@@ -30,6 +30,35 @@ export const SIM = {
   reformSeconds: 4,
 } as const;
 
+export const SPAWN = {
+  /** Delay before the very first ship enters the corridor. */
+  firstDelay: 1.0,
+  /** Nominal delay between two ships entering the SAME lane — this is what
+   *  makes spawning scalable: total spawn duration grows linearly with
+   *  convoy size (roughly (n / lanes) * perLaneInterval) without any change
+   *  to the scheduling logic itself, whether the convoy is 20 ships or 45. */
+  perLaneInterval: 3.2,
+  /** Random +/- applied on top of the nominal cadence so the stream doesn't
+   *  arrive on a metronome. */
+  timeJitter: 0.8,
+  /** Hard floor on the gap between two ships entering the same lane, even
+   *  after jitter — keeps entrances from ever bunching up. */
+  minGap: 1.1,
+  /** Persistent per-ship pace variance, +/- this fraction of class speed. */
+  speedVariance: 0.05,
+} as const;
+
+export const SPACING = {
+  /** Minimum along-track gap, expressed as a multiple of the longer ship's
+   *  hull length — "about two ship lengths" of clear water between hulls. */
+  gapLengths: 2,
+  /** Absolute floor so small hulls are never unrealistically close. */
+  minGapFloor: 40,
+  /** Lateral correction speed (world units/second) ships use to settle onto
+   *  their lane target — independent of forward transit speed. */
+  lateralCorrectionSpeed: 34,
+} as const;
+
 export const COMBAT = {
   missile: { speed: 60, damage: 34, hitRadius: 30, splashRadius: 55, splashDamage: 14 },
   guided: { speed: 50, damage: 46, hitRadius: 30, turnRate: 1.4, baseHitChance: 0.92 },

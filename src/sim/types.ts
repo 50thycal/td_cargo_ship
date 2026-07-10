@@ -21,6 +21,8 @@ export interface ShipClassDef {
   slots: number;
   /** Collision/visual radius in world units. */
   radius: number;
+  /** Hull length in world units, used to size minimum following distance. */
+  length: number;
   /** Cost to purchase a replacement hull. */
   replaceCost: number;
   /** Tankers explode on death, damaging nearby ships. */
@@ -53,16 +55,27 @@ export interface Ship {
   alive: boolean;
   delivered: boolean;
   modules: ModuleId[];
-  /** Formation slot offset relative to convoy anchor. */
-  slotDx: number;
-  slotDy: number;
+  /** Scheduled time (seconds into the transit) this ship enters the corridor. */
+  spawnTime: number;
+  /** True once the ship has actually entered the world at its spawn time. */
+  spawned: boolean;
+  /** Which of the three corridor lanes this ship travels, fixed at spawn. */
+  laneIndex: number;
+  /** Persistent per-ship lateral offset seed in [-1, 1], scaled by the
+   *  current formation's spread — this is what keeps the stream from
+   *  looking like a rigid grid without ever reassigning ships. */
+  lateralSeed: number;
+  /** Persistent per-ship pace variance (~1 ± a few %) so ships don't all
+   *  move in perfect lockstep. */
+  speedVariance: number;
   /** Transient lateral offset used to steer around revealed mines. */
   avoidDy: number;
   /** Seconds of burning remaining (damage over time). */
   fireSeconds: number;
   /** Point-defense cooldown timer. */
   pdCooldown: number;
-  /** True when the ship has fallen behind its formation slot. */
+  /** True when the ship has fallen well behind its own expected pace
+   *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
 }
 
@@ -78,11 +91,13 @@ export interface FormationDef {
   desc: string;
   /** Convoy speed multiplier. */
   speedMult: number;
-  /** Horizontal / vertical spacing between formation slots. */
-  spacingX: number;
-  spacingY: number;
-  /** Ships per column (grid height). */
-  rows: number;
+  /** Half-range (world units) of each ship's persistent lateral jitter
+   *  around its lane center — the wider this is, the less rigid the stream
+   *  looks. Never affects the hard minimum-separation floor. */
+  lateralSpread: number;
+  /** Extra along-track buffer (world units) added on top of the
+   *  two-ship-length minimum gap enforced between consecutive ships. */
+  gapBonus: number;
   /** Multiplier on splash / tanker-explosion collateral radius. */
   collateralMult: number;
   /** Chance a ship successfully steers clear of a revealed mine in its path. */
@@ -245,11 +260,15 @@ export interface CombatEffects {
 export interface TransitState {
   time: number;
   over: boolean;
-  /** Convoy anchor position (formation slots are relative to this). */
+  /** Notional patrol/progress reference used to position escorts and center
+   *  convoy-wide ability effects — no longer a slot anchor for cargo ships,
+   *  which now move individually through the corridor. */
   anchorX: number;
-  laneY: number;
-  targetLaneY: number;
-  laneIndex: number;
+  /** Integer bias applied to every ship's laneIndex when steering (clamped
+   *  per-ship at use time), driven by the 'lane' command — lets the player
+   *  nudge the whole stream toward one shore without collapsing it into a
+   *  single file. */
+  laneBias: number;
   formation: FormationId;
   /** Seconds remaining during which ships are re-forming (slower). */
   reforming: number;

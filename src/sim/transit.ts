@@ -2,7 +2,7 @@
 // commands into stepTransit and renders whatever is in TransitState. No DOM,
 // no timers, no Math.random — the caller owns the RNG and the fixed timestep.
 
-import { COMBAT, SIM, WORLD } from '../data/tuning';
+import { COMBAT, SIM, SPACING, SPAWN, WORLD } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import type { RNG } from './rng';
 import type {
@@ -43,37 +43,59 @@ export function deriveEffects(research: ReadonlySet<ResearchId>): CombatEffects 
 }
 
 // ---------------------------------------------------------------------------
-// Formation slots
+// Spawn scheduling & spacing
 // ---------------------------------------------------------------------------
 
-function computeSlots(formation: FormationId, n: number): { dx: number; dy: number }[] {
-  const f = FORMATIONS[formation];
-  const slots: { dx: number; dy: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    const col = Math.floor(i / f.rows);
-    const row = i % f.rows;
-    slots.push({
-      dx: -col * f.spacingX,
-      dy: (row - (f.rows - 1) / 2) * f.spacingY,
-    });
-  }
-  return slots;
+/** Clamp a lane index into the valid corridor range. */
+function clampLane(lane: number): number {
+  return Math.max(0, Math.min(WORLD.lanes.length - 1, lane));
 }
 
-/** High-value ships take the central (best protected) slots. */
-function assignSlots(ships: Ship[], formation: FormationId): void {
-  const active = ships.filter((s) => s.alive && !s.delivered);
-  const slots = computeSlots(formation, active.length);
-  const slotOrder = slots
-    .map((s, i) => ({ s, i }))
-    .sort((a, b) => Math.abs(a.s.dy) - Math.abs(b.s.dy) || b.s.dx - a.s.dx);
-  const shipOrder = [...active].sort(
-    (a, b) => SHIP_CLASSES[b.classId].value - SHIP_CLASSES[a.classId].value,
-  );
-  shipOrder.forEach((ship, i) => {
-    ship.slotDx = slotOrder[i].s.dx;
-    ship.slotDy = slotOrder[i].s.dy;
-  });
+/** The lane a ship actually steers toward: its own lane, shifted by the
+ *  player's lane-bias command and clamped to the corridor. */
+function effectiveLane(ship: Ship, t: TransitState): number {
+  return clampLane(ship.laneIndex + t.laneBias);
+}
+
+/** Reference lateral position used for escort patrol and ability effect
+ *  centers — the corridor's center lane, shifted by the lane-bias command. */
+export function patrolLaneY(t: TransitState): number {
+  return WORLD.lanes[clampLane(1 + t.laneBias)];
+}
+
+/** Minimum along-track gap required between two ships (the one ahead and
+ *  the one following), in world units — "about two ship lengths" of clear
+ *  water, plus whatever extra buffer the current formation adds. Never
+ *  drops below the absolute floor regardless of formation. */
+function requiredGap(aheadClass: ShipClassId, followClass: ShipClassId, formation: FormationId): number {
+  const lengthAhead = SHIP_CLASSES[aheadClass].length;
+  const lengthFollow = SHIP_CLASSES[followClass].length;
+  const base = Math.max(SPACING.minGapFloor, Math.max(lengthAhead, lengthFollow) * SPACING.gapLengths);
+  return Math.max(SPACING.minGapFloor, base + FORMATIONS[formation].gapBonus);
+}
+
+/** Schedule every ship's entry into the corridor: round-robin across lanes
+ *  with a randomized order (so classes interleave) and jittered timing.
+ *  Total spawn duration grows linearly with convoy size — the same logic
+ *  handles a 20-ship or a 45-ship convoy without modification. */
+function scheduleSpawns(ships: Ship[], rng: RNG): void {
+  const order = rng.shuffle(ships.map((_, i) => i));
+  const laneCount = WORLD.lanes.length;
+  const lastSpawnInLane = new Array(laneCount).fill(SPAWN.firstDelay - SPAWN.perLaneInterval);
+  let laneCursor = rng.int(laneCount);
+  for (const idx of order) {
+    const ship = ships[idx];
+    const lane = laneCursor % laneCount;
+    laneCursor++;
+    const nominal = lastSpawnInLane[lane] + SPAWN.perLaneInterval;
+    const jitter = rng.range(-SPAWN.timeJitter, SPAWN.timeJitter);
+    const time = Math.max(SPAWN.firstDelay, lastSpawnInLane[lane] + SPAWN.minGap, nominal + jitter);
+    lastSpawnInLane[lane] = time;
+    ship.spawnTime = time;
+    ship.laneIndex = lane;
+    ship.lateralSeed = rng.range(-1, 1);
+    ship.speedVariance = rng.range(1 - SPAWN.speedVariance, 1 + SPAWN.speedVariance);
+  }
 }
 
 const ESCORT_SLOTS = [
@@ -102,15 +124,18 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         id: nextId++,
         name: names[(ships.length) % names.length],
         classId,
-        x: 0,
-        y: 0,
+        x: WORLD.spawnX,
+        y: WORLD.lanes[1],
         hp: maxHp,
         maxHp,
         alive: true,
         delivered: false,
         modules: [...modules],
-        slotDx: 0,
-        slotDy: 0,
+        spawnTime: 0,
+        spawned: false,
+        laneIndex: 1,
+        lateralSeed: 0,
+        speedVariance: 1,
         avoidDy: 0,
         fireSeconds: 0,
         pdCooldown: 0,
@@ -118,6 +143,9 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       });
     }
   }
+  // Individual entry timing/lane/jitter — ships stream in one at a time
+  // rather than appearing as a single block.
+  scheduleSpawns(ships, rng);
 
   // Unrepaired damage from previous rounds shows up on this convoy. Whatever
   // does not fit (capped at 40% of each hull) stays in the campaign pool —
@@ -132,15 +160,12 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     pendingApplied += applied;
   }
 
-  const laneIndex = 1;
-  const laneY = WORLD.lanes[laneIndex];
+  const centerLaneY = WORLD.lanes[1];
   const state: TransitState = {
     time: 0,
     over: false,
     anchorX: WORLD.spawnX,
-    laneY,
-    targetLaneY: laneY,
-    laneIndex,
+    laneBias: 0,
     formation: campaign.formation,
     reforming: 0,
     ships,
@@ -181,17 +206,11 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     pendingDamageApplied: pendingApplied,
   };
 
-  assignSlots(state.ships, state.formation);
-  for (const ship of state.ships) {
-    ship.x = WORLD.spawnX + ship.slotDx;
-    ship.y = laneY + ship.slotDy;
-  }
-
   for (let i = 0; i < campaign.escorts && i < ESCORT_SLOTS.length; i++) {
     state.escorts.push({
       id: state.nextEntityId++,
       x: WORLD.spawnX + ESCORT_SLOTS[i].dx,
-      y: laneY + ESCORT_SLOTS[i].dy,
+      y: centerLaneY + ESCORT_SLOTS[i].dy,
       slotDx: ESCORT_SLOTS[i].dx,
       slotDy: ESCORT_SLOTS[i].dy,
       cooldown: 0,
@@ -225,8 +244,12 @@ function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
 }
 
+function isActive(s: Ship): boolean {
+  return s.spawned && s.alive && !s.delivered;
+}
+
 function activeShips(t: TransitState): Ship[] {
-  return t.ships.filter((s) => s.alive && !s.delivered);
+  return t.ships.filter(isActive);
 }
 
 function pushEvent(t: TransitState, ev: Omit<TransitEvent, 't'>): void {
@@ -356,7 +379,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         t.stats.scanUsed++;
         pushEvent(t, { type: 'abilityUsed', detail: 'scan' });
         const cx = t.anchorX + 220;
-        const cy = t.laneY;
+        const cy = patrolLaneY(t);
         for (const mine of t.threats) {
           if (mine.kind !== 'mine' || !mine.alive) continue;
           const d = dist(cx, cy, mine.x, mine.y);
@@ -380,15 +403,16 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       if (cmd.formation === t.formation) return;
       t.formation = cmd.formation;
       t.reforming = SIM.reformSeconds;
-      assignSlots(t.ships, t.formation);
+      // No slot reassignment needed: each ship's lane target already reads
+      // the new formation's spread/gap live, so it glides to the new spacing.
       pushEvent(t, { type: 'abilityUsed', detail: `formation:${cmd.formation}` });
       return;
     }
     case 'lane': {
-      const next = Math.max(0, Math.min(WORLD.lanes.length - 1, t.laneIndex + cmd.direction));
-      if (next === t.laneIndex) return;
-      t.laneIndex = next;
-      t.targetLaneY = WORLD.lanes[next];
+      const max = WORLD.lanes.length - 1;
+      const next = Math.max(-max, Math.min(max, t.laneBias + cmd.direction));
+      if (next === t.laneBias) return;
+      t.laneBias = next;
       pushEvent(t, { type: 'abilityUsed', detail: `lane:${next}` });
       return;
     }
@@ -414,17 +438,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   for (const cmd of commands) handleCommand(t, cmd, rng);
 
-  // --- Convoy anchor & lane -------------------------------------------------
+  // --- Patrol reference (escort/effect positioning only) ---------------------
   const formation = FORMATIONS[t.formation];
   const cohesion = t.reforming > 0 ? 0.8 : 1;
   t.reforming = Math.max(0, t.reforming - dt);
-  const convoySpeed = t.baseSpeed * formation.speedMult * cohesion;
-  t.anchorX += convoySpeed * dt;
-  if (t.laneY !== t.targetLaneY) {
-    const dy = t.targetLaneY - t.laneY;
-    const step = WORLD.laneChangeSpeed * dt;
-    t.laneY = Math.abs(dy) <= step ? t.targetLaneY : t.laneY + Math.sign(dy) * step;
-  }
+  const patrolSpeed = t.baseSpeed * formation.speedMult * cohesion;
+  t.anchorX += patrolSpeed * dt;
 
   // --- Enemy spawns ----------------------------------------------------------
   const pool = activeShips(t);
@@ -437,11 +456,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     if (spawn.kind === 'missile') {
       const target = pickWeighted(rng, pool, 1);
       // Lead the target: aim where it will be, iterating the flight-time guess.
+      const leadSpeed = SHIP_CLASSES[target.classId].speed * formation.speedMult * target.speedVariance;
       let aimX = target.x;
       let aimY = target.y;
       for (let i = 0; i < 2; i++) {
         const flight = dist(site.x, site.y, aimX, aimY) / COMBAT.missile.speed;
-        aimX = target.x + convoySpeed * flight;
+        aimX = target.x + leadSpeed * flight;
         aimY = target.y;
       }
       const d = dist(site.x, site.y, aimX, aimY);
@@ -482,8 +502,27 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // --- Ships -----------------------------------------------------------------
   const ecmActive = t.time < t.ecmActiveUntil;
+
+  // Bring newly-scheduled ships into the world.
   for (const ship of t.ships) {
-    if (!ship.alive || ship.delivered) continue;
+    if (ship.spawned || t.time < ship.spawnTime) continue;
+    ship.spawned = true;
+    ship.x = WORLD.spawnX;
+    ship.y = WORLD.lanes[effectiveLane(ship, t)] + ship.lateralSeed * formation.lateralSpread;
+  }
+
+  // Snapshot pre-tick positions per lane, sorted by progress, so the
+  // following-distance governor below is order-independent within this
+  // tick (a ship processed later in the array must not "see" another
+  // ship's already-updated position from earlier in the same tick).
+  const laneSnapshot: { id: number; x: number; classId: ShipClassId }[][] = WORLD.lanes.map(() => []);
+  for (const ship of t.ships) {
+    if (!isActive(ship)) continue;
+    laneSnapshot[effectiveLane(ship, t)].push({ id: ship.id, x: ship.x, classId: ship.classId });
+  }
+
+  for (const ship of t.ships) {
+    if (!isActive(ship)) continue;
 
     // Mine avoidance: does the crew spot a revealed mine ahead in time?
     ship.avoidDy *= Math.max(0, 1 - dt * 1.5);
@@ -501,31 +540,53 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
     }
 
-    // Healthy ships keep pace with the formation (the speed multiplier is the
-    // whole convoy pushing its engines) plus a small catch-up margin so a
-    // displaced ship can re-form. Only crippled ships genuinely fall behind —
-    // straggling is meant to be a consequence of damage, not of formation.
     const crippled = ship.hp < ship.maxHp * COMBAT.crippleHpFraction;
-    const targetX = t.anchorX + ship.slotDx;
-    const targetY = t.laneY + ship.slotDy + ship.avoidDy;
-    const behind = targetX - ship.x > 20;
-    const maxSpeed =
-      SHIP_CLASSES[ship.classId].speed *
-      formation.speedMult *
-      (crippled ? COMBAT.crippleSpeedMult : 1) *
-      (behind && !crippled ? 1.12 : 1);
-    const dx = targetX - ship.x;
-    const dy = targetY - ship.y;
-    const d = Math.hypot(dx, dy);
-    const step = maxSpeed * dt;
-    if (d <= step) {
-      ship.x = targetX;
-      ship.y = targetY;
-    } else {
-      ship.x += (dx / d) * step;
-      ship.y += (dy / d) * step;
+
+    // Forward speed: class pace, formation tempo, this ship's own personal
+    // variance (so the stream never moves in perfect lockstep), and a hard
+    // cut if crippled.
+    let speed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
+    if (crippled) speed *= COMBAT.crippleSpeedMult;
+    if (t.reforming > 0) speed *= 0.9;
+
+    // Following-distance governor: never let a ship close within the
+    // minimum safe gap of whichever ship is immediately ahead of it in the
+    // same lane. This is what guarantees ships never overlap or stack,
+    // regardless of spawn timing, crippling, or mine-dodge jitter.
+    const lane = effectiveLane(ship, t);
+    let ahead: { x: number; classId: ShipClassId } | null = null;
+    for (const entry of laneSnapshot[lane]) {
+      if (entry.id === ship.id) continue;
+      if (entry.x > ship.x && (!ahead || entry.x < ahead.x)) ahead = entry;
     }
-    ship.straggling = targetX - ship.x > COMBAT.straggleDistance;
+    if (ahead) {
+      const gapNeeded = requiredGap(ahead.classId, ship.classId, t.formation);
+      const gap = ahead.x - ship.x;
+      if (gap < gapNeeded) {
+        const stopZone = gapNeeded * 0.3;
+        const slack = gapNeeded - stopZone;
+        const room = Math.max(0, gap - stopZone);
+        speed *= slack > 0 ? Math.max(0, Math.min(1, room / slack)) : 0;
+      }
+    }
+
+    ship.x += speed * dt;
+
+    // Lateral homing toward this ship's lane target (own lane + persistent
+    // jitter + any active mine-dodge offset) at a fixed correction speed,
+    // independent of forward progress.
+    const laneTargetY = WORLD.lanes[lane] + ship.lateralSeed * formation.lateralSpread + ship.avoidDy;
+    const dy = laneTargetY - ship.y;
+    const lateralStep = SPACING.lateralCorrectionSpeed * dt;
+    ship.y += Math.max(-lateralStep, Math.min(lateralStep, dy));
+    ship.y = Math.max(60, Math.min(WORLD.height - 60, ship.y));
+
+    // Straggling is measured against THIS ship's own expected pace (class
+    // speed * formation tempo * its own variance), so baseline personality
+    // never trips it — only genuine damage or being blocked does.
+    const nominalSpeed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
+    const nominalX = WORLD.spawnX + Math.max(0, t.time - ship.spawnTime) * nominalSpeed;
+    ship.straggling = nominalX - ship.x > COMBAT.straggleDistance;
 
     // Fire damage over time.
     if (ship.fireSeconds > 0) {
@@ -544,11 +605,36 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
   }
 
+  // Cross-lane safety net: a true last-resort guarantee that no two ships
+  // ever visually overlap, independent of the lane governor above (which
+  // only reasons about ships sharing a lane). Cheap at this scale (<=45
+  // ships) and only ever nudges ships apart laterally, never touching
+  // forward progress.
+  const activeNow = activeShips(t);
+  for (let i = 0; i < activeNow.length; i++) {
+    for (let j = i + 1; j < activeNow.length; j++) {
+      const a = activeNow[i];
+      const b = activeNow[j];
+      if (Math.abs(a.x - b.x) > 60) continue;
+      const minDist = (SHIP_CLASSES[a.classId].radius + SHIP_CLASSES[b.classId].radius) * 2.2;
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0 && d < minDist) {
+        const push = (minDist - d) / 2;
+        const dir = dy >= 0 ? 1 : -1;
+        a.y += dir * push;
+        b.y -= dir * push;
+      }
+    }
+  }
+
   // --- Escorts ---------------------------------------------------------------
+  const escortLaneY = patrolLaneY(t);
   for (const escort of t.escorts) {
     escort.cooldown = Math.max(0, escort.cooldown - dt);
     const targetX = t.anchorX + escort.slotDx;
-    const targetY = t.laneY + escort.slotDy;
+    const targetY = escortLaneY + escort.slotDy;
     const dx = targetX - escort.x;
     const dy = targetY - escort.y;
     const d = Math.hypot(dx, dy);
