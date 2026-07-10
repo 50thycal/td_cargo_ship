@@ -1,0 +1,21 @@
+{
+  "name": "straitwatch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Straitwatch — adaptive convoy-defense game MVP (predator vs prey arms race)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "node e2e/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
