@@ -4,7 +4,7 @@
 
 import { COMBAT, SIM, WORLD } from '../data/tuning';
 import { FORMATIONS } from '../data/defs';
-import { stepTransit } from '../sim/transit';
+import { patrolLaneY, stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
   FormationId,
@@ -312,7 +312,7 @@ export class TransitView {
             this.effects.push({
               kind: 'scan',
               x: cx,
-              y: this.state.laneY,
+              y: patrolLaneY(this.state),
               start: now,
               duration: 900,
               maxRadius: COMBAT.scan.radius,
@@ -430,9 +430,9 @@ export class TransitView {
       ctx.stroke();
     }
     ctx.setLineDash([]);
-    // Active lane marker
+    // Lane-bias marker: shows which shore the "Lane" control is steering the stream toward.
     ctx.strokeStyle = 'rgba(120, 190, 255, 0.25)';
-    ctx.strokeRect(0, this.sy(t.targetLaneY) - 4, CANVAS_W, 8);
+    ctx.strokeRect(0, this.sy(patrolLaneY(t)) - 4, CANVAS_W, 8);
 
     // Exit zone
     const exitGrad = ctx.createLinearGradient(this.sx(WORLD.deliverX), 0, CANVAS_W, 0);
@@ -444,7 +444,7 @@ export class TransitView {
     // ECM aura
     if (t.time < t.ecmActiveUntil) {
       const cx = this.sx(t.anchorX - 80);
-      const cy = this.sy(t.laneY);
+      const cy = this.sy(patrolLaneY(t));
       const pulse = 1 + 0.04 * Math.sin(now / 120);
       ctx.strokeStyle = 'rgba(199, 146, 234, 0.5)';
       ctx.setLineDash([6, 8]);
@@ -480,7 +480,7 @@ export class TransitView {
 
     // Ships
     for (const ship of t.ships) {
-      if (!ship.alive || ship.delivered) continue;
+      if (!ship.spawned || !ship.alive || ship.delivered) continue;
       this.drawShip(ship);
     }
 

@@ -19,8 +19,15 @@ Transit → After-Action Report → Intelligence & Research → Procurement → 
 
 ### 1. Transit (real time, ~75–95s)
 
-~20+ ships cross the map left-to-right in formation. The player operates the
-convoy **as a system**, not ship-by-ship:
+~20+ ships cross the map left-to-right. They are not a rigid military
+formation — each ship streams into the corridor individually, staggered a
+few seconds apart across three lanes, at its own pace with a touch of
+personal variance, so the convoy reads as commercial traffic rather than a
+fleet block. A following-distance rule keeps every ship at least ~two hull
+lengths from the one ahead of it in its lane, automatically, so ships never
+overlap or stack regardless of how the formation, damage, or mine-dodging
+moves them around. The player operates the convoy **as a system**, not
+ship-by-ship:
 
 | Action | Input | Cost/limit |
 | --- | --- | --- |
@@ -35,9 +42,11 @@ Ship modules (point defense, sonar, etc.) operate automatically — active
 gameplay lives in the convoy-wide layer, so 20+ ships stay manageable on a
 phone.
 
-Emergent drama: damaged ships slow down, fall out of formation, and become
+Emergent drama: damaged ships slow down, fall behind their own expected pace
+(or get blocked behind another slowed ship in their lane), and become
 preferred targets for guided missiles. Tankers explode and damage neighbors —
-formation choice decides how badly.
+formation choice (lateral spread and following-distance buffer, not a slot
+grid) decides how badly.
 
 ### 2. After-Action Report
 

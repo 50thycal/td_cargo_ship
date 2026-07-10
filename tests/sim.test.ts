@@ -20,6 +20,8 @@ import {
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { saveCampaign, loadCampaign, clearCampaign } from '../src/platform/save';
+import { SHIP_CLASSES } from '../src/data/defs';
+import { SPACING } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -139,13 +141,18 @@ describe('transit', () => {
   });
 
   it('defending measurably beats not defending across early rounds', () => {
+    // Early rounds are deliberately gentle (few, slow, unguided missiles),
+    // so any single seed can land on zero losses either way — average over
+    // several seeds instead of trusting one draw.
     const play = (defend: boolean): number => {
-      const c = newCampaign('ab-test');
       let lost = 0;
-      for (let r = 0; r < 4; r++) {
-        const { state } = runRound(c, { defend });
-        lost += state.stats.lost;
-        botProcure(c);
+      for (let seed = 0; seed < 12; seed++) {
+        const c = newCampaign(`ab-test-${seed}`);
+        for (let r = 0; r < 4; r++) {
+          const { state } = runRound(c, { defend });
+          lost += state.stats.lost;
+          botProcure(c);
+        }
       }
       return lost;
     };
@@ -350,19 +357,23 @@ describe('transit hardening', () => {
     expect(state.ecmCharges).toBe(1); // still active -> rejected
   });
 
-  it('healthy ships never straggle in sprint formation', () => {
-    const c = newCampaign('sprint-straggle');
-    c.formation = 'sprint';
+  it('a crippled ship falls behind its own pace and is flagged straggling', () => {
+    const c = newCampaign('cripple-straggle');
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    for (let i = 0; i < 30 * 40 && !state.over; i++) {
+    for (let i = 0; i < 30 * 3; i++) stepTransit(state, [], rng);
+    const victim = state.ships.find((s) => s.spawned && s.alive && !s.delivered);
+    expect(victim).toBeDefined();
+    victim!.hp = victim!.maxHp * 0.3; // below crippleHpFraction
+    let flagged = false;
+    for (let i = 0; i < 30 * 20 && victim!.alive && !victim!.delivered; i++) {
       stepTransit(state, [], rng);
-      for (const ship of state.ships) {
-        if (ship.alive && !ship.delivered && ship.hp === ship.maxHp) {
-          expect(ship.straggling).toBe(false);
-        }
+      if (victim!.straggling) {
+        flagged = true;
+        break;
       }
     }
+    expect(flagged).toBe(true);
   });
 
   it('reports quota evaluation as round 3 of the window', () => {
@@ -373,6 +384,88 @@ describe('transit hardening', () => {
     }
     expect(lastReport!.quota.evaluated).toBe(true);
     expect(lastReport!.quota.windowRound).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Convoy spawning & spacing
+// ---------------------------------------------------------------------------
+
+function stretchCapacity(c: CampaignState, cargo: number, tanker: number, freighter: number): void {
+  c.capacity = cargo + tanker + freighter;
+  c.fleet = { cargo, tanker, freighter };
+  setComposition(c, 'cargo', cargo);
+  setComposition(c, 'tanker', tanker);
+  setComposition(c, 'freighter', freighter);
+}
+
+describe('convoy spawning', () => {
+  it('ships enter individually with staggered timing that scales with convoy size', () => {
+    const small = newCampaign('spawn-scale-small'); // default 20-ship convoy
+    const big = newCampaign('spawn-scale-big');
+    stretchCapacity(big, 40, 3, 2); // max-capacity-sized convoy
+
+    const { state: stateSmall } = createRoundTransit(small, planCurrentRound(small));
+    const { state: stateBig } = createRoundTransit(big, planCurrentRound(big));
+
+    const timesSmall = stateSmall.ships.map((s) => s.spawnTime).sort((a, b) => a - b);
+    const timesBig = stateBig.ships.map((s) => s.spawnTime).sort((a, b) => a - b);
+
+    // Individually staggered, not a single instantaneous block.
+    expect(new Set(timesSmall).size).toBeGreaterThan(1);
+    expect(timesSmall[timesSmall.length - 1] - timesSmall[0]).toBeGreaterThan(5);
+
+    // Scales without special-casing: a larger convoy takes longer to fully arrive.
+    expect(timesBig[timesBig.length - 1]).toBeGreaterThan(timesSmall[timesSmall.length - 1]);
+  });
+
+  it('never lets two ships overlap, at max convoy size in the tightest formation', () => {
+    const c = newCampaign('no-overlap-stress');
+    c.formation = 'tight';
+    stretchCapacity(c, 40, 3, 2); // the densest, largest case the game allows
+
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    let pairsChecked = 0;
+    let tick = 0;
+    while (!state.over) {
+      stepTransit(state, [], rng);
+      tick++;
+      // Ships move a fraction of a world unit per 1/30s tick at these speeds,
+      // so sampling every 4th tick (~0.13s resolution) still can't miss a
+      // real violation while cutting this stress test's runtime ~4x.
+      if (tick % 4 !== 0) continue;
+      const active = state.ships.filter((s) => s.spawned && s.alive && !s.delivered);
+      for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+          const a = active[i];
+          const b = active[j];
+          const minHull = SHIP_CLASSES[a.classId].radius + SHIP_CLASSES[b.classId].radius;
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          expect(d).toBeGreaterThanOrEqual(minHull - 0.01);
+          pairsChecked++;
+        }
+      }
+    }
+    expect(pairsChecked).toBeGreaterThan(0);
+  });
+
+  it('keeps consecutive same-lane ships at least ~two ship lengths apart once settled', () => {
+    const c = newCampaign('min-gap-check');
+    c.formation = 'tight'; // the formation with no extra gap bonus
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    // Run past the full spawn window so every ship is in the water.
+    for (let i = 0; i < 30 * 40 && !state.over; i++) stepTransit(state, [], rng);
+
+    const byLane: Record<number, { x: number; classId: string }[]> = { 0: [], 1: [], 2: [] };
+    for (const s of state.ships) {
+      if (s.spawned && s.alive && !s.delivered) byLane[s.laneIndex].push({ x: s.x, classId: s.classId });
+    }
+    for (const lane of Object.values(byLane)) {
+      lane.sort((a, b) => a.x - b.x);
+      for (let i = 1; i < lane.length; i++) {
+        expect(lane[i].x - lane[i - 1].x).toBeGreaterThanOrEqual(SPACING.minGapFloor - 1);
+      }
+    }
   });
 });
 
