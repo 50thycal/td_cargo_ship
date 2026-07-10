@@ -104,7 +104,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   },
   sprint: {
     id: 'sprint',
-    name: 'Sprint Column',
+    name: 'Sprint',
     desc: 'Twin fast columns. The convoy moves quickest, but the long line stretches escort coverage thin.',
     speedMult: 1.22,
     spacingX: 42,

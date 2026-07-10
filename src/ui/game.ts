@@ -30,14 +30,28 @@ export class Game {
   }
 
   private swapScreen(el: HTMLElement | null): void {
+    // Preserve scroll position across rerenders (prep/research rebuild the
+    // whole screen on every purchase — losing scroll would be brutal on
+    // phone-height viewports).
+    const oldBody = this.currentScreen?.querySelector('.screen-body');
+    const oldScreenId = this.currentScreen?.getAttribute('data-screen');
+    const scrollTop = oldBody?.scrollTop ?? 0;
     this.currentScreen?.remove();
     this.currentScreen = el;
-    if (el) this.stage.append(el);
+    if (el) {
+      this.stage.append(el);
+      if (scrollTop > 0 && el.getAttribute('data-screen') === oldScreenId) {
+        const newBody = el.querySelector('.screen-body');
+        if (newBody) newBody.scrollTop = scrollTop;
+      }
+    }
   }
 
   private showMenu(): void {
+    // A finished campaign still counts as continuable: route() lands on the
+    // game-over screen, so the final score isn't lost to a reload.
     const saved = loadCampaign();
-    const hasSave = saved !== null && !saved.campaignOver;
+    const hasSave = saved !== null;
     this.swapScreen(
       menuScreen(
         hasSave,
@@ -60,7 +74,11 @@ export class Game {
   private route(): void {
     const c = this.campaign;
     if (!c) return this.showMenu();
-    if (c.campaignOver) return this.showGameOver();
+    if (c.campaignOver) {
+      // Reload during the final report: show it once more before the tally.
+      if (c.phase === 'aar' && c.lastReport) return this.showAar();
+      return this.showGameOver();
+    }
     switch (c.phase) {
       case 'prep':
         return this.showPrep();

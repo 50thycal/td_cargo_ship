@@ -202,11 +202,18 @@ export class TransitView {
   // -------------------------------------------------------------------------
 
   private queue(cmd: TransitCommand): void {
-    if (this.state.over) return;
+    if (this.state.over || this.paused) return;
+    // Ability taps must not stack: a double-tap (or two taps in one frame)
+    // would otherwise burn two charges for one activation.
+    if (cmd.type === 'ability') {
+      if (this.pending.some((p) => p.type === 'ability' && p.ability === cmd.ability)) return;
+      if (cmd.ability === 'ecm' && this.state.time < this.state.ecmActiveUntil) return;
+    }
     this.pending.push(cmd);
   }
 
   private onPointerDown = (ev: PointerEvent): void => {
+    ev.preventDefault(); // keep taps from starting scroll/zoom gestures on iOS
     if (this.paused || this.state.over) return;
     const rect = this.canvas.getBoundingClientRect();
     const cx = ((ev.clientX - rect.left) / rect.width) * CANVAS_W;
@@ -505,6 +512,49 @@ export class TransitView {
     // Missiles with trails
     for (const threat of t.threats) {
       if (!threat.alive || threat.kind === 'mine') continue;
+
+      // Early-Warning Network research: show where each missile is headed.
+      if (t.effects.showTargetVectors) {
+        const target =
+          threat.kind === 'guidedMissile'
+            ? t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered)
+            : undefined;
+        const tx = target ? target.x : threat.targetX;
+        const ty = target ? target.y : threat.targetY;
+        if (tx !== undefined && ty !== undefined) {
+          ctx.strokeStyle = 'rgba(255, 120, 120, 0.22)';
+          ctx.setLineDash([4, 8]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(this.sx(threat.x), this.sy(threat.y));
+          ctx.lineTo(this.sx(tx), this.sy(ty));
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // Missile-Warning Receiver module: mark the hunted ship.
+      if (threat.kind === 'guidedMissile') {
+        const target = t.ships.find(
+          (s) => s.id === threat.targetShipId && s.alive && !s.delivered,
+        );
+        if (target?.modules.includes('missileWarning')) {
+          const px = this.sx(target.x);
+          const py = this.sy(target.y);
+          const blink = Math.sin(now / 110) > 0;
+          if (blink) {
+            ctx.strokeStyle = 'rgba(255, 107, 107, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(px, py - 22);
+            ctx.lineTo(px - 7, py - 11);
+            ctx.lineTo(px + 7, py - 11);
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+      }
+
       let trail = this.trails.get(threat.id);
       if (!trail) {
         trail = [];

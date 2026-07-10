@@ -118,11 +118,17 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   for (const classId of Object.keys(c.composition) as ShipClassId[]) {
     c.composition[classId] = Math.min(c.composition[classId], c.fleet[classId]);
   }
-  c.pendingDamage = Math.round(
-    t.ships
-      .filter((ship) => ship.alive)
-      .reduce((sum, ship) => sum + (ship.maxHp - ship.hp), 0),
-  );
+  // Damage-pool conservation: whatever the sailing convoy could not absorb
+  // (per-hull 40% cap in createTransit) stays owed, plus the damage the
+  // survivors actually carry. Destroyed ships take their share to the bottom.
+  const leftoverPool = Math.max(0, c.pendingDamage - t.pendingDamageApplied);
+  c.pendingDamage =
+    leftoverPool +
+    Math.round(
+      t.ships
+        .filter((ship) => ship.alive)
+        .reduce((sum, ship) => sum + (ship.maxHp - ship.hp), 0),
+    );
 
   // --- Confidence ----------------------------------------------------------------
   const deliveredFraction = s.launched > 0 ? s.delivered / s.launched : 0;
@@ -138,6 +144,9 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const quotaEvaluated = c.quota.roundsLeft <= 0;
   let quotaMet = false;
   const quotaSnapshot = { needed: c.quota.pointsNeeded, earned: c.quota.pointsEarned };
+  // Captured before the window resets below, so evaluation rounds report as
+  // round 3-of-3 rather than 0.
+  const quotaWindowRound = CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft);
   if (quotaEvaluated) {
     quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
     confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
@@ -249,7 +258,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     capacityIncreased,
     researchCompleted,
     quota: {
-      windowRound: CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft),
+      windowRound: quotaWindowRound,
       earned: quotaSnapshot.earned,
       needed: quotaSnapshot.needed,
       evaluated: quotaEvaluated,
@@ -301,8 +310,12 @@ export function startResearch(c: CampaignState, id: ResearchId): boolean {
 // Procurement actions (all return false when the purchase is invalid)
 // ---------------------------------------------------------------------------
 
+/** Priced on OWNED hulls, not the mutable convoy assignment — composition can
+ *  be toggled to zero for free, which would otherwise let the player buy a
+ *  class-wide refit at single-ship price. Fleet size only shrinks through
+ *  real losses, so it is exploit-proof as a price basis. */
 export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): number {
-  const count = Math.max(1, c.composition[classId]);
+  const count = Math.max(1, c.fleet[classId]);
   return MODULES[moduleId].costPerShip * count;
 }
 
@@ -318,6 +331,7 @@ export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: Modu
 }
 
 export function buyAmmo(c: CampaignState, count: number): boolean {
+  if (!Number.isInteger(count) || count <= 0) return false;
   const cost = ECONOMY.ammoCost * count;
   if (c.cash < cost) return false;
   c.cash -= cost;

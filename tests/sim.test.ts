@@ -8,10 +8,12 @@ import { makeRng } from '../src/sim/rng';
 import {
   buyAmmo,
   createRoundTransit,
+  moduleCost,
   newCampaign,
   planCurrentRound,
   repairFleet,
   resolveTransit,
+  setComposition,
   startResearch,
   unlockScan,
 } from '../src/sim/campaign';
@@ -293,6 +295,84 @@ describe('campaign', () => {
     const assigned = c.composition.cargo + c.composition.tanker + c.composition.freighter;
     expect(owned).toBeLessThan(20);
     expect(assigned).toBeLessThanOrEqual(owned);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression tests for review findings
+// ---------------------------------------------------------------------------
+
+describe('economy hardening', () => {
+  it('rejects non-positive or fractional ammo purchases', () => {
+    const c = newCampaign('ammo-guard');
+    const cash = c.cash;
+    const ammo = c.ammo;
+    expect(buyAmmo(c, 0)).toBe(false);
+    expect(buyAmmo(c, -10)).toBe(false);
+    expect(buyAmmo(c, 2.5)).toBe(false);
+    expect(c.cash).toBe(cash);
+    expect(c.ammo).toBe(ammo);
+    expect(buyAmmo(c, 3)).toBe(true);
+    expect(c.ammo).toBe(ammo + 3);
+  });
+
+  it('module price is based on owned hulls, immune to composition toggling', () => {
+    const c = newCampaign('module-exploit');
+    const fullPrice = moduleCost(c, 'cargo', 'pointDefense');
+    setComposition(c, 'cargo', 0);
+    expect(moduleCost(c, 'cargo', 'pointDefense')).toBe(fullPrice);
+    setComposition(c, 'cargo', 15);
+    expect(fullPrice).toBe(110 * 15);
+  });
+
+  it('unrepaired damage beyond the per-convoy cap is conserved, not erased', () => {
+    const c = newCampaign('damage-pool');
+    c.pendingDamage = 900;
+    // Sail a single freighter (70 hp -> absorbs at most 28 damage).
+    setComposition(c, 'cargo', 0);
+    setComposition(c, 'tanker', 0);
+    setComposition(c, 'freighter', 1);
+    runRound(c, { defend: true });
+    // 900 - 28 = 872 must still be owed (plus any new damage taken).
+    expect(c.pendingDamage).toBeGreaterThanOrEqual(872);
+  });
+});
+
+describe('transit hardening', () => {
+  it('a second ECM command while a burst is active does not burn a charge', () => {
+    const c = newCampaign('ecm-stack');
+    c.ecmUnlocked = true;
+    const plan = planCurrentRound(c);
+    const { state, rng } = createRoundTransit(c, plan);
+    stepTransit(state, [{ type: 'ability', ability: 'ecm' }], rng);
+    expect(state.ecmCharges).toBe(1);
+    stepTransit(state, [{ type: 'ability', ability: 'ecm' }], rng);
+    expect(state.ecmCharges).toBe(1); // still active -> rejected
+  });
+
+  it('healthy ships never straggle in sprint formation', () => {
+    const c = newCampaign('sprint-straggle');
+    c.formation = 'sprint';
+    const plan = planCurrentRound(c);
+    const { state, rng } = createRoundTransit(c, plan);
+    for (let i = 0; i < 30 * 40 && !state.over; i++) {
+      stepTransit(state, [], rng);
+      for (const ship of state.ships) {
+        if (ship.alive && !ship.delivered && ship.hp === ship.maxHp) {
+          expect(ship.straggling).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('reports quota evaluation as round 3 of the window', () => {
+    const c = newCampaign('quota-window');
+    let lastReport;
+    for (let r = 0; r < 3; r++) {
+      lastReport = runRound(c, { defend: true }).report;
+    }
+    expect(lastReport!.quota.evaluated).toBe(true);
+    expect(lastReport!.quota.windowRound).toBe(3);
   });
 });
 

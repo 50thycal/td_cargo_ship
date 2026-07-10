@@ -12,6 +12,8 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} was singled out by a guided missile that tracked her through evasive maneuvering.`,
   mine: (name) =>
     `${name} struck a naval mine. The field was not charted on any of our sensor picture.`,
+  chartedMine: (name) =>
+    `${name} struck a charted mine — the field was known, but the helm could not clear it in formation. Wider spacing or a lane change would have given her room.`,
   lowSigMine: (name) =>
     `${name} struck a mine that our detection systems failed to register — even where coverage was active.`,
   fire: (name) =>

@@ -238,6 +238,8 @@ export interface CombatEffects {
   scanSweeps: boolean;
   /** Fires extinguish themselves quickly. */
   autoExtinguish: boolean;
+  /** Sensors research: draw target-vector lines for inbound missiles. */
+  showTargetVectors: boolean;
 }
 
 export interface TransitState {
@@ -271,6 +273,8 @@ export interface TransitState {
   avoidRolls: Record<string, boolean>;
   /** Tech keys already announced via techDebut events this transit. */
   debutsSeen: TechKey[];
+  /** How much of the campaign's pendingDamage pool this convoy absorbed. */
+  pendingDamageApplied: number;
 }
 
 // ---------------------------------------------------------------------------

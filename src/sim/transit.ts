@@ -38,6 +38,7 @@ export function deriveEffects(research: ReadonlySet<ResearchId>): CombatEffects 
     ecmGuidedHitChance: research.has('ew1') ? 0.08 : COMBAT.ecm.guidedHitChance,
     scanSweeps: research.has('mines1'),
     autoExtinguish: research.has('resilience2'),
+    showTargetVectors: research.has('sensors1'),
   };
 }
 
@@ -118,13 +119,17 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     }
   }
 
-  // Unrepaired damage from previous rounds shows up on this convoy.
+  // Unrepaired damage from previous rounds shows up on this convoy. Whatever
+  // does not fit (capped at 40% of each hull) stays in the campaign pool —
+  // resolveTransit uses pendingDamageApplied to conserve the remainder.
   let pending = campaign.pendingDamage;
+  let pendingApplied = 0;
   for (const ship of ships) {
     if (pending <= 0) break;
     const applied = Math.min(pending, Math.floor(ship.maxHp * 0.4));
     ship.hp -= applied;
     pending -= applied;
+    pendingApplied += applied;
   }
 
   const laneIndex = 1;
@@ -173,6 +178,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     nextEntityId: nextId,
     avoidRolls: {},
     debutsSeen: [],
+    pendingDamageApplied: pendingApplied,
   };
 
   assignSlots(state.ships, state.formation);
@@ -338,7 +344,8 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
     }
     case 'ability': {
       if (cmd.ability === 'ecm') {
-        if (t.ecmCharges <= 0) return;
+        // No stacking: a burst must expire before another charge can be spent.
+        if (t.ecmCharges <= 0 || t.time < t.ecmActiveUntil) return;
         t.ecmCharges--;
         t.stats.ecmUsed++;
         t.ecmActiveUntil = t.time + COMBAT.ecm.durationSeconds;
@@ -494,10 +501,19 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
     }
 
+    // Healthy ships keep pace with the formation (the speed multiplier is the
+    // whole convoy pushing its engines) plus a small catch-up margin so a
+    // displaced ship can re-form. Only crippled ships genuinely fall behind —
+    // straggling is meant to be a consequence of damage, not of formation.
     const crippled = ship.hp < ship.maxHp * COMBAT.crippleHpFraction;
-    const maxSpeed = SHIP_CLASSES[ship.classId].speed * (crippled ? COMBAT.crippleSpeedMult : 1);
     const targetX = t.anchorX + ship.slotDx;
     const targetY = t.laneY + ship.slotDy + ship.avoidDy;
+    const behind = targetX - ship.x > 20;
+    const maxSpeed =
+      SHIP_CLASSES[ship.classId].speed *
+      formation.speedMult *
+      (crippled ? COMBAT.crippleSpeedMult : 1) *
+      (behind && !crippled ? 1.12 : 1);
     const dx = targetX - ship.x;
     const dy = targetY - ship.y;
     const d = Math.hypot(dx, dy);
@@ -609,8 +625,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       ) {
         threat.alive = false;
         let splashed = false;
+        // Dispersed formations shrink the effective blast footprint — this is
+        // half of the tight-vs-wide tradeoff the formation tooltips promise.
+        const splashRadius =
+          COMBAT.missile.splashRadius * FORMATIONS[t.formation].collateralMult;
         for (const ship of activeShips(t)) {
-          if (dist(threat.x, threat.y, ship.x, ship.y) <= COMBAT.missile.splashRadius) {
+          if (dist(threat.x, threat.y, ship.x, ship.y) <= splashRadius) {
             damageShip(t, ship, COMBAT.missile.splashDamage, 'missile', rng, false);
             splashed = true;
           }
@@ -720,7 +740,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         announceDebut(t, 'mine');
         if (mine.lowSig) announceDebut(t, 'lowSigMine');
         pushEvent(t, { type: 'mineDetonated', lowSig: mine.lowSig });
-        damageShip(t, ship, COMBAT.mine.damage, mine.lowSig ? 'lowSigMine' : 'mine', rng, false);
+        // Forensics must be honest: a charted mine the helm failed to clear is
+        // a maneuvering failure, not a detection failure.
+        const cause = mine.revealed ? 'chartedMine' : mine.lowSig ? 'lowSigMine' : 'mine';
+        damageShip(t, ship, COMBAT.mine.damage, cause, rng, false);
         break;
       }
     }
