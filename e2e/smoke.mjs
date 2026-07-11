@@ -69,18 +69,13 @@ try {
   await page.waitForTimeout(16_000);
   await page.screenshot({ path: `${SHOT_DIR}/03-transit.png` });
 
-  // Exercise per-ship lane control: tap low in the map to select a ship, then
-  // nudge its lane. Must not throw.
   const canvas = page.locator('#game-canvas');
   const box = await canvas.boundingBox();
-  if (box) {
-    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.72).catch(() => {});
-    await page.getByRole('button', { name: '▲ Lane' }).click().catch(() => {});
-  }
 
-  // Tap around the upper half of the map repeatedly to attempt interceptions
-  // (missiles come from the top shore). Also exercises the 2x speed button.
+  // Speed the round up (1× → 2× → 3×) and tap around the upper half of the map
+  // to attempt interceptions (missiles come from the top shore).
   await page.getByRole('button', { name: '1×' }).click();
+  await page.getByRole('button', { name: '2×' }).click();
   const deadline = Date.now() + 180_000;
   let aarSeen = false;
   while (Date.now() < deadline) {

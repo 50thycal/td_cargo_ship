@@ -25,52 +25,60 @@ export const SIM = {
   /** Fixed timestep (seconds). The sim only ever advances in these steps. */
   dt: 1 / 30,
   /** Hard safety cap on transit length (seconds). */
-  maxTransitTime: 300,
-  /** Seconds of reduced cohesion after a formation change. */
-  reformSeconds: 4,
+  maxTransitTime: 360,
 } as const;
 
 export const SPAWN = {
-  /** Delay before the very first ship enters the corridor. */
+  /** Delay before the first ship enters. */
   firstDelay: 1.0,
-  /** Nominal delay between two ships entering the SAME lane — this is what
-   *  makes spawning scalable: total spawn duration grows linearly with
-   *  convoy size (roughly (n / lanes) * perLaneInterval) without any change
-   *  to the scheduling logic itself, whether the convoy is 20 ships or 45. */
-  perLaneInterval: 3.2,
-  /** Random +/- applied on top of the nominal cadence so the stream doesn't
-   *  arrive on a metronome. */
-  timeJitter: 0.8,
-  /** Hard floor on the gap between two ships entering the same lane, even
-   *  after jitter — keeps entrances from ever bunching up. */
-  minGap: 1.1,
+  /** One ship enters from the left roughly every this many seconds. Keeps the
+   *  map uncluttered — the stream is sparse and readable. */
+  interval: 5.0,
+  /** Small +/- jitter so entries aren't a perfect metronome. */
+  timeJitter: 0.4,
   /** Persistent per-ship pace variance, +/- this fraction of class speed. */
   speedVariance: 0.05,
 } as const;
 
-export const SPACING = {
-  /** Minimum CLEAR WATER between two hulls, as a multiple of the longer ship's
-   *  length — "about two ship lengths." Center-to-center distance adds both
-   *  half-lengths on top, so hulls stay visibly separated. */
-  gapLengths: 2,
-  /** Absolute floor on centre-to-centre spacing for the smallest hulls. */
-  minGapFloor: 70,
-  /** Max turn rate (radians/second) — how sharply a ship can change heading.
-   *  Lane changes are arcs at constant speed, never sideways drift. */
-  turnRate: 0.9,
-  /** How far ahead (world units) a ship aims when steering toward its lane;
-   *  larger = gentler, more anticipatory turns. */
-  lookahead: 70,
-  /** Lateral band (world units) within which a ship ahead counts as "in my
-   *  path" for following / passing decisions. */
-  passBand: 46,
-  /** Maximum lateral offset a ship will take to overtake a slower one. */
-  maxOvertakeOffset: 62,
-  /** How fast the overtake offset builds toward / relaxes from its target. */
-  overtakeLerp: 2.4,
-  /** Follow zone: once a gap opens beyond gapNeeded by this much, the follower
-   *  may return to full speed; between the two it matches the leader. */
-  followEase: 90,
+/**
+ * Steering-behavior navigation. Ships integrate a smoothed steering vector
+ * (goal + separation + forward collision-avoidance) into an acceleration- and
+ * turn-rate-limited motion, so they ease around and wait for one another like
+ * real vessels instead of snapping or overlapping.
+ */
+export const NAV = {
+  /** Sense neighbors within this radius. */
+  perception: 150,
+  /** Clear water (beyond the two hull radii) the separation force protects. */
+  sepBuffer: 34,
+  sepWeight: 1.9,
+  /** Forward distance over which an obstacle ahead is avoided. */
+  lookAhead: 135,
+  /** Lateral half-width of the "in my path" corridor (added to hull radii). */
+  laneBand: 14,
+  avoidWeight: 1.7,
+  goalWeight: 1.0,
+  /** Lateral distance over which the goal pulls a ship back to its lane line
+   *  (larger = gentler lane-keeping). */
+  lanePull: 70,
+  /** Heading may swing at most this many radians/second. */
+  maxTurnRate: 1.4,
+  /** Speed may change at most this many units/second^2. */
+  maxAccel: 22,
+  /** Heading is clamped to +/- this from due-east so ships always progress. */
+  headingClamp: 1.2,
+  /** Fraction of speed shed while turning hardest (eases into avoidance turns). */
+  turnSlow: 0.55,
+  /** Revealed-mine avoidance corridor + weight. */
+  mineBand: 30,
+  mineAvoidWeight: 2.6,
+  /** Last-resort hull-overlap correction (fraction of overlap per tick). Rarely
+   *  triggers once steering is doing its job; guarantees no visual overlap. */
+  overlapPush: 0.5,
+  /** Escorts. */
+  escortSpeed: 50,
+  escortArrive: 16,
+  escortSepBuffer: 26,
 } as const;
 
 export const COMBAT = {
@@ -99,7 +107,7 @@ export const COMBAT = {
   /** Fixed shore battery: engages any missile on the map (unlimited range),
    *  but reloads far slower than an escort. The player's baseline defense. */
   base: {
-    reload: 4.5,
+    reload: 4.0,
     speed: 105,
   },
   pointDefense: {
@@ -119,13 +127,13 @@ export const COMBAT = {
 export const ECONOMY = {
   startCash: 450,
   startIntel: 0,
-  startAmmo: 24,
+  startAmmo: 28,
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
   /** Cash earned per point of cargo value delivered. */
   cashPerValue: 4,
-  ammoCost: 10,
+  ammoCost: 8,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,
@@ -154,12 +162,12 @@ export const CAMPAIGN = {
   maxConfidence: 100,
   /** Confidence deltas. */
   confidenceGreatRound: 8, // >= 90% delivered
-  confidenceGoodRound: 4, // >= 75% delivered
+  confidenceGoodRound: 5, // >= 75% delivered
   confidenceBadRound: -5, // < 60% delivered
   confidencePerLoss: -3,
-  confidenceLossCap: -15, // max penalty from losses in one round
+  confidenceLossCap: -12, // max penalty from losses in one round
   confidenceQuotaMet: 10,
-  confidenceQuotaMissed: -25,
+  confidenceQuotaMissed: -18,
   /** Quota: value points required per 3-round window. The requirement starts
    *  from the initial capacity and ramps gently per window, deliberately NOT
    *  tracking capacity growth — larger convoys are opportunity, not obligation. */
@@ -199,13 +207,15 @@ export const EVOLUTION = {
    *  (missiles/minute) that scales with round and its saturation doctrine, and
    *  keeps firing across a window sized to the convoy — so as long as ships are
    *  in the strait, more missiles come. Volleys still cluster launches. */
-  missileBaseRate: 4,
-  missileRoundRate: 1.8,
-  missileSatRate: 0.08,
-  missileRateMax: 20,
+  missileBaseRate: 4.5,
+  missileRoundRate: 1.5,
+  missileSatRate: 0.06,
+  missileRateMax: 16,
   volleySatDivisor: 24,
   windowStartT: 6,
-  windowBaseT: 34,
+  windowBaseT: 30,
+  /** Fire window scales with convoy size so bigger convoys draw more fire, but
+   *  not the full (longer) spawn duration — kept winnable with good economy. */
   windowPerShipT: 3.2,
   windowMaxT: 150,
   /** Safety backstop only — far above any intended round volume. */
