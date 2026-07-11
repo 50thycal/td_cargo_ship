@@ -487,14 +487,13 @@ describe('convoy spawning', () => {
       s.lateralSeed = 0;
       s.speedVariance = 1;
       s.heading = 0;
-      s.overtakeOffset = 0;
-      s.avoidDy = 0;
       s.y = WORLD.lanes[1];
+      s.speed = SHIP_CLASSES[s.classId].speed;
     }
-    tanker.x = 320;
+    tanker.x = 340;
     freighter.x = 200;
 
-    for (let i = 0; i < 30 * 30 && !state.over; i++) stepTransit(state, [], rng);
+    for (let i = 0; i < 30 * 40 && !state.over; i++) stepTransit(state, [], rng);
 
     // The freighter (speed 34) must get past the tanker (speed 22); if passing
     // were broken it would queue behind and stay slower.
@@ -547,6 +546,27 @@ describe('air defense & telemetry', () => {
     expect(state.bases.length).toBeGreaterThan(0);
     expect(state.stats.baseIntercepts).toBeGreaterThan(0);
     expect(state.stats.escortIntercepts).toBe(0);
+  });
+
+  it('a moveEscort command sends the escort to the point, then it resumes forward', () => {
+    const c = newCampaign('escort-move');
+    c.escorts = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    const targetX = 900;
+    const targetY = WORLD.lanes[0];
+    stepTransit(state, [{ type: 'moveEscort', escortId: escort.id, x: targetX, y: targetY }], rng);
+    expect(escort.moveTarget).not.toBeNull();
+    // Steam until it arrives (target cleared).
+    for (let i = 0; i < 30 * 60 && escort.moveTarget; i++) stepTransit(state, [], rng);
+    expect(escort.moveTarget).toBeNull();
+    expect(Math.hypot(escort.x - targetX, escort.y - targetY)).toBeLessThan(40);
+    // Now it resumes forward motion (x increases over the next second).
+    const x0 = escort.x;
+    for (let i = 0; i < 30; i++) stepTransit(state, [], rng);
+    expect(escort.x).toBeGreaterThan(x0);
   });
 
   it('accumulates per-round telemetry and exports valid totals', () => {

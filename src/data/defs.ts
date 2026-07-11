@@ -82,13 +82,16 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   },
 };
 
+// Formation is chosen once in the prep screen and holds for the whole transit.
+// It sets how much lateral room ships keep (lateralSpread + separation bonus),
+// their pace, and how far a blast/minefield spreads.
 export const FORMATIONS: Record<FormationId, FormationDef> = {
   tight: {
     id: 'tight',
     name: 'Tight',
-    desc: 'Ships run close, holding to the minimum safe following distance. Point-defense and escort coverage overlap well, but a blast or minefield can reach more than one hull, and mines are harder to dodge in the narrower lane.',
+    desc: 'Ships run close and centered in their lanes. Point-defense and escort coverage overlap well, but a blast or minefield can reach more than one hull, and mines are harder to dodge in the narrower channel.',
     speedMult: 0.95,
-    lateralSpread: 22,
+    lateralSpread: 18,
     gapBonus: 0,
     collateralMult: 1.0,
     mineAvoidChance: 0.8,
@@ -96,19 +99,19 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   wide: {
     id: 'wide',
     name: 'Wide',
-    desc: 'Ships fan out across the corridor with generous sea room between hulls. Blasts and mines rarely claim more than one ship, but defenses cover less of the stream.',
+    desc: 'Ships keep generous sea room within their lanes. Blasts and mines rarely claim more than one ship, but defenses cover less of the stream.',
     speedMult: 1.0,
-    lateralSpread: 60,
-    gapBonus: 70,
+    lateralSpread: 42,
+    gapBonus: 34,
     collateralMult: 0.35,
     mineAvoidChance: 0.95,
   },
   sprint: {
     id: 'sprint',
     name: 'Sprint',
-    desc: 'Ships hold a fast, narrow column at minimum spacing. The stream clears the strait quickest, but the line stretches escort coverage thin.',
+    desc: 'Ships hold a fast, narrow column. The stream clears the strait quickest, but the tighter line stretches escort coverage thin.',
     speedMult: 1.22,
-    lateralSpread: 14,
+    lateralSpread: 12,
     gapBonus: 0,
     collateralMult: 0.6,
     mineAvoidChance: 0.88,

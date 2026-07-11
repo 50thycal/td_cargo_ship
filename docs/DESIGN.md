@@ -17,51 +17,52 @@ defenses; the player researches counters. The core promise:
 Transit → After-Action Report → Intelligence & Research → Procurement → Transit …
 ```
 
-### 1. Transit (real time, ~75–95s)
+### 1. Transit (real time, a few minutes at 1×; 2×/3× available)
 
-~20+ ships cross the map left-to-right. They are not a rigid military
-formation — each ship streams into the corridor individually, staggered a
-few seconds apart across three lanes, at its own pace with a touch of
-personal variance, so the convoy reads as commercial traffic rather than a
-fleet block. A following-distance rule keeps every ship at least ~two hull
-lengths of clear water from the one ahead of it in its lane, automatically, so
-ships never overlap or stack. Ships move along a heading and turn toward their
-lane, so lane changes and passes are realistic constant-speed arcs, never a
-sideways drift. A **faster ship overtakes a slower one** by sliding into clear
-water beside it; when a lane is too crowded to pass, ships queue and the lane
-**jams up** — the cost of overloading one lane. The player operates the convoy
-**as a system**, not ship-by-ship:
+~20+ ships cross the map left-to-right. **One ship enters from the left every
+~5 seconds**, round-robin across three lanes, so the strait stays an
+uncluttered, readable stream of commercial traffic rather than a wall of hulls.
+
+Ships navigate with a **steering-behavior model**: each integrates a smoothed
+vector — head east and hold its lane (goal), keep clear water from neighbors
+(separation), and turn or slow to avoid whatever is ahead (collision
+avoidance) — through acceleration- and turn-rate-limited motion. The result is
+that ships **ease around and wait for one another like real vessels**: a faster
+ship commits to a clear side and overtakes a slower one; a ship with no room to
+pass slows to match and queues; hulls never overlap or stack. Course changes
+are smooth arcs, never sideways drift.
+
+The player operates the convoy's **defenses**, not the cargo ships' steering:
 
 | Action | Input | Cost/limit |
 | --- | --- | --- |
 | Launch interceptor at a missile | tap the missile | ammo pool + launcher reload |
-| Select ships for lane control | tap a ship (tap more to add) | — |
-| Move selected ships one lane | ▲/▼ Lane buttons | reassigns just the selected ships |
+| Command an escort | tap the escort, then tap a destination | escort steams there, then resumes forward |
 | ECM burst (scrambles guided seekers) | HUD button | 2 charges/round, must own suite |
 | Scan pulse (charts mines ahead) | HUD button | 2 charges/round, must own array |
-| Switch formation (Tight/Wide/Sprint) | HUD buttons | 4s of reduced cohesion |
-| Pause / 2× speed | HUD buttons | free |
+| Pause / speed (1×/2×/3×) | HUD buttons | free |
 
-Lane assignment is **per-ship**: tapping a ship selects it (blue ring), and the
-Lane buttons reassign only the selected ships — spreading load across lanes to
-avoid jams is a live tactical decision. Ship modules (point defense, sonar,
-etc.) operate automatically — active gameplay lives in the convoy-wide layer,
-so 20+ ships stay manageable on a phone.
+The **only** vessel the player steers is the escort: tap it to select (blue
+ring), then tap the map to send it there — on arrival it resumes cruising
+forward with the convoy. Cargo ships steer themselves. **Formation is chosen in
+the prep screen and fixed for the transit** (it sets how much lateral room ships
+keep and how far blasts/mines spread) — there is no formation or lane control
+mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
+20+ ships stay manageable on a phone.
 
 **Air defense** comes from two launcher types, both bought (and stackable):
 - **Shore batteries** on the friendly shore — unlimited range, slow reload. The
   player's baseline defense (one to start).
-- **Escorts** that steam with the pack — limited range, fast reload. Purchased,
+- **Escorts** — limited range, fast reload, and directly steerable. Purchased,
   not free.
 
 Both draw from a shared interceptor ammo pool; a tap prefers a ready in-range
 escort and falls back to a ready battery.
 
 Emergent drama: damaged ships slow down, fall behind their own expected pace
-(or get blocked behind another slowed ship in their lane), and become
-preferred targets for guided missiles. Tankers explode and damage neighbors —
-formation choice (lateral spread and following-distance buffer, not a slot
-grid) decides how badly.
+(or get blocked behind a slower ship ahead of them), and become preferred
+targets for guided missiles. Tankers explode and damage neighbors — formation
+choice (how much clear water ships keep) decides how badly.
 
 ### 2. After-Action Report
 

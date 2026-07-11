@@ -59,24 +59,22 @@ export interface Ship {
   spawnTime: number;
   /** True once the ship has actually entered the world at its spawn time. */
   spawned: boolean;
-  /** The corridor lane this ship is steering toward. Assigned at spawn, but
-   *  the player can reassign it per-ship via the lane command. */
+  /** The corridor lane this ship holds. Assigned at spawn; not player-editable
+   *  (cargo ships steer themselves — only escorts are player-directed). */
   laneIndex: number;
   /** Persistent per-ship lateral offset seed in [-1, 1], scaled by the
-   *  current formation's spread — this is what keeps the stream from
-   *  looking like a rigid grid without ever reassigning ships. */
+   *  formation's spread — keeps the stream from looking like a rigid grid. */
   lateralSeed: number;
   /** Persistent per-ship pace variance (~1 ± a few %) so ships don't all
    *  move in perfect lockstep. */
   speedVariance: number;
-  /** Facing angle in radians (0 = due east). Ships move along this heading at
-   *  their speed and turn toward their target, so lane changes are realistic
-   *  arcs at constant speed rather than sideways drift. */
+  /** Facing angle in radians (0 = due east). The ship moves along this heading
+   *  and turns toward it under a turn-rate limit, so course changes are smooth
+   *  realistic arcs. */
   heading: number;
-  /** Transient lateral offset held while overtaking a slower ship. */
-  overtakeOffset: number;
-  /** Transient lateral offset used to steer around revealed mines. */
-  avoidDy: number;
+  /** Current forward speed (world units/second). Changes are acceleration-
+   *  limited so ships ease up and slow down smoothly rather than snapping. */
+  speed: number;
   /** Seconds of burning remaining (damage over time). */
   fireSeconds: number;
   /** Point-defense cooldown timer. */
@@ -176,6 +174,10 @@ export interface Escort {
   slotDx: number;
   slotDy: number;
   cooldown: number;
+  heading: number;
+  /** Player-set destination. While set, the escort steers here; on arrival it
+   *  clears and resumes moving forward with the convoy. */
+  moveTarget: { x: number; y: number } | null;
 }
 
 /** A fixed shore battery. Unlimited range but a long reload — the player's
@@ -206,9 +208,8 @@ export interface Interceptor {
 export type TransitCommand =
   | { type: 'intercept'; threatId: number }
   | { type: 'ability'; ability: 'ecm' | 'scan' }
-  | { type: 'formation'; formation: FormationId }
-  /** Nudge the listed ships one lane toward a shore. Empty list = no-op. */
-  | { type: 'lane'; shipIds: number[]; direction: -1 | 1 };
+  /** Send an escort to a point on the map; it resumes forward motion on arrival. */
+  | { type: 'moveEscort'; escortId: number; x: number; y: number };
 
 export type TransitEventType =
   | 'delivered'
@@ -288,9 +289,8 @@ export interface TransitState {
    *  convoy-wide ability effects — no longer a slot anchor for cargo ships,
    *  which now move individually through the corridor. */
   anchorX: number;
+  /** Formation chosen in prep; fixed for the whole transit. */
   formation: FormationId;
-  /** Seconds remaining during which ships are re-forming (slower). */
-  reforming: number;
   ships: Ship[];
   escorts: Escort[];
   bases: Base[];
