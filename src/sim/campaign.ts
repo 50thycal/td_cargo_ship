@@ -119,6 +119,10 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       c.fleet[ship.classId] = Math.max(0, c.fleet[ship.classId] - 1);
     }
   }
+  // Escorts destroyed at sea are removed from the fleet permanently.
+  if (s.escortsLost > 0) {
+    c.escorts = Math.max(0, c.escorts - s.escortsLost);
+  }
   for (const classId of Object.keys(c.composition) as ShipClassId[]) {
     c.composition[classId] = Math.min(c.composition[classId], c.fleet[classId]);
   }
@@ -316,6 +320,8 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     minesRevealed: s.minesRevealed,
     minesDetonated: s.minesDetonated,
     minesSwept: s.minesSwept,
+    escortsLost: s.escortsLost,
+    launchersDisabled: s.launchersDisabled,
     losses,
     cashEarned,
     intelEarned,

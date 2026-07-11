@@ -24,7 +24,7 @@ import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign } from '../src/platform/save';
 import { SHIP_CLASSES } from '../src/data/defs';
-import { WORLD } from '../src/data/tuning';
+import { COMBAT, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -557,16 +557,188 @@ describe('air defense & telemetry', () => {
     const escort = state.escorts[0];
     const targetX = 900;
     const targetY = WORLD.lanes[0];
-    stepTransit(state, [{ type: 'moveEscort', escortId: escort.id, x: targetX, y: targetY }], rng);
+    stepTransit(state, [{ type: 'moveEscort', escortId: escort.id, x: targetX, y: targetY, hold: false }], rng);
     expect(escort.moveTarget).not.toBeNull();
     // Steam until it arrives (target cleared).
     for (let i = 0; i < 30 * 60 && escort.moveTarget; i++) stepTransit(state, [], rng);
     expect(escort.moveTarget).toBeNull();
+    expect(escort.stationed).toBe(false);
     expect(Math.hypot(escort.x - targetX, escort.y - targetY)).toBeLessThan(40);
     // Now it resumes forward motion (x increases over the next second).
     const x0 = escort.x;
     for (let i = 0; i < 30; i++) stepTransit(state, [], rng);
     expect(escort.x).toBeGreaterThan(x0);
+  });
+
+  it('a hold order stations the escort in place instead of resuming forward', () => {
+    const c = newCampaign('escort-hold');
+    c.escorts = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    const targetX = 900;
+    const targetY = WORLD.lanes[0];
+    stepTransit(state, [{ type: 'moveEscort', escortId: escort.id, x: targetX, y: targetY, hold: true }], rng);
+    for (let i = 0; i < 30 * 60 && escort.moveTarget; i++) stepTransit(state, [], rng);
+    expect(escort.moveTarget).toBeNull();
+    expect(escort.stationed).toBe(true);
+    // Stationed: it holds position — x does not drift forward over a second.
+    const x0 = escort.x;
+    const y0 = escort.y;
+    for (let i = 0; i < 30; i++) stepTransit(state, [], rng);
+    expect(Math.abs(escort.x - x0)).toBeLessThan(1);
+    expect(Math.abs(escort.y - y0)).toBeLessThan(1);
+    // A fresh tap order releases it from station and it resumes forward.
+    stepTransit(state, [{ type: 'moveEscort', escortId: escort.id, x: escort.x + 50, y: escort.y, hold: false }], rng);
+    expect(escort.stationed).toBe(false);
+    for (let i = 0; i < 30 * 60 && escort.moveTarget; i++) stepTransit(state, [], rng);
+    const x1 = escort.x;
+    for (let i = 0; i < 30; i++) stepTransit(state, [], rng);
+    expect(escort.x).toBeGreaterThan(x1);
+  });
+
+  it('escorts can be destroyed by fire and are removed from the fleet', () => {
+    const c = newCampaign('escort-killable');
+    c.escorts = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    // Park a mine right on the escort and station it there so it detonates.
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine',
+      x: escort.x,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: false,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    // One heavy mine won't kill a 130hp escort; drop its hp first so it dies.
+    escort.hp = 40;
+    stepTransit(state, [], rng);
+    expect(escort.alive).toBe(false);
+    expect(state.stats.escortsLost).toBe(1);
+    resolveTransit(c, state);
+    expect(c.escorts).toBe(0);
+  });
+
+  it('a hit temporarily disables an escort launcher', () => {
+    const c = newCampaign('escort-disable');
+    c.escorts = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    // A charted mine beside the escort clips it (survivable) and disables it.
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine',
+      x: escort.x,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: false,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    escort.hp = escort.maxHp; // survives the 115 mine hit
+    stepTransit(state, [], rng);
+    if (escort.alive) {
+      expect(escort.disabledUntil).toBeGreaterThan(state.time);
+      expect(state.stats.launchersDisabled).toBeGreaterThan(0);
+    }
+  });
+
+  it('a battery strike knocks a shore battery offline without destroying it', () => {
+    const c = newCampaign('base-disable');
+    c.bases = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const base = state.bases[0];
+    // A missile arriving on the battery disables it.
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'missile',
+      x: base.x,
+      y: base.y - 1,
+      vx: 0,
+      vy: COMBAT.missile.speed,
+      speed: COMBAT.missile.speed,
+      alive: true,
+      targetX: base.x,
+      targetY: base.y,
+      targetKind: 'base',
+      targetEntityId: base.id,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    stepTransit(state, [], rng);
+    expect(base.disabledUntil).toBeGreaterThan(state.time);
+    // Battery is not destroyed — it still exists in the array.
+    expect(state.bases).toHaveLength(1);
+  });
+
+  it('keeps firing missiles into the late transit (no long end-of-round silence)', () => {
+    const c = newCampaign('late-fire');
+    for (let i = 0; i < 3; i++) runRound(c, { defend: true }); // reach a round with volume
+    const plan = planCurrentRound(c);
+    expect(plan.spawns.length).toBeGreaterThan(6);
+    // Missile launch times themselves span the transit: the last scheduled
+    // launch is well into the round, not clustered in the opening seconds.
+    const spawnTimes = plan.spawns.map((s) => s.time).sort((a, b) => a - b);
+    const lastScheduled = spawnTimes[spawnTimes.length - 1];
+    expect(lastScheduled).toBeGreaterThan(60);
+    // No 30s+ silent gap between consecutive scheduled launches across the body
+    // of the fire window (up to the last launch).
+    let maxGap = spawnTimes[0];
+    for (let i = 1; i < spawnTimes.length; i++) {
+      maxGap = Math.max(maxGap, spawnTimes[i] - spawnTimes[i - 1]);
+    }
+    expect(maxGap).toBeLessThan(30);
+
+    // And in a live defended transit there is never a 30s+ silent stretch while
+    // the convoy is still substantially in the strait (≥4 ships crossing) —
+    // that dead-air near the end was the reported problem.
+    c.ammo = 60;
+    const { state, rng } = createRoundTransit(c, plan);
+    let lastSpawnT = 0;
+    let prevSpawned = state.stats.missilesSpawned;
+    let maxGapWhileBusy = 0;
+    while (!state.over) {
+      const cmds: TransitCommand[] = [];
+      const ready =
+        state.ammo > 0 &&
+        (state.bases.some((b) => b.cooldown <= 0 && state.time >= b.disabledUntil) ||
+          state.escorts.some((e) => e.alive && e.cooldown <= 0 && state.time >= e.disabledUntil));
+      if (ready) {
+        for (const threat of state.threats) {
+          if (threat.alive && threat.kind !== 'mine' && !threat.claimedByInterceptor) {
+            cmds.push({ type: 'intercept', threatId: threat.id });
+            break;
+          }
+        }
+      }
+      stepTransit(state, cmds, rng);
+      if (state.stats.missilesSpawned > prevSpawned) {
+        lastSpawnT = state.time;
+        prevSpawned = state.stats.missilesSpawned;
+      }
+      const active = state.ships.filter((s) => s.spawned && s.alive && !s.delivered).length;
+      if (prevSpawned > 0 && active >= 4) {
+        maxGapWhileBusy = Math.max(maxGapWhileBusy, state.time - lastSpawnT);
+      }
+    }
+    expect(maxGapWhileBusy).toBeLessThan(30);
   });
 
   it('accumulates per-round telemetry and exports valid totals', () => {

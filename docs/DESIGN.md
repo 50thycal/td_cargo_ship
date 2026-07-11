@@ -37,16 +37,19 @@ The player operates the convoy's **defenses**, not the cargo ships' steering:
 | Action | Input | Cost/limit |
 | --- | --- | --- |
 | Launch interceptor at a missile | tap the missile | ammo pool + launcher reload |
-| Command an escort | tap the escort, then tap a destination | escort steams there, then resumes forward |
+| Command an escort (move) | tap the escort, then **tap** a destination | escort steams there, then resumes forward |
+| Command an escort (station) | tap the escort, then **hold ~2s** on a spot | escort steams there and **holds position** |
 | ECM burst (scrambles guided seekers) | HUD button | 2 charges/round, must own suite |
 | Scan pulse (charts mines ahead) | HUD button | 2 charges/round, must own array |
 | Pause / speed (1×/2×/3×) | HUD buttons | free |
 
 The **only** vessel the player steers is the escort: tap it to select (blue
-ring), then tap the map to send it there — on arrival it resumes cruising
-forward with the convoy. Cargo ships steer themselves. **Formation is chosen in
-the prep screen and fixed for the transit** (it sets how much lateral room ships
-keep and how far blasts/mines spread) — there is no formation or lane control
+ring), then either **tap** the map to send it there (on arrival it resumes
+cruising forward with the convoy) or **hold ~2 seconds** on a spot to order it to
+**station** there and hold position (a green marker). Either order deselects the
+escort once given. Cargo ships steer themselves. **Formation is chosen in the
+prep screen and fixed for the transit** (it sets how much lateral room ships keep
+and how far blasts/mines spread) — there is no formation or lane control
 mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
 20+ ships stay manageable on a phone.
 
@@ -58,6 +61,15 @@ mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
 
 Both draw from a shared interceptor ammo pool; a tap prefers a ready in-range
 escort and falls back to a ready battery.
+
+**Both launcher types are attackable.** The enemy occasionally singles out an
+escort or streaks a missile across to a shore battery, and escorts also steam
+into mines. A hit knocks the launcher **offline for a few seconds** (a red
+wind-down ring) — it cannot fire during the outage. Escorts additionally take
+hull damage and can be **destroyed**, permanently removing that launcher from
+the fleet; shore batteries are hardened installations that are disabled but not
+destroyed. Stationing an escort forward is therefore a real risk/reward call:
+more coverage where you place it, but it is exposed to fire and mines there.
 
 Emergent drama: damaged ships slow down, fall behind their own expected pace
 (or get blocked behind a slower ship ahead of them), and become preferred
@@ -112,11 +124,14 @@ by rules that respond to observed player behavior:
 | High mine-detection rate | invest in low-signature mines |
 | Rich convoys | attack harder (bonus points) |
 
-Missile volume is **not capped** by a fixed per-round count. The enemy fires at
-a rate (missiles/minute) that climbs with round and its saturation doctrine,
-across a window sized to the convoy — so a larger convoy (which takes longer to
-cross) draws sustained fire, and as long as ships are in the strait more
-missiles keep coming. Launches still cluster into volleys.
+Missile volume is a controlled **total count** that climbs with the round and
+the enemy's saturation doctrine (capped for fairness). Crucially, that count is
+**spread across the whole transit window** — from an opening delay until the last
+ship is expected to have crossed — rather than clustered up front. So the enemy
+keeps firing while ships are still in the strait and there is **no long silent
+gap near the end of a round**. Launches still cluster into volleys, and a larger
+convoy (which takes longer to cross) stretches the same doctrine over a longer
+window.
 
 **Fairness rules:** a new capability's first appearance is capped small (≤3
 guided missiles, ≤4 mines, ≤3 low-sig mines); scripted floors guarantee the

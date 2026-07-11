@@ -4,7 +4,7 @@
 // Scripted floors guarantee the designed early-campaign beats regardless of
 // play style; fairness caps keep a new capability's first appearance small.
 
-import { EVOLUTION, ROUND1, WORLD } from '../data/tuning';
+import { EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
 import type { RNG } from './rng';
 import type {
   CampaignState,
@@ -123,11 +123,20 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const debuts: TechKey[] = [];
   const shipsOut = Object.values(campaign.composition).reduce((a, b) => a + b, 0);
 
+  // Fire window spans the whole transit: from windowStartT until the last ship
+  // (which enters at ~shipsOut * spawn interval) has had time to cross. Missiles
+  // are spread across this whole span, so there is never a long silent gap at
+  // the end while ships are still in the strait.
+  const windowEnd = Math.min(
+    SIM.maxTransitTime - 20,
+    SPAWN.firstDelay + shipsOut * SPAWN.interval + EVOLUTION.windowTailT,
+  );
+
   if (round === 1) {
-    // Scripted onboarding: a light unguided probe over a short window.
+    // Scripted onboarding: a light unguided probe, spread across the transit.
     return {
       round,
-      spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, 42),
+      spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
       mines: [],
       debuts: ['missile'],
     };
@@ -135,24 +144,15 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
 
   const tracks = evo.tracks;
 
-  // Missiles: rate-based, uncapped by a fixed per-round count. The fire window
-  // is sized to the convoy, so larger convoys (which take longer to transit)
-  // draw sustained fire, and any missile scheduled after the last ship has
-  // cleared is simply never launched (handled in the transit sim).
-  const windowEnd = Math.min(
-    EVOLUTION.windowMaxT,
-    EVOLUTION.windowBaseT + shipsOut * EVOLUTION.windowPerShipT,
-  );
-  const windowMinutes = Math.max(0, (windowEnd - EVOLUTION.windowStartT) / 60);
-  const ratePerMin = Math.min(
-    EVOLUTION.missileRateMax,
-    EVOLUTION.missileBaseRate +
-      round * EVOLUTION.missileRoundRate +
-      tracks.saturation * EVOLUTION.missileSatRate,
-  );
+  // Missiles: a controlled TOTAL count (scales with round + saturation doctrine),
+  // spread across the full fire window above.
   const missileCount = Math.min(
-    EVOLUTION.spawnHardCap,
-    Math.round(ratePerMin * windowMinutes),
+    EVOLUTION.missileCountCap,
+    Math.round(
+      EVOLUTION.missileCountBase +
+        round * EVOLUTION.missileCountPerRound +
+        tracks.saturation * EVOLUTION.missileCountSat,
+    ),
   );
   const volleySize = 1 + Math.floor(tracks.saturation / EVOLUTION.volleySatDivisor);
 

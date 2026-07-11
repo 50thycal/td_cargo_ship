@@ -118,6 +118,10 @@ export type ThreatKind = 'missile' | 'guidedMissile' | 'mine';
 /** Discovery keys — includes variants that reveal enemy evolution. */
 export type TechKey = 'missile' | 'guidedMissile' | 'mine' | 'lowSigMine' | 'saturation';
 
+/** What a missile is aimed at. Escorts and shore batteries are valid targets
+ *  now, not just cargo ships. */
+export type TargetKind = 'ship' | 'escort' | 'base';
+
 export interface Threat {
   id: number;
   kind: ThreatKind;
@@ -128,8 +132,12 @@ export interface Threat {
   vy: number;
   speed: number;
   alive: boolean;
+  /** What this missile is aimed at (default 'ship'). */
+  targetKind?: TargetKind;
   /** Ship this threat is homing on / was aimed at. */
   targetShipId?: number;
+  /** Escort/base this missile is aimed at (when targetKind is escort/base). */
+  targetEntityId?: number;
   /** Straight-line aim point for unguided missiles. */
   targetX?: number;
   targetY?: number;
@@ -175,18 +183,28 @@ export interface Escort {
   slotDy: number;
   cooldown: number;
   heading: number;
-  /** Player-set destination. While set, the escort steers here; on arrival it
-   *  clears and resumes moving forward with the convoy. */
-  moveTarget: { x: number; y: number } | null;
+  hp: number;
+  maxHp: number;
+  alive: boolean;
+  /** While time < disabledUntil the escort can't launch (recently hit). */
+  disabledUntil: number;
+  /** Player-set destination. `hold` = station there instead of resuming
+   *  forward on arrival. */
+  moveTarget: { x: number; y: number; hold: boolean } | null;
+  /** True once a hold order has been reached: the escort holds position. */
+  stationed: boolean;
 }
 
 /** A fixed shore battery. Unlimited range but a long reload — the player's
- *  baseline air defense, present from round 1 and buyable in numbers. */
+ *  baseline air defense, present from round 1 and buyable in numbers. It can be
+ *  struck by missiles, which temporarily knock it offline. */
 export interface Base {
   id: number;
   x: number;
   y: number;
   cooldown: number;
+  /** While time < disabledUntil the battery can't launch (recently hit). */
+  disabledUntil: number;
 }
 
 export type LauncherKind = 'base' | 'escort';
@@ -208,8 +226,9 @@ export interface Interceptor {
 export type TransitCommand =
   | { type: 'intercept'; threatId: number }
   | { type: 'ability'; ability: 'ecm' | 'scan' }
-  /** Send an escort to a point on the map; it resumes forward motion on arrival. */
-  | { type: 'moveEscort'; escortId: number; x: number; y: number };
+  /** Send an escort to a point. hold=false → resume forward on arrival;
+   *  hold=true → stay stationed there. */
+  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean };
 
 export type TransitEventType =
   | 'delivered'
@@ -257,6 +276,10 @@ export interface TransitStats {
   ammoUsed: number;
   ecmUsed: number;
   scanUsed: number;
+  /** Escorts destroyed during the transit (lost from the fleet). */
+  escortsLost: number;
+  /** Times a launcher (escort or battery) was knocked offline by a hit. */
+  launchersDisabled: number;
 }
 
 /** Research-derived combat effects, baked once at transit creation. */
@@ -469,6 +492,10 @@ export interface RoundTelemetry {
   minesRevealed: number;
   minesDetonated: number;
   minesSwept: number;
+  /** Escorts destroyed this transit. */
+  escortsLost: number;
+  /** Launcher-offline events (escort or battery hit). */
+  launchersDisabled: number;
   losses: ShipLoss[];
   cashEarned: number;
   intelEarned: number;
