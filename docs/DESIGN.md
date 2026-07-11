@@ -24,23 +24,38 @@ formation — each ship streams into the corridor individually, staggered a
 few seconds apart across three lanes, at its own pace with a touch of
 personal variance, so the convoy reads as commercial traffic rather than a
 fleet block. A following-distance rule keeps every ship at least ~two hull
-lengths from the one ahead of it in its lane, automatically, so ships never
-overlap or stack regardless of how the formation, damage, or mine-dodging
-moves them around. The player operates the convoy **as a system**, not
-ship-by-ship:
+lengths of clear water from the one ahead of it in its lane, automatically, so
+ships never overlap or stack. Ships move along a heading and turn toward their
+lane, so lane changes and passes are realistic constant-speed arcs, never a
+sideways drift. A **faster ship overtakes a slower one** by sliding into clear
+water beside it; when a lane is too crowded to pass, ships queue and the lane
+**jams up** — the cost of overloading one lane. The player operates the convoy
+**as a system**, not ship-by-ship:
 
 | Action | Input | Cost/limit |
 | --- | --- | --- |
-| Launch interceptor at a missile | tap the missile | ammo pool + per-escort reload |
+| Launch interceptor at a missile | tap the missile | ammo pool + launcher reload |
+| Select ships for lane control | tap a ship (tap more to add) | — |
+| Move selected ships one lane | ▲/▼ Lane buttons | reassigns just the selected ships |
 | ECM burst (scrambles guided seekers) | HUD button | 2 charges/round, must own suite |
 | Scan pulse (charts mines ahead) | HUD button | 2 charges/round, must own array |
 | Switch formation (Tight/Wide/Sprint) | HUD buttons | 4s of reduced cohesion |
-| Change lane (north/center/south) | HUD buttons | lateral speed limit |
 | Pause / 2× speed | HUD buttons | free |
 
-Ship modules (point defense, sonar, etc.) operate automatically — active
-gameplay lives in the convoy-wide layer, so 20+ ships stay manageable on a
-phone.
+Lane assignment is **per-ship**: tapping a ship selects it (blue ring), and the
+Lane buttons reassign only the selected ships — spreading load across lanes to
+avoid jams is a live tactical decision. Ship modules (point defense, sonar,
+etc.) operate automatically — active gameplay lives in the convoy-wide layer,
+so 20+ ships stay manageable on a phone.
+
+**Air defense** comes from two launcher types, both bought (and stackable):
+- **Shore batteries** on the friendly shore — unlimited range, slow reload. The
+  player's baseline defense (one to start).
+- **Escorts** that steam with the pack — limited range, fast reload. Purchased,
+  not free.
+
+Both draw from a shared interceptor ammo pool; a tap prefers a ready in-range
+escort and falls back to a ready battery.
 
 Emergent drama: damaged ships slow down, fall behind their own expected pace
 (or get blocked behind another slowed ship in their lane), and become
@@ -96,22 +111,32 @@ by rules that respond to observed player behavior:
 | High mine-detection rate | invest in low-signature mines |
 | Rich convoys | attack harder (bonus points) |
 
-**Fairness rules:** a new capability's first appearance is capped small (≤2
+Missile volume is **not capped** by a fixed per-round count. The enemy fires at
+a rate (missiles/minute) that climbs with round and its saturation doctrine,
+across a window sized to the convoy — so a larger convoy (which takes longer to
+cross) draws sustained fire, and as long as ships are in the strait more
+missiles keep coming. Launches still cluster into volleys.
+
+**Fairness rules:** a new capability's first appearance is capped small (≤3
 guided missiles, ≤4 mines, ≤3 low-sig mines); scripted floors guarantee the
-designed early beats (guided by round 3, mines by round 5) regardless of play
+designed early beats (guided by round 2, mines by round 3) regardless of play
 style; warnings usually precede debuts; the first minefield is always laid in
 the main shipping channel so the discovery beat lands.
 
 ## Designed opening
 
-- **R1:** 4 slow unguided missiles, 12 free interceptors. Teaches tapping.
-  Nearly everything survives.
-- **R2:** More missiles, first spending decisions, capacity can grow.
-- **R3:** Guided missiles debut (warned at R2). First research decision bites.
-- **R4–5:** First minefield — likely one unexpected loss → forensic AAR card
-  → mine-detection arms race begins.
-- **Later:** volleys, mixed threats, low-sig mines if (and only if) the player
-  countered standard mines.
+The ramp is deliberately steep early — round 1 is the only truly gentle round.
+
+- **R1:** A light unguided probe (~6 missiles) against a single shore battery.
+  Teaches tapping; nearly everything survives.
+- **R2:** A real fight — missile volume roughly triples, guided missiles debut
+  (warned at R1). First serious spending decisions; capacity can grow.
+- **R3:** Mines debut in the main channel (first field small) → forensic AAR
+  card → the mine-detection / formation arms race begins.
+- **R4+:** Volume keeps climbing, guided share rises, mixed missile+mine
+  rounds. Winnable with a balanced build (more batteries/escorts, ammo, mine
+  research, wider formation); low-sig mines appear only if the player counters
+  standard mines.
 
 ## Winning, losing, scaling
 
@@ -124,6 +149,16 @@ the main shipping channel so the discovery beat lands.
 - **Quota:** cargo points per 3-round window; the requirement ramps gently
   over time but does *not* scale with capacity (growth is opportunity, not
   obligation). One disastrous round can be recovered within the window.
+
+## Game log (playtest telemetry)
+
+Every round appends a rich record (deliveries, per-ship losses with cause,
+missiles fired vs intercepted split by base/escort/point-defense, mines, ammo,
+economy deltas, enemy tech tracks, research) to the campaign. A **Download game
+log** button on the after-action and game-over screens exports the whole
+session as JSON, so a playtester can hand the file back and every decision point
+is visible. `buildTelemetryExport` (pure) assembles it; the UI turns it into a
+file.
 
 ## Out of scope for the MVP (planned expansion)
 

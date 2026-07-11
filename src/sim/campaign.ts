@@ -19,6 +19,7 @@ import type {
   RoundMetrics,
   RoundPlan,
   ShipClassId,
+  ShipLoss,
   TechKey,
   TransitState,
 } from './types';
@@ -42,6 +43,7 @@ export function newCampaign(seed: string): CampaignState {
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
     pendingDamage: 0,
+    bases: ECONOMY.startBases,
     escorts: ECONOMY.startEscorts,
     ammo: ECONOMY.startAmmo,
     ecmUnlocked: false,
@@ -56,6 +58,7 @@ export function newCampaign(seed: string): CampaignState {
       pointsEarned: 0,
     },
     history: [],
+    telemetry: [],
     lastReport: null,
   };
 }
@@ -86,6 +89,7 @@ export function createRoundTransit(
 export function resolveTransit(c: CampaignState, t: TransitState): AfterActionReport {
   const s = t.stats;
   const round = c.round;
+  const confidenceBefore = c.confidence;
 
   // --- Economy ---------------------------------------------------------------
   const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
@@ -278,6 +282,56 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     intelEarned,
   });
 
+  // --- Telemetry (downloadable game log) --------------------------------------
+  const losses: ShipLoss[] = t.events
+    .filter((e) => e.type === 'shipLost')
+    .map((e) => {
+      const ship = t.ships.find((sh) => sh.id === e.shipId);
+      return {
+        name: e.shipName ?? ship?.name ?? 'unknown',
+        classId: ship?.classId ?? 'cargo',
+        cause: e.cause ?? 'unknown',
+      };
+    });
+  c.telemetry.push({
+    round,
+    formation: t.formation,
+    transitSeconds: Math.round(t.time * 10) / 10,
+    launched: s.launched,
+    delivered: s.delivered,
+    lost: s.lost,
+    deliveredPct: s.launched > 0 ? Math.round((s.delivered / s.launched) * 100) : 0,
+    valueSent: s.valueSent,
+    valueDelivered: s.valueDelivered,
+    missilesSpawned: s.missilesSpawned,
+    missilesIntercepted: s.missilesIntercepted,
+    baseIntercepts: s.baseIntercepts,
+    escortIntercepts: s.escortIntercepts,
+    pdKills: s.pdKills,
+    interceptMisses: s.interceptMisses,
+    ammoUsed: s.ammoUsed,
+    ecmUsed: s.ecmUsed,
+    scanUsed: s.scanUsed,
+    minesTotal: s.minesTotal,
+    minesRevealed: s.minesRevealed,
+    minesDetonated: s.minesDetonated,
+    minesSwept: s.minesSwept,
+    losses,
+    cashEarned,
+    intelEarned,
+    confidenceBefore,
+    confidenceAfter: c.confidence,
+    capacity: c.capacity,
+    capacityIncreased,
+    basesOwned: c.bases,
+    escortsOwned: c.escorts,
+    researchCompleted: researchCompleted ?? null,
+    activeResearch: c.activeResearch?.id ?? null,
+    completedResearch: [...c.completedResearch],
+    enemyTracks: { ...c.evolution.tracks },
+    newDiscoveries: [...newDiscoveries],
+  });
+
   c.round++;
   c.phase = 'aar';
   c.lastReport = report;
@@ -344,6 +398,14 @@ export function buyEscort(c: CampaignState): boolean {
   if (c.cash < ECONOMY.escortCost) return false;
   c.cash -= ECONOMY.escortCost;
   c.escorts++;
+  return true;
+}
+
+export function buyBase(c: CampaignState): boolean {
+  if (c.bases >= ECONOMY.maxBases) return false;
+  if (c.cash < ECONOMY.baseCost) return false;
+  c.cash -= ECONOMY.baseCost;
+  c.bases++;
   return true;
 }
 

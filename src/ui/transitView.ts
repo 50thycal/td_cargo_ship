@@ -57,10 +57,13 @@ export class TransitView {
   private threatWasAlive = new Map<number, { x: number; y: number }>();
   private tutorialTip: HTMLElement | null = null;
   private tutorialDismissed = false;
+  /** Ships the player has tapped to select for lane reassignment. */
+  private selected = new Set<number>();
 
   // HUD elements updated per-frame
   private hudInfo!: HTMLElement;
   private hudAmmo!: HTMLElement;
+  private selInfo!: HTMLElement;
   private ecmBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
@@ -108,9 +111,11 @@ export class TransitView {
   private buildHud(): void {
     this.hudInfo = h('span');
     this.hudAmmo = h('span');
+    this.selInfo = h('span', { attrs: { id: 'sel-info' } });
     this.hudTop.append(
       this.hudInfo,
       h('span', { className: 'spacer' }),
+      this.selInfo,
       this.hudAmmo,
     );
 
@@ -137,12 +142,12 @@ export class TransitView {
     const laneUp = h('button', {
       className: 'hud-btn',
       text: '▲ Lane',
-      onClick: () => this.queue({ type: 'lane', direction: -1 }),
+      onClick: () => this.moveSelected(-1),
     });
     const laneDown = h('button', {
       className: 'hud-btn',
       text: '▼ Lane',
-      onClick: () => this.queue({ type: 'lane', direction: 1 }),
+      onClick: () => this.moveSelected(1),
     });
 
     this.pauseBtn = h('button', {
@@ -181,6 +186,13 @@ export class TransitView {
       `   ·   Confidence ${this.confidence}`;
     this.hudAmmo.textContent = `Interceptors: ${this.state.ammo}`;
 
+    // Drop delivered/lost ships from the selection and reflect the count.
+    for (const id of [...this.selected]) {
+      const ship = this.state.ships.find((sh) => sh.id === id);
+      if (!ship || !ship.spawned || !ship.alive || ship.delivered) this.selected.delete(id);
+    }
+    this.selInfo.textContent = this.selected.size > 0 ? `Selected: ${this.selected.size}` : '';
+
     const ecmActive = this.state.time < this.state.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
       ecmActive ? 'ACTIVE' : `×${this.state.ecmCharges}`
@@ -212,6 +224,20 @@ export class TransitView {
     this.pending.push(cmd);
   }
 
+  /** Move the currently-selected ships one lane toward a shore. */
+  private moveSelected(direction: -1 | 1): void {
+    if (this.state.over || this.paused) return;
+    const ids = [...this.selected].filter((id) => {
+      const s = this.state.ships.find((sh) => sh.id === id);
+      return s && s.spawned && s.alive && !s.delivered;
+    });
+    if (ids.length === 0) {
+      this.showToast('Tap ships to select, then change their lane');
+      return;
+    }
+    this.queue({ type: 'lane', shipIds: ids, direction });
+  }
+
   private onPointerDown = (ev: PointerEvent): void => {
     ev.preventDefault(); // keep taps from starting scroll/zoom gestures on iOS
     if (this.paused || this.state.over) return;
@@ -223,20 +249,43 @@ export class TransitView {
 
     // Generous mobile-friendly tap radius (in world units).
     const tapRadius = 42 / SCALE;
-    let best: Threat | null = null;
-    let bestD = tapRadius;
+
+    // A tap near an incoming missile fires an interceptor at it.
+    let bestThreat: Threat | null = null;
+    let bestThreatD = tapRadius;
     for (const threat of this.state.threats) {
       if (!threat.alive || threat.kind === 'mine' || threat.claimedByInterceptor) continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
-      if (d < bestD) {
-        best = threat;
-        bestD = d;
+      if (d < bestThreatD) {
+        bestThreat = threat;
+        bestThreatD = d;
       }
     }
-    if (best) {
-      this.queue({ type: 'intercept', threatId: best.id });
+    if (bestThreat) {
+      this.queue({ type: 'intercept', threatId: bestThreat.id });
       this.dismissTutorial();
+      return;
     }
+
+    // Otherwise, a tap near a ship toggles its selection for lane control.
+    let bestShip: Ship | null = null;
+    let bestShipD = tapRadius;
+    for (const ship of this.state.ships) {
+      if (!ship.spawned || !ship.alive || ship.delivered) continue;
+      const d = Math.hypot(ship.x - wx, ship.y - wy);
+      if (d < bestShipD) {
+        bestShip = ship;
+        bestShipD = d;
+      }
+    }
+    if (bestShip) {
+      if (this.selected.has(bestShip.id)) this.selected.delete(bestShip.id);
+      else this.selected.add(bestShip.id);
+      return;
+    }
+
+    // A tap in open water clears the selection.
+    this.selected.clear();
   };
 
   private dismissTutorial(): void {
@@ -430,9 +479,6 @@ export class TransitView {
       ctx.stroke();
     }
     ctx.setLineDash([]);
-    // Lane-bias marker: shows which shore the "Lane" control is steering the stream toward.
-    ctx.strokeStyle = 'rgba(120, 190, 255, 0.25)';
-    ctx.strokeRect(0, this.sy(patrolLaneY(t)) - 4, CANVAS_W, 8);
 
     // Exit zone
     const exitGrad = ctx.createLinearGradient(this.sx(WORLD.deliverX), 0, CANVAS_W, 0);
@@ -476,6 +522,37 @@ export class TransitView {
       ctx.beginPath();
       ctx.arc(x, y, 14, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    // Shore batteries on the friendly (bottom) shore.
+    for (const base of t.bases) {
+      const x = this.sx(base.x);
+      const y = this.sy(base.y);
+      ctx.fillStyle = '#5f7d92';
+      ctx.fillRect(x - 13, y - 6, 26, 12);
+      ctx.fillStyle = '#8fb0c4';
+      ctx.fillRect(x - 9, y - 12, 18, 7);
+      // Twin launch rails
+      ctx.strokeStyle = '#c9d4de';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y - 12);
+      ctx.lineTo(x - 7, y - 20);
+      ctx.moveTo(x + 4, y - 12);
+      ctx.lineTo(x + 7, y - 20);
+      ctx.stroke();
+      const ready = base.cooldown <= 0;
+      ctx.fillStyle = ready ? '#59d98c' : '#ffc857';
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      if (!ready) {
+        ctx.strokeStyle = 'rgba(255, 200, 87, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y - 2, 16, -Math.PI / 2, -Math.PI / 2 + (1 - base.cooldown / COMBAT.base.reload) * Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Ships
@@ -664,6 +741,14 @@ export class TransitView {
     const len = ship.classId === 'tanker' ? 20 : ship.classId === 'freighter' ? 13 : 16;
     const wid = ship.classId === 'tanker' ? 7 : 5;
 
+    // Selection ring (screen space, so it doesn't rotate with the hull).
+    if (this.selected.has(ship.id)) {
+      ctx.strokeStyle = '#4dc3ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, len + 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     if (ship.straggling) {
       ctx.strokeStyle = 'rgba(255, 200, 87, 0.5)';
       ctx.lineWidth = 1.5;
@@ -672,15 +757,21 @@ export class TransitView {
       ctx.stroke();
     }
 
+    // Hull, rotated to the ship's heading so turns and lane changes read as
+    // the ship actually pointing where it is going.
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ship.heading);
     ctx.fillStyle = SHIP_COLORS[ship.classId] ?? '#9ab';
     ctx.beginPath();
-    ctx.moveTo(x + len, y);
-    ctx.lineTo(x + len - 6, y - wid);
-    ctx.lineTo(x - len, y - wid);
-    ctx.lineTo(x - len, y + wid);
-    ctx.lineTo(x + len - 6, y + wid);
+    ctx.moveTo(len, 0);
+    ctx.lineTo(len - 6, -wid);
+    ctx.lineTo(-len, -wid);
+    ctx.lineTo(-len, wid);
+    ctx.lineTo(len - 6, wid);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
 
     // Fire
     if (ship.fireSeconds > 0) {
@@ -694,9 +785,9 @@ export class TransitView {
     if (ship.hp < ship.maxHp) {
       const frac = Math.max(0, ship.hp / ship.maxHp);
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(x - 12, y - wid - 8, 24, 3);
+      ctx.fillRect(x - 12, y - wid - 10, 24, 3);
       ctx.fillStyle = frac > 0.5 ? '#59d98c' : frac > 0.25 ? '#ffc857' : '#ff6b6b';
-      ctx.fillRect(x - 12, y - wid - 8, 24 * frac, 3);
+      ctx.fillRect(x - 12, y - wid - 10, 24 * frac, 3);
     }
   }
 }

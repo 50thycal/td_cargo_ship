@@ -12,6 +12,7 @@ import {
 } from '../data/defs';
 import {
   buyAmmo,
+  buyBase,
   buyEscort,
   buyModule,
   buyShip,
@@ -27,6 +28,7 @@ import {
   unlockScan,
 } from '../sim/campaign';
 import { formatInterceptSummary } from '../sim/aar';
+import { downloadGameLog } from './download';
 import type {
   AfterActionReport,
   CampaignState,
@@ -155,6 +157,10 @@ export function aarScreen(
   }
 
   footer.append(
+    h('button', {
+      text: 'Download game log',
+      onClick: () => downloadGameLog(c),
+    }),
     h('button', {
       className: 'primary',
       text: report.campaignOver ? 'Final Report' : 'Continue to Intelligence & Research',
@@ -349,8 +355,34 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
   );
 
   // --- Convoy-wide assets -----------------------------------------------------------
-  const assetPanel = h('div', { className: 'panel' }, [h('h2', { text: 'Convoy-wide assets' })]);
+  const assetPanel = h('div', { className: 'panel' }, [h('h2', { text: 'Air defense & convoy assets' })]);
   assetPanel.append(
+    h('div', { className: 'row' }, [
+      h('div', {
+        className: 'name grow',
+        text: `Shore batteries: ${c.bases}/${ECONOMY.maxBases} — unlimited range, slow reload`,
+      }),
+      h('button', {
+        text: `Build battery $${ECONOMY.baseCost}`,
+        disabled: c.bases >= ECONOMY.maxBases || c.cash < ECONOMY.baseCost,
+        onClick: () => {
+          if (buyBase(c)) rerender();
+        },
+      }),
+    ]),
+    h('div', { className: 'row' }, [
+      h('div', {
+        className: 'name grow',
+        text: `Escort ships: ${c.escorts}/${ECONOMY.maxEscorts} — limited range, fast reload`,
+      }),
+      h('button', {
+        text: `Hire escort $${ECONOMY.escortCost}`,
+        disabled: c.escorts >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
+        onClick: () => {
+          if (buyEscort(c)) rerender();
+        },
+      }),
+    ]),
     h('div', { className: 'row' }, [
       h('div', { className: 'name grow', text: `Interceptor ammunition: ${c.ammo}` }),
       h('button', {
@@ -358,16 +390,6 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
         disabled: c.cash < ECONOMY.ammoCost * 5,
         onClick: () => {
           if (buyAmmo(c, 5)) rerender();
-        },
-      }),
-    ]),
-    h('div', { className: 'row' }, [
-      h('div', { className: 'name grow', text: `Escort ships: ${c.escorts}/${ECONOMY.maxEscorts} (each adds a launcher)` }),
-      h('button', {
-        text: `Hire escort $${ECONOMY.escortCost}`,
-        disabled: c.escorts >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
-        onClick: () => {
-          if (buyEscort(c)) rerender();
         },
       }),
     ]),
@@ -462,6 +484,9 @@ export function gameOverScreen(c: CampaignState, onNewCampaign: () => void): HTM
       }),
     ]),
   );
-  footer.append(h('button', { className: 'primary', text: 'New Campaign', onClick: onNewCampaign }));
+  footer.append(
+    h('button', { text: 'Download game log', onClick: () => downloadGameLog(c) }),
+    h('button', { className: 'primary', text: 'New Campaign', onClick: onNewCampaign }),
+  );
   return root;
 }
