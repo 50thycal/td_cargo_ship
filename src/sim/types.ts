@@ -59,7 +59,8 @@ export interface Ship {
   spawnTime: number;
   /** True once the ship has actually entered the world at its spawn time. */
   spawned: boolean;
-  /** Which of the three corridor lanes this ship travels, fixed at spawn. */
+  /** The corridor lane this ship is steering toward. Assigned at spawn, but
+   *  the player can reassign it per-ship via the lane command. */
   laneIndex: number;
   /** Persistent per-ship lateral offset seed in [-1, 1], scaled by the
    *  current formation's spread — this is what keeps the stream from
@@ -68,6 +69,12 @@ export interface Ship {
   /** Persistent per-ship pace variance (~1 ± a few %) so ships don't all
    *  move in perfect lockstep. */
   speedVariance: number;
+  /** Facing angle in radians (0 = due east). Ships move along this heading at
+   *  their speed and turn toward their target, so lane changes are realistic
+   *  arcs at constant speed rather than sideways drift. */
+  heading: number;
+  /** Transient lateral offset held while overtaking a slower ship. */
+  overtakeOffset: number;
   /** Transient lateral offset used to steer around revealed mines. */
   avoidDy: number;
   /** Seconds of burning remaining (damage over time). */
@@ -171,12 +178,25 @@ export interface Escort {
   cooldown: number;
 }
 
+/** A fixed shore battery. Unlimited range but a long reload — the player's
+ *  baseline air defense, present from round 1 and buyable in numbers. */
+export interface Base {
+  id: number;
+  x: number;
+  y: number;
+  cooldown: number;
+}
+
+export type LauncherKind = 'base' | 'escort';
+
 export interface Interceptor {
   id: number;
   x: number;
   y: number;
   targetThreatId: number;
   speed: number;
+  /** Which launcher fired it (for telemetry attribution). */
+  launcher: LauncherKind;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +207,8 @@ export type TransitCommand =
   | { type: 'intercept'; threatId: number }
   | { type: 'ability'; ability: 'ecm' | 'scan' }
   | { type: 'formation'; formation: FormationId }
-  | { type: 'lane'; direction: -1 | 1 };
+  /** Nudge the listed ships one lane toward a shore. Empty list = no-op. */
+  | { type: 'lane'; shipIds: number[]; direction: -1 | 1 };
 
 export type TransitEventType =
   | 'delivered'
@@ -224,6 +245,9 @@ export interface TransitStats {
   missilesSpawned: number;
   missilesIntercepted: number; // player interceptors + point defense
   playerIntercepts: number;
+  baseIntercepts: number;
+  escortIntercepts: number;
+  interceptMisses: number;
   pdKills: number;
   minesTotal: number;
   minesRevealed: number;
@@ -264,16 +288,12 @@ export interface TransitState {
    *  convoy-wide ability effects — no longer a slot anchor for cargo ships,
    *  which now move individually through the corridor. */
   anchorX: number;
-  /** Integer bias applied to every ship's laneIndex when steering (clamped
-   *  per-ship at use time), driven by the 'lane' command — lets the player
-   *  nudge the whole stream toward one shore without collapsing it into a
-   *  single file. */
-  laneBias: number;
   formation: FormationId;
   /** Seconds remaining during which ships are re-forming (slower). */
   reforming: number;
   ships: Ship[];
   escorts: Escort[];
+  bases: Base[];
   threats: Threat[];
   interceptors: Interceptor[];
   ammo: number;
@@ -417,6 +437,54 @@ export interface RoundSummary {
   intelEarned: number;
 }
 
+/** A ship lost during a transit, with the cause, for the game log. */
+export interface ShipLoss {
+  name: string;
+  classId: ShipClassId;
+  cause: string;
+}
+
+/** Rich per-round record accumulated across the whole campaign and exported
+ *  as the downloadable game log so a playtester's session can be analyzed. */
+export interface RoundTelemetry {
+  round: number;
+  formation: FormationId;
+  transitSeconds: number;
+  launched: number;
+  delivered: number;
+  lost: number;
+  deliveredPct: number;
+  valueSent: number;
+  valueDelivered: number;
+  missilesSpawned: number;
+  missilesIntercepted: number;
+  baseIntercepts: number;
+  escortIntercepts: number;
+  pdKills: number;
+  interceptMisses: number;
+  ammoUsed: number;
+  ecmUsed: number;
+  scanUsed: number;
+  minesTotal: number;
+  minesRevealed: number;
+  minesDetonated: number;
+  minesSwept: number;
+  losses: ShipLoss[];
+  cashEarned: number;
+  intelEarned: number;
+  confidenceBefore: number;
+  confidenceAfter: number;
+  capacity: number;
+  capacityIncreased: boolean;
+  basesOwned: number;
+  escortsOwned: number;
+  researchCompleted: ResearchId | null;
+  activeResearch: ResearchId | null;
+  completedResearch: ResearchId[];
+  enemyTracks: EvolutionTracks;
+  newDiscoveries: TechKey[];
+}
+
 export interface CampaignState {
   version: number;
   seed: string;
@@ -439,6 +507,9 @@ export interface CampaignState {
   classModules: Record<ShipClassId, ModuleId[]>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
+  /** Fixed shore batteries: unlimited range, long reload. */
+  bases: number;
+  /** Escort ships: limited range, fast reload. Not free at campaign start. */
   escorts: number;
   ammo: number;
   /** Convoy-wide assets: owned => charges refresh each round. */
@@ -450,6 +521,8 @@ export interface CampaignState {
   evolution: EvolutionState;
   quota: QuotaWindow;
   history: RoundSummary[];
+  /** Full per-round telemetry for the downloadable game log. */
+  telemetry: RoundTelemetry[];
   /** Last AAR, kept for the report screen after a reload. */
   lastReport: AfterActionReport | null;
 }

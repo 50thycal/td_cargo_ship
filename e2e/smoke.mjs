@@ -69,12 +69,19 @@ try {
   await page.waitForTimeout(16_000);
   await page.screenshot({ path: `${SHOT_DIR}/03-transit.png` });
 
+  // Exercise per-ship lane control: tap low in the map to select a ship, then
+  // nudge its lane. Must not throw.
+  const canvas = page.locator('#game-canvas');
+  const box = await canvas.boundingBox();
+  if (box) {
+    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.72).catch(() => {});
+    await page.getByRole('button', { name: '▲ Lane' }).click().catch(() => {});
+  }
+
   // Tap around the upper half of the map repeatedly to attempt interceptions
   // (missiles come from the top shore). Also exercises the 2x speed button.
   await page.getByRole('button', { name: '1×' }).click();
-  const canvas = page.locator('#game-canvas');
-  const box = await canvas.boundingBox();
-  const deadline = Date.now() + 150_000;
+  const deadline = Date.now() + 180_000;
   let aarSeen = false;
   while (Date.now() < deadline) {
     if (await page.locator('[data-screen="aar"]').count()) {
@@ -83,10 +90,10 @@ try {
     }
     if (box) {
       const x = box.x + box.width * (0.2 + Math.random() * 0.6);
-      const y = box.y + box.height * (0.15 + Math.random() * 0.5);
+      const y = box.y + box.height * (0.1 + Math.random() * 0.4);
       await page.mouse.click(x, y).catch(() => {});
     }
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(600);
   }
   if (!aarSeen) throw new Error('after-action report never appeared');
 
@@ -94,6 +101,21 @@ try {
   await page.screenshot({ path: `${SHOT_DIR}/04-aar.png` });
   const delivered = await page.locator('.stat .value').first().textContent();
   console.log('AAR delivered stat:', delivered);
+
+  // Download the game log and validate the JSON payload.
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 10_000 }),
+    page.getByRole('button', { name: 'Download game log' }).click(),
+  ]);
+  const stream = await download.createReadStream();
+  let raw = '';
+  for await (const chunk of stream) raw += chunk;
+  const log = JSON.parse(raw);
+  if (log.game !== 'straitwatch' || !Array.isArray(log.rounds) || log.rounds.length < 1) {
+    throw new Error('game log JSON missing expected fields');
+  }
+  console.log(`game log OK: ${log.rounds.length} round(s), filename ${download.suggestedFilename()}`);
+
   await page.getByRole('button', { name: /Continue to Intelligence/ }).click();
 
   // --- Research --------------------------------------------------------------------

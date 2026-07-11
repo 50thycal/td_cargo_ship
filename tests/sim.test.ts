@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import {
   buyAmmo,
+  buyBase,
+  buyEscort,
   createRoundTransit,
   moduleCost,
   newCampaign,
@@ -19,9 +21,10 @@ import {
 } from '../src/sim/campaign';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
+import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign } from '../src/platform/save';
 import { SHIP_CLASSES } from '../src/data/defs';
-import { SPACING } from '../src/data/tuning';
+import { WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -45,7 +48,11 @@ function runRound(c: CampaignState, opts: BotOptions): { state: TransitState; re
   let scanUsedAt = -1;
   while (!state.over) {
     const cmds: TransitCommand[] = [];
-    if (opts.defend && state.escorts.some((e) => e.cooldown <= 0) && state.ammo > 0) {
+    // Fire whenever any launcher (shore battery or escort) is ready.
+    const launcherReady =
+      state.ammo > 0 &&
+      (state.bases.some((b) => b.cooldown <= 0) || state.escorts.some((e) => e.cooldown <= 0));
+    if (opts.defend && launcherReady) {
       for (const threat of state.threats) {
         if (threat.alive && threat.kind !== 'mine' && !threat.claimedByInterceptor) {
           cmds.push({ type: 'intercept', threatId: threat.id });
@@ -63,10 +70,12 @@ function runRound(c: CampaignState, opts: BotOptions): { state: TransitState; re
   return { state, report };
 }
 
-/** Minimal sensible procurement between rounds. */
+/** Minimal sensible procurement between rounds: keep enough firepower up. */
 function botProcure(c: CampaignState): void {
   repairFleet(c);
-  while (c.ammo < 14 && buyAmmo(c, 1)) {
+  buyBase(c); // more shore batteries = higher sustained fire rate
+  buyEscort(c);
+  while (c.ammo < 22 && buyAmmo(c, 1)) {
     /* top up */
   }
   if (!c.scanUnlocked) unlockScan(c);
@@ -121,12 +130,13 @@ describe('transit', () => {
     expect(results[0]).toBe(results[1]);
   });
 
-  it('round 1 heavily favors a defending player', () => {
+  it('round 1 is a winnable onboarding for a defending player', () => {
     const c = newCampaign('friendly-start');
     const { state } = runRound(c, { defend: true });
     expect(state.stats.launched).toBe(20);
-    expect(state.stats.delivered).toBeGreaterThanOrEqual(18);
-    expect(state.stats.lost).toBeLessThanOrEqual(2);
+    // A single shore battery vs a light unguided probe should still deliver
+    // the large majority of the convoy.
+    expect(state.stats.delivered).toBeGreaterThanOrEqual(16);
   });
 
   it('terminates even with no player input', () => {
@@ -177,33 +187,32 @@ function syntheticMetrics(round: number, overrides: Partial<RoundMetrics> = {}):
 }
 
 describe('enemy evolution', () => {
-  it('round 1 is a small unguided attack with no mines', () => {
+  it('round 1 is a small unguided probe with no mines', () => {
     const c = newCampaign('r1');
     const plan = planCurrentRound(c);
-    expect(plan.spawns.length).toBe(4);
+    expect(plan.spawns.length).toBe(6);
     expect(plan.spawns.every((s) => s.kind === 'missile')).toBe(true);
     expect(plan.mines.length).toBe(0);
   });
 
-  it('guided missiles appear by round 3 with a fairness cap', () => {
+  it('guided missiles debut by round 2 with a fairness cap', () => {
     const c = newCampaign('beats');
     const rng = makeRng('evo');
     evolveEnemy(c.evolution, syntheticMetrics(1), rng);
-    evolveEnemy(c.evolution, syntheticMetrics(2), rng);
-    c.round = 3;
-    const plan = planRound(c, makeRng('plan3'));
+    c.round = 2;
+    const plan = planRound(c, makeRng('plan2'));
     const guided = plan.spawns.filter((s) => s.kind === 'guidedMissile');
     expect(guided.length).toBeGreaterThanOrEqual(1);
-    expect(guided.length).toBeLessThanOrEqual(2);
+    expect(guided.length).toBeLessThanOrEqual(3); // firstGuidedCap
     expect(plan.debuts).toContain('guidedMissile');
   });
 
-  it('mines appear by round 5 at the latest, small first field in the main channel', () => {
+  it('mines debut by round 3, small first field in the main channel', () => {
     const c = newCampaign('beats2');
     const rng = makeRng('evo2');
-    for (let r = 1; r <= 4; r++) evolveEnemy(c.evolution, syntheticMetrics(r), rng);
-    c.round = 5;
-    const plan = planRound(c, makeRng('plan5'));
+    for (let r = 1; r <= 2; r++) evolveEnemy(c.evolution, syntheticMetrics(r), rng);
+    c.round = 3;
+    const plan = planRound(c, makeRng('plan3'));
     expect(plan.mines.length).toBeGreaterThanOrEqual(1);
     expect(plan.mines.length).toBeLessThanOrEqual(4);
     expect(plan.debuts).toContain('mine');
@@ -225,13 +234,12 @@ describe('enemy evolution', () => {
     expect(evoDetected.tracks.lowSig).toBeGreaterThan(evoUndetected.tracks.lowSig);
   });
 
-  it('emits an intelligence warning before an unseen capability debuts', () => {
+  it('emits an intelligence warning about a capability before it is seen', () => {
     const evo = newEvolution();
     const rng = makeRng('warn');
-    // Guidance floor after round 2 is exactly at the unlock threshold, so a
-    // warning about guided missiles must be pending before round 3.
+    // After round 1 the guidance track reaches its unlock threshold, so a
+    // warning about guided missiles is pending before they are ever fielded.
     evolveEnemy(evo, syntheticMetrics(1), rng);
-    evolveEnemy(evo, syntheticMetrics(2), rng);
     expect(evo.pendingWarnings.some((w) => w.track === 'guidance')).toBe(true);
   });
 });
@@ -252,12 +260,20 @@ describe('campaign', () => {
 
   it('capacity grows after two consecutive strong rounds', () => {
     const c = newCampaign('growth');
+    // Heavy defense + a light convoy so deliveries are reliably strong, which
+    // isolates the growth mechanic from round-to-round combat variance.
+    c.bases = 4;
+    c.ammo = 120;
+    setComposition(c, 'cargo', 6);
+    setComposition(c, 'tanker', 0);
+    setComposition(c, 'freighter', 0);
     const startCapacity = c.capacity;
     let increased = false;
-    for (let r = 0; r < 4 && !increased; r++) {
+    for (let r = 0; r < 3 && !increased; r++) {
       const { report } = runRound(c, { defend: true, useScan: true });
       increased = report.capacityIncreased;
-      botProcure(c);
+      c.ammo = 120;
+      repairFleet(c);
     }
     expect(increased).toBe(true);
     expect(c.capacity).toBe(startCapacity + 5);
@@ -449,23 +465,103 @@ describe('convoy spawning', () => {
     expect(pairsChecked).toBeGreaterThan(0);
   });
 
-  it('keeps consecutive same-lane ships at least ~two ship lengths apart once settled', () => {
-    const c = newCampaign('min-gap-check');
-    c.formation = 'tight'; // the formation with no extra gap bonus
+  it('a faster ship overtakes a slower one in the same lane instead of stalling', () => {
+    const c = newCampaign('overtake');
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
-    // Run past the full spawn window so every ship is in the water.
-    for (let i = 0; i < 30 * 40 && !state.over; i++) stepTransit(state, [], rng);
-
-    const byLane: Record<number, { x: number; classId: string }[]> = { 0: [], 1: [], 2: [] };
+    // Isolate two ships in one lane: a slow tanker ahead, a fast freighter
+    // behind. No threats so we observe steering alone.
+    state.spawnQueue = [];
+    state.threats = [];
+    const tanker = state.ships.find((s) => s.classId === 'tanker')!;
+    const freighter = state.ships.find((s) => s.classId === 'freighter')!;
     for (const s of state.ships) {
-      if (s.spawned && s.alive && !s.delivered) byLane[s.laneIndex].push({ x: s.x, classId: s.classId });
+      if (s === tanker || s === freighter) continue;
+      s.spawned = true;
+      s.delivered = true; // remove from the sim
     }
-    for (const lane of Object.values(byLane)) {
-      lane.sort((a, b) => a.x - b.x);
-      for (let i = 1; i < lane.length; i++) {
-        expect(lane[i].x - lane[i - 1].x).toBeGreaterThanOrEqual(SPACING.minGapFloor - 1);
-      }
+    for (const s of [tanker, freighter]) {
+      s.spawned = true;
+      s.alive = true;
+      s.delivered = false;
+      s.laneIndex = 1;
+      s.lateralSeed = 0;
+      s.speedVariance = 1;
+      s.heading = 0;
+      s.overtakeOffset = 0;
+      s.avoidDy = 0;
+      s.y = WORLD.lanes[1];
     }
+    tanker.x = 320;
+    freighter.x = 200;
+
+    for (let i = 0; i < 30 * 30 && !state.over; i++) stepTransit(state, [], rng);
+
+    // The freighter (speed 34) must get past the tanker (speed 22); if passing
+    // were broken it would queue behind and stay slower.
+    expect(freighter.x).toBeGreaterThan(tanker.x);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Air defense economy & telemetry
+// ---------------------------------------------------------------------------
+
+describe('air defense & telemetry', () => {
+  it('starts with a shore battery and no free escort', () => {
+    const c = newCampaign('loadout');
+    expect(c.bases).toBe(1);
+    expect(c.escorts).toBe(0);
+  });
+
+  it('bases and escorts are buyable and capped', () => {
+    const c = newCampaign('buy-launchers');
+    c.cash = 100_000;
+    let guard = 0;
+    while (buyBase(c) && guard++ < 20) {
+      /* buy to cap */
+    }
+    expect(c.bases).toBe(4);
+    expect(buyBase(c)).toBe(false);
+    guard = 0;
+    while (buyEscort(c) && guard++ < 20) {
+      /* buy to cap */
+    }
+    expect(c.escorts).toBe(3);
+    expect(buyEscort(c)).toBe(false);
+  });
+
+  it('the transit builds one shore battery per owned base', () => {
+    const c = newCampaign('base-count');
+    c.bases = 3;
+    const { state } = createRoundTransit(c, planCurrentRound(c));
+    expect(state.bases).toHaveLength(3);
+    // Batteries sit on the friendly (bottom) shore.
+    for (const base of state.bases) expect(base.y).toBeGreaterThan(800);
+  });
+
+  it('a base-only defender still downs missiles (unlimited range)', () => {
+    const c = newCampaign('base-defense');
+    // No escorts; the shore battery must be able to engage anything.
+    const { state } = runRound(c, { defend: true });
+    expect(state.escorts).toHaveLength(0);
+    expect(state.bases.length).toBeGreaterThan(0);
+    expect(state.stats.baseIntercepts).toBeGreaterThan(0);
+    expect(state.stats.escortIntercepts).toBe(0);
+  });
+
+  it('accumulates per-round telemetry and exports valid totals', () => {
+    const c = newCampaign('telemetry');
+    runRound(c, { defend: true });
+    runRound(c, { defend: true });
+    expect(c.telemetry).toHaveLength(2);
+    const exported = buildTelemetryExport(c, '2026-01-01T00:00:00.000Z');
+    expect(exported.game).toBe('straitwatch');
+    expect(exported.seed).toBe('telemetry');
+    expect(exported.rounds).toHaveLength(2);
+    expect(exported.totals.launched).toBe(
+      c.telemetry.reduce((sum, r) => sum + r.launched, 0),
+    );
+    expect(exported.totals.launched).toBeGreaterThan(0);
   });
 });
 

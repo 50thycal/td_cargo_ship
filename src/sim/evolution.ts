@@ -121,11 +121,13 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const round = campaign.round;
   const evo = campaign.evolution;
   const debuts: TechKey[] = [];
+  const shipsOut = Object.values(campaign.composition).reduce((a, b) => a + b, 0);
 
   if (round === 1) {
+    // Scripted onboarding: a light unguided probe over a short window.
     return {
       round,
-      spawns: scheduleMissiles(ROUND1.missileCount, 0, rng),
+      spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, 42),
       mines: [],
       debuts: ['missile'],
     };
@@ -133,11 +135,26 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
 
   const tracks = evo.tracks;
 
-  // Missiles ---------------------------------------------------------------
-  let missileCount = Math.min(
-    EVOLUTION.missileCap,
-    EVOLUTION.missileBase + Math.floor(tracks.saturation / EVOLUTION.missileSaturationDivisor),
+  // Missiles: rate-based, uncapped by a fixed per-round count. The fire window
+  // is sized to the convoy, so larger convoys (which take longer to transit)
+  // draw sustained fire, and any missile scheduled after the last ship has
+  // cleared is simply never launched (handled in the transit sim).
+  const windowEnd = Math.min(
+    EVOLUTION.windowMaxT,
+    EVOLUTION.windowBaseT + shipsOut * EVOLUTION.windowPerShipT,
   );
+  const windowMinutes = Math.max(0, (windowEnd - EVOLUTION.windowStartT) / 60);
+  const ratePerMin = Math.min(
+    EVOLUTION.missileRateMax,
+    EVOLUTION.missileBaseRate +
+      round * EVOLUTION.missileRoundRate +
+      tracks.saturation * EVOLUTION.missileSatRate,
+  );
+  const missileCount = Math.min(
+    EVOLUTION.spawnHardCap,
+    Math.round(ratePerMin * windowMinutes),
+  );
+  const volleySize = 1 + Math.floor(tracks.saturation / EVOLUTION.volleySatDivisor);
 
   let guidedCount = 0;
   if (tracks.guidance >= EVOLUTION.guidanceUnlock) {
@@ -152,8 +169,8 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const basicCount = Math.max(0, missileCount - guidedCount);
 
   const spawns = [
-    ...scheduleMissiles(basicCount, tracks.saturation, rng),
-    ...scheduleMissiles(guidedCount, tracks.saturation, rng, 'guidedMissile'),
+    ...scheduleMissiles(basicCount, volleySize, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
+    ...scheduleMissiles(guidedCount, volleySize, rng, 'guidedMissile', EVOLUTION.windowStartT, windowEnd),
   ];
 
   // Mines --------------------------------------------------------------------
@@ -201,24 +218,24 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   return { round, spawns, mines, debuts };
 }
 
-/** Spread missile launches across the transit window, in volleys that grow
- *  with the enemy's saturation doctrine. */
+/** Spread `count` missile launches across [windowStart, windowEnd] in volleys
+ *  of the given size, jittered so they never arrive on a metronome. */
 function scheduleMissiles(
   count: number,
-  saturation: number,
+  volleySize: number,
   rng: RNG,
-  kind: 'missile' | 'guidedMissile' = 'missile',
+  kind: 'missile' | 'guidedMissile',
+  windowStart: number,
+  windowEnd: number,
 ): SpawnEvent[] {
   const spawns: SpawnEvent[] = [];
   if (count <= 0) return spawns;
-  const volleySize = 1 + Math.floor(saturation / 30);
-  const windowStart = 12;
-  const windowEnd = 78;
+  const size = Math.max(1, volleySize);
   let spawned = 0;
   while (spawned < count) {
     const volleyTime = rng.range(windowStart, windowEnd);
     const site = rng.pick(WORLD.launchSites);
-    const inVolley = Math.min(volleySize, count - spawned);
+    const inVolley = Math.min(size, count - spawned);
     for (let i = 0; i < inVolley; i++) {
       spawns.push({
         time: volleyTime + rng.range(0, 1.4),

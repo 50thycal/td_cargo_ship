@@ -6,10 +6,12 @@ import { COMBAT, SIM, SPACING, SPAWN, WORLD } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import type { RNG } from './rng';
 import type {
+  Base,
   CampaignState,
   CombatEffects,
   Escort,
   FormationId,
+  LauncherKind,
   ResearchId,
   RoundPlan,
   Ship,
@@ -47,31 +49,26 @@ export function deriveEffects(research: ReadonlySet<ResearchId>): CombatEffects 
 // ---------------------------------------------------------------------------
 
 /** Clamp a lane index into the valid corridor range. */
-function clampLane(lane: number): number {
+export function clampLane(lane: number): number {
   return Math.max(0, Math.min(WORLD.lanes.length - 1, lane));
 }
 
-/** The lane a ship actually steers toward: its own lane, shifted by the
- *  player's lane-bias command and clamped to the corridor. */
-function effectiveLane(ship: Ship, t: TransitState): number {
-  return clampLane(ship.laneIndex + t.laneBias);
+/** Reference lateral position for escort patrol and ability-effect centers:
+ *  the corridor's center lane. (Ships steer their own lanes individually.) */
+export function patrolLaneY(_t: TransitState): number {
+  return WORLD.lanes[1];
 }
 
-/** Reference lateral position used for escort patrol and ability effect
- *  centers — the corridor's center lane, shifted by the lane-bias command. */
-export function patrolLaneY(t: TransitState): number {
-  return WORLD.lanes[clampLane(1 + t.laneBias)];
-}
-
-/** Minimum along-track gap required between two ships (the one ahead and
- *  the one following), in world units — "about two ship lengths" of clear
- *  water, plus whatever extra buffer the current formation adds. Never
- *  drops below the absolute floor regardless of formation. */
+/** Required centre-to-centre spacing between a ship and the one ahead of it:
+ *  both half-lengths plus ~two full lengths of clear water, plus the current
+ *  formation's extra buffer. Never below the absolute floor. This is the hard
+ *  guarantee that hulls stay visibly separated and never stack. */
 function requiredGap(aheadClass: ShipClassId, followClass: ShipClassId, formation: FormationId): number {
-  const lengthAhead = SHIP_CLASSES[aheadClass].length;
-  const lengthFollow = SHIP_CLASSES[followClass].length;
-  const base = Math.max(SPACING.minGapFloor, Math.max(lengthAhead, lengthFollow) * SPACING.gapLengths);
-  return Math.max(SPACING.minGapFloor, base + FORMATIONS[formation].gapBonus);
+  const lenAhead = SHIP_CLASSES[aheadClass].length;
+  const lenFollow = SHIP_CLASSES[followClass].length;
+  const clearWater = Math.max(lenAhead, lenFollow) * SPACING.gapLengths;
+  const centreToCentre = lenAhead / 2 + lenFollow / 2 + clearWater + FORMATIONS[formation].gapBonus;
+  return Math.max(SPACING.minGapFloor, centreToCentre);
 }
 
 /** Schedule every ship's entry into the corridor: round-robin across lanes
@@ -136,6 +133,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         laneIndex: 1,
         lateralSeed: 0,
         speedVariance: 1,
+        heading: 0,
+        overtakeOffset: 0,
         avoidDy: 0,
         fireSeconds: 0,
         pdCooldown: 0,
@@ -165,11 +164,11 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     time: 0,
     over: false,
     anchorX: WORLD.spawnX,
-    laneBias: 0,
     formation: campaign.formation,
     reforming: 0,
     ships,
     escorts: [],
+    bases: [],
     threats: [],
     interceptors: [],
     ammo: campaign.ammo,
@@ -187,6 +186,9 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       missilesSpawned: 0,
       missilesIntercepted: 0,
       playerIntercepts: 0,
+      baseIntercepts: 0,
+      escortIntercepts: 0,
+      interceptMisses: 0,
       pdKills: 0,
       minesTotal: plan.mines.length,
       minesRevealed: 0,
@@ -217,6 +219,18 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     });
   }
 
+  // Shore batteries spread along the friendly (bottom) shore.
+  const baseCount = Math.max(0, campaign.bases);
+  for (let i = 0; i < baseCount; i++) {
+    const frac = baseCount === 1 ? 0.5 : i / (baseCount - 1);
+    state.bases.push({
+      id: state.nextEntityId++,
+      x: 360 + frac * (WORLD.width - 720),
+      y: WORLD.baseLine,
+      cooldown: 0,
+    });
+  }
+
   for (const mine of plan.mines) {
     state.threats.push({
       id: state.nextEntityId++,
@@ -242,6 +256,37 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+/** Car-following target speed: stop if dangerously close, match the leader's
+ *  pace at the required gap, and blend back up to my own pace as the gap
+ *  opens. Produces smooth queues (and jams) instead of collisions. */
+function followSpeed(gap: number, gapNeeded: number, myNom: number, leadNom: number): number {
+  const hardStop = gapNeeded * 0.55;
+  if (gap <= hardStop) return 0;
+  if (gap <= gapNeeded) return leadNom * ((gap - hardStop) / (gapNeeded - hardStop));
+  const f = Math.min(1, (gap - gapNeeded) / SPACING.followEase);
+  return leadNom + (myNom - leadNom) * f;
+}
+
+/** Is there clear water for `ship` to slide out to lateral `candY` and pass?
+ *  Checks the overtaking corridor just ahead of the ship for any other hull. */
+function laneClearBeside(
+  ship: Ship,
+  candY: number,
+  gapNeeded: number,
+  snap: { id: number; x: number; y: number }[],
+): boolean {
+  for (const e of snap) {
+    if (e.id === ship.id) continue;
+    if (e.x < ship.x - 20 || e.x > ship.x + gapNeeded) continue;
+    if (Math.abs(e.y - candY) < SPACING.passBand * 0.9) return false;
+  }
+  return true;
 }
 
 function isActive(s: Ship): boolean {
@@ -330,38 +375,74 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         pushEvent(t, { type: 'launchFailed', detail: 'No interceptors remaining' });
         return;
       }
-      let best: Escort | null = null;
-      let bestDist = Infinity;
-      let inRangeButReloading = false;
+
+      // Prefer a ready escort in range (fast reload); fall back to a ready
+      // shore battery (unlimited range, slow reload). Nearest of each wins.
+      let bestEscort: Escort | null = null;
+      let bestEscortDist = Infinity;
+      let escortReloading = false;
       for (const escort of t.escorts) {
         const d = dist(escort.x, escort.y, threat.x, threat.y);
         if (d > COMBAT.interceptor.range) continue;
         if (escort.cooldown > 0) {
-          inRangeButReloading = true;
+          escortReloading = true;
           continue;
         }
-        if (d < bestDist) {
-          best = escort;
-          bestDist = d;
+        if (d < bestEscortDist) {
+          bestEscort = escort;
+          bestEscortDist = d;
         }
       }
-      if (!best) {
+
+      let bestBase: Base | null = null;
+      let bestBaseDist = Infinity;
+      let baseReloading = false;
+      for (const base of t.bases) {
+        if (base.cooldown > 0) {
+          baseReloading = true;
+          continue;
+        }
+        const d = Math.abs(base.x - threat.x); // unlimited range; pick closest by x
+        if (d < bestBaseDist) {
+          bestBase = base;
+          bestBaseDist = d;
+        }
+      }
+
+      let originX: number;
+      let originY: number;
+      let launcher: LauncherKind;
+      let speed: number;
+      if (bestEscort) {
+        bestEscort.cooldown = COMBAT.interceptor.cooldown * t.effects.escortCooldownMult;
+        originX = bestEscort.x;
+        originY = bestEscort.y;
+        launcher = 'escort';
+        speed = COMBAT.interceptor.speed * t.effects.interceptorSpeedMult;
+      } else if (bestBase) {
+        bestBase.cooldown = COMBAT.base.reload;
+        originX = bestBase.x;
+        originY = bestBase.y;
+        launcher = 'base';
+        speed = COMBAT.base.speed * t.effects.interceptorSpeedMult;
+      } else {
         pushEvent(t, {
           type: 'launchFailed',
-          detail: inRangeButReloading ? 'Launcher reloading' : 'Threat out of range',
+          detail: escortReloading || baseReloading ? 'All launchers reloading' : 'No launcher available',
         });
         return;
       }
+
       t.ammo--;
       t.stats.ammoUsed++;
-      best.cooldown = COMBAT.interceptor.cooldown * t.effects.escortCooldownMult;
       threat.claimedByInterceptor = true;
       t.interceptors.push({
         id: t.nextEntityId++,
-        x: best.x,
-        y: best.y,
+        x: originX,
+        y: originY,
         targetThreatId: threat.id,
-        speed: COMBAT.interceptor.speed * t.effects.interceptorSpeedMult,
+        speed,
+        launcher,
       });
       return;
     }
@@ -409,11 +490,18 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       return;
     }
     case 'lane': {
-      const max = WORLD.lanes.length - 1;
-      const next = Math.max(-max, Math.min(max, t.laneBias + cmd.direction));
-      if (next === t.laneBias) return;
-      t.laneBias = next;
-      pushEvent(t, { type: 'abilityUsed', detail: `lane:${next}` });
+      // Reassign only the selected ships, one lane toward a shore.
+      let moved = 0;
+      for (const id of cmd.shipIds) {
+        const ship = t.ships.find((s) => s.id === id);
+        if (!ship || !isActive(ship)) continue;
+        const next = clampLane(ship.laneIndex + cmd.direction);
+        if (next !== ship.laneIndex) {
+          ship.laneIndex = next;
+          moved++;
+        }
+      }
+      if (moved > 0) pushEvent(t, { type: 'abilityUsed', detail: `lane:${cmd.direction}:${moved}` });
       return;
     }
   }
@@ -503,23 +591,26 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // --- Ships -----------------------------------------------------------------
   const ecmActive = t.time < t.ecmActiveUntil;
 
-  // Bring newly-scheduled ships into the world.
+  // Bring newly-scheduled ships into the world at their assigned lane.
   for (const ship of t.ships) {
     if (ship.spawned || t.time < ship.spawnTime) continue;
     ship.spawned = true;
     ship.x = WORLD.spawnX;
-    ship.y = WORLD.lanes[effectiveLane(ship, t)] + ship.lateralSeed * formation.lateralSpread;
+    ship.y = WORLD.lanes[clampLane(ship.laneIndex)] + ship.lateralSeed * formation.lateralSpread;
+    ship.heading = 0;
   }
 
-  // Snapshot pre-tick positions per lane, sorted by progress, so the
-  // following-distance governor below is order-independent within this
-  // tick (a ship processed later in the array must not "see" another
-  // ship's already-updated position from earlier in the same tick).
-  const laneSnapshot: { id: number; x: number; classId: ShipClassId }[][] = WORLD.lanes.map(() => []);
-  for (const ship of t.ships) {
-    if (!isActive(ship)) continue;
-    laneSnapshot[effectiveLane(ship, t)].push({ id: ship.id, x: ship.x, classId: ship.classId });
-  }
+  // Pre-tick snapshot so every ship's steering decision reads the same world
+  // (no dependence on array order within a tick — keeps it deterministic).
+  const snap = activeShips(t).map((s) => {
+    const crippled = s.hp < s.maxHp * COMBAT.crippleHpFraction;
+    const nom =
+      SHIP_CLASSES[s.classId].speed *
+      formation.speedMult *
+      s.speedVariance *
+      (crippled ? COMBAT.crippleSpeedMult : 1);
+    return { id: s.id, x: s.x, y: s.y, classId: s.classId, nomSpeed: nom };
+  });
 
   for (const ship of t.ships) {
     if (!isActive(ship)) continue;
@@ -541,51 +632,74 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
 
     const crippled = ship.hp < ship.maxHp * COMBAT.crippleHpFraction;
+    const laneCenterY = WORLD.lanes[clampLane(ship.laneIndex)];
+    const baseLatY = laneCenterY + ship.lateralSeed * formation.lateralSpread;
+    const nomSpeed =
+      SHIP_CLASSES[ship.classId].speed *
+      formation.speedMult *
+      ship.speedVariance *
+      (crippled ? COMBAT.crippleSpeedMult : 1) *
+      (t.reforming > 0 ? 0.9 : 1);
 
-    // Forward speed: class pace, formation tempo, this ship's own personal
-    // variance (so the stream never moves in perfect lockstep), and a hard
-    // cut if crippled.
-    let speed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
-    if (crippled) speed *= COMBAT.crippleSpeedMult;
-    if (t.reforming > 0) speed *= 0.9;
-
-    // Following-distance governor: never let a ship close within the
-    // minimum safe gap of whichever ship is immediately ahead of it in the
-    // same lane. This is what guarantees ships never overlap or stack,
-    // regardless of spawn timing, crippling, or mine-dodge jitter.
-    const lane = effectiveLane(ship, t);
-    let ahead: { x: number; classId: ShipClassId } | null = null;
-    for (const entry of laneSnapshot[lane]) {
-      if (entry.id === ship.id) continue;
-      if (entry.x > ship.x && (!ahead || entry.x < ahead.x)) ahead = entry;
+    // Find the ship directly ahead in my path (a lateral band around me).
+    let leader: (typeof snap)[number] | null = null;
+    for (const e of snap) {
+      if (e.id === ship.id || e.x <= ship.x) continue;
+      if (Math.abs(e.y - ship.y) > SPACING.passBand) continue;
+      if (!leader || e.x < leader.x) leader = e;
     }
-    if (ahead) {
-      const gapNeeded = requiredGap(ahead.classId, ship.classId, t.formation);
-      const gap = ahead.x - ship.x;
-      if (gap < gapNeeded) {
-        const stopZone = gapNeeded * 0.3;
-        const slack = gapNeeded - stopZone;
-        const room = Math.max(0, gap - stopZone);
-        speed *= slack > 0 ? Math.max(0, Math.min(1, room / slack)) : 0;
+
+    let targetSpeed = nomSpeed;
+    let desiredOffset = 0; // relax back toward lane center by default
+
+    if (leader) {
+      const gapNeeded = requiredGap(leader.classId, ship.classId, t.formation);
+      const gap = leader.x - ship.x;
+      const wantPass = nomSpeed > leader.nomSpeed + 0.5; // I'm the faster ship
+      let canPass = false;
+
+      if (wantPass && gap < gapNeeded + SPACING.lookahead) {
+        // Try to overtake: is there clear water beside the slow ship?
+        const firstSide = ship.y <= leader.y ? -1 : 1; // lean to the side I'm already on
+        for (const side of [firstSide, -firstSide]) {
+          const candY = clamp(baseLatY + side * SPACING.maxOvertakeOffset, 90, WORLD.height - 90);
+          if (laneClearBeside(ship, candY, gapNeeded, snap)) {
+            desiredOffset = candY - baseLatY;
+            canPass = true;
+            break;
+          }
+        }
+      }
+
+      if (!canPass && gap < gapNeeded + SPACING.followEase) {
+        // Boxed in — queue behind the leader (car-following). Crowded lanes
+        // therefore jam up, which is the intended cost of overloading a lane.
+        targetSpeed = followSpeed(gap, gapNeeded, nomSpeed, leader.nomSpeed);
       }
     }
 
-    ship.x += speed * dt;
+    // Ease the lateral overtake offset toward its target.
+    ship.overtakeOffset += (desiredOffset - ship.overtakeOffset) * Math.min(1, SPACING.overtakeLerp * dt);
 
-    // Lateral homing toward this ship's lane target (own lane + persistent
-    // jitter + any active mine-dodge offset) at a fixed correction speed,
-    // independent of forward progress.
-    const laneTargetY = WORLD.lanes[lane] + ship.lateralSeed * formation.lateralSpread + ship.avoidDy;
-    const dy = laneTargetY - ship.y;
-    const lateralStep = SPACING.lateralCorrectionSpeed * dt;
-    ship.y += Math.max(-lateralStep, Math.min(lateralStep, dy));
-    ship.y = Math.max(60, Math.min(WORLD.height - 60, ship.y));
+    // Heading-based motion: turn toward a point ahead in the lane and travel
+    // at (governed) speed along that heading. Lane changes and passes become
+    // realistic constant-speed arcs — never a sideways drift or a speed boost.
+    const latTargetY = clamp(baseLatY + ship.overtakeOffset + ship.avoidDy, 70, WORLD.height - 70);
+    const desiredHeading = Math.atan2(latTargetY - ship.y, SPACING.lookahead);
+    let delta = desiredHeading - ship.heading;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    const maxTurn = SPACING.turnRate * dt;
+    ship.heading = clamp(ship.heading + clamp(delta, -maxTurn, maxTurn), -1.1, 1.1);
 
-    // Straggling is measured against THIS ship's own expected pace (class
-    // speed * formation tempo * its own variance), so baseline personality
-    // never trips it — only genuine damage or being blocked does.
-    const nominalSpeed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
-    const nominalX = WORLD.spawnX + Math.max(0, t.time - ship.spawnTime) * nominalSpeed;
+    ship.x += Math.cos(ship.heading) * targetSpeed * dt;
+    ship.y += Math.sin(ship.heading) * targetSpeed * dt;
+    ship.y = clamp(ship.y, 70, WORLD.height - 70);
+
+    // Straggling: measured against the ship's healthy pace, so only real
+    // damage or being blocked (a jam) makes it fall behind and become bait.
+    const healthySpeed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
+    const nominalX = WORLD.spawnX + Math.max(0, t.time - ship.spawnTime) * healthySpeed;
     ship.straggling = nominalX - ship.x > COMBAT.straggleDistance;
 
     // Fire damage over time.
@@ -630,15 +744,21 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
 
   // --- Escorts ---------------------------------------------------------------
+  // Escorts steam alongside the middle of the pack: track the average x of the
+  // ships still in transit so they stay useful as the stream advances.
+  const inTransit = activeShips(t);
+  const packX = inTransit.length
+    ? inTransit.reduce((sum, s) => sum + s.x, 0) / inTransit.length
+    : t.anchorX;
   const escortLaneY = patrolLaneY(t);
   for (const escort of t.escorts) {
     escort.cooldown = Math.max(0, escort.cooldown - dt);
-    const targetX = t.anchorX + escort.slotDx;
+    const targetX = packX + escort.slotDx;
     const targetY = escortLaneY + escort.slotDy;
     const dx = targetX - escort.x;
     const dy = targetY - escort.y;
     const d = Math.hypot(dx, dy);
-    const step = 42 * dt;
+    const step = 60 * dt;
     if (d <= step) {
       escort.x = targetX;
       escort.y = targetY;
@@ -646,6 +766,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       escort.x += (dx / d) * step;
       escort.y += (dy / d) * step;
     }
+  }
+
+  // --- Shore batteries (fixed; just reload) ----------------------------------
+  for (const base of t.bases) {
+    base.cooldown = Math.max(0, base.cooldown - dt);
   }
 
   // --- Missiles --------------------------------------------------------------
@@ -785,8 +910,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         threat.alive = false;
         t.stats.playerIntercepts++;
         t.stats.missilesIntercepted++;
+        if (interceptor.launcher === 'base') t.stats.baseIntercepts++;
+        else t.stats.escortIntercepts++;
         pushEvent(t, { type: 'intercepted', threatKind: threat.kind });
       } else {
+        t.stats.interceptMisses++;
         pushEvent(t, { type: 'interceptMiss', threatKind: threat.kind });
       }
       interceptor.speed = 0;
