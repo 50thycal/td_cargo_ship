@@ -130,7 +130,11 @@ export function aarScreen(
           ? `${formatInterceptSummary(transit)} Interceptors expended: ${s.ammoUsed}.` +
             (s.minesTotal > 0
               ? ` Mines: ${s.minesRevealed}/${s.minesTotal} charted, ${s.minesDetonated} detonated, ${s.minesSwept} swept.`
-              : '')
+              : '') +
+            (s.launchersDisabled > 0
+              ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
+              : '') +
+            (s.escortsLost > 0 ? ` Escorts lost: ${s.escortsLost}.` : '')
           : 'Transit record unavailable (resumed campaign).',
       }),
     ]),

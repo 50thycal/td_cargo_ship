@@ -17,6 +17,9 @@ const CANVAS_W = 1280;
 const CANVAS_H = 720;
 const SCALE = CANVAS_W / WORLD.width; // 0.64
 const OFFSET_Y = (CANVAS_H - WORLD.height * SCALE) / 2;
+/** Hold this long (ms) on a spot to station an escort there instead of
+ *  sending it and letting it resume forward. */
+const HOLD_MS = 2000;
 
 const SHIP_COLORS: Record<string, string> = {
   cargo: '#6fb1e0',
@@ -53,10 +56,15 @@ export class TransitView {
   private effects: VisualEffect[] = [];
   private trails = new Map<number, { x: number; y: number }[]>();
   private threatWasAlive = new Map<number, { x: number; y: number }>();
+  private escortDeaths = new Set<number>();
   private tutorialTip: HTMLElement | null = null;
   private tutorialDismissed = false;
   /** The escort the player has tapped to command (null = none). */
   private selectedEscort: number | null = null;
+  /** An in-progress escort-destination press: a quick release sends the escort
+   *  (resume forward); holding past HOLD_MS stations it there. */
+  private press: { x: number; y: number; escortId: number } | null = null;
+  private holdTimer: number | undefined;
 
   // HUD elements updated per-frame
   private hudInfo!: HTMLElement;
@@ -97,6 +105,10 @@ export class TransitView {
     }
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    // Release/cancel handled on the window so a drag off the canvas still ends
+    // the gesture cleanly.
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerCancel);
     this.lastNow = performance.now();
     requestAnimationFrame(this.frame);
   }
@@ -158,12 +170,15 @@ export class TransitView {
       `   ·   Confidence ${this.confidence}`;
     this.hudAmmo.textContent = `Interceptors: ${this.state.ammo}`;
 
-    // Clear the escort selection if that escort no longer exists.
-    if (this.selectedEscort !== null && !this.state.escorts.some((e) => e.id === this.selectedEscort)) {
+    // Clear the escort selection if that escort is gone or was destroyed.
+    if (
+      this.selectedEscort !== null &&
+      !this.state.escorts.some((e) => e.id === this.selectedEscort && e.alive)
+    ) {
       this.selectedEscort = null;
     }
     this.selInfo.textContent =
-      this.selectedEscort !== null ? 'Escort selected — tap the map to send it' : '';
+      this.selectedEscort !== null ? 'Escort selected — tap to send · hold to station' : '';
 
     const ecmActive = this.state.time < this.state.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
@@ -221,10 +236,11 @@ export class TransitView {
       return;
     }
 
-    // 2) A tap near an escort selects it (only escorts are player-directed).
+    // 2) A tap near a living escort selects it (only escorts are player-directed).
     let bestEscort: number | null = null;
     let bestEscortD = tapRadius;
     for (const escort of this.state.escorts) {
+      if (!escort.alive) continue;
       const d = Math.hypot(escort.x - wx, escort.y - wy);
       if (d < bestEscortD) {
         bestEscort = escort.id;
@@ -236,11 +252,44 @@ export class TransitView {
       return;
     }
 
-    // 3) With an escort selected, a tap in open water sends it there.
+    // 3) With an escort selected, a press in open water begins a destination
+    //    gesture: a quick tap sends it (resume forward on arrival); holding for
+    //    HOLD_MS stations it there. Either way it is deselected afterward.
     if (this.selectedEscort !== null) {
-      this.queue({ type: 'moveEscort', escortId: this.selectedEscort, x: wx, y: wy });
+      const escortId = this.selectedEscort;
+      this.press = { x: wx, y: wy, escortId };
+      if (this.holdTimer !== undefined) clearTimeout(this.holdTimer);
+      this.holdTimer = window.setTimeout(() => {
+        if (!this.press) return;
+        this.queue({ type: 'moveEscort', escortId: this.press.escortId, x: this.press.x, y: this.press.y, hold: true });
+        this.showToast('Escort ordered to hold station');
+        this.selectedEscort = null;
+        this.press = null;
+        this.holdTimer = undefined;
+      }, HOLD_MS);
       return;
     }
+  };
+
+  private onPointerUp = (): void => {
+    if (this.holdTimer !== undefined) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = undefined;
+    }
+    const press = this.press;
+    this.press = null;
+    if (!press) return;
+    // Released before the hold threshold → a tap: send there and resume forward.
+    this.queue({ type: 'moveEscort', escortId: press.escortId, x: press.x, y: press.y, hold: false });
+    this.selectedEscort = null;
+  };
+
+  private onPointerCancel = (): void => {
+    if (this.holdTimer !== undefined) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = undefined;
+    }
+    this.press = null;
   };
 
   private dismissTutorial(): void {
@@ -286,6 +335,9 @@ export class TransitView {
     if (this.destroyed) return;
     this.destroyed = true;
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerCancel);
+    if (this.holdTimer !== undefined) clearTimeout(this.holdTimer);
     for (const el of this.elements) el.remove();
   }
 
@@ -302,7 +354,9 @@ export class TransitView {
           this.showToast(ev.detail ?? 'Launch failed');
           break;
         case 'shipLost':
-          this.showToast(`${ev.shipName} lost!`);
+          this.showToast(
+            ev.cause?.startsWith('escort:') ? 'Escort ship destroyed!' : `${ev.shipName} lost!`,
+          );
           break;
         case 'mineRevealed':
           this.showToast(ev.lowSig ? 'Low-signature mine detected!' : 'Mine detected ahead!');
@@ -357,6 +411,20 @@ export class TransitView {
           start: now,
           duration: 800,
           maxRadius: 55,
+        });
+      }
+    }
+    // Escort deaths too (escort ids are distinct from ship ids).
+    for (const escort of this.state.escorts) {
+      if (!escort.alive && !this.escortDeaths.has(escort.id)) {
+        this.escortDeaths.add(escort.id);
+        this.effects.push({
+          kind: 'explosion',
+          x: escort.x,
+          y: escort.y,
+          start: now,
+          duration: 800,
+          maxRadius: 48,
         });
       }
     }
@@ -496,12 +564,21 @@ export class TransitView {
       ctx.moveTo(x + 4, y - 12);
       ctx.lineTo(x + 7, y - 20);
       ctx.stroke();
-      const ready = base.cooldown <= 0;
-      ctx.fillStyle = ready ? '#59d98c' : '#ffc857';
+      const disabled = t.time < base.disabledUntil;
+      const ready = base.cooldown <= 0 && !disabled;
+      ctx.fillStyle = disabled ? '#ff6b6b' : ready ? '#59d98c' : '#ffc857';
       ctx.beginPath();
       ctx.arc(x, y - 2, 3, 0, Math.PI * 2);
       ctx.fill();
-      if (!ready) {
+      if (disabled) {
+        // Offline: a red ring winding down over the outage.
+        const remain = (base.disabledUntil - t.time) / COMBAT.base.disableSeconds;
+        ctx.strokeStyle = 'rgba(255, 107, 107, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y - 2, 16, -Math.PI / 2, -Math.PI / 2 + Math.max(0, Math.min(1, remain)) * Math.PI * 2);
+        ctx.stroke();
+      } else if (!ready) {
         ctx.strokeStyle = 'rgba(255, 200, 87, 0.7)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -516,15 +593,18 @@ export class TransitView {
       this.drawShip(ship);
     }
 
-    // Escorts (player-directed). Draw a route to the destination when selected.
+    // Escorts (player-directed). Draw a route to the destination when moving.
     for (const escort of t.escorts) {
+      if (!escort.alive) continue; // destroyed escorts leave the map
       const x = this.sx(escort.x);
       const y = this.sy(escort.y);
       const isSel = escort.id === this.selectedEscort;
+      const disabled = t.time < escort.disabledUntil;
 
       if (escort.moveTarget) {
         const tx = this.sx(escort.moveTarget.x);
         const ty = this.sy(escort.moveTarget.y);
+        const hold = escort.moveTarget.hold;
         ctx.strokeStyle = isSel ? 'rgba(77, 195, 255, 0.6)' : 'rgba(120, 180, 220, 0.3)';
         ctx.setLineDash([5, 6]);
         ctx.lineWidth = 1.5;
@@ -533,12 +613,28 @@ export class TransitView {
         ctx.lineTo(tx, ty);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(77, 195, 255, 0.8)';
+        ctx.strokeStyle = hold ? 'rgba(120, 220, 160, 0.9)' : 'rgba(77, 195, 255, 0.8)';
+        ctx.lineWidth = 2;
+        if (hold) {
+          // A hold order: draw a square "station here" marker.
+          ctx.strokeRect(tx - 5, ty - 5, 10, 10);
+        } else {
+          // A move order: draw an X waypoint.
+          ctx.beginPath();
+          ctx.moveTo(tx - 5, ty - 5);
+          ctx.lineTo(tx + 5, ty + 5);
+          ctx.moveTo(tx + 5, ty - 5);
+          ctx.lineTo(tx - 5, ty + 5);
+          ctx.stroke();
+        }
+      }
+
+      // Stationed marker: a steady ring shows it is holding position.
+      if (escort.stationed) {
+        ctx.strokeStyle = 'rgba(120, 220, 160, 0.7)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(tx - 5, ty - 5);
-        ctx.lineTo(tx + 5, ty + 5);
-        ctx.moveTo(tx + 5, ty - 5);
-        ctx.lineTo(tx - 5, ty + 5);
+        ctx.arc(x, y, 18, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -550,11 +646,11 @@ export class TransitView {
         ctx.stroke();
       }
 
-      // Hull, rotated to heading.
+      // Hull, rotated to heading. Dimmed while its launcher is knocked offline.
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(escort.heading);
-      ctx.fillStyle = '#c9d4de';
+      ctx.fillStyle = disabled ? '#8a9099' : '#c9d4de';
       ctx.beginPath();
       ctx.moveTo(12, 0);
       ctx.lineTo(4, -5);
@@ -567,12 +663,29 @@ export class TransitView {
       ctx.fillRect(-5, -2.5, 6, 5);
       ctx.restore();
 
-      if (escort.cooldown > 0) {
+      if (disabled) {
+        // Offline from a hit: a red ring winding down over the outage.
+        const remain = (escort.disabledUntil - t.time) / COMBAT.escort.disableSeconds;
+        ctx.strokeStyle = 'rgba(255, 107, 107, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 16, -Math.PI / 2, -Math.PI / 2 + Math.max(0, Math.min(1, remain)) * Math.PI * 2);
+        ctx.stroke();
+      } else if (escort.cooldown > 0) {
         ctx.strokeStyle = 'rgba(255, 200, 87, 0.6)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(x, y, 16, -Math.PI / 2, -Math.PI / 2 + (1 - escort.cooldown / COMBAT.interceptor.cooldown) * Math.PI * 2);
         ctx.stroke();
+      }
+
+      // HP bar when the escort is damaged.
+      if (escort.hp < escort.maxHp) {
+        const frac = Math.max(0, escort.hp / escort.maxHp);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x - 12, y - 16, 24, 3);
+        ctx.fillStyle = frac > 0.5 ? '#59d98c' : frac > 0.25 ? '#ffc857' : '#ff6b6b';
+        ctx.fillRect(x - 12, y - 16, 24 * frac, 3);
       }
     }
 

@@ -177,6 +177,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       ammoUsed: 0,
       ecmUsed: 0,
       scanUsed: 0,
+      escortsLost: 0,
+      launchersDisabled: 0,
     },
     effects,
     baseSpeed: Math.min(
@@ -197,7 +199,12 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       slotDy: ESCORT_SLOTS[i].dy,
       cooldown: 0,
       heading: 0,
+      hp: COMBAT.escort.hp,
+      maxHp: COMBAT.escort.hp,
+      alive: true,
+      disabledUntil: 0,
       moveTarget: null,
+      stationed: false,
     });
   }
 
@@ -210,6 +217,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       x: 360 + frac * (WORLD.width - 720),
       y: WORLD.baseLine,
       cooldown: 0,
+      disabledUntil: 0,
     });
   }
 
@@ -297,17 +305,38 @@ function announceDebut(t: TransitState, key: TechKey): void {
   pushEvent(t, { type: 'techDebut', detail: key });
 }
 
-function pickWeighted(rng: RNG, ships: Ship[], straggleWeight: number): Ship {
-  const weights = ships.map(
-    (s) => SHIP_CLASSES[s.classId].value * (s.straggling ? straggleWeight : 1),
-  );
-  const total = weights.reduce((a, b) => a + b, 0);
-  let roll = rng.next() * total;
-  for (let i = 0; i < ships.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return ships[i];
+type MissileTarget =
+  | { kind: 'ship'; ship: Ship }
+  | { kind: 'escort'; escort: Escort };
+
+/** Choose what a missile aims at: mostly cargo ships (weighted by value and
+ *  straggler-preference), but escorts are in the pool too — so the enemy will
+ *  occasionally single one out. Returns null only if nothing is targetable. */
+function pickMissileTarget(
+  rng: RNG,
+  ships: Ship[],
+  escorts: Escort[],
+  straggleWeight: number,
+): MissileTarget | null {
+  const entries: { target: MissileTarget; weight: number }[] = [];
+  for (const s of ships) {
+    entries.push({
+      target: { kind: 'ship', ship: s },
+      weight: SHIP_CLASSES[s.classId].value * (s.straggling ? straggleWeight : 1),
+    });
   }
-  return ships[ships.length - 1];
+  for (const e of escorts) {
+    if (!e.alive) continue;
+    entries.push({ target: { kind: 'escort', escort: e }, weight: COMBAT.escort.targetWeight });
+  }
+  if (entries.length === 0) return null;
+  const total = entries.reduce((a, e) => a + e.weight, 0);
+  let roll = rng.next() * total;
+  for (const e of entries) {
+    roll -= e.weight;
+    if (roll <= 0) return e.target;
+  }
+  return entries[entries.length - 1].target;
 }
 
 function damageShip(
@@ -350,6 +379,37 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   }
 }
 
+/** A hit on an escort: hull damage, a temporary launcher outage, and — if the
+ *  hull is gone — destruction (the escort is removed from the fleet). */
+function damageEscort(t: TransitState, escort: Escort, amount: number, cause: string): void {
+  if (!escort.alive) return;
+  escort.hp -= amount * t.effects.damageTakenMult;
+  const disableUntil = t.time + COMBAT.escort.disableSeconds;
+  if (disableUntil > escort.disabledUntil) {
+    escort.disabledUntil = disableUntil;
+    t.stats.launchersDisabled++;
+    pushEvent(t, { type: 'shipHit', shipId: escort.id, cause: `escort:${cause}` });
+  }
+  if (escort.hp <= 0) {
+    escort.hp = 0;
+    escort.alive = false;
+    escort.moveTarget = null;
+    t.stats.escortsLost++;
+    pushEvent(t, { type: 'shipLost', shipId: escort.id, cause: `escort:${cause}` });
+  }
+}
+
+/** A hit on a shore battery: it is hardened and not destroyed, but the strike
+ *  knocks its launcher offline for a few seconds. */
+function disableBase(t: TransitState, base: Base): void {
+  const disableUntil = t.time + COMBAT.base.disableSeconds;
+  if (disableUntil > base.disabledUntil) {
+    base.disabledUntil = disableUntil;
+    t.stats.launchersDisabled++;
+    pushEvent(t, { type: 'shipHit', shipId: base.id, cause: 'base:missile' });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Command processing
 // ---------------------------------------------------------------------------
@@ -372,10 +432,11 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       let bestEscortDist = Infinity;
       let escortReloading = false;
       for (const escort of t.escorts) {
+        if (!escort.alive) continue; // destroyed escorts can't fire
         const d = dist(escort.x, escort.y, threat.x, threat.y);
         if (d > COMBAT.interceptor.range) continue;
-        if (escort.cooldown > 0) {
-          escortReloading = true;
+        if (escort.cooldown > 0 || t.time < escort.disabledUntil) {
+          escortReloading = true; // reloading OR knocked offline by a hit
           continue;
         }
         if (d < bestEscortDist) {
@@ -388,8 +449,8 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       let bestBaseDist = Infinity;
       let baseReloading = false;
       for (const base of t.bases) {
-        if (base.cooldown > 0) {
-          baseReloading = true;
+        if (base.cooldown > 0 || t.time < base.disabledUntil) {
+          baseReloading = true; // reloading OR knocked offline by a hit
           continue;
         }
         const d = Math.abs(base.x - threat.x); // unlimited range; pick closest by x
@@ -471,13 +532,17 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       return;
     }
     case 'moveEscort': {
-      const escort = t.escorts.find((e) => e.id === cmd.escortId);
+      const escort = t.escorts.find((e) => e.id === cmd.escortId && e.alive);
       if (!escort) return;
+      // A fresh order (tap or hold) puts the escort back under way; whether it
+      // stations on arrival depends on `hold`.
+      escort.stationed = false;
       escort.moveTarget = {
         x: clamp(cmd.x, 20, WORLD.width - 20),
         y: clamp(cmd.y, 60, WORLD.height - 60),
+        hold: cmd.hold,
       };
-      pushEvent(t, { type: 'abilityUsed', detail: 'moveEscort' });
+      pushEvent(t, { type: 'abilityUsed', detail: cmd.hold ? 'stationEscort' : 'moveEscort' });
       return;
     }
   }
@@ -508,24 +573,64 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // --- Enemy spawns ----------------------------------------------------------
   const pool = activeShips(t);
+  const liveEscorts = t.escorts.filter((e) => e.alive);
   while (t.spawnQueue.length > 0 && t.spawnQueue[0].time <= t.time) {
     const spawn = t.spawnQueue.shift()!;
-    if (pool.length === 0) continue;
+    // Nothing to shoot at (all ships resolved and no escorts afloat) → skip.
+    if (pool.length === 0 && liveEscorts.length === 0) continue;
     const site = { x: spawn.siteX, y: WORLD.launchSites[0].y };
-    t.stats.missilesSpawned++;
-    if (spawn.kind === 'guidedMissile') announceDebut(t, 'guidedMissile');
+
     if (spawn.kind === 'missile') {
-      const target = pickWeighted(rng, pool, 1);
+      // A fraction of unguided missiles streak across to strike a shore battery,
+      // knocking it offline rather than hitting the convoy.
+      if (t.bases.length > 0 && rng.chance(COMBAT.baseStrikeChance)) {
+        const base = rng.pick(t.bases);
+        const d = dist(site.x, site.y, base.x, base.y) || 1;
+        t.stats.missilesSpawned++;
+        t.threats.push({
+          id: t.nextEntityId++,
+          kind: 'missile',
+          x: site.x,
+          y: site.y,
+          vx: ((base.x - site.x) / d) * COMBAT.missile.speed,
+          vy: ((base.y - site.y) / d) * COMBAT.missile.speed,
+          speed: COMBAT.missile.speed,
+          alive: true,
+          targetX: base.x,
+          targetY: base.y,
+          targetKind: 'base',
+          targetEntityId: base.id,
+          revealed: true,
+          lowSig: false,
+          claimedByInterceptor: false,
+        });
+        continue;
+      }
+
+      const target = pickMissileTarget(rng, pool, liveEscorts, 1);
+      if (!target) continue;
+      t.stats.missilesSpawned++;
       // Lead the target: aim where it will be, iterating the flight-time guess.
-      const leadSpeed = SHIP_CLASSES[target.classId].speed * formation.speedMult * target.speedVariance;
-      let aimX = target.x;
-      let aimY = target.y;
+      let tx: number;
+      let ty: number;
+      let leadSpeed: number;
+      if (target.kind === 'ship') {
+        tx = target.ship.x;
+        ty = target.ship.y;
+        leadSpeed = SHIP_CLASSES[target.ship.classId].speed * formation.speedMult * target.ship.speedVariance;
+      } else {
+        tx = target.escort.x;
+        ty = target.escort.y;
+        leadSpeed = NAV.escortSpeed;
+      }
+      let aimX = tx;
+      let aimY = ty;
       for (let i = 0; i < 2; i++) {
         const flight = dist(site.x, site.y, aimX, aimY) / COMBAT.missile.speed;
-        aimX = target.x + leadSpeed * flight;
-        aimY = target.y;
+        aimX = tx + leadSpeed * flight;
+        aimY = ty;
       }
-      const d = dist(site.x, site.y, aimX, aimY);
+      const d = dist(site.x, site.y, aimX, aimY) || 1;
       t.threats.push({
         id: t.nextEntityId++,
         kind: 'missile',
@@ -537,23 +642,32 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         alive: true,
         targetX: aimX,
         targetY: aimY,
+        targetKind: target.kind,
+        targetEntityId: target.kind === 'escort' ? target.escort.id : undefined,
         revealed: true,
         lowSig: false,
         claimedByInterceptor: false,
       });
     } else {
-      const target = pickWeighted(rng, pool, COMBAT.straggleTargetWeight);
-      const d = dist(site.x, site.y, target.x, target.y);
+      const target = pickMissileTarget(rng, pool, liveEscorts, COMBAT.straggleTargetWeight);
+      if (!target) continue;
+      t.stats.missilesSpawned++;
+      announceDebut(t, 'guidedMissile');
+      const tx = target.kind === 'ship' ? target.ship.x : target.escort.x;
+      const ty = target.kind === 'ship' ? target.ship.y : target.escort.y;
+      const d = dist(site.x, site.y, tx, ty) || 1;
       t.threats.push({
         id: t.nextEntityId++,
         kind: 'guidedMissile',
         x: site.x,
         y: site.y,
-        vx: ((target.x - site.x) / d) * COMBAT.guided.speed,
-        vy: ((target.y - site.y) / d) * COMBAT.guided.speed,
+        vx: ((tx - site.x) / d) * COMBAT.guided.speed,
+        vy: ((ty - site.y) / d) * COMBAT.guided.speed,
         speed: COMBAT.guided.speed,
         alive: true,
-        targetShipId: target.id,
+        targetKind: target.kind,
+        targetShipId: target.kind === 'ship' ? target.ship.id : undefined,
+        targetEntityId: target.kind === 'escort' ? target.escort.id : undefined,
         revealed: true,
         lowSig: false,
         claimedByInterceptor: false,
@@ -587,6 +701,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     obstacles.push({ id: s.id, x: s.x, y: s.y, r: SHIP_CLASSES[s.classId].radius, spd: s.speed });
   }
   for (const e of t.escorts) {
+    if (!e.alive) continue;
     obstacles.push({ id: -e.id, x: e.x, y: e.y, r: 12, spd: NAV.escortSpeed });
   }
   const sepBonus = formation.gapBonus;
@@ -729,18 +844,22 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
 
   // --- Escorts ---------------------------------------------------------------
-  // An escort either steams to its player-set destination, or (default) simply
-  // continues forward at the convoy's pace, holding its lateral position — so
-  // once you send it somewhere it stays there and keeps moving with the stream.
+  // An escort steams to its player-set destination and then either resumes
+  // cruising forward with the convoy (a quick tap order) or stays stationed
+  // there holding position (a long-hold order). With no order and not
+  // stationed it simply cruises forward at the convoy's pace.
   const convoyFwd = t.baseSpeed * formation.speedMult;
   for (const escort of t.escorts) {
+    if (!escort.alive) continue;
     escort.cooldown = Math.max(0, escort.cooldown - dt);
     if (escort.moveTarget) {
       const dx = escort.moveTarget.x - escort.x;
       const dy = escort.moveTarget.y - escort.y;
       const d = Math.hypot(dx, dy);
       if (d <= NAV.escortArrive) {
-        escort.moveTarget = null; // arrived → resume forward motion below
+        // Arrived: a hold order stations it here; a move order resumes forward.
+        escort.stationed = escort.moveTarget.hold;
+        escort.moveTarget = null;
       } else {
         const step = Math.min(NAV.escortSpeed * dt, d);
         escort.x += (dx / d) * step;
@@ -748,7 +867,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         escort.heading = Math.atan2(dy, dx);
       }
     }
-    if (!escort.moveTarget) {
+    if (!escort.moveTarget && !escort.stationed) {
       escort.x += convoyFwd * dt; // cruise forward with the convoy
       escort.heading = 0;
     }
@@ -760,7 +879,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // once steering is doing its job; guarantees no visual stacking.
   const bodies: { o: { x: number; y: number }; r: number }[] = [];
   for (const s of t.ships) if (isActive(s)) bodies.push({ o: s, r: SHIP_CLASSES[s.classId].radius });
-  for (const e of t.escorts) bodies.push({ o: e, r: 12 });
+  for (const e of t.escorts) if (e.alive) bodies.push({ o: e, r: 12 });
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i];
@@ -793,19 +912,39 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     if (!threat.alive || threat.kind === 'mine') continue;
 
     if (threat.kind === 'guidedMissile' && !ecmActive) {
-      let target = t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered);
-      if (!target) {
-        const candidates = activeShips(t);
-        if (candidates.length > 0) {
-          target = candidates.reduce((best, s) =>
-            dist(threat.x, threat.y, s.x, s.y) < dist(threat.x, threat.y, best.x, best.y) ? s : best,
-          );
-          threat.targetShipId = target.id;
+      // Resolve the current homing point (escort or ship); re-acquire the
+      // nearest ship if the original target is gone.
+      let tgtX: number | undefined;
+      let tgtY: number | undefined;
+      if (threat.targetKind === 'escort') {
+        const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
+        if (esc) {
+          tgtX = esc.x;
+          tgtY = esc.y;
+        }
+      } else {
+        const ship = t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered);
+        if (ship) {
+          tgtX = ship.x;
+          tgtY = ship.y;
         }
       }
-      if (target) {
+      if (tgtX === undefined) {
+        const candidates = activeShips(t);
+        if (candidates.length > 0) {
+          const nearest = candidates.reduce((best, s) =>
+            dist(threat.x, threat.y, s.x, s.y) < dist(threat.x, threat.y, best.x, best.y) ? s : best,
+          );
+          threat.targetKind = 'ship';
+          threat.targetShipId = nearest.id;
+          threat.targetEntityId = undefined;
+          tgtX = nearest.x;
+          tgtY = nearest.y;
+        }
+      }
+      if (tgtX !== undefined && tgtY !== undefined) {
         // Rotate velocity toward the target with a limited turn rate.
-        const desired = Math.atan2(target.y - threat.y, target.x - threat.x);
+        const desired = Math.atan2(tgtY - threat.y, tgtX - threat.x);
         const current = Math.atan2(threat.vy, threat.vx);
         let delta = desired - current;
         while (delta > Math.PI) delta -= 2 * Math.PI;
@@ -822,28 +961,65 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     // Terminal resolution.
     if (threat.kind === 'guidedMissile') {
-      const target = t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered);
-      if (target && dist(threat.x, threat.y, target.x, target.y) <= COMBAT.guided.hitRadius) {
-        threat.alive = false;
-        const hitChance = ecmActive ? t.effects.ecmGuidedHitChance : COMBAT.guided.baseHitChance;
-        if (rng.chance(hitChance)) {
-          damageShip(t, target, COMBAT.guided.damage, 'guidedMissile', rng, true);
-        } else {
-          pushEvent(t, { type: 'missileMiss', threatKind: 'guidedMissile' });
+      const hitChance = ecmActive ? t.effects.ecmGuidedHitChance : COMBAT.guided.baseHitChance;
+      if (threat.targetKind === 'escort') {
+        const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
+        if (esc && dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.guided.hitRadius) {
+          threat.alive = false;
+          if (rng.chance(hitChance)) damageEscort(t, esc, COMBAT.guided.damage, 'guidedMissile');
+          else pushEvent(t, { type: 'missileMiss', threatKind: 'guidedMissile' });
+        }
+      } else {
+        const target = t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered);
+        if (target && dist(threat.x, threat.y, target.x, target.y) <= COMBAT.guided.hitRadius) {
+          threat.alive = false;
+          if (rng.chance(hitChance)) {
+            damageShip(t, target, COMBAT.guided.damage, 'guidedMissile', rng, true);
+          } else {
+            pushEvent(t, { type: 'missileMiss', threatKind: 'guidedMissile' });
+          }
         }
       }
+    } else if (threat.targetKind === 'base') {
+      // A battery strike: detonate on the installation, knocking it offline.
+      const base = t.bases.find((b) => b.id === threat.targetEntityId);
+      if (base && dist(threat.x, threat.y, base.x, base.y) <= COMBAT.base.hitRadius) {
+        threat.alive = false;
+        disableBase(t, base);
+      } else if (
+        threat.targetX !== undefined &&
+        threat.targetY !== undefined &&
+        dist(threat.x, threat.y, threat.targetX, threat.targetY) <= threat.speed * dt
+      ) {
+        threat.alive = false;
+        pushEvent(t, { type: 'missileMiss', threatKind: 'missile' });
+      }
     } else {
-      // Unguided: hit the first ship it brushes, else splash at the aim point.
-      let struck: Ship | null = null;
+      // Unguided convoy-bound: hit the first hull (ship OR escort) it brushes,
+      // else splash at the aim point.
+      let struckShip: Ship | null = null;
       for (const ship of activeShips(t)) {
         if (dist(threat.x, threat.y, ship.x, ship.y) <= COMBAT.missile.hitRadius) {
-          struck = ship;
+          struckShip = ship;
           break;
         }
       }
-      if (struck) {
+      let struckEscort: Escort | null = null;
+      if (!struckShip) {
+        for (const esc of t.escorts) {
+          if (!esc.alive) continue;
+          if (dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.missile.hitRadius + COMBAT.escort.hitRadius) {
+            struckEscort = esc;
+            break;
+          }
+        }
+      }
+      if (struckShip) {
         threat.alive = false;
-        damageShip(t, struck, COMBAT.missile.damage, 'missile', rng, true);
+        damageShip(t, struckShip, COMBAT.missile.damage, 'missile', rng, true);
+      } else if (struckEscort) {
+        threat.alive = false;
+        damageEscort(t, struckEscort, COMBAT.missile.damage, 'missile');
       } else if (
         threat.targetX !== undefined &&
         threat.targetY !== undefined &&
@@ -858,6 +1034,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         for (const ship of activeShips(t)) {
           if (dist(threat.x, threat.y, ship.x, ship.y) <= splashRadius) {
             damageShip(t, ship, COMBAT.missile.splashDamage, 'missile', rng, false);
+            splashed = true;
+          }
+        }
+        for (const esc of t.escorts) {
+          if (!esc.alive) continue;
+          if (dist(threat.x, threat.y, esc.x, esc.y) <= splashRadius) {
+            damageEscort(t, esc, COMBAT.missile.splashDamage, 'missile');
             splashed = true;
           }
         }
@@ -973,6 +1156,22 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // a maneuvering failure, not a detection failure.
         const cause = mine.revealed ? 'chartedMine' : mine.lowSig ? 'lowSigMine' : 'mine';
         damageShip(t, ship, COMBAT.mine.damage, cause, rng, false);
+        break;
+      }
+    }
+
+    // Escorts steam into mines too — no limitations.
+    if (!mine.alive) continue;
+    for (const escort of t.escorts) {
+      if (!escort.alive) continue;
+      const triggerRadius = COMBAT.mine.triggerRadius + COMBAT.escort.hitRadius;
+      if (dist(escort.x, escort.y, mine.x, mine.y) <= triggerRadius) {
+        mine.alive = false;
+        t.stats.minesDetonated++;
+        announceDebut(t, 'mine');
+        if (mine.lowSig) announceDebut(t, 'lowSigMine');
+        pushEvent(t, { type: 'mineDetonated', lowSig: mine.lowSig });
+        damageEscort(t, escort, COMBAT.mine.damage, 'mine');
         break;
       }
     }

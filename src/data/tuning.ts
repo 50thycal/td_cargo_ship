@@ -105,11 +105,28 @@ export const COMBAT = {
     hitChanceVsGuided: 0.66,
   },
   /** Fixed shore battery: engages any missile on the map (unlimited range),
-   *  but reloads far slower than an escort. The player's baseline defense. */
+   *  but reloads far slower than an escort. The player's baseline defense.
+   *  A missile strike knocks it offline for disableSeconds (it is not
+   *  destroyed — it is a hardened shore installation). */
   base: {
     reload: 4.0,
     speed: 105,
+    hitRadius: 30,
+    disableSeconds: 5,
   },
+  /** Escorts are ships at sea: they take hull damage from missiles and mines,
+   *  can be destroyed (and are then lost from the fleet), and a hit knocks
+   *  their launcher offline for disableSeconds. */
+  escort: {
+    hp: 130,
+    hitRadius: 15,
+    disableSeconds: 4,
+    /** Missile-target weight vs a cargo ship's cargo value (so escorts are
+     *  occasionally, not constantly, singled out). */
+    targetWeight: 9,
+  },
+  /** Fraction of missiles that streak across to strike a shore battery. */
+  baseStrikeChance: 0.07,
   pointDefense: {
     radius: 95,
     cooldown: 1.3,
@@ -203,23 +220,18 @@ export const EVOLUTION = {
   firstGuidedCap: 3,
   firstMinefieldCap: 4,
   firstLowSigCap: 3,
-  /** Missiles are NOT capped by a per-round count. The enemy fires at a rate
-   *  (missiles/minute) that scales with round and its saturation doctrine, and
-   *  keeps firing across a window sized to the convoy — so as long as ships are
-   *  in the strait, more missiles come. Volleys still cluster launches. */
-  missileBaseRate: 4.5,
-  missileRoundRate: 1.5,
-  missileSatRate: 0.06,
-  missileRateMax: 16,
+  /** Missile VOLUME is a controlled total count (scales with round + doctrine),
+   *  but it is spread across the WHOLE transit — from windowStartT until the
+   *  last ship is expected to clear — so the enemy keeps firing to the end and
+   *  there are no long silent gaps. Volleys still cluster launches. */
+  missileCountBase: 5,
+  missileCountPerRound: 2,
+  missileCountSat: 0.18,
+  missileCountCap: 46,
   volleySatDivisor: 24,
   windowStartT: 6,
-  windowBaseT: 30,
-  /** Fire window scales with convoy size so bigger convoys draw more fire, but
-   *  not the full (longer) spawn duration — kept winnable with good economy. */
-  windowPerShipT: 3.2,
-  windowMaxT: 150,
-  /** Safety backstop only — far above any intended round volume. */
-  spawnHardCap: 180,
+  /** Extra seconds after the last ship enters, so fire covers it crossing. */
+  windowTailT: 60,
   /** Mine volume once unlocked. */
   mineBase: 3,
   mineTrackDivisor: 10,
