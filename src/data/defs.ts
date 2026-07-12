@@ -53,7 +53,7 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   pointDefense: {
     id: 'pointDefense',
     name: 'Point-Defense Turret',
-    desc: 'Automatically engages missiles that come close. In tight formation its arc also covers neighbors.',
+    desc: 'A last-ditch close-in turret with ONE ready round per transit: it automatically engages the first missile that gets close. Rearmed before every departure.',
     costPerShip: 110,
   },
   missileWarning: {
@@ -71,7 +71,7 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   mineSonar: {
     id: 'mineSonar',
     name: 'Mine-Detection Sonar',
-    desc: 'Reveals standard mines ahead of this ship so the convoy can steer around them.',
+    desc: 'Reveals standard mines around this ship so the convoy can steer clear of them.',
     costPerShip: 95,
   },
   fireSuppression: {
@@ -89,12 +89,11 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   tight: {
     id: 'tight',
     name: 'Tight',
-    desc: 'Ships run close and centered in their lanes. Point-defense and escort coverage overlap well, but a blast or minefield can reach more than one hull, and mines are harder to dodge in the narrower channel.',
+    desc: 'Ships run close and centered in their lanes. Point-defense and escort coverage overlap well, but a blast or minefield can reach more than one hull.',
     speedMult: 0.95,
     lateralSpread: 18,
     gapBonus: 0,
     collateralMult: 1.0,
-    mineAvoidChance: 0.8,
   },
   wide: {
     id: 'wide',
@@ -104,7 +103,6 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
     lateralSpread: 42,
     gapBonus: 34,
     collateralMult: 0.35,
-    mineAvoidChance: 0.95,
   },
   sprint: {
     id: 'sprint',
@@ -114,7 +112,6 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
     lateralSpread: 12,
     gapBonus: 0,
     collateralMult: 0.6,
-    mineAvoidChance: 0.88,
   },
 };
 
@@ -146,14 +143,14 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     id: 'intercept1',
     branch: 'interception',
     name: 'Improved Interceptors',
-    desc: 'Interceptors fly 30% faster and hit 10% more often.',
+    desc: 'Battery interceptors fly 50% faster and escort interceptors 10% faster; every interceptor hits 10% more often.',
     cost: 40,
   },
   intercept2: {
     id: 'intercept2',
     branch: 'interception',
     name: 'Dual-Launch Cells',
-    desc: 'Escort launchers reload twice as fast.',
+    desc: 'Escort launchers reload twice as fast, and battery interceptors gain another 20% speed.',
     cost: 70,
     requires: 'intercept1',
   },
@@ -161,7 +158,7 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     id: 'mines1',
     branch: 'mineWarfare',
     name: 'Minesweeping Drones',
-    desc: 'Fields autonomous drones that launch from your nearest escort or shore battery to detonate charted (revealed) mines before ships reach them.',
+    desc: 'Fields autonomous drones, launched from your escorts, that fly out and detonate charted (revealed) mines before ships reach them. Each sortie expends a drone munition bought in Preparation.',
     cost: 55,
   },
   resilience1: {
@@ -183,7 +180,7 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     id: 'ew1',
     branch: 'electronicWarfare',
     name: 'Barrage Jamming',
-    desc: 'ECM bursts scramble guided seekers far more effectively (guided hit chance 8% while active).',
+    desc: 'ECM aircraft jam guided seekers far more effectively (guided hit chance 8% inside the jamming orbit).',
     cost: 55,
   },
   logistics1: {

@@ -218,7 +218,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       ...classIds.filter((c) => campaign.composition[c] > 0).map((c) => SHIP_CLASSES[c].speed),
     ),
     nextEntityId: nextId,
-    avoidRolls: {},
     debutsSeen: [],
     pendingDamageApplied: pendingApplied,
   };
