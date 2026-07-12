@@ -174,7 +174,9 @@ export class TransitView {
       this.selectedEscort = null;
     }
     this.selInfo.textContent = this.armedAbility
-      ? `Tap the map to place ${this.armedAbility.toUpperCase()}`
+      ? this.armedAbility === 'scan'
+        ? 'Tap a lane to send the scan plane down it'
+        : 'Tap open water to deploy the ECM plane'
       : this.selectedEscort !== null
         ? 'Escort selected — tap to send · double-tap to pause'
         : '';
@@ -232,20 +234,12 @@ export class TransitView {
     const wy = (cy - OFFSET_Y) / SCALE;
 
     // 0) If an ability is armed, this tap places it where the player touched.
+    //    Scan: the Y picks a lane and a plane flies it. ECM: a plane deploys to
+    //    the tapped water (rejected on land, see the sim). The aircraft itself is
+    //    the visual feedback, so no placed ripple is drawn here.
     if (this.armedAbility) {
       const ability = this.armedAbility;
       this.queue({ type: 'ability', ability, x: wx, y: wy });
-      if (ability === 'scan') {
-        // Scan ripple renders at the placed point.
-        this.effects.push({
-          kind: 'scan',
-          x: wx,
-          y: wy,
-          start: performance.now(),
-          duration: 900,
-          maxRadius: COMBAT.scan.radius,
-        });
-      }
       this.armedAbility = null;
       return;
     }
@@ -524,10 +518,11 @@ export class TransitView {
     ctx.fillStyle = exitGrad;
     ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
 
-    // ECM bubble — drawn where the player placed it, at its true radius.
-    if (t.time < t.ecmActiveUntil) {
-      const cx = this.sx(t.ecmCenterX);
-      const cy = this.sy(t.ecmCenterY);
+    // ECM jamming orbit — drawn around each deployed ECM plane while on station.
+    for (const ac of t.aircraft) {
+      if (ac.role !== 'ecm' || ac.phase !== 'onStation') continue;
+      const cx = this.sx(ac.centerX);
+      const cy = this.sy(ac.centerY);
       const pulse = 1 + 0.04 * Math.sin(now / 120);
       ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
       ctx.beginPath();
@@ -880,6 +875,25 @@ export class TransitView {
       ctx.restore();
     }
 
+    // Support aircraft (scan / ECM planes).
+    for (const ac of t.aircraft) {
+      const ax = this.sx(ac.x);
+      const ay = this.sy(ac.y);
+      if (ac.role === 'scan') {
+        // A scan plane sweeping its lane; draw a bright band ahead of it so the
+        // lane it is charting reads clearly.
+        const laneY = this.sy(ac.laneY);
+        ctx.fillStyle = 'rgba(77, 195, 255, 0.06)';
+        ctx.fillRect(ax, laneY - COMBAT.scan.laneHalfWidth * SCALE, CANVAS_W - ax, COMBAT.scan.laneHalfWidth * 2 * SCALE);
+        ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ax, ay, 14 + 3 * Math.sin(now / 120), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      this.drawPlane(ax, ay, ac.heading, ac.role === 'ecm' ? '#c792ea' : '#7ce7ff');
+    }
+
     // Visual effects
     this.effects = this.effects.filter((fx) => now - fx.start < fx.duration);
     for (const fx of this.effects) {
@@ -929,6 +943,32 @@ export class TransitView {
         CANVAS_H / 2 + 9,
       );
     }
+  }
+
+  /** A small top-down aircraft silhouette (swept wings), pointed along heading. */
+  private drawPlane(x: number, y: number, heading: number, color: string): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(11, 0); // nose
+    ctx.lineTo(2, 3);
+    ctx.lineTo(-4, 3);
+    ctx.lineTo(-4, 9); // swept wing
+    ctx.lineTo(-8, 9);
+    ctx.lineTo(-7, 2);
+    ctx.lineTo(-11, 2); // tailplane
+    ctx.lineTo(-11, -2);
+    ctx.lineTo(-7, -2);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-4, -9);
+    ctx.lineTo(-4, -3);
+    ctx.lineTo(2, -3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   private drawShip(ship: Ship): void {

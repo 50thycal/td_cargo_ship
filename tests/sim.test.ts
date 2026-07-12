@@ -890,21 +890,23 @@ describe('air defense & telemetry', () => {
     }
   });
 
-  it('minesweeper drones clear revealed mines when mine-warfare research is done', () => {
+  it('minesweeper drones clear revealed mines (escort-launched, munitions spent)', () => {
     const c = newCampaign('sweeper-drone');
     c.completedResearch = ['mines1'];
-    c.bases = 1;
+    c.escorts = 1;
+    c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     expect(state.effects.sweepDrones).toBe(true);
     state.spawnQueue = [];
     state.threats = [];
-    const base = state.bases[0];
-    // A revealed mine below the lanes, near the battery — no ship will touch it.
+    const escort = state.escorts[0];
+    const ammo0 = state.droneAmmo;
+    // A revealed mine near the escort — no ship will touch it.
     const mine = {
       id: state.nextEntityId++,
       kind: 'mine' as const,
-      x: base.x,
-      y: 820,
+      x: escort.x + 60,
+      y: escort.y,
       vx: 0,
       vy: 0,
       speed: 0,
@@ -923,6 +925,171 @@ describe('air defense & telemetry', () => {
     expect(sawDrone).toBe(true);
     expect(mine.alive).toBe(false);
     expect(state.stats.minesSwept).toBeGreaterThan(swept0);
+    // A munition was consumed by the launch.
+    expect(state.droneAmmo).toBe(ammo0 - 1);
+  });
+
+  it('drones do NOT launch without munitions in stock', () => {
+    const c = newCampaign('sweeper-no-ammo');
+    c.completedResearch = ['mines1'];
+    c.escorts = 1;
+    c.droneAmmo = 0; // researched, but nothing bought
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine' as const,
+      x: escort.x + 60,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    for (let i = 0; i < 30 * 20; i++) stepTransit(state, [], rng);
+    expect(state.drones.length).toBe(0);
+  });
+
+  function pushMine(state: TransitState, x: number, y: number, revealed = false) {
+    const mine = {
+      id: state.nextEntityId++,
+      kind: 'mine' as const,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed,
+      lowSig: false,
+      claimedByInterceptor: false,
+    };
+    state.threats.push(mine);
+    return mine;
+  }
+
+  it('a scan plane charts mines only in the selected lane', () => {
+    const c = newCampaign('scan-lane');
+    c.scanUnlocked = true;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const inLane = pushMine(state, 1000, WORLD.lanes[0]);
+    const otherLane = pushMine(state, 1000, WORLD.lanes[2]);
+    // Send the scan plane down the NORTH lane (lanes[0]).
+    stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[0] }], rng);
+    for (let i = 0; i < 30 * 12 && state.aircraft.length > 0; i++) stepTransit(state, [], rng);
+    expect(inLane.revealed).toBe(true);
+    expect(otherLane.revealed).toBe(false);
+  });
+
+  it('runs two scan sorties in one transit without error (regression)', () => {
+    const c = newCampaign('scan-twice');
+    c.scanUnlocked = true;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const north = pushMine(state, 900, WORLD.lanes[0]);
+    const south = pushMine(state, 1200, WORLD.lanes[2]);
+    stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[0] }], rng);
+    for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
+    stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[2] }], rng);
+    for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
+    expect(state.scanCharges).toBe(COMBAT.scan.chargesPerRound - 2);
+    expect(north.revealed).toBe(true);
+    expect(south.revealed).toBe(true);
+  });
+
+  it('an ECM plane destroys a missile that lingers in its jamming orbit', () => {
+    const c = newCampaign('ecm-jam');
+    c.ecmUnlocked = true;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const cx = 1000;
+    const cy = WORLD.lanes[1];
+    // A near-stationary missile parked at the orbit center (aim point far away
+    // so it never self-detonates); it should cook off once the plane is jamming.
+    const m = makeMissile(state, { x: cx, y: cy, vx: 0, vy: 0, targetX: cx, targetY: -400 });
+    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: cx, y: cy }], rng);
+    const threat = state.threats.find((th) => th.id === m)!;
+    for (let i = 0; i < 30 * 12 && threat.alive; i++) stepTransit(state, [], rng);
+    expect(threat.alive).toBe(false);
+    expect(state.stats.ecmKills).toBeGreaterThan(0);
+  });
+
+  it('rejects an ECM deployment on land (off the water band), wasting no charge', () => {
+    const c = newCampaign('ecm-land');
+    c.ecmUnlocked = true;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    const charges0 = state.ecmCharges;
+    // y=40 is up on the hostile shore, over the launchers — not open water.
+    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: 40 }], rng);
+    expect(state.ecmCharges).toBe(charges0); // no charge spent
+    expect(state.aircraft.some((a) => a.role === 'ecm')).toBe(false);
+    expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);
+  });
+
+  it('point defense fires only its per-transit magazine, then stops', () => {
+    const c = newCampaign('pd-magazine');
+    c.classModules.cargo = ['pointDefense'];
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    let ship = undefined as ReturnType<TransitState['ships']['find']>;
+    for (let i = 0; i < 30 * 12 && !ship; i++) {
+      stepTransit(state, [], rng);
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+    }
+    expect(ship).toBeDefined();
+    expect(ship!.pdShots).toBe(COMBAT.pointDefense.magazine);
+    // Keep feeding fresh in-range missiles; PD may only ever fire `magazine` shots.
+    let pdLaunches = 0;
+    const seen = new Set<number>();
+    for (let k = 0; k < 20 && ship!.alive && !ship!.delivered; k++) {
+      makeMissile(state, { x: ship!.x + 60, y: ship!.y, targetX: ship!.x + 2000, targetY: ship!.y });
+      stepTransit(state, [], rng);
+      for (const i of state.interceptors) {
+        if (i.launcher === 'pd' && !seen.has(i.id)) {
+          seen.add(i.id);
+          pdLaunches++;
+        }
+      }
+    }
+    expect(pdLaunches).toBeLessThanOrEqual(COMBAT.pointDefense.magazine);
+    expect(ship!.pdShots).toBe(0);
+  });
+
+  it('does not fire missiles at a ship that has all but crossed the delivery line', () => {
+    const c = newCampaign('no-target-delivered');
+    c.escorts = 0;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [{ time: 0.05, kind: 'missile', siteX: 900 }];
+    state.threats = [];
+    // Only one live ship, sitting right at the delivery line (inside the safe
+    // margin); every other ship removed from the sim.
+    const survivors = state.ships.filter((s) => s.spawned || true);
+    let kept = false;
+    for (const s of survivors) {
+      if (!kept) {
+        s.spawned = true;
+        s.alive = true;
+        s.delivered = false;
+        s.x = WORLD.deliverX - 10; // within deliverSafeMargin of the line
+        s.y = WORLD.lanes[1];
+        kept = true;
+      } else {
+        s.spawned = true;
+        s.delivered = true;
+      }
+    }
+    stepTransit(state, [], rng);
+    expect(state.stats.missilesSpawned).toBe(0);
   });
 
   it('accumulates per-round telemetry and exports valid totals', () => {

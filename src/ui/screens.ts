@@ -13,6 +13,7 @@ import {
 import {
   buyAmmo,
   buyBase,
+  buyDroneAmmo,
   buyEscort,
   buyModule,
   buyShip,
@@ -401,7 +402,24 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
     h('div', { className: 'row' }, [
       h('div', {
         className: 'name grow',
-        text: `ECM suite: ${c.ecmUnlocked ? `owned (${'2'} bursts/round, scrambles guided seekers)` : 'not installed'}`,
+        text:
+          `Minesweeper-drone munitions: ${c.droneAmmo}` +
+          (c.completedResearch.includes('mines1')
+            ? ' — escorts launch drones at charted mines'
+            : ' — requires Minesweeping Drones research'),
+      }),
+      h('button', {
+        text: `Buy ${ECONOMY.droneAmmoPerBuy} for $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
+        disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
+        onClick: () => {
+          if (buyDroneAmmo(c)) rerender();
+        },
+      }),
+    ]),
+    h('div', { className: 'row' }, [
+      h('div', {
+        className: 'name grow',
+        text: `ECM aircraft: ${c.ecmUnlocked ? `owned (${'2'} sorties/round — plane jams a water area, missiles inside cook off)` : 'not installed'}`,
       }),
       h('button', {
         text: c.ecmUnlocked ? 'Installed ✓' : `Install $${ECONOMY.ecmUnlockCost}`,
@@ -414,7 +432,7 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
     h('div', { className: 'row' }, [
       h('div', {
         className: 'name grow',
-        text: `Scanning array: ${c.scanUnlocked ? 'owned (2 pulses/round, charts mines ahead)' : 'not installed'}`,
+        text: `Scan aircraft: ${c.scanUnlocked ? 'owned (2 sorties/round — plane flies a chosen lane charting its mines)' : 'not installed'}`,
       }),
       h('button', {
         text: c.scanUnlocked ? 'Installed ✓' : `Install $${ECONOMY.scanUnlockCost}`,

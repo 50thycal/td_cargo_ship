@@ -79,6 +79,11 @@ export interface Ship {
   fireSeconds: number;
   /** Point-defense cooldown timer. */
   pdCooldown: number;
+  /** Point-defense shots remaining this transit. Refills each round; a hard
+   *  per-transit magazine so ship self-defense is a limited resource, not a
+   *  free auto-turret. Only meaningful when the ship carries a pointDefense
+   *  module. */
+  pdShots: number;
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
@@ -147,6 +152,9 @@ export interface Threat {
   lowSig: boolean;
   /** Set when an interceptor is currently en route to this threat. */
   claimedByInterceptor: boolean;
+  /** Seconds this missile has spent inside an active ECM jamming orbit. Once it
+   *  crosses the jam threshold the seeker cooks off and the missile explodes. */
+  jamSeconds?: number;
 }
 
 export interface SpawnEvent {
@@ -226,14 +234,37 @@ export interface Interceptor {
   hitChance?: number;
 }
 
-/** An autonomous minesweeper drone: flies from a launcher to a revealed mine
- *  and detonates it. Unlocked by mine-warfare research. */
+/** An autonomous minesweeper drone: flies from an escort to a revealed mine
+ *  and detonates it. Unlocked by mine-warfare research; each launch consumes a
+ *  purchased drone munition. */
 export interface Drone {
   id: number;
   x: number;
   y: number;
   targetMineId: number;
   speed: number;
+}
+
+/** A support aircraft the player calls in for a placed ability. Scan planes fly
+ *  down a chosen lane charting mines in that lane only; ECM planes fly to a
+ *  water station, orbit while jamming inbound missiles, then depart. */
+export interface Aircraft {
+  id: number;
+  role: 'scan' | 'ecm';
+  x: number;
+  y: number;
+  heading: number;
+  /** inbound → fly to the work area; onStation → do the job; departing → leave. */
+  phase: 'inbound' | 'onStation' | 'departing';
+  /** Scan: the lane-center Y the plane sweeps along. */
+  laneY: number;
+  /** ECM: center of the jamming orbit. */
+  centerX: number;
+  centerY: number;
+  /** ECM: current orbit angle (radians). */
+  orbitAngle: number;
+  /** ECM: transit time at which the plane breaks orbit and departs. */
+  stationUntil: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,12 +312,14 @@ export interface TransitStats {
   valueSent: number;
   valueDelivered: number;
   missilesSpawned: number;
-  missilesIntercepted: number; // player interceptors + point defense
+  missilesIntercepted: number; // player interceptors + point defense + ECM jamming
   playerIntercepts: number;
   baseIntercepts: number;
   escortIntercepts: number;
   interceptMisses: number;
   pdKills: number;
+  /** Missiles destroyed by lingering inside an ECM jamming orbit. */
+  ecmKills: number;
   minesTotal: number;
   minesRevealed: number;
   minesDetonated: number;
@@ -305,7 +338,12 @@ export interface TransitStats {
 /** Research-derived combat effects, baked once at transit creation. */
 export interface CombatEffects {
   interceptHitBonus: number;
-  interceptorSpeedMult: number;
+  /** Speed multiplier for shore-battery interceptors — scales strongly with
+   *  interception research (batteries are the fast, upgradeable launcher). */
+  baseInterceptorSpeedMult: number;
+  /** Speed multiplier for escort-launched interceptors — the slower, shorter-
+   *  ranged ship-mounted launcher; barely scales with research. */
+  escortInterceptorSpeedMult: number;
   escortCooldownMult: number;
   /** Mine-detection radius for ships WITHOUT sonar (0 = cannot detect). */
   baseDetectRadius: number;
@@ -340,15 +378,23 @@ export interface TransitState {
   threats: Threat[];
   interceptors: Interceptor[];
   drones: Drone[];
+  /** Support aircraft in flight (scan / ECM planes). */
+  aircraft: Aircraft[];
   ammo: number;
+  /** Drone munitions remaining: each minesweeper drone launch consumes one. */
+  droneAmmo: number;
   ecmCharges: number;
+  /** Transit time until which an ECM plane is deployed (blocks a second call). */
   ecmActiveUntil: number;
-  /** Where the active ECM bubble is centered (set when the player places it). */
+  /** Where the active ECM jamming orbit is centered. */
   ecmCenterX: number;
   ecmCenterY: number;
   scanCharges: number;
   /** Cooldown gate between minesweeper drone launches. */
   droneCooldown: number;
+  /** How sharply the enemy prioritizes closer / weaker ships (0 = near-random,
+   *  1 = fully focused). Ramps with the campaign round. */
+  enemyTargetingSkill: number;
   /** Pending enemy spawns, sorted by time. */
   spawnQueue: SpawnEvent[];
   events: TransitEvent[];
@@ -571,6 +617,9 @@ export interface CampaignState {
   /** Escort ships: limited range, fast reload. Not free at campaign start. */
   escorts: number;
   ammo: number;
+  /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
+   *  drones, and each launch spends one. Unused stock carries between rounds. */
+  droneAmmo: number;
   /** Convoy-wide assets: owned => charges refresh each round. */
   ecmUnlocked: boolean;
   scanUnlocked: boolean;
