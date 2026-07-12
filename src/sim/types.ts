@@ -110,8 +110,6 @@ export interface FormationDef {
   gapBonus: number;
   /** Multiplier on splash / tanker-explosion collateral radius. */
   collateralMult: number;
-  /** Chance a ship successfully steers clear of a revealed mine in its path. */
-  mineAvoidChance: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,8 +401,6 @@ export interface TransitState {
   /** Convoy base speed (slowest ship class present). */
   baseSpeed: number;
   nextEntityId: number;
-  /** Memoized per ship-mine pair: did this crew spot the mine in time? */
-  avoidRolls: Record<string, boolean>;
   /** Tech keys already announced via techDebut events this transit. */
   debutsSeen: TechKey[];
   /** How much of the campaign's pendingDamage pool this convoy absorbed. */

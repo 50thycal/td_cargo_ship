@@ -60,6 +60,7 @@ try {
 
   // --- Prep ----------------------------------------------------------------
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
+  await page.waitForTimeout(900); // let the entry stagger finish before shooting
   await page.screenshot({ path: `${SHOT_DIR}/02-prep.png` });
   await page.getByRole('button', { name: 'Begin Transit' }).click();
 
@@ -93,6 +94,22 @@ try {
   if (!aarSeen) throw new Error('after-action report never appeared');
 
   // --- AAR ----------------------------------------------------------------------
+  // The report reveals as a click-through sequence: tap the debrief until the
+  // footer (Continue button) appears, then let count-up animations settle.
+  const seqDeadline = Date.now() + 30_000;
+  while (Date.now() < seqDeadline) {
+    const contVisible = await page
+      .getByRole('button', { name: /Continue to Intelligence|Final Report/ })
+      .isVisible()
+      .catch(() => false);
+    if (contVisible) break;
+    await page
+      .locator('[data-screen="aar"] .screen-body')
+      .click({ position: { x: 30, y: 30 } })
+      .catch(() => {});
+    await page.waitForTimeout(200);
+  }
+  await page.waitForTimeout(1100);
   await page.screenshot({ path: `${SHOT_DIR}/04-aar.png` });
   const delivered = await page.locator('.stat .value').first().textContent();
   console.log('AAR delivered stat:', delivered);
@@ -115,11 +132,13 @@ try {
 
   // --- Research --------------------------------------------------------------------
   await page.waitForSelector('[data-screen="research"]', { timeout: 10_000 });
+  await page.waitForTimeout(900); // entry stagger
   await page.screenshot({ path: `${SHOT_DIR}/05-research.png` });
   await page.getByRole('button', { name: 'Continue to Preparation' }).click();
 
   // --- Round 2 prep -------------------------------------------------------------------
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
+  await page.waitForTimeout(900); // entry stagger
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.
