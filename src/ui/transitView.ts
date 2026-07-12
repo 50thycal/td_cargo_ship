@@ -3,7 +3,7 @@
 // stepTransit on a fixed timestep and draws whatever the sim state says.
 
 import { COMBAT, SIM, WORLD } from '../data/tuning';
-import { patrolLaneY, stepTransit } from '../sim/transit';
+import { stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
   Ship,
@@ -17,9 +17,9 @@ const CANVAS_W = 1280;
 const CANVAS_H = 720;
 const SCALE = CANVAS_W / WORLD.width; // 0.64
 const OFFSET_Y = (CANVAS_H - WORLD.height * SCALE) / 2;
-/** Hold this long (ms) on a spot to station an escort there instead of
- *  sending it and letting it resume forward. */
-const HOLD_MS = 2000;
+/** Second tap within this long (ms) counts as a double-tap → station the escort
+ *  (pause it). A lone tap after the window sends it and it resumes forward. */
+const DOUBLE_MS = 300;
 
 const SHIP_COLORS: Record<string, string> = {
   cargo: '#6fb1e0',
@@ -61,10 +61,10 @@ export class TransitView {
   private tutorialDismissed = false;
   /** The escort the player has tapped to command (null = none). */
   private selectedEscort: number | null = null;
-  /** An in-progress escort-destination press: a quick release sends the escort
-   *  (resume forward); holding past HOLD_MS stations it there. */
-  private press: { x: number; y: number; escortId: number } | null = null;
-  private holdTimer: number | undefined;
+  /** A first escort-destination tap awaiting a possible second (double) tap. */
+  private escortTap: { x: number; y: number; escortId: number; timer: number } | null = null;
+  /** An armed placeable ability: the next map tap places it. */
+  private armedAbility: 'ecm' | 'scan' | null = null;
 
   // HUD elements updated per-frame
   private hudInfo!: HTMLElement;
@@ -105,10 +105,6 @@ export class TransitView {
     }
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
-    // Release/cancel handled on the window so a drag off the canvas still ends
-    // the gesture cleanly.
-    window.addEventListener('pointerup', this.onPointerUp);
-    window.addEventListener('pointercancel', this.onPointerCancel);
     this.lastNow = performance.now();
     requestAnimationFrame(this.frame);
   }
@@ -130,11 +126,11 @@ export class TransitView {
 
     this.ecmBtn = h('button', {
       className: 'hud-btn',
-      onClick: () => this.queue({ type: 'ability', ability: 'ecm' }),
+      onClick: () => this.armAbility('ecm'),
     });
     this.scanBtn = h('button', {
       className: 'hud-btn',
-      onClick: () => this.queue({ type: 'ability', ability: 'scan' }),
+      onClick: () => this.armAbility('scan'),
     });
 
     this.pauseBtn = h('button', {
@@ -177,8 +173,11 @@ export class TransitView {
     ) {
       this.selectedEscort = null;
     }
-    this.selInfo.textContent =
-      this.selectedEscort !== null ? 'Escort selected — tap to send · hold to station' : '';
+    this.selInfo.textContent = this.armedAbility
+      ? `Tap the map to place ${this.armedAbility.toUpperCase()}`
+      : this.selectedEscort !== null
+        ? 'Escort selected — tap to send · double-tap to pause'
+        : '';
 
     const ecmActive = this.state.time < this.state.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
@@ -186,10 +185,12 @@ export class TransitView {
     }</span>`;
     this.ecmBtn.disabled = this.state.ecmCharges <= 0 && !ecmActive;
     this.ecmBtn.classList.toggle('off', this.state.ecmCharges <= 0 && !ecmActive);
+    this.ecmBtn.classList.toggle('armed', this.armedAbility === 'ecm');
 
     this.scanBtn.innerHTML = `SCAN<span class="charges">×${this.state.scanCharges}</span>`;
     this.scanBtn.disabled = this.state.scanCharges <= 0;
     this.scanBtn.classList.toggle('off', this.state.scanCharges <= 0);
+    this.scanBtn.classList.toggle('armed', this.armedAbility === 'scan');
   }
 
   // -------------------------------------------------------------------------
@@ -198,13 +199,27 @@ export class TransitView {
 
   private queue(cmd: TransitCommand): void {
     if (this.state.over || this.paused) return;
-    // Ability taps must not stack: a double-tap (or two taps in one frame)
-    // would otherwise burn two charges for one activation.
+    // Ability placements must not stack: two in one frame would burn two charges.
     if (cmd.type === 'ability') {
       if (this.pending.some((p) => p.type === 'ability' && p.ability === cmd.ability)) return;
       if (cmd.ability === 'ecm' && this.state.time < this.state.ecmActiveUntil) return;
     }
     this.pending.push(cmd);
+  }
+
+  /** Arm (or disarm) a placeable ability. The next map tap places it. */
+  private armAbility(ability: 'ecm' | 'scan'): void {
+    if (this.state.over || this.paused) return;
+    if (ability === 'ecm' && (this.state.ecmCharges <= 0 || this.state.time < this.state.ecmActiveUntil)) return;
+    if (ability === 'scan' && this.state.scanCharges <= 0) return;
+    this.armedAbility = this.armedAbility === ability ? null : ability; // toggle
+  }
+
+  private cancelEscortTap(): void {
+    if (this.escortTap) {
+      clearTimeout(this.escortTap.timer);
+      this.escortTap = null;
+    }
   }
 
   private onPointerDown = (ev: PointerEvent): void => {
@@ -216,14 +231,34 @@ export class TransitView {
     const wx = cx / SCALE;
     const wy = (cy - OFFSET_Y) / SCALE;
 
+    // 0) If an ability is armed, this tap places it where the player touched.
+    if (this.armedAbility) {
+      const ability = this.armedAbility;
+      this.queue({ type: 'ability', ability, x: wx, y: wy });
+      if (ability === 'scan') {
+        // Scan ripple renders at the placed point.
+        this.effects.push({
+          kind: 'scan',
+          x: wx,
+          y: wy,
+          start: performance.now(),
+          duration: 900,
+          maxRadius: COMBAT.scan.radius,
+        });
+      }
+      this.armedAbility = null;
+      return;
+    }
+
     // Generous mobile-friendly tap radius (in world units).
     const tapRadius = 42 / SCALE;
 
-    // 1) A tap near an incoming missile always fires an interceptor at it.
+    // 1) A tap near an incoming missile fires an interceptor at it. Multiple
+    //    interceptors CAN be sent at one missile, so claimed missiles still tap.
     let bestThreat: Threat | null = null;
     let bestThreatD = tapRadius;
     for (const threat of this.state.threats) {
-      if (!threat.alive || threat.kind === 'mine' || threat.claimedByInterceptor) continue;
+      if (!threat.alive || threat.kind === 'mine') continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
       if (d < bestThreatD) {
         bestThreat = threat;
@@ -248,48 +283,38 @@ export class TransitView {
       }
     }
     if (bestEscort !== null) {
+      this.cancelEscortTap();
       this.selectedEscort = this.selectedEscort === bestEscort ? null : bestEscort;
       return;
     }
 
-    // 3) With an escort selected, a press in open water begins a destination
-    //    gesture: a quick tap sends it (resume forward on arrival); holding for
-    //    HOLD_MS stations it there. Either way it is deselected afterward.
+    // 3) With an escort selected, an open-water tap sets its destination:
+    //    single tap → move there and resume forward; double-tap → pause there.
     if (this.selectedEscort !== null) {
       const escortId = this.selectedEscort;
-      this.press = { x: wx, y: wy, escortId };
-      if (this.holdTimer !== undefined) clearTimeout(this.holdTimer);
-      this.holdTimer = window.setTimeout(() => {
-        if (!this.press) return;
-        this.queue({ type: 'moveEscort', escortId: this.press.escortId, x: this.press.x, y: this.press.y, hold: true });
-        this.showToast('Escort ordered to hold station');
+      const near =
+        this.escortTap &&
+        this.escortTap.escortId === escortId &&
+        Math.hypot(this.escortTap.x - wx, this.escortTap.y - wy) < 70 / SCALE;
+      if (near) {
+        // Second tap → double-tap → station (pause) the escort.
+        this.cancelEscortTap();
+        this.queue({ type: 'moveEscort', escortId, x: wx, y: wy, hold: true });
+        this.showToast('Escort holding position');
         this.selectedEscort = null;
-        this.press = null;
-        this.holdTimer = undefined;
-      }, HOLD_MS);
+      } else {
+        // First tap: wait briefly for a possible second tap before committing
+        // to a plain move (which lets the escort resume forward on arrival).
+        this.cancelEscortTap();
+        const timer = window.setTimeout(() => {
+          this.queue({ type: 'moveEscort', escortId, x: wx, y: wy, hold: false });
+          this.selectedEscort = null;
+          this.escortTap = null;
+        }, DOUBLE_MS);
+        this.escortTap = { x: wx, y: wy, escortId, timer };
+      }
       return;
     }
-  };
-
-  private onPointerUp = (): void => {
-    if (this.holdTimer !== undefined) {
-      clearTimeout(this.holdTimer);
-      this.holdTimer = undefined;
-    }
-    const press = this.press;
-    this.press = null;
-    if (!press) return;
-    // Released before the hold threshold → a tap: send there and resume forward.
-    this.queue({ type: 'moveEscort', escortId: press.escortId, x: press.x, y: press.y, hold: false });
-    this.selectedEscort = null;
-  };
-
-  private onPointerCancel = (): void => {
-    if (this.holdTimer !== undefined) {
-      clearTimeout(this.holdTimer);
-      this.holdTimer = undefined;
-    }
-    this.press = null;
   };
 
   private dismissTutorial(): void {
@@ -335,9 +360,7 @@ export class TransitView {
     if (this.destroyed) return;
     this.destroyed = true;
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
-    window.removeEventListener('pointerup', this.onPointerUp);
-    window.removeEventListener('pointercancel', this.onPointerCancel);
-    if (this.holdTimer !== undefined) clearTimeout(this.holdTimer);
+    this.cancelEscortTap();
     for (const el of this.elements) el.remove();
   }
 
@@ -355,7 +378,11 @@ export class TransitView {
           break;
         case 'shipLost':
           this.showToast(
-            ev.cause?.startsWith('escort:') ? 'Escort ship destroyed!' : `${ev.shipName} lost!`,
+            ev.cause?.startsWith('escort:')
+              ? 'Escort ship destroyed!'
+              : ev.cause?.startsWith('base:')
+                ? 'Shore battery destroyed!'
+                : `${ev.shipName} lost!`,
           );
           break;
         case 'mineRevealed':
@@ -363,19 +390,6 @@ export class TransitView {
           break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
-          break;
-        case 'abilityUsed':
-          if (ev.detail === 'scan') {
-            const cx = this.state.anchorX + 220;
-            this.effects.push({
-              kind: 'scan',
-              x: cx,
-              y: patrolLaneY(this.state),
-              start: now,
-              duration: 900,
-              maxRadius: COMBAT.scan.radius,
-            });
-          }
           break;
         default:
           break;
@@ -510,16 +524,20 @@ export class TransitView {
     ctx.fillStyle = exitGrad;
     ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
 
-    // ECM aura
+    // ECM bubble — drawn where the player placed it, at its true radius.
     if (t.time < t.ecmActiveUntil) {
-      const cx = this.sx(t.anchorX - 80);
-      const cy = this.sy(patrolLaneY(t));
+      const cx = this.sx(t.ecmCenterX);
+      const cy = this.sy(t.ecmCenterY);
       const pulse = 1 + 0.04 * Math.sin(now / 120);
+      ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, COMBAT.ecm.radius * SCALE * pulse, 0, Math.PI * 2);
+      ctx.fill();
       ctx.strokeStyle = 'rgba(199, 146, 234, 0.5)';
       ctx.setLineDash([6, 8]);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, 210 * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, COMBAT.ecm.radius * SCALE * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -551,6 +569,20 @@ export class TransitView {
     for (const base of t.bases) {
       const x = this.sx(base.x);
       const y = this.sy(base.y);
+      if (!base.alive) {
+        // Destroyed battery: a dark, broken emplacement.
+        ctx.fillStyle = '#3a2a2a';
+        ctx.fillRect(x - 13, y - 5, 26, 10);
+        ctx.strokeStyle = 'rgba(120, 90, 90, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y - 4);
+        ctx.lineTo(x + 6, y + 4);
+        ctx.moveTo(x + 8, y - 4);
+        ctx.lineTo(x - 4, y + 5);
+        ctx.stroke();
+        continue;
+      }
       ctx.fillStyle = '#5f7d92';
       ctx.fillRect(x - 13, y - 6, 26, 12);
       ctx.fillStyle = '#8fb0c4';
@@ -584,6 +616,14 @@ export class TransitView {
         ctx.beginPath();
         ctx.arc(x, y - 2, 16, -Math.PI / 2, -Math.PI / 2 + (1 - base.cooldown / COMBAT.base.reload) * Math.PI * 2);
         ctx.stroke();
+      }
+      // HP bar when the battery is damaged.
+      if (base.hp < base.maxHp) {
+        const frac = Math.max(0, base.hp / base.maxHp);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x - 13, y - 26, 26, 3);
+        ctx.fillStyle = frac > 0.5 ? '#59d98c' : frac > 0.25 ? '#ffc857' : '#ff6b6b';
+        ctx.fillRect(x - 13, y - 26, 26 * frac, 3);
       }
     }
 
@@ -761,13 +801,24 @@ export class TransitView {
       ctx.arc(x, y, threat.kind === 'guidedMissile' ? 5 : 4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Tap affordance ring / claimed marker
-      if (threat.claimedByInterceptor) {
+      // Tap affordance ring. Multiple interceptors can be sent at one missile;
+      // when any are inbound, show a solid ring plus a count.
+      const incoming = t.interceptors.reduce(
+        (n, i) => (i.targetThreatId === threat.id && i.launcher !== 'pd' ? n + 1 : n),
+        0,
+      );
+      if (incoming > 0) {
         ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(x, y, 11, 0, Math.PI * 2);
         ctx.stroke();
+        if (incoming > 1) {
+          ctx.fillStyle = 'rgba(150, 230, 255, 0.95)';
+          ctx.font = '600 10px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${incoming}`, x, y - 13);
+        }
       } else {
         const pulse = 12 + 2.5 * Math.sin(now / 160);
         ctx.strokeStyle = 'rgba(255, 190, 120, 0.45)';
@@ -778,12 +829,55 @@ export class TransitView {
       }
     }
 
-    // Interceptors
-    ctx.fillStyle = '#7ce7ff';
+    // Interceptors (player launches = cyan dots) and point-defense tracers
+    // (bright streaks flying at their target so nothing is deleted silently).
     for (const interceptor of t.interceptors) {
-      ctx.beginPath();
-      ctx.arc(this.sx(interceptor.x), this.sy(interceptor.y), 3.5, 0, Math.PI * 2);
-      ctx.fill();
+      const ix = this.sx(interceptor.x);
+      const iy = this.sy(interceptor.y);
+      if (interceptor.launcher === 'pd') {
+        const threat = t.threats.find((th) => th.id === interceptor.targetThreatId);
+        if (threat) {
+          ctx.strokeStyle = 'rgba(255, 240, 170, 0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(ix, iy);
+          ctx.lineTo(this.sx(threat.x), this.sy(threat.y));
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#fff3aa';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#7ce7ff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Minesweeper drones flying out to charted mines.
+    for (const drone of t.drones) {
+      const dx = this.sx(drone.x);
+      const dy = this.sy(drone.y);
+      const mine = t.threats.find((m) => m.id === drone.targetMineId);
+      if (mine) {
+        ctx.strokeStyle = 'rgba(120, 230, 160, 0.4)';
+        ctx.setLineDash([3, 5]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(dx, dy);
+        ctx.lineTo(this.sx(mine.x), this.sy(mine.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = '#8de0b0';
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(now / 200); // spinning body reads as a drone
+      ctx.fillRect(-4, -1.2, 8, 2.4);
+      ctx.fillRect(-1.2, -4, 2.4, 8);
+      ctx.restore();
     }
 
     // Visual effects

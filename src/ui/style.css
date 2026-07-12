@@ -320,6 +320,12 @@ button.selected {
 
 .hud-btn .charges { font-size: 11px; color: var(--accent); }
 .hud-btn.off .charges { color: var(--dim); }
+/* Armed placeable ability: the next map tap places it. */
+.hud-btn.armed {
+  outline: 2px solid var(--accent);
+  box-shadow: 0 0 10px rgba(120, 200, 255, 0.6);
+  background: rgba(30, 60, 92, 0.95);
+}
 
 .hud-group {
   display: flex;

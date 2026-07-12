@@ -13,6 +13,7 @@ import {
   moduleCost,
   newCampaign,
   planCurrentRound,
+  repairCost,
   repairFleet,
   resolveTransit,
   setComposition,
@@ -61,7 +62,8 @@ function runRound(c: CampaignState, opts: BotOptions): { state: TransitState; re
       }
     }
     if (opts.useScan && state.scanCharges > 0 && state.time > 25 && state.time - scanUsedAt > 20) {
-      cmds.push({ type: 'ability', ability: 'scan' });
+      // Place the pulse over the shipping channel where mines cluster.
+      cmds.push({ type: 'ability', ability: 'scan', x: 1150, y: WORLD.lanes[1] });
       scanUsedAt = state.time;
     }
     stepTransit(state, cmds, rng);
@@ -367,9 +369,9 @@ describe('transit hardening', () => {
     c.ecmUnlocked = true;
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    stepTransit(state, [{ type: 'ability', ability: 'ecm' }], rng);
+    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: WORLD.lanes[1] }], rng);
     expect(state.ecmCharges).toBe(1);
-    stepTransit(state, [{ type: 'ability', ability: 'ecm' }], rng);
+    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: WORLD.lanes[1] }], rng);
     expect(state.ecmCharges).toBe(1); // still active -> rejected
   });
 
@@ -739,6 +741,188 @@ describe('air defense & telemetry', () => {
       }
     }
     expect(maxGapWhileBusy).toBeLessThan(30);
+  });
+
+  /** Build a bare threat for combat unit tests. */
+  function makeMissile(state: TransitState, over: Partial<Record<string, unknown>>): number {
+    const id = state.nextEntityId++;
+    state.threats.push({
+      id,
+      kind: 'missile',
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      speed: COMBAT.missile.speed,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+      ...(over as object),
+    } as never);
+    return id;
+  }
+
+  it('an intercept fires from the nearest launcher (escort vs battery)', () => {
+    const c = newCampaign('nearest-launcher');
+    c.escorts = 1;
+    c.bases = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    const base = state.bases[0];
+
+    // A threat close to the escort (within its range, clear of both the hull
+    // and its own aim point so it stays alive this tick). Aim points are far so
+    // nothing self-detonates.
+    const nearEscort = makeMissile(state, { x: escort.x + 100, y: escort.y, targetX: escort.x + 1200, targetY: escort.y });
+    stepTransit(state, [{ type: 'intercept', threatId: nearEscort }], rng);
+    expect(state.interceptors.find((i) => i.targetThreatId === nearEscort)?.launcher).toBe('escort');
+
+    // A threat just above the battery (escort is far up-map): battery is nearer.
+    const nearBase = makeMissile(state, { x: base.x, y: base.y - 100, targetX: base.x, targetY: 0 });
+    stepTransit(state, [{ type: 'intercept', threatId: nearBase }], rng);
+    expect(state.interceptors.find((i) => i.targetThreatId === nearBase)?.launcher).toBe('base');
+  });
+
+  it('allows more than one interceptor against a single missile', () => {
+    const c = newCampaign('multi-intercept');
+    c.bases = 2;
+    c.ammo = 10;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    // Aim point far away so the missile doesn't self-detonate this tick.
+    const threat = makeMissile(state, { x: 900, y: 300, targetX: 1900, targetY: 300 });
+    const ammo0 = state.ammo;
+    stepTransit(
+      state,
+      [
+        { type: 'intercept', threatId: threat },
+        { type: 'intercept', threatId: threat },
+      ],
+      rng,
+    );
+    const inbound = state.interceptors.filter((i) => i.targetThreatId === threat && i.launcher !== 'pd');
+    expect(inbound.length).toBe(2);
+    expect(state.ammo).toBe(ammo0 - 2);
+  });
+
+  it('point defense launches a tracer projectile instead of deleting the missile', () => {
+    const c = newCampaign('pd-projectile');
+    c.classModules.cargo = ['pointDefense'];
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    // Bring a point-defense ship into the world.
+    let ship = undefined as ReturnType<TransitState['ships']['find']>;
+    for (let i = 0; i < 30 * 12 && !ship; i++) {
+      stepTransit(state, [], rng);
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+    }
+    expect(ship).toBeDefined();
+    // Within point-defense radius (95) but outside strike range (30) and not
+    // heading into the hull, so it survives to be engaged by point defense.
+    makeMissile(state, { x: ship!.x + 60, y: ship!.y, targetX: ship!.x + 1000, targetY: ship!.y });
+    stepTransit(state, [], rng);
+    expect(state.interceptors.some((i) => i.launcher === 'pd')).toBe(true);
+  });
+
+  it('enough battery strikes destroy a shore battery (and remove it from the fleet)', () => {
+    const c = newCampaign('base-destroy');
+    c.bases = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const base = state.bases[0];
+    for (let k = 0; k < 30 && base.alive; k++) {
+      makeMissile(state, {
+        x: base.x,
+        y: base.y - 1,
+        vx: 0,
+        vy: COMBAT.missile.speed,
+        targetX: base.x,
+        targetY: base.y,
+        targetKind: 'base',
+        targetEntityId: base.id,
+      });
+      stepTransit(state, [], rng);
+    }
+    expect(base.alive).toBe(false);
+    expect(state.stats.basesLost).toBe(1);
+    resolveTransit(c, state);
+    expect(c.bases).toBe(0);
+  });
+
+  it('escorts and batteries carry damage between rounds and are repaired for cash', () => {
+    const c = newCampaign('repair-assets');
+    c.escorts = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    escort.hp = escort.maxHp;
+    // A mine clips the escort (survivable at full hp) — leaves hull damage.
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine',
+      x: escort.x,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: false,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    while (!state.over) stepTransit(state, [], rng);
+    resolveTransit(c, state);
+    if (c.escorts > 0) {
+      expect(c.escortDamage).toBeGreaterThan(0);
+      const cost = repairCost(c);
+      expect(cost).toBeGreaterThan(0);
+      c.cash = cost;
+      expect(repairFleet(c)).toBe(true);
+      expect(c.escortDamage).toBe(0);
+      expect(c.baseDamage).toBe(0);
+    }
+  });
+
+  it('minesweeper drones clear revealed mines when mine-warfare research is done', () => {
+    const c = newCampaign('sweeper-drone');
+    c.completedResearch = ['mines1'];
+    c.bases = 1;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    expect(state.effects.sweepDrones).toBe(true);
+    state.spawnQueue = [];
+    state.threats = [];
+    const base = state.bases[0];
+    // A revealed mine below the lanes, near the battery — no ship will touch it.
+    const mine = {
+      id: state.nextEntityId++,
+      kind: 'mine' as const,
+      x: base.x,
+      y: 820,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+    };
+    state.threats.push(mine);
+    const swept0 = state.stats.minesSwept;
+    let sawDrone = false;
+    for (let i = 0; i < 30 * 20 && mine.alive; i++) {
+      stepTransit(state, [], rng);
+      if (state.drones.length > 0) sawDrone = true;
+    }
+    expect(sawDrone).toBe(true);
+    expect(mine.alive).toBe(false);
+    expect(state.stats.minesSwept).toBeGreaterThan(swept0);
   });
 
   it('accumulates per-round telemetry and exports valid totals', () => {

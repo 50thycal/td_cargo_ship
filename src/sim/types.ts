@@ -197,17 +197,22 @@ export interface Escort {
 
 /** A fixed shore battery. Unlimited range but a long reload — the player's
  *  baseline air defense, present from round 1 and buyable in numbers. It can be
- *  struck by missiles, which temporarily knock it offline. */
+ *  struck by missiles, which knock it offline and do hull damage; enough
+ *  strikes destroy it. Unrepaired damage carries into the next round. */
 export interface Base {
   id: number;
   x: number;
   y: number;
   cooldown: number;
+  hp: number;
+  maxHp: number;
+  alive: boolean;
   /** While time < disabledUntil the battery can't launch (recently hit). */
   disabledUntil: number;
 }
 
-export type LauncherKind = 'base' | 'escort';
+/** 'pd' = an automatic ship point-defense tracer (no ammo, its own hit roll). */
+export type LauncherKind = 'base' | 'escort' | 'pd';
 
 export interface Interceptor {
   id: number;
@@ -217,6 +222,18 @@ export interface Interceptor {
   speed: number;
   /** Which launcher fired it (for telemetry attribution). */
   launcher: LauncherKind;
+  /** Overrides the default per-launcher hit chance (used by point defense). */
+  hitChance?: number;
+}
+
+/** An autonomous minesweeper drone: flies from a launcher to a revealed mine
+ *  and detonates it. Unlocked by mine-warfare research. */
+export interface Drone {
+  id: number;
+  x: number;
+  y: number;
+  targetMineId: number;
+  speed: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -225,7 +242,8 @@ export interface Interceptor {
 
 export type TransitCommand =
   | { type: 'intercept'; threatId: number }
-  | { type: 'ability'; ability: 'ecm' | 'scan' }
+  /** Placed ability: x/y is where the player put the effect on the map. */
+  | { type: 'ability'; ability: 'ecm' | 'scan'; x: number; y: number }
   /** Send an escort to a point. hold=false → resume forward on arrival;
    *  hold=true → stay stationed there. */
   | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean };
@@ -278,6 +296,8 @@ export interface TransitStats {
   scanUsed: number;
   /** Escorts destroyed during the transit (lost from the fleet). */
   escortsLost: number;
+  /** Shore batteries destroyed during the transit (lost from the fleet). */
+  basesLost: number;
   /** Times a launcher (escort or battery) was knocked offline by a hit. */
   launchersDisabled: number;
 }
@@ -297,8 +317,8 @@ export interface CombatEffects {
   damageTakenMult: number;
   /** Guided-missile terminal hit chance while ECM is active. */
   ecmGuidedHitChance: number;
-  /** Scan pulse also destroys revealed mines in radius. */
-  scanSweeps: boolean;
+  /** Mine-warfare research: minesweeper drones auto-clear revealed mines. */
+  sweepDrones: boolean;
   /** Fires extinguish themselves quickly. */
   autoExtinguish: boolean;
   /** Sensors research: draw target-vector lines for inbound missiles. */
@@ -319,10 +339,16 @@ export interface TransitState {
   bases: Base[];
   threats: Threat[];
   interceptors: Interceptor[];
+  drones: Drone[];
   ammo: number;
   ecmCharges: number;
   ecmActiveUntil: number;
+  /** Where the active ECM bubble is centered (set when the player places it). */
+  ecmCenterX: number;
+  ecmCenterY: number;
   scanCharges: number;
+  /** Cooldown gate between minesweeper drone launches. */
+  droneCooldown: number;
   /** Pending enemy spawns, sorted by time. */
   spawnQueue: SpawnEvent[];
   events: TransitEvent[];
@@ -494,6 +520,8 @@ export interface RoundTelemetry {
   minesSwept: number;
   /** Escorts destroyed this transit. */
   escortsLost: number;
+  /** Shore batteries destroyed this transit. */
+  basesLost: number;
   /** Launcher-offline events (escort or battery hit). */
   launchersDisabled: number;
   losses: ShipLoss[];
@@ -534,6 +562,10 @@ export interface CampaignState {
   classModules: Record<ShipClassId, ModuleId[]>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
+  /** Unrepaired hull damage carried by the escort ships (repaired like hulls). */
+  escortDamage: number;
+  /** Unrepaired hull damage carried by the shore batteries. */
+  baseDamage: number;
   /** Fixed shore batteries: unlimited range, long reload. */
   bases: number;
   /** Escort ships: limited range, fast reload. Not free at campaign start. */

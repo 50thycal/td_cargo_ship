@@ -134,7 +134,8 @@ export function aarScreen(
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
               : '') +
-            (s.escortsLost > 0 ? ` Escorts lost: ${s.escortsLost}.` : '')
+            (s.escortsLost > 0 ? ` Escorts lost: ${s.escortsLost}.` : '') +
+            (s.basesLost > 0 ? ` Shore batteries destroyed: ${s.basesLost}.` : '')
           : 'Transit record unavailable (resumed campaign).',
       }),
     ]),
@@ -426,11 +427,16 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
   );
 
   const repair = repairCost(c);
+  const totalDamage = c.pendingDamage + c.escortDamage + c.baseDamage;
   assetPanel.append(
     h('div', { className: 'row' }, [
       h('div', {
         className: 'name grow',
-        text: repair > 0 ? `Fleet damage: ${c.pendingDamage} hull points unrepaired` : 'Fleet fully repaired',
+        text:
+          repair > 0
+            ? `Fleet damage: ${totalDamage} hull points unrepaired` +
+              (c.escortDamage + c.baseDamage > 0 ? ' (incl. escorts & batteries)' : '')
+            : 'Fleet fully repaired',
       }),
       h('button', {
         text: repair > 0 ? `Repair all $${repair}` : 'No repairs needed',

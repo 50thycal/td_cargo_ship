@@ -161,7 +161,7 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     id: 'mines1',
     branch: 'mineWarfare',
     name: 'Minesweeping Drones',
-    desc: 'The scan pulse also neutralizes revealed mines near the convoy.',
+    desc: 'Fields autonomous drones that launch from your nearest escort or shore battery to detonate charted (revealed) mines before ships reach them.',
     cost: 55,
   },
   resilience1: {
