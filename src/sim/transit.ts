@@ -37,7 +37,7 @@ export function deriveEffects(research: ReadonlySet<ResearchId>): CombatEffects 
     detectLowSig: research.has('sensors3'),
     damageTakenMult: research.has('resilience1') ? 0.75 : 1,
     ecmGuidedHitChance: research.has('ew1') ? 0.08 : COMBAT.ecm.guidedHitChance,
-    scanSweeps: research.has('mines1'),
+    sweepDrones: research.has('mines1'),
     autoExtinguish: research.has('resilience2'),
     showTargetVectors: research.has('sensors1'),
   };
@@ -151,10 +151,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     bases: [],
     threats: [],
     interceptors: [],
+    drones: [],
     ammo: campaign.ammo,
     ecmCharges: campaign.ecmUnlocked ? COMBAT.ecm.chargesPerRound : 0,
     ecmActiveUntil: -1,
+    ecmCenterX: 0,
+    ecmCenterY: 0,
     scanCharges: campaign.scanUnlocked ? COMBAT.scan.chargesPerRound : 0,
+    droneCooldown: 0,
     spawnQueue: [...plan.spawns].sort((a, b) => a.time - b.time),
     events: [],
     stats: {
@@ -178,6 +182,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       ecmUsed: 0,
       scanUsed: 0,
       escortsLost: 0,
+      basesLost: 0,
       launchersDisabled: 0,
     },
     effects,
@@ -190,7 +195,13 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     pendingDamageApplied: pendingApplied,
   };
 
-  for (let i = 0; i < campaign.escorts && i < ESCORT_SLOTS.length; i++) {
+  // Escorts carry unrepaired damage between rounds (distributed across them),
+  // just like cargo hulls — the player repairs them in procurement.
+  const escortCount = Math.min(campaign.escorts, ESCORT_SLOTS.length);
+  let escortPending = campaign.escortDamage;
+  for (let i = 0; i < escortCount; i++) {
+    const share = escortCount > 0 ? Math.min(escortPending, COMBAT.escort.hp * 0.6) : 0;
+    escortPending -= share;
     state.escorts.push({
       id: state.nextEntityId++,
       x: WORLD.spawnX + ESCORT_SLOTS[i].dx,
@@ -199,7 +210,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       slotDy: ESCORT_SLOTS[i].dy,
       cooldown: 0,
       heading: 0,
-      hp: COMBAT.escort.hp,
+      hp: COMBAT.escort.hp - share,
       maxHp: COMBAT.escort.hp,
       alive: true,
       disabledUntil: 0,
@@ -208,15 +219,22 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     });
   }
 
-  // Shore batteries spread along the friendly (bottom) shore.
+  // Shore batteries spread along the friendly (bottom) shore. They too carry
+  // unrepaired damage between rounds.
   const baseCount = Math.max(0, campaign.bases);
+  let basePending = campaign.baseDamage;
   for (let i = 0; i < baseCount; i++) {
     const frac = baseCount === 1 ? 0.5 : i / (baseCount - 1);
+    const share = baseCount > 0 ? Math.min(basePending, COMBAT.base.hp * 0.6) : 0;
+    basePending -= share;
     state.bases.push({
       id: state.nextEntityId++,
       x: 360 + frac * (WORLD.width - 720),
       y: WORLD.baseLine,
       cooldown: 0,
+      hp: COMBAT.base.hp - share,
+      maxHp: COMBAT.base.hp,
+      alive: true,
       disabledUntil: 0,
     });
   }
@@ -246,6 +264,15 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
+}
+
+/** Is a point currently inside the active ECM bubble? Guided seekers there are
+ *  scrambled. */
+function ecmActiveAt(t: TransitState, x: number, y: number): boolean {
+  return (
+    t.time < t.ecmActiveUntil &&
+    dist(x, y, t.ecmCenterX, t.ecmCenterY) <= COMBAT.ecm.radius
+  );
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -399,14 +426,22 @@ function damageEscort(t: TransitState, escort: Escort, amount: number, cause: st
   }
 }
 
-/** A hit on a shore battery: it is hardened and not destroyed, but the strike
- *  knocks its launcher offline for a few seconds. */
-function disableBase(t: TransitState, base: Base): void {
+/** A hit on a shore battery: hull damage plus a temporary launcher outage. A
+ *  hardened installation takes many strikes, but enough of them destroy it. */
+function damageBase(t: TransitState, base: Base): void {
+  if (!base.alive) return;
+  base.hp -= COMBAT.base.strikeDamage * t.effects.damageTakenMult;
   const disableUntil = t.time + COMBAT.base.disableSeconds;
   if (disableUntil > base.disabledUntil) {
     base.disabledUntil = disableUntil;
     t.stats.launchersDisabled++;
     pushEvent(t, { type: 'shipHit', shipId: base.id, cause: 'base:missile' });
+  }
+  if (base.hp <= 0) {
+    base.hp = 0;
+    base.alive = false;
+    t.stats.basesLost++;
+    pushEvent(t, { type: 'shipLost', shipId: base.id, cause: 'base:missile' });
   }
 }
 
@@ -420,43 +455,48 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       const threat = t.threats.find(
         (th) => th.id === cmd.threatId && th.alive && th.kind !== 'mine',
       );
-      if (!threat || threat.claimedByInterceptor) return;
+      // Multiple interceptors MAY be sent at one missile — no claimed guard.
+      if (!threat) return;
       if (t.ammo <= 0) {
         pushEvent(t, { type: 'launchFailed', detail: 'No interceptors remaining' });
         return;
       }
 
-      // Prefer a ready escort in range (fast reload); fall back to a ready
-      // shore battery (unlimited range, slow reload). Nearest of each wins.
+      // Fire from the NEAREST ready launcher — escort or shore battery alike,
+      // compared by true distance to the threat. Escorts have a max range;
+      // batteries have unlimited range but reload slowly.
+      let bestKind: 'escort' | 'base' | null = null;
       let bestEscort: Escort | null = null;
-      let bestEscortDist = Infinity;
-      let escortReloading = false;
+      let bestBase: Base | null = null;
+      let bestDist = Infinity;
+      let anyReloading = false;
       for (const escort of t.escorts) {
         if (!escort.alive) continue; // destroyed escorts can't fire
         const d = dist(escort.x, escort.y, threat.x, threat.y);
         if (d > COMBAT.interceptor.range) continue;
         if (escort.cooldown > 0 || t.time < escort.disabledUntil) {
-          escortReloading = true; // reloading OR knocked offline by a hit
+          anyReloading = true; // reloading OR knocked offline by a hit
           continue;
         }
-        if (d < bestEscortDist) {
+        if (d < bestDist) {
+          bestDist = d;
+          bestKind = 'escort';
           bestEscort = escort;
-          bestEscortDist = d;
+          bestBase = null;
         }
       }
-
-      let bestBase: Base | null = null;
-      let bestBaseDist = Infinity;
-      let baseReloading = false;
       for (const base of t.bases) {
+        if (!base.alive) continue; // destroyed batteries can't fire
         if (base.cooldown > 0 || t.time < base.disabledUntil) {
-          baseReloading = true; // reloading OR knocked offline by a hit
+          anyReloading = true;
           continue;
         }
-        const d = Math.abs(base.x - threat.x); // unlimited range; pick closest by x
-        if (d < bestBaseDist) {
+        const d = dist(base.x, base.y, threat.x, threat.y);
+        if (d < bestDist) {
+          bestDist = d;
+          bestKind = 'base';
           bestBase = base;
-          bestBaseDist = d;
+          bestEscort = null;
         }
       }
 
@@ -464,13 +504,13 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       let originY: number;
       let launcher: LauncherKind;
       let speed: number;
-      if (bestEscort) {
+      if (bestKind === 'escort' && bestEscort) {
         bestEscort.cooldown = COMBAT.interceptor.cooldown * t.effects.escortCooldownMult;
         originX = bestEscort.x;
         originY = bestEscort.y;
         launcher = 'escort';
         speed = COMBAT.interceptor.speed * t.effects.interceptorSpeedMult;
-      } else if (bestBase) {
+      } else if (bestKind === 'base' && bestBase) {
         bestBase.cooldown = COMBAT.base.reload;
         originX = bestBase.x;
         originY = bestBase.y;
@@ -479,7 +519,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       } else {
         pushEvent(t, {
           type: 'launchFailed',
-          detail: escortReloading || baseReloading ? 'All launchers reloading' : 'No launcher available',
+          detail: anyReloading ? 'All launchers reloading' : 'No launcher available',
         });
         return;
       }
@@ -498,34 +538,35 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       return;
     }
     case 'ability': {
+      const px = clamp(cmd.x, 20, WORLD.width - 20);
+      const py = clamp(cmd.y, 60, WORLD.height - 60);
       if (cmd.ability === 'ecm') {
         // No stacking: a burst must expire before another charge can be spent.
         if (t.ecmCharges <= 0 || t.time < t.ecmActiveUntil) return;
         t.ecmCharges--;
         t.stats.ecmUsed++;
         t.ecmActiveUntil = t.time + COMBAT.ecm.durationSeconds;
+        // The bubble is centered where the player placed it — guided seekers
+        // inside it are scrambled.
+        t.ecmCenterX = px;
+        t.ecmCenterY = py;
         pushEvent(t, { type: 'abilityUsed', detail: 'ecm' });
       } else if (cmd.ability === 'scan') {
         if (t.scanCharges <= 0) return;
         t.scanCharges--;
         t.stats.scanUsed++;
         pushEvent(t, { type: 'abilityUsed', detail: 'scan' });
-        const cx = t.anchorX + 220;
-        const cy = patrolLaneY(t);
+        // Chart mines around the placed pulse center. Sweeping is handled by
+        // minesweeper drones (mine-warfare research), not the pulse itself.
         for (const mine of t.threats) {
-          if (mine.kind !== 'mine' || !mine.alive) continue;
-          const d = dist(cx, cy, mine.x, mine.y);
-          if (!mine.revealed && d <= COMBAT.scan.radius) {
+          if (mine.kind !== 'mine' || !mine.alive || mine.revealed) continue;
+          const d = dist(px, py, mine.x, mine.y);
+          if (d <= COMBAT.scan.radius) {
             const canSee =
               !mine.lowSig ||
               t.effects.detectLowSig ||
               rng.chance(COMBAT.scan.lowSigRevealChance);
             if (canSee) revealMine(t, mine);
-          }
-          if (t.effects.scanSweeps && mine.revealed && mine.alive && d <= COMBAT.scan.sweepRadius) {
-            mine.alive = false;
-            t.stats.minesSwept++;
-            pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
           }
         }
       }
@@ -574,6 +615,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // --- Enemy spawns ----------------------------------------------------------
   const pool = activeShips(t);
   const liveEscorts = t.escorts.filter((e) => e.alive);
+  const liveBases = t.bases.filter((b) => b.alive);
   while (t.spawnQueue.length > 0 && t.spawnQueue[0].time <= t.time) {
     const spawn = t.spawnQueue.shift()!;
     // Nothing to shoot at (all ships resolved and no escorts afloat) → skip.
@@ -582,9 +624,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     if (spawn.kind === 'missile') {
       // A fraction of unguided missiles streak across to strike a shore battery,
-      // knocking it offline rather than hitting the convoy.
-      if (t.bases.length > 0 && rng.chance(COMBAT.baseStrikeChance)) {
-        const base = rng.pick(t.bases);
+      // damaging it and knocking it offline rather than hitting the convoy.
+      if (liveBases.length > 0 && rng.chance(COMBAT.baseStrikeChance)) {
+        const base = rng.pick(liveBases);
         const d = dist(site.x, site.y, base.x, base.y) || 1;
         t.stats.missilesSpawned++;
         t.threats.push({
@@ -681,7 +723,6 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // avoid whatever is ahead (collision avoidance) — through acceleration- and
   // turn-rate-limited motion. The result: ships ease around and wait for one
   // another like real vessels, and never permanently overlap.
-  const ecmActive = t.time < t.ecmActiveUntil;
 
   // Bring newly-scheduled ships into the world, already under way.
   for (const ship of t.ships) {
@@ -911,7 +952,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   for (const threat of t.threats) {
     if (!threat.alive || threat.kind === 'mine') continue;
 
-    if (threat.kind === 'guidedMissile' && !ecmActive) {
+    // ECM only scrambles a guided seeker while it is inside the placed bubble.
+    const scrambled = ecmActiveAt(t, threat.x, threat.y);
+    if (threat.kind === 'guidedMissile' && !scrambled) {
       // Resolve the current homing point (escort or ship); re-acquire the
       // nearest ship if the original target is gone.
       let tgtX: number | undefined;
@@ -961,7 +1004,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     // Terminal resolution.
     if (threat.kind === 'guidedMissile') {
-      const hitChance = ecmActive ? t.effects.ecmGuidedHitChance : COMBAT.guided.baseHitChance;
+      const hitChance = scrambled ? t.effects.ecmGuidedHitChance : COMBAT.guided.baseHitChance;
       if (threat.targetKind === 'escort') {
         const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
         if (esc && dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.guided.hitRadius) {
@@ -982,10 +1025,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
     } else if (threat.targetKind === 'base') {
       // A battery strike: detonate on the installation, knocking it offline.
-      const base = t.bases.find((b) => b.id === threat.targetEntityId);
+      const base = t.bases.find((b) => b.id === threat.targetEntityId && b.alive);
       if (base && dist(threat.x, threat.y, base.x, base.y) <= COMBAT.base.hitRadius) {
         threat.alive = false;
-        disableBase(t, base);
+        damageBase(t, base);
       } else if (
         threat.targetX !== undefined &&
         threat.targetY !== undefined &&
@@ -1058,7 +1101,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
   }
 
-  // --- Point defense ----------------------------------------------------------
+  // --- Point defense: automatic ship self-defense ----------------------------
+  // Fires a fast tracer projectile at the nearest inbound missile; the kill
+  // roll resolves when the tracer reaches it, so the missile isn't silently
+  // deleted — something visibly flies at it.
   for (const ship of activeShips(t)) {
     if (!ship.modules.includes('pointDefense')) continue;
     ship.pdCooldown = Math.max(0, ship.pdCooldown - dt);
@@ -1079,15 +1125,18 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       nearest.kind === 'guidedMissile'
         ? COMBAT.pointDefense.killChanceVsGuided
         : COMBAT.pointDefense.killChanceVsMissile;
-    if (rng.chance(killChance)) {
-      nearest.alive = false;
-      t.stats.pdKills++;
-      t.stats.missilesIntercepted++;
-      pushEvent(t, { type: 'pdKill', threatKind: nearest.kind });
-    }
+    t.interceptors.push({
+      id: t.nextEntityId++,
+      x: ship.x,
+      y: ship.y,
+      targetThreatId: nearest.id,
+      speed: COMBAT.pointDefense.projectileSpeed,
+      launcher: 'pd',
+      hitChance: killChance,
+    });
   }
 
-  // --- Interceptors -------------------------------------------------------------
+  // --- Interceptors (player launches + point-defense tracers) -----------------
   for (const interceptor of t.interceptors) {
     const threat = t.threats.find((th) => th.id === interceptor.targetThreatId);
     if (!threat || !threat.alive) {
@@ -1096,22 +1145,33 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
     const d = dist(interceptor.x, interceptor.y, threat.x, threat.y);
     if (d <= 18) {
-      threat.claimedByInterceptor = false;
-      const targetShip = t.ships.find((s) => s.id === threat.targetShipId);
-      let hitChance =
-        (threat.kind === 'guidedMissile'
-          ? COMBAT.interceptor.hitChanceVsGuided
-          : COMBAT.interceptor.hitChanceVsMissile) + t.effects.interceptHitBonus;
-      if (targetShip?.modules.includes('missileWarning')) hitChance += 0.1;
-      hitChance = Math.min(0.95, hitChance);
+      const isPd = interceptor.launcher === 'pd';
+      let hitChance: number;
+      if (interceptor.hitChance !== undefined) {
+        hitChance = interceptor.hitChance; // point defense carries its own roll
+      } else {
+        const targetShip = t.ships.find((s) => s.id === threat.targetShipId);
+        hitChance =
+          (threat.kind === 'guidedMissile'
+            ? COMBAT.interceptor.hitChanceVsGuided
+            : COMBAT.interceptor.hitChanceVsMissile) + t.effects.interceptHitBonus;
+        if (targetShip?.modules.includes('missileWarning')) hitChance += 0.1;
+        hitChance = Math.min(0.95, hitChance);
+      }
       if (rng.chance(hitChance)) {
         threat.alive = false;
-        t.stats.playerIntercepts++;
         t.stats.missilesIntercepted++;
-        if (interceptor.launcher === 'base') t.stats.baseIntercepts++;
-        else t.stats.escortIntercepts++;
-        pushEvent(t, { type: 'intercepted', threatKind: threat.kind });
-      } else {
+        if (isPd) {
+          t.stats.pdKills++;
+          pushEvent(t, { type: 'pdKill', threatKind: threat.kind });
+        } else {
+          t.stats.playerIntercepts++;
+          if (interceptor.launcher === 'base') t.stats.baseIntercepts++;
+          else t.stats.escortIntercepts++;
+          pushEvent(t, { type: 'intercepted', threatKind: threat.kind });
+        }
+      } else if (!isPd) {
+        // Only player launches report a miss; PD tracers fire constantly.
         t.stats.interceptMisses++;
         pushEvent(t, { type: 'interceptMiss', threatKind: threat.kind });
       }
@@ -1173,6 +1233,79 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         pushEvent(t, { type: 'mineDetonated', lowSig: mine.lowSig });
         damageEscort(t, escort, COMBAT.mine.damage, 'mine');
         break;
+      }
+    }
+  }
+
+  // --- Minesweeper drones ------------------------------------------------------
+  // Mine-warfare research fields autonomous drones that launch from the nearest
+  // launcher toward a charted (revealed) mine and detonate it safely.
+  t.droneCooldown = Math.max(0, t.droneCooldown - dt);
+  if (t.effects.sweepDrones) {
+    // Advance in-flight drones; sweep the mine on arrival.
+    for (const drone of t.drones) {
+      const mine = t.threats.find((m) => m.id === drone.targetMineId);
+      if (!mine || !mine.alive) {
+        drone.speed = 0; // target already gone
+        continue;
+      }
+      const d = dist(drone.x, drone.y, mine.x, mine.y);
+      if (d <= COMBAT.sweepDrone.sweepRadius) {
+        mine.alive = false;
+        t.stats.minesSwept++;
+        pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
+        drone.speed = 0;
+        continue;
+      }
+      const step = drone.speed * dt;
+      drone.x += ((mine.x - drone.x) / d) * step;
+      drone.y += ((mine.y - drone.y) / d) * step;
+    }
+    t.drones = t.drones.filter((dr) => dr.speed > 0);
+
+    // Launch a new drone at the nearest untargeted revealed mine from the
+    // nearest alive launcher within range.
+    if (t.droneCooldown <= 0) {
+      const targeted = new Set(t.drones.map((dr) => dr.targetMineId));
+      let bestMine: Threat | null = null;
+      let bestFrom: { x: number; y: number } | null = null;
+      let bestScore = Infinity;
+      for (const mine of t.threats) {
+        if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
+        if (targeted.has(mine.id)) continue;
+        let from: { x: number; y: number } | null = null;
+        let fromD: number = COMBAT.sweepDrone.launchRange;
+        for (const e of t.escorts) {
+          if (!e.alive) continue;
+          const dd = dist(e.x, e.y, mine.x, mine.y);
+          if (dd < fromD) {
+            fromD = dd;
+            from = { x: e.x, y: e.y };
+          }
+        }
+        for (const b of t.bases) {
+          if (!b.alive) continue;
+          const dd = dist(b.x, b.y, mine.x, mine.y);
+          if (dd < fromD) {
+            fromD = dd;
+            from = { x: b.x, y: b.y };
+          }
+        }
+        if (from && fromD < bestScore) {
+          bestScore = fromD;
+          bestMine = mine;
+          bestFrom = from;
+        }
+      }
+      if (bestMine && bestFrom) {
+        t.drones.push({
+          id: t.nextEntityId++,
+          x: bestFrom.x,
+          y: bestFrom.y,
+          targetMineId: bestMine.id,
+          speed: COMBAT.sweepDrone.speed,
+        });
+        t.droneCooldown = COMBAT.sweepDrone.cooldown;
       }
     }
   }

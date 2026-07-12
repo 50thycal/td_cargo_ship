@@ -43,6 +43,8 @@ export function newCampaign(seed: string): CampaignState {
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
     pendingDamage: 0,
+    escortDamage: 0,
+    baseDamage: 0,
     bases: ECONOMY.startBases,
     escorts: ECONOMY.startEscorts,
     ammo: ECONOMY.startAmmo,
@@ -119,9 +121,12 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       c.fleet[ship.classId] = Math.max(0, c.fleet[ship.classId] - 1);
     }
   }
-  // Escorts destroyed at sea are removed from the fleet permanently.
+  // Escorts and batteries destroyed at sea are removed from the fleet.
   if (s.escortsLost > 0) {
     c.escorts = Math.max(0, c.escorts - s.escortsLost);
+  }
+  if (s.basesLost > 0) {
+    c.bases = Math.max(0, c.bases - s.basesLost);
   }
   for (const classId of Object.keys(c.composition) as ShipClassId[]) {
     c.composition[classId] = Math.min(c.composition[classId], c.fleet[classId]);
@@ -137,6 +142,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
         .filter((ship) => ship.alive)
         .reduce((sum, ship) => sum + (ship.maxHp - ship.hp), 0),
     );
+  // Escorts and batteries carry their unrepaired hull damage into next round
+  // (survivors only — the destroyed ones are gone). Repaired in procurement.
+  c.escortDamage = Math.round(
+    t.escorts.filter((e) => e.alive).reduce((sum, e) => sum + (e.maxHp - e.hp), 0),
+  );
+  c.baseDamage = Math.round(
+    t.bases.filter((b) => b.alive).reduce((sum, b) => sum + (b.maxHp - b.hp), 0),
+  );
 
   // --- Confidence ----------------------------------------------------------------
   const deliveredFraction = s.launched > 0 ? s.delivered / s.launched : 0;
@@ -321,6 +334,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     minesDetonated: s.minesDetonated,
     minesSwept: s.minesSwept,
     escortsLost: s.escortsLost,
+    basesLost: s.basesLost,
     launchersDisabled: s.launchersDisabled,
     losses,
     cashEarned,
@@ -429,9 +443,14 @@ export function unlockScan(c: CampaignState): boolean {
   return true;
 }
 
+/** Total unrepaired hull damage across cargo hulls, escorts and batteries. */
+export function totalPendingDamage(c: CampaignState): number {
+  return c.pendingDamage + c.escortDamage + c.baseDamage;
+}
+
 export function repairCost(c: CampaignState): number {
   const mult = c.completedResearch.includes('logistics1') ? 0.5 : 1;
-  return Math.ceil(c.pendingDamage * ECONOMY.repairCostPerHp * mult);
+  return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult);
 }
 
 export function repairFleet(c: CampaignState): boolean {
@@ -439,6 +458,8 @@ export function repairFleet(c: CampaignState): boolean {
   if (cost <= 0 || c.cash < cost) return false;
   c.cash -= cost;
   c.pendingDamage = 0;
+  c.escortDamage = 0;
+  c.baseDamage = 0;
   return true;
 }
 

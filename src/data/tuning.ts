@@ -106,13 +106,17 @@ export const COMBAT = {
   },
   /** Fixed shore battery: engages any missile on the map (unlimited range),
    *  but reloads far slower than an escort. The player's baseline defense.
-   *  A missile strike knocks it offline for disableSeconds (it is not
-   *  destroyed — it is a hardened shore installation). */
+   *  A missile strike knocks it offline for disableSeconds and does hull
+   *  damage; enough strikes destroy it (hardened, so it takes a lot). */
   base: {
     reload: 4.0,
     speed: 105,
     hitRadius: 30,
-    disableSeconds: 5,
+    disableSeconds: 9,
+    /** Hull points. Hardened installation — takes many strikes to destroy. */
+    hp: 300,
+    /** Damage a battery strike does to the installation. */
+    strikeDamage: 40,
   },
   /** Escorts are ships at sea: they take hull damage from missiles and mines,
    *  can be destroyed (and are then lost from the fleet), and a hit knocks
@@ -120,7 +124,7 @@ export const COMBAT = {
   escort: {
     hp: 130,
     hitRadius: 15,
-    disableSeconds: 4,
+    disableSeconds: 8,
     /** Missile-target weight vs a cargo ship's cargo value (so escorts are
      *  occasionally, not constantly, singled out). */
     targetWeight: 9,
@@ -132,9 +136,23 @@ export const COMBAT = {
     cooldown: 1.3,
     killChanceVsMissile: 0.5,
     killChanceVsGuided: 0.33,
+    /** Speed of the point-defense tracer projectile (fast, short range). */
+    projectileSpeed: 260,
   },
-  ecm: { durationSeconds: 9, guidedHitChance: 0.2, chargesPerRound: 2 },
+  /** ECM is a placed bubble: guided seekers INSIDE the bubble are scrambled. */
+  ecm: { durationSeconds: 9, guidedHitChance: 0.2, chargesPerRound: 2, radius: 340 },
   scan: { radius: 460, sweepRadius: 300, chargesPerRound: 2, lowSigRevealChance: 0.35 },
+  /** Minesweeper drone (unlocked by mine-warfare research): auto-launches from
+   *  the nearest ready launcher toward a revealed mine and detonates it. */
+  sweepDrone: {
+    speed: 95,
+    /** Min seconds between drone launches (whole convoy). */
+    cooldown: 4.5,
+    /** A launcher must be within this range of the mine to send a drone. */
+    launchRange: 1100,
+    /** Distance at which the drone reaches the mine and sweeps it. */
+    sweepRadius: 16,
+  },
   mineSonarRadius: 240,
   /** Ships auto-steer around revealed mines within this look-ahead range. */
   mineAvoidLookahead: 130,

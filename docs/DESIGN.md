@@ -36,16 +36,16 @@ The player operates the convoy's **defenses**, not the cargo ships' steering:
 
 | Action | Input | Cost/limit |
 | --- | --- | --- |
-| Launch interceptor at a missile | tap the missile | ammo pool + launcher reload |
-| Command an escort (move) | tap the escort, then **tap** a destination | escort steams there, then resumes forward |
-| Command an escort (station) | tap the escort, then **hold ~2s** on a spot | escort steams there and **holds position** |
-| ECM burst (scrambles guided seekers) | HUD button | 2 charges/round, must own suite |
-| Scan pulse (charts mines ahead) | HUD button | 2 charges/round, must own array |
+| Launch interceptor at a missile | tap the missile (tap again for a second interceptor) | ammo pool + launcher reload |
+| Command an escort (move) | tap the escort, then **single-tap** a destination | escort steams there, then resumes forward |
+| Command an escort (station) | tap the escort, then **double-tap** a spot | escort steams there and **holds position** |
+| ECM bubble (scrambles guided seekers) | tap ECM, then **tap where** to place it | 2 charges/round, must own suite |
+| Scan pulse (charts mines ahead) | tap SCAN, then **tap where** to place it | 2 charges/round, must own array |
 | Pause / speed (1×/2×/3×) | HUD buttons | free |
 
 The **only** vessel the player steers is the escort: tap it to select (blue
-ring), then either **tap** the map to send it there (on arrival it resumes
-cruising forward with the convoy) or **hold ~2 seconds** on a spot to order it to
+ring), then either **single-tap** the map to send it there (on arrival it resumes
+cruising forward with the convoy) or **double-tap** a spot to order it to
 **station** there and hold position (a green marker). Either order deselects the
 escort once given. Cargo ships steer themselves. **Formation is chosen in the
 prep screen and fixed for the transit** (it sets how much lateral room ships keep
@@ -53,23 +53,36 @@ and how far blasts/mines spread) — there is no formation or lane control
 mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
 20+ ships stay manageable on a phone.
 
+ECM and Scan are **placed** abilities: tapping the HUD button arms it (it
+highlights), and the next tap on the map drops the effect there — an ECM bubble
+that scrambles guided seekers inside it, or a scan pulse that charts mines around
+the chosen point. Placement lets the player commit a charge exactly where the
+threat is, not at a fixed spot.
+
 **Air defense** comes from two launcher types, both bought (and stackable):
 - **Shore batteries** on the friendly shore — unlimited range, slow reload. The
   player's baseline defense (one to start).
 - **Escorts** — limited range, fast reload, and directly steerable. Purchased,
   not free.
 
-Both draw from a shared interceptor ammo pool; a tap prefers a ready in-range
-escort and falls back to a ready battery.
+Both draw from a shared interceptor ammo pool. A tap fires from the **nearest
+ready launcher** — escort or battery — measured by true distance to the missile;
+tapping the same missile again sends a second interceptor from the next-nearest
+launcher (so a hard target can be double- or triple-shot). Ships fitted with
+**point defense** also fire automatically: a visible tracer streaks at the
+nearest missile rather than deleting it silently.
 
-**Both launcher types are attackable.** The enemy occasionally singles out an
-escort or streaks a missile across to a shore battery, and escorts also steam
-into mines. A hit knocks the launcher **offline for a few seconds** (a red
-wind-down ring) — it cannot fire during the outage. Escorts additionally take
-hull damage and can be **destroyed**, permanently removing that launcher from
-the fleet; shore batteries are hardened installations that are disabled but not
-destroyed. Stationing an escort forward is therefore a real risk/reward call:
-more coverage where you place it, but it is exposed to fire and mines there.
+**Both launcher types are attackable, and both can be destroyed.** The enemy
+occasionally singles out an escort or streaks a missile across to a shore
+battery, and escorts also steam into mines. A hit knocks the launcher **offline
+for several seconds** (a red wind-down ring) — it cannot fire during the outage —
+and does hull damage. Escorts are lightly built and are **destroyed** outright
+once their hull is gone (permanently lost from the fleet); shore batteries are
+hardened and take many strikes, but enough of them will **destroy** a battery
+too. Unrepaired escort and battery damage carries into the next round and is
+repaired in procurement, exactly like cargo hulls. Stationing an escort forward
+is therefore a real risk/reward call: more coverage where you place it, but it is
+exposed to fire and mines there.
 
 Emergent drama: damaged ships slow down, fall behind their own expected pace
 (or get blocked behind a slower ship ahead of them), and become preferred
@@ -94,6 +107,11 @@ resources earned. This is where enemy evolution becomes visible:
 One project at a time, paid in intel. Research completes **after the next
 transit** — you must survive one more round without it. Branches: sensors,
 interception, mine warfare, resilience, electronic warfare, logistics.
+
+The **mine-warfare** project ("Minesweeping Drones") fields autonomous drones:
+once a mine is charted (by a scan pulse or ship sonar), a drone launches from the
+nearest escort or shore battery, flies out to it, and detonates it safely before
+ships reach it — turning mine detection into active clearance.
 
 Intel is earned mostly from *contact with the enemy*: losses (+6 each),
 interceptions (+1), first encounters with new tech (+12). A struggling player

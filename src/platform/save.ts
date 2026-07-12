@@ -39,6 +39,9 @@ export function loadCampaign(): CampaignState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { v: number; campaign: CampaignState };
     if (parsed.v !== SAVE_VERSION || !parsed.campaign) return null;
+    // Forward-compatible defaults for fields added after a save was written.
+    parsed.campaign.escortDamage ??= 0;
+    parsed.campaign.baseDamage ??= 0;
     return parsed.campaign;
   } catch {
     return null;
