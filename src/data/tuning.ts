@@ -96,8 +96,23 @@ export const COMBAT = {
   straggleDistance: 130,
   /** Guided missiles prefer stragglers by this weight factor. */
   straggleTargetWeight: 1.6,
+  /** A ship within this distance of the delivery line is treated as already
+   *  safe — the enemy won't fire on a hull about to score (a missile could
+   *  never arrive in time), so misses aren't wasted chasing delivered ships. */
+  deliverSafeMargin: 90,
+  /** Enemy target-selection skill ramp: skill = clamp((round - start)/span).
+   *  Skill 0 = near-random (value-weighted only); skill 1 = heavily favors
+   *  closer and lower-health ships. */
+  targetingSkillStartRound: 2,
+  targetingSkillSpanRounds: 8,
+  /** How strongly full skill weights proximity-to-launch and woundedness. */
+  targetingProximityWeight: 1.6,
+  targetingWoundedWeight: 1.6,
+  /** Escort-launched interceptors: the ship-mounted launcher. Deliberately the
+   *  SLOWER of the two interceptor types and shorter-ranged — its edge is a
+   *  fast reload and being able to move with the convoy, not velocity. */
   interceptor: {
-    speed: 115,
+    speed: 92,
     /** Max launch range from an escort to the target threat. */
     range: 780,
     cooldown: 3.2,
@@ -110,7 +125,9 @@ export const COMBAT = {
    *  damage; enough strikes destroy it (hardened, so it takes a lot). */
   base: {
     reload: 4.0,
-    speed: 105,
+    /** Shore-battery interceptors are the FAST interceptor type — they start
+     *  quicker than escorts and scale hard with interception research. */
+    speed: 150,
     hitRadius: 30,
     disableSeconds: 9,
     /** Hull points. Hardened installation — takes many strikes to destroy. */
@@ -131,6 +148,9 @@ export const COMBAT = {
   },
   /** Fraction of missiles that streak across to strike a shore battery. */
   baseStrikeChance: 0.07,
+  /** Point-defense turret module: a per-ship close-in interceptor. It is a
+   *  limited magazine, NOT a free auto-turret — each ship gets `magazine` shots
+   *  for the whole transit, refilled each round. */
   pointDefense: {
     radius: 95,
     cooldown: 1.3,
@@ -138,24 +158,58 @@ export const COMBAT = {
     killChanceVsGuided: 0.33,
     /** Speed of the point-defense tracer projectile (fast, short range). */
     projectileSpeed: 260,
+    /** Shots each point-defense ship may fire per transit. */
+    magazine: 1,
   },
-  /** ECM is a placed bubble: guided seekers INSIDE the bubble are scrambled. */
-  ecm: { durationSeconds: 9, guidedHitChance: 0.2, chargesPerRound: 2, radius: 340 },
-  scan: { radius: 460, sweepRadius: 300, chargesPerRound: 2, lowSigRevealChance: 0.35 },
-  /** Minesweeper drone (unlocked by mine-warfare research): auto-launches from
-   *  the nearest ready launcher toward a revealed mine and detonates it. */
+  /** ECM plane: flies to a water station, orbits jamming inbound missiles —
+   *  any missile that lingers inside the orbit `explodeSeconds` cooks off — then
+   *  departs. `stationSeconds` is how long it holds the orbit. */
+  ecm: {
+    stationSeconds: 9,
+    guidedHitChance: 0.2,
+    chargesPerRound: 2,
+    radius: 300,
+    /** Seconds a missile must spend inside the jamming orbit before it explodes. */
+    explodeSeconds: 2.5,
+    /** Cruise speed of the ECM plane. */
+    planeSpeed: 240,
+    /** Orbit angular speed (radians/second). */
+    orbitRate: 1.1,
+    /** Radius the plane flies around the orbit center. */
+    orbitRadius: 90,
+    /** Water band the orbit center must sit inside (off both shores/launchers). */
+    waterYMin: 150,
+    waterYMax: 860,
+  },
+  /** Scan plane: flies down the player-selected lane charting mines in THAT lane
+   *  only, then leaves. */
+  scan: {
+    chargesPerRound: 2,
+    lowSigRevealChance: 0.35,
+    /** Cruise speed of the scan plane across the map. */
+    planeSpeed: 520,
+    /** Half-width of the lane band the plane can chart (mines outside are missed). */
+    laneHalfWidth: 95,
+    /** How far ahead/around the plane it reveals mines as it passes. */
+    revealRadius: 130,
+  },
+  /** Minesweeper drone (unlocked by mine-warfare research): launches from the
+   *  nearest escort toward a revealed mine and detonates it. Each launch spends
+   *  a purchased drone munition. */
   sweepDrone: {
     speed: 95,
     /** Min seconds between drone launches (whole convoy). */
     cooldown: 4.5,
-    /** A launcher must be within this range of the mine to send a drone. */
+    /** An escort must be within this range of the mine to send a drone. */
     launchRange: 1100,
     /** Distance at which the drone reaches the mine and sweeps it. */
     sweepRadius: 16,
   },
   mineSonarRadius: 240,
-  /** Ships auto-steer around revealed mines within this look-ahead range. */
-  mineAvoidLookahead: 130,
+  /** Ships auto-steer around revealed mines within this look-ahead range. A
+   *  charted mine is ALWAYS steered around (no dodge roll) — a revealed mine on
+   *  the plotted track is a known hazard the helm actively avoids. */
+  mineAvoidLookahead: 200,
   mineAvoidOffset: 70,
 } as const;
 
@@ -163,12 +217,17 @@ export const ECONOMY = {
   startCash: 450,
   startIntel: 0,
   startAmmo: 28,
+  /** No drone munitions until the player buys them (and researches drones). */
+  startDroneAmmo: 0,
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
   /** Cash earned per point of cargo value delivered. */
   cashPerValue: 4,
   ammoCost: 8,
+  /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
+  droneAmmoCost: 14,
+  droneAmmoPerBuy: 3,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,

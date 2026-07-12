@@ -231,9 +231,16 @@ function scheduleMissiles(
   const spawns: SpawnEvent[] = [];
   if (count <= 0) return spawns;
   const size = Math.max(1, volleySize);
+  const volleys = Math.ceil(count / size);
+  const span = Math.max(0, windowEnd - windowStart);
+  // Space the volleys on an even grid across the window, jittered within their
+  // own slot, so fire is spread over the whole transit without long silent gaps
+  // AND without a rigid metronome. (A fully-random time per volley could, by
+  // chance, leave a 30s+ hole; the grid bounds the worst-case gap.)
+  const slot = volleys > 0 ? span / volleys : span;
   let spawned = 0;
-  while (spawned < count) {
-    const volleyTime = rng.range(windowStart, windowEnd);
+  for (let v = 0; v < volleys; v++) {
+    const volleyTime = windowStart + v * slot + rng.range(0, slot);
     const site = rng.pick(WORLD.launchSites);
     const inVolley = Math.min(size, count - spawned);
     for (let i = 0; i < inVolley; i++) {

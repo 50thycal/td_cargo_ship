@@ -48,6 +48,7 @@ export function newCampaign(seed: string): CampaignState {
     bases: ECONOMY.startBases,
     escorts: ECONOMY.startEscorts,
     ammo: ECONOMY.startAmmo,
+    droneAmmo: ECONOMY.startDroneAmmo,
     ecmUnlocked: false,
     scanUnlocked: false,
     formation: 'tight',
@@ -97,6 +98,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
+  c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
   c.formation = t.formation; // tactical formation changes persist as the new default
 
   const newDiscoveries: TechKey[] = [];
@@ -410,6 +412,15 @@ export function buyAmmo(c: CampaignState, count: number): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.ammo += count;
+  return true;
+}
+
+export function buyDroneAmmo(c: CampaignState, buys = 1): boolean {
+  if (!Number.isInteger(buys) || buys <= 0) return false;
+  const cost = ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy * buys;
+  if (c.cash < cost) return false;
+  c.cash -= cost;
+  c.droneAmmo += ECONOMY.droneAmmoPerBuy * buys;
   return true;
 }
 
