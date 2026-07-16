@@ -53,7 +53,7 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   pointDefense: {
     id: 'pointDefense',
     name: 'Point-Defense Turret',
-    desc: 'A last-ditch close-in turret with ONE ready round per transit: it automatically engages the first missile that gets close. Rearmed before every departure.',
+    desc: 'A last-ditch close-in turret that automatically engages one nearby missile per transit. Draws from your shared stock of point-defense rounds (bought in prep) — no rounds, no defense.',
     costPerShip: 110,
   },
   missileWarning: {

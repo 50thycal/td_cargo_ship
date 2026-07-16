@@ -378,6 +378,17 @@ button.ghost {
   font-variant-numeric: tabular-nums;
 }
 
+.brief-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+}
+
+.brief-tag.good { color: var(--good); }
+
 @container (max-width: 740px) {
   .brief-strip { flex-direction: column; }
 }
@@ -468,6 +479,24 @@ button.ghost {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.buy-hull {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.buy-hull .sub-cost {
+  font-size: 10px;
+  color: var(--dim);
+}
+
+button.unequip {
+  border-color: rgba(255, 200, 87, 0.4);
+  color: var(--warn);
 }
 
 /* ---------- prep: formation cards ---------- */
@@ -768,6 +797,31 @@ button.ghost {
 .beat.fast { animation-duration: 0.18s; }
 
 .aar-banner { border-left-color: var(--accent); }
+
+/* All losses shown together in one beat. */
+.loss-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loss-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loss-group-head .icon { width: 20px; height: 20px; color: var(--bad); }
+.loss-group-head h3 { font-size: 15px; }
+
+.loss-group .card.loss {
+  animation: beatIn 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.loss-group .card.loss:nth-child(3) { animation-delay: 0.05s; }
+.loss-group .card.loss:nth-child(4) { animation-delay: 0.1s; }
+.loss-group .card.loss:nth-child(5) { animation-delay: 0.15s; }
+.loss-group .card.loss:nth-child(n + 6) { animation-delay: 0.2s; }
 
 .aar-big {
   font-size: 40px;

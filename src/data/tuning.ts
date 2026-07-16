@@ -165,18 +165,21 @@ export const COMBAT = {
    *  any missile that lingers inside the orbit `explodeSeconds` cooks off — then
    *  departs. `stationSeconds` is how long it holds the orbit. */
   ecm: {
-    stationSeconds: 9,
+    // Deliberately restrained: a smaller, shorter-lived bubble that needs a
+    // missile to loiter longer before it cooks off, so ECM shapes a fight
+    // rather than clearing the sky.
+    stationSeconds: 6,
     guidedHitChance: 0.2,
     chargesPerRound: 2,
-    radius: 300,
+    radius: 220,
     /** Seconds a missile must spend inside the jamming orbit before it explodes. */
-    explodeSeconds: 2.5,
+    explodeSeconds: 3.2,
     /** Cruise speed of the ECM plane. */
     planeSpeed: 240,
     /** Orbit angular speed (radians/second). */
     orbitRate: 1.1,
     /** Radius the plane flies around the orbit center. */
-    orbitRadius: 90,
+    orbitRadius: 80,
     /** Water band the orbit center must sit inside (off both shores/launchers). */
     waterYMin: 150,
     waterYMax: 860,
@@ -193,15 +196,15 @@ export const COMBAT = {
     /** How far ahead/around the plane it reveals mines as it passes. */
     revealRadius: 130,
   },
-  /** Minesweeper drone (unlocked by mine-warfare research): launches from the
-   *  nearest escort toward a revealed mine and detonates it. Each launch spends
-   *  a purchased drone munition. */
+  /** Minesweeper drone (unlocked by mine-warfare research): the player TAPS a
+   *  charted mine to send a drone from the nearest escort — just like tapping a
+   *  missile, but with a much shorter reach and its own behavior (fly out, sit
+   *  on the mine, detonate it). Each launch spends a purchased drone munition. */
   sweepDrone: {
     speed: 95,
-    /** Min seconds between drone launches (whole convoy). */
-    cooldown: 4.5,
-    /** An escort must be within this range of the mine to send a drone. */
-    launchRange: 1100,
+    /** An escort must be within ~7 ship-lengths of the mine to send a drone —
+     *  far shorter than an interceptor's reach, so escorts must close in. */
+    launchRange: 240,
     /** Distance at which the drone reaches the mine and sweeps it. */
     sweepRadius: 16,
   },
@@ -219,6 +222,9 @@ export const ECONOMY = {
   startAmmo: 28,
   /** No drone munitions until the player buys them (and researches drones). */
   startDroneAmmo: 0,
+  /** Point-defense rounds in stock at campaign start (turrets are useless
+   *  without them, but the module also has to be researched/bought first). */
+  startPdAmmo: 0,
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
@@ -228,6 +234,9 @@ export const ECONOMY = {
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
   droneAmmoPerBuy: 3,
+  /** Cash per point-defense round, and how many a single purchase buys. */
+  pdAmmoCost: 12,
+  pdAmmoPerBuy: 3,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,

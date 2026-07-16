@@ -164,7 +164,9 @@ export class TransitView {
       `Round ${this.round}   ·   Delivered ${s.delivered}/${s.launched}` +
       (s.lost > 0 ? `   ·   Lost ${s.lost}` : '') +
       `   ·   Confidence ${this.confidence}`;
-    this.hudAmmo.textContent = `Interceptors: ${this.state.ammo}`;
+    this.hudAmmo.textContent =
+      `Interceptors: ${this.state.ammo}` +
+      (this.state.effects.sweepDrones ? `   ·   Drones: ${this.state.droneAmmo}` : '');
 
     // Clear the escort selection if that escort is gone or was destroyed.
     if (
@@ -247,16 +249,27 @@ export class TransitView {
     // Generous mobile-friendly tap radius (in world units).
     const tapRadius = 42 / SCALE;
 
-    // 1) A tap near an incoming missile fires an interceptor at it. Multiple
-    //    interceptors CAN be sent at one missile, so claimed missiles still tap.
+    // 1) A tap near an incoming missile fires an interceptor at it. When several
+    //    missiles are bunched under one tap, prefer the one that does NOT already
+    //    have an interceptor inbound, so a tap defaults to a fresh target instead
+    //    of doubling up. (Doubling up is still possible — tap the same one again.)
+    const inbound = new Set(
+      this.state.interceptors
+        .filter((i) => i.launcher !== 'pd')
+        .map((i) => i.targetThreatId),
+    );
     let bestThreat: Threat | null = null;
-    let bestThreatD = tapRadius;
+    let bestThreatKey = Infinity;
     for (const threat of this.state.threats) {
       if (!threat.alive || threat.kind === 'mine') continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
-      if (d < bestThreatD) {
+      if (d >= tapRadius) continue;
+      // Sort key: un-targeted missiles (band 0) always beat targeted ones
+      // (band 1); within a band, nearest to the tap wins.
+      const key = (inbound.has(threat.id) ? tapRadius : 0) + d;
+      if (key < bestThreatKey) {
+        bestThreatKey = key;
         bestThreat = threat;
-        bestThreatD = d;
       }
     }
     if (bestThreat) {
@@ -265,7 +278,27 @@ export class TransitView {
       return;
     }
 
-    // 2) A tap near a living escort selects it (only escorts are player-directed).
+    // 2) With minesweeping researched, a tap on a charted mine sends a drone from
+    //    the nearest in-range escort (the sim validates range / munitions).
+    if (this.state.effects.sweepDrones) {
+      let bestMine: Threat | null = null;
+      let bestMineD = tapRadius;
+      for (const mine of this.state.threats) {
+        if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
+        if (this.state.drones.some((dr) => dr.targetMineId === mine.id)) continue; // already swept
+        const d = Math.hypot(mine.x - wx, mine.y - wy);
+        if (d < bestMineD) {
+          bestMine = mine;
+          bestMineD = d;
+        }
+      }
+      if (bestMine) {
+        this.queue({ type: 'sweepMine', threatId: bestMine.id });
+        return;
+      }
+    }
+
+    // 3) A tap near a living escort selects it (only escorts are player-directed).
     let bestEscort: number | null = null;
     let bestEscortD = tapRadius;
     for (const escort of this.state.escorts) {
@@ -282,7 +315,7 @@ export class TransitView {
       return;
     }
 
-    // 3) With an escort selected, an open-water tap sets its destination:
+    // 4) With an escort selected, an open-water tap sets its destination:
     //    single tap → move there and resume forward; double-tap → pause there.
     if (this.selectedEscort !== null) {
       const escortId = this.selectedEscort;
@@ -558,6 +591,27 @@ export class TransitView {
       ctx.beginPath();
       ctx.arc(x, y, 14, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Sweep affordance: when drones are researched and in stock, and no drone
+      // is already inbound, show a green targeting bracket — tap it to sweep.
+      const beingSwept = t.drones.some((dr) => dr.targetMineId === mine.id);
+      if (t.effects.sweepDrones && t.droneAmmo > 0 && !beingSwept) {
+        ctx.strokeStyle = 'rgba(120, 224, 176, 0.8)';
+        ctx.lineWidth = 1.5;
+        const r = 18 + 1.5 * Math.sin(now / 200);
+        for (let q = 0; q < 4; q++) {
+          const a0 = q * (Math.PI / 2) + Math.PI / 4 - 0.35;
+          ctx.beginPath();
+          ctx.arc(x, y, r, a0, a0 + 0.7);
+          ctx.stroke();
+        }
+      } else if (beingSwept) {
+        ctx.strokeStyle = 'rgba(120, 224, 176, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 17, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Shore batteries on the friendly (bottom) shore.

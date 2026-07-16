@@ -42,6 +42,9 @@ export function loadCampaign(): CampaignState | null {
     // Forward-compatible defaults for fields added after a save was written.
     parsed.campaign.escortDamage ??= 0;
     parsed.campaign.baseDamage ??= 0;
+    parsed.campaign.droneAmmo ??= 0;
+    parsed.campaign.pdAmmo ??= 0;
+    parsed.campaign.modulePaid ??= { cargo: {}, tanker: {}, freighter: {} };
     return parsed.campaign;
   } catch {
     return null;
