@@ -271,6 +271,9 @@ export interface Aircraft {
 
 export type TransitCommand =
   | { type: 'intercept'; threatId: number }
+  /** Send a minesweeper drone at a charted mine (from the nearest in-range
+   *  escort). Player-directed, like an intercept but for mines. */
+  | { type: 'sweepMine'; threatId: number }
   /** Placed ability: x/y is where the player put the effect on the map. */
   | { type: 'ability'; ability: 'ecm' | 'scan'; x: number; y: number }
   /** Send an escort to a point. hold=false → resume forward on arrival;
@@ -353,7 +356,8 @@ export interface CombatEffects {
   damageTakenMult: number;
   /** Guided-missile terminal hit chance while ECM is active. */
   ecmGuidedHitChance: number;
-  /** Mine-warfare research: minesweeper drones auto-clear revealed mines. */
+  /** Mine-warfare research: the player can send minesweeper drones at charted
+   *  mines (tap a revealed mine, drone launches from the nearest in-range escort). */
   sweepDrones: boolean;
   /** Fires extinguish themselves quickly. */
   autoExtinguish: boolean;
@@ -381,6 +385,8 @@ export interface TransitState {
   ammo: number;
   /** Drone munitions remaining: each minesweeper drone launch consumes one. */
   droneAmmo: number;
+  /** Point-defense rounds remaining: each turret shot draws from this pool. */
+  pdAmmo: number;
   ecmCharges: number;
   /** Transit time until which an ECM plane is deployed (blocks a second call). */
   ecmActiveUntil: number;
@@ -388,8 +394,6 @@ export interface TransitState {
   ecmCenterX: number;
   ecmCenterY: number;
   scanCharges: number;
-  /** Cooldown gate between minesweeper drone launches. */
-  droneCooldown: number;
   /** How sharply the enemy prioritizes closer / weaker ships (0 = near-random,
    *  1 = fully focused). Ramps with the campaign round. */
   enemyTargetingSkill: number;
@@ -602,6 +606,10 @@ export interface CampaignState {
   composition: Record<ShipClassId, number>;
   /** Module templates applied per ship class. */
   classModules: Record<ShipClassId, ModuleId[]>;
+  /** Cash paid to equip each currently-fitted module, per class. Lets an
+   *  unequip refund exactly what was spent (so loadouts can be experimented
+   *  with freely without opening a buy-low / refund-high exploit). */
+  modulePaid: Record<ShipClassId, Partial<Record<ModuleId, number>>>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
   /** Unrepaired hull damage carried by the escort ships (repaired like hulls). */
@@ -616,6 +624,9 @@ export interface CampaignState {
   /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
    *  drones, and each launch spends one. Unused stock carries between rounds. */
   droneAmmo: number;
+  /** Point-defense rounds in stock. Bought in prep; each turret shot spends one.
+   *  Unused stock carries between rounds. */
+  pdAmmo: number;
   /** Convoy-wide assets: owned => charges refresh each round. */
   ecmUnlocked: boolean;
   scanUnlocked: boolean;

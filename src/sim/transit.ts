@@ -175,12 +175,12 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     aircraft: [],
     ammo: campaign.ammo,
     droneAmmo: campaign.droneAmmo,
+    pdAmmo: campaign.pdAmmo,
     ecmCharges: campaign.ecmUnlocked ? COMBAT.ecm.chargesPerRound : 0,
     ecmActiveUntil: -1,
     ecmCenterX: 0,
     ecmCenterY: 0,
     scanCharges: campaign.scanUnlocked ? COMBAT.scan.chargesPerRound : 0,
-    droneCooldown: 0,
     enemyTargetingSkill: clamp(
       (campaign.round - COMBAT.targetingSkillStartRound) / COMBAT.targetingSkillSpanRounds,
       0,
@@ -603,6 +603,50 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         targetThreatId: threat.id,
         speed,
         launcher,
+      });
+      return;
+    }
+    case 'sweepMine': {
+      // Player-directed minesweeper: tap a charted mine to send a drone from the
+      // nearest in-range escort. Shorter reach than an interceptor and its own
+      // behavior (fly out, detonate the mine).
+      if (!t.effects.sweepDrones) {
+        pushEvent(t, { type: 'launchFailed', detail: 'Minesweeping drones not researched' });
+        return;
+      }
+      const mine = t.threats.find(
+        (m) => m.id === cmd.threatId && m.alive && m.kind === 'mine' && m.revealed,
+      );
+      if (!mine) return;
+      // One drone per mine is enough — ignore a repeat tap on a mine already
+      // being swept so munitions aren't wasted.
+      if (t.drones.some((dr) => dr.targetMineId === mine.id)) return;
+      if (t.droneAmmo <= 0) {
+        pushEvent(t, { type: 'launchFailed', detail: 'No drone munitions remaining' });
+        return;
+      }
+      // Nearest alive escort within launch range of the mine.
+      let bestEscort: Escort | null = null;
+      let bestD: number = COMBAT.sweepDrone.launchRange;
+      for (const escort of t.escorts) {
+        if (!escort.alive) continue;
+        const d = dist(escort.x, escort.y, mine.x, mine.y);
+        if (d <= bestD) {
+          bestD = d;
+          bestEscort = escort;
+        }
+      }
+      if (!bestEscort) {
+        pushEvent(t, { type: 'launchFailed', detail: 'No escort in drone range of that mine' });
+        return;
+      }
+      t.droneAmmo--;
+      t.drones.push({
+        id: t.nextEntityId++,
+        x: bestEscort.x,
+        y: bestEscort.y,
+        targetMineId: mine.id,
+        speed: COMBAT.sweepDrone.speed,
       });
       return;
     }
@@ -1278,13 +1322,14 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // --- Point defense: limited ship self-defense ------------------------------
   // Fires a fast tracer projectile at the nearest inbound missile; the kill
   // roll resolves when the tracer reaches it, so the missile isn't silently
-  // deleted — something visibly flies at it. Each ship carries only a small
-  // magazine per transit (refilled each round), so this is a last-ditch shot,
-  // not a free continuous shield.
+  // deleted — something visibly flies at it. Each ship may fire at most its own
+  // per-transit magazine, and every shot also draws from the convoy-wide pool of
+  // point-defense rounds the player buys — so it is a last-ditch shot, not a
+  // free continuous shield.
   for (const ship of activeShips(t)) {
     if (!ship.modules.includes('pointDefense')) continue;
     ship.pdCooldown = Math.max(0, ship.pdCooldown - dt);
-    if (ship.pdCooldown > 0 || ship.pdShots <= 0) continue;
+    if (ship.pdCooldown > 0 || ship.pdShots <= 0 || t.pdAmmo <= 0) continue;
     let nearest: Threat | null = null;
     let nearestD = Infinity;
     for (const threat of t.threats) {
@@ -1298,6 +1343,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     if (!nearest) continue;
     ship.pdCooldown = COMBAT.pointDefense.cooldown;
     ship.pdShots--;
+    t.pdAmmo--;
     const killChance =
       nearest.kind === 'guidedMissile'
         ? COMBAT.pointDefense.killChanceVsGuided
@@ -1415,74 +1461,27 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
 
   // --- Minesweeper drones ------------------------------------------------------
-  // Mine-warfare research fields autonomous drones that launch from the nearest
-  // ESCORT toward a charted (revealed) mine and detonate it safely. Only escorts
-  // carry drones (never shore batteries), and each launch spends a purchased
-  // drone munition.
-  t.droneCooldown = Math.max(0, t.droneCooldown - dt);
-  if (t.effects.sweepDrones) {
-    // Advance in-flight drones; sweep the mine on arrival.
-    for (const drone of t.drones) {
-      const mine = t.threats.find((m) => m.id === drone.targetMineId);
-      if (!mine || !mine.alive) {
-        drone.speed = 0; // target already gone
-        continue;
-      }
-      const d = dist(drone.x, drone.y, mine.x, mine.y);
-      if (d <= COMBAT.sweepDrone.sweepRadius) {
-        mine.alive = false;
-        t.stats.minesSwept++;
-        pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
-        drone.speed = 0;
-        continue;
-      }
-      const step = drone.speed * dt;
-      drone.x += ((mine.x - drone.x) / d) * step;
-      drone.y += ((mine.y - drone.y) / d) * step;
+  // Drones are player-launched (see the 'sweepMine' command): here we only fly
+  // the in-flight ones out to their target mine and detonate it on arrival.
+  for (const drone of t.drones) {
+    const mine = t.threats.find((m) => m.id === drone.targetMineId);
+    if (!mine || !mine.alive) {
+      drone.speed = 0; // target already gone
+      continue;
     }
-    t.drones = t.drones.filter((dr) => dr.speed > 0);
-
-    // Launch a new drone at the nearest untargeted revealed mine from the
-    // nearest alive ESCORT within range — but only if a drone munition is in
-    // stock. No munitions (or no escort in range) → the charted mine is left for
-    // the ships to steer around.
-    if (t.droneCooldown <= 0 && t.droneAmmo > 0) {
-      const targeted = new Set(t.drones.map((dr) => dr.targetMineId));
-      let bestMine: Threat | null = null;
-      let bestFrom: { x: number; y: number } | null = null;
-      let bestScore = Infinity;
-      for (const mine of t.threats) {
-        if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
-        if (targeted.has(mine.id)) continue;
-        let from: { x: number; y: number } | null = null;
-        let fromD: number = COMBAT.sweepDrone.launchRange;
-        for (const e of t.escorts) {
-          if (!e.alive) continue;
-          const dd = dist(e.x, e.y, mine.x, mine.y);
-          if (dd < fromD) {
-            fromD = dd;
-            from = { x: e.x, y: e.y };
-          }
-        }
-        if (from && fromD < bestScore) {
-          bestScore = fromD;
-          bestMine = mine;
-          bestFrom = from;
-        }
-      }
-      if (bestMine && bestFrom) {
-        t.drones.push({
-          id: t.nextEntityId++,
-          x: bestFrom.x,
-          y: bestFrom.y,
-          targetMineId: bestMine.id,
-          speed: COMBAT.sweepDrone.speed,
-        });
-        t.droneAmmo--;
-        t.droneCooldown = COMBAT.sweepDrone.cooldown;
-      }
+    const d = dist(drone.x, drone.y, mine.x, mine.y);
+    if (d <= COMBAT.sweepDrone.sweepRadius) {
+      mine.alive = false;
+      t.stats.minesSwept++;
+      pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
+      drone.speed = 0;
+      continue;
     }
+    const step = drone.speed * dt;
+    drone.x += ((mine.x - drone.x) / d) * step;
+    drone.y += ((mine.y - drone.y) / d) * step;
   }
+  t.drones = t.drones.filter((dr) => dr.speed > 0);
 
   // --- Support aircraft (scan / ECM planes) ----------------------------------
   updateAircraft(t, rng, dt);

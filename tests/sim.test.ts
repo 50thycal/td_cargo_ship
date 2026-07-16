@@ -9,14 +9,19 @@ import {
   buyAmmo,
   buyBase,
   buyEscort,
+  buyModule,
+  buyPdAmmo,
+  buyShip,
   createRoundTransit,
   moduleCost,
   newCampaign,
   planCurrentRound,
+  removeModule,
   repairCost,
   repairFleet,
   resolveTransit,
   setComposition,
+  shipCost,
   startResearch,
   unlockScan,
 } from '../src/sim/campaign';
@@ -24,8 +29,8 @@ import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign } from '../src/platform/save';
-import { SHIP_CLASSES } from '../src/data/defs';
-import { COMBAT, WORLD } from '../src/data/tuning';
+import { MODULES, SHIP_CLASSES } from '../src/data/defs';
+import { COMBAT, ECONOMY, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -348,6 +353,42 @@ describe('economy hardening', () => {
     expect(moduleCost(c, 'cargo', 'pointDefense')).toBe(fullPrice);
     setComposition(c, 'cargo', 15);
     expect(fullPrice).toBe(110 * 15);
+  });
+
+  it('a new hull costs its base price plus its class module fit', () => {
+    const c = newCampaign('hull-surcharge');
+    c.cash = 100_000;
+    const base = SHIP_CLASSES.freighter.replaceCost;
+    expect(shipCost(c, 'freighter')).toBe(base);
+    // Fit a module on the freighter class (1 slot).
+    expect(buyModule(c, 'freighter', 'pointDefense')).toBe(true);
+    expect(shipCost(c, 'freighter')).toBe(base + MODULES.pointDefense.costPerShip);
+    const before = c.cash;
+    expect(buyShip(c, 'freighter')).toBe(true);
+    expect(c.cash).toBe(before - (base + MODULES.pointDefense.costPerShip));
+  });
+
+  it('unequipping a module refunds exactly what was paid and frees the slot', () => {
+    const c = newCampaign('module-refund');
+    c.cash = 5000;
+    const cash0 = c.cash;
+    const price = moduleCost(c, 'cargo', 'reinforcedHull');
+    expect(buyModule(c, 'cargo', 'reinforcedHull')).toBe(true);
+    expect(c.cash).toBe(cash0 - price);
+    expect(c.classModules.cargo).toContain('reinforcedHull');
+    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(true);
+    expect(c.cash).toBe(cash0); // fully refunded
+    expect(c.classModules.cargo).not.toContain('reinforcedHull');
+    // Removing something not fitted is a no-op.
+    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(false);
+  });
+
+  it('point-defense rounds are purchasable and carry over', () => {
+    const c = newCampaign('pd-ammo-buy');
+    c.cash = 1000;
+    const pd0 = c.pdAmmo;
+    expect(buyPdAmmo(c)).toBe(true);
+    expect(c.pdAmmo).toBe(pd0 + ECONOMY.pdAmmoPerBuy);
   });
 
   it('unrepaired damage beyond the per-convoy cap is conserved, not erased', () => {
@@ -812,6 +853,7 @@ describe('air defense & telemetry', () => {
   it('point defense launches a tracer projectile instead of deleting the missile', () => {
     const c = newCampaign('pd-projectile');
     c.classModules.cargo = ['pointDefense'];
+    c.pdAmmo = 10;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -890,7 +932,7 @@ describe('air defense & telemetry', () => {
     }
   });
 
-  it('minesweeper drones clear revealed mines (escort-launched, munitions spent)', () => {
+  it('a tapped mine is swept by a drone from an in-range escort (munition spent)', () => {
     const c = newCampaign('sweeper-drone');
     c.completedResearch = ['mines1'];
     c.escorts = 1;
@@ -901,7 +943,7 @@ describe('air defense & telemetry', () => {
     state.threats = [];
     const escort = state.escorts[0];
     const ammo0 = state.droneAmmo;
-    // A revealed mine near the escort — no ship will touch it.
+    // A revealed mine well within drone range of the escort — no ship touches it.
     const mine = {
       id: state.nextEntityId++,
       kind: 'mine' as const,
@@ -917,16 +959,70 @@ describe('air defense & telemetry', () => {
     };
     state.threats.push(mine);
     const swept0 = state.stats.minesSwept;
-    let sawDrone = false;
-    for (let i = 0; i < 30 * 20 && mine.alive; i++) {
-      stepTransit(state, [], rng);
-      if (state.drones.length > 0) sawDrone = true;
-    }
-    expect(sawDrone).toBe(true);
+    // Player taps the mine to send a drone.
+    stepTransit(state, [{ type: 'sweepMine', threatId: mine.id }], rng);
+    expect(state.drones.length).toBe(1);
+    expect(state.droneAmmo).toBe(ammo0 - 1); // munition consumed at launch
+    for (let i = 0; i < 30 * 20 && mine.alive; i++) stepTransit(state, [], rng);
     expect(mine.alive).toBe(false);
     expect(state.stats.minesSwept).toBeGreaterThan(swept0);
-    // A munition was consumed by the launch.
-    expect(state.droneAmmo).toBe(ammo0 - 1);
+  });
+
+  it('drones are NOT auto-launched — an untapped charted mine is left alone', () => {
+    const c = newCampaign('sweeper-manual');
+    c.completedResearch = ['mines1'];
+    c.escorts = 1;
+    c.droneAmmo = 5;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine' as const,
+      x: escort.x + 60,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    for (let i = 0; i < 30 * 10; i++) stepTransit(state, [], rng); // no command issued
+    expect(state.drones.length).toBe(0);
+    expect(state.droneAmmo).toBe(5);
+  });
+
+  it('a drone will not launch when no escort is within range of the mine', () => {
+    const c = newCampaign('sweeper-oor');
+    c.completedResearch = ['mines1'];
+    c.escorts = 1;
+    c.droneAmmo = 5;
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    const escort = state.escorts[0];
+    // A revealed mine far beyond drone launch range of the only escort.
+    const mine = {
+      id: state.nextEntityId++,
+      kind: 'mine' as const,
+      x: escort.x + COMBAT.sweepDrone.launchRange + 400,
+      y: escort.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+    };
+    state.threats.push(mine);
+    stepTransit(state, [{ type: 'sweepMine', threatId: mine.id }], rng);
+    expect(state.drones.length).toBe(0);
+    expect(state.droneAmmo).toBe(5); // no munition spent
+    expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);
   });
 
   it('drones do NOT launch without munitions in stock', () => {
@@ -951,8 +1047,10 @@ describe('air defense & telemetry', () => {
       lowSig: false,
       claimedByInterceptor: false,
     });
-    for (let i = 0; i < 30 * 20; i++) stepTransit(state, [], rng);
+    const mineId = state.threats[state.threats.length - 1].id;
+    stepTransit(state, [{ type: 'sweepMine', threatId: mineId }], rng);
     expect(state.drones.length).toBe(0);
+    expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);
   });
 
   function pushMine(state: TransitState, x: number, y: number, revealed = false) {
@@ -1038,6 +1136,7 @@ describe('air defense & telemetry', () => {
   it('point defense fires only its per-transit magazine, then stops', () => {
     const c = newCampaign('pd-magazine');
     c.classModules.cargo = ['pointDefense'];
+    c.pdAmmo = 20; // plenty of rounds in stock; the per-ship magazine is the cap
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1063,6 +1162,27 @@ describe('air defense & telemetry', () => {
     }
     expect(pdLaunches).toBeLessThanOrEqual(COMBAT.pointDefense.magazine);
     expect(ship!.pdShots).toBe(0);
+  });
+
+  it('point defense will not fire without point-defense rounds in stock', () => {
+    const c = newCampaign('pd-no-ammo');
+    c.classModules.cargo = ['pointDefense'];
+    c.pdAmmo = 0; // module fitted but no rounds bought
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    state.spawnQueue = [];
+    state.threats = [];
+    let ship = undefined as ReturnType<TransitState['ships']['find']>;
+    for (let i = 0; i < 30 * 12 && !ship; i++) {
+      stepTransit(state, [], rng);
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+    }
+    expect(ship).toBeDefined();
+    for (let k = 0; k < 10; k++) {
+      makeMissile(state, { x: ship!.x + 60, y: ship!.y, targetX: ship!.x + 2000, targetY: ship!.y });
+      stepTransit(state, [], rng);
+    }
+    expect(state.interceptors.some((i) => i.launcher === 'pd')).toBe(false);
+    expect(ship!.pdShots).toBe(COMBAT.pointDefense.magazine); // never spent
   });
 
   it('does not fire missiles at a ship that has all but crossed the delivery line', () => {

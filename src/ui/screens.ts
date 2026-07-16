@@ -22,13 +22,16 @@ import {
   buyDroneAmmo,
   buyEscort,
   buyModule,
+  buyPdAmmo,
   buyShip,
   canStartResearch,
   moduleCost,
+  removeModule,
   repairCost,
   repairFleet,
   setComposition,
   setFormation,
+  shipCost,
   startResearch,
   totalComposition,
   totalPendingDamage,
@@ -39,6 +42,7 @@ import { formatInterceptSummary } from '../sim/aar';
 import { downloadGameLog } from './download';
 import { formationFigure, icon, shipFigure, SHIP_TINTS, type IconName } from './icons';
 import type {
+  AarCard,
   AarCardKind,
   AfterActionReport,
   CampaignState,
@@ -159,6 +163,31 @@ function countUp(
     if (p < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+/** Plain-language guidance about the quota window: whether it's already met,
+ *  that surplus keeps counting within the period, and what happens next. */
+function quotaSummary(c: CampaignState): { text: string; met: boolean } {
+  const q = c.quota;
+  const met = q.pointsEarned >= q.pointsNeeded;
+  if (met) {
+    const surplus = q.pointsEarned - q.pointsNeeded;
+    return {
+      met: true,
+      text:
+        `Quota met for this period${surplus > 0 ? ` (+${surplus} surplus)` : ''}. ` +
+        (q.roundsLeft > 0
+          ? `Keep sailing — the same period runs ${q.roundsLeft} more round(s), then a larger quota begins.`
+          : 'A larger quota begins next round.'),
+    };
+  }
+  const need = q.pointsNeeded - q.pointsEarned;
+  return {
+    met: false,
+    text:
+      `${need} more cargo point(s) to clear this period — you have ${q.roundsLeft} round(s) left. ` +
+      'Deliveries accumulate across the whole period; the next period only starts when it ends.',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -330,22 +359,53 @@ export function aarScreen(
 
   // --- Beat: quota progress (only mid-window; evaluation gets its own card) -------
   if (!report.quota.evaluated) {
+    const qs = quotaSummary(c);
     beats.push(() =>
-      h('div', { className: 'card' }, [
+      h('div', { className: `card ${qs.met ? 'capacity' : 'quota'}` }, [
         h('div', { className: 'card-head' }, [icon('coin'), h('h3', { text: 'Delivery quota' })]),
         h('p', {
-          text: `${c.quota.pointsEarned}/${c.quota.pointsNeeded} cargo points this period — ${c.quota.roundsLeft} round(s) remaining.`,
+          text: `${c.quota.pointsEarned}/${c.quota.pointsNeeded} cargo points this period. ${qs.text}`,
         }),
         progressBar(
           c.quota.pointsNeeded > 0 ? c.quota.pointsEarned / c.quota.pointsNeeded : 0,
-          c.quota.pointsEarned >= c.quota.pointsNeeded ? 'good' : 'warn',
+          qs.met ? 'good' : 'warn',
         ),
       ]),
     );
   }
 
-  // --- Beats: one per report card ---------------------------------------------------
+  // --- Beats: report cards. All lost-ship cards are shown TOGETHER in one beat
+  //     (the player shouldn't have to click through each sinking); other cards
+  //     stay one-per-beat. Order is preserved by flushing the loss group in place.
+  const lossGroup: AarCard[] = [];
+  const flushLosses = (): void => {
+    if (lossGroup.length === 0) return;
+    const cards = lossGroup.slice();
+    lossGroup.length = 0;
+    beats.push(() => {
+      const wrap = h('div', { className: 'loss-group' }, [
+        h('div', { className: 'loss-group-head' }, [
+          icon('flame'),
+          h('h3', { text: cards.length === 1 ? 'Ship lost' : `${cards.length} ships lost` }),
+        ]),
+      ]);
+      for (const card of cards) {
+        wrap.append(
+          h('div', { className: 'card loss' }, [
+            h('div', { className: 'card-head' }, [icon('flame'), h('h3', { text: card.title })]),
+            h('p', { text: card.body }),
+          ]),
+        );
+      }
+      return wrap;
+    });
+  };
   for (const card of report.cards) {
+    if (card.kind === 'loss') {
+      lossGroup.push(card);
+      continue;
+    }
+    flushLosses();
     beats.push(() =>
       h('div', { className: `card ${card.kind}` }, [
         h('div', { className: 'card-head' }, [
@@ -356,6 +416,7 @@ export function aarScreen(
       ]),
     );
   }
+  flushLosses();
 
   // --- Reveal engine -------------------------------------------------------------
   footer.classList.add('hidden');
@@ -634,6 +695,7 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
 
   // --- Mission brief: capacity + quota at a glance ------------------------------
   const assigned = totalComposition(c);
+  const qs = quotaSummary(c);
   body.append(
     h('div', { className: 'brief-strip' }, [
       h('div', { className: 'brief' }, [
@@ -648,12 +710,16 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
         h('div', { className: 'brief-row' }, [
           icon('coin'),
           h('span', { text: `Quota · ${c.quota.roundsLeft} round(s) left` }),
+          qs.met
+            ? h('span', { className: 'brief-tag good', text: 'MET' })
+            : h('span'),
           h('span', { className: 'brief-num', text: `${c.quota.pointsEarned}/${c.quota.pointsNeeded}` }),
         ]),
         progressBar(
           c.quota.pointsNeeded > 0 ? c.quota.pointsEarned / c.quota.pointsNeeded : 0,
-          c.quota.pointsEarned >= c.quota.pointsNeeded ? 'good' : 'warn',
+          qs.met ? 'good' : 'warn',
         ),
+        h('div', { className: 'hint', text: qs.text }),
       ]),
     ]),
   );
@@ -679,35 +745,44 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
             chip('coin', `${def.value}`, 'Cargo value delivered per run'),
             chip('shield', `${def.hp}`, 'Hull points'),
             chip('speed', `${def.speed}`, 'Cruise speed'),
-            chip('slots', `${def.slots}`, 'Module slots'),
+            chip('slots', `${c.classModules[classId].length}/${def.slots}`, 'Module slots used'),
           ]),
         ]),
-        h('div', { className: 'ship-actions' }, [
-          h('div', { className: 'stepper' }, [
+        (() => {
+          const hullCost = shipCost(c, classId);
+          const surcharge = hullCost - def.replaceCost;
+          return h('div', { className: 'ship-actions' }, [
+            h('div', { className: 'stepper' }, [
+              h('button', {
+                text: '−',
+                onClick: () => {
+                  setComposition(c, classId, c.composition[classId] - 1);
+                  rerender();
+                },
+              }),
+              h('span', { className: 'count', text: `${c.composition[classId]}` }),
+              h('button', {
+                text: '+',
+                onClick: () => {
+                  setComposition(c, classId, c.composition[classId] + 1);
+                  rerender();
+                },
+              }),
+            ]),
             h('button', {
-              text: '−',
+              className: 'buy-hull',
+              disabled: c.cash < hullCost,
               onClick: () => {
-                setComposition(c, classId, c.composition[classId] - 1);
-                rerender();
+                if (buyShip(c, classId)) rerender();
               },
-            }),
-            h('span', { className: 'count', text: `${c.composition[classId]}` }),
-            h('button', {
-              text: '+',
-              onClick: () => {
-                setComposition(c, classId, c.composition[classId] + 1);
-                rerender();
-              },
-            }),
-          ]),
-          h('button', {
-            text: `Buy hull $${def.replaceCost}`,
-            disabled: c.cash < def.replaceCost,
-            onClick: () => {
-              if (buyShip(c, classId)) rerender();
-            },
-          }),
-        ]),
+            }, [
+              h('span', { text: `Buy hull $${hullCost}` }),
+              surcharge > 0
+                ? h('span', { className: 'sub-cost', text: `incl. $${surcharge} modules` })
+                : h('span'),
+            ]),
+          ]);
+        })(),
       ]),
     );
   }
@@ -785,6 +860,7 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
     const cost = moduleCost(c, activeClass, moduleId);
     const full = activeOwned.length >= activeDef.slots;
     const canBuy = !isOwned && !full && c.cash >= cost;
+    const refund = c.modulePaid[activeClass]?.[moduleId] ?? cost;
     modGrid.append(
       h('div', { className: isOwned ? 'module-card owned' : 'module-card' }, [
         h('div', { className: 'card-head' }, [
@@ -793,19 +869,21 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
           isOwned ? h('span', { className: 'badge good', text: 'Equipped' }) : h('span'),
         ]),
         h('p', { text: mod.desc }),
-        h('button', {
-          text: isOwned
-            ? 'Equipped ✓'
-            : full
-              ? 'No slots free'
-              : c.cash < cost
-                ? `Need $${cost}`
-                : `Equip class — $${cost}`,
-          disabled: !canBuy,
-          onClick: () => {
-            if (buyModule(c, activeClass, moduleId)) rerender();
-          },
-        }),
+        isOwned
+          ? h('button', {
+              className: 'unequip',
+              text: `Unequip — refund $${refund}`,
+              onClick: () => {
+                if (removeModule(c, activeClass, moduleId)) rerender();
+              },
+            })
+          : h('button', {
+              text: full ? 'No slots free' : c.cash < cost ? `Need $${cost}` : `Equip class — $${cost}`,
+              disabled: !canBuy,
+              onClick: () => {
+                if (buyModule(c, activeClass, moduleId)) rerender();
+              },
+            }),
       ]),
     );
   }
@@ -813,7 +891,9 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
     modGrid,
     h('div', {
       className: 'hint',
-      text: `Refits apply to every ${activeDef.name} you own (${Math.max(1, c.fleet[activeClass])} hull(s)) — pricing scales with the fleet.`,
+      text:
+        `Refits apply to every ${activeDef.name} you own (${Math.max(1, c.fleet[activeClass])} hull(s)) — pricing scales with the fleet. ` +
+        'Unequip to swap loadouts freely (you get the fitting cost back), and note a fitted module raises the price of buying a new hull of that class.',
     }),
   );
 
@@ -891,13 +971,26 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
       'Drone munitions',
       `${c.droneAmmo}`,
       c.completedResearch.includes('mines1')
-        ? 'One munition per minesweeper sortie: your escorts launch drones at charted mines and detonate them safely. No stock, no sweeps.'
-        : 'One munition per minesweeper sortie — requires the Minesweeping Drones research (and an escort) to actually fly. Stock carries over.',
+        ? 'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort — an escort must be within about 7 ship-lengths, so close in first. No stock, no sweeps.'
+        : 'One munition per sweep — requires the Minesweeping Drones research (and an escort close to the mine) before drones can fly. Stock carries over.',
       {
         label: `Buy ${ECONOMY.droneAmmoPerBuy} — $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
         disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
         onClick: () => {
           if (buyDroneAmmo(c)) rerender();
+        },
+      },
+    ),
+    assetCard(
+      'turret',
+      'Point-defense rounds',
+      `${c.pdAmmo}`,
+      'Ammunition for the Point-Defense Turret module. Every turret shot draws from this shared stock (one shot per turret per transit) — a fitted turret does nothing without rounds. Stock carries over.',
+      {
+        label: `Buy ${ECONOMY.pdAmmoPerBuy} — $${ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy}`,
+        disabled: c.cash < ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy,
+        onClick: () => {
+          if (buyPdAmmo(c)) rerender();
         },
       },
     ),

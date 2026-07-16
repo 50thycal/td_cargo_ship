@@ -42,6 +42,7 @@ export function newCampaign(seed: string): CampaignState {
     fleet: { cargo: 15, tanker: 3, freighter: 2 },
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
+    modulePaid: { cargo: {}, tanker: {}, freighter: {} },
     pendingDamage: 0,
     escortDamage: 0,
     baseDamage: 0,
@@ -49,6 +50,7 @@ export function newCampaign(seed: string): CampaignState {
     escorts: ECONOMY.startEscorts,
     ammo: ECONOMY.startAmmo,
     droneAmmo: ECONOMY.startDroneAmmo,
+    pdAmmo: ECONOMY.startPdAmmo,
     ecmUnlocked: false,
     scanUnlocked: false,
     formation: 'tight',
@@ -99,6 +101,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
+  c.pdAmmo = t.pdAmmo; // unused point-defense rounds carry over
   c.formation = t.formation; // tactical formation changes persist as the new default
 
   const newDiscoveries: TechKey[] = [];
@@ -255,12 +258,17 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     });
   }
   if (quotaEvaluated) {
+    // The window has already rolled over to the next one here, so c.quota now
+    // holds the fresh requirement — tell the player exactly what's next.
+    const next = `A new ${CAMPAIGN.quotaWindowRounds}-round period begins now: deliver ${c.quota.pointsNeeded} cargo points.`;
     cards.push({
       kind: 'quota',
       title: quotaMet ? 'Delivery quota met' : 'Delivery quota missed',
-      body: quotaMet
-        ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence rises.`
-        : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence is shaken.`,
+      body:
+        (quotaMet
+          ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence rises. `
+          : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence is shaken. `) +
+        next,
     });
   }
   if (!c.campaignOver && c.confidence <= 25) {
@@ -403,7 +411,34 @@ export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: Modu
   if (c.cash < cost) return false;
   c.cash -= cost;
   owned.push(moduleId);
+  // Remember what was paid so unequipping refunds exactly this (not a value
+  // recomputed at a different fleet size).
+  (c.modulePaid[classId] ??= {})[moduleId] = cost;
   return true;
+}
+
+/** Unequip a class module and refund exactly what was paid to fit it, so the
+ *  player can freely try loadouts within a class's limited slots. */
+export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+  const owned = c.classModules[classId];
+  const idx = owned.indexOf(moduleId);
+  if (idx < 0) return false;
+  owned.splice(idx, 1);
+  const paid = c.modulePaid[classId]?.[moduleId];
+  if (paid !== undefined) {
+    c.cash += paid;
+    delete c.modulePaid[classId][moduleId];
+  }
+  return true;
+}
+
+/** Cost to buy one replacement hull of a class, INCLUDING the class's current
+ *  module fit — a new hull sails with the class loadout, so the buyer pays for
+ *  those modules too (per single ship, not the whole-fleet refit price). */
+export function shipCost(c: CampaignState, classId: ShipClassId): number {
+  const modules = c.classModules[classId] ?? [];
+  const moduleSurcharge = modules.reduce((sum, m) => sum + MODULES[m].costPerShip, 0);
+  return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
 }
 
 export function buyAmmo(c: CampaignState, count: number): boolean {
@@ -421,6 +456,15 @@ export function buyDroneAmmo(c: CampaignState, buys = 1): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.droneAmmo += ECONOMY.droneAmmoPerBuy * buys;
+  return true;
+}
+
+export function buyPdAmmo(c: CampaignState, buys = 1): boolean {
+  if (!Number.isInteger(buys) || buys <= 0) return false;
+  const cost = ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy * buys;
+  if (c.cash < cost) return false;
+  c.cash -= cost;
+  c.pdAmmo += ECONOMY.pdAmmoPerBuy * buys;
   return true;
 }
 
@@ -475,7 +519,7 @@ export function repairFleet(c: CampaignState): boolean {
 }
 
 export function buyShip(c: CampaignState, classId: ShipClassId): boolean {
-  const cost = SHIP_CLASSES[classId].replaceCost;
+  const cost = shipCost(c, classId);
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.fleet[classId]++;
