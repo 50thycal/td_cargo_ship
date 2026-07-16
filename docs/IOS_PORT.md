@@ -1,5 +1,10 @@
 # iOS / App Store Port Path
 
+> **For the full, grounded delivery plan** (phases, division of labor between
+> Claude Code and the Mac/Apple steps, code-level gotchas, and open
+> decisions), see [APP_STORE_DELIVERY.md](APP_STORE_DELIVERY.md). This file is
+> the short version.
+
 The MVP is a web build specifically so it can be wrapped with
 [Capacitor](https://capacitorjs.com), which produces a real Xcode project for
 App Store submission. Many shipped App Store games use this exact path.
