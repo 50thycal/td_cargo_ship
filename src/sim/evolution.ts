@@ -24,6 +24,7 @@ export function newEvolution(): EvolutionState {
     firstSeen: {},
     metrics: [],
     pendingWarnings: [],
+    formationTell: null,
   };
 }
 
@@ -52,11 +53,21 @@ export function evolveEnemy(evo: EvolutionState, metrics: RoundMetrics, rng: RNG
     weights.saturation += 0.4;
   }
 
+  // Formation shapes enemy doctrine — and the player is told about it (below).
   const last3 = evo.metrics.slice(-3);
   const tightRounds = last3.filter((m) => m.formation === 'tight').length;
+  const wideRounds = last3.filter((m) => m.formation === 'wide').length;
+  evo.formationTell = null;
   if (tightRounds >= 2) {
     // Dense formations invite area-denial weapons.
     weights.mines += 1.0;
+    evo.formationTell =
+      'Your convoys have been sailing a tight column. The enemy is exploiting it — expect heavier investment in mines and area-denial to punish the packed formation.';
+  } else if (wideRounds >= 2) {
+    // A dispersed stream is harder to blanket — the enemy answers with volume.
+    weights.saturation += 0.7;
+    evo.formationTell =
+      'Your convoys have been running wide and dispersed. The enemy is answering with volume — expect larger missile salvos to blanket the spread-out stream.';
   }
 
   const mineRounds = recent.filter((m) => m.mineDetectRate >= 0);
@@ -231,25 +242,32 @@ function scheduleMissiles(
   const spawns: SpawnEvent[] = [];
   if (count <= 0) return spawns;
   const size = Math.max(1, volleySize);
-  const volleys = Math.ceil(count / size);
   const span = Math.max(0, windowEnd - windowStart);
-  // Space the volleys on an even grid across the window, jittered within their
-  // own slot, so fire is spread over the whole transit without long silent gaps
-  // AND without a rigid metronome. (A fully-random time per volley could, by
-  // chance, leave a 30s+ hole; the grid bounds the worst-case gap.)
-  const slot = volleys > 0 ? span / volleys : span;
-  let spawned = 0;
+  // Number of volley EVENTS: enough to honor the volley size, but also enough
+  // that no slot is wider than maxVolleyGap — so a large volley size can't
+  // collapse fire into a few widely-spaced bursts. Capped at one-per-missile.
+  const volleys = Math.max(
+    1,
+    Math.min(
+      count,
+      Math.max(Math.ceil(count / size), Math.ceil(span / EVOLUTION.maxVolleyGap)),
+    ),
+  );
+  const slot = span / volleys;
+  // Distribute the missiles across the volleys as evenly as possible.
+  const base = Math.floor(count / volleys);
+  const extra = count % volleys;
   for (let v = 0; v < volleys; v++) {
+    // Grid position, jittered within its own slot so it's not a metronome.
     const volleyTime = windowStart + v * slot + rng.range(0, slot);
     const site = rng.pick(WORLD.launchSites);
-    const inVolley = Math.min(size, count - spawned);
+    const inVolley = base + (v < extra ? 1 : 0);
     for (let i = 0; i < inVolley; i++) {
       spawns.push({
         time: volleyTime + rng.range(0, 1.4),
         kind,
         siteX: site.x + rng.range(-60, 60),
       });
-      spawned++;
     }
   }
   return spawns;

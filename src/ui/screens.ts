@@ -165,28 +165,18 @@ function countUp(
   requestAnimationFrame(step);
 }
 
-/** Plain-language guidance about the quota window: whether it's already met,
- *  that surplus keeps counting within the period, and what happens next. */
+/** Plain-language guidance about the current quota: how much is left and how
+ *  many rounds remain. Clearing it immediately starts a new, larger quota. */
 function quotaSummary(c: CampaignState): { text: string; met: boolean } {
   const q = c.quota;
   const met = q.pointsEarned >= q.pointsNeeded;
   if (met) {
-    const surplus = q.pointsEarned - q.pointsNeeded;
-    return {
-      met: true,
-      text:
-        `Quota met for this period${surplus > 0 ? ` (+${surplus} surplus)` : ''}. ` +
-        (q.roundsLeft > 0
-          ? `Keep sailing — the same period runs ${q.roundsLeft} more round(s), then a larger quota begins.`
-          : 'A larger quota begins next round.'),
-    };
+    return { met: true, text: 'Quota cleared — a larger quota takes over next round.' };
   }
   const need = q.pointsNeeded - q.pointsEarned;
   return {
     met: false,
-    text:
-      `${need} more cargo point(s) to clear this period — you have ${q.roundsLeft} round(s) left. ` +
-      'Deliveries accumulate across the whole period; the next period only starts when it ends.',
+    text: `Deliver ${need} more cargo point(s) within ${q.roundsLeft} round(s) to clear this quota.`,
   };
 }
 
@@ -807,6 +797,21 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
             h('div', { className: 'formation-title' }, [
               h('span', { className: 'name', text: def.name }),
               h('span', { className: 'hint', text: `speed ×${def.speedMult}` }),
+            ]),
+            h('div', { className: 'chip-row' }, [
+              chip(
+                'turret',
+                `${def.interceptAccuracy >= 0 ? '+' : ''}${Math.round(def.interceptAccuracy * 100)}%`,
+                'Interceptor accuracy from this formation',
+              ),
+              chip('radar', `×${def.defenseRangeMult}`, 'Point-defense & escort reach'),
+              chip(
+                'flame',
+                def.chainSplashRadius > 0 ? 'chains' : 'isolated',
+                def.chainSplashRadius > 0
+                  ? 'A direct hit splashes into neighboring hulls'
+                  : 'Hits stay isolated to one ship',
+              ),
             ]),
             h('div', { className: 'hint', text: def.desc }),
           ]),

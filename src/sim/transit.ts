@@ -454,6 +454,20 @@ function damageShip(
   if (ship.hp <= 0) killShip(t, ship, cause);
 }
 
+/** Bonus splash from a DIRECT hit into hulls packed alongside — the cost of a
+ *  tight formation. Radius is set by the formation (0 = isolated hits). Does not
+ *  ignite fires and never touches the ship that took the direct hit. */
+function chainSplash(t: TransitState, x: number, y: number, exceptId: number, rng: RNG): void {
+  const radius = FORMATIONS[t.formation].chainSplashRadius;
+  if (radius <= 0) return;
+  for (const other of activeShips(t)) {
+    if (other.id === exceptId) continue;
+    if (dist(x, y, other.x, other.y) <= radius) {
+      damageShip(t, other, COMBAT.missile.splashDamage, 'chain', rng, false);
+    }
+  }
+}
+
 function killShip(t: TransitState, ship: Ship, cause: string): void {
   if (!ship.alive) return;
   ship.alive = false;
@@ -539,10 +553,13 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       let bestBase: Base | null = null;
       let bestDist = Infinity;
       let anyReloading = false;
+      // Formation shapes defensive reach: a Tight column overlaps escort fire,
+      // a Wide one stretches it thin.
+      const escortRange = COMBAT.interceptor.range * FORMATIONS[t.formation].defenseRangeMult;
       for (const escort of t.escorts) {
         if (!escort.alive) continue; // destroyed escorts can't fire
         const d = dist(escort.x, escort.y, threat.x, threat.y);
-        if (d > COMBAT.interceptor.range) continue;
+        if (d > escortRange) continue;
         if (escort.cooldown > 0 || t.time < escort.disabledUntil) {
           anyReloading = true; // reloading OR knocked offline by a hit
           continue;
@@ -1235,7 +1252,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         if (target && dist(threat.x, threat.y, target.x, target.y) <= COMBAT.guided.hitRadius) {
           threat.alive = false;
           if (rng.chance(hitChance)) {
+            const hx = target.x;
+            const hy = target.y;
+            const hid = target.id;
             damageShip(t, target, COMBAT.guided.damage, 'guidedMissile', rng, true);
+            chainSplash(t, hx, hy, hid, rng); // bunched hulls share the blast (Tight)
           } else {
             pushEvent(t, { type: 'missileMiss', threatKind: 'guidedMissile' });
           }
@@ -1277,7 +1298,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
       if (struckShip) {
         threat.alive = false;
+        const hx = struckShip.x;
+        const hy = struckShip.y;
+        const hid = struckShip.id;
         damageShip(t, struckShip, COMBAT.missile.damage, 'missile', rng, true);
+        chainSplash(t, hx, hy, hid, rng); // bunched hulls share the blast (Tight)
       } else if (struckEscort) {
         threat.alive = false;
         damageEscort(t, struckEscort, COMBAT.missile.damage, 'missile');
@@ -1326,6 +1351,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // per-transit magazine, and every shot also draws from the convoy-wide pool of
   // point-defense rounds the player buys — so it is a last-ditch shot, not a
   // free continuous shield.
+  // A concentrated column extends each turret's reach so it can cover a
+  // neighbor; a dispersed one shrinks it.
+  const pdRadius = COMBAT.pointDefense.radius * FORMATIONS[t.formation].defenseRangeMult;
   for (const ship of activeShips(t)) {
     if (!ship.modules.includes('pointDefense')) continue;
     ship.pdCooldown = Math.max(0, ship.pdCooldown - dt);
@@ -1335,7 +1363,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     for (const threat of t.threats) {
       if (!threat.alive || threat.kind === 'mine') continue;
       const d = dist(ship.x, ship.y, threat.x, threat.y);
-      if (d <= COMBAT.pointDefense.radius && d < nearestD) {
+      if (d <= pdRadius && d < nearestD) {
         nearest = threat;
         nearestD = d;
       }
@@ -1377,9 +1405,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         hitChance =
           (threat.kind === 'guidedMissile'
             ? COMBAT.interceptor.hitChanceVsGuided
-            : COMBAT.interceptor.hitChanceVsMissile) + t.effects.interceptHitBonus;
+            : COMBAT.interceptor.hitChanceVsMissile) +
+          t.effects.interceptHitBonus +
+          // A concentrated column's overlapping fire is more accurate.
+          FORMATIONS[t.formation].interceptAccuracy;
         if (targetShip?.modules.includes('missileWarning')) hitChance += 0.1;
-        hitChance = Math.min(0.95, hitChance);
+        hitChance = Math.max(0.05, Math.min(0.95, hitChance));
       }
       if (rng.chance(hitChance)) {
         threat.alive = false;
