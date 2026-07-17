@@ -544,6 +544,7 @@ export function researchScreen(c: CampaignState, onContinue: () => void, rerende
 
   // --- The tree ---------------------------------------------------------------
   const tree = h('div', { className: 'tech-tree' });
+  const branchEls: Partial<Record<ResearchBranch, HTMLElement>> = {};
   for (const branch of BRANCH_ORDER) {
     const ids = (Object.keys(RESEARCH) as ResearchId[]).filter((id) => RESEARCH[id].branch === branch);
     const nodes = h('div', { className: 'tech-nodes' });
@@ -578,15 +579,15 @@ export function researchScreen(c: CampaignState, onContinue: () => void, rerende
       ));
       nodes.append(node);
     });
-    tree.append(
-      h('div', { className: 'tech-branch' }, [
-        h('div', { className: 'tech-branch-label' }, [
-          icon(BRANCH_ICONS[branch]),
-          h('span', { text: RESEARCH_BRANCH_NAMES[branch] ?? branch }),
-        ]),
-        nodes,
+    const branchEl = h('div', { className: 'tech-branch' }, [
+      h('div', { className: 'tech-branch-label' }, [
+        icon(BRANCH_ICONS[branch]),
+        h('span', { text: RESEARCH_BRANCH_NAMES[branch] ?? branch }),
       ]),
-    );
+      nodes,
+    ]);
+    branchEls[branch] = branchEl;
+    tree.append(branchEl);
   }
   body.append(tree);
 
@@ -637,7 +638,11 @@ export function researchScreen(c: CampaignState, onContinue: () => void, rerende
           }),
         ]),
       ]);
-    body.append(detail);
+    // Open the dossier inline, right under the branch the node lives in — no
+    // scrolling to the bottom of the screen to read or buy it.
+    const host = branchEls[def.branch];
+    if (host) host.after(detail);
+    else body.append(detail);
     if (shouldReveal) {
       // Double-rAF: game.ts restores the old scrollTop right after the swap,
       // and this scroll must land after that restoration.
@@ -646,7 +651,7 @@ export function researchScreen(c: CampaignState, onContinue: () => void, rerende
       );
     }
   } else {
-    body.append(
+    tree.append(
       h('div', { className: 'tech-detail empty hint', text: 'Select a project above to review its dossier.' }),
     );
   }
@@ -972,34 +977,6 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
       },
     ),
     assetCard(
-      'drone',
-      'Drone munitions',
-      `${c.droneAmmo}`,
-      c.completedResearch.includes('mines1')
-        ? 'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort — an escort must be within about 7 ship-lengths, so close in first. No stock, no sweeps.'
-        : 'One munition per sweep — requires the Minesweeping Drones research (and an escort close to the mine) before drones can fly. Stock carries over.',
-      {
-        label: `Buy ${ECONOMY.droneAmmoPerBuy} — $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
-        disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
-        onClick: () => {
-          if (buyDroneAmmo(c)) rerender();
-        },
-      },
-    ),
-    assetCard(
-      'turret',
-      'Point-defense rounds',
-      `${c.pdAmmo}`,
-      'Ammunition for the Point-Defense Turret module. Every turret shot draws from this shared stock (one shot per turret per transit) — a fitted turret does nothing without rounds. Stock carries over.',
-      {
-        label: `Buy ${ECONOMY.pdAmmoPerBuy} — $${ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy}`,
-        disabled: c.cash < ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy,
-        onClick: () => {
-          if (buyPdAmmo(c)) rerender();
-        },
-      },
-    ),
-    assetCard(
       'planeEcm',
       'ECM aircraft',
       c.ecmUnlocked ? `${COMBAT.ecm.chargesPerRound}/round` : '—',
@@ -1030,6 +1007,46 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
           },
     ),
   );
+
+  // Drone munitions only appear once minesweeping is researched (nothing to buy
+  // them for otherwise).
+  if (c.completedResearch.includes('mines1')) {
+    assetGrid.append(
+      assetCard(
+        'drone',
+        'Drone munitions',
+        `${c.droneAmmo}`,
+        'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort — an escort must be within about 7 ship-lengths, so close in first. No stock, no sweeps.',
+        {
+          label: `Buy ${ECONOMY.droneAmmoPerBuy} — $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
+          disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
+          onClick: () => {
+            if (buyDroneAmmo(c)) rerender();
+          },
+        },
+      ),
+    );
+  }
+
+  // Point-defense rounds only appear once a turret is actually fitted on a class.
+  const hasPointDefense = Object.values(c.classModules).some((mods) => mods.includes('pointDefense'));
+  if (hasPointDefense) {
+    assetGrid.append(
+      assetCard(
+        'turret',
+        'Point-defense rounds',
+        `${c.pdAmmo}`,
+        'Ammunition for the Point-Defense Turret module. Every turret shot draws from this shared stock (one shot per turret per transit) — a fitted turret does nothing without rounds. Buy more once they are spent. Stock carries over.',
+        {
+          label: `Buy ${ECONOMY.pdAmmoPerBuy} — $${ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy}`,
+          disabled: c.cash < ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy,
+          onClick: () => {
+            if (buyPdAmmo(c)) rerender();
+          },
+        },
+      ),
+    );
+  }
 
   const repair = repairCost(c);
   const totalDamage = totalPendingDamage(c);
