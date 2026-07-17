@@ -241,6 +241,20 @@ describe('enemy evolution', () => {
     expect(evoDetected.tracks.lowSig).toBeGreaterThan(evoUndetected.tracks.lowSig);
   });
 
+  it('surfaces a formation tell: tight invites mines, wide invites salvos', () => {
+    const evoTight = newEvolution();
+    const rng1 = makeRng('tell-tight');
+    for (let r = 1; r <= 3; r++) evolveEnemy(evoTight, syntheticMetrics(r, { formation: 'tight' }), rng1);
+    expect(evoTight.formationTell).toBeTruthy();
+    expect(evoTight.formationTell!.toLowerCase()).toContain('mine');
+
+    const evoWide = newEvolution();
+    const rng2 = makeRng('tell-wide');
+    for (let r = 1; r <= 3; r++) evolveEnemy(evoWide, syntheticMetrics(r, { formation: 'wide' }), rng2);
+    expect(evoWide.formationTell).toBeTruthy();
+    expect(evoWide.formationTell!.toLowerCase()).toMatch(/salvo|volume/);
+  });
+
   it('emits an intelligence warning about a capability before it is seen', () => {
     const evo = newEvolution();
     const rng = makeRng('warn');
@@ -435,13 +449,32 @@ describe('transit hardening', () => {
     expect(flagged).toBe(true);
   });
 
-  it('reports quota evaluation as round 3 of the window', () => {
-    const c = newCampaign('quota-window');
+  it('a met quota resolves immediately and rolls into a larger one', () => {
+    const c = newCampaign('quota-early');
+    // A meetable target within a single strong round.
+    c.quota = { roundsLeft: 3, pointsNeeded: 50, pointsEarned: 0 };
+    const before = c.quota.pointsNeeded;
+    const { report } = runRound(c, { defend: true });
+    expect(report.quota.evaluated).toBe(true);
+    expect(report.quota.met).toBe(true);
+    // Did not wait out the window: it was cleared on round 1 of the window.
+    expect(report.quota.windowRound).toBe(1);
+    // A fresh, larger quota is now active.
+    expect(c.quota.pointsEarned).toBe(0);
+    expect(c.quota.roundsLeft).toBe(3);
+    expect(c.quota.pointsNeeded).toBeGreaterThan(before);
+  });
+
+  it('an unmet quota still resolves when its rounds run out', () => {
+    const c = newCampaign('quota-expire');
+    // A target too large to clear in three light rounds.
+    c.quota = { roundsLeft: 3, pointsNeeded: 100_000, pointsEarned: 0 };
     let lastReport;
     for (let r = 0; r < 3; r++) {
       lastReport = runRound(c, { defend: true }).report;
     }
     expect(lastReport!.quota.evaluated).toBe(true);
+    expect(lastReport!.quota.met).toBe(false);
     expect(lastReport!.quota.windowRound).toBe(3);
   });
 });
@@ -1183,6 +1216,57 @@ describe('air defense & telemetry', () => {
     }
     expect(state.interceptors.some((i) => i.launcher === 'pd')).toBe(false);
     expect(ship!.pdShots).toBe(COMBAT.pointDefense.magazine); // never spent
+  });
+
+  it('formation shapes escort reach: Tight extends range, Wide shrinks it', () => {
+    const range = (formation: 'tight' | 'wide') => {
+      const c = newCampaign(`reach-${formation}`);
+      c.formation = formation;
+      c.escorts = 1;
+      c.bases = 0; // isolate the escort (no unlimited-range battery)
+      c.ammo = 10;
+      const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+      state.spawnQueue = [];
+      state.threats = [];
+      const escort = state.escorts[0];
+      // A threat 700u from the escort: inside Tight reach (~1014) but beyond
+      // Wide reach (~608). Aim point far away so it survives the tick.
+      const id = makeMissile(state, {
+        x: escort.x + 700,
+        y: escort.y,
+        targetX: escort.x + 3000,
+        targetY: escort.y,
+      });
+      stepTransit(state, [{ type: 'intercept', threatId: id }], rng);
+      return state.interceptors.some((i) => i.targetThreatId === id && i.launcher === 'escort');
+    };
+    expect(range('tight')).toBe(true); // in reach
+    expect(range('wide')).toBe(false); // out of reach
+  });
+
+  it('a direct hit chains blast into a neighbor in Tight, but not in Wide', () => {
+    const neighborHurt = (formation: 'tight' | 'wide') => {
+      const c = newCampaign(`chain-${formation}`);
+      c.formation = formation;
+      const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+      state.spawnQueue = [];
+      state.threats = [];
+      // Two active ships packed ~30u apart (inside Tight's 55u chain radius).
+      const [a, b] = state.ships;
+      for (const s of state.ships) {
+        s.spawned = true;
+        s.delivered = s !== a && s !== b;
+        s.alive = true;
+      }
+      a.x = 900; a.y = WORLD.lanes[1]; a.hp = a.maxHp;
+      b.x = 930; b.y = WORLD.lanes[1]; b.hp = b.maxHp;
+      // A stationary missile sitting on ship A → direct hit this tick.
+      makeMissile(state, { x: a.x, y: a.y, vx: 0, vy: 0, targetX: a.x + 3000, targetY: a.y });
+      stepTransit(state, [], rng);
+      return b.hp < b.maxHp;
+    };
+    expect(neighborHurt('tight')).toBe(true);
+    expect(neighborHurt('wide')).toBe(false);
   });
 
   it('does not fire missiles at a ship that has all but crossed the delivery line', () => {

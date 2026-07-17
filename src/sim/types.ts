@@ -110,6 +110,15 @@ export interface FormationDef {
   gapBonus: number;
   /** Multiplier on splash / tanker-explosion collateral radius. */
   collateralMult: number;
+  /** Added to player interceptor hit chance — a concentrated column's overlapping
+   *  fire is more accurate (Tight +, Wide −). */
+  interceptAccuracy: number;
+  /** Multiplier on defensive REACH: point-defense radius and escort interceptor
+   *  range. Tight overlaps coverage (>1); Wide stretches it thin (<1). */
+  defenseRangeMult: number;
+  /** Radius (world units) of the bonus splash a DIRECT missile/guided hit deals
+   *  to neighboring hulls — the downside of bunching up. 0 = hits stay isolated. */
+  chainSplashRadius: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -483,6 +492,9 @@ export interface EvolutionState {
   firstSeen: Partial<Record<TechKey, number>>;
   metrics: RoundMetrics[];
   pendingWarnings: IntelWarning[];
+  /** A note about how the enemy is adapting to the player's recent formation
+   *  choices (null = no notable formation-driven adaptation this round). */
+  formationTell: string | null;
 }
 
 // ---------------------------------------------------------------------------

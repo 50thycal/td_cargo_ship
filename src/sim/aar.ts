@@ -16,6 +16,8 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} struck a charted mine — the field was known, but the helm could not clear it in formation. Wider spacing or a lane change would have given her room.`,
   lowSigMine: (name) =>
     `${name} struck a mine that our detection systems failed to register — even where coverage was active.`,
+  chain: (name) =>
+    `${name} was caught by the blast of a missile that struck a ship packed in close alongside her — the price of a tight formation.`,
   fire: (name) =>
     `${name} survived the initial hit but the fire spread out of control before she could reach port.`,
   explosion: (name) =>

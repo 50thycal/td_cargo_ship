@@ -167,14 +167,15 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // --- Quota window -----------------------------------------------------------------
   c.quota.pointsEarned += s.valueDelivered;
   c.quota.roundsLeft--;
-  const quotaEvaluated = c.quota.roundsLeft <= 0;
-  let quotaMet = false;
+  // A quota resolves the moment it is MET — a new, larger one begins next round —
+  // or when its rounds run out (a miss). No more waiting out a window you've
+  // already cleared.
+  const quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
+  const quotaEvaluated = quotaMet || c.quota.roundsLeft <= 0;
   const quotaSnapshot = { needed: c.quota.pointsNeeded, earned: c.quota.pointsEarned };
-  // Captured before the window resets below, so evaluation rounds report as
-  // round 3-of-3 rather than 0.
+  // Captured before the window resets below (1-based round within the window).
   const quotaWindowRound = CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft);
   if (quotaEvaluated) {
-    quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
     confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
   }
 
@@ -236,6 +237,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 
   // --- Cards --------------------------------------------------------------------------
   const cards: AarCard[] = buildTransitCards(t, newDiscoveries);
+  if (c.evolution.formationTell) {
+    cards.push({
+      kind: 'warning',
+      title: 'Enemy is reading your formation',
+      body: c.evolution.formationTell,
+    });
+  }
   for (const warning of c.evolution.pendingWarnings) {
     cards.push({
       kind: 'warning',
@@ -260,14 +268,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     // The window has already rolled over to the next one here, so c.quota now
     // holds the fresh requirement — tell the player exactly what's next.
-    const next = `A new ${CAMPAIGN.quotaWindowRounds}-round period begins now: deliver ${c.quota.pointsNeeded} cargo points.`;
+    const next = `New quota: deliver ${c.quota.pointsNeeded} cargo points over the next ${CAMPAIGN.quotaWindowRounds} rounds.`;
     cards.push({
       kind: 'quota',
       title: quotaMet ? 'Delivery quota met' : 'Delivery quota missed',
       body:
         (quotaMet
-          ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence rises. `
-          : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence is shaken. `) +
+          ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, consortium confidence rises. `
+          : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points in time — consortium confidence is shaken. `) +
         next,
     });
   }

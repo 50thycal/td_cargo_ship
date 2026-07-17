@@ -318,6 +318,10 @@ export const EVOLUTION = {
   windowStartT: 6,
   /** Extra seconds after the last ship enters, so fire covers it crossing. */
   windowTailT: 60,
+  /** Hard ceiling on the spacing between missile volleys (seconds): fire is
+   *  split into enough volleys that no gap in the schedule exceeds this, even
+   *  when the volley size is large. Keeps the strait from going quiet. */
+  maxVolleyGap: 12,
   /** Mine volume once unlocked. */
   mineBase: 3,
   mineTrackDivisor: 10,
