@@ -99,6 +99,8 @@ export class TransitView {
       this.tutorialTip = h('div', {
         className: 'tutorial-tip',
         text: 'Tap an incoming missile to launch an interceptor',
+        // Tapping the tip itself dismisses it.
+        onClick: () => this.dismissTutorial(),
       });
       stage.append(this.tutorialTip);
       this.elements.push(this.tutorialTip);
@@ -878,8 +880,10 @@ export class TransitView {
       }
     }
 
-    // Interceptors (player launches = cyan dots) and point-defense tracers
-    // (bright streaks flying at their target so nothing is deleted silently).
+    // Interceptors — three visibly distinct munitions:
+    //  • point-defense tracer: tiny pale-yellow streak
+    //  • battery interceptor: the FAST one — a larger white-blue round with a glow
+    //  • escort interceptor: a smaller cyan round
     for (const interceptor of t.interceptors) {
       const ix = this.sx(interceptor.x);
       const iy = this.sy(interceptor.y);
@@ -897,10 +901,22 @@ export class TransitView {
         ctx.beginPath();
         ctx.arc(ix, iy, 2.5, 0, Math.PI * 2);
         ctx.fill();
-      } else {
-        ctx.fillStyle = '#7ce7ff';
+      } else if (interceptor.launcher === 'base') {
+        // Battery interceptor: bigger, brighter, with a soft glow — it reads as
+        // the heavier, faster round.
+        ctx.fillStyle = 'rgba(180, 230, 255, 0.28)';
         ctx.beginPath();
-        ctx.arc(ix, iy, 3.5, 0, Math.PI * 2);
+        ctx.arc(ix, iy, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#eaf6ff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Escort interceptor: smaller cyan round.
+        ctx.fillStyle = '#4dc3ff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 3, 0, Math.PI * 2);
         ctx.fill();
       }
     }

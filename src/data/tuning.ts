@@ -244,7 +244,7 @@ export const ECONOMY = {
   ecmUnlockCost: 150,
   scanUnlockCost: 150,
   /** Cash per hp of hull repair. */
-  repairCostPerHp: 0.8,
+  repairCostPerHp: 0.6,
   /** Intel income. */
   intelPerRound: 4,
   intelPerLoss: 6,
