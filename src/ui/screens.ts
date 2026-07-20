@@ -25,6 +25,7 @@ import {
   buyPdAmmo,
   buyShip,
   canStartResearch,
+  type DevOptions,
   moduleCost,
   removeModule,
   repairCost,
@@ -184,13 +185,32 @@ function quotaSummary(c: CampaignState): { text: string; met: boolean } {
 // Menu
 // ---------------------------------------------------------------------------
 
-export function menuScreen(
-  hasSave: boolean,
-  onNew: () => void,
-  onContinue: () => void,
-): HTMLElement {
+const PHASE_LABELS: Record<CampaignState['phase'], string> = {
+  prep: 'Preparation',
+  transit: 'Transit',
+  aar: 'After-Action',
+  research: 'Research',
+};
+
+export function menuScreen(opts: {
+  saved: CampaignState | null;
+  onNew: () => void;
+  onContinue: () => void;
+  devAvailable: boolean;
+  onDev: () => void;
+}): HTMLElement {
   entering('menu');
-  return h('div', { className: 'screen menu', attrs: { 'data-screen': 'menu' } }, [
+  const { saved } = opts;
+  const continueLabel = saved
+    ? saved.campaignOver
+      ? 'View Final Report'
+      : `Continue Run — Round ${saved.round}`
+    : 'Continue';
+  const buttons = h('div', { className: 'buttons' }, [
+    h('button', { className: 'primary', text: 'New Campaign', onClick: opts.onNew }),
+    h('button', { text: continueLabel, disabled: !saved, onClick: opts.onContinue }),
+  ]);
+  const children: HTMLElement[] = [
     h('div', { className: 'menu-emblem' }, [icon('anchor')]),
     h('h1', { text: 'Straitwatch' }),
     h('div', {
@@ -199,11 +219,121 @@ export function menuScreen(
         'Shepherd civilian convoys through a contested strait. Every convoy that gets through ' +
         'teaches the enemy something — and every attack they invent teaches you. Outlast the arms race.',
     }),
-    h('div', { className: 'buttons' }, [
-      h('button', { className: 'primary', text: 'New Campaign', onClick: onNew }),
-      h('button', { text: 'Continue', disabled: !hasSave, onClick: onContinue }),
+    buttons,
+  ];
+  if (saved && !saved.campaignOver) {
+    children.push(
+      h('div', {
+        className: 'menu-save-note hint',
+        text: `Your run is saved automatically — pick up at Round ${saved.round} (${PHASE_LABELS[saved.phase]}).`,
+      }),
+    );
+  }
+  if (opts.devAvailable) {
+    children.push(
+      h('button', { className: 'menu-dev-btn', text: '🛠 Dev Mode', onClick: opts.onDev }),
+    );
+  }
+  return h('div', { className: 'screen menu', attrs: { 'data-screen': 'menu' } }, children);
+}
+
+// ---------------------------------------------------------------------------
+// Dev mode — god abilities & level select for testing
+// ---------------------------------------------------------------------------
+
+// Persisted across rerenders of the dev screen.
+let devRound = 1;
+let devGod = true;
+let devUnlock = true;
+
+export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => void): HTMLElement {
+  const { root, body, footer } = screenShell(
+    'Dev Mode',
+    'God abilities and level select — for testing only',
+    null,
+    'dev',
+  );
+
+  const roundValue = h('span', { className: 'count', text: `${devRound}` });
+  const roundRow = h('div', { className: 'dev-row' }, [
+    h('div', { className: 'dev-label' }, [icon('anchor'), h('span', { text: 'Jump to round' })]),
+    h('div', { className: 'stepper' }, [
+      h('button', {
+        text: '−',
+        onClick: () => {
+          devRound = Math.max(1, devRound - 1);
+          roundValue.textContent = `${devRound}`;
+        },
+      }),
+      roundValue,
+      h('button', {
+        text: '+',
+        onClick: () => {
+          devRound = Math.min(30, devRound + 1);
+          roundValue.textContent = `${devRound}`;
+        },
+      }),
     ]),
   ]);
+
+  const toggle = (
+    ic: IconName,
+    label: string,
+    desc: string,
+    get: () => boolean,
+    set: (v: boolean) => void,
+  ): HTMLElement => {
+    const btn = h('button', {
+      className: get() ? 'dev-toggle on' : 'dev-toggle',
+      text: get() ? 'ON' : 'OFF',
+      onClick: () => {
+        set(!get());
+        btn.textContent = get() ? 'ON' : 'OFF';
+        btn.className = get() ? 'dev-toggle on' : 'dev-toggle';
+      },
+    });
+    return h('div', { className: 'dev-row' }, [
+      h('div', { className: 'dev-label' }, [icon(ic), h('span', { text: label })]),
+      h('div', { className: 'dev-desc hint', text: desc }),
+      btn,
+    ]);
+  };
+
+  body.append(
+    h('div', { className: 'panel' }, [
+      h('h2', { text: 'Test loadout' }),
+      roundRow,
+      toggle(
+        'shield',
+        'God mode',
+        'Ships, escorts and batteries are invincible; interceptors, drones, PD rounds and aircraft are unlimited.',
+        () => devGod,
+        (v) => (devGod = v),
+      ),
+      toggle(
+        'flask',
+        'Unlock everything',
+        'All research complete, ECM & scan installed, max batteries/escorts/capacity, and deep pockets.',
+        () => devUnlock,
+        (v) => (devUnlock = v),
+      ),
+    ]),
+    h('div', {
+      className: 'hint',
+      text:
+        'A dev run is a normal campaign with these cheats applied and the enemy fast-forwarded to your chosen round — so later rounds field the guided missiles, mines and low-signature mines you would meet there.',
+    }),
+  );
+
+  footer.append(
+    h('button', { text: 'Back', onClick: onBack }),
+    h('button', {
+      className: 'primary',
+      text: 'Launch Dev Run',
+      onClick: () => onLaunch({ round: devRound, god: devGod, unlockAll: devUnlock }),
+    }),
+  );
+  return root;
 }
 
 // ---------------------------------------------------------------------------
@@ -520,7 +650,12 @@ function researchNodeState(c: CampaignState, id: ResearchId): NodeState {
   return canStartResearch(c, id).ok ? 'ready' : 'known';
 }
 
-export function researchScreen(c: CampaignState, onContinue: () => void, rerender: () => void): HTMLElement {
+export function researchScreen(
+  c: CampaignState,
+  onContinue: () => void,
+  rerender: () => void,
+  onQuit: () => void,
+): HTMLElement {
   const { root, body, footer } = screenShell(
     'Intelligence & Research',
     'One project at a time; results arrive after the next transit',
@@ -657,6 +792,12 @@ export function researchScreen(c: CampaignState, onContinue: () => void, rerende
   }
 
   footer.append(
+    h('button', {
+      className: 'ghost',
+      text: '☰ Save & Quit',
+      attrs: { style: 'margin-right:auto' },
+      onClick: onQuit,
+    }),
     h('button', { className: 'primary', text: 'Continue to Preparation', onClick: onContinue }),
   );
   return root;
@@ -680,7 +821,12 @@ const MODULE_ICONS: Record<ModuleId, IconName> = {
   fireSuppression: 'flame',
 };
 
-export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () => void): HTMLElement {
+export function prepScreen(
+  c: CampaignState,
+  onLaunch: () => void,
+  rerender: () => void,
+  onQuit: () => void,
+): HTMLElement {
   const { root, body, footer } = screenShell(
     `Preparation — Round ${c.round}`,
     'Fit out the convoy and its defenses, then sail',
@@ -1073,6 +1219,12 @@ export function prepScreen(c: CampaignState, onLaunch: () => void, rerender: () 
 
   const canLaunch = totalComposition(c) > 0;
   footer.append(
+    h('button', {
+      className: 'ghost',
+      text: '☰ Save & Quit',
+      attrs: { style: 'margin-right:auto' },
+      onClick: onQuit,
+    }),
     h('div', {
       className: 'hint',
       text: canLaunch

@@ -108,6 +108,9 @@ const ESCORT_SLOTS = [
 
 export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG): TransitState {
   const effects = deriveEffects(new Set(campaign.completedResearch));
+  // Dev god mode: hulls shrug off all damage this transit.
+  if (campaign.godMode) effects.damageTakenMult = 0;
+  const god = !!campaign.godMode;
   const names = rng.shuffle([...SHIP_NAMES]);
   let nextId = 1;
 
@@ -173,14 +176,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     interceptors: [],
     drones: [],
     aircraft: [],
-    ammo: campaign.ammo,
-    droneAmmo: campaign.droneAmmo,
-    pdAmmo: campaign.pdAmmo,
-    ecmCharges: campaign.ecmUnlocked ? COMBAT.ecm.chargesPerRound : 0,
+    ammo: god ? 9999 : campaign.ammo,
+    droneAmmo: god ? 9999 : campaign.droneAmmo,
+    pdAmmo: god ? 9999 : campaign.pdAmmo,
+    ecmCharges: god ? 99 : campaign.ecmUnlocked ? COMBAT.ecm.chargesPerRound : 0,
     ecmActiveUntil: -1,
     ecmCenterX: 0,
     ecmCenterY: 0,
-    scanCharges: campaign.scanUnlocked ? COMBAT.scan.chargesPerRound : 0,
+    scanCharges: god ? 99 : campaign.scanUnlocked ? COMBAT.scan.chargesPerRound : 0,
     enemyTargetingSkill: clamp(
       (campaign.round - COMBAT.targetingSkillStartRound) / COMBAT.targetingSkillSpanRounds,
       0,

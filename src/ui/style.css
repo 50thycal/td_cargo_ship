@@ -1047,7 +1047,54 @@ button.unequip {
 
 .menu .tagline { color: var(--dim); max-width: 520px; line-height: 1.5; font-size: 14px; }
 .menu .buttons { display: flex; gap: 14px; margin-top: 10px; }
-.menu button { min-width: 200px; min-height: 54px; font-size: 16px; }
+.menu .buttons button { min-width: 200px; min-height: 54px; font-size: 16px; }
+.menu-save-note { max-width: 460px; }
+.menu-dev-btn {
+  margin-top: 6px;
+  min-height: 40px;
+  font-size: 13px;
+  color: var(--dim);
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+/* ---------- dev screen ---------- */
+
+.dev-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.dev-row:first-of-type { border-top: none; }
+
+.dev-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.dev-label .icon { color: var(--accent); }
+.dev-desc { flex: 1; min-width: 180px; }
+
+.dev-toggle {
+  min-width: 64px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+}
+
+.dev-toggle.on {
+  color: var(--good);
+  border-color: var(--good);
+  box-shadow: 0 0 0 1px var(--good) inset;
+}
 
 /* ---------- keyframes ---------- */
 
