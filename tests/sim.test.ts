@@ -15,6 +15,7 @@ import {
   createRoundTransit,
   moduleCost,
   newCampaign,
+  newDevCampaign,
   planCurrentRound,
   removeModule,
   repairCost,
@@ -28,8 +29,8 @@ import {
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
-import { saveCampaign, loadCampaign, clearCampaign } from '../src/platform/save';
-import { MODULES, SHIP_CLASSES } from '../src/data/defs';
+import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
+import { MODULES, RESEARCH, SHIP_CLASSES } from '../src/data/defs';
 import { COMBAT, ECONOMY, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
@@ -1331,5 +1332,102 @@ describe('save', () => {
   it('returns null when nothing is saved', () => {
     clearCampaign();
     expect(loadCampaign()).toBeNull();
+  });
+
+  it('migrates an old / partial save, backfilling missing fields', () => {
+    // A minimal, pre-many-features save (old version, missing most fields).
+    const old = { version: 1, seed: 'legacy', round: 4, phase: 'prep', cash: 500 };
+    const m = migrateCampaign(old)!;
+    expect(m).not.toBeNull();
+    expect(m.version).toBe(2);
+    // Preserved values survive.
+    expect(m.seed).toBe('legacy');
+    expect(m.round).toBe(4);
+    expect(m.cash).toBe(500);
+    // New fields are backfilled to sane defaults.
+    expect(m.pdAmmo).toBe(0);
+    expect(m.droneAmmo).toBe(0);
+    expect(m.dev).toBe(false);
+    expect(m.modulePaid).toEqual({ cargo: {}, tanker: {}, freighter: {} });
+    expect(m.classModules).toEqual({ cargo: [], tanker: [], freighter: [] });
+    expect(m.quota.pointsNeeded).toBeGreaterThan(0);
+    expect(m.evolution.formationTell).toBe(null);
+    expect(Array.isArray(m.history)).toBe(true);
+    // A garbage phase is repaired.
+    expect(migrateCampaign({ seed: 'x', phase: 'nonsense' })!.phase).toBe('prep');
+    // Non-objects are rejected.
+    expect(migrateCampaign(null)).toBeNull();
+    expect(migrateCampaign(42)).toBeNull();
+  });
+
+  it('does not clobber existing nested values when migrating', () => {
+    const c = newCampaign('nested');
+    c.classModules.cargo = ['pointDefense'];
+    c.modulePaid.cargo = { pointDefense: 220 };
+    c.evolution.tracks.mines = 55;
+    const m = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
+    expect(m.classModules.cargo).toEqual(['pointDefense']);
+    expect(m.modulePaid.cargo).toEqual({ pointDefense: 220 });
+    expect(m.evolution.tracks.mines).toBe(55);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dev mode
+// ---------------------------------------------------------------------------
+
+describe('dev mode', () => {
+  it('builds a dev campaign with the god / unlock loadout and jumps to a round', () => {
+    const c = newDevCampaign('dev-run', { round: 6, god: true, unlockAll: true });
+    expect(c.dev).toBe(true);
+    expect(c.godMode).toBe(true);
+    expect(c.round).toBe(6);
+    expect(c.completedResearch.length).toBe(Object.keys(RESEARCH).length);
+    expect(c.ecmUnlocked).toBe(true);
+    expect(c.scanUnlocked).toBe(true);
+    expect(c.cash).toBeGreaterThan(100000);
+    // Jumping to a later round faces later threats: the enemy is fast-forwarded.
+    const plan = planCurrentRound(c);
+    expect(plan.mines.length).toBeGreaterThan(0); // mines are online by round 6
+    expect(plan.spawns.some((s) => s.kind === 'guidedMissile')).toBe(true);
+  });
+
+  it('god mode makes hulls invincible and munitions unlimited', () => {
+    const c = newDevCampaign('god-run', { round: 3, god: true, unlockAll: true });
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    expect(state.effects.damageTakenMult).toBe(0);
+    expect(state.ammo).toBeGreaterThan(1000);
+    state.spawnQueue = [];
+    state.threats = [];
+    // Bring a ship into the world and slam a mine onto it — it must survive.
+    let ship = undefined as ReturnType<TransitState['ships']['find']>;
+    for (let i = 0; i < 30 * 12 && !ship; i++) {
+      stepTransit(state, [], rng);
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered);
+    }
+    expect(ship).toBeDefined();
+    const hp0 = ship!.hp;
+    state.threats.push({
+      id: state.nextEntityId++,
+      kind: 'mine',
+      x: ship!.x,
+      y: ship!.y,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      alive: true,
+      revealed: false,
+      lowSig: false,
+      claimedByInterceptor: false,
+    });
+    stepTransit(state, [], rng);
+    expect(ship!.alive).toBe(true);
+    expect(ship!.hp).toBe(hp0); // took zero damage
+  });
+
+  it('a normal campaign is never a dev run', () => {
+    const c = newCampaign('normal');
+    expect(c.dev).toBe(false);
+    expect(c.godMode).toBe(false);
   });
 });

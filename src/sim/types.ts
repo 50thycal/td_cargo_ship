@@ -601,6 +601,12 @@ export interface RoundTelemetry {
 export interface CampaignState {
   version: number;
   seed: string;
+  /** True for a developer/test run — enables the dev tools and, with godMode,
+   *  invincible ships & unlimited munitions. Never set on a normal campaign. */
+  dev?: boolean;
+  /** Dev invincibility: ships/escorts/batteries take no damage and munitions are
+   *  effectively unlimited during transit. Only meaningful when dev is true. */
+  godMode?: boolean;
   /** Round about to be played (1-based). */
   round: number;
   phase: 'prep' | 'transit' | 'aar' | 'research';

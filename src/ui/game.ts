@@ -4,14 +4,37 @@
 import {
   createRoundTransit,
   newCampaign,
+  newDevCampaign,
   planCurrentRound,
   resolveTransit,
+  type DevOptions,
 } from '../sim/campaign';
 import { clearCampaign, loadCampaign, saveCampaign } from '../platform/save';
 import type { CampaignState, TransitState } from '../sim/types';
 import { h } from './dom';
-import { menuScreen, aarScreen, gameOverScreen, prepScreen, researchScreen } from './screens';
+import {
+  menuScreen,
+  aarScreen,
+  devScreen,
+  gameOverScreen,
+  prepScreen,
+  researchScreen,
+} from './screens';
 import { TransitView } from './transitView';
+
+/** Dev tools are gated behind an explicit opt-in so they never surface for a
+ *  normal player: add `?dev` (or `#dev`) to the URL, or run the Vite dev server.
+ *  An existing dev save also keeps the door open. */
+function devEnabled(saved: CampaignState | null): boolean {
+  try {
+    const url = typeof location !== 'undefined' ? location.href.toLowerCase() : '';
+    if (/[?#&]dev\b/.test(url) || url.includes('dev=1')) return true;
+  } catch {
+    /* no location (tests) */
+  }
+  const viteDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV;
+  return !!viteDev || !!saved?.dev;
+}
 
 export class Game {
   private readonly stage: HTMLElement;
@@ -51,23 +74,44 @@ export class Game {
     // A finished campaign still counts as continuable: route() lands on the
     // game-over screen, so the final score isn't lost to a reload.
     const saved = loadCampaign();
-    const hasSave = saved !== null;
     this.swapScreen(
-      menuScreen(
-        hasSave,
-        () => {
+      menuScreen({
+        saved,
+        onNew: () => {
           clearCampaign();
           this.campaign = newCampaign(`campaign-${Date.now().toString(36)}`);
           saveCampaign(this.campaign);
           this.route();
         },
-        () => {
+        onContinue: () => {
           if (!saved) return;
           this.campaign = saved;
           this.route();
         },
+        devAvailable: devEnabled(saved),
+        onDev: () => this.showDev(),
+      }),
+    );
+  }
+
+  private showDev(): void {
+    this.swapScreen(
+      devScreen(
+        (opts: DevOptions) => {
+          clearCampaign();
+          this.campaign = newDevCampaign(`dev-${Date.now().toString(36)}`, opts);
+          saveCampaign(this.campaign);
+          this.route();
+        },
+        () => this.showMenu(),
       ),
     );
+  }
+
+  /** Save the current run and return to the menu (Save & Quit). */
+  private quitToMenu(): void {
+    if (this.campaign) saveCampaign(this.campaign);
+    this.showMenu();
   }
 
   /** Send the player to whatever phase the campaign says it is in. */
@@ -104,6 +148,7 @@ export class Game {
           this.startTransit();
         },
         () => this.showPrep(),
+        () => this.quitToMenu(),
       ),
     );
   }
@@ -146,6 +191,7 @@ export class Game {
           this.showPrep();
         },
         () => this.showResearch(),
+        () => this.quitToMenu(),
       ),
     );
   }

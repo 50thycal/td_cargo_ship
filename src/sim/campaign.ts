@@ -3,7 +3,7 @@
 // glue between transit results and enemy evolution. All mutations validate
 // their inputs so the UI can stay dumb.
 
-import { CAMPAIGN, ECONOMY } from '../data/tuning';
+import { CAMPAIGN, ECONOMY, EVOLUTION } from '../data/tuning';
 import { MODULES, RESEARCH, SHIP_CLASSES } from '../data/defs';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
@@ -24,12 +24,14 @@ import type {
   TransitState,
 } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function newCampaign(seed: string): CampaignState {
   return {
     version: SAVE_VERSION,
     seed,
+    dev: false,
+    godMode: false,
     round: 1,
     phase: 'prep',
     cash: ECONOMY.startCash,
@@ -71,6 +73,67 @@ export function newCampaign(seed: string): CampaignState {
 /** Deterministic per-round, per-purpose RNG derived from the campaign seed. */
 export function roundRng(c: CampaignState, purpose: string): RNG {
   return makeRng(`${c.seed}:r${c.round}:${purpose}`);
+}
+
+// ---------------------------------------------------------------------------
+// Developer / test runs
+// ---------------------------------------------------------------------------
+
+export interface DevOptions {
+  /** Round to jump into (enemy doctrine is fast-forwarded to match). */
+  round: number;
+  /** Invincible ships/escorts/batteries and effectively unlimited munitions. */
+  god: boolean;
+  /** All research complete, ECM/scan installed, max assets & capacity, deep
+   *  pockets and full magazines. */
+  unlockAll: boolean;
+}
+
+/** Advance the enemy's hidden doctrine as if moderate rounds had been played up
+ *  to `targetRound`, so jumping into a later level actually faces later threats
+ *  (guided missiles, mines, low-signature mines) rather than a round-1 probe. */
+function fastForwardEvolution(c: CampaignState, targetRound: number): void {
+  for (let r = 1; r < targetRound; r++) {
+    const metrics: RoundMetrics = {
+      round: r,
+      interceptRate: 0.7,
+      formation: 'tight',
+      mineDetectRate: -1,
+      valueSent: 241,
+      deliveredFraction: 0.85,
+    };
+    evolveEnemy(c.evolution, metrics, roundRng(c, `dev-evolve-${r}`));
+  }
+  c.round = Math.max(1, Math.floor(targetRound));
+  // Field unlocked capabilities at full scale (skip the debut fairness caps) so
+  // a jumped-to hard level really is hard.
+  const evo = c.evolution;
+  if (evo.tracks.guidance >= EVOLUTION.guidanceUnlock) evo.firstSeen.guidedMissile ??= 1;
+  if (evo.tracks.mines >= EVOLUTION.minesUnlock) evo.firstSeen.mine ??= 1;
+  if (evo.tracks.lowSig >= EVOLUTION.lowSigUnlock) evo.firstSeen.lowSigMine ??= 1;
+}
+
+/** Build a developer campaign: a normal campaign with the dev flag set, the
+ *  chosen god/unlock loadout applied, and the enemy fast-forwarded to `round`. */
+export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
+  const c = newCampaign(seed);
+  c.dev = true;
+  c.godMode = opts.god;
+  if (opts.unlockAll) {
+    c.completedResearch = Object.keys(RESEARCH) as ResearchId[];
+    c.ecmUnlocked = true;
+    c.scanUnlocked = true;
+    c.cash = 999_999;
+    c.intel = 9_999;
+    c.ammo = 999;
+    c.droneAmmo = 999;
+    c.pdAmmo = 999;
+    c.bases = ECONOMY.maxBases;
+    c.escorts = ECONOMY.maxEscorts;
+    c.capacity = CAMPAIGN.maxCapacity;
+  }
+  fastForwardEvolution(c, opts.round);
+  return c;
 }
 
 export function planCurrentRound(c: CampaignState): RoundPlan {
