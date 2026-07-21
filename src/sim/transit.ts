@@ -10,6 +10,7 @@ import type {
   CampaignState,
   CombatEffects,
   Escort,
+  FormationId,
   LauncherKind,
   ResearchId,
   RoundPlan,
@@ -77,20 +78,62 @@ export function patrolLaneY(_t: TransitState): number {
   return WORLD.lanes[1];
 }
 
-/** Schedule ship entries: ONE ship enters from the left roughly every
- *  SPAWN.interval seconds, round-robin across the lanes. A sparse, steady
- *  stream keeps the map uncluttered. */
-function scheduleSpawns(ships: Ship[], rng: RNG): void {
+/** Schedule ship entries in a pattern that visibly reflects the chosen
+ *  formation:
+ *   • sprint — a single-file column: every ship enters the SAME centre lane,
+ *     one at a time, close behind the last (a fast, narrow line).
+ *   • tight  — grouped waves: two or three ships enter TOGETHER, each in a
+ *     different lane, then the next wave a while later (a packed convoy).
+ *   • wide   — staggered: one ship at a time, alternating across the lanes
+ *     (a loose, spread-out stream).
+ */
+function scheduleSpawns(ships: Ship[], rng: RNG, formation: FormationId): void {
   const order = rng.shuffle(ships.map((_, i) => i));
   const laneCount = WORLD.lanes.length;
+  const setJitter = (ship: Ship): void => {
+    ship.lateralSeed = rng.range(-1, 1);
+    ship.speedVariance = rng.range(1 - SPAWN.speedVariance, 1 + SPAWN.speedVariance);
+  };
+
+  if (formation === 'sprint') {
+    let t = SPAWN.firstDelay;
+    for (const idx of order) {
+      const ship = ships[idx];
+      setJitter(ship);
+      ship.laneIndex = 1; // one line, centre lane
+      ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
+      t += SPAWN.sprintInterval;
+    }
+    return;
+  }
+
+  if (formation === 'tight') {
+    let t = SPAWN.firstDelay;
+    let i = 0;
+    while (i < order.length) {
+      const groupSize = Math.min(laneCount, order.length - i);
+      // Distinct lanes for this wave, shuffled so groups aren't always 0,1,2.
+      const lanes = rng.shuffle([...Array(laneCount).keys()]).slice(0, groupSize);
+      for (let g = 0; g < groupSize; g++) {
+        const ship = ships[order[i + g]];
+        setJitter(ship);
+        ship.laneIndex = lanes[g];
+        ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(0, SPAWN.tightWaveJitter));
+      }
+      i += groupSize;
+      t += SPAWN.tightWaveInterval;
+    }
+    return;
+  }
+
+  // wide (staggered)
   let laneCursor = rng.int(laneCount);
   let t = SPAWN.firstDelay;
   for (const idx of order) {
     const ship = ships[idx];
-    ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
+    setJitter(ship);
     ship.laneIndex = laneCursor % laneCount;
-    ship.lateralSeed = rng.range(-1, 1);
-    ship.speedVariance = rng.range(1 - SPAWN.speedVariance, 1 + SPAWN.speedVariance);
+    ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
     laneCursor++;
     t += SPAWN.interval;
   }
@@ -148,7 +191,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   }
   // Individual entry timing/lane/jitter — ships stream in one at a time
   // rather than appearing as a single block.
-  scheduleSpawns(ships, rng);
+  scheduleSpawns(ships, rng, campaign.formation);
 
   // Unrepaired damage from previous rounds shows up on this convoy. Whatever
   // does not fit (capped at 40% of each hull) stays in the campaign pool —
