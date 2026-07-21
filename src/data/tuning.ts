@@ -31,9 +31,16 @@ export const SIM = {
 export const SPAWN = {
   /** Delay before the first ship enters. */
   firstDelay: 1.0,
-  /** One ship enters from the left roughly every this many seconds. Keeps the
-   *  map uncluttered — the stream is sparse and readable. */
+  /** Wide/staggered pace: one ship enters, alternating lanes, every this many
+   *  seconds. Keeps the map uncluttered — the stream is sparse and readable. */
   interval: 5.0,
+  /** Sprint pace: a fast single-file column enters this often (back to back). */
+  sprintInterval: 2.8,
+  /** Tight pace: a whole wave (one ship per lane) enters this often. */
+  tightWaveInterval: 5.5,
+  /** Tiny spread within a Tight wave so the group reads as "together" without
+   *  perfectly stacking. */
+  tightWaveJitter: 0.25,
   /** Small +/- jitter so entries aren't a perfect metronome. */
   timeJitter: 0.4,
   /** Persistent per-ship pace variance, +/- this fraction of class speed. */

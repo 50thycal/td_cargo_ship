@@ -493,6 +493,45 @@ function stretchCapacity(c: CampaignState, cargo: number, tanker: number, freigh
 }
 
 describe('convoy spawning', () => {
+  it('the spawn pattern visibly reflects the chosen formation', () => {
+    const build = (formation: 'tight' | 'wide' | 'sprint') => {
+      const c = newCampaign(`spawn-${formation}`);
+      c.formation = formation;
+      return createRoundTransit(c, planCurrentRound(c)).state.ships;
+    };
+
+    // Sprint: single-file column — every ship enters the centre lane.
+    const sprint = build('sprint');
+    expect(sprint.every((s) => s.laneIndex === 1)).toBe(true);
+
+    // Tight: grouped waves — some ships enter together (within a wave) across
+    // different lanes.
+    const tight = build('tight');
+    let sawWave = false;
+    for (let i = 0; i < tight.length && !sawWave; i++) {
+      for (let j = i + 1; j < tight.length; j++) {
+        if (
+          Math.abs(tight[i].spawnTime - tight[j].spawnTime) < 0.4 &&
+          tight[i].laneIndex !== tight[j].laneIndex
+        ) {
+          sawWave = true;
+          break;
+        }
+      }
+    }
+    expect(sawWave).toBe(true);
+    expect(new Set(tight.map((s) => s.laneIndex)).size).toBeGreaterThan(1);
+
+    // Wide: staggered — spread across all lanes, one at a time (well-separated
+    // entry times, never a simultaneous wave).
+    const wide = build('wide');
+    expect(new Set(wide.map((s) => s.laneIndex)).size).toBe(WORLD.lanes.length);
+    const times = wide.map((s) => s.spawnTime).sort((a, b) => a - b);
+    let minGap = Infinity;
+    for (let i = 1; i < times.length; i++) minGap = Math.min(minGap, times[i] - times[i - 1]);
+    expect(minGap).toBeGreaterThan(1);
+  });
+
   it('ships enter individually with staggered timing that scales with convoy size', () => {
     const small = newCampaign('spawn-scale-small'); // default 20-ship convoy
     const big = newCampaign('spawn-scale-big');
