@@ -34,8 +34,16 @@ export const SPAWN = {
   /** Wide/staggered pace: one ship enters, alternating lanes, every this many
    *  seconds. Keeps the map uncluttered — the stream is sparse and readable. */
   interval: 5.0,
-  /** Sprint pace: a fast single-file column enters this often (back to back). */
+  /** Sprint pace: within a volley, one ship enters this often (back to back). */
   sprintInterval: 2.8,
+  /** Sprint: min/max ships in one single-file volley before the column
+   *  relocates to a different lane. */
+  sprintVolleyMin: 3,
+  sprintVolleyMax: 6,
+  /** Sprint: pause after a volley's LAST ship before the next volley's first
+   *  ship enters (in the new lane) — longer than the in-volley spacing so the
+   *  lane switch reads clearly. */
+  sprintVolleyGap: 5.0,
   /** Tight pace: a whole wave (one ship per lane) enters this often. */
   tightWaveInterval: 5.5,
   /** Tiny spread within a Tight wave so the group reads as "together" without

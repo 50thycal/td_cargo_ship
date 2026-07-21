@@ -80,8 +80,10 @@ export function patrolLaneY(_t: TransitState): number {
 
 /** Schedule ship entries in a pattern that visibly reflects the chosen
  *  formation:
- *   • sprint — a single-file column: every ship enters the SAME centre lane,
- *     one at a time, close behind the last (a fast, narrow line).
+ *   • sprint — single-file volleys: 3-6 ships enter one at a time, nose to
+ *     tail, all in ONE lane; then the next volley of 3-6 ships forms up in a
+ *     DIFFERENT lane after a longer pause (so the whole round isn't dumped
+ *     into a single lane).
  *   • tight  — grouped waves: two or three ships enter TOGETHER, each in a
  *     different lane, then the next wave a while later (a packed convoy).
  *   • wide   — staggered: one ship at a time, alternating across the lanes
@@ -97,12 +99,30 @@ function scheduleSpawns(ships: Ship[], rng: RNG, formation: FormationId): void {
 
   if (formation === 'sprint') {
     let t = SPAWN.firstDelay;
-    for (const idx of order) {
-      const ship = ships[idx];
-      setJitter(ship);
-      ship.laneIndex = 1; // one line, centre lane
-      ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
-      t += SPAWN.sprintInterval;
+    let i = 0;
+    let lastLane = -1;
+    while (i < order.length) {
+      // Pick a lane different from the previous volley's, so the column
+      // visibly relocates instead of refilling the same line all round.
+      let lane = rng.int(laneCount);
+      if (laneCount > 1) {
+        while (lane === lastLane) lane = rng.int(laneCount);
+      }
+      lastLane = lane;
+      const volleySize = Math.min(
+        SPAWN.sprintVolleyMin + rng.int(SPAWN.sprintVolleyMax - SPAWN.sprintVolleyMin + 1),
+        order.length - i,
+      );
+      for (let v = 0; v < volleySize; v++) {
+        const ship = ships[order[i + v]];
+        setJitter(ship);
+        ship.laneIndex = lane;
+        ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
+        // Nose-to-tail within the volley; a longer pause after the volley's
+        // last ship before the next volley's first ship enters.
+        t += v === volleySize - 1 ? SPAWN.sprintVolleyGap : SPAWN.sprintInterval;
+      }
+      i += volleySize;
     }
     return;
   }

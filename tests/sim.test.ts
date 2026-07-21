@@ -31,7 +31,7 @@ import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
 import { MODULES, RESEARCH, SHIP_CLASSES } from '../src/data/defs';
-import { COMBAT, ECONOMY, WORLD } from '../src/data/tuning';
+import { COMBAT, ECONOMY, SPAWN, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -500,9 +500,11 @@ describe('convoy spawning', () => {
       return createRoundTransit(c, planCurrentRound(c)).state.ships;
     };
 
-    // Sprint: single-file column — every ship enters the centre lane.
+    // Sprint: single-file volleys — ships enter one lane at a time in a
+    // volley, then relocate to a different lane for the next volley. So no
+    // single lane holds ALL the ships, but each volley is single-file.
     const sprint = build('sprint');
-    expect(sprint.every((s) => s.laneIndex === 1)).toBe(true);
+    expect(new Set(sprint.map((s) => s.laneIndex)).size).toBeGreaterThan(1);
 
     // Tight: grouped waves — some ships enter together (within a wave) across
     // different lanes.
@@ -530,6 +532,55 @@ describe('convoy spawning', () => {
     let minGap = Infinity;
     for (let i = 1; i < times.length; i++) minGap = Math.min(minGap, times[i] - times[i - 1]);
     expect(minGap).toBeGreaterThan(1);
+  });
+
+  it('sprint sends 3-6 ship volleys single-file, then relocates to a different lane', () => {
+    const c = newCampaign('sprint-volleys');
+    c.formation = 'sprint';
+    const { state } = createRoundTransit(c, planCurrentRound(c));
+    const byTime = [...state.ships].sort((a, b) => a.spawnTime - b.spawnTime);
+
+    // Group into volleys: consecutive (by spawn order) ships sharing a lane.
+    const volleys: { lane: number; size: number; times: number[] }[] = [];
+    for (const ship of byTime) {
+      const last = volleys[volleys.length - 1];
+      if (last && last.lane === ship.laneIndex) {
+        last.size++;
+        last.times.push(ship.spawnTime);
+      } else {
+        volleys.push({ lane: ship.laneIndex, size: 1, times: [ship.spawnTime] });
+      }
+    }
+
+    expect(volleys.length).toBeGreaterThan(1); // more than one volley for a 20-ship convoy
+    // Every volley (but possibly the last, which may be a partial remainder)
+    // falls in the 3-6 range.
+    for (let i = 0; i < volleys.length - 1; i++) {
+      expect(volleys[i].size).toBeGreaterThanOrEqual(3);
+      expect(volleys[i].size).toBeLessThanOrEqual(6);
+    }
+    // Consecutive volleys never reuse the same lane.
+    for (let i = 1; i < volleys.length; i++) {
+      expect(volleys[i].lane).not.toBe(volleys[i - 1].lane);
+    }
+    // Within a volley, spacing is tight (~sprintInterval, allow jitter); the
+    // gap between a volley's last ship and the next volley's first ship is
+    // the longer sprintVolleyGap.
+    const withinVolleyMax = SPAWN.sprintInterval + 2 * SPAWN.timeJitter;
+    const betweenVolleyMin = SPAWN.sprintVolleyGap - 2 * SPAWN.timeJitter;
+    for (const v of volleys) {
+      const sorted = [...v.times].sort((a, b) => a - b);
+      for (let i = 1; i < sorted.length; i++) {
+        expect(sorted[i] - sorted[i - 1]).toBeLessThan(withinVolleyMax);
+      }
+    }
+    for (let i = 1; i < volleys.length; i++) {
+      const prevLast = Math.max(...volleys[i - 1].times);
+      const nextFirst = Math.min(...volleys[i].times);
+      expect(nextFirst - prevLast).toBeGreaterThanOrEqual(betweenVolleyMin);
+      // And clearly bigger than the in-volley cadence, so the pause reads.
+      expect(nextFirst - prevLast).toBeGreaterThan(withinVolleyMax);
+    }
   });
 
   it('ships enter individually with staggered timing that scales with convoy size', () => {
