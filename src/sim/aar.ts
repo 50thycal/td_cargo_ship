@@ -16,6 +16,8 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} struck a charted mine — the field was known, but the helm could not clear it in formation. Wider spacing or a lane change would have given her room.`,
   lowSigMine: (name) =>
     `${name} struck a mine that our detection systems failed to register — even where coverage was active.`,
+  chain: (name) =>
+    `${name} was caught by the blast of a missile that struck a ship packed in close alongside her — the price of a tight formation.`,
   fire: (name) =>
     `${name} survived the initial hit but the fire spread out of control before she could reach port.`,
   explosion: (name) =>
@@ -63,8 +65,14 @@ export function buildTransitCards(t: TransitState, newDiscoveries: TechKey[]): A
     if (card) cards.push(card);
   }
 
-  // One card per lost ship, with cause forensics.
-  const losses = t.events.filter((e): e is TransitEvent & { shipName: string } => e.type === 'shipLost');
+  // One card per lost cargo ship, with cause forensics. Escort and shore-battery
+  // losses (cause prefixed 'escort:' / 'base:') carry no ship name and are
+  // already reported in the defensive summary — skip them so the report never
+  // shows an "undefined lost" card.
+  const losses = t.events.filter(
+    (e): e is TransitEvent & { shipName: string } =>
+      e.type === 'shipLost' && !!e.shipName && !e.cause?.startsWith('escort:') && !e.cause?.startsWith('base:'),
+  );
   for (const loss of losses) {
     const narrative = LOSS_NARRATIVES[loss.cause ?? ''] ?? ((n: string) => `${n} was lost.`);
     cards.push({
@@ -82,6 +90,8 @@ export function formatInterceptSummary(t: TransitState): string {
   if (s.missilesSpawned === 0) return 'No missile attacks this transit.';
   return (
     `${s.missilesIntercepted} of ${s.missilesSpawned} missiles stopped ` +
-    `(${s.playerIntercepts} by interceptor, ${s.pdKills} by point defense).`
+    `(${s.playerIntercepts} by interceptor, ${s.pdKills} by point defense` +
+    (s.ecmKills > 0 ? `, ${s.ecmKills} by ECM jamming` : '') +
+    `).`
   );
 }

@@ -31,9 +31,24 @@ export const SIM = {
 export const SPAWN = {
   /** Delay before the first ship enters. */
   firstDelay: 1.0,
-  /** One ship enters from the left roughly every this many seconds. Keeps the
-   *  map uncluttered — the stream is sparse and readable. */
+  /** Wide/staggered pace: one ship enters, alternating lanes, every this many
+   *  seconds. Keeps the map uncluttered — the stream is sparse and readable. */
   interval: 5.0,
+  /** Sprint pace: within a volley, one ship enters this often (back to back). */
+  sprintInterval: 2.8,
+  /** Sprint: min/max ships in one single-file volley before the column
+   *  relocates to a different lane. */
+  sprintVolleyMin: 3,
+  sprintVolleyMax: 6,
+  /** Sprint: pause after a volley's LAST ship before the next volley's first
+   *  ship enters (in the new lane) — longer than the in-volley spacing so the
+   *  lane switch reads clearly. */
+  sprintVolleyGap: 5.0,
+  /** Tight pace: a whole wave (one ship per lane) enters this often. */
+  tightWaveInterval: 5.5,
+  /** Tiny spread within a Tight wave so the group reads as "together" without
+   *  perfectly stacking. */
+  tightWaveJitter: 0.25,
   /** Small +/- jitter so entries aren't a perfect metronome. */
   timeJitter: 0.4,
   /** Persistent per-ship pace variance, +/- this fraction of class speed. */
@@ -96,8 +111,23 @@ export const COMBAT = {
   straggleDistance: 130,
   /** Guided missiles prefer stragglers by this weight factor. */
   straggleTargetWeight: 1.6,
+  /** A ship within this distance of the delivery line is treated as already
+   *  safe — the enemy won't fire on a hull about to score (a missile could
+   *  never arrive in time), so misses aren't wasted chasing delivered ships. */
+  deliverSafeMargin: 90,
+  /** Enemy target-selection skill ramp: skill = clamp((round - start)/span).
+   *  Skill 0 = near-random (value-weighted only); skill 1 = heavily favors
+   *  closer and lower-health ships. */
+  targetingSkillStartRound: 2,
+  targetingSkillSpanRounds: 8,
+  /** How strongly full skill weights proximity-to-launch and woundedness. */
+  targetingProximityWeight: 1.6,
+  targetingWoundedWeight: 1.6,
+  /** Escort-launched interceptors: the ship-mounted launcher. Deliberately the
+   *  SLOWER of the two interceptor types and shorter-ranged — its edge is a
+   *  fast reload and being able to move with the convoy, not velocity. */
   interceptor: {
-    speed: 115,
+    speed: 92,
     /** Max launch range from an escort to the target threat. */
     range: 780,
     cooldown: 3.2,
@@ -110,7 +140,9 @@ export const COMBAT = {
    *  damage; enough strikes destroy it (hardened, so it takes a lot). */
   base: {
     reload: 4.0,
-    speed: 105,
+    /** Shore-battery interceptors are the FAST interceptor type — they start
+     *  quicker than escorts and scale hard with interception research. */
+    speed: 150,
     hitRadius: 30,
     disableSeconds: 9,
     /** Hull points. Hardened installation — takes many strikes to destroy. */
@@ -131,6 +163,9 @@ export const COMBAT = {
   },
   /** Fraction of missiles that streak across to strike a shore battery. */
   baseStrikeChance: 0.07,
+  /** Point-defense turret module: a per-ship close-in interceptor. It is a
+   *  limited magazine, NOT a free auto-turret — each ship gets `magazine` shots
+   *  for the whole transit, refilled each round. */
   pointDefense: {
     radius: 95,
     cooldown: 1.3,
@@ -138,24 +173,61 @@ export const COMBAT = {
     killChanceVsGuided: 0.33,
     /** Speed of the point-defense tracer projectile (fast, short range). */
     projectileSpeed: 260,
+    /** Shots each point-defense ship may fire per transit. */
+    magazine: 1,
   },
-  /** ECM is a placed bubble: guided seekers INSIDE the bubble are scrambled. */
-  ecm: { durationSeconds: 9, guidedHitChance: 0.2, chargesPerRound: 2, radius: 340 },
-  scan: { radius: 460, sweepRadius: 300, chargesPerRound: 2, lowSigRevealChance: 0.35 },
-  /** Minesweeper drone (unlocked by mine-warfare research): auto-launches from
-   *  the nearest ready launcher toward a revealed mine and detonates it. */
+  /** ECM plane: flies to a water station, orbits jamming inbound missiles —
+   *  any missile that lingers inside the orbit `explodeSeconds` cooks off — then
+   *  departs. `stationSeconds` is how long it holds the orbit. */
+  ecm: {
+    // Deliberately restrained: a smaller, shorter-lived bubble that needs a
+    // missile to loiter longer before it cooks off, so ECM shapes a fight
+    // rather than clearing the sky.
+    stationSeconds: 6,
+    guidedHitChance: 0.2,
+    chargesPerRound: 2,
+    radius: 220,
+    /** Seconds a missile must spend inside the jamming orbit before it explodes. */
+    explodeSeconds: 3.2,
+    /** Cruise speed of the ECM plane. */
+    planeSpeed: 240,
+    /** Orbit angular speed (radians/second). */
+    orbitRate: 1.1,
+    /** Radius the plane flies around the orbit center. */
+    orbitRadius: 80,
+    /** Water band the orbit center must sit inside (off both shores/launchers). */
+    waterYMin: 150,
+    waterYMax: 860,
+  },
+  /** Scan plane: flies down the player-selected lane charting mines in THAT lane
+   *  only, then leaves. */
+  scan: {
+    chargesPerRound: 2,
+    lowSigRevealChance: 0.35,
+    /** Cruise speed of the scan plane across the map. */
+    planeSpeed: 520,
+    /** Half-width of the lane band the plane can chart (mines outside are missed). */
+    laneHalfWidth: 95,
+    /** How far ahead/around the plane it reveals mines as it passes. */
+    revealRadius: 130,
+  },
+  /** Minesweeper drone (unlocked by mine-warfare research): the player TAPS a
+   *  charted mine to send a drone from the nearest escort — just like tapping a
+   *  missile, but with a much shorter reach and its own behavior (fly out, sit
+   *  on the mine, detonate it). Each launch spends a purchased drone munition. */
   sweepDrone: {
     speed: 95,
-    /** Min seconds between drone launches (whole convoy). */
-    cooldown: 4.5,
-    /** A launcher must be within this range of the mine to send a drone. */
-    launchRange: 1100,
+    /** An escort must be within ~7 ship-lengths of the mine to send a drone —
+     *  far shorter than an interceptor's reach, so escorts must close in. */
+    launchRange: 240,
     /** Distance at which the drone reaches the mine and sweeps it. */
     sweepRadius: 16,
   },
   mineSonarRadius: 240,
-  /** Ships auto-steer around revealed mines within this look-ahead range. */
-  mineAvoidLookahead: 130,
+  /** Ships auto-steer around revealed mines within this look-ahead range. A
+   *  charted mine is ALWAYS steered around (no dodge roll) — a revealed mine on
+   *  the plotted track is a known hazard the helm actively avoids. */
+  mineAvoidLookahead: 200,
   mineAvoidOffset: 70,
 } as const;
 
@@ -163,12 +235,32 @@ export const ECONOMY = {
   startCash: 450,
   startIntel: 0,
   startAmmo: 28,
+  /** No drone munitions until the player buys them (and researches drones). */
+  startDroneAmmo: 0,
+  /** Point-defense rounds in stock at campaign start (turrets are useless
+   *  without them, but the module also has to be researched/bought first). */
+  startPdAmmo: 0,
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
   /** Cash earned per point of cargo value delivered. */
   cashPerValue: 4,
   ammoCost: 8,
+  /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
+  droneAmmoCost: 14,
+  droneAmmoPerBuy: 3,
+  /** Cash per point-defense round, and how many a single purchase buys. */
+  pdAmmoCost: 12,
+  pdAmmoPerBuy: 3,
+  /** Module refits price on OWNED hulls of the class (exploit-proof — see
+   *  moduleCost), but a flat per-ship rate would make a late-campaign refit
+   *  balloon into many thousands of cash as the fleet grows past 30+ hulls.
+   *  Ships up to this count are billed at the full per-ship rate; ships beyond
+   *  it are billed at moduleCostTaperRate of that rate, so a big fleet can
+   *  still afford SOME upgrades without every refit consuming the whole
+   *  treasury. */
+  moduleCostSoftCap: 12,
+  moduleCostTaperRate: 0.25,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,
@@ -176,7 +268,7 @@ export const ECONOMY = {
   ecmUnlockCost: 150,
   scanUnlockCost: 150,
   /** Cash per hp of hull repair. */
-  repairCostPerHp: 0.8,
+  repairCostPerHp: 0.6,
   /** Intel income. */
   intelPerRound: 4,
   intelPerLoss: 6,
@@ -203,12 +295,27 @@ export const CAMPAIGN = {
   confidenceLossCap: -12, // max penalty from losses in one round
   confidenceQuotaMet: 10,
   confidenceQuotaMissed: -18,
-  /** Quota: value points required per 3-round window. The requirement starts
-   *  from the initial capacity and ramps gently per window, deliberately NOT
-   *  tracking capacity growth — larger convoys are opportunity, not obligation. */
+  /** Quota: value points required per 3-round window. The FIRST window's
+   *  target is fixed (startCapacity * quotaPerCapacity); every window after
+   *  that is DYNAMIC — sized from the player's own recent output rather than a
+   *  flat increment, so it scales with how well the player is actually doing
+   *  instead of drifting trivially far behind a growing fleet (too easy) or
+   *  outrunning a struggling one (too punishing). See resolveTransit. */
   quotaWindowRounds: 3,
   quotaPerCapacity: 24, // initial window: startCapacity * this
-  quotaGrowthPerWindow: 40,
+  /** Next window's target = (this window's avg value delivered per round) *
+   *  quotaWindowRounds * quotaDifficulty. */
+  quotaDifficultyStart: 1.0,
+  quotaDifficultyMin: 0.65,
+  quotaDifficultyMax: 1.6,
+  /** Difficulty ratchets up on an easy clear (big surplus) and down on a miss
+   *  (big shortfall) — a standard rubber-band. Each step is scaled by how far
+   *  over/under the target the window landed, capped at the constant below. */
+  quotaDifficultyUpStep: 0.1,
+  quotaDifficultyDownStep: 0.16,
+  /** Hard floor so a single bad round can't trivialize the next quota:
+   *  pointsNeeded never drops below capacity * this. */
+  quotaFloorPerCapacity: 8,
   /** Score weights. */
   scorePerValue: 1,
   scorePerRound: 40,
@@ -250,6 +357,10 @@ export const EVOLUTION = {
   windowStartT: 6,
   /** Extra seconds after the last ship enters, so fire covers it crossing. */
   windowTailT: 60,
+  /** Hard ceiling on the spacing between missile volleys (seconds): fire is
+   *  split into enough volleys that no gap in the schedule exceeds this, even
+   *  when the volley size is large. Keeps the strait from going quiet. */
+  maxVolleyGap: 12,
   /** Mine volume once unlocked. */
   mineBase: 3,
   mineTrackDivisor: 10,

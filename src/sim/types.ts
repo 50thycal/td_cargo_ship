@@ -79,6 +79,11 @@ export interface Ship {
   fireSeconds: number;
   /** Point-defense cooldown timer. */
   pdCooldown: number;
+  /** Point-defense shots remaining this transit. Refills each round; a hard
+   *  per-transit magazine so ship self-defense is a limited resource, not a
+   *  free auto-turret. Only meaningful when the ship carries a pointDefense
+   *  module. */
+  pdShots: number;
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
@@ -89,6 +94,15 @@ export interface Ship {
 // ---------------------------------------------------------------------------
 
 export type FormationId = 'tight' | 'wide' | 'sprint';
+
+/** How a tap on a cluster of missiles picks which one to target:
+ *   • proximity     — nearest to the tap wins (the long-standing default).
+ *   • protectShips  — missiles aimed at a ship/escort always outrank ones
+ *     aimed at a shore battery (the battery can absorb a hit; a ship can't).
+ *   • threat        — guided (advanced) missiles always outrank unguided ones.
+ *  In every mode, a threat with no interceptor already inbound still beats one
+ *  that already has a shot on the way, as a secondary tiebreak. */
+export type TargetPriority = 'proximity' | 'protectShips' | 'threat';
 
 export interface FormationDef {
   id: FormationId;
@@ -105,8 +119,15 @@ export interface FormationDef {
   gapBonus: number;
   /** Multiplier on splash / tanker-explosion collateral radius. */
   collateralMult: number;
-  /** Chance a ship successfully steers clear of a revealed mine in its path. */
-  mineAvoidChance: number;
+  /** Added to player interceptor hit chance — a concentrated column's overlapping
+   *  fire is more accurate (Tight +, Wide −). */
+  interceptAccuracy: number;
+  /** Multiplier on defensive REACH: point-defense radius and escort interceptor
+   *  range. Tight overlaps coverage (>1); Wide stretches it thin (<1). */
+  defenseRangeMult: number;
+  /** Radius (world units) of the bonus splash a DIRECT missile/guided hit deals
+   *  to neighboring hulls — the downside of bunching up. 0 = hits stay isolated. */
+  chainSplashRadius: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +168,9 @@ export interface Threat {
   lowSig: boolean;
   /** Set when an interceptor is currently en route to this threat. */
   claimedByInterceptor: boolean;
+  /** Seconds this missile has spent inside an active ECM jamming orbit. Once it
+   *  crosses the jam threshold the seeker cooks off and the missile explodes. */
+  jamSeconds?: number;
 }
 
 export interface SpawnEvent {
@@ -226,8 +250,9 @@ export interface Interceptor {
   hitChance?: number;
 }
 
-/** An autonomous minesweeper drone: flies from a launcher to a revealed mine
- *  and detonates it. Unlocked by mine-warfare research. */
+/** An autonomous minesweeper drone: flies from an escort to a revealed mine
+ *  and detonates it. Unlocked by mine-warfare research; each launch consumes a
+ *  purchased drone munition. */
 export interface Drone {
   id: number;
   x: number;
@@ -236,12 +261,37 @@ export interface Drone {
   speed: number;
 }
 
+/** A support aircraft the player calls in for a placed ability. Scan planes fly
+ *  down a chosen lane charting mines in that lane only; ECM planes fly to a
+ *  water station, orbit while jamming inbound missiles, then depart. */
+export interface Aircraft {
+  id: number;
+  role: 'scan' | 'ecm';
+  x: number;
+  y: number;
+  heading: number;
+  /** inbound → fly to the work area; onStation → do the job; departing → leave. */
+  phase: 'inbound' | 'onStation' | 'departing';
+  /** Scan: the lane-center Y the plane sweeps along. */
+  laneY: number;
+  /** ECM: center of the jamming orbit. */
+  centerX: number;
+  centerY: number;
+  /** ECM: current orbit angle (radians). */
+  orbitAngle: number;
+  /** ECM: transit time at which the plane breaks orbit and departs. */
+  stationUntil: number;
+}
+
 // ---------------------------------------------------------------------------
 // Transit state & commands
 // ---------------------------------------------------------------------------
 
 export type TransitCommand =
   | { type: 'intercept'; threatId: number }
+  /** Send a minesweeper drone at a charted mine (from the nearest in-range
+   *  escort). Player-directed, like an intercept but for mines. */
+  | { type: 'sweepMine'; threatId: number }
   /** Placed ability: x/y is where the player put the effect on the map. */
   | { type: 'ability'; ability: 'ecm' | 'scan'; x: number; y: number }
   /** Send an escort to a point. hold=false → resume forward on arrival;
@@ -281,12 +331,14 @@ export interface TransitStats {
   valueSent: number;
   valueDelivered: number;
   missilesSpawned: number;
-  missilesIntercepted: number; // player interceptors + point defense
+  missilesIntercepted: number; // player interceptors + point defense + ECM jamming
   playerIntercepts: number;
   baseIntercepts: number;
   escortIntercepts: number;
   interceptMisses: number;
   pdKills: number;
+  /** Missiles destroyed by lingering inside an ECM jamming orbit. */
+  ecmKills: number;
   minesTotal: number;
   minesRevealed: number;
   minesDetonated: number;
@@ -305,7 +357,12 @@ export interface TransitStats {
 /** Research-derived combat effects, baked once at transit creation. */
 export interface CombatEffects {
   interceptHitBonus: number;
-  interceptorSpeedMult: number;
+  /** Speed multiplier for shore-battery interceptors — scales strongly with
+   *  interception research (batteries are the fast, upgradeable launcher). */
+  baseInterceptorSpeedMult: number;
+  /** Speed multiplier for escort-launched interceptors — the slower, shorter-
+   *  ranged ship-mounted launcher; barely scales with research. */
+  escortInterceptorSpeedMult: number;
   escortCooldownMult: number;
   /** Mine-detection radius for ships WITHOUT sonar (0 = cannot detect). */
   baseDetectRadius: number;
@@ -317,7 +374,8 @@ export interface CombatEffects {
   damageTakenMult: number;
   /** Guided-missile terminal hit chance while ECM is active. */
   ecmGuidedHitChance: number;
-  /** Mine-warfare research: minesweeper drones auto-clear revealed mines. */
+  /** Mine-warfare research: the player can send minesweeper drones at charted
+   *  mines (tap a revealed mine, drone launches from the nearest in-range escort). */
   sweepDrones: boolean;
   /** Fires extinguish themselves quickly. */
   autoExtinguish: boolean;
@@ -340,15 +398,23 @@ export interface TransitState {
   threats: Threat[];
   interceptors: Interceptor[];
   drones: Drone[];
+  /** Support aircraft in flight (scan / ECM planes). */
+  aircraft: Aircraft[];
   ammo: number;
+  /** Drone munitions remaining: each minesweeper drone launch consumes one. */
+  droneAmmo: number;
+  /** Point-defense rounds remaining: each turret shot draws from this pool. */
+  pdAmmo: number;
   ecmCharges: number;
+  /** Transit time until which an ECM plane is deployed (blocks a second call). */
   ecmActiveUntil: number;
-  /** Where the active ECM bubble is centered (set when the player places it). */
+  /** Where the active ECM jamming orbit is centered. */
   ecmCenterX: number;
   ecmCenterY: number;
   scanCharges: number;
-  /** Cooldown gate between minesweeper drone launches. */
-  droneCooldown: number;
+  /** How sharply the enemy prioritizes closer / weaker ships (0 = near-random,
+   *  1 = fully focused). Ramps with the campaign round. */
+  enemyTargetingSkill: number;
   /** Pending enemy spawns, sorted by time. */
   spawnQueue: SpawnEvent[];
   events: TransitEvent[];
@@ -357,8 +423,6 @@ export interface TransitState {
   /** Convoy base speed (slowest ship class present). */
   baseSpeed: number;
   nextEntityId: number;
-  /** Memoized per ship-mine pair: did this crew spot the mine in time? */
-  avoidRolls: Record<string, boolean>;
   /** Tech keys already announced via techDebut events this transit. */
   debutsSeen: TechKey[];
   /** How much of the campaign's pendingDamage pool this convoy absorbed. */
@@ -437,6 +501,9 @@ export interface EvolutionState {
   firstSeen: Partial<Record<TechKey, number>>;
   metrics: RoundMetrics[];
   pendingWarnings: IntelWarning[];
+  /** A note about how the enemy is adapting to the player's recent formation
+   *  choices (null = no notable formation-driven adaptation this round). */
+  formationTell: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +610,12 @@ export interface RoundTelemetry {
 export interface CampaignState {
   version: number;
   seed: string;
+  /** True for a developer/test run — enables the dev tools and, with godMode,
+   *  invincible ships & unlimited munitions. Never set on a normal campaign. */
+  dev?: boolean;
+  /** Dev invincibility: ships/escorts/batteries take no damage and munitions are
+   *  effectively unlimited during transit. Only meaningful when dev is true. */
+  godMode?: boolean;
   /** Round about to be played (1-based). */
   round: number;
   phase: 'prep' | 'transit' | 'aar' | 'research';
@@ -560,6 +633,10 @@ export interface CampaignState {
   composition: Record<ShipClassId, number>;
   /** Module templates applied per ship class. */
   classModules: Record<ShipClassId, ModuleId[]>;
+  /** Cash paid to equip each currently-fitted module, per class. Lets an
+   *  unequip refund exactly what was spent (so loadouts can be experimented
+   *  with freely without opening a buy-low / refund-high exploit). */
+  modulePaid: Record<ShipClassId, Partial<Record<ModuleId, number>>>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
   /** Unrepaired hull damage carried by the escort ships (repaired like hulls). */
@@ -571,14 +648,30 @@ export interface CampaignState {
   /** Escort ships: limited range, fast reload. Not free at campaign start. */
   escorts: number;
   ammo: number;
+  /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
+   *  drones, and each launch spends one. Unused stock carries between rounds. */
+  droneAmmo: number;
+  /** Point-defense rounds in stock. Bought in prep; each turret shot spends one.
+   *  Unused stock carries between rounds. */
+  pdAmmo: number;
   /** Convoy-wide assets: owned => charges refresh each round. */
   ecmUnlocked: boolean;
   scanUnlocked: boolean;
   formation: FormationId;
+  /** Player preference for which threat a tap on a cluster of missiles
+   *  selects: nearest first, ship-aimed missiles before base-aimed ones, or
+   *  guided (advanced) missiles before unguided ones. Purely a UI/input
+   *  preference — does not change sim behavior, only which threat a tap
+   *  resolves to. Persists across rounds like formation. */
+  targetPriority: TargetPriority;
   completedResearch: ResearchId[];
   activeResearch: { id: ResearchId; roundsLeft: number } | null;
   evolution: EvolutionState;
   quota: QuotaWindow;
+  /** Rubber-band multiplier applied when sizing the NEXT quota window off the
+   *  player's recent output — rises on an easy clear, falls on a miss. See
+   *  CAMPAIGN.quotaDifficulty* in tuning.ts. */
+  quotaDifficulty: number;
   history: RoundSummary[];
   /** Full per-round telemetry for the downloadable game log. */
   telemetry: RoundTelemetry[];

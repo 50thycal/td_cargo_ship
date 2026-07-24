@@ -3,7 +3,7 @@
 // glue between transit results and enemy evolution. All mutations validate
 // their inputs so the UI can stay dumb.
 
-import { CAMPAIGN, ECONOMY } from '../data/tuning';
+import { CAMPAIGN, ECONOMY, EVOLUTION } from '../data/tuning';
 import { MODULES, RESEARCH, SHIP_CLASSES } from '../data/defs';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
@@ -24,12 +24,14 @@ import type {
   TransitState,
 } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function newCampaign(seed: string): CampaignState {
   return {
     version: SAVE_VERSION,
     seed,
+    dev: false,
+    godMode: false,
     round: 1,
     phase: 'prep',
     cash: ECONOMY.startCash,
@@ -42,15 +44,19 @@ export function newCampaign(seed: string): CampaignState {
     fleet: { cargo: 15, tanker: 3, freighter: 2 },
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
+    modulePaid: { cargo: {}, tanker: {}, freighter: {} },
     pendingDamage: 0,
     escortDamage: 0,
     baseDamage: 0,
     bases: ECONOMY.startBases,
     escorts: ECONOMY.startEscorts,
     ammo: ECONOMY.startAmmo,
+    droneAmmo: ECONOMY.startDroneAmmo,
+    pdAmmo: ECONOMY.startPdAmmo,
     ecmUnlocked: false,
     scanUnlocked: false,
     formation: 'tight',
+    targetPriority: 'proximity',
     completedResearch: [],
     activeResearch: null,
     evolution: newEvolution(),
@@ -59,6 +65,7 @@ export function newCampaign(seed: string): CampaignState {
       pointsNeeded: CAMPAIGN.startCapacity * CAMPAIGN.quotaPerCapacity,
       pointsEarned: 0,
     },
+    quotaDifficulty: CAMPAIGN.quotaDifficultyStart,
     history: [],
     telemetry: [],
     lastReport: null,
@@ -68,6 +75,67 @@ export function newCampaign(seed: string): CampaignState {
 /** Deterministic per-round, per-purpose RNG derived from the campaign seed. */
 export function roundRng(c: CampaignState, purpose: string): RNG {
   return makeRng(`${c.seed}:r${c.round}:${purpose}`);
+}
+
+// ---------------------------------------------------------------------------
+// Developer / test runs
+// ---------------------------------------------------------------------------
+
+export interface DevOptions {
+  /** Round to jump into (enemy doctrine is fast-forwarded to match). */
+  round: number;
+  /** Invincible ships/escorts/batteries and effectively unlimited munitions. */
+  god: boolean;
+  /** All research complete, ECM/scan installed, max assets & capacity, deep
+   *  pockets and full magazines. */
+  unlockAll: boolean;
+}
+
+/** Advance the enemy's hidden doctrine as if moderate rounds had been played up
+ *  to `targetRound`, so jumping into a later level actually faces later threats
+ *  (guided missiles, mines, low-signature mines) rather than a round-1 probe. */
+function fastForwardEvolution(c: CampaignState, targetRound: number): void {
+  for (let r = 1; r < targetRound; r++) {
+    const metrics: RoundMetrics = {
+      round: r,
+      interceptRate: 0.7,
+      formation: 'tight',
+      mineDetectRate: -1,
+      valueSent: 241,
+      deliveredFraction: 0.85,
+    };
+    evolveEnemy(c.evolution, metrics, roundRng(c, `dev-evolve-${r}`));
+  }
+  c.round = Math.max(1, Math.floor(targetRound));
+  // Field unlocked capabilities at full scale (skip the debut fairness caps) so
+  // a jumped-to hard level really is hard.
+  const evo = c.evolution;
+  if (evo.tracks.guidance >= EVOLUTION.guidanceUnlock) evo.firstSeen.guidedMissile ??= 1;
+  if (evo.tracks.mines >= EVOLUTION.minesUnlock) evo.firstSeen.mine ??= 1;
+  if (evo.tracks.lowSig >= EVOLUTION.lowSigUnlock) evo.firstSeen.lowSigMine ??= 1;
+}
+
+/** Build a developer campaign: a normal campaign with the dev flag set, the
+ *  chosen god/unlock loadout applied, and the enemy fast-forwarded to `round`. */
+export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
+  const c = newCampaign(seed);
+  c.dev = true;
+  c.godMode = opts.god;
+  if (opts.unlockAll) {
+    c.completedResearch = Object.keys(RESEARCH) as ResearchId[];
+    c.ecmUnlocked = true;
+    c.scanUnlocked = true;
+    c.cash = 999_999;
+    c.intel = 9_999;
+    c.ammo = 999;
+    c.droneAmmo = 999;
+    c.pdAmmo = 999;
+    c.bases = ECONOMY.maxBases;
+    c.escorts = ECONOMY.maxEscorts;
+    c.capacity = CAMPAIGN.maxCapacity;
+  }
+  fastForwardEvolution(c, opts.round);
+  return c;
 }
 
 export function planCurrentRound(c: CampaignState): RoundPlan {
@@ -97,6 +165,8 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
+  c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
+  c.pdAmmo = t.pdAmmo; // unused point-defense rounds carry over
   c.formation = t.formation; // tactical formation changes persist as the new default
 
   const newDiscoveries: TechKey[] = [];
@@ -162,14 +232,15 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // --- Quota window -----------------------------------------------------------------
   c.quota.pointsEarned += s.valueDelivered;
   c.quota.roundsLeft--;
-  const quotaEvaluated = c.quota.roundsLeft <= 0;
-  let quotaMet = false;
+  // A quota resolves the moment it is MET — a new, larger one begins next round —
+  // or when its rounds run out (a miss). No more waiting out a window you've
+  // already cleared.
+  const quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
+  const quotaEvaluated = quotaMet || c.quota.roundsLeft <= 0;
   const quotaSnapshot = { needed: c.quota.pointsNeeded, earned: c.quota.pointsEarned };
-  // Captured before the window resets below, so evaluation rounds report as
-  // round 3-of-3 rather than 0.
+  // Captured before the window resets below (1-based round within the window).
   const quotaWindowRound = CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft);
   if (quotaEvaluated) {
-    quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
     confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
   }
 
@@ -189,9 +260,29 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   }
 
   if (quotaEvaluated) {
+    // Rubber-band the difficulty multiplier off how comfortably the window
+    // resolved: an easy clear (big surplus) ratchets it up; a miss (big
+    // shortfall) eases it back down. Each step scales with the margin, capped
+    // so no single window swings it too far.
+    const ratio = quotaSnapshot.needed > 0 ? quotaSnapshot.earned / quotaSnapshot.needed : 1;
+    if (quotaMet) {
+      const surplus = Math.max(0, ratio - 1);
+      const step = Math.min(CAMPAIGN.quotaDifficultyUpStep, surplus * CAMPAIGN.quotaDifficultyUpStep * 2);
+      c.quotaDifficulty = Math.min(CAMPAIGN.quotaDifficultyMax, c.quotaDifficulty + step);
+    } else {
+      const shortfall = Math.max(0, 1 - ratio);
+      const step = Math.min(CAMPAIGN.quotaDifficultyDownStep, shortfall * CAMPAIGN.quotaDifficultyDownStep * 2);
+      c.quotaDifficulty = Math.max(CAMPAIGN.quotaDifficultyMin, c.quotaDifficulty - step);
+    }
+    // Size the next target off the player's own recent pace (average value
+    // delivered per round actually played this window) rather than a flat
+    // increment, so it tracks real capability as the campaign progresses.
+    const avgPerRound = quotaWindowRound > 0 ? quotaSnapshot.earned / quotaWindowRound : quotaSnapshot.earned;
+    const target = avgPerRound * CAMPAIGN.quotaWindowRounds * c.quotaDifficulty;
+    const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
     c.quota = {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
-      pointsNeeded: c.quota.pointsNeeded + CAMPAIGN.quotaGrowthPerWindow,
+      pointsNeeded: Math.max(Math.round(target), Math.round(floor)),
       pointsEarned: 0,
     };
   }
@@ -231,6 +322,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 
   // --- Cards --------------------------------------------------------------------------
   const cards: AarCard[] = buildTransitCards(t, newDiscoveries);
+  if (c.evolution.formationTell) {
+    cards.push({
+      kind: 'warning',
+      title: 'Enemy is reading your formation',
+      body: c.evolution.formationTell,
+    });
+  }
   for (const warning of c.evolution.pendingWarnings) {
     cards.push({
       kind: 'warning',
@@ -253,12 +351,17 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     });
   }
   if (quotaEvaluated) {
+    // The window has already rolled over to the next one here, so c.quota now
+    // holds the fresh requirement — tell the player exactly what's next.
+    const next = `New quota: deliver ${c.quota.pointsNeeded} cargo points over the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`;
     cards.push({
       kind: 'quota',
       title: quotaMet ? 'Delivery quota met' : 'Delivery quota missed',
-      body: quotaMet
-        ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence rises.`
-        : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} required cargo points this period. Consortium confidence is shaken.`,
+      body:
+        (quotaMet
+          ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, consortium confidence rises. `
+          : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points in time — consortium confidence is shaken. `) +
+        next,
     });
   }
   if (!c.campaignOver && c.confidence <= 25) {
@@ -387,10 +490,17 @@ export function startResearch(c: CampaignState, id: ResearchId): boolean {
 /** Priced on OWNED hulls, not the mutable convoy assignment — composition can
  *  be toggled to zero for free, which would otherwise let the player buy a
  *  class-wide refit at single-ship price. Fleet size only shrinks through
- *  real losses, so it is exploit-proof as a price basis. */
+ *  real losses, so it is exploit-proof as a price basis.
+ *
+ *  The rate itself SOFT-CAPS: hulls up to moduleCostSoftCap are billed at the
+ *  full per-ship rate (so early-game pricing is unchanged), and hulls beyond
+ *  the cap are billed at a fraction of it — otherwise a late-campaign fleet of
+ *  30+ ships makes every refit cost thousands and nothing is ever affordable. */
 export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): number {
   const count = Math.max(1, c.fleet[classId]);
-  return MODULES[moduleId].costPerShip * count;
+  const cap = ECONOMY.moduleCostSoftCap;
+  const billable = count <= cap ? count : cap + (count - cap) * ECONOMY.moduleCostTaperRate;
+  return Math.round(MODULES[moduleId].costPerShip * billable);
 }
 
 export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
@@ -401,7 +511,34 @@ export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: Modu
   if (c.cash < cost) return false;
   c.cash -= cost;
   owned.push(moduleId);
+  // Remember what was paid so unequipping refunds exactly this (not a value
+  // recomputed at a different fleet size).
+  (c.modulePaid[classId] ??= {})[moduleId] = cost;
   return true;
+}
+
+/** Unequip a class module and refund exactly what was paid to fit it, so the
+ *  player can freely try loadouts within a class's limited slots. */
+export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+  const owned = c.classModules[classId];
+  const idx = owned.indexOf(moduleId);
+  if (idx < 0) return false;
+  owned.splice(idx, 1);
+  const paid = c.modulePaid[classId]?.[moduleId];
+  if (paid !== undefined) {
+    c.cash += paid;
+    delete c.modulePaid[classId][moduleId];
+  }
+  return true;
+}
+
+/** Cost to buy one replacement hull of a class, INCLUDING the class's current
+ *  module fit — a new hull sails with the class loadout, so the buyer pays for
+ *  those modules too (per single ship, not the whole-fleet refit price). */
+export function shipCost(c: CampaignState, classId: ShipClassId): number {
+  const modules = c.classModules[classId] ?? [];
+  const moduleSurcharge = modules.reduce((sum, m) => sum + MODULES[m].costPerShip, 0);
+  return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
 }
 
 export function buyAmmo(c: CampaignState, count: number): boolean {
@@ -410,6 +547,24 @@ export function buyAmmo(c: CampaignState, count: number): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.ammo += count;
+  return true;
+}
+
+export function buyDroneAmmo(c: CampaignState, buys = 1): boolean {
+  if (!Number.isInteger(buys) || buys <= 0) return false;
+  const cost = ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy * buys;
+  if (c.cash < cost) return false;
+  c.cash -= cost;
+  c.droneAmmo += ECONOMY.droneAmmoPerBuy * buys;
+  return true;
+}
+
+export function buyPdAmmo(c: CampaignState, buys = 1): boolean {
+  if (!Number.isInteger(buys) || buys <= 0) return false;
+  const cost = ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy * buys;
+  if (c.cash < cost) return false;
+  c.cash -= cost;
+  c.pdAmmo += ECONOMY.pdAmmoPerBuy * buys;
   return true;
 }
 
@@ -464,7 +619,7 @@ export function repairFleet(c: CampaignState): boolean {
 }
 
 export function buyShip(c: CampaignState, classId: ShipClassId): boolean {
-  const cost = SHIP_CLASSES[classId].replaceCost;
+  const cost = shipCost(c, classId);
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.fleet[classId]++;

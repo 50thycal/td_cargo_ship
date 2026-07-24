@@ -7,11 +7,25 @@ import { stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
   Ship,
+  TargetPriority,
   Threat,
   TransitCommand,
   TransitState,
 } from '../sim/types';
 import { h } from './dom';
+
+/** Cycle order for the HUD targeting-priority toggle. */
+const TARGET_PRIORITY_ORDER: TargetPriority[] = ['proximity', 'protectShips', 'threat'];
+const TARGET_PRIORITY_LABEL: Record<TargetPriority, string> = {
+  proximity: 'NEAR',
+  protectShips: 'SHIPS',
+  threat: 'THREAT',
+};
+const TARGET_PRIORITY_HINT: Record<TargetPriority, string> = {
+  proximity: 'Targeting: nearest missile first',
+  protectShips: 'Targeting: missiles aimed at ships first, batteries last',
+  threat: 'Targeting: guided (advanced) missiles first',
+};
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -65,13 +79,18 @@ export class TransitView {
   private escortTap: { x: number; y: number; escortId: number; timer: number } | null = null;
   /** An armed placeable ability: the next map tap places it. */
   private armedAbility: 'ecm' | 'scan' | null = null;
+  /** Which threat a tap on a cluster of missiles resolves to. A player
+   *  preference, persisted on the campaign (see onTargetPriorityChange). */
+  private targetPriority: TargetPriority;
 
   // HUD elements updated per-frame
   private hudInfo!: HTMLElement;
+  private hudQuota!: HTMLElement;
   private hudAmmo!: HTMLElement;
   private selInfo!: HTMLElement;
   private ecmBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
+  private targetBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
   private speedBtn!: HTMLButtonElement;
 
@@ -82,8 +101,18 @@ export class TransitView {
     private readonly round: number,
     private readonly confidence: number,
     private readonly showTutorial: boolean,
+    /** Cargo points already banked toward the active quota window BEFORE this
+     *  transit (i.e. campaign.quota.pointsEarned at round start). The live HUD
+     *  figure is this plus the round's own valueDelivered so far. */
+    private readonly quotaEarnedBefore: number,
+    private readonly quotaNeeded: number,
+    initialTargetPriority: TargetPriority,
+    /** Called whenever the player cycles the targeting-priority toggle, so the
+     *  host can persist the choice on the campaign (it isn't sim state). */
+    private readonly onTargetPriorityChange: (p: TargetPriority) => void,
     private readonly onDone: (t: TransitState) => void,
   ) {
+    this.targetPriority = initialTargetPriority;
     this.canvas = h('canvas', { attrs: { id: 'game-canvas' } });
     this.canvas.width = CANVAS_W;
     this.canvas.height = CANVAS_H;
@@ -99,6 +128,8 @@ export class TransitView {
       this.tutorialTip = h('div', {
         className: 'tutorial-tip',
         text: 'Tap an incoming missile to launch an interceptor',
+        // Tapping the tip itself dismisses it.
+        onClick: () => this.dismissTutorial(),
       });
       stage.append(this.tutorialTip);
       this.elements.push(this.tutorialTip);
@@ -115,10 +146,12 @@ export class TransitView {
 
   private buildHud(): void {
     this.hudInfo = h('span');
+    this.hudQuota = h('span', { className: 'hud-quota', attrs: { title: 'Active delivery quota' } });
     this.hudAmmo = h('span');
     this.selInfo = h('span', { attrs: { id: 'sel-info' } });
     this.hudTop.append(
       this.hudInfo,
+      this.hudQuota,
       h('span', { className: 'spacer' }),
       this.selInfo,
       this.hudAmmo,
@@ -131,6 +164,10 @@ export class TransitView {
     this.scanBtn = h('button', {
       className: 'hud-btn',
       onClick: () => this.armAbility('scan'),
+    });
+    this.targetBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.cycleTargetPriority(),
     });
 
     this.pauseBtn = h('button', {
@@ -153,9 +190,19 @@ export class TransitView {
     this.hudBottom.append(
       this.ecmBtn,
       this.scanBtn,
+      this.targetBtn,
       h('span', { className: 'spacer' }),
       h('div', { className: 'hud-group' }, [this.pauseBtn, this.speedBtn]),
     );
+  }
+
+  /** Cycle Proximity → Protect Ships → Threat Level → Proximity, and let the
+   *  host persist the choice (it's a player preference, not sim state). */
+  private cycleTargetPriority(): void {
+    const i = TARGET_PRIORITY_ORDER.indexOf(this.targetPriority);
+    this.targetPriority = TARGET_PRIORITY_ORDER[(i + 1) % TARGET_PRIORITY_ORDER.length];
+    this.onTargetPriorityChange(this.targetPriority);
+    this.showToast(TARGET_PRIORITY_HINT[this.targetPriority]);
   }
 
   private updateHud(): void {
@@ -164,7 +211,17 @@ export class TransitView {
       `Round ${this.round}   ·   Delivered ${s.delivered}/${s.launched}` +
       (s.lost > 0 ? `   ·   Lost ${s.lost}` : '') +
       `   ·   Confidence ${this.confidence}`;
-    this.hudAmmo.textContent = `Interceptors: ${this.state.ammo}`;
+
+    // Live quota: cargo points already banked this window PLUS this round's
+    // delivered value so far, so the player watches the active quota climb
+    // ship by ship as the convoy crosses. A distinct pill (not folded into the
+    // info string) so it stays legible and easy to track at a glance.
+    const quotaLive = this.quotaEarnedBefore + s.valueDelivered;
+    this.hudQuota.textContent = `Quota ${quotaLive}/${this.quotaNeeded}`;
+    this.hudQuota.classList.toggle('quota-met', quotaLive >= this.quotaNeeded);
+    this.hudAmmo.textContent =
+      `Interceptors: ${this.state.ammo}` +
+      (this.state.effects.sweepDrones ? `   ·   Drones: ${this.state.droneAmmo}` : '');
 
     // Clear the escort selection if that escort is gone or was destroyed.
     if (
@@ -174,10 +231,15 @@ export class TransitView {
       this.selectedEscort = null;
     }
     this.selInfo.textContent = this.armedAbility
-      ? `Tap the map to place ${this.armedAbility.toUpperCase()}`
+      ? this.armedAbility === 'scan'
+        ? 'Tap a lane to send the scan plane down it'
+        : 'Tap open water to deploy the ECM plane'
       : this.selectedEscort !== null
         ? 'Escort selected — tap to send · double-tap to pause'
         : '';
+
+    this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
+    this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
 
     const ecmActive = this.state.time < this.state.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
@@ -232,20 +294,12 @@ export class TransitView {
     const wy = (cy - OFFSET_Y) / SCALE;
 
     // 0) If an ability is armed, this tap places it where the player touched.
+    //    Scan: the Y picks a lane and a plane flies it. ECM: a plane deploys to
+    //    the tapped water (rejected on land, see the sim). The aircraft itself is
+    //    the visual feedback, so no placed ripple is drawn here.
     if (this.armedAbility) {
       const ability = this.armedAbility;
       this.queue({ type: 'ability', ability, x: wx, y: wy });
-      if (ability === 'scan') {
-        // Scan ripple renders at the placed point.
-        this.effects.push({
-          kind: 'scan',
-          x: wx,
-          y: wy,
-          start: performance.now(),
-          duration: 900,
-          maxRadius: COMBAT.scan.radius,
-        });
-      }
       this.armedAbility = null;
       return;
     }
@@ -253,16 +307,42 @@ export class TransitView {
     // Generous mobile-friendly tap radius (in world units).
     const tapRadius = 42 / SCALE;
 
-    // 1) A tap near an incoming missile fires an interceptor at it. Multiple
-    //    interceptors CAN be sent at one missile, so claimed missiles still tap.
+    // 1) A tap near an incoming missile fires an interceptor at it. When several
+    //    missiles are bunched under one tap, which one wins depends on the
+    //    HUD targeting-priority toggle:
+    //     - proximity:    nearest wins.
+    //     - protectShips: a missile aimed at a ship/escort always outranks one
+    //       aimed at a shore battery.
+    //     - threat:       a guided (advanced) missile always outranks an
+    //       unguided one.
+    //    In every mode a threat with no interceptor already inbound still
+    //    beats one that already has a shot on the way (so a tap defaults to a
+    //    fresh target instead of doubling up — doubling up is still possible
+    //    by tapping the same one again).
+    const inbound = new Set(
+      this.state.interceptors
+        .filter((i) => i.launcher !== 'pd')
+        .map((i) => i.targetThreatId),
+    );
     let bestThreat: Threat | null = null;
-    let bestThreatD = tapRadius;
+    let bestThreatKey = Infinity;
     for (const threat of this.state.threats) {
       if (!threat.alive || threat.kind === 'mine') continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
-      if (d < bestThreatD) {
+      if (d >= tapRadius) continue;
+      const claimedBand = inbound.has(threat.id) ? 1 : 0;
+      let modeBand = 0;
+      if (this.targetPriority === 'protectShips') {
+        modeBand = threat.targetKind === 'base' ? 2 : 0;
+      } else if (this.targetPriority === 'threat') {
+        modeBand = threat.kind === 'guidedMissile' ? 0 : 2;
+      }
+      // Band dominates (each unit is worth a full tapRadius, always bigger
+      // than any in-radius distance); distance only breaks ties within a band.
+      const key = (modeBand + claimedBand) * tapRadius + d;
+      if (key < bestThreatKey) {
+        bestThreatKey = key;
         bestThreat = threat;
-        bestThreatD = d;
       }
     }
     if (bestThreat) {
@@ -271,7 +351,27 @@ export class TransitView {
       return;
     }
 
-    // 2) A tap near a living escort selects it (only escorts are player-directed).
+    // 2) With minesweeping researched, a tap on a charted mine sends a drone from
+    //    the nearest in-range escort (the sim validates range / munitions).
+    if (this.state.effects.sweepDrones) {
+      let bestMine: Threat | null = null;
+      let bestMineD = tapRadius;
+      for (const mine of this.state.threats) {
+        if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
+        if (this.state.drones.some((dr) => dr.targetMineId === mine.id)) continue; // already swept
+        const d = Math.hypot(mine.x - wx, mine.y - wy);
+        if (d < bestMineD) {
+          bestMine = mine;
+          bestMineD = d;
+        }
+      }
+      if (bestMine) {
+        this.queue({ type: 'sweepMine', threatId: bestMine.id });
+        return;
+      }
+    }
+
+    // 3) A tap near a living escort selects it (only escorts are player-directed).
     let bestEscort: number | null = null;
     let bestEscortD = tapRadius;
     for (const escort of this.state.escorts) {
@@ -288,7 +388,7 @@ export class TransitView {
       return;
     }
 
-    // 3) With an escort selected, an open-water tap sets its destination:
+    // 4) With an escort selected, an open-water tap sets its destination:
     //    single tap → move there and resume forward; double-tap → pause there.
     if (this.selectedEscort !== null) {
       const escortId = this.selectedEscort;
@@ -524,10 +624,11 @@ export class TransitView {
     ctx.fillStyle = exitGrad;
     ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
 
-    // ECM bubble — drawn where the player placed it, at its true radius.
-    if (t.time < t.ecmActiveUntil) {
-      const cx = this.sx(t.ecmCenterX);
-      const cy = this.sy(t.ecmCenterY);
+    // ECM jamming orbit — drawn around each deployed ECM plane while on station.
+    for (const ac of t.aircraft) {
+      if (ac.role !== 'ecm' || ac.phase !== 'onStation') continue;
+      const cx = this.sx(ac.centerX);
+      const cy = this.sy(ac.centerY);
       const pulse = 1 + 0.04 * Math.sin(now / 120);
       ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
       ctx.beginPath();
@@ -563,6 +664,27 @@ export class TransitView {
       ctx.beginPath();
       ctx.arc(x, y, 14, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Sweep affordance: when drones are researched and in stock, and no drone
+      // is already inbound, show a green targeting bracket — tap it to sweep.
+      const beingSwept = t.drones.some((dr) => dr.targetMineId === mine.id);
+      if (t.effects.sweepDrones && t.droneAmmo > 0 && !beingSwept) {
+        ctx.strokeStyle = 'rgba(120, 224, 176, 0.8)';
+        ctx.lineWidth = 1.5;
+        const r = 18 + 1.5 * Math.sin(now / 200);
+        for (let q = 0; q < 4; q++) {
+          const a0 = q * (Math.PI / 2) + Math.PI / 4 - 0.35;
+          ctx.beginPath();
+          ctx.arc(x, y, r, a0, a0 + 0.7);
+          ctx.stroke();
+        }
+      } else if (beingSwept) {
+        ctx.strokeStyle = 'rgba(120, 224, 176, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 17, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Shore batteries on the friendly (bottom) shore.
@@ -829,8 +951,10 @@ export class TransitView {
       }
     }
 
-    // Interceptors (player launches = cyan dots) and point-defense tracers
-    // (bright streaks flying at their target so nothing is deleted silently).
+    // Interceptors — three visibly distinct munitions:
+    //  • point-defense tracer: tiny pale-yellow streak
+    //  • battery interceptor: the FAST one — a larger white-blue round with a glow
+    //  • escort interceptor: a smaller cyan round
     for (const interceptor of t.interceptors) {
       const ix = this.sx(interceptor.x);
       const iy = this.sy(interceptor.y);
@@ -848,10 +972,22 @@ export class TransitView {
         ctx.beginPath();
         ctx.arc(ix, iy, 2.5, 0, Math.PI * 2);
         ctx.fill();
-      } else {
-        ctx.fillStyle = '#7ce7ff';
+      } else if (interceptor.launcher === 'base') {
+        // Battery interceptor: bigger, brighter, with a soft glow — it reads as
+        // the heavier, faster round.
+        ctx.fillStyle = 'rgba(180, 230, 255, 0.28)';
         ctx.beginPath();
-        ctx.arc(ix, iy, 3.5, 0, Math.PI * 2);
+        ctx.arc(ix, iy, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#eaf6ff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Escort interceptor: smaller cyan round.
+        ctx.fillStyle = '#4dc3ff';
+        ctx.beginPath();
+        ctx.arc(ix, iy, 3, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -878,6 +1014,25 @@ export class TransitView {
       ctx.fillRect(-4, -1.2, 8, 2.4);
       ctx.fillRect(-1.2, -4, 2.4, 8);
       ctx.restore();
+    }
+
+    // Support aircraft (scan / ECM planes).
+    for (const ac of t.aircraft) {
+      const ax = this.sx(ac.x);
+      const ay = this.sy(ac.y);
+      if (ac.role === 'scan') {
+        // A scan plane sweeping its lane; draw a bright band ahead of it so the
+        // lane it is charting reads clearly.
+        const laneY = this.sy(ac.laneY);
+        ctx.fillStyle = 'rgba(77, 195, 255, 0.06)';
+        ctx.fillRect(ax, laneY - COMBAT.scan.laneHalfWidth * SCALE, CANVAS_W - ax, COMBAT.scan.laneHalfWidth * 2 * SCALE);
+        ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ax, ay, 14 + 3 * Math.sin(now / 120), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      this.drawPlane(ax, ay, ac.heading, ac.role === 'ecm' ? '#c792ea' : '#7ce7ff');
     }
 
     // Visual effects
@@ -929,6 +1084,32 @@ export class TransitView {
         CANVAS_H / 2 + 9,
       );
     }
+  }
+
+  /** A small top-down aircraft silhouette (swept wings), pointed along heading. */
+  private drawPlane(x: number, y: number, heading: number, color: string): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(11, 0); // nose
+    ctx.lineTo(2, 3);
+    ctx.lineTo(-4, 3);
+    ctx.lineTo(-4, 9); // swept wing
+    ctx.lineTo(-8, 9);
+    ctx.lineTo(-7, 2);
+    ctx.lineTo(-11, 2); // tailplane
+    ctx.lineTo(-11, -2);
+    ctx.lineTo(-7, -2);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-4, -9);
+    ctx.lineTo(-4, -3);
+    ctx.lineTo(2, -3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   private drawShip(ship: Ship): void {
