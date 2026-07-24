@@ -905,6 +905,20 @@ button.unequip {
 
 #hud-top .spacer { flex: 1; }
 
+.hud-quota {
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hud-quota.quota-met {
+  border-color: var(--good);
+  color: var(--good);
+}
+
 #hud-bottom {
   position: absolute;
   bottom: 0;

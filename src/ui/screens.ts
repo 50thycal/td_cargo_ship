@@ -883,7 +883,8 @@ export function prepScreen(
           ]),
           h('div', { className: 'hint', text: SHIP_TAGLINES[classId] }),
           h('div', { className: 'chip-row' }, [
-            chip('coin', `${def.value}`, 'Cargo value delivered per run'),
+            chip('coin', `$${def.value * ECONOMY.cashPerValue}`, 'Cash earned when this ship is delivered'),
+            chip('crate', `${def.value} pts`, 'Points toward the delivery quota when this ship is delivered'),
             chip('shield', `${def.hp}`, 'Hull points'),
             chip('speed', `${def.speed}`, 'Cruise speed'),
             chip('slots', `${c.classModules[classId].length}/${def.slots}`, 'Module slots used'),

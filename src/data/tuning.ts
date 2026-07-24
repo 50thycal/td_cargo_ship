@@ -252,6 +252,15 @@ export const ECONOMY = {
   /** Cash per point-defense round, and how many a single purchase buys. */
   pdAmmoCost: 12,
   pdAmmoPerBuy: 3,
+  /** Module refits price on OWNED hulls of the class (exploit-proof — see
+   *  moduleCost), but a flat per-ship rate would make a late-campaign refit
+   *  balloon into many thousands of cash as the fleet grows past 30+ hulls.
+   *  Ships up to this count are billed at the full per-ship rate; ships beyond
+   *  it are billed at moduleCostTaperRate of that rate, so a big fleet can
+   *  still afford SOME upgrades without every refit consuming the whole
+   *  treasury. */
+  moduleCostSoftCap: 12,
+  moduleCostTaperRate: 0.25,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,
@@ -286,12 +295,27 @@ export const CAMPAIGN = {
   confidenceLossCap: -12, // max penalty from losses in one round
   confidenceQuotaMet: 10,
   confidenceQuotaMissed: -18,
-  /** Quota: value points required per 3-round window. The requirement starts
-   *  from the initial capacity and ramps gently per window, deliberately NOT
-   *  tracking capacity growth — larger convoys are opportunity, not obligation. */
+  /** Quota: value points required per 3-round window. The FIRST window's
+   *  target is fixed (startCapacity * quotaPerCapacity); every window after
+   *  that is DYNAMIC — sized from the player's own recent output rather than a
+   *  flat increment, so it scales with how well the player is actually doing
+   *  instead of drifting trivially far behind a growing fleet (too easy) or
+   *  outrunning a struggling one (too punishing). See resolveTransit. */
   quotaWindowRounds: 3,
   quotaPerCapacity: 24, // initial window: startCapacity * this
-  quotaGrowthPerWindow: 40,
+  /** Next window's target = (this window's avg value delivered per round) *
+   *  quotaWindowRounds * quotaDifficulty. */
+  quotaDifficultyStart: 1.0,
+  quotaDifficultyMin: 0.65,
+  quotaDifficultyMax: 1.6,
+  /** Difficulty ratchets up on an easy clear (big surplus) and down on a miss
+   *  (big shortfall) — a standard rubber-band. Each step is scaled by how far
+   *  over/under the target the window landed, capped at the constant below. */
+  quotaDifficultyUpStep: 0.1,
+  quotaDifficultyDownStep: 0.16,
+  /** Hard floor so a single bad round can't trivialize the next quota:
+   *  pointsNeeded never drops below capacity * this. */
+  quotaFloorPerCapacity: 8,
   /** Score weights. */
   scorePerValue: 1,
   scorePerRound: 40,
