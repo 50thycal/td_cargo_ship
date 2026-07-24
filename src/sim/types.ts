@@ -95,6 +95,15 @@ export interface Ship {
 
 export type FormationId = 'tight' | 'wide' | 'sprint';
 
+/** How a tap on a cluster of missiles picks which one to target:
+ *   • proximity     — nearest to the tap wins (the long-standing default).
+ *   • protectShips  — missiles aimed at a ship/escort always outrank ones
+ *     aimed at a shore battery (the battery can absorb a hit; a ship can't).
+ *   • threat        — guided (advanced) missiles always outrank unguided ones.
+ *  In every mode, a threat with no interceptor already inbound still beats one
+ *  that already has a shot on the way, as a secondary tiebreak. */
+export type TargetPriority = 'proximity' | 'protectShips' | 'threat';
+
 export interface FormationDef {
   id: FormationId;
   name: string;
@@ -649,10 +658,20 @@ export interface CampaignState {
   ecmUnlocked: boolean;
   scanUnlocked: boolean;
   formation: FormationId;
+  /** Player preference for which threat a tap on a cluster of missiles
+   *  selects: nearest first, ship-aimed missiles before base-aimed ones, or
+   *  guided (advanced) missiles before unguided ones. Purely a UI/input
+   *  preference — does not change sim behavior, only which threat a tap
+   *  resolves to. Persists across rounds like formation. */
+  targetPriority: TargetPriority;
   completedResearch: ResearchId[];
   activeResearch: { id: ResearchId; roundsLeft: number } | null;
   evolution: EvolutionState;
   quota: QuotaWindow;
+  /** Rubber-band multiplier applied when sizing the NEXT quota window off the
+   *  player's recent output — rises on an easy clear, falls on a miss. See
+   *  CAMPAIGN.quotaDifficulty* in tuning.ts. */
+  quotaDifficulty: number;
   history: RoundSummary[];
   /** Full per-round telemetry for the downloadable game log. */
   telemetry: RoundTelemetry[];

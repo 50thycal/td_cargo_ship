@@ -158,12 +158,26 @@ export class Game {
     this.swapScreen(null);
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    new TransitView(this.stage, state, rng, c.round, c.confidence, c.round === 1, (finished) => {
-      this.lastTransit = finished;
-      resolveTransit(c, finished);
-      saveCampaign(c);
-      this.showAar();
-    });
+    new TransitView(
+      this.stage,
+      state,
+      rng,
+      c.round,
+      c.confidence,
+      c.round === 1,
+      c.quota.pointsEarned,
+      c.quota.pointsNeeded,
+      c.targetPriority,
+      (priority) => {
+        c.targetPriority = priority; // persisted with the next saveCampaign
+      },
+      (finished) => {
+        this.lastTransit = finished;
+        resolveTransit(c, finished);
+        saveCampaign(c);
+        this.showAar();
+      },
+    );
   }
 
   private showAar(): void {

@@ -116,6 +116,12 @@ export const ICONS = {
       '<rect x="4" y="13" width="7" height="7" rx="1.2"/><rect x="13" y="13" width="7" height="7" rx="1.2" opacity=".4"/>',
   ),
   speed: stroked('<path d="M4.5 6 10.5 12l-6 6"/><path d="M12 6l6 6-6 6" opacity=".7"/>'),
+  /** Cargo crate — used specifically for quota-points contribution, distinct
+   *  from the coin (cash) icon even though both derive from a ship's value. */
+  crate: stroked(
+    '<path d="M4 8.2 12 4l8 4.2v8.6L12 21 4 16.8z"/>' +
+      '<path d="M4 8.2 12 12.4l8-4.2M12 12.4V21" opacity=".7"/>',
+  ),
 } as const;
 
 export type IconName = keyof typeof ICONS;

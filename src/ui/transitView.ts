@@ -7,11 +7,25 @@ import { stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
   Ship,
+  TargetPriority,
   Threat,
   TransitCommand,
   TransitState,
 } from '../sim/types';
 import { h } from './dom';
+
+/** Cycle order for the HUD targeting-priority toggle. */
+const TARGET_PRIORITY_ORDER: TargetPriority[] = ['proximity', 'protectShips', 'threat'];
+const TARGET_PRIORITY_LABEL: Record<TargetPriority, string> = {
+  proximity: 'NEAR',
+  protectShips: 'SHIPS',
+  threat: 'THREAT',
+};
+const TARGET_PRIORITY_HINT: Record<TargetPriority, string> = {
+  proximity: 'Targeting: nearest missile first',
+  protectShips: 'Targeting: missiles aimed at ships first, batteries last',
+  threat: 'Targeting: guided (advanced) missiles first',
+};
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -65,13 +79,18 @@ export class TransitView {
   private escortTap: { x: number; y: number; escortId: number; timer: number } | null = null;
   /** An armed placeable ability: the next map tap places it. */
   private armedAbility: 'ecm' | 'scan' | null = null;
+  /** Which threat a tap on a cluster of missiles resolves to. A player
+   *  preference, persisted on the campaign (see onTargetPriorityChange). */
+  private targetPriority: TargetPriority;
 
   // HUD elements updated per-frame
   private hudInfo!: HTMLElement;
+  private hudQuota!: HTMLElement;
   private hudAmmo!: HTMLElement;
   private selInfo!: HTMLElement;
   private ecmBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
+  private targetBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
   private speedBtn!: HTMLButtonElement;
 
@@ -82,8 +101,18 @@ export class TransitView {
     private readonly round: number,
     private readonly confidence: number,
     private readonly showTutorial: boolean,
+    /** Cargo points already banked toward the active quota window BEFORE this
+     *  transit (i.e. campaign.quota.pointsEarned at round start). The live HUD
+     *  figure is this plus the round's own valueDelivered so far. */
+    private readonly quotaEarnedBefore: number,
+    private readonly quotaNeeded: number,
+    initialTargetPriority: TargetPriority,
+    /** Called whenever the player cycles the targeting-priority toggle, so the
+     *  host can persist the choice on the campaign (it isn't sim state). */
+    private readonly onTargetPriorityChange: (p: TargetPriority) => void,
     private readonly onDone: (t: TransitState) => void,
   ) {
+    this.targetPriority = initialTargetPriority;
     this.canvas = h('canvas', { attrs: { id: 'game-canvas' } });
     this.canvas.width = CANVAS_W;
     this.canvas.height = CANVAS_H;
@@ -117,10 +146,12 @@ export class TransitView {
 
   private buildHud(): void {
     this.hudInfo = h('span');
+    this.hudQuota = h('span', { className: 'hud-quota', attrs: { title: 'Active delivery quota' } });
     this.hudAmmo = h('span');
     this.selInfo = h('span', { attrs: { id: 'sel-info' } });
     this.hudTop.append(
       this.hudInfo,
+      this.hudQuota,
       h('span', { className: 'spacer' }),
       this.selInfo,
       this.hudAmmo,
@@ -133,6 +164,10 @@ export class TransitView {
     this.scanBtn = h('button', {
       className: 'hud-btn',
       onClick: () => this.armAbility('scan'),
+    });
+    this.targetBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.cycleTargetPriority(),
     });
 
     this.pauseBtn = h('button', {
@@ -155,9 +190,19 @@ export class TransitView {
     this.hudBottom.append(
       this.ecmBtn,
       this.scanBtn,
+      this.targetBtn,
       h('span', { className: 'spacer' }),
       h('div', { className: 'hud-group' }, [this.pauseBtn, this.speedBtn]),
     );
+  }
+
+  /** Cycle Proximity → Protect Ships → Threat Level → Proximity, and let the
+   *  host persist the choice (it's a player preference, not sim state). */
+  private cycleTargetPriority(): void {
+    const i = TARGET_PRIORITY_ORDER.indexOf(this.targetPriority);
+    this.targetPriority = TARGET_PRIORITY_ORDER[(i + 1) % TARGET_PRIORITY_ORDER.length];
+    this.onTargetPriorityChange(this.targetPriority);
+    this.showToast(TARGET_PRIORITY_HINT[this.targetPriority]);
   }
 
   private updateHud(): void {
@@ -166,6 +211,14 @@ export class TransitView {
       `Round ${this.round}   ·   Delivered ${s.delivered}/${s.launched}` +
       (s.lost > 0 ? `   ·   Lost ${s.lost}` : '') +
       `   ·   Confidence ${this.confidence}`;
+
+    // Live quota: cargo points already banked this window PLUS this round's
+    // delivered value so far, so the player watches the active quota climb
+    // ship by ship as the convoy crosses. A distinct pill (not folded into the
+    // info string) so it stays legible and easy to track at a glance.
+    const quotaLive = this.quotaEarnedBefore + s.valueDelivered;
+    this.hudQuota.textContent = `Quota ${quotaLive}/${this.quotaNeeded}`;
+    this.hudQuota.classList.toggle('quota-met', quotaLive >= this.quotaNeeded);
     this.hudAmmo.textContent =
       `Interceptors: ${this.state.ammo}` +
       (this.state.effects.sweepDrones ? `   ·   Drones: ${this.state.droneAmmo}` : '');
@@ -184,6 +237,9 @@ export class TransitView {
       : this.selectedEscort !== null
         ? 'Escort selected — tap to send · double-tap to pause'
         : '';
+
+    this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
+    this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
 
     const ecmActive = this.state.time < this.state.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
@@ -252,9 +308,17 @@ export class TransitView {
     const tapRadius = 42 / SCALE;
 
     // 1) A tap near an incoming missile fires an interceptor at it. When several
-    //    missiles are bunched under one tap, prefer the one that does NOT already
-    //    have an interceptor inbound, so a tap defaults to a fresh target instead
-    //    of doubling up. (Doubling up is still possible — tap the same one again.)
+    //    missiles are bunched under one tap, which one wins depends on the
+    //    HUD targeting-priority toggle:
+    //     - proximity:    nearest wins.
+    //     - protectShips: a missile aimed at a ship/escort always outranks one
+    //       aimed at a shore battery.
+    //     - threat:       a guided (advanced) missile always outranks an
+    //       unguided one.
+    //    In every mode a threat with no interceptor already inbound still
+    //    beats one that already has a shot on the way (so a tap defaults to a
+    //    fresh target instead of doubling up — doubling up is still possible
+    //    by tapping the same one again).
     const inbound = new Set(
       this.state.interceptors
         .filter((i) => i.launcher !== 'pd')
@@ -266,9 +330,16 @@ export class TransitView {
       if (!threat.alive || threat.kind === 'mine') continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
       if (d >= tapRadius) continue;
-      // Sort key: un-targeted missiles (band 0) always beat targeted ones
-      // (band 1); within a band, nearest to the tap wins.
-      const key = (inbound.has(threat.id) ? tapRadius : 0) + d;
+      const claimedBand = inbound.has(threat.id) ? 1 : 0;
+      let modeBand = 0;
+      if (this.targetPriority === 'protectShips') {
+        modeBand = threat.targetKind === 'base' ? 2 : 0;
+      } else if (this.targetPriority === 'threat') {
+        modeBand = threat.kind === 'guidedMissile' ? 0 : 2;
+      }
+      // Band dominates (each unit is worth a full tapRadius, always bigger
+      // than any in-radius distance); distance only breaks ties within a band.
+      const key = (modeBand + claimedBand) * tapRadius + d;
       if (key < bestThreatKey) {
         bestThreatKey = key;
         bestThreat = threat;

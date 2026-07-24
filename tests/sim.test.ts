@@ -367,7 +367,25 @@ describe('economy hardening', () => {
     setComposition(c, 'cargo', 0);
     expect(moduleCost(c, 'cargo', 'pointDefense')).toBe(fullPrice);
     setComposition(c, 'cargo', 15);
-    expect(fullPrice).toBe(110 * 15);
+    // Below the soft cap this is still a flat per-ship rate; above it, the
+    // marginal hull is billed at the taper rate (see moduleCost).
+    const cap = ECONOMY.moduleCostSoftCap;
+    const billable = 15 <= cap ? 15 : cap + (15 - cap) * ECONOMY.moduleCostTaperRate;
+    expect(fullPrice).toBe(Math.round(110 * billable));
+  });
+
+  it('module refit cost soft-caps so a large fleet stays affordable', () => {
+    const c = newCampaign('module-softcap');
+    c.fleet.cargo = 40; // a big late-campaign fleet
+    const cost40 = moduleCost(c, 'cargo', 'pointDefense');
+    // Linear pricing would be 110 * 40 = 4400; the soft cap must price it well
+    // under that so upgrades stay reachable at scale.
+    expect(cost40).toBeLessThan(110 * 40 * 0.7);
+    // Still strictly more expensive than a small fleet (more hulls to refit).
+    c.fleet.cargo = 10;
+    const cost10 = moduleCost(c, 'cargo', 'pointDefense');
+    expect(cost10).toBe(110 * 10); // at/under the cap: unchanged flat rate
+    expect(cost40).toBeGreaterThan(cost10);
   });
 
   it('a new hull costs its base price plus its class module fit', () => {
@@ -477,6 +495,48 @@ describe('transit hardening', () => {
     expect(lastReport!.quota.evaluated).toBe(true);
     expect(lastReport!.quota.met).toBe(false);
     expect(lastReport!.quota.windowRound).toBe(3);
+  });
+
+  it('quota difficulty ratchets up on an easy clear and the next target tracks recent pace', () => {
+    const c = newCampaign('quota-ratchet-up');
+    const before = c.quotaDifficulty;
+    // Trivially easy target: cleared on round 1 with a big surplus.
+    c.quota = { roundsLeft: 3, pointsNeeded: 10, pointsEarned: 0 };
+    const { report } = runRound(c, { defend: true });
+    expect(c.quotaDifficulty).toBeGreaterThan(before);
+    // The new target is sized off THIS window's actual average output
+    // (1 round, since it cleared immediately), not a flat increment.
+    const avgPerRound = report.quota.earned / report.quota.windowRound;
+    expect(c.quota.pointsNeeded).toBe(Math.round(avgPerRound * 3 * c.quotaDifficulty));
+  });
+
+  it('quota difficulty ratchets down on a miss, floored so it never bottoms out at zero', () => {
+    const c = newCampaign('quota-ratchet-down');
+    c.quotaDifficulty = 1.0;
+    const before = c.quotaDifficulty;
+    // Impossible target: guaranteed miss after 3 rounds.
+    c.quota = { roundsLeft: 3, pointsNeeded: 1_000_000, pointsEarned: 0 };
+    for (let r = 0; r < 3; r++) runRound(c, { defend: true });
+    expect(c.quotaDifficulty).toBeLessThan(before);
+    expect(c.quotaDifficulty).toBeGreaterThanOrEqual(0.65); // quotaDifficultyMin
+    // Floored relative to capacity even after a near-zero-output window.
+    expect(c.quota.pointsNeeded).toBeGreaterThanOrEqual(Math.round(c.capacity * 8));
+  });
+
+  it('repeated easy clears keep raising the bar (difficulty climbs, capped)', () => {
+    const c = newCampaign('quota-climb');
+    c.bases = 4;
+    c.ammo = 200;
+    let prevDifficulty = c.quotaDifficulty;
+    let roseAtLeastOnce = false;
+    for (let i = 0; i < 6; i++) {
+      runRound(c, { defend: true });
+      botProcure(c);
+      if (c.quotaDifficulty > prevDifficulty) roseAtLeastOnce = true;
+      expect(c.quotaDifficulty).toBeLessThanOrEqual(1.6); // quotaDifficultyMax
+      prevDifficulty = c.quotaDifficulty;
+    }
+    expect(roseAtLeastOnce).toBe(true);
   });
 });
 

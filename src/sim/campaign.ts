@@ -56,6 +56,7 @@ export function newCampaign(seed: string): CampaignState {
     ecmUnlocked: false,
     scanUnlocked: false,
     formation: 'tight',
+    targetPriority: 'proximity',
     completedResearch: [],
     activeResearch: null,
     evolution: newEvolution(),
@@ -64,6 +65,7 @@ export function newCampaign(seed: string): CampaignState {
       pointsNeeded: CAMPAIGN.startCapacity * CAMPAIGN.quotaPerCapacity,
       pointsEarned: 0,
     },
+    quotaDifficulty: CAMPAIGN.quotaDifficultyStart,
     history: [],
     telemetry: [],
     lastReport: null,
@@ -258,9 +260,29 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   }
 
   if (quotaEvaluated) {
+    // Rubber-band the difficulty multiplier off how comfortably the window
+    // resolved: an easy clear (big surplus) ratchets it up; a miss (big
+    // shortfall) eases it back down. Each step scales with the margin, capped
+    // so no single window swings it too far.
+    const ratio = quotaSnapshot.needed > 0 ? quotaSnapshot.earned / quotaSnapshot.needed : 1;
+    if (quotaMet) {
+      const surplus = Math.max(0, ratio - 1);
+      const step = Math.min(CAMPAIGN.quotaDifficultyUpStep, surplus * CAMPAIGN.quotaDifficultyUpStep * 2);
+      c.quotaDifficulty = Math.min(CAMPAIGN.quotaDifficultyMax, c.quotaDifficulty + step);
+    } else {
+      const shortfall = Math.max(0, 1 - ratio);
+      const step = Math.min(CAMPAIGN.quotaDifficultyDownStep, shortfall * CAMPAIGN.quotaDifficultyDownStep * 2);
+      c.quotaDifficulty = Math.max(CAMPAIGN.quotaDifficultyMin, c.quotaDifficulty - step);
+    }
+    // Size the next target off the player's own recent pace (average value
+    // delivered per round actually played this window) rather than a flat
+    // increment, so it tracks real capability as the campaign progresses.
+    const avgPerRound = quotaWindowRound > 0 ? quotaSnapshot.earned / quotaWindowRound : quotaSnapshot.earned;
+    const target = avgPerRound * CAMPAIGN.quotaWindowRounds * c.quotaDifficulty;
+    const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
     c.quota = {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
-      pointsNeeded: c.quota.pointsNeeded + CAMPAIGN.quotaGrowthPerWindow,
+      pointsNeeded: Math.max(Math.round(target), Math.round(floor)),
       pointsEarned: 0,
     };
   }
@@ -331,7 +353,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     // The window has already rolled over to the next one here, so c.quota now
     // holds the fresh requirement — tell the player exactly what's next.
-    const next = `New quota: deliver ${c.quota.pointsNeeded} cargo points over the next ${CAMPAIGN.quotaWindowRounds} rounds.`;
+    const next = `New quota: deliver ${c.quota.pointsNeeded} cargo points over the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`;
     cards.push({
       kind: 'quota',
       title: quotaMet ? 'Delivery quota met' : 'Delivery quota missed',
@@ -468,10 +490,17 @@ export function startResearch(c: CampaignState, id: ResearchId): boolean {
 /** Priced on OWNED hulls, not the mutable convoy assignment — composition can
  *  be toggled to zero for free, which would otherwise let the player buy a
  *  class-wide refit at single-ship price. Fleet size only shrinks through
- *  real losses, so it is exploit-proof as a price basis. */
+ *  real losses, so it is exploit-proof as a price basis.
+ *
+ *  The rate itself SOFT-CAPS: hulls up to moduleCostSoftCap are billed at the
+ *  full per-ship rate (so early-game pricing is unchanged), and hulls beyond
+ *  the cap are billed at a fraction of it — otherwise a late-campaign fleet of
+ *  30+ ships makes every refit cost thousands and nothing is ever affordable. */
 export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): number {
   const count = Math.max(1, c.fleet[classId]);
-  return MODULES[moduleId].costPerShip * count;
+  const cap = ECONOMY.moduleCostSoftCap;
+  const billable = count <= cap ? count : cap + (count - cap) * ECONOMY.moduleCostTaperRate;
+  return Math.round(MODULES[moduleId].costPerShip * billable);
 }
 
 export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
