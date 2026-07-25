@@ -6,6 +6,7 @@ import { COMBAT, SIM, WORLD } from '../data/tuning';
 import { stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
+  AutoSystem,
   Ship,
   TargetPriority,
   Threat,
@@ -13,6 +14,18 @@ import type {
   TransitState,
 } from '../sim/types';
 import { h } from './dom';
+
+/** Placeable abilities/weapons the HUD can arm; the next map tap places them. */
+type ArmedAbility = 'ecm' | 'scan' | 'sonar' | 'smoke' | 'dc';
+
+/** Automation toggle buttons, shown only for unlocked automation tactics. */
+const AUTO_TOGGLES: { system: AutoSystem; label: string; hint: string }[] = [
+  { system: 'escortInterceptor', label: 'ESC', hint: 'Escort automatic engagement' },
+  { system: 'baseInterceptor', label: 'BASE', hint: 'Shore-base automatic engagement' },
+  { system: 'mcmDrones', label: 'MCM', hint: 'Automatic mine clearance' },
+  { system: 'depthCharges', label: 'ASW', hint: 'Automatic depth-charge drop' },
+  { system: 'deckGun', label: 'GUN', hint: 'Automatic deck-gun engagement' },
+];
 
 /** Cycle order for the HUD targeting-priority toggle. */
 const TARGET_PRIORITY_ORDER: TargetPriority[] = ['proximity', 'protectShips', 'threat'];
@@ -78,7 +91,9 @@ export class TransitView {
   /** A first escort-destination tap awaiting a possible second (double) tap. */
   private escortTap: { x: number; y: number; escortId: number; timer: number } | null = null;
   /** An armed placeable ability: the next map tap places it. */
-  private armedAbility: 'ecm' | 'scan' | null = null;
+  private armedAbility: ArmedAbility | null = null;
+  /** Depth-charge shot ids whose detonation blast has been drawn. */
+  private dcDetonationsSeen = new Set<number>();
   /** Which threat a tap on a cluster of missiles resolves to. A player
    *  preference, persisted on the campaign (see onTargetPriorityChange). */
   private targetPriority: TargetPriority;
@@ -90,9 +105,14 @@ export class TransitView {
   private selInfo!: HTMLElement;
   private ecmBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
+  private sonarBtn!: HTMLButtonElement;
+  private smokeBtn!: HTMLButtonElement;
+  private rebootBtn!: HTMLButtonElement;
+  private dcBtn!: HTMLButtonElement;
   private targetBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
   private speedBtn!: HTMLButtonElement;
+  private autoBtns = new Map<AutoSystem, HTMLButtonElement>();
 
   constructor(
     stage: HTMLElement,
@@ -165,6 +185,22 @@ export class TransitView {
       className: 'hud-btn',
       onClick: () => this.armAbility('scan'),
     });
+    this.sonarBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.armAbility('sonar'),
+    });
+    this.smokeBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.armAbility('smoke'),
+    });
+    this.dcBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.armAbility('dc'),
+    });
+    this.rebootBtn = h('button', {
+      className: 'hud-btn',
+      onClick: () => this.queue({ type: 'reboot' }),
+    });
     this.targetBtn = h('button', {
       className: 'hud-btn',
       onClick: () => this.cycleTargetPriority(),
@@ -187,10 +223,41 @@ export class TransitView {
       },
     });
 
+    // Automation toggles — only for automation tactics actually researched.
+    // Disabling automation NEVER removes manual fire (the sim guarantees it).
+    const autoGroup = h('div', { className: 'hud-group' });
+    const fx = this.state.effects;
+    const autoAvailable: Partial<Record<AutoSystem, boolean>> = {
+      escortInterceptor: fx.escort.autoUnlocked && this.state.escorts.length > 0,
+      baseInterceptor: fx.base.autoUnlocked && this.state.bases.length > 0,
+      mcmDrones: fx.mcm.autoUnlocked && fx.sweepDrones,
+      depthCharges: fx.depthCharge.autoUnlocked && this.state.escortModules.includes('depthCharges'),
+      deckGun: fx.deckGun.autoNearest && this.state.escortModules.includes('deckGun'),
+    };
+    for (const toggle of AUTO_TOGGLES) {
+      if (!autoAvailable[toggle.system]) continue;
+      const btn = h('button', {
+        className: 'hud-btn auto-btn',
+        onClick: () => {
+          const enabled = !this.state.autoFire[toggle.system];
+          this.queue({ type: 'toggleAuto', system: toggle.system, enabled });
+          this.showToast(`${toggle.hint}: ${enabled ? 'ON' : 'OFF'} (manual fire always available)`);
+        },
+      });
+      btn.title = `${toggle.hint} — tap to toggle. Manual fire is never disabled.`;
+      this.autoBtns.set(toggle.system, btn);
+      autoGroup.append(btn);
+    }
+
     this.hudBottom.append(
       this.ecmBtn,
       this.scanBtn,
+      this.sonarBtn,
+      this.smokeBtn,
+      this.dcBtn,
+      this.rebootBtn,
       this.targetBtn,
+      autoGroup,
       h('span', { className: 'spacer' }),
       h('div', { className: 'hud-group' }, [this.pauseBtn, this.speedBtn]),
     );
@@ -219,40 +286,85 @@ export class TransitView {
     const quotaLive = this.quotaEarnedBefore + s.valueDelivered;
     this.hudQuota.textContent = `Quota ${quotaLive}/${this.quotaNeeded}`;
     this.hudQuota.classList.toggle('quota-met', quotaLive >= this.quotaNeeded);
+    const t = this.state;
+    const dcEquipped = t.escortModules.includes('depthCharges');
+    const dcReady = t.escorts.filter((e) => e.alive && e.dcShots > 0 && e.dcCooldown <= 0).length;
     this.hudAmmo.textContent =
-      `Interceptors: ${this.state.ammo}` +
-      (this.state.effects.sweepDrones ? `   ·   Drones: ${this.state.droneAmmo}` : '');
+      `Interceptors: ${t.ammo}` +
+      (t.effects.sweepDrones ? `   ·   Drones: ${t.droneAmmo}` : '') +
+      (dcEquipped ? `   ·   DC ready: ${dcReady}` : '');
 
     // Clear the escort selection if that escort is gone or was destroyed.
     if (
       this.selectedEscort !== null &&
-      !this.state.escorts.some((e) => e.id === this.selectedEscort && e.alive)
+      !t.escorts.some((e) => e.id === this.selectedEscort && e.alive)
     ) {
       this.selectedEscort = null;
     }
+    const armedHints: Record<ArmedAbility, string> = {
+      scan: 'Tap a lane to send the scan plane down it',
+      ecm: 'Tap open water to deploy the ECM plane',
+      sonar: 'Tap the water to place the active sonar ping',
+      smoke: 'Tap the water to lay the defensive smoke',
+      dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
+    };
     this.selInfo.textContent = this.armedAbility
-      ? this.armedAbility === 'scan'
-        ? 'Tap a lane to send the scan plane down it'
-        : 'Tap open water to deploy the ECM plane'
+      ? armedHints[this.armedAbility]
       : this.selectedEscort !== null
         ? 'Escort selected — tap to send · double-tap to pause'
-        : '';
+        : t.jammingSeconds > 0
+          ? `⚠ SENSOR JAMMING — ${Math.ceil(t.jammingSeconds)}s`
+          : '';
 
     this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
     this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
 
-    const ecmActive = this.state.time < this.state.ecmActiveUntil;
+    const ecmActive = t.time < t.ecmActiveUntil;
     this.ecmBtn.innerHTML = `ECM<span class="charges">${
-      ecmActive ? 'ACTIVE' : `×${this.state.ecmCharges}`
+      ecmActive ? 'ACTIVE' : `×${t.ecmCharges}`
     }</span>`;
-    this.ecmBtn.disabled = this.state.ecmCharges <= 0 && !ecmActive;
-    this.ecmBtn.classList.toggle('off', this.state.ecmCharges <= 0 && !ecmActive);
+    this.ecmBtn.disabled = t.ecmCharges <= 0 && !ecmActive;
+    this.ecmBtn.classList.toggle('off', t.ecmCharges <= 0 && !ecmActive);
     this.ecmBtn.classList.toggle('armed', this.armedAbility === 'ecm');
+    this.ecmBtn.classList.toggle('hidden', t.ecmCharges <= 0 && !ecmActive && t.stats.counter.charges.ecm.available === 0);
 
-    this.scanBtn.innerHTML = `SCAN<span class="charges">×${this.state.scanCharges}</span>`;
-    this.scanBtn.disabled = this.state.scanCharges <= 0;
-    this.scanBtn.classList.toggle('off', this.state.scanCharges <= 0);
+    this.scanBtn.innerHTML = `SCAN<span class="charges">×${t.scanCharges}</span>`;
+    this.scanBtn.disabled = t.scanCharges <= 0;
+    this.scanBtn.classList.toggle('off', t.scanCharges <= 0);
     this.scanBtn.classList.toggle('armed', this.armedAbility === 'scan');
+    this.scanBtn.classList.toggle('hidden', t.scanCharges <= 0 && t.stats.counter.charges.scan.available === 0);
+
+    this.sonarBtn.innerHTML = `PING<span class="charges">×${t.sonarCharges}</span>`;
+    this.sonarBtn.disabled = t.sonarCharges <= 0;
+    this.sonarBtn.classList.toggle('off', t.sonarCharges <= 0);
+    this.sonarBtn.classList.toggle('armed', this.armedAbility === 'sonar');
+    this.sonarBtn.classList.toggle('hidden', t.stats.counter.charges.sonar.available === 0);
+
+    this.smokeBtn.innerHTML = `SMOKE<span class="charges">×${t.smokeCharges}</span>`;
+    this.smokeBtn.disabled = t.smokeCharges <= 0;
+    this.smokeBtn.classList.toggle('off', t.smokeCharges <= 0);
+    this.smokeBtn.classList.toggle('armed', this.armedAbility === 'smoke');
+    this.smokeBtn.classList.toggle('hidden', t.stats.counter.charges.smoke.available === 0);
+
+    this.rebootBtn.innerHTML = `RBT<span class="charges">×${t.rebootCharges}</span>`;
+    this.rebootBtn.disabled = t.rebootCharges <= 0 || t.jammingSeconds <= 0;
+    this.rebootBtn.classList.toggle('hidden', t.stats.counter.charges.reboot.available === 0);
+    this.rebootBtn.title = 'Emergency reboot — shortens an active sensor-jamming blackout';
+
+    this.dcBtn.innerHTML = `DC<span class="charges">×${dcReady}</span>`;
+    this.dcBtn.disabled = dcReady <= 0;
+    this.dcBtn.classList.toggle('off', dcReady <= 0);
+    this.dcBtn.classList.toggle('armed', this.armedAbility === 'dc');
+    this.dcBtn.classList.toggle('hidden', !dcEquipped);
+    this.dcBtn.title = 'Depth charges — arm, then tap a point in the water (torpedoes only)';
+
+    // Automation toggle states: launcher reload and the SEPARATE auto-fire
+    // cooldown are both visible so automation is never hidden behavior.
+    for (const [system, btn] of this.autoBtns) {
+      const on = t.autoFire[system];
+      btn.innerHTML = `${AUTO_TOGGLES.find((a) => a.system === system)?.label}<span class="charges">${on ? 'AUTO' : 'MAN'}</span>`;
+      btn.classList.toggle('off', !on);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -269,11 +381,19 @@ export class TransitView {
     this.pending.push(cmd);
   }
 
-  /** Arm (or disarm) a placeable ability. The next map tap places it. */
-  private armAbility(ability: 'ecm' | 'scan'): void {
+  /** Arm (or disarm) a placeable ability/weapon. The next map tap places it. */
+  private armAbility(ability: ArmedAbility): void {
     if (this.state.over || this.paused) return;
     if (ability === 'ecm' && (this.state.ecmCharges <= 0 || this.state.time < this.state.ecmActiveUntil)) return;
     if (ability === 'scan' && this.state.scanCharges <= 0) return;
+    if (ability === 'sonar' && this.state.sonarCharges <= 0) return;
+    if (ability === 'smoke' && this.state.smokeCharges <= 0) return;
+    if (
+      ability === 'dc' &&
+      !this.state.escorts.some((e) => e.alive && e.dcShots > 0 && e.dcCooldown <= 0)
+    ) {
+      return;
+    }
     this.armedAbility = this.armedAbility === ability ? null : ability; // toggle
   }
 
@@ -293,13 +413,17 @@ export class TransitView {
     const wx = cx / SCALE;
     const wy = (cy - OFFSET_Y) / SCALE;
 
-    // 0) If an ability is armed, this tap places it where the player touched.
-    //    Scan: the Y picks a lane and a plane flies it. ECM: a plane deploys to
-    //    the tapped water (rejected on land, see the sim). The aircraft itself is
-    //    the visual feedback, so no placed ripple is drawn here.
+    // 0) If an ability/weapon is armed, this tap places it where the player
+    //    touched. Scan: the Y picks a lane. ECM: a plane deploys to the tapped
+    //    water. Sonar/smoke: a placed area effect. DC: the nearest ready escort
+    //    lobs depth charges at the point (an AREA attack — never a lock-on).
     if (this.armedAbility) {
       const ability = this.armedAbility;
-      this.queue({ type: 'ability', ability, x: wx, y: wy });
+      if (ability === 'dc') {
+        this.queue({ type: 'depthCharge', x: wx, y: wy });
+      } else {
+        this.queue({ type: 'ability', ability, x: wx, y: wy });
+      }
       this.armedAbility = null;
       return;
     }
@@ -321,13 +445,15 @@ export class TransitView {
     //    by tapping the same one again).
     const inbound = new Set(
       this.state.interceptors
-        .filter((i) => i.launcher !== 'pd')
+        .filter((i) => i.launcher !== 'pd' && i.launcher !== 'flak')
         .map((i) => i.targetThreatId),
     );
     let bestThreat: Threat | null = null;
     let bestThreatKey = Infinity;
     for (const threat of this.state.threats) {
-      if (!threat.alive || threat.kind === 'mine') continue;
+      // Interceptor taps resolve to MISSILES only — torpedoes, mines and boats
+      // have their own interactions (the sim would reject them anyway).
+      if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
       if (d >= tapRadius) continue;
       const claimedBand = inbound.has(threat.id) ? 1 : 0;
@@ -349,6 +475,24 @@ export class TransitView {
       this.queue({ type: 'intercept', threatId: bestThreat.id });
       this.dismissTutorial();
       return;
+    }
+
+    // 1b) A tap on an attack boat commits a deck gun to it (sustained fire).
+    if (this.state.escortModules.includes('deckGun')) {
+      let bestBoat: Threat | null = null;
+      let bestBoatD = tapRadius;
+      for (const threat of this.state.threats) {
+        if (!threat.alive || threat.kind !== 'attackBoat') continue;
+        const d = Math.hypot(threat.x - wx, threat.y - wy);
+        if (d < bestBoatD) {
+          bestBoat = threat;
+          bestBoatD = d;
+        }
+      }
+      if (bestBoat) {
+        this.queue({ type: 'engageBoat', threatId: bestBoat.id });
+        return;
+      }
     }
 
     // 2) With minesweeping researched, a tap on a charted mine sends a drone from
@@ -488,11 +632,40 @@ export class TransitView {
         case 'mineRevealed':
           this.showToast(ev.lowSig ? 'Low-signature mine detected!' : 'Mine detected ahead!');
           break;
+        case 'torpedoDetected':
+          this.showToast(
+            ev.detail === 'activeSonar' ? 'Sonar ping: torpedo contact!' : 'Hydrophone: torpedo in the water!',
+          );
+          break;
+        case 'depthChargeKill':
+          this.showToast('Depth charges destroyed a torpedo');
+          break;
+        case 'boatSunk':
+          this.showToast('Attack boat sunk');
+          break;
+        case 'flakKill':
+          this.showToast('Flak downed an enemy aircraft');
+          break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
           break;
         default:
           break;
+      }
+    }
+
+    // Depth-charge detonations: one expanding blast ring per shot.
+    for (const shot of this.state.depthChargeShots) {
+      if (shot.detonated && !this.dcDetonationsSeen.has(shot.id)) {
+        this.dcDetonationsSeen.add(shot.id);
+        this.effects.push({
+          kind: 'explosion',
+          x: shot.targetX,
+          y: shot.targetY,
+          start: now,
+          duration: 650,
+          maxRadius: shot.blastRadius * SCALE,
+        });
       }
     }
 
@@ -625,6 +798,7 @@ export class TransitView {
     ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
 
     // ECM jamming orbit — drawn around each deployed ECM plane while on station.
+    const ecmRadius = t.effects.abilities.ecm.radius;
     for (const ac of t.aircraft) {
       if (ac.role !== 'ecm' || ac.phase !== 'onStation') continue;
       const cx = this.sx(ac.centerX);
@@ -632,15 +806,53 @@ export class TransitView {
       const pulse = 1 + 0.04 * Math.sin(now / 120);
       ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
       ctx.beginPath();
-      ctx.arc(cx, cy, COMBAT.ecm.radius * SCALE * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, ecmRadius * SCALE * pulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(199, 146, 234, 0.5)';
       ctx.setLineDash([6, 8]);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, COMBAT.ecm.radius * SCALE * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, ecmRadius * SCALE * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // Placed area effects: active sonar pings (blue) and defensive smoke (grey).
+    for (const fx of t.areaEffects) {
+      const cx = this.sx(fx.x);
+      const cy = this.sy(fx.y);
+      const r = fx.radius * SCALE;
+      const remain = Math.max(0, fx.until - t.time);
+      if (fx.kind === 'sonar') {
+        ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
+        ctx.setLineDash([4, 7]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // A sweeping ping arm makes the active window readable.
+        const ang = (now / 500) % (Math.PI * 2);
+        ctx.strokeStyle = 'rgba(77, 195, 255, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+        ctx.stroke();
+      } else {
+        // Smoke: a soft grey blob, fading as it nears expiry.
+        const fade = Math.min(1, remain / 4);
+        ctx.fillStyle = `rgba(170, 180, 190, ${0.16 * fade})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(190, 200, 210, ${0.35 * fade})`;
+        ctx.setLineDash([10, 10]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     // Mines (revealed only)
@@ -736,7 +948,16 @@ export class TransitView {
         ctx.strokeStyle = 'rgba(255, 200, 87, 0.7)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x, y - 2, 16, -Math.PI / 2, -Math.PI / 2 + (1 - base.cooldown / COMBAT.base.reload) * Math.PI * 2);
+        ctx.arc(x, y - 2, 16, -Math.PI / 2, -Math.PI / 2 + (1 - base.cooldown / t.effects.base.reload) * Math.PI * 2);
+        ctx.stroke();
+      }
+      // Separate automatic-fire cooldown (inner amber arc) — automation state
+      // is never hidden behavior: reload and auto-cycle read independently.
+      if (t.effects.base.autoUnlocked && t.autoFire.baseInterceptor && base.autoCooldown > 0 && t.effects.base.autoCooldown > 0) {
+        ctx.strokeStyle = 'rgba(199, 146, 234, 0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y - 2, 11, -Math.PI / 2, -Math.PI / 2 + (1 - base.autoCooldown / t.effects.base.autoCooldown) * Math.PI * 2);
         ctx.stroke();
       }
       // HP bar when the battery is damaged.
@@ -837,7 +1058,23 @@ export class TransitView {
         ctx.strokeStyle = 'rgba(255, 200, 87, 0.6)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x, y, 16, -Math.PI / 2, -Math.PI / 2 + (1 - escort.cooldown / COMBAT.interceptor.cooldown) * Math.PI * 2);
+        ctx.arc(x, y, 16, -Math.PI / 2, -Math.PI / 2 + (1 - escort.cooldown / t.effects.escort.reload) * Math.PI * 2);
+        ctx.stroke();
+      }
+      // Separate automatic-fire cooldown arc (independent of launcher reload).
+      if (t.effects.escort.autoUnlocked && t.autoFire.escortInterceptor && escort.autoCooldown > 0 && t.effects.escort.autoCooldown > 0) {
+        ctx.strokeStyle = 'rgba(199, 146, 234, 0.65)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 12, -Math.PI / 2, -Math.PI / 2 + (1 - escort.autoCooldown / t.effects.escort.autoCooldown) * Math.PI * 2);
+        ctx.stroke();
+      }
+      // Local automatic-engagement radius (faint) while automation is on.
+      if (t.effects.escort.autoUnlocked && t.autoFire.escortInterceptor && !disabled) {
+        ctx.strokeStyle = 'rgba(199, 146, 234, 0.14)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, t.effects.escort.autoRadius * SCALE, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -851,9 +1088,96 @@ export class TransitView {
       }
     }
 
+    // Revealed torpedoes: a teal underwater runner with a short wake. Hidden
+    // ones stay invisible — detection is the hydrophone/active-sonar job.
+    for (const threat of t.threats) {
+      if (threat.kind !== 'torpedo' || !threat.alive || !threat.revealed) continue;
+      const x = this.sx(threat.x);
+      const y = this.sy(threat.y);
+      const ang = Math.atan2(threat.vy, threat.vx);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.fillStyle = '#4fd8c4';
+      ctx.fillRect(-7, -2, 14, 4);
+      ctx.strokeStyle = 'rgba(79, 216, 196, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(-26, 0);
+      ctx.stroke();
+      ctx.restore();
+      // Depth charges are the counter — cue the area-attack affordance.
+      if (t.escortModules.includes('depthCharges')) {
+        ctx.strokeStyle = 'rgba(79, 216, 196, 0.5)';
+        ctx.setLineDash([3, 5]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 15 + 2 * Math.sin(now / 180), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Attack boats: persistent surface craft with hull bars; a committed deck
+    // gun draws its fire line.
+    for (const threat of t.threats) {
+      if (threat.kind !== 'attackBoat' || !threat.alive) continue;
+      const x = this.sx(threat.x);
+      const y = this.sy(threat.y);
+      const ang = Math.atan2(threat.vy, threat.vx);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.fillStyle = threat.boatVariant === 'boarding' ? '#e08a5e' : '#d8626a';
+      ctx.beginPath();
+      ctx.moveTo(9, 0);
+      ctx.lineTo(3, -4);
+      ctx.lineTo(-9, -4);
+      ctx.lineTo(-9, 4);
+      ctx.lineTo(3, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (threat.maxHp && threat.hp !== undefined && threat.hp < threat.maxHp) {
+        const frac = Math.max(0, threat.hp / threat.maxHp);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x - 10, y - 12, 20, 3);
+        ctx.fillStyle = frac > 0.5 ? '#59d98c' : frac > 0.25 ? '#ffc857' : '#ff6b6b';
+        ctx.fillRect(x - 10, y - 12, 20 * frac, 3);
+      }
+      for (const escort of t.escorts) {
+        if (!escort.alive || escort.gunTargetId !== threat.id) continue;
+        ctx.strokeStyle = 'rgba(255, 200, 87, 0.5)';
+        ctx.setLineDash([2, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(this.sx(escort.x), this.sy(escort.y));
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Depth-charge rounds in flight, plus their aim points.
+    for (const shot of t.depthChargeShots) {
+      if (shot.detonated) continue;
+      const sx = this.sx(shot.x);
+      const sy = this.sy(shot.y);
+      ctx.fillStyle = '#9aa8b5';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(154, 168, 181, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(this.sx(shot.targetX), this.sy(shot.targetY), shot.blastRadius * SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // Missiles with trails
     for (const threat of t.threats) {
-      if (!threat.alive || threat.kind === 'mine') continue;
+      if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
 
       // Early-Warning Network research: show where each missile is headed.
       if (t.effects.showTargetVectors) {
@@ -875,7 +1199,9 @@ export class TransitView {
         }
       }
 
-      // Missile-Warning Receiver module: mark the hunted ship.
+      // Missile-Warning Receiver module: mark the hunted ship. With the
+      // impact-urgency tactic the pulse speeds up as the missile closes —
+      // a readable urgency state, never a number to read.
       if (threat.kind === 'guidedMissile') {
         const target = t.ships.find(
           (s) => s.id === threat.targetShipId && s.alive && !s.delivered,
@@ -883,7 +1209,13 @@ export class TransitView {
         if (target?.modules.includes('missileWarning')) {
           const px = this.sx(target.x);
           const py = this.sy(target.y);
-          const blink = Math.sin(now / 110) > 0;
+          let blinkPeriod = 110;
+          if (t.effects.missileWarning.urgency) {
+            const d = Math.hypot(threat.x - target.x, threat.y - target.y);
+            const tti = d / Math.max(1, threat.speed);
+            blinkPeriod = tti < 3 ? 45 : tti < 7 ? 75 : 130;
+          }
+          const blink = Math.sin(now / blinkPeriod) > 0;
           if (blink) {
             ctx.strokeStyle = 'rgba(255, 107, 107, 0.9)';
             ctx.lineWidth = 2;
@@ -972,23 +1304,91 @@ export class TransitView {
         ctx.beginPath();
         ctx.arc(ix, iy, 2.5, 0, Math.PI * 2);
         ctx.fill();
+      } else if (interceptor.launcher === 'flak') {
+        // Flak burst: a short amber tracer.
+        ctx.fillStyle = '#ffd27a';
+        ctx.beginPath();
+        ctx.arc(ix, iy, interceptor.size ?? 2.5, 0, Math.PI * 2);
+        ctx.fill();
       } else if (interceptor.launcher === 'base') {
         // Battery interceptor: bigger, brighter, with a soft glow — it reads as
-        // the heavier, faster round.
+        // the heavier, faster round. Visual size follows its size tier.
+        const size = interceptor.size ?? 5;
         ctx.fillStyle = 'rgba(180, 230, 255, 0.28)';
         ctx.beginPath();
-        ctx.arc(ix, iy, 9, 0, Math.PI * 2);
+        ctx.arc(ix, iy, size + 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#eaf6ff';
         ctx.beginPath();
-        ctx.arc(ix, iy, 5, 0, Math.PI * 2);
+        ctx.arc(ix, iy, size, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Escort interceptor: smaller cyan round.
+        // Escort interceptor: smaller cyan round (size tier–driven).
         ctx.fillStyle = '#4dc3ff';
         ctx.beginPath();
-        ctx.arc(ix, iy, 3, 0, Math.PI * 2);
+        ctx.arc(ix, iy, interceptor.size ?? 3, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+
+    // Self-defense module cues: the threat-designator tactic highlights the
+    // missile each module intends to engage (at ~2× firing range — warning
+    // before the shot); the engagement-predictor tactic adds the projected
+    // engagement line and a loaded/empty/reloading status pip.
+    const sd = t.effects.selfDefense;
+    if (sd.designator || sd.predictor) {
+      const designateRange = sd.range * 2;
+      for (const ship of t.ships) {
+        if (!ship.spawned || !ship.alive || ship.delivered) continue;
+        if (!ship.modules.includes('selfDefense')) continue;
+        const px = this.sx(ship.x);
+        const py = this.sy(ship.y);
+        if (sd.predictor) {
+          const status =
+            ship.pdShots <= 0 || t.pdAmmo <= 0
+              ? '#ff6b6b' // empty / no rounds
+              : ship.pdCooldown > 0
+                ? '#ffc857' // reloading
+                : '#59d98c'; // loaded
+          ctx.fillStyle = status;
+          ctx.fillRect(px + 8, py - 14, 5, 5);
+        }
+        if (ship.pdShots <= 0 || t.pdAmmo <= 0) continue;
+        let intended: Threat | null = null;
+        let bestD = designateRange;
+        for (const threat of t.threats) {
+          if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
+          const d = Math.hypot(threat.x - ship.x, threat.y - ship.y);
+          if (d < bestD) {
+            bestD = d;
+            intended = threat;
+          }
+        }
+        if (!intended) continue;
+        const tx = this.sx(intended.x);
+        const ty = this.sy(intended.y);
+        if (sd.designator) {
+          // Amber corner brackets on the intended target.
+          ctx.strokeStyle = 'rgba(255, 210, 122, 0.85)';
+          ctx.lineWidth = 1.5;
+          const r = 9;
+          for (let q = 0; q < 4; q++) {
+            const a0 = q * (Math.PI / 2) + Math.PI / 4 - 0.3;
+            ctx.beginPath();
+            ctx.arc(tx, ty, r, a0, a0 + 0.6);
+            ctx.stroke();
+          }
+        }
+        if (sd.predictor) {
+          ctx.strokeStyle = 'rgba(255, 210, 122, 0.3)';
+          ctx.setLineDash([3, 5]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
 
@@ -1022,10 +1422,13 @@ export class TransitView {
       const ay = this.sy(ac.y);
       if (ac.role === 'scan') {
         // A scan plane sweeping its lane; draw a bright band ahead of it so the
-        // lane it is charting reads clearly.
+        // lane it is charting reads clearly (band width scales with the
+        // expanded-coverage research path).
+        const laneHalf =
+          COMBAT.scan.laneHalfWidth * (t.effects.abilities.scan.radius / COMBAT.scan.baseRevealRadius);
         const laneY = this.sy(ac.laneY);
         ctx.fillStyle = 'rgba(77, 195, 255, 0.06)';
-        ctx.fillRect(ax, laneY - COMBAT.scan.laneHalfWidth * SCALE, CANVAS_W - ax, COMBAT.scan.laneHalfWidth * 2 * SCALE);
+        ctx.fillRect(ax, laneY - laneHalf * SCALE, CANVAS_W - ax, laneHalf * 2 * SCALE);
         ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();

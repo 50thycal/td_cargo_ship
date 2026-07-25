@@ -8,36 +8,65 @@
 // same screen id and must not re-trigger the stagger, so `entering()` tracks
 // the last screen id at module scope.
 
-import { COMBAT, ECONOMY } from '../data/tuning';
+import { ECONOMY } from '../data/tuning';
 import {
+  BASE_MODULES,
+  BASE_MODULE_SLOTS,
+  ESCORT_MODULES,
+  ESCORT_MODULE_SLOTS,
   FORMATIONS,
   MODULES,
-  RESEARCH,
-  RESEARCH_BRANCH_NAMES,
   SHIP_CLASSES,
 } from '../data/defs';
 import {
+  CATEGORY_ORDER,
+  COUNTER_BRANCHES,
+  COUNTER_CATEGORY_NAMES,
+  ENEMY_BRANCH_NAMES,
+  RESEARCH_INDEX,
+  type CounterBranchDef,
+  type CounterBranchId,
+  type CounterCategoryId,
+  type CounterNodeDef,
+  type CounterRole,
+  type CounterTacticDef,
+  type PlatformKind,
+  type TacticKind,
+} from '../data/counters';
+import {
+  baseModuleBlockReason,
   buyAmmo,
   buyBase,
+  buyBaseModule,
   buyDroneAmmo,
   buyEscort,
+  buyEscortModule,
   buyModule,
   buyPdAmmo,
   buyShip,
   canStartResearch,
   type DevOptions,
+  escortModuleBlockReason,
+  hasResearch,
+  moduleBlockReason,
   moduleCost,
+  removeBaseModule,
+  removeEscortModule,
   removeModule,
   repairCost,
   repairFleet,
   setComposition,
   setFormation,
+  setProtectedChannels,
   shipCost,
   startResearch,
   totalComposition,
   totalPendingDamage,
   unlockEcm,
+  unlockHardened,
   unlockScan,
+  unlockSmoke,
+  unlockSonar,
 } from '../sim/campaign';
 import { formatInterceptSummary } from '../sim/aar';
 import { downloadGameLog } from './download';
@@ -49,8 +78,8 @@ import type {
   CampaignState,
   FormationId,
   ModuleId,
-  ResearchBranch,
   ResearchId,
+  SensorFamily,
   ShipClassId,
   TransitState,
 } from '../sim/types';
@@ -609,45 +638,184 @@ export function aarScreen(
 // Research — an interactive tech tree
 // ---------------------------------------------------------------------------
 
-const BRANCH_ORDER: ResearchBranch[] = [
-  'sensors',
-  'interception',
-  'mineWarfare',
-  'electronicWarfare',
-  'resilience',
-  'logistics',
-];
-
-const BRANCH_ICONS: Record<ResearchBranch, IconName> = {
-  sensors: 'radar',
-  interception: 'missile',
+const CATEGORY_ICONS: Record<CounterCategoryId, IconName> = {
+  missileDefense: 'missile',
   mineWarfare: 'mine',
-  resilience: 'shield',
-  electronicWarfare: 'jam',
+  torpedoWarfare: 'sonar',
+  antiSurface: 'turret',
+  counterArtillery: 'turret',
+  concealment: 'eye',
+  electronicDefense: 'jam',
+  damageControl: 'shield',
+  support: 'anchor',
+};
+
+const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
+  escortInterceptor: 'missile',
+  baseInterceptor: 'turret',
+  selfDefense: 'turret',
+  missileWarning: 'alert',
+  mineSonar: 'sonar',
+  mcmDrones: 'drone',
+  scanPulse: 'planeScan',
+  hydrophone: 'sonar',
+  depthCharges: 'mine',
+  activeSonar: 'radar',
+  deckGun: 'turret',
+  antiBoarding: 'lock',
+  counterBattery: 'turret',
+  thermalImaging: 'eye',
+  smokeScreen: 'jam',
+  flak: 'turret',
+  hardened: 'shield',
+  ecm: 'planeEcm',
+  reinforcedHull: 'shield',
+  fireSuppression: 'flame',
+  compartmentalization: 'slots',
   logistics: 'anchor',
 };
 
-const RESEARCH_ICONS: Record<ResearchId, IconName> = {
-  sensors1: 'radar',
-  sensors2: 'sonar',
-  sensors3: 'eye',
-  intercept1: 'missile',
-  intercept2: 'chevrons',
-  mines1: 'drone',
-  resilience1: 'shield',
-  resilience2: 'flame',
-  ew1: 'jam',
-  logistics1: 'anchor',
+const PLATFORM_LABELS: Record<PlatformKind, string> = {
+  cargoModule: 'Cargo module',
+  escort: 'Escort',
+  shoreBase: 'Shore base',
+  convoy: 'Convoy-wide',
+};
+
+const ROLE_LABELS: Record<CounterRole, string> = {
+  detect: 'detects',
+  attack: 'attacks',
+  mitigate: 'mitigates',
+  disrupt: 'disrupts',
+  support: 'support',
+};
+
+/** What a tactic changes, so the player can tell automation from information
+ *  from operating modes at a glance. */
+const TACTIC_KIND_LABELS: Record<TacticKind, string> = {
+  manual: 'Manual control',
+  automation: 'Automation',
+  info: 'Target information',
+  coordination: 'Coordinated fire',
+  mode: 'Operating mode',
 };
 
 type NodeState = 'done' | 'active' | 'ready' | 'known' | 'locked';
 
 function researchNodeState(c: CampaignState, id: ResearchId): NodeState {
-  const def = RESEARCH[id];
-  if (c.completedResearch.includes(id)) return 'done';
+  const entry = RESEARCH_INDEX[id];
+  if (!entry) return 'locked';
+  if (hasResearch(c, id)) return 'done';
   if (c.activeResearch?.id === id) return 'active';
-  if (def.requires && !c.completedResearch.includes(def.requires)) return 'locked';
+  if (entry.requires.some((r) => !hasResearch(c, r))) return 'locked';
   return canStartResearch(c, id).ok ? 'ready' : 'known';
+}
+
+/** Human summary of what a node's tier assignments / grants do (hardware
+ *  performance vs targets vs ammo — distinct from tactic behavior). */
+function nodeEffectSummary(def: CounterNodeDef): string {
+  const parts: string[] = [];
+  for (const s of def.set ?? []) {
+    parts.push(`${s.stat} → ${s.tier.charAt(0).toUpperCase()}${s.tier.slice(1)}`);
+  }
+  for (const [k, v] of Object.entries(def.grant ?? {})) parts.push(`${k}: ${v}`);
+  return parts.join(' · ');
+}
+
+function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
+  const tags = h('div', { className: 'chip-row branch-tags' }, [
+    chip('anchor', PLATFORM_LABELS[branch.platform], 'Platform this branch belongs to'),
+    chip('chevrons', ROLE_LABELS[branch.role], 'Whether it detects, attacks, mitigates or disrupts'),
+  ]);
+  for (const enemy of branch.counters) {
+    tags.append(chip('alert', `vs ${ENEMY_BRANCH_NAMES[enemy]}`, branch.countersDetail));
+  }
+  if (branch.future) {
+    tags.append(chip('eye', 'awaiting enemy capability', 'The countered enemy branch has not been fielded yet — research and equipment are ready for the day it appears.'));
+  }
+  // Equipment status: what physically carries this branch, and whether it is
+  // installed — research alone never equips anything.
+  const eq = branch.equipment;
+  if (eq) {
+    let fitted = false;
+    let label = '';
+    if (eq.kind === 'cargoModule') {
+      fitted = Object.values(c.classModules).some((mods) => mods.includes(eq.id));
+      label = `module: ${MODULES[eq.id].name}`;
+    } else if (eq.kind === 'escortModule') {
+      fitted = c.escortModules.includes(eq.id);
+      label = `escort fit: ${ESCORT_MODULES[eq.id].name}`;
+    } else if (eq.kind === 'baseModule') {
+      fitted = c.baseModules.includes(eq.id);
+      label = `base fit: ${BASE_MODULES[eq.id].name}`;
+    } else if (eq.kind === 'ability') {
+      fitted =
+        (eq.id === 'ecm' && c.ecmUnlocked) ||
+        (eq.id === 'scan' && c.scanUnlocked) ||
+        (eq.id === 'sonar' && c.sonarUnlocked) ||
+        (eq.id === 'smoke' && c.smokeUnlocked) ||
+        (eq.id === 'hardened' && c.hardenedUnlocked);
+      label = 'convoy asset';
+    } else {
+      fitted = eq.id === 'escort' ? c.escorts > 0 : c.bases > 0;
+      label = 'built-in launcher';
+    }
+    tags.append(chip(fitted ? 'check' : 'lock', fitted ? `${label} ✓` : `${label} — not fitted`,
+      fitted ? 'Equipment installed' : 'Research is ready, but the hardware must be bought in Preparation'));
+  }
+  return tags;
+}
+
+/** One row of researchable entries (the branch's Nodes or its Tactics). */
+function entryRow(
+  c: CampaignState,
+  label: string,
+  entries: readonly CounterNodeDef[],
+  chained: boolean,
+  branchIcon: IconName,
+  rerender: () => void,
+): HTMLElement {
+  const nodes = h('div', { className: 'tech-nodes' });
+  entries.forEach((def, i) => {
+    const state = researchNodeState(c, def.id);
+    if (i > 0 && chained) {
+      const prevDone = hasResearch(c, entries[i - 1].id);
+      nodes.append(h('div', { className: prevDone ? 'tech-connector done' : 'tech-connector' }));
+    } else if (i > 0) {
+      nodes.append(h('div', { className: 'tech-gap' }));
+    }
+    const orbIcon =
+      state === 'done' ? 'check' : state === 'active' ? 'flask' : state === 'locked' ? 'lock' : branchIcon;
+    const costEl = def.granted
+      ? h('div', { className: 'tech-cost done', text: 'built-in' })
+      : state === 'done'
+        ? h('div', { className: 'tech-cost done', text: 'deployed' })
+        : state === 'active'
+          ? h('div', { className: 'tech-cost active', text: 'in progress' })
+          : h('div', { className: 'tech-cost' }, [icon('intel'), h('span', { text: `${def.cost}` })]);
+    nodes.append(
+      clickable(h(
+        'div',
+        {
+          className: `tech-node ${state}${selectedResearch === def.id ? ' selected' : ''}`,
+          onClick: () => {
+            selectedResearch = selectedResearch === def.id ? null : def.id;
+            revealResearchDetail = selectedResearch !== null;
+            rerender();
+          },
+        },
+        [
+          h('div', { className: 'orb' }, [icon(orbIcon)]),
+          h('div', { className: 'tech-name', text: def.name }),
+          costEl,
+        ],
+      )),
+    );
+  });
+  return h('div', { className: 'tech-row' }, [
+    h('div', { className: 'tech-row-label', text: label }),
+    nodes,
+  ]);
 }
 
 export function researchScreen(
@@ -663,13 +831,13 @@ export function researchScreen(
     'research',
   );
 
-  if (c.activeResearch) {
-    const def = RESEARCH[c.activeResearch.id];
+  if (c.activeResearch && RESEARCH_INDEX[c.activeResearch.id]) {
+    const entry = RESEARCH_INDEX[c.activeResearch.id];
     body.append(
       h('div', { className: 'card research active-banner' }, [
         h('div', { className: 'card-head' }, [
           icon('flask', 'spin-slow'),
-          h('h3', { text: `In progress: ${def.name}` }),
+          h('h3', { text: `In progress: ${entry.def.name} (${entry.branch.name})` }),
         ]),
         h('p', { text: 'The lab will deliver after the next transit. Choose wisely what the convoy must survive until then.' }),
         h('div', { className: 'bar stripes' }, [h('div', { className: 'fill accent', attrs: { style: 'width:60%' } })]),
@@ -677,59 +845,53 @@ export function researchScreen(
     );
   }
 
-  // --- The tree ---------------------------------------------------------------
+  // --- The catalogue: Category → Branch → Nodes / Tactics ---------------------
   const tree = h('div', { className: 'tech-tree' });
-  const branchEls: Partial<Record<ResearchBranch, HTMLElement>> = {};
-  for (const branch of BRANCH_ORDER) {
-    const ids = (Object.keys(RESEARCH) as ResearchId[]).filter((id) => RESEARCH[id].branch === branch);
-    const nodes = h('div', { className: 'tech-nodes' });
-    ids.forEach((id, i) => {
-      const def = RESEARCH[id];
-      const state = researchNodeState(c, id);
-      if (i > 0) {
-        const prevDone = c.completedResearch.includes(ids[i - 1]);
-        nodes.append(h('div', { className: prevDone ? 'tech-connector done' : 'tech-connector' }));
-      }
-      const orbIcon =
-        state === 'done' ? 'check' : state === 'active' ? 'flask' : state === 'locked' ? 'lock' : RESEARCH_ICONS[id];
-      const node = clickable(h(
-        'div',
-        {
-          className: `tech-node ${state}${selectedResearch === id ? ' selected' : ''}`,
-          onClick: () => {
-            selectedResearch = selectedResearch === id ? null : id;
-            revealResearchDetail = selectedResearch !== null;
-            rerender();
-          },
-        },
-        [
-          h('div', { className: 'orb' }, [icon(orbIcon)]),
-          h('div', { className: 'tech-name', text: def.name }),
-          state === 'done'
-            ? h('div', { className: 'tech-cost done', text: 'deployed' })
-            : state === 'active'
-              ? h('div', { className: 'tech-cost active', text: 'in progress' })
-              : h('div', { className: 'tech-cost' }, [icon('intel'), h('span', { text: `${def.cost}` })]),
-        ],
-      ));
-      nodes.append(node);
-    });
-    const branchEl = h('div', { className: 'tech-branch' }, [
-      h('div', { className: 'tech-branch-label' }, [
-        icon(BRANCH_ICONS[branch]),
-        h('span', { text: RESEARCH_BRANCH_NAMES[branch] ?? branch }),
+  const branchEls: Partial<Record<CounterBranchId, HTMLElement>> = {};
+  for (const category of CATEGORY_ORDER) {
+    const branches = Object.values(COUNTER_BRANCHES).filter((b) => b.category === category);
+    if (branches.length === 0) continue;
+    tree.append(
+      h('div', { className: 'tech-category-label' }, [
+        icon(CATEGORY_ICONS[category]),
+        h('span', { text: COUNTER_CATEGORY_NAMES[category] }),
       ]),
-      nodes,
-    ]);
-    branchEls[branch] = branchEl;
-    tree.append(branchEl);
+    );
+    for (const branch of branches) {
+      const rows: HTMLElement[] = [
+        h('div', { className: 'branch-head' }, [
+          icon(BRANCH_ICONS[branch.id]),
+          h('span', { className: 'branch-name', text: branch.name }),
+        ]),
+        branchTagRow(c, branch),
+        h('div', { className: 'hint', text: branch.short }),
+        entryRow(c, 'Nodes', branch.nodes, true, BRANCH_ICONS[branch.id], rerender),
+      ];
+      if (branch.tactics.length > 0) {
+        rows.push(
+          entryRow(
+            c,
+            branch.tacticStyle === 'parallel' ? 'Tactics (parallel paths)' : 'Tactics',
+            branch.tactics,
+            branch.tacticStyle === 'ladder',
+            BRANCH_ICONS[branch.id],
+            rerender,
+          ),
+        );
+      }
+      const branchEl = h('div', { className: 'counter-branch' }, rows);
+      branchEls[branch.id] = branchEl;
+      tree.append(branchEl);
+    }
   }
   body.append(tree);
 
   // --- Detail panel for the selected node ----------------------------------------
-  if (selectedResearch) {
+  const selectedEntry = selectedResearch ? RESEARCH_INDEX[selectedResearch] : undefined;
+  if (selectedResearch && selectedEntry) {
     const id = selectedResearch;
-    const def = RESEARCH[id];
+    const def = selectedEntry.def;
+    const branch = selectedEntry.branch;
     const state = researchNodeState(c, id);
     const check = canStartResearch(c, id);
     const shouldReveal = revealResearchDetail;
@@ -737,35 +899,58 @@ export function researchScreen(
     let status: string;
     switch (state) {
       case 'done':
-        status = 'Deployed — this capability is active across the fleet.';
+        status = def.granted
+          ? 'Built-in — active whenever the branch is equipped.'
+          : 'Deployed — this capability is active on every equipped instance of the branch.';
         break;
       case 'active':
         status = 'In progress — the lab delivers after the next transit.';
         break;
-      case 'locked':
-        status = `Requires ${RESEARCH[def.requires!].name} first.`;
+      case 'locked': {
+        const missing = selectedEntry.requires.filter((r) => !hasResearch(c, r));
+        status = `Requires ${missing.map((m) => RESEARCH_INDEX[m]?.def.name ?? m).join(' + ')} first.`;
         break;
+      }
       default:
         status = check.ok
           ? 'The lab is ready to begin immediately.'
           : check.reason === 'A project is already underway'
             ? 'The lab is already committed to another project this round.'
-            : `Not enough intel — you have ${c.intel} of ${def.cost}.`;
+            : check.reason === 'Not enough intel'
+              ? `Not enough intel — you have ${c.intel} of ${def.cost}.`
+              : check.reason ?? '';
     }
+    const infoBits: HTMLElement[] = [
+      h('h3', { text: def.name }),
+      h('div', {
+        className: 'hint',
+        text:
+          `${branch.name} · ${PLATFORM_LABELS[branch.platform]} · ` +
+          (selectedEntry.isTactic
+            ? TACTIC_KIND_LABELS[(def as CounterTacticDef).kind]
+            : 'Hardware node'),
+      }),
+      h('p', { text: def.desc }),
+    ];
+    const effectText = nodeEffectSummary(def);
+    if (effectText) {
+      infoBits.push(h('div', { className: 'hint', text: `Sets: ${effectText}` }));
+    }
+    infoBits.push(h('div', { className: 'hint status', text: status }));
     const detail =
       h('div', { className: `tech-detail ${state}` }, [
-        h('div', { className: 'tech-detail-orb' }, [icon(RESEARCH_ICONS[id])]),
-        h('div', { className: 'tech-detail-info' }, [
-          h('h3', { text: def.name }),
-          h('div', { className: 'hint', text: RESEARCH_BRANCH_NAMES[def.branch] ?? def.branch }),
-          h('p', { text: def.desc }),
-          h('div', { className: 'hint status', text: status }),
-        ]),
+        h('div', { className: 'tech-detail-orb' }, [icon(BRANCH_ICONS[branch.id])]),
+        h('div', { className: 'tech-detail-info' }, infoBits),
         h('div', { className: 'tech-detail-action' }, [
-          chip('intel', `${def.cost} intel`, 'Project cost'),
+          def.granted ? chip('check', 'built-in') : chip('intel', `${def.cost} intel`, 'Project cost'),
           h('button', {
             className: 'primary',
-            text: state === 'done' ? 'Deployed ✓' : state === 'active' ? 'In progress…' : 'Begin research',
+            text:
+              state === 'done'
+                ? def.granted ? 'Built-in ✓' : 'Deployed ✓'
+                : state === 'active'
+                  ? 'In progress…'
+                  : 'Begin research',
             disabled: !check.ok,
             onClick: () => {
               if (startResearch(c, id)) rerender();
@@ -775,7 +960,7 @@ export function researchScreen(
       ]);
     // Open the dossier inline, right under the branch the node lives in — no
     // scrolling to the bottom of the screen to read or buy it.
-    const host = branchEls[def.branch];
+    const host = branchEls[branch.id];
     if (host) host.after(detail);
     else body.append(detail);
     if (shouldReveal) {
@@ -814,12 +999,34 @@ const SHIP_TAGLINES: Record<ShipClassId, string> = {
 };
 
 const MODULE_ICONS: Record<ModuleId, IconName> = {
-  pointDefense: 'turret',
+  selfDefense: 'turret',
   missileWarning: 'alert',
   reinforcedHull: 'shield',
   mineSonar: 'sonar',
   fireSuppression: 'flame',
+  hydrophone: 'sonar',
+  thermalImaging: 'eye',
+  flak: 'turret',
+  antiBoarding: 'lock',
+  compartmentalization: 'slots',
 };
+
+/** The counter branch a piece of equipment belongs to (for the platform /
+ *  counters / role line on its card). */
+function branchForEquipment(kind: 'cargoModule' | 'escortModule' | 'baseModule', id: string) {
+  return Object.values(COUNTER_BRANCHES).find(
+    (b) => b.equipment?.kind === kind && b.equipment.id === id,
+  );
+}
+
+/** One-line "what this equipment is for": role + countered enemy branches. */
+function equipmentRoleLine(kind: 'cargoModule' | 'escortModule' | 'baseModule', id: string): string {
+  const branch = branchForEquipment(kind, id);
+  if (!branch) return '';
+  const vs = branch.counters.map((e) => ENEMY_BRANCH_NAMES[e]).join(', ');
+  const role = ROLE_LABELS[branch.role];
+  return vs ? `${role} · vs ${vs}` : `${role} · all damage`;
+}
 
 export function prepScreen(
   c: CampaignState,
@@ -1015,9 +1222,15 @@ export function prepScreen(
     const mod = MODULES[moduleId];
     const isOwned = activeOwned.includes(moduleId);
     const cost = moduleCost(c, activeClass, moduleId);
-    const full = activeOwned.length >= activeDef.slots;
-    const canBuy = !isOwned && !full && c.cash >= cost;
+    const block = moduleBlockReason(c, activeClass, moduleId);
     const refund = c.modulePaid[activeClass]?.[moduleId] ?? cost;
+    const roleLine = equipmentRoleLine('cargoModule', moduleId);
+    let buyLabel: string;
+    if (block === null) buyLabel = `Equip class — $${cost}`;
+    else if (block === 'Not enough cash') buyLabel = `Need $${cost}`;
+    else if (block.startsWith('Requires research')) buyLabel = block;
+    else if (block === 'No module slots free on this class') buyLabel = 'No slots free';
+    else buyLabel = block;
     modGrid.append(
       h('div', { className: isOwned ? 'module-card owned' : 'module-card' }, [
         h('div', { className: 'card-head' }, [
@@ -1025,6 +1238,7 @@ export function prepScreen(
           h('h3', { text: mod.name }),
           isOwned ? h('span', { className: 'badge good', text: 'Equipped' }) : h('span'),
         ]),
+        roleLine ? h('div', { className: 'hint role-line', text: roleLine }) : h('span'),
         h('p', { text: mod.desc }),
         isOwned
           ? h('button', {
@@ -1035,8 +1249,8 @@ export function prepScreen(
               },
             })
           : h('button', {
-              text: full ? 'No slots free' : c.cash < cost ? `Need $${cost}` : `Equip class — $${cost}`,
-              disabled: !canBuy,
+              text: buyLabel,
+              disabled: block !== null,
               onClick: () => {
                 if (buyModule(c, activeClass, moduleId)) rerender();
               },
@@ -1050,9 +1264,99 @@ export function prepScreen(
       className: 'hint',
       text:
         `Refits apply to every ${activeDef.name} you own (${Math.max(1, c.fleet[activeClass])} hull(s)) — pricing scales with the fleet. ` +
+        'Modules unlock through research first, then compete for the class’s limited slots — no hull can carry every counter. ' +
         'Unequip to swap loadouts freely (you get the fitting cost back), and note a fitted module raises the price of buying a new hull of that class.',
     }),
   );
+
+  // --- Escort loadout: optional systems competing for limited escort slots ----
+  const escortPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: `Escort loadout — ${c.escortModules.length}/${ESCORT_MODULE_SLOTS} slots` }),
+    h('div', {
+      className: 'hint',
+      text:
+        'Missile interceptors are built into every escort. These optional systems fit the whole escort group and compete for its limited slots — deck guns, drone launchers and depth charges cannot all sail at once.' +
+        (c.escorts === 0 ? ' You own no escorts yet — fit systems now and they apply to every escort you hire.' : ''),
+    }),
+  ]);
+  const escortGrid = h('div', { className: 'module-grid' });
+  for (const id of Object.keys(ESCORT_MODULES) as (keyof typeof ESCORT_MODULES)[]) {
+    const def = ESCORT_MODULES[id];
+    const fitted = c.escortModules.includes(id);
+    const block = escortModuleBlockReason(c, id);
+    const refund = c.escortModulePaid[id] ?? def.cost;
+    const branch = branchForEquipment('escortModule', id);
+    escortGrid.append(
+      h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
+        h('div', { className: 'card-head' }, [
+          icon(branch ? BRANCH_ICONS[branch.id] : 'turret'),
+          h('h3', { text: def.name }),
+          fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
+        ]),
+        h('div', { className: 'hint role-line', text: equipmentRoleLine('escortModule', id) }),
+        h('p', { text: def.desc }),
+        fitted
+          ? h('button', {
+              className: 'unequip',
+              text: `Remove — refund $${refund}`,
+              onClick: () => {
+                if (removeEscortModule(c, id)) rerender();
+              },
+            })
+          : h('button', {
+              text: block === null ? `Fit escorts — $${def.cost}` : block,
+              disabled: block !== null,
+              onClick: () => {
+                if (buyEscortModule(c, id)) rerender();
+              },
+            }),
+      ]),
+    );
+  }
+  escortPanel.append(escortGrid);
+
+  // --- Shore-base loadout ------------------------------------------------------
+  const basePanel = h('div', { className: 'panel' }, [
+    h('h2', { text: `Shore-base loadout — ${c.baseModules.length}/${BASE_MODULE_SLOTS} slot` }),
+    h('div', {
+      className: 'hint',
+      text: 'Missile interceptors are built into every battery. Optional strategic systems compete for the base network’s limited slots.',
+    }),
+  ]);
+  const baseGrid = h('div', { className: 'module-grid' });
+  for (const id of Object.keys(BASE_MODULES) as (keyof typeof BASE_MODULES)[]) {
+    const def = BASE_MODULES[id];
+    const fitted = c.baseModules.includes(id);
+    const block = baseModuleBlockReason(c, id);
+    const refund = c.baseModulePaid[id] ?? def.cost;
+    baseGrid.append(
+      h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
+        h('div', { className: 'card-head' }, [
+          icon('turret'),
+          h('h3', { text: def.name }),
+          fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
+        ]),
+        h('div', { className: 'hint role-line', text: equipmentRoleLine('baseModule', id) }),
+        h('p', { text: def.desc }),
+        fitted
+          ? h('button', {
+              className: 'unequip',
+              text: `Remove — refund $${refund}`,
+              onClick: () => {
+                if (removeBaseModule(c, id)) rerender();
+              },
+            })
+          : h('button', {
+              text: block === null ? `Fit bases — $${def.cost}` : block,
+              disabled: block !== null,
+              onClick: () => {
+                if (buyBaseModule(c, id)) rerender();
+              },
+            }),
+      ]),
+    );
+  }
+  basePanel.append(baseGrid);
 
   // --- Support assets: every item explains itself inline ----------------------------
   const assetPanel = h('div', { className: 'panel' }, [
@@ -1088,7 +1392,7 @@ export function prepScreen(
       'turret',
       'Shore battery',
       `${c.bases}/${ECONOMY.maxBases}`,
-      `Hardened launcher on the friendly shore. Unlimited range, ${COMBAT.base.reload}s reload — and it fires the FAST interceptor type, which gets much faster with Interception research. Can be struck, knocked offline and destroyed.`,
+      'Hardened launcher on the friendly shore. Unlimited range with slow reload — it fires the FAST interceptor type, which climbs the speed tiers with Shore-Base Interceptor research. Can be struck, knocked offline and destroyed.',
       {
         label: `Build battery — $${ECONOMY.baseCost}`,
         disabled: c.bases >= ECONOMY.maxBases || c.cash < ECONOMY.baseCost,
@@ -1101,7 +1405,7 @@ export function prepScreen(
       'missile',
       'Escort ship',
       `${c.escorts}/${ECONOMY.maxEscorts}`,
-      `Mobile launcher that sails with the convoy: ${COMBAT.interceptor.cooldown}s base reload but slower interceptors and limited range. The ONLY hull that can launch minesweeper drones. Tap it in transit to order it around the map.`,
+      'Mobile launcher that sails with the convoy: quick reload but slower interceptors and limited range. Carries whatever the Escort Loadout fits (drone launcher, deck gun, depth charges). Tap it in transit to order it around the map.',
       {
         label: `Hire escort — $${ECONOMY.escortCost}`,
         disabled: c.escorts >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
@@ -1126,8 +1430,8 @@ export function prepScreen(
     assetCard(
       'planeEcm',
       'ECM aircraft',
-      c.ecmUnlocked ? `${COMBAT.ecm.chargesPerRound}/round` : '—',
-      `Call it onto any patch of open water: it orbits there jamming guided seekers, and any missile that lingers ${COMBAT.ecm.explodeSeconds}s inside the orbit is destroyed. It cannot be stationed over a shore or launcher.`,
+      c.ecmUnlocked ? 'owned' : '—',
+      'Call it onto any patch of open water: it orbits there scrambling GUIDED seekers, and a guided missile that lingers inside cooks off. It never touches mines, torpedoes, boats, artillery, smoke or jamming — research its parallel paths for more charges, radius or duration.',
       c.ecmUnlocked
         ? null
         : {
@@ -1141,8 +1445,8 @@ export function prepScreen(
     assetCard(
       'planeScan',
       'Scan aircraft',
-      c.scanUnlocked ? `${COMBAT.scan.chargesPerRound}/round` : '—',
-      'Pick a lane and the aircraft sweeps its full length, charting the mines in THAT lane only (low-signature mines may still slip past standard sensors). Ships always steer around charted mines — and your escorts can send drones to clear them.',
+      c.scanUnlocked ? 'owned' : '—',
+      'Pick a lane and the aircraft sweeps its full length, charting the mines in THAT lane only (low-signature mines need Composite Scan Processing). Ships always steer around charted mines — and your escorts can send drones to clear them.',
       c.scanUnlocked
         ? null
         : {
@@ -1155,15 +1459,76 @@ export function prepScreen(
     ),
   );
 
-  // Drone munitions only appear once minesweeping is researched (nothing to buy
-  // them for otherwise).
-  if (c.completedResearch.includes('mines1')) {
+  // Active sonar: purchasable once its base node is researched.
+  if (hasResearch(c, 'activeSonar.base') || c.sonarUnlocked) {
+    assetGrid.append(
+      assetCard(
+        'radar',
+        'Active sonar ping',
+        c.sonarUnlocked ? 'owned' : '—',
+        'Placed, charge-based ping that actively reveals torpedoes in the chosen area — the underwater domain only. Detection, not destruction: depth charges do the killing.',
+        c.sonarUnlocked
+          ? null
+          : {
+              label: `Commission — $${ECONOMY.sonarUnlockCost}`,
+              disabled: c.cash < ECONOMY.sonarUnlockCost,
+              onClick: () => {
+                if (unlockSonar(c)) rerender();
+              },
+            },
+      ),
+    );
+  }
+  // Defensive smoke: purchasable once its base node is researched.
+  if (hasResearch(c, 'smokeScreen.base') || c.smokeUnlocked) {
+    assetGrid.append(
+      assetCard(
+        'jam',
+        'Defensive smoke screen',
+        c.smokeUnlocked ? 'owned' : '—',
+        'Placed cloud that degrades the enemy’s targeting doctrine for ships inside — the finish-the-wounded / high-value preference falls back a tier. It destroys nothing and never makes a ship invulnerable.',
+        c.smokeUnlocked
+          ? null
+          : {
+              label: `Commission — $${ECONOMY.smokeUnlockCost}`,
+              disabled: c.cash < ECONOMY.smokeUnlockCost,
+              onClick: () => {
+                if (unlockSmoke(c)) rerender();
+              },
+            },
+      ),
+    );
+  }
+  // Hardened systems: the sanctioned work-around for un-shootable jamming.
+  if (hasResearch(c, 'hardened.base') || c.hardenedUnlocked) {
+    assetGrid.append(
+      assetCard(
+        'shield',
+        'Hardened & backup systems',
+        c.hardenedUnlocked ? 'owned' : '—',
+        'Enemy sensor jamming cannot be shot down — this shortens its blackouts (emergency reboot) and keeps chosen sensor families partially alive through them.',
+        c.hardenedUnlocked
+          ? null
+          : {
+              label: `Commission — $${ECONOMY.hardenedUnlockCost}`,
+              disabled: c.cash < ECONOMY.hardenedUnlockCost,
+              onClick: () => {
+                if (unlockHardened(c)) rerender();
+              },
+            },
+      ),
+    );
+  }
+
+  // Drone munitions only appear once the minesweeper branch is researched
+  // (nothing to buy them for otherwise).
+  if (hasResearch(c, 'mcmDrones.base')) {
     assetGrid.append(
       assetCard(
         'drone',
         'Drone munitions',
         `${c.droneAmmo}`,
-        'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort — an escort must be within about 7 ship-lengths, so close in first. No stock, no sweeps.',
+        'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort with a drone launcher fitted. No launcher, no sweeps; no stock, no sweeps.',
         {
           label: `Buy ${ECONOMY.droneAmmoPerBuy} — $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
           disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
@@ -1175,15 +1540,15 @@ export function prepScreen(
     );
   }
 
-  // Point-defense rounds only appear once a turret is actually fitted on a class.
-  const hasPointDefense = Object.values(c.classModules).some((mods) => mods.includes('pointDefense'));
-  if (hasPointDefense) {
+  // Self-defense rounds only appear once the module is actually fitted on a class.
+  const hasSelfDefense = Object.values(c.classModules).some((mods) => mods.includes('selfDefense'));
+  if (hasSelfDefense) {
     assetGrid.append(
       assetCard(
         'turret',
-        'Point-defense rounds',
+        'Self-defense rounds',
         `${c.pdAmmo}`,
-        'Ammunition for the Point-Defense Turret module. Every turret shot draws from this shared stock (one shot per turret per transit) — a fitted turret does nothing without rounds. Buy more once they are spent. Stock carries over.',
+        'Ammunition for the Self-Defense Interceptor module. Every shot draws from this shared stock (per-round magazine per ship) — a fitted module does nothing without rounds. Stock carries over.',
         {
           label: `Buy ${ECONOMY.pdAmmoPerBuy} — $${ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy}`,
           disabled: c.cash < ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy,
@@ -1216,7 +1581,43 @@ export function prepScreen(
   );
   assetPanel.append(assetGrid);
 
-  body.append(h('div', { className: 'grid-2' }, [compPanel, formPanel]), modPanel, assetPanel);
+  // --- Protected-channel selection (hardened systems, pre-round choice) -------
+  if (c.hardenedUnlocked && hasResearch(c, 'hardened.protectedChannel')) {
+    const capacity = hasResearch(c, 'hardened.dualChannel') ? 2 : 1;
+    const families: { id: SensorFamily; label: string }[] = [
+      { id: 'mineDetection', label: 'Mine detection' },
+      { id: 'torpedoDetection', label: 'Torpedo detection' },
+      { id: 'missileWarning', label: 'Missile warning' },
+      { id: 'smokeImaging', label: 'Smoke-penetrating imaging' },
+    ];
+    const row = h('div', { className: 'chip-row' });
+    for (const fam of families) {
+      const selected = c.protectedChannels.includes(fam.id);
+      const btn = h('button', {
+        className: selected ? 'tab selected' : 'tab',
+        text: selected ? `${fam.label} ✓` : fam.label,
+        onClick: () => {
+          const next = selected
+            ? c.protectedChannels.filter((f) => f !== fam.id)
+            : [...c.protectedChannels, fam.id].slice(-capacity);
+          if (setProtectedChannels(c, next)) rerender();
+        },
+      });
+      row.append(btn);
+    }
+    assetPanel.append(
+      h('div', { className: 'hint', text: `Protected detection channel${capacity > 1 ? 's' : ''} — choose which sensor famil${capacity > 1 ? 'ies stay' : 'y stays'} partially functional if the enemy jams your sensors this round (${c.protectedChannels.length}/${capacity} chosen):` }),
+      row,
+    );
+  }
+
+  body.append(
+    h('div', { className: 'grid-2' }, [compPanel, formPanel]),
+    modPanel,
+    escortPanel,
+    basePanel,
+    assetPanel,
+  );
 
   const canLaunch = totalComposition(c) > 0;
   footer.append(

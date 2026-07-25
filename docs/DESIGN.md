@@ -105,8 +105,11 @@ resources earned. This is where enemy evolution becomes visible:
 ### 3. Intelligence & Research
 
 One project at a time, paid in intel. Research completes **after the next
-transit** — you must survive one more round without it. Branches: sensors,
-interception, mine warfare, resilience, electronic warfare, logistics.
+transit** — you must survive one more round without it. The original linear
+six-branch tree has been superseded by the **player counter catalogue**
+(Category → Branch → Nodes → Tactics) — see
+[`PLAYER_COUNTERS.md`](./PLAYER_COUNTERS.md) for the full system, its stat
+tiers, and the enemy-to-counter coverage matrix.
 
 The **mine-warfare** project ("Minesweeping Drones") fields autonomous drones:
 once a mine is charted (by a scan pulse or ship sonar), a drone launches from the
