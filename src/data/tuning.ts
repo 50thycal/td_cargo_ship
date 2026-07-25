@@ -98,7 +98,16 @@ export const NAV = {
 
 export const COMBAT = {
   missile: { speed: 60, damage: 34, hitRadius: 30, splashRadius: 55, splashDamage: 14 },
-  guided: { speed: 50, damage: 46, hitRadius: 30, turnRate: 1.4, baseHitChance: 0.92 },
+  guided: {
+    speed: 50,
+    damage: 46,
+    hitRadius: 30,
+    turnRate: 1.4,
+    baseHitChance: 0.92,
+    /** Subtracted from a player weapon's accuracy when the target is a guided
+     *  (evading) missile — the enemy node property, not a weapon stat. */
+    accuracyPenalty: 0.16,
+  },
   mine: { damage: 115, triggerRadius: 30 },
   /** Chance a missile hit starts a fire (damage over time). */
   fireChance: 0.3,
@@ -125,24 +134,19 @@ export const COMBAT = {
   targetingWoundedWeight: 1.6,
   /** Escort-launched interceptors: the ship-mounted launcher. Deliberately the
    *  SLOWER of the two interceptor types and shorter-ranged — its edge is a
-   *  fast reload and being able to move with the convoy, not velocity. */
+   *  fast reload and being able to move with the convoy, not velocity.
+   *  Speed/accuracy/reload are tier-resolved (statTiers + counters); only the
+   *  physical launch envelope lives here. */
   interceptor: {
-    speed: 92,
     /** Max launch range from an escort to the target threat. */
     range: 780,
-    cooldown: 3.2,
-    hitChanceVsMissile: 0.82,
-    hitChanceVsGuided: 0.66,
   },
   /** Fixed shore battery: engages any missile on the map (unlimited range),
    *  but reloads far slower than an escort. The player's baseline defense.
    *  A missile strike knocks it offline for disableSeconds and does hull
-   *  damage; enough strikes destroy it (hardened, so it takes a lot). */
+   *  damage; enough strikes destroy it (hardened, so it takes a lot).
+   *  Interceptor speed/accuracy/reload are tier-resolved. */
   base: {
-    reload: 4.0,
-    /** Shore-battery interceptors are the FAST interceptor type — they start
-     *  quicker than escorts and scale hard with interception research. */
-    speed: 150,
     hitRadius: 30,
     disableSeconds: 9,
     /** Hull points. Hardened installation — takes many strikes to destroy. */
@@ -163,30 +167,26 @@ export const COMBAT = {
   },
   /** Fraction of missiles that streak across to strike a shore battery. */
   baseStrikeChance: 0.07,
-  /** Point-defense turret module: a per-ship close-in interceptor. It is a
-   *  limited magazine, NOT a free auto-turret — each ship gets `magazine` shots
-   *  for the whole transit, refilled each round. */
-  pointDefense: {
-    radius: 95,
+  /** Cargo self-defense interceptor module: a per-ship close-in tracer. It is
+   *  a limited magazine, NOT a free auto-turret — the per-round magazine,
+   *  range and accuracy are tier-resolved; only the between-shot cycle time
+   *  lives here (matters once the dual-shot node grants a second round). */
+  selfDefense: {
     cooldown: 1.3,
-    killChanceVsMissile: 0.5,
-    killChanceVsGuided: 0.33,
-    /** Speed of the point-defense tracer projectile (fast, short range). */
-    projectileSpeed: 260,
-    /** Shots each point-defense ship may fire per transit. */
-    magazine: 1,
+  },
+  /** Depth-charge round ballistics (the launcher's range/blast/reload are
+   *  tier-resolved). A lobbed area weapon: it flies to the tapped point and
+   *  detonates — it never locks on. */
+  depthCharge: {
+    flightSpeed: 150,
+    /** Pattern-salvo: extra charges dropped in a short line, this far apart. */
+    patternSpacing: 55,
+    patternCount: 3,
   },
   /** ECM plane: flies to a water station, orbits jamming inbound missiles —
    *  any missile that lingers inside the orbit `explodeSeconds` cooks off — then
-   *  departs. `stationSeconds` is how long it holds the orbit. */
+   *  departs. Charges/radius/duration are tier-resolved (ability paths). */
   ecm: {
-    // Deliberately restrained: a smaller, shorter-lived bubble that needs a
-    // missile to loiter longer before it cooks off, so ECM shapes a fight
-    // rather than clearing the sky.
-    stationSeconds: 6,
-    guidedHitChance: 0.2,
-    chargesPerRound: 2,
-    radius: 220,
     /** Seconds a missile must spend inside the jamming orbit before it explodes. */
     explodeSeconds: 3.2,
     /** Cruise speed of the ECM plane. */
@@ -200,26 +200,20 @@ export const COMBAT = {
     waterYMax: 860,
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
-   *  only, then leaves. */
+   *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
+   *  band scales with the resolved reveal radius. */
   scan: {
-    chargesPerRound: 2,
-    lowSigRevealChance: 0.35,
     /** Cruise speed of the scan plane across the map. */
     planeSpeed: 520,
-    /** Half-width of the lane band the plane can chart (mines outside are missed). */
+    /** Half-width of the lane band the plane can chart at the BASE reveal
+     *  radius (scales proportionally with the expanded-coverage path). */
     laneHalfWidth: 95,
-    /** How far ahead/around the plane it reveals mines as it passes. */
-    revealRadius: 130,
+    baseRevealRadius: 130,
   },
-  /** Minesweeper drone (unlocked by mine-warfare research): the player TAPS a
-   *  charted mine to send a drone from the nearest escort — just like tapping a
-   *  missile, but with a much shorter reach and its own behavior (fly out, sit
-   *  on the mine, detonate it). Each launch spends a purchased drone munition. */
+  /** Minesweeper drone: the player TAPS a charted mine to send a drone from
+   *  the nearest escort with a drone launcher. Launch range/speed/reload are
+   *  tier-resolved; only the sweep contact distance lives here. */
   sweepDrone: {
-    speed: 95,
-    /** An escort must be within ~7 ship-lengths of the mine to send a drone —
-     *  far shorter than an interceptor's reach, so escorts must close in. */
-    launchRange: 240,
     /** Distance at which the drone reaches the mine and sweeps it. */
     sweepRadius: 16,
   },
@@ -267,6 +261,9 @@ export const ECONOMY = {
   maxEscorts: 3,
   ecmUnlockCost: 150,
   scanUnlockCost: 150,
+  sonarUnlockCost: 160,
+  smokeUnlockCost: 160,
+  hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
   /** Intel income. */

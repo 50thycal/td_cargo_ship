@@ -30,7 +30,8 @@ import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
-import { MODULES, RESEARCH, SHIP_CLASSES } from '../src/data/defs';
+import { MODULES, SHIP_CLASSES } from '../src/data/defs';
+import { allResearchableIds } from '../src/data/counters';
 import { COMBAT, ECONOMY, SPAWN, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
@@ -304,11 +305,11 @@ describe('campaign', () => {
   it('research takes one full round before completing', () => {
     const c = newCampaign('research');
     c.intel = 100;
-    expect(startResearch(c, 'intercept1')).toBe(true);
+    expect(startResearch(c, 'escortInterceptor.precisionGuidance')).toBe(true);
     expect(c.completedResearch).toHaveLength(0);
     const { report } = runRound(c, { defend: true });
-    expect(report.researchCompleted).toBe('intercept1');
-    expect(c.completedResearch).toContain('intercept1');
+    expect(report.researchCompleted).toBe('escortInterceptor.precisionGuidance');
+    expect(c.completedResearch).toContain('escortInterceptor.precisionGuidance');
   });
 
   it('an undefended campaign eventually collapses', () => {
@@ -363,9 +364,9 @@ describe('economy hardening', () => {
 
   it('module price is based on owned hulls, immune to composition toggling', () => {
     const c = newCampaign('module-exploit');
-    const fullPrice = moduleCost(c, 'cargo', 'pointDefense');
+    const fullPrice = moduleCost(c, 'cargo', 'selfDefense');
     setComposition(c, 'cargo', 0);
-    expect(moduleCost(c, 'cargo', 'pointDefense')).toBe(fullPrice);
+    expect(moduleCost(c, 'cargo', 'selfDefense')).toBe(fullPrice);
     setComposition(c, 'cargo', 15);
     // Below the soft cap this is still a flat per-ship rate; above it, the
     // marginal hull is billed at the taper rate (see moduleCost).
@@ -377,13 +378,13 @@ describe('economy hardening', () => {
   it('module refit cost soft-caps so a large fleet stays affordable', () => {
     const c = newCampaign('module-softcap');
     c.fleet.cargo = 40; // a big late-campaign fleet
-    const cost40 = moduleCost(c, 'cargo', 'pointDefense');
+    const cost40 = moduleCost(c, 'cargo', 'selfDefense');
     // Linear pricing would be 110 * 40 = 4400; the soft cap must price it well
     // under that so upgrades stay reachable at scale.
     expect(cost40).toBeLessThan(110 * 40 * 0.7);
     // Still strictly more expensive than a small fleet (more hulls to refit).
     c.fleet.cargo = 10;
-    const cost10 = moduleCost(c, 'cargo', 'pointDefense');
+    const cost10 = moduleCost(c, 'cargo', 'selfDefense');
     expect(cost10).toBe(110 * 10); // at/under the cap: unchanged flat rate
     expect(cost40).toBeGreaterThan(cost10);
   });
@@ -391,14 +392,15 @@ describe('economy hardening', () => {
   it('a new hull costs its base price plus its class module fit', () => {
     const c = newCampaign('hull-surcharge');
     c.cash = 100_000;
+    c.completedResearch = ['selfDefense.base']; // purchases are research-gated
     const base = SHIP_CLASSES.freighter.replaceCost;
     expect(shipCost(c, 'freighter')).toBe(base);
     // Fit a module on the freighter class (1 slot).
-    expect(buyModule(c, 'freighter', 'pointDefense')).toBe(true);
-    expect(shipCost(c, 'freighter')).toBe(base + MODULES.pointDefense.costPerShip);
+    expect(buyModule(c, 'freighter', 'selfDefense')).toBe(true);
+    expect(shipCost(c, 'freighter')).toBe(base + MODULES.selfDefense.costPerShip);
     const before = c.cash;
     expect(buyShip(c, 'freighter')).toBe(true);
-    expect(c.cash).toBe(before - (base + MODULES.pointDefense.costPerShip));
+    expect(c.cash).toBe(before - (base + MODULES.selfDefense.costPerShip));
   });
 
   it('unequipping a module refunds exactly what was paid and frees the slot', () => {
@@ -1036,7 +1038,7 @@ describe('air defense & telemetry', () => {
 
   it('point defense launches a tracer projectile instead of deleting the missile', () => {
     const c = newCampaign('pd-projectile');
-    c.classModules.cargo = ['pointDefense'];
+    c.classModules.cargo = ['selfDefense'];
     c.pdAmmo = 10;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1045,7 +1047,7 @@ describe('air defense & telemetry', () => {
     let ship = undefined as ReturnType<TransitState['ships']['find']>;
     for (let i = 0; i < 30 * 12 && !ship; i++) {
       stepTransit(state, [], rng);
-      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('selfDefense'));
     }
     expect(ship).toBeDefined();
     // Within point-defense radius (95) but outside strike range (30) and not
@@ -1118,7 +1120,8 @@ describe('air defense & telemetry', () => {
 
   it('a tapped mine is swept by a drone from an in-range escort (munition spent)', () => {
     const c = newCampaign('sweeper-drone');
-    c.completedResearch = ['mines1'];
+    c.completedResearch = ['mcmDrones.base'];
+    c.escortModules = ['mcmDroneLauncher'];
     c.escorts = 1;
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
@@ -1154,7 +1157,8 @@ describe('air defense & telemetry', () => {
 
   it('drones are NOT auto-launched — an untapped charted mine is left alone', () => {
     const c = newCampaign('sweeper-manual');
-    c.completedResearch = ['mines1'];
+    c.completedResearch = ['mcmDrones.base'];
+    c.escortModules = ['mcmDroneLauncher'];
     c.escorts = 1;
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
@@ -1181,7 +1185,8 @@ describe('air defense & telemetry', () => {
 
   it('a drone will not launch when no escort is within range of the mine', () => {
     const c = newCampaign('sweeper-oor');
-    c.completedResearch = ['mines1'];
+    c.completedResearch = ['mcmDrones.base'];
+    c.escortModules = ['mcmDroneLauncher'];
     c.escorts = 1;
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
@@ -1192,7 +1197,7 @@ describe('air defense & telemetry', () => {
     const mine = {
       id: state.nextEntityId++,
       kind: 'mine' as const,
-      x: escort.x + COMBAT.sweepDrone.launchRange + 400,
+      x: escort.x + state.effects.mcm.launchRange + 400,
       y: escort.y,
       vx: 0,
       vy: 0,
@@ -1211,7 +1216,8 @@ describe('air defense & telemetry', () => {
 
   it('drones do NOT launch without munitions in stock', () => {
     const c = newCampaign('sweeper-no-ammo');
-    c.completedResearch = ['mines1'];
+    c.completedResearch = ['mcmDrones.base'];
+    c.escortModules = ['mcmDroneLauncher'];
     c.escorts = 1;
     c.droneAmmo = 0; // researched, but nothing bought
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
@@ -1282,7 +1288,7 @@ describe('air defense & telemetry', () => {
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
     stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[2] }], rng);
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
-    expect(state.scanCharges).toBe(COMBAT.scan.chargesPerRound - 2);
+    expect(state.scanCharges).toBe(state.effects.abilities.scan.charges - 2);
     expect(north.revealed).toBe(true);
     expect(south.revealed).toBe(true);
   });
@@ -1319,7 +1325,7 @@ describe('air defense & telemetry', () => {
 
   it('point defense fires only its per-transit magazine, then stops', () => {
     const c = newCampaign('pd-magazine');
-    c.classModules.cargo = ['pointDefense'];
+    c.classModules.cargo = ['selfDefense'];
     c.pdAmmo = 20; // plenty of rounds in stock; the per-ship magazine is the cap
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1327,10 +1333,10 @@ describe('air defense & telemetry', () => {
     let ship = undefined as ReturnType<TransitState['ships']['find']>;
     for (let i = 0; i < 30 * 12 && !ship; i++) {
       stepTransit(state, [], rng);
-      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('selfDefense'));
     }
     expect(ship).toBeDefined();
-    expect(ship!.pdShots).toBe(COMBAT.pointDefense.magazine);
+    expect(ship!.pdShots).toBe(state.effects.selfDefense.magazine);
     // Keep feeding fresh in-range missiles; PD may only ever fire `magazine` shots.
     let pdLaunches = 0;
     const seen = new Set<number>();
@@ -1344,13 +1350,13 @@ describe('air defense & telemetry', () => {
         }
       }
     }
-    expect(pdLaunches).toBeLessThanOrEqual(COMBAT.pointDefense.magazine);
+    expect(pdLaunches).toBeLessThanOrEqual(state.effects.selfDefense.magazine);
     expect(ship!.pdShots).toBe(0);
   });
 
   it('point defense will not fire without point-defense rounds in stock', () => {
     const c = newCampaign('pd-no-ammo');
-    c.classModules.cargo = ['pointDefense'];
+    c.classModules.cargo = ['selfDefense'];
     c.pdAmmo = 0; // module fitted but no rounds bought
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1358,7 +1364,7 @@ describe('air defense & telemetry', () => {
     let ship = undefined as ReturnType<TransitState['ships']['find']>;
     for (let i = 0; i < 30 * 12 && !ship; i++) {
       stepTransit(state, [], rng);
-      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('pointDefense'));
+      ship = state.ships.find((s) => s.spawned && s.alive && !s.delivered && s.modules.includes('selfDefense'));
     }
     expect(ship).toBeDefined();
     for (let k = 0; k < 10; k++) {
@@ -1366,7 +1372,7 @@ describe('air defense & telemetry', () => {
       stepTransit(state, [], rng);
     }
     expect(state.interceptors.some((i) => i.launcher === 'pd')).toBe(false);
-    expect(ship!.pdShots).toBe(COMBAT.pointDefense.magazine); // never spent
+    expect(ship!.pdShots).toBe(state.effects.selfDefense.magazine); // never spent
   });
 
   it('formation shapes escort reach: Tight extends range, Wide shrinks it', () => {
@@ -1489,7 +1495,7 @@ describe('save', () => {
     const old = { version: 1, seed: 'legacy', round: 4, phase: 'prep', cash: 500 };
     const m = migrateCampaign(old)!;
     expect(m).not.toBeNull();
-    expect(m.version).toBe(2);
+    expect(m.version).toBe(3);
     // Preserved values survive.
     expect(m.seed).toBe('legacy');
     expect(m.round).toBe(4);
@@ -1512,12 +1518,12 @@ describe('save', () => {
 
   it('does not clobber existing nested values when migrating', () => {
     const c = newCampaign('nested');
-    c.classModules.cargo = ['pointDefense'];
-    c.modulePaid.cargo = { pointDefense: 220 };
+    c.classModules.cargo = ['selfDefense'];
+    c.modulePaid.cargo = { selfDefense: 220 };
     c.evolution.tracks.mines = 55;
     const m = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
-    expect(m.classModules.cargo).toEqual(['pointDefense']);
-    expect(m.modulePaid.cargo).toEqual({ pointDefense: 220 });
+    expect(m.classModules.cargo).toEqual(['selfDefense']);
+    expect(m.modulePaid.cargo).toEqual({ selfDefense: 220 });
     expect(m.evolution.tracks.mines).toBe(55);
   });
 });
@@ -1532,7 +1538,7 @@ describe('dev mode', () => {
     expect(c.dev).toBe(true);
     expect(c.godMode).toBe(true);
     expect(c.round).toBe(6);
-    expect(c.completedResearch.length).toBe(Object.keys(RESEARCH).length);
+    expect(c.completedResearch.length).toBe(allResearchableIds().length);
     expect(c.ecmUnlocked).toBe(true);
     expect(c.scanUnlocked).toBe(true);
     expect(c.cash).toBeGreaterThan(100000);

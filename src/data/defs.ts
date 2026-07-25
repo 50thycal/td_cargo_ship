@@ -1,13 +1,17 @@
-// Static definitions: ship classes, modules, formations, research tree.
-// All content additions (new ships, modules, research) happen here.
+// Static definitions: ship classes, modules (cargo / escort / shore-base),
+// formations. All content additions (new ships, modules) happen here.
+// The research catalogue lives in counters.ts (Category → Branch → Nodes →
+// Tactics); the tier→number tables live in statTiers.ts.
 
 import type {
+  BaseModuleDef,
+  BaseModuleId,
+  EscortModuleDef,
+  EscortModuleId,
   FormationDef,
   FormationId,
   ModuleDef,
   ModuleId,
-  ResearchDef,
-  ResearchId,
   ShipClassDef,
   ShipClassId,
 } from '../sim/types';
@@ -49,36 +53,107 @@ export const SHIP_CLASSES: Record<ShipClassId, ShipClassDef> = {
   },
 };
 
+/** Cargo-ship modules. The limited class slots are the point: the player can
+ *  never equip every counter at once. Purchases are gated on each branch's
+ *  base research node (see counters.MODULE_RESEARCH_REQUIREMENT). */
 export const MODULES: Record<ModuleId, ModuleDef> = {
-  pointDefense: {
-    id: 'pointDefense',
-    name: 'Point-Defense Turret',
-    desc: 'A last-ditch close-in turret that automatically engages one nearby missile per transit. Draws from your shared stock of point-defense rounds (bought in prep) — no rounds, no defense.',
+  selfDefense: {
+    id: 'selfDefense',
+    name: 'Self-Defense Interceptor',
+    desc: 'Last-ditch automatic close-in defense: one tracer shot per equipped ship per round at a missile entering its short envelope. Draws from the shared stock of self-defense rounds bought in prep — no rounds, no defense.',
     costPerShip: 110,
   },
   missileWarning: {
     id: 'missileWarning',
     name: 'Missile-Warning Receiver',
-    desc: 'Marks missiles homing on this ship and improves interceptor accuracy defending it (+10%).',
+    desc: 'Detects and marks missiles homing on this ship and assists the interceptors defending it. Detection only — it does not shoot.',
     costPerShip: 45,
   },
   reinforcedHull: {
     id: 'reinforcedHull',
     name: 'Reinforced Hull',
-    desc: '+50 max hull points.',
+    desc: 'Bonus max hull points (rises with Reinforced Hull research). Generic survivability — never a substitute for the threat’s active counter.',
     costPerShip: 75,
   },
   mineSonar: {
     id: 'mineSonar',
     name: 'Mine-Detection Sonar',
-    desc: 'Reveals standard mines around this ship so the convoy can steer clear of them.',
+    desc: 'Reveals mines around this ship so the convoy can steer clear. Detection only — clearing needs escort minesweeper drones.',
     costPerShip: 95,
   },
   fireSuppression: {
     id: 'fireSuppression',
     name: 'Fire-Suppression System',
-    desc: 'Missile hits can no longer set this ship ablaze.',
+    desc: 'Counters the fire (damage-over-time) that missile hits start on this ship. Research upgrades extinguish faster, up to full immunity.',
     costPerShip: 55,
+  },
+  hydrophone: {
+    id: 'hydrophone',
+    name: 'Hydrophone',
+    desc: 'Listens for torpedoes in the underwater domain and shows their bearing. Detection only — destroying them is the depth-charge launcher’s job.',
+    costPerShip: 85,
+  },
+  thermalImaging: {
+    id: 'thermalImaging',
+    name: 'Thermal/Radar Imaging',
+    desc: 'Sees precise threat tracks through enemy screening smoke. It removes nothing and destroys nothing — it gives your defenses their eyes back.',
+    costPerShip: 90,
+  },
+  flak: {
+    id: 'flak',
+    name: 'Anti-Air Flak Mount',
+    desc: 'Automatically engages enemy recon planes (and, with proximity fuses, ship-disabling drones) entering its arc. Separate equipment from the missile self-defense interceptor — it cannot engage missiles.',
+    costPerShip: 100,
+  },
+  antiBoarding: {
+    id: 'antiBoarding',
+    name: 'Anti-Boarding Countermeasures',
+    desc: 'Slows and can reject the Boarding Boat capture mechanic on this ship. No effect on missiles, mines, torpedoes, artillery or ordinary hull damage.',
+    costPerShip: 60,
+  },
+  compartmentalization: {
+    id: 'compartmentalization',
+    name: 'Compartmentalization',
+    desc: 'Reduces the damage this ship takes after a hit lands (reduction tier from research). Never interferes with detection or interception.',
+    costPerShip: 70,
+  },
+};
+
+/** Escort loadout slots. Missile interceptors are built into every escort;
+ *  these optional systems compete for the loadout's limited slots — no escort
+ *  carries every weapon. */
+export const ESCORT_MODULE_SLOTS = 2;
+
+export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {
+  deckGun: {
+    id: 'deckGun',
+    name: 'Deck Gun / Autocannon',
+    desc: 'Sustained-fire gun for attack boats — persistent HP targets the missile interceptor cannot touch. Commits to a selected boat until it sinks or leaves range.',
+    cost: 260,
+  },
+  mcmDroneLauncher: {
+    id: 'mcmDroneLauncher',
+    name: 'Mine-Countermeasure Drone Launcher',
+    desc: 'Launches minesweeper drones at REVEALED mines (tap a charted mine). Each sortie expends a purchased drone munition. Detection stays separate — no drone flies at an uncharted mine.',
+    cost: 200,
+  },
+  depthCharges: {
+    id: 'depthCharges',
+    name: 'Depth-Charge Launcher',
+    desc: 'Lobbed area weapon against torpedoes: tap a point in the water and the blast destroys torpedoes inside it. Completely separate from missile interceptors — it cannot engage anything airborne.',
+    cost: 240,
+  },
+};
+
+/** Shore-base loadout slots. Base missile interceptors are built in. */
+export const BASE_MODULE_SLOTS = 1;
+
+export const BASE_MODULES: Record<BaseModuleId, BaseModuleDef> = {
+  counterBattery: {
+    id: 'counterBattery',
+    name: 'Counter-Battery System',
+    desc: 'Fires at identified hostile ARTILLERY POSITIONS to suppress (and with focus, destroy) them. It never engages shells in flight, ships, or any mobile unit.',
+    cost: 300,
   },
 };
 
@@ -89,7 +164,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   tight: {
     id: 'tight',
     name: 'Tight',
-    desc: 'A concentrated column: overlapping fire makes your interceptors more accurate (+8%) and extends point-defense and escort reach (×1.3). The price — a direct hit or a mine chains blast damage into the ships packed alongside.',
+    desc: 'A concentrated column: overlapping fire makes your interceptors more accurate (+8%) and extends self-defense and escort reach (×1.3). The price — a direct hit or a mine chains blast damage into the ships packed alongside.',
     speedMult: 0.95,
     lateralSpread: 18,
     gapBonus: 0,
@@ -122,92 +197,6 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
     defenseRangeMult: 0.9,
     chainSplashRadius: 24,
   },
-};
-
-export const RESEARCH: Record<ResearchId, ResearchDef> = {
-  sensors1: {
-    id: 'sensors1',
-    branch: 'sensors',
-    name: 'Early-Warning Network',
-    desc: 'Threat tracks appear with target-vector lines and interceptors gain +5% accuracy.',
-    cost: 40,
-  },
-  sensors2: {
-    id: 'sensors2',
-    branch: 'sensors',
-    name: 'Advanced Sonar Suite',
-    desc: 'Every ship gains basic mine detection; sonar-equipped ships detect at nearly double range.',
-    cost: 65,
-    requires: 'sensors1',
-  },
-  sensors3: {
-    id: 'sensors3',
-    branch: 'sensors',
-    name: 'Composite-Signature Analysis',
-    desc: 'Detection systems can identify low-signature mines.',
-    cost: 90,
-    requires: 'sensors2',
-  },
-  intercept1: {
-    id: 'intercept1',
-    branch: 'interception',
-    name: 'Improved Interceptors',
-    desc: 'Battery interceptors fly 50% faster and escort interceptors 10% faster; every interceptor hits 10% more often.',
-    cost: 40,
-  },
-  intercept2: {
-    id: 'intercept2',
-    branch: 'interception',
-    name: 'Dual-Launch Cells',
-    desc: 'Escort launchers reload twice as fast, and battery interceptors gain another 20% speed.',
-    cost: 70,
-    requires: 'intercept1',
-  },
-  mines1: {
-    id: 'mines1',
-    branch: 'mineWarfare',
-    name: 'Minesweeping Drones',
-    desc: 'Fields autonomous drones, launched from your escorts, that fly out and detonate charted (revealed) mines before ships reach them. Each sortie expends a drone munition bought in Preparation.',
-    cost: 55,
-  },
-  resilience1: {
-    id: 'resilience1',
-    branch: 'resilience',
-    name: 'Compartmentalization',
-    desc: 'All ships take 25% less damage.',
-    cost: 50,
-  },
-  resilience2: {
-    id: 'resilience2',
-    branch: 'resilience',
-    name: 'Damage-Control Teams',
-    desc: 'Fires are extinguished almost immediately on every ship.',
-    cost: 60,
-    requires: 'resilience1',
-  },
-  ew1: {
-    id: 'ew1',
-    branch: 'electronicWarfare',
-    name: 'Barrage Jamming',
-    desc: 'ECM aircraft jam guided seekers far more effectively (guided hit chance 8% inside the jamming orbit).',
-    cost: 55,
-  },
-  logistics1: {
-    id: 'logistics1',
-    branch: 'logistics',
-    name: 'Expanded Berthing',
-    desc: 'Convoy capacity +5 immediately and hull repairs cost half as much.',
-    cost: 70,
-  },
-};
-
-export const RESEARCH_BRANCH_NAMES: Record<string, string> = {
-  sensors: 'Sensors & Intelligence',
-  interception: 'Missile Interception',
-  mineWarfare: 'Mine Warfare',
-  resilience: 'Ship Resilience',
-  electronicWarfare: 'Electronic Warfare',
-  logistics: 'Logistics',
 };
 
 /** Flavor names for cargo ships, used in after-action narratives. */
