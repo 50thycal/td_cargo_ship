@@ -1175,3 +1175,70 @@ button.unequip {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- research: counter catalogue (Category → Branch → Nodes/Tactics) */
+
+.tech-category-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.tech-category-label .icon { width: 18px; height: 18px; }
+
+.counter-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.branch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.branch-head .icon { width: 18px; height: 18px; color: var(--accent); }
+.branch-head .branch-name { font-size: 14px; font-weight: 600; }
+
+.branch-tags .chip { font-size: 11px; padding: 3px 8px; }
+
+/* A labelled row of researchable entries: the branch's NODES or TACTICS. */
+.tech-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.tech-row-label {
+  flex: none;
+  width: 58px;
+  margin-top: 18px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+/* Parallel tactic paths: a gap instead of a prerequisite connector. */
+.tech-gap { width: 16px; flex: none; }
+
+/* What a module is for, on its prep card (role + countered branch). */
+.module-card .role-line {
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

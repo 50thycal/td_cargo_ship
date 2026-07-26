@@ -2,9 +2,32 @@
 // economy, research pipeline, convoy scaling, campaign confidence, and the
 // glue between transit results and enemy evolution. All mutations validate
 // their inputs so the UI can stay dumb.
+//
+// Research runs on the counter catalogue (data/counters.ts): branches with
+// hardware NODES and TACTICS, multi-prerequisites, and granted built-ins.
+// Equipment purchases are gated on each branch's base node — intel unlocks,
+// cash equips, and neither substitutes for the other.
 
 import { CAMPAIGN, ECONOMY, EVOLUTION } from '../data/tuning';
-import { MODULES, RESEARCH, SHIP_CLASSES } from '../data/defs';
+import {
+  BASE_MODULES,
+  BASE_MODULE_SLOTS,
+  ESCORT_MODULES,
+  ESCORT_MODULE_SLOTS,
+  MODULES,
+  SHIP_CLASSES,
+} from '../data/defs';
+import {
+  ABILITY_RESEARCH_REQUIREMENT,
+  allResearchableIds,
+  BASE_MODULE_RESEARCH_REQUIREMENT,
+  COUNTER_BRANCHES,
+  effectiveResearch,
+  ESCORT_MODULE_RESEARCH_REQUIREMENT,
+  MODULE_RESEARCH_REQUIREMENT,
+  RESEARCH_INDEX,
+  type CounterTacticDef,
+} from '../data/counters';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound } from './evolution';
@@ -12,19 +35,33 @@ import { buildTransitCards } from './aar';
 import type {
   AarCard,
   AfterActionReport,
+  AutoSystem,
+  BaseModuleId,
   CampaignState,
+  CounterTelemetry,
+  EscortModuleId,
   FormationId,
   ModuleId,
   ResearchId,
   RoundMetrics,
   RoundPlan,
+  SensorFamily,
   ShipClassId,
   ShipLoss,
   TechKey,
   TransitState,
 } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
+
+const DEFAULT_AUTO_FIRE: Record<AutoSystem, boolean> = {
+  escortInterceptor: true,
+  baseInterceptor: true,
+  mcmDrones: true,
+  depthCharges: true,
+  deckGun: true,
+  counterBattery: true,
+};
 
 export function newCampaign(seed: string): CampaignState {
   return {
@@ -45,6 +82,10 @@ export function newCampaign(seed: string): CampaignState {
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
     modulePaid: { cargo: {}, tanker: {}, freighter: {} },
+    escortModules: [],
+    escortModulePaid: {},
+    baseModules: [],
+    baseModulePaid: {},
     pendingDamage: 0,
     escortDamage: 0,
     baseDamage: 0,
@@ -55,10 +96,17 @@ export function newCampaign(seed: string): CampaignState {
     pdAmmo: ECONOMY.startPdAmmo,
     ecmUnlocked: false,
     scanUnlocked: false,
+    sonarUnlocked: false,
+    smokeUnlocked: false,
+    hardenedUnlocked: false,
+    autoFire: { ...DEFAULT_AUTO_FIRE },
+    protectedChannels: [],
     formation: 'tight',
     targetPriority: 'proximity',
     completedResearch: [],
     activeResearch: null,
+    roundSpend: {},
+    roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0 },
     evolution: newEvolution(),
     quota: {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
@@ -77,6 +125,21 @@ export function roundRng(c: CampaignState, purpose: string): RNG {
   return makeRng(`${c.seed}:r${c.round}:${purpose}`);
 }
 
+/** The player's effective research (completed + granted built-ins). */
+export function researchSet(c: CampaignState): Set<ResearchId> {
+  return effectiveResearch(c.completedResearch);
+}
+
+export function hasResearch(c: CampaignState, id: ResearchId): boolean {
+  return researchSet(c).has(id);
+}
+
+/** Attribute cash movement to a counter branch for the game log (negative on
+ *  refunds, so the net spend per branch stays honest). */
+function recordSpend(c: CampaignState, branch: string, amount: number): void {
+  c.roundSpend[branch] = (c.roundSpend[branch] ?? 0) + amount;
+}
+
 // ---------------------------------------------------------------------------
 // Developer / test runs
 // ---------------------------------------------------------------------------
@@ -86,8 +149,8 @@ export interface DevOptions {
   round: number;
   /** Invincible ships/escorts/batteries and effectively unlimited munitions. */
   god: boolean;
-  /** All research complete, ECM/scan installed, max assets & capacity, deep
-   *  pockets and full magazines. */
+  /** All research complete, every ability installed, max assets & capacity,
+   *  deep pockets and full magazines. */
   unlockAll: boolean;
 }
 
@@ -122,9 +185,15 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
   c.dev = true;
   c.godMode = opts.god;
   if (opts.unlockAll) {
-    c.completedResearch = Object.keys(RESEARCH) as ResearchId[];
+    c.completedResearch = allResearchableIds();
     c.ecmUnlocked = true;
     c.scanUnlocked = true;
+    c.sonarUnlocked = true;
+    c.smokeUnlocked = true;
+    c.hardenedUnlocked = true;
+    // The limited loadout slots still apply, even for dev runs.
+    c.escortModules = ['mcmDroneLauncher', 'deckGun'];
+    c.baseModules = ['counterBattery'];
     c.cash = 999_999;
     c.intel = 9_999;
     c.ammo = 999;
@@ -166,8 +235,9 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
-  c.pdAmmo = t.pdAmmo; // unused point-defense rounds carry over
+  c.pdAmmo = t.pdAmmo; // unused self-defense rounds carry over
   c.formation = t.formation; // tactical formation changes persist as the new default
+  c.autoFire = { ...t.autoFire }; // in-transit automation toggles persist
 
   const newDiscoveries: TechKey[] = [];
   for (const key of t.debutsSeen) {
@@ -295,7 +365,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       researchCompleted = c.activeResearch.id;
       c.completedResearch.push(researchCompleted);
       c.activeResearch = null;
-      if (researchCompleted === 'logistics1') {
+      if (researchCompleted === 'logistics.expandedBerthing') {
         c.capacity = Math.min(CAMPAIGN.maxCapacity, c.capacity + 5);
       }
     }
@@ -336,11 +406,12 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       body: warning.text,
     });
   }
-  if (researchCompleted) {
+  if (researchCompleted && RESEARCH_INDEX[researchCompleted]) {
+    const entry = RESEARCH_INDEX[researchCompleted];
     cards.push({
       kind: 'research',
-      title: `Research complete: ${RESEARCH[researchCompleted].name}`,
-      body: RESEARCH[researchCompleted].desc,
+      title: `Research complete: ${entry.def.name}`,
+      body: `${entry.branch.name} — ${entry.def.desc}`,
     });
   }
   if (capacityIncreased) {
@@ -413,6 +484,39 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
         cause: e.cause ?? 'unknown',
       };
     });
+  // Player-counter snapshot: equipment by platform, active nodes vs tactics,
+  // spend and munitions by branch — the player half of the seesaw log.
+  const effective = [...researchSet(c)];
+  const counters: CounterTelemetry = {
+    equipped: {
+      cargo: {
+        cargo: [...c.classModules.cargo],
+        tanker: [...c.classModules.tanker],
+        freighter: [...c.classModules.freighter],
+      },
+      escorts: [...c.escortModules],
+      bases: [...c.baseModules],
+      abilities: [
+        ...(c.ecmUnlocked ? ['ecm'] : []),
+        ...(c.scanUnlocked ? ['scanPulse'] : []),
+        ...(c.sonarUnlocked ? ['activeSonar'] : []),
+        ...(c.smokeUnlocked ? ['smokeScreen'] : []),
+        ...(c.hardenedUnlocked ? ['hardened'] : []),
+      ],
+    },
+    activeNodes: effective.filter((id) => RESEARCH_INDEX[id] && !RESEARCH_INDEX[id].isTactic).sort(),
+    activeTactics: effective.filter((id) => RESEARCH_INDEX[id]?.isTactic).sort(),
+    spendByBranch: { ...c.roundSpend },
+    ammo: {
+      interceptorBought: c.roundAmmoBought.interceptor,
+      interceptorUsed: s.ammoUsed,
+      droneBought: c.roundAmmoBought.drone,
+      droneUsed: s.counter.droneLaunches,
+      selfDefenseBought: c.roundAmmoBought.selfDefense,
+      selfDefenseUsed: s.counter.selfDefenseShots,
+    },
+    stats: s.counter,
+  };
   c.telemetry.push({
     round,
     formation: t.formation,
@@ -453,7 +557,12 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     completedResearch: [...c.completedResearch],
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
+    counters,
   });
+
+  // A fresh spend ledger for the next prep phase.
+  c.roundSpend = {};
+  c.roundAmmoBought = { interceptor: 0, drone: 0, selfDefense: 0 };
 
   c.round++;
   c.phase = 'aar';
@@ -466,19 +575,31 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 // ---------------------------------------------------------------------------
 
 export function canStartResearch(c: CampaignState, id: ResearchId): { ok: boolean; reason?: string } {
-  const def = RESEARCH[id];
-  if (c.completedResearch.includes(id)) return { ok: false, reason: 'Already researched' };
+  const entry = RESEARCH_INDEX[id];
+  if (!entry) return { ok: false, reason: 'Unknown project' };
+  if (entry.def.granted) return { ok: false, reason: 'Built-in — no research needed' };
+  const eff = researchSet(c);
+  if (eff.has(id)) return { ok: false, reason: 'Already researched' };
   if (c.activeResearch) return { ok: false, reason: 'A project is already underway' };
-  if (def.requires && !c.completedResearch.includes(def.requires)) {
-    return { ok: false, reason: `Requires ${RESEARCH[def.requires].name}` };
+  const missing = entry.requires.find((r) => !eff.has(r));
+  if (missing) {
+    return { ok: false, reason: `Requires ${RESEARCH_INDEX[missing]?.def.name ?? missing}` };
   }
-  if (c.intel < def.cost) return { ok: false, reason: 'Not enough intel' };
+  const excludes = (entry.def as CounterTacticDef).excludes;
+  const conflict = excludes?.find((e) => eff.has(e));
+  if (conflict) {
+    return {
+      ok: false,
+      reason: `Mutually exclusive with ${RESEARCH_INDEX[conflict]?.def.name ?? conflict}`,
+    };
+  }
+  if (c.intel < entry.def.cost) return { ok: false, reason: 'Not enough intel' };
   return { ok: true };
 }
 
 export function startResearch(c: CampaignState, id: ResearchId): boolean {
   if (!canStartResearch(c, id).ok) return false;
-  c.intel -= RESEARCH[id].cost;
+  c.intel -= RESEARCH_INDEX[id].def.cost;
   c.activeResearch = { id, roundsLeft: 1 };
   return true;
 }
@@ -503,17 +624,33 @@ export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: Mod
   return Math.round(MODULES[moduleId].costPerShip * billable);
 }
 
-export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+/** Why a cargo module cannot be bought right now (null = it can). Purchase is
+ *  gated on the branch's base research node — cash never skips the lab. */
+export function moduleBlockReason(
+  c: CampaignState,
+  classId: ShipClassId,
+  moduleId: ModuleId,
+): string | null {
   const owned = c.classModules[classId];
-  if (owned.includes(moduleId)) return false;
-  if (owned.length >= SHIP_CLASSES[classId].slots) return false;
+  if (owned.includes(moduleId)) return 'Already equipped';
+  if (owned.length >= SHIP_CLASSES[classId].slots) return 'No module slots free on this class';
+  const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
+  if (req && !hasResearch(c, req)) {
+    return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  }
+  if (c.cash < moduleCost(c, classId, moduleId)) return 'Not enough cash';
+  return null;
+}
+
+export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+  if (moduleBlockReason(c, classId, moduleId) !== null) return false;
   const cost = moduleCost(c, classId, moduleId);
-  if (c.cash < cost) return false;
   c.cash -= cost;
-  owned.push(moduleId);
+  c.classModules[classId].push(moduleId);
   // Remember what was paid so unequipping refunds exactly this (not a value
   // recomputed at a different fleet size).
   (c.modulePaid[classId] ??= {})[moduleId] = cost;
+  recordSpend(c, moduleId, cost);
   return true;
 }
 
@@ -528,6 +665,73 @@ export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: M
   if (paid !== undefined) {
     c.cash += paid;
     delete c.modulePaid[classId][moduleId];
+    recordSpend(c, moduleId, -paid);
+  }
+  return true;
+}
+
+/** Why an escort module cannot be fitted (null = it can). */
+export function escortModuleBlockReason(c: CampaignState, id: EscortModuleId): string | null {
+  if (c.escortModules.includes(id)) return 'Already fitted';
+  if (c.escortModules.length >= ESCORT_MODULE_SLOTS) return 'Escort loadout slots are full';
+  const req = ESCORT_MODULE_RESEARCH_REQUIREMENT[id];
+  if (!hasResearch(c, req)) return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (c.cash < ESCORT_MODULES[id].cost) return 'Not enough cash';
+  return null;
+}
+
+export function buyEscortModule(c: CampaignState, id: EscortModuleId): boolean {
+  if (escortModuleBlockReason(c, id) !== null) return false;
+  const cost = ESCORT_MODULES[id].cost;
+  c.cash -= cost;
+  c.escortModules.push(id);
+  c.escortModulePaid[id] = cost;
+  recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, cost);
+  return true;
+}
+
+export function removeEscortModule(c: CampaignState, id: EscortModuleId): boolean {
+  const idx = c.escortModules.indexOf(id);
+  if (idx < 0) return false;
+  c.escortModules.splice(idx, 1);
+  const paid = c.escortModulePaid[id];
+  if (paid !== undefined) {
+    c.cash += paid;
+    delete c.escortModulePaid[id];
+    recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, -paid);
+  }
+  return true;
+}
+
+/** Why a base module cannot be fitted (null = it can). */
+export function baseModuleBlockReason(c: CampaignState, id: BaseModuleId): string | null {
+  if (c.baseModules.includes(id)) return 'Already fitted';
+  if (c.baseModules.length >= BASE_MODULE_SLOTS) return 'Base loadout slots are full';
+  const req = BASE_MODULE_RESEARCH_REQUIREMENT[id];
+  if (!hasResearch(c, req)) return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (c.cash < BASE_MODULES[id].cost) return 'Not enough cash';
+  return null;
+}
+
+export function buyBaseModule(c: CampaignState, id: BaseModuleId): boolean {
+  if (baseModuleBlockReason(c, id) !== null) return false;
+  const cost = BASE_MODULES[id].cost;
+  c.cash -= cost;
+  c.baseModules.push(id);
+  c.baseModulePaid[id] = cost;
+  recordSpend(c, id, cost);
+  return true;
+}
+
+export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
+  const idx = c.baseModules.indexOf(id);
+  if (idx < 0) return false;
+  c.baseModules.splice(idx, 1);
+  const paid = c.baseModulePaid[id];
+  if (paid !== undefined) {
+    c.cash += paid;
+    delete c.baseModulePaid[id];
+    recordSpend(c, id, -paid);
   }
   return true;
 }
@@ -547,6 +751,8 @@ export function buyAmmo(c: CampaignState, count: number): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.ammo += count;
+  c.roundAmmoBought.interceptor += count;
+  recordSpend(c, 'interceptorAmmo', cost);
   return true;
 }
 
@@ -556,6 +762,8 @@ export function buyDroneAmmo(c: CampaignState, buys = 1): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.droneAmmo += ECONOMY.droneAmmoPerBuy * buys;
+  c.roundAmmoBought.drone += ECONOMY.droneAmmoPerBuy * buys;
+  recordSpend(c, 'mcmDrones', cost);
   return true;
 }
 
@@ -565,6 +773,8 @@ export function buyPdAmmo(c: CampaignState, buys = 1): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.pdAmmo += ECONOMY.pdAmmoPerBuy * buys;
+  c.roundAmmoBought.selfDefense += ECONOMY.pdAmmoPerBuy * buys;
+  recordSpend(c, 'selfDefense', cost);
   return true;
 }
 
@@ -573,6 +783,7 @@ export function buyEscort(c: CampaignState): boolean {
   if (c.cash < ECONOMY.escortCost) return false;
   c.cash -= ECONOMY.escortCost;
   c.escorts++;
+  recordSpend(c, 'escortInterceptor', ECONOMY.escortCost);
   return true;
 }
 
@@ -581,21 +792,71 @@ export function buyBase(c: CampaignState): boolean {
   if (c.cash < ECONOMY.baseCost) return false;
   c.cash -= ECONOMY.baseCost;
   c.bases++;
+  recordSpend(c, 'baseInterceptor', ECONOMY.baseCost);
   return true;
 }
 
 export function unlockEcm(c: CampaignState): boolean {
   if (c.ecmUnlocked || c.cash < ECONOMY.ecmUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.ecm)) return false;
   c.cash -= ECONOMY.ecmUnlockCost;
   c.ecmUnlocked = true;
+  recordSpend(c, 'ecm', ECONOMY.ecmUnlockCost);
   return true;
 }
 
 export function unlockScan(c: CampaignState): boolean {
   if (c.scanUnlocked || c.cash < ECONOMY.scanUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.scan)) return false;
   c.cash -= ECONOMY.scanUnlockCost;
   c.scanUnlocked = true;
+  recordSpend(c, 'scanPulse', ECONOMY.scanUnlockCost);
   return true;
+}
+
+export function unlockSonar(c: CampaignState): boolean {
+  if (c.sonarUnlocked || c.cash < ECONOMY.sonarUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.sonar)) return false;
+  c.cash -= ECONOMY.sonarUnlockCost;
+  c.sonarUnlocked = true;
+  recordSpend(c, 'activeSonar', ECONOMY.sonarUnlockCost);
+  return true;
+}
+
+export function unlockSmoke(c: CampaignState): boolean {
+  if (c.smokeUnlocked || c.cash < ECONOMY.smokeUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.smoke)) return false;
+  c.cash -= ECONOMY.smokeUnlockCost;
+  c.smokeUnlocked = true;
+  recordSpend(c, 'smokeScreen', ECONOMY.smokeUnlockCost);
+  return true;
+}
+
+export function unlockHardened(c: CampaignState): boolean {
+  if (c.hardenedUnlocked || c.cash < ECONOMY.hardenedUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.hardened)) return false;
+  c.cash -= ECONOMY.hardenedUnlockCost;
+  c.hardenedUnlocked = true;
+  recordSpend(c, 'hardened', ECONOMY.hardenedUnlockCost);
+  return true;
+}
+
+/** Pre-round protected-channel selection (hardened systems). Rejects picks
+ *  beyond the researched channel capacity or unknown families. */
+export function setProtectedChannels(c: CampaignState, families: SensorFamily[]): boolean {
+  const valid: SensorFamily[] = ['mineDetection', 'torpedoDetection', 'missileWarning', 'smokeImaging'];
+  if (families.some((f) => !valid.includes(f))) return false;
+  if (new Set(families).size !== families.length) return false;
+  const eff = researchSet(c);
+  const capacity = eff.has('hardened.dualChannel') ? 2 : eff.has('hardened.protectedChannel') ? 1 : 0;
+  if (families.length > capacity) return false;
+  c.protectedChannels = [...families];
+  return true;
+}
+
+/** Pre-round automation preference (also toggleable live in transit). */
+export function setAutoFire(c: CampaignState, system: AutoSystem, enabled: boolean): void {
+  c.autoFire[system] = enabled;
 }
 
 /** Total unrepaired hull damage across cargo hulls, escorts and batteries. */
@@ -604,7 +865,7 @@ export function totalPendingDamage(c: CampaignState): number {
 }
 
 export function repairCost(c: CampaignState): number {
-  const mult = c.completedResearch.includes('logistics1') ? 0.5 : 1;
+  const mult = hasResearch(c, 'logistics.expandedBerthing') ? 0.5 : 1;
   return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult);
 }
 
@@ -615,6 +876,7 @@ export function repairFleet(c: CampaignState): boolean {
   c.pendingDamage = 0;
   c.escortDamage = 0;
   c.baseDamage = 0;
+  recordSpend(c, 'fleet', cost);
   return true;
 }
 
@@ -623,6 +885,7 @@ export function buyShip(c: CampaignState, classId: ShipClassId): boolean {
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.fleet[classId]++;
+  recordSpend(c, 'fleet', cost);
   return true;
 }
 

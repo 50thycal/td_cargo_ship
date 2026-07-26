@@ -133,12 +133,36 @@ try {
   // --- Research --------------------------------------------------------------------
   await page.waitForSelector('[data-screen="research"]', { timeout: 10_000 });
   await page.waitForTimeout(900); // entry stagger
+  // The counter catalogue renders Category → Branch with separate Nodes and
+  // Tactics rows; a TAP on a node must open its dossier (no hover anywhere).
+  const branchCount = await page.locator('.counter-branch').count();
+  if (branchCount < 10) throw new Error(`expected the counter catalogue, saw ${branchCount} branches`);
+  const nodeRows = await page.locator('.tech-row-label', { hasText: 'Nodes' }).count();
+  const tacticRows = await page.locator('.tech-row-label', { hasText: /Tactics/ }).count();
+  if (nodeRows < 10 || tacticRows < 5) {
+    throw new Error(`research rows missing: ${nodeRows} node rows, ${tacticRows} tactic rows`);
+  }
+  await page.locator('.tech-node').first().click();
+  await page.waitForSelector('.tech-detail:not(.empty)', { timeout: 5_000 });
+  console.log(`research catalogue OK: ${branchCount} branches, tap-opened dossier`);
   await page.screenshot({ path: `${SHOT_DIR}/05-research.png` });
   await page.getByRole('button', { name: 'Continue to Preparation' }).click();
 
   // --- Round 2 prep -------------------------------------------------------------------
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
   await page.waitForTimeout(900); // entry stagger
+  // Platform loadout panels: escort and shore-base slots must be visible.
+  for (const label of [/Escort loadout/, /Shore-base loadout/]) {
+    if (!(await page.getByText(label).count())) throw new Error(`prep panel missing: ${label}`);
+  }
+  // Research-gated procurement: an ungated module (Reinforced Hull) offers a
+  // price; a gated one (Hydrophone) names its missing research instead.
+  const hydroCard = page.locator('.module-card', { hasText: 'Hydrophone' }).first();
+  const hydroBtn = await hydroCard.locator('button').first().textContent();
+  if (!/Requires research/i.test(hydroBtn ?? '')) {
+    throw new Error(`hydrophone should be research-gated, button says: ${hydroBtn}`);
+  }
+  console.log('prep loadout panels OK (escort/base slots + research gating)');
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.
