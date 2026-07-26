@@ -9,8 +9,9 @@
 //
 //   • `implemented` — whether the simulation can genuinely FIELD this branch.
 //     The allocator refuses to spend on anything it cannot field, so budget is
-//     never silently burned on a threat that would never appear. Missiles and
-//     mines are live; the rest are catalogued (costs, gates, targeting grants)
+//     never silently burned on a threat that would never appear. Missiles,
+//     mines and torpedoes are live; the rest are catalogued (costs, gates,
+//     targeting grants)
 //     and switch on by flipping this flag once their spawn/behaviour lands.
 //
 //   • `nodes[].implemented` — same idea one level down: a branch can be live
@@ -257,7 +258,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
     key: 'torpedoes',
     name: 'Torpedoes',
     identity: 'The underwater branch — immune to every air-defense investment the player has made.',
-    implemented: false,
+    implemented: true,
     openRound: 5,
     openCost: 40,
     maxUnitsPerRound: 8,
@@ -268,7 +269,8 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
         cost: 34,
         gateRound: 5,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'torpedo',
         warning: 'Hydrophone intercepts suggest the enemy is preparing shore-launched torpedo runs.',
       },
       {
@@ -277,7 +279,10 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
         cost: 48,
         gateRound: 7,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'homingTorpedo',
+        warning:
+          'Acoustic analysis indicates the enemy is fitting its torpedoes with terminal homing.',
       },
       {
         id: 'lowSigTorpedo',
@@ -285,7 +290,10 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
         cost: 62,
         gateRound: 10,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'lowSigTorpedo',
+        warning:
+          'Analysts warn of a wakeless torpedo design that would leave nothing to read on the water.',
       },
     ],
     tactics: tacticLadder(['Single torpedo', 'Several torpedoes', 'Torpedo volleys']),

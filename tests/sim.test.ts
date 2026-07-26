@@ -189,6 +189,7 @@ function syntheticMetrics(round: number, overrides: Partial<RoundMetrics> = {}):
     interceptRate: 0.8,
     formation: 'tight',
     mineDetectRate: -1,
+    torpedoDetectRate: -1,
     valueSent: 241,
     deliveredFraction: 0.95,
     ...overrides,

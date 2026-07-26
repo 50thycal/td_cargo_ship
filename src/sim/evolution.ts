@@ -217,20 +217,39 @@ function escalationShare(
   metrics: RoundMetrics | undefined,
 ): number {
   const ledger = economy.ledgers[key];
-  let share =
+  // Tenure alone deepens a branch, up to the ordinary ceiling.
+  const share = Math.min(
+    ENEMY_ECONOMY.escalationShareMax,
     ENEMY_ECONOMY.escalationShareBase +
-    ENEMY_ECONOMY.escalationSharePerRound * ledger.roundsInvested;
-  if (metrics) {
-    // Missiles being shot down reliably → invest in guided/harder variants.
-    if (key === 'missiles' && metrics.interceptRate > 0.6) {
-      share += ENEMY_ECONOMY.counteredEscalationBonus;
-    }
-    // Mines being charted reliably → invest in low-signature casings.
-    if (key === 'mines' && metrics.mineDetectRate >= 0 && metrics.mineDetectRate > 0.5) {
-      share += ENEMY_ECONOMY.counteredEscalationBonus;
-    }
+      ENEMY_ECONOMY.escalationSharePerRound * ledger.roundsInvested,
+  );
+  if (!metrics || !isHardCountered(key, metrics)) return share;
+  // Being hard-countered pushes PAST the tenure ceiling. The bonus has to be
+  // applied after that clamp, not before it: any branch the enemy has invested
+  // in for ~6 rounds is already pinned at escalationShareMax, so folding the
+  // bonus in first made the player's counter produce no answer at all.
+  return Math.min(
+    ENEMY_ECONOMY.escalationShareCounteredMax,
+    share + ENEMY_ECONOMY.counteredEscalationBonus,
+  );
+}
+
+/** Is the player reliably beating this branch's current node? That is the cue
+ *  to climb the node ladder rather than simply buy more of what is failing. */
+function isHardCountered(key: EnemyBranchKey, metrics: RoundMetrics): boolean {
+  switch (key) {
+    // Missiles being shot down reliably → guided/harder variants.
+    case 'missiles':
+      return metrics.interceptRate > 0.6;
+    // Mines being charted reliably → low-signature casings.
+    case 'mines':
+      return metrics.mineDetectRate >= 0 && metrics.mineDetectRate > 0.5;
+    // Torpedoes being heard and killed → wakeless, quieter runs.
+    case 'torpedoes':
+      return metrics.torpedoDetectRate >= 0 && metrics.torpedoDetectRate > 0.5;
+    default:
+      return false;
   }
-  return Math.min(ENEMY_ECONOMY.escalationShareMax, share);
 }
 
 interface Purchase {
@@ -587,6 +606,43 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     }
   }
 
+  // --- Torpedoes -------------------------------------------------------------
+  // The underwater branch: launched from the shore across the transit window,
+  // scheduled on the same queue as missiles so there is one timing path.
+  const torpedoLedger = economy.ledgers.torpedoes;
+  const straight = torpedoLedger.units.straight ?? 0;
+  const homing = torpedoLedger.units.homing ?? 0;
+  const lowSigTorpedoes = torpedoLedger.units.lowSigTorpedo ?? 0;
+  const torpedoTotal = straight + homing + lowSigTorpedoes;
+  if (torpedoTotal > 0) {
+    if (evo.firstSeen.torpedo === undefined) debuts.push('torpedo');
+    if (lowSigTorpedoes > 0 && evo.firstSeen.lowSigTorpedo === undefined) {
+      debuts.push('lowSigTorpedo');
+    }
+    const torpedoTactic = tacticForRounds('torpedoes', torpedoLedger.roundsInvested);
+    // Volley size rises with the tactic rung: single runs become salvos.
+    const volley = Math.max(1, Math.round(torpedoTactic.volumeMult));
+    const scheduled = scheduleMissiles(
+      torpedoTotal,
+      volley,
+      rng,
+      'torpedo',
+      EVOLUTION.windowStartT,
+      windowEnd,
+    );
+    // Assign variants across the scheduled runs: low-signature first (they are
+    // the scarcest and nastiest), then homing, then straight runners.
+    scheduled.forEach((event, i) => {
+      if (i < lowSigTorpedoes) {
+        event.lowSig = true;
+        event.homing = true; // the low-sig node is a homing torpedo minus the wake
+      } else if (i < lowSigTorpedoes + homing) {
+        event.homing = true;
+      }
+    });
+    spawns.push(...scheduled);
+  }
+
   return { round, spawns, mines, debuts };
 }
 
@@ -596,7 +652,7 @@ function scheduleMissiles(
   count: number,
   volleySize: number,
   rng: RNG,
-  kind: 'missile' | 'guidedMissile',
+  kind: 'missile' | 'guidedMissile' | 'torpedo',
   windowStart: number,
   windowEnd: number,
 ): SpawnEvent[] {

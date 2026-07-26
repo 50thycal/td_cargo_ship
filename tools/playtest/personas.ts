@@ -85,9 +85,10 @@ export interface TransitPolicy {
   useEcm: boolean;
   /** Place defensive smoke over the densest cluster of hulls. */
   useSmoke: boolean;
-  /** Fire depth charges at detected torpedoes (no-op until the enemy fields
-   *  them — kept so the policy space is complete). */
+  /** Fire depth charges at detected torpedoes. */
   useDepthCharges: boolean;
+  /** Spend active-sonar charges hunting torpedoes the passive watch missed. */
+  useSonar: boolean;
 }
 
 export interface Persona {
@@ -337,6 +338,20 @@ export function decideCommands(
     mem.lastScanT = t.time;
   }
 
+  // Active sonar: the only way to find a torpedo the passive watch cannot
+  // hear. Ping ahead of the convoy — behind it is water already crossed — and
+  // only once torpedoes are known to be a threat this round, since charges are
+  // few. Nothing detected yet is exactly when a ping is worth spending.
+  if (
+    p.useSonar &&
+    t.sonarCharges > 0 &&
+    t.stats.torpedoesLaunched > t.stats.torpedoesDetected &&
+    t.time - mem.lastSonarT > 18
+  ) {
+    cmds.push({ type: 'ability', ability: 'sonar', x: center.x + 260, y: center.y });
+    mem.lastSonarT = t.time;
+  }
+
   // ECM: worth a charge when several guided seekers are in the air near the
   // convoy — that is exactly what the orbit scrambles.
   if (p.useEcm && t.ecmCharges > 0 && t.time >= t.ecmActiveUntil && t.time - mem.lastEcmT > 20) {
@@ -378,6 +393,7 @@ const FIGHTER: TransitPolicy = {
   useEcm: true,
   useSmoke: true,
   useDepthCharges: true,
+  useSonar: true,
 };
 
 const PASSIVE: TransitPolicy = {
@@ -388,6 +404,7 @@ const PASSIVE: TransitPolicy = {
   useEcm: false,
   useSmoke: false,
   useDepthCharges: false,
+  useSonar: false,
 };
 
 export const PERSONAS: Persona[] = [
@@ -549,6 +566,42 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
       { kind: 'ammo', upTo: 32 },
+    ],
+    transit: FIGHTER,
+  },
+  {
+    name: 'asw',
+    desc: 'Underwater specialist: hydrophone watch, depth charges and sonar pings — no answer to anything airborne.',
+    formation: 'wide',
+    research: [
+      'hydrophone.base',
+      'depthCharges.base',
+      'hydrophone.longRange',
+      'depthCharges.improvedReload',
+      'depthCharges.localAutoDrop',
+      'activeSonar.base',
+      'hydrophone.lowSigProcessing',
+      'depthCharges.expandedPattern',
+      'activeSonar.lowSigReturn',
+      'depthCharges.extendedThrow',
+      'hydrophone.projectedPath',
+      'depthCharges.dualRack',
+      'activeSonar.extraCharge',
+      'depthCharges.leadSolution',
+      'hydrophone.sharedPicture',
+    ],
+    buys: [
+      { kind: 'repair' },
+      { kind: 'ammo', upTo: 18 },
+      { kind: 'escort' },
+      { kind: 'escortModule', id: 'depthCharges' },
+      { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
+      { kind: 'module', classId: 'tanker', moduleId: 'hydrophone' },
+      { kind: 'ability', id: 'sonar' },
+      { kind: 'module', classId: 'freighter', moduleId: 'hydrophone' },
+      { kind: 'ship', classId: 'cargo' },
+      { kind: 'base' },
+      { kind: 'ammo', upTo: 30 },
     ],
     transit: FIGHTER,
   },

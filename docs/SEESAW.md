@@ -203,6 +203,26 @@ allocator — correctly — bought almost nothing but mines, and the seesaw lock
 Repricing mines to 28 restored rotation (top-spend pivots went 0.26 → 1.48 per
 campaign). When adding a branch, price it against what it actually achieves.
 
+### A clamping rule learned the hard way
+
+**Apply the counter-response bonus after the ordinary ceiling, not before it.**
+The node-ladder escalation share was computed as
+`min(max, base + perRound × tenure + counteredBonus)`. That reads correctly and
+is wrong: any branch the enemy had invested in for ~6 rounds already exceeded
+`max` from tenure alone, so the countered bonus was clamped away entirely and
+the player's counter produced **no answer at all**. The bug survived because the
+test that claimed to check it compared two runs with *different seeds* — the
+exploration jitter moved the shares more than the signal did, and the assertion
+passed on noise for as long as it existed. Both halves are now fixed: the bonus
+is added on top of the tenure clamp with its own higher ceiling, and the
+escalation tests hold the seed constant across both arms and vary only the
+counter signal.
+
+Two rules follow. When a mechanism is "the enemy answering the player", check
+that its input can still move the output at the *end* of a campaign, not just at
+the start. And when a test compares two behaviours, change one thing between the
+arms — a seeded run is a sample, not a measurement.
+
 ---
 
 ## How this is used

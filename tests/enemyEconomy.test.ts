@@ -25,6 +25,7 @@ function metrics(round: number, over: Partial<RoundMetrics> = {}): RoundMetrics 
     interceptRate: 0.5,
     formation: 'sprint', // avoids the tight/wide formation tells skewing shares
     mineDetectRate: -1,
+    torpedoDetectRate: -1,
     valueSent: 241,
     deliveredFraction: 0.75,
     branchResults: {},
@@ -202,24 +203,68 @@ describe('adaptive allocation', () => {
     );
   });
 
+  // The escalation tests below hold the SEED constant across both arms and vary
+  // only the counter signal. Different seeds give the exploration jitter its own
+  // say in branch shares, which drowns out the effect being measured — an
+  // earlier version of the mine test compared two seeds and passed for rounds
+  // while the signal it claimed to check was doing nothing at all.
+  const nodeShare = (evo: EvolutionState, branch: 'missiles' | 'mines' | 'torpedoes', node: string): number => {
+    const units = evo.economy.ledgers[branch].units;
+    const total = totalUnits(units);
+    return total > 0 ? (units[node] ?? 0) / total : 0;
+  };
+
+  /** Run both arms over many seeds; the counter arm must escalate at least as
+   *  far every time and strictly further on a clear majority. */
+  const expectEscalation = (
+    rounds: number,
+    branch: 'missiles' | 'mines' | 'torpedoes',
+    node: string,
+    counteredMetrics: Partial<RoundMetrics>,
+    ignoredMetrics: Partial<RoundMetrics>,
+  ): void => {
+    let strictlyHigher = 0;
+    const seeds = 10;
+    for (let i = 0; i < seeds; i++) {
+      const seed = `esc-${branch}-${i}`;
+      const countered = nodeShare(runEconomy(rounds, () => counteredMetrics, seed), branch, node);
+      const ignored = nodeShare(runEconomy(rounds, () => ignoredMetrics, seed), branch, node);
+      expect(countered).toBeGreaterThanOrEqual(ignored);
+      if (countered > ignored) strictlyHigher++;
+    }
+    expect(strictlyHigher).toBeGreaterThanOrEqual(seeds / 2);
+  };
+
   it('escalates within a branch the player is hard-countering', () => {
     // A player intercepting nearly everything should push the missile branch
     // up its node ladder (unguided -> guided) rather than just buying more.
-    const countered = runEconomy(6, () => ({ interceptRate: 0.95 }), 'esc-hi');
-    const ignored = runEconomy(6, () => ({ interceptRate: 0.05 }), 'esc-lo');
-    const guidedShare = (evo: EvolutionState): number => {
-      const units = evo.economy.ledgers.missiles.units;
-      const total = totalUnits(units);
-      return total > 0 ? (units.guided ?? 0) / total : 0;
-    };
-    expect(guidedShare(countered)).toBeGreaterThan(guidedShare(ignored));
+    expectEscalation(6, 'missiles', 'guided', { interceptRate: 0.95 }, { interceptRate: 0.05 });
   });
 
   it('escalates to low-signature mines when the player charts standard ones', () => {
-    const detected = runEconomy(9, () => ({ mineDetectRate: 0.95 }), 'mine-hi');
-    const missed = runEconomy(9, () => ({ mineDetectRate: 0.05 }), 'mine-lo');
-    const lowSigOf = (evo: EvolutionState): number => evo.economy.ledgers.mines.units.lowSig ?? 0;
-    expect(lowSigOf(detected)).toBeGreaterThanOrEqual(lowSigOf(missed));
+    expectEscalation(9, 'mines', 'lowSig', { mineDetectRate: 0.95 }, { mineDetectRate: 0.05 });
+  });
+
+  it('escalates to low-signature torpedoes when the player hears and kills them', () => {
+    expectEscalation(
+      12,
+      'torpedoes',
+      'lowSigTorpedo',
+      { torpedoDetectRate: 0.95 },
+      { torpedoDetectRate: 0.05 },
+    );
+  });
+
+  it('answers a counter even on a branch that has already maxed its tenure escalation', () => {
+    // Regression: the countered bonus used to be summed BEFORE the tenure clamp,
+    // so any branch invested in for ~6 rounds was already pinned at
+    // escalationShareMax and the player's counter changed nothing.
+    const longRun = runEconomy(12, () => ({ mineDetectRate: -1 }), 'clamp');
+    expect(longRun.economy.ledgers.mines.roundsInvested).toBeGreaterThan(
+      (ENEMY_ECONOMY.escalationShareMax - ENEMY_ECONOMY.escalationShareBase) /
+        ENEMY_ECONOMY.escalationSharePerRound,
+    );
+    expectEscalation(12, 'mines', 'lowSig', { mineDetectRate: 0.95 }, { mineDetectRate: -1 });
   });
 });
 

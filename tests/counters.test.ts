@@ -4,10 +4,12 @@
 // automation is independent of and subordinate to manual control; the same
 // stat tier always means the same number; and old saves migrate whole.
 //
-// Threats whose ENEMY-side implementation has not landed yet (torpedoes,
-// boats, artillery, aircraft) are injected directly into TransitState — that
+// Threats whose ENEMY-side implementation has not landed yet (boats,
+// artillery, aircraft) are injected directly into TransitState — that
 // exercises the player-side compatibility layer without inventing any enemy
-// behavior.
+// behavior. Torpedoes are injected here too, but only to pin the compatibility
+// boundaries in isolation; the live branch is exercised end to end in
+// tests/torpedoes.test.ts.
 
 import { describe, expect, it } from 'vitest';
 import {

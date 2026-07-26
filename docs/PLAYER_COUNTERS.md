@@ -210,7 +210,7 @@ Coverage (reveal radius 130→185, band scales) · Longer Track Persistence.
 Static mines stay charted permanently once revealed (their position cannot go
 stale); persistence governs moving contacts when drifting mines land.
 
-### Category: Torpedo Warfare ⚑ (enemy branch designed, not yet fielded)
+### Category: Torpedo Warfare (enemy branch LIVE)
 
 #### Branch: Hydrophone — cargo module, detects Torpedoes
 **Nodes:** Base (standard + homing torpedo noise, Medium range, approximate
@@ -418,9 +418,9 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Standard mines | Mine sonar or Scan Pulse | MCM drones (after detection) | Compartmentalization |
 | Low-signature mines | Composite-Signature Analysis / Composite Scan | MCM drones | Compartmentalization |
 | Drifting mines ⚑ | Drift Tracking | Moving-Target Guidance drones | Formation + hull systems |
-| Standard torpedoes ⚑ | Wake (enemy pass) or Hydrophone | Depth charges | Hull systems |
-| Homing torpedoes ⚑ | Hydrophone | Depth charges | Hull systems |
-| Low-signature torpedoes ⚑ | Low-Signature Processing or Active Sonar Return Processing | Depth charges | Hull systems |
+| Standard torpedoes | Wake (enemy pass) or Hydrophone | Depth charges | Hull systems |
+| Homing torpedoes | Hydrophone | Depth charges | Hull systems |
+| Low-signature torpedoes | Low-Signature Processing or Active Sonar Return Processing | Depth charges | Hull systems |
 | Small-arms boats ⚑ | Visual contact | Escort deck guns | Hull systems |
 | Rocket boats ⚑ | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
 | Boarding boats ⚑ | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
