@@ -16,6 +16,7 @@ import type { RNG } from './rng';
 import type {
   AreaEffect,
   Base,
+  BoatVariant,
   CampaignState,
   CombatEffects,
   CounterRoundStats,
@@ -268,6 +269,12 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         flakCooldown: 0,
         smokeGraceUntil: 0,
         straggling: false,
+        boardingSeconds: 0,
+        boardingLockUntil: 0,
+        lockdownUsed: false,
+        rejectionUsed: false,
+        captured: false,
+        captureExitAt: 0,
       });
     }
   }
@@ -355,6 +362,10 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       torpedoesDetected: 0,
       torpedoesHit: 0,
       torpedoesDestroyed: 0,
+      boatsLaunched: 0,
+      boatsSunk: 0,
+      boatKills: 0,
+      shipsCaptured: 0,
       ammoUsed: 0,
       ecmUsed: 0,
       scanUsed: 0,
@@ -566,6 +577,15 @@ function announceTorpedo(t: TransitState, threat: Threat): void {
   announceDebut(t, 'torpedo');
   if (threat.homing) announceDebut(t, 'homingTorpedo');
   if (threat.lowSig) announceDebut(t, 'lowSigTorpedo');
+}
+
+/** Attack-boat debuts. Boats are surface craft in plain sight, so the player
+ *  learns what they are facing the moment one puts to sea — no detection
+ *  gate, unlike the underwater branch. */
+function announceBoat(t: TransitState, variant: BoatVariant): void {
+  announceDebut(t, 'attackBoat');
+  if (variant === 'rocket') announceDebut(t, 'rocketBoat');
+  if (variant === 'boarding') announceDebut(t, 'boardingBoat');
 }
 
 /** Rough seconds until a missile reaches whatever it is aimed at (used by the
@@ -1551,7 +1571,14 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
     }
     // Auto-acquisition (nearest valid boat), respecting distributed fire.
     if (!target && fx.autoNearest && t.autoFire.deckGun) {
-      const candidates = boats.filter((b) => dist(escort.x, escort.y, b.x, b.y) <= fx.range);
+      let candidates = boats.filter((b) => dist(escort.x, escort.y, b.x, b.y) <= fx.range);
+      // Automatic Threat Priority: a boarding party already on a hull outranks
+      // every other boat in reach. A capture is unrecoverable; a few more
+      // seconds of gunfire from a small-arms boat is not.
+      if (t.effects.antiBoarding.autoPriority) {
+        const attached = candidates.filter((b) => b.boatVariant === 'boarding' && b.engaging);
+        if (attached.length > 0) candidates = attached;
+      }
       let pool = candidates;
       if (fx.distributedFire) {
         // Avoid overkill: prefer boats no other gun is already working on.
@@ -1601,7 +1628,13 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         target.alive = false;
         target.engagedByEscortId = undefined;
         t.stats.counter.deckGunKills++;
+        t.stats.boatsSunk++;
         pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
+        // Sinking a boarding boat throws its party off the hull. The progress
+        // it had made is lost — that is what makes shooting the boat the
+        // answer, rather than merely a way to stop the clock where it stands.
+        const boarded = t.ships.find((s) => s.id === target.targetShipId);
+        if (boarded) releaseBoarding(t, boarded);
       }
     }
   }
@@ -1708,6 +1741,160 @@ function updateFlak(t: TransitState, dt: number): void {
       size: t.effects.selfDefense.projectileSize,
     });
   }
+}
+
+/** Attack boats: the surface branch. A boat is a persistent unit, so this is a
+ *  small state machine rather than a projectile update — close, commit, hold
+ *  station and work on one hull until it is gone, then pause and pick another.
+ *  Killing the boat is the only way to stop it, and only the deck gun can. */
+function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.attackBoat;
+  for (const boat of t.threats) {
+    if (boat.kind !== 'attackBoat' || !boat.alive) continue;
+    const variant = boat.boatVariant ?? 'smallArms';
+
+    // Re-acquire when the committed hull is gone, delivered or taken. Boats
+    // pick their target on arrival, not at launch, so a long run-in never
+    // wastes them on a ship that has since scored.
+    let target = t.ships.find((s) => s.id === boat.targetShipId);
+    if (!target || !target.alive || target.delivered || target.captured) {
+      if (target) releaseBoarding(t, target);
+      boat.targetShipId = undefined;
+      boat.engaging = false;
+      target = undefined;
+      if (t.time < (boat.retargetAt ?? 0)) continue;
+      const candidates = targetableShips(t);
+      if (candidates.length === 0) continue;
+      // Boarding boats hunt the prize — that is the T4 doctrine they grant.
+      const pick =
+        variant === 'boarding'
+          ? candidates.reduce((best, s) =>
+              SHIP_CLASSES[s.classId].value > SHIP_CLASSES[best.classId].value ? s : best,
+            )
+          : candidates.reduce((best, s) =>
+              dist(boat.x, boat.y, s.x, s.y) < dist(boat.x, boat.y, best.x, best.y) ? s : best,
+            );
+      boat.targetShipId = pick.id;
+      target = pick;
+    }
+    if (!target) continue;
+
+    // Close to weapons range, then hold station alongside. A boat matches the
+    // convoy's pace once attached, so the hull cannot simply outrun it.
+    const range = variant === 'boarding' ? fx.boardRange : fx.engageRange;
+    const d = dist(boat.x, boat.y, target.x, target.y) || 1;
+    if (d > range) {
+      boat.engaging = false;
+      boat.vx = ((target.x - boat.x) / d) * fx.speed;
+      boat.vy = ((target.y - boat.y) / d) * fx.speed;
+      boat.x += boat.vx * dt;
+      boat.y += boat.vy * dt;
+      continue;
+    }
+    boat.engaging = true;
+    // Station-keeping: drift with the target rather than orbiting it.
+    boat.vx = 0;
+    boat.vy = 0;
+    boat.x += (target.x - boat.x) * Math.min(1, dt * 2);
+    boat.y += (target.y - boat.y) * Math.min(1, dt * 2);
+
+    if (variant === 'boarding') {
+      advanceBoarding(t, boat, target, dt);
+      continue;
+    }
+
+    // Gunfire: sustained damage, no accuracy roll — the boat is alongside.
+    const before = target.hp;
+    target.hp -= fx.dps[variant] * dt * t.effects.damageTakenMult;
+    creditEnemyBranch(t, boatCause(variant), before - target.hp, false);
+    if (target.hp <= 0) {
+      t.stats.boatKills++;
+      killShip(t, target, boatCause(variant));
+      boat.targetShipId = undefined;
+      boat.engaging = false;
+      boat.retargetAt = t.time + fx.retargetDelay;
+    }
+  }
+
+  // Captured hulls steer off toward the hostile shore under their prize crew.
+  // They are already out of the game; this is purely so the player can watch it
+  // happen instead of a ship blinking out.
+  for (const ship of t.ships) {
+    if (!ship.captured || t.time >= ship.captureExitAt) continue;
+    ship.y += (WORLD.launchSites[0].y - ship.y) * Math.min(1, dt * 0.6);
+    ship.x -= 20 * dt;
+  }
+}
+
+/** Loss cause naming the boat node responsible, so the AAR can be specific. */
+function boatCause(variant: BoatVariant): string {
+  return variant === 'rocket' ? 'rocketBoat' : variant === 'boarding' ? 'captured' : 'attackBoat';
+}
+
+/** Drop a half-finished boarding. Progress is LOST, not paused — driving the
+ *  boat off has to be worth something, or the counter is just a delay. */
+function releaseBoarding(t: TransitState, ship: Ship): void {
+  if (ship.boardingSeconds <= 0) return;
+  ship.boardingSeconds = 0;
+  t.stats.counter.boardingInterrupted++;
+  pushEvent(t, { type: 'boardingRepelled', shipId: ship.id, shipName: ship.name });
+}
+
+/** Boarding: the capture clock, and every anti-boarding node that fights it. */
+function advanceBoarding(t: TransitState, boat: Threat, ship: Ship, dt: number): void {
+  const fx = t.effects.antiBoarding;
+  const equipped = fx.equippedEffect && ship.modules.includes('antiBoarding');
+  if (ship.boardingSeconds <= 0) {
+    t.stats.counter.boardingAttempts++;
+    pushEvent(t, { type: 'boardingStarted', shipId: ship.id, shipName: ship.name });
+  }
+
+  // Citadel Lockdown: one free freeze partway through the takeover.
+  const needed = COMBAT.attackBoat.boardingSeconds;
+  if (equipped && fx.lockdown && !ship.lockdownUsed && ship.boardingSeconds >= needed * 0.5) {
+    ship.lockdownUsed = true;
+    ship.boardingLockUntil = t.time + 4;
+  }
+  if (t.time < ship.boardingLockUntil) return;
+
+  // Counter-Boarding Team: while the boat is under deck-gun fire the crew is
+  // pushing them back off, not merely holding. This is the node that rewards
+  // actually shooting at the thing rather than buying armour and waiting.
+  if (equipped && fx.counterTeam && boat.engagedByEscortId !== undefined) {
+    ship.boardingSeconds = Math.max(0, ship.boardingSeconds - dt);
+    return;
+  }
+
+  ship.boardingSeconds += dt / (equipped ? fx.slowMult : 1);
+
+  // Emergency Rejection: one almost-complete capture per hull is thrown back.
+  // It buys time — the boat is untouched and will simply start again.
+  if (equipped && fx.emergencyRejection && !ship.rejectionUsed && ship.boardingSeconds >= needed * 0.9) {
+    ship.rejectionUsed = true;
+    ship.boardingSeconds = 0;
+    t.stats.counter.boardingInterrupted++;
+    pushEvent(t, { type: 'boardingRepelled', shipId: ship.id, shipName: ship.name, detail: 'rejection' });
+    return;
+  }
+
+  if (ship.boardingSeconds >= needed) {
+    captureShip(t, ship);
+    boat.targetShipId = undefined;
+    boat.engaging = false;
+    boat.retargetAt = t.time + COMBAT.attackBoat.retargetDelay;
+  }
+}
+
+/** A hull taken by a boarding party. Counted as a loss like a sinking, but
+ *  flagged so the AAR and the confidence penalty can treat it as the worse
+ *  outcome it is — the cargo is in enemy hands, not on the seabed. */
+function captureShip(t: TransitState, ship: Ship): void {
+  if (!ship.alive) return;
+  ship.captured = true;
+  ship.captureExitAt = t.time + COMBAT.attackBoat.captureExitSeconds;
+  t.stats.shipsCaptured++;
+  t.stats.counter.boardingCaptures++;
+  killShip(t, ship, 'captured');
 }
 
 /** Passive torpedo detection (hydrophone modules) — bearing contacts. */
@@ -1834,6 +2021,36 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         homing: !!spawn.homing,
         claimedByInterceptor: false,
       });
+      continue;
+    }
+
+    if (spawn.kind === 'attackBoat') {
+      // The SURFACE branch: a persistent unit, not a projectile. It puts to sea
+      // from the shore and picks its first hull on arrival rather than at
+      // launch — a boat that takes 20 seconds to close should be hunting what
+      // is actually in front of it, not a ship that has since been delivered.
+      const variant = spawn.boatVariant ?? 'smallArms';
+      t.stats.boatsLaunched++;
+      const maxHp = COMBAT.attackBoat.hp[variant];
+      t.threats.push({
+        id: t.nextEntityId++,
+        kind: 'attackBoat',
+        x: site.x,
+        y: site.y,
+        vx: 0,
+        vy: 0,
+        speed: COMBAT.attackBoat.speed,
+        alive: true,
+        // Boats are surface craft in plain sight — nothing to detect.
+        revealed: true,
+        lowSig: false,
+        claimedByInterceptor: false,
+        hp: maxHp,
+        maxHp,
+        boatVariant: variant,
+        engaging: false,
+      });
+      announceBoat(t, variant);
       continue;
     }
 
@@ -2477,6 +2694,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       threat.alive = false;
     }
   }
+
+  updateAttackBoats(t, rng, dt);
 
   // --- Cargo-module systems ---------------------------------------------------
   updateSelfDefense(t, dt);

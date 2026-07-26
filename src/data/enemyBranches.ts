@@ -10,9 +10,9 @@
 //   • `implemented` — whether the simulation can genuinely FIELD this branch.
 //     The allocator refuses to spend on anything it cannot field, so budget is
 //     never silently burned on a threat that would never appear. Missiles,
-//     mines and torpedoes are live; the rest are catalogued (costs, gates,
-//     targeting grants)
-//     and switch on by flipping this flag once their spawn/behaviour lands.
+//     mines, torpedoes and attack boats are live; the rest are catalogued
+//     (costs, gates, targeting grants) and switch on by flipping this flag
+//     once their spawn/behaviour lands.
 //
 //   • `nodes[].implemented` — same idea one level down: a branch can be live
 //     while its later variants are not (e.g. missiles field unguided/guided
@@ -303,36 +303,58 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
     key: 'attackBoats',
     name: 'Attack Boats',
     identity: 'Persistent, sinkable surface craft that engage one ship at a time until it is gone.',
-    implemented: false,
-    openRound: 4,
-    openCost: 45,
+    implemented: true,
+    openRound: 5,
+    openCost: 55,
     maxUnitsPerRound: 6,
+    // PRICING NOTE. Boats are the first threat that is not spent on use: a mine
+    // or torpedo buys at most one hull, but a boat that survives keeps killing
+    // for the rest of the transit.
+    //
+    // These are MEASURED prices, twice corrected. A sweep put boats at ROI
+    // 0.237 against mines at 0.247 — nominally well matched, and still far too
+    // strong, because mines were themselves ~7x more efficient per kill than
+    // missiles. Matching the most efficient branch in the game simply gave the
+    // enemy a SECOND high-efficiency outlet for a budget that used to be capped
+    // by the mine unit ceiling, and total lethality rose accordingly: every
+    // build collapsed by round 11. Priced deliberately ABOVE mines now, so
+    // opening this front costs the enemy real efficiency rather than handing it
+    // a better mine. (The underlying spread — missiles and torpedoes needing
+    // ~15x the budget per kill that mines do — is a real finding for the tuning
+    // pass, not something this slice can fix.)
     nodes: [
       {
         id: 'smallArms',
         name: 'Small-arms boat',
-        cost: 30,
-        gateRound: 4,
+        cost: 110,
+        gateRound: 5,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'attackBoat',
         warning: 'Fast craft are massing in the coastal inlets — expect close-in surface attacks.',
       },
       {
         id: 'rocket',
         name: 'Rocket boat',
-        cost: 42,
+        cost: 155,
         gateRound: 7,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'rocketBoat',
+        warning:
+          'The inlet craft are being fitted with rocket racks — expect them to sink a hull far faster.',
       },
       {
         id: 'boarding',
         name: 'Boarding boat',
-        cost: 55,
+        cost: 180,
         gateRound: 9,
         firstAppearanceCap: 1,
         grantsTargeting: 4,
-        implemented: false,
+        implemented: true,
+        techKey: 'boardingBoat',
+        warning:
+          'Intercepted traffic mentions boarding parties and prize crews — they intend to take a ship, not sink it.',
       },
     ],
     tactics: tacticLadder(['Single boat', 'Several boats', 'Waves of boats']),

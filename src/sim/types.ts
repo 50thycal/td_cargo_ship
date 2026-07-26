@@ -125,6 +125,23 @@ export interface Ship {
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
+  /** Seconds a boarding party has held this hull. Reset whenever the boarding
+   *  boat is driven off, so an interrupted boarding genuinely costs the enemy
+   *  its progress rather than merely pausing it. */
+  boardingSeconds: number;
+  /** Transit time until which Citadel Lockdown has boarding progress frozen. */
+  boardingLockUntil: number;
+  /** Lockdown and Emergency Rejection are once-per-round per hull, so a ship
+   *  cannot stall an unlimited number of boarding attempts by itself. */
+  lockdownUsed: boolean;
+  rejectionUsed: boolean;
+  /** Set when a boarding party has taken the hull. A captured ship is a LOSS —
+   *  it is not sunk, it steers off to the hostile shore under a prize crew and
+   *  costs more confidence than a sinking, so "tank the damage and push
+   *  through" is not an answer to this branch. */
+  captured: boolean;
+  /** Transit time at which a captured hull finishes leaving the board. */
+  captureExitAt: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +218,9 @@ export type TechKey =
   | 'torpedo'
   | 'homingTorpedo'
   | 'lowSigTorpedo'
+  | 'attackBoat'
+  | 'rocketBoat'
+  | 'boardingBoat'
   | 'saturation';
 
 /** What a missile is aimed at. Escorts and shore batteries are valid targets
@@ -250,6 +270,13 @@ export interface Threat {
   boatVariant?: BoatVariant;
   /** Escort deck gun currently committed to this boat (sustained fire). */
   engagedByEscortId?: number;
+  /** Attack boats: transit time before which this boat will not commit to a
+   *  new hull (the pause after it finishes one off). */
+  retargetAt?: number;
+  /** Attack boats: true once the boat is holding station on its target and
+   *  actually shooting/boarding, rather than still closing. Drives the UI tell
+   *  and keeps "approaching" and "engaging" distinguishable in the sim. */
+  engaging?: boolean;
   /** Self-defense modules: ship reserving this missile (coordinated fire). */
   reservedByShipId?: number;
 }
@@ -274,7 +301,7 @@ export interface EnemyInstallation {
 
 export interface SpawnEvent {
   time: number;
-  kind: 'missile' | 'guidedMissile' | 'torpedo';
+  kind: 'missile' | 'guidedMissile' | 'torpedo' | 'attackBoat';
   /** Launch site x position along the hostile shore. */
   siteX: number;
   /** Torpedoes: corrects toward its target instead of running straight. */
@@ -282,6 +309,8 @@ export interface SpawnEvent {
   /** Torpedoes: leaves no wake, so it cannot be read off the water and needs
    *  an active sensor (upgraded hydrophone / active sonar) to see at all. */
   lowSig?: boolean;
+  /** Attack boats: which variant puts to sea (small-arms / rocket / boarding). */
+  boatVariant?: BoatVariant;
 }
 
 export interface MinePlacement {
@@ -498,6 +527,8 @@ export type TransitEventType =
   | 'mineDetonated'
   | 'depthChargeKill'
   | 'boatSunk'
+  | 'boardingStarted'
+  | 'boardingRepelled'
   | 'suppressed'
   | 'abilityUsed'
   | 'launchFailed'
@@ -596,6 +627,14 @@ export interface TransitStats {
   torpedoesHit: number;
   /** Torpedoes destroyed by depth charges. */
   torpedoesDestroyed: number;
+  /** Attack boats that reached the convoy this transit. */
+  boatsLaunched: number;
+  /** Attack boats destroyed (deck guns are the only thing that can). */
+  boatsSunk: number;
+  /** Hulls sunk by boat gunfire (boarding captures are counted separately). */
+  boatKills: number;
+  /** Hulls taken by a boarding party — losses, but not sinkings. */
+  shipsCaptured: number;
   ammoUsed: number;
   ecmUsed: number;
   scanUsed: number;
@@ -784,6 +823,8 @@ export interface CombatEffects {
     lockdown: boolean;
     counterTeam: boolean;
     emergencyRejection: boolean;
+    /** Deck-gun auto-acquisition puts an attached boarding boat first. */
+    autoPriority: boolean;
   };
 
   hardened: {
@@ -1114,6 +1155,10 @@ export interface RoundTelemetry {
   torpedoesDetected: number;
   torpedoesHit: number;
   torpedoesDestroyed: number;
+  boatsLaunched: number;
+  boatsSunk: number;
+  boatKills: number;
+  shipsCaptured: number;
   /** Escorts destroyed this transit. */
   escortsLost: number;
   /** Shore batteries destroyed this transit. */

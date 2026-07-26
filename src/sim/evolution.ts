@@ -131,9 +131,17 @@ function settleRoi(economy: EnemyEconomyState, metrics: RoundMetrics): void {
     const outcome = results[key];
     ledger.result = outcome?.result ?? 0;
     ledger.kills = outcome?.kills ?? 0;
-    // No spend means no evidence — leave ROI at the neutral prior so an
-    // untried branch still looks worth a first attempt.
-    ledger.roi = ledger.spend > 0 ? ledger.result / ledger.spend : ENEMY_ECONOMY.priorRoi;
+    if (ledger.spend > 0) {
+      ledger.roi = ledger.result / ledger.spend;
+    } else if (!economy.openBranches.includes(key)) {
+      // Genuinely untried: the neutral prior keeps a first attempt worthwhile.
+      ledger.roi = ENEMY_ECONOMY.priorRoi;
+    }
+    // An OPEN branch that spent nothing this round keeps the ROI it earned.
+    // Resetting it to the prior here let a failing branch launder its record:
+    // one round too poor to afford a single unit and it came back looking as
+    // promising as something never tried, so the allocator kept refunding the
+    // thing the player had already beaten.
   }
 }
 
@@ -571,10 +579,28 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const missileTactic = tacticForRounds('missiles', missileLedger.roundsInvested);
   const volleySize = Math.max(1, Math.round(missileTactic.volumeMult * 1.6));
 
-  const spawns = [
-    ...scheduleMissiles(basicCount, volleySize, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
-    ...scheduleMissiles(guidedCount, volleySize, rng, 'guidedMissile', EVOLUTION.windowStartT, windowEnd),
-  ];
+  // Schedule the whole missile buy ONCE and assign guidance across the result,
+  // the way torpedo and boat variants are assigned. Scheduling the two kinds
+  // separately gave both calls the same span and volley count, so their slot
+  // centres coincided and launches arrived in correlated pairs — half the
+  // events the enemy paid for, and gaps twice as long as intended between them.
+  const spawns = scheduleMissiles(
+    basicCount + guidedCount,
+    volleySize,
+    rng,
+    'missile',
+    EVOLUTION.windowStartT,
+    windowEnd,
+  );
+  // Spread the guided rounds through the run rather than front- or back-loading
+  // them, so the harder variant is not all survivable in one stretch.
+  if (guidedCount > 0 && spawns.length > 0) {
+    const stride = spawns.length / guidedCount;
+    for (let i = 0; i < guidedCount; i++) {
+      const at = Math.min(spawns.length - 1, Math.floor(i * stride));
+      spawns[at].kind = 'guidedMissile';
+    }
+  }
   if (guidedCount > 0 && evo.firstSeen.guidedMissile === undefined) debuts.push('guidedMissile');
 
   // --- Mines -----------------------------------------------------------------
@@ -643,6 +669,44 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     spawns.push(...scheduled);
   }
 
+  // --- Attack boats ----------------------------------------------------------
+  // The surface branch. Boats are persistent units, so they are scheduled EARLY
+  // in the window rather than spread across it: a boat that puts to sea at the
+  // very end of a transit never reaches anyone, which would quietly refund the
+  // enemy's most expensive purchase. Waves (the tactic ladder) are modelled as
+  // tighter clustering, not as more boats — the unit count is what was bought.
+  const boatLedger = economy.ledgers.attackBoats;
+  const smallArmsBoats = boatLedger.units.smallArms ?? 0;
+  const rocketBoats = boatLedger.units.rocket ?? 0;
+  const boardingBoats = boatLedger.units.boarding ?? 0;
+  const boatTotal = smallArmsBoats + rocketBoats + boardingBoats;
+  if (boatTotal > 0) {
+    if (evo.firstSeen.attackBoat === undefined) debuts.push('attackBoat');
+    if (rocketBoats > 0 && evo.firstSeen.rocketBoat === undefined) debuts.push('rocketBoat');
+    if (boardingBoats > 0 && evo.firstSeen.boardingBoat === undefined) debuts.push('boardingBoat');
+    const boatTactic = tacticForRounds('attackBoats', boatLedger.roundsInvested);
+    const waveSize = Math.max(1, Math.round(boatTactic.volumeMult));
+    // Boats need most of the transit to close, engage and re-target, so the
+    // launch window is only the first part of the run.
+    const boatWindowEnd = EVOLUTION.windowStartT + (windowEnd - EVOLUTION.windowStartT) * 0.45;
+    const scheduled = scheduleMissiles(
+      boatTotal,
+      waveSize,
+      rng,
+      'attackBoat',
+      EVOLUTION.windowStartT,
+      boatWindowEnd,
+    );
+    // Nastiest first, same as torpedoes: boarding parties, then rocket racks,
+    // then small-arms craft.
+    scheduled.forEach((event, i) => {
+      if (i < boardingBoats) event.boatVariant = 'boarding';
+      else if (i < boardingBoats + rocketBoats) event.boatVariant = 'rocket';
+      else event.boatVariant = 'smallArms';
+    });
+    spawns.push(...scheduled);
+  }
+
   return { round, spawns, mines, debuts };
 }
 
@@ -652,7 +716,7 @@ function scheduleMissiles(
   count: number,
   volleySize: number,
   rng: RNG,
-  kind: 'missile' | 'guidedMissile' | 'torpedo',
+  kind: 'missile' | 'guidedMissile' | 'torpedo' | 'attackBoat',
   windowStart: number,
   windowEnd: number,
 ): SpawnEvent[] {
@@ -660,6 +724,12 @@ function scheduleMissiles(
   if (count <= 0) return spawns;
   const size = Math.max(1, volleySize);
   const span = Math.max(0, windowEnd - windowStart);
+  // Note on what maxVolleyGap can and cannot promise: there is never more than
+  // one volley per round fired, so with low volume the best achievable spacing
+  // is span/count no matter what the ceiling says. The fire still spreads
+  // across the WHOLE window rather than concentrating — a dense opening
+  // followed by a silent run-in is precisely the dead-air this scheduler
+  // exists to avoid, and ships are still crossing at the end of the round.
   // Number of volley EVENTS: enough to honor the volley size, but also enough
   // that no slot is wider than maxVolleyGap — so a large volley size can't
   // collapse fire into a few widely-spaced bursts. Capped at one-per-missile.
@@ -671,12 +741,18 @@ function scheduleMissiles(
     ),
   );
   const slot = span / volleys;
+  // Jitter is a FRACTION of the slot, not the whole of it. Jittering across a
+  // full slot lets neighbouring volleys land at opposite ends of adjacent
+  // slots, so the worst-case gap was twice the slot width and the maxVolleyGap
+  // ceiling above was not actually a ceiling.
+  const jitter = slot * 0.45;
   // Distribute the missiles across the volleys as evenly as possible.
   const base = Math.floor(count / volleys);
   const extra = count % volleys;
   for (let v = 0; v < volleys; v++) {
-    // Grid position, jittered within its own slot so it's not a metronome.
-    const volleyTime = windowStart + v * slot + rng.range(0, slot);
+    // Grid position, jittered around the middle of its own slot.
+    const volleyTime =
+      windowStart + v * slot + slot / 2 + rng.range(-jitter / 2, jitter / 2);
     const site = rng.pick(WORLD.launchSites);
     const inVolley = base + (v < extra ? 1 : 0);
     for (let i = 0; i < inVolley; i++) {

@@ -127,6 +127,47 @@ export const COMBAT = {
      *  leaves no wake, so unaided crews never see it coming. */
     wakeVisibleRange: 230,
   },
+  /** Attack boats: the SURFACE branch (ENEMY_ATTACKS.md). Unlike every other
+   *  threat these are persistent, sinkable UNITS, not committed projectiles.
+   *  A boat closes with the convoy, commits to one hull, and stays on it until
+   *  that hull is gone — so the player is killing the shooter, not the shot,
+   *  and a boat left alive keeps earning. That is why they need their own
+   *  weapon: interceptors point at the sky and cannot help here at all. */
+  attackBoat: {
+    /** Faster than any cargo hull so a boat can always close and hold station,
+     *  but far slower than a missile — there is time to shoot back. */
+    speed: 64,
+    /** Standoff it holds once committed. Comfortably inside deck-gun reach
+     *  (medium tier 420) so fielding the counter always gets a shot. */
+    engageRange: 150,
+    /** Contact radius for the boarding grapple. */
+    boardRange: 46,
+    /** Hull points per variant. Small-arms dies to ~3 medium deck-gun rounds
+     *  (12 damage each), matching "sunk by ~3 anti-boat rounds". Rocket and
+     *  boarding hulls are tougher AND take half damage until Armor-Piercing is
+     *  researched — that node is what keeps them killable. */
+    hp: { smallArms: 34, rocket: 46, boarding: 40 },
+    /** Damage per second poured into the committed hull. Tuned against the
+     *  design's times-to-sink on a 100hp cargo ship: small-arms ~30s,
+     *  rocket ~20s. Boarding boats deal no damage — they take the ship. */
+    dps: { smallArms: 3.4, rocket: 5, boarding: 0 },
+    /** Sustained contact a boarding boat needs before the hull is captured. */
+    boardingSeconds: 15,
+    /** Pause after a kill before committing to the next hull. This is the main
+     *  brake on a single boat: at the design's ~30s per hull an unopposed boat
+     *  would otherwise chain-sink five ships in one transit, which no price
+     *  could honestly cover. Modelling the reposition as a real gap caps it
+     *  nearer three and leaves the player a window to answer.
+     *
+     *  Measured, not guessed: at 10s a sweep put boats at 43% of all losses
+     *  with every build collapsing by round 11, even builds carrying the deck
+     *  gun. Two hulls per boat per transit is the ceiling this branch can be
+     *  worth at its price. */
+    retargetDelay: 20,
+    /** Seconds a captured hull takes to steer off toward the hostile shore
+     *  before it leaves the board — long enough to read what happened. */
+    captureExitSeconds: 6,
+  },
   /** Chance a missile hit starts a fire (damage over time). */
   fireChance: 0.3,
   fireDps: 3,
@@ -308,6 +349,13 @@ export const CAMPAIGN = {
   confidenceBadRound: -5, // < 60% delivered
   confidencePerLoss: -3,
   confidenceLossCap: -12, // max penalty from losses in one round
+  /** Extra confidence lost per hull TAKEN by a boarding party, on top of the
+   *  ordinary loss penalty and outside its cap. A captured ship is a worse
+   *  outcome than a sunk one — the cargo is in enemy hands rather than on the
+   *  seabed — and putting it outside the cap is what stops "absorb the losses
+   *  and push through" from answering the boarding node (ENEMY_ATTACKS.md). */
+  confidencePerCapture: -7,
+  confidenceCaptureCap: -21,
   confidenceQuotaMet: 10,
   confidenceQuotaMissed: -18,
   /** Quota: value points required per 3-round window. The FIRST window's

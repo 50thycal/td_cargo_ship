@@ -119,9 +119,11 @@ domain ⇒ same number across branches).
 ## Categories and branches
 
 Notation: ⚑ = branch counters an enemy branch that is **designed but not yet
-fielded by the enemy sim** (`future` flag in data). The player-side data,
-research, equipment, sim validation and behavior are implemented and tested
-against injected threats; they go live the moment the enemy pass lands.
+fielded by the enemy sim**. The player-side data, research, equipment, sim
+validation and behavior are implemented and tested against injected threats;
+they go live the moment the enemy pass lands. In code this is derived from the
+enemy catalogue (`awaitingEnemyCapability`) rather than kept by hand, so the
+research screen stops disclaiming a capability the moment that branch ships.
 
 ### Category: Missile Defense
 
@@ -244,7 +246,7 @@ lingering tracks). **Tactic paths (parallel):** +1 charge · larger radius ·
 longer track duration. Same placed interaction as Scan Pulse, but strictly the
 underwater domain.
 
-### Category: Anti-Surface Warfare ⚑
+### Category: Anti-Surface Warfare (enemy branch LIVE)
 
 #### Branch: Escort Deck Gun / Autocannon — escort module, attacks Attack Boats
 Boats are persistent HP targets; the gun commits to a selected boat until it
@@ -421,9 +423,9 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Standard torpedoes | Wake (enemy pass) or Hydrophone | Depth charges | Hull systems |
 | Homing torpedoes | Hydrophone | Depth charges | Hull systems |
 | Low-signature torpedoes | Low-Signature Processing or Active Sonar Return Processing | Depth charges | Hull systems |
-| Small-arms boats ⚑ | Visual contact | Escort deck guns | Hull systems |
-| Rocket boats ⚑ | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
-| Boarding boats ⚑ | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
+| Small-arms boats | Visual contact | Escort deck guns | Hull systems |
+| Rocket boats | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
+| Boarding boats | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
 | Coastal artillery ⚑ | Firing position (installation) | Counter-battery | Formation + hull systems |
 | Ranging artillery ⚑ | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
 | Rolling barrage ⚑ | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
