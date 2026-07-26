@@ -370,3 +370,77 @@ export const ROUND1 = {
   /** Round 1 is a scripted, winnable onboarding: a light unguided probe. */
   missileCount: 6,
 } as const;
+
+/**
+ * The enemy procurement economy (docs/SEESAW.md).
+ *
+ * The enemy receives war funds each round, must commit them at the start of
+ * the round, and scraps whatever it cannot spend — exactly like the player's
+ * prep phase. What it BUYS is driven by return on investment per branch, which
+ * is what makes the seesaw real: a branch the player counters stops paying,
+ * so the enemy pivots to one they haven't.
+ *
+ * The budget curve is calibrated to reproduce roughly the old point-track
+ * pressure (≈13 missiles at R2, ≈23 at R5, ≈37 by R10) so this lands as a
+ * change of MECHANISM, not a change of difficulty. Tune difficulty here —
+ * `budgetPerRound` is the primary dial — rather than in attack mechanics.
+ */
+export const ENEMY_ECONOMY = {
+  /** War funds = base + perRound × round, before modifiers. */
+  budgetBase: 35,
+  budgetPerRound: 45,
+  /** Hard ceiling so a long campaign can't run away. */
+  budgetCap: 900,
+
+  /** Anti-snowball, applied as multipliers to the round's budget. Success arms
+   *  the enemy faster; a struggling player gets breathing room. Both ends
+   *  matter — the restoring force has to work in both directions. */
+  bonusStrongDelivery: 0.12, // player delivered >= 85%
+  bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
+  bonusRichConvoy: 0.08, // convoy value > 1.3x baseline
+  dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+
+  /** ROI = result ÷ spend, where result weights a kill far above chip damage
+   *  (sinking hulls is the point; scratching paint is not). */
+  roiKillWeight: 10,
+  roiDamageWeight: 0.04,
+  /** A captured ship hurts more than a sunk one (ENEMY_ATTACKS.md), so it is
+   *  worth more ROI when the boarding node lands. */
+  roiCaptureWeight: 16,
+
+  /** How fast allocation chases ROI. Shares are blended toward the ROI-implied
+   *  target so a pivot takes 1-2 rounds — visible, not instant. */
+  allocationLag: 0.5,
+  /** Share of every budget reserved to probe the branch the enemy has leaned
+   *  on least, so it keeps hunting for the player's blind spot instead of
+   *  converging forever on one line. */
+  explorationShare: 0.15,
+  /** A branch's share never falls below this while it is open, so nothing is
+   *  permanently abandoned (it stays available to become attractive again). */
+  minBranchShare: 0.05,
+  /** ROI assumed for a branch with no track record yet, so an untried branch
+   *  looks worth a first attempt. */
+  priorRoi: 1.0,
+
+  /** Fraction of a branch's budget spent on its newest available node, rising
+   *  with sustained investment: a branch the player ignores doesn't just
+   *  repeat, it deepens. */
+  escalationShareBase: 0.25,
+  escalationSharePerRound: 0.08,
+  escalationShareMax: 0.7,
+  /** Extra escalation pressure when the player is hard-countering the branch's
+   *  current node (high intercept rate → guided; high mine detection →
+   *  low-signature). This is the node ladder answering the player's counter. */
+  counteredEscalationBonus: 0.25,
+
+  /** Scripted debuts guarantee the designed early beats regardless of what the
+   *  ROI allocator would otherwise prefer (ENEMY_ATTACKS.md: "first appearances
+   *  are capped and warned"). Minimum units fielded on that round. */
+  scriptedDebuts: [
+    { round: 2, branch: 'missiles', node: 'guided', minUnits: 1 },
+    { round: 3, branch: 'mines', node: 'standard', minUnits: 3 },
+  ] as const,
+
+  /** An intel warning fires this many rounds before a node's gate opens. */
+  warningLeadRounds: 1,
+} as const;

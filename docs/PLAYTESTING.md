@@ -62,7 +62,9 @@ Campaigns are scored against the three north-star signals in
 by hand, so an automated sweep and a hand-read log agree:
 
 - **Oscillation** — does the #1 loss-cause branch rotate, or is one branch #1 for
-  4+ straight rounds?
+  4+ straight rounds? (Read this alongside the measured `ROI response rate`: the
+  loss-mix view is content-limited while only two branches exist, whereas the
+  allocator metric is not.)
 - **Balance** — does delivery oscillate in the ~60–90% band and confidence
   wobble, rather than pinning high or collapsing?
 - **Scarcity** — is the player pressured every round but not overwhelmed?
@@ -80,10 +82,11 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
 
 ## Known limits (read before trusting a number)
 
-- **The enemy economy is not instrumented.** There is no budget, per-branch
-  spend, ROI or scrap in the log yet (see the end of `SEESAW.md`), so every
-  statement about *why* the enemy shifted is **inferred** from the player-side
-  loss mix. The report labels this.
+- **The enemy economy IS instrumented** (budget, per-branch spend, ROI, scrap),
+  so the report scores the allocator from measured data: `ROI response rate`
+  (share of below-average-ROI branches whose funding was cut the next round),
+  `top-spend pivots`, and `budget scrapped`. Older logs without those fields
+  fall back to inference, and the report says which applies.
 - **Only two enemy branches exist.** Missiles and mines are implemented;
   torpedoes, boats, artillery, smoke and electronic attack are designed but not
   fielded. The oscillation signal is therefore **content-limited** — the enemy

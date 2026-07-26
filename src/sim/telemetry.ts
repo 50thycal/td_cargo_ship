@@ -62,6 +62,23 @@ export interface TelemetryExport {
     damagePrevented: Record<string, number>;
     spendByBranch: Record<string, number>;
   };
+  /** Campaign-wide view of the ENEMY's economy: what it spent per branch,
+   *  what that spend earned (ROI), and what it wasted. This is what makes the
+   *  arms race measurable instead of inferred. */
+  enemyEconomy: {
+    totalBudget: number;
+    totalCommitted: number;
+    totalScrapped: number;
+    spendByBranch: Record<string, number>;
+    killsByBranch: Record<string, number>;
+    /** Campaign ROI per branch = total result ÷ total spend. */
+    roiByBranch: Record<string, number>;
+    /** Per-round share of budget by branch — the pivot, round by round. */
+    shareByRound: { round: number; shares: Record<string, number> }[];
+    finalTargetingTier: number;
+    finalTargetingName: string;
+    openBranches: string[];
+  };
   lossesByCause: Record<string, number>;
   /** Every loss cause mapped to its enemy branch ('collateral'/'attrition'
    *  mark secondary-blast and lost-at-sea outcomes explicitly). */
@@ -70,7 +87,7 @@ export interface TelemetryExport {
   rounds: CampaignState['telemetry'];
 }
 
-export const TELEMETRY_FORMAT_VERSION = 2;
+export const TELEMETRY_FORMAT_VERSION = 3;
 
 export function buildTelemetryExport(c: CampaignState, generatedAt: string): TelemetryExport {
   const totals = {
@@ -87,6 +104,19 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
   };
   const lossesByCause: Record<string, number> = {};
   const lossesByEnemyBranch: Record<string, number> = {};
+  const enemyEconomy: TelemetryExport['enemyEconomy'] = {
+    totalBudget: 0,
+    totalCommitted: 0,
+    totalScrapped: 0,
+    spendByBranch: {},
+    killsByBranch: {},
+    roiByBranch: {},
+    shareByRound: [],
+    finalTargetingTier: 0,
+    finalTargetingName: 'Unaimed spread',
+    openBranches: [],
+  };
+  const resultByBranch: Record<string, number> = {};
   const lossesByClass: Record<string, number> = {};
   const counterTotals: TelemetryExport['counterTotals'] = {
     manualShots: 0,
@@ -151,6 +181,30 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     for (const [k, v] of Object.entries(r.counters?.spendByBranch ?? {})) {
       counterTotals.spendByBranch[k] = (counterTotals.spendByBranch[k] ?? 0) + v;
     }
+    // Rounds recorded before the enemy-economy overhaul lack this block.
+    const en = r.enemy;
+    if (en) {
+      enemyEconomy.totalBudget += en.budget;
+      enemyEconomy.totalCommitted += en.committed;
+      enemyEconomy.totalScrapped += en.scrapped;
+      const shares: Record<string, number> = {};
+      for (const [branch, entry] of Object.entries(en.branches)) {
+        enemyEconomy.spendByBranch[branch] =
+          (enemyEconomy.spendByBranch[branch] ?? 0) + entry.spend;
+        enemyEconomy.killsByBranch[branch] =
+          (enemyEconomy.killsByBranch[branch] ?? 0) + entry.kills;
+        resultByBranch[branch] = (resultByBranch[branch] ?? 0) + entry.result;
+        if (entry.share > 0) shares[branch] = entry.share;
+      }
+      enemyEconomy.shareByRound.push({ round: r.round, shares });
+      enemyEconomy.finalTargetingTier = en.targetingTier;
+      enemyEconomy.finalTargetingName = en.targetingName;
+      enemyEconomy.openBranches = en.openBranches;
+    }
+  }
+  for (const [branch, spend] of Object.entries(enemyEconomy.spendByBranch)) {
+    enemyEconomy.roiByBranch[branch] =
+      spend > 0 ? Math.round(((resultByBranch[branch] ?? 0) / spend) * 1000) / 1000 : 0;
   }
 
   return {
@@ -181,6 +235,7 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     enemyTracks: { ...c.evolution.tracks },
     totals,
     counterTotals,
+    enemyEconomy,
     lossesByCause,
     lossesByEnemyBranch,
     lossesByClass,

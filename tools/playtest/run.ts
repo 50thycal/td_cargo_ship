@@ -242,6 +242,24 @@ function printReport(summary: ReturnType<typeof summarize>, outDir: string, wrot
     console.log(`  ${pad(verdict, 20)} ${count} campaign(s)`);
   }
 
+  // --- Enemy economy (measured) --------------------------------------------
+  const en = summary.enemy;
+  if (en.campaignsInstrumented > 0) {
+    console.log('\nENEMY ECONOMY (measured, not inferred)');
+    console.log('─'.repeat(78));
+    console.log(
+      `  ROI response rate     ${pct(en.roiResponseRate)}   below-average-ROI branches cut the next round`,
+    );
+    console.log(`  Top-spend pivots      ${en.meanPivotsPerCampaign} per campaign`);
+    console.log(`  Budget scrapped       ${pct(en.meanScrapRate)}   (SEESAW wants low but non-zero)`);
+    console.log(`  Final targeting rung  T${en.meanFinalTargetingTier} average`);
+    const tops = Object.entries(en.topSpendBranches)
+      .sort((a, b) => b[1] - a[1])
+      .map(([b, n]) => `${b} (${n})`)
+      .join(', ');
+    console.log(`  Ever top spend        ${tops || 'none'}`);
+  }
+
   // --- Loss attribution ----------------------------------------------------
   console.log('\nLOSSES BY ENEMY BRANCH (whole sweep)');
   console.log('─'.repeat(78));

@@ -4,13 +4,15 @@
 // Oscillation, Balance, Scarcity — using the same rubric the `seesaw-eval`
 // skill applies by hand, so an automated sweep and a hand-read log agree.
 //
-// HONESTY RULE (from the skill's guardrails): the enemy's economy is not
-// instrumented yet, so every claim about *why* the enemy did something is
-// inferred from the player-side loss mix. Anything inferred is labelled as
-// such in the output, and the analyzer additionally reports how many enemy
-// branches actually exist in the sim — because with only missiles and mines
-// implemented, the oscillation signal is capped by CONTENT, not by a broken
-// allocator, and reading it as a balance failure would be wrong.
+// The enemy's procurement economy IS now instrumented (budget, per-branch
+// spend, ROI, scrap), so the allocator is scored from measured data rather
+// than inferred from what killed the player. Where a log predates that
+// instrumentation the analyzer falls back to inference and says so.
+//
+// One caveat survives regardless of instrumentation: with only missiles and
+// mines implemented, the oscillation signal is capped by CONTENT, not by a
+// broken allocator — the enemy cannot rotate through branches it cannot
+// field, and reading that as a balance failure would be wrong.
 
 import { LOSS_CAUSE_TO_ENEMY_BRANCH, type EnemyBranchKey } from '../../src/data/counters';
 import type { RoundTelemetry } from '../../src/sim/types';
@@ -78,6 +80,26 @@ export interface CampaignAnalysis {
   completedResearch: string[];
   /** True when resources piled up unspent — a "nothing worth buying" tell. */
   hoarding: boolean;
+  /** MEASURED enemy behaviour (present once the enemy economy is instrumented).
+   *  Before this existed, every claim about the enemy was inferred from the
+   *  player's loss mix; now the allocator can be checked directly. */
+  enemy?: {
+    /** Rounds where the enemy's top-spend branch changed — an actual pivot. */
+    pivots: number;
+    /** Distinct branches that were ever the enemy's top spend. */
+    topSpendBranches: string[];
+    /** Wasted budget ÷ granted budget. SEESAW wants low-but-non-zero. */
+    scrapRate: number;
+    /** Times a branch's share FELL in the 1-2 rounds after its ROI came in
+     *  below the round average — the allocator abandoning what stopped
+     *  working, which is the seesaw's actual engine. */
+    roiResponses: number;
+    /** Opportunities to respond (branch had below-average ROI with a next
+     *  round to react in), so responses can be read as a rate. */
+    roiOpportunities: number;
+    finalTargetingTier: number;
+    budgetGrowth: { first: number; last: number };
+  };
 }
 
 /** Rounds delivered inside this band count as "in the healthy band". */
@@ -269,6 +291,54 @@ export function analyzeCampaign(
     };
   }
 
+  // --- Measured enemy behaviour -------------------------------------------
+  // With the enemy economy instrumented we can check the allocator directly
+  // rather than inferring intent from what killed the player.
+  let enemy: CampaignAnalysis['enemy'];
+  const withEnemy = telemetry.filter((r) => r.enemy);
+  if (withEnemy.length >= 2) {
+    const topSpendOf = (r: RoundTelemetry): string => {
+      const entries = Object.entries(r.enemy.branches).filter(([, b]) => b.spend > 0);
+      if (entries.length === 0) return 'none';
+      return entries.sort((a, b) => b[1].spend - a[1].spend)[0][0];
+    };
+    const tops = withEnemy.map(topSpendOf);
+    let pivots = 0;
+    for (let i = 1; i < tops.length; i++) if (tops[i] !== tops[i - 1]) pivots++;
+
+    const budget = withEnemy.reduce((sum, r) => sum + r.enemy.budget, 0);
+    const scrapped = withEnemy.reduce((sum, r) => sum + r.enemy.scrapped, 0);
+
+    // Did a below-average-ROI branch actually get its funding cut next round?
+    let roiResponses = 0;
+    let roiOpportunities = 0;
+    for (let i = 0; i < withEnemy.length - 1; i++) {
+      const now = withEnemy[i].enemy.branches;
+      const next = withEnemy[i + 1].enemy.branches;
+      const funded = Object.entries(now).filter(([, b]) => b.spend > 0);
+      if (funded.length < 2) continue; // nothing to reallocate between
+      const avgRoi = funded.reduce((sum, [, b]) => sum + b.roi, 0) / funded.length;
+      for (const [branch, b] of funded) {
+        if (b.roi >= avgRoi) continue;
+        roiOpportunities++;
+        if ((next[branch]?.share ?? 0) < b.share) roiResponses++;
+      }
+    }
+
+    enemy = {
+      pivots,
+      topSpendBranches: [...new Set(tops)],
+      scrapRate: budget > 0 ? scrapped / budget : 0,
+      roiResponses,
+      roiOpportunities,
+      finalTargetingTier: withEnemy[withEnemy.length - 1].enemy.targetingTier,
+      budgetGrowth: {
+        first: withEnemy[0].enemy.budget,
+        last: withEnemy[withEnemy.length - 1].enemy.budget,
+      },
+    };
+  }
+
   // --- Hoarding ------------------------------------------------------------
   // Piling up unspent resources = nothing worth buying, or enemy already solved.
   const hoarding = final.cash > 1500 || final.intel > 200;
@@ -303,6 +373,7 @@ export function analyzeCampaign(
       ? [...telemetry[telemetry.length - 1].completedResearch]
       : [],
     hoarding,
+    enemy,
   };
 }
 
@@ -340,6 +411,17 @@ export interface SweepSummary {
      *  sweep. Below 3 the oscillation signal is content-limited: the enemy
      *  cannot rotate through branches it does not yet field. */
     branchesObserved: string[];
+  };
+  /** MEASURED enemy-economy behaviour across the sweep. */
+  enemy: {
+    campaignsInstrumented: number;
+    meanPivotsPerCampaign: number;
+    /** Share of below-average-ROI branches that got cut the following round —
+     *  the single clearest measure of whether the allocator is alive. */
+    roiResponseRate: number;
+    meanScrapRate: number;
+    topSpendBranches: Record<string, number>;
+    meanFinalTargetingTier: number;
   };
   /** Plain-language findings, ordered most-important first. */
   findings: string[];
@@ -408,6 +490,34 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
     (b) => b !== 'collateral' && b !== 'attrition' && b !== 'unknown',
   );
 
+  // --- Measured enemy behaviour across the sweep ---------------------------
+  const instrumented = analyses.filter((a) => a.enemy);
+  const topSpendBranches: Record<string, number> = {};
+  for (const a of instrumented) {
+    for (const b of a.enemy!.topSpendBranches) {
+      topSpendBranches[b] = (topSpendBranches[b] ?? 0) + 1;
+    }
+  }
+  const totalOpportunities = instrumented.reduce((sum, a) => sum + a.enemy!.roiOpportunities, 0);
+  const totalResponses = instrumented.reduce((sum, a) => sum + a.enemy!.roiResponses, 0);
+  const enemySummary: SweepSummary['enemy'] = {
+    campaignsInstrumented: instrumented.length,
+    meanPivotsPerCampaign:
+      instrumented.length > 0
+        ? Math.round(mean(instrumented.map((a) => a.enemy!.pivots)) * 100) / 100
+        : 0,
+    roiResponseRate: totalOpportunities > 0 ? totalResponses / totalOpportunities : 0,
+    meanScrapRate:
+      instrumented.length > 0
+        ? Math.round(mean(instrumented.map((a) => a.enemy!.scrapRate)) * 1000) / 1000
+        : 0,
+    topSpendBranches,
+    meanFinalTargetingTier:
+      instrumented.length > 0
+        ? Math.round(mean(instrumented.map((a) => a.enemy!.finalTargetingTier)) * 100) / 100
+        : 0,
+  };
+
   // --- Findings ------------------------------------------------------------
   const findings: string[] = [];
   const fighting = personas.filter((p) => p.persona !== 'afk');
@@ -462,6 +572,28 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
     }
   }
 
+  // Allocator health is now measurable, so say so plainly either way.
+  if (instrumented.length > 0) {
+    if (totalOpportunities === 0) {
+      findings.push(
+        'Enemy allocator could not be scored: fewer than two branches were funded in any round, so there was never a reallocation to make.',
+      );
+    } else if (enemySummary.roiResponseRate >= 0.5) {
+      findings.push(
+        `Enemy allocator is ALIVE: ${Math.round(enemySummary.roiResponseRate * 100)}% of below-average-ROI branches had their funding cut the next round, with ${enemySummary.meanPivotsPerCampaign} top-spend pivots per campaign (measured, not inferred).`,
+      );
+    } else {
+      findings.push(
+        `⚠ Enemy allocator looks sluggish: only ${Math.round(enemySummary.roiResponseRate * 100)}% of below-average-ROI branches were cut the following round — check allocationLag / explorationShare in ENEMY_ECONOMY.`,
+      );
+    }
+    if (enemySummary.meanScrapRate > 0.2) {
+      findings.push(
+        `⚠ Enemy wastes ${Math.round(enemySummary.meanScrapRate * 100)}% of its budget as scrap — SEESAW.md wants this low-but-non-zero. Check unit costs against budget granularity.`,
+      );
+    }
+  }
+
   return {
     generatedAt,
     campaigns: analyses.length,
@@ -476,9 +608,12 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
       lossesByBranch,
       branchesObserved,
     },
+    enemy: enemySummary,
     findings,
     instrumentationNotes: [
-      'Enemy economy is NOT instrumented (no budget, per-branch spend, ROI or scrap in the log), so every statement about why the enemy shifted is INFERRED from the player-side loss mix — see the end of docs/SEESAW.md.',
+      instrumented.length === analyses.length
+        ? 'Enemy economy IS instrumented (budget, per-branch spend, ROI, scrap) — enemy behaviour above is measured, not inferred.'
+        : `Enemy economy instrumented in ${instrumented.length}/${analyses.length} campaigns; the rest fall back to inference from the loss mix.`,
       'Enemy branches beyond missiles and mines (torpedoes, boats, artillery, smoke, electronic attack) are not implemented, so their player counters are never exercised by this sweep.',
       'Bots are heuristics, not humans: they cannot judge readability, feel, or UI clarity. Use this sweep for balance/economy questions, not UX ones.',
     ],
