@@ -135,6 +135,11 @@ export interface Ship {
    *  cannot stall an unlimited number of boarding attempts by itself. */
   lockdownUsed: boolean;
   rejectionUsed: boolean;
+  /** Damage this hull has taken, keyed by the enemy branch that dealt it. When
+   *  the ship finally dies the kill is split across these in proportion, so a
+   *  branch that did the work gets the credit even if something else landed the
+   *  last blow. */
+  damageByBranch: Record<string, number>;
   /** Set when a boarding party has taken the hull. A captured ship is a LOSS —
    *  it is not sunk, it steers off to the hostile shore under a prize crew and
    *  costs more confidence than a sinking, so "tank the damage and push

@@ -269,6 +269,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         flakCooldown: 0,
         smokeGraceUntil: 0,
         straggling: false,
+        damageByBranch: {},
         boardingSeconds: 0,
         boardingLockUntil: 0,
         lockdownUsed: false,
@@ -697,12 +698,52 @@ function creditEnemyBranch(
   damage: number,
   killed: boolean,
 ): void {
-  const bare = cause.replace(/^(escort|base):/, '');
-  const branch = LOSS_CAUSE_TO_ENEMY_BRANCH[bare];
-  if (!branch || branch === 'collateral' || branch === 'attrition') return;
+  const branch = branchOf(cause);
+  if (!branch) return;
   const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
   entry.damage += damage;
   if (killed) entry.kills++;
+}
+
+/** The enemy branch behind a loss cause, or null when it belongs to nobody
+ *  (a tanker's secondary blast, a ship lost at sea). */
+function branchOf(cause: string): string | null {
+  const bare = cause.replace(/^(escort|base):/, '');
+  const branch = LOSS_CAUSE_TO_ENEMY_BRANCH[bare];
+  if (!branch || branch === 'collateral' || branch === 'attrition') return null;
+  return branch;
+}
+
+/** Split a kill across the branches that actually did the damage.
+ *
+ *  Kill credit used to go entirely to whichever attack landed the final blow,
+ *  which quietly decided the whole economy: a mine does 115 to a 100hp hull and
+ *  therefore almost always finishes, while a 34-damage missile almost never
+ *  does. Missiles measured at ~1200 budget per kill against a mine's ~70, not
+ *  because they achieved nothing — a third of them got through and they dealt
+ *  50k damage across a sweep — but because something else was always credited
+ *  with the hull they had softened. The allocator read that as "missiles do not
+ *  work" and it was an artifact of the scoring, not the sim. */
+function creditKillShare(t: TransitState, ship: Ship, finisher: string): void {
+  const tally = { ...ship.damageByBranch };
+  // The finishing blow counts even if it dealt no tracked damage (a capture).
+  const finishBranch = branchOf(finisher);
+  if (finishBranch && !(finishBranch in tally)) tally[finishBranch] = 0;
+  const total = Object.values(tally).reduce((a, b) => a + b, 0);
+  if (total <= 0) {
+    // No damage tracked (capture, or a one-shot that bypassed the tally):
+    // the finisher takes the whole kill.
+    if (finishBranch) {
+      const entry = (t.stats.enemyBranch[finishBranch] ??= { damage: 0, kills: 0 });
+      entry.kills += 1;
+    }
+    return;
+  }
+  for (const [branch, dealt] of Object.entries(tally)) {
+    if (dealt <= 0) continue;
+    const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
+    entry.kills += dealt / total;
+  }
 }
 
 function damageShip(
@@ -724,6 +765,9 @@ function damageShip(
   }
   ship.hp -= dealt;
   creditEnemyBranch(t, cause, dealt, false);
+  // Remember who wore this hull down, so the kill can be split fairly later.
+  const branch = branchOf(cause);
+  if (branch) ship.damageByBranch[branch] = (ship.damageByBranch[branch] ?? 0) + dealt;
   pushEvent(t, { type: 'shipHit', shipId: ship.id, shipName: ship.name, cause });
   if (canIgnite && ship.hp > 0) {
     const fs = ship.modules.includes('fireSuppression');
@@ -766,7 +810,7 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   ship.alive = false;
   ship.hp = 0;
   t.stats.lost++;
-  creditEnemyBranch(t, cause, 0, true);
+  creditKillShare(t, ship, cause);
   pushEvent(t, { type: 'shipLost', shipId: ship.id, shipName: ship.name, cause });
   const def = SHIP_CLASSES[ship.classId];
   if (def.explodes) {
@@ -1806,7 +1850,11 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     // Gunfire: sustained damage, no accuracy roll — the boat is alongside.
     const before = target.hp;
     target.hp -= fx.dps[variant] * dt * t.effects.damageTakenMult;
-    creditEnemyBranch(t, boatCause(variant), before - target.hp, false);
+    const dealt = before - target.hp;
+    creditEnemyBranch(t, boatCause(variant), dealt, false);
+    // Gunfire here bypasses damageShip (it is a continuous stream, not a hit),
+    // so the per-hull tally that splits the eventual kill has to be kept here.
+    target.damageByBranch.attackBoats = (target.damageByBranch.attackBoats ?? 0) + dealt;
     if (target.hp <= 0) {
       t.stats.boatKills++;
       killShip(t, target, boatCause(variant));
@@ -2311,7 +2359,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Fire damage over time.
     if (ship.fireSeconds > 0) {
       ship.fireSeconds -= dt;
-      ship.hp -= COMBAT.fireDps * dt * t.effects.damageTakenMult;
+      const burn = COMBAT.fireDps * dt * t.effects.damageTakenMult;
+      ship.hp -= burn;
+      // Fires are started by missile hits, so the burn belongs to that branch
+      // too — otherwise a hull that burns down credits nobody.
+      creditEnemyBranch(t, 'fire', burn, false);
+      ship.damageByBranch.missiles = (ship.damageByBranch.missiles ?? 0) + burn;
       if (ship.hp <= 0) killShip(t, ship, 'fire');
       if (!ship.alive) continue;
     }

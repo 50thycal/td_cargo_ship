@@ -446,17 +446,24 @@ export const ROUND1 = {
  * is what makes the seesaw real: a branch the player counters stops paying,
  * so the enemy pivots to one they haven't.
  *
- * The budget curve is calibrated to reproduce roughly the old point-track
- * pressure (≈13 missiles at R2, ≈23 at R5, ≈37 by R10) so this lands as a
- * change of MECHANISM, not a change of difficulty. Tune difficulty here —
- * `budgetPerRound` is the primary dial — rather than in attack mechanics.
+ * Tune difficulty HERE — `budgetPerRound` is the primary dial — rather than in
+ * attack mechanics or unit prices. Prices belong to enemyBranches.ts and are
+ * set from measured lethality so the allocator's choice between branches is a
+ * real one; this curve is what decides how much of that arsenal it can afford.
+ *
+ * The two move together. Repricing the catalogue against measured cost-per-kill
+ * raised the average price of a kill about 2.3x, which by itself handed the
+ * player a much easier game (round-cap completions jumped from a third to two
+ * thirds of campaigns). The curve was scaled to match, so the repricing landed
+ * as a change of BRANCH BALANCE rather than a change of difficulty.
  */
 export const ENEMY_ECONOMY = {
   /** War funds = base + perRound × round, before modifiers. */
-  budgetBase: 35,
-  budgetPerRound: 45,
-  /** Hard ceiling so a long campaign can't run away. */
-  budgetCap: 900,
+  budgetBase: 46,
+  budgetPerRound: 59,
+  /** Hard ceiling so a long campaign can't run away. Scales with prices: at the
+   *  old 900 this bought ~32 mines, at current prices barely 12. */
+  budgetCap: 1200,
 
   /** Anti-snowball, applied as multipliers to the round's budget. Success arms
    *  the enemy faster; a struggling player gets breathing room. Both ends

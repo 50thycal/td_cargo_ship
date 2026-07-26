@@ -90,12 +90,18 @@ export interface EnemyNodeDef {
   name: string;
   /** Budget cost per unit fielded.
    *
-   *  PRICE BY REALIZED LETHALITY, not by nominal unit. A unit that reliably
-   *  kills a hull AND cannot be shot down is worth several that can be
-   *  intercepted — price them the same and the ROI allocator will (correctly)
-   *  buy nothing but the efficient one, and the seesaw locks. Mines and
-   *  torpedoes sit well above missiles for exactly this reason: a playtest
-   *  sweep measured mine ROI at 17x missile ROI when they were priced alike. */
+   *  PRICE BY MEASURED LETHALITY. Every cost here is set from a playtest sweep
+   *  as `target cost-per-kill x kills-per-unit`, not from what the unit sounds
+   *  like it should be worth. Price two branches alike when one is five times
+   *  as lethal and the ROI allocator will (correctly) buy nothing but the
+   *  efficient one — the seesaw locks and the other branch becomes dead
+   *  content. Sweeps have caught this three times now: mines at 17x missile
+   *  ROI, attack boats matching mines and doubling total lethality, and the
+   *  whole catalogue spread across an 18x cost-per-kill band.
+   *
+   *  Re-measure after changing any of these. Prices interact — making one
+   *  branch dearer pushes budget into the others, so a single edit moves every
+   *  branch's realized numbers. */
   cost: number;
   /** Campaign round before which this node cannot be fielded at all — the
    *  progression gate from ENEMY_ATTACKS.md ("nodes are gated, tactics are
@@ -166,7 +172,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'unguided',
         name: 'Unguided missile',
-        cost: 8,
+        cost: 5,
         gateRound: 1,
         firstAppearanceCap: 99,
         grantsTargeting: 1,
@@ -176,7 +182,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'guided',
         name: 'Guided missile',
-        cost: 15,
+        cost: 9,
         gateRound: 2,
         firstAppearanceCap: 3,
         grantsTargeting: 3,
@@ -221,7 +227,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'standard',
         name: 'Standard mine',
-        cost: 28,
+        cost: 73,
         gateRound: 3,
         firstAppearanceCap: 4,
         implemented: true,
@@ -232,7 +238,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'lowSig',
         name: 'Low-signature mine',
-        cost: 44,
+        cost: 115,
         gateRound: 5,
         firstAppearanceCap: 3,
         implemented: true,
@@ -243,7 +249,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'drifting',
         name: 'Drifting mine',
-        cost: 58,
+        cost: 151,
         gateRound: 8,
         firstAppearanceCap: 3,
         implemented: false,
@@ -266,7 +272,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'straight',
         name: 'Straight-running torpedo',
-        cost: 34,
+        cost: 28,
         gateRound: 5,
         firstAppearanceCap: 2,
         implemented: true,
@@ -276,7 +282,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'homing',
         name: 'Homing torpedo',
-        cost: 48,
+        cost: 39,
         gateRound: 7,
         firstAppearanceCap: 2,
         implemented: true,
@@ -287,7 +293,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'lowSigTorpedo',
         name: 'Low-signature torpedo',
-        cost: 62,
+        cost: 50,
         gateRound: 10,
         firstAppearanceCap: 2,
         implemented: true,
@@ -326,7 +332,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'smallArms',
         name: 'Small-arms boat',
-        cost: 110,
+        cost: 164,
         gateRound: 5,
         firstAppearanceCap: 2,
         implemented: true,
@@ -336,7 +342,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'rocket',
         name: 'Rocket boat',
-        cost: 155,
+        cost: 231,
         gateRound: 7,
         firstAppearanceCap: 2,
         implemented: true,
@@ -347,7 +353,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'boarding',
         name: 'Boarding boat',
-        cost: 180,
+        cost: 268,
         gateRound: 9,
         firstAppearanceCap: 1,
         grantsTargeting: 4,

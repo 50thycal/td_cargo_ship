@@ -240,7 +240,9 @@ function buildEnemyTelemetry(c: CampaignState): EnemyRoundTelemetry {
       share: Math.round(ledger.share * 1000) / 1000,
       units: { ...ledger.units },
       roi: Math.round(ledger.roi * 1000) / 1000,
-      kills: ledger.kills,
+      // Kills are fractional: a hull worn down by two branches gives each a
+      // share, so no single attack is credited with work it did not do.
+      kills: Math.round(ledger.kills * 100) / 100,
       result: Math.round(ledger.result * 10) / 10,
       scrap: Math.round(ledger.scrap),
       roundsInvested: ledger.roundsInvested,

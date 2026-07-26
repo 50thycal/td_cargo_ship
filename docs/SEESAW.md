@@ -254,9 +254,38 @@ So: **a new branch priced to match the current best is a difficulty increase,
 not a lateral move.** Boats are now priced deliberately above mines, and opening
 that front costs the enemy efficiency rather than handing it a better mine.
 
-The wider spread is a real finding and still open: missiles and torpedoes are
-decoys at their current prices — the allocator buys them only when it has
-nothing better. Closing that gap belongs to the tuning pass.
+### The scoring bug underneath all of it
+
+That wider spread turned out not to be a pricing problem at all.
+
+**Kill credit went entirely to whatever landed the final blow.** A mine does 115
+damage to a 100hp hull, so it almost always finishes; a 34-damage missile almost
+never does. Missiles measured at ~1200 budget per kill against a mine's ~70 — and
+they had not failed. A third of them were getting through and they dealt 50k
+damage across a sweep. Something else was simply credited with every hull they
+had softened. The allocator read that as "missiles do not work", defunded them,
+and the entire catalogue collapsed onto two one-shot branches.
+
+Kills are now **split across branches in proportion to the damage each did** to
+that hull, so a kill is still exactly one kill but nobody is credited with work
+they did not do. Fractional kills fall out of this and that is fine. The effect
+on the measurement was immediate, before a single price moved:
+
+| | before | after attribution fix |
+| --- | --- | --- |
+| missile kills (sweep) | 81 | 217 |
+| torpedo kills (sweep) | 41 | 147 |
+| cost-per-kill spread | 18x | 6.9x |
+
+Repricing every branch against the corrected numbers closed the rest, to a
+**1.54x** spread with the enemy's spend genuinely distributed (missiles 39%,
+mines 26%, boats 18%, torpedoes 17%) instead of concentrated in whatever
+happened to land last.
+
+The lesson generalises past this game: **before tuning a number, check that the
+metric driving it measures what it claims to.** Two rounds of price changes were
+spent compensating for a scoring artifact, and neither would have worked, because
+the branch being "fixed" was never the one that was broken.
 
 ---
 

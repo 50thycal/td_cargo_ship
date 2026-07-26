@@ -263,6 +263,34 @@ describe('attack-boat behaviour', () => {
       expect(LOSS_CAUSE_TO_ENEMY_BRANCH[cause]).toBe('attackBoats');
     }
   });
+
+  it('splits a kill across the branches that wore the hull down', () => {
+    // Regression, and the most consequential scoring rule in the economy. Kill
+    // credit used to go entirely to whatever landed the FINAL blow, so a
+    // 115-damage mine (a one-shot on a 100hp hull) collected nearly every kill
+    // while a 34-damage missile collected almost none — measured at ~1200
+    // budget per kill against a mine's ~70. The allocator read that as
+    // "missiles do not work" when they had in fact done most of the damage.
+    const { state, rng, fleet } = engage([spawn('smallArms')]);
+    const victim = victimOf(state, fleet[0])!;
+    run(state, rng, Math.ceil(6 / SIM.dt));
+    const boatDamage = victim.damageByBranch.attackBoats ?? 0;
+    expect(boatDamage).toBeGreaterThan(0);
+
+    // Pretend a mine had also chipped this hull, then let the boat finish it.
+    victim.damageByBranch.mines = boatDamage;
+    victim.hp = 0.01;
+    run(state, rng, Math.ceil(2 / SIM.dt));
+    expect(victim.alive).toBe(false);
+
+    const credited = state.stats.enemyBranch;
+    // Both branches share the hull, in proportion to the work each did.
+    expect(credited.attackBoats?.kills ?? 0).toBeCloseTo(0.5, 2);
+    expect(credited.mines?.kills ?? 0).toBeCloseTo(0.5, 2);
+    // And a hull is still exactly one kill however it is divided up.
+    const total = Object.values(credited).reduce((a, b) => a + b.kills, 0);
+    expect(total).toBeCloseTo(state.stats.lost, 5);
+  });
 });
 
 // ---------------------------------------------------------------------------
