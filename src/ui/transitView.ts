@@ -649,6 +649,16 @@ export class TransitView {
         case 'boatSunk':
           this.showToast('Attack boat sunk');
           break;
+        case 'boardingStarted':
+          this.showToast(`Boarders on ${ev.shipName}! Sink that boat!`);
+          break;
+        case 'boardingRepelled':
+          this.showToast(
+            ev.detail === 'rejection'
+              ? `${ev.shipName} threw the boarding party off — that was the last chance`
+              : `Boarders driven off ${ev.shipName}`,
+          );
+          break;
         case 'flakKill':
           this.showToast('Flak downed an enemy aircraft');
           break;
@@ -656,6 +666,9 @@ export class TransitView {
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
           else if (ev.detail === 'torpedo') this.showToast('Torpedo in the water — air defense cannot touch it!');
           else if (ev.detail === 'lowSigTorpedo') this.showToast('That torpedo left no wake at all!');
+          else if (ev.detail === 'attackBoat') this.showToast('Attack boats closing — deck guns only!');
+          else if (ev.detail === 'rocketBoat') this.showToast('Rocket boat — it will open a hull fast!');
+          else if (ev.detail === 'boardingBoat') this.showToast('Boarding boat — they mean to take a ship!');
           break;
         default:
           break;
@@ -1165,6 +1178,39 @@ export class TransitView {
         ctx.stroke();
         ctx.setLineDash([]);
       }
+      // An attached boat draws a grapple line to the hull it is working on, so
+      // "closing" and "alongside and killing her" never look the same.
+      if (threat.engaging) {
+        const victim = t.ships.find((s) => s.id === threat.targetShipId && s.alive);
+        if (victim) {
+          ctx.strokeStyle =
+            threat.boatVariant === 'boarding' ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Boarding Alarm (a granted anti-boarding tactic): the boarded hull and its
+    // takeover progress have to be unmistakable, because the player's window to
+    // answer is short and a capture cannot be undone.
+    for (const ship of t.ships) {
+      if (ship.boardingSeconds <= 0 || !ship.alive) continue;
+      const frac = Math.min(1, ship.boardingSeconds / COMBAT.attackBoat.boardingSeconds);
+      const x = this.sx(ship.x);
+      const y = this.sy(ship.y);
+      ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.35 * Math.sin(now / 110)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x - 16, y - 27, 32, 4);
+      ctx.fillStyle = frac > 0.75 ? '#ff6b6b' : '#ffc857';
+      ctx.fillRect(x - 16, y - 27, 32 * frac, 4);
     }
 
     // Depth-charge rounds in flight, plus their aim points.

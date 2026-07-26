@@ -32,11 +32,12 @@ import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
 import { MODULES, SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
-import { COMBAT, ECONOMY, SPAWN, WORLD } from '../src/data/tuning';
+import { CAMPAIGN, COMBAT, ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
   RoundMetrics,
+  RoundPlan,
   TransitCommand,
   TransitState,
 } from '../src/sim/types';
@@ -283,24 +284,33 @@ describe('campaign', () => {
   });
 
   it('capacity grows after two consecutive strong rounds', () => {
+    // This pins the GROWTH RULE, so it runs the rounds against an empty enemy
+    // plan rather than trying to out-defend a live one. Stacking bases and
+    // ammunition used to be enough to guarantee strong deliveries, but the
+    // enemy now reallocates toward whatever the player has not answered, so
+    // "heavy defense" is not a fixed quantity any more and the scenario drifted
+    // out from under the rule it was meant to check. Combat is covered by the
+    // campaign-survival tests; this one is about the consortium's response to
+    // two good rounds.
     const c = newCampaign('growth');
-    // Heavy defense + a light convoy so deliveries are reliably strong, which
-    // isolates the growth mechanic from round-to-round combat variance.
-    c.bases = 4;
-    c.ammo = 120;
     setComposition(c, 'cargo', 6);
     setComposition(c, 'tanker', 0);
     setComposition(c, 'freighter', 0);
     const startCapacity = c.capacity;
     let increased = false;
-    for (let r = 0; r < 3 && !increased; r++) {
-      const { report } = runRound(c, { defend: true, useScan: true });
+    for (let r = 0; r < CAMPAIGN.strongRoundsForGrowth && !increased; r++) {
+      const plan: RoundPlan = { ...planCurrentRound(c), spawns: [], mines: [], debuts: [] };
+      const { state, rng } = createRoundTransit(c, plan);
+      let guard = 0;
+      while (!state.over && guard++ < Math.ceil(SIM.maxTransitTime / SIM.dt)) {
+        stepTransit(state, [], rng);
+      }
+      const report = resolveTransit(c, state);
+      expect(state.stats.delivered).toBe(state.stats.launched); // unopposed
       increased = report.capacityIncreased;
-      c.ammo = 120;
-      repairFleet(c);
     }
     expect(increased).toBe(true);
-    expect(c.capacity).toBe(startCapacity + 5);
+    expect(c.capacity).toBe(startCapacity + CAMPAIGN.capacityStep);
   });
 
   it('research takes one full round before completing', () => {
@@ -928,11 +938,20 @@ describe('air defense & telemetry', () => {
     const spawnTimes = plan.spawns.map((s) => s.time).sort((a, b) => a - b);
     const lastScheduled = spawnTimes[spawnTimes.length - 1];
     expect(lastScheduled).toBeGreaterThan(60);
-    // No 30s+ silent gap between consecutive scheduled launches across the body
-    // of the fire window (up to the last launch).
-    let maxGap = spawnTimes[0];
-    for (let i = 1; i < spawnTimes.length; i++) {
-      maxGap = Math.max(maxGap, spawnTimes[i] - spawnTimes[i - 1]);
+    // No 30s+ stretch with nothing for the player to do. Time between LAUNCHES
+    // is the wrong measure now that the enemy fields persistent units: an
+    // attack boat spawned at t=20 is still alongside a hull at t=80, so it
+    // occupies the whole window rather than a moment of it. Treat a boat as
+    // covering its engagement window and measure the silence that is left.
+    const boatOccupancy = COMBAT.attackBoat.engageRange / COMBAT.attackBoat.speed + 45;
+    const covered = plan.spawns
+      .map((s) => ({ from: s.time, to: s.kind === 'attackBoat' ? s.time + boatOccupancy : s.time }))
+      .sort((a, b) => a.from - b.from);
+    let maxGap = covered[0].from;
+    let clearUntil = covered[0].to;
+    for (const span of covered.slice(1)) {
+      maxGap = Math.max(maxGap, Math.max(0, span.from - clearUntil));
+      clearUntil = Math.max(clearUntil, span.to);
     }
     expect(maxGap).toBeLessThan(30);
 
@@ -963,6 +982,9 @@ describe('air defense & telemetry', () => {
         lastSpawnT = state.time;
         prevSpawned = state.stats.missilesSpawned;
       }
+      // A live boat on the field is pressure too — the clock only runs while
+      // there is genuinely nothing in the water demanding a response.
+      if (state.threats.some((th) => th.alive && th.kind === 'attackBoat')) lastSpawnT = state.time;
       const active = state.ships.filter((s) => s.spawned && s.alive && !s.delivered).length;
       if (prevSpawned > 0 && active >= 4) {
         maxGapWhileBusy = Math.max(maxGapWhileBusy, state.time - lastSpawnT);

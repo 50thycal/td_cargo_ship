@@ -22,6 +22,12 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} tried to turn out of the torpedo's path and it followed her around. The weapon was tracking, not running straight.`,
   lowSigTorpedo: (name) =>
     `${name} was struck by a torpedo that left no readable wake and never appeared on the sonar picture before impact.`,
+  attackBoat: (name) =>
+    `${name} was worked over at close range by an attack boat that stayed on her until she went down. Nothing that shoots at aircraft could be brought to bear.`,
+  rocketBoat: (name) =>
+    `${name} was broken open by rocket fire from a fast boat alongside. She sank far quicker than small-arms fire would have managed.`,
+  captured: (name) =>
+    `${name} was boarded and taken. She is under a prize crew making for the hostile shore — hull, cargo and all. This is not a sinking; the enemy has her.`,
   chain: (name) =>
     `${name} was caught by the blast of a missile that struck a ship packed in close alongside her — the price of a tight formation.`,
   fire: (name) =>
@@ -82,6 +88,33 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
       'sonar sweeps will not raise these before impact. Analysts propose low-signature processing ' +
       'on the hydrophone array, or a return filter on the active sonar; without one of those, ' +
       'depth charges have nothing to aim at.',
+  },
+  attackBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: attack boats',
+    body:
+      'Fast craft are now closing with the convoy and staying alongside a ship until she sinks. ' +
+      'A boat is not a shot to be blocked — it is a vessel with a crew, it remains on the water, ' +
+      'and it moves to the next hull when it finishes. Interceptors point at the sky and cannot ' +
+      'depress onto it. Escort deck guns are the weapon for this, and sinking the boat is the ' +
+      'only thing that stops it.',
+  },
+  rocketBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: rocket boats',
+    body:
+      'The boats are carrying rocket racks now and are opening hulls in roughly half the time. ' +
+      'They are also built heavier: deck-gun rounds are glancing off until the crews have ' +
+      'armour-piercing ammunition to work with.',
+  },
+  boardingBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: boarding parties',
+    body:
+      'The enemy is no longer trying to sink us — a boarding party took a ship and sailed her ' +
+      'away. Absorbing damage is no answer to this: a captured hull costs more than a sunk one ' +
+      'and hull plating does not slow a boarding. Anti-boarding countermeasures buy the crew ' +
+      'time, and deck guns that kill the boat throw the party off entirely.',
   },
 };
 

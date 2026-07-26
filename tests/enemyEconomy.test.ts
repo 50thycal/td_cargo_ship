@@ -13,6 +13,7 @@ import { newCampaign, planCurrentRound } from '../src/sim/campaign';
 import { migrateCampaign } from '../src/platform/save';
 import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../src/data/enemyBranches';
 import { ENEMY_ECONOMY } from '../src/data/tuning';
+import type { EnemyBranchKey } from '../src/data/enemyBranches';
 import type { EvolutionState, RoundMetrics } from '../src/sim/types';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,31 @@ function runEconomy(
 
 const totalUnits = (units: Record<string, number>): number =>
   Object.values(units).reduce((a, b) => a + b, 0);
+
+/** Every unit a branch bought across the whole run, summed per node.
+ *
+ *  A single round's composition is a poor measuring stick: units are whole
+ *  numbers and a branch holding a quarter of the budget buys two or three of
+ *  them, so a real change in the escalation share frequently cannot move it at
+ *  all. Summing the campaign's purchases integrates that quantization away and
+ *  measures the same observable thing — what the enemy actually built. */
+function unitsOverRun(
+  rounds: number,
+  shape: (round: number) => Partial<RoundMetrics>,
+  seed: string,
+  branch: EnemyBranchKey,
+): Record<string, number> {
+  const evo = newEvolution();
+  const rng = makeRng(seed);
+  const totals: Record<string, number> = {};
+  for (let r = 1; r <= rounds; r++) {
+    evolveEnemy(evo, metrics(r, shape(r)), rng);
+    for (const [node, n] of Object.entries(evo.economy.ledgers[branch].units)) {
+      totals[node] = (totals[node] ?? 0) + n;
+    }
+  }
+  return totals;
+}
 
 // ---------------------------------------------------------------------------
 // Budget
@@ -162,6 +188,33 @@ describe('adaptive allocation', () => {
     expect(missiles.roi).toBeGreaterThan(mines.roi);
   });
 
+  it('does not let an idle round launder a failing branch back to optimism', () => {
+    // Regression. ROI fell back to the neutral prior whenever a branch spent
+    // nothing that round, and "spent nothing" also covers "was allocated too
+    // little to afford a single unit". A branch the player had comprehensively
+    // beaten could therefore skip one round and come back scored as though it
+    // had never been tried — so the allocator kept refunding it. With four
+    // branches splitting the budget this happens constantly.
+    const evo = newEvolution();
+    const rng = makeRng('launder');
+    for (let r = 1; r <= 10; r++) {
+      evolveEnemy(
+        evo,
+        metrics(r, {
+          branchResults: {
+            missiles: { result: 60, kills: 6 },
+            mines: { result: 0, kills: 0 },
+          },
+        }),
+        rng,
+      );
+    }
+    const mines = evo.economy.ledgers.mines;
+    expect(evo.economy.openBranches).toContain('mines');
+    // Ten rounds of earning nothing must not read as neutral.
+    expect(mines.roi).toBeLessThan(ENEMY_ECONOMY.priorRoi);
+  });
+
   it('reverses that preference when the payoff reverses', () => {
     // Same setup, opposite results: mines earn, missiles do not.
     const evo = newEvolution();
@@ -208,17 +261,25 @@ describe('adaptive allocation', () => {
   // say in branch shares, which drowns out the effect being measured — an
   // earlier version of the mine test compared two seeds and passed for rounds
   // while the signal it claimed to check was doing nothing at all.
-  const nodeShare = (evo: EvolutionState, branch: 'missiles' | 'mines' | 'torpedoes', node: string): number => {
-    const units = evo.economy.ledgers[branch].units;
-    const total = totalUnits(units);
-    return total > 0 ? (units[node] ?? 0) / total : 0;
+  /** Share of everything the branch built over the run that was the newest node. */
+  const escalatedShare = (
+    rounds: number,
+    shape: Partial<RoundMetrics>,
+    seed: string,
+    branch: EnemyBranchKey,
+    node: string,
+  ): number => {
+    const totals = unitsOverRun(rounds, () => shape, seed, branch);
+    const all = totalUnits(totals);
+    return all > 0 ? (totals[node] ?? 0) / all : 0;
   };
 
-  /** Run both arms over many seeds; the counter arm must escalate at least as
-   *  far every time and strictly further on a clear majority. */
+  /** Run both arms over many seeds, varying ONLY the counter signal; the
+   *  countered arm must escalate at least as far every time and strictly
+   *  further on a clear majority. */
   const expectEscalation = (
     rounds: number,
-    branch: 'missiles' | 'mines' | 'torpedoes',
+    branch: EnemyBranchKey,
     node: string,
     counteredMetrics: Partial<RoundMetrics>,
     ignoredMetrics: Partial<RoundMetrics>,
@@ -227,8 +288,8 @@ describe('adaptive allocation', () => {
     const seeds = 10;
     for (let i = 0; i < seeds; i++) {
       const seed = `esc-${branch}-${i}`;
-      const countered = nodeShare(runEconomy(rounds, () => counteredMetrics, seed), branch, node);
-      const ignored = nodeShare(runEconomy(rounds, () => ignoredMetrics, seed), branch, node);
+      const countered = escalatedShare(rounds, counteredMetrics, seed, branch, node);
+      const ignored = escalatedShare(rounds, ignoredMetrics, seed, branch, node);
       expect(countered).toBeGreaterThanOrEqual(ignored);
       if (countered > ignored) strictlyHigher++;
     }
@@ -242,7 +303,7 @@ describe('adaptive allocation', () => {
   });
 
   it('escalates to low-signature mines when the player charts standard ones', () => {
-    expectEscalation(9, 'mines', 'lowSig', { mineDetectRate: 0.95 }, { mineDetectRate: 0.05 });
+    expectEscalation(14, 'mines', 'lowSig', { mineDetectRate: 0.95 }, { mineDetectRate: 0.05 });
   });
 
   it('escalates to low-signature torpedoes when the player hears and kills them', () => {

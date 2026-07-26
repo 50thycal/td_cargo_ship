@@ -10,9 +10,9 @@
 //   • `implemented` — whether the simulation can genuinely FIELD this branch.
 //     The allocator refuses to spend on anything it cannot field, so budget is
 //     never silently burned on a threat that would never appear. Missiles,
-//     mines and torpedoes are live; the rest are catalogued (costs, gates,
-//     targeting grants)
-//     and switch on by flipping this flag once their spawn/behaviour lands.
+//     mines, torpedoes and attack boats are live; the rest are catalogued
+//     (costs, gates, targeting grants) and switch on by flipping this flag
+//     once their spawn/behaviour lands.
 //
 //   • `nodes[].implemented` — same idea one level down: a branch can be live
 //     while its later variants are not (e.g. missiles field unguided/guided
@@ -90,12 +90,18 @@ export interface EnemyNodeDef {
   name: string;
   /** Budget cost per unit fielded.
    *
-   *  PRICE BY REALIZED LETHALITY, not by nominal unit. A unit that reliably
-   *  kills a hull AND cannot be shot down is worth several that can be
-   *  intercepted — price them the same and the ROI allocator will (correctly)
-   *  buy nothing but the efficient one, and the seesaw locks. Mines and
-   *  torpedoes sit well above missiles for exactly this reason: a playtest
-   *  sweep measured mine ROI at 17x missile ROI when they were priced alike. */
+   *  PRICE BY MEASURED LETHALITY. Every cost here is set from a playtest sweep
+   *  as `target cost-per-kill x kills-per-unit`, not from what the unit sounds
+   *  like it should be worth. Price two branches alike when one is five times
+   *  as lethal and the ROI allocator will (correctly) buy nothing but the
+   *  efficient one — the seesaw locks and the other branch becomes dead
+   *  content. Sweeps have caught this three times now: mines at 17x missile
+   *  ROI, attack boats matching mines and doubling total lethality, and the
+   *  whole catalogue spread across an 18x cost-per-kill band.
+   *
+   *  Re-measure after changing any of these. Prices interact — making one
+   *  branch dearer pushes budget into the others, so a single edit moves every
+   *  branch's realized numbers. */
   cost: number;
   /** Campaign round before which this node cannot be fielded at all — the
    *  progression gate from ENEMY_ATTACKS.md ("nodes are gated, tactics are
@@ -166,7 +172,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'unguided',
         name: 'Unguided missile',
-        cost: 8,
+        cost: 5,
         gateRound: 1,
         firstAppearanceCap: 99,
         grantsTargeting: 1,
@@ -176,7 +182,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'guided',
         name: 'Guided missile',
-        cost: 15,
+        cost: 9,
         gateRound: 2,
         firstAppearanceCap: 3,
         grantsTargeting: 3,
@@ -221,7 +227,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'standard',
         name: 'Standard mine',
-        cost: 28,
+        cost: 73,
         gateRound: 3,
         firstAppearanceCap: 4,
         implemented: true,
@@ -232,7 +238,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'lowSig',
         name: 'Low-signature mine',
-        cost: 44,
+        cost: 115,
         gateRound: 5,
         firstAppearanceCap: 3,
         implemented: true,
@@ -243,7 +249,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'drifting',
         name: 'Drifting mine',
-        cost: 58,
+        cost: 151,
         gateRound: 8,
         firstAppearanceCap: 3,
         implemented: false,
@@ -266,7 +272,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'straight',
         name: 'Straight-running torpedo',
-        cost: 34,
+        cost: 28,
         gateRound: 5,
         firstAppearanceCap: 2,
         implemented: true,
@@ -276,7 +282,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'homing',
         name: 'Homing torpedo',
-        cost: 48,
+        cost: 39,
         gateRound: 7,
         firstAppearanceCap: 2,
         implemented: true,
@@ -287,7 +293,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'lowSigTorpedo',
         name: 'Low-signature torpedo',
-        cost: 62,
+        cost: 50,
         gateRound: 10,
         firstAppearanceCap: 2,
         implemented: true,
@@ -303,36 +309,58 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
     key: 'attackBoats',
     name: 'Attack Boats',
     identity: 'Persistent, sinkable surface craft that engage one ship at a time until it is gone.',
-    implemented: false,
-    openRound: 4,
-    openCost: 45,
+    implemented: true,
+    openRound: 5,
+    openCost: 55,
     maxUnitsPerRound: 6,
+    // PRICING NOTE. Boats are the first threat that is not spent on use: a mine
+    // or torpedo buys at most one hull, but a boat that survives keeps killing
+    // for the rest of the transit.
+    //
+    // These are MEASURED prices, twice corrected. A sweep put boats at ROI
+    // 0.237 against mines at 0.247 — nominally well matched, and still far too
+    // strong, because mines were themselves ~7x more efficient per kill than
+    // missiles. Matching the most efficient branch in the game simply gave the
+    // enemy a SECOND high-efficiency outlet for a budget that used to be capped
+    // by the mine unit ceiling, and total lethality rose accordingly: every
+    // build collapsed by round 11. Priced deliberately ABOVE mines now, so
+    // opening this front costs the enemy real efficiency rather than handing it
+    // a better mine. (The underlying spread — missiles and torpedoes needing
+    // ~15x the budget per kill that mines do — is a real finding for the tuning
+    // pass, not something this slice can fix.)
     nodes: [
       {
         id: 'smallArms',
         name: 'Small-arms boat',
-        cost: 30,
-        gateRound: 4,
+        cost: 164,
+        gateRound: 5,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'attackBoat',
         warning: 'Fast craft are massing in the coastal inlets — expect close-in surface attacks.',
       },
       {
         id: 'rocket',
         name: 'Rocket boat',
-        cost: 42,
+        cost: 231,
         gateRound: 7,
         firstAppearanceCap: 2,
-        implemented: false,
+        implemented: true,
+        techKey: 'rocketBoat',
+        warning:
+          'The inlet craft are being fitted with rocket racks — expect them to sink a hull far faster.',
       },
       {
         id: 'boarding',
         name: 'Boarding boat',
-        cost: 55,
+        cost: 268,
         gateRound: 9,
         firstAppearanceCap: 1,
         grantsTargeting: 4,
-        implemented: false,
+        implemented: true,
+        techKey: 'boardingBoat',
+        warning:
+          'Intercepted traffic mentions boarding parties and prize crews — they intend to take a ship, not sink it.',
       },
     ],
     tactics: tacticLadder(['Single boat', 'Several boats', 'Waves of boats']),

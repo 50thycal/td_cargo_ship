@@ -240,7 +240,9 @@ function buildEnemyTelemetry(c: CampaignState): EnemyRoundTelemetry {
       share: Math.round(ledger.share * 1000) / 1000,
       units: { ...ledger.units },
       roi: Math.round(ledger.roi * 1000) / 1000,
-      kills: ledger.kills,
+      // Kills are fractional: a hull worn down by two branches gives each a
+      // share, so no single attack is credited with work it did not do.
+      kills: Math.round(ledger.kills * 100) / 100,
       result: Math.round(ledger.result * 10) / 10,
       scrap: Math.round(ledger.scrap),
       roundsInvested: ledger.roundsInvested,
@@ -331,6 +333,15 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   else if (deliveredFraction >= 0.75) confidenceChange += CAMPAIGN.confidenceGoodRound;
   else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
   confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
+  // Captures bite on top of that, and OUTSIDE the loss cap — a player already
+  // at the cap still feels each hull the enemy sails away with, which is what
+  // stops absorbing losses from being an answer to the boarding node.
+  if (s.shipsCaptured > 0) {
+    confidenceChange += Math.max(
+      CAMPAIGN.confidenceCaptureCap,
+      CAMPAIGN.confidencePerCapture * s.shipsCaptured,
+    );
+  }
 
   // --- Quota window -----------------------------------------------------------------
   c.quota.pointsEarned += s.valueDelivered;
@@ -595,6 +606,10 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     torpedoesDetected: s.torpedoesDetected,
     torpedoesHit: s.torpedoesHit,
     torpedoesDestroyed: s.torpedoesDestroyed,
+    boatsLaunched: s.boatsLaunched,
+    boatsSunk: s.boatsSunk,
+    boatKills: s.boatKills,
+    shipsCaptured: s.shipsCaptured,
     escortsLost: s.escortsLost,
     basesLost: s.basesLost,
     launchersDisabled: s.launchersDisabled,

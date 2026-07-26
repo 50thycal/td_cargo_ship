@@ -223,6 +223,70 @@ that its input can still move the output at the *end* of a campaign, not just at
 the start. And when a test compares two behaviours, change one thing between the
 arms — a seeded run is a sample, not a measurement.
 
+### A scoring rule learned the hard way
+
+**"Spent nothing" is not the same as "never tried."** ROI fell back to the
+neutral prior for any branch that spent nothing in a round. That reads as a
+sensible way to keep an untried branch worth probing, and it is — but a branch
+that had been thoroughly beaten *also* spends nothing the moment its allowance
+drops below the price of one unit. It then came back scored as promising as
+something never attempted, so the allocator refunded it, it failed again, and
+the cycle repeated. A branch earning zero for ten straight rounds was still
+holding a 1.0 ROI and the largest share of the budget. Falling back to the prior
+only for branches that have never been opened fixed it, and the branch the
+player had beaten dropped from a 0.46 share to 0.10.
+
+The general form: any "no data" default must be reachable only by genuine
+absence of data. If a failure state can also produce it, the default becomes a
+laundering mechanism for that failure.
+
+### What a fourth branch taught us about prices
+
+Adding attack boats did not just add a threat, it added a second **efficient**
+outlet for the same budget. Measured across a sweep, mines cost the enemy ~68
+budget per kill and boats ~65 — well matched to each other, and both about 15×
+cheaper per kill than missiles (~960) or torpedoes (~1500). While mines were the
+only cheap option, the per-round unit ceiling capped how much of the budget could
+find its way there. A second cheap option removed that cap in practice, total
+lethality rose, and every playtest build collapsed by round 11.
+
+So: **a new branch priced to match the current best is a difficulty increase,
+not a lateral move.** Boats are now priced deliberately above mines, and opening
+that front costs the enemy efficiency rather than handing it a better mine.
+
+### The scoring bug underneath all of it
+
+That wider spread turned out not to be a pricing problem at all.
+
+**Kill credit went entirely to whatever landed the final blow.** A mine does 115
+damage to a 100hp hull, so it almost always finishes; a 34-damage missile almost
+never does. Missiles measured at ~1200 budget per kill against a mine's ~70 — and
+they had not failed. A third of them were getting through and they dealt 50k
+damage across a sweep. Something else was simply credited with every hull they
+had softened. The allocator read that as "missiles do not work", defunded them,
+and the entire catalogue collapsed onto two one-shot branches.
+
+Kills are now **split across branches in proportion to the damage each did** to
+that hull, so a kill is still exactly one kill but nobody is credited with work
+they did not do. Fractional kills fall out of this and that is fine. The effect
+on the measurement was immediate, before a single price moved:
+
+| | before | after attribution fix |
+| --- | --- | --- |
+| missile kills (sweep) | 81 | 217 |
+| torpedo kills (sweep) | 41 | 147 |
+| cost-per-kill spread | 18x | 6.9x |
+
+Repricing every branch against the corrected numbers closed the rest, to a
+**1.54x** spread with the enemy's spend genuinely distributed (missiles 39%,
+mines 26%, boats 18%, torpedoes 17%) instead of concentrated in whatever
+happened to land last.
+
+The lesson generalises past this game: **before tuning a number, check that the
+metric driving it measures what it claims to.** Two rounds of price changes were
+spent compensating for a scoring artifact, and neither would have worked, because
+the branch being "fixed" was never the one that was broken.
+
 ---
 
 ## How this is used

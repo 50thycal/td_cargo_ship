@@ -22,6 +22,7 @@ import {
   CATEGORY_ORDER,
   COUNTER_BRANCHES,
   COUNTER_CATEGORY_NAMES,
+  awaitingEnemyCapability,
   ENEMY_BRANCH_NAMES,
   RESEARCH_INDEX,
   type CounterBranchDef,
@@ -500,6 +501,12 @@ export function aarScreen(
               ? ` Torpedoes: ${s.torpedoesDetected}/${s.torpedoesLaunched} detected, ` +
                 `${s.torpedoesDestroyed} destroyed, ${s.torpedoesHit} hit home.`
               : '') +
+            (s.boatsLaunched > 0
+              ? ` Attack boats: ${s.boatsSunk}/${s.boatsLaunched} sunk, ${s.boatKills} hull(s) lost to them` +
+                (s.counter.boardingAttempts > 0
+                  ? `, ${s.counter.boardingInterrupted} boarding(s) repelled and ${s.shipsCaptured} ship(s) CAPTURED.`
+                  : '.')
+              : '') +
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
               : '') +
@@ -734,7 +741,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
   for (const enemy of branch.counters) {
     tags.append(chip('alert', `vs ${ENEMY_BRANCH_NAMES[enemy]}`, branch.countersDetail));
   }
-  if (branch.future) {
+  if (awaitingEnemyCapability(branch)) {
     tags.append(chip('eye', 'awaiting enemy capability', 'The countered enemy branch has not been fielded yet — research and equipment are ready for the day it appears.'));
   }
   // Equipment status: what physically carries this branch, and whether it is
