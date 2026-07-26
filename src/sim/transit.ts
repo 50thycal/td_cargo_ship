@@ -15,11 +15,13 @@ import { targetingSkill } from './evolution';
 import type { RNG } from './rng';
 import type {
   AreaEffect,
+  ArtilleryVariant,
   Base,
   BoatVariant,
   CampaignState,
   CombatEffects,
   CounterRoundStats,
+  EnemyInstallation,
   Escort,
   FormationId,
   LauncherKind,
@@ -312,7 +314,25 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     escorts: [],
     bases: [],
     threats: [],
-    installations: [],
+    installations: plan.installations.map((p) => ({
+      id: nextId++,
+      kind: 'artillery' as const,
+      x: p.x,
+      y: p.y,
+      variant: p.variant,
+      suppressedUntil: 0,
+      strikes: 0,
+      destroyed: false,
+      // Guns open up after a short lay-in rather than the instant the round
+      // starts, so the first shells are a beat the player can read.
+      cooldown: COMBAT.artillery.reload[p.variant] * 1.5,
+      walkShots: 0,
+      barrageLeft: 0,
+      barrageFromX: p.x,
+      barrageY: WORLD.lanes[0],
+      barrageNextAt: 8,
+    })),
+    shells: [],
     interceptors: [],
     drones: [],
     depthChargeShots: [],
@@ -367,6 +387,9 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       boatsSunk: 0,
       boatKills: 0,
       shipsCaptured: 0,
+      shellsFired: 0,
+      shellHits: 0,
+      batteriesDestroyed: 0,
       ammoUsed: 0,
       ecmUsed: 0,
       scanUsed: 0,
@@ -1361,6 +1384,8 @@ function fireCounterBattery(
     pushEvent(t, { type: 'suppressed', detail: `installation:${pos.id}` });
     if (t.effects.counterBattery.coordinatedStrike && pos.strikes >= 3) {
       pos.destroyed = true;
+      t.stats.batteriesDestroyed++;
+      pushEvent(t, { type: 'suppressed', detail: `destroyed:${pos.id}` });
     }
   }
 }
@@ -1943,6 +1968,182 @@ function captureShip(t: TransitState, ship: Ship): void {
   t.stats.shipsCaptured++;
   t.stats.counter.boardingCaptures++;
   killShip(t, ship, 'captured');
+}
+
+/** Artillery: fixed shore guns firing direct across the near water.
+ *
+ *  The whole branch hinges on RANGE. A gun engages only what falls inside its
+ *  reach, which for a coastal gun is the near lane and nothing else, so routing
+ *  the convoy wide is a real and complete answer — and hugging the near lane is
+ *  a real and expensive mistake. Suppression from counter-battery silences a
+ *  gun for a while; enough focused strikes remove it for the round. */
+function updateArtillery(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.artillery;
+  for (const gun of t.installations) {
+    if (gun.destroyed) continue;
+    gun.cooldown -= dt;
+    if (t.time < gun.suppressedUntil) {
+      // A suppressed crew is off the gun, not merely pausing: it loses the
+      // ranging solution it had been building, and a barrage in progress is
+      // broken up rather than resumed where it left off.
+      gun.walkShots = 0;
+      gun.walkTargetShipId = undefined;
+      if (t.effects.counterBattery.barrageDisruption) gun.barrageLeft = 0;
+      continue;
+    }
+
+    if (gun.variant === 'rollingBarrage') {
+      updateBarrage(t, gun, rng);
+      continue;
+    }
+    if (gun.cooldown > 0) continue;
+
+    // Only hulls genuinely inside the gun's reach are candidates. This is the
+    // near-lane rule and it is enforced here rather than by any aiming code.
+    const range = fx.range[gun.variant];
+    const inReach = activeShips(t).filter((s) => dist(gun.x, gun.y, s.x, s.y) <= range);
+    if (inReach.length === 0) {
+      gun.walkShots = 0;
+      gun.walkTargetShipId = undefined;
+      continue;
+    }
+    // T2 doctrine, expressed as geometry rather than a rule: the gun shoots at
+    // what is closest to its own shore.
+    const target = inReach.reduce((best, s) =>
+      dist(gun.x, gun.y, s.x, s.y) < dist(gun.x, gun.y, best.x, best.y) ? s : best,
+    );
+
+    // Ranging artillery WALKS its fire in: consecutive shells at the same hull
+    // tighten the aim, and the solution is lost the moment that hull is no
+    // longer the one being shot at. Holding position in reach is the mistake.
+    let scatter: number = fx.scatter[gun.variant];
+    if (gun.variant === 'ranging') {
+      if (gun.walkTargetShipId === target.id) gun.walkShots++;
+      else {
+        gun.walkTargetShipId = target.id;
+        gun.walkShots = 0;
+      }
+      scatter = Math.max(fx.walkMinScatter, scatter * fx.walkTightening ** gun.walkShots);
+    }
+
+    gun.cooldown = fx.reload[gun.variant];
+    fireShell(t, gun, target.x + rng.range(-scatter, scatter), target.y + rng.range(-scatter, scatter));
+  }
+}
+
+/** A rolling barrage: a salvo of shells sweeping along one lane, then a pause.
+ *  It is aimed at WATER, not at a ship — the point is a wall of fire moving up
+ *  a lane that the convoy has to not be in. */
+function updateBarrage(t: TransitState, gun: EnemyInstallation, rng: RNG): void {
+  const fx = COMBAT.artillery;
+  if (gun.barrageLeft <= 0) {
+    if (t.time < gun.barrageNextAt) return;
+    // Pick the lane inside reach carrying the most hulls — a barrage is worth
+    // firing at the water the convoy is actually using.
+    const reachable = WORLD.lanes.filter((laneY) => Math.abs(laneY - gun.y) <= fx.range.rollingBarrage);
+    if (reachable.length === 0) {
+      gun.barrageNextAt = t.time + fx.barrageInterval;
+      return;
+    }
+    const ships = activeShips(t);
+    const laneY = reachable.reduce((best, laneY) => {
+      const count = (y: number): number => ships.filter((s) => Math.abs(s.y - y) < 90).length;
+      return count(laneY) > count(best) ? laneY : best;
+    });
+    gun.barrageY = laneY;
+    // A rolling barrage WALKS AHEAD of an advancing target — that is the whole
+    // point of the name. Anchoring the sweep to the gun instead put shells on
+    // water the convoy had already crossed: 60 shells and no kills in testing.
+    // Start it just ahead of the leading hull in the lane and sweep forward, so
+    // the convoy sails into successive rounds rather than out of them.
+    const inLane = ships.filter(
+      (s) => Math.abs(s.y - laneY) < 90 && dist(gun.x, gun.y, s.x, s.y) <= fx.range.rollingBarrage,
+    );
+    const leadX = inLane.length > 0 ? Math.max(...inLane.map((s) => s.x)) : gun.x;
+    gun.barrageFromX = leadX + 40 + rng.range(-25, 25);
+    gun.barrageLeft = fx.barrageShells;
+    gun.cooldown = 0;
+  }
+  if (gun.cooldown > 0) return;
+  const fired = fx.barrageShells - gun.barrageLeft;
+  const step = fx.barrageSweep / Math.max(1, fx.barrageShells - 1);
+  const aimX = gun.barrageFromX + fired * step;
+  const s = fx.scatter.rollingBarrage;
+  gun.barrageLeft--;
+  gun.cooldown = fx.reload.rollingBarrage;
+  if (gun.barrageLeft <= 0) gun.barrageNextAt = t.time + fx.barrageInterval;
+  fireShell(t, gun, aimX + rng.range(-s * 0.3, s * 0.3), gun.barrageY + rng.range(-s * 0.4, s * 0.4));
+}
+
+/** Put one shell in the air toward an impact point. */
+function fireShell(t: TransitState, gun: EnemyInstallation, aimX: number, aimY: number): void {
+  const fx = COMBAT.artillery;
+  const d = dist(gun.x, gun.y, aimX, aimY) || 1;
+  t.stats.shellsFired++;
+  t.shells.push({
+    id: t.nextEntityId++,
+    x: gun.x,
+    y: gun.y,
+    vx: ((aimX - gun.x) / d) * fx.shellSpeed,
+    vy: ((aimY - gun.y) / d) * fx.shellSpeed,
+    targetX: aimX,
+    targetY: aimY,
+    damage: fx.damage[gun.variant],
+    variant: gun.variant,
+    alive: true,
+  });
+  announceArtillery(t, gun.variant);
+}
+
+/** Shells in flight. A shell bursts at its aim point and damages what is near
+ *  it — an area weapon, so it never homes and never "misses" a hull it was
+ *  never aimed at. Nothing in the game can shoot one down. */
+function updateShells(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.artillery;
+  for (const shell of t.shells) {
+    if (!shell.alive) continue;
+    const remaining = dist(shell.x, shell.y, shell.targetX, shell.targetY);
+    const step = Math.hypot(shell.vx, shell.vy) * dt;
+    if (remaining > step) {
+      shell.x += shell.vx * dt;
+      shell.y += shell.vy * dt;
+      continue;
+    }
+    shell.x = shell.targetX;
+    shell.y = shell.targetY;
+    shell.alive = false;
+    let hit = false;
+    for (const ship of activeShips(t)) {
+      if (dist(shell.x, shell.y, ship.x, ship.y) > fx.splashRadius) continue;
+      hit = true;
+      damageShip(t, ship, shell.damage, artilleryCause(shell.variant), rng, true);
+    }
+    for (const escort of t.escorts) {
+      if (!escort.alive) continue;
+      if (dist(shell.x, shell.y, escort.x, escort.y) > fx.splashRadius) continue;
+      hit = true;
+      damageEscort(t, escort, shell.damage, `escort:${artilleryCause(shell.variant)}`);
+    }
+    if (hit) t.stats.shellHits++;
+  }
+  t.shells = t.shells.filter((s) => s.alive);
+}
+
+/** Loss cause naming the artillery node responsible. */
+function artilleryCause(variant: ArtilleryVariant): string {
+  return variant === 'ranging'
+    ? 'rangingArtillery'
+    : variant === 'rollingBarrage'
+      ? 'rollingBarrage'
+      : 'artillery';
+}
+
+/** Artillery debuts. Guns are emplacements in plain sight on the far shore, so
+ *  the player learns what they face the first time one opens up. */
+function announceArtillery(t: TransitState, variant: ArtilleryVariant): void {
+  announceDebut(t, 'artillery');
+  if (variant === 'ranging') announceDebut(t, 'rangingArtillery');
+  if (variant === 'rollingBarrage') announceDebut(t, 'rollingBarrage');
 }
 
 /** Passive torpedo detection (hydrophone modules) — bearing contacts. */
@@ -2749,6 +2950,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
 
   updateAttackBoats(t, rng, dt);
+  updateArtillery(t, rng, dt);
+  updateShells(t, rng, dt);
 
   // --- Cargo-module systems ---------------------------------------------------
   updateSelfDefense(t, dt);

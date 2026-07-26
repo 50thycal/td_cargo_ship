@@ -168,6 +168,50 @@ export const COMBAT = {
      *  before it leaves the board — long enough to read what happened. */
     captureExitSeconds: 6,
   },
+  /** Artillery: the SHORE-GUN branch (ENEMY_ATTACKS.md). Direct fire from fixed
+   *  emplacements. There is no arc to tap out of the sky, so a shell is not an
+   *  interceptable projectile — shells live in their own array rather than in
+   *  `threats`, which is what structurally guarantees no weapon can ever be
+   *  pointed at one. The answers are counter-battery suppression and simply not
+   *  sailing where the guns reach.
+   *
+   *  RANGE IS THE WHOLE DESIGN. The lanes sit 270 / 450 / 630 from the hostile
+   *  shore, so a coastal gun reaches only the near lane and ranging artillery
+   *  only the near two. Lane choice is therefore a real decision rather than a
+   *  cosmetic one, and it is also where the T2 nearest-to-shore doctrine this
+   *  branch grants comes from — the gun's reach IS the doctrine. */
+  artillery: {
+    /** Direct fire: fast enough that a shell cannot be outrun, slow enough to
+     *  read as a tracer crossing the water. */
+    shellSpeed: 430,
+    range: { coastalGun: 330, ranging: 520, rollingBarrage: 330 },
+    /** Per the design's times-to-sink on a 100hp hull: ~8 coastal hits, ~5
+     *  ranging hits. A barrage fires coastal-weight shells in bulk. */
+    damage: { coastalGun: 13, ranging: 21, rollingBarrage: 13 },
+    reload: { coastalGun: 2.2, ranging: 4.2, rollingBarrage: 0.55 },
+    /** Shells burst at their aim point and damage what is near it — artillery
+     *  is an area weapon, so it never "homes" onto a hull. */
+    splashRadius: 46,
+    /** Aim scatter at the impact point. Fire is inaccurate by default; that is
+     *  what makes holding still, rather than being in the lane at all, the
+     *  thing that gets punished. */
+    scatter: { coastalGun: 44, ranging: 38, rollingBarrage: 40 },
+    /** Ranging artillery WALKS onto a hull that holds its position: every
+     *  consecutive shell at the same ship tightens the aim, and changing lane
+     *  or falling out of the salvo resets it. Loitering in reach is the
+     *  mistake this node exists to punish. */
+    walkTightening: 0.72,
+    walkMinScatter: 9,
+    /** Rolling barrage: a salvo of shells sweeping along one lane, then a long
+     *  pause. Readable as a wall of fire moving up the lane. */
+    barrageShells: 12,
+    barrageInterval: 26,
+    /** How far the salvo walks. Kept SHORT relative to the convoy's length so
+     *  the twelve rounds concentrate on one stretch of lane — a barrage spread
+     *  thin lands eight hits across eight different hulls and kills none of
+     *  them, which is what a 340-unit sweep measured. */
+    barrageSweep: 190,
+  },
   /** Chance a missile hit starts a fire (damage over time). */
   fireChance: 0.3,
   fireDps: 3,
@@ -420,6 +464,11 @@ export const EVOLUTION = {
   windowStartT: 6,
   /** Extra seconds after the last ship enters, so fire covers it crossing. */
   windowTailT: 60,
+  /** Stretch of hostile shore the enemy emplaces artillery along. Kept clear of
+   *  the convoy's entry so the first guns are something the player sails toward
+   *  and can route around, not an ambush at the start line. */
+  gunFieldStartX: 620,
+  gunFieldEndX: 1620,
   /** Hard ceiling on the spacing between missile volleys (seconds): fire is
    *  split into enough volleys that no gap in the schedule exceeds this, even
    *  when the volley size is large. Keeps the strait from going quiet. */

@@ -173,18 +173,28 @@ describe('attack-boat procurement', () => {
   });
 
   it('grants the T4 targeting rung when the boarding node is first fielded', () => {
+    // Asserts the GRANT, not the affordability. The boarding boat is the
+    // dearest node in the catalogue and every branch that ships makes it
+    // compete harder, so which round it can first be afforded drifts with the
+    // rest of the economy; whether fielding it raises the doctrine must not.
     const c = newCampaign('boat-doctrine');
     const rng = makeRng('boat-doctrine');
-    let sawBoarding = false;
-    for (let r = 1; r <= 30; r++) {
+    for (let r = 1; r <= 8; r++) {
       c.round = r;
       evolveEnemy(c.evolution, metrics(r), rng);
-      if (c.evolution.economy.nodesFielded.includes('boarding')) {
-        sawBoarding = true;
-        break;
-      }
     }
-    expect(sawBoarding).toBe(true);
+    expect(c.evolution.economy.targetingTier).toBeLessThan(4);
+    // Fund the branch directly so the node is bought the moment its gate opens.
+    c.round = 12;
+    c.evolution.economy.ledgers.attackBoats.share = 0.9;
+    c.evolution.economy.budget = 4000;
+    for (let r = 12; r <= 20 && !c.evolution.economy.nodesFielded.includes('boarding'); r++) {
+      c.round = r;
+      c.evolution.economy.ledgers.attackBoats.share = 0.9;
+      c.evolution.economy.budget = 4000;
+      evolveEnemy(c.evolution, metrics(r), rng);
+    }
+    expect(c.evolution.economy.nodesFielded).toContain('boarding');
     expect(c.evolution.economy.targetingTier).toBeGreaterThanOrEqual(4);
   });
 });

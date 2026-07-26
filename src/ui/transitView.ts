@@ -646,6 +646,13 @@ export class TransitView {
         case 'depthChargeKill':
           this.showToast('Depth charges destroyed a torpedo');
           break;
+        case 'suppressed':
+          this.showToast(
+            ev.detail?.startsWith('destroyed:')
+              ? 'Shore battery destroyed — silenced for the round'
+              : 'Shore battery suppressed',
+          );
+          break;
         case 'boatSunk':
           this.showToast('Attack boat sunk');
           break;
@@ -669,6 +676,9 @@ export class TransitView {
           else if (ev.detail === 'attackBoat') this.showToast('Attack boats closing — deck guns only!');
           else if (ev.detail === 'rocketBoat') this.showToast('Rocket boat — it will open a hull fast!');
           else if (ev.detail === 'boardingBoat') this.showToast('Boarding boat — they mean to take a ship!');
+          else if (ev.detail === 'artillery') this.showToast('Shore guns! They only reach the near lane');
+          else if (ev.detail === 'rangingArtillery') this.showToast('Heavy shore battery — do not hold position!');
+          else if (ev.detail === 'rollingBarrage') this.showToast('Barrage walking up the lane ahead!');
           break;
         default:
           break;
@@ -796,6 +806,50 @@ export class TransitView {
       ctx.lineTo(this.sx(site.x) + 8, this.sy(site.y) - 6);
       ctx.closePath();
       ctx.fill();
+    }
+
+    // Shore batteries, and the water each one can actually reach. The reach
+    // ring is the whole decision this branch asks the player to make, so it is
+    // drawn rather than left to be inferred from where shells happen to land.
+    for (const gun of t.installations) {
+      const gx = this.sx(gun.x);
+      const gy = this.sy(gun.y);
+      const suppressed = t.time < gun.suppressedUntil;
+      if (!gun.destroyed) {
+        ctx.strokeStyle = suppressed ? 'rgba(120, 160, 200, 0.22)' : 'rgba(255, 138, 94, 0.30)';
+        ctx.setLineDash([6, 9]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(gx, gy, COMBAT.artillery.range[gun.variant] * SCALE, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = gun.destroyed
+        ? 'rgba(90, 96, 104, 0.65)'
+        : suppressed
+          ? '#6f7f92'
+          : gun.variant === 'coastalGun'
+            ? '#e0703c'
+            : '#d8484f';
+      ctx.beginPath();
+      ctx.arc(gx, gy, gun.variant === 'coastalGun' ? 6 : 8, 0, Math.PI * 2);
+      ctx.fill();
+      if (gun.destroyed) {
+        ctx.strokeStyle = 'rgba(220, 226, 232, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(gx - 6, gy - 6);
+        ctx.lineTo(gx + 6, gy + 6);
+        ctx.moveTo(gx + 6, gy - 6);
+        ctx.lineTo(gx - 6, gy + 6);
+        ctx.stroke();
+      } else if (suppressed) {
+        ctx.strokeStyle = 'rgba(140, 190, 240, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(gx, gy, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Lane guides
@@ -1211,6 +1265,27 @@ export class TransitView {
       ctx.fillRect(x - 16, y - 27, 32, 4);
       ctx.fillStyle = frac > 0.75 ? '#ff6b6b' : '#ffc857';
       ctx.fillRect(x - 16, y - 27, 32 * frac, 4);
+    }
+
+    // Shells in flight, with the water they are about to burst on marked. The
+    // impact ring is the readable part — nothing can shoot a shell down, so the
+    // only useful information is where NOT to be.
+    for (const shell of t.shells) {
+      const ix = this.sx(shell.targetX);
+      const iy = this.sy(shell.targetY);
+      ctx.strokeStyle = 'rgba(255, 138, 94, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(ix, iy, COMBAT.artillery.splashRadius * SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+      const sx2 = this.sx(shell.x);
+      const sy2 = this.sy(shell.y);
+      ctx.strokeStyle = 'rgba(255, 196, 120, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx2, sy2);
+      ctx.lineTo(sx2 - shell.vx * 0.05 * SCALE, sy2 - shell.vy * 0.05 * SCALE);
+      ctx.stroke();
     }
 
     // Depth-charge rounds in flight, plus their aim points.

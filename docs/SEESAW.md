@@ -254,6 +254,21 @@ So: **a new branch priced to match the current best is a difficulty increase,
 not a lateral move.** Boats are now priced deliberately above mines, and opening
 that front costs the enemy efficiency rather than handing it a better mine.
 
+### Pricing a branch takes two sweeps, not one
+
+Artillery made the loop explicit. Shipped at 96/150/210 it measured **66 budget
+per kill against 137-225 for every other branch** and collapsed all but 6 of 72
+campaigns. Corrected to parity at 290/450/620 the allocator stopped buying guns
+entirely — the branch vanished from the loss mix and oscillation fell straight
+back from 51% to 25%. It sits at 180/285/400, between the two, and both ends of
+that bracket had to be measured to find it.
+
+So the rule is not "price it right first time", which is not achievable. It is:
+**ship a price, measure cost-per-kill, and expect to bracket it.** A branch
+priced too low breaks difficulty; a branch priced too high is worse, because it
+is silently absent and the report still looks reasonable. The second failure is
+the one to watch for, since nothing screams.
+
 ### The scoring bug underneath all of it
 
 That wider spread turned out not to be a pricing problem at all.

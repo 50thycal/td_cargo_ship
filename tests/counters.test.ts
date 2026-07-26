@@ -92,6 +92,12 @@ function injectArtillery(state: TransitState, over: Partial<EnemyInstallation> =
     suppressedUntil: 0,
     strikes: 0,
     destroyed: false,
+    cooldown: 0,
+    walkShots: 0,
+    barrageLeft: 0,
+    barrageFromX: 900,
+    barrageY: WORLD.lanes[0],
+    barrageNextAt: 0,
     ...over,
   };
   state.installations.push(pos);

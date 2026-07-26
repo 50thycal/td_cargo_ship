@@ -507,6 +507,13 @@ export function aarScreen(
                   ? `, ${s.counter.boardingInterrupted} boarding(s) repelled and ${s.shipsCaptured} ship(s) CAPTURED.`
                   : '.')
               : '') +
+            (s.shellsFired > 0
+              ? ` Shore guns: ${s.shellsFired} shells fired, ${s.shellHits} on target` +
+                (s.counter.counterBatterySuppressions > 0
+                  ? `, ${s.counter.counterBatterySuppressions} battery suppression(s)`
+                  : '') +
+                (s.batteriesDestroyed > 0 ? `, ${s.batteriesDestroyed} silenced for good.` : '.')
+              : '') +
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
               : '') +

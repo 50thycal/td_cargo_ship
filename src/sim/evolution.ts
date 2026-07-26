@@ -35,11 +35,13 @@ import {
 } from '../data/enemyBranches';
 import type { RNG } from './rng';
 import type {
+  ArtilleryVariant,
   BranchLedger,
   CampaignState,
   EnemyEconomyState,
   EvolutionState,
   EvolutionTracks,
+  InstallationPlacement,
   IntelWarning,
   MinePlacement,
   RoundMetrics,
@@ -563,6 +565,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
       round,
       spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
       mines: [],
+      installations: [],
       debuts: ['missile'],
     };
   }
@@ -707,7 +710,44 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     spawns.push(...scheduled);
   }
 
-  return { round, spawns, mines, debuts };
+  // --- Artillery -------------------------------------------------------------
+  // Shore guns are EMPLACED, not launched: they are placed along the hostile
+  // shore before the round and shoot for as long as they survive. Position is
+  // the whole decision — a gun only reaches the lanes inside its range, so
+  // where it sits determines which water is dangerous.
+  const gunLedger = economy.ledgers.artillery;
+  const coastalGuns = gunLedger.units.coastalGun ?? 0;
+  const rangingGuns = gunLedger.units.ranging ?? 0;
+  const barrageGuns = gunLedger.units.rollingBarrage ?? 0;
+  const installations: InstallationPlacement[] = [];
+  if (coastalGuns + rangingGuns + barrageGuns > 0) {
+    if (evo.firstSeen.artillery === undefined) debuts.push('artillery');
+    if (rangingGuns > 0 && evo.firstSeen.rangingArtillery === undefined) {
+      debuts.push('rangingArtillery');
+    }
+    if (barrageGuns > 0 && evo.firstSeen.rollingBarrage === undefined) {
+      debuts.push('rollingBarrage');
+    }
+    const variants: ArtilleryVariant[] = [
+      ...Array<ArtilleryVariant>(barrageGuns).fill('rollingBarrage'),
+      ...Array<ArtilleryVariant>(rangingGuns).fill('ranging'),
+      ...Array<ArtilleryVariant>(coastalGuns).fill('coastalGun'),
+    ];
+    // Spread the emplacements along the shore rather than stacking them, so
+    // the guns threaten different stretches of the crossing and routing round
+    // one does not walk into another.
+    const span = EVOLUTION.gunFieldEndX - EVOLUTION.gunFieldStartX;
+    variants.forEach((variant, i) => {
+      const slot = span / variants.length;
+      installations.push({
+        x: EVOLUTION.gunFieldStartX + i * slot + rng.range(slot * 0.15, slot * 0.85),
+        y: WORLD.launchSites[0].y + rng.range(-14, 18),
+        variant,
+      });
+    });
+  }
+
+  return { round, spawns, mines, installations, debuts };
 }
 
 /** Spread `count` missile launches across [windowStart, windowEnd] in volleys

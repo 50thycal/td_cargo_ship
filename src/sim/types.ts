@@ -226,6 +226,9 @@ export type TechKey =
   | 'attackBoat'
   | 'rocketBoat'
   | 'boardingBoat'
+  | 'artillery'
+  | 'rangingArtillery'
+  | 'rollingBarrage'
   | 'saturation';
 
 /** What a missile is aimed at. Escorts and shore batteries are valid targets
@@ -296,12 +299,54 @@ export interface EnemyInstallation {
   x: number;
   y: number;
   /** Artillery node variant per ENEMY_ATTACKS.md. */
-  variant: 'coastalGun' | 'ranging' | 'rollingBarrage';
+  variant: ArtilleryVariant;
   /** Transit time until which this position is suppressed (cannot fire). */
   suppressedUntil: number;
   /** Successful focused strikes accumulated (enough destroys it this round). */
   strikes: number;
   destroyed: boolean;
+  /** Reload timer until this gun may fire again. */
+  cooldown: number;
+  /** Ship this gun is currently walking its fire onto, and how many consecutive
+   *  shells it has put near it. Ranging artillery tightens its aim the longer a
+   *  hull holds position; moving out of the lane resets it. */
+  walkTargetShipId?: number;
+  walkShots: number;
+  /** Rolling barrage: shells left in the current salvo, where the sweep runs,
+   *  and when the next salvo begins. */
+  barrageLeft: number;
+  barrageFromX: number;
+  barrageY: number;
+  barrageNextAt: number;
+}
+
+/** An artillery shell in flight.
+ *
+ *  Deliberately NOT a Threat. Shells are direct fire with no arc to intercept
+ *  (ENEMY_ATTACKS.md), and keeping them out of `threats` means the target
+ *  compatibility layer never sees them at all — no weapon can be pointed at a
+ *  shell even by mistake, because there is nothing there to point at. */
+export interface Shell {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Impact point. A shell bursts here regardless of what it hits on the way. */
+  targetX: number;
+  targetY: number;
+  damage: number;
+  variant: ArtilleryVariant;
+  alive: boolean;
+}
+
+export type ArtilleryVariant = 'coastalGun' | 'ranging' | 'rollingBarrage';
+
+/** Where the enemy emplaces a gun before the round starts. */
+export interface InstallationPlacement {
+  x: number;
+  y: number;
+  variant: ArtilleryVariant;
 }
 
 export interface SpawnEvent {
@@ -329,6 +374,8 @@ export interface RoundPlan {
   round: number;
   spawns: SpawnEvent[];
   mines: MinePlacement[];
+  /** Shore guns emplaced for this round. */
+  installations: InstallationPlacement[];
   /** Tech that appears for the first time this round (for AAR forensics). */
   debuts: TechKey[];
 }
@@ -640,6 +687,11 @@ export interface TransitStats {
   boatKills: number;
   /** Hulls taken by a boarding party — losses, but not sinkings. */
   shipsCaptured: number;
+  /** Artillery shells fired at the convoy, and how many burst on a hull. */
+  shellsFired: number;
+  shellHits: number;
+  /** Shore batteries the player permanently silenced this transit. */
+  batteriesDestroyed: number;
   ammoUsed: number;
   ecmUsed: number;
   scanUsed: number;
@@ -887,6 +939,8 @@ export interface TransitState {
   aircraft: Aircraft[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
+  /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
+  shells: Shell[];
   /** Escort loadout template applied to every escort this transit. */
   escortModules: EscortModuleId[];
   /** Shore-base loadout template. */
@@ -1164,6 +1218,9 @@ export interface RoundTelemetry {
   boatsSunk: number;
   boatKills: number;
   shipsCaptured: number;
+  shellsFired: number;
+  shellHits: number;
+  batteriesDestroyed: number;
   /** Escorts destroyed this transit. */
   escortsLost: number;
   /** Shore batteries destroyed this transit. */

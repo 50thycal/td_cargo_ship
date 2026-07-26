@@ -270,7 +270,7 @@ per round, cancels an almost-complete capture — buys time, kills nothing).
 **Tactics:** Boarding Alarm (granted) · Automatic Threat Priority (attached
 boarding boats top the deck-gun queue) · Escort Response Cue (informational).
 
-### Category: Counter-Artillery ⚑
+### Category: Counter-Artillery (enemy branch LIVE)
 
 #### Branch: Shore Counter-Battery System — base module, attacks Artillery positions
 Fires at the **gun position** (an installation), never at shells in flight.
@@ -426,9 +426,9 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Small-arms boats | Visual contact | Escort deck guns | Hull systems |
 | Rocket boats | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
 | Boarding boats | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
-| Coastal artillery ⚑ | Firing position (installation) | Counter-battery | Formation + hull systems |
-| Ranging artillery ⚑ | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
-| Rolling barrage ⚑ | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
+| Coastal artillery | Firing position (installation) | Counter-battery | Formation + hull systems |
+| Ranging artillery | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
+| Rolling barrage | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
 | Screening smoke ⚑ | Thermal/radar imaging | *No destructive counter* | Sensor improvement |
 | Blinding smoke ⚑ | Blinding-Smoke Resistance | *No destructive counter* | Sensor networking |
 | Recon plane ⚑ | Air-contact cue | Flak | Hardened systems |

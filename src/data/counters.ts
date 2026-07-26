@@ -2488,6 +2488,8 @@ export const LOSS_CAUSE_TO_ENEMY_BRANCH: Record<string, EnemyBranchKey | 'collat
   attackBoat: 'attackBoats',
   rocketBoat: 'attackBoats',
   captured: 'attackBoats',
+  rangingArtillery: 'artillery',
+  rollingBarrage: 'artillery',
   artillery: 'artillery',
   explosion: 'collateral',
   timeout: 'attrition',
