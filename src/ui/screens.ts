@@ -496,6 +496,10 @@ export function aarScreen(
             (s.minesTotal > 0
               ? ` Mines: ${s.minesRevealed}/${s.minesTotal} charted, ${s.minesDetonated} detonated, ${s.minesSwept} swept.`
               : '') +
+            (s.torpedoesLaunched > 0
+              ? ` Torpedoes: ${s.torpedoesDetected}/${s.torpedoesLaunched} detected, ` +
+                `${s.torpedoesDestroyed} destroyed, ${s.torpedoesHit} hit home.`
+              : '') +
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
               : '') +

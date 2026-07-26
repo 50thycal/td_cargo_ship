@@ -351,6 +351,10 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       minesRevealed: 0,
       minesDetonated: 0,
       minesSwept: 0,
+      torpedoesLaunched: 0,
+      torpedoesDetected: 0,
+      torpedoesHit: 0,
+      torpedoesDestroyed: 0,
       ammoUsed: 0,
       ecmUsed: 0,
       scanUsed: 0,
@@ -552,6 +556,16 @@ function announceDebut(t: TransitState, key: TechKey): void {
   if (t.debutsSeen.includes(key)) return;
   t.debutsSeen.push(key);
   pushEvent(t, { type: 'techDebut', detail: key });
+}
+
+/** Torpedo debuts. Called wherever the player learns a torpedo exists — on
+ *  detection, or on impact if it was never found. A revealed weapon shows what
+ *  it is: a homing run visibly tracks, a wakeless one is identified by what it
+ *  did NOT leave behind. */
+function announceTorpedo(t: TransitState, threat: Threat): void {
+  announceDebut(t, 'torpedo');
+  if (threat.homing) announceDebut(t, 'homingTorpedo');
+  if (threat.lowSig) announceDebut(t, 'lowSigTorpedo');
 }
 
 /** Rough seconds until a missile reaches whatever it is aimed at (used by the
@@ -1294,8 +1308,10 @@ function revealTorpedoesInPing(t: TransitState, fx: AreaEffect): void {
     if (threat.lowSig && !t.effects.abilities.sonar.unlockedLowSig) continue;
     if (dist(threat.x, threat.y, fx.x, fx.y) <= fx.radius) {
       threat.revealed = true;
+      t.stats.torpedoesDetected++;
       t.stats.counter.detections.activeSonar++;
       pushEvent(t, { type: 'torpedoDetected', lowSig: threat.lowSig, detail: 'activeSonar' });
+      announceTorpedo(t, threat);
     }
   }
 }
@@ -1705,8 +1721,10 @@ function updateTorpedoDetection(t: TransitState): void {
       if (!ship.modules.includes('hydrophone')) continue;
       if (dist(ship.x, ship.y, threat.x, threat.y) <= fx.range) {
         threat.revealed = true;
+        t.stats.torpedoesDetected++;
         t.stats.counter.detections.hydrophone++;
         pushEvent(t, { type: 'torpedoDetected', lowSig: threat.lowSig, detail: 'hydrophone' });
+        announceTorpedo(t, threat);
         break;
       }
     }
@@ -1746,6 +1764,7 @@ function updateDepthChargeShots(t: TransitState, dt: number): void {
         if (!threat.alive || !canEngage('depthCharge', threat.kind)) continue;
         if (dist(shot.x, shot.y, threat.x, threat.y) <= shot.blastRadius) {
           threat.alive = false;
+          t.stats.torpedoesDestroyed++;
           t.stats.counter.depthChargeKills++;
           pushEvent(t, { type: 'depthChargeKill', threatKind: threat.kind, lowSig: threat.lowSig });
         }
@@ -1785,6 +1804,38 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Nothing to shoot at (all ships resolved and no escorts afloat) → skip.
     if (pool.length === 0 && liveEscorts.length === 0) continue;
     const site = { x: spawn.siteX, y: WORLD.launchSites[0].y };
+
+    if (spawn.kind === 'torpedo') {
+      // The UNDERWATER branch: launched from the shore and run under the
+      // surface toward the convoy. Interceptors, ECM and close-in defense are
+      // all useless here by design — the counter is detection + depth charges.
+      const target = pickMissileTarget(t, rng, targetPool, [], 1, site.x, site.y);
+      if (!target) continue;
+      t.stats.torpedoesLaunched++;
+      const tx = target.kind === 'ship' ? target.ship.x : target.escort.x;
+      const ty = target.kind === 'ship' ? target.ship.y : target.escort.y;
+      const d = dist(site.x, site.y, tx, ty) || 1;
+      t.threats.push({
+        id: t.nextEntityId++,
+        kind: 'torpedo',
+        x: site.x,
+        y: site.y,
+        vx: ((tx - site.x) / d) * COMBAT.torpedo.speed,
+        vy: ((ty - site.y) / d) * COMBAT.torpedo.speed,
+        speed: COMBAT.torpedo.speed,
+        alive: true,
+        targetKind: target.kind === 'ship' ? 'ship' : 'escort',
+        targetShipId: target.kind === 'ship' ? target.ship.id : undefined,
+        targetEntityId: target.kind === 'escort' ? target.escort.id : undefined,
+        // A wake-leaving torpedo is only spotted once something is close
+        // enough to read the water (or a hydrophone hears it first).
+        revealed: false,
+        lowSig: !!spawn.lowSig,
+        homing: !!spawn.homing,
+        claimedByInterceptor: false,
+      });
+      continue;
+    }
 
     if (spawn.kind === 'missile') {
       // A fraction of unguided missiles streak across to strike a shore battery,
@@ -2321,12 +2372,104 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
   }
 
-  // --- Torpedoes (compatibility motion: straight runners; the enemy pass owns
-  //     spawning/behavior — nothing here invents new enemy mechanics) --------
+  // --- Torpedoes -------------------------------------------------------------
+  // Run under the surface toward the convoy. The homing node corrects course;
+  // the straight node does not. Nothing in the air-defense stack touches them.
   for (const threat of t.threats) {
     if (threat.kind !== 'torpedo' || !threat.alive) continue;
+
+    // Homing torpedoes re-aim, re-acquiring if their target is gone.
+    if (threat.homing) {
+      let tgtX: number | undefined;
+      let tgtY: number | undefined;
+      if (threat.targetKind === 'escort') {
+        const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
+        if (esc) {
+          tgtX = esc.x;
+          tgtY = esc.y;
+        }
+      } else {
+        const ship = t.ships.find((sh) => sh.id === threat.targetShipId && sh.alive && !sh.delivered);
+        if (ship) {
+          tgtX = ship.x;
+          tgtY = ship.y;
+        }
+      }
+      if (tgtX === undefined) {
+        const candidates = targetableShips(t);
+        if (candidates.length > 0) {
+          const nearest = candidates.reduce((best, sh) =>
+            dist(threat.x, threat.y, sh.x, sh.y) < dist(threat.x, threat.y, best.x, best.y) ? sh : best,
+          );
+          threat.targetKind = 'ship';
+          threat.targetShipId = nearest.id;
+          threat.targetEntityId = undefined;
+          tgtX = nearest.x;
+          tgtY = nearest.y;
+        }
+      }
+      if (tgtX !== undefined && tgtY !== undefined) {
+        const desired = Math.atan2(tgtY - threat.y, tgtX - threat.x);
+        const current = Math.atan2(threat.vy, threat.vx);
+        const maxTurn = COMBAT.torpedo.turnRate * dt;
+        const angle = current + clamp(angleDiff(desired, current), -maxTurn, maxTurn);
+        threat.vx = Math.cos(angle) * threat.speed;
+        threat.vy = Math.sin(angle) * threat.speed;
+      }
+    }
+
     threat.x += threat.vx * dt;
     threat.y += threat.vy * dt;
+
+    // WAKE: a straight or homing torpedo leaves a trail any nearby hull can
+    // read off the water with no equipment. The low-signature node leaves
+    // none, so it stays invisible until an active sensor finds it — that is
+    // the entire reason to buy a hydrophone upgrade or an active sonar ping.
+    if (!threat.revealed && !threat.lowSig) {
+      for (const ship of activeShips(t)) {
+        if (dist(ship.x, ship.y, threat.x, threat.y) <= COMBAT.torpedo.wakeVisibleRange) {
+          threat.revealed = true;
+          t.stats.torpedoesDetected++;
+          pushEvent(t, { type: 'torpedoDetected', lowSig: false, detail: 'wake' });
+          announceTorpedo(t, threat);
+          break;
+        }
+      }
+    }
+
+    // Terminal: the first hull it brushes takes the hit. The cause names the
+    // node that fired so the AAR can explain what the player actually faced.
+    const cause = threat.lowSig ? 'lowSigTorpedo' : threat.homing ? 'homingTorpedo' : 'torpedo';
+    let struck: Ship | null = null;
+    for (const ship of activeShips(t)) {
+      if (dist(threat.x, threat.y, ship.x, ship.y) <= COMBAT.torpedo.hitRadius) {
+        struck = ship;
+        break;
+      }
+    }
+    if (struck) {
+      threat.alive = false;
+      t.stats.torpedoesHit++;
+      announceTorpedo(t, threat);
+      damageShip(t, struck, COMBAT.torpedo.damage, cause, rng, false);
+      continue;
+    }
+    let struckEscort: Escort | null = null;
+    for (const esc of t.escorts) {
+      if (!esc.alive) continue;
+      if (dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.torpedo.hitRadius + COMBAT.escort.hitRadius) {
+        struckEscort = esc;
+        break;
+      }
+    }
+    if (struckEscort) {
+      threat.alive = false;
+      t.stats.torpedoesHit++;
+      announceTorpedo(t, threat);
+      damageEscort(t, struckEscort, COMBAT.torpedo.damage, cause);
+      continue;
+    }
+
     if (
       threat.x < -100 || threat.x > WORLD.width + 100 ||
       threat.y < -100 || threat.y > WORLD.height + 100

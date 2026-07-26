@@ -2483,6 +2483,8 @@ export const LOSS_CAUSE_TO_ENEMY_BRANCH: Record<string, EnemyBranchKey | 'collat
   chartedMine: 'mines',
   lowSigMine: 'mines',
   torpedo: 'torpedoes',
+  homingTorpedo: 'torpedoes',
+  lowSigTorpedo: 'torpedoes',
   attackBoat: 'attackBoats',
   boarding: 'attackBoats',
   artillery: 'artillery',

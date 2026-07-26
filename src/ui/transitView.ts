@@ -634,7 +634,13 @@ export class TransitView {
           break;
         case 'torpedoDetected':
           this.showToast(
-            ev.detail === 'activeSonar' ? 'Sonar ping: torpedo contact!' : 'Hydrophone: torpedo in the water!',
+            ev.detail === 'activeSonar'
+              ? 'Sonar ping: torpedo contact!'
+              : ev.detail === 'wake'
+                ? 'Wake sighted — torpedo closing!'
+                : ev.lowSig
+                  ? 'Hydrophone: low-signature torpedo!'
+                  : 'Hydrophone: torpedo in the water!',
           );
           break;
         case 'depthChargeKill':
@@ -648,6 +654,8 @@ export class TransitView {
           break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
+          else if (ev.detail === 'torpedo') this.showToast('Torpedo in the water — air defense cannot touch it!');
+          else if (ev.detail === 'lowSigTorpedo') this.showToast('That torpedo left no wake at all!');
           break;
         default:
           break;

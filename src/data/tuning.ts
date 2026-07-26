@@ -109,6 +109,24 @@ export const COMBAT = {
     accuracyPenalty: 0.16,
   },
   mine: { damage: 115, triggerRadius: 30 },
+  /** Torpedoes: the UNDERWATER branch (ENEMY_ATTACKS.md). Launched from the
+   *  hostile shore, immune to interceptors/ECM/point-defense by design — the
+   *  whole point is that every air-defense investment is useless here.
+   *  Slower than a missile, so there is time to react IF you can see it. */
+  torpedo: {
+    speed: 46,
+    damage: 90,
+    hitRadius: 22,
+    /** Homing torpedoes correct toward their target at this rate (rad/s) —
+     *  deliberately lazier than a guided missile's 1.4, so a course change can
+     *  still shake one. */
+    turnRate: 0.7,
+    /** Straight and homing torpedoes leave a WAKE: any active hull within this
+     *  distance reads it off the water with no equipment at all. A hydrophone
+     *  earns its slot by seeing them much further out; the low-signature node
+     *  leaves no wake, so unaided crews never see it coming. */
+    wakeVisibleRange: 230,
+  },
   /** Chance a missile hit starts a fire (damage over time). */
   fireChance: 0.3,
   fireDps: 3,
@@ -430,8 +448,14 @@ export const ENEMY_ECONOMY = {
   escalationShareMax: 0.7,
   /** Extra escalation pressure when the player is hard-countering the branch's
    *  current node (high intercept rate → guided; high mine detection →
-   *  low-signature). This is the node ladder answering the player's counter. */
+   *  low-signature; heard-and-killed torpedoes → wakeless). This is the node
+   *  ladder answering the player's counter, so it is applied ON TOP of the
+   *  tenure clamp above and gets its own, higher ceiling — otherwise a branch
+   *  the enemy has run for several rounds sits at escalationShareMax already
+   *  and the counter signal disappears. The ceiling stays below 1 so the base
+   *  node keeps supplying volume alongside the expensive variant. */
   counteredEscalationBonus: 0.25,
+  escalationShareCounteredMax: 0.9,
 
   /** Scripted debuts guarantee the designed early beats regardless of what the
    *  ROI allocator would otherwise prefer (ENEMY_ATTACKS.md: "first appearances

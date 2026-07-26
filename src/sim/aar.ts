@@ -16,6 +16,12 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} struck a charted mine — the field was known, but the helm could not clear it in formation. Wider spacing or a lane change would have given her room.`,
   lowSigMine: (name) =>
     `${name} struck a mine that our detection systems failed to register — even where coverage was active.`,
+  torpedo: (name) =>
+    `${name} was hit below the waterline by a torpedo. Nothing in the air-defense picture could have touched it — the run came in under the surface.`,
+  homingTorpedo: (name) =>
+    `${name} tried to turn out of the torpedo's path and it followed her around. The weapon was tracking, not running straight.`,
+  lowSigTorpedo: (name) =>
+    `${name} was struck by a torpedo that left no readable wake and never appeared on the sonar picture before impact.`,
   chain: (name) =>
     `${name} was caught by the blast of a missile that struck a ship packed in close alongside her — the price of a tight formation.`,
   fire: (name) =>
@@ -50,6 +56,32 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
       'Forensic analysis of the wreck indicates a composite mine casing our sonar cannot ' +
       'register. Existing mine detection is no longer sufficient on its own. Analysts propose ' +
       'composite-signature research; until then, spacing and routing are the only mitigation.',
+  },
+  torpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: torpedoes',
+    body:
+      'Submerged runs are now coming in against the convoy. Interceptors, point defense and ECM ' +
+      'cannot touch a torpedo — they only engage things in the air. Straight-running weapons ' +
+      'leave a wake a lookout can read close in; hydrophones hear them much further out, and ' +
+      'depth charges are the only thing aboard that can kill one.',
+  },
+  homingTorpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: homing torpedoes',
+    body:
+      'Enemy torpedoes are steering onto their targets instead of running a fixed bearing. ' +
+      'Turning a ship out of the path no longer breaks the run — the weapon follows. Killing ' +
+      'the torpedo outright, or hearing it early enough to have time to, is what is left.',
+  },
+  lowSigTorpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: low-signature torpedoes',
+    body:
+      'The run that hit us left no wake and no passive signature. Standard hydrophone watch and ' +
+      'sonar sweeps will not raise these before impact. Analysts propose low-signature processing ' +
+      'on the hydrophone array, or a return filter on the active sonar; without one of those, ' +
+      'depth charges have nothing to aim at.',
   },
 };
 

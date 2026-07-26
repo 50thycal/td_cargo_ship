@@ -165,6 +165,7 @@ function fastForwardEvolution(c: CampaignState, targetRound: number): void {
       interceptRate: 0.7,
       formation: 'tight',
       mineDetectRate: -1,
+      torpedoDetectRate: -1,
       valueSent: 241,
       deliveredFraction: 0.85,
     };
@@ -427,6 +428,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     interceptRate: s.missilesSpawned > 0 ? s.missilesIntercepted / s.missilesSpawned : 1,
     formation: t.formation,
     mineDetectRate: s.minesTotal > 0 ? s.minesRevealed / s.minesTotal : -1,
+    // A torpedo the player heard OR killed was a torpedo the ASW stack handled.
+    torpedoDetectRate:
+      s.torpedoesLaunched > 0
+        ? Math.min(1, (s.torpedoesDetected + s.torpedoesDestroyed) / (2 * s.torpedoesLaunched))
+        : -1,
     valueSent: s.valueSent,
     deliveredFraction,
     branchResults,
@@ -585,6 +591,10 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     minesRevealed: s.minesRevealed,
     minesDetonated: s.minesDetonated,
     minesSwept: s.minesSwept,
+    torpedoesLaunched: s.torpedoesLaunched,
+    torpedoesDetected: s.torpedoesDetected,
+    torpedoesHit: s.torpedoesHit,
+    torpedoesDestroyed: s.torpedoesDestroyed,
     escortsLost: s.escortsLost,
     basesLost: s.basesLost,
     launchersDisabled: s.launchersDisabled,

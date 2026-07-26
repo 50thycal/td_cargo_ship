@@ -193,7 +193,15 @@ export type ThreatKind =
 export type BoatVariant = 'smallArms' | 'rocket' | 'boarding';
 
 /** Discovery keys — includes variants that reveal enemy evolution. */
-export type TechKey = 'missile' | 'guidedMissile' | 'mine' | 'lowSigMine' | 'saturation';
+export type TechKey =
+  | 'missile'
+  | 'guidedMissile'
+  | 'mine'
+  | 'lowSigMine'
+  | 'torpedo'
+  | 'homingTorpedo'
+  | 'lowSigTorpedo'
+  | 'saturation';
 
 /** What a missile is aimed at. Escorts and shore batteries are valid targets
  *  now, not just cargo ships. */
@@ -266,9 +274,14 @@ export interface EnemyInstallation {
 
 export interface SpawnEvent {
   time: number;
-  kind: 'missile' | 'guidedMissile';
+  kind: 'missile' | 'guidedMissile' | 'torpedo';
   /** Launch site x position along the hostile shore. */
   siteX: number;
+  /** Torpedoes: corrects toward its target instead of running straight. */
+  homing?: boolean;
+  /** Torpedoes: leaves no wake, so it cannot be read off the water and needs
+   *  an active sensor (upgraded hydrophone / active sonar) to see at all. */
+  lowSig?: boolean;
 }
 
 export interface MinePlacement {
@@ -575,6 +588,14 @@ export interface TransitStats {
   minesRevealed: number;
   minesDetonated: number;
   minesSwept: number;
+  /** Torpedoes launched at the convoy this transit. */
+  torpedoesLaunched: number;
+  /** Torpedoes the player detected (by wake, hydrophone or active sonar). */
+  torpedoesDetected: number;
+  /** Torpedoes that reached a hull. */
+  torpedoesHit: number;
+  /** Torpedoes destroyed by depth charges. */
+  torpedoesDestroyed: number;
   ammoUsed: number;
   ecmUsed: number;
   scanUsed: number;
@@ -957,7 +978,11 @@ export interface RoundMetrics {
   round: number;
   interceptRate: number; // intercepted / missiles spawned (1 if none spawned)
   formation: FormationId;
-  mineDetectRate: number; // revealed / total (1 if no mines)
+  mineDetectRate: number; // revealed / total (-1 if no mines)
+  /** Detected+destroyed / launched (-1 if no torpedoes ran). Drives the torpedo
+   *  branch's escalation toward low-signature casings, the same way
+   *  mineDetectRate drives the mine branch's. */
+  torpedoDetectRate: number;
   valueSent: number;
   deliveredFraction: number;
   /** Weighted result each enemy branch produced this round (kills + damage),
@@ -1085,6 +1110,10 @@ export interface RoundTelemetry {
   minesRevealed: number;
   minesDetonated: number;
   minesSwept: number;
+  torpedoesLaunched: number;
+  torpedoesDetected: number;
+  torpedoesHit: number;
+  torpedoesDestroyed: number;
   /** Escorts destroyed this transit. */
   escortsLost: number;
   /** Shore batteries destroyed this transit. */

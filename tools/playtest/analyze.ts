@@ -15,6 +15,7 @@
 // field, and reading that as a balance failure would be wrong.
 
 import { LOSS_CAUSE_TO_ENEMY_BRANCH, type EnemyBranchKey } from '../../src/data/counters';
+import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../../src/data/enemyBranches';
 import type { RoundTelemetry } from '../../src/sim/types';
 
 export type Verdict =
@@ -491,6 +492,10 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
   );
 
   // --- Measured enemy behaviour across the sweep ---------------------------
+  // Derived from the catalogue, never hardcoded: the caveat about unexercised
+  // counters has to shrink on its own as each branch lands, or the report will
+  // keep disclaiming coverage it actually has.
+  const unbuiltBranches = ENEMY_BRANCH_ORDER.filter((k) => !ENEMY_BRANCHES[k].implemented);
   const instrumented = analyses.filter((a) => a.enemy);
   const topSpendBranches: Record<string, number> = {};
   for (const a of instrumented) {
@@ -614,7 +619,9 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
       instrumented.length === analyses.length
         ? 'Enemy economy IS instrumented (budget, per-branch spend, ROI, scrap) — enemy behaviour above is measured, not inferred.'
         : `Enemy economy instrumented in ${instrumented.length}/${analyses.length} campaigns; the rest fall back to inference from the loss mix.`,
-      'Enemy branches beyond missiles and mines (torpedoes, boats, artillery, smoke, electronic attack) are not implemented, so their player counters are never exercised by this sweep.',
+      unbuiltBranches.length > 0
+        ? `Enemy branches not yet implemented (${unbuiltBranches.join(', ')}) never appear, so their player counters are never exercised by this sweep.`
+        : 'Every enemy branch in ENEMY_ATTACKS.md is implemented — the sweep exercises the whole arsenal.',
       'Bots are heuristics, not humans: they cannot judge readability, feel, or UI clarity. Use this sweep for balance/economy questions, not UX ones.',
     ],
   };

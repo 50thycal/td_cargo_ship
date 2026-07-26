@@ -87,11 +87,16 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
   (share of below-average-ROI branches whose funding was cut the next round),
   `top-spend pivots`, and `budget scrapped`. Older logs without those fields
   fall back to inference, and the report says which applies.
-- **Only two enemy branches exist.** Missiles and mines are implemented;
-  torpedoes, boats, artillery, smoke and electronic attack are designed but not
-  fielded. The oscillation signal is therefore **content-limited** — the enemy
-  cannot rotate through branches it cannot field, and a low oscillation score
-  today is not by itself evidence of a broken allocator.
+- **Three enemy branches exist.** Missiles, mines and torpedoes are
+  implemented; boats, artillery, smoke and electronic attack are designed but
+  not fielded. The oscillation signal is still **content-limited** — the enemy
+  cannot rotate through branches it cannot field — but less so with every
+  branch that lands. The report derives this caveat from the catalogue rather
+  than hardcoding it, so it shrinks on its own.
+- **A persona per branch.** `asw` (hydrophone + depth charges + sonar pings) is
+  the underwater specialist, the mirror of `mine-warfare` and
+  `interceptor-rush`. A specialist collapsing is not automatically a bug: it is
+  evidence about which branch is carrying the damage.
 - **Bots are heuristics.** They do not learn, do not read the AAR, and will not
   find the clever line a human would. Treat persona scores as a comparison
   *between builds under a fixed policy*, not as a skill ceiling.
