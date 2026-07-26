@@ -167,26 +167,41 @@ economics problem.
 
 ---
 
-## What the log must record for this to be measurable
+## What the log records (implemented)
 
-The current telemetry (`RoundTelemetry`) captures the **player** side well
-(losses by cause, intercepts, ammo, economy deltas) but **not the enemy's
-economy** — so today the seesaw is only half-visible. To evaluate against this
-north star, each round's telemetry needs to also record:
+Both halves of the seesaw are now instrumented, so evaluation is **measured
+rather than inferred**. Each round's `RoundTelemetry` carries:
 
-- **Enemy budget** this round (and the growth applied).
-- **Per-branch spend** — how the budget was allocated across Missiles / Mines /
-  Torpedoes / Boats / Artillery / Smoke / EA.
-- **Per-branch ROI** — damage / kills / captures / confidence-loss attributed to
-  each branch, and the spend it came from (so ROI = result ÷ spend is computable).
-- **Per-branch scrap** — budget bought but not expended.
-- **Active nodes and tactic tiers** per branch, and the **current targeting tier.**
-- **Losses by branch** (extend the existing `lossesByCause` so causes map cleanly
-  onto branches).
+- `enemy.budget` — war funds granted (after anti-snowball modifiers), plus
+  `committed` and `scrapped`.
+- `enemy.branches[].spend` / `.share` — how the budget was allocated across
+  Missiles / Mines / Torpedoes / Boats / Artillery / Smoke / EA.
+- `enemy.branches[].roi` / `.result` / `.kills` — what each branch earned for
+  what it cost, so ROI = result ÷ spend is directly readable.
+- `enemy.branches[].scrap` — budget that could not be converted into units.
+- `enemy.branches[].units` — units fielded per node, plus `nodeDebuts`,
+  `openBranches`, `roundsInvested`, and the current `targetingTier`/`targetingName`.
+- `lossesByEnemyBranch` in the export — every loss cause mapped onto its branch,
+  with `collateral` (secondary blast) and `attrition` (lost at sea) as explicit
+  non-branch outcomes.
 
-Until that instrumentation exists, seesaw evaluation is partly inferred from the
-player-side loss-cause mix. Adding it is the prerequisite for the enemy-economy
-overhaul to be tunable rather than guessed.
+The campaign-level export adds `enemyEconomy` (spend/kills/ROI per branch,
+per-round share history, final targeting rung). `npm run playtest` scores the
+allocator directly from these fields — see [`PLAYTESTING.md`](./PLAYTESTING.md).
+
+**Implementation:** the economy lives in `src/sim/evolution.ts`; prices, gates
+and targeting grants are data in `src/data/enemyBranches.ts`; the dials are
+`ENEMY_ECONOMY` in `src/data/tuning.ts`.
+
+### A pricing rule learned the hard way
+
+Attacks must be **priced by realized lethality, not by nominal unit.** The first
+build priced a mine (115 damage, a guaranteed kill on a cargo hull, and
+un-interceptable) at 11 against a missile (34 damage, routinely shot down) at 8.
+A playtest sweep measured the result: mine ROI **17×** missile ROI, so the
+allocator — correctly — bought almost nothing but mines, and the seesaw locked.
+Repricing mines to 28 restored rotation (top-spend pivots went 0.26 → 1.48 per
+campaign). When adding a branch, price it against what it actually achieves.
 
 ---
 

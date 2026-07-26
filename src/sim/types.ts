@@ -587,6 +587,11 @@ export interface TransitStats {
   /** Player-counter attribution (auto/manual split, per-weapon, detection,
    *  mitigation). */
   counter: CounterRoundStats;
+  /** What each ENEMY branch achieved this round — damage dealt and hulls
+   *  sunk, keyed by branch. This is the numerator of the enemy's ROI: without
+   *  it the procurement economy cannot tell which attack is paying off, and
+   *  the seesaw cannot pivot. */
+  enemyBranch: Record<string, { damage: number; kills: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -874,6 +879,10 @@ export type SensorFamily = 'mineDetection' | 'torpedoDetection' | 'missileWarnin
 // Enemy evolution
 // ---------------------------------------------------------------------------
 
+/** Legacy doctrine tracks. The enemy now runs a real procurement economy
+ *  (EnemyEconomyState); these remain as a DERIVED read-out so old saves,
+ *  existing telemetry consumers and the AAR keep working. They are computed
+ *  from cumulative branch spend, never used to decide what the enemy buys. */
 export interface EvolutionTracks {
   /** More simultaneous missiles / volleys. */
   saturation: number;
@@ -883,6 +892,58 @@ export interface EvolutionTracks {
   mines: number;
   /** Low-signature mines that defeat standard detection. */
   lowSig: number;
+}
+
+/** What one enemy branch did with its money last round — the raw material for
+ *  ROI, and the field docs/SEESAW.md called out as missing instrumentation. */
+export interface BranchLedger {
+  /** Budget allocated to this branch this round. */
+  spend: number;
+  /** Units actually fielded, keyed by node id. */
+  units: Record<string, number>;
+  /** Budget allocated but not convertible into whole units — wasted. */
+  scrap: number;
+  /** Damage + kills the branch produced, weighted (see ENEMY_ECONOMY). */
+  result: number;
+  /** result ÷ spend from the round that just resolved. */
+  roi: number;
+  /** Ships this branch sank (or captured) last round. */
+  kills: number;
+  /** Consecutive rounds the enemy has funded this branch. */
+  roundsInvested: number;
+  /** Allocation weight carried into next round's split. */
+  share: number;
+}
+
+/** The enemy's procurement economy — a mirror of the player's prep phase.
+ *  Budget arrives, is committed in full, and whatever is not spent is scrapped;
+ *  what it buys is driven by which branches are paying off. */
+export interface EnemyEconomyState {
+  /** War funds granted this round (after anti-snowball modifiers). */
+  budget: number;
+  /** Budget actually committed to attacks. */
+  committed: number;
+  /** Budget wasted this round (could not be converted to whole units). */
+  scrapped: number;
+  /** Per-branch ledgers, including closed branches (share 0). */
+  ledgers: Record<string, BranchLedger>;
+  /** Branches the enemy has paid to open. */
+  openBranches: string[];
+  /** Highest targeting doctrine tier unlocked. */
+  targetingTier: number;
+  /** Tier unlocked this round, if any — drives the one-round reduced-weight
+   *  fairness rule and the discovery beat. */
+  targetingDebut: number | null;
+  /** Node ids fielded at least once, so first-appearance caps fire exactly
+   *  once per node. */
+  nodesFielded: string[];
+  /** Node ids that debuted this round (for AAR discovery cards). */
+  nodeDebuts: string[];
+  /** Round the current purchases were committed FOR. Planning a different
+   *  round means procurement has not run for it — which happens when a save
+   *  from before the economy existed is resumed — and the planner runs a
+   *  catch-up buy rather than fielding an empty round. */
+  plannedForRound: number;
 }
 
 export interface IntelWarning {
@@ -899,10 +960,17 @@ export interface RoundMetrics {
   mineDetectRate: number; // revealed / total (1 if no mines)
   valueSent: number;
   deliveredFraction: number;
+  /** Weighted result each enemy branch produced this round (kills + damage),
+   *  keyed by branch. This is the numerator of ROI — without it the enemy
+   *  cannot tell which of its attacks is actually paying. */
+  branchResults?: Record<string, { result: number; kills: number }>;
 }
 
 export interface EvolutionState {
+  /** Derived read-out of cumulative branch spend (see EvolutionTracks). */
   tracks: EvolutionTracks;
+  /** The enemy's procurement economy — what actually decides its attacks. */
+  economy: EnemyEconomyState;
   /** Round on which the player first encountered each tech (for fairness caps). */
   firstSeen: Partial<Record<TechKey, number>>;
   metrics: RoundMetrics[];
@@ -1039,6 +1107,43 @@ export interface RoundTelemetry {
   newDiscoveries: TechKey[];
   /** Player-counter side of the seesaw (equipment, spend, per-weapon stats). */
   counters: CounterTelemetry;
+  /** ENEMY side of the seesaw — the instrumentation docs/SEESAW.md required
+   *  before the arms race could be evaluated rather than inferred. */
+  enemy: EnemyRoundTelemetry;
+}
+
+/** Per-round record of the enemy's procurement economy: what it was given,
+ *  where it put the money, what that bought, what it earned, and what it
+ *  wasted. Together with the player-side block this makes both ends of the
+ *  seesaw measurable in the same log. */
+export interface EnemyRoundTelemetry {
+  /** War funds granted for this round (after anti-snowball modifiers). */
+  budget: number;
+  /** Budget actually committed to attacks. */
+  committed: number;
+  /** Budget that could not be converted into whole units — wasted. */
+  scrapped: number;
+  /** Per-branch: spend, units fielded by node, ROI earned, kills, scrap. */
+  branches: Record<
+    string,
+    {
+      spend: number;
+      share: number;
+      units: Record<string, number>;
+      roi: number;
+      kills: number;
+      result: number;
+      scrap: number;
+      roundsInvested: number;
+    }
+  >;
+  /** Branches the enemy has paid to open. */
+  openBranches: string[];
+  /** Node ids fielded for the first time this round. */
+  nodeDebuts: string[];
+  /** Current shared Targeting Doctrine rung, and its human-readable name. */
+  targetingTier: number;
+  targetingName: string;
 }
 
 export interface CampaignState {

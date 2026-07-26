@@ -10,7 +10,8 @@
 
 import { COMBAT, NAV, SIM, SPAWN, WORLD } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
-import { canEngage, deriveCounterEffects } from '../data/counters';
+import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
+import { targetingSkill } from './evolution';
 import type { RNG } from './rng';
 import type {
   AreaEffect,
@@ -325,11 +326,11 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     smokeCharges,
     rebootCharges,
     jammingSeconds: 0,
-    enemyTargetingSkill: clamp(
-      (campaign.round - COMBAT.targetingSkillStartRound) / COMBAT.targetingSkillSpanRounds,
-      0,
-      1,
-    ),
+    // How sharply the enemy aims comes from its Targeting Doctrine rung, which
+    // it unlocks by FIELDING branches — a broader arsenal aims smarter, not
+    // just louder (ENEMY_ATTACKS.md). Early campaigns still ramp, because the
+    // enemy has only reached the low rungs by then.
+    enemyTargetingSkill: targetingSkill(campaign.evolution.economy),
     spawnQueue: [...plan.spawns].sort((a, b) => a.time - b.time),
     events: [],
     stats: {
@@ -363,6 +364,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         smoke: smokeCharges,
         reboot: rebootCharges,
       }),
+      enemyBranch: {},
     },
     effects,
     baseSpeed: Math.min(
@@ -650,6 +652,25 @@ function pickMissileTarget(
   return entries[entries.length - 1].target;
 }
 
+/** Credit an enemy BRANCH with what its attack just achieved. The enemy's
+ *  procurement economy divides this by what it spent to get ROI, which is what
+ *  makes it pivot away from attacks the player has countered. Causes that are
+ *  not a branch's doing (a tanker's secondary blast, a ship lost at sea) map to
+ *  'collateral'/'attrition' and are deliberately not credited to anyone. */
+function creditEnemyBranch(
+  t: TransitState,
+  cause: string,
+  damage: number,
+  killed: boolean,
+): void {
+  const bare = cause.replace(/^(escort|base):/, '');
+  const branch = LOSS_CAUSE_TO_ENEMY_BRANCH[bare];
+  if (!branch || branch === 'collateral' || branch === 'attrition') return;
+  const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
+  entry.damage += damage;
+  if (killed) entry.kills++;
+}
+
 function damageShip(
   t: TransitState,
   ship: Ship,
@@ -668,6 +689,7 @@ function damageShip(
     t.stats.counter.damagePrevented.compartmentalization += prevented;
   }
   ship.hp -= dealt;
+  creditEnemyBranch(t, cause, dealt, false);
   pushEvent(t, { type: 'shipHit', shipId: ship.id, shipName: ship.name, cause });
   if (canIgnite && ship.hp > 0) {
     const fs = ship.modules.includes('fireSuppression');
@@ -710,6 +732,7 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   ship.alive = false;
   ship.hp = 0;
   t.stats.lost++;
+  creditEnemyBranch(t, cause, 0, true);
   pushEvent(t, { type: 'shipLost', shipId: ship.id, shipName: ship.name, cause });
   const def = SHIP_CLASSES[ship.classId];
   if (def.explodes) {
@@ -731,6 +754,7 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
 function damageEscort(t: TransitState, escort: Escort, amount: number, cause: string): void {
   if (!escort.alive) return;
   escort.hp -= amount * t.effects.damageTakenMult;
+  creditEnemyBranch(t, cause, amount * t.effects.damageTakenMult, false);
   const disableUntil = t.time + COMBAT.escort.disableSeconds;
   if (disableUntil > escort.disabledUntil) {
     escort.disabledUntil = disableUntil;
@@ -742,6 +766,7 @@ function damageEscort(t: TransitState, escort: Escort, amount: number, cause: st
     escort.alive = false;
     escort.moveTarget = null;
     escort.gunTargetId = null;
+    creditEnemyBranch(t, cause, 0, true);
     t.stats.escortsLost++;
     pushEvent(t, { type: 'shipLost', shipId: escort.id, cause: `escort:${cause}` });
   }

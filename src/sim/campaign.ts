@@ -8,7 +8,7 @@
 // Equipment purchases are gated on each branch's base node — intel unlocks,
 // cash equips, and neither substitutes for the other.
 
-import { CAMPAIGN, ECONOMY, EVOLUTION } from '../data/tuning';
+import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
@@ -30,7 +30,7 @@ import {
 } from '../data/counters';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
-import { evolveEnemy, newEvolution, planRound } from './evolution';
+import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -39,6 +39,7 @@ import type {
   BaseModuleId,
   CampaignState,
   CounterTelemetry,
+  EnemyRoundTelemetry,
   EscortModuleId,
   FormationId,
   ModuleId,
@@ -170,12 +171,13 @@ function fastForwardEvolution(c: CampaignState, targetRound: number): void {
     evolveEnemy(c.evolution, metrics, roundRng(c, `dev-evolve-${r}`));
   }
   c.round = Math.max(1, Math.floor(targetRound));
-  // Field unlocked capabilities at full scale (skip the debut fairness caps) so
-  // a jumped-to hard level really is hard.
+  // Mark already-purchased capabilities as "met" so a jumped-to level fields
+  // them at full scale rather than re-running their debut fairness caps.
   const evo = c.evolution;
-  if (evo.tracks.guidance >= EVOLUTION.guidanceUnlock) evo.firstSeen.guidedMissile ??= 1;
-  if (evo.tracks.mines >= EVOLUTION.minesUnlock) evo.firstSeen.mine ??= 1;
-  if (evo.tracks.lowSig >= EVOLUTION.lowSigUnlock) evo.firstSeen.lowSigMine ??= 1;
+  const fielded = evo.economy.nodesFielded;
+  if (fielded.includes('guided')) evo.firstSeen.guidedMissile ??= 1;
+  if (fielded.includes('standard')) evo.firstSeen.mine ??= 1;
+  if (fielded.includes('lowSig')) evo.firstSeen.lowSigMine ??= 1;
 }
 
 /** Build a developer campaign: a normal campaign with the dev flag set, the
@@ -224,6 +226,36 @@ export function createRoundTransit(
 // ---------------------------------------------------------------------------
 // Round resolution
 // ---------------------------------------------------------------------------
+
+/** Snapshot the enemy's procurement economy for the game log. This is the
+ *  half of the seesaw that docs/SEESAW.md flagged as missing: with it, "why
+ *  did the enemy pivot" is measured rather than inferred from loss causes. */
+function buildEnemyTelemetry(c: CampaignState): EnemyRoundTelemetry {
+  const economy = c.evolution.economy;
+  const branches: EnemyRoundTelemetry['branches'] = {};
+  for (const [key, ledger] of Object.entries(economy.ledgers)) {
+    branches[key] = {
+      spend: Math.round(ledger.spend),
+      share: Math.round(ledger.share * 1000) / 1000,
+      units: { ...ledger.units },
+      roi: Math.round(ledger.roi * 1000) / 1000,
+      kills: ledger.kills,
+      result: Math.round(ledger.result * 10) / 10,
+      scrap: Math.round(ledger.scrap),
+      roundsInvested: ledger.roundsInvested,
+    };
+  }
+  return {
+    budget: economy.budget,
+    committed: economy.committed,
+    scrapped: economy.scrapped,
+    branches,
+    openBranches: [...economy.openBranches],
+    nodeDebuts: [...economy.nodeDebuts],
+    targetingTier: economy.targetingTier,
+    targetingName: targetingName(economy),
+  };
+}
 
 export function resolveTransit(c: CampaignState, t: TransitState): AfterActionReport {
   const s = t.stats;
@@ -378,6 +410,18 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     s.missilesIntercepted * CAMPAIGN.scorePerIntercept;
 
   // --- Enemy learns from this round ---------------------------------------------------
+  // Weight each branch's damage and kills into the single "result" figure its
+  // procurement economy divides by spend to get ROI. Kills dominate: sinking
+  // hulls is the point, chip damage is not.
+  const branchResults: Record<string, { result: number; kills: number }> = {};
+  for (const [branch, outcome] of Object.entries(s.enemyBranch)) {
+    branchResults[branch] = {
+      result:
+        outcome.kills * ENEMY_ECONOMY.roiKillWeight +
+        outcome.damage * ENEMY_ECONOMY.roiDamageWeight,
+      kills: outcome.kills,
+    };
+  }
   const metrics: RoundMetrics = {
     round,
     interceptRate: s.missilesSpawned > 0 ? s.missilesIntercepted / s.missilesSpawned : 1,
@@ -385,6 +429,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     mineDetectRate: s.minesTotal > 0 ? s.minesRevealed / s.minesTotal : -1,
     valueSent: s.valueSent,
     deliveredFraction,
+    branchResults,
   };
   evolveEnemy(c.evolution, metrics, roundRng(c, 'evolve'));
 
@@ -558,6 +603,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
     counters,
+    enemy: buildEnemyTelemetry(c),
   });
 
   // A fresh spend ledger for the next prep phase.

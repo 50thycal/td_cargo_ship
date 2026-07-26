@@ -1,13 +1,43 @@
-// Enemy evolution engine. The enemy runs its own hidden research: it earns
-// tech points each round (faster when the player is doing well — a deliberate
-// anti-snowball) and allocates them in response to observed player behavior.
-// Scripted floors guarantee the designed early-campaign beats regardless of
-// play style; fairness caps keep a new capability's first appearance small.
+// Enemy evolution: a procurement economy that mirrors the player's.
+//
+// This is the engine behind docs/SEESAW.md. Each round the enemy receives war
+// funds, must COMMIT them at the start of the round, and SCRAPS whatever it
+// cannot spend — it can never bank for a super-round. What it buys is decided
+// by return on investment per branch:
+//
+//     ROI up   → buy more of that branch, and escalate within it
+//     ROI down → cut its share and move the money to a branch the player is
+//                not countering
+//
+// That single loop is the whole arms race. The player's counters are what push
+// a branch's ROI down; the enemy's pivot is what creates the next threat. An
+// exploration slice always probes the branch it has leaned on least, so it
+// keeps hunting for the current blind spot instead of converging on one line.
+//
+// Anti-snowball works in BOTH directions (SEESAW.md): a dominating player arms
+// the enemy faster, a struggling player faces damped growth — so neither end
+// of the seesaw sticks.
+//
+// The enemy only ever spends on branches the simulation can actually field
+// (see `implemented` in data/enemyBranches.ts). Budget is never burned on a
+// threat that would not appear, which would quietly make the enemy weaker than
+// its budget claims.
 
-import { EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
+import { ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
+import {
+  ENEMY_BRANCHES,
+  ENEMY_BRANCH_ORDER,
+  implementedNodes,
+  tacticForRounds,
+  TARGETING_DOCTRINE,
+  type EnemyBranchKey,
+  type EnemyNodeDef,
+} from '../data/enemyBranches';
 import type { RNG } from './rng';
 import type {
+  BranchLedger,
   CampaignState,
+  EnemyEconomyState,
   EvolutionState,
   EvolutionTracks,
   IntelWarning,
@@ -18,13 +48,374 @@ import type {
   TechKey,
 } from './types';
 
+// ---------------------------------------------------------------------------
+// Construction
+// ---------------------------------------------------------------------------
+
+function newLedger(share: number): BranchLedger {
+  return {
+    spend: 0,
+    units: {},
+    scrap: 0,
+    result: 0,
+    roi: 0,
+    kills: 0,
+    roundsInvested: 0,
+    share,
+  };
+}
+
+function newEconomy(): EnemyEconomyState {
+  const ledgers: Record<string, BranchLedger> = {};
+  for (const key of ENEMY_BRANCH_ORDER) {
+    // Missiles start open and fully funded — it is the round-1 probe.
+    ledgers[key] = newLedger(key === 'missiles' ? 1 : 0);
+  }
+  return {
+    budget: 0,
+    committed: 0,
+    scrapped: 0,
+    ledgers,
+    openBranches: ['missiles'],
+    targetingTier: 0,
+    targetingDebut: null,
+    nodesFielded: [],
+    nodeDebuts: [],
+    plannedForRound: 0,
+  };
+}
+
 export function newEvolution(): EvolutionState {
   return {
     tracks: { saturation: 20, guidance: 0, mines: 0, lowSig: 0 },
+    economy: newEconomy(),
     firstSeen: {},
     metrics: [],
     pendingWarnings: [],
     formationTell: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Budget
+// ---------------------------------------------------------------------------
+
+/** War funds for `round`. Growth is the primary difficulty dial; the
+ *  anti-snowball modifiers are the restoring force that keeps the seesaw from
+ *  sticking at either end. */
+function grantBudget(round: number, metrics: RoundMetrics | undefined, baselineValue: number): number {
+  let budget = ENEMY_ECONOMY.budgetBase + ENEMY_ECONOMY.budgetPerRound * round;
+  if (metrics) {
+    let mult = 1;
+    // Player dominating → arm the enemy faster.
+    if (metrics.deliveredFraction >= 0.85) mult += ENEMY_ECONOMY.bonusStrongDelivery;
+    if (metrics.interceptRate > 0.7) mult += ENEMY_ECONOMY.bonusHighIntercept;
+    if (metrics.valueSent > baselineValue * 1.3) mult += ENEMY_ECONOMY.bonusRichConvoy;
+    // Player struggling → damp growth so they can recover and re-counter.
+    if (metrics.deliveredFraction < 0.55) mult -= ENEMY_ECONOMY.dampStruggling;
+    budget *= Math.max(0.5, mult);
+  }
+  return Math.min(ENEMY_ECONOMY.budgetCap, Math.round(budget));
+}
+
+// ---------------------------------------------------------------------------
+// ROI settlement
+// ---------------------------------------------------------------------------
+
+/** Score what each branch achieved with last round's money. This is the
+ *  measurement that makes the allocator adaptive rather than scripted. */
+function settleRoi(economy: EnemyEconomyState, metrics: RoundMetrics): void {
+  const results = metrics.branchResults ?? {};
+  for (const key of ENEMY_BRANCH_ORDER) {
+    const ledger = economy.ledgers[key];
+    const outcome = results[key];
+    ledger.result = outcome?.result ?? 0;
+    ledger.kills = outcome?.kills ?? 0;
+    // No spend means no evidence — leave ROI at the neutral prior so an
+    // untried branch still looks worth a first attempt.
+    ledger.roi = ledger.spend > 0 ? ledger.result / ledger.spend : ENEMY_ECONOMY.priorRoi;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Allocation
+// ---------------------------------------------------------------------------
+
+/** Branches the enemy may fund this round: already open, or openable now. */
+function candidateBranches(economy: EnemyEconomyState, round: number): EnemyBranchKey[] {
+  return ENEMY_BRANCH_ORDER.filter((key) => {
+    const def = ENEMY_BRANCHES[key];
+    if (!def.implemented) return false; // never fund what cannot be fielded
+    if (economy.openBranches.includes(key)) return true;
+    if (round < def.openRound) return false;
+    // Must have at least one node past its gate to be worth opening.
+    return implementedNodes(key).some((n) => round >= n.gateRound);
+  });
+}
+
+/** Blend each branch's share toward what ROI says it deserves. The lag is
+ *  deliberate: a pivot should be visible over 1-2 rounds, not instant. */
+function allocate(economy: EnemyEconomyState, round: number, rng: RNG): void {
+  const candidates = candidateBranches(economy, round);
+  if (candidates.length === 0) return;
+
+  // Target shares proportional to ROI.
+  const roiOf = (key: EnemyBranchKey): number => {
+    const ledger = economy.ledgers[key];
+    // An unopened branch has no history; use the prior so it can be probed.
+    if (!economy.openBranches.includes(key)) return ENEMY_ECONOMY.priorRoi;
+    return Math.max(0.01, ledger.roi);
+  };
+  const totalRoi = candidates.reduce((sum, key) => sum + roiOf(key), 0);
+
+  for (const key of ENEMY_BRANCH_ORDER) {
+    const ledger = economy.ledgers[key];
+    if (!candidates.includes(key)) {
+      ledger.share = 0;
+      continue;
+    }
+    const target = roiOf(key) / totalRoi;
+    const lag = ENEMY_ECONOMY.allocationLag;
+    ledger.share = ledger.share * (1 - lag) + target * lag;
+    // Nothing is ever permanently abandoned — a cut branch stays alive at a
+    // floor so it can become attractive again once the player moves on.
+    ledger.share = Math.max(ENEMY_ECONOMY.minBranchShare, ledger.share);
+  }
+
+  // Exploration: push a slice toward whichever candidate has been funded least
+  // recently, so the enemy keeps probing for the player's blind spot.
+  if (candidates.length > 1) {
+    const leastInvested = candidates.reduce((best, key) =>
+      economy.ledgers[key].roundsInvested < economy.ledgers[best].roundsInvested ? key : best,
+    );
+    economy.ledgers[leastInvested].share += ENEMY_ECONOMY.explorationShare;
+    // A touch of noise so repeated identical states don't lock into a rut.
+    economy.ledgers[rng.pick(candidates)].share += rng.range(0, 0.05);
+  }
+
+  // Normalize across candidates.
+  const total = candidates.reduce((sum, key) => sum + economy.ledgers[key].share, 0) || 1;
+  for (const key of candidates) economy.ledgers[key].share /= total;
+}
+
+// ---------------------------------------------------------------------------
+// Purchasing
+// ---------------------------------------------------------------------------
+
+/** Which nodes of a branch may be fielded this round. */
+function availableNodes(key: EnemyBranchKey, round: number): EnemyNodeDef[] {
+  return implementedNodes(key).filter((n) => round >= n.gateRound);
+}
+
+/** How much of a branch's money goes to its NEWEST available node. Rises with
+ *  sustained investment (a branch the player ignores deepens) and rises again
+ *  when the player is hard-countering the current node — that is the node
+ *  ladder answering the counter. */
+function escalationShare(
+  economy: EnemyEconomyState,
+  key: EnemyBranchKey,
+  metrics: RoundMetrics | undefined,
+): number {
+  const ledger = economy.ledgers[key];
+  let share =
+    ENEMY_ECONOMY.escalationShareBase +
+    ENEMY_ECONOMY.escalationSharePerRound * ledger.roundsInvested;
+  if (metrics) {
+    // Missiles being shot down reliably → invest in guided/harder variants.
+    if (key === 'missiles' && metrics.interceptRate > 0.6) {
+      share += ENEMY_ECONOMY.counteredEscalationBonus;
+    }
+    // Mines being charted reliably → invest in low-signature casings.
+    if (key === 'mines' && metrics.mineDetectRate >= 0 && metrics.mineDetectRate > 0.5) {
+      share += ENEMY_ECONOMY.counteredEscalationBonus;
+    }
+  }
+  return Math.min(ENEMY_ECONOMY.escalationShareMax, share);
+}
+
+interface Purchase {
+  branch: EnemyBranchKey;
+  node: EnemyNodeDef;
+  units: number;
+}
+
+/** Convert this round's budget into concrete attacks. Spend-or-scrap: what
+ *  cannot be turned into whole units is wasted, so over-buying a countered
+ *  branch is a real loss for the enemy — which is exactly what should push it
+ *  to pivot. */
+function purchase(
+  economy: EnemyEconomyState,
+  round: number,
+  metrics: RoundMetrics | undefined,
+  rng: RNG,
+): Purchase[] {
+  const purchases: Purchase[] = [];
+  const budget = economy.budget;
+  let scrapped = 0;
+  let committed = 0;
+
+  // Reset per-round ledger fields (shares and roundsInvested persist).
+  for (const key of ENEMY_BRANCH_ORDER) {
+    const ledger = economy.ledgers[key];
+    ledger.spend = 0;
+    ledger.units = {};
+    ledger.scrap = 0;
+  }
+  economy.nodeDebuts = [];
+
+  const candidates = candidateBranches(economy, round);
+  // Two passes: the first spends each branch's share, the second re-offers
+  // whatever came back (unaffordable opens, unit ceilings) to branches that
+  // can still use it — the enemy is thrifty before it is wasteful.
+  let pool = 0;
+
+  const spendOn = (key: EnemyBranchKey, allowance: number): number => {
+    const def = ENEMY_BRANCHES[key];
+    const ledger = economy.ledgers[key];
+    let remaining = allowance;
+
+    // Opening a new front costs a one-off fee.
+    if (!economy.openBranches.includes(key)) {
+      if (remaining < def.openCost) return remaining; // can't afford: hand it back
+      remaining -= def.openCost;
+      committed += def.openCost;
+      ledger.spend += def.openCost;
+      economy.openBranches.push(key);
+    }
+
+    const nodes = availableNodes(key, round);
+    if (nodes.length === 0) return remaining;
+
+    // Volume rung: sustained investment buys more of whatever it fields.
+    const tactic = tacticForRounds(key, ledger.roundsInvested);
+    const unitCeiling = Math.max(1, Math.round(def.maxUnitsPerRound * Math.min(1, tactic.volumeMult / 1.95)));
+    let unitsBought = Object.values(ledger.units).reduce((a, b) => a + b, 0);
+
+    const newest = nodes[nodes.length - 1];
+    const buy = (node: EnemyNodeDef, allowanceForNode: number): number => {
+      if (unitsBought >= unitCeiling) return allowanceForNode;
+      let units = Math.floor(allowanceForNode / node.cost);
+      if (units <= 0) return allowanceForNode;
+      // First appearance is capped so a debut is a beat, not an ambush.
+      if (!economy.nodesFielded.includes(node.id)) {
+        units = Math.min(units, node.firstAppearanceCap);
+      }
+      units = Math.min(units, unitCeiling - unitsBought);
+      if (units <= 0) return allowanceForNode;
+
+      const cost = units * node.cost;
+      ledger.units[node.id] = (ledger.units[node.id] ?? 0) + units;
+      ledger.spend += cost;
+      committed += cost;
+      unitsBought += units;
+      purchases.push({ branch: key, node, units });
+
+      if (!economy.nodesFielded.includes(node.id)) {
+        economy.nodesFielded.push(node.id);
+        economy.nodeDebuts.push(node.id);
+        // Fielding a node can unlock the next rung of the shared targeting
+        // ladder — a broader arsenal aims smarter, not just louder.
+        if (node.grantsTargeting !== undefined && node.grantsTargeting > economy.targetingTier) {
+          economy.targetingTier = node.grantsTargeting;
+          economy.targetingDebut = node.grantsTargeting;
+        }
+      }
+      return allowanceForNode - cost;
+    };
+
+    // Escalate into the newest variant, then pour the rest into volume.
+    if (nodes.length > 1) {
+      const escShare = escalationShare(economy, key, metrics);
+      remaining = buy(newest, Math.floor(remaining * escShare)) + (remaining - Math.floor(remaining * escShare));
+    }
+    remaining = buy(nodes[0], remaining);
+    // Mop up with any middle nodes if money is still on the table.
+    for (let i = 1; i < nodes.length - 1 && remaining > 0; i++) {
+      remaining = buy(nodes[i], remaining);
+    }
+    return remaining;
+  };
+
+  for (const key of candidates) {
+    const allowance = Math.floor(budget * economy.ledgers[key].share);
+    pool += spendOn(key, allowance);
+  }
+  // Second pass: re-offer the leftovers to already-open branches.
+  for (const key of candidates) {
+    if (pool <= 0) break;
+    if (!economy.openBranches.includes(key)) continue;
+    pool = spendOn(key, pool);
+  }
+  scrapped = Math.max(0, pool);
+
+  // Scripted debuts guarantee the designed early beats regardless of what ROI
+  // would otherwise prefer (guided by R2, mines by R3).
+  for (const scripted of ENEMY_ECONOMY.scriptedDebuts) {
+    if (scripted.round !== round) continue;
+    const key = scripted.branch as EnemyBranchKey;
+    const def = ENEMY_BRANCHES[key];
+    if (!def.implemented) continue;
+    const node = def.nodes.find((n) => n.id === scripted.node);
+    if (!node || !node.implemented) continue;
+    const ledger = economy.ledgers[key];
+    const have = ledger.units[node.id] ?? 0;
+    if (have >= scripted.minUnits) continue;
+    const extra = scripted.minUnits - have;
+    if (!economy.openBranches.includes(key)) economy.openBranches.push(key);
+    ledger.units[node.id] = have + extra;
+    ledger.spend += extra * node.cost;
+    committed += extra * node.cost;
+    const existing = purchases.find((p) => p.branch === key && p.node.id === node.id);
+    if (existing) existing.units += extra;
+    else purchases.push({ branch: key, node, units: extra });
+    if (!economy.nodesFielded.includes(node.id)) {
+      economy.nodesFielded.push(node.id);
+      economy.nodeDebuts.push(node.id);
+      if (node.grantsTargeting !== undefined && node.grantsTargeting > economy.targetingTier) {
+        economy.targetingTier = node.grantsTargeting;
+        economy.targetingDebut = node.grantsTargeting;
+      }
+    }
+  }
+
+  // Track sustained investment (drives tactic rungs and escalation).
+  for (const key of ENEMY_BRANCH_ORDER) {
+    const ledger = economy.ledgers[key];
+    if (ledger.spend > 0) ledger.roundsInvested++;
+    else ledger.roundsInvested = 0;
+    ledger.scrap = 0;
+  }
+  // Attribute the unspendable remainder to the branch that had the largest
+  // share — it is that branch's over-buy that could not be converted.
+  const biggest = candidates.reduce(
+    (best, key) => (economy.ledgers[key].share > economy.ledgers[best]?.share ? key : best),
+    candidates[0],
+  );
+  if (biggest) economy.ledgers[biggest].scrap = scrapped;
+
+  economy.committed = committed;
+  economy.scrapped = scrapped;
+  economy.plannedForRound = round;
+  void rng;
+  return purchases;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy doctrine tracks (derived read-out)
+// ---------------------------------------------------------------------------
+
+/** The old four-track model, recomputed from cumulative spend. Nothing reads
+ *  these to make decisions any more — they exist so saved games, the AAR and
+ *  existing telemetry consumers keep working. */
+function deriveTracks(economy: EnemyEconomyState, prev: EvolutionTracks): EvolutionTracks {
+  const missiles = economy.ledgers.missiles;
+  const mines = economy.ledgers.mines;
+  const unitsOf = (ledger: BranchLedger, node: string): number => ledger.units[node] ?? 0;
+  return {
+    saturation: prev.saturation + missiles.spend * 0.08,
+    guidance: prev.guidance + unitsOf(missiles, 'guided') * 6,
+    mines: prev.mines + mines.spend * 0.3,
+    lowSig: prev.lowSig + unitsOf(mines, 'lowSig') * 8,
   };
 }
 
@@ -34,103 +425,99 @@ export function newEvolution(): EvolutionState {
 
 export function evolveEnemy(evo: EvolutionState, metrics: RoundMetrics, rng: RNG): void {
   evo.metrics.push(metrics);
+  const economy = evo.economy;
+  const nextRound = metrics.round + 1;
 
-  // --- Earn tech points (the enemy adapts faster against a winning player) --
-  let points = EVOLUTION.basePoints + EVOLUTION.pointsPerRound * metrics.round;
-  if (metrics.deliveredFraction >= 0.85) points += EVOLUTION.bonusStrongDelivery;
-  if (metrics.interceptRate > 0.7) points += EVOLUTION.bonusHighIntercept;
-  const baseline = evo.metrics[0]?.valueSent ?? metrics.valueSent;
-  if (metrics.valueSent > baseline * 1.3) points += EVOLUTION.bonusRichConvoy;
+  // 1. Score what last round's money achieved.
+  settleRoi(economy, metrics);
 
-  // --- Allocation weights, adjusted by what the player has been doing -------
-  const weights: EvolutionTracks = { saturation: 1.0, guidance: 0.7, mines: 0.4, lowSig: 0 };
-
-  const recent = evo.metrics.slice(-2);
-  const avgIntercept = recent.reduce((a, m) => a + m.interceptRate, 0) / recent.length;
-  if (avgIntercept > 0.6) {
-    // Player is shooting missiles down reliably: seek guidance and volume.
-    weights.guidance += 1.0;
-    weights.saturation += 0.4;
-  }
-
-  // Formation shapes enemy doctrine — and the player is told about it (below).
+  // 2. Formation still shapes doctrine — and the player is told about it.
   const last3 = evo.metrics.slice(-3);
   const tightRounds = last3.filter((m) => m.formation === 'tight').length;
   const wideRounds = last3.filter((m) => m.formation === 'wide').length;
   evo.formationTell = null;
   if (tightRounds >= 2) {
     // Dense formations invite area-denial weapons.
-    weights.mines += 1.0;
+    economy.ledgers.mines.share += 0.15;
     evo.formationTell =
       'Your convoys have been sailing a tight column. The enemy is exploiting it — expect heavier investment in mines and area-denial to punish the packed formation.';
   } else if (wideRounds >= 2) {
-    // A dispersed stream is harder to blanket — the enemy answers with volume.
-    weights.saturation += 0.7;
+    // A dispersed stream is harder to blanket — answer with volume.
+    economy.ledgers.missiles.share += 0.15;
     evo.formationTell =
       'Your convoys have been running wide and dispersed. The enemy is answering with volume — expect larger missile salvos to blanket the spread-out stream.';
   }
 
-  const mineRounds = recent.filter((m) => m.mineDetectRate >= 0);
-  if (mineRounds.length > 0 && evo.tracks.mines >= EVOLUTION.minesUnlock) {
-    const avgDetect = mineRounds.reduce((a, m) => a + m.mineDetectRate, 0) / mineRounds.length;
-    if (avgDetect > 0.5) {
-      // Player counters mines: develop low-signature casings.
-      weights.lowSig += 2.0;
-    }
-  }
+  // 3. Grant next round's budget, re-allocate on ROI, and commit it.
+  const baseline = evo.metrics[0]?.valueSent ?? metrics.valueSent;
+  economy.targetingDebut = null;
+  economy.budget = grantBudget(nextRound, metrics, baseline);
+  allocate(economy, nextRound, rng);
+  purchase(economy, nextRound, metrics, rng);
 
-  const totalWeight = weights.saturation + weights.guidance + weights.mines + weights.lowSig;
-  for (const key of Object.keys(weights) as (keyof EvolutionTracks)[]) {
-    evo.tracks[key] += (points * weights[key]) / totalWeight;
-  }
+  // 4. Keep the legacy track read-out current.
+  evo.tracks = deriveTracks(economy, evo.tracks);
 
-  // --- Scripted floors keep the early beats on schedule ---------------------
-  for (const floor of EVOLUTION.floors) {
-    if (metrics.round >= floor.afterRound) {
-      evo.tracks[floor.track] = Math.max(evo.tracks[floor.track], floor.value);
-    }
-  }
-
-  // --- Intelligence warnings about capabilities the player hasn't met yet ---
-  evo.pendingWarnings = buildWarnings(evo, rng);
+  // 5. Warn about what is coming.
+  evo.pendingWarnings = buildWarnings(evo, nextRound, rng);
 }
 
-const WARNING_TEXTS: Partial<Record<TechKey, string>> = {
-  guidedMissile:
-    'Signals intercepts suggest the enemy is testing terminal-guidance seekers for its anti-ship missiles.',
-  mine: 'Coastal traffic reports unusual enemy small-boat activity consistent with minelaying rehearsals.',
-  lowSigMine:
-    'Analysts believe the enemy is developing composite mine casings designed to defeat standard sonar.',
-};
-
-function buildWarnings(evo: EvolutionState, rng: RNG): IntelWarning[] {
-  const checks: { key: TechKey; track: keyof EvolutionTracks; unlock: number }[] = [
-    { key: 'guidedMissile', track: 'guidance', unlock: EVOLUTION.guidanceUnlock },
-    { key: 'mine', track: 'mines', unlock: EVOLUTION.minesUnlock },
-    { key: 'lowSigMine', track: 'lowSig', unlock: EVOLUTION.lowSigUnlock },
-  ];
+/** Intel forecasts: warn about node gates that are about to open, and about
+ *  capabilities already bought but not yet met. */
+function buildWarnings(evo: EvolutionState, nextRound: number, rng: RNG): IntelWarning[] {
   const warnings: IntelWarning[] = [];
-  for (const check of checks) {
-    if (evo.firstSeen[check.key] !== undefined) continue; // already encountered
-    const value = evo.tracks[check.track];
-    if (value < check.unlock - EVOLUTION.warningProximity) continue;
-    const closeness = Math.min(1, value / check.unlock);
-    warnings.push({
-      track: check.track,
-      text: WARNING_TEXTS[check.key] ?? '',
-      confidencePct: Math.round(55 + closeness * 30 + rng.range(0, 10)),
-    });
+  const economy = evo.economy;
+  for (const key of ENEMY_BRANCH_ORDER) {
+    const def = ENEMY_BRANCHES[key];
+    if (!def.implemented) continue;
+    for (const node of def.nodes) {
+      if (!node.implemented || !node.warning) continue;
+      // Skip only what the player has actually ENCOUNTERED. A node the enemy
+      // has just bought for next round is precisely what a forecast is for —
+      // gating on "already purchased" would suppress every warning, since
+      // procurement for the coming round runs before warnings are built.
+      const met = node.techKey
+        ? evo.firstSeen[node.techKey as TechKey] !== undefined
+        : economy.nodesFielded.includes(node.id);
+      if (met) continue;
+      const roundsAway = node.gateRound - nextRound;
+      if (roundsAway > ENEMY_ECONOMY.warningLeadRounds || roundsAway < 0) continue;
+      warnings.push({
+        track: key === 'mines' ? 'mines' : 'guidance',
+        text: node.warning,
+        confidencePct: Math.round(60 + (1 - roundsAway) * 20 + rng.range(0, 10)),
+      });
+    }
   }
   return warnings;
 }
 
+/** Make sure the enemy has actually bought something for `round`.
+ *
+ *  Normally `evolveEnemy` commits next round's budget at the end of the
+ *  previous one. A campaign SAVED BEFORE the economy existed has no purchases
+ *  at all, so resuming it would otherwise sail into an empty strait. This runs
+ *  the budget → allocate → buy cycle on the spot for such a round. */
+export function ensureProcurement(evo: EvolutionState, round: number, rng: RNG): void {
+  const economy = evo.economy;
+  if (economy.plannedForRound === round) return;
+  const last = evo.metrics[evo.metrics.length - 1];
+  const baseline = evo.metrics[0]?.valueSent ?? last?.valueSent ?? 241;
+  economy.targetingDebut = null;
+  economy.budget = grantBudget(round, last, baseline);
+  allocate(economy, round, rng);
+  purchase(economy, round, last, rng);
+  evo.tracks = deriveTracks(economy, evo.tracks);
+}
+
 // ---------------------------------------------------------------------------
-// Planning: generate everything the enemy will do in the upcoming round.
+// Planning: turn the purchased attacks into a concrete round plan.
 // ---------------------------------------------------------------------------
 
 export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const round = campaign.round;
   const evo = campaign.evolution;
+  const economy = evo.economy;
   const debuts: TechKey[] = [];
   const shipsOut = Object.values(campaign.composition).reduce((a, b) => a + b, 0);
 
@@ -153,59 +540,33 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     };
   }
 
-  const tracks = evo.tracks;
+  // A resumed pre-economy save has no committed purchases; buy for this round
+  // before materializing it, so the strait is never silently empty.
+  ensureProcurement(evo, round, rng);
 
-  // Missiles: a controlled TOTAL count (scales with round + saturation doctrine),
-  // spread across the full fire window above.
-  const missileCount = Math.min(
-    EVOLUTION.missileCountCap,
-    Math.round(
-      EVOLUTION.missileCountBase +
-        round * EVOLUTION.missileCountPerRound +
-        tracks.saturation * EVOLUTION.missileCountSat,
-    ),
-  );
-  const volleySize = 1 + Math.floor(tracks.saturation / EVOLUTION.volleySatDivisor);
-
-  let guidedCount = 0;
-  if (tracks.guidance >= EVOLUTION.guidanceUnlock) {
-    const share = Math.min(0.65, 0.2 + (tracks.guidance - EVOLUTION.guidanceUnlock) / 120);
-    guidedCount = Math.round(missileCount * share);
-    if (evo.firstSeen.guidedMissile === undefined) {
-      guidedCount = Math.min(guidedCount, EVOLUTION.firstGuidedCap);
-      guidedCount = Math.max(guidedCount, 1); // a debut actually happens
-      debuts.push('guidedMissile');
-    }
-  }
-  const basicCount = Math.max(0, missileCount - guidedCount);
+  // --- Missiles --------------------------------------------------------------
+  const missileLedger = economy.ledgers.missiles;
+  const basicCount = missileLedger.units.unguided ?? 0;
+  const guidedCount = missileLedger.units.guided ?? 0;
+  // The tactic rung sets how tightly launches cluster into volleys.
+  const missileTactic = tacticForRounds('missiles', missileLedger.roundsInvested);
+  const volleySize = Math.max(1, Math.round(missileTactic.volumeMult * 1.6));
 
   const spawns = [
     ...scheduleMissiles(basicCount, volleySize, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
     ...scheduleMissiles(guidedCount, volleySize, rng, 'guidedMissile', EVOLUTION.windowStartT, windowEnd),
   ];
+  if (guidedCount > 0 && evo.firstSeen.guidedMissile === undefined) debuts.push('guidedMissile');
 
-  // Mines --------------------------------------------------------------------
+  // --- Mines -----------------------------------------------------------------
+  const mineLedger = economy.ledgers.mines;
+  const standardMines = mineLedger.units.standard ?? 0;
+  const lowSigMines = mineLedger.units.lowSig ?? 0;
+  const mineCount = standardMines + lowSigMines;
   const mines: MinePlacement[] = [];
-  if (tracks.mines >= EVOLUTION.minesUnlock) {
-    let mineCount = Math.min(
-      EVOLUTION.mineCap,
-      EVOLUTION.mineBase + Math.floor((tracks.mines - EVOLUTION.minesUnlock) / EVOLUTION.mineTrackDivisor),
-    );
-    if (evo.firstSeen.mine === undefined) {
-      mineCount = Math.min(mineCount, EVOLUTION.firstMinefieldCap);
-      debuts.push('mine');
-    }
-
-    let lowSigCount = 0;
-    if (tracks.lowSig >= EVOLUTION.lowSigUnlock) {
-      const share = Math.min(0.7, 0.4 + (tracks.lowSig - EVOLUTION.lowSigUnlock) / 150);
-      lowSigCount = Math.round(mineCount * share);
-      if (evo.firstSeen.lowSigMine === undefined) {
-        lowSigCount = Math.min(lowSigCount, EVOLUTION.firstLowSigCap);
-        lowSigCount = Math.max(lowSigCount, 1);
-        debuts.push('lowSigMine');
-      }
-    }
+  if (mineCount > 0) {
+    if (evo.firstSeen.mine === undefined) debuts.push('mine');
+    if (lowSigMines > 0 && evo.firstSeen.lowSigMine === undefined) debuts.push('lowSigMine');
 
     // One cluster for small fields, two for larger ones. The FIRST minefield
     // is always laid in the main shipping channel (the convoy's default lane)
@@ -221,7 +582,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
       mines.push({
         x: cx + rng.range(-130, 130),
         y: WORLD.lanes[lane] + rng.range(-75, 75),
-        lowSig: i < lowSigCount,
+        lowSig: i < lowSigMines,
       });
     }
   }
@@ -271,4 +632,26 @@ function scheduleMissiles(
     }
   }
   return spawns;
+}
+
+// ---------------------------------------------------------------------------
+// Read-outs for UI / telemetry
+// ---------------------------------------------------------------------------
+
+/** The enemy's current targeting doctrine, as a 0-1 "skill" the transit sim
+ *  already understands. The doctrine LADDER is richer than one scalar — the
+ *  higher rungs (nearest-to-shore, high-value, isolation, deny-the-delivery)
+ *  arrive with the branches that grant them, since each needs its own
+ *  behaviour. Until then a tier maps onto how sharply the enemy prefers close,
+ *  wounded targets, which is what T1/T3 describe. */
+export function targetingSkill(economy: EnemyEconomyState): number {
+  const tier = economy.targetingTier;
+  // A newly unlocked tier runs at reduced weight for one round (fairness rule).
+  const effective = economy.targetingDebut === tier ? Math.max(0, tier - 0.5) : tier;
+  return Math.max(0, Math.min(1, effective / 4));
+}
+
+/** Human-readable name of the enemy's current doctrine rung. */
+export function targetingName(economy: EnemyEconomyState): string {
+  return TARGETING_DOCTRINE[economy.targetingTier]?.name ?? 'Unaimed spread';
 }
