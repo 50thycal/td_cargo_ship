@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e": "node e2e/smoke.mjs",
+    "playtest": "vite-node tools/playtest/run.ts --",
+    "ablate": "vite-node tools/playtest/ablate.ts --"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",

@@ -32,11 +32,13 @@ import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
 import { MODULES, SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
-import { COMBAT, ECONOMY, SPAWN, WORLD } from '../src/data/tuning';
+import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
   RoundMetrics,
+  ShipClassId,
+  RoundPlan,
   TransitCommand,
   TransitState,
 } from '../src/sim/types';
@@ -189,6 +191,7 @@ function syntheticMetrics(round: number, overrides: Partial<RoundMetrics> = {}):
     interceptRate: 0.8,
     formation: 'tight',
     mineDetectRate: -1,
+    torpedoDetectRate: -1,
     valueSent: 241,
     deliveredFraction: 0.95,
     ...overrides,
@@ -232,15 +235,19 @@ describe('enemy evolution', () => {
   });
 
   it('strong mine detection pushes the enemy toward low-signature mines', () => {
-    const evoDetected = newEvolution();
-    const evoUndetected = newEvolution();
-    const rng1 = makeRng('lowsig1');
-    const rng2 = makeRng('lowsig2');
-    for (let r = 1; r <= 8; r++) {
-      evolveEnemy(evoDetected, syntheticMetrics(r, { mineDetectRate: 0.9 }), rng1);
-      evolveEnemy(evoUndetected, syntheticMetrics(r, { mineDetectRate: 0.1 }), rng2);
-    }
-    expect(evoDetected.tracks.lowSig).toBeGreaterThan(evoUndetected.tracks.lowSig);
+    // Same seed on both arms, varying only the detection rate. Comparing two
+    // different seeds lets exploration jitter move the shares more than the
+    // signal does — see docs/SEESAW.md; the escalation tests in
+    // enemyEconomy.test.ts were passing on that noise for weeks. The horizon
+    // has to be long enough for the mine branch to buy meaningfully, which gets
+    // longer with every enemy branch that ships and splits the budget.
+    const run = (mineDetectRate: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('lowsig');
+      for (let r = 1; r <= 18; r++) evolveEnemy(evo, syntheticMetrics(r, { mineDetectRate }), rng);
+      return evo.tracks.lowSig;
+    };
+    expect(run(0.9)).toBeGreaterThan(run(0.1));
   });
 
   it('surfaces a formation tell: tight invites mines, wide invites salvos', () => {
@@ -282,24 +289,33 @@ describe('campaign', () => {
   });
 
   it('capacity grows after two consecutive strong rounds', () => {
+    // This pins the GROWTH RULE, so it runs the rounds against an empty enemy
+    // plan rather than trying to out-defend a live one. Stacking bases and
+    // ammunition used to be enough to guarantee strong deliveries, but the
+    // enemy now reallocates toward whatever the player has not answered, so
+    // "heavy defense" is not a fixed quantity any more and the scenario drifted
+    // out from under the rule it was meant to check. Combat is covered by the
+    // campaign-survival tests; this one is about the consortium's response to
+    // two good rounds.
     const c = newCampaign('growth');
-    // Heavy defense + a light convoy so deliveries are reliably strong, which
-    // isolates the growth mechanic from round-to-round combat variance.
-    c.bases = 4;
-    c.ammo = 120;
     setComposition(c, 'cargo', 6);
     setComposition(c, 'tanker', 0);
     setComposition(c, 'freighter', 0);
     const startCapacity = c.capacity;
     let increased = false;
-    for (let r = 0; r < 3 && !increased; r++) {
-      const { report } = runRound(c, { defend: true, useScan: true });
+    for (let r = 0; r < CAMPAIGN.strongRoundsForGrowth && !increased; r++) {
+      const plan: RoundPlan = { ...planCurrentRound(c), spawns: [], mines: [], debuts: [] };
+      const { state, rng } = createRoundTransit(c, plan);
+      let guard = 0;
+      while (!state.over && guard++ < Math.ceil(SIM.maxTransitTime / SIM.dt)) {
+        stepTransit(state, [], rng);
+      }
+      const report = resolveTransit(c, state);
+      expect(state.stats.delivered).toBe(state.stats.launched); // unopposed
       increased = report.capacityIncreased;
-      c.ammo = 120;
-      repairFleet(c);
     }
     expect(increased).toBe(true);
-    expect(c.capacity).toBe(startCapacity + 5);
+    expect(c.capacity).toBe(startCapacity + CAMPAIGN.capacityStep);
   });
 
   it('research takes one full round before completing', () => {
@@ -439,6 +455,174 @@ describe('economy hardening', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Anti-snowball — the restoring force SEESAW.md promises at BOTH ends
+// ---------------------------------------------------------------------------
+
+describe('anti-snowball: the losing side', () => {
+  it('underwrites hulls lost at sea, so a ruinous round still leaves something to sail with', () => {
+    // Sail into a heavy enemy round undefended and check the report pays out.
+    const c = newDevCampaign('insure-payout', { round: 9, god: false, unlockAll: false });
+    setComposition(c, 'cargo', 8);
+    const { state, report } = runRound(c, { defend: false });
+    const lost = state.ships.filter((s) => !s.alive).length;
+    if (lost === 0) return; // nothing sank; nothing to underwrite
+    const delivered = state.stats.valueDelivered * ECONOMY.cashPerValue;
+    // Everything above the delivery earnings is the underwriting.
+    expect(report.cashEarned).toBeGreaterThan(delivered);
+  });
+
+  it('pays out against what replacement ACTUALLY costs, modules included', () => {
+    // The whole point: an equipped fleet replaces at far more than the bare
+    // hull price, and underwriting the bare hull would pay the builds that
+    // invest in their ships a fraction of what it pays the empty ones.
+    const bare = newCampaign('insure-bare');
+    const kitted = newCampaign('insure-kitted');
+    kitted.classModules.cargo = ['selfDefense'];
+    expect(shipCost(kitted, 'cargo')).toBeGreaterThan(shipCost(bare, 'cargo'));
+
+    const payout = (c: CampaignState): number =>
+      shipCost(c, 'cargo') * ECONOMY.lossInsurance;
+    expect(payout(kitted)).toBeGreaterThan(payout(bare));
+  });
+
+  it('never pays enough to make losing a hull profitable', () => {
+    // A restoring force, not an exploit: scuttling for the payout must always
+    // be worse than keeping the ship.
+    const c = newCampaign('insure-exploit');
+    expect(ECONOMY.lossInsurance).toBeLessThan(1);
+    expect(shipCost(c, 'cargo') * ECONOMY.lossInsurance).toBeLessThan(shipCost(c, 'cargo'));
+  });
+
+  it('floors ordinary confidence loss so a disaster round is a slope, not a cliff', () => {
+    // Bad round + full loss cap + missed quota all describe the same disaster
+    // and all land together. Unfloored that is -35 against a starting 60, so
+    // two rounds ended a campaign with no round in between to answer in.
+    const unflooredWorstCase =
+      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidenceQuotaMissed;
+    expect(unflooredWorstCase).toBeLessThan(CAMPAIGN.confidenceRoundFloor);
+    // The floor has to leave more than two rounds of headroom from the start.
+    expect(CAMPAIGN.startConfidence / Math.abs(CAMPAIGN.confidenceRoundFloor)).toBeGreaterThan(2);
+  });
+
+  it('the floor does NOT cover captures — absorbing losses is no answer to boarding', () => {
+    const c = newCampaign('capture-floor');
+    c.confidence = 90;
+    const before = c.confidence;
+    const { state } = runRound(c, { defend: false });
+    // Force the worst ordinary round AND a capture, then confirm the capture
+    // pushed the total past the ordinary floor.
+    state.stats.shipsCaptured = 3;
+    state.stats.lost = 10;
+    state.stats.delivered = 0;
+    state.stats.launched = 10;
+    const c2 = newCampaign('capture-floor');
+    c2.confidence = 90;
+    resolveTransit(c2, state);
+    const drop = before - c2.confidence;
+    expect(drop).toBeGreaterThan(Math.abs(CAMPAIGN.confidenceRoundFloor));
+  });
+});
+
+describe('anti-snowball: the winning side', () => {
+  it('a player who keeps dominating faces a budget that keeps climbing', () => {
+    // The flat bonus fires readily but never moved a build sitting at 94%
+    // delivery. Sustained dominance has to compound or it is not a restoring
+    // force at all — measured, 56% of rounds finished above 90% delivered.
+    const budgetAfter = (dominantRounds: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('dominance');
+      for (let r = 1; r <= dominantRounds; r++) {
+        evolveEnemy(evo, syntheticMetrics(r, { deliveredFraction: 0.95 }), rng);
+      }
+      return evo.economy.budget;
+    };
+    // Per-round growth is in the curve, so compare the RATIO to a matched
+    // run where the player is merely holding even rather than dominating.
+    const heldEven = (rounds: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('dominance');
+      for (let r = 1; r <= rounds; r++) {
+        evolveEnemy(evo, syntheticMetrics(r, { deliveredFraction: 0.7 }), rng);
+      }
+      return evo.economy.budget;
+    };
+    const short = budgetAfter(2) / heldEven(2);
+    const long = budgetAfter(7) / heldEven(7);
+    expect(long).toBeGreaterThan(short);
+  });
+
+  it('the pressure releases the round the player drops back into the band', () => {
+    // It scales with how LONG they have dominated, so a broken streak resets
+    // it — otherwise it is a difficulty ramp, not a restoring force.
+    //
+    // Both arms end on an identical DOMINANT round, so the flat
+    // bonusStrongDelivery is paid in both and cancels out. The only thing that
+    // differs is how long the streak behind that round ran. Without holding the
+    // last round equal this passes on the flat bonus alone and says nothing
+    // about the streak at all — which an earlier version of it did.
+    const budgetAfter = (deliveries: number[]): number => {
+      const evo = newEvolution();
+      const rng = makeRng('release');
+      deliveries.forEach((d, i) => {
+        evolveEnemy(evo, syntheticMetrics(i + 1, { deliveredFraction: d }), rng);
+      });
+      return evo.economy.budget;
+    };
+    const D = 0.95; // dominant
+    const B = 0.7; // back inside the healthy band
+    const unbroken = budgetAfter([D, D, D, D, D, D, D]);
+    const broken = budgetAfter([D, D, D, D, D, B, D]);
+    expect(broken).toBeLessThan(unbroken);
+  });
+
+  it('is capped, so dominance never runs away into an unplayable round', () => {
+    expect(ENEMY_ECONOMY.dominanceStreakMax).toBeLessThan(1);
+    expect(ENEMY_ECONOMY.dominanceStreakStep).toBeLessThan(ENEMY_ECONOMY.dominanceStreakMax);
+  });
+});
+
+describe('a bigger convoy is a bigger target', () => {
+  const budgetFor = (valueSent: number): number => {
+    const evo = newEvolution();
+    const rng = makeRng('convoy-scale');
+    for (let r = 1; r <= 5; r++) {
+      evolveEnemy(evo, syntheticMetrics(r, { valueSent, deliveredFraction: 0.8 }), rng);
+    }
+    return evo.economy.budget;
+  };
+
+  it('draws more enemy ordnance the more value sails', () => {
+    // Without this the enemy fires a budget-determined volume whatever sails,
+    // so growing the convoy DILUTES incoming fire and hull count becomes the
+    // best defensive stat in the game — while also being the scoring stat.
+    // Measured before the fix: 6 hulls took 4.13 missiles each, 40 took 0.85.
+    expect(budgetFor(500)).toBeGreaterThan(budgetFor(120));
+  });
+
+  it('scales against a FIXED reference, not the campaign\'s own first convoy', () => {
+    // Measuring against the player's opening convoy is self-cancelling: a build
+    // that starts big and stays big reads as 1.0 forever and never draws the
+    // extra ordnance — which is precisely the build this exists to price.
+    // A campaign whose every round sails a big convoy must still be scaled up.
+    const evo = newEvolution();
+    const rng = makeRng('fixed-ref');
+    for (let r = 1; r <= 5; r++) {
+      evolveEnemy(evo, syntheticMetrics(r, { valueSent: 600, deliveredFraction: 0.8 }), rng);
+    }
+    const alwaysBig = evo.economy.budget;
+    expect(alwaysBig).toBeGreaterThan(budgetFor(ENEMY_ECONOMY.convoyValueBaseline));
+  });
+
+  it('is clamped at both ends — sailing light is a smaller target, never a free pass', () => {
+    expect(ENEMY_ECONOMY.convoyScaleMin).toBeLessThan(0);
+    expect(ENEMY_ECONOMY.convoyScaleMin).toBeGreaterThan(-1);
+    expect(ENEMY_ECONOMY.convoyScaleMax).toBeGreaterThan(0);
+    // A one-hull convoy must still meet an enemy.
+    expect(budgetFor(10)).toBeGreaterThan(0);
+  });
+});
+
 describe('transit hardening', () => {
   it('a second ECM command while a burst is active does not burn a charge', () => {
     const c = newCampaign('ecm-stack');
@@ -499,17 +683,45 @@ describe('transit hardening', () => {
     expect(lastReport!.quota.windowRound).toBe(3);
   });
 
-  it('quota difficulty ratchets up on an easy clear and the next target tracks recent pace', () => {
+  it('quota difficulty ratchets up on an easy clear, and the next target is sized off the CONVOY', () => {
     const c = newCampaign('quota-ratchet-up');
     const before = c.quotaDifficulty;
     // Trivially easy target: cleared on round 1 with a big surplus.
     c.quota = { roundsLeft: 3, pointsNeeded: 10, pointsEarned: 0 };
-    const { report } = runRound(c, { defend: true });
+    runRound(c, { defend: true });
     expect(c.quotaDifficulty).toBeGreaterThan(before);
-    // The new target is sized off THIS window's actual average output
-    // (1 round, since it cleared immediately), not a flat increment.
-    const avgPerRound = report.quota.earned / report.quota.windowRound;
-    expect(c.quota.pointsNeeded).toBe(Math.round(avgPerRound * 3 * c.quotaDifficulty));
+    // The target asks for a share of what the convoy CAN carry, not a multiple
+    // of what the last window happened to deliver. Pinning the formula is what
+    // makes this a real test: "a smaller convoy is asked for less" sounds like
+    // the property worth asserting and is NOT — under the old delivery-based
+    // rule a smaller convoy also delivered less, so both implementations
+    // satisfy it and the assertion catches nothing. Checked by mutation.
+    //
+    // The regression it guards: sizing off delivery meant any purchase that
+    // traded convoy size for convoy quality missed a quota set by the larger
+    // convoy it used to sail, and the target only adapted downward AFTER that
+    // miss had cost 18 confidence. Measured across three builds the miss rate
+    // tracked convoy size almost exactly — 28% sailing 29.4 hulls of 30.4
+    // capacity, 39% at 24.6, 60% at 19.7 — so equipping the convoy was
+    // structurally unaffordable however cheap the equipment was.
+    const convoyValue = (Object.keys(c.composition) as ShipClassId[]).reduce(
+      (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+      0,
+    );
+    const expected = convoyValue * 3 * CAMPAIGN.quotaDeliveryFraction * c.quotaDifficulty;
+    const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
+    expect(c.quota.pointsNeeded).toBe(Math.max(Math.round(expected), Math.round(floor)));
+  });
+
+  it('the floor stops a player shrinking the convoy to trivialise the quota', () => {
+    const c = newCampaign('quota-floor-guard');
+    c.quota = { roundsLeft: 3, pointsNeeded: 10, pointsEarned: 0 };
+    setComposition(c, 'tanker', 0);
+    setComposition(c, 'freighter', 0);
+    setComposition(c, 'cargo', 1); // sail almost nothing
+    runRound(c, { defend: true });
+    // Capacity is untouched by the convoy shrinking, so the floor still bites.
+    expect(c.quota.pointsNeeded).toBe(Math.round(c.capacity * CAMPAIGN.quotaFloorPerCapacity));
   });
 
   it('quota difficulty ratchets down on a miss, floored so it never bottoms out at zero', () => {
@@ -927,11 +1139,20 @@ describe('air defense & telemetry', () => {
     const spawnTimes = plan.spawns.map((s) => s.time).sort((a, b) => a - b);
     const lastScheduled = spawnTimes[spawnTimes.length - 1];
     expect(lastScheduled).toBeGreaterThan(60);
-    // No 30s+ silent gap between consecutive scheduled launches across the body
-    // of the fire window (up to the last launch).
-    let maxGap = spawnTimes[0];
-    for (let i = 1; i < spawnTimes.length; i++) {
-      maxGap = Math.max(maxGap, spawnTimes[i] - spawnTimes[i - 1]);
+    // No 30s+ stretch with nothing for the player to do. Time between LAUNCHES
+    // is the wrong measure now that the enemy fields persistent units: an
+    // attack boat spawned at t=20 is still alongside a hull at t=80, so it
+    // occupies the whole window rather than a moment of it. Treat a boat as
+    // covering its engagement window and measure the silence that is left.
+    const boatOccupancy = COMBAT.attackBoat.engageRange / COMBAT.attackBoat.speed + 45;
+    const covered = plan.spawns
+      .map((s) => ({ from: s.time, to: s.kind === 'attackBoat' ? s.time + boatOccupancy : s.time }))
+      .sort((a, b) => a.from - b.from);
+    let maxGap = covered[0].from;
+    let clearUntil = covered[0].to;
+    for (const span of covered.slice(1)) {
+      maxGap = Math.max(maxGap, Math.max(0, span.from - clearUntil));
+      clearUntil = Math.max(clearUntil, span.to);
     }
     expect(maxGap).toBeLessThan(30);
 
@@ -962,6 +1183,9 @@ describe('air defense & telemetry', () => {
         lastSpawnT = state.time;
         prevSpawned = state.stats.missilesSpawned;
       }
+      // A live boat on the field is pressure too — the clock only runs while
+      // there is genuinely nothing in the water demanding a response.
+      if (state.threats.some((th) => th.alive && th.kind === 'attackBoat')) lastSpawnT = state.time;
       const active = state.ships.filter((s) => s.spawned && s.alive && !s.delivered).length;
       if (prevSpawned > 0 && active >= 4) {
         maxGapWhileBusy = Math.max(maxGapWhileBusy, state.time - lastSpawnT);

@@ -125,6 +125,32 @@ export interface Ship {
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
+  /** Seconds a boarding party has held this hull. Reset whenever the boarding
+   *  boat is driven off, so an interrupted boarding genuinely costs the enemy
+   *  its progress rather than merely pausing it. */
+  boardingSeconds: number;
+  /** Transit time until which Citadel Lockdown has boarding progress frozen. */
+  boardingLockUntil: number;
+  /** Lockdown and Emergency Rejection are once-per-round per hull, so a ship
+   *  cannot stall an unlimited number of boarding attempts by itself. */
+  lockdownUsed: boolean;
+  rejectionUsed: boolean;
+  /** Damage this hull has taken, keyed by the enemy branch that dealt it. When
+   *  the ship finally dies the kill is split across these in proportion, so a
+   *  branch that did the work gets the credit even if something else landed the
+   *  last blow. */
+  damageByBranch: Record<string, number>;
+  /** Set when a boarding party has taken the hull. A captured ship is a LOSS —
+   *  it is not sunk, it steers off to the hostile shore under a prize crew and
+   *  costs more confidence than a sinking, so "tank the damage and push
+   *  through" is not an answer to this branch. */
+  captured: boolean;
+  /** Transit time at which a captured hull finishes leaving the board. */
+  captureExitAt: number;
+  /** Dead in the water until this transit time (a disabling drone got her).
+   *  She keeps her hull and her cargo but cannot move — a static target for
+   *  everything else on the board. */
+  disabledUntil: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +219,26 @@ export type ThreatKind =
 export type BoatVariant = 'smallArms' | 'rocket' | 'boarding';
 
 /** Discovery keys — includes variants that reveal enemy evolution. */
-export type TechKey = 'missile' | 'guidedMissile' | 'mine' | 'lowSigMine' | 'saturation';
+export type TechKey =
+  | 'missile'
+  | 'guidedMissile'
+  | 'mine'
+  | 'lowSigMine'
+  | 'torpedo'
+  | 'homingTorpedo'
+  | 'lowSigTorpedo'
+  | 'attackBoat'
+  | 'rocketBoat'
+  | 'boardingBoat'
+  | 'artillery'
+  | 'rangingArtillery'
+  | 'rollingBarrage'
+  | 'screeningSmoke'
+  | 'blindingSmoke'
+  | 'reconPlane'
+  | 'disablingDrone'
+  | 'sensorJamming'
+  | 'saturation';
 
 /** What a missile is aimed at. Escorts and shore batteries are valid targets
  *  now, not just cargo ships. */
@@ -242,6 +287,22 @@ export interface Threat {
   boatVariant?: BoatVariant;
   /** Escort deck gun currently committed to this boat (sustained fire). */
   engagedByEscortId?: number;
+  /** True while this threat sits inside enemy smoke. A concealed threat keeps a
+   *  faint bearing marker but loses its precise tap-target — the locked SOFT
+   *  concealment model. It is never removed from the sim, only from the
+   *  player's ability to point at it. */
+  concealed?: boolean;
+  /** True if this threat was concealed at any point. Support branches earn
+   *  their ROI from what they enabled, so a hit that landed off a hull the
+   *  player could not see pays the smoke that hid it. */
+  wasConcealed?: boolean;
+  /** Attack boats: transit time before which this boat will not commit to a
+   *  new hull (the pause after it finishes one off). */
+  retargetAt?: number;
+  /** Attack boats: true once the boat is holding station on its target and
+   *  actually shooting/boarding, rather than still closing. Drives the UI tell
+   *  and keeps "approaching" and "engaging" distinguishable in the sim. */
+  engaging?: boolean;
   /** Self-defense modules: ship reserving this missile (coordinated fire). */
   reservedByShipId?: number;
 }
@@ -256,19 +317,90 @@ export interface EnemyInstallation {
   x: number;
   y: number;
   /** Artillery node variant per ENEMY_ATTACKS.md. */
-  variant: 'coastalGun' | 'ranging' | 'rollingBarrage';
+  variant: ArtilleryVariant;
   /** Transit time until which this position is suppressed (cannot fire). */
   suppressedUntil: number;
   /** Successful focused strikes accumulated (enough destroys it this round). */
   strikes: number;
   destroyed: boolean;
+  /** Reload timer until this gun may fire again. */
+  cooldown: number;
+  /** Ship this gun is currently walking its fire onto, and how many consecutive
+   *  shells it has put near it. Ranging artillery tightens its aim the longer a
+   *  hull holds position; moving out of the lane resets it. */
+  walkTargetShipId?: number;
+  walkShots: number;
+  /** Rolling barrage: shells left in the current salvo, where the sweep runs,
+   *  and when the next salvo begins. */
+  barrageLeft: number;
+  barrageFromX: number;
+  barrageY: number;
+  barrageNextAt: number;
+}
+
+/** An artillery shell in flight.
+ *
+ *  Deliberately NOT a Threat. Shells are direct fire with no arc to intercept
+ *  (ENEMY_ATTACKS.md), and keeping them out of `threats` means the target
+ *  compatibility layer never sees them at all — no weapon can be pointed at a
+ *  shell even by mistake, because there is nothing there to point at. */
+export interface Shell {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Impact point. A shell bursts here regardless of what it hits on the way. */
+  targetX: number;
+  targetY: number;
+  damage: number;
+  variant: ArtilleryVariant;
+  alive: boolean;
+}
+
+export type ArtilleryVariant = 'coastalGun' | 'ranging' | 'rollingBarrage';
+
+/** An enemy smoke cloud laid during the round. */
+export interface SmokePlacement {
+  /** Screening sits over the launch sites; blinding sits over the convoy. */
+  variant: 'screening' | 'blinding';
+  /** Transit time it goes up. */
+  time: number;
+  /** Screening clouds have a fixed position; blinding ones follow the convoy
+   *  and resolve their center when they are laid. */
+  x?: number;
+  y?: number;
+}
+
+/** Electronic-attack effects bought for a round. */
+export interface ElectronicPlan {
+  /** Recon plane crossings, each dragging interceptor accuracy while alive. */
+  reconPlanes: number;
+  /** Single-use drones, each disabling one hull. */
+  disablingDrones: number;
+  /** Sensor-jamming blackouts. Played at the round's start; not shootable. */
+  jamming: number;
+}
+
+/** Where the enemy emplaces a gun before the round starts. */
+export interface InstallationPlacement {
+  x: number;
+  y: number;
+  variant: ArtilleryVariant;
 }
 
 export interface SpawnEvent {
   time: number;
-  kind: 'missile' | 'guidedMissile';
+  kind: 'missile' | 'guidedMissile' | 'torpedo' | 'attackBoat';
   /** Launch site x position along the hostile shore. */
   siteX: number;
+  /** Torpedoes: corrects toward its target instead of running straight. */
+  homing?: boolean;
+  /** Torpedoes: leaves no wake, so it cannot be read off the water and needs
+   *  an active sensor (upgraded hydrophone / active sonar) to see at all. */
+  lowSig?: boolean;
+  /** Attack boats: which variant puts to sea (small-arms / rocket / boarding). */
+  boatVariant?: BoatVariant;
 }
 
 export interface MinePlacement {
@@ -282,6 +414,12 @@ export interface RoundPlan {
   round: number;
   spawns: SpawnEvent[];
   mines: MinePlacement[];
+  /** Shore guns emplaced for this round. */
+  installations: InstallationPlacement[];
+  /** Enemy smoke clouds laid this round. */
+  smoke: SmokePlacement[];
+  /** Electronic-attack effects the enemy paid for this round. */
+  electronic: ElectronicPlan;
   /** Tech that appears for the first time this round (for AAR forensics). */
   debuts: TechKey[];
 }
@@ -423,12 +561,18 @@ export interface Aircraft {
  *  underwater picture) or defensive smoke (degrades enemy targeting). */
 export interface AreaEffect {
   id: number;
-  kind: 'sonar' | 'smoke';
+  /** `smoke` is the PLAYER's track-breaking cloud; `enemySmoke` is the enemy's
+   *  concealment branch. They are deliberately distinct kinds — one hides the
+   *  player's ships from the enemy, the other hides the enemy's threats from
+   *  the player, and nothing should ever treat them interchangeably. */
+  kind: 'sonar' | 'smoke' | 'enemySmoke';
   x: number;
   y: number;
   radius: number;
   /** Transit time at which the effect expires. */
   until: number;
+  /** Enemy smoke: blinding clouds also degrade missile-warning cues inside. */
+  blinding?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -485,6 +629,11 @@ export type TransitEventType =
   | 'mineDetonated'
   | 'depthChargeKill'
   | 'boatSunk'
+  | 'boardingStarted'
+  | 'boardingRepelled'
+  | 'enemySmoke'
+  | 'jammingStarted'
+  | 'shipDisabled'
   | 'suppressed'
   | 'abilityUsed'
   | 'launchFailed'
@@ -575,6 +724,36 @@ export interface TransitStats {
   minesRevealed: number;
   minesDetonated: number;
   minesSwept: number;
+  /** Torpedoes launched at the convoy this transit. */
+  torpedoesLaunched: number;
+  /** Torpedoes the player detected (by wake, hydrophone or active sonar). */
+  torpedoesDetected: number;
+  /** Torpedoes that reached a hull. */
+  torpedoesHit: number;
+  /** Torpedoes destroyed by depth charges. */
+  torpedoesDestroyed: number;
+  /** Attack boats that reached the convoy this transit. */
+  boatsLaunched: number;
+  /** Attack boats destroyed (deck guns are the only thing that can). */
+  boatsSunk: number;
+  /** Hulls sunk by boat gunfire (boarding captures are counted separately). */
+  boatKills: number;
+  /** Hulls taken by a boarding party — losses, but not sinkings. */
+  shipsCaptured: number;
+  /** Artillery shells fired at the convoy, and how many burst on a hull. */
+  shellsFired: number;
+  shellHits: number;
+  /** Shore batteries the player permanently silenced this transit. */
+  batteriesDestroyed: number;
+  /** Enemy smoke clouds laid, and seconds of threat-time spent concealed. */
+  smokeCloudsLaid: number;
+  concealedSeconds: number;
+  /** Recon planes and disabling drones fielded, and how many were shot down. */
+  reconPlanes: number;
+  disablingDrones: number;
+  aircraftDowned: number;
+  /** Seconds a hull spent dead in the water from a disabling drone. */
+  shipDisabledSeconds: number;
   ammoUsed: number;
   ecmUsed: number;
   scanUsed: number;
@@ -587,6 +766,11 @@ export interface TransitStats {
   /** Player-counter attribution (auto/manual split, per-weapon, detection,
    *  mitigation). */
   counter: CounterRoundStats;
+  /** What each ENEMY branch achieved this round — damage dealt and hulls
+   *  sunk, keyed by branch. This is the numerator of the enemy's ROI: without
+   *  it the procurement economy cannot tell which attack is paying off, and
+   *  the seesaw cannot pivot. */
+  enemyBranch: Record<string, { damage: number; kills: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -758,6 +942,8 @@ export interface CombatEffects {
     lockdown: boolean;
     counterTeam: boolean;
     emergencyRejection: boolean;
+    /** Deck-gun auto-acquisition puts an attached boarding boat first. */
+    autoPriority: boolean;
   };
 
   hardened: {
@@ -815,6 +1001,14 @@ export interface TransitState {
   aircraft: Aircraft[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
+  /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
+  shells: Shell[];
+  /** Enemy smoke still to be laid this round. */
+  smokeQueue: SmokePlacement[];
+  /** Recon planes and drones still to launch this round. */
+  eaQueue: { time: number; kind: 'reconPlane' | 'disablingDrone' }[];
+  /** Sensor-jamming blackouts bought but not yet played. */
+  pendingJamming: number;
   /** Escort loadout template applied to every escort this transit. */
   escortModules: EscortModuleId[];
   /** Shore-base loadout template. */
@@ -874,6 +1068,10 @@ export type SensorFamily = 'mineDetection' | 'torpedoDetection' | 'missileWarnin
 // Enemy evolution
 // ---------------------------------------------------------------------------
 
+/** Legacy doctrine tracks. The enemy now runs a real procurement economy
+ *  (EnemyEconomyState); these remain as a DERIVED read-out so old saves,
+ *  existing telemetry consumers and the AAR keep working. They are computed
+ *  from cumulative branch spend, never used to decide what the enemy buys. */
 export interface EvolutionTracks {
   /** More simultaneous missiles / volleys. */
   saturation: number;
@@ -883,6 +1081,64 @@ export interface EvolutionTracks {
   mines: number;
   /** Low-signature mines that defeat standard detection. */
   lowSig: number;
+}
+
+/** What one enemy branch did with its money last round — the raw material for
+ *  ROI, and the field docs/SEESAW.md called out as missing instrumentation. */
+export interface BranchLedger {
+  /** Budget allocated to this branch this round. */
+  spend: number;
+  /** Units actually fielded, keyed by node id. */
+  units: Record<string, number>;
+  /** Budget allocated but not convertible into whole units — wasted. */
+  scrap: number;
+  /** Damage + kills the branch produced, weighted (see ENEMY_ECONOMY). */
+  result: number;
+  /** result ÷ spend from the round that just resolved. */
+  roi: number;
+  /** Ships this branch sank (or captured) last round. */
+  kills: number;
+  /** Consecutive rounds the enemy has funded this branch. */
+  roundsInvested: number;
+  /** Allocation weight carried into next round's split. */
+  share: number;
+  /** Every credit ever spent on this branch, and everything it ever returned.
+   *  ROI is their ratio rather than the round's, so a branch that buys one
+   *  expensive unit is judged on its average instead of on the variance a
+   *  single lumpy purchase produces. */
+  lifetimeSpend: number;
+  lifetimeResult: number;
+}
+
+/** The enemy's procurement economy — a mirror of the player's prep phase.
+ *  Budget arrives, is committed in full, and whatever is not spent is scrapped;
+ *  what it buys is driven by which branches are paying off. */
+export interface EnemyEconomyState {
+  /** War funds granted this round (after anti-snowball modifiers). */
+  budget: number;
+  /** Budget actually committed to attacks. */
+  committed: number;
+  /** Budget wasted this round (could not be converted to whole units). */
+  scrapped: number;
+  /** Per-branch ledgers, including closed branches (share 0). */
+  ledgers: Record<string, BranchLedger>;
+  /** Branches the enemy has paid to open. */
+  openBranches: string[];
+  /** Highest targeting doctrine tier unlocked. */
+  targetingTier: number;
+  /** Tier unlocked this round, if any — drives the one-round reduced-weight
+   *  fairness rule and the discovery beat. */
+  targetingDebut: number | null;
+  /** Node ids fielded at least once, so first-appearance caps fire exactly
+   *  once per node. */
+  nodesFielded: string[];
+  /** Node ids that debuted this round (for AAR discovery cards). */
+  nodeDebuts: string[];
+  /** Round the current purchases were committed FOR. Planning a different
+   *  round means procurement has not run for it — which happens when a save
+   *  from before the economy existed is resumed — and the planner runs a
+   *  catch-up buy rather than fielding an empty round. */
+  plannedForRound: number;
 }
 
 export interface IntelWarning {
@@ -896,13 +1152,24 @@ export interface RoundMetrics {
   round: number;
   interceptRate: number; // intercepted / missiles spawned (1 if none spawned)
   formation: FormationId;
-  mineDetectRate: number; // revealed / total (1 if no mines)
+  mineDetectRate: number; // revealed / total (-1 if no mines)
+  /** Detected+destroyed / launched (-1 if no torpedoes ran). Drives the torpedo
+   *  branch's escalation toward low-signature casings, the same way
+   *  mineDetectRate drives the mine branch's. */
+  torpedoDetectRate: number;
   valueSent: number;
   deliveredFraction: number;
+  /** Weighted result each enemy branch produced this round (kills + damage),
+   *  keyed by branch. This is the numerator of ROI — without it the enemy
+   *  cannot tell which of its attacks is actually paying. */
+  branchResults?: Record<string, { result: number; kills: number }>;
 }
 
 export interface EvolutionState {
+  /** Derived read-out of cumulative branch spend (see EvolutionTracks). */
   tracks: EvolutionTracks;
+  /** The enemy's procurement economy — what actually decides its attacks. */
+  economy: EnemyEconomyState;
   /** Round on which the player first encountered each tech (for fairness caps). */
   firstSeen: Partial<Record<TechKey, number>>;
   metrics: RoundMetrics[];
@@ -928,6 +1195,12 @@ export interface AfterActionReport {
   round: number;
   stats: TransitStats;
   cashEarned: number;
+  /** Part of `cashEarned` that was underwriting on hulls lost at sea, rather
+   *  than payment for cargo delivered. Reported separately because a restoring
+   *  force the player cannot see just looks like noise in the cash figure — and
+   *  because "the consortium covered half of what that cost you" is the beat
+   *  that tells them a bad round is survivable. */
+  insurancePaid: number;
   intelEarned: number;
   confidenceChange: number;
   confidenceAfter: number;
@@ -1017,6 +1290,23 @@ export interface RoundTelemetry {
   minesRevealed: number;
   minesDetonated: number;
   minesSwept: number;
+  torpedoesLaunched: number;
+  torpedoesDetected: number;
+  torpedoesHit: number;
+  torpedoesDestroyed: number;
+  boatsLaunched: number;
+  boatsSunk: number;
+  boatKills: number;
+  shipsCaptured: number;
+  shellsFired: number;
+  shellHits: number;
+  batteriesDestroyed: number;
+  smokeCloudsLaid: number;
+  concealedSeconds: number;
+  reconPlanes: number;
+  disablingDrones: number;
+  aircraftDowned: number;
+  shipDisabledSeconds: number;
   /** Escorts destroyed this transit. */
   escortsLost: number;
   /** Shore batteries destroyed this transit. */
@@ -1039,6 +1329,43 @@ export interface RoundTelemetry {
   newDiscoveries: TechKey[];
   /** Player-counter side of the seesaw (equipment, spend, per-weapon stats). */
   counters: CounterTelemetry;
+  /** ENEMY side of the seesaw — the instrumentation docs/SEESAW.md required
+   *  before the arms race could be evaluated rather than inferred. */
+  enemy: EnemyRoundTelemetry;
+}
+
+/** Per-round record of the enemy's procurement economy: what it was given,
+ *  where it put the money, what that bought, what it earned, and what it
+ *  wasted. Together with the player-side block this makes both ends of the
+ *  seesaw measurable in the same log. */
+export interface EnemyRoundTelemetry {
+  /** War funds granted for this round (after anti-snowball modifiers). */
+  budget: number;
+  /** Budget actually committed to attacks. */
+  committed: number;
+  /** Budget that could not be converted into whole units — wasted. */
+  scrapped: number;
+  /** Per-branch: spend, units fielded by node, ROI earned, kills, scrap. */
+  branches: Record<
+    string,
+    {
+      spend: number;
+      share: number;
+      units: Record<string, number>;
+      roi: number;
+      kills: number;
+      result: number;
+      scrap: number;
+      roundsInvested: number;
+    }
+  >;
+  /** Branches the enemy has paid to open. */
+  openBranches: string[];
+  /** Node ids fielded for the first time this round. */
+  nodeDebuts: string[];
+  /** Current shared Targeting Doctrine rung, and its human-readable name. */
+  targetingTier: number;
+  targetingName: string;
 }
 
 export interface CampaignState {

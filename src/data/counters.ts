@@ -13,6 +13,7 @@
 //    consumes finished numbers out of deriveCounterEffects().
 
 import { tierValue, type StatTier } from './statTiers';
+import { ENEMY_BRANCHES } from './enemyBranches';
 import type {
   BaseModuleId,
   CombatEffects,
@@ -209,10 +210,6 @@ export interface CounterBranchDef {
     | { kind: 'builtIn'; id: 'escort' | 'base' };
   /** Ammunition the branch draws on. */
   ammo: 'interceptor' | 'selfDefense' | 'drone' | 'perRound' | 'none';
-  /** True when the countered enemy mechanics are not yet implemented in the
-   *  sim — the branch is fully defined and validated, and becomes live the
-   *  moment the enemy branch lands. */
-  future?: boolean;
   nodes: CounterNodeDef[];
   tactics: CounterTacticDef[];
   /** ladder = tactics chain; parallel = independent paths off the base node. */
@@ -858,7 +855,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
   },
 
   // =========================================================================
-  // TORPEDO WARFARE (enemy branch designed, not yet fielded — see future flag)
+  // TORPEDO WARFARE
   // =========================================================================
   hydrophone: {
     id: 'hydrophone',
@@ -871,7 +868,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Standard & homing torpedo noise at base; wakeless low-signature torpedoes via Low-Signature Processing.',
     equipment: { kind: 'cargoModule', id: 'hydrophone' },
     ammo: 'none',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -956,7 +952,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     weapon: 'depthCharge',
     equipment: { kind: 'escortModule', id: 'depthCharges' },
     ammo: 'perRound',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1068,7 +1063,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Standard & homing torpedoes at base; low-signature via Return Processing.',
     equipment: { kind: 'ability', id: 'sonar' },
     ammo: 'perRound',
-    future: true,
     tacticStyle: 'parallel',
     nodes: [
       {
@@ -1140,7 +1134,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     weapon: 'deckGun',
     equipment: { kind: 'escortModule', id: 'deckGun' },
     ammo: 'none',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1254,7 +1247,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'The Boarding Boat node only — no help vs missiles, mines, torpedoes, artillery or ordinary hull damage.',
     equipment: { kind: 'cargoModule', id: 'antiBoarding' },
     ammo: 'none',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1340,7 +1332,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     weapon: 'counterBattery',
     equipment: { kind: 'baseModule', id: 'counterBattery' },
     ammo: 'none',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1458,7 +1449,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Screening Smoke at base; Blinding Smoke via Blinding-Smoke Resistance.',
     equipment: { kind: 'cargoModule', id: 'thermalImaging' },
     ammo: 'none',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1610,7 +1600,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     weapon: 'flak',
     equipment: { kind: 'cargoModule', id: 'flak' },
     ammo: 'perRound',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -1712,7 +1701,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Sensor Jamming only: shortens blackouts and keeps chosen sensor families partially alive. Cannot remove or prevent the jamming itself.',
     equipment: { kind: 'ability', id: 'hardened' },
     ammo: 'perRound',
-    future: true,
     tacticStyle: 'ladder',
     nodes: [
       {
@@ -2066,6 +2054,17 @@ export const AUTO_GRANTED: ReadonlySet<ResearchId> = new Set(
 /** The effective researched set: player-completed entries plus every granted
  *  entry whose prerequisites are satisfied (iterated to a fixed point so
  *  granted chains resolve). */
+/** True when NONE of the enemy branches this counter answers can be fielded
+ *  yet — the branch is fully defined and validated and goes live the moment the
+ *  enemy pass lands. Derived from the enemy catalogue rather than a flag kept by
+ *  hand, so it stops claiming "awaiting enemy capability" on its own as each
+ *  branch ships. (It was wrong for the whole torpedo category until this was
+ *  derived: three branches still advertised a capability that had shipped.) */
+export function awaitingEnemyCapability(branch: CounterBranchDef): boolean {
+  if (branch.counters.length === 0) return false;
+  return branch.counters.every((key) => !ENEMY_BRANCHES[key].implemented);
+}
+
 export function effectiveResearch(completed: readonly ResearchId[]): Set<ResearchId> {
   const set = new Set<ResearchId>(completed.filter((id) => RESEARCH_INDEX[id]));
   let grew = true;
@@ -2381,6 +2380,7 @@ export function deriveCounterEffects(
       lockdown: ab.flags.has('lockdown'),
       counterTeam: ab.flags.has('counterTeam'),
       emergencyRejection: ab.flags.has('rejection'),
+      autoPriority: ab.flags.has('autoPriority'),
     },
 
     hardened: {
@@ -2483,8 +2483,13 @@ export const LOSS_CAUSE_TO_ENEMY_BRANCH: Record<string, EnemyBranchKey | 'collat
   chartedMine: 'mines',
   lowSigMine: 'mines',
   torpedo: 'torpedoes',
+  homingTorpedo: 'torpedoes',
+  lowSigTorpedo: 'torpedoes',
   attackBoat: 'attackBoats',
-  boarding: 'attackBoats',
+  rocketBoat: 'attackBoats',
+  captured: 'attackBoats',
+  rangingArtillery: 'artillery',
+  rollingBarrage: 'artillery',
   artillery: 'artillery',
   explosion: 'collateral',
   timeout: 'attrition',

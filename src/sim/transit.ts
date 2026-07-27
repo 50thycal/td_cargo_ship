@@ -8,16 +8,20 @@
 // automation loops — an invalid engagement is rejected here, not just greyed
 // out in the UI.
 
-import { COMBAT, NAV, SIM, SPAWN, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, WORLD } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
-import { canEngage, deriveCounterEffects } from '../data/counters';
+import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
+import { targetingSkill } from './evolution';
 import type { RNG } from './rng';
 import type {
   AreaEffect,
+  ArtilleryVariant,
   Base,
+  BoatVariant,
   CampaignState,
   CombatEffects,
   CounterRoundStats,
+  EnemyInstallation,
   Escort,
   FormationId,
   LauncherKind,
@@ -267,6 +271,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         flakCooldown: 0,
         smokeGraceUntil: 0,
         straggling: false,
+        damageByBranch: {},
+        boardingSeconds: 0,
+        boardingLockUntil: 0,
+        lockdownUsed: false,
+        rejectionUsed: false,
+        captured: false,
+        captureExitAt: 0,
+        disabledUntil: 0,
       });
     }
   }
@@ -303,7 +315,28 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     escorts: [],
     bases: [],
     threats: [],
-    installations: [],
+    installations: plan.installations.map((p) => ({
+      id: nextId++,
+      kind: 'artillery' as const,
+      x: p.x,
+      y: p.y,
+      variant: p.variant,
+      suppressedUntil: 0,
+      strikes: 0,
+      destroyed: false,
+      // Guns open up after a short lay-in rather than the instant the round
+      // starts, so the first shells are a beat the player can read.
+      cooldown: COMBAT.artillery.reload[p.variant] * 1.5,
+      walkShots: 0,
+      barrageLeft: 0,
+      barrageFromX: p.x,
+      barrageY: WORLD.lanes[0],
+      barrageNextAt: 8,
+    })),
+    shells: [],
+    smokeQueue: [...plan.smoke].sort((a, b) => a.time - b.time),
+    eaQueue: buildEaQueue(plan),
+    pendingJamming: plan.electronic.jamming,
     interceptors: [],
     drones: [],
     depthChargeShots: [],
@@ -325,11 +358,11 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     smokeCharges,
     rebootCharges,
     jammingSeconds: 0,
-    enemyTargetingSkill: clamp(
-      (campaign.round - COMBAT.targetingSkillStartRound) / COMBAT.targetingSkillSpanRounds,
-      0,
-      1,
-    ),
+    // How sharply the enemy aims comes from its Targeting Doctrine rung, which
+    // it unlocks by FIELDING branches — a broader arsenal aims smarter, not
+    // just louder (ENEMY_ATTACKS.md). Early campaigns still ramp, because the
+    // enemy has only reached the low rungs by then.
+    enemyTargetingSkill: targetingSkill(campaign.evolution.economy),
     spawnQueue: [...plan.spawns].sort((a, b) => a.time - b.time),
     events: [],
     stats: {
@@ -350,6 +383,23 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       minesRevealed: 0,
       minesDetonated: 0,
       minesSwept: 0,
+      torpedoesLaunched: 0,
+      torpedoesDetected: 0,
+      torpedoesHit: 0,
+      torpedoesDestroyed: 0,
+      boatsLaunched: 0,
+      boatsSunk: 0,
+      boatKills: 0,
+      shipsCaptured: 0,
+      shellsFired: 0,
+      shellHits: 0,
+      batteriesDestroyed: 0,
+      smokeCloudsLaid: 0,
+      concealedSeconds: 0,
+      reconPlanes: 0,
+      disablingDrones: 0,
+      aircraftDowned: 0,
+      shipDisabledSeconds: 0,
       ammoUsed: 0,
       ecmUsed: 0,
       scanUsed: 0,
@@ -363,6 +413,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         smoke: smokeCharges,
         reboot: rebootCharges,
       }),
+      enemyBranch: {},
     },
     effects,
     baseSpeed: Math.min(
@@ -479,6 +530,55 @@ function inPlayerSmoke(t: TransitState, x: number, y: number): boolean {
   return false;
 }
 
+/** Enemy smoke covering a point, if any.
+ *
+ *  Thermal/radar imaging is the see-through counter, and it is deliberately
+ *  LOCAL rather than a global switch: an equipped hull burns through the cloud
+ *  within its own range, so the module has to be carried near the trouble to be
+ *  worth anything. Blinding smoke is thicker and needs the Blinding-Smoke
+ *  Resistance node on top of the base module. */
+function enemySmokeAt(t: TransitState, x: number, y: number): AreaEffect | null {
+  for (const fx of t.areaEffects) {
+    if (fx.kind !== 'enemySmoke' || t.time >= fx.until) continue;
+    if (dist(x, y, fx.x, fx.y) > fx.radius) continue;
+    if (fx.blinding && !t.effects.thermal.blindingResistance) return fx;
+    const seen = activeShips(t).some(
+      (s) => s.modules.includes('thermalImaging') && dist(s.x, s.y, x, y) <= t.effects.thermal.range,
+    );
+    if (!seen) return fx;
+  }
+  return null;
+}
+
+/** Is an enemy recon plane airborne right now? While one is, every launcher's
+ *  accuracy is degraded (COMBAT.electronic.reconAccuracyPenalty), which is both
+ *  the reason to shoot it and the reason its branch earns. */
+function reconOverhead(t: TransitState): boolean {
+  return t.threats.some((th) => th.alive && th.kind === 'reconPlane');
+}
+
+/** Mark every threat sitting in enemy smoke as concealed.
+ *
+ *  The LOCKED soft model: a concealed threat keeps a faint bearing marker so
+ *  the player can still tell something is coming from over there, but loses its
+ *  precise tap-target until it clears. It is never removed from the sim — the
+ *  missile is still flying and will still hit; the player just cannot point at
+ *  it. Fully hiding it would be too punishing in a tap-to-target game. */
+function updateConcealment(t: TransitState, dt: number): void {
+  for (const threat of t.threats) {
+    if (!threat.alive) {
+      threat.concealed = false;
+      continue;
+    }
+    const cloud = enemySmokeAt(t, threat.x, threat.y);
+    threat.concealed = cloud !== null;
+    if (cloud) {
+      threat.wasConcealed = true;
+      t.stats.concealedSeconds += dt;
+    }
+  }
+}
+
 /** Is a sensor family functional right now? Enemy sensor jamming blacks out
  *  detection except for hardened protected channels (jamming itself is an
  *  enemy ability with no shootable object — see ENEMY_ATTACKS.md). */
@@ -550,6 +650,25 @@ function announceDebut(t: TransitState, key: TechKey): void {
   if (t.debutsSeen.includes(key)) return;
   t.debutsSeen.push(key);
   pushEvent(t, { type: 'techDebut', detail: key });
+}
+
+/** Torpedo debuts. Called wherever the player learns a torpedo exists — on
+ *  detection, or on impact if it was never found. A revealed weapon shows what
+ *  it is: a homing run visibly tracks, a wakeless one is identified by what it
+ *  did NOT leave behind. */
+function announceTorpedo(t: TransitState, threat: Threat): void {
+  announceDebut(t, 'torpedo');
+  if (threat.homing) announceDebut(t, 'homingTorpedo');
+  if (threat.lowSig) announceDebut(t, 'lowSigTorpedo');
+}
+
+/** Attack-boat debuts. Boats are surface craft in plain sight, so the player
+ *  learns what they are facing the moment one puts to sea — no detection
+ *  gate, unlike the underwater branch. */
+function announceBoat(t: TransitState, variant: BoatVariant): void {
+  announceDebut(t, 'attackBoat');
+  if (variant === 'rocket') announceDebut(t, 'rocketBoat');
+  if (variant === 'boarding') announceDebut(t, 'boardingBoat');
 }
 
 /** Rough seconds until a missile reaches whatever it is aimed at (used by the
@@ -650,6 +769,65 @@ function pickMissileTarget(
   return entries[entries.length - 1].target;
 }
 
+/** Credit an enemy BRANCH with what its attack just achieved. The enemy's
+ *  procurement economy divides this by what it spent to get ROI, which is what
+ *  makes it pivot away from attacks the player has countered. Causes that are
+ *  not a branch's doing (a tanker's secondary blast, a ship lost at sea) map to
+ *  'collateral'/'attrition' and are deliberately not credited to anyone. */
+function creditEnemyBranch(
+  t: TransitState,
+  cause: string,
+  damage: number,
+  killed: boolean,
+): void {
+  const branch = branchOf(cause);
+  if (!branch) return;
+  const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
+  entry.damage += damage;
+  if (killed) entry.kills++;
+}
+
+/** The enemy branch behind a loss cause, or null when it belongs to nobody
+ *  (a tanker's secondary blast, a ship lost at sea). */
+function branchOf(cause: string): string | null {
+  const bare = cause.replace(/^(escort|base):/, '');
+  const branch = LOSS_CAUSE_TO_ENEMY_BRANCH[bare];
+  if (!branch || branch === 'collateral' || branch === 'attrition') return null;
+  return branch;
+}
+
+/** Split a kill across the branches that actually did the damage.
+ *
+ *  Kill credit used to go entirely to whichever attack landed the final blow,
+ *  which quietly decided the whole economy: a mine does 115 to a 100hp hull and
+ *  therefore almost always finishes, while a 34-damage missile almost never
+ *  does. Missiles measured at ~1200 budget per kill against a mine's ~70, not
+ *  because they achieved nothing — a third of them got through and they dealt
+ *  50k damage across a sweep — but because something else was always credited
+ *  with the hull they had softened. The allocator read that as "missiles do not
+ *  work" and it was an artifact of the scoring, not the sim. */
+function creditKillShare(t: TransitState, ship: Ship, finisher: string): void {
+  const tally = { ...ship.damageByBranch };
+  // The finishing blow counts even if it dealt no tracked damage (a capture).
+  const finishBranch = branchOf(finisher);
+  if (finishBranch && !(finishBranch in tally)) tally[finishBranch] = 0;
+  const total = Object.values(tally).reduce((a, b) => a + b, 0);
+  if (total <= 0) {
+    // No damage tracked (capture, or a one-shot that bypassed the tally):
+    // the finisher takes the whole kill.
+    if (finishBranch) {
+      const entry = (t.stats.enemyBranch[finishBranch] ??= { damage: 0, kills: 0 });
+      entry.kills += 1;
+    }
+    return;
+  }
+  for (const [branch, dealt] of Object.entries(tally)) {
+    if (dealt <= 0) continue;
+    const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
+    entry.kills += dealt / total;
+  }
+}
+
 function damageShip(
   t: TransitState,
   ship: Ship,
@@ -657,6 +835,10 @@ function damageShip(
   cause: string,
   rng: RNG,
   canIgnite: boolean,
+  /** The threat that dealt this, when there is one. Only used to work out
+   *  whether a support branch enabled the hit — a missile the player never got
+   *  a clean look at pays the smoke that hid it. */
+  source?: Threat,
 ): void {
   if (!ship.alive || ship.delivered) return;
   let dealt = amount * t.effects.damageTakenMult;
@@ -668,6 +850,11 @@ function damageShip(
     t.stats.counter.damagePrevented.compartmentalization += prevented;
   }
   ship.hp -= dealt;
+  creditEnemyBranch(t, cause, dealt, false);
+  // Remember who wore this hull down, so the kill can be split fairly later.
+  const branch = branchOf(cause);
+  if (branch) ship.damageByBranch[branch] = (ship.damageByBranch[branch] ?? 0) + dealt;
+  creditAssist(t, ship, dealt, source);
   pushEvent(t, { type: 'shipHit', shipId: ship.id, shipName: ship.name, cause });
   if (canIgnite && ship.hp > 0) {
     const fs = ship.modules.includes('fireSuppression');
@@ -710,6 +897,7 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   ship.alive = false;
   ship.hp = 0;
   t.stats.lost++;
+  creditKillShare(t, ship, cause);
   pushEvent(t, { type: 'shipLost', shipId: ship.id, shipName: ship.name, cause });
   const def = SHIP_CLASSES[ship.classId];
   if (def.explodes) {
@@ -731,6 +919,7 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
 function damageEscort(t: TransitState, escort: Escort, amount: number, cause: string): void {
   if (!escort.alive) return;
   escort.hp -= amount * t.effects.damageTakenMult;
+  creditEnemyBranch(t, cause, amount * t.effects.damageTakenMult, false);
   const disableUntil = t.time + COMBAT.escort.disableSeconds;
   if (disableUntil > escort.disabledUntil) {
     escort.disabledUntil = disableUntil;
@@ -742,6 +931,7 @@ function damageEscort(t: TransitState, escort: Escort, amount: number, cause: st
     escort.alive = false;
     escort.moveTarget = null;
     escort.gunTargetId = null;
+    creditEnemyBranch(t, cause, 0, true);
     t.stats.escortsLost++;
     pushEvent(t, { type: 'shipLost', shipId: escort.id, cause: `escort:${cause}` });
   }
@@ -833,6 +1023,13 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           type: 'launchFailed',
           detail: `Interceptors cannot engage ${threat.kind}`,
         });
+        return;
+      }
+      // Enemy smoke: the threat is still there and still coming, but there is
+      // no precise target to hand a launcher. This is the whole branch — it
+      // steals the reaction window rather than the shot.
+      if (threat.concealed) {
+        pushEvent(t, { type: 'launchFailed', detail: 'No firing solution — target is in smoke' });
         return;
       }
       if (t.ammo <= 0) {
@@ -1258,6 +1455,8 @@ function fireCounterBattery(
     pushEvent(t, { type: 'suppressed', detail: `installation:${pos.id}` });
     if (t.effects.counterBattery.coordinatedStrike && pos.strikes >= 3) {
       pos.destroyed = true;
+      t.stats.batteriesDestroyed++;
+      pushEvent(t, { type: 'suppressed', detail: `destroyed:${pos.id}` });
     }
   }
 }
@@ -1269,8 +1468,10 @@ function revealTorpedoesInPing(t: TransitState, fx: AreaEffect): void {
     if (threat.lowSig && !t.effects.abilities.sonar.unlockedLowSig) continue;
     if (dist(threat.x, threat.y, fx.x, fx.y) <= fx.radius) {
       threat.revealed = true;
+      t.stats.torpedoesDetected++;
       t.stats.counter.detections.activeSonar++;
       pushEvent(t, { type: 'torpedoDetected', lowSig: threat.lowSig, detail: 'activeSonar' });
+      announceTorpedo(t, threat);
     }
   }
 }
@@ -1510,7 +1711,14 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
     }
     // Auto-acquisition (nearest valid boat), respecting distributed fire.
     if (!target && fx.autoNearest && t.autoFire.deckGun) {
-      const candidates = boats.filter((b) => dist(escort.x, escort.y, b.x, b.y) <= fx.range);
+      let candidates = boats.filter((b) => dist(escort.x, escort.y, b.x, b.y) <= fx.range);
+      // Automatic Threat Priority: a boarding party already on a hull outranks
+      // every other boat in reach. A capture is unrecoverable; a few more
+      // seconds of gunfire from a small-arms boat is not.
+      if (t.effects.antiBoarding.autoPriority) {
+        const attached = candidates.filter((b) => b.boatVariant === 'boarding' && b.engaging);
+        if (attached.length > 0) candidates = attached;
+      }
       let pool = candidates;
       if (fx.distributedFire) {
         // Avoid overkill: prefer boats no other gun is already working on.
@@ -1560,7 +1768,13 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         target.alive = false;
         target.engagedByEscortId = undefined;
         t.stats.counter.deckGunKills++;
+        t.stats.boatsSunk++;
         pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
+        // Sinking a boarding boat throws its party off the hull. The progress
+        // it had made is lost — that is what makes shooting the boat the
+        // answer, rather than merely a way to stop the clock where it stands.
+        const boarded = t.ships.find((s) => s.id === target.targetShipId);
+        if (boarded) releaseBoarding(t, boarded);
       }
     }
   }
@@ -1669,6 +1883,518 @@ function updateFlak(t: TransitState, dt: number): void {
   }
 }
 
+/** Attack boats: the surface branch. A boat is a persistent unit, so this is a
+ *  small state machine rather than a projectile update — close, commit, hold
+ *  station and work on one hull until it is gone, then pause and pick another.
+ *  Killing the boat is the only way to stop it, and only the deck gun can. */
+function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.attackBoat;
+  for (const boat of t.threats) {
+    if (boat.kind !== 'attackBoat' || !boat.alive) continue;
+    const variant = boat.boatVariant ?? 'smallArms';
+
+    // Re-acquire when the committed hull is gone, delivered or taken. Boats
+    // pick their target on arrival, not at launch, so a long run-in never
+    // wastes them on a ship that has since scored.
+    let target = t.ships.find((s) => s.id === boat.targetShipId);
+    if (!target || !target.alive || target.delivered || target.captured) {
+      if (target) releaseBoarding(t, target);
+      boat.targetShipId = undefined;
+      boat.engaging = false;
+      target = undefined;
+      if (t.time < (boat.retargetAt ?? 0)) continue;
+      const candidates = targetableShips(t);
+      if (candidates.length === 0) continue;
+      // Boarding boats hunt the prize — that is the T4 doctrine they grant.
+      const pick =
+        variant === 'boarding'
+          ? candidates.reduce((best, s) =>
+              SHIP_CLASSES[s.classId].value > SHIP_CLASSES[best.classId].value ? s : best,
+            )
+          : candidates.reduce((best, s) =>
+              dist(boat.x, boat.y, s.x, s.y) < dist(boat.x, boat.y, best.x, best.y) ? s : best,
+            );
+      boat.targetShipId = pick.id;
+      target = pick;
+    }
+    if (!target) continue;
+
+    // Close to weapons range, then hold station alongside. A boat matches the
+    // convoy's pace once attached, so the hull cannot simply outrun it.
+    const range = variant === 'boarding' ? fx.boardRange : fx.engageRange;
+    const d = dist(boat.x, boat.y, target.x, target.y) || 1;
+    if (d > range) {
+      boat.engaging = false;
+      boat.vx = ((target.x - boat.x) / d) * fx.speed;
+      boat.vy = ((target.y - boat.y) / d) * fx.speed;
+      boat.x += boat.vx * dt;
+      boat.y += boat.vy * dt;
+      continue;
+    }
+    boat.engaging = true;
+    // Station-keeping: drift with the target rather than orbiting it.
+    boat.vx = 0;
+    boat.vy = 0;
+    boat.x += (target.x - boat.x) * Math.min(1, dt * 2);
+    boat.y += (target.y - boat.y) * Math.min(1, dt * 2);
+
+    if (variant === 'boarding') {
+      advanceBoarding(t, boat, target, dt);
+      continue;
+    }
+
+    // Gunfire: sustained damage, no accuracy roll — the boat is alongside.
+    const before = target.hp;
+    target.hp -= fx.dps[variant] * dt * t.effects.damageTakenMult;
+    const dealt = before - target.hp;
+    creditEnemyBranch(t, boatCause(variant), dealt, false);
+    // Gunfire here bypasses damageShip (it is a continuous stream, not a hit),
+    // so the per-hull tally that splits the eventual kill has to be kept here.
+    target.damageByBranch.attackBoats = (target.damageByBranch.attackBoats ?? 0) + dealt;
+    if (target.hp <= 0) {
+      t.stats.boatKills++;
+      killShip(t, target, boatCause(variant));
+      boat.targetShipId = undefined;
+      boat.engaging = false;
+      boat.retargetAt = t.time + fx.retargetDelay;
+    }
+  }
+
+  // Captured hulls steer off toward the hostile shore under their prize crew.
+  // They are already out of the game; this is purely so the player can watch it
+  // happen instead of a ship blinking out.
+  for (const ship of t.ships) {
+    if (!ship.captured || t.time >= ship.captureExitAt) continue;
+    ship.y += (WORLD.launchSites[0].y - ship.y) * Math.min(1, dt * 0.6);
+    ship.x -= 20 * dt;
+  }
+}
+
+/** Loss cause naming the boat node responsible, so the AAR can be specific. */
+function boatCause(variant: BoatVariant): string {
+  return variant === 'rocket' ? 'rocketBoat' : variant === 'boarding' ? 'captured' : 'attackBoat';
+}
+
+/** Drop a half-finished boarding. Progress is LOST, not paused — driving the
+ *  boat off has to be worth something, or the counter is just a delay. */
+function releaseBoarding(t: TransitState, ship: Ship): void {
+  if (ship.boardingSeconds <= 0) return;
+  ship.boardingSeconds = 0;
+  t.stats.counter.boardingInterrupted++;
+  pushEvent(t, { type: 'boardingRepelled', shipId: ship.id, shipName: ship.name });
+}
+
+/** Boarding: the capture clock, and every anti-boarding node that fights it. */
+function advanceBoarding(t: TransitState, boat: Threat, ship: Ship, dt: number): void {
+  const fx = t.effects.antiBoarding;
+  const equipped = fx.equippedEffect && ship.modules.includes('antiBoarding');
+  if (ship.boardingSeconds <= 0) {
+    t.stats.counter.boardingAttempts++;
+    pushEvent(t, { type: 'boardingStarted', shipId: ship.id, shipName: ship.name });
+  }
+
+  // Citadel Lockdown: one free freeze partway through the takeover.
+  const needed = COMBAT.attackBoat.boardingSeconds;
+  if (equipped && fx.lockdown && !ship.lockdownUsed && ship.boardingSeconds >= needed * 0.5) {
+    ship.lockdownUsed = true;
+    ship.boardingLockUntil = t.time + 4;
+  }
+  if (t.time < ship.boardingLockUntil) return;
+
+  // Counter-Boarding Team: while the boat is under deck-gun fire the crew is
+  // pushing them back off, not merely holding. This is the node that rewards
+  // actually shooting at the thing rather than buying armour and waiting.
+  if (equipped && fx.counterTeam && boat.engagedByEscortId !== undefined) {
+    ship.boardingSeconds = Math.max(0, ship.boardingSeconds - dt);
+    return;
+  }
+
+  ship.boardingSeconds += dt / (equipped ? fx.slowMult : 1);
+
+  // Emergency Rejection: one almost-complete capture per hull is thrown back.
+  // It buys time — the boat is untouched and will simply start again.
+  if (equipped && fx.emergencyRejection && !ship.rejectionUsed && ship.boardingSeconds >= needed * 0.9) {
+    ship.rejectionUsed = true;
+    ship.boardingSeconds = 0;
+    t.stats.counter.boardingInterrupted++;
+    pushEvent(t, { type: 'boardingRepelled', shipId: ship.id, shipName: ship.name, detail: 'rejection' });
+    return;
+  }
+
+  if (ship.boardingSeconds >= needed) {
+    captureShip(t, ship);
+    boat.targetShipId = undefined;
+    boat.engaging = false;
+    boat.retargetAt = t.time + COMBAT.attackBoat.retargetDelay;
+  }
+}
+
+/** A hull taken by a boarding party. Counted as a loss like a sinking, but
+ *  flagged so the AAR and the confidence penalty can treat it as the worse
+ *  outcome it is — the cargo is in enemy hands, not on the seabed. */
+function captureShip(t: TransitState, ship: Ship): void {
+  if (!ship.alive) return;
+  ship.captured = true;
+  ship.captureExitAt = t.time + COMBAT.attackBoat.captureExitSeconds;
+  t.stats.shipsCaptured++;
+  t.stats.counter.boardingCaptures++;
+  killShip(t, ship, 'captured');
+}
+
+/** Artillery: fixed shore guns firing direct across the near water.
+ *
+ *  The whole branch hinges on RANGE. A gun engages only what falls inside its
+ *  reach, which for a coastal gun is the near lane and nothing else, so routing
+ *  the convoy wide is a real and complete answer — and hugging the near lane is
+ *  a real and expensive mistake. Suppression from counter-battery silences a
+ *  gun for a while; enough focused strikes remove it for the round. */
+function updateArtillery(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.artillery;
+  for (const gun of t.installations) {
+    if (gun.destroyed) continue;
+    gun.cooldown -= dt;
+    if (t.time < gun.suppressedUntil) {
+      // A suppressed crew is off the gun, not merely pausing: it loses the
+      // ranging solution it had been building, and a barrage in progress is
+      // broken up rather than resumed where it left off.
+      gun.walkShots = 0;
+      gun.walkTargetShipId = undefined;
+      if (t.effects.counterBattery.barrageDisruption) gun.barrageLeft = 0;
+      continue;
+    }
+
+    if (gun.variant === 'rollingBarrage') {
+      updateBarrage(t, gun, rng);
+      continue;
+    }
+    if (gun.cooldown > 0) continue;
+
+    // Only hulls genuinely inside the gun's reach are candidates. This is the
+    // near-lane rule and it is enforced here rather than by any aiming code.
+    const range = fx.range[gun.variant];
+    const inReach = activeShips(t).filter((s) => dist(gun.x, gun.y, s.x, s.y) <= range);
+    if (inReach.length === 0) {
+      gun.walkShots = 0;
+      gun.walkTargetShipId = undefined;
+      continue;
+    }
+    // T2 doctrine, expressed as geometry rather than a rule: the gun shoots at
+    // what is closest to its own shore.
+    const target = inReach.reduce((best, s) =>
+      dist(gun.x, gun.y, s.x, s.y) < dist(gun.x, gun.y, best.x, best.y) ? s : best,
+    );
+
+    // Ranging artillery WALKS its fire in: consecutive shells at the same hull
+    // tighten the aim, and the solution is lost the moment that hull is no
+    // longer the one being shot at. Holding position in reach is the mistake.
+    let scatter: number = fx.scatter[gun.variant];
+    if (gun.variant === 'ranging') {
+      if (gun.walkTargetShipId === target.id) gun.walkShots++;
+      else {
+        gun.walkTargetShipId = target.id;
+        gun.walkShots = 0;
+      }
+      scatter = Math.max(fx.walkMinScatter, scatter * fx.walkTightening ** gun.walkShots);
+    }
+
+    gun.cooldown = fx.reload[gun.variant];
+    fireShell(t, gun, target.x + rng.range(-scatter, scatter), target.y + rng.range(-scatter, scatter));
+  }
+}
+
+/** A rolling barrage: a salvo of shells sweeping along one lane, then a pause.
+ *  It is aimed at WATER, not at a ship — the point is a wall of fire moving up
+ *  a lane that the convoy has to not be in. */
+function updateBarrage(t: TransitState, gun: EnemyInstallation, rng: RNG): void {
+  const fx = COMBAT.artillery;
+  if (gun.barrageLeft <= 0) {
+    if (t.time < gun.barrageNextAt) return;
+    // Pick the lane inside reach carrying the most hulls — a barrage is worth
+    // firing at the water the convoy is actually using.
+    const reachable = WORLD.lanes.filter((laneY) => Math.abs(laneY - gun.y) <= fx.range.rollingBarrage);
+    if (reachable.length === 0) {
+      gun.barrageNextAt = t.time + fx.barrageInterval;
+      return;
+    }
+    const ships = activeShips(t);
+    const laneY = reachable.reduce((best, laneY) => {
+      const count = (y: number): number => ships.filter((s) => Math.abs(s.y - y) < 90).length;
+      return count(laneY) > count(best) ? laneY : best;
+    });
+    gun.barrageY = laneY;
+    // A rolling barrage WALKS AHEAD of an advancing target — that is the whole
+    // point of the name. Anchoring the sweep to the gun instead put shells on
+    // water the convoy had already crossed: 60 shells and no kills in testing.
+    // Start it just ahead of the leading hull in the lane and sweep forward, so
+    // the convoy sails into successive rounds rather than out of them.
+    const inLane = ships.filter(
+      (s) => Math.abs(s.y - laneY) < 90 && dist(gun.x, gun.y, s.x, s.y) <= fx.range.rollingBarrage,
+    );
+    const leadX = inLane.length > 0 ? Math.max(...inLane.map((s) => s.x)) : gun.x;
+    gun.barrageFromX = leadX + 40 + rng.range(-25, 25);
+    gun.barrageLeft = fx.barrageShells;
+    gun.cooldown = 0;
+  }
+  if (gun.cooldown > 0) return;
+  const fired = fx.barrageShells - gun.barrageLeft;
+  const step = fx.barrageSweep / Math.max(1, fx.barrageShells - 1);
+  const aimX = gun.barrageFromX + fired * step;
+  const s = fx.scatter.rollingBarrage;
+  gun.barrageLeft--;
+  gun.cooldown = fx.reload.rollingBarrage;
+  if (gun.barrageLeft <= 0) gun.barrageNextAt = t.time + fx.barrageInterval;
+  fireShell(t, gun, aimX + rng.range(-s * 0.3, s * 0.3), gun.barrageY + rng.range(-s * 0.4, s * 0.4));
+}
+
+/** Put one shell in the air toward an impact point. */
+function fireShell(t: TransitState, gun: EnemyInstallation, aimX: number, aimY: number): void {
+  const fx = COMBAT.artillery;
+  const d = dist(gun.x, gun.y, aimX, aimY) || 1;
+  t.stats.shellsFired++;
+  t.shells.push({
+    id: t.nextEntityId++,
+    x: gun.x,
+    y: gun.y,
+    vx: ((aimX - gun.x) / d) * fx.shellSpeed,
+    vy: ((aimY - gun.y) / d) * fx.shellSpeed,
+    targetX: aimX,
+    targetY: aimY,
+    damage: fx.damage[gun.variant],
+    variant: gun.variant,
+    alive: true,
+  });
+  announceArtillery(t, gun.variant);
+}
+
+/** Shells in flight. A shell bursts at its aim point and damages what is near
+ *  it — an area weapon, so it never homes and never "misses" a hull it was
+ *  never aimed at. Nothing in the game can shoot one down. */
+function updateShells(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.artillery;
+  for (const shell of t.shells) {
+    if (!shell.alive) continue;
+    const remaining = dist(shell.x, shell.y, shell.targetX, shell.targetY);
+    const step = Math.hypot(shell.vx, shell.vy) * dt;
+    if (remaining > step) {
+      shell.x += shell.vx * dt;
+      shell.y += shell.vy * dt;
+      continue;
+    }
+    shell.x = shell.targetX;
+    shell.y = shell.targetY;
+    shell.alive = false;
+    let hit = false;
+    for (const ship of activeShips(t)) {
+      if (dist(shell.x, shell.y, ship.x, ship.y) > fx.splashRadius) continue;
+      hit = true;
+      damageShip(t, ship, shell.damage, artilleryCause(shell.variant), rng, true);
+    }
+    for (const escort of t.escorts) {
+      if (!escort.alive) continue;
+      if (dist(shell.x, shell.y, escort.x, escort.y) > fx.splashRadius) continue;
+      hit = true;
+      damageEscort(t, escort, shell.damage, `escort:${artilleryCause(shell.variant)}`);
+    }
+    if (hit) t.stats.shellHits++;
+  }
+  t.shells = t.shells.filter((s) => s.alive);
+}
+
+/** Loss cause naming the artillery node responsible. */
+function artilleryCause(variant: ArtilleryVariant): string {
+  return variant === 'ranging'
+    ? 'rangingArtillery'
+    : variant === 'rollingBarrage'
+      ? 'rollingBarrage'
+      : 'artillery';
+}
+
+/** Artillery debuts. Guns are emplacements in plain sight on the far shore, so
+ *  the player learns what they face the first time one opens up. */
+function announceArtillery(t: TransitState, variant: ArtilleryVariant): void {
+  announceDebut(t, 'artillery');
+  if (variant === 'ranging') announceDebut(t, 'rangingArtillery');
+  if (variant === 'rollingBarrage') announceDebut(t, 'rollingBarrage');
+}
+
+/** Schedule the round's recon planes and drones across the fire window. Both
+ *  are launched rather than placed, so they get times the way missiles do. */
+function buildEaQueue(plan: RoundPlan): { time: number; kind: 'reconPlane' | 'disablingDrone' }[] {
+  const out: { time: number; kind: 'reconPlane' | 'disablingDrone' }[] = [];
+  const total = plan.electronic.reconPlanes + plan.electronic.disablingDrones;
+  if (total === 0) return out;
+  const start = 10;
+  const span = 90;
+  for (let i = 0; i < total; i++) {
+    out.push({
+      time: start + (span * (i + 0.4)) / (total + 0.8),
+      kind: i < plan.electronic.reconPlanes ? 'reconPlane' : 'disablingDrone',
+    });
+  }
+  return out.sort((a, b) => a.time - b.time);
+}
+
+/** Lay the enemy's scheduled smoke. Screening clouds have a fixed position over
+ *  the launch sites; blinding clouds resolve their center when they go up, over
+ *  wherever the convoy actually is, so they always land on ships. */
+function updateEnemySmoke(t: TransitState): void {
+  while (t.smokeQueue.length > 0 && t.smokeQueue[0].time <= t.time) {
+    const plan = t.smokeQueue.shift()!;
+    let x = plan.x ?? 0;
+    let y = plan.y ?? 0;
+    if (plan.variant === 'blinding') {
+      const ships = activeShips(t);
+      if (ships.length === 0) continue; // nothing to blind; the charge is wasted
+      x = ships.reduce((a, s) => a + s.x, 0) / ships.length;
+      y = ships.reduce((a, s) => a + s.y, 0) / ships.length;
+    }
+    t.stats.smokeCloudsLaid++;
+    t.areaEffects.push({
+      id: t.nextEntityId++,
+      kind: 'enemySmoke',
+      x,
+      y,
+      radius: COMBAT.enemySmoke.radius,
+      until: t.time + COMBAT.enemySmoke.seconds,
+      blinding: plan.variant === 'blinding',
+    });
+    announceDebut(t, plan.variant === 'blinding' ? 'blindingSmoke' : 'screeningSmoke');
+    pushEvent(t, { type: 'enemySmoke', detail: plan.variant });
+  }
+}
+
+/** Electronic attack: recon planes, disabling drones and sensor jamming.
+ *
+ *  Two of the three are objects the player can shoot; the third deliberately is
+ *  not. ENEMY_ATTACKS.md allows exactly one node in the whole design with no
+ *  counter, and this is it — the work-arounds are hardened channels, emergency
+ *  reboots, and simply not relying on detection for thirty seconds. */
+function updateElectronic(t: TransitState, rng: RNG, dt: number): void {
+  const fx = COMBAT.electronic;
+
+  // Sensor jamming fires once, at the round's start, so its cost is visible up
+  // front rather than sprung late.
+  if (t.pendingJamming > 0 && t.time >= fx.jammingStartT) {
+    t.pendingJamming--;
+    t.jammingSeconds = Math.max(t.jammingSeconds, fx.jammingSeconds);
+    announceDebut(t, 'sensorJamming');
+    pushEvent(t, { type: 'jammingStarted' });
+  }
+
+  // Recon planes and drones launch from the hostile shore.
+  while (t.eaQueue.length > 0 && t.eaQueue[0].time <= t.time) {
+    const launch = t.eaQueue.shift()!;
+    const site = rng.pick(WORLD.launchSites);
+    if (launch.kind === 'reconPlane') {
+      t.stats.reconPlanes++;
+      t.threats.push({
+        id: t.nextEntityId++,
+        kind: 'reconPlane',
+        x: -60,
+        // Crosses OVER the shipping lanes, not along its own shore. A plane
+        // that never comes within flak reach is not shootable in any
+        // meaningful sense, and the design calls for a reaction test.
+        y: rng.pick(WORLD.lanes) + rng.range(-60, 60),
+        vx: fx.reconSpeed,
+        vy: 0,
+        speed: fx.reconSpeed,
+        alive: true,
+        revealed: true,
+        lowSig: false,
+        claimedByInterceptor: false,
+        hp: fx.reconHp,
+        maxHp: fx.reconHp,
+      });
+      announceDebut(t, 'reconPlane');
+      continue;
+    }
+    const target = rng.pick(targetableShips(t) as Ship[]);
+    if (!target) continue;
+    t.stats.disablingDrones++;
+    t.threats.push({
+      id: t.nextEntityId++,
+      kind: 'disablingDrone',
+      x: site.x,
+      y: site.y,
+      vx: 0,
+      vy: 0,
+      speed: fx.droneSpeed,
+      alive: true,
+      revealed: true,
+      lowSig: false,
+      claimedByInterceptor: false,
+      hp: fx.droneHp,
+      maxHp: fx.droneHp,
+      targetKind: 'ship',
+      targetShipId: target.id,
+    });
+    announceDebut(t, 'disablingDrone');
+  }
+
+  // Movement.
+  for (const threat of t.threats) {
+    if (!threat.alive) continue;
+    if (threat.kind === 'reconPlane') {
+      // Straight across the map. It is only overhead for one crossing, which is
+      // what makes shooting it down a reaction test rather than a formality.
+      threat.x += threat.vx * dt;
+      if (threat.x > WORLD.width + 80) threat.alive = false;
+      continue;
+    }
+    if (threat.kind !== 'disablingDrone') continue;
+    const ship = t.ships.find((s) => s.id === threat.targetShipId && s.alive && !s.delivered);
+    if (!ship) {
+      threat.alive = false; // its one target is gone; a single-use weapon wasted
+      continue;
+    }
+    const d = dist(threat.x, threat.y, ship.x, ship.y) || 1;
+    if (d > 18) {
+      threat.vx = ((ship.x - threat.x) / d) * threat.speed;
+      threat.vy = ((ship.y - threat.y) / d) * threat.speed;
+      threat.x += threat.vx * dt;
+      threat.y += threat.vy * dt;
+      continue;
+    }
+    // Arrived: the hull goes dead in the water. It keeps its cargo and its hull
+    // — this branch does not sink anything — but it is now a static target.
+    threat.alive = false;
+    ship.disabledUntil = Math.max(ship.disabledUntil, t.time + fx.droneDisableSeconds);
+    pushEvent(t, { type: 'shipDisabled', shipId: ship.id, shipName: ship.name });
+  }
+
+  // A disabled hull is a sitting target, and the branch that put it there earns
+  // from everything that lands on it while it cannot move.
+  for (const ship of activeShips(t)) {
+    if (t.time < ship.disabledUntil) t.stats.shipDisabledSeconds += dt;
+  }
+}
+
+/** Credit a SUPPORT branch for damage it enabled but did not deal.
+ *
+ *  Smoke and electronic attack take no hulls of their own. Without this they
+ *  score exactly zero, the allocator defunds them on the first settlement, and
+ *  two of seven branches are dead content at any price. The credit is an
+ *  addition rather than a transfer — the branch that fired still gets its full
+ *  result, because both of them genuinely contributed. */
+function creditAssist(t: TransitState, ship: Ship, dealt: number, source?: Threat): void {
+  const share = ENEMY_ECONOMY.assistShare;
+  const pay = (branch: 'smoke' | 'electronic'): void => {
+    const entry = (t.stats.enemyBranch[branch] ??= { damage: 0, kills: 0 });
+    entry.damage += dealt * share;
+    ship.damageByBranch[branch] = (ship.damageByBranch[branch] ?? 0) + dealt * share;
+  };
+  // Hit while the hull was sitting disabled, while detection was blacked out,
+  // or while a recon plane was overhead suppressing every interceptor's
+  // accuracy — that last one is why the branch's cheapest node is worth
+  // anything at all, and why shooting the plane down pays: kill it early and
+  // the branch stops earning for the rest of the round.
+  if (t.time < ship.disabledUntil || t.jammingSeconds > 0 || reconOverhead(t)) pay('electronic');
+  // Hit by something the player never got a clean look at — either the hull
+  // was under a blinding cloud, or the weapon itself came out of a screening
+  // one and could not be pointed at on the way in.
+  if (source?.wasConcealed || enemySmokeAt(t, ship.x, ship.y) !== null) pay('smoke');
+}
+
 /** Passive torpedo detection (hydrophone modules) — bearing contacts. */
 function updateTorpedoDetection(t: TransitState): void {
   if (!sensorAvailable(t, 'torpedoDetection')) return;
@@ -1680,8 +2406,10 @@ function updateTorpedoDetection(t: TransitState): void {
       if (!ship.modules.includes('hydrophone')) continue;
       if (dist(ship.x, ship.y, threat.x, threat.y) <= fx.range) {
         threat.revealed = true;
+        t.stats.torpedoesDetected++;
         t.stats.counter.detections.hydrophone++;
         pushEvent(t, { type: 'torpedoDetected', lowSig: threat.lowSig, detail: 'hydrophone' });
+        announceTorpedo(t, threat);
         break;
       }
     }
@@ -1721,6 +2449,7 @@ function updateDepthChargeShots(t: TransitState, dt: number): void {
         if (!threat.alive || !canEngage('depthCharge', threat.kind)) continue;
         if (dist(shot.x, shot.y, threat.x, threat.y) <= shot.blastRadius) {
           threat.alive = false;
+          t.stats.torpedoesDestroyed++;
           t.stats.counter.depthChargeKills++;
           pushEvent(t, { type: 'depthChargeKill', threatKind: threat.kind, lowSig: threat.lowSig });
         }
@@ -1760,6 +2489,68 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Nothing to shoot at (all ships resolved and no escorts afloat) → skip.
     if (pool.length === 0 && liveEscorts.length === 0) continue;
     const site = { x: spawn.siteX, y: WORLD.launchSites[0].y };
+
+    if (spawn.kind === 'torpedo') {
+      // The UNDERWATER branch: launched from the shore and run under the
+      // surface toward the convoy. Interceptors, ECM and close-in defense are
+      // all useless here by design — the counter is detection + depth charges.
+      const target = pickMissileTarget(t, rng, targetPool, [], 1, site.x, site.y);
+      if (!target) continue;
+      t.stats.torpedoesLaunched++;
+      const tx = target.kind === 'ship' ? target.ship.x : target.escort.x;
+      const ty = target.kind === 'ship' ? target.ship.y : target.escort.y;
+      const d = dist(site.x, site.y, tx, ty) || 1;
+      t.threats.push({
+        id: t.nextEntityId++,
+        kind: 'torpedo',
+        x: site.x,
+        y: site.y,
+        vx: ((tx - site.x) / d) * COMBAT.torpedo.speed,
+        vy: ((ty - site.y) / d) * COMBAT.torpedo.speed,
+        speed: COMBAT.torpedo.speed,
+        alive: true,
+        targetKind: target.kind === 'ship' ? 'ship' : 'escort',
+        targetShipId: target.kind === 'ship' ? target.ship.id : undefined,
+        targetEntityId: target.kind === 'escort' ? target.escort.id : undefined,
+        // A wake-leaving torpedo is only spotted once something is close
+        // enough to read the water (or a hydrophone hears it first).
+        revealed: false,
+        lowSig: !!spawn.lowSig,
+        homing: !!spawn.homing,
+        claimedByInterceptor: false,
+      });
+      continue;
+    }
+
+    if (spawn.kind === 'attackBoat') {
+      // The SURFACE branch: a persistent unit, not a projectile. It puts to sea
+      // from the shore and picks its first hull on arrival rather than at
+      // launch — a boat that takes 20 seconds to close should be hunting what
+      // is actually in front of it, not a ship that has since been delivered.
+      const variant = spawn.boatVariant ?? 'smallArms';
+      t.stats.boatsLaunched++;
+      const maxHp = COMBAT.attackBoat.hp[variant];
+      t.threats.push({
+        id: t.nextEntityId++,
+        kind: 'attackBoat',
+        x: site.x,
+        y: site.y,
+        vx: 0,
+        vy: 0,
+        speed: COMBAT.attackBoat.speed,
+        alive: true,
+        // Boats are surface craft in plain sight — nothing to detect.
+        revealed: true,
+        lowSig: false,
+        claimedByInterceptor: false,
+        hp: maxHp,
+        maxHp,
+        boatVariant: variant,
+        engaging: false,
+      });
+      announceBoat(t, variant);
+      continue;
+    }
 
     if (spawn.kind === 'missile') {
       // A fraction of unguided missiles streak across to strike a shore battery,
@@ -2001,8 +2792,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     );
 
     // Speed eases toward the cap, shedding some pace while turning hardest.
+    // A hull a disabling drone has reached is dead in the water: it coasts to a
+    // stop and sits there, cargo intact, as a static target for everything else.
+    const disabled = t.time < ship.disabledUntil;
     const turnFactor = 1 - NAV.turnSlow * Math.min(1, Math.abs(dh) / (Math.PI / 2));
-    const targetSpeed = Math.max(0, speedCap) * turnFactor;
+    const targetSpeed = disabled ? 0 : Math.max(0, speedCap) * turnFactor;
     ship.speed += clamp(targetSpeed - ship.speed, -NAV.maxAccel * dt, NAV.maxAccel * dt);
     ship.speed = Math.max(0, ship.speed);
 
@@ -2018,7 +2812,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Fire damage over time.
     if (ship.fireSeconds > 0) {
       ship.fireSeconds -= dt;
-      ship.hp -= COMBAT.fireDps * dt * t.effects.damageTakenMult;
+      const burn = COMBAT.fireDps * dt * t.effects.damageTakenMult;
+      ship.hp -= burn;
+      // Fires are started by missile hits, so the burn belongs to that branch
+      // too — otherwise a hull that burns down credits nobody.
+      creditEnemyBranch(t, 'fire', burn, false);
+      ship.damageByBranch.missiles = (ship.damageByBranch.missiles ?? 0) + burn;
       if (ship.hp <= 0) killShip(t, ship, 'fire');
       if (!ship.alive) continue;
     }
@@ -2207,7 +3006,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
             const hx = target.x;
             const hy = target.y;
             const hid = target.id;
-            damageShip(t, target, COMBAT.guided.damage, 'guidedMissile', rng, true);
+            damageShip(t, target, COMBAT.guided.damage, 'guidedMissile', rng, true, threat);
             chainSplash(t, hx, hy, hid, rng); // bunched hulls share the blast (Tight)
           } else {
             pushEvent(t, { type: 'missileMiss', threatKind: 'guidedMissile' });
@@ -2253,7 +3052,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         const hx = struckShip.x;
         const hy = struckShip.y;
         const hid = struckShip.id;
-        damageShip(t, struckShip, COMBAT.missile.damage, 'missile', rng, true);
+        damageShip(t, struckShip, COMBAT.missile.damage, 'missile', rng, true, threat);
         chainSplash(t, hx, hy, hid, rng); // bunched hulls share the blast (Tight)
       } else if (struckEscort) {
         threat.alive = false;
@@ -2296,12 +3095,104 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
   }
 
-  // --- Torpedoes (compatibility motion: straight runners; the enemy pass owns
-  //     spawning/behavior — nothing here invents new enemy mechanics) --------
+  // --- Torpedoes -------------------------------------------------------------
+  // Run under the surface toward the convoy. The homing node corrects course;
+  // the straight node does not. Nothing in the air-defense stack touches them.
   for (const threat of t.threats) {
     if (threat.kind !== 'torpedo' || !threat.alive) continue;
+
+    // Homing torpedoes re-aim, re-acquiring if their target is gone.
+    if (threat.homing) {
+      let tgtX: number | undefined;
+      let tgtY: number | undefined;
+      if (threat.targetKind === 'escort') {
+        const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
+        if (esc) {
+          tgtX = esc.x;
+          tgtY = esc.y;
+        }
+      } else {
+        const ship = t.ships.find((sh) => sh.id === threat.targetShipId && sh.alive && !sh.delivered);
+        if (ship) {
+          tgtX = ship.x;
+          tgtY = ship.y;
+        }
+      }
+      if (tgtX === undefined) {
+        const candidates = targetableShips(t);
+        if (candidates.length > 0) {
+          const nearest = candidates.reduce((best, sh) =>
+            dist(threat.x, threat.y, sh.x, sh.y) < dist(threat.x, threat.y, best.x, best.y) ? sh : best,
+          );
+          threat.targetKind = 'ship';
+          threat.targetShipId = nearest.id;
+          threat.targetEntityId = undefined;
+          tgtX = nearest.x;
+          tgtY = nearest.y;
+        }
+      }
+      if (tgtX !== undefined && tgtY !== undefined) {
+        const desired = Math.atan2(tgtY - threat.y, tgtX - threat.x);
+        const current = Math.atan2(threat.vy, threat.vx);
+        const maxTurn = COMBAT.torpedo.turnRate * dt;
+        const angle = current + clamp(angleDiff(desired, current), -maxTurn, maxTurn);
+        threat.vx = Math.cos(angle) * threat.speed;
+        threat.vy = Math.sin(angle) * threat.speed;
+      }
+    }
+
     threat.x += threat.vx * dt;
     threat.y += threat.vy * dt;
+
+    // WAKE: a straight or homing torpedo leaves a trail any nearby hull can
+    // read off the water with no equipment. The low-signature node leaves
+    // none, so it stays invisible until an active sensor finds it — that is
+    // the entire reason to buy a hydrophone upgrade or an active sonar ping.
+    if (!threat.revealed && !threat.lowSig) {
+      for (const ship of activeShips(t)) {
+        if (dist(ship.x, ship.y, threat.x, threat.y) <= COMBAT.torpedo.wakeVisibleRange) {
+          threat.revealed = true;
+          t.stats.torpedoesDetected++;
+          pushEvent(t, { type: 'torpedoDetected', lowSig: false, detail: 'wake' });
+          announceTorpedo(t, threat);
+          break;
+        }
+      }
+    }
+
+    // Terminal: the first hull it brushes takes the hit. The cause names the
+    // node that fired so the AAR can explain what the player actually faced.
+    const cause = threat.lowSig ? 'lowSigTorpedo' : threat.homing ? 'homingTorpedo' : 'torpedo';
+    let struck: Ship | null = null;
+    for (const ship of activeShips(t)) {
+      if (dist(threat.x, threat.y, ship.x, ship.y) <= COMBAT.torpedo.hitRadius) {
+        struck = ship;
+        break;
+      }
+    }
+    if (struck) {
+      threat.alive = false;
+      t.stats.torpedoesHit++;
+      announceTorpedo(t, threat);
+      damageShip(t, struck, COMBAT.torpedo.damage, cause, rng, false, threat);
+      continue;
+    }
+    let struckEscort: Escort | null = null;
+    for (const esc of t.escorts) {
+      if (!esc.alive) continue;
+      if (dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.torpedo.hitRadius + COMBAT.escort.hitRadius) {
+        struckEscort = esc;
+        break;
+      }
+    }
+    if (struckEscort) {
+      threat.alive = false;
+      t.stats.torpedoesHit++;
+      announceTorpedo(t, threat);
+      damageEscort(t, struckEscort, COMBAT.torpedo.damage, cause);
+      continue;
+    }
+
     if (
       threat.x < -100 || threat.x > WORLD.width + 100 ||
       threat.y < -100 || threat.y > WORLD.height + 100
@@ -2309,6 +3200,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       threat.alive = false;
     }
   }
+
+  updateAttackBoats(t, rng, dt);
+  updateArtillery(t, rng, dt);
+  updateShells(t, rng, dt);
+  updateEnemySmoke(t);
+  updateElectronic(t, rng, dt);
+  updateConcealment(t, dt);
 
   // --- Cargo-module systems ---------------------------------------------------
   updateSelfDefense(t, dt);
@@ -2350,6 +3248,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
             if (near) hitChance += t.effects.missileWarning.assist / 2;
           }
         }
+        // Blinding smoke degrades the missile-warning cues inside it, so the
+        // assisted targeting the player paid for stops helping in the cloud.
+        const cloud = enemySmokeAt(t, threat.x, threat.y);
+        if (cloud?.blinding) hitChance -= t.effects.missileWarning.assist * COMBAT.enemySmoke.warningDegradation;
+        // A recon plane overhead drags every launcher's accuracy down for as
+        // long as it is alive — which is exactly why it is worth shooting.
+        if (reconOverhead(t)) hitChance -= COMBAT.electronic.reconAccuracyPenalty;
         // The guided node's evasion penalty (an enemy property, not a stat).
         if (threat.kind === 'guidedMissile') hitChance -= COMBAT.guided.accuracyPenalty;
         hitChance = Math.max(0.05, Math.min(0.95, hitChance));
@@ -2358,6 +3263,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         threat.alive = false;
         if (isFlak) {
           t.stats.counter.flakKills++;
+          if (threat.kind === 'reconPlane' || threat.kind === 'disablingDrone') {
+            t.stats.aircraftDowned++;
+          }
           pushEvent(t, { type: 'flakKill', threatKind: threat.kind });
         } else {
           t.stats.missilesIntercepted++;

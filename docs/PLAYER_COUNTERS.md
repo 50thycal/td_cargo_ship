@@ -119,9 +119,11 @@ domain ⇒ same number across branches).
 ## Categories and branches
 
 Notation: ⚑ = branch counters an enemy branch that is **designed but not yet
-fielded by the enemy sim** (`future` flag in data). The player-side data,
-research, equipment, sim validation and behavior are implemented and tested
-against injected threats; they go live the moment the enemy pass lands.
+fielded by the enemy sim**. The player-side data, research, equipment, sim
+validation and behavior are implemented and tested against injected threats;
+they go live the moment the enemy pass lands. In code this is derived from the
+enemy catalogue (`awaitingEnemyCapability`) rather than kept by hand, so the
+research screen stops disclaiming a capability the moment that branch ships.
 
 ### Category: Missile Defense
 
@@ -210,7 +212,7 @@ Coverage (reveal radius 130→185, band scales) · Longer Track Persistence.
 Static mines stay charted permanently once revealed (their position cannot go
 stale); persistence governs moving contacts when drifting mines land.
 
-### Category: Torpedo Warfare ⚑ (enemy branch designed, not yet fielded)
+### Category: Torpedo Warfare (enemy branch LIVE)
 
 #### Branch: Hydrophone — cargo module, detects Torpedoes
 **Nodes:** Base (standard + homing torpedo noise, Medium range, approximate
@@ -244,7 +246,7 @@ lingering tracks). **Tactic paths (parallel):** +1 charge · larger radius ·
 longer track duration. Same placed interaction as Scan Pulse, but strictly the
 underwater domain.
 
-### Category: Anti-Surface Warfare ⚑
+### Category: Anti-Surface Warfare (enemy branch LIVE)
 
 #### Branch: Escort Deck Gun / Autocannon — escort module, attacks Attack Boats
 Boats are persistent HP targets; the gun commits to a selected boat until it
@@ -268,7 +270,7 @@ per round, cancels an almost-complete capture — buys time, kills nothing).
 **Tactics:** Boarding Alarm (granted) · Automatic Threat Priority (attached
 boarding boats top the deck-gun queue) · Escort Response Cue (informational).
 
-### Category: Counter-Artillery ⚑
+### Category: Counter-Artillery (enemy branch LIVE)
 
 #### Branch: Shore Counter-Battery System — base module, attacks Artillery positions
 Fires at the **gun position** (an installation), never at shells in flight.
@@ -285,7 +287,7 @@ Priority Doctrine (rate-of-fire / barrage-prep / most-valuable-lane priority).
 
 ### Category: Smoke & Concealment
 
-#### Branch: Thermal/Radar Imaging — cargo module, detects through Smoke ⚑
+#### Branch: Thermal/Radar Imaging — cargo module, detects through Smoke
 Sees threats through enemy smoke; removes and destroys nothing.
 **Nodes:** Base (precise tracks inside Screening Smoke, Medium range) →
 Long-Range Imaging (High); Blinding-Smoke Resistance (tracks inside
@@ -306,7 +308,7 @@ debuff, never invulnerability.
 
 ### Category: Electronic Attack & Drones
 
-#### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones ⚑
+#### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones
 Separate equipment and research from the self-defense interceptor — one module
 never solves both missiles and aircraft. Shares only visual language.
 **Nodes:** Base (auto-engages Recon Planes in a Low radius; acc Medium, reload
@@ -318,7 +320,7 @@ Air-Contact Designator (~2× range) · Threat Priority (recon / drone / lowest
 time-to-objective) · Fire-Control Deconfliction (no piling onto a dying
 aircraft).
 
-#### Branch: Hardened & Backup Systems — convoy ability, mitigates Sensor Jamming ⚑
+#### Branch: Hardened & Backup Systems — convoy ability, mitigates Sensor Jamming
 Jamming stays unshootable and cannot be prevented; this reduces its effect.
 **Nodes:** Base Emergency Reboot (shortens the remaining blackout by the Low
 recovery fraction; 1 charge/round) → Protected Detection Channel (pre-round
@@ -418,20 +420,20 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Standard mines | Mine sonar or Scan Pulse | MCM drones (after detection) | Compartmentalization |
 | Low-signature mines | Composite-Signature Analysis / Composite Scan | MCM drones | Compartmentalization |
 | Drifting mines ⚑ | Drift Tracking | Moving-Target Guidance drones | Formation + hull systems |
-| Standard torpedoes ⚑ | Wake (enemy pass) or Hydrophone | Depth charges | Hull systems |
-| Homing torpedoes ⚑ | Hydrophone | Depth charges | Hull systems |
-| Low-signature torpedoes ⚑ | Low-Signature Processing or Active Sonar Return Processing | Depth charges | Hull systems |
-| Small-arms boats ⚑ | Visual contact | Escort deck guns | Hull systems |
-| Rocket boats ⚑ | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
-| Boarding boats ⚑ | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
-| Coastal artillery ⚑ | Firing position (installation) | Counter-battery | Formation + hull systems |
-| Ranging artillery ⚑ | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
-| Rolling barrage ⚑ | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
-| Screening smoke ⚑ | Thermal/radar imaging | *No destructive counter* | Sensor improvement |
-| Blinding smoke ⚑ | Blinding-Smoke Resistance | *No destructive counter* | Sensor networking |
-| Recon plane ⚑ | Air-contact cue | Flak | Hardened systems |
-| Disabling drone ⚑ | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
-| Sensor jamming ⚑ | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
+| Standard torpedoes | Wake (enemy pass) or Hydrophone | Depth charges | Hull systems |
+| Homing torpedoes | Hydrophone | Depth charges | Hull systems |
+| Low-signature torpedoes | Low-Signature Processing or Active Sonar Return Processing | Depth charges | Hull systems |
+| Small-arms boats | Visual contact | Escort deck guns | Hull systems |
+| Rocket boats | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
+| Boarding boats | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
+| Coastal artillery | Firing position (installation) | Counter-battery | Formation + hull systems |
+| Ranging artillery | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
+| Rolling barrage | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
+| Screening smoke | Thermal/radar imaging | *No destructive counter* | Sensor improvement |
+| Blinding smoke | Blinding-Smoke Resistance | *No destructive counter* | Sensor networking |
+| Recon plane | Air-contact cue | Flak | Hardened systems |
+| Disabling drone | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
+| Sensor jamming | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
 | Advanced targeting doctrine | Warning + target indicators | Defensive Smoke Screen | Formation/loadout choices |
 
 Audit results of this matrix (the "review the completed design" pass):

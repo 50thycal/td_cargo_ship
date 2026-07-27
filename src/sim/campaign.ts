@@ -8,7 +8,7 @@
 // Equipment purchases are gated on each branch's base node — intel unlocks,
 // cash equips, and neither substitutes for the other.
 
-import { CAMPAIGN, ECONOMY, EVOLUTION } from '../data/tuning';
+import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
@@ -30,7 +30,7 @@ import {
 } from '../data/counters';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
-import { evolveEnemy, newEvolution, planRound } from './evolution';
+import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -39,6 +39,7 @@ import type {
   BaseModuleId,
   CampaignState,
   CounterTelemetry,
+  EnemyRoundTelemetry,
   EscortModuleId,
   FormationId,
   ModuleId,
@@ -164,18 +165,20 @@ function fastForwardEvolution(c: CampaignState, targetRound: number): void {
       interceptRate: 0.7,
       formation: 'tight',
       mineDetectRate: -1,
+      torpedoDetectRate: -1,
       valueSent: 241,
       deliveredFraction: 0.85,
     };
     evolveEnemy(c.evolution, metrics, roundRng(c, `dev-evolve-${r}`));
   }
   c.round = Math.max(1, Math.floor(targetRound));
-  // Field unlocked capabilities at full scale (skip the debut fairness caps) so
-  // a jumped-to hard level really is hard.
+  // Mark already-purchased capabilities as "met" so a jumped-to level fields
+  // them at full scale rather than re-running their debut fairness caps.
   const evo = c.evolution;
-  if (evo.tracks.guidance >= EVOLUTION.guidanceUnlock) evo.firstSeen.guidedMissile ??= 1;
-  if (evo.tracks.mines >= EVOLUTION.minesUnlock) evo.firstSeen.mine ??= 1;
-  if (evo.tracks.lowSig >= EVOLUTION.lowSigUnlock) evo.firstSeen.lowSigMine ??= 1;
+  const fielded = evo.economy.nodesFielded;
+  if (fielded.includes('guided')) evo.firstSeen.guidedMissile ??= 1;
+  if (fielded.includes('standard')) evo.firstSeen.mine ??= 1;
+  if (fielded.includes('lowSig')) evo.firstSeen.lowSigMine ??= 1;
 }
 
 /** Build a developer campaign: a normal campaign with the dev flag set, the
@@ -225,13 +228,64 @@ export function createRoundTransit(
 // Round resolution
 // ---------------------------------------------------------------------------
 
+/** Snapshot the enemy's procurement economy for the game log. This is the
+ *  half of the seesaw that docs/SEESAW.md flagged as missing: with it, "why
+ *  did the enemy pivot" is measured rather than inferred from loss causes. */
+function buildEnemyTelemetry(c: CampaignState): EnemyRoundTelemetry {
+  const economy = c.evolution.economy;
+  const branches: EnemyRoundTelemetry['branches'] = {};
+  for (const [key, ledger] of Object.entries(economy.ledgers)) {
+    branches[key] = {
+      spend: Math.round(ledger.spend),
+      share: Math.round(ledger.share * 1000) / 1000,
+      units: { ...ledger.units },
+      roi: Math.round(ledger.roi * 1000) / 1000,
+      // Kills are fractional: a hull worn down by two branches gives each a
+      // share, so no single attack is credited with work it did not do.
+      kills: Math.round(ledger.kills * 100) / 100,
+      result: Math.round(ledger.result * 10) / 10,
+      scrap: Math.round(ledger.scrap),
+      roundsInvested: ledger.roundsInvested,
+    };
+  }
+  return {
+    budget: economy.budget,
+    committed: economy.committed,
+    scrapped: economy.scrapped,
+    branches,
+    openBranches: [...economy.openBranches],
+    nodeDebuts: [...economy.nodeDebuts],
+    targetingTier: economy.targetingTier,
+    targetingName: targetingName(economy),
+  };
+}
+
 export function resolveTransit(c: CampaignState, t: TransitState): AfterActionReport {
   const s = t.stats;
   const round = c.round;
   const confidenceBefore = c.confidence;
 
   // --- Economy ---------------------------------------------------------------
-  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
+  // Underwriting on hulls lost at sea, paid before anything else so a ruinous
+  // round still leaves something to sail with. See ECONOMY.lossInsurance: this
+  // is the restoring force on the cash axis, and it is what stops a fleet that
+  // crosses its break-even loss rate from being mathematically unable to
+  // recover.
+  //
+  // Priced off shipCost — what replacing that hull ACTUALLY costs this player,
+  // fitted modules included — and not off the bare hull. The surcharge is most
+  // of the bill for an equipped fleet: a module-heavy cargo hull replaces at
+  // 165 against a bare one's 80, so the same 40 it earns on delivery leaves the
+  // equipped player break-even at a 19% loss rate rather than 33%. Underwriting
+  // the bare hull would have quietly paid the specialist builds a quarter of
+  // what it paid the empty ones, which is backwards: every build that invests
+  // in its hulls is the one this force exists to catch.
+  let insurancePaid = 0;
+  for (const ship of t.ships) {
+    if (!ship.alive) insurancePaid += shipCost(c, ship.classId) * ECONOMY.lossInsurance;
+  }
+  insurancePaid = Math.round(insurancePaid);
+  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue + insurancePaid;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
@@ -298,6 +352,15 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   else if (deliveredFraction >= 0.75) confidenceChange += CAMPAIGN.confidenceGoodRound;
   else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
   confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
+  // Captures bite on top of that, and OUTSIDE the loss cap — a player already
+  // at the cap still feels each hull the enemy sails away with, which is what
+  // stops absorbing losses from being an answer to the boarding node.
+  if (s.shipsCaptured > 0) {
+    confidenceChange += Math.max(
+      CAMPAIGN.confidenceCaptureCap,
+      CAMPAIGN.confidencePerCapture * s.shipsCaptured,
+    );
+  }
 
   // --- Quota window -----------------------------------------------------------------
   c.quota.pointsEarned += s.valueDelivered;
@@ -313,6 +376,25 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
   }
+
+  // Floor on how far ORDINARY failure can drop confidence in a single round.
+  //
+  // A bad round, the full loss cap and a missed quota all land together — they
+  // are the same disaster described three ways — and unfloored they took 35 of
+  // a starting 60 at once. Two such rounds ended a campaign from full health
+  // with no round in between where the player could see it coming and answer.
+  // The floor turns that cliff into a slope: the same disaster still hurts more
+  // than anything else in the game, but it leaves rounds to recover in, which
+  // is the only thing that makes a comeback possible at all.
+  //
+  // Captures are deliberately NOT floored, for the same reason they are not
+  // capped: absorbing losses must never become the answer to the boarding node.
+  const captureLoss =
+    s.shipsCaptured > 0
+      ? Math.max(CAMPAIGN.confidencePerCapture * s.shipsCaptured, CAMPAIGN.confidenceCaptureCap)
+      : 0;
+  const ordinaryLoss = confidenceChange - captureLoss;
+  confidenceChange = Math.max(ordinaryLoss, CAMPAIGN.confidenceRoundFloor) + captureLoss;
 
   c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
 
@@ -344,11 +426,31 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       const step = Math.min(CAMPAIGN.quotaDifficultyDownStep, shortfall * CAMPAIGN.quotaDifficultyDownStep * 2);
       c.quotaDifficulty = Math.max(CAMPAIGN.quotaDifficultyMin, c.quotaDifficulty - step);
     }
-    // Size the next target off the player's own recent pace (average value
-    // delivered per round actually played this window) rather than a flat
-    // increment, so it tracks real capability as the campaign progresses.
-    const avgPerRound = quotaWindowRound > 0 ? quotaSnapshot.earned / quotaWindowRound : quotaSnapshot.earned;
-    const target = avgPerRound * CAMPAIGN.quotaWindowRounds * c.quotaDifficulty;
+    // Size the next target off the CONVOY, not off what the last window
+    // managed to deliver.
+    //
+    // Sizing from delivery had two faults that pulled in the same direction.
+    // It asked more of a player who had been defending well, and — the one that
+    // mattered — it punished any purchase that traded convoy size for convoy
+    // quality, because the target had been set by the larger convoy they used
+    // to sail and only adapted downward AFTER a miss had cost 18 confidence.
+    // Measured across three builds, the quota-miss rate tracked convoy size
+    // almost exactly: 28% for a build sailing 29.4 hulls of 30.4 capacity, 39%
+    // at 24.6, and 60% at 19.7. Equipping the convoy was structurally punished
+    // however little the equipment cost, which is why halving every module
+    // price made those builds WORSE rather than better.
+    //
+    // Asking for a share of what the convoy can carry decouples the target from
+    // both: sail less and less is expected of you, defend well and you are not
+    // punished for it with a higher bar next window. The floor below is what
+    // stops "sail three hulls to trivialise the quota" — it is pinned to
+    // CAPACITY, which does not shrink when the convoy does.
+    const convoyValue = (Object.keys(c.composition) as ShipClassId[]).reduce(
+      (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+      0,
+    );
+    const target =
+      convoyValue * CAMPAIGN.quotaWindowRounds * CAMPAIGN.quotaDeliveryFraction * c.quotaDifficulty;
     const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
     c.quota = {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
@@ -378,13 +480,31 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     s.missilesIntercepted * CAMPAIGN.scorePerIntercept;
 
   // --- Enemy learns from this round ---------------------------------------------------
+  // Weight each branch's damage and kills into the single "result" figure its
+  // procurement economy divides by spend to get ROI. Kills dominate: sinking
+  // hulls is the point, chip damage is not.
+  const branchResults: Record<string, { result: number; kills: number }> = {};
+  for (const [branch, outcome] of Object.entries(s.enemyBranch)) {
+    branchResults[branch] = {
+      result:
+        outcome.kills * ENEMY_ECONOMY.roiKillWeight +
+        outcome.damage * ENEMY_ECONOMY.roiDamageWeight,
+      kills: outcome.kills,
+    };
+  }
   const metrics: RoundMetrics = {
     round,
     interceptRate: s.missilesSpawned > 0 ? s.missilesIntercepted / s.missilesSpawned : 1,
     formation: t.formation,
     mineDetectRate: s.minesTotal > 0 ? s.minesRevealed / s.minesTotal : -1,
+    // A torpedo the player heard OR killed was a torpedo the ASW stack handled.
+    torpedoDetectRate:
+      s.torpedoesLaunched > 0
+        ? Math.min(1, (s.torpedoesDetected + s.torpedoesDestroyed) / (2 * s.torpedoesLaunched))
+        : -1,
     valueSent: s.valueSent,
     deliveredFraction,
+    branchResults,
   };
   evolveEnemy(c.evolution, metrics, roundRng(c, 'evolve'));
 
@@ -447,6 +567,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     round,
     stats: s,
     cashEarned,
+    insurancePaid,
     intelEarned,
     confidenceChange,
     confidenceAfter: c.confidence,
@@ -540,6 +661,23 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     minesRevealed: s.minesRevealed,
     minesDetonated: s.minesDetonated,
     minesSwept: s.minesSwept,
+    torpedoesLaunched: s.torpedoesLaunched,
+    torpedoesDetected: s.torpedoesDetected,
+    torpedoesHit: s.torpedoesHit,
+    torpedoesDestroyed: s.torpedoesDestroyed,
+    boatsLaunched: s.boatsLaunched,
+    boatsSunk: s.boatsSunk,
+    boatKills: s.boatKills,
+    shipsCaptured: s.shipsCaptured,
+    shellsFired: s.shellsFired,
+    shellHits: s.shellHits,
+    batteriesDestroyed: s.batteriesDestroyed,
+    smokeCloudsLaid: s.smokeCloudsLaid,
+    concealedSeconds: Math.round(s.concealedSeconds * 10) / 10,
+    reconPlanes: s.reconPlanes,
+    disablingDrones: s.disablingDrones,
+    aircraftDowned: s.aircraftDowned,
+    shipDisabledSeconds: Math.round(s.shipDisabledSeconds * 10) / 10,
     escortsLost: s.escortsLost,
     basesLost: s.basesLost,
     launchersDisabled: s.launchersDisabled,
@@ -558,6 +696,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
     counters,
+    enemy: buildEnemyTelemetry(c),
   });
 
   // A fresh spend ledger for the next prep phase.

@@ -634,20 +634,65 @@ export class TransitView {
           break;
         case 'torpedoDetected':
           this.showToast(
-            ev.detail === 'activeSonar' ? 'Sonar ping: torpedo contact!' : 'Hydrophone: torpedo in the water!',
+            ev.detail === 'activeSonar'
+              ? 'Sonar ping: torpedo contact!'
+              : ev.detail === 'wake'
+                ? 'Wake sighted — torpedo closing!'
+                : ev.lowSig
+                  ? 'Hydrophone: low-signature torpedo!'
+                  : 'Hydrophone: torpedo in the water!',
           );
           break;
         case 'depthChargeKill':
           this.showToast('Depth charges destroyed a torpedo');
           break;
+        case 'enemySmoke':
+          this.showToast(ev.detail === 'blinding' ? 'Blinding smoke over the convoy!' : 'Screening smoke laid');
+          break;
+        case 'jammingStarted':
+          this.showToast('SENSORS JAMMED — mine detection is offline');
+          break;
+        case 'shipDisabled':
+          this.showToast(`${ev.shipName} is dead in the water!`);
+          break;
+        case 'suppressed':
+          this.showToast(
+            ev.detail?.startsWith('destroyed:')
+              ? 'Shore battery destroyed — silenced for the round'
+              : 'Shore battery suppressed',
+          );
+          break;
         case 'boatSunk':
           this.showToast('Attack boat sunk');
+          break;
+        case 'boardingStarted':
+          this.showToast(`Boarders on ${ev.shipName}! Sink that boat!`);
+          break;
+        case 'boardingRepelled':
+          this.showToast(
+            ev.detail === 'rejection'
+              ? `${ev.shipName} threw the boarding party off — that was the last chance`
+              : `Boarders driven off ${ev.shipName}`,
+          );
           break;
         case 'flakKill':
           this.showToast('Flak downed an enemy aircraft');
           break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
+          else if (ev.detail === 'torpedo') this.showToast('Torpedo in the water — air defense cannot touch it!');
+          else if (ev.detail === 'lowSigTorpedo') this.showToast('That torpedo left no wake at all!');
+          else if (ev.detail === 'attackBoat') this.showToast('Attack boats closing — deck guns only!');
+          else if (ev.detail === 'rocketBoat') this.showToast('Rocket boat — it will open a hull fast!');
+          else if (ev.detail === 'boardingBoat') this.showToast('Boarding boat — they mean to take a ship!');
+          else if (ev.detail === 'artillery') this.showToast('Shore guns! They only reach the near lane');
+          else if (ev.detail === 'rangingArtillery') this.showToast('Heavy shore battery — do not hold position!');
+          else if (ev.detail === 'rollingBarrage') this.showToast('Barrage walking up the lane ahead!');
+          else if (ev.detail === 'screeningSmoke') this.showToast('Smoke over their launch sites — no firing solution in there');
+          else if (ev.detail === 'blindingSmoke') this.showToast('They are laying smoke over OUR ships!');
+          else if (ev.detail === 'reconPlane') this.showToast('Recon aircraft overhead — our accuracy is down');
+          else if (ev.detail === 'disablingDrone') this.showToast('Disabling drone inbound!');
+          else if (ev.detail === 'sensorJamming') this.showToast('SENSORS JAMMED — no mine detection');
           break;
         default:
           break;
@@ -775,6 +820,50 @@ export class TransitView {
       ctx.lineTo(this.sx(site.x) + 8, this.sy(site.y) - 6);
       ctx.closePath();
       ctx.fill();
+    }
+
+    // Shore batteries, and the water each one can actually reach. The reach
+    // ring is the whole decision this branch asks the player to make, so it is
+    // drawn rather than left to be inferred from where shells happen to land.
+    for (const gun of t.installations) {
+      const gx = this.sx(gun.x);
+      const gy = this.sy(gun.y);
+      const suppressed = t.time < gun.suppressedUntil;
+      if (!gun.destroyed) {
+        ctx.strokeStyle = suppressed ? 'rgba(120, 160, 200, 0.22)' : 'rgba(255, 138, 94, 0.30)';
+        ctx.setLineDash([6, 9]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(gx, gy, COMBAT.artillery.range[gun.variant] * SCALE, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = gun.destroyed
+        ? 'rgba(90, 96, 104, 0.65)'
+        : suppressed
+          ? '#6f7f92'
+          : gun.variant === 'coastalGun'
+            ? '#e0703c'
+            : '#d8484f';
+      ctx.beginPath();
+      ctx.arc(gx, gy, gun.variant === 'coastalGun' ? 6 : 8, 0, Math.PI * 2);
+      ctx.fill();
+      if (gun.destroyed) {
+        ctx.strokeStyle = 'rgba(220, 226, 232, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(gx - 6, gy - 6);
+        ctx.lineTo(gx + 6, gy + 6);
+        ctx.moveTo(gx + 6, gy - 6);
+        ctx.lineTo(gx - 6, gy + 6);
+        ctx.stroke();
+      } else if (suppressed) {
+        ctx.strokeStyle = 'rgba(140, 190, 240, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(gx, gy, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     // Lane guides
@@ -1157,6 +1246,99 @@ export class TransitView {
         ctx.stroke();
         ctx.setLineDash([]);
       }
+      // An attached boat draws a grapple line to the hull it is working on, so
+      // "closing" and "alongside and killing her" never look the same.
+      if (threat.engaging) {
+        const victim = t.ships.find((s) => s.id === threat.targetShipId && s.alive);
+        if (victim) {
+          ctx.strokeStyle =
+            threat.boatVariant === 'boarding' ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Boarding Alarm (a granted anti-boarding tactic): the boarded hull and its
+    // takeover progress have to be unmistakable, because the player's window to
+    // answer is short and a capture cannot be undone.
+    for (const ship of t.ships) {
+      if (ship.boardingSeconds <= 0 || !ship.alive) continue;
+      const frac = Math.min(1, ship.boardingSeconds / COMBAT.attackBoat.boardingSeconds);
+      const x = this.sx(ship.x);
+      const y = this.sy(ship.y);
+      ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.35 * Math.sin(now / 110)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x - 16, y - 27, 32, 4);
+      ctx.fillStyle = frac > 0.75 ? '#ff6b6b' : '#ffc857';
+      ctx.fillRect(x - 16, y - 27, 32 * frac, 4);
+    }
+
+    // Enemy smoke: a soft grey mass. Anything inside it keeps only a faint
+    // bearing marker, which is drawn with the threats below.
+    for (const fx of t.areaEffects) {
+      if (fx.kind !== 'enemySmoke' || t.time >= fx.until) continue;
+      const cx = this.sx(fx.x);
+      const cy = this.sy(fx.y);
+      const r = fx.radius * SCALE;
+      const fade = Math.min(1, (fx.until - t.time) / 5);
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+      const tint = fx.blinding ? '190, 178, 168' : '176, 182, 190';
+      grad.addColorStop(0, `rgba(${tint}, ${0.5 * fade})`);
+      grad.addColorStop(1, `rgba(${tint}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Recon planes and disabling drones.
+    for (const threat of t.threats) {
+      if (!threat.alive) continue;
+      if (threat.kind !== 'reconPlane' && threat.kind !== 'disablingDrone') continue;
+      const x = this.sx(threat.x);
+      const y = this.sy(threat.y);
+      const recon = threat.kind === 'reconPlane';
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(threat.vy, threat.vx));
+      ctx.fillStyle = recon ? '#b9a3e3' : '#e3a34f';
+      ctx.beginPath();
+      ctx.moveTo(recon ? 11 : 8, 0);
+      ctx.lineTo(-6, recon ? -7 : -5);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-6, recon ? 7 : 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Shells in flight, with the water they are about to burst on marked. The
+    // impact ring is the readable part — nothing can shoot a shell down, so the
+    // only useful information is where NOT to be.
+    for (const shell of t.shells) {
+      const ix = this.sx(shell.targetX);
+      const iy = this.sy(shell.targetY);
+      ctx.strokeStyle = 'rgba(255, 138, 94, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(ix, iy, COMBAT.artillery.splashRadius * SCALE, 0, Math.PI * 2);
+      ctx.stroke();
+      const sx2 = this.sx(shell.x);
+      const sy2 = this.sy(shell.y);
+      ctx.strokeStyle = 'rgba(255, 196, 120, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx2, sy2);
+      ctx.lineTo(sx2 - shell.vx * 0.05 * SCALE, sy2 - shell.vy * 0.05 * SCALE);
+      ctx.stroke();
     }
 
     // Depth-charge rounds in flight, plus their aim points.
@@ -1178,6 +1360,28 @@ export class TransitView {
     // Missiles with trails
     for (const threat of t.threats) {
       if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
+
+      // Concealed by enemy smoke: the SOFT model. A faint, deliberately fuzzy
+      // marker so the player can still read "something is coming from over
+      // there", but no crisp sprite and no tap-target until it clears. Never
+      // hidden outright — that would be unfair in a tap-to-target game.
+      if (threat.concealed) {
+        const cx = this.sx(threat.x);
+        const cy = this.sy(threat.y);
+        const pulse = 0.22 + 0.12 * Math.sin(now / 220);
+        ctx.fillStyle = `rgba(255, 170, 140, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 190, 160, ${pulse + 0.15})`;
+        ctx.setLineDash([3, 4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        continue;
+      }
 
       // Early-Warning Network research: show where each missile is headed.
       if (t.effects.showTargetVectors) {
@@ -1462,6 +1666,26 @@ export class TransitView {
         ctx.arc(x, y, fx.maxRadius * (0.4 + 0.6 * progress), 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    // Sensor jamming: ENEMY_ATTACKS.md locks this as the one capability with no
+    // counter at all, and requires an UNMISSABLE indicator in exchange. A
+    // player who cannot see why their detection stopped working would read a
+    // deliberate design choice as a bug.
+    if (t.jammingSeconds > 0) {
+      const pulse = 0.55 + 0.25 * Math.sin(now / 160);
+      ctx.strokeStyle = `rgba(255, 96, 96, ${pulse})`;
+      ctx.lineWidth = 5;
+      ctx.strokeRect(2.5, 2.5, CANVAS_W - 5, CANVAS_H - 5);
+      const label = `SENSORS JAMMED — ${Math.ceil(t.jammingSeconds)}s`;
+      ctx.font = '600 17px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const w = ctx.measureText(label).width + 28;
+      ctx.fillStyle = `rgba(120, 20, 20, ${0.62 + 0.12 * Math.sin(now / 160)})`;
+      ctx.fillRect(CANVAS_W / 2 - w / 2, 12, w, 30);
+      ctx.fillStyle = '#ffe0e0';
+      ctx.fillText(label, CANVAS_W / 2, 33);
+      ctx.textAlign = 'left';
     }
 
     // Paused overlay

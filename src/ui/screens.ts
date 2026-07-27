@@ -22,6 +22,7 @@ import {
   CATEGORY_ORDER,
   COUNTER_BRANCHES,
   COUNTER_CATEGORY_NAMES,
+  awaitingEnemyCapability,
   ENEMY_BRANCH_NAMES,
   RESEARCH_INDEX,
   type CounterBranchDef,
@@ -476,6 +477,13 @@ export function aarScreen(
     animStat('Ships lost', s.lost, (v) => `${v}`, s.lost > 0 ? 'bad' : 'good');
     animStat('Cargo value', s.valueDelivered, (v) => `${v}`);
     animStat('Cash earned', report.cashEarned, (v) => `+$${v}`, 'good');
+    // Only shown when it actually paid. A player having a good round should not
+    // be reading a line about hull underwriting; a player having a terrible one
+    // needs to see that the consortium covered part of it, because that is the
+    // difference between a bad round and a hopeless one.
+    if (report.insurancePaid > 0) {
+      animStat('  of which underwriting', report.insurancePaid, (v) => `$${v}`);
+    }
     animStat('Intel gained', report.intelEarned, (v) => `+${v}`);
     animStat(
       'Confidence',
@@ -495,6 +503,37 @@ export function aarScreen(
           ? `${formatInterceptSummary(transit)} Interceptors expended: ${s.ammoUsed}.` +
             (s.minesTotal > 0
               ? ` Mines: ${s.minesRevealed}/${s.minesTotal} charted, ${s.minesDetonated} detonated, ${s.minesSwept} swept.`
+              : '') +
+            (s.torpedoesLaunched > 0
+              ? ` Torpedoes: ${s.torpedoesDetected}/${s.torpedoesLaunched} detected, ` +
+                `${s.torpedoesDestroyed} destroyed, ${s.torpedoesHit} hit home.`
+              : '') +
+            (s.boatsLaunched > 0
+              ? ` Attack boats: ${s.boatsSunk}/${s.boatsLaunched} sunk, ${s.boatKills} hull(s) lost to them` +
+                (s.counter.boardingAttempts > 0
+                  ? `, ${s.counter.boardingInterrupted} boarding(s) repelled and ${s.shipsCaptured} ship(s) CAPTURED.`
+                  : '.')
+              : '') +
+            (s.shellsFired > 0
+              ? ` Shore guns: ${s.shellsFired} shells fired, ${s.shellHits} on target` +
+                (s.counter.counterBatterySuppressions > 0
+                  ? `, ${s.counter.counterBatterySuppressions} battery suppression(s)`
+                  : '') +
+                (s.batteriesDestroyed > 0 ? `, ${s.batteriesDestroyed} silenced for good.` : '.')
+              : '') +
+            (s.smokeCloudsLaid > 0
+              ? ` Enemy smoke: ${s.smokeCloudsLaid} cloud(s), ${Math.round(s.concealedSeconds)}s of threats hidden from targeting.`
+              : '') +
+            (s.reconPlanes + s.disablingDrones > 0
+              ? ` Electronic attack: ${s.reconPlanes} recon, ${s.disablingDrones} drone(s), ` +
+                `${s.aircraftDowned} shot down` +
+                (s.shipDisabledSeconds > 0 ? `, ${Math.round(s.shipDisabledSeconds)}s dead in the water.` : '.')
+              : '') +
+            (s.counter.jammingSeconds > 0
+              ? ` Sensors jammed for ${Math.round(s.counter.jammingSeconds)}s` +
+                (s.counter.jammingMitigatedSeconds > 0
+                  ? ` (${Math.round(s.counter.jammingMitigatedSeconds)}s recovered by hardened systems).`
+                  : ' — no counter exists for this; only work-arounds.')
               : '') +
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
@@ -730,7 +769,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
   for (const enemy of branch.counters) {
     tags.append(chip('alert', `vs ${ENEMY_BRANCH_NAMES[enemy]}`, branch.countersDetail));
   }
-  if (branch.future) {
+  if (awaitingEnemyCapability(branch)) {
     tags.append(chip('eye', 'awaiting enemy capability', 'The countered enemy branch has not been fielded yet — research and equipment are ready for the day it appears.'));
   }
   // Equipment status: what physically carries this branch, and whether it is

@@ -3,3 +3,4 @@ dist/
 e2e/shots/
 *.log
 .DS_Store
+playtest-out/

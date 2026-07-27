@@ -16,6 +16,24 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} struck a charted mine — the field was known, but the helm could not clear it in formation. Wider spacing or a lane change would have given her room.`,
   lowSigMine: (name) =>
     `${name} struck a mine that our detection systems failed to register — even where coverage was active.`,
+  torpedo: (name) =>
+    `${name} was hit below the waterline by a torpedo. Nothing in the air-defense picture could have touched it — the run came in under the surface.`,
+  homingTorpedo: (name) =>
+    `${name} tried to turn out of the torpedo's path and it followed her around. The weapon was tracking, not running straight.`,
+  lowSigTorpedo: (name) =>
+    `${name} was struck by a torpedo that left no readable wake and never appeared on the sonar picture before impact.`,
+  attackBoat: (name) =>
+    `${name} was worked over at close range by an attack boat that stayed on her until she went down. Nothing that shoots at aircraft could be brought to bear.`,
+  rocketBoat: (name) =>
+    `${name} was broken open by rocket fire from a fast boat alongside. She sank far quicker than small-arms fire would have managed.`,
+  artillery: (name) =>
+    `${name} was caught by shore guns while crossing the near lane and took shell after shell until she went down. There was nothing in the air to shoot at.`,
+  rangingArtillery: (name) =>
+    `${name} held her line under heavy shore fire and the gunners walked their rounds straight onto her. Each shell landed closer than the last.`,
+  rollingBarrage: (name) =>
+    `${name} sailed into a barrage that was already walking up her lane. The rounds were waiting for her, not chasing her.`,
+  captured: (name) =>
+    `${name} was boarded and taken. She is under a prize crew making for the hostile shore — hull, cargo and all. This is not a sinking; the enemy has her.`,
   chain: (name) =>
     `${name} was caught by the blast of a missile that struck a ship packed in close alongside her — the price of a tight formation.`,
   fire: (name) =>
@@ -50,6 +68,130 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
       'Forensic analysis of the wreck indicates a composite mine casing our sonar cannot ' +
       'register. Existing mine detection is no longer sufficient on its own. Analysts propose ' +
       'composite-signature research; until then, spacing and routing are the only mitigation.',
+  },
+  torpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: torpedoes',
+    body:
+      'Submerged runs are now coming in against the convoy. Interceptors, point defense and ECM ' +
+      'cannot touch a torpedo — they only engage things in the air. Straight-running weapons ' +
+      'leave a wake a lookout can read close in; hydrophones hear them much further out, and ' +
+      'depth charges are the only thing aboard that can kill one.',
+  },
+  homingTorpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: homing torpedoes',
+    body:
+      'Enemy torpedoes are steering onto their targets instead of running a fixed bearing. ' +
+      'Turning a ship out of the path no longer breaks the run — the weapon follows. Killing ' +
+      'the torpedo outright, or hearing it early enough to have time to, is what is left.',
+  },
+  lowSigTorpedo: {
+    kind: 'discovery',
+    title: 'New enemy capability: low-signature torpedoes',
+    body:
+      'The run that hit us left no wake and no passive signature. Standard hydrophone watch and ' +
+      'sonar sweeps will not raise these before impact. Analysts propose low-signature processing ' +
+      'on the hydrophone array, or a return filter on the active sonar; without one of those, ' +
+      'depth charges have nothing to aim at.',
+  },
+  attackBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: attack boats',
+    body:
+      'Fast craft are now closing with the convoy and staying alongside a ship until she sinks. ' +
+      'A boat is not a shot to be blocked — it is a vessel with a crew, it remains on the water, ' +
+      'and it moves to the next hull when it finishes. Interceptors point at the sky and cannot ' +
+      'depress onto it. Escort deck guns are the weapon for this, and sinking the boat is the ' +
+      'only thing that stops it.',
+  },
+  rocketBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: rocket boats',
+    body:
+      'The boats are carrying rocket racks now and are opening hulls in roughly half the time. ' +
+      'They are also built heavier: deck-gun rounds are glancing off until the crews have ' +
+      'armour-piercing ammunition to work with.',
+  },
+  artillery: {
+    kind: 'discovery',
+    title: 'New enemy capability: shore artillery',
+    body:
+      'The far shore has emplaced guns and they are firing directly across the water. A shell ' +
+      'is not something that can be shot down — there is no arc to intercept and nothing for a ' +
+      'launcher to lock onto. But the guns are short-ranged: they reach the lane nearest their ' +
+      'shore and no further. Routing the convoy wide costs time and answers them completely; ' +
+      'counter-battery fire from a shore battery silences them where they stand.',
+  },
+  rangingArtillery: {
+    kind: 'discovery',
+    title: 'New enemy capability: ranging artillery',
+    body:
+      'Heavier pieces, firing further and hitting harder — and the crews are ranging in. Each ' +
+      'shell at a ship holding its position lands closer than the last, so loitering inside ' +
+      'their reach is now far worse than passing through it. Suppressing a battery also throws ' +
+      'away the firing solution it had been building.',
+  },
+  rollingBarrage: {
+    kind: 'discovery',
+    title: 'New enemy capability: rolling barrages',
+    body:
+      'Instead of aiming at ships, the guns are now walking a wall of shells up a lane ahead of ' +
+      'the convoy — the rounds are waiting where we are going. This is aimed at water, so ' +
+      'evading individual shells is not the answer; being in a different lane is.',
+  },
+  screeningSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: screening smoke',
+    body:
+      'The enemy is laying smoke over its own launch sites. Weapons fired through it are still ' +
+      'coming and can still be shot down once they clear — but while they are in the cloud there ' +
+      'is only a bearing, not a target, and every second of that is reaction time we do not get ' +
+      'back. Thermal and radar imaging carried close enough to the trouble burns through it.',
+  },
+  blindingSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: blinding smoke',
+    body:
+      'They are now laying smoke over OUR ships rather than their own positions — the same ' +
+      'blindness, but sitting on top of the convoy, and it degrades missile-warning cues inside ' +
+      'the cloud as well. This is thicker than the screening variant: base thermal imaging is ' +
+      'not enough, the crews need Blinding-Smoke Resistance to see through it.',
+  },
+  reconPlane: {
+    kind: 'discovery',
+    title: 'New enemy capability: recon aircraft',
+    body:
+      'An aircraft is crossing over the shipping lanes and, while it is up there, every ' +
+      'interceptor we fire is less likely to connect. It can be shot down — flak is the weapon ' +
+      'for it — but it is only overhead for one crossing, so the crews have to be quick.',
+  },
+  disablingDrone: {
+    kind: 'discovery',
+    title: 'New enemy capability: ship-disabling drones',
+    body:
+      'A one-way drone reached one of our hulls and left her dead in the water. She is not sunk ' +
+      'and her cargo is intact, but she cannot move, and everything else on the board now has a ' +
+      'stationary target. Flak can bring one down on the way in; nothing can undo it afterwards ' +
+      'except waiting out the recovery.',
+  },
+  sensorJamming: {
+    kind: 'discovery',
+    title: 'New enemy capability: sensor jamming',
+    body:
+      'Our mine detection stopped working. Not degraded — stopped, across the board, for half a ' +
+      'minute. There is no transmitter to shoot at and no counter to research: this one can only ' +
+      'be worked around. Hardened systems keep a chosen channel alive through it, an emergency ' +
+      'reboot cuts the blackout short, and routing around water we cannot see is always free.',
+  },
+  boardingBoat: {
+    kind: 'discovery',
+    title: 'New enemy capability: boarding parties',
+    body:
+      'The enemy is no longer trying to sink us — a boarding party took a ship and sailed her ' +
+      'away. Absorbing damage is no answer to this: a captured hull costs more than a sunk one ' +
+      'and hull plating does not slow a boarding. Anti-boarding countermeasures buy the crew ' +
+      'time, and deck guns that kill the boat throw the party off entirely.',
   },
 };
 
