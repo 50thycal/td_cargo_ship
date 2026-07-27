@@ -480,6 +480,44 @@ that the metric driving a fix is the one that is actually broken.* Two of the
 last three findings here have been a mechanism wearing a pricing problem's
 clothes.
 
+### A counter cannot be worth more than the threat it answers
+
+With the quota fixed, the four negative counters were **unchanged** — deck gun
+−2.3%, counter-battery −5.0%. Their problem was never the player's economy at
+all: artillery was 7% of all losses and attack boats 8%. A counter bought for
+7% of your damage cannot pay however cheap it is, and buying down its price
+just makes a bad deal marginally less bad.
+
+So the fix went on the ENEMY side: artillery damage and boat DPS each up ~30%,
+which moved boats to 11% of losses and artillery to 9%, and moved every
+mitigation counter with them (reinforced hull and the hydrophone improved too,
+without either being touched — a more lethal enemy makes protection worth more
+across the board).
+
+Two things that only showed up by measuring:
+
+- **The unit ceiling was not the constraint.** Raising `maxUnitsPerRound` for
+  both branches produced *byte-identical* results across 176 campaigns. The cap
+  never binds: artillery's allowance is ~44–256 and one gun costs 180, so it can
+  rarely afford even one. Budget share was the limit all along.
+- **Fair pricing and counter-viability pull against each other.** At the raised
+  lethality and old prices, artillery was the best buy in the catalogue (5.7
+  cost-per-result against a 7–9 pack) and counter-battery reached −1.1%.
+  Repricing it to a fair 7.9 pushed counter-battery back to −3.7%. A cheaper
+  artillery *also* turned out to help the greed build — it sprints the far
+  lanes, which artillery cannot reach, so budget shifted into artillery is
+  budget aimed where that build is not: its survival went 38% → 63%.
+
+Fair pricing won, because "greed is punished" is a property worth more than a
+situational counter reaching break-even. Counter-battery and the deck gun sit
+near zero rather than clearly positive, and that is the honest landing.
+
+**Know the harness's resolution.** Deck gun measured −2.4%, −2.3%, +0.3%,
+−1.7%, −2.6% across five runs of the same 16 seeds as other things moved around
+it. Counter-battery moved decisively (−5.0% → −1.3% → −3.7%) and the deck gun
+never left the noise. Effects of 1–3% are not separable at this seed count;
+tuning against them is fitting noise, and stopping is the discipline.
+
 ---
 
 ## How this is used
