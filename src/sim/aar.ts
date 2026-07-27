@@ -26,6 +26,12 @@ const LOSS_NARRATIVES: Record<string, (name: string) => string> = {
     `${name} was worked over at close range by an attack boat that stayed on her until she went down. Nothing that shoots at aircraft could be brought to bear.`,
   rocketBoat: (name) =>
     `${name} was broken open by rocket fire from a fast boat alongside. She sank far quicker than small-arms fire would have managed.`,
+  artillery: (name) =>
+    `${name} was caught by shore guns while crossing the near lane and took shell after shell until she went down. There was nothing in the air to shoot at.`,
+  rangingArtillery: (name) =>
+    `${name} held her line under heavy shore fire and the gunners walked their rounds straight onto her. Each shell landed closer than the last.`,
+  rollingBarrage: (name) =>
+    `${name} sailed into a barrage that was already walking up her lane. The rounds were waiting for her, not chasing her.`,
   captured: (name) =>
     `${name} was boarded and taken. She is under a prize crew making for the hostile shore — hull, cargo and all. This is not a sinking; the enemy has her.`,
   chain: (name) =>
@@ -106,6 +112,77 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
       'The boats are carrying rocket racks now and are opening hulls in roughly half the time. ' +
       'They are also built heavier: deck-gun rounds are glancing off until the crews have ' +
       'armour-piercing ammunition to work with.',
+  },
+  artillery: {
+    kind: 'discovery',
+    title: 'New enemy capability: shore artillery',
+    body:
+      'The far shore has emplaced guns and they are firing directly across the water. A shell ' +
+      'is not something that can be shot down — there is no arc to intercept and nothing for a ' +
+      'launcher to lock onto. But the guns are short-ranged: they reach the lane nearest their ' +
+      'shore and no further. Routing the convoy wide costs time and answers them completely; ' +
+      'counter-battery fire from a shore battery silences them where they stand.',
+  },
+  rangingArtillery: {
+    kind: 'discovery',
+    title: 'New enemy capability: ranging artillery',
+    body:
+      'Heavier pieces, firing further and hitting harder — and the crews are ranging in. Each ' +
+      'shell at a ship holding its position lands closer than the last, so loitering inside ' +
+      'their reach is now far worse than passing through it. Suppressing a battery also throws ' +
+      'away the firing solution it had been building.',
+  },
+  rollingBarrage: {
+    kind: 'discovery',
+    title: 'New enemy capability: rolling barrages',
+    body:
+      'Instead of aiming at ships, the guns are now walking a wall of shells up a lane ahead of ' +
+      'the convoy — the rounds are waiting where we are going. This is aimed at water, so ' +
+      'evading individual shells is not the answer; being in a different lane is.',
+  },
+  screeningSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: screening smoke',
+    body:
+      'The enemy is laying smoke over its own launch sites. Weapons fired through it are still ' +
+      'coming and can still be shot down once they clear — but while they are in the cloud there ' +
+      'is only a bearing, not a target, and every second of that is reaction time we do not get ' +
+      'back. Thermal and radar imaging carried close enough to the trouble burns through it.',
+  },
+  blindingSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: blinding smoke',
+    body:
+      'They are now laying smoke over OUR ships rather than their own positions — the same ' +
+      'blindness, but sitting on top of the convoy, and it degrades missile-warning cues inside ' +
+      'the cloud as well. This is thicker than the screening variant: base thermal imaging is ' +
+      'not enough, the crews need Blinding-Smoke Resistance to see through it.',
+  },
+  reconPlane: {
+    kind: 'discovery',
+    title: 'New enemy capability: recon aircraft',
+    body:
+      'An aircraft is crossing over the shipping lanes and, while it is up there, every ' +
+      'interceptor we fire is less likely to connect. It can be shot down — flak is the weapon ' +
+      'for it — but it is only overhead for one crossing, so the crews have to be quick.',
+  },
+  disablingDrone: {
+    kind: 'discovery',
+    title: 'New enemy capability: ship-disabling drones',
+    body:
+      'A one-way drone reached one of our hulls and left her dead in the water. She is not sunk ' +
+      'and her cargo is intact, but she cannot move, and everything else on the board now has a ' +
+      'stationary target. Flak can bring one down on the way in; nothing can undo it afterwards ' +
+      'except waiting out the recovery.',
+  },
+  sensorJamming: {
+    kind: 'discovery',
+    title: 'New enemy capability: sensor jamming',
+    body:
+      'Our mine detection stopped working. Not degraded — stopped, across the board, for half a ' +
+      'minute. There is no transmitter to shoot at and no counter to research: this one can only ' +
+      'be worked around. Hardened systems keep a chosen channel alive through it, an emergency ' +
+      'reboot cuts the blackout short, and routing around water we cannot see is always free.',
   },
   boardingBoat: {
     kind: 'discovery',

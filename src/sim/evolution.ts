@@ -23,7 +23,7 @@
 // threat that would not appear, which would quietly make the enemy weaker than
 // its budget claims.
 
-import { ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
 import {
   ENEMY_BRANCHES,
   ENEMY_BRANCH_ORDER,
@@ -35,15 +35,19 @@ import {
 } from '../data/enemyBranches';
 import type { RNG } from './rng';
 import type {
+  ArtilleryVariant,
   BranchLedger,
   CampaignState,
   EnemyEconomyState,
   EvolutionState,
   EvolutionTracks,
+  ElectronicPlan,
+  InstallationPlacement,
   IntelWarning,
   MinePlacement,
   RoundMetrics,
   RoundPlan,
+  SmokePlacement,
   SpawnEvent,
   TechKey,
 } from './types';
@@ -62,6 +66,8 @@ function newLedger(share: number): BranchLedger {
     kills: 0,
     roundsInvested: 0,
     share,
+    lifetimeSpend: 0,
+    lifetimeResult: 0,
   };
 }
 
@@ -132,7 +138,18 @@ function settleRoi(economy: EnemyEconomyState, metrics: RoundMetrics): void {
     ledger.result = outcome?.result ?? 0;
     ledger.kills = outcome?.kills ?? 0;
     if (ledger.spend > 0) {
-      ledger.roi = ledger.result / ledger.spend;
+      // Score against the branch's WHOLE record, not just the round that just
+      // ended. A branch buying thousands of cheap missiles has a smooth ROI; a
+      // branch buying one 180-cost shore gun has a violently lumpy one, and a
+      // single unlucky round reads as failure. Judged per-round the allocator
+      // systematically defunds anything expensive — measured, artillery earned
+      // the best cost-per-result of all seven branches and still had its
+      // allowance cut to ~44 in the round its second gun unlocked at 285, so it
+      // never fielded one. Accumulating both sides of the ratio lets a lumpy
+      // branch be judged on its average rather than on its variance.
+      ledger.lifetimeSpend += ledger.spend;
+      ledger.lifetimeResult += ledger.result;
+      ledger.roi = ledger.lifetimeResult / ledger.lifetimeSpend;
     } else if (!economy.openBranches.includes(key)) {
       // Genuinely untried: the neutral prior keeps a first attempt worthwhile.
       ledger.roi = ENEMY_ECONOMY.priorRoi;
@@ -350,22 +367,68 @@ function purchase(
       return allowanceForNode - cost;
     };
 
-    // Escalate into the newest variant, then pour the rest into volume.
+    // Escalate into the best variant the earmark can reach, then pour the rest
+    // into volume.
     if (nodes.length > 1) {
       const escShare = escalationShare(economy, key, metrics);
-      remaining = buy(newest, Math.floor(remaining * escShare)) + (remaining - Math.floor(remaining * escShare));
+      let earmark = Math.floor(remaining * escShare);
+      // The escalation budget is a statement of INTENT, not a hard ceiling. A
+      // fraction of an allowance that cannot cover one unit of the next node
+      // buys nothing and rounds to zero — and because that is a property of the
+      // node's PRICE rather than of the round, the branch could never escalate
+      // at all. Seven implemented nodes went unbought across a whole sweep for
+      // exactly this reason. Two separate rules lift the earmark to a whole
+      // unit, and they exist for genuinely different purposes.
+      //
+      // ONE — the player's counter. A branch being reliably beaten leans into
+      // its newest variant every round it can afford to, which is the whole
+      // point of the node ladder: answer the counter, don't buy more of what is
+      // already failing. This is the rule the escalation tests measure.
+      if (
+        metrics &&
+        isHardCountered(key, metrics) &&
+        earmark < newest.cost &&
+        remaining >= newest.cost
+      ) {
+        earmark = newest.cost;
+      }
+      // TWO — reachability. A rung the enemy has NEVER fielded gets one debut
+      // once it has gone begging for escalationPatienceRounds, whatever the
+      // player is doing, so no implemented node is dead content at any budget.
+      // Both restrictions on it are load-bearing: buying a debut rather than
+      // volume, and waiting rather than firing the round the node gates. Drop
+      // either and the countered and ignored arms buy identical ladders — the
+      // signal from rule one disappears underneath it.
+      //
+      // The rung aimed at is the CHEAPEST never-fielded one, not the newest.
+      // Reaching straight for the top leaves the middle of every ladder dead:
+      // by the time a branch can afford anything above its base, the top rung
+      // has gated in and takes the money every time.
+      const step = nodes
+        .slice(1)
+        .filter(
+          (n) =>
+            !economy.nodesFielded.includes(n.id) &&
+            round - n.gateRound >= ENEMY_ECONOMY.escalationPatienceRounds,
+        )
+        .sort((a, b) => a.cost - b.cost)[0];
+      if (step && earmark < step.cost && remaining >= step.cost) earmark = step.cost;
+      const before = earmark;
+      // Walk DOWN the ladder with the escalation money. Without this the middle
+      // rungs are dead the moment the top one gates in: the newest node takes
+      // the earmark, and everything the earmark could not afford falls through
+      // to the cheapest node, which soaks the allowance on volume before any
+      // mid-tier variant is ever offered.
+      for (let i = nodes.length - 1; i >= 1 && earmark > 0; i--) {
+        earmark = buy(nodes[i], earmark);
+      }
+      remaining = earmark + (remaining - before);
     }
-    remaining = buy(nodes[0], remaining);
-    // Mop up with any middle nodes if money is still on the table.
-    for (let i = 1; i < nodes.length - 1 && remaining > 0; i++) {
-      remaining = buy(nodes[i], remaining);
-    }
-    return remaining;
+    return buy(nodes[0], remaining);
   };
 
   for (const key of candidates) {
-    const allowance = Math.floor(budget * economy.ledgers[key].share);
-    pool += spendOn(key, allowance);
+    pool += spendOn(key, Math.floor(budget * economy.ledgers[key].share));
   }
   // Second pass: re-offer the leftovers to already-open branches.
   for (const key of candidates) {
@@ -563,6 +626,9 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
       round,
       spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
       mines: [],
+      installations: [],
+      smoke: [],
+      electronic: { reconPlanes: 0, disablingDrones: 0, jamming: 0 },
       debuts: ['missile'],
     };
   }
@@ -707,7 +773,104 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     spawns.push(...scheduled);
   }
 
-  return { round, spawns, mines, debuts };
+  // --- Artillery -------------------------------------------------------------
+  // Shore guns are EMPLACED, not launched: they are placed along the hostile
+  // shore before the round and shoot for as long as they survive. Position is
+  // the whole decision — a gun only reaches the lanes inside its range, so
+  // where it sits determines which water is dangerous.
+  const gunLedger = economy.ledgers.artillery;
+  const coastalGuns = gunLedger.units.coastalGun ?? 0;
+  const rangingGuns = gunLedger.units.ranging ?? 0;
+  const barrageGuns = gunLedger.units.rollingBarrage ?? 0;
+  const installations: InstallationPlacement[] = [];
+  if (coastalGuns + rangingGuns + barrageGuns > 0) {
+    if (evo.firstSeen.artillery === undefined) debuts.push('artillery');
+    if (rangingGuns > 0 && evo.firstSeen.rangingArtillery === undefined) {
+      debuts.push('rangingArtillery');
+    }
+    if (barrageGuns > 0 && evo.firstSeen.rollingBarrage === undefined) {
+      debuts.push('rollingBarrage');
+    }
+    const variants: ArtilleryVariant[] = [
+      ...Array<ArtilleryVariant>(barrageGuns).fill('rollingBarrage'),
+      ...Array<ArtilleryVariant>(rangingGuns).fill('ranging'),
+      ...Array<ArtilleryVariant>(coastalGuns).fill('coastalGun'),
+    ];
+    // Spread the emplacements along the shore rather than stacking them, so
+    // the guns threaten different stretches of the crossing and routing round
+    // one does not walk into another.
+    const span = EVOLUTION.gunFieldEndX - EVOLUTION.gunFieldStartX;
+    variants.forEach((variant, i) => {
+      const slot = span / variants.length;
+      installations.push({
+        x: EVOLUTION.gunFieldStartX + i * slot + rng.range(slot * 0.15, slot * 0.85),
+        y: WORLD.launchSites[0].y + rng.range(-14, 18),
+        variant,
+      });
+    });
+  }
+
+  // --- Smoke -----------------------------------------------------------------
+  // Concealment, not damage. Screening clouds go up over the launch sites so a
+  // salvo is already in the air before the player can point at it; blinding
+  // clouds go up over the convoy itself. Both are scheduled across the window
+  // rather than at the start — smoke that is already burning when the round
+  // opens has stolen nothing.
+  const smokeLedger = economy.ledgers.smoke;
+  const screening = smokeLedger.units.screening ?? 0;
+  const blinding = smokeLedger.units.blinding ?? 0;
+  const smoke: SmokePlacement[] = [];
+  if (screening + blinding > 0) {
+    if (evo.firstSeen.screeningSmoke === undefined && screening > 0) debuts.push('screeningSmoke');
+    if (evo.firstSeen.blindingSmoke === undefined && blinding > 0) debuts.push('blindingSmoke');
+    const total = screening + blinding;
+    const span = windowEnd - EVOLUTION.windowStartT;
+    for (let i = 0; i < total; i++) {
+      const at = EVOLUTION.windowStartT + (span * (i + 0.3)) / (total + 0.6) + rng.range(-6, 6);
+      if (i < blinding) {
+        // Blinding smoke resolves its center when it is laid, over whatever the
+        // convoy is doing then — so it always lands on ships, not on old water.
+        smoke.push({ variant: 'blinding', time: at });
+      } else {
+        // Screen the launch site that is actually BUSY around this time. A
+        // cloud over an idle site screens nothing — the missiles simply come
+        // from one of the other two and the enemy has paid for scenery.
+        const near = spawns.filter((sp) => Math.abs(sp.time - at) < 25);
+        const busiest = (near.length > 0 ? near : spawns).reduce<Record<number, number>>(
+          (acc, sp) => ({ ...acc, [sp.siteX]: (acc[sp.siteX] ?? 0) + 1 }),
+          {},
+        );
+        const siteX = Object.keys(busiest).length
+          ? Number(Object.entries(busiest).sort((a, b) => b[1] - a[1])[0][0])
+          : rng.pick(WORLD.launchSites).x;
+        smoke.push({
+          variant: 'screening',
+          time: at,
+          x: siteX + rng.range(-50, 50),
+          y: WORLD.launchSites[0].y + COMBAT.enemySmoke.screeningOffsetY,
+        });
+      }
+    }
+  }
+
+  // --- Electronic attack -----------------------------------------------------
+  const eaLedger = economy.ledgers.electronic;
+  const electronic: ElectronicPlan = {
+    reconPlanes: eaLedger.units.reconPlane ?? 0,
+    disablingDrones: eaLedger.units.disablingDrone ?? 0,
+    jamming: eaLedger.units.sensorJamming ?? 0,
+  };
+  if (electronic.reconPlanes > 0 && evo.firstSeen.reconPlane === undefined) {
+    debuts.push('reconPlane');
+  }
+  if (electronic.disablingDrones > 0 && evo.firstSeen.disablingDrone === undefined) {
+    debuts.push('disablingDrone');
+  }
+  if (electronic.jamming > 0 && evo.firstSeen.sensorJamming === undefined) {
+    debuts.push('sensorJamming');
+  }
+
+  return { round, spawns, mines, installations, smoke, electronic, debuts };
 }
 
 /** Spread `count` missile launches across [windowStart, windowEnd] in volleys

@@ -270,7 +270,7 @@ per round, cancels an almost-complete capture — buys time, kills nothing).
 **Tactics:** Boarding Alarm (granted) · Automatic Threat Priority (attached
 boarding boats top the deck-gun queue) · Escort Response Cue (informational).
 
-### Category: Counter-Artillery ⚑
+### Category: Counter-Artillery (enemy branch LIVE)
 
 #### Branch: Shore Counter-Battery System — base module, attacks Artillery positions
 Fires at the **gun position** (an installation), never at shells in flight.
@@ -287,7 +287,7 @@ Priority Doctrine (rate-of-fire / barrage-prep / most-valuable-lane priority).
 
 ### Category: Smoke & Concealment
 
-#### Branch: Thermal/Radar Imaging — cargo module, detects through Smoke ⚑
+#### Branch: Thermal/Radar Imaging — cargo module, detects through Smoke
 Sees threats through enemy smoke; removes and destroys nothing.
 **Nodes:** Base (precise tracks inside Screening Smoke, Medium range) →
 Long-Range Imaging (High); Blinding-Smoke Resistance (tracks inside
@@ -308,7 +308,7 @@ debuff, never invulnerability.
 
 ### Category: Electronic Attack & Drones
 
-#### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones ⚑
+#### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones
 Separate equipment and research from the self-defense interceptor — one module
 never solves both missiles and aircraft. Shares only visual language.
 **Nodes:** Base (auto-engages Recon Planes in a Low radius; acc Medium, reload
@@ -320,7 +320,7 @@ Air-Contact Designator (~2× range) · Threat Priority (recon / drone / lowest
 time-to-objective) · Fire-Control Deconfliction (no piling onto a dying
 aircraft).
 
-#### Branch: Hardened & Backup Systems — convoy ability, mitigates Sensor Jamming ⚑
+#### Branch: Hardened & Backup Systems — convoy ability, mitigates Sensor Jamming
 Jamming stays unshootable and cannot be prevented; this reduces its effect.
 **Nodes:** Base Emergency Reboot (shortens the remaining blackout by the Low
 recovery fraction; 1 charge/round) → Protected Detection Channel (pre-round
@@ -426,14 +426,14 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Small-arms boats | Visual contact | Escort deck guns | Hull systems |
 | Rocket boats | Visual contact | Deck guns (+Armor-Piercing) | Hull + fire suppression |
 | Boarding boats | Boarding alarm | Deck guns (+AP, +focus fire) | Anti-boarding countermeasures |
-| Coastal artillery ⚑ | Firing position (installation) | Counter-battery | Formation + hull systems |
-| Ranging artillery ⚑ | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
-| Rolling barrage ⚑ | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
-| Screening smoke ⚑ | Thermal/radar imaging | *No destructive counter* | Sensor improvement |
-| Blinding smoke ⚑ | Blinding-Smoke Resistance | *No destructive counter* | Sensor networking |
-| Recon plane ⚑ | Air-contact cue | Flak | Hardened systems |
-| Disabling drone ⚑ | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
-| Sensor jamming ⚑ | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
+| Coastal artillery | Firing position (installation) | Counter-battery | Formation + hull systems |
+| Ranging artillery | Fire-control detection | Extended-Range counter-battery | Formation + hull systems |
+| Rolling barrage | Barrage warning | Barrage Disruption strikes | Formation + hull systems |
+| Screening smoke | Thermal/radar imaging | *No destructive counter* | Sensor improvement |
+| Blinding smoke | Blinding-Smoke Resistance | *No destructive counter* | Sensor networking |
+| Recon plane | Air-contact cue | Flak | Hardened systems |
+| Disabling drone | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
+| Sensor jamming | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
 | Advanced targeting doctrine | Warning + target indicators | Defensive Smoke Screen | Formation/loadout choices |
 
 Audit results of this matrix (the "review the completed design" pass):
