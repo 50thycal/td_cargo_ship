@@ -381,6 +381,26 @@ export const ECONOMY = {
   startEscorts: 0,
   /** Cash earned per point of cargo value delivered. */
   cashPerValue: 4,
+  /** Fraction of a lost hull's replacement cost the consortium underwrites.
+   *
+   *  This is the anti-snowball restoring force on the CASH axis, and without it
+   *  there wasn't one. SEESAW.md promises the seesaw returns to center from both
+   *  ends, but every mechanism for the losing side acted on something else:
+   *  `dampStruggling` trims the ENEMY's budget, and `intelPerLoss` pays research
+   *  currency. Neither helps an operator who cannot afford to sail — and that is
+   *  what actually ends these campaigns.
+   *
+   *  A cargo hull earns 40 on delivery and costs 80 to replace, so the fleet
+   *  breaks even at a **33% loss rate** and shrinks irreversibly above it: fewer
+   *  hulls deliver less, less delivered buys fewer hulls. Traced across a sweep,
+   *  every collapse ran the same three rounds — ~700 cash and 20 hulls, then
+   *  ~250 and 7, then dead — and nothing in the game pulled back. Underwriting
+   *  half the replacement moves break-even to 50%, so losing half a convoy is a
+   *  bad round rather than a death sentence.
+   *
+   *  Self-limiting by construction: it pays in proportion to what the player is
+   *  losing, so a player who is winning collects almost nothing. */
+  lossInsurance: 0.5,
   ammoCost: 8,
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
@@ -441,6 +461,19 @@ export const CAMPAIGN = {
   confidenceCaptureCap: -21,
   confidenceQuotaMet: 10,
   confidenceQuotaMissed: -18,
+  /** Floor on ordinary confidence lost in ONE round (captures excluded).
+   *
+   *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
+   *  the same disaster and all land together, for -35 against a starting 60.
+   *  Two of those ended a campaign from full health with no round in between
+   *  where the player could read the danger and answer it — measured, every
+   *  collapse in a sweep ran the same three rounds from healthy to dead. The
+   *  floor keeps a disaster the worst thing that can happen while leaving rounds
+   *  to recover in, which is what makes the seesaw a seesaw rather than a cliff.
+   *
+   *  Captures sit outside it, as they sit outside the loss cap: absorbing losses
+   *  must never become the answer to the boarding node. */
+  confidenceRoundFloor: -22,
   /** Quota: value points required per 3-round window. The FIRST window's
    *  target is fixed (startCapacity * quotaPerCapacity); every window after
    *  that is DYNAMIC — sized from the player's own recent output rather than a
@@ -575,6 +608,27 @@ export const ENEMY_ECONOMY = {
   bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
   bonusRichConvoy: 0.08, // convoy value > 1.3x baseline
   dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+
+  /** Compounding pressure on a player who keeps walking through untouched.
+   *
+   *  The flat bonuses above fire readily — strong delivery hit 71% of rounds
+   *  across a sweep — but a fixed +12% never moved a build sitting at 94%
+   *  delivery. Measured, 56% of ALL rounds finished above 90% delivered while
+   *  the healthy band is 60-90%, and the builds that lived in the band were
+   *  precisely the ones that died. Survival and being-in-band were
+   *  anticorrelated: you dominated or you collapsed, which is the bimodal
+   *  distribution SEESAW.md's Balance signal had been failing on for four
+   *  slices running.
+   *
+   *  A streak bonus fixes what a flat one cannot, because it keeps growing
+   *  until it bites and then releases the round the player drops back into the
+   *  band. It is the mirror of ECONOMY.lossInsurance at the other end of the
+   *  seesaw — one scales with how badly the player is losing, this with how
+   *  long they have been winning, and both stop the moment the fight is even
+   *  again. */
+  dominanceFraction: 0.85,
+  dominanceStreakStep: 0.09,
+  dominanceStreakMax: 0.55,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */

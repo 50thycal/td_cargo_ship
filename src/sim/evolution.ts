@@ -109,7 +109,13 @@ export function newEvolution(): EvolutionState {
 /** War funds for `round`. Growth is the primary difficulty dial; the
  *  anti-snowball modifiers are the restoring force that keeps the seesaw from
  *  sticking at either end. */
-function grantBudget(round: number, metrics: RoundMetrics | undefined, baselineValue: number): number {
+function grantBudget(
+  round: number,
+  metrics: RoundMetrics | undefined,
+  baselineValue: number,
+  /** Consecutive rounds the player has just walked through untouched. */
+  dominantStreak = 0,
+): number {
   let budget = ENEMY_ECONOMY.budgetBase + ENEMY_ECONOMY.budgetPerRound * round;
   if (metrics) {
     let mult = 1;
@@ -117,6 +123,21 @@ function grantBudget(round: number, metrics: RoundMetrics | undefined, baselineV
     if (metrics.deliveredFraction >= 0.85) mult += ENEMY_ECONOMY.bonusStrongDelivery;
     if (metrics.interceptRate > 0.7) mult += ENEMY_ECONOMY.bonusHighIntercept;
     if (metrics.valueSent > baselineValue * 1.3) mult += ENEMY_ECONOMY.bonusRichConvoy;
+    // ...and faster the LONGER they have been walking through untouched. The
+    // flat bonuses fire readily enough — strong delivery hit in 71% of rounds
+    // across a sweep — but a fixed +12% never moved a build sitting at 94%
+    // delivery, and 56% of all rounds finished above 90%. A pressure that only
+    // grows while the player is dominating does: it keeps building until they
+    // are back in the band, then stops on its own the round they drop into it.
+    //
+    // This is the mirror of ECONOMY.lossInsurance on the other end. One scales
+    // with how badly the player is losing, the other with how long they have
+    // been winning, and both release the moment the seesaw comes back to
+    // centre — which is the whole restoring force SEESAW.md asks for.
+    mult += Math.min(
+      ENEMY_ECONOMY.dominanceStreakMax,
+      ENEMY_ECONOMY.dominanceStreakStep * dominantStreak,
+    );
     // Player struggling → damp growth so they can recover and re-counter.
     if (metrics.deliveredFraction < 0.55) mult -= ENEMY_ECONOMY.dampStruggling;
     budget *= Math.max(0.5, mult);
@@ -541,7 +562,15 @@ export function evolveEnemy(evo: EvolutionState, metrics: RoundMetrics, rng: RNG
   // 3. Grant next round's budget, re-allocate on ROI, and commit it.
   const baseline = evo.metrics[0]?.valueSent ?? metrics.valueSent;
   economy.targetingDebut = null;
-  economy.budget = grantBudget(nextRound, metrics, baseline);
+  // How many rounds in a row the player has just dominated. Counted off the
+  // metrics history rather than carried as campaign state, so it stays a pure
+  // read of what actually happened and needs no save migration.
+  let dominantStreak = 0;
+  for (let i = evo.metrics.length - 1; i >= 0; i--) {
+    if (evo.metrics[i].deliveredFraction < ENEMY_ECONOMY.dominanceFraction) break;
+    dominantStreak++;
+  }
+  economy.budget = grantBudget(nextRound, metrics, baseline, dominantStreak);
   allocate(economy, nextRound, rng);
   purchase(economy, nextRound, metrics, rng);
 

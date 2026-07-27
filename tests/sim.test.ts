@@ -32,7 +32,7 @@ import { buildTelemetryExport } from '../src/sim/telemetry';
 import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
 import { MODULES, SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
-import { CAMPAIGN, COMBAT, ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
+import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import type {
   AfterActionReport,
   CampaignState,
@@ -451,6 +451,133 @@ describe('economy hardening', () => {
     runRound(c, { defend: true });
     // 900 - 28 = 872 must still be owed (plus any new damage taken).
     expect(c.pendingDamage).toBeGreaterThanOrEqual(872);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Anti-snowball — the restoring force SEESAW.md promises at BOTH ends
+// ---------------------------------------------------------------------------
+
+describe('anti-snowball: the losing side', () => {
+  it('underwrites hulls lost at sea, so a ruinous round still leaves something to sail with', () => {
+    // Sail into a heavy enemy round undefended and check the report pays out.
+    const c = newDevCampaign('insure-payout', { round: 9, god: false, unlockAll: false });
+    setComposition(c, 'cargo', 8);
+    const { state, report } = runRound(c, { defend: false });
+    const lost = state.ships.filter((s) => !s.alive).length;
+    if (lost === 0) return; // nothing sank; nothing to underwrite
+    const delivered = state.stats.valueDelivered * ECONOMY.cashPerValue;
+    // Everything above the delivery earnings is the underwriting.
+    expect(report.cashEarned).toBeGreaterThan(delivered);
+  });
+
+  it('pays out against what replacement ACTUALLY costs, modules included', () => {
+    // The whole point: an equipped fleet replaces at far more than the bare
+    // hull price, and underwriting the bare hull would pay the builds that
+    // invest in their ships a fraction of what it pays the empty ones.
+    const bare = newCampaign('insure-bare');
+    const kitted = newCampaign('insure-kitted');
+    kitted.classModules.cargo = ['selfDefense'];
+    expect(shipCost(kitted, 'cargo')).toBeGreaterThan(shipCost(bare, 'cargo'));
+
+    const payout = (c: CampaignState): number =>
+      shipCost(c, 'cargo') * ECONOMY.lossInsurance;
+    expect(payout(kitted)).toBeGreaterThan(payout(bare));
+  });
+
+  it('never pays enough to make losing a hull profitable', () => {
+    // A restoring force, not an exploit: scuttling for the payout must always
+    // be worse than keeping the ship.
+    const c = newCampaign('insure-exploit');
+    expect(ECONOMY.lossInsurance).toBeLessThan(1);
+    expect(shipCost(c, 'cargo') * ECONOMY.lossInsurance).toBeLessThan(shipCost(c, 'cargo'));
+  });
+
+  it('floors ordinary confidence loss so a disaster round is a slope, not a cliff', () => {
+    // Bad round + full loss cap + missed quota all describe the same disaster
+    // and all land together. Unfloored that is -35 against a starting 60, so
+    // two rounds ended a campaign with no round in between to answer in.
+    const unflooredWorstCase =
+      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidenceQuotaMissed;
+    expect(unflooredWorstCase).toBeLessThan(CAMPAIGN.confidenceRoundFloor);
+    // The floor has to leave more than two rounds of headroom from the start.
+    expect(CAMPAIGN.startConfidence / Math.abs(CAMPAIGN.confidenceRoundFloor)).toBeGreaterThan(2);
+  });
+
+  it('the floor does NOT cover captures — absorbing losses is no answer to boarding', () => {
+    const c = newCampaign('capture-floor');
+    c.confidence = 90;
+    const before = c.confidence;
+    const { state } = runRound(c, { defend: false });
+    // Force the worst ordinary round AND a capture, then confirm the capture
+    // pushed the total past the ordinary floor.
+    state.stats.shipsCaptured = 3;
+    state.stats.lost = 10;
+    state.stats.delivered = 0;
+    state.stats.launched = 10;
+    const c2 = newCampaign('capture-floor');
+    c2.confidence = 90;
+    resolveTransit(c2, state);
+    const drop = before - c2.confidence;
+    expect(drop).toBeGreaterThan(Math.abs(CAMPAIGN.confidenceRoundFloor));
+  });
+});
+
+describe('anti-snowball: the winning side', () => {
+  it('a player who keeps dominating faces a budget that keeps climbing', () => {
+    // The flat bonus fires readily but never moved a build sitting at 94%
+    // delivery. Sustained dominance has to compound or it is not a restoring
+    // force at all — measured, 56% of rounds finished above 90% delivered.
+    const budgetAfter = (dominantRounds: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('dominance');
+      for (let r = 1; r <= dominantRounds; r++) {
+        evolveEnemy(evo, syntheticMetrics(r, { deliveredFraction: 0.95 }), rng);
+      }
+      return evo.economy.budget;
+    };
+    // Per-round growth is in the curve, so compare the RATIO to a matched
+    // run where the player is merely holding even rather than dominating.
+    const heldEven = (rounds: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('dominance');
+      for (let r = 1; r <= rounds; r++) {
+        evolveEnemy(evo, syntheticMetrics(r, { deliveredFraction: 0.7 }), rng);
+      }
+      return evo.economy.budget;
+    };
+    const short = budgetAfter(2) / heldEven(2);
+    const long = budgetAfter(7) / heldEven(7);
+    expect(long).toBeGreaterThan(short);
+  });
+
+  it('the pressure releases the round the player drops back into the band', () => {
+    // It scales with how LONG they have dominated, so a broken streak resets
+    // it — otherwise it is a difficulty ramp, not a restoring force.
+    //
+    // Both arms end on an identical DOMINANT round, so the flat
+    // bonusStrongDelivery is paid in both and cancels out. The only thing that
+    // differs is how long the streak behind that round ran. Without holding the
+    // last round equal this passes on the flat bonus alone and says nothing
+    // about the streak at all — which an earlier version of it did.
+    const budgetAfter = (deliveries: number[]): number => {
+      const evo = newEvolution();
+      const rng = makeRng('release');
+      deliveries.forEach((d, i) => {
+        evolveEnemy(evo, syntheticMetrics(i + 1, { deliveredFraction: d }), rng);
+      });
+      return evo.economy.budget;
+    };
+    const D = 0.95; // dominant
+    const B = 0.7; // back inside the healthy band
+    const unbroken = budgetAfter([D, D, D, D, D, D, D]);
+    const broken = budgetAfter([D, D, D, D, D, B, D]);
+    expect(broken).toBeLessThan(unbroken);
+  });
+
+  it('is capped, so dominance never runs away into an unplayable round', () => {
+    expect(ENEMY_ECONOMY.dominanceStreakMax).toBeLessThan(1);
+    expect(ENEMY_ECONOMY.dominanceStreakStep).toBeLessThan(ENEMY_ECONOMY.dominanceStreakMax);
   });
 });
 
