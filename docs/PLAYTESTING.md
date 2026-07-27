@@ -107,7 +107,17 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
   the underwater specialist, `gunboat` (deck guns + anti-boarding) the
   anti-surface one and `shore-battery` (counter-battery) the anti-artillery
   one, mirroring `mine-warfare` and `interceptor-rush`. A specialist collapsing is not automatically a bug: it is
-  evidence about which branch is carrying the damage.
+  evidence about which branch is carrying the damage. Against seven enemy
+  branches a mono-build covers a seventh of the threat space, so **expect them
+  to fail** — the question a specialist answers is "does this counter work in
+  its own domain", not "is this a viable way to play".
+- **A persona's research list is a wish, not a plan.** Research runs one project
+  at a time and a campaign completes roughly thirteen, so anything past that in
+  the list never happens. Order by breadth if the persona is meant to represent
+  breadth: `balanced` was ordered by depth and consequently never researched
+  deck guns or counter-battery in any campaign, which made every sweep that
+  used it a measurement of narrow coverage wearing a generalist's label. If you
+  add to a list, check what actually completes.
 - **Bots are heuristics.** They do not learn, do not read the AAR, and will not
   find the clever line a human would. Treat persona scores as a comparison
   *between builds under a fixed policy*, not as a skill ceiling.

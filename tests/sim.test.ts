@@ -581,6 +581,47 @@ describe('anti-snowball: the winning side', () => {
   });
 });
 
+describe('a bigger convoy is a bigger target', () => {
+  const budgetFor = (valueSent: number): number => {
+    const evo = newEvolution();
+    const rng = makeRng('convoy-scale');
+    for (let r = 1; r <= 5; r++) {
+      evolveEnemy(evo, syntheticMetrics(r, { valueSent, deliveredFraction: 0.8 }), rng);
+    }
+    return evo.economy.budget;
+  };
+
+  it('draws more enemy ordnance the more value sails', () => {
+    // Without this the enemy fires a budget-determined volume whatever sails,
+    // so growing the convoy DILUTES incoming fire and hull count becomes the
+    // best defensive stat in the game — while also being the scoring stat.
+    // Measured before the fix: 6 hulls took 4.13 missiles each, 40 took 0.85.
+    expect(budgetFor(500)).toBeGreaterThan(budgetFor(120));
+  });
+
+  it('scales against a FIXED reference, not the campaign\'s own first convoy', () => {
+    // Measuring against the player's opening convoy is self-cancelling: a build
+    // that starts big and stays big reads as 1.0 forever and never draws the
+    // extra ordnance — which is precisely the build this exists to price.
+    // A campaign whose every round sails a big convoy must still be scaled up.
+    const evo = newEvolution();
+    const rng = makeRng('fixed-ref');
+    for (let r = 1; r <= 5; r++) {
+      evolveEnemy(evo, syntheticMetrics(r, { valueSent: 600, deliveredFraction: 0.8 }), rng);
+    }
+    const alwaysBig = evo.economy.budget;
+    expect(alwaysBig).toBeGreaterThan(budgetFor(ENEMY_ECONOMY.convoyValueBaseline));
+  });
+
+  it('is clamped at both ends — sailing light is a smaller target, never a free pass', () => {
+    expect(ENEMY_ECONOMY.convoyScaleMin).toBeLessThan(0);
+    expect(ENEMY_ECONOMY.convoyScaleMin).toBeGreaterThan(-1);
+    expect(ENEMY_ECONOMY.convoyScaleMax).toBeGreaterThan(0);
+    // A one-hull convoy must still meet an enemy.
+    expect(budgetFor(10)).toBeGreaterThan(0);
+  });
+});
+
 describe('transit hardening', () => {
   it('a second ECM command while a burst is active does not burn a charge', () => {
     const c = newCampaign('ecm-stack');

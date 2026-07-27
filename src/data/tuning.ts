@@ -606,8 +606,37 @@ export const ENEMY_ECONOMY = {
    *  matter — the restoring force has to work in both directions. */
   bonusStrongDelivery: 0.12, // player delivered >= 85%
   bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
-  bonusRichConvoy: 0.08, // convoy value > 1.3x baseline
   dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+
+  /** Enemy ordnance scales with the convoy value actually sailing, measured
+   *  against the campaign's first convoy. Replaces a one-off "rich convoy"
+   *  threshold bonus, which was far too coarse for what it was guarding.
+   *
+   *  Without proportional scaling the enemy fires roughly the same volume
+   *  whatever sails, so growing the convoy simply DILUTES incoming fire.
+   *  Measured, going from 6 hulls to 40 took missiles-per-hull from 4.13 to
+   *  0.85 and lifted delivery from 63% to 91%. That made convoy size the best
+   *  defensive stat in the game — while also being the scoring stat, so buying
+   *  hulls beat buying defense on both axes simultaneously. Every build that
+   *  spent on defense delivered WORSE than the greed build that spent almost
+   *  nothing: defense share and value-per-round were near-perfectly inversely
+   *  correlated across nine builds.
+   *
+   *  With it, a bigger convoy earns more and draws more, which is the trade-off
+   *  the choice was always supposed to be. The floor is deliberately shallow —
+   *  sailing light should be a smaller target, but never a free pass. */
+  convoyScalePerRatio: 1.0,
+  convoyScaleMin: -0.5,
+  convoyScaleMax: 1.0,
+  /** Convoy value the scaling above is measured against — the designed opening
+   *  convoy (15 cargo + 3 tankers + 2 freighters = 241).
+   *
+   *  A FIXED reference, deliberately. Measuring against the campaign's own
+   *  first convoy makes the ratio self-cancelling: a player who starts big and
+   *  stays big reads as 1.0 forever and never draws the extra ordnance, which
+   *  is exactly the build the scaling exists to price. Tried that way first and
+   *  it moved missiles-per-hull by 0.02. */
+  convoyValueBaseline: 241,
 
   /** Compounding pressure on a player who keeps walking through untouched.
    *
@@ -627,8 +656,8 @@ export const ENEMY_ECONOMY = {
    *  long they have been winning, and both stop the moment the fight is even
    *  again. */
   dominanceFraction: 0.85,
-  dominanceStreakStep: 0.09,
-  dominanceStreakMax: 0.55,
+  dominanceStreakStep: 0.06,
+  dominanceStreakMax: 0.33,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */
