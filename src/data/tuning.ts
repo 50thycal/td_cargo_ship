@@ -381,6 +381,26 @@ export const ECONOMY = {
   startEscorts: 0,
   /** Cash earned per point of cargo value delivered. */
   cashPerValue: 4,
+  /** Fraction of a lost hull's replacement cost the consortium underwrites.
+   *
+   *  This is the anti-snowball restoring force on the CASH axis, and without it
+   *  there wasn't one. SEESAW.md promises the seesaw returns to center from both
+   *  ends, but every mechanism for the losing side acted on something else:
+   *  `dampStruggling` trims the ENEMY's budget, and `intelPerLoss` pays research
+   *  currency. Neither helps an operator who cannot afford to sail — and that is
+   *  what actually ends these campaigns.
+   *
+   *  A cargo hull earns 40 on delivery and costs 80 to replace, so the fleet
+   *  breaks even at a **33% loss rate** and shrinks irreversibly above it: fewer
+   *  hulls deliver less, less delivered buys fewer hulls. Traced across a sweep,
+   *  every collapse ran the same three rounds — ~700 cash and 20 hulls, then
+   *  ~250 and 7, then dead — and nothing in the game pulled back. Underwriting
+   *  half the replacement moves break-even to 50%, so losing half a convoy is a
+   *  bad round rather than a death sentence.
+   *
+   *  Self-limiting by construction: it pays in proportion to what the player is
+   *  losing, so a player who is winning collects almost nothing. */
+  lossInsurance: 0.5,
   ammoCost: 8,
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
@@ -441,6 +461,19 @@ export const CAMPAIGN = {
   confidenceCaptureCap: -21,
   confidenceQuotaMet: 10,
   confidenceQuotaMissed: -18,
+  /** Floor on ordinary confidence lost in ONE round (captures excluded).
+   *
+   *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
+   *  the same disaster and all land together, for -35 against a starting 60.
+   *  Two of those ended a campaign from full health with no round in between
+   *  where the player could read the danger and answer it — measured, every
+   *  collapse in a sweep ran the same three rounds from healthy to dead. The
+   *  floor keeps a disaster the worst thing that can happen while leaving rounds
+   *  to recover in, which is what makes the seesaw a seesaw rather than a cliff.
+   *
+   *  Captures sit outside it, as they sit outside the loss cap: absorbing losses
+   *  must never become the answer to the boarding node. */
+  confidenceRoundFloor: -22,
   /** Quota: value points required per 3-round window. The FIRST window's
    *  target is fixed (startCapacity * quotaPerCapacity); every window after
    *  that is DYNAMIC — sized from the player's own recent output rather than a
@@ -573,8 +606,58 @@ export const ENEMY_ECONOMY = {
    *  matter — the restoring force has to work in both directions. */
   bonusStrongDelivery: 0.12, // player delivered >= 85%
   bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
-  bonusRichConvoy: 0.08, // convoy value > 1.3x baseline
   dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+
+  /** Enemy ordnance scales with the convoy value actually sailing, measured
+   *  against the campaign's first convoy. Replaces a one-off "rich convoy"
+   *  threshold bonus, which was far too coarse for what it was guarding.
+   *
+   *  Without proportional scaling the enemy fires roughly the same volume
+   *  whatever sails, so growing the convoy simply DILUTES incoming fire.
+   *  Measured, going from 6 hulls to 40 took missiles-per-hull from 4.13 to
+   *  0.85 and lifted delivery from 63% to 91%. That made convoy size the best
+   *  defensive stat in the game — while also being the scoring stat, so buying
+   *  hulls beat buying defense on both axes simultaneously. Every build that
+   *  spent on defense delivered WORSE than the greed build that spent almost
+   *  nothing: defense share and value-per-round were near-perfectly inversely
+   *  correlated across nine builds.
+   *
+   *  With it, a bigger convoy earns more and draws more, which is the trade-off
+   *  the choice was always supposed to be. The floor is deliberately shallow —
+   *  sailing light should be a smaller target, but never a free pass. */
+  convoyScalePerRatio: 1.0,
+  convoyScaleMin: -0.5,
+  convoyScaleMax: 1.0,
+  /** Convoy value the scaling above is measured against — the designed opening
+   *  convoy (15 cargo + 3 tankers + 2 freighters = 241).
+   *
+   *  A FIXED reference, deliberately. Measuring against the campaign's own
+   *  first convoy makes the ratio self-cancelling: a player who starts big and
+   *  stays big reads as 1.0 forever and never draws the extra ordnance, which
+   *  is exactly the build the scaling exists to price. Tried that way first and
+   *  it moved missiles-per-hull by 0.02. */
+  convoyValueBaseline: 241,
+
+  /** Compounding pressure on a player who keeps walking through untouched.
+   *
+   *  The flat bonuses above fire readily — strong delivery hit 71% of rounds
+   *  across a sweep — but a fixed +12% never moved a build sitting at 94%
+   *  delivery. Measured, 56% of ALL rounds finished above 90% delivered while
+   *  the healthy band is 60-90%, and the builds that lived in the band were
+   *  precisely the ones that died. Survival and being-in-band were
+   *  anticorrelated: you dominated or you collapsed, which is the bimodal
+   *  distribution SEESAW.md's Balance signal had been failing on for four
+   *  slices running.
+   *
+   *  A streak bonus fixes what a flat one cannot, because it keeps growing
+   *  until it bites and then releases the round the player drops back into the
+   *  band. It is the mirror of ECONOMY.lossInsurance at the other end of the
+   *  seesaw — one scales with how badly the player is losing, this with how
+   *  long they have been winning, and both stop the moment the fight is even
+   *  again. */
+  dominanceFraction: 0.85,
+  dominanceStreakStep: 0.06,
+  dominanceStreakMax: 0.33,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */

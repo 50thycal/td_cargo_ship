@@ -410,26 +410,42 @@ const PASSIVE: TransitPolicy = {
 export const PERSONAS: Persona[] = [
   {
     name: 'balanced',
-    desc: 'Generalist: spreads investment across launchers, sensors and hull, researches broadly.',
+    desc: 'Generalist: one answer to every branch before depth in any of them.',
     formation: 'tight',
+    // BREADTH FIRST, and deliberately so. Research runs one project at a time
+    // and a campaign completes roughly thirteen of them, so a list ordered by
+    // depth never reaches its tail: the previous ordering front-loaded missile
+    // and mine upgrades and NEVER researched deck guns or counter-battery in
+    // any campaign. That made "balanced" a missile/mine specialist wearing a
+    // generalist's name, and every sweep that used it was quietly measuring
+    // narrow coverage. Ablating deck guns or counter-battery from it changed
+    // the score by exactly zero, which is what gave the mis-specification away.
+    //
+    // One base node per enemy branch comes first; depth is what the tail is
+    // for, and reaching the tail is a bonus rather than the plan.
     research: [
-      'escortInterceptor.precisionGuidance',
+      'escortInterceptor.precisionGuidance', // missiles
+      'mineSonar.base', // mines
+      'deckGun.base', // attack boats
+      'hydrophone.base', // torpedoes
+      'counterBattery.base', // artillery
+      'mcmDrones.base', // mines — the counter, not just the detection
+      'depthCharges.base', // torpedoes — likewise
       'missileWarning.base',
-      'mineSonar.base',
-      'mcmDrones.base',
+      'compartmentalization.low',
+      'flak.base', // electronic attack / drones
+      'deckGun.autoNearest',
+      'counterBattery.autoReturnFire',
+      'thermalImaging.base', // smoke
+      // Depth from here — anything reached is a bonus, not the plan.
       'mineSonar.improvedRange',
       'baseInterceptor.extendedBurn',
       'escortInterceptor.rapidReload',
-      'compartmentalization.low',
       'missileWarning.targetVector',
       'baseInterceptor.strategicAuto',
       'mineSonar.compositeSignature',
       'selfDefense.base',
       'escortInterceptor.localAuto',
-      'deckGun.base',
-      'deckGun.autoNearest',
-      'counterBattery.base',
-      'counterBattery.autoReturnFire',
       'logistics.expandedBerthing',
     ],
     buys: [
@@ -440,10 +456,12 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'escort' },
       { kind: 'escortModule', id: 'deckGun' },
+      { kind: 'escortModule', id: 'depthCharges' },
       { kind: 'escortModule', id: 'mcmDroneLauncher' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'droneAmmo', upTo: 6 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
+      { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
       { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'ability', id: 'ecm' },

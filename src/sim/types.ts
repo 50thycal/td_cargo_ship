@@ -1195,6 +1195,12 @@ export interface AfterActionReport {
   round: number;
   stats: TransitStats;
   cashEarned: number;
+  /** Part of `cashEarned` that was underwriting on hulls lost at sea, rather
+   *  than payment for cargo delivered. Reported separately because a restoring
+   *  force the player cannot see just looks like noise in the cash figure — and
+   *  because "the consortium covered half of what that cost you" is the beat
+   *  that tells them a bad round is survivable. */
+  insurancePaid: number;
   intelEarned: number;
   confidenceChange: number;
   confidenceAfter: number;

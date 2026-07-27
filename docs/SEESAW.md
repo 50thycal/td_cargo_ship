@@ -355,6 +355,73 @@ about a third of the difficulty.
 resources or just a sharper rule. Resources are the expensive answer and they
 move everything else with them.**
 
+### The restoring force was aimed at the wrong variable
+
+The Balance signal sat at 1–6% for four slices running. Both ends were broken,
+and neither for the reason the design assumed.
+
+**Losing side.** Everything aimed at a struggling player acted on something
+other than what was killing them: `dampStruggling` trims the *enemy's* budget,
+`intelPerLoss` pays research currency. Neither helps an operator who cannot
+afford to sail — and cash was the thing collapsing. Income is purely
+delivery-proportional with no floor, while a cargo hull earns 40 on delivery
+and costs 80 to replace, so the fleet breaks even at a **33% loss rate** and
+shrinks irreversibly above it. Every collapse traced ran the same three rounds:
+~700 cash and 20 hulls, then ~250 and 7, then dead. Confidence had the same
+shape — a bad round, the loss cap and a missed quota all describe one disaster
+and all land together, for −35 against a starting 60.
+
+**Winning side.** The flat bonuses fired constantly (strong delivery in 71% of
+rounds) and moved nothing: 56% of all rounds finished above 90% delivered.
+Survival and being-in-band were *anticorrelated* — you dominated or you
+collapsed, which is the bimodality stated exactly.
+
+The fixes are deliberately symmetric: underwriting that scales with how badly
+the player is losing, and enemy pressure that scales with how long they have
+been winning. **Both release the moment the fight is even again**, which is what
+makes them restoring forces rather than a difficulty slider.
+
+### Convoy size was secretly the best defensive stat
+
+The deepest one. The enemy fired a budget-determined volume of ordnance
+regardless of how many hulls sailed, so **growing the convoy simply diluted
+incoming fire**: 6 hulls took 4.13 missiles each, 40 took 0.85, and delivery
+went 63% → 91% purely from being bigger.
+
+Hull count was therefore the best *defensive* stat in the game — while also
+being the *scoring* stat. Buying hulls beat buying defense on both axes at
+once, which is why the greed build outscored every build that actually fights,
+and why the specialists could not climb: they sail small convoys into undiluted
+fire. Defense share and value-per-round were near-perfectly inversely
+correlated across nine builds.
+
+Enemy ordnance now scales with the convoy value actually sailing, against a
+**fixed** reference. Measuring against the campaign's own first convoy is
+self-cancelling — a build that starts big and stays big reads as 1.0 forever,
+which is exactly the build the scaling exists to price. Tried that way first;
+it moved missiles-per-hull by 0.02.
+
+### A persona that had been lying to every sweep
+
+Ablating one counter at a time out of the `balanced` build produced two arms
+with *byte-identical* scores. That only happens if those counters were never
+bought — and they never were. Research runs one project at a time and a
+campaign completes about thirteen, so `balanced`'s depth-ordered list never
+reached its tail: it had **never researched deck guns or counter-battery in any
+campaign**. A missile/mine specialist had been wearing a generalist's name, and
+every sweep using it was quietly measuring narrow coverage.
+
+Two lessons, and the second is the sharper one:
+
+1. Order a bot's research by breadth when it is meant to represent breadth.
+2. **An ablation that changes nothing is evidence about your harness, not about
+   the thing you ablated.** Identical numbers are a bug report.
+
+And a third, learned immediately after: the first corrected ablation run said
+every counter was worth *negative* value. On matched seeds at 16 seeds instead
+of 10, that inverted for two of them. Ten seeds is not enough to rank builds
+that finish within 10% of each other.
+
 ---
 
 ## How this is used

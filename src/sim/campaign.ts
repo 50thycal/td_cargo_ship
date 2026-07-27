@@ -266,7 +266,26 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const confidenceBefore = c.confidence;
 
   // --- Economy ---------------------------------------------------------------
-  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
+  // Underwriting on hulls lost at sea, paid before anything else so a ruinous
+  // round still leaves something to sail with. See ECONOMY.lossInsurance: this
+  // is the restoring force on the cash axis, and it is what stops a fleet that
+  // crosses its break-even loss rate from being mathematically unable to
+  // recover.
+  //
+  // Priced off shipCost — what replacing that hull ACTUALLY costs this player,
+  // fitted modules included — and not off the bare hull. The surcharge is most
+  // of the bill for an equipped fleet: a module-heavy cargo hull replaces at
+  // 165 against a bare one's 80, so the same 40 it earns on delivery leaves the
+  // equipped player break-even at a 19% loss rate rather than 33%. Underwriting
+  // the bare hull would have quietly paid the specialist builds a quarter of
+  // what it paid the empty ones, which is backwards: every build that invests
+  // in its hulls is the one this force exists to catch.
+  let insurancePaid = 0;
+  for (const ship of t.ships) {
+    if (!ship.alive) insurancePaid += shipCost(c, ship.classId) * ECONOMY.lossInsurance;
+  }
+  insurancePaid = Math.round(insurancePaid);
+  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue + insurancePaid;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
@@ -357,6 +376,25 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
   }
+
+  // Floor on how far ORDINARY failure can drop confidence in a single round.
+  //
+  // A bad round, the full loss cap and a missed quota all land together — they
+  // are the same disaster described three ways — and unfloored they took 35 of
+  // a starting 60 at once. Two such rounds ended a campaign from full health
+  // with no round in between where the player could see it coming and answer.
+  // The floor turns that cliff into a slope: the same disaster still hurts more
+  // than anything else in the game, but it leaves rounds to recover in, which
+  // is the only thing that makes a comeback possible at all.
+  //
+  // Captures are deliberately NOT floored, for the same reason they are not
+  // capped: absorbing losses must never become the answer to the boarding node.
+  const captureLoss =
+    s.shipsCaptured > 0
+      ? Math.max(CAMPAIGN.confidencePerCapture * s.shipsCaptured, CAMPAIGN.confidenceCaptureCap)
+      : 0;
+  const ordinaryLoss = confidenceChange - captureLoss;
+  confidenceChange = Math.max(ordinaryLoss, CAMPAIGN.confidenceRoundFloor) + captureLoss;
 
   c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
 
@@ -509,6 +547,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     round,
     stats: s,
     cashEarned,
+    insurancePaid,
     intelEarned,
     confidenceChange,
     confidenceAfter: c.confidence,
