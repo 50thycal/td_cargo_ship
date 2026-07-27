@@ -12,8 +12,11 @@ import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
+  ESCORT_DEFAULT_NAMES,
   ESCORT_MODULES,
   ESCORT_MODULE_SLOTS,
+  ESCORT_MODULE_SLOTS_UNLOCKED,
+  ESCORT_NAME_MAX,
   MODULES,
   SHIP_CLASSES,
 } from '../data/defs';
@@ -41,6 +44,7 @@ import type {
   CounterTelemetry,
   EnemyRoundTelemetry,
   EscortModuleId,
+  EscortUnit,
   FormationId,
   ModuleId,
   ResearchId,
@@ -83,15 +87,13 @@ export function newCampaign(seed: string): CampaignState {
     composition: { cargo: 15, tanker: 3, freighter: 2 },
     classModules: { cargo: [], tanker: [], freighter: [] },
     modulePaid: { cargo: {}, tanker: {}, freighter: {} },
-    escortModules: [],
-    escortModulePaid: {},
     baseModules: [],
     baseModulePaid: {},
     pendingDamage: 0,
-    escortDamage: 0,
     baseDamage: 0,
     bases: ECONOMY.startBases,
-    escorts: ECONOMY.startEscorts,
+    escortUnits: [],
+    nextEscortId: 1,
     ammo: ECONOMY.startAmmo,
     droneAmmo: ECONOMY.startDroneAmmo,
     pdAmmo: ECONOMY.startPdAmmo,
@@ -194,8 +196,9 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.sonarUnlocked = true;
     c.smokeUnlocked = true;
     c.hardenedUnlocked = true;
-    // The limited loadout slots still apply, even for dev runs.
-    c.escortModules = ['mcmDroneLauncher', 'deckGun'];
+    // The limited loadout slots still apply, even for dev runs — but each
+    // escort is fitted individually, so a dev flotilla is a MIXED one rather
+    // than three copies of the same design.
     c.baseModules = ['counterBattery'];
     c.cash = 999_999;
     c.intel = 9_999;
@@ -203,8 +206,21 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.droneAmmo = 999;
     c.pdAmmo = 999;
     c.bases = ECONOMY.maxBases;
-    c.escorts = ECONOMY.maxEscorts;
     c.capacity = CAMPAIGN.maxCapacity;
+    const devLoadouts: EscortModuleId[][] = [
+      ['deckGun', 'mcmDroneLauncher'],
+      ['depthCharges', 'deckGun'],
+      ['mcmDroneLauncher', 'depthCharges'],
+    ];
+    for (let i = 0; i < ECONOMY.maxEscorts; i++) {
+      c.escortUnits.push({
+        id: c.nextEscortId++,
+        name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+        modules: [...(devLoadouts[i % devLoadouts.length] ?? [])].slice(0, escortSlots(c)),
+        modulePaid: {},
+        damage: 0,
+      });
+    }
   }
   fastForwardEvolution(c, opts.round);
   return c;
@@ -315,9 +331,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       c.fleet[ship.classId] = Math.max(0, c.fleet[ship.classId] - 1);
     }
   }
-  // Escorts and batteries destroyed at sea are removed from the fleet.
-  if (s.escortsLost > 0) {
-    c.escorts = Math.max(0, c.escorts - s.escortsLost);
+  // Escorts destroyed at sea leave the flotilla — the SPECIFIC ships that
+  // sank, by unit id, so the surviving escorts keep their names, their fitted
+  // loadouts and their accumulated damage. Under the old count-and-template
+  // model this was just `escorts--` and any notion of which escort died was
+  // meaningless, because they were interchangeable.
+  const sunkUnitIds = new Set(t.escorts.filter((e) => !e.alive).map((e) => e.unitId));
+  if (sunkUnitIds.size > 0) {
+    c.escortUnits = c.escortUnits.filter((u) => !sunkUnitIds.has(u.id));
   }
   if (s.basesLost > 0) {
     c.bases = Math.max(0, c.bases - s.basesLost);
@@ -338,9 +359,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     );
   // Escorts and batteries carry their unrepaired hull damage into next round
   // (survivors only — the destroyed ones are gone). Repaired in procurement.
-  c.escortDamage = Math.round(
-    t.escorts.filter((e) => e.alive).reduce((sum, e) => sum + (e.maxHp - e.hp), 0),
-  );
+  // Each surviving escort carries its OWN unrepaired damage forward, so a
+  // battered gun boat stays battered and its undamaged sister does not
+  // inherit a share of the wound.
+  for (const unit of c.escortUnits) {
+    const sailed = t.escorts.find((e) => e.unitId === unit.id);
+    unit.damage = sailed && sailed.alive ? Math.round(sailed.maxHp - sailed.hp) : 0;
+  }
   c.baseDamage = Math.round(
     t.bases.filter((b) => b.alive).reduce((sum, b) => sum + (b.maxHp - b.hp), 0),
   );
@@ -615,7 +640,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
         tanker: [...c.classModules.tanker],
         freighter: [...c.classModules.freighter],
       },
-      escorts: [...c.escortModules],
+      escorts: c.escortUnits.map((e) => ({ id: e.id, name: e.name, modules: [...e.modules] })),
       bases: [...c.baseModules],
       abilities: [
         ...(c.ecmUnlocked ? ['ecm'] : []),
@@ -682,6 +707,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     basesLost: s.basesLost,
     launchersDisabled: s.launchersDisabled,
     losses,
+    escortPerformance: Object.values(s.escortPerformance).map((p) => ({
+      ...p,
+      modules: [...p.modules],
+      damageTaken: Math.round(p.damageTaken),
+    })),
     cashEarned,
     intelEarned,
     confidenceBefore,
@@ -689,7 +719,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     capacity: c.capacity,
     capacityIncreased,
     basesOwned: c.bases,
-    escortsOwned: c.escorts,
+    escortsOwned: c.escortUnits.length,
     researchCompleted: researchCompleted ?? null,
     activeResearch: c.activeResearch?.id ?? null,
     completedResearch: [...c.completedResearch],
@@ -809,37 +839,113 @@ export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: M
   return true;
 }
 
-/** Why an escort module cannot be fitted (null = it can). */
-export function escortModuleBlockReason(c: CampaignState, id: EscortModuleId): string | null {
-  if (c.escortModules.includes(id)) return 'Already fitted';
-  if (c.escortModules.length >= ESCORT_MODULE_SLOTS) return 'Escort loadout slots are full';
+// ---------------------------------------------------------------------------
+// The escort flotilla
+// ---------------------------------------------------------------------------
+
+/** Specialist slots on every escort right now. The third exists in the model
+ *  from the start and is unlocked by research, so an escort's role can deepen
+ *  mid-campaign without the loadout changing shape. */
+export function escortSlots(c: CampaignState): number {
+  return hasResearch(c, 'logistics.escortRefitBay')
+    ? ESCORT_MODULE_SLOTS_UNLOCKED
+    : ESCORT_MODULE_SLOTS;
+}
+
+export function findEscort(c: CampaignState, escortId: number): EscortUnit | undefined {
+  return c.escortUnits.find((e) => e.id === escortId);
+}
+
+/** Trim a player-typed escort name to something safe to store and render.
+ *  Collapses whitespace, strips control characters, and length-limits. An empty
+ *  result falls back to the caller's default rather than an unnamed ship. */
+export function sanitizeEscortName(raw: string, fallback = 'Escort'): string {
+  const cleaned = [...raw]
+    // eslint-disable-next-line no-control-regex
+    .filter((ch) => ch >= ' ' && ch !== '')
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, ESCORT_NAME_MAX);
+  return cleaned.length > 0 ? cleaned : fallback;
+}
+
+/** The next unused default name, so a freshly commissioned escort arrives with
+ *  something meaningful rather than a bare number. */
+function nextEscortName(c: CampaignState): string {
+  const taken = new Set(c.escortUnits.map((e) => e.name));
+  const free = ESCORT_DEFAULT_NAMES.find((n) => !taken.has(n));
+  if (free) return free;
+  for (let i = c.escortUnits.length + 1; ; i++) {
+    const name = `Escort ${i}`;
+    if (!taken.has(name)) return name;
+  }
+}
+
+export function renameEscort(c: CampaignState, escortId: number, name: string): boolean {
+  const escort = findEscort(c, escortId);
+  if (!escort) return false;
+  escort.name = sanitizeEscortName(name, escort.name);
+  return true;
+}
+
+/** Why a module cannot be fitted to THIS escort (null = it can). */
+export function escortModuleBlockReason(
+  c: CampaignState,
+  escortId: number,
+  id: EscortModuleId,
+): string | null {
+  const escort = findEscort(c, escortId);
+  if (!escort) return 'No such escort';
+  // Fitting the same module to a DIFFERENT escort is always allowed — three
+  // gun boats is a legitimate answer to a strait full of attack boats.
+  if (escort.modules.includes(id)) return 'Already fitted to this escort';
+  if (escort.modules.length >= escortSlots(c)) {
+    return hasResearch(c, 'logistics.escortRefitBay')
+      ? 'All specialist slots full on this escort'
+      : 'Both specialist slots full — Escort Refit Bay unlocks a third';
+  }
   const req = ESCORT_MODULE_RESEARCH_REQUIREMENT[id];
   if (!hasResearch(c, req)) return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
   if (c.cash < ESCORT_MODULES[id].cost) return 'Not enough cash';
   return null;
 }
 
-export function buyEscortModule(c: CampaignState, id: EscortModuleId): boolean {
-  if (escortModuleBlockReason(c, id) !== null) return false;
+export function buyEscortModule(c: CampaignState, escortId: number, id: EscortModuleId): boolean {
+  if (escortModuleBlockReason(c, escortId, id) !== null) return false;
+  const escort = findEscort(c, escortId);
+  if (!escort) return false;
   const cost = ESCORT_MODULES[id].cost;
   c.cash -= cost;
-  c.escortModules.push(id);
-  c.escortModulePaid[id] = cost;
+  escort.modules.push(id);
+  // Recorded against THIS escort, so unequipping refunds what this hull's
+  // fitting actually cost and a module cannot be bought cheaply on one escort
+  // and cashed out at another's price.
+  escort.modulePaid[id] = cost;
   recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, cost);
   return true;
 }
 
-export function removeEscortModule(c: CampaignState, id: EscortModuleId): boolean {
-  const idx = c.escortModules.indexOf(id);
+export function removeEscortModule(c: CampaignState, escortId: number, id: EscortModuleId): boolean {
+  const escort = findEscort(c, escortId);
+  if (!escort) return false;
+  const idx = escort.modules.indexOf(id);
   if (idx < 0) return false;
-  c.escortModules.splice(idx, 1);
-  const paid = c.escortModulePaid[id];
+  escort.modules.splice(idx, 1);
+  const paid = escort.modulePaid[id];
   if (paid !== undefined) {
     c.cash += paid;
-    delete c.escortModulePaid[id];
+    delete escort.modulePaid[id];
     recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, -paid);
   }
   return true;
+}
+
+/** Does ANY escort in the flotilla carry this module? Used for availability
+ *  read-outs and for research effects that ask whether a capability exists at
+ *  all, never for deciding which escort may fire — that is per escort. */
+export function fleetHasEscortModule(c: CampaignState, id: EscortModuleId): boolean {
+  return c.escortUnits.some((e) => e.modules.includes(id));
 }
 
 /** Why a base module cannot be fitted (null = it can). */
@@ -917,11 +1023,20 @@ export function buyPdAmmo(c: CampaignState, buys = 1): boolean {
   return true;
 }
 
+/** Commission a new escort. It arrives with built-in interceptors, a default
+ *  name and EMPTY specialist slots — a replacement is a new ship, not a
+ *  resurrection of the one that sank, so its loadout is bought fresh. */
 export function buyEscort(c: CampaignState): boolean {
-  if (c.escorts >= ECONOMY.maxEscorts) return false;
+  if (c.escortUnits.length >= ECONOMY.maxEscorts) return false;
   if (c.cash < ECONOMY.escortCost) return false;
   c.cash -= ECONOMY.escortCost;
-  c.escorts++;
+  c.escortUnits.push({
+    id: c.nextEscortId++,
+    name: nextEscortName(c),
+    modules: [],
+    modulePaid: {},
+    damage: 0,
+  });
   recordSpend(c, 'escortInterceptor', ECONOMY.escortCost);
   return true;
 }
@@ -1000,7 +1115,14 @@ export function setAutoFire(c: CampaignState, system: AutoSystem, enabled: boole
 
 /** Total unrepaired hull damage across cargo hulls, escorts and batteries. */
 export function totalPendingDamage(c: CampaignState): number {
-  return c.pendingDamage + c.escortDamage + c.baseDamage;
+  return c.pendingDamage + escortDamageTotal(c) + c.baseDamage;
+}
+
+/** Unrepaired damage across the whole flotilla. Held per escort so a wound
+ *  stays with the ship that took it; summed here because repair is bought for
+ *  the fleet in one go. */
+export function escortDamageTotal(c: CampaignState): number {
+  return c.escortUnits.reduce((sum, e) => sum + e.damage, 0);
 }
 
 export function repairCost(c: CampaignState): number {
@@ -1013,7 +1135,7 @@ export function repairFleet(c: CampaignState): boolean {
   if (cost <= 0 || c.cash < cost) return false;
   c.cash -= cost;
   c.pendingDamage = 0;
-  c.escortDamage = 0;
+  for (const unit of c.escortUnits) unit.damage = 0;
   c.baseDamage = 0;
   recordSpend(c, 'fleet', cost);
   return true;

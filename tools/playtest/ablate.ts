@@ -123,8 +123,11 @@ function ablate(base: Persona, branchId: string): Persona {
     switch (eq.kind) {
       case 'cargoModule':
         return b.kind === 'module' && b.moduleId === eq.id;
+      // Escort modules are no longer their own intent — they come out of the
+      // persona's escortDoctrine, so the branch is removed from the doctrine
+      // below rather than from the buy list.
       case 'escortModule':
-        return b.kind === 'escortModule' && b.id === eq.id;
+        return false;
       case 'baseModule':
         return b.kind === 'baseModule' && b.id === eq.id;
       case 'ability':
@@ -137,13 +140,23 @@ function ablate(base: Persona, branchId: string): Persona {
     }
   };
 
+  // Strip the ablated module from every escort's wanted loadout. Each escort
+  // keeps the REST of its fit, so the arm still sails a mixed flotilla — only
+  // this one capability is gone from it.
+  const doctrine =
+    eq?.kind === 'escortModule' && base.escortDoctrine
+      ? base.escortDoctrine.map((fit) => fit.filter((m) => m !== eq.id))
+      : base.escortDoctrine;
+  const wantsAnyFit = (doctrine ?? []).some((fit) => fit.length > 0);
+
   const policy = POLICY_FOR[branchId];
   return {
     ...base,
     name: `-${branchId}`,
     // Node ids are namespaced by branch, so this is exact rather than fuzzy.
     research: base.research.filter((r) => !r.startsWith(`${branchId}.`)),
-    buys: base.buys.filter((b) => !dropsBuy(b)),
+    buys: base.buys.filter((b) => !dropsBuy(b) && (b.kind !== 'escortFit' || wantsAnyFit)),
+    escortDoctrine: doctrine,
     transit: policy ? { ...base.transit, [policy]: false } : base.transit,
   };
 }
@@ -170,14 +183,18 @@ function ownedEquipment(c: CampaignState, into: Set<string>): void {
   for (const mods of Object.values(c.classModules)) {
     for (const m of mods) into.add(`cargoModule:${m}`);
   }
-  for (const m of c.escortModules) into.add(`escortModule:${m}`);
+  // Any escort carrying it counts — the branch is measured as owned as soon as
+  // one hull in the flotilla can use it.
+  for (const unit of c.escortUnits) {
+    for (const m of unit.modules) into.add(`escortModule:${m}`);
+  }
   for (const m of c.baseModules) into.add(`baseModule:${m}`);
   if (c.ecmUnlocked) into.add('ability:ecm');
   if (c.scanUnlocked) into.add('ability:scan');
   if (c.sonarUnlocked) into.add('ability:sonar');
   if (c.smokeUnlocked) into.add('ability:smoke');
   if (c.hardenedUnlocked) into.add('ability:hardened');
-  if (c.escorts > 0) into.add('builtIn:escort');
+  if (c.escortUnits.length > 0) into.add('builtIn:escort');
   if (c.bases > 0) into.add('builtIn:base');
 }
 

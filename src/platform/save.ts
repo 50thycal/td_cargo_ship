@@ -16,8 +16,8 @@ import {
   RESEARCH_INDEX,
   RESEARCH_MIGRATION,
 } from '../data/counters';
-import { SHIP_CLASSES } from '../data/defs';
-import type { CampaignState, ModuleId, ShipClassId } from '../sim/types';
+import { ESCORT_DEFAULT_NAMES, ESCORT_MODULE_SLOTS, SHIP_CLASSES } from '../data/defs';
+import type { CampaignState, EscortModuleId, ModuleId, ShipClassId } from '../sim/types';
 
 const KEY = 'straitwatch.campaign.v1';
 
@@ -155,6 +155,68 @@ function migrateLegacyFields(raw: Record<string, unknown>): void {
     const kept = legacyResearch.filter((id) => RESEARCH_INDEX[id] !== undefined);
     raw.completedResearch = [...new Set([...kept, ...mapped])];
   }
+
+  migrateEscortFlotilla(raw);
+}
+
+/** Turn the old shared-template escort model into an individually-fitted
+ *  flotilla.
+ *
+ *  Before: `escorts` was a COUNT, `escortModules` one loadout applied to every
+ *  one of them, `escortModulePaid` a single refund record, and `escortDamage` a
+ *  pool shared across the group. Under that model escorts were interchangeable
+ *  and there was nothing to migrate them INTO individually.
+ *
+ *  The least surprising translation is the one that changes nothing the player
+ *  can see: build one escort per owned hull and give each the loadout they were
+ *  all already carrying. A player who reloads mid-campaign finds the same
+ *  capabilities in the same places, and can now start differentiating them.
+ *
+ *  Two details worth stating, because both could otherwise bite quietly:
+ *
+ *  - The shared loadout is TRUNCATED to the starting slot count. Old saves
+ *    cannot exceed it (the old cap was the same number), but a save hand-edited
+ *    or written by a future build with the third slot unlocked would otherwise
+ *    smuggle an over-full escort past the limit.
+ *  - `escortModulePaid` recorded ONE price for the whole fleet, so it cannot be
+ *    honestly split N ways. Each escort inherits the recorded price as its own
+ *    refund value. That is generous in the sense that refunding all three
+ *    returns three times what was paid — but the alternative, dividing it,
+ *    would refund less than the player paid for the fitting they can see, which
+ *    is the worse surprise. Fresh purchases under the new model record their
+ *    own price per escort, so this only ever applies to modules bought before
+ *    the change. */
+function migrateEscortFlotilla(raw: Record<string, unknown>): void {
+  // Already migrated (or a fresh save): nothing to do.
+  if (Array.isArray(raw.escortUnits)) return;
+  const count = typeof raw.escorts === 'number' ? Math.max(0, Math.floor(raw.escorts)) : 0;
+  const shared = Array.isArray(raw.escortModules)
+    ? (raw.escortModules as EscortModuleId[]).slice(0, ESCORT_MODULE_SLOTS)
+    : [];
+  const sharedPaid = isPlainObject(raw.escortModulePaid)
+    ? (raw.escortModulePaid as Partial<Record<EscortModuleId, number>>)
+    : {};
+  const pooledDamage = typeof raw.escortDamage === 'number' ? Math.max(0, raw.escortDamage) : 0;
+  // The pool was already distributed evenly across escorts at transit time, so
+  // splitting it evenly here preserves what the player would have sailed with.
+  const perEscortDamage = count > 0 ? pooledDamage / count : 0;
+
+  const units = [];
+  for (let i = 0; i < count; i++) {
+    units.push({
+      id: i + 1,
+      name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+      modules: [...shared],
+      modulePaid: { ...sharedPaid },
+      damage: Math.round(perEscortDamage),
+    });
+  }
+  raw.escortUnits = units;
+  raw.nextEscortId = count + 1;
+  delete raw.escorts;
+  delete raw.escortModules;
+  delete raw.escortModulePaid;
+  delete raw.escortDamage;
 }
 
 /** Bring a parsed (possibly older-version, possibly partial) campaign up to the

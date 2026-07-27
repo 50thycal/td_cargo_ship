@@ -119,10 +119,35 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   },
 };
 
-/** Escort loadout slots. Missile interceptors are built into every escort;
- *  these optional systems compete for the loadout's limited slots — no escort
- *  carries every weapon. */
+/** Optional specialist slots on a single escort. Missile interceptors are BUILT
+ *  IN to every escort and never occupy one of these — the slots are what force
+ *  a choice of role, so no one escort carries every weapon.
+ *
+ *  Each escort is fitted independently (see CampaignState.escortUnits): a
+ *  three-escort flotilla can run a gun boat, a submarine hunter and a
+ *  minesweeper, or three gun boats when the boats are what is hurting. */
 export const ESCORT_MODULE_SLOTS = 2;
+
+/** Slots after the refit-bay unlock. The third slot exists in the architecture
+ *  from the start and is simply locked, so an escort's role can deepen later in
+ *  a campaign without the loadout model changing shape. */
+export const ESCORT_MODULE_SLOTS_UNLOCKED = 3;
+
+/** Longest an escort's player-set name may be. Long enough for a real ship
+ *  name, short enough to render in a list row and a transit label. */
+export const ESCORT_NAME_MAX = 22;
+
+/** Names handed to escorts as they are commissioned, in order. Past the end of
+ *  the list they fall back to a numbered hull, so the player always gets
+ *  something meaningful to rename rather than "Escort 4". */
+export const ESCORT_DEFAULT_NAMES: readonly string[] = [
+  'Vanguard',
+  'Sentinel',
+  'Seawatch',
+  'Bulwark',
+  'Lookout',
+  'Steadfast',
+];
 
 export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {
   deckGun: {

@@ -13,6 +13,7 @@ import {
   buyPdAmmo,
   buyShip,
   createRoundTransit,
+  escortDamageTotal,
   moduleCost,
   newCampaign,
   newDevCampaign,
@@ -26,6 +27,7 @@ import {
   startResearch,
   unlockScan,
 } from '../src/sim/campaign';
+import { fitUniformEscorts } from './helpers';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
@@ -950,7 +952,7 @@ describe('air defense & telemetry', () => {
   it('starts with a shore battery and no free escort', () => {
     const c = newCampaign('loadout');
     expect(c.bases).toBe(1);
-    expect(c.escorts).toBe(0);
+    expect(c.escortUnits).toHaveLength(0);
   });
 
   it('bases and escorts are buyable and capped', () => {
@@ -966,8 +968,12 @@ describe('air defense & telemetry', () => {
     while (buyEscort(c) && guard++ < 20) {
       /* buy to cap */
     }
-    expect(c.escorts).toBe(3);
+    expect(c.escortUnits).toHaveLength(3);
     expect(buyEscort(c)).toBe(false);
+    // Each commissioned hull is a distinct ship with its own identity.
+    expect(new Set(c.escortUnits.map((e) => e.id)).size).toBe(3);
+    expect(new Set(c.escortUnits.map((e) => e.name)).size).toBe(3);
+    for (const e of c.escortUnits) expect(e.modules).toEqual([]);
   });
 
   it('the transit builds one shore battery per owned base', () => {
@@ -991,7 +997,7 @@ describe('air defense & telemetry', () => {
 
   it('a moveEscort command sends the escort to the point, then it resumes forward', () => {
     const c = newCampaign('escort-move');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1013,7 +1019,7 @@ describe('air defense & telemetry', () => {
 
   it('a hold order stations the escort in place instead of resuming forward', () => {
     const c = newCampaign('escort-hold');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1041,7 +1047,7 @@ describe('air defense & telemetry', () => {
 
   it('escorts can be destroyed by fire and are removed from the fleet', () => {
     const c = newCampaign('escort-killable');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1066,12 +1072,12 @@ describe('air defense & telemetry', () => {
     expect(escort.alive).toBe(false);
     expect(state.stats.escortsLost).toBe(1);
     resolveTransit(c, state);
-    expect(c.escorts).toBe(0);
+    expect(c.escortUnits).toHaveLength(0);
   });
 
   it('a hit temporarily disables an escort launcher', () => {
     const c = newCampaign('escort-disable');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1216,7 +1222,7 @@ describe('air defense & telemetry', () => {
 
   it('an intercept fires from the nearest launcher (escort vs battery)', () => {
     const c = newCampaign('nearest-launcher');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     c.bases = 1;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1309,7 +1315,7 @@ describe('air defense & telemetry', () => {
 
   it('escorts and batteries carry damage between rounds and are repaired for cash', () => {
     const c = newCampaign('repair-assets');
-    c.escorts = 1;
+    fitUniformEscorts(c, 1);
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1331,13 +1337,13 @@ describe('air defense & telemetry', () => {
     });
     while (!state.over) stepTransit(state, [], rng);
     resolveTransit(c, state);
-    if (c.escorts > 0) {
-      expect(c.escortDamage).toBeGreaterThan(0);
+    if (c.escortUnits.length > 0) {
+      expect(escortDamageTotal(c)).toBeGreaterThan(0);
       const cost = repairCost(c);
       expect(cost).toBeGreaterThan(0);
       c.cash = cost;
       expect(repairFleet(c)).toBe(true);
-      expect(c.escortDamage).toBe(0);
+      expect(escortDamageTotal(c)).toBe(0);
       expect(c.baseDamage).toBe(0);
     }
   });
@@ -1345,8 +1351,7 @@ describe('air defense & telemetry', () => {
   it('a tapped mine is swept by a drone from an in-range escort (munition spent)', () => {
     const c = newCampaign('sweeper-drone');
     c.completedResearch = ['mcmDrones.base'];
-    c.escortModules = ['mcmDroneLauncher'];
-    c.escorts = 1;
+    fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     expect(state.effects.sweepDrones).toBe(true);
@@ -1382,8 +1387,7 @@ describe('air defense & telemetry', () => {
   it('drones are NOT auto-launched — an untapped charted mine is left alone', () => {
     const c = newCampaign('sweeper-manual');
     c.completedResearch = ['mcmDrones.base'];
-    c.escortModules = ['mcmDroneLauncher'];
-    c.escorts = 1;
+    fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1410,8 +1414,7 @@ describe('air defense & telemetry', () => {
   it('a drone will not launch when no escort is within range of the mine', () => {
     const c = newCampaign('sweeper-oor');
     c.completedResearch = ['mcmDrones.base'];
-    c.escortModules = ['mcmDroneLauncher'];
-    c.escorts = 1;
+    fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
     c.droneAmmo = 5;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1441,8 +1444,7 @@ describe('air defense & telemetry', () => {
   it('drones do NOT launch without munitions in stock', () => {
     const c = newCampaign('sweeper-no-ammo');
     c.completedResearch = ['mcmDrones.base'];
-    c.escortModules = ['mcmDroneLauncher'];
-    c.escorts = 1;
+    fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
     c.droneAmmo = 0; // researched, but nothing bought
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
@@ -1603,7 +1605,7 @@ describe('air defense & telemetry', () => {
     const range = (formation: 'tight' | 'wide') => {
       const c = newCampaign(`reach-${formation}`);
       c.formation = formation;
-      c.escorts = 1;
+      fitUniformEscorts(c, 1);
       c.bases = 0; // isolate the escort (no unlimited-range battery)
       c.ammo = 10;
       const { state, rng } = createRoundTransit(c, planCurrentRound(c));
@@ -1652,7 +1654,6 @@ describe('air defense & telemetry', () => {
 
   it('does not fire missiles at a ship that has all but crossed the delivery line', () => {
     const c = newCampaign('no-target-delivered');
-    c.escorts = 0;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [{ time: 0.05, kind: 'missile', siteX: 900 }];
     state.threats = [];

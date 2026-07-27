@@ -360,7 +360,8 @@ sea-skimmers will still be affected but their short window stays meaningful
 ### Category: Logistics & Support
 
 - **Logistics** — Expanded Berthing (legacy `logistics1`, intact: +5 capacity,
-  half-price repairs).
+  half-price repairs); Escort Refit Bay (a third specialist slot on every
+  escort — the only way past the starting two).
 
 ---
 
@@ -371,9 +372,20 @@ sea-skimmers will still be affected but their short window stays meaningful
   mine sonar, hydrophone, thermal/radar imaging, flak, reinforced hull, fire
   suppression, compartmentalization, anti-boarding. **The limited slots are
   the point: no hull equips every counter.**
-- **Escorts** carry built-in missile interceptors plus an **escort loadout
-  template** with **2 slots** competing between: deck gun, MCM drone launcher,
-  depth-charge launcher. No escort carries every weapon.
+- **Escorts** are **individual ships**, not a count. Each has its own name, its
+  own loadout, and its own accumulated damage, all persisting between rounds
+  and through saves. Every escort carries **built-in missile interceptors that
+  consume no slot**, plus **2 specialist slots** competing between: deck gun,
+  MCM drone launcher, depth-charge launcher. Fitting a module fits it to *that*
+  escort only, and several escorts may carry the same one — three gun boats is
+  a legitimate answer to a strait full of attack boats. **No escort carries
+  every weapon**, so a flotilla covers roles by dividing them.
+  - A third slot exists in the model from the start and is unlocked fleet-wide
+    by the **Escort Refit Bay** logistics node, letting an escort take on a
+    second role without giving up its first.
+  - A destroyed escort is removed by identity: the survivors keep their own
+    names and fits. A replacement is a new ship — default name, empty slots,
+    no inherited damage — so a loadout has to be bought again.
 - **Shore bases** carry built-in missile interceptors plus a **1-slot base
   loadout**: counter-battery system (future strategic sensors join here).
 - **Convoy-wide assets** (purchased, charges refresh each round): ECM, Scan

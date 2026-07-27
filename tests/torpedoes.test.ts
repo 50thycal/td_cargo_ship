@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createRoundTransit, newCampaign, planCurrentRound, resolveTransit } from '../src/sim/campaign';
+import { fitUniformEscorts } from './helpers';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, planRound } from '../src/sim/evolution';
 import { makeRng } from '../src/sim/rng';
@@ -311,8 +312,8 @@ describe('torpedo counter loop', () => {
       'depthCharges.localAutoDrop',
     ];
     c.classModules = { cargo: ['hydrophone'], tanker: ['hydrophone'], freighter: ['hydrophone'] };
-    c.escorts = 2; // campaigns start with none; ASW needs a hull to drop from
-    c.escortModules = ['depthCharges'];
+    // campaigns start with no escorts; ASW needs hulls to drop from
+    fitUniformEscorts(c, 2, ['depthCharges']);
     c.autoFire = { ...c.autoFire, depthCharges: true };
   };
 

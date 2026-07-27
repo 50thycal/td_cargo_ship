@@ -23,6 +23,8 @@ import type {
   CounterRoundStats,
   EnemyInstallation,
   Escort,
+  EscortModuleId,
+  EscortPerformance,
   FormationId,
   LauncherKind,
   ResearchId,
@@ -229,8 +231,16 @@ function newCounterStats(t: {
 }
 
 export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG): TransitState {
+  // Research TIERS stay fleet-wide — a better depth-charge doctrine improves
+  // every launcher the player owns. Only the question "does this hull carry
+  // the hardware" is per escort, and that is answered off the escort itself.
+  // The union here is what the tier derivation needs: whether the capability
+  // exists in the flotilla at all.
+  const fleetEscortModules = [
+    ...new Set(campaign.escortUnits.flatMap((u) => u.modules)),
+  ] as EscortModuleId[];
   const effects = deriveEffects(campaign.completedResearch, {
-    escortModules: campaign.escortModules,
+    escortModules: fleetEscortModules,
     baseModules: campaign.baseModules,
   });
   // Dev god mode: hulls shrug off all damage this transit.
@@ -342,7 +352,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     depthChargeShots: [],
     aircraft: [],
     areaEffects: [],
-    escortModules: [...campaign.escortModules],
+    escortModules: fleetEscortModules,
     baseModules: [...campaign.baseModules],
     autoFire: { ...campaign.autoFire },
     protectedChannels: campaign.protectedChannels.slice(0, effects.hardened.protectedChannelCount),
@@ -404,6 +414,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       ecmUsed: 0,
       scanUsed: 0,
       escortsLost: 0,
+      escortPerformance: {},
       basesLost: 0,
       launchersDisabled: 0,
       counter: newCounterStats({
@@ -426,24 +437,32 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
 
   // Escorts carry unrepaired damage between rounds (distributed across them),
   // just like cargo hulls — the player repairs them in procurement.
-  const escortCount = Math.min(campaign.escorts, ESCORT_SLOTS.length);
-  let escortPending = campaign.escortDamage;
-  const dcMagazine = state.escortModules.includes('depthCharges') ? effects.depthCharge.magazine : 0;
-  const droneSorties = state.escortModules.includes('mcmDroneLauncher')
-    ? (effects.mcm.dualSortie ? 2 : 1)
-    : 0;
-  for (let i = 0; i < escortCount; i++) {
-    const share = escortCount > 0 ? Math.min(escortPending, COMBAT.escort.hp * 0.6) : 0;
-    escortPending -= share;
+  // One sim escort per commissioned unit, each sailing with ITS OWN name,
+  // loadout and carried damage. Magazines are sized from that escort's own
+  // fit: a hull with no depth-charge launcher puts to sea with no depth
+  // charges, rather than inheriting a fleet-wide magazine.
+  const sailingUnits = campaign.escortUnits.slice(0, ESCORT_SLOTS.length);
+  for (let i = 0; i < sailingUnits.length; i++) {
+    const unit = sailingUnits[i];
+    const carried = Math.min(unit.damage, COMBAT.escort.hp * 0.6);
+    const dcMagazine = unit.modules.includes('depthCharges') ? effects.depthCharge.magazine : 0;
+    const droneSorties = unit.modules.includes('mcmDroneLauncher')
+      ? effects.mcm.dualSortie
+        ? 2
+        : 1
+      : 0;
     state.escorts.push({
       id: state.nextEntityId++,
+      unitId: unit.id,
+      name: unit.name,
+      modules: [...unit.modules],
       x: WORLD.spawnX + ESCORT_SLOTS[i].dx,
       y: centerLaneY + ESCORT_SLOTS[i].dy,
       slotDx: ESCORT_SLOTS[i].dx,
       slotDy: ESCORT_SLOTS[i].dy,
       cooldown: 0,
       heading: 0,
-      hp: COMBAT.escort.hp - share,
+      hp: COMBAT.escort.hp - carried,
       maxHp: COMBAT.escort.hp,
       alive: true,
       disabledUntil: 0,
@@ -452,13 +471,24 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       autoCooldown: 0,
       mcmAutoCooldown: 0,
       droneCooldown: 0,
-      droneReady: god ? 99 : droneSorties,
+      droneReady: god && droneSorties > 0 ? 99 : droneSorties,
       dcCooldown: 0,
       dcShots: god && dcMagazine > 0 ? 99 : dcMagazine,
       dcAutoCooldown: 0,
       gunCooldown: 0,
       gunTargetId: null,
     });
+    state.stats.escortPerformance[unit.id] = {
+      id: unit.id,
+      name: unit.name,
+      modules: [...unit.modules],
+      intercepts: 0,
+      boatKills: 0,
+      torpedoKills: 0,
+      minesSwept: 0,
+      damageTaken: 0,
+      lost: false,
+    };
   }
 
   // Shore batteries spread along the friendly (bottom) shore. They too carry
@@ -914,12 +944,28 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   }
 }
 
-/** A hit on an escort: hull damage, a temporary launcher outage, and — if the
- *  hull is gone — destruction (the escort is removed from the fleet). */
+/** This escort's performance row, created on demand so an escort that somehow
+ *  acts before its row exists still gets credited rather than throwing. */
+function escortPerf(t: TransitState, escort: Escort): EscortPerformance {
+  return (t.stats.escortPerformance[escort.unitId] ??= {
+    id: escort.unitId,
+    name: escort.name,
+    modules: [...escort.modules],
+    intercepts: 0,
+    boatKills: 0,
+    torpedoKills: 0,
+    minesSwept: 0,
+    damageTaken: 0,
+    lost: false,
+  });
+}
+
 function damageEscort(t: TransitState, escort: Escort, amount: number, cause: string): void {
   if (!escort.alive) return;
-  escort.hp -= amount * t.effects.damageTakenMult;
-  creditEnemyBranch(t, cause, amount * t.effects.damageTakenMult, false);
+  const dealt = amount * t.effects.damageTakenMult;
+  escort.hp -= dealt;
+  escortPerf(t, escort).damageTaken += dealt;
+  creditEnemyBranch(t, cause, dealt, false);
   const disableUntil = t.time + COMBAT.escort.disableSeconds;
   if (disableUntil > escort.disabledUntil) {
     escort.disabledUntil = disableUntil;
@@ -933,7 +979,10 @@ function damageEscort(t: TransitState, escort: Escort, amount: number, cause: st
     escort.gunTargetId = null;
     creditEnemyBranch(t, cause, 0, true);
     t.stats.escortsLost++;
-    pushEvent(t, { type: 'shipLost', shipId: escort.id, cause: `escort:${cause}` });
+    escortPerf(t, escort).lost = true;
+    // Named, so the loss reads as a specific ship going down rather than an
+    // anonymous escort slot decrementing.
+    pushEvent(t, { type: 'shipLost', shipId: escort.id, shipName: escort.name, cause: `escort:${cause}` });
   }
 }
 
@@ -973,11 +1022,13 @@ function fireInterceptor(
   let launcher: LauncherKind;
   let speed: number;
   let size: number;
+  let ownerUnitId: number | undefined;
   if (from.kind === 'escort') {
     from.escort.cooldown = t.effects.escort.reload;
     originX = from.escort.x;
     originY = from.escort.y;
     launcher = 'escort';
+    ownerUnitId = from.escort.unitId;
     speed = t.effects.escort.speed;
     size = t.effects.escort.projectileSize;
   } else {
@@ -1001,6 +1052,7 @@ function fireInterceptor(
     targetThreatId: threat.id,
     speed,
     launcher,
+    ownerUnitId,
     auto,
     size,
   });
@@ -1113,7 +1165,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
     case 'depthCharge': {
       // Depth charges are lobbed AREA weapons: the player taps a point in the
       // water, never a torpedo sprite. The blast destroys torpedoes only.
-      if (!t.escortModules.includes('depthCharges')) {
+      if (!t.escorts.some((e) => e.alive && e.modules.includes('depthCharges'))) {
         pushEvent(t, { type: 'launchFailed', detail: 'No escort carries a depth-charge launcher' });
         return;
       }
@@ -1125,6 +1177,8 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       let anyReloading = false;
       for (const escort of t.escorts) {
         if (!escort.alive || t.time < escort.disabledUntil) continue;
+        // Only a hull that actually carries a launcher can drop.
+        if (!escort.modules.includes('depthCharges')) continue;
         const d = dist(escort.x, escort.y, px, py);
         if (d > t.effects.depthCharge.throwRange) continue;
         if (escort.dcShots <= 0 || escort.dcCooldown > 0) {
@@ -1150,7 +1204,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       // Deck guns: sustained fire on a persistent HP target. The commitment
       // model — the gun stays on the boat until it sinks, leaves range, the
       // escort dies, or the player re-tasks it.
-      if (!t.escortModules.includes('deckGun')) {
+      if (!t.escorts.some((e) => e.alive && e.modules.includes('deckGun'))) {
         pushEvent(t, { type: 'launchFailed', detail: 'No escort carries a deck gun' });
         return;
       }
@@ -1160,7 +1214,10 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         pushEvent(t, { type: 'launchFailed', detail: `Deck guns cannot engage ${boat.kind}` });
         return;
       }
-      const inRange = (e: Escort) => dist(e.x, e.y, boat.x, boat.y) <= t.effects.deckGun.range;
+      // A gun escort is one that CARRIES a gun — a depth-charge escort sitting
+      // right next to the boat cannot shoot at it.
+      const inRange = (e: Escort) =>
+        e.modules.includes('deckGun') && dist(e.x, e.y, boat.x, boat.y) <= t.effects.deckGun.range;
       if (cmd.focus && t.effects.deckGun.focusFire) {
         // Focus fire: every gun escort that can reach commits to this boat.
         let committed = 0;
@@ -1361,6 +1418,7 @@ function launchSweepDrone(t: TransitState, mine: Threat, auto: boolean): void {
   let bestEscort: Escort | null = null;
   let bestD: number = t.effects.mcm.launchRange;
   for (const escort of t.escorts) {
+    if (!escort.modules.includes('mcmDroneLauncher')) continue;
     if (!escort.alive || escort.droneReady <= 0) continue;
     const d = dist(escort.x, escort.y, mine.x, mine.y);
     if (d <= bestD) {
@@ -1383,6 +1441,7 @@ function launchSweepDrone(t: TransitState, mine: Threat, auto: boolean): void {
     x: bestEscort.x,
     y: bestEscort.y,
     targetMineId: mine.id,
+    ownerUnitId: bestEscort.unitId,
     speed: t.effects.mcm.droneSpeed,
     tracking: t.effects.mcm.movingTarget,
   });
@@ -1411,6 +1470,7 @@ function dropDepthCharges(t: TransitState, escort: Escort, px: number, py: numbe
   for (const p of points) {
     t.depthChargeShots.push({
       id: t.nextEntityId++,
+      ownerUnitId: escort.unitId,
       x: escort.x,
       y: escort.y,
       targetX: clamp(p.x, 20, WORLD.width - 20),
@@ -1624,6 +1684,7 @@ function updateMcmAuto(t: TransitState): void {
   if (!t.effects.sweepDrones || !fx.autoUnlocked || !t.autoFire.mcmDrones) return;
   if (t.droneAmmo <= 0) return;
   for (const escort of t.escorts) {
+    if (!escort.modules.includes('mcmDroneLauncher')) continue;
     if (!escort.alive || escort.droneReady <= 0 || escort.mcmAutoCooldown > 0) continue;
     let best: Threat | null = null;
     let bestD = fx.autoRadius;
@@ -1647,9 +1708,9 @@ function updateMcmAuto(t: TransitState): void {
  *  detection and attack stay separate capabilities. */
 function updateDepthChargeAuto(t: TransitState): void {
   const fx = t.effects.depthCharge;
-  if (!t.escortModules.includes('depthCharges')) return;
   if (!fx.autoUnlocked || !t.autoFire.depthCharges) return;
   for (const escort of t.escorts) {
+    if (!escort.modules.includes('depthCharges')) continue;
     if (!escort.alive || escort.dcShots <= 0 || escort.dcCooldown > 0) continue;
     if (escort.dcAutoCooldown > 0 || t.time < escort.disabledUntil) continue;
     for (const threat of t.threats) {
@@ -1689,10 +1750,12 @@ function updateCounterBatteryAuto(t: TransitState, rng: RNG): void {
 /** Deck guns: sustain fire on committed boats; auto-acquisition and the
  *  focus/distributed/layered allocation tactics live here. */
 function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
-  if (!t.escortModules.includes('deckGun')) return;
   const fx = t.effects.deckGun;
   const boats = t.threats.filter((th) => th.alive && canEngage('deckGun', th.kind));
   for (const escort of t.escorts) {
+    // Per escort, not per fleet: only hulls with a gun fitted take part, so a
+    // flotilla with one gun boat brings one gun to the fight.
+    if (!escort.modules.includes('deckGun')) continue;
     if (!escort.alive) {
       continue;
     }
@@ -1769,6 +1832,7 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         target.engagedByEscortId = undefined;
         t.stats.counter.deckGunKills++;
         t.stats.boatsSunk++;
+        escortPerf(t, escort).boatKills++;
         pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
         // Sinking a boarding boat throws its party off the hull. The progress
         // it had made is lost — that is what makes shooting the boat the
@@ -2451,6 +2515,8 @@ function updateDepthChargeShots(t: TransitState, dt: number): void {
           threat.alive = false;
           t.stats.torpedoesDestroyed++;
           t.stats.counter.depthChargeKills++;
+          const dropper = t.stats.escortPerformance[shot.ownerUnitId];
+          if (dropper) dropper.torpedoKills++;
           pushEvent(t, { type: 'depthChargeKill', threatKind: threat.kind, lowSig: threat.lowSig });
         }
       }
@@ -2847,7 +2913,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     escort.dcAutoCooldown = Math.max(0, escort.dcAutoCooldown - dt);
     if (escort.droneReady <= 0) {
       escort.droneCooldown = Math.max(0, escort.droneCooldown - dt);
-      if (escort.droneCooldown <= 0 && t.escortModules.includes('mcmDroneLauncher')) {
+      if (escort.droneCooldown <= 0 && escort.modules.includes('mcmDroneLauncher')) {
         escort.droneReady = t.effects.mcm.dualSortie ? 2 : 1;
       }
     }
@@ -3275,6 +3341,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
             pushEvent(t, { type: 'pdKill', threatKind: threat.kind });
           } else {
             t.stats.playerIntercepts++;
+            if (interceptor.ownerUnitId !== undefined) {
+              const shooter = t.stats.escortPerformance[interceptor.ownerUnitId];
+              if (shooter) shooter.intercepts++;
+            }
             if (interceptor.auto) t.stats.counter.autoIntercepts++;
             else t.stats.counter.manualIntercepts++;
             if (interceptor.launcher === 'base') t.stats.baseIntercepts++;
@@ -3364,6 +3434,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       mine.alive = false;
       t.stats.minesSwept++;
       t.stats.counter.droneKills++;
+      const launcher = t.stats.escortPerformance[drone.ownerUnitId];
+      if (launcher) launcher.minesSwept++;
       pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
       drone.speed = 0;
       continue;

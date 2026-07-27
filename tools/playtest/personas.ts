@@ -19,6 +19,7 @@ import {
   buyEscort,
   buyEscortModule,
   buyModule,
+  fleetHasEscortModule,
   buyPdAmmo,
   buyShip,
   canStartResearch,
@@ -62,7 +63,11 @@ export type BuyIntent =
   | { kind: 'droneAmmo'; upTo: number }
   | { kind: 'selfDefenseAmmo'; upTo: number }
   | { kind: 'module'; classId: ShipClassId; moduleId: ModuleId }
-  | { kind: 'escortModule'; id: EscortModuleId }
+  /** Fit the persona's escortDoctrine across the flotilla — escort 1 gets the
+   *  first loadout, escort 2 the second, and so on. Replaces a per-module
+   *  intent that fitted one fleet-wide template, which could not express a
+   *  mixed flotilla at all. */
+  | { kind: 'escortFit' }
   | { kind: 'baseModule'; id: BaseModuleId }
   | { kind: 'ability'; id: 'ecm' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
   /** Replace losses. Without `upToCapacity: false` the bot only rebuilds while
@@ -99,6 +104,11 @@ export interface Persona {
   /** Research priority order; the first affordable+available entry is started. */
   research: ResearchId[];
   buys: BuyIntent[];
+  /** Loadout wanted for each escort by position: index 0 is the first escort
+   *  hired, index 1 the second. A persona that names the same module in every
+   *  entry builds a specialised flotilla (three gun boats); one that varies
+   *  them builds a balanced one. Escorts past the end of the list stay bare. */
+  escortDoctrine?: EscortModuleId[][];
   transit: TransitPolicy;
   /** Cash kept in reserve (never spent by the buy loop), so a persona can be
    *  made deliberately stingy. */
@@ -111,7 +121,7 @@ export interface Persona {
 
 /** Attempt one intent. Returns true if cash actually moved (so the caller can
  *  loop until the whole list stops making progress). */
-function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number): boolean {
+function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: Persona): boolean {
   const spendable = c.cash - reserve;
   if (spendable <= 0 && intent.kind !== 'repair') return false;
   switch (intent.kind) {
@@ -128,7 +138,7 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number): boolean {
     // letting a bot do it would quietly distort the economy signal.
     case 'droneAmmo':
       return (
-        c.escortModules.includes('mcmDroneLauncher') &&
+        fleetHasEscortModule(c, 'mcmDroneLauncher') &&
         c.droneAmmo < intent.upTo &&
         buyDroneAmmo(c)
       );
@@ -140,8 +150,19 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number): boolean {
       );
     case 'module':
       return buyModule(c, intent.classId, intent.moduleId);
-    case 'escortModule':
-      return buyEscortModule(c, intent.id);
+    case 'escortFit': {
+      // Walk the doctrine in order and fit the first thing that is affordable,
+      // researched and has a free slot on that escort. One purchase per call so
+      // the caller's loop keeps interleaving with the rest of the shopping list.
+      const doctrine = persona.escortDoctrine ?? [];
+      for (let i = 0; i < c.escortUnits.length; i++) {
+        const want = doctrine[i] ?? [];
+        for (const moduleId of want) {
+          if (buyEscortModule(c, c.escortUnits[i].id, moduleId)) return true;
+        }
+      }
+      return false;
+    }
     case 'baseModule':
       return buyBaseModule(c, intent.id);
     case 'ability':
@@ -190,7 +211,7 @@ export function procure(c: CampaignState, persona: Persona): void {
   while (progressed && guard++ < 200) {
     progressed = false;
     for (const intent of persona.buys) {
-      if (tryBuy(c, intent, reserve)) progressed = true;
+      if (tryBuy(c, intent, reserve, persona)) progressed = true;
     }
   }
   fillConvoy(c);
@@ -315,12 +336,16 @@ export function decideCommands(
 
   // --- Depth charges -------------------------------------------------------
   // Aims at a DETECTED torpedo's position (an area attack at a water point).
-  if (p.useDepthCharges && t.escortModules.includes('depthCharges')) {
+  // Only the escorts actually fitted with racks can drop, so the readiness check
+  // below is the whole gate — a fleet-wide "do we have depth charges" question
+  // no longer has an answer.
+  if (p.useDepthCharges) {
     const torpedo = t.threats.find((th) => th.kind === 'torpedo' && th.alive && th.revealed);
     if (torpedo) {
       const ready = t.escorts.some(
         (e) =>
           e.alive &&
+          e.modules.includes('depthCharges') &&
           e.dcShots > 0 &&
           e.dcCooldown <= 0 &&
           dist(e.x, e.y, torpedo.x, torpedo.y) <= t.effects.depthCharge.throwRange,
@@ -455,9 +480,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ability', id: 'scan' },
       { kind: 'base' },
       { kind: 'escort' },
-      { kind: 'escortModule', id: 'deckGun' },
-      { kind: 'escortModule', id: 'depthCharges' },
-      { kind: 'escortModule', id: 'mcmDroneLauncher' },
+      { kind: 'escortFit' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'droneAmmo', upTo: 6 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
@@ -466,6 +489,12 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'ability', id: 'ecm' },
       { kind: 'ammo', upTo: 45 },
+    ],
+    escortDoctrine: [
+      // A generalist flotilla: one of each role rather than three of one.
+      ['deckGun'],
+      ['depthCharges'],
+      ['mcmDroneLauncher'],
     ],
     transit: FIGHTER,
   },
@@ -560,10 +589,14 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
       { kind: 'escort' },
-      { kind: 'escortModule', id: 'mcmDroneLauncher' },
-      { kind: 'escortModule', id: 'deckGun' },
+      { kind: 'escortFit' },
       { kind: 'droneAmmo', upTo: 9 },
       { kind: 'ammo', upTo: 40 },
+    ],
+    escortDoctrine: [
+      ['mcmDroneLauncher'],
+      ['deckGun'],
+      ['mcmDroneLauncher'],
     ],
     transit: FIGHTER,
   },
@@ -590,12 +623,17 @@ export const PERSONAS: Persona[] = [
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'escort' },
-      { kind: 'escortModule', id: 'mcmDroneLauncher' },
+      { kind: 'escortFit' },
       { kind: 'droneAmmo', upTo: 12 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
       { kind: 'ammo', upTo: 32 },
+    ],
+    escortDoctrine: [
+      ['mcmDroneLauncher'],
+      ['mcmDroneLauncher'],
+      ['mcmDroneLauncher'],
     ],
     transit: FIGHTER,
   },
@@ -624,7 +662,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
-      { kind: 'escortModule', id: 'depthCharges' },
+      { kind: 'escortFit' },
       { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
       { kind: 'module', classId: 'tanker', moduleId: 'hydrophone' },
       { kind: 'ability', id: 'sonar' },
@@ -632,6 +670,11 @@ export const PERSONAS: Persona[] = [
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
       { kind: 'ammo', upTo: 30 },
+    ],
+    escortDoctrine: [
+      ['depthCharges'],
+      ['depthCharges'],
+      ['depthCharges'],
     ],
     transit: FIGHTER,
   },
@@ -659,13 +702,20 @@ export const PERSONAS: Persona[] = [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
-      { kind: 'escortModule', id: 'deckGun' },
+      { kind: 'escortFit' },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
       { kind: 'module', classId: 'tanker', moduleId: 'antiBoarding' },
       { kind: 'escort' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
       { kind: 'ammo', upTo: 30 },
+    ],
+    escortDoctrine: [
+      // Specialised hard: every escort is a gun boat, which the old shared
+      // template could express but only by making ALL escorts identical.
+      ['deckGun'],
+      ['deckGun'],
+      ['deckGun'],
     ],
     transit: FIGHTER,
   },
@@ -741,9 +791,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'cargo', moduleId: 'compartmentalization' },
-      { kind: 'escortModule', id: 'deckGun' },
-      { kind: 'escortModule', id: 'depthCharges' },
-      { kind: 'escortModule', id: 'mcmDroneLauncher' },
+      { kind: 'escortFit' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'ability', id: 'ecm' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
@@ -751,6 +799,11 @@ export const PERSONAS: Persona[] = [
       // Only now does the convoy grow.
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ammo', upTo: 45 },
+    ],
+    escortDoctrine: [
+      ['deckGun', 'depthCharges'],
+      ['mcmDroneLauncher', 'deckGun'],
+      ['depthCharges', 'mcmDroneLauncher'],
     ],
     transit: FIGHTER,
   },
