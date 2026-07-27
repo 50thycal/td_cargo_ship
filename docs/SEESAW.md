@@ -302,6 +302,59 @@ metric driving it measures what it claims to.** Two rounds of price changes were
 spent compensating for a scoring artifact, and neither would have worked, because
 the branch being "fixed" was never the one that was broken.
 
+### Dead content is silent, so go looking for it
+
+Completing the catalogue meant asking a question nobody had asked: *which nodes
+has the enemy actually bought?* Across a 947-round sweep, **11 of 18 implemented
+nodes had never been fielded once.** Not underused — never bought, in any
+campaign, at any budget. Nothing in any report said so, because every signal the
+harness watches is computed from what *did* happen.
+
+Three separate causes, all worth knowing:
+
+1. **A fraction that rounds to zero.** Escalation spends a *share* of a branch's
+   allowance on its newest node. When that share cannot cover one whole unit it
+   buys nothing and the remainder falls through to volume — and since that
+   depends on the node's price, not on the round, the branch could never
+   escalate however long the campaign ran. Artillery saw ~44 budget in the round
+   its second gun unlocked at 285.
+2. **Reaching for the top rung.** Escalation aimed at the *newest* available
+   node, so the moment a branch's third rung gated in, its second became
+   unreachable forever — the money always went past it.
+3. **Per-round ROI punishes lumpy branches.** A branch buying 3,000 five-credit
+   missiles has a smooth ROI; one buying a single 180-credit gun has a violent
+   one, and a single bad round reads as failure. Artillery had the *best*
+   cost-per-result of all seven branches while being defunded for variance. ROI
+   is now measured against a branch's whole record rather than its last round.
+
+The fixes had to be kept apart from the counter signal, which is the subtle
+part. A rule that guarantees a branch can reach its next rung will, if applied
+every round, also hand it that rung regardless of what the player is doing —
+and then the countered and ignored arms of the escalation tests buy identical
+ladders. The reachability rule therefore buys a **debut only**, and **only after
+the rung has gone begging for several rounds**; leaning into the newest variant
+round after round stays the exclusive business of being hard-countered.
+
+### Breadth has to be paid for — but not with money
+
+Switching the two support branches from priced-but-dead to genuinely funded made
+every other branch poorer: seven claimants on a budget sized for five. It showed
+up as mines no longer being able to afford a low-signature variant in *either*
+arm of its counter test — the player's counter had stopped changing what the
+enemy built.
+
+The obvious lever was the budget curve, and it was the wrong one. Raising it far
+enough to restore the signal took round-cap completions from **34 campaigns in
+72 to 15 in 80** and left every build except the two economic ones unviable.
+What worked was making the *counter* the thing that escalates — a hard-countered
+branch reaches for its newest variant whenever it can afford one — plus a much
+smaller budget bump for the genuine cost of two extra claimants. Same signal,
+about a third of the difficulty.
+
+**When a signal weakens after adding content, check whether it needs more
+resources or just a sharper rule. Resources are the expensive answer and they
+move everything else with them.**
+
 ---
 
 ## How this is used

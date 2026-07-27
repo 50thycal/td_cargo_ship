@@ -234,15 +234,19 @@ describe('enemy evolution', () => {
   });
 
   it('strong mine detection pushes the enemy toward low-signature mines', () => {
-    const evoDetected = newEvolution();
-    const evoUndetected = newEvolution();
-    const rng1 = makeRng('lowsig1');
-    const rng2 = makeRng('lowsig2');
-    for (let r = 1; r <= 8; r++) {
-      evolveEnemy(evoDetected, syntheticMetrics(r, { mineDetectRate: 0.9 }), rng1);
-      evolveEnemy(evoUndetected, syntheticMetrics(r, { mineDetectRate: 0.1 }), rng2);
-    }
-    expect(evoDetected.tracks.lowSig).toBeGreaterThan(evoUndetected.tracks.lowSig);
+    // Same seed on both arms, varying only the detection rate. Comparing two
+    // different seeds lets exploration jitter move the shares more than the
+    // signal does — see docs/SEESAW.md; the escalation tests in
+    // enemyEconomy.test.ts were passing on that noise for weeks. The horizon
+    // has to be long enough for the mine branch to buy meaningfully, which gets
+    // longer with every enemy branch that ships and splits the budget.
+    const run = (mineDetectRate: number): number => {
+      const evo = newEvolution();
+      const rng = makeRng('lowsig');
+      for (let r = 1; r <= 18; r++) evolveEnemy(evo, syntheticMetrics(r, { mineDetectRate }), rng);
+      return evo.tracks.lowSig;
+    };
+    expect(run(0.9)).toBeGreaterThan(run(0.1));
   });
 
   it('surfaces a formation tell: tight invites mines, wide invites salvos', () => {

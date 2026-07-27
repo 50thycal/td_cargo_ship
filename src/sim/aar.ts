@@ -140,6 +140,50 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
       'the convoy — the rounds are waiting where we are going. This is aimed at water, so ' +
       'evading individual shells is not the answer; being in a different lane is.',
   },
+  screeningSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: screening smoke',
+    body:
+      'The enemy is laying smoke over its own launch sites. Weapons fired through it are still ' +
+      'coming and can still be shot down once they clear — but while they are in the cloud there ' +
+      'is only a bearing, not a target, and every second of that is reaction time we do not get ' +
+      'back. Thermal and radar imaging carried close enough to the trouble burns through it.',
+  },
+  blindingSmoke: {
+    kind: 'discovery',
+    title: 'New enemy capability: blinding smoke',
+    body:
+      'They are now laying smoke over OUR ships rather than their own positions — the same ' +
+      'blindness, but sitting on top of the convoy, and it degrades missile-warning cues inside ' +
+      'the cloud as well. This is thicker than the screening variant: base thermal imaging is ' +
+      'not enough, the crews need Blinding-Smoke Resistance to see through it.',
+  },
+  reconPlane: {
+    kind: 'discovery',
+    title: 'New enemy capability: recon aircraft',
+    body:
+      'An aircraft is crossing over the shipping lanes and, while it is up there, every ' +
+      'interceptor we fire is less likely to connect. It can be shot down — flak is the weapon ' +
+      'for it — but it is only overhead for one crossing, so the crews have to be quick.',
+  },
+  disablingDrone: {
+    kind: 'discovery',
+    title: 'New enemy capability: ship-disabling drones',
+    body:
+      'A one-way drone reached one of our hulls and left her dead in the water. She is not sunk ' +
+      'and her cargo is intact, but she cannot move, and everything else on the board now has a ' +
+      'stationary target. Flak can bring one down on the way in; nothing can undo it afterwards ' +
+      'except waiting out the recovery.',
+  },
+  sensorJamming: {
+    kind: 'discovery',
+    title: 'New enemy capability: sensor jamming',
+    body:
+      'Our mine detection stopped working. Not degraded — stopped, across the board, for half a ' +
+      'minute. There is no transmitter to shoot at and no counter to research: this one can only ' +
+      'be worked around. Hardened systems keep a chosen channel alive through it, an emergency ' +
+      'reboot cuts the blackout short, and routing around water we cannot see is always free.',
+  },
   boardingBoat: {
     kind: 'discovery',
     title: 'New enemy capability: boarding parties',

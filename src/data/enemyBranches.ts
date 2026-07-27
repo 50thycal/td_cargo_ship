@@ -427,7 +427,20 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
     key: 'smoke',
     name: 'Smoke / Concealment',
     identity: 'Denial of the player’s eyes — multiplies every other branch by shrinking reaction time.',
-    implemented: false,
+    // PRICING NOTE. Smoke deals no damage and takes no hulls, so it earns
+    // through the assist share (ENEMY_ECONOMY.assistShare): a hit that lands on
+    // a hull the player could not see pays the cloud that hid it. Priced
+    // against what that assist is worth rather than against a kill it can never
+    // make on its own.
+    //
+    // MEASURED, not guessed. A screening cloud is one radius over one launch
+    // site for 34 seconds; across a sweep that is worth ~0.9 result, against
+    // ~19 for an attack boat and ~26 for a shore gun. Priced at a weapon's rate
+    // it earned an ROI of 0.006 against a 0.10 pack average — dead content at
+    // any gate. These are cheap because their effect is small and brief, which
+    // is also what a support branch should be: something sprinkled over a plan,
+    // not a capital purchase that has to justify itself alone.
+    implemented: true,
     openRound: 7,
     openCost: 30,
     maxUnitsPerRound: 2,
@@ -435,20 +448,24 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'screening',
         name: 'Screening smoke',
-        cost: 18,
+        cost: 50,
         gateRound: 7,
         firstAppearanceCap: 1,
-        implemented: false,
+        implemented: true,
+        techKey: 'screeningSmoke',
         warning: 'The enemy has been laying smoke over its launch sites during drills.',
       },
       {
         id: 'blinding',
         name: 'Blinding smoke',
-        cost: 28,
+        cost: 85,
         gateRound: 10,
         firstAppearanceCap: 1,
         grantsTargeting: 6,
-        implemented: false,
+        implemented: true,
+        techKey: 'blindingSmoke',
+        warning:
+          'The enemy has been rehearsing smoke laid directly over shipping, not over its own positions.',
       },
     ],
     tactics: tacticLadder(['Once per round', 'Twice per round', 'Sustained screening']),
@@ -458,7 +475,21 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
     key: 'electronic',
     name: 'Electronic Attack / Drones',
     identity: 'The support wing — degrades the player’s systems rather than sinking ships directly.',
-    implemented: false,
+    // PRICING NOTE. Same as smoke: this branch mostly does not sink anything
+    // and earns through the assist share. Sensor jamming in particular is the
+    // one node in the design with no counter at all, so ENEMY_ATTACKS.md
+    // requires it to cost real budget — it must never be a free opening move.
+    //
+    // MEASURED. The nodes are priced by how long their effect actually lasts,
+    // because that is what the assist share can see. A recon plane crosses a
+    // 2000-wide map at 92/s: roughly twenty seconds of degraded interception,
+    // and it can be shot down inside that. The drone parks a hull for thirty.
+    // Jamming blacks out detection outright for thirty and cannot be shot at
+    // all, so it stays the dearest support node in the catalogue by a wide
+    // margin — the fee ENEMY_ATTACKS.md asks for is honoured by the ratio to
+    // its siblings, not by an absolute number that priced the branch out of
+    // ever being fielded.
+    implemented: true,
     openRound: 8,
     openCost: 40,
     maxUnitsPerRound: 3,
@@ -466,28 +497,35 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'reconPlane',
         name: 'Recon plane',
-        cost: 25,
+        cost: 60,
         gateRound: 8,
         firstAppearanceCap: 1,
         grantsTargeting: 5,
-        implemented: false,
+        implemented: true,
+        techKey: 'reconPlane',
         warning: 'Unidentified aircraft have been probing the strait’s approaches.',
       },
       {
         id: 'disablingDrone',
         name: 'Ship-disabling drone',
-        cost: 35,
+        cost: 100,
         gateRound: 10,
         firstAppearanceCap: 1,
-        implemented: false,
+        implemented: true,
+        techKey: 'disablingDrone',
+        warning:
+          'Small one-way aircraft are being prepared — analysts believe they are meant to cripple a hull, not sink it.',
       },
       {
         id: 'sensorJamming',
         name: 'Sensor jamming',
-        cost: 40,
+        cost: 150,
         gateRound: 12,
         firstAppearanceCap: 1,
-        implemented: false,
+        implemented: true,
+        techKey: 'sensorJamming',
+        warning:
+          'Powerful transmitters are being installed on the far shore. If they are what they look like, our detection will simply stop working for a while.',
       },
     ],
     tactics: tacticLadder(['One effect per round', 'Two effects per round', 'Layered disruption']),

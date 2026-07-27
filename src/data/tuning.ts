@@ -212,6 +212,45 @@ export const COMBAT = {
      *  them, which is what a 340-unit sweep measured. */
     barrageSweep: 190,
   },
+  /** Enemy smoke: the CONCEALMENT branch (ENEMY_ATTACKS.md). It deals no damage
+   *  at all — it denies the player's eyes, which shrinks the reaction window on
+   *  every other branch at once.
+   *
+   *  The interaction model is the LOCKED soft one: a threat in cloud keeps a
+   *  faint bearing marker so the player can still tell something is coming from
+   *  over there, but loses its precise tap-target until it clears. Never fully
+   *  hidden — that would be too punishing in a tap-to-target game. */
+  enemySmoke: {
+    radius: 210,
+    seconds: 34,
+    /** Screening smoke sits over the launch sites, stealing reaction time at
+     *  the moment of launch; blinding smoke sits over the convoy itself. */
+    screeningOffsetY: 40,
+    /** Blinding smoke also degrades missile-warning cues inside it, so the
+     *  assisted-targeting the player paid for stops helping in the cloud. */
+    warningDegradation: 0.6,
+  },
+  /** Electronic attack and drones: the SUPPORT branch. Mostly does not sink
+   *  ships — it degrades the player's systems. */
+  electronic: {
+    /** Recon plane: crosses the map and drags interceptor accuracy down for as
+     *  long as it is alive. Shooting it down is the counter, and the player has
+     *  to be quick because it is only overhead for one crossing. */
+    reconSpeed: 92,
+    reconAccuracyPenalty: 0.22,
+    reconHp: 20,
+    /** Disabling drone: flies to one hull and leaves it dead in the water — a
+     *  static target for everything else on the board. Shootable en route. */
+    droneSpeed: 118,
+    droneHp: 14,
+    droneDisableSeconds: 30,
+    /** Sensor jamming: an ABILITY, not an object. Blacks out mine detection and
+     *  cannot be shot down — the one node in the whole design with no counter,
+     *  only work-arounds (hardened channels, reboots, routing). Played once at
+     *  the round's start so its cost is always visible up front. */
+    jammingSeconds: 30,
+    jammingStartT: 6,
+  },
   /** Chance a missile hit starts a fire (damage over time). */
   fireChance: 0.3,
   fireDps: 3,
@@ -507,9 +546,24 @@ export const ROUND1 = {
  * as a change of BRANCH BALANCE rather than a change of difficulty.
  */
 export const ENEMY_ECONOMY = {
-  /** War funds = base + perRound × round, before modifiers. */
-  budgetBase: 46,
-  budgetPerRound: 59,
+  /** War funds = base + perRound × round, before modifiers.
+   *
+   *  Scaled again when smoke and electronic attack went from priced-but-dead to
+   *  genuinely funded. Seven branches drawing on a budget sized for five makes
+   *  every branch poorer, and it showed where it always shows: mines could no
+   *  longer afford a low-signature variant out of their escalation fraction in
+   *  EITHER arm of the counter test, so the player's counter stopped changing
+   *  what the enemy built. Breadth has to be paid for or it is taken out of the
+   *  ladders.
+   *
+   *  Paid for SPARINGLY, though. Raising the curve far enough to restore that
+   *  signal by budget alone took round-cap completions from 34 campaigns in 72
+   *  down to 15 in 80, and left every build except the two economic ones
+   *  unviable. Most of that work is done by escalationPatienceCounteredRounds
+   *  instead — the enemy climbs its ladder sooner when the player counters it,
+   *  rather than being handed more money to climb with. */
+  budgetBase: 50,
+  budgetPerRound: 63,
   /** Hard ceiling so a long campaign can't run away. Scales with prices: at the
    *  old 900 this bought ~32 mines, at current prices barely 12. */
   budgetCap: 1200,
@@ -529,6 +583,18 @@ export const ENEMY_ECONOMY = {
   /** A captured ship hurts more than a sunk one (ENEMY_ATTACKS.md), so it is
    *  worth more ROI when the boarding node lands. */
   roiCaptureWeight: 16,
+  /** Share of a hit's damage credited to the SUPPORT branch that enabled it.
+   *
+   *  Smoke and electronic attack deal no damage and take no hulls — their whole
+   *  identity is multiplying the other branches. Scored on damage-and-kills
+   *  alone they measure exactly zero, the allocator defunds them on the first
+   *  settlement, and two of the seven branches become dead content no matter
+   *  what they cost. So a hit that landed on a hull the player could not see,
+   *  or could not detect, or that was sitting disabled in the water, pays the
+   *  branch that arranged it. The credit is an ADDITION, not a transfer: the
+   *  branch that actually fired still gets its full result, because both of
+   *  them genuinely contributed to that hull being hit. */
+  assistShare: 0.35,
 
   /** How fast allocation chases ROI. Shares are blended toward the ROI-implied
    *  target so a pivot takes 1-2 rounds — visible, not instant. */
@@ -560,6 +626,25 @@ export const ENEMY_ECONOMY = {
    *  node keeps supplying volume alongside the expensive variant. */
   counteredEscalationBonus: 0.25,
   escalationShareCounteredMax: 0.9,
+  /** Rounds a gated node may sit unbought before the branch buys one outright
+   *  from its full allowance instead of from the escalation fraction.
+   *
+   *  The fraction rounds down to zero units whenever a node costs more than a
+   *  whole round's allowance, which is a property of the PRICE, not of the
+   *  round — so without this, seven implemented nodes were unreachable across
+   *  an entire sweep no matter how long campaigns ran. The patience matters as
+   *  much as the rule: firing it immediately makes every branch debut its next
+   *  rung the round it gates, which erases the timing difference the player's
+   *  counter is supposed to create. These rounds are that window.
+   *
+   *  This is only the REACHABILITY floor — it guarantees no implemented node is
+   *  dead content at any budget. A branch the player is actively countering
+   *  does not wait for it: that branch lifts its earmark to its newest variant
+   *  every round it can afford one, which is the counter signal proper. Keeping
+   *  the two rules separate is what let the ladders open up without handing the
+   *  enemy more money, and more money was measured to cost the player two
+   *  thirds of its round-cap completions. */
+  escalationPatienceRounds: 4,
 
   /** Scripted debuts guarantee the designed early beats regardless of what the
    *  ROI allocator would otherwise prefer (ENEMY_ATTACKS.md: "first appearances

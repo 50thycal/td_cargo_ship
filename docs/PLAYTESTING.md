@@ -62,9 +62,10 @@ Campaigns are scored against the three north-star signals in
 by hand, so an automated sweep and a hand-read log agree:
 
 - **Oscillation** — does the #1 loss-cause branch rotate, or is one branch #1 for
-  4+ straight rounds? (Read this alongside the measured `ROI response rate`: the
-  loss-mix view is content-limited while only two branches exist, whereas the
-  allocator metric is not.)
+  4+ straight rounds? (Read this alongside the measured `ROI response rate`.
+  The loss-mix view only ever sees branches that *sink things*, so the two
+  support branches are invisible to it however hard the enemy leans on them;
+  the allocator metric sees all seven.)
 - **Balance** — does delivery oscillate in the ~60–90% band and confidence
   wobble, rather than pinning high or collapsing?
 - **Scarcity** — is the player pressured every round but not overwhelmed?
@@ -87,12 +88,21 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
   (share of below-average-ROI branches whose funding was cut the next round),
   `top-spend pivots`, and `budget scrapped`. Older logs without those fields
   fall back to inference, and the report says which applies.
-- **Five enemy branches exist.** Missiles, mines, torpedoes, attack boats and
-  artillery are implemented; smoke and electronic attack are designed but not
-  fielded. The oscillation signal is still **content-limited** — the enemy
-  cannot rotate through branches it cannot field — but less so with every
-  branch that lands. The report derives this caveat from the catalogue rather
-  than hardcoding it, so it shrinks on its own.
+- **All seven enemy branches exist.** Missiles, mines, torpedoes, attack boats,
+  artillery, smoke and electronic attack are all implemented and fielded, so
+  the oscillation signal is no longer content-limited: every rotation the
+  allocator could want to make, it can now make. The report derives this from
+  the catalogue rather than hardcoding it, so it stays honest if a branch is
+  ever switched off.
+- **The harness systematically under-measures the support branches.** Smoke and
+  electronic attack shrink the player's *reaction window*, and a scripted bot
+  has no reaction window to shrink — it re-evaluates every tick and simply
+  fires a moment later. Screening smoke measures as nearly free against a bot
+  while being one of the more disorienting things a human faces. Their sweep
+  ROI is therefore a **floor**, not a valuation; price them from it only in the
+  direction of "is this branch dead", never "is this branch strong". This is
+  the clearest case in the game of a number the headless harness cannot be
+  asked for — it needs a hand-played session.
 - **A persona per branch.** `asw` (hydrophone + depth charges + sonar pings) is
   the underwater specialist, `gunboat` (deck guns + anti-boarding) the
   anti-surface one and `shore-battery` (counter-battery) the anti-artillery

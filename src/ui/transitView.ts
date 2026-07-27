@@ -646,6 +646,15 @@ export class TransitView {
         case 'depthChargeKill':
           this.showToast('Depth charges destroyed a torpedo');
           break;
+        case 'enemySmoke':
+          this.showToast(ev.detail === 'blinding' ? 'Blinding smoke over the convoy!' : 'Screening smoke laid');
+          break;
+        case 'jammingStarted':
+          this.showToast('SENSORS JAMMED — mine detection is offline');
+          break;
+        case 'shipDisabled':
+          this.showToast(`${ev.shipName} is dead in the water!`);
+          break;
         case 'suppressed':
           this.showToast(
             ev.detail?.startsWith('destroyed:')
@@ -679,6 +688,11 @@ export class TransitView {
           else if (ev.detail === 'artillery') this.showToast('Shore guns! They only reach the near lane');
           else if (ev.detail === 'rangingArtillery') this.showToast('Heavy shore battery — do not hold position!');
           else if (ev.detail === 'rollingBarrage') this.showToast('Barrage walking up the lane ahead!');
+          else if (ev.detail === 'screeningSmoke') this.showToast('Smoke over their launch sites — no firing solution in there');
+          else if (ev.detail === 'blindingSmoke') this.showToast('They are laying smoke over OUR ships!');
+          else if (ev.detail === 'reconPlane') this.showToast('Recon aircraft overhead — our accuracy is down');
+          else if (ev.detail === 'disablingDrone') this.showToast('Disabling drone inbound!');
+          else if (ev.detail === 'sensorJamming') this.showToast('SENSORS JAMMED — no mine detection');
           break;
         default:
           break;
@@ -1267,6 +1281,45 @@ export class TransitView {
       ctx.fillRect(x - 16, y - 27, 32 * frac, 4);
     }
 
+    // Enemy smoke: a soft grey mass. Anything inside it keeps only a faint
+    // bearing marker, which is drawn with the threats below.
+    for (const fx of t.areaEffects) {
+      if (fx.kind !== 'enemySmoke' || t.time >= fx.until) continue;
+      const cx = this.sx(fx.x);
+      const cy = this.sy(fx.y);
+      const r = fx.radius * SCALE;
+      const fade = Math.min(1, (fx.until - t.time) / 5);
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+      const tint = fx.blinding ? '190, 178, 168' : '176, 182, 190';
+      grad.addColorStop(0, `rgba(${tint}, ${0.5 * fade})`);
+      grad.addColorStop(1, `rgba(${tint}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Recon planes and disabling drones.
+    for (const threat of t.threats) {
+      if (!threat.alive) continue;
+      if (threat.kind !== 'reconPlane' && threat.kind !== 'disablingDrone') continue;
+      const x = this.sx(threat.x);
+      const y = this.sy(threat.y);
+      const recon = threat.kind === 'reconPlane';
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(threat.vy, threat.vx));
+      ctx.fillStyle = recon ? '#b9a3e3' : '#e3a34f';
+      ctx.beginPath();
+      ctx.moveTo(recon ? 11 : 8, 0);
+      ctx.lineTo(-6, recon ? -7 : -5);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-6, recon ? 7 : 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Shells in flight, with the water they are about to burst on marked. The
     // impact ring is the readable part — nothing can shoot a shell down, so the
     // only useful information is where NOT to be.
@@ -1307,6 +1360,28 @@ export class TransitView {
     // Missiles with trails
     for (const threat of t.threats) {
       if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
+
+      // Concealed by enemy smoke: the SOFT model. A faint, deliberately fuzzy
+      // marker so the player can still read "something is coming from over
+      // there", but no crisp sprite and no tap-target until it clears. Never
+      // hidden outright — that would be unfair in a tap-to-target game.
+      if (threat.concealed) {
+        const cx = this.sx(threat.x);
+        const cy = this.sy(threat.y);
+        const pulse = 0.22 + 0.12 * Math.sin(now / 220);
+        ctx.fillStyle = `rgba(255, 170, 140, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 190, 160, ${pulse + 0.15})`;
+        ctx.setLineDash([3, 4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        continue;
+      }
 
       // Early-Warning Network research: show where each missile is headed.
       if (t.effects.showTargetVectors) {
@@ -1591,6 +1666,26 @@ export class TransitView {
         ctx.arc(x, y, fx.maxRadius * (0.4 + 0.6 * progress), 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    // Sensor jamming: ENEMY_ATTACKS.md locks this as the one capability with no
+    // counter at all, and requires an UNMISSABLE indicator in exchange. A
+    // player who cannot see why their detection stopped working would read a
+    // deliberate design choice as a bug.
+    if (t.jammingSeconds > 0) {
+      const pulse = 0.55 + 0.25 * Math.sin(now / 160);
+      ctx.strokeStyle = `rgba(255, 96, 96, ${pulse})`;
+      ctx.lineWidth = 5;
+      ctx.strokeRect(2.5, 2.5, CANVAS_W - 5, CANVAS_H - 5);
+      const label = `SENSORS JAMMED — ${Math.ceil(t.jammingSeconds)}s`;
+      ctx.font = '600 17px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const w = ctx.measureText(label).width + 28;
+      ctx.fillStyle = `rgba(120, 20, 20, ${0.62 + 0.12 * Math.sin(now / 160)})`;
+      ctx.fillRect(CANVAS_W / 2 - w / 2, 12, w, 30);
+      ctx.fillStyle = '#ffe0e0';
+      ctx.fillText(label, CANVAS_W / 2, 33);
+      ctx.textAlign = 'left';
     }
 
     // Paused overlay

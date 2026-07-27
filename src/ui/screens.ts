@@ -514,6 +514,20 @@ export function aarScreen(
                   : '') +
                 (s.batteriesDestroyed > 0 ? `, ${s.batteriesDestroyed} silenced for good.` : '.')
               : '') +
+            (s.smokeCloudsLaid > 0
+              ? ` Enemy smoke: ${s.smokeCloudsLaid} cloud(s), ${Math.round(s.concealedSeconds)}s of threats hidden from targeting.`
+              : '') +
+            (s.reconPlanes + s.disablingDrones > 0
+              ? ` Electronic attack: ${s.reconPlanes} recon, ${s.disablingDrones} drone(s), ` +
+                `${s.aircraftDowned} shot down` +
+                (s.shipDisabledSeconds > 0 ? `, ${Math.round(s.shipDisabledSeconds)}s dead in the water.` : '.')
+              : '') +
+            (s.counter.jammingSeconds > 0
+              ? ` Sensors jammed for ${Math.round(s.counter.jammingSeconds)}s` +
+                (s.counter.jammingMitigatedSeconds > 0
+                  ? ` (${Math.round(s.counter.jammingMitigatedSeconds)}s recovered by hardened systems).`
+                  : ' — no counter exists for this; only work-arounds.')
+              : '') +
             (s.launchersDisabled > 0
               ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
               : '') +

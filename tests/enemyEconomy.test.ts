@@ -320,8 +320,14 @@ describe('adaptive allocation', () => {
     // Regression: the countered bonus used to be summed BEFORE the tenure clamp,
     // so any branch invested in for ~6 rounds was already pinned at
     // escalationShareMax and the player's counter changed nothing.
-    const longRun = runEconomy(12, () => ({ mineDetectRate: -1 }), 'clamp');
-    expect(longRun.economy.ledgers.mines.roundsInvested).toBeGreaterThan(
+    // The precondition rides on MISSILES rather than mines: roundsInvested
+    // counts CONSECUTIVE funded rounds and resets on any round a branch cannot
+    // afford a unit, which every additional enemy branch makes more likely.
+    // Missiles are funded every round, so they are the branch that reliably
+    // sits pinned at the tenure ceiling — which is the state this regression
+    // is about.
+    const longRun = runEconomy(20, () => ({ mineDetectRate: -1 }), 'clamp');
+    expect(longRun.economy.ledgers.missiles.roundsInvested).toBeGreaterThan(
       (ENEMY_ECONOMY.escalationShareMax - ENEMY_ECONOMY.escalationShareBase) /
         ENEMY_ECONOMY.escalationSharePerRound,
     );
