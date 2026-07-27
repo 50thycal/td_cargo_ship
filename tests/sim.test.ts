@@ -37,6 +37,7 @@ import type {
   AfterActionReport,
   CampaignState,
   RoundMetrics,
+  ShipClassId,
   RoundPlan,
   TransitCommand,
   TransitState,
@@ -682,17 +683,45 @@ describe('transit hardening', () => {
     expect(lastReport!.quota.windowRound).toBe(3);
   });
 
-  it('quota difficulty ratchets up on an easy clear and the next target tracks recent pace', () => {
+  it('quota difficulty ratchets up on an easy clear, and the next target is sized off the CONVOY', () => {
     const c = newCampaign('quota-ratchet-up');
     const before = c.quotaDifficulty;
     // Trivially easy target: cleared on round 1 with a big surplus.
     c.quota = { roundsLeft: 3, pointsNeeded: 10, pointsEarned: 0 };
-    const { report } = runRound(c, { defend: true });
+    runRound(c, { defend: true });
     expect(c.quotaDifficulty).toBeGreaterThan(before);
-    // The new target is sized off THIS window's actual average output
-    // (1 round, since it cleared immediately), not a flat increment.
-    const avgPerRound = report.quota.earned / report.quota.windowRound;
-    expect(c.quota.pointsNeeded).toBe(Math.round(avgPerRound * 3 * c.quotaDifficulty));
+    // The target asks for a share of what the convoy CAN carry, not a multiple
+    // of what the last window happened to deliver. Pinning the formula is what
+    // makes this a real test: "a smaller convoy is asked for less" sounds like
+    // the property worth asserting and is NOT — under the old delivery-based
+    // rule a smaller convoy also delivered less, so both implementations
+    // satisfy it and the assertion catches nothing. Checked by mutation.
+    //
+    // The regression it guards: sizing off delivery meant any purchase that
+    // traded convoy size for convoy quality missed a quota set by the larger
+    // convoy it used to sail, and the target only adapted downward AFTER that
+    // miss had cost 18 confidence. Measured across three builds the miss rate
+    // tracked convoy size almost exactly — 28% sailing 29.4 hulls of 30.4
+    // capacity, 39% at 24.6, 60% at 19.7 — so equipping the convoy was
+    // structurally unaffordable however cheap the equipment was.
+    const convoyValue = (Object.keys(c.composition) as ShipClassId[]).reduce(
+      (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+      0,
+    );
+    const expected = convoyValue * 3 * CAMPAIGN.quotaDeliveryFraction * c.quotaDifficulty;
+    const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
+    expect(c.quota.pointsNeeded).toBe(Math.max(Math.round(expected), Math.round(floor)));
+  });
+
+  it('the floor stops a player shrinking the convoy to trivialise the quota', () => {
+    const c = newCampaign('quota-floor-guard');
+    c.quota = { roundsLeft: 3, pointsNeeded: 10, pointsEarned: 0 };
+    setComposition(c, 'tanker', 0);
+    setComposition(c, 'freighter', 0);
+    setComposition(c, 'cargo', 1); // sail almost nothing
+    runRound(c, { defend: true });
+    // Capacity is untouched by the convoy shrinking, so the floor still bites.
+    expect(c.quota.pointsNeeded).toBe(Math.round(c.capacity * CAMPAIGN.quotaFloorPerCapacity));
   });
 
   it('quota difficulty ratchets down on a miss, floored so it never bottoms out at zero', () => {

@@ -482,8 +482,20 @@ export const CAMPAIGN = {
    *  outrunning a struggling one (too punishing). See resolveTransit. */
   quotaWindowRounds: 3,
   quotaPerCapacity: 24, // initial window: startCapacity * this
-  /** Next window's target = (this window's avg value delivered per round) *
-   *  quotaWindowRounds * quotaDifficulty. */
+  /** Share of the sailing convoy's cargo value the consortium expects to arrive.
+   *  Next window's target = convoy value * quotaWindowRounds * this *
+   *  quotaDifficulty — a fraction of what the fleet CAN carry, rather than a
+   *  multiple of what the last window happened to deliver.
+   *
+   *  Sizing from delivery punished the player twice over: it asked more of
+   *  someone who had been defending well, and it made any purchase that traded
+   *  convoy size for convoy quality miss a target set by the larger convoy they
+   *  used to sail. Measured, the quota-miss rate tracked convoy size almost
+   *  exactly — 28% for a build sailing 29.4 hulls of 30.4 capacity, 39% at
+   *  24.6, 60% at 19.7 — so equipping the convoy was structurally punished
+   *  however cheap the equipment was. Halving every module price made those
+   *  builds worse rather than better, which is what pointed here. */
+  quotaDeliveryFraction: 0.84,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
   quotaDifficultyMax: 1.6,

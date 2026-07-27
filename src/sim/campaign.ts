@@ -426,11 +426,31 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       const step = Math.min(CAMPAIGN.quotaDifficultyDownStep, shortfall * CAMPAIGN.quotaDifficultyDownStep * 2);
       c.quotaDifficulty = Math.max(CAMPAIGN.quotaDifficultyMin, c.quotaDifficulty - step);
     }
-    // Size the next target off the player's own recent pace (average value
-    // delivered per round actually played this window) rather than a flat
-    // increment, so it tracks real capability as the campaign progresses.
-    const avgPerRound = quotaWindowRound > 0 ? quotaSnapshot.earned / quotaWindowRound : quotaSnapshot.earned;
-    const target = avgPerRound * CAMPAIGN.quotaWindowRounds * c.quotaDifficulty;
+    // Size the next target off the CONVOY, not off what the last window
+    // managed to deliver.
+    //
+    // Sizing from delivery had two faults that pulled in the same direction.
+    // It asked more of a player who had been defending well, and — the one that
+    // mattered — it punished any purchase that traded convoy size for convoy
+    // quality, because the target had been set by the larger convoy they used
+    // to sail and only adapted downward AFTER a miss had cost 18 confidence.
+    // Measured across three builds, the quota-miss rate tracked convoy size
+    // almost exactly: 28% for a build sailing 29.4 hulls of 30.4 capacity, 39%
+    // at 24.6, and 60% at 19.7. Equipping the convoy was structurally punished
+    // however little the equipment cost, which is why halving every module
+    // price made those builds WORSE rather than better.
+    //
+    // Asking for a share of what the convoy can carry decouples the target from
+    // both: sail less and less is expected of you, defend well and you are not
+    // punished for it with a higher bar next window. The floor below is what
+    // stops "sail three hulls to trivialise the quota" — it is pinned to
+    // CAPACITY, which does not shrink when the convoy does.
+    const convoyValue = (Object.keys(c.composition) as ShipClassId[]).reduce(
+      (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+      0,
+    );
+    const target =
+      convoyValue * CAMPAIGN.quotaWindowRounds * CAMPAIGN.quotaDeliveryFraction * c.quotaDifficulty;
     const floor = c.capacity * CAMPAIGN.quotaFloorPerCapacity;
     c.quota = {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
