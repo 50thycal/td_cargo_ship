@@ -389,7 +389,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'coastalGun',
         name: 'Coastal gun',
-        cost: 180,
+        cost: 234,
         gateRound: 6,
         firstAppearanceCap: 1,
         grantsTargeting: 2,
@@ -400,7 +400,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'ranging',
         name: 'Ranging artillery',
-        cost: 285,
+        cost: 370,
         gateRound: 8,
         firstAppearanceCap: 1,
         implemented: true,
@@ -411,7 +411,7 @@ export const ENEMY_BRANCHES: Record<EnemyBranchKey, EnemyBranchDef> = {
       {
         id: 'rollingBarrage',
         name: 'Rolling barrage',
-        cost: 400,
+        cost: 520,
         gateRound: 11,
         firstAppearanceCap: 1,
         implemented: true,

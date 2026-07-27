@@ -422,6 +422,102 @@ every counter was worth *negative* value. On matched seeds at 16 seeds instead
 of 10, that inverted for two of them. Ten seeds is not enough to rank builds
 that finish within 10% of each other.
 
+### Counters measured: what each one is actually worth
+
+`npm run ablate` removes one counter branch from a broad build and plays both
+arms on matched seeds. Measured against `balanced` at 16 seeds:
+
+| counter | vs | worth | survival without it |
+| --- | --- | --- | --- |
+| escort interceptors | missiles | **+38.6%** | 88% → 19% |
+| base interceptors | missiles | **+36.9%** | 88% → 6% |
+| scan pulse | mines | +11.4% | 88% → 63% |
+| ECM | missiles | +7.8% | 88% → 63% |
+| mine sonar | mines | +2.0% | 88% → 75% |
+| MCM drones | mines | +1.9% | 88% → 69% |
+| reinforced hull | — | −2.1% | 88% → 88% |
+| deck gun | attack boats | −2.4% | 88% → **94%** |
+| hydrophone | torpedoes | −2.4% | 88% → **94%** |
+| counter-battery | artillery | −5.1% | 88% → 88% |
+
+Score and survival agree, which is what makes the ranking trustworthy — score
+alone would be suspect, because the score function barely rewards staying alive
+(40 a round against ~470 of delivered value, so a build that dies at round 13
+having shipped a lot outscores one that survives 15 shipping less).
+
+Six more — self-defense, missile warning, depth charges, thermal imaging, flak,
+compartmentalization — are **researched and then never bought**, so they cannot
+be measured this way at all.
+
+### The counters are not mispriced. Spending is.
+
+The obvious reading of that table is a pricing problem, and it is wrong. Cargo
+modules bill at 16–20× their per-ship cost at realistic fleet sizes, so
+Self-Defense costs 19–28 hulls; halving every cargo module's price to see what
+happened made **both** broad builds worse — `balanced` fell from 88% survival to
+69%, and the equip-first build from 38% to 6%. Losses fell in both arms, so the
+equipment was working. The builds still did worse.
+
+What punishes them is the quota. Its target is sized from the player's **own
+recent pace**, and it only adapts downward *after* a miss has already cost 18
+confidence. So any purchase that trades convoy size for convoy quality misses a
+quota set by the larger convoy it used to sail:
+
+| build | hulls sailed / capacity | quota missed |
+| --- | --- | --- |
+| economist (pure hulls) | 29.4 / 30.4 | 28% |
+| balanced | 24.6 / 31.6 | 39% |
+| technologist (equip first) | 19.7 / 31.5 | **60%** |
+
+Not the floor, which never binds — the adaptation lag. **Quality-over-quantity
+is structurally punished no matter what the equipment costs**, and no price
+change can reach that, which is why the price change made things worse instead
+of better: it only got the builds to buy more of the thing that was shrinking
+them.
+
+The lesson is the one this document keeps relearning from a new angle: *check
+that the metric driving a fix is the one that is actually broken.* Two of the
+last three findings here have been a mechanism wearing a pricing problem's
+clothes.
+
+### A counter cannot be worth more than the threat it answers
+
+With the quota fixed, the four negative counters were **unchanged** — deck gun
+−2.3%, counter-battery −5.0%. Their problem was never the player's economy at
+all: artillery was 7% of all losses and attack boats 8%. A counter bought for
+7% of your damage cannot pay however cheap it is, and buying down its price
+just makes a bad deal marginally less bad.
+
+So the fix went on the ENEMY side: artillery damage and boat DPS each up ~30%,
+which moved boats to 11% of losses and artillery to 9%, and moved every
+mitigation counter with them (reinforced hull and the hydrophone improved too,
+without either being touched — a more lethal enemy makes protection worth more
+across the board).
+
+Two things that only showed up by measuring:
+
+- **The unit ceiling was not the constraint.** Raising `maxUnitsPerRound` for
+  both branches produced *byte-identical* results across 176 campaigns. The cap
+  never binds: artillery's allowance is ~44–256 and one gun costs 180, so it can
+  rarely afford even one. Budget share was the limit all along.
+- **Fair pricing and counter-viability pull against each other.** At the raised
+  lethality and old prices, artillery was the best buy in the catalogue (5.7
+  cost-per-result against a 7–9 pack) and counter-battery reached −1.1%.
+  Repricing it to a fair 7.9 pushed counter-battery back to −3.7%. A cheaper
+  artillery *also* turned out to help the greed build — it sprints the far
+  lanes, which artillery cannot reach, so budget shifted into artillery is
+  budget aimed where that build is not: its survival went 38% → 63%.
+
+Fair pricing won, because "greed is punished" is a property worth more than a
+situational counter reaching break-even. Counter-battery and the deck gun sit
+near zero rather than clearly positive, and that is the honest landing.
+
+**Know the harness's resolution.** Deck gun measured −2.4%, −2.3%, +0.3%,
+−1.7%, −2.6% across five runs of the same 16 seeds as other things moved around
+it. Counter-battery moved decisively (−5.0% → −1.3% → −3.7%) and the deck gun
+never left the noise. Effects of 1–3% are not separable at this seed count;
+tuning against them is fitting noise, and stopping is the discipline.
+
 ---
 
 ## How this is used

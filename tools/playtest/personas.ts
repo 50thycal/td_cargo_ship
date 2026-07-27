@@ -698,6 +698,63 @@ export const PERSONAS: Persona[] = [
     transit: FIGHTER,
   },
   {
+    // The mirror of `economist`, and it exists to settle a specific question.
+    // Six counter branches were researched and then NEVER bought by any build,
+    // which has two very different explanations: the equipment is overpriced,
+    // or the bots simply fill the convoy to capacity before they ever reach it
+    // in the list. Those need different fixes, so one build has to try the
+    // other order. Same research and same kit as `balanced` — only the
+    // PRIORITY differs: equip the convoy before enlarging it.
+    name: 'technologist',
+    desc: 'Equips the convoy before it enlarges it — the mirror of economist.',
+    formation: 'tight',
+    research: [
+      'escortInterceptor.precisionGuidance',
+      'mineSonar.base',
+      'selfDefense.base',
+      'missileWarning.base',
+      'deckGun.base',
+      'hydrophone.base',
+      'depthCharges.base',
+      'counterBattery.base',
+      'mcmDrones.base',
+      'compartmentalization.low',
+      'flak.base',
+      'thermalImaging.base',
+      'deckGun.autoNearest',
+    ],
+    buys: [
+      { kind: 'repair' },
+      { kind: 'ammo', upTo: 30 },
+      // No hull purchase up here at all. The campaign already starts with a
+      // convoy that can sail, and this build's whole point is to equip that
+      // convoy before enlarging it — the growth intent sits at the bottom of
+      // the list instead. (Note `upToCapacity: false` would be the WRONG way to
+      // express "just a few": it removes the capacity ceiling rather than
+      // lowering it, so the bot buys hulls without limit and never reaches its
+      // own modules. That misread made the first run of this comparison
+      // measure the opposite of what it claimed.)
+      { kind: 'ability', id: 'scan' },
+      { kind: 'base' },
+      { kind: 'escort' },
+      { kind: 'module', classId: 'cargo', moduleId: 'selfDefense' },
+      { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
+      { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
+      { kind: 'module', classId: 'cargo', moduleId: 'compartmentalization' },
+      { kind: 'escortModule', id: 'deckGun' },
+      { kind: 'escortModule', id: 'depthCharges' },
+      { kind: 'escortModule', id: 'mcmDroneLauncher' },
+      { kind: 'baseModule', id: 'counterBattery' },
+      { kind: 'ability', id: 'ecm' },
+      { kind: 'selfDefenseAmmo', upTo: 9 },
+      { kind: 'droneAmmo', upTo: 6 },
+      // Only now does the convoy grow.
+      { kind: 'ship', classId: 'cargo' },
+      { kind: 'ammo', upTo: 45 },
+    ],
+    transit: FIGHTER,
+  },
+  {
     name: 'economist',
     desc: 'Greed test: buys hulls and capacity, minimal defense — should be punished if pressure is real.',
     formation: 'sprint',

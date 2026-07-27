@@ -150,7 +150,7 @@ export const COMBAT = {
     /** Damage per second poured into the committed hull. Tuned against the
      *  design's times-to-sink on a 100hp cargo ship: small-arms ~30s,
      *  rocket ~20s. Boarding boats deal no damage — they take the ship. */
-    dps: { smallArms: 3.4, rocket: 5, boarding: 0 },
+    dps: { smallArms: 4.4, rocket: 6.5, boarding: 0 },
     /** Sustained contact a boarding boat needs before the hull is captured. */
     boardingSeconds: 15,
     /** Pause after a kill before committing to the next hull. This is the main
@@ -162,7 +162,13 @@ export const COMBAT = {
      *  Measured, not guessed: at 10s a sweep put boats at 43% of all losses
      *  with every build collapsing by round 11, even builds carrying the deck
      *  gun. Two hulls per boat per transit is the ceiling this branch can be
-     *  worth at its price. */
+     *  worth at its price.
+     *
+     *  DPS was later raised ~30% (3.4/5 -> 4.4/6.5) to make the branch a real
+     *  share of the damage rather than a rounding error. A counter for 9% of
+     *  your losses cannot pay however cheap it is, and the deck gun measured at
+     *  -2.4% worth because of it. Boats now take 11% of losses and the branch
+     *  still prices out at 8.6 cost-per-result, in line with mines at 8.8. */
     retargetDelay: 20,
     /** Seconds a captured hull takes to steer off toward the hostile shore
      *  before it leaves the board — long enough to read what happened. */
@@ -185,9 +191,17 @@ export const COMBAT = {
      *  read as a tracer crossing the water. */
     shellSpeed: 430,
     range: { coastalGun: 330, ranging: 520, rollingBarrage: 330 },
-    /** Per the design's times-to-sink on a 100hp hull: ~8 coastal hits, ~5
-     *  ranging hits. A barrage fires coastal-weight shells in bulk. */
-    damage: { coastalGun: 13, ranging: 21, rollingBarrage: 13 },
+    /** Per the design's times-to-sink on a 100hp hull: ~6 coastal hits, ~4
+     *  ranging hits. A barrage fires coastal-weight shells in bulk.
+     *
+     *  Raised ~30% (13/21 -> 17/27) for the same reason as attack-boat DPS: at
+     *  7% of all losses, counter-battery could not pay whatever it cost, and
+     *  measured at -5.0% worth. Artillery was REPRICED upward to match the new
+     *  lethality (180/285/400 -> 234/370/520) — at the old prices it became the
+     *  best buy in the catalogue at 5.7 cost-per-result against a 7-9 pack, and
+     *  the locked doctrine in enemyBranches.ts is that the allocator's choice
+     *  has to stay honest. */
+    damage: { coastalGun: 17, ranging: 27, rollingBarrage: 17 },
     reload: { coastalGun: 2.2, ranging: 4.2, rollingBarrage: 0.55 },
     /** Shells burst at their aim point and damage what is near it — artillery
      *  is an area weapon, so it never "homes" onto a hull. */
@@ -482,8 +496,20 @@ export const CAMPAIGN = {
    *  outrunning a struggling one (too punishing). See resolveTransit. */
   quotaWindowRounds: 3,
   quotaPerCapacity: 24, // initial window: startCapacity * this
-  /** Next window's target = (this window's avg value delivered per round) *
-   *  quotaWindowRounds * quotaDifficulty. */
+  /** Share of the sailing convoy's cargo value the consortium expects to arrive.
+   *  Next window's target = convoy value * quotaWindowRounds * this *
+   *  quotaDifficulty — a fraction of what the fleet CAN carry, rather than a
+   *  multiple of what the last window happened to deliver.
+   *
+   *  Sizing from delivery punished the player twice over: it asked more of
+   *  someone who had been defending well, and it made any purchase that traded
+   *  convoy size for convoy quality miss a target set by the larger convoy they
+   *  used to sail. Measured, the quota-miss rate tracked convoy size almost
+   *  exactly — 28% for a build sailing 29.4 hulls of 30.4 capacity, 39% at
+   *  24.6, 60% at 19.7 — so equipping the convoy was structurally punished
+   *  however cheap the equipment was. Halving every module price made those
+   *  builds worse rather than better, which is what pointed here. */
+  quotaDeliveryFraction: 0.84,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
   quotaDifficultyMax: 1.6,
