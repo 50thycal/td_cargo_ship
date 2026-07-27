@@ -25,6 +25,7 @@
 //      ranked on a handful of campaigns.
 
 import { createRoundTransit, newCampaign, planCurrentRound, resolveTransit } from '../../src/sim/campaign';
+import type { CampaignState } from '../../src/sim/types';
 import { stepTransit } from '../../src/sim/transit';
 import { COUNTER_BRANCHES } from '../../src/data/counters';
 import {
@@ -157,10 +158,31 @@ interface Result {
   delivered: number;
   score: number;
   losses: number;
+  /** Equipment the build actually ended up owning, as `kind:id` keys. Carried
+   *  so a branch that was researched but never BOUGHT can be reported as
+   *  unmeasured instead of as a number. */
+  owned: Set<string>;
+}
+
+/** Everything this campaign actually owns, keyed to match a branch's
+ *  `equipment` descriptor. */
+function ownedEquipment(c: CampaignState, into: Set<string>): void {
+  for (const mods of Object.values(c.classModules)) {
+    for (const m of mods) into.add(`cargoModule:${m}`);
+  }
+  for (const m of c.escortModules) into.add(`escortModule:${m}`);
+  for (const m of c.baseModules) into.add(`baseModule:${m}`);
+  if (c.ecmUnlocked) into.add('ability:ecm');
+  if (c.scanUnlocked) into.add('ability:scan');
+  if (c.sonarUnlocked) into.add('ability:sonar');
+  if (c.smokeUnlocked) into.add('ability:smoke');
+  if (c.hardenedUnlocked) into.add('ability:hardened');
+  if (c.escorts > 0) into.add('builtIn:escort');
+  if (c.bases > 0) into.add('builtIn:base');
 }
 
 function play(p: Persona, seeds: number, maxRounds: number): Result {
-  const r: Result = { survived: 0, rounds: 0, delivered: 0, score: 0, losses: 0 };
+  const r: Result = { survived: 0, rounds: 0, delivered: 0, score: 0, losses: 0, owned: new Set() };
   let delivSum = 0;
   let delivRounds = 0;
   for (let s = 0; s < seeds; s++) {
@@ -170,6 +192,7 @@ function play(p: Persona, seeds: number, maxRounds: number): Result {
       if (c.campaignOver) break;
       procure(c, p);
       if (Object.values(c.composition).reduce((a, b) => a + b, 0) === 0) break;
+      ownedEquipment(c, r.owned);
       const plan = planCurrentRound(c);
       const { state, rng } = createRoundTransit(c, plan);
       const mem = newTransitMemory();
@@ -239,13 +262,31 @@ console.log(
 );
 
 const rows: { id: string; worth: number; counters: string }[] = [];
+const unbought: string[] = [];
 for (const id of targets) {
+  const branch = COUNTER_BRANCHES[id as keyof typeof COUNTER_BRANCHES] as {
+    counters?: string;
+    equipment?: { kind: string; id: string };
+  };
+  const eq = branch?.equipment;
+  // A branch the build RESEARCHED but never actually bought cannot be measured
+  // by removing it: the two arms differ only in a research slot, and the number
+  // that falls out describes which project completed instead. Report it as
+  // unmeasured rather than as a value — a confident zero here is exactly how
+  // the previous ablation misread half its own table.
+  if (eq && !baseline.owned.has(`${eq.kind}:${eq.id}`)) {
+    unbought.push(id);
+    console.log(
+      '  ' + pad(`without ${id}`, 22) + padL('—', 7) + padL('—', 8) + padL('—', 9) +
+        padL('—', 8) + padL('—', 8) + padL('NEVER BOUGHT', 15),
+    );
+    continue;
+  }
   const r = play(ablate(base, id), opts.seeds, opts.rounds);
   // WORTH is the baseline's advantage over the build without it: positive means
   // the counter earned its slot, negative means the build is better off
   // spending that money and research time on something else.
   const worth = ((baseline.score - r.score) / baseline.score) * 100;
-  const branch = COUNTER_BRANCHES[id as keyof typeof COUNTER_BRANCHES] as { counters?: string };
   rows.push({ id, worth, counters: branch?.counters ?? '—' });
   console.log(
     '  ' + pad(`without ${id}`, 22) +
@@ -266,6 +307,11 @@ console.log('─'.repeat(80));
 for (const r of [...rows].sort((a, b) => b.worth - a.worth)) {
   const bar = r.worth >= 0 ? '+'.repeat(Math.min(40, Math.round(r.worth))) : '-'.repeat(Math.min(40, Math.round(-r.worth)));
   console.log(`  ${pad(r.id, 22)}${pad(`(vs ${r.counters})`, 18)}${padL(`${r.worth >= 0 ? '+' : ''}${r.worth.toFixed(1)}%`, 8)}  ${bar}`);
+}
+if (unbought.length > 0) {
+  console.log(`\n  RESEARCHED BUT NEVER BOUGHT — unmeasurable, and a finding in itself:`);
+  console.log(`    ${unbought.join(', ')}`);
+  console.log('    The build completed their research and then never afforded the equipment.');
 }
 if (skipped.length > 0) {
   console.log(`\n  Not carried by "${base.name}", so not measured: ${skipped.join(', ')}`);
