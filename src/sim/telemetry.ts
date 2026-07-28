@@ -5,7 +5,7 @@
 
 import { SHIP_CLASSES } from '../data/defs';
 import { LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
-import type { CampaignState } from './types';
+import type { CampaignState, EscortModuleId } from './types';
 
 export interface TelemetryExport {
   game: 'straitwatch';
@@ -26,7 +26,9 @@ export interface TelemetryExport {
   /** Player loadout at export time (the per-round history is in rounds[]). */
   loadout: {
     classModules: CampaignState['classModules'];
-    escortModules: CampaignState['escortModules'];
+    /** The whole flotilla, one entry per escort. A single `escortModules` list
+     *  could not describe a mixed fleet, which is the point of the model. */
+    escorts: { id: number; name: string; modules: EscortModuleId[] }[];
     baseModules: CampaignState['baseModules'];
   };
   enemyTracks: CampaignState['evolution']['tracks'];
@@ -221,7 +223,7 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     cash: c.cash,
     intel: c.intel,
     bases: c.bases,
-    escorts: c.escorts,
+    escorts: c.escortUnits.length,
     completedResearch: [...c.completedResearch],
     loadout: {
       classModules: {
@@ -229,7 +231,7 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
         tanker: [...c.classModules.tanker],
         freighter: [...c.classModules.freighter],
       },
-      escortModules: [...c.escortModules],
+      escorts: c.escortUnits.map((e) => ({ id: e.id, name: e.name, modules: [...e.modules] })),
       baseModules: [...c.baseModules],
     },
     enemyTracks: { ...c.evolution.tracks },

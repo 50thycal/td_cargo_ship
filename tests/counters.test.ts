@@ -20,6 +20,7 @@ import {
   resolveTransit,
   setProtectedChannels,
 } from '../src/sim/campaign';
+import { fitUniformEscorts } from './helpers';
 import { stepTransit, deriveEffects } from '../src/sim/transit';
 import { migrateCampaign } from '../src/platform/save';
 import {
@@ -161,8 +162,7 @@ describe('interceptor target compatibility', () => {
 describe('deck gun target compatibility', () => {
   it('cannot target missiles or torpedoes', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['deckGun'];
+      fitUniformEscorts(c, 1, ['deckGun']);
       c.completedResearch = ['deckGun.base'];
     });
     const escort = state.escorts[0];
@@ -180,8 +180,7 @@ describe('deck gun target compatibility', () => {
 
   it('sustains fire on a boat until it sinks (persistent HP target, no one-tap kill)', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['deckGun'];
+      fitUniformEscorts(c, 1, ['deckGun']);
       c.completedResearch = ['deckGun.base'];
     });
     const escort = state.escorts[0];
@@ -211,8 +210,7 @@ describe('deck gun target compatibility', () => {
 describe('depth-charge target compatibility', () => {
   it('the blast destroys torpedoes but never missiles, boats, or mines', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['depthCharges'];
+      fitUniformEscorts(c, 1, ['depthCharges']);
       c.completedResearch = ['depthCharges.base'];
     });
     const escort = state.escorts[0];
@@ -235,8 +233,7 @@ describe('depth-charge target compatibility', () => {
 
   it('is placed at a water point and respects the per-round magazine', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['depthCharges'];
+      fitUniformEscorts(c, 1, ['depthCharges']);
       c.completedResearch = ['depthCharges.base'];
     });
     const escort = state.escorts[0];
@@ -396,8 +393,7 @@ describe('sensor jamming', () => {
 describe('detection gates clearing', () => {
   it('a drone can never be sent at an unrevealed mine', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['mcmDroneLauncher'];
+      fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
       c.completedResearch = ['mcmDrones.base'];
       c.droneAmmo = 5;
     });
@@ -415,8 +411,7 @@ describe('detection gates clearing', () => {
 
   it('automatic clearance also refuses unrevealed mines', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
-      c.escortModules = ['mcmDroneLauncher'];
+      fitUniformEscorts(c, 1, ['mcmDroneLauncher']);
       c.completedResearch = ['mcmDrones.base', 'mcmDrones.extendedLink', 'mcmDrones.riskDesignator', 'mcmDrones.localAuto'];
       c.droneAmmo = 5;
     });
@@ -500,7 +495,7 @@ describe('low-signature detection gates', () => {
 describe('automation tactics', () => {
   it('the automatic-fire cooldown is independent of launcher reload', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
+      fitUniformEscorts(c, 1);
       c.completedResearch = ['escortInterceptor.localAuto'];
       c.ammo = 20;
     });
@@ -537,7 +532,7 @@ describe('automation tactics', () => {
 
   it('disabling automatic fire never removes manual fire', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 1;
+      fitUniformEscorts(c, 1);
       c.completedResearch = ['escortInterceptor.localAuto'];
       c.ammo = 20;
     });
@@ -553,7 +548,7 @@ describe('automation tactics', () => {
 
   it('expanded automation never double-fires at an already-covered missile', () => {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 2;
+      fitUniformEscorts(c, 2);
       c.completedResearch = ['escortInterceptor.localAuto', 'escortInterceptor.expandedAuto'];
       c.ammo = 20;
     });
@@ -610,8 +605,7 @@ describe('cargo self-defense magazine', () => {
 describe('deck-gun fire allocation', () => {
   function twoGunsTwoBoats() {
     const { state, rng } = quietTransit((c) => {
-      c.escorts = 2;
-      c.escortModules = ['deckGun'];
+      fitUniformEscorts(c, 2, ['deckGun']);
       c.completedResearch = [
         'deckGun.base',
         'deckGun.stabilizedMount',
@@ -704,6 +698,8 @@ describe('save migration (legacy → counter model)', () => {
       intel: 44,
       droneAmmo: 6,
       pdAmmo: 3,
+      escorts: 2,
+      escortDamage: 30,
       completedResearch: [
         'sensors1', 'sensors2', 'sensors3',
         'intercept1', 'intercept2',
@@ -727,8 +723,15 @@ describe('save migration (legacy → counter model)', () => {
     expect(m.classModules.tanker).toContain('mineSonar');
     expect(m.classModules.freighter).toContain('fireSuppression');
     expect(m.modulePaid.cargo.selfDefense).toBe(220); // refund value preserved
-    // Legacy mine-warfare research implies the escort drone launcher.
-    expect(m.escortModules).toContain('mcmDroneLauncher');
+    // Legacy mine-warfare research implied a fleet-wide drone launcher. It now
+    // lands on each individual escort, and the pooled damage splits with them.
+    expect(m.escortUnits).toHaveLength(2);
+    for (const unit of m.escortUnits) {
+      expect(unit.modules).toContain('mcmDroneLauncher');
+      expect(unit.name.length).toBeGreaterThan(0);
+      expect(unit.damage).toBe(15);
+    }
+    expect(new Set(m.escortUnits.map((u) => u.id)).size).toBe(2); // ids are unique
     // Legacy fleet-wide compartmentalization equips where a slot is free.
     expect(m.classModules.tanker).toContain('compartmentalization');
 
@@ -756,7 +759,7 @@ describe('save migration (legacy → counter model)', () => {
 
     // Value: the effects the old save had are still there or better.
     const fx = deriveEffects(m.completedResearch, {
-      escortModules: m.escortModules,
+      escortModules: m.escortUnits[0].modules,
       baseModules: m.baseModules,
     });
     expect(fx.compartmentReduction).toBe(0.25); // old resilience1's 25%
@@ -787,7 +790,7 @@ describe('save migration (legacy → counter model)', () => {
   it('a new-format save round-trips through migration untouched', () => {
     const c = newCampaign('fresh-format');
     c.completedResearch = ['mineSonar.base'];
-    c.escortModules = ['deckGun'];
+    fitUniformEscorts(c, 1, ['deckGun']);
     const m = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
     expect(JSON.stringify(m)).toBe(JSON.stringify(c));
   });

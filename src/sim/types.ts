@@ -64,8 +64,33 @@ export interface EscortModuleDef {
   id: EscortModuleId;
   name: string;
   desc: string;
-  /** Flat cash cost to fit the escort loadout template. */
+  /** Flat cash cost to fit this module to ONE escort. Fitting the same module
+   *  to a second escort is a second purchase — a flotilla of three gun boats
+   *  costs three deck guns. */
   cost: number;
+}
+
+/** One escort in the flotilla: a persistent, individually-fitted ship rather
+ *  than an anonymous slot in a count.
+ *
+ *  Missile interceptors are built in and are deliberately NOT in `modules` —
+ *  they are not optional, they cost nothing, and they never occupy a slot. */
+export interface EscortUnit {
+  /** Stable for the escort's whole life, so damage, name and loadout follow
+   *  the same ship between rounds and the right one is removed when it sinks. */
+  id: number;
+  /** Player-set, sanitised and length-limited (see ESCORT_NAME_MAX). */
+  name: string;
+  /** Optional specialist systems fitted to THIS escort. Capped by the escort's
+   *  unlocked slot count; several escorts may carry the same module. */
+  modules: EscortModuleId[];
+  /** Cash actually paid for each fitted module, so unequipping refunds exactly
+   *  what was spent. Per escort rather than per module type, which is what
+   *  stops a module being fitted cheaply on one hull and refunded at another's
+   *  price. */
+  modulePaid: Partial<Record<EscortModuleId, number>>;
+  /** Unrepaired hull damage this escort is carrying into the next round. */
+  damage: number;
 }
 
 export interface BaseModuleDef {
@@ -430,6 +455,17 @@ export interface RoundPlan {
 
 export interface Escort {
   id: number;
+  /** The campaign EscortUnit this is sailing for. Losses are reported against
+   *  it so the right named ship leaves the flotilla, and per-escort telemetry
+   *  is attributed through it. */
+  unitId: number;
+  /** Copied from the unit so the transit can label it without reaching back
+   *  into campaign state. */
+  name: string;
+  /** THIS escort's fitted specialist systems. Every capability gate in the
+   *  sim reads this rather than a fleet-wide list — a depth charge can only be
+   *  dropped by an escort that actually carries a launcher. */
+  modules: EscortModuleId[];
   x: number;
   y: number;
   slotDx: number;
@@ -500,6 +536,9 @@ export interface Interceptor {
   speed: number;
   /** Which launcher fired it (for telemetry attribution). */
   launcher: LauncherKind;
+  /** EscortUnit that fired it, when an escort did. Shore batteries and cargo
+   *  self-defense leave this undefined. */
+  ownerUnitId?: number;
   /** Overrides the default per-launcher hit chance (used by self-defense). */
   hitChance?: number;
   /** True when an automation tactic (not a player tap) fired this. */
@@ -515,6 +554,9 @@ export interface Drone {
   id: number;
   x: number;
   y: number;
+  /** EscortUnit that launched it, so the clearance is credited to the escort
+   *  actually carrying the launcher. */
+  ownerUnitId: number;
   targetMineId: number;
   speed: number;
   /** Moving-target guidance: keeps tracking a drifting mine after launch. */
@@ -525,6 +567,9 @@ export interface Drone {
  *  detonates, destroying torpedoes inside the blast area. Never locks on. */
 export interface DepthChargeShot {
   id: number;
+  /** EscortUnit that lobbed it, so torpedo kills credit the hull that carries
+   *  the launcher. */
+  ownerUnitId: number;
   x: number;
   y: number;
   targetX: number;
@@ -759,6 +804,10 @@ export interface TransitStats {
   scanUsed: number;
   /** Escorts destroyed during the transit (lost from the fleet). */
   escortsLost: number;
+  /** What each escort did this transit, keyed by EscortUnit id. Attribution is
+   *  per SHIP rather than per weapon type, so a log can answer whether fitting
+   *  the deck gun to a particular escort was worth the slot. */
+  escortPerformance: Record<number, EscortPerformance>;
   /** Shore batteries destroyed during the transit (lost from the fleet). */
   basesLost: number;
   /** Times a launcher (escort or battery) was knocked offline by a hit. */
@@ -1239,12 +1288,43 @@ export interface ShipLoss {
   cause: string;
 }
 
+/** One escort's identity and fit, recorded per round so performance can be
+ *  attributed to a specific ship and a specific loadout. */
+export interface EscortLoadoutTelemetry {
+  id: number;
+  name: string;
+  modules: EscortModuleId[];
+}
+
+/** What one escort actually did during a transit. Keyed by unit id so a
+ *  campaign log can answer "was fitting the deck gun to Sentinel worth it"
+ *  rather than only "did the fleet shoot anything". */
+export interface EscortPerformance {
+  id: number;
+  name: string;
+  modules: EscortModuleId[];
+  /** Missile interceptors — built in, so this is every escort's baseline. */
+  intercepts: number;
+  /** Attack boats destroyed by this escort's deck gun. */
+  boatKills: number;
+  /** Torpedoes destroyed by this escort's depth charges. */
+  torpedoKills: number;
+  /** Mines cleared by drones this escort launched. */
+  minesSwept: number;
+  /** Hull damage this escort absorbed, and whether it survived the transit. */
+  damageTaken: number;
+  lost: boolean;
+}
+
 /** Player-counter snapshot recorded per round in the game log. */
 export interface CounterTelemetry {
   /** Equipment by platform at round start. */
   equipped: {
     cargo: Record<ShipClassId, ModuleId[]>;
-    escorts: EscortModuleId[];
+    /** One entry per escort, so a log records WHICH escort carried what rather
+     *  than one fleet-wide list. Reading back whether a specialist loadout paid
+     *  off needs the loadouts kept apart. */
+    escorts: EscortLoadoutTelemetry[];
     bases: BaseModuleId[];
     abilities: string[];
   };
@@ -1327,6 +1407,11 @@ export interface RoundTelemetry {
   completedResearch: ResearchId[];
   enemyTracks: EvolutionTracks;
   newDiscoveries: TechKey[];
+  /** What each escort individually did this transit, keyed by unit id. Paired
+   *  with `counters.equipped.escorts` (the fit at round start) this is what
+   *  makes a specialist loadout evaluable: the fleet aggregate cannot say which
+   *  hull earned the kills. Escorts lost mid-transit still appear, flagged. */
+  escortPerformance: EscortPerformance[];
   /** Player-counter side of the seesaw (equipment, spend, per-weapon stats). */
   counters: CounterTelemetry;
   /** ENEMY side of the seesaw — the instrumentation docs/SEESAW.md required
@@ -1398,22 +1483,28 @@ export interface CampaignState {
    *  unequip refund exactly what was spent (so loadouts can be experimented
    *  with freely without opening a buy-low / refund-high exploit). */
   modulePaid: Record<ShipClassId, Partial<Record<ModuleId, number>>>;
-  /** Escort loadout template (applies to every escort; limited slots). */
-  escortModules: EscortModuleId[];
-  escortModulePaid: Partial<Record<EscortModuleId, number>>;
   /** Shore-base loadout template (applies to every battery; limited slots). */
   baseModules: BaseModuleId[];
   baseModulePaid: Partial<Record<BaseModuleId, number>>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
-  /** Unrepaired hull damage carried by the escort ships (repaired like hulls). */
-  escortDamage: number;
   /** Unrepaired hull damage carried by the shore batteries. */
   baseDamage: number;
   /** Fixed shore batteries: unlimited range, long reload. */
   bases: number;
-  /** Escort ships: limited range, fast reload. Not free at campaign start. */
-  escorts: number;
+  /** The escort flotilla — every escort individually named and fitted.
+   *
+   *  This replaced a count plus one shared `escortModules` template. Under the
+   *  template every escort carried the same loadout and was recreated as an
+   *  interchangeable unit each round, so "three escorts" could only ever mean
+   *  three copies of one design. Owning the units directly is what lets a
+   *  flotilla specialise — a gun boat, a submarine hunter and a minesweeper —
+   *  and what keeps a name, a loadout and accumulated damage attached to the
+   *  same ship from round to round. */
+  escortUnits: EscortUnit[];
+  /** Monotonic source of EscortUnit ids. Never reused, so a sunk escort's id
+   *  cannot be confused with its replacement's in saves or telemetry. */
+  nextEscortId: number;
   ammo: number;
   /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
    *  drones, and each launch spends one. Unused stock carries between rounds. */
