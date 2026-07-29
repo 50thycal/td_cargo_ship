@@ -147,11 +147,11 @@ Each region gradually introduces new strategic challenges, such as:
 
 The regions act primarily as pacing and teaching structures rather than as isolated balance environments.
 
-A player may need to reach a milestone, such as approximately round 20 or another defined operation threshold, to unlock the next region or tier.
+A player must reach a defined completion watermark, currently envisioned as approximately round 20, to complete the active region and permanently unlock the next region.
 
-The final region unlocks the full threat roster. From that point onward, the run continues in an endless mode where increasingly difficult combinations are generated and the goal is to survive as long as possible.
+The final region unlocks the full threat roster. From that point onward, the player may continue through escalating tiers using increasingly difficult combinations, with the goal of surviving as long as possible.
 
-The exact number of regions, unlock threshold, and presentation remain open for later refinement.
+The exact number of regions, completion threshold, and final-region tier structure remain open for later refinement.
 
 ## Region Design Philosophy
 
@@ -169,6 +169,8 @@ Regions instead modify:
 
 This avoids maintaining separate equipment and enemy balance tables for every region.
 
+Each region should emphasize a newly introduced primary challenge while continuing to use previously introduced systems. For example, a later region may introduce attack boats while retaining mines and missile threats from earlier regions.
+
 ## Threat Budget
 
 Difficulty should increase primarily through a threat-budget system.
@@ -184,6 +186,134 @@ Difficulty can increase by:
 
 Difficulty should generally not increase by repeatedly inflating enemy health or damage.
 
+## Region Runs and Reset Rules
+
+Each region is an independent roguelite campaign.
+
+A typical region structure is:
+
+1. Begin the region at round 1 with a region-specific starting state.
+2. Build the fleet during the run through cash, recovered technology, equipment purchases, and doctrines.
+3. Continue until the region completion watermark is reached or the run is lost.
+4. Completing the region permanently unlocks the next region.
+5. Losing restarts the same region at round 1.
+
+If a player reaches round 10 of Region 8 and loses, the next attempt begins at Region 8, round 1. The player does not return to Region 7 or Region 1.
+
+### What Resets
+
+The following are temporary to the active region run and are lost when the run ends, whether through defeat or region completion:
+
+- Cash.
+- Current fleet composition.
+- Purchased and installed equipment.
+- Ammunition and other consumables.
+- Repairs and temporary operational investments.
+- Technologies unlocked during the region.
+- Intel or wreckage progression collected during the region.
+- Current round progress within the region.
+
+Technology and equipment unlocked in one region do not carry into the next region. The player must build a new technology path during every regional run.
+
+This reset is intentional. Familiarity and player knowledge carry forward, but the in-run build does not.
+
+### What Persists
+
+The following persist across defeats and regional transitions:
+
+- Permanently unlocked regions.
+- Commander Experience.
+- Unlocked Commander Abilities.
+- Statistics, achievements, and cosmetic progression if added later.
+
+Commander progression is currently the only gameplay-affecting progression intended to persist across all regions.
+
+## Commander Progression
+
+### Commander Experience
+
+Commander Experience is the permanent progression resource earned through play and region completion.
+
+Potential sources include:
+
+- Completing a region.
+- Reaching significant round milestones.
+- Completing difficult objectives.
+- Performance-based awards to be defined later.
+
+The exact earning rate remains open for balancing. One possible starting model is awarding a fixed amount, such as five Commander Experience points, for completing a region.
+
+### Commander Abilities
+
+Commander Experience unlocks Commander Abilities. These are optional, swappable abilities selected before beginning a regional run.
+
+Commander Abilities should provide bounded strategic advantages rather than endlessly accumulating permanent raw power.
+
+Examples:
+
+- Fleet accuracy increased by 5%.
+- Repairs cost 10% less.
+- Enemy wreckage has a slightly higher drop chance.
+- Escorts recover wreckage faster.
+- The fleet begins with additional operational cash.
+- Ammunition purchases are slightly cheaper.
+
+The player equips only a limited loadout of Commander Abilities for a run.
+
+Current working model:
+
+- Approximately three ability slots.
+- Approximately 25 total loadout points.
+- Each ability has a point cost based on strength.
+- The player may freely swap unlocked abilities between regional attempts.
+- The number of slots or available loadout points may scale through progression, but should remain capped.
+
+Example:
+
+- Veteran Gunnery: costs 8 points and grants +5% fleet accuracy.
+- Efficient Logistics: costs 6 points and reduces repair costs.
+- Salvage Specialist: costs 7 points and improves wreckage recovery.
+
+The player cannot equip every unlocked benefit at once. The system should encourage deliberate pre-run builds rather than passive, permanent stat accumulation.
+
+### Design Goal
+
+Commander progression should:
+
+- Make losses feel productive without eliminating the importance of a fresh run.
+- Give experienced players more strategic starting options.
+- Allow different pre-run playstyles.
+- Preserve the tension and balance of early regional rounds.
+- Avoid turning playtime alone into unlimited fleet power.
+
+## Progression Layers
+
+The game now has three distinct progression layers:
+
+### Permanent Campaign Progression
+
+- Region unlocks.
+- Commander Experience.
+- Commander Abilities.
+
+### Pre-Run Loadout
+
+- Selected Commander Abilities.
+- Limited ability slots and point budget.
+- Region-specific starting fleet and resources.
+
+### Temporary Region-Run Progression
+
+- Fleet composition.
+- Cash.
+- Technology choices.
+- Installed equipment.
+- Fleet doctrines.
+- Intel and wreckage recovery.
+- Round progress.
+
+Keeping these layers separate is a core architectural goal.
+
 ## Guiding Principle
 
 > Balance the building blocks, not the campaign.
@@ -196,18 +326,20 @@ Campaign difficulty should emerge from encounter composition and escalating comb
 - The relationship between recovered wreckage, number of choices, and reward rarity remains to be defined.
 - Equipment prices, doctrine strength, munitions costs, repairs, and fleet replacement costs will be balanced later.
 - Adaptive reward weighting should help players find counters without eliminating the consequences of earlier choices.
+- Each region requires a defined starting fleet and resource package appropriate for its threat roster.
+- Commander Ability bonuses must remain bounded so they create build variety without trivializing early rounds.
+- The exact Commander Experience economy, ability costs, slot count, and point cap require future balancing.
 
 ## Open Design Questions
 
-### Next Topic: Run Persistence
+### Next Topic: Regional Starting State
 
-When a player loses a run:
+When beginning a region for the first time or restarting after defeat:
 
-- What is lost?
-- What is retained?
-- Do region unlocks persist?
-- Do technology unlocks persist?
-- Do ships, cash, doctrines, statistics, cosmetics, or starting options persist?
-- What permanent progression exists between runs?
+- What fleet does the player begin with?
+- Does every region use the same basic starter fleet?
+- Are later-region starter fleets tailored to the threats introduced there?
+- How much starting cash and ammunition is provided?
+- Are any baseline technologies automatically available before the first mission?
 
 This is the next design topic to resolve.
