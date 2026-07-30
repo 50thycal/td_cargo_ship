@@ -13,16 +13,33 @@ export interface TelemetryExport {
   generatedAt: string;
   seed: string;
   saveVersion: number;
+  /** Roguelite run identity: where this attempt was fought and how it ended. */
+  regionId: string;
+  runOutcome: CampaignState['runOutcome'];
+  defeatCause: CampaignState['defeatCause'];
+  commanderAbilities: string[];
   roundsPlayed: number;
   campaignOver: boolean;
   finalScore: number;
   capacity: number;
   confidence: number;
   cash: number;
-  intel: number;
   bases: number;
   escorts: number;
   completedResearch: string[];
+  /** Draft history: what every round offered and what was taken. */
+  drafts: CampaignState['draftHistory'];
+  /** Recovery + rescue across the whole run. */
+  recoveryTotals: {
+    wreckageSpawned: number;
+    wreckageRecovered: number;
+    wreckageExpired: number;
+    wreckageByBranch: Record<string, number>;
+    recoveryEscortSeconds: number;
+    survivorsSpawned: number;
+    survivorsRescued: number;
+    survivorsLost: number;
+  };
   /** Player loadout at export time (the per-round history is in rounds[]). */
   loadout: {
     classModules: CampaignState['classModules'];
@@ -89,7 +106,7 @@ export interface TelemetryExport {
   rounds: CampaignState['telemetry'];
 }
 
-export const TELEMETRY_FORMAT_VERSION = 3;
+export const TELEMETRY_FORMAT_VERSION = 4;
 
 export function buildTelemetryExport(c: CampaignState, generatedAt: string): TelemetryExport {
   const totals = {
@@ -120,6 +137,16 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
   };
   const resultByBranch: Record<string, number> = {};
   const lossesByClass: Record<string, number> = {};
+  const recoveryTotals: TelemetryExport['recoveryTotals'] = {
+    wreckageSpawned: 0,
+    wreckageRecovered: 0,
+    wreckageExpired: 0,
+    wreckageByBranch: {},
+    recoveryEscortSeconds: 0,
+    survivorsSpawned: 0,
+    survivorsRescued: 0,
+    survivorsLost: 0,
+  };
   const counterTotals: TelemetryExport['counterTotals'] = {
     manualShots: 0,
     autoShots: 0,
@@ -158,6 +185,16 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
       const className = SHIP_CLASSES[loss.classId]?.name ?? loss.classId;
       lossesByClass[className] = (lossesByClass[className] ?? 0) + 1;
     }
+    recoveryTotals.wreckageSpawned += r.wreckageSpawned ?? 0;
+    recoveryTotals.wreckageRecovered += r.wreckageRecovered ?? 0;
+    recoveryTotals.wreckageExpired += r.wreckageExpired ?? 0;
+    for (const [k, v] of Object.entries(r.wreckageByBranch ?? {})) {
+      recoveryTotals.wreckageByBranch[k] = (recoveryTotals.wreckageByBranch[k] ?? 0) + v;
+    }
+    recoveryTotals.recoveryEscortSeconds += r.recoveryEscortSeconds ?? 0;
+    recoveryTotals.survivorsSpawned += r.survivorsSpawned ?? 0;
+    recoveryTotals.survivorsRescued += r.survivorsRescued ?? 0;
+    recoveryTotals.survivorsLost += r.survivorsLost ?? 0;
     // Rounds recorded before the counter overhaul lack this block — tolerate.
     const cs = r.counters?.stats;
     if (cs) {
@@ -215,16 +252,21 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     generatedAt,
     seed: c.seed,
     saveVersion: c.version,
+    regionId: c.regionId,
+    runOutcome: c.runOutcome,
+    defeatCause: c.defeatCause,
+    commanderAbilities: [...(c.commanderAbilities ?? [])],
     roundsPlayed: c.telemetry.length,
     campaignOver: c.campaignOver,
     finalScore: c.score,
     capacity: c.capacity,
     confidence: c.confidence,
     cash: c.cash,
-    intel: c.intel,
     bases: c.bases,
     escorts: c.escortUnits.length,
     completedResearch: [...c.completedResearch],
+    drafts: c.draftHistory.map((d) => ({ ...d, offered: [...d.offered] })),
+    recoveryTotals,
     loadout: {
       classModules: {
         cargo: [...c.classModules.cargo],

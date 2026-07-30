@@ -127,17 +127,19 @@ interface CampaignResult {
   analysis: CampaignAnalysis;
 }
 
-/** Play one campaign to collapse or the round cap, following the real phase
- *  order: prep (procure) → transit → after-action (resolve) → research. */
+/** Play one run to defeat or the round cap, following the real phase order:
+ *  prep (procure) → transit → after-action (resolve) → technology draft. */
 function playCampaign(persona: Persona, seed: string, maxRounds: number): CampaignResult {
   const c = newCampaign(seed);
-  const onHand: { cash: number; intel: number }[] = [];
+  const onHand: { cash: number }[] = [];
   // Assume the run goes the distance; the loop downgrades this if it doesn't.
   let endReason: EndReason = 'round-cap';
 
+  const defeatReason = (): EndReason =>
+    c.defeatCause === 'quota' ? 'quota-failed' : 'confidence-collapse';
   for (let round = 0; round < maxRounds; round++) {
     if (c.campaignOver) {
-      endReason = 'confidence-collapse';
+      endReason = defeatReason();
       break;
     }
     // --- Prep --------------------------------------------------------------
@@ -161,17 +163,17 @@ function playCampaign(persona: Persona, seed: string, maxRounds: number): Campai
 
     // --- After-action + research -------------------------------------------
     resolveTransit(c, state);
-    onHand.push({ cash: c.cash, intel: c.intel });
+    onHand.push({ cash: c.cash });
     research(c, persona);
   }
   // The loop can also fall out with the flag set on the final round.
-  if (c.campaignOver) endReason = 'confidence-collapse';
+  if (c.campaignOver) endReason = defeatReason();
 
   const analysis = analyzeCampaign(
     persona.name,
     seed,
     c.telemetry,
-    { campaignOver: c.campaignOver, score: c.score, cash: c.cash, intel: c.intel, endReason },
+    { campaignOver: c.campaignOver, score: c.score, cash: c.cash, endReason },
     onHand,
   );
   return { campaign: c, analysis };

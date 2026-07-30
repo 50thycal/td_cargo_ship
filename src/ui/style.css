@@ -268,6 +268,29 @@ button.ghost {
 .card.capacity .card-head .icon { color: var(--good); }
 .card.quota { border-left-color: var(--warn); }
 .card.quota .card-head .icon { color: var(--warn); }
+/* Roguelite loop: salvage (wreckage) and rescue (crews) beats. */
+.card.salvage { border-left-color: #f0be5c; }
+.card.salvage .card-head .icon { color: #f0be5c; }
+.card.rescue { border-left-color: #7ee0d6; }
+.card.rescue .card-head .icon { color: #7ee0d6; }
+/* Locked region / ability cards read as unavailable, not broken. */
+.card.locked { opacity: 0.55; }
+.card.locked .card-head .icon { color: var(--dim); }
+/* Region select / loadout / draft screens stack cards with breathing room. */
+[data-screen='regionSelect'] .screen-body .card,
+[data-screen='loadout'] .screen-body .card { margin-bottom: 10px; }
+[data-screen='regionSelect'] .card button,
+[data-screen='loadout'] .card button { margin-top: 10px; }
+/* Draft options: keep the choice cards visually parallel; the pick button
+ * anchors to the bottom so 2- and 3-option drafts read the same. The grid
+ * auto-fits so a 3-option draft doesn't leave a dangling half-row. */
+.grid-2.draft-options {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-bottom: 12px;
+}
+.draft-option { display: flex; flex-direction: column; gap: 8px; }
+.draft-option > button { margin-top: auto; }
+.draft-option .chip-row { margin-top: 2px; }
 
 .badge {
   margin-left: auto;

@@ -33,6 +33,7 @@ import {
   type EnemyBranchKey,
   type EnemyNodeDef,
 } from '../data/enemyBranches';
+import { DEV_REGION, REGIONS, type RegionDef } from '../data/regions';
 import type { RNG } from './rng';
 import type {
   ArtilleryVariant,
@@ -71,13 +72,27 @@ function newLedger(share: number): BranchLedger {
   };
 }
 
-function newEconomy(): EnemyEconomyState {
+function newEconomy(region: RegionDef): EnemyEconomyState {
   const ledgers: Record<string, BranchLedger> = {};
   for (const key of ENEMY_BRANCH_ORDER) {
     // Missiles start open and fully funded — it is the round-1 probe.
     ledgers[key] = newLedger(key === 'missiles' ? 1 : 0);
   }
   return {
+    // The region is the enemy's operating envelope for this whole run: which
+    // branches exist here, when they may debut, and how fast the war chest
+    // grows. Stored ON the economy (rather than read live from the region
+    // def) so a run replays identically from its save even if region data is
+    // retuned between sessions.
+    allowedBranches: [...region.enemyBranches],
+    branchDebutRounds: { ...(region.branchDebutRounds ?? {}) },
+    budgetCurve: region.budget
+      ? { ...region.budget }
+      : {
+          base: ENEMY_ECONOMY.budgetBase,
+          perRound: ENEMY_ECONOMY.budgetPerRound,
+          cap: ENEMY_ECONOMY.budgetCap,
+        },
     budget: 0,
     committed: 0,
     scrapped: 0,
@@ -91,10 +106,14 @@ function newEconomy(): EnemyEconomyState {
   };
 }
 
-export function newEvolution(): EvolutionState {
+/** Fresh enemy state for a regional run. Enemy adaptation always starts over
+ *  with the run — that reset is a design requirement, not an accident. The
+ *  region argument defaults to the full-roster proving ground so dev/test
+ *  callers that predate regions keep their old behavior. */
+export function newEvolution(region: RegionDef = REGIONS[DEV_REGION]): EvolutionState {
   return {
     tracks: { saturation: 20, guidance: 0, mines: 0, lowSig: 0 },
-    economy: newEconomy(),
+    economy: newEconomy(region),
     firstSeen: {},
     metrics: [],
     pendingWarnings: [],
@@ -106,16 +125,18 @@ export function newEvolution(): EvolutionState {
 // Budget
 // ---------------------------------------------------------------------------
 
-/** War funds for `round`. Growth is the primary difficulty dial; the
- *  anti-snowball modifiers are the restoring force that keeps the seesaw from
- *  sticking at either end. */
+/** War funds for `round`. Growth is the primary difficulty dial — the REGION
+ *  supplies the curve — and the anti-snowball modifiers are the restoring
+ *  force that keeps the seesaw from sticking at either end. */
 function grantBudget(
+  economy: EnemyEconomyState,
   round: number,
   metrics: RoundMetrics | undefined,
   /** Consecutive rounds the player has just walked through untouched. */
   dominantStreak = 0,
 ): number {
-  let budget = ENEMY_ECONOMY.budgetBase + ENEMY_ECONOMY.budgetPerRound * round;
+  const curve = economy.budgetCurve;
+  let budget = curve.base + curve.perRound * round;
   if (metrics) {
     let mult = 1;
     // Player dominating → arm the enemy faster.
@@ -155,7 +176,7 @@ function grantBudget(
     if (metrics.deliveredFraction < 0.55) mult -= ENEMY_ECONOMY.dampStruggling;
     budget *= Math.max(0.5, mult);
   }
-  return Math.min(ENEMY_ECONOMY.budgetCap, Math.round(budget));
+  return Math.min(curve.cap, Math.round(budget));
 }
 
 // ---------------------------------------------------------------------------
@@ -200,11 +221,17 @@ function settleRoi(economy: EnemyEconomyState, metrics: RoundMetrics): void {
 // Allocation
 // ---------------------------------------------------------------------------
 
-/** Branches the enemy may fund this round: already open, or openable now. */
+/** Branches the enemy may fund this round: permitted by the region, and
+ *  already open or openable now. The region is a hard wall — a branch outside
+ *  it is never funded no matter what ROI says. */
 function candidateBranches(economy: EnemyEconomyState, round: number): EnemyBranchKey[] {
   return ENEMY_BRANCH_ORDER.filter((key) => {
     const def = ENEMY_BRANCHES[key];
     if (!def.implemented) return false; // never fund what cannot be fielded
+    if (!economy.allowedBranches.includes(key)) return false; // region wall
+    // Region pacing may hold a branch past its global open round.
+    const debutFloor = economy.branchDebutRounds[key] ?? 0;
+    if (round < debutFloor) return false;
     if (economy.openBranches.includes(key)) return true;
     if (round < def.openRound) return false;
     // Must have at least one node past its gate to be worth opening.
@@ -473,12 +500,15 @@ function purchase(
   scrapped = Math.max(0, pool);
 
   // Scripted debuts guarantee the designed early beats regardless of what ROI
-  // would otherwise prefer (guided by R2, mines by R3).
+  // would otherwise prefer (guided by R2, mines by R3). The region wall still
+  // applies: a scripted beat for a branch this region forbids never fires.
   for (const scripted of ENEMY_ECONOMY.scriptedDebuts) {
     if (scripted.round !== round) continue;
     const key = scripted.branch as EnemyBranchKey;
     const def = ENEMY_BRANCHES[key];
     if (!def.implemented) continue;
+    if (!economy.allowedBranches.includes(key)) continue;
+    if (round < (economy.branchDebutRounds[key] ?? 0)) continue;
     const node = def.nodes.find((n) => n.id === scripted.node);
     if (!node || !node.implemented) continue;
     const ledger = economy.ledgers[key];
@@ -582,7 +612,7 @@ export function evolveEnemy(evo: EvolutionState, metrics: RoundMetrics, rng: RNG
     if (evo.metrics[i].deliveredFraction < ENEMY_ECONOMY.dominanceFraction) break;
     dominantStreak++;
   }
-  economy.budget = grantBudget(nextRound, metrics, dominantStreak);
+  economy.budget = grantBudget(economy, nextRound, metrics, dominantStreak);
   allocate(economy, nextRound, rng);
   purchase(economy, nextRound, metrics, rng);
 
@@ -601,6 +631,9 @@ function buildWarnings(evo: EvolutionState, nextRound: number, rng: RNG): IntelW
   for (const key of ENEMY_BRANCH_ORDER) {
     const def = ENEMY_BRANCHES[key];
     if (!def.implemented) continue;
+    // Never forecast a branch the region cannot field — an intel warning
+    // about a threat that structurally cannot appear is misinformation.
+    if (!economy.allowedBranches.includes(key)) continue;
     for (const node of def.nodes) {
       if (!node.implemented || !node.warning) continue;
       // Skip only what the player has actually ENCOUNTERED. A node the enemy
@@ -634,7 +667,7 @@ export function ensureProcurement(evo: EvolutionState, round: number, rng: RNG):
   if (economy.plannedForRound === round) return;
   const last = evo.metrics[evo.metrics.length - 1];
   economy.targetingDebut = null;
-  economy.budget = grantBudget(round, last);
+  economy.budget = grantBudget(economy, round, last);
   allocate(economy, round, rng);
   purchase(economy, round, last, rng);
   evo.tracks = deriveTracks(economy, evo.tracks);

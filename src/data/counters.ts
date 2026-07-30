@@ -2409,6 +2409,9 @@ export function deriveCounterEffects(
     smokeDegradation: r.has('smokeScreen.base') ? (smk.flags.has('dense') ? 1.0 : 0.5) : 0,
     smokeTrackBreakSeconds: smk.flags.has('trackBreaking') ? 4 : 0,
     scanLowSigChance: ms.flags.has('lowSig') ? 1.0 : scan.flags.has('lowSig') ? 0.75 : 0.35,
+    // Baseline recovery rates. Commander Abilities multiply these AFTER this
+    // derivation (applyCommanderCombatEffects) — the design's effect flow.
+    recovery: { wreckageRateMult: 1, rescueRateMult: 1 },
 
     abilities: {
       ecm: ability('ecm', ecm),

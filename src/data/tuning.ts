@@ -383,7 +383,6 @@ export const COMBAT = {
 
 export const ECONOMY = {
   startCash: 450,
-  startIntel: 0,
   startAmmo: 28,
   /** No drone munitions until the player buys them (and researches drones). */
   startDroneAmmo: 0,
@@ -442,12 +441,6 @@ export const ECONOMY = {
   hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
-  /** Intel income. */
-  intelPerRound: 4,
-  intelPerLoss: 6,
-  intelPerIntercept: 1,
-  intelPerDiscovery: 12,
-  intelMaxPerRound: 60,
 } as const;
 
 export const CAMPAIGN = {
@@ -474,7 +467,11 @@ export const CAMPAIGN = {
   confidencePerCapture: -7,
   confidenceCaptureCap: -21,
   confidenceQuotaMet: 10,
-  confidenceQuotaMissed: -18,
+  /** Extra confidence lost per civilian crew left in the water (a survivor
+   *  area that was never rescued). Rescue prevents the penalty entirely —
+   *  that is the whole tactical bargain of diverting an escort to them.
+   *  PROVISIONAL, like every roguelite number: tune through play. */
+  confidencePerCrewLost: -4,
   /** Floor on ordinary confidence lost in ONE round (captures excluded).
    *
    *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
@@ -508,16 +505,23 @@ export const CAMPAIGN = {
    *  exactly — 28% for a build sailing 29.4 hulls of 30.4 capacity, 39% at
    *  24.6, 60% at 19.7 — so equipping the convoy was structurally punished
    *  however cheap the equipment was. Halving every module price made those
-   *  builds worse rather than better, which is what pointed here. */
-  quotaDeliveryFraction: 0.84,
+   *  builds worse rather than better, which is what pointed here.
+   *
+   *  LOWERED from 0.84 for the roguelite rules (PROVISIONAL): a missed quota
+   *  now ENDS the regional run instead of costing 18 confidence, so the same
+   *  bar carries far higher stakes. At 0.84 a healthy defended fleet missed a
+   *  window by 3% and lost the run outright — the failure system should catch
+   *  a player who stops running a real shipping operation, not one having an
+   *  ordinary attritional stretch. Tune with the playable slice. */
+  quotaDeliveryFraction: 0.7,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
   quotaDifficultyMax: 1.6,
-  /** Difficulty ratchets up on an easy clear (big surplus) and down on a miss
-   *  (big shortfall) — a standard rubber-band. Each step is scaled by how far
-   *  over/under the target the window landed, capped at the constant below. */
+  /** Difficulty ratchets up on an easy clear (big surplus) — scaled by how far
+   *  over the target the window landed, capped at this step. There is no
+   *  downward ratchet any more: under the roguelite rules a missed quota ends
+   *  the regional run outright rather than easing the next window. */
   quotaDifficultyUpStep: 0.1,
-  quotaDifficultyDownStep: 0.16,
   /** Hard floor so a single bad round can't trivialize the next quota:
    *  pointsNeeded never drops below capacity * this. */
   quotaFloorPerCapacity: 8,
@@ -525,6 +529,89 @@ export const CAMPAIGN = {
   scorePerValue: 1,
   scorePerRound: 40,
   scorePerIntercept: 3,
+} as const;
+
+/**
+ * Wreckage recovery — the roguelite loop's technology faucet.
+ *
+ * Destroyed PHYSICAL enemy threats may leave a recoverable field; recovering
+ * one requires committing escort time inside it, and what was recovered
+ * weights the post-round technology draft. Every number here is PROVISIONAL —
+ * the design doc defers all recovery balance to playtesting on the working
+ * slice. Tune freely; nothing in the sim hard-codes these.
+ */
+export const WRECKAGE = {
+  /** Chance a player-destroyed threat leaves wreckage, by threat kind. Mines
+   *  that detonate against a hull spent themselves — only SWEPT mines are
+   *  recoverable, which is priced into the mine entry here. */
+  dropChance: {
+    missile: 0.22,
+    guidedMissile: 0.32,
+    mine: 0.38,
+    torpedo: 0.38,
+    attackBoat: 0.55,
+    reconPlane: 0.45,
+    disablingDrone: 0.45,
+  } as Record<string, number>,
+  /** Radius (world units) an escort must hold inside to work the field. */
+  radius: 100,
+  /** Escort-seconds of work one escort needs to recover a field. */
+  recoverSeconds: 12,
+  /** Each escort beyond the first adds this fraction of the base rate —
+   *  two escorts work at 1.6x, three at 2.2x. */
+  extraEscortRate: 0.6,
+  /** Seconds a field stays recoverable before sinking for good. */
+  lifetimeSeconds: 55,
+} as const;
+
+/** Survivor rescue: lost civilian hulls may leave crews in the water. Same
+ *  positional recovery mechanics as wreckage; an unrescued crew costs extra
+ *  confidence (CAMPAIGN.confidencePerCrewLost). All PROVISIONAL. */
+export const SURVIVORS = {
+  /** Chance a sunk (not captured — the enemy takes those crews) civilian hull
+   *  leaves survivors. */
+  chance: 0.55,
+  radius: 100,
+  rescueSeconds: 10,
+  extraEscortRate: 0.6,
+  lifetimeSeconds: 60,
+} as const;
+
+/**
+ * The mandatory post-round technology draft (replaces paid research).
+ * Breadth and quality scale with the round's recovered wreckage; weighting
+ * leans toward counters for the threat families actually recovered. All
+ * PROVISIONAL pending play on the slice.
+ */
+export const DRAFT = {
+  /** Options always offered after a successfully completed round. */
+  baseChoices: 2,
+  /** Chance of a THIRD option per wreckage unit recovered that round —
+   *  recovery beyond ~3 units guarantees the wide draft. */
+  thirdChoicePerUnit: 0.34,
+  /** Extra draft weight per recovered unit applied to entries in branches
+   *  that counter the recovered threat's family. */
+  branchWeightPerUnit: 1.25,
+  /** Recovered units beyond this start improving option QUALITY: deeper
+   *  entries in a branch gain weight, so strong recovery rounds skew the
+   *  draft toward later, stronger tech instead of entry nodes. */
+  qualityThreshold: 3,
+  /** Depth weight per excess unit (scaled by how deep the entry sits). */
+  depthWeightPerUnit: 0.3,
+  /** Weight multiplier on remaining same-branch entries after one is drawn,
+   *  so a draft leans toward offering distinct branches. */
+  sameBranchRepeatMult: 0.35,
+} as const;
+
+/** Commander progression: the permanent layer. PROVISIONAL numbers. */
+export const COMMANDER = {
+  /** Equipped ability slots (design working model: 2-3 initially). */
+  abilitySlots: 3,
+  /** Total loadout point budget across equipped abilities. */
+  loadoutPoints: 25,
+  /** Commander XP earned per round survived when a run ends — losses still
+   *  feed permanent progression, which is what makes them feel productive. */
+  xpPerRound: 5,
 } as const;
 
 export const EVOLUTION = {
