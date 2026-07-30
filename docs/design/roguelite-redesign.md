@@ -2,7 +2,7 @@
 
 ## Status
 
-Living design document for the roguelite progression redesign. This document will be updated as design decisions are made.
+Implementation-ready living design document for the roguelite progression redesign. Numerical balance remains intentionally deferred until the new game flow is playable.
 
 ## Design Workflow
 
@@ -14,66 +14,286 @@ Living design document for the roguelite progression redesign. This document wil
 
 ## Vision
 
-Transform the game from a linear research-and-economy progression into a roguelite where the player earns technology by recovering enemy wreckage during combat.
+Transform the game from a linear research-and-economy campaign into a sequence of independent regional roguelite runs where the player acquires technology by recovering enemy wreckage during combat.
 
-The primary progression should come from capturing enemy technology, not simply earning money.
+The primary in-run progression should come from capturing enemy technology, making difficult tactical choices, and building a fleet that can survive the region. Permanent progression should provide bounded strategic options rather than unlimited raw power.
 
-## Core Gameplay Loop
+## Core Regional Loop
 
-1. Defend the convoy.
-2. Enemy weapons and attack objects are destroyed.
-3. Some destroyed threats leave recoverable wreckage.
-4. Escorts can leave formation to recover the wreckage.
-5. Recovery contributes toward post-mission technology rewards.
-6. The mission ends.
-7. The player chooses one technology from several offered.
-8. The fleet is retrofitted and resupplied.
-9. The next mission begins.
+1. Select an unlocked region.
+2. Equip a limited Commander Ability loadout.
+3. Prepare the convoy and escort fleet.
+4. Escort the convoy through transit.
+5. Destroy enemy threats.
+6. Recover enemy wreckage and rescue friendly crews when tactically possible.
+7. Resolve deliveries, losses, quota progress, and confidence.
+8. Review the After-Action Report.
+9. Select one technology from a mandatory reward draft.
+10. Purchase and install unlocked equipment.
+11. Begin the next round.
+12. Continue until the region is completed or the run is lost.
 
-## Intel Recovery
+## Progression Architecture
 
-- Destroyed enemy missiles, mines, torpedoes, and similar attack objects have a chance to leave recoverable wreckage.
-- Wreckage appears as a small search area in the ocean.
-- An escort must remain inside the area for approximately 2–3 seconds.
-- A visible circular progress indicator should show recovery progress.
-- Leaving the area before completion cancels the recovery attempt.
-- Successful recovery increases the mission's technology reward value.
-- Recovered wreckage should be reflected in a visible HUD counter.
-- The recovery area disappears after collection.
+The game has two separately persisted state layers and three distinct progression layers.
+
+### Commander Profile
+
+The Commander Profile persists across every attempt and region.
+
+It contains:
+
+- Commander Experience.
+- Unlocked Commander Abilities.
+- Equipped Commander Ability loadout.
+- Permanently unlocked regions.
+- Long-term statistics, records, achievements, and cosmetics if added later.
+
+### Regional Run
+
+The active Regional Run is temporary.
+
+It contains:
+
+- Current region and round.
+- Cash and operational resources.
+- Fleet composition and damage.
+- Individually equipped escorts.
+- Class-equipped cargo ships.
+- Purchased equipment.
+- Technologies and Fleet Doctrines acquired during the run.
+- Enemy adaptation state.
+- Confidence.
+- Quota progress.
+- Wreckage and crew-rescue results.
+- Run history and telemetry.
+
+Losing or completing a region clears the Regional Run without clearing the Commander Profile.
+
+### Three Progression Layers
+
+#### Permanent Campaign Progression
+
+- Region unlocks.
+- Commander Experience.
+- Commander Abilities.
+- Long-term records and achievements.
+
+#### Pre-Run Loadout
+
+- Selected Commander Abilities.
+- Limited ability slots.
+- Limited Commander Ability point budget.
+- Region selection.
+
+#### Temporary Region-Run Progression
+
+- Fleet composition.
+- Cash.
+- Technologies.
+- Installed equipment.
+- Fleet Doctrines.
+- Consumables and repairs.
+- Confidence and quota state.
+- Round progress.
+
+Keeping these layers separate is a core architectural requirement.
+
+## Region Runs and Reset Rules
+
+Each region is an independent roguelite campaign.
+
+A typical region structure is:
+
+1. Begin the region at round 1 with a region-defined starting state.
+2. Build the fleet during the run through cash, recovered technology, equipment purchases, and doctrines.
+3. Continue until the region completion watermark is reached or the run is lost.
+4. Completing the region permanently unlocks the next region and awards Commander Experience.
+5. Losing restarts the same region at round 1.
+
+If a player reaches round 10 of Region 8 and loses, the next attempt begins at Region 8, round 1. The player does not return to Region 7 or Region 1.
+
+### What Resets
+
+The following are temporary to the active regional run and are lost when it ends through defeat or completion:
+
+- Cash.
+- Current fleet composition.
+- Fleet damage and repairs.
+- Purchased and installed equipment.
+- Ammunition and consumables.
+- Technologies unlocked during the region.
+- Fleet Doctrines selected during the region.
+- Enemy adaptation and procurement state.
+- Confidence and quota progress.
+- Current round progress.
+
+Technology and equipment acquired in one region do not carry into the next. The player must build a new technology path during every regional run.
+
+This reset is intentional. Player familiarity and strategic knowledge carry forward, but the in-run build does not.
+
+### What Persists
+
+- Permanently unlocked regions.
+- Commander Experience.
+- Unlocked Commander Abilities.
+- Long-term statistics, records, achievements, and cosmetics if added later.
+
+Commander progression is the only gameplay-affecting progression intended to persist across all regions.
+
+## Regional Victory and Defeat
+
+Each region has a defined completion round or watermark. Reaching that watermark completes the region.
+
+A regional run can fail through either of two systems:
+
+1. Confidence reaches zero.
+2. The player fails the required shipping quota.
+
+### Confidence
+
+Confidence represents whether civilian crews, operators, and shipping organizations remain willing to continue the operation.
+
+- Ship losses reduce confidence.
+- Improved survival in later rounds can restore confidence.
+- Unrescued crews create an additional confidence penalty.
+- Crew rescue reduces or prevents that additional penalty.
+- Exact confidence gains, losses, floors, and recovery rules are balancing parameters.
+
+Confidence is the regional health bar. It allows one poor round to be recoverable while sustained failure ends the attempt.
+
+### Shipping Quota
+
+The quota remains necessary to prevent a low-risk exploit where the player sends only one or two ships every round.
+
+- The player must deliver a required amount of cargo during a defined quota window.
+- Missing the quota ends the regional run or applies the final loss condition defined during implementation.
+- The quota must remain tied to available fleet capacity strongly enough to prevent trivializing encounters with extremely small convoys.
+- The exact quota formula, window length, rollover behavior, and presentation will be tuned after the new loop is playable.
+
+Confidence measures whether the operation remains politically and socially viable. The quota ensures the player is actually conducting a meaningful shipping operation.
+
+## Crew Rescue
+
+Lost civilian ships may leave survivors in the water.
+
+A survivor area:
+
+- Appears near the lost ship.
+- Requires one or more escorts to remain inside the area.
+- Recovers faster when multiple escorts participate.
+- Resets completely if all escorts leave before completion.
+- Disappears after successful rescue.
+- Creates an additional confidence penalty if the crew is not rescued.
+
+Crew rescue creates a tactical choice between:
+
+- Defending the active convoy.
+- Recovering enemy technology.
+- Rescuing friendly crews.
+
+The exact survivor chance, rescue duration, availability window, multi-escort scaling, and confidence effect are balancing parameters.
+
+## Wreckage Recovery
+
+Destroyed physical enemy threats have a random chance to create recoverable wreckage.
+
+Potential sources include:
+
+- Missiles.
+- Mines.
+- Torpedoes.
+- Attack boats.
+- Drones and aircraft.
+- Other physical enemy weapons or platforms added later.
+
+A wreckage field:
+
+- Appears near the destroyed threat.
+- Records the threat family that produced it.
+- Requires one or more escorts to remain inside its recovery area.
+- Recovers faster when multiple escorts participate.
+- Resets completely if all escorts leave before completion.
+- Shows visible recovery progress.
+- Disappears after successful recovery.
+- Contributes to the post-round technology draft.
+
+The player should not be able to briefly touch a wreckage field, leave, and preserve progress. Recovery requires committing escort time and accepting exposure.
 
 ### Design Goal
 
-Recovery should create a tactical tradeoff between convoy protection and technological progression.
+Recovery should create a direct tactical tradeoff between convoy protection and technological progression.
 
-The player may need to decide whether to keep an escort in formation or expose it by sending it toward uncertain waters to recover wreckage.
+The most valuable or specialized escort may also be the riskiest ship to divert, especially because escorts now have individual identities and loadouts.
 
-## Technology Rewards
+### Deferred Wreckage Balance
 
-Technology rewards replace the current research tree as the primary progression interface.
+The following should be measured through playtesting:
 
-After each mission:
+- Drop chance by threat type.
+- Recovery duration.
+- Multi-escort recovery scaling.
+- Whether larger or more advanced threats produce higher recovery value.
+- Wreckage lifetime before expiration.
+- Commander Ability modifiers.
 
-- The player is presented with two or three upgrade choices.
-- Better recovery performance can result in additional choices.
-- Better recovery performance can improve reward quality and rarity.
-- Rewards should come from the current tech-tree nodes, tactics, and other progression items where appropriate.
+## Technology Reward Draft
 
-Reward generation should be weighted by:
+The existing paid research phase is removed and replaced by a mandatory post-round reward draft.
 
-- Current fleet composition.
-- Enemy threats encountered during recent missions.
-- Technologies the player lacks.
-- Existing upgrade branches and prior choices.
+After every successfully completed round:
 
-Example: If torpedoes have appeared repeatedly and the player has no counter, the reward system should increase the probability of offering an entry-level torpedo detection or interception option.
+- The player receives a technology draft.
+- The player must select one reward.
+- Rewards cannot be skipped.
+- Rewards cannot be banked.
+- The selected reward activates immediately for the active regional run.
+- Existing prerequisites remain enforced.
+- The next eligible node in a branch the player already owns can appear.
+- Higher nodes cannot appear before their required lower nodes.
 
-The system should assist a struggling player without fully removing randomness or making every counter guaranteed.
+The current player-counter catalogue should remain the source of technology progression. The combat effects, target compatibility, branches, nodes, tactics, and prerequisite relationships should be reused rather than rebuilt.
+
+The acquisition method changes; the underlying counter architecture remains valuable.
+
+### Wreckage Influence
+
+Recovered wreckage affects both draft breadth and quality.
+
+- A successful round always grants a draft even if no wreckage was recovered.
+- Lower recovery generally produces two choices.
+- Stronger recovery increasingly favors three choices.
+- Recovery beyond the choice-count threshold increasingly improves rarity, quality, or tier potential.
+- Wreckage from particular threat families may weight the draft toward relevant counter branches.
+
+Example: Recovering technology from torpedoes should increase the chance of seeing eligible hydrophone, sonar, or depth-charge progression without guaranteeing a specific counter.
+
+Exact thresholds, probability curves, and rarity rules are balancing parameters.
+
+### Retired Research Systems
+
+The following existing systems are removed from the primary progression loop:
+
+- Spendable research intel.
+- Paid research projects.
+- One active research project at a time.
+- Research completion delays.
+- Surviving an additional round before a selected reward activates.
+
+Cash remains spendable. Technology rewards are selected rather than purchased with intel.
 
 ## Upgrade Categories
 
 ### Fleet Doctrines
 
-Fleet-wide improvements that activate immediately after selection.
+Fleet Doctrines are temporary fleet-wide improvements.
+
+They:
+
+- Activate immediately when selected.
+- Apply fleet-wide.
+- Require no separate cash purchase.
+- Last only for the active regional run.
 
 Examples:
 
@@ -81,38 +301,62 @@ Examples:
 - Improved crew efficiency.
 - Better radar processing.
 - Faster repairs.
+- Improved rescue operations.
 - Passive fleet bonuses.
-
-These do not require a separate cash purchase after being unlocked.
 
 ### Equipment Technologies
 
-Technologies that unlock hardware the player may purchase and install.
+Equipment Technologies unlock hardware that may be purchased and installed.
 
 Examples:
 
 - Sonar.
-- CIWS.
+- CIWS and self-defense systems.
 - MCM drones.
-- Torpedo decoys.
-- Missile and gun upgrades.
+- Depth charges.
+- Deck guns.
+- Torpedo counters.
+- Missile and sensor upgrades.
 
 Unlocking the technology makes it available to the fleet but does not automatically install it.
 
-## Fleet and Escort Philosophy
+### Catalogue Structure
 
-Technology belongs to the fleet rather than to the escort that recovered it.
+Fleet Doctrines and Equipment Technologies may share one reward interface even if they are stored in separate internal catalogues.
 
-Once unlocked, equipment may be installed on any eligible escort or cargo ship through the loadout and preparation systems.
+The final internal representation should favor clean prerequisite handling, reward weighting, effect derivation, and future content authoring.
 
-Each escort still develops an individual identity because:
+## Fleet Equipment Model
 
-- Installed equipment is purchased separately.
-- Equipment loadouts differ by ship.
-- The player may invest heavily in specific escorts.
-- Losing a highly developed escort should carry meaningful risk.
+Technology belongs to the fleet rather than to the escort that recovered it. Equipment purchases remain platform-specific.
 
-This creates a reason not to use the most valuable escort for every dangerous recovery attempt.
+### Individual Escorts
+
+Escorts are individual units with:
+
+- Stable identity during the regional run.
+- Player-editable name.
+- Individual damage state.
+- Individual module loadout.
+- Individual equipment receipts.
+- Individual combat telemetry.
+- Loss by specific hull identity.
+
+Technology unlocks remain fleet-wide, but equipment is purchased and fitted separately for each escort.
+
+For example, unlocking depth charges makes the system available, but each escort carrying depth charges must be fitted separately.
+
+The individual-escort architecture implemented in PR #28 should be retained as the foundation for this model.
+
+### Cargo Ships
+
+Cargo-ship equipment remains class-based rather than individually managed.
+
+A module installed for a cargo class applies to that class. This keeps merchant-fleet management readable while preserving specialization and identity among the smaller escort flotilla.
+
+### Design Goal
+
+The player should care which escort is performing a dangerous recovery or rescue operation because escorts differ in value, role, condition, and equipment.
 
 ## Role of Cash
 
@@ -129,119 +373,126 @@ Cash is used for:
 
 This creates a clear split:
 
-- Intel and wreckage unlock knowledge.
+- Wreckage and reward drafts unlock knowledge.
 - Cash purchases and sustains hardware.
 
-## Campaign Structure
+## Campaign and Region Structure
 
-The current preferred direction is approximately ten operational regions or theaters.
+The preferred direction is approximately ten operational regions or theaters.
 
-Each region gradually introduces new strategic challenges, such as:
+Each region introduces or emphasizes new strategic challenges while continuing to use previously introduced systems.
 
-- Mines.
-- Fast attack boats.
-- Cruise missiles.
-- Submarines.
-- Torpedoes.
-- Combined attacks.
+Potential progression includes:
 
-The regions act primarily as pacing and teaching structures rather than as isolated balance environments.
+- Missiles and basic interception.
+- Mines and mine warfare.
+- Fast attack boats and boarding.
+- Torpedoes and underwater detection.
+- Artillery and shore threats.
+- Smoke, electronic warfare, aircraft, and drones.
+- Combined multi-domain attacks.
 
-A player must reach a defined completion watermark, currently envisioned as approximately round 20, to complete the active region and permanently unlock the next region.
+A region should not feel like a disconnected mini-game. New threats join the existing vocabulary and create more complex combinations.
 
-The final region unlocks the full threat roster. From that point onward, the player may continue through escalating tiers using increasingly difficult combinations, with the goal of surviving as long as possible.
+The final region unlocks the full threat roster. After its completion watermark, the run may continue through escalating endless tiers with the goal of surviving as long as possible.
 
-The exact number of regions, completion threshold, and final-region tier structure remain open for later refinement.
+The exact number of regions, completion thresholds, and endless-tier presentation remain balance and content decisions.
 
-## Region Design Philosophy
+## Region Definitions
 
-Regions should not rebalance individual units or equipment.
+Each region should be represented by a data-driven Region Definition.
+
+A Region Definition controls:
+
+- Region identity and presentation.
+- Completion round or watermark.
+- Enemy branches allowed in the region.
+- Enemy branches initially available.
+- Threats that may debut later.
+- Player counter branches eligible for reward drafts.
+- Threat-budget progression.
+- Encounter rules and scripted teaching beats.
+- Optional environmental modifiers.
+- Region-specific starting state, to be tuned later.
+
+Example:
+
+```text
+Region 1 permits:
+- Missiles
+- Mines
+
+Region 2 permits:
+- Missiles
+- Mines
+- Attack boats
+```
+
+Regions should not create separately balanced versions of the same enemy or equipment.
 
 An attack boat, mine, missile, escort weapon, or other game object should retain the same core balance values regardless of region.
 
-Regions instead modify:
+Regions instead modify availability, combinations, pacing, timing, and environment.
 
-- Which enemy types are available.
-- Encounter composition.
-- Threat budget.
-- Frequency and combination of threats.
-- Environmental conditions, if added later.
+## Adaptive Enemy Integration
 
-This avoids maintaining separate equipment and enemy balance tables for every region.
+The existing adaptive enemy and enemy procurement economy remain part of the redesign.
 
-Each region should emphasize a newly introduced primary challenge while continuing to use previously introduced systems. For example, a later region may introduce attack boats while retaining mines and missile threats from earlier regions.
+The region limits which enemy branches are available. Within that allowed set, the enemy continues to allocate its resources based on which attacks are succeeding against the player.
+
+The relationship is:
+
+- The region determines what the enemy can use.
+- The adaptive enemy determines what it chooses to emphasize.
+
+Enemy adaptation resets at the beginning of every regional run.
+
+This preserves the existing arms-race identity while giving the campaign a controlled teaching and pacing structure.
 
 ## Threat Budget
 
-Difficulty should increase primarily through a threat-budget system.
+Difficulty should increase primarily through a threat-budget system operating alongside the adaptive enemy.
 
-Each enemy or hazard receives a threat cost. The mission generator spends the available budget using only the threats permitted in the current region.
+Each enemy branch or unit has a cost. The region supplies the available threat space and budget curve. The enemy procurement system determines how the budget is allocated within that space.
 
 Difficulty can increase by:
 
 - Increasing the available threat budget.
-- Introducing additional enemy types.
+- Introducing additional enemy branches.
 - Combining threats in new ways.
-- Changing timing, spacing, or attack patterns.
+- Changing timing, spacing, attack patterns, and objectives.
+- Adding environmental complications.
 
 Difficulty should generally not increase by repeatedly inflating enemy health or damage.
 
-## Region Runs and Reset Rules
+## Region-Aware Technology Availability
 
-Each region is an independent roguelite campaign.
+Technology rewards should avoid offering counters that have no meaningful use in the active region.
 
-A typical region structure is:
+- Threat-specific counters become eligible when their corresponding enemy families are part of the region.
+- General survivability, logistics, and Fleet Doctrine rewards may remain broadly available.
+- Later regions include counter families introduced in earlier regions.
+- Technology still begins from its entry nodes during every new regional run.
+- Prerequisites remain enforced within the active run.
 
-1. Begin the region at round 1 with a region-specific starting state.
-2. Build the fleet during the run through cash, recovered technology, equipment purchases, and doctrines.
-3. Continue until the region completion watermark is reached or the run is lost.
-4. Completing the region permanently unlocks the next region.
-5. Losing restarts the same region at round 1.
-
-If a player reaches round 10 of Region 8 and loses, the next attempt begins at Region 8, round 1. The player does not return to Region 7 or Region 1.
-
-### What Resets
-
-The following are temporary to the active region run and are lost when the run ends, whether through defeat or region completion:
-
-- Cash.
-- Current fleet composition.
-- Purchased and installed equipment.
-- Ammunition and other consumables.
-- Repairs and temporary operational investments.
-- Technologies unlocked during the region.
-- Intel or wreckage progression collected during the region.
-- Current round progress within the region.
-
-Technology and equipment unlocked in one region do not carry into the next region. The player must build a new technology path during every regional run.
-
-This reset is intentional. Familiarity and player knowledge carry forward, but the in-run build does not.
-
-### What Persists
-
-The following persist across defeats and regional transitions:
-
-- Permanently unlocked regions.
-- Commander Experience.
-- Unlocked Commander Abilities.
-- Statistics, achievements, and cosmetic progression if added later.
-
-Commander progression is currently the only gameplay-affecting progression intended to persist across all regions.
+This keeps early reward pools understandable and prevents unusable rewards from consuming draft slots.
 
 ## Commander Progression
 
 ### Commander Experience
 
-Commander Experience is the permanent progression resource earned through play and region completion.
+Commander Experience is the permanent progression resource earned through play and region advancement.
 
 Potential sources include:
 
 - Completing a region.
 - Reaching significant round milestones.
 - Completing difficult objectives.
-- Performance-based awards to be defined later.
+- Performance-based awards defined later.
 
-The exact earning rate remains open for balancing. One possible starting model is awarding a fixed amount, such as five Commander Experience points, for completing a region.
+Commander Experience persists through defeat and regional transitions.
+
+The exact earning rate remains a balance decision.
 
 ### Commander Abilities
 
@@ -249,97 +500,163 @@ Commander Experience unlocks Commander Abilities. These are optional, swappable 
 
 Commander Abilities should provide bounded strategic advantages rather than endlessly accumulating permanent raw power.
 
-Examples:
+Potential examples:
 
-- Fleet accuracy increased by 5%.
-- Repairs cost 10% less.
-- Enemy wreckage has a slightly higher drop chance.
-- Escorts recover wreckage faster.
-- The fleet begins with additional operational cash.
-- Ammunition purchases are slightly cheaper.
+- Small fleet accuracy increase.
+- Reduced repair costs.
+- Improved wreckage recovery.
+- Improved crew-rescue speed or confidence preservation.
+- Additional starting logistics.
+- Slightly cheaper ammunition.
+- Improved detection or operational flexibility.
 
-The player equips only a limited loadout of Commander Abilities for a run.
+The player equips only a limited loadout.
 
 Current working model:
 
-- Approximately three ability slots.
+- Approximately two or three ability slots initially.
 - Approximately 25 total loadout points.
 - Each ability has a point cost based on strength.
 - The player may freely swap unlocked abilities between regional attempts.
-- The number of slots or available loadout points may scale through progression, but should remain capped.
+- Slot count or point capacity may increase through progression, but both remain capped.
 
-Example:
+The player cannot equip every unlocked benefit at once. The system should encourage deliberate pre-run builds rather than passive permanent stat accumulation.
 
-- Veteran Gunnery: costs 8 points and grants +5% fleet accuracy.
-- Efficient Logistics: costs 6 points and reduces repair costs.
-- Salvage Specialist: costs 7 points and improves wreckage recovery.
+### Effect Integration
 
-The player cannot equip every unlocked benefit at once. The system should encourage deliberate pre-run builds rather than passive, permanent stat accumulation.
+Commander Ability effects should be applied centrally after normal technology and equipment effects are derived.
+
+Preferred effect flow:
+
+```text
+Base platform values
+→ Technology and tactic effects
+→ Installed equipment effects
+→ Commander Ability modifiers
+→ Final combat and economy values
+```
+
+Commander modifiers should not be scattered across unrelated simulation code.
 
 ### Design Goal
 
 Commander progression should:
 
-- Make losses feel productive without eliminating the importance of a fresh run.
-- Give experienced players more strategic starting options.
-- Allow different pre-run playstyles.
-- Preserve the tension and balance of early regional rounds.
+- Make losses feel productive without eliminating fresh-run tension.
+- Give experienced players more strategic options.
+- Support different pre-run playstyles.
+- Preserve the importance of early regional decisions.
 - Avoid turning playtime alone into unlimited fleet power.
 
-## Progression Layers
+## Menu and Run-Start Flow
 
-The game now has three distinct progression layers:
+The eventual player flow should be:
 
-### Permanent Campaign Progression
+```text
+Main Menu
+→ Region Select
+→ Commander Ability Loadout
+→ Start Regional Run
+→ Preparation
+→ Transit
+```
 
-- Region unlocks.
-- Commander Experience.
-- Commander Abilities.
+The menu redesign is secondary to the first playable vertical slice, but the save and routing architecture must support this flow.
 
-### Pre-Run Loadout
+The final endless region should eventually display persistent records such as highest round, highest tier, or best score.
 
-- Selected Commander Abilities.
-- Limited ability slots and point budget.
-- Region-specific starting fleet and resources.
+## Save Architecture
 
-### Temporary Region-Run Progression
+The existing single campaign save should be separated into:
 
-- Fleet composition.
-- Cash.
-- Technology choices.
-- Installed equipment.
-- Fleet doctrines.
-- Intel and wreckage recovery.
-- Round progress.
+- A permanent Commander Profile save.
+- A temporary active Regional Run save.
 
-Keeping these layers separate is a core architectural goal.
+Clearing or replacing the active run must never erase permanent progress.
 
-## Guiding Principle
+Save migration should preserve existing compatibility principles where practical, but this redesign may require an explicit migration boundary because the campaign model changes substantially.
+
+## Telemetry and Playtesting
+
+The deterministic simulation and existing telemetry are major assets and should be preserved.
+
+The new telemetry should make it possible to evaluate:
+
+- Wreckage generated, recovered, and abandoned.
+- Escort time spent recovering wreckage.
+- Survivors generated, rescued, and lost.
+- Confidence impact by cause.
+- Quota progress and failure causes.
+- Reward choices offered and selected.
+- Draft rarity and prerequisite progression.
+- Commander Ability loadouts and effects.
+- Regional completion and failure rates.
+- Individual escort performance and losses.
+
+The existing headless playtest harness should be adapted after the first vertical slice works. It should not be used to tune the old campaign model as a substitute for testing the new loop.
+
+## First Implementation Milestone
+
+Build one complete regional vertical slice containing:
+
+- Separate Commander Profile and Regional Run saves.
+- Region selection.
+- Commander Ability loadout.
+- One Region Definition.
+- Wreckage drops and escort recovery.
+- Survivor rescue.
+- Confidence and quota failure conditions.
+- Mandatory post-round technology drafts.
+- Existing counter catalogue reused as reward content.
+- Cash-based equipment procurement.
+- Individual escort fitting.
+- Regional defeat and reset.
+- Region completion and Commander Profile persistence.
+
+The first slice does not need ten balanced regions. Its purpose is to prove the full loop and expose the balancing questions through play.
+
+## Explicitly Deferred Balance Work
+
+The following should not block implementation:
+
+- Starting fleet by region.
+- Starting cash, ammunition, and consumables.
+- Region length and completion round.
+- Equipment prices.
+- Quota targets, window length, and consequences.
+- Confidence gains, losses, and recovery.
+- Wreckage drop rates and recovery duration.
+- Crew-rescue timing and confidence impact.
+- Reward rarity probabilities and thresholds.
+- Fleet Doctrine strength.
+- Commander Ability values, costs, slots, and experience awards.
+- Enemy threat-budget curves.
+- Final endless-tier scaling.
+
+These values should be tuned using the playable vertical slice and the deterministic test harness.
+
+## Guiding Principles
 
 > Balance the building blocks, not the campaign.
 
-Campaign difficulty should emerge from encounter composition and escalating combinations rather than region-specific versions of every enemy and piece of equipment.
+Campaign difficulty should emerge from encounter composition, adaptive allocation, escalating combinations, and player decisions rather than region-specific versions of every enemy and piece of equipment.
 
-## Balance Notes
+> Familiarity persists; the build does not.
 
-- Intel drop rates will require tuning so players receive meaningful choices without rapidly reaching rare upgrades.
-- The relationship between recovered wreckage, number of choices, and reward rarity remains to be defined.
-- Equipment prices, doctrine strength, munitions costs, repairs, and fleet replacement costs will be balanced later.
-- Adaptive reward weighting should help players find counters without eliminating the consequences of earlier choices.
-- Each region requires a defined starting fleet and resource package appropriate for its threat roster.
-- Commander Ability bonuses must remain bounded so they create build variety without trivializing early rounds.
-- The exact Commander Experience economy, ability costs, slot count, and point cap require future balancing.
+The player carries strategic knowledge and Commander options forward, but rebuilds the fleet and technology path during every regional run.
 
-## Open Design Questions
+> Escorts create the tactical decisions.
 
-### Next Topic: Regional Starting State
+Convoy defense, enemy-technology recovery, and friendly-crew rescue should compete for the same limited escort attention.
 
-When beginning a region for the first time or restarting after defeat:
+## Remaining Non-Blocking Design Items
 
-- What fleet does the player begin with?
-- Does every region use the same basic starter fleet?
-- Are later-region starter fleets tailored to the threats introduced there?
-- How much starting cash and ammunition is provided?
-- Are any baseline technologies automatically available before the first mission?
+The following can be refined during implementation without reopening the core architecture:
 
-This is the next design topic to resolve.
+- Final terminology for recovered enemy technology.
+- Whether Fleet Doctrines live inside the counter catalogue or a parallel catalogue.
+- Exact survivor-generation rules.
+- Exact relationship between the quota and confidence when a quota is missed.
+- Final region count and thematic ordering.
+
+None of these prevent beginning the first implementation milestone.
