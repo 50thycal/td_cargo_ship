@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createRoundTransit, newCampaign, planCurrentRound, resolveTransit } from '../src/sim/campaign';
+import { fitUniformEscorts } from './helpers';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, planRound } from '../src/sim/evolution';
 import { makeRng } from '../src/sim/rng';
@@ -214,8 +215,7 @@ describe('shells cannot be engaged', () => {
         'deckGun.base',
         'flak.base',
       ];
-      c.escorts = 2;
-      c.escortModules = ['deckGun', 'depthCharges'];
+      fitUniformEscorts(c, 2, ['deckGun', 'depthCharges']);
       c.classModules = { cargo: ['selfDefense'], tanker: ['flak'], freighter: [] };
     });
     runOut(state, rng);

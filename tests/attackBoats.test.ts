@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createRoundTransit, newCampaign, planCurrentRound, resolveTransit } from '../src/sim/campaign';
+import { fitUniformEscorts } from './helpers';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, planRound } from '../src/sim/evolution';
 import { makeRng } from '../src/sim/rng';
@@ -110,8 +111,7 @@ const victimOf = (state: TransitState, boat: Threat): Ship | undefined =>
 /** Escorts with deck guns and auto-engagement — the branch's only real answer. */
 const gunboatEscorts = (c: CampaignState): void => {
   c.completedResearch = ['deckGun.base', 'deckGun.autoNearest'];
-  c.escorts = 2;
-  c.escortModules = ['deckGun'];
+  fitUniformEscorts(c, 2, ['deckGun']);
   c.autoFire = { ...c.autoFire, deckGun: true };
 };
 

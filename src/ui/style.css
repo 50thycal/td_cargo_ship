@@ -597,6 +597,68 @@ button.unequip {
 
 .module-card.owned .card-head .icon { color: var(--good); }
 
+/* ---------- prep: the escort flotilla ---------- */
+/* One row per escort so roles compare at a glance, rather than one loadout
+   standing in for the whole group. */
+.escort-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.escort-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  min-height: 44px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.escort-tab.selected {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(90, 169, 255, 0.1), transparent 60%), var(--panel-2);
+}
+
+.escort-tab-name { font-size: 13.5px; font-weight: 600; }
+.escort-tab-fit,
+.escort-tab-slots { font-size: 11.5px; color: var(--dim); line-height: 1.35; }
+
+.escort-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.escort-name-input {
+  flex: 1;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.escort-name-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* The built-in interceptor card reads as equipment the player already has and
+   cannot trade away, so it carries no button and no slot cost. */
+.module-card.built-in { margin-bottom: 10px; }
+
 /* ---------- prep: asset cards ---------- */
 
 .asset-grid {

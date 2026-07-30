@@ -13,7 +13,7 @@ import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
   ESCORT_MODULES,
-  ESCORT_MODULE_SLOTS,
+  ESCORT_NAME_MAX,
   FORMATIONS,
   MODULES,
   SHIP_CLASSES,
@@ -68,6 +68,8 @@ import {
   unlockScan,
   unlockSmoke,
   unlockSonar,
+  escortSlots,
+  renameEscort,
 } from '../sim/campaign';
 import { formatInterceptSummary } from '../sim/aar';
 import { downloadGameLog } from './download';
@@ -97,7 +99,10 @@ function entering(screenId: string): boolean {
   const fresh = lastScreenId !== screenId;
   lastScreenId = screenId;
   if (fresh && screenId === 'research') selectedResearch = null;
-  if (fresh && screenId === 'prep') prepModuleTab = 'cargo';
+  if (fresh && screenId === 'prep') {
+    prepModuleTab = 'cargo';
+    prepEscortId = null;
+  }
   return fresh;
 }
 
@@ -118,6 +123,11 @@ function clickable(el: HTMLElement): HTMLElement {
 /** Which ship class's module loadout is open in the prep screen (persists
  *  across purchase rerenders so the tab doesn't jump). */
 let prepModuleTab: ShipClassId = 'cargo';
+
+/** Which escort is open in the flotilla panel. Held by unit id rather than
+ *  index so it survives a sinking — if the selected escort is gone, the panel
+ *  falls back to the first one rather than silently editing a different ship. */
+let prepEscortId: number | null = null;
 
 /** Tech-tree node the player has tapped (persists across rerenders). */
 let selectedResearch: ResearchId | null = null;
@@ -782,7 +792,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
       fitted = Object.values(c.classModules).some((mods) => mods.includes(eq.id));
       label = `module: ${MODULES[eq.id].name}`;
     } else if (eq.kind === 'escortModule') {
-      fitted = c.escortModules.includes(eq.id);
+      fitted = c.escortUnits.some((u) => u.modules.includes(eq.id));
       label = `escort fit: ${ESCORT_MODULES[eq.id].name}`;
     } else if (eq.kind === 'baseModule') {
       fitted = c.baseModules.includes(eq.id);
@@ -796,7 +806,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
         (eq.id === 'hardened' && c.hardenedUnlocked);
       label = 'convoy asset';
     } else {
-      fitted = eq.id === 'escort' ? c.escorts > 0 : c.bases > 0;
+      fitted = eq.id === 'escort' ? c.escortUnits.length > 0 : c.bases > 0;
       label = 'built-in launcher';
     }
     tags.append(chip(fitted ? 'check' : 'lock', fitted ? `${label} ✓` : `${label} — not fitted`,
@@ -1308,51 +1318,149 @@ export function prepScreen(
     }),
   );
 
-  // --- Escort loadout: optional systems competing for limited escort slots ----
+  // --- The escort flotilla: every escort named and fitted on its own ---------
+  //
+  // This replaced a single fleet-wide loadout panel. Under that model the three
+  // module cards described ONE design that every escort copied, so a flotilla
+  // could never cover more than two roles no matter how many hulls it had.
+  const slotCount = escortSlots(c);
+  const refitUnlocked = hasResearch(c, 'logistics.escortRefitBay');
+  const selected =
+    c.escortUnits.find((u) => u.id === prepEscortId) ?? c.escortUnits[0] ?? null;
+  if (selected) prepEscortId = selected.id;
+
   const escortPanel = h('div', { className: 'panel' }, [
-    h('h2', { text: `Escort loadout — ${c.escortModules.length}/${ESCORT_MODULE_SLOTS} slots` }),
+    h('h2', { text: `Escort flotilla — ${c.escortUnits.length}/${ECONOMY.maxEscorts} ships` }),
     h('div', {
       className: 'hint',
       text:
-        'Missile interceptors are built into every escort. These optional systems fit the whole escort group and compete for its limited slots — deck guns, drone launchers and depth charges cannot all sail at once.' +
-        (c.escorts === 0 ? ' You own no escorts yet — fit systems now and they apply to every escort you hire.' : ''),
+        'Missile interceptors are built into every escort and never use a slot. Each escort is fitted separately, so one can hunt boats while another hunts torpedoes — or all of them can carry deck guns when the boats are what is hurting.' +
+        (c.escortUnits.length === 0
+          ? ' You own no escorts yet. Hire one below and it arrives with interceptors and empty specialist slots.'
+          : ''),
     }),
   ]);
-  const escortGrid = h('div', { className: 'module-grid' });
-  for (const id of Object.keys(ESCORT_MODULES) as (keyof typeof ESCORT_MODULES)[]) {
-    const def = ESCORT_MODULES[id];
-    const fitted = c.escortModules.includes(id);
-    const block = escortModuleBlockReason(c, id);
-    const refund = c.escortModulePaid[id] ?? def.cost;
-    const branch = branchForEquipment('escortModule', id);
-    escortGrid.append(
-      h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
-        h('div', { className: 'card-head' }, [
-          icon(branch ? BRANCH_ICONS[branch.id] : 'turret'),
-          h('h3', { text: def.name }),
-          fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
+
+  if (c.escortUnits.length > 0 && selected) {
+    // --- Roster: one row per escort, so roles compare at a glance -------------
+    const roster = h('div', { className: 'escort-roster' });
+    for (const unit of c.escortUnits) {
+      const isSel = unit.id === selected.id;
+      const fit =
+        unit.modules.length > 0
+          ? unit.modules.map((m) => ESCORT_MODULES[m].name.split(' ')[0]).join(' + ')
+          : 'no specialists';
+      roster.append(
+        h('button', {
+          className: isSel ? 'escort-tab selected' : 'escort-tab',
+          onClick: () => {
+            prepEscortId = unit.id;
+            rerender();
+          },
+        }, [
+          h('div', { className: 'escort-tab-name', text: unit.name }),
+          h('div', { className: 'escort-tab-fit', text: `interceptors + ${fit}` }),
+          h('div', {
+            className: 'escort-tab-slots',
+            text: `${unit.modules.length}/${slotCount} slots${unit.damage > 0 ? ` · ${Math.round(unit.damage)} dmg` : ''}`,
+          }),
         ]),
-        h('div', { className: 'hint role-line', text: equipmentRoleLine('escortModule', id) }),
-        h('p', { text: def.desc }),
-        fitted
-          ? h('button', {
-              className: 'unequip',
-              text: `Remove — refund $${refund}`,
-              onClick: () => {
-                if (removeEscortModule(c, id)) rerender();
-              },
-            })
-          : h('button', {
-              text: block === null ? `Fit escorts — $${def.cost}` : block,
-              disabled: block !== null,
-              onClick: () => {
-                if (buyEscortModule(c, id)) rerender();
-              },
-            }),
+      );
+    }
+    escortPanel.append(roster);
+
+    // --- Rename --------------------------------------------------------------
+    const nameInput = h('input', { className: 'escort-name-input' });
+    nameInput.setAttribute('type', 'text');
+    nameInput.setAttribute('maxlength', String(ESCORT_NAME_MAX));
+    nameInput.setAttribute('aria-label', 'Escort name');
+    nameInput.value = selected.name;
+    const commitName = (): void => {
+      if (renameEscort(c, selected.id, nameInput.value)) rerender();
+    };
+    nameInput.addEventListener('change', commitName);
+    nameInput.addEventListener('keydown', (ev) => {
+      if ((ev as KeyboardEvent).key === 'Enter') commitName();
+    });
+    escortPanel.append(
+      h('div', { className: 'escort-name-row' }, [
+        h('label', { className: 'hint', text: 'Name' }),
+        nameInput,
       ]),
     );
+
+    // --- Built-in, then the slots --------------------------------------------
+    escortPanel.append(
+      h('div', { className: 'module-card owned built-in' }, [
+        h('div', { className: 'card-head' }, [
+          icon('turret'),
+          h('h3', { text: 'Missile Interceptors' }),
+          h('span', { className: 'badge good', text: 'Built in' }),
+        ]),
+        h('div', { className: 'hint role-line', text: 'Attacks missiles · every escort · no slot' }),
+        h('p', {
+          text: 'Standard on every escort and free. It does not occupy a specialist slot, so the choices below are additions to it rather than alternatives.',
+        }),
+      ]),
+    );
+
+    const usedSlots = selected.modules.length;
+    escortPanel.append(
+      h('div', {
+        className: 'hint',
+        text:
+          `${selected.name}: ${usedSlots}/${slotCount} specialist slots used.` +
+          (refitUnlocked
+            ? ''
+            : ' A third slot unlocks with the Escort Refit Bay (Logistics).'),
+      }),
+    );
+
+    const escortGrid = h('div', { className: 'module-grid' });
+    for (const id of Object.keys(ESCORT_MODULES) as (keyof typeof ESCORT_MODULES)[]) {
+      const def = ESCORT_MODULES[id];
+      const fitted = selected.modules.includes(id);
+      const block = escortModuleBlockReason(c, selected.id, id);
+      const refund = selected.modulePaid[id] ?? def.cost;
+      const branch = branchForEquipment('escortModule', id);
+      // How many OTHER escorts already carry this, so the player can see the
+      // shape of the flotilla without clicking through every ship.
+      const elsewhere = c.escortUnits.filter((u) => u.id !== selected.id && u.modules.includes(id)).length;
+      escortGrid.append(
+        h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
+          h('div', { className: 'card-head' }, [
+            icon(branch ? BRANCH_ICONS[branch.id] : 'turret'),
+            h('h3', { text: def.name }),
+            fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
+          ]),
+          h('div', { className: 'hint role-line', text: equipmentRoleLine('escortModule', id) }),
+          h('p', { text: def.desc }),
+          elsewhere > 0
+            ? h('div', {
+                className: 'hint',
+                text: `Also carried by ${elsewhere} other escort${elsewhere === 1 ? '' : 's'}.`,
+              })
+            : h('span'),
+          fitted
+            ? h('button', {
+                className: 'unequip',
+                text: `Remove from ${selected.name} — refund $${refund}`,
+                onClick: () => {
+                  if (removeEscortModule(c, selected.id, id)) rerender();
+                },
+              })
+            : h('button', {
+                text: block === null ? `Fit to ${selected.name} — $${def.cost}` : block,
+                disabled: block !== null,
+                onClick: () => {
+                  if (buyEscortModule(c, selected.id, id)) rerender();
+                },
+              }),
+        ]),
+      );
+    }
+    escortPanel.append(escortGrid);
   }
-  escortPanel.append(escortGrid);
 
   // --- Shore-base loadout ------------------------------------------------------
   const basePanel = h('div', { className: 'panel' }, [
@@ -1443,11 +1551,11 @@ export function prepScreen(
     assetCard(
       'missile',
       'Escort ship',
-      `${c.escorts}/${ECONOMY.maxEscorts}`,
-      'Mobile launcher that sails with the convoy: quick reload but slower interceptors and limited range. Carries whatever the Escort Loadout fits (drone launcher, deck gun, depth charges). Tap it in transit to order it around the map.',
+      `${c.escortUnits.length}/${ECONOMY.maxEscorts}`,
+      'Mobile launcher that sails with the convoy: quick reload but slower interceptors and limited range. Arrives with built-in interceptors, a default name and empty specialist slots — fit it individually in the Escort flotilla panel. Tap it in transit to order it around the map.',
       {
         label: `Hire escort — $${ECONOMY.escortCost}`,
-        disabled: c.escorts >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
+        disabled: c.escortUnits.length >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
         onClick: () => {
           if (buyEscort(c)) rerender();
         },

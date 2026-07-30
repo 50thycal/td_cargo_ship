@@ -1998,6 +1998,13 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         cost: 70,
         flags: ['berthing'],
       },
+      {
+        id: 'logistics.escortRefitBay',
+        name: 'Escort Refit Bay',
+        desc: 'A third specialist slot on every escort. Interceptors stay built in and never use a slot — this is room for one more optional system, so an escort can cover a second role without giving up its first.',
+        cost: 110,
+        flags: ['escortRefit'],
+      },
     ],
     tactics: [],
   },
