@@ -24,7 +24,7 @@ import {
   sanitizeEscortName,
 } from '../src/sim/campaign';
 import { stepTransit } from '../src/sim/transit';
-import { migrateCampaign } from '../src/platform/save';
+import { migrateRun } from '../src/platform/save';
 import { fitEscorts, fitUniformEscorts } from './helpers';
 import {
   ESCORT_DEFAULT_NAMES,
@@ -305,7 +305,7 @@ describe('escort names', () => {
     expect(renameEscort(c, 9999, 'Ghost')).toBe(false); // no such escort
 
     buyEscortModule(c, a.id, 'deckGun');
-    const reloaded = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
+    const reloaded = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(reloaded.escortUnits[0].name).toBe('Iron Duke');
     expect(reloaded.escortUnits[0].modules).toEqual(['deckGun']);
     expect(reloaded.escortUnits[1].name).toBe(bName);
@@ -483,7 +483,7 @@ describe('per-escort cash accounting', () => {
     buyEscortAt(c, 2);
     const id = c.escortUnits[0].id;
     c.cash = 100_000;
-    expect(escortModuleBlockReason(c, id, 'deckGun')).toMatch(/^Requires research/);
+    expect(escortModuleBlockReason(c, id, 'deckGun')).toMatch(/^Requires technology/);
     c.completedResearch = ['deckGun.base'];
     expect(escortModuleBlockReason(c, id, 'deckGun')).toBeNull();
     c.cash = 0;
@@ -496,96 +496,39 @@ describe('per-escort cash accounting', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10: save migration from the shared template
+// 10: save healing keeps the flotilla whole
 // ---------------------------------------------------------------------------
+// (The pre-roguelite shared-template escort save is behind the redesign's
+// explicit migration boundary — the old key is ignored, so its translation
+// tests retired with it. What must still hold: the current per-escort format
+// heals forward without losing a ship, a name, a fit or a receipt.)
 
-describe('save migration from the shared escortModules template', () => {
-  it('gives every owned escort the loadout they were all already carrying', () => {
-    const m = migrateCampaign({
-      version: 3,
-      seed: 'shared-template',
-      phase: 'prep',
-      escorts: 3,
-      escortModules: ['deckGun', 'depthCharges'],
-      escortModulePaid: { deckGun: 260, depthCharges: 240 },
-      escortDamage: 30,
-      completedResearch: ['deckGun.base', 'depthCharges.base'],
-    })!;
-
-    expect(m.escortUnits).toHaveLength(3);
-    for (const unit of m.escortUnits) {
-      expect(unit.modules).toEqual(['deckGun', 'depthCharges']);
-      expect(unit.damage).toBe(10); // the shared pool split evenly
-      expect(unit.name.length).toBeGreaterThan(0);
-    }
-    expect(new Set(m.escortUnits.map((u) => u.id)).size).toBe(3);
-    expect(m.nextEscortId).toBeGreaterThan(3);
-    // The legacy fields are gone, not shadowing the new ones.
-    const raw = m as unknown as Record<string, unknown>;
-    expect(raw.escorts).toBeUndefined();
-    expect(raw.escortModules).toBeUndefined();
-    expect(raw.escortModulePaid).toBeUndefined();
-    expect(raw.escortDamage).toBeUndefined();
-  });
-
-  it('each migrated escort refunds what was PAID, not the current list price', () => {
-    // The legacy price is deliberately unequal to today's catalogue cost: a
-    // refund that reads the price list instead of the receipt would pay out the
-    // difference, which is free money every time a price is retuned.
-    const legacyPrice = ESCORT_MODULES.deckGun.cost - 80;
-    const m = migrateCampaign({
-      version: 3,
-      seed: 'migrated-refund',
-      phase: 'prep',
-      cash: 0,
-      escorts: 2,
-      escortModules: ['deckGun'],
-      escortModulePaid: { deckGun: legacyPrice },
-      completedResearch: ['deckGun.base'],
-    })!;
-    m.cash = 0;
-    expect(removeEscortModule(m, m.escortUnits[0].id, 'deckGun')).toBe(true);
-    expect(m.cash).toBe(legacyPrice);
-    expect(m.cash).not.toBe(ESCORT_MODULES.deckGun.cost);
-    expect(m.escortUnits[1].modules).toEqual(['deckGun']);
-  });
-
-  it('truncates an over-full legacy loadout to the current slot count', () => {
-    const m = migrateCampaign({
-      version: 3,
-      seed: 'over-full',
-      phase: 'prep',
-      escorts: 1,
-      escortModules: ['deckGun', 'depthCharges', 'mcmDroneLauncher'],
-      completedResearch: [],
-    })!;
-    expect(m.escortUnits[0].modules).toHaveLength(ESCORT_MODULE_SLOTS);
-  });
-
-  it('a save with no escorts migrates to an empty flotilla, not a phantom ship', () => {
-    const m = migrateCampaign({
-      version: 3,
-      seed: 'no-escorts',
-      phase: 'prep',
-      escorts: 0,
-      escortModules: ['mcmDroneLauncher'],
-      completedResearch: ['mcmDrones.base'],
-    })!;
-    expect(m.escortUnits).toEqual([]);
-    // The RESEARCH survives, so the capability is still unlocked for the next
-    // hull the player commissions — only the free fitting is gone, and there
-    // was no hull carrying it to begin with.
-    expect(m.completedResearch).toContain('mcmDrones.base');
-  });
-
-  it('an already-migrated save round-trips untouched', () => {
+describe('save healing keeps the flotilla whole', () => {
+  it('an individually-fitted flotilla round-trips untouched', () => {
     const c = richCampaign('already-new');
     fitEscorts(c, [['deckGun'], ['depthCharges']]);
     renameEscort(c, c.escortUnits[0].id, 'Steadfast II');
-    const once = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
-    const twice = migrateCampaign(JSON.parse(JSON.stringify(once)))!;
+    const once = migrateRun(JSON.parse(JSON.stringify(c)))!;
+    const twice = migrateRun(JSON.parse(JSON.stringify(once)))!;
     expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
     expect(once.escortUnits[0].name).toBe('Steadfast II');
+    expect(once.escortUnits[0].modules).toEqual(['deckGun']);
+    expect(once.escortUnits[1].modules).toEqual(['depthCharges']);
+  });
+
+  it('a healed escort still refunds what was PAID, not the current list price', () => {
+    const c = richCampaign('healed-refund');
+    fitEscorts(c, [[]]);
+    const id = c.escortUnits[0].id;
+    c.completedResearch = ['deckGun.base'];
+    c.cash = ESCORT_MODULES.deckGun.cost;
+    expect(buyEscortModule(c, id, 'deckGun')).toBe(true);
+    // Simulate a price retune between save and load: the receipt must win.
+    const paid = c.escortUnits[0].modulePaid.deckGun!;
+    const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
+    m.cash = 0;
+    expect(removeEscortModule(m, m.escortUnits[0].id, 'deckGun')).toBe(true);
+    expect(m.cash).toBe(paid);
   });
 });
 

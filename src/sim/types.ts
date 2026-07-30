@@ -621,6 +621,48 @@ export interface AreaEffect {
 }
 
 // ---------------------------------------------------------------------------
+// Wreckage recovery & crew rescue (roguelite loop)
+// ---------------------------------------------------------------------------
+
+/** A recoverable enemy wreckage field left by a threat the player destroyed.
+ *  Recovery is POSITIONAL: one or more escorts must hold inside the field's
+ *  radius; more escorts recover faster; progress resets completely the moment
+ *  no escort is working it (touch-and-go preserves nothing by design). */
+export interface WreckageField {
+  id: number;
+  x: number;
+  y: number;
+  /** Enemy branch family that produced the wreck (drives draft weighting). */
+  branch: string;
+  /** The threat kind that was destroyed (display + telemetry). */
+  threatKind: ThreatKind;
+  /** Escort-seconds of work a SINGLE escort would need to recover it. */
+  required: number;
+  /** Work done so far, in single-escort-equivalent seconds. */
+  progress: number;
+  /** Transit time at which the field sinks for good. */
+  expiresAt: number;
+  recovered: boolean;
+  expired: boolean;
+}
+
+/** Survivors in the water where a civilian hull went down. Same recovery
+ *  mechanics as wreckage; an unrescued crew costs extra confidence when the
+ *  round resolves. */
+export interface SurvivorArea {
+  id: number;
+  x: number;
+  y: number;
+  /** Name of the lost ship, so the rescue reads as saving HER crew. */
+  shipName: string;
+  required: number;
+  progress: number;
+  expiresAt: number;
+  rescued: boolean;
+  lost: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Transit state & commands
 // ---------------------------------------------------------------------------
 
@@ -682,7 +724,13 @@ export type TransitEventType =
   | 'suppressed'
   | 'abilityUsed'
   | 'launchFailed'
-  | 'techDebut';
+  | 'techDebut'
+  | 'wreckageSpawned'
+  | 'wreckageRecovered'
+  | 'wreckageExpired'
+  | 'survivorsSpawned'
+  | 'survivorsRescued'
+  | 'survivorsLost';
 
 export interface TransitEvent {
   t: number;
@@ -820,6 +868,20 @@ export interface TransitStats {
    *  it the procurement economy cannot tell which attack is paying off, and
    *  the seesaw cannot pivot. */
   enemyBranch: Record<string, { damage: number; kills: number }>;
+  /** Wreckage fields spawned / recovered / abandoned this transit. */
+  wreckageSpawned: number;
+  wreckageRecovered: number;
+  wreckageExpired: number;
+  /** Recovered wreckage units by the enemy branch that produced them —
+   *  the input to the post-round technology draft's weighting. */
+  wreckageByBranch: Record<string, number>;
+  /** Escort-seconds spent working recovery areas (wreckage + survivors) —
+   *  the telemetry that prices what recovery actually costs in escort time. */
+  recoveryEscortSeconds: number;
+  /** Survivor areas spawned / rescued / lost this transit. */
+  survivorsSpawned: number;
+  survivorsRescued: number;
+  survivorsLost: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1018,6 +1080,10 @@ export interface CombatEffects {
   smokeTrackBreakSeconds: number;
   /** Probability a scan pulse reveals a low-signature mine (research-scaled). */
   scanLowSigChance: number;
+  /** Recovery-operation rates. 1 = baseline; Commander Abilities are applied
+   *  on top of derived tech/equipment effects (the central modifier point the
+   *  design requires) and land here among other places. */
+  recovery: { wreckageRateMult: number; rescueRateMult: number };
 
   abilities: {
     ecm: AbilityEffects;
@@ -1052,6 +1118,10 @@ export interface TransitState {
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
   shells: Shell[];
+  /** Recoverable wreckage fields from destroyed enemy threats. */
+  wreckage: WreckageField[];
+  /** Survivor areas where lost civilian ships went down. */
+  survivors: SurvivorArea[];
   /** Enemy smoke still to be laid this round. */
   smokeQueue: SmokePlacement[];
   /** Recon planes and drones still to launch this round. */
@@ -1102,13 +1172,34 @@ export interface TransitState {
 }
 
 // ---------------------------------------------------------------------------
-// Research (counter branches — see src/data/counters.ts for the catalogue)
+// Technology (counter branches — see src/data/counters.ts for the catalogue)
 // ---------------------------------------------------------------------------
 
-/** Research entries are `<branch>.<node>` strings defined in the counter
- *  catalogue (src/data/counters.ts). The old 10-entry linear tree's ids are
- *  migrated by the save layer. */
+/** Technology entries are `<branch>.<node>` strings defined in the counter
+ *  catalogue (src/data/counters.ts). Under the roguelite loop these are no
+ *  longer bought with intel — they arrive through the mandatory post-round
+ *  technology draft — but the catalogue, its prerequisites and its effect
+ *  derivation are reused unchanged. */
 export type ResearchId = string;
+
+/** A mandatory post-round technology draft. The player must pick exactly one
+ *  option before the next round; picks activate immediately and cannot be
+ *  banked or skipped (an EMPTY options list is the one exception — the
+ *  catalogue has been exhausted and there is nothing left to offer). */
+export interface TechDraft {
+  /** Round whose transit earned this draft. */
+  round: number;
+  options: ResearchId[];
+  /** Wreckage units recovered that round (drove breadth and weighting). */
+  recoveredUnits: number;
+}
+
+/** One draft's telemetry: what was offered and what the player took. */
+export interface DraftRecord {
+  round: number;
+  offered: ResearchId[];
+  picked: ResearchId | null;
+}
 
 /** Sensor families the hardened-systems protected channel can preserve. */
 export type SensorFamily = 'mineDetection' | 'torpedoDetection' | 'missileWarning' | 'smokeImaging';
@@ -1163,6 +1254,15 @@ export interface BranchLedger {
  *  Budget arrives, is committed in full, and whatever is not spent is scrapped;
  *  what it buys is driven by which branches are paying off. */
 export interface EnemyEconomyState {
+  /** REGION GATING: enemy branch keys the active region permits. Procurement
+   *  never funds anything outside this set — the region decides what the
+   *  enemy CAN use; the adaptive economy decides what it emphasizes. */
+  allowedBranches: string[];
+  /** Optional per-branch earliest-round floors from the region definition
+   *  (pacing DELAYS on top of each branch's own openRound). */
+  branchDebutRounds: Record<string, number>;
+  /** The region's threat-budget curve (base + perRound × round, capped). */
+  budgetCurve: { base: number; perRound: number; cap: number };
   /** War funds granted this round (after anti-snowball modifiers). */
   budget: number;
   /** Budget actually committed to attacks. */
@@ -1232,7 +1332,16 @@ export interface EvolutionState {
 // After-action report
 // ---------------------------------------------------------------------------
 
-export type AarCardKind = 'loss' | 'discovery' | 'warning' | 'quota' | 'capacity' | 'research' | 'info';
+export type AarCardKind =
+  | 'loss'
+  | 'discovery'
+  | 'warning'
+  | 'quota'
+  | 'capacity'
+  | 'research'
+  | 'info'
+  | 'salvage'
+  | 'rescue';
 
 export interface AarCard {
   kind: AarCardKind;
@@ -1250,14 +1359,18 @@ export interface AfterActionReport {
    *  because "the consortium covered half of what that cost you" is the beat
    *  that tells them a bad round is survivable. */
   insurancePaid: number;
-  intelEarned: number;
   confidenceChange: number;
   confidenceAfter: number;
   capacityIncreased: boolean;
-  researchCompleted?: ResearchId;
   quota: { windowRound: number; earned: number; needed: number; evaluated: boolean; met: boolean };
   cards: AarCard[];
+  /** True when the regional run ended this round (defeat OR completion). */
   campaignOver: boolean;
+  /** How it ended, mirrored from the run state for the report screen. */
+  runOutcome: 'active' | 'defeat' | 'victory';
+  /** Options in the technology draft this round earned (0 = run over or
+   *  catalogue exhausted). */
+  draftSize: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1278,7 +1391,6 @@ export interface RoundSummary {
   lost: number;
   valueDelivered: number;
   cashEarned: number;
-  intelEarned: number;
 }
 
 /** A ship lost during a transit, with the cause, for the game log. */
@@ -1395,16 +1507,28 @@ export interface RoundTelemetry {
   launchersDisabled: number;
   losses: ShipLoss[];
   cashEarned: number;
-  intelEarned: number;
   confidenceBefore: number;
   confidenceAfter: number;
   capacity: number;
   capacityIncreased: boolean;
   basesOwned: number;
   escortsOwned: number;
-  researchCompleted: ResearchId | null;
-  activeResearch: ResearchId | null;
+  /** Technologies held at round end (drafted + granted base entries). */
   completedResearch: ResearchId[];
+  /** Wreckage generated, recovered and abandoned this round, with the branch
+   *  breakdown and the escort time it cost — the recovery half of the new
+   *  loop's telemetry. */
+  wreckageSpawned: number;
+  wreckageRecovered: number;
+  wreckageExpired: number;
+  wreckageByBranch: Record<string, number>;
+  recoveryEscortSeconds: number;
+  /** Survivors generated, rescued and lost this round. */
+  survivorsSpawned: number;
+  survivorsRescued: number;
+  survivorsLost: number;
+  /** The draft this round earned (options offered; pick recorded when made). */
+  draftOffered: ResearchId[];
   enemyTracks: EvolutionTracks;
   newDiscoveries: TechKey[];
   /** What each escort individually did this transit, keyed by unit id. Paired
@@ -1453,9 +1577,19 @@ export interface EnemyRoundTelemetry {
   targetingName: string;
 }
 
+/** The active REGIONAL RUN. Everything in here is temporary to one attempt at
+ *  one region: it is created when the run starts and cleared when the run is
+ *  lost or the region is completed. Permanent progress lives in the separate
+ *  CommanderProfile (src/sim/commander.ts) — keeping the two layers apart is a
+ *  core architectural requirement of the roguelite redesign. The name
+ *  CampaignState is retained so the sim/UI surface area stays familiar. */
 export interface CampaignState {
   version: number;
   seed: string;
+  /** Region this run is being fought in (key into data/regions.ts). */
+  regionId: string;
+  /** Commander Ability loadout locked in for this run at run start. */
+  commanderAbilities: string[];
   /** True for a developer/test run — enables the dev tools and, with godMode,
    *  invincible ships & unlimited munitions. Never set on a normal campaign. */
   dev?: boolean;
@@ -1464,15 +1598,30 @@ export interface CampaignState {
   godMode?: boolean;
   /** Round about to be played (1-based). */
   round: number;
-  phase: 'prep' | 'transit' | 'aar' | 'research';
+  phase: 'prep' | 'transit' | 'aar' | 'draft';
   cash: number;
-  intel: number;
   score: number;
   capacity: number;
   confidence: number;
   /** Consecutive rounds with >= 85% ships delivered (drives capacity growth). */
   strongStreak: number;
+  /** True once the run has ended — through defeat OR region completion. */
   campaignOver: boolean;
+  /** How the run stands: fighting, lost, or region completed. */
+  runOutcome: 'active' | 'defeat' | 'victory';
+  /** Which failure system ended a defeated run. */
+  defeatCause: 'confidence' | 'quota' | null;
+  /** Mandatory technology draft awaiting a pick (null = none pending). */
+  pendingDraft: TechDraft | null;
+  /** Every draft offered this run, with what was picked (telemetry). */
+  draftHistory: DraftRecord[];
+  /** Wreckage recovered across the whole run, by enemy branch. */
+  wreckageRecovered: Record<string, number>;
+  /** Crew-rescue totals across the run (drives records + AAR framing). */
+  crewRescue: { rescued: number; lost: number };
+  /** True once this run's ending has been applied to the Commander Profile,
+   *  so a reload of the final report can never award XP twice. */
+  profileApplied: boolean;
   /** Ships owned per class. */
   fleet: Record<ShipClassId, number>;
   /** Ships assigned to the next convoy per class. */
@@ -1532,8 +1681,9 @@ export interface CampaignState {
    *  preference — does not change sim behavior, only which threat a tap
    *  resolves to. Persists across rounds like formation. */
   targetPriority: TargetPriority;
+  /** Technologies acquired THIS RUN (drafted; granted entries derive on top).
+   *  Reset with the run — the build does not carry between regions. */
   completedResearch: ResearchId[];
-  activeResearch: { id: ResearchId; roundsLeft: number } | null;
   /** Cash spent this prep, attributed to counter branches (telemetry). */
   roundSpend: Record<string, number>;
   /** Munitions bought this prep (telemetry). */

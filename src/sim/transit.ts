@@ -8,9 +8,10 @@
 // automation loops — an invalid engagement is rejected here, not just greyed
 // out in the UI.
 
-import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
+import { applyCommanderCombatEffects } from '../data/commanderAbilities';
 import { targetingSkill } from './evolution';
 import type { RNG } from './rng';
 import type {
@@ -34,6 +35,7 @@ import type {
   ShipClassId,
   TechKey,
   Threat,
+  ThreatKind,
   TransitCommand,
   TransitEvent,
   TransitState,
@@ -44,15 +46,19 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** Tier-resolved combat effects for a research set + platform loadout. All
- *  numeric conversion happens in the data layer (deriveCounterEffects). */
+ *  numeric conversion happens in the data layer (deriveCounterEffects), and
+ *  Commander Ability modifiers are applied LAST, centrally — the locked
+ *  effect flow: base → technology/tactics → equipment → commander → final. */
 export function deriveEffects(
   completedResearch: readonly ResearchId[],
   loadout: { escortModules: readonly ('deckGun' | 'mcmDroneLauncher' | 'depthCharges')[]; baseModules: readonly 'counterBattery'[] },
+  commanderAbilities: readonly string[] = [],
 ): CombatEffects {
-  return deriveCounterEffects(completedResearch, {
+  const effects = deriveCounterEffects(completedResearch, {
     escortModules: [...loadout.escortModules],
     baseModules: [...loadout.baseModules],
   });
+  return applyCommanderCombatEffects(effects, commanderAbilities);
 }
 
 // ---------------------------------------------------------------------------
@@ -239,10 +245,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   const fleetEscortModules = [
     ...new Set(campaign.escortUnits.flatMap((u) => u.modules)),
   ] as EscortModuleId[];
-  const effects = deriveEffects(campaign.completedResearch, {
-    escortModules: fleetEscortModules,
-    baseModules: campaign.baseModules,
-  });
+  const effects = deriveEffects(
+    campaign.completedResearch,
+    {
+      escortModules: fleetEscortModules,
+      baseModules: campaign.baseModules,
+    },
+    campaign.commanderAbilities ?? [],
+  );
   // Dev god mode: hulls shrug off all damage this transit.
   if (campaign.godMode) effects.damageTakenMult = 0;
   const god = !!campaign.godMode;
@@ -344,6 +354,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       barrageNextAt: 8,
     })),
     shells: [],
+    wreckage: [],
+    survivors: [],
     smokeQueue: [...plan.smoke].sort((a, b) => a.time - b.time),
     eaQueue: buildEaQueue(plan),
     pendingJamming: plan.electronic.jamming,
@@ -425,6 +437,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         reboot: rebootCharges,
       }),
       enemyBranch: {},
+      wreckageSpawned: 0,
+      wreckageRecovered: 0,
+      wreckageExpired: 0,
+      wreckageByBranch: {},
+      recoveryEscortSeconds: 0,
+      survivorsSpawned: 0,
+      survivorsRescued: 0,
+      survivorsLost: 0,
     },
     effects,
     baseSpeed: Math.min(
@@ -905,7 +925,7 @@ function damageShip(
       t.stats.counter.damagePrevented.fireSuppression += COMBAT.fireChance * COMBAT.fireSeconds * COMBAT.fireDps;
     }
   }
-  if (ship.hp <= 0) killShip(t, ship, cause);
+  if (ship.hp <= 0) killShip(t, ship, cause, rng);
 }
 
 /** Bonus splash from a DIRECT hit into hulls packed alongside — the cost of a
@@ -922,13 +942,19 @@ function chainSplash(t: TransitState, x: number, y: number, exceptId: number, rn
   }
 }
 
-function killShip(t: TransitState, ship: Ship, cause: string): void {
+function killShip(t: TransitState, ship: Ship, cause: string, rng?: RNG): void {
   if (!ship.alive) return;
   ship.alive = false;
   ship.hp = 0;
   t.stats.lost++;
   creditKillShare(t, ship, cause);
   pushEvent(t, { type: 'shipLost', shipId: ship.id, shipName: ship.name, cause });
+  // Survivors in the water. Not from captures (the enemy has that crew) and
+  // not from timeouts (the transit is already over — there would be no round
+  // left in which to attempt the rescue).
+  if (rng && cause !== 'captured' && cause !== 'timeout') {
+    maybeSpawnSurvivors(t, ship, rng);
+  }
   const def = SHIP_CLASSES[ship.classId];
   if (def.explodes) {
     const radius = def.explodes.radius * FORMATIONS[t.formation].collateralMult;
@@ -938,8 +964,127 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
         // Explosion damage does not chain-ignite further explosions' fires.
         other.hp -= def.explodes.damage * t.effects.damageTakenMult;
         pushEvent(t, { type: 'shipHit', shipId: other.id, shipName: other.name, cause: 'explosion' });
-        if (other.hp <= 0) killShip(t, other, 'explosion');
+        if (other.hp <= 0) killShip(t, other, 'explosion', rng);
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wreckage recovery & crew rescue — the roguelite loop's tactical layer
+// ---------------------------------------------------------------------------
+
+/** Threat kind → the enemy branch family its wreckage teaches about. */
+const WRECKAGE_BRANCH: Partial<Record<ThreatKind, string>> = {
+  missile: 'missiles',
+  guidedMissile: 'missiles',
+  mine: 'mines',
+  torpedo: 'torpedoes',
+  attackBoat: 'attackBoats',
+  reconPlane: 'electronic',
+  disablingDrone: 'electronic',
+};
+
+/** Roll for a recoverable wreckage field where a PLAYER-DESTROYED physical
+ *  threat died. Threats that expend themselves (a mine detonating against a
+ *  hull, a missile striking home) leave nothing — only kills call this. */
+function maybeSpawnWreckage(t: TransitState, threat: Threat, rng: RNG): void {
+  const branch = WRECKAGE_BRANCH[threat.kind];
+  const chance = WRECKAGE.dropChance[threat.kind] ?? 0;
+  if (!branch || chance <= 0 || !rng.chance(chance)) return;
+  t.wreckage.push({
+    id: t.nextEntityId++,
+    // Clamped into open water so a kill near a shore still leaves a field an
+    // escort can actually sail to.
+    x: clamp(threat.x, 80, WORLD.width - 80),
+    y: clamp(threat.y, 160, WORLD.baseLine - 60),
+    branch,
+    threatKind: threat.kind,
+    required: WRECKAGE.recoverSeconds,
+    progress: 0,
+    expiresAt: t.time + WRECKAGE.lifetimeSeconds,
+    recovered: false,
+    expired: false,
+  });
+  t.stats.wreckageSpawned++;
+  pushEvent(t, { type: 'wreckageSpawned', threatKind: threat.kind });
+}
+
+/** Roll for survivors in the water where a civilian hull just went down. */
+function maybeSpawnSurvivors(t: TransitState, ship: Ship, rng: RNG): void {
+  if (!rng.chance(SURVIVORS.chance)) return;
+  t.survivors.push({
+    id: t.nextEntityId++,
+    x: clamp(ship.x, 80, WORLD.width - 80),
+    y: clamp(ship.y, 160, WORLD.baseLine - 60),
+    shipName: ship.name,
+    required: SURVIVORS.rescueSeconds,
+    progress: 0,
+    expiresAt: t.time + SURVIVORS.lifetimeSeconds,
+    rescued: false,
+    lost: false,
+  });
+  t.stats.survivorsSpawned++;
+  pushEvent(t, { type: 'survivorsSpawned', shipName: ship.name });
+}
+
+/** Advance every active recovery area: positional, multi-escort, all-or-
+ *  nothing. Progress accrues while at least one live escort holds inside the
+ *  area; each extra escort adds a fraction of the base rate; and the moment
+ *  NO escort remains, progress resets to zero — touch-and-go preserves
+ *  nothing, recovery means committing escort time under fire. */
+function updateRecoveryFields(t: TransitState, dt: number): void {
+  const liveEscorts = t.escorts.filter((e) => e.alive);
+  const workDone = (x: number, y: number, radius: number, extraRate: number): number => {
+    let crews = 0;
+    for (const escort of liveEscorts) {
+      if (dist(escort.x, escort.y, x, y) <= radius) crews++;
+    }
+    if (crews === 0) return 0;
+    t.stats.recoveryEscortSeconds += crews * dt;
+    return dt * (1 + (crews - 1) * extraRate);
+  };
+
+  for (const field of t.wreckage) {
+    if (field.recovered || field.expired) continue;
+    if (t.time >= field.expiresAt) {
+      field.expired = true;
+      t.stats.wreckageExpired++;
+      pushEvent(t, { type: 'wreckageExpired', threatKind: field.threatKind });
+      continue;
+    }
+    const step = workDone(field.x, field.y, WRECKAGE.radius, WRECKAGE.extraEscortRate);
+    if (step <= 0) {
+      field.progress = 0; // every escort left → the field resets completely
+      continue;
+    }
+    field.progress += step * t.effects.recovery.wreckageRateMult;
+    if (field.progress >= field.required) {
+      field.recovered = true;
+      t.stats.wreckageRecovered++;
+      t.stats.wreckageByBranch[field.branch] = (t.stats.wreckageByBranch[field.branch] ?? 0) + 1;
+      pushEvent(t, { type: 'wreckageRecovered', threatKind: field.threatKind });
+    }
+  }
+
+  for (const area of t.survivors) {
+    if (area.rescued || area.lost) continue;
+    if (t.time >= area.expiresAt) {
+      area.lost = true;
+      t.stats.survivorsLost++;
+      pushEvent(t, { type: 'survivorsLost', shipName: area.shipName });
+      continue;
+    }
+    const step = workDone(area.x, area.y, SURVIVORS.radius, SURVIVORS.extraEscortRate);
+    if (step <= 0) {
+      area.progress = 0;
+      continue;
+    }
+    area.progress += step * t.effects.recovery.rescueRateMult;
+    if (area.progress >= area.required) {
+      area.rescued = true;
+      t.stats.survivorsRescued++;
+      pushEvent(t, { type: 'survivorsRescued', shipName: area.shipName });
     }
   }
 }
@@ -1834,6 +1979,7 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         t.stats.boatsSunk++;
         escortPerf(t, escort).boatKills++;
         pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
+        maybeSpawnWreckage(t, target, rng);
         // Sinking a boarding boat throws its party off the hull. The progress
         // it had made is lost — that is what makes shooting the boat the
         // answer, rather than merely a way to stop the clock where it stands.
@@ -2500,7 +2646,7 @@ function updateAreaEffects(t: TransitState): void {
 
 /** Depth-charge rounds fly to their point and detonate. The blast destroys
  *  torpedoes ONLY — the compatibility rule, enforced at the moment of effect. */
-function updateDepthChargeShots(t: TransitState, dt: number): void {
+function updateDepthChargeShots(t: TransitState, rng: RNG, dt: number): void {
   for (const shot of t.depthChargeShots) {
     if (shot.detonated) continue;
     const d = dist(shot.x, shot.y, shot.targetX, shot.targetY);
@@ -2518,6 +2664,7 @@ function updateDepthChargeShots(t: TransitState, dt: number): void {
           const dropper = t.stats.escortPerformance[shot.ownerUnitId];
           if (dropper) dropper.torpedoKills++;
           pushEvent(t, { type: 'depthChargeKill', threatKind: threat.kind, lowSig: threat.lowSig });
+          maybeSpawnWreckage(t, threat, rng);
         }
       }
     } else {
@@ -2884,7 +3031,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       // too — otherwise a hull that burns down credits nobody.
       creditEnemyBranch(t, 'fire', burn, false);
       ship.damageByBranch.missiles = (ship.damageByBranch.missiles ?? 0) + burn;
-      if (ship.hp <= 0) killShip(t, ship, 'fire');
+      if (ship.hp <= 0) killShip(t, ship, 'fire', rng);
       if (!ship.alive) continue;
     }
 
@@ -2998,6 +3145,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         t.stats.missilesIntercepted++;
         t.stats.ecmKills++;
         pushEvent(t, { type: 'intercepted', threatKind: threat.kind, detail: 'ecm' });
+        // A cooked-off seeker still leaves a physical airframe in the water.
+        maybeSpawnWreckage(t, threat, rng);
         continue;
       }
     }
@@ -3327,6 +3476,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
       if (rng.chance(hitChance)) {
         threat.alive = false;
+        // Every interceptor kill is a player-destroyed physical threat —
+        // missiles and aircraft alike may leave recoverable wreckage.
+        maybeSpawnWreckage(t, threat, rng);
         if (isFlak) {
           t.stats.counter.flakKills++;
           if (threat.kind === 'reconPlane' || threat.kind === 'disablingDrone') {
@@ -3437,6 +3589,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       const launcher = t.stats.escortPerformance[drone.ownerUnitId];
       if (launcher) launcher.minesSwept++;
       pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
+      // A swept mine is disarmed, not detonated — prime salvage.
+      maybeSpawnWreckage(t, mine, rng);
       drone.speed = 0;
       continue;
     }
@@ -3447,9 +3601,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   t.drones = t.drones.filter((dr) => dr.speed > 0);
 
   // --- Depth charges, placed areas, support aircraft --------------------------
-  updateDepthChargeShots(t, dt);
+  updateDepthChargeShots(t, rng, dt);
   updateAreaEffects(t);
   updateAircraft(t, rng, dt);
+
+  // --- Wreckage recovery & crew rescue ----------------------------------------
+  updateRecoveryFields(t, dt);
 
   // --- Housekeeping --------------------------------------------------------------
   if (t.jammingSeconds > 0) {
@@ -3462,6 +3619,21 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Any ship still afloat when time expires counts as lost at sea.
     for (const ship of t.ships) {
       if (ship.alive && !ship.delivered) killShip(t, ship, 'timeout');
+    }
+    // The convoy has cleared the strait: whatever is still in the water is
+    // not coming home. Unfinished wreckage is abandoned; crews still waiting
+    // are lost — and will cost confidence when the round resolves.
+    for (const field of t.wreckage) {
+      if (field.recovered || field.expired) continue;
+      field.expired = true;
+      t.stats.wreckageExpired++;
+      pushEvent(t, { type: 'wreckageExpired', threatKind: field.threatKind });
+    }
+    for (const area of t.survivors) {
+      if (area.rescued || area.lost) continue;
+      area.lost = true;
+      t.stats.survivorsLost++;
+      pushEvent(t, { type: 'survivorsLost', shipName: area.shipName });
     }
     t.over = true;
   }

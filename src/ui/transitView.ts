@@ -2,7 +2,7 @@
 // The view owns nothing about game rules — it feeds TransitCommands into
 // stepTransit on a fixed timestep and draws whatever the sim state says.
 
-import { COMBAT, SIM, WORLD } from '../data/tuning';
+import { COMBAT, SIM, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { stepTransit } from '../sim/transit';
 import type { RNG } from '../sim/rng';
 import type {
@@ -678,6 +678,24 @@ export class TransitView {
         case 'flakKill':
           this.showToast('Flak downed an enemy aircraft');
           break;
+        case 'wreckageSpawned':
+          this.showToast('Recoverable wreckage in the water — hold an escort inside it');
+          break;
+        case 'wreckageRecovered':
+          this.showToast('Wreckage recovered — it will shape tonight’s technology draft');
+          break;
+        case 'wreckageExpired':
+          this.showToast('Wreckage sank before it could be recovered');
+          break;
+        case 'survivorsSpawned':
+          this.showToast(`Survivors from ${ev.shipName ?? 'a lost ship'} in the water!`);
+          break;
+        case 'survivorsRescued':
+          this.showToast(`${ev.shipName ?? 'The'} crew pulled from the water`);
+          break;
+        case 'survivorsLost':
+          this.showToast(`${ev.shipName ?? 'A'} crew was lost to the water`);
+          break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
           else if (ev.detail === 'torpedo') this.showToast('Torpedo in the water — air defense cannot touch it!');
@@ -885,6 +903,99 @@ export class TransitView {
     exitGrad.addColorStop(1, 'rgba(89, 217, 140, 0.28)');
     ctx.fillStyle = exitGrad;
     ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
+
+    // Recovery areas — wreckage fields (salvage amber) and survivor areas
+    // (rescue cyan). Both draw their working radius, a center marker, and a
+    // progress ring that visibly resets to zero if every escort leaves.
+    const drawRecoveryArea = (
+      x: number,
+      y: number,
+      radius: number,
+      progress: number,
+      required: number,
+      expiresAt: number,
+      color: string,
+      marker: 'wreck' | 'crew',
+    ): void => {
+      const cx = this.sx(x);
+      const cy = this.sy(y);
+      const r = radius * SCALE;
+      // Fade the area as its lifetime runs out, so "about to sink" is legible.
+      const lifeLeft = Math.max(0, Math.min(1, (expiresAt - t.time) / 20));
+      const alpha = 0.35 + 0.65 * lifeLeft;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color.replace('ALPHA', '0.07');
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color.replace('ALPHA', '0.55');
+      ctx.setLineDash([7, 9]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Progress ring (inner): sweeps as escorts work the area.
+      if (progress > 0) {
+        ctx.strokeStyle = color.replace('ALPHA', '0.95');
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + (progress / required) * Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = color.replace('ALPHA', '0.9');
+      ctx.lineWidth = 2;
+      if (marker === 'wreck') {
+        // Broken-hull diamond.
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 7);
+        ctx.lineTo(cx + 7, cy);
+        ctx.lineTo(cx, cy + 7);
+        ctx.lineTo(cx - 7, cy);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - 3, cy);
+        ctx.lineTo(cx + 3, cy);
+        ctx.stroke();
+      } else {
+        // Life-ring: circle with a bobbing head.
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = color.replace('ALPHA', '0.9');
+        ctx.beginPath();
+        ctx.arc(cx, cy - 1 + Math.sin(now / 260) * 1.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    for (const field of t.wreckage) {
+      if (field.recovered || field.expired) continue;
+      drawRecoveryArea(
+        field.x,
+        field.y,
+        WRECKAGE.radius,
+        field.progress,
+        field.required,
+        field.expiresAt,
+        'rgba(240, 190, 92, ALPHA)',
+        'wreck',
+      );
+    }
+    for (const area of t.survivors) {
+      if (area.rescued || area.lost) continue;
+      drawRecoveryArea(
+        area.x,
+        area.y,
+        SURVIVORS.radius,
+        area.progress,
+        area.required,
+        area.expiresAt,
+        'rgba(126, 224, 214, ALPHA)',
+        'crew',
+      );
+    }
 
     // ECM jamming orbit — drawn around each deployed ECM plane while on station.
     const ecmRadius = t.effects.abilities.ecm.radius;

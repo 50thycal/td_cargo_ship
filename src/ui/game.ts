@@ -1,24 +1,47 @@
-// Top-level game controller: routes between phases, owns the campaign state,
-// and persists at every phase boundary so a reload always resumes cleanly.
+// Top-level game controller: routes between phases, owns the Commander
+// Profile (permanent) and the active Regional Run (temporary), and persists
+// both at every boundary so a reload always resumes cleanly.
+//
+// The run-start flow the redesign locks in:
+//   Main Menu → Region Select → Commander Loadout → Start Run → Preparation
+// and within a run: Prep → Transit → After-Action → Technology Draft → Prep.
+// Losing or completing a region clears ONLY the run save; the profile is
+// settled exactly once per run (applyRunToProfile is idempotent).
 
 import {
   createRoundTransit,
-  newCampaign,
   newDevCampaign,
+  newRegionalRun,
   planCurrentRound,
   resolveTransit,
   type DevOptions,
 } from '../sim/campaign';
-import { clearCampaign, loadCampaign, saveCampaign } from '../platform/save';
+import {
+  applyRunToProfile,
+  recordRunStart,
+  sanitizedLoadout,
+  type CommanderProfile,
+  type RunSettlement,
+} from '../sim/commander';
+import {
+  clearRun,
+  loadOrCreateProfile,
+  loadRun,
+  saveProfile,
+  saveRun,
+} from '../platform/save';
+import type { RegionId } from '../data/regions';
 import type { CampaignState, TransitState } from '../sim/types';
 import { h } from './dom';
 import {
   menuScreen,
   aarScreen,
   devScreen,
-  gameOverScreen,
+  draftScreen,
+  loadoutScreen,
   prepScreen,
-  researchScreen,
+  regionSelectScreen,
+  runOverScreen,
 } from './screens';
 import { TransitView } from './transitView';
 
@@ -38,14 +61,19 @@ function devEnabled(saved: CampaignState | null): boolean {
 
 export class Game {
   private readonly stage: HTMLElement;
-  private campaign: CampaignState | null = null;
+  private profile: CommanderProfile;
+  private run: CampaignState | null = null;
   private currentScreen: HTMLElement | null = null;
   /** Kept only for the AAR defensive-summary line; not persisted. */
   private lastTransit: TransitState | null = null;
+  /** What the just-finished run paid into the profile (for the end screen).
+   *  Null after a reload — the XP is already banked, only the recap is lost. */
+  private lastSettlement: RunSettlement | null = null;
 
   constructor(root: HTMLElement) {
     this.stage = h('div', { attrs: { id: 'stage' } });
     root.append(this.stage);
+    this.profile = loadOrCreateProfile();
   }
 
   start(): void {
@@ -53,7 +81,7 @@ export class Game {
   }
 
   private swapScreen(el: HTMLElement | null): void {
-    // Preserve scroll position across rerenders (prep/research rebuild the
+    // Preserve scroll position across rerenders (prep/loadout rebuild the
     // whole screen on every purchase — losing scroll would be brutal on
     // phone-height viewports).
     const oldBody = this.currentScreen?.querySelector('.screen-body');
@@ -71,21 +99,17 @@ export class Game {
   }
 
   private showMenu(): void {
-    // A finished campaign still counts as continuable: route() lands on the
-    // game-over screen, so the final score isn't lost to a reload.
-    const saved = loadCampaign();
+    // A finished run still counts as continuable: route() lands on the final
+    // report, so the tally isn't lost to a reload.
+    const saved = loadRun();
     this.swapScreen(
       menuScreen({
+        profile: this.profile,
         saved,
-        onNew: () => {
-          clearCampaign();
-          this.campaign = newCampaign(`campaign-${Date.now().toString(36)}`);
-          saveCampaign(this.campaign);
-          this.route();
-        },
+        onNewRun: () => this.showRegionSelect(),
         onContinue: () => {
           if (!saved) return;
-          this.campaign = saved;
+          this.run = saved;
           this.route();
         },
         devAvailable: devEnabled(saved),
@@ -94,13 +118,58 @@ export class Game {
     );
   }
 
+  private showRegionSelect(): void {
+    this.swapScreen(
+      regionSelectScreen(
+        this.profile,
+        (regionId) => this.showLoadout(regionId),
+        () => this.showMenu(),
+      ),
+    );
+  }
+
+  private showLoadout(regionId: RegionId): void {
+    this.swapScreen(
+      loadoutScreen(
+        this.profile,
+        regionId,
+        () => this.startRun(regionId),
+        () => {
+          // Unlocks and loadout edits are PERMANENT state — persist on every
+          // change, not just on run start.
+          saveProfile(this.profile);
+          this.showLoadout(regionId);
+        },
+        () => this.showRegionSelect(),
+      ),
+    );
+  }
+
+  private startRun(regionId: RegionId): void {
+    // Starting a new run replaces any existing one (the menu warns). The
+    // profile is never touched by clearing the run — separate saves.
+    clearRun();
+    saveProfile(this.profile);
+    this.run = newRegionalRun(
+      `run-${Date.now().toString(36)}`,
+      regionId,
+      sanitizedLoadout(this.profile),
+    );
+    recordRunStart(this.profile, regionId);
+    saveProfile(this.profile);
+    saveRun(this.run);
+    this.lastSettlement = null;
+    this.route();
+  }
+
   private showDev(): void {
     this.swapScreen(
       devScreen(
         (opts: DevOptions) => {
-          clearCampaign();
-          this.campaign = newDevCampaign(`dev-${Date.now().toString(36)}`, opts);
-          saveCampaign(this.campaign);
+          clearRun();
+          this.run = newDevCampaign(`dev-${Date.now().toString(36)}`, opts);
+          saveRun(this.run);
+          this.lastSettlement = null;
           this.route();
         },
         () => this.showMenu(),
@@ -110,18 +179,18 @@ export class Game {
 
   /** Save the current run and return to the menu (Save & Quit). */
   private quitToMenu(): void {
-    if (this.campaign) saveCampaign(this.campaign);
+    if (this.run) saveRun(this.run);
     this.showMenu();
   }
 
-  /** Send the player to whatever phase the campaign says it is in. */
+  /** Send the player to whatever phase the run says it is in. */
   private route(): void {
-    const c = this.campaign;
+    const c = this.run;
     if (!c) return this.showMenu();
     if (c.campaignOver) {
       // Reload during the final report: show it once more before the tally.
       if (c.phase === 'aar' && c.lastReport) return this.showAar();
-      return this.showGameOver();
+      return this.showRunOver();
     }
     switch (c.phase) {
       case 'prep':
@@ -130,21 +199,21 @@ export class Game {
         return this.startTransit();
       case 'aar':
         return this.showAar();
-      case 'research':
-        return this.showResearch();
+      case 'draft':
+        return this.showDraft();
     }
   }
 
   private showPrep(): void {
-    const c = this.campaign!;
+    const c = this.run!;
     c.phase = 'prep';
-    saveCampaign(c);
+    saveRun(c);
     this.swapScreen(
       prepScreen(
         c,
         () => {
           c.phase = 'transit';
-          saveCampaign(c);
+          saveRun(c);
           this.startTransit();
         },
         () => this.showPrep(),
@@ -154,7 +223,7 @@ export class Game {
   }
 
   private startTransit(): void {
-    const c = this.campaign!;
+    const c = this.run!;
     this.swapScreen(null);
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
@@ -169,54 +238,71 @@ export class Game {
       c.quota.pointsNeeded,
       c.targetPriority,
       (priority) => {
-        c.targetPriority = priority; // persisted with the next saveCampaign
+        c.targetPriority = priority; // persisted with the next saveRun
       },
       (finished) => {
         this.lastTransit = finished;
         resolveTransit(c, finished);
-        saveCampaign(c);
+        if (c.campaignOver) {
+          // Settle the profile the moment the run ends — before any screen —
+          // so a reload can never lose the XP. Idempotent via profileApplied.
+          this.lastSettlement = applyRunToProfile(this.profile, c);
+          saveProfile(this.profile);
+        }
+        saveRun(c);
         this.showAar();
       },
     );
   }
 
   private showAar(): void {
-    const c = this.campaign!;
+    const c = this.run!;
     const report = c.lastReport;
     if (!report) return this.showPrep();
     this.swapScreen(
       aarScreen(c, report, this.lastTransit, () => {
-        if (c.campaignOver) return this.showGameOver();
-        c.phase = 'research';
-        saveCampaign(c);
-        this.showResearch();
+        if (c.campaignOver) return this.showRunOver();
+        c.phase = c.pendingDraft ? 'draft' : 'prep';
+        saveRun(c);
+        this.route();
       }),
     );
   }
 
-  private showResearch(): void {
-    const c = this.campaign!;
+  private showDraft(): void {
+    const c = this.run!;
+    if (!c.pendingDraft) {
+      c.phase = 'prep';
+      saveRun(c);
+      return this.showPrep();
+    }
     this.swapScreen(
-      researchScreen(
+      draftScreen(
         c,
         () => {
-          c.phase = 'prep';
-          saveCampaign(c);
+          // selectDraftOption / dismissEmptyDraft moved the phase to prep.
+          saveRun(c);
           this.showPrep();
         },
-        () => this.showResearch(),
         () => this.quitToMenu(),
       ),
     );
   }
 
-  private showGameOver(): void {
-    const c = this.campaign!;
-    saveCampaign(c);
+  private showRunOver(): void {
+    const c = this.run!;
+    // Belt-and-braces: settle the profile even if the run ended before this
+    // build (or the transit callback was skipped by a reload).
+    const settlement = applyRunToProfile(this.profile, c);
+    if (settlement.xpEarned > 0) this.lastSettlement = settlement;
+    saveProfile(this.profile);
+    saveRun(c);
     this.swapScreen(
-      gameOverScreen(c, () => {
-        clearCampaign();
-        this.campaign = null;
+      runOverScreen(c, this.lastSettlement, () => {
+        // Clearing the RUN save is the whole reset: the profile survives.
+        clearRun();
+        this.run = null;
+        this.lastSettlement = null;
         this.showMenu();
       }),
     );

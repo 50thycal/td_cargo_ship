@@ -22,7 +22,7 @@ import {
 } from '../src/sim/campaign';
 import { fitUniformEscorts } from './helpers';
 import { stepTransit, deriveEffects } from '../src/sim/transit';
-import { migrateCampaign } from '../src/platform/save';
+import { migrateRun } from '../src/platform/save';
 import {
   canEngage,
   deriveCounterEffects,
@@ -687,112 +687,30 @@ describe('stat-tier consistency', () => {
 // 18: save migration preserves equipment and research value
 // ---------------------------------------------------------------------------
 
-describe('save migration (legacy → counter model)', () => {
-  it('migrates a full legacy save without losing equipment or research value', () => {
-    const old = {
-      version: 2,
-      seed: 'legacy-full',
-      round: 7,
-      phase: 'prep',
-      cash: 800,
-      intel: 44,
-      droneAmmo: 6,
-      pdAmmo: 3,
-      escorts: 2,
-      escortDamage: 30,
-      completedResearch: [
-        'sensors1', 'sensors2', 'sensors3',
-        'intercept1', 'intercept2',
-        'mines1', 'resilience1', 'resilience2', 'ew1', 'logistics1',
-      ],
-      classModules: {
-        cargo: ['pointDefense', 'missileWarning'],
-        tanker: ['mineSonar'],
-        freighter: ['fireSuppression'],
-      },
-      modulePaid: { cargo: { pointDefense: 220, missileWarning: 90 }, tanker: {}, freighter: {} },
-    };
-    const m = migrateCampaign(JSON.parse(JSON.stringify(old)))!;
-    expect(m).not.toBeNull();
-    expect(m.version).toBe(3);
-
-    // Equipment: pointDefense evolved into selfDefense; everything else kept.
-    expect(m.classModules.cargo).toContain('selfDefense');
-    expect(m.classModules.cargo).not.toContain('pointDefense');
-    expect(m.classModules.cargo).toContain('missileWarning');
-    expect(m.classModules.tanker).toContain('mineSonar');
-    expect(m.classModules.freighter).toContain('fireSuppression');
-    expect(m.modulePaid.cargo.selfDefense).toBe(220); // refund value preserved
-    // Legacy mine-warfare research implied a fleet-wide drone launcher. It now
-    // lands on each individual escort, and the pooled damage splits with them.
-    expect(m.escortUnits).toHaveLength(2);
-    for (const unit of m.escortUnits) {
-      expect(unit.modules).toContain('mcmDroneLauncher');
-      expect(unit.name.length).toBeGreaterThan(0);
-      expect(unit.damage).toBe(15);
-    }
-    expect(new Set(m.escortUnits.map((u) => u.id)).size).toBe(2); // ids are unique
-    // Legacy fleet-wide compartmentalization equips where a slot is free.
-    expect(m.classModules.tanker).toContain('compartmentalization');
-
-    // Research: every legacy id translated, none left behind.
-    for (const legacy of old.completedResearch) {
-      expect(m.completedResearch).not.toContain(legacy);
-    }
-    for (const id of [
-      'missileWarning.base', 'missileWarning.targetVector',
-      'mineSonar.base', 'mineSonar.improvedRange', 'mineSonar.compositeSignature',
-      'scanPulse.compositeScan',
-      'escortInterceptor.precisionGuidance', 'escortInterceptor.rapidReload',
-      'baseInterceptor.extendedBurn', 'baseInterceptor.maxVelocity',
-      'mcmDrones.base',
-      'compartmentalization.low', 'compartmentalization.medium',
-      'fireSuppression.automatic',
-      'ecm.improvedJamming', 'logistics.expandedBerthing',
-    ]) {
-      expect(m.completedResearch, id).toContain(id);
-    }
-    // Every migrated id is a real catalogue entry.
-    for (const id of m.completedResearch) {
-      expect(RESEARCH_INDEX[id], id).toBeDefined();
-    }
-
-    // Value: the effects the old save had are still there or better.
-    const fx = deriveEffects(m.completedResearch, {
-      escortModules: m.escortUnits[0].modules,
-      baseModules: m.baseModules,
-    });
-    expect(fx.compartmentReduction).toBe(0.25); // old resilience1's 25%
-    expect(fx.escort.accuracy).toBe(tierValue('weaponAccuracy', 'high'));
-    expect(fx.base.speed).toBe(tierValue('interceptorSpeed', 'max')); // intercept1+2
-    expect(fx.escort.reload).toBe(tierValue('reloadSeconds', 'high')); // dual-launch cells
-    expect(fx.mineSonar.detectLowSig).toBe(true); // sensors3
-    expect(fx.sweepDrones).toBe(true); // mines1 + implied launcher
-    expect(fx.autoExtinguish).toBe(true); // resilience2
-    expect(fx.ecmGuidedHitChance).toBe(0.08); // ew1
-    expect(m.pdAmmo).toBe(3);
-    expect(m.droneAmmo).toBe(6);
-  });
-
-  it('an in-flight legacy project is granted rather than lost', () => {
-    const m = migrateCampaign({
-      version: 2,
-      seed: 'legacy-inflight',
-      phase: 'research',
-      completedResearch: [],
-      activeResearch: { id: 'intercept1', roundsLeft: 1 },
-    })!;
-    expect(m.activeResearch).toBeNull();
-    expect(m.completedResearch).toContain('escortInterceptor.precisionGuidance');
-    expect(m.completedResearch).toContain('baseInterceptor.extendedBurn');
-  });
-
-  it('a new-format save round-trips through migration untouched', () => {
+describe('save healing (regional-run format)', () => {
+  // The pre-roguelite single-campaign save is an EXPLICIT migration boundary
+  // (docs/design/roguelite-redesign.md → Save Architecture): the old key is
+  // ignored rather than translated, so no legacy-translation tests remain.
+  it('a current-format run round-trips through healing untouched', () => {
     const c = newCampaign('fresh-format');
     c.completedResearch = ['mineSonar.base'];
     fitUniformEscorts(c, 1, ['deckGun']);
-    const m = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
+    const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(JSON.stringify(m)).toBe(JSON.stringify(c));
+  });
+
+  it('every drafted id a healed run carries is a real catalogue entry', () => {
+    const c = newCampaign('healed');
+    c.completedResearch = ['mineSonar.base', 'mineSonar.improvedRange'];
+    const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
+    for (const id of m.completedResearch) {
+      expect(RESEARCH_INDEX[id], id).toBeDefined();
+    }
+    const fx = deriveEffects(m.completedResearch, {
+      escortModules: [],
+      baseModules: m.baseModules,
+    });
+    expect(fx.mineSonar.radius).toBe(tierValue('mineDetectionRange', 'medium'));
   });
 });
 

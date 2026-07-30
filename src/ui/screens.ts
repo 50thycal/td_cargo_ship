@@ -1,6 +1,7 @@
-// Phase screens: menu, after-action report, research, procurement, game over.
-// Pure DOM construction — every mutation goes through the campaign helpers so
-// nothing here can put the game into an invalid state.
+// Phase screens: menu, region select, commander loadout, after-action report,
+// technology draft, procurement, run over. Pure DOM construction — every
+// mutation goes through the campaign/commander helpers so nothing here can
+// put the game into an invalid state.
 //
 // Presentation notes: screens are built from a shared card/chip/icon design
 // system (see icons.ts + style.css). Entry animations only replay when the
@@ -8,7 +9,7 @@
 // same screen id and must not re-trigger the stagger, so `entering()` tracks
 // the last screen id at module scope.
 
-import { ECONOMY } from '../data/tuning';
+import { COMMANDER, ECONOMY } from '../data/tuning';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
@@ -27,7 +28,6 @@ import {
   RESEARCH_INDEX,
   type CounterBranchDef,
   type CounterBranchId,
-  type CounterCategoryId,
   type CounterNodeDef,
   type CounterRole,
   type CounterTacticDef,
@@ -35,6 +35,7 @@ import {
   type TacticKind,
 } from '../data/counters';
 import {
+  ammoUnitCost,
   baseModuleBlockReason,
   buyAmmo,
   buyBase,
@@ -45,7 +46,6 @@ import {
   buyModule,
   buyPdAmmo,
   buyShip,
-  canStartResearch,
   type DevOptions,
   escortModuleBlockReason,
   hasResearch,
@@ -60,7 +60,6 @@ import {
   setFormation,
   setProtectedChannels,
   shipCost,
-  startResearch,
   totalComposition,
   totalPendingDamage,
   unlockEcm,
@@ -71,6 +70,23 @@ import {
   escortSlots,
   renameEscort,
 } from '../sim/campaign';
+import { draftOptionInfo, selectDraftOption, dismissEmptyDraft } from '../sim/draft';
+import {
+  loadoutBlockReason,
+  setLoadout,
+  unlockAbility,
+  unlockBlockReason,
+  regionUnlocked,
+  type CommanderProfile,
+  type RunSettlement,
+} from '../sim/commander';
+import {
+  COMMANDER_ABILITIES,
+  COMMANDER_ABILITY_ORDER,
+  loadoutPointsUsed,
+} from '../data/commanderAbilities';
+import { REGIONS, REGION_ORDER, regionDef, type RegionId } from '../data/regions';
+import { ENEMY_BRANCHES } from '../data/enemyBranches';
 import { formatInterceptSummary } from '../sim/aar';
 import { downloadGameLog } from './download';
 import { formationFigure, icon, shipFigure, SHIP_TINTS, type IconName } from './icons';
@@ -81,7 +97,6 @@ import type {
   CampaignState,
   FormationId,
   ModuleId,
-  ResearchId,
   SensorFamily,
   ShipClassId,
   TransitState,
@@ -98,7 +113,6 @@ let lastScreenId = '';
 function entering(screenId: string): boolean {
   const fresh = lastScreenId !== screenId;
   lastScreenId = screenId;
-  if (fresh && screenId === 'research') selectedResearch = null;
   if (fresh && screenId === 'prep') {
     prepModuleTab = 'cargo';
     prepEscortId = null;
@@ -129,18 +143,13 @@ let prepModuleTab: ShipClassId = 'cargo';
  *  falls back to the first one rather than silently editing a different ship. */
 let prepEscortId: number | null = null;
 
-/** Tech-tree node the player has tapped (persists across rerenders). */
-let selectedResearch: ResearchId | null = null;
-
-/** Set by a node tap so the rebuilt screen scrolls the dossier into view —
- *  the tree can be taller than the viewport and the panel sits below it. */
-let revealResearchDetail = false;
-
 function resourceBar(c: CampaignState): HTMLElement {
   return h('div', { className: 'resource-bar' }, [
     h('span', { className: 'res-chip cash' }, [icon('coin'), h('span', { text: `$${c.cash}` })]),
-    h('span', { className: 'res-chip intel' }, [icon('intel'), h('span', { text: `${c.intel}` })]),
-    h('span', { className: 'res-chip conf' }, [icon('star'), h('span', { text: `${c.confidence}` })]),
+    h('span', { className: 'res-chip conf', attrs: { title: 'Confidence — the run ends if it reaches zero' } }, [
+      icon('star'),
+      h('span', { text: `${c.confidence}` }),
+    ]),
   ]);
 }
 
@@ -229,43 +238,59 @@ const PHASE_LABELS: Record<CampaignState['phase'], string> = {
   prep: 'Preparation',
   transit: 'Transit',
   aar: 'After-Action',
-  research: 'Research',
+  draft: 'Technology Draft',
 };
 
 export function menuScreen(opts: {
+  profile: CommanderProfile;
   saved: CampaignState | null;
-  onNew: () => void;
+  onNewRun: () => void;
   onContinue: () => void;
   devAvailable: boolean;
   onDev: () => void;
 }): HTMLElement {
   entering('menu');
-  const { saved } = opts;
+  const { saved, profile } = opts;
+  const savedRegion = saved ? regionDef(saved.regionId) : null;
   const continueLabel = saved
     ? saved.campaignOver
       ? 'View Final Report'
-      : `Continue Run — Round ${saved.round}`
-    : 'Continue';
+      : `Continue Run — ${savedRegion?.name ?? 'Region'}, Round ${saved.round}`
+    : 'Continue Run';
   const buttons = h('div', { className: 'buttons' }, [
-    h('button', { className: 'primary', text: 'New Campaign', onClick: opts.onNew }),
+    h('button', { className: 'primary', text: 'Begin Regional Run', onClick: opts.onNewRun }),
     h('button', { text: continueLabel, disabled: !saved, onClick: opts.onContinue }),
   ]);
+  const regionsCleared = REGION_ORDER.filter((id) => (profile.records[id]?.completions ?? 0) > 0).length;
   const children: HTMLElement[] = [
     h('div', { className: 'menu-emblem' }, [icon('anchor')]),
     h('h1', { text: 'Straitwatch' }),
     h('div', {
       className: 'tagline',
       text:
-        'Shepherd civilian convoys through a contested strait. Every convoy that gets through ' +
-        'teaches the enemy something — and every attack they invent teaches you. Outlast the arms race.',
+        'Shepherd civilian convoys through contested regions. Destroy the enemy’s weapons, ' +
+        'recover their wreckage, and draft their technology into your fleet — every region is a ' +
+        'fresh run, but the Commander remembers.',
     }),
     buttons,
+    h('div', { className: 'menu-save-note hint' }, [
+      icon('star'),
+      h('span', {
+        text:
+          ` Commander XP: ${profile.xp}` +
+          ` · Regions unlocked: ${profile.unlockedRegions.filter((r) => REGION_ORDER.includes(r)).length}/${REGION_ORDER.length}` +
+          ` · Regions secured: ${regionsCleared}`,
+      }),
+    ]),
   ];
   if (saved && !saved.campaignOver) {
     children.push(
       h('div', {
         className: 'menu-save-note hint',
-        text: `Your run is saved automatically — pick up at Round ${saved.round} (${PHASE_LABELS[saved.phase]}).`,
+        text:
+          `Your run is saved automatically — pick up at Round ${saved.round} ` +
+          `(${PHASE_LABELS[saved.phase]}). Beginning a new run abandons it; ` +
+          'Commander progress is never lost.',
       }),
     );
   }
@@ -275,6 +300,159 @@ export function menuScreen(opts: {
     );
   }
   return h('div', { className: 'screen menu', attrs: { 'data-screen': 'menu' } }, children);
+}
+
+// ---------------------------------------------------------------------------
+// Region select — the roguelite campaign map
+// ---------------------------------------------------------------------------
+
+export function regionSelectScreen(
+  profile: CommanderProfile,
+  onPick: (regionId: RegionId) => void,
+  onBack: () => void,
+): HTMLElement {
+  const { root, body, footer } = screenShell(
+    'Region Select',
+    'Each region is an independent run — lose it and it restarts at round 1',
+    null,
+    'regionSelect',
+  );
+
+  for (const id of REGION_ORDER) {
+    const region = REGIONS[id];
+    const unlocked = regionUnlocked(profile, id);
+    const rec = profile.records[id];
+    const threatNames = region.enemyBranches
+      .filter((k) => ENEMY_BRANCHES[k].implemented)
+      .map((k) => ENEMY_BRANCH_NAMES[k])
+      .join(', ');
+    const tags = h('div', { className: 'chip-row' }, [
+      chip('alert', threatNames || 'No threats', 'Enemy branches this region can field'),
+      chip('anchor', `Secure round ${region.completionRound}`, 'Surviving this round completes the region'),
+      chip('star', `+${region.completionXp} XP on completion`),
+    ]);
+    if (rec && rec.attempts > 0) {
+      tags.append(
+        chip(
+          'check',
+          `Best round ${rec.bestRound} · ${rec.completions} completion${rec.completions === 1 ? '' : 's'} in ${rec.attempts} attempt${rec.attempts === 1 ? '' : 's'}`,
+        ),
+      );
+    }
+    const card = h('div', { className: unlocked ? 'card' : 'card locked' }, [
+      h('div', { className: 'card-head' }, [
+        icon(unlocked ? 'radar' : 'lock'),
+        h('h3', { text: region.name }),
+      ]),
+      h('div', { className: 'hint', text: region.tagline }),
+      h('p', { text: unlocked ? region.desc : 'Complete the previous region to unlock this theater.' }),
+      tags,
+      h('button', {
+        className: 'primary',
+        text: unlocked ? `Deploy to ${region.name}` : 'Locked',
+        disabled: !unlocked,
+        onClick: () => onPick(id),
+      }),
+    ]);
+    body.append(card);
+  }
+
+  footer.append(h('button', { text: 'Back', onClick: onBack }));
+  return root;
+}
+
+// ---------------------------------------------------------------------------
+// Commander Ability loadout — the bounded pre-run build
+// ---------------------------------------------------------------------------
+
+export function loadoutScreen(
+  profile: CommanderProfile,
+  regionId: RegionId,
+  onStart: () => void,
+  rerender: () => void,
+  onBack: () => void,
+): HTMLElement {
+  const region = regionDef(regionId);
+  const { root, body, footer } = screenShell(
+    'Commander Loadout',
+    `Deploying to ${region.name} — equip up to ${COMMANDER.abilitySlots} abilities within ${COMMANDER.loadoutPoints} points`,
+    null,
+    'loadout',
+  );
+
+  const used = loadoutPointsUsed(profile.loadout);
+  body.append(
+    h('div', { className: 'card' }, [
+      h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: 'Commander' })]),
+      h('div', { className: 'chip-row' }, [
+        chip('intel', `${profile.xp} XP available`, 'Commander XP unlocks new abilities'),
+        chip('slots', `${profile.loadout.length}/${COMMANDER.abilitySlots} slots`),
+        chip('coin', `${used}/${COMMANDER.loadoutPoints} points`),
+      ]),
+      h('div', {
+        className: 'hint',
+        text:
+          'Abilities are permanent once unlocked and freely swappable between runs — but the ' +
+          'equipped loadout is locked in when the run starts.',
+      }),
+    ]),
+  );
+
+  for (const id of COMMANDER_ABILITY_ORDER) {
+    const def = COMMANDER_ABILITIES[id];
+    const unlocked = profile.unlockedAbilities.includes(id);
+    const equipped = profile.loadout.includes(id);
+    const rows: HTMLElement[] = [
+      h('div', { className: 'card-head' }, [
+        icon(unlocked ? (equipped ? 'check' : 'star') : 'lock'),
+        h('h3', { text: def.name }),
+      ]),
+      h('p', { text: def.desc }),
+      h('div', { className: 'chip-row' }, [
+        chip('coin', `${def.points} points`, 'Loadout points this ability consumes'),
+        ...(unlocked ? [] : [chip('intel', `${def.xpCost} XP to unlock`)]),
+      ]),
+    ];
+    if (unlocked) {
+      const next = equipped
+        ? profile.loadout.filter((a) => a !== id)
+        : [...profile.loadout, id];
+      const block = equipped ? null : loadoutBlockReason(profile, next);
+      rows.push(
+        h('button', {
+          className: equipped ? '' : 'primary',
+          text: equipped ? 'Unequip' : (block ?? 'Equip'),
+          disabled: !equipped && block !== null,
+          onClick: () => {
+            if (setLoadout(profile, next)) rerender();
+          },
+        }),
+      );
+    } else {
+      const block = unlockBlockReason(profile, id);
+      rows.push(
+        h('button', {
+          className: 'primary',
+          text: block === null ? `Unlock — ${def.xpCost} XP` : block,
+          disabled: block !== null,
+          onClick: () => {
+            if (unlockAbility(profile, id)) rerender();
+          },
+        }),
+      );
+    }
+    body.append(h('div', { className: unlocked ? 'card' : 'card locked' }, rows));
+  }
+
+  footer.append(
+    h('button', { text: 'Back', onClick: onBack }),
+    h('button', {
+      className: 'primary launch',
+      text: `Start Run — ${region.name}`,
+      onClick: onStart,
+    }),
+  );
+  return root;
 }
 
 // ---------------------------------------------------------------------------
@@ -388,6 +566,8 @@ const AAR_CARD_ICONS: Record<AarCardKind, IconName> = {
   capacity: 'anchor',
   research: 'flask',
   info: 'alert',
+  salvage: 'crate',
+  rescue: 'star',
 };
 
 export function aarScreen(
@@ -494,7 +674,22 @@ export function aarScreen(
     if (report.insurancePaid > 0) {
       animStat('  of which underwriting', report.insurancePaid, (v) => `$${v}`);
     }
-    animStat('Intel gained', report.intelEarned, (v) => `+${v}`);
+    if (s.wreckageSpawned > 0) {
+      animStat(
+        'Wreckage recovered',
+        s.wreckageRecovered,
+        (v) => `${v}/${s.wreckageSpawned}`,
+        s.wreckageRecovered > 0 ? 'good' : '',
+      );
+    }
+    if (s.survivorsSpawned > 0) {
+      animStat(
+        'Crews rescued',
+        s.survivorsRescued,
+        (v) => `${v}/${s.survivorsSpawned}`,
+        s.survivorsLost > 0 ? 'bad' : 'good',
+      );
+    }
     animStat(
       'Confidence',
       report.confidenceAfter,
@@ -622,7 +817,11 @@ export function aarScreen(
     h('button', { text: 'Download game log', onClick: () => downloadGameLog(c) }),
     h('button', {
       className: 'primary',
-      text: report.campaignOver ? 'Final Report' : 'Continue to Intelligence & Research',
+      text: report.campaignOver
+        ? 'Final Report'
+        : report.draftSize > 0
+          ? 'Continue to Technology Draft'
+          : 'Continue to Preparation',
       onClick: onContinue,
     }),
   );
@@ -687,18 +886,6 @@ export function aarScreen(
 // Research — an interactive tech tree
 // ---------------------------------------------------------------------------
 
-const CATEGORY_ICONS: Record<CounterCategoryId, IconName> = {
-  missileDefense: 'missile',
-  mineWarfare: 'mine',
-  torpedoWarfare: 'sonar',
-  antiSurface: 'turret',
-  counterArtillery: 'turret',
-  concealment: 'eye',
-  electronicDefense: 'jam',
-  damageControl: 'shield',
-  support: 'anchor',
-};
-
 const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
   escortInterceptor: 'missile',
   baseInterceptor: 'turret',
@@ -748,17 +935,6 @@ const TACTIC_KIND_LABELS: Record<TacticKind, string> = {
   coordination: 'Coordinated fire',
   mode: 'Operating mode',
 };
-
-type NodeState = 'done' | 'active' | 'ready' | 'known' | 'locked';
-
-function researchNodeState(c: CampaignState, id: ResearchId): NodeState {
-  const entry = RESEARCH_INDEX[id];
-  if (!entry) return 'locked';
-  if (hasResearch(c, id)) return 'done';
-  if (c.activeResearch?.id === id) return 'active';
-  if (entry.requires.some((r) => !hasResearch(c, r))) return 'locked';
-  return canStartResearch(c, id).ok ? 'ready' : 'known';
-}
 
 /** Human summary of what a node's tier assignments / grants do (hardware
  *  performance vs targets vs ammo — distinct from tactic behavior). */
@@ -815,215 +991,139 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
   return tags;
 }
 
-/** One row of researchable entries (the branch's Nodes or its Tactics). */
-function entryRow(
-  c: CampaignState,
-  label: string,
-  entries: readonly CounterNodeDef[],
-  chained: boolean,
-  branchIcon: IconName,
-  rerender: () => void,
-): HTMLElement {
-  const nodes = h('div', { className: 'tech-nodes' });
-  entries.forEach((def, i) => {
-    const state = researchNodeState(c, def.id);
-    if (i > 0 && chained) {
-      const prevDone = hasResearch(c, entries[i - 1].id);
-      nodes.append(h('div', { className: prevDone ? 'tech-connector done' : 'tech-connector' }));
-    } else if (i > 0) {
-      nodes.append(h('div', { className: 'tech-gap' }));
-    }
-    const orbIcon =
-      state === 'done' ? 'check' : state === 'active' ? 'flask' : state === 'locked' ? 'lock' : branchIcon;
-    const costEl = def.granted
-      ? h('div', { className: 'tech-cost done', text: 'built-in' })
-      : state === 'done'
-        ? h('div', { className: 'tech-cost done', text: 'deployed' })
-        : state === 'active'
-          ? h('div', { className: 'tech-cost active', text: 'in progress' })
-          : h('div', { className: 'tech-cost' }, [icon('intel'), h('span', { text: `${def.cost}` })]);
-    nodes.append(
-      clickable(h(
-        'div',
-        {
-          className: `tech-node ${state}${selectedResearch === def.id ? ' selected' : ''}`,
-          onClick: () => {
-            selectedResearch = selectedResearch === def.id ? null : def.id;
-            revealResearchDetail = selectedResearch !== null;
-            rerender();
-          },
-        },
-        [
-          h('div', { className: 'orb' }, [icon(orbIcon)]),
-          h('div', { className: 'tech-name', text: def.name }),
-          costEl,
-        ],
-      )),
-    );
-  });
-  return h('div', { className: 'tech-row' }, [
-    h('div', { className: 'tech-row-label', text: label }),
-    nodes,
+/** The technology a run currently holds, grouped by category — the read-only
+ *  build overview shown beneath the draft. Replaces the old browsable tech
+ *  tree: there is nothing to buy here any more, only what the drafts built. */
+function ownedTechSummary(c: CampaignState): HTMLElement {
+  const wrap = h('div', { className: 'card' }, [
+    h('div', { className: 'card-head' }, [icon('check'), h('h3', { text: 'Technology held this run' })]),
   ]);
+  const owned = c.completedResearch.filter((id) => RESEARCH_INDEX[id]);
+  if (owned.length === 0) {
+    wrap.append(h('p', {
+      className: 'hint',
+      text: 'Nothing drafted yet — every technology this run uses will come from post-round drafts.',
+    }));
+    return wrap;
+  }
+  for (const category of CATEGORY_ORDER) {
+    const inCategory = owned.filter((id) => RESEARCH_INDEX[id].branch.category === category);
+    if (inCategory.length === 0) continue;
+    const row = h('div', { className: 'chip-row' });
+    for (const id of inCategory) {
+      const entry = RESEARCH_INDEX[id];
+      row.append(chip(BRANCH_ICONS[entry.branch.id], entry.def.name, entry.def.desc));
+    }
+    wrap.append(
+      h('div', { className: 'hint', text: COUNTER_CATEGORY_NAMES[category] }),
+      row,
+    );
+  }
+  return wrap;
 }
 
-export function researchScreen(
+/** The mandatory post-round technology draft. The player MUST take one option
+ *  (no skipping, no banking); the pick activates immediately. The only escape
+ *  hatch is an exhausted catalogue, which offers nothing to take. */
+export function draftScreen(
   c: CampaignState,
-  onContinue: () => void,
-  rerender: () => void,
+  onPicked: () => void,
   onQuit: () => void,
 ): HTMLElement {
+  const draft = c.pendingDraft;
   const { root, body, footer } = screenShell(
-    'Intelligence & Research',
-    'One project at a time; results arrive after the next transit',
+    `Technology Draft — Round ${draft?.round ?? c.round - 1}`,
+    'Select exactly one recovered technology — it activates immediately',
     c,
-    'research',
+    'draft',
   );
 
-  if (c.activeResearch && RESEARCH_INDEX[c.activeResearch.id]) {
-    const entry = RESEARCH_INDEX[c.activeResearch.id];
+  if (!draft) {
+    // Defensive: routed here without a pending draft — let the player through.
+    body.append(h('p', { className: 'hint', text: 'No draft is pending.' }));
+    footer.append(h('button', { className: 'primary', text: 'Continue to Preparation', onClick: onPicked }));
+    return root;
+  }
+
+  if (draft.recoveredUnits > 0) {
     body.append(
-      h('div', { className: 'card research active-banner' }, [
-        h('div', { className: 'card-head' }, [
-          icon('flask', 'spin-slow'),
-          h('h3', { text: `In progress: ${entry.def.name} (${entry.branch.name})` }),
-        ]),
-        h('p', { text: 'The lab will deliver after the next transit. Choose wisely what the convoy must survive until then.' }),
-        h('div', { className: 'bar stripes' }, [h('div', { className: 'fill accent', attrs: { style: 'width:60%' } })]),
+      h('div', { className: 'card salvage' }, [
+        h('div', { className: 'card-head' }, [icon('crate'), h('h3', { text: 'Salvage analysis' })]),
+        h('p', {
+          text:
+            `${draft.recoveredUnits} wreckage field${draft.recoveredUnits === 1 ? '' : 's'} recovered last round. ` +
+            'Recovered enemy technology widens the draft and steers it toward counters for the ' +
+            'threat families your escorts actually brought home.',
+        }),
       ]),
+    );
+  } else {
+    body.append(
+      h('div', {
+        className: 'hint',
+        text:
+          'No wreckage came home last round — the engineers still have two proposals on the ' +
+          'table. Recovering wreckage widens future drafts and improves their quality.',
+      }),
     );
   }
 
-  // --- The catalogue: Category → Branch → Nodes / Tactics ---------------------
-  const tree = h('div', { className: 'tech-tree' });
-  const branchEls: Partial<Record<CounterBranchId, HTMLElement>> = {};
-  for (const category of CATEGORY_ORDER) {
-    const branches = Object.values(COUNTER_BRANCHES).filter((b) => b.category === category);
-    if (branches.length === 0) continue;
-    tree.append(
-      h('div', { className: 'tech-category-label' }, [
-        icon(CATEGORY_ICONS[category]),
-        h('span', { text: COUNTER_CATEGORY_NAMES[category] }),
+  if (draft.options.length === 0) {
+    body.append(
+      h('div', { className: 'card' }, [
+        h('div', { className: 'card-head' }, [icon('check'), h('h3', { text: 'Catalogue exhausted' })]),
+        h('p', {
+          text: 'Every technology this region can use is already in the fleet. The engineers stand down.',
+        }),
       ]),
     );
-    for (const branch of branches) {
-      const rows: HTMLElement[] = [
-        h('div', { className: 'branch-head' }, [
-          icon(BRANCH_ICONS[branch.id]),
-          h('span', { className: 'branch-name', text: branch.name }),
-        ]),
-        branchTagRow(c, branch),
-        h('div', { className: 'hint', text: branch.short }),
-        entryRow(c, 'Nodes', branch.nodes, true, BRANCH_ICONS[branch.id], rerender),
-      ];
-      if (branch.tactics.length > 0) {
-        rows.push(
-          entryRow(
-            c,
-            branch.tacticStyle === 'parallel' ? 'Tactics (parallel paths)' : 'Tactics',
-            branch.tactics,
-            branch.tacticStyle === 'ladder',
-            BRANCH_ICONS[branch.id],
-            rerender,
-          ),
-        );
-      }
-      const branchEl = h('div', { className: 'counter-branch' }, rows);
-      branchEls[branch.id] = branchEl;
-      tree.append(branchEl);
-    }
+    footer.append(
+      h('button', {
+        className: 'primary',
+        text: 'Continue to Preparation',
+        onClick: () => {
+          if (dismissEmptyDraft(c)) onPicked();
+        },
+      }),
+    );
+    return root;
   }
-  body.append(tree);
 
-  // --- Detail panel for the selected node ----------------------------------------
-  const selectedEntry = selectedResearch ? RESEARCH_INDEX[selectedResearch] : undefined;
-  if (selectedResearch && selectedEntry) {
-    const id = selectedResearch;
-    const def = selectedEntry.def;
-    const branch = selectedEntry.branch;
-    const state = researchNodeState(c, id);
-    const check = canStartResearch(c, id);
-    const shouldReveal = revealResearchDetail;
-    revealResearchDetail = false;
-    let status: string;
-    switch (state) {
-      case 'done':
-        status = def.granted
-          ? 'Built-in — active whenever the branch is equipped.'
-          : 'Deployed — this capability is active on every equipped instance of the branch.';
-        break;
-      case 'active':
-        status = 'In progress — the lab delivers after the next transit.';
-        break;
-      case 'locked': {
-        const missing = selectedEntry.requires.filter((r) => !hasResearch(c, r));
-        status = `Requires ${missing.map((m) => RESEARCH_INDEX[m]?.def.name ?? m).join(' + ')} first.`;
-        break;
-      }
-      default:
-        status = check.ok
-          ? 'The lab is ready to begin immediately.'
-          : check.reason === 'A project is already underway'
-            ? 'The lab is already committed to another project this round.'
-            : check.reason === 'Not enough intel'
-              ? `Not enough intel — you have ${c.intel} of ${def.cost}.`
-              : check.reason ?? '';
-    }
-    const infoBits: HTMLElement[] = [
-      h('h3', { text: def.name }),
+  const optionRow = h('div', { className: 'grid-2 draft-options' });
+  for (const id of draft.options) {
+    const entry = RESEARCH_INDEX[id];
+    const info = draftOptionInfo(id);
+    if (!entry || !info) continue;
+    const def = entry.def;
+    const branch = entry.branch;
+    const bits: HTMLElement[] = [
+      h('div', { className: 'card-head' }, [
+        icon(BRANCH_ICONS[branch.id]),
+        h('h3', { text: def.name }),
+      ]),
       h('div', {
         className: 'hint',
         text:
           `${branch.name} · ${PLATFORM_LABELS[branch.platform]} · ` +
-          (selectedEntry.isTactic
-            ? TACTIC_KIND_LABELS[(def as CounterTacticDef).kind]
-            : 'Hardware node'),
+          (entry.isTactic ? TACTIC_KIND_LABELS[(def as CounterTacticDef).kind] : 'Hardware node'),
       }),
       h('p', { text: def.desc }),
+      branchTagRow(c, branch),
     ];
     const effectText = nodeEffectSummary(def);
-    if (effectText) {
-      infoBits.push(h('div', { className: 'hint', text: `Sets: ${effectText}` }));
-    }
-    infoBits.push(h('div', { className: 'hint status', text: status }));
-    const detail =
-      h('div', { className: `tech-detail ${state}` }, [
-        h('div', { className: 'tech-detail-orb' }, [icon(BRANCH_ICONS[branch.id])]),
-        h('div', { className: 'tech-detail-info' }, infoBits),
-        h('div', { className: 'tech-detail-action' }, [
-          def.granted ? chip('check', 'built-in') : chip('intel', `${def.cost} intel`, 'Project cost'),
-          h('button', {
-            className: 'primary',
-            text:
-              state === 'done'
-                ? def.granted ? 'Built-in ✓' : 'Deployed ✓'
-                : state === 'active'
-                  ? 'In progress…'
-                  : 'Begin research',
-            disabled: !check.ok,
-            onClick: () => {
-              if (startResearch(c, id)) rerender();
-            },
-          }),
-        ]),
-      ]);
-    // Open the dossier inline, right under the branch the node lives in — no
-    // scrolling to the bottom of the screen to read or buy it.
-    const host = branchEls[branch.id];
-    if (host) host.after(detail);
-    else body.append(detail);
-    if (shouldReveal) {
-      // Double-rAF: game.ts restores the old scrollTop right after the swap,
-      // and this scroll must land after that restoration.
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' })),
-      );
-    }
-  } else {
-    tree.append(
-      h('div', { className: 'tech-detail empty hint', text: 'Select a project above to review its dossier.' }),
+    if (effectText) bits.push(h('div', { className: 'hint', text: `Sets: ${effectText}` }));
+    bits.push(
+      h('button', {
+        className: 'primary',
+        text: `Draft ${def.name}`,
+        onClick: () => {
+          if (selectDraftOption(c, id)) onPicked();
+        },
+      }),
     );
+    optionRow.append(h('div', { className: 'card draft-option' }, bits));
   }
+  body.append(optionRow, ownedTechSummary(c));
 
   footer.append(
     h('button', {
@@ -1032,7 +1132,7 @@ export function researchScreen(
       attrs: { style: 'margin-right:auto' },
       onClick: onQuit,
     }),
-    h('button', { className: 'primary', text: 'Continue to Preparation', onClick: onContinue }),
+    h('div', { className: 'hint', text: 'The draft is mandatory — select one to continue.' }),
   );
   return root;
 }
@@ -1277,7 +1377,7 @@ export function prepScreen(
     let buyLabel: string;
     if (block === null) buyLabel = `Equip class — $${cost}`;
     else if (block === 'Not enough cash') buyLabel = `Need $${cost}`;
-    else if (block.startsWith('Requires research')) buyLabel = block;
+    else if (block.startsWith('Requires technology')) buyLabel = block;
     else if (block === 'No module slots free on this class') buyLabel = 'No slots free';
     else buyLabel = block;
     modGrid.append(
@@ -1313,7 +1413,7 @@ export function prepScreen(
       className: 'hint',
       text:
         `Refits apply to every ${activeDef.name} you own (${Math.max(1, c.fleet[activeClass])} hull(s)) — pricing scales with the fleet. ` +
-        'Modules unlock through research first, then compete for the class’s limited slots — no hull can carry every counter. ' +
+        'Modules unlock through the technology draft first, then compete for the class’s limited slots — no hull can carry every counter. ' +
         'Unequip to swap loadouts freely (you get the fitting cost back), and note a fitted module raises the price of buying a new hull of that class.',
     }),
   );
@@ -1567,8 +1667,8 @@ export function prepScreen(
       `${c.ammo}`,
       'Shared magazine for every launcher — each interceptor fired, from a battery or an escort, expends one round. Unused rounds carry over.',
       {
-        label: `Buy 5 — $${ECONOMY.ammoCost * 5}`,
-        disabled: c.cash < ECONOMY.ammoCost * 5,
+        label: `Buy 5 — $${ammoUnitCost(c) * 5}`,
+        disabled: c.cash < ammoUnitCost(c) * 5,
         onClick: () => {
           if (buyAmmo(c, 5)) rerender();
         },
@@ -1791,41 +1891,73 @@ export function prepScreen(
 }
 
 // ---------------------------------------------------------------------------
-// Game over
+// Run over — defeat resets the region; victory unlocks the next one.
+// Either way the Commander keeps everything the run taught them.
 // ---------------------------------------------------------------------------
 
-export function gameOverScreen(c: CampaignState, onNewCampaign: () => void): HTMLElement {
+export function runOverScreen(
+  c: CampaignState,
+  settlement: RunSettlement | null,
+  onContinue: () => void,
+): HTMLElement {
+  const region = regionDef(c.regionId);
+  const victory = c.runOutcome === 'victory';
   const { root, body, footer } = screenShell(
-    'Campaign Over',
-    'The consortium has withdrawn its backing',
+    victory ? `${region.name} Secured` : 'Regional Run Lost',
+    victory
+      ? 'The completion watermark was reached — the region is yours'
+      : c.defeatCause === 'quota'
+        ? 'The shipping quota was missed and the consortium pulled out'
+        : 'Confidence collapsed — the crews will no longer sail',
     null,
-    'gameover',
+    'runover',
   );
   const totalDelivered = c.history.reduce((a, r) => a + r.delivered, 0);
   const totalLost = c.history.reduce((a, r) => a + r.lost, 0);
   const totalValue = c.history.reduce((a, r) => a + r.valueDelivered, 0);
+  const totalWreckage = Object.values(c.wreckageRecovered).reduce((a, b) => a + b, 0);
   body.append(
     h('div', { className: 'stat-grid' }, [
       stat('Final score', `${c.score}`),
-      stat('Rounds survived', `${c.history.length}`),
+      stat('Rounds fought', `${c.history.length}`),
       stat('Ships delivered', `${totalDelivered}`, 'good'),
       stat('Ships lost', `${totalLost}`, 'bad'),
       stat('Cargo value moved', `${totalValue}`),
-      stat('Peak convoy capacity', `${c.capacity}`),
+      stat('Wreckage recovered', `${totalWreckage}`),
+      stat('Crews rescued', `${c.crewRescue.rescued}`, c.crewRescue.rescued > 0 ? 'good' : ''),
+      stat('Crews lost', `${c.crewRescue.lost}`, c.crewRescue.lost > 0 ? 'bad' : ''),
     ]),
+  );
+  if (settlement && settlement.xpEarned > 0) {
+    body.append(
+      h('div', { className: 'card capacity' }, [
+        h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: `Commander XP earned: +${settlement.xpEarned}` })]),
+        h('p', {
+          text: settlement.regionUnlocked
+            ? `New region unlocked: ${REGIONS[settlement.regionUnlocked]?.name ?? settlement.regionUnlocked}. ` +
+              'Commander XP can unlock new abilities from the loadout screen.'
+            : 'Commander XP persists through every defeat — spend it on new abilities from the loadout screen.',
+        }),
+      ]),
+    );
+  }
+  body.append(
     h('div', { className: 'card' }, [
-      h('div', { className: 'card-head' }, [icon('anchor'), h('h3', { text: 'The strait remembers' })]),
+      h('div', { className: 'card-head' }, [icon('anchor'), h('h3', { text: victory ? 'The lane holds' : 'The strait remembers' })]),
       h('p', {
-        text:
-          'Confidence in the operation collapsed and the shipping lanes closed. ' +
-          'The enemy doctrine you faced was shaped by every convoy you ran — a different ' +
-          'campaign will breed a different predator.',
+        text: victory
+          ? 'The fleet, cash and technology built during this run retire with it — the next region ' +
+            'starts from its own footing, and only the Commander carries forward. That is the shape ' +
+            'of the war: familiarity persists; the build does not.'
+          : `The next attempt at ${region.name} restarts at round 1 with a fresh fleet and a fresh ` +
+            'enemy. Nothing the Commander earned is lost — and the enemy you just taught is gone ' +
+            'with the run; a new attempt breeds a new predator.',
       }),
     ]),
   );
   footer.append(
     h('button', { text: 'Download game log', onClick: () => downloadGameLog(c) }),
-    h('button', { className: 'primary', text: 'New Campaign', onClick: onNewCampaign }),
+    h('button', { className: 'primary', text: 'Return to Command', onClick: onContinue }),
   );
   return root;
 }

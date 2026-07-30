@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import { evolveEnemy, newEvolution, planRound, targetingSkill } from '../src/sim/evolution';
 import { newCampaign, planCurrentRound } from '../src/sim/campaign';
-import { migrateCampaign } from '../src/platform/save';
+import { migrateRun } from '../src/platform/save';
 import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../src/data/enemyBranches';
 import { ENEMY_ECONOMY } from '../src/data/tuning';
 import type { EnemyBranchKey } from '../src/data/enemyBranches';
@@ -458,16 +458,16 @@ describe('economy drives the round plan', () => {
     expect(plan.mines.length).toBe(0);
   });
 
-  it('never sails an empty round for a save made before the economy existed', () => {
-    // A pre-economy save has no committed purchases. Without catch-up
-    // procurement the planner would field nothing and the player would resume
-    // into an empty strait — a silent, campaign-ruining regression.
-    const legacy = migrateCampaign({
-      version: 2,
-      seed: 'legacy-economy',
+  it('never sails an empty round for a save with no committed purchases', () => {
+    // A healed save can arrive with an economy that has bought nothing for
+    // this round (its purchases were backfilled, not planned). Without
+    // catch-up procurement the planner would field nothing and the player
+    // would resume into an empty strait — a silent, run-ruining regression.
+    const healed = migrateRun({
+      version: 4,
+      seed: 'unplanned-economy',
       round: 8,
       phase: 'prep',
-      completedResearch: ['sensors1', 'intercept1', 'mines1'],
       evolution: {
         tracks: { saturation: 90, guidance: 70, mines: 60, lowSig: 40 },
         firstSeen: { missile: 1, guidedMissile: 2, mine: 3 },
@@ -476,12 +476,13 @@ describe('economy drives the round plan', () => {
         formationTell: null,
       },
     })!;
-    expect(legacy.evolution.economy).toBeDefined();
-    const plan = planRound(legacy, makeRng('legacy-plan'));
+    expect(healed.evolution.economy).toBeDefined();
+    expect(healed.evolution.economy.plannedForRound).toBe(0);
+    const plan = planRound(healed, makeRng('healed-plan'));
     expect(plan.spawns.length).toBeGreaterThan(0);
-    expect(legacy.evolution.economy.committed).toBeGreaterThan(0);
+    expect(healed.evolution.economy.committed).toBeGreaterThan(0);
     // And the round it planned for is recorded, so it does not re-buy.
-    expect(legacy.evolution.economy.plannedForRound).toBe(8);
+    expect(healed.evolution.economy.plannedForRound).toBe(8);
   });
 
   it('is deterministic: the same seed reproduces the same procurement', () => {

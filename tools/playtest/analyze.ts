@@ -42,15 +42,13 @@ export interface RoundRow {
   mineDetectPct: number | null;
   confidenceDelta: number;
   netCash: number;
-  netIntel: number;
   cashOnHand: number;
-  intelOnHand: number;
 }
 
 /** Why a campaign stopped. Distinguishing these matters: a run that ended
  *  because the fleet was wiped out is a LOSS, not a survival, and conflating
  *  them makes a failing build look healthy. */
-export type EndReason = 'confidence-collapse' | 'fleet-wiped' | 'round-cap';
+export type EndReason = 'confidence-collapse' | 'quota-failed' | 'fleet-wiped' | 'round-cap';
 
 export interface CampaignAnalysis {
   persona: string;
@@ -143,12 +141,11 @@ export function analyzeCampaign(
     campaignOver: boolean;
     score: number;
     cash: number;
-    intel: number;
     endReason: EndReason;
   },
   /** Resources held after each round (not part of RoundTelemetry), so the
    *  report can show whether the player is actually spending. */
-  onHand: { cash: number; intel: number }[] = [],
+  onHand: { cash: number }[] = [],
 ): CampaignAnalysis {
   const rows: RoundRow[] = [];
   const lossesByBranch: Record<string, number> = {};
@@ -175,9 +172,7 @@ export function analyzeCampaign(
       mineDetectPct: r.minesTotal > 0 ? Math.round((r.minesRevealed / r.minesTotal) * 100) : null,
       confidenceDelta: r.confidenceAfter - r.confidenceBefore,
       netCash: r.cashEarned,
-      netIntel: r.intelEarned,
       cashOnHand: onHand[rows.length]?.cash ?? 0,
-      intelOnHand: onHand[rows.length]?.intel ?? 0,
     });
   }
 
@@ -342,7 +337,7 @@ export function analyzeCampaign(
 
   // --- Hoarding ------------------------------------------------------------
   // Piling up unspent resources = nothing worth buying, or enemy already solved.
-  const hoarding = final.cash > 1500 || final.intel > 200;
+  const hoarding = final.cash > 1500;
 
   // --- Verdict -------------------------------------------------------------
   let verdict: Verdict;
