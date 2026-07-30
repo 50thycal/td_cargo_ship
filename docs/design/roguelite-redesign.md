@@ -11,6 +11,7 @@ Implementation-ready living design document for the roguelite progression redesi
 - Related design decisions are added to the same branch and PR over time.
 - Separate design initiatives should use separate branches and draft PRs.
 - Implementation work should reference the finalized design PR rather than relying on scattered chat history.
+- Implementation must begin from the current game code, including the individual-escort architecture merged in PR #28.
 
 ## Vision
 
