@@ -2,17 +2,20 @@
 // The view owns nothing about game rules — it feeds TransitCommands into
 // stepTransit on a fixed timestep and draws whatever the sim state says.
 
-import { COMBAT, SIM, WORLD } from '../data/tuning';
+import { COMBAT, SIM, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { stepTransit } from '../sim/transit';
+import { escortStatus, resolveEscortOrder, type EscortStatus } from '../sim/escortOrders';
 import type { RNG } from '../sim/rng';
 import type {
   AutoSystem,
+  Escort,
   Ship,
   TargetPriority,
   Threat,
   TransitCommand,
   TransitState,
 } from '../sim/types';
+import { Camera } from './camera';
 import { h } from './dom';
 
 /** Placeable abilities/weapons the HUD can arm; the next map tap places them. */
@@ -42,11 +45,27 @@ const TARGET_PRIORITY_HINT: Record<TargetPriority, string> = {
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
-const SCALE = CANVAS_W / WORLD.width; // 0.64
-const OFFSET_Y = (CANVAS_H - WORLD.height * SCALE) / 2;
+/** Pointer travel (canvas px) beyond which a press is a DRAG, not a tap. Below
+ *  it the gesture issues an order; above it, it pans the map. */
+const DRAG_THRESHOLD = 7;
+
+/** Colour per escort activity — the same coding in the roster panel and on the
+ *  map label, so a glance at either reads the same. */
+const ACTIVITY_COLORS: Record<string, string> = {
+  escorting: '#9fe0ff',
+  recovering: '#f0be5c',
+  rescuing: '#7ee0d6',
+  engaging: '#ff9e6e',
+  moving: '#9fe0ff',
+  holding: '#8fe0a8',
+  lost: '#8a9099',
+};
+/** Tap tolerance in canvas pixels — converted to world units through the
+ *  camera, so the target you can hit stays the same size on screen at any
+ *  zoom level. */
+const TAP_RADIUS_PX = 27;
 /** Second tap within this long (ms) counts as a double-tap → station the escort
  *  (pause it). A lone tap after the window sends it and it resumes forward. */
-const DOUBLE_MS = 300;
 
 const SHIP_COLORS: Record<string, string> = {
   cargo: '#6fb1e0',
@@ -60,6 +79,7 @@ interface VisualEffect {
   y: number;
   start: number;
   duration: number;
+  /** Radius in WORLD units; scaled by the camera when drawn. */
   maxRadius: number;
 }
 
@@ -88,8 +108,21 @@ export class TransitView {
   private tutorialDismissed = false;
   /** The escort the player has tapped to command (null = none). */
   private selectedEscort: number | null = null;
-  /** A first escort-destination tap awaiting a possible second (double) tap. */
-  private escortTap: { x: number; y: number; escortId: number; timer: number } | null = null;
+  /** The map camera (zoom / pan / smoothing). */
+  private readonly camera = new Camera(
+    { width: WORLD.width, height: WORLD.height },
+    { width: CANVAS_W, height: CANVAS_H },
+  );
+  /** Live pointers, for drag-to-pan and pinch-zoom. */
+  private readonly pointers = new Map<number, { x: number; y: number }>();
+  /** The press in progress: where it started, and whether it has travelled far
+   *  enough to be a drag. A press only issues an order if it never became one. */
+  private press: { id: number; startX: number; startY: number; dragging: boolean } | null = null;
+  /** Distance between the two pinch fingers on the previous move event. */
+  private pinchDist = 0;
+  /** Destination markers, kept briefly after an order so the player sees where
+   *  they just sent a ship even once it has arrived. */
+  private orderMarkers: { x: number; y: number; kind: string; at: number; escortId: number }[] = [];
   /** An armed placeable ability: the next map tap places it. */
   private armedAbility: ArmedAbility | null = null;
   /** Depth-charge shot ids whose detonation blast has been drawn. */
@@ -103,6 +136,13 @@ export class TransitView {
   private hudQuota!: HTMLElement;
   private hudAmmo!: HTMLElement;
   private selInfo!: HTMLElement;
+  /** The escort roster: one row per ship, showing name, status and damage.
+   *  This is the panel that answers "why is that one sitting there". */
+  private escortPanel!: HTMLElement;
+  private readonly escortRows = new Map<number, { row: HTMLElement; name: HTMLElement; status: HTMLElement; bar: HTMLElement }>();
+  private centreBtn!: HTMLButtonElement;
+  private zoomInBtn!: HTMLButtonElement;
+  private zoomOutBtn!: HTMLButtonElement;
   private ecmBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
   private sonarBtn!: HTMLButtonElement;
@@ -156,6 +196,10 @@ export class TransitView {
     }
 
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('pointermove', this.onPointerMove);
+    this.canvas.addEventListener('pointerup', this.onPointerUp);
+    this.canvas.addEventListener('pointercancel', this.onPointerUp);
+    this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.lastNow = performance.now();
     requestAnimationFrame(this.frame);
   }
@@ -249,6 +293,38 @@ export class TransitView {
       autoGroup.append(btn);
     }
 
+    // Camera controls. Zooming in to work an escort and back out to read the
+    // battle is a core loop now, so it gets first-class buttons rather than
+    // relying on a wheel the player may not have.
+    this.zoomOutBtn = h('button', {
+      className: 'hud-btn',
+      text: '－',
+      onClick: () => this.camera.zoomBy(1 / 1.35, CANVAS_W / 2, CANVAS_H / 2),
+    });
+    this.zoomOutBtn.title = 'Zoom out (mouse wheel / pinch)';
+    this.zoomInBtn = h('button', {
+      className: 'hud-btn',
+      text: '＋',
+      onClick: () => this.camera.zoomBy(1.35, CANVAS_W / 2, CANVAS_H / 2),
+    });
+    this.zoomInBtn.title = 'Zoom in (mouse wheel / pinch)';
+    this.centreBtn = h('button', {
+      className: 'hud-btn',
+      text: 'CONVOY',
+      onClick: () => {
+        const c = this.convoyCentre();
+        if (this.camera.isFollowing()) {
+          // Second press releases the camera and shows the whole strait again.
+          this.camera.resetToFit();
+          this.showToast('Camera released — whole strait in view');
+        } else {
+          this.camera.follow(c.x, c.y);
+          this.showToast('Camera centred on the convoy');
+        }
+      },
+    });
+    this.centreBtn.title = 'Centre the camera on the convoy (press again to view the whole strait)';
+
     this.hudBottom.append(
       this.ecmBtn,
       this.scanBtn,
@@ -259,8 +335,73 @@ export class TransitView {
       this.targetBtn,
       autoGroup,
       h('span', { className: 'spacer' }),
+      h('div', { className: 'hud-group' }, [this.zoomOutBtn, this.zoomInBtn, this.centreBtn]),
       h('div', { className: 'hud-group' }, [this.pauseBtn, this.speedBtn]),
     );
+
+    // The escort roster. Every ship, always visible, always saying what it is
+    // doing — so the player never has to hunt the map to find out why one is
+    // sitting still. Tapping a row selects that escort and brings the camera
+    // to her, which is the fastest way to take command of a specific ship.
+    this.escortPanel = h('div', { attrs: { id: 'escort-panel' } });
+    this.elements.push(this.escortPanel);
+  }
+
+  /** Centre of the live convoy — what the camera follows and what "return to
+   *  escort duty" aims at. Falls back to the escorts, then the map centre. */
+  private convoyCentre(): { x: number; y: number } {
+    const ships = this.state.ships.filter((s) => s.alive && !s.delivered && s.spawned);
+    const pool: { x: number; y: number }[] = ships.length > 0
+      ? ships
+      : this.state.escorts.filter((e) => e.alive);
+    if (pool.length === 0) return { x: WORLD.width / 2, y: WORLD.height / 2 };
+    return {
+      x: pool.reduce((sum, p) => sum + p.x, 0) / pool.length,
+      y: pool.reduce((sum, p) => sum + p.y, 0) / pool.length,
+    };
+  }
+
+  /** Rebuild the escort roster rows in place (only when the flotilla changes)
+   *  and refresh their live text every frame. */
+  private updateEscortPanel(): void {
+    const alive = this.state.escorts.filter((e) => e.alive);
+    // Drop rows for escorts that have been lost.
+    for (const [id, entry] of this.escortRows) {
+      if (!alive.some((e) => e.id === id)) {
+        entry.row.remove();
+        this.escortRows.delete(id);
+      }
+    }
+    for (const escort of alive) {
+      let entry = this.escortRows.get(escort.id);
+      if (!entry) {
+        const name = h('span', { className: 'escort-name' });
+        const status = h('span', { className: 'escort-status' });
+        const bar = h('div', { className: 'escort-hp-fill' });
+        const row = h('div', {
+          className: 'escort-row',
+          onClick: () => {
+            this.selectedEscort = this.selectedEscort === escort.id ? null : escort.id;
+            if (this.selectedEscort !== null) this.camera.centreOn(escort.x, escort.y);
+          },
+        }, [
+          h('div', { className: 'escort-row-head' }, [name, status]),
+          h('div', { className: 'escort-hp' }, [bar]),
+        ]);
+        entry = { row, name, status, bar };
+        this.escortRows.set(escort.id, entry);
+        this.escortPanel.append(row);
+      }
+      const st = escortStatus(this.state, escort);
+      entry.name.textContent = escort.name;
+      entry.status.textContent =
+        st.progress !== null ? `${st.label} ${Math.round(st.progress * 100)}%` : st.label;
+      entry.row.className = `escort-row${this.selectedEscort === escort.id ? ' selected' : ''}`;
+      entry.row.setAttribute('data-activity', st.activity);
+      const frac = Math.max(0, escort.hp / escort.maxHp);
+      entry.bar.style.width = `${frac * 100}%`;
+      entry.bar.className = `escort-hp-fill${frac > 0.5 ? '' : frac > 0.25 ? ' warn' : ' bad'}`;
+    }
   }
 
   /** Cycle Proximity → Protect Ships → Threat Level → Proximity, and let the
@@ -308,13 +449,20 @@ export class TransitView {
       smoke: 'Tap the water to lay the defensive smoke',
       dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
     };
+    const selected = t.escorts.find((e) => e.id === this.selectedEscort && e.alive);
     this.selInfo.textContent = this.armedAbility
       ? armedHints[this.armedAbility]
-      : this.selectedEscort !== null
-        ? 'Escort selected — tap to send · double-tap to pause'
+      : selected
+        ? `${selected.name} — tap water to move · wreck/crew to work it · convoy to rejoin`
         : t.jammingSeconds > 0
           ? `⚠ SENSOR JAMMING — ${Math.ceil(t.jammingSeconds)}s`
           : '';
+    this.selInfo.classList.toggle('escort-selected', !!selected && !this.armedAbility);
+
+    this.updateEscortPanel();
+    this.centreBtn.classList.toggle('armed', this.camera.isFollowing());
+    this.zoomInBtn.disabled = this.camera.zoom >= this.camera.maxZoom() - 1e-4;
+    this.zoomOutBtn.disabled = this.camera.isFitted();
 
     this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
     this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
@@ -397,21 +545,80 @@ export class TransitView {
     this.armedAbility = this.armedAbility === ability ? null : ability; // toggle
   }
 
-  private cancelEscortTap(): void {
-    if (this.escortTap) {
-      clearTimeout(this.escortTap.timer);
-      this.escortTap = null;
-    }
+  /** Canvas-space coordinates for a pointer event (the canvas is letterboxed
+   *  and scaled by CSS, so client pixels are not canvas pixels). */
+  private canvasPoint(ev: PointerEvent | WheelEvent): { x: number; y: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: ((ev.clientX - rect.left) / rect.width) * CANVAS_W,
+      y: ((ev.clientY - rect.top) / rect.height) * CANVAS_H,
+    };
   }
 
   private onPointerDown = (ev: PointerEvent): void => {
     ev.preventDefault(); // keep taps from starting scroll/zoom gestures on iOS
+    this.canvas.setPointerCapture?.(ev.pointerId);
+    const p = this.canvasPoint(ev);
+    this.pointers.set(ev.pointerId, p);
+    if (this.pointers.size === 2) {
+      // Second finger down: this is a pinch, not a tap. Abandon the press.
+      const [a, b] = [...this.pointers.values()];
+      this.pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+      this.press = null;
+      return;
+    }
+    this.press = { id: ev.pointerId, startX: p.x, startY: p.y, dragging: false };
+  };
+
+  private onPointerMove = (ev: PointerEvent): void => {
+    if (!this.pointers.has(ev.pointerId)) return;
+    const p = this.canvasPoint(ev);
+    const prev = this.pointers.get(ev.pointerId)!;
+    this.pointers.set(ev.pointerId, p);
+
+    // Two fingers: pinch to zoom about the midpoint between them.
+    if (this.pointers.size === 2) {
+      const [a, b] = [...this.pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (this.pinchDist > 0 && d > 0) {
+        this.camera.zoomBy(d / this.pinchDist, (a.x + b.x) / 2, (a.y + b.y) / 2);
+      }
+      this.pinchDist = d;
+      return;
+    }
+
+    if (!this.press || this.press.id !== ev.pointerId) return;
+    const travelled = Math.hypot(p.x - this.press.startX, p.y - this.press.startY);
+    if (!this.press.dragging && travelled > DRAG_THRESHOLD) this.press.dragging = true;
+    // Once it is a drag it pans the map — the press will not issue an order.
+    if (this.press.dragging) this.camera.panByScreen(p.x - prev.x, p.y - prev.y);
+  };
+
+  private onPointerUp = (ev: PointerEvent): void => {
+    const p = this.pointers.get(ev.pointerId);
+    this.pointers.delete(ev.pointerId);
+    if (this.pointers.size < 2) this.pinchDist = 0;
+    if (!this.press || this.press.id !== ev.pointerId) return;
+    const wasDrag = this.press.dragging;
+    this.press = null;
+    // A drag moved the camera; it was never an order.
+    if (wasDrag || !p) return;
+    this.handleTap(p.x, p.y);
+  };
+
+  private onWheel = (ev: WheelEvent): void => {
+    ev.preventDefault();
+    const p = this.canvasPoint(ev);
+    // Normalise across deltaMode (pixel / line / page) so a notch is a notch.
+    const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? CANVAS_H : 1;
+    this.camera.zoomBy(Math.exp((-ev.deltaY * unit) / 400), p.x, p.y);
+  };
+
+  /** A tap that was not a drag: resolve it to an action. */
+  private handleTap(cx: number, cy: number): void {
     if (this.paused || this.state.over) return;
-    const rect = this.canvas.getBoundingClientRect();
-    const cx = ((ev.clientX - rect.left) / rect.width) * CANVAS_W;
-    const cy = ((ev.clientY - rect.top) / rect.height) * CANVAS_H;
-    const wx = cx / SCALE;
-    const wy = (cy - OFFSET_Y) / SCALE;
+    const wx = this.camera.screenToWorldX(cx);
+    const wy = this.camera.screenToWorldY(cy);
 
     // 0) If an ability/weapon is armed, this tap places it where the player
     //    touched. Scan: the Y picks a lane. ECM: a plane deploys to the tapped
@@ -428,8 +635,10 @@ export class TransitView {
       return;
     }
 
-    // Generous mobile-friendly tap radius (in world units).
-    const tapRadius = 42 / SCALE;
+    // Tap tolerance is a constant number of SCREEN pixels, converted to world
+    // units through the camera — so what the player can hit stays the same
+    // size under their finger however far they have zoomed in or out.
+    const tapRadius = TAP_RADIUS_PX * this.camera.worldPerPixel();
 
     // 1) A tap near an incoming missile fires an interceptor at it. When several
     //    missiles are bunched under one tap, which one wins depends on the
@@ -515,9 +724,11 @@ export class TransitView {
       }
     }
 
-    // 3) A tap near a living escort selects it (only escorts are player-directed).
+    // 3) A tap near a living escort selects it. Selection PERSISTS: it survives
+    //    issuing orders, so a player can work one ship through several moves
+    //    without re-finding it. Tapping the selected escort again releases it.
     let bestEscort: number | null = null;
-    let bestEscortD = tapRadius;
+    let bestEscortD = tapRadius * 1.4; // escorts are small; be generous
     for (const escort of this.state.escorts) {
       if (!escort.alive) continue;
       const d = Math.hypot(escort.x - wx, escort.y - wy);
@@ -527,39 +738,36 @@ export class TransitView {
       }
     }
     if (bestEscort !== null) {
-      this.cancelEscortTap();
+      const escort = this.state.escorts.find((e) => e.id === bestEscort);
       this.selectedEscort = this.selectedEscort === bestEscort ? null : bestEscort;
+      if (this.selectedEscort !== null && escort) {
+        this.showToast(`${escort.name} selected — tap the map to give her orders`);
+      }
+      this.dismissTutorial();
       return;
     }
 
-    // 4) With an escort selected, an open-water tap sets its destination:
-    //    single tap → move there and resume forward; double-tap → pause there.
+    // 4) With an escort selected, a tap on the map is an ORDER — and what the
+    //    player tapped decides which one. Tapping the thing you want worked
+    //    (a wreckage field, a crew in the water, the convoy) beats having to
+    //    know that all of them are really "move here and hold".
     if (this.selectedEscort !== null) {
       const escortId = this.selectedEscort;
-      const near =
-        this.escortTap &&
-        this.escortTap.escortId === escortId &&
-        Math.hypot(this.escortTap.x - wx, this.escortTap.y - wy) < 70 / SCALE;
-      if (near) {
-        // Second tap → double-tap → station (pause) the escort.
-        this.cancelEscortTap();
-        this.queue({ type: 'moveEscort', escortId, x: wx, y: wy, hold: true });
-        this.showToast('Escort holding position');
-        this.selectedEscort = null;
-      } else {
-        // First tap: wait briefly for a possible second tap before committing
-        // to a plain move (which lets the escort resume forward on arrival).
-        this.cancelEscortTap();
-        const timer = window.setTimeout(() => {
-          this.queue({ type: 'moveEscort', escortId, x: wx, y: wy, hold: false });
-          this.selectedEscort = null;
-          this.escortTap = null;
-        }, DOUBLE_MS);
-        this.escortTap = { x: wx, y: wy, escortId, timer };
-      }
+      const order = resolveEscortOrder(this.state, wx, wy, tapRadius);
+      this.queue({ type: 'moveEscort', escortId, x: order.x, y: order.y, hold: order.hold });
+      const escort = this.state.escorts.find((e) => e.id === escortId);
+      this.showToast(`${escort?.name ?? 'Escort'} — ${order.message.toLowerCase()}`);
+      this.orderMarkers.push({
+        x: order.x,
+        y: order.y,
+        kind: order.kind,
+        at: performance.now(),
+        escortId,
+      });
+      this.dismissTutorial();
       return;
     }
-  };
+  }
 
   private dismissTutorial(): void {
     if (this.tutorialDismissed || !this.tutorialTip) return;
@@ -586,6 +794,17 @@ export class TransitView {
       }
     }
 
+    // Camera: follow the convoy if asked, then ease toward the target. Done
+    // every frame regardless of pause, so panning and zooming stay live while
+    // the player is stopped and thinking.
+    if (this.camera.isFollowing()) {
+      const c = this.convoyCentre();
+      this.camera.updateFollowTarget(c.x, c.y);
+    }
+    this.camera.update(dtReal);
+    // Order markers fade out after a few seconds.
+    this.orderMarkers = this.orderMarkers.filter((m) => now - m.at < 4000);
+
     this.processEvents(now);
     this.render(now);
     this.updateHud();
@@ -604,7 +823,10 @@ export class TransitView {
     if (this.destroyed) return;
     this.destroyed = true;
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
-    this.cancelEscortTap();
+    this.canvas.removeEventListener('pointermove', this.onPointerMove);
+    this.canvas.removeEventListener('pointerup', this.onPointerUp);
+    this.canvas.removeEventListener('pointercancel', this.onPointerUp);
+    this.canvas.removeEventListener('wheel', this.onWheel);
     for (const el of this.elements) el.remove();
   }
 
@@ -678,6 +900,24 @@ export class TransitView {
         case 'flakKill':
           this.showToast('Flak downed an enemy aircraft');
           break;
+        case 'wreckageSpawned':
+          this.showToast('Recoverable wreckage in the water — hold an escort inside it');
+          break;
+        case 'wreckageRecovered':
+          this.showToast('Wreckage recovered — it will shape tonight’s technology draft');
+          break;
+        case 'wreckageExpired':
+          this.showToast('Wreckage sank before it could be recovered');
+          break;
+        case 'survivorsSpawned':
+          this.showToast(`Survivors from ${ev.shipName ?? 'a lost ship'} in the water!`);
+          break;
+        case 'survivorsRescued':
+          this.showToast(`${ev.shipName ?? 'The'} crew pulled from the water`);
+          break;
+        case 'survivorsLost':
+          this.showToast(`${ev.shipName ?? 'A'} crew was lost to the water`);
+          break;
         case 'techDebut':
           if (ev.detail === 'guidedMissile') this.showToast('Warning: missile is maneuvering!');
           else if (ev.detail === 'torpedo') this.showToast('Torpedo in the water — air defense cannot touch it!');
@@ -709,7 +949,7 @@ export class TransitView {
           y: shot.targetY,
           start: now,
           duration: 650,
-          maxRadius: shot.blastRadius * SCALE,
+          maxRadius: shot.blastRadius,
         });
       }
     }
@@ -728,7 +968,7 @@ export class TransitView {
           y: prev.y,
           start: now,
           duration: 550,
-          maxRadius: threat.kind === 'mine' ? 42 : 26,
+          maxRadius: threat.kind === 'mine' ? 66 : 41,
         });
       }
     }
@@ -742,7 +982,7 @@ export class TransitView {
           y: ship.y,
           start: now,
           duration: 800,
-          maxRadius: 55,
+          maxRadius: 86,
         });
       }
     }
@@ -756,7 +996,7 @@ export class TransitView {
           y: escort.y,
           start: now,
           duration: 800,
-          maxRadius: 48,
+          maxRadius: 75,
         });
       }
     }
@@ -773,11 +1013,20 @@ export class TransitView {
   // Rendering
   // -------------------------------------------------------------------------
 
+  /** World → canvas. Everything drawn goes through these, so zoom and pan are
+   *  a property of the camera rather than something each draw call handles. */
   private sx(wx: number): number {
-    return wx * SCALE;
+    return this.camera.worldToScreenX(wx);
   }
+
   private sy(wy: number): number {
-    return wy * SCALE + OFFSET_Y;
+    return this.camera.worldToScreenY(wy);
+  }
+
+  /** Canvas pixels per world unit right now — for sizing sprites and rings
+   *  that should keep their WORLD size as the player zooms. */
+  private get scale(): number {
+    return this.camera.zoom;
   }
 
   private render(now: number): void {
@@ -834,7 +1083,7 @@ export class TransitView {
         ctx.setLineDash([6, 9]);
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(gx, gy, COMBAT.artillery.range[gun.variant] * SCALE, 0, Math.PI * 2);
+        ctx.arc(gx, gy, COMBAT.artillery.range[gun.variant] * this.scale, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -884,7 +1133,105 @@ export class TransitView {
     exitGrad.addColorStop(0, 'rgba(89, 217, 140, 0.0)');
     exitGrad.addColorStop(1, 'rgba(89, 217, 140, 0.28)');
     ctx.fillStyle = exitGrad;
-    ctx.fillRect(this.sx(WORLD.deliverX), OFFSET_Y, CANVAS_W - this.sx(WORLD.deliverX), WORLD.height * SCALE);
+    ctx.fillRect(
+      this.sx(WORLD.deliverX),
+      this.sy(0),
+      CANVAS_W - this.sx(WORLD.deliverX),
+      WORLD.height * this.scale,
+    );
+
+    // Recovery areas — wreckage fields (salvage amber) and survivor areas
+    // (rescue cyan). Both draw their working radius, a center marker, and a
+    // progress ring that visibly resets to zero if every escort leaves.
+    const drawRecoveryArea = (
+      x: number,
+      y: number,
+      radius: number,
+      progress: number,
+      required: number,
+      expiresAt: number,
+      color: string,
+      marker: 'wreck' | 'crew',
+    ): void => {
+      const cx = this.sx(x);
+      const cy = this.sy(y);
+      const r = radius * this.scale;
+      // Fade the area as its lifetime runs out, so "about to sink" is legible.
+      const lifeLeft = Math.max(0, Math.min(1, (expiresAt - t.time) / 20));
+      const alpha = 0.35 + 0.65 * lifeLeft;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color.replace('ALPHA', '0.07');
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color.replace('ALPHA', '0.55');
+      ctx.setLineDash([7, 9]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Progress ring (inner): sweeps as escorts work the area.
+      if (progress > 0) {
+        ctx.strokeStyle = color.replace('ALPHA', '0.95');
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + (progress / required) * Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = color.replace('ALPHA', '0.9');
+      ctx.lineWidth = 2;
+      if (marker === 'wreck') {
+        // Broken-hull diamond.
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 7);
+        ctx.lineTo(cx + 7, cy);
+        ctx.lineTo(cx, cy + 7);
+        ctx.lineTo(cx - 7, cy);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - 3, cy);
+        ctx.lineTo(cx + 3, cy);
+        ctx.stroke();
+      } else {
+        // Life-ring: circle with a bobbing head.
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = color.replace('ALPHA', '0.9');
+        ctx.beginPath();
+        ctx.arc(cx, cy - 1 + Math.sin(now / 260) * 1.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    for (const field of t.wreckage) {
+      if (field.recovered || field.expired) continue;
+      drawRecoveryArea(
+        field.x,
+        field.y,
+        WRECKAGE.radius,
+        field.progress,
+        field.required,
+        field.expiresAt,
+        'rgba(240, 190, 92, ALPHA)',
+        'wreck',
+      );
+    }
+    for (const area of t.survivors) {
+      if (area.rescued || area.lost) continue;
+      drawRecoveryArea(
+        area.x,
+        area.y,
+        SURVIVORS.radius,
+        area.progress,
+        area.required,
+        area.expiresAt,
+        'rgba(126, 224, 214, ALPHA)',
+        'crew',
+      );
+    }
 
     // ECM jamming orbit — drawn around each deployed ECM plane while on station.
     const ecmRadius = t.effects.abilities.ecm.radius;
@@ -895,13 +1242,13 @@ export class TransitView {
       const pulse = 1 + 0.04 * Math.sin(now / 120);
       ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
       ctx.beginPath();
-      ctx.arc(cx, cy, ecmRadius * SCALE * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, ecmRadius * this.scale * pulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(199, 146, 234, 0.5)';
       ctx.setLineDash([6, 8]);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, ecmRadius * SCALE * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, ecmRadius * this.scale * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -910,7 +1257,7 @@ export class TransitView {
     for (const fx of t.areaEffects) {
       const cx = this.sx(fx.x);
       const cy = this.sy(fx.y);
-      const r = fx.radius * SCALE;
+      const r = fx.radius * this.scale;
       const remain = Math.max(0, fx.until - t.time);
       if (fx.kind === 'sonar') {
         ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
@@ -1065,6 +1412,47 @@ export class TransitView {
       this.drawShip(ship);
     }
 
+    // Order confirmations: a ping where the player just sent a ship. It
+    // outlives the order itself for a few seconds, so a tap always produces
+    // visible feedback even if the escort is already standing on the spot.
+    for (const marker of this.orderMarkers) {
+      const age = (now - marker.at) / 4000;
+      const mx = this.sx(marker.x);
+      const my = this.sy(marker.y);
+      const colour =
+        marker.kind === 'recover'
+          ? '240, 190, 92'
+          : marker.kind === 'rescue'
+            ? '126, 224, 214'
+            : marker.kind === 'rejoin'
+              ? '111, 177, 224'
+              : '77, 195, 255';
+      // Expanding ping in the first half-second, then a steady marker fading.
+      const ping = Math.min(1, age * 8);
+      if (ping < 1) {
+        ctx.strokeStyle = `rgba(${colour}, ${0.8 * (1 - ping)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(mx, my, 6 + 26 * ping, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = `rgba(${colour}, ${0.75 * (1 - age)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(mx, my, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mx, my - 11);
+      ctx.lineTo(mx, my - 4);
+      ctx.moveTo(mx, my + 4);
+      ctx.lineTo(mx, my + 11);
+      ctx.moveTo(mx - 11, my);
+      ctx.lineTo(mx - 4, my);
+      ctx.moveTo(mx + 4, my);
+      ctx.lineTo(mx + 11, my);
+      ctx.stroke();
+    }
+
     // Escorts (player-directed). Draw a route to the destination when moving.
     for (const escort of t.escorts) {
       if (!escort.alive) continue; // destroyed escorts leave the map
@@ -1073,13 +1461,17 @@ export class TransitView {
       const isSel = escort.id === this.selectedEscort;
       const disabled = t.time < escort.disabledUntil;
 
+      const status = escortStatus(t, escort);
+
+      // The route it is running. Drawn brighter for the selected ship, and the
+      // marker at the far end says what will happen on arrival.
       if (escort.moveTarget) {
         const tx = this.sx(escort.moveTarget.x);
         const ty = this.sy(escort.moveTarget.y);
         const hold = escort.moveTarget.hold;
-        ctx.strokeStyle = isSel ? 'rgba(77, 195, 255, 0.6)' : 'rgba(120, 180, 220, 0.3)';
+        ctx.strokeStyle = isSel ? 'rgba(77, 195, 255, 0.75)' : 'rgba(120, 180, 220, 0.28)';
         ctx.setLineDash([5, 6]);
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = isSel ? 2 : 1.5;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(tx, ty);
@@ -1110,11 +1502,25 @@ export class TransitView {
         ctx.stroke();
       }
 
+      // SELECTION. The commonest complaint was not knowing which ship was
+      // under command, so the selected escort gets an unmistakable double
+      // ring that pulses — nothing else on the map looks like it.
       if (isSel) {
-        ctx.strokeStyle = '#4dc3ff';
-        ctx.lineWidth = 2;
+        const pulse = 1 + 0.06 * Math.sin(now / 180);
+        ctx.strokeStyle = 'rgba(77, 195, 255, 0.35)';
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.arc(x, y, 22 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#4dc3ff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 22 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        // Bearing pip: which way she is pointed, readable at any zoom.
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(escort.heading) * 22 * pulse, y + Math.sin(escort.heading) * 22 * pulse);
+        ctx.lineTo(x + Math.cos(escort.heading) * 30 * pulse, y + Math.sin(escort.heading) * 30 * pulse);
         ctx.stroke();
       }
 
@@ -1163,7 +1569,7 @@ export class TransitView {
         ctx.strokeStyle = 'rgba(199, 146, 234, 0.14)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(x, y, t.effects.escort.autoRadius * SCALE, 0, Math.PI * 2);
+        ctx.arc(x, y, t.effects.escort.autoRadius * this.scale, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -1175,6 +1581,12 @@ export class TransitView {
         ctx.fillStyle = frac > 0.5 ? '#59d98c' : frac > 0.25 ? '#ffc857' : '#ff6b6b';
         ctx.fillRect(x - 12, y - 16, 24 * frac, 3);
       }
+
+      // NAME, and what she is doing. Every escort carries her name on the map
+      // so the roster panel and the ships are the same fleet in the player's
+      // head; the selected one also says her current job underneath, because
+      // that is the ship they are actively thinking about.
+      this.drawEscortLabel(escort, x, y, isSel, status);
     }
 
     // Revealed torpedoes: a teal underwater runner with a short wake. Hidden
@@ -1214,7 +1626,20 @@ export class TransitView {
       if (threat.kind !== 'attackBoat' || !threat.alive) continue;
       const x = this.sx(threat.x);
       const y = this.sy(threat.y);
-      const ang = Math.atan2(threat.vy, threat.vx);
+      // Boats steer under a turn limit, so heading is real state — a boat
+      // holding station has near-zero velocity but is still pointed somewhere.
+      const ang = threat.heading ?? Math.atan2(threat.vy, threat.vx);
+      // Wake: the visible tell that a boat is a moving hull rather than a
+      // marker that appears alongside. Length tracks actual speed.
+      const wake = Math.min(1, (threat.speed ?? 0) / COMBAT.attackBoat.speed);
+      if (wake > 0.15) {
+        ctx.strokeStyle = `rgba(180, 210, 235, ${0.05 + 0.16 * wake})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - Math.cos(ang) * 26 * wake, y - Math.sin(ang) * 26 * wake);
+        ctx.stroke();
+      }
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(ang);
@@ -1246,19 +1671,58 @@ export class TransitView {
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      // An attached boat draws a grapple line to the hull it is working on, so
-      // "closing" and "alongside and killing her" never look the same.
-      if (threat.engaging) {
-        const victim = t.ships.find((s) => s.id === threat.targetShipId && s.alive);
-        if (victim) {
-          ctx.strokeStyle =
-            threat.boatVariant === 'boarding' ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.7)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
-          ctx.stroke();
-        }
+      // A BOARDING boat that has grappled draws a hard line to the hull — it
+      // is physically attached and the player must break that contact. Gun
+      // boats no longer draw one: they stand off and their rounds crossing the
+      // water are the tell, so "attached" and "shooting at her" never read the
+      // same. A faint target thread shows which hull a gun boat is working.
+      const victim = threat.engaging
+        ? t.ships.find((s) => s.id === threat.targetShipId && s.alive)
+        : undefined;
+      if (victim) {
+        const boarding = threat.boatVariant === 'boarding';
+        ctx.strokeStyle = boarding ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.22)';
+        ctx.lineWidth = boarding ? 2 : 1;
+        if (!boarding) ctx.setLineDash([3, 6]);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Attack-boat rounds in flight. Every point of damage this branch does to
+    // a cargo hull is one of these crossing the water — a tracer for machine
+    // guns, a fatter glowing round for rockets — so a player who loses a ship
+    // to boats watched the rounds come and had the seconds to answer.
+    for (const shot of t.boatShots) {
+      if (!shot.alive) continue;
+      const sxp = this.sx(shot.x);
+      const syp = this.sy(shot.y);
+      const speed = Math.hypot(shot.vx, shot.vy) || 1;
+      const rocket = shot.variant === 'rocket';
+      // Draw as a short streak along the direction of travel so fast rounds
+      // read as motion rather than as a dot that teleports each frame.
+      const trail = rocket ? 13 : 9;
+      const tx = sxp - (shot.vx / speed) * trail;
+      const ty = syp - (shot.vy / speed) * trail;
+      const grad = ctx.createLinearGradient(tx, ty, sxp, syp);
+      grad.addColorStop(0, rocket ? 'rgba(255, 138, 94, 0)' : 'rgba(255, 224, 160, 0)');
+      grad.addColorStop(1, rocket ? 'rgba(255, 158, 110, 0.95)' : 'rgba(255, 236, 180, 0.9)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = shot.size;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(sxp, syp);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      if (rocket) {
+        ctx.fillStyle = 'rgba(255, 190, 130, 0.9)';
+        ctx.beginPath();
+        ctx.arc(sxp, syp, shot.size * 0.7, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -1287,7 +1751,7 @@ export class TransitView {
       if (fx.kind !== 'enemySmoke' || t.time >= fx.until) continue;
       const cx = this.sx(fx.x);
       const cy = this.sy(fx.y);
-      const r = fx.radius * SCALE;
+      const r = fx.radius * this.scale;
       const fade = Math.min(1, (fx.until - t.time) / 5);
       const grad = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
       const tint = fx.blinding ? '190, 178, 168' : '176, 182, 190';
@@ -1329,7 +1793,7 @@ export class TransitView {
       ctx.strokeStyle = 'rgba(255, 138, 94, 0.5)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(ix, iy, COMBAT.artillery.splashRadius * SCALE, 0, Math.PI * 2);
+      ctx.arc(ix, iy, COMBAT.artillery.splashRadius * this.scale, 0, Math.PI * 2);
       ctx.stroke();
       const sx2 = this.sx(shell.x);
       const sy2 = this.sy(shell.y);
@@ -1337,7 +1801,7 @@ export class TransitView {
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(sx2, sy2);
-      ctx.lineTo(sx2 - shell.vx * 0.05 * SCALE, sy2 - shell.vy * 0.05 * SCALE);
+      ctx.lineTo(sx2 - shell.vx * 0.05 * this.scale, sy2 - shell.vy * 0.05 * this.scale);
       ctx.stroke();
     }
 
@@ -1353,7 +1817,7 @@ export class TransitView {
       ctx.strokeStyle = 'rgba(154, 168, 181, 0.4)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(this.sx(shot.targetX), this.sy(shot.targetY), shot.blastRadius * SCALE, 0, Math.PI * 2);
+      ctx.arc(this.sx(shot.targetX), this.sy(shot.targetY), shot.blastRadius * this.scale, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -1632,7 +2096,7 @@ export class TransitView {
           COMBAT.scan.laneHalfWidth * (t.effects.abilities.scan.radius / COMBAT.scan.baseRevealRadius);
         const laneY = this.sy(ac.laneY);
         ctx.fillStyle = 'rgba(77, 195, 255, 0.06)';
-        ctx.fillRect(ax, laneY - laneHalf * SCALE, CANVAS_W - ax, laneHalf * 2 * SCALE);
+        ctx.fillRect(ax, laneY - laneHalf * this.scale, CANVAS_W - ax, laneHalf * 2 * this.scale);
         ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1652,21 +2116,25 @@ export class TransitView {
         ctx.strokeStyle = `rgba(77, 195, 255, ${0.7 * (1 - progress)})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(x, y, fx.maxRadius * SCALE * progress, 0, Math.PI * 2);
+        ctx.arc(x, y, fx.maxRadius * this.scale * progress, 0, Math.PI * 2);
         ctx.stroke();
       } else if (fx.kind === 'intercept') {
         ctx.strokeStyle = `rgba(160, 230, 255, ${1 - progress})`;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(x, y, fx.maxRadius * progress, 0, Math.PI * 2);
+        ctx.arc(x, y, fx.maxRadius * this.scale * progress, 0, Math.PI * 2);
         ctx.stroke();
       } else {
         ctx.fillStyle = `rgba(255, ${140 - 80 * progress}, 60, ${0.8 * (1 - progress)})`;
         ctx.beginPath();
-        ctx.arc(x, y, fx.maxRadius * (0.4 + 0.6 * progress), 0, Math.PI * 2);
+        ctx.arc(x, y, fx.maxRadius * this.scale * (0.4 + 0.6 * progress), 0, Math.PI * 2);
         ctx.fill();
       }
     }
+
+    // Edge arrows for the selected escort and the convoy when they are off the
+    // visible map — drawn last so nothing overlaps them.
+    this.drawOffscreenMarkers();
 
     // Sensor jamming: ENEMY_ATTACKS.md locks this as the one capability with no
     // counter at all, and requires an UNMISSABLE indicator in exchange. A
@@ -1714,6 +2182,99 @@ export class TransitView {
   }
 
   /** A small top-down aircraft silhouette (swept wings), pointed along heading. */
+  /** Edge markers for things that matter but are off the visible map.
+   *
+   *  Zooming in to work one escort is only safe if the player can still find
+   *  the rest of the fleet — without this, "zoom in to manage escorts" trades
+   *  away "zoom out to understand the battle" the moment they lose track of
+   *  where anything is. The selected escort gets a bright arrow; the convoy a
+   *  quiet one. */
+  private drawOffscreenMarkers(): void {
+    if (this.camera.isFitted()) return; // everything is on screen already
+    const ctx = this.ctx;
+    const margin = 26;
+    const arrow = (wx: number, wy: number, colour: string, label: string, strong: boolean): void => {
+      const sx = this.sx(wx);
+      const sy = this.sy(wy);
+      if (sx >= 0 && sx <= CANVAS_W && sy >= 0 && sy <= CANVAS_H) return; // visible
+      // Point from the screen centre toward the target and clamp to the edge.
+      const cx = CANVAS_W / 2;
+      const cy = CANVAS_H / 2;
+      const ang = Math.atan2(sy - cy, sx - cx);
+      const ex = clampNum(cx + Math.cos(ang) * CANVAS_W, margin, CANVAS_W - margin);
+      const ey = clampNum(cy + Math.sin(ang) * CANVAS_H, margin, CANVAS_H - margin);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(ang);
+      ctx.fillStyle = colour;
+      ctx.globalAlpha = strong ? 0.95 : 0.5;
+      ctx.beginPath();
+      ctx.moveTo(11, 0);
+      ctx.lineTo(-7, -7);
+      ctx.lineTo(-7, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      if (strong) {
+        ctx.globalAlpha = 0.95;
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = colour;
+        // Keep the whole name on screen — an arrow at the edge would
+        // otherwise clip the very label that says which ship it points at.
+        const half = ctx.measureText(label).width / 2 + 4;
+        ctx.fillText(
+          label,
+          clampNum(ex, half, CANVAS_W - half),
+          ey + (ey > CANVAS_H / 2 ? -16 : 24),
+        );
+        ctx.textAlign = 'left';
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const selected = this.state.escorts.find((e) => e.id === this.selectedEscort && e.alive);
+    if (selected) arrow(selected.x, selected.y, '#4dc3ff', selected.name, true);
+    const c = this.convoyCentre();
+    arrow(c.x, c.y, '#6fb1e0', 'Convoy', false);
+  }
+
+  /** Name plate under an escort, plus its current job when selected. Drawn in
+   *  screen space at a constant size so it stays legible at every zoom. */
+  private drawEscortLabel(
+    escort: Escort,
+    x: number,
+    y: number,
+    selected: boolean,
+    status: EscortStatus,
+  ): void {
+    const ctx = this.ctx;
+    const lines: { text: string; color: string; size: number }[] = [
+      { text: escort.name, color: selected ? '#9fe0ff' : 'rgba(201, 212, 222, 0.72)', size: 11 },
+    ];
+    if (selected) {
+      const detail =
+        status.progress !== null
+          ? `${status.label} ${Math.round(status.progress * 100)}%`
+          : status.label;
+      lines.push({ text: detail, color: ACTIVITY_COLORS[status.activity], size: 10 });
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    let ly = y + 16;
+    for (const line of lines) {
+      ctx.font = `${line.size}px system-ui, sans-serif`;
+      const w = ctx.measureText(line.text).width;
+      ctx.fillStyle = 'rgba(8, 18, 28, 0.55)';
+      ctx.fillRect(x - w / 2 - 3, ly - 1, w + 6, line.size + 3);
+      ctx.fillStyle = line.color;
+      ctx.fillText(line.text, x, ly);
+      ly += line.size + 4;
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+
   private drawPlane(x: number, y: number, heading: number, color: string): void {
     const ctx = this.ctx;
     ctx.save();
@@ -1787,4 +2348,8 @@ export class TransitView {
       ctx.fillRect(x - 12, y - wid - 10, 24 * frac, 3);
     }
   }
+}
+
+function clampNum(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
 }

@@ -1,12 +1,16 @@
-// Campaign orchestration: the meta-game around each transit. Owns the
-// economy, research pipeline, convoy scaling, campaign confidence, and the
-// glue between transit results and enemy evolution. All mutations validate
-// their inputs so the UI can stay dumb.
+// Regional-run orchestration: the meta-game around each transit. Owns the
+// economy, convoy scaling, run confidence, the mandatory technology draft,
+// the run's victory/defeat conditions, and the glue between transit results
+// and enemy evolution. All mutations validate their inputs so the UI can
+// stay dumb.
 //
-// Research runs on the counter catalogue (data/counters.ts): branches with
-// hardware NODES and TACTICS, multi-prerequisites, and granted built-ins.
-// Equipment purchases are gated on each branch's base node — intel unlocks,
-// cash equips, and neither substitutes for the other.
+// A CampaignState is one TEMPORARY regional run (see types.ts). Permanent
+// progression lives in the Commander Profile (sim/commander.ts) and is only
+// touched at run settlement. Technology comes from the post-round draft
+// (sim/draft.ts) over the counter catalogue (data/counters.ts) — the old
+// paid-research pipeline (spendable intel, one active project, completion
+// delays) is retired. Equipment purchases stay gated on each branch's base
+// node: the draft unlocks, cash equips, and neither substitutes for the other.
 
 import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
@@ -29,11 +33,13 @@ import {
   ESCORT_MODULE_RESEARCH_REQUIREMENT,
   MODULE_RESEARCH_REQUIREMENT,
   RESEARCH_INDEX,
-  type CounterTacticDef,
 } from '../data/counters';
+import { DEV_REGION, regionDef, type RegionId } from '../data/regions';
+import { foldCommanderMods } from '../data/commanderAbilities';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
+import { generateDraft, newThreatPressure } from './draft';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -57,7 +63,10 @@ import type {
   TransitState,
 } from './types';
 
-export const SAVE_VERSION = 3;
+/** Bumped for the roguelite redesign: saves split into Commander Profile +
+ *  Regional Run, research/intel retired, regions and drafts added. Pre-split
+ *  campaign saves are an explicit migration boundary (see platform/save.ts). */
+export const SAVE_VERSION = 4;
 
 const DEFAULT_AUTO_FIRE: Record<AutoSystem, boolean> = {
   escortInterceptor: true,
@@ -68,35 +77,57 @@ const DEFAULT_AUTO_FIRE: Record<AutoSystem, boolean> = {
   counterBattery: true,
 };
 
-export function newCampaign(seed: string): CampaignState {
-  return {
+/** Start a REGIONAL RUN: the real game entry point. The region definition
+ *  supplies the starting state (all provisional numbers, deliberately data-
+ *  driven); the Commander Ability loadout is snapshotted into the run so the
+ *  attempt stays self-contained and deterministic even if the profile's
+ *  loadout changes mid-run. */
+export function newRegionalRun(
+  seed: string,
+  regionId: RegionId,
+  commanderAbilities: readonly string[] = [],
+): CampaignState {
+  const region = regionDef(regionId);
+  const start = region.start;
+  const mods = foldCommanderMods(commanderAbilities);
+  const run: CampaignState = {
     version: SAVE_VERSION,
     seed,
+    regionId: region.id,
+    commanderAbilities: [...commanderAbilities],
     dev: false,
     godMode: false,
     round: 1,
     phase: 'prep',
-    cash: ECONOMY.startCash,
-    intel: ECONOMY.startIntel,
+    cash: start.cash + mods.startCash,
     score: 0,
-    capacity: CAMPAIGN.startCapacity,
-    confidence: CAMPAIGN.startConfidence,
+    capacity: start.capacity,
+    confidence: start.confidence,
     strongStreak: 0,
     campaignOver: false,
-    fleet: { cargo: 15, tanker: 3, freighter: 2 },
-    composition: { cargo: 15, tanker: 3, freighter: 2 },
+    runOutcome: 'active',
+    defeatCause: null,
+    pendingDraft: null,
+    draftHistory: [],
+    threatPressure: {},
+    lastOfferedRound: {},
+    wreckageRecovered: {},
+    crewRescue: { rescued: 0, lost: 0 },
+    profileApplied: false,
+    fleet: { ...start.fleet },
+    composition: { ...start.fleet },
     classModules: { cargo: [], tanker: [], freighter: [] },
     modulePaid: { cargo: {}, tanker: {}, freighter: {} },
     baseModules: [],
     baseModulePaid: {},
     pendingDamage: 0,
     baseDamage: 0,
-    bases: ECONOMY.startBases,
+    bases: start.bases,
     escortUnits: [],
     nextEscortId: 1,
-    ammo: ECONOMY.startAmmo,
-    droneAmmo: ECONOMY.startDroneAmmo,
-    pdAmmo: ECONOMY.startPdAmmo,
+    ammo: start.ammo,
+    droneAmmo: start.droneAmmo,
+    pdAmmo: start.pdAmmo,
     ecmUnlocked: false,
     scanUnlocked: false,
     sonarUnlocked: false,
@@ -107,13 +138,14 @@ export function newCampaign(seed: string): CampaignState {
     formation: 'tight',
     targetPriority: 'proximity',
     completedResearch: [],
-    activeResearch: null,
     roundSpend: {},
     roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0 },
-    evolution: newEvolution(),
+    // Enemy adaptation is scoped to the run and constrained by the region —
+    // a fresh economy every attempt is a design requirement.
+    evolution: newEvolution(region),
     quota: {
       roundsLeft: CAMPAIGN.quotaWindowRounds,
-      pointsNeeded: CAMPAIGN.startCapacity * CAMPAIGN.quotaPerCapacity,
+      pointsNeeded: start.capacity * CAMPAIGN.quotaPerCapacity,
       pointsEarned: 0,
     },
     quotaDifficulty: CAMPAIGN.quotaDifficultyStart,
@@ -121,6 +153,25 @@ export function newCampaign(seed: string): CampaignState {
     telemetry: [],
     lastReport: null,
   };
+  // The region's free starting escorts (the recovery loop needs at least one
+  // hull that can work a field, so real regions never start bare).
+  for (let i = 0; i < start.escorts; i++) {
+    run.escortUnits.push({
+      id: run.nextEscortId++,
+      name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+      modules: [],
+      modulePaid: {},
+      damage: 0,
+    });
+  }
+  return run;
+}
+
+/** Dev/test-compat constructor: a run on the full-roster proving ground with
+ *  no Commander Abilities. The pre-region test suite and headless harness
+ *  keep their old threat dynamics through this. */
+export function newCampaign(seed: string): CampaignState {
+  return newRegionalRun(seed, DEV_REGION, []);
 }
 
 /** Deterministic per-round, per-purpose RNG derived from the campaign seed. */
@@ -201,7 +252,6 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     // than three copies of the same design.
     c.baseModules = ['counterBattery'];
     c.cash = 999_999;
-    c.intel = 9_999;
     c.ammo = 999;
     c.droneAmmo = 999;
     c.pdAmmo = 999;
@@ -282,26 +332,19 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const confidenceBefore = c.confidence;
 
   // --- Economy ---------------------------------------------------------------
-  // Underwriting on hulls lost at sea, paid before anything else so a ruinous
-  // round still leaves something to sail with. See ECONOMY.lossInsurance: this
-  // is the restoring force on the cash axis, and it is what stops a fleet that
-  // crosses its break-even loss rate from being mathematically unable to
-  // recover.
+  // One rule, and the player can do the arithmetic themselves: cargo delivered
+  // pays cash. Nothing else adds to the round's income.
   //
-  // Priced off shipCost — what replacing that hull ACTUALLY costs this player,
-  // fitted modules included — and not off the bare hull. The surcharge is most
-  // of the bill for an equipped fleet: a module-heavy cargo hull replaces at
-  // 165 against a bare one's 80, so the same 40 it earns on delivery leaves the
-  // equipped player break-even at a 19% loss rate rather than 33%. Underwriting
-  // the bare hull would have quietly paid the specialist builds a quarter of
-  // what it paid the empty ones, which is backwards: every build that invests
-  // in its hulls is the one this force exists to catch.
-  let insurancePaid = 0;
-  for (const ship of t.ships) {
-    if (!ship.alive) insurancePaid += shipCost(c, ship.classId) * ECONOMY.lossInsurance;
-  }
-  insurancePaid = Math.round(insurancePaid);
-  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue + insurancePaid;
+  // There used to be a second term here — underwriting that paid back a share
+  // of every hull lost — which existed to stop a fleet past its break-even loss
+  // rate from being mathematically unable to recover. It did that job, but it
+  // did it invisibly: the cash figure moved for reasons the player could not
+  // read off the screen, and "how much did this round actually earn me" stopped
+  // having a simple answer. The same protection now lives somewhere the player
+  // can see it — replacement hulls are priced so that a delivered cargo covers
+  // its own hull (see SHIP_CLASSES.replaceCost) — so a bad round is survivable
+  // because ships are affordable, not because a hidden rebate arrived.
+  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
@@ -316,14 +359,42 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       newDiscoveries.push(key);
     }
   }
-  const intelEarned = Math.min(
-    ECONOMY.intelMaxPerRound,
-    ECONOMY.intelPerRound +
-      ECONOMY.intelPerLoss * s.lost +
-      ECONOMY.intelPerIntercept * s.missilesIntercepted +
-      ECONOMY.intelPerDiscovery * newDiscoveries.length,
-  );
-  c.intel += intelEarned;
+
+  // --- Recovery bookkeeping -----------------------------------------------------
+  // Wreckage feeds the draft below; run totals feed records and telemetry.
+  for (const [branch, units] of Object.entries(s.wreckageByBranch)) {
+    c.wreckageRecovered[branch] = (c.wreckageRecovered[branch] ?? 0) + units;
+  }
+  c.crewRescue.rescued += s.survivorsRescued;
+  c.crewRescue.lost += s.survivorsLost;
+
+  // --- Threat pressure ------------------------------------------------------------
+  // What each enemy branch actually did this round. This is the draft's primary
+  // signal: being hurt by something is what should put its counter on the table,
+  // whether or not the player had escorts free to salvage its wreckage.
+  const encountered = new Set<string>();
+  for (const [branch, outcome] of Object.entries(s.enemyBranch)) {
+    if (outcome.damage <= 0 && outcome.kills <= 0) continue;
+    encountered.add(branch);
+    const p = (c.threatPressure[branch] ??= newThreatPressure());
+    p.rounds++;
+    p.streak = p.lastSeenRound === round - 1 ? p.streak + 1 : 1;
+    p.damage += outcome.damage;
+    p.kills += outcome.kills;
+    p.lastSeenRound = round;
+  }
+  // A branch that fielded units the player shut out entirely still counts as
+  // ENCOUNTERED — surviving a minefield untouched is not evidence you can
+  // afford to ignore mines, and the draft should still know they are out there.
+  for (const key of Object.keys(c.evolution.economy.ledgers)) {
+    if (encountered.has(key)) continue;
+    const fielded = Object.values(c.evolution.economy.ledgers[key].units).reduce((a, b) => a + b, 0);
+    if (fielded <= 0) continue;
+    const p = (c.threatPressure[key] ??= newThreatPressure());
+    p.rounds++;
+    p.streak = p.lastSeenRound === round - 1 ? p.streak + 1 : 1;
+    p.lastSeenRound = round;
+  }
 
   // --- Fleet bookkeeping -------------------------------------------------------
   for (const ship of t.ships) {
@@ -377,6 +448,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   else if (deliveredFraction >= 0.75) confidenceChange += CAMPAIGN.confidenceGoodRound;
   else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
   confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
+  // Crews left in the water bite on top of the loss penalty: the sinking cost
+  // a hull, the abandonment costs trust. This is part of the ordinary disaster
+  // and so sits INSIDE the round floor below. (The rescue credit does not —
+  // see below.)
+  confidenceChange += CAMPAIGN.confidencePerCrewLost * s.survivorsLost;
   // Captures bite on top of that, and OUTSIDE the loss cap — a player already
   // at the cap still feels each hull the enemy sails away with, which is what
   // stops absorbing losses from being an answer to the boarding node.
@@ -390,16 +466,17 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // --- Quota window -----------------------------------------------------------------
   c.quota.pointsEarned += s.valueDelivered;
   c.quota.roundsLeft--;
-  // A quota resolves the moment it is MET — a new, larger one begins next round —
-  // or when its rounds run out (a miss). No more waiting out a window you've
-  // already cleared.
+  // A quota resolves the moment it is MET — a new, larger one begins next
+  // round — or when its rounds run out. Under the roguelite rules a missed
+  // quota is one of the two run-ending failure systems (the other is
+  // confidence): it terminates the regional run rather than costing points.
   const quotaMet = c.quota.pointsEarned >= c.quota.pointsNeeded;
   const quotaEvaluated = quotaMet || c.quota.roundsLeft <= 0;
   const quotaSnapshot = { needed: c.quota.pointsNeeded, earned: c.quota.pointsEarned };
   // Captured before the window resets below (1-based round within the window).
   const quotaWindowRound = CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft);
-  if (quotaEvaluated) {
-    confidenceChange += quotaMet ? CAMPAIGN.confidenceQuotaMet : CAMPAIGN.confidenceQuotaMissed;
+  if (quotaEvaluated && quotaMet) {
+    confidenceChange += CAMPAIGN.confidenceQuotaMet;
   }
 
   // Floor on how far ORDINARY failure can drop confidence in a single round.
@@ -420,6 +497,12 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       : 0;
   const ordinaryLoss = confidenceChange - captureLoss;
   confidenceChange = Math.max(ordinaryLoss, CAMPAIGN.confidenceRoundFloor) + captureLoss;
+  // Crews brought home are credited OUTSIDE the floor, on purpose. Inside it, a
+  // player having the disaster round the floor exists for would get nothing at
+  // all for going back for their people — the floor would simply swallow the
+  // credit — and that is precisely the round where the choice to divert an
+  // escort should still visibly mean something.
+  confidenceChange += CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued;
 
   c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
 
@@ -436,21 +519,15 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     c.strongStreak = 0;
   }
 
-  if (quotaEvaluated) {
+  if (quotaEvaluated && quotaMet) {
     // Rubber-band the difficulty multiplier off how comfortably the window
-    // resolved: an easy clear (big surplus) ratchets it up; a miss (big
-    // shortfall) eases it back down. Each step scales with the margin, capped
-    // so no single window swings it too far.
+    // cleared: an easy clear (big surplus) ratchets it up, capped so no
+    // single window swings it too far. (A miss ends the run outright, so the
+    // old downward ratchet has nothing left to act on.)
     const ratio = quotaSnapshot.needed > 0 ? quotaSnapshot.earned / quotaSnapshot.needed : 1;
-    if (quotaMet) {
-      const surplus = Math.max(0, ratio - 1);
-      const step = Math.min(CAMPAIGN.quotaDifficultyUpStep, surplus * CAMPAIGN.quotaDifficultyUpStep * 2);
-      c.quotaDifficulty = Math.min(CAMPAIGN.quotaDifficultyMax, c.quotaDifficulty + step);
-    } else {
-      const shortfall = Math.max(0, 1 - ratio);
-      const step = Math.min(CAMPAIGN.quotaDifficultyDownStep, shortfall * CAMPAIGN.quotaDifficultyDownStep * 2);
-      c.quotaDifficulty = Math.max(CAMPAIGN.quotaDifficultyMin, c.quotaDifficulty - step);
-    }
+    const surplus = Math.max(0, ratio - 1);
+    const step = Math.min(CAMPAIGN.quotaDifficultyUpStep, surplus * CAMPAIGN.quotaDifficultyUpStep * 2);
+    c.quotaDifficulty = Math.min(CAMPAIGN.quotaDifficultyMax, c.quotaDifficulty + step);
     // Size the next target off the CONVOY, not off what the last window
     // managed to deliver.
     //
@@ -482,20 +559,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       pointsNeeded: Math.max(Math.round(target), Math.round(floor)),
       pointsEarned: 0,
     };
-  }
-
-  // --- Research pipeline -----------------------------------------------------------
-  let researchCompleted: ResearchId | undefined;
-  if (c.activeResearch) {
-    c.activeResearch.roundsLeft--;
-    if (c.activeResearch.roundsLeft <= 0) {
-      researchCompleted = c.activeResearch.id;
-      c.completedResearch.push(researchCompleted);
-      c.activeResearch = null;
-      if (researchCompleted === 'logistics.expandedBerthing') {
-        c.capacity = Math.min(CAMPAIGN.maxCapacity, c.capacity + 5);
-      }
-    }
   }
 
   // --- Score ------------------------------------------------------------------------
@@ -533,7 +596,34 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   };
   evolveEnemy(c.evolution, metrics, roundRng(c, 'evolve'));
 
-  c.campaignOver = c.confidence <= 0;
+  // --- Run outcome ----------------------------------------------------------------
+  // Two failure systems and one completion watermark, checked in that order:
+  // a player who fails the quota on the final round has still failed the
+  // region. Defeat resets the region to round 1 on the next attempt; the
+  // Commander Profile is settled by the caller (applyRunToProfile).
+  const region = regionDef(c.regionId);
+  if (c.confidence <= 0) {
+    c.campaignOver = true;
+    c.runOutcome = 'defeat';
+    c.defeatCause = 'confidence';
+  } else if (quotaEvaluated && !quotaMet) {
+    c.campaignOver = true;
+    c.runOutcome = 'defeat';
+    c.defeatCause = 'quota';
+  } else if (round >= region.completionRound) {
+    c.campaignOver = true;
+    c.runOutcome = 'victory';
+    c.defeatCause = null;
+  }
+
+  // --- Mandatory technology draft ---------------------------------------------------
+  // Every successfully completed round earns one — no skipping, no banking.
+  // A finished run drafts nothing: there is no next round to equip for.
+  if (!c.campaignOver) {
+    c.pendingDraft = generateDraft(c, s.wreckageByBranch, roundRng(c, 'draft'));
+  } else {
+    c.pendingDraft = null;
+  }
 
   // --- Cards --------------------------------------------------------------------------
   const cards: AarCard[] = buildTransitCards(t, newDiscoveries);
@@ -551,12 +641,46 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       body: warning.text,
     });
   }
-  if (researchCompleted && RESEARCH_INDEX[researchCompleted]) {
-    const entry = RESEARCH_INDEX[researchCompleted];
+  // Recovery beats: what the escorts pulled out of the water, and what it
+  // will mean at the draft table.
+  if (s.wreckageRecovered > 0) {
+    const byBranch = Object.entries(s.wreckageByBranch)
+      .map(([branch, units]) => `${units}× ${branch}`)
+      .join(', ');
     cards.push({
-      kind: 'research',
-      title: `Research complete: ${entry.def.name}`,
-      body: `${entry.branch.name} — ${entry.def.desc}`,
+      kind: 'salvage',
+      title: `Wreckage recovered: ${s.wreckageRecovered} field${s.wreckageRecovered === 1 ? '' : 's'}`,
+      body:
+        `Salvage teams brought back ${byBranch}. Recovered enemy technology widens tonight's ` +
+        'draft and steers it toward counters for what was actually recovered.',
+    });
+  }
+  if (s.wreckageExpired > 0 && s.wreckageRecovered === 0) {
+    cards.push({
+      kind: 'salvage',
+      title: 'Wreckage left in the water',
+      body:
+        `${s.wreckageExpired} recoverable field${s.wreckageExpired === 1 ? '' : 's'} sank before ` +
+        'any escort could work them. Holding an escort inside a field recovers it — leaving ' +
+        'resets all progress.',
+    });
+  }
+  if (s.survivorsRescued > 0) {
+    cards.push({
+      kind: 'rescue',
+      title: `Crews rescued: ${s.survivorsRescued}`,
+      body:
+        'Escorts pulled the survivors aboard before the water took them. The families — and ' +
+        'the operators association — will remember it.',
+    });
+  }
+  if (s.survivorsLost > 0) {
+    cards.push({
+      kind: 'rescue',
+      title: `Crews lost in the water: ${s.survivorsLost}`,
+      body:
+        'Survivors went unrescued and the confidence cost lands on top of the sinkings ' +
+        'themselves. An escort holding inside a survivor area brings the crew home.',
     });
   }
   if (capacityIncreased) {
@@ -567,17 +691,45 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     });
   }
   if (quotaEvaluated) {
-    // The window has already rolled over to the next one here, so c.quota now
-    // holds the fresh requirement — tell the player exactly what's next.
-    const next = `New quota: deliver ${c.quota.pointsNeeded} cargo points over the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`;
+    if (quotaMet) {
+      // The window has already rolled over here, so c.quota now holds the
+      // fresh requirement — tell the player exactly what's next.
+      cards.push({
+        kind: 'quota',
+        title: 'Delivery quota met',
+        body:
+          `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, ` +
+          `consortium confidence rises. New quota: deliver ${c.quota.pointsNeeded} cargo points over ` +
+          `the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`,
+      });
+    } else {
+      cards.push({
+        kind: 'quota',
+        title: 'Delivery quota failed — operation terminated',
+        body:
+          `Only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points arrived inside the ` +
+          'window. The consortium has pulled its ships: the regional run is over. The next attempt ' +
+          'restarts this region at round 1 — Commander progression is retained.',
+      });
+    }
+  }
+  if (c.runOutcome === 'defeat' && c.defeatCause === 'confidence') {
     cards.push({
-      kind: 'quota',
-      title: quotaMet ? 'Delivery quota met' : 'Delivery quota missed',
+      kind: 'info',
+      title: 'Confidence exhausted — operation terminated',
       body:
-        (quotaMet
-          ? `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, consortium confidence rises. `
-          : `Delivered only ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points in time — consortium confidence is shaken. `) +
-        next,
+        'Civilian crews and operators are no longer willing to sail. The regional run is over. ' +
+        'The next attempt restarts this region at round 1 — Commander progression is retained.',
+    });
+  }
+  if (c.runOutcome === 'victory') {
+    cards.push({
+      kind: 'capacity',
+      title: `${region.name} secured`,
+      body:
+        `Round ${region.completionRound} cleared — the region's completion watermark. The shipping ` +
+        'lane is considered secured; Commander Experience has been earned, and the next region is ' +
+        'open. Technology and equipment built during this run stay with it.',
     });
   }
   if (!c.campaignOver && c.confidence <= 25) {
@@ -592,12 +744,9 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     round,
     stats: s,
     cashEarned,
-    insurancePaid,
-    intelEarned,
     confidenceChange,
     confidenceAfter: c.confidence,
     capacityIncreased,
-    researchCompleted,
     quota: {
       windowRound: quotaWindowRound,
       earned: quotaSnapshot.earned,
@@ -607,6 +756,8 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     },
     cards,
     campaignOver: c.campaignOver,
+    runOutcome: c.runOutcome,
+    draftSize: c.pendingDraft?.options.length ?? 0,
   };
 
   c.history.push({
@@ -616,7 +767,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     lost: s.lost,
     valueDelivered: s.valueDelivered,
     cashEarned,
-    intelEarned,
   });
 
   // --- Telemetry (downloadable game log) --------------------------------------
@@ -713,16 +863,22 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       damageTaken: Math.round(p.damageTaken),
     })),
     cashEarned,
-    intelEarned,
     confidenceBefore,
     confidenceAfter: c.confidence,
     capacity: c.capacity,
     capacityIncreased,
     basesOwned: c.bases,
     escortsOwned: c.escortUnits.length,
-    researchCompleted: researchCompleted ?? null,
-    activeResearch: c.activeResearch?.id ?? null,
     completedResearch: [...c.completedResearch],
+    wreckageSpawned: s.wreckageSpawned,
+    wreckageRecovered: s.wreckageRecovered,
+    wreckageExpired: s.wreckageExpired,
+    wreckageByBranch: { ...s.wreckageByBranch },
+    recoveryEscortSeconds: Math.round(s.recoveryEscortSeconds * 10) / 10,
+    survivorsSpawned: s.survivorsSpawned,
+    survivorsRescued: s.survivorsRescued,
+    survivorsLost: s.survivorsLost,
+    draftOffered: c.pendingDraft ? [...c.pendingDraft.options] : [],
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
     counters,
@@ -737,40 +893,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.phase = 'aar';
   c.lastReport = report;
   return report;
-}
-
-// ---------------------------------------------------------------------------
-// Research actions
-// ---------------------------------------------------------------------------
-
-export function canStartResearch(c: CampaignState, id: ResearchId): { ok: boolean; reason?: string } {
-  const entry = RESEARCH_INDEX[id];
-  if (!entry) return { ok: false, reason: 'Unknown project' };
-  if (entry.def.granted) return { ok: false, reason: 'Built-in — no research needed' };
-  const eff = researchSet(c);
-  if (eff.has(id)) return { ok: false, reason: 'Already researched' };
-  if (c.activeResearch) return { ok: false, reason: 'A project is already underway' };
-  const missing = entry.requires.find((r) => !eff.has(r));
-  if (missing) {
-    return { ok: false, reason: `Requires ${RESEARCH_INDEX[missing]?.def.name ?? missing}` };
-  }
-  const excludes = (entry.def as CounterTacticDef).excludes;
-  const conflict = excludes?.find((e) => eff.has(e));
-  if (conflict) {
-    return {
-      ok: false,
-      reason: `Mutually exclusive with ${RESEARCH_INDEX[conflict]?.def.name ?? conflict}`,
-    };
-  }
-  if (c.intel < entry.def.cost) return { ok: false, reason: 'Not enough intel' };
-  return { ok: true };
-}
-
-export function startResearch(c: CampaignState, id: ResearchId): boolean {
-  if (!canStartResearch(c, id).ok) return false;
-  c.intel -= RESEARCH_INDEX[id].def.cost;
-  c.activeResearch = { id, roundsLeft: 1 };
-  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -805,7 +927,7 @@ export function moduleBlockReason(
   if (owned.length >= SHIP_CLASSES[classId].slots) return 'No module slots free on this class';
   const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
   if (req && !hasResearch(c, req)) {
-    return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+    return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
   }
   if (c.cash < moduleCost(c, classId, moduleId)) return 'Not enough cash';
   return null;
@@ -906,7 +1028,7 @@ export function escortModuleBlockReason(
       : 'Both specialist slots full — Escort Refit Bay unlocks a third';
   }
   const req = ESCORT_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
   if (c.cash < ESCORT_MODULES[id].cost) return 'Not enough cash';
   return null;
 }
@@ -953,7 +1075,7 @@ export function baseModuleBlockReason(c: CampaignState, id: BaseModuleId): strin
   if (c.baseModules.includes(id)) return 'Already fitted';
   if (c.baseModules.length >= BASE_MODULE_SLOTS) return 'Base loadout slots are full';
   const req = BASE_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires research: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
   if (c.cash < BASE_MODULES[id].cost) return 'Not enough cash';
   return null;
 }
@@ -990,9 +1112,15 @@ export function shipCost(c: CampaignState, classId: ShipClassId): number {
   return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
 }
 
+/** Interceptor round price with the Commander quartermaster modifier baked in
+ *  (exported so the UI quotes the same number the purchase charges). */
+export function ammoUnitCost(c: CampaignState): number {
+  return Math.max(1, Math.round(ECONOMY.ammoCost * foldCommanderMods(c.commanderAbilities ?? []).ammoCost));
+}
+
 export function buyAmmo(c: CampaignState, count: number): boolean {
   if (!Number.isInteger(count) || count <= 0) return false;
-  const cost = ECONOMY.ammoCost * count;
+  const cost = ammoUnitCost(c) * count;
   if (c.cash < cost) return false;
   c.cash -= cost;
   c.ammo += count;
@@ -1127,7 +1255,10 @@ export function escortDamageTotal(c: CampaignState): number {
 
 export function repairCost(c: CampaignState): number {
   const mult = hasResearch(c, 'logistics.expandedBerthing') ? 0.5 : 1;
-  return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult);
+  // Commander modifier applied last, after technology effects — same flow as
+  // combat effects (base → tech → commander).
+  const commander = foldCommanderMods(c.commanderAbilities ?? []).repairCost;
+  return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult * commander);
 }
 
 export function repairFleet(c: CampaignState): boolean {

@@ -205,6 +205,18 @@ anti-missile interceptor).
    confidence hit** (worse than a normal sinking). Defeats "tank the damage and
    push through."
 
+**Engagement model (locked).** A boat is a physical hull, not a marker that
+appears alongside. It accelerates, turns under a rate limit, and navigates
+around its sisters, so every approach has a visible track the player can read
+and answer. Gun boats hold a **stand-off ring beside** their target rather than
+sitting on top of it, and every point of damage they deal arrives as a
+**visible round in flight** — a tracer or a rocket that crosses the water and
+can miss a maneuvering hull. A player must never lose a ship to a boat that
+teleported onto it; losing one is a failure to respond. Boarding boats are the
+single exception to the stand-off: they have to make physical contact, which is
+what their counter-play is about. The times-to-sink above are unchanged and are
+the product of the fire rate and per-round damage in `COMBAT.attackBoat.fire`.
+
 **Tactic ladder** (count & waves — boat verbiage)
 - Single boat per round
 - Several boats per round

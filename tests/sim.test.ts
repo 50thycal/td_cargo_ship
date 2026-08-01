@@ -24,14 +24,25 @@ import {
   resolveTransit,
   setComposition,
   shipCost,
-  startResearch,
   unlockScan,
 } from '../src/sim/campaign';
+import { selectDraftOption } from '../src/sim/draft';
+import { newProfile } from '../src/sim/commander';
+import { FIRST_REGION } from '../src/data/regions';
 import { fitUniformEscorts } from './helpers';
 import { stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution, planRound } from '../src/sim/evolution';
 import { buildTelemetryExport } from '../src/sim/telemetry';
-import { saveCampaign, loadCampaign, clearCampaign, migrateCampaign } from '../src/platform/save';
+import {
+  clearProfile,
+  clearRun,
+  loadProfile,
+  loadRun,
+  migrateProfile,
+  migrateRun,
+  saveProfile,
+  saveRun,
+} from '../src/platform/save';
 import { MODULES, SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
 import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
@@ -58,6 +69,7 @@ function runRound(c: CampaignState, opts: BotOptions): { state: TransitState; re
   const plan = planCurrentRound(c);
   const { state, rng } = createRoundTransit(c, plan);
   let scanUsedAt = -1;
+  let rescueOrderAt = -1;
   while (!state.over) {
     const cmds: TransitCommand[] = [];
     // Fire whenever any launcher (shore battery or escort) is ready.
@@ -77,17 +89,41 @@ function runRound(c: CampaignState, opts: BotOptions): { state: TransitState; re
       cmds.push({ type: 'ability', ability: 'scan', x: 1150, y: WORLD.lanes[1] });
       scanUsedAt = state.time;
     }
+    // Recovery: a defending bot sends its last escort to hold on the newest
+    // survivor area (crews first — they cost confidence) or wreckage field.
+    // This is the roguelite loop's escort-diversion tradeoff, exercised
+    // end-to-end by the same harness that drives the seesaw tests.
+    if (opts.defend && state.time - rescueOrderAt > 2) {
+      const escort = state.escorts.filter((e) => e.alive).at(-1);
+      const target =
+        state.survivors.find((a) => !a.rescued && !a.lost) ??
+        state.wreckage.find((f) => !f.recovered && !f.expired);
+      if (escort && target) {
+        cmds.push({ type: 'moveEscort', escortId: escort.id, x: target.x, y: target.y, hold: true });
+        rescueOrderAt = state.time;
+      }
+    }
     stepTransit(state, cmds, rng);
   }
   const report = resolveTransit(c, state);
   return { state, report };
 }
 
-/** Minimal sensible procurement between rounds: keep enough firepower up. */
+/** Minimal sensible procurement between rounds: keep enough firepower up and
+ *  the fleet replenished. Replacing lost hulls is not optional under the
+ *  roguelite rules — a shrinking convoy walks into the quota failure
+ *  condition all by itself. */
 function botProcure(c: CampaignState): void {
   repairFleet(c);
   buyBase(c); // more shore batteries = higher sustained fire rate
   buyEscort(c);
+  const fleetTotal = (): number => c.fleet.cargo + c.fleet.tanker + c.fleet.freighter;
+  while (fleetTotal() < CAMPAIGN.startCapacity && buyShip(c, 'cargo')) {
+    /* replace losses */
+  }
+  setComposition(c, 'cargo', c.fleet.cargo);
+  setComposition(c, 'tanker', c.fleet.tanker);
+  setComposition(c, 'freighter', c.fleet.freighter);
   while (c.ammo < 22 && buyAmmo(c, 1)) {
     /* top up */
   }
@@ -281,13 +317,12 @@ describe('enemy evolution', () => {
 // ---------------------------------------------------------------------------
 
 describe('campaign', () => {
-  it('awards cash and intel after a round', () => {
+  it('awards cash after a round', () => {
     const c = newCampaign('economy');
     const startCash = c.cash;
     const { report } = runRound(c, { defend: true });
     expect(report.cashEarned).toBeGreaterThan(0);
     expect(c.cash).toBe(startCash + report.cashEarned);
-    expect(report.intelEarned).toBeGreaterThan(0);
   });
 
   it('capacity grows after two consecutive strong rounds', () => {
@@ -320,14 +355,21 @@ describe('campaign', () => {
     expect(c.capacity).toBe(startCapacity + CAMPAIGN.capacityStep);
   });
 
-  it('research takes one full round before completing', () => {
-    const c = newCampaign('research');
-    c.intel = 100;
-    expect(startResearch(c, 'escortInterceptor.precisionGuidance')).toBe(true);
-    expect(c.completedResearch).toHaveLength(0);
+  it('every surviving round earns a mandatory technology draft', () => {
+    const c = newCampaign('draft-pipeline');
+    expect(c.pendingDraft).toBeNull();
     const { report } = runRound(c, { defend: true });
-    expect(report.researchCompleted).toBe('escortInterceptor.precisionGuidance');
-    expect(c.completedResearch).toContain('escortInterceptor.precisionGuidance');
+    expect(c.campaignOver).toBe(false);
+    expect(c.pendingDraft).not.toBeNull();
+    expect(report.draftSize).toBe(c.pendingDraft!.options.length);
+    expect(c.pendingDraft!.options.length).toBeGreaterThanOrEqual(2);
+    // Taking an option activates it immediately for the active run.
+    const pick = c.pendingDraft!.options[0];
+    expect(selectDraftOption(c, pick)).toBe(true);
+    expect(c.completedResearch).toContain(pick);
+    expect(c.pendingDraft).toBeNull();
+    expect(c.draftHistory).toHaveLength(1);
+    expect(c.draftHistory[0].picked).toBe(pick);
   });
 
   it('an undefended campaign eventually collapses', () => {
@@ -462,46 +504,70 @@ describe('economy hardening', () => {
 // ---------------------------------------------------------------------------
 
 describe('anti-snowball: the losing side', () => {
-  it('underwrites hulls lost at sea, so a ruinous round still leaves something to sail with', () => {
-    // Sail into a heavy enemy round undefended and check the report pays out.
-    const c = newDevCampaign('insure-payout', { round: 9, god: false, unlockAll: false });
+  it('round income is cargo delivered and NOTHING else', () => {
+    // The economy's transparency rule. There is no rebate, no underwriting and
+    // no hidden term: a player can multiply what arrived by the delivery rate
+    // and get the number on the report. Checked on a round with real losses,
+    // because the retired mechanic paid out precisely there.
+    const c = newDevCampaign('income-transparent', { round: 9, god: false, unlockAll: false });
     setComposition(c, 'cargo', 8);
     const { state, report } = runRound(c, { defend: false });
+    expect(state.ships.some((s) => !s.alive)).toBe(true); // hulls were lost
+    expect(report.cashEarned).toBe(state.stats.valueDelivered * ECONOMY.cashPerValue);
+  });
+
+  it('a delivered hull earns about what replacing her costs', () => {
+    // This is the restoring force now, and it is one the player can check:
+    // set delivery income against replacement price and the fleet breaks even
+    // around a 50% loss rate, so losing half a convoy is a bad round rather
+    // than the start of an unrecoverable spiral.
+    for (const classId of ['cargo', 'tanker', 'freighter'] as ShipClassId[]) {
+      const def = SHIP_CLASSES[classId];
+      const earns = def.value * ECONOMY.cashPerValue;
+      const breakEven = earns / def.replaceCost;
+      expect(breakEven, `${classId} break-even loss rate`).toBeGreaterThan(0.45);
+      expect(breakEven, `${classId} break-even loss rate`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('a fleet that loses badly can still afford to rebuild', () => {
+    // The property the retired underwriting existed to guarantee, asserted
+    // end-to-end instead of through a payout: sail undefended, lose hulls, and
+    // the round's earnings still cover replacing a meaningful share of them.
+    const c = newDevCampaign('rebuild-after-losses', { round: 9, god: false, unlockAll: false });
+    setComposition(c, 'cargo', 10);
+    const { state, report } = runRound(c, { defend: false });
     const lost = state.ships.filter((s) => !s.alive).length;
-    if (lost === 0) return; // nothing sank; nothing to underwrite
-    const delivered = state.stats.valueDelivered * ECONOMY.cashPerValue;
-    // Everything above the delivery earnings is the underwriting.
-    expect(report.cashEarned).toBeGreaterThan(delivered);
+    expect(lost).toBeGreaterThan(0);
+    const replacements = Math.floor(report.cashEarned / shipCost(c, 'cargo'));
+    // Deliveries in a losing round still fund a real fraction of the rebuild.
+    expect(replacements).toBeGreaterThanOrEqual(Math.floor((state.stats.delivered * 0.9)));
   });
 
-  it('pays out against what replacement ACTUALLY costs, modules included', () => {
-    // The whole point: an equipped fleet replaces at far more than the bare
-    // hull price, and underwriting the bare hull would pay the builds that
-    // invest in their ships a fraction of what it pays the empty ones.
-    const bare = newCampaign('insure-bare');
-    const kitted = newCampaign('insure-kitted');
-    kitted.classModules.cargo = ['selfDefense'];
-    expect(shipCost(kitted, 'cargo')).toBeGreaterThan(shipCost(bare, 'cargo'));
-
-    const payout = (c: CampaignState): number =>
-      shipCost(c, 'cargo') * ECONOMY.lossInsurance;
-    expect(payout(kitted)).toBeGreaterThan(payout(bare));
-  });
-
-  it('never pays enough to make losing a hull profitable', () => {
-    // A restoring force, not an exploit: scuttling for the payout must always
-    // be worse than keeping the ship.
-    const c = newCampaign('insure-exploit');
-    expect(ECONOMY.lossInsurance).toBeLessThan(1);
-    expect(shipCost(c, 'cargo') * ECONOMY.lossInsurance).toBeLessThan(shipCost(c, 'cargo'));
+  it('losing a hull is never profitable — there is no payout at all', () => {
+    const c = newCampaign('no-payout');
+    const plan = { ...planCurrentRound(c), spawns: [], mines: [], debuts: [] };
+    const { state, rng } = createRoundTransit(c, plan);
+    let guard = 0;
+    while (!state.over && guard++ < Math.ceil(SIM.maxTransitTime / SIM.dt) + 10) {
+      stepTransit(state, [], rng);
+    }
+    // Scuttle one hull's worth of cargo before resolving: strictly less income.
+    const delivered = state.stats.valueDelivered;
+    state.stats.valueDelivered = delivered - SHIP_CLASSES.cargo.value;
+    const report = resolveTransit(c, state);
+    expect(report.cashEarned).toBe((delivered - SHIP_CLASSES.cargo.value) * ECONOMY.cashPerValue);
+    expect(report.cashEarned).toBeLessThan(delivered * ECONOMY.cashPerValue);
   });
 
   it('floors ordinary confidence loss so a disaster round is a slope, not a cliff', () => {
-    // Bad round + full loss cap + missed quota all describe the same disaster
-    // and all land together. Unfloored that is -35 against a starting 60, so
-    // two rounds ended a campaign with no round in between to answer in.
+    // Bad round + full loss cap + several crews lost in the water all describe
+    // the same disaster and all land together. Unfloored, that stack can take
+    // most of a starting confidence bar in one round — the floor keeps it the
+    // worst thing in the game while leaving rounds to recover in. (A missed
+    // quota no longer costs confidence at all: it ends the run outright.)
     const unflooredWorstCase =
-      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidenceQuotaMissed;
+      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidencePerCrewLost * 3;
     expect(unflooredWorstCase).toBeLessThan(CAMPAIGN.confidenceRoundFloor);
     // The floor has to leave more than two rounds of headroom from the start.
     expect(CAMPAIGN.startConfidence / Math.abs(CAMPAIGN.confidenceRoundFloor)).toBeGreaterThan(2);
@@ -726,17 +792,18 @@ describe('transit hardening', () => {
     expect(c.quota.pointsNeeded).toBe(Math.round(c.capacity * CAMPAIGN.quotaFloorPerCapacity));
   });
 
-  it('quota difficulty ratchets down on a miss, floored so it never bottoms out at zero', () => {
-    const c = newCampaign('quota-ratchet-down');
-    c.quotaDifficulty = 1.0;
-    const before = c.quotaDifficulty;
-    // Impossible target: guaranteed miss after 3 rounds.
+  it('a missed quota ENDS the regional run (the second failure system)', () => {
+    const c = newCampaign('quota-run-ends');
+    // Impossible target: guaranteed miss when the window's rounds run out.
     c.quota = { roundsLeft: 3, pointsNeeded: 1_000_000, pointsEarned: 0 };
-    for (let r = 0; r < 3; r++) runRound(c, { defend: true });
-    expect(c.quotaDifficulty).toBeLessThan(before);
-    expect(c.quotaDifficulty).toBeGreaterThanOrEqual(0.65); // quotaDifficultyMin
-    // Floored relative to capacity even after a near-zero-output window.
-    expect(c.quota.pointsNeeded).toBeGreaterThanOrEqual(Math.round(c.capacity * 8));
+    let rounds = 0;
+    while (!c.campaignOver && rounds++ < 3) runRound(c, { defend: true });
+    expect(rounds).toBe(3); // mid-window rounds do not end anything
+    expect(c.campaignOver).toBe(true);
+    expect(c.runOutcome).toBe('defeat');
+    expect(c.defeatCause).toBe('quota');
+    // No draft for a dead run — there is no next round to equip for.
+    expect(c.pendingDraft).toBeNull();
   });
 
   it('repeated easy clears keep raising the bar (difficulty climbs, capped)', () => {
@@ -1699,30 +1766,29 @@ describe('air defense & telemetry', () => {
 // ---------------------------------------------------------------------------
 
 describe('save', () => {
-  it('round-trips the campaign state', () => {
-    clearCampaign();
+  it('round-trips the regional-run state', () => {
+    clearRun();
     const c = newCampaign('savegame');
     runRound(c, { defend: true });
-    saveCampaign(c);
-    const loaded = loadCampaign();
+    saveRun(c);
+    const loaded = loadRun();
     expect(loaded).not.toBeNull();
     expect(JSON.stringify(loaded)).toBe(JSON.stringify(c));
-    clearCampaign();
+    clearRun();
   });
 
   it('returns null when nothing is saved', () => {
-    clearCampaign();
-    expect(loadCampaign()).toBeNull();
+    clearRun();
+    expect(loadRun()).toBeNull();
   });
 
-  it('migrates an old / partial save, backfilling missing fields', () => {
-    // A minimal, pre-many-features save (old version, missing most fields).
-    const old = { version: 1, seed: 'legacy', round: 4, phase: 'prep', cash: 500 };
-    const m = migrateCampaign(old)!;
+  it('heals a partial run save, backfilling missing fields', () => {
+    // A minimal save from an earlier build of the redesign (missing fields).
+    const old = { version: 4, seed: 'partial', round: 4, phase: 'prep', cash: 500 };
+    const m = migrateRun(old)!;
     expect(m).not.toBeNull();
-    expect(m.version).toBe(3);
     // Preserved values survive.
-    expect(m.seed).toBe('legacy');
+    expect(m.seed).toBe('partial');
     expect(m.round).toBe(4);
     expect(m.cash).toBe(500);
     // New fields are backfilled to sane defaults.
@@ -1730,26 +1796,66 @@ describe('save', () => {
     expect(m.droneAmmo).toBe(0);
     expect(m.dev).toBe(false);
     expect(m.modulePaid).toEqual({ cargo: {}, tanker: {}, freighter: {} });
-    expect(m.classModules).toEqual({ cargo: [], tanker: [], freighter: [] });
     expect(m.quota.pointsNeeded).toBeGreaterThan(0);
     expect(m.evolution.formationTell).toBe(null);
     expect(Array.isArray(m.history)).toBe(true);
-    // A garbage phase is repaired.
-    expect(migrateCampaign({ seed: 'x', phase: 'nonsense' })!.phase).toBe('prep');
+    expect(m.runOutcome).toBe('active');
+    expect(m.pendingDraft).toBeNull();
+    expect(Array.isArray(m.draftHistory)).toBe(true);
+    expect(typeof m.regionId).toBe('string');
+    // A garbage phase is repaired (including the retired 'research' phase).
+    expect(migrateRun({ seed: 'x', phase: 'research' })!.phase).toBe('prep');
+    expect(migrateRun({ seed: 'x', phase: 'nonsense' })!.phase).toBe('prep');
     // Non-objects are rejected.
-    expect(migrateCampaign(null)).toBeNull();
-    expect(migrateCampaign(42)).toBeNull();
+    expect(migrateRun(null)).toBeNull();
+    expect(migrateRun(42)).toBeNull();
   });
 
-  it('does not clobber existing nested values when migrating', () => {
+  it('does not clobber existing nested values when healing', () => {
     const c = newCampaign('nested');
     c.classModules.cargo = ['selfDefense'];
     c.modulePaid.cargo = { selfDefense: 220 };
     c.evolution.tracks.mines = 55;
-    const m = migrateCampaign(JSON.parse(JSON.stringify(c)))!;
+    const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(m.classModules.cargo).toEqual(['selfDefense']);
     expect(m.modulePaid.cargo).toEqual({ selfDefense: 220 });
     expect(m.evolution.tracks.mines).toBe(55);
+  });
+
+  it('keeps the Commander Profile and the run under separate keys', () => {
+    clearRun();
+    clearProfile();
+    const profile = newProfile();
+    profile.xp = 77;
+    saveProfile(profile);
+    const run = newCampaign('separation');
+    saveRun(run);
+    // Clearing / replacing the RUN never touches the profile.
+    clearRun();
+    expect(loadRun()).toBeNull();
+    expect(loadProfile()!.xp).toBe(77);
+    // And clearing the profile never touches a saved run.
+    saveRun(run);
+    clearProfile();
+    expect(loadProfile()).toBeNull();
+    expect(loadRun()).not.toBeNull();
+    clearRun();
+  });
+
+  it('round-trips and heals the Commander Profile', () => {
+    clearProfile();
+    const p = newProfile();
+    p.xp = 30;
+    p.records.homeStrait = { bestRound: 5, attempts: 2, completions: 0 };
+    saveProfile(p);
+    const loaded = loadProfile()!;
+    expect(JSON.stringify(loaded)).toBe(JSON.stringify(p));
+    // A partial profile heals forward.
+    const healed = migrateProfile({ xp: 12 })!;
+    expect(healed.xp).toBe(12);
+    expect(healed.unlockedRegions).toContain(FIRST_REGION);
+    expect(Array.isArray(healed.loadout)).toBe(true);
+    clearProfile();
   });
 });
 

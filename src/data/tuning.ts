@@ -134,23 +134,68 @@ export const COMBAT = {
    *  and a boat left alive keeps earning. That is why they need their own
    *  weapon: interceptors point at the sky and cannot help here at all. */
   attackBoat: {
-    /** Faster than any cargo hull so a boat can always close and hold station,
-     *  but far slower than a missile — there is time to shoot back. */
+    /** MAX speed. Faster than any cargo hull so a boat can always close and
+     *  hold station, but far slower than a missile — there is time to shoot
+     *  back. A boat accelerates and turns into this rather than snapping to it. */
     speed: 64,
-    /** Standoff it holds once committed. Comfortably inside deck-gun reach
-     *  (medium tier 420) so fielding the counter always gets a shot. */
-    engageRange: 150,
+    /** Acceleration limit (units/s²) and turn-rate limit (radians/s).
+     *
+     *  These two are what make a boat read as a BOAT. The old model set the
+     *  velocity vector straight at the target every tick and then lerped the
+     *  boat's position onto the hull once inside range, so a boat effectively
+     *  teleported alongside and the player never got a run-in to react to.
+     *  Physical motion means an approach has a visible track, a commitment,
+     *  and a turn radius — and it means a boat that picks a new target has to
+     *  actually sail there. */
+    accel: 34,
+    turnRate: 1.9,
+    /** Where a committed boat HOLDS, per variant: the radius of the ring it
+     *  keeps around its target. Gun boats stand off and shoot; a boarding boat
+     *  has to make physical contact, so its ring sits just inside grapple
+     *  range. Nothing may ever sit on top of a hull — see hullBuffer. */
+    standoff: { smallArms: 118, rocket: 158, boarding: 34 },
+    /** Hard floor on how close a boat may come to the hull it is working,
+     *  as a fraction of its standoff ring. Below this it is pushed back out,
+     *  so "alongside" never degenerates into "inside". */
+    hullBuffer: 0.55,
+    /** Clear water a boat keeps from other boats, and how hard it steers to
+     *  hold it — several boats on one hull spread around it instead of
+     *  stacking into a single sprite. */
+    separation: 52,
+    separationWeight: 1.7,
+    /** Minimum angular spacing (radians) between two boats stationed on the
+     *  same hull when their stations are assigned. */
+    stationSpacing: 0.9,
+    /** Max range at which a gun boat opens fire. Comfortably inside deck-gun
+     *  reach (medium tier 420) so fielding the counter always gets a shot. */
+    engageRange: 190,
     /** Contact radius for the boarding grapple. */
     boardRange: 46,
+    /** Boat weapons: every point of cargo damage this branch deals now arrives
+     *  as a VISIBLE projectile that flies from the boat to the hull, rather
+     *  than as an invisible damage-per-second stream applied because the boat
+     *  was nearby. A player who loses a ship to boats should have watched the
+     *  rounds cross the water first.
+     *
+     *  Effective DPS is deliberately BELOW the old contact-damage figures
+     *  (small arms 4.4 → ~3.5, rocket 6.5 → ~5.0) and lower again in practice,
+     *  because rounds now have flight time and can miss a maneuvering hull.
+     *  That is the temporary lethality reduction the movement rework asks for:
+     *  re-measure and re-raise once the new approach model has been played. */
+    fire: {
+      smallArms: { interval: 0.85, damage: 3.0, speed: 330, spread: 10, size: 2 },
+      rocket: { interval: 2.4, damage: 12, speed: 215, spread: 17, size: 3.4 },
+    } as Record<string, { interval: number; damage: number; speed: number; spread: number; size: number }>,
+    /** How close a boat round must pass to a hull to strike it. */
+    projectileHitRadius: 13,
+    /** Seconds a round stays in the water after overshooting its aim point
+     *  before it is culled (keeps a visible miss on screen for a beat). */
+    projectileOvershoot: 0.35,
     /** Hull points per variant. Small-arms dies to ~3 medium deck-gun rounds
      *  (12 damage each), matching "sunk by ~3 anti-boat rounds". Rocket and
      *  boarding hulls are tougher AND take half damage until Armor-Piercing is
      *  researched — that node is what keeps them killable. */
     hp: { smallArms: 34, rocket: 46, boarding: 40 },
-    /** Damage per second poured into the committed hull. Tuned against the
-     *  design's times-to-sink on a 100hp cargo ship: small-arms ~30s,
-     *  rocket ~20s. Boarding boats deal no damage — they take the ship. */
-    dps: { smallArms: 4.4, rocket: 6.5, boarding: 0 },
     /** Sustained contact a boarding boat needs before the hull is captured. */
     boardingSeconds: 15,
     /** Pause after a kill before committing to the next hull. This is the main
@@ -383,7 +428,6 @@ export const COMBAT = {
 
 export const ECONOMY = {
   startCash: 450,
-  startIntel: 0,
   startAmmo: 28,
   /** No drone munitions until the player buys them (and researches drones). */
   startDroneAmmo: 0,
@@ -393,28 +437,9 @@ export const ECONOMY = {
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
-  /** Cash earned per point of cargo value delivered. */
+  /** Cash earned per point of cargo value delivered. The ONLY source of round
+   *  income — see resolveTransit. */
   cashPerValue: 4,
-  /** Fraction of a lost hull's replacement cost the consortium underwrites.
-   *
-   *  This is the anti-snowball restoring force on the CASH axis, and without it
-   *  there wasn't one. SEESAW.md promises the seesaw returns to center from both
-   *  ends, but every mechanism for the losing side acted on something else:
-   *  `dampStruggling` trims the ENEMY's budget, and `intelPerLoss` pays research
-   *  currency. Neither helps an operator who cannot afford to sail — and that is
-   *  what actually ends these campaigns.
-   *
-   *  A cargo hull earns 40 on delivery and costs 80 to replace, so the fleet
-   *  breaks even at a **33% loss rate** and shrinks irreversibly above it: fewer
-   *  hulls deliver less, less delivered buys fewer hulls. Traced across a sweep,
-   *  every collapse ran the same three rounds — ~700 cash and 20 hulls, then
-   *  ~250 and 7, then dead — and nothing in the game pulled back. Underwriting
-   *  half the replacement moves break-even to 50%, so losing half a convoy is a
-   *  bad round rather than a death sentence.
-   *
-   *  Self-limiting by construction: it pays in proportion to what the player is
-   *  losing, so a player who is winning collects almost nothing. */
-  lossInsurance: 0.5,
   ammoCost: 8,
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
@@ -442,12 +467,6 @@ export const ECONOMY = {
   hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
-  /** Intel income. */
-  intelPerRound: 4,
-  intelPerLoss: 6,
-  intelPerIntercept: 1,
-  intelPerDiscovery: 12,
-  intelMaxPerRound: 60,
 } as const;
 
 export const CAMPAIGN = {
@@ -474,7 +493,26 @@ export const CAMPAIGN = {
   confidencePerCapture: -7,
   confidenceCaptureCap: -21,
   confidenceQuotaMet: 10,
-  confidenceQuotaMissed: -18,
+  /** Extra confidence lost per civilian crew left in the water (a survivor
+   *  area that was never rescued). Rescue prevents the penalty entirely —
+   *  that is the whole tactical bargain of diverting an escort to them.
+   *
+   *  RESCALED from -4 when every sinking began leaving a crew. At -4 it was
+   *  priced against a ~55% spawn chance (an expected -2.2 per sinking); once
+   *  every loss reliably produced one, the same number nearly doubled the real
+   *  drag and measurably broke the game — a sweep that finished 8 of 9
+   *  campaigns at the round cap beforehand collapsed 7 of 9 on confidence
+   *  afterwards. Halving it restores the intended pressure while keeping the
+   *  beat on every loss. PROVISIONAL: tune through play. */
+  confidencePerCrewLost: -2,
+  /** Confidence RECOVERED per crew brought home. Deliberately smaller than
+   *  the abandonment penalty: bringing the crew back does not undo losing the
+   *  ship, but visibly rewards the diversion — and gives a player having a
+   *  terrible round something they can still do about it. Credited OUTSIDE
+   *  confidenceRoundFloor (see resolveTransit) so a disaster round cannot
+   *  swallow it, which is exactly the round it matters most in. Rescue is the
+   *  only way confidence moves upward inside a round other than delivering. */
+  confidencePerCrewRescued: 1,
   /** Floor on ordinary confidence lost in ONE round (captures excluded).
    *
    *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
@@ -508,16 +546,23 @@ export const CAMPAIGN = {
    *  exactly — 28% for a build sailing 29.4 hulls of 30.4 capacity, 39% at
    *  24.6, 60% at 19.7 — so equipping the convoy was structurally punished
    *  however cheap the equipment was. Halving every module price made those
-   *  builds worse rather than better, which is what pointed here. */
-  quotaDeliveryFraction: 0.84,
+   *  builds worse rather than better, which is what pointed here.
+   *
+   *  LOWERED from 0.84 for the roguelite rules (PROVISIONAL): a missed quota
+   *  now ENDS the regional run instead of costing 18 confidence, so the same
+   *  bar carries far higher stakes. At 0.84 a healthy defended fleet missed a
+   *  window by 3% and lost the run outright — the failure system should catch
+   *  a player who stops running a real shipping operation, not one having an
+   *  ordinary attritional stretch. Tune with the playable slice. */
+  quotaDeliveryFraction: 0.7,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
   quotaDifficultyMax: 1.6,
-  /** Difficulty ratchets up on an easy clear (big surplus) and down on a miss
-   *  (big shortfall) — a standard rubber-band. Each step is scaled by how far
-   *  over/under the target the window landed, capped at the constant below. */
+  /** Difficulty ratchets up on an easy clear (big surplus) — scaled by how far
+   *  over the target the window landed, capped at this step. There is no
+   *  downward ratchet any more: under the roguelite rules a missed quota ends
+   *  the regional run outright rather than easing the next window. */
   quotaDifficultyUpStep: 0.1,
-  quotaDifficultyDownStep: 0.16,
   /** Hard floor so a single bad round can't trivialize the next quota:
    *  pointsNeeded never drops below capacity * this. */
   quotaFloorPerCapacity: 8,
@@ -525,6 +570,151 @@ export const CAMPAIGN = {
   scorePerValue: 1,
   scorePerRound: 40,
   scorePerIntercept: 3,
+} as const;
+
+/**
+ * Wreckage recovery — the roguelite loop's technology faucet.
+ *
+ * Destroyed PHYSICAL enemy threats may leave a recoverable field; recovering
+ * one requires committing escort time inside it, and what was recovered
+ * weights the post-round technology draft. Every number here is PROVISIONAL —
+ * the design doc defers all recovery balance to playtesting on the working
+ * slice. Tune freely; nothing in the sim hard-codes these.
+ */
+export const WRECKAGE = {
+  /** Chance a player-destroyed threat leaves wreckage, by threat kind. Mines
+   *  that detonate against a hull spent themselves — only SWEPT mines are
+   *  recoverable, which is priced into the mine entry here. */
+  dropChance: {
+    missile: 0.22,
+    guidedMissile: 0.32,
+    mine: 0.38,
+    torpedo: 0.38,
+    attackBoat: 0.55,
+    reconPlane: 0.45,
+    disablingDrone: 0.45,
+  } as Record<string, number>,
+  /** Radius (world units) an escort must hold inside to work the field. */
+  radius: 100,
+  /** Escort-seconds of work one escort needs to recover a field. */
+  recoverSeconds: 12,
+  /** Each escort beyond the first adds this fraction of the base rate —
+   *  two escorts work at 1.6x, three at 2.2x. */
+  extraEscortRate: 0.6,
+  /** Seconds a field stays recoverable before sinking for good. */
+  lifetimeSeconds: 55,
+} as const;
+
+/** Survivor rescue: a sunk civilian hull leaves her crew in the water. Same
+ *  positional recovery mechanics as wreckage; an unrescued crew costs extra
+ *  confidence (CAMPAIGN.confidencePerCrewLost) and a rescue earns some back
+ *  (CAMPAIGN.confidencePerCrewRescued). All PROVISIONAL.
+ *
+ *  EVERY ordinary sinking generates survivors. It used to be a coin flip,
+ *  which made the beat feel arbitrary — sometimes a sinking mattered
+ *  emotionally and sometimes it silently didn't, with nothing on screen
+ *  explaining the difference. A crew in the water every time makes each loss
+ *  land, and gives escorts a standing responsibility beyond shooting things
+ *  down. The exceptions are narrow and deliberate: see spawnSurvivors. */
+export const SURVIVORS = {
+  radius: 100,
+  rescueSeconds: 10,
+  extraEscortRate: 0.6,
+  /** How long a crew stays afloat and reachable. This is the real difficulty
+   *  dial now that every sinking spawns one: it decides how many rescues a
+   *  flotilla can physically service in a bad round, and therefore how much
+   *  the choice between convoy defense, salvage and rescue actually costs. */
+  lifetimeSeconds: 60,
+} as const;
+
+/**
+ * The mandatory post-round technology draft (replaces paid research).
+ *
+ * Breadth scales with recovered wreckage; WEIGHTING reads the run as a whole.
+ * Wreckage alone was too narrow a signal — a player who was mined for three
+ * rounds running but never had an escort to spare for salvage could go the
+ * whole run without ever being offered a mine counter, which is a draft-RNG
+ * loss rather than a played one. So the pool now also weighs what each enemy
+ * branch has actually been doing (appearances, damage, kills), whether the
+ * player already holds an answer to it, and how recently each entry was last
+ * put on the table.
+ *
+ * Randomness is preserved deliberately — the draft still rolls, still offers
+ * imperfect options, and is never guaranteed to hand over the ideal counter.
+ * The pity rule below only guarantees a PATH exists. All PROVISIONAL.
+ */
+export const DRAFT = {
+  /** Options always offered after a successfully completed round. */
+  baseChoices: 2,
+  /** Chance of a THIRD option per wreckage unit recovered that round —
+   *  recovery beyond ~3 units guarantees the wide draft. */
+  thirdChoicePerUnit: 0.34,
+  /** Extra draft weight per recovered unit applied to entries in branches
+   *  that counter the recovered threat's family. */
+  branchWeightPerUnit: 1.25,
+  /** Recovered units beyond this start improving option QUALITY: deeper
+   *  entries in a branch gain weight, so strong recovery rounds skew the
+   *  draft toward later, stronger tech instead of entry nodes. */
+  qualityThreshold: 3,
+  /** Depth weight per excess unit (scaled by how deep the entry sits). */
+  depthWeightPerUnit: 0.3,
+  /** Weight multiplier on remaining same-branch entries after one is drawn,
+   *  so a draft leans toward offering distinct branches. */
+  sameBranchRepeatMult: 0.35,
+
+  // --- Threat-pressure weighting -------------------------------------------
+  /** Weight added per round a countered branch has been ENCOUNTERED. */
+  pressurePerEncounter: 0.5,
+  /** Weight added per hull that branch has sunk or taken. */
+  pressurePerKill: 1.4,
+  /** Weight added per point of hull damage it has dealt. */
+  pressurePerDamage: 0.004,
+  /** Ceiling on the raw pressure weight one branch can contribute, so a
+   *  single dominant threat cannot crowd every other option off the table. */
+  pressureCap: 7,
+  /** Pressure decays with staleness: a branch not seen for this many rounds
+   *  contributes nothing, scaling linearly in between. Answering a threat
+   *  that has stopped appearing is not urgent. */
+  pressureMemoryRounds: 4,
+  /** Multiplier applied to an entry whose branch answers a threat the player
+   *  has NO counter for yet. This is where "you are being hurt by something
+   *  you cannot answer" turns into offers. */
+  unansweredMult: 2.4,
+  /** Multiplier applied to a branch's ENTRY node specifically while the
+   *  player lacks any counter to the family it answers — the basic counter
+   *  should surface before its upgrades. */
+  entryNodeMult: 1.8,
+  /** Multiplier applied to an entry offered within the last `offerCooldown`
+   *  drafts, so a declined option steps aside for something else. */
+  recentlyOfferedMult: 0.3,
+  offerCooldownRounds: 2,
+
+  // --- The pity rule -------------------------------------------------------
+  /** Rounds a threat must have appeared in before the pity rule may fire. */
+  pityMinEncounters: 2,
+  /** Drafts an entry-level counter for that threat must have been absent
+   *  from before the rule fires — so a player who was offered it and turned
+   *  it down is not handed it again immediately. */
+  pityOfferGraceRounds: 2,
+  /** Hard guarantee: once a threat has gone unanswered for this many rounds
+   *  past the minimum, an entry-level counter is FORCED into the draft. The
+   *  slack between pityMinEncounters and this is what keeps the rule from
+   *  making every draft predictable. */
+  pityForceAfterRounds: 1,
+  /** Most pity slots one draft may spend, so a forced option never fills the
+   *  whole table and the player always keeps a real choice. */
+  pityMaxPerDraft: 1,
+} as const;
+
+/** Commander progression: the permanent layer. PROVISIONAL numbers. */
+export const COMMANDER = {
+  /** Equipped ability slots (design working model: 2-3 initially). */
+  abilitySlots: 3,
+  /** Total loadout point budget across equipped abilities. */
+  loadoutPoints: 25,
+  /** Commander XP earned per round survived when a run ends — losses still
+   *  feed permanent progression, which is what makes them feel productive. */
+  xpPerRound: 5,
 } as const;
 
 export const EVOLUTION = {
@@ -677,10 +867,10 @@ export const ENEMY_ECONOMY = {
    *
    *  A streak bonus fixes what a flat one cannot, because it keeps growing
    *  until it bites and then releases the round the player drops back into the
-   *  band. It is the mirror of ECONOMY.lossInsurance at the other end of the
-   *  seesaw — one scales with how badly the player is losing, this with how
-   *  long they have been winning, and both stop the moment the fight is even
-   *  again. */
+   *  band. It is the enemy-side half of the seesaw's restoring force: it scales
+   *  with how long the player has been winning and stops the moment the fight
+   *  is even again. (The player-side half is no longer a cash rebate — it is
+   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.) */
   dominanceFraction: 0.85,
   dominanceStreakStep: 0.06,
   dominanceStreakMax: 0.33,

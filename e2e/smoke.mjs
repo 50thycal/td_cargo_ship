@@ -1,6 +1,7 @@
 // Browser smoke test: builds nothing itself — expects `vite preview` (or dev)
-// to be reachable at PORT. Drives a full round: menu → prep → transit (with
-// interceptor taps) → after-action report → research → next prep.
+// to be reachable at PORT. Drives a full roguelite round: menu → region select
+// → commander loadout → prep → transit (with interceptor taps) → after-action
+// report → technology draft → next prep.
 //
 // Usage:  npm run build && npm run preview -- --port 4173 &  node e2e/smoke.mjs
 // Env:    BASE_URL (default http://localhost:4173)
@@ -56,7 +57,22 @@ try {
   await page.waitForSelector('[data-screen="menu"]', { timeout: 10_000 });
   await page.screenshot({ path: `${SHOT_DIR}/01-menu.png` });
   await page.evaluate(() => localStorage.clear());
-  await page.getByRole('button', { name: 'New Campaign' }).click();
+  await page.getByRole('button', { name: 'Begin Regional Run' }).click();
+
+  // --- Region select ---------------------------------------------------------
+  await page.waitForSelector('[data-screen="regionSelect"]', { timeout: 10_000 });
+  await page.screenshot({ path: `${SHOT_DIR}/01b-region-select.png` });
+  // Region 2 must be visibly locked on a fresh profile.
+  const lockedCount = await page.locator('.card.locked').count();
+  if (lockedCount < 1) throw new Error('expected the second region to be locked on a fresh profile');
+  await page.getByRole('button', { name: /Deploy to Home Strait/ }).click();
+
+  // --- Commander loadout -------------------------------------------------------
+  await page.waitForSelector('[data-screen="loadout"]', { timeout: 10_000 });
+  // Equip a zero-cost standing ability, then launch the run.
+  await page.getByRole('button', { name: 'Equip' }).first().click();
+  await page.screenshot({ path: `${SHOT_DIR}/01c-loadout.png` });
+  await page.getByRole('button', { name: /Start Run/ }).click();
 
   // --- Prep ----------------------------------------------------------------
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
@@ -99,7 +115,7 @@ try {
   const seqDeadline = Date.now() + 30_000;
   while (Date.now() < seqDeadline) {
     const contVisible = await page
-      .getByRole('button', { name: /Continue to Intelligence|Final Report/ })
+      .getByRole('button', { name: /Continue to Technology Draft|Continue to Preparation|Final Report/ })
       .isVisible()
       .catch(() => false);
     if (contVisible) break;
@@ -128,41 +144,43 @@ try {
   }
   console.log(`game log OK: ${log.rounds.length} round(s), filename ${download.suggestedFilename()}`);
 
-  await page.getByRole('button', { name: /Continue to Intelligence/ }).click();
+  await page.getByRole('button', { name: /Continue to Technology Draft/ }).click();
 
-  // --- Research --------------------------------------------------------------------
-  await page.waitForSelector('[data-screen="research"]', { timeout: 10_000 });
+  // --- Technology draft -------------------------------------------------------------
+  await page.waitForSelector('[data-screen="draft"]', { timeout: 10_000 });
   await page.waitForTimeout(900); // entry stagger
-  // The counter catalogue renders Category → Branch with separate Nodes and
-  // Tactics rows; a TAP on a node must open its dossier (no hover anywhere).
-  const branchCount = await page.locator('.counter-branch').count();
-  if (branchCount < 10) throw new Error(`expected the counter catalogue, saw ${branchCount} branches`);
-  const nodeRows = await page.locator('.tech-row-label', { hasText: 'Nodes' }).count();
-  const tacticRows = await page.locator('.tech-row-label', { hasText: /Tactics/ }).count();
-  if (nodeRows < 10 || tacticRows < 5) {
-    throw new Error(`research rows missing: ${nodeRows} node rows, ${tacticRows} tactic rows`);
+  // The mandatory draft offers 2-3 option cards, each with a Draft button.
+  const optionCount = await page.locator('.draft-option').count();
+  if (optionCount < 2 || optionCount > 3) {
+    throw new Error(`expected 2-3 draft options, saw ${optionCount}`);
   }
-  await page.locator('.tech-node').first().click();
-  await page.waitForSelector('.tech-detail:not(.empty)', { timeout: 5_000 });
-  console.log(`research catalogue OK: ${branchCount} branches, tap-opened dossier`);
-  await page.screenshot({ path: `${SHOT_DIR}/05-research.png` });
-  await page.getByRole('button', { name: 'Continue to Preparation' }).click();
+  // There is no skip: the footer carries no Continue button while options wait.
+  const continueOnDraft = await page
+    .getByRole('button', { name: 'Continue to Preparation' })
+    .count();
+  if (continueOnDraft > 0) throw new Error('draft offered a way past without picking');
+  await page.screenshot({ path: `${SHOT_DIR}/05-draft.png` });
+  await page.locator('.draft-option button').first().click();
+  console.log(`technology draft OK: ${optionCount} options, pick advanced the run`);
 
   // --- Round 2 prep -------------------------------------------------------------------
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
   await page.waitForTimeout(900); // entry stagger
-  // Platform loadout panels: escort and shore-base slots must be visible.
-  for (const label of [/Escort loadout/, /Shore-base loadout/]) {
+  // Platform loadout panels: the escort flotilla and shore-base slots must be
+  // visible. (The escort panel became "Escort flotilla" with the individual-
+  // escort model in PR #28.)
+  for (const label of [/Escort flotilla/, /Shore-base loadout/]) {
     if (!(await page.getByText(label).count())) throw new Error(`prep panel missing: ${label}`);
   }
-  // Research-gated procurement: an ungated module (Reinforced Hull) offers a
-  // price; a gated one (Hydrophone) names its missing research instead.
+  // Technology-gated procurement: an ungated module (Reinforced Hull) offers a
+  // price; a gated one (Hydrophone) names its missing technology instead —
+  // the draft unlocks, cash equips, and neither substitutes for the other.
   const hydroCard = page.locator('.module-card', { hasText: 'Hydrophone' }).first();
   const hydroBtn = await hydroCard.locator('button').first().textContent();
-  if (!/Requires research/i.test(hydroBtn ?? '')) {
-    throw new Error(`hydrophone should be research-gated, button says: ${hydroBtn}`);
+  if (!/Requires technology/i.test(hydroBtn ?? '')) {
+    throw new Error(`hydrophone should be technology-gated, button says: ${hydroBtn}`);
   }
-  console.log('prep loadout panels OK (escort/base slots + research gating)');
+  console.log('prep loadout panels OK (escort/base slots + technology gating)');
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.

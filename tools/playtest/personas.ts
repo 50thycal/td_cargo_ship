@@ -1,15 +1,17 @@
 // Bot personas for headless playtesting.
 //
 // A persona is a complete playing style: how it fights during transit, what it
-// buys in procurement, what it researches, and how it sails. Personas exist to
-// sweep the STRATEGY SPACE — the point is not that any one bot plays well, but
-// that between them they exercise the builds a real player might try, so the
-// balance report reflects more than a single line of play.
+// buys in procurement, which draft options it prefers, and how it sails.
+// Personas exist to sweep the STRATEGY SPACE — the point is not that any one
+// bot plays well, but that between them they exercise the builds a real player
+// might try, so the balance report reflects more than a single line of play.
 //
 // Hard rule: every persona drives the real campaign/transit APIs (buyModule,
-// startResearch, stepTransit …). Nothing here reaches into state directly, so
-// a bot can only do what a player could — including respecting research gates,
-// slot limits and ammunition.
+// selectDraftOption, stepTransit …). Nothing here reaches into state directly,
+// so a bot can only do what a player could — including respecting technology
+// gates, slot limits and ammunition. Under the roguelite loop the persona's
+// `research` list is its DRAFT PREFERENCE order: the mandatory post-round
+// draft is resolved toward it whenever the draft offers something on it.
 
 import {
   buyAmmo,
@@ -22,18 +24,17 @@ import {
   fleetHasEscortModule,
   buyPdAmmo,
   buyShip,
-  canStartResearch,
   repairCost,
   repairFleet,
   setComposition,
   setFormation,
-  startResearch,
   unlockEcm,
   unlockHardened,
   unlockScan,
   unlockSmoke,
   unlockSonar,
 } from '../../src/sim/campaign';
+import { dismissEmptyDraft, selectDraftOption } from '../../src/sim/draft';
 import { WORLD } from '../../src/data/tuning';
 import type {
   BaseModuleId,
@@ -217,13 +218,20 @@ export function procure(c: CampaignState, persona: Persona): void {
   fillConvoy(c);
 }
 
-/** Start the first research project this persona wants and can afford. */
+/** Resolve the pending technology draft the way this persona would: take the
+ *  offered option it ranks highest in its research-preference list, or the
+ *  first option when nothing it wanted was offered (the draft is mandatory).
+ *  Returns the pick, or null when no draft was pending. */
 export function research(c: CampaignState, persona: Persona): ResearchId | null {
-  if (c.activeResearch) return null;
-  for (const id of persona.research) {
-    if (canStartResearch(c, id).ok && startResearch(c, id)) return id;
+  const draft = c.pendingDraft;
+  if (!draft) return null;
+  if (draft.options.length === 0) {
+    dismissEmptyDraft(c);
+    return null;
   }
-  return null;
+  const preferred = persona.research.find((id) => draft.options.includes(id));
+  const pick = preferred ?? draft.options[0];
+  return selectDraftOption(c, pick) ? pick : null;
 }
 
 // ---------------------------------------------------------------------------

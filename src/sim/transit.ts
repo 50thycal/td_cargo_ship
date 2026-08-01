@@ -8,9 +8,10 @@
 // automation loops — an invalid engagement is rejected here, not just greyed
 // out in the UI.
 
-import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
+import { applyCommanderCombatEffects } from '../data/commanderAbilities';
 import { targetingSkill } from './evolution';
 import type { RNG } from './rng';
 import type {
@@ -34,6 +35,7 @@ import type {
   ShipClassId,
   TechKey,
   Threat,
+  ThreatKind,
   TransitCommand,
   TransitEvent,
   TransitState,
@@ -44,15 +46,19 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** Tier-resolved combat effects for a research set + platform loadout. All
- *  numeric conversion happens in the data layer (deriveCounterEffects). */
+ *  numeric conversion happens in the data layer (deriveCounterEffects), and
+ *  Commander Ability modifiers are applied LAST, centrally — the locked
+ *  effect flow: base → technology/tactics → equipment → commander → final. */
 export function deriveEffects(
   completedResearch: readonly ResearchId[],
   loadout: { escortModules: readonly ('deckGun' | 'mcmDroneLauncher' | 'depthCharges')[]; baseModules: readonly 'counterBattery'[] },
+  commanderAbilities: readonly string[] = [],
 ): CombatEffects {
-  return deriveCounterEffects(completedResearch, {
+  const effects = deriveCounterEffects(completedResearch, {
     escortModules: [...loadout.escortModules],
     baseModules: [...loadout.baseModules],
   });
+  return applyCommanderCombatEffects(effects, commanderAbilities);
 }
 
 // ---------------------------------------------------------------------------
@@ -239,10 +245,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   const fleetEscortModules = [
     ...new Set(campaign.escortUnits.flatMap((u) => u.modules)),
   ] as EscortModuleId[];
-  const effects = deriveEffects(campaign.completedResearch, {
-    escortModules: fleetEscortModules,
-    baseModules: campaign.baseModules,
-  });
+  const effects = deriveEffects(
+    campaign.completedResearch,
+    {
+      escortModules: fleetEscortModules,
+      baseModules: campaign.baseModules,
+    },
+    campaign.commanderAbilities ?? [],
+  );
   // Dev god mode: hulls shrug off all damage this transit.
   if (campaign.godMode) effects.damageTakenMult = 0;
   const god = !!campaign.godMode;
@@ -344,6 +354,9 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       barrageNextAt: 8,
     })),
     shells: [],
+    boatShots: [],
+    wreckage: [],
+    survivors: [],
     smokeQueue: [...plan.smoke].sort((a, b) => a.time - b.time),
     eaQueue: buildEaQueue(plan),
     pendingJamming: plan.electronic.jamming,
@@ -400,6 +413,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       boatsLaunched: 0,
       boatsSunk: 0,
       boatKills: 0,
+      boatRoundsFired: 0,
+      boatRoundsHit: 0,
       shipsCaptured: 0,
       shellsFired: 0,
       shellHits: 0,
@@ -425,6 +440,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         reboot: rebootCharges,
       }),
       enemyBranch: {},
+      wreckageSpawned: 0,
+      wreckageRecovered: 0,
+      wreckageExpired: 0,
+      wreckageByBranch: {},
+      recoveryEscortSeconds: 0,
+      survivorsSpawned: 0,
+      survivorsRescued: 0,
+      survivorsLost: 0,
     },
     effects,
     baseSpeed: Math.min(
@@ -922,6 +945,11 @@ function chainSplash(t: TransitState, x: number, y: number, exceptId: number, rn
   }
 }
 
+/** Causes that do NOT leave a crew in the water. Both are structural, not
+ *  random: a captured hull sails away with her people aboard, and a timeout
+ *  loss resolves as the transit ends, leaving no round in which to rescue. */
+const NO_SURVIVOR_CAUSES = new Set(['captured', 'timeout']);
+
 function killShip(t: TransitState, ship: Ship, cause: string): void {
   if (!ship.alive) return;
   ship.alive = false;
@@ -929,6 +957,11 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
   t.stats.lost++;
   creditKillShare(t, ship, cause);
   pushEvent(t, { type: 'shipLost', shipId: ship.id, shipName: ship.name, cause });
+  // Every ordinary sinking puts a crew in the water — no roll, and no
+  // dependence on whether the caller happened to have an RNG to hand. That
+  // optional-rng threading was itself a source of the inconsistency: a hull
+  // sunk by boat gunfire silently never spawned survivors at all.
+  if (!NO_SURVIVOR_CAUSES.has(cause)) spawnSurvivors(t, ship);
   const def = SHIP_CLASSES[ship.classId];
   if (def.explodes) {
     const radius = def.explodes.radius * FORMATIONS[t.formation].collateralMult;
@@ -940,6 +973,138 @@ function killShip(t: TransitState, ship: Ship, cause: string): void {
         pushEvent(t, { type: 'shipHit', shipId: other.id, shipName: other.name, cause: 'explosion' });
         if (other.hp <= 0) killShip(t, other, 'explosion');
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wreckage recovery & crew rescue — the roguelite loop's tactical layer
+// ---------------------------------------------------------------------------
+
+/** Threat kind → the enemy branch family its wreckage teaches about. */
+const WRECKAGE_BRANCH: Partial<Record<ThreatKind, string>> = {
+  missile: 'missiles',
+  guidedMissile: 'missiles',
+  mine: 'mines',
+  torpedo: 'torpedoes',
+  attackBoat: 'attackBoats',
+  reconPlane: 'electronic',
+  disablingDrone: 'electronic',
+};
+
+/** Roll for a recoverable wreckage field where a PLAYER-DESTROYED physical
+ *  threat died. Threats that expend themselves (a mine detonating against a
+ *  hull, a missile striking home) leave nothing — only kills call this. */
+function maybeSpawnWreckage(t: TransitState, threat: Threat, rng: RNG): void {
+  const branch = WRECKAGE_BRANCH[threat.kind];
+  const chance = WRECKAGE.dropChance[threat.kind] ?? 0;
+  if (!branch || chance <= 0 || !rng.chance(chance)) return;
+  t.wreckage.push({
+    id: t.nextEntityId++,
+    // Clamped into open water so a kill near a shore still leaves a field an
+    // escort can actually sail to.
+    x: clamp(threat.x, 80, WORLD.width - 80),
+    y: clamp(threat.y, 160, WORLD.baseLine - 60),
+    branch,
+    threatKind: threat.kind,
+    required: WRECKAGE.recoverSeconds,
+    progress: 0,
+    expiresAt: t.time + WRECKAGE.lifetimeSeconds,
+    recovered: false,
+    expired: false,
+  });
+  t.stats.wreckageSpawned++;
+  pushEvent(t, { type: 'wreckageSpawned', threatKind: threat.kind });
+}
+
+/** Put this hull's crew in the water where she went down.
+ *
+ *  EVERY ordinary sinking spawns survivors — no roll. A coin flip made the
+ *  beat arbitrary: two identical losses, one with a crew to save and one
+ *  without, and nothing on screen to explain the difference. Now a sinking
+ *  always leaves someone to go back for, which is what gives the loss weight
+ *  and gives escorts a standing job beyond intercepting.
+ *
+ *  The exceptions are narrow and both structural rather than random:
+ *   • CAPTURED hulls — the enemy sails away with the crew aboard; there is
+ *     nobody in the water to recover.
+ *   • TIMEOUT losses — these resolve as the transit ends, so there would be
+ *     no round left in which to attempt the rescue.
+ *  Both are enforced by the caller (killShip), which simply does not call
+ *  this for those causes. */
+function spawnSurvivors(t: TransitState, ship: Ship): void {
+  t.survivors.push({
+    id: t.nextEntityId++,
+    x: clamp(ship.x, 80, WORLD.width - 80),
+    y: clamp(ship.y, 160, WORLD.baseLine - 60),
+    shipName: ship.name,
+    required: SURVIVORS.rescueSeconds,
+    progress: 0,
+    expiresAt: t.time + SURVIVORS.lifetimeSeconds,
+    rescued: false,
+    lost: false,
+  });
+  t.stats.survivorsSpawned++;
+  pushEvent(t, { type: 'survivorsSpawned', shipName: ship.name });
+}
+
+/** Advance every active recovery area: positional, multi-escort, all-or-
+ *  nothing. Progress accrues while at least one live escort holds inside the
+ *  area; each extra escort adds a fraction of the base rate; and the moment
+ *  NO escort remains, progress resets to zero — touch-and-go preserves
+ *  nothing, recovery means committing escort time under fire. */
+function updateRecoveryFields(t: TransitState, dt: number): void {
+  const liveEscorts = t.escorts.filter((e) => e.alive);
+  const workDone = (x: number, y: number, radius: number, extraRate: number): number => {
+    let crews = 0;
+    for (const escort of liveEscorts) {
+      if (dist(escort.x, escort.y, x, y) <= radius) crews++;
+    }
+    if (crews === 0) return 0;
+    t.stats.recoveryEscortSeconds += crews * dt;
+    return dt * (1 + (crews - 1) * extraRate);
+  };
+
+  for (const field of t.wreckage) {
+    if (field.recovered || field.expired) continue;
+    if (t.time >= field.expiresAt) {
+      field.expired = true;
+      t.stats.wreckageExpired++;
+      pushEvent(t, { type: 'wreckageExpired', threatKind: field.threatKind });
+      continue;
+    }
+    const step = workDone(field.x, field.y, WRECKAGE.radius, WRECKAGE.extraEscortRate);
+    if (step <= 0) {
+      field.progress = 0; // every escort left → the field resets completely
+      continue;
+    }
+    field.progress += step * t.effects.recovery.wreckageRateMult;
+    if (field.progress >= field.required) {
+      field.recovered = true;
+      t.stats.wreckageRecovered++;
+      t.stats.wreckageByBranch[field.branch] = (t.stats.wreckageByBranch[field.branch] ?? 0) + 1;
+      pushEvent(t, { type: 'wreckageRecovered', threatKind: field.threatKind });
+    }
+  }
+
+  for (const area of t.survivors) {
+    if (area.rescued || area.lost) continue;
+    if (t.time >= area.expiresAt) {
+      area.lost = true;
+      t.stats.survivorsLost++;
+      pushEvent(t, { type: 'survivorsLost', shipName: area.shipName });
+      continue;
+    }
+    const step = workDone(area.x, area.y, SURVIVORS.radius, SURVIVORS.extraEscortRate);
+    if (step <= 0) {
+      area.progress = 0;
+      continue;
+    }
+    area.progress += step * t.effects.recovery.rescueRateMult;
+    if (area.progress >= area.required) {
+      area.rescued = true;
+      t.stats.survivorsRescued++;
+      pushEvent(t, { type: 'survivorsRescued', shipName: area.shipName });
     }
   }
 }
@@ -1834,6 +1999,7 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         t.stats.boatsSunk++;
         escortPerf(t, escort).boatKills++;
         pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
+        maybeSpawnWreckage(t, target, rng);
         // Sinking a boarding boat throws its party off the hull. The progress
         // it had made is lost — that is what makes shooting the boat the
         // answer, rather than merely a way to stop the clock where it stands.
@@ -1947,28 +2113,69 @@ function updateFlak(t: TransitState, dt: number): void {
   }
 }
 
-/** Attack boats: the surface branch. A boat is a persistent unit, so this is a
- *  small state machine rather than a projectile update — close, commit, hold
- *  station and work on one hull until it is gone, then pause and pick another.
- *  Killing the boat is the only way to stop it, and only the deck gun can. */
+/** Pick the bearing off `target` this boat will hold station on, spaced away
+ *  from the boats already working that hull so several attackers surround a
+ *  ship instead of stacking into one sprite. Deterministic: it starts from the
+ *  boat's own approach bearing and steps around until the ring is clear. */
+function assignStation(t: TransitState, boat: Threat, target: Ship): number {
+  const taken: number[] = [];
+  for (const other of t.threats) {
+    if (other === boat || other.kind !== 'attackBoat' || !other.alive) continue;
+    if (other.targetShipId !== target.id || other.stationAngle === undefined) continue;
+    taken.push(other.stationAngle);
+  }
+  const approach = Math.atan2(boat.y - target.y, boat.x - target.x);
+  const clear = (angle: number): boolean =>
+    taken.every((a) => Math.abs(angleDiff(angle, a)) >= COMBAT.attackBoat.stationSpacing);
+  if (clear(approach)) return approach;
+  // Step around the hull in both directions from the approach bearing and take
+  // the first clear berth — the boat drives to the near side of the free water.
+  for (let step = 1; step <= 12; step++) {
+    const delta = step * COMBAT.attackBoat.stationSpacing;
+    if (clear(approach + delta)) return approach + delta;
+    if (clear(approach - delta)) return approach - delta;
+  }
+  return approach;
+}
+
+/** Attack boats: the surface branch. A boat is a persistent unit and a
+ *  physical one — it accelerates, turns under a rate limit, navigates around
+ *  its sisters, and holds a standoff ring beside the hull it is working rather
+ *  than sitting on top of it. Everything it does to a cargo ship is delivered
+ *  by a visible round (updateBoatShots), never by proximity.
+ *
+ *  Killing the boat is still the only way to stop it, and only the deck gun
+ *  can — but now the player gets a readable run-in to do it in. */
 function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
   const fx = COMBAT.attackBoat;
   for (const boat of t.threats) {
     if (boat.kind !== 'attackBoat' || !boat.alive) continue;
     const variant = boat.boatVariant ?? 'smallArms';
+    boat.fireCooldown = Math.max(0, (boat.fireCooldown ?? 0) - dt);
+    if (boat.heading === undefined) boat.heading = Math.atan2(boat.vy, boat.vx);
 
+    // --- Target acquisition -------------------------------------------------
     // Re-acquire when the committed hull is gone, delivered or taken. Boats
     // pick their target on arrival, not at launch, so a long run-in never
-    // wastes them on a ship that has since scored.
+    // wastes them on a ship that has since scored. A boat that loses its
+    // target visibly SAILS to the next one — it keeps its momentum and turns.
     let target = t.ships.find((s) => s.id === boat.targetShipId);
     if (!target || !target.alive || target.delivered || target.captured) {
       if (target) releaseBoarding(t, target);
       boat.targetShipId = undefined;
+      boat.stationAngle = undefined;
       boat.engaging = false;
       target = undefined;
-      if (t.time < (boat.retargetAt ?? 0)) continue;
-      const candidates = targetableShips(t);
-      if (candidates.length === 0) continue;
+    }
+    if (!target) {
+      const canCommit = t.time >= (boat.retargetAt ?? 0);
+      const candidates = canCommit ? targetableShips(t) : [];
+      if (candidates.length === 0) {
+        // Nothing to hunt (or still in the post-kill pause): coast forward and
+        // bleed speed rather than freezing mid-water.
+        steerBoat(t, boat, boat.x + Math.cos(boat.heading) * 200, boat.y + Math.sin(boat.heading) * 200, fx.speed * 0.45, dt);
+        continue;
+      }
       // Boarding boats hunt the prize — that is the T4 doctrine they grant.
       const pick =
         variant === 'boarding'
@@ -1979,49 +2186,76 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
               dist(boat.x, boat.y, s.x, s.y) < dist(boat.x, boat.y, best.x, best.y) ? s : best,
             );
       boat.targetShipId = pick.id;
+      boat.stationAngle = assignStation(t, boat, pick);
       target = pick;
     }
-    if (!target) continue;
+    if (boat.stationAngle === undefined) boat.stationAngle = assignStation(t, boat, target);
 
-    // Close to weapons range, then hold station alongside. A boat matches the
-    // convoy's pace once attached, so the hull cannot simply outrun it.
-    const range = variant === 'boarding' ? fx.boardRange : fx.engageRange;
-    const d = dist(boat.x, boat.y, target.x, target.y) || 1;
-    if (d > range) {
-      boat.engaging = false;
-      boat.vx = ((target.x - boat.x) / d) * fx.speed;
-      boat.vy = ((target.y - boat.y) / d) * fx.speed;
-      boat.x += boat.vx * dt;
-      boat.y += boat.vy * dt;
-      continue;
+    // --- Station keeping ----------------------------------------------------
+    // The boat steers for a point ON THE RING around its target, never for the
+    // hull itself. That single change is what stops a boat converging onto the
+    // ship: the goal it chases is already the standoff distance away.
+    const standoff = fx.standoff[variant] ?? fx.standoff.smallArms;
+    const stationX = target.x + Math.cos(boat.stationAngle) * standoff;
+    const stationY = target.y + Math.sin(boat.stationAngle) * standoff;
+    const toStation = dist(boat.x, boat.y, stationX, stationY);
+    // Where this tick started, so the total displacement can be held to what a
+    // boat could actually cover — steering plus buffer correction combined.
+    const fromX = boat.x;
+    const fromY = boat.y;
+    // Match the hull's pace once on station, so a boat alongside drifts with
+    // the convoy instead of oscillating past it — but never sprint-close: the
+    // approach speed tapers with the distance still to run.
+    const desiredSpeed = Math.min(fx.speed, target.speed + toStation * 1.6);
+    steerBoat(t, boat, stationX, stationY, desiredSpeed, dt);
+
+    // Buffer: a boat is pushed back out if it ends up inside the hull's
+    // personal space — but only ever by as far as it could physically move in
+    // a tick. A hard snap to the ring would be a teleport in its own right,
+    // which is precisely the thing this rework exists to remove; the steering
+    // above is already aiming at the ring, so a bounded nudge closes the gap
+    // within a few frames. The only way in here at all is committing to a new
+    // hull that is already close, which is a legitimate transient.
+    const minDist = Math.max(
+      standoff * fx.hullBuffer,
+      SHIP_CLASSES[target.classId].radius + COMBAT.escort.hitRadius,
+    );
+    const dHull = dist(boat.x, boat.y, target.x, target.y);
+    if (dHull < minDist) {
+      const nx = dHull > 0.001 ? (boat.x - target.x) / dHull : Math.cos(boat.stationAngle);
+      const ny = dHull > 0.001 ? (boat.y - target.y) / dHull : Math.sin(boat.stationAngle);
+      const push = Math.min(minDist - dHull, fx.speed * dt);
+      boat.x += nx * push;
+      boat.y += ny * push;
     }
-    boat.engaging = true;
-    // Station-keeping: drift with the target rather than orbiting it.
-    boat.vx = 0;
-    boat.vy = 0;
-    boat.x += (target.x - boat.x) * Math.min(1, dt * 2);
-    boat.y += (target.y - boat.y) * Math.min(1, dt * 2);
+    // Absolute invariant: however the steering and the buffer combined, a boat
+    // never covers more ground in one tick than its own speed allows. This is
+    // the guarantee the whole rework rests on — nothing about a boat's motion
+    // is ever a jump the player could not have watched happen.
+    const moved = dist(fromX, fromY, boat.x, boat.y);
+    const limit = fx.speed * dt;
+    if (moved > limit) {
+      boat.x = fromX + ((boat.x - fromX) / moved) * limit;
+      boat.y = fromY + ((boat.y - fromY) / moved) * limit;
+    }
+
+    const range = variant === 'boarding' ? fx.boardRange : fx.engageRange;
+    const engaged = dist(boat.x, boat.y, target.x, target.y) <= range;
+    boat.engaging = engaged;
+    if (!engaged) continue;
 
     if (variant === 'boarding') {
       advanceBoarding(t, boat, target, dt);
       continue;
     }
 
-    // Gunfire: sustained damage, no accuracy roll — the boat is alongside.
-    const before = target.hp;
-    target.hp -= fx.dps[variant] * dt * t.effects.damageTakenMult;
-    const dealt = before - target.hp;
-    creditEnemyBranch(t, boatCause(variant), dealt, false);
-    // Gunfire here bypasses damageShip (it is a continuous stream, not a hit),
-    // so the per-hull tally that splits the eventual kill has to be kept here.
-    target.damageByBranch.attackBoats = (target.damageByBranch.attackBoats ?? 0) + dealt;
-    if (target.hp <= 0) {
-      t.stats.boatKills++;
-      killShip(t, target, boatCause(variant));
-      boat.targetShipId = undefined;
-      boat.engaging = false;
-      boat.retargetAt = t.time + fx.retargetDelay;
-    }
+    // --- Gunnery ------------------------------------------------------------
+    // Damage leaves the boat as a round that has to cross the water. Nothing
+    // here touches the target's hp — updateBoatShots does, on impact.
+    const weapon = fx.fire[variant];
+    if (!weapon || (boat.fireCooldown ?? 0) > 0) continue;
+    boat.fireCooldown = weapon.interval;
+    fireBoatRound(t, boat, target, variant, weapon, rng);
   }
 
   // Captured hulls steer off toward the hostile shore under their prize crew.
@@ -2032,6 +2266,160 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     ship.y += (WORLD.launchSites[0].y - ship.y) * Math.min(1, dt * 0.6);
     ship.x -= 20 * dt;
   }
+}
+
+/** Move one boat toward a goal point under acceleration, turn-rate and
+ *  boat-to-boat separation limits.
+ *
+ *  This is the whole difference between the old model and this one. Before,
+ *  a boat set its velocity straight at its target every tick and then had its
+ *  POSITION lerped onto the hull once inside range — so it could reverse
+ *  course instantly and effectively teleported alongside. Here it has a
+ *  heading it can only swing so fast and a speed it can only change so
+ *  quickly, which gives every approach a track the player can read and react
+ *  to. Losing a ship should be a failure to answer, never a surprise. */
+function steerBoat(
+  t: TransitState,
+  boat: Threat,
+  goalX: number,
+  goalY: number,
+  desiredSpeed: number,
+  dt: number,
+): void {
+  const fx = COMBAT.attackBoat;
+  let gx = goalX - boat.x;
+  let gy = goalY - boat.y;
+  const gd = Math.hypot(gx, gy) || 1;
+  gx /= gd;
+  gy /= gd;
+
+  // Separation: steer away from other boats crowding this one, so a group
+  // converging on the same convoy spreads out instead of merging.
+  let sx = 0;
+  let sy = 0;
+  for (const other of t.threats) {
+    if (other === boat || other.kind !== 'attackBoat' || !other.alive) continue;
+    const dx = boat.x - other.x;
+    const dy = boat.y - other.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= 0.001 || d >= fx.separation) continue;
+    const push = (fx.separation - d) / fx.separation;
+    sx += (dx / d) * push;
+    sy += (dy / d) * push;
+  }
+
+  const vx = gx + sx * fx.separationWeight;
+  const vy = gy + sy * fx.separationWeight;
+  const desiredHeading = Math.atan2(vy, vx);
+  const heading = boat.heading ?? desiredHeading;
+  const turn = clamp(angleDiff(desiredHeading, heading), -fx.turnRate * dt, fx.turnRate * dt);
+  boat.heading = heading + turn;
+
+  // Speed eases toward the request, and a boat hauling its wheel over sheds
+  // pace the way a real hull does — which is what makes a hard turn cost it
+  // something rather than being free.
+  const turnPenalty = 1 - 0.45 * Math.min(1, Math.abs(angleDiff(desiredHeading, boat.heading)) / (Math.PI / 2));
+  const wanted = Math.max(0, desiredSpeed) * turnPenalty;
+  const current = boat.speed ?? 0;
+  boat.speed = current + clamp(wanted - current, -fx.accel * dt, fx.accel * dt);
+  boat.vx = Math.cos(boat.heading) * boat.speed;
+  boat.vy = Math.sin(boat.heading) * boat.speed;
+  boat.x += boat.vx * dt;
+  boat.y += boat.vy * dt;
+  boat.y = clamp(boat.y, 40, WORLD.height - 40);
+}
+
+/** Fire one visible round from a boat at its target, leading the hull and
+ *  scattering the aim. The round carries the damage; the boat does not. */
+function fireBoatRound(
+  t: TransitState,
+  boat: Threat,
+  target: Ship,
+  variant: BoatVariant,
+  weapon: { interval: number; damage: number; speed: number; spread: number; size: number },
+  rng: RNG,
+): void {
+  // Lead the target: aim where she will be when the round arrives, so a boat
+  // shooting at a moving hull is not systematically shooting behind it.
+  const flight = dist(boat.x, boat.y, target.x, target.y) / weapon.speed;
+  const aimX = target.x + Math.cos(target.heading) * target.speed * flight + rng.range(-weapon.spread, weapon.spread);
+  const aimY = target.y + Math.sin(target.heading) * target.speed * flight + rng.range(-weapon.spread, weapon.spread);
+  const d = dist(boat.x, boat.y, aimX, aimY) || 1;
+  t.stats.boatRoundsFired++;
+  t.boatShots.push({
+    id: t.nextEntityId++,
+    ownerBoatId: boat.id,
+    targetShipId: target.id,
+    variant,
+    x: boat.x,
+    y: boat.y,
+    vx: ((aimX - boat.x) / d) * weapon.speed,
+    vy: ((aimY - boat.y) / d) * weapon.speed,
+    targetX: aimX,
+    targetY: aimY,
+    damage: weapon.damage,
+    size: weapon.size,
+    alive: true,
+    expireIn: COMBAT.attackBoat.projectileOvershoot,
+  });
+}
+
+/** Fly every boat round, and resolve what it strikes.
+ *
+ *  Damage goes through damageShip like any other hit, which is what earns it
+ *  the whole existing machinery: branch credit, the per-hull tally that splits
+ *  a kill fairly, fire ignition, and — because killShip now receives the rng —
+ *  survivors in the water when the hull goes down. */
+function updateBoatShots(t: TransitState, rng: RNG, dt: number): void {
+  for (const shot of t.boatShots) {
+    if (!shot.alive) continue;
+    shot.x += shot.vx * dt;
+    shot.y += shot.vy * dt;
+
+    let struck: Ship | null = null;
+    for (const ship of activeShips(t)) {
+      const radius = COMBAT.attackBoat.projectileHitRadius + SHIP_CLASSES[ship.classId].radius * 0.5;
+      if (dist(shot.x, shot.y, ship.x, ship.y) <= radius) {
+        struck = ship;
+        break;
+      }
+    }
+    if (struck) {
+      shot.alive = false;
+      t.stats.boatRoundsHit++;
+      const wasAlive = struck.alive;
+      const boat = t.threats.find((b) => b.id === shot.ownerBoatId);
+      damageShip(t, struck, shot.damage, boatCause(shot.variant), rng, shot.variant === 'rocket');
+      if (wasAlive && !struck.alive) {
+        t.stats.boatKills++;
+        // The boat that finished her stands off and picks a new hull after the
+        // reposition pause, exactly as before.
+        if (boat) {
+          boat.targetShipId = undefined;
+          boat.stationAngle = undefined;
+          boat.engaging = false;
+          boat.retargetAt = t.time + COMBAT.attackBoat.retargetDelay;
+        }
+      }
+      continue;
+    }
+
+    // Past its aim point and hit nothing: a visible miss. It runs on for a
+    // moment so the player can see the round go wide.
+    const overshot =
+      (shot.x - shot.targetX) * shot.vx + (shot.y - shot.targetY) * shot.vy > 0;
+    if (overshot) {
+      shot.expireIn -= dt;
+      if (shot.expireIn <= 0) shot.alive = false;
+    }
+    if (
+      shot.x < -60 || shot.x > WORLD.width + 60 ||
+      shot.y < -60 || shot.y > WORLD.height + 60
+    ) {
+      shot.alive = false;
+    }
+  }
+  t.boatShots = t.boatShots.filter((s) => s.alive);
 }
 
 /** Loss cause naming the boat node responsible, so the AAR can be specific. */
@@ -2500,7 +2888,7 @@ function updateAreaEffects(t: TransitState): void {
 
 /** Depth-charge rounds fly to their point and detonate. The blast destroys
  *  torpedoes ONLY — the compatibility rule, enforced at the moment of effect. */
-function updateDepthChargeShots(t: TransitState, dt: number): void {
+function updateDepthChargeShots(t: TransitState, rng: RNG, dt: number): void {
   for (const shot of t.depthChargeShots) {
     if (shot.detonated) continue;
     const d = dist(shot.x, shot.y, shot.targetX, shot.targetY);
@@ -2518,6 +2906,7 @@ function updateDepthChargeShots(t: TransitState, dt: number): void {
           const dropper = t.stats.escortPerformance[shot.ownerUnitId];
           if (dropper) dropper.torpedoKills++;
           pushEvent(t, { type: 'depthChargeKill', threatKind: threat.kind, lowSig: threat.lowSig });
+          maybeSpawnWreckage(t, threat, rng);
         }
       }
     } else {
@@ -2603,7 +2992,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         y: site.y,
         vx: 0,
         vy: 0,
-        speed: COMBAT.attackBoat.speed,
+        // Current speed, not a constant: she works up to her cruise.
+        speed: COMBAT.attackBoat.speed * 0.4,
         alive: true,
         // Boats are surface craft in plain sight — nothing to detect.
         revealed: true,
@@ -2613,6 +3003,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         maxHp,
         boatVariant: variant,
         engaging: false,
+        // Puts to sea already under way, pointed at the water it has to cross,
+        // and builds up to its cruise from there.
+        heading: Math.PI / 2,
+        fireCooldown: 0,
       });
       announceBoat(t, variant);
       continue;
@@ -2998,6 +3392,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         t.stats.missilesIntercepted++;
         t.stats.ecmKills++;
         pushEvent(t, { type: 'intercepted', threatKind: threat.kind, detail: 'ecm' });
+        // A cooked-off seeker still leaves a physical airframe in the water.
+        maybeSpawnWreckage(t, threat, rng);
         continue;
       }
     }
@@ -3268,6 +3664,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
 
   updateAttackBoats(t, rng, dt);
+  updateBoatShots(t, rng, dt);
   updateArtillery(t, rng, dt);
   updateShells(t, rng, dt);
   updateEnemySmoke(t);
@@ -3327,6 +3724,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
       if (rng.chance(hitChance)) {
         threat.alive = false;
+        // Every interceptor kill is a player-destroyed physical threat —
+        // missiles and aircraft alike may leave recoverable wreckage.
+        maybeSpawnWreckage(t, threat, rng);
         if (isFlak) {
           t.stats.counter.flakKills++;
           if (threat.kind === 'reconPlane' || threat.kind === 'disablingDrone') {
@@ -3437,6 +3837,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       const launcher = t.stats.escortPerformance[drone.ownerUnitId];
       if (launcher) launcher.minesSwept++;
       pushEvent(t, { type: 'mineSwept', lowSig: mine.lowSig });
+      // A swept mine is disarmed, not detonated — prime salvage.
+      maybeSpawnWreckage(t, mine, rng);
       drone.speed = 0;
       continue;
     }
@@ -3447,9 +3849,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   t.drones = t.drones.filter((dr) => dr.speed > 0);
 
   // --- Depth charges, placed areas, support aircraft --------------------------
-  updateDepthChargeShots(t, dt);
+  updateDepthChargeShots(t, rng, dt);
   updateAreaEffects(t);
   updateAircraft(t, rng, dt);
+
+  // --- Wreckage recovery & crew rescue ----------------------------------------
+  updateRecoveryFields(t, dt);
 
   // --- Housekeeping --------------------------------------------------------------
   if (t.jammingSeconds > 0) {
@@ -3462,6 +3867,21 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // Any ship still afloat when time expires counts as lost at sea.
     for (const ship of t.ships) {
       if (ship.alive && !ship.delivered) killShip(t, ship, 'timeout');
+    }
+    // The convoy has cleared the strait: whatever is still in the water is
+    // not coming home. Unfinished wreckage is abandoned; crews still waiting
+    // are lost — and will cost confidence when the round resolves.
+    for (const field of t.wreckage) {
+      if (field.recovered || field.expired) continue;
+      field.expired = true;
+      t.stats.wreckageExpired++;
+      pushEvent(t, { type: 'wreckageExpired', threatKind: field.threatKind });
+    }
+    for (const area of t.survivors) {
+      if (area.rescued || area.lost) continue;
+      area.lost = true;
+      t.stats.survivorsLost++;
+      pushEvent(t, { type: 'survivorsLost', shipName: area.shipName });
     }
     t.over = true;
   }
