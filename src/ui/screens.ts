@@ -667,13 +667,6 @@ export function aarScreen(
     animStat('Ships lost', s.lost, (v) => `${v}`, s.lost > 0 ? 'bad' : 'good');
     animStat('Cargo value', s.valueDelivered, (v) => `${v}`);
     animStat('Cash earned', report.cashEarned, (v) => `+$${v}`, 'good');
-    // Only shown when it actually paid. A player having a good round should not
-    // be reading a line about hull underwriting; a player having a terrible one
-    // needs to see that the consortium covered part of it, because that is the
-    // difference between a bad round and a hopeless one.
-    if (report.insurancePaid > 0) {
-      animStat('  of which underwriting', report.insurancePaid, (v) => `$${v}`);
-    }
     if (s.wreckageSpawned > 0) {
       animStat(
         'Wreckage recovered',

@@ -16,6 +16,20 @@ import type {
   ShipClassId,
 } from '../sim/types';
 
+/** Hull replacement is priced against what a hull EARNS, and that relationship
+ *  is the economy's whole safety net.
+ *
+ *  A hull's delivery pays `value × ECONOMY.cashPerValue`; replacing it costs
+ *  `replaceCost`. Set the two equal and the fleet breaks even at a 50% loss
+ *  rate — lose half a convoy and you can still rebuild it — which is what
+ *  stops a bad round from starting an unrecoverable spiral of fewer hulls
+ *  delivering less and buying fewer hulls still.
+ *
+ *  This replaced a loss-underwriting rebate that achieved the same 50% figure
+ *  by paying cash back for sinkings. That worked, but only the designer could
+ *  see it working: the round's cash moved for reasons the player could not
+ *  read. Pricing the hull instead puts the same protection somewhere they can
+ *  check for themselves — the ship costs about what it brings home. */
 export const SHIP_CLASSES: Record<ShipClassId, ShipClassDef> = {
   cargo: {
     id: 'cargo',
@@ -26,7 +40,8 @@ export const SHIP_CLASSES: Record<ShipClassId, ShipClassDef> = {
     slots: 2,
     radius: 11,
     length: 34,
-    replaceCost: 80,
+    // Earns 40 a run; costs 40 to replace.
+    replaceCost: 40,
   },
   tanker: {
     id: 'tanker',
@@ -37,7 +52,9 @@ export const SHIP_CLASSES: Record<ShipClassId, ShipClassDef> = {
     slots: 2,
     radius: 14,
     length: 44,
-    replaceCost: 160,
+    // Earns 100 a run. Priced slightly above break-even: she is the richest
+    // hull afloat and the one that takes neighbours with her when she goes.
+    replaceCost: 110,
     explodes: { damage: 50, radius: 90 },
   },
   freighter: {
@@ -47,7 +64,8 @@ export const SHIP_CLASSES: Record<ShipClassId, ShipClassDef> = {
     speed: 34,
     value: 8,
     slots: 1,
-    replaceCost: 70,
+    // Earns 32 a run. Cheapest hull in the book, and the first to sink.
+    replaceCost: 34,
     radius: 9,
     length: 26,
   },

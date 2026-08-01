@@ -332,26 +332,19 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const confidenceBefore = c.confidence;
 
   // --- Economy ---------------------------------------------------------------
-  // Underwriting on hulls lost at sea, paid before anything else so a ruinous
-  // round still leaves something to sail with. See ECONOMY.lossInsurance: this
-  // is the restoring force on the cash axis, and it is what stops a fleet that
-  // crosses its break-even loss rate from being mathematically unable to
-  // recover.
+  // One rule, and the player can do the arithmetic themselves: cargo delivered
+  // pays cash. Nothing else adds to the round's income.
   //
-  // Priced off shipCost — what replacing that hull ACTUALLY costs this player,
-  // fitted modules included — and not off the bare hull. The surcharge is most
-  // of the bill for an equipped fleet: a module-heavy cargo hull replaces at
-  // 165 against a bare one's 80, so the same 40 it earns on delivery leaves the
-  // equipped player break-even at a 19% loss rate rather than 33%. Underwriting
-  // the bare hull would have quietly paid the specialist builds a quarter of
-  // what it paid the empty ones, which is backwards: every build that invests
-  // in its hulls is the one this force exists to catch.
-  let insurancePaid = 0;
-  for (const ship of t.ships) {
-    if (!ship.alive) insurancePaid += shipCost(c, ship.classId) * ECONOMY.lossInsurance;
-  }
-  insurancePaid = Math.round(insurancePaid);
-  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue + insurancePaid;
+  // There used to be a second term here — underwriting that paid back a share
+  // of every hull lost — which existed to stop a fleet past its break-even loss
+  // rate from being mathematically unable to recover. It did that job, but it
+  // did it invisibly: the cash figure moved for reasons the player could not
+  // read off the screen, and "how much did this round actually earn me" stopped
+  // having a simple answer. The same protection now lives somewhere the player
+  // can see it — replacement hulls are priced so that a delivered cargo covers
+  // its own hull (see SHIP_CLASSES.replaceCost) — so a bad round is survivable
+  // because ships are affordable, not because a hidden rebate arrived.
+  const cashEarned = s.valueDelivered * ECONOMY.cashPerValue;
   c.cash += cashEarned;
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
@@ -751,7 +744,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     round,
     stats: s,
     cashEarned,
-    insurancePaid,
     confidenceChange,
     confidenceAfter: c.confidence,
     capacityIncreased,

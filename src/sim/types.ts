@@ -1425,13 +1425,10 @@ export interface AarCard {
 export interface AfterActionReport {
   round: number;
   stats: TransitStats;
+  /** Cash the round earned. Cargo delivered × the delivery rate, and nothing
+   *  else — every number the economy shows the player is one they can derive
+   *  themselves. */
   cashEarned: number;
-  /** Part of `cashEarned` that was underwriting on hulls lost at sea, rather
-   *  than payment for cargo delivered. Reported separately because a restoring
-   *  force the player cannot see just looks like noise in the cash figure — and
-   *  because "the consortium covered half of what that cost you" is the beat
-   *  that tells them a bad round is survivable. */
-  insurancePaid: number;
   confidenceChange: number;
   confidenceAfter: number;
   capacityIncreased: boolean;
