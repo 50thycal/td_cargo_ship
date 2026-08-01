@@ -39,7 +39,7 @@ import { foldCommanderMods } from '../data/commanderAbilities';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
-import { generateDraft } from './draft';
+import { generateDraft, newThreatPressure } from './draft';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -109,6 +109,8 @@ export function newRegionalRun(
     defeatCause: null,
     pendingDraft: null,
     draftHistory: [],
+    threatPressure: {},
+    lastOfferedRound: {},
     wreckageRecovered: {},
     crewRescue: { rescued: 0, lost: 0 },
     profileApplied: false,
@@ -373,6 +375,34 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.crewRescue.rescued += s.survivorsRescued;
   c.crewRescue.lost += s.survivorsLost;
 
+  // --- Threat pressure ------------------------------------------------------------
+  // What each enemy branch actually did this round. This is the draft's primary
+  // signal: being hurt by something is what should put its counter on the table,
+  // whether or not the player had escorts free to salvage its wreckage.
+  const encountered = new Set<string>();
+  for (const [branch, outcome] of Object.entries(s.enemyBranch)) {
+    if (outcome.damage <= 0 && outcome.kills <= 0) continue;
+    encountered.add(branch);
+    const p = (c.threatPressure[branch] ??= newThreatPressure());
+    p.rounds++;
+    p.streak = p.lastSeenRound === round - 1 ? p.streak + 1 : 1;
+    p.damage += outcome.damage;
+    p.kills += outcome.kills;
+    p.lastSeenRound = round;
+  }
+  // A branch that fielded units the player shut out entirely still counts as
+  // ENCOUNTERED — surviving a minefield untouched is not evidence you can
+  // afford to ignore mines, and the draft should still know they are out there.
+  for (const key of Object.keys(c.evolution.economy.ledgers)) {
+    if (encountered.has(key)) continue;
+    const fielded = Object.values(c.evolution.economy.ledgers[key].units).reduce((a, b) => a + b, 0);
+    if (fielded <= 0) continue;
+    const p = (c.threatPressure[key] ??= newThreatPressure());
+    p.rounds++;
+    p.streak = p.lastSeenRound === round - 1 ? p.streak + 1 : 1;
+    p.lastSeenRound = round;
+  }
+
   // --- Fleet bookkeeping -------------------------------------------------------
   for (const ship of t.ships) {
     if (!ship.alive) {
@@ -426,8 +456,9 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
   confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
   // Crews left in the water bite on top of the loss penalty: the sinking cost
-  // a hull, the abandonment costs trust. Rescue prevents this entirely —
-  // which is the whole reason diverting an escort to them is worth weighing.
+  // a hull, the abandonment costs trust. This is part of the ordinary disaster
+  // and so sits INSIDE the round floor below. (The rescue credit does not —
+  // see below.)
   confidenceChange += CAMPAIGN.confidencePerCrewLost * s.survivorsLost;
   // Captures bite on top of that, and OUTSIDE the loss cap — a player already
   // at the cap still feels each hull the enemy sails away with, which is what
@@ -473,6 +504,12 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       : 0;
   const ordinaryLoss = confidenceChange - captureLoss;
   confidenceChange = Math.max(ordinaryLoss, CAMPAIGN.confidenceRoundFloor) + captureLoss;
+  // Crews brought home are credited OUTSIDE the floor, on purpose. Inside it, a
+  // player having the disaster round the floor exists for would get nothing at
+  // all for going back for their people — the floor would simply swallow the
+  // credit — and that is precisely the round where the choice to divert an
+  // escort should still visibly mean something.
+  confidenceChange += CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued;
 
   c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
 
