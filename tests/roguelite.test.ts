@@ -37,6 +37,8 @@ import {
   dismissEmptyDraft,
   draftPool,
   generateDraft,
+  hasCounterFor,
+  pityCandidates,
   selectDraftOption,
 } from '../src/sim/draft';
 import { deriveEffects, stepTransit } from '../src/sim/transit';
@@ -44,7 +46,7 @@ import { evolveEnemy, newEvolution } from '../src/sim/evolution';
 import { COMMANDER_ABILITIES } from '../src/data/commanderAbilities';
 import { FIRST_REGION, REGIONS, regionDef } from '../src/data/regions';
 import { RESEARCH_INDEX, effectiveResearch } from '../src/data/counters';
-import { CAMPAIGN, COMMANDER, ECONOMY, SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
+import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type {
   CampaignState,
   RoundMetrics,
@@ -421,18 +423,103 @@ describe('survivor rescue', () => {
     expect(abandoned).toBe(clean + CAMPAIGN.confidencePerCrewLost * 2);
   });
 
-  it('rescue prevents the penalty entirely', () => {
-    const outcome = (rescued: number): number => {
+  it('rescue prevents the abandonment penalty AND recovers some confidence', () => {
+    const outcome = (rescued: number, lost: number): number => {
       const c = newRegionalRun('crew-rescued', FIRST_REGION);
       const plan = { ...planCurrentRound(c), spawns: [], mines: [], installations: [], smoke: [], electronic: { reconPlanes: 0, disablingDrones: 0, jamming: 0 }, debuts: [] };
       const { state, rng } = createRoundTransit(c, plan);
       let guard = 0;
       while (!state.over && guard++ < ticks(SIM.maxTransitTime) + 10) stepTransit(state, [], rng);
       state.stats.survivorsRescued = rescued;
+      state.stats.survivorsLost = lost;
       resolveTransit(c, state);
       return c.confidence;
     };
-    expect(outcome(2)).toBe(outcome(0)); // no bonus, no penalty — prevention
+    const none = outcome(0, 0);
+    // Bringing crews home pays — it is the one way confidence moves upward
+    // inside a round other than delivering cargo.
+    expect(outcome(2, 0)).toBe(none + CAMPAIGN.confidencePerCrewRescued * 2);
+    // Rescuing instead of abandoning is worth the difference between the two,
+    // and a rescue never fully offsets having lost the ship in the first place.
+    expect(outcome(2, 0)).toBeGreaterThan(outcome(0, 2));
+    expect(CAMPAIGN.confidencePerCrewRescued).toBeLessThan(
+      Math.abs(CAMPAIGN.confidencePerCrewLost),
+    );
+  });
+
+  it('EVERY ordinary sinking leaves a crew in the water', () => {
+    // Survivor generation used to be a coin flip, which made the beat feel
+    // arbitrary — two identical losses, one with a crew to save and one
+    // without, and nothing on screen explaining the difference.
+    const { state, rng } = quietRun(1);
+    const victims = state.ships.slice(0, 4);
+    for (const ship of victims) {
+      ship.spawned = true;
+      ship.hp = 1;
+    }
+    // Sink them with ordinary damage, one at a time.
+    let sunk = 0;
+    for (const ship of victims) {
+      const before = state.stats.survivorsSpawned;
+      // A missile strike is the plainest ordinary cause there is.
+      ship.x = 600;
+      ship.y = WORLD.lanes[1];
+      state.threats.push({
+        id: 970_000 + sunk,
+        kind: 'missile',
+        x: ship.x,
+        y: ship.y,
+        vx: 0,
+        vy: 0,
+        speed: 60,
+        alive: true,
+        revealed: true,
+        lowSig: false,
+        claimedByInterceptor: false,
+        targetX: ship.x,
+        targetY: ship.y,
+      });
+      stepTransit(state, [], rng);
+      if (!ship.alive) {
+        sunk++;
+        expect(state.stats.survivorsSpawned).toBe(before + 1);
+      }
+    }
+    expect(sunk).toBeGreaterThan(0);
+    expect(state.stats.survivorsSpawned).toBe(sunk);
+    // One area per lost hull, each named for the ship that went down.
+    expect(state.survivors).toHaveLength(sunk);
+    for (const area of state.survivors) expect(area.shipName.length).toBeGreaterThan(0);
+  });
+
+  it('a hull sunk by boat gunfire leaves survivors too', () => {
+    // Regression: boat gunfire used to bypass the damage path that spawns
+    // survivors entirely, so those sinkings silently never left a crew.
+    const { state, rng } = quietRun(1);
+    const ship = state.ships[0];
+    ship.spawned = true;
+    ship.x = 600;
+    ship.y = WORLD.lanes[1];
+    ship.hp = 1;
+    state.boatShots.push({
+      id: 980_001,
+      ownerBoatId: 1,
+      targetShipId: ship.id,
+      variant: 'smallArms',
+      x: ship.x - 5,
+      y: ship.y,
+      vx: 200,
+      vy: 0,
+      targetX: ship.x + 40,
+      targetY: ship.y,
+      damage: 50,
+      size: 2,
+      alive: true,
+      expireIn: 0.35,
+    });
+    stepTransit(state, [], rng);
+    expect(ship.alive).toBe(false);
+    expect(state.stats.survivorsSpawned).toBe(1);
   });
 
   it('timeout losses at transit end leave no survivors (no round left to rescue in)', () => {
@@ -525,6 +612,143 @@ describe('technology draft', () => {
       }
     }
     expect(mineOffers / total).toBeGreaterThan(0.3);
+  });
+
+  it('weights toward threats that are actually hurting the run', () => {
+    // The reported failure: mines encountered for several rounds running, and
+    // the basic mine counter never offered. Wreckage alone was the only signal,
+    // so a player without escorts to spare for salvage never got the steer.
+    const c = newRegionalRun('draft-pressure', FIRST_REGION);
+    c.round = 4;
+    c.threatPressure.mines = {
+      rounds: 3,
+      streak: 3,
+      damage: 260,
+      kills: 2,
+      lastSeenRound: 3,
+    };
+    const pool = draftPool(c, {}); // NO wreckage recovered at all
+    const mineCounter = pool.find((p) => p.entry.branch.counters.includes('mines'));
+    const generic = pool.find((p) => p.entry.branch.counters.length === 0);
+    expect(mineCounter).toBeDefined();
+    expect(generic).toBeDefined();
+    expect(mineCounter!.weight).toBeGreaterThan(generic!.weight * 3);
+  });
+
+  it('an unanswered threat outweighs one the player has already solved', () => {
+    const c = newRegionalRun('draft-answered', FIRST_REGION);
+    c.round = 4;
+    const pressure = { rounds: 3, streak: 3, damage: 200, kills: 1, lastSeenRound: 3 };
+    c.threatPressure.mines = { ...pressure };
+    c.threatPressure.missiles = { ...pressure };
+    const weightFor = (family: string, pool: ReturnType<typeof draftPool>): number => {
+      const entries = pool.filter((p) => p.entry.branch.counters.includes(family as never));
+      return Math.max(...entries.map((p) => p.weight));
+    };
+    const before = draftPool(c, {});
+    const mineBefore = weightFor('mines', before);
+    // Now answer the mine threat and re-price the pool.
+    c.completedResearch.push('mineSonar.base');
+    const after = draftPool(c, {});
+    expect(weightFor('mines', after)).toBeLessThan(mineBefore);
+  });
+
+  it('steps aside from entries it put on the table a round or two ago', () => {
+    const c = newRegionalRun('draft-recency', FIRST_REGION);
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 3, streak: 3, damage: 200, kills: 1, lastSeenRound: 4 };
+    const fresh = draftPool(c, {});
+    const target = fresh.find((p) => p.entry.branch.counters.includes('mines'))!;
+    c.lastOfferedRound[target.entry.def.id] = c.round; // offered just now
+    const after = draftPool(c, {});
+    const same = after.find((p) => p.entry.def.id === target.entry.def.id)!;
+    expect(same.weight).toBeLessThan(target.weight);
+  });
+
+  it('PITY RULE: guarantees a basic counter for a repeated, unanswered threat', () => {
+    const c = newRegionalRun('draft-pity', FIRST_REGION);
+    c.round = 5;
+    // Mined for four rounds running, still no answer, nothing offered yet.
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    const candidates = pityCandidates(c);
+    expect(candidates.some((p) => p.family === 'mines')).toBe(true);
+
+    // Across many independent rolls the guarantee must hold EVERY time — that
+    // is what makes it a guarantee rather than a nudge.
+    for (let i = 0; i < 25; i++) {
+      const run = newRegionalRun(`pity-${i}`, FIRST_REGION);
+      run.round = 5;
+      run.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+      const draft = generateDraft(run, {}, makeRng(`pity-roll-${i}`));
+      const offeredMineCounter = draft.options.some((id) =>
+        RESEARCH_INDEX[id].branch.counters.includes('mines'),
+      );
+      expect(offeredMineCounter, `roll ${i} offered ${draft.options.join(', ')}`).toBe(true);
+      expect(draft.pityBranches).toContain('mines');
+    }
+  });
+
+  it('the pity rule leaves a real choice — it never fills the whole draft', () => {
+    const c = newRegionalRun('draft-pity-room', FIRST_REGION);
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    c.threatPressure.missiles = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    const draft = generateDraft(c, {}, makeRng('pity-room'));
+    expect(draft.options.length).toBeGreaterThanOrEqual(2);
+    expect((draft.pityBranches ?? []).length).toBeLessThanOrEqual(DRAFT.pityMaxPerDraft);
+    expect(new Set(draft.options).size).toBe(draft.options.length); // no duplicates
+  });
+
+  it('does not fire the pity rule once the threat has an answer', () => {
+    const c = newRegionalRun('draft-pity-answered', FIRST_REGION);
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    expect(hasCounterFor(c, 'mines')).toBe(false);
+    c.completedResearch.push('mineSonar.base');
+    expect(hasCounterFor(c, 'mines')).toBe(true);
+    expect(pityCandidates(c).some((p) => p.family === 'mines')).toBe(false);
+  });
+
+  it('granted built-ins do not count as having answered a threat', () => {
+    // Every run starts holding the granted entries. Counting them would report
+    // every threat as already answered from round 1, and the unanswered-threat
+    // weighting (and the pity rule with it) would never fire at all.
+    const c = newRegionalRun('draft-granted', FIRST_REGION);
+    expect(hasCounterFor(c, 'mines')).toBe(false);
+    expect(hasCounterFor(c, 'missiles')).toBe(false);
+  });
+
+  it('does not fire the pity rule for a threat that has stopped appearing', () => {
+    const c = newRegionalRun('draft-pity-stale', FIRST_REGION);
+    c.round = 20; // long since
+    c.threatPressure.mines = { rounds: 4, streak: 0, damage: 300, kills: 3, lastSeenRound: 4 };
+    expect(pityCandidates(c).some((p) => p.family === 'mines')).toBe(false);
+  });
+
+  it('keeps its randomness — the same pressure does not always yield the same table', () => {
+    const offer = (seed: string): string => {
+      const c = newRegionalRun(`variety-${seed}`, FIRST_REGION);
+      c.round = 3;
+      c.threatPressure.mines = { rounds: 1, streak: 1, damage: 40, kills: 0, lastSeenRound: 2 };
+      return generateDraft(c, {}, makeRng(seed)).options.join('|');
+    };
+    const seen = new Set(Array.from({ length: 14 }, (_, i) => offer(`seed-${i}`)));
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('records threat pressure from what the round actually did', () => {
+    const c = newRegionalRun('pressure-recorded', FIRST_REGION);
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    let guard = 0;
+    while (!state.over && guard++ < ticks(SIM.maxTransitTime) + 10) stepTransit(state, [], rng);
+    state.stats.enemyBranch.mines = { damage: 120, kills: 1 };
+    resolveTransit(c, state);
+    const p = c.threatPressure.mines;
+    expect(p).toBeDefined();
+    expect(p.rounds).toBe(1);
+    expect(p.damage).toBe(120);
+    expect(p.kills).toBe(1);
+    expect(p.lastSeenRound).toBe(1);
   });
 
   it('the pick activates immediately and cannot be repeated or skipped', () => {

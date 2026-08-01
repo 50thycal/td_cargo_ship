@@ -1325,7 +1325,20 @@ export class TransitView {
       if (threat.kind !== 'attackBoat' || !threat.alive) continue;
       const x = this.sx(threat.x);
       const y = this.sy(threat.y);
-      const ang = Math.atan2(threat.vy, threat.vx);
+      // Boats steer under a turn limit, so heading is real state — a boat
+      // holding station has near-zero velocity but is still pointed somewhere.
+      const ang = threat.heading ?? Math.atan2(threat.vy, threat.vx);
+      // Wake: the visible tell that a boat is a moving hull rather than a
+      // marker that appears alongside. Length tracks actual speed.
+      const wake = Math.min(1, (threat.speed ?? 0) / COMBAT.attackBoat.speed);
+      if (wake > 0.15) {
+        ctx.strokeStyle = `rgba(180, 210, 235, ${0.05 + 0.16 * wake})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - Math.cos(ang) * 26 * wake, y - Math.sin(ang) * 26 * wake);
+        ctx.stroke();
+      }
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(ang);
@@ -1357,19 +1370,58 @@ export class TransitView {
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      // An attached boat draws a grapple line to the hull it is working on, so
-      // "closing" and "alongside and killing her" never look the same.
-      if (threat.engaging) {
-        const victim = t.ships.find((s) => s.id === threat.targetShipId && s.alive);
-        if (victim) {
-          ctx.strokeStyle =
-            threat.boatVariant === 'boarding' ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.7)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
-          ctx.stroke();
-        }
+      // A BOARDING boat that has grappled draws a hard line to the hull — it
+      // is physically attached and the player must break that contact. Gun
+      // boats no longer draw one: they stand off and their rounds crossing the
+      // water are the tell, so "attached" and "shooting at her" never read the
+      // same. A faint target thread shows which hull a gun boat is working.
+      const victim = threat.engaging
+        ? t.ships.find((s) => s.id === threat.targetShipId && s.alive)
+        : undefined;
+      if (victim) {
+        const boarding = threat.boatVariant === 'boarding';
+        ctx.strokeStyle = boarding ? 'rgba(224, 138, 94, 0.9)' : 'rgba(216, 98, 106, 0.22)';
+        ctx.lineWidth = boarding ? 2 : 1;
+        if (!boarding) ctx.setLineDash([3, 6]);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(this.sx(victim.x), this.sy(victim.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // Attack-boat rounds in flight. Every point of damage this branch does to
+    // a cargo hull is one of these crossing the water — a tracer for machine
+    // guns, a fatter glowing round for rockets — so a player who loses a ship
+    // to boats watched the rounds come and had the seconds to answer.
+    for (const shot of t.boatShots) {
+      if (!shot.alive) continue;
+      const sxp = this.sx(shot.x);
+      const syp = this.sy(shot.y);
+      const speed = Math.hypot(shot.vx, shot.vy) || 1;
+      const rocket = shot.variant === 'rocket';
+      // Draw as a short streak along the direction of travel so fast rounds
+      // read as motion rather than as a dot that teleports each frame.
+      const trail = rocket ? 13 : 9;
+      const tx = sxp - (shot.vx / speed) * trail;
+      const ty = syp - (shot.vy / speed) * trail;
+      const grad = ctx.createLinearGradient(tx, ty, sxp, syp);
+      grad.addColorStop(0, rocket ? 'rgba(255, 138, 94, 0)' : 'rgba(255, 224, 160, 0)');
+      grad.addColorStop(1, rocket ? 'rgba(255, 158, 110, 0.95)' : 'rgba(255, 236, 180, 0.9)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = shot.size;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(sxp, syp);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      if (rocket) {
+        ctx.fillStyle = 'rgba(255, 190, 130, 0.9)';
+        ctx.beginPath();
+        ctx.arc(sxp, syp, shot.size * 0.7, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 

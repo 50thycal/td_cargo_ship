@@ -193,7 +193,16 @@ Crew rescue creates a tactical choice between:
 - Recovering enemy technology.
 - Rescuing friendly crews.
 
-The exact survivor chance, rescue duration, availability window, multi-escort scaling, and confidence effect are balancing parameters.
+Survivor generation is **not** random: every ordinary civilian sinking leaves a crew in the water. A chance-based roll made the beat arbitrary — two identical losses, one with a crew to save and one without, with nothing on screen explaining the difference. A crew every time makes each loss land and gives escorts a standing responsibility beyond intercepting.
+
+Two narrow exceptions remain, both structural rather than random:
+
+- Captured hulls, where the enemy sails away with the crew aboard.
+- Losses that resolve as the transit ends, where no round remains in which to attempt the rescue.
+
+Rescuing a crew also recovers a little confidence, so the diversion visibly pays rather than merely avoiding a penalty. The credit is applied outside the per-round confidence floor, so a disaster round cannot swallow it.
+
+The rescue duration, availability window, multi-escort scaling, and confidence effects remain balancing parameters.
 
 ## Wreckage Recovery
 

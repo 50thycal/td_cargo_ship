@@ -324,6 +324,16 @@ export interface Threat {
   /** Attack boats: transit time before which this boat will not commit to a
    *  new hull (the pause after it finishes one off). */
   retargetAt?: number;
+  /** Attack boats: current facing (radians). Boats steer under a turn-rate
+   *  limit rather than pointing their velocity straight at the target, so the
+   *  heading is real state and not derived from vx/vy each tick. */
+  heading?: number;
+  /** Attack boats: the bearing off its target this boat holds station on,
+   *  assigned when it commits and spaced against the boats already working
+   *  that hull — so several boats surround a ship rather than stacking. */
+  stationAngle?: number;
+  /** Attack boats: seconds until this boat's gun may fire again. */
+  fireCooldown?: number;
   /** Attack boats: true once the boat is holding station on its target and
    *  actually shooting/boarding, rather than still closing. Drives the UI tell
    *  and keeps "approaching" and "engaging" distinguishable in the sim. */
@@ -381,6 +391,39 @@ export interface Shell {
   damage: number;
   variant: ArtilleryVariant;
   alive: boolean;
+}
+
+/** A round fired by an attack boat: machine-gun tracer or rocket, depending on
+ *  the boat variant.
+ *
+ *  Deliberately a real object rather than a damage-per-second stream. Every
+ *  point of damage this branch does to a cargo hull now crosses the water
+ *  visibly, so a player who loses a ship to boats watched it happen and had
+ *  the seconds of flight time to answer. Like Shell, it lives in its own array
+ *  and is NOT a Threat — nothing may ever be pointed at one. */
+export interface BoatShot {
+  id: number;
+  /** The boat that fired it (for telemetry and for culling on its death). */
+  ownerBoatId: number;
+  /** Hull it was aimed at. Purely informational — the round damages whatever
+   *  it actually strikes, so a shot at one ship can hit another sailing
+   *  through its path. */
+  targetShipId?: number;
+  variant: BoatVariant;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Aim point resolved at fire time (lead + scatter). A round that reaches it
+   *  without striking anything is a MISS and is culled shortly after. */
+  targetX: number;
+  targetY: number;
+  damage: number;
+  /** Rendered size (px radius). */
+  size: number;
+  alive: boolean;
+  /** Counts down once the round has overshot its aim point. */
+  expireIn: number;
 }
 
 export type ArtilleryVariant = 'coastalGun' | 'ranging' | 'rollingBarrage';
@@ -831,6 +874,11 @@ export interface TransitStats {
   boatsSunk: number;
   /** Hulls sunk by boat gunfire (boarding captures are counted separately). */
   boatKills: number;
+  /** Boat rounds fired, and how many struck a hull. The gap between them is
+   *  what a maneuvering convoy (and a boat forced to shoot from its standoff
+   *  ring) is actually worth. */
+  boatRoundsFired: number;
+  boatRoundsHit: number;
   /** Hulls taken by a boarding party — losses, but not sinkings. */
   shipsCaptured: number;
   /** Artillery shells fired at the convoy, and how many burst on a hull. */
@@ -1118,6 +1166,10 @@ export interface TransitState {
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
   shells: Shell[];
+  /** Attack-boat rounds in flight. Kept out of `threats` for the same reason:
+   *  a boat's gunfire is not a thing the player can shoot down, only something
+   *  they can see coming (and outmaneuver). Killing the BOAT is the answer. */
+  boatShots: BoatShot[];
   /** Recoverable wreckage fields from destroyed enemy threats. */
   wreckage: WreckageField[];
   /** Survivor areas where lost civilian ships went down. */
@@ -1192,6 +1244,27 @@ export interface TechDraft {
   options: ResearchId[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
+  /** Enemy branches this draft was forced to answer by the pity rule, if any
+   *  — surfaced so the UI can say WHY an option is on the table. */
+  pityBranches?: string[];
+}
+
+/** What one enemy branch has actually been doing to this run.
+ *
+ *  The draft reads this, not just recovered wreckage: a player who has been
+ *  mined for three rounds running needs to be offered mine counters whether
+ *  or not they had the escorts to spare for salvage. */
+export interface ThreatPressure {
+  /** Rounds in which this branch was encountered at all. */
+  rounds: number;
+  /** Consecutive most-recent rounds it has appeared in. */
+  streak: number;
+  /** Hull damage it has dealt across the run. */
+  damage: number;
+  /** Ships it has sunk or taken across the run. */
+  kills: number;
+  /** Last round it was seen (0 = never). */
+  lastSeenRound: number;
 }
 
 /** One draft's telemetry: what was offered and what the player took. */
@@ -1615,6 +1688,14 @@ export interface CampaignState {
   pendingDraft: TechDraft | null;
   /** Every draft offered this run, with what was picked (telemetry). */
   draftHistory: DraftRecord[];
+  /** What each enemy branch has actually done to this run — the primary
+   *  signal the draft weights against, so the technology on offer tracks the
+   *  threats the player is really facing. */
+  threatPressure: Record<string, ThreatPressure>;
+  /** Round each technology was last OFFERED (whether or not it was taken), so
+   *  the draft can avoid re-offering the same entry every round and the pity
+   *  rule can tell "never offered" from "offered and declined". */
+  lastOfferedRound: Record<string, number>;
   /** Wreckage recovered across the whole run, by enemy branch. */
   wreckageRecovered: Record<string, number>;
   /** Crew-rescue totals across the run (drives records + AAR framing). */

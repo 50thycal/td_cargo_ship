@@ -290,16 +290,235 @@ describe('attack-boat behaviour', () => {
     // Pretend a mine had also chipped this hull, then let the boat finish it.
     victim.damageByBranch.mines = boatDamage;
     victim.hp = 0.01;
-    run(state, rng, Math.ceil(2 / SIM.dt));
+    run(state, rng, Math.ceil(3 / SIM.dt));
     expect(victim.alive).toBe(false);
 
     const credited = state.stats.enemyBranch;
-    // Both branches share the hull, in proportion to the work each did.
-    expect(credited.attackBoats?.kills ?? 0).toBeCloseTo(0.5, 2);
-    expect(credited.mines?.kills ?? 0).toBeCloseTo(0.5, 2);
+    // Both branches share the hull IN PROPORTION TO THE WORK EACH DID. The
+    // shares are computed from the hull's own tally rather than assumed to be
+    // an even split: boat damage now arrives as discrete rounds, so the round
+    // that finishes her adds a real amount to the boat's side of the ledger.
+    // That is the rule working, not drifting — the proportion is what matters.
+    const boatShare = victim.damageByBranch.attackBoats ?? 0;
+    const mineShare = victim.damageByBranch.mines ?? 0;
+    const totalDamage = boatShare + mineShare;
+    expect(credited.attackBoats?.kills ?? 0).toBeCloseTo(boatShare / totalDamage, 5);
+    expect(credited.mines?.kills ?? 0).toBeCloseTo(mineShare / totalDamage, 5);
+    // Neither branch may collect the whole hull when both wore it down.
+    expect(credited.attackBoats?.kills ?? 0).toBeGreaterThan(0.3);
+    expect(credited.mines?.kills ?? 0).toBeGreaterThan(0.3);
     // And a hull is still exactly one kill however it is divided up.
     const total = Object.values(credited).reduce((a, b) => a + b.kills, 0);
     expect(total).toBeCloseTo(state.stats.lost, 5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Physical movement & visible gunnery
+//
+// The rework these pin exists because boats used to "snap" onto a hull: the
+// old model pointed the velocity vector straight at the target every tick and
+// then LERPED the boat's position onto the ship once inside range. A player
+// lost a hull to something that had effectively teleported alongside, with no
+// run-in to react to and no visible rounds to explain the damage. Everything
+// below is the guarantee that losing a ship to boats is now a failure to
+// respond rather than a surprise.
+// ---------------------------------------------------------------------------
+
+describe('attack-boat movement is physical', () => {
+  it('never exceeds its speed limit — no teleporting, ever', () => {
+    const { state, rng, fleet } = launch([spawn('smallArms')]);
+    const boat = fleet[0];
+    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05; // 5% slack for rounding
+    let prevX = boat.x;
+    let prevY = boat.y;
+    let biggest = 0;
+    for (let i = 0; i < Math.ceil(60 / SIM.dt) && !state.over && boat.alive; i++) {
+      stepTransit(state, [], rng);
+      biggest = Math.max(biggest, Math.hypot(boat.x - prevX, boat.y - prevY));
+      prevX = boat.x;
+      prevY = boat.y;
+    }
+    expect(biggest).toBeGreaterThan(0); // it did actually move
+    expect(biggest).toBeLessThanOrEqual(maxStep);
+  });
+
+  it('turns under a rate limit instead of reversing course instantly', () => {
+    const { state, rng, fleet } = launch([spawn('smallArms')]);
+    const boat = fleet[0];
+    const maxTurn = COMBAT.attackBoat.turnRate * SIM.dt * 1.05;
+    let prev = boat.heading!;
+    let sharpest = 0;
+    for (let i = 0; i < Math.ceil(60 / SIM.dt) && !state.over && boat.alive; i++) {
+      stepTransit(state, [], rng);
+      let delta = Math.abs(boat.heading! - prev);
+      while (delta > Math.PI) delta = Math.abs(delta - 2 * Math.PI);
+      sharpest = Math.max(sharpest, delta);
+      prev = boat.heading!;
+    }
+    expect(sharpest).toBeLessThanOrEqual(maxTurn);
+  });
+
+  it('works up to cruise from a standing start, then eases onto its station', () => {
+    const { state, rng, fleet } = launch([spawn('smallArms')]);
+    const boat = fleet[0];
+    const launchSpeed = boat.speed;
+    expect(launchSpeed).toBeLessThan(COMBAT.attackBoat.speed);
+    // Peak over the whole run-in, not an instantaneous sample: the boat
+    // reaches cruise crossing the open water and then sheds pace again as it
+    // settles onto the ring, so a fixed-time reading lands anywhere.
+    let peak = launchSpeed;
+    for (let i = 0; i < Math.ceil(25 / SIM.dt) && !state.over && boat.alive; i++) {
+      stepTransit(state, [], rng);
+      peak = Math.max(peak, boat.speed);
+      expect(boat.speed).toBeLessThanOrEqual(COMBAT.attackBoat.speed + 0.001);
+    }
+    expect(peak).toBeGreaterThan(launchSpeed);
+    expect(peak).toBeCloseTo(COMBAT.attackBoat.speed, 0); // it does reach cruise
+    // ...and once alongside it matches the convoy's pace rather than idling at
+    // full throttle into the hull.
+    expect(boat.speed).toBeLessThan(COMBAT.attackBoat.speed);
+  });
+
+  it('holds a stand-off ring BESIDE the hull and never sits on top of it', () => {
+    const { state, rng, fleet } = engage([spawn('smallArms')]);
+    const boat = fleet[0];
+    const victim = victimOf(state, boat)!;
+    const standoff = COMBAT.attackBoat.standoff.smallArms;
+    const floor = standoff * COMBAT.attackBoat.hullBuffer;
+    let closest = Infinity;
+    let samples = 0;
+    let onRing = 0;
+    for (let i = 0; i < Math.ceil(30 / SIM.dt) && !state.over && victim.alive; i++) {
+      stepTransit(state, [], rng);
+      if (!boat.alive) break;
+      const gap = Math.hypot(victim.x - boat.x, victim.y - boat.y);
+      closest = Math.min(closest, gap);
+      samples++;
+      if (Math.abs(gap - standoff) < standoff * 0.25) onRing++;
+    }
+    // The whole complaint: a boat must never end up ON the cargo ship.
+    expect(closest).toBeGreaterThanOrEqual(floor * 0.98);
+    // And it genuinely settles on the ring rather than merely brushing past it.
+    expect(samples).toBeGreaterThan(0);
+    expect(onRing / samples).toBeGreaterThan(0.8);
+  });
+
+  it('several boats on one convoy spread out instead of stacking', () => {
+    const { state, rng, fleet } = launch([spawn('smallArms'), spawn('smallArms'), spawn('smallArms')]);
+    run(state, rng, Math.ceil(70 / SIM.dt));
+    const alive = fleet.filter((b) => b.alive);
+    expect(alive.length).toBeGreaterThan(1);
+    for (let i = 0; i < alive.length; i++) {
+      for (let j = i + 1; j < alive.length; j++) {
+        const gap = Math.hypot(alive[i].x - alive[j].x, alive[i].y - alive[j].y);
+        // Not a hard constraint (separation is a steering force, not a solver),
+        // but boats must not be occupying the same patch of water.
+        expect(gap).toBeGreaterThan(COMBAT.attackBoat.separation * 0.4);
+      }
+    }
+  });
+
+  it('sails to its next target after a kill rather than blinking onto it', () => {
+    const { state, rng, fleet } = engage([spawn('rocket')]);
+    const boat = fleet[0];
+    const victim = victimOf(state, boat)!;
+    victim.hp = 1;
+    run(state, rng, Math.ceil(3 / SIM.dt));
+    expect(victim.alive).toBe(false);
+    expect(boat.targetShipId).toBeUndefined();
+    // Through the reposition pause and the run-in to the next hull, every step
+    // stays inside the speed limit — the boat covers the water under its own
+    // power instead of being repositioned.
+    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05;
+    let prevX = boat.x;
+    let prevY = boat.y;
+    for (
+      let i = 0;
+      i < Math.ceil((COMBAT.attackBoat.retargetDelay + 20) / SIM.dt) && !state.over && boat.alive;
+      i++
+    ) {
+      stepTransit(state, [], rng);
+      expect(Math.hypot(boat.x - prevX, boat.y - prevY)).toBeLessThanOrEqual(maxStep);
+      prevX = boat.x;
+      prevY = boat.y;
+    }
+  });
+
+  it('a boarding boat still closes to physical contact', () => {
+    const { state, rng, fleet } = engage([spawn('boarding')]);
+    const boat = fleet[0];
+    const victim = victimOf(state, boat)!;
+    run(state, rng, Math.ceil(6 / SIM.dt));
+    if (!victim.alive || !boat.alive) return; // resolved early; nothing to assert
+    expect(Math.hypot(victim.x - boat.x, victim.y - boat.y)).toBeLessThanOrEqual(
+      COMBAT.attackBoat.boardRange + 1,
+    );
+    expect(victim.boardingSeconds).toBeGreaterThan(0);
+  });
+});
+
+describe('attack-boat gunnery is visible', () => {
+  it('damage arrives as rounds in flight, not as proximity damage', () => {
+    const { state, rng, fleet } = engage([spawn('smallArms')]);
+    const victim = victimOf(state, fleet[0])!;
+    const hp0 = victim.hp;
+    // Step until the boat has actually fired something.
+    let guard = 0;
+    while (state.stats.boatRoundsFired === 0 && guard++ < Math.ceil(10 / SIM.dt) && !state.over) {
+      stepTransit(state, [], rng);
+    }
+    expect(state.stats.boatRoundsFired).toBeGreaterThan(0);
+    // The instant a round exists it has NOT yet dealt its damage — it has to
+    // cross the water first. That gap is the reaction window the rework buys.
+    expect(state.boatShots.length).toBeGreaterThan(0);
+    expect(victim.hp).toBe(hp0);
+    run(state, rng, Math.ceil(8 / SIM.dt));
+    expect(state.stats.boatRoundsHit).toBeGreaterThan(0);
+    expect(victim.hp).toBeLessThan(hp0);
+  });
+
+  it('every point of hull damage is credited to the boat branch', () => {
+    const { state, rng, fleet } = engage([spawn('smallArms')]);
+    const victim = victimOf(state, fleet[0])!;
+    run(state, rng, Math.ceil(12 / SIM.dt));
+    const dealt = victim.maxHp - victim.hp;
+    expect(dealt).toBeGreaterThan(0);
+    expect(victim.damageByBranch.attackBoats ?? 0).toBeCloseTo(dealt, 4);
+    expect(state.stats.enemyBranch.attackBoats?.damage ?? 0).toBeCloseTo(dealt, 4);
+  });
+
+  it('rounds are spent at the configured rate, and rockets hit harder', () => {
+    const rounds = (variant: BoatVariant, seconds: number): number => {
+      const { state, rng, fleet } = engage([spawn(variant)]);
+      void fleet;
+      const before = state.stats.boatRoundsFired;
+      run(state, rng, Math.ceil(seconds / SIM.dt));
+      return state.stats.boatRoundsFired - before;
+    };
+    // Small arms cycle far faster than rockets — the readable difference
+    // between a stream of tracer and occasional heavy rounds.
+    expect(rounds('smallArms', 10)).toBeGreaterThan(rounds('rocket', 10));
+    expect(COMBAT.attackBoat.fire.rocket.damage).toBeGreaterThan(
+      COMBAT.attackBoat.fire.smallArms.damage,
+    );
+  });
+
+  it('a boarding boat fires nothing — it takes the ship instead', () => {
+    const { state, rng } = engage([spawn('boarding')]);
+    run(state, rng, Math.ceil(10 / SIM.dt));
+    expect(state.stats.boatRoundsFired).toBe(0);
+    expect(state.boatShots).toHaveLength(0);
+  });
+
+  it('lethality is below the old contact-damage model (temporary reduction)', () => {
+    // The rework asks for reduced lethality until the movement model has been
+    // played. These are the pre-rework damage-per-second figures.
+    const OLD_DPS = { smallArms: 4.4, rocket: 6.5 };
+    for (const variant of ['smallArms', 'rocket'] as const) {
+      const weapon = COMBAT.attackBoat.fire[variant];
+      expect(weapon.damage / weapon.interval).toBeLessThan(OLD_DPS[variant]);
+    }
   });
 });
 
