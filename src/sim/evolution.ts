@@ -164,10 +164,10 @@ function grantBudget(
     // grows while the player is dominating does: it keeps building until they
     // are back in the band, then stops on its own the round they drop into it.
     //
-    // This is the mirror of ECONOMY.lossInsurance on the other end. One scales
-    // with how badly the player is losing, the other with how long they have
-    // been winning, and both release the moment the seesaw comes back to
-    // centre — which is the whole restoring force SEESAW.md asks for.
+    // This is the enemy-side half of the restoring force SEESAW.md asks for:
+    // it grows with how long the player has been winning and releases the
+    // moment the seesaw comes back to centre. The player-side half is the
+    // price of a replacement hull, which keeps a bad round recoverable.
     mult += Math.min(
       ENEMY_ECONOMY.dominanceStreakMax,
       ENEMY_ECONOMY.dominanceStreakStep * dominantStreak,

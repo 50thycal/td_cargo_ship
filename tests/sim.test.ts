@@ -504,38 +504,60 @@ describe('economy hardening', () => {
 // ---------------------------------------------------------------------------
 
 describe('anti-snowball: the losing side', () => {
-  it('underwrites hulls lost at sea, so a ruinous round still leaves something to sail with', () => {
-    // Sail into a heavy enemy round undefended and check the report pays out.
-    const c = newDevCampaign('insure-payout', { round: 9, god: false, unlockAll: false });
+  it('round income is cargo delivered and NOTHING else', () => {
+    // The economy's transparency rule. There is no rebate, no underwriting and
+    // no hidden term: a player can multiply what arrived by the delivery rate
+    // and get the number on the report. Checked on a round with real losses,
+    // because the retired mechanic paid out precisely there.
+    const c = newDevCampaign('income-transparent', { round: 9, god: false, unlockAll: false });
     setComposition(c, 'cargo', 8);
     const { state, report } = runRound(c, { defend: false });
+    expect(state.ships.some((s) => !s.alive)).toBe(true); // hulls were lost
+    expect(report.cashEarned).toBe(state.stats.valueDelivered * ECONOMY.cashPerValue);
+  });
+
+  it('a delivered hull earns about what replacing her costs', () => {
+    // This is the restoring force now, and it is one the player can check:
+    // set delivery income against replacement price and the fleet breaks even
+    // around a 50% loss rate, so losing half a convoy is a bad round rather
+    // than the start of an unrecoverable spiral.
+    for (const classId of ['cargo', 'tanker', 'freighter'] as ShipClassId[]) {
+      const def = SHIP_CLASSES[classId];
+      const earns = def.value * ECONOMY.cashPerValue;
+      const breakEven = earns / def.replaceCost;
+      expect(breakEven, `${classId} break-even loss rate`).toBeGreaterThan(0.45);
+      expect(breakEven, `${classId} break-even loss rate`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('a fleet that loses badly can still afford to rebuild', () => {
+    // The property the retired underwriting existed to guarantee, asserted
+    // end-to-end instead of through a payout: sail undefended, lose hulls, and
+    // the round's earnings still cover replacing a meaningful share of them.
+    const c = newDevCampaign('rebuild-after-losses', { round: 9, god: false, unlockAll: false });
+    setComposition(c, 'cargo', 10);
+    const { state, report } = runRound(c, { defend: false });
     const lost = state.ships.filter((s) => !s.alive).length;
-    if (lost === 0) return; // nothing sank; nothing to underwrite
-    const delivered = state.stats.valueDelivered * ECONOMY.cashPerValue;
-    // Everything above the delivery earnings is the underwriting.
-    expect(report.cashEarned).toBeGreaterThan(delivered);
+    expect(lost).toBeGreaterThan(0);
+    const replacements = Math.floor(report.cashEarned / shipCost(c, 'cargo'));
+    // Deliveries in a losing round still fund a real fraction of the rebuild.
+    expect(replacements).toBeGreaterThanOrEqual(Math.floor((state.stats.delivered * 0.9)));
   });
 
-  it('pays out against what replacement ACTUALLY costs, modules included', () => {
-    // The whole point: an equipped fleet replaces at far more than the bare
-    // hull price, and underwriting the bare hull would pay the builds that
-    // invest in their ships a fraction of what it pays the empty ones.
-    const bare = newCampaign('insure-bare');
-    const kitted = newCampaign('insure-kitted');
-    kitted.classModules.cargo = ['selfDefense'];
-    expect(shipCost(kitted, 'cargo')).toBeGreaterThan(shipCost(bare, 'cargo'));
-
-    const payout = (c: CampaignState): number =>
-      shipCost(c, 'cargo') * ECONOMY.lossInsurance;
-    expect(payout(kitted)).toBeGreaterThan(payout(bare));
-  });
-
-  it('never pays enough to make losing a hull profitable', () => {
-    // A restoring force, not an exploit: scuttling for the payout must always
-    // be worse than keeping the ship.
-    const c = newCampaign('insure-exploit');
-    expect(ECONOMY.lossInsurance).toBeLessThan(1);
-    expect(shipCost(c, 'cargo') * ECONOMY.lossInsurance).toBeLessThan(shipCost(c, 'cargo'));
+  it('losing a hull is never profitable — there is no payout at all', () => {
+    const c = newCampaign('no-payout');
+    const plan = { ...planCurrentRound(c), spawns: [], mines: [], debuts: [] };
+    const { state, rng } = createRoundTransit(c, plan);
+    let guard = 0;
+    while (!state.over && guard++ < Math.ceil(SIM.maxTransitTime / SIM.dt) + 10) {
+      stepTransit(state, [], rng);
+    }
+    // Scuttle one hull's worth of cargo before resolving: strictly less income.
+    const delivered = state.stats.valueDelivered;
+    state.stats.valueDelivered = delivered - SHIP_CLASSES.cargo.value;
+    const report = resolveTransit(c, state);
+    expect(report.cashEarned).toBe((delivered - SHIP_CLASSES.cargo.value) * ECONOMY.cashPerValue);
+    expect(report.cashEarned).toBeLessThan(delivered * ECONOMY.cashPerValue);
   });
 
   it('floors ordinary confidence loss so a disaster round is a slope, not a cliff', () => {

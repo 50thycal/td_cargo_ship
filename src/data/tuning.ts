@@ -437,28 +437,9 @@ export const ECONOMY = {
   /** One shore battery to start; no free escort. */
   startBases: 1,
   startEscorts: 0,
-  /** Cash earned per point of cargo value delivered. */
+  /** Cash earned per point of cargo value delivered. The ONLY source of round
+   *  income — see resolveTransit. */
   cashPerValue: 4,
-  /** Fraction of a lost hull's replacement cost the consortium underwrites.
-   *
-   *  This is the anti-snowball restoring force on the CASH axis, and without it
-   *  there wasn't one. SEESAW.md promises the seesaw returns to center from both
-   *  ends, but every mechanism for the losing side acted on something else:
-   *  `dampStruggling` trims the ENEMY's budget, and `intelPerLoss` pays research
-   *  currency. Neither helps an operator who cannot afford to sail — and that is
-   *  what actually ends these campaigns.
-   *
-   *  A cargo hull earns 40 on delivery and costs 80 to replace, so the fleet
-   *  breaks even at a **33% loss rate** and shrinks irreversibly above it: fewer
-   *  hulls deliver less, less delivered buys fewer hulls. Traced across a sweep,
-   *  every collapse ran the same three rounds — ~700 cash and 20 hulls, then
-   *  ~250 and 7, then dead — and nothing in the game pulled back. Underwriting
-   *  half the replacement moves break-even to 50%, so losing half a convoy is a
-   *  bad round rather than a death sentence.
-   *
-   *  Self-limiting by construction: it pays in proportion to what the player is
-   *  losing, so a player who is winning collects almost nothing. */
-  lossInsurance: 0.5,
   ammoCost: 8,
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
@@ -886,10 +867,10 @@ export const ENEMY_ECONOMY = {
    *
    *  A streak bonus fixes what a flat one cannot, because it keeps growing
    *  until it bites and then releases the round the player drops back into the
-   *  band. It is the mirror of ECONOMY.lossInsurance at the other end of the
-   *  seesaw — one scales with how badly the player is losing, this with how
-   *  long they have been winning, and both stop the moment the fight is even
-   *  again. */
+   *  band. It is the enemy-side half of the seesaw's restoring force: it scales
+   *  with how long the player has been winning and stops the moment the fight
+   *  is even again. (The player-side half is no longer a cash rebate — it is
+   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.) */
   dominanceFraction: 0.85,
   dominanceStreakStep: 0.06,
   dominanceStreakMax: 0.33,
