@@ -105,14 +105,24 @@ function runTo(state: TransitState, rng: Rng, time: number): TransitState {
   return state;
 }
 
-/** A screening cloud over whichever launch site this round actually uses. */
-function screeningOverBusiestSite(plan: RoundPlan, time = 12): RoundPlan {
+/** A screening cloud over whichever launch site this round actually uses,
+ *  timed to be up before that site's FIRST launch.
+ *
+ *  Deriving the time from the plan rather than hard-coding one matters: the
+ *  convoy's entry pacing sets the enemy's fire window, so a fixed timestamp
+ *  quietly stops covering a launch the moment anyone retunes SPAWN. Asking the
+ *  plan when the site fires keeps the test about smoke. */
+function screeningOverBusiestSite(plan: RoundPlan, time?: number): RoundPlan {
   const busiest: Record<number, number> = {};
   for (const sp of plan.spawns) busiest[sp.siteX] = (busiest[sp.siteX] ?? 0) + 1;
   const siteX = Number(Object.entries(busiest).sort((a, b) => b[1] - a[1])[0][0]);
+  const firstAtSite = plan.spawns
+    .filter((sp) => sp.siteX === siteX)
+    .reduce((min, sp) => Math.min(min, sp.time), Infinity);
+  const at = time ?? Math.max(0, firstAtSite - 2);
   return {
     ...plan,
-    smoke: [{ variant: 'screening', time, x: siteX, y: WORLD.launchSites[0].y + 40 }],
+    smoke: [{ variant: 'screening', time: at, x: siteX, y: WORLD.launchSites[0].y + 40 }],
   };
 }
 
@@ -319,7 +329,9 @@ describe('smoke concealment', () => {
       debuts: [],
     });
     const { state, rng } = createRoundTransit(c, plan);
-    runOut(state, rng, true);
+    // No interception: the question here is who gets CREDITED for a hit that
+    // landed under a cloud, so the hit has to be allowed to land.
+    runOut(state, rng);
     expect(state.stats.enemyBranch.smoke?.damage ?? 0).toBeGreaterThan(0);
     // And the branch that actually fired keeps its full credit — the assist is
     // an addition, not a transfer.

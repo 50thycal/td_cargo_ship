@@ -28,7 +28,7 @@ import {
   repairFleet,
   setComposition,
   setFormation,
-  unlockEcm,
+  unlockWarthog,
   unlockHardened,
   unlockScan,
   unlockSmoke,
@@ -70,7 +70,7 @@ export type BuyIntent =
    *  mixed flotilla at all. */
   | { kind: 'escortFit' }
   | { kind: 'baseModule'; id: BaseModuleId }
-  | { kind: 'ability'; id: 'ecm' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+  | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
   /** Replace losses. Without `upToCapacity: false` the bot only rebuilds while
    *  the fleet is under convoy capacity — a real player restores the convoy
    *  rather than letting attrition shrink it to nothing. */
@@ -87,8 +87,9 @@ export interface TransitPolicy {
   sweepMines: boolean;
   /** Place scan pulses over the shipping channel to chart mines. */
   useScan: boolean;
-  /** Place ECM over the convoy when guided missiles are inbound. */
-  useEcm: boolean;
+  /** Call the Warthog onto whatever patch of water has the most surface
+   *  targets (mines and boats) sitting in it. */
+  useWarthog: boolean;
   /** Place defensive smoke over the densest cluster of hulls. */
   useSmoke: boolean;
   /** Fire depth charges at detected torpedoes. */
@@ -168,8 +169,8 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
       return buyBaseModule(c, intent.id);
     case 'ability':
       switch (intent.id) {
-        case 'ecm':
-          return unlockEcm(c);
+        case 'warthog':
+          return unlockWarthog(c);
         case 'scan':
           return unlockScan(c);
         case 'sonar':
@@ -280,13 +281,13 @@ function convoyCenter(t: TransitState): { x: number; y: number; count: number } 
 /** Per-transit scratch state for a persona's ability pacing. */
 export interface TransitMemory {
   lastScanT: number;
-  lastEcmT: number;
+  lastWarthogT: number;
   lastSmokeT: number;
   lastSonarT: number;
 }
 
 export function newTransitMemory(): TransitMemory {
-  return { lastScanT: -99, lastEcmT: -99, lastSmokeT: -99, lastSonarT: -99 };
+  return { lastScanT: -99, lastWarthogT: -99, lastSmokeT: -99, lastSonarT: -99 };
 }
 
 /** Decide this tick's commands. Pure w.r.t. the sim — it only reads state. */
@@ -385,18 +386,35 @@ export function decideCommands(
     mem.lastSonarT = t.time;
   }
 
-  // ECM: worth a charge when several guided seekers are in the air near the
-  // convoy — that is exactly what the orbit scrambles.
-  if (p.useEcm && t.ecmCharges > 0 && t.time >= t.ecmActiveUntil && t.time - mem.lastEcmT > 20) {
-    const guidedNear = t.threats.filter(
-      (th) =>
-        th.alive &&
-        th.kind === 'guidedMissile' &&
-        dist(th.x, th.y, center.x, center.y) < 600,
-    ).length;
-    if (guidedNear >= 2) {
-      cmds.push({ type: 'ability', ability: 'ecm', x: center.x, y: center.y });
-      mem.lastEcmT = t.time;
+  // Warthog: send it wherever the most surface targets are clustered ahead of
+  // the convoy. A sortie is worth spending once there is more than one thing in
+  // the wheel — it kills mines outright and grinds boats down over passes.
+  if (
+    p.useWarthog &&
+    t.warthogCharges > 0 &&
+    t.time >= t.warthogActiveUntil &&
+    t.time - mem.lastWarthogT > 20
+  ) {
+    const surface = t.threats.filter(
+      (th) => th.alive && (th.kind === 'mine' || th.kind === 'attackBoat'),
+    );
+    let bestX = 0;
+    let bestY = 0;
+    let bestCount = 0;
+    for (const th of surface) {
+      // Only water ahead of the convoy is worth a sortie — behind it, whatever
+      // is there has already been sailed past.
+      if (th.x < center.x - 120) continue;
+      const near = surface.filter((o) => dist(o.x, o.y, th.x, th.y) < 200).length;
+      if (near > bestCount) {
+        bestCount = near;
+        bestX = th.x;
+        bestY = th.y;
+      }
+    }
+    if (bestCount >= 2) {
+      cmds.push({ type: 'ability', ability: 'warthog', x: bestX, y: bestY });
+      mem.lastWarthogT = t.time;
     }
   }
 
@@ -423,7 +441,7 @@ const FIGHTER: TransitPolicy = {
   targeting: 'urgent',
   sweepMines: true,
   useScan: true,
-  useEcm: true,
+  useWarthog: true,
   useSmoke: true,
   useDepthCharges: true,
   useSonar: true,
@@ -434,7 +452,7 @@ const PASSIVE: TransitPolicy = {
   targeting: 'nearest',
   sweepMines: false,
   useScan: false,
-  useEcm: false,
+  useWarthog: false,
   useSmoke: false,
   useDepthCharges: false,
   useSonar: false,
@@ -495,7 +513,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
       { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
-      { kind: 'ability', id: 'ecm' },
+      { kind: 'ability', id: 'warthog' },
       { kind: 'ammo', upTo: 45 },
     ],
     escortDoctrine: [
@@ -563,7 +581,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'escort' },
       { kind: 'ammo', upTo: 70 },
-      { kind: 'ability', id: 'ecm' },
+      { kind: 'ability', id: 'warthog' },
     ],
     transit: FIGHTER,
   },
@@ -801,7 +819,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'compartmentalization' },
       { kind: 'escortFit' },
       { kind: 'baseModule', id: 'counterBattery' },
-      { kind: 'ability', id: 'ecm' },
+      { kind: 'ability', id: 'warthog' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
       { kind: 'droneAmmo', upTo: 6 },
       // Only now does the convoy grow.

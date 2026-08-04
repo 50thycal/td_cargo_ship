@@ -128,7 +128,7 @@ export function newRegionalRun(
     ammo: start.ammo,
     droneAmmo: start.droneAmmo,
     pdAmmo: start.pdAmmo,
-    ecmUnlocked: false,
+    warthogUnlocked: false,
     scanUnlocked: false,
     sonarUnlocked: false,
     smokeUnlocked: false,
@@ -242,7 +242,7 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
   c.godMode = opts.god;
   if (opts.unlockAll) {
     c.completedResearch = allResearchableIds();
-    c.ecmUnlocked = true;
+    c.warthogUnlocked = true;
     c.scanUnlocked = true;
     c.sonarUnlocked = true;
     c.smokeUnlocked = true;
@@ -793,7 +793,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       escorts: c.escortUnits.map((e) => ({ id: e.id, name: e.name, modules: [...e.modules] })),
       bases: [...c.baseModules],
       abilities: [
-        ...(c.ecmUnlocked ? ['ecm'] : []),
+        ...(c.warthogUnlocked ? ['warthog'] : []),
         ...(c.scanUnlocked ? ['scanPulse'] : []),
         ...(c.sonarUnlocked ? ['activeSonar'] : []),
         ...(c.smokeUnlocked ? ['smokeScreen'] : []),
@@ -830,7 +830,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     pdKills: s.pdKills,
     interceptMisses: s.interceptMisses,
     ammoUsed: s.ammoUsed,
-    ecmUsed: s.ecmUsed,
+    warthogUsed: s.warthogUsed,
     scanUsed: s.scanUsed,
     minesTotal: s.minesTotal,
     minesRevealed: s.minesRevealed,
@@ -1178,12 +1178,12 @@ export function buyBase(c: CampaignState): boolean {
   return true;
 }
 
-export function unlockEcm(c: CampaignState): boolean {
-  if (c.ecmUnlocked || c.cash < ECONOMY.ecmUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.ecm)) return false;
-  c.cash -= ECONOMY.ecmUnlockCost;
-  c.ecmUnlocked = true;
-  recordSpend(c, 'ecm', ECONOMY.ecmUnlockCost);
+export function unlockWarthog(c: CampaignState): boolean {
+  if (c.warthogUnlocked || c.cash < ECONOMY.warthogUnlockCost) return false;
+  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.warthog)) return false;
+  c.cash -= ECONOMY.warthogUnlockCost;
+  c.warthogUnlocked = true;
+  recordSpend(c, 'warthog', ECONOMY.warthogUnlockCost);
   return true;
 }
 
