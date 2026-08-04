@@ -23,7 +23,8 @@
 // threat that would not appear, which would quietly make the enemy weaker than
 // its budget claims.
 
-import { COMBAT, ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, SPAWN, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, WORLD } from '../data/tuning';
+import { convoySpawnSpan } from './convoySchedule';
 import {
   ENEMY_BRANCHES,
   ENEMY_BRANCH_ORDER,
@@ -685,12 +686,18 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   const shipsOut = Object.values(campaign.composition).reduce((a, b) => a + b, 0);
 
   // Fire window spans the whole transit: from windowStartT until the last ship
-  // (which enters at ~shipsOut * spawn interval) has had time to cross. Missiles
-  // are spread across this whole span, so there is never a long silent gap at
-  // the end while ships are still in the strait.
+  // has entered AND had time to cross. Missiles are spread across this whole
+  // span, so there is never a long silent gap at the end while ships are still
+  // in the strait — nor a wall of fire at the start against a convoy that is
+  // still mostly over the horizon.
+  //
+  // The convoy's arrival span comes from the same code that schedules it, per
+  // formation. That matters: a Tight convoy is fully on the map in a fraction
+  // of the time a Wide stream takes, and estimating both at the Wide rate would
+  // dilute a round's fire across water with nothing in it.
   const windowEnd = Math.min(
     SIM.maxTransitTime - 20,
-    SPAWN.firstDelay + shipsOut * SPAWN.interval + EVOLUTION.windowTailT,
+    convoySpawnSpan(shipsOut, campaign.formation) + EVOLUTION.windowTailT,
   );
 
   if (round === 1) {

@@ -19,7 +19,7 @@ import { Camera } from './camera';
 import { h } from './dom';
 
 /** Placeable abilities/weapons the HUD can arm; the next map tap places them. */
-type ArmedAbility = 'ecm' | 'scan' | 'sonar' | 'smoke' | 'dc';
+type ArmedAbility = 'warthog' | 'scan' | 'sonar' | 'smoke' | 'dc';
 
 /** Automation toggle buttons, shown only for unlocked automation tactics. */
 const AUTO_TOGGLES: { system: AutoSystem; label: string; hint: string }[] = [
@@ -143,7 +143,7 @@ export class TransitView {
   private centreBtn!: HTMLButtonElement;
   private zoomInBtn!: HTMLButtonElement;
   private zoomOutBtn!: HTMLButtonElement;
-  private ecmBtn!: HTMLButtonElement;
+  private warthogBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
   private sonarBtn!: HTMLButtonElement;
   private smokeBtn!: HTMLButtonElement;
@@ -221,9 +221,9 @@ export class TransitView {
       this.hudAmmo,
     );
 
-    this.ecmBtn = h('button', {
+    this.warthogBtn = h('button', {
       className: 'hud-btn',
-      onClick: () => this.armAbility('ecm'),
+      onClick: () => this.armAbility('warthog'),
     });
     this.scanBtn = h('button', {
       className: 'hud-btn',
@@ -326,7 +326,7 @@ export class TransitView {
     this.centreBtn.title = 'Centre the camera on the convoy (press again to view the whole strait)';
 
     this.hudBottom.append(
-      this.ecmBtn,
+      this.warthogBtn,
       this.scanBtn,
       this.sonarBtn,
       this.smokeBtn,
@@ -444,7 +444,7 @@ export class TransitView {
     }
     const armedHints: Record<ArmedAbility, string> = {
       scan: 'Tap a lane to send the scan plane down it',
-      ecm: 'Tap open water to deploy the ECM plane',
+      warthog: 'Tap open water to send the Warthog — it guns mines and boats inside its wheel',
       sonar: 'Tap the water to place the active sonar ping',
       smoke: 'Tap the water to lay the defensive smoke',
       dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
@@ -467,14 +467,17 @@ export class TransitView {
     this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
     this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
 
-    const ecmActive = t.time < t.ecmActiveUntil;
-    this.ecmBtn.innerHTML = `ECM<span class="charges">${
-      ecmActive ? 'ACTIVE' : `×${t.ecmCharges}`
+    const warthogActive = t.time < t.warthogActiveUntil;
+    this.warthogBtn.innerHTML = `A-10<span class="charges">${
+      warthogActive ? 'ON TASK' : `×${t.warthogCharges}`
     }</span>`;
-    this.ecmBtn.disabled = t.ecmCharges <= 0 && !ecmActive;
-    this.ecmBtn.classList.toggle('off', t.ecmCharges <= 0 && !ecmActive);
-    this.ecmBtn.classList.toggle('armed', this.armedAbility === 'ecm');
-    this.ecmBtn.classList.toggle('hidden', t.ecmCharges <= 0 && !ecmActive && t.stats.counter.charges.ecm.available === 0);
+    this.warthogBtn.disabled = t.warthogCharges <= 0 && !warthogActive;
+    this.warthogBtn.classList.toggle('off', t.warthogCharges <= 0 && !warthogActive);
+    this.warthogBtn.classList.toggle('armed', this.armedAbility === 'warthog');
+    this.warthogBtn.classList.toggle(
+      'hidden',
+      t.warthogCharges <= 0 && !warthogActive && t.stats.counter.charges.warthog.available === 0,
+    );
 
     this.scanBtn.innerHTML = `SCAN<span class="charges">×${t.scanCharges}</span>`;
     this.scanBtn.disabled = t.scanCharges <= 0;
@@ -524,7 +527,7 @@ export class TransitView {
     // Ability placements must not stack: two in one frame would burn two charges.
     if (cmd.type === 'ability') {
       if (this.pending.some((p) => p.type === 'ability' && p.ability === cmd.ability)) return;
-      if (cmd.ability === 'ecm' && this.state.time < this.state.ecmActiveUntil) return;
+      if (cmd.ability === 'warthog' && this.state.time < this.state.warthogActiveUntil) return;
     }
     this.pending.push(cmd);
   }
@@ -532,7 +535,12 @@ export class TransitView {
   /** Arm (or disarm) a placeable ability/weapon. The next map tap places it. */
   private armAbility(ability: ArmedAbility): void {
     if (this.state.over || this.paused) return;
-    if (ability === 'ecm' && (this.state.ecmCharges <= 0 || this.state.time < this.state.ecmActiveUntil)) return;
+    if (
+      ability === 'warthog' &&
+      (this.state.warthogCharges <= 0 || this.state.time < this.state.warthogActiveUntil)
+    ) {
+      return;
+    }
     if (ability === 'scan' && this.state.scanCharges <= 0) return;
     if (ability === 'sonar' && this.state.sonarCharges <= 0) return;
     if (ability === 'smoke' && this.state.smokeCharges <= 0) return;
@@ -621,7 +629,7 @@ export class TransitView {
     const wy = this.camera.screenToWorldY(cy);
 
     // 0) If an ability/weapon is armed, this tap places it where the player
-    //    touched. Scan: the Y picks a lane. ECM: a plane deploys to the tapped
+    //    touched. Scan: the Y picks a lane. A-10: the jet takes station on the
     //    water. Sonar/smoke: a placed area effect. DC: the nearest ready escort
     //    lobs depth charges at the point (an AREA attack — never a lock-on).
     if (this.armedAbility) {
@@ -1233,22 +1241,24 @@ export class TransitView {
       );
     }
 
-    // ECM jamming orbit — drawn around each deployed ECM plane while on station.
-    const ecmRadius = t.effects.abilities.ecm.radius;
+    // The Warthog's strafe radius — everything hostile on the surface inside
+    // this ring is being worked, so the player can see exactly what the sortie
+    // bought and place the next one better.
+    const strafeRadius = t.effects.abilities.warthog.radius;
     for (const ac of t.aircraft) {
-      if (ac.role !== 'ecm' || ac.phase !== 'onStation') continue;
+      if (ac.role !== 'warthog' || ac.phase !== 'onStation') continue;
       const cx = this.sx(ac.centerX);
       const cy = this.sy(ac.centerY);
       const pulse = 1 + 0.04 * Math.sin(now / 120);
-      ctx.fillStyle = 'rgba(199, 146, 234, 0.08)';
+      ctx.fillStyle = 'rgba(255, 176, 84, 0.07)';
       ctx.beginPath();
-      ctx.arc(cx, cy, ecmRadius * this.scale * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, strafeRadius * this.scale * pulse, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(199, 146, 234, 0.5)';
+      ctx.strokeStyle = 'rgba(255, 176, 84, 0.5)';
       ctx.setLineDash([6, 8]);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, ecmRadius * this.scale * pulse, 0, Math.PI * 2);
+      ctx.arc(cx, cy, strafeRadius * this.scale * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -1291,11 +1301,21 @@ export class TransitView {
       }
     }
 
-    // Mines (revealed only)
+    // Mines the fleet currently holds a contact on. A contact is not permanent:
+    // as the fix ages out it is drawn fading, and the last seconds blink, so
+    // losing the plot on a mine is something the player watches happen and can
+    // still act on — not something they discover by sailing into it.
     for (const mine of t.threats) {
       if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
       const x = this.sx(mine.x);
       const y = this.sy(mine.y);
+      const left = (mine.revealedUntil ?? 0) - t.time;
+      const stale = clampNum(left / COMBAT.mineContact.fadeSeconds, 0, 1);
+      // Fading contacts also pulse, so a mine about to drop off the plot is
+      // caught out of the corner of the eye.
+      const alpha = stale >= 1 ? 1 : 0.3 + 0.7 * stale * (0.6 + 0.4 * Math.sin(now / 110));
+      ctx.save();
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = mine.lowSig ? '#4a3550' : '#3d3d46';
       ctx.beginPath();
       ctx.arc(x, y, 7, 0, Math.PI * 2);
@@ -1333,6 +1353,7 @@ export class TransitView {
         ctx.arc(x, y, 17, 0, Math.PI * 2);
         ctx.stroke();
       }
+      ctx.restore();
     }
 
     // Shore batteries on the friendly (bottom) shore.
@@ -2084,7 +2105,34 @@ export class TransitView {
       ctx.restore();
     }
 
-    // Support aircraft (scan / ECM planes).
+    // Gun runs: a burst of 30mm from the jet to what it hit. Short-lived on
+    // purpose — the point is that every kill the Warthog makes is one the
+    // player SAW it make, which is exactly what the jammer it replaced could
+    // never show.
+    for (const run of t.strafeRuns) {
+      const fade = clampNum(run.ttl / COMBAT.warthog.burstSeconds, 0, 1);
+      const x0 = this.sx(run.x);
+      const y0 = this.sy(run.y);
+      const x1 = this.sx(run.targetX);
+      const y1 = this.sy(run.targetY);
+      ctx.strokeStyle = `rgba(255, 216, 130, ${0.85 * fade})`;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([9, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Impact splash at the far end; a kill flashes harder than a hit.
+      ctx.fillStyle = run.killed
+        ? `rgba(255, 236, 180, ${0.8 * fade})`
+        : `rgba(255, 190, 110, ${0.5 * fade})`;
+      ctx.beginPath();
+      ctx.arc(x1, y1, (run.killed ? 9 : 5) * (2 - fade), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Support aircraft (scan plane / the Warthog).
     for (const ac of t.aircraft) {
       const ax = this.sx(ac.x);
       const ay = this.sy(ac.y);
@@ -2103,7 +2151,7 @@ export class TransitView {
         ctx.arc(ax, ay, 14 + 3 * Math.sin(now / 120), 0, Math.PI * 2);
         ctx.stroke();
       }
-      this.drawPlane(ax, ay, ac.heading, ac.role === 'ecm' ? '#c792ea' : '#7ce7ff');
+      this.drawPlane(ax, ay, ac.heading, ac.role === 'warthog' ? '#ffb054' : '#7ce7ff');
     }
 
     // Visual effects

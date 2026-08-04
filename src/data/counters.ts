@@ -14,6 +14,7 @@
 
 import { tierValue, type StatTier } from './statTiers';
 import { ENEMY_BRANCHES } from './enemyBranches';
+import { COMBAT } from './tuning';
 import type {
   BaseModuleId,
   CombatEffects,
@@ -56,7 +57,7 @@ export type CounterBranchId =
   | 'smokeScreen'
   | 'flak'
   | 'hardened'
-  | 'ecm'
+  | 'warthog'
   | 'reinforcedHull'
   | 'fireSuppression'
   | 'compartmentalization'
@@ -83,7 +84,8 @@ export type PlayerWeaponKind =
   | 'depthCharge'
   | 'deckGun'
   | 'counterBattery'
-  | 'flak';
+  | 'flak'
+  | 'gunRun';
 
 export const COUNTER_CATEGORY_NAMES: Record<CounterCategoryId, string> = {
   missileDefense: 'Missile Defense',
@@ -121,6 +123,9 @@ export const ENEMY_BRANCH_NAMES: Record<EnemyBranchKey, string> = {
  *     Threat objects — its entry here is empty by design;
  *   • flak: enemy aircraft; ship-disabling drones require the proximity-fuse
  *     node (see canEngage);
+ *   • gun run (the A-10's 30mm pass): whatever is sitting on or just under the
+ *     surface — mines and attack boats. Nothing airborne and nothing running
+ *     deep: it cannot touch a missile in flight or a torpedo under the water;
  *   • sensor jamming has no entry anywhere: it is not a shootable object. */
 export const WEAPON_TARGETS: Record<PlayerWeaponKind, readonly ThreatKind[]> = {
   interceptor: ['missile', 'guidedMissile'],
@@ -130,6 +135,7 @@ export const WEAPON_TARGETS: Record<PlayerWeaponKind, readonly ThreatKind[]> = {
   deckGun: ['attackBoat'],
   counterBattery: [],
   flak: ['reconPlane', 'disablingDrone'],
+  gunRun: ['mine', 'attackBoat'],
 };
 
 /** Central engage check. `researched` matters only for gated variants (flak
@@ -206,7 +212,7 @@ export interface CounterBranchDef {
     | { kind: 'cargoModule'; id: ModuleId }
     | { kind: 'escortModule'; id: EscortModuleId }
     | { kind: 'baseModule'; id: BaseModuleId }
-    | { kind: 'ability'; id: 'ecm' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+    | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
     | { kind: 'builtIn'; id: 'escort' | 'base' };
   /** Ammunition the branch draws on. */
   ammo: 'interceptor' | 'selfDefense' | 'drone' | 'perRound' | 'none';
@@ -1783,62 +1789,68 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     ],
   },
 
-  ecm: {
-    id: 'ecm',
-    category: 'electronicDefense',
-    name: 'ECM Suite',
-    short: 'The answer to guided missile seekers — degrades, diverts or destroys guided missiles that linger in its orbit.',
+  // Close air support. This slot used to hold an ECM jammer that shaved the hit
+  // chance of guided seekers inside an orbit. It was invisible: nothing on
+  // screen changed when it worked, the player only ever saw a missile that
+  // happened not to connect, and a counter you cannot watch working is a
+  // counter nobody spends a charge on. The A-10 does the opposite — you call
+  // it, you watch it kill things, and you can point at what it killed.
+  warthog: {
+    id: 'warthog',
+    category: 'antiSurface',
+    name: 'A-10 Warthog',
+    short: 'Close air support on call: the jet holds a wheel over water you choose and guns everything on the surface inside it — mines and attack boats alike.',
     platform: 'convoy',
-    role: 'disrupt',
-    counters: ['missiles'],
-    countersDetail: 'Guided seekers only: no effect on mines, torpedoes, boats, artillery, smoke or jamming; unguided missiles are degraded, never invalidated.',
-    equipment: { kind: 'ability', id: 'ecm' },
+    role: 'attack',
+    counters: ['mines', 'attackBoats'],
+    countersDetail: 'Surface and near-surface targets only. Mines are destroyed outright — charted or not, the gun does not care whether the fleet had found it — and boats are shot to pieces over successive passes. It cannot touch a missile in flight, a torpedo running deep, shore artillery, smoke or jamming.',
+    equipment: { kind: 'ability', id: 'warthog' },
     ammo: 'perRound',
     tacticStyle: 'parallel',
     nodes: [
       {
-        id: 'ecm.base',
-        name: 'Base ECM Orbit',
-        desc: 'A jamming aircraft orbits a placed point; guided seekers inside are scrambled and missiles that linger cook off.',
+        id: 'warthog.base',
+        name: 'Base Gun Run',
+        desc: 'One sortie a round. The jet flies to a placed point, holds a wheel over it and guns mines and attack boats inside its strafe radius until it is out of time.',
         cost: 0,
         granted: true,
-        grant: { charges: 2 },
+        grant: { charges: 1 },
       },
       {
-        id: 'ecm.improvedJamming',
-        name: 'Barrage Jamming',
-        desc: 'Guided hit chance inside the orbit drops to 8%.',
+        id: 'warthog.tankBuster',
+        name: '30mm Tank-Buster Rounds',
+        desc: 'Heavier armour-piercing belt: each pass does double damage, so even a rocket or boarding boat breaks up in a pass or two.',
         cost: 55,
-        flags: ['improvedJamming'],
+        flags: ['tankBuster'],
       },
     ],
     tactics: [
       {
-        id: 'ecm.extraCharge',
-        name: 'Additional Charge',
-        desc: 'Two charges become three.',
+        id: 'warthog.secondSortie',
+        name: 'Second Sortie',
+        desc: 'The flight comes back around: two gun runs a round instead of one.',
         cost: 45,
         noChain: true,
         kind: 'mode',
-        grant: { charges: 3 },
+        grant: { charges: 2 },
       },
       {
-        id: 'ecm.expandedCoverage',
-        name: 'Expanded Coverage',
-        desc: 'Jamming orbit radius becomes larger.',
-        cost: 40,
-        noChain: true,
-        kind: 'mode',
-        flags: ['wide'],
-      },
-      {
-        id: 'ecm.longerDuration',
-        name: 'Longer Duration',
-        desc: 'The plane holds its jamming station longer.',
+        id: 'warthog.extendedLoiter',
+        name: 'Extended Loiter',
+        desc: 'External tanks: the jet holds its wheel far longer, so one call covers a much bigger slice of the transit.',
         cost: 40,
         noChain: true,
         kind: 'mode',
         flags: ['longTrack'],
+      },
+      {
+        id: 'warthog.wideStrafe',
+        name: 'Wide Strafe Pattern',
+        desc: 'Longer, looser gun runs: the radius the jet can reach from its station grows.',
+        cost: 40,
+        noChain: true,
+        kind: 'mode',
+        flags: ['wide'],
       },
     ],
   },
@@ -2125,10 +2137,10 @@ export const BASE_MODULE_RESEARCH_REQUIREMENT: Record<BaseModuleId, ResearchId> 
 };
 
 export const ABILITY_RESEARCH_REQUIREMENT: Record<
-  'ecm' | 'scan' | 'sonar' | 'smoke' | 'hardened',
+  'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened',
   ResearchId
 > = {
-  ecm: 'ecm.base',
+  warthog: 'warthog.base',
   scan: 'scanPulse.base',
   sonar: 'activeSonar.base',
   smoke: 'smokeScreen.base',
@@ -2173,7 +2185,10 @@ export function resolveBranchStats(
 // ---------------------------------------------------------------------------
 
 const ABILITY_BASE = {
-  ecm: { radius: 220, wideRadius: 285, duration: 6, longDuration: 9.5 },
+  // Loiter is long compared to the old jamming orbit because the Warthog has to
+  // FIND and KILL things in its radius one burst at a time, where jamming
+  // applied to everything inside it at once.
+  warthog: { radius: 230, wideRadius: 300, duration: 14, longDuration: 26 },
   scan: { radius: 130, wideRadius: 185, duration: 0, longDuration: 0 },
   sonar: { radius: 260, wideRadius: 335, duration: 8, longDuration: 16 },
   smoke: { radius: 200, wideRadius: 265, duration: 14, longDuration: 22 },
@@ -2202,6 +2217,7 @@ export function deriveCounterEffects(
   const ms = t('mineSonar');
   const mcm = t('mcmDrones');
   const scan = t('scanPulse');
+  const wart = t('warthog');
   const hyd = t('hydrophone');
   const dc = t('depthCharges');
   const asn = t('activeSonar');
@@ -2212,13 +2228,12 @@ export function deriveCounterEffects(
   const smk = t('smokeScreen');
   const flk = t('flak');
   const hrd = t('hardened');
-  const ecm = t('ecm');
   const hull = t('reinforcedHull');
   const fs = t('fireSuppression');
   const cmp = t('compartmentalization');
 
   const ability = (
-    key: 'ecm' | 'scan' | 'sonar' | 'smoke',
+    key: 'warthog' | 'scan' | 'sonar' | 'smoke',
     stats: { flags: Set<string>; grants: Record<string, number> },
   ) => ({
     charges: stats.grants.charges ?? 0,
@@ -2234,7 +2249,8 @@ export function deriveCounterEffects(
 
   return {
     damageTakenMult: 1,
-    ecmGuidedHitChance: ecm.flags.has('improvedJamming') ? 0.08 : 0.2,
+    warthogDamage:
+      COMBAT.warthog.damage * (wart.flags.has('tankBuster') ? COMBAT.warthog.tankBusterMult : 1),
     sweepDrones: r.has('mcmDrones.base') && loadout.escortModules.includes('mcmDroneLauncher'),
     autoExtinguish: fs.flags.has('auto'),
     showTargetVectors: mw.flags.has('targetVector'),
@@ -2414,7 +2430,7 @@ export function deriveCounterEffects(
     recovery: { wreckageRateMult: 1, rescueRateMult: 1 },
 
     abilities: {
-      ecm: ability('ecm', ecm),
+      warthog: ability('warthog', wart),
       scan: {
         ...ability('scan', scan),
         // Composite scan reliability rises with sensor research (see doc).
@@ -2457,7 +2473,10 @@ export const RESEARCH_MIGRATION: Record<string, ResearchId[]> = {
   mines1: ['mcmDrones.base'],
   resilience1: ['compartmentalization.low', 'compartmentalization.medium'],
   resilience2: ['fireSuppression.automatic', 'fireSuppression.redundantZones'],
-  ew1: ['ecm.improvedJamming'],
+  // The legacy EW node bought a jamming upgrade on a branch that no longer
+  // exists. Its nearest heir is the gun-run damage node on the branch that
+  // replaced it.
+  ew1: ['warthog.tankBuster'],
   logistics1: ['logistics.expandedBerthing'],
 };
 

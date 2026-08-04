@@ -807,7 +807,7 @@ describe('research catalogue integrity', () => {
     expect(eff.has('escortInterceptor.base')).toBe(true);
     expect(eff.has('baseInterceptor.base')).toBe(true);
     expect(eff.has('scanPulse.base')).toBe(true);
-    expect(eff.has('ecm.base')).toBe(true);
+    expect(eff.has('warthog.base')).toBe(true);
     expect(eff.has('selfDefense.base')).toBe(false); // researchable, not granted
     for (const [id, entry] of Object.entries(RESEARCH_INDEX)) {
       for (const req of entry.requires) {

@@ -24,18 +24,43 @@ export const WORLD = {
 export const SIM = {
   /** Fixed timestep (seconds). The sim only ever advances in these steps. */
   dt: 1 / 30,
-  /** Hard safety cap on transit length (seconds). */
-  maxTransitTime: 360,
+  /** Absolute backstop on transit length (seconds) — a guard against a round
+   *  that can never resolve, not a design lever. The round's REAL limit is
+   *  computed from the convoy that is sailing (see transitTimeLimit).
+   *
+   *  This used to be a flat 360 and it was also the effective limit, because
+   *  every convoy finished entering well inside it. Doubling the entry spacing
+   *  broke that assumption: a large convoy now spends minutes just arriving,
+   *  and a flat cap silently drowned the tail of it — measured, one loss in
+   *  five across a sweep became "lost at sea" with nothing having shot at it. */
+  maxTransitTime: 900,
+  /** Floor on a round's time limit, so a tiny convoy still gets a real round. */
+  minTransitTime: 260,
+  /** Time allowed AFTER the last hull enters for the convoy to clear the
+   *  strait. The crossing itself is about 90 seconds for the slowest class;
+   *  the rest is room for the avoidance, give-way and mine-dodging that a
+   *  contested transit actually involves. */
+  transitCrossAllowance: 175,
 } as const;
 
+/** Convoy entry pacing.
+ *
+ *  Every gap here was doubled from its original value. The convoy used to
+ *  arrive faster than a player could read it: hulls entered on top of each
+ *  other, and by the time you had worked out which one was in trouble two more
+ *  were on the map. Twice the spacing is twice the time to look at each ship
+ *  before the next one demands attention. It costs nothing in volume — the same
+ *  hulls sail, they just do not all arrive at once — and the enemy's fire window
+ *  stretches with the convoy (see convoySpawnSpan), so a longer transit does not
+ *  mean a quieter one. */
 export const SPAWN = {
   /** Delay before the first ship enters. */
   firstDelay: 1.0,
   /** Wide/staggered pace: one ship enters, alternating lanes, every this many
    *  seconds. Keeps the map uncluttered — the stream is sparse and readable. */
-  interval: 5.0,
+  interval: 10.0,
   /** Sprint pace: within a volley, one ship enters this often (back to back). */
-  sprintInterval: 2.8,
+  sprintInterval: 5.6,
   /** Sprint: min/max ships in one single-file volley before the column
    *  relocates to a different lane. */
   sprintVolleyMin: 3,
@@ -43,9 +68,9 @@ export const SPAWN = {
   /** Sprint: pause after a volley's LAST ship before the next volley's first
    *  ship enters (in the new lane) — longer than the in-volley spacing so the
    *  lane switch reads clearly. */
-  sprintVolleyGap: 5.0,
+  sprintVolleyGap: 10.0,
   /** Tight pace: a whole wave (one ship per lane) enters this often. */
-  tightWaveInterval: 5.5,
+  tightWaveInterval: 11.0,
   /** Tiny spread within a Tight wave so the group reads as "together" without
    *  perfectly stacking. */
   tightWaveJitter: 0.25,
@@ -90,10 +115,50 @@ export const NAV = {
   /** Last-resort hull-overlap correction (fraction of overlap per tick). Rarely
    *  triggers once steering is doing its job; guarantees no visual overlap. */
   overlapPush: 0.5,
+  /** Share of a ship↔escort overlap correction the CARGO HULL absorbs (the
+   *  escort takes the remainder). An escort under orders is the stand-on
+   *  vessel: it holds the track the player gave it, and the merchant gets out
+   *  of the way. At 1.0 the escort is never deflected at all. */
+  escortPushShare: 0.9,
   /** Escorts. */
   escortSpeed: 50,
   escortArrive: 16,
   escortSepBuffer: 26,
+  /** Give-way to a crossing escort.
+   *
+   *  An escort cutting through the column used to be a bulldozer: it drove
+   *  straight down the line and every hull it touched got shoved sideways into
+   *  its neighbours, which shoved THEIRS, and the convoy came apart. Real
+   *  merchants do the opposite of shoving — they take the way off and let the
+   *  warship pass. So a cargo hull with an escort in its path slows, down to a
+   *  dead stop if the escort is close aboard, and picks up again the moment the
+   *  water ahead is clear. */
+  giveWay: {
+    /** Forward distance over which a crossing escort is watched for. */
+    lookAhead: 150,
+    /** Lateral half-width of the "she's in my way" corridor (added to hull
+     *  radii), wider than the ordinary avoidance band because the response is
+     *  throttle rather than rudder — better to slow early for a near miss than
+     *  to swerve late. */
+    band: 34,
+    /** Inside this range the merchant stops outright rather than creeping. */
+    stopDistance: 62,
+    /** How fast an escort must be moving ACROSS a merchant's track before this
+     *  rule applies at all.
+     *
+     *  This threshold is what stops give-way turning into deadlock. An escort
+     *  keeping station alongside the convoy is travelling the same way as the
+     *  merchants, not across them: it never clears their bow, so a merchant
+     *  that gave way to it would sit there until the round ended. Below this
+     *  rate the escort is just another hull in the water and the ordinary
+     *  overtake-or-wait logic handles it, which is the logic that knows how to
+     *  go around something. */
+    minCrossSpeed: 12,
+    /** Absolute ceiling on how long one merchant will hold for crossing traffic
+     *  before it gives up and steers around instead. Give-way is a courtesy,
+     *  not a reason to never reach the far shore. */
+    maxHoldSeconds: 8,
+  },
 } as const;
 
 export const COMBAT = {
@@ -110,7 +175,7 @@ export const COMBAT = {
   },
   mine: { damage: 115, triggerRadius: 30 },
   /** Torpedoes: the UNDERWATER branch (ENEMY_ATTACKS.md). Launched from the
-   *  hostile shore, immune to interceptors/ECM/point-defense by design — the
+   *  hostile shore, immune to interceptors and point-defense by design — the
    *  whole point is that every air-defense investment is useless here.
    *  Slower than a missile, so there is time to react IF you can see it. */
   torpedo: {
@@ -384,19 +449,30 @@ export const COMBAT = {
     patternSpacing: 55,
     patternCount: 3,
   },
-  /** ECM plane: flies to a water station, orbits jamming inbound missiles —
-   *  any missile that lingers inside the orbit `explodeSeconds` cooks off — then
-   *  departs. Charges/radius/duration are tier-resolved (ability paths). */
-  ecm: {
-    /** Seconds a missile must spend inside the jamming orbit before it explodes. */
-    explodeSeconds: 3.2,
-    /** Cruise speed of the ECM plane. */
+  /** A-10 Warthog: flies to a water station, holds a wheel over it, and makes
+   *  30mm gun runs on everything hostile it can see on or in the surface —
+   *  mines and attack boats. It is a hard, visible, area answer, not a
+   *  probability modifier: every pass either kills something or misses in
+   *  plain sight. Charges/strafe radius/loiter are tier-resolved (ability
+   *  paths); the ballistics live here. */
+  warthog: {
+    /** Cruise speed of the jet. */
     planeSpeed: 240,
-    /** Orbit angular speed (radians/second). */
+    /** Orbit angular speed (radians/second) of the wheel it holds on station. */
     orbitRate: 1.1,
-    /** Radius the plane flies around the orbit center. */
+    /** Radius the jet flies around the station center. */
     orbitRadius: 80,
-    /** Water band the orbit center must sit inside (off both shores/launchers). */
+    /** Seconds between gun runs while on station. */
+    fireInterval: 1.15,
+    /** Damage one burst does to an attack boat. Mines are destroyed outright —
+     *  a moored charge does not survive being hit by 30mm. */
+    damage: 26,
+    /** Tank-buster rounds (paid node) multiply the burst. */
+    tankBusterMult: 2.0,
+    /** How long a burst stays drawn on the water, in seconds. Purely visual —
+     *  the damage lands the instant the burst is fired. */
+    burstSeconds: 0.32,
+    /** Water band the station center must sit inside (off both shores/launchers). */
     waterYMin: 150,
     waterYMax: 860,
   },
@@ -424,6 +500,27 @@ export const COMBAT = {
    *  the plotted track is a known hazard the helm actively avoids. */
   mineAvoidLookahead: 200,
   mineAvoidOffset: 70,
+  /** A hull with a charted mine close ahead does not simply lean on the rudder:
+   *  it comes off the throttle, because the slower it is going the tighter it
+   *  can turn out of the way. Speed is capped to this fraction of cruise at the
+   *  worst case (mine dead ahead, right on the bow) and eases back to full as
+   *  the mine falls astern or off to one side. */
+  mineSlowFraction: 0.45,
+  /** Detection is a CONTACT, not a permanent chart mark. Everything below is
+   *  how long a contact survives once the thing that made it stops looking. */
+  mineContact: {
+    /** A scan-plane pass hands the fleet a fix good for this long. After that
+     *  the mine drifts back off the plot and the convoy is blind to it again —
+     *  clearing the water is the only permanent answer to a mine. */
+    scanHoldSeconds: 30,
+    /** A sonar contact is live only while a hull is actually holding it. This
+     *  much grace is allowed after the mine leaves the last hull's range, so a
+     *  contact at the very edge of the envelope does not strobe on and off. */
+    sonarGraceSeconds: 3,
+    /** A contact inside its last seconds is drawn fading, so losing it is
+     *  something the player watches happen rather than discovers afterwards. */
+    fadeSeconds: 6,
+  },
 } as const;
 
 export const ECONOMY = {
@@ -460,7 +557,7 @@ export const ECONOMY = {
   maxBases: 4,
   escortCost: 600,
   maxEscorts: 3,
-  ecmUnlockCost: 150,
+  warthogUnlockCost: 150,
   scanUnlockCost: 150,
   sonarUnlockCost: 160,
   smokeUnlockCost: 160,
