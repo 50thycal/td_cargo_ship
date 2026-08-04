@@ -83,17 +83,31 @@ export class Game {
   private swapScreen(el: HTMLElement | null): void {
     // Preserve scroll position across rerenders (prep/loadout rebuild the
     // whole screen on every purchase — losing scroll would be brutal on
-    // phone-height viewports).
+    // phone-height viewports). The prep screen scrolls a section pane
+    // (.prep-content) instead of the body; its scroll only carries over when
+    // the SAME section is still open (data-section), so switching sections
+    // starts at the top.
     const oldBody = this.currentScreen?.querySelector('.screen-body');
     const oldScreenId = this.currentScreen?.getAttribute('data-screen');
     const scrollTop = oldBody?.scrollTop ?? 0;
+    const oldPane = this.currentScreen?.querySelector('.prep-content');
+    const paneSection = oldPane?.getAttribute('data-section');
+    const paneScrollTop = oldPane?.scrollTop ?? 0;
     this.currentScreen?.remove();
     this.currentScreen = el;
     if (el) {
       this.stage.append(el);
-      if (scrollTop > 0 && el.getAttribute('data-screen') === oldScreenId) {
-        const newBody = el.querySelector('.screen-body');
-        if (newBody) newBody.scrollTop = scrollTop;
+      if (el.getAttribute('data-screen') === oldScreenId) {
+        if (scrollTop > 0) {
+          const newBody = el.querySelector('.screen-body');
+          if (newBody) newBody.scrollTop = scrollTop;
+        }
+        if (paneScrollTop > 0) {
+          const newPane = el.querySelector('.prep-content');
+          if (newPane && newPane.getAttribute('data-section') === paneSection) {
+            newPane.scrollTop = paneScrollTop;
+          }
+        }
       }
     }
   }
