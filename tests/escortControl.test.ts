@@ -376,4 +376,44 @@ describe('map camera', () => {
     // pixel tap radius picks a tighter world radius, which is the point.
     expect(cam.worldPerPixel()).toBeCloseTo(atFit / 2, 4);
   });
+
+  it('reports no magnification at all when the whole world is on screen', () => {
+    // detailScale is what the renderer multiplies every sprite by. At the
+    // fitted view it has to be exactly 1, or the default look of the game
+    // changes the day zoom is wired up.
+    const cam = newCamera();
+    expect(cam.detailScale()).toBeCloseTo(1, 6);
+  });
+
+  it('magnification tracks zoom, so sprites grow with the world', () => {
+    const cam = newCamera();
+    cam.zoomBy(2, 640, 360);
+    settle(cam);
+    expect(cam.detailScale()).toBeCloseTo(2, 4);
+    cam.zoomBy(2, 640, 360);
+    settle(cam);
+    expect(cam.detailScale()).toBeCloseTo(4, 4);
+  });
+
+  it('fit-space position times magnification IS the true screen position', () => {
+    // The renderer draws the world at fit scale under a detailScale transform.
+    // That only lands in the right place if the two compose back to exactly
+    // what worldToScreen would have given — this is that identity.
+    const cam = newCamera();
+    cam.zoomBy(2.5, 300, 500);
+    settle(cam);
+    const k = cam.detailScale();
+    for (const [wx, wy] of [
+      [0, 0],
+      [900, 400],
+      [2000, 1000],
+      [1234, 87],
+    ]) {
+      const fx = cam.fitScreenX(wx);
+      const fy = cam.fitScreenY(wy);
+      // The canvas transform: scale about the viewport centre.
+      expect((fx - 1280 / 2) * k + 1280 / 2).toBeCloseTo(cam.worldToScreenX(wx), 4);
+      expect((fy - 720 / 2) * k + 720 / 2).toBeCloseTo(cam.worldToScreenY(wy), 4);
+    }
+  });
 });

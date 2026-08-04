@@ -68,6 +68,28 @@ export class Camera {
     return this.zoom <= this.fitZoom() + 1e-4;
   }
 
+  /** How much bigger than the fitted view the camera currently is: 1 when the
+   *  whole world is on screen, up to maxZoom/fitZoom when fully zoomed in.
+   *
+   *  A renderer that draws the world at `fitZoom` and then applies this as a
+   *  canvas transform gets magnification for free — sprites, line weights and
+   *  every hard-coded pixel size scale together, which is what zooming in is
+   *  supposed to mean. Drawing straight at `zoom` instead gives you a camera
+   *  that moves the world around under a fixed-size stencil. */
+  detailScale(): number {
+    return this.zoom / this.fitZoom();
+  }
+
+  /** World → canvas position at FIT scale (pan applied, magnification not).
+   *  Feed these to a context already carrying the detailScale() transform. */
+  fitScreenX(wx: number): number {
+    return (wx - this.x) * this.fitZoom() + this.viewport.width / 2;
+  }
+
+  fitScreenY(wy: number): number {
+    return (wy - this.y) * this.fitZoom() + this.viewport.height / 2;
+  }
+
   // -------------------------------------------------------------------------
   // Transforms
   // -------------------------------------------------------------------------

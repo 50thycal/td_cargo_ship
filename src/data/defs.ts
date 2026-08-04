@@ -186,6 +186,12 @@ export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {
     desc: 'Lobbed area weapon against torpedoes: tap a point in the water and the blast destroys torpedoes inside it. Completely separate from missile interceptors — it cannot engage anything airborne.',
     cost: 240,
   },
+  mineSonar: {
+    id: 'mineSonar',
+    name: 'Hull-Mounted Mine Sonar',
+    desc: 'The escort can hear mines itself, and shares every contact with the whole convoy. Send her ahead and the water she is in stays charted for as long as she stays in it. Detection only — clearing still needs drones or a gun run.',
+    cost: 190,
+  },
 };
 
 /** Shore-base loadout slots. Base missile interceptors are built in. */

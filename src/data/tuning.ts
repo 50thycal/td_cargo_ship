@@ -112,6 +112,21 @@ export const NAV = {
   /** Revealed-mine avoidance corridor + weight. */
   mineBand: 30,
   mineAvoidWeight: 2.6,
+  /** Clear water a hull tries to keep around a CHARTED mine, in hull radii.
+   *
+   *  The forward-cone steering above only reacts to a mine the ship is pointed
+   *  at, which meant a hull could pass one close enough aboard to look like it
+   *  had not noticed. This is a standoff instead: any charted mine inside this
+   *  distance pushes the hull directly away from it, whatever heading it is on,
+   *  so the ship opens the range rather than merely missing.
+   *
+   *  Eight radii is roughly four ship lengths of clearance — 88 units for a
+   *  cargo hull, 112 for a tanker. */
+  mineBerthRadii: 8,
+  /** Strength of that standoff, relative to ordinary neighbour separation. A
+   *  mine is not a ship you are politely giving room to; it is the thing that
+   *  ends the hull. */
+  mineBerthWeight: 2.2,
   /** Last-resort hull-overlap correction (fraction of overlap per tick). Rarely
    *  triggers once steering is doing its job; guarantees no visual overlap. */
   overlapPush: 0.5,
@@ -120,10 +135,40 @@ export const NAV = {
    *  vessel: it holds the track the player gave it, and the merchant gets out
    *  of the way. At 1.0 the escort is never deflected at all. */
   escortPushShare: 0.9,
-  /** Escorts. */
+  /** Escorts.
+   *
+   *  An escort steers, it does not teleport along a ruler. It used to run the
+   *  straight line from where it was to where it was told to go, which meant a
+   *  merchant sitting on that line got shouldered aside — the convoy giving way
+   *  fixed the case where the merchant was under way and could take the way
+   *  off, but a hull stopped dead in the water cannot get out of anybody's way.
+   *  So the escort does the getting out of the way: same shape of steering the
+   *  merchants use, goal plus avoidance plus separation, through a turn-rate
+   *  limit so the course change reads as a ship altering course. */
   escortSpeed: 50,
   escortArrive: 16,
   escortSepBuffer: 26,
+  /** Forward distance over which an escort watches for a hull in its way. */
+  escortLookAhead: 120,
+  /** Lateral half-width of the escort's "in my way" corridor, added to hull
+   *  radii. */
+  escortLaneBand: 16,
+  escortGoalWeight: 1.0,
+  escortAvoidWeight: 2.0,
+  escortSepWeight: 1.6,
+  /** Escort heading may swing at most this many radians/second. Quicker than a
+   *  loaded merchant's 1.4 — it is a warship, and the player expects an order
+   *  to be obeyed promptly — but not instant. */
+  escortTurnRate: 2.6,
+  /** Seconds of making no real progress toward its destination before an escort
+   *  stops going around and starts nosing through.
+   *
+   *  Going around is right when there is a way around. A packed column with no
+   *  gap in it has none, and an escort that would rather circle forever than
+   *  push between two merchants is an escort that never carries out its order —
+   *  which is worse than a bit of shouldering. Separation still applies, so it
+   *  parts the line rather than driving over it. */
+  escortAvoidGiveUpSeconds: 3.5,
   /** Give-way to a crossing escort.
    *
    *  An escort cutting through the column used to be a bulldozer: it drove
@@ -499,7 +544,6 @@ export const COMBAT = {
    *  charted mine is ALWAYS steered around (no dodge roll) — a revealed mine on
    *  the plotted track is a known hazard the helm actively avoids. */
   mineAvoidLookahead: 200,
-  mineAvoidOffset: 70,
   /** A hull with a charted mine close ahead does not simply lean on the rudder:
    *  it comes off the throttle, because the slower it is going the tighter it
    *  can turn out of the way. Speed is capped to this fraction of cruise at the

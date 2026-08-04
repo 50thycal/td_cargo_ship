@@ -20,6 +20,7 @@ import type {
   AreaEffect,
   ArtilleryVariant,
   Base,
+  BaseModuleId,
   BoatVariant,
   CampaignState,
   CombatEffects,
@@ -52,7 +53,7 @@ import type {
  *  effect flow: base → technology/tactics → equipment → commander → final. */
 export function deriveEffects(
   completedResearch: readonly ResearchId[],
-  loadout: { escortModules: readonly ('deckGun' | 'mcmDroneLauncher' | 'depthCharges')[]; baseModules: readonly 'counterBattery'[] },
+  loadout: { escortModules: readonly EscortModuleId[]; baseModules: readonly BaseModuleId[] },
   commanderAbilities: readonly string[] = [],
 ): CombatEffects {
   const effects = deriveCounterEffects(completedResearch, {
@@ -410,6 +411,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       disabledUntil: 0,
       moveTarget: null,
       stationed: false,
+      blockedSeconds: 0,
       autoCooldown: 0,
       mcmAutoCooldown: 0,
       droneCooldown: 0,
@@ -3295,14 +3297,53 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // amount of lost speed. (Uncharted mines are still a detection problem, and
     // a contact that has gone stale is uncharted again.)
     let mineSlow = 1;
+    /** How badly this hull currently wants to be somewhere else, 0-1. */
+    let mineDanger = 0;
+    const mineBerth = r * NAV.mineBerthRadii;
     for (const mine of t.threats) {
       if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
       const dx = mine.x - ship.x;
       const dy = mine.y - ship.y;
       const along = dx * fx + dy * fy;
       const lat = -dx * fy + dy * fx;
-      if (along <= 0 || along > COMBAT.mineAvoidLookahead || Math.abs(lat) > NAV.mineBand) continue;
+
+      // Standoff, whatever heading the ship is on. Forward-cone steering alone
+      // only reacts to a mine the hull happens to be POINTED at, so a ship
+      // could slide past one close enough aboard to look like it had not seen
+      // it — and once the mine was abeam, nothing was in the cone at all.
+      //
+      // The direction matters as much as the force. Shoving a hull straight
+      // back from a mine dead ahead just fights its own engine; what a helm
+      // actually does is go WIDER. So ahead of the beam the standoff pushes
+      // sideways, away from the side the mine is on, and abeam or astern it
+      // pushes straight away to open the range.
+      const dm = Math.hypot(dx, dy);
+      if (dm > 0.001 && dm < mineBerth) {
+        const frac = (mineBerth - dm) / mineBerth;
+        mineDanger = Math.max(mineDanger, frac);
+        const push = frac * (NAV.mineBerthWeight / NAV.sepWeight);
+        if (along > 0) {
+          const side = lat >= 0 ? -1 : 1;
+          sepx += -fy * side * push;
+          sepy += fx * side * push;
+        } else {
+          sepx -= (dx / dm) * push;
+          sepy -= (dy / dm) * push;
+        }
+      }
+
+      // The corridor is as wide as the berth the ship is trying to keep, and
+      // that width matters more than it looks. It used to be a narrow fixed
+      // band measured in the SHIP's frame, which meant a mine dead ahead fell
+      // out of the corridor the moment the ship angled away from it — the
+      // avoidance switched itself off at exactly the heading that was working,
+      // and the hull settled into a shallow crab that took it past the charge
+      // at two ship lengths. Steering has to stay engaged while the ship opens
+      // out, or it is not steering, it is twitching.
+      const band = Math.max(NAV.mineBand, mineBerth);
+      if (along <= 0 || along > COMBAT.mineAvoidLookahead || Math.abs(lat) > band) continue;
       const urgency = 1 - along / COMBAT.mineAvoidLookahead;
+      mineDanger = Math.max(mineDanger, urgency);
       // Steer to whichever side gives more room; if dead ahead, pick a side.
       const side = lat >= 0 ? -1 : 1;
       const w = NAV.mineAvoidWeight / NAV.avoidWeight;
@@ -3320,7 +3361,14 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // slower hull is in my path, either COMMIT to a clear passing side (and
     // hold speed) or, if boxed in, slow to its pace and wait — like real ships.
     let gx = 1;
-    let gy = clamp((laneY - ship.y) / NAV.lanePull, -0.9, 0.9);
+    // Lane-keeping yields to a mine. Holding the lane line is a tidiness
+    // preference; the mine is the thing that ends the hull, and while the two
+    // pulled against each other at roughly equal strength the ship sat on the
+    // fence — measured, it crabbed along at a shallow angle and still passed
+    // within two ship lengths of the charge. A helm clearing a mine is not
+    // simultaneously trying to get back on its track.
+    let gy =
+      clamp((laneY - ship.y) / NAV.lanePull, -0.9, 0.9) * (1 - clamp(mineDanger * 1.6, 0, 1));
     let speedCap = cruise;
     if (hasBlock) {
       const wantSign = blockLat >= 0 ? -1 : 1; // veer to the side away from it
@@ -3427,6 +3475,18 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         escort.droneReady = t.effects.mcm.dualSortie ? 2 : 1;
       }
     }
+    // Where this escort wants to go, and how fast, before anything is in the
+    // way: a destination if it has one, otherwise station-keeping alongside
+    // the convoy, otherwise nothing at all.
+    let goalX = 0;
+    let goalY = 0;
+    let speed = 0;
+    // How much notice to take of other hulls. On the last stretch to a
+    // destination this falls to zero, because several orders — rejoin the
+    // convoy, most of all — send the escort AT a ship, and an escort that
+    // refuses to go near ships can never carry one out.
+    let avoidGain = 1;
+    let goalDistBefore = 0;
     if (escort.moveTarget) {
       const dx = escort.moveTarget.x - escort.x;
       const dy = escort.moveTarget.y - escort.y;
@@ -3435,16 +3495,99 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // Arrived: a hold order stations it here; a move order resumes forward.
         escort.stationed = escort.moveTarget.hold;
         escort.moveTarget = null;
+        escort.blockedSeconds = 0;
       } else {
-        const step = Math.min(NAV.escortSpeed * dt, d);
-        escort.x += (dx / d) * step;
-        escort.y += (dy / d) * step;
-        escort.heading = Math.atan2(dy, dx);
+        goalDistBefore = d;
+        goalX = dx / d;
+        goalY = dy / d;
+        speed = Math.min(NAV.escortSpeed, d / dt);
+        avoidGain = clamp((d - NAV.escortArrive) / (2 * NAV.escortArrive), 0, 1);
+        // Blocked long enough that there is evidently no way around: part the
+        // line instead of circling it forever.
+        if (escort.blockedSeconds >= NAV.escortAvoidGiveUpSeconds) avoidGain = 0;
       }
+    } else {
+      escort.blockedSeconds = 0;
     }
     if (!escort.moveTarget && !escort.stationed) {
-      escort.x += convoyFwd * dt; // cruise forward with the convoy
-      escort.heading = 0;
+      goalX = 1; // cruise forward with the convoy
+      goalY = 0;
+      speed = convoyFwd;
+    }
+
+    if (speed > 0) {
+      // Steer around the convoy rather than through it. A merchant under way
+      // gives way (see the give-way rule above), but one stopped dead — jammed
+      // by a drone, waiting behind a slower hull, boarded — cannot get out of
+      // anybody's way, so the escort has to be the one that alters course.
+      let avx = 0;
+      let avy = 0;
+      let sepx = 0;
+      let sepy = 0;
+      const fx = Math.cos(escort.heading);
+      const fy = Math.sin(escort.heading);
+      for (const ship of t.ships) {
+        if (!isActive(ship)) continue;
+        const or = SHIP_CLASSES[ship.classId].radius;
+        const dx = ship.x - escort.x;
+        const dy = ship.y - escort.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= 0.001 || d > NAV.perception) continue;
+
+        // Separation: hold clear water from anything close aboard.
+        const sepDist = COMBAT.escort.hitRadius + or + NAV.escortSepBuffer;
+        if (d < sepDist) {
+          const push = (sepDist - d) / sepDist;
+          sepx -= (dx / d) * push;
+          sepy -= (dy / d) * push;
+        }
+
+        // Forward avoidance: a hull inside the corridor ahead gets gone around,
+        // to whichever side it is NOT on.
+        const along = dx * fx + dy * fy;
+        const lat = -dx * fy + dy * fx;
+        if (
+          along > 0 &&
+          along < NAV.escortLookAhead &&
+          Math.abs(lat) < COMBAT.escort.hitRadius + or + NAV.escortLaneBand
+        ) {
+          const urgency = 1 - along / NAV.escortLookAhead;
+          const side = lat >= 0 ? -1 : 1;
+          avx += -fy * side * urgency;
+          avy += fx * side * urgency;
+        }
+      }
+
+      const vx =
+        NAV.escortGoalWeight * goalX +
+        avoidGain * (NAV.escortAvoidWeight * avx + NAV.escortSepWeight * sepx);
+      const vy =
+        NAV.escortGoalWeight * goalY +
+        avoidGain * (NAV.escortAvoidWeight * avy + NAV.escortSepWeight * sepy);
+      // Turn-rate limited, so an order reads as a ship altering course rather
+      // than a cursor being dragged.
+      const desired = Math.atan2(vy, vx);
+      const dh = angleDiff(desired, escort.heading);
+      escort.heading += clamp(dh, -NAV.escortTurnRate * dt, NAV.escortTurnRate * dt);
+      const step = speed * dt;
+      escort.x += Math.cos(escort.heading) * step;
+      escort.y += Math.sin(escort.heading) * step;
+
+      // Did that tick actually get us anywhere? Ground made good, not speed
+      // through the water — an escort sliding sideways along a wall of hulls is
+      // moving at full speed and arriving never. The counter DECAYS rather than
+      // resetting, so a ship that has just fought its way through does not
+      // immediately start dodging again and re-block itself.
+      if (goalDistBefore > 0 && escort.moveTarget) {
+        const after = dist(escort.x, escort.y, escort.moveTarget.x, escort.moveTarget.y);
+        const madeGood = goalDistBefore - after;
+        escort.blockedSeconds = Math.max(
+          0,
+          escort.blockedSeconds + (madeGood < step * 0.35 ? dt : -dt),
+        );
+      }
+    } else if (!escort.moveTarget && escort.stationed) {
+      escort.heading = 0; // holding station, bow forward
     }
     escort.x = clamp(escort.x, 20, WORLD.deliverX - 20);
     escort.y = clamp(escort.y, 60, WORLD.height - 60);
@@ -3900,6 +4043,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     const detectable = mineDetectionUp && (!mine.lowSig || t.effects.mineSonar.detectLowSig);
     if (detectable) {
+      // Nothing hears a mine without a sonar fitted to it. There is exactly one
+      // exception and it is a purchased capability, not a freebie: the Shared
+      // Sonar Picture node wires the unequipped hulls into the fleet's feed at
+      // a much shorter range, and until it is researched fleetDetectRadius is
+      // zero. A hull with no sonar and no shared picture is deaf, full stop.
       let heard = false;
       for (const ship of activeShips(t)) {
         const radius = ship.modules.includes('mineSonar')
@@ -3910,12 +4058,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
           break;
         }
       }
-      // Escorts listen too, and at the fitted-sonar radius: hearing mines is
-      // most of what a screen is FOR, and an escort sent ahead to sweep the
-      // track is the clearest expression of that.
+      // Escorts listen too — but only the ones actually carrying a sonar. An
+      // escort is a hull like any other: hearing mines is a fit you buy for
+      // her, not something a warship does by existing. (Send that one ahead
+      // and the water she is in stays charted for as long as she stays in it.)
       if (!heard) {
         for (const escort of t.escorts) {
-          if (!escort.alive) continue;
+          if (!escort.alive || !escort.modules.includes('mineSonar')) continue;
           if (dist(escort.x, escort.y, mine.x, mine.y) <= t.effects.mineSonar.radius) {
             heard = true;
             break;

@@ -55,6 +55,15 @@ sea that is what taking way off is for:
   overtake-or-queue logic; and no merchant will hold for crossing traffic
   indefinitely — after 8 seconds it stops waiting and steers around.
 
+**Escorts steer too.** They run the same shape of model — goal, forward
+avoidance, separation, through a turn-rate limit — rather than the straight line
+to their destination they used to run. Giving way only works when the merchant
+can move: a hull stopped dead in the water (jammed by a drone, queued behind a
+slower ship, boarded) cannot get out of anyone's way, so the escort goes around
+it instead. If it makes no ground toward its destination for several seconds —
+a packed column with no gap in it — it stops going around and parts the line,
+because an order has to be carried out.
+
 The player operates the convoy's **defenses**, not the cargo ships' steering:
 
 | Action | Input | Cost/limit |

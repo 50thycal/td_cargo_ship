@@ -180,13 +180,18 @@ Priority Tag (target-selection priority only; never accuracy).
 
 ### Category: Mine Warfare
 
-#### Branch: Mine-Detection Sonar — cargo module, detects Mines
+#### Branch: Mine-Detection Sonar — cargo module AND escort fit, detects Mines
+Sold twice, because both kinds of hull can carry it and both are worth fitting:
+as a **cargo module** on the ships that need to hear what is in front of them,
+and as **Hull-Mounted Mine Sonar**, an escort specialist fit for the ship you
+send ahead to hold the track. Same sonar, same branch, same base node.
 **Nodes:** Base (standard mines, Low range) → Improved Range (Medium) →
 Long-Range (High); Composite-Signature Analysis (low-signature mines; needs
 Improved Range); Drift Tracking (keeps a drifting mine's chart current ⚑).
 **Tactics:** Passive Detection (granted) → Danger Envelope (shows trigger
-areas) → Drift Vector (drift direction ⚑); Shared Sonar Picture (every hull
-contributes a 120 u contact feed — a found mine stays found).
+areas) → Drift Vector (drift direction ⚑); Shared Sonar Picture (the only way
+an UNEQUIPPED hull contributes anything — a 120 u contact feed; without it an
+unfitted hull's detection radius is zero).
 
 #### Branch: Escort Mine-Countermeasure Drones — escort module, attacks Mines
 Detection and clearing stay separate: **a drone can never be launched at an
@@ -217,10 +222,19 @@ mine warfare a live problem rather than a one-time chore:
 
 - **Scan plane** hands the fleet a **timed fix**, good for 30 seconds. After
   that the mine drops off the plot and the convoy is blind to it again.
-- **Sonar** (hull or escort) holds a contact only while some hull actually has
-  the mine inside its envelope, plus a few seconds of grace so an edge contact
-  does not strobe. Whoever holds it **shares it** — the whole fleet steers off
-  a mine one ship can hear, which is the entire value of fitting sonar.
+- **Sonar** holds a contact only while some hull actually has the mine inside
+  its envelope, plus a few seconds of grace so an edge contact does not strobe.
+  Whoever holds it **shares it** — the whole fleet steers off a mine one ship
+  can hear, which is the entire value of fitting sonar.
+
+Nothing detects a mine without a sonar fitted to it. Not a cargo hull, not an
+escort, however close it sails. The one exception is a purchased capability
+rather than a freebie: **Shared Sonar Picture** wires the *unequipped* hulls
+into the fleet's feed at a much shorter range, and until that node is researched
+an unfitted hull's detection radius is zero. Escorts carry the sonar as a
+specialist fit (**Hull-Mounted Mine Sonar**) like any other — a warship does not
+hear mines by existing — and an escort with one sent ahead keeps the water she
+is in charted for as long as she stays in it.
 
 So a convoy can sail back into water it already charted and hit a mine it
 already found, and an escort sent ahead to hold the track is doing real work
@@ -230,6 +244,14 @@ gun run — is the only permanent answer to it.
 A hull with a live contact close on the bow does not merely lean on the rudder:
 it also comes off the throttle (down to 45% of cruise at worst), because slower
 means a tighter turn and more time to make it.
+
+It also keeps a real **berth** — eight hull radii, about four ship lengths — and
+that standoff applies in every direction, not just ahead. Forward-cone steering
+alone only answers a mine the ship is pointed at, so a hull could slide past one
+close enough aboard to look like it had not seen it, and once the mine was abeam
+nothing was in the cone at all. Lane-keeping yields to the mine while this is
+happening: holding the track is a preference, the mine is the thing that ends
+the hull.
 
 ### Category: Torpedo Warfare (enemy branch LIVE)
 

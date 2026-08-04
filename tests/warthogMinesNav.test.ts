@@ -355,9 +355,9 @@ describe('mine contacts', () => {
     expect(mine.revealed).toBe(true);
   });
 
-  it('an escort ahead of the convoy holds contacts for the ships behind it', () => {
+  it('an escort WITH sonar fitted holds contacts for the ships behind it', () => {
     const { state, rng } = emptyTransit('mine-escort-sonar', (c) => {
-      fitUniformEscorts(c, 1);
+      fitUniformEscorts(c, 1, ['mineSonar']);
       c.completedResearch.push('mineSonar.base' as ResearchId);
     });
     clearTheDecks(state); // no cargo hull is anywhere near
@@ -369,6 +369,41 @@ describe('mine contacts', () => {
     run(state, rng, 1);
     expect(mine.revealed).toBe(true);
     expect(state.stats.counter.detections.mineSonar).toBe(1);
+  });
+
+  it('an escort WITHOUT sonar hears nothing, however close it sits', () => {
+    // The reported bug: mines were being charted in the first round by a fleet
+    // that had bought no sonar at all. Nothing detects a mine by existing.
+    const { state, rng } = emptyTransit('mine-escort-deaf', (c) => {
+      fitUniformEscorts(c, 1, ['deckGun']);
+      c.completedResearch.push('mineSonar.base' as ResearchId);
+    });
+    clearTheDecks(state);
+    const mine = addMine(state, 1400, WORLD.lanes[2]);
+    const escort = state.escorts[0];
+    escort.x = mine.x;
+    escort.y = mine.y;
+    escort.stationed = true;
+    run(state, rng, 3);
+    expect(mine.revealed).toBe(false);
+    expect(state.stats.minesRevealed).toBe(0);
+  });
+
+  it('an unequipped convoy with no research is deaf to mines entirely', () => {
+    // Sailing right over one is not detection. Until something aboard is
+    // listening, a mine is found the hard way.
+    const { state, rng } = emptyTransit('mine-no-kit');
+    const mine = addMine(state, 700, WORLD.lanes[1]);
+    const ship = soloShip(state);
+    ship.spawnTime = 0;
+    run(state, rng, 1);
+    ship.x = mine.x - 40;
+    ship.y = mine.y;
+    ship.disabledUntil = SIM.maxTransitTime; // stopped right beside it
+    run(state, rng, 3);
+    expect(state.effects.mineSonar.fleetDetectRadius).toBe(0);
+    expect(mine.revealed).toBe(false);
+    expect(state.stats.minesRevealed).toBe(0);
   });
 
   it('a low-signature mine still needs the research, contact or not', () => {
@@ -417,6 +452,51 @@ describe('convoy helmsmanship', () => {
     // Slowing is not stopping — a merchant that halts in a minefield is a
     // sitting target, and it still has to get through.
     expect(slowest).toBeGreaterThan(0);
+  });
+
+  it('opens the range on a charted mine to several ship lengths', () => {
+    const { state, rng } = emptyTransit('mine-berth', (c) => {
+      c.classModules.cargo = ['mineSonar'];
+      c.completedResearch.push('mineSonar.base' as ResearchId);
+    });
+    const ship = soloShip(state);
+    run(state, rng, 4);
+
+    // Plant a charted mine right on the ship's track, a little ahead.
+    const mine = addMine(state, ship.x + 120, ship.y);
+    mine.revealedUntil = SIM.maxTransitTime;
+    mine.revealed = true;
+
+    const r = SHIP_CLASSES[ship.classId].radius;
+    let closest = Infinity;
+    for (let i = 0; i < Math.ceil(20 / SIM.dt); i++) {
+      stepTransit(state, [], rng);
+      closest = Math.min(closest, Math.hypot(ship.x - mine.x, ship.y - mine.y));
+      if (ship.x > mine.x + 200) break; // well past it
+    }
+    // Three ship lengths is the floor the design asks for; a length is about
+    // two hull radii.
+    expect(closest).toBeGreaterThan(r * 6);
+    // And it did not simply stop short of the mine and give up.
+    expect(ship.x).toBeGreaterThan(mine.x);
+  });
+
+  it('keeps clear of a mine that appears alongside, not just ahead', () => {
+    // Forward-cone steering alone cannot answer this one: by the time a hull
+    // has a mine abeam, nothing is in the cone at all.
+    const { state, rng } = emptyTransit('mine-berth-abeam', (c) => {
+      c.classModules.cargo = ['mineSonar'];
+      c.completedResearch.push('mineSonar.base' as ResearchId);
+    });
+    const ship = soloShip(state);
+    run(state, rng, 4);
+    const r = SHIP_CLASSES[ship.classId].radius;
+    const mine = addMine(state, ship.x, ship.y + r * 2.5);
+    mine.revealedUntil = SIM.maxTransitTime;
+    mine.revealed = true;
+    const gap0 = Math.hypot(ship.x - mine.x, ship.y - mine.y);
+    run(state, rng, 5);
+    expect(Math.hypot(ship.x - mine.x, ship.y - mine.y)).toBeGreaterThan(gap0);
   });
 
   it('takes the way off for an escort crossing its bow', () => {
@@ -493,15 +573,15 @@ describe('convoy helmsmanship', () => {
     expect(ship.x - startX).toBeGreaterThan(50);
   });
 
-  it('an escort crossing the column holds its ordered track', () => {
+  it('an escort crossing a packed column still carries out its order', () => {
     // The original complaint: an escort cutting through a row of merchants
-    // bulldozed them and was itself knocked off course. Both halves are fixed —
-    // this pins the escort half.
+    // bulldozed them and was itself knocked off course. It now steers around
+    // traffic — but a column with no gap in it has nothing to steer around, and
+    // an order has to be carried out. It parts the line instead of circling it.
     const { state, rng } = emptyTransit('escort-track', (c) => {
       fitUniformEscorts(c, 1);
     });
     const escort = state.escorts[0];
-    // Wall a line of hulls across its path.
     const laneY = WORLD.lanes[1];
     state.ships.forEach((ship, i) => {
       ship.spawnTime = 0;
@@ -517,11 +597,47 @@ describe('convoy helmsmanship', () => {
     const targetX = 760;
     const targetY = laneY + 240;
     escort.moveTarget = { x: targetX, y: targetY, hold: true };
-    run(state, rng, 14);
-    // It got where it was told to go, through the column, near enough.
+    run(state, rng, 40);
     expect(Math.hypot(escort.x - targetX, escort.y - targetY)).toBeLessThan(
       NAV.escortArrive + 12,
     );
+  });
+
+  it('an escort goes AROUND a hull stopped dead on its track, not through it', () => {
+    // The reported bug. A merchant under way can give way; one stopped in the
+    // water cannot, so the escort has to be the one that alters course.
+    const { state, rng } = emptyTransit('escort-around', (c) => {
+      fitUniformEscorts(c, 1);
+    });
+    const laneY = WORLD.lanes[1];
+    const blocker = soloShip(state);
+    blocker.spawnTime = 0;
+    blocker.spawned = true;
+    blocker.alive = true;
+    blocker.x = 900;
+    blocker.y = laneY;
+    blocker.heading = 0;
+    blocker.speed = 0;
+    blocker.disabledUntil = SIM.maxTransitTime; // dead in the water
+    const blockerY0 = blocker.y;
+
+    const escort = state.escorts[0];
+    escort.x = 700;
+    escort.y = laneY;
+    escort.heading = 0;
+    escort.moveTarget = { x: 1100, y: laneY, hold: true };
+
+    let closest = Infinity;
+    for (let i = 0; i < Math.ceil(20 / SIM.dt) && escort.moveTarget; i++) {
+      stepTransit(state, [], rng);
+      closest = Math.min(closest, Math.hypot(escort.x - blocker.x, escort.y - blocker.y));
+    }
+    // It arrived...
+    expect(Math.hypot(escort.x - 1100, escort.y - laneY)).toBeLessThan(NAV.escortArrive + 12);
+    // ...without ever driving over the hull...
+    expect(closest).toBeGreaterThan(SHIP_CLASSES[blocker.classId].radius);
+    // ...and without dragging it out of the water it was sitting in.
+    expect(Math.abs(blocker.y - blockerY0)).toBeLessThan(26);
   });
 });
 
