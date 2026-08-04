@@ -544,6 +544,15 @@ export interface Escort {
    *  NAV.escortAvoidGiveUpSeconds the escort stops going around traffic and
    *  starts parting it — see the escort steering block in transit.ts. */
   blockedSeconds: number;
+  /** Smoothed steering vector. Persisted because a rudder is not re-decided
+   *  from scratch thirty times a second — see NAV.escortSteerSmoothing. */
+  steerX: number;
+  steerY: number;
+  /** Which hull this escort is currently committed to passing, and on which
+   *  side (-1 = to port of its own heading, +1 = to starboard). Held until the
+   *  hull is well clear, so the choice cannot flip tick to tick. */
+  passShipId: number | null;
+  passSide: number;
   /** SEPARATE automatic-fire cooldown (local automatic engagement tactic).
    *  Independent of the launcher reload `cooldown` by design. */
   autoCooldown: number;

@@ -169,6 +169,42 @@ export const NAV = {
    *  which is worse than a bit of shouldering. Separation still applies, so it
    *  parts the line rather than driving over it. */
   escortAvoidGiveUpSeconds: 3.5,
+  /** Seconds over which that override fades in, rather than snapping on at the
+   *  threshold. A binary switch in the middle of a steering loop is a visible
+   *  twitch — the escort was going one way and is suddenly going another. */
+  escortAvoidGiveUpFade: 0.8,
+  /** Passing astern.
+   *
+   *  An escort always goes round the STERN of a merchant that is making way.
+   *  Crossing ahead of a moving ship is a losing race: she keeps coming, so the
+   *  escort keeps having to bear away, and the merchant ends up herding it
+   *  further and further off its track. Cross behind her and she takes herself
+   *  out of the problem. It is also the rule of the road.
+   *
+   *  Below this speed a merchant counts as stopped — she has no stern to pass,
+   *  and the side is chosen on plain geometry instead. */
+  escortSternMinSpeed: 3,
+  /** How squarely the stern has to lie to one side before that side is taken.
+   *  Two ships on the same course have no astern-side at all (the stern is
+   *  dead ahead of the escort or dead behind it), and forcing a choice there
+   *  would be arbitrary — that is an overtaking situation, not a crossing one,
+   *  so geometry decides. */
+  escortSternMinLateral: 0.15,
+  /** Seconds of smoothing on an escort's steering vector.
+   *
+   *  Steering forces are computed fresh every tick from a world that is itself
+   *  moving, so the raw vector flickers — a hull crosses in or out of the
+   *  corridor, a merchant gives way and stops, a passing side is re-evaluated.
+   *  Feeding that straight to the rudder made the escort visibly shake when it
+   *  got close to the convoy. Filtering the vector (rather than the heading)
+   *  keeps the ship committed to a course for long enough to look like it meant
+   *  it, and still lets a real change through inside half a second. */
+  escortSteerSmoothing: 0.35,
+  /** Once an escort has committed to passing a particular hull on a particular
+   *  side, it holds that choice until the hull is this far outside the corridor
+   *  it was avoiding — the hysteresis that stops the side flipping every tick
+   *  as the geometry crosses dead ahead. */
+  escortPassCommitSlack: 40,
   /** Give-way to a crossing escort.
    *
    *  An escort cutting through the column used to be a bulldozer: it drove
