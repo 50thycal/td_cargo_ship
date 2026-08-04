@@ -2130,6 +2130,7 @@ export const ESCORT_MODULE_RESEARCH_REQUIREMENT: Record<EscortModuleId, Research
   deckGun: 'deckGun.base',
   mcmDroneLauncher: 'mcmDrones.base',
   depthCharges: 'depthCharges.base',
+  mineSonar: 'mineSonar.base',
 };
 
 export const BASE_MODULE_RESEARCH_REQUIREMENT: Record<BaseModuleId, ResearchId> = {

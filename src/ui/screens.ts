@@ -1156,9 +1156,15 @@ const MODULE_ICONS: Record<ModuleId, IconName> = {
 /** The counter branch a piece of equipment belongs to (for the platform /
  *  counters / role line on its card). */
 function branchForEquipment(kind: 'cargoModule' | 'escortModule' | 'baseModule', id: string) {
-  return Object.values(COUNTER_BRANCHES).find(
+  const exact = Object.values(COUNTER_BRANCHES).find(
     (b) => b.equipment?.kind === kind && b.equipment.id === id,
   );
+  if (exact) return exact;
+  // A capability can be fitted to more than one kind of hull — mine sonar is
+  // sold as a cargo module and as an escort fit, and it is the same sonar. Fall
+  // back to matching the id alone so the second fit still shows its branch's
+  // icon and "what this is for" line instead of a generic card.
+  return Object.values(COUNTER_BRANCHES).find((b) => b.equipment?.id === id);
 }
 
 /** One-line "what this equipment is for": role + countered enemy branches. */

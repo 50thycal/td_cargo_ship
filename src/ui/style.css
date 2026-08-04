@@ -1027,23 +1027,31 @@ button.unequip {
   z-index: 6;
 }
 
+/* The roster sits over the top-right corner of the sea, which is water the
+   player has to be able to read — missiles come in over it. So the rows are
+   mostly transparent and lean on a blur plus a text shadow for legibility
+   rather than on an opaque slab. Hovering or selecting a row makes it solid,
+   because at that point the player is looking AT the roster, not through it. */
 .escort-row {
   padding: 6px 8px 5px;
   border-radius: 8px;
-  border: 1px solid rgba(120, 160, 200, 0.22);
-  border-left: 3px solid rgba(120, 160, 200, 0.5);
-  background: rgba(9, 20, 32, 0.82);
+  border: 1px solid rgba(120, 160, 200, 0.16);
+  border-left: 3px solid rgba(120, 160, 200, 0.42);
+  background: rgba(9, 20, 32, 0.3);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
 
-.escort-row:hover { background: rgba(16, 33, 52, 0.92); }
+.escort-row:hover { background: rgba(16, 33, 52, 0.8); }
 
 .escort-row.selected {
   border-color: #4dc3ff;
   border-left-color: #4dc3ff;
-  background: rgba(18, 44, 66, 0.95);
-  box-shadow: 0 0 0 1px rgba(77, 195, 255, 0.35);
+  background: rgba(18, 44, 66, 0.72);
+  box-shadow: 0 0 0 1px rgba(77, 195, 255, 0.3);
 }
 
 /* Activity colour-coding, matched to the map labels. */
@@ -1082,7 +1090,7 @@ button.unequip {
   margin-top: 4px;
   height: 3px;
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
