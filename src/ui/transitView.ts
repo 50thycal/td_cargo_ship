@@ -131,10 +131,18 @@ export class TransitView {
    *  preference, persisted on the campaign (see onTargetPriorityChange). */
   private targetPriority: TargetPriority;
 
-  // HUD elements updated per-frame
-  private hudInfo!: HTMLElement;
+  // HUD elements updated per-frame. The top rail is a row of LCD readout
+  // chips (label + value) rather than one long text string, so the vital
+  // numbers stay scannable on a phone.
+  private hudDelivered!: HTMLElement;
+  private hudLost!: HTMLElement;
+  private hudLostChip!: HTMLElement;
   private hudQuota!: HTMLElement;
-  private hudAmmo!: HTMLElement;
+  private hudInt!: HTMLElement;
+  private hudDrones!: HTMLElement;
+  private hudDronesChip!: HTMLElement;
+  private hudDc!: HTMLElement;
+  private hudDcChip!: HTMLElement;
   private selInfo!: HTMLElement;
   /** The escort roster: one row per ship, showing name, status and damage.
    *  This is the panel that answers "why is that one sitting there". */
@@ -177,11 +185,14 @@ export class TransitView {
     this.canvas.width = CANVAS_W;
     this.canvas.height = CANVAS_H;
     this.ctx = this.canvas.getContext('2d')!;
+    // The CRT glass: scanlines + vignette over the tactical display. Purely
+    // cosmetic, never takes input.
+    const crt = h('div', { attrs: { id: 'crt-overlay', 'aria-hidden': 'true' } });
     this.hudTop = h('div', { attrs: { id: 'hud-top' } });
     this.hudBottom = h('div', { attrs: { id: 'hud-bottom' } });
     this.toast = h('div', { attrs: { id: 'toast' } });
     this.buildHud();
-    this.elements.push(this.canvas, this.hudTop, this.hudBottom, this.toast);
+    this.elements.push(this.canvas, crt, this.hudTop, this.hudBottom, this.toast);
     for (const el of this.elements) stage.append(el);
 
     if (this.showTutorial) {
@@ -208,17 +219,47 @@ export class TransitView {
   // HUD
   // -------------------------------------------------------------------------
 
+  /** An LCD readout chip: tiny label + live value. */
+  private static chip(label: string, cls = ''): { el: HTMLElement; val: HTMLElement } {
+    const val = h('span');
+    const el = h('span', { className: cls ? `hud-chip ${cls}` : 'hud-chip' }, [
+      h('span', { className: 'hud-chip-label', text: label }),
+      val,
+    ]);
+    return { el, val };
+  }
+
   private buildHud(): void {
-    this.hudInfo = h('span');
+    const round = TransitView.chip('RND');
+    round.val.textContent = `${this.round}`;
+    const conf = TransitView.chip('CONF', this.confidence <= 25 ? 'warn' : '');
+    conf.val.textContent = `${this.confidence}`;
+    const delivered = TransitView.chip('DEL');
+    this.hudDelivered = delivered.val;
+    const lost = TransitView.chip('LOST', 'bad');
+    this.hudLost = lost.val;
+    this.hudLostChip = lost.el;
+    const int = TransitView.chip('INT');
+    this.hudInt = int.val;
+    const drones = TransitView.chip('DRN');
+    this.hudDrones = drones.val;
+    this.hudDronesChip = drones.el;
+    const dc = TransitView.chip('DC');
+    this.hudDc = dc.val;
+    this.hudDcChip = dc.el;
     this.hudQuota = h('span', { className: 'hud-quota', attrs: { title: 'Active delivery quota' } });
-    this.hudAmmo = h('span');
     this.selInfo = h('span', { attrs: { id: 'sel-info' } });
     this.hudTop.append(
-      this.hudInfo,
+      round.el,
+      delivered.el,
+      lost.el,
+      conf.el,
       this.hudQuota,
       h('span', { className: 'spacer' }),
       this.selInfo,
-      this.hudAmmo,
+      int.el,
+      drones.el,
+      dc.el,
     );
 
     this.warthogBtn = h('button', {
@@ -252,10 +293,10 @@ export class TransitView {
 
     this.pauseBtn = h('button', {
       className: 'hud-btn',
-      text: '⏸',
+      text: 'II',
       onClick: () => {
         this.paused = !this.paused;
-        this.pauseBtn.textContent = this.paused ? '▶' : '⏸';
+        this.pauseBtn.textContent = this.paused ? '▶' : 'II';
       },
     });
     this.speedBtn = h('button', {
@@ -285,7 +326,7 @@ export class TransitView {
         onClick: () => {
           const enabled = !this.state.autoFire[toggle.system];
           this.queue({ type: 'toggleAuto', system: toggle.system, enabled });
-          this.showToast(`${toggle.hint}: ${enabled ? 'ON' : 'OFF'} (manual fire always available)`);
+          this.showToast(`${toggle.hint}: ${enabled ? 'ON' : 'OFF'}`);
         },
       });
       btn.title = `${toggle.hint} — tap to toggle. Manual fire is never disabled.`;
@@ -415,25 +456,24 @@ export class TransitView {
 
   private updateHud(): void {
     const s = this.state.stats;
-    this.hudInfo.textContent =
-      `Round ${this.round}   ·   Delivered ${s.delivered}/${s.launched}` +
-      (s.lost > 0 ? `   ·   Lost ${s.lost}` : '') +
-      `   ·   Confidence ${this.confidence}`;
+    this.hudDelivered.textContent = `${s.delivered}/${s.launched}`;
+    this.hudLostChip.classList.toggle('hidden', s.lost === 0);
+    this.hudLost.textContent = `${s.lost}`;
 
     // Live quota: cargo points already banked this window PLUS this round's
     // delivered value so far, so the player watches the active quota climb
-    // ship by ship as the convoy crosses. A distinct pill (not folded into the
-    // info string) so it stays legible and easy to track at a glance.
+    // ship by ship as the convoy crosses.
     const quotaLive = this.quotaEarnedBefore + s.valueDelivered;
-    this.hudQuota.textContent = `Quota ${quotaLive}/${this.quotaNeeded}`;
+    this.hudQuota.textContent = `QUOTA ${quotaLive}/${this.quotaNeeded}`;
     this.hudQuota.classList.toggle('quota-met', quotaLive >= this.quotaNeeded);
     const t = this.state;
     const dcEquipped = t.escortModules.includes('depthCharges');
     const dcReady = t.escorts.filter((e) => e.alive && e.dcShots > 0 && e.dcCooldown <= 0).length;
-    this.hudAmmo.textContent =
-      `Interceptors: ${t.ammo}` +
-      (t.effects.sweepDrones ? `   ·   Drones: ${t.droneAmmo}` : '') +
-      (dcEquipped ? `   ·   DC ready: ${dcReady}` : '');
+    this.hudInt.textContent = `${t.ammo}`;
+    this.hudDronesChip.classList.toggle('hidden', !t.effects.sweepDrones);
+    this.hudDrones.textContent = `${t.droneAmmo}`;
+    this.hudDcChip.classList.toggle('hidden', !dcEquipped);
+    this.hudDc.textContent = `${dcReady}`;
 
     // Clear the escort selection if that escort is gone or was destroyed.
     if (
