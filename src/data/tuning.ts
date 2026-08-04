@@ -656,12 +656,37 @@ export const CAMPAIGN = {
   strongRoundsForGrowth: 2,
   startConfidence: 60,
   maxConfidence: 100,
-  /** Confidence deltas. */
-  confidenceGreatRound: 8, // >= 90% delivered
-  confidenceGoodRound: 5, // >= 75% delivered
-  confidenceBadRound: -5, // < 60% delivered
-  confidencePerLoss: -3,
-  confidenceLossCap: -12, // max penalty from losses in one round
+  /** Confidence deltas.
+   *
+   *  Confidence follows the SHARE of the convoy that arrives, not the COUNT
+   *  that does not. The first build rewarded a delivered *fraction* with a flat
+   *  bonus (max +8) and punished each lost *hull* (-3, capped -12), which
+   *  scaled the two halves differently — so the same performance cost more
+   *  confidence the bigger the convoy got. Measured over 88 campaigns, at an
+   *  identical 80-90% delivery a sub-20-hull convoy averaged -3.6 confidence
+   *  and a 28+ hull convoy -12.1. Capacity is both the progression and the
+   *  scoring stat, so the player was punished for advancing, and every delivery
+   *  band below 90% bled confidence: -9.4 at 80-90%, -20.0 at 70-75%. SEESAW.md
+   *  calls 60-90% the HEALTHY band; the game made all of it terminal and
+   *  demanded ~90%+ forever, which is the "pinned at 100%" state the north star
+   *  explicitly rejects. Every campaign in the sweep died of it.
+   *
+   *  A single rate-based curve fixes both halves at once: it is size-neutral by
+   *  construction, and its break-even sits inside the healthy band. */
+  /** Delivered fraction that leaves confidence unchanged. Below it the round
+   *  costs confidence, above it the round earns some. Sits inside SEESAW.md's
+   *  60-90% healthy band, near the top — holding station should take a good
+   *  round, but not a perfect one. */
+  confidenceBreakEven: 0.78,
+  /** Confidence per unit of delivered fraction away from break-even. At 100%
+   *  delivered this reaches the ceiling below; at ~8% it reaches the floor. */
+  confidenceDeliverySwing: 36,
+  /** Ceiling on what one round's delivery can earn (hit at 100% delivered),
+   *  and floor on what it can cost. The floor is deliberately wider than the
+   *  ceiling: a disaster should outweigh a triumph, and confidenceRoundFloor
+   *  still bounds the round as a whole. */
+  confidenceDeliveryCeiling: 8,
+  confidenceDeliveryFloor: -25,
   /** Extra confidence lost per hull TAKEN by a boarding party, on top of the
    *  ordinary loss penalty and outside its cap. A captured ship is a worse
    *  outcome than a sunk one — the cargo is in enemy hands rather than on the
@@ -680,8 +705,14 @@ export const CAMPAIGN = {
    *  drag and measurably broke the game — a sweep that finished 8 of 9
    *  campaigns at the round cap beforehand collapsed 7 of 9 on confidence
    *  afterwards. Halving it restores the intended pressure while keeping the
-   *  beat on every loss. PROVISIONAL: tune through play. */
-  confidencePerCrewLost: -2,
+   *  beat on every loss.
+   *
+   *  RATE-SCALED for the same reason the delivery term is (see above): as a
+   *  per-crew count it carried the identical convoy-size flaw, adding roughly
+   *  -5 to a big convoy's round against -2.6 to a small one at equal
+   *  performance. Expressed against the convoy sailed, abandoning a quarter of
+   *  your crews costs the same wherever the fleet has grown to. */
+  confidenceCrewLostRate: -20,
   /** Confidence RECOVERED per crew brought home. Deliberately smaller than
    *  the abandonment penalty: bringing the crew back does not undo losing the
    *  ship, but visibly rewards the diversion — and gives a player having a
@@ -690,6 +721,12 @@ export const CAMPAIGN = {
    *  swallow it, which is exactly the round it matters most in. Rescue is the
    *  only way confidence moves upward inside a round other than delivering. */
   confidencePerCrewRescued: 1,
+  /** Ceiling on the rescue credit in one round. The abandonment penalty above
+   *  is now rate-scaled while this credit stays per-crew — deliberately, so a
+   *  diversion pays a predictable, legible amount — but without a ceiling a
+   *  catastrophic round on a large convoy could bank more confidence from
+   *  rescues than the sinkings cost, making a disaster profitable. */
+  confidenceRescueCap: 8,
   /** Floor on ordinary confidence lost in ONE round (captures excluded).
    *
    *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
@@ -999,7 +1036,18 @@ export const ENEMY_ECONOMY = {
    *  matter — the restoring force has to work in both directions. */
   bonusStrongDelivery: 0.12, // player delivered >= 85%
   bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
-  dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+  dampStruggling: 0.2, // player delivered below the threshold -> budget cut by this
+  /** Delivered fraction under which the player counts as STRUGGLING and the
+   *  enemy's budget growth is damped.
+   *
+   *  RAISED from 0.55. The damp is the seesaw's restoring force on the player's
+   *  end, and at 0.55 it was calibrated below the band where campaigns actually
+   *  died: across 88 campaigns the median delivery over a campaign's final
+   *  three rounds was 62%, and only 8.9% of all rounds ever fell under 55%. The
+   *  brake existed but the car never reached the speed that applied it. 0.68
+   *  sits just under confidenceBreakEven (0.78), so it engages once a player is
+   *  genuinely losing ground rather than merely having an ordinary hard round. */
+  strugglingDelivery: 0.68,
 
   /** Enemy ordnance scales with the convoy value actually sailing, measured
    *  against the campaign's first convoy. Replaces a one-off "rich convoy"

@@ -444,15 +444,25 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // --- Confidence ----------------------------------------------------------------
   const deliveredFraction = s.launched > 0 ? s.delivered / s.launched : 0;
   let confidenceChange = 0;
-  if (deliveredFraction >= 0.9) confidenceChange += CAMPAIGN.confidenceGreatRound;
-  else if (deliveredFraction >= 0.75) confidenceChange += CAMPAIGN.confidenceGoodRound;
-  else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
-  confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
-  // Crews left in the water bite on top of the loss penalty: the sinking cost
-  // a hull, the abandonment costs trust. This is part of the ordinary disaster
-  // and so sits INSIDE the round floor below. (The rescue credit does not —
-  // see below.)
-  confidenceChange += CAMPAIGN.confidencePerCrewLost * s.survivorsLost;
+  // Confidence follows the SHARE of the convoy that arrives, not the COUNT that
+  // does not — one rate-based curve covering both the reward and the penalty,
+  // so the same performance reads the same at 20 hulls and at 45. See the
+  // CAMPAIGN.confidenceBreakEven block for the measurements behind the shape.
+  confidenceChange += Math.max(
+    CAMPAIGN.confidenceDeliveryFloor,
+    Math.min(
+      CAMPAIGN.confidenceDeliveryCeiling,
+      CAMPAIGN.confidenceDeliverySwing * (deliveredFraction - CAMPAIGN.confidenceBreakEven),
+    ),
+  );
+  // Crews left in the water bite on top of the delivery curve: the sinking cost
+  // a hull, the abandonment costs trust. Rate-scaled against the convoy sailed
+  // for the same reason the curve is. This is part of the ordinary disaster and
+  // so sits INSIDE the round floor below. (The rescue credit does not — see
+  // below.)
+  if (s.launched > 0) {
+    confidenceChange += CAMPAIGN.confidenceCrewLostRate * (s.survivorsLost / s.launched);
+  }
   // Captures bite on top of that, and OUTSIDE the loss cap — a player already
   // at the cap still feels each hull the enemy sails away with, which is what
   // stops absorbing losses from being an answer to the boarding node.
@@ -502,7 +512,10 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // all for going back for their people — the floor would simply swallow the
   // credit — and that is precisely the round where the choice to divert an
   // escort should still visibly mean something.
-  confidenceChange += CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued;
+  confidenceChange += Math.min(
+    CAMPAIGN.confidenceRescueCap,
+    CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued,
+  );
 
   c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
 

@@ -174,7 +174,8 @@ function grantBudget(
       ENEMY_ECONOMY.dominanceStreakStep * dominantStreak,
     );
     // Player struggling → damp growth so they can recover and re-counter.
-    if (metrics.deliveredFraction < 0.55) mult -= ENEMY_ECONOMY.dampStruggling;
+    if (metrics.deliveredFraction < ENEMY_ECONOMY.strugglingDelivery)
+      mult -= ENEMY_ECONOMY.dampStruggling;
     budget *= Math.max(0.5, mult);
   }
   return Math.min(curve.cap, Math.round(budget));
