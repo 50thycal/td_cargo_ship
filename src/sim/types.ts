@@ -47,7 +47,7 @@ export type ModuleId =
 
 /** Optional escort systems. Escort missile interceptors are built in; these
  *  compete for the escort loadout's limited slots. */
-export type EscortModuleId = 'deckGun' | 'mcmDroneLauncher' | 'depthCharges';
+export type EscortModuleId = 'deckGun' | 'mcmDroneLauncher' | 'depthCharges' | 'mineSonar';
 
 /** Optional shore-base systems. Base missile interceptors are built in. */
 export type BaseModuleId = 'counterBattery';
@@ -540,6 +540,10 @@ export interface Escort {
   moveTarget: { x: number; y: number; hold: boolean } | null;
   /** True once a hold order has been reached: the escort holds position. */
   stationed: boolean;
+  /** Seconds spent making no real ground toward the current destination. Past
+   *  NAV.escortAvoidGiveUpSeconds the escort stops going around traffic and
+   *  starts parting it — see the escort steering block in transit.ts. */
+  blockedSeconds: number;
   /** SEPARATE automatic-fire cooldown (local automatic engagement tactic).
    *  Independent of the launcher reload `cooldown` by design. */
   autoCooldown: number;

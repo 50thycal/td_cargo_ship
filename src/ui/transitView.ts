@@ -1023,30 +1023,59 @@ export class TransitView {
 
   /** World → canvas. Everything drawn goes through these, so zoom and pan are
    *  a property of the camera rather than something each draw call handles. */
+  // Positions for the WORLD layer, which is drawn under the camera's
+  // magnification transform (see render). They carry the pan but not the zoom:
+  // the transform supplies the zoom, which is how every sprite, ring and line
+  // weight in the world gets bigger together when the player zooms in.
   private sx(wx: number): number {
-    return this.camera.worldToScreenX(wx);
+    return this.camera.fitScreenX(wx);
   }
 
   private sy(wy: number): number {
+    return this.camera.fitScreenY(wy);
+  }
+
+  /** True canvas position — for anything drawn OUTSIDE the world transform
+   *  (edge markers, banners) and for hit-testing against the real screen. */
+  private screenX(wx: number): number {
+    return this.camera.worldToScreenX(wx);
+  }
+
+  private screenY(wy: number): number {
     return this.camera.worldToScreenY(wy);
   }
 
-  /** Canvas pixels per world unit right now — for sizing sprites and rings
-   *  that should keep their WORLD size as the player zooms. */
+  /** Units → pixels for world-sized rings drawn inside the world transform.
+   *  Fit scale, because the transform multiplies in the rest. */
   private get scale(): number {
-    return this.camera.zoom;
+    return this.camera.fitZoom();
   }
 
   private render(now: number): void {
     const ctx = this.ctx;
     const t = this.state;
 
-    // Water
+    // Water. Drawn in plain canvas space — it is a full-screen backdrop with
+    // nothing in the world to line up with.
     const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     grad.addColorStop(0, '#0e2334');
     grad.addColorStop(1, '#0a1a2a');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // --- The world layer -----------------------------------------------------
+    // Everything from here to the matching restore() is drawn at FIT scale and
+    // magnified by one canvas transform. That is the whole reason zooming in
+    // makes a ship bigger: every pixel size below — hull lengths, mine spikes,
+    // missile streaks, HP bars, line weights — is expressed once, at the fitted
+    // view, and the transform does the rest. Previously only the handful of
+    // things multiplied by `scale` responded to zoom, so zooming in moved the
+    // world under a fixed-size stencil.
+    const detail = this.camera.detailScale();
+    ctx.save();
+    ctx.translate(CANVAS_W / 2, CANVAS_H / 2);
+    ctx.scale(detail, detail);
+    ctx.translate(-CANVAS_W / 2, -CANVAS_H / 2);
 
     // Hostile shore (top) and friendly shore (bottom)
     ctx.fillStyle = '#33222a';
@@ -2180,6 +2209,11 @@ export class TransitView {
       }
     }
 
+    // --- End of the world layer ---------------------------------------------
+    // Everything below is chrome: it belongs to the screen, not to the sea, so
+    // it keeps its size however far the player has zoomed in.
+    ctx.restore();
+
     // Edge arrows for the selected escort and the convoy when they are off the
     // visible map — drawn last so nothing overlaps them.
     this.drawOffscreenMarkers();
@@ -2242,8 +2276,9 @@ export class TransitView {
     const ctx = this.ctx;
     const margin = 26;
     const arrow = (wx: number, wy: number, colour: string, label: string, strong: boolean): void => {
-      const sx = this.sx(wx);
-      const sy = this.sy(wy);
+      // True screen position: these markers live on the frame, not in the sea.
+      const sx = this.screenX(wx);
+      const sy = this.screenY(wy);
       if (sx >= 0 && sx <= CANVAS_W && sy >= 0 && sy <= CANVAS_H) return; // visible
       // Point from the screen centre toward the target and clamp to the edge.
       const cx = CANVAS_W / 2;
@@ -2307,20 +2342,29 @@ export class TransitView {
           : status.label;
       lines.push({ text: detail, color: ACTIVITY_COLORS[status.activity], size: 10 });
     }
+    // Names sit inside the magnified world layer, so left alone they would grow
+    // with the ships. Damp them back to the square root of the magnification:
+    // big enough not to look lost beside a zoomed-in hull, small enough that
+    // three escorts close together do not become a wall of text.
+    const damp = 1 / Math.sqrt(this.camera.detailScale());
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(damp, damp);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    let ly = y + 16;
+    let ly = 16 / damp;
     for (const line of lines) {
       ctx.font = `${line.size}px system-ui, sans-serif`;
       const w = ctx.measureText(line.text).width;
       ctx.fillStyle = 'rgba(8, 18, 28, 0.55)';
-      ctx.fillRect(x - w / 2 - 3, ly - 1, w + 6, line.size + 3);
+      ctx.fillRect(-w / 2 - 3, ly - 1, w + 6, line.size + 3);
       ctx.fillStyle = line.color;
-      ctx.fillText(line.text, x, ly);
+      ctx.fillText(line.text, 0, ly);
       ly += line.size + 4;
     }
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
 
   private drawPlane(x: number, y: number, heading: number, color: string): void {
