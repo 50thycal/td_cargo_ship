@@ -412,6 +412,10 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       moveTarget: null,
       stationed: false,
       blockedSeconds: 0,
+      steerX: 1,
+      steerY: 0,
+      passShipId: null,
+      passSide: 0,
       autoCooldown: 0,
       mcmAutoCooldown: 0,
       droneCooldown: 0,
@@ -3503,8 +3507,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         speed = Math.min(NAV.escortSpeed, d / dt);
         avoidGain = clamp((d - NAV.escortArrive) / (2 * NAV.escortArrive), 0, 1);
         // Blocked long enough that there is evidently no way around: part the
-        // line instead of circling it forever.
-        if (escort.blockedSeconds >= NAV.escortAvoidGiveUpSeconds) avoidGain = 0;
+        // line instead of circling it forever. Faded in rather than switched,
+        // because a binary flip in the middle of a steering loop is a visible
+        // twitch — the ship was going one way and is suddenly going another.
+        const over = escort.blockedSeconds - NAV.escortAvoidGiveUpSeconds;
+        if (over > 0) avoidGain *= clamp(1 - over / NAV.escortAvoidGiveUpFade, 0, 1);
       }
     } else {
       escort.blockedSeconds = 0;
@@ -3526,6 +3533,15 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       let sepy = 0;
       const fx = Math.cos(escort.heading);
       const fy = Math.sin(escort.heading);
+      // The hull this escort is working its way around, if any: the nearest one
+      // in the corridor ahead. Deliberately ONE hull, not a sum over all of
+      // them — averaging the "go left" from one ship against the "go right"
+      // from the next produces a course that clears neither and changes its
+      // mind every tick.
+      let passShip: Ship | null = null;
+      let passAlong = Infinity;
+      let passLat = 0;
+      let passBand = 0;
       for (const ship of t.ships) {
         if (!isActive(ship)) continue;
         const or = SHIP_CLASSES[ship.classId].radius;
@@ -3542,31 +3558,81 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
           sepy -= (dy / d) * push;
         }
 
-        // Forward avoidance: a hull inside the corridor ahead gets gone around,
-        // to whichever side it is NOT on.
         const along = dx * fx + dy * fy;
         const lat = -dx * fy + dy * fx;
-        if (
-          along > 0 &&
-          along < NAV.escortLookAhead &&
-          Math.abs(lat) < COMBAT.escort.hitRadius + or + NAV.escortLaneBand
-        ) {
-          const urgency = 1 - along / NAV.escortLookAhead;
-          const side = lat >= 0 ? -1 : 1;
-          avx += -fy * side * urgency;
-          avy += fx * side * urgency;
+        const band = COMBAT.escort.hitRadius + or + NAV.escortLaneBand;
+        // A hull the escort has already committed to passing keeps its claim a
+        // little past the edge of the corridor, so a course that is working is
+        // not abandoned the instant the geometry says "clear".
+        const committed = escort.passShipId === ship.id;
+        const reach = committed ? band + NAV.escortPassCommitSlack : band;
+        if (along > 0 && along < NAV.escortLookAhead && Math.abs(lat) < reach && along < passAlong) {
+          passShip = ship;
+          passAlong = along;
+          passLat = lat;
+          passBand = band;
         }
       }
 
-      const vx =
+      if (!passShip) {
+        escort.passShipId = null;
+        escort.passSide = 0;
+      } else {
+        // Which way round? Astern, whenever the hull is actually making way.
+        //
+        // Crossing ahead of a moving ship is a losing race: she keeps coming,
+        // so the escort keeps having to bear away, and the merchant ends up
+        // herding it further and further off its track. Cross behind her and
+        // she takes herself out of the problem. It is also the rule of the road.
+        //
+        // A hull stopped in the water has no stern to pass, so that case falls
+        // back to plain geometry: go round whichever side she is not on.
+        const geoSide = passLat >= 0 ? -1 : 1;
+        let side = geoSide;
+        if (passShip.speed > NAV.escortSternMinSpeed) {
+          // Her stern, expressed as a direction, projected onto the escort's
+          // own port-side normal: positive means the stern lies to port.
+          const sternLat = -(-Math.cos(passShip.heading)) * fy + -Math.sin(passShip.heading) * fx;
+          // Two ships on the same course have no astern-side to speak of (her
+          // stern is dead ahead of the escort, not off to one side) — that is
+          // overtaking, and geometry decides it.
+          if (Math.abs(sternLat) > NAV.escortSternMinLateral) {
+            side = sternLat >= 0 ? 1 : -1;
+          }
+        }
+        // ...but only DECIDE while there is no decision in force. Re-deciding
+        // every tick as the geometry crosses dead ahead is what made the ship
+        // shake; committing and holding is what makes it look like it is being
+        // steered.
+        if (escort.passShipId !== passShip.id || escort.passSide === 0) {
+          escort.passShipId = passShip.id;
+          escort.passSide = side;
+        }
+        const urgency = 1 - passAlong / NAV.escortLookAhead;
+        // Bearing away harder when she is close aboard laterally as well as
+        // close ahead — a hull already half a beam off needs less.
+        const centrality = 1 - Math.min(1, Math.abs(passLat) / Math.max(1, passBand));
+        const gain = urgency * (0.35 + 0.65 * centrality);
+        avx += -fy * escort.passSide * gain;
+        avy += fx * escort.passSide * gain;
+      }
+
+      const rawX =
         NAV.escortGoalWeight * goalX +
         avoidGain * (NAV.escortAvoidWeight * avx + NAV.escortSepWeight * sepx);
-      const vy =
+      const rawY =
         NAV.escortGoalWeight * goalY +
         avoidGain * (NAV.escortAvoidWeight * avy + NAV.escortSepWeight * sepy);
-      // Turn-rate limited, so an order reads as a ship altering course rather
-      // than a cursor being dragged.
-      const desired = Math.atan2(vy, vx);
+      // Filter the steering VECTOR, not the heading. The forces are recomputed
+      // from scratch every tick against a world that is itself moving, so the
+      // raw vector flickers even when nothing important has changed; sending
+      // that to the rudder is what made the escort shake near the convoy.
+      const k = 1 - Math.exp(-dt / NAV.escortSteerSmoothing);
+      escort.steerX += (rawX - escort.steerX) * k;
+      escort.steerY += (rawY - escort.steerY) * k;
+      // Turn-rate limited on top, so an order reads as a ship altering course
+      // rather than a cursor being dragged.
+      const desired = Math.atan2(escort.steerY, escort.steerX);
       const dh = angleDiff(desired, escort.heading);
       escort.heading += clamp(dh, -NAV.escortTurnRate * dt, NAV.escortTurnRate * dt);
       const step = speed * dt;
@@ -3587,7 +3653,14 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         );
       }
     } else if (!escort.moveTarget && escort.stationed) {
-      escort.heading = 0; // holding station, bow forward
+      // Holding station, bow forward — but come round to it at the same rate
+      // any other course change happens. Snapping the heading was a visible pop
+      // the instant an escort reached its destination, and the arrival is
+      // exactly the moment the player is looking at it.
+      const dh = angleDiff(0, escort.heading);
+      escort.heading += clamp(dh, -NAV.escortTurnRate * dt, NAV.escortTurnRate * dt);
+      escort.steerX = Math.cos(escort.heading);
+      escort.steerY = Math.sin(escort.heading);
     }
     escort.x = clamp(escort.x, 20, WORLD.deliverX - 20);
     escort.y = clamp(escort.y, 60, WORLD.height - 60);

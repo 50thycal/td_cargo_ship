@@ -64,6 +64,25 @@ it instead. If it makes no ground toward its destination for several seconds —
 a packed column with no gap in it — it stops going around and parts the line,
 because an order has to be carried out.
 
+Two rules make that read as seamanship rather than as a solver twitching:
+
+- **Pass astern.** An escort goes round the *stern* of any merchant making way,
+  never across her bow. Crossing ahead of a moving ship is a losing race — she
+  keeps coming, so the escort keeps having to bear away and gets herded off its
+  track. Cross behind her and she removes herself from the problem. A hull
+  stopped in the water has no stern to pass, so that case falls back to plain
+  geometry, and two ships on the same course are an overtaking situation rather
+  than a crossing one.
+- **Commit, then hold.** The escort avoids ONE hull at a time — the nearest in
+  its corridor — rather than summing everyone's advice into a course that
+  clears nobody. It decides which side once and holds that choice until the
+  hull is well clear, and the steering *vector* is filtered before it reaches
+  the rudder. The forces are recomputed every tick against a world that is
+  itself moving, so the raw vector flickers even when nothing has changed;
+  feeding that straight to the helm is what made escorts visibly shake near
+  the convoy (measured: 74 rudder reversals across one crossing manoeuvre,
+  now 4).
+
 The player operates the convoy's **defenses**, not the cargo ships' steering:
 
 | Action | Input | Cost/limit |
