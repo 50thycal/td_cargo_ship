@@ -427,12 +427,16 @@ that finish within 10% of each other.
 `npm run ablate` removes one counter branch from a broad build and plays both
 arms on matched seeds. Measured against `balanced` at 16 seeds:
 
+*The ECM row is a historical measurement. That branch has been replaced by the
+A-10 Warthog, which attacks mines and attack boats rather than missiles — its
+own ablation figure is not in this table yet.
+
 | counter | vs | worth | survival without it |
 | --- | --- | --- | --- |
 | escort interceptors | missiles | **+38.6%** | 88% → 19% |
 | base interceptors | missiles | **+36.9%** | 88% → 6% |
 | scan pulse | mines | +11.4% | 88% → 63% |
-| ECM | missiles | +7.8% | 88% → 63% |
+| ECM* | missiles | +7.8% | 88% → 63% |
 | mine sonar | mines | +2.0% | 88% → 75% |
 | MCM drones | mines | +1.9% | 88% → 69% |
 | reinforced hull | — | −2.1% | 88% → 88% |

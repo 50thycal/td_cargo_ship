@@ -8,13 +8,15 @@
 // automation loops — an invalid engagement is rejected here, not just greyed
 // out in the UI.
 
-import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SPAWN, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
 import { applyCommanderCombatEffects } from '../data/commanderAbilities';
 import { targetingSkill } from './evolution';
+import { clampLane, nearestLane, scheduleSpawns, transitTimeLimit } from './convoySchedule';
 import type { RNG } from './rng';
 import type {
+  Aircraft,
   AreaEffect,
   ArtilleryVariant,
   Base,
@@ -26,7 +28,6 @@ import type {
   Escort,
   EscortModuleId,
   EscortPerformance,
-  FormationId,
   LauncherKind,
   ResearchId,
   RoundPlan,
@@ -64,112 +65,22 @@ export function deriveEffects(
 // ---------------------------------------------------------------------------
 // Spawn scheduling & spacing
 // ---------------------------------------------------------------------------
-
-/** Clamp a lane index into the valid corridor range. */
-export function clampLane(lane: number): number {
-  return Math.max(0, Math.min(WORLD.lanes.length - 1, lane));
-}
-
-/** Index of the corridor lane whose center is nearest a world-Y (used to turn a
- *  scan tap into a lane selection). */
-export function nearestLane(y: number): number {
-  let best = 0;
-  let bestD = Infinity;
-  for (let i = 0; i < WORLD.lanes.length; i++) {
-    const d = Math.abs(WORLD.lanes[i] - y);
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  }
-  return best;
-}
+// The schedule itself lives in convoySchedule.ts, shared with the enemy
+// planner so the fire window always matches the convoy it is shooting at.
+// Re-exported here because the UI and tests have always reached for them
+// through the sim entry point.
+export {
+  clampLane,
+  nearestLane,
+  convoySpawnSpan,
+  scheduleSpawns,
+  transitTimeLimit,
+} from './convoySchedule';
 
 /** Reference lateral position for escort patrol and ability-effect centers:
  *  the corridor's center lane. */
 export function patrolLaneY(_t: TransitState): number {
   return WORLD.lanes[1];
-}
-
-/** Schedule ship entries in a pattern that visibly reflects the chosen
- *  formation:
- *   • sprint — single-file volleys: 3-6 ships enter one at a time, nose to
- *     tail, all in ONE lane; then the next volley of 3-6 ships forms up in a
- *     DIFFERENT lane after a longer pause (so the whole round isn't dumped
- *     into a single lane).
- *   • tight  — grouped waves: two or three ships enter TOGETHER, each in a
- *     different lane, then the next wave a while later (a packed convoy).
- *   • wide   — staggered: one ship at a time, alternating across the lanes
- *     (a loose, spread-out stream).
- */
-function scheduleSpawns(ships: Ship[], rng: RNG, formation: FormationId): void {
-  const order = rng.shuffle(ships.map((_, i) => i));
-  const laneCount = WORLD.lanes.length;
-  const setJitter = (ship: Ship): void => {
-    ship.lateralSeed = rng.range(-1, 1);
-    ship.speedVariance = rng.range(1 - SPAWN.speedVariance, 1 + SPAWN.speedVariance);
-  };
-
-  if (formation === 'sprint') {
-    let t = SPAWN.firstDelay;
-    let i = 0;
-    let lastLane = -1;
-    while (i < order.length) {
-      // Pick a lane different from the previous volley's, so the column
-      // visibly relocates instead of refilling the same line all round.
-      let lane = rng.int(laneCount);
-      if (laneCount > 1) {
-        while (lane === lastLane) lane = rng.int(laneCount);
-      }
-      lastLane = lane;
-      const volleySize = Math.min(
-        SPAWN.sprintVolleyMin + rng.int(SPAWN.sprintVolleyMax - SPAWN.sprintVolleyMin + 1),
-        order.length - i,
-      );
-      for (let v = 0; v < volleySize; v++) {
-        const ship = ships[order[i + v]];
-        setJitter(ship);
-        ship.laneIndex = lane;
-        ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
-        // Nose-to-tail within the volley; a longer pause after the volley's
-        // last ship before the next volley's first ship enters.
-        t += v === volleySize - 1 ? SPAWN.sprintVolleyGap : SPAWN.sprintInterval;
-      }
-      i += volleySize;
-    }
-    return;
-  }
-
-  if (formation === 'tight') {
-    let t = SPAWN.firstDelay;
-    let i = 0;
-    while (i < order.length) {
-      const groupSize = Math.min(laneCount, order.length - i);
-      // Distinct lanes for this wave, shuffled so groups aren't always 0,1,2.
-      const lanes = rng.shuffle([...Array(laneCount).keys()]).slice(0, groupSize);
-      for (let g = 0; g < groupSize; g++) {
-        const ship = ships[order[i + g]];
-        setJitter(ship);
-        ship.laneIndex = lanes[g];
-        ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(0, SPAWN.tightWaveJitter));
-      }
-      i += groupSize;
-      t += SPAWN.tightWaveInterval;
-    }
-    return;
-  }
-
-  // wide (staggered)
-  let laneCursor = rng.int(laneCount);
-  let t = SPAWN.firstDelay;
-  for (const idx of order) {
-    const ship = ships[idx];
-    setJitter(ship);
-    ship.laneIndex = laneCursor % laneCount;
-    ship.spawnTime = Math.max(SPAWN.firstDelay, t + rng.range(-SPAWN.timeJitter, SPAWN.timeJitter));
-    laneCursor++;
-    t += SPAWN.interval;
-  }
 }
 
 const ESCORT_SLOTS = [
@@ -183,7 +94,7 @@ const ESCORT_SLOTS = [
 // ---------------------------------------------------------------------------
 
 function newCounterStats(t: {
-  ecm: number;
+  warthog: number;
   scan: number;
   sonar: number;
   smoke: number;
@@ -204,6 +115,8 @@ function newCounterStats(t: {
     depthChargeKills: 0,
     deckGunRounds: 0,
     deckGunKills: 0,
+    gunRuns: 0,
+    gunRunKills: 0,
     counterBatteryShots: 0,
     counterBatterySuppressions: 0,
     flakShots: 0,
@@ -227,7 +140,7 @@ function newCounterStats(t: {
     jammingSeconds: 0,
     jammingMitigatedSeconds: 0,
     charges: {
-      ecm: { available: t.ecm, used: 0 },
+      warthog: { available: t.warthog, used: 0 },
       scan: { available: t.scan, used: 0 },
       sonar: { available: t.sonar, used: 0 },
       smoke: { available: t.smoke, used: 0 },
@@ -291,6 +204,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         flakCooldown: 0,
         smokeGraceUntil: 0,
         straggling: false,
+        giveWayHold: 0,
+        giveWayExhausted: false,
         damageByBranch: {},
         boardingSeconds: 0,
         boardingLockUntil: 0,
@@ -320,7 +235,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   }
 
   const centerLaneY = WORLD.lanes[1];
-  const ecmCharges = god ? 99 : campaign.ecmUnlocked ? effects.abilities.ecm.charges : 0;
+  const warthogCharges = god ? 99 : campaign.warthogUnlocked ? effects.abilities.warthog.charges : 0;
   const scanCharges = god ? 99 : campaign.scanUnlocked ? effects.abilities.scan.charges : 0;
   const sonarCharges = god ? 99 : campaign.sonarUnlocked ? effects.abilities.sonar.charges : 0;
   const smokeCharges = god ? 99 : campaign.smokeUnlocked ? effects.abilities.smoke.charges : 0;
@@ -364,6 +279,10 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     drones: [],
     depthChargeShots: [],
     aircraft: [],
+    strafeRuns: [],
+    // Sized to the convoy that is actually sailing, so a hull is only ever
+    // written off for failing to get across — never for entering last.
+    timeLimit: transitTimeLimit(ships.length, campaign.formation),
     areaEffects: [],
     escortModules: fleetEscortModules,
     baseModules: [...campaign.baseModules],
@@ -372,10 +291,10 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     ammo: god ? 9999 : campaign.ammo,
     droneAmmo: god ? 9999 : campaign.droneAmmo,
     pdAmmo: god ? 9999 : campaign.pdAmmo,
-    ecmCharges,
-    ecmActiveUntil: -1,
-    ecmCenterX: 0,
-    ecmCenterY: 0,
+    warthogCharges,
+    warthogActiveUntil: -1,
+    warthogCenterX: 0,
+    warthogCenterY: 0,
     scanCharges,
     sonarCharges,
     smokeCharges,
@@ -401,7 +320,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       escortIntercepts: 0,
       interceptMisses: 0,
       pdKills: 0,
-      ecmKills: 0,
+      warthogKills: 0,
       minesTotal: plan.mines.length,
       minesRevealed: 0,
       minesDetonated: 0,
@@ -426,14 +345,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       aircraftDowned: 0,
       shipDisabledSeconds: 0,
       ammoUsed: 0,
-      ecmUsed: 0,
+      warthogUsed: 0,
       scanUsed: 0,
       escortsLost: 0,
       escortPerformance: {},
       basesLost: 0,
       launchersDisabled: 0,
       counter: newCounterStats({
-        ecm: ecmCharges,
+        warthog: warthogCharges,
         scan: scanCharges,
         sonar: sonarCharges,
         smoke: smokeCharges,
@@ -562,16 +481,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
-}
-
-/** Is a point currently inside a deployed ECM plane's jamming orbit? Missiles
- *  there are scrambled and, if they linger, cook off. */
-function jammingAt(t: TransitState, x: number, y: number): boolean {
-  for (const ac of t.aircraft) {
-    if (ac.role !== 'ecm' || ac.phase !== 'onStation') continue;
-    if (dist(x, y, ac.centerX, ac.centerY) <= t.effects.abilities.ecm.radius) return true;
-  }
-  return false;
 }
 
 /** Is a point inside an active player smoke cloud? */
@@ -1437,28 +1346,28 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
     case 'ability': {
       const px = clamp(cmd.x, 20, WORLD.width - 20);
       const py = clamp(cmd.y, 60, WORLD.height - 60);
-      if (cmd.ability === 'ecm') {
-        // No stacking: a deployed plane must clear before another can be called.
-        if (t.ecmCharges <= 0 || t.time < t.ecmActiveUntil) return;
-        // The jamming orbit must sit over open water — not on a shore launcher
+      if (cmd.ability === 'warthog') {
+        // No stacking: the jet on task must be clear before another is called.
+        if (t.warthogCharges <= 0 || t.time < t.warthogActiveUntil) return;
+        // The station must sit over open water — not on a shore launcher
         // (enemy launch sites up-map, friendly batteries down-map). Reject a
-        // placement outside the water band so a charge is never wasted on land.
-        if (py < COMBAT.ecm.waterYMin || py > COMBAT.ecm.waterYMax) {
-          pushEvent(t, { type: 'launchFailed', detail: 'Deploy ECM over open water' });
+        // placement outside the water band so a sortie is never wasted on land.
+        if (py < COMBAT.warthog.waterYMin || py > COMBAT.warthog.waterYMax) {
+          pushEvent(t, { type: 'launchFailed', detail: 'Send the Warthog over open water' });
           return;
         }
-        t.ecmCharges--;
-        t.stats.ecmUsed++;
-        t.stats.counter.charges.ecm.used++;
-        // Total deployment: fly-in + on-station orbit + fly-out. Blocks a second
-        // ECM until the plane is clear, and centers the future jamming orbit.
-        t.ecmActiveUntil = t.time + t.effects.abilities.ecm.duration + 12;
-        t.ecmCenterX = px;
-        t.ecmCenterY = py;
-        // ECM plane enters from the friendly (bottom) shore and heads to station.
+        t.warthogCharges--;
+        t.stats.warthogUsed++;
+        t.stats.counter.charges.warthog.used++;
+        // Total sortie: fly-in + time on station + fly-out. Blocks a second call
+        // until the jet is clear, and fixes where it holds its wheel.
+        t.warthogActiveUntil = t.time + t.effects.abilities.warthog.duration + 12;
+        t.warthogCenterX = px;
+        t.warthogCenterY = py;
+        // The jet comes up from the friendly (bottom) shore and heads to station.
         t.aircraft.push({
           id: t.nextEntityId++,
-          role: 'ecm',
+          role: 'warthog',
           x: px,
           y: WORLD.height + 40,
           heading: -Math.PI / 2,
@@ -1468,8 +1377,9 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           centerY: py,
           orbitAngle: 0,
           stationUntil: 0,
+          gunCooldown: 0,
         });
-        pushEvent(t, { type: 'abilityUsed', detail: 'ecm' });
+        pushEvent(t, { type: 'abilityUsed', detail: 'warthog' });
       } else if (cmd.ability === 'scan') {
         if (t.scanCharges <= 0) return;
         t.scanCharges--;
@@ -1490,6 +1400,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           centerY: laneY,
           orbitAngle: 0,
           stationUntil: 0,
+          gunCooldown: 0,
         });
         pushEvent(t, { type: 'abilityUsed', detail: 'scan' });
       } else if (cmd.ability === 'sonar') {
@@ -1701,9 +1612,13 @@ function revealTorpedoesInPing(t: TransitState, fx: AreaEffect): void {
   }
 }
 
+/** Record a mine contact. Reveal STATE is recomputed every tick in updateMines;
+ *  this is the moment of acquisition — the stat, the event and the debut all
+ *  fire on the first fix and never again, so "mines detected" counts mines the
+ *  fleet found rather than times a contact was re-acquired. */
 function revealMine(t: TransitState, mine: Threat, source: 'mineSonar' | 'scanPulse'): void {
-  if (mine.revealed) return;
-  mine.revealed = true;
+  if (mine.everRevealed) return;
+  mine.everRevealed = true;
   t.stats.minesRevealed++;
   t.stats.counter.detections[source]++;
   pushEvent(t, { type: 'mineRevealed', lowSig: mine.lowSig });
@@ -1711,39 +1626,112 @@ function revealMine(t: TransitState, mine: Threat, source: 'mineSonar' | 'scanPu
   if (mine.lowSig) announceDebut(t, 'lowSigMine');
 }
 
+/** Pick what the Warthog shoots on this pass. Boarding parties already on a
+ *  hull come first for the same reason the deck gun prioritises them — a
+ *  capture cannot be undone, everything else can be survived. After that it is
+ *  simply the nearest thing in the strafe radius, because a jet holding a wheel
+ *  over one patch of water works that patch, it does not go hunting. */
+function pickStrafeTarget(t: TransitState, ac: Aircraft, radius: number): Threat | null {
+  let best: Threat | null = null;
+  let bestKey = Infinity;
+  for (const th of t.threats) {
+    if (!th.alive || !canEngage('gunRun', th.kind)) continue;
+    const d = dist(ac.centerX, ac.centerY, th.x, th.y);
+    if (d > radius) continue;
+    const boarding = th.boatVariant === 'boarding' && th.engaging ? 0 : 1;
+    const key = boarding * 10000 + d;
+    if (key < bestKey) {
+      bestKey = key;
+      best = th;
+    }
+  }
+  return best;
+}
+
+/** One 30mm pass. Mines are destroyed outright — a moored charge does not
+ *  survive being hit — and boats take hull damage over successive passes. */
+function fireGunRun(t: TransitState, ac: Aircraft, target: Threat, rng: RNG): void {
+  let killed = false;
+  if (target.kind === 'mine') {
+    target.alive = false;
+    // Destroyed in place before it could touch anything: that is a sweep, the
+    // same outcome a drone produces, and it leaves the same salvage.
+    t.stats.minesSwept++;
+    t.stats.warthogKills++;
+    announceDebut(t, 'mine');
+    if (target.lowSig) announceDebut(t, 'lowSigMine');
+    pushEvent(t, { type: 'mineSwept', lowSig: target.lowSig });
+    maybeSpawnWreckage(t, target, rng);
+    killed = true;
+  } else {
+    target.hp = (target.hp ?? 1) - t.effects.warthogDamage;
+    if (target.hp <= 0) {
+      target.alive = false;
+      target.engagedByEscortId = undefined;
+      t.stats.boatsSunk++;
+      t.stats.warthogKills++;
+      pushEvent(t, { type: 'boatSunk', threatKind: target.kind });
+      maybeSpawnWreckage(t, target, rng);
+      // Sinking a boarding boat throws its party off the hull, exactly as a
+      // deck-gun kill does — the progress it had made is lost.
+      const boarded = t.ships.find((s) => s.id === target.targetShipId);
+      if (boarded) releaseBoarding(t, boarded);
+      killed = true;
+    }
+  }
+  t.stats.counter.gunRuns++;
+  if (killed) t.stats.counter.gunRunKills++;
+  t.strafeRuns.push({
+    id: t.nextEntityId++,
+    x: ac.x,
+    y: ac.y,
+    targetX: target.x,
+    targetY: target.y,
+    killed,
+    ttl: COMBAT.warthog.burstSeconds,
+  });
+}
+
 /** Advance support aircraft: scan planes sweep their lane charting mines in it;
- *  ECM planes fly to a water station, orbit (jamming resolves in the missile
- *  loop via jammingAt), then break off and leave. Missiles never touch planes;
- *  planes can't be shot down. */
+ *  the Warthog flies to a water station, holds a wheel over it making gun runs
+ *  on surface targets inside its strafe radius, then breaks off and leaves.
+ *  Missiles never touch planes; planes can't be shot down. */
 function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
   const scanRadius = t.effects.abilities.scan.radius;
   const laneHalf = COMBAT.scan.laneHalfWidth * (scanRadius / COMBAT.scan.baseRevealRadius);
+  const strafeRadius = t.effects.abilities.warthog.radius;
   for (const ac of t.aircraft) {
     if (ac.role === 'scan') {
       // Fly straight across the map along the selected lane.
       ac.x += COMBAT.scan.planeSpeed * dt;
       ac.y = ac.laneY;
       ac.heading = 0;
-      // Chart un-revealed mines within THIS lane band as the plane passes over.
+      // Chart mines within THIS lane band as the plane passes over. The fix is
+      // good for a limited time — see COMBAT.mineContact.scanHoldSeconds.
       for (const mine of t.threats) {
-        if (mine.kind !== 'mine' || !mine.alive || mine.revealed) continue;
+        if (mine.kind !== 'mine' || !mine.alive) continue;
         if (Math.abs(mine.y - ac.laneY) > laneHalf) continue; // other lane
         if (Math.abs(mine.x - ac.x) > scanRadius) continue;
         const canSee = !mine.lowSig || rng.chance(t.effects.scanLowSigChance);
-        if (canSee) revealMine(t, mine, 'scanPulse');
+        if (!canSee) continue;
+        mine.revealedUntil = Math.max(
+          mine.revealedUntil ?? 0,
+          t.time + COMBAT.mineContact.scanHoldSeconds,
+        );
+        revealMine(t, mine, 'scanPulse');
       }
       continue;
     }
 
-    // ECM plane.
+    // The Warthog.
     if (ac.phase === 'inbound') {
       const dx = ac.centerX - ac.x;
-      const dy = ac.centerY + COMBAT.ecm.orbitRadius - ac.y; // arrive at orbit edge
+      const dy = ac.centerY + COMBAT.warthog.orbitRadius - ac.y; // arrive at wheel edge
       const d = Math.hypot(dx, dy) || 1;
-      const step = COMBAT.ecm.planeSpeed * dt;
+      const step = COMBAT.warthog.planeSpeed * dt;
       if (d <= step) {
         ac.phase = 'onStation';
-        ac.stationUntil = t.time + t.effects.abilities.ecm.duration;
+        ac.stationUntil = t.time + t.effects.abilities.warthog.duration;
         ac.orbitAngle = Math.PI / 2;
       } else {
         ac.x += (dx / d) * step;
@@ -1751,24 +1739,36 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
         ac.heading = Math.atan2(dy, dx);
       }
     } else if (ac.phase === 'onStation') {
-      ac.orbitAngle += COMBAT.ecm.orbitRate * dt;
+      ac.orbitAngle += COMBAT.warthog.orbitRate * dt;
       const prevX = ac.x;
       const prevY = ac.y;
-      ac.x = ac.centerX + Math.cos(ac.orbitAngle) * COMBAT.ecm.orbitRadius;
-      ac.y = ac.centerY + Math.sin(ac.orbitAngle) * COMBAT.ecm.orbitRadius;
+      ac.x = ac.centerX + Math.cos(ac.orbitAngle) * COMBAT.warthog.orbitRadius;
+      ac.y = ac.centerY + Math.sin(ac.orbitAngle) * COMBAT.warthog.orbitRadius;
       ac.heading = Math.atan2(ac.y - prevY, ac.x - prevX);
+      // Gun runs, one target at a time, while there is anything to shoot.
+      ac.gunCooldown = Math.max(0, ac.gunCooldown - dt);
+      if (ac.gunCooldown <= 0) {
+        const target = pickStrafeTarget(t, ac, strafeRadius);
+        if (target) {
+          ac.gunCooldown = COMBAT.warthog.fireInterval;
+          fireGunRun(t, ac, target, rng);
+        }
+      }
       if (t.time >= ac.stationUntil) ac.phase = 'departing';
     } else {
       // Depart off the bottom of the map, then get culled below.
-      ac.y += COMBAT.ecm.planeSpeed * dt;
+      ac.y += COMBAT.warthog.planeSpeed * dt;
       ac.heading = Math.PI / 2;
     }
   }
-  // Cull finished aircraft: scan planes that flew off the right edge, ECM planes
-  // that have left the bottom of the world.
+  // Cull finished aircraft: scan planes that flew off the right edge, the
+  // Warthog once it has left the bottom of the world.
   t.aircraft = t.aircraft.filter((ac) =>
     ac.role === 'scan' ? ac.x <= WORLD.width + 80 : ac.y <= WORLD.height + 80,
   );
+  // Bursts are drawn for a fraction of a second and then gone.
+  for (const run of t.strafeRuns) run.ttl -= dt;
+  t.strafeRuns = t.strafeRuns.filter((run) => run.ttl > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -2947,7 +2947,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     if (spawn.kind === 'torpedo') {
       // The UNDERWATER branch: launched from the shore and run under the
-      // surface toward the convoy. Interceptors, ECM and close-in defense are
+      // surface toward the convoy. Interceptors and close-in defense are
       // all useless here by design — the counter is detection + depth charges.
       const target = pickMissileTarget(t, rng, targetPool, [], 1, site.x, site.y);
       if (!target) continue;
@@ -3134,14 +3134,59 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // Pre-tick snapshot of every moving hull (ships + escorts) so each ship's
   // steering reads the same world regardless of array order — deterministic.
-  const obstacles: { id: number; x: number; y: number; r: number; spd: number }[] = [];
+  const convoyFwd = t.baseSpeed * formation.speedMult;
+  const obstacles: {
+    id: number;
+    x: number;
+    y: number;
+    r: number;
+    spd: number;
+    escort: boolean;
+    /** Where this hull is heading, so a merchant can tell traffic CROSSING its
+     *  track from traffic travelling the same way as it. */
+    vx: number;
+    vy: number;
+  }[] = [];
   for (const s of t.ships) {
     if (!isActive(s)) continue;
-    obstacles.push({ id: s.id, x: s.x, y: s.y, r: SHIP_CLASSES[s.classId].radius, spd: s.speed });
+    obstacles.push({
+      id: s.id,
+      x: s.x,
+      y: s.y,
+      r: SHIP_CLASSES[s.classId].radius,
+      spd: s.speed,
+      escort: false,
+      vx: Math.cos(s.heading) * s.speed,
+      vy: Math.sin(s.heading) * s.speed,
+    });
   }
   for (const e of t.escorts) {
     if (!e.alive) continue;
-    obstacles.push({ id: -e.id, x: e.x, y: e.y, r: 12, spd: NAV.escortSpeed });
+    // An escort's velocity is fully determined by its order, so it can be read
+    // straight off the order rather than tracked: steaming to a destination,
+    // stopped on station, or keeping pace alongside the convoy.
+    let evx = convoyFwd;
+    let evy = 0;
+    if (e.moveTarget) {
+      const dx = e.moveTarget.x - e.x;
+      const dy = e.moveTarget.y - e.y;
+      const d = Math.hypot(dx, dy) || 1;
+      evx = (dx / d) * NAV.escortSpeed;
+      evy = (dy / d) * NAV.escortSpeed;
+    } else if (e.stationed) {
+      evx = 0;
+      evy = 0;
+    }
+    obstacles.push({
+      id: -e.id,
+      x: e.x,
+      y: e.y,
+      r: 12,
+      spd: Math.hypot(evx, evy),
+      escort: true,
+      vx: evx,
+      vy: evy,
+    });
   }
   const sepBonus = formation.gapBonus;
 
@@ -3168,6 +3213,11 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     let blockLat = 0;
     let blockSpd = 0;
     let hasBlock = false;
+    // Give-way: the tightest speed cap any crossing escort asks for, as a
+    // fraction of cruise. 1 = nothing in the way, 0 = stop where you are.
+    // Always computed, even when this hull has stopped honouring it, because
+    // it is also what decides when honouring it may resume.
+    let rawGiveWay = 1;
 
     for (const o of obstacles) {
       if (o.id === ship.id) continue;
@@ -3186,9 +3236,44 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         sepy -= ny * push;
       }
 
-      // Forward collision avoidance: obstacle within the cone ahead.
       const along = dx * fx + dy * fy;
       const lat = -dx * fy + dy * fx; // signed lateral offset (left positive)
+
+      // An escort CROSSING the track is the stand-on vessel: it is under the
+      // player's orders and holds its course, so the merchant answers with the
+      // THROTTLE rather than the rudder. Swerving is what used to tear the
+      // column apart — one hull leaning away from a passing escort shoved the
+      // next, which shoved the next. Slowing does not propagate, and crossing
+      // traffic clears the bow within seconds by definition.
+      //
+      // An escort travelling WITH the convoy is not crossing anything and gets
+      // no such courtesy: it drops through to the ordinary logic below, which
+      // knows how to overtake or wait behind a slower hull. Giving way to it
+      // instead would be a merchant politely stopping behind an escort that
+      // never gets out of the way, for the rest of the round.
+      if (o.escort) {
+        const crossRate = Math.abs(-o.vx * fy + o.vy * fx);
+        if (crossRate >= NAV.giveWay.minCrossSpeed) {
+          if (
+            along > 0 &&
+            along < NAV.giveWay.lookAhead &&
+            Math.abs(lat) < r + o.r + NAV.giveWay.band
+          ) {
+            const factor =
+              along <= NAV.giveWay.stopDistance
+                ? 0
+                : (along - NAV.giveWay.stopDistance) /
+                  (NAV.giveWay.lookAhead - NAV.giveWay.stopDistance);
+            rawGiveWay = Math.min(rawGiveWay, factor);
+          }
+          // Stand-on vessel: not steered around, not overtaken — unless this
+          // hull has already waited longer than any crossing should take, in
+          // which case it falls through and treats her as ordinary traffic.
+          if (!ship.giveWayExhausted) continue;
+        }
+      }
+
+      // Forward collision avoidance: another hull within the cone ahead.
       if (along > 0 && along < NAV.lookAhead && Math.abs(lat) < r + o.r + NAV.laneBand) {
         const urgency = 1 - along / NAV.lookAhead;
         const side = lat >= 0 ? -1 : 1; // steer to the side opposite the obstacle
@@ -3203,10 +3288,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       }
     }
 
-    // Steer around charted (revealed) mines. A revealed mine is a KNOWN hazard
-    // on the plotted track — the helm always attempts to clear it rather than
-    // gambling on a dodge roll, so a mine spotted by sensors or a scan plane is
-    // not blundered into. (Uncharted mines are still a detection problem.)
+    // Charted mines. A revealed mine is a KNOWN hazard on the plotted track, so
+    // the helm does two things at once, exactly as it would at sea: it puts the
+    // rudder over, AND it comes off the throttle — slower means a tighter turn
+    // and more time to make it, and a mine close on the bow is worth almost any
+    // amount of lost speed. (Uncharted mines are still a detection problem, and
+    // a contact that has gone stale is uncharted again.)
+    let mineSlow = 1;
     for (const mine of t.threats) {
       if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
       const dx = mine.x - ship.x;
@@ -3220,6 +3308,12 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       const w = NAV.mineAvoidWeight / NAV.avoidWeight;
       avx += -fy * side * urgency * w;
       avy += fx * side * urgency * w;
+      // How much way to take off scales with how urgent the hazard is and how
+      // squarely it sits on the bow: a mine well off to one side barely slows
+      // the ship at all.
+      const centrality = 1 - Math.abs(lat) / NAV.mineBand;
+      const severity = urgency * centrality;
+      mineSlow = Math.min(mineSlow, 1 - (1 - COMBAT.mineSlowFraction) * severity);
     }
 
     // Goal: head east, gently pulled toward this ship's lane line. But if a
@@ -3235,6 +3329,28 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       } else {
         gy = wantSign * 0.9; // clear water beside it → commit to the pass
       }
+    }
+    // Giving way and easing past a mine both cut the cap, and the tighter one
+    // wins — never the average, or a hull would creep into something.
+    const giveWayFactor = ship.giveWayExhausted ? 1 : rawGiveWay;
+    speedCap = Math.min(speedCap, cruise * giveWayFactor, cruise * mineSlow);
+
+    // Courtesy has a limit. If a merchant has been held near a standstill for
+    // crossing traffic longer than any real crossing takes, something is wrong
+    // with the picture and it stops waiting — it steers around instead. Without
+    // this a single unlucky geometry could leave a hull stopped in the water
+    // until the round expired, and "lost at sea" would be the game's fault.
+    //
+    // The clock runs on what the escort is ASKING for, not on the speed that
+    // resulted: once a hull has given up, its own speed cap is 1 again, so
+    // reading the outcome here would clear the flag on the very next tick and
+    // put it straight back into the same stall.
+    if (rawGiveWay < 0.2) {
+      ship.giveWayHold += dt;
+      if (ship.giveWayHold >= NAV.giveWay.maxHoldSeconds) ship.giveWayExhausted = true;
+    } else if (rawGiveWay > 0.85) {
+      ship.giveWayHold = 0;
+      ship.giveWayExhausted = false;
     }
     const gl = Math.hypot(gx, gy) || 1;
     gx /= gl;
@@ -3295,8 +3411,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // An escort steams to its player-set destination and then either resumes
   // cruising forward with the convoy (a quick tap order) or stays stationed
   // there holding position (a long-hold order). With no order and not
-  // stationed it simply cruises forward at the convoy's pace.
-  const convoyFwd = t.baseSpeed * formation.speedMult;
+  // stationed it simply cruises forward at the convoy's pace. (convoyFwd is
+  // computed above, where the merchants read it off the obstacle snapshot.)
   for (const escort of t.escorts) {
     if (!escort.alive) continue;
     escort.cooldown = Math.max(0, escort.cooldown - dt);
@@ -3336,9 +3452,17 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // Last-resort overlap correction across all hulls (ships + escorts). Rare
   // once steering is doing its job; guarantees no visual stacking.
-  const bodies: { o: { x: number; y: number }; r: number }[] = [];
-  for (const s of t.ships) if (isActive(s)) bodies.push({ o: s, r: SHIP_CLASSES[s.classId].radius });
-  for (const e of t.escorts) if (e.alive) bodies.push({ o: e, r: 12 });
+  //
+  // Between two merchants it is shared evenly. Between a merchant and an
+  // escort it is NOT: the escort is under orders and holds its track, and the
+  // merchant absorbs almost all of the correction. An even split here is what
+  // made an escort crossing the column look like a bowling ball — it was
+  // knocked off its ordered course while knocking everything else off theirs.
+  const bodies: { o: { x: number; y: number }; r: number; escort: boolean }[] = [];
+  for (const s of t.ships) {
+    if (isActive(s)) bodies.push({ o: s, r: SHIP_CLASSES[s.classId].radius, escort: false });
+  }
+  for (const e of t.escorts) if (e.alive) bodies.push({ o: e, r: 12, escort: true });
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i];
@@ -3353,11 +3477,14 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         dy = 1;
         d = 1;
       }
-      const push = (minDist - d) * NAV.overlapPush * 0.5;
-      a.o.x += (dx / d) * push;
-      a.o.y += (dy / d) * push;
-      b.o.x -= (dx / d) * push;
-      b.o.y -= (dy / d) * push;
+      const overlap = (minDist - d) * NAV.overlapPush;
+      // Share of the correction each body takes.
+      let aShare = 0.5;
+      if (a.escort !== b.escort) aShare = a.escort ? 1 - NAV.escortPushShare : NAV.escortPushShare;
+      a.o.x += (dx / d) * overlap * aShare;
+      a.o.y += (dy / d) * overlap * aShare;
+      b.o.x -= (dx / d) * overlap * (1 - aShare);
+      b.o.y -= (dy / d) * overlap * (1 - aShare);
     }
   }
 
@@ -3382,22 +3509,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     if (!threat.alive) continue;
     if (threat.kind !== 'missile' && threat.kind !== 'guidedMissile') continue;
 
-    // Inside a deployed ECM jamming orbit a missile's seeker is scrambled, and
-    // if it lingers there its guidance cooks off and it explodes harmlessly.
-    const scrambled = jammingAt(t, threat.x, threat.y);
-    if (scrambled) {
-      threat.jamSeconds = (threat.jamSeconds ?? 0) + dt;
-      if (threat.jamSeconds >= COMBAT.ecm.explodeSeconds) {
-        threat.alive = false;
-        t.stats.missilesIntercepted++;
-        t.stats.ecmKills++;
-        pushEvent(t, { type: 'intercepted', threatKind: threat.kind, detail: 'ecm' });
-        // A cooked-off seeker still leaves a physical airframe in the water.
-        maybeSpawnWreckage(t, threat, rng);
-        continue;
-      }
-    }
-    if (threat.kind === 'guidedMissile' && !scrambled) {
+    if (threat.kind === 'guidedMissile') {
       // Resolve the current homing point (escort or ship); re-acquire the
       // nearest ship if the original target is gone. Track-breaking smoke
       // keeps recently-cloaked ships out of the re-acquisition pool.
@@ -3452,7 +3564,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     // Terminal resolution.
     if (threat.kind === 'guidedMissile') {
-      const hitChance = scrambled ? t.effects.ecmGuidedHitChance : COMBAT.guided.baseHitChance;
+      const hitChance = COMBAT.guided.baseHitChance;
       if (threat.targetKind === 'escort') {
         const esc = t.escorts.find((e) => e.id === threat.targetEntityId && e.alive);
         if (esc && dist(threat.x, threat.y, esc.x, esc.y) <= COMBAT.guided.hitRadius) {
@@ -3766,25 +3878,59 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
   t.interceptors = t.interceptors.filter((i) => i.speed > 0);
 
-  // --- Mines: passive detection & proximity triggers ---------------------------
+  // --- Mines: live contact & proximity triggers -------------------------------
+  //
+  // A mine is not a thing you find once and cross off. Detection produces a
+  // CONTACT, and a contact goes stale:
+  //
+  //   • sonar — held only while some hull actually has the mine inside its
+  //     envelope. Whoever holds it shares it: the whole fleet steers around a
+  //     mine one ship can hear, which is the entire value of fitting sonar to
+  //     anything. The moment the last hull that could hear it moves on (plus a
+  //     few seconds of grace, so a contact on the edge does not strobe), the
+  //     plot goes dark again.
+  //   • scan plane — a timed fix. Good for half a minute, then gone.
+  //
+  // So a convoy can sail back into water it already charted and hit a mine it
+  // already found. That is the point: detection buys you time and a course
+  // change, and CLEARING the mine is the only permanent answer to it.
   const mineDetectionUp = sensorAvailable(t, 'mineDetection');
   for (const mine of t.threats) {
     if (mine.kind !== 'mine' || !mine.alive) continue;
 
-    if (!mine.revealed && mineDetectionUp) {
+    const detectable = mineDetectionUp && (!mine.lowSig || t.effects.mineSonar.detectLowSig);
+    if (detectable) {
+      let heard = false;
       for (const ship of activeShips(t)) {
-        const hasSonar = ship.modules.includes('mineSonar');
-        const radius = hasSonar
+        const radius = ship.modules.includes('mineSonar')
           ? t.effects.mineSonar.radius
           : t.effects.mineSonar.fleetDetectRadius;
-        if (radius <= 0) continue;
-        if (mine.lowSig && !t.effects.mineSonar.detectLowSig) continue;
-        if (dist(ship.x, ship.y, mine.x, mine.y) <= radius) {
-          revealMine(t, mine, 'mineSonar');
+        if (radius > 0 && dist(ship.x, ship.y, mine.x, mine.y) <= radius) {
+          heard = true;
           break;
         }
       }
+      // Escorts listen too, and at the fitted-sonar radius: hearing mines is
+      // most of what a screen is FOR, and an escort sent ahead to sweep the
+      // track is the clearest expression of that.
+      if (!heard) {
+        for (const escort of t.escorts) {
+          if (!escort.alive) continue;
+          if (dist(escort.x, escort.y, mine.x, mine.y) <= t.effects.mineSonar.radius) {
+            heard = true;
+            break;
+          }
+        }
+      }
+      if (heard) {
+        mine.revealedUntil = Math.max(
+          mine.revealedUntil ?? 0,
+          t.time + COMBAT.mineContact.sonarGraceSeconds,
+        );
+        revealMine(t, mine, 'mineSonar');
+      }
     }
+    mine.revealed = t.time < (mine.revealedUntil ?? 0);
 
     if (!mine.alive) continue;
     for (const ship of activeShips(t)) {
@@ -3863,7 +4009,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
   t.time += dt;
   const unresolved = t.ships.some((s) => s.alive && !s.delivered);
-  if (!unresolved || t.time >= SIM.maxTransitTime) {
+  if (!unresolved || t.time >= t.timeLimit) {
     // Any ship still afloat when time expires counts as lost at sea.
     for (const ship of t.ships) {
       if (ship.alive && !ship.delivered) killShip(t, ship, 'timeout');

@@ -20,8 +20,17 @@ Transit → After-Action Report → Intelligence & Research → Procurement → 
 ### 1. Transit (real time, a few minutes at 1×; 2×/3× available)
 
 ~20+ ships cross the map left-to-right. **One ship enters from the left every
-~5 seconds**, round-robin across three lanes, so the strait stays an
+~10 seconds**, round-robin across three lanes, so the strait stays an
 uncluttered, readable stream of commercial traffic rather than a wall of hulls.
+Tight and Sprint pace their entries differently (waves and volleys) but at the
+same doubled spacing — the convoy is meant to arrive at a speed a player can
+actually read, one hull at a time.
+
+Because the convoy's arrival span sets how long a round lasts, two other
+numbers are derived from it rather than fixed: the **enemy's fire window**
+(so a round's ordnance is spread across the convoy that is sailing, not across
+empty water), and the **round's time limit** (so a hull is only ever written
+off for failing to get across, never for entering last).
 
 Ships navigate with a **steering-behavior model**: each integrates a smoothed
 vector — head east and hold its lane (goal), keep clear water from neighbors
@@ -32,6 +41,20 @@ ship commits to a clear side and overtakes a slower one; a ship with no room to
 pass slows to match and queues; hulls never overlap or stack. Course changes
 are smooth arcs, never sideways drift.
 
+Two hazards get a **throttle** response rather than a rudder one, because at
+sea that is what taking way off is for:
+
+- **A charted mine on the bow** — the ship steers around it *and* slows, which
+  tightens the turn it can make and buys time to make it.
+- **An escort crossing the track** — the escort is under the player's orders
+  and is the stand-on vessel, so the merchant slows, down to a dead stop if the
+  escort is close aboard, and picks up again once the water is clear. Slowing
+  does not propagate down the column the way swerving does. An escort travelling
+  *with* the convoy gets no such courtesy (it never clears anyone's bow, so
+  waiting for it would mean waiting forever) and is handled by the ordinary
+  overtake-or-queue logic; and no merchant will hold for crossing traffic
+  indefinitely — after 8 seconds it stops waiting and steers around.
+
 The player operates the convoy's **defenses**, not the cargo ships' steering:
 
 | Action | Input | Cost/limit |
@@ -39,7 +62,7 @@ The player operates the convoy's **defenses**, not the cargo ships' steering:
 | Launch interceptor at a missile | tap the missile (tap again for a second interceptor) | ammo pool + launcher reload |
 | Command an escort (move) | tap the escort, then **single-tap** a destination | escort steams there, then resumes forward |
 | Command an escort (station) | tap the escort, then **double-tap** a spot | escort steams there and **holds position** |
-| ECM bubble (scrambles guided seekers) | tap ECM, then **tap where** to place it | 2 charges/round, must own suite |
+| A-10 gun runs (kills mines + boats in a radius) | tap A-10, then **tap where** to send it | 1 sortie/round, must own the jet |
 | Scan pulse (charts mines ahead) | tap SCAN, then **tap where** to place it | 2 charges/round, must own array |
 | Pause / speed (1×/2×/3×) | HUD buttons | free |
 
@@ -53,8 +76,8 @@ and how far blasts/mines spread) — there is no formation or lane control
 mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
 20+ ships stay manageable on a phone.
 
-ECM and Scan are **placed** abilities: tapping the HUD button arms it (it
-highlights), and the next tap on the map drops the effect there — an ECM bubble
+The A-10 and Scan are **placed** abilities: tapping the HUD button arms it (it
+highlights), and the next tap on the map sends it there — a Warthog station
 that scrambles guided seekers inside it, or a scan pulse that charts mines around
 the chosen point. Placement lets the player commit a charge exactly where the
 threat is, not at a fixed spot.
@@ -126,7 +149,7 @@ Cash (earned per cargo value delivered) buys:
 
 - **Ship modules** per class (point defense, missile warning, reinforced hull,
   mine sonar, fire suppression) — limited slots per class.
-- **Convoy-wide assets**: escorts (more interceptor launchers), ECM suite,
+- **Convoy-wide assets**: escorts (more interceptor launchers), the A-10,
   scanning array, interceptor ammo.
 - **Fleet**: replacement hulls, repairs (unrepaired damage carries into the
   next transit), convoy composition (which ships sail, up to capacity).

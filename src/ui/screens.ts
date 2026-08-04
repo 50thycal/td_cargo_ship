@@ -62,7 +62,7 @@ import {
   shipCost,
   totalComposition,
   totalPendingDamage,
-  unlockEcm,
+  unlockWarthog,
   unlockHardened,
   unlockScan,
   unlockSmoke,
@@ -531,7 +531,7 @@ export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => vo
       toggle(
         'flask',
         'Unlock everything',
-        'All research complete, ECM & scan installed, max batteries/escorts/capacity, and deep pockets.',
+        'All research complete, Warthog & scan installed, max batteries/escorts/capacity, and deep pockets.',
         () => devUnlock,
         (v) => (devUnlock = v),
       ),
@@ -897,7 +897,7 @@ const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
   smokeScreen: 'jam',
   flak: 'turret',
   hardened: 'shield',
-  ecm: 'planeEcm',
+  warthog: 'planeGun',
   reinforcedHull: 'shield',
   fireSuppression: 'flame',
   compartmentalization: 'slots',
@@ -968,7 +968,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
       label = `base fit: ${BASE_MODULES[eq.id].name}`;
     } else if (eq.kind === 'ability') {
       fitted =
-        (eq.id === 'ecm' && c.ecmUnlocked) ||
+        (eq.id === 'warthog' && c.warthogUnlocked) ||
         (eq.id === 'scan' && c.scanUnlocked) ||
         (eq.id === 'sonar' && c.sonarUnlocked) ||
         (eq.id === 'smoke' && c.smokeUnlocked) ||
@@ -1668,17 +1668,17 @@ export function prepScreen(
       },
     ),
     assetCard(
-      'planeEcm',
-      'ECM aircraft',
-      c.ecmUnlocked ? 'owned' : '—',
-      'Call it onto any patch of open water: it orbits there scrambling GUIDED seekers, and a guided missile that lingers inside cooks off. It never touches mines, torpedoes, boats, artillery, smoke or jamming — research its parallel paths for more charges, radius or duration.',
-      c.ecmUnlocked
+      'planeGun',
+      'A-10 Warthog',
+      c.warthogUnlocked ? 'owned' : '—',
+      'Call it onto any patch of open water: it holds a wheel over that spot and guns everything hostile on the surface inside its strafe radius. Mines break up outright — charted or not — and attack boats come apart over successive passes. It cannot reach a missile in flight or a torpedo running deep. Research its parallel paths for a second sortie, a longer loiter or a wider pattern.',
+      c.warthogUnlocked
         ? null
         : {
-            label: `Commission — $${ECONOMY.ecmUnlockCost}`,
-            disabled: c.cash < ECONOMY.ecmUnlockCost,
+            label: `Commission — $${ECONOMY.warthogUnlockCost}`,
+            disabled: c.cash < ECONOMY.warthogUnlockCost,
             onClick: () => {
-              if (unlockEcm(c)) rerender();
+              if (unlockWarthog(c)) rerender();
             },
           },
     ),

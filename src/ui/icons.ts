@@ -80,9 +80,10 @@ export const ICONS = {
       '<path d="M19.5 6.5l2.6-1.4M20.5 12h3M19.5 17.5l2.6 1.4" opacity=".6"/>',
     '0 0 26 24',
   ),
-  planeEcm: stroked(
+  // The Warthog: the airframe with a burst of gunfire coming off its nose.
+  planeGun: stroked(
     `<path d="${PLANE_PATH}" fill="currentColor" stroke="none"/>` +
-      '<path d="M3.4 8.6a6.4 6.4 0 0 0 0 6.8M20.6 8.6a6.4 6.4 0 0 1 0 6.8" opacity=".6"/>',
+      '<path d="M12 1.4v3.1M8.6 3.1l1.5 2.7M15.4 3.1l-1.5 2.7" opacity=".75"/>',
   ),
   // --- economy / meta ------------------------------------------------------------
   coin: stroked(

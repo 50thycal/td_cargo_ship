@@ -73,7 +73,7 @@ const DISCOVERY_CARDS: Partial<Record<TechKey, AarCard>> = {
     kind: 'discovery',
     title: 'New enemy capability: torpedoes',
     body:
-      'Submerged runs are now coming in against the convoy. Interceptors, point defense and ECM ' +
+      'Submerged runs are now coming in against the convoy. Interceptors, point defense and gun runs ' +
       'cannot touch a torpedo — they only engage things in the air. Straight-running weapons ' +
       'leave a wake a lookout can read close in; hydrophones hear them much further out, and ' +
       'depth charges are the only thing aboard that can kill one.',
@@ -232,8 +232,6 @@ export function formatInterceptSummary(t: TransitState): string {
   if (s.missilesSpawned === 0) return 'No missile attacks this transit.';
   return (
     `${s.missilesIntercepted} of ${s.missilesSpawned} missiles stopped ` +
-    `(${s.playerIntercepts} by interceptor, ${s.pdKills} by point defense` +
-    (s.ecmKills > 0 ? `, ${s.ecmKills} by ECM jamming` : '') +
-    `).`
+    `(${s.playerIntercepts} by interceptor, ${s.pdKills} by point defense).`
   );
 }

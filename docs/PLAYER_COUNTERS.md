@@ -209,8 +209,27 @@ researched — sensor research informs it); Persistent Mine Track (contacts stay
 charted through drift ⚑).
 **Tactic paths (parallel, independent):** Additional Charge (2→3) · Expanded
 Coverage (reveal radius 130→185, band scales) · Longer Track Persistence.
-Static mines stay charted permanently once revealed (their position cannot go
-stale); persistence governs moving contacts when drifting mines land.
+
+#### Mine detection is a CONTACT, not a chart mark
+
+A mine that has been found does not stay found. This is the rule that makes
+mine warfare a live problem rather than a one-time chore:
+
+- **Scan plane** hands the fleet a **timed fix**, good for 30 seconds. After
+  that the mine drops off the plot and the convoy is blind to it again.
+- **Sonar** (hull or escort) holds a contact only while some hull actually has
+  the mine inside its envelope, plus a few seconds of grace so an edge contact
+  does not strobe. Whoever holds it **shares it** — the whole fleet steers off
+  a mine one ship can hear, which is the entire value of fitting sonar.
+
+So a convoy can sail back into water it already charted and hit a mine it
+already found, and an escort sent ahead to hold the track is doing real work
+for as long as it stays there. **Clearing** the mine — a drone, or a Warthog
+gun run — is the only permanent answer to it.
+
+A hull with a live contact close on the bow does not merely lean on the rudder:
+it also comes off the throttle (down to 45% of cruise at worst), because slower
+means a tighter turn and more time to make it.
 
 ### Category: Torpedo Warfare (enemy branch LIVE)
 
@@ -333,16 +352,24 @@ degraded).
 countdown) · Pre-Round Channel Selection (granted with the node) · Emergency
 Reboot Charge (granted) → Second Reboot Charge.
 
-#### Branch: ECM Suite — convoy ability, disrupts guided Missiles
-**The answer to guided seekers, and only that.** A jamming aircraft orbits a
-placed point; guided seekers inside are scrambled (terminal hit chance 20%,
-8% with Barrage Jamming) and a missile that lingers 3.2 s cooks off. It does
-not affect mines, torpedoes, boats, artillery, smoke or jamming; unguided
-missiles are degraded only by the loiter-kill, never invalidated; guided
-sea-skimmers will still be affected but their short window stays meaningful
-(the loiter requirement is the limiter).
-**Nodes:** Base (granted, 2 charges) → Barrage Jamming (legacy `ew1`).
-**Tactic paths (parallel):** +1 charge · larger orbit · longer station time.
+#### Branch: A-10 Warthog — convoy ability, attacks Mines and Attack Boats
+**Close air support on call.** The jet flies to a patch of open water you
+choose, holds a wheel over it, and makes 30 mm gun runs on everything hostile
+on the surface inside its strafe radius. Mines are destroyed outright —
+**charted or not**, since the gun does not care whether the fleet had found
+them — and boats are broken up over successive passes. It cannot touch a
+missile in flight, a torpedo running deep, shore artillery, smoke or jamming.
+
+This slot previously held an ECM jammer that lowered the terminal hit chance of
+guided seekers. It was removed because it was invisible: nothing on screen
+changed when it worked, so the player only ever saw a missile that happened to
+miss, and a counter you cannot watch working is a counter nobody spends a
+charge on. Every kill the Warthog makes is one the player watched it make.
+
+**Nodes:** Base (granted, **1 sortie**) → 30 mm Tank-Buster Rounds (double
+damage per pass; legacy `ew1` migrates here).
+**Tactic paths (parallel):** Second Sortie (2 a round) · Extended Loiter ·
+Wide Strafe Pattern.
 
 ### Category: Hull & Damage Control (sibling branches — deliberately not one chain)
 
@@ -388,7 +415,7 @@ sea-skimmers will still be affected but their short window stays meaningful
     no inherited damage — so a loadout has to be bought again.
 - **Shore bases** carry built-in missile interceptors plus a **1-slot base
   loadout**: counter-battery system (future strategic sensors join here).
-- **Convoy-wide assets** (purchased, charges refresh each round): ECM, Scan
+- **Convoy-wide assets** (purchased, charges refresh each round): Warthog, Scan
   Pulse, Active Sonar Ping, Defensive Smoke Screen, Hardened/Backup Systems.
   Each keeps three **independent** upgrade paths — more charges vs larger
   coverage vs longer duration/persistence — never one forced chain.
@@ -402,7 +429,7 @@ sea-skimmers will still be affected but their short window stays meaningful
 - **Buying equipment before its base node is researched is not permitted**
   (`MODULE_RESEARCH_REQUIREMENT` and friends; enforced in `campaign.ts`, with
   the reason shown on the card). Built-in systems (escort/base interceptors,
-  scan, ECM, reinforced hull, fire suppression) begin with their base node
+  scan, Warthog, reinforced hull, fire suppression) begin with their base node
   granted, so the rule holds trivially for them.
 - Researching a deck gun does not equip any escort; researching sonar occupies
   no cargo slot.
@@ -426,7 +453,7 @@ sea-skimmers will still be affected but their short window stays meaningful
 | Enemy threat | Detection / information | Active counter | Mitigation |
 | --- | --- | --- | --- |
 | Unguided missiles | Missile warning | Base, escort, or cargo self-defense interceptor | Hull systems |
-| Guided missiles | Missile warning | Interceptors and ECM | Hull systems |
+| Guided missiles | Missile warning | Interceptors and point defense | Hull systems |
 | Sea-skimming missiles ⚑ | Sea-Skimmer Warning node | High/Extra-speed interceptors / close-in self-defense | Hull systems |
 | Swarm / MIRV missiles ⚑ | Warning + target display | Multiple interceptors / Dual-Shot magazines / automation | Hull systems |
 | Standard mines | Mine sonar or Scan Pulse | MCM drones (after detection) | Compartmentalization |
@@ -453,7 +480,7 @@ Audit results of this matrix (the "review the completed design" pass):
 - **Threats with no counter:** only sensor jamming (deliberate — the single
   no-counter node) and smoke (deliberately mitigate-only).
 - **Counters that solve too many branches:** none — the compatibility tests
-  pin each weapon to its domain. ECM is scoped to guided seekers; smoke is
+  pin each weapon to its domain. The gun run is scoped to the surface; smoke is
   scoped to targeting doctrine, not damage.
 - **Redundant systems:** interceptor branches overlap on missiles by design
   (three layers with different range/reload identities). Nothing else doubles.
@@ -480,7 +507,7 @@ Deterministic and value-preserving; runs before the generic deep backfill:
 | `mines1` | `mcmDrones.base` + the escort drone launcher fitted free (it was implicit) |
 | `resilience1` | Compartmentalization Low + Medium (the legacy 25%), module auto-fitted where a class slot is free |
 | `resilience2` | Fire Suppression Automatic + Redundant Zones |
-| `ew1` | ECM Barrage Jamming |
+| `ew1` | Warthog 30 mm Tank-Buster Rounds |
 | `logistics1` | `logistics.expandedBerthing` (intact) |
 | in-flight legacy project | its mapped nodes granted outright (already paid) |
 

@@ -100,7 +100,7 @@ interceptor economy is built around and the one the player already understands.
    launch; flies straight and does not correct. Cheapest node.
 2. **Guided missile** — homes on its target and can re-aim mid-flight; prefers
    stragglers/crippled ships. Defeats "just dodge / move the escort" and forces
-   ECM.
+   layered interception.
 3. **Sea-skimming missile** — fast, low-altitude approach; **short interceptor
    reaction window** (appears late / closer, less time to tap). Defeats slow or
    long-range interception; rewards point-defense and early warning.
@@ -153,7 +153,7 @@ lane.
 ### Branch: Torpedoes
 
 **Identity.** The **underwater** branch. Launched from the shoreline, runs under
-the surface, and is **immune to interceptors, ECM, and point-defense** — every
+the surface, and is **immune to interceptors and point-defense** — every
 air-defense investment the player has made is useless here. That is the entire
 point of the branch: it forces investment in a *new* sensor/counter that is
 useless against everything else. Torpedoes leave a **wake trail** the player can
@@ -337,7 +337,7 @@ a single node.
 
 | Branch | Nodes (escalation →) | Tactic ladder (→) | Grants targeting | Counter family (later) |
 | --- | --- | --- | --- | --- |
-| **Missiles** | Unguided → Guided → Sea-skimming → Swarm/MIRV | 1 → volley → coordinated volleys | T1, T3 | Interceptors, PD, ECM |
+| **Missiles** | Unguided → Guided → Sea-skimming → Swarm/MIRV | 1 → volley → coordinated volleys | T1, T3 | Interceptors, PD |
 | **Mines** | Standard → Low-sig → Drifting | 1 lane → 2 lanes → all lanes → dispersed | — | Detection + sweeping |
 | **Torpedoes** | Straight → Homing → Low-sig (no wake) | 1 → several → volley → several volleys | (uses T3) | **Anti-sub (NOT interceptors)** |
 | **Attack Boats** | Small-arms → Rocket → Boarding (capture) | 1 boat → several → wave → several waves | T4 | **Dedicated anti-boat weapon** |

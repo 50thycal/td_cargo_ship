@@ -150,6 +150,11 @@ export interface Ship {
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
+  /** Seconds this hull has spent held near a standstill for crossing traffic,
+   *  and whether it has given up waiting and gone back to steering around.
+   *  Give-way is a courtesy with a time limit — see NAV.giveWay.maxHoldSeconds. */
+  giveWayHold: number;
+  giveWayExhausted: boolean;
   /** Seconds a boarding party has held this hull. Reset whenever the boarding
    *  boat is driven off, so an interrupted boarding genuinely costs the enemy
    *  its progress rather than merely pausing it. */
@@ -288,16 +293,26 @@ export interface Threat {
   /** Straight-line aim point for unguided missiles. */
   targetX?: number;
   targetY?: number;
-  /** Mines & torpedoes: hidden until detected. */
+  /** Mines & torpedoes: hidden until detected.
+   *
+   *  For a torpedo this is permanent — once you have seen the wake you know
+   *  where the weapon is going, and it is gone within the minute anyway. For a
+   *  MINE it is a live contact, recomputed every tick from `revealedUntil` and
+   *  whether a hull is currently holding it on sonar. A mine sits in the water
+   *  all round; a fix on one goes stale exactly like a real plot does. */
   revealed: boolean;
+  /** Mines: transit time until which a TIMED reveal (a scan-plane fix) holds.
+   *  Sonar contact is not stored here — it is re-derived from hull positions
+   *  every tick, so a mine goes dark the moment the last hull loses it. */
+  revealedUntil?: number;
+  /** Mines: true once this mine has been detected at least once, so the round's
+   *  detection count is a count of MINES FOUND and not of contact re-acquired. */
+  everRevealed?: boolean;
   /** Low-signature variants resist standard detection (mines today;
    *  wakeless torpedoes when the enemy branch lands). */
   lowSig: boolean;
   /** Set when an interceptor is currently en route to this threat. */
   claimedByInterceptor: boolean;
-  /** Seconds this missile has spent inside an active ECM jamming orbit. Once it
-   *  crosses the jam threshold the seeker cooks off and the missile explodes. */
-  jamSeconds?: number;
   // --- Compatibility fields for enemy branches designed but not yet fielded --
   /** Torpedoes: corrects toward ships (homing node). */
   homing?: boolean;
@@ -624,11 +639,12 @@ export interface DepthChargeShot {
 }
 
 /** A support aircraft the player calls in for a placed ability. Scan planes fly
- *  down a chosen lane charting mines in that lane only; ECM planes fly to a
- *  water station, orbit while jamming inbound missiles, then depart. */
+ *  down a chosen lane charting mines in that lane only; the Warthog flies to a
+ *  water station, holds a wheel over it gunning surface targets inside its
+ *  strafe radius, then departs. */
 export interface Aircraft {
   id: number;
-  role: 'scan' | 'ecm';
+  role: 'scan' | 'warthog';
   x: number;
   y: number;
   heading: number;
@@ -636,13 +652,36 @@ export interface Aircraft {
   phase: 'inbound' | 'onStation' | 'departing';
   /** Scan: the lane-center Y the plane sweeps along. */
   laneY: number;
-  /** ECM: center of the jamming orbit. */
+  /** Warthog: center of the station wheel (and of the strafe radius). */
   centerX: number;
   centerY: number;
-  /** ECM: current orbit angle (radians). */
+  /** Warthog: current orbit angle (radians). */
   orbitAngle: number;
-  /** ECM: transit time at which the plane breaks orbit and departs. */
+  /** Warthog: transit time at which the plane breaks off and departs. */
   stationUntil: number;
+  /** Warthog: seconds until the gun is ready for the next pass. */
+  gunCooldown: number;
+}
+
+/** One 30mm gun run: a burst drawn from the jet to the water it hit.
+ *
+ *  Unlike a BoatShot this carries no damage and has no flight time — a burst
+ *  from a rotary cannon crosses a few hundred metres faster than a frame, so
+ *  the sim resolves the hit at the instant it fires and this object exists only
+ *  so the player SEES which target the pass was against. It is not a Threat and
+ *  nothing may ever be aimed at one. */
+export interface StrafeRun {
+  id: number;
+  /** Where the burst started (the jet) and ended (the target). */
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  /** True when the pass actually destroyed what it was aimed at — the view
+   *  draws a kill differently from a hit that merely hurt. */
+  killed: boolean;
+  /** Seconds of visibility left. */
+  ttl: number;
 }
 
 /** A placed area effect with a lifetime: active-sonar ping (reveals the
@@ -734,7 +773,7 @@ export type TransitCommand =
    *  installation id — never a projectile or mobile unit). */
   | { type: 'counterBattery'; installationId: number }
   /** Placed ability: x/y is where the player put the effect on the map. */
-  | { type: 'ability'; ability: 'ecm' | 'scan' | 'sonar' | 'smoke'; x: number; y: number }
+  | { type: 'ability'; ability: 'warthog' | 'scan' | 'sonar' | 'smoke'; x: number; y: number }
   /** Hardened systems: spend an emergency-reboot charge to shorten an active
    *  sensor-jamming blackout. */
   | { type: 'reboot' }
@@ -807,6 +846,9 @@ export interface CounterRoundStats {
   depthChargeKills: number;
   deckGunRounds: number;
   deckGunKills: number;
+  /** A-10 gun runs fired, and how many of those passes killed what they hit. */
+  gunRuns: number;
+  gunRunKills: number;
   counterBatteryShots: number;
   counterBatterySuppressions: number;
   flakShots: number;
@@ -833,7 +875,7 @@ export interface CounterRoundStats {
   jammingMitigatedSeconds: number;
   /** Ability charges available at round start / expended. */
   charges: {
-    ecm: { available: number; used: number };
+    warthog: { available: number; used: number };
     scan: { available: number; used: number };
     sonar: { available: number; used: number };
     smoke: { available: number; used: number };
@@ -848,14 +890,14 @@ export interface TransitStats {
   valueSent: number;
   valueDelivered: number;
   missilesSpawned: number;
-  missilesIntercepted: number; // player interceptors + self-defense + ECM jamming
+  missilesIntercepted: number; // player interceptors + self-defense
   playerIntercepts: number;
   baseIntercepts: number;
   escortIntercepts: number;
   interceptMisses: number;
   pdKills: number;
-  /** Missiles destroyed by lingering inside an ECM jamming orbit. */
-  ecmKills: number;
+  /** Mines and boats destroyed by A-10 gun runs. */
+  warthogKills: number;
   minesTotal: number;
   minesRevealed: number;
   minesDetonated: number;
@@ -896,7 +938,7 @@ export interface TransitStats {
   /** Seconds a hull spent dead in the water from a disabling drone. */
   shipDisabledSeconds: number;
   ammoUsed: number;
-  ecmUsed: number;
+  warthogUsed: number;
   scanUsed: number;
   /** Escorts destroyed during the transit (lost from the fleet). */
   escortsLost: number;
@@ -957,7 +999,7 @@ export interface InterceptorEffects {
 export interface AbilityEffects {
   charges: number;
   radius: number;
-  /** Seconds the placed effect lasts (sonar track / smoke cloud / ECM orbit). */
+  /** Seconds the placed effect lasts (sonar track / smoke cloud / A-10 loiter). */
   duration: number;
   /** Extra seconds a revealed contact stays precisely tracked. */
   persistence: number;
@@ -971,8 +1013,8 @@ export interface CombatEffects {
   /** Global damage multiplier (1 normally; 0 in dev god mode). Per-ship
    *  compartmentalization applies separately, only to equipped hulls. */
   damageTakenMult: number;
-  /** Guided-missile terminal hit chance while ECM is active. */
-  ecmGuidedHitChance: number;
+  /** Damage one A-10 gun run does to an attack boat (mines die outright). */
+  warthogDamage: number;
   /** Minesweeper drones available (branch researched AND launcher equipped). */
   sweepDrones: boolean;
   /** Fires extinguish themselves quickly (fire-suppression node). */
@@ -1134,7 +1176,7 @@ export interface CombatEffects {
   recovery: { wreckageRateMult: number; rescueRateMult: number };
 
   abilities: {
-    ecm: AbilityEffects;
+    warthog: AbilityEffects;
     scan: AbilityEffects;
     sonar: AbilityEffects;
     smoke: AbilityEffects;
@@ -1160,8 +1202,14 @@ export interface TransitState {
   interceptors: Interceptor[];
   drones: Drone[];
   depthChargeShots: DepthChargeShot[];
-  /** Support aircraft in flight (scan / ECM planes). */
+  /** Transit seconds after which anything still afloat is lost at sea. Sized
+   *  from the convoy's own arrival span (see transitTimeLimit) rather than a
+   *  flat number, so entering last is never itself a death sentence. */
+  timeLimit: number;
+  /** Support aircraft in flight (scan planes / the A-10). */
   aircraft: Aircraft[];
+  /** Gun-run bursts still being drawn. Visual only — see StrafeRun. */
+  strafeRuns: StrafeRun[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
@@ -1193,12 +1241,12 @@ export interface TransitState {
   droneAmmo: number;
   /** Self-defense rounds remaining: each module shot draws from this pool. */
   pdAmmo: number;
-  ecmCharges: number;
-  /** Transit time until which an ECM plane is deployed (blocks a second call). */
-  ecmActiveUntil: number;
-  /** Where the active ECM jamming orbit is centered. */
-  ecmCenterX: number;
-  ecmCenterY: number;
+  warthogCharges: number;
+  /** Transit time until which an A-10 is on task (blocks a second call). */
+  warthogActiveUntil: number;
+  /** Where the A-10 currently on task is holding its wheel. */
+  warthogCenterX: number;
+  warthogCenterY: number;
   scanCharges: number;
   sonarCharges: number;
   smokeCharges: number;
@@ -1546,7 +1594,7 @@ export interface RoundTelemetry {
   pdKills: number;
   interceptMisses: number;
   ammoUsed: number;
-  ecmUsed: number;
+  warthogUsed: number;
   scanUsed: number;
   minesTotal: number;
   minesRevealed: number;
@@ -1741,7 +1789,7 @@ export interface CampaignState {
    *  point-defense system for save compatibility.) */
   pdAmmo: number;
   /** Convoy-wide assets: owned => charges refresh each round. */
-  ecmUnlocked: boolean;
+  warthogUnlocked: boolean;
   scanUnlocked: boolean;
   sonarUnlocked: boolean;
   smokeUnlocked: boolean;

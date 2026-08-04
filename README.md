@@ -22,7 +22,8 @@ hover/right-click/keyboard requirements.
 
 **How to play:** pick an unlocked region and a Commander Ability loadout, then
 run convoys. Protect them during transit (tap incoming missiles to launch
-interceptors, order escorts around the map, fire ECM/scan pulses) — and when
+interceptors, order escorts around the map, call in A-10 gun runs and scan
+passes) — and when
 you destroy an enemy weapon, hold an escort inside the wreckage it leaves to
 recover it; do the same for the crews of lost ships before the water takes
 them. After each round, read the after-action report and take exactly one

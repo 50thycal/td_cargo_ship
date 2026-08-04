@@ -692,15 +692,16 @@ describe('a bigger convoy is a bigger target', () => {
 });
 
 describe('transit hardening', () => {
-  it('a second ECM command while a burst is active does not burn a charge', () => {
-    const c = newCampaign('ecm-stack');
-    c.ecmUnlocked = true;
+  it('a second Warthog call while one is on task does not burn a sortie', () => {
+    const c = newCampaign('warthog-stack');
+    c.warthogUnlocked = true;
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: WORLD.lanes[1] }], rng);
-    expect(state.ecmCharges).toBe(1);
-    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: WORLD.lanes[1] }], rng);
-    expect(state.ecmCharges).toBe(1); // still active -> rejected
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
+    expect(state.warthogCharges).toBe(0); // base branch is a single sortie
+    expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
+    expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1); // rejected
   });
 
   it('a crippled ship falls behind its own pace and is flagged straggling', () => {
@@ -1586,33 +1587,15 @@ describe('air defense & telemetry', () => {
     expect(south.revealed).toBe(true);
   });
 
-  it('an ECM plane destroys a missile that lingers in its jamming orbit', () => {
-    const c = newCampaign('ecm-jam');
-    c.ecmUnlocked = true;
+  it('rejects a Warthog call on land (off the water band), wasting no sortie', () => {
+    const c = newCampaign('warthog-land');
+    c.warthogUnlocked = true;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
-    state.spawnQueue = [];
-    state.threats = [];
-    const cx = 1000;
-    const cy = WORLD.lanes[1];
-    // A near-stationary missile parked at the orbit center (aim point far away
-    // so it never self-detonates); it should cook off once the plane is jamming.
-    const m = makeMissile(state, { x: cx, y: cy, vx: 0, vy: 0, targetX: cx, targetY: -400 });
-    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: cx, y: cy }], rng);
-    const threat = state.threats.find((th) => th.id === m)!;
-    for (let i = 0; i < 30 * 12 && threat.alive; i++) stepTransit(state, [], rng);
-    expect(threat.alive).toBe(false);
-    expect(state.stats.ecmKills).toBeGreaterThan(0);
-  });
-
-  it('rejects an ECM deployment on land (off the water band), wasting no charge', () => {
-    const c = newCampaign('ecm-land');
-    c.ecmUnlocked = true;
-    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
-    const charges0 = state.ecmCharges;
+    const charges0 = state.warthogCharges;
     // y=40 is up on the hostile shore, over the launchers — not open water.
-    stepTransit(state, [{ type: 'ability', ability: 'ecm', x: 900, y: 40 }], rng);
-    expect(state.ecmCharges).toBe(charges0); // no charge spent
-    expect(state.aircraft.some((a) => a.role === 'ecm')).toBe(false);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: 40 }], rng);
+    expect(state.warthogCharges).toBe(charges0); // no sortie spent
+    expect(state.aircraft.some((a) => a.role === 'warthog')).toBe(false);
     expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);
   });
 
@@ -1870,7 +1853,7 @@ describe('dev mode', () => {
     expect(c.godMode).toBe(true);
     expect(c.round).toBe(6);
     expect(c.completedResearch.length).toBe(allResearchableIds().length);
-    expect(c.ecmUnlocked).toBe(true);
+    expect(c.warthogUnlocked).toBe(true);
     expect(c.scanUnlocked).toBe(true);
     expect(c.cash).toBeGreaterThan(100000);
     // Jumping to a later round faces later threats: the enemy is fast-forwarded.

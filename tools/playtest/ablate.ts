@@ -102,7 +102,7 @@ const AMMO_FOR: Record<string, BuyIntent['kind']> = {
 const POLICY_FOR: Record<string, keyof Persona['transit']> = {
   mcmDrones: 'sweepMines',
   scanPulse: 'useScan',
-  ecm: 'useEcm',
+  warthog: 'useWarthog',
   smokeScreen: 'useSmoke',
   depthCharges: 'useDepthCharges',
   activeSonar: 'useSonar',
@@ -189,7 +189,7 @@ function ownedEquipment(c: CampaignState, into: Set<string>): void {
     for (const m of unit.modules) into.add(`escortModule:${m}`);
   }
   for (const m of c.baseModules) into.add(`baseModule:${m}`);
-  if (c.ecmUnlocked) into.add('ability:ecm');
+  if (c.warthogUnlocked) into.add('ability:warthog');
   if (c.scanUnlocked) into.add('ability:scan');
   if (c.sonarUnlocked) into.add('ability:sonar');
   if (c.smokeUnlocked) into.add('ability:smoke');
