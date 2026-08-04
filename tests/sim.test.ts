@@ -567,7 +567,7 @@ describe('anti-snowball: the losing side', () => {
     // worst thing in the game while leaving rounds to recover in. (A missed
     // quota no longer costs confidence at all: it ends the run outright.)
     const unflooredWorstCase =
-      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidencePerCrewLost * 3;
+      CAMPAIGN.confidenceDeliveryFloor + CAMPAIGN.confidenceCrewLostRate;
     expect(unflooredWorstCase).toBeLessThan(CAMPAIGN.confidenceRoundFloor);
     // The floor has to leave more than two rounds of headroom from the start.
     expect(CAMPAIGN.startConfidence / Math.abs(CAMPAIGN.confidenceRoundFloor)).toBeGreaterThan(2);

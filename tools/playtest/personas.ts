@@ -59,7 +59,17 @@ import type {
 export type BuyIntent =
   | { kind: 'repair' }
   | { kind: 'base' }
-  | { kind: 'escort' }
+  /** Buy an escort, optionally maintaining a standing screen of `upTo` hulls.
+   *  Without `upTo` the bot buys one whenever it happens to be affordable at
+   *  this point in the list, which measured badly: escorts are the mobile
+   *  interceptor platform, they take 3-5 losses a campaign, and with the intent
+   *  sitting BELOW `ship` the bot spent its money replacing merchant hulls
+   *  instead. Half the personas peaked at 2-3 escorts and finished at zero,
+   *  sailing the endgame with no screen at all — which no human does, and which
+   *  made a launcher-throughput shortfall look like a missile-balance problem.
+   *  A screen target restores the intent a player actually has: keep the escorts
+   *  up FIRST, then grow the convoy behind them. */
+  | { kind: 'escort'; upTo?: number }
   | { kind: 'ammo'; upTo: number }
   | { kind: 'droneAmmo'; upTo: number }
   | { kind: 'selfDefenseAmmo'; upTo: number }
@@ -132,7 +142,7 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
     case 'base':
       return buyBase(c);
     case 'escort':
-      return buyEscort(c);
+      return (intent.upTo === undefined || c.escortUnits.length < intent.upTo) && buyEscort(c);
     case 'ammo':
       return c.ammo < intent.upTo && buyAmmo(c, 5);
     // Consumables are gated on owning the thing that fires them — a real
@@ -502,10 +512,10 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 30 },
+      { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'droneAmmo', upTo: 6 },
@@ -577,9 +587,9 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 40 },
+      { kind: 'escort', upTo: 4 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'ammo', upTo: 70 },
       { kind: 'ability', id: 'warthog' },
     ],
@@ -607,6 +617,7 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 25 },
+      { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
@@ -614,7 +625,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'missileWarning' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
       { kind: 'droneAmmo', upTo: 9 },
       { kind: 'ammo', upTo: 40 },
@@ -646,9 +656,9 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 20 },
+      { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
       { kind: 'droneAmmo', upTo: 12 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
@@ -767,8 +777,8 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'base' },
+      { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
-      { kind: 'escort' },
       { kind: 'ammo', upTo: 34 },
     ],
     transit: FIGHTER,

@@ -681,8 +681,12 @@ describe('boarding and capture', () => {
   it('the capture penalty lands even when ordinary losses are already capped', () => {
     // The point of putting it outside the loss cap: a player being overrun
     // still feels every hull the enemy sails away with.
-    const lossesOnly = Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * 20);
-    expect(lossesOnly).toBe(CAMPAIGN.confidenceLossCap);
+    // A round that lost so much cargo the delivery curve is pinned at its floor.
+    const lossesOnly = Math.max(
+      CAMPAIGN.confidenceDeliveryFloor,
+      Math.min(CAMPAIGN.confidenceDeliveryCeiling, CAMPAIGN.confidenceDeliverySwing * (0 - CAMPAIGN.confidenceBreakEven)),
+    );
+    expect(lossesOnly).toBe(CAMPAIGN.confidenceDeliveryFloor);
     const withCapture =
       lossesOnly + Math.max(CAMPAIGN.confidenceCaptureCap, CAMPAIGN.confidencePerCapture * 1);
     expect(withCapture).toBeLessThan(lossesOnly);

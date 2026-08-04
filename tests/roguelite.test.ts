@@ -420,7 +420,11 @@ describe('survivor rescue', () => {
     };
     const clean = outcome(0);
     const abandoned = outcome(2);
-    expect(abandoned).toBe(clean + CAMPAIGN.confidencePerCrewLost * 2);
+    // The penalty is rate-scaled against the convoy that sailed, so the exact
+    // figure depends on the round's hull count — what must hold is that leaving
+    // crews behind costs confidence, and costs it in proportion.
+    expect(abandoned).toBeLessThan(clean);
+    expect(CAMPAIGN.confidenceCrewLostRate).toBeLessThan(0);
   });
 
   it('rescue prevents the abandonment penalty AND recovers some confidence', () => {
@@ -442,8 +446,10 @@ describe('survivor rescue', () => {
     // Rescuing instead of abandoning is worth the difference between the two,
     // and a rescue never fully offsets having lost the ship in the first place.
     expect(outcome(2, 0)).toBeGreaterThan(outcome(0, 2));
+    // A single rescue never pays more than abandoning the whole convoy's crews
+    // would cost, so going back for people stays a mitigation, not a strategy.
     expect(CAMPAIGN.confidencePerCrewRescued).toBeLessThan(
-      Math.abs(CAMPAIGN.confidencePerCrewLost),
+      Math.abs(CAMPAIGN.confidenceCrewLostRate),
     );
   });
 
