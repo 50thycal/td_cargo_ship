@@ -64,6 +64,14 @@ const ACTIVITY_COLORS: Record<string, string> = {
  *  camera, so the target you can hit stays the same size on screen at any
  *  zoom level. */
 const TAP_RADIUS_PX = 27;
+/** Tap tolerance for things a tap ATTACKS — missiles, attack boats, charted
+ *  mines. Deliberately larger than the map tolerance above, because the two
+ *  kinds of near-miss are not equally bad. Missing the map costs nothing; a
+ *  tap aimed at a missile that lands a few pixels wide falls through to the
+ *  move-order branch and sends the selected escort across the screen, so the
+ *  player loses the shot AND has to sail their ship back. These are also small,
+ *  fast, often-overlapping targets under a fingertip that hides them. */
+const THREAT_TAP_RADIUS_PX = 46;
 /** Second tap within this long (ms) counts as a double-tap → station the escort
  *  (pause it). A lone tap after the window sends it and it resumes forward. */
 
@@ -687,6 +695,7 @@ export class TransitView {
     // units through the camera — so what the player can hit stays the same
     // size under their finger however far they have zoomed in or out.
     const tapRadius = TAP_RADIUS_PX * this.camera.worldPerPixel();
+    const threatTapRadius = THREAT_TAP_RADIUS_PX * this.camera.worldPerPixel();
 
     // 1) A tap near an incoming missile fires an interceptor at it. When several
     //    missiles are bunched under one tap, which one wins depends on the
@@ -712,7 +721,7 @@ export class TransitView {
       // have their own interactions (the sim would reject them anyway).
       if (!threat.alive || (threat.kind !== 'missile' && threat.kind !== 'guidedMissile')) continue;
       const d = Math.hypot(threat.x - wx, threat.y - wy);
-      if (d >= tapRadius) continue;
+      if (d >= threatTapRadius) continue;
       const claimedBand = inbound.has(threat.id) ? 1 : 0;
       let modeBand = 0;
       if (this.targetPriority === 'protectShips') {
@@ -722,7 +731,7 @@ export class TransitView {
       }
       // Band dominates (each unit is worth a full tapRadius, always bigger
       // than any in-radius distance); distance only breaks ties within a band.
-      const key = (modeBand + claimedBand) * tapRadius + d;
+      const key = (modeBand + claimedBand) * threatTapRadius + d;
       if (key < bestThreatKey) {
         bestThreatKey = key;
         bestThreat = threat;
@@ -737,7 +746,7 @@ export class TransitView {
     // 1b) A tap on an attack boat commits a deck gun to it (sustained fire).
     if (this.state.escortModules.includes('deckGun')) {
       let bestBoat: Threat | null = null;
-      let bestBoatD = tapRadius;
+      let bestBoatD = threatTapRadius;
       for (const threat of this.state.threats) {
         if (!threat.alive || threat.kind !== 'attackBoat') continue;
         const d = Math.hypot(threat.x - wx, threat.y - wy);
@@ -756,7 +765,7 @@ export class TransitView {
     //    the nearest in-range escort (the sim validates range / munitions).
     if (this.state.effects.sweepDrones) {
       let bestMine: Threat | null = null;
-      let bestMineD = tapRadius;
+      let bestMineD = threatTapRadius;
       for (const mine of this.state.threats) {
         if (mine.kind !== 'mine' || !mine.alive || !mine.revealed) continue;
         if (this.state.drones.some((dr) => dr.targetMineId === mine.id)) continue; // already swept

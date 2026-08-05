@@ -147,12 +147,50 @@ export const NAV = {
    *  limit so the course change reads as a ship altering course. */
   escortSpeed: 50,
   escortArrive: 16,
-  escortSepBuffer: 26,
-  /** Forward distance over which an escort watches for a hull in its way. */
-  escortLookAhead: 120,
+  /** How far an escort considers merchant hulls at all.
+   *
+   *  Separate from the merchants' own `perception` (150) on purpose. The escort
+   *  now looks 240 units ahead and holds a ~102-unit bubble, and a neighbour
+   *  loop that culled at 150 would have thrown away the far half of both before
+   *  the steering ever saw it — the widened numbers would have quietly done
+   *  nothing. Raising the shared constant instead would have pulled every
+   *  merchant into considering far more neighbours than its formation-keeping
+   *  needs, which is both slower and a change to convoy behaviour nobody asked
+   *  for. */
+  escortPerception: 280,
+  /** Clear water an escort holds around a merchant hull, on top of the two
+   *  hull radii — the "bubble" the two ships keep between them.
+   *
+   *  WIDENED from 26, which put the bubble at 15 + 11 + 26 = 52 units against a
+   *  cargo hull, barely more than two hull radii. An escort only began to react
+   *  once it was already close aboard, so the correction it then had to make
+   *  was a hard one, and it read as a ship noticing a merchant late rather than
+   *  keeping out of her way. At 76 the bubble is ~102 units, about twice the
+   *  old one: the two ships start easing apart while there is still room to do
+   *  it gently. Paired with the squared falloff in the steering loop, which is
+   *  what keeps a wider bubble from turning into a mushy one — see
+   *  escortSepFalloff. */
+  escortSepBuffer: 76,
+  /** How sharply the separation force builds as the bubbles overlap.
+   *
+   *  1 is the old linear ramp: at the edge of the bubble it is already pushing
+   *  meaningfully, which across a bubble this wide would have the escort
+   *  drifting off its ordered track any time it came near the convoy at all.
+   *  Squaring it makes first contact between the bubbles a nudge and deep
+   *  overlap an emphatic shove — the response gets more severe the closer they
+   *  get, rather than being uniformly assertive across the whole radius. */
+  escortSepFalloff: 2,
+  /** Forward distance over which an escort watches for a hull in its way.
+   *
+   *  DOUBLED from 120 alongside the bubble above: the point of seeing further
+   *  is to start the alteration of course earlier, and a standoff distance the
+   *  escort cannot see far enough to plan for just becomes a late shove. */
+  escortLookAhead: 240,
   /** Lateral half-width of the escort's "in my way" corridor, added to hull
-   *  radii. */
-  escortLaneBand: 16,
+   *  radii. Widened less than the look-ahead was: this decides which hulls
+   *  count as obstacles at all, and opening it too far has the escort altering
+   *  course for merchants it was always going to pass clear of. */
+  escortLaneBand: 30,
   escortGoalWeight: 1.0,
   escortAvoidWeight: 2.0,
   escortSepWeight: 1.6,
@@ -200,11 +238,31 @@ export const NAV = {
    *  keeps the ship committed to a course for long enough to look like it meant
    *  it, and still lets a real change through inside half a second. */
   escortSteerSmoothing: 0.35,
+  /** Minimum length of the smoothed steering vector that counts as a steering
+   *  COMMAND. Below it the escort holds its heading.
+   *
+   *  A real command is order-of-1 long (the goal term alone is weighted 1.0).
+   *  What this rejects is the residue left once the escort is on station and
+   *  the goal force is spent — a hundredth of that, pointing wherever the
+   *  nearest hull last moved. Direction is meaningless at that magnitude, and
+   *  atan2 does not care: it returns an angle just as confidently for a vector
+   *  0.003 long, and the ship chases it at full rudder. */
+  escortSteerDeadband: 0.25,
   /** Once an escort has committed to passing a particular hull on a particular
    *  side, it holds that choice until the hull is this far outside the corridor
    *  it was avoiding — the hysteresis that stops the side flipping every tick
    *  as the geometry crosses dead ahead. */
   escortPassCommitSlack: 40,
+  /** Seconds a passing commitment survives with nothing in the corridor before
+   *  it is released.
+   *
+   *  The commitment used to be torn down the first tick the corridor came up
+   *  empty. A hull skimming the edge of it drops out for a tick or two at a
+   *  time, so the side was re-decided on every re-entry and could come back the
+   *  other way — a rudder reversal produced by bookkeeping rather than by
+   *  anything in the water. Long enough to ride out that flicker, short enough
+   *  that a hull genuinely left behind stops steering the ship. */
+  escortPassReleaseSeconds: 0.6,
   /** Give-way to a crossing escort.
    *
    *  An escort cutting through the column used to be a bulldozer: it drove

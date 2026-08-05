@@ -553,6 +553,12 @@ export interface Escort {
    *  hull is well clear, so the choice cannot flip tick to tick. */
   passShipId: number | null;
   passSide: number;
+  /** Seconds the committed hull has been out of the avoidance corridor. The
+   *  commitment survives a brief dropout rather than being torn down the first
+   *  tick the geometry says "clear" — a hull sliding in and out of the corridor
+   *  used to reset the side and let it be re-decided the other way, which is a
+   *  rudder reversal produced by nothing having actually changed. */
+  passClearSeconds: number;
   /** SEPARATE automatic-fire cooldown (local automatic engagement tactic).
    *  Independent of the launcher reload `cooldown` by design. */
   autoCooldown: number;

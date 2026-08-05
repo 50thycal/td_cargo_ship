@@ -246,6 +246,66 @@ export function tierMeter(tier: StatTier, invert = false): HTMLElement {
   return h('span', { className: 'meter', attrs: { role: 'img', 'aria-label': label } }, cells);
 }
 
+const TIER_LABELS: Record<StatTier, string> = {
+  low: 'Low',
+  medium: 'Med',
+  high: 'High',
+  extra: 'Extra',
+  max: 'Max',
+};
+
+/** Where a tier sits on the meter, accounting for magnitude-named domains
+ *  (see STAT_TIERS) where a LOWER tier is the better one. */
+function litIndex(tier: StatTier, invert: boolean): number {
+  const idx = TIER_ORDER.indexOf(tier);
+  return invert ? TIER_ORDER.length - 1 - idx : idx;
+}
+
+/** A tier meter showing a CHANGE rather than a level: the rungs already held
+ *  are lit, and the rungs this upgrade would add are marked as a gain, so the
+ *  player can see the size of the step and not just the destination. */
+export function tierMeterDelta(
+  from: StatTier | undefined,
+  to: StatTier,
+  invert = false,
+): HTMLElement {
+  const litTo = litIndex(to, invert);
+  const litFrom = from === undefined ? -1 : litIndex(from, invert);
+  const cells: HTMLElement[] = [];
+  for (let i = 0; i < TIER_ORDER.length; i++) {
+    let cls = 'meter-cell';
+    if (i <= Math.min(litFrom, litTo)) cls = 'meter-cell on';
+    else if (i <= litTo) cls = 'meter-cell gain';
+    else if (i <= litFrom) cls = 'meter-cell loss';
+    cells.push(h('span', { className: cls }));
+  }
+  const label =
+    from === undefined
+      ? `new, ${litTo + 1} of ${TIER_ORDER.length}`
+      : `${litFrom + 1} to ${litTo + 1} of ${TIER_ORDER.length}`;
+  return h('span', { className: 'meter', attrs: { role: 'img', 'aria-label': label } }, cells);
+}
+
+/** A stat row for the draft: what the stat is now, and what taking this option
+ *  would make it. `from` is undefined when the branch does not have the stat
+ *  yet — this option introduces it. */
+export function statUpgradeRow(
+  stat: string,
+  from: StatTier | undefined,
+  to: StatTier,
+): HTMLElement {
+  const meta = statMeta(stat);
+  return h('span', { className: 'stat-meter' }, [
+    icon(meta.icon),
+    h('span', { className: 'stat-meter-label', text: meta.label }),
+    tierMeterDelta(from, to, meta.invert),
+    h('span', {
+      className: 'stat-delta',
+      text: from === undefined ? TIER_LABELS[to] : `${TIER_LABELS[from]} → ${TIER_LABELS[to]}`,
+    }),
+  ]);
+}
+
 /** A labelled stat row: glyph, name, LED meter. The standard way any tiered
  *  stat is presented anywhere in the UI. */
 export function statTierRow(stat: string, tier: StatTier): HTMLElement {

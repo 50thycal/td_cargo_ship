@@ -172,15 +172,18 @@ try {
   for (const label of [/Escort flotilla/, /Shore-base loadout/]) {
     if (!(await page.getByText(label).count())) throw new Error(`prep panel missing: ${label}`);
   }
-  // Technology-gated procurement: an ungated module (Reinforced Hull) offers a
-  // price; a gated one (Hydrophone) names its missing technology instead —
-  // the draft unlocks, cash equips, and neither substitutes for the other.
-  const hydroCard = page.locator('.module-card', { hasText: 'Hydrophone' }).first();
-  const hydroBtn = await hydroCard.locator('button').first().textContent();
-  if (!/Requires technology/i.test(hydroBtn ?? '')) {
-    throw new Error(`hydrophone should be technology-gated, button says: ${hydroBtn}`);
+  // Technology-gated procurement: the shop shows what the fleet can actually
+  // field. Reinforced Hull's base node is granted at the start of a run, so it
+  // is on sale from round one; Hydrophone's is not, so its card is absent
+  // entirely until the draft produces it — a locked item is not displayed at
+  // all, rather than shown with its requirement as a label.
+  const hullCards = await page.locator('.module-card', { hasText: 'Reinforced Hull' }).count();
+  if (!hullCards) throw new Error('Reinforced Hull should be purchasable from round one');
+  const hydroCards = await page.locator('.module-card', { hasText: 'Hydrophone' }).count();
+  if (hydroCards) {
+    throw new Error('Hydrophone is not researched yet, so its card should not be rendered');
   }
-  console.log('prep loadout panels OK (escort/base slots + technology gating)');
+  console.log('prep loadout panels OK (escort/base slots + unresearched kit hidden)');
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.

@@ -676,6 +676,14 @@ describe('convoy helmsmanship', () => {
 
     // Count direction REVERSALS in the rudder. A ship altering course turns one
     // way for a while; a shaking one changes its mind several times a second.
+    // What counts as the rudder MOVING. One tick at full rudder is
+    // escortTurnRate * dt (~87 mrad); this is ~2% of that. Below it the heading
+    // is being nudged by float noise in a steering vector that has not
+    // meaningfully changed — counting those as reversals measures arithmetic,
+    // not helmsmanship, and no such turn is visible on screen. The shake this
+    // test exists to catch alternated at the full-rudder cap, so it is still
+    // caught with room to spare.
+    const SIGNIFICANT_TURN = NAV.escortTurnRate * SIM.dt * 0.02;
     let prev = escort.heading;
     let prevTurn = 0;
     let reversals = 0;
@@ -685,7 +693,7 @@ describe('convoy helmsmanship', () => {
       stepTransit(state, [], rng);
       const turn = escort.heading - prev;
       sharpest = Math.max(sharpest, Math.abs(turn));
-      if (Math.abs(turn) > 1e-4) {
+      if (Math.abs(turn) > SIGNIFICANT_TURN) {
         if (prevTurn !== 0 && Math.sign(turn) !== Math.sign(prevTurn)) reversals++;
         prevTurn = turn;
       }
@@ -700,6 +708,52 @@ describe('convoy helmsmanship', () => {
     // And the rudder never moves faster than the ship can turn. It used to
     // snap on arrival, which is the one moment the player is watching.
     expect(sharpest).toBeLessThanOrEqual(NAV.escortTurnRate * SIM.dt + 1e-6);
+  });
+
+  it('holds its heading on station instead of chasing a collapsed steering vector', () => {
+    // An escort that has ARRIVED has no goal force left, so its steering vector
+    // is whatever residue the nearby hulls contribute — a vector two orders of
+    // magnitude shorter than a real steering command, pointing wherever the
+    // nearest merchant happened to drift that tick. atan2 returns an angle for
+    // it just as confidently as for a real one, so the ship used to put the
+    // rudder hard over, full stop to full stop, in answer to nothing at all.
+    const { state, rng } = emptyTransit('escort-on-station', (c) => {
+      fitUniformEscorts(c, 1);
+    });
+    const laneY = WORLD.lanes[1];
+    state.ships.forEach((ship, i) => {
+      if (i >= 3) {
+        ship.spawnTime = SIM.maxTransitTime * 2;
+        ship.spawned = false;
+        return;
+      }
+      ship.spawnTime = 0;
+      ship.spawned = true;
+      ship.alive = true;
+      ship.x = 900 + i * 80;
+      ship.y = laneY;
+      ship.heading = 0;
+      ship.speed = SHIP_CLASSES[ship.classId].speed;
+    });
+    // Parked on station right beside the column: no goal force, hulls close
+    // enough aboard to keep feeding it separation residue.
+    const escort = state.escorts[0];
+    escort.x = 940;
+    escort.y = laneY - 70;
+    escort.heading = 0;
+    escort.moveTarget = null;
+
+    const start = escort.heading;
+    let sharpest = 0;
+    for (let i = 0; i < Math.ceil(8 / SIM.dt); i++) {
+      const before = escort.heading;
+      stepTransit(state, [], rng);
+      sharpest = Math.max(sharpest, Math.abs(escort.heading - before));
+    }
+    // Nothing is asking this ship to turn, so it should barely have moved the
+    // rudder at all — certainly nowhere near the hard-over it used to apply.
+    expect(sharpest).toBeLessThan(NAV.escortTurnRate * SIM.dt * 0.5);
+    expect(Math.abs(escort.heading - start)).toBeLessThan(0.5);
   });
 
   it('an escort goes AROUND a hull stopped dead on its track, not through it', () => {

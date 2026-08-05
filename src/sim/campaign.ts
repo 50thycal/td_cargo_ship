@@ -517,7 +517,17 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued,
   );
 
-  c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
+  // Confidence is a WHOLE-NUMBER bar, and the number in brackets on the debrief
+  // must be the change the player can actually see happen to it. Two things
+  // would otherwise break that. The delivery curve is continuous, so the raw
+  // change is fractional and would render as 67.43999999999998. And the bar
+  // clamps at both ends, so an unclamped delta reads "100 (+8)" on a round that
+  // really moved +2. Round the destination, then derive the reported change
+  // from where the bar actually landed.
+  c.confidence = Math.round(
+    Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange)),
+  );
+  confidenceChange = c.confidence - confidenceBefore;
 
   // --- Convoy capacity growth ----------------------------------------------------
   let capacityIncreased = false;
@@ -944,6 +954,33 @@ export function moduleBlockReason(
   }
   if (c.cash < moduleCost(c, classId, moduleId)) return 'Not enough cash';
   return null;
+}
+
+// --- Shop visibility -------------------------------------------------------
+//
+// A thing appears in the shop once its TECHNOLOGY exists, not once it is
+// affordable. The draft is where the player learns what they can now field, so
+// listing un-researched hardware there spoils that reveal and pads every grid
+// with cards that cannot be acted on. Cash is deliberately NOT part of the
+// test: an item you can afford next round must stay visible so you can save for
+// it, and a shop that reshuffles as the balance moves is unreadable.
+//
+// Anything already owned always shows, so it can still be unequipped.
+
+export function moduleRevealed(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+  if (c.classModules[classId].includes(moduleId)) return true;
+  const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
+  return !req || hasResearch(c, req);
+}
+
+export function escortModuleRevealed(c: CampaignState, id: EscortModuleId): boolean {
+  if (c.escortUnits.some((u) => u.modules.includes(id))) return true;
+  return hasResearch(c, ESCORT_MODULE_RESEARCH_REQUIREMENT[id]);
+}
+
+export function baseModuleRevealed(c: CampaignState, id: BaseModuleId): boolean {
+  if (c.baseModules.includes(id)) return true;
+  return hasResearch(c, BASE_MODULE_RESEARCH_REQUIREMENT[id]);
 }
 
 export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
