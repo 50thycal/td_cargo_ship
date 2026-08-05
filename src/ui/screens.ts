@@ -1956,7 +1956,7 @@ export function prepScreen(
     },
     { id: 'modules', label: 'Modules', ic: 'slots', els: [modPanel] },
     { id: 'fleet', label: 'Defense', ic: 'missile', els: [fleetPanel, escortPanel, basePanel] },
-    { id: 'assets', label: 'Stores', ic: 'crate', els: [assetPanel] },
+    { id: 'assets', label: 'Supplies', ic: 'crate', els: [assetPanel] },
   ];
 
   const rail = h('div', { className: 'prep-rail' });
