@@ -416,6 +416,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       steerY: 0,
       passShipId: null,
       passSide: 0,
+      passClearSeconds: 0,
       autoCooldown: 0,
       mcmAutoCooldown: 0,
       droneCooldown: 0,
@@ -3531,6 +3532,9 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       let avy = 0;
       let sepx = 0;
       let sepy = 0;
+      /** Depth of the deepest bubble overlap found so far — see the separation
+       *  block below, which keeps only the strongest push rather than summing. */
+      let sepPush = 0;
       const fx = Math.cos(escort.heading);
       const fy = Math.sin(escort.heading);
       // The hull this escort is working its way around, if any: the nearest one
@@ -3538,24 +3542,52 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       // them — averaging the "go left" from one ship against the "go right"
       // from the next produces a course that clears neither and changes its
       // mind every tick.
-      let passShip: Ship | null = null;
-      let passAlong = Infinity;
-      let passLat = 0;
-      let passBand = 0;
+      // The hull already committed to keeps its claim for as long as it is
+      // still in the way — it is tracked separately from "whichever is nearest"
+      // rather than competing with it. Nearest-wins re-decided the target every
+      // tick, so two hulls a few units apart in range traded the commitment
+      // back and forth (measured: the target churned 3 → 1 → 3 → 1 on
+      // successive ticks, and each swap put the rudder over the other way).
+      let nearestShip: Ship | null = null;
+      let nearestAlong = Infinity;
+      let nearestLat = 0;
+      let nearestBand = 0;
+      let heldShip: Ship | null = null;
+      let heldAlong = 0;
+      let heldLat = 0;
+      let heldBand = 0;
       for (const ship of t.ships) {
         if (!isActive(ship)) continue;
         const or = SHIP_CLASSES[ship.classId].radius;
         const dx = ship.x - escort.x;
         const dy = ship.y - escort.y;
         const d = Math.hypot(dx, dy);
-        if (d <= 0.001 || d > NAV.perception) continue;
+        if (d <= 0.001 || d > NAV.escortPerception) continue;
 
-        // Separation: hold clear water from anything close aboard.
+        // Separation: hold clear water from anything close aboard. The two
+        // ships carry bubbles; where those overlap, they ease apart, and the
+        // deeper the overlap the harder they do it. The falloff exponent is
+        // what makes the wide bubble usable — a linear ramp over this radius
+        // would have the escort shouldered off its ordered track by any hull it
+        // merely passed near, where a squared one is a nudge at first contact
+        // and an emphatic shove close aboard.
         const sepDist = COMBAT.escort.hitRadius + or + NAV.escortSepBuffer;
         if (d < sepDist) {
-          const push = (sepDist - d) / sepDist;
-          sepx -= (dx / d) * push;
-          sepy -= (dy / d) * push;
+          const overlap = (sepDist - d) / sepDist;
+          const push = Math.pow(overlap, NAV.escortSepFalloff);
+          // The DEEPEST overlap wins outright rather than every bubble adding
+          // its own vote. Summing them reads fine on paper and shakes the ship
+          // in practice: an escort between two hulls gets two nearly opposite
+          // pushes, they cancel to a small residual, and the sign of that
+          // residual flips as the geometry shifts a few units — measured, a
+          // reversal on almost every tick with the passing target and side both
+          // perfectly stable. One hull at a time is also what the avoidance
+          // corridor above already does, for the same reason.
+          if (push > sepPush) {
+            sepPush = push;
+            sepx = -(dx / d) * push;
+            sepy = -(dy / d) * push;
+          }
         }
 
         const along = dx * fx + dy * fy;
@@ -3566,18 +3598,39 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // not abandoned the instant the geometry says "clear".
         const committed = escort.passShipId === ship.id;
         const reach = committed ? band + NAV.escortPassCommitSlack : band;
-        if (along > 0 && along < NAV.escortLookAhead && Math.abs(lat) < reach && along < passAlong) {
-          passShip = ship;
-          passAlong = along;
-          passLat = lat;
-          passBand = band;
+        if (along > 0 && along < NAV.escortLookAhead && Math.abs(lat) < reach) {
+          if (committed) {
+            heldShip = ship;
+            heldAlong = along;
+            heldLat = lat;
+            heldBand = band;
+          } else if (along < nearestAlong) {
+            nearestShip = ship;
+            nearestAlong = along;
+            nearestLat = lat;
+            nearestBand = band;
+          }
         }
       }
 
+      const passShip = heldShip ?? nearestShip;
+      const passAlong = heldShip ? heldAlong : nearestAlong;
+      const passLat = heldShip ? heldLat : nearestLat;
+      const passBand = heldShip ? heldBand : nearestBand;
+
       if (!passShip) {
-        escort.passShipId = null;
-        escort.passSide = 0;
+        // Nothing in the corridor. Let the commitment lapse on a timer rather
+        // than immediately: a hull skimming the edge drops out for a tick or
+        // two at a time, and tearing the side down each time let it be
+        // re-decided the other way on re-entry — a reversal caused by the
+        // bookkeeping rather than by the water.
+        escort.passClearSeconds += dt;
+        if (escort.passClearSeconds >= NAV.escortPassReleaseSeconds) {
+          escort.passShipId = null;
+          escort.passSide = 0;
+        }
       } else {
+        escort.passClearSeconds = 0;
         // Which way round? Astern, whenever the hull is actually making way.
         //
         // Crossing ahead of a moving ship is a losing race: she keeps coming,
@@ -3608,7 +3661,14 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
           escort.passShipId = passShip.id;
           escort.passSide = side;
         }
-        const urgency = 1 - passAlong / NAV.escortLookAhead;
+        // Shaped by the same falloff as separation, and for the same reason.
+        // `1 - along/lookAhead` is linear, so doubling the look-ahead would
+        // have raised the response at EVERY range rather than starting it
+        // earlier — a hull 60 units ahead went from 0.5 to 0.75 without having
+        // got any closer. Squaring restores the old strength close aboard
+        // (0.56 at that same 60 units) while making first detection out at the
+        // new edge of the cone the gentle nudge it should be.
+        const urgency = Math.pow(1 - passAlong / NAV.escortLookAhead, NAV.escortSepFalloff);
         // Bearing away harder when she is close aboard laterally as well as
         // close ahead — a hull already half a beam off needs less.
         const centrality = 1 - Math.min(1, Math.abs(passLat) / Math.max(1, passBand));
@@ -3632,9 +3692,22 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       escort.steerY += (rawY - escort.steerY) * k;
       // Turn-rate limited on top, so an order reads as a ship altering course
       // rather than a cursor being dragged.
-      const desired = Math.atan2(escort.steerY, escort.steerX);
-      const dh = angleDiff(desired, escort.heading);
-      escort.heading += clamp(dh, -NAV.escortTurnRate * dt, NAV.escortTurnRate * dt);
+      //
+      // A short steering vector carries no usable direction. Once the escort is
+      // on station the goal force is spent, and what is left is a residue of
+      // separation forces a hundredth the length of a real steering command —
+      // whose ANGLE is then whatever the nearest hull happened to do that tick.
+      // Feeding that to atan2 had the ship putting the rudder hard over, full
+      // stop to full stop, in answer to nothing: measured, reversals at the
+      // 86.7 mrad turn-rate cap with the steering vector down at 0.003 long.
+      // Below the threshold there is no reason to turn, so the ship holds what
+      // it has — which is also what a real one does.
+      const steerMag = Math.hypot(escort.steerX, escort.steerY);
+      if (steerMag > NAV.escortSteerDeadband) {
+        const desired = Math.atan2(escort.steerY, escort.steerX);
+        const dh = angleDiff(desired, escort.heading);
+        escort.heading += clamp(dh, -NAV.escortTurnRate * dt, NAV.escortTurnRate * dt);
+      }
       const step = speed * dt;
       escort.x += Math.cos(escort.heading) * step;
       escort.y += Math.sin(escort.heading) * step;

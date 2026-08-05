@@ -10,6 +10,7 @@
 // the last screen id at module scope.
 
 import { COMMANDER, ECONOMY } from '../data/tuning';
+import type { StatTier } from '../data/statTiers';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
@@ -22,6 +23,7 @@ import {
 import {
   CATEGORY_ORDER,
   COUNTER_BRANCHES,
+  resolveBranchStats,
   COUNTER_CATEGORY_NAMES,
   awaitingEnemyCapability,
   ENEMY_BRANCH_NAMES,
@@ -37,6 +39,7 @@ import {
 import {
   ammoUnitCost,
   baseModuleBlockReason,
+  baseModuleRevealed,
   buyAmmo,
   buyBase,
   buyBaseModule,
@@ -48,8 +51,11 @@ import {
   buyShip,
   type DevOptions,
   escortModuleBlockReason,
+  escortModuleRevealed,
   hasResearch,
   moduleBlockReason,
+  moduleRevealed,
+  researchSet,
   moduleCost,
   removeBaseModule,
   removeEscortModule,
@@ -95,6 +101,7 @@ import {
   shipFigure,
   SHIP_TINTS,
   statTierRow,
+  statUpgradeRow,
   type IconName,
 } from './icons';
 import type {
@@ -988,9 +995,18 @@ const GRANT_LABELS: Record<string, string> = {
 
 /** What a node's tier assignments / grants do, as LED meters and chips — tier
  *  words never reach the player. */
-function effectRows(def: CounterNodeDef): HTMLElement | null {
+/** The effect rows on a draft card. When a branch is given, each tiered stat
+ *  is shown as a CHANGE — where it sits today against where this option would
+ *  put it — because "Accuracy: High" means nothing without knowing whether the
+ *  fleet is already there. Without a branch (anywhere the option is not a
+ *  choice being weighed) it falls back to a plain level. */
+function effectRows(def: CounterNodeDef, current?: Record<string, StatTier>): HTMLElement | null {
   const rows: HTMLElement[] = [];
-  for (const s of def.set ?? []) rows.push(statTierRow(s.stat, s.tier));
+  for (const s of def.set ?? []) {
+    rows.push(
+      current ? statUpgradeRow(s.stat, current[s.stat], s.tier) : statTierRow(s.stat, s.tier),
+    );
+  }
   for (const [k, v] of Object.entries(def.grant ?? {})) {
     rows.push(chip('ammo', `${GRANT_LABELS[k] ?? k} ×${v}`));
   }
@@ -1046,7 +1062,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
  *  build overview shown beneath the draft. Replaces the old browsable tech
  *  tree: there is nothing to buy here any more, only what the drafts built. */
 function ownedTechSummary(c: CampaignState): HTMLElement {
-  const wrap = h('div', { className: 'card' }, [
+  const wrap = h('div', { className: 'card owned-tech' }, [
     h('div', { className: 'card-head' }, [icon('check'), h('h3', { text: 'Technology held this run' })]),
   ]);
   const owned = c.completedResearch.filter((id) => RESEARCH_INDEX[id]);
@@ -1127,6 +1143,10 @@ export function draftScreen(
   }
 
   const optionRow = h('div', { className: 'grid-2 draft-options' });
+  // researchSet(), not the raw completedResearch array: base nodes can be
+  // GRANTED rather than drafted, and a stat the fleet already has from a
+  // granted node would otherwise read as brand new on the card.
+  const researchedSet = researchSet(c);
   for (const id of draft.options) {
     const entry = RESEARCH_INDEX[id];
     const info = draftOptionInfo(id);
@@ -1146,7 +1166,7 @@ export function draftScreen(
       }),
       h('p', { text: def.desc }),
     ];
-    const effects = effectRows(def);
+    const effects = effectRows(def, resolveBranchStats(branch.id, researchedSet).tiers);
     if (effects) bits.push(effects);
     bits.push(branchTagRow(c, branch));
     bits.push(
@@ -1410,6 +1430,7 @@ export function prepScreen(
   const activeOwned = c.classModules[activeClass];
   const modGrid = h('div', { className: 'module-grid' });
   for (const moduleId of Object.keys(MODULES) as ModuleId[]) {
+    if (!moduleRevealed(c, activeClass, moduleId)) continue;
     const mod = MODULES[moduleId];
     const isOwned = activeOwned.includes(moduleId);
     const cost = moduleCost(c, activeClass, moduleId);
@@ -1553,6 +1574,7 @@ export function prepScreen(
 
     const escortGrid = h('div', { className: 'module-grid' });
     for (const id of Object.keys(ESCORT_MODULES) as (keyof typeof ESCORT_MODULES)[]) {
+      if (!escortModuleRevealed(c, id)) continue;
       const def = ESCORT_MODULES[id];
       const fitted = selected.modules.includes(id);
       const block = escortModuleBlockReason(c, selected.id, id);
@@ -1594,7 +1616,17 @@ export function prepScreen(
         ]),
       );
     }
-    escortPanel.append(escortGrid);
+    // Every escort module is technology-gated, so before the first relevant
+    // draft this grid is legitimately empty — say so rather than showing a
+    // blank panel that reads as a bug.
+    escortPanel.append(
+      escortGrid.childElementCount > 0
+        ? escortGrid
+        : h('p', {
+            className: 'hint',
+            text: 'No specialist equipment available yet. Escort weapons and sensors unlock through the technology draft.',
+          }),
+    );
   }
 
   // --- Shore-base loadout ------------------------------------------------------
@@ -1607,6 +1639,7 @@ export function prepScreen(
   ]);
   const baseGrid = h('div', { className: 'module-grid' });
   for (const id of Object.keys(BASE_MODULES) as (keyof typeof BASE_MODULES)[]) {
+    if (!baseModuleRevealed(c, id)) continue;
     const def = BASE_MODULES[id];
     const fitted = c.baseModules.includes(id);
     const block = baseModuleBlockReason(c, id);
@@ -1638,7 +1671,14 @@ export function prepScreen(
       ]),
     );
   }
-  basePanel.append(baseGrid);
+  basePanel.append(
+    baseGrid.childElementCount > 0
+      ? baseGrid
+      : h('p', {
+          className: 'hint',
+          text: 'No battery equipment available yet. Shore-battery fits unlock through the technology draft.',
+        }),
+  );
 
   // --- Support assets: every item explains itself inline ----------------------------
   const assetPanel = h('div', { className: 'panel' }, [
@@ -1915,8 +1955,8 @@ export function prepScreen(
       els: [briefStrip, h('div', { className: 'grid-2' }, [compPanel, formPanel])],
     },
     { id: 'modules', label: 'Modules', ic: 'slots', els: [modPanel] },
-    { id: 'fleet', label: 'Fleet', ic: 'missile', els: [fleetPanel, escortPanel, basePanel] },
-    { id: 'assets', label: 'Support', ic: 'crate', els: [assetPanel] },
+    { id: 'fleet', label: 'Defense', ic: 'missile', els: [fleetPanel, escortPanel, basePanel] },
+    { id: 'assets', label: 'Stores', ic: 'crate', els: [assetPanel] },
   ];
 
   const rail = h('div', { className: 'prep-rail' });
