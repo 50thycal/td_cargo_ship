@@ -99,7 +99,13 @@ export const STAT_TIERS = {
   underwaterDetectionRange: { low: 200, medium: 300, high: 420, extra: 540, max: 660 } as TierTable,
 
   /** Thermal/radar smoke-penetrating imaging radius (world units). */
-  imagingRange: { low: 220, medium: 330, high: 470, extra: 600, max: 720 } as TierTable,
+  /** SCALED with the strait's doubling. This range is measured from the convoy
+   *  lanes to smoke laid over the hostile shore, and that gap went from ~270 to
+   *  ~590 units — at the old table even Max could barely see the near lane's
+   *  worth of it, so the whole branch quietly stopped working. The gap has to
+   *  be cleared with slack, not exactly: a hull is rarely directly below the
+   *  smoke, and the ALONG-SHORE offset counts too. */
+  imagingRange: { low: 600, medium: 900, high: 1250, extra: 1600, max: 1900 } as TierTable,
 
   /** Minesweeper-drone flight speed. Anchor: today's drone = 95 (Medium). */
   droneSpeed: { low: 70, medium: 95, high: 140, extra: 180, max: 220 } as TierTable,

@@ -629,11 +629,22 @@ describe('boarding and capture', () => {
   });
 
   it('sinking the boarding boat throws the party off and loses their progress', () => {
-    const ctx = engage([spawn('boarding')], gunboatEscorts);
+    // Hold the deck guns until the party is actually up the side. Boats sail at
+    // convoy pace now, so gunners left on auto from the start routinely break
+    // one up on the run-in — which is the branch working, but it is not what
+    // THIS test is about: the claim is that progress already made is lost.
+    const ctx = engage([spawn('boarding')], (c) => {
+      gunboatEscorts(c);
+      c.autoFire = { ...c.autoFire, deckGun: false };
+    });
     const { state, rng } = ctx;
-    run(state, rng, 2);
+    let settle = 0;
     const victim = victimOf(state, ctx.fleet[0])!;
+    while (victim.boardingSeconds <= 0 && settle++ < Math.ceil(20 / SIM.dt) && !state.over) {
+      stepTransit(state, [], rng);
+    }
     expect(victim.boardingSeconds).toBeGreaterThan(0);
+    state.autoFire = { ...state.autoFire, deckGun: true };
     let guard = 0;
     while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(60 / SIM.dt) && !state.over) {
       stepTransit(state, [], rng);

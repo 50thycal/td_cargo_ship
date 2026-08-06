@@ -259,13 +259,19 @@ const settle = (cam: Camera): void => {
 };
 
 describe('map camera', () => {
-  it('opens showing the whole world', () => {
+  it('opens on a slice of the strait, not the whole of it', () => {
+    // The widest view is deliberately CLOSER IN than fit-to-window. A floor at
+    // fit means the map is always entirely on screen, which is the same as
+    // having nowhere to pan — the strait was doubled precisely so the fight has
+    // somewhere to happen that the player has to look for.
     const cam = newCamera();
-    expect(cam.isFitted()).toBe(true);
-    expect(cam.zoom).toBeCloseTo(Math.min(1280 / WORLD.width, 720 / WORLD.height), 6);
-    // Corners of the world map inside the viewport.
-    expect(cam.worldToScreenX(0)).toBeGreaterThanOrEqual(-0.001);
-    expect(cam.worldToScreenX(WORLD.width)).toBeLessThanOrEqual(VIEWPORT.width + 0.001);
+    settle(cam);
+    expect(cam.isFitted()).toBe(true); // "as wide as it goes", not "all of it"
+    expect(cam.zoom).toBeCloseTo(cam.minZoom(), 6);
+    expect(cam.minZoom()).toBeGreaterThan(cam.fitZoom());
+    // Some of the world is off screen at the widest zoom — that is the point.
+    const visibleW = cam.screenToWorldX(VIEWPORT.width) - cam.screenToWorldX(0);
+    expect(visibleW).toBeLessThan(WORLD.width);
   });
 
   it('round-trips world → screen → world at any zoom', () => {
@@ -291,11 +297,11 @@ describe('map camera', () => {
     expect(cam.screenToWorldY(anchorY)).toBeCloseTo(worldBefore.y, 1);
   });
 
-  it('never zooms out past the whole world, nor in past the max', () => {
+  it('never zooms out past its floor, nor in past the max', () => {
     const cam = newCamera();
     for (let i = 0; i < 20; i++) cam.zoomBy(0.5, 640, 360);
     settle(cam);
-    expect(cam.zoom).toBeCloseTo(cam.fitZoom(), 6);
+    expect(cam.zoom).toBeCloseTo(cam.minZoom(), 6);
     for (let i = 0; i < 40; i++) cam.zoomBy(2, 640, 360);
     settle(cam);
     expect(cam.zoom).toBeCloseTo(cam.maxZoom(), 6);
@@ -316,15 +322,16 @@ describe('map camera', () => {
     expect(cam.screenToWorldY(VIEWPORT.height)).toBeLessThanOrEqual(WORLD.height + 0.001);
   });
 
-  it('a fitted view stays centred however hard it is dragged', () => {
+  it('can be panned at the widest zoom, because the world is bigger than it', () => {
     const cam = newCamera();
     settle(cam);
     const x0 = cam.x;
-    const y0 = cam.y;
-    cam.panByScreen(500, 500);
+    cam.panByScreen(-500, 0);
     settle(cam);
-    expect(cam.x).toBeCloseTo(x0, 6);
-    expect(cam.y).toBeCloseTo(y0, 6);
+    // Horizontally there is world to spare, so the view moves…
+    expect(cam.x).toBeGreaterThan(x0);
+    // …and still cannot be dragged off the edge of it.
+    expect(cam.screenToWorldX(VIEWPORT.width)).toBeLessThanOrEqual(WORLD.width + 0.001);
   });
 
   it('eases toward its target rather than snapping', () => {
@@ -377,22 +384,28 @@ describe('map camera', () => {
     expect(cam.worldPerPixel()).toBeCloseTo(atFit / 2, 4);
   });
 
-  it('reports no magnification at all when the whole world is on screen', () => {
-    // detailScale is what the renderer multiplies every sprite by. At the
-    // fitted view it has to be exactly 1, or the default look of the game
-    // changes the day zoom is wired up.
+  it('magnifies at the widest zoom, because the widest zoom is not the whole world', () => {
+    // detailScale is what the renderer multiplies every sprite by, measured
+    // against the whole-world baseline. The zoom floor sits above that
+    // baseline, so at the widest view it is the floor's ratio rather than 1 —
+    // which is exactly what keeps ships their old apparent size now that the
+    // strait around them is twice as big.
     const cam = newCamera();
-    expect(cam.detailScale()).toBeCloseTo(1, 6);
+    settle(cam);
+    expect(cam.detailScale()).toBeCloseTo(cam.minZoom() / cam.fitZoom(), 6);
+    expect(cam.detailScale()).toBeGreaterThan(1);
   });
 
   it('magnification tracks zoom, so sprites grow with the world', () => {
     const cam = newCamera();
+    settle(cam);
+    const base = cam.detailScale();
     cam.zoomBy(2, 640, 360);
     settle(cam);
-    expect(cam.detailScale()).toBeCloseTo(2, 4);
+    expect(cam.detailScale()).toBeCloseTo(base * 2, 4);
     cam.zoomBy(2, 640, 360);
     settle(cam);
-    expect(cam.detailScale()).toBeCloseTo(4, 4);
+    expect(cam.detailScale()).toBeCloseTo(base * 4, 4);
   });
 
   it('fit-space position times magnification IS the true screen position', () => {

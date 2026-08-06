@@ -74,6 +74,9 @@ import {
   buyWarthogSortie,
   scanCapacity,
   scanPulseBlockReason,
+  smokeCapacity,
+  smokeCanisterBlockReason,
+  buySmokeCanister,
   buyScanPulse,
   unlockHardened,
   unlockScan,
@@ -1840,10 +1843,19 @@ export function prepScreen(
       assetCard(
         'jam',
         'Defensive smoke',
-        c.smokeUnlocked ? 'owned' : '—',
+        c.smokeUnlocked ? `${c.smokeStock}/${smokeCapacity(c)}` : '—',
         'Placed cloud that dulls enemy targeting for ships inside. Destroys nothing.',
         c.smokeUnlocked
-          ? null
+          ? {
+              label:
+                smokeCanisterBlockReason(c) === 'Stowage full'
+                  ? 'Stowage full'
+                  : `Buy canister — $${ECONOMY.smokeCanisterCost}`,
+              disabled: smokeCanisterBlockReason(c) !== null,
+              onClick: () => {
+                if (buySmokeCanister(c)) rerender();
+              },
+            }
           : {
               label: `Commission — $${ECONOMY.smokeUnlockCost}`,
               disabled: c.cash < ECONOMY.smokeUnlockCost,
@@ -1916,25 +1928,32 @@ export function prepScreen(
   }
 
   const repair = repairCost(c);
-  const totalDamage = totalPendingDamage(c);
-  assetGrid.append(
-    assetCard(
-      'wrench',
-      'Fleet repairs',
-      totalDamage > 0 ? `${totalDamage} hp` : '✓',
-      totalDamage > 0
-        ? 'Unrepaired damage sails with the next convoy.'
-        : 'Every hull, escort and battery is at full strength.',
-      {
-        label: repair > 0 ? `Repair all — $${repair}` : 'No repairs needed',
-        disabled: repair <= 0 || c.cash < repair,
-        onClick: () => {
-          if (repairFleet(c)) rerender();
-        },
-      },
-    ),
-  );
   assetPanel.append(assetGrid);
+
+  // Fleet repairs sit with the CONVOY, not the stores. Repairing is a decision
+  // about the hulls that are about to sail, taken while looking at them —
+  // filed under supplies it read as one more consumable to top up.
+  const totalDamage = totalPendingDamage(c);
+  const repairPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Fleet repairs' }),
+    h('div', { className: 'asset-grid' }, [
+      assetCard(
+        'wrench',
+        'Fleet repairs',
+        totalDamage > 0 ? `${totalDamage} hp` : '✓',
+        totalDamage > 0
+          ? 'Unrepaired damage sails with the next convoy.'
+          : 'Every hull, escort and battery is at full strength.',
+        {
+          label: repair > 0 ? `Repair all — $${repair}` : 'No repairs needed',
+          disabled: repair <= 0 || c.cash < repair,
+          onClick: () => {
+            if (repairFleet(c)) rerender();
+          },
+        },
+      ),
+    ]),
+  ]);
 
   // --- Protected-channel selection (hardened systems, pre-round choice) -------
   if (c.hardenedUnlocked && hasResearch(c, 'hardened.protectedChannel')) {
@@ -1980,7 +1999,7 @@ export function prepScreen(
       id: 'convoy',
       label: 'Convoy',
       ic: 'anchor',
-      els: [briefStrip, h('div', { className: 'grid-2' }, [compPanel, formPanel])],
+      els: [briefStrip, h('div', { className: 'grid-2' }, [compPanel, formPanel]), repairPanel],
     },
     { id: 'modules', label: 'Modules', ic: 'slots', els: [modPanel] },
     { id: 'fleet', label: 'Defense', ic: 'missile', els: [fleetPanel, escortPanel, basePanel] },

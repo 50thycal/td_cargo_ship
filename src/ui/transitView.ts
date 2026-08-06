@@ -226,6 +226,18 @@ export class TransitView {
     this.canvas.addEventListener('pointerup', this.onPointerUp);
     this.canvas.addEventListener('pointercancel', this.onPointerUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
+    // Open on the convoy, and keep it framed until the player takes the wheel.
+    //
+    // The camera used to start centred on the world, which was the same thing
+    // as centring on the convoy back when the whole strait fitted on screen.
+    // It does not any more: the map is twice as wide and the widest view shows
+    // about half of it, so a world-centred camera opens on empty water with the
+    // convoy still off the left-hand edge, and the round begins with the player
+    // hunting for their own ships. Following is also simply the right default —
+    // it is what the Centre Convoy button does, and any pan or pinch releases
+    // it immediately.
+    const opening = this.convoyCentre();
+    this.camera.follow(opening.x, opening.y);
     this.lastNow = performance.now();
     requestAnimationFrame(this.frame);
   }

@@ -288,6 +288,12 @@ export interface Threat {
   targetKind?: TargetKind;
   /** Ship this threat is homing on / was aimed at. */
   targetShipId?: number;
+  /** Escort an ATTACK BOAT has committed to, when no merchant is worth
+   *  hunting. Distinct from targetShipId rather than folded into it because a
+   *  boat working the screen skips the whole convoy-hull path — boarding,
+   *  station sharing, give-way, delivery — and conflating the two ids would
+   *  have every one of those look up an escort in the ship list. */
+  targetEscortId?: number;
   /** Escort/base this missile is aimed at (when targetKind is escort/base). */
   targetEntityId?: number;
   /** Straight-line aim point for unguided missiles. */
@@ -1837,6 +1843,7 @@ export interface CampaignState {
    *  than handing out a fresh allowance. */
   warthogStock: number;
   scanStock: number;
+  smokeStock: number;
   /** Convoy-wide assets: owned => the capability is commissioned and its
    *  ordnance can be bought. */
   warthogUnlocked: boolean;
