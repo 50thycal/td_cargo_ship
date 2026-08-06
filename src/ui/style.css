@@ -5,8 +5,9 @@
    The theme: a dark metal console face carrying inset phosphor CRT readouts.
    Panels and cards are little screens (scanlined, green/amber glow); buttons
    are beveled keycaps; numbers are LCD digits; stat tiers are LED bar meters.
-   The meta screens now FILL the viewport — only the tactical display (the
-   transit canvas) keeps a strict 16:9, framed as the console's main CRT. */
+   Every screen FILLS the viewport, the tactical display included: its drawing
+   surface is shaped to the device rather than letterboxed into a fixed
+   aspect. */
 
 :root {
   /* Console metal */
@@ -81,17 +82,22 @@ body {
     linear-gradient(180deg, #171a10, var(--metal-deep) 40%);
 }
 
-/* The tactical display: the one strict-16:9 surface, letterboxed into the
-   stage and framed as the console's main CRT. The overlay carries the glass
-   (scanlines + vignette) and never takes input. */
+/* The tactical display, framed as the console's main CRT. The overlay carries
+   the glass (scanlines + vignette) and never takes input. */
 canvas#game-canvas,
 #crt-overlay {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(100cqw - 8px, calc((100cqh - 8px) * 16 / 9));
-  height: min(100cqh - 8px, calc((100cqw - 8px) * 9 / 16));
+  /* Fill the stage. The canvas's BACKING STORE is shaped to this element's
+     aspect at construction (see transitView), so there is nothing to letterbox
+     — the drawing surface is the same shape as the space it occupies. The old
+     hard 16:9 box left black bars down both sides of any phone that is not
+     16:9, which made the playfield look shrunk on exactly the devices this game
+     is for. */
+  width: calc(100cqw - 8px);
+  height: calc(100cqh - 8px);
   border-radius: 8px;
 }
 

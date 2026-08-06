@@ -691,6 +691,49 @@ describe('a bigger convoy is a bigger target', () => {
   });
 });
 
+describe('map geometry', () => {
+  it('puts every shore installation firmly on land, at every point of the coast', () => {
+    // The renderer and the sim used to carry SEPARATE ideas of where the land
+    // was — the friendly coast was drawn at `height - 100`, the batteries were
+    // placed at `baseLine` — and they agreed only by luck. Resizing the map
+    // broke the luck and the batteries stood 140 units out to sea. Both now
+    // read the same two lines, and this is the invariant that keeps them
+    // honest: a coast MEANDERS by shoreWave, so being inland of the mean line
+    // is not enough — it has to clear the wave.
+    const { hostileShoreY, friendlyShoreY, shoreWave, baseLine, launchSites } = WORLD;
+    // Shore batteries sit below the friendly coast at its most seaward.
+    expect(baseLine).toBeGreaterThan(friendlyShoreY + shoreWave);
+    // Enemy launch sites sit above the hostile coast at its most seaward.
+    for (const site of launchSites) {
+      expect(site.y).toBeLessThan(hostileShoreY - shoreWave);
+    }
+    // And both coasts leave real water between them for the lanes to run in.
+    expect(friendlyShoreY - hostileShoreY).toBeGreaterThan(600);
+    for (const lane of WORLD.lanes) {
+      expect(lane).toBeGreaterThan(hostileShoreY + shoreWave);
+      expect(lane).toBeLessThan(friendlyShoreY - shoreWave);
+    }
+  });
+
+  it('keeps the A-10 water band inside the water', () => {
+    expect(COMBAT.warthog.waterYMin).toBeGreaterThan(WORLD.hostileShoreY + WORLD.shoreWave);
+    expect(COMBAT.warthog.waterYMax).toBeLessThan(WORLD.friendlyShoreY - WORLD.shoreWave);
+  });
+
+  it('gives artillery a reach that still picks out lanes, not all or nothing', () => {
+    // Range IS this branch's design: a coastal gun must reach the near lane and
+    // no further, ranging one lane further and no further. Re-derive it from
+    // the geometry rather than trusting the constants to have been scaled.
+    const shore = WORLD.launchSites[0].y;
+    const [near, mid, far] = WORLD.lanes.map((l) => l - shore);
+    const { coastalGun, ranging } = COMBAT.artillery.range;
+    expect(coastalGun).toBeGreaterThan(near);
+    expect(coastalGun).toBeLessThan(mid);
+    expect(ranging).toBeGreaterThan(mid);
+    expect(ranging).toBeLessThan(far);
+  });
+});
+
 describe('transit hardening', () => {
   it('a second Warthog call while one is on task does not burn a sortie', () => {
     const c = newCampaign('warthog-stack');

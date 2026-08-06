@@ -259,19 +259,22 @@ const settle = (cam: Camera): void => {
 };
 
 describe('map camera', () => {
-  it('opens on a slice of the strait, not the whole of it', () => {
-    // The widest view is deliberately CLOSER IN than fit-to-window. A floor at
-    // fit means the map is always entirely on screen, which is the same as
-    // having nowhere to pan — the strait was doubled precisely so the fight has
-    // somewhere to happen that the player has to look for.
+  it('opens on a slice of the strait, but can still be pulled out to all of it', () => {
+    // Opening fitted would draw a map this size into a phone screen, which is
+    // just everything at half size. It opens closer in, at roughly the apparent
+    // scale the old smaller world had — and the rest of the strait is a zoom or
+    // a pan away rather than unreachable.
     const cam = newCamera();
     settle(cam);
-    expect(cam.isFitted()).toBe(true); // "as wide as it goes", not "all of it"
-    expect(cam.zoom).toBeCloseTo(cam.minZoom(), 6);
-    expect(cam.minZoom()).toBeGreaterThan(cam.fitZoom());
-    // Some of the world is off screen at the widest zoom — that is the point.
+    expect(cam.zoom).toBeCloseTo(cam.openingZoom(), 6);
+    expect(cam.openingZoom()).toBeGreaterThan(cam.fitZoom());
     const visibleW = cam.screenToWorldX(VIEWPORT.width) - cam.screenToWorldX(0);
     expect(visibleW).toBeLessThan(WORLD.width);
+    // …and pulling all the way out really does show the whole world.
+    for (let i = 0; i < 30; i++) cam.zoomBy(0.5, 640, 360);
+    settle(cam);
+    expect(cam.zoom).toBeCloseTo(cam.fitZoom(), 6);
+    expect(cam.isFitted()).toBe(true);
   });
 
   it('round-trips world → screen → world at any zoom', () => {
@@ -384,15 +387,14 @@ describe('map camera', () => {
     expect(cam.worldPerPixel()).toBeCloseTo(atFit / 2, 4);
   });
 
-  it('magnifies at the widest zoom, because the widest zoom is not the whole world', () => {
+  it('magnifies at the opening zoom, so ships keep their old apparent size', () => {
     // detailScale is what the renderer multiplies every sprite by, measured
-    // against the whole-world baseline. The zoom floor sits above that
-    // baseline, so at the widest view it is the floor's ratio rather than 1 —
-    // which is exactly what keeps ships their old apparent size now that the
-    // strait around them is twice as big.
+    // against the whole-world baseline. The camera opens above that baseline,
+    // which is exactly what keeps ships the size they have always been now the
+    // strait around them is bigger.
     const cam = newCamera();
     settle(cam);
-    expect(cam.detailScale()).toBeCloseTo(cam.minZoom() / cam.fitZoom(), 6);
+    expect(cam.detailScale()).toBeCloseTo(cam.openingZoom() / cam.fitZoom(), 6);
     expect(cam.detailScale()).toBeGreaterThan(1);
   });
 

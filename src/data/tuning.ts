@@ -18,24 +18,42 @@
  */
 export const WORLD = {
   width: 4000,
-  height: 2000,
+  height: 1800,
   /** Ships are delivered once past this x. */
   deliverX: 3880,
   /** Convoy spawns with its lead ships around this x. */
   spawnX: 80,
-  /** Y centers of the three transit lanes (north / center / south). Spread
-   *  across the middle of the water rather than a straight 2x of the old
-   *  values, which would have crowded them against the hostile shore. */
-  lanes: [780, 1030, 1280],
-  /** Hostile shore occupies the top of the map; launch sites sit along it.
-   *  Deeper than before so the coast reads as land rather than a border. */
+  /** THE COASTLINES.
+   *
+   *  These exist because the renderer and the sim each used to carry their own
+   *  idea of where the land was — the friendly coast was drawn at
+   *  `height - 100` while shore batteries were placed at `baseLine`, and the
+   *  two agreed only by luck. When the map was resized they stopped agreeing
+   *  and the batteries stood 140 units out to sea. One number each, used by
+   *  both, so that cannot happen again.
+   *
+   *  Water runs between them; land is above hostileShoreY and below
+   *  friendlyShoreY. Both coasts undulate by +/- shoreWave around these lines,
+   *  so anything that must sit ON land needs that much clearance. */
+  hostileShoreY: 340,
+  friendlyShoreY: 1465,
+  /** Amplitude of the drawn coastline's meander, either side of the lines
+   *  above. Anything placed on land must clear it. */
+  shoreWave: 45,
+  /** Y centers of the three transit lanes (north / center / south), spread
+   *  across the water between the two coasts. */
+  lanes: [620, 900, 1180],
+  /** Hostile shore: launch sites sit along it, well inland of the coastline so
+   *  they read as emplacements on land rather than rafts. */
   launchSites: [
-    { x: 700, y: 150 },
-    { x: 1800, y: 120 },
-    { x: 2900, y: 150 },
+    { x: 700, y: 200 },
+    { x: 1800, y: 170 },
+    { x: 2900, y: 200 },
   ],
-  /** Friendly shore (bottom): shore batteries launch interceptors from here. */
-  baseLine: 1760,
+  /** Friendly shore: shore batteries launch interceptors from here. Inland of
+   *  friendlyShoreY by more than shoreWave, so a battery is never in the sea at
+   *  any point along the coast. */
+  baseLine: 1600,
 } as const;
 
 export const SIM = {
@@ -457,7 +475,7 @@ export const COMBAT = {
    *  pointed at one. The answers are counter-battery suppression and simply not
    *  sailing where the guns reach.
    *
-   *  RANGE IS THE WHOLE DESIGN. The lanes sit 640 / 890 / 1140 from the hostile
+   *  RANGE IS THE WHOLE DESIGN. The lanes sit 420 / 700 / 980 from the hostile
    *  shore, so a coastal gun reaches only the near lane and ranging artillery
    *  only the near two. Lane choice is therefore a real decision rather than a
    *  cosmetic one, and it is also where the T2 nearest-to-shore doctrine this
@@ -473,7 +491,7 @@ export const COMBAT = {
     /** Direct fire: fast enough that a shell cannot be outrun, slow enough to
      *  read as a tracer crossing the water. */
     shellSpeed: 430,
-    range: { coastalGun: 760, ranging: 1010, rollingBarrage: 760 },
+    range: { coastalGun: 540, ranging: 830, rollingBarrage: 540 },
     /** Per the design's times-to-sink on a 100hp hull: ~6 coastal hits, ~4
      *  ranging hits. A barrage fires coastal-weight shells in bulk.
      *
@@ -684,8 +702,8 @@ export const COMBAT = {
      *  the damage lands the instant the burst is fired. */
     burstSeconds: 0.32,
     /** Water band the station center must sit inside (off both shores/launchers). */
-    waterYMin: 320,
-    waterYMax: 1690,
+    waterYMin: 400,
+    waterYMax: 1400,
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
    *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
