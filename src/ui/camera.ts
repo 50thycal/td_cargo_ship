@@ -44,7 +44,7 @@ export class Camera {
     private readonly world: CameraBounds,
     private readonly viewport: CameraViewport,
   ) {
-    this.zoom = this.minZoom();
+    this.zoom = this.openingZoom();
     this.targetZoom = this.zoom;
     this.x = world.width / 2;
     this.y = world.height / 2;
@@ -60,23 +60,29 @@ export class Camera {
     return Math.min(this.viewport.width / this.world.width, this.viewport.height / this.world.height);
   }
 
-  /** How much of the world the player can see at the widest.
+  /** Where the camera STARTS, as a multiple of fitZoom.
    *
-   *  Deliberately closer in than fitZoom. A floor at fit means the map is
-   *  always entirely on screen, which is the same as having no map to pan
-   *  around: the strait was doubled in size precisely so that the fight has
-   *  somewhere to happen that the player has to LOOK for. At 2 the widest view
-   *  is about half the strait's width, which is roughly the apparent scale the
-   *  old 2000-wide world had — so ships stay the size they always were and the
-   *  extra water is extra water, not everything drawn smaller. */
-  private static readonly MIN_ZOOM_OVER_FIT = 2;
+   *  Not a floor — the player can still pull all the way out to see the whole
+   *  strait, and should be able to. This is about what the round OPENS on.
+   *  Fitting the whole world in at the start would draw a map twice the size
+   *  into the same screen, which is just everything at half size; at 2 the
+   *  opening view has roughly the apparent scale the old 2000-wide world did,
+   *  so ships are the size they have always been and the extra water is extra
+   *  water rather than a shrunken picture. Panning room comes from the same
+   *  place: there is more strait than the opening view shows. */
+  private static readonly OPENING_ZOOM_OVER_FIT = 2;
 
+  openingZoom(): number {
+    return this.fitZoom() * Camera.OPENING_ZOOM_OVER_FIT;
+  }
+
+  /** The widest the camera goes: the whole world. */
   minZoom(): number {
-    return this.fitZoom() * Camera.MIN_ZOOM_OVER_FIT;
+    return this.fitZoom();
   }
 
   maxZoom(): number {
-    return this.minZoom() * 4;
+    return this.fitZoom() * 8;
   }
 
   /** True when the camera is showing everything — used by the HUD to label the

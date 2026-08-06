@@ -43,8 +43,19 @@ const TARGET_PRIORITY_HINT: Record<TargetPriority, string> = {
   threat: 'Targeting: guided (advanced) missiles first',
 };
 
+/** Logical drawing width. The backing store is always this wide; the HEIGHT is
+ *  derived from the element's real aspect ratio at construction (see `ch`), so
+ *  the playfield fills whatever screen it is on instead of being letterboxed
+ *  into a fixed 16:9 box. On a modern phone in landscape (~2.2:1) that box left
+ *  black bars down both sides and made the whole game look shrunk. */
 const CANVAS_W = 1280;
-const CANVAS_H = 720;
+/** Fallback aspect when the element has not been laid out yet (tests, first
+ *  frame). 16:9 — the shape the game was designed at. */
+const FALLBACK_ASPECT = 16 / 9;
+/** Clamp on how extreme a shape we will draw at, so a very tall or very wide
+ *  window still gets a sane playfield rather than a letterbox slot. */
+const MIN_ASPECT = 1.4;
+const MAX_ASPECT = 2.6;
 /** Pointer travel (canvas px) beyond which a press is a DRAG, not a tap. Below
  *  it the gesture issues an order; above it, it pans the map. */
 const DRAG_THRESHOLD = 7;
@@ -116,11 +127,12 @@ export class TransitView {
   private tutorialDismissed = false;
   /** The escort the player has tapped to command (null = none). */
   private selectedEscort: number | null = null;
+  /** Logical canvas size. Width is fixed; height follows the element's real
+   *  aspect so the map fills the screen it is actually on. */
+  private readonly cw = CANVAS_W;
+  private readonly ch: number;
   /** The map camera (zoom / pan / smoothing). */
-  private readonly camera = new Camera(
-    { width: WORLD.width, height: WORLD.height },
-    { width: CANVAS_W, height: CANVAS_H },
-  );
+  private readonly camera: Camera;
   /** Live pointers, for drag-to-pan and pinch-zoom. */
   private readonly pointers = new Map<number, { x: number; y: number }>();
   /** The press in progress: where it started, and whether it has travelled far
@@ -196,9 +208,21 @@ export class TransitView {
     private readonly onDone: (t: TransitState) => void,
   ) {
     this.targetPriority = initialTargetPriority;
+    // Shape the drawing surface to the screen it is on, once, before anything
+    // measures itself against it. A fixed 16:9 backing store letterboxed the
+    // playfield on any device that is not 16:9 — which is most phones — and
+    // that letterboxing is what read as "the map got smaller".
+    const rect = stage.getBoundingClientRect?.();
+    const aspect =
+      rect && rect.width > 0 && rect.height > 0 ? rect.width / rect.height : FALLBACK_ASPECT;
+    this.ch = Math.round(CANVAS_W / Math.max(MIN_ASPECT, Math.min(MAX_ASPECT, aspect)));
+    this.camera = new Camera(
+      { width: WORLD.width, height: WORLD.height },
+      { width: this.cw, height: this.ch },
+    );
     this.canvas = h('canvas', { attrs: { id: 'game-canvas' } });
-    this.canvas.width = CANVAS_W;
-    this.canvas.height = CANVAS_H;
+    this.canvas.width = this.cw;
+    this.canvas.height = this.ch;
     this.ctx = this.canvas.getContext('2d')!;
     // The CRT glass: scanlines + vignette over the tactical display. Purely
     // cosmetic, never takes input.
@@ -367,13 +391,13 @@ export class TransitView {
     this.zoomOutBtn = h('button', {
       className: 'hud-btn',
       text: '－',
-      onClick: () => this.camera.zoomBy(1 / 1.35, CANVAS_W / 2, CANVAS_H / 2),
+      onClick: () => this.camera.zoomBy(1 / 1.35, this.cw / 2, this.ch / 2),
     });
     this.zoomOutBtn.title = 'Zoom out (mouse wheel / pinch)';
     this.zoomInBtn = h('button', {
       className: 'hud-btn',
       text: '＋',
-      onClick: () => this.camera.zoomBy(1.35, CANVAS_W / 2, CANVAS_H / 2),
+      onClick: () => this.camera.zoomBy(1.35, this.cw / 2, this.ch / 2),
     });
     this.zoomInBtn.title = 'Zoom in (mouse wheel / pinch)';
     this.centreBtn = h('button', {
@@ -629,8 +653,8 @@ export class TransitView {
   private canvasPoint(ev: PointerEvent | WheelEvent): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      x: ((ev.clientX - rect.left) / rect.width) * CANVAS_W,
-      y: ((ev.clientY - rect.top) / rect.height) * CANVAS_H,
+      x: ((ev.clientX - rect.left) / rect.width) * this.cw,
+      y: ((ev.clientY - rect.top) / rect.height) * this.ch,
     };
   }
 
@@ -716,7 +740,7 @@ export class TransitView {
     ev.preventDefault();
     const p = this.canvasPoint(ev);
     // Normalise across deltaMode (pixel / line / page) so a notch is a notch.
-    const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? CANVAS_H : 1;
+    const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? this.ch : 1;
     this.camera.zoomBy(Math.exp((-ev.deltaY * unit) / 400), p.x, p.y);
   };
 
@@ -1182,11 +1206,11 @@ export class TransitView {
 
     // Water. Drawn in plain canvas space — it is a full-screen backdrop with
     // nothing in the world to line up with.
-    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+    const grad = ctx.createLinearGradient(0, 0, 0, this.ch);
     grad.addColorStop(0, '#0e2334');
     grad.addColorStop(1, '#0a1a2a');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillRect(0, 0, this.cw, this.ch);
 
     // --- The world layer -----------------------------------------------------
     // Everything from here to the matching restore() is drawn at FIT scale and
@@ -1198,27 +1222,34 @@ export class TransitView {
     // world under a fixed-size stencil.
     const detail = this.camera.detailScale();
     ctx.save();
-    ctx.translate(CANVAS_W / 2, CANVAS_H / 2);
+    ctx.translate(this.cw / 2, this.ch / 2);
     ctx.scale(detail, detail);
-    ctx.translate(-CANVAS_W / 2, -CANVAS_H / 2);
+    ctx.translate(-this.cw / 2, -this.ch / 2);
 
     // Hostile shore (top) and friendly shore (bottom)
+    // Both coasts are drawn from the SAME lines the sim places things against
+    // (WORLD.hostileShoreY / friendlyShoreY). They used to be independent magic
+    // numbers here, which is how the shore batteries ended up standing in the
+    // water the first time the map was resized.
     ctx.fillStyle = '#33222a';
     ctx.beginPath();
     ctx.moveTo(0, this.sy(0) - 60);
     for (let x = 0; x <= WORLD.width; x += 200) {
-      ctx.lineTo(this.sx(x), this.sy(110 + 45 * Math.sin(x * 0.004)));
+      ctx.lineTo(this.sx(x), this.sy(WORLD.hostileShoreY + WORLD.shoreWave * Math.sin(x * 0.002)));
     }
-    ctx.lineTo(CANVAS_W, this.sy(0) - 60);
+    ctx.lineTo(this.cw, this.sy(0) - 60);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#22301f';
     ctx.beginPath();
     ctx.moveTo(0, this.sy(WORLD.height) + 60);
     for (let x = 0; x <= WORLD.width; x += 200) {
-      ctx.lineTo(this.sx(x), this.sy(WORLD.height - 100 - 40 * Math.sin(x * 0.003 + 2)));
+      ctx.lineTo(
+        this.sx(x),
+        this.sy(WORLD.friendlyShoreY - WORLD.shoreWave * Math.sin(x * 0.0015 + 2)),
+      );
     }
-    ctx.lineTo(CANVAS_W, this.sy(WORLD.height) + 60);
+    ctx.lineTo(this.cw, this.sy(WORLD.height) + 60);
     ctx.closePath();
     ctx.fill();
 
@@ -1285,20 +1316,20 @@ export class TransitView {
       const y = this.sy(WORLD.lanes[i]);
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y);
+      ctx.lineTo(this.cw, y);
       ctx.stroke();
     }
     ctx.setLineDash([]);
 
     // Exit zone
-    const exitGrad = ctx.createLinearGradient(this.sx(WORLD.deliverX), 0, CANVAS_W, 0);
+    const exitGrad = ctx.createLinearGradient(this.sx(WORLD.deliverX), 0, this.cw, 0);
     exitGrad.addColorStop(0, 'rgba(89, 217, 140, 0.0)');
     exitGrad.addColorStop(1, 'rgba(89, 217, 140, 0.28)');
     ctx.fillStyle = exitGrad;
     ctx.fillRect(
       this.sx(WORLD.deliverX),
       this.sy(0),
-      CANVAS_W - this.sx(WORLD.deliverX),
+      this.cw - this.sx(WORLD.deliverX),
       WORLD.height * this.scale,
     );
 
@@ -2369,7 +2400,7 @@ export class TransitView {
           COMBAT.scan.laneHalfWidth * (t.effects.abilities.scan.radius / COMBAT.scan.baseRevealRadius);
         const laneY = this.sy(ac.laneY);
         ctx.fillStyle = 'rgba(77, 195, 255, 0.06)';
-        ctx.fillRect(ax, laneY - laneHalf * this.scale, CANVAS_W - ax, laneHalf * 2 * this.scale);
+        ctx.fillRect(ax, laneY - laneHalf * this.scale, this.cw - ax, laneHalf * 2 * this.scale);
         ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -2422,39 +2453,39 @@ export class TransitView {
       const pulse = 0.55 + 0.25 * Math.sin(now / 160);
       ctx.strokeStyle = `rgba(255, 96, 96, ${pulse})`;
       ctx.lineWidth = 5;
-      ctx.strokeRect(2.5, 2.5, CANVAS_W - 5, CANVAS_H - 5);
+      ctx.strokeRect(2.5, 2.5, this.cw - 5, this.ch - 5);
       const label = `SENSORS JAMMED — ${Math.ceil(t.jammingSeconds)}s`;
       ctx.font = '600 17px system-ui, sans-serif';
       ctx.textAlign = 'center';
       const w = ctx.measureText(label).width + 28;
       ctx.fillStyle = `rgba(120, 20, 20, ${0.62 + 0.12 * Math.sin(now / 160)})`;
-      ctx.fillRect(CANVAS_W / 2 - w / 2, 12, w, 30);
+      ctx.fillRect(this.cw / 2 - w / 2, 12, w, 30);
       ctx.fillStyle = '#ffe0e0';
-      ctx.fillText(label, CANVAS_W / 2, 33);
+      ctx.fillText(label, this.cw / 2, 33);
       ctx.textAlign = 'left';
     }
 
     // Paused overlay
     if (this.paused) {
       ctx.fillStyle = 'rgba(5, 10, 18, 0.55)';
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillRect(0, 0, this.cw, this.ch);
       ctx.fillStyle = '#d8e6f3';
       ctx.font = '600 30px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('PAUSED', CANVAS_W / 2, CANVAS_H / 2);
+      ctx.fillText('PAUSED', this.cw / 2, this.ch / 2);
     }
 
     // End-of-transit banner
     if (t.over) {
       ctx.fillStyle = 'rgba(5, 10, 18, 0.5)';
-      ctx.fillRect(0, CANVAS_H / 2 - 44, CANVAS_W, 88);
+      ctx.fillRect(0, this.ch / 2 - 44, this.cw, 88);
       ctx.fillStyle = '#d8e6f3';
       ctx.font = '600 26px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(
         `Transit complete — ${t.stats.delivered}/${t.stats.launched} ships delivered`,
-        CANVAS_W / 2,
-        CANVAS_H / 2 + 9,
+        this.cw / 2,
+        this.ch / 2 + 9,
       );
     }
   }
@@ -2475,13 +2506,13 @@ export class TransitView {
       // True screen position: these markers live on the frame, not in the sea.
       const sx = this.screenX(wx);
       const sy = this.screenY(wy);
-      if (sx >= 0 && sx <= CANVAS_W && sy >= 0 && sy <= CANVAS_H) return; // visible
+      if (sx >= 0 && sx <= this.cw && sy >= 0 && sy <= this.ch) return; // visible
       // Point from the screen centre toward the target and clamp to the edge.
-      const cx = CANVAS_W / 2;
-      const cy = CANVAS_H / 2;
+      const cx = this.cw / 2;
+      const cy = this.ch / 2;
       const ang = Math.atan2(sy - cy, sx - cx);
-      const ex = clampNum(cx + Math.cos(ang) * CANVAS_W, margin, CANVAS_W - margin);
-      const ey = clampNum(cy + Math.sin(ang) * CANVAS_H, margin, CANVAS_H - margin);
+      const ex = clampNum(cx + Math.cos(ang) * this.cw, margin, this.cw - margin);
+      const ey = clampNum(cy + Math.sin(ang) * this.ch, margin, this.ch - margin);
       ctx.save();
       ctx.translate(ex, ey);
       ctx.rotate(ang);
@@ -2504,8 +2535,8 @@ export class TransitView {
         const half = ctx.measureText(label).width / 2 + 4;
         ctx.fillText(
           label,
-          clampNum(ex, half, CANVAS_W - half),
-          ey + (ey > CANVAS_H / 2 ? -16 : 24),
+          clampNum(ex, half, this.cw - half),
+          ey + (ey > this.ch / 2 ? -16 : 24),
         );
         ctx.textAlign = 'left';
       }
