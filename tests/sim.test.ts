@@ -695,12 +695,14 @@ describe('transit hardening', () => {
   it('a second Warthog call while one is on task does not burn a sortie', () => {
     const c = newCampaign('warthog-stack');
     c.warthogUnlocked = true;
+    c.warthogStock = 1; // sorties are bought now, not handed out each round
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
-    expect(state.warthogCharges).toBe(0); // base branch is a single sortie
+    const run = { x: 800, y: WORLD.lanes[1], x2: 1200, y2: WORLD.lanes[1] };
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', ...run }], rng);
+    expect(state.warthogCharges).toBe(0); // the one sortie in stock is spent
     expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', ...run }], rng);
     expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1); // rejected
   });
 
@@ -1558,6 +1560,7 @@ describe('air defense & telemetry', () => {
   it('a scan plane charts mines only in the selected lane', () => {
     const c = newCampaign('scan-lane');
     c.scanUnlocked = true;
+    c.scanStock = 2; // pulses are bought now, not handed out each round
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1573,6 +1576,7 @@ describe('air defense & telemetry', () => {
   it('runs two scan sorties in one transit without error (regression)', () => {
     const c = newCampaign('scan-twice');
     c.scanUnlocked = true;
+    c.scanStock = 2;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1582,7 +1586,7 @@ describe('air defense & telemetry', () => {
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
     stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[2] }], rng);
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
-    expect(state.scanCharges).toBe(state.effects.abilities.scan.charges - 2);
+    expect(state.scanCharges).toBe(0); // both bought pulses flown
     expect(north.revealed).toBe(true);
     expect(south.revealed).toBe(true);
   });
@@ -1590,10 +1594,15 @@ describe('air defense & telemetry', () => {
   it('rejects a Warthog call on land (off the water band), wasting no sortie', () => {
     const c = newCampaign('warthog-land');
     c.warthogUnlocked = true;
+    c.warthogStock = 1;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     const charges0 = state.warthogCharges;
     // y=40 is up on the hostile shore, over the launchers — not open water.
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: 40 }], rng);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 700, y: 40, x2: 1100, y2: 40 }],
+      rng,
+    );
     expect(state.warthogCharges).toBe(charges0); // no sortie spent
     expect(state.aircraft.some((a) => a.role === 'warthog')).toBe(false);
     expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);

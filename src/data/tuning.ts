@@ -597,10 +597,31 @@ export const COMBAT = {
   warthog: {
     /** Cruise speed of the jet. */
     planeSpeed: 240,
-    /** Orbit angular speed (radians/second) of the wheel it holds on station. */
-    orbitRate: 1.1,
-    /** Radius the jet flies around the station center. */
-    orbitRadius: 80,
+    /** Half-angle (radians) of the gun cone ahead of the nose.
+     *
+     *  The jet used to hold a wheel over a point and shoot anything inside a
+     *  circle drawn round it, which is a loiter, not a gun run: direction meant
+     *  nothing and the player's only input was where to park it. Targets are
+     *  now taken from a cone off the nose, so the LINE the player draws is the
+     *  weapon — what lies along it gets strafed, what sits off to the side does
+     *  not, and lining the run up is the skill. */
+    coneHalfAngle: 0.42,
+    /** Multiplier on that half-angle with the Wide Strafe Pattern node. */
+    wideConeMult: 1.7,
+    /** How far ahead of the nose the gun reaches. */
+    coneRange: 300,
+    /** Distance beyond the map edge the jet enters from and exits to, so both
+     *  the run-in and the turn happen off screen. */
+    offMapMargin: 220,
+    /** Shortest run-in line that counts as a gun run. Two points on top of one
+     *  another give the cone no direction to point along, so a stray tap can
+     *  never burn a sortie on a zero-length run. */
+    minRunLength: 90,
+    /** Rounds drawn in the burst streak for one engagement. A 30mm rotary
+     *  cannon fires far more than this in a second; what matters is that the
+     *  player sees a STREAM of tracer rather than a single line, so the pass
+     *  reads as gunfire. */
+    burstRounds: 14,
     /** Seconds between gun runs while on station. */
     fireInterval: 1.15,
     /** Damage one burst does to an attack boat. Mines are destroyed outright —
@@ -698,6 +719,22 @@ export const ECONOMY = {
   warthogUnlockCost: 150,
   scanUnlockCost: 150,
   sonarUnlockCost: 160,
+  /** Per-use cost of an A-10 sortie and a scan pulse.
+   *
+   *  These used to be free. The unlock was bought once and every round after it
+   *  refilled the charges for nothing, which made calling them in a decision
+   *  about TIMING only — never about whether it was worth it — and meant the
+   *  two most flexible tools in the game sat outside the economy that every
+   *  other counter competes inside. They are now stock: bought in preparation,
+   *  spent on use, and carried over when unused, exactly like interceptor
+   *  ammunition. The unlock still buys the CAPABILITY (and the first sortie
+   *  with it, so commissioning is immediately useful); this buys the ordnance.
+   *
+   *  Priced against what they do. A sortie is two firing passes at 26 damage
+   *  and kills mines outright, so it sits near an escort's magazine refill; a
+   *  scan pulse charts one lane, which is cheaper and more situational. */
+  warthogSortieCost: 95,
+  scanPulseCost: 55,
   smokeUnlockCost: 160,
   hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */

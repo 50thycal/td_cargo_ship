@@ -29,13 +29,15 @@ import {
   setComposition,
   setFormation,
   unlockWarthog,
+  buyWarthogSortie,
+  buyScanPulse,
   unlockHardened,
   unlockScan,
   unlockSmoke,
   unlockSonar,
 } from '../../src/sim/campaign';
 import { dismissEmptyDraft, selectDraftOption } from '../../src/sim/draft';
-import { WORLD } from '../../src/data/tuning';
+import { COMBAT, WORLD } from '../../src/data/tuning';
 import type {
   BaseModuleId,
   CampaignState,
@@ -178,11 +180,15 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
     case 'baseModule':
       return buyBaseModule(c, intent.id);
     case 'ability':
+      // Commission first, then keep the apron/stowage topped up. Sorties and
+      // pulses are consumables now, so a bot that only ever unlocked the
+      // capability would fly exactly one of each per run and the sweep would
+      // stop measuring these branches at all.
       switch (intent.id) {
         case 'warthog':
-          return unlockWarthog(c);
+          return unlockWarthog(c) || buyWarthogSortie(c);
         case 'scan':
-          return unlockScan(c);
+          return unlockScan(c) || buyScanPulse(c);
         case 'sonar':
           return unlockSonar(c);
         case 'smoke':
@@ -251,6 +257,10 @@ export function research(c: CampaignState, persona: Persona): ResearchId | null 
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
+}
+
+function clampNum(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
 }
 
 /** Is any interceptor launcher ready to fire right now? Checked before issuing
@@ -396,9 +406,10 @@ export function decideCommands(
     mem.lastSonarT = t.time;
   }
 
-  // Warthog: send it wherever the most surface targets are clustered ahead of
-  // the convoy. A sortie is worth spending once there is more than one thing in
-  // the wheel — it kills mines outright and grinds boats down over passes.
+  // Warthog: draw the run-in line through the best string of surface targets
+  // ahead of the convoy. The jet takes one target on the way out and one on the
+  // way back, so the bot wants targets STRUNG OUT along a line rather than
+  // bunched in a blob — a pair it can line up beats a cluster it cannot.
   if (
     p.useWarthog &&
     t.warthogCharges > 0 &&
@@ -406,24 +417,60 @@ export function decideCommands(
     t.time - mem.lastWarthogT > 20
   ) {
     const surface = t.threats.filter(
-      (th) => th.alive && (th.kind === 'mine' || th.kind === 'attackBoat'),
+      (th) =>
+        th.alive &&
+        (th.kind === 'mine' || th.kind === 'attackBoat') &&
+        // Only water ahead of the convoy is worth a sortie — behind it,
+        // whatever is there has already been sailed past.
+        th.x >= center.x - 120 &&
+        th.y >= COMBAT.warthog.waterYMin &&
+        th.y <= COMBAT.warthog.waterYMax,
     );
-    let bestX = 0;
-    let bestY = 0;
-    let bestCount = 0;
-    for (const th of surface) {
-      // Only water ahead of the convoy is worth a sortie — behind it, whatever
-      // is there has already been sailed past.
-      if (th.x < center.x - 120) continue;
-      const near = surface.filter((o) => dist(o.x, o.y, th.x, th.y) < 200).length;
-      if (near > bestCount) {
-        bestCount = near;
-        bestX = th.x;
-        bestY = th.y;
+    // Best PAIR: the two targets whose separation makes the longest legal run.
+    // The line through them is the run, extended a little past both so each is
+    // comfortably inside the gun cone rather than sitting on the endpoint.
+    let bestA: { x: number; y: number } | null = null;
+    let bestB: { x: number; y: number } | null = null;
+    let bestScore = 0;
+    for (let i = 0; i < surface.length; i++) {
+      for (let j = i + 1; j < surface.length; j++) {
+        const a = surface[i];
+        const b = surface[j];
+        const d = dist(a.x, a.y, b.x, b.y);
+        if (d < COMBAT.warthog.minRunLength || d > COMBAT.warthog.coneRange * 2) continue;
+        // Prefer pairs with other targets near the line between them.
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const near = surface.filter((o) => dist(o.x, o.y, midX, midY) < d).length;
+        if (near > bestScore) {
+          bestScore = near;
+          bestA = { x: a.x, y: a.y };
+          bestB = { x: b.x, y: b.y };
+        }
       }
     }
-    if (bestCount >= 2) {
-      cmds.push({ type: 'ability', ability: 'warthog', x: bestX, y: bestY });
+    // No pair lines up? A single target is still worth a run — draw the line
+    // straight down the convoy's axis through it, which is what a player does
+    // and which keeps a bought sortie from sitting on the apron all round.
+    if (!bestA && surface.length > 0) {
+      const lone = surface.reduce((best, th) => (th.x < best.x ? th : best), surface[0]);
+      const y = clampNum(lone.y, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax);
+      bestA = { x: lone.x - COMBAT.warthog.minRunLength, y };
+      bestB = { x: lone.x + COMBAT.warthog.minRunLength * 1.5, y };
+      bestScore = 2;
+    }
+    if (bestA && bestB && bestScore >= 2) {
+      const ux = (bestB.x - bestA.x) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
+      const uy = (bestB.y - bestA.y) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
+      const pad = 60;
+      cmds.push({
+        type: 'ability',
+        ability: 'warthog',
+        x: bestA.x - ux * pad,
+        y: clampNum(bestA.y - uy * pad, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax),
+        x2: bestB.x + ux * pad,
+        y2: clampNum(bestB.y + uy * pad, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax),
+      });
       mem.lastWarthogT = t.time;
     }
   }

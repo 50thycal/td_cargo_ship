@@ -69,6 +69,12 @@ import {
   totalComposition,
   totalPendingDamage,
   unlockWarthog,
+  warthogCapacity,
+  warthogSortieBlockReason,
+  buyWarthogSortie,
+  scanCapacity,
+  scanPulseBlockReason,
+  buyScanPulse,
   unlockHardened,
   unlockScan,
   unlockSmoke,
@@ -1754,13 +1760,26 @@ export function prepScreen(
         },
       },
     ),
+    // Sorties and pulses are STOCK, not a refilling allowance: commission the
+    // flight once, then buy each one you intend to fly. The count reads
+    // "held/apron" so the cap — which research raises — is visible at the point
+    // the player would otherwise wonder why they cannot buy another.
     assetCard(
       'planeGun',
       'A-10 Warthog',
-      c.warthogUnlocked ? 'owned' : '—',
-      'Wheels over a chosen spot, gunning mines and boats beneath it. Nothing airborne or underwater.',
+      c.warthogUnlocked ? `${c.warthogStock}/${warthogCapacity(c)}` : '—',
+      'Guns a line you draw: one target on the way out, one on the way back. Mines and boats only — nothing airborne or underwater.',
       c.warthogUnlocked
-        ? null
+        ? {
+            label:
+              warthogSortieBlockReason(c) === 'Apron full'
+                ? 'Apron full'
+                : `Buy sortie — $${ECONOMY.warthogSortieCost}`,
+            disabled: warthogSortieBlockReason(c) !== null,
+            onClick: () => {
+              if (buyWarthogSortie(c)) rerender();
+            },
+          }
         : {
             label: `Commission — $${ECONOMY.warthogUnlockCost}`,
             disabled: c.cash < ECONOMY.warthogUnlockCost,
@@ -1772,10 +1791,19 @@ export function prepScreen(
     assetCard(
       'planeScan',
       'Scan aircraft',
-      c.scanUnlocked ? 'owned' : '—',
+      c.scanUnlocked ? `${c.scanStock}/${scanCapacity(c)}` : '—',
       'Sweeps one lane, charting its mines. Ships steer around charted mines.',
       c.scanUnlocked
-        ? null
+        ? {
+            label:
+              scanPulseBlockReason(c) === 'Stowage full'
+                ? 'Stowage full'
+                : `Buy pulse — $${ECONOMY.scanPulseCost}`,
+            disabled: scanPulseBlockReason(c) !== null,
+            onClick: () => {
+              if (buyScanPulse(c)) rerender();
+            },
+          }
         : {
             label: `Commission — $${ECONOMY.scanUnlockCost}`,
             disabled: c.cash < ECONOMY.scanUnlockCost,

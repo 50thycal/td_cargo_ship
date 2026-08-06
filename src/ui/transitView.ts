@@ -133,6 +133,13 @@ export class TransitView {
   private orderMarkers: { x: number; y: number; kind: string; at: number; escortId: number }[] = [];
   /** An armed placeable ability: the next map tap places it. */
   private armedAbility: ArmedAbility | null = null;
+  /** The A-10 is aimed along a LINE, so arming it starts a two-part input
+   *  rather than waiting for one tap. Either gesture works and both end here:
+   *  tap-then-tap leaves the first point in `runStart` between taps, and a
+   *  drag fills `runStart` on press and `runDrag` as the finger moves. World
+   *  coordinates, so the line stays put if the camera moves under it. */
+  private runStart: { x: number; y: number } | null = null;
+  private runDrag: { x: number; y: number } | null = null;
   /** Depth-charge shot ids whose detonation blast has been drawn. */
   private dcDetonationsSeen = new Set<number>();
   /** Which threat a tap on a cluster of missiles resolves to. A player
@@ -492,7 +499,8 @@ export class TransitView {
     }
     const armedHints: Record<ArmedAbility, string> = {
       scan: 'Tap a lane to send the scan plane down it',
-      warthog: 'Tap open water to send the Warthog — it guns mines and boats inside its wheel',
+      warthog:
+        'Drag the A-10\u2019s run-in line over open water, or tap its two ends — it guns what lies ahead of it, then comes back the other way',
       sonar: 'Tap the water to place the active sonar ping',
       smoke: 'Tap the water to lay the defensive smoke',
       dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
@@ -599,6 +607,9 @@ export class TransitView {
       return;
     }
     this.armedAbility = this.armedAbility === ability ? null : ability; // toggle
+    // A half-drawn run belongs to the arming that started it.
+    this.runStart = null;
+    this.runDrag = null;
   }
 
   /** Canvas-space coordinates for a pointer event (the canvas is letterboxed
@@ -624,6 +635,12 @@ export class TransitView {
       return;
     }
     this.press = { id: ev.pointerId, startX: p.x, startY: p.y, dragging: false };
+    // With the A-10 armed and no first point yet, this press may become the
+    // start of a dragged run line. (If it turns out to be a tap, handleTap
+    // takes it instead — the two gestures share the same first point.)
+    if (this.armedAbility === 'warthog' && !this.runStart) {
+      this.runDrag = null;
+    }
   };
 
   private onPointerMove = (ev: PointerEvent): void => {
@@ -646,8 +663,24 @@ export class TransitView {
     if (!this.press || this.press.id !== ev.pointerId) return;
     const travelled = Math.hypot(p.x - this.press.startX, p.y - this.press.startY);
     if (!this.press.dragging && travelled > DRAG_THRESHOLD) this.press.dragging = true;
-    // Once it is a drag it pans the map — the press will not issue an order.
-    if (this.press.dragging) this.camera.panByScreen(p.x - prev.x, p.y - prev.y);
+    if (!this.press.dragging) return;
+    // With the A-10 armed, a drag DRAWS THE RUN rather than panning: the line
+    // is the weapon, so the most natural gesture for it has to be the one that
+    // aims it. Panning is still available by disarming.
+    if (this.armedAbility === 'warthog') {
+      const from = this.runStart ?? {
+        x: this.camera.screenToWorldX(this.press.startX),
+        y: this.camera.screenToWorldY(this.press.startY),
+      };
+      this.runStart = from;
+      this.runDrag = {
+        x: this.camera.screenToWorldX(p.x),
+        y: this.camera.screenToWorldY(p.y),
+      };
+      return;
+    }
+    // Otherwise a drag pans the map — the press will not issue an order.
+    this.camera.panByScreen(p.x - prev.x, p.y - prev.y);
   };
 
   private onPointerUp = (ev: PointerEvent): void => {
@@ -657,7 +690,12 @@ export class TransitView {
     if (!this.press || this.press.id !== ev.pointerId) return;
     const wasDrag = this.press.dragging;
     this.press = null;
-    // A drag moved the camera; it was never an order.
+    // A dragged A-10 run is complete on release — that gesture IS the order.
+    if (wasDrag && this.armedAbility === 'warthog' && this.runStart && this.runDrag) {
+      this.commitWarthogRun(this.runStart, this.runDrag);
+      return;
+    }
+    // Any other drag moved the camera; it was never an order.
     if (wasDrag || !p) return;
     this.handleTap(p.x, p.y);
   };
@@ -669,6 +707,18 @@ export class TransitView {
     const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? CANVAS_H : 1;
     this.camera.zoomBy(Math.exp((-ev.deltaY * unit) / 400), p.x, p.y);
   };
+
+  /** Send the A-10 down the line the player drew, and clear the input state.
+   *  Both gestures (tap-then-tap, and drag) funnel through here so the sim only
+   *  ever sees one shape of order. The sim validates water and minimum length
+   *  and reports back through the normal event channel, so this does not
+   *  second-guess it — it just stops arming for a run that was never sent. */
+  private commitWarthogRun(a: { x: number; y: number }, b: { x: number; y: number }): void {
+    this.runStart = null;
+    this.runDrag = null;
+    this.armedAbility = null;
+    this.queue({ type: 'ability', ability: 'warthog', x: a.x, y: a.y, x2: b.x, y2: b.y });
+  }
 
   /** A tap that was not a drag: resolve it to an action. */
   private handleTap(cx: number, cy: number): void {
@@ -682,6 +732,20 @@ export class TransitView {
     //    lobs depth charges at the point (an AREA attack — never a lock-on).
     if (this.armedAbility) {
       const ability = this.armedAbility;
+      // The A-10 needs a LINE, so it takes two taps: the first marks where the
+      // run begins, the second where it ends. (Dragging does the same thing in
+      // one gesture — see onPointerMove.) Nothing is spent until the second
+      // point lands, so a misplaced first tap costs only another tap.
+      if (ability === 'warthog') {
+        if (!this.runStart) {
+          this.runStart = { x: wx, y: wy };
+          this.runDrag = null;
+          this.showToast('Run-in start marked — tap where the pass should end');
+          return;
+        }
+        this.commitWarthogRun(this.runStart, { x: wx, y: wy });
+        return;
+      }
       if (ability === 'dc') {
         this.queue({ type: 'depthCharge', x: wx, y: wy });
       } else {
@@ -1319,26 +1383,78 @@ export class TransitView {
       );
     }
 
-    // The Warthog's strafe radius — everything hostile on the surface inside
-    // this ring is being worked, so the player can see exactly what the sortie
-    // bought and place the next one better.
-    const strafeRadius = t.effects.abilities.warthog.radius;
-    for (const ac of t.aircraft) {
-      if (ac.role !== 'warthog' || ac.phase !== 'onStation') continue;
-      const cx = this.sx(ac.centerX);
-      const cy = this.sy(ac.centerY);
-      const pulse = 1 + 0.04 * Math.sin(now / 120);
-      ctx.fillStyle = 'rgba(255, 176, 84, 0.07)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, strafeRadius * this.scale * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 176, 84, 0.5)';
-      ctx.setLineDash([6, 8]);
+    // The run-in line being drawn right now, before it is sent. Without this
+    // the player is aiming a line weapon blind — the first tap would vanish and
+    // a drag would show nothing until the jet appeared somewhere unexpected.
+    if (this.armedAbility === 'warthog' && this.runStart) {
+      const end = this.runDrag;
+      const ax = this.sx(this.runStart.x);
+      const ay = this.sy(this.runStart.y);
+      ctx.strokeStyle = 'rgba(255, 176, 84, 0.75)';
       ctx.lineWidth = 2;
+      if (end) {
+        const bx = this.sx(end.x);
+        const by = this.sy(end.y);
+        const long =
+          Math.hypot(end.x - this.runStart.x, end.y - this.runStart.y) >=
+          COMBAT.warthog.minRunLength;
+        // A run too short to fly is drawn in warning red, so the rule is
+        // learned from the picture rather than from a rejection message.
+        ctx.strokeStyle = long ? 'rgba(255, 176, 84, 0.75)' : 'rgba(255, 110, 90, 0.8)';
+        ctx.setLineDash([12, 7]);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // An arrowhead at the far end: the run has a direction, and the first
+        // pass goes this way.
+        const ang = Math.atan2(by - ay, bx - ax);
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx - Math.cos(ang - 0.4) * 14, by - Math.sin(ang - 0.4) * 14);
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx - Math.cos(ang + 0.4) * 14, by - Math.sin(ang + 0.4) * 14);
+        ctx.stroke();
+      }
+      // The start marker stays put between the two taps.
       ctx.beginPath();
-      ctx.arc(cx, cy, strafeRadius * this.scale * pulse, 0, Math.PI * 2);
+      ctx.arc(ax, ay, 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // The Warthog's run-in line and its gun cone. The line is what the player
+    // drew; the cone is what the gun can actually reach off the nose. Together
+    // they make a sortie readable while it happens — what is inside the cone is
+    // about to be strafed, what is merely near the line is not.
+    const coneHalf =
+      COMBAT.warthog.coneHalfAngle *
+      (t.effects.abilities.warthog.wide ? COMBAT.warthog.wideConeMult : 1);
+    for (const ac of t.aircraft) {
+      if (ac.role !== 'warthog') continue;
+      ctx.strokeStyle = 'rgba(255, 176, 84, 0.28)';
+      ctx.setLineDash([10, 8]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(this.sx(ac.runAx), this.sy(ac.runAy));
+      ctx.lineTo(this.sx(ac.runBx), this.sy(ac.runBy));
       ctx.stroke();
       ctx.setLineDash([]);
+      // The live cone, only while a firing pass is being flown and only while
+      // the gun still has its one engagement for that pass in hand.
+      if (ac.phase !== 'onStation' || ac.firedThisPass) continue;
+      const ax = this.sx(ac.x);
+      const ay = this.sy(ac.y);
+      const reach = COMBAT.warthog.coneRange * this.scale;
+      ctx.fillStyle = 'rgba(255, 176, 84, 0.07)';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.arc(ax, ay, reach, ac.heading - coneHalf, ac.heading + coneHalf);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 176, 84, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
 
     // Placed area effects: active sonar pings (blue) and defensive smoke (grey).
@@ -2193,14 +2309,33 @@ export class TransitView {
       const y0 = this.sy(run.y);
       const x1 = this.sx(run.targetX);
       const y1 = this.sy(run.targetY);
-      ctx.strokeStyle = `rgba(255, 216, 130, ${0.85 * fade})`;
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([9, 6]);
+      // A STREAM of tracer, not one line. The gun is a rotary cannon and the
+      // burst should read as such: individual rounds strung out along the line
+      // of fire, the leading ones already at the target while the tail is still
+      // leaving the aircraft. The string slides toward the target as the burst
+      // ages, which is what sells it as gunfire rather than a drawn beam.
+      const rounds = COMBAT.warthog.burstRounds;
+      const travel = 1 - fade; // 0 at the muzzle, 1 when the burst has landed
+      for (let i = 0; i < rounds; i++) {
+        const spacing = i / rounds;
+        const at = Math.min(1, spacing * 0.55 + travel * 0.9);
+        const rx = x0 + (x1 - x0) * at;
+        const ry = y0 + (y1 - y0) * at;
+        // The head of the stream is brightest; the tail dims as it is spent.
+        const heat = 0.35 + 0.65 * (1 - spacing);
+        ctx.fillStyle = `rgba(255, 226, 150, ${heat * fade})`;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 1.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // A faint line of the gun's axis under the tracer, so the direction of
+      // the pass stays legible at the moment the rounds are still bunched.
+      ctx.strokeStyle = `rgba(255, 216, 130, ${0.22 * fade})`;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(x0, y0);
       ctx.lineTo(x1, y1);
       ctx.stroke();
-      ctx.setLineDash([]);
       // Impact splash at the far end; a kill flashes harder than a hit.
       ctx.fillStyle = run.killed
         ? `rgba(255, 236, 180, ${0.8 * fade})`
