@@ -177,69 +177,106 @@ describe('A-10 Warthog', () => {
     expect([...COUNTER_BRANCHES.warthog.counters].sort()).toEqual(['attackBoats', 'mines']);
   });
 
-  it('destroys mines under its wheel — charted or not', () => {
+  it('destroys mines along the run it was given — charted or not', () => {
     const { state, rng } = emptyTransit('warthog-mines', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 1000;
     const cy = WORLD.lanes[1];
-    const mines = [
-      addMine(state, cx - 60, cy),
-      addMine(state, cx + 50, cy + 40),
-      addMine(state, cx, cy - 70),
-    ];
+    // Two mines strung out along the run line: one for the outbound pass, one
+    // for the return. The gun takes ONE target per pass, so a sortie is worth
+    // exactly two engagements however many targets are lying about.
+    const first = addMine(state, 1000, cy);
+    const second = addMine(state, 1150, cy);
     // Never detected by anything: the gun does not care whether the plot had it.
-    expect(mines.every((m) => !m.revealed)).toBe(true);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
-    run(state, rng, 30);
-    expect(mines.every((m) => !m.alive)).toBe(true);
-    expect(state.stats.minesSwept).toBe(3);
-    expect(state.stats.warthogKills).toBe(3);
-    expect(state.stats.counter.gunRunKills).toBe(3);
+    expect([first, second].every((m) => !m.revealed)).toBe(true);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 40);
+    expect(first.alive).toBe(false);
+    expect(second.alive).toBe(false);
+    expect(state.stats.minesSwept).toBe(2);
+    expect(state.stats.warthogKills).toBe(2);
+    expect(state.stats.counter.gunRunKills).toBe(2);
   });
 
-  it('leaves alone what is outside the strafe radius', () => {
-    const { state, rng } = emptyTransit('warthog-radius', (c) => {
+  it('engages once per pass, and only twice in a sortie', () => {
+    const { state, rng } = emptyTransit('warthog-passes', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 900;
     const cy = WORLD.lanes[1];
-    const radius = state.effects.abilities.warthog.radius;
-    const inside = addMine(state, cx + radius * 0.5, cy);
-    const outside = addMine(state, cx + radius + 220, cy);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
-    run(state, rng, 40);
-    expect(inside.alive).toBe(false);
-    expect(outside.alive).toBe(true);
+    // Five mines in a row. A wheel would have swept the lot; a strafing run
+    // gets two of them and has to be called again for the rest. That limit is
+    // what makes WHERE the line goes a decision.
+    for (let i = 0; i < 5; i++) addMine(state, 950 + i * 60, cy);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1400, y2: cy }],
+      rng,
+    );
+    run(state, rng, 60);
+    expect(state.stats.counter.gunRuns).toBe(2);
+    expect(state.threats.filter((m) => m.kind === 'mine' && m.alive).length).toBe(3);
   });
 
-  it('grinds a boat down over several visible passes rather than one-tapping it', () => {
+  it('leaves alone what sits off the run line, however close to the track', () => {
+    const { state, rng } = emptyTransit('warthog-cone', (c) => {
+      c.warthogUnlocked = true;
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    // On the line and well within reach.
+    const onLine = addMine(state, 1000, cy);
+    // Abeam of the run, far outside the gun cone — a fixed gun points where the
+    // aircraft points, so this is never in the solution however near it looks.
+    const abeam = addMine(state, 900, cy - 330);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 50);
+    expect(onLine.alive).toBe(false);
+    expect(abeam.alive).toBe(true);
+  });
+
+  it('draws a visible burst of tracer for every engagement', () => {
     const { state, rng } = emptyTransit('warthog-boat', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 1000;
     const cy = WORLD.lanes[1];
-    const boat = addBoat(state, cx + 40, cy, 120);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
+    // A light boat: two passes at the base 26 is 52, so this one breaks up
+    // inside a single sortie while a heavy one would need another call.
+    const boat = addBoat(state, 1050, cy, 40);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
     // Every point of damage crosses the water as a drawn burst.
     let sawBurst = false;
-    for (let i = 0; i < Math.ceil(40 / SIM.dt) && boat.alive; i++) {
+    for (let i = 0; i < Math.ceil(50 / SIM.dt) && boat.alive; i++) {
       stepTransit(state, [], rng);
       if (state.strafeRuns.length > 0) sawBurst = true;
     }
     expect(sawBurst).toBe(true);
     expect(boat.alive).toBe(false);
     expect(state.stats.boatsSunk).toBe(1);
-    // 120hp at the base 26 a pass is five passes, not one.
-    expect(state.stats.counter.gunRuns).toBeGreaterThanOrEqual(4);
   });
 
   it('cannot reach a missile — an air threat is not its problem', () => {
     const { state, rng } = emptyTransit('warthog-missile', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
     const cx = 1000;
@@ -275,6 +312,7 @@ describe('mine contacts', () => {
   it('a scan-plane fix expires, and the mine drops back off the plot', () => {
     const { state, rng } = emptyTransit('mine-scan-expiry', (c) => {
       c.scanUnlocked = true;
+      c.scanStock = 2;
     });
     clearTheDecks(state); // nothing with sonar anywhere near it
     const laneY = WORLD.lanes[1];

@@ -808,7 +808,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'scanPulse.base',
         name: 'Base Scan Pulse',
-        desc: 'Reveals standard mines along the swept lane. Two charges per round.',
+        desc: 'Reveals standard mines along the swept lane. Pulses are bought in preparation; this is stowage for two at a time.',
         cost: 0,
         granted: true,
         grant: { charges: 2 },
@@ -832,8 +832,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'scanPulse.extraCharge',
-        name: 'Additional Charge',
-        desc: 'Two charges become three.',
+        name: 'Additional Stowage',
+        desc: 'Stowage for three pulses instead of two.',
         cost: 45,
         noChain: true,
         kind: 'mode',
@@ -1811,7 +1811,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.base',
         name: 'Base Gun Run',
-        desc: 'One sortie a round. The jet flies to a placed point, holds a wheel over it and guns mines and attack boats inside its strafe radius until it is out of time.',
+        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for one at a time.',
         cost: 0,
         granted: true,
         grant: { charges: 1 },
@@ -1828,7 +1828,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.secondSortie',
         name: 'Second Sortie',
-        desc: 'The flight comes back around: two gun runs a round instead of one.',
+        desc: 'Room on the apron for a second sortie, so two can be held ready instead of one.',
         cost: 45,
         noChain: true,
         kind: 'mode',
@@ -1836,8 +1836,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       },
       {
         id: 'warthog.extendedLoiter',
-        name: 'Extended Loiter',
-        desc: 'External tanks: the jet holds its wheel far longer, so one call covers a much bigger slice of the transit.',
+        name: 'Longer Firing Pass',
+        desc: 'External tanks and a slower run in: the jet stays in range longer on each pass, so its gun solution has further to develop.',
         cost: 40,
         noChain: true,
         kind: 'mode',
@@ -1846,7 +1846,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.wideStrafe',
         name: 'Wide Strafe Pattern',
-        desc: 'Longer, looser gun runs: the radius the jet can reach from its station grows.',
+        desc: 'A broader gun cone ahead of the nose: the jet can take targets further off its run-in line.',
         cost: 40,
         noChain: true,
         kind: 'mode',
@@ -2239,6 +2239,10 @@ export function deriveCounterEffects(
   ) => ({
     charges: stats.grants.charges ?? 0,
     radius: stats.flags.has('wide') ? ABILITY_BASE[key].wideRadius : ABILITY_BASE[key].radius,
+    /** Exposed on its own because the Warthog's `wide` node now opens a gun
+     *  CONE rather than growing a loiter radius — the radius above is still
+     *  meaningful for the placed-area abilities, but not for the gun. */
+    wide: stats.flags.has('wide'),
     duration: stats.flags.has('longTrack')
       ? ABILITY_BASE[key].longDuration
       : ABILITY_BASE[key].duration,

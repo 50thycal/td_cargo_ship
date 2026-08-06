@@ -236,8 +236,11 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   }
 
   const centerLaneY = WORLD.lanes[1];
-  const warthogCharges = god ? 99 : campaign.warthogUnlocked ? effects.abilities.warthog.charges : 0;
-  const scanCharges = god ? 99 : campaign.scanUnlocked ? effects.abilities.scan.charges : 0;
+  // Sorties and pulses are STOCK the player bought, not an allowance research
+  // refills each round — what research grants is how many can be held (the
+  // capacity), which is enforced at the point of purchase.
+  const warthogCharges = god ? 99 : campaign.warthogUnlocked ? campaign.warthogStock : 0;
+  const scanCharges = god ? 99 : campaign.scanUnlocked ? campaign.scanStock : 0;
   const sonarCharges = god ? 99 : campaign.sonarUnlocked ? effects.abilities.sonar.charges : 0;
   const smokeCharges = god ? 99 : campaign.smokeUnlocked ? effects.abilities.smoke.charges : 0;
   const rebootCharges = god ? 99 : campaign.hardenedUnlocked ? effects.hardened.rebootCharges : 0;
@@ -1356,33 +1359,57 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       if (cmd.ability === 'warthog') {
         // No stacking: the jet on task must be clear before another is called.
         if (t.warthogCharges <= 0 || t.time < t.warthogActiveUntil) return;
-        // The station must sit over open water — not on a shore launcher
-        // (enemy launch sites up-map, friendly batteries down-map). Reject a
-        // placement outside the water band so a sortie is never wasted on land.
-        if (py < COMBAT.warthog.waterYMin || py > COMBAT.warthog.waterYMax) {
-          pushEvent(t, { type: 'launchFailed', detail: 'Send the Warthog over open water' });
+        // The run-in line, A to B. A tap with no second point is not a run —
+        // the caller is required to supply both ends.
+        const bx = clamp(cmd.x2 ?? px, 20, WORLD.width - 20);
+        const by = clamp(cmd.y2 ?? py, 60, WORLD.height - 60);
+        // Both ends must lie over open water — not on a shore launcher (enemy
+        // sites up-map, friendly batteries down-map). Reject a run outside the
+        // water band so a sortie is never wasted on land.
+        const wetY = (y: number): boolean =>
+          y >= COMBAT.warthog.waterYMin && y <= COMBAT.warthog.waterYMax;
+        if (!wetY(py) || !wetY(by)) {
+          pushEvent(t, { type: 'launchFailed', detail: 'Run the Warthog over open water' });
+          return;
+        }
+        // A line has to have a direction to be a gun run: two points on top of
+        // one another give the cone nothing to point along.
+        if (Math.hypot(bx - px, by - py) < COMBAT.warthog.minRunLength) {
+          pushEvent(t, { type: 'launchFailed', detail: 'Draw a longer run-in line' });
           return;
         }
         t.warthogCharges--;
         t.stats.warthogUsed++;
         t.stats.counter.charges.warthog.used++;
-        // Total sortie: fly-in + time on station + fly-out. Blocks a second call
-        // until the jet is clear, and fixes where it holds its wheel.
-        t.warthogActiveUntil = t.time + t.effects.abilities.warthog.duration + 12;
-        t.warthogCenterX = px;
-        t.warthogCenterY = py;
-        // The jet comes up from the friendly (bottom) shore and heads to station.
+        // Two passes plus the turn between them, with margin for the run-in and
+        // the exit. Blocks a second call until the flight is clear.
+        const runLen = Math.hypot(bx - px, by - py);
+        // Run in, down the line, out past the end, back down it, and away:
+        // four leg-lengths of margin plus two of the line itself.
+        t.warthogActiveUntil =
+          t.time +
+          (runLen * 2 + COMBAT.warthog.offMapMargin * 4) / COMBAT.warthog.planeSpeed;
+        t.warthogCenterX = (px + bx) / 2;
+        t.warthogCenterY = (py + by) / 2;
+        // The jet rolls in from beyond the near end of the line, already
+        // pointing down it, so the first pass is a firing pass rather than a
+        // transit to a station.
+        const ux = (bx - px) / runLen;
+        const uy = (by - py) / runLen;
         t.aircraft.push({
           id: t.nextEntityId++,
           role: 'warthog',
-          x: px,
-          y: WORLD.height + 40,
-          heading: -Math.PI / 2,
-          phase: 'inbound',
+          x: px - ux * COMBAT.warthog.offMapMargin,
+          y: py - uy * COMBAT.warthog.offMapMargin,
+          heading: Math.atan2(uy, ux),
+          phase: 'onStation',
           laneY: py,
-          centerX: px,
-          centerY: py,
-          orbitAngle: 0,
+          runAx: px,
+          runAy: py,
+          runBx: bx,
+          runBy: by,
+          pass: 0,
+          firedThisPass: false,
           stationUntil: 0,
           gunCooldown: 0,
         });
@@ -1403,9 +1430,14 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           heading: 0,
           phase: 'onStation',
           laneY,
-          centerX: 0,
-          centerY: laneY,
-          orbitAngle: 0,
+          // A scan plane flies a lane, not a drawn run — the run-line fields
+          // describe that lane so the shape stays one aircraft type.
+          runAx: -60,
+          runAy: laneY,
+          runBx: WORLD.width + 60,
+          runBy: laneY,
+          pass: 0,
+          firedThisPass: false,
           stationUntil: 0,
           gunCooldown: 0,
         });
@@ -1638,13 +1670,26 @@ function revealMine(t: TransitState, mine: Threat, source: 'mineSonar' | 'scanPu
  *  capture cannot be undone, everything else can be survived. After that it is
  *  simply the nearest thing in the strafe radius, because a jet holding a wheel
  *  over one patch of water works that patch, it does not go hunting. */
-function pickStrafeTarget(t: TransitState, ac: Aircraft, radius: number): Threat | null {
+/** What the gun can reach: a cone off the nose, not a circle round a station.
+ *  A target must be AHEAD of the jet (positive along-track) and inside both the
+ *  cone's half-angle and its range. */
+function pickStrafeTarget(t: TransitState, ac: Aircraft, halfAngle: number): Threat | null {
+  const fx = Math.cos(ac.heading);
+  const fy = Math.sin(ac.heading);
   let best: Threat | null = null;
   let bestKey = Infinity;
   for (const th of t.threats) {
     if (!th.alive || !canEngage('gunRun', th.kind)) continue;
-    const d = dist(ac.centerX, ac.centerY, th.x, th.y);
-    if (d > radius) continue;
+    const dx = th.x - ac.x;
+    const dy = th.y - ac.y;
+    const along = dx * fx + dy * fy;
+    if (along <= 0) continue; // behind the wing line: the gun does not point there
+    const d = Math.hypot(dx, dy);
+    if (d > COMBAT.warthog.coneRange) continue;
+    // Angle off the nose. Compared against the cone rather than a lateral band
+    // so the reach widens with distance, which is how a fixed gun actually
+    // covers ground and makes a long straight run-in worth drawing.
+    if (Math.acos(Math.min(1, along / (d || 1))) > halfAngle) continue;
     const boarding = th.boatVariant === 'boarding' && th.engaging ? 0 : 1;
     const key = boarding * 10000 + d;
     if (key < bestKey) {
@@ -1706,7 +1751,11 @@ function fireGunRun(t: TransitState, ac: Aircraft, target: Threat, rng: RNG): vo
 function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
   const scanRadius = t.effects.abilities.scan.radius;
   const laneHalf = COMBAT.scan.laneHalfWidth * (scanRadius / COMBAT.scan.baseRevealRadius);
-  const strafeRadius = t.effects.abilities.warthog.radius;
+  // Gun cone half-angle. The Wide Strafe node opens it rather than growing a
+  // loiter radius, which no longer exists.
+  const strafeHalfAngle =
+    COMBAT.warthog.coneHalfAngle *
+    (t.effects.abilities.warthog.wide ? COMBAT.warthog.wideConeMult : 1);
   for (const ac of t.aircraft) {
     if (ac.role === 'scan') {
       // Fly straight across the map along the selected lane.
@@ -1730,49 +1779,75 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
       continue;
     }
 
-    // The Warthog.
-    if (ac.phase === 'inbound') {
-      const dx = ac.centerX - ac.x;
-      const dy = ac.centerY + COMBAT.warthog.orbitRadius - ac.y; // arrive at wheel edge
-      const d = Math.hypot(dx, dy) || 1;
-      const step = COMBAT.warthog.planeSpeed * dt;
-      if (d <= step) {
+    // The Warthog: a strafing run down the line the player drew, off the map,
+    // turn, and back down the same line the other way.
+    //
+    // `onStation` here means "flying a firing pass"; `departing` is the
+    // turnaround between them and the exit after the last one. The jet is
+    // always tracking to a point beyond the far end of the line, so it leaves
+    // the map under its own power rather than being teleported away.
+    const step = COMBAT.warthog.planeSpeed * dt;
+    const outbound = ac.pass === 0;
+    const fromX = outbound ? ac.runAx : ac.runBx;
+    const fromY = outbound ? ac.runAy : ac.runBy;
+    const toX = outbound ? ac.runBx : ac.runAx;
+    const toY = outbound ? ac.runBy : ac.runAy;
+    const runDx = toX - fromX;
+    const runDy = toY - fromY;
+    const runLen = Math.hypot(runDx, runDy) || 1;
+    const ux = runDx / runLen;
+    const uy = runDy / runLen;
+    if (ac.phase === 'departing') {
+      // Carrying on out past the end of the line. Distance-based rather than on
+      // a timer: the jet has to be genuinely clear of the map before it turns,
+      // or the reversal happens in view and reads as the aircraft jinking
+      // backwards instead of coming round.
+      ac.heading = Math.atan2(uy, ux);
+      ac.x += ux * step;
+      ac.y += uy * step;
+      const pastEnd = (ac.x - toX) * ux + (ac.y - toY) * uy;
+      if (ac.pass < 1 && pastEnd >= COMBAT.warthog.offMapMargin) {
+        // Round we come: same line, other direction, gun reloaded for one more
+        // engagement. No reposition — the jet simply reverses where it is, off
+        // the edge of the world.
+        ac.pass = 1;
+        ac.firedThisPass = false;
         ac.phase = 'onStation';
-        ac.stationUntil = t.time + t.effects.abilities.warthog.duration;
-        ac.orbitAngle = Math.PI / 2;
-      } else {
-        ac.x += (dx / d) * step;
-        ac.y += (dy / d) * step;
-        ac.heading = Math.atan2(dy, dx);
+        ac.heading = Math.atan2(-uy, -ux);
       }
-    } else if (ac.phase === 'onStation') {
-      ac.orbitAngle += COMBAT.warthog.orbitRate * dt;
-      const prevX = ac.x;
-      const prevY = ac.y;
-      ac.x = ac.centerX + Math.cos(ac.orbitAngle) * COMBAT.warthog.orbitRadius;
-      ac.y = ac.centerY + Math.sin(ac.orbitAngle) * COMBAT.warthog.orbitRadius;
-      ac.heading = Math.atan2(ac.y - prevY, ac.x - prevX);
-      // Gun runs, one target at a time, while there is anything to shoot.
+    } else {
+      // Flying the pass. Heading is the run line itself, so the gun cone points
+      // where the player aimed it.
+      ac.heading = Math.atan2(uy, ux);
+      ac.x += ux * step;
+      ac.y += uy * step;
+      // One engagement per pass. The jet picks the best target in its cone,
+      // guns it, and is done until it comes round again — which is what makes
+      // WHERE the line goes the decision, rather than parking over a crowd.
       ac.gunCooldown = Math.max(0, ac.gunCooldown - dt);
-      if (ac.gunCooldown <= 0) {
-        const target = pickStrafeTarget(t, ac, strafeRadius);
+      if (!ac.firedThisPass && ac.gunCooldown <= 0) {
+        const target = pickStrafeTarget(t, ac, strafeHalfAngle);
         if (target) {
-          ac.gunCooldown = COMBAT.warthog.fireInterval;
+          ac.firedThisPass = true;
           fireGunRun(t, ac, target, rng);
         }
       }
-      if (t.time >= ac.stationUntil) ac.phase = 'departing';
-    } else {
-      // Depart off the bottom of the map, then get culled below.
-      ac.y += COMBAT.warthog.planeSpeed * dt;
-      ac.heading = Math.PI / 2;
+      // Past the end of the line: break off. The first break is the turn for
+      // the return pass; the second takes it home.
+      const travelled = (ac.x - fromX) * ux + (ac.y - fromY) * uy;
+      if (travelled >= runLen) ac.phase = 'departing';
     }
   }
   // Cull finished aircraft: scan planes that flew off the right edge, the
-  // Warthog once it has left the bottom of the world.
-  t.aircraft = t.aircraft.filter((ac) =>
-    ac.role === 'scan' ? ac.x <= WORLD.width + 80 : ac.y <= WORLD.height + 80,
-  );
+  // Warthog once its second pass has carried it clear of the world.
+  t.aircraft = t.aircraft.filter((ac) => {
+    if (ac.role === 'scan') return ac.x <= WORLD.width + 80;
+    if (ac.pass < 1 || ac.phase !== 'departing') return true;
+    const m = COMBAT.warthog.offMapMargin;
+    return (
+      ac.x > -m && ac.x < WORLD.width + m && ac.y > -m && ac.y < WORLD.height + m
+    );
+  });
   // Bursts are drawn for a fraction of a second and then gone.
   for (const run of t.strafeRuns) run.ttl -= dt;
   t.strafeRuns = t.strafeRuns.filter((run) => run.ttl > 0);

@@ -32,6 +32,7 @@ import {
   effectiveResearch,
   ESCORT_MODULE_RESEARCH_REQUIREMENT,
   MODULE_RESEARCH_REQUIREMENT,
+  resolveBranchStats,
   RESEARCH_INDEX,
 } from '../data/counters';
 import { DEV_REGION, regionDef, type RegionId } from '../data/regions';
@@ -128,6 +129,8 @@ export function newRegionalRun(
     ammo: start.ammo,
     droneAmmo: start.droneAmmo,
     pdAmmo: start.pdAmmo,
+    warthogStock: 0,
+    scanStock: 0,
     warthogUnlocked: false,
     scanUnlocked: false,
     sonarUnlocked: false,
@@ -255,6 +258,11 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.ammo = 999;
     c.droneAmmo = 999;
     c.pdAmmo = 999;
+    // Full magazines includes the apron: sorties and pulses are stock now, so
+    // "unlock everything" has to stock them or the dev run lands with the two
+    // aircraft commissioned and nothing to fly.
+    c.warthogStock = 999;
+    c.scanStock = 999;
     c.bases = ECONOMY.maxBases;
     c.capacity = CAMPAIGN.maxCapacity;
     const devLoadouts: EscortModuleId[][] = [
@@ -349,6 +357,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
   c.pdAmmo = t.pdAmmo; // unused self-defense rounds carry over
+  // Sorties and pulses are stock too: what was flown is gone, what was not
+  // flown is still on the apron next round. Clamped because a god-mode run
+  // hands the transit 99 of each without the campaign having bought them.
+  c.warthogStock = Math.max(0, Math.min(c.warthogStock, t.warthogCharges));
+  c.scanStock = Math.max(0, Math.min(c.scanStock, t.scanCharges));
   c.formation = t.formation; // tactical formation changes persist as the new default
   c.autoFire = { ...t.autoFire }; // in-transit automation toggles persist
 
@@ -1233,7 +1246,50 @@ export function unlockWarthog(c: CampaignState): boolean {
   if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.warthog)) return false;
   c.cash -= ECONOMY.warthogUnlockCost;
   c.warthogUnlocked = true;
+  // Commissioning includes the first sortie, so buying the capability is
+  // immediately worth something rather than unlocking an empty apron.
+  c.warthogStock = Math.max(c.warthogStock, 1);
   recordSpend(c, 'warthog', ECONOMY.warthogUnlockCost);
+  return true;
+}
+
+/** How many A-10 sorties can be held at once. Research buys apron space; it no
+ *  longer hands out free sorties each round. */
+export function warthogCapacity(c: CampaignState): number {
+  return resolveBranchStats('warthog', researchSet(c)).grants.charges ?? 0;
+}
+
+export function scanCapacity(c: CampaignState): number {
+  return resolveBranchStats('scanPulse', researchSet(c)).grants.charges ?? 0;
+}
+
+export function warthogSortieBlockReason(c: CampaignState): string | null {
+  if (!c.warthogUnlocked) return 'Commission the A-10 flight first';
+  if (c.warthogStock >= warthogCapacity(c)) return 'Apron full';
+  if (c.cash < ECONOMY.warthogSortieCost) return 'Not enough cash';
+  return null;
+}
+
+export function buyWarthogSortie(c: CampaignState): boolean {
+  if (warthogSortieBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.warthogSortieCost;
+  c.warthogStock++;
+  recordSpend(c, 'warthog', ECONOMY.warthogSortieCost);
+  return true;
+}
+
+export function scanPulseBlockReason(c: CampaignState): string | null {
+  if (!c.scanUnlocked) return 'Commission the scan flight first';
+  if (c.scanStock >= scanCapacity(c)) return 'Stowage full';
+  if (c.cash < ECONOMY.scanPulseCost) return 'Not enough cash';
+  return null;
+}
+
+export function buyScanPulse(c: CampaignState): boolean {
+  if (scanPulseBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.scanPulseCost;
+  c.scanStock++;
+  recordSpend(c, 'scanPulse', ECONOMY.scanPulseCost);
   return true;
 }
 
@@ -1242,6 +1298,7 @@ export function unlockScan(c: CampaignState): boolean {
   if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.scan)) return false;
   c.cash -= ECONOMY.scanUnlockCost;
   c.scanUnlocked = true;
+  c.scanStock = Math.max(c.scanStock, 1);
   recordSpend(c, 'scanPulse', ECONOMY.scanUnlockCost);
   return true;
 }

@@ -671,11 +671,18 @@ export interface Aircraft {
   phase: 'inbound' | 'onStation' | 'departing';
   /** Scan: the lane-center Y the plane sweeps along. */
   laneY: number;
-  /** Warthog: center of the station wheel (and of the strafe radius). */
-  centerX: number;
-  centerY: number;
-  /** Warthog: current orbit angle (radians). */
-  orbitAngle: number;
+  /** Warthog: the run-in line the player drew, from A to B. The jet flies this
+   *  line, carries on off the map, turns, and flies it back the other way. */
+  runAx: number;
+  runAy: number;
+  runBx: number;
+  runBy: number;
+  /** Warthog: which pass is being flown — 0 is A→B, 1 is the return B→A. */
+  pass: number;
+  /** Warthog: true once the gun has been fired on THIS pass. One engagement per
+   *  pass is the whole shape of the weapon: the jet commits to a target, takes
+   *  it, and has to come round again for anything else. */
+  firedThisPass: boolean;
   /** Warthog: transit time at which the plane breaks off and departs. */
   stationUntil: number;
   /** Warthog: seconds until the gun is ready for the next pass. */
@@ -792,7 +799,17 @@ export type TransitCommand =
    *  installation id — never a projectile or mobile unit). */
   | { type: 'counterBattery'; installationId: number }
   /** Placed ability: x/y is where the player put the effect on the map. */
-  | { type: 'ability'; ability: 'warthog' | 'scan' | 'sonar' | 'smoke'; x: number; y: number }
+  /** x/y is where the player put the effect. The Warthog additionally carries
+   *  x2/y2: it is aimed along a LINE the player draws, not parked on a point,
+   *  and the line is the weapon (see the gun-cone targeting in transit.ts). */
+  | {
+      type: 'ability';
+      ability: 'warthog' | 'scan' | 'sonar' | 'smoke';
+      x: number;
+      y: number;
+      x2?: number;
+      y2?: number;
+    }
   /** Hardened systems: spend an emergency-reboot charge to shorten an active
    *  sensor-jamming blackout. */
   | { type: 'reboot' }
@@ -1023,6 +1040,10 @@ export interface AbilityEffects {
   /** Extra seconds a revealed contact stays precisely tracked. */
   persistence: number;
   unlockedLowSig: boolean;
+  /** The Wide node is set. For the placed abilities this is already folded into
+   *  `radius`; the Warthog needs it separately because its wide node opens a
+   *  gun CONE rather than growing a circle. */
+  wide: boolean;
 }
 
 /** Research-derived combat effects, baked once at transit creation. Every
@@ -1807,7 +1828,17 @@ export interface CampaignState {
    *  Unused stock carries between rounds. (Field name kept from the old
    *  point-defense system for save compatibility.) */
   pdAmmo: number;
-  /** Convoy-wide assets: owned => charges refresh each round. */
+  /** A-10 sorties and scan pulses in stock. Bought in preparation, spent on
+   *  use, carried over when unused — the same contract as every other
+   *  consumable above. They used to refill for free every round once the
+   *  capability was unlocked, which put the two most flexible tools in the game
+   *  outside the economy every other counter competes inside. Research now
+   *  raises how many can be HELD (see warthogCapacity / scanCapacity) rather
+   *  than handing out a fresh allowance. */
+  warthogStock: number;
+  scanStock: number;
+  /** Convoy-wide assets: owned => the capability is commissioned and its
+   *  ordnance can be bought. */
   warthogUnlocked: boolean;
   scanUnlocked: boolean;
   sonarUnlocked: boolean;
