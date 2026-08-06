@@ -2,23 +2,40 @@
 // data files — never hard-coded inside sim logic — so playtesting iterations
 // are config edits, not code changes.
 
+/**
+ * The strait. DOUBLED in both dimensions from 2000x1000.
+ *
+ * The old world was exactly the shape of a phone in landscape, so the camera's
+ * fit-zoom showed all of it and there was nowhere to pan TO — the map was the
+ * screen. Twice the water gives the fight somewhere to happen: room to work a
+ * flank, room for the convoy to be strung out with parts of it off screen, and
+ * a reason for the zoom control to exist. The shores are deeper than a straight
+ * doubling as well, so neither coast is a thin strip at the edge of the frame.
+ *
+ * Note this only produces panning room in combination with the camera's minimum
+ * zoom (see camera.ts): a bigger world at a fit-to-window floor is not a bigger
+ * map, it is the same map drawn smaller.
+ */
 export const WORLD = {
-  width: 2000,
-  height: 1000,
+  width: 4000,
+  height: 2000,
   /** Ships are delivered once past this x. */
-  deliverX: 1940,
+  deliverX: 3880,
   /** Convoy spawns with its lead ships around this x. */
-  spawnX: 40,
-  /** Y centers of the three transit lanes (north / center / south). */
-  lanes: [340, 520, 700],
-  /** Hostile shore occupies the top of the map; launch sites sit along it. */
+  spawnX: 80,
+  /** Y centers of the three transit lanes (north / center / south). Spread
+   *  across the middle of the water rather than a straight 2x of the old
+   *  values, which would have crowded them against the hostile shore. */
+  lanes: [780, 1030, 1280],
+  /** Hostile shore occupies the top of the map; launch sites sit along it.
+   *  Deeper than before so the coast reads as land rather than a border. */
   launchSites: [
-    { x: 350, y: 70 },
-    { x: 900, y: 55 },
-    { x: 1450, y: 70 },
+    { x: 700, y: 150 },
+    { x: 1800, y: 120 },
+    { x: 2900, y: 150 },
   ],
   /** Friendly shore (bottom): shore batteries launch interceptors from here. */
-  baseLine: 920,
+  baseLine: 1760,
 } as const;
 
 export const SIM = {
@@ -33,14 +50,17 @@ export const SIM = {
    *  broke that assumption: a large convoy now spends minutes just arriving,
    *  and a flat cap silently drowned the tail of it — measured, one loss in
    *  five across a sweep became "lost at sea" with nothing having shot at it. */
-  maxTransitTime: 900,
+  maxTransitTime: 1500,
   /** Floor on a round's time limit, so a tiny convoy still gets a real round. */
-  minTransitTime: 260,
+  minTransitTime: 430,
   /** Time allowed AFTER the last hull enters for the convoy to clear the
    *  strait. The crossing itself is about 90 seconds for the slowest class;
    *  the rest is room for the avoidance, give-way and mine-dodging that a
-   *  contested transit actually involves. */
-  transitCrossAllowance: 175,
+   *  contested transit actually involves.
+   *
+   *  SCALED with the world: the strait is twice as wide, so the crossing itself
+   *  is about 180 seconds for the slowest class rather than 90. */
+  transitCrossAllowance: 350,
 } as const;
 
 /** Convoy entry pacing.
@@ -338,10 +358,17 @@ export const COMBAT = {
    *  and a boat left alive keeps earning. That is why they need their own
    *  weapon: interceptors point at the sky and cannot help here at all. */
   attackBoat: {
-    /** MAX speed. Faster than any cargo hull so a boat can always close and
-     *  hold station, but far slower than a missile — there is time to shoot
-     *  back. A boat accelerates and turns into this rather than snapping to it. */
-    speed: 64,
+    /** MAX speed.
+     *
+     *  SLOWED from 64. It only needs to beat the fastest merchant (a freighter
+     *  at 34) by enough to close and hold station; at 64 it was nearly twice
+     *  that and read as a speedboat tearing across the strait rather than a
+     *  craft working a convoy. A boat that crosses the screen in a couple of
+     *  seconds also gives the player almost no run-in to shoot at, which is
+     *  exactly what the physical-navigation rework was for. 42 is a quarter
+     *  clear of the fastest hull — still able to run one down and take station,
+     *  but on the same order as the ships it is hunting. */
+    speed: 42,
     /** Acceleration limit (units/s²) and turn-rate limit (radians/s).
      *
      *  These two are what make a boat read as a BOAT. The old model set the
@@ -430,16 +457,23 @@ export const COMBAT = {
    *  pointed at one. The answers are counter-battery suppression and simply not
    *  sailing where the guns reach.
    *
-   *  RANGE IS THE WHOLE DESIGN. The lanes sit 270 / 450 / 630 from the hostile
+   *  RANGE IS THE WHOLE DESIGN. The lanes sit 640 / 890 / 1140 from the hostile
    *  shore, so a coastal gun reaches only the near lane and ranging artillery
    *  only the near two. Lane choice is therefore a real decision rather than a
    *  cosmetic one, and it is also where the T2 nearest-to-shore doctrine this
-   *  branch grants comes from — the gun's reach IS the doctrine. */
+   *  branch grants comes from — the gun's reach IS the doctrine.
+   *
+   *  RE-DERIVED when the strait was doubled. These are not scaled numbers, they
+   *  are the ladder rebuilt against the new lane offsets: every one has to sit
+   *  in the gap between two lanes, and the gaps moved. Scaling them by 2 would
+   *  have been close enough to look right and wrong at the edges, which for a
+   *  branch whose entire identity is reach is the one thing that must not
+   *  happen. */
   artillery: {
     /** Direct fire: fast enough that a shell cannot be outrun, slow enough to
      *  read as a tracer crossing the water. */
     shellSpeed: 430,
-    range: { coastalGun: 330, ranging: 520, rollingBarrage: 330 },
+    range: { coastalGun: 760, ranging: 1010, rollingBarrage: 760 },
     /** Per the design's times-to-sink on a 100hp hull: ~6 coastal hits, ~4
      *  ranging hits. A barrage fires coastal-weight shells in bulk.
      *
@@ -529,6 +563,17 @@ export const COMBAT = {
    *  safe — the enemy won't fire on a hull about to score (a missile could
    *  never arrive in time), so misses aren't wasted chasing delivered ships. */
   deliverSafeMargin: 90,
+  /** How far from the delivery line a hull has to be before an ATTACK BOAT
+   *  will commit to it.
+   *
+   *  Much deeper than deliverSafeMargin, and for a different reason. A missile
+   *  is discounted from chasing a nearly-home ship because it could not arrive
+   *  in time; a boat has to sail there, take station and then work the hull
+   *  over several bursts, so it needs far more of the map left to do it in.
+   *  Without this the boats chased the leaders — the hulls closest to scoring
+   *  and therefore usually the ones nearest the front of the convoy — and
+   *  followed them clean off the end of the map for nothing. */
+  boatCommitMargin: 520,
   /** Enemy target-selection skill ramp: skill = clamp((round - start)/span).
    *  Skill 0 = near-random (value-weighted only); skill 1 = heavily favors
    *  closer and lower-health ships. */
@@ -613,6 +658,12 @@ export const COMBAT = {
     /** Distance beyond the map edge the jet enters from and exits to, so both
      *  the run-in and the turn happen off screen. */
     offMapMargin: 220,
+    /** How far past the end of the run the jet carries on before reversing for
+     *  the return pass. Deliberately longer than the run-in margin above: at
+     *  the same distance the reversal came round so fast it read as the
+     *  aircraft bouncing off something just out of frame rather than flying a
+     *  circuit. The wait is the turn. */
+    turnMargin: 440,
     /** Shortest run-in line that counts as a gun run. Two points on top of one
      *  another give the cone no direction to point along, so a stray tap can
      *  never burn a sortie on a zero-length run. */
@@ -633,8 +684,8 @@ export const COMBAT = {
      *  the damage lands the instant the burst is fired. */
     burstSeconds: 0.32,
     /** Water band the station center must sit inside (off both shores/launchers). */
-    waterYMin: 150,
-    waterYMax: 860,
+    waterYMin: 320,
+    waterYMax: 1690,
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
    *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
@@ -735,6 +786,12 @@ export const ECONOMY = {
    *  scan pulse charts one lane, which is cheaper and more situational. */
   warthogSortieCost: 95,
   scanPulseCost: 55,
+  /** Per-use cost of a defensive smoke canister, on the same footing as the
+   *  sortie and the pulse above and for the same reason: an ability that
+   *  refilled for free was a question about timing and never about cost. Priced
+   *  between them — a cloud protects a cluster of hulls for a while, which is
+   *  worth more than charting one lane and less than two gun passes. */
+  smokeCanisterCost: 70,
   smokeUnlockCost: 160,
   hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */
@@ -1059,13 +1116,19 @@ export const EVOLUTION = {
   missileCountCap: 46,
   volleySatDivisor: 24,
   windowStartT: 6,
-  /** Extra seconds after the last ship enters, so fire covers it crossing. */
-  windowTailT: 60,
+  /** Extra seconds after the last ship enters, so fire covers it crossing.
+   *
+   *  RAISED with the strait. The crossing itself went from about 90 seconds to
+   *  about 180 when the map doubled, and this tail did not — so a round's fire
+   *  finished while the back half of the convoy was still in open water, and
+   *  the last stretch of every transit went silent. Measured before the change,
+   *  118 seconds of nothing at all with four or more hulls still at sea. */
+  windowTailT: 150,
   /** Stretch of hostile shore the enemy emplaces artillery along. Kept clear of
    *  the convoy's entry so the first guns are something the player sails toward
    *  and can route around, not an ambush at the start line. */
-  gunFieldStartX: 620,
-  gunFieldEndX: 1620,
+  gunFieldStartX: 1240,
+  gunFieldEndX: 3240,
   /** Hard ceiling on the spacing between missile volleys (seconds): fire is
    *  split into enough volleys that no gap in the schedule exceeds this, even
    *  when the volley size is large. Keeps the strait from going quiet. */

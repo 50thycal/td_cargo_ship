@@ -1540,7 +1540,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'smokeScreen.base',
         name: 'Base Defensive Smoke',
-        desc: 'Enemy attacks against ships inside the cloud fall back to cruder targeting.',
+        desc: 'Enemy attacks against ships inside the cloud fall back to cruder targeting. Canisters are bought in preparation; this is stowage for two at a time.',
         cost: 40,
         grant: { charges: 2 },
       },
@@ -1563,8 +1563,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'smokeScreen.extraCharge',
-        name: 'Additional Charge',
-        desc: 'Two charges become three.',
+        name: 'Additional Stowage',
+        desc: 'Stowage for three canisters instead of two.',
         cost: 40,
         noChain: true,
         kind: 'mode',

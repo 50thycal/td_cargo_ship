@@ -131,6 +131,7 @@ export function newRegionalRun(
     pdAmmo: start.pdAmmo,
     warthogStock: 0,
     scanStock: 0,
+    smokeStock: 0,
     warthogUnlocked: false,
     scanUnlocked: false,
     sonarUnlocked: false,
@@ -263,6 +264,7 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     // aircraft commissioned and nothing to fly.
     c.warthogStock = 999;
     c.scanStock = 999;
+    c.smokeStock = 999;
     c.bases = ECONOMY.maxBases;
     c.capacity = CAMPAIGN.maxCapacity;
     const devLoadouts: EscortModuleId[][] = [
@@ -362,6 +364,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // hands the transit 99 of each without the campaign having bought them.
   c.warthogStock = Math.max(0, Math.min(c.warthogStock, t.warthogCharges));
   c.scanStock = Math.max(0, Math.min(c.scanStock, t.scanCharges));
+  c.smokeStock = Math.max(0, Math.min(c.smokeStock, t.smokeCharges));
   c.formation = t.formation; // tactical formation changes persist as the new default
   c.autoFire = { ...t.autoFire }; // in-transit automation toggles persist
 
@@ -1263,6 +1266,25 @@ export function scanCapacity(c: CampaignState): number {
   return resolveBranchStats('scanPulse', researchSet(c)).grants.charges ?? 0;
 }
 
+export function smokeCapacity(c: CampaignState): number {
+  return resolveBranchStats('smokeScreen', researchSet(c)).grants.charges ?? 0;
+}
+
+export function smokeCanisterBlockReason(c: CampaignState): string | null {
+  if (!c.smokeUnlocked) return 'Commission the smoke stores first';
+  if (c.smokeStock >= smokeCapacity(c)) return 'Stowage full';
+  if (c.cash < ECONOMY.smokeCanisterCost) return 'Not enough cash';
+  return null;
+}
+
+export function buySmokeCanister(c: CampaignState): boolean {
+  if (smokeCanisterBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.smokeCanisterCost;
+  c.smokeStock++;
+  recordSpend(c, 'smokeScreen', ECONOMY.smokeCanisterCost);
+  return true;
+}
+
 export function warthogSortieBlockReason(c: CampaignState): string | null {
   if (!c.warthogUnlocked) return 'Commission the A-10 flight first';
   if (c.warthogStock >= warthogCapacity(c)) return 'Apron full';
@@ -1317,6 +1339,7 @@ export function unlockSmoke(c: CampaignState): boolean {
   if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.smoke)) return false;
   c.cash -= ECONOMY.smokeUnlockCost;
   c.smokeUnlocked = true;
+  c.smokeStock = Math.max(c.smokeStock, 1);
   recordSpend(c, 'smokeScreen', ECONOMY.smokeUnlockCost);
   return true;
 }

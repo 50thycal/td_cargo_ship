@@ -242,7 +242,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   const warthogCharges = god ? 99 : campaign.warthogUnlocked ? campaign.warthogStock : 0;
   const scanCharges = god ? 99 : campaign.scanUnlocked ? campaign.scanStock : 0;
   const sonarCharges = god ? 99 : campaign.sonarUnlocked ? effects.abilities.sonar.charges : 0;
-  const smokeCharges = god ? 99 : campaign.smokeUnlocked ? effects.abilities.smoke.charges : 0;
+  const smokeCharges = god ? 99 : campaign.smokeUnlocked ? campaign.smokeStock : 0;
   const rebootCharges = god ? 99 : campaign.hardenedUnlocked ? effects.hardened.rebootCharges : 0;
 
   const state: TransitState = {
@@ -609,6 +609,23 @@ function activeShips(t: TransitState): Ship[] {
  *  scored. A hull within deliverSafeMargin of the line will cross before any
  *  missile could reach it, so targeting it just wastes a missile on a delivered
  *  ship — the enemy skips it. */
+/** The escort a boat would go for when the merchants are out of reach: the
+ *  nearest living one. Boats only ever reach this once nothing in the convoy is
+ *  worth committing to, so there is no need to rank the screen by value. */
+function nearestEngageableEscort(t: TransitState, boat: Threat): Escort | null {
+  let best: Escort | null = null;
+  let bestD = Infinity;
+  for (const e of t.escorts) {
+    if (!e.alive) continue;
+    const d = dist(boat.x, boat.y, e.x, e.y);
+    if (d < bestD) {
+      bestD = d;
+      best = e;
+    }
+  }
+  return best;
+}
+
 function targetableShips(t: TransitState): Ship[] {
   const cutoff = WORLD.deliverX - COMBAT.deliverSafeMargin;
   return t.ships.filter((s) => isActive(s) && s.x < cutoff);
@@ -1388,7 +1405,8 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         // four leg-lengths of margin plus two of the line itself.
         t.warthogActiveUntil =
           t.time +
-          (runLen * 2 + COMBAT.warthog.offMapMargin * 4) / COMBAT.warthog.planeSpeed;
+          (runLen * 2 + COMBAT.warthog.offMapMargin * 2 + COMBAT.warthog.turnMargin * 2) /
+            COMBAT.warthog.planeSpeed;
         t.warthogCenterX = (px + bx) / 2;
         t.warthogCenterY = (py + by) / 2;
         // The jet rolls in from beyond the near end of the line, already
@@ -1806,7 +1824,7 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
       ac.x += ux * step;
       ac.y += uy * step;
       const pastEnd = (ac.x - toX) * ux + (ac.y - toY) * uy;
-      if (ac.pass < 1 && pastEnd >= COMBAT.warthog.offMapMargin) {
+      if (ac.pass < 1 && pastEnd >= COMBAT.warthog.turnMargin) {
         // Round we come: same line, other direction, gun reloaded for one more
         // engagement. No reposition — the jet simply reverses where it is, off
         // the edge of the world.
@@ -1843,7 +1861,7 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
   t.aircraft = t.aircraft.filter((ac) => {
     if (ac.role === 'scan') return ac.x <= WORLD.width + 80;
     if (ac.pass < 1 || ac.phase !== 'departing') return true;
-    const m = COMBAT.warthog.offMapMargin;
+    const m = COMBAT.warthog.turnMargin + 40;
     return (
       ac.x > -m && ac.x < WORLD.width + m && ac.y > -m && ac.y < WORLD.height + m
     );
@@ -2251,26 +2269,78 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     }
     if (!target) {
       const canCommit = t.time >= (boat.retargetAt ?? 0);
-      const candidates = canCommit ? targetableShips(t) : [];
+      // Only hulls with enough of the strait left to be worked over. A boat
+      // that commits to a leader spends the whole round chasing a ship that
+      // scores anyway, and follows it off the end of the map doing it.
+      const candidates = canCommit
+        ? targetableShips(t).filter((s) => s.x < WORLD.deliverX - COMBAT.boatCommitMargin)
+        : [];
       if (candidates.length === 0) {
-        // Nothing to hunt (or still in the post-kill pause): coast forward and
-        // bleed speed rather than freezing mid-water.
-        steerBoat(t, boat, boat.x + Math.cos(boat.heading) * 200, boat.y + Math.sin(boat.heading) * 200, fx.speed * 0.45, dt);
+        // No hull worth hunting. Before coasting, look for an ESCORT: the
+        // screen is a legitimate target in its own right, and going for it is
+        // what a real flotilla does when the merchants are out of reach. It
+        // also stops boats milling about doing nothing for the back half of a
+        // round the player is winning.
+        const escort = canCommit ? nearestEngageableEscort(t, boat) : null;
+        if (escort) {
+          boat.targetEscortId = escort.id;
+          boat.stationAngle = rng.range(0, Math.PI * 2);
+        } else {
+          // Nothing to hunt (or still in the post-kill pause): coast forward and
+          // bleed speed rather than freezing mid-water.
+          steerBoat(t, boat, boat.x + Math.cos(boat.heading) * 200, boat.y + Math.sin(boat.heading) * 200, fx.speed * 0.45, dt);
+          continue;
+        }
+      } else {
+        // Boarding boats hunt the prize — that is the T4 doctrine they grant.
+        // Everything else works from the BACK of the convoy forward: the hull
+        // with the most water still to cross is the one a boat has time to
+        // finish, and starting at the tail keeps the fight where the player can
+        // still do something about it.
+        const pick =
+          variant === 'boarding'
+            ? candidates.reduce((best, s) =>
+                SHIP_CLASSES[s.classId].value > SHIP_CLASSES[best.classId].value ? s : best,
+              )
+            : candidates.reduce((best, s) => (s.x < best.x ? s : best));
+        boat.targetEscortId = undefined;
+        boat.targetShipId = pick.id;
+        boat.stationAngle = assignStation(t, boat, pick);
+        target = pick;
+      }
+    }
+    // --- Working an escort --------------------------------------------------
+    // A boat with no merchant worth chasing goes for the screen instead. Same
+    // shape as the hull case — hold a ring, shoot from it — but kept separate
+    // because everything below is about a CONVOY hull: boarding parties,
+    // station sharing between boats on one ship, give-way, delivery.
+    if (target === undefined && boat.targetEscortId !== undefined) {
+      const esc = t.escorts.find((e) => e.id === boat.targetEscortId && e.alive);
+      if (!esc) {
+        boat.targetEscortId = undefined;
+        boat.stationAngle = undefined;
         continue;
       }
-      // Boarding boats hunt the prize — that is the T4 doctrine they grant.
-      const pick =
-        variant === 'boarding'
-          ? candidates.reduce((best, s) =>
-              SHIP_CLASSES[s.classId].value > SHIP_CLASSES[best.classId].value ? s : best,
-            )
-          : candidates.reduce((best, s) =>
-              dist(boat.x, boat.y, s.x, s.y) < dist(boat.x, boat.y, best.x, best.y) ? s : best,
-            );
-      boat.targetShipId = pick.id;
-      boat.stationAngle = assignStation(t, boat, pick);
-      target = pick;
+      const standoff = fx.standoff[variant] ?? fx.standoff.smallArms;
+      const ang = boat.stationAngle ?? 0;
+      steerBoat(
+        t,
+        boat,
+        esc.x + Math.cos(ang) * standoff,
+        esc.y + Math.sin(ang) * standoff,
+        fx.speed,
+        dt,
+      );
+      const weaponE = fx.fire[variant];
+      const inRange = dist(boat.x, boat.y, esc.x, esc.y) <= standoff * 1.35;
+      if (weaponE && inRange && (boat.fireCooldown ?? 0) <= 0) {
+        boat.fireCooldown = weaponE.interval;
+        fireBoatRound(t, boat, { ...esc, heading: 0, speed: 0 }, variant, weaponE, rng);
+      }
+      continue;
     }
+    if (target === undefined) continue;
+
     if (boat.stationAngle === undefined) boat.stationAngle = assignStation(t, boat, target);
 
     // --- Station keeping ----------------------------------------------------
@@ -2416,7 +2486,9 @@ function steerBoat(
 function fireBoatRound(
   t: TransitState,
   boat: Threat,
-  target: Ship,
+  /** Anything with a position and a course — a merchant or an escort. The round
+   *  damages whatever it actually strikes, so this is only the aim point. */
+  target: { id: number; x: number; y: number; heading: number; speed: number },
   variant: BoatVariant,
   weapon: { interval: number; damage: number; speed: number; spread: number; size: number },
   rng: RNG,
@@ -2464,6 +2536,23 @@ function updateBoatShots(t: TransitState, rng: RNG, dt: number): void {
       if (dist(shot.x, shot.y, ship.x, ship.y) <= radius) {
         struck = ship;
         break;
+      }
+    }
+    if (!struck) {
+      // Escorts are struck by the same rounds. Checked after the merchants so a
+      // shot passing through the screen at a hull behind it still favours the
+      // hull it was aimed at.
+      const hitEscort = t.escorts.find(
+        (e) =>
+          e.alive &&
+          dist(shot.x, shot.y, e.x, e.y) <=
+            COMBAT.attackBoat.projectileHitRadius + COMBAT.escort.hitRadius * 0.5,
+      );
+      if (hitEscort) {
+        shot.alive = false;
+        t.stats.boatRoundsHit++;
+        damageEscort(t, hitEscort, shot.damage, boatCause(shot.variant));
+        continue;
       }
     }
     if (struck) {
@@ -3748,8 +3837,23 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // close ahead — a hull already half a beam off needs less.
         const centrality = 1 - Math.min(1, Math.abs(passLat) / Math.max(1, passBand));
         const gain = urgency * (0.35 + 0.65 * centrality);
-        avx += -fy * escort.passSide * gain;
-        avy += fx * escort.passSide * gain;
+        // Push perpendicular to the BEARING TO THE HULL, not to the escort's
+        // own heading.
+        //
+        // Heading-relative was a feedback loop: the avoidance direction is
+        // perpendicular to where the ship is pointing, so every degree of
+        // rudder it caused swung the push itself, which called for more rudder.
+        // With a merchant manoeuvring alongside it went unstable and the escort
+        // slammed stop to stop — measured, 30 reversals at the full turn-rate
+        // cap across one crossing, with the committed hull and passing side
+        // both perfectly steady the whole time. The bearing to a hull changes
+        // slowly and is not something the rudder can chase, so the loop is
+        // broken at the source rather than damped afterwards.
+        const bdx = passShip.x - escort.x;
+        const bdy = passShip.y - escort.y;
+        const bd = Math.hypot(bdx, bdy) || 1;
+        avx += (-bdy / bd) * escort.passSide * gain;
+        avy += (bdx / bd) * escort.passSide * gain;
       }
 
       const rawX =

@@ -268,7 +268,7 @@ describe('enemy evolution', () => {
     expect(plan.debuts).toContain('mine');
     // First field targets the default (center) lane so the beat lands.
     for (const mine of plan.mines) {
-      expect(Math.abs(mine.y - 520)).toBeLessThanOrEqual(75);
+      expect(Math.abs(mine.y - WORLD.lanes[1])).toBeLessThanOrEqual(75);
     }
   });
 

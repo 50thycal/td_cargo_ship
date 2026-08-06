@@ -44,7 +44,7 @@ export class Camera {
     private readonly world: CameraBounds,
     private readonly viewport: CameraViewport,
   ) {
-    this.zoom = this.fitZoom();
+    this.zoom = this.minZoom();
     this.targetZoom = this.zoom;
     this.x = world.width / 2;
     this.y = world.height / 2;
@@ -52,20 +52,37 @@ export class Camera {
     this.targetY = this.y;
   }
 
-  /** The zoom at which the whole world is visible — also the minimum, so the
-   *  player can never pan off into empty space around the map. */
+  /** The zoom at which the whole world would be visible. Kept as the reference
+   *  for detailScale below — it is the "one world, one screen" baseline that
+   *  every hard-coded pixel size is expressed against — but it is NO LONGER the
+   *  minimum the player can reach. */
   fitZoom(): number {
     return Math.min(this.viewport.width / this.world.width, this.viewport.height / this.world.height);
   }
 
+  /** How much of the world the player can see at the widest.
+   *
+   *  Deliberately closer in than fitZoom. A floor at fit means the map is
+   *  always entirely on screen, which is the same as having no map to pan
+   *  around: the strait was doubled in size precisely so that the fight has
+   *  somewhere to happen that the player has to LOOK for. At 2 the widest view
+   *  is about half the strait's width, which is roughly the apparent scale the
+   *  old 2000-wide world had — so ships stay the size they always were and the
+   *  extra water is extra water, not everything drawn smaller. */
+  private static readonly MIN_ZOOM_OVER_FIT = 2;
+
+  minZoom(): number {
+    return this.fitZoom() * Camera.MIN_ZOOM_OVER_FIT;
+  }
+
   maxZoom(): number {
-    return this.fitZoom() * 4;
+    return this.minZoom() * 4;
   }
 
   /** True when the camera is showing everything — used by the HUD to label the
    *  zoom control honestly rather than guessing. */
   isFitted(): boolean {
-    return this.zoom <= this.fitZoom() + 1e-4;
+    return this.zoom <= this.minZoom() + 1e-4;
   }
 
   /** How much bigger than the fitted view the camera currently is: 1 when the
@@ -125,7 +142,7 @@ export class Camera {
    *  and pinch zoom feel like the map is being handled rather than resized. */
   zoomBy(factor: number, anchorX: number, anchorY: number): void {
     const before = this.targetZoom;
-    const next = clamp(before * factor, this.fitZoom(), this.maxZoom());
+    const next = clamp(before * factor, this.minZoom(), this.maxZoom());
     if (next === before) return;
     // Solve for the centre that keeps the anchor's world point stationary.
     const worldAnchorX = (anchorX - this.viewport.width / 2) / before + this.targetX;
@@ -169,9 +186,9 @@ export class Camera {
     this.centreOn(wx, wy);
   }
 
-  /** Snap all the way back out to the whole-world view. */
+  /** Snap all the way back out to the widest view the player is allowed. */
   resetToFit(): void {
-    this.targetZoom = this.fitZoom();
+    this.targetZoom = this.minZoom();
     this.targetX = this.world.width / 2;
     this.targetY = this.world.height / 2;
     this.following = null;

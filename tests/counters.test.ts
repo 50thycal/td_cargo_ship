@@ -786,6 +786,7 @@ describe('touch-input contract', () => {
     const { state, rng } = quietTransit((c) => {
       c.sonarUnlocked = true;
       c.smokeUnlocked = true;
+      c.smokeStock = 1; // canisters are bought now, not refilled each round
       c.completedResearch = ['activeSonar.base', 'smokeScreen.base'];
     });
     step(state, rng, [
