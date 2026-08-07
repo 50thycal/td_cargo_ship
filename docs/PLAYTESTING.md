@@ -11,6 +11,14 @@ The headless runner exists for the first. It cannot tell you whether a screen is
 confusing or a fight is fun — it has no eyes and no taste. Do not use it to
 answer UX questions.
 
+There is a third question underneath both, and it is the one that decays
+silently: **is the sweep measuring the same game the playtester is playing?**
+Every number below is conditional on the bots exercising the same systems a
+human does, and that stops being true the moment a mechanic is added to the game
+and not to the personas. `npm run fidelity` measures that gap against a
+hand-played log — see [`PLAYTEST_FIDELITY.md`](./PLAYTEST_FIDELITY.md). Check it
+before trusting a sweep number that a human session disagrees with.
+
 ## Running it
 
 ```bash
@@ -121,3 +129,22 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
 - **Bots are heuristics.** They do not learn, do not read the AAR, and will not
   find the clever line a human would. Treat persona scores as a comparison
   *between builds under a fixed policy*, not as a skill ceiling.
+- **The sweep runs the dev proving ground, not a shipping region.** `newCampaign`
+  resolves to `openSeas`: all seven branches, no free starting escort, no
+  completion watermark, no Commander Abilities. A real run is `pirateNarrows`
+  (three branches, one escort, completion at round 10) or `homeStrait` (two).
+  The wider roster splits the same budget more ways, so branches debut later and
+  weaker than a player meets them — measured: **zero boarding attempts in 524
+  bot rounds** against six captures in a single hand-played round.
+- **The recovery loop is not exercised.** No persona issues `moveEscort`, so the
+  bots recover ~0.2% of wreckage against a human's ~80%. Recovered wreckage is
+  what widens the technology draft from two options to three, so the sweep
+  converges on a **narrower tree** than a player climbs (one 3-option draft in
+  556). Any conclusion about counter value or draft pacing inherits this.
+- **The bots waste no interceptors.** `decideCommands` filters on
+  `claimedByInterceptor`, so duplicate shots are 0% against a measured 17.7% for
+  a human. The sweep's ammunition economy is roughly a fifth cheaper than a real
+  player's — price ammunition with that in mind.
+
+Every item in the last three bullets is a **measured** fidelity gap, tracked with
+its triage bucket in [`PLAYTEST_FIDELITY.md`](./PLAYTEST_FIDELITY.md).

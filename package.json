@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "e2e": "node e2e/smoke.mjs",
     "playtest": "vite-node tools/playtest/run.ts --",
-    "ablate": "vite-node tools/playtest/ablate.ts --"
+    "ablate": "vite-node tools/playtest/ablate.ts --",
+    "fidelity": "vite-node tools/playtest/fidelity.ts --"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",
