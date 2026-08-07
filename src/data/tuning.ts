@@ -1045,6 +1045,13 @@ export const DRAFT = {
   /** Weight multiplier on remaining same-branch entries after one is drawn,
    *  so a draft leans toward offering distinct branches. */
   sameBranchRepeatMult: 0.35,
+  /** How sub-linearly a branch banks the pressure of the several enemy
+   *  families it claims to counter: summed pressure ÷ liveFamilies^this.
+   *  0 = full credit for every family (the old compounding behaviour),
+   *  1 = pure average. 0.5 keeps breadth worth something without letting a
+   *  branch that splits one sortie between two threats outbid the specialist
+   *  that removes one of them. */
+  breadthDampingExponent: 0.5,
 
   // --- Threat-pressure weighting -------------------------------------------
   /** Weight added per round a countered branch has been ENCOUNTERED. */
@@ -1061,33 +1068,59 @@ export const DRAFT = {
    *  that has stopped appearing is not urgent. */
   pressureMemoryRounds: 4,
   /** Multiplier applied to an entry whose branch answers a threat the player
-   *  has NO counter for yet. This is where "you are being hurt by something
-   *  you cannot answer" turns into offers. */
-  unansweredMult: 2.4,
-  /** Multiplier applied to a branch's ENTRY node specifically while the
-   *  player lacks any counter to the family it answers — the basic counter
-   *  should surface before its upgrades. */
+   *  is not actually stopping. Scaled by the COVERAGE GAP (1 - coverage), so a
+   *  wide-open threat gets the full multiplier, a mostly-handled one gets
+   *  almost none, and the two ends are joined by a smooth line rather than the
+   *  boolean cliff that used to declare a threat solved the moment any tech
+   *  nominally pointed at it. */
+  coverageGapMult: 2.4,
+  /** Multiplier applied to a branch's ENTRY node specifically, scaled by the
+   *  same gap — the basic counter should surface before its upgrades. */
   entryNodeMult: 1.8,
   /** Multiplier applied to an entry offered within the last `offerCooldown`
    *  drafts, so a declined option steps aside for something else. */
   recentlyOfferedMult: 0.3,
   offerCooldownRounds: 2,
 
-  // --- The pity rule -------------------------------------------------------
-  /** Rounds a threat must have appeared in before the pity rule may fire. */
-  pityMinEncounters: 2,
-  /** Drafts an entry-level counter for that threat must have been absent
-   *  from before the rule fires — so a player who was offered it and turned
-   *  it down is not handed it again immediately. */
-  pityOfferGraceRounds: 2,
-  /** Hard guarantee: once a threat has gone unanswered for this many rounds
-   *  past the minimum, an entry-level counter is FORCED into the draft. The
-   *  slack between pityMinEncounters and this is what keeps the rule from
-   *  making every draft predictable. */
-  pityForceAfterRounds: 1,
-  /** Most pity slots one draft may spend, so a forced option never fills the
-   *  whole table and the player always keeps a real choice. */
-  pityMaxPerDraft: 1,
+  // --- Coverage measurement ------------------------------------------------
+  /** Smoothing on the per-branch coverage ratio: how much of a round's
+   *  measurement replaces the running value. High enough that a bad round
+   *  registers immediately, low enough that one lucky transit does not read as
+   *  a solved threat. */
+  coverageSmoothing: 0.55,
+  /** Coverage at or above which a branch counts as genuinely handled — the
+   *  counter slot stops competing for it and its entries lose the gap bonus. */
+  coverageAnsweredAt: 0.8,
+  /** Coverage credited to a branch that fielded nothing measurable this round
+   *  while the player holds a real (attack/mitigate) counter for it. Keeps an
+   *  idle branch from reading as a crisis without declaring it solved. */
+  coverageIdleWithCounter: 0.6,
+  /** Credit for a mine that was REVEALED and steered around rather than
+   *  destroyed. The hull survived, so it is not nothing; the minefield is
+   *  still there, so it is not a sweep. */
+  coverageRevealCredit: 0.5,
+
+  // --- The counter slot ----------------------------------------------------
+  //  Replaces the old pity rule. Pity was a probabilistic backstop with a
+  //  narrow timing window and a boolean off-switch; the counter slot is
+  //  structural — one seat at every table belongs to the worst-covered live
+  //  threat, so a player can never again go a whole run without being shown an
+  //  answer to what is killing them.
+  /** Minimum coverage deficit (pressure × gap) before a family may claim the
+   *  counter slot. Below it the slot falls through to the open pool. */
+  counterSlotMinDeficit: 0.4,
+  /** Weight multiplier inside the counter slot for a branch that can actually
+   *  REMOVE the threat (role attack/mitigate) over one that only detects it.
+   *  Seeing a mine is not sweeping a mine. */
+  counterSlotAttackMult: 3,
+  /** Weight multiplier inside the counter slot for the entry node of a branch
+   *  the player has nothing from yet — a new tool beats a fifth upgrade to the
+   *  tool that is already failing. */
+  counterSlotNewBranchMult: 2.5,
+  /** Weight multiplier inside the counter slot for an entry shown in the last
+   *  `offerCooldownRounds` drafts. Softer than the open pool's: the guarantee
+   *  matters more than the variety. */
+  counterSlotRecentMult: 0.5,
 } as const;
 
 /** Commander progression: the permanent layer. PROVISIONAL numbers. */

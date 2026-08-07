@@ -1338,9 +1338,13 @@ export interface TechDraft {
   options: ResearchId[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
-  /** Enemy branches this draft was forced to answer by the pity rule, if any
-   *  — surfaced so the UI can say WHY an option is on the table. */
-  pityBranches?: string[];
+  /** The enemy branch the COUNTER SLOT was drawn to answer (absent when no
+   *  live threat was under-covered and the slot fell through to the open
+   *  pool) — surfaced so the UI can say WHY an option is on the table. */
+  counterFamily?: string;
+  /** Which offered id filled the counter slot, so the UI can badge exactly
+   *  that card rather than guessing from the family. */
+  counterOption?: ResearchId;
 }
 
 /** What one enemy branch has actually been doing to this run.
@@ -1359,6 +1363,28 @@ export interface ThreatPressure {
   kills: number;
   /** Last round it was seen (0 = never). */
   lastSeenRound: number;
+}
+
+/** How well the player is ACTUALLY handling one enemy branch, 0..1.
+ *
+ *  Owning a counter is not the same as answering a threat, and the difference
+ *  is what made the draft go wrong: one A-10 gun run per round against three
+ *  mines and two boats used to flip mines AND attack boats to "solved" —
+ *  because the old test was a boolean over the catalogue, not a measurement of
+ *  the water. Coverage is measured from what the round did: mines swept out of
+ *  mines laid, boats sunk out of boats launched, missiles intercepted out of
+ *  missiles fired. A branch that keeps killing hulls keeps a low coverage no
+ *  matter how much tech nominally points at it, and the draft keeps offering
+ *  answers for it. */
+export interface ThreatCoverage {
+  /** Smoothed neutralized fraction (0..1) — the number the draft weights on. */
+  ratio: number;
+  /** Units of this branch fielded against the run so far. */
+  fielded: number;
+  /** Units of it the player neutralized. */
+  neutralized: number;
+  /** Last round a measurement was taken (0 = never measured). */
+  lastMeasuredRound: number;
 }
 
 /** One draft's telemetry: what was offered and what the player took. */
@@ -1783,6 +1809,11 @@ export interface CampaignState {
    *  signal the draft weights against, so the technology on offer tracks the
    *  threats the player is really facing. */
   threatPressure: Record<string, ThreatPressure>;
+  /** How much of each enemy branch the player is actually neutralizing. The
+   *  draft weights on the GAP between pressure and coverage, so a threat that
+   *  keeps getting through keeps drawing offers even when the player already
+   *  owns something that nominally counters it. */
+  threatCoverage: Record<string, ThreatCoverage>;
   /** Round each technology was last OFFERED (whether or not it was taken), so
    *  the draft can avoid re-offering the same entry every round and the pity
    *  rule can tell "never offered" from "offered and declined". */

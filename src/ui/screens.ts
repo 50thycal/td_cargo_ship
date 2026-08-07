@@ -85,7 +85,12 @@ import {
   escortSlots,
   renameEscort,
 } from '../sim/campaign';
-import { draftOptionInfo, selectDraftOption, dismissEmptyDraft } from '../sim/draft';
+import {
+  draftEquipmentGrant,
+  draftOptionInfo,
+  selectDraftOption,
+  dismissEmptyDraft,
+} from '../sim/draft';
 import {
   loadoutBlockReason,
   setLoadout,
@@ -1023,7 +1028,14 @@ function effectRows(def: CounterNodeDef, current?: Record<string, StatTier>): HT
   return h('div', { className: 'effect-rows' }, rows);
 }
 
-function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
+function branchTagRow(
+  c: CampaignState,
+  branch: CounterBranchDef,
+  /** True when the option being rendered will FIT this branch's hardware for
+   *  free. The "buy in prep" tag would otherwise sit directly above a line
+   *  promising the same hardware at no cost, which reads as a contradiction. */
+  grantsEquipment = false,
+): HTMLElement {
   const tags = h('div', { className: 'chip-row branch-tags' }, [
     chip('anchor', PLATFORM_LABELS[branch.platform], 'Platform this branch belongs to'),
     chip('chevrons', ROLE_LABELS[branch.role], 'Whether it detects, attacks, mitigates or disrupts'),
@@ -1061,8 +1073,25 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
       fitted = eq.id === 'escort' ? c.escortUnits.length > 0 : c.bases > 0;
       label = 'built-in launcher';
     }
-    tags.append(chip(fitted ? 'check' : 'lock', fitted ? `${label} ✓` : `${label} — buy in prep`,
-      fitted ? 'Equipment installed' : 'Research is ready; the hardware must be bought in Preparation'));
+    if (fitted || grantsEquipment) {
+      tags.append(
+        chip(
+          'check',
+          grantsEquipment && !fitted ? `${label} — included` : `${label} ✓`,
+          grantsEquipment && !fitted
+            ? 'Drafting this fits one free unit; more are bought in Preparation'
+            : 'Equipment installed',
+        ),
+      );
+    } else {
+      tags.append(
+        chip(
+          'lock',
+          `${label} — buy in prep`,
+          'Research is ready; the hardware must be bought in Preparation',
+        ),
+      );
+    }
   }
   return tags;
 }
@@ -1118,6 +1147,10 @@ export function draftScreen(
     return root;
   }
 
+  const counterName = draft.counterFamily
+    ? (ENEMY_BRANCH_NAMES[draft.counterFamily as keyof typeof ENEMY_BRANCH_NAMES] ??
+      draft.counterFamily)
+    : null;
   body.append(
     h('div', { className: 'chip-row' }, [
       draft.recoveredUnits > 0
@@ -1127,6 +1160,16 @@ export function draftScreen(
             'Recovered wreckage widens the draft and aims it at the threats it came from',
           )
         : chip('crate', 'No salvage — base draft', 'Recovering wreckage widens future drafts'),
+      ...(counterName
+        ? [
+            chip(
+              'alert',
+              `Answering: ${counterName}`,
+              'One option always answers whatever is getting through to the convoy. ' +
+                'It stops appearing once you are actually stopping that threat.',
+            ),
+          ]
+        : []),
     ]),
   );
 
@@ -1177,7 +1220,19 @@ export function draftScreen(
     ];
     const effects = effectRows(def, resolveBranchStats(branch.id, researchedSet).tiers);
     if (effects) bits.push(effects);
-    bits.push(branchTagRow(c, branch));
+    // The hardware a pick brings with it. Said out loud on the card because it
+    // is the whole difference between drafting an answer and drafting the
+    // right to shop for one next phase.
+    const grant = draftEquipmentGrant(c, id);
+    bits.push(branchTagRow(c, branch, grant !== null));
+    if (grant) {
+      bits.push(
+        h('div', { className: 'grant-line' }, [
+          icon('check'),
+          h('span', { text: `Includes 1 × ${grant.name}, ${grant.placement} — free` }),
+        ]),
+      );
+    }
     bits.push(
       h('button', {
         className: 'primary',
@@ -1187,7 +1242,9 @@ export function draftScreen(
         },
       }),
     );
-    optionRow.append(h('div', { className: 'card draft-option' }, bits));
+    const classes = ['card', 'draft-option'];
+    if (id === draft.counterOption) classes.push('draft-counter');
+    optionRow.append(h('div', { className: classes.join(' ') }, bits));
   }
   body.append(optionRow, ownedTechSummary(c));
 
