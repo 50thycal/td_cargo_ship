@@ -246,14 +246,6 @@ export function tierMeter(tier: StatTier, invert = false): HTMLElement {
   return h('span', { className: 'meter', attrs: { role: 'img', 'aria-label': label } }, cells);
 }
 
-const TIER_LABELS: Record<StatTier, string> = {
-  low: 'Low',
-  medium: 'Med',
-  high: 'High',
-  extra: 'Extra',
-  max: 'Max',
-};
-
 /** Where a tier sits on the meter, accounting for magnitude-named domains
  *  (see STAT_TIERS) where a LOWER tier is the better one. */
 function litIndex(tier: StatTier, invert: boolean): number {
@@ -288,7 +280,14 @@ export function tierMeterDelta(
 
 /** A stat row for the draft: what the stat is now, and what taking this option
  *  would make it. `from` is undefined when the branch does not have the stat
- *  yet — this option introduces it. */
+ *  yet — this option introduces it.
+ *
+ *  The METER carries the whole message. There is deliberately no "High to
+ *  Extra" caption: naming the rungs asks the player to learn a five-word scale
+ *  and then translate it back into the picture that is already in front of
+ *  them, and the lit-versus-gained segments say the same thing without the
+ *  vocabulary. The tier names remain the internal representation; they are
+ *  simply not something the game says out loud. */
 export function statUpgradeRow(
   stat: string,
   from: StatTier | undefined,
@@ -299,10 +298,6 @@ export function statUpgradeRow(
     icon(meta.icon),
     h('span', { className: 'stat-meter-label', text: meta.label }),
     tierMeterDelta(from, to, meta.invert),
-    h('span', {
-      className: 'stat-delta',
-      text: from === undefined ? TIER_LABELS[to] : `${TIER_LABELS[from]} → ${TIER_LABELS[to]}`,
-    }),
   ]);
 }
 

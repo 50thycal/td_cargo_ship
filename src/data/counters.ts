@@ -364,7 +364,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       },
       {
         id: 'baseInterceptor.maxVelocity',
-        name: 'Maximum-Velocity Interceptor',
+        name: 'Boosted Interceptor',
         desc: 'Peak projectile speed.',
         cost: 70,
         requires: ['baseInterceptor.extendedBurn'],
@@ -1881,21 +1881,21 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       },
       {
         id: 'reinforcedHull.medium',
-        name: 'Medium Hull Reinforcement',
+        name: 'Reinforced Plating',
         desc: 'Upgrades the hull bonus.',
         cost: 35,
         set: [{ stat: 'bonus', tier: 'medium' }],
       },
       {
         id: 'reinforcedHull.high',
-        name: 'High Hull Reinforcement',
+        name: 'Heavy Plating',
         desc: 'Upgrades the hull bonus further.',
         cost: 50,
         set: [{ stat: 'bonus', tier: 'high' }],
       },
       {
         id: 'reinforcedHull.extra',
-        name: 'Extra Hull Reinforcement',
+        name: 'Armoured Belt',
         desc: 'Peak hull reinforcement.',
         cost: 70,
         set: [{ stat: 'bonus', tier: 'extra' }],
@@ -1941,7 +1941,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       },
       {
         id: 'fireSuppression.maxDamageControl',
-        name: 'Maximum Damage Control',
+        name: 'Total Damage Control',
         desc: 'The missile-hit damage-over-time effect is prevented entirely.',
         cost: 60,
         flags: ['immune'],
@@ -1965,21 +1965,21 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     nodes: [
       {
         id: 'compartmentalization.low',
-        name: 'Low Damage Reduction',
+        name: 'Compartment Bracing',
         desc: 'Equipped ships take reduced damage.',
         cost: 30,
         set: [{ stat: 'reduction', tier: 'low' }],
       },
       {
         id: 'compartmentalization.medium',
-        name: 'Medium Damage Reduction',
+        name: 'Blast Shielding',
         desc: 'Upgrades the damage reduction.',
         cost: 45,
         set: [{ stat: 'reduction', tier: 'medium' }],
       },
       {
         id: 'compartmentalization.high',
-        name: 'High Damage Reduction',
+        name: 'Armoured Bulkheads',
         desc: 'Upgrades the damage reduction further.',
         cost: 65,
         set: [{ stat: 'reduction', tier: 'high' }],

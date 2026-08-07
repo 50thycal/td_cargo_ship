@@ -220,6 +220,42 @@ function progressBar(fraction: number, tone: '' | 'good' | 'warn' | 'bad' = ''):
   return bar;
 }
 
+/** A progress bar carrying a second, lighter segment stacked on the first: what
+ *  is already banked, and what the convoy currently assigned would add on top
+ *  of it. Both are fractions of the same total, and the projection is drawn
+ *  from where the earned segment ends. */
+function projectionBar(
+  earnedFraction: number,
+  projectedFraction: number,
+  tone: '' | 'good' | 'warn' | 'bad' = '',
+): HTMLElement {
+  const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+  const earned = clamp01(earnedFraction);
+  // The projection can only fill what is left of the bar, however big the
+  // convoy is — overshooting the quota should read as "clears it", not as a
+  // segment hanging off the end.
+  const projected = Math.min(clamp01(projectedFraction), 1 - earned);
+  const fill = h('div', { className: `fill ${tone}`.trim() });
+  const proj = h('div', { className: 'fill projected' });
+  const bar = h('div', { className: 'bar' }, [fill, proj]);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.width = `${earned * 100}%`;
+    proj.style.left = `${earned * 100}%`;
+    proj.style.width = `${projected * 100}%`;
+  }));
+  return bar;
+}
+
+/** Cargo points the currently assigned convoy is worth if every hull arrives.
+ *  This is the same arithmetic resolveTransit does — value delivered IS quota
+ *  progress — so the bar cannot drift from what the round will actually pay. */
+function projectedQuotaPoints(c: CampaignState): number {
+  return (Object.keys(SHIP_CLASSES) as ShipClassId[]).reduce(
+    (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+    0,
+  );
+}
+
 function chip(iconName: IconName, text: string, title = ''): HTMLElement {
   const el = h('span', { className: 'chip' }, [icon(iconName), h('span', { text })]);
   if (title) el.title = title;
@@ -1284,10 +1320,19 @@ export function prepScreen(
             : h('span'),
           h('span', { className: 'brief-num', text: `${c.quota.pointsEarned}/${c.quota.pointsNeeded}` }),
         ]),
-        progressBar(
+        projectionBar(
           c.quota.pointsNeeded > 0 ? c.quota.pointsEarned / c.quota.pointsNeeded : 0,
+          c.quota.pointsNeeded > 0 ? projectedQuotaPoints(c) / c.quota.pointsNeeded : 0,
           qs.met ? 'good' : 'warn',
         ),
+        // A stacked bar is only readable if the second colour is named, so the
+        // legend is part of the control rather than something to infer.
+        h('div', { className: 'bar-legend' }, [
+          h('span', { className: 'key earned' }),
+          h('span', { text: 'banked' }),
+          h('span', { className: 'key projected' }),
+          h('span', { text: `this convoy +${projectedQuotaPoints(c)}` }),
+        ]),
         h('div', { className: 'hint', text: qs.text }),
       ]),
     ]);
