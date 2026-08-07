@@ -487,6 +487,21 @@ button.ghost {
 .draft-option > button { margin-top: auto; }
 .draft-option .effect-rows { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* The counter slot: one card on every table answers whatever is actually
+   getting through. Marked so the player can tell at a glance which option is
+   the reply to their losses and which is the free development pick. */
+.draft-option.draft-counter { border-left-color: var(--bad); }
+
+/* Hardware that arrives with the technology, not after another purchase. */
+.grant-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--good);
+}
+.grant-line .icon { width: 14px; height: 14px; flex: none; }
+
 /* The draft is a READ-AND-CHOOSE screen: both options and the pick buttons have
    to be on screen together, or the player is comparing from memory while
    scrolling. Everything below tightens the option card enough for two of them

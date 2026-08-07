@@ -27,8 +27,10 @@ passes) — and when
 you destroy an enemy weapon, hold an escort inside the wreckage it leaves to
 recover it; do the same for the crews of lost ships before the water takes
 them. After each round, read the after-action report and take exactly one
-technology from the mandatory draft (recovered wreckage widens and steers it),
-then spend cash on modules/escorts/repairs and sail again. Keep confidence
+technology from the mandatory draft — one option on every table answers
+whatever is actually getting through to your convoy, and a pick that unlocks
+hardware arrives with one free unit of it fitted — then spend cash on
+modules/escorts/repairs and sail again. Keep confidence
 above zero and the shipping quota met: either failure ends the regional run at
 round 1 of the same region. Survive to the region's completion round to secure
 it, unlock the next one, and earn Commander XP — the only thing that outlives

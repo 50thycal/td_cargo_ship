@@ -266,6 +266,30 @@ The current player-counter catalogue should remain the source of technology prog
 
 The acquisition method changes; the underlying counter architecture remains valuable.
 
+### The Counter Slot
+
+One seat at every draft belongs to whatever is actually getting through to the convoy.
+
+- Each enemy branch carries a measured **coverage** score: the fraction of what it fielded that the player neutralized (mines swept out of mines laid, boats sunk out of boats launched, missiles intercepted out of missiles fired). Coverage is measured from the round, never inferred from the catalogue.
+- The branch with the worst **deficit** — how much it is hurting the run, times how much of it still gets through — claims the counter slot.
+- The slot is drawn from branches that answer that threat, preferring one that can remove it (role `attack`/`mitigate`) over one that only detects it, and preferring a capability the fleet does not have at all over another upgrade to one already in service and already failing.
+- The slot never takes more than one seat, so the rest of the table stays an open draw and the choice stays real.
+- It stands down when the threat stops appearing, or when the player starts genuinely stopping it — never because the player happens to own a piece of technology pointed in its direction.
+
+This replaces an earlier probabilistic "pity rule". That rule tested a boolean over the catalogue rather than measuring outcomes, so a branch that nominally countered two families (the A-10 answers mines *and* attack boats) marked both solved the moment any of its nodes was taken — permanently disabling the guarantee while the threats kept sinking hulls. A guarantee that one wrong pick can switch off is not a guarantee.
+
+Multi-family branches bank the pressure of the families they claim **sub-linearly**. One aircraft splitting a sortie between mines and boats is not a minesweeper plus a gun boat, and under a per-family product it priced itself above every specialist that actually removes one of them.
+
+### Hardware Arrives With The Technology
+
+A drafted node that unlocks equipment fits one free unit of that equipment immediately.
+
+- Applies only to the node the purchase gate names, and only while the player cannot field the thing yet. Upgrades grant nothing; a second free copy is never handed out.
+- Escort and shore-base fits land on a specific unit; a cargo-class fit lands on the class carrying the most value in the convoy.
+- Granted fits are recorded as costing zero, so unequipping refunds nothing and replacement hulls are not surcharged for them. A free fit that raises the price of every future hull is not free.
+
+Without this the draft asked the player to weigh an IOU with a round of delay (the *right to buy* a deck gun next phase) against an ability upgrade that applies to the very next transit — a second, independent reason specialist counters lost even when they were offered.
+
 ### Wreckage Influence
 
 Recovered wreckage affects both draft breadth and quality.

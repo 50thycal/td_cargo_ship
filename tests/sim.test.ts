@@ -463,6 +463,21 @@ describe('economy hardening', () => {
     expect(c.cash).toBe(before - (base + MODULES.selfDefense.costPerShip));
   });
 
+  it('a module the draft fitted for free does not tax every replacement hull', () => {
+    // The free fit that comes with a technology has to be actually free. Left
+    // in the surcharge it costs nothing once and then quietly raises the price
+    // of every hull the player replaces for the rest of the run — which, in a
+    // fleet that is losing ships, is worth far more than the module.
+    const c = newCampaign('hull-granted');
+    const base = SHIP_CLASSES.freighter.replaceCost;
+    c.classModules.freighter.push('selfDefense');
+    c.modulePaid.freighter.selfDefense = 0; // how a granted fit is recorded
+    expect(shipCost(c, 'freighter')).toBe(base);
+    // A module actually bought still surcharges, exactly as before.
+    c.modulePaid.freighter.selfDefense = 999;
+    expect(shipCost(c, 'freighter')).toBe(base + MODULES.selfDefense.costPerShip);
+  });
+
   it('unequipping a module refunds exactly what was paid and frees the slot', () => {
     const c = newCampaign('module-refund');
     c.cash = 5000;

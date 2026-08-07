@@ -29,6 +29,10 @@ export interface TelemetryExport {
   completedResearch: string[];
   /** Draft history: what every round offered and what was taken. */
   drafts: CampaignState['draftHistory'];
+  /** How much of each enemy branch the player was actually neutralizing by the
+   *  end of the run. This is what the draft's counter slot ranks on, so a log
+   *  that shows an unanswered threat can be read against the offers it drew. */
+  threatCoverage: Record<string, { ratio: number; fielded: number; neutralized: number }>;
   /** Recovery + rescue across the whole run. */
   recoveryTotals: {
     wreckageSpawned: number;
@@ -266,6 +270,16 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     escorts: c.escortUnits.length,
     completedResearch: [...c.completedResearch],
     drafts: c.draftHistory.map((d) => ({ ...d, offered: [...d.offered] })),
+    threatCoverage: Object.fromEntries(
+      Object.entries(c.threatCoverage ?? {}).map(([k, v]) => [
+        k,
+        {
+          ratio: Math.round(v.ratio * 1000) / 1000,
+          fielded: Math.round(v.fielded * 100) / 100,
+          neutralized: Math.round(v.neutralized * 100) / 100,
+        },
+      ]),
+    ),
     recoveryTotals,
     loadout: {
       classModules: {

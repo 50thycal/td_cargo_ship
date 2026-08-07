@@ -40,7 +40,7 @@ import { foldCommanderMods } from '../data/commanderAbilities';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
-import { generateDraft, newThreatPressure } from './draft';
+import { generateDraft, newThreatPressure, recordThreatCoverage } from './draft';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -111,6 +111,7 @@ export function newRegionalRun(
     pendingDraft: null,
     draftHistory: [],
     threatPressure: {},
+    threatCoverage: {},
     lastOfferedRound: {},
     wreckageRecovered: {},
     crewRescue: { rescued: 0, lost: 0 },
@@ -411,6 +412,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     p.streak = p.lastSeenRound === round - 1 ? p.streak + 1 : 1;
     p.lastSeenRound = round;
   }
+
+  // --- Threat coverage -----------------------------------------------------------
+  // Pressure says what hurt; coverage says how much of it the player actually
+  // stopped. The draft weights the GAP between the two, so a branch that keeps
+  // getting through keeps drawing offers no matter how much technology
+  // nominally points at it.
+  recordThreatCoverage(c, s, round);
 
   // --- Fleet bookkeeping -------------------------------------------------------
   for (const ship of t.ships) {
@@ -1174,7 +1182,17 @@ export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
  *  those modules too (per single ship, not the whole-fleet refit price). */
 export function shipCost(c: CampaignState, classId: ShipClassId): number {
   const modules = c.classModules[classId] ?? [];
-  const moduleSurcharge = modules.reduce((sum, m) => sum + MODULES[m].costPerShip, 0);
+  const paid = c.modulePaid[classId] ?? {};
+  const moduleSurcharge = modules.reduce((sum, m) => {
+    // A module the DRAFT fitted for free (recorded as paid 0) does not tax
+    // every replacement hull for the rest of the run. Without this the "free"
+    // fit is a trap: it costs nothing once and then quietly raises the price of
+    // every hull the player has to replace, which in a fleet that is losing
+    // ships is far more than the module was worth. `undefined` means bought
+    // before this record existed — still surcharged, as it always was.
+    if (paid[m] === 0) return sum;
+    return sum + MODULES[m].costPerShip;
+  }, 0);
   return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
 }
 
