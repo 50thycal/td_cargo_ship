@@ -21,13 +21,15 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   createRoundTransit,
-  newCampaign,
+  newRegionalRun,
   planCurrentRound,
   resolveTransit,
 } from '../../src/sim/campaign';
 import { stepTransit } from '../../src/sim/transit';
 import { buildTelemetryExport } from '../../src/sim/telemetry';
+import { REGIONS, REGION_ORDER, regionDef, type RegionDef } from '../../src/data/regions';
 import {
+  commanderLoadoutError,
   decideCommands,
   newTransitMemory,
   personaByName,
@@ -45,8 +47,11 @@ import type { CampaignState } from '../../src/sim/types';
 
 interface Options {
   seeds: number;
+  /** Max rounds. 0 = derive from the region's own completion watermark, which
+   *  is what a real run plays to. */
   rounds: number;
   personas: Persona[];
+  region: string;
   outDir: string;
   writeLogs: boolean;
 }
@@ -54,8 +59,20 @@ interface Options {
 function parseArgs(argv: string[]): Options {
   const opts: Options = {
     seeds: 8,
-    rounds: 15,
+    rounds: 0,
     personas: PERSONAS,
+    // The fullest SHIPPING region, not the dev proving ground.
+    //
+    // This default used to be `openSeas`, via `newCampaign`. That region is
+    // excluded from REGION_ORDER — no player can ever select it — and it fields
+    // all seven enemy branches, starts with no escort and has no completion
+    // watermark. Measured consequence: the same enemy budget split seven ways
+    // never reached the attack-boat nodes, so across 524 bot rounds there were
+    // ZERO boarding attempts, while a hand-played pirateNarrows run lost six
+    // hulls to boarding in a single round. The sweep was balancing a game
+    // nobody plays. Pass `--region openSeas` to get the old proving ground back
+    // deliberately.
+    region: 'pirateNarrows',
     outDir: 'playtest-out',
     writeLogs: true,
   };
@@ -69,6 +86,18 @@ function parseArgs(argv: string[]): Options {
       case '--rounds':
         opts.rounds = Math.max(1, parseInt(next(), 10) || opts.rounds);
         break;
+      case '--region': {
+        const id = next();
+        if (!REGIONS[id]) {
+          console.error(
+            `Unknown region "${id}". Available: ${Object.keys(REGIONS).join(', ')}` +
+              ` (shipping ladder: ${REGION_ORDER.join(' → ')})`,
+          );
+          process.exit(1);
+        }
+        opts.region = id;
+        break;
+      }
       case '--out':
         opts.outDir = next() || opts.outDir;
         break;
@@ -101,12 +130,14 @@ function parseArgs(argv: string[]): Options {
             'Straitwatch headless playtest runner',
             '',
             '  --seeds N       campaigns per persona (default 8)',
-            '  --rounds N      max rounds per campaign (default 15)',
+            '  --rounds N      max rounds per campaign (default: the region watermark)',
+            '  --region ID     region to fight in (default pirateNarrows)',
             '  --personas a,b  subset of personas to run',
             '  --out DIR       output directory (default playtest-out)',
             '  --no-logs       skip per-campaign JSON, summary only',
             '',
             `Personas: ${PERSONAS.map((p) => p.name).join(', ')}`,
+            `Regions:  ${Object.keys(REGIONS).join(', ')} (ladder: ${REGION_ORDER.join(' → ')})`,
           ].join('\n'),
         );
         process.exit(0);
@@ -127,19 +158,39 @@ interface CampaignResult {
   analysis: CampaignAnalysis;
 }
 
-/** Play one run to defeat or the round cap, following the real phase order:
- *  prep (procure) → transit → after-action (resolve) → technology draft. */
-function playCampaign(persona: Persona, seed: string, maxRounds: number): CampaignResult {
-  const c = newCampaign(seed);
+/** Play one run to defeat, region completion or the round cap, following the
+ *  real phase order: prep (procure) → transit → after-action (resolve) →
+ *  technology draft.
+ *
+ *  Uses `newRegionalRun` rather than `newCampaign`: the latter hard-codes the
+ *  `openSeas` dev proving ground, which is not a region any player can select
+ *  and which changes the enemy roster, the starting state and whether the run
+ *  has a win condition at all. */
+function playCampaign(
+  persona: Persona,
+  seed: string,
+  regionId: string,
+  maxRounds: number,
+): CampaignResult {
+  const c = newRegionalRun(seed, regionId, persona.commander ?? []);
   const onHand: { cash: number }[] = [];
   // Assume the run goes the distance; the loop downgrades this if it doesn't.
   let endReason: EndReason = 'round-cap';
 
-  const defeatReason = (): EndReason =>
-    c.defeatCause === 'quota' ? 'quota-failed' : 'confidence-collapse';
+  // A finished run is not automatically a lost one. A shipping region has a
+  // completion watermark, so `campaignOver` now means EITHER defeat or victory
+  // — reading it as defeat (which the old three-way mapping did) would have
+  // scored every successful run as a failure the moment the sweep stopped
+  // playing the endless proving ground.
+  const finishReason = (): EndReason =>
+    c.runOutcome === 'victory'
+      ? 'region-complete'
+      : c.defeatCause === 'quota'
+        ? 'quota-failed'
+        : 'confidence-collapse';
   for (let round = 0; round < maxRounds; round++) {
     if (c.campaignOver) {
-      endReason = defeatReason();
+      endReason = finishReason();
       break;
     }
     // --- Prep --------------------------------------------------------------
@@ -167,7 +218,7 @@ function playCampaign(persona: Persona, seed: string, maxRounds: number): Campai
     research(c, persona);
   }
   // The loop can also fall out with the flag set on the final round.
-  if (c.campaignOver) endReason = defeatReason();
+  if (c.campaignOver) endReason = finishReason();
 
   const analysis = analyzeCampaign(
     persona.name,
@@ -192,14 +243,27 @@ function padLeft(text: string, width: number): string {
 
 const MARK = { pass: '[+]', warn: '[~]', fail: '[!]' } as const;
 
-function printReport(summary: ReturnType<typeof summarize>, outDir: string, wroteLogs: boolean): void {
+function printReport(
+  summary: ReturnType<typeof summarize>,
+  outDir: string,
+  wroteLogs: boolean,
+  region: RegionDef,
+): void {
   const line = '─'.repeat(78);
   console.log(`\n${line}`);
   console.log(`STRAITWATCH PLAYTEST SWEEP — ${summary.campaigns} campaigns`);
   console.log(line);
+  // The region is stated up front because it decides the enemy roster, the
+  // starting state and whether the run has a win condition at all — reading a
+  // sweep without knowing which one it played is how the harness drifted away
+  // from the shipping game unnoticed.
+  console.log(
+    `  Region: ${region.name} (${region.id}) — branches ${region.enemyBranches.join(', ')};` +
+      ` completion round ${region.completionRound >= 999 ? 'none' : region.completionRound}`,
+  );
 
   // --- Per-persona ---------------------------------------------------------
-  console.log('  WENT = share of campaigns that reached the round cap intact');
+  console.log('  WENT = share of campaigns that came through (region cleared or round cap)');
   console.log(
     `\n${pad('PERSONA', 17)}${padLeft('RUNS', 5)}${padLeft('WENT', 6)}${padLeft('ROUNDS', 8)}${padLeft('DELIV%', 8)}${padLeft('LOSSES', 8)}${padLeft('SCORE', 8)}${padLeft('HOARD', 7)}`,
   );
@@ -299,6 +363,24 @@ function printReport(summary: ReturnType<typeof summarize>, outDir: string, wrot
 const opts = parseArgs(process.argv.slice(2));
 mkdirSync(opts.outDir, { recursive: true });
 
+// A persona whose Commander loadout breaks the slot/point budget is a bug in
+// the persona, and clamping it silently would make the build quietly different
+// from what it claims to be. Fail before playing 66 campaigns with it.
+const badLoadouts = opts.personas
+  .map((p) => ({ name: p.name, error: commanderLoadoutError(p) }))
+  .filter((r) => r.error !== null);
+if (badLoadouts.length > 0) {
+  for (const { name, error } of badLoadouts) console.error(`Persona "${name}": ${error}`);
+  process.exit(1);
+}
+
+const region = regionDef(opts.region);
+// Default the cap to the region's own completion watermark: a real run of
+// pirateNarrows ENDS at round 10, and playing past it measures rounds no
+// player ever sees. The proving ground's watermark is 999, so it still needs an
+// explicit --rounds.
+const maxRounds = opts.rounds > 0 ? opts.rounds : Math.min(region.completionRound, 30);
+
 const analyses: CampaignAnalysis[] = [];
 const started = Date.now();
 const total = opts.personas.length * opts.seeds;
@@ -309,7 +391,7 @@ for (const persona of opts.personas) {
     // Shared seed base across personas: every build faces comparable starting
     // conditions, so score differences reflect the build, not the draw.
     const seed = `playtest-${s}`;
-    const { campaign, analysis } = playCampaign(persona, seed, opts.rounds);
+    const { campaign, analysis } = playCampaign(persona, seed, opts.region, maxRounds);
     analyses.push(analysis);
 
     if (opts.writeLogs) {
@@ -331,7 +413,7 @@ for (const persona of opts.personas) {
 }
 process.stdout.write('\r' + ' '.repeat(100) + '\r');
 
-const summary = summarize(analyses, new Date().toISOString());
+const summary = summarize(analyses, new Date().toISOString(), region);
 writeFileSync(join(opts.outDir, 'summary.json'), JSON.stringify(summary, null, 2), 'utf8');
-printReport(summary, opts.outDir, opts.writeLogs);
+printReport(summary, opts.outDir, opts.writeLogs, region);
 console.log(`Completed in ${((Date.now() - started) / 1000).toFixed(1)}s\n`);

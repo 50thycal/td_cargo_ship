@@ -156,7 +156,7 @@ describe('run-setup diff', () => {
     const same = [log({ regionId: 'pirateNarrows', rounds: [round()] })];
     const report = buildReport(same, same, 'test');
     expect(report.setup.every((s) => s.same)).toBe(true);
-    expect(report.grade).toMatch(/^\d+\/\d+ probes match$/);
+    expect(report.grade).toMatch(/^\d+\/\d+ probes match, \d+ drift, \d+ open gap\(s\)$/);
   });
 });
 
@@ -185,6 +185,55 @@ describe('gap list', () => {
   });
 });
 
+describe('accepted divergences', () => {
+  it('keeps a deliberate idealization out of the work list but still reports it', () => {
+    // Duplicate shots are accepted: modelling human misfires means building a
+    // bot that plays badly on purpose, with the badness as a free parameter
+    // fitted to one log. It must not sit at the top of the work list forever
+    // (severity Infinity would put it there), but the bias has to stay visible.
+    const human = [
+      log({
+        counterTotals: { manualShots: 100, autoShots: 100, duplicateShots: 35 },
+        rounds: [round()],
+      }),
+    ];
+    const bots = [
+      log({
+        counterTotals: { manualShots: 100, autoShots: 100, duplicateShots: 0 },
+        rounds: [round()],
+      }),
+    ];
+    const report = buildReport(human, bots, 'test');
+    expect(report.gaps.some((g) => g.id === 'duplicateShotRate')).toBe(false);
+    const accepted = report.acceptedDivergences.find((g) => g.id === 'duplicateShotRate');
+    expect(accepted?.verdict).toBe('unexercised');
+    expect(accepted?.accepted).toContain('RECORDED BIAS');
+  });
+});
+
+describe('commander loadouts are a build variable, not a setup mismatch', () => {
+  it('does not flag two sides that both commission abilities but different ones', () => {
+    // The sweep's job is to VARY builds. Demanding every persona commission the
+    // human's exact three abilities would make the sweep narrower, not more
+    // faithful — an equality test here reported a permanent SETUP MISMATCH that
+    // no amount of harness work could ever clear.
+    const human = [log({ commanderAbilities: ['steadyHands', 'salvageTeams'], rounds: [round()] })];
+    const bots = [
+      log({ commanderAbilities: ['salvageTeams', 'quartermaster'], rounds: [round()] }),
+      log({ commanderAbilities: ['warChest'], rounds: [round()] }),
+    ];
+    const row = buildReport(human, bots, 'test').setup.find((s) => s.key === 'Commander abilities');
+    expect(row?.same).toBe(true);
+  });
+
+  it('does flag a bot side that sails bare when the human does not', () => {
+    const human = [log({ commanderAbilities: ['steadyHands'], rounds: [round()] })];
+    const bots = [log({ commanderAbilities: [], rounds: [round()] })];
+    const row = buildReport(human, bots, 'test').setup.find((s) => s.key === 'Commander abilities');
+    expect(row?.same).toBe(false);
+  });
+});
+
 describe('the panel itself', () => {
   it('gives every probe a consequence, not just a description', () => {
     // `why` is what turns the gap list into something actionable. A probe added
@@ -194,5 +243,12 @@ describe('the panel itself', () => {
       expect(p.tolerance).toBeGreaterThan(0);
     }
     expect(new Set(PROBES.map((p) => p.id)).size).toBe(PROBES.length);
+  });
+
+  it('records a direction of bias for anything it accepts', () => {
+    // An accepted gap without a written-down bias is just an ignored gap.
+    for (const p of PROBES.filter((x) => x.accepted)) {
+      expect(p.accepted, `${p.id}`).toContain('RECORDED BIAS');
+    }
   });
 });

@@ -18,12 +18,20 @@ npm run playtest -- --rounds 9 --seeds 6 --out playtest-out
 
 # 2. Diff the hand-played log against it
 npm run fidelity -- --human straitwatchlog.json --sweep playtest-out
+
+# 3. …and against the single persona that models that player's build
+npm run fidelity -- --human straitwatchlog.json --sweep playtest-out --persona automation
 ```
 
-The report gives a run-setup diff, four probe groups (engagement / tempo /
-economy / outcome) and a ranked gap list. Banding is on the **log ratio**, so
-"half as much" and "twice as much" are the same distance — a linear band around
-1.0 cannot report "the bots do this 100× less" as anything worse than a shrug.
+Step 3 is not optional polish. **Engagement and tempo probes measure *style*,
+and the bot side is a deliberate spread of styles** — comparing one human
+against the average of twelve builds asks a question with no answer. Read style
+probes per-persona and economy/outcome probes against the whole sweep, where
+seed variance averages out.
+
+Banding is on the **log ratio**, so "half as much" and "twice as much" are the
+same distance — a linear band around 1.0 cannot report "the bots do this 100×
+less" as anything worse than a shrug.
 
 The procedure for acting on it — including which gaps *should not* be closed —
 is the **`playtest-fidelity`** skill.
@@ -36,7 +44,7 @@ Every gap triages into exactly one, and only two of them are harness work.
 | --- | --- | --- |
 | **A — Setup mismatch** | Different region, commander loadout, starting state or completion round | Always close. Nothing downstream is comparable until it is. |
 | **B — Missing capability** | The bot cannot issue the command at all (`TransitCommand` case with no persona branch) | Close in `personas.ts`. Biggest and quietest measurement errors live here. |
-| **C — Deliberate idealization** | The bot *can* do it and does it better than any human (perfect dedup, tick-rate reaction) | Optional. If accepted, **write down the direction of the bias** so later readers know which way the number leans. |
+| **C — Deliberate idealization** | The bot *can* do it and does it better than any human (perfect dedup, tick-rate reaction) | Optional. If accepted, set `accepted` on the probe with a **RECORDED BIAS** line — the report then lists it separately instead of parking it atop the work list forever. |
 | **D — Human-side finding** | The human does *less* than the bots — bought a thing and never used it | **Not a harness bug.** A discoverability/UX finding for the game. Never "fix" it by making bots play worse. |
 
 ## The one-change rule
@@ -56,95 +64,123 @@ decays, and what the ledger exists to make visible.
 
 | Date | Human log | Rounds | Grade | Gaps closed | Accepted (C/D) |
 | --- | --- | --- | --- | --- | --- |
-| 2026-08-07 | `straitwatchlog_r9` (pirateNarrows, steadyHands+salvageTeams) | 9 | **SETUP MISMATCH (5)** — 6/20 probes match | — (baseline) | see below |
+| 2026-08-07 | `straitwatchlog_r9` (pirateNarrows, steadyHands+salvageTeams) | 9 | **SETUP MISMATCH (5)** — 6/20 probes match | — (baseline) | — |
+| 2026-08-07 | same log, after the harness fixes below | 9 | **6/20 match, 9 drift, 4 open** (whole sweep)<br>**11/20 match, 5 drift, 2 open** (vs `automation`) | A ×4, B ×5 | C ×1, D ×2 |
 
 ---
 
-## Open gaps (as of the 2026-08-07 baseline)
+## Closed in the 2026-08-07 harness pass
 
-Measured against 60 bot campaigns (11 personas × 6 seeds, 9-round cap, AFK
-control excluded) versus one 9-round hand-played run.
+### A — Run setup (`run.ts`, `ablate.ts`)
 
-### A — Setup mismatch (5 of 5 setup rows differ)
+The sweep ran `newCampaign()`, which is `newRegionalRun(seed, 'openSeas', [])`.
+`openSeas` is the **dev proving ground** — excluded from `REGION_ORDER`, so no
+player can ever select it.
 
-The sweep runs `newCampaign()`, which is `newRegionalRun(seed, 'openSeas', [])`.
-`openSeas` is the **dev proving ground** — explicitly excluded from
-`REGION_ORDER`, so no player can ever select it.
+Now: `--region`, defaulting to `pirateNarrows`; per-persona Commander loadouts
+validated against `COMMANDER.abilitySlots`/`loadoutPoints` at startup (rejected,
+never silently clamped); and the round cap defaults to the region's own
+completion watermark instead of an arbitrary 15.
 
-| | Human | Bots |
+That also required teaching the analyzer that `campaignOver` no longer means
+defeat — clearing a region sets it too, and the old three-way mapping scored
+every **win** as a `confidence-collapse`.
+
+| | Before | After |
 | --- | --- | --- |
-| Region | `pirateNarrows` | `openSeas` |
-| Enemy branches | missiles + mines + attackBoats | all seven |
-| Escorts at start | 1 | 0 |
-| Completion round | 10 | none (endless) |
-| Commander abilities | steadyHands, salvageTeams | none |
+| Region | `openSeas` (7 branches, 0 escorts, endless) | `pirateNarrows` (3 branches, 1 escort, completes R10) |
+| Loss mix | missiles 57% / mines 28% / boats 8% | boats 56% / missiles 25% / mines 15% |
+| Boarding attempts | **0** in 524 rounds | 60 in 583 rounds |
 
-Consequences that showed up directly in the probes:
+The human's mix was boats 52% / mines 48% / missiles 5%. The seven-branch roster
+was splitting the same budget so many ways that the attack-boat nodes were never
+reached.
 
-- **The seven-branch roster dilutes every branch below its debut threshold.**
-  Across 524 bot rounds there were **zero boarding attempts**; the human met six
-  captures in a single round. The same enemy budget split seven ways never
-  reaches the attack-boat nodes that a three-branch region reaches by round 4.
-- **The loss mix inverts.** Bots: missiles 57% / mines 28% / boats 8%. Human:
-  boats 52% / mines 48% / missiles 5%.
-- **No completion watermark** means `--rounds N` is an arbitrary stopping point
-  rather than a win condition, so the sweep never plays an endgame.
+### B — Missing capabilities (`personas.ts`)
 
-### B — Missing capability
+`decideCommands` implemented `intercept`, `sweepMine`, `depthCharge` and
+`ability`. The `TransitCommand` union also carries `moveEscort`, `engageBoat` and
+`counterBattery`, which no persona had ever issued.
 
-`decideCommands` in `personas.ts` implements `intercept`, `sweepMine`,
-`depthCharge` and `ability`. The `TransitCommand` union also carries
-`moveEscort`, `engageBoat`, `counterBattery`, `reboot` and `toggleAuto` — none
-of which any persona has ever issued.
+- **`moveEscort` — the recovery loop was dead.** Personas now detach escorts to
+  work wreckage and crews, keeping `screenReserve` hulls on the convoy and only
+  taking a job they can *finish* before the field sinks (`reachableInTime`) —
+  so salvage costs escort time instead of being free value.
+- **`engageBoat` / `counterBattery`** are now issued by hand, not just through
+  their automation tactics. Deck-gun kills went 0 → 38 across the sweep.
+- **`intercept: 'sparing'`** defers to the automation until a threat is inside
+  ~7s of impact, so auto-fire technology is worth something to a bot.
+- **`adaptFormation`** re-picks the formation each prep phase from the last
+  round's loss mix, using the formation table's own trade-offs.
+- **`automation` persona** added, modelled on the hand-played build.
 
-- **`moveEscort` — the recovery loop is dead in the sweep.** 2062 wreckage
-  fields spawned, **5 recovered (0.2%)**, 2057 expired; 1709 survivor areas,
-  **3 rescued**. The human recovered 44/54 (81%) and rescued 12/15 (80%). The
-  ~0.9 escort-seconds/round the bots do log is incidental proximity, not a
-  decision.
-- **Which breaks the draft economy downstream.** Recovered wreckage is what
-  widens the draft from two options to three (`DRAFT.thirdChoicePerUnit`) and
-  what skews it toward deeper nodes past `DRAFT.qualityThreshold`. Across 556
-  bot drafts, **one** offered three options. The human got three options in 6 of
-  8 drafts. *The sweep has been measuring a different technology tree than the
-  one a player climbs.*
-- **`engageBoat` / `counterBattery`** are never issued manually, so those
-  branches are measured only through their auto-fire tactics — which is part of
-  why `SEESAW.md` records the deck gun and counter-battery sitting near zero
-  value. That measurement is a floor, not a valuation.
-- **Formation never changes.** Each persona has one fixed formation for the
-  whole campaign; the human switched three times in nine rounds.
+| | Before | After (sweep) | After (`automation`) | Human |
+| --- | --- | --- | --- | --- |
+| Wreckage recovered | 5/2062 (**0.2%**) | 1249/2388 (52.3%) | 69.4% | 81.5% |
+| Survivors rescued | 3/1589 (**0.2%**) | 996/2225 (44.8%) | 53.8% | 80.0% |
+| Drafts with 3 options | 1/508 (**0.2%**) | 277/572 (48.4%) | 58.3% | 75.0% |
+| Manual shot share | 83.1% | 70.3% | 38.7% | 31.6% |
+| Warthog sorties/round | 0.18 | 0.24 | 0.67 | 0.67 |
+| Formation changes/campaign | **0** | 1.47 | 4.00 | 3.00 |
 
-### C — Deliberate idealization (accepted, with the bias recorded)
+---
 
-- **The bots waste no interceptors.** Human duplicate-shot rate **17.7%** of all
-  shots (51 of 288); bots **0.0%**, because `decideCommands` filters on
-  `claimedByInterceptor` before firing. *Bias: the sweep's ammunition economy is
-  ~18% cheaper than a real player's.* Accepting this is defensible; forgetting
-  it while pricing ammunition is not.
-- **`duplicateShotsAvoided` is uninterpretable in sweep logs.** It read 471,899
-  across 66 campaigns (~850/round) because a bot re-offers an intercept every
-  tick and each rejection increments the counter. Do not compare this field
-  across the two sides.
+## Open and accepted (as of the second row)
 
-### D — Human-side findings (game, not harness)
+### Still open (worth closing)
+
+1. **Boarding attempts 0.10/round vs 0.67.** Better than zero, but the human's
+   figure comes from one catastrophic round (six captures) and is a weak
+   baseline. Re-measure against a log that meets boarding more than once before
+   tuning anything on it.
+2. **Enemy budget in the final round, 679 vs 1196.** The anti-snowball response
+   is *working on both sides*: the human delivered 92.7% and their enemy armed
+   faster; the bots deliver 84.2% and lose 3.9 hulls a round, so theirs stays
+   poorer. This is a skill gap showing up in the economy, not a harness bug —
+   but it means the sweep never stresses the top of the anti-snowball curve.
+   Closing it needs a stronger persona, not a code change.
+3. **Recovery rate still ~0.6–0.85× the human's.** The escort-job heuristic
+   takes one job at a time and never re-prioritises. Diminishing returns.
+
+### Accepted — bucket C (bias recorded)
+
+- **The bots waste no interceptors.** Human duplicate-shot rate **17.7%** (51 of
+  288 shots); bots **0.0%**, because `decideCommands` filters on
+  `claimedByInterceptor`. Modelling human misfires means building a bot that
+  plays badly on purpose, with the amount of badness a free parameter fitted to
+  one log — that measures noise. **RECORDED BIAS: the sweep's ammunition economy
+  is roughly a fifth cheaper than a real player's.** Never conclude "ammunition
+  is affordable" from a sweep alone. The probe carries this text so the report
+  reprints it every run.
+- **`duplicateShotsAvoided` is uninterpretable in sweep logs** (471,899 across
+  66 campaigns — a bot re-offers an intercept every tick and each rejection
+  increments it). Do not compare that field across the two sides.
+
+### Accepted — bucket D (game, not harness)
 
 - **Smoke was researched, bought and never used.** The player took
-  `smokeScreen.base` in the round-6 draft and spent $160 on it in round 7, then
-  laid **zero clouds** in nine rounds. The bots laid 0.26/round. A bought
-  ability that never gets used once is a discoverability problem, not a persona
-  bug — and the fix belongs in the game.
-- **Manual/auto split is inverted.** Human 32% manual / 68% auto (they drafted
-  `escortInterceptor.localAuto` and `baseInterceptor.strategicAuto` early and
-  leaned on them); bots 83% manual. A hand-firing bot under-values every
-  auto-fire node in the tree.
+  `smokeScreen.base` in the round-6 draft, spent $160 on it in round 7, then
+  laid **zero clouds** in nine rounds. A bought ability that is never used once
+  is a discoverability problem, and the fix belongs in the game.
+- **Convoy capacity 40 vs ~30, launched 28/round vs 23.7.** The human grew the
+  convoy harder than any persona does. `SEESAW.md` already records convoy size
+  as the strongest defensive stat in the game, so this is a strategy the bots
+  under-weight rather than a capability they lack.
 
-### Outcome probes that agree *by accident*
+---
 
-Mean delivery (92.7% vs 86.7%), hulls lost per round (2.33 vs 3.03) and final
-confidence (79 vs 83) all land inside tolerance. **This is not validation.** With
-the engagement probes in the state above, the two sides reach similar outcomes
-through different play: the human runs a 40-hull convoy against a 1196-budget
-enemy that has climbed to boarding; the bots run a 31-hull convoy against a
-667-budget enemy that never gets there. Read agreement on an outcome probe as
-meaningful only once the engagement probes under it match.
+## A balance finding this pass exposed (NOT tuned here)
+
+With the harness fixed, **attack boats now cause 56% of all branch-attributable
+losses** across the sweep (1450 of 2503), and the oscillation signal's pass rate
+fell from 58% to 28%. That is the seesaw locking on one branch — precisely the
+`SEESAW.md` failure mode "same loss-cause #1 for 4+ rounds".
+
+It is not a regression. The old number was measured in a region that split the
+enemy's budget seven ways and never let boats reach their expensive nodes; this
+is the first honest reading of `pirateNarrows`.
+
+**Deliberately not fixed in the same change as the harness**, per the one-change
+rule above — a balance fix landing here would make the next sweep's movement
+unattributable. It needs its own change, its own before/after, and a re-read
+through `seesaw-eval`.

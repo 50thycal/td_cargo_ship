@@ -66,14 +66,29 @@ Six seeds × eleven personas is enough to read a fidelity gap (they are large;
 balance effects are the small ones). Use more seeds only if a probe lands near
 its tolerance band.
 
-### 3. Run the differ
+### 3. Run the differ — twice
 
 ```bash
+# Against the whole sweep: economy and outcome probes, where seed variance averages out
 npm run fidelity -- --human <log.json> --sweep playtest-out --json fidelity.json
+
+# Against the ONE persona that models this player's build: engagement and tempo
+npm run fidelity -- --human <log.json> --sweep playtest-out --persona automation
 ```
 
-It prints a run-setup diff, four groups of probes (engagement / tempo / economy
-/ outcome) with `MATCH` `DRIFT` `DIVERGENT` `UNEXERCISED`, and a ranked gap list.
+**Both runs, always.** Engagement and tempo probes measure *style*, and the bot
+side is a deliberate spread of styles — comparing one human against the average
+of twelve builds asks a question with no answer, and its "divergence" is really
+just the spread. The same panel scored against the matching persona went from
+6/20 to 11/20 matching with no code change between them; the difference was
+entirely which comparison was being made. Economy and outcome probes are the
+reverse: one persona × six seeds is too few to read them, and the aggregate is
+the honest denominator.
+
+If no persona models the player's build, that is itself the finding — add one.
+
+The report prints a run-setup diff, four probe groups with `MATCH` `DRIFT`
+`DIVERGENT` `UNEXERCISED`, a ranked gap list, and any accepted divergences.
 Banding is on the **log ratio**, so "half as much" and "twice as much" are the
 same distance.
 
@@ -96,11 +111,15 @@ biggest, quietest measurement errors.
 
 **C — Deliberate idealization.** The bot *can* do it and does it better than a
 human ever would: perfect target deduplication, tick-rate reaction, no
-misclicks. Closing these is optional and often wrong — a bot that plays like a
-tired human measures noise. *Decide, then write down the direction of the bias*
-in `docs/PLAYTESTING.md` so every later reader knows which way the number leans.
-The existing note about smoke being under-measured against bots is the model to
-follow.
+misclicks. Closing these is optional and usually wrong — a bot that plays like a
+tired human measures noise, and "how bad should it be" is a free parameter you
+would be fitting to one log.
+
+When you accept one, **set `accepted` on the probe** in `fidelity.ts` with a
+sentence containing the literal words `RECORDED BIAS` and which direction it
+leans. The report then lists it under *Accepted divergences* instead of parking
+it at the top of the work list forever, and reprints the bias every single run —
+which is the point. An accepted gap with no recorded bias is just an ignored gap.
 
 **D — Human-side finding.** The human does *less* than the bots — bought an
 ability and never used it, ignored a mechanic, never changed a setting. This is
@@ -189,4 +208,15 @@ stops being checked the moment this conversation ends.
 - **One log is one data point.** A single hand-played run has seed variance a
   60-campaign sweep does not. Treat a lone log's outcome probes as indicative
   and its engagement probes (does the human touch this system at all?) as
-  reliable — those are behavioural, not stochastic.
+  reliable — those are behavioural, not stochastic. A gap resting on one
+  dramatic round in one log is not a mandate; say so and re-measure.
+- **Some gaps are the player being better than the bots, and close on their
+  own terms.** A bigger convoy, a richer enemy from the anti-snowball response —
+  those are strategy differences, not missing capabilities. The fix is a
+  stronger persona (or none at all), never a code change that hands bots an
+  advantage a player had to earn.
+- **Expect the honest baseline to look worse.** Closing fidelity gaps routinely
+  makes the balance signals *drop*, because the old numbers were measured in
+  conditions that flattered them. That is the fix working. Report the new
+  reading, resist tuning it in the same change, and re-read the affected
+  `seesaw-eval` conclusions against the new baseline.

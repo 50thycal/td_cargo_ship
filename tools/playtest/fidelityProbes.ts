@@ -112,6 +112,13 @@ export interface Probe {
   tolerance: number;
   /** What a divergence on this probe invalidates. */
   why: string;
+  /** Set when the gap is a DELIBERATE idealization the project has chosen to
+   *  keep (the skill's bucket C). The probe is still measured and still
+   *  reported — the direction of the bias has to stay visible — but it is
+   *  listed as an accepted divergence rather than sitting at the top of the
+   *  work list forever, where it would crowd out the gaps that are still
+   *  worth closing. The string is the recorded justification. */
+  accepted?: string;
 }
 
 /** A rate probe: numerator ÷ denominator, null when the denominator is zero
@@ -237,6 +244,9 @@ export const PROBES: Probe[] = [
     unit: 'share',
     tolerance: 0.4,
     why: 'Wasted interceptors are a human error the ammunition economy is balanced around. A perfectly deduplicating bot is a cheaper player than the real one.',
+    accepted:
+      'Bots check `claimedByInterceptor` before firing, so they waste nothing. Modelling human misfires would mean building a bot that plays badly on purpose, and the amount of badness would be a free parameter fitted to one log — that measures noise. ' +
+      'RECORDED BIAS: the sweep\'s ammunition economy is roughly a fifth cheaper than a real player\'s. Price interceptor ammunition with that in mind, and never conclude "ammo is affordable" from a sweep alone.',
     value: rate(
       (l) => sumTotals(l, 'counterTotals', 'duplicateShots'),
       (l) => sumTotals(l, 'counterTotals', 'manualShots') + sumTotals(l, 'counterTotals', 'autoShots'),
@@ -375,6 +385,8 @@ export interface ProbeResult {
   /** |ln(ratio)| — how far apart the sides are, for ranking. */
   severity: number;
   why: string;
+  /** Recorded justification when this divergence is deliberate and kept. */
+  accepted?: string;
 }
 
 /** Values below this are treated as "essentially never happens", so a probe
@@ -392,6 +404,7 @@ function compareProbe(probe: Probe, human: Log[], bots: Log[]): ProbeResult {
     human: h,
     bot: b,
     why: probe.why,
+    accepted: probe.accepted,
   };
   if (h === null || b === null) {
     return { ...base, ratio: null, verdict: 'no-data', severity: 0 };
@@ -457,6 +470,12 @@ function modeOf(logs: Log[], pick: (l: Log) => string): string {
   return ranked.length === 1 ? ranked[0][0] : `${ranked[0][0]} (+${ranked.length - 1} other)`;
 }
 
+/** Does this side commission Commander Abilities at all? `true` when every run
+ *  sails bare, which is the state the harness was actually in. */
+function bareShare(logs: Log[]): boolean {
+  return logs.every((l) => (l.commanderAbilities ?? []).length === 0);
+}
+
 export function diffSetup(human: Log[], bots: Log[]): SetupDiff[] {
   const hRegion = modeOf(human, (l) => l.regionId ?? '?');
   const bRegion = modeOf(bots, (l) => l.regionId ?? '?');
@@ -494,10 +513,15 @@ export function diffSetup(human: Log[], bots: Log[]): SetupDiff[] {
       key: 'Commander abilities',
       human: modeOf(human, (l) => (l.commanderAbilities ?? []).join(',') || '(none)'),
       bot: modeOf(bots, (l) => (l.commanderAbilities ?? []).join(',') || '(none)'),
-      same:
-        modeOf(human, (l) => (l.commanderAbilities ?? []).join(',') || '(none)') ===
-        modeOf(bots, (l) => (l.commanderAbilities ?? []).join(',') || '(none)'),
-      why: 'Commander abilities modify accuracy, recovery rate, prices and start cash before anything else is derived.',
+      // Deliberately NOT an equality test. A Commander loadout is part of the
+      // BUILD, and the sweep's whole job is to vary builds — demanding that
+      // every persona commission the human's exact three abilities would make
+      // the sweep narrower, not more faithful. What matters is that the bots
+      // commission a loadout at all: they used to run bare, which changes
+      // accuracy, recovery rate, prices and start cash before anything else is
+      // derived, and that IS a setup mismatch.
+      same: bareShare(human) === bareShare(bots),
+      why: 'Running bare changes accuracy, recovery rate, prices and start cash before anything else is derived. (Which abilities differ between builds is expected — that is the sweep working.)',
     },
   ];
   return rows;
@@ -511,25 +535,34 @@ export interface FidelityReport {
   botRounds: number;
   setup: SetupDiff[];
   probes: ProbeResult[];
-  /** Probes at DIVERGENT or UNEXERCISED, worst first — the work list. */
+  /** Probes at DIVERGENT or UNEXERCISED that are still worth closing, worst
+   *  first — the work list. */
   gaps: ProbeResult[];
+  /** Divergences the project has deliberately kept, with their recorded bias.
+   *  Split out of `gaps` so an accepted idealization does not sit permanently
+   *  at the top of the work list — but still reported, because the direction of
+   *  the bias has to stay visible to whoever reads the next balance number. */
+  acceptedDivergences: ProbeResult[];
   /** One-line fidelity grade for tracking across playtests. */
   grade: string;
 }
 
 export function buildReport(human: Log[], bots: Log[], generatedAt: string): FidelityReport {
   const probes = PROBES.map((p) => compareProbe(p, human, bots));
-  const gaps = probes
+  const diverging = probes
     .filter((p) => p.verdict === 'divergent' || p.verdict === 'unexercised')
     .sort((a, b) => b.severity - a.severity);
+  const gaps = diverging.filter((p) => !p.accepted);
+  const acceptedDivergences = diverging.filter((p) => p.accepted);
   const setup = diffSetup(human, bots);
   const setupMismatches = setup.filter((s) => !s.same).length;
   const scored = probes.filter((p) => p.verdict !== 'no-data').length;
   const matched = probes.filter((p) => p.verdict === 'match').length;
+  const drifting = probes.filter((p) => p.verdict === 'drift').length;
   const grade =
     setupMismatches > 0
       ? `SETUP MISMATCH (${setupMismatches}) — probe comparisons are between different games`
-      : `${matched}/${scored} probes match`;
+      : `${matched}/${scored} probes match, ${drifting} drift, ${gaps.length} open gap(s)`;
   return {
     generatedAt,
     humanLogs: human.length,
@@ -539,6 +572,7 @@ export function buildReport(human: Log[], bots: Log[], generatedAt: string): Fid
     setup,
     probes,
     gaps,
+    acceptedDivergences,
     grade,
   };
 }
@@ -636,6 +670,16 @@ export function printReport(report: FidelityReport): void {
       console.log(`  ${i + 1}. ${g.label} — ${gap}`);
       console.log(`     ${g.why}`);
     });
+  }
+
+  // --- Accepted divergences ------------------------------------------------
+  if (report.acceptedDivergences.length > 0) {
+    console.log('\nACCEPTED DIVERGENCES (deliberate — the recorded bias, not a work item)');
+    console.log(line);
+    for (const a of report.acceptedDivergences) {
+      console.log(`  • ${a.label} — human ${fmt(a.human, a.unit)} vs bots ${fmt(a.bot, a.unit)}`);
+      console.log(`    ${a.accepted}`);
+    }
   }
 
   console.log(`\nGRADE: ${report.grade}`);

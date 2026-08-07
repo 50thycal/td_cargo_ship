@@ -22,15 +22,19 @@ before trusting a sweep number that a human session disagrees with.
 ## Running it
 
 ```bash
-npm run playtest                              # all personas × 8 seeds × 15 rounds
+npm run playtest                              # all personas × 8 seeds, pirateNarrows
 npm run playtest -- --seeds 24                # tighter averages
-npm run playtest -- --rounds 25               # longer campaigns
+npm run playtest -- --rounds 9                # match a hand-played log's length
+npm run playtest -- --region homeStrait       # the opening ladder region
+npm run playtest -- --region openSeas --rounds 15   # dev proving ground, all 7 branches
 npm run playtest -- --personas turtle,economist
 npm run playtest -- --no-logs                 # summary only, no per-campaign JSON
 ```
 
-A full default sweep is 56 campaigns and takes about 90 seconds — fast enough to
-run after any tuning change.
+A full default sweep is 72 campaigns and takes about three minutes — fast enough
+to run after any tuning change. The region is printed at the top of the report,
+because reading a sweep without knowing which one it played is how the harness
+drifted away from the shipping game unnoticed in the first place.
 
 ## What it produces
 
@@ -56,6 +60,7 @@ exercise the builds a real player might try.
 | `sensor-net` | Detection-first — is information worth buying before shooters? |
 | `mine-warfare` | Mine specialist — is the mine counter-chain worth its price? |
 | `economist` | Greed test — buy hulls and capacity, skimp on defense. Should be punished. |
+| `automation` | Drafts auto-fire first and leans on it — hand-fires only what the automation would miss. Modelled on a hand-played log. |
 | `afk` | Control case. Buys nothing, fires nothing. The floor every real build must beat. |
 
 Every persona drives the **real** campaign and transit APIs (`buyModule`,
@@ -81,9 +86,16 @@ by hand, so an automated sweep and a hand-read log agree:
 Each campaign also gets an **end reason**, which is deliberately kept separate
 from the verdict:
 
-- `round-cap` — reached the end intact (the only outcome that counts as survival)
+- `region-complete` — cleared the region's completion watermark. **A win**, and
+  the outcome a real run is played for
+- `round-cap` — reached `--rounds` intact, which only means the sweep stopped asking
 - `confidence-collapse` — the consortium withdrew support
 - `fleet-wiped` — attrition took every hull and the player could not replace them
+- `quota-failed` — the delivery quota went unmet
+
+The first two both count as coming through. Note that `campaignOver` is set by a
+**win** as well as a defeat, so anything reading that flag directly has to check
+`runOutcome` — conflating them scored every successful run as a collapse.
 
 A run that traded blows for ten rounds and *then* went under is a hard campaign,
 not a jammed seesaw — the verdict logic reflects that, and only calls a loss
@@ -96,12 +108,14 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
   (share of below-average-ROI branches whose funding was cut the next round),
   `top-spend pivots`, and `budget scrapped`. Older logs without those fields
   fall back to inference, and the report says which applies.
-- **All seven enemy branches exist.** Missiles, mines, torpedoes, attack boats,
-  artillery, smoke and electronic attack are all implemented and fielded, so
-  the oscillation signal is no longer content-limited: every rotation the
-  allocator could want to make, it can now make. The report derives this from
-  the catalogue rather than hardcoding it, so it stays honest if a branch is
-  ever switched off.
+- **All seven enemy branches exist, but a region fields only some of them.**
+  Missiles, mines, torpedoes, attack boats, artillery, smoke and electronic
+  attack are all implemented. `pirateNarrows` permits three of them by design,
+  so the oscillation signal there is **roster-limited, not content-limited** —
+  the enemy cannot rotate through branches the region withholds, and reading
+  that as a broken allocator would be wrong. The report derives the distinction
+  from the region and the catalogue rather than hardcoding either, and names the
+  counters a given region leaves unexercised.
 - **The harness systematically under-measures the support branches.** Smoke and
   electronic attack shrink the player's *reaction window*, and a scripted bot
   has no reaction window to shrink — it re-evaluates every tick and simply
@@ -129,22 +143,27 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
 - **Bots are heuristics.** They do not learn, do not read the AAR, and will not
   find the clever line a human would. Treat persona scores as a comparison
   *between builds under a fixed policy*, not as a skill ceiling.
-- **The sweep runs the dev proving ground, not a shipping region.** `newCampaign`
-  resolves to `openSeas`: all seven branches, no free starting escort, no
-  completion watermark, no Commander Abilities. A real run is `pirateNarrows`
-  (three branches, one escort, completion at round 10) or `homeStrait` (two).
-  The wider roster splits the same budget more ways, so branches debut later and
-  weaker than a player meets them — measured: **zero boarding attempts in 524
-  bot rounds** against six captures in a single hand-played round.
-- **The recovery loop is not exercised.** No persona issues `moveEscort`, so the
-  bots recover ~0.2% of wreckage against a human's ~80%. Recovered wreckage is
-  what widens the technology draft from two options to three, so the sweep
-  converges on a **narrower tree** than a player climbs (one 3-option draft in
-  556). Any conclusion about counter value or draft pacing inherits this.
+- **The sweep plays a region, and which one changes everything.** It defaults to
+  `pirateNarrows` — three branches, one free escort, completion at round 10 —
+  because that is a region a player can actually select. `--region openSeas` is
+  the dev proving ground (all seven branches, no starting escort, endless); use
+  it for whole-arsenal coverage, never for a balance read. The wider roster
+  splits the same budget more ways, so branches debut later and weaker than a
+  player meets them: the sweep measured **zero boarding attempts in 524 rounds**
+  of `openSeas` against 60 in 583 rounds of `pirateNarrows`.
+- **Round cap defaults to the region's completion watermark.** Playing past it
+  measures rounds no player ever reaches. Pass `--rounds N` to match a
+  hand-played log instead.
+- **`region-complete` is a WIN, not a stop.** A cleared region sets
+  `campaignOver` exactly as a defeat does; the analyzer distinguishes them, and
+  anything reading that flag directly must too.
 - **The bots waste no interceptors.** `decideCommands` filters on
   `claimedByInterceptor`, so duplicate shots are 0% against a measured 17.7% for
   a human. The sweep's ammunition economy is roughly a fifth cheaper than a real
-  player's — price ammunition with that in mind.
+  player's — price ammunition with that in mind. This one is *accepted*, not
+  fixed: modelling human misfires means a bot that plays badly on purpose.
+- **The bots still under-grow the convoy** (capacity ~30 against a hand-played
+  40) and recover less than a human does (52% of wreckage against 81%).
 
-Every item in the last three bullets is a **measured** fidelity gap, tracked with
-its triage bucket in [`PLAYTEST_FIDELITY.md`](./PLAYTEST_FIDELITY.md).
+Every bullet here is a **measured** fidelity probe, tracked with its triage
+bucket and current value in [`PLAYTEST_FIDELITY.md`](./PLAYTEST_FIDELITY.md).
