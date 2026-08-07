@@ -254,6 +254,15 @@ export class Game {
       (priority) => {
         c.targetPriority = priority; // persisted with the next saveRun
       },
+      () => {
+        // Straight back to preparation. The campaign has not been touched —
+        // resolveTransit is the only thing that mutates it and it has not run —
+        // so the fleet, the cash and everything bought are exactly as they were
+        // when Begin Transit was pressed. planCurrentRound is derived from the
+        // run's seed and round, so the enemy's plan is the SAME plan: this is a
+        // second visit to the shop, not a re-roll of the round.
+        this.showPrep();
+      },
       (finished) => {
         this.lastTransit = finished;
         resolveTransit(c, finished);

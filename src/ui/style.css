@@ -605,6 +605,7 @@ button.ghost {
 
 /* Segmented LED strip. */
 .bar {
+  position: relative;
   height: 8px;
   border-radius: 3px;
   background: #070a06;
@@ -614,6 +615,9 @@ button.ghost {
 }
 
 .bar .fill {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   width: 0;
   background-color: var(--accent);
@@ -629,6 +633,68 @@ button.ghost {
 .bar .fill.warn { background-color: var(--warn); }
 .bar .fill.bad { background-color: var(--bad); }
 .bar .fill.accent { background-color: var(--accent); }
+
+/* The PROJECTED segment: what the convoy currently assigned would add if every
+   hull arrives. Hollow and cyan against the solid banked segment, so it reads
+   as a forecast rather than as progress already made — the difference matters,
+   because one of them is a promise and the other is money in the bank. */
+.bar .fill.projected {
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--cyan) 0 3px,
+    transparent 3px 7px
+  );
+  opacity: 0.8;
+  transition: width 0.8s cubic-bezier(0.25, 0.8, 0.35, 1),
+    left 0.8s cubic-bezier(0.25, 0.8, 0.35, 1);
+}
+
+.bar-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bar-legend .key {
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid var(--edge-lo);
+  flex: none;
+}
+
+.bar-legend .key.earned { background: var(--good); }
+.bar-legend .key.projected {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--cyan) 0 3px,
+    transparent 3px 7px
+  );
+}
+
+/* Legend entries pair a swatch with its label; the gap before the NEXT swatch
+   is wider so the two keys read as two items rather than four. */
+.bar-legend .key + span { margin-right: 8px; }
+
+/* Restart: an escape hatch, styled as one. Muted until armed, then red — the
+   second press throws the round away, so the control should look different at
+   the moment it will actually do that. */
+.hud-btn.danger {
+  border-color: rgba(255, 111, 94, 0.4);
+  color: var(--bad);
+}
+
+.hud-btn.danger.armed {
+  background: linear-gradient(180deg, #5e2820, #3d1a15);
+  border-color: var(--bad);
+  color: var(--accent-hi);
+}
 
 /* ---------- prep: brief strip ---------- */
 

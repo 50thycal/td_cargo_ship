@@ -186,6 +186,9 @@ export class TransitView {
   private dcBtn!: HTMLButtonElement;
   private targetBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
+  private restartBtn!: HTMLButtonElement;
+  /** Restart is a two-press control; this is whether the first press landed. */
+  private restartArmed = false;
   private speedBtn!: HTMLButtonElement;
   private autoBtns = new Map<AutoSystem, HTMLButtonElement>();
 
@@ -205,6 +208,9 @@ export class TransitView {
     /** Called whenever the player cycles the targeting-priority toggle, so the
      *  host can persist the choice on the campaign (it isn't sim state). */
     private readonly onTargetPriorityChange: (p: TargetPriority) => void,
+    /** Abandon the round and go back to preparation, with the campaign
+     *  untouched — no losses, no refunds, the same enemy plan waiting. */
+    private readonly onRestart: () => void,
     private readonly onDone: (t: TransitState) => void,
   ) {
     this.targetPriority = initialTargetPriority;
@@ -348,6 +354,33 @@ export class TransitView {
       onClick: () => {
         this.paused = !this.paused;
         this.pauseBtn.textContent = this.paused ? '▶' : 'II';
+        // Restarting is only offered from a stopped clock. It is a deliberate
+        // act — "I sailed without the thing I meant to buy" — not something to
+        // fat-finger while working the convoy.
+        this.restartBtn.classList.toggle('hidden', !this.paused);
+        this.restartArmed = false;
+        this.restartBtn.textContent = 'RESTART';
+        this.restartBtn.classList.remove('armed');
+      },
+    });
+    // Back to preparation with the round un-sailed. NOTHING is refunded: the
+    // loadout you bought is the loadout you keep, so this buys a second look at
+    // the shop with the money still in your pocket, not a second attempt at the
+    // round with a different strategy. Two presses, because it throws away
+    // whatever has happened so far in the transit.
+    this.restartBtn = h('button', {
+      className: 'hud-btn danger hidden',
+      text: 'RESTART',
+      onClick: () => {
+        if (!this.restartArmed) {
+          this.restartArmed = true;
+          this.restartBtn.textContent = 'SURE?';
+          this.restartBtn.classList.add('armed');
+          this.showToast('Restart returns to preparation — nothing is refunded');
+          return;
+        }
+        this.destroy();
+        this.onRestart();
       },
     });
     this.speedBtn = h('button', {
@@ -428,7 +461,7 @@ export class TransitView {
       autoGroup,
       h('span', { className: 'spacer' }),
       h('div', { className: 'hud-group' }, [this.zoomOutBtn, this.zoomInBtn, this.centreBtn]),
-      h('div', { className: 'hud-group' }, [this.pauseBtn, this.speedBtn]),
+      h('div', { className: 'hud-group' }, [this.restartBtn, this.pauseBtn, this.speedBtn]),
     );
 
     // The escort roster. Every ship, always visible, always saying what it is
