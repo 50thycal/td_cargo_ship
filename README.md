@@ -26,11 +26,13 @@ interceptors, order escorts around the map, call in A-10 gun runs and scan
 passes) — and when
 you destroy an enemy weapon, hold an escort inside the wreckage it leaves to
 recover it; do the same for the crews of lost ships before the water takes
-them. After each round, read the after-action report and take exactly one
-technology from the mandatory draft — one option on every table answers
-whatever is actually getting through to your convoy, and a pick that unlocks
-hardware arrives with one free unit of it fitted — then spend cash on
-modules/escorts/repairs and sail again. Keep confidence
+them. After each round, read the after-action report and take exactly one reward
+from the mandatory draft — an upgrade, a piece of equipment, a fleet asset or
+a crate of ordnance — then sail again. One option on every table answers
+whatever is actually getting through to your convoy. Equipment is never
+bought: the draft hands you a unit and you fit it free, though an escort takes
+her equipment down with her. Cash buys hulls, escorts, repairs and
+ammunition. Keep confidence
 above zero and the shipping quota met: either failure ends the regional run at
 round 1 of the same region. Survive to the region's completion round to secure
 it, unlock the next one, and earn Commander XP — the only thing that outlives

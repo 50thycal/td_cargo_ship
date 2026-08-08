@@ -9,7 +9,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buyEscort,
-  buyEscortModule,
+  equipEscortModule,
+  moduleSpare,
+  moduleStock,
   createRoundTransit,
   escortDamageTotal,
   escortModuleBlockReason,
@@ -28,7 +30,6 @@ import { migrateRun } from '../src/platform/save';
 import { fitEscorts, fitUniformEscorts } from './helpers';
 import {
   ESCORT_DEFAULT_NAMES,
-  ESCORT_MODULES,
   ESCORT_MODULE_SLOTS,
   ESCORT_MODULE_SLOTS_UNLOCKED,
   ESCORT_NAME_MAX,
@@ -43,10 +44,31 @@ import type { CampaignState, Threat, ThreatKind, TransitState } from '../src/sim
 /** A campaign that can afford anything and has researched every escort weapon,
  *  so a blocked purchase is always about SLOTS or the wrong escort — never
  *  about money or tech. */
+/** Sink the escort at `index` on a quiet transit and resolve the round. */
+function sinkOne(c: CampaignState, index: number): TransitState {
+  const { state, rng } = quietTransit(c);
+  const victim = state.escorts[index];
+  for (const e of state.escorts) e.stationed = true;
+  while (victim.alive) {
+    inject(state, 'mine', { x: victim.x, y: victim.y, kind: 'mine' });
+    stepTransit(state, [], rng);
+  }
+  while (!state.over) stepTransit(state, [], rng);
+  resolveTransit(c, state);
+  return state;
+}
+
 function richCampaign(seed = 'escort-spec'): CampaignState {
   const c = newCampaign(seed);
   c.cash = 100_000;
   c.completedResearch = ['deckGun.base', 'depthCharges.base', 'mcmDrones.base'];
+  // Equipment is drafted, not bought: stock the locker to the cap so these
+  // tests are about FITTING rather than about acquisition.
+  c.moduleStock = {
+    cargo: {},
+    escort: { deckGun: 3, depthCharges: 3, mcmDroneLauncher: 3 },
+    base: {},
+  };
   return c;
 }
 
@@ -95,9 +117,9 @@ describe('per-escort loadouts', () => {
     buyEscort(c);
     const [one, two, three] = c.escortUnits;
 
-    expect(buyEscortModule(c, one.id, 'deckGun')).toBe(true);
-    expect(buyEscortModule(c, two.id, 'depthCharges')).toBe(true);
-    expect(buyEscortModule(c, three.id, 'mcmDroneLauncher')).toBe(true);
+    expect(equipEscortModule(c, one.id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, two.id, 'depthCharges')).toBe(true);
+    expect(equipEscortModule(c, three.id, 'mcmDroneLauncher')).toBe(true);
 
     expect(one.modules).toEqual(['deckGun']);
     expect(two.modules).toEqual(['depthCharges']);
@@ -145,7 +167,7 @@ describe('per-escort loadouts', () => {
 // ---------------------------------------------------------------------------
 
 describe('duplicate fits across the flotilla', () => {
-  it('all three escorts may carry the same module, each paying for it', () => {
+  it('all three escorts may carry the same module, one drafted unit each', () => {
     const c = richCampaign('all-gunboats');
     buyEscort(c);
     buyEscort(c);
@@ -154,11 +176,13 @@ describe('duplicate fits across the flotilla', () => {
 
     for (const unit of c.escortUnits) {
       expect(escortModuleBlockReason(c, unit.id, 'deckGun')).toBeNull();
-      expect(buyEscortModule(c, unit.id, 'deckGun')).toBe(true);
+      expect(equipEscortModule(c, unit.id, 'deckGun')).toBe(true);
     }
     for (const unit of c.escortUnits) expect(unit.modules).toEqual(['deckGun']);
-    // Three guns cost three guns — specialization is not a bulk discount.
-    expect(cash0 - c.cash).toBe(3 * ESCORT_MODULES.deckGun.cost);
+    // Three gun boats take three drafted units — specialisation is paid for in
+    // draft picks now, not cash, and fitting them costs nothing.
+    expect(c.cash).toBe(cash0);
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
     expect(fleetHasEscortModule(c, 'deckGun')).toBe(true);
     expect(fleetHasEscortModule(c, 'depthCharges')).toBe(false);
   });
@@ -167,11 +191,11 @@ describe('duplicate fits across the flotilla', () => {
     const c = richCampaign('no-double-fit');
     buyEscort(c);
     const id = c.escortUnits[0].id;
-    expect(buyEscortModule(c, id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(true);
     expect(escortModuleBlockReason(c, id, 'deckGun')).toBe('Already fitted to this escort');
     const cash = c.cash;
-    expect(buyEscortModule(c, id, 'deckGun')).toBe(false);
-    expect(c.cash).toBe(cash); // a refused purchase costs nothing
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(false);
+    expect(c.cash).toBe(cash); // nothing was ever charged either way
     expect(c.escortUnits[0].modules).toEqual(['deckGun']);
   });
 });
@@ -202,13 +226,13 @@ describe('built-in interceptors and slot budget', () => {
     const id = c.escortUnits[0].id;
     expect(escortSlots(c)).toBe(ESCORT_MODULE_SLOTS);
 
-    expect(buyEscortModule(c, id, 'deckGun')).toBe(true);
-    expect(buyEscortModule(c, id, 'depthCharges')).toBe(true);
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, id, 'depthCharges')).toBe(true);
     expect(findEscort(c, id)!.modules).toHaveLength(ESCORT_MODULE_SLOTS);
 
     const cash = c.cash;
     expect(escortModuleBlockReason(c, id, 'mcmDroneLauncher')).toMatch(/Escort Refit Bay/);
-    expect(buyEscortModule(c, id, 'mcmDroneLauncher')).toBe(false);
+    expect(equipEscortModule(c, id, 'mcmDroneLauncher')).toBe(false);
     expect(c.cash).toBe(cash);
     expect(findEscort(c, id)!.modules).toHaveLength(ESCORT_MODULE_SLOTS);
   });
@@ -238,19 +262,19 @@ describe('the third specialist slot', () => {
     buyEscort(c);
     buyEscort(c);
     const [a, b] = c.escortUnits;
-    buyEscortModule(c, a.id, 'deckGun');
-    buyEscortModule(c, a.id, 'depthCharges');
-    expect(buyEscortModule(c, a.id, 'mcmDroneLauncher')).toBe(false);
+    equipEscortModule(c, a.id, 'deckGun');
+    equipEscortModule(c, a.id, 'depthCharges');
+    expect(equipEscortModule(c, a.id, 'mcmDroneLauncher')).toBe(false);
 
     c.completedResearch = [...c.completedResearch, 'logistics.escortRefitBay'];
     expect(escortSlots(c)).toBe(ESCORT_MODULE_SLOTS_UNLOCKED);
 
-    expect(buyEscortModule(c, a.id, 'mcmDroneLauncher')).toBe(true);
+    expect(equipEscortModule(c, a.id, 'mcmDroneLauncher')).toBe(true);
     expect(a.modules).toHaveLength(3);
     // The unlock is fleet-wide: the escort that was empty gets three too.
-    expect(buyEscortModule(c, b.id, 'deckGun')).toBe(true);
-    expect(buyEscortModule(c, b.id, 'depthCharges')).toBe(true);
-    expect(buyEscortModule(c, b.id, 'mcmDroneLauncher')).toBe(true);
+    expect(equipEscortModule(c, b.id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, b.id, 'depthCharges')).toBe(true);
+    expect(equipEscortModule(c, b.id, 'mcmDroneLauncher')).toBe(true);
     expect(b.modules).toHaveLength(3);
   });
 
@@ -264,7 +288,7 @@ describe('the third specialist slot', () => {
     expect(escortModuleBlockReason(c, id, 'deckGun')).toBe('Already fitted to this escort');
     removeEscortModule(c, id, 'deckGun');
     expect(c.escortUnits[0].modules).toHaveLength(2);
-    expect(buyEscortModule(c, id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(true);
     expect(c.escortUnits[0].modules).toHaveLength(3);
   });
 });
@@ -304,7 +328,7 @@ describe('escort names', () => {
     expect(b.name).toBe(bName);
     expect(renameEscort(c, 9999, 'Ghost')).toBe(false); // no such escort
 
-    buyEscortModule(c, a.id, 'deckGun');
+    equipEscortModule(c, a.id, 'deckGun');
     const reloaded = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(reloaded.escortUnits[0].name).toBe('Iron Duke');
     expect(reloaded.escortUnits[0].modules).toEqual(['deckGun']);
@@ -331,18 +355,6 @@ describe('escort names', () => {
 
 describe('losing and replacing an escort', () => {
   /** Sink exactly one escort by parking a mine on it and stationing it there. */
-  function sinkOne(c: CampaignState, index: number): TransitState {
-    const { state, rng } = quietTransit(c);
-    const victim = state.escorts[index];
-    for (const e of state.escorts) e.stationed = true;
-    while (victim.alive) {
-      inject(state, 'mine', { x: victim.x, y: victim.y, kind: 'mine' });
-      stepTransit(state, [], rng);
-    }
-    while (!state.over) stepTransit(state, [], rng);
-    resolveTransit(c, state);
-    return state;
-  }
 
   it('the escort that sank is the escort removed — by identity, not by index', () => {
     const c = richCampaign('sink-the-middle');
@@ -377,7 +389,6 @@ describe('losing and replacing an escort', () => {
     expect(fresh.name).not.toBe('Doomed');
     expect(ESCORT_DEFAULT_NAMES).toContain(fresh.name);
     expect(fresh.modules).toEqual([]);
-    expect(fresh.modulePaid).toEqual({});
     expect(fresh.damage).toBe(0);
   });
 
@@ -407,101 +418,96 @@ describe('losing and replacing an escort', () => {
 // 9: per-escort purchase and refund accounting
 // ---------------------------------------------------------------------------
 
-describe('per-escort cash accounting', () => {
-  it('unequipping refunds exactly what THAT escort paid', () => {
-    const c = richCampaign('refund-exact');
+describe('escort equipment is drafted stock, and sinks with the ship', () => {
+  it('fitting and unfitting is free and perfectly reversible', () => {
+    const c = richCampaign('free-refit');
     buyEscort(c);
     const id = c.escortUnits[0].id;
     const cash0 = c.cash;
-    buyEscortModule(c, id, 'deckGun');
-    expect(c.cash).toBe(cash0 - ESCORT_MODULES.deckGun.cost);
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(true);
+    expect(c.cash).toBe(cash0); // the draft already paid for it
     expect(removeEscortModule(c, id, 'deckGun')).toBe(true);
-    expect(c.cash).toBe(cash0); // exactly whole, neither more nor less
-    expect(c.escortUnits[0].modules).toEqual([]);
-    expect(c.escortUnits[0].modulePaid.deckGun).toBeUndefined();
-  });
-
-  it('refunding one escort never touches another escort of the same fit', () => {
-    const c = richCampaign('refund-isolated');
-    buyEscort(c);
-    buyEscort(c);
-    const [a, b] = c.escortUnits;
-    buyEscortModule(c, a.id, 'deckGun');
-    buyEscortModule(c, b.id, 'deckGun');
-    const cash = c.cash;
-
-    removeEscortModule(c, a.id, 'deckGun');
-    expect(c.cash).toBe(cash + ESCORT_MODULES.deckGun.cost); // ONE gun back
-    expect(a.modules).toEqual([]);
-    expect(b.modules).toEqual(['deckGun']); // still fitted, still paid for
-    expect(b.modulePaid.deckGun).toBe(ESCORT_MODULES.deckGun.cost);
-  });
-
-  it('no buy-once-refund-many exploit: a fit-and-strip cycle is cash-neutral', () => {
-    const c = richCampaign('no-money-pump');
-    buyEscort(c);
-    buyEscort(c);
-    buyEscort(c);
-    const cash0 = c.cash;
-    for (let round = 0; round < 5; round++) {
-      for (const unit of c.escortUnits) buyEscortModule(c, unit.id, 'deckGun');
-      for (const unit of c.escortUnits) removeEscortModule(c, unit.id, 'deckGun');
-    }
     expect(c.cash).toBe(cash0);
-    for (const unit of c.escortUnits) expect(unit.modules).toEqual([]);
+    expect(c.escortUnits[0].modules).toEqual([]);
+    // And the unit is back in the locker, not consumed by the round trip.
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(3);
   });
 
-  it('a price change after purchase does not change the refund', () => {
-    const c = richCampaign('receipt-not-pricelist');
-    buyEscort(c);
-    const unit = c.escortUnits[0];
-    buyEscortModule(c, unit.id, 'deckGun');
-    // Simulate the module having been bought under a cheaper price list — the
-    // receipt on the escort is the only thing a refund may consult.
-    unit.modulePaid.deckGun = 40;
-    const cash = c.cash;
-    removeEscortModule(c, unit.id, 'deckGun');
-    expect(c.cash).toBe(cash + 40);
-  });
-
-  it('a module cannot be refunded from an escort that never carried it', () => {
-    const c = richCampaign('no-phantom-refund');
+  it('a unit fitted to one escort is not available to another', () => {
+    const c = richCampaign('one-unit-one-hull');
+    c.moduleStock.escort.deckGun = 1;
     buyEscort(c);
     buyEscort(c);
     const [a, b] = c.escortUnits;
-    buyEscortModule(c, a.id, 'deckGun');
-    const cash = c.cash;
-    // b never bought one — asking to strip it must be a no-op, not a payout.
-    expect(removeEscortModule(c, b.id, 'deckGun')).toBe(false);
-    expect(removeEscortModule(c, 9999, 'deckGun')).toBe(false);
-    expect(c.cash).toBe(cash);
-    expect(a.modules).toEqual(['deckGun']);
+    expect(equipEscortModule(c, a.id, 'deckGun')).toBe(true);
+    // The locker is empty now, so the second escort cannot have one too.
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
+    expect(equipEscortModule(c, b.id, 'deckGun')).toBe(false);
+    expect(escortModuleBlockReason(c, b.id, 'deckGun')).toBe(
+      'Every unit is fitted to another escort — unfit one first',
+    );
+    // Free it and it becomes hers.
+    expect(removeEscortModule(c, a.id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, b.id, 'deckGun')).toBe(true);
+    expect(a.modules).toEqual([]);
+    expect(b.modules).toEqual(['deckGun']);
   });
 
-  it('research and cash gates are reported per escort', () => {
-    const c = newCampaign('gates');
-    buyEscortAt(c, 2);
-    const id = c.escortUnits[0].id;
-    c.cash = 100_000;
-    expect(escortModuleBlockReason(c, id, 'deckGun')).toMatch(/^Requires technology/);
-    c.completedResearch = ['deckGun.base'];
-    expect(escortModuleBlockReason(c, id, 'deckGun')).toBeNull();
-    c.cash = 0;
-    expect(escortModuleBlockReason(c, id, 'deckGun')).toBe('Not enough cash');
+  it('three drafted units arm three escorts', () => {
+    const c = richCampaign('three-gun-boats');
+    buyEscort(c);
+    buyEscort(c);
+    buyEscort(c);
+    for (const unit of c.escortUnits) {
+      expect(equipEscortModule(c, unit.id, 'deckGun')).toBe(true);
+    }
+    expect(c.escortUnits.every((u) => u.modules.includes('deckGun'))).toBe(true);
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
   });
 
-  function buyEscortAt(c: CampaignState, n: number): void {
-    fitUniformEscorts(c, n);
-  }
+  it('LOSING an escort destroys the equipment she was carrying', () => {
+    // This is what makes an escort worth defending. The hull is 600 cash; the
+    // deck gun aboard her cannot be bought back at any price — it has to be
+    // drafted again.
+    const c = richCampaign('equipment-sinks');
+    c.moduleStock.escort = { deckGun: 2 };
+    buyEscort(c);
+    buyEscort(c);
+    const [a, b] = c.escortUnits;
+    expect(equipEscortModule(c, a.id, 'deckGun')).toBe(true);
+    expect(equipEscortModule(c, b.id, 'deckGun')).toBe(true);
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(2);
+
+    sinkOne(c, 0);
+    expect(c.escortUnits.map((u) => u.id)).not.toContain(a.id);
+    // One unit gone with her; the survivor keeps hers.
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(1);
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
+    expect(c.escortUnits[0].modules).toEqual(['deckGun']);
+  });
+
+  it('a bare escort takes nothing to the bottom with her', () => {
+    const c = richCampaign('bare-sinks');
+    c.moduleStock.escort = { deckGun: 1 };
+    buyEscort(c);
+    buyEscort(c);
+    const [a] = c.escortUnits;
+    expect(equipEscortModule(c, a.id, 'deckGun')).toBe(true);
+    sinkOne(c, 1); // the empty one
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(1);
+    expect(c.escortUnits[0].modules).toEqual(['deckGun']);
+  });
+
+  it('with nothing in the locker the block reason says so', () => {
+    const c = richCampaign('empty-locker');
+    c.moduleStock.escort = {};
+    buyEscort(c);
+    expect(c.escortUnits.length).toBeGreaterThan(0);
+    expect(escortModuleBlockReason(c, c.escortUnits[0].id, 'deckGun')).toBe(
+      'No unit held — draft one',
+    );
+  });
 });
-
-// ---------------------------------------------------------------------------
-// 10: save healing keeps the flotilla whole
-// ---------------------------------------------------------------------------
-// (The pre-roguelite shared-template escort save is behind the redesign's
-// explicit migration boundary — the old key is ignored, so its translation
-// tests retired with it. What must still hold: the current per-escort format
-// heals forward without losing a ship, a name, a fit or a receipt.)
 
 describe('save healing keeps the flotilla whole', () => {
   it('an individually-fitted flotilla round-trips untouched', () => {
@@ -516,25 +522,20 @@ describe('save healing keeps the flotilla whole', () => {
     expect(once.escortUnits[1].modules).toEqual(['depthCharges']);
   });
 
-  it('a healed escort still refunds what was PAID, not the current list price', () => {
-    const c = richCampaign('healed-refund');
+  it('a healed run keeps its equipment stock and its fittings in step', () => {
+    const c = richCampaign('healed-stock');
     fitEscorts(c, [[]]);
     const id = c.escortUnits[0].id;
-    c.completedResearch = ['deckGun.base'];
-    c.cash = ESCORT_MODULES.deckGun.cost;
-    expect(buyEscortModule(c, id, 'deckGun')).toBe(true);
-    // Simulate a price retune between save and load: the receipt must win.
-    const paid = c.escortUnits[0].modulePaid.deckGun!;
+    c.moduleStock.escort = { deckGun: 2 };
+    expect(equipEscortModule(c, id, 'deckGun')).toBe(true);
+
     const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
-    m.cash = 0;
-    expect(removeEscortModule(m, m.escortUnits[0].id, 'deckGun')).toBe(true);
-    expect(m.cash).toBe(paid);
+    expect(moduleStock(m, 'escort', 'deckGun')).toBe(2);
+    expect(m.escortUnits[0].modules).toEqual(['deckGun']);
+    // Fitted is counted off the loadout, so stock and fittings cannot drift.
+    expect(moduleSpare(m, 'escort', 'deckGun')).toBe(1);
   });
 });
-
-// ---------------------------------------------------------------------------
-// 11: only escorts that carry the weapon may use it
-// ---------------------------------------------------------------------------
 
 describe('weapon selection uses only escorts that carry the module', () => {
   it('MANUAL depth charges come from the fitted escort, never the bare one', () => {

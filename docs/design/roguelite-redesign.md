@@ -29,8 +29,8 @@ The primary in-run progression should come from capturing enemy technology, maki
 6. Recover enemy wreckage and rescue friendly crews when tactically possible.
 7. Resolve deliveries, losses, quota progress, and confidence.
 8. Review the After-Action Report.
-9. Select one technology from a mandatory reward draft.
-10. Purchase and install unlocked equipment.
+9. Select one reward from a mandatory draft: an upgrade, a piece of equipment, a fleet asset or a crate of ordnance.
+10. Fit the equipment the drafts have delivered, and buy hulls and ordnance.
 11. Begin the next round.
 12. Continue until the region is completed or the run is lost.
 
@@ -61,7 +61,7 @@ It contains:
 - Fleet composition and damage.
 - Individually equipped escorts.
 - Class-equipped cargo ships.
-- Purchased equipment.
+- Equipment units the drafts have delivered.
 - Technologies and Fleet Doctrines acquired during the run.
 - Enemy adaptation state.
 - Confidence.
@@ -107,7 +107,7 @@ Each region is an independent roguelite campaign.
 A typical region structure is:
 
 1. Begin the region at round 1 with a region-defined starting state.
-2. Build the fleet during the run through cash, recovered technology, equipment purchases, and doctrines.
+2. Build the fleet during the run through cash, recovered technology, drafted equipment, and doctrines.
 3. Continue until the region completion watermark is reached or the run is lost.
 4. Completing the region permanently unlocks the next region and awards Commander Experience.
 5. Losing restarts the same region at round 1.
@@ -121,7 +121,7 @@ The following are temporary to the active regional run and are lost when it ends
 - Cash.
 - Current fleet composition.
 - Fleet damage and repairs.
-- Purchased and installed equipment.
+- Drafted and installed equipment.
 - Ammunition and consumables.
 - Technologies unlocked during the region.
 - Fleet Doctrines selected during the region.
@@ -280,15 +280,32 @@ This replaces an earlier probabilistic "pity rule". That rule tested a boolean o
 
 Multi-family branches bank the pressure of the families they claim **sub-linearly**. One aircraft splitting a sortie between mines and boats is not a minesweeper plus a gun boat, and under a per-family product it priced itself above every specialist that actually removes one of them.
 
-### Hardware Arrives With The Technology
+### Four Reward Categories
 
-A drafted node that unlocks equipment fits one free unit of that equipment immediately.
+A draft hands over four different kinds of thing, and the player should never have to work out which they are looking at. Each has its own colour, icon and ribbon on the card.
 
-- Applies only to the node the purchase gate names, and only while the player cannot field the thing yet. Upgrades grant nothing; a second free copy is never handed out.
-- Escort and shore-base fits land on a specific unit; a cargo-class fit lands on the class carrying the most value in the convoy.
-- Granted fits are recorded as costing zero, so unequipping refunds nothing and replacement hulls are not surcharged for them. A free fit that raises the price of every future hull is not free.
+**Upgrade** — a branch node or tactic. Free, permanent, and applied to **every copy** of that system the fleet carries: effects resolve per branch, so fitting three self-defense mounts and drafting one accuracy node upgrades all three. You never upgrade a module, you upgrade a branch. The card shows how deep the branch already runs and the rung this pick would add.
 
-Without this the draft asked the player to weigh an IOU with a round of delay (the *right to buy* a deck gun next phase) against an ability upgrade that applies to the very next transit — a second, independent reason specialist counters lost even when they were offered.
+**Module** — one physical unit of equipment, held as stock and fitted for free between rounds. There is nothing to buy: the draft delivers the hardware, and the first unit of a type also delivers its branch's base node, so a branch's upgrades only become draftable once you actually hold one of the thing. Held to a cap per type — three for cargo (one per ship class), three for escort (one per escort), one for the shore batteries — and a module at its cap stops being offered. The same module never appears twice in one draft.
+
+The two platforms differ in exactly one way, deliberately:
+
+- a **cargo** unit fits an entire ship class and is never lost — hulls sink and are replaced, the fit stays with the class. Because one card protects roughly fifteen hulls against an escort unit's one, cargo units are drawn meaningfully less often and the card says what it fits;
+- an **escort** unit arms one hull and **goes down with her**. Losing an escort already cost 600 cash; now it costs the drafted equipment aboard, which is what makes a flotilla worth defending. The branch upgrades survive — the knowledge does not sink, the hardware does.
+
+**Fleet Asset** — a change to the shape of the fleet rather than to a weapon: Expanded Berthing, the Escort Refit Bay, a Forward Repair Yard (warships repair free), a Salvage Crane (recovery and rescue run faster), Modular Refit Plans (one more module slot on every merchant class). Parallel, not a ladder: none gates another.
+
+**Ordnance** — a one-off crate of consumables, and the only category that is spent rather than kept. It is priced as a *share of the table* rather than on its own merits, because its job is relative: with a full catalogue on offer a crate of shells should almost never be the interesting card, and with everything worth having already drafted or capped it should be. The share grows as the alternatives run out. It never claims the counter slot — a crate of shells is not an answer to a threat.
+
+### What Cash Still Buys
+
+Hulls, escorts, shore batteries, repairs, and ordnance. Nothing else.
+
+Equipment purchases are gone entirely, and so is ability commissioning: the A-10, the scan pulse, active sonar, defensive smoke and hardened systems are in hand from round one. Their *ordnance* is still bought every round, which is the decision worth keeping — an ability that refilled itself for free would be a question about timing and never about cost.
+
+This splits the two currencies cleanly: **the draft decides what the fleet can do, cash decides how much of it it does.**
+
+The old model asked the player to weigh an IOU with a round of delay (the *right to buy* a deck gun next phase) against an ability upgrade that applied to the very next transit. The upgrade won every time, and a logged run finished round 9 with an escort carrying nothing at all. Equipment purchases were only ~4% of the cash economy, so removing them cost almost nothing and removed nearly all of the friction.
 
 ### Wreckage Influence
 

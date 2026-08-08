@@ -772,46 +772,26 @@ export const ECONOMY = {
   /** Cash per point-defense round, and how many a single purchase buys. */
   pdAmmoCost: 12,
   pdAmmoPerBuy: 3,
-  /** Module refits price on OWNED hulls of the class (exploit-proof — see
-   *  moduleCost), but a flat per-ship rate would make a late-campaign refit
-   *  balloon into many thousands of cash as the fleet grows past 30+ hulls.
-   *  Ships up to this count are billed at the full per-ship rate; ships beyond
-   *  it are billed at moduleCostTaperRate of that rate, so a big fleet can
-   *  still afford SOME upgrades without every refit consuming the whole
-   *  treasury. */
-  moduleCostSoftCap: 12,
-  moduleCostTaperRate: 0.25,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,
   maxEscorts: 3,
-  warthogUnlockCost: 150,
-  scanUnlockCost: 150,
-  sonarUnlockCost: 160,
-  /** Per-use cost of an A-10 sortie and a scan pulse.
+  /** Per-use cost of an A-10 sortie, a scan pulse and a smoke canister.
    *
-   *  These used to be free. The unlock was bought once and every round after it
-   *  refilled the charges for nothing, which made calling them in a decision
-   *  about TIMING only — never about whether it was worth it — and meant the
-   *  two most flexible tools in the game sat outside the economy that every
-   *  other counter competes inside. They are now stock: bought in preparation,
-   *  spent on use, and carried over when unused, exactly like interceptor
-   *  ammunition. The unlock still buys the CAPABILITY (and the first sortie
-   *  with it, so commissioning is immediately useful); this buys the ordnance.
+   *  The CAPABILITIES are free and present from round one — commissioning them
+   *  used to cost 150-160 each, which was the same IOU the module economy has
+   *  now shed: the technology said you had an A-10 and the bank said you did
+   *  not. What you buy is the ORDNANCE, every round, and that is the decision
+   *  worth keeping: an ability that refilled for free would be a question about
+   *  timing and never about cost.
    *
    *  Priced against what they do. A sortie is two firing passes at 26 damage
    *  and kills mines outright, so it sits near an escort's magazine refill; a
-   *  scan pulse charts one lane, which is cheaper and more situational. */
+   *  scan pulse charts one lane, which is cheaper and more situational; a smoke
+   *  cloud protects a cluster of hulls for a while, between the two. */
   warthogSortieCost: 95,
   scanPulseCost: 55,
-  /** Per-use cost of a defensive smoke canister, on the same footing as the
-   *  sortie and the pulse above and for the same reason: an ability that
-   *  refilled for free was a question about timing and never about cost. Priced
-   *  between them — a cloud protects a cluster of hulls for a while, which is
-   *  worth more than charting one lane and less than two gun passes. */
   smokeCanisterCost: 70,
-  smokeUnlockCost: 160,
-  hardenedUnlockCost: 160,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
 } as const;
@@ -1121,6 +1101,50 @@ export const DRAFT = {
    *  `offerCooldownRounds` drafts. Softer than the open pool's: the guarantee
    *  matters more than the variety. */
   counterSlotRecentMult: 0.5,
+
+  // --- Reward categories ---------------------------------------------------
+  //  A draft can hand over four different kinds of thing, and they are not
+  //  interchangeable. A MODULE is a new capability; an UPGRADE improves every
+  //  copy of one the fleet already has; an ASSET changes the fleet's shape;
+  //  ORDNANCE is a one-off crate of consumables. Left unweighted the module
+  //  would win every table — a thing you cannot do yet always reads better than
+  //  a thing you can do slightly better — so the pool is biased back toward
+  //  upgrades and the module's advantage is spent where it belongs: answering
+  //  a threat that is actually getting through.
+  /** Base weight multiplier per category in the OPEN (development) pool. */
+  categoryWeight: {
+    upgrade: 1,
+    module: 0.75,
+    asset: 0.9,
+    ordnance: 0.28,
+  } as Record<string, number>,
+  /** A cargo module unit fits an entire ship CLASS — roughly fifteen hulls for
+   *  one card, against one hull for an escort unit. Same card, very different
+   *  gift, so the class-wide one is drawn meaningfully less often. */
+  cargoModuleRarity: 0.5,
+  /** Units of one cargo module type the player may hold: one per ship class. */
+  cargoModuleCap: 3,
+  /** Units of one escort module type: one per escort the flotilla can field. */
+  escortModuleCap: 3,
+  /** Units of one base module type (the battery loadout is a shared template
+   *  with a single slot, so a second unit could never be fitted). */
+  baseModuleCap: 1,
+  /** Ordnance never claims the counter slot — a crate of shells is not an
+   *  answer to a threat — and is held out of the pool entirely until the run
+   *  has something it would actually resupply. */
+  ordnanceMinRound: 3,
+  /** Share of the table ordnance takes when there is plenty else on offer.
+   *  Low on purpose: with a full catalogue in front of them, a crate of shells
+   *  should almost never be the interesting card. */
+  ordnanceShare: 0.05,
+  /** Extra share it claims as the alternatives run out, scaled by how far the
+   *  pool has thinned below `ordnanceRichPool`. This is the whole point of the
+   *  category — when everything worth having is already drafted or capped, the
+   *  draft should offer something real rather than a card the player resents.
+   *  A near-empty pool hands ordnance most of the table. */
+  ordnanceScarcityShare: 0.5,
+  /** Non-ordnance options that count as "plenty else on offer". */
+  ordnanceRichPool: 12,
 } as const;
 
 /** Commander progression: the permanent layer. PROVISIONAL numbers. */

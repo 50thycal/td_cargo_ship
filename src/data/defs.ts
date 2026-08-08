@@ -194,6 +194,75 @@ export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Ordnance packages
+// ---------------------------------------------------------------------------
+
+/** One-off crates of consumables the draft can hand over.
+ *
+ *  Consumables are BOUGHT, every round, with cash — that stays true and is the
+ *  point: an ability that refilled itself for free is a question about timing
+ *  and never about cost. These are not a replacement for that. They exist so a
+ *  draft that has nothing else useful left to offer — every module capped,
+ *  every relevant upgrade taken — still offers something real instead of a card
+ *  the player resents. Deliberately the weakest category.
+ *
+ *  Each pack declares what it tops up. `needs` keeps a pack off the table until
+ *  the run can actually use it: drone munitions are worthless without a
+ *  launcher, self-defense rounds without the module. */
+export interface OrdnancePackDef {
+  id: string;
+  name: string;
+  desc: string;
+  /** Stock fields this pack adds to, by amount. */
+  grant: Partial<
+    Record<'ammo' | 'droneAmmo' | 'pdAmmo' | 'warthogStock' | 'scanStock' | 'smokeStock', number>
+  >;
+  /** Capability the run must already hold for the pack to be worth offering. */
+  needs?: 'mcmDroneLauncher' | 'selfDefenseModule';
+}
+
+export const ORDNANCE_PACKS: Record<string, OrdnancePackDef> = {
+  interceptorRounds: {
+    id: 'interceptorRounds',
+    name: 'Interceptor Resupply',
+    desc: 'A pallet of 24 interceptor rounds, delivered to the magazines.',
+    grant: { ammo: 24 },
+  },
+  sorties: {
+    id: 'sorties',
+    name: 'Sortie Allocation',
+    desc: 'Two A-10 gun runs, fuelled and armed on the apron.',
+    grant: { warthogStock: 2 },
+  },
+  pulses: {
+    id: 'pulses',
+    name: 'Survey Package',
+    desc: 'Three scan pulses in stowage.',
+    grant: { scanStock: 3 },
+  },
+  canisters: {
+    id: 'canisters',
+    name: 'Smoke Stores',
+    desc: 'Two defensive smoke canisters.',
+    grant: { smokeStock: 2 },
+  },
+  droneMunitions: {
+    id: 'droneMunitions',
+    name: 'Drone Munitions',
+    desc: 'Six minesweeping-drone munitions.',
+    grant: { droneAmmo: 6 },
+    needs: 'mcmDroneLauncher',
+  },
+  selfDefenseRounds: {
+    id: 'selfDefenseRounds',
+    name: 'Close-In Rounds',
+    desc: 'Nine self-defense rounds for the cargo mounts.',
+    grant: { pdAmmo: 9 },
+    needs: 'selfDefenseModule',
+  },
+};
+
 /** Shore-base loadout slots. Base missile interceptors are built in. */
 export const BASE_MODULE_SLOTS = 1;
 

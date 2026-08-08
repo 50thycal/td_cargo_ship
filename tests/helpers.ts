@@ -20,7 +20,6 @@ export function fitEscorts(c: CampaignState, loadouts: EscortModuleId[][]): void
       id: c.nextEscortId++,
       name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
       modules: [...modules],
-      modulePaid: {},
       damage: 0,
     });
   }

@@ -1074,8 +1074,9 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'activeSonar.base',
         name: 'Base Active Sonar Ping',
-        desc: 'Reveals standard and homing torpedoes inside the placed area. Two charges per round.',
-        cost: 35,
+        desc: 'Reveals standard and homing torpedoes inside the placed area. Pings are bought in preparation; this is stowage for two at a time.',
+        cost: 0,
+        granted: true,
         grant: { charges: 2 },
       },
       {
@@ -1541,7 +1542,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         id: 'smokeScreen.base',
         name: 'Base Defensive Smoke',
         desc: 'Enemy attacks against ships inside the cloud fall back to cruder targeting. Canisters are bought in preparation; this is stowage for two at a time.',
-        cost: 40,
+        cost: 0,
+        granted: true,
         grant: { charges: 2 },
       },
       {
@@ -1713,7 +1715,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         id: 'hardened.base',
         name: 'Base Emergency Reboot',
         desc: 'A manual activation that shortens the remaining jamming blackout.',
-        cost: 35,
+        cost: 0,
+        granted: true,
         set: [{ stat: 'recovery', tier: 'low' }],
         grant: { reboots: 1 },
       },
@@ -1876,7 +1879,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Base Hull Reinforcement',
         desc: '+50 max hull points on equipped ships.',
         cost: 0,
-        granted: true,
         set: [{ stat: 'bonus', tier: 'low' }],
       },
       {
@@ -1922,7 +1924,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Base Fire Suppression',
         desc: 'Missile-hit fires burn for half as long on equipped ships.',
         cost: 0,
-        granted: true,
         flags: ['halfDuration'],
       },
       {
@@ -2002,12 +2003,24 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'The economy, not a threat.',
     ammo: 'none',
     tacticStyle: 'ladder',
+    // Fleet assets are PARALLEL, not a ladder: each one is an independent
+    // change to the fleet's shape, and none is a prerequisite for another. The
+    // granted base exists purely to satisfy the index's implicit "everything
+    // requires nodes[0]" rule without making one asset gate the rest.
     nodes: [
+      {
+        id: 'logistics.base',
+        name: 'Quartermaster’s Office',
+        desc: 'The fleet keeps its own books. No effect on its own.',
+        cost: 0,
+        granted: true,
+      },
       {
         id: 'logistics.expandedBerthing',
         name: 'Expanded Berthing',
-        desc: 'Convoy capacity +5 immediately and hull repairs cost half as much.',
+        desc: 'Convoy capacity +5 immediately and merchant hull repairs cost half as much.',
         cost: 70,
+        noChain: true,
         flags: ['berthing'],
       },
       {
@@ -2015,12 +2028,46 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Escort Refit Bay',
         desc: 'A third specialist slot on every escort. Interceptors stay built in and never use a slot — this is room for one more optional system, so an escort can cover a second role without giving up its first.',
         cost: 110,
+        noChain: true,
         flags: ['escortRefit'],
+      },
+      {
+        id: 'logistics.repairYard',
+        name: 'Forward Repair Yard',
+        desc: 'Escorts and shore batteries are patched up between rounds at no cost. Only the merchant hulls still bill for repairs.',
+        cost: 120,
+        noChain: true,
+        flags: ['repairYard'],
+      },
+      {
+        id: 'logistics.salvageCrane',
+        name: 'Salvage Crane',
+        desc: 'Wreckage is recovered and survivors are pulled aboard in around two-thirds the time, so one escort can work more of the water before it drifts away.',
+        cost: 90,
+        noChain: true,
+        flags: ['salvageCrane'],
+      },
+      {
+        id: 'logistics.modularRefit',
+        name: 'Modular Refit Plans',
+        desc: 'One more module slot on every merchant class — including the Fast Freighter, which otherwise only ever carries one thing.',
+        cost: 130,
+        noChain: true,
+        flags: ['modularRefit'],
       },
     ],
     tactics: [],
   },
 };
+
+/** Logistics nodes are FLEET ASSETS in the draft: they change the shape of the
+ *  fleet — its berthing, its slots, what it can repair and how fast it can
+ *  salvage — rather than improving a weapon or handing over a piece of
+ *  equipment. Kept as a set so the draft can categorise without hard-coding a
+ *  branch name in three places. */
+export const FLEET_ASSET_BRANCHES: ReadonlySet<CounterBranchId> = new Set<CounterBranchId>([
+  'logistics',
+]);
 
 // ---------------------------------------------------------------------------
 // Flattened research index & prerequisite resolution
@@ -2120,8 +2167,6 @@ export const MODULE_RESEARCH_REQUIREMENT: Partial<Record<ModuleId, ResearchId>> 
   flak: 'flak.base',
   antiBoarding: 'antiBoarding.base',
   compartmentalization: 'compartmentalization.low',
-  // reinforcedHull / fireSuppression: base nodes are granted, so buyable
-  // immediately — the rule "no purchase before the base node" still holds.
   reinforcedHull: 'reinforcedHull.base',
   fireSuppression: 'fireSuppression.base',
 };
