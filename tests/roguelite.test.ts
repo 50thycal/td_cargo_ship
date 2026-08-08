@@ -666,7 +666,49 @@ describe('technology draft', () => {
     const generic = pool.find((p) => candidateGeneric(p));
     expect(mineCounter).toBeDefined();
     expect(generic).toBeDefined();
-    expect(mineCounter!.weight).toBeGreaterThan(generic!.weight * 3);
+    // A specific answer to what is actually killing you still beats a general
+    // one — but only by a margin, not by an order of magnitude. See the
+    // starvation test below for the other half of that.
+    expect(mineCounter!.weight).toBeGreaterThan(generic!.weight);
+  });
+
+  it('SURVIVABILITY: armour is priced on total danger, not starved for lacking a target', () => {
+    // Everything else in the weighting prices a reward against the family it
+    // answers, which left reinforced hull and compartmentalization with no
+    // signal at all: a flat 1 against 5-30 for a counter under pressure. A
+    // 192-campaign sweep drafted Reinforced Hull ONCE and Compartmentalization
+    // never. What makes armour relevant is being hurt AT ALL.
+    const quiet = newRegionalRun('armour-quiet', FIRST_REGION);
+    quiet.round = 4;
+    const calm = draftPool(quiet, {}).find((p) => candidateGeneric(p))!;
+    expect(calm).toBeDefined();
+
+    const bleeding = newRegionalRun('armour-bleeding', FIRST_REGION);
+    bleeding.round = 4;
+    bleeding.threatPressure.mines = {
+      rounds: 3,
+      streak: 3,
+      damage: 260,
+      kills: 3,
+      lastSeenRound: 3,
+    };
+    bleeding.threatPressure.missiles = {
+      rounds: 3,
+      streak: 3,
+      damage: 300,
+      kills: 2,
+      lastSeenRound: 3,
+    };
+    const hurt = draftPool(bleeding, {}).find((p) => candidateGeneric(p))!;
+    // A run taking losses across the board values armour far more than a quiet
+    // one does, which is the whole signal that was missing.
+    expect(hurt.weight).toBeGreaterThan(calm.weight * 2);
+
+    // And it is genuinely on the table: reinforced hull reaches the pool.
+    const hasHull = draftPool(bleeding, {}).some(
+      (p) => draftOptionKey(p.option) === 'module:cargo:reinforcedHull',
+    );
+    expect(hasHull).toBe(true);
   });
 
   it('an unanswered threat outweighs one the player is actually stopping', () => {

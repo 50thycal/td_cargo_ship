@@ -1145,6 +1145,18 @@ export const DRAFT = {
   ordnanceScarcityShare: 0.5,
   /** Non-ordnance options that count as "plenty else on offer". */
   ordnanceRichPool: 12,
+
+  /** Share of the run's TOTAL live danger that a branch countering nothing in
+   *  particular — reinforced hull, compartmentalization — banks as weight.
+   *
+   *  Everything else in this block prices a reward against the family it
+   *  answers, which left generic survivability with no signal at all: a hull
+   *  fit scored a flat 1 against 5-30 for a counter under pressure, and a
+   *  192-campaign sweep drafted Reinforced Hull ONCE and Compartmentalization
+   *  never. What makes armour relevant is not any one threat, it is being hurt
+   *  at all, so it prices on the sum of what is getting through. Below 1
+   *  because a specific answer should still beat a general one. */
+  survivabilityShare: 0.55,
 } as const;
 
 /** Commander progression: the permanent layer. PROVISIONAL numbers. */

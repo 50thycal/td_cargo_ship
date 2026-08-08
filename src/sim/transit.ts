@@ -1890,20 +1890,29 @@ function updateEscortAuto(t: TransitState): void {
     if (t.ammo <= 0) return;
     let best: Threat | null = null;
     let bestD = autoRadius;
+    let skippedCovered = false;
     for (const threat of t.threats) {
       if (!threat.alive || !canEngage('interceptor', threat.kind)) continue;
+      const d = dist(escort.x, escort.y, threat.x, threat.y);
       if (threat.claimedByInterceptor) {
         // Never double-fire at a missile that already has a kill shot inbound.
-        if (fx.autoDedupe) t.stats.counter.duplicateShotsAvoided++;
+        if (fx.autoDedupe && d <= autoRadius) skippedCovered = true;
         continue;
       }
-      const d = dist(escort.x, escort.y, threat.x, threat.y);
       if (d <= bestD) {
         bestD = d;
         best = threat;
       }
     }
-    if (!best) continue;
+    if (!best) {
+      // ONE avoided shot: a ready launcher held its fire this cycle because
+      // everything it could reach was already covered. Counting it inside the
+      // scan above instead counted evaluations — every candidate, every escort,
+      // every tick — which reported 1.9 million "avoided shots" across a sweep
+      // and made the one number that prices the dedupe tactics meaningless.
+      if (skippedCovered) t.stats.counter.duplicateShotsAvoided++;
+      continue;
+    }
     fireInterceptor(t, best, { kind: 'escort', escort }, true);
     escort.autoCooldown = fx.autoCooldown;
   }
@@ -1922,10 +1931,13 @@ function updateBaseAuto(t: TransitState): void {
     if (t.ammo <= 0) return;
     let best: Threat | null = null;
     let bestKey = Infinity;
+    let skippedCovered = false;
     for (const threat of t.threats) {
       if (!threat.alive || !canEngage('interceptor', threat.kind)) continue;
       if (threat.claimedByInterceptor) {
-        if (fx.autoDedupe) t.stats.counter.duplicateShotsAvoided++;
+        // Bases reach the whole map, so any covered missile is one this battery
+        // could have fired at.
+        if (fx.autoDedupe) skippedCovered = true;
         continue;
       }
       const key = fx.autoPrioritizeTti
@@ -1936,7 +1948,11 @@ function updateBaseAuto(t: TransitState): void {
         best = threat;
       }
     }
-    if (!best) continue;
+    if (!best) {
+      // One held shot per ready battery per cycle — see updateEscortAuto.
+      if (skippedCovered) t.stats.counter.duplicateShotsAvoided++;
+      continue;
+    }
     fireInterceptor(t, best, { kind: 'base', base }, true);
     base.autoCooldown = fx.autoCooldown;
   }
@@ -2122,6 +2138,7 @@ function updateSelfDefense(t: TransitState, dt: number): void {
     if (ship.pdCooldown > 0 || ship.pdShots <= 0 || t.pdAmmo <= 0) continue;
     let best: Threat | null = null;
     let bestKey = Infinity;
+    let skippedCovered = false;
     for (const threat of t.threats) {
       if (!threat.alive || !canEngage('selfDefense', threat.kind)) continue;
       const d = dist(ship.x, ship.y, threat.x, threat.y);
@@ -2130,7 +2147,7 @@ function updateSelfDefense(t: TransitState, dt: number): void {
       if (fx.coordinated) {
         // Another module already has a likely kill inbound → skip entirely.
         if (threat.reservedByShipId !== undefined && threat.reservedByShipId !== ship.id) {
-          t.stats.counter.duplicateShotsAvoided++;
+          skippedCovered = true;
           continue;
         }
         // Prioritize missiles hunting THIS hull, then lowest time-to-impact.
@@ -2142,7 +2159,11 @@ function updateSelfDefense(t: TransitState, dt: number): void {
         best = threat;
       }
     }
-    if (!best) continue;
+    if (!best) {
+      // One held shot per loaded mount per cycle — see updateEscortAuto.
+      if (skippedCovered) t.stats.counter.duplicateShotsAvoided++;
+      continue;
+    }
     ship.pdCooldown = COMBAT.selfDefense.cooldown;
     ship.pdShots--;
     t.pdAmmo--;
@@ -2179,23 +2200,28 @@ function updateFlak(t: TransitState, dt: number): void {
     if (ship.flakCooldown > 0 || ship.flakShots <= 0) continue;
     let best: Threat | null = null;
     let bestD = flakRadius;
+    let skippedCovered = false;
     for (const threat of t.threats) {
       if (!threat.alive) continue;
       if (!canEngage('flak', threat.kind, researched)) continue;
+      const d = dist(ship.x, ship.y, threat.x, threat.y);
       if (
         fx.deconfliction &&
         t.interceptors.some((i) => i.launcher === 'flak' && i.targetThreatId === threat.id)
       ) {
-        t.stats.counter.duplicateShotsAvoided++;
+        if (d <= flakRadius) skippedCovered = true;
         continue;
       }
-      const d = dist(ship.x, ship.y, threat.x, threat.y);
       if (d <= bestD) {
         bestD = d;
         best = threat;
       }
     }
-    if (!best) continue;
+    if (!best) {
+      // One held shot per loaded mount per cycle — see updateEscortAuto.
+      if (skippedCovered) t.stats.counter.duplicateShotsAvoided++;
+      continue;
+    }
     ship.flakCooldown = fx.reload;
     ship.flakShots--;
     t.stats.counter.flakShots++;

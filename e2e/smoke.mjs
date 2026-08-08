@@ -172,18 +172,49 @@ try {
   for (const label of [/Escort flotilla/, /Shore-base loadout/]) {
     if (!(await page.getByText(label).count())) throw new Error(`prep panel missing: ${label}`);
   }
-  // Technology-gated procurement: the shop shows what the fleet can actually
-  // field. Reinforced Hull's base node is granted at the start of a run, so it
-  // is on sale from round one; Hydrophone's is not, so its card is absent
-  // entirely until the draft produces it — a locked item is not displayed at
-  // all, rather than shown with its requirement as a label.
-  const hullCards = await page.locator('.module-card', { hasText: 'Reinforced Hull' }).count();
-  if (!hullCards) throw new Error('Reinforced Hull should be purchasable from round one');
-  const hydroCards = await page.locator('.module-card', { hasText: 'Hydrophone' }).count();
-  if (hydroCards) {
-    throw new Error('Hydrophone is not researched yet, so its card should not be rendered');
+  // Equipment-gated procurement: the loadout shows exactly what the run HOLDS,
+  // because equipment is no longer bought — the draft delivers units and the
+  // loadout fits them. So a module card appears if and only if there is a unit
+  // in the locker. Checked against the saved run rather than against a
+  // hard-coded module, since which unit round one delivers is a roll.
+  const held = await page.evaluate(() => {
+    const raw = window.localStorage.getItem('straitwatch.run.v1');
+    if (!raw) return null;
+    const run = JSON.parse(raw).run;
+    return {
+      cargo: Object.entries(run.moduleStock?.cargo ?? {})
+        .filter(([, n]) => n > 0)
+        .map(([id]) => id),
+    };
+  });
+  if (!held) throw new Error('no saved run to check the loadout against');
+  const cargoCards = await page.locator('.module-card').allTextContents();
+  const MODULE_NAMES = {
+    reinforcedHull: 'Reinforced Hull',
+    fireSuppression: 'Fire-Suppression',
+    mineSonar: 'Mine-Detection Sonar',
+    selfDefense: 'Self-Defense Interceptor',
+    missileWarning: 'Missile-Warning Receiver',
+    hydrophone: 'Hydrophone',
+    thermalImaging: 'Thermal/Radar Imaging',
+    flak: 'Anti-Air Flak',
+    antiBoarding: 'Anti-Boarding',
+    compartmentalization: 'Compartmentalization',
+  };
+  for (const id of held.cargo) {
+    const name = MODULE_NAMES[id];
+    if (name && !cargoCards.some((tx) => tx.includes(name))) {
+      throw new Error(`holding a ${name} unit but its loadout card is missing`);
+    }
   }
-  console.log('prep loadout panels OK (escort/base slots + unresearched kit hidden)');
+  // Nothing can have drafted a hydrophone by round two, so it must be absent —
+  // an unheld item is not displayed at all, rather than shown with a label.
+  if (!held.cargo.includes('hydrophone') && cargoCards.some((tx) => tx.includes('Hydrophone'))) {
+    throw new Error('no Hydrophone unit is held, so its card should not be rendered');
+  }
+  console.log(
+    `prep loadout panels OK (escort/base slots; ${held.cargo.length} cargo unit(s) held and shown)`,
+  );
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.
