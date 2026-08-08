@@ -38,7 +38,7 @@ import {
   draftOptionResearchId,
   selectDraftOption,
 } from '../../src/sim/draft';
-import { LOSS_CAUSE_TO_ENEMY_BRANCH } from '../../src/data/counters';
+import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../src/data/counters';
 import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
 import { COMBAT, COMMANDER, NAV, WORLD } from '../../src/data/tuning';
 import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
@@ -378,7 +378,20 @@ export function research(c: CampaignState, persona: Persona): DraftOption | null
   // in this file kept working when equipment stopped being bought and started
   // being drafted. Ordnance matches nothing by name and is only ever the
   // fallback, which is exactly its role in the draft too.
-  const preferred = persona.research
+  //
+  // A doctrine that names an UPGRADE wants the thing it upgrades. That used to
+  // go without saying, because branch base nodes were either granted or bought
+  // with cash; now they arrive as equipment from the draft, and a list naming
+  // `reinforcedHull.medium` without `reinforcedHull.base` describes a build the
+  // bot can never reach. Rather than patch every doctrine by hand, each entry
+  // implies its own branch's base — which is what a player means anyway.
+  const wanted: ResearchId[] = [];
+  for (const id of persona.research) {
+    const base = RESEARCH_INDEX[id]?.branch.nodes[0]?.id;
+    if (base && base !== id && !wanted.includes(base)) wanted.push(base);
+    if (!wanted.includes(id)) wanted.push(id);
+  }
+  const preferred = wanted
     .map((id) => draft.options.find((o) => draftOptionResearchId(o) === id))
     .find((o): o is DraftOption => o !== undefined);
   const pick = preferred ?? draft.options[0];

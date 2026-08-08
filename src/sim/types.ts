@@ -1701,6 +1701,8 @@ export interface RoundTelemetry {
   interceptMisses: number;
   ammoUsed: number;
   warthogUsed: number;
+  /** Mines and boats destroyed by A-10 gun runs this round. */
+  warthogKills: number;
   scanUsed: number;
   minesTotal: number;
   minesRevealed: number;

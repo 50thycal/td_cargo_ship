@@ -305,6 +305,31 @@ export function familyDeficit(c: CampaignState, family: string): number {
   return pressureWeight(c, family) * (1 - familyCoverage(c, family));
 }
 
+/** The run's danger taken as a whole: how much is getting through, across
+ *  everything the region can field. This is what a branch that answers no
+ *  family in particular — armour, compartmentalisation — is actually a reply
+ *  to. Returned as a (pressure, gap) pair so generic branches can be priced
+ *  through exactly the same path as specific ones instead of special-cased. */
+function generalDanger(c: CampaignState): { pressure: number; gap: number } {
+  const region = regionDef(c.regionId);
+  let pressure = 0;
+  let gapSum = 0;
+  let live = 0;
+  for (const family of region.enemyBranches) {
+    if (!ENEMY_BRANCHES[family].implemented) continue;
+    const p = pressureWeight(c, family);
+    if (p <= 0) continue;
+    pressure += p;
+    gapSum += 1 - familyCoverage(c, family);
+    live++;
+  }
+  if (live === 0) return { pressure: 0, gap: 0 };
+  return {
+    pressure: (pressure / Math.pow(live, DRAFT.breadthDampingExponent)) * DRAFT.survivabilityShare,
+    gap: gapSum / live,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Eligibility
 // ---------------------------------------------------------------------------
@@ -411,6 +436,7 @@ function weighCandidate(
   excess: number,
   pressureOf: Map<string, number>,
   gapOf: Map<string, number>,
+  general: { pressure: number; gap: number },
 ): number {
   let weight = 1;
   const { option, branch, entry } = cand;
@@ -419,6 +445,15 @@ function weighCandidate(
     let pressureSum = 0;
     let liveFamilies = 0;
     let worstGap = 0;
+    // A branch that answers NOTHING in particular is answering the run as a
+    // whole. Priced through the same path below rather than special-cased, so
+    // armour competes on the same terms as a counter — just against total
+    // danger instead of one family's.
+    if (branch.counters.length === 0 && general.pressure > 0) {
+      pressureSum = general.pressure;
+      liveFamilies = 1;
+      worstGap = general.gap;
+    }
     for (const family of branch.counters) {
       const units = recoveredByBranch[family] ?? 0;
       if (units > 0) weight += units * DRAFT.branchWeightPerUnit;
@@ -490,6 +525,7 @@ export function draftPool(
   const excess = Math.max(0, recoveredTotal - DRAFT.qualityThreshold);
   const pressureOf = new Map<string, number>();
   const gapOf = new Map<string, number>();
+  const general = generalDanger(c);
 
   const raw: { option: DraftOption; branch: CounterBranchDef | null; entry: ResearchEntry | null }[] =
     [];
@@ -525,7 +561,7 @@ export function draftPool(
 
   const pool = raw.map((cand) => ({
     ...cand,
-    weight: weighCandidate(c, cand, recoveredByBranch, excess, pressureOf, gapOf),
+    weight: weighCandidate(c, cand, recoveredByBranch, excess, pressureOf, gapOf, general),
   }));
 
   // Ordnance is priced as a SHARE of the table rather than on its own merits,

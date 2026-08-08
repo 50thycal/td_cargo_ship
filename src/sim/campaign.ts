@@ -884,6 +884,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     interceptMisses: s.interceptMisses,
     ammoUsed: s.ammoUsed,
     warthogUsed: s.warthogUsed,
+    // Split out so a log can answer "is the A-10 doing anything about the
+    // boats, or only sweeping mines" — which it could not before, and which is
+    // the difference between a bot mis-flying it and the aircraft being unable
+    // to kill a boat at all.
+    warthogKills: s.warthogKills,
     scanUsed: s.scanUsed,
     minesTotal: s.minesTotal,
     minesRevealed: s.minesRevealed,
