@@ -19,7 +19,7 @@ import {
   createRoundTransit,
   newRegionalRun,
   planCurrentRound,
-  removeEscortModule,
+  moduleStock,
   repairCost,
   resolveTransit,
   setComposition,
@@ -36,9 +36,11 @@ import {
 } from '../src/sim/commander';
 import {
   counterCandidates,
+  MODULE_CATALOGUE,
   counterSlotPool,
   dismissEmptyDraft,
-  draftEquipmentGrant,
+  draftOptionKey,
+  draftOptionBranch,
   draftPool,
   familyCoverage,
   generateDraft,
@@ -55,6 +57,7 @@ import { RESEARCH_INDEX, effectiveResearch } from '../src/data/counters';
 import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type {
   CampaignState,
+  DraftOption,
   RoundMetrics,
   SurvivorArea,
   TransitState,
@@ -79,7 +82,6 @@ function quietRun(escorts = 1): {
       id: c.nextEscortId++,
       name: `Extra ${c.escortUnits.length}`,
       modules: [],
-      modulePaid: {},
       damage: 0,
     });
   }
@@ -557,6 +559,24 @@ describe('survivor rescue', () => {
 // The mandatory technology draft
 // ---------------------------------------------------------------------------
 
+/** Does this reward answer that enemy family? Works across every category, so
+ *  a test can ask the question without caring whether the answer arrived as an
+ *  upgrade or as a piece of equipment. */
+function answersFamily(option: DraftOption, family: string): boolean {
+  const branch = draftOptionBranch(option);
+  return !!branch && (branch.counters as readonly string[]).includes(family);
+}
+
+/** Same question, asked of a pool candidate. */
+function candidateAnswers(cand: { branch: { counters: readonly string[] } | null }, family: string): boolean {
+  return !!cand.branch && cand.branch.counters.includes(family);
+}
+
+/** A candidate that counters nothing — damage control, logistics, ordnance. */
+function candidateGeneric(cand: { branch: { counters: readonly string[] } | null }): boolean {
+  return !cand.branch || cand.branch.counters.length === 0;
+}
+
 describe('technology draft', () => {
   it('always offers at least the base choices after a successful round', () => {
     const c = newRegionalRun('draft-base', FIRST_REGION);
@@ -578,9 +598,10 @@ describe('technology draft', () => {
     for (let i = 0; i < 30; i++) {
       const draft = generateDraft(c, { missiles: 3 }, makeRng(`prereq-${i}`));
       const owned = effectiveResearch(c.completedResearch);
-      for (const id of draft.options) {
-        for (const req of RESEARCH_INDEX[id].requires) {
-          expect(owned.has(req), `${id} requires ${req}`).toBe(true);
+      for (const option of draft.options) {
+        if (option.kind !== 'upgrade' && option.kind !== 'asset') continue;
+        for (const req of RESEARCH_INDEX[option.id].requires) {
+          expect(owned.has(req), `${option.id} requires ${req}`).toBe(true);
         }
       }
     }
@@ -591,26 +612,26 @@ describe('technology draft', () => {
     const region = regionDef(FIRST_REGION);
     for (let i = 0; i < 30; i++) {
       const draft = generateDraft(c, { missiles: 3 }, makeRng(`region-${i}`));
-      for (const id of draft.options) {
-        const counters = RESEARCH_INDEX[id].branch.counters;
-        if (counters.length === 0) continue; // generic survivability is fine
+      for (const option of draft.options) {
+        const branch = draftOptionBranch(option);
+        if (!branch || branch.counters.length === 0) continue; // generic is fine
         expect(
-          counters.some((k) => region.enemyBranches.includes(k)),
-          `${id} counters ${counters.join(',')} — none present in region 1`,
+          branch.counters.some((k) => region.enemyBranches.includes(k)),
+          `${draftOptionKey(option)} counters ${branch.counters.join(',')} — absent in region 1`,
         ).toBe(true);
       }
     }
     // Depth charges (torpedo counter) must be pool-ineligible in region 1.
     const pool = draftPool(c, {});
-    expect(pool.some((p) => p.entry.branch.id === 'depthCharges')).toBe(false);
-    expect(pool.some((p) => p.entry.branch.id === 'deckGun')).toBe(false);
+    expect(pool.some((p) => p.branch?.id === 'depthCharges')).toBe(false);
+    expect(pool.some((p) => p.branch?.id === 'deckGun')).toBe(false);
   });
 
   it('wreckage from a family weights the draft toward its counters', () => {
     const c = newRegionalRun('draft-weight', FIRST_REGION);
     const pool = draftPool(c, { mines: 4 });
-    const mineCounter = pool.find((p) => p.entry.branch.counters.includes('mines'));
-    const generic = pool.find((p) => p.entry.branch.counters.length === 0);
+    const mineCounter = pool.find((p) => candidateAnswers(p, 'mines'));
+    const generic = pool.find((p) => candidateGeneric(p));
     expect(mineCounter).toBeDefined();
     expect(generic).toBeDefined();
     expect(mineCounter!.weight).toBeGreaterThan(generic!.weight);
@@ -619,9 +640,9 @@ describe('technology draft', () => {
     let total = 0;
     for (let i = 0; i < 60; i++) {
       const draft = generateDraft(c, { mines: 4 }, makeRng(`weight-${i}`));
-      for (const id of draft.options) {
+      for (const option of draft.options) {
         total++;
-        if (RESEARCH_INDEX[id].branch.counters.includes('mines')) mineOffers++;
+        if (answersFamily(option, 'mines')) mineOffers++;
       }
     }
     expect(mineOffers / total).toBeGreaterThan(0.3);
@@ -641,8 +662,8 @@ describe('technology draft', () => {
       lastSeenRound: 3,
     };
     const pool = draftPool(c, {}); // NO wreckage recovered at all
-    const mineCounter = pool.find((p) => p.entry.branch.counters.includes('mines'));
-    const generic = pool.find((p) => p.entry.branch.counters.length === 0);
+    const mineCounter = pool.find((p) => candidateAnswers(p, 'mines'));
+    const generic = pool.find((p) => candidateGeneric(p));
     expect(mineCounter).toBeDefined();
     expect(generic).toBeDefined();
     expect(mineCounter!.weight).toBeGreaterThan(generic!.weight * 3);
@@ -655,7 +676,7 @@ describe('technology draft', () => {
     c.threatPressure.mines = { ...pressure };
     c.threatPressure.missiles = { ...pressure };
     const weightFor = (family: string, pool: ReturnType<typeof draftPool>): number => {
-      const entries = pool.filter((p) => p.entry.branch.counters.includes(family as never));
+      const entries = pool.filter((p) => p.branch?.counters ?? [].includes(family as never));
       return Math.max(...entries.map((p) => p.weight));
     };
     const mineBefore = weightFor('mines', draftPool(c, {}));
@@ -719,12 +740,11 @@ describe('technology draft', () => {
       run.round = 5;
       run.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
       const draft = generateDraft(run, {}, makeRng(`counter-roll-${i}`));
-      const offeredMineCounter = draft.options.some((id) =>
-        RESEARCH_INDEX[id].branch.counters.includes('mines'),
-      );
-      expect(offeredMineCounter, `roll ${i} offered ${draft.options.join(', ')}`).toBe(true);
+      const offeredMineCounter = draft.options.some((o) => answersFamily(o, 'mines'));
+      const shown = draft.options.map(draftOptionKey).join(', ');
+      expect(offeredMineCounter, `roll ${i} offered ${shown}`).toBe(true);
       expect(draft.counterFamily).toBe('mines');
-      expect(draft.options).toContain(draft.counterOption);
+      expect(draft.options.map(draftOptionKey)).toContain(draft.counterOption);
     }
   });
 
@@ -768,14 +788,16 @@ describe('technology draft', () => {
       run.threatCoverage.mines = { ...c.threatCoverage.mines };
       run.threatCoverage.attackBoats = { ...c.threatCoverage.attackBoats };
       const draft = generateDraft(run, {}, makeRng(`regression-roll-${i}`));
-      const answered = draft.options.some((id) => {
-        const entry = RESEARCH_INDEX[id];
+      const answered = draft.options.some((option) => {
+        const branch = draftOptionBranch(option);
         return (
-          entry.branch.id !== 'warthog' &&
-          entry.branch.counters.some((k) => k === 'mines' || k === 'attackBoats')
+          !!branch &&
+          branch.id !== 'warthog' &&
+          (answersFamily(option, 'mines') || answersFamily(option, 'attackBoats'))
         );
       });
-      expect(answered, `roll ${i} offered ${draft.options.join(', ')}`).toBe(true);
+      const shown = draft.options.map(draftOptionKey).join(', ');
+      expect(answered, `roll ${i} offered ${shown}`).toBe(true);
     }
   });
 
@@ -784,8 +806,8 @@ describe('technology draft', () => {
     c.round = 5;
     c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
     const pool = counterSlotPool(c, 'mines');
-    const drones = pool.find((p) => p.entry.def.id === 'mcmDrones.base')!;
-    const sonar = pool.find((p) => p.entry.def.id === 'mineSonar.base')!;
+    const drones = pool.find((p) => draftOptionKey(p.option) === 'module:escort:mcmDroneLauncher')!;
+    const sonar = pool.find((p) => draftOptionKey(p.option) === 'module:cargo:mineSonar')!;
     expect(drones).toBeDefined();
     expect(sonar).toBeDefined();
     expect(drones.weight).toBeGreaterThan(sonar.weight);
@@ -808,9 +830,9 @@ describe('technology draft', () => {
       lastSeenRound: 5,
     };
     const pool = draftPool(c, {});
-    const drones = pool.find((p) => p.entry.def.id === 'mcmDrones.base')!;
+    const drones = pool.find((p) => draftOptionKey(p.option) === 'module:escort:mcmDroneLauncher')!;
     const bestWarthog = Math.max(
-      ...pool.filter((p) => p.entry.branch.id === 'warthog').map((p) => p.weight),
+      ...pool.filter((p) => p.branch?.id === 'warthog').map((p) => p.weight),
     );
     expect(drones).toBeDefined();
     expect(drones.weight).toBeGreaterThan(bestWarthog);
@@ -824,8 +846,11 @@ describe('technology draft', () => {
     const draft = generateDraft(c, {}, makeRng('counter-room'));
     expect(draft.options.length).toBeGreaterThanOrEqual(2);
     // Exactly one seat is ever claimed, so the rest of the table stays open.
-    expect(draft.options.filter((id) => id === draft.counterOption)).toHaveLength(1);
-    expect(new Set(draft.options).size).toBe(draft.options.length); // no duplicates
+    expect(
+      draft.options.filter((o) => draftOptionKey(o) === draft.counterOption),
+    ).toHaveLength(1);
+    const keys = draft.options.map(draftOptionKey);
+    expect(new Set(keys).size).toBe(keys.length); // no duplicates
   });
 
   it('the counter slot stands down once the threat is actually being handled', () => {
@@ -870,54 +895,114 @@ describe('technology draft', () => {
   });
 
   // -------------------------------------------------------------------------
-  // The pick arrives usable
+  // Equipment is drafted, not bought
   // -------------------------------------------------------------------------
 
-  it('EQUIPMENT: a pick that unlocks hardware fits one free unit of it', () => {
-    const c = newRegionalRun('grant-escort', 'pirateNarrows');
-    const escort = c.escortUnits[0];
-    expect(escort).toBeDefined();
-    expect(escort.modules).toHaveLength(0);
-
-    const grant = draftEquipmentGrant(c, 'mcmDrones.base');
-    expect(grant?.kind).toBe('escortModule');
-    expect(grant?.escortId).toBe(escort.id);
-
-    c.pendingDraft = { round: 1, options: ['mcmDrones.base'], recoveredUnits: 0 };
+  it('EQUIPMENT: drafting a module delivers the unit AND its base technology', () => {
+    const c = newRegionalRun('module-grant', 'pirateNarrows');
+    const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'mcmDroneLauncher' };
+    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0 };
     c.phase = 'draft';
     const cashBefore = c.cash;
-    expect(selectDraftOption(c, 'mcmDrones.base')).toBe(true);
-    // The launcher exists in the water THIS round, not after another purchase.
-    expect(escort.modules).toContain('mcmDroneLauncher');
+
+    expect(selectDraftOption(c, option)).toBe(true);
+    // A unit in the locker, at no cost, ready to fit this round.
+    expect(moduleStock(c, 'escort', 'mcmDroneLauncher')).toBe(1);
     expect(c.cash).toBe(cashBefore);
-    // Recorded as free, so unequipping can never refund cash that was never
-    // spent — a free fit must not become a press through the shop.
-    expect(escort.modulePaid.mcmDroneLauncher).toBe(0);
-    removeEscortModule(c, escort.id, 'mcmDroneLauncher');
-    expect(c.cash).toBe(cashBefore);
+    // And the branch's base node came with it, so its upgrades are now
+    // draftable — you can only improve what you actually have.
+    expect(c.completedResearch).toContain('mcmDrones.base');
   });
 
-  it('a cargo-module unlock fits across the class carrying the most value', () => {
-    const c = newRegionalRun('grant-cargo', FIRST_REGION);
-    const grant = draftEquipmentGrant(c, 'mineSonar.base');
-    expect(grant?.kind).toBe('cargoModule');
-    expect(grant?.classId).toBe('cargo'); // 15 hulls at value 10 beats the rest
-    c.pendingDraft = { round: 1, options: ['mineSonar.base'], recoveredUnits: 0 };
-    c.phase = 'draft';
-    expect(selectDraftOption(c, 'mineSonar.base')).toBe(true);
-    expect(c.classModules.cargo).toContain('mineSonar');
-    expect(c.modulePaid.cargo.mineSonar).toBe(0);
+  it('a second unit is more hardware, not more technology', () => {
+    const c = newRegionalRun('module-second', 'pirateNarrows');
+    const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'deckGun' };
+    for (let i = 0; i < 2; i++) {
+      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0 };
+      c.phase = 'draft';
+      expect(selectDraftOption(c, option)).toBe(true);
+    }
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(2);
+    expect(c.completedResearch.filter((id) => id === 'deckGun.base')).toHaveLength(1);
   });
 
-  it('grants nothing for an upgrade, or for hardware already in service', () => {
-    const c = newRegionalRun('grant-none', 'pirateNarrows');
-    // An upgrade to a launcher does not unlock a launcher.
-    expect(draftEquipmentGrant(c, 'mcmDrones.extendedLink')).toBeNull();
-    // Ability branches never had the problem: the A-10 is already in hand.
-    expect(draftEquipmentGrant(c, 'warthog.tankBuster')).toBeNull();
-    // And a second free copy is never handed out.
-    c.escortUnits[0].modules.push('mcmDroneLauncher');
-    expect(draftEquipmentGrant(c, 'mcmDrones.base')).toBeNull();
+  it('stops offering a module once the run holds the cap for it', () => {
+    const c = newRegionalRun('module-cap', 'pirateNarrows');
+    c.round = 4;
+    c.moduleStock.escort.deckGun = DRAFT.escortModuleCap;
+    const pool = draftPool(c, {});
+    expect(
+      pool.some(
+        (p) => p.option.kind === 'module' && p.option.moduleId === 'deckGun',
+      ),
+    ).toBe(false);
+    // One below the cap and it is back on the table.
+    c.moduleStock.escort.deckGun = DRAFT.escortModuleCap - 1;
+    expect(
+      draftPool(c, {}).some(
+        (p) => p.option.kind === 'module' && p.option.moduleId === 'deckGun',
+      ),
+    ).toBe(true);
+  });
+
+  it('never offers the same module twice in one draft', () => {
+    const c = newRegionalRun('module-dupes', 'pirateNarrows');
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    for (let i = 0; i < 40; i++) {
+      const draft = generateDraft(c, { mines: 5 }, makeRng(`dupes-${i}`));
+      const keys = draft.options.map(draftOptionKey);
+      expect(new Set(keys).size, `roll ${i}: ${keys.join(', ')}`).toBe(keys.length);
+    }
+  });
+
+  it('a branch base node is never offered as a bare upgrade card', () => {
+    // The capability IS the hardware. Offering `deckGun.base` on its own would
+    // put the IOU straight back: technology saying the fleet has a deck gun
+    // while the locker says it does not.
+    const c = newRegionalRun('no-bare-base', 'pirateNarrows');
+    c.round = 5;
+    c.threatPressure.attackBoats = {
+      rounds: 4,
+      streak: 4,
+      damage: 300,
+      kills: 3,
+      lastSeenRound: 4,
+    };
+    const pool = draftPool(c, {});
+    for (const p of pool) {
+      const option = p.option;
+      if (option.kind !== 'upgrade' && option.kind !== 'asset') continue;
+      expect(MODULE_CATALOGUE.some((m) => m.research === option.id)).toBe(false);
+    }
+  });
+
+  it('the ability capabilities are in hand from round one, only ordnance is bought', () => {
+    const c = newRegionalRun('abilities-free', FIRST_REGION);
+    expect(c.warthogUnlocked).toBe(true);
+    expect(c.scanUnlocked).toBe(true);
+    expect(c.smokeUnlocked).toBe(true);
+    expect(c.sonarUnlocked).toBe(true);
+    expect(c.hardenedUnlocked).toBe(true);
+    // And their base nodes are granted, so they never occupy a draft slot.
+    const pool = draftPool(c, {});
+    const keys = pool.map((p) => draftOptionKey(p.option));
+    expect(keys).not.toContain('warthog.base');
+    expect(keys).not.toContain('smokeScreen.base');
+  });
+
+  it('ORDNANCE is held back until the run could use it, and never answers a threat', () => {
+    const c = newRegionalRun('ordnance-late', FIRST_REGION);
+    c.round = 1;
+    expect(draftPool(c, {}).some((p) => p.option.kind === 'ordnance')).toBe(false);
+    c.round = DRAFT.ordnanceMinRound;
+    c.ammo = 0;
+    expect(draftPool(c, {}).some((p) => p.option.kind === 'ordnance')).toBe(true);
+    // A crate of shells is not an answer to a threat: the counter slot never
+    // draws one, however badly the run is being hurt.
+    c.threatPressure.mines = { rounds: 5, streak: 5, damage: 400, kills: 4, lastSeenRound: 4 };
+    c.round = 5;
+    expect(counterSlotPool(c, 'mines').every((p) => p.option.kind !== 'ordnance')).toBe(true);
   });
 
   it('keeps its randomness — the same pressure does not always yield the same table', () => {
@@ -925,7 +1010,7 @@ describe('technology draft', () => {
       const c = newRegionalRun(`variety-${seed}`, FIRST_REGION);
       c.round = 3;
       c.threatPressure.mines = { rounds: 1, streak: 1, damage: 40, kills: 0, lastSeenRound: 2 };
-      return generateDraft(c, {}, makeRng(seed)).options.join('|');
+      return generateDraft(c, {}, makeRng(seed)).options.map(draftOptionKey).join('|');
     };
     const seen = new Set(Array.from({ length: 14 }, (_, i) => offer(`seed-${i}`)));
     expect(seen.size).toBeGreaterThan(1);
@@ -954,10 +1039,11 @@ describe('technology draft', () => {
     // Cannot dismiss a non-empty draft (mandatory).
     expect(dismissEmptyDraft(c)).toBe(false);
     // Cannot take something that was not offered.
+    const offered = new Set(c.pendingDraft.options.map(draftOptionKey));
     const notOffered = Object.keys(RESEARCH_INDEX).find(
-      (id) => !c.pendingDraft!.options.includes(id) && !RESEARCH_INDEX[id].def.granted,
+      (id) => !offered.has(id) && !RESEARCH_INDEX[id].def.granted,
     )!;
-    expect(selectDraftOption(c, notOffered)).toBe(false);
+    expect(selectDraftOption(c, { kind: 'upgrade', id: notOffered })).toBe(false);
     expect(selectDraftOption(c, a)).toBe(true);
     expect(c.completedResearch.length).toBeGreaterThan(0);
     expect(c.pendingDraft).toBeNull();
@@ -972,7 +1058,12 @@ describe('technology draft', () => {
     for (let guard = 0; guard < 200; guard++) {
       const pool = draftPool(c, {});
       if (pool.length === 0) break;
-      c.completedResearch.push(pool[0].entry.def.id);
+      // Take the first thing on offer, whatever category it is, until the
+      // catalogue and every stock cap are exhausted.
+      const option = pool[0].option;
+      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0 };
+      c.phase = 'draft';
+      if (!selectDraftOption(c, option)) break;
     }
     expect(draftPool(c, {}).length).toBe(0);
     const draft = generateDraft(c, {}, makeRng('empty'));

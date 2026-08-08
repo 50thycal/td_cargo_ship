@@ -7,14 +7,17 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import {
   buyAmmo,
+  buyScanPulse,
   buyBase,
   buyEscort,
-  buyModule,
+  equipModule,
   buyPdAmmo,
   buyShip,
   createRoundTransit,
   escortDamageTotal,
-  moduleCost,
+  moduleBlockReason,
+  moduleSpare,
+  moduleStock,
   newCampaign,
   newDevCampaign,
   planCurrentRound,
@@ -24,7 +27,6 @@ import {
   resolveTransit,
   setComposition,
   shipCost,
-  unlockScan,
 } from '../src/sim/campaign';
 import { selectDraftOption } from '../src/sim/draft';
 import { newProfile } from '../src/sim/commander';
@@ -43,7 +45,7 @@ import {
   saveProfile,
   saveRun,
 } from '../src/platform/save';
-import { MODULES, SHIP_CLASSES } from '../src/data/defs';
+import { SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
 import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import type {
@@ -127,7 +129,10 @@ function botProcure(c: CampaignState): void {
   while (c.ammo < 22 && buyAmmo(c, 1)) {
     /* top up */
   }
-  if (!c.scanUnlocked) unlockScan(c);
+  // The scan capability is in hand from round one; only pulses are bought.
+  while (c.scanStock < 2 && buyScanPulse(c)) {
+    /* top up stowage */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -363,13 +368,19 @@ describe('campaign', () => {
     expect(c.pendingDraft).not.toBeNull();
     expect(report.draftSize).toBe(c.pendingDraft!.options.length);
     expect(c.pendingDraft!.options.length).toBeGreaterThanOrEqual(2);
-    // Taking an option activates it immediately for the active run.
+    // Taking an option applies it immediately for the active run — whatever
+    // category it is: an upgrade lands in the research set, a module lands in
+    // the locker, ordnance lands in the magazines.
     const pick = c.pendingDraft!.options[0];
     expect(selectDraftOption(c, pick)).toBe(true);
-    expect(c.completedResearch).toContain(pick);
+    if (pick.kind === 'upgrade' || pick.kind === 'asset') {
+      expect(c.completedResearch).toContain(pick.id);
+    } else if (pick.kind === 'module') {
+      expect(moduleStock(c, pick.platform, pick.moduleId)).toBe(1);
+    }
     expect(c.pendingDraft).toBeNull();
     expect(c.draftHistory).toHaveLength(1);
-    expect(c.draftHistory[0].picked).toBe(pick);
+    expect(c.draftHistory[0].picked).toEqual(pick);
   });
 
   it('an undefended campaign eventually collapses', () => {
@@ -422,75 +433,51 @@ describe('economy hardening', () => {
     expect(c.ammo).toBe(ammo + 3);
   });
 
-  it('module price is based on owned hulls, immune to composition toggling', () => {
-    const c = newCampaign('module-exploit');
-    const fullPrice = moduleCost(c, 'cargo', 'selfDefense');
-    setComposition(c, 'cargo', 0);
-    expect(moduleCost(c, 'cargo', 'selfDefense')).toBe(fullPrice);
-    setComposition(c, 'cargo', 15);
-    // Below the soft cap this is still a flat per-ship rate; above it, the
-    // marginal hull is billed at the taper rate (see moduleCost).
-    const cap = ECONOMY.moduleCostSoftCap;
-    const billable = 15 <= cap ? 15 : cap + (15 - cap) * ECONOMY.moduleCostTaperRate;
-    expect(fullPrice).toBe(Math.round(110 * billable));
+  it('fitting a drafted unit costs nothing and frees on removal', () => {
+    // Modules used to be priced per hull with a soft cap, and gated behind a
+    // research node the draft had to hand over first — which made every
+    // equipment draft an IOU. Units are drafted now; the shop never sells them.
+    const c = newCampaign('module-free');
+    c.moduleStock.cargo.selfDefense = 1;
+    const cash0 = c.cash;
+    expect(equipModule(c, 'cargo', 'selfDefense')).toBe(true);
+    expect(c.cash).toBe(cash0);
+    expect(c.classModules.cargo).toEqual(['selfDefense']);
+    expect(moduleSpare(c, 'cargo', 'selfDefense')).toBe(0);
+
+    expect(removeModule(c, 'cargo', 'selfDefense')).toBe(true);
+    expect(c.cash).toBe(cash0);
+    expect(moduleSpare(c, 'cargo', 'selfDefense')).toBe(1);
   });
 
-  it('module refit cost soft-caps so a large fleet stays affordable', () => {
-    const c = newCampaign('module-softcap');
-    c.fleet.cargo = 40; // a big late-campaign fleet
-    const cost40 = moduleCost(c, 'cargo', 'selfDefense');
-    // Linear pricing would be 110 * 40 = 4400; the soft cap must price it well
-    // under that so upgrades stay reachable at scale.
-    expect(cost40).toBeLessThan(110 * 40 * 0.7);
-    // Still strictly more expensive than a small fleet (more hulls to refit).
-    c.fleet.cargo = 10;
-    const cost10 = moduleCost(c, 'cargo', 'selfDefense');
-    expect(cost10).toBe(110 * 10); // at/under the cap: unchanged flat rate
-    expect(cost40).toBeGreaterThan(cost10);
+  it('a class fit needs a unit in the locker, and only one per class', () => {
+    const c = newCampaign('module-stock-gate');
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBe('No unit held — draft one');
+    c.moduleStock.cargo.mineSonar = 1;
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBeNull();
+    expect(equipModule(c, 'cargo', 'mineSonar')).toBe(true);
+    // The one unit is spoken for, so no other class can have it too.
+    expect(moduleBlockReason(c, 'tanker', 'mineSonar')).toBe(
+      'Every unit is fitted elsewhere — unfit one first',
+    );
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBe('Already fitted to this class');
   });
 
-  it('a new hull costs its base price plus its class module fit', () => {
-    const c = newCampaign('hull-surcharge');
+  it('a replacement hull is never surcharged for the class module fit', () => {
+    // Fits are drafted, not bought, so a hull sails with the class loadout at
+    // no extra cost. Charging for it would make every drafted module a
+    // permanent tax on replacing losses — which, in a fleet that is losing
+    // ships, is worth far more than the module.
+    const c = newCampaign('hull-no-surcharge');
     c.cash = 100_000;
-    c.completedResearch = ['selfDefense.base']; // purchases are research-gated
     const base = SHIP_CLASSES.freighter.replaceCost;
     expect(shipCost(c, 'freighter')).toBe(base);
-    // Fit a module on the freighter class (1 slot).
-    expect(buyModule(c, 'freighter', 'selfDefense')).toBe(true);
-    expect(shipCost(c, 'freighter')).toBe(base + MODULES.selfDefense.costPerShip);
+    c.moduleStock.cargo.selfDefense = 1;
+    expect(equipModule(c, 'freighter', 'selfDefense')).toBe(true);
+    expect(shipCost(c, 'freighter')).toBe(base);
     const before = c.cash;
     expect(buyShip(c, 'freighter')).toBe(true);
-    expect(c.cash).toBe(before - (base + MODULES.selfDefense.costPerShip));
-  });
-
-  it('a module the draft fitted for free does not tax every replacement hull', () => {
-    // The free fit that comes with a technology has to be actually free. Left
-    // in the surcharge it costs nothing once and then quietly raises the price
-    // of every hull the player replaces for the rest of the run — which, in a
-    // fleet that is losing ships, is worth far more than the module.
-    const c = newCampaign('hull-granted');
-    const base = SHIP_CLASSES.freighter.replaceCost;
-    c.classModules.freighter.push('selfDefense');
-    c.modulePaid.freighter.selfDefense = 0; // how a granted fit is recorded
-    expect(shipCost(c, 'freighter')).toBe(base);
-    // A module actually bought still surcharges, exactly as before.
-    c.modulePaid.freighter.selfDefense = 999;
-    expect(shipCost(c, 'freighter')).toBe(base + MODULES.selfDefense.costPerShip);
-  });
-
-  it('unequipping a module refunds exactly what was paid and frees the slot', () => {
-    const c = newCampaign('module-refund');
-    c.cash = 5000;
-    const cash0 = c.cash;
-    const price = moduleCost(c, 'cargo', 'reinforcedHull');
-    expect(buyModule(c, 'cargo', 'reinforcedHull')).toBe(true);
-    expect(c.cash).toBe(cash0 - price);
-    expect(c.classModules.cargo).toContain('reinforcedHull');
-    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(true);
-    expect(c.cash).toBe(cash0); // fully refunded
-    expect(c.classModules.cargo).not.toContain('reinforcedHull');
-    // Removing something not fitted is a no-op.
-    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(false);
+    expect(c.cash).toBe(before - base);
   });
 
   it('point-defense rounds are purchasable and carry over', () => {
@@ -1845,7 +1832,7 @@ describe('save', () => {
     expect(m.pdAmmo).toBe(0);
     expect(m.droneAmmo).toBe(0);
     expect(m.dev).toBe(false);
-    expect(m.modulePaid).toEqual({ cargo: {}, tanker: {}, freighter: {} });
+    expect(m.moduleStock).toEqual({ cargo: {}, escort: {}, base: {} });
     expect(m.quota.pointsNeeded).toBeGreaterThan(0);
     expect(m.evolution.formationTell).toBe(null);
     expect(Array.isArray(m.history)).toBe(true);
@@ -1864,11 +1851,11 @@ describe('save', () => {
   it('does not clobber existing nested values when healing', () => {
     const c = newCampaign('nested');
     c.classModules.cargo = ['selfDefense'];
-    c.modulePaid.cargo = { selfDefense: 220 };
+    c.moduleStock.cargo = { selfDefense: 2 };
     c.evolution.tracks.mines = 55;
     const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(m.classModules.cargo).toEqual(['selfDefense']);
-    expect(m.modulePaid.cargo).toEqual({ selfDefense: 220 });
+    expect(m.moduleStock.cargo).toEqual({ selfDefense: 2 });
     expect(m.evolution.tracks.mines).toBe(55);
   });
 

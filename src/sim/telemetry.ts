@@ -3,6 +3,7 @@
 // downloadable file. Captures the whole session so a playtester can hand the
 // file back and every decision point is visible.
 
+import { draftOptionKey } from './draft';
 import { SHIP_CLASSES } from '../data/defs';
 import { LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
 import type { CampaignState, EscortModuleId } from './types';
@@ -27,8 +28,22 @@ export interface TelemetryExport {
   bases: number;
   escorts: number;
   completedResearch: string[];
-  /** Draft history: what every round offered and what was taken. */
-  drafts: CampaignState['draftHistory'];
+  /** Draft history: what every round offered and what was taken, flattened to
+   *  option keys plus the category of each — the mix is what tells you whether
+   *  a run was ever offered equipment or only ever stat upgrades. */
+  drafts: {
+    round: number;
+    offered: string[];
+    picked: string | null;
+    kinds: string[];
+    pickedKind: string | null;
+  }[];
+  /** Equipment units the run finished holding, by platform. */
+  moduleStock: {
+    cargo: Record<string, number>;
+    escort: Record<string, number>;
+    base: Record<string, number>;
+  };
   /** How much of each enemy branch the player was actually neutralizing by the
    *  end of the run. This is what the draft's counter slot ranks on, so a log
    *  that shows an unanswered threat can be read against the offers it drew. */
@@ -269,7 +284,20 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     bases: c.bases,
     escorts: c.escortUnits.length,
     completedResearch: [...c.completedResearch],
-    drafts: c.draftHistory.map((d) => ({ ...d, offered: [...d.offered] })),
+    drafts: c.draftHistory.map((d) => ({
+      round: d.round,
+      offered: d.offered.map(draftOptionKey),
+      picked: d.picked ? draftOptionKey(d.picked) : null,
+      // The category mix is the thing to read at a glance: a run that only
+      // ever drafted upgrades never got the equipment it needed.
+      kinds: d.offered.map((o) => o.kind),
+      pickedKind: d.picked?.kind ?? null,
+    })),
+    moduleStock: {
+      cargo: { ...(c.moduleStock?.cargo ?? {}) },
+      escort: { ...(c.moduleStock?.escort ?? {}) },
+      base: { ...(c.moduleStock?.base ?? {}) },
+    },
     threatCoverage: Object.fromEntries(
       Object.entries(c.threatCoverage ?? {}).map(([k, v]) => [
         k,

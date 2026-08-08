@@ -32,7 +32,6 @@ function quietRun(escorts = 2): { c: CampaignState; state: TransitState; rng: Re
       id: c.nextEscortId++,
       name: `Picket ${c.escortUnits.length + 1}`,
       modules: [],
-      modulePaid: {},
       damage: 0,
     });
   }

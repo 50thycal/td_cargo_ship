@@ -84,11 +84,6 @@ export interface EscortUnit {
   /** Optional specialist systems fitted to THIS escort. Capped by the escort's
    *  unlocked slot count; several escorts may carry the same module. */
   modules: EscortModuleId[];
-  /** Cash actually paid for each fitted module, so unequipping refunds exactly
-   *  what was spent. Per escort rather than per module type, which is what
-   *  stops a module being fitted cheaply on one hull and refunded at another's
-   *  price. */
-  modulePaid: Partial<Record<EscortModuleId, number>>;
   /** Unrepaired hull damage this escort is carrying into the next round. */
   damage: number;
 }
@@ -1332,19 +1327,58 @@ export type ResearchId = string;
  *  option before the next round; picks activate immediately and cannot be
  *  banked or skipped (an EMPTY options list is the one exception — the
  *  catalogue has been exhausted and there is nothing left to offer). */
+/** Which kind of reward a draft card is. Four shapes, because they behave in
+ *  four different ways and the player should never have to work out which they
+ *  are looking at:
+ *
+ *   • UPGRADE — a branch node or tactic. Free, permanent, applies to EVERY copy
+ *     of that system the fleet is carrying (effects resolve per branch, not per
+ *     module), and takes effect on the next transit.
+ *   • MODULE — one physical unit of equipment. Held as stock, fitted and
+ *     refitted freely between rounds. Cargo units survive anything; an escort
+ *     unit goes down with its hull.
+ *   • ASSET — a change to the shape of the fleet itself: berthing, slots,
+ *     repair and salvage capability.
+ *   • ORDNANCE — a one-off delivery of consumables. The only category that is
+ *     spent rather than kept, and deliberately the weakest: it exists so a
+ *     draft with nothing useful left to offer still offers something real. */
+export type DraftOptionKind = 'upgrade' | 'module' | 'asset' | 'ordnance';
+
+/** Where a module unit can be fitted. `mineSonar` exists as BOTH a cargo module
+ *  and an escort module, so the platform is part of a module's identity and can
+ *  never be inferred from its id alone. */
+export type ModulePlatform = 'cargo' | 'escort' | 'base';
+
+export type DraftOption =
+  | { kind: 'upgrade'; id: ResearchId }
+  | { kind: 'asset'; id: ResearchId }
+  | { kind: 'module'; platform: 'cargo'; moduleId: ModuleId }
+  | { kind: 'module'; platform: 'escort'; moduleId: EscortModuleId }
+  | { kind: 'module'; platform: 'base'; moduleId: BaseModuleId }
+  | { kind: 'ordnance'; packId: string };
+
+/** Stock of equipment the drafts have delivered, by platform then module.
+ *  Counts every unit OWNED — fitted and spare alike; what is fitted is read off
+ *  the loadout itself, so the two can never disagree. */
+export interface ModuleStock {
+  cargo: Partial<Record<ModuleId, number>>;
+  escort: Partial<Record<EscortModuleId, number>>;
+  base: Partial<Record<BaseModuleId, number>>;
+}
+
 export interface TechDraft {
   /** Round whose transit earned this draft. */
   round: number;
-  options: ResearchId[];
+  options: DraftOption[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
   /** The enemy branch the COUNTER SLOT was drawn to answer (absent when no
    *  live threat was under-covered and the slot fell through to the open
    *  pool) — surfaced so the UI can say WHY an option is on the table. */
   counterFamily?: string;
-  /** Which offered id filled the counter slot, so the UI can badge exactly
-   *  that card rather than guessing from the family. */
-  counterOption?: ResearchId;
+  /** Key of the option that filled the counter slot (see draftOptionKey), so
+   *  the UI can badge exactly that card rather than guessing from the family. */
+  counterOption?: string;
 }
 
 /** What one enemy branch has actually been doing to this run.
@@ -1390,8 +1424,8 @@ export interface ThreatCoverage {
 /** One draft's telemetry: what was offered and what the player took. */
 export interface DraftRecord {
   round: number;
-  offered: ResearchId[];
-  picked: ResearchId | null;
+  offered: DraftOption[];
+  picked: DraftOption | null;
 }
 
 /** Sensor families the hardened-systems protected channel can preserve. */
@@ -1831,13 +1865,11 @@ export interface CampaignState {
   composition: Record<ShipClassId, number>;
   /** Module templates applied per ship class. */
   classModules: Record<ShipClassId, ModuleId[]>;
-  /** Cash paid to equip each currently-fitted module, per class. Lets an
-   *  unequip refund exactly what was spent (so loadouts can be experimented
-   *  with freely without opening a buy-low / refund-high exploit). */
-  modulePaid: Record<ShipClassId, Partial<Record<ModuleId, number>>>;
+  /** Equipment units the drafts have delivered. Modules are no longer bought:
+   *  the draft grants a UNIT, and the unit is fitted and refitted for free. */
+  moduleStock: ModuleStock;
   /** Shore-base loadout template (applies to every battery; limited slots). */
   baseModules: BaseModuleId[];
-  baseModulePaid: Partial<Record<BaseModuleId, number>>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
   /** Unrepaired hull damage carried by the shore batteries. */

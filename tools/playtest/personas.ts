@@ -16,11 +16,12 @@
 import {
   buyAmmo,
   buyBase,
-  buyBaseModule,
+  equipBaseModule,
+  moduleSpare,
   buyDroneAmmo,
   buyEscort,
-  buyEscortModule,
-  buyModule,
+  equipEscortModule,
+  equipModule,
   fleetHasEscortModule,
   buyPdAmmo,
   buyShip,
@@ -28,19 +29,21 @@ import {
   repairFleet,
   setComposition,
   setFormation,
-  unlockWarthog,
   buyWarthogSortie,
   buyScanPulse,
-  unlockHardened,
-  unlockScan,
-  unlockSmoke,
-  unlockSonar,
+  buySmokeCanister,
 } from '../../src/sim/campaign';
-import { dismissEmptyDraft, selectDraftOption } from '../../src/sim/draft';
+import {
+  dismissEmptyDraft,
+  draftOptionResearchId,
+  selectDraftOption,
+} from '../../src/sim/draft';
 import { LOSS_CAUSE_TO_ENEMY_BRANCH } from '../../src/data/counters';
+import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
 import { COMBAT, COMMANDER, NAV, WORLD } from '../../src/data/tuning';
 import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
 import type {
+  DraftOption,
   BaseModuleId,
   CampaignState,
   EscortModuleId,
@@ -187,7 +190,10 @@ export interface Persona {
  *  loop until the whole list stops making progress). */
 function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: Persona): boolean {
   const spendable = c.cash - reserve;
-  if (spendable <= 0 && intent.kind !== 'repair') return false;
+  // Fitting equipment costs nothing — the draft already paid for it — so those
+  // intents are never gated on cash the way purchases are.
+  const free = intent.kind === 'module' || intent.kind === 'escortFit' || intent.kind === 'baseModule';
+  if (spendable <= 0 && intent.kind !== 'repair' && !free) return false;
   switch (intent.kind) {
     case 'repair':
       return repairCost(c) > 0 && repairFleet(c);
@@ -213,7 +219,7 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
         buyPdAmmo(c)
       );
     case 'module':
-      return buyModule(c, intent.classId, intent.moduleId);
+      return equipModule(c, intent.classId, intent.moduleId);
     case 'escortFit': {
       // Walk the doctrine in order and fit the first thing that is affordable,
       // researched and has a free slot on that escort. One purchase per call so
@@ -222,29 +228,28 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
       for (let i = 0; i < c.escortUnits.length; i++) {
         const want = doctrine[i] ?? [];
         for (const moduleId of want) {
-          if (buyEscortModule(c, c.escortUnits[i].id, moduleId)) return true;
+          if (equipEscortModule(c, c.escortUnits[i].id, moduleId)) return true;
         }
       }
       return false;
     }
     case 'baseModule':
-      return buyBaseModule(c, intent.id);
+      return equipBaseModule(c, intent.id);
     case 'ability':
-      // Commission first, then keep the apron/stowage topped up. Sorties and
-      // pulses are consumables now, so a bot that only ever unlocked the
-      // capability would fly exactly one of each per run and the sweep would
-      // stop measuring these branches at all.
+      // The capabilities themselves are in hand from round one; what is bought
+      // is their ordnance. A bot that never topped up would fly exactly the
+      // starting allowance all run and the sweep would stop measuring these
+      // branches at all.
       switch (intent.id) {
         case 'warthog':
-          return unlockWarthog(c) || buyWarthogSortie(c);
+          return buyWarthogSortie(c);
         case 'scan':
-          return unlockScan(c) || buyScanPulse(c);
-        case 'sonar':
-          return unlockSonar(c);
+          return buyScanPulse(c);
         case 'smoke':
-          return unlockSmoke(c);
+          return buySmokeCanister(c);
+        case 'sonar':
         case 'hardened':
-          return unlockHardened(c);
+          return false; // no consumable to buy
       }
       return false;
     case 'ship': {
@@ -313,21 +318,69 @@ export function procure(c: CampaignState, persona: Persona): void {
       if (tryBuy(c, intent, reserve, persona)) progressed = true;
     }
   }
+  fitSpareEquipment(c);
   fillConvoy(c);
+}
+
+/** Bolt on anything sitting in the locker with somewhere legal to go.
+ *
+ *  A persona's buy list names the fits its DOCTRINE wants, which was the whole
+ *  story when equipment was bought: you only ever owned what you chose. Under
+ *  the draft economy units arrive whether or not they were asked for, and a bot
+ *  that only ever fitted its shopping list left them in the locker — 3.6 units
+ *  drafted per campaign against 0.6 fitted, which is not a playstyle, it is the
+ *  harness failing to play. Nobody drafts a deck gun and forgets to bolt it on.
+ *
+ *  Doctrine still comes first: this runs AFTER the buy list, so a persona's
+ *  preferred escort fits claim their slots before the leftovers do. */
+function fitSpareEquipment(c: CampaignState): void {
+  let progressed = true;
+  let guard = 0;
+  while (progressed && guard++ < 100) {
+    progressed = false;
+    for (const moduleId of Object.keys(ESCORT_MODULES) as EscortModuleId[]) {
+      if (moduleSpare(c, 'escort', moduleId) <= 0) continue;
+      for (const unit of c.escortUnits) {
+        if (equipEscortModule(c, unit.id, moduleId)) {
+          progressed = true;
+          break;
+        }
+      }
+    }
+    for (const moduleId of Object.keys(MODULES) as ModuleId[]) {
+      if (moduleSpare(c, 'cargo', moduleId) <= 0) continue;
+      for (const classId of Object.keys(c.classModules) as ShipClassId[]) {
+        if (equipModule(c, classId, moduleId)) {
+          progressed = true;
+          break;
+        }
+      }
+    }
+    for (const moduleId of Object.keys(BASE_MODULES) as BaseModuleId[]) {
+      if (moduleSpare(c, 'base', moduleId) > 0 && equipBaseModule(c, moduleId)) progressed = true;
+    }
+  }
 }
 
 /** Resolve the pending technology draft the way this persona would: take the
  *  offered option it ranks highest in its research-preference list, or the
  *  first option when nothing it wanted was offered (the draft is mandatory).
  *  Returns the pick, or null when no draft was pending. */
-export function research(c: CampaignState, persona: Persona): ResearchId | null {
+export function research(c: CampaignState, persona: Persona): DraftOption | null {
   const draft = c.pendingDraft;
   if (!draft) return null;
   if (draft.options.length === 0) {
     dismissEmptyDraft(c);
     return null;
   }
-  const preferred = persona.research.find((id) => draft.options.includes(id));
+  // A persona's preference list is written in RESEARCH ids, and a module option
+  // is matched by the research its first unit delivers — so every doctrine list
+  // in this file kept working when equipment stopped being bought and started
+  // being drafted. Ordnance matches nothing by name and is only ever the
+  // fallback, which is exactly its role in the draft too.
+  const preferred = persona.research
+    .map((id) => draft.options.find((o) => draftOptionResearchId(o) === id))
+    .find((o): o is DraftOption => o !== undefined);
   const pick = preferred ?? draft.options[0];
   return selectDraftOption(c, pick) ? pick : null;
 }

@@ -60,7 +60,11 @@ export interface RegionDef {
  *  is escort-driven, so a run must never start without a hull that can
  *  perform it. */
 const DEFAULT_START: RegionStartState = {
-  cash: 450,
+  // Trimmed from 450 when ability commissioning was removed. A run used to
+  // spend its whole opening purse on one shore battery (300) and commissioning
+  // the A-10 (150); the aircraft is free now, so the same 450 would have made
+  // round one's shopping a formality rather than a decision.
+  cash: 350,
   ammo: 28,
   droneAmmo: 0,
   pdAmmo: 0,

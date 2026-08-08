@@ -9,29 +9,22 @@
 // touched at run settlement. Technology comes from the post-round draft
 // (sim/draft.ts) over the counter catalogue (data/counters.ts) — the old
 // paid-research pipeline (spendable intel, one active project, completion
-// delays) is retired. Equipment purchases stay gated on each branch's base
-// node: the draft unlocks, cash equips, and neither substitutes for the other.
+// delays) is retired. Equipment is no longer bought either: the draft delivers
+// UNITS, the loadout fits them for free, and cash is left holding the two jobs
+// it does well — hulls and ordnance.
 
-import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
+import { CAMPAIGN, DRAFT, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
-  BASE_MODULES,
   BASE_MODULE_SLOTS,
   ESCORT_DEFAULT_NAMES,
-  ESCORT_MODULES,
   ESCORT_MODULE_SLOTS,
   ESCORT_MODULE_SLOTS_UNLOCKED,
   ESCORT_NAME_MAX,
-  MODULES,
   SHIP_CLASSES,
 } from '../data/defs';
 import {
-  ABILITY_RESEARCH_REQUIREMENT,
   allResearchableIds,
-  BASE_MODULE_RESEARCH_REQUIREMENT,
-  COUNTER_BRANCHES,
   effectiveResearch,
-  ESCORT_MODULE_RESEARCH_REQUIREMENT,
-  MODULE_RESEARCH_REQUIREMENT,
   resolveBranchStats,
   RESEARCH_INDEX,
 } from '../data/counters';
@@ -40,7 +33,12 @@ import { foldCommanderMods } from '../data/commanderAbilities';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
-import { generateDraft, newThreatPressure, recordThreatCoverage } from './draft';
+import {
+  draftOptionKey,
+  generateDraft,
+  newThreatPressure,
+  recordThreatCoverage,
+} from './draft';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -53,6 +51,7 @@ import type {
   EscortModuleId,
   EscortUnit,
   FormationId,
+  ModulePlatform,
   ModuleId,
   ResearchId,
   RoundMetrics,
@@ -119,9 +118,8 @@ export function newRegionalRun(
     fleet: { ...start.fleet },
     composition: { ...start.fleet },
     classModules: { cargo: [], tanker: [], freighter: [] },
-    modulePaid: { cargo: {}, tanker: {}, freighter: {} },
+    moduleStock: { cargo: {}, escort: {}, base: {} },
     baseModules: [],
-    baseModulePaid: {},
     pendingDamage: 0,
     baseDamage: 0,
     bases: start.bases,
@@ -133,11 +131,13 @@ export function newRegionalRun(
     warthogStock: 0,
     scanStock: 0,
     smokeStock: 0,
-    warthogUnlocked: false,
-    scanUnlocked: false,
-    sonarUnlocked: false,
-    smokeUnlocked: false,
-    hardenedUnlocked: false,
+    // The convoy's own assets are in hand from the first round; only their
+    // ordnance is bought (see the note above repairCost).
+    warthogUnlocked: true,
+    scanUnlocked: true,
+    sonarUnlocked: true,
+    smokeUnlocked: true,
+    hardenedUnlocked: true,
     autoFire: { ...DEFAULT_AUTO_FIRE },
     protectedChannels: [],
     formation: 'tight',
@@ -165,7 +165,6 @@ export function newRegionalRun(
       id: run.nextEscortId++,
       name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
       modules: [],
-      modulePaid: {},
       damage: 0,
     });
   }
@@ -278,7 +277,6 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
         id: c.nextEscortId++,
         name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
         modules: [...(devLoadouts[i % devLoadouts.length] ?? [])].slice(0, escortSlots(c)),
-        modulePaid: {},
         damage: 0,
       });
     }
@@ -433,6 +431,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // meaningless, because they were interchangeable.
   const sunkUnitIds = new Set(t.escorts.filter((e) => !e.alive).map((e) => e.unitId));
   if (sunkUnitIds.size > 0) {
+    // Her equipment goes down with her. Escort modules are drafted units, not
+    // purchases, so there is no buying them back — losing an escort now costs
+    // the flotilla a capability as well as a hull, which is what makes keeping
+    // one alive worth spending a round on. Cargo-class fits are untouched:
+    // those live with the class, and hulls are replaceable.
+    for (const unit of c.escortUnits.filter((u) => sunkUnitIds.has(u.id))) {
+      for (const moduleId of unit.modules) destroyModuleUnits(c, moduleId);
+    }
     c.escortUnits = c.escortUnits.filter((u) => !sunkUnitIds.has(u.id));
   }
   if (s.basesLost > 0) {
@@ -925,7 +931,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     survivorsSpawned: s.survivorsSpawned,
     survivorsRescued: s.survivorsRescued,
     survivorsLost: s.survivorsLost,
-    draftOffered: c.pendingDraft ? [...c.pendingDraft.options] : [],
+    draftOffered: c.pendingDraft ? c.pendingDraft.options.map(draftOptionKey) : [],
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
     counters,
@@ -946,92 +952,154 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 // Procurement actions (all return false when the purchase is invalid)
 // ---------------------------------------------------------------------------
 
-/** Priced on OWNED hulls, not the mutable convoy assignment — composition can
- *  be toggled to zero for free, which would otherwise let the player buy a
- *  class-wide refit at single-ship price. Fleet size only shrinks through
- *  real losses, so it is exploit-proof as a price basis.
- *
- *  The rate itself SOFT-CAPS: hulls up to moduleCostSoftCap are billed at the
- *  full per-ship rate (so early-game pricing is unchanged), and hulls beyond
- *  the cap are billed at a fraction of it — otherwise a late-campaign fleet of
- *  30+ ships makes every refit cost thousands and nothing is ever affordable. */
-export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): number {
-  const count = Math.max(1, c.fleet[classId]);
-  const cap = ECONOMY.moduleCostSoftCap;
-  const billable = count <= cap ? count : cap + (count - cap) * ECONOMY.moduleCostTaperRate;
-  return Math.round(MODULES[moduleId].costPerShip * billable);
+// ---------------------------------------------------------------------------
+// Equipment: stock, not purchases
+// ---------------------------------------------------------------------------
+//
+// Modules used to be bought per class, per escort, per battery, at a price that
+// scaled with fleet size — and every one of them was gated behind a research
+// node the draft had to hand over first. That made the draft an IOU: the
+// technology said the fleet could field a deck gun and the bank said it could
+// not, and the player was asked to weigh that against an ability upgrade that
+// applied to the very next transit. The upgrade won every time.
+//
+// A module is now a UNIT. The draft delivers it; the shop never sells it. Units
+// are fitted and refitted for free between rounds, so the interesting question
+// stopped being "can I afford this" and became "which hull should carry it".
+// Cash buys hulls and ordnance; the draft decides what the fleet can do.
+//
+// The two platforms differ in exactly one way, deliberately:
+//   • a CARGO unit is fitted to a whole ship class and is never lost — hulls
+//     sink and are replaced, the fit stays with the class;
+//   • an ESCORT unit goes down with its escort. Losing an escort already cost
+//     600 cash; now it costs the drafted equipment aboard her too, which is
+//     what makes a flotilla worth defending.
+
+/** Units of one module type the run may ever hold. */
+export function moduleStockCap(platform: ModulePlatform): number {
+  if (platform === 'cargo') return DRAFT.cargoModuleCap;
+  if (platform === 'escort') return DRAFT.escortModuleCap;
+  return DRAFT.baseModuleCap;
 }
 
-/** Why a cargo module cannot be bought right now (null = it can). Purchase is
- *  gated on the branch's base research node — cash never skips the lab. */
+/** Units of this module the run owns — fitted and spare together. */
+export function moduleStock(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  return (c.moduleStock?.[platform] as Record<string, number> | undefined)?.[moduleId] ?? 0;
+}
+
+/** Units of this module currently bolted to something. Counted off the loadout
+ *  itself rather than tracked separately, so stock and fittings can never
+ *  drift apart. */
+export function moduleFitted(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  if (platform === 'cargo') {
+    return Object.values(c.classModules).filter((mods) =>
+      mods.includes(moduleId as ModuleId),
+    ).length;
+  }
+  if (platform === 'escort') {
+    return c.escortUnits.filter((e) => e.modules.includes(moduleId as EscortModuleId)).length;
+  }
+  return c.baseModules.includes(moduleId as BaseModuleId) ? 1 : 0;
+}
+
+/** Units in the locker, waiting for a hull. */
+export function moduleSpare(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  return Math.max(0, moduleStock(c, platform, moduleId) - moduleFitted(c, platform, moduleId));
+}
+
+/** Deliver one unit. Returns false when the run is already at the cap for that
+ *  module — the draft checks this before offering, and this is the backstop. */
+export function grantModule(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): boolean {
+  c.moduleStock ??= { cargo: {}, escort: {}, base: {} };
+  const held = moduleStock(c, platform, moduleId);
+  if (held >= moduleStockCap(platform)) return false;
+  (c.moduleStock[platform] as Record<string, number>)[moduleId] = held + 1;
+  return true;
+}
+
+/** Destroy `count` units — what happens when the escort carrying them sinks. */
+function destroyModuleUnits(c: CampaignState, moduleId: EscortModuleId, count = 1): void {
+  if (!c.moduleStock) return;
+  const held = c.moduleStock.escort[moduleId] ?? 0;
+  const left = Math.max(0, held - count);
+  if (left === 0) delete c.moduleStock.escort[moduleId];
+  else c.moduleStock.escort[moduleId] = left;
+}
+
+/** Module slots on a merchant class, after any refit asset. */
+export function classSlots(c: CampaignState, classId: ShipClassId): number {
+  const extra = hasResearch(c, 'logistics.modularRefit') ? 1 : 0;
+  return SHIP_CLASSES[classId].slots + extra;
+}
+
+/** Why a cargo module cannot be fitted to this class right now (null = it can). */
 export function moduleBlockReason(
   c: CampaignState,
   classId: ShipClassId,
   moduleId: ModuleId,
 ): string | null {
   const owned = c.classModules[classId];
-  if (owned.includes(moduleId)) return 'Already equipped';
-  if (owned.length >= SHIP_CLASSES[classId].slots) return 'No module slots free on this class';
-  const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
-  if (req && !hasResearch(c, req)) {
-    return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (owned.includes(moduleId)) return 'Already fitted to this class';
+  if (owned.length >= classSlots(c, classId)) return 'No module slots free on this class';
+  if (moduleSpare(c, 'cargo', moduleId) <= 0) {
+    return moduleStock(c, 'cargo', moduleId) > 0
+      ? 'Every unit is fitted elsewhere — unfit one first'
+      : 'No unit held — draft one';
   }
-  if (c.cash < moduleCost(c, classId, moduleId)) return 'Not enough cash';
   return null;
 }
 
 // --- Shop visibility -------------------------------------------------------
 //
-// A thing appears in the shop once its TECHNOLOGY exists, not once it is
-// affordable. The draft is where the player learns what they can now field, so
-// listing un-researched hardware there spoils that reveal and pads every grid
-// with cards that cannot be acted on. Cash is deliberately NOT part of the
-// test: an item you can afford next round must stay visible so you can save for
-// it, and a shop that reshuffles as the balance moves is unreadable.
-//
-// Anything already owned always shows, so it can still be unequipped.
+// Equipment appears in the loadout once the run HOLDS a unit of it. There is
+// nothing to save up for any more, so a module the player cannot field is not
+// a thing to plan toward — it is noise. Anything already fitted always shows,
+// so it can still be moved.
 
 export function moduleRevealed(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
   if (c.classModules[classId].includes(moduleId)) return true;
-  const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
-  return !req || hasResearch(c, req);
+  return moduleStock(c, 'cargo', moduleId) > 0;
 }
 
 export function escortModuleRevealed(c: CampaignState, id: EscortModuleId): boolean {
   if (c.escortUnits.some((u) => u.modules.includes(id))) return true;
-  return hasResearch(c, ESCORT_MODULE_RESEARCH_REQUIREMENT[id]);
+  return moduleStock(c, 'escort', id) > 0;
 }
 
 export function baseModuleRevealed(c: CampaignState, id: BaseModuleId): boolean {
   if (c.baseModules.includes(id)) return true;
-  return hasResearch(c, BASE_MODULE_RESEARCH_REQUIREMENT[id]);
+  return moduleStock(c, 'base', id) > 0;
 }
 
-export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+/** Fit a held cargo unit to a class. Free — the cost was the draft pick. */
+export function equipModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
   if (moduleBlockReason(c, classId, moduleId) !== null) return false;
-  const cost = moduleCost(c, classId, moduleId);
-  c.cash -= cost;
   c.classModules[classId].push(moduleId);
-  // Remember what was paid so unequipping refunds exactly this (not a value
-  // recomputed at a different fleet size).
-  (c.modulePaid[classId] ??= {})[moduleId] = cost;
-  recordSpend(c, moduleId, cost);
   return true;
 }
 
-/** Unequip a class module and refund exactly what was paid to fit it, so the
- *  player can freely try loadouts within a class's limited slots. */
+/** Take a cargo unit back off a class and return it to the locker. */
 export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
   const owned = c.classModules[classId];
   const idx = owned.indexOf(moduleId);
   if (idx < 0) return false;
   owned.splice(idx, 1);
-  const paid = c.modulePaid[classId]?.[moduleId];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete c.modulePaid[classId][moduleId];
-    recordSpend(c, moduleId, -paid);
-  }
   return true;
 }
 
@@ -1094,31 +1162,33 @@ export function escortModuleBlockReason(
   const escort = findEscort(c, escortId);
   if (!escort) return 'No such escort';
   // Fitting the same module to a DIFFERENT escort is always allowed — three
-  // gun boats is a legitimate answer to a strait full of attack boats.
+  // gun boats is a legitimate answer to a strait full of attack boats, and
+  // three drafted units is what it takes.
   if (escort.modules.includes(id)) return 'Already fitted to this escort';
   if (escort.modules.length >= escortSlots(c)) {
     return hasResearch(c, 'logistics.escortRefitBay')
       ? 'All specialist slots full on this escort'
       : 'Both specialist slots full — Escort Refit Bay unlocks a third';
   }
-  const req = ESCORT_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
-  if (c.cash < ESCORT_MODULES[id].cost) return 'Not enough cash';
+  if (moduleSpare(c, 'escort', id) <= 0) {
+    return moduleStock(c, 'escort', id) > 0
+      ? 'Every unit is fitted to another escort — unfit one first'
+      : 'No unit held — draft one';
+  }
   return null;
 }
 
-export function buyEscortModule(c: CampaignState, escortId: number, id: EscortModuleId): boolean {
+/** Fit a held escort unit. Free, and freely reversible: which escort carries
+ *  which role is a decision the player should be able to remake every round. */
+export function equipEscortModule(
+  c: CampaignState,
+  escortId: number,
+  id: EscortModuleId,
+): boolean {
   if (escortModuleBlockReason(c, escortId, id) !== null) return false;
   const escort = findEscort(c, escortId);
   if (!escort) return false;
-  const cost = ESCORT_MODULES[id].cost;
-  c.cash -= cost;
   escort.modules.push(id);
-  // Recorded against THIS escort, so unequipping refunds what this hull's
-  // fitting actually cost and a module cannot be bought cheaply on one escort
-  // and cashed out at another's price.
-  escort.modulePaid[id] = cost;
-  recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, cost);
   return true;
 }
 
@@ -1128,12 +1198,6 @@ export function removeEscortModule(c: CampaignState, escortId: number, id: Escor
   const idx = escort.modules.indexOf(id);
   if (idx < 0) return false;
   escort.modules.splice(idx, 1);
-  const paid = escort.modulePaid[id];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete escort.modulePaid[id];
-    recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, -paid);
-  }
   return true;
 }
 
@@ -1148,19 +1212,13 @@ export function fleetHasEscortModule(c: CampaignState, id: EscortModuleId): bool
 export function baseModuleBlockReason(c: CampaignState, id: BaseModuleId): string | null {
   if (c.baseModules.includes(id)) return 'Already fitted';
   if (c.baseModules.length >= BASE_MODULE_SLOTS) return 'Base loadout slots are full';
-  const req = BASE_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
-  if (c.cash < BASE_MODULES[id].cost) return 'Not enough cash';
+  if (moduleSpare(c, 'base', id) <= 0) return 'No unit held — draft one';
   return null;
 }
 
-export function buyBaseModule(c: CampaignState, id: BaseModuleId): boolean {
+export function equipBaseModule(c: CampaignState, id: BaseModuleId): boolean {
   if (baseModuleBlockReason(c, id) !== null) return false;
-  const cost = BASE_MODULES[id].cost;
-  c.cash -= cost;
   c.baseModules.push(id);
-  c.baseModulePaid[id] = cost;
-  recordSpend(c, id, cost);
   return true;
 }
 
@@ -1168,12 +1226,6 @@ export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
   const idx = c.baseModules.indexOf(id);
   if (idx < 0) return false;
   c.baseModules.splice(idx, 1);
-  const paid = c.baseModulePaid[id];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete c.baseModulePaid[id];
-    recordSpend(c, id, -paid);
-  }
   return true;
 }
 
@@ -1181,19 +1233,12 @@ export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
  *  module fit — a new hull sails with the class loadout, so the buyer pays for
  *  those modules too (per single ship, not the whole-fleet refit price). */
 export function shipCost(c: CampaignState, classId: ShipClassId): number {
-  const modules = c.classModules[classId] ?? [];
-  const paid = c.modulePaid[classId] ?? {};
-  const moduleSurcharge = modules.reduce((sum, m) => {
-    // A module the DRAFT fitted for free (recorded as paid 0) does not tax
-    // every replacement hull for the rest of the run. Without this the "free"
-    // fit is a trap: it costs nothing once and then quietly raises the price of
-    // every hull the player has to replace, which in a fleet that is losing
-    // ships is far more than the module was worth. `undefined` means bought
-    // before this record existed — still surcharged, as it always was.
-    if (paid[m] === 0) return sum;
-    return sum + MODULES[m].costPerShip;
-  }, 0);
-  return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
+  // No module surcharge: fits are drafted, not bought, so a replacement hull
+  // sails with the class loadout at no extra cost. Charging for it would have
+  // made every drafted module a permanent tax on replacing losses — which, in
+  // a fleet that is losing ships, is worth more than the module.
+  void c;
+  return SHIP_CLASSES[classId].replaceCost;
 }
 
 /** Interceptor round price with the Commander quartermaster modifier baked in
@@ -1246,7 +1291,6 @@ export function buyEscort(c: CampaignState): boolean {
     id: c.nextEscortId++,
     name: nextEscortName(c),
     modules: [],
-    modulePaid: {},
     damage: 0,
   });
   recordSpend(c, 'escortInterceptor', ECONOMY.escortCost);
@@ -1262,17 +1306,12 @@ export function buyBase(c: CampaignState): boolean {
   return true;
 }
 
-export function unlockWarthog(c: CampaignState): boolean {
-  if (c.warthogUnlocked || c.cash < ECONOMY.warthogUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.warthog)) return false;
-  c.cash -= ECONOMY.warthogUnlockCost;
-  c.warthogUnlocked = true;
-  // Commissioning includes the first sortie, so buying the capability is
-  // immediately worth something rather than unlocking an empty apron.
-  c.warthogStock = Math.max(c.warthogStock, 1);
-  recordSpend(c, 'warthog', ECONOMY.warthogUnlockCost);
-  return true;
-}
+// The convoy's own assets — the A-10 flight, the survey pulse, active sonar,
+// defensive smoke and hardened systems — are AVAILABLE FROM ROUND ONE. They
+// used to cost 150-160 each to commission on top of the technology that
+// unlocked them, which was the same IOU the module economy has shed: the tech
+// tree said the fleet had an A-10 and the bank said it did not. What is bought
+// now is only the ORDNANCE, every round, which is the decision worth keeping.
 
 /** How many A-10 sorties can be held at once. Research buys apron space; it no
  *  longer hands out free sorties each round. */
@@ -1289,7 +1328,6 @@ export function smokeCapacity(c: CampaignState): number {
 }
 
 export function smokeCanisterBlockReason(c: CampaignState): string | null {
-  if (!c.smokeUnlocked) return 'Commission the smoke stores first';
   if (c.smokeStock >= smokeCapacity(c)) return 'Stowage full';
   if (c.cash < ECONOMY.smokeCanisterCost) return 'Not enough cash';
   return null;
@@ -1304,7 +1342,6 @@ export function buySmokeCanister(c: CampaignState): boolean {
 }
 
 export function warthogSortieBlockReason(c: CampaignState): string | null {
-  if (!c.warthogUnlocked) return 'Commission the A-10 flight first';
   if (c.warthogStock >= warthogCapacity(c)) return 'Apron full';
   if (c.cash < ECONOMY.warthogSortieCost) return 'Not enough cash';
   return null;
@@ -1319,7 +1356,6 @@ export function buyWarthogSortie(c: CampaignState): boolean {
 }
 
 export function scanPulseBlockReason(c: CampaignState): string | null {
-  if (!c.scanUnlocked) return 'Commission the scan flight first';
   if (c.scanStock >= scanCapacity(c)) return 'Stowage full';
   if (c.cash < ECONOMY.scanPulseCost) return 'Not enough cash';
   return null;
@@ -1333,43 +1369,6 @@ export function buyScanPulse(c: CampaignState): boolean {
   return true;
 }
 
-export function unlockScan(c: CampaignState): boolean {
-  if (c.scanUnlocked || c.cash < ECONOMY.scanUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.scan)) return false;
-  c.cash -= ECONOMY.scanUnlockCost;
-  c.scanUnlocked = true;
-  c.scanStock = Math.max(c.scanStock, 1);
-  recordSpend(c, 'scanPulse', ECONOMY.scanUnlockCost);
-  return true;
-}
-
-export function unlockSonar(c: CampaignState): boolean {
-  if (c.sonarUnlocked || c.cash < ECONOMY.sonarUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.sonar)) return false;
-  c.cash -= ECONOMY.sonarUnlockCost;
-  c.sonarUnlocked = true;
-  recordSpend(c, 'activeSonar', ECONOMY.sonarUnlockCost);
-  return true;
-}
-
-export function unlockSmoke(c: CampaignState): boolean {
-  if (c.smokeUnlocked || c.cash < ECONOMY.smokeUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.smoke)) return false;
-  c.cash -= ECONOMY.smokeUnlockCost;
-  c.smokeUnlocked = true;
-  c.smokeStock = Math.max(c.smokeStock, 1);
-  recordSpend(c, 'smokeScreen', ECONOMY.smokeUnlockCost);
-  return true;
-}
-
-export function unlockHardened(c: CampaignState): boolean {
-  if (c.hardenedUnlocked || c.cash < ECONOMY.hardenedUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.hardened)) return false;
-  c.cash -= ECONOMY.hardenedUnlockCost;
-  c.hardenedUnlocked = true;
-  recordSpend(c, 'hardened', ECONOMY.hardenedUnlockCost);
-  return true;
-}
 
 /** Pre-round protected-channel selection (hardened systems). Rejects picks
  *  beyond the researched channel capacity or unknown families. */
@@ -1403,10 +1402,15 @@ export function escortDamageTotal(c: CampaignState): number {
 
 export function repairCost(c: CampaignState): number {
   const mult = hasResearch(c, 'logistics.expandedBerthing') ? 0.5 : 1;
+  // The Forward Repair Yard patches the warships for nothing: only the
+  // merchant hulls still bill. Escorts and batteries are what the fleet asset
+  // is for, and it pairs with escort modules now going down with their hull.
+  const yard = hasResearch(c, 'logistics.repairYard');
+  const billable = yard ? c.pendingDamage : totalPendingDamage(c);
   // Commander modifier applied last, after technology effects — same flow as
   // combat effects (base → tech → commander).
   const commander = foldCommanderMods(c.commanderAbilities ?? []).repairCost;
-  return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult * commander);
+  return Math.ceil(billable * ECONOMY.repairCostPerHp * mult * commander);
 }
 
 export function repairFleet(c: CampaignState): boolean {

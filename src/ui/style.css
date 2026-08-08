@@ -487,12 +487,94 @@ button.ghost {
 .draft-option > button { margin-top: auto; }
 .draft-option .effect-rows { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* The counter slot: one card on every table answers whatever is actually
-   getting through. Marked so the player can tell at a glance which option is
-   the reply to their losses and which is the free development pick. */
-.draft-option.draft-counter { border-left-color: var(--bad); }
+/* ---------- reward categories ----------
 
-/* Hardware that arrives with the technology, not after another purchase. */
+   Four categories, four identities, so the player can tell what KIND of reward
+   a card is before reading a word of it. Category owns the fill, the icon and
+   the ribbon; the counter slot owns the border. They are independent axes — a
+   module can also be the counter pick — so they never share a channel. */
+
+.draft-option.cat-upgrade { --cat: var(--accent); }
+.draft-option.cat-module { --cat: var(--cyan); }
+.draft-option.cat-asset { --cat: var(--intel); }
+.draft-option.cat-ordnance { --cat: var(--good); }
+
+.draft-option[class*='cat-'] {
+  border-left-color: var(--cat);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--cat) 7%, transparent), transparent 42%);
+}
+.draft-option[class*='cat-'] .card-head > .icon { color: var(--cat); }
+
+.cat-ribbon {
+  margin-left: auto;
+  flex: none;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--cat);
+  color: var(--cat);
+  background: color-mix(in srgb, var(--cat) 12%, transparent);
+}
+
+/* The counter slot: one card on every table answers whatever is actually
+   getting through. The border and the badge are its channel, so it reads on top
+   of any category rather than competing with it. */
+.draft-option.draft-counter {
+  border-left-color: var(--bad);
+  box-shadow: inset 3px 0 0 -1px var(--bad);
+}
+
+/* ---------- analog progress pips ----------
+
+   Round, so they can never be misread as the skewed LED bars that show stat
+   tiers: two read-outs meaning different things must not share a shape. */
+
+.pip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--dim);
+  background: #0b100b;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 7px;
+}
+.pip-label { text-transform: uppercase; letter-spacing: 0.05em; }
+.pip-count { margin-left: auto; color: var(--text); font-variant-numeric: tabular-nums; }
+.pip-note { color: var(--dim); }
+.pips { display: inline-flex; gap: 3px; }
+
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0b0e09;
+  border: 1px solid #2b3323;
+  flex: none;
+}
+.pip.on {
+  background: var(--good);
+  border-color: rgba(82, 229, 149, 0.6);
+  box-shadow: 0 0 5px rgba(82, 229, 149, 0.5);
+}
+/* The rung this card would add — amber and pulsing against the steady green of
+   what the fleet already holds, matching the tier meters' `gain` language. */
+.pip.gain {
+  background: var(--accent);
+  border-color: rgba(255, 180, 84, 0.85);
+  box-shadow: 0 0 7px rgba(255, 180, 84, 0.7);
+  animation: pipPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pipPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Where a drafted unit can be fitted. */
 .grant-line {
   display: flex;
   align-items: center;
