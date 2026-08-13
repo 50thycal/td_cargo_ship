@@ -718,7 +718,14 @@ export function generateDraft(
 ): TechDraft {
   const pool = draftPool(c, recoveredByBranch);
   const recoveredUnits = Object.values(recoveredByBranch).reduce((a, b) => a + b, 0);
-  let choices = DRAFT.baseChoices;
+  // Recovery buys PICKS first and cards second: the table has to stay wider
+  // than the number of things that can be taken from it, or a generous draft
+  // stops being a decision.
+  const picks = Math.min(
+    DRAFT.maxPicks,
+    DRAFT.basePicks + Math.floor(recoveredUnits / DRAFT.unitsPerExtraPick),
+  );
+  let choices = DRAFT.baseChoices + (picks - DRAFT.basePicks) * DRAFT.choicesPerExtraPick;
   const thirdChance = Math.min(1, recoveredUnits * DRAFT.thirdChoicePerUnit);
   if (thirdChance > 0 && rng.chance(thirdChance)) choices++;
 
@@ -763,6 +770,7 @@ export function generateDraft(
     round: c.round,
     options,
     recoveredUnits,
+    picksLeft: picks,
     ...(counterFamily ? { counterFamily, counterOption } : {}),
   };
 }
@@ -832,8 +840,15 @@ export function selectDraftOption(c: CampaignState, option: DraftOption): boolea
 
   const draft = c.pendingDraft!;
   c.draftHistory.push({ round: draft.round, offered: [...draft.options], picked: option });
-  c.pendingDraft = null;
-  if (c.phase === 'draft') c.phase = 'prep';
+  // Spend one pick. The card taken leaves the table — nothing can be drafted
+  // twice — and the draft only closes once the picks are gone.
+  const takenKey = draftOptionKey(option);
+  draft.options = draft.options.filter((o) => draftOptionKey(o) !== takenKey);
+  draft.picksLeft--;
+  if (draft.picksLeft <= 0 || draft.options.length === 0) {
+    c.pendingDraft = null;
+    if (c.phase === 'draft') c.phase = 'prep';
+  }
   return true;
 }
 

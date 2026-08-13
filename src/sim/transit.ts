@@ -597,6 +597,32 @@ function passSideBlocked(
   return false;
 }
 
+/** THE NAVIGABLE WATER, as one definition everything afloat shares.
+ *
+ *  The coastlines meander by WORLD.shoreWave, so "north of the friendly shore
+ *  line" is not the same as "in the sea" — a hull sitting exactly on the mean
+ *  line is aground wherever the coast bulges. These clear the wave, so anything
+ *  held between them is in open water at every point along the strait. */
+function waterTop(): number {
+  return WORLD.hostileShoreY + WORLD.shoreWave + COMBAT.shoreClearance;
+}
+
+function waterBottom(): number {
+  return WORLD.friendlyShoreY - WORLD.shoreWave - COMBAT.shoreClearance;
+}
+
+function overWater(y: number): boolean {
+  return y >= waterTop() && y <= waterBottom();
+}
+
+/** Hold a hull in the water. Ships and escorts steer from forces that know
+ *  nothing about the coast, so without this an avoidance shove or an ordered
+ *  move could beach them — and a ship on the sand is both nonsense to look at
+ *  and unreachable by anything that has to sail to it. */
+function keepAfloat(entity: { y: number }): void {
+  entity.y = clamp(entity.y, waterTop(), waterBottom());
+}
+
 function isActive(s: Ship): boolean {
   return s.spawned && s.alive && !s.delivered;
 }
@@ -935,12 +961,17 @@ function maybeSpawnWreckage(t: TransitState, threat: Threat, rng: RNG): void {
   const branch = WRECKAGE_BRANCH[threat.kind];
   const chance = WRECKAGE.dropChance[threat.kind] ?? 0;
   if (!branch || chance <= 0 || !rng.chance(chance)) return;
+  // Nothing washes up on the beach. A kill over land — a missile taken down
+  // above the hostile shore, a gun run on the coast — used to leave a salvage
+  // field sitting inland that no escort could ever reach, so the reward for a
+  // good intercept was a marker taunting the player from dry ground.
+  if (!overWater(threat.y)) return;
   t.wreckage.push({
     id: t.nextEntityId++,
     // Clamped into open water so a kill near a shore still leaves a field an
     // escort can actually sail to.
     x: clamp(threat.x, 80, WORLD.width - 80),
-    y: clamp(threat.y, 160, WORLD.baseLine - 60),
+    y: clamp(threat.y, waterTop(), waterBottom()),
     branch,
     threatKind: threat.kind,
     required: WRECKAGE.recoverSeconds,
@@ -1401,12 +1432,14 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         // Two passes plus the turn between them, with margin for the run-in and
         // the exit. Blocks a second call until the flight is clear.
         const runLen = Math.hypot(bx - px, by - py);
-        // Run in, down the line, out past the end, back down it, and away:
-        // four leg-lengths of margin plus two of the line itself.
+        // A crossing of the whole strait, the turn, and the crossing back.
+        // The DRAWN length no longer bounds the sortie — the bearing does — so
+        // this is sized from the world, not from the player's finger.
+        const crossing = Math.hypot(WORLD.width, WORLD.height);
         t.warthogActiveUntil =
           t.time +
-          (runLen * 2 + COMBAT.warthog.offMapMargin * 2 + COMBAT.warthog.turnMargin * 2) /
-            COMBAT.warthog.planeSpeed;
+          (crossing * 2 + COMBAT.warthog.offMapMargin * 2) / COMBAT.warthog.planeSpeed +
+          Math.PI / COMBAT.warthog.turnRate;
         t.warthogCenterX = (px + bx) / 2;
         t.warthogCenterY = (py + by) / 2;
         // The jet rolls in from beyond the near end of the line, already
@@ -1698,6 +1731,12 @@ function pickStrafeTarget(t: TransitState, ac: Aircraft, halfAngle: number): Thr
   let bestKey = Infinity;
   for (const th of t.threats) {
     if (!th.alive || !canEngage('gunRun', th.kind)) continue;
+    // A pilot shoots what the plot is holding. An uncharted mine is a floating
+    // object nobody has identified — letting the gun find it made the A-10 a
+    // free area sweep that quietly did the sonar's and the scan plane's job for
+    // them, and made charting the water pointless. Boats are visible on their
+    // own; only mines have to be FOUND.
+    if (th.kind === 'mine' && !th.revealed) continue;
     const dx = th.x - ac.x;
     const dy = th.y - ac.y;
     const along = dx * fx + dy * fy;
@@ -1797,51 +1836,82 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
       continue;
     }
 
-    // The Warthog: a strafing run down the line the player drew, off the map,
-    // turn, and back down the same line the other way.
+    // The Warthog: a strafing run along the BEARING the player drew.
     //
-    // `onStation` here means "flying a firing pass"; `departing` is the
-    // turnaround between them and the exit after the last one. The jet is
-    // always tracking to a point beyond the far end of the line, so it leaves
-    // the map under its own power rather than being teleported away.
+    // The line is a direction, not a route. The jet crosses the whole strait on
+    // that bearing, banks round at the near edge of the world and comes back
+    // down it the other way. Treating the line as the path made the drawn
+    // segment the whole sortie: a short line meant a short attack, so the
+    // player was really choosing how long the aircraft stayed useful, which is
+    // not a decision anybody wanted to be making with their finger.
+    //
+    // Phases: `onStation` is a firing pass, `departing` is the banked turn
+    // between them. The gun is COLD through the turn — a real one cannot track
+    // through 180 degrees of bank, and letting it kill during the turn made the
+    // careful run-in irrelevant.
     const step = COMBAT.warthog.planeSpeed * dt;
-    const outbound = ac.pass === 0;
-    const fromX = outbound ? ac.runAx : ac.runBx;
-    const fromY = outbound ? ac.runAy : ac.runBy;
-    const toX = outbound ? ac.runBx : ac.runAx;
-    const toY = outbound ? ac.runBy : ac.runAy;
-    const runDx = toX - fromX;
-    const runDy = toY - fromY;
+    const runDx = ac.runBx - ac.runAx;
+    const runDy = ac.runBy - ac.runAy;
     const runLen = Math.hypot(runDx, runDy) || 1;
-    const ux = runDx / runLen;
-    const uy = runDy / runLen;
+    // The bearing, and the sign the current pass flies it in.
+    const bx = runDx / runLen;
+    const by = runDy / runLen;
+    const dir = ac.pass === 0 ? 1 : -1;
+    const ux = bx * dir;
+    const uy = by * dir;
+
     if (ac.phase === 'departing') {
-      // Carrying on out past the end of the line. Distance-based rather than on
-      // a timer: the jet has to be genuinely clear of the map before it turns,
-      // or the reversal happens in view and reads as the aircraft jinking
-      // backwards instead of coming round.
-      ac.heading = Math.atan2(uy, ux);
-      ac.x += ux * step;
-      ac.y += uy * step;
-      const pastEnd = (ac.x - toX) * ux + (ac.y - toY) * uy;
-      if (ac.pass < 1 && pastEnd >= COMBAT.warthog.turnMargin) {
-        // Round we come: same line, other direction, gun reloaded for one more
-        // engagement. No reposition — the jet simply reverses where it is, off
-        // the edge of the world.
+      // After the second pass there is nothing to come back for: fly out and be
+      // culled.
+      if (ac.pass >= 1) {
+        ac.x += Math.cos(ac.heading) * step;
+        ac.y += Math.sin(ac.heading) * step;
+        continue;
+      }
+      // The turn between passes: a flown arc, not a snap, so it draws the wide
+      // bank a jet actually makes. Started BEFORE the edge of the world so the
+      // whole thing happens in view — the player paid for two passes and should
+      // get to watch the aeroplane set up the second one.
+      //
+      // It steers back onto the LINE rather than merely onto the reciprocal
+      // heading. A flat 180 leaves you on a parallel track displaced by the
+      // turn diameter — measured, 750 units off, which put the return pass
+      // clean past everything the first one had lined up. Regaining the track
+      // is what a re-attack actually is.
+      const lateral = -(ac.x - ac.runAx) * by + (ac.y - ac.runAy) * bx;
+      // A point on the line, ahead of us in the RETURN direction: chasing it is
+      // what curves the aircraft back on.
+      const along = (ac.x - ac.runAx) * bx + (ac.y - ac.runAy) * by;
+      const leadAlong = along - COMBAT.warthog.regainLead;
+      const aimX = ac.runAx + bx * leadAlong;
+      const aimY = ac.runAy + by * leadAlong;
+      const want = Math.atan2(aimY - ac.y, aimX - ac.x);
+      const swing = COMBAT.warthog.turnRate * dt;
+      ac.heading += clamp(angleDiff(want, ac.heading), -swing, swing);
+      ac.x += Math.cos(ac.heading) * step;
+      ac.y += Math.sin(ac.heading) * step;
+      // Rolled out: back on the track and pointing down it. Snap the last few
+      // units of lateral error away so the pass runs exactly along the line the
+      // player drew; at this tolerance the correction is not visible.
+      const reciprocal = Math.atan2(-by, -bx);
+      if (
+        Math.abs(lateral) < COMBAT.warthog.regainTolerance &&
+        Math.abs(angleDiff(reciprocal, ac.heading)) < 0.12
+      ) {
+        ac.x -= -by * lateral;
+        ac.y -= bx * lateral;
         ac.pass = 1;
         ac.firedThisPass = false;
         ac.phase = 'onStation';
-        ac.heading = Math.atan2(-uy, -ux);
       }
     } else {
-      // Flying the pass. Heading is the run line itself, so the gun cone points
-      // where the player aimed it.
+      // Flying the pass on the drawn bearing, gun live.
       ac.heading = Math.atan2(uy, ux);
       ac.x += ux * step;
       ac.y += uy * step;
-      // One engagement per pass. The jet picks the best target in its cone,
+      // One engagement per pass. The jet takes the best target in its cone,
       // guns it, and is done until it comes round again — which is what makes
-      // WHERE the line goes the decision, rather than parking over a crowd.
+      // WHERE the line points the decision rather than parking over a crowd.
       ac.gunCooldown = Math.max(0, ac.gunCooldown - dt);
       if (!ac.firedThisPass && ac.gunCooldown <= 0) {
         const target = pickStrafeTarget(t, ac, strafeHalfAngle);
@@ -1850,10 +1920,19 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
           fireGunRun(t, ac, target, rng);
         }
       }
-      // Past the end of the line: break off. The first break is the turn for
-      // the return pass; the second takes it home.
-      const travelled = (ac.x - fromX) * ux + (ac.y - fromY) * uy;
-      if (travelled >= runLen) ac.phase = 'departing';
+      // Break off while still on screen, so the turn is visible. `turnMargin`
+      // is how much room the arc needs; the aircraft starts it that far inside
+      // whichever edge it is heading FOR.
+      //
+      // Direction matters here. Checking proximity to any edge meant that the
+      // moment the jet rolled out of a turn — still deep inside the margin of
+      // the edge it had just turned away from — it immediately broke off again,
+      // so the second pass never happened and the sortie was worth one target
+      // instead of two.
+      const m = COMBAT.warthog.turnMargin;
+      const closingX = ux > 0 ? ac.x >= WORLD.width - m : ux < 0 ? ac.x <= m : false;
+      const closingY = uy > 0 ? ac.y >= WORLD.height - m : uy < 0 ? ac.y <= m : false;
+      if (closingX || closingY) ac.phase = 'departing';
     }
   }
   // Cull finished aircraft: scan planes that flew off the right edge, the
@@ -2504,7 +2583,7 @@ function steerBoat(
   boat.vy = Math.sin(boat.heading) * boat.speed;
   boat.x += boat.vx * dt;
   boat.y += boat.vy * dt;
-  boat.y = clamp(boat.y, 40, WORLD.height - 40);
+  keepAfloat(boat);
 }
 
 /** Fire one visible round from a boat at its target, leading the hull and
@@ -3621,7 +3700,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     ship.x += Math.cos(ship.heading) * ship.speed * dt;
     ship.y += Math.sin(ship.heading) * ship.speed * dt;
-    ship.y = clamp(ship.y, 60, WORLD.height - 60);
+    keepAfloat(ship);
 
     // Straggling vs the ship's healthy pace: damage or a jam makes it bait.
     const healthySpeed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
@@ -3941,7 +4020,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       escort.steerY = Math.sin(escort.heading);
     }
     escort.x = clamp(escort.x, 20, WORLD.deliverX - 20);
-    escort.y = clamp(escort.y, 60, WORLD.height - 60);
+    keepAfloat(escort);
   }
 
   // Last-resort overlap correction across all hulls (ships + escorts). Rare

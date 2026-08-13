@@ -67,7 +67,6 @@ import {
   repairFleet,
   setComposition,
   setFormation,
-  setProtectedChannels,
   shipCost,
   totalComposition,
   totalPendingDamage,
@@ -127,7 +126,6 @@ import type {
   FormationId,
   ModuleId,
   ModulePlatform,
-  SensorFamily,
   ShipClassId,
   TransitState,
 } from '../sim/types';
@@ -1262,7 +1260,9 @@ export function draftScreen(
   const draft = c.pendingDraft;
   const { root, body, footer } = screenShell(
     `Technology Draft — Round ${draft?.round ?? c.round - 1}`,
-    'Pick one — it activates immediately',
+    draft && draft.picksLeft > 1
+      ? `Take ${draft.picksLeft} — salvage bought the extra picks`
+      : 'Pick one — it activates immediately',
     c,
     'draft',
   );
@@ -1375,6 +1375,8 @@ export function draftScreen(
         className: 'primary',
         text: `Draft ${info.name}`,
         onClick: () => {
+          // With picks left the draft stays open, so re-render the same screen
+          // rather than routing on; the sim decides when it is spent.
           if (selectDraftOption(c, option)) onPicked();
         },
       }),
@@ -2016,13 +2018,6 @@ export function prepScreen(
   // has shed.
   assetGrid.append(
     assetCard(
-      'radar',
-      'Active sonar ping',
-      'ready',
-      'Placed ping that reveals torpedoes in an area. Depth charges do the killing.',
-      null,
-    ),
-    assetCard(
       'jam',
       'Defensive smoke',
       `${c.smokeStock}/${smokeCapacity(c)}`,
@@ -2037,13 +2032,6 @@ export function prepScreen(
           if (buySmokeCanister(c)) rerender();
         },
       },
-    ),
-    assetCard(
-      'shield',
-      'Hardened systems',
-      'ready',
-      'Shortens jamming blackouts and keeps chosen sensors partially alive through them.',
-      null,
     ),
   );
 
@@ -2115,39 +2103,6 @@ export function prepScreen(
     ]),
   ]);
 
-  // --- Protected-channel selection (hardened systems, pre-round choice) -------
-  if (c.hardenedUnlocked && hasResearch(c, 'hardened.protectedChannel')) {
-    const capacity = hasResearch(c, 'hardened.dualChannel') ? 2 : 1;
-    const families: { id: SensorFamily; label: string }[] = [
-      { id: 'mineDetection', label: 'Mine detection' },
-      { id: 'torpedoDetection', label: 'Torpedo detection' },
-      { id: 'missileWarning', label: 'Missile warning' },
-      { id: 'smokeImaging', label: 'Smoke-penetrating imaging' },
-    ];
-    const row = h('div', { className: 'chip-row' });
-    for (const fam of families) {
-      const selected = c.protectedChannels.includes(fam.id);
-      const btn = h('button', {
-        className: selected ? 'tab selected' : 'tab',
-        text: selected ? `${fam.label} ✓` : fam.label,
-        onClick: () => {
-          const next = selected
-            ? c.protectedChannels.filter((f) => f !== fam.id)
-            : [...c.protectedChannels, fam.id].slice(-capacity);
-          if (setProtectedChannels(c, next)) rerender();
-        },
-      });
-      row.append(btn);
-    }
-    assetPanel.append(
-      h('div', {
-        className: 'hint',
-        text: `Protected channel${capacity > 1 ? 's' : ''} (${c.protectedChannels.length}/${capacity}) — stays partially alive through jamming:`,
-      }),
-      row,
-    );
-  }
-
   // --- Assemble: a section rail instead of one endless scroll -----------------
   const fleetPanel = h('div', { className: 'panel' }, [
     h('h2', { text: 'Fleet procurement' }),
@@ -2199,7 +2154,7 @@ export function prepScreen(
     h('div', {
       className: 'hint',
       text: canLaunch
-        ? `${totalComposition(c)} ship(s) ready`
+        ? `${totalComposition(c)} / ${c.capacity} ships ready`
         : 'Assign at least one ship.',
     }),
     h('button', {

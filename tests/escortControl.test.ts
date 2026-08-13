@@ -352,13 +352,19 @@ describe('map camera', () => {
   it('follows the convoy until the player takes the wheel', () => {
     const cam = newCamera();
     cam.zoomBy(3, 640, 360);
-    cam.follow(400, 500);
+    // Follow points taken from the middle of the world rather than fixed
+    // coordinates: near an edge the pan clamp legitimately refuses to centre,
+    // and this test is about FOLLOWING, not about clamping.
+    const midY = WORLD.height / 2;
+    const a = WORLD.width * 0.4;
+    const b = WORLD.width * 0.6;
+    cam.follow(a, midY);
     settle(cam);
     expect(cam.isFollowing()).toBe(true);
-    expect(cam.x).toBeCloseTo(400, 0);
-    cam.updateFollowTarget(900, 500);
+    expect(cam.x).toBeCloseTo(a, 0);
+    cam.updateFollowTarget(b, midY);
     settle(cam);
-    expect(cam.x).toBeCloseTo(900, 0);
+    expect(cam.x).toBeCloseTo(b, 0);
     // A manual pan releases it — the player's hands always win.
     cam.panByScreen(30, 0);
     expect(cam.isFollowing()).toBe(false);

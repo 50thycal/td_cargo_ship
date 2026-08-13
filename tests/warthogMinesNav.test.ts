@@ -63,6 +63,15 @@ function emptyTransit(
   return { c, state, rng };
 }
 
+/** A mine the plot is HOLDING — charted by scan or sonar. The A-10's gun only
+ *  engages these, so anything testing the gun has to chart its targets. */
+function addChartedMine(state: TransitState, x: number, y: number, lowSig = false): Threat {
+  const mine = addMine(state, x, y, lowSig);
+  mine.revealed = true;
+  mine.revealedUntil = Number.POSITIVE_INFINITY;
+  return mine;
+}
+
 function addMine(state: TransitState, x: number, y: number, lowSig = false): Threat {
   const mine: Threat = {
     id: state.nextEntityId++,
@@ -177,7 +186,7 @@ describe('A-10 Warthog', () => {
     expect([...COUNTER_BRANCHES.warthog.counters].sort()).toEqual(['attackBoats', 'mines']);
   });
 
-  it('destroys mines along the run it was given — charted or not', () => {
+  it('destroys charted mines along the bearing it was given', () => {
     const { state, rng } = emptyTransit('warthog-mines', (c) => {
       c.warthogUnlocked = true;
       c.warthogStock = 1;
@@ -187,16 +196,14 @@ describe('A-10 Warthog', () => {
     // Two mines strung out along the run line: one for the outbound pass, one
     // for the return. The gun takes ONE target per pass, so a sortie is worth
     // exactly two engagements however many targets are lying about.
-    const first = addMine(state, 1000, cy);
-    const second = addMine(state, 1150, cy);
-    // Never detected by anything: the gun does not care whether the plot had it.
-    expect([first, second].every((m) => !m.revealed)).toBe(true);
+    const first = addChartedMine(state, 1000, cy);
+    const second = addChartedMine(state, 1150, cy);
     stepTransit(
       state,
       [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
       rng,
     );
-    run(state, rng, 40);
+    run(state, rng, 120);
     expect(first.alive).toBe(false);
     expect(second.alive).toBe(false);
     expect(state.stats.minesSwept).toBe(2);
@@ -214,15 +221,60 @@ describe('A-10 Warthog', () => {
     // Five mines in a row. A wheel would have swept the lot; a strafing run
     // gets two of them and has to be called again for the rest. That limit is
     // what makes WHERE the line goes a decision.
-    for (let i = 0; i < 5; i++) addMine(state, 950 + i * 60, cy);
+    for (let i = 0; i < 5; i++) addChartedMine(state, 950 + i * 60, cy);
     stepTransit(
       state,
       [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1400, y2: cy }],
       rng,
     );
-    run(state, rng, 60);
+    run(state, rng, 120);
     expect(state.stats.counter.gunRuns).toBe(2);
     expect(state.threats.filter((m) => m.kind === 'mine' && m.alive).length).toBe(3);
+  });
+
+  it('will not shoot a mine the plot is not holding', () => {
+    // The gun is not a search sensor. Letting it find uncharted mines made the
+    // A-10 a free area sweep that quietly did the scan plane's and the sonar's
+    // job, and made charting the water pointless.
+    const { state, rng } = emptyTransit('warthog-uncharted', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    const hidden = addMine(state, 1000, cy);
+    const charted = addChartedMine(state, 1200, cy);
+    expect(hidden.revealed).toBe(false);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 120);
+    expect(hidden.alive).toBe(true);
+    expect(charted.alive).toBe(false);
+  });
+
+  it('holds its fire through the turn between passes', () => {
+    // A gun cannot track through 180 degrees of bank, and if it could the
+    // careful run-in would not matter.
+    const { state, rng } = emptyTransit('warthog-turn', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    let firedWhileTurning = false;
+    for (let i = 0; i < Math.ceil(90 / SIM.dt); i++) {
+      const before = state.stats.counter.gunRuns;
+      const turning = state.aircraft.some((a) => a.role === 'warthog' && a.phase === 'departing');
+      stepTransit(state, [], rng);
+      if (turning && state.stats.counter.gunRuns > before) firedWhileTurning = true;
+    }
+    expect(firedWhileTurning).toBe(false);
   });
 
   it('leaves alone what sits off the run line, however close to the track', () => {
@@ -233,16 +285,16 @@ describe('A-10 Warthog', () => {
     clearTheDecks(state);
     const cy = WORLD.lanes[1];
     // On the line and well within reach.
-    const onLine = addMine(state, 1000, cy);
+    const onLine = addChartedMine(state, 1000, cy);
     // Abeam of the run, far outside the gun cone — a fixed gun points where the
     // aircraft points, so this is never in the solution however near it looks.
-    const abeam = addMine(state, 900, cy - 330);
+    const abeam = addChartedMine(state, 900, cy - 330);
     stepTransit(
       state,
       [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
       rng,
     );
-    run(state, rng, 50);
+    run(state, rng, 120);
     expect(onLine.alive).toBe(false);
     expect(abeam.alive).toBe(true);
   });
@@ -264,7 +316,7 @@ describe('A-10 Warthog', () => {
     );
     // Every point of damage crosses the water as a drawn burst.
     let sawBurst = false;
-    for (let i = 0; i < Math.ceil(50 / SIM.dt) && boat.alive; i++) {
+    for (let i = 0; i < Math.ceil(120 / SIM.dt) && boat.alive; i++) {
       stepTransit(state, [], rng);
       if (state.strafeRuns.length > 0) sawBurst = true;
     }
