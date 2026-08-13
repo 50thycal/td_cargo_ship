@@ -782,6 +782,32 @@ button.ghost {
 /* Restart: an escape hatch, styled as one. Muted until armed, then red — the
    second press throws the round away, so the control should look different at
    the moment it will actually do that. */
+/* The actions tray: abilities live here rather than strung across the bottom
+   of the screen, where a fully-equipped player's row wrapped and stacked over
+   the map. Opens upward from its key so it never covers the clock or camera
+   controls, and scrolls if the player somehow has more than fits. */
+.action-tray {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  max-width: min(92cqw, 620px);
+  overflow-x: auto;
+  background: linear-gradient(180deg, #232819, #171a10);
+  border: 1px solid var(--line-bright);
+  border-radius: 9px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.65);
+  z-index: 5;
+}
+
+.hud-btn.actions { position: relative; }
+.hud-btn.actions.armed {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
 .hud-btn.danger {
   border-color: rgba(255, 111, 94, 0.4);
   color: var(--bad);

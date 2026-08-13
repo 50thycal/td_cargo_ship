@@ -187,6 +187,8 @@ export class TransitView {
   private targetBtn!: HTMLButtonElement;
   private pauseBtn!: HTMLButtonElement;
   private restartBtn!: HTMLButtonElement;
+  private actionsBtn!: HTMLButtonElement;
+  private actionTray!: HTMLElement;
   /** Restart is a two-press control; this is whether the first press landed. */
   private restartArmed = false;
   private speedBtn!: HTMLButtonElement;
@@ -450,15 +452,39 @@ export class TransitView {
     });
     this.centreBtn.title = 'Centre the camera on the convoy (press again to view the whole strait)';
 
-    this.hudBottom.append(
+    // ACTIONS live behind one button, not spread across the bottom of the
+    // screen. A player who buys everything ends up with seven ability keys plus
+    // the automation group plus the camera and clock groups, and on a phone
+    // that row wraps and starts stacking on top of the map. One key opens the
+    // tray; the tray holds whatever the player actually has.
+    //
+    // The targeting-priority toggle is deliberately NOT in it. It is a
+    // preference, not an action, and it was noise on a screen that has none to
+    // spare — the control and its behaviour are intact, simply not shown.
+    // The automation toggles live in the tray too. They are settings, not
+    // moment-to-moment actions — five more keys on the bar to hold state the
+    // player sets once and rarely revisits, while the two groups that ARE used
+    // constantly (camera, clock) got squeezed onto a second row.
+    this.actionTray = h('div', { className: 'action-tray hidden' }, [
       this.warthogBtn,
       this.scanBtn,
-      this.sonarBtn,
       this.smokeBtn,
       this.dcBtn,
-      this.rebootBtn,
-      this.targetBtn,
       autoGroup,
+    ]);
+    this.actionsBtn = h('button', {
+      className: 'hud-btn actions',
+      text: 'ACTIONS',
+      onClick: () => {
+        const open = this.actionTray.classList.toggle('hidden');
+        this.actionsBtn.classList.toggle('armed', !open);
+      },
+    });
+    this.actionsBtn.title = 'Abilities you have in hand';
+
+    this.hudBottom.append(
+      this.actionsBtn,
+      this.actionTray,
       h('span', { className: 'spacer' }),
       h('div', { className: 'hud-group' }, [this.zoomOutBtn, this.zoomInBtn, this.centreBtn]),
       h('div', { className: 'hud-group' }, [this.restartBtn, this.pauseBtn, this.speedBtn]),

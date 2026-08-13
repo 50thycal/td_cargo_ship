@@ -303,8 +303,12 @@ export class Game {
       draftScreen(
         c,
         () => {
-          // selectDraftOption / dismissEmptyDraft moved the phase to prep.
           saveRun(c);
+          // A draft can carry more than one pick. The sim clears pendingDraft
+          // when the last one is spent, so "still pending" is the signal to
+          // rebuild the table rather than route on — the screen must not decide
+          // for itself how many picks a draft was worth.
+          if (c.pendingDraft) return this.showDraft();
           this.showPrep();
         },
         () => this.quitToMenu(),

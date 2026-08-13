@@ -1372,6 +1372,11 @@ export interface TechDraft {
   options: DraftOption[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
+  /** How many options may be TAKEN from this table. One ordinarily; recovery
+   *  buys a second and a third. Picking decrements it, and the draft closes
+   *  when it reaches zero — so a rich salvage round is a bigger shopping trip
+   *  rather than merely a wider menu it still only gets one bite of. */
+  picksLeft: number;
   /** The enemy branch the COUNTER SLOT was drawn to answer (absent when no
    *  live threat was under-covered and the slot fell through to the open
    *  pool) — surfaced so the UI can say WHY an option is on the table. */

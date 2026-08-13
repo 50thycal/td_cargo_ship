@@ -18,7 +18,7 @@
  */
 export const WORLD = {
   width: 4000,
-  height: 1800,
+  height: 3375,
   /** Ships are delivered once past this x. */
   deliverX: 3880,
   /** Convoy spawns with its lead ships around this x. */
@@ -35,25 +35,35 @@ export const WORLD = {
    *  Water runs between them; land is above hostileShoreY and below
    *  friendlyShoreY. Both coasts undulate by +/- shoreWave around these lines,
    *  so anything that must sit ON land needs that much clearance. */
-  hostileShoreY: 340,
-  friendlyShoreY: 1465,
+  /** DEEPENED so each shore is about as thick as the strait is wide, rather
+   *  than the third of it they were.
+   *
+   *  This is not scenery. The strait is a horizontal band across the middle of
+   *  the screen, so when the camera is on the convoy the top and bottom of the
+   *  viewport are exactly where the HUD sits — and with a thin shore, missiles
+   *  inbound from the hostile coast spent their first seconds underneath the
+   *  status bar. Deep land means there is somewhere to pan to that puts the
+   *  launch sites in clear view. The camera is NOT expected to show all of it
+   *  at once; it is buffer, and buffer only has to exist to be useful. */
+  hostileShoreY: 1125,
+  friendlyShoreY: 2250,
   /** Amplitude of the drawn coastline's meander, either side of the lines
    *  above. Anything placed on land must clear it. */
   shoreWave: 45,
   /** Y centers of the three transit lanes (north / center / south), spread
    *  across the water between the two coasts. */
-  lanes: [620, 900, 1180],
+  lanes: [1405, 1685, 1965],
   /** Hostile shore: launch sites sit along it, well inland of the coastline so
    *  they read as emplacements on land rather than rafts. */
   launchSites: [
-    { x: 700, y: 200 },
-    { x: 1800, y: 170 },
-    { x: 2900, y: 200 },
+    { x: 700, y: 985 },
+    { x: 1800, y: 955 },
+    { x: 2900, y: 985 },
   ],
   /** Friendly shore: shore batteries launch interceptors from here. Inland of
    *  friendlyShoreY by more than shoreWave, so a battery is never in the sea at
    *  any point along the coast. */
-  baseLine: 1600,
+  baseLine: 2385,
 } as const;
 
 export const SIM = {
@@ -339,6 +349,10 @@ export const NAV = {
 } as const;
 
 export const COMBAT = {
+  /** Clear water kept between any hull and the coastline, on top of the shore's
+   *  meander. Ships look wrong nosed right up against the beach even when they
+   *  are technically afloat. */
+  shoreClearance: 26,
   missile: { speed: 60, damage: 34, hitRadius: 30, splashRadius: 55, splashDamage: 14 },
   guided: {
     speed: 50,
@@ -658,8 +672,10 @@ export const COMBAT = {
    *  plain sight. Charges/strafe radius/loiter are tier-resolved (ability
    *  paths); the ballistics live here. */
   warthog: {
-    /** Cruise speed of the jet. */
-    planeSpeed: 240,
+    /** Cruise speed of the jet. RAISED a quarter from 240: it is a strike
+     *  aircraft crossing a strait, and at the old speed the run-in read as a
+     *  cruise rather than an attack. */
+    planeSpeed: 300,
     /** Half-angle (radians) of the gun cone ahead of the nose.
      *
      *  The jet used to hold a wheel over a point and shoot anything inside a
@@ -673,15 +689,24 @@ export const COMBAT = {
     wideConeMult: 1.7,
     /** How far ahead of the nose the gun reaches. */
     coneRange: 300,
-    /** Distance beyond the map edge the jet enters from and exits to, so both
-     *  the run-in and the turn happen off screen. */
+    /** Distance beyond the map edge the jet enters from, so the run-in starts
+     *  off screen and the aircraft arrives already established on its bearing. */
     offMapMargin: 220,
-    /** How far past the end of the run the jet carries on before reversing for
-     *  the return pass. Deliberately longer than the run-in margin above: at
-     *  the same distance the reversal came round so fast it read as the
-     *  aircraft bouncing off something just out of frame rather than flying a
-     *  circuit. The wait is the turn. */
-    turnMargin: 440,
+    /** How fast the jet swings its nose through the turn between passes
+     *  (radians/second). Slow enough to draw a wide, banked arc rather than a
+     *  pirouette — the turn is a piece of the aesthetic, not just a state
+     *  change. At 300 units/s this arc is roughly 380 units across. */
+    turnRate: 0.8,
+    /** How far ahead along the track the turning jet aims when regaining it.
+     *  Short and it cuts the corner and overshoots; long and the arc unwinds
+     *  into a lazy drift back rather than reading as a turn. */
+    regainLead: 250,
+    /** Lateral error at which the aircraft counts as back on the line. */
+    regainTolerance: 40,
+    /** How far inside the edge of the world the jet begins its turn. It has to
+     *  be at least the arc's width or the aeroplane banks out of the world and
+     *  the player watches it leave rather than come round. */
+    turnMargin: 420,
     /** Shortest run-in line that counts as a gun run. Two points on top of one
      *  another give the cone no direction to point along, so a stray tap can
      *  never burn a sortie on a zero-length run. */
@@ -702,8 +727,8 @@ export const COMBAT = {
      *  the damage lands the instant the burst is fired. */
     burstSeconds: 0.32,
     /** Water band the station center must sit inside (off both shores/launchers). */
-    waterYMin: 400,
-    waterYMax: 1400,
+    waterYMin: 1185,
+    waterYMax: 2190,
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
    *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
@@ -1008,8 +1033,26 @@ export const SURVIVORS = {
  * The pity rule below only guarantees a PATH exists. All PROVISIONAL.
  */
 export const DRAFT = {
-  /** Options always offered after a successfully completed round. */
-  baseChoices: 2,
+  /** Options always offered after a successfully completed round.
+   *
+   *  RAISED from 2. With more than one pick available a two-card table stops
+   *  being a choice the moment the second pick lands — the player takes both
+   *  and there was nothing to decide. The table has to stay wider than the
+   *  number of picks or the draft is just a delivery. */
+  baseChoices: 3,
+  /** Extra options offered per EXTRA pick earned, so a bigger draft is still a
+   *  choice rather than a hand-out: two picks see five cards, three see seven. */
+  choicesPerExtraPick: 2,
+  /** PICKS. Recovery buys them: every this many wreckage units recovered that
+   *  round earns one more option the player may take, up to maxPicks.
+   *
+   *  This is what recovery is FOR. It used to buy a wider table and slightly
+   *  better weighting, which is a real but nearly invisible reward — a third
+   *  card the player did not take is worth nothing to them. Turning salvage
+   *  into a second technology is a reward you can feel. */
+  unitsPerExtraPick: 3,
+  basePicks: 1,
+  maxPicks: 3,
   /** Chance of a THIRD option per wreckage unit recovered that round —
    *  recovery beyond ~3 units guarantees the wide draft. */
   thirdChoicePerUnit: 0.34,

@@ -578,19 +578,48 @@ function candidateGeneric(cand: { branch: { counters: readonly string[] } | null
 }
 
 describe('technology draft', () => {
-  it('always offers at least the base choices after a successful round', () => {
+  it('offers a table with nothing recovered, and only one thing to take from it', () => {
     const c = newRegionalRun('draft-base', FIRST_REGION);
     const draft = generateDraft(c, {}, makeRng('draft-base'));
-    expect(draft.options.length).toBe(2);
     expect(draft.recoveredUnits).toBe(0);
+    expect(draft.picksLeft).toBe(DRAFT.basePicks);
+    expect(draft.options.length).toBeGreaterThanOrEqual(DRAFT.baseChoices);
   });
 
-  it('strong recovery produces the third option', () => {
+  it('recovery buys PICKS, and the table stays wider than them', () => {
+    // Salvage used to buy a wider menu the player still only got one bite of,
+    // which is a reward you cannot feel. It now buys another technology — and
+    // the table grows faster than the picks do, so a rich draft is a bigger
+    // decision rather than a hand-out.
     const c = newRegionalRun('draft-third', FIRST_REGION);
-    // 3+ units → third-choice chance saturates at 1.0 with the tuned rate.
     const draft = generateDraft(c, { missiles: 2, mines: 1 }, makeRng('draft-third'));
     expect(draft.recoveredUnits).toBe(3);
-    expect(draft.options.length).toBe(3);
+    expect(draft.picksLeft).toBe(2);
+    expect(draft.options.length).toBeGreaterThan(draft.picksLeft);
+  });
+
+  it('caps the picks however much is recovered', () => {
+    const c = newRegionalRun('draft-cap', FIRST_REGION);
+    const draft = generateDraft(c, { missiles: 40 }, makeRng('draft-cap'));
+    expect(draft.picksLeft).toBe(DRAFT.maxPicks);
+    expect(draft.options.length).toBeGreaterThan(DRAFT.maxPicks);
+  });
+
+  it('a multi-pick draft stays open until its picks are spent', () => {
+    const c = newRegionalRun('draft-multi', FIRST_REGION);
+    c.pendingDraft = generateDraft(c, { missiles: 3 }, makeRng('draft-multi'));
+    c.phase = 'draft';
+    const draft = c.pendingDraft;
+    expect(draft.picksLeft).toBe(2);
+    const first = draft.options[0];
+    expect(selectDraftOption(c, first)).toBe(true);
+    // Still open, one pick down, and the card taken is off the table.
+    expect(c.pendingDraft).not.toBeNull();
+    expect(c.pendingDraft!.picksLeft).toBe(1);
+    expect(c.pendingDraft!.options).not.toContainEqual(first);
+    expect(selectDraftOption(c, c.pendingDraft!.options[0])).toBe(true);
+    expect(c.pendingDraft).toBeNull();
+    expect(c.phase).toBe('prep');
   });
 
   it('never offers entries whose prerequisites are not held', () => {
@@ -943,7 +972,7 @@ describe('technology draft', () => {
   it('EQUIPMENT: drafting a module delivers the unit AND its base technology', () => {
     const c = newRegionalRun('module-grant', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'mcmDroneLauncher' };
-    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0 };
+    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, picksLeft: 1 };
     c.phase = 'draft';
     const cashBefore = c.cash;
 
@@ -960,7 +989,7 @@ describe('technology draft', () => {
     const c = newRegionalRun('module-second', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'deckGun' };
     for (let i = 0; i < 2; i++) {
-      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0 };
+      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, picksLeft: 1 };
       c.phase = 'draft';
       expect(selectDraftOption(c, option)).toBe(true);
     }
@@ -1103,7 +1132,7 @@ describe('technology draft', () => {
       // Take the first thing on offer, whatever category it is, until the
       // catalogue and every stock cap are exhausted.
       const option = pool[0].option;
-      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0 };
+      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, picksLeft: 1 };
       c.phase = 'draft';
       if (!selectDraftOption(c, option)) break;
     }
