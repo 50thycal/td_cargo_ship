@@ -437,3 +437,118 @@ describe('map camera', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Escorts navigate around each other
+// ---------------------------------------------------------------------------
+
+describe('escort-vs-escort navigation', () => {
+  it('an escort steers around a stationed sister instead of driving through her', () => {
+    const { state, rng } = quietRun(2);
+    const [mover, blocker] = state.escorts;
+    // The blocker holds station dead on the mover's ordered track.
+    blocker.x = 1400;
+    blocker.y = WORLD.lanes[1];
+    blocker.moveTarget = null;
+    blocker.stationed = true;
+    mover.x = 1000;
+    mover.y = WORLD.lanes[1];
+    mover.heading = 0;
+    mover.stationed = false;
+    mover.moveTarget = { x: 1800, y: WORLD.lanes[1], hold: true };
+
+    let minSep = Infinity;
+    for (let i = 0; i < Math.ceil(60 / SIM.dt) && mover.moveTarget; i++) {
+      stepTransit(state, [], rng);
+      minSep = Math.min(minSep, Math.hypot(mover.x - blocker.x, mover.y - blocker.y));
+    }
+    // The order was carried out...
+    expect(mover.moveTarget).toBeNull();
+    expect(Math.hypot(mover.x - 1800, mover.y - WORLD.lanes[1])).toBeLessThan(60);
+    // ...and the pass kept real clear water. The last-resort overlap push
+    // alone would only guarantee ~28 units; steering keeps meaningfully more.
+    expect(minSep).toBeGreaterThan(50);
+    expect(Number.isFinite(mover.x)).toBe(true);
+    expect(Number.isFinite(mover.y)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The round holds for crews in the water
+// ---------------------------------------------------------------------------
+
+describe('round end vs pending rescues', () => {
+  const deliverEveryone = (state: TransitState): void => {
+    for (const ship of state.ships) {
+      ship.spawned = true;
+      ship.delivered = true;
+    }
+  };
+
+  it('crews in the water hold the round open until rescued', () => {
+    const { state, rng } = quietRun(1);
+    deliverEveryone(state);
+    const escort = state.escorts[0];
+    const area = addSurvivors(state, 900, WORLD.lanes[1]);
+    // One tick with a pending rescue: the convoy is home, the round is not over.
+    stepTransit(state, [], rng);
+    expect(state.over).toBe(false);
+    // Escort works the area; the moment the crew is aboard the round closes.
+    escort.x = area.x;
+    escort.y = area.y;
+    escort.moveTarget = null;
+    escort.stationed = true;
+    let guard = 0;
+    while (!state.over && guard++ < Math.ceil(SURVIVORS.rescueSeconds * 3 / SIM.dt)) {
+      stepTransit(state, [], rng);
+    }
+    expect(area.rescued).toBe(true);
+    expect(state.over).toBe(true);
+    expect(state.stats.survivorsRescued).toBe(1);
+  });
+
+  it('an unreachable crew bounds the wait by its own lifetime', () => {
+    const { state, rng } = quietRun(1);
+    deliverEveryone(state);
+    // Far from any escort, and nobody is sent: the area expires on its clock
+    // and the round then ends with the loss recorded.
+    const area = addSurvivors(state, 3400, WORLD.lanes[0]);
+    state.escorts[0].stationed = true; // hold clear so no accidental rescue
+    let guard = 0;
+    while (!state.over && guard++ < Math.ceil((SURVIVORS.lifetimeSeconds + 10) / SIM.dt)) {
+      stepTransit(state, [], rng);
+    }
+    expect(state.over).toBe(true);
+    expect(area.lost).toBe(true);
+    expect(state.stats.survivorsLost).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprite reference: ships keep a constant world size as the map grows
+// ---------------------------------------------------------------------------
+
+describe('camera sprite reference', () => {
+  it('anchors the drawing baseline to the reference world, not the actual one', () => {
+    const reference = { width: 4000, height: 2250 };
+    const cam = new Camera(WORLD_BOUNDS, VIEWPORT, reference);
+    // Height-limited viewport: base scale comes from the fixed reference, so
+    // deepening the world (3375 high here) does not shrink it.
+    expect(cam.baseZoom()).toBeCloseTo(VIEWPORT.height / reference.height, 6);
+    expect(cam.baseZoom()).toBeGreaterThan(cam.fitZoom());
+    // The compose identity must still hold: base-space position times the
+    // detail transform lands exactly where worldToScreen says.
+    settle(cam);
+    const k = cam.detailScale();
+    for (const [wx, wy] of [
+      [0, 0],
+      [900, 400],
+      [2000, 3000],
+    ]) {
+      const fx = cam.fitScreenX(wx);
+      const fy = cam.fitScreenY(wy);
+      expect((fx - VIEWPORT.width / 2) * k + VIEWPORT.width / 2).toBeCloseTo(cam.worldToScreenX(wx), 4);
+      expect((fy - VIEWPORT.height / 2) * k + VIEWPORT.height / 2).toBeCloseTo(cam.worldToScreenY(wy), 4);
+    }
+  });
+});

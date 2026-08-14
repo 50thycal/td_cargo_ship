@@ -113,6 +113,8 @@ const gunboatEscorts = (c: CampaignState): void => {
   c.completedResearch = ['deckGun.base', 'deckGun.autoNearest'];
   fitUniformEscorts(c, 2, ['deckGun']);
   c.autoFire = { ...c.autoFire, deckGun: true };
+  // Shells are a bought consumable now: an unstocked magazine never fires.
+  c.gunAmmo = 500;
 };
 
 // ---------------------------------------------------------------------------
@@ -561,7 +563,10 @@ describe('attack-boat counters', () => {
       });
       const start = state.time;
       let guard = 0;
-      while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(90 / SIM.dt) && !state.over) {
+      // Quarter-damage guns make an un-armour-pierced rocket boat a LONG
+      // fight (~50 gun-seconds of contact), and contact is intermittent while
+      // the boat works its victims — give the engagement room to finish.
+      while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(300 / SIM.dt) && !state.over) {
         stepTransit(state, [], rng);
       }
       expect(state.stats.boatsSunk).toBe(1);
@@ -633,8 +638,14 @@ describe('boarding and capture', () => {
     // convoy pace now, so gunners left on auto from the start routinely break
     // one up on the run-in — which is the branch working, but it is not what
     // THIS test is about: the claim is that progress already made is lost.
+    // Armour-piercing + rapid feed: at quarter damage, base guns can no
+    // longer break a boarding boat inside the 15-second takeover window —
+    // which is the intended shape of the branch now (stopping a boarding
+    // takes invested guns, not any gun) — and this test is about progress
+    // loss on the sink, not about the base gun's time-to-kill.
     const ctx = engage([spawn('boarding')], (c) => {
       gunboatEscorts(c);
+      c.completedResearch = [...c.completedResearch, 'deckGun.armorPiercing', 'deckGun.rapidFeed'];
       c.autoFire = { ...c.autoFire, deckGun: false };
     });
     const { state, rng } = ctx;

@@ -131,6 +131,7 @@ export function newRegionalRun(
     warthogStock: 0,
     scanStock: 0,
     smokeStock: 0,
+    gunAmmo: 0,
     // The convoy's own assets are in hand from the first round; only their
     // ordnance is bought (see the note above repairCost).
     warthogUnlocked: true,
@@ -144,7 +145,7 @@ export function newRegionalRun(
     targetPriority: 'proximity',
     completedResearch: [],
     roundSpend: {},
-    roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0 },
+    roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0, gun: 0 },
     // Enemy adaptation is scoped to the run and constrained by the region —
     // a fresh economy every attempt is a design requirement.
     evolution: newEvolution(region),
@@ -265,6 +266,7 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.warthogStock = 999;
     c.scanStock = 999;
     c.smokeStock = 999;
+    c.gunAmmo = 999;
     c.bases = ECONOMY.maxBases;
     c.capacity = CAMPAIGN.maxCapacity;
     const devLoadouts: EscortModuleId[][] = [
@@ -358,6 +360,9 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
   c.pdAmmo = t.pdAmmo; // unused self-defense rounds carry over
+  // Deck-gun shells: what was fired is gone, the rest stays in the magazine.
+  // Clamped for the same god-mode reason as the sortie stocks below.
+  c.gunAmmo = Math.max(0, Math.min(c.gunAmmo, t.gunAmmo));
   // Sorties and pulses are stock too: what was flown is gone, what was not
   // flown is still on the apron next round. Clamped because a god-mode run
   // hands the transit 99 of each without the campaign having bought them.
@@ -663,7 +668,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     c.campaignOver = true;
     c.runOutcome = 'defeat';
     c.defeatCause = 'quota';
-  } else if (round >= region.completionRound) {
+  } else if (round >= region.completionRound && quotaEvaluated) {
+    // Victory waits for the OPEN quota window to resolve. The completion round
+    // and the 3-round quota cycle do not generally line up, and ending the
+    // region mid-window walked away from a commitment the consortium was still
+    // counting — the player watched an active quota bar simply vanish. So the
+    // watermark round is the earliest the region can complete, and the run
+    // sails on until the window in progress is met (victory) or missed
+    // (defeat, handled above) — at most two extra rounds.
     c.campaignOver = true;
     c.runOutcome = 'victory';
     c.defeatCause = null;
@@ -746,14 +758,19 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     if (quotaMet) {
       // The window has already rolled over here, so c.quota now holds the
-      // fresh requirement — tell the player exactly what's next.
+      // fresh requirement — tell the player exactly what's next. Unless the
+      // run just ENDED on this clearance: promising a next window that will
+      // never be sailed is worse than silence.
       cards.push({
         kind: 'quota',
         title: 'Delivery quota met',
         body:
           `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, ` +
-          `consortium confidence rises. New quota: deliver ${c.quota.pointsNeeded} cargo points over ` +
-          `the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`,
+          `consortium confidence rises.` +
+          (c.campaignOver
+            ? ' Every commitment made to the consortium has been honoured.'
+            : ` New quota: deliver ${c.quota.pointsNeeded} cargo points over ` +
+              `the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`),
       });
     } else {
       cards.push({
@@ -780,9 +797,22 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       kind: 'capacity',
       title: `${region.name} secured`,
       body:
-        `Round ${region.completionRound} cleared — the region's completion watermark. The shipping ` +
-        'lane is considered secured; Commander Experience has been earned, and the next region is ' +
-        'open. Technology and equipment built during this run stay with it.',
+        `Round ${round} cleared with every delivery quota honoured — the region's completion ` +
+        'watermark. The shipping lane is considered secured; Commander Experience has been earned, ' +
+        'and the next region is open. Technology and equipment built during this run stay with it.',
+    });
+  }
+  // Past the watermark with a quota window still open: say WHY the run is
+  // continuing, or the extra rounds read as the game failing to end.
+  if (!c.campaignOver && round >= region.completionRound) {
+    cards.push({
+      kind: 'quota',
+      title: 'One commitment left to honour',
+      body:
+        `The completion watermark is behind you, but the current delivery quota — ` +
+        `${c.quota.pointsEarned} of ${c.quota.pointsNeeded} cargo points, ${c.quota.roundsLeft} ` +
+        `round${c.quota.roundsLeft === 1 ? '' : 's'} left — is still open. Meet it and the region ` +
+        'is secured; miss it and the run ends like any other failed quota.',
     });
   }
   if (!c.campaignOver && c.confidence <= 25) {
@@ -863,6 +893,8 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       droneUsed: s.counter.droneLaunches,
       selfDefenseBought: c.roundAmmoBought.selfDefense,
       selfDefenseUsed: s.counter.selfDefenseShots,
+      gunShellsBought: c.roundAmmoBought.gun,
+      gunShellsUsed: s.counter.deckGunRounds,
     },
     stats: s.counter,
   };
@@ -945,7 +977,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 
   // A fresh spend ledger for the next prep phase.
   c.roundSpend = {};
-  c.roundAmmoBought = { interceptor: 0, drone: 0, selfDefense: 0 };
+  c.roundAmmoBought = { interceptor: 0, drone: 0, selfDefense: 0, gun: 0 };
 
   c.round++;
   c.phase = 'aar';
@@ -1364,6 +1396,26 @@ export function scanPulseBlockReason(c: CampaignState): string | null {
   if (c.scanStock >= scanCapacity(c)) return 'Stowage full';
   if (c.cash < ECONOMY.scanPulseCost) return 'Not enough cash';
   return null;
+}
+
+/** Deck-gun shells. The gun hardware arrives through the draft; every round
+ *  it fires is a shell bought here. No stowage cap — like interceptor ammo,
+ *  the constraint is the price, not the shelf. */
+export function gunShellsBlockReason(c: CampaignState): string | null {
+  if (!fleetHasEscortModule(c, 'deckGun') && c.moduleStock.escort.deckGun === undefined) {
+    return 'No deck gun in the flotilla';
+  }
+  if (c.cash < ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy) return 'Not enough cash';
+  return null;
+}
+
+export function buyGunShells(c: CampaignState): boolean {
+  if (gunShellsBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy;
+  c.gunAmmo += ECONOMY.gunShellsPerBuy;
+  c.roundAmmoBought.gun += ECONOMY.gunShellsPerBuy;
+  recordSpend(c, 'deckGunAmmo', ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy);
+  return true;
 }
 
 export function buyScanPulse(c: CampaignState): boolean {

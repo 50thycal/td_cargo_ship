@@ -14,6 +14,7 @@ import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../
 import { applyCommanderCombatEffects } from '../data/commanderAbilities';
 import { targetingSkill } from './evolution';
 import { clampLane, nearestLane, scheduleSpawns, transitTimeLimit } from './convoySchedule';
+import { survivorsUnderEscort, wreckageUnderEscort } from './escortOrders';
 import type { RNG } from './rng';
 import type {
   Aircraft,
@@ -295,6 +296,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     ammo: god ? 9999 : campaign.ammo,
     droneAmmo: god ? 9999 : campaign.droneAmmo,
     pdAmmo: god ? 9999 : campaign.pdAmmo,
+    gunAmmo: god ? 9999 : campaign.gunAmmo,
+    gunAmmoWarned: false,
     warthogCharges,
     warthogActiveUntil: -1,
     warthogCenterX: 0,
@@ -429,6 +432,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       dcAutoCooldown: 0,
       gunCooldown: 0,
       gunTargetId: null,
+      pursueBoatId: null,
+      lastSpeed: 0,
     });
     state.stats.escortPerformance[unit.id] = {
       id: unit.id,
@@ -1333,9 +1338,12 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       return;
     }
     case 'engageBoat': {
-      // Deck guns: sustained fire on a persistent HP target. The commitment
-      // model — the gun stays on the boat until it sinks, leaves range, the
-      // escort dies, or the player re-tasks it.
+      // Deck guns: sustained fire on a persistent HP target. Selecting a boat
+      // is an ORDER, not a range check — an out-of-reach boat sends the
+      // nearest gun escort steaming to it, and the escort then shadows the
+      // boat inside gun range until it sinks or the player re-tasks the ship.
+      // "No deck gun in range" used to be the answer here, which turned the
+      // one counter this branch has into a button that mostly said no.
       if (!t.escorts.some((e) => e.alive && e.modules.includes('deckGun'))) {
         pushEvent(t, { type: 'launchFailed', detail: 'No escort carries a deck gun' });
         return;
@@ -1348,34 +1356,50 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       }
       // A gun escort is one that CARRIES a gun — a depth-charge escort sitting
       // right next to the boat cannot shoot at it.
-      const inRange = (e: Escort) =>
-        e.modules.includes('deckGun') && dist(e.x, e.y, boat.x, boat.y) <= t.effects.deckGun.range;
-      if (cmd.focus && t.effects.deckGun.focusFire) {
-        // Focus fire: every gun escort that can reach commits to this boat.
-        let committed = 0;
-        for (const escort of t.escorts) {
-          if (!escort.alive || !inRange(escort)) continue;
+      const commit = (escort: Escort) => {
+        escort.pursueBoatId = boat.id;
+        // Pursuit IS the escort's order now: it replaces any standing
+        // destination the same way a fresh move order would.
+        escort.moveTarget = null;
+        escort.stationed = false;
+        if (dist(escort.x, escort.y, boat.x, boat.y) <= t.effects.deckGun.range) {
           escort.gunTargetId = boat.id;
-          committed++;
         }
-        if (committed === 0) pushEvent(t, { type: 'launchFailed', detail: 'No deck gun in range of that boat' });
+      };
+      if (cmd.focus && t.effects.deckGun.focusFire) {
+        // Focus fire: every gun escort converges on this boat.
+        for (const escort of t.escorts) {
+          if (escort.alive && escort.modules.includes('deckGun')) commit(escort);
+        }
+        pushEvent(t, { type: 'escortTasked', detail: 'All guns on the designated boat' });
         return;
       }
+      // Nearest gun escort — preferring one that is NOT mid-recovery or
+      // mid-rescue. A pursuit replaces the escort's standing order, and
+      // yanking the hull that is holding a survivor area (because it happened
+      // to be nearest) abandons work the player explicitly ordered. An idle
+      // escort slightly further away is the ship a real officer would send;
+      // only when every gun is busy does the nearest busy one get pulled.
       let best: Escort | null = null;
       let bestD = Infinity;
+      let bestBusy = true;
       for (const escort of t.escorts) {
-        if (!escort.alive || !inRange(escort)) continue;
+        if (!escort.alive || !escort.modules.includes('deckGun')) continue;
+        const busy =
+          wreckageUnderEscort(t, escort) !== undefined ||
+          survivorsUnderEscort(t, escort) !== undefined;
         const d = dist(escort.x, escort.y, boat.x, boat.y);
-        if (d < bestD) {
+        if ((bestBusy && !busy) || (busy === bestBusy && d < bestD)) {
           bestD = d;
           best = escort;
+          bestBusy = busy;
         }
       }
-      if (!best) {
-        pushEvent(t, { type: 'launchFailed', detail: 'No deck gun in range of that boat' });
-        return;
+      if (!best) return;
+      commit(best);
+      if (bestD > t.effects.deckGun.range) {
+        pushEvent(t, { type: 'escortTasked', detail: `${best.name} closing to engage` });
       }
-      best.gunTargetId = boat.id;
       return;
     }
     case 'counterBattery': {
@@ -1554,7 +1578,9 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       const escort = t.escorts.find((e) => e.id === cmd.escortId && e.alive);
       if (!escort) return;
       // A fresh order (tap or hold) puts the escort back under way; whether it
-      // stations on arrival depends on `hold`.
+      // stations on arrival depends on `hold`. It also releases any boat
+      // pursuit — re-tasking is the one way a pursuit ends early.
+      escort.pursueBoatId = null;
       escort.stationed = false;
       escort.moveTarget = {
         x: clamp(cmd.x, 20, WORLD.width - 20),
@@ -2132,6 +2158,21 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
       }
       escort.gunTargetId = null;
     }
+    // A pursuit order outranks whatever the gun found for itself: the player
+    // named this boat, and the escort has sailed here to shoot it. The pin
+    // only holds while the boat is genuinely in reach — out of range, the
+    // helm (see the pursuit goal in the movement loop) closes the distance
+    // and the gun stays free for targets of opportunity on the way.
+    if (escort.pursueBoatId !== null) {
+      const pursued = boats.find((b) => b.id === escort.pursueBoatId);
+      if (pursued && dist(escort.x, escort.y, pursued.x, pursued.y) <= fx.range) {
+        if (target && target.id !== pursued.id && target.engagedByEscortId === escort.id) {
+          target.engagedByEscortId = undefined;
+        }
+        escort.gunTargetId = pursued.id;
+        target = pursued;
+      }
+    }
     // Auto-acquisition (nearest valid boat), respecting distributed fire.
     if (!target && fx.autoNearest && t.autoFire.deckGun) {
       let candidates = boats.filter((b) => dist(escort.x, escort.y, b.x, b.y) <= fx.range);
@@ -2179,6 +2220,17 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
     if (!target) continue;
     if (target.engagedByEscortId === undefined) target.engagedByEscortId = escort.id;
     if (escort.gunCooldown > 0 || t.time < escort.disabledUntil) continue;
+    // Every trigger pull draws a bought shell. An empty magazine holds its
+    // fire — announced once per dry spell, because the player's mistake was
+    // made in preparation and thirty toasts a second will not unmake it.
+    if (t.gunAmmo <= 0) {
+      if (!t.gunAmmoWarned) {
+        t.gunAmmoWarned = true;
+        pushEvent(t, { type: 'launchFailed', detail: 'Deck guns out of shells' });
+      }
+      continue;
+    }
+    t.gunAmmo--;
     // Fire one round: accuracy roll, then HP damage (boats are persistent
     // sinkable units, never one-tap kills).
     escort.gunCooldown = fx.fireInterval;
@@ -3735,6 +3787,23 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   // there holding position (a long-hold order). With no order and not
   // stationed it simply cruises forward at the convoy's pace. (convoyFwd is
   // computed above, where the merchants read it off the obstacle snapshot.)
+  //
+  // What an escort steers around: merchant hulls AND the other escorts, in one
+  // shape. Escorts used to be invisible to each other here — two of them
+  // ordered through the same water drove straight through one another and only
+  // the last-resort overlap push kept their sprites apart, which reads as a
+  // collision, not seamanship. The snapshot is taken before any escort moves
+  // this tick so the scan is order-independent.
+  const escortObstacles = t.escorts
+    .filter((e) => e.alive)
+    .map((e) => ({
+      id: e.id,
+      x: e.x,
+      y: e.y,
+      heading: e.heading,
+      speed: e.lastSpeed,
+      radius: COMBAT.escort.hitRadius,
+    }));
   for (const escort of t.escorts) {
     if (!escort.alive) continue;
     escort.cooldown = Math.max(0, escort.cooldown - dt);
@@ -3761,6 +3830,28 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     // refuses to go near ships can never carry one out.
     let avoidGain = 1;
     let goalDistBefore = 0;
+    // A boat pursuit is a standing order with a moving destination: steam to
+    // the boat, take station inside gun range, and shadow it there until it
+    // sinks or the player re-tasks the ship. The hold ring sits well inside
+    // the gun's reach so ordinary weaving never drops the target out of range.
+    if (escort.pursueBoatId !== null) {
+      const boat = t.threats.find((th) => th.id === escort.pursueBoatId && th.alive);
+      if (!boat) {
+        escort.pursueBoatId = null; // boat sunk or gone: resume ordinary duty
+      } else {
+        const dx = boat.x - escort.x;
+        const dy = boat.y - escort.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const holdAt = t.effects.deckGun.range * 0.7;
+        goalX = dx / d;
+        goalY = dy / d;
+        // Full chase outside the ring, easing to a stop on it — and never
+        // backing away: a boat that closes the range is the gun's problem,
+        // not the helm's.
+        speed = NAV.escortSpeed * clamp((d - holdAt) / 60, 0, 1);
+        avoidGain = clamp((d - NAV.escortArrive) / (2 * NAV.escortArrive), 0, 1);
+      }
+    }
     if (escort.moveTarget) {
       const dx = escort.moveTarget.x - escort.x;
       const dy = escort.moveTarget.y - escort.y;
@@ -3786,7 +3877,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     } else {
       escort.blockedSeconds = 0;
     }
-    if (!escort.moveTarget && !escort.stationed) {
+    if (escort.pursueBoatId === null && !escort.moveTarget && !escort.stationed) {
       goalX = 1; // cruise forward with the convoy
       goalY = 0;
       speed = convoyFwd;
@@ -3817,21 +3908,31 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       // tick, so two hulls a few units apart in range traded the commitment
       // back and forth (measured: the target churned 3 → 1 → 3 → 1 on
       // successive ticks, and each swap put the rudder over the other way).
-      let nearestShip: Ship | null = null;
+      /** One shape for everything in the water: a merchant hull or another
+       *  escort. Escort ids share the entity counter with ships, so the pass
+       *  commitment below can hold either without ambiguity. */
+      interface SteerObstacle {
+        id: number;
+        x: number;
+        y: number;
+        heading: number;
+        speed: number;
+        radius: number;
+      }
+      let nearestOb: SteerObstacle | null = null;
       let nearestAlong = Infinity;
       let nearestLat = 0;
       let nearestBand = 0;
-      let heldShip: Ship | null = null;
+      let heldOb: SteerObstacle | null = null;
       let heldAlong = 0;
       let heldLat = 0;
       let heldBand = 0;
-      for (const ship of t.ships) {
-        if (!isActive(ship)) continue;
-        const or = SHIP_CLASSES[ship.classId].radius;
-        const dx = ship.x - escort.x;
-        const dy = ship.y - escort.y;
+      const scanObstacle = (ob: SteerObstacle): void => {
+        const or = ob.radius;
+        const dx = ob.x - escort.x;
+        const dy = ob.y - escort.y;
         const d = Math.hypot(dx, dy);
-        if (d <= 0.001 || d > NAV.escortPerception) continue;
+        if (d <= 0.001 || d > NAV.escortPerception) return;
 
         // Separation: hold clear water from anything close aboard. The two
         // ships carry bubbles; where those overlap, they ease apart, and the
@@ -3865,29 +3966,49 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // A hull the escort has already committed to passing keeps its claim a
         // little past the edge of the corridor, so a course that is working is
         // not abandoned the instant the geometry says "clear".
-        const committed = escort.passShipId === ship.id;
+        const committed = escort.passShipId === ob.id;
         const reach = committed ? band + NAV.escortPassCommitSlack : band;
         if (along > 0 && along < NAV.escortLookAhead && Math.abs(lat) < reach) {
           if (committed) {
-            heldShip = ship;
+            heldOb = ob;
             heldAlong = along;
             heldLat = lat;
             heldBand = band;
           } else if (along < nearestAlong) {
-            nearestShip = ship;
+            nearestOb = ob;
             nearestAlong = along;
             nearestLat = lat;
             nearestBand = band;
           }
         }
+      };
+      for (const ship of t.ships) {
+        if (!isActive(ship)) continue;
+        scanObstacle({
+          id: ship.id,
+          x: ship.x,
+          y: ship.y,
+          heading: ship.heading,
+          speed: ship.speed,
+          radius: SHIP_CLASSES[ship.classId].radius,
+        });
+      }
+      // The other escorts, from the tick-start snapshot: navigated around with
+      // exactly the merchants' rules — bubble, corridor, pass-astern and all.
+      for (const other of escortObstacles) {
+        if (other.id !== escort.id) scanObstacle(other);
       }
 
-      const passShip = heldShip ?? nearestShip;
-      const passAlong = heldShip ? heldAlong : nearestAlong;
-      const passLat = heldShip ? heldLat : nearestLat;
-      const passBand = heldShip ? heldBand : nearestBand;
+      // Widened read: the accumulators are written inside scanObstacle, and
+      // control-flow analysis cannot see closure assignments — without the
+      // cast it narrows them to their initial null and the else-branch below
+      // to never.
+      const passOb = (heldOb ?? nearestOb) as SteerObstacle | null;
+      const passAlong = heldOb ? heldAlong : nearestAlong;
+      const passLat = heldOb ? heldLat : nearestLat;
+      const passBand = heldOb ? heldBand : nearestBand;
 
-      if (!passShip) {
+      if (!passOb) {
         // Nothing in the corridor. Let the commitment lapse on a timer rather
         // than immediately: a hull skimming the edge drops out for a tick or
         // two at a time, and tearing the side down each time let it be
@@ -3911,10 +4032,10 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // back to plain geometry: go round whichever side she is not on.
         const geoSide = passLat >= 0 ? -1 : 1;
         let side = geoSide;
-        if (passShip.speed > NAV.escortSternMinSpeed) {
+        if (passOb.speed > NAV.escortSternMinSpeed) {
           // Her stern, expressed as a direction, projected onto the escort's
           // own port-side normal: positive means the stern lies to port.
-          const sternLat = -(-Math.cos(passShip.heading)) * fy + -Math.sin(passShip.heading) * fx;
+          const sternLat = -(-Math.cos(passOb.heading)) * fy + -Math.sin(passOb.heading) * fx;
           // Two ships on the same course have no astern-side to speak of (her
           // stern is dead ahead of the escort, not off to one side) — that is
           // overtaking, and geometry decides it.
@@ -3926,8 +4047,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // every tick as the geometry crosses dead ahead is what made the ship
         // shake; committing and holding is what makes it look like it is being
         // steered.
-        if (escort.passShipId !== passShip.id || escort.passSide === 0) {
-          escort.passShipId = passShip.id;
+        if (escort.passShipId !== passOb.id || escort.passSide === 0) {
+          escort.passShipId = passOb.id;
           escort.passSide = side;
         }
         // Shaped by the same falloff as separation, and for the same reason.
@@ -3954,8 +4075,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // both perfectly steady the whole time. The bearing to a hull changes
         // slowly and is not something the rudder can chase, so the loop is
         // broken at the source rather than damped afterwards.
-        const bdx = passShip.x - escort.x;
-        const bdy = passShip.y - escort.y;
+        const bdx = passOb.x - escort.x;
+        const bdy = passOb.y - escort.y;
         const bd = Math.hypot(bdx, bdy) || 1;
         avx += (-bdy / bd) * escort.passSide * gain;
         avy += (bdx / bd) * escort.passSide * gain;
@@ -4021,6 +4142,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     }
     escort.x = clamp(escort.x, 20, WORLD.deliverX - 20);
     keepAfloat(escort);
+    // What the OTHER escorts' stern-passing logic reads next tick.
+    escort.lastSpeed = speed;
   }
 
   // Last-resort overlap correction across all hulls (ships + escorts). Rare
@@ -4588,7 +4711,13 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
   }
   t.time += dt;
   const unresolved = t.ships.some((s) => s.alive && !s.delivered);
-  if (!unresolved || t.time >= t.timeLimit) {
+  // Crews still alive in the water hold the round open after the last hull
+  // crosses: the convoy being home is not the operation being over while
+  // people are still waiting for rescue. Bounded by the survivors' own
+  // lifetime (SURVIVORS.lifetimeSeconds), so this never stalls a round —
+  // every area resolves to rescued or lost on its own clock.
+  const rescuesPending = t.survivors.some((a) => !a.rescued && !a.lost);
+  if ((!unresolved && !rescuesPending) || t.time >= t.timeLimit) {
     // Any ship still afloat when time expires counts as lost at sea.
     for (const ship of t.ships) {
       if (ship.alive && !ship.delivered) killShip(t, ship, 'timeout');

@@ -215,7 +215,7 @@ export interface CounterBranchDef {
     | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
     | { kind: 'builtIn'; id: 'escort' | 'base' };
   /** Ammunition the branch draws on. */
-  ammo: 'interceptor' | 'selfDefense' | 'drone' | 'perRound' | 'none';
+  ammo: 'interceptor' | 'selfDefense' | 'drone' | 'gun' | 'perRound' | 'none';
   nodes: CounterNodeDef[];
   tactics: CounterTacticDef[];
   /** ladder = tactics chain; parallel = independent paths off the base node. */
@@ -1140,7 +1140,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Small-arms boats at base; rocket & boarding variants stay killable with Armor-Piercing Ammunition.',
     weapon: 'deckGun',
     equipment: { kind: 'escortModule', id: 'deckGun' },
-    ammo: 'none',
+    ammo: 'gun',
     tacticStyle: 'ladder',
     nodes: [
       {

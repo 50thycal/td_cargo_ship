@@ -125,6 +125,19 @@ reached.
 
 ---
 
+## Kept current — 2026-08-14 batch (`personas.ts`)
+
+Two game changes in the same batch would have silently outdated the harness,
+so the personas learned them immediately rather than waiting for a fidelity
+diff to flag the decay:
+
+- **Deck-gun shells became a purchase.** Every persona that fits escort
+  modules now carries a `gunAmmo` intent (self-gating on actually owning a
+  gun), so the sweep never measures an armed flotilla that cannot shoot.
+- **Engage-boat is a pursuit order now.** `engageBoats` policies issue the
+  order out to 2.5× gun range — mirroring the player's new chase-to-engage —
+  instead of only when a boat happened to wander into reach.
+
 ## Open and accepted (as of the second row)
 
 ### Still open (worth closing)

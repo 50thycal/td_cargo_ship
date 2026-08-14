@@ -227,6 +227,9 @@ export class TransitView {
     this.camera = new Camera(
       { width: WORLD.width, height: WORLD.height },
       { width: this.cw, height: this.ch },
+      // Sprites keep a constant WORLD size however deep the shores get — see
+      // WORLD.spriteReference for the incident this prevents.
+      { width: WORLD.spriteReference.width, height: WORLD.spriteReference.height },
     );
     this.canvas = h('canvas', { attrs: { id: 'game-canvas' } });
     this.canvas.width = this.cw;
@@ -1254,9 +1257,9 @@ export class TransitView {
   }
 
   /** Units → pixels for world-sized rings drawn inside the world transform.
-   *  Fit scale, because the transform multiplies in the rest. */
+   *  Base scale, because the transform multiplies in the rest. */
   private get scale(): number {
-    return this.camera.fitZoom();
+    return this.camera.baseZoom();
   }
 
   private render(now: number): void {

@@ -484,6 +484,25 @@ that the metric driving a fix is the one that is actually broken.* Two of the
 last three findings here have been a mechanism wearing a pricing problem's
 clothes.
 
+### A failure bar must stay inside the achievable band
+
+The quota's difficulty ratchet only ever climbs, and its ceiling was 1.6 —
+which, at a 0.7 delivery fraction, demands **112% of the convoy value that
+sailed**. Even the ~1.3 reachable mid-campaign asked for more than the healthy
+band's own ceiling. The trap stayed hidden while campaigns banked victory at
+the completion watermark; the moment region completion started waiting for the
+open quota window (so a run must clear one final, fully-ratcheted window), a
+sweep showed six of twelve personas **quota-failing at 80–84% delivered** —
+killed by the bookkeeping while fighting inside the band the game calls
+healthy. The ceiling now sits at 1.15 (demand tops out ~80.5% of sailed
+value): a bar a sloppy run misses and a defended run clears.
+
+The rule: any run-ending target expressed as a fraction of the player's
+achievable output must have its ceiling checked against the healthy band —
+a ratchet with no such check will eventually demand more than the game's own
+definition of a great round, and it will look like difficulty until someone
+reads the arithmetic.
+
 ### A counter cannot be worth more than the threat it answers
 
 With the quota fixed, the four negative counters were **unchanged** — deck gun

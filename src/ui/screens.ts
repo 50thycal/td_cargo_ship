@@ -21,10 +21,8 @@ import {
   SHIP_CLASSES,
 } from '../data/defs';
 import {
-  CATEGORY_ORDER,
   COUNTER_BRANCHES,
   resolveBranchStats,
-  COUNTER_CATEGORY_NAMES,
   awaitingEnemyCapability,
   ENEMY_BRANCH_NAMES,
   RESEARCH_INDEX,
@@ -75,6 +73,8 @@ import {
   buyWarthogSortie,
   scanCapacity,
   scanPulseBlockReason,
+  gunShellsBlockReason,
+  buyGunShells,
   smokeCapacity,
   smokeCanisterBlockReason,
   buySmokeCanister,
@@ -401,7 +401,11 @@ export function regionSelectScreen(
       .join(', ');
     const tags = h('div', { className: 'chip-row' }, [
       chip('alert', threatNames || 'No threats', 'Enemy branches this region can field'),
-      chip('anchor', `Secure R${region.completionRound}`, 'Surviving this round completes the region'),
+      chip(
+        'anchor',
+        `Secure R${region.completionRound}`,
+        'Reach this round with every delivery quota honoured to complete the region — an open quota window plays out first',
+      ),
       chip('star', `+${region.completionXp} XP`),
     ]);
     if (rec && rec.attempts > 0) {
@@ -1132,9 +1136,29 @@ function branchTagRow(
   return tags;
 }
 
-/** The technology a run currently holds, grouped by category — the read-only
- *  build overview shown beneath the draft. Replaces the old browsable tech
- *  tree: there is nothing to buy here any more, only what the drafts built. */
+/** The technology a run currently holds — the read-only build overview shown
+ *  beneath the draft. Grouped by WHAT CARRIES each technology (cargo modules /
+ *  escort fit / fleet-wide / consumables) rather than by the enemy it counters:
+ *  the question this list answers is "what does my fleet already have", and a
+ *  player looks that up by where the thing lives, not by which threat it was
+ *  bought against. */
+const OWNED_TECH_GROUPS = [
+  { key: 'cargo', label: 'Cargo ship modules' },
+  { key: 'escort', label: 'Escort modules' },
+  { key: 'fleet', label: 'Fleet upgrades' },
+  { key: 'consumable', label: 'Consumable upgrades' },
+] as const;
+
+function ownedTechGroup(branch: CounterBranchDef): (typeof OWNED_TECH_GROUPS)[number]['key'] {
+  const eq = branch.equipment;
+  if (!eq) return 'fleet'; // logistics and other fleet-shape branches
+  if (eq.kind === 'cargoModule') return 'cargo';
+  if (eq.kind === 'escortModule') return 'escort';
+  if (eq.kind === 'builtIn') return eq.id === 'escort' ? 'escort' : 'fleet';
+  if (eq.kind === 'ability') return 'consumable';
+  return 'fleet'; // base modules ride with the fleet's fixed installations
+}
+
 function ownedTechSummary(c: CampaignState): HTMLElement {
   const wrap = h('div', { className: 'card owned-tech' }, [
     h('div', { className: 'card-head' }, [icon('check'), h('h3', { text: 'Technology held this run' })]),
@@ -1144,18 +1168,15 @@ function ownedTechSummary(c: CampaignState): HTMLElement {
     wrap.append(h('p', { className: 'hint', text: 'Nothing drafted yet.' }));
     return wrap;
   }
-  for (const category of CATEGORY_ORDER) {
-    const inCategory = owned.filter((id) => RESEARCH_INDEX[id].branch.category === category);
-    if (inCategory.length === 0) continue;
+  for (const group of OWNED_TECH_GROUPS) {
+    const inGroup = owned.filter((id) => ownedTechGroup(RESEARCH_INDEX[id].branch) === group.key);
+    if (inGroup.length === 0) continue;
     const row = h('div', { className: 'chip-row' });
-    for (const id of inCategory) {
+    for (const id of inGroup) {
       const entry = RESEARCH_INDEX[id];
       row.append(chip(BRANCH_ICONS[entry.branch.id], entry.def.name, entry.def.desc));
     }
-    wrap.append(
-      h('div', { className: 'hint', text: COUNTER_CATEGORY_NAMES[category] }),
-      row,
-    );
+    wrap.append(h('div', { className: 'hint', text: group.label }), row);
   }
   return wrap;
 }
@@ -1195,17 +1216,21 @@ function draftRoleLine(
   option: DraftOption,
   info: ReturnType<typeof draftOptionInfo> & object,
   branch: CounterBranchDef | null,
+  /** True when the card's TITLE is already the branch name, so repeating it
+   *  here would just say the same thing twice in two type sizes. */
+  branchTitled = false,
 ): string {
+  const lead = branchTitled ? '' : `${info.branchName} · `;
   if (option.kind === 'ordnance') return 'Consumables · delivered once · spent in play';
-  if (option.kind === 'asset') return `${info.branchName} · the fleet itself · permanent`;
+  if (option.kind === 'asset') return `${lead}the fleet itself · permanent`;
   if (option.kind === 'module') {
-    return `${info.branchName} · ${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · equipment unit`;
+    return `${lead}${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · equipment unit`;
   }
   const entry = RESEARCH_INDEX[(option as { id: string }).id];
   const kindLabel = entry?.isTactic
     ? TACTIC_KIND_LABELS[(entry.def as CounterTacticDef).kind]
     : 'Hardware';
-  return `${info.branchName} · ${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · ${kindLabel}`;
+  return `${lead}${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · ${kindLabel}`;
 }
 
 /** A row of analog lights: filled for what the fleet already holds, one amber
@@ -1278,6 +1303,23 @@ export function draftScreen(
     ? (ENEMY_BRANCH_NAMES[draft.counterFamily as keyof typeof ENEMY_BRANCH_NAMES] ??
       draft.counterFamily)
     : null;
+  // How many picks this table carries, front and centre — the count used to
+  // live only in the subtitle, and a player who had earned a triple pick
+  // through salvage could walk past two of them without ever knowing.
+  const picksTotal = draft.picksTotal ?? draft.picksLeft;
+  body.append(
+    h('div', { className: 'draft-picks' }, [
+      icon('chevrons'),
+      h('strong', { text: `Pick ${picksTotal - draft.picksLeft + 1} of ${picksTotal}` }),
+      h('span', {
+        className: 'hint',
+        text:
+          picksTotal > 1
+            ? `${draft.picksLeft} still to take — salvage bought the extra picks`
+            : 'One technology joins the fleet — recover wreckage to earn more picks',
+      }),
+    ]),
+  );
   body.append(
     h('div', { className: 'chip-row' }, [
       draft.recoveredUnits > 0
@@ -1331,15 +1373,21 @@ export function draftScreen(
     if (!info) continue;
     const branch = draftOptionBranch(option);
     const meta = CATEGORY_STYLE[info.kind];
+    // The card is titled by its BRANCH — the system being improved — with the
+    // specific node beneath it. "High-Velocity Motor" alone forced the player
+    // to deduce what the motor was in; "Escort Missile Interceptors" answers
+    // the only question a card has to answer at a glance: what is this FOR.
+    const branchTitled = Boolean(branch && info.branchName && info.branchName !== info.name);
     const bits: HTMLElement[] = [
       h('div', { className: 'card-head' }, [
         icon(branch ? BRANCH_ICONS[branch.id] : meta.icon),
-        h('h3', { text: info.name }),
+        h('h3', { text: branchTitled ? info.branchName : info.name }),
         h('span', { className: `cat-ribbon cat-${info.kind}`, text: meta.label }),
       ]),
+      ...(branchTitled ? [h('div', { className: 'draft-node-name', text: info.name })] : []),
       h('div', {
         className: 'role-line',
-        text: draftRoleLine(option, info, branch),
+        text: draftRoleLine(option, info, branch, branchTitled),
       }),
       h('p', { text: info.desc }),
     ];
@@ -1974,6 +2022,25 @@ export function prepScreen(
         },
       },
     ),
+    ...(c.escortUnits.some((u) => u.modules.includes('deckGun')) ||
+    (c.moduleStock.escort.deckGun ?? 0) > 0 ||
+    c.gunAmmo > 0
+      ? [
+          assetCard(
+            'turret',
+            'Deck gun shells',
+            `${c.gunAmmo}`,
+            'Every round a deck gun fires draws one. An empty magazine holds its fire — stock up before the boats come.',
+            {
+              label: `Buy ${ECONOMY.gunShellsPerBuy} — $${ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy}`,
+              disabled: gunShellsBlockReason(c) !== null,
+              onClick: () => {
+                if (buyGunShells(c)) rerender();
+              },
+            },
+          ),
+        ]
+      : []),
     // Sorties and pulses are STOCK, not a refilling allowance: commission the
     // flight once, then buy each one you intend to fly. The count reads
     // "held/apron" so the cap — which research raises — is visible at the point

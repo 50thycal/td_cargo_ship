@@ -15,6 +15,7 @@
 
 import {
   buyAmmo,
+  buyGunShells,
   buyBase,
   equipBaseModule,
   moduleSpare,
@@ -80,6 +81,10 @@ export type BuyIntent =
   | { kind: 'ammo'; upTo: number }
   | { kind: 'droneAmmo'; upTo: number }
   | { kind: 'selfDefenseAmmo'; upTo: number }
+  /** Deck-gun shells: the gun fires nothing without them now, so any persona
+   *  that fits a gun must also keep its magazine stocked or the sweep would
+   *  measure an armed flotilla that never shoots. */
+  | { kind: 'gunAmmo'; upTo: number }
   | { kind: 'module'; classId: ShipClassId; moduleId: ModuleId }
   /** Fit the persona's escortDoctrine across the flotilla — escort 1 gets the
    *  first loadout, escort 2 the second, and so on. Replaces a per-module
@@ -218,6 +223,8 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
         c.pdAmmo < intent.upTo &&
         buyPdAmmo(c)
       );
+    case 'gunAmmo':
+      return fleetHasEscortModule(c, 'deckGun') && c.gunAmmo < intent.upTo && buyGunShells(c);
     case 'module':
       return equipModule(c, intent.classId, intent.moduleId);
     case 'escortFit': {
@@ -537,13 +544,25 @@ export function decideCommands(
   }
 
   // --- Deck guns -----------------------------------------------------------
-  // Commit a gun escort to a boat that no gun is already on. The sim's model is
-  // COMMITMENT — the gun stays until the boat sinks or leaves range — so the
-  // only thing to avoid is re-tasking a gun that is already working.
+  // Commit a gun escort to a boat that no gun is already on. The sim's model
+  // is COMMITMENT — an engage order is a pursuit that follows the boat until
+  // it sinks or the escort is re-tasked — so the only thing to avoid is
+  // re-tasking a gun that is already working. Out-of-range boats are valid
+  // orders now (the escort steams to them), bounded so the bot does not send
+  // its screen across the whole strait after a boat still forming up.
   if (p.engageBoats && t.escorts.some((e) => e.alive && e.modules.includes('deckGun'))) {
     const engaged = new Set(
-      t.escorts.filter((e) => e.alive && e.gunTargetId !== null).map((e) => e.gunTargetId),
+      t.escorts
+        .filter((e) => e.alive && (e.gunTargetId !== null || e.pursueBoatId !== null))
+        .flatMap((e) => [e.gunTargetId, e.pursueBoatId]),
     );
+    // Chase, but with judgement: a human sends the gun after a boat that is
+    // actually menacing the convoy, not any contact a kilometre out. At 2.5×
+    // gun range there was ALWAYS a valid pursuit in this region, so the one
+    // detachable escort spent every round chasing and the recovery loop —
+    // measured — never ran at all. 1.3× keeps the new order exercised while
+    // leaving the quiet stretches recovery lives in.
+    const pursuitReach = t.effects.deckGun.range * 1.3;
     let target: Threat | null = null;
     let bestD = Infinity;
     for (const boat of t.threats) {
@@ -554,7 +573,7 @@ export function decideCommands(
           .map((e) => dist(e.x, e.y, boat.x, boat.y)),
         Infinity,
       );
-      if (d <= t.effects.deckGun.range && d < bestD) {
+      if (d <= pursuitReach && d < bestD) {
         bestD = d;
         target = boat;
       }
@@ -599,12 +618,18 @@ export function decideCommands(
   // taken if the escort can finish it before the field sinks.
   if (p.recoveryRange > 0 && t.escorts.some((e) => e.alive)) {
     const center = convoyCenter(t);
-    // Retire finished or impossible jobs first, and recall the hull.
+    // Retire finished or impossible jobs first, and recall the hull. A job
+    // whose escort has been RE-TASKED onto a boat pursuit is retired too —
+    // the engage order replaced the recovery hold, and leaving the stale job
+    // in the ledger both blocked re-assignment (jobs.size gated the detach
+    // budget) and pinned the field as "claimed" while nobody worked it.
     for (const [escortId, job] of mem.jobs) {
       const escort = t.escorts.find((e) => e.id === escortId);
+      const retasked = !!escort?.alive && escort.pursueBoatId !== null;
       const done =
         !escort ||
         !escort.alive ||
+        retasked ||
         (job.kind === 'wreckage'
           ? !t.wreckage.some((f) => f.id === job.targetId && !f.recovered && !f.expired)
           : !t.survivors.some((a) => a.id === job.targetId && !a.rescued && !a.lost));
@@ -612,7 +637,9 @@ export function decideCommands(
       mem.jobs.delete(escortId);
       // Rejoin: hold=false so the escort resumes cruising with the convoy on
       // arrival instead of parking in empty water where it screens nothing.
-      if (escort?.alive && !job.recalled) {
+      // Never sent to a pursuing escort — a move order would cancel the very
+      // pursuit that displaced the job.
+      if (escort?.alive && !job.recalled && !retasked) {
         cmds.push({ type: 'moveEscort', escortId, x: center.x, y: center.y, hold: false });
       }
     }
@@ -897,6 +924,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ability', id: 'scan' },
       { kind: 'base' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'droneAmmo', upTo: 6 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
@@ -1011,6 +1039,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 9 },
       { kind: 'ammo', upTo: 40 },
     ],
@@ -1046,6 +1075,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 12 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
@@ -1086,6 +1116,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
       { kind: 'module', classId: 'tanker', moduleId: 'hydrophone' },
       { kind: 'ability', id: 'sonar' },
@@ -1127,6 +1158,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
       { kind: 'module', classId: 'tanker', moduleId: 'antiBoarding' },
       { kind: 'escort' },
@@ -1219,6 +1251,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'cargo', moduleId: 'compartmentalization' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'ability', id: 'warthog' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
@@ -1291,6 +1324,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ability', id: 'warthog' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       // The hand-played run put reinforced hull on all three classes and spent
       // more on it than on any weapon — mitigation across the whole convoy
       // rather than depth in one counter.
