@@ -43,6 +43,11 @@ export class Camera {
   constructor(
     private readonly world: CameraBounds,
     private readonly viewport: CameraViewport,
+    /** The world size the renderer's hard-coded pixel sizes were authored
+     *  against. Defaults to the world itself (the old behaviour); passing a
+     *  FIXED reference instead pins sprites to a constant WORLD size, so
+     *  growing the map does not silently grow every ship drawn on it. */
+    private readonly spriteReference: CameraBounds = world,
   ) {
     this.zoom = this.openingZoom();
     this.targetZoom = this.zoom;
@@ -52,12 +57,27 @@ export class Camera {
     this.targetY = this.y;
   }
 
-  /** The zoom at which the whole world would be visible. Kept as the reference
-   *  for detailScale below — it is the "one world, one screen" baseline that
-   *  every hard-coded pixel size is expressed against — but it is NO LONGER the
-   *  minimum the player can reach. */
+  /** The zoom at which the whole world would be visible — the floor of the
+   *  zoom range. NOT the baseline sprites are drawn against; see baseZoom. */
   fitZoom(): number {
     return Math.min(this.viewport.width / this.world.width, this.viewport.height / this.world.height);
+  }
+
+  /** The scale the world layer is DRAWN at before magnification — the baseline
+   *  every hard-coded pixel size in the renderer is expressed against.
+   *
+   *  Anchored to the sprite REFERENCE world rather than the actual world.
+   *  When this was fitZoom itself, a hard-coded "10 px" hull was 10/fitZoom
+   *  world units, so any growth in the world grew every sprite with it —
+   *  deepening the shores made the ships a half bigger while their lane
+   *  spacing stayed put, and the convoy read as giants in a paddling pool.
+   *  Against a fixed reference, a sprite is a fixed number of WORLD units and
+   *  the map can grow without touching how big a ship is. */
+  baseZoom(): number {
+    return Math.min(
+      this.viewport.width / this.spriteReference.width,
+      this.viewport.height / this.spriteReference.height,
+    );
   }
 
   /** Where the camera STARTS, as a multiple of fitZoom.
@@ -91,26 +111,27 @@ export class Camera {
     return this.zoom <= this.minZoom() + 1e-4;
   }
 
-  /** How much bigger than the fitted view the camera currently is: 1 when the
-   *  whole world is on screen, up to maxZoom/fitZoom when fully zoomed in.
+  /** The magnification the world layer's canvas transform applies on top of
+   *  baseZoom — together they compose to the true `zoom`, so positions land
+   *  exactly where worldToScreen would put them.
    *
-   *  A renderer that draws the world at `fitZoom` and then applies this as a
+   *  A renderer that draws the world at `baseZoom` and then applies this as a
    *  canvas transform gets magnification for free — sprites, line weights and
    *  every hard-coded pixel size scale together, which is what zooming in is
    *  supposed to mean. Drawing straight at `zoom` instead gives you a camera
    *  that moves the world around under a fixed-size stencil. */
   detailScale(): number {
-    return this.zoom / this.fitZoom();
+    return this.zoom / this.baseZoom();
   }
 
-  /** World → canvas position at FIT scale (pan applied, magnification not).
+  /** World → canvas position at BASE scale (pan applied, magnification not).
    *  Feed these to a context already carrying the detailScale() transform. */
   fitScreenX(wx: number): number {
-    return (wx - this.x) * this.fitZoom() + this.viewport.width / 2;
+    return (wx - this.x) * this.baseZoom() + this.viewport.width / 2;
   }
 
   fitScreenY(wy: number): number {
-    return (wy - this.y) * this.fitZoom() + this.viewport.height / 2;
+    return (wy - this.y) * this.baseZoom() + this.viewport.height / 2;
   }
 
   // -------------------------------------------------------------------------

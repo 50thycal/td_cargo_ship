@@ -487,6 +487,39 @@ button.ghost {
 .draft-option > button { margin-top: auto; }
 .draft-option .effect-rows { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* The specific node under the branch-name title: the card leads with WHAT
+   SYSTEM it improves, and this line says which rung of it. */
+.draft-node-name {
+  margin-top: -4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  opacity: 0.85;
+}
+
+/* The picks banner: how many cards this table hands over, stated before any
+   card is read. Deliberately louder than a chip — a second pick a player
+   never noticed is a reward that never happened. */
+.draft-picks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.draft-picks > .icon { color: var(--accent); }
+.draft-picks > strong {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 /* ---------- reward categories ----------
 
    Four categories, four identities, so the player can tell what KIND of reward

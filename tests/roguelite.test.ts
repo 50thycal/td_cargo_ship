@@ -972,7 +972,7 @@ describe('technology draft', () => {
   it('EQUIPMENT: drafting a module delivers the unit AND its base technology', () => {
     const c = newRegionalRun('module-grant', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'mcmDroneLauncher' };
-    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, picksLeft: 1 };
+    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
     c.phase = 'draft';
     const cashBefore = c.cash;
 
@@ -989,7 +989,7 @@ describe('technology draft', () => {
     const c = newRegionalRun('module-second', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'deckGun' };
     for (let i = 0; i < 2; i++) {
-      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, picksLeft: 1 };
+      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
       c.phase = 'draft';
       expect(selectDraftOption(c, option)).toBe(true);
     }
@@ -1132,7 +1132,7 @@ describe('technology draft', () => {
       // Take the first thing on offer, whatever category it is, until the
       // catalogue and every stock cap are exhausted.
       const option = pool[0].option;
-      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, picksLeft: 1 };
+      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
       c.phase = 'draft';
       if (!selectDraftOption(c, option)) break;
     }
@@ -1242,5 +1242,63 @@ describe('commander abilities', () => {
     const run = newRegionalRun('snapshot', FIRST_REGION, sanitizedLoadout(p));
     setLoadout(p, []);
     expect(run.commanderAbilities).toEqual(['salvageTeams']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Region completion waits for the open quota window
+// ---------------------------------------------------------------------------
+
+describe('quota-gated region completion', () => {
+  it('victory waits for the open quota window to be honoured', () => {
+    const run = newRegionalRun('quota-gated-victory', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate';
+    // A window the fleet cannot clear by the watermark round, but can one
+    // round later (empty rounds deliver the full 241-value convoy each time).
+    run.quota = { roundsLeft: 3, pointsNeeded: 700, pointsEarned: 0 };
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    // The watermark round: survived, but 482 < 700 with a round left in the
+    // window — the region must NOT complete out from under an active quota.
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    expect(run.runOutcome).toBe('active');
+    // The window resolves met: NOW it is a victory.
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('victory');
+    delete REGIONS.__quotaGate;
+  });
+
+  it('a quota missed after the watermark still ends the run in defeat', () => {
+    const run = newRegionalRun('quota-gated-defeat', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate2 = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate2';
+    run.quota = { roundsLeft: 3, pointsNeeded: 10_000, pointsEarned: 0 };
+    playEmptyRound(run);
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    playEmptyRound(run); // window closes unmet
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('defeat');
+    expect(run.defeatCause).toBe('quota');
+    delete REGIONS.__quotaGate2;
+  });
+
+  it('a window met exactly on the watermark round completes on time', () => {
+    const run = newRegionalRun('quota-on-time', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate3 = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate3';
+    run.quota = { roundsLeft: 3, pointsNeeded: 400, pointsEarned: 0 };
+    playEmptyRound(run); // 241 < 400: window stays open
+    expect(run.campaignOver).toBe(false);
+    playEmptyRound(run); // 482 >= 400: met on the watermark round itself
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('victory');
+    delete REGIONS.__quotaGate3;
   });
 });

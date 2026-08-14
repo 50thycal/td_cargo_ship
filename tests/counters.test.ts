@@ -32,7 +32,7 @@ import {
   effectiveResearch,
 } from '../src/data/counters';
 import { STAT_TIERS, tierValue, TIER_ORDER } from '../src/data/statTiers';
-import { WORLD } from '../src/data/tuning';
+import { SIM, WORLD } from '../src/data/tuning';
 import type {
   CampaignState,
   EnemyInstallation,
@@ -182,6 +182,7 @@ describe('deck gun target compatibility', () => {
     const { state, rng } = quietTransit((c) => {
       fitUniformEscorts(c, 1, ['deckGun']);
       c.completedResearch = ['deckGun.base'];
+      c.gunAmmo = 500;
     });
     const escort = state.escorts[0];
     escort.stationed = true; // hold position so range stays stable
@@ -194,12 +195,13 @@ describe('deck gun target compatibility', () => {
     });
     step(state, rng, [{ type: 'engageBoat', threatId: boat.id }]);
     expect(escort.gunTargetId).toBe(boat.id);
-    // One round cannot sink it (damage Medium=12 vs 36 hp).
+    // One round cannot sink it (damage Medium=3 vs 36 hp — a sustained
+    // engagement of a dozen or more hits, by design).
     expect(boat.alive).toBe(true);
-    step(state, rng, [], 30 * 25);
+    step(state, rng, [], 30 * 60);
     expect(boat.alive).toBe(false);
     expect(state.stats.counter.deckGunKills).toBe(1);
-    expect(state.stats.counter.deckGunRounds).toBeGreaterThanOrEqual(3);
+    expect(state.stats.counter.deckGunRounds).toBeGreaterThanOrEqual(12);
   });
 });
 
@@ -821,5 +823,109 @@ describe('research catalogue integrity', () => {
     const entry = RESEARCH_INDEX['depthCharges.patternSalvo'];
     expect(entry.requires).toContain('depthCharges.expandedPattern');
     expect(entry.requires).toContain('depthCharges.dualRack');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Deck-gun pursuit and the shell magazine
+// ---------------------------------------------------------------------------
+
+describe('deck gun pursuit and shells', () => {
+  const gunned = () =>
+    quietTransit((c) => {
+      fitUniformEscorts(c, 1, ['deckGun']);
+      c.completedResearch = ['deckGun.base'];
+      c.gunAmmo = 500;
+    });
+
+  it('an out-of-range boat is an order to close, not a rejection', () => {
+    const { state, rng } = gunned();
+    const escort = state.escorts[0];
+    escort.x = 800;
+    escort.y = WORLD.lanes[1];
+    escort.stationed = true;
+    const boat = inject(state, 'attackBoat', {
+      x: 800 + state.effects.deckGun.range * 2, // far beyond gun reach
+      y: WORLD.lanes[1],
+      hp: 34,
+      maxHp: 34,
+      boatVariant: 'smallArms',
+    });
+    step(state, rng, [{ type: 'engageBoat', threatId: boat.id }]);
+    // The old behaviour was a refusal; now it is a standing pursuit order.
+    expect(escort.pursueBoatId).toBe(boat.id);
+    expect(
+      state.events.some((e) => e.type === 'launchFailed' && e.detail?.includes('in range')),
+    ).toBe(false);
+    expect(state.events.some((e) => e.type === 'escortTasked')).toBe(true);
+    // The escort closes, the gun opens up, the boat dies, the order clears.
+    let guard = 0;
+    while (boat.alive && guard++ < Math.ceil(240 / SIM.dt) && !state.over) {
+      stepTransit(state, [], rng);
+    }
+    expect(boat.alive).toBe(false);
+    expect(state.stats.counter.deckGunRounds).toBeGreaterThan(0);
+    stepTransit(state, [], rng);
+    expect(escort.pursueBoatId).toBeNull();
+  });
+
+  it('a fresh move order releases the pursuit', () => {
+    const { state, rng } = gunned();
+    const escort = state.escorts[0];
+    escort.x = 800;
+    escort.y = WORLD.lanes[1];
+    const boat = inject(state, 'attackBoat', {
+      x: 2600,
+      y: WORLD.lanes[1],
+      hp: 34,
+      maxHp: 34,
+      boatVariant: 'smallArms',
+    });
+    step(state, rng, [{ type: 'engageBoat', threatId: boat.id }]);
+    expect(escort.pursueBoatId).toBe(boat.id);
+    step(state, rng, [
+      { type: 'moveEscort', escortId: escort.id, x: 600, y: WORLD.lanes[0], hold: true },
+    ]);
+    expect(escort.pursueBoatId).toBeNull();
+  });
+
+  it('an empty magazine holds its fire, and says so once', () => {
+    const { state, rng } = quietTransit((c) => {
+      fitUniformEscorts(c, 1, ['deckGun']);
+      c.completedResearch = ['deckGun.base'];
+      c.gunAmmo = 0;
+    });
+    const escort = state.escorts[0];
+    escort.stationed = true;
+    const boat = inject(state, 'attackBoat', {
+      x: escort.x + 150,
+      y: escort.y,
+      hp: 34,
+      maxHp: 34,
+      boatVariant: 'smallArms',
+    });
+    step(state, rng, [{ type: 'engageBoat', threatId: boat.id }], Math.ceil(10 / SIM.dt));
+    expect(state.stats.counter.deckGunRounds).toBe(0);
+    expect(boat.alive).toBe(true);
+    expect(
+      state.events.filter((e) => e.type === 'launchFailed' && e.detail?.includes('out of shells'))
+        .length,
+    ).toBe(1);
+  });
+
+  it('every round fired draws exactly one shell from stock', () => {
+    const { state, rng } = gunned();
+    const escort = state.escorts[0];
+    escort.stationed = true;
+    const boat = inject(state, 'attackBoat', {
+      x: escort.x + 150,
+      y: escort.y,
+      hp: 34,
+      maxHp: 34,
+      boatVariant: 'smallArms',
+    });
+    step(state, rng, [{ type: 'engageBoat', threatId: boat.id }], Math.ceil(60 / SIM.dt));
+    expect(state.stats.counter.deckGunRounds).toBeGreaterThan(0);
+    expect(state.gunAmmo).toBe(500 - state.stats.counter.deckGunRounds);
   });
 });

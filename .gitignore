@@ -4,3 +4,4 @@ e2e/shots/
 *.log
 .DS_Store
 playtest-out/
+e2e/shots-batch/

@@ -123,7 +123,12 @@ export const STAT_TIERS = {
   deckGunRange: { low: 300, medium: 420, high: 560, extra: 700, max: 840 } as TierTable,
 
   /** Deck-gun damage per round (attack boats are persistent HP targets). */
-  deckGunDamage: { low: 8, medium: 12, high: 18, extra: 24, max: 30 } as TierTable,
+  /** QUARTERED from 8/12/18/24/30. At the old figures a medium gun broke a
+   *  small-arms boat in ~3 hits and the fight was over before it read as one —
+   *  boats are meant to be persistent, sinkable UNITS the player watches being
+   *  worn down, not one-burst kills. A quarter of the damage makes a boat a
+   *  sustained engagement (~15 medium hits) without touching range or rate. */
+  deckGunDamage: { low: 2, medium: 3, high: 4.5, extra: 6, max: 7.5 } as TierTable,
 
   /** Sustained-fire interval (seconds between rounds) for deck guns / flak
    *  cycling; tier names firing RATE (higher tier = shorter interval). */

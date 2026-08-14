@@ -64,6 +64,19 @@ export const WORLD = {
    *  friendlyShoreY by more than shoreWave, so a battery is never in the sea at
    *  any point along the coast. */
   baseLine: 2385,
+  /** The world size every hard-coded SPRITE pixel size is authored against.
+   *
+   *  The renderer draws the world at a base scale and magnifies it with one
+   *  canvas transform, so a hull length written as "10 pixels" is really
+   *  10 / baseScale world units — which means the base scale decides how big a
+   *  ship IS out on the water. When that base was simply "fit the whole world
+   *  in the window", growing the world silently grew every sprite with it:
+   *  deepening the shores took a third off the fit zoom, every hull swelled
+   *  half again in world units while the lanes stayed put, and the convoy
+   *  read as oversized ships crammed into a shrunken strait. Anchoring the
+   *  base scale to THIS fixed reference instead means land can be added
+   *  forever and a ship stays the size a ship has always been. */
+  spriteReference: { width: 4000, height: 2250 },
 } as const;
 
 export const SIM = {
@@ -693,20 +706,25 @@ export const COMBAT = {
      *  off screen and the aircraft arrives already established on its bearing. */
     offMapMargin: 220,
     /** How fast the jet swings its nose through the turn between passes
-     *  (radians/second). Slow enough to draw a wide, banked arc rather than a
+     *  (radians/second). Slow enough to draw a banked arc rather than a
      *  pirouette — the turn is a piece of the aesthetic, not just a state
-     *  change. At 300 units/s this arc is roughly 380 units across. */
-    turnRate: 0.8,
+     *  change. DOUBLED from 0.8, which halves the turn radius (v/ω, 375 →
+     *  ~188 units at 300 units/s): the old arc swung so wide the jet spent
+     *  longer wandering back than attacking, and read as lost rather than
+     *  re-attacking. */
+    turnRate: 1.6,
     /** How far ahead along the track the turning jet aims when regaining it.
      *  Short and it cuts the corner and overshoots; long and the arc unwinds
-     *  into a lazy drift back rather than reading as a turn. */
-    regainLead: 250,
+     *  into a lazy drift back rather than reading as a turn. Re-derived with
+     *  the tighter turn: scales with the turn radius, so it halves too. */
+    regainLead: 125,
     /** Lateral error at which the aircraft counts as back on the line. */
     regainTolerance: 40,
     /** How far inside the edge of the world the jet begins its turn. It has to
      *  be at least the arc's width or the aeroplane banks out of the world and
-     *  the player watches it leave rather than come round. */
-    turnMargin: 420,
+     *  the player watches it leave rather than come round. Re-derived with the
+     *  halved turn radius (arc excursion is proportional to it). */
+    turnMargin: 240,
     /** Shortest run-in line that counts as a gun run. Two points on top of one
      *  another give the cone no direction to point along, so a stray tap can
      *  never burn a sortie on a zero-length run. */
@@ -817,6 +835,14 @@ export const ECONOMY = {
   warthogSortieCost: 95,
   scanPulseCost: 55,
   smokeCanisterCost: 70,
+  /** Deck-gun shells: cash per round, and how many one purchase buys. The gun
+   *  is no longer free to fire — a magazine is bought in Preparation like the
+   *  interceptor stock. Priced against work done: at quarter damage a
+   *  small-arms boat takes roughly 15 hits to sink, so a kill runs ~$40 of
+   *  shells — between an interceptor kill (~$13 for a far cheaper threat) and
+   *  an A-10 sortie ($95 for two engagements). Unused shells carry over. */
+  gunShellCost: 2,
+  gunShellsPerBuy: 12,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
 } as const;
@@ -946,12 +972,23 @@ export const CAMPAIGN = {
   quotaDeliveryFraction: 0.7,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
-  quotaDifficultyMax: 1.6,
+  /** Ceiling on the ratchet — LOWERED from 1.6, which was arithmetic the game
+   *  could not honour: the window demands fraction × difficulty of the SAILED
+   *  convoy value, so 1.6 asked for 112% of what was put to sea and even the
+   *  1.3s reachable mid-run asked for more than the healthy delivery band's
+   *  ceiling. Measured after the enemy-budget raise: six of twelve personas
+   *  quota-failed at 80-84% DELIVERED — killed by the bookkeeping while
+   *  fighting well — and with region completion now waiting for the open
+   *  window, that unwinnable bar was the last thing every extended run met.
+   *  1.15 tops the demand out at ~80.5% of sailed value: a real bar a sloppy
+   *  run misses and a defended one clears. */
+  quotaDifficultyMax: 1.15,
   /** Difficulty ratchets up on an easy clear (big surplus) — scaled by how far
-   *  over the target the window landed, capped at this step. There is no
-   *  downward ratchet any more: under the roguelite rules a missed quota ends
-   *  the regional run outright rather than easing the next window. */
-  quotaDifficultyUpStep: 0.1,
+   *  over the target the window landed, capped at this step. Halved alongside
+   *  the ceiling so the ratchet arrives over a campaign, not by window three.
+   *  There is no downward ratchet any more: under the roguelite rules a missed
+   *  quota ends the regional run outright rather than easing the next window. */
+  quotaDifficultyUpStep: 0.05,
   /** Hard floor so a single bad round can't trivialize the next quota:
    *  pointsNeeded never drops below capacity * this. */
   quotaFloorPerCapacity: 8,
@@ -1252,8 +1289,16 @@ export const EVOLUTION = {
    *  about 180 when the map doubled, and this tail did not — so a round's fire
    *  finished while the back half of the convoy was still in open water, and
    *  the last stretch of every transit went silent. Measured before the change,
-   *  118 seconds of nothing at all with four or more hulls still at sea. */
-  windowTailT: 150,
+   *  118 seconds of nothing at all with four or more hulls still at sea.
+   *
+   *  RAISED AGAIN from 150, which was still short of its own arithmetic: the
+   *  slowest healthy crossing is ~180 seconds, and a hull slowed by charted
+   *  mines or give-way takes 200-260. The shortfall hid whenever the round's
+   *  mix included boats (persistent units occupy the tail on their own) and
+   *  surfaced the moment a seed rolled a pure-missile round: measured, a 36s
+   *  silence with four hulls still crossing. 210 covers the honest crossing
+   *  plus ordinary slow-downs; a crippled straggler beyond that is accepted. */
+  windowTailT: 210,
   /** Stretch of hostile shore the enemy emplaces artillery along. Kept clear of
    *  the convoy's entry so the first guns are something the player sails toward
    *  and can route around, not an ambush at the start line. */
@@ -1313,11 +1358,27 @@ export const ENEMY_ECONOMY = {
    *  unviable. Most of that work is done by escalationPatienceCounteredRounds
    *  instead — the enemy climbs its ladder sooner when the player counters it,
    *  rather than being handed more money to climb with. */
-  budgetBase: 50,
-  budgetPerRound: 63,
+  budgetBase: 55,
+  budgetPerRound: 67,
   /** Hard ceiling so a long campaign can't run away. Scales with prices: at the
-   *  old 900 this bought ~32 mines, at current prices barely 12. */
-  budgetCap: 1200,
+   *  old 900 this bought ~32 mines, at current prices barely 12.
+   *
+   *  RAISED with budgetPerRound (63 → 67) after hand-play and the sweep agreed
+   *  the fight had gone soft: a played 10-round campaign hit the old 1200 cap
+   *  on round 8 and sat there — three flat rounds of pressure against a player
+   *  economy that kept compounding — while 8 of 11 sweep personas were
+   *  finishing at 100% round-cap completion. The player called it: "I could
+   *  speed through the round and not do anything and still get to the final
+   *  round." The cap exists to stop runaways, not to be the operating point of
+   *  every endgame.
+   *
+   *  BRACKETED, per this file's own rule. The first arm (72 / 1550) overshot:
+   *  measured, mid-breadth builds entered an attrition spiral — convoy value
+   *  sailed fell 241 → 100 across eight rounds while per-round delivery still
+   *  read 75-90% — and died of the shrinking fleet, not of any one round.
+   *  This midpoint holds the late game under real pressure without tipping
+   *  hull replacement past its break-even. */
+  budgetCap: 1350,
 
   /** Anti-snowball, applied as multipliers to the round's budget. Success arms
    *  the enemy faster; a struggling player gets breathing room. Both ends

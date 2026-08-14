@@ -578,6 +578,15 @@ export interface Escort {
    *  gun is committed to (sustained engagement until it ends). */
   gunCooldown: number;
   gunTargetId: number | null;
+  /** The attack boat this escort is ORDERED onto. Unlike gunTargetId (which
+   *  only holds while the boat is in gun range), a pursuit survives the boat
+   *  being out of reach: the escort steams to it, takes station inside gun
+   *  range and follows until the boat sinks or the player re-tasks the ship.
+   *  This is what makes "engage that boat" an order rather than a wish. */
+  pursueBoatId: number | null;
+  /** Speed made good last tick — lets OTHER escorts read this one as a moving
+   *  vessel (stern-passing needs to know whether a neighbour is under way). */
+  lastSpeed: number;
 }
 
 /** A fixed shore battery. Unlimited range but a long reload — the player's
@@ -842,6 +851,7 @@ export type TransitEventType =
   | 'shipDisabled'
   | 'suppressed'
   | 'abilityUsed'
+  | 'escortTasked'
   | 'launchFailed'
   | 'techDebut'
   | 'wreckageSpawned'
@@ -1282,6 +1292,12 @@ export interface TransitState {
   droneAmmo: number;
   /** Self-defense rounds remaining: each module shot draws from this pool. */
   pdAmmo: number;
+  /** Deck-gun shells remaining: every round any gun fires draws one. A gun
+   *  with an empty magazine holds its fire — shells are bought in prep. */
+  gunAmmo: number;
+  /** One "out of shells" warning per dry spell, not one per silent trigger
+   *  pull — thirty toasts a second is noise, not information. */
+  gunAmmoWarned: boolean;
   warthogCharges: number;
   /** Transit time until which an A-10 is on task (blocks a second call). */
   warthogActiveUntil: number;
@@ -1377,6 +1393,9 @@ export interface TechDraft {
    *  when it reaches zero — so a rich salvage round is a bigger shopping trip
    *  rather than merely a wider menu it still only gets one bite of. */
   picksLeft: number;
+  /** How many picks the table OPENED with, so the UI can say "pick 2 of 3"
+   *  rather than only counting down. */
+  picksTotal: number;
   /** The enemy branch the COUNTER SLOT was drawn to answer (absent when no
    *  live threat was under-covered and the slot fell through to the open
    *  pool) — surfaced so the UI can say WHY an option is on the table. */
@@ -1682,6 +1701,8 @@ export interface CounterTelemetry {
     droneUsed: number;
     selfDefenseBought: number;
     selfDefenseUsed: number;
+    gunShellsBought: number;
+    gunShellsUsed: number;
   };
   stats: CounterRoundStats;
 }
@@ -1914,6 +1935,10 @@ export interface CampaignState {
   warthogStock: number;
   scanStock: number;
   smokeStock: number;
+  /** Deck-gun shells in stock: bought in preparation, drawn one per round
+   *  fired, carried over when unused — same contract as the other consumables.
+   *  The gun hardware comes from the draft; the shells never do. */
+  gunAmmo: number;
   /** Convoy-wide assets: owned => the capability is commissioned and its
    *  ordnance can be bought. */
   warthogUnlocked: boolean;
@@ -1940,7 +1965,7 @@ export interface CampaignState {
   /** Cash spent this prep, attributed to counter branches (telemetry). */
   roundSpend: Record<string, number>;
   /** Munitions bought this prep (telemetry). */
-  roundAmmoBought: { interceptor: number; drone: number; selfDefense: number };
+  roundAmmoBought: { interceptor: number; drone: number; selfDefense: number; gun: number };
   evolution: EvolutionState;
   quota: QuotaWindow;
   /** Rubber-band multiplier applied when sizing the NEXT quota window off the

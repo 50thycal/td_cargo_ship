@@ -771,6 +771,7 @@ export function generateDraft(
     options,
     recoveredUnits,
     picksLeft: picks,
+    picksTotal: picks,
     ...(counterFamily ? { counterFamily, counterOption } : {}),
   };
 }
