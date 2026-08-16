@@ -91,6 +91,15 @@ export function migrateRun(raw: unknown): CampaignState | null {
     // Minimal sanity: a run must have a valid phase to route to.
     const phases = ['prep', 'transit', 'aar', 'draft'];
     if (!phases.includes(raw.phase as string)) raw.phase = 'prep';
+    // NOTE: the used-escort-name ledger is deliberately NOT reconciled here.
+    // Rewriting it to include the ships currently afloat was tried, and it
+    // costs more than it buys: healing must leave a current-format save byte
+    // for byte identical, or a run starts behaving differently purely for
+    // having been saved and loaded. The guarantee it was reaching for is
+    // enforced at the point names are ISSUED instead — nextEscortName unions
+    // the ledger with the names of every escort afloat, so a restored save can
+    // never hand out a name that is already in service. The only thing an
+    // upgraded save cannot know is the name of a ship lost before it upgraded.
     return raw as unknown as CampaignState;
   } catch {
     return null;

@@ -34,6 +34,8 @@ import {
   ESCORT_MODULE_SLOTS_UNLOCKED,
   ESCORT_NAME_MAX,
 } from '../src/data/defs';
+import { newRegionalRun } from '../src/sim/campaign';
+import { FIRST_REGION } from '../src/data/regions';
 import { WORLD } from '../src/data/tuning';
 import type { CampaignState, Threat, ThreatKind, TransitState } from '../src/sim/types';
 
@@ -303,7 +305,13 @@ describe('escort names', () => {
     buyEscort(c);
     buyEscort(c);
     buyEscort(c);
-    expect(c.escortUnits.map((e) => e.name)).toEqual(ESCORT_DEFAULT_NAMES.slice(0, 3));
+    const names = c.escortUnits.map((e) => e.name);
+    // Drawn from the pool, all different — but NOT in list order. The order is
+    // derived from the run seed so that two runs do not open with the same two
+    // ships; asserting the first three entries of the list would pin exactly
+    // the sameness that change removed.
+    expect(new Set(names).size).toBe(names.length);
+    for (const n of names) expect(ESCORT_DEFAULT_NAMES).toContain(n);
   });
 
   it('sanitizes control characters, collapses whitespace and length-limits', () => {
@@ -640,5 +648,100 @@ describe('weapon selection uses only escorts that carry the module', () => {
       ['deckGun'],
       ['depthCharges'],
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Naming a new hull
+// ---------------------------------------------------------------------------
+
+describe('escort names', () => {
+  it('never reissues the name of a ship that has been lost', () => {
+    // THE regression. Names were checked against the escorts currently afloat,
+    // so the moment one sank her name was free again and went straight to her
+    // replacement — the debrief then read as though she had survived, while in
+    // fact a different hull was flying her name with none of her equipment.
+    const c = newCampaign('name-reuse');
+    c.cash = 99_999;
+    while (c.escortUnits.length > 0) c.escortUnits.pop();
+    expect(buyEscort(c)).toBe(true);
+    const first = c.escortUnits[0].name;
+    // She goes down.
+    c.escortUnits = [];
+    expect(buyEscort(c)).toBe(true);
+    expect(c.escortUnits[0].name).not.toBe(first);
+    // And the ledger remembers both, not merely the hull afloat.
+    expect(c.usedEscortNames).toContain(first);
+    expect(c.usedEscortNames).toContain(c.escortUnits[0].name);
+  });
+
+  it('gives every hull in a flotilla a distinct name', () => {
+    const c = newCampaign('name-distinct');
+    c.cash = 99_999;
+    c.escortUnits = [];
+    for (let i = 0; i < 3; i++) buyEscort(c);
+    const names = c.escortUnits.map((e) => e.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('does not open every run with the same two ships', () => {
+    // Deterministic per seed, but varied ACROSS seeds: the pool is walked in a
+    // seed-derived order rather than list order, which is what stopped every
+    // run in the game's history from starting with Vanguard and Sentinel.
+    const firstNameFor = (seed: string): string => {
+      const c = newRegionalRun(seed, FIRST_REGION);
+      c.cash = 99_999;
+      c.escortUnits = [];
+      buyEscort(c);
+      return c.escortUnits[0].name;
+    };
+    const seeds = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
+    const names = seeds.map(firstNameFor);
+    expect(new Set(names).size).toBeGreaterThan(1);
+    for (const n of names) expect(ESCORT_DEFAULT_NAMES).toContain(n);
+    // Same seed, same name — a replay must not drift.
+    expect(firstNameFor('alpha')).toBe(firstNameFor('alpha'));
+  });
+
+  it('a player-chosen name is burned too, so no second hull can be given it', () => {
+    const c = newCampaign('name-rename');
+    c.cash = 99_999;
+    c.escortUnits = [];
+    buyEscort(c);
+    renameEscort(c, c.escortUnits[0].id, 'Kingfisher');
+    expect(c.usedEscortNames).toContain('Kingfisher');
+    for (let i = 0; i < 3; i++) buyEscort(c);
+    expect(c.escortUnits.filter((e) => e.name === 'Kingfisher')).toHaveLength(1);
+  });
+
+  it('a restored save never reissues a name that is already in service', () => {
+    // The ledger is a new field, so a save written before it existed arrives
+    // without one. Healing deliberately does NOT rewrite it — a current-format
+    // save must round-trip untouched — so the guarantee is enforced where
+    // names are issued: the draw unions the ledger with the ships afloat.
+    const c = newCampaign('name-migrate');
+    c.cash = 99_999;
+    c.escortUnits = [];
+    buyEscort(c);
+    buyEscort(c);
+    const afloat = c.escortUnits.map((e) => e.name);
+    const legacy = JSON.parse(JSON.stringify(c)) as Record<string, unknown>;
+    delete legacy.usedEscortNames; // a save from before the ledger existed
+    const restored = migrateRun(legacy)!;
+    expect(restored).not.toBeNull();
+    restored.cash = 99_999;
+    expect(buyEscort(restored)).toBe(true);
+    expect(afloat).not.toContain(restored.escortUnits[2].name);
+  });
+
+  it('keeps naming hulls once the pool is spent', () => {
+    const c = newCampaign('name-exhausted');
+    c.cash = 9_999_999;
+    c.escortUnits = [];
+    c.usedEscortNames = [...ESCORT_DEFAULT_NAMES];
+    expect(buyEscort(c)).toBe(true);
+    const name = c.escortUnits[0].name;
+    expect(name.length).toBeGreaterThan(0);
+    expect(ESCORT_DEFAULT_NAMES).not.toContain(name);
   });
 });

@@ -2469,7 +2469,8 @@ export class TransitView {
         ctx.arc(ax, ay, 14 + 3 * Math.sin(now / 120), 0, Math.PI * 2);
         ctx.stroke();
       }
-      this.drawPlane(ax, ay, ac.heading, ac.role === 'warthog' ? '#ffb054' : '#7ce7ff');
+      if (ac.role === 'warthog') this.drawWarthog(ax, ay, ac.heading);
+      else this.drawPlane(ax, ay, ac.heading, '#7ce7ff');
     }
 
     // Visual effects
@@ -2678,6 +2679,128 @@ export class TransitView {
     ctx.lineTo(2, -3);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+  }
+
+  /** The A-10, in plan view, nose along +x.
+   *
+   *  Drawn as itself rather than as the generic swept-wing arrowhead every
+   *  other aircraft in the game gets. The player buys this thing by name, and
+   *  from directly above an A-10 is one of the most recognisable aircraft ever
+   *  built — but only if the features that make it recognisable are actually
+   *  there: long STRAIGHT wings (everything else in the sky is swept), the two
+   *  engine nacelles hung off the rear fuselage rather than buried in it, and
+   *  the twin fins out at the tips of the tailplane.
+   *
+   *  Proportions are the real aircraft's, scaled to a ~23-unit length: span a
+   *  shade longer than the length, tailplane about a third of the span,
+   *  nacelles a fifth of the length. Guessing them instead produced a
+   *  chunky-looking aeroplane whose wings read as short and whose nacelles read
+   *  as two extra fuselages. */
+  private drawWarthog(x: number, y: number, heading: number): void {
+    const ctx = this.ctx;
+    const BODY = '#ffb054';
+    const SHADE = '#c8813a';
+    const LINE = 'rgba(38, 21, 6, 0.85)';
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 0.55;
+    ctx.strokeStyle = LINE;
+
+    // Tailplane, and the twin fins standing at its tips.
+    ctx.fillStyle = SHADE;
+    ctx.beginPath();
+    ctx.rect(-11.2, -5.6, 3.0, 11.2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = BODY;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.rect(-12.0, side * 5.0 - 0.85, 4.6, 1.7);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Wings: long, straight and barely tapered — the giveaway from above.
+    ctx.fillStyle = BODY;
+    ctx.beginPath();
+    ctx.moveTo(1.9, -12.5);
+    ctx.lineTo(2.3, -3.6);
+    ctx.lineTo(2.3, 3.6);
+    ctx.lineTo(1.9, 12.5);
+    ctx.lineTo(-1.7, 12.5);
+    ctx.lineTo(-2.4, 3.6);
+    ctx.lineTo(-2.4, -3.6);
+    ctx.lineTo(-1.7, -12.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Hardpoints: the pylons show from above as tabs ahead of the leading
+    // edge. Drawn there rather than as ticks across the chord, which striped
+    // the whole wing and buried its shape.
+    ctx.fillStyle = SHADE;
+    for (const side of [-1, 1]) {
+      for (const span of [5.2, 7.8, 10.4]) {
+        ctx.beginPath();
+        ctx.rect(2.0, side * span - 0.45, 1.5, 0.9);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // Engine nacelles. Drawn OVER the wing, not under it: on the real
+    // aircraft they are slung above the rear fuselage, so from directly above
+    // they are the most prominent thing on the airframe — hidden behind the
+    // wing they read as nothing at all.
+    ctx.fillStyle = SHADE;
+    for (const side of [-1, 1]) {
+      const cy = side * 3.5;
+      ctx.beginPath();
+      ctx.rect(-8.8, cy - 1.3, 7.6, 2.6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = LINE;
+      ctx.beginPath();
+      ctx.ellipse(-1.4, cy, 0.6, 1.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = SHADE;
+    }
+
+    // Fuselage: blunt gun nose, slab sides, tapering into the tail boom.
+    ctx.fillStyle = BODY;
+    ctx.beginPath();
+    ctx.moveTo(11.4, -0.75);
+    ctx.quadraticCurveTo(12.2, 0, 11.4, 0.75); // stubby, rounded gun nose
+    ctx.lineTo(9.6, 1.5);
+    ctx.lineTo(7.0, 1.9);
+    ctx.lineTo(-6.0, 1.7);
+    ctx.quadraticCurveTo(-8.8, 1.5, -9.6, 0);
+    ctx.quadraticCurveTo(-8.8, -1.5, -6.0, -1.7);
+    ctx.lineTo(7.0, -1.9);
+    ctx.lineTo(9.6, -1.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // The GAU-8's muzzle, offset to port as it is on the real aircraft.
+    ctx.strokeStyle = LINE;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(11.7, -0.35);
+    ctx.lineTo(12.7, -0.35);
+    ctx.stroke();
+
+    // Bubble canopy.
+    ctx.fillStyle = 'rgba(28, 44, 58, 0.95)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(6.6, 0, 1.8, 1.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
     ctx.restore();
   }
 

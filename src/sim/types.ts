@@ -697,6 +697,14 @@ export interface Aircraft {
   stationUntil: number;
   /** Warthog: seconds until the gun is ready for the next pass. */
   gunCooldown: number;
+  /** Warthog: has this pass been over open water yet?
+   *
+   *  The break-off rule is "over land, having crossed the water" — without the
+   *  second half a run drawn across the strait would break off immediately,
+   *  because the jet ENTERS over the land it flew in from. */
+  wetSeen: boolean;
+  /** Warthog: seconds spent over land since last leaving the water. */
+  landSeconds: number;
 }
 
 /** One 30mm gun run: a burst drawn from the jet to the water it hit.
@@ -1917,6 +1925,11 @@ export interface CampaignState {
   /** Monotonic source of EscortUnit ids. Never reused, so a sunk escort's id
    *  cannot be confused with its replacement's in saves or telemetry. */
   nextEscortId: number;
+  /** Every escort name this run has ever issued, including those of ships that
+   *  have since gone down. A name is never reissued: a replacement hull under
+   *  a sunk ship's name made the debrief read as though she had survived, and
+   *  hid the fact that her fitted equipment went down with her. */
+  usedEscortNames: string[];
   ammo: number;
   /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
    *  drones, and each launch spends one. Unused stock carries between rounds. */

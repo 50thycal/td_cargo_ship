@@ -703,7 +703,15 @@ export const COMBAT = {
     /** How far ahead of the nose the gun reaches. */
     coneRange: 300,
     /** Distance beyond the map edge the jet enters from, so the run-in starts
-     *  off screen and the aircraft arrives already established on its bearing. */
+     *  off screen and the aircraft arrives already established on its bearing.
+     *
+     *  Measured from the WORLD BOUNDARY, not from the drawn line. It used to be
+     *  measured back from the line's near end, which meant a line drawn in the
+     *  middle of the strait put the aeroplane 220 units before it — still well
+     *  inside the map, so the jet simply appeared out of nothing a moment
+     *  before it started shooting. An aircraft that materialises where the
+     *  player pointed is a cursor, not an aircraft: it now flies in from off
+     *  the map along the bearing, however short the drawn line was. */
     offMapMargin: 220,
     /** How fast the jet swings its nose through the turn between passes
      *  (radians/second). Slow enough to draw a banked arc rather than a
@@ -720,11 +728,40 @@ export const COMBAT = {
     regainLead: 125,
     /** Lateral error at which the aircraft counts as back on the line. */
     regainTolerance: 40,
-    /** How far inside the edge of the world the jet begins its turn. It has to
-     *  be at least the arc's width or the aeroplane banks out of the world and
-     *  the player watches it leave rather than come round. Re-derived with the
-     *  halved turn radius (arc excursion is proportional to it). */
-    turnMargin: 240,
+    /** When the jet breaks off to turn, expressed in SECONDS of flight rather
+     *  than in units of distance — one buffer, measured two ways, so the break
+     *  happens at the same point in the run whichever way the player drew it:
+     *
+     *    • it has been over LAND this long (having crossed the water first), or
+     *    • it is this long from the left or right edge of the world.
+     *
+     *  A distance margin could not do this job. The strait runs east-west, so a
+     *  run drawn across it ends over land and a run drawn along it ends at the
+     *  map's edge — two completely different geometries that a single distance
+     *  measures inconsistently. Time-to-the-boundary is the thing the player
+     *  actually perceives, and it reads the same on both. */
+    turnBufferSeconds: 0.5,
+    /** Room the REVERSAL itself needs, in turn radii, on top of that buffer.
+     *
+     *  A turn is not free in the along-track direction. The jet reverses onto
+     *  the line rather than merely onto the reciprocal heading (a flat 180
+     *  rolls out a full diameter off to one side and the return pass misses
+     *  everything), and buying that lateral correction costs distance BACK
+     *  along the track. Measured, about three turn radii of it.
+     *
+     *  Left unaccounted for, the whole of that cost is taken out of the far end
+     *  of the player's line: breaking off 0.5s past the shore rolled the jet
+     *  out ~380 units INSIDE the water, and the return pass simply skipped that
+     *  stretch — measured, a mine sitting in it survived a sortie that flew
+     *  directly over it twice. Adding the arc's own footprint to the break-off
+     *  point puts the roll-out back at the buffer, so the second pass covers
+     *  the same water the first one did.
+     *
+     *  3.4, not the 3.0 the arc itself measures, so the roll-out lands just
+     *  OUTSIDE the water rather than 60 units inside it: the return pass should
+     *  be established on the line before it reaches the fighting area, not
+     *  within it. */
+    turnArcRadii: 3.4,
     /** Shortest run-in line that counts as a gun run. Two points on top of one
      *  another give the cone no direction to point along, so a stray tap can
      *  never burn a sortie on a zero-length run. */

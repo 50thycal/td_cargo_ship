@@ -628,6 +628,33 @@ function keepAfloat(entity: { y: number }): void {
   entity.y = clamp(entity.y, waterTop(), waterBottom());
 }
 
+/** March from (x, y) along the unit vector (dx, dy) until the point leaves the
+ *  world, then keep going by `margin`. The point an aircraft on this bearing
+ *  would be at if it had entered from off the map — which is where aircraft
+ *  come from, whatever part of the strait the player was pointing at. */
+function offMapPoint(
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  margin: number,
+): { x: number; y: number } {
+  let t = Infinity;
+  if (dx > 1e-6) t = Math.min(t, (WORLD.width - x) / dx);
+  else if (dx < -1e-6) t = Math.min(t, -x / dx);
+  if (dy > 1e-6) t = Math.min(t, (WORLD.height - y) / dy);
+  else if (dy < -1e-6) t = Math.min(t, -y / dy);
+  if (!Number.isFinite(t)) t = 0; // no direction at all: stand off where we are
+  return { x: x + dx * (t + margin), y: y + dy * (t + margin) };
+}
+
+/** Is this aircraft over land? Measured against the same water band the run-in
+ *  line itself is validated against, so "run it over open water" and "turn
+ *  once you are past the water" agree about where the water is. */
+function aircraftOverLand(y: number): boolean {
+  return y < COMBAT.warthog.waterYMin || y > COMBAT.warthog.waterYMax;
+}
+
 function isActive(s: Ship): boolean {
   return s.spawned && s.alive && !s.delivered;
 }
@@ -1466,16 +1493,20 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           Math.PI / COMBAT.warthog.turnRate;
         t.warthogCenterX = (px + bx) / 2;
         t.warthogCenterY = (py + by) / 2;
-        // The jet rolls in from beyond the near end of the line, already
-        // pointing down it, so the first pass is a firing pass rather than a
-        // transit to a station.
+        // The jet flies IN from off the map, already established on the
+        // bearing — so the run-in is something the player watches arrive
+        // rather than an aeroplane that appears where they pointed. The entry
+        // point is the bearing projected BACKWARDS to the world boundary and
+        // then a margin further out, which is why a short line drawn in the
+        // middle of the strait still produces a full-length attack run.
         const ux = (bx - px) / runLen;
         const uy = (by - py) / runLen;
+        const entry = offMapPoint(px, py, -ux, -uy, COMBAT.warthog.offMapMargin);
         t.aircraft.push({
           id: t.nextEntityId++,
           role: 'warthog',
-          x: px - ux * COMBAT.warthog.offMapMargin,
-          y: py - uy * COMBAT.warthog.offMapMargin,
+          x: entry.x,
+          y: entry.y,
           heading: Math.atan2(uy, ux),
           phase: 'onStation',
           laneY: py,
@@ -1487,6 +1518,8 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           firedThisPass: false,
           stationUntil: 0,
           gunCooldown: 0,
+          wetSeen: false,
+          landSeconds: 0,
         });
         pushEvent(t, { type: 'abilityUsed', detail: 'warthog' });
       } else if (cmd.ability === 'scan') {
@@ -1515,6 +1548,10 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
           firedThisPass: false,
           stationUntil: 0,
           gunCooldown: 0,
+          // Unused by the scan plane: it flies one lane, straight through,
+          // and never turns.
+          wetSeen: true,
+          landSeconds: 0,
         });
         pushEvent(t, { type: 'abilityUsed', detail: 'scan' });
       } else if (cmd.ability === 'sonar') {
@@ -1929,6 +1966,12 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
         ac.pass = 1;
         ac.firedThisPass = false;
         ac.phase = 'onStation';
+        // The return pass gets a fresh water crossing. The jet rolls out over
+        // the land it turned above, so without this the "past the water" test
+        // would be satisfied the instant the new pass began and it would turn
+        // straight back round.
+        ac.wetSeen = false;
+        ac.landSeconds = 0;
       }
     } else {
       // Flying the pass on the drawn bearing, gun live.
@@ -1946,19 +1989,49 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
           fireGunRun(t, ac, target, rng);
         }
       }
-      // Break off while still on screen, so the turn is visible. `turnMargin`
-      // is how much room the arc needs; the aircraft starts it that far inside
-      // whichever edge it is heading FOR.
+      // Break off, on a buffer measured in SECONDS of flight rather than units
+      // of distance — see COMBAT.warthog.turnBufferSeconds. Two triggers,
+      // because a run across the strait and a run along it end in completely
+      // different places:
       //
-      // Direction matters here. Checking proximity to any edge meant that the
-      // moment the jet rolled out of a turn — still deep inside the margin of
-      // the edge it had just turned away from — it immediately broke off again,
-      // so the second pass never happened and the sortie was worth one target
-      // instead of two.
-      const m = COMBAT.warthog.turnMargin;
-      const closingX = ux > 0 ? ac.x >= WORLD.width - m : ux < 0 ? ac.x <= m : false;
-      const closingY = uy > 0 ? ac.y >= WORLD.height - m : uy < 0 ? ac.y <= m : false;
-      if (closingX || closingY) ac.phase = 'departing';
+      //   • Over land, having crossed the water first. This is what ends a run
+      //     drawn across the strait: the jet clears the far shore, flies on for
+      //     the buffer, and banks round over the land — well clear of the
+      //     convoy, which is where a turn belongs.
+      //   • Within the buffer of the left or right edge of the world. This is
+      //     what ends a run drawn ALONG the strait, where there is no land to
+      //     cross at all.
+      //
+      // Direction matters on the edge test. Checking proximity to any edge
+      // meant that the moment the jet rolled out of a turn — still inside the
+      // margin of the edge it had just turned away from — it immediately broke
+      // off again, so the second pass never happened.
+      if (aircraftOverLand(ac.y)) {
+        if (ac.wetSeen) ac.landSeconds += dt;
+      } else {
+        ac.wetSeen = true;
+        ac.landSeconds = 0;
+      }
+      // The player's clearance, plus the room the reversal itself eats going
+      // back down the track — see COMBAT.warthog.turnArcRadii. Both expressed
+      // as seconds of flight, then converted once.
+      const arcSeconds = COMBAT.warthog.turnArcRadii / COMBAT.warthog.turnRate;
+      const breakOffSeconds = COMBAT.warthog.turnBufferSeconds + arcSeconds;
+      const buffer = COMBAT.warthog.planeSpeed * breakOffSeconds;
+      const pastWater = ac.landSeconds >= breakOffSeconds;
+      const closingX =
+        ux > 0 ? ac.x >= WORLD.width - buffer : ux < 0 ? ac.x <= buffer : false;
+      // The top and bottom edges are a pure BACKSTOP — no bearing may ever fly
+      // the jet out of the world without turning — and so they use a much
+      // tighter margin than the design rule above. Given the same buffer, they
+      // fired FIRST on every across-strait run: the map's north and south edges
+      // are closer to the water than the land rule's break-off point, so the
+      // turn was cut short and rolled out inside the water again, which is the
+      // exact fault the arc allowance exists to fix.
+      const edge = COMBAT.warthog.offMapMargin;
+      const closingY =
+        uy > 0 ? ac.y >= WORLD.height - edge : uy < 0 ? ac.y <= edge : false;
+      if (pastWater || closingX || closingY) ac.phase = 'departing';
     }
   }
   // Cull finished aircraft: scan planes that flew off the right edge, the
@@ -1966,7 +2039,7 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
   t.aircraft = t.aircraft.filter((ac) => {
     if (ac.role === 'scan') return ac.x <= WORLD.width + 80;
     if (ac.pass < 1 || ac.phase !== 'departing') return true;
-    const m = COMBAT.warthog.turnMargin + 40;
+    const m = COMBAT.warthog.offMapMargin + 40;
     return (
       ac.x > -m && ac.x < WORLD.width + m && ac.y > -m && ac.y < WORLD.height + m
     );

@@ -971,3 +971,130 @@ function makeStubShip(i: number): Ship {
     damageByBranch: {},
   } as unknown as Ship;
 }
+
+// ---------------------------------------------------------------------------
+// The run-in: where the aircraft comes FROM
+// ---------------------------------------------------------------------------
+
+describe('A-10 run-in and reversal', () => {
+  const cy = WORLD.lanes[1];
+
+  /** Fly a whole sortie and report the shape of it. */
+  function flySortie(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    seed = 'warthog-runin',
+  ): {
+    entry: { x: number; y: number };
+    turnAt: { x: number; y: number } | null;
+    rollOutAt: { x: number; y: number } | null;
+    firedOnPass: [boolean, boolean];
+    firedDuringTurn: boolean;
+  } {
+    const { state, rng } = emptyTransit(seed, (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: ax, y: ay, x2: bx, y2: by }], rng);
+    const jet = state.aircraft[0];
+    expect(jet).toBeDefined();
+    const entry = { x: jet.x, y: jet.y };
+    let turnAt: { x: number; y: number } | null = null;
+    let rollOutAt: { x: number; y: number } | null = null;
+    const firedOnPass: [boolean, boolean] = [false, false];
+    let firedDuringTurn = false;
+    let prev = { phase: jet.phase, pass: jet.pass, shots: state.strafeRuns.length };
+    for (let i = 0; i < Math.ceil(200 / SIM.dt) && state.aircraft.length > 0; i++) {
+      stepTransit(state, [], rng);
+      const ac = state.aircraft[0];
+      if (!ac) break;
+      if (prev.phase === 'onStation' && ac.phase === 'departing' && prev.pass === 0) {
+        turnAt = { x: ac.x, y: ac.y };
+      }
+      if (prev.phase === 'departing' && ac.phase === 'onStation') {
+        rollOutAt = { x: ac.x, y: ac.y };
+      }
+      if (ac.firedThisPass) firedOnPass[ac.pass === 0 ? 0 : 1] = true;
+      // A burst appearing while the aircraft is mid-reversal would mean the gun
+      // tracked through the turn, which is exactly what it must not do.
+      if (ac.phase === 'departing' && state.stats.counter.gunRuns > prev.shots) {
+        firedDuringTurn = true;
+      }
+      prev = { phase: ac.phase, pass: ac.pass, shots: state.stats.counter.gunRuns };
+    }
+    return { entry, turnAt, rollOutAt, firedOnPass, firedDuringTurn };
+  }
+
+  const offMap = (p: { x: number; y: number }): boolean =>
+    p.x < 0 || p.x > WORLD.width || p.y < 0 || p.y > WORLD.height;
+
+  it('enters from off the map however short the drawn line was', () => {
+    // A stubby line in the middle of the strait. The jet used to appear a fixed
+    // 220 units before its near end — still well inside the map — so it simply
+    // materialised beside the convoy and started shooting.
+    const { entry } = flySortie(2000, cy, 2120, cy + 12);
+    expect(offMap(entry)).toBe(true);
+  });
+
+  it('enters along the drawn bearing, not from a fixed corner', () => {
+    // Drawn west-to-east: the aeroplane must come from the WEST. Drawn
+    // east-to-west, from the east. The bearing is the whole input.
+    expect(flySortie(1400, cy, 2600, cy).entry.x).toBeLessThan(0);
+    expect(flySortie(2600, cy, 1400, cy).entry.x).toBeGreaterThan(WORLD.width);
+    // Across the strait, from the south shore northward.
+    const northbound = flySortie(2000, WORLD.lanes[2], 2000, WORLD.lanes[0]);
+    expect(northbound.entry.y).toBeGreaterThan(WORLD.height);
+  });
+
+  it('turns clear of the water and comes back down the same line', () => {
+    // The reversal costs distance back along the track. Unaccounted for, the
+    // jet rolled out INSIDE the water and the return pass skipped the stretch
+    // it had just flown over — measured, a mine directly beneath the flight
+    // path survived a sortie that crossed it twice.
+    const run = flySortie(2000, WORLD.lanes[2], 2000, WORLD.lanes[0]);
+    expect(run.turnAt).not.toBeNull();
+    expect(run.rollOutAt).not.toBeNull();
+    // Broke off past the far shore...
+    expect(run.turnAt!.y).toBeLessThan(COMBAT.warthog.waterYMin);
+    // ...and was established on the line again before re-entering the water.
+    expect(run.rollOutAt!.y).toBeLessThan(COMBAT.warthog.waterYMin);
+    // Back on the drawn track, not on a parallel one a turn-diameter away.
+    expect(Math.abs(run.rollOutAt!.x - 2000)).toBeLessThan(COMBAT.warthog.regainTolerance);
+  });
+
+  it('a run along the strait turns at the map edge instead', () => {
+    // No land to cross on this bearing, so the edge buffer is what ends the
+    // pass — and it has to fire before the jet leaves the world.
+    const run = flySortie(1400, cy, 2600, cy);
+    expect(run.turnAt).not.toBeNull();
+    expect(run.turnAt!.x).toBeLessThan(WORLD.width);
+    expect(run.rollOutAt).not.toBeNull();
+    expect(Math.abs(run.rollOutAt!.y - cy)).toBeLessThan(COMBAT.warthog.regainTolerance);
+  });
+
+  it('shoots on both passes and never through the turn', () => {
+    const { state, rng } = emptyTransit('warthog-both-passes', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    // One target either side of the mid-point, both on the line.
+    addChartedMine(state, 1800, cy);
+    addChartedMine(state, 2200, cy);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 1600, y: cy, x2: 2400, y2: cy }], rng);
+    let firedDuringTurn = false;
+    let shots = 0;
+    for (let i = 0; i < Math.ceil(200 / SIM.dt) && state.aircraft.length > 0; i++) {
+      stepTransit(state, [], rng);
+      const ac = state.aircraft[0];
+      if (!ac) break;
+      if (ac.phase === 'departing' && state.stats.counter.gunRuns > shots) firedDuringTurn = true;
+      shots = state.stats.counter.gunRuns;
+    }
+    // Two passes, one engagement each: both mines gone.
+    expect(state.threats.filter((t) => t.alive)).toHaveLength(0);
+    expect(state.stats.counter.gunRuns).toBe(2);
+    expect(firedDuringTurn).toBe(false);
+  });
+});

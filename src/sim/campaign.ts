@@ -125,6 +125,7 @@ export function newRegionalRun(
     bases: start.bases,
     escortUnits: [],
     nextEscortId: 1,
+    usedEscortNames: [],
     ammo: start.ammo,
     droneAmmo: start.droneAmmo,
     pdAmmo: start.pdAmmo,
@@ -164,7 +165,7 @@ export function newRegionalRun(
   for (let i = 0; i < start.escorts; i++) {
     run.escortUnits.push({
       id: run.nextEscortId++,
-      name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+      name: claimEscortName(run),
       modules: [],
       damage: 0,
     });
@@ -277,7 +278,7 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     for (let i = 0; i < ECONOMY.maxEscorts; i++) {
       c.escortUnits.push({
         id: c.nextEscortId++,
-        name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+        name: claimEscortName(c),
         modules: [...(devLoadouts[i % devLoadouts.length] ?? [])].slice(0, escortSlots(c)),
         damage: 0,
       });
@@ -1171,22 +1172,52 @@ export function sanitizeEscortName(raw: string, fallback = 'Escort'): string {
   return cleaned.length > 0 ? cleaned : fallback;
 }
 
-/** The next unused default name, so a freshly commissioned escort arrives with
- *  something meaningful rather than a bare number. */
+/** A name for a freshly commissioned escort: one this run has never used.
+ *
+ *  Two things were wrong with picking the first free name off the list. It
+ *  only looked at the escorts currently AFLOAT, so a sunk ship's name was
+ *  handed straight to her replacement — the debrief then read as though
+ *  Vanguard had survived, when in fact Vanguard was on the bottom and a new
+ *  hull was flying her name with none of her equipment. And taking the list in
+ *  order meant the first escort of every run in the game's history was called
+ *  Vanguard and the second Sentinel.
+ *
+ *  So: the pool is walked in an order derived from the RUN SEED (varied
+ *  between runs, identical on replay), and every name the run has ever issued
+ *  is remembered — see `usedEscortNames` — so nothing is ever reissued. */
 function nextEscortName(c: CampaignState): string {
-  const taken = new Set(c.escortUnits.map((e) => e.name));
-  const free = ESCORT_DEFAULT_NAMES.find((n) => !taken.has(n));
+  const taken = new Set<string>([
+    ...c.escortUnits.map((e) => e.name),
+    ...(c.usedEscortNames ?? []),
+  ]);
+  const order = makeRng(`${c.seed}:escortNames`).shuffle([...ESCORT_DEFAULT_NAMES]);
+  const free = order.find((n) => !taken.has(n));
   if (free) return free;
-  for (let i = c.escortUnits.length + 1; ; i++) {
+  // Pool exhausted (a very long run losing escorts steadily). Numbered hulls
+  // keep the guarantee even past the end of the list.
+  for (let i = 1; ; i++) {
     const name = `Escort ${i}`;
     if (!taken.has(name)) return name;
   }
+}
+
+/** Take the next name AND record it, so it can never come round again. Every
+ *  place that commissions an escort goes through here. */
+export function claimEscortName(c: CampaignState): string {
+  const name = nextEscortName(c);
+  c.usedEscortNames = [...(c.usedEscortNames ?? []), name];
+  return name;
 }
 
 export function renameEscort(c: CampaignState, escortId: number, name: string): boolean {
   const escort = findEscort(c, escortId);
   if (!escort) return false;
   escort.name = sanitizeEscortName(name, escort.name);
+  // Burn the player's chosen name too: the automatic draw must never later
+  // hand the same name to a second hull and produce two ships alike.
+  if (!(c.usedEscortNames ?? []).includes(escort.name)) {
+    c.usedEscortNames = [...(c.usedEscortNames ?? []), escort.name];
+  }
   return true;
 }
 
@@ -1326,7 +1357,7 @@ export function buyEscort(c: CampaignState): boolean {
   c.cash -= ECONOMY.escortCost;
   c.escortUnits.push({
     id: c.nextEscortId++,
-    name: nextEscortName(c),
+    name: claimEscortName(c),
     modules: [],
     damage: 0,
   });
