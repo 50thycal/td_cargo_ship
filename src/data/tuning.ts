@@ -554,6 +554,39 @@ export const COMBAT = {
      *  them, which is what a 340-unit sweep measured. */
     barrageSweep: 190,
   },
+  /** The player's defensive smoke, laid as a WALKING BARRAGE down one lane.
+   *
+   *  It used to be a single cloud dropped wherever the player tapped, which
+   *  made it a spot answer to a spot problem — and the convoy is not a spot,
+   *  it is a column strung out along a lane. Screening one hull while the
+   *  eleven behind it sailed in clear air was the wrong shape for a screen.
+   *  Now the player picks a LANE, the way they pick one for the scan plane,
+   *  and the friendly shore walks a line of smoke pockets up it. */
+  smokeBarrage: {
+    /** Share of the lane's SAILED length (spawn line to delivery line) the
+     *  pockets cover. The remainder is left open at BOTH ENDS: a screen that
+     *  reached the delivery line would hide the hulls least in need of hiding,
+     *  and one that reached the start line would be spent before the convoy
+     *  was properly under way. The cover is where the crossing happens. */
+    laneCoverage: 0.75,
+    /** Spacing between pocket centres, in pocket radii. Below 2 the circles
+     *  overlap; 1.5 leaves a continuous band about 1.7 radii wide rather than
+     *  a string of separate puffs with clear water between them. */
+    pocketSpacingRadii: 1.5,
+    /** Seconds from the first pocket bursting to the last. The walk is the
+     *  point — a barrage that arrived all at once would be a rectangle
+     *  appearing on the map, and the player would learn nothing from watching
+     *  it. Long enough to read as marching fire, short enough that the near
+     *  end has not thinned out before the far end is laid. */
+    walkSeconds: 8,
+    /** Speed of a smoke round from the shore to its burst point. Matches the
+     *  enemy's shell speed: the two are the same kind of object and should
+     *  cross the water at the same rate. */
+    shellSpeed: 430,
+    /** Hard cap on pockets in one barrage, so a big coverage upgrade widens
+     *  the band rather than multiplying the area effects without limit. */
+    maxPockets: 14,
+  },
   /** Enemy smoke: the CONCEALMENT branch (ENEMY_ATTACKS.md). It deals no damage
    *  at all — it denies the player's eyes, which shrinks the reaction window on
    *  every other branch at once.

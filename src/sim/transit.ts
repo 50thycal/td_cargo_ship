@@ -36,6 +36,7 @@ import type {
   SensorFamily,
   Ship,
   ShipClassId,
+  SmokeShell,
   TechKey,
   Threat,
   ThreatKind,
@@ -274,6 +275,8 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       barrageNextAt: 8,
     })),
     shells: [],
+    smokeShells: [],
+    smokeBarrage: [],
     boatShots: [],
     wreckage: [],
     survivors: [],
@@ -1572,19 +1575,40 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         revealTorpedoesInPing(t, fx);
         pushEvent(t, { type: 'abilityUsed', detail: 'sonar' });
       } else if (cmd.ability === 'smoke') {
-        // Defensive smoke: degrades the enemy's targeting preference for
-        // ships inside. It destroys nothing and blocks nothing outright.
+        // Defensive smoke: a barrage walked up ONE LANE from the friendly
+        // shore, degrading the enemy's targeting for every hull it covers. It
+        // destroys nothing and blocks nothing outright.
+        //
+        // The tap picks a lane, exactly as it does for the scan plane — the
+        // convoy is a column strung along a lane, so screening it is a lane
+        // decision, not a point one.
         if (t.smokeCharges <= 0) return;
         t.smokeCharges--;
         t.stats.counter.charges.smoke.used++;
-        t.areaEffects.push({
-          id: t.nextEntityId++,
-          kind: 'smoke',
-          x: px,
-          y: py,
-          radius: t.effects.abilities.smoke.radius,
-          until: t.time + t.effects.abilities.smoke.duration,
-        });
+        const laneY = WORLD.lanes[nearestLane(py)];
+        const bar = COMBAT.smokeBarrage;
+        const radius = t.effects.abilities.smoke.radius;
+        const duration = t.effects.abilities.smoke.duration;
+        // Cover the middle of the sailed length; leave both ends open.
+        const sailed = WORLD.deliverX - WORLD.spawnX;
+        const covered = sailed * bar.laneCoverage;
+        const from = WORLD.spawnX + (sailed - covered) / 2;
+        const pockets = Math.max(
+          2,
+          Math.min(bar.maxPockets, Math.round(covered / (radius * bar.pocketSpacingRadii)) + 1),
+        );
+        for (let i = 0; i < pockets; i++) {
+          const f = i / (pockets - 1);
+          t.smokeBarrage.push({
+            // Always west to east, whichever end the player happened to tap:
+            // the barrage walks the way the convoy sails.
+            x: from + covered * f,
+            y: laneY,
+            at: t.time + bar.walkSeconds * f,
+            radius,
+            duration,
+          });
+        }
         pushEvent(t, { type: 'abilityUsed', detail: 'smoke' });
       }
       return;
@@ -3271,6 +3295,61 @@ function updateTorpedoDetection(t: TransitState): void {
 
 /** Expire placed area effects; sonar pings keep revealing torpedoes that run
  *  into them; smoke refreshes the track-breaking grace on ships inside. */
+/** Walk the player's smoke barrage: fire each pocket's round as its turn comes
+ *  round, fly the rounds, and burst them into cloud where they land. */
+function updateSmokeBarrage(t: TransitState, dt: number): void {
+  // Rounds whose turn has come leave the friendly shore directly below their
+  // burst point, so the barrage reads as a line of fire marching up the lane
+  // rather than a fan from one battery.
+  if (t.smokeBarrage.length > 0) {
+    const due = t.smokeBarrage.filter((p) => p.at <= t.time);
+    if (due.length > 0) {
+      t.smokeBarrage = t.smokeBarrage.filter((p) => p.at > t.time);
+      for (const pocket of due) {
+        t.smokeShells.push({
+          id: t.nextEntityId++,
+          x: pocket.x,
+          y: WORLD.baseLine,
+          targetX: pocket.x,
+          targetY: pocket.y,
+          radius: pocket.radius,
+          duration: pocket.duration,
+        });
+      }
+    }
+  }
+  if (t.smokeShells.length === 0) return;
+  const step = COMBAT.smokeBarrage.shellSpeed * dt;
+  const landed: SmokeShell[] = [];
+  for (const shell of t.smokeShells) {
+    const dx = shell.targetX - shell.x;
+    const dy = shell.targetY - shell.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= step) {
+      shell.x = shell.targetX;
+      shell.y = shell.targetY;
+      landed.push(shell);
+      continue;
+    }
+    shell.x += (dx / d) * step;
+    shell.y += (dy / d) * step;
+  }
+  for (const shell of landed) {
+    t.areaEffects.push({
+      id: t.nextEntityId++,
+      kind: 'smoke',
+      x: shell.x,
+      y: shell.y,
+      radius: shell.radius,
+      until: t.time + shell.duration,
+    });
+  }
+  if (landed.length > 0) {
+    const done = new Set(landed.map((s) => s.id));
+    t.smokeShells = t.smokeShells.filter((s) => !done.has(s.id));
+  }
+}
+
 function updateAreaEffects(t: TransitState): void {
   for (const fx of t.areaEffects) {
     if (t.time >= fx.until) continue;
@@ -4771,6 +4850,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // --- Depth charges, placed areas, support aircraft --------------------------
   updateDepthChargeShots(t, rng, dt);
+  updateSmokeBarrage(t, dt);
   updateAreaEffects(t);
   updateAircraft(t, rng, dt);
 

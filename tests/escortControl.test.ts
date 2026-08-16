@@ -17,6 +17,8 @@ import {
   wreckageUnderEscort,
 } from '../src/sim/escortOrders';
 import { Camera } from '../src/ui/camera';
+import { escortTag } from '../src/ui/transitView';
+import { ESCORT_DEFAULT_NAMES } from '../src/data/defs';
 import { FIRST_REGION } from '../src/data/regions';
 import { SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type { CampaignState, SurvivorArea, TransitState, WreckageField } from '../src/sim/types';
@@ -550,5 +552,30 @@ describe('camera sprite reference', () => {
       expect((fx - VIEWPORT.width / 2) * k + VIEWPORT.width / 2).toBeCloseTo(cam.worldToScreenX(wx), 4);
       expect((fy - VIEWPORT.height / 2) * k + VIEWPORT.height / 2).toBeCloseTo(cam.worldToScreenY(wy), 4);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The roster's short codes
+// ---------------------------------------------------------------------------
+
+describe('escort roster codes', () => {
+  it('gives every name in the pool a distinct code', () => {
+    // The roster shows codes, not names — so two ships wearing the same code
+    // would be two rows the player cannot tell apart.
+    const codes = ESCORT_DEFAULT_NAMES.map(escortTag);
+    expect(new Set(codes).size).toBe(codes.length);
+    for (const code of codes) expect(code).toMatch(/^[A-Z]{3}$/);
+  });
+
+  it('uses initials for a name the player typed in words', () => {
+    expect(escortTag('Iron Duke')).toBe('ID');
+    expect(escortTag('  Queen  of the   South ')).toBe('QOTS');
+    expect(escortTag('Vanguard')).toBe('VAN');
+  });
+
+  it('never renders an empty label', () => {
+    expect(escortTag('   ').length).toBeGreaterThan(0);
+    expect(escortTag('Ab')).toBe('AB');
   });
 });

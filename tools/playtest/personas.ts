@@ -247,13 +247,16 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
       // is their ordnance. A bot that never topped up would fly exactly the
       // starting allowance all run and the sweep would stop measuring these
       // branches at all.
+      // Gated on the persona actually FLYING the thing, the same way the drone
+      // and self-defense magazines are gated on owning the launcher. Without
+      // it a bot can stockpile ordnance its transit policy will never spend.
       switch (intent.id) {
         case 'warthog':
-          return buyWarthogSortie(c);
+          return persona.transit.useWarthog && buyWarthogSortie(c);
         case 'scan':
-          return buyScanPulse(c);
+          return persona.transit.useScan && buyScanPulse(c);
         case 'smoke':
-          return buySmokeCanister(c);
+          return persona.transit.useSmoke && buySmokeCanister(c);
         case 'sonar':
         case 'hardened':
           return false; // no consumable to buy
@@ -922,6 +925,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'base' },
       { kind: 'escortFit' },
       { kind: 'gunAmmo', upTo: 60 },
@@ -932,6 +936,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'ability', id: 'warthog' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'ammo', upTo: 45 },
     ],
     escortDoctrine: [
@@ -1003,6 +1008,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'ammo', upTo: 70 },
       { kind: 'ability', id: 'warthog' },
+      { kind: 'ability', id: 'smoke' },
     ],
     transit: FIGHTER,
   },
@@ -1033,6 +1039,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'missileWarning' },
@@ -1074,6 +1081,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'escortFit' },
       { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 12 },
@@ -1244,6 +1252,7 @@ export const PERSONAS: Persona[] = [
       // own modules. That misread made the first run of this comparison
       // measure the opposite of what it claimed.)
       { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'base' },
       { kind: 'escort' },
       { kind: 'module', classId: 'cargo', moduleId: 'selfDefense' },
@@ -1254,6 +1263,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'ability', id: 'warthog' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
       { kind: 'droneAmmo', upTo: 6 },
       // Only now does the convoy grow.
@@ -1321,6 +1331,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 2 },
       { kind: 'base' },
       { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'smoke' },
       { kind: 'ability', id: 'warthog' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'escortFit' },
