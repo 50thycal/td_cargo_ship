@@ -953,8 +953,19 @@ export const CAMPAIGN = {
    *  seabed was confidence-NEUTRAL, and a hand-played log showed exactly what
    *  that bought: rounds delivering 77% and 73% — seven and eight hulls lost —
    *  left confidence pinned at 100 for both. Confidence was not a factor in
-   *  that run because nothing short of catastrophe could move it. */
-  confidenceBreakEven: 0.86,
+   *  that run because nothing short of catastrophe could move it.
+   *
+   *  BRACKETED. The first arm went to 0.86 and overshot badly: measured across
+   *  96 campaigns, mean delivery is 84.4%, so break-even sat ABOVE the
+   *  achievable operating point and the average round bled confidence every
+   *  time it sailed. Confidence deaths went 0% → 39% and became the dominant
+   *  failure system, ahead of the quota it is supposed to sit beside. Same
+   *  class of error this file already records for the quota ratchet: a failure
+   *  bar has to stay inside the band the game calls healthy, and "inside the
+   *  band" must be checked against MEASURED delivery, not against the band's
+   *  nominal edges. 0.82 sits above the old free ride and below the operating
+   *  point, so a defended round still earns and a sloppy one still pays. */
+  confidenceBreakEven: 0.82,
   /** Confidence per unit of delivered fraction away from break-even. At 100%
    *  delivered this reaches the ceiling below; at ~8% it reaches the floor. */
   confidenceDeliverySwing: 36,
@@ -977,10 +988,15 @@ export const CAMPAIGN = {
    *  count rather than a rate because the flotilla is three ships however big
    *  the convoy grows — there is no size to be neutral about. */
   confidencePerEscortLost: -4,
-  /** LOWERED from 10. The quota bonus was landing on top of disaster rounds
-   *  and turning them positive — meeting a shipping window while losing a
-   *  quarter of the convoy is not a round the consortium is pleased about. */
-  confidenceQuotaMet: 6,
+  /** LOWERED from 10, then part-restored to 8. The quota bonus was landing on
+   *  top of disaster rounds and turning them positive — meeting a shipping
+   *  window while losing a quarter of the convoy is not a round the consortium
+   *  is pleased about. But cutting the number was the wrong instrument and
+   *  double-counted the fix: confidenceCreditMitigation now stops the bonus
+   *  rescuing a losing round directly, so the bonus itself only needed to stop
+   *  being the largest single term in the model. On a GOOD round it still pays
+   *  nearly what it always did, which is the round it is for. */
+  confidenceQuotaMet: 8,
   /** Extra confidence lost per civilian crew left in the water (a survivor
    *  area that was never rescued). Rescue prevents the penalty entirely —
    *  that is the whole tactical bargain of diverting an escort to them.
@@ -1003,8 +1019,15 @@ export const CAMPAIGN = {
    *  hulls down and every one of those crews left in the water — paid -9.3 for
    *  the abandonment, less than half of what one missed quota window used to
    *  cost. Drowning half a convoy's crews has to be the loudest number on the
-   *  debrief, not a rounding error beside the delivery curve. */
-  confidenceCrewLostRate: -45,
+   *  debrief, not a rounding error beside the delivery curve.
+   *
+   *  BRACKETED at -45 then -35. Sweeps abandon ~60% of crews as a matter of
+   *  course, so this is a RECURRING drag rather than an occasional one, and at
+   *  -45 it compounded with the break-even overshoot into a death spiral.
+   *  Still 1.75x the old value, and the permanent half of the crew penalty now
+   *  lives in the confidence CEILING, where a single round's floor cannot
+   *  swallow it. */
+  confidenceCrewLostRate: -35,
   /** Confidence RECOVERED per crew brought home. Deliberately smaller than
    *  the abandonment penalty: bringing the crew back does not undo losing the
    *  ship, but visibly rewards the diversion — and gives a player having a
