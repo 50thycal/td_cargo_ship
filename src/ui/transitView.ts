@@ -86,6 +86,22 @@ const THREAT_TAP_RADIUS_PX = 46;
 /** Second tap within this long (ms) counts as a double-tap → station the escort
  *  (pause it). A lone tap after the window sends it and it resumes forward. */
 
+/** The short code a ship goes by in the roster panel.
+ *
+ *  A ship name is for the map, where there is room for it and where it names
+ *  the thing the player is looking at. In a list down the side of a phone the
+ *  same names are a column of prose. Initials for a multi-word name, the first
+ *  three letters otherwise — which is unique across the whole naming pool, so
+ *  two escorts never wear the same code. */
+export function escortTag(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '—';
+  if (words.length > 1) {
+    return words.map((w) => w[0]).join('').slice(0, 4).toUpperCase();
+  }
+  return words[0].slice(0, 3).toUpperCase();
+}
+
 const SHIP_COLORS: Record<string, string> = {
   cargo: '#6fb1e0',
   tanker: '#f0a35e',
@@ -170,14 +186,18 @@ export class TransitView {
   private hudDronesChip!: HTMLElement;
   private hudDc!: HTMLElement;
   private hudDcChip!: HTMLElement;
+  private hudPd!: HTMLElement;
+  private hudPdChip!: HTMLElement;
+  private hudGun!: HTMLElement;
+  private hudGunChip!: HTMLElement;
+  private hudMunitions!: HTMLElement;
   private selInfo!: HTMLElement;
   /** The escort roster: one row per ship, showing name, status and damage.
    *  This is the panel that answers "why is that one sitting there". */
   private escortPanel!: HTMLElement;
   private readonly escortRows = new Map<number, { row: HTMLElement; name: HTMLElement; status: HTMLElement; bar: HTMLElement }>();
   private centreBtn!: HTMLButtonElement;
-  private zoomInBtn!: HTMLButtonElement;
-  private zoomOutBtn!: HTMLButtonElement;
+
   private warthogBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
   private sonarBtn!: HTMLButtonElement;
@@ -301,28 +321,45 @@ export class TransitView {
     const lost = TransitView.chip('LOST', 'bad');
     this.hudLost = lost.val;
     this.hudLostChip = lost.el;
+    // MUNITIONS. Every magazine the fleet carries, in one block that never
+    // moves.
+    //
+    // These chips used to sit in the top rail alongside the round and quota
+    // readouts, and the rail wraps. Selecting an escort puts a long hint in
+    // that rail, the rail wrapped, and the ammo counts dropped onto a second
+    // row — straight underneath the escort roster, which is drawn above them.
+    // The player's interceptor count vanished at exactly the moment they were
+    // taking command of a ship. A readout you consult under pressure has to be
+    // in the same place every time, so this is anchored on its own.
     const int = TransitView.chip('INT');
     this.hudInt = int.val;
+    int.el.title = 'Interceptor rounds — the shared magazine for every launcher';
     const drones = TransitView.chip('DRN');
     this.hudDrones = drones.val;
     this.hudDronesChip = drones.el;
+    drones.el.title = 'Minesweeper drone munitions';
+    const pd = TransitView.chip('PD');
+    this.hudPd = pd.val;
+    this.hudPdChip = pd.el;
+    pd.el.title = 'Cargo self-defense rounds';
+    const gun = TransitView.chip('GUN');
+    this.hudGun = gun.val;
+    this.hudGunChip = gun.el;
+    gun.el.title = 'Deck-gun shells';
     const dc = TransitView.chip('DC');
     this.hudDc = dc.val;
     this.hudDcChip = dc.el;
+    dc.el.title = 'Depth charges remaining across the flotilla';
+    this.hudMunitions = h('div', { attrs: { id: 'hud-munitions' } }, [
+      h('span', { className: 'munitions-label', text: 'MUNITIONS' }),
+      h('div', { className: 'munitions-row' }, [int.el, drones.el, pd.el, gun.el, dc.el]),
+    ]);
     this.hudQuota = h('span', { className: 'hud-quota', attrs: { title: 'Active delivery quota' } });
+    // The hint gets its own line under the rail rather than competing with the
+    // chips for width — it is the one element here whose length is unbounded.
     this.selInfo = h('span', { attrs: { id: 'sel-info' } });
-    this.hudTop.append(
-      round.el,
-      delivered.el,
-      lost.el,
-      conf.el,
-      this.hudQuota,
-      h('span', { className: 'spacer' }),
-      this.selInfo,
-      int.el,
-      drones.el,
-      dc.el,
-    );
+    this.hudTop.append(round.el, delivered.el, lost.el, conf.el, this.hudQuota);
+    this.elements.push(this.hudMunitions, this.selInfo);
 
     this.warthogBtn = h('button', {
       className: 'hud-btn',
@@ -423,21 +460,10 @@ export class TransitView {
       autoGroup.append(btn);
     }
 
-    // Camera controls. Zooming in to work an escort and back out to read the
-    // battle is a core loop now, so it gets first-class buttons rather than
-    // relying on a wheel the player may not have.
-    this.zoomOutBtn = h('button', {
-      className: 'hud-btn',
-      text: '－',
-      onClick: () => this.camera.zoomBy(1 / 1.35, this.cw / 2, this.ch / 2),
-    });
-    this.zoomOutBtn.title = 'Zoom out (mouse wheel / pinch)';
-    this.zoomInBtn = h('button', {
-      className: 'hud-btn',
-      text: '＋',
-      onClick: () => this.camera.zoomBy(1.35, this.cw / 2, this.ch / 2),
-    });
-    this.zoomInBtn.title = 'Zoom in (mouse wheel / pinch)';
+    // No zoom buttons. Pinch does it on a phone and the wheel does it on a
+    // desktop, so a pair of keys that duplicate a gesture the player already
+    // has were two of the handful of slots along the bottom of a small screen
+    // spent on nothing. CONVOY stays: recentring is not a gesture.
     this.centreBtn = h('button', {
       className: 'hud-btn',
       text: 'CONVOY',
@@ -489,7 +515,7 @@ export class TransitView {
       this.actionsBtn,
       this.actionTray,
       h('span', { className: 'spacer' }),
-      h('div', { className: 'hud-group' }, [this.zoomOutBtn, this.zoomInBtn, this.centreBtn]),
+      h('div', { className: 'hud-group' }, [this.centreBtn]),
       h('div', { className: 'hud-group' }, [this.restartBtn, this.pauseBtn, this.speedBtn]),
     );
 
@@ -530,7 +556,13 @@ export class TransitView {
       let entry = this.escortRows.get(escort.id);
       if (!entry) {
         const name = h('span', { className: 'escort-name' });
-        const status = h('span', { className: 'escort-status' });
+        // The status line is GONE from the panel. It read as a paragraph per
+        // ship down the side of a phone screen, to say things the player can
+        // already see the ship doing — and the roster's job is to be a tally
+        // of hulls and their health, not a commentary. What each ship is doing
+        // still shows on the map label when she is selected, and the coloured
+        // edge of the row still carries her activity at a glance.
+        const status = h('span', { className: 'escort-status hidden' });
         const bar = h('div', { className: 'escort-hp-fill' });
         const row = h('div', {
           className: 'escort-row',
@@ -539,7 +571,7 @@ export class TransitView {
             if (this.selectedEscort !== null) this.camera.centreOn(escort.x, escort.y);
           },
         }, [
-          h('div', { className: 'escort-row-head' }, [name, status]),
+          h('div', { className: 'escort-row-head' }, [name]),
           h('div', { className: 'escort-hp' }, [bar]),
         ]);
         entry = { row, name, status, bar };
@@ -547,9 +579,11 @@ export class TransitView {
         this.escortPanel.append(row);
       }
       const st = escortStatus(this.state, escort);
-      entry.name.textContent = escort.name;
-      entry.status.textContent =
-        st.progress !== null ? `${st.label} ${Math.round(st.progress * 100)}%` : st.label;
+      // The abbreviation, not the name: three characters identify the ship
+      // against her map label without spending a fifth of the screen width on
+      // a roster. The full name is on the hull itself.
+      entry.name.textContent = escortTag(escort.name);
+      entry.row.title = `${escort.name} — ${st.label}`;
       entry.row.className = `escort-row${this.selectedEscort === escort.id ? ' selected' : ''}`;
       entry.row.setAttribute('data-activity', st.activity);
       const frac = Math.max(0, escort.hp / escort.maxHp);
@@ -580,13 +614,27 @@ export class TransitView {
     this.hudQuota.textContent = `QUOTA ${quotaLive}/${this.quotaNeeded}`;
     this.hudQuota.classList.toggle('quota-met', quotaLive >= this.quotaNeeded);
     const t = this.state;
+    // Every magazine reads as what is LEFT, not as what is ready to fire: the
+    // question this block answers is "can I keep doing this", and a launcher
+    // that is merely reloading still has its rounds.
     const dcEquipped = t.escortModules.includes('depthCharges');
+    const dcLeft = t.escorts.reduce((n, e) => n + (e.alive ? e.dcShots : 0), 0);
+    // The BUTTON still counts launchers that can fire this instant — that is
+    // what pressing it does — while the munitions chip above counts rounds.
     const dcReady = t.escorts.filter((e) => e.alive && e.dcShots > 0 && e.dcCooldown <= 0).length;
+    const gunEquipped = t.escortModules.includes('deckGun');
+    const pdEquipped = t.ships.some((sh) => sh.modules.includes('selfDefense'));
     this.hudInt.textContent = `${t.ammo}`;
+    this.hudInt.parentElement?.classList.toggle('bad', t.ammo === 0);
     this.hudDronesChip.classList.toggle('hidden', !t.effects.sweepDrones);
     this.hudDrones.textContent = `${t.droneAmmo}`;
+    this.hudPdChip.classList.toggle('hidden', !pdEquipped);
+    this.hudPd.textContent = `${t.pdAmmo}`;
+    this.hudGunChip.classList.toggle('hidden', !gunEquipped);
+    this.hudGun.textContent = `${t.gunAmmo}`;
+    this.hudGunChip.classList.toggle('bad', gunEquipped && t.gunAmmo === 0);
     this.hudDcChip.classList.toggle('hidden', !dcEquipped);
-    this.hudDc.textContent = `${dcReady}`;
+    this.hudDc.textContent = `${dcLeft}`;
 
     // Clear the escort selection if that escort is gone or was destroyed.
     if (
@@ -600,7 +648,7 @@ export class TransitView {
       warthog:
         'Drag the A-10\u2019s run-in line over open water, or tap its two ends — it guns what lies ahead of it, then comes back the other way',
       sonar: 'Tap the water to place the active sonar ping',
-      smoke: 'Tap the water to lay the defensive smoke',
+      smoke: 'Tap a lane — the shore walks a smoke screen up it, west to east',
       dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
     };
     const selected = t.escorts.find((e) => e.id === this.selectedEscort && e.alive);
@@ -615,8 +663,6 @@ export class TransitView {
 
     this.updateEscortPanel();
     this.centreBtn.classList.toggle('armed', this.camera.isFollowing());
-    this.zoomInBtn.disabled = this.camera.zoom >= this.camera.maxZoom() - 1e-4;
-    this.zoomOutBtn.disabled = this.camera.isFitted();
 
     this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
     this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
@@ -825,9 +871,10 @@ export class TransitView {
     const wy = this.camera.screenToWorldY(cy);
 
     // 0) If an ability/weapon is armed, this tap places it where the player
-    //    touched. Scan: the Y picks a lane. A-10: the jet takes station on the
-    //    water. Sonar/smoke: a placed area effect. DC: the nearest ready escort
-    //    lobs depth charges at the point (an AREA attack — never a lock-on).
+    //    touched. Scan and smoke: the Y picks a lane — one charts it, the other
+    //    screens it. A-10: the jet runs the bearing that was drawn. Sonar: a
+    //    placed area effect. DC: the nearest ready escort lobs depth charges at
+    //    the point (an AREA attack — never a lock-on).
     if (this.armedAbility) {
       const ability = this.armedAbility;
       // The A-10 needs a LINE, so it takes two taps: the first marks where the
@@ -2125,6 +2172,31 @@ export class TransitView {
       ctx.stroke();
     }
 
+    // The player's smoke barrage: rounds arcing up from the friendly shore,
+    // each with the pocket it is about to lay marked ahead of it. Drawn pale
+    // and cool so they are never mistaken for the enemy's artillery, which
+    // uses the same shape in hot orange.
+    for (const shell of t.smokeShells) {
+      const ix = this.sx(shell.targetX);
+      const iy = this.sy(shell.targetY);
+      ctx.strokeStyle = 'rgba(196, 206, 216, 0.35)';
+      ctx.setLineDash([3, 5]);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(ix, iy, shell.radius * this.scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const sx = this.sx(shell.x);
+      const sy = this.sy(shell.y);
+      ctx.strokeStyle = 'rgba(226, 234, 240, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      // Trail points back the way it came — straight down the lane's normal.
+      ctx.lineTo(sx, sy + 9 * Math.sign(shell.y - shell.targetY || 1));
+      ctx.stroke();
+    }
+
     // Depth-charge rounds in flight, plus their aim points.
     for (const shot of t.depthChargeShots) {
       if (shot.detonated) continue;
@@ -2469,7 +2541,8 @@ export class TransitView {
         ctx.arc(ax, ay, 14 + 3 * Math.sin(now / 120), 0, Math.PI * 2);
         ctx.stroke();
       }
-      this.drawPlane(ax, ay, ac.heading, ac.role === 'warthog' ? '#ffb054' : '#7ce7ff');
+      if (ac.role === 'warthog') this.drawWarthog(ax, ay, ac.heading);
+      else this.drawPlane(ax, ay, ac.heading, '#7ce7ff');
     }
 
     // Visual effects
@@ -2624,12 +2697,17 @@ export class TransitView {
     const lines: { text: string; color: string; size: number }[] = [
       { text: escort.name, color: selected ? '#9fe0ff' : 'rgba(201, 212, 222, 0.72)', size: 11 },
     ];
-    if (selected) {
-      const detail =
-        status.progress !== null
-          ? `${status.label} ${Math.round(status.progress * 100)}%`
-          : status.label;
-      lines.push({ text: detail, color: ACTIVITY_COLORS[status.activity], size: 10 });
+    // A second line only when it says something the map does not already show.
+    // "Escorting Convoy" under a ship visibly escorting the convoy, or
+    // "Holding Position" under one visibly stopped, is a caption on a picture
+    // of itself; a recovery or rescue percentage is a number that exists
+    // nowhere else. So the label carries progress and stays quiet otherwise.
+    if (selected && status.progress !== null) {
+      lines.push({
+        text: `${status.label} ${Math.round(status.progress * 100)}%`,
+        color: ACTIVITY_COLORS[status.activity],
+        size: 10,
+      });
     }
     // Names sit inside the magnified world layer, so left alone they would grow
     // with the ships. Damp them back to the square root of the magnification:
@@ -2678,6 +2756,128 @@ export class TransitView {
     ctx.lineTo(2, -3);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
+  }
+
+  /** The A-10, in plan view, nose along +x.
+   *
+   *  Drawn as itself rather than as the generic swept-wing arrowhead every
+   *  other aircraft in the game gets. The player buys this thing by name, and
+   *  from directly above an A-10 is one of the most recognisable aircraft ever
+   *  built — but only if the features that make it recognisable are actually
+   *  there: long STRAIGHT wings (everything else in the sky is swept), the two
+   *  engine nacelles hung off the rear fuselage rather than buried in it, and
+   *  the twin fins out at the tips of the tailplane.
+   *
+   *  Proportions are the real aircraft's, scaled to a ~23-unit length: span a
+   *  shade longer than the length, tailplane about a third of the span,
+   *  nacelles a fifth of the length. Guessing them instead produced a
+   *  chunky-looking aeroplane whose wings read as short and whose nacelles read
+   *  as two extra fuselages. */
+  private drawWarthog(x: number, y: number, heading: number): void {
+    const ctx = this.ctx;
+    const BODY = '#ffb054';
+    const SHADE = '#c8813a';
+    const LINE = 'rgba(38, 21, 6, 0.85)';
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 0.55;
+    ctx.strokeStyle = LINE;
+
+    // Tailplane, and the twin fins standing at its tips.
+    ctx.fillStyle = SHADE;
+    ctx.beginPath();
+    ctx.rect(-11.2, -5.6, 3.0, 11.2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = BODY;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.rect(-12.0, side * 5.0 - 0.85, 4.6, 1.7);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Wings: long, straight and barely tapered — the giveaway from above.
+    ctx.fillStyle = BODY;
+    ctx.beginPath();
+    ctx.moveTo(1.9, -12.5);
+    ctx.lineTo(2.3, -3.6);
+    ctx.lineTo(2.3, 3.6);
+    ctx.lineTo(1.9, 12.5);
+    ctx.lineTo(-1.7, 12.5);
+    ctx.lineTo(-2.4, 3.6);
+    ctx.lineTo(-2.4, -3.6);
+    ctx.lineTo(-1.7, -12.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Hardpoints: the pylons show from above as tabs ahead of the leading
+    // edge. Drawn there rather than as ticks across the chord, which striped
+    // the whole wing and buried its shape.
+    ctx.fillStyle = SHADE;
+    for (const side of [-1, 1]) {
+      for (const span of [5.2, 7.8, 10.4]) {
+        ctx.beginPath();
+        ctx.rect(2.0, side * span - 0.45, 1.5, 0.9);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    // Engine nacelles. Drawn OVER the wing, not under it: on the real
+    // aircraft they are slung above the rear fuselage, so from directly above
+    // they are the most prominent thing on the airframe — hidden behind the
+    // wing they read as nothing at all.
+    ctx.fillStyle = SHADE;
+    for (const side of [-1, 1]) {
+      const cy = side * 3.5;
+      ctx.beginPath();
+      ctx.rect(-8.8, cy - 1.3, 7.6, 2.6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = LINE;
+      ctx.beginPath();
+      ctx.ellipse(-1.4, cy, 0.6, 1.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = SHADE;
+    }
+
+    // Fuselage: blunt gun nose, slab sides, tapering into the tail boom.
+    ctx.fillStyle = BODY;
+    ctx.beginPath();
+    ctx.moveTo(11.4, -0.75);
+    ctx.quadraticCurveTo(12.2, 0, 11.4, 0.75); // stubby, rounded gun nose
+    ctx.lineTo(9.6, 1.5);
+    ctx.lineTo(7.0, 1.9);
+    ctx.lineTo(-6.0, 1.7);
+    ctx.quadraticCurveTo(-8.8, 1.5, -9.6, 0);
+    ctx.quadraticCurveTo(-8.8, -1.5, -6.0, -1.7);
+    ctx.lineTo(7.0, -1.9);
+    ctx.lineTo(9.6, -1.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // The GAU-8's muzzle, offset to port as it is on the real aircraft.
+    ctx.strokeStyle = LINE;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(11.7, -0.35);
+    ctx.lineTo(12.7, -0.35);
+    ctx.stroke();
+
+    // Bubble canopy.
+    ctx.fillStyle = 'rgba(28, 44, 58, 0.95)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(6.6, 0, 1.8, 1.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
     ctx.restore();
   }
 

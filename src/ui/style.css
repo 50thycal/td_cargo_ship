@@ -1393,10 +1393,58 @@ button.unequip {
   background: linear-gradient(180deg, rgba(8, 10, 6, 0.92), rgba(8, 10, 6, 0));
   pointer-events: none;
   z-index: 5;
-  flex-wrap: wrap;
+  /* Never wraps. It used to, and the munitions chips rode the wrap down onto
+     a second row underneath the escort roster — see #hud-munitions. */
+  flex-wrap: nowrap;
 }
 
 #hud-top .spacer { flex: 1; }
+
+/* ---------- munitions ----------
+   Anchored top-right, in its own stacking context, so nothing in the rail can
+   push it and nothing drawn later can cover it. */
+#hud-munitions {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  pointer-events: none;
+  z-index: 7;
+}
+
+.munitions-label {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  opacity: 0.75;
+}
+
+.munitions-row {
+  display: flex;
+  gap: 4px;
+}
+
+.munitions-row .hud-chip {
+  padding: 2px 6px;
+  gap: 4px;
+}
+
+/* The hint gets its own line under the rail: it is the one element up here
+   whose length is unbounded, and it was what forced the rail to wrap. */
+#sel-info {
+  position: absolute;
+  top: 34px;
+  left: 12px;
+  max-width: min(60%, 460px);
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
 
 /* LCD readout chips along the top rail. */
 .hud-chip {
@@ -1453,17 +1501,22 @@ button.unequip {
    solidifies it. */
 #escort-panel {
   position: absolute;
-  top: 44px;
-  right: 10px;
-  width: 200px;
+  /* Pinned to the right edge at the vertical MIDPOINT. Top-right put the
+     roster in the same corner as the munitions block and the top rail, which
+     is the busiest part of a landscape phone screen; the middle of the edge is
+     empty in every round. */
+  top: 50%;
+  transform: translateY(-50%);
+  right: 6px;
+  width: 46px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   z-index: 6;
 }
 
 .escort-row {
-  padding: 6px 8px 5px;
+  padding: 4px 5px 4px;
   border-radius: 5px;
   border: 1px solid rgba(120, 140, 100, 0.18);
   border-left: 3px solid rgba(120, 140, 100, 0.45);
@@ -1497,13 +1550,14 @@ button.unequip {
 }
 
 .escort-name {
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: #e2ead2;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
+.escort-row-head { justify-content: center; }
 
 .escort-status {
   font-size: 9.5px;

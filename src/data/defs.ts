@@ -158,13 +158,26 @@ export const ESCORT_NAME_MAX = 22;
 /** Names handed to escorts as they are commissioned, in order. Past the end of
  *  the list they fall back to a numbered hull, so the player always gets
  *  something meaningful to rename rather than "Escort 4". */
+/** Names for commissioned escorts.
+ *
+ *  Deliberately LONG, and drawn in a per-run shuffled order (see
+ *  nextEscortName): a six-name list handed out in list order meant every run
+ *  in the game's history opened with Vanguard and Sentinel, so the flotilla
+ *  had no identity of its own — the ships were furniture with the same labels
+ *  every time. A name is also never reissued inside a run, so a replacement
+ *  hull can never sail under the name of one that went down; that reuse made
+ *  the after-action report read as though a sunk escort had come back, and it
+ *  quietly hid the loss of whatever equipment went down with her.
+ *
+ *  Themed as watch-and-guard words a small maritime security outfit would
+ *  actually paint on a transom. */
 export const ESCORT_DEFAULT_NAMES: readonly string[] = [
-  'Vanguard',
-  'Sentinel',
-  'Seawatch',
-  'Bulwark',
-  'Lookout',
-  'Steadfast',
+  'Vanguard', 'Sentinel', 'Seawatch', 'Bulwark', 'Lookout', 'Steadfast',
+  'Warden', 'Picket', 'Rampart', 'Beacon', 'Aegis', 'Resolute',
+  'Fairwind', 'Nightwatch', 'Sabre', 'Kingfisher', 'Tempest', 'Marlin',
+  'Ironside', 'Redoubt', 'Harrier', 'Cutlass', 'Petrel', 'Stalwart',
+  'Longshore', 'Tideguard', 'Osprey', 'Valiant', 'Bastion', 'Corsair',
+  'Northstar', 'Barracuda', 'Trident', 'Watchman', 'Endeavour', 'Shrike',
 ];
 
 export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {

@@ -2088,7 +2088,7 @@ export function prepScreen(
       'jam',
       'Defensive smoke',
       `${c.smokeStock}/${smokeCapacity(c)}`,
-      'Placed cloud that dulls enemy targeting for ships inside. Destroys nothing.',
+      'Pick a lane in transit; the shore walks a screen up it that dulls enemy targeting for every hull inside. Destroys nothing.',
       {
         label:
           smokeCanisterBlockReason(c) === 'Stowage full'

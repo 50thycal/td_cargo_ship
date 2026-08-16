@@ -32,7 +32,7 @@ import {
   effectiveResearch,
 } from '../src/data/counters';
 import { STAT_TIERS, tierValue, TIER_ORDER } from '../src/data/statTiers';
-import { SIM, WORLD } from '../src/data/tuning';
+import { COMBAT, SIM, WORLD } from '../src/data/tuning';
 import type {
   CampaignState,
   EnemyInstallation,
@@ -796,7 +796,12 @@ describe('touch-input contract', () => {
       { type: 'ability', ability: 'smoke', x: 1000, y: WORLD.lanes[1] },
     ]);
     expect(state.areaEffects.filter((f) => f.kind === 'sonar')).toHaveLength(1);
-    expect(state.areaEffects.filter((f) => f.kind === 'smoke')).toHaveLength(1);
+    // Smoke is still ONE tap, but what it buys is a barrage rather than a
+    // cloud: the shore has to fire, and the rounds have to fly, before there
+    // is anything on the water.
+    expect(state.smokeBarrage.length + state.smokeShells.length).toBeGreaterThan(0);
+    step(state, rng, [], Math.ceil((COMBAT.smokeBarrage.walkSeconds + 4) / SIM.dt));
+    expect(state.areaEffects.filter((f) => f.kind === 'smoke').length).toBeGreaterThan(1);
   });
 });
 

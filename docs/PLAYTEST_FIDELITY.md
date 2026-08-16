@@ -138,6 +138,36 @@ diff to flag the decay:
   order out to 2.5× gun range — mirroring the player's new chase-to-engage —
   instead of only when a boat happened to wander into reach.
 
+## Closed — 2026-08-16: the smoke branch was never measured
+
+Found while checking whether reworking defensive smoke had moved the balance:
+the sweep reported the change as *exactly nil*, which for a mechanic whose
+covered area grew about eightfold is not a result, it is a broken instrument.
+
+Measured: across 72 campaigns the bots spent **$0** on smoke canisters and laid
+**14** charges in total, all of them from ordnance draft cards. No persona had a
+`{kind:'ability', id:'smoke'}` buy intent at all, so the only smoke in the whole
+sweep was smoke somebody was given. Every previous conclusion about this
+branch's worth was drawn from a sample of essentially zero.
+
+Two fixes, both in `personas.ts`:
+
+- Personas that already stock a consumable now stock smoke too (8 intents).
+- Consumable purchases are gated on the persona's transit policy actually
+  USING that ability, the same way drone and self-defense munitions are gated
+  on owning the launcher — so no bot stockpiles ordnance it will never fire.
+
+After: 307 charges laid across 41 campaigns, $21,980 spent — and the branch
+turns out to be a real economic choice rather than a free win. It carried
+`mine-warfare` from 17% to 83% completion and cost `balanced` and
+`technologist` outright, because the money to buy it comes out of hulls.
+Sweep-wide the north star's Balance signal rose 43% → 51%.
+
+**The general lesson, and the one worth re-reading:** a sweep that reports *no
+change* from a large mechanical change is reporting on the harness, not on the
+game. Check that the bots exercise a branch before believing any number about
+it — including a number that says nothing happened.
+
 ## Open and accepted (as of the second row)
 
 ### Still open (worth closing)

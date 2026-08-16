@@ -409,6 +409,24 @@ export interface Shell {
   alive: boolean;
 }
 
+/** A smoke round on its way from the friendly shore to its burst point.
+ *
+ *  Deliberately NOT a `Shell`. Those are the enemy's artillery, and every
+ *  shell in that array is resolved against the convoy for splash damage — a
+ *  friendly round sharing the type would either need a flag threaded through
+ *  the damage path or would quietly shell the ships it was sent to protect. */
+export interface SmokeShell {
+  id: number;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  /** Carried to the burst so the pocket it lays matches the research the
+   *  barrage was fired under, even if something changes mid-flight. */
+  radius: number;
+  duration: number;
+}
+
 /** A round fired by an attack boat: machine-gun tracer or rocket, depending on
  *  the boat variant.
  *
@@ -697,6 +715,14 @@ export interface Aircraft {
   stationUntil: number;
   /** Warthog: seconds until the gun is ready for the next pass. */
   gunCooldown: number;
+  /** Warthog: has this pass been over open water yet?
+   *
+   *  The break-off rule is "over land, having crossed the water" — without the
+   *  second half a run drawn across the strait would break off immediately,
+   *  because the jet ENTERS over the land it flew in from. */
+  wetSeen: boolean;
+  /** Warthog: seconds spent over land since last leaving the water. */
+  landSeconds: number;
 }
 
 /** One 30mm gun run: a burst drawn from the jet to the water it hit.
@@ -1265,6 +1291,10 @@ export interface TransitState {
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
   shells: Shell[];
+  /** The player's smoke barrage: rounds in flight, and the bursts still
+   *  waiting their turn as the barrage walks up the lane. */
+  smokeShells: SmokeShell[];
+  smokeBarrage: { x: number; y: number; at: number; radius: number; duration: number }[];
   /** Attack-boat rounds in flight. Kept out of `threats` for the same reason:
    *  a boat's gunfire is not a thing the player can shoot down, only something
    *  they can see coming (and outmaneuver). Killing the BOAT is the answer. */
@@ -1917,6 +1947,11 @@ export interface CampaignState {
   /** Monotonic source of EscortUnit ids. Never reused, so a sunk escort's id
    *  cannot be confused with its replacement's in saves or telemetry. */
   nextEscortId: number;
+  /** Every escort name this run has ever issued, including those of ships that
+   *  have since gone down. A name is never reissued: a replacement hull under
+   *  a sunk ship's name made the debrief read as though she had survived, and
+   *  hid the fact that her fitted equipment went down with her. */
+  usedEscortNames: string[];
   ammo: number;
   /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
    *  drones, and each launch spends one. Unused stock carries between rounds. */
