@@ -592,6 +592,46 @@ standing or record needs both, and the slow one needs to be visible — the
 ceiling is shown on the resource bar (`82/91`) and on the debrief, because a
 cap the player cannot see acting on them is indistinguishable from a bug.
 
+### …and the bar it becomes has to stay inside the achievable band
+
+Two sweeps of 96 campaigns each, one at the merge point and one per arm:
+
+| | before | first arm | second arm |
+|---|---|---|---|
+| victories | 25% | 12% | 15% |
+| reached round cap | 41% | 20% | 22% |
+| **confidence deaths** | **0%** | **39%** | **31%** |
+| quota deaths | 34% | 29% | 32% |
+| mean final confidence | 68.7 | 28.6 | 31.7 |
+| campaigns ending at 100 | 8 | 0 | 0 |
+| mean delivered | 82.8% | 84.4% | 84.2% |
+
+**Zero.** Across 96 campaigns before the rework, confidence killed nobody. It
+was not a soft failure system, it was not a failure system — one of the game's
+two advertised ways to lose had never once happened.
+
+The first arm turned it into the *dominant* one, and the cause was arithmetic
+rather than severity: break-even went to 0.86 while measured mean delivery is
+**84.4%**, so break-even sat *above* the achievable operating point and the
+average round bled every time it sailed. That is the quota-ratchet mistake
+recorded above, in a second costume, and this is the half of that lesson which
+was missing: **"inside the healthy band" must be checked against measured
+delivery, not the band's nominal edges.** 60–90% being called healthy does not
+license a bar at 86% when the fleet actually operates at 84%.
+
+Second arm: 0.82 (above the old free ride, below the operating point), crew rate
+−45 → −35 (sweeps abandon ~60% of crews, so it is a *recurring* drag, and the
+permanent half of that penalty now lives in the ceiling anyway), quota bonus
+restored 6 → 8 (cutting it double-counted the credit-mitigation rule). The two
+failure systems land at 31% and 32% — neither dominant, which is the shape a
+game with two of them should have.
+
+Not free, and worth saying plainly: overall completion fell from 66% to 37%,
+and three builds crossed from viable to not — `shore-battery` (0/8 → 6/8 deaths,
+final confidence 70 → 11), `turtle` (1/8 → 8/8), `economist` (0/8 → 8/8). All
+three were already the weakest three by final confidence before the change; the
+rework did not create their problem, it stopped hiding it.
+
 ---
 
 ## How this is used
