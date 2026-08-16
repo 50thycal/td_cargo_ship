@@ -770,6 +770,7 @@ export function generateDraft(
     round: c.round,
     options,
     recoveredUnits,
+    recoveredByBranch: { ...recoveredByBranch },
     picksLeft: picks,
     picksTotal: picks,
     ...(counterFamily ? { counterFamily, counterOption } : {}),
@@ -797,8 +798,17 @@ export function draftBlockReason(c: CampaignState, option: DraftOption): string 
 }
 
 /** Hand over one unit of equipment, plus the base research the first unit
- *  teaches. Later units are just more hardware. */
-function applyModuleGrant(c: CampaignState, platform: ModulePlatform, moduleId: string): void {
+ *  teaches. Later units are just more hardware.
+ *
+ *  Exported because the draft is no longer the only way equipment arrives —
+ *  the Requisition Order legacy grants a unit at region start, and it has to
+ *  arrive the SAME way or the player gets hardware they have not been taught
+ *  to use. */
+export function applyModuleGrant(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): void {
   const m = moduleEntry(platform, moduleId);
   if (!m) return;
   c.moduleStock ??= { cargo: {}, escort: {}, base: {} };

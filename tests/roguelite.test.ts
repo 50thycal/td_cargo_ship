@@ -972,7 +972,7 @@ describe('technology draft', () => {
   it('EQUIPMENT: drafting a module delivers the unit AND its base technology', () => {
     const c = newRegionalRun('module-grant', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'mcmDroneLauncher' };
-    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
+    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
     c.phase = 'draft';
     const cashBefore = c.cash;
 
@@ -989,7 +989,7 @@ describe('technology draft', () => {
     const c = newRegionalRun('module-second', 'pirateNarrows');
     const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'deckGun' };
     for (let i = 0; i < 2; i++) {
-      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
+      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
       c.phase = 'draft';
       expect(selectDraftOption(c, option)).toBe(true);
     }
@@ -1132,7 +1132,7 @@ describe('technology draft', () => {
       // Take the first thing on offer, whatever category it is, until the
       // catalogue and every stock cap are exhausted.
       const option = pool[0].option;
-      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, picksLeft: 1, picksTotal: 1 };
+      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
       c.phase = 'draft';
       if (!selectDraftOption(c, option)) break;
     }

@@ -1814,10 +1814,10 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.base',
         name: 'Base Gun Run',
-        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for one at a time.',
+        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for two at a time.',
         cost: 0,
         granted: true,
-        grant: { charges: 1 },
+        grant: { charges: 2 },
       },
       {
         id: 'warthog.tankBuster',
@@ -1830,12 +1830,12 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'warthog.secondSortie',
-        name: 'Second Sortie',
-        desc: 'Room on the apron for a second sortie, so two can be held ready instead of one.',
+        name: 'Expanded Apron',
+        desc: 'Room on the apron for four sorties instead of two.',
         cost: 45,
         noChain: true,
         kind: 'mode',
-        grant: { charges: 2 },
+        grant: { charges: 4 },
       },
       {
         id: 'warthog.extendedLoiter',
@@ -2299,6 +2299,9 @@ export function deriveCounterEffects(
 
   return {
     damageTakenMult: 1,
+    escortDamageMult: 1,
+    escortMineDamageMult: 1,
+    escortSpeedMult: 1,
     warthogDamage:
       COMBAT.warthog.damage * (wart.flags.has('tankBuster') ? COMBAT.warthog.tankBusterMult : 1),
     sweepDrones: r.has('mcmDrones.base') && loadout.escortModules.includes('mcmDroneLauncher'),

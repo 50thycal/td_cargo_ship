@@ -179,8 +179,14 @@ Cash (earned per cargo value delivered) buys:
   mine sonar, fire suppression) — limited slots per class.
 - **Convoy-wide assets**: escorts (more interceptor launchers), the A-10,
   scanning array, interceptor ammo.
-- **Fleet**: replacement hulls, repairs (unrepaired damage carries into the
-  next transit), convoy composition (which ships sail, up to capacity).
+- **Fleet**: replacement hulls, convoy composition (which ships sail, up to
+  capacity).
+- **Repairs**, bought a scope at a time — cargo hulls (Convoy), escorts and
+  shore batteries (Defense), or everything in one order. Each single-scope
+  order also offers *repair what you can*, which spends the cash on hand
+  worst-hurt-hull-first. There is deliberately no partial order for
+  "everything": spending the whole wallet across the whole fleet is not a
+  decision. Unrepaired damage carries into the next transit.
 
 ## The adaptive enemy
 
@@ -232,8 +238,23 @@ The ramp is deliberately steep early — round 1 is the only truly gentle round.
 - **Convoy capacity** (20 → 45 by +5): grows after two consecutive rounds with
   ≥85% delivery. Bigger convoys earn more and attract more attention. The
   player chooses how many ships to actually send.
-- **Confidence** (0–100): rises with strong deliveries, falls with losses and
-  missed quotas. Zero = campaign over.
+- **Confidence** (0–100): rises with strong deliveries, falls with losses,
+  escorts sunk, crews abandoned and missed quotas. Zero = campaign over.
+  It has **two time constants**, and both are visible:
+  - the *round* term — one rate-based delivery curve with break-even inside the
+    healthy band, plus the crew, escort and capture penalties. Crews brought
+    home and a met shipping window are CREDITS, and on a losing round they
+    together cancel at most 70% of the damage: they mitigate, never profit;
+  - the *ceiling* — derived from the run's whole record. Every hull that did
+    not arrive and every crew left in the water permanently lowers the highest
+    number the consortium will give you. **A full bar means an operation that
+    has lost neither.** It floors at 40, so a bad record is never an
+    unrecoverable one, and it is shown on the resource bar (`82/91`) and on the
+    debrief, because an invisible cap reads as a bug.
+- **Draft rerolls:** rescuing 3 crews in one round earns a reroll of the
+  technology table, bankable up to 3. Crews only enter the water when hulls go
+  down, so it pays out exactly on the rounds that went badly — and it pays for
+  the boat work, not the sinking.
 - **Quota:** cargo points per 3-round window; the requirement ramps gently
   over time but does *not* scale with capacity (growth is opportunity, not
   obligation). One disastrous round can be recovered within the window.

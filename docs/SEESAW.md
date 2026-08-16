@@ -541,6 +541,57 @@ it. Counter-battery moved decisively (−5.0% → −1.3% → −3.7%) and the d
 never left the noise. Effects of 1–3% are not separable at this seed count;
 tuning against them is fitting noise, and stopping is the discipline.
 
+### A meter that only reads one thing is not a meter
+
+Confidence was, for a long stretch, unable to say anything. A hand-played
+eight-round log tells the whole story in three rows:
+
+| round | delivered | hulls lost | escorts lost | crews left | confidence |
+|-------|-----------|-----------|--------------|-----------|------------|
+| 5     | 97%       | 1         | **2**        | **1**     | 99 → **100** |
+| 6     | 77%       | **7**     | 0            | 1         | 100 → **100** |
+| 7     | 73%       | **8**     | 1            | 1         | 100 → **100** |
+
+Fifteen hulls and three escorts across those rounds, and the bar did not move.
+Four separate faults, each individually reasonable:
+
+- **Break-even sat at 0.78**, so putting 22% of the convoy on the seabed was
+  confidence-neutral by construction.
+- **Escort losses cost nothing at all.** Nothing in the model looked at the
+  screen.
+- **Crew abandonment was rate-scaled to near-invisibility** — the worst round
+  in the log drowned fourteen crews for −9.3, less than a missed quota window
+  used to cost.
+- **The credits could out-earn the disaster.** A round that lost seven of
+  thirty hulls but rescued six crews came out at **+1.3**; another was carried
+  back to level by the quota bonus landing on top of it. The boat work paid
+  better than not losing the ships.
+
+The first three are numbers and were re-tuned (0.86, −4/escort, −45 rate). The
+fourth is a *shape* problem, and the fix is a rule rather than a constant: the
+credits — crews home, window met — may cancel at most 70% of a losing round.
+They mitigate; they never profit. That keeps a worse round monotonically worse
+however much is done about it.
+
+But none of that would have fixed the third row. Round-by-round arithmetic
+**cannot** express "you have lost a sixth of everything you ever sailed",
+because each round in isolation was survivable. The ledger was not, and nothing
+was reading the ledger.
+
+So confidence gained a **ceiling**, derived from the run's cumulative record:
+every hull that did not arrive and every crew left in the water permanently
+lowers the highest number the consortium will give you. A full bar now means
+exactly what the player expected it to mean — an operation that has lost
+neither. Replayed against the same log, the three rows above become
+81 → 75, 75 → 74, 74 → 71, with the ceiling itself falling 91 → 81 → 74.
+
+The general rule: **a meter with only one time constant will eventually pin.**
+A per-round term can say "that went badly"; only a cumulative term can say
+"you are not the operator you were". Anything meant to read as reputation,
+standing or record needs both, and the slow one needs to be visible — the
+ceiling is shown on the resource bar (`82/91`) and on the debrief, because a
+cap the player cannot see acting on them is indistinguishable from a bug.
+
 ---
 
 ## How this is used

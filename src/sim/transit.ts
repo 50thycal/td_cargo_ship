@@ -12,6 +12,7 @@ import { COMBAT, ENEMY_ECONOMY, NAV, SIM, SURVIVORS, WORLD, WRECKAGE } from '../
 import { FORMATIONS, SHIP_CLASSES, SHIP_NAMES } from '../data/defs';
 import { canEngage, deriveCounterEffects, LOSS_CAUSE_TO_ENEMY_BRANCH } from '../data/counters';
 import { applyCommanderCombatEffects } from '../data/commanderAbilities';
+import { activeLegacyIds, applyEscortLegacyEffects } from '../data/escortLegacies';
 import { targetingSkill } from './evolution';
 import { clampLane, nearestLane, scheduleSpawns, transitTimeLimit } from './convoySchedule';
 import { survivorsUnderEscort, wreckageUnderEscort } from './escortOrders';
@@ -50,19 +51,26 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** Tier-resolved combat effects for a research set + platform loadout. All
- *  numeric conversion happens in the data layer (deriveCounterEffects), and
- *  Commander Ability modifiers are applied LAST, centrally — the locked
- *  effect flow: base → technology/tactics → equipment → commander → final. */
+ *  numeric conversion happens in the data layer (deriveCounterEffects), and the
+ *  permanent-progression modifiers — Commander Abilities and Escort Legacies —
+ *  are applied LAST, centrally, on the locked effect flow:
+ *  base → technology/tactics → equipment → commander & legacies → final.
+ *
+ *  `escortLegacies` takes the ACTIVE legacies only, meaning the ones whose
+ *  carrier is still afloat. Nothing downstream needs to know a legacy can be
+ *  lost mid-region: the effects are simply re-derived without it. */
 export function deriveEffects(
   completedResearch: readonly ResearchId[],
   loadout: { escortModules: readonly EscortModuleId[]; baseModules: readonly BaseModuleId[] },
   commanderAbilities: readonly string[] = [],
+  escortLegacies: readonly string[] = [],
 ): CombatEffects {
   const effects = deriveCounterEffects(completedResearch, {
     escortModules: [...loadout.escortModules],
     baseModules: [...loadout.baseModules],
   });
-  return applyCommanderCombatEffects(effects, commanderAbilities);
+  applyCommanderCombatEffects(effects, commanderAbilities);
+  return applyEscortLegacyEffects(effects, escortLegacies);
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +176,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       baseModules: campaign.baseModules,
     },
     campaign.commanderAbilities ?? [],
+    activeLegacyIds(campaign.escortUnits),
   );
   // Dev god mode: hulls shrug off all damage this transit.
   if (campaign.godMode) effects.damageTakenMult = 0;
@@ -1127,9 +1136,20 @@ function escortPerf(t: TransitState, escort: Escort): EscortPerformance {
   });
 }
 
+/** Top speed an escort answers an order with this transit: the navigation
+ *  constant with the Veteran Helm legacy folded in. Read through this rather
+ *  than off NAV directly, so the enemy's lead calculation and the cargo
+ *  steering's velocity estimate agree with how the escort actually moves. */
+function escortSpeedOf(t: TransitState): number {
+  return NAV.escortSpeed * t.effects.escortSpeedMult;
+}
+
 function damageEscort(t: TransitState, escort: Escort, amount: number, cause: string): void {
   if (!escort.alive) return;
-  const dealt = amount * t.effects.damageTakenMult;
+  // Escort legacies ride on top of the fleet-wide damage multiplier: a general
+  // reduction for every hit, and a second one that only answers mines.
+  const mineMult = cause === 'mine' || cause.startsWith('mine:') ? t.effects.escortMineDamageMult : 1;
+  const dealt = amount * t.effects.damageTakenMult * t.effects.escortDamageMult * mineMult;
   escort.hp -= dealt;
   escortPerf(t, escort).damageTaken += dealt;
   creditEnemyBranch(t, cause, dealt, false);
@@ -3533,7 +3553,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       } else {
         tx = target.escort.x;
         ty = target.escort.y;
-        leadSpeed = NAV.escortSpeed;
+        leadSpeed = escortSpeedOf(t);
       }
       let aimX = tx;
       let aimY = ty;
@@ -3651,8 +3671,8 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       const dx = e.moveTarget.x - e.x;
       const dy = e.moveTarget.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
-      evx = (dx / d) * NAV.escortSpeed;
-      evy = (dy / d) * NAV.escortSpeed;
+      evx = (dx / d) * escortSpeedOf(t);
+      evy = (dy / d) * escortSpeedOf(t);
     } else if (e.stationed) {
       evx = 0;
       evy = 0;
@@ -4000,7 +4020,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         // Full chase outside the ring, easing to a stop on it — and never
         // backing away: a boat that closes the range is the gun's problem,
         // not the helm's.
-        speed = NAV.escortSpeed * clamp((d - holdAt) / 60, 0, 1);
+        speed = escortSpeedOf(t) * clamp((d - holdAt) / 60, 0, 1);
         avoidGain = clamp((d - NAV.escortArrive) / (2 * NAV.escortArrive), 0, 1);
       }
     }
@@ -4017,7 +4037,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         goalDistBefore = d;
         goalX = dx / d;
         goalY = dy / d;
-        speed = Math.min(NAV.escortSpeed, d / dt);
+        speed = Math.min(escortSpeedOf(t), d / dt);
         avoidGain = clamp((d - NAV.escortArrive) / (2 * NAV.escortArrive), 0, 1);
         // Blocked long enough that there is evidently no way around: part the
         // line instead of circling it forever. Faded in rather than switched,

@@ -86,6 +86,9 @@ export interface EscortUnit {
   modules: EscortModuleId[];
   /** Unrepaired hull damage this escort is carrying into the next round. */
   damage: number;
+  /** The escort legacy this ship carries, assigned when she was commissioned.
+   *  Her loss burns it for the rest of the region — see spendEscortLegacy. */
+  legacy?: string;
 }
 
 export interface BaseModuleDef {
@@ -1090,6 +1093,14 @@ export interface CombatEffects {
   /** Global damage multiplier (1 normally; 0 in dev god mode). Per-ship
    *  compartmentalization applies separately, only to equipped hulls. */
   damageTakenMult: number;
+  /** Escort-only damage multipliers, on top of damageTakenMult. Escort
+   *  legacies live here: a flotilla can be hardened without also hardening the
+   *  merchant hulls, which is a different (and much bigger) lever. */
+  escortDamageMult: number;
+  /** Applied on top of escortDamageMult for MINE damage only. */
+  escortMineDamageMult: number;
+  /** Multiplies escort transit speed. */
+  escortSpeedMult: number;
   /** Damage one A-10 gun run does to an attack boat (mines die outright). */
   warthogDamage: number;
   /** Minesweeper drones available (branch researched AND launcher equipped). */
@@ -1418,6 +1429,12 @@ export interface TechDraft {
   options: DraftOption[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
+  /** The per-branch salvage the table was drawn against, kept so a REROLL can
+   *  redraw against the same round rather than against a bare pool. */
+  recoveredByBranch: Record<string, number>;
+  /** Times this table has been rerolled — shown to the player, and used to
+   *  salt the redraw so a reroll is deterministic on replay. */
+  rerolls?: number;
   /** How many options may be TAKEN from this table. One ordinarily; recovery
    *  buys a second and a third. Picking decrements it, and the draft closes
    *  when it reaches zero — so a rich salvage round is a bigger shopping trip
@@ -1872,6 +1889,11 @@ export interface CampaignState {
   regionId: string;
   /** Commander Ability loadout locked in for this run at run start. */
   commanderAbilities: string[];
+  /** Escort legacies equipped for this run, snapshotted from the profile at
+   *  region start, and the ones whose ship has since gone down. A spent legacy
+   *  is never reassigned: a replacement hull is a new ship with a new crew. */
+  escortLegacies: string[];
+  spentLegacies: string[];
   /** True for a developer/test run — enables the dev tools and, with godMode,
    *  invincible ships & unlimited munitions. Never set on a normal campaign. */
   dev?: boolean;
@@ -1895,6 +1917,8 @@ export interface CampaignState {
   defeatCause: 'confidence' | 'quota' | null;
   /** Mandatory technology draft awaiting a pick (null = none pending). */
   pendingDraft: TechDraft | null;
+  /** Banked draft rerolls, earned by pulling crews out of the water. */
+  draftRerolls: number;
   /** Every draft offered this run, with what was picked (telemetry). */
   draftHistory: DraftRecord[];
   /** What each enemy branch has actually done to this run — the primary
@@ -1914,6 +1938,11 @@ export interface CampaignState {
   wreckageRecovered: Record<string, number>;
   /** Crew-rescue totals across the run (drives records + AAR framing). */
   crewRescue: { rescued: number; lost: number };
+  /** The run's cumulative hull ledger — every merchant sailed and every one
+   *  that did not arrive. This is what the CONFIDENCE CEILING is read from:
+   *  the consortium's highest opinion of you is your record, not your last
+   *  round. See CAMPAIGN.confidenceCeilingLossDrag. */
+  record: { launched: number; lost: number };
   /** True once this run's ending has been applied to the Commander Profile,
    *  so a reload of the final report can never award XP twice. */
   profileApplied: boolean;

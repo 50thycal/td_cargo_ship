@@ -26,8 +26,10 @@ import {
   fleetHasEscortModule,
   buyPdAmmo,
   buyShip,
-  repairCost,
   repairFleet,
+  repairPartial,
+  scopeDamage,
+  type RepairScope,
   setComposition,
   setFormation,
   buyWarthogSortie,
@@ -41,8 +43,9 @@ import {
 } from '../../src/sim/draft';
 import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../src/data/counters';
 import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
-import { COMBAT, COMMANDER, NAV, WORLD } from '../../src/data/tuning';
+import { COMBAT, COMMANDER, ESCORT_LEGACY, NAV, WORLD } from '../../src/data/tuning';
 import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
+import { ESCORT_LEGACIES, legacyPointsUsed } from '../../src/data/escortLegacies';
 import type {
   DraftOption,
   BaseModuleId,
@@ -65,7 +68,12 @@ import type {
  *  bot walks its list top to bottom, repeatedly, until nothing is affordable —
  *  so an early cheap intent is satisfied before a later expensive one. */
 export type BuyIntent =
-  | { kind: 'repair' }
+  /** Patch the fleet. `scope` picks which half (default: everything); `partial`
+   *  lets the bot spend what it has on a scope it cannot fully afford, the way
+   *  the prep screen's second repair button does. Without a persona that sets
+   *  these, the sweep could never measure a change to the split — the same
+   *  instrument gap that hid the smoke rework. */
+  | { kind: 'repair'; scope?: RepairScope; partial?: boolean }
   | { kind: 'base' }
   /** Buy an escort, optionally maintaining a standing screen of `upTo` hulls.
    *  Without `upTo` the bot buys one whenever it happens to be affordable at
@@ -173,6 +181,12 @@ export interface Persona {
    *  startup — an illegal loadout is a persona bug, not something to silently
    *  truncate. Empty means a bare commander, which no real run has. */
   commander?: string[];
+  /** Escort Legacy loadout this build commissions with, bounded by
+   *  ESCORT_LEGACY.slots / .loadoutPoints and validated at startup the same way
+   *  as `commander`. Every persona carries some, because a sweep where nobody
+   *  equips legacies cannot measure a change to one — the same instrument bug
+   *  that hid the smoke rework (see docs/PLAYTEST_FIDELITY.md). */
+  legacies?: string[];
   /** Research priority order; the first affordable+available entry is started. */
   research: ResearchId[];
   buys: BuyIntent[];
@@ -200,8 +214,17 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
   const free = intent.kind === 'module' || intent.kind === 'escortFit' || intent.kind === 'baseModule';
   if (spendable <= 0 && intent.kind !== 'repair' && !free) return false;
   switch (intent.kind) {
-    case 'repair':
-      return repairCost(c) > 0 && repairFleet(c);
+    case 'repair': {
+      const scope = intent.scope ?? 'all';
+      // Damage, not COST, is the "is there work to do" test: the Forward Repair
+      // Yard patches warships for nothing, and gating on price meant a bot that
+      // owned the yard never took the free repair it had paid for.
+      if (scopeDamage(c, scope) <= 0) return false;
+      if (repairFleet(c, scope)) return true;
+      // Cannot afford the whole order. A persona that says so patches what it
+      // can; one that does not waits and saves.
+      return intent.partial === true && scope !== 'all' && repairPartial(c, scope);
+    }
     case 'base':
       return buyBase(c);
     case 'escort':
@@ -882,6 +905,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Generalist: one answer to every branch before depth in any of them.',
     formation: 'tight',
     commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['gunneryDrill', 'minePlating', 'veteranHelm'],
     adaptFormation: true,
     // BREADTH FIRST, and deliberately so. Research runs one project at a time
     // and a campaign completes roughly thirteen of them, so a list ordered by
@@ -952,6 +976,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Survivability-first: hull, compartmentalization and fire suppression before firepower.',
     formation: 'wide',
     commander: ['shipwright', 'rescueDoctrine', 'salvageTeams'],
+    legacies: ['damageControl', 'minePlating'],
     adaptFormation: true,
     research: [
       'compartmentalization.low',
@@ -968,7 +993,8 @@ export const PERSONAS: Persona[] = [
       'reinforcedHull.extra',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'escorts', partial: true },
+      { kind: 'repair', scope: 'cargo', partial: true },
       { kind: 'ammo', upTo: 22 },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
       { kind: 'ship', classId: 'cargo' },
@@ -987,6 +1013,7 @@ export const PERSONAS: Persona[] = [
     desc: 'All-in on missile defense: launchers, ammunition and interceptor research; ignores mines.',
     formation: 'tight',
     commander: ['steadyHands', 'quartermaster', 'rescueDoctrine'],
+    legacies: ['gunneryDrill', 'rapidRearm', 'veteranHelm'],
     research: [
       'escortInterceptor.precisionGuidance',
       'baseInterceptor.extendedBurn',
@@ -1017,6 +1044,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Detection-first: warning receivers, sonar and scan pulses before shooters.',
     formation: 'wide',
     commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['rescueRig', 'gunneryDrill', 'veteranHelm'],
     adaptFormation: true,
     research: [
       'missileWarning.base',
@@ -1062,6 +1090,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Mine specialist: sonar + scan + drone launchers, minimal missile investment.',
     formation: 'wide',
     commander: ['salvageTeams', 'quartermaster', 'shipwright'],
+    legacies: ['minePlating', 'requisitionOrder'],
     research: [
       'mineSonar.base',
       'mcmDrones.base',
@@ -1102,6 +1131,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Underwater specialist: hydrophone watch, depth charges and sonar pings — no answer to anything airborne.',
     formation: 'wide',
     commander: ['salvageTeams', 'rescueDoctrine', 'shipwright'],
+    legacies: ['rescueRig', 'minePlating', 'veteranHelm'],
     research: [
       'hydrophone.base',
       'depthCharges.base',
@@ -1120,7 +1150,8 @@ export const PERSONAS: Persona[] = [
       'hydrophone.sharedPicture',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'escorts', partial: true },
+      { kind: 'repair', scope: 'cargo' },
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
       { kind: 'escortFit' },
@@ -1145,6 +1176,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Anti-surface specialist: escort deck guns and anti-boarding drills — no answer to anything it cannot shoot flat.',
     formation: 'tight',
     commander: ['shipwright', 'quartermaster', 'salvageTeams'],
+    legacies: ['requisitionOrder', 'veteranHelm', 'standingContract'],
     research: [
       'deckGun.base',
       'deckGun.autoNearest',
@@ -1188,6 +1220,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Counter-battery specialist: silences artillery from the friendly shore, and sails wide of the guns.',
     formation: 'wide',
     commander: ['steadyHands', 'quartermaster', 'rescueDoctrine'],
+    legacies: ['gunneryDrill', 'rescueRig', 'standingContract'],
     research: [
       'counterBattery.base',
       'counterBattery.autoReturnFire',
@@ -1224,6 +1257,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Equips the convoy before it enlarges it — the mirror of economist.',
     formation: 'tight',
     commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['damageControl', 'veteranHelm', 'standingContract'],
     adaptFormation: true,
     research: [
       'escortInterceptor.precisionGuidance',
@@ -1241,7 +1275,8 @@ export const PERSONAS: Persona[] = [
       'deckGun.autoNearest',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'cargo', partial: true },
+      { kind: 'repair', scope: 'escorts', partial: true },
       { kind: 'ammo', upTo: 30 },
       // No hull purchase up here at all. The campaign already starts with a
       // convoy that can sail, and this build's whole point is to equip that
@@ -1282,6 +1317,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Greed test: buys hulls and capacity, minimal defense — should be punished if pressure is real.',
     formation: 'sprint',
     commander: ['warChest', 'shipwright', 'quartermaster'],
+    legacies: ['standingContract', 'veteranHelm', 'requisitionOrder'],
     research: [
       'logistics.expandedBerthing',
       'escortInterceptor.precisionGuidance',
@@ -1309,6 +1345,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Drafts auto-fire first and lets it work: hand-fires only what the automation would miss.',
     formation: 'tight',
     commander: ['steadyHands', 'salvageTeams'],
+    legacies: ['rapidRearm', 'gunneryDrill', 'veteranHelm'],
     adaptFormation: true,
     research: [
       'escortInterceptor.localAuto',
@@ -1353,6 +1390,7 @@ export const PERSONAS: Persona[] = [
     desc: 'Control case: buys nothing, fires nothing. The floor any real build must beat.',
     formation: 'tight',
     commander: [],
+    legacies: [],
     research: [],
     buys: [],
     transit: PASSIVE,
@@ -1381,6 +1419,23 @@ export function commanderLoadoutError(persona: Persona): string | null {
   const points = loadoutPointsUsed(ids);
   if (points > COMMANDER.loadoutPoints) {
     return `${points} loadout points exceeds the ${COMMANDER.loadoutPoints} budget`;
+  }
+  return null;
+}
+
+/** Why this persona's Escort Legacy loadout is illegal, or null when it is
+ *  fine. Checked, not clamped, for the same reason as the Commander loadout. */
+export function legacyLoadoutError(persona: Persona): string | null {
+  const ids = persona.legacies ?? [];
+  const unknown = ids.filter((id) => !ESCORT_LEGACIES[id]);
+  if (unknown.length > 0) return `unknown Escort Legacy: ${unknown.join(', ')}`;
+  if (new Set(ids).size !== ids.length) return 'duplicate Escort Legacy';
+  if (ids.length > ESCORT_LEGACY.slots) {
+    return `${ids.length} legacies exceeds ${ESCORT_LEGACY.slots} berths`;
+  }
+  const points = legacyPointsUsed(ids);
+  if (points > ESCORT_LEGACY.loadoutPoints) {
+    return `${points} legacy points exceeds the ${ESCORT_LEGACY.loadoutPoints} budget`;
   }
   return null;
 }
