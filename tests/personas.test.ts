@@ -194,6 +194,47 @@ describe('formation is a per-round lever', () => {
   });
 });
 
+describe('the whole draft gets spent', () => {
+  // Recovery buys PICKS first and cards second (see generateDraft): a draft
+  // grants DRAFT.basePicks plus one per DRAFT.unitsPerExtraPick recovered, up
+  // to DRAFT.maxPicks. `research` used to take exactly one and return, so every
+  // extra pick a bot earned by salvaging was abandoned and then overwritten by
+  // the next round's draft — the recovery loop ran and its entire reward went
+  // in the bin. Measured before the fix: 0.98 picks/round against a hand-played
+  // 1.38, and 53 of 66 campaigns fired zero automatic shots.
+  it('leaves no pending draft behind, however many picks it granted', () => {
+    const persona = personaByName('automation')!;
+    const c = newRegionalRun('multipick-seed', 'pirateNarrows', persona.commander ?? []);
+    let sawMultiPick = false;
+    for (let round = 0; round < 8; round++) {
+      if (c.campaignOver) break;
+      procure(c, persona);
+      const plan = planCurrentRound(c);
+      const { state, rng } = createRoundTransit(c, plan);
+      const mem = newTransitMemory();
+      let guard = 0;
+      while (!state.over && guard++ < 100_000) {
+        stepTransit(state, decideCommands(state, persona, mem), rng);
+      }
+      resolveTransit(c, state);
+      const granted = c.pendingDraft?.picksTotal ?? 0;
+      if (granted > 1) sawMultiPick = true;
+      const picks = research(c, persona);
+      // Every granted pick is taken, and the draft is closed behind it.
+      expect(picks.length).toBe(granted);
+      expect(c.pendingDraft).toBeNull();
+    }
+    // The test is worthless if the run never earned a second pick — that would
+    // pass just as happily against the one-pick-only bug it exists to catch.
+    expect(sawMultiPick).toBe(true);
+  });
+
+  it('earns more technology per round than one-pick-per-round could', () => {
+    const c = playRun('automation', 'multipick-seed', 8);
+    expect(c.draftHistory.length).toBeGreaterThan(c.telemetry.length);
+  });
+});
+
 describe('the run the sweep plays', () => {
   it('is a shipping region with a win condition, not the dev proving ground', () => {
     // `newCampaign` hard-codes `openSeas`: seven branches, no starting escort,

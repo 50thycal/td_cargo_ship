@@ -103,11 +103,20 @@ commander loadout, the same starting state or the same completion round. *Always
 close.* No judgement required and nothing downstream is comparable until it is.
 Fix in the runner's campaign construction (`newRegionalRun`, not `newCampaign`).
 
-**B — Missing capability.** The bot cannot issue the command at all — check
-`decideCommands` in `personas.ts` against the `TransitCommand` union in
-`src/sim/types.ts`. A command type with no case in the persona is a system the
-sweep has never once exercised. *Close.* This is the bucket that produces the
-biggest, quietest measurement errors.
+**B — Missing capability.** The bot cannot do the thing at all. Two places to
+look, and the second is the one that gets forgotten:
+
+- *In transit* — check `decideCommands` in `personas.ts` against the
+  `TransitCommand` union in `src/sim/types.ts`. A command type with no case in
+  the persona is a system the sweep has never once exercised.
+- *Between rounds* — check that the harness consumes each between-round system
+  **to exhaustion**, not once. `research()` took a single draft pick while the
+  draft granted up to `DRAFT.maxPicks`, so every extra pick recovery earned was
+  abandoned; the bots did the salvage work and binned the reward. A per-round
+  loop that assumes "one of these per round" is the shape to distrust.
+
+*Close.* This is the bucket that produces the biggest, quietest measurement
+errors.
 
 **C — Deliberate idealization.** The bot *can* do it and does it better than a
 human ever would: perfect target deduplication, tick-rate reaction, no
@@ -180,6 +189,14 @@ is one entry in `PROBES` in `tools/playtest/fidelity.ts`:
 - `value(logs)` aggregates over one side's logs — return `null` when the side
   has **no data** for it (an older log missing the field), which is different
   from a measured zero and must not be reported as one.
+- **Measure a magnitude, not a threshold.** A probe phrased as "share of drafts
+  offering 3+ options" dies silently the day the game raises its floor to 3:
+  both sides pin at 100% and it reports `MATCH` forever, over whatever it was
+  supposed to be watching. Count the thing (options per draft), not how often
+  the thing clears a bar.
+- **Probes go stale too.** When a run turns up a real gap the panel reported as
+  `MATCH`, the probe that missed it is itself a finding — fix it in the same
+  pass and say so in the ledger.
 - `tolerance` is the relative band for `MATCH`. Be generous (0.3–0.5) on
   behavioural rates and tight (0.1–0.2) on economy and outcome numbers.
 - `why` states **what a divergence invalidates** — this string is what makes the

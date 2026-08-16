@@ -52,6 +52,15 @@ function round(over: Record<string, unknown> = {}) {
   };
 }
 
+/** A draft record offering `n` options. */
+function d(n: number) {
+  return {
+    round: 1,
+    offered: Array.from({ length: n }, (_, i) => `opt${i}`),
+    picked: 'opt0',
+  };
+}
+
 function probe(id: string, human: Log[], bots: Log[]) {
   const found = buildReport(human, bots, 'test').probes.find((p) => p.id === id);
   if (!found) throw new Error(`no such probe: ${id}`);
@@ -243,6 +252,34 @@ describe('the panel itself', () => {
       expect(p.tolerance).toBeGreaterThan(0);
     }
     expect(new Set(PROBES.map((p) => p.id)).size).toBe(PROBES.length);
+  });
+
+  it('measures magnitudes, not thresholds the game can outgrow', () => {
+    // `draftWidth` used to be "share of drafts offering 3+ options", which was
+    // meaningful when DRAFT.baseChoices was 2. The game then raised the floor to
+    // 3, pinning both sides at 100% and reporting MATCH while the human was
+    // being offered 4.91 options a draft against the bots' 4.09. A probe whose
+    // threshold sits below the game's own floor measures nothing — so the
+    // share-typed probes are the ones to keep honest here.
+    const wide = [log({ drafts: [d(6), d(5), d(6)], rounds: [round()] })];
+    const narrow = [log({ drafts: [d(3), d(3), d(3)], rounds: [round()] })];
+    const result = probe('draftWidth', wide, narrow);
+    expect(result.human).toBeCloseTo(5.67, 1);
+    expect(result.bot).toBeCloseTo(3, 1);
+    expect(result.verdict).not.toBe('match');
+  });
+
+  it('counts picks taken per round, so an abandoned pick cannot hide', () => {
+    // The bug this exists for: the harness resolved one pick per round while a
+    // draft granted up to DRAFT.maxPicks, so recovery's actual payout was
+    // abandoned. Nothing in the panel could see it — the draft-width probe was
+    // saturated and tech-per-round moved too little to leave tolerance.
+    const spent = [log({ drafts: [d(4), d(4), d(4)], rounds: [round(), round()] })];
+    const dropped = [log({ drafts: [d(4), d(4)], rounds: [round(), round()] })];
+    const result = probe('draftPicksPerRound', spent, dropped);
+    expect(result.human).toBeCloseTo(1.5, 2);
+    expect(result.bot).toBeCloseTo(1.0, 2);
+    expect(result.verdict).not.toBe('match');
   });
 
   it('records a direction of bias for anything it accepts', () => {

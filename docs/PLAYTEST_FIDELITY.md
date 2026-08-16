@@ -66,6 +66,7 @@ decays, and what the ledger exists to make visible.
 | --- | --- | --- | --- | --- | --- |
 | 2026-08-07 | `straitwatchlog_r9` (pirateNarrows, steadyHands+salvageTeams) | 9 | **SETUP MISMATCH (5)** — 6/20 probes match | — (baseline) | — |
 | 2026-08-07 | same log, after the harness fixes below | 9 | **6/20 match, 9 drift, 4 open** (whole sweep)<br>**11/20 match, 5 drift, 2 open** (vs `automation`) | A ×4, B ×5 | C ×1, D ×2 |
+| 2026-08-16 | `straitwatchlog_r8` (pirateNarrows, **bare** commander, lost on quota R8) | 8 | before: **10/21 match, 6 drift, 3 open**<br>after: **12/21 match, 5 drift, 3 open** | B ×1 (whole draft now spent) + 2 dead probes replaced | C ×1, D ×3 |
 
 ---
 
@@ -227,3 +228,91 @@ is the first honest reading of `pirateNarrows`.
 rule above — a balance fix landing here would make the next sweep's movement
 unattributable. It needs its own change, its own before/after, and a re-read
 through `seesaw-eval`.
+
+
+---
+
+## 2026-08-16 — the recovery loop's reward was going in the bin
+
+Read against a hand-played 8-round `pirateNarrows` run that lost on quota.
+
+### B — The harness took one draft pick per round; the draft grants up to three
+
+`generateDraft` awards `DRAFT.basePicks` plus one more per
+`DRAFT.unitsPerExtraPick` wreckage recovered, capped at `DRAFT.maxPicks` —
+**recovery buys PICKS first and cards second**. The persona's `research()` took
+exactly one option and returned, so the runner closed the round with
+`pendingDraft` still holding unspent picks, and `resolveTransit` overwrote it
+with a fresh draft the next round.
+
+The bots were doing the salvage work — 53.7% of wreckage recovered against the
+human's 61.5% — and then discarding what it bought.
+
+| | Before | After | Human |
+| --- | --- | --- | --- |
+| Draft picks taken per round | 0.98 | 1.20 | 1.38 |
+| Technologies completed per round | 0.90 | 1.10 | 1.25 |
+
+`research()` now spends the whole draft and returns every pick. Pinned by
+`tests/personas.test.ts` → *the whole draft gets spent*, which asserts the run
+actually earned a multi-pick draft first — the same test against the old
+one-pick behaviour would otherwise have passed happily.
+
+### Two probes had gone dead and had to be replaced
+
+Both were reporting `MATCH` over the bug above.
+
+- **`draftWidth` was saturated.** It measured "share of drafts offering 3+
+  options", which was meaningful when `DRAFT.baseChoices` was 2. The game raised
+  the floor to 3, so both sides pinned at 100% while the human was offered
+  **4.91** options a draft against the bots' **4.09**. Now it measures options
+  per draft. *A probe whose threshold sits below the game's own floor measures
+  nothing — prefer a magnitude over a threshold.*
+- **Nothing counted picks at all**, which is why an abandoned pick was invisible.
+  Added `draftPicksPerRound`.
+
+---
+
+## Open and accepted (2026-08-16)
+
+### Still open
+
+1. **Manual shot share 89.8% vs 26.1%** — and it is **not** a persona defect.
+   Measured: when an interceptor auto-fire node is offered, the `automation`
+   persona takes it **6 times out of 6**. The gap is entirely on the *offer*
+   side — auto nodes appeared in **0.17 per bot draft against 0.55 per human
+   draft**, a 3.2× difference. Auto-fire tactics are upgrades to an already
+   *answered* branch, so the draft's unanswered-threat weighting ranks them
+   below modules for branches that are currently hurting. **This is a draft-pool
+   question for the game, not harness work** — and it means the `automation`
+   archetype is currently not reliably reachable by anyone, bot or player.
+   Do not "fix" it by making the bots luckier.
+2. **Warthog sorties 0.23/round vs 0.88** on the whole sweep — but **0.72
+   (MATCH)** against `automation` alone. This is the aggregate-vs-persona
+   artefact the `--persona` flag exists for; read it there.
+3. **Escort-seconds on recovery, 25 vs 44 per round.** The one-job-at-a-time
+   escort heuristic again. Diminishing returns.
+
+### Accepted — bucket C
+
+- **Duplicate shots** unchanged and still accepted, bias recorded on the probe.
+- **`duplicateShotsAvoided` now appears in HUMAN logs too** (103,200 in this
+  one). It counts per-tick re-offer rejections, not player decisions. It was
+  already uninterpretable across the two sides; it is now uninterpretable within
+  either. Do not use this field.
+
+### Accepted — bucket D (game, not harness)
+
+- **Smoke was researched, upgraded and never used — again.** The player took
+  `smokeScreen.expandedCoverage`, spent $140, and laid **zero clouds** in eight
+  rounds. This is the *second consecutive log* with that exact shape, so it is
+  no longer a one-off: it is a confirmed discoverability problem.
+- **Self-defense was drafted, equipped and never fed.** `selfDefense.base`
+  researched, `module:cargo:selfDefense` drafted and fitted to the cargo
+  class — and **zero** self-defense ammunition bought, so `pdKills` is 0. Same
+  shape as the smoke finding: a counter acquired and left inert.
+- **The player finished with 0 escorts; the bots keep 1.71.** Five escorts lost,
+  four of them to mines. A strategy/luck difference, not a missing capability.
+- **The player ran a bare Commander profile** (no abilities) while every persona
+  commissions a loadout. Flagged as a setup mismatch, and correctly so — the
+  bots get accuracy, salvage-rate and price bonuses this run did not have.

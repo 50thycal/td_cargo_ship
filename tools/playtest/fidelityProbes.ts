@@ -170,22 +170,44 @@ export const PROBES: Probe[] = [
   },
   {
     id: 'draftWidth',
-    label: 'Drafts offering 3+ options',
+    label: 'Options per draft',
     group: 'engagement',
-    unit: 'share',
-    tolerance: 0.3,
-    why: 'Draft width is the roguelite reward loop. Narrow drafts mean the technology the sweep converges on is a different tree than the human climbs.',
+    unit: '/draft',
+    tolerance: 0.2,
+    why: 'Draft width is the roguelite reward loop, and recovery is what buys it. A narrower table means the sweep converges on a different tree than the human climbs.',
+    // Counts OPTIONS, not "drafts with at least three". The old form was a
+    // share-of-drafts-with-3+, which was meaningful when DRAFT.baseChoices was
+    // 2 — and then the game raised the floor to 3, pinning both sides at 100%
+    // and reporting MATCH while the human was being offered 4.91 options a
+    // draft against the bots' 4.09. A probe whose threshold sits below the
+    // game's floor measures nothing; prefer a magnitude over a threshold.
     value: (logs) => {
-      let wide = 0;
-      let total = 0;
+      let options = 0;
+      let drafts = 0;
       for (const log of logs) {
         for (const d of log.drafts ?? []) {
-          total++;
-          if ((d.offered?.length ?? 0) >= 3) wide++;
+          drafts++;
+          options += d.offered?.length ?? 0;
         }
       }
-      return total > 0 ? wide / total : null;
+      return drafts > 0 ? options / drafts : null;
     },
+  },
+  {
+    id: 'draftPicksPerRound',
+    label: 'Draft picks taken per round',
+    group: 'engagement',
+    unit: '/round',
+    tolerance: 0.15,
+    why: 'Recovery buys PICKS before it buys cards, so this is the recovery loop\'s actual payout. A side taking fewer picks than it earned is throwing the reward away and every technology-pacing number measured through it is short.',
+    // The probe that would have caught a real bug: the harness resolved exactly
+    // one pick per round while the draft granted up to DRAFT.maxPicks, so every
+    // extra pick a bot earned by salvaging was abandoned and then overwritten by
+    // the next round's draft. Measured 0.98/round against a hand-played 1.38.
+    value: rate(
+      (l) => l.reduce((sum, log) => sum + (log.drafts?.length ?? 0), 0),
+      (l) => roundCount(l),
+    ),
   },
   {
     id: 'smokePerRound',
