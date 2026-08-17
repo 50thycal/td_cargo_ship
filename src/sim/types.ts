@@ -560,6 +560,15 @@ export interface Escort {
   /** Player-set destination. `hold` = station there instead of resuming
    *  forward on arrival. */
   moveTarget: { x: number; y: number; hold: boolean } | null;
+  /** The REST of a drawn route, in order, waiting behind moveTarget.
+   *
+   *  A path is deliberately nothing more than a queue of ordinary move targets:
+   *  arriving at one pops the next. Every bit of the steering the escort
+   *  already has — traffic avoidance, the blocked-and-parting rule, the arrival
+   *  test — applies to a drawn route without knowing routes exist, which is why
+   *  a curve around a minefield behaves like a hand-flown one rather than a
+   *  rail the ship is dragged along. */
+  waypoints: { x: number; y: number }[];
   /** True once a hold order has been reached: the escort holds position. */
   stationed: boolean;
   /** Seconds spent making no real ground toward the current destination. Past
@@ -749,6 +758,34 @@ export interface StrafeRun {
   ttl: number;
 }
 
+/** One deck-gun round in flight, drawn from the escort to what she shot at.
+ *
+ *  VISUAL ONLY, exactly like StrafeRun and for the same reason: the sim
+ *  resolves the accuracy roll and the damage at the trigger pull, so this
+ *  object carries neither. It exists because a gun that killed attack boats
+ *  with nothing visible between the escort and the boat left the player with a
+ *  weapon they could only find in the after-action report.
+ *
+ *  The view interpolates the shell along the line over its life, so a round
+ *  that misses still flies — it simply arrives with nothing to show for it. */
+export interface GunShot {
+  id: number;
+  /** Muzzle, at fire time. */
+  x: number;
+  y: number;
+  /** Where the round is going — the target's position when it was fired. A
+   *  boat that moves is not chased: the shell was already on its way. */
+  targetX: number;
+  targetY: number;
+  /** Did the roll land? Decides whether the far end shows an impact. */
+  hit: boolean;
+  /** True when this round is what sank her, so the view can flash it. */
+  killed: boolean;
+  /** Seconds of flight left, counted down from ttlTotal. */
+  ttl: number;
+  ttlTotal: number;
+}
+
 /** A placed area effect with a lifetime: active-sonar ping (reveals the
  *  underwater picture) or defensive smoke (degrades enemy targeting). */
 export interface AreaEffect {
@@ -856,7 +893,10 @@ export type TransitCommand =
   | { type: 'toggleAuto'; system: AutoSystem; enabled: boolean }
   /** Send an escort to a point. hold=false → resume forward on arrival;
    *  hold=true → stay stationed there. */
-  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean };
+  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean }
+  /** A drawn ROUTE: the escort steams the points in order. The last one
+   *  carries `hold`, exactly as a single move order would. */
+  | { type: 'pathEscort'; escortId: number; points: { x: number; y: number }[]; hold: boolean };
 
 export type TransitEventType =
   | 'delivered'
@@ -1298,6 +1338,8 @@ export interface TransitState {
   aircraft: Aircraft[];
   /** Gun-run bursts still being drawn. Visual only — see StrafeRun. */
   strafeRuns: StrafeRun[];
+  /** Deck-gun rounds in flight. Visual only — see GunShot. */
+  gunShots: GunShot[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
@@ -1339,12 +1381,11 @@ export interface TransitState {
   /** One "out of shells" warning per dry spell, not one per silent trigger
    *  pull — thirty toasts a second is noise, not information. */
   gunAmmoWarned: boolean;
+  /** Sorties in hand. Sorties STACK — several jets may be on task at once, on
+   *  different bearings — so this count is the only thing limiting the player.
+   *  There is deliberately no "one flight at a time" gate: with one, holding
+   *  four charges and flying one made the count a lie. */
   warthogCharges: number;
-  /** Transit time until which an A-10 is on task (blocks a second call). */
-  warthogActiveUntil: number;
-  /** Where the A-10 currently on task is holding its wheel. */
-  warthogCenterX: number;
-  warthogCenterY: number;
   scanCharges: number;
   sonarCharges: number;
   smokeCharges: number;

@@ -384,10 +384,21 @@ function eligibleOrdnance(c: CampaignState, pack: OrdnancePackDef): boolean {
   const research = effectiveResearch(c.completedResearch);
   const capacityOf = (branchId: 'warthog' | 'scanPulse' | 'smokeScreen'): number =>
     resolveBranchStats(branchId, research).grants.charges ?? 0;
-  if (pack.grant.warthogStock && c.warthogStock >= capacityOf('warthog')) return false;
-  if (pack.grant.scanStock && c.scanStock >= capacityOf('scanPulse')) return false;
-  if (pack.grant.smokeStock && c.smokeStock >= capacityOf('smokeScreen')) return false;
-  return true;
+  // Offer the pack while ANY of its components can still land.
+  //
+  // This used to reject on the first FULL component, which is the correct rule
+  // for a single-munition pack and exactly the wrong one for a mixed package:
+  // the more things a package carried, the more likely one of them was topped
+  // out, so the richest cards would have been the rarest. A pack is worth
+  // offering if the player can still use part of it.
+  const uncapped: boolean[] = [];
+  if (pack.grant.warthogStock) uncapped.push(c.warthogStock < capacityOf('warthog'));
+  if (pack.grant.scanStock) uncapped.push(c.scanStock < capacityOf('scanPulse'));
+  if (pack.grant.smokeStock) uncapped.push(c.smokeStock < capacityOf('smokeScreen'));
+  // Ammunition stocks have no cap, so a pack carrying any of them always has
+  // somewhere to put its load.
+  if (pack.grant.ammo || pack.grant.droneAmmo || pack.grant.pdAmmo) uncapped.push(true);
+  return uncapped.length === 0 || uncapped.some(Boolean);
 }
 
 // ---------------------------------------------------------------------------

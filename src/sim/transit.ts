@@ -29,6 +29,7 @@ import type {
   CounterRoundStats,
   EnemyInstallation,
   Escort,
+  GunShot,
   EscortModuleId,
   EscortPerformance,
   LauncherKind,
@@ -297,6 +298,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     depthChargeShots: [],
     aircraft: [],
     strafeRuns: [],
+    gunShots: [],
     // Sized to the convoy that is actually sailing, so a hull is only ever
     // written off for failing to get across — never for entering last.
     timeLimit: transitTimeLimit(ships.length, campaign.formation),
@@ -311,9 +313,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     gunAmmo: god ? 9999 : campaign.gunAmmo,
     gunAmmoWarned: false,
     warthogCharges,
-    warthogActiveUntil: -1,
-    warthogCenterX: 0,
-    warthogCenterY: 0,
     scanCharges,
     sonarCharges,
     smokeCharges,
@@ -428,6 +427,7 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       alive: true,
       disabledUntil: 0,
       moveTarget: null,
+      waypoints: [],
       stationed: false,
       blockedSeconds: 0,
       steerX: 1,
@@ -1479,8 +1479,14 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       const px = clamp(cmd.x, 20, WORLD.width - 20);
       const py = clamp(cmd.y, 60, WORLD.height - 60);
       if (cmd.ability === 'warthog') {
-        // No stacking: the jet on task must be clear before another is called.
-        if (t.warthogCharges <= 0 || t.time < t.warthogActiveUntil) return;
+        // Sorties STACK. Charges are the only limit: a player holding four can
+        // put four jets over the strait at once, on four different bearings.
+        //
+        // This used to block a second call until the flight on task was clear,
+        // which made the charge count a lie — you could hold four and fly one.
+        // A two-pass sortie is most of a minute, so "buy more sorties" bought
+        // nothing a player could use inside the round they bought it for.
+        if (t.warthogCharges <= 0) return;
         // The run-in line, A to B. A tap with no second point is not a run —
         // the caller is required to supply both ends.
         const bx = clamp(cmd.x2 ?? px, 20, WORLD.width - 20);
@@ -1503,19 +1509,7 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         t.warthogCharges--;
         t.stats.warthogUsed++;
         t.stats.counter.charges.warthog.used++;
-        // Two passes plus the turn between them, with margin for the run-in and
-        // the exit. Blocks a second call until the flight is clear.
         const runLen = Math.hypot(bx - px, by - py);
-        // A crossing of the whole strait, the turn, and the crossing back.
-        // The DRAWN length no longer bounds the sortie — the bearing does — so
-        // this is sized from the world, not from the player's finger.
-        const crossing = Math.hypot(WORLD.width, WORLD.height);
-        t.warthogActiveUntil =
-          t.time +
-          (crossing * 2 + COMBAT.warthog.offMapMargin * 2) / COMBAT.warthog.planeSpeed +
-          Math.PI / COMBAT.warthog.turnRate;
-        t.warthogCenterX = (px + bx) / 2;
-        t.warthogCenterY = (py + by) / 2;
         // The jet flies IN from off the map, already established on the
         // bearing — so the run-in is something the player watches arrive
         // rather than an aeroplane that appears where they pointed. The entry
@@ -1663,12 +1657,43 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
       // pursuit — re-tasking is the one way a pursuit ends early.
       escort.pursueBoatId = null;
       escort.stationed = false;
+      // A single destination replaces any route still being steamed. An order
+      // is an order: the player pointing somewhere means GO THERE, not "go
+      // there after you have finished the last thing I drew".
+      escort.waypoints = [];
       escort.moveTarget = {
         x: clamp(cmd.x, 20, WORLD.width - 20),
         y: clamp(cmd.y, 60, WORLD.height - 60),
         hold: cmd.hold,
       };
       pushEvent(t, { type: 'abilityUsed', detail: cmd.hold ? 'stationEscort' : 'moveEscort' });
+      return;
+    }
+    case 'pathEscort': {
+      const escort = t.escorts.find((e) => e.id === cmd.escortId && e.alive);
+      if (!escort) return;
+      const points = cmd.points
+        .map((pt) => ({
+          x: clamp(pt.x, 20, WORLD.width - 20),
+          y: clamp(pt.y, 60, WORLD.height - 60),
+        }))
+        // Points closer together than the arrival test cannot be steamed to —
+        // the escort would count itself arrived at several at once and the
+        // route would collapse. Thinning here keeps the drawn curve and drops
+        // only the redundancy a finger produces.
+        .filter((pt, i, all) => i === 0 || Math.hypot(pt.x - all[i - 1].x, pt.y - all[i - 1].y) > NAV.escortArrive);
+      if (points.length === 0) return;
+      escort.pursueBoatId = null;
+      escort.stationed = false;
+      const [first, ...rest] = points;
+      // `hold` rides on EVERY leg and is only acted on at the end of the route
+      // (see the arrival block). Storing it solely on the final leg looked
+      // tidier and lost it: each pop derived the next leg's hold from the
+      // current one, which is false for every leg but the last, so the flag
+      // was false by the time the route finished and the ship sailed on.
+      escort.moveTarget = { x: first.x, y: first.y, hold: cmd.hold };
+      escort.waypoints = rest;
+      pushEvent(t, { type: 'abilityUsed', detail: 'pathEscort' });
       return;
     }
   }
@@ -2091,6 +2116,8 @@ function updateAircraft(t: TransitState, rng: RNG, dt: number): void {
   // Bursts are drawn for a fraction of a second and then gone.
   for (const run of t.strafeRuns) run.ttl -= dt;
   t.strafeRuns = t.strafeRuns.filter((run) => run.ttl > 0);
+  for (const shot of t.gunShots) shot.ttl -= dt;
+  t.gunShots = t.gunShots.filter((shot) => shot.ttl > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -2352,11 +2379,29 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
     // sinkable units, never one-tap kills).
     escort.gunCooldown = fx.fireInterval;
     t.stats.counter.deckGunRounds++;
+    // The round the player SEES. Pushed before the roll is applied so its
+    // muzzle and aim point are the ones the shot was actually taken at, then
+    // stamped with the outcome below — the sim stays authoritative and this
+    // carries no damage of its own (see GunShot).
+    const shot: GunShot = {
+      id: t.nextEntityId++,
+      x: escort.x,
+      y: escort.y,
+      targetX: target.x,
+      targetY: target.y,
+      hit: false,
+      killed: false,
+      ttl: COMBAT.deckGunShell.flightSeconds,
+      ttlTotal: COMBAT.deckGunShell.flightSeconds,
+    };
+    t.gunShots.push(shot);
     if (rng.chance(fx.accuracy)) {
+      shot.hit = true;
       const tough = target.boatVariant === 'rocket' || target.boatVariant === 'boarding';
       const dmg = fx.damage * (tough && !fx.armorPiercing ? 0.5 : 1);
       target.hp = (target.hp ?? 1) - dmg;
       if (target.hp <= 0) {
+        shot.killed = true;
         target.alive = false;
         target.engagedByEscortId = undefined;
         t.stats.counter.deckGunKills++;
@@ -4029,9 +4074,19 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
       const dy = escort.moveTarget.y - escort.y;
       const d = Math.hypot(dx, dy);
       if (d <= NAV.escortArrive) {
-        // Arrived: a hold order stations it here; a move order resumes forward.
-        escort.stationed = escort.moveTarget.hold;
-        escort.moveTarget = null;
+        // Arrived. If a drawn route has more to it, the next point simply
+        // becomes the destination and the ship carries on — that queue IS the
+        // whole path mechanic, and it is why a route inherits every bit of
+        // steering behaviour a single move order already had.
+        const next = escort.waypoints.shift();
+        if (next) {
+          escort.moveTarget = { x: next.x, y: next.y, hold: escort.moveTarget.hold };
+        } else {
+          // End of the line: a hold order stations here, a move order resumes
+          // forward with the convoy.
+          escort.stationed = escort.moveTarget.hold;
+          escort.moveTarget = null;
+        }
         escort.blockedSeconds = 0;
       } else {
         goalDistBefore = d;

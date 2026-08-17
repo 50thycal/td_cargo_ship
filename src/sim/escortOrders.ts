@@ -126,6 +126,18 @@ export function escortStatus(t: TransitState, escort: Escort): EscortStatus {
   }
 
   if (escort.moveTarget) {
+    // A drawn route says so, and says how much of it is left — "Moving" for a
+    // ship five legs into a curve around a minefield tells the player nothing
+    // about whether she is nearly done.
+    if (escort.waypoints.length > 0) {
+      return {
+        activity: 'moving',
+        label: `On Route · ${escort.waypoints.length + 1} legs`,
+        progress: null,
+        destination,
+        holding,
+      };
+    }
     return { activity: 'moving', label: ACTIVITY_LABELS.moving, progress: null, destination, holding };
   }
   if (escort.stationed) {

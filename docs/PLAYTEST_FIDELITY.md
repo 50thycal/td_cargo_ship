@@ -194,6 +194,23 @@ test is now on DAMAGE, not price. A cost of zero means "free", not "nothing to
 do", and any is-there-work check written against a price will get that wrong
 the moment something in the game becomes free.
 
+## Kept current — 2026-08-17: the A-10 gate, and a range nobody rescaled
+
+- **Sorties stack now**, so the persona's Warthog intent no longer waits for
+  the flight already up (`t.time >= t.warthogActiveUntil` is gone with the
+  field). Only its own 20-second re-call spacing remains, standing in for a
+  human not spending every charge in the opening half-minute.
+- **Escort automatic engagement was measured, not assumed.** The player
+  reported it "does not seem to be working"; the sweep could not have told
+  anyone either way, because `autoShots` is one counter shared by escorts and
+  shore batteries. Isolating it needed a throwaway probe that silenced the
+  batteries and varied the radius alone — see PLAYER_COUNTERS for the numbers.
+
+**The lesson worth keeping:** a counter shared between two platforms cannot
+answer "is THIS platform's automation working". The telemetry had 235 automatic
+shots a round and looked healthy; nearly all of them were the batteries'. Split
+a counter, or be ready to write a probe every time somebody asks.
+
 ## Open and accepted (as of the second row)
 
 ### Still open (worth closing)

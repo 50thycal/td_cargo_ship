@@ -35,10 +35,6 @@ export class Camera {
   private targetX: number;
   private targetY: number;
   private targetZoom: number;
-  /** While set, the camera re-centres on this point every frame (Center
-   *  Convoy). Any manual pan or pinch clears it — the player's hands always
-   *  win over automation. */
-  private following: { x: number; y: number } | null = null;
 
   constructor(
     private readonly world: CameraBounds,
@@ -93,12 +89,32 @@ export class Camera {
   private static readonly OPENING_ZOOM_OVER_FIT = 2;
 
   openingZoom(): number {
-    return this.fitZoom() * Camera.OPENING_ZOOM_OVER_FIT;
+    // Never below the bound — on a tall viewport the cover zoom is the wider
+    // of the two, and an opening view outside the allowed range would snap on
+    // the first frame.
+    return Math.max(this.fitZoom() * Camera.OPENING_ZOOM_OVER_FIT, this.minZoom());
   }
 
-  /** The widest the camera goes: the whole world. */
+  /** The widest the camera goes: the zoom at which the viewport is exactly
+   *  COVERED by the world.
+   *
+   *  This used to be fitZoom — the whole world in the window — and that is the
+   *  one view the map cannot survive being seen at. The coastlines are drawn
+   *  only across x = 0..WORLD.width; pull out past cover and the viewport
+   *  contains the world's rectangular edge, where both land masses run into the
+   *  boundary and close on each other. It reads as the strait pinching shut, a
+   *  piece of geography that does not exist.
+   *
+   *  MAX of the two ratios, not MIN: min fits the world inside the viewport
+   *  (edges visible on the slack axis), max fits the viewport inside the world
+   *  (no edge ever visible on either). Only the BOUND moves — baseZoom, and
+   *  therefore how big anything is drawn, is anchored to WORLD.spriteReference
+   *  and is untouched by this. */
   minZoom(): number {
-    return this.fitZoom();
+    return Math.max(
+      this.viewport.width / this.world.width,
+      this.viewport.height / this.world.height,
+    );
   }
 
   maxZoom(): number {
@@ -177,7 +193,6 @@ export class Camera {
     this.targetZoom = next;
     this.targetX = worldAnchorX - (anchorX - this.viewport.width / 2) / next;
     this.targetY = worldAnchorY - (anchorY - this.viewport.height / 2) / next;
-    this.following = null;
     this.clampTarget();
   }
 
@@ -185,7 +200,6 @@ export class Camera {
   panByScreen(dx: number, dy: number): void {
     this.targetX -= dx / this.targetZoom;
     this.targetY -= dy / this.targetZoom;
-    this.following = null;
     this.clampTarget();
   }
 
@@ -196,30 +210,30 @@ export class Camera {
     this.clampTarget();
   }
 
-  /** Keep a world point centred every frame until the player intervenes. */
-  follow(wx: number, wy: number): void {
-    this.following = { x: wx, y: wy };
+  /** Is this world point inside the CURRENT view, with a margin in canvas px?
+   *
+   *  The margin exists because "just inside the edge" is not really on screen:
+   *  a ship half under the HUD is one the player still has to go looking for. */
+  isOnScreen(wx: number, wy: number, marginPx = 0): boolean {
+    const sx = this.worldToScreenX(wx);
+    const sy = this.worldToScreenY(wy);
+    return (
+      sx >= marginPx &&
+      sx <= this.viewport.width - marginPx &&
+      sy >= marginPx &&
+      sy <= this.viewport.height - marginPx
+    );
+  }
+
+  /** Bring a world point into view, but ONLY if it is not already there.
+   *
+   *  This is the whole of the game's automatic camera. Centring on something
+   *  the player can already see is the camera moving for no reason — it steals
+   *  the frame they had chosen and reads as a jolt. Returns true if it moved. */
+  revealIfOffScreen(wx: number, wy: number, marginPx = 0): boolean {
+    if (this.isOnScreen(wx, wy, marginPx)) return false;
     this.centreOn(wx, wy);
-  }
-
-  isFollowing(): boolean {
-    return this.following !== null;
-  }
-
-  /** Update the followed point (the convoy moves); no-op when not following. */
-  updateFollowTarget(wx: number, wy: number): void {
-    if (!this.following) return;
-    this.following = { x: wx, y: wy };
-    this.centreOn(wx, wy);
-  }
-
-  /** Snap all the way back out to the widest view the player is allowed. */
-  resetToFit(): void {
-    this.targetZoom = this.minZoom();
-    this.targetX = this.world.width / 2;
-    this.targetY = this.world.height / 2;
-    this.following = null;
-    this.clampTarget();
+    return true;
   }
 
   // -------------------------------------------------------------------------
@@ -238,15 +252,24 @@ export class Camera {
     if (Math.abs(this.targetY - this.y) < EPSILON) this.y = this.targetY;
   }
 
-  /** Keep the view inside the world. When an axis is fully visible the camera
-   *  is pinned to its centre, so a fitted view can never be dragged askew. */
+  /** Keep the viewport inside the world, on both axes, always.
+   *
+   *  minZoom guarantees the viewport is no larger than the world, so the clamp
+   *  range is real and there is no "this axis is fully visible" case to handle
+   *  any more — that case WAS the bug: it pinned the camera to the world centre
+   *  and showed the boundary either side. The guard below only covers a
+   *  degenerate viewport (zero-size canvas during layout). */
   private clampTarget(): void {
     const halfW = this.viewport.width / (2 * this.targetZoom);
     const halfH = this.viewport.height / (2 * this.targetZoom);
-    if (halfW * 2 >= this.world.width) this.targetX = this.world.width / 2;
-    else this.targetX = clamp(this.targetX, halfW, this.world.width - halfW);
-    if (halfH * 2 >= this.world.height) this.targetY = this.world.height / 2;
-    else this.targetY = clamp(this.targetY, halfH, this.world.height - halfH);
+    this.targetX =
+      halfW * 2 >= this.world.width
+        ? this.world.width / 2
+        : clamp(this.targetX, halfW, this.world.width - halfW);
+    this.targetY =
+      halfH * 2 >= this.world.height
+        ? this.world.height / 2
+        : clamp(this.targetY, halfH, this.world.height - halfH);
   }
 }
 
