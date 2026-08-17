@@ -520,6 +520,14 @@ button.ghost {
   color: var(--accent);
 }
 
+/* The reroll offer sits under the table it would replace. Deliberately quieter
+   than an option card — it is not a thing to take, it is a thing to spend. */
+.reroll-card {
+  margin-top: 10px;
+  border-left-color: var(--muted);
+}
+.reroll-card p { font-size: 12px; }
+
 /* ---------- reward categories ----------
 
    Four categories, four identities, so the player can tell what KIND of reward

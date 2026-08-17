@@ -168,6 +168,32 @@ change* from a large mechanical change is reporting on the harness, not on the
 game. Check that the bots exercise a branch before believing any number about
 it — including a number that says nothing happened.
 
+## Kept current — 2026-08-16: two new systems, wired before they shipped
+
+The smoke lesson above cost a whole sweep to learn, so this batch wired the
+harness at the same time as the game rather than afterwards:
+
+- **Escort Legacies** — every persona now carries a legacy loadout
+  (`Persona.legacies`), validated at startup by `legacyLoadoutError` exactly as
+  the Commander loadout is. A sweep in which nobody equips a legacy cannot
+  measure a change to one. The twelve loadouts are spread so each of the eight
+  legacies is carried by at least two personas — `veteranHelm` 8, `gunneryDrill`
+  5, `minePlating` and `standingContract` 4, `rescueRig` and `requisitionOrder`
+  3, `damageControl` and `rapidRearm` 2. Two personas is the resolution floor:
+  read nothing into a 1–3% move on either of the last pair.
+- **Scoped repairs** — `{kind:'repair'}` grew `scope` and `partial`, and three
+  personas (`turtle`, `gunboat`, `economist`) were given real repair doctrines
+  rather than the one-button default, so the split is exercised in both
+  directions.
+
+Fixed while wiring the second one: the repair intent tested `repairCost(c) > 0`
+to decide whether there was work to do. With the **Forward Repair Yard** —
+which patches warships for nothing — a bot that owned the yard would never take
+the free repair it had paid for, because the price of that work is zero. The
+test is now on DAMAGE, not price. A cost of zero means "free", not "nothing to
+do", and any is-there-work check written against a price will get that wrong
+the moment something in the game becomes free.
+
 ## Open and accepted (as of the second row)
 
 ### Still open (worth closing)

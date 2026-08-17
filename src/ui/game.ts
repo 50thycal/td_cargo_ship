@@ -20,6 +20,7 @@ import {
   applyRunToProfile,
   recordRunStart,
   sanitizedLoadout,
+  sanitizedLegacyLoadout,
   type CommanderProfile,
   type RunSettlement,
 } from '../sim/commander';
@@ -168,6 +169,7 @@ export class Game {
       `run-${Date.now().toString(36)}`,
       regionId,
       sanitizedLoadout(this.profile),
+      sanitizedLegacyLoadout(this.profile),
     );
     recordRunStart(this.profile, regionId);
     saveProfile(this.profile);
