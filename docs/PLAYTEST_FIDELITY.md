@@ -277,16 +277,24 @@ Both were reporting `MATCH` over the bug above.
 
 ### Still open
 
-1. **Manual shot share 89.8% vs 26.1%** — and it is **not** a persona defect.
-   Measured: when an interceptor auto-fire node is offered, the `automation`
-   persona takes it **6 times out of 6**. The gap is entirely on the *offer*
-   side — auto nodes appeared in **0.17 per bot draft against 0.55 per human
-   draft**, a 3.2× difference. Auto-fire tactics are upgrades to an already
-   *answered* branch, so the draft's unanswered-threat weighting ranks them
-   below modules for branches that are currently hurting. **This is a draft-pool
-   question for the game, not harness work** — and it means the `automation`
-   archetype is currently not reliably reachable by anyone, bot or player.
-   Do not "fix" it by making the bots luckier.
+1. ~~**Manual shot share 89.8% vs 26.1%**~~ — **fixed at the source, in the
+   game, not the harness.** This was correctly diagnosed as a draft-pool
+   question, not a persona defect: when an interceptor auto-fire node WAS
+   offered, `automation` took it 6/6 times, but auto nodes were offered at only
+   0.17 per bot draft against a hand-played 0.55. Root cause: `weighCandidate`
+   priced `kind: 'automation'` tactics through the same coverage-gap multiplier
+   as accuracy/reload upgrades, so a branch getting GOOD at its job (which is
+   exactly when hands-off engagement is worth having) also got its automation
+   nodes priced down with everything else. Added `DRAFT.automationTacticMult`
+   (1.75×, applied flat, outside the coverage-gap system) in `src/sim/draft.ts`
+   — pinned by the `AUTOMATION:` test in `tests/roguelite.test.ts`. Measured on
+   the `automation` persona specifically (this is a style probe — read it
+   per-persona, not on the whole sweep, same rule as #2 below): manual share
+   82.1% → **64.6%**, auto nodes/campaign 1.00 → **1.17**, zero-auto-shot
+   campaigns 3/6 → **2/6**. Still short of the human's 26.1% — six seeds is a
+   small sample and this is a genuine balance dial, not a bug fix, so further
+   tuning belongs in its own change with its own before/after, not folded into
+   this one.
 2. **Warthog sorties 0.23/round vs 0.88** on the whole sweep — but **0.72
    (MATCH)** against `automation` alone. This is the aggregate-vs-persona
    artefact the `--persona` flag exists for; read it there.
@@ -301,12 +309,27 @@ Both were reporting `MATCH` over the bug above.
   already uninterpretable across the two sides; it is now uninterpretable within
   either. Do not use this field.
 
-### Accepted — bucket D (game, not harness)
+### Accepted — bucket D (game, not harness), one now fixed
 
-- **Smoke was researched, upgraded and never used — again.** The player took
-  `smokeScreen.expandedCoverage`, spent $140, and laid **zero clouds** in eight
-  rounds. This is the *second consecutive log* with that exact shape, so it is
-  no longer a one-off: it is a confirmed discoverability problem.
+- ~~**Smoke was researched, upgraded and never used — again.**~~ **Root-caused
+  and fixed.** The player took `smokeScreen.expandedCoverage`, spent $140, and
+  laid zero clouds in eight rounds — the *second consecutive log* with that
+  exact shape. Checked both possible causes directly (a real dev-mode session
+  via Playwright, not guesswork): the sim-side placement path and the button's
+  visibility logic were both correct — `charges.smoke.available` derives
+  straight from `smokeStock` and the button is never hidden once smoke is
+  unlocked and stocked. The actual cause: ALL placeable abilities (warthog,
+  scan, smoke, depth charges) live behind a collapsed "ACTIONS" drawer, closed
+  by default, and the drawer's only "you have something in here" signal was its
+  `title` attribute — a hover tooltip, which never fires on the touchscreen this
+  game ships to. A player who never taps ACTIONS has no way to learn it holds
+  anything, however much they've paid for. Fixed with a small amber dot on the
+  ACTIONS key (`.has-charges`, `src/ui/style.css` + `src/ui/transitView.ts`),
+  reusing the existing `pipPulse` "worth a look" language, lit whenever a
+  placeable ability has spendable charges and hidden the instant the drawer is
+  open (a reminder to open it, not a status light to keep watching).
+  Verified end-to-end: armed SMOKE from the drawer, tapped the map, watched the
+  charge count decrement and the sim accept the command.
 - **Self-defense was drafted, equipped and never fed.** `selfDefense.base`
   researched, `module:cargo:selfDefense` drafted and fitted to the cargo
   class — and **zero** self-defense ammunition bought, so `pdKills` is 0. Same

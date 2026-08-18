@@ -25,6 +25,9 @@ import {
   resolveTransit,
 } from '../src/sim/campaign';
 import { stepTransit } from '../src/sim/transit';
+import { generateDraft } from '../src/sim/draft';
+import { makeRng } from '../src/sim/rng';
+import { DRAFT } from '../src/data/tuning';
 import type { CampaignState } from '../src/sim/types';
 
 /** Play a whole regional run the way the sweep runner does. */
@@ -202,35 +205,50 @@ describe('the whole draft gets spent', () => {
   // the next round's draft — the recovery loop ran and its entire reward went
   // in the bin. Measured before the fix: 0.98 picks/round against a hand-played
   // 1.38, and 53 of 66 campaigns fired zero automatic shots.
+  //
+  // The multi-pick scenario is built DIRECTLY with `generateDraft` rather than
+  // left to emerge from a seeded persona playthrough. A whole-run version of
+  // this test existed first and was seed-fragile in a way that had nothing to
+  // do with the behavior under test: reweighting draft OPTIONS (e.g. pricing
+  // automation tactics) changes which card a round takes, which changes RNG
+  // consumption for the rest of that transit, which can silently steer a fixed
+  // seed's recovery total below the threshold that earns a second pick at all —
+  // failing a test about spending picks for a reason unrelated to spending
+  // picks. Constructing the draft directly pins DRAFT.unitsPerExtraPick/
+  // maxPicks as the only thing the test depends on.
   it('leaves no pending draft behind, however many picks it granted', () => {
     const persona = personaByName('automation')!;
     const c = newRegionalRun('multipick-seed', 'pirateNarrows', persona.commander ?? []);
-    let sawMultiPick = false;
-    for (let round = 0; round < 8; round++) {
-      if (c.campaignOver) break;
-      procure(c, persona);
-      const plan = planCurrentRound(c);
-      const { state, rng } = createRoundTransit(c, plan);
-      const mem = newTransitMemory();
-      let guard = 0;
-      while (!state.over && guard++ < 100_000) {
-        stepTransit(state, decideCommands(state, persona, mem), rng);
-      }
-      resolveTransit(c, state);
-      const granted = c.pendingDraft?.picksTotal ?? 0;
-      if (granted > 1) sawMultiPick = true;
-      const picks = research(c, persona);
-      // Every granted pick is taken, and the draft is closed behind it.
-      expect(picks.length).toBe(granted);
-      expect(c.pendingDraft).toBeNull();
-    }
-    // The test is worthless if the run never earned a second pick — that would
-    // pass just as happily against the one-pick-only bug it exists to catch.
-    expect(sawMultiPick).toBe(true);
+    // Comfortably over unitsPerExtraPick * (maxPicks - basePicks): guarantees
+    // the draft grants the maximum, however those constants get tuned later.
+    const heavyRecovery = { missiles: DRAFT.unitsPerExtraPick * DRAFT.maxPicks * 2 };
+    c.pendingDraft = generateDraft(c, heavyRecovery, makeRng('multipick-draft-seed'));
+    const granted = c.pendingDraft.picksTotal;
+    expect(granted).toBe(DRAFT.maxPicks); // the scenario is worthless below this
+    expect(granted).toBeGreaterThan(1);
+
+    const picks = research(c, persona);
+    // Every granted pick is taken, and the draft is closed behind it.
+    expect(picks.length).toBe(granted);
+    expect(c.pendingDraft).toBeNull();
   });
 
-  it('earns more technology per round than one-pick-per-round could', () => {
-    const c = playRun('automation', 'multipick-seed', 8);
+  it('a multi-pick draft adds more than one entry to draftHistory', () => {
+    const persona = personaByName('automation')!;
+    const c = newRegionalRun('multipick-seed-2', 'pirateNarrows', persona.commander ?? []);
+    const heavyRecovery = { mines: DRAFT.unitsPerExtraPick * DRAFT.maxPicks * 2 };
+    c.pendingDraft = generateDraft(c, heavyRecovery, makeRng('multipick-draft-seed-2'));
+    const before = c.draftHistory.length;
+    research(c, persona);
+    // One-pick-per-round would have added exactly 1 regardless of what the
+    // draft granted — this is the assertion that catches that regression.
+    expect(c.draftHistory.length - before).toBe(DRAFT.maxPicks);
+  });
+
+  // Still worth one whole-run pass: confirms the deterministic behavior above
+  // actually fires somewhere in ordinary play, without pinning WHEN.
+  it('a real campaign eventually spends a multi-pick draft', () => {
+    const c = playRun('automation', 'multipick-whole-run-seed', 10);
     expect(c.draftHistory.length).toBeGreaterThan(c.telemetry.length);
   });
 });

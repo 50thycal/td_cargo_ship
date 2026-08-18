@@ -841,6 +841,26 @@ button.ghost {
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
+/* A charge sitting in the closed tray, unspent. The key's own tooltip
+   ("Abilities you have in hand") is a hover-only clue, which is no clue at
+   all on the touch platform this ships to — this dot is the same message
+   worn on the outside, in the same amber/pulse language `.pip.gain` already
+   uses for "this is worth a look". Hidden the instant the drawer is open: it
+   is a reminder to open it, not a status light to keep watching. */
+.hud-btn.actions.has-charges:not(.armed)::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid var(--accent-hi);
+  box-shadow: 0 0 6px rgba(255, 180, 84, 0.8);
+  animation: pipPulse 1.6s ease-in-out infinite;
+}
+
 .hud-btn.danger {
   border-color: rgba(255, 111, 94, 0.4);
   color: var(--bad);

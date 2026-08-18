@@ -747,7 +747,16 @@ describe('technology draft', () => {
     c.threatPressure.mines = { ...pressure };
     c.threatPressure.missiles = { ...pressure };
     const weightFor = (family: string, pool: ReturnType<typeof draftPool>): number => {
-      const entries = pool.filter((p) => p.branch?.counters ?? [].includes(family as never));
+      // Parens matter: `??` binds looser than the method call that follows it,
+      // so `p.branch?.counters ?? [].includes(family)` was actually
+      // `(p.branch?.counters) ?? ([].includes(family))` — `[].includes` is
+      // always false on a literal empty array, so the `??` never fired and this
+      // silently kept EVERY branched candidate regardless of family. It read as
+      // passing only because the pool's overall max happened to sit on a mines
+      // entry; a later change to automation-tactic weighting (which touches
+      // candidates outside the mines branch) was enough to break that
+      // coincidence and expose the bug as a failing assertion.
+      const entries = pool.filter((p) => (p.branch?.counters ?? []).includes(family as never));
       return Math.max(...entries.map((p) => p.weight));
     };
     const mineBefore = weightFor('mines', draftPool(c, {}));
@@ -759,6 +768,33 @@ describe('technology draft', () => {
       lastMeasuredRound: 3,
     };
     expect(weightFor('mines', draftPool(c, {}))).toBeLessThan(mineBefore);
+  });
+
+  it('AUTOMATION: is not starved by the coverage gap the way an ordinary upgrade is', () => {
+    // escortInterceptor.localAuto (kind: 'automation') and
+    // escortInterceptor.precisionGuidance (an ordinary accuracy upgrade) sit in
+    // the same branch, at the same depth, both non-entry. Everything the
+    // coverage-gap system prices them on is identical; the only difference is
+    // the automation flag. A well-covered missile threat should price DOWN the
+    // accuracy upgrade — more accuracy on a branch already stopping most of
+    // what it sees is worth less — while the automation tactic keeps its value,
+    // because what it buys (freeing the player's attention) does not shrink
+    // just because the branch got good at its job.
+    const c = newRegionalRun('draft-automation', FIRST_REGION);
+    c.round = 4;
+    c.threatCoverage.missiles = { ratio: 0.9, fielded: 20, neutralized: 18, lastMeasuredRound: 3 };
+    const pool = draftPool(c, {});
+    const auto = pool.find((p) => draftOptionKey(p.option) === 'escortInterceptor.localAuto');
+    const accuracy = pool.find(
+      (p) => draftOptionKey(p.option) === 'escortInterceptor.precisionGuidance',
+    );
+    expect(auto).toBeDefined();
+    expect(accuracy).toBeDefined();
+    expect(auto!.weight).toBeGreaterThan(accuracy!.weight);
+    // And it is a real premium, not a rounding artefact of unrelated factors —
+    // matches DRAFT.automationTacticMult exactly, since these two candidates
+    // are identical on every other axis the weighing function reads.
+    expect(auto!.weight / accuracy!.weight).toBeCloseTo(DRAFT.automationTacticMult, 5);
   });
 
   it('COVERAGE: scores what the round stopped, not what the fleet owns', () => {
