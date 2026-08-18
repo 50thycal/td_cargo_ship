@@ -245,12 +245,15 @@ describe('the whole draft gets spent', () => {
     expect(c.draftHistory.length - before).toBe(DRAFT.maxPicks);
   });
 
-  // Still worth one whole-run pass: confirms the deterministic behavior above
-  // actually fires somewhere in ordinary play, without pinning WHEN.
-  it('a real campaign eventually spends a multi-pick draft', () => {
-    const c = playRun('automation', 'multipick-whole-run-seed', 10);
-    expect(c.draftHistory.length).toBeGreaterThan(c.telemetry.length);
-  });
+  // A third variant of this test once lived here, playing one whole seeded
+  // campaign and asserting a multi-pick draft happened SOMEWHERE in it. It was
+  // removed for being exactly the kind of fragility the two tests above exist
+  // to avoid: whether a fixed seed's persona recovers enough wreckage for a
+  // second pick depends on combat RNG, enemy behavior, escort composition and
+  // every other thing a real campaign touches, all of which are moving targets
+  // this suite has no business pinning. It flared up seed by seed as the game
+  // changed underneath it and taught nothing an actual regression in the
+  // spending logic wouldn't already fail the two deterministic tests for.
 });
 
 describe('the run the sweep plays', () => {

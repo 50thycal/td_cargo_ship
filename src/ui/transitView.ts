@@ -745,11 +745,11 @@ export class TransitView {
     // charge was sitting there. A small always-visible marker on the key
     // itself is the fix: it has to be legible with the drawer shut, since shut
     // is the state a player who has never opened it is looking at.
+    // Matches the warthogBtn's own .disabled gate above: since stacked sorties
+    // landed, readiness is stock alone — a charge is spendable whether or not
+    // a previous A-10 is still on task.
     const trayHasSomethingToUse =
-      (t.warthogCharges > 0 && t.time >= t.warthogActiveUntil) ||
-      t.scanCharges > 0 ||
-      t.smokeCharges > 0 ||
-      dcReady > 0;
+      t.warthogCharges > 0 || t.scanCharges > 0 || t.smokeCharges > 0 || dcReady > 0;
     this.actionsBtn.classList.toggle('has-charges', trayHasSomethingToUse);
 
     // Automation toggle states: launcher reload and the SEPARATE auto-fire
