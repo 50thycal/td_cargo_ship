@@ -520,6 +520,14 @@ button.ghost {
   color: var(--accent);
 }
 
+/* The reroll offer sits under the table it would replace. Deliberately quieter
+   than an option card — it is not a thing to take, it is a thing to spend. */
+.reroll-card {
+  margin-top: 10px;
+  border-left-color: var(--muted);
+}
+.reroll-card p { font-size: 12px; }
+
 /* ---------- reward categories ----------
 
    Four categories, four identities, so the player can tell what KIND of reward
@@ -819,14 +827,26 @@ button.ghost {
    of the screen, where a fully-equipped player's row wrapped and stacked over
    the map. Opens upward from its key so it never covers the clock or camera
    controls, and scrolls if the player somehow has more than fits. */
+/* The dock is the positioning context for the tray, so the tray opens beside
+   the button rather than over the map. */
+.action-dock { position: relative; display: flex; }
+
 .action-tray {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 8px;
+  /* Opens to the RIGHT of the ACTIONS key, level with it. It used to open
+     upward and leftward, which laid a wide panel across the left half of the
+     strait — the water the player watches most, since the convoy sails left to
+     right and the threats arrive ahead of it. */
+  left: calc(100% + 6px);
+  bottom: 0;
   display: flex;
+  align-items: stretch;
   gap: 6px;
   padding: 8px;
-  max-width: min(92cqw, 620px);
+  /* Whatever is left of the stage once the button and the right-hand groups
+     have taken theirs; the tray scrolls inside that rather than pushing past
+     the edge of the screen. */
+  max-width: calc(100cqw - 210px);
   overflow-x: auto;
   background: linear-gradient(180deg, #232819, #171a10);
   border: 1px solid var(--line-bright);
@@ -1210,25 +1230,18 @@ button.unequip {
   margin: 2px 0 6px;
 }
 
-.escort-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  align-items: flex-start;
-  text-align: left;
-  min-height: 44px;
-  padding: 8px 10px;
-  text-transform: none;
+/* The flotilla roster IS the module class-tab component (.tab), so the Defense
+   screen and the Modules screen describe "pick a platform, see what is on it"
+   the same way. Only the things genuinely different about an escort are
+   overridden here: her name is arbitrary text rather than a class label, and
+   the hull class sits under it. */
+.escort-tab { text-transform: none; }
+.escort-tab .tab-label > span:first-child { font-weight: 700; }
+.escort-tab-class {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
-
-.escort-tab.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset, 0 2px 0 var(--edge-lo);
-}
-
-.escort-tab-name { font-size: 12.5px; font-weight: 700; }
-.escort-tab-fit,
-.escort-tab-slots { font-size: 10.5px; color: var(--dim); line-height: 1.35; }
 
 .escort-name-row {
   display: flex;

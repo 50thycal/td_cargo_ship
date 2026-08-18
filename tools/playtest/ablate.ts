@@ -219,7 +219,7 @@ function play(p: Persona, seeds: number, maxRounds: number, regionId: string): R
   let delivSum = 0;
   let delivRounds = 0;
   for (let s = 0; s < seeds; s++) {
-    const c = newRegionalRun(`playtest-${s}`, regionId, p.commander ?? []);
+    const c = newRegionalRun(`playtest-${s}`, regionId, p.commander ?? [], p.legacies ?? []);
     let played = 0;
     for (let round = 0; round < maxRounds; round++) {
       if (c.campaignOver) break;

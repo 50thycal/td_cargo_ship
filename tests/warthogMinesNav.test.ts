@@ -145,14 +145,14 @@ function soloShip(state: TransitState): Ship {
 // ---------------------------------------------------------------------------
 
 describe('A-10 Warthog', () => {
-  it('comes with ONE sortie, and a second is something you buy', () => {
+  it('comes with TWO sorties on the apron, and doubling that is something you buy', () => {
     const base = deriveCounterEffects([], { escortModules: [], baseModules: [] });
-    expect(base.abilities.warthog.charges).toBe(1);
+    expect(base.abilities.warthog.charges).toBe(2);
     const withSortie = deriveCounterEffects(['warthog.secondSortie'] as ResearchId[], {
       escortModules: [],
       baseModules: [],
     });
-    expect(withSortie.abilities.warthog.charges).toBe(2);
+    expect(withSortie.abilities.warthog.charges).toBe(4);
   });
 
   it('the loiter and radius upgrades each buy what they say they buy', () => {

@@ -30,6 +30,7 @@ import { buildTelemetryExport } from '../../src/sim/telemetry';
 import { REGIONS, REGION_ORDER, regionDef, type RegionDef } from '../../src/data/regions';
 import {
   commanderLoadoutError,
+  legacyLoadoutError,
   decideCommands,
   newTransitMemory,
   personaByName,
@@ -172,7 +173,7 @@ function playCampaign(
   regionId: string,
   maxRounds: number,
 ): CampaignResult {
-  const c = newRegionalRun(seed, regionId, persona.commander ?? []);
+  const c = newRegionalRun(seed, regionId, persona.commander ?? [], persona.legacies ?? []);
   const onHand: { cash: number }[] = [];
   // Assume the run goes the distance; the loop downgrades this if it doesn't.
   let endReason: EndReason = 'round-cap';
@@ -367,7 +368,10 @@ mkdirSync(opts.outDir, { recursive: true });
 // the persona, and clamping it silently would make the build quietly different
 // from what it claims to be. Fail before playing 66 campaigns with it.
 const badLoadouts = opts.personas
-  .map((p) => ({ name: p.name, error: commanderLoadoutError(p) }))
+  .flatMap((p) => [
+    { name: p.name, error: commanderLoadoutError(p) },
+    { name: p.name, error: legacyLoadoutError(p) },
+  ])
   .filter((r) => r.error !== null);
 if (badLoadouts.length > 0) {
   for (const { name, error } of badLoadouts) console.error(`Persona "${name}": ${error}`);

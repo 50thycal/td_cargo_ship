@@ -717,6 +717,16 @@ export const COMBAT = {
    *  probability modifier: every pass either kills something or misses in
    *  plain sight. Charges/strafe radius/loiter are tier-resolved (ability
    *  paths); the ballistics live here. */
+  /** Deck gun presentation. The gun's damage, range and accuracy live in the
+   *  counter catalogue with the rest of the branch; this is only how long a
+   *  fired round is drawn crossing the water. Purely visual — see GunShot. */
+  deckGunShell: {
+    /** Seconds a round takes to reach its aim point, whatever the range. Held
+     *  constant rather than derived from a muzzle velocity because the point is
+     *  legibility: a shell at a boat 200 units away and one at 600 should both
+     *  be visible for long enough to see. */
+    flightSeconds: 0.42,
+  },
   warthog: {
     /** Cruise speed of the jet. RAISED a quarter from 240: it is a strike
      *  aircraft crossing a strait, and at the old speed the run-in read as a
@@ -947,8 +957,25 @@ export const CAMPAIGN = {
   /** Delivered fraction that leaves confidence unchanged. Below it the round
    *  costs confidence, above it the round earns some. Sits inside SEESAW.md's
    *  60-90% healthy band, near the top — holding station should take a good
-   *  round, but not a perfect one. */
-  confidenceBreakEven: 0.78,
+   *  round, but not a perfect one.
+   *
+   *  RAISED from 0.78. At 0.78 a round that put 22% of the convoy on the
+   *  seabed was confidence-NEUTRAL, and a hand-played log showed exactly what
+   *  that bought: rounds delivering 77% and 73% — seven and eight hulls lost —
+   *  left confidence pinned at 100 for both. Confidence was not a factor in
+   *  that run because nothing short of catastrophe could move it.
+   *
+   *  BRACKETED. The first arm went to 0.86 and overshot badly: measured across
+   *  96 campaigns, mean delivery is 84.4%, so break-even sat ABOVE the
+   *  achievable operating point and the average round bled confidence every
+   *  time it sailed. Confidence deaths went 0% → 39% and became the dominant
+   *  failure system, ahead of the quota it is supposed to sit beside. Same
+   *  class of error this file already records for the quota ratchet: a failure
+   *  bar has to stay inside the band the game calls healthy, and "inside the
+   *  band" must be checked against MEASURED delivery, not against the band's
+   *  nominal edges. 0.82 sits above the old free ride and below the operating
+   *  point, so a defended round still earns and a sloppy one still pays. */
+  confidenceBreakEven: 0.82,
   /** Confidence per unit of delivered fraction away from break-even. At 100%
    *  delivered this reaches the ceiling below; at ~8% it reaches the floor. */
   confidenceDeliverySwing: 36,
@@ -965,7 +992,21 @@ export const CAMPAIGN = {
    *  and push through" from answering the boarding node (ENEMY_ATTACKS.md). */
   confidencePerCapture: -7,
   confidenceCaptureCap: -21,
-  confidenceQuotaMet: 10,
+  /** Confidence lost per ESCORT sunk. Warships were free to lose: a logged
+   *  round that lost two escorts and abandoned a crew still finished at 100,
+   *  because nothing in the model looked at the screen at all. It is a per-hull
+   *  count rather than a rate because the flotilla is three ships however big
+   *  the convoy grows — there is no size to be neutral about. */
+  confidencePerEscortLost: -4,
+  /** LOWERED from 10, then part-restored to 8. The quota bonus was landing on
+   *  top of disaster rounds and turning them positive — meeting a shipping
+   *  window while losing a quarter of the convoy is not a round the consortium
+   *  is pleased about. But cutting the number was the wrong instrument and
+   *  double-counted the fix: confidenceCreditMitigation now stops the bonus
+   *  rescuing a losing round directly, so the bonus itself only needed to stop
+   *  being the largest single term in the model. On a GOOD round it still pays
+   *  nearly what it always did, which is the round it is for. */
+  confidenceQuotaMet: 8,
   /** Extra confidence lost per civilian crew left in the water (a survivor
    *  area that was never rescued). Rescue prevents the penalty entirely —
    *  that is the whole tactical bargain of diverting an escort to them.
@@ -982,8 +1023,21 @@ export const CAMPAIGN = {
    *  per-crew count it carried the identical convoy-size flaw, adding roughly
    *  -5 to a big convoy's round against -2.6 to a small one at equal
    *  performance. Expressed against the convoy sailed, abandoning a quarter of
-   *  your crews costs the same wherever the fleet has grown to. */
-  confidenceCrewLostRate: -20,
+   *  your crews costs the same wherever the fleet has grown to.
+   *
+   *  RAISED from -20. At -20 the worst round in a hand-played log — fourteen
+   *  hulls down and every one of those crews left in the water — paid -9.3 for
+   *  the abandonment, less than half of what one missed quota window used to
+   *  cost. Drowning half a convoy's crews has to be the loudest number on the
+   *  debrief, not a rounding error beside the delivery curve.
+   *
+   *  BRACKETED at -45 then -35. Sweeps abandon ~60% of crews as a matter of
+   *  course, so this is a RECURRING drag rather than an occasional one, and at
+   *  -45 it compounded with the break-even overshoot into a death spiral.
+   *  Still 1.75x the old value, and the permanent half of the crew penalty now
+   *  lives in the confidence CEILING, where a single round's floor cannot
+   *  swallow it. */
+  confidenceCrewLostRate: -35,
   /** Confidence RECOVERED per crew brought home. Deliberately smaller than
    *  the abandonment penalty: bringing the crew back does not undo losing the
    *  ship, but visibly rewards the diversion — and gives a player having a
@@ -998,6 +1052,42 @@ export const CAMPAIGN = {
    *  catastrophic round on a large convoy could bank more confidence from
    *  rescues than the sinkings cost, making a disaster profitable. */
   confidenceRescueCap: 8,
+  /** The most of a LOSING round's damage the CREDITS may cancel between them —
+   *  crews brought home and a shipping window met.
+   *
+   *  Without this cap either credit could turn a disaster into a gain, and in a
+   *  hand-played log both did: a round that lost seven of thirty hulls but
+   *  rescued six crews came out at +1.3 confidence, and a round that lost two
+   *  escorts and abandoned a crew was carried back to level by the quota bonus
+   *  landing on top of it. Both must MITIGATE and neither may profit, so
+   *  together they can cancel only a share of what the round otherwise cost.
+   *  Going back for the crew still visibly pays; it just cannot pay more than
+   *  the sinking cost, and a worse round stays worse however much is done
+   *  about it. */
+  confidenceCreditMitigation: 0.7,
+  /** THE CONFIDENCE CEILING — the headline rule.
+   *
+   *  Confidence tops out at maxConfidence only for an operation that has never
+   *  lost a ship or a crew. Every hull on the seabed and every crew left in the
+   *  water lowers the highest number the consortium will give you, permanently,
+   *  for the rest of the run. That is what makes the bar mean something: it is
+   *  a RECORD, not a mood.
+   *
+   *  Read against the run's cumulative hulls launched, so it is size-neutral
+   *  like everything else here: losing a tenth of everything you have ever
+   *  sailed caps you at 80 whether the convoy is 20 hulls or 45.
+   *
+   *  These are ceiling points per unit of cumulative share, so 200 means each
+   *  1% of hulls lost costs 2 points of ceiling. Crews drag half again as hard
+   *  as hulls: a sinking is the sea's doing, leaving the crew in it is yours. */
+  confidenceCeilingLossDrag: 200,
+  confidenceCeilingCrewDrag: 300,
+  /** Floor under the ceiling. A terrible record must not strangle a run into
+   *  something unrecoverable — defeat is confidence reaching ZERO, and that has
+   *  to stay a thing the player does round by round rather than a wall the
+   *  ledger builds behind them. Whatever the record, the bar can always be
+   *  climbed back to here. */
+  confidenceCeilingFloor: 40,
   /** Floor on ordinary confidence lost in ONE round (captures excluded).
    *
    *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
@@ -1163,6 +1253,18 @@ export const DRAFT = {
   /** Chance of a THIRD option per wreckage unit recovered that round —
    *  recovery beyond ~3 units guarantees the wide draft. */
   thirdChoicePerUnit: 0.34,
+  /** Crews pulled out of the water in ONE round that earn a draft REROLL.
+   *
+   *  Deliberately aimed at the player who is losing ships: crews only enter the
+   *  water when hulls go down, so this is a consolation that pays exactly when
+   *  a round has gone badly — and it pays for the boat-work, not the sinking.
+   *  Recovery already buys draft breadth through wreckage; this buys a second
+   *  look at a table the player does not like, which is the thing a bad round
+   *  most often needs. */
+  crewsPerReroll: 3,
+  /** Rerolls that may be banked at once, so a run of terrible rounds cannot
+   *  turn the draft into a slot machine the player pulls until it pays. */
+  maxRerolls: 3,
   /** Extra draft weight per recovered unit applied to entries in branches
    *  that counter the recovered threat's family. */
   branchWeightPerUnit: 1.25,
@@ -1339,6 +1441,21 @@ export const COMMANDER = {
   /** Commander XP earned per round survived when a run ends — losses still
    *  feed permanent progression, which is what makes them feel productive. */
   xpPerRound: 5,
+} as const;
+
+/** Escort Legacies: the flotilla's half of the permanent layer.
+ *
+ *  Bounded exactly like the commander loadout, and for the same reason — the
+ *  design forbids unbounded permanent power growth, and the slot/point caps
+ *  are what enforce it structurally. Sized to the escort cap: three berths,
+ *  three legacies, so a full flotilla can carry one each and a player who has
+ *  unlocked everything still has to choose which three sail. */
+export const ESCORT_LEGACY = {
+  /** Equipped legacy slots. Matches ECONOMY.maxEscorts: one per berth. */
+  slots: 3,
+  /** Total loadout point budget across equipped legacies. Deliberately short
+   *  of three of the dearest, so the third slot costs something to fill. */
+  loadoutPoints: 22,
 } as const;
 
 export const EVOLUTION = {

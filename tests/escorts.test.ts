@@ -426,7 +426,7 @@ describe('losing and replacing an escort', () => {
 // 9: per-escort purchase and refund accounting
 // ---------------------------------------------------------------------------
 
-describe('escort equipment is drafted stock, and sinks with the ship', () => {
+describe('escort equipment is drafted stock, and is SALVAGED when the ship sinks', () => {
   it('fitting and unfitting is free and perfectly reversible', () => {
     const c = richCampaign('free-refit');
     buyEscort(c);
@@ -473,11 +473,13 @@ describe('escort equipment is drafted stock, and sinks with the ship', () => {
     expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
   });
 
-  it('LOSING an escort destroys the equipment she was carrying', () => {
-    // This is what makes an escort worth defending. The hull is 600 cash; the
-    // deck gun aboard her cannot be bought back at any price — it has to be
-    // drafted again.
-    const c = richCampaign('equipment-sinks');
+  it('LOSING an escort RETURNS the equipment she was carrying to the locker', () => {
+    // Losing a hull used to delete the drafted units aboard her, which was a
+    // far worse trade than it looked: modules only arrive through the draft, so
+    // one mine could erase a branch the player had spent three rounds building
+    // toward, with no decision anywhere in it. The crew get the guns off her.
+    // What an escort loss costs now is her LEGACY — see the legacy suite.
+    const c = richCampaign('equipment-salvaged');
     c.moduleStock.escort = { deckGun: 2 };
     buyEscort(c);
     buyEscort(c);
@@ -488,13 +490,13 @@ describe('escort equipment is drafted stock, and sinks with the ship', () => {
 
     sinkOne(c, 0);
     expect(c.escortUnits.map((u) => u.id)).not.toContain(a.id);
-    // One unit gone with her; the survivor keeps hers.
-    expect(moduleStock(c, 'escort', 'deckGun')).toBe(1);
-    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
+    // Both units still held; hers is loose in the locker for the next hull.
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(2);
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(1);
     expect(c.escortUnits[0].modules).toEqual(['deckGun']);
   });
 
-  it('a bare escort takes nothing to the bottom with her', () => {
+  it('a bare escort leaves the locker exactly as it was', () => {
     const c = richCampaign('bare-sinks');
     c.moduleStock.escort = { deckGun: 1 };
     buyEscort(c);
@@ -503,6 +505,7 @@ describe('escort equipment is drafted stock, and sinks with the ship', () => {
     expect(equipEscortModule(c, a.id, 'deckGun')).toBe(true);
     sinkOne(c, 1); // the empty one
     expect(moduleStock(c, 'escort', 'deckGun')).toBe(1);
+    expect(moduleSpare(c, 'escort', 'deckGun')).toBe(0);
     expect(c.escortUnits[0].modules).toEqual(['deckGun']);
   });
 

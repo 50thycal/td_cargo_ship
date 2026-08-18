@@ -5,6 +5,7 @@
 import { COMBAT, SIM, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { stepTransit } from '../sim/transit';
 import { escortStatus, resolveEscortOrder, type EscortStatus } from '../sim/escortOrders';
+import { escortHull } from '../data/escortHulls';
 import type { RNG } from '../sim/rng';
 import type {
   AutoSystem,
@@ -168,6 +169,9 @@ export class TransitView {
    *  coordinates, so the line stays put if the camera moves under it. */
   private runStart: { x: number; y: number } | null = null;
   private runDrag: { x: number; y: number } | null = null;
+  /** The route being drawn for the selected escort, in world points. Non-null
+   *  only while a drag that STARTED on that escort is in progress. */
+  private pathDraw: { escortId: number; points: { x: number; y: number }[] } | null = null;
   /** Depth-charge shot ids whose detonation blast has been drawn. */
   private dcDetonationsSeen = new Set<number>();
   /** Which threat a tap on a cluster of missiles resolves to. A player
@@ -196,7 +200,6 @@ export class TransitView {
    *  This is the panel that answers "why is that one sitting there". */
   private escortPanel!: HTMLElement;
   private readonly escortRows = new Map<number, { row: HTMLElement; name: HTMLElement; status: HTMLElement; bar: HTMLElement }>();
-  private centreBtn!: HTMLButtonElement;
 
   private warthogBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
@@ -281,18 +284,21 @@ export class TransitView {
     this.canvas.addEventListener('pointerup', this.onPointerUp);
     this.canvas.addEventListener('pointercancel', this.onPointerUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
-    // Open on the convoy, and keep it framed until the player takes the wheel.
+    // Open on the convoy — ONCE.
     //
     // The camera used to start centred on the world, which was the same thing
     // as centring on the convoy back when the whole strait fitted on screen.
     // It does not any more: the map is twice as wide and the widest view shows
     // about half of it, so a world-centred camera opens on empty water with the
     // convoy still off the left-hand edge, and the round begins with the player
-    // hunting for their own ships. Following is also simply the right default —
-    // it is what the Centre Convoy button does, and any pan or pinch releases
-    // it immediately.
+    // hunting for their own ships.
+    //
+    // It used to FOLLOW from here, which is a different thing and not one the
+    // player asked for: a camera that rides the convoy every frame overrides
+    // wherever they have chosen to look. Frame it at the start, then leave the
+    // wheel alone.
     const opening = this.convoyCentre();
-    this.camera.follow(opening.x, opening.y);
+    this.camera.centreOn(opening.x, opening.y);
     this.lastNow = performance.now();
     requestAnimationFrame(this.frame);
   }
@@ -460,27 +466,12 @@ export class TransitView {
       autoGroup.append(btn);
     }
 
-    // No zoom buttons. Pinch does it on a phone and the wheel does it on a
-    // desktop, so a pair of keys that duplicate a gesture the player already
-    // has were two of the handful of slots along the bottom of a small screen
-    // spent on nothing. CONVOY stays: recentring is not a gesture.
-    this.centreBtn = h('button', {
-      className: 'hud-btn',
-      text: 'CONVOY',
-      onClick: () => {
-        const c = this.convoyCentre();
-        if (this.camera.isFollowing()) {
-          // Second press releases the camera and shows the whole strait again.
-          this.camera.resetToFit();
-          this.showToast('Camera released — whole strait in view');
-        } else {
-          this.camera.follow(c.x, c.y);
-          this.showToast('Camera centred on the convoy');
-        }
-      },
-    });
-    this.centreBtn.title = 'Centre the camera on the convoy (press again to view the whole strait)';
-
+    // No camera keys at all now. Pinch zooms and drag pans, and the one thing
+    // the player could not do with a gesture — find a ship that had steamed off
+    // the edge of the view — is handled by the camera itself: selecting an
+    // escort that is off screen brings her into it, and selecting one already
+    // in view does nothing. A CONVOY key on top of that was a button for a job
+    // nobody had.
     // ACTIONS live behind one button, not spread across the bottom of the
     // screen. A player who buys everything ends up with seven ability keys plus
     // the automation group plus the camera and clock groups, and on a phone
@@ -511,11 +502,18 @@ export class TransitView {
     });
     this.actionsBtn.title = 'Abilities you have in hand';
 
-    this.hudBottom.append(
+    // The button and its tray travel together in one positioned dock, so the
+    // tray can open ALONGSIDE the button rather than above it. Opening upward
+    // put a 620px-wide panel over the left of the map — the water the player is
+    // most likely to be watching, since the convoy sails left to right.
+    const actionDock = h('div', { className: 'action-dock' }, [
       this.actionsBtn,
       this.actionTray,
+    ]);
+
+    this.hudBottom.append(
+      actionDock,
       h('span', { className: 'spacer' }),
-      h('div', { className: 'hud-group' }, [this.centreBtn]),
       h('div', { className: 'hud-group' }, [this.restartBtn, this.pauseBtn, this.speedBtn]),
     );
 
@@ -527,7 +525,32 @@ export class TransitView {
     this.elements.push(this.escortPanel);
   }
 
-  /** Centre of the live convoy — what the camera follows and what "return to
+  /** Margin, in canvas pixels, inside which a ship does not count as visible.
+   *  The HUD bar and the escort roster overlap the edges of the stage, so a
+   *  hull sitting under one of them is a hull the player cannot actually see. */
+  private static readonly REVEAL_MARGIN_PX = 90;
+
+  /** How close, in canvas pixels, a press must land to the selected escort for
+   *  the drag to be read as drawing her route rather than panning the map.
+   *  Generous on purpose: a fingertip is wide and the hull is small. */
+  private static readonly PATH_GRAB_PX = 46;
+
+  /** Minimum canvas-pixel spacing between captured route points. A finger
+   *  emits one per frame; the escort only needs enough to describe the curve,
+   *  and the sim thins again against its own arrival radius. */
+  private static readonly PATH_POINT_SPACING_PX = 18;
+
+  /** Bring a newly selected escort into view — and ONLY if she is not already
+   *  in it. This is the whole of the game's automatic camera.
+   *
+   *  Centring unconditionally is the version that annoys: most selections are
+   *  of a ship the player is already looking at, and moving the frame for those
+   *  throws away the view they had set up, usually mid-order. */
+  private revealEscort(escort: { x: number; y: number }): void {
+    this.camera.revealIfOffScreen(escort.x, escort.y, TransitView.REVEAL_MARGIN_PX);
+  }
+
+  /** Centre of the live convoy — where the camera opens and what "return to
    *  escort duty" aims at. Falls back to the escorts, then the map centre. */
   private convoyCentre(): { x: number; y: number } {
     const ships = this.state.ships.filter((s) => s.alive && !s.delivered && s.spawned);
@@ -568,7 +591,7 @@ export class TransitView {
           className: 'escort-row',
           onClick: () => {
             this.selectedEscort = this.selectedEscort === escort.id ? null : escort.id;
-            if (this.selectedEscort !== null) this.camera.centreOn(escort.x, escort.y);
+            if (this.selectedEscort !== null) this.revealEscort(escort);
           },
         }, [
           h('div', { className: 'escort-row-head' }, [name]),
@@ -662,21 +685,23 @@ export class TransitView {
     this.selInfo.classList.toggle('escort-selected', !!selected && !this.armedAbility);
 
     this.updateEscortPanel();
-    this.centreBtn.classList.toggle('armed', this.camera.isFollowing());
 
     this.targetBtn.innerHTML = `TARGET<span class="charges">${TARGET_PRIORITY_LABEL[this.targetPriority]}</span>`;
     this.targetBtn.title = TARGET_PRIORITY_HINT[this.targetPriority];
 
-    const warthogActive = t.time < t.warthogActiveUntil;
-    this.warthogBtn.innerHTML = `A-10<span class="charges">${
-      warthogActive ? 'ON TASK' : `×${t.warthogCharges}`
+    // Sorties stack, so the button reads what is left to CALL, not whether one
+    // is airborne. The count of jets already up is shown beside it — a player
+    // running three at once should be able to see that they are.
+    const onTask = t.aircraft.filter((a) => a.role === 'warthog').length;
+    this.warthogBtn.innerHTML = `A-10<span class="charges">×${t.warthogCharges}${
+      onTask > 0 ? ` · ${onTask} UP` : ''
     }</span>`;
-    this.warthogBtn.disabled = t.warthogCharges <= 0 && !warthogActive;
-    this.warthogBtn.classList.toggle('off', t.warthogCharges <= 0 && !warthogActive);
+    this.warthogBtn.disabled = t.warthogCharges <= 0;
+    this.warthogBtn.classList.toggle('off', t.warthogCharges <= 0);
     this.warthogBtn.classList.toggle('armed', this.armedAbility === 'warthog');
     this.warthogBtn.classList.toggle(
       'hidden',
-      t.warthogCharges <= 0 && !warthogActive && t.stats.counter.charges.warthog.available === 0,
+      t.warthogCharges <= 0 && onTask === 0 && t.stats.counter.charges.warthog.available === 0,
     );
 
     this.scanBtn.innerHTML = `SCAN<span class="charges">×${t.scanCharges}</span>`;
@@ -745,7 +770,6 @@ export class TransitView {
     // Ability placements must not stack: two in one frame would burn two charges.
     if (cmd.type === 'ability') {
       if (this.pending.some((p) => p.type === 'ability' && p.ability === cmd.ability)) return;
-      if (cmd.ability === 'warthog' && this.state.time < this.state.warthogActiveUntil) return;
     }
     this.pending.push(cmd);
   }
@@ -753,12 +777,7 @@ export class TransitView {
   /** Arm (or disarm) a placeable ability/weapon. The next map tap places it. */
   private armAbility(ability: ArmedAbility): void {
     if (this.state.over || this.paused) return;
-    if (
-      ability === 'warthog' &&
-      (this.state.warthogCharges <= 0 || this.state.time < this.state.warthogActiveUntil)
-    ) {
-      return;
-    }
+    if (ability === 'warthog' && this.state.warthogCharges <= 0) return;
     if (ability === 'scan' && this.state.scanCharges <= 0) return;
     if (ability === 'sonar' && this.state.sonarCharges <= 0) return;
     if (ability === 'smoke' && this.state.smokeCharges <= 0) return;
@@ -803,6 +822,25 @@ export class TransitView {
     if (this.armedAbility === 'warthog' && !this.runStart) {
       this.runDrag = null;
     }
+    // A press that lands ON the selected escort may become a drawn ROUTE.
+    //
+    // Anchoring the gesture to the ship is what keeps it unambiguous: dragging
+    // anywhere else still pans the map, which the player needs constantly, and
+    // "drag the ship along the way you want her to go" is the reading a player
+    // arrives at without being told. Nothing is committed until release, so a
+    // press that turns out to be a tap is still an ordinary move order.
+    this.pathDraw = null;
+    if (this.selectedEscort !== null && !this.armedAbility) {
+      const esc = this.state.escorts.find((e) => e.id === this.selectedEscort && e.alive);
+      if (esc) {
+        const grab = TransitView.PATH_GRAB_PX;
+        const d = Math.hypot(
+          this.camera.worldToScreenX(esc.x) - p.x,
+          this.camera.worldToScreenY(esc.y) - p.y,
+        );
+        if (d <= grab) this.pathDraw = { escortId: esc.id, points: [] };
+      }
+    }
   };
 
   private onPointerMove = (ev: PointerEvent): void => {
@@ -841,6 +879,21 @@ export class TransitView {
       };
       return;
     }
+    // A drag that began on the selected escort DRAWS HER ROUTE rather than
+    // panning. Points are thinned on the way in: a finger produces one per
+    // frame, and a route only needs enough of them to describe the curve.
+    if (this.pathDraw) {
+      const w = {
+        x: this.camera.screenToWorldX(p.x),
+        y: this.camera.screenToWorldY(p.y),
+      };
+      const last = this.pathDraw.points[this.pathDraw.points.length - 1];
+      const spacing = TransitView.PATH_POINT_SPACING_PX * this.camera.worldPerPixel();
+      if (!last || Math.hypot(w.x - last.x, w.y - last.y) >= spacing) {
+        this.pathDraw.points.push(w);
+      }
+      return;
+    }
     // Otherwise a drag pans the map — the press will not issue an order.
     this.camera.panByScreen(p.x - prev.x, p.y - prev.y);
   };
@@ -857,6 +910,19 @@ export class TransitView {
       this.commitWarthogRun(this.runStart, this.runDrag);
       return;
     }
+    // A drawn route is complete on release — that gesture IS the order.
+    if (wasDrag && this.pathDraw) {
+      const { escortId, points } = this.pathDraw;
+      this.pathDraw = null;
+      if (points.length >= 2) {
+        this.queue({ type: 'pathEscort', escortId, points, hold: false });
+        const escort = this.state.escorts.find((e) => e.id === escortId);
+        this.showToast(`${escort?.name ?? 'Escort'} — steaming the route you drew`);
+        this.dismissTutorial();
+      }
+      return;
+    }
+    this.pathDraw = null;
     // Any other drag moved the camera; it was never an order.
     if (wasDrag || !p) return;
     this.handleTap(p.x, p.y);
@@ -1025,6 +1091,7 @@ export class TransitView {
       const escort = this.state.escorts.find((e) => e.id === bestEscort);
       this.selectedEscort = this.selectedEscort === bestEscort ? null : bestEscort;
       if (this.selectedEscort !== null && escort) {
+        this.revealEscort(escort);
         this.showToast(`${escort.name} selected — tap the map to give her orders`);
       }
       this.dismissTutorial();
@@ -1078,13 +1145,14 @@ export class TransitView {
       }
     }
 
-    // Camera: follow the convoy if asked, then ease toward the target. Done
-    // every frame regardless of pause, so panning and zooming stay live while
-    // the player is stopped and thinking.
-    if (this.camera.isFollowing()) {
-      const c = this.convoyCentre();
-      this.camera.updateFollowTarget(c.x, c.y);
-    }
+    // Camera: ease toward the target. Done every frame regardless of pause, so
+    // panning and zooming stay live while the player is stopped and thinking.
+    //
+    // Nothing is followed continuously any more. A camera that rides the convoy
+    // takes the frame away from a player who has deliberately panned somewhere
+    // else, and the convoy is the one thing on the map that is never hard to
+    // find. The only automatic move left is revealEscort, and it only fires for
+    // a ship that is actually off screen.
     this.camera.update(dtReal);
     // Order markers fade out after a few seconds.
     this.orderMarkers = this.orderMarkers.filter((m) => now - m.at < 4000);
@@ -1797,6 +1865,59 @@ export class TransitView {
       this.drawShip(ship);
     }
 
+    // ROUTES. Two of them, drawn the same way so the line under the finger and
+    // the line the ship is steaming are visibly the same object.
+    //
+    //  • the route being drawn right now, from the escort through the finger;
+    //  • the route a ship is already on — her current leg plus what is queued.
+    const drawRoute = (
+      from: { x: number; y: number },
+      points: { x: number; y: number }[],
+      alpha: number,
+      dashPhase: number,
+    ): void => {
+      if (points.length === 0) return;
+      ctx.save();
+      ctx.setLineDash([7, 6]);
+      ctx.lineDashOffset = dashPhase;
+      ctx.strokeStyle = `rgba(77, 195, 255, ${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.sx(from.x), this.sy(from.y));
+      for (const pt of points) ctx.lineTo(this.sx(pt.x), this.sy(pt.y));
+      ctx.stroke();
+      ctx.restore();
+      // A pip at each turn, so the shape of the route reads as a set of
+      // decisions rather than a smear.
+      ctx.fillStyle = `rgba(77, 195, 255, ${alpha * 0.8})`;
+      for (const pt of points) {
+        ctx.beginPath();
+        ctx.arc(this.sx(pt.x), this.sy(pt.y), 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // The far end gets a ring — that is where she finishes.
+      const end = points[points.length - 1];
+      ctx.strokeStyle = `rgba(77, 195, 255, ${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.sx(end.x), this.sy(end.y), 6, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+
+    // The dashes crawl toward the destination, which is the cheapest possible
+    // way to say "this is a direction of travel, not a boundary".
+    const crawl = -(now / 40) % 13;
+    for (const escort of t.escorts) {
+      if (!escort.alive || !escort.moveTarget) continue;
+      if (escort.waypoints.length === 0) continue; // a plain move order, not a route
+      drawRoute(escort, [escort.moveTarget, ...escort.waypoints], 0.4, crawl);
+    }
+    if (this.pathDraw && this.pathDraw.points.length > 0) {
+      const esc = t.escorts.find((e) => e.id === this.pathDraw?.escortId && e.alive);
+      if (esc) drawRoute(esc, this.pathDraw.points, 0.85, crawl);
+    }
+
     // Order confirmations: a ping where the player just sent a ship. It
     // outlives the order itself for a few seconds, so a tap always produces
     // visible feedback even if the escort is already standing on the spot.
@@ -1910,20 +2031,25 @@ export class TransitView {
       }
 
       // Hull, rotated to heading. Dimmed while its launcher is knocked offline.
+      //
+      // The OUTLINE comes from the ship's own hull class, so the frigate on the
+      // map is the frigate in the roster. Every escort used to draw the same
+      // wedge, which made a flotilla three identical markers the player had to
+      // read labels to tell apart.
+      const plan = escortHull(escort.unitId).plan;
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(escort.heading);
       ctx.fillStyle = disabled ? '#8a9099' : '#c9d4de';
       ctx.beginPath();
-      ctx.moveTo(12, 0);
-      ctx.lineTo(4, -5);
-      ctx.lineTo(-12, -5);
-      ctx.lineTo(-12, 5);
-      ctx.lineTo(4, 5);
+      plan.points.forEach(([px, py], i) => {
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = '#5b6b7a';
-      ctx.fillRect(-5, -2.5, 6, 5);
+      ctx.fillRect(plan.house[0], plan.house[1], plan.house[2], plan.house[3]);
       ctx.restore();
 
       if (disabled) {
@@ -1956,6 +2082,47 @@ export class TransitView {
         ctx.beginPath();
         ctx.arc(x, y, t.effects.escort.autoRadius * this.scale, 0, Math.PI * 2);
         ctx.stroke();
+      }
+
+      // MINE-DRONE READINESS, on the hull that carries the launcher.
+      //
+      // A drone is the one weapon whose availability the player had no way to
+      // read on the map: it fires from a specific escort, it recharges on its
+      // own clock, and the only clue was the launch silently not happening. A
+      // ring that fills as the rack reloads answers "how long until I can sweep
+      // that mine" without opening anything.
+      if (escort.modules.includes('mcmDroneLauncher') && t.effects.sweepDrones) {
+        const ringR = 20;
+        if (escort.droneReady > 0) {
+          // Ready: a solid arc, plus a pip per sortie in the rack so the
+          // dual-sortie upgrade is visible as the thing it is.
+          ctx.strokeStyle = 'rgba(122, 214, 255, 0.75)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y, ringR, 0, Math.PI * 2);
+          ctx.stroke();
+          const pips = Math.min(escort.droneReady, 3);
+          for (let i = 0; i < pips; i++) {
+            const a = -Math.PI / 2 + (i - (pips - 1) / 2) * 0.34;
+            ctx.fillStyle = 'rgba(122, 214, 255, 0.95)';
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * ringR, y + Math.sin(a) * ringR, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (t.effects.mcm.reload > 0) {
+          // Reloading: the arc sweeps round as the rack refills, so the ring is
+          // a clock rather than a light.
+          const done = clampNum(1 - escort.droneCooldown / t.effects.mcm.reload, 0, 1);
+          ctx.strokeStyle = 'rgba(122, 214, 255, 0.18)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y, ringR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(122, 214, 255, 0.7)';
+          ctx.beginPath();
+          ctx.arc(x, y, ringR, -Math.PI / 2, -Math.PI / 2 + done * Math.PI * 2);
+          ctx.stroke();
+        }
       }
 
       // HP bar when the escort is damaged.
@@ -2538,6 +2705,48 @@ export class TransitView {
       ctx.beginPath();
       ctx.arc(x1, y1, (run.killed ? 9 : 5) * (2 - fade), 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Deck-gun rounds. The gun used to kill attack boats with nothing at all
+    // drawn between the escort and the boat, so the one weapon the player aims
+    // by hand was also the only one they could not watch work.
+    //
+    // The sim resolved the hit at the trigger pull (see GunShot), so this is
+    // presentation: the shell is interpolated along its line over the round's
+    // life, and a shot that missed still flies — it simply arrives with nothing
+    // to show. That distinction is the useful part: a player watching rounds
+    // land short learns the gun's accuracy is the problem.
+    for (const shot of t.gunShots) {
+      const travel = clampNum(1 - shot.ttl / shot.ttlTotal, 0, 1);
+      const x0 = this.sx(shot.x);
+      const y0 = this.sy(shot.y);
+      const x1 = this.sx(shot.targetX);
+      const y1 = this.sy(shot.targetY);
+      const rx = x0 + (x1 - x0) * travel;
+      const ry = y0 + (y1 - y0) * travel;
+      // A short tracer behind the shell reads as a fast round rather than a
+      // dot sliding across the water.
+      const tailAt = Math.max(0, travel - 0.16);
+      ctx.strokeStyle = 'rgba(255, 208, 140, 0.55)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x0 + (x1 - x0) * tailAt, y0 + (y1 - y0) * tailAt);
+      ctx.lineTo(rx, ry);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 232, 176, 0.95)';
+      ctx.beginPath();
+      ctx.arc(rx, ry, 2.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Impact, only in the last of the flight and only where it landed.
+      if (travel > 0.86 && shot.hit) {
+        const punch = (travel - 0.86) / 0.14;
+        ctx.fillStyle = shot.killed
+          ? `rgba(255, 236, 180, ${0.85 * (1 - punch)})`
+          : `rgba(255, 190, 110, ${0.6 * (1 - punch)})`;
+        ctx.beginPath();
+        ctx.arc(x1, y1, (shot.killed ? 8 : 4) * (0.5 + punch), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // Support aircraft (scan plane / the Warthog).

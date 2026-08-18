@@ -86,6 +86,9 @@ export interface EscortUnit {
   modules: EscortModuleId[];
   /** Unrepaired hull damage this escort is carrying into the next round. */
   damage: number;
+  /** The escort legacy this ship carries, assigned when she was commissioned.
+   *  Her loss burns it for the rest of the region — see spendEscortLegacy. */
+  legacy?: string;
 }
 
 export interface BaseModuleDef {
@@ -557,6 +560,15 @@ export interface Escort {
   /** Player-set destination. `hold` = station there instead of resuming
    *  forward on arrival. */
   moveTarget: { x: number; y: number; hold: boolean } | null;
+  /** The REST of a drawn route, in order, waiting behind moveTarget.
+   *
+   *  A path is deliberately nothing more than a queue of ordinary move targets:
+   *  arriving at one pops the next. Every bit of the steering the escort
+   *  already has — traffic avoidance, the blocked-and-parting rule, the arrival
+   *  test — applies to a drawn route without knowing routes exist, which is why
+   *  a curve around a minefield behaves like a hand-flown one rather than a
+   *  rail the ship is dragged along. */
+  waypoints: { x: number; y: number }[];
   /** True once a hold order has been reached: the escort holds position. */
   stationed: boolean;
   /** Seconds spent making no real ground toward the current destination. Past
@@ -746,6 +758,34 @@ export interface StrafeRun {
   ttl: number;
 }
 
+/** One deck-gun round in flight, drawn from the escort to what she shot at.
+ *
+ *  VISUAL ONLY, exactly like StrafeRun and for the same reason: the sim
+ *  resolves the accuracy roll and the damage at the trigger pull, so this
+ *  object carries neither. It exists because a gun that killed attack boats
+ *  with nothing visible between the escort and the boat left the player with a
+ *  weapon they could only find in the after-action report.
+ *
+ *  The view interpolates the shell along the line over its life, so a round
+ *  that misses still flies — it simply arrives with nothing to show for it. */
+export interface GunShot {
+  id: number;
+  /** Muzzle, at fire time. */
+  x: number;
+  y: number;
+  /** Where the round is going — the target's position when it was fired. A
+   *  boat that moves is not chased: the shell was already on its way. */
+  targetX: number;
+  targetY: number;
+  /** Did the roll land? Decides whether the far end shows an impact. */
+  hit: boolean;
+  /** True when this round is what sank her, so the view can flash it. */
+  killed: boolean;
+  /** Seconds of flight left, counted down from ttlTotal. */
+  ttl: number;
+  ttlTotal: number;
+}
+
 /** A placed area effect with a lifetime: active-sonar ping (reveals the
  *  underwater picture) or defensive smoke (degrades enemy targeting). */
 export interface AreaEffect {
@@ -853,7 +893,10 @@ export type TransitCommand =
   | { type: 'toggleAuto'; system: AutoSystem; enabled: boolean }
   /** Send an escort to a point. hold=false → resume forward on arrival;
    *  hold=true → stay stationed there. */
-  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean };
+  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean }
+  /** A drawn ROUTE: the escort steams the points in order. The last one
+   *  carries `hold`, exactly as a single move order would. */
+  | { type: 'pathEscort'; escortId: number; points: { x: number; y: number }[]; hold: boolean };
 
 export type TransitEventType =
   | 'delivered'
@@ -1090,6 +1133,14 @@ export interface CombatEffects {
   /** Global damage multiplier (1 normally; 0 in dev god mode). Per-ship
    *  compartmentalization applies separately, only to equipped hulls. */
   damageTakenMult: number;
+  /** Escort-only damage multipliers, on top of damageTakenMult. Escort
+   *  legacies live here: a flotilla can be hardened without also hardening the
+   *  merchant hulls, which is a different (and much bigger) lever. */
+  escortDamageMult: number;
+  /** Applied on top of escortDamageMult for MINE damage only. */
+  escortMineDamageMult: number;
+  /** Multiplies escort transit speed. */
+  escortSpeedMult: number;
   /** Damage one A-10 gun run does to an attack boat (mines die outright). */
   warthogDamage: number;
   /** Minesweeper drones available (branch researched AND launcher equipped). */
@@ -1287,6 +1338,8 @@ export interface TransitState {
   aircraft: Aircraft[];
   /** Gun-run bursts still being drawn. Visual only — see StrafeRun. */
   strafeRuns: StrafeRun[];
+  /** Deck-gun rounds in flight. Visual only — see GunShot. */
+  gunShots: GunShot[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
@@ -1328,12 +1381,11 @@ export interface TransitState {
   /** One "out of shells" warning per dry spell, not one per silent trigger
    *  pull — thirty toasts a second is noise, not information. */
   gunAmmoWarned: boolean;
+  /** Sorties in hand. Sorties STACK — several jets may be on task at once, on
+   *  different bearings — so this count is the only thing limiting the player.
+   *  There is deliberately no "one flight at a time" gate: with one, holding
+   *  four charges and flying one made the count a lie. */
   warthogCharges: number;
-  /** Transit time until which an A-10 is on task (blocks a second call). */
-  warthogActiveUntil: number;
-  /** Where the A-10 currently on task is holding its wheel. */
-  warthogCenterX: number;
-  warthogCenterY: number;
   scanCharges: number;
   sonarCharges: number;
   smokeCharges: number;
@@ -1418,6 +1470,12 @@ export interface TechDraft {
   options: DraftOption[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
+  /** The per-branch salvage the table was drawn against, kept so a REROLL can
+   *  redraw against the same round rather than against a bare pool. */
+  recoveredByBranch: Record<string, number>;
+  /** Times this table has been rerolled — shown to the player, and used to
+   *  salt the redraw so a reroll is deterministic on replay. */
+  rerolls?: number;
   /** How many options may be TAKEN from this table. One ordinarily; recovery
    *  buys a second and a third. Picking decrements it, and the draft closes
    *  when it reaches zero — so a rich salvage round is a bigger shopping trip
@@ -1872,6 +1930,11 @@ export interface CampaignState {
   regionId: string;
   /** Commander Ability loadout locked in for this run at run start. */
   commanderAbilities: string[];
+  /** Escort legacies equipped for this run, snapshotted from the profile at
+   *  region start, and the ones whose ship has since gone down. A spent legacy
+   *  is never reassigned: a replacement hull is a new ship with a new crew. */
+  escortLegacies: string[];
+  spentLegacies: string[];
   /** True for a developer/test run — enables the dev tools and, with godMode,
    *  invincible ships & unlimited munitions. Never set on a normal campaign. */
   dev?: boolean;
@@ -1895,6 +1958,8 @@ export interface CampaignState {
   defeatCause: 'confidence' | 'quota' | null;
   /** Mandatory technology draft awaiting a pick (null = none pending). */
   pendingDraft: TechDraft | null;
+  /** Banked draft rerolls, earned by pulling crews out of the water. */
+  draftRerolls: number;
   /** Every draft offered this run, with what was picked (telemetry). */
   draftHistory: DraftRecord[];
   /** What each enemy branch has actually done to this run — the primary
@@ -1914,6 +1979,11 @@ export interface CampaignState {
   wreckageRecovered: Record<string, number>;
   /** Crew-rescue totals across the run (drives records + AAR framing). */
   crewRescue: { rescued: number; lost: number };
+  /** The run's cumulative hull ledger — every merchant sailed and every one
+   *  that did not arrive. This is what the CONFIDENCE CEILING is read from:
+   *  the consortium's highest opinion of you is your record, not your last
+   *  round. See CAMPAIGN.confidenceCeilingLossDrag. */
+  record: { launched: number; lost: number };
   /** True once this run's ending has been applied to the Commander Profile,
    *  so a reload of the final report can never award XP twice. */
   profileApplied: boolean;

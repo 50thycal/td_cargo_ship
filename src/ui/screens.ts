@@ -9,7 +9,7 @@
 // same screen id and must not re-trigger the stagger, so `entering()` tracks
 // the last screen id at module scope.
 
-import { COMMANDER, ECONOMY } from '../data/tuning';
+import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, ESCORT_LEGACY } from '../data/tuning';
 import type { StatTier } from '../data/statTiers';
 import {
   BASE_MODULES,
@@ -63,6 +63,9 @@ import {
   removeModule,
   repairCost,
   repairFleet,
+  repairPartial,
+  repairPartialQuote,
+  scopeDamage,
   setComposition,
   setFormation,
   shipCost,
@@ -81,6 +84,9 @@ import {
   buyScanPulse,
   escortSlots,
   renameEscort,
+  rerollBlockReason,
+  rerollDraft,
+  confidenceCeiling,
 } from '../sim/campaign';
 import {
   draftOptionBranch,
@@ -94,6 +100,10 @@ import {
   setLoadout,
   unlockAbility,
   unlockBlockReason,
+  legacyLoadoutBlockReason,
+  legacyUnlockBlockReason,
+  setLegacyLoadout,
+  unlockLegacy,
   regionUnlocked,
   type CommanderProfile,
   type RunSettlement,
@@ -103,6 +113,12 @@ import {
   COMMANDER_ABILITY_ORDER,
   loadoutPointsUsed,
 } from '../data/commanderAbilities';
+import { escortHull } from '../data/escortHulls';
+import {
+  ESCORT_LEGACIES,
+  ESCORT_LEGACY_ORDER,
+  legacyPointsUsed,
+} from '../data/escortLegacies';
 import { REGIONS, REGION_ORDER, regionDef, type RegionId } from '../data/regions';
 import { ENEMY_BRANCHES } from '../data/enemyBranches';
 import { formatInterceptSummary } from '../sim/aar';
@@ -111,6 +127,7 @@ import {
   formationFigure,
   icon,
   shipFigure,
+  escortHullFigure,
   SHIP_TINTS,
   statTierRow,
   statUpgradeRow,
@@ -178,12 +195,27 @@ let prepModuleTab: ShipClassId = 'cargo';
 let prepEscortId: number | null = null;
 
 function resourceBar(c: CampaignState): HTMLElement {
+  // The ceiling rides on the confidence chip: the bar reads "82/91" once the
+  // run's record has cost it headroom, so the cap is visible where the number
+  // is rather than only on the debrief.
+  const ceiling = Math.round(confidenceCeiling(c));
+  const capped = ceiling < CAMPAIGN.maxConfidence;
   return h('div', { className: 'resource-bar' }, [
     h('span', { className: 'res-chip cash' }, [icon('coin'), h('span', { text: `$${c.cash}` })]),
-    h('span', { className: 'res-chip conf', attrs: { title: 'Confidence — the run ends if it reaches zero' } }, [
-      icon('star'),
-      h('span', { text: `${c.confidence}` }),
-    ]),
+    h(
+      'span',
+      {
+        className: 'res-chip conf',
+        attrs: {
+          title: capped
+            ? `Confidence — the run ends if it reaches zero. Capped at ${ceiling}: ` +
+              `${c.record?.lost ?? 0} of ${c.record?.launched ?? 0} hulls lost and ` +
+              `${c.crewRescue?.lost ?? 0} crews left in the water. A full bar means a clean record.`
+            : 'Confidence — the run ends if it reaches zero',
+        },
+      },
+      [icon('star'), h('span', { text: capped ? `${c.confidence}/${ceiling}` : `${c.confidence}` })],
+    ),
   ]);
 }
 
@@ -435,8 +467,64 @@ export function regionSelectScreen(
 }
 
 // ---------------------------------------------------------------------------
-// Commander Ability loadout — the bounded pre-run build
+// Pre-run loadout — Commander Abilities and Escort Legacies
 // ---------------------------------------------------------------------------
+// Two banks off one XP pool. The cards are built by the same renderer because
+// the player is doing the same thing on both: spend XP to unlock, then fit
+// what fits. The difference is in what a slot MEANS — an ability is the
+// commander's and simply on for the run; a legacy belongs to a hull and dies
+// with her — so the copy has to carry it even though the widget cannot.
+
+/** Which bank is open. Held across rerenders so unlocking something does not
+ *  bounce the player back to the other page. */
+let loadoutTab: 'commander' | 'flotilla' = 'commander';
+
+/** One unlock/equip card, shared by both banks. */
+function progressionCard(opts: {
+  name: string;
+  desc: string;
+  points: number;
+  xpCost: number;
+  unlocked: boolean;
+  equipped: boolean;
+  /** null = the toggle is allowed; a string = why it is not. */
+  equipBlock: string | null;
+  unlockBlock: string | null;
+  onToggle: () => void;
+  onUnlock: () => void;
+}): HTMLElement {
+  const rows: HTMLElement[] = [
+    h('div', { className: 'card-head' }, [
+      icon(opts.unlocked ? (opts.equipped ? 'check' : 'star') : 'lock'),
+      h('h3', { text: opts.name }),
+    ]),
+    h('p', { text: opts.desc }),
+    h('div', { className: 'chip-row' }, [
+      chip('coin', `${opts.points} points`, 'Loadout points this consumes'),
+      ...(opts.unlocked ? [] : [chip('intel', `${opts.xpCost} XP to unlock`)]),
+    ]),
+  ];
+  if (opts.unlocked) {
+    rows.push(
+      h('button', {
+        className: opts.equipped ? '' : 'primary',
+        text: opts.equipped ? 'Unequip' : (opts.equipBlock ?? 'Equip'),
+        disabled: !opts.equipped && opts.equipBlock !== null,
+        onClick: opts.onToggle,
+      }),
+    );
+  } else {
+    rows.push(
+      h('button', {
+        className: 'primary',
+        text: opts.unlockBlock === null ? `Unlock — ${opts.xpCost} XP` : opts.unlockBlock,
+        disabled: opts.unlockBlock !== null,
+        onClick: opts.onUnlock,
+      }),
+    );
+  }
+  return h('div', { className: opts.unlocked ? 'card' : 'card locked' }, rows);
+}
 
 export function loadoutScreen(
   profile: CommanderProfile,
@@ -446,73 +534,123 @@ export function loadoutScreen(
   onBack: () => void,
 ): HTMLElement {
   const region = regionDef(regionId);
+  const legacyLoadout = profile.legacyLoadout ?? [];
+  const unlockedLegacies = profile.unlockedLegacies ?? [];
+  const onCommander = loadoutTab === 'commander';
   const { root, body, footer } = screenShell(
-    'Commander Loadout',
-    `${region.name} — ${COMMANDER.abilitySlots} slots · ${COMMANDER.loadoutPoints} pts`,
+    'Pre-Run Loadout',
+    onCommander
+      ? `${region.name} — ${COMMANDER.abilitySlots} slots · ${COMMANDER.loadoutPoints} pts`
+      : `${region.name} — ${ESCORT_LEGACY.slots} berths · ${ESCORT_LEGACY.loadoutPoints} pts`,
     null,
     'loadout',
   );
 
-  const used = loadoutPointsUsed(profile.loadout);
-  body.append(
-    h('div', { className: 'card' }, [
-      h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: 'Commander' })]),
-      h('div', { className: 'chip-row' }, [
-        chip('intel', `${profile.xp} XP`, 'Commander XP unlocks new abilities'),
-        chip('slots', `${profile.loadout.length}/${COMMANDER.abilitySlots} slots`),
-        chip('coin', `${used}/${COMMANDER.loadoutPoints} pts`),
-      ]),
-      h('div', {
-        className: 'hint',
-        text: 'Unlocks are permanent. The equipped loadout locks when the run starts.',
-      }),
-    ]),
+  const tabs = h('div', { className: 'tabs' });
+  const tabButton = (id: 'commander' | 'flotilla', label: string, sub: string): HTMLElement =>
+    h(
+      'button',
+      {
+        className: loadoutTab === id ? 'tab selected' : 'tab',
+        onClick: () => {
+          loadoutTab = id;
+          rerender();
+        },
+      },
+      [
+        icon(id === 'commander' ? 'star' : 'shield'),
+        h('span', { className: 'tab-label' }, [
+          h('strong', { text: label }),
+          h('span', { className: 'muted', text: sub }),
+        ]),
+      ],
+    );
+  tabs.append(
+    tabButton('commander', 'Commander', `${profile.loadout.length}/${COMMANDER.abilitySlots}`),
+    tabButton('flotilla', 'Flotilla', `${legacyLoadout.length}/${ESCORT_LEGACY.slots}`),
   );
+  body.append(tabs);
 
-  for (const id of COMMANDER_ABILITY_ORDER) {
-    const def = COMMANDER_ABILITIES[id];
-    const unlocked = profile.unlockedAbilities.includes(id);
-    const equipped = profile.loadout.includes(id);
-    const rows: HTMLElement[] = [
-      h('div', { className: 'card-head' }, [
-        icon(unlocked ? (equipped ? 'check' : 'star') : 'lock'),
-        h('h3', { text: def.name }),
+  if (onCommander) {
+    const used = loadoutPointsUsed(profile.loadout);
+    body.append(
+      h('div', { className: 'card' }, [
+        h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: 'Commander' })]),
+        h('div', { className: 'chip-row' }, [
+          chip('intel', `${profile.xp} XP`, 'Commander XP unlocks abilities and legacies'),
+          chip('slots', `${profile.loadout.length}/${COMMANDER.abilitySlots} slots`),
+          chip('coin', `${used}/${COMMANDER.loadoutPoints} pts`),
+        ]),
+        h('div', {
+          className: 'hint',
+          text: 'Unlocks are permanent. The equipped loadout locks when the run starts.',
+        }),
       ]),
-      h('p', { text: def.desc }),
-      h('div', { className: 'chip-row' }, [
-        chip('coin', `${def.points} points`, 'Loadout points this ability consumes'),
-        ...(unlocked ? [] : [chip('intel', `${def.xpCost} XP to unlock`)]),
-      ]),
-    ];
-    if (unlocked) {
-      const next = equipped
-        ? profile.loadout.filter((a) => a !== id)
-        : [...profile.loadout, id];
-      const block = equipped ? null : loadoutBlockReason(profile, next);
-      rows.push(
-        h('button', {
-          className: equipped ? '' : 'primary',
-          text: equipped ? 'Unequip' : (block ?? 'Equip'),
-          disabled: !equipped && block !== null,
-          onClick: () => {
+    );
+
+    for (const id of COMMANDER_ABILITY_ORDER) {
+      const def = COMMANDER_ABILITIES[id];
+      const equipped = profile.loadout.includes(id);
+      const next = equipped ? profile.loadout.filter((a) => a !== id) : [...profile.loadout, id];
+      body.append(
+        progressionCard({
+          name: def.name,
+          desc: def.desc,
+          points: def.points,
+          xpCost: def.xpCost,
+          unlocked: profile.unlockedAbilities.includes(id),
+          equipped,
+          equipBlock: equipped ? null : loadoutBlockReason(profile, next),
+          unlockBlock: unlockBlockReason(profile, id),
+          onToggle: () => {
             if (setLoadout(profile, next)) rerender();
           },
-        }),
-      );
-    } else {
-      const block = unlockBlockReason(profile, id);
-      rows.push(
-        h('button', {
-          className: 'primary',
-          text: block === null ? `Unlock — ${def.xpCost} XP` : block,
-          disabled: block !== null,
-          onClick: () => {
+          onUnlock: () => {
             if (unlockAbility(profile, id)) rerender();
           },
         }),
       );
     }
-    body.append(h('div', { className: unlocked ? 'card' : 'card locked' }, rows));
+  } else {
+    const used = legacyPointsUsed(legacyLoadout);
+    body.append(
+      h('div', { className: 'card' }, [
+        h('div', { className: 'card-head' }, [icon('shield'), h('h3', { text: 'Flotilla' })]),
+        h('div', { className: 'chip-row' }, [
+          chip('intel', `${profile.xp} XP`, 'Commander XP unlocks abilities and legacies'),
+          chip('slots', `${legacyLoadout.length}/${ESCORT_LEGACY.slots} berths`),
+          chip('coin', `${used}/${ESCORT_LEGACY.loadoutPoints} pts`),
+        ]),
+        h('div', {
+          className: 'hint',
+          text: 'One legacy per escort, handed out as hulls are commissioned. A legacy goes down with its ship for the rest of the region — a replacement hull does not bring it back.',
+        }),
+      ]),
+    );
+
+    for (const id of ESCORT_LEGACY_ORDER) {
+      const def = ESCORT_LEGACIES[id];
+      const equipped = legacyLoadout.includes(id);
+      const next = equipped ? legacyLoadout.filter((a) => a !== id) : [...legacyLoadout, id];
+      body.append(
+        progressionCard({
+          name: def.name,
+          desc: def.desc,
+          points: def.points,
+          xpCost: def.xpCost,
+          unlocked: unlockedLegacies.includes(id),
+          equipped,
+          equipBlock: equipped ? null : legacyLoadoutBlockReason(profile, next),
+          unlockBlock: legacyUnlockBlockReason(profile, id),
+          onToggle: () => {
+            if (setLegacyLoadout(profile, next)) rerender();
+          },
+          onUnlock: () => {
+            if (unlockLegacy(profile, id)) rerender();
+          },
+        }),
+      );
+    }
   }
 
   footer.append(
@@ -760,6 +898,13 @@ export function aarScreen(
       (v) => `${v} (${report.confidenceChange >= 0 ? '+' : ''}${report.confidenceChange})`,
       report.confidenceChange >= 0 ? 'good' : 'bad',
     );
+    // The ceiling is a cap the player cannot see acting on them unless it is
+    // shown. Hidden, "why did a 96% round only move me two points" has no
+    // answer on the screen anywhere.
+    const ceiling = Math.round(confidenceCeiling(c));
+    if (ceiling < CAMPAIGN.maxConfidence) {
+      animStat('Confidence ceiling', ceiling, (v) => `${v}/${CAMPAIGN.maxConfidence}`, 'bad');
+    }
     return grid;
   });
 
@@ -1204,7 +1349,7 @@ const CATEGORY_STYLE: Record<DraftOptionKind, { label: string; icon: IconName }>
 
 const PLATFORM_FIT_LINE: Record<ModulePlatform, string> = {
   cargo: 'One unit — fits an entire ship class, and is never lost with a hull.',
-  escort: 'One unit — fits any single escort, and goes down with her.',
+  escort: 'One unit — fits any single escort, and is salvaged if she is lost.',
   base: 'One unit — fits the shore batteries.',
 };
 
@@ -1339,6 +1484,15 @@ export function draftScreen(
             ),
           ]
         : []),
+      ...(draft.rerolls
+        ? [
+            chip(
+              'reload',
+              draft.rerolls > 1 ? `Rerolled ×${draft.rerolls}` : 'Rerolled',
+              'This table was redrawn with a reroll earned by rescuing crews',
+            ),
+          ]
+        : []),
     ]),
   );
 
@@ -1433,7 +1587,36 @@ export function draftScreen(
     if (draftOptionKey(option) === draft.counterOption) classes.push('draft-counter');
     optionRow.append(h('div', { className: classes.join(' ') }, bits));
   }
-  body.append(optionRow, ownedTechSummary(c));
+  body.append(optionRow);
+
+  // Reroll — earned by pulling crews out of the water, so the offer to redraw
+  // sits with the table it would replace rather than in a menu somewhere.
+  const banked = c.draftRerolls ?? 0;
+  const rerollBlock = rerollBlockReason(c);
+  body.append(
+    h('div', { className: 'card reroll-card' }, [
+      h('div', { className: 'card-head' }, [
+        icon('reload'),
+        h('h3', { text: 'Reroll the table' }),
+        ...(banked > 0 ? [h('span', { className: 'cat-ribbon', text: `×${banked}` })] : []),
+      ]),
+      h('p', {
+        text:
+          banked > 0
+            ? 'Redraw every option. Picks already taken stay taken, and the number of picks does not change.'
+            : `Rescuing ${DRAFT.crewsPerReroll} crews in a single round earns a reroll.`,
+      }),
+      h('button', {
+        className: banked > 0 ? 'primary' : '',
+        text: banked > 0 ? `Reroll — ${banked} left` : (rerollBlock ?? 'Reroll'),
+        disabled: rerollBlock !== null,
+        onClick: () => {
+          if (rerollDraft(c)) onPicked();
+        },
+      }),
+    ]),
+  );
+  body.append(ownedTechSummary(c));
 
   footer.append(
     h('button', {
@@ -1769,29 +1952,49 @@ export function prepScreen(
 
   if (c.escortUnits.length > 0 && selected) {
     // --- Roster: one row per escort, so roles compare at a glance -------------
+    // Built as `tabs`, exactly like the ship-module class tabs above: a profile
+    // of the ship, its name, and a row of slot lights that fill as specialists
+    // are fitted. The two screens were describing the same idea — pick a
+    // platform, see what is on it — in two different visual languages, and the
+    // escort one was the weaker of them: three lines of small text with no
+    // picture, so a flotilla read as a list rather than as ships.
     const roster = h('div', { className: 'escort-roster' });
     for (const unit of c.escortUnits) {
       const isSel = unit.id === selected.id;
+      const hull = escortHull(unit.id);
+      const dots = Array.from({ length: slotCount }, (_, i) =>
+        h('span', { className: i < unit.modules.length ? 'slot-dot filled' : 'slot-dot' }),
+      );
       const fit =
         unit.modules.length > 0
           ? unit.modules.map((m) => ESCORT_MODULES[m].name.split(' ')[0]).join(' + ')
           : 'no specialists';
       roster.append(
-        h('button', {
-          className: isSel ? 'escort-tab selected' : 'escort-tab',
-          onClick: () => {
-            prepEscortId = unit.id;
-            rerender();
+        h(
+          'button',
+          {
+            className: isSel ? 'tab escort-tab selected' : 'tab escort-tab',
+            onClick: () => {
+              prepEscortId = unit.id;
+              rerender();
+            },
           },
-        }, [
-          h('div', { className: 'escort-tab-name', text: unit.name }),
-          h('div', { className: 'escort-tab-fit', text: `interceptors + ${fit}` }),
-          h('div', {
-            className: 'escort-tab-slots',
-            text: `${unit.modules.length}/${slotCount} slots${unit.damage > 0 ? ` · ${Math.round(unit.damage)} dmg` : ''}`,
-          }),
-        ]),
+          [
+            h('span', { className: 'tab-fig' }, [escortHullFigure(unit.id)]),
+            h('span', { className: 'tab-label' }, [
+              h('span', { text: unit.name }),
+              h('span', { className: 'muted escort-tab-class', text: hull.name }),
+              h('span', { className: 'slot-dots' }, dots),
+            ]),
+          ],
+        ),
       );
+      // The fit and any damage still have to be readable — they were the point
+      // of the old rows — but as a title rather than a third line of type.
+      const last = roster.lastElementChild as HTMLElement;
+      last.title = `${unit.name} (${hull.name}) — interceptors + ${fit}${
+        unit.damage > 0 ? ` · ${Math.round(unit.damage)} damage` : ''
+      }`;
     }
     escortPanel.append(roster);
 
@@ -2142,30 +2345,89 @@ export function prepScreen(
     );
   }
 
-  const repair = repairCost(c);
   assetPanel.append(assetGrid);
 
-  // Fleet repairs sit with the CONVOY, not the stores. Repairing is a decision
-  // about the hulls that are about to sail, taken while looking at them —
-  // filed under supplies it read as one more consumable to top up.
+  // Repairs are bought a SCOPE at a time. A player who cannot afford everything
+  // should be choosing which half of the fleet to patch — the merchant hulls
+  // that carry the quota, or the warships that protect them — and each
+  // single-scope order carries a spend-what-you-have variant underneath it.
+  // The cards live with the assets they patch: cargo hulls with the convoy,
+  // escorts and batteries on the Defense screen.
+  const repairCard = (
+    scope: 'cargo' | 'escorts',
+    title: string,
+    clean: string,
+    dirty: string,
+  ): HTMLElement => {
+    const damage = scopeDamage(c, scope);
+    const full = repairCost(c, scope);
+    const part = repairPartialQuote(c, scope);
+    const card = h('div', { className: 'asset-card' }, [
+      h('div', { className: 'card-head' }, [
+        icon('wrench'),
+        h('h3', { text: title }),
+        h('span', { className: 'asset-count', text: damage > 0 ? `${damage} hp` : '✓' }),
+      ]),
+      h('p', { text: damage > 0 ? dirty : clean }),
+      h('button', {
+        text: damage > 0 ? `Repair — $${full}` : 'No repairs needed',
+        disabled: damage <= 0 || c.cash < full,
+        onClick: () => {
+          if (repairFleet(c, scope)) rerender();
+        },
+      }),
+    ]);
+    // The partial order only earns its place when the full one is out of
+    // reach — otherwise it is a second button that does the same thing.
+    if (damage > 0 && c.cash < full && part.hp > 0) {
+      card.append(
+        h('button', {
+          text: `Repair what you can — $${part.cost} (${part.hp} of ${damage} hp)`,
+          onClick: () => {
+            if (repairPartial(c, scope)) rerender();
+          },
+        }),
+      );
+    }
+    return card;
+  };
+
   const totalDamage = totalPendingDamage(c);
+  const repairAll = repairCost(c, 'all');
   const repairPanel = h('div', { className: 'panel' }, [
     h('h2', { text: 'Fleet repairs' }),
     h('div', { className: 'asset-grid' }, [
+      repairCard(
+        'cargo',
+        'Cargo hull repairs',
+        'Every merchant hull is at full strength.',
+        'Unrepaired damage sails with the next convoy.',
+      ),
       assetCard(
-        'wrench',
-        'Fleet repairs',
+        'anchor',
+        'Repair everything',
         totalDamage > 0 ? `${totalDamage} hp` : '✓',
         totalDamage > 0
-          ? 'Unrepaired damage sails with the next convoy.'
-          : 'Every hull, escort and battery is at full strength.',
+          ? 'Merchant hulls, escorts and batteries in one order.'
+          : 'Nothing in the fleet is carrying damage.',
         {
-          label: repair > 0 ? `Repair all — $${repair}` : 'No repairs needed',
-          disabled: repair <= 0 || c.cash < repair,
+          label: totalDamage > 0 ? `Repair all — $${repairAll}` : 'No repairs needed',
+          disabled: totalDamage <= 0 || c.cash < repairAll,
           onClick: () => {
-            if (repairFleet(c)) rerender();
+            if (repairFleet(c, 'all')) rerender();
           },
         },
+      ),
+    ]),
+  ]);
+  const escortRepairPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Escort & battery repairs' }),
+    h('div', { className: 'asset-grid' }, [
+      repairCard(
+        'escorts',
+        'Escorts & batteries',
+        'Every escort and battery is at full strength.',
+        'Escorts and batteries carry their damage into the next transit.',
       ),
     ]),
   ]);
@@ -2184,7 +2446,12 @@ export function prepScreen(
       els: [briefStrip, h('div', { className: 'grid-2' }, [compPanel, formPanel]), repairPanel],
     },
     { id: 'modules', label: 'Modules', ic: 'slots', els: [modPanel] },
-    { id: 'fleet', label: 'Defense', ic: 'missile', els: [fleetPanel, escortPanel, basePanel] },
+    {
+      id: 'fleet',
+      label: 'Defense',
+      ic: 'missile',
+      els: [fleetPanel, escortRepairPanel, escortPanel, basePanel],
+    },
     { id: 'assets', label: 'Supplies', ic: 'crate', els: [assetPanel] },
   ];
 

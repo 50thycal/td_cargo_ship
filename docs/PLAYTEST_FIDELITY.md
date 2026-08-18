@@ -169,6 +169,49 @@ change* from a large mechanical change is reporting on the harness, not on the
 game. Check that the bots exercise a branch before believing any number about
 it — including a number that says nothing happened.
 
+## Kept current — 2026-08-16: two new systems, wired before they shipped
+
+The smoke lesson above cost a whole sweep to learn, so this batch wired the
+harness at the same time as the game rather than afterwards:
+
+- **Escort Legacies** — every persona now carries a legacy loadout
+  (`Persona.legacies`), validated at startup by `legacyLoadoutError` exactly as
+  the Commander loadout is. A sweep in which nobody equips a legacy cannot
+  measure a change to one. The twelve loadouts are spread so each of the eight
+  legacies is carried by at least two personas — `veteranHelm` 8, `gunneryDrill`
+  5, `minePlating` and `standingContract` 4, `rescueRig` and `requisitionOrder`
+  3, `damageControl` and `rapidRearm` 2. Two personas is the resolution floor:
+  read nothing into a 1–3% move on either of the last pair.
+- **Scoped repairs** — `{kind:'repair'}` grew `scope` and `partial`, and three
+  personas (`turtle`, `gunboat`, `economist`) were given real repair doctrines
+  rather than the one-button default, so the split is exercised in both
+  directions.
+
+Fixed while wiring the second one: the repair intent tested `repairCost(c) > 0`
+to decide whether there was work to do. With the **Forward Repair Yard** —
+which patches warships for nothing — a bot that owned the yard would never take
+the free repair it had paid for, because the price of that work is zero. The
+test is now on DAMAGE, not price. A cost of zero means "free", not "nothing to
+do", and any is-there-work check written against a price will get that wrong
+the moment something in the game becomes free.
+
+## Kept current — 2026-08-17: the A-10 gate, and a range nobody rescaled
+
+- **Sorties stack now**, so the persona's Warthog intent no longer waits for
+  the flight already up (`t.time >= t.warthogActiveUntil` is gone with the
+  field). Only its own 20-second re-call spacing remains, standing in for a
+  human not spending every charge in the opening half-minute.
+- **Escort automatic engagement was measured, not assumed.** The player
+  reported it "does not seem to be working"; the sweep could not have told
+  anyone either way, because `autoShots` is one counter shared by escorts and
+  shore batteries. Isolating it needed a throwaway probe that silenced the
+  batteries and varied the radius alone — see PLAYER_COUNTERS for the numbers.
+
+**The lesson worth keeping:** a counter shared between two platforms cannot
+answer "is THIS platform's automation working". The telemetry had 235 automatic
+shots a round and looked healthy; nearly all of them were the batteries'. Split
+a counter, or be ready to write a probe every time somebody asks.
+
 ## Open and accepted (as of the second row)
 
 ### Still open (worth closing)

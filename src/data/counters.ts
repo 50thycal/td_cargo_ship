@@ -1814,10 +1814,10 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.base',
         name: 'Base Gun Run',
-        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for one at a time.',
+        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for two at a time.',
         cost: 0,
         granted: true,
-        grant: { charges: 1 },
+        grant: { charges: 2 },
       },
       {
         id: 'warthog.tankBuster',
@@ -1830,12 +1830,12 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'warthog.secondSortie',
-        name: 'Second Sortie',
-        desc: 'Room on the apron for a second sortie, so two can be held ready instead of one.',
+        name: 'Expanded Apron',
+        desc: 'Room on the apron for four sorties instead of two.',
         cost: 45,
         noChain: true,
         kind: 'mode',
-        grant: { charges: 2 },
+        grant: { charges: 4 },
       },
       {
         id: 'warthog.extendedLoiter',
@@ -2299,6 +2299,9 @@ export function deriveCounterEffects(
 
   return {
     damageTakenMult: 1,
+    escortDamageMult: 1,
+    escortMineDamageMult: 1,
+    escortSpeedMult: 1,
     warthogDamage:
       COMBAT.warthog.damage * (wart.flags.has('tankBuster') ? COMBAT.warthog.tankBusterMult : 1),
     sweepDrones: r.has('mcmDrones.base') && loadout.escortModules.includes('mcmDroneLauncher'),
@@ -2311,7 +2314,27 @@ export function deriveCounterEffects(
       reload: tierValue('reloadSeconds', esc.tiers.reload ?? 'medium'),
       projectileSize: tierValue('visualProjectileSize', esc.tiers.size ?? 'medium'),
       autoUnlocked: esc.flags.has('auto') || esc.flags.has('autoExpanded'),
-      autoRadius: esc.flags.has('autoExpanded') ? 460 : esc.flags.has('auto') ? 280 : 0,
+      // RESCALED for the deepened map. These were 280/460, written when the
+      // strait was under half its current size; the map doubling never came
+      // back for them, so the escort's automatic bubble quietly shrank to 7% of
+      // the map width.
+      //
+      // Measured with the batteries silenced, so every automatic shot is an
+      // escort's, over three rounds x three escorts, radius as the only
+      // variable:
+      //
+      //     280 ->  38 shots,  26 kills, 86.7% delivered
+      //     460 ->  56 shots,  37 kills, 90.0%
+      //     700 ->  57 shots,  41 kills, 90.0%
+      //    1150 ->  57 shots,  44 kills, 91.7%
+      //    1600 ->  59 shots,  42 kills, 91.7%   (saturated)
+      //
+      // At 280 the tactic fires, but lands under two-thirds of the kills it can
+      // — the player pays 40 intel for a launcher that mostly watches. 700/1150
+      // keeps the original 1:1.64 spacing between the two tactics and sits on
+      // the knee of that curve: local defence that works, an upgrade that is
+      // worth buying, and still nothing like the battery's whole-map reach.
+      autoRadius: esc.flags.has('autoExpanded') ? 1150 : esc.flags.has('auto') ? 700 : 0,
       autoCooldown: esc.flags.has('autoExpanded')
         ? 0
         : esc.tiers.autoCooldown
