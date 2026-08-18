@@ -734,6 +734,24 @@ export class TransitView {
     this.dcBtn.classList.toggle('hidden', !dcEquipped);
     this.dcBtn.title = 'Depth charges — arm, then tap a point in the water (torpedoes only)';
 
+    // ACTIONS is a closed drawer — everything above this line updates buttons
+    // that are invisible until the player opens it. The button's own tooltip
+    // ("Abilities you have in hand") is the only clue it holds anything, and a
+    // `title` attribute never fires on a touchscreen: on the platform this
+    // game ships to, that clue does not exist. Two full campaigns' worth of
+    // playtest logs show the cost — smoke researched, canisters bought,
+    // upgraded, and laid ZERO times across nine rounds and then again across
+    // eight, in each case because nothing on the closed HUD ever said the
+    // charge was sitting there. A small always-visible marker on the key
+    // itself is the fix: it has to be legible with the drawer shut, since shut
+    // is the state a player who has never opened it is looking at.
+    // Matches the warthogBtn's own .disabled gate above: since stacked sorties
+    // landed, readiness is stock alone — a charge is spendable whether or not
+    // a previous A-10 is still on task.
+    const trayHasSomethingToUse =
+      t.warthogCharges > 0 || t.scanCharges > 0 || t.smokeCharges > 0 || dcReady > 0;
+    this.actionsBtn.classList.toggle('has-charges', trayHasSomethingToUse);
+
     // Automation toggle states: launcher reload and the SEPARATE auto-fire
     // cooldown are both visible so automation is never hidden behavior.
     for (const [system, btn] of this.autoBtns) {

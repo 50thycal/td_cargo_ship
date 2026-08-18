@@ -66,6 +66,7 @@ decays, and what the ledger exists to make visible.
 | --- | --- | --- | --- | --- | --- |
 | 2026-08-07 | `straitwatchlog_r9` (pirateNarrows, steadyHands+salvageTeams) | 9 | **SETUP MISMATCH (5)** — 6/20 probes match | — (baseline) | — |
 | 2026-08-07 | same log, after the harness fixes below | 9 | **6/20 match, 9 drift, 4 open** (whole sweep)<br>**11/20 match, 5 drift, 2 open** (vs `automation`) | A ×4, B ×5 | C ×1, D ×2 |
+| 2026-08-16 | `straitwatchlog_r8` (pirateNarrows, **bare** commander, lost on quota R8) | 8 | before: **10/21 match, 6 drift, 3 open**<br>after: **12/21 match, 5 drift, 3 open** | B ×1 (whole draft now spent) + 2 dead probes replaced | C ×1, D ×3 |
 
 ---
 
@@ -270,3 +271,114 @@ is the first honest reading of `pirateNarrows`.
 rule above — a balance fix landing here would make the next sweep's movement
 unattributable. It needs its own change, its own before/after, and a re-read
 through `seesaw-eval`.
+
+
+---
+
+## 2026-08-16 — the recovery loop's reward was going in the bin
+
+Read against a hand-played 8-round `pirateNarrows` run that lost on quota.
+
+### B — The harness took one draft pick per round; the draft grants up to three
+
+`generateDraft` awards `DRAFT.basePicks` plus one more per
+`DRAFT.unitsPerExtraPick` wreckage recovered, capped at `DRAFT.maxPicks` —
+**recovery buys PICKS first and cards second**. The persona's `research()` took
+exactly one option and returned, so the runner closed the round with
+`pendingDraft` still holding unspent picks, and `resolveTransit` overwrote it
+with a fresh draft the next round.
+
+The bots were doing the salvage work — 53.7% of wreckage recovered against the
+human's 61.5% — and then discarding what it bought.
+
+| | Before | After | Human |
+| --- | --- | --- | --- |
+| Draft picks taken per round | 0.98 | 1.20 | 1.38 |
+| Technologies completed per round | 0.90 | 1.10 | 1.25 |
+
+`research()` now spends the whole draft and returns every pick. Pinned by
+`tests/personas.test.ts` → *the whole draft gets spent*, which asserts the run
+actually earned a multi-pick draft first — the same test against the old
+one-pick behaviour would otherwise have passed happily.
+
+### Two probes had gone dead and had to be replaced
+
+Both were reporting `MATCH` over the bug above.
+
+- **`draftWidth` was saturated.** It measured "share of drafts offering 3+
+  options", which was meaningful when `DRAFT.baseChoices` was 2. The game raised
+  the floor to 3, so both sides pinned at 100% while the human was offered
+  **4.91** options a draft against the bots' **4.09**. Now it measures options
+  per draft. *A probe whose threshold sits below the game's own floor measures
+  nothing — prefer a magnitude over a threshold.*
+- **Nothing counted picks at all**, which is why an abandoned pick was invisible.
+  Added `draftPicksPerRound`.
+
+---
+
+## Open and accepted (2026-08-16)
+
+### Still open
+
+1. ~~**Manual shot share 89.8% vs 26.1%**~~ — **fixed at the source, in the
+   game, not the harness.** This was correctly diagnosed as a draft-pool
+   question, not a persona defect: when an interceptor auto-fire node WAS
+   offered, `automation` took it 6/6 times, but auto nodes were offered at only
+   0.17 per bot draft against a hand-played 0.55. Root cause: `weighCandidate`
+   priced `kind: 'automation'` tactics through the same coverage-gap multiplier
+   as accuracy/reload upgrades, so a branch getting GOOD at its job (which is
+   exactly when hands-off engagement is worth having) also got its automation
+   nodes priced down with everything else. Added `DRAFT.automationTacticMult`
+   (1.75×, applied flat, outside the coverage-gap system) in `src/sim/draft.ts`
+   — pinned by the `AUTOMATION:` test in `tests/roguelite.test.ts`. Measured on
+   the `automation` persona specifically (this is a style probe — read it
+   per-persona, not on the whole sweep, same rule as #2 below): manual share
+   82.1% → **64.6%**, auto nodes/campaign 1.00 → **1.17**, zero-auto-shot
+   campaigns 3/6 → **2/6**. Still short of the human's 26.1% — six seeds is a
+   small sample and this is a genuine balance dial, not a bug fix, so further
+   tuning belongs in its own change with its own before/after, not folded into
+   this one.
+2. **Warthog sorties 0.23/round vs 0.88** on the whole sweep — but **0.72
+   (MATCH)** against `automation` alone. This is the aggregate-vs-persona
+   artefact the `--persona` flag exists for; read it there.
+3. **Escort-seconds on recovery, 25 vs 44 per round.** The one-job-at-a-time
+   escort heuristic again. Diminishing returns.
+
+### Accepted — bucket C
+
+- **Duplicate shots** unchanged and still accepted, bias recorded on the probe.
+- **`duplicateShotsAvoided` now appears in HUMAN logs too** (103,200 in this
+  one). It counts per-tick re-offer rejections, not player decisions. It was
+  already uninterpretable across the two sides; it is now uninterpretable within
+  either. Do not use this field.
+
+### Accepted — bucket D (game, not harness), one now fixed
+
+- ~~**Smoke was researched, upgraded and never used — again.**~~ **Root-caused
+  and fixed.** The player took `smokeScreen.expandedCoverage`, spent $140, and
+  laid zero clouds in eight rounds — the *second consecutive log* with that
+  exact shape. Checked both possible causes directly (a real dev-mode session
+  via Playwright, not guesswork): the sim-side placement path and the button's
+  visibility logic were both correct — `charges.smoke.available` derives
+  straight from `smokeStock` and the button is never hidden once smoke is
+  unlocked and stocked. The actual cause: ALL placeable abilities (warthog,
+  scan, smoke, depth charges) live behind a collapsed "ACTIONS" drawer, closed
+  by default, and the drawer's only "you have something in here" signal was its
+  `title` attribute — a hover tooltip, which never fires on the touchscreen this
+  game ships to. A player who never taps ACTIONS has no way to learn it holds
+  anything, however much they've paid for. Fixed with a small amber dot on the
+  ACTIONS key (`.has-charges`, `src/ui/style.css` + `src/ui/transitView.ts`),
+  reusing the existing `pipPulse` "worth a look" language, lit whenever a
+  placeable ability has spendable charges and hidden the instant the drawer is
+  open (a reminder to open it, not a status light to keep watching).
+  Verified end-to-end: armed SMOKE from the drawer, tapped the map, watched the
+  charge count decrement and the sim accept the command.
+- **Self-defense was drafted, equipped and never fed.** `selfDefense.base`
+  researched, `module:cargo:selfDefense` drafted and fitted to the cargo
+  class — and **zero** self-defense ammunition bought, so `pdKills` is 0. Same
+  shape as the smoke finding: a counter acquired and left inert.
+- **The player finished with 0 escorts; the bots keep 1.71.** Five escorts lost,
+  four of them to mines. A strategy/luck difference, not a missing capability.
+- **The player ran a bare Commander profile** (no abilities) while every persona
+  commissions a loadout. Flagged as a setup mismatch, and correctly so — the
+  bots get accuracy, salvage-rate and price bonuses this run did not have.

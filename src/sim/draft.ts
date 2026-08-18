@@ -504,6 +504,15 @@ function weighCandidate(
     weight *= 1 + excess * DRAFT.depthWeightPerUnit * entryDepth(entry);
   }
 
+  // Automation tactics are priced OUTSIDE the coverage-gap system, deliberately.
+  // Their value — freeing the player's attention rather than answering an
+  // unstopped threat more precisely — does not shrink as the branch's coverage
+  // gap does, and letting it shrink with the gap was starving automation
+  // exactly when good coverage had made it worth having. See DRAFT.automationTacticMult.
+  if (entry?.isTactic && (entry.def as CounterTacticDef).kind === 'automation') {
+    weight *= DRAFT.automationTacticMult;
+  }
+
   // Something offered in the last couple of drafts steps aside so the table
   // keeps moving — a declined option should not simply reappear.
   const offeredAt = c.lastOfferedRound?.[draftOptionKey(option)];

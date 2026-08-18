@@ -395,17 +395,24 @@ function fitSpareEquipment(c: CampaignState): void {
   }
 }
 
-/** Resolve the pending technology draft the way this persona would: take the
- *  offered option it ranks highest in its research-preference list, or the
- *  first option when nothing it wanted was offered (the draft is mandatory).
- *  Returns the pick, or null when no draft was pending. */
-export function research(c: CampaignState, persona: Persona): DraftOption | null {
-  const draft = c.pendingDraft;
-  if (!draft) return null;
-  if (draft.options.length === 0) {
-    dismissEmptyDraft(c);
-    return null;
-  }
+/** Resolve the pending technology draft the way this persona would, SPENDING
+ *  EVERY PICK the draft granted: each time, take the offered option it ranks
+ *  highest in its research-preference list, or the first option when nothing it
+ *  wanted was offered (the draft is mandatory). Returns the picks in order, or
+ *  an empty array when no draft was pending.
+ *
+ *  Spending the whole draft is not a detail. A draft grants `DRAFT.basePicks`
+ *  plus one more per `DRAFT.unitsPerExtraPick` wreckage recovered, up to
+ *  `DRAFT.maxPicks` — recovery buys PICKS first and cards second. This function
+ *  used to take exactly one and return, so every extra pick a bot earned by
+ *  salvaging was silently abandoned and then overwritten by the next round's
+ *  draft. Measured: bots took 0.98 picks per round against a hand-played 1.38,
+ *  they completed 0.33 auto-fire nodes per campaign against the player's 2, and
+ *  53 of 66 campaigns fired ZERO automatic shots — including every run of the
+ *  persona named `automation`, which hand-fired 100% of its shots because it
+ *  could never reach the nodes it is defined by. The recovery loop was working;
+ *  its entire reward was going in the bin. */
+export function research(c: CampaignState, persona: Persona): DraftOption[] {
   // A persona's preference list is written in RESEARCH ids, and a module option
   // is matched by the research its first unit delivers — so every doctrine list
   // in this file kept working when equipment stopped being bought and started
@@ -424,11 +431,27 @@ export function research(c: CampaignState, persona: Persona): DraftOption | null
     if (base && base !== id && !wanted.includes(base)) wanted.push(base);
     if (!wanted.includes(id)) wanted.push(id);
   }
-  const preferred = wanted
-    .map((id) => draft.options.find((o) => draftOptionResearchId(o) === id))
-    .find((o): o is DraftOption => o !== undefined);
-  const pick = preferred ?? draft.options[0];
-  return selectDraftOption(c, pick) ? pick : null;
+
+  const picks: DraftOption[] = [];
+  // Bounded by DRAFT.maxPicks in practice; the guard is against a refused pick
+  // leaving the draft open forever rather than against a legitimately wide one.
+  let guard = 0;
+  while (c.pendingDraft && guard++ < 16) {
+    const draft = c.pendingDraft;
+    if (draft.options.length === 0) {
+      dismissEmptyDraft(c);
+      break;
+    }
+    const preferred = wanted
+      .map((id) => draft.options.find((o) => draftOptionResearchId(o) === id))
+      .find((o): o is DraftOption => o !== undefined);
+    const pick = preferred ?? draft.options[0];
+    // A refused pick would otherwise spin the loop on the same card until the
+    // guard trips, quietly costing the rest of the draft.
+    if (!selectDraftOption(c, pick)) break;
+    picks.push(pick);
+  }
+  return picks;
 }
 
 // ---------------------------------------------------------------------------

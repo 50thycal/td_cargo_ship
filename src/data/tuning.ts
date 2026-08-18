@@ -1314,6 +1314,27 @@ export const DRAFT = {
   recentlyOfferedMult: 0.3,
   offerCooldownRounds: 2,
 
+  /** Flat multiplier on any `kind: 'automation'` tactic (localAuto,
+   *  strategicAuto, responsiveAuto, expandedAuto, autoNearest, …).
+   *
+   *  An automation tactic's value is orthogonal to `coverageGapMult`: it does
+   *  not make an intercept more likely to land, it changes WHO fires — freeing
+   *  the player's attention for salvage, formation, and the threats that don't
+   *  yet have an answer. The coverage-gap system correctly prices "does this
+   *  branch answer an unstopped threat", so once a branch is well covered its
+   *  upgrades — automation included — are priced down with it. That is right
+   *  for an accuracy/reload upgrade; it starves automation exactly when the
+   *  player would most want it, since good coverage is what makes hands-off
+   *  engagement worth the ammunition it burns.
+   *
+   *  Measured before this existed: a persona built and named around leaning on
+   *  automation drafted an auto-fire node in 0/9 campaigns because none were
+   *  EVER on offer — not a persona defect; when one WAS offered it was taken
+   *  6/6 times. Auto nodes appeared at 0.17 per bot draft against a
+   *  hand-played 0.55, and manual shot share read 89.8% against a human
+   *  26.1%. See docs/PLAYTEST_FIDELITY.md, 2026-08-16. */
+  automationTacticMult: 1.75,
+
   // --- Coverage measurement ------------------------------------------------
   /** Smoothing on the per-branch coverage ratio: how much of a round's
    *  measurement replaces the running value. High enough that a bad round
