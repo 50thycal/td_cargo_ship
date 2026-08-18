@@ -90,19 +90,39 @@ The player operates the convoy's **defenses**, not the cargo ships' steering:
 | Launch interceptor at a missile | tap the missile (tap again for a second interceptor) | ammo pool + launcher reload |
 | Command an escort (move) | tap the escort, then **single-tap** a destination | escort steams there, then resumes forward |
 | Command an escort (station) | tap the escort, then **double-tap** a spot | escort steams there and **holds position** |
-| A-10 gun runs (kills mines + boats in a radius) | tap A-10, then **tap where** to send it | 1 sortie/round, must own the jet |
+| Draw an escort a ROUTE | select the escort, then **drag from the ship itself** | she steams the drawn curve leg by leg — how you take her around a minefield |
+| A-10 gun runs (kills mines + boats in a radius) | tap A-10, then **drag the run-in line** | 1 charge per sortie; sorties STACK, several jets at once |
 | Scan pulse (charts mines ahead) | tap SCAN, then **tap where** to place it | 2 charges/round, must own array |
 | Pause / speed (1×/2×/3×) | HUD buttons | free |
+
+The camera has no keys at all. Pinch zooms, drag pans, and the one job a
+gesture could not do — finding a ship that has steamed off the edge of the view
+— is done by the camera itself: selecting an escort who is off screen brings
+her into it, and selecting one already visible does nothing. The widest zoom is
+bounded so the world's own edge is never in frame; past that bound the drawn
+coastlines run out and the strait appears to pinch shut on geography that does
+not exist.
 
 The **only** vessel the player steers is the escort: tap it to select (blue
 ring), then either **single-tap** the map to send it there (on arrival it resumes
 cruising forward with the convoy) or **double-tap** a spot to order it to
 **station** there and hold position (a green marker). Either order deselects the
-escort once given. Cargo ships steer themselves. **Formation is chosen in the
-prep screen and fixed for the transit** (it sets how much lateral room ships keep
-and how far blasts/mines spread) — there is no formation or lane control
-mid-transit. Ship modules (point defense, sonar, etc.) operate automatically, so
-20+ ships stay manageable on a phone.
+escort once given.
+
+A **drawn route** is the third option and the only one that is a drag: with the
+escort selected, dragging *from the ship* traces a path she then steams leg by
+leg, which is how she is taken around a charted minefield rather than through
+it. Anchoring the gesture to the hull is what keeps it unambiguous — dragging
+anywhere else still pans the map. Under the hood a route is nothing more than a
+queue of ordinary move orders, so it inherits every bit of steering the escort
+already had (traffic avoidance, the blocked-and-parting rule), and a fresh
+single tap abandons it: an order is an order.
+
+Cargo ships steer themselves. **Formation is chosen in the prep screen and fixed
+for the transit** (it sets how much lateral room ships keep and how far
+blasts/mines spread) — there is no formation or lane control mid-transit. Ship
+modules (point defense, sonar, etc.) operate automatically, so 20+ ships stay
+manageable on a phone.
 
 The A-10 and Scan are **placed** abilities: tapping the HUD button arms it (it
 highlights), and the next tap on the map sends it there — a Warthog station

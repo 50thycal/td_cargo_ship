@@ -134,11 +134,20 @@ escort's 780 u defensive envelope, one hit kills one missile.
 Advanced Seeker (acc Extra, needs Precision Guidance); High-Velocity Motor
 (speed High, parallel).
 **Tactics:** Manual Engagement (always available — tap a missile, nearest
-ready escort in range fires) → Local Automatic Engagement (small auto radius
-280 u, separate auto cooldown High tier, toggleable) → Expanded Automatic
-Engagement (radius 460 u, **no** separate auto cooldown — launcher reload and
-ammo still limit — and never double-fires at a missile already covered by a
+ready escort in range fires) → Local Automatic Engagement (auto radius
+**700 u**, separate auto cooldown High tier, toggleable) → Expanded Automatic
+Engagement (radius **1150 u**, **no** separate auto cooldown — launcher reload
+and ammo still limit — and never double-fires at a missile already covered by a
 kill shot).
+
+Those radii were 280/460 and were never rescaled when the map doubled, which
+left the escort's automatic bubble at 7% of the map width. Measured with the
+shore batteries silenced so every automatic shot was an escort's, radius as the
+only variable across three rounds x three escorts: 280 → 26 kills, 460 → 37,
+700 → 41, 1150 → 44, 1600 → 42 (saturated). The tactic fired at 280; it simply
+landed under two-thirds of the kills it could, so a 40-intel node bought a
+launcher that mostly watched. **A range constant written before a map resize is
+a bug waiting for someone to measure it.**
 
 #### Branch: Shore-Base Missile Interceptors — shore bases, built-in, attacks Missiles
 Base node (granted): High speed/accuracy/visual size, Low reload, engages
@@ -388,6 +397,12 @@ changed when it worked, so the player only ever saw a missile that happened to
 miss, and a counter you cannot watch working is a counter nobody spends a
 charge on. Every kill the Warthog makes is one the player watched it make.
 
+**Sorties STACK.** Several jets can be over the strait at once, on different
+bearings — charges are the only limit. There used to be a "one flight at a
+time" gate on top of the charge count, which made the count a lie: a player
+holding four could fly one, and a two-pass sortie is most of a minute, so
+buying more bought nothing usable inside the round it was bought for.
+
 **Nodes:** Base (granted, **2 sorties on the apron**) → 30 mm Tank-Buster
 Rounds (double damage per pass; legacy `ew1` migrates here).
 **Tactic paths (parallel):** Expanded Apron (4 held) · Extended Loiter ·
@@ -422,6 +437,9 @@ Wide Strafe Pattern.
   suppression, compartmentalization, anti-boarding. **The limited slots are
   the point: no hull equips every counter.**
 - **Escorts** are **individual ships**, not a count. Each has its own name, its
+  own HULL CLASS (six of them — Cutter, Sloop, Corvette, Frigate, Patrol Boat,
+  Monitor — differing in side profile and in plan view on the map, and in
+  nothing else; a hull is a face, never a stat), its
   own loadout, and its own accumulated damage, all persisting between rounds
   and through saves. Every escort carries **built-in missile interceptors that
   consume no slot**, plus **2 specialist slots** competing between: deck gun,

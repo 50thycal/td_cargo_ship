@@ -19,6 +19,7 @@ import {
 import { Camera } from '../src/ui/camera';
 import { escortTag } from '../src/ui/transitView';
 import { ESCORT_DEFAULT_NAMES } from '../src/data/defs';
+import { ESCORT_HULLS, escortHull } from '../src/data/escortHulls';
 import { FIRST_REGION } from '../src/data/regions';
 import { SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type { CampaignState, SurvivorArea, TransitState, WreckageField } from '../src/sim/types';
@@ -260,7 +261,7 @@ const settle = (cam: Camera): void => {
 };
 
 describe('map camera', () => {
-  it('opens on a slice of the strait, but can still be pulled out to all of it', () => {
+  it('opens on a slice of the strait, and pulls out only as far as it may', () => {
     // Opening fitted would draw a map this size into a phone screen, which is
     // just everything at half size. It opens closer in, at roughly the apparent
     // scale the old smaller world had — and the rest of the strait is a zoom or
@@ -271,10 +272,14 @@ describe('map camera', () => {
     expect(cam.openingZoom()).toBeGreaterThan(cam.fitZoom());
     const visibleW = cam.screenToWorldX(VIEWPORT.width) - cam.screenToWorldX(0);
     expect(visibleW).toBeLessThan(WORLD.width);
-    // …and pulling all the way out really does show the whole world.
+    // …and pulling all the way out stops at COVER, not at fit. Fit is the view
+    // that contains the world's own edge, which is the one thing the map may
+    // never show; the widest allowed view is the largest one still entirely
+    // inside the water and land that has been drawn.
     for (let i = 0; i < 30; i++) cam.zoomBy(0.5, 640, 360);
     settle(cam);
-    expect(cam.zoom).toBeCloseTo(cam.fitZoom(), 6);
+    expect(cam.zoom).toBeCloseTo(cam.minZoom(), 6);
+    expect(cam.minZoom()).toBeGreaterThan(cam.fitZoom());
     expect(cam.isFitted()).toBe(true);
   });
 
@@ -351,37 +356,65 @@ describe('map camera', () => {
     expect(cam.x).toBeCloseTo(Math.min(WORLD.width - 200, cam.x), 6);
   });
 
-  it('follows the convoy until the player takes the wheel', () => {
+  it('never shows anything outside the world, even at the widest zoom', () => {
+    // THE bound this camera exists to hold. The coastlines are only drawn
+    // across the world's own width, so a view containing the boundary shows
+    // both land masses running into it and closing on each other — the strait
+    // appearing to pinch shut on a piece of geography that does not exist.
     const cam = newCamera();
-    cam.zoomBy(3, 640, 360);
-    // Follow points taken from the middle of the world rather than fixed
-    // coordinates: near an edge the pan clamp legitimately refuses to centre,
-    // and this test is about FOLLOWING, not about clamping.
-    const midY = WORLD.height / 2;
-    const a = WORLD.width * 0.4;
-    const b = WORLD.width * 0.6;
-    cam.follow(a, midY);
+    for (let i = 0; i < 30; i++) cam.zoomBy(0.5, 640, 360); // pull all the way out
     settle(cam);
-    expect(cam.isFollowing()).toBe(true);
-    expect(cam.x).toBeCloseTo(a, 0);
-    cam.updateFollowTarget(b, midY);
+    for (const px of [0, VIEWPORT.width]) {
+      expect(cam.screenToWorldX(px)).toBeGreaterThanOrEqual(-0.001);
+      expect(cam.screenToWorldX(px)).toBeLessThanOrEqual(WORLD.width + 0.001);
+    }
+    for (const py of [0, VIEWPORT.height]) {
+      expect(cam.screenToWorldY(py)).toBeGreaterThanOrEqual(-0.001);
+      expect(cam.screenToWorldY(py)).toBeLessThanOrEqual(WORLD.height + 0.001);
+    }
+    // And it still cannot be dragged out of the world from there.
+    for (let i = 0; i < 60; i++) cam.panByScreen(-500, -500);
     settle(cam);
-    expect(cam.x).toBeCloseTo(b, 0);
-    // A manual pan releases it — the player's hands always win.
-    cam.panByScreen(30, 0);
-    expect(cam.isFollowing()).toBe(false);
+    expect(cam.screenToWorldX(VIEWPORT.width)).toBeLessThanOrEqual(WORLD.width + 0.001);
+    expect(cam.screenToWorldY(VIEWPORT.height)).toBeLessThanOrEqual(WORLD.height + 0.001);
   });
 
-  it('resetToFit returns to the whole-world view', () => {
+  it('opens no wider than it is allowed to go', () => {
     const cam = newCamera();
-    cam.zoomBy(3.5, 200, 200);
-    cam.follow(1500, 800);
+    expect(cam.openingZoom()).toBeGreaterThanOrEqual(cam.minZoom() - 1e-9);
+  });
+
+  it('reveals a point only when it is off screen', () => {
+    // The whole of the automatic camera: bring a selected escort into view if
+    // she is not in it, and otherwise leave the frame the player set alone.
+    const cam = newCamera();
+    cam.zoomBy(3, 640, 360);
     settle(cam);
-    expect(cam.isFitted()).toBe(false);
-    cam.resetToFit();
+    const centreX = cam.x;
+    const centreY = cam.y;
+
+    // Already in the middle of the view: no movement at all.
+    expect(cam.revealIfOffScreen(centreX, centreY, 40)).toBe(false);
     settle(cam);
-    expect(cam.isFitted()).toBe(true);
-    expect(cam.isFollowing()).toBe(false);
+    expect(cam.x).toBeCloseTo(centreX, 6);
+    expect(cam.y).toBeCloseTo(centreY, 6);
+
+    // Well outside it: the camera goes and gets it.
+    const farX = Math.min(WORLD.width - 1, centreX + VIEWPORT.width / cam.zoom);
+    expect(cam.revealIfOffScreen(farX, centreY, 40)).toBe(true);
+    settle(cam);
+    expect(cam.isOnScreen(farX, centreY, 40)).toBe(true);
+  });
+
+  it('counts a point hidden under the HUD margin as off screen', () => {
+    // "Just inside the edge" is not really visible — the HUD bar and the escort
+    // roster sit over the stage, so a hull beneath one still has to be hunted.
+    const cam = newCamera();
+    cam.zoomBy(3, 640, 360);
+    settle(cam);
+    const nearEdge = cam.screenToWorldX(VIEWPORT.width - 20);
+    expect(cam.isOnScreen(nearEdge, cam.y, 0)).toBe(true);
+    expect(cam.isOnScreen(nearEdge, cam.y, 90)).toBe(false);
   });
 
   it('keeps tap tolerance constant on screen as zoom changes', () => {
@@ -577,5 +610,204 @@ describe('escort roster codes', () => {
   it('never renders an empty label', () => {
     expect(escortTag('   ').length).toBeGreaterThan(0);
     expect(escortTag('Ab')).toBe('AB');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Drawn routes — a path is a queue of ordinary move orders
+// ---------------------------------------------------------------------------
+
+describe('escort routes', () => {
+  /** Run the sim until the predicate holds or the guard trips. */
+  function until(
+    state: TransitState,
+    rng: ReturnType<typeof createRoundTransit>['rng'],
+    done: () => boolean,
+    seconds = 240,
+  ): boolean {
+    const steps = Math.ceil(seconds / SIM.dt);
+    for (let i = 0; i < steps; i++) {
+      if (done()) return true;
+      stepTransit(state, [], rng);
+    }
+    return done();
+  }
+
+  it('takes the first point as the destination and queues the rest', () => {
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const pts = [
+      { x: e.x + 300, y: e.y - 200 },
+      { x: e.x + 600, y: e.y - 200 },
+      { x: e.x + 900, y: e.y + 100 },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: false }], rng);
+    expect(e.moveTarget).not.toBeNull();
+    expect(e.moveTarget!.x).toBeCloseTo(pts[0].x, 0);
+    expect(e.waypoints).toHaveLength(2);
+  });
+
+  it('steams the legs in order, popping one at a time', () => {
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    for (const esc of state.escorts) esc.stationed = true;
+    const pts = [
+      { x: e.x + 250, y: e.y - 150 },
+      { x: e.x + 500, y: e.y - 150 },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: false }], rng);
+    expect(e.waypoints).toHaveLength(1);
+    // First leg reached: the queue shortens and the second becomes the target.
+    expect(until(state, rng, () => e.waypoints.length === 0)).toBe(true);
+    expect(e.moveTarget?.x).toBeCloseTo(pts[1].x, 0);
+    // Second leg reached: the route is finished and she is under way again.
+    expect(until(state, rng, () => e.moveTarget === null)).toBe(true);
+  });
+
+  it('a route can go somewhere a straight line would not', () => {
+    // The point of drawing one: the ship follows the CURVE, so she can be sent
+    // around something rather than through it. Asserted as "she visits a
+    // waypoint that is well off the straight line to the destination".
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    for (const esc of state.escorts) esc.stationed = true;
+    const startY = e.y;
+    const detourY = startY - 260;
+    const pts = [
+      { x: e.x + 300, y: detourY },
+      { x: e.x + 600, y: startY },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: false }], rng);
+    let peak = startY;
+    const steps = Math.ceil(240 / SIM.dt);
+    for (let i = 0; i < steps && (e.moveTarget || e.waypoints.length); i++) {
+      peak = Math.min(peak, e.y);
+      stepTransit(state, [], rng);
+    }
+    // She really did go up and around, not straight across.
+    expect(peak).toBeLessThan(startY - 120);
+  });
+
+  it('only the LAST leg carries the hold', () => {
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const pts = [
+      { x: e.x + 250, y: e.y },
+      { x: e.x + 500, y: e.y },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: true }], rng);
+    // The flag rides every leg and is only ACTED ON at the end.
+    expect(until(state, rng, () => e.waypoints.length === 0)).toBe(true);
+    expect(e.moveTarget!.hold).toBe(true);
+    expect(until(state, rng, () => e.moveTarget === null)).toBe(true);
+    expect(e.stationed).toBe(true); // the end of the route stations her
+  });
+
+  it('a fresh single order abandons the route rather than queueing behind it', () => {
+    // An order is an order. Anything else means a tap does nothing visible
+    // until the ship has finished a route the player has already changed their
+    // mind about.
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const pts = [
+      { x: e.x + 300, y: e.y - 200 },
+      { x: e.x + 600, y: e.y - 200 },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: false }], rng);
+    expect(e.waypoints.length).toBeGreaterThan(0);
+    // Somewhere well inside the world, captured up front — the escort is
+    // moving, so reading e.x inside the assertion would compare against a
+    // position she has already left.
+    const redirect = { x: e.x + 800, y: e.y + 150 };
+    stepTransit(
+      state,
+      [{ type: 'moveEscort', escortId: e.id, x: redirect.x, y: redirect.y, hold: true }],
+      rng,
+    );
+    expect(e.waypoints).toHaveLength(0);
+    expect(e.moveTarget!.x).toBeCloseTo(redirect.x, 0);
+  });
+
+  it('thins points too close together to be steamed to', () => {
+    // A finger emits a point per frame. Points inside the arrival radius would
+    // all count as reached at once and the route would collapse into its
+    // endpoint.
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const dense = Array.from({ length: 40 }, (_, i) => ({ x: e.x + 200 + i * 2, y: e.y }));
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: dense, hold: false }], rng);
+    expect(e.waypoints.length).toBeLessThan(dense.length / 2);
+  });
+
+  it('says it is on a route, and how many legs are left', () => {
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const pts = [
+      { x: e.x + 300, y: e.y },
+      { x: e.x + 600, y: e.y },
+      { x: e.x + 900, y: e.y },
+    ];
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: pts, hold: false }], rng);
+    expect(escortStatus(state, e).label).toContain('3 legs');
+    // A plain move order is still just "Moving" — the route wording only shows
+    // up when there IS a route.
+    stepTransit(state, [{ type: 'moveEscort', escortId: e.id, x: e.x + 400, y: e.y, hold: false }], rng);
+    expect(escortStatus(state, e).label).toBe(ACTIVITY_LABELS.moving);
+  });
+
+  it('ignores an empty route', () => {
+    const { state, rng } = quietRun(1);
+    const e = state.escorts[0];
+    const before = e.moveTarget;
+    stepTransit(state, [{ type: 'pathEscort', escortId: e.id, points: [], hold: false }], rng);
+    expect(e.moveTarget).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hull varieties — cosmetic, but they have to be consistent
+// ---------------------------------------------------------------------------
+
+describe('escort hull classes', () => {
+  it('offers six, each with both views and a distinct name', () => {
+    expect(ESCORT_HULLS).toHaveLength(6);
+    const names = new Set(ESCORT_HULLS.map((hd) => hd.name));
+    expect(names.size).toBe(6);
+    for (const hd of ESCORT_HULLS) {
+      expect(hd.profile.length).toBeGreaterThan(0);
+      expect(hd.plan.points.length).toBeGreaterThanOrEqual(4);
+      expect(hd.plan.house).toHaveLength(4);
+    }
+  });
+
+  it('gives the opening flotilla visibly different ships', () => {
+    // Walking the list in order rather than hashing means the first few hulls
+    // a player is ever given cannot come out identical.
+    const first = [1, 2, 3].map((id) => escortHull(id).id);
+    expect(new Set(first).size).toBe(3);
+  });
+
+  it('is stable for the life of a ship, and identical on replay', () => {
+    expect(escortHull(4).id).toBe(escortHull(4).id);
+    const a = quietRun(2);
+    const b = quietRun(2);
+    expect(a.state.escorts.map((e) => escortHull(e.unitId).id)).toEqual(
+      b.state.escorts.map((e) => escortHull(e.unitId).id),
+    );
+  });
+
+  it('handles ids past the end of the list without falling off it', () => {
+    for (const id of [7, 12, 30, 1000]) {
+      expect(ESCORT_HULLS).toContain(escortHull(id));
+    }
+  });
+
+  it('changes nothing mechanical — the hull is a face, not a stat', () => {
+    // Guarded because the temptation to hang a stat off it later is obvious,
+    // and doing so would make a purchase the player cannot re-roll into a
+    // lottery on top of everything else an escort already carries.
+    for (const hd of ESCORT_HULLS) {
+      expect(Object.keys(hd).sort()).toEqual(['id', 'name', 'plan', 'profile']);
+    }
   });
 });

@@ -11,6 +11,7 @@
 import { h } from './dom';
 import type { StatTier } from '../data/statTiers';
 import { TIER_ORDER } from '../data/statTiers';
+import { escortHull } from '../data/escortHulls';
 import type { FormationId, ShipClassId } from '../sim/types';
 
 /** Wrap an svg body in the standard 24×24 stroke frame. Elements inside may
@@ -362,6 +363,16 @@ export function shipFigure(classId: ShipClassId | 'escort', className = ''): HTM
   return h('span', {
     className: className ? `ship-svg ${className}` : 'ship-svg',
     html: SHIP_SVGS[classId],
+  });
+}
+
+/** Side profile of a specific escort HULL — the six varieties differ, so the
+ *  roster shows which ship is which rather than six copies of one drawing.
+ *  Same viewBox and tinting as shipFigure, so the two sit together. */
+export function escortHullFigure(unitId: number, className = ''): HTMLElement {
+  return h('span', {
+    className: className ? `ship-svg ${className}` : 'ship-svg',
+    html: filled(escortHull(unitId).profile, '0 0 64 28'),
   });
 }
 

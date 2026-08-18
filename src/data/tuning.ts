@@ -717,6 +717,16 @@ export const COMBAT = {
    *  probability modifier: every pass either kills something or misses in
    *  plain sight. Charges/strafe radius/loiter are tier-resolved (ability
    *  paths); the ballistics live here. */
+  /** Deck gun presentation. The gun's damage, range and accuracy live in the
+   *  counter catalogue with the rest of the branch; this is only how long a
+   *  fired round is drawn crossing the water. Purely visual — see GunShot. */
+  deckGunShell: {
+    /** Seconds a round takes to reach its aim point, whatever the range. Held
+     *  constant rather than derived from a muzzle velocity because the point is
+     *  legibility: a shell at a boat 200 units away and one at 600 should both
+     *  be visible for long enough to see. */
+    flightSeconds: 0.42,
+  },
   warthog: {
     /** Cruise speed of the jet. RAISED a quarter from 240: it is a strike
      *  aircraft crossing a strait, and at the old speed the run-in read as a

@@ -235,43 +235,55 @@ export interface OrdnancePackDef {
   needs?: 'mcmDroneLauncher' | 'selfDefenseModule';
 }
 
+/** Every pack is a MIXED package — several munitions, never one.
+ *
+ *  They used to be single top-ups ("24 interceptor rounds", "two canisters"),
+ *  and a hand-played ten-round log declined every ordnance card it was ever
+ *  offered: against a technology upgrade or a piece of equipment, one line of
+ *  ammunition is not a decision, it is a consolation. A package that resupplies
+ *  a WAY OF FIGHTING — the air plan, the minesweeping plan, the magazines —
+ *  can at least be weighed against the alternatives.
+ *
+ *  Only droneAmmo and pdAmmo need a `needs` gate; the other four stocks are
+ *  usable from round one (the convoy's own assets are in hand from the start),
+ *  so any pack may carry them without risking dead value. */
 export const ORDNANCE_PACKS: Record<string, OrdnancePackDef> = {
-  interceptorRounds: {
-    id: 'interceptorRounds',
-    name: 'Interceptor Resupply',
-    desc: 'A pallet of 24 interceptor rounds, delivered to the magazines.',
-    grant: { ammo: 24 },
+  magazines: {
+    id: 'magazines',
+    name: 'Magazine Resupply',
+    desc: 'A pallet of 20 interceptor rounds, with a smoke canister struck down alongside it.',
+    grant: { ammo: 20, smokeStock: 1 },
   },
-  sorties: {
-    id: 'sorties',
-    name: 'Sortie Allocation',
-    desc: 'Two A-10 gun runs, fuelled and armed on the apron.',
-    grant: { warthogStock: 2 },
+  airSupport: {
+    id: 'airSupport',
+    name: 'Air Support Package',
+    desc: 'Two A-10 sorties fuelled on the apron, and two survey pulses to find them work.',
+    grant: { warthogStock: 2, scanStock: 2 },
   },
-  pulses: {
-    id: 'pulses',
+  screening: {
+    id: 'screening',
+    name: 'Screening Stores',
+    desc: 'Two smoke canisters, a survey pulse, and eight interceptor rounds.',
+    grant: { smokeStock: 2, scanStock: 1, ammo: 8 },
+  },
+  survey: {
+    id: 'survey',
     name: 'Survey Package',
-    desc: 'Three scan pulses in stowage.',
-    grant: { scanStock: 3 },
+    desc: 'Three scan pulses in stowage, with ten interceptor rounds to answer what they find.',
+    grant: { scanStock: 3, ammo: 10 },
   },
-  canisters: {
-    id: 'canisters',
-    name: 'Smoke Stores',
-    desc: 'Two defensive smoke canisters.',
-    grant: { smokeStock: 2 },
-  },
-  droneMunitions: {
-    id: 'droneMunitions',
-    name: 'Drone Munitions',
-    desc: 'Six minesweeping-drone munitions.',
-    grant: { droneAmmo: 6 },
+  counterMine: {
+    id: 'counterMine',
+    name: 'Counter-Mine Package',
+    desc: 'Six drone munitions, two survey pulses to chart the field, and six interceptor rounds.',
+    grant: { droneAmmo: 6, scanStock: 2, ammo: 6 },
     needs: 'mcmDroneLauncher',
   },
-  selfDefenseRounds: {
-    id: 'selfDefenseRounds',
-    name: 'Close-In Rounds',
-    desc: 'Nine self-defense rounds for the cargo mounts.',
-    grant: { pdAmmo: 9 },
+  closeIn: {
+    id: 'closeIn',
+    name: 'Close-In Package',
+    desc: 'Nine self-defense rounds for the cargo mounts, and twelve interceptor rounds behind them.',
+    grant: { pdAmmo: 9, ammo: 12 },
     needs: 'selfDefenseModule',
   },
 };

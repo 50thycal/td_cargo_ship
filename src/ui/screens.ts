@@ -113,6 +113,7 @@ import {
   COMMANDER_ABILITY_ORDER,
   loadoutPointsUsed,
 } from '../data/commanderAbilities';
+import { escortHull } from '../data/escortHulls';
 import {
   ESCORT_LEGACIES,
   ESCORT_LEGACY_ORDER,
@@ -126,6 +127,7 @@ import {
   formationFigure,
   icon,
   shipFigure,
+  escortHullFigure,
   SHIP_TINTS,
   statTierRow,
   statUpgradeRow,
@@ -1950,29 +1952,49 @@ export function prepScreen(
 
   if (c.escortUnits.length > 0 && selected) {
     // --- Roster: one row per escort, so roles compare at a glance -------------
+    // Built as `tabs`, exactly like the ship-module class tabs above: a profile
+    // of the ship, its name, and a row of slot lights that fill as specialists
+    // are fitted. The two screens were describing the same idea — pick a
+    // platform, see what is on it — in two different visual languages, and the
+    // escort one was the weaker of them: three lines of small text with no
+    // picture, so a flotilla read as a list rather than as ships.
     const roster = h('div', { className: 'escort-roster' });
     for (const unit of c.escortUnits) {
       const isSel = unit.id === selected.id;
+      const hull = escortHull(unit.id);
+      const dots = Array.from({ length: slotCount }, (_, i) =>
+        h('span', { className: i < unit.modules.length ? 'slot-dot filled' : 'slot-dot' }),
+      );
       const fit =
         unit.modules.length > 0
           ? unit.modules.map((m) => ESCORT_MODULES[m].name.split(' ')[0]).join(' + ')
           : 'no specialists';
       roster.append(
-        h('button', {
-          className: isSel ? 'escort-tab selected' : 'escort-tab',
-          onClick: () => {
-            prepEscortId = unit.id;
-            rerender();
+        h(
+          'button',
+          {
+            className: isSel ? 'tab escort-tab selected' : 'tab escort-tab',
+            onClick: () => {
+              prepEscortId = unit.id;
+              rerender();
+            },
           },
-        }, [
-          h('div', { className: 'escort-tab-name', text: unit.name }),
-          h('div', { className: 'escort-tab-fit', text: `interceptors + ${fit}` }),
-          h('div', {
-            className: 'escort-tab-slots',
-            text: `${unit.modules.length}/${slotCount} slots${unit.damage > 0 ? ` · ${Math.round(unit.damage)} dmg` : ''}`,
-          }),
-        ]),
+          [
+            h('span', { className: 'tab-fig' }, [escortHullFigure(unit.id)]),
+            h('span', { className: 'tab-label' }, [
+              h('span', { text: unit.name }),
+              h('span', { className: 'muted escort-tab-class', text: hull.name }),
+              h('span', { className: 'slot-dots' }, dots),
+            ]),
+          ],
+        ),
       );
+      // The fit and any damage still have to be readable — they were the point
+      // of the old rows — but as a title rather than a third line of type.
+      const last = roster.lastElementChild as HTMLElement;
+      last.title = `${unit.name} (${hull.name}) — interceptors + ${fit}${
+        unit.damage > 0 ? ` · ${Math.round(unit.damage)} damage` : ''
+      }`;
     }
     escortPanel.append(roster);
 

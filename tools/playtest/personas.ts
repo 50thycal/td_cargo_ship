@@ -774,12 +774,10 @@ export function decideCommands(
   // ahead of the convoy. The jet takes one target on the way out and one on the
   // way back, so the bot wants targets STRUNG OUT along a line rather than
   // bunched in a blob — a pair it can line up beats a cluster it cannot.
-  if (
-    p.useWarthog &&
-    t.warthogCharges > 0 &&
-    t.time >= t.warthogActiveUntil &&
-    t.time - mem.lastWarthogT > 20
-  ) {
+  // Sorties stack now, so the bot is no longer gated on the flight already up —
+  // only on its own re-call spacing, which stands in for a human not spending
+  // every charge in the opening thirty seconds.
+  if (p.useWarthog && t.warthogCharges > 0 && t.time - mem.lastWarthogT > 20) {
     const surface = t.threats.filter(
       (th) =>
         th.alive &&
