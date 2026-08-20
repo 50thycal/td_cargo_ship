@@ -13,6 +13,7 @@
 // working vertical slice.
 
 import type { EnemyBranchKey } from './enemyBranches';
+import { geography, type Geography, type GeographyId } from './geography';
 import type { ShipClassId } from '../sim/types';
 
 export type RegionId = string;
@@ -53,6 +54,16 @@ export interface RegionDef {
   completionXp: number;
   /** Region permanently unlocked by completing this one (null = none yet). */
   unlocks: RegionId | null;
+  /** THE WATER this region is fought in — coastlines, lanes and emplacement
+   *  lines (see geography.ts). Omitted means the default strait.
+   *
+   *  This is the one region property that changes the battlefield rather than
+   *  the opposition, and it is still not an exception to the rule above: a
+   *  geography moves coastlines, never weapon stats. What makes a region hard
+   *  is how close the enemy shore is to the shipping lane and how much room a
+   *  hull has to work in — both of which the same missile, unchanged, exploits
+   *  differently. */
+  geography?: GeographyId;
 }
 
 /** The shared provisional starting state. Mirrors the pre-redesign campaign
@@ -144,4 +155,10 @@ export const DEV_REGION: RegionId = 'openSeas';
 
 export function regionDef(id: RegionId): RegionDef {
   return REGIONS[id] ?? REGIONS[FIRST_REGION];
+}
+
+/** The water this region is fought in. One lookup for every system that needs
+ *  to know where the land is, so the sim never reaches for `WORLD` directly. */
+export function geographyOf(id: RegionId): Geography {
+  return geography(regionDef(id).geography ?? 'strait');
 }

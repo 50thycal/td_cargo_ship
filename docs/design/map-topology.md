@@ -14,6 +14,13 @@ whole point of the exercise is that geography can move the numbers that decide a
 fight without touching a single weapon stat — and the sections below show, with
 the constants, exactly how much it can move them.
 
+> **Status.** Tier 0 and Tier 1 are built (`src/data/geography.ts`): a region
+> names a geography, shores and lanes are per-region profiles, and the sim asks
+> the map rather than reaching for `WORLD`. The default strait is bit-for-bit
+> the map it replaced. One curved geography — `squeeze`, the shape 4.2 wants —
+> ships validated but unworn: no region uses it yet, so the campaign is
+> unchanged. Tier 2 (real land) is not started.
+
 ---
 
 ## 1. The test a map shape has to pass
@@ -50,16 +57,36 @@ launch line y = 985     missile speed 60
 
 The south lane already gives the player **2.3× the reaction time** of the north
 lane. The game has been shipping its strongest difficulty lever since the first
-build and has never varied it per region. Move the hostile shore 400 units south
-at mid-map and the centre lane's warning drops to **5 seconds** — that is Missile
-Alley, produced by moving a coastline.
+build and has never varied it per region.
+
+Move the hostile shore 400 units south at mid-map — the `squeeze` geography, now
+built and validated in `geography.ts` — and the measured result is:
+
+| | near lane | centre lane |
+| --- | --- | --- |
+| warning, out west (unchanged) | 7.0 s | 11.7 s |
+| warning, in the alley | 5.5 s | 7.0 s |
+
+That is Missile Alley, produced by moving a coastline.
 
 The same move does something even sharper to artillery. A coastal gun on the
 launch line reaches `y ≤ 1525`: the north lane and nothing else, exactly as the
-comment in `evolution.ts` says. Drop the gun line 400 units with the coast and it
-reaches `y ≤ 1925` — **two and a half lanes.** A ranging gun goes from covering
-two lanes to covering the entire strait including the friendly shore. That is The
-Headlands, and it costs zero balance changes.
+comment in `evolution.ts` says. Drop the gun line 400 units with the coast and
+the same gun — same range, same cost — covers **two** lanes, while a ranging gun
+goes from two lanes to the entire strait. That is The Headlands, and it costs
+zero balance changes.
+
+> **The lane rule matters as much as the coastline.** This was not obvious until
+> the geography was built. Lanes spread *proportionally* across the water close
+> up together as it narrows, so both threatened lanes slide away from the guns
+> and the bulge gives back most of what it took — measured, the centre lane fell
+> only from 11.7 s to 8.3 s. Lanes that *hold station* and yield only where the
+> land actually reaches them get shoved into each other instead, crowding into
+> exactly the water the guns cover: 11.7 s → 7.0 s, and 7.0 s → 5.5 s on the
+> near lane. Same coastline, materially different region. `geography.ts` ships
+> both rules (`lanesAcross`, `lanesPressed`); a region picks the one that
+> matches its story — pressed for land closing in, across for maps whose story
+> is the shape of the water itself.
 
 **Lever B — channel width against mine berth.** A merchant holds `8 × hull
 radius` off a charted mine: 88 units for a cargo hull, 112 for a tanker. In the
@@ -160,12 +187,20 @@ struct instead of a module constant. Nothing structural changes; the whole sim
 already reads these numbers rather than hard-coding them, which is the payoff of
 work already done.
 
-**Tier 1 — lanes become curves.** `WORLD.lanes[i]` → `laneY(i, x)`, a sampled
-polyline per lane, plus a per-region shore profile `shoreY(x)` replacing the
-hard-coded sines in the renderer (`transitView.ts:1433`) and in
-`waterTop()`/`waterBottom()`. The steering loop is untouched — it already reads
-`laneY` into a local and pulls toward it. The blast radius is the 112 reference
-sites, most of which are mechanical.
+**Tier 1 — lanes become curves.** *(Built.)* `WORLD.lanes[i]` → `laneY(i, x)`, a
+sampled polyline per lane, plus per-region shore profiles replacing the
+hard-coded sines in the renderer and in `waterTop()`/`waterBottom()`. The
+steering loop is untouched — it already reads `laneY` into a local and pulls
+toward it.
+
+Two things the build taught that the plan did not anticipate. **Sampling has to
+be exact where it matters**: profiles return one-point and flat segments with no
+arithmetic at all, which is what let the default map come out bit-for-bit
+identical rather than merely close — and "merely close" would have moved every
+distance the game is balanced around. And **a computed lane cannot track a
+continuous rule exactly**, so a lane laid on the validator's minimum margin
+fails the check it was built to pass; the helpers leave headroom, and the
+sampling density is chosen against the error term.
 
 > Tier 1 is the keystone. It is one refactor and it unlocks **five** of the ten
 > shapes below, including both regions the campaign wants next.
@@ -174,6 +209,10 @@ sites, most of which are mechanical.
 > weave but must never cross.** Lane 0 stays north of lane 1 stays north of lane
 > 2 at every x. `nearestLane`, `clampLane`, the barrage lane pick and the
 > artillery reach ordering all quietly assume it.
+>
+> Built as `validateGeography`, which also checks that no lane wanders out of
+> the water and that the channel never pinches shut. Every shipped geography is
+> run through it by test.
 
 **Tier 2 — real land.** A polygon list per region; `keepAfloat` becomes
 "push out of the nearest obstacle"; boats, torpedoes and aircraft get terrain
@@ -217,9 +256,11 @@ puzzle.
 ═══════════════════════════════════════════════════
 ```
 
-**Moves lever A, hard.** Centre-lane warning 11.7 s → 5.0 s in the bulge.
-Coastal guns go from one lane to two and a half. Boats reach the convoy in a
-third of the time. All of it from one shore profile.
+**Moves lever A, hard.** Centre-lane warning 11.7 s → 7.0 s in the bulge, near
+lane 7.0 s → 5.5 s, and the two lanes crowd together as the near one is pressed
+off the coast. Coastal guns go from one lane to two; ranging guns from two to
+three. Boats reach the convoy in a fraction of the time. All of it from one
+shore profile — **built and validated as `squeeze` in `geography.ts`.**
 
 * **Merchant AI** — lanes bend south with the coast. A 300-unit bend over 1000
   x-units is a 17° deflection, comfortably inside `headingClamp`; the existing

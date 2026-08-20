@@ -2,6 +2,7 @@
 // touches the DOM — every type here is plain data so the core can be ported
 // to another engine (SpriteKit, Godot) without changes to the design.
 
+import type { Geography } from '../data/geography';
 import type { StatTier } from '../data/statTiers';
 
 // ---------------------------------------------------------------------------
@@ -709,7 +710,11 @@ export interface Aircraft {
   heading: number;
   /** inbound → fly to the work area; onStation → do the job; departing → leave. */
   phase: 'inbound' | 'onStation' | 'departing';
-  /** Scan: the lane-center Y the plane sweeps along. */
+  /** Scan: which lane the plane was sent down. The LANE is the order — a lane
+   *  can bend, so the plane follows the index rather than holding one height. */
+  laneIndex?: number;
+  /** Scan: the lane-center Y the plane is over right now. Kept up to date as it
+   *  flies, so the charting band bends with the lane. */
   laneY: number;
   /** Warthog: the run-in line the player drew, from A to B. The jet flies this
    *  line, carries on off the map, turns, and flies it back the other way. */
@@ -1314,6 +1319,14 @@ export interface CombatEffects {
 export interface TransitState {
   time: number;
   over: boolean;
+  /** THE WATER this transit is fought in — coastlines, lanes and emplacement
+   *  lines for the region that was sailed into (see data/geography.ts).
+   *
+   *  On the state rather than reached for as a module constant because the map
+   *  is a property of the round, and everything that asks where the land is —
+   *  the sim, the renderer, the escort order resolver — has to be asking about
+   *  the SAME map. Not serialized: it is derived from the region id. */
+  geo: Geography;
   /** Notional patrol/progress reference used to position escorts and center
    *  convoy-wide ability effects — no longer a slot anchor for cargo ships,
    *  which now move individually through the corridor. */

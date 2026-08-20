@@ -48,6 +48,7 @@ import {
 import { SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
 import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
+import { geography } from '../src/data/geography';
 import type {
   AfterActionReport,
   CampaignState,
@@ -718,8 +719,13 @@ describe('map geometry', () => {
   });
 
   it('keeps the A-10 water band inside the water', () => {
-    expect(COMBAT.warthog.waterYMin).toBeGreaterThan(WORLD.hostileShoreY + WORLD.shoreWave);
-    expect(COMBAT.warthog.waterYMax).toBeLessThan(WORLD.friendlyShoreY - WORLD.shoreWave);
+    // Derived from the geography now rather than hard-coded beside it, so this
+    // holds at every x — including on a map whose coast bends.
+    const geo = geography('strait');
+    for (let x = 0; x <= WORLD.width; x += 250) {
+      expect(geo.airWaterTop(x)).toBeGreaterThan(geo.hostileShoreY(x) + geo.shoreWave);
+      expect(geo.airWaterBottom(x)).toBeLessThan(geo.friendlyShoreY(x) - geo.shoreWave);
+    }
   });
 
   it('gives artillery a reach that still picks out lanes, not all or nothing', () => {

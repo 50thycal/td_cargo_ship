@@ -23,7 +23,7 @@
 // threat that would not appear, which would quietly make the enemy weaker than
 // its budget claims.
 
-import { COMBAT, ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM, WORLD } from '../data/tuning';
+import { COMBAT, ENEMY_ECONOMY, EVOLUTION, ROUND1, SIM } from '../data/tuning';
 import { convoySpawnSpan } from './convoySchedule';
 import {
   ENEMY_BRANCHES,
@@ -34,7 +34,8 @@ import {
   type EnemyBranchKey,
   type EnemyNodeDef,
 } from '../data/enemyBranches';
-import { DEV_REGION, REGIONS, type RegionDef } from '../data/regions';
+import { DEV_REGION, REGIONS, geographyOf, type RegionDef } from '../data/regions';
+import type { Geography } from '../data/geography';
 import type { RNG } from './rng';
 import type {
   ArtilleryVariant,
@@ -680,6 +681,10 @@ export function ensureProcurement(evo: EvolutionState, round: number, rng: RNG):
 // ---------------------------------------------------------------------------
 
 export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
+  // The water this round will be fought in. Everything the enemy EMPLACES —
+  // minefields, shore guns, screening smoke, the sites its volleys leave from —
+  // is a position on this map, so the planner has to know its shape too.
+  const geo = geographyOf(campaign.regionId);
   const round = campaign.round;
   const evo = campaign.evolution;
   const economy = evo.economy;
@@ -698,14 +703,14 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   // dilute a round's fire across water with nothing in it.
   const windowEnd = Math.min(
     SIM.maxTransitTime - 20,
-    convoySpawnSpan(shipsOut, campaign.formation) + EVOLUTION.windowTailT,
+    convoySpawnSpan(shipsOut, campaign.formation, geo.laneCount) + EVOLUTION.windowTailT,
   );
 
   if (round === 1) {
     // Scripted onboarding: a light unguided probe, spread across the transit.
     return {
       round,
-      spawns: scheduleMissiles(ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
+      spawns: scheduleMissiles(geo, ROUND1.missileCount, 1, rng, 'missile', EVOLUTION.windowStartT, windowEnd),
       mines: [],
       installations: [],
       smoke: [],
@@ -732,6 +737,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   // centres coincided and launches arrived in correlated pairs — half the
   // events the enemy paid for, and gaps twice as long as intended between them.
   const spawns = scheduleMissiles(
+    geo,
     basicCount + guidedCount,
     volleySize,
     rng,
@@ -763,17 +769,31 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     // One cluster for small fields, two for larger ones. The FIRST minefield
     // is always laid in the main shipping channel (the convoy's default lane)
     // so the debut is actually encountered; later fields spread randomly.
-    const clusters = mineCount > 6 ? 2 : 1;
+    //
+    // The cluster COUNT is read back off the lane choices rather than decided
+    // ahead of them. It used to be decided first, and the debut case then
+    // supplied a single lane against a count of two — so `laneChoices[1]` was
+    // undefined, `WORLD.lanes[undefined]` was undefined, and every second mine
+    // of a debut field larger than six was laid at y = NaN. A NaN mine is
+    // inert: every distance test against it is false, so it is never avoided
+    // and never detonates. The enemy has been buying charges that dissolve on
+    // contact with the water since the branch shipped. Surfaced by this
+    // refactor, which asks the geography for a lane instead of indexing an
+    // array and getting `undefined` for free.
     const laneChoices =
       evo.firstSeen.mine === undefined
         ? [1]
-        : rng.shuffle([...WORLD.lanes.keys()]).slice(0, clusters);
+        : rng.shuffle([...Array(geo.laneCount).keys()]).slice(0, mineCount > 6 ? 2 : 1);
+    const clusters = laneChoices.length;
     for (let i = 0; i < mineCount; i++) {
       const lane = laneChoices[i % clusters];
       const cx = rng.range(850, 1450);
+      // The charge's own x is settled first: a lane is a curve, so where its
+      // centre lies depends on where along the map the mine is laid.
+      const mx = cx + rng.range(-130, 130);
       mines.push({
-        x: cx + rng.range(-130, 130),
-        y: WORLD.lanes[lane] + rng.range(-75, 75),
+        x: mx,
+        y: geo.laneY(lane, mx) + rng.range(-75, 75),
         lowSig: i < lowSigMines,
       });
     }
@@ -796,6 +816,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     // Volley size rises with the tactic rung: single runs become salvos.
     const volley = Math.max(1, Math.round(torpedoTactic.volumeMult));
     const scheduled = scheduleMissiles(
+      geo,
       torpedoTotal,
       volley,
       rng,
@@ -837,6 +858,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     // launch window is only the first part of the run.
     const boatWindowEnd = EVOLUTION.windowStartT + (windowEnd - EVOLUTION.windowStartT) * 0.45;
     const scheduled = scheduleMissiles(
+      geo,
       boatTotal,
       waveSize,
       rng,
@@ -883,11 +905,11 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     const span = EVOLUTION.gunFieldEndX - EVOLUTION.gunFieldStartX;
     variants.forEach((variant, i) => {
       const slot = span / variants.length;
-      installations.push({
-        x: EVOLUTION.gunFieldStartX + i * slot + rng.range(slot * 0.15, slot * 0.85),
-        y: WORLD.launchSites[0].y + rng.range(-14, 18),
-        variant,
-      });
+      // Settle the emplacement's x, then sit it on the shore THERE. A gun's
+      // position is the whole decision this branch makes, and on a coast that
+      // bends, the shore is where the reach comes from.
+      const gx = EVOLUTION.gunFieldStartX + i * slot + rng.range(slot * 0.15, slot * 0.85);
+      installations.push({ x: gx, y: geo.launchY(gx) + rng.range(-14, 18), variant });
     });
   }
 
@@ -923,12 +945,13 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
         );
         const siteX = Object.keys(busiest).length
           ? Number(Object.entries(busiest).sort((a, b) => b[1] - a[1])[0][0])
-          : rng.pick(WORLD.launchSites).x;
+          : rng.pick(geo.launchSites).x;
+        const cloudX = siteX + rng.range(-50, 50);
         smoke.push({
           variant: 'screening',
           time: at,
-          x: siteX + rng.range(-50, 50),
-          y: WORLD.launchSites[0].y + COMBAT.enemySmoke.screeningOffsetY,
+          x: cloudX,
+          y: geo.launchY(cloudX) + COMBAT.enemySmoke.screeningOffsetY,
         });
       }
     }
@@ -957,6 +980,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
 /** Spread `count` missile launches across [windowStart, windowEnd] in volleys
  *  of the given size, jittered so they never arrive on a metronome. */
 function scheduleMissiles(
+  geo: Geography,
   count: number,
   volleySize: number,
   rng: RNG,
@@ -997,7 +1021,7 @@ function scheduleMissiles(
     // Grid position, jittered around the middle of its own slot.
     const volleyTime =
       windowStart + v * slot + slot / 2 + rng.range(-jitter / 2, jitter / 2);
-    const site = rng.pick(WORLD.launchSites);
+    const site = rng.pick(geo.launchSites);
     const inVolley = base + (v < extra ? 1 : 0);
     for (let i = 0; i < inVolley; i++) {
       spawns.push({

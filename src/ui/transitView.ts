@@ -1426,11 +1426,17 @@ export class TransitView {
     // (WORLD.hostileShoreY / friendlyShoreY). They used to be independent magic
     // numbers here, which is how the shore batteries ended up standing in the
     // water the first time the map was resized.
+    // STEPPED FINER than the 200-unit walk this used to take. A straight coast
+    // is drawn correctly by two points; a coast that bends needs enough of them
+    // to be a curve rather than a row of facets, and the step has to be well
+    // inside the shortest feature a geography is likely to author.
+    const geo = t.geo;
+    const shoreStep = 50;
     ctx.fillStyle = '#33222a';
     ctx.beginPath();
     ctx.moveTo(0, this.sy(0) - 60);
-    for (let x = 0; x <= WORLD.width; x += 200) {
-      ctx.lineTo(this.sx(x), this.sy(WORLD.hostileShoreY + WORLD.shoreWave * Math.sin(x * 0.002)));
+    for (let x = 0; x <= WORLD.width; x += shoreStep) {
+      ctx.lineTo(this.sx(x), this.sy(geo.hostileShoreY(x) + geo.shoreWave * Math.sin(x * 0.002)));
     }
     ctx.lineTo(this.cw, this.sy(0) - 60);
     ctx.closePath();
@@ -1438,10 +1444,10 @@ export class TransitView {
     ctx.fillStyle = '#22301f';
     ctx.beginPath();
     ctx.moveTo(0, this.sy(WORLD.height) + 60);
-    for (let x = 0; x <= WORLD.width; x += 200) {
+    for (let x = 0; x <= WORLD.width; x += shoreStep) {
       ctx.lineTo(
         this.sx(x),
-        this.sy(WORLD.friendlyShoreY - WORLD.shoreWave * Math.sin(x * 0.0015 + 2)),
+        this.sy(geo.friendlyShoreY(x) - geo.shoreWave * Math.sin(x * 0.0015 + 2)),
       );
     }
     ctx.lineTo(this.cw, this.sy(WORLD.height) + 60);
@@ -1450,7 +1456,7 @@ export class TransitView {
 
     // Launch sites
     ctx.fillStyle = '#7a3b45';
-    for (const site of WORLD.launchSites) {
+    for (const site of geo.launchSites) {
       ctx.beginPath();
       ctx.moveTo(this.sx(site.x), this.sy(site.y) + 10);
       ctx.lineTo(this.sx(site.x) - 8, this.sy(site.y) - 6);
@@ -1507,11 +1513,14 @@ export class TransitView {
     ctx.strokeStyle = 'rgba(120, 160, 200, 0.14)';
     ctx.setLineDash([14, 18]);
     ctx.lineWidth = 1.5;
-    for (let i = 0; i < WORLD.lanes.length; i++) {
-      const y = this.sy(WORLD.lanes[i]);
+    for (let i = 0; i < geo.laneCount; i++) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(this.cw, y);
+      for (let x = 0; x <= WORLD.width; x += shoreStep) {
+        const sx = this.sx(x);
+        const sy = this.sy(geo.laneY(i, x));
+        if (x === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
       ctx.stroke();
     }
     ctx.setLineDash([]);

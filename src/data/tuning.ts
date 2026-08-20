@@ -23,7 +23,14 @@ export const WORLD = {
   deliverX: 3880,
   /** Convoy spawns with its lead ships around this x. */
   spawnX: 80,
-  /** THE COASTLINES.
+  /** THE COASTLINES — of the DEFAULT map, the strait.
+   *
+   *  These are no longer read by the sim. They are the source the `strait`
+   *  entry in geography.ts is authored from, and the sim asks the region's
+   *  geography instead — which may bend a coast, narrow the water or curve the
+   *  lanes (see docs/design/map-topology.md). They stay here, rather than
+   *  moving wholesale into geography.ts, so the default map's numbers still
+   *  live in one place next to the world they size.
    *
    *  These exist because the renderer and the sim each used to carry their own
    *  idea of where the land was — the friendly coast was drawn at
@@ -824,9 +831,13 @@ export const COMBAT = {
     /** How long a burst stays drawn on the water, in seconds. Purely visual —
      *  the damage lands the instant the burst is fired. */
     burstSeconds: 0.32,
-    /** Water band the station center must sit inside (off both shores/launchers). */
-    waterYMin: 1185,
-    waterYMax: 2190,
+    // The water band a station centre must sit inside used to be a pair of
+    // hard-coded y values here. It is the region's geography now
+    // (`airWaterTop` / `airWaterBottom`), because on a map with a bulging coast
+    // there is no single pair of numbers that describes it — and a run-in
+    // validated against the wrong band is an aeroplane cleared to fly into a
+    // headland. Aircraft get closer to the beach than hulls do; that clearance
+    // lives in geography.ts.
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
    *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
