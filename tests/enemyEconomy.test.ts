@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import { evolveEnemy, newEvolution, planRound, targetingSkill } from '../src/sim/evolution';
+import { geography } from '../src/data/geography';
 import { newCampaign, planCurrentRound } from '../src/sim/campaign';
 import { migrateRun } from '../src/platform/save';
 import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../src/data/enemyBranches';
@@ -434,6 +435,32 @@ describe('economy drives the round plan', () => {
     const guided = plan.spawns.filter((s) => s.kind === 'guidedMissile').length;
     expect(unguided).toBe(ledger.units.unguided ?? 0);
     expect(guided).toBe(ledger.units.guided ?? 0);
+  });
+
+  it('lays every mine it bought in real water, however big the debut field', () => {
+    // Regression. The cluster COUNT was decided before the lanes were chosen,
+    // and a debut field is laid in one lane — so a first minefield of more than
+    // six charges asked for `laneChoices[1]` of a one-element array, got
+    // `undefined`, and indexed the lane table with it. Every second charge was
+    // laid at y = NaN, where nothing can ever detect or detonate it: the enemy
+    // had been paying full price for charges that dissolved on contact with the
+    // water ever since the branch shipped.
+    const c = newCampaign('mine-debut');
+    c.round = 4;
+    // Stated directly rather than played into: the case is a DEBUT field of
+    // more than six charges, and whether the economy happens to buy one on a
+    // given seed is not what is under test.
+    c.evolution.economy.plannedForRound = c.round; // this round is already bought
+    c.evolution.economy.ledgers.mines.units = { standard: 8 };
+    c.evolution.firstSeen = {};
+    const plan = planRound(c, makeRng('mine-debut-plan'));
+    expect(plan.mines.length).toBeGreaterThan(6);
+    for (const mine of plan.mines) {
+      expect(Number.isFinite(mine.x)).toBe(true);
+      expect(Number.isFinite(mine.y)).toBe(true);
+      expect(mine.y).toBeGreaterThan(geography('strait').waterTop(mine.x));
+      expect(mine.y).toBeLessThan(geography('strait').waterBottom(mine.x));
+    }
   });
 
   it('lays exactly the mines it bought, low-signature ones included', () => {

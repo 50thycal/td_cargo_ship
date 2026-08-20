@@ -495,7 +495,7 @@ function timeToImpact(t: TransitState, threat: Threat): number {
 /** Centroid of the live convoy — where placed abilities are most useful. */
 function convoyCenter(t: TransitState): { x: number; y: number; count: number } {
   const live = t.ships.filter((s) => s.spawned && s.alive && !s.delivered);
-  if (live.length === 0) return { x: WORLD.width / 2, y: WORLD.lanes[1], count: 0 };
+  if (live.length === 0) return { x: WORLD.width / 2, y: t.geo.laneY(1, WORLD.width / 2), count: 0 };
   const x = live.reduce((sum, s) => sum + s.x, 0) / live.length;
   const y = live.reduce((sum, s) => sum + s.y, 0) / live.length;
   return { x, y, count: live.length };
@@ -808,8 +808,8 @@ export function decideCommands(
         // Only water ahead of the convoy is worth a sortie — behind it,
         // whatever is there has already been sailed past.
         th.x >= center.x - 120 &&
-        th.y >= COMBAT.warthog.waterYMin &&
-        th.y <= COMBAT.warthog.waterYMax,
+        th.y >= t.geo.airWaterTop(th.x) &&
+        th.y <= t.geo.airWaterBottom(th.x),
     );
     // Best PAIR: the two targets whose separation makes the longest legal run.
     // The line through them is the run, extended a little past both so each is
@@ -839,7 +839,7 @@ export function decideCommands(
     // and which keeps a bought sortie from sitting on the apron all round.
     if (!bestA && surface.length > 0) {
       const lone = surface.reduce((best, th) => (th.x < best.x ? th : best), surface[0]);
-      const y = clampNum(lone.y, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax);
+      const y = clampNum(lone.y, t.geo.airWaterTop(lone.x), t.geo.airWaterBottom(lone.x));
       bestA = { x: lone.x - COMBAT.warthog.minRunLength, y };
       bestB = { x: lone.x + COMBAT.warthog.minRunLength * 1.5, y };
       bestScore = 2;
@@ -848,13 +848,15 @@ export function decideCommands(
       const ux = (bestB.x - bestA.x) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
       const uy = (bestB.y - bestA.y) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
       const pad = 60;
+      const ax = bestA.x - ux * pad;
+      const bx = bestB.x + ux * pad;
       cmds.push({
         type: 'ability',
         ability: 'warthog',
-        x: bestA.x - ux * pad,
-        y: clampNum(bestA.y - uy * pad, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax),
-        x2: bestB.x + ux * pad,
-        y2: clampNum(bestB.y + uy * pad, COMBAT.warthog.waterYMin, COMBAT.warthog.waterYMax),
+        x: ax,
+        y: clampNum(bestA.y - uy * pad, t.geo.airWaterTop(ax), t.geo.airWaterBottom(ax)),
+        x2: bx,
+        y2: clampNum(bestB.y + uy * pad, t.geo.airWaterTop(bx), t.geo.airWaterBottom(bx)),
       });
       mem.lastWarthogT = t.time;
     }

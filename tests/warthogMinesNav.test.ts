@@ -25,6 +25,7 @@ import { fitUniformEscorts } from './helpers';
 import { canEngage, COUNTER_BRANCHES, deriveCounterEffects } from '../src/data/counters';
 import { COMBAT, NAV, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import { SHIP_CLASSES } from '../src/data/defs';
+import { geography } from '../src/data/geography';
 import type {
   CampaignState,
   FormationId,
@@ -888,15 +889,19 @@ describe('convoy helmsmanship', () => {
 // Convoy pacing
 // ---------------------------------------------------------------------------
 
+/** The default map, for the tests below that assert against its shape. */
+const STRAIT = geography('strait');
+const STRAIT_LANES = STRAIT.laneCount;
+
 describe('convoy entry pacing', () => {
   const FORMATIONS: FormationId[] = ['wide', 'tight', 'sprint'];
 
   it('the schedule matches what the span estimate promises, per formation', () => {
     for (const formation of FORMATIONS) {
       const ships: Ship[] = Array.from({ length: 14 }, (_, i) => makeStubShip(i));
-      scheduleSpawns(ships, makeRng(`span-${formation}`), formation);
+      scheduleSpawns(ships, makeRng(`span-${formation}`), formation, STRAIT_LANES);
       const last = Math.max(...ships.map((s) => s.spawnTime));
-      const estimate = convoySpawnSpan(ships.length, formation);
+      const estimate = convoySpawnSpan(ships.length, formation, STRAIT_LANES);
       // An estimate, not a promise — the volley sizes are rolled — but it has to
       // be in the right neighbourhood or the enemy fire window is wrong.
       expect(last).toBeGreaterThan(estimate * 0.5);
@@ -906,7 +911,9 @@ describe('convoy entry pacing', () => {
 
   it('a Tight convoy is fully on the map long before a Wide one', () => {
     // The reason the estimate has to be formation-aware at all.
-    expect(convoySpawnSpan(15, 'tight')).toBeLessThan(convoySpawnSpan(15, 'wide') * 0.5);
+    expect(convoySpawnSpan(15, 'tight', STRAIT_LANES)).toBeLessThan(
+      convoySpawnSpan(15, 'wide', STRAIT_LANES) * 0.5,
+    );
   });
 
   it('the enemy fire window follows the convoy instead of staying put', () => {
@@ -929,7 +936,7 @@ describe('convoy entry pacing', () => {
     const crossing = (WORLD.deliverX - WORLD.spawnX) / (slowest * 0.95);
     for (const formation of FORMATIONS) {
       const ships: Ship[] = Array.from({ length: 24 }, (_, i) => makeStubShip(i));
-      scheduleSpawns(ships, makeRng(`cap-${formation}`), formation);
+      scheduleSpawns(ships, makeRng(`cap-${formation}`), formation, STRAIT_LANES);
       const last = Math.max(...ships.map((s) => s.spawnTime));
       expect(last + crossing).toBeLessThan(SIM.maxTransitTime);
     }
@@ -1057,9 +1064,9 @@ describe('A-10 run-in and reversal', () => {
     expect(run.turnAt).not.toBeNull();
     expect(run.rollOutAt).not.toBeNull();
     // Broke off past the far shore...
-    expect(run.turnAt!.y).toBeLessThan(COMBAT.warthog.waterYMin);
+    expect(run.turnAt!.y).toBeLessThan(STRAIT.airWaterTop(run.turnAt!.x));
     // ...and was established on the line again before re-entering the water.
-    expect(run.rollOutAt!.y).toBeLessThan(COMBAT.warthog.waterYMin);
+    expect(run.rollOutAt!.y).toBeLessThan(STRAIT.airWaterTop(run.rollOutAt!.x));
     // Back on the drawn track, not on a parallel one a turn-diameter away.
     expect(Math.abs(run.rollOutAt!.x - 2000)).toBeLessThan(COMBAT.warthog.regainTolerance);
   });

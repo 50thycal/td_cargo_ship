@@ -8,29 +8,14 @@
 // the same file is the only thing that stops the two drifting apart the next
 // time somebody retunes SPAWN.
 
-import { SIM, SPAWN, WORLD } from '../data/tuning';
+import { SIM, SPAWN } from '../data/tuning';
 import type { FormationId, Ship } from './types';
 import type { RNG } from './rng';
 
-/** Clamp a lane index into the valid corridor range. */
-export function clampLane(lane: number): number {
-  return Math.max(0, Math.min(WORLD.lanes.length - 1, lane));
-}
-
-/** Index of the corridor lane whose center is nearest a world-Y (used to turn a
- *  scan tap into a lane selection). */
-export function nearestLane(y: number): number {
-  let best = 0;
-  let bestD = Infinity;
-  for (let i = 0; i < WORLD.lanes.length; i++) {
-    const d = Math.abs(WORLD.lanes[i] - y);
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  }
-  return best;
-}
+// `clampLane` and `nearestLane` used to live here. They belong to the map, not
+// to the schedule, and on a map whose lanes curve "which lane is this point in"
+// cannot be answered without knowing WHERE along the map you are asking. They
+// are `Geography.clampLane` / `Geography.nearestLane(x, y)` now.
 
 /** Roughly when the LAST hull of a `shipsOut`-strong convoy enters, for this
  *  formation.
@@ -48,9 +33,12 @@ export function nearestLane(y: number): number {
  *  it is shooting at, and the same number of missiles spread over twice the
  *  water is half the pressure — a difficulty change nobody asked for, hidden
  *  inside a pacing change. */
-export function convoySpawnSpan(shipsOut: number, formation: FormationId): number {
+export function convoySpawnSpan(
+  shipsOut: number,
+  formation: FormationId,
+  laneCount: number,
+): number {
   const gaps = Math.max(0, shipsOut - 1);
-  const laneCount = WORLD.lanes.length;
   if (formation === 'sprint') {
     // Volleys of sprintVolleyMin..Max; use the midpoint, since the RNG picks
     // per volley and this is an average over the whole round.
@@ -78,8 +66,12 @@ export function convoySpawnSpan(shipsOut: number, formation: FormationId): numbe
  *  Give the convoy its arrival span plus a crossing allowance, and the timeout
  *  goes back to meaning what it should — a convoy that could not fight its way
  *  across — rather than one that was still queueing when the whistle blew. */
-export function transitTimeLimit(shipsOut: number, formation: FormationId): number {
-  const needed = convoySpawnSpan(shipsOut, formation) + SIM.transitCrossAllowance;
+export function transitTimeLimit(
+  shipsOut: number,
+  formation: FormationId,
+  laneCount: number,
+): number {
+  const needed = convoySpawnSpan(shipsOut, formation, laneCount) + SIM.transitCrossAllowance;
   return Math.max(SIM.minTransitTime, Math.min(SIM.maxTransitTime, needed));
 }
 
@@ -94,9 +86,13 @@ export function transitTimeLimit(shipsOut: number, formation: FormationId): numb
  *   • wide   — staggered: one ship at a time, alternating across the lanes
  *     (a loose, spread-out stream).
  */
-export function scheduleSpawns(ships: Ship[], rng: RNG, formation: FormationId): void {
+export function scheduleSpawns(
+  ships: Ship[],
+  rng: RNG,
+  formation: FormationId,
+  laneCount: number,
+): void {
   const order = rng.shuffle(ships.map((_, i) => i));
-  const laneCount = WORLD.lanes.length;
   const setJitter = (ship: Ship): void => {
     ship.lateralSeed = rng.range(-1, 1);
     ship.speedVariance = rng.range(1 - SPAWN.speedVariance, 1 + SPAWN.speedVariance);
