@@ -31,6 +31,7 @@ import {
   recordRunStart,
   regionUnlocked,
   sanitizedLoadout,
+  setDevMode,
   setLoadout,
   unlockAbility,
   unlockBlockReason,
@@ -284,14 +285,34 @@ describe('regional run lifecycle', () => {
     }
   });
 
+  it('developer mode is off until it is switched on, and fully retreats', () => {
+    // Off is a full retreat on purpose: leaving the region unlock set with its
+    // switch hidden would strand a profile with everything open and nothing on
+    // screen explaining why.
+    const profile = newProfile();
+    expect(profile.devMode).toBe(false);
+
+    setDevMode(profile, true);
+    profile.allRegionsUnlocked = true;
+    expect(regionUnlocked(profile, REGION_ORDER[REGION_ORDER.length - 1])).toBe(true);
+
+    setDevMode(profile, false);
+    expect(profile.allRegionsUnlocked).toBe(false);
+    expect(regionUnlocked(profile, REGION_ORDER[REGION_ORDER.length - 1])).toBe(false);
+    // ...and the earned ladder survived both directions untouched.
+    expect(profile.unlockedRegions).toEqual([FIRST_REGION]);
+  });
+
   it('backfills the dev unlock onto a profile saved before it existed', () => {
     // Old saves heal forward rather than being rejected — same rule the rest
     // of the profile migration follows.
     const legacy = newProfile() as unknown as Record<string, unknown>;
     delete legacy.allRegionsUnlocked;
+    delete legacy.devMode;
     const healed = migrateProfile(legacy);
     expect(healed).not.toBeNull();
     expect(healed!.allRegionsUnlocked).toBe(false);
+    expect(healed!.devMode).toBe(false);
     expect(regionUnlocked(healed!, FIRST_REGION)).toBe(true);
   });
 
