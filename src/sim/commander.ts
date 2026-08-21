@@ -32,6 +32,17 @@ export interface CommanderProfile {
    *  run at start. Always kept valid against slots/points/unlocks. */
   loadout: string[];
   unlockedRegions: RegionId[];
+  /** DEV/TESTING: the developer tools are switched on for this profile.
+   *
+   *  Turned on from Settings, so the tools are reachable on a phone without
+   *  having to get `?dev` onto the URL — which is fine on a desktop address bar
+   *  and awkward everywhere else. The URL flag and the Vite dev server still
+   *  work; this is a third way in, not a replacement.
+   *
+   *  Turning it OFF also clears `allRegionsUnlocked` below. Leaving that set
+   *  with its switch hidden would strand a profile with every region open and
+   *  nothing on screen explaining why. */
+  devMode: boolean;
   /** DEV/TESTING: treat every region on the ladder as unlocked.
    *
    *  Separate from `unlockedRegions` rather than folded into it, because the
@@ -72,6 +83,7 @@ export function newProfile(): CommanderProfile {
       .map((l) => l.id),
     legacyLoadout: [],
     unlockedRegions: [FIRST_REGION],
+    devMode: false,
     allRegionsUnlocked: false,
     records: {},
     totalRuns: 0,
@@ -209,6 +221,16 @@ export function sanitizedLegacyLoadout(p: CommanderProfile): string[] {
 
 export function regionUnlocked(p: CommanderProfile, id: RegionId): boolean {
   return p.allRegionsUnlocked || p.unlockedRegions.includes(id);
+}
+
+/** Switch the developer tools on or off for this profile.
+ *
+ *  Off is a full retreat: the dev-only settings go with it, so "turn the dev
+ *  version off" means the game is exactly the game again. The earned ladder is
+ *  never touched either way — see `allRegionsUnlocked`. */
+export function setDevMode(p: CommanderProfile, on: boolean): void {
+  p.devMode = on;
+  if (!on) p.allRegionsUnlocked = false;
 }
 
 function record(p: CommanderProfile, id: RegionId): RegionRecord {

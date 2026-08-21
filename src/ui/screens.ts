@@ -105,6 +105,7 @@ import {
   setLegacyLoadout,
   unlockLegacy,
   regionUnlocked,
+  setDevMode,
   type CommanderProfile,
   type RunSettlement,
 } from '../sim/commander';
@@ -354,6 +355,7 @@ export function menuScreen(opts: {
   onContinue: () => void;
   devAvailable: boolean;
   onDev: () => void;
+  onSettings: () => void;
 }): HTMLElement {
   entering('menu');
   const { saved, profile } = opts;
@@ -366,6 +368,7 @@ export function menuScreen(opts: {
   const buttons = h('div', { className: 'buttons' }, [
     h('button', { className: 'primary', text: 'Begin Regional Run', onClick: opts.onNewRun }),
     h('button', { text: continueLabel, disabled: !saved, onClick: opts.onContinue }),
+    h('button', { text: 'Settings', onClick: opts.onSettings }),
   ]);
   const regionsCleared = REGION_ORDER.filter((id) => (profile.records[id]?.completions ?? 0) > 0).length;
   const children: HTMLElement[] = [
@@ -682,6 +685,96 @@ export function loadoutScreen(
 }
 
 // ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+/** One labelled ON/OFF row. Shared by Settings and Dev Mode so the two screens
+ *  cannot drift into looking like different games. */
+function toggleRow(
+  ic: IconName,
+  label: string,
+  desc: string,
+  get: () => boolean,
+  set: (v: boolean) => void,
+): HTMLElement {
+  const btn = h('button', {
+    className: get() ? 'dev-toggle on' : 'dev-toggle',
+    text: get() ? 'ON' : 'OFF',
+    onClick: () => {
+      set(!get());
+      btn.textContent = get() ? 'ON' : 'OFF';
+      btn.className = get() ? 'dev-toggle on' : 'dev-toggle';
+    },
+  });
+  return h('div', { className: 'dev-row' }, [
+    h('div', { className: 'dev-label' }, [icon(ic), h('span', { text: label })]),
+    h('div', { className: 'dev-desc hint', text: desc }),
+    btn,
+  ]);
+}
+
+/** Settings — where the developer tools are switched on.
+ *
+ *  Exists because `?dev` on the URL is a fine gate on a desktop and a poor one
+ *  on the device this game is actually played on. Everything here is permanent
+ *  profile state, persisted the moment it changes; `onChange` re-renders so the
+ *  dev-only rows appear and disappear with the switch above them. */
+export function settingsScreen(
+  profile: CommanderProfile,
+  onChange: () => void,
+  onBack: () => void,
+): HTMLElement {
+  const { root, body, footer } = screenShell(
+    'Settings',
+    'Developer tools and testing options',
+    null,
+    'settings',
+  );
+
+  const panel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Developer' }),
+    toggleRow(
+      'wrench',
+      'Developer mode',
+      'Adds the Dev Mode launcher to the main menu and the testing options below. Turning it off puts everything back, including any regions opened for testing.',
+      () => profile.devMode,
+      (v) => {
+        setDevMode(profile, v);
+        onChange();
+      },
+    ),
+  ]);
+
+  if (profile.devMode) {
+    panel.append(
+      toggleRow(
+        'radar',
+        'Unlock all regions',
+        `Opens every region (${REGION_ORDER.map((id) => REGIONS[id].name).join(', ')}) for ordinary runs from Region Select. Nothing is granted — your earned progress is untouched, and Region Select marks anything opened this way as unlocked for testing.`,
+        () => profile.allRegionsUnlocked,
+        (v) => {
+          profile.allRegionsUnlocked = v;
+          onChange();
+        },
+      ),
+    );
+  }
+
+  body.append(
+    panel,
+    h('div', {
+      className: 'hint',
+      text: profile.devMode
+        ? 'Dev Mode is on the main menu now — that is where god mode and jump-to-round live.'
+        : 'Nothing here changes how the game plays until Developer mode is on.',
+    }),
+  );
+
+  footer.append(h('button', { text: 'Back', onClick: onBack }));
+  return root;
+}
+
+// ---------------------------------------------------------------------------
 // Dev mode — god abilities & level select for testing
 // ---------------------------------------------------------------------------
 
@@ -690,14 +783,13 @@ let devRound = 1;
 let devGod = true;
 let devUnlock = true;
 
-export function devScreen(
-  profile: CommanderProfile,
-  onLaunch: (opts: DevOptions) => void,
-  /** Persist the profile — the region unlock is permanent state, not a launch
-   *  option, so it takes effect on Region Select without launching anything. */
-  onProfileChange: () => void,
-  onBack: () => void,
-): HTMLElement {
+/** Dev Mode — the dev-RUN launcher.
+ *
+ *  Everything on this screen is an option for the run it launches. Persistent
+ *  profile state (the region unlock) lives in Settings instead: it was the odd
+ *  one out here, being the only switch that did something without launching
+ *  anything. */
+export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => void): HTMLElement {
   const { root, body, footer } = screenShell(
     'Dev Mode',
     'God abilities and level select — for testing only',
@@ -727,59 +819,23 @@ export function devScreen(
     ]),
   ]);
 
-  const toggle = (
-    ic: IconName,
-    label: string,
-    desc: string,
-    get: () => boolean,
-    set: (v: boolean) => void,
-  ): HTMLElement => {
-    const btn = h('button', {
-      className: get() ? 'dev-toggle on' : 'dev-toggle',
-      text: get() ? 'ON' : 'OFF',
-      onClick: () => {
-        set(!get());
-        btn.textContent = get() ? 'ON' : 'OFF';
-        btn.className = get() ? 'dev-toggle on' : 'dev-toggle';
-      },
-    });
-    return h('div', { className: 'dev-row' }, [
-      h('div', { className: 'dev-label' }, [icon(ic), h('span', { text: label })]),
-      h('div', { className: 'dev-desc hint', text: desc }),
-      btn,
-    ]);
-  };
-
   body.append(
     h('div', { className: 'panel' }, [
       h('h2', { text: 'Test loadout' }),
       roundRow,
-      toggle(
+      toggleRow(
         'shield',
         'God mode',
         'Ships, escorts and batteries are invincible; interceptors, drones, PD rounds and aircraft are unlimited.',
         () => devGod,
         (v) => (devGod = v),
       ),
-      toggle(
+      toggleRow(
         'flask',
         'Unlock everything',
         'All research complete, Warthog & scan installed, max batteries/escorts/capacity, and deep pockets.',
         () => devUnlock,
         (v) => (devUnlock = v),
-      ),
-    ]),
-    h('div', { className: 'panel' }, [
-      h('h2', { text: 'Campaign ladder' }),
-      toggle(
-        'radar',
-        'Unlock all regions',
-        `Opens every region on the ladder (${REGION_ORDER.map((id) => REGIONS[id].name).join(', ')}) for ordinary runs from Region Select. Takes effect immediately — no dev run needed — and turning it off restores exactly what you had earned.`,
-        () => profile.allRegionsUnlocked,
-        (v) => {
-          profile.allRegionsUnlocked = v;
-          onProfileChange();
-        },
       ),
     ]),
     h('div', {

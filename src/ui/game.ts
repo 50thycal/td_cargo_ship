@@ -43,13 +43,20 @@ import {
   prepScreen,
   regionSelectScreen,
   runOverScreen,
+  settingsScreen,
 } from './screens';
 import { TransitView } from './transitView';
 
 /** Dev tools are gated behind an explicit opt-in so they never surface for a
- *  normal player: add `?dev` (or `#dev`) to the URL, or run the Vite dev server.
- *  An existing dev save also keeps the door open. */
-function devEnabled(saved: CampaignState | null): boolean {
+ *  normal player: turn Developer mode on in Settings, add `?dev` (or `#dev`) to
+ *  the URL, or run the Vite dev server. An existing dev save also keeps the
+ *  door open.
+ *
+ *  Settings is the one that matters on a phone, where getting a query string
+ *  onto the URL is a chore. The others are kept because they cost nothing and
+ *  desktop habits rely on them. */
+function devEnabled(saved: CampaignState | null, profile: CommanderProfile): boolean {
+  if (profile.devMode) return true;
   try {
     const url = typeof location !== 'undefined' ? location.href.toLowerCase() : '';
     if (/[?#&]dev\b/.test(url) || url.includes('dev=1')) return true;
@@ -127,8 +134,9 @@ export class Game {
           this.run = saved;
           this.route();
         },
-        devAvailable: devEnabled(saved),
+        devAvailable: devEnabled(saved, this.profile),
         onDev: () => this.showDev(),
+        onSettings: () => this.showSettings(),
       }),
     );
   }
@@ -181,7 +189,6 @@ export class Game {
   private showDev(): void {
     this.swapScreen(
       devScreen(
-        this.profile,
         (opts: DevOptions) => {
           clearRun();
           this.run = newDevCampaign(`dev-${Date.now().toString(36)}`, opts);
@@ -189,11 +196,22 @@ export class Game {
           this.lastSettlement = null;
           this.route();
         },
-        // Same rule as the loadout screen: permanent state is persisted the
-        // moment it changes, not when something is launched. No re-render —
-        // the toggle repaints itself, and rebuilding the screen under the
-        // finger that just tapped it would be a jolt for nothing.
-        () => saveProfile(this.profile),
+        () => this.showMenu(),
+      ),
+    );
+  }
+
+  private showSettings(): void {
+    this.swapScreen(
+      settingsScreen(
+        this.profile,
+        () => {
+          // Same rule as the loadout screen: permanent state is persisted the
+          // moment it changes. The re-render is load-bearing here — the
+          // dev-only rows appear and disappear with the switch above them.
+          saveProfile(this.profile);
+          this.showSettings();
+        },
         () => this.showMenu(),
       ),
     );
