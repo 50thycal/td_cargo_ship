@@ -49,6 +49,27 @@ export interface RegionDef {
   branchDebutRounds?: Partial<Record<EnemyBranchKey, number>>;
   /** Region threat-budget curve. null = the global ENEMY_ECONOMY defaults. */
   budget: { base: number; perRound: number; cap: number } | null;
+  /** Per-round unit ceilings this region raises for a branch, replacing the
+   *  catalogue's `maxUnitsPerRound`.
+   *
+   *  Still not a weapon rebalance, and the distinction is worth being exact
+   *  about because the rule at the top of this file is worth keeping. A missile
+   *  here costs what a missile costs, flies at the speed a missile flies and
+   *  does the damage a missile does. What changes is HOW MANY the enemy may
+   *  field in one round — availability and pacing, which is the one thing a
+   *  region is for.
+   *
+   *  Needed because volume is a real counter to a real defence rather than a
+   *  difficulty dial. The player's shore battery has unlimited range: geography
+   *  cannot weaken it and distance does not matter to it, so on a map where
+   *  missiles are the only threat it is close to a complete answer. What it
+   *  does have is a reload — so the way past it is more missiles arriving at
+   *  once than it can service. Without this lever a missile-only region is
+   *  pinned at the catalogue's 46 per round however rich the enemy gets, and
+   *  measured, it finished EASIER than the tutorial region: 98% delivery with
+   *  the enemy scrapping a third of its war chest every round for want of
+   *  anything it was allowed to buy. */
+  branchUnitCeilings?: Partial<Record<EnemyBranchKey, number>>;
   start: RegionStartState;
   /** Commander XP awarded for completing the region. */
   completionXp: number;
@@ -115,7 +136,72 @@ export const REGIONS: Record<RegionId, RegionDef> = {
     budget: null,
     start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
     completionXp: 90,
+    unlocks: 'missileCoast',
+  },
+  missileCoast: {
+    id: 'missileCoast',
+    name: 'Missile Coast',
+    tagline: 'A hostile shore that leans out to meet you',
+    desc:
+      'The coastline bulges into the shipping lane at the halfway mark, and the launch ' +
+      'sites ride out with it. Nothing here is new — the same missiles, from the same ' +
+      'racks — but in the alley they arrive in five seconds instead of twelve, and there ' +
+      'is no minefield to sweep and no boat to shoot: only the sky, and how much of it ' +
+      'you can cover.',
+    completionRound: 11,
+    // NO MINES, and that is the point. The kit the last two regions taught you
+    // to build — sonar, sweep drones, the scan plane — buys nothing here, and a
+    // player who reaches for it has brought the wrong fleet. Smoke and the
+    // recon plane arrive late (rounds 7 and 8) as the saturation escalates from
+    // volume into deception.
+    enemyBranches: ['missiles', 'smoke', 'electronic'],
+    // BOTH levers, and each answers a different half of the problem. Left on
+    // the defaults this region finished EASIER than the tutorial: 96-99%
+    // delivery, every build surviving, `interceptor-rush` losing 2.8 hulls in
+    // eleven rounds. Missiles are the least cost-efficient thing the enemy can
+    // buy, so a menu with nothing else on it under-spends by construction.
+    //
+    // The purse is what raises the ordinary round. The ceiling is what lets the
+    // enemy answer a player who is running away with it: the anti-snowball
+    // bonus can add a third to the war chest, but at the catalogue's 46
+    // missiles a round there was nothing to spend it ON and it was scrapped.
+    // Measured against the four builds that dominate here, lifting the ceiling
+    // alone roughly doubles their attrition — automation 4.3 hulls to 9.5,
+    // sensor-net 5.3 to 10.8 — while leaving the builds that are already
+    // struggling untouched. That is the restoring force in SEESAW.md finally
+    // reaching the water.
+    //
+    // PROVISIONAL, like every number in this file: a 4-seed sweep across the
+    // twelve personas. What it buys is 9 of 11 builds clearing the region with
+    // 87-98% delivery and real attrition, against 12 of 12 clearing it
+    // untouched before.
+    budget: { base: 58, perRound: 74, cap: 1400 },
+    branchUnitCeilings: { missiles: 56 },
+    start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
+    completionXp: 120,
+    unlocks: 'headlands',
+    geography: 'squeeze',
+  },
+  headlands: {
+    id: 'headlands',
+    name: 'The Headlands',
+    tagline: 'Guns on a peninsula you have to sail the length of',
+    desc:
+      'A hostile promontory runs two-thirds of the crossing, and the batteries on it ' +
+      'reach water no shore gun has ever reached before. There is no stretch to wait it ' +
+      'out in and no lane that is quietly safe. The question this coast asks is the only ' +
+      'one it asks: how fast can you put those guns out of action?',
+    // Long enough for the artillery ladder to finish arriving. Coastal guns
+    // open at 6 and ranging at 8 — the round the last safe lane disappears —
+    // so a region that ended before then would be named after a branch the
+    // player barely met.
+    completionRound: 12,
+    enemyBranches: ['artillery', 'smoke', 'missiles'],
+    budget: null,
+    start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
+    completionXp: 150,
     unlocks: null,
+    geography: 'headlands',
   },
   // Not part of the campaign ladder: the full-threat proving ground used by
   // dev runs and the headless playtest harness. Never appears in REGION_ORDER,
@@ -145,7 +231,12 @@ export const REGIONS: Record<RegionId, RegionDef> = {
 };
 
 /** Campaign ladder, in unlock order. The dev proving ground is excluded. */
-export const REGION_ORDER: RegionId[] = ['homeStrait', 'pirateNarrows'];
+export const REGION_ORDER: RegionId[] = [
+  'homeStrait',
+  'pirateNarrows',
+  'missileCoast',
+  'headlands',
+];
 
 /** Where a fresh Commander Profile starts. */
 export const FIRST_REGION: RegionId = 'homeStrait';

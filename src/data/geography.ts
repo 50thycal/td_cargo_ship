@@ -96,6 +96,14 @@ export interface Geography {
 
   /** Centre of a lane at this x. */
   laneY(lane: number, x: number): number;
+  /** Distance travelled ALONG a lane, from the western edge of the map to x.
+   *
+   *  Progress is measured in x everywhere else in the sim, which is right for
+   *  "has she crossed the line yet" and wrong for "is she behind schedule": a
+   *  hull following a bend covers more water than her easting suggests, and
+   *  judged on easting alone she reads as a straggler for sailing normally.
+   *  On a straight lane this returns x, exactly. */
+  laneDistance(lane: number, x: number): number;
   clampLane(lane: number): number;
   /** Index of the lane running nearest this point — how a tap becomes a lane. */
   nearestLane(x: number, y: number): number;
@@ -166,8 +174,32 @@ export function makeGeography(def: GeographyDef): Geography {
     y: launchY(site.x) - (site.extraInset ?? 0),
   }));
 
-  const laneY = (lane: number, x: number): number =>
-    sample(def.lanes[Math.max(0, Math.min(laneCount - 1, lane))], x);
+  const clampLane = (lane: number): number => Math.max(0, Math.min(laneCount - 1, lane));
+  const laneY = (lane: number, x: number): number => sample(def.lanes[clampLane(lane)], x);
+
+  // Cumulative distance ALONG each lane, tabulated once. A straight lane's
+  // table is 0, step, 2*step, ... so the lookup below returns x untouched and
+  // nothing that reads it can tell this was ever added.
+  const ARC_STEPS = 200;
+  const arcStep = WORLD.width / ARC_STEPS;
+  const arcs: number[][] = def.lanes.map((_, lane) => {
+    const table = [0];
+    for (let i = 1; i <= ARC_STEPS; i++) {
+      const x0 = arcStep * (i - 1);
+      const x1 = arcStep * i;
+      const dy = laneY(lane, x1) - laneY(lane, x0);
+      table.push(table[i - 1] + (dy === 0 ? arcStep : Math.hypot(arcStep, dy)));
+    }
+    return table;
+  });
+  const laneDistance = (lane: number, x: number): number => {
+    const table = arcs[clampLane(lane)];
+    if (x <= 0) return x;
+    if (x >= WORLD.width) return table[ARC_STEPS] + (x - WORLD.width);
+    const i = Math.min(ARC_STEPS - 1, Math.floor(x / arcStep));
+    const t = (x - arcStep * i) / arcStep;
+    return table[i] + (table[i + 1] - table[i]) * t;
+  };
 
   return {
     id: def.id,
@@ -182,7 +214,8 @@ export function makeGeography(def: GeographyDef): Geography {
     airWaterTop: (x) => hostileShoreY(x) + def.shoreWave + airClearance,
     airWaterBottom: (x) => friendlyShoreY(x) - def.shoreWave - airClearance,
     laneY,
-    clampLane: (lane) => Math.max(0, Math.min(laneCount - 1, lane)),
+    laneDistance,
+    clampLane,
     nearestLane: (x, y) => {
       let best = 0;
       let bestD = Infinity;
@@ -226,6 +259,25 @@ export function makeGeography(def: GeographyDef): Geography {
 // Rule of thumb: `lanesPressed` for a map whose story is LAND CLOSING IN
 // (the squeeze, a headland, a narrows), `lanesAcross` for one whose story is
 // the shape of the water itself (open sea, a diagonal drift).
+
+/** THE STEEPEST A LANE MAY BEND.
+ *
+ *  Not a taste call — it is what the steering can physically follow. A hull's
+ *  lane-keeping goal is `clamp((laneY - y) / NAV.lanePull, -0.9, 0.9)` against
+ *  a forward component of 1, so however far off her line she gets, the goal
+ *  direction saturates at 0.9 lateral per 1 forward: about 42 degrees. Author a
+ *  lane steeper than that and it simply outruns the hulls on it — measured on
+ *  a first cut of the headlands, whose lane touched 56 degrees, the convoy
+ *  trailed its own lane line by 228 units and clipped the beach.
+ *
+ *  Applied to the SAMPLED profile, which is not the same as the finished curve:
+ *  smoothstep between two samples peaks at 1.5x the slope of the straight line
+ *  joining them, so the limit here comes out about half again as steep on the
+ *  water. 0.4 sampled is therefore ~0.6 (31 degrees) real, which leaves room
+ *  for the separation and avoidance forces the goal is blended with — what a
+ *  hull is spending the rest of its helm on in traffic. Set it to 0.6 and the
+ *  real curve lands at 0.888, exactly the saturation point, with nothing spare. */
+const MAX_LANE_SLOPE = 0.4;
 
 /** How densely a computed lane is sampled.
  *
@@ -283,7 +335,7 @@ export function lanesPressed(
   friendlyShore: readonly GeoPoint[],
   shoreWave: number,
   baseYs: readonly number[],
-  opts: { edgeMargin?: number; minSeparation?: number } = {},
+  opts: { edgeMargin?: number; minSeparation?: number; maxSlope?: number } = {},
   samples = LANE_SAMPLES,
 ): GeoPoint[][] {
   // Built with more room than the validator demands, for the sampling reason
@@ -291,16 +343,44 @@ export function lanesPressed(
   // constructed to pass, which is a maddening thing to debug.
   const edgeMargin = opts.edgeMargin ?? LANE_MARGIN + 30;
   const minSeparation = opts.minSeparation ?? 90;
-  const at = (x: number): number[] => {
-    const top = sample(hostileShore, x) + shoreWave + hullClearance;
-    const out: number[] = [];
+
+  // The FLOOR is smoothed, not the finished lanes.
+  //
+  // Smoothing each lane on its own would let one lane anticipate a climb that
+  // its neighbour does not, and two lanes moving on different schedules is how
+  // lanes cross. Doing it to the floor instead means every lane below inherits
+  // an already-gentle shape through the `max` cascade, and the cascade is what
+  // guarantees the ordering. Both passes only ever push the floor SOUTH, away
+  // from the hostile shore, so a smoothed floor is never less safe than the raw
+  // one — it just starts giving way sooner.
+  const xs: number[] = [];
+  const floor: number[] = [];
+  for (let i = 0; i < samples; i++) {
+    const x = (WORLD.width * i) / (samples - 1);
+    xs.push(x);
+    floor.push(sample(hostileShore, x) + shoreWave + hullClearance + edgeMargin);
+  }
+  const maxSlope = opts.maxSlope ?? MAX_LANE_SLOPE;
+  // Backwards: start bearing away early enough to be clear when the land
+  // arrives. Forwards: come back in no faster than a hull can steer.
+  for (let i = samples - 2; i >= 0; i--) {
+    floor[i] = Math.max(floor[i], floor[i + 1] - maxSlope * (xs[i + 1] - xs[i]));
+  }
+  for (let i = 1; i < samples; i++) {
+    floor[i] = Math.max(floor[i], floor[i - 1] - maxSlope * (xs[i] - xs[i - 1]));
+  }
+
+  const lanes: GeoPoint[][] = baseYs.map(() => []);
+  for (let s = 0; s < samples; s++) {
+    let prev = -Infinity;
     for (let i = 0; i < baseYs.length; i++) {
-      const floor = i === 0 ? top + edgeMargin : Math.max(top + edgeMargin, out[i - 1] + minSeparation);
-      out.push(Math.max(baseYs[i], floor));
+      const limit = i === 0 ? floor[s] : Math.max(floor[s], prev + minSeparation);
+      const y = Math.max(baseYs[i], limit);
+      lanes[i].push({ x: xs[s], y });
+      prev = y;
     }
-    return out;
-  };
-  return baseYs.map((_, i) => laneProfile((x) => at(x)[i], samples));
+  }
+  return lanes;
 }
 
 // ---------------------------------------------------------------------------
@@ -388,9 +468,10 @@ export const STRAIT: GeographyDef = {
 /** THE SQUEEZE — the hostile coast bulges into the shipping lane across the
  *  middle third of the map, and the lanes close up and bend south with it.
  *
- *  Not yet worn by any region: this exists so the machinery above is exercised
- *  by something that is actually curved, and so the shape Missile Coast wants
- *  is already sitting here, validated, when that region is built.
+ *  Worn by MISSILE COAST. The bulge is a PEAK, not a plateau — it ramps up
+ *  over 750 units, tops out, and ramps back down — so the danger arrives, is
+ *  survived, and is left behind. Every transit has a recognisable moment in
+ *  the middle, which is the whole thing a straight strait cannot give you.
  *
  *  What the bulge DOES, with no weapon touched. At the peak the launch line
  *  sits 400 units further south, and the near lane — with the coast where it
@@ -435,9 +516,82 @@ export const SQUEEZE: GeographyDef = {
   launchSites: [{ x: 700 }, { x: 2000, extraInset: 30 }, { x: 3300 }],
 };
 
+/** THE HEADLANDS — a hostile peninsula the convoy has to sail the length of.
+ *
+ *  The squeeze's amplitude, held for two-thirds of the crossing instead of
+ *  spiked in the middle, and that difference is the whole region. A peak is a
+ *  moment: you take the hits and you are past it. A plateau is a passage —
+ *  there is no stretch of water where the guns are not on you, so "wait it
+ *  out" is not an answer and suppressing the shore is.
+ *
+ *  Sized to what the artillery branch can actually reach, since that is the
+ *  branch this region exists to give a home to. Coastal and barrage guns
+ *  reach 540; ranging guns reach 830. Because a pressed lane and the launch
+ *  line BOTH ride the shore, the near lane sits a constant 331 units off the
+ *  guns however deep the intrusion is — so what the depth actually buys is the
+ *  far lanes:
+ *
+ *    lanes a shore gun can reach          coastal (540)   ranging (830)
+ *      the strait                              1               2
+ *      the headlands                           2               3
+ *
+ *    warning before a missile arrives     near   centre   far
+ *      the strait                         7.0s    11.7s   16.3s
+ *      the headlands                      5.5s     8.0s   10.5s
+ *
+ *  Note what is NOT here: coastal guns reaching all three lanes. The geometry
+ *  forbids it and it is worth writing down why. The gun sits 211 units above
+ *  the water's edge (140 inland, plus the meander and the hull clearance), so
+ *  reaching a far lane 540 away means the whole navigable channel is under
+ *  330 units deep — and three lanes will not fit in that with enough water
+ *  between them to sail. Crowding the lanes to make them fit produces a
+ *  traffic jam, not a battle: a Wide convoy spreads 42 units either side of
+ *  its lane line, so lanes closer than about 150 apart put hulls inside each
+ *  other's separation bubble for the length of the plateau. Two lanes under
+ *  the coastal guns and all three under the ranging guns is what the numbers
+ *  actually support, and it still makes the round-8 ranging debut the moment
+ *  the last safe water disappears. */
+const HEADLANDS_INTRUSION = 400;
+
+const HEADLANDS_HOSTILE: GeoPoint[] = [
+  { x: 0, y: WORLD.hostileShoreY },
+  { x: 500, y: WORLD.hostileShoreY },
+  // The COASTLINE may be as abrupt as it likes — headlands are. What the hulls
+  // follow is the lane, and `lanesPressed` holds that to MAX_LANE_SLOPE
+  // whatever the land does, bearing away early rather than turning hard late.
+  { x: 1100, y: WORLD.hostileShoreY + HEADLANDS_INTRUSION },
+  { x: 3100, y: WORLD.hostileShoreY + HEADLANDS_INTRUSION },
+  { x: 3700, y: WORLD.hostileShoreY },
+  { x: WORLD.width, y: WORLD.hostileShoreY },
+];
+
+const HEADLANDS_FRIENDLY: GeoPoint[] = [{ x: 0, y: WORLD.friendlyShoreY }];
+
+export const HEADLANDS: GeographyDef = {
+  id: 'headlands',
+  name: 'The Headlands',
+  hostileShore: HEADLANDS_HOSTILE,
+  friendlyShore: HEADLANDS_FRIENDLY,
+  shoreWave: WORLD.shoreWave,
+  // WIDER lane separation than the squeeze's default. The squeeze crowds its
+  // lanes on purpose and gets away with it because the crowding lasts a few
+  // seconds; hold the same crowding for two-thirds of the map and the convoy
+  // spends the passage giving way to itself instead of fighting.
+  lanes: lanesPressed(HEADLANDS_HOSTILE, HEADLANDS_FRIENDLY, WORLD.shoreWave, WORLD.lanes, {
+    minSeparation: 150,
+  }),
+  launchInset: 140,
+  baseInset: 135,
+  // All three sites on the plateau, and spread across it: the emplacements ARE
+  // the peninsula, and a convoy should never be able to point at one stretch
+  // of coast and call the rest of it quiet.
+  launchSites: [{ x: 1300 }, { x: 2200, extraInset: 30 }, { x: 3000 }],
+};
+
 export const GEOGRAPHIES: Record<GeographyId, GeographyDef> = {
   strait: STRAIT,
   squeeze: SQUEEZE,
+  headlands: HEADLANDS,
 };
 
 const resolved = new Map<GeographyId, Geography>();

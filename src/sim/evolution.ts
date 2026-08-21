@@ -88,6 +88,7 @@ function newEconomy(region: RegionDef): EnemyEconomyState {
     // retuned between sessions.
     allowedBranches: [...region.enemyBranches],
     branchDebutRounds: { ...(region.branchDebutRounds ?? {}) },
+    branchUnitCeilings: { ...(region.branchUnitCeilings ?? {}) },
     budgetCurve: region.budget
       ? { ...region.budget }
       : {
@@ -396,7 +397,13 @@ function purchase(
 
     // Volume rung: sustained investment buys more of whatever it fields.
     const tactic = tacticForRounds(key, ledger.roundsInvested);
-    const unitCeiling = Math.max(1, Math.round(def.maxUnitsPerRound * Math.min(1, tactic.volumeMult / 1.95)));
+    // The region may raise the per-round ceiling for a branch — see
+    // RegionDef.branchUnitCeilings for why that is availability rather than a
+    // weapon change. The tactic rung still gates how much of it is unlocked,
+    // so a raised ceiling is earned by sustained investment exactly as the
+    // catalogue's own is.
+    const maxUnits = economy.branchUnitCeilings[key] ?? def.maxUnitsPerRound;
+    const unitCeiling = Math.max(1, Math.round(maxUnits * Math.min(1, tactic.volumeMult / 1.95)));
     let unitsBought = Object.values(ledger.units).reduce((a, b) => a + b, 0);
 
     const newest = nodes[nodes.length - 1];
