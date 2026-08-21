@@ -423,9 +423,21 @@ export function regionSelectScreen(
     'regionSelect',
   );
 
+  if (profile.allRegionsUnlocked) {
+    body.append(
+      h('div', {
+        className: 'hint',
+        text: 'Dev: all regions unlocked. Turn it off in Dev Mode to go back to the earned ladder.',
+      }),
+    );
+  }
+
   for (const id of REGION_ORDER) {
     const region = REGIONS[id];
     const unlocked = regionUnlocked(profile, id);
+    // A region opened by the dev flag rather than earned still says so, so a
+    // test run is never mistaken for progress.
+    const earned = profile.unlockedRegions.includes(id);
     const rec = profile.records[id];
     const threatNames = region.enemyBranches
       .filter((k) => ENEMY_BRANCHES[k].implemented)
@@ -450,7 +462,12 @@ export function regionSelectScreen(
         icon(unlocked ? 'radar' : 'lock'),
         h('h3', { text: region.name }),
       ]),
-      h('div', { className: 'hint', text: unlocked ? region.tagline : 'Complete the previous region to unlock.' }),
+      h('div', {
+        className: 'hint',
+        text: unlocked
+          ? `${region.tagline}${unlocked && !earned ? ' · unlocked for testing' : ''}`
+          : 'Complete the previous region to unlock.',
+      }),
       tags,
       h('button', {
         className: 'primary',
@@ -673,7 +690,14 @@ let devRound = 1;
 let devGod = true;
 let devUnlock = true;
 
-export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => void): HTMLElement {
+export function devScreen(
+  profile: CommanderProfile,
+  onLaunch: (opts: DevOptions) => void,
+  /** Persist the profile — the region unlock is permanent state, not a launch
+   *  option, so it takes effect on Region Select without launching anything. */
+  onProfileChange: () => void,
+  onBack: () => void,
+): HTMLElement {
   const { root, body, footer } = screenShell(
     'Dev Mode',
     'God abilities and level select — for testing only',
@@ -743,6 +767,19 @@ export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => vo
         'All research complete, Warthog & scan installed, max batteries/escorts/capacity, and deep pockets.',
         () => devUnlock,
         (v) => (devUnlock = v),
+      ),
+    ]),
+    h('div', { className: 'panel' }, [
+      h('h2', { text: 'Campaign ladder' }),
+      toggle(
+        'radar',
+        'Unlock all regions',
+        `Opens every region on the ladder (${REGION_ORDER.map((id) => REGIONS[id].name).join(', ')}) for ordinary runs from Region Select. Takes effect immediately — no dev run needed — and turning it off restores exactly what you had earned.`,
+        () => profile.allRegionsUnlocked,
+        (v) => {
+          profile.allRegionsUnlocked = v;
+          onProfileChange();
+        },
       ),
     ]),
     h('div', {

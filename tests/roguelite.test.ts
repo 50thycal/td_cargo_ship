@@ -29,11 +29,13 @@ import {
   loadoutBlockReason,
   newProfile,
   recordRunStart,
+  regionUnlocked,
   sanitizedLoadout,
   setLoadout,
   unlockAbility,
   unlockBlockReason,
 } from '../src/sim/commander';
+import { migrateProfile } from '../src/platform/save';
 import {
   counterCandidates,
   MODULE_CATALOGUE,
@@ -52,7 +54,7 @@ import {
 import { deriveEffects, stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution } from '../src/sim/evolution';
 import { COMMANDER_ABILITIES } from '../src/data/commanderAbilities';
-import { FIRST_REGION, REGIONS, regionDef } from '../src/data/regions';
+import { FIRST_REGION, REGION_ORDER, REGIONS, regionDef } from '../src/data/regions';
 import { RESEARCH_INDEX, effectiveResearch } from '../src/data/counters';
 import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type {
@@ -256,6 +258,41 @@ describe('regional run lifecycle', () => {
     expect(again.xpEarned).toBe(0);
     expect(profile.xp).toBe(settlement.xpEarned);
     delete REGIONS.__testCap;
+  });
+
+  it('the dev unlock opens every region without granting any of them', () => {
+    // Testing affordance, behind Dev Mode (itself behind ?dev). The two ideas
+    // have to stay separate: "show me everything" must not become "you have
+    // earned everything", or flipping it off would silently eat progress.
+    const profile = newProfile();
+    expect(regionUnlocked(profile, FIRST_REGION)).toBe(true);
+    for (const id of REGION_ORDER.filter((r) => r !== FIRST_REGION)) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: false });
+    }
+
+    profile.allRegionsUnlocked = true;
+    for (const id of REGION_ORDER) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: true });
+    }
+    // Nothing was granted — the earned ladder is untouched.
+    expect(profile.unlockedRegions).toEqual([FIRST_REGION]);
+
+    // ...and turning it off restores exactly what was earned.
+    profile.allRegionsUnlocked = false;
+    for (const id of REGION_ORDER.filter((r) => r !== FIRST_REGION)) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: false });
+    }
+  });
+
+  it('backfills the dev unlock onto a profile saved before it existed', () => {
+    // Old saves heal forward rather than being rejected — same rule the rest
+    // of the profile migration follows.
+    const legacy = newProfile() as unknown as Record<string, unknown>;
+    delete legacy.allRegionsUnlocked;
+    const healed = migrateProfile(legacy);
+    expect(healed).not.toBeNull();
+    expect(healed!.allRegionsUnlocked).toBe(false);
+    expect(regionUnlocked(healed!, FIRST_REGION)).toBe(true);
   });
 
   it('defeat retains Commander progression and records the attempt', () => {
