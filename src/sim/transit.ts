@@ -4003,9 +4003,21 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
     keepAfloat(t, ship);
 
     // Straggling vs the ship's healthy pace: damage or a jam makes it bait.
+    //
+    // Measured along the LANE, not along the map. Easting is the right measure
+    // of "has she got across yet" and the wrong one for "is she behind": a hull
+    // working round a bend covers more water than her easting shows, so judged
+    // on easting she reads as a straggler for sailing perfectly. That is not a
+    // cosmetic mislabel — a straggler is weighted up as a target, so the enemy
+    // would aim harder at a convoy for the crime of being on a curved map.
+    // Measured on the first cut of the headlands it flagged a third of all
+    // ship-seconds against a quarter on the strait. On a straight lane
+    // `laneDistance` returns x, so this is the same arithmetic it always was.
     const healthySpeed = SHIP_CLASSES[ship.classId].speed * formation.speedMult * ship.speedVariance;
-    const nominalX = WORLD.spawnX + Math.max(0, t.time - ship.spawnTime) * healthySpeed;
-    ship.straggling = nominalX - ship.x > COMBAT.straggleDistance;
+    const sailed =
+      t.geo.laneDistance(ship.laneIndex, ship.x) - t.geo.laneDistance(ship.laneIndex, WORLD.spawnX);
+    const due = Math.max(0, t.time - ship.spawnTime) * healthySpeed;
+    ship.straggling = due - sailed > COMBAT.straggleDistance;
 
     // Fire damage over time.
     if (ship.fireSeconds > 0) {

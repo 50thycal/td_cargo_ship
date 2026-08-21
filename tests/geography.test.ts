@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GEOGRAPHIES,
+
   SQUEEZE,
   STRAIT,
   geography,
@@ -15,10 +16,13 @@ import {
   flat,
   type GeographyDef,
 } from '../src/data/geography';
-import { COMBAT, WORLD } from '../src/data/tuning';
+import { COMBAT, NAV, WORLD } from '../src/data/tuning';
+import { REGIONS, REGION_ORDER, regionDef, geographyOf } from '../src/data/regions';
+import { ENEMY_BRANCHES } from '../src/data/enemyBranches';
 
 const strait = geography('strait');
 const squeeze = geography('squeeze');
+const headlands = geography('headlands');
 
 describe('the strait reproduces the map it replaced', () => {
   // If any of these drift, every distance the game is balanced around drifts
@@ -299,5 +303,228 @@ describe('the squeeze does what geography is supposed to do', () => {
     expect(gapAt(300)).toBe(WORLD.lanes[1] - WORLD.lanes[0]);
     expect(gapAt(2000)).toBeLessThan(gapAt(300) * 0.5);
     expect(gapAt(2000)).toBeGreaterThan(0);
+  });
+});
+
+
+describe('lane distance', () => {
+  it('is x itself on a straight lane — exactly', () => {
+    // The straggle test reads this every tick on every hull. If it drifted even
+    // slightly from x, every ship on the default map would start reading as
+    // fractionally behind schedule, and a straggler is weighted up as a target.
+    for (let x = -300; x <= WORLD.width + 300; x += 191) {
+      for (let i = 0; i < strait.laneCount; i++) {
+        expect(strait.laneDistance(i, x)).toBe(x);
+      }
+    }
+  });
+
+  it('exceeds x on a lane that bends, by roughly the water actually covered', () => {
+    // Still exactly x while the lane is genuinely straight — which on the
+    // headlands is only the first couple of hundred units, because the lane
+    // starts bearing away for the peninsula well before it reaches it.
+    expect(headlands.laneDistance(0, 200)).toBe(200);
+    expect(headlands.laneDistance(0, 500)).toBeGreaterThan(500);
+    // Over the whole crossing the near lane climbs ~310 units and comes back
+    // down again while making 4000 of easting: a longer path than the crossing,
+    // but not by much — a bend, not a detour.
+    const full = headlands.laneDistance(0, WORLD.width);
+    expect(full).toBeGreaterThan(WORLD.width + 40);
+    expect(full).toBeLessThan(WORLD.width + 300);
+  });
+
+  it('never runs backwards', () => {
+    for (const geo of [strait, squeeze, headlands]) {
+      for (let i = 0; i < geo.laneCount; i++) {
+        let prev = -Infinity;
+        for (let x = 0; x <= WORLD.width; x += 50) {
+          const d = geo.laneDistance(i, x);
+          expect(d).toBeGreaterThan(prev);
+          prev = d;
+        }
+      }
+    }
+  });
+});
+
+describe('no lane bends harder than a hull can steer', () => {
+  // The lane-keeping goal is clamp((laneY - y) / lanePull, -0.9, 0.9) against a
+  // forward component of 1, so a hull's steering saturates at 0.9 lateral per 1
+  // forward. A lane steeper than that outruns the convoy on it: the hulls trail
+  // their own lane line and end up shouldering the beach. This is the check
+  // that keeps a future geography from quietly reintroducing that.
+  const SATURATION = 0.9;
+
+  for (const [id, def] of Object.entries(GEOGRAPHIES)) {
+    it(`${id} stays inside the steering limit`, () => {
+      const geo = makeGeography(def);
+      let worst = 0;
+      let worstAt = 0;
+      for (let i = 0; i < geo.laneCount; i++) {
+        for (let x = 0; x < WORLD.width; x += 5) {
+          const slope = Math.abs(geo.laneY(i, x + 5) - geo.laneY(i, x)) / 5;
+          if (slope > worst) {
+            worst = slope;
+            worstAt = x;
+          }
+        }
+      }
+      expect({ id, worst: Number(worst.toFixed(3)), worstAt }).toEqual({
+        id,
+        worst: Number(worst.toFixed(3)),
+        worstAt,
+      });
+      expect(worst).toBeLessThan(SATURATION * 0.8);
+    });
+  }
+
+  it('reads the saturation point off NAV rather than hard-coding it', () => {
+    // If lanePull or the goal clamp is ever retuned, the number above is wrong
+    // and this is the line that says so.
+    expect(NAV.lanePull).toBe(70);
+  });
+});
+
+describe('the headlands is a passage, not a moment', () => {
+  const reach = (x: number, range: number): number => {
+    let n = 0;
+    for (let i = 0; i < headlands.laneCount; i++) {
+      if (Math.abs(headlands.laneY(i, x) - headlands.launchY(x)) <= range) n++;
+    }
+    return n;
+  };
+  const coastal = COMBAT.artillery.range.coastalGun;
+  const ranging = COMBAT.artillery.range.ranging;
+
+  it('is exactly the strait at both ends of the map', () => {
+    for (const x of [0, 100, 200, WORLD.width]) {
+      for (let i = 0; i < strait.laneCount; i++) {
+        expect(headlands.laneY(i, x)).toBe(WORLD.lanes[i]);
+      }
+      expect(reach(x, coastal)).toBe(1);
+    }
+  });
+
+  it('bears away for the headland BEFORE reaching it, and settles after', () => {
+    // The lane is slope-capped, so it cannot turn hard late — it has to start
+    // early instead. That is the shape a convoy shaping its course would take,
+    // and it is what keeps the hulls on their line rather than trailing it.
+    expect(headlands.laneY(0, 400)).toBeGreaterThan(WORLD.lanes[0]);
+    expect(headlands.laneY(0, 400)).toBeLessThan(headlands.laneY(0, 1000));
+    // Still easing back down at 3900, home by 3950.
+    expect(headlands.laneY(0, 3900)).toBeGreaterThan(WORLD.lanes[0]);
+    expect(headlands.laneY(0, 3900)).toBeLessThan(WORLD.lanes[0] + 20);
+    expect(headlands.laneY(0, 3950)).toBe(WORLD.lanes[0]);
+  });
+
+  it('holds two lanes under the coastal guns for the whole plateau', () => {
+    // The squeeze does this for an instant at its peak. Here it is the passage:
+    // sustained, with no stretch of water to wait it out in.
+    for (let x = 1200; x <= 3000; x += 150) {
+      expect({ x, coastal: reach(x, coastal), ranging: reach(x, ranging) }).toEqual({
+        x,
+        coastal: 2,
+        ranging: 3,
+      });
+    }
+  });
+
+  it('leaves the lanes room to sail, unlike the squeeze', () => {
+    // The squeeze crowds on purpose and gets away with it because it is brief.
+    // A Wide convoy spreads 42 units either side of its lane, so sustained
+    // crowding would be a traffic jam rather than a battle.
+    for (let x = 1200; x <= 3000; x += 150) {
+      expect(headlands.laneY(1, x) - headlands.laneY(0, x)).toBeGreaterThanOrEqual(150);
+      expect(headlands.laneY(2, x) - headlands.laneY(1, x)).toBeGreaterThanOrEqual(150);
+    }
+    expect(squeeze.laneY(1, 2000) - squeeze.laneY(0, 2000)).toBeLessThan(120);
+  });
+
+  it('cuts the warning on EVERY lane, which the squeeze does not', () => {
+    const warn = (geo: typeof strait, lane: number, x: number): number =>
+      (geo.laneY(lane, x) - geo.launchY(x)) / COMBAT.missile.speed;
+    // Every lane, not just the near one — that is what "nowhere is safe" means
+    // and it is the difference from the squeeze, which only ever threatens the
+    // two lanes it has crowded together.
+    for (let lane = 0; lane < 3; lane++) {
+      expect(warn(headlands, lane, 2000)).toBeLessThan(warn(strait, lane, 2000) * 0.8);
+    }
+    // The near lane's cut is the smallest, and that is geometry rather than
+    // tuning: a pressed lane and the launch line both ride the shore, so the
+    // near lane sits a fixed 331 units off the guns however deep the coast
+    // comes in. Depth buys the FAR lanes — 16.3s down to 10.5s.
+    expect(warn(strait, 2, 2000) - warn(headlands, 2, 2000)).toBeGreaterThan(
+      warn(strait, 0, 2000) - warn(headlands, 0, 2000),
+    );
+    expect(warn(headlands, 0, 2000)).toBeCloseTo(5.5, 1);
+    expect(warn(headlands, 1, 2000)).toBeCloseTo(8.0, 1);
+    expect(warn(headlands, 2, 2000)).toBeCloseTo(10.5, 1);
+  });
+});
+
+describe('the campaign ladder', () => {
+  it('is a single unbroken chain that ends', () => {
+    let id = REGION_ORDER[0];
+    const walked: string[] = [];
+    for (let i = 0; i < REGION_ORDER.length + 2; i++) {
+      walked.push(id);
+      const next = regionDef(id).unlocks;
+      if (next === null) break;
+      id = next;
+    }
+    expect(walked).toEqual(REGION_ORDER);
+  });
+
+  it('names a geography that exists, for every region', () => {
+    for (const [id, def] of Object.entries(REGIONS)) {
+      if (def.geography === undefined) continue;
+      expect({ id, known: def.geography in GEOGRAPHIES }).toEqual({ id, known: true });
+    }
+  });
+
+  it('gives every region something the enemy can field in round one', () => {
+    // A region whose whole menu is gated past round 1 would open onto an empty
+    // strait — the enemy holding a budget it is not allowed to spend. Missiles
+    // are the only branch that opens at round 1 today, so in practice this says
+    // every region must let the enemy shoot at you on the first crossing.
+    for (const id of REGION_ORDER) {
+      const def = regionDef(id);
+      const openAtOne = def.enemyBranches.filter(
+        (b) => (def.branchDebutRounds?.[b] ?? 1) <= 1 && ENEMY_BRANCHES[b].openRound <= 1,
+      );
+      expect({ id, openAtOne }).toEqual({ id, openAtOne: ['missiles'] });
+    }
+  });
+
+  it('runs long enough for each region to show the branch it is named after', () => {
+    const latestGate = (id: string): number => {
+      const def = regionDef(id);
+      return Math.max(
+        ...def.enemyBranches.map((b) =>
+          Math.max(ENEMY_BRANCHES[b].openRound, def.branchDebutRounds?.[b] ?? 0),
+        ),
+      );
+    };
+    for (const id of REGION_ORDER) {
+      // At least a couple of rounds with the last branch on the board, or the
+      // region is named after something the player barely met.
+      expect({ id, slack: regionDef(id).completionRound - latestGate(id) }).toEqual({
+        id,
+        slack: regionDef(id).completionRound - latestGate(id),
+      });
+      expect(regionDef(id).completionRound - latestGate(id)).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('escalates the completion reward down the ladder', () => {
+    const xp = REGION_ORDER.map((id) => regionDef(id).completionXp);
+    for (let i = 1; i < xp.length; i++) expect(xp[i]).toBeGreaterThan(xp[i - 1]);
+  });
+
+  it('puts the two new regions on the water they were designed for', () => {
+    expect(geographyOf('missileCoast').id).toBe('squeeze');
+    expect(geographyOf('headlands').id).toBe('headlands');
+    expect(geographyOf('homeStrait').id).toBe('strait');
+    expect(geographyOf('pirateNarrows').id).toBe('strait');
   });
 });

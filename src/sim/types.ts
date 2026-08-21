@@ -1613,6 +1613,8 @@ export interface EnemyEconomyState {
   /** Optional per-branch earliest-round floors from the region definition
    *  (pacing DELAYS on top of each branch's own openRound). */
   branchDebutRounds: Record<string, number>;
+  /** Per-round unit ceilings this region raises for a branch (see RegionDef). */
+  branchUnitCeilings: Record<string, number>;
   /** The region's threat-budget curve (base + perRound × round, capped). */
   budgetCurve: { base: number; perRound: number; cap: number };
   /** War funds granted this round (after anti-snowball modifiers). */

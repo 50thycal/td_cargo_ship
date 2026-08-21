@@ -17,9 +17,16 @@ the constants, exactly how much it can move them.
 > **Status.** Tier 0 and Tier 1 are built (`src/data/geography.ts`): a region
 > names a geography, shores and lanes are per-region profiles, and the sim asks
 > the map rather than reaching for `WORLD`. The default strait is bit-for-bit
-> the map it replaced. One curved geography — `squeeze`, the shape 4.2 wants —
-> ships validated but unworn: no region uses it yet, so the campaign is
-> unchanged. Tier 2 (real land) is not started.
+> the map it replaced. Two curved geographies ship — `squeeze` (4.2) and
+> `headlands` (4.3) — and the campaign ladder is now **Home Strait → Pirate
+> Narrows → Missile Coast → The Headlands**. Tier 2 (real land) is not started,
+> so Pirate Narrows is still fought on the straight strait.
+>
+> Two things the shipped regions taught that this document had wrong, both
+> written up below: a lane can be authored steeper than a hull can steer
+> (§2, C4a), and geography alone could not make a missile-only region hard,
+> because the player's best answer to missiles ignores geography entirely
+> (§8).
 
 ---
 
@@ -144,6 +151,24 @@ This is the single most important constraint in the document. It means:
 lane curve does the routing; the steering loop keeps doing local avoidance. Get
 that division right and almost everything below is cheap. Get it wrong and every
 island becomes an AI project.
+
+**C4a — A lane can be authored steeper than a hull can steer.**
+Found by building one. The lane-keeping goal is
+`clamp((laneY − y) / NAV.lanePull, −0.9, 0.9)` against a forward component of 1,
+so however far off her line a hull gets, her goal direction saturates at **0.9
+lateral per 1 forward — about 42°**. A lane steeper than that does not get
+followed; it gets left behind. The first cut of The Headlands touched 56°, and
+the convoy trailed its own lane line by 228 units and clipped the beach.
+
+> Lane slope is a hard constraint, not a style choice. `lanesPressed` now caps
+> it, bearing away *early* rather than turning hard late — which is what a
+> convoy shaping its course for a headland would do anyway. Note the sampled
+> profile is not the finished curve: smoothstep between two samples peaks at
+> 1.5× the straight-line slope between them, so the cap is set at 0.4 sampled
+> to land at ~0.6 real.
+
+The coastline itself may be as abrupt as it likes. Only the lane is constrained,
+because only the lane is steered.
 
 **C5 — Every enemy spawns from one y.**
 Missiles, torpedoes *and* boats all launch from `{ x: spawn.siteX, y:
@@ -655,3 +680,71 @@ a route the enemy gets to predict.
   works with a nerfed missile, the shape is wrong. Levers A and B are strong
   enough — a 2.3× swing in warning time and a coastal gun going from one lane to
   three — that no weapon should ever need to move.
+
+
+---
+
+## 8. What the first two regions taught
+
+Both shipped. Both needed something this document did not predict.
+
+### The Headlands worked as designed
+
+A plateau rather than a peak: the squeeze's amplitude held for two-thirds of the
+crossing. Warning falls on **every** lane (7.0/11.7/16.3s → 5.5/8.0/10.5s),
+coastal guns go from one lane to two and ranging guns from two to three, and the
+lane spacing is deliberately kept at 150 rather than the squeeze's 90 — sustained
+crowding is a traffic jam, brief crowding is a moment.
+
+Measured over a 4-seed, 12-persona sweep it has the **healthiest seesaw of any
+region in the game** (oscillating in 36 of 48 campaigns, against 17 for Home
+Strait), the widest build spread (1.6×), and it discriminates: `technologist`,
+`balanced` and `shore-battery` clear it every time; `mine-warfare` and
+`sensor-net` mostly fail — which is correct, since there is nothing here to
+sweep or detect.
+
+### Missile Coast did not, and the reason matters
+
+Built to the study's spec — missiles, smoke, electronic, no mines — it finished
+**easier than the tutorial region**: 96–99% delivery, every build surviving,
+`interceptor-rush` losing 2.8 hulls in eleven rounds. Three findings, in the
+order they were found:
+
+**Raising the budget did nothing.** 2.5× the war chest moved delivery by 0.6
+points. The enemy was pinned at the catalogue's `maxUnitsPerRound: 46` from
+round seven and scrapping a third of its money every round.
+
+**Geography could not fix it either, and §1 says why.** The player's shore
+battery has **unlimited range**. It is the one system in the table that
+geography cannot touch — so on a map where missiles are the only threat, the
+weapon that ignores the map is a near-complete answer to it. Cutting the warning
+time from 11.7s to 7.0s is worth a great deal to escort interceptors and nothing
+at all to a battery that was never range-limited.
+
+> Generalised: **a region's geography can only be as strong as the player's
+> most geography-independent answer to its threats.** Worth checking before
+> designing any future single-threat region.
+
+**What the battery does have is a reload.** The way past an unlimited-range
+interceptor is more missiles at once than it can service — which is volume, and
+volume was exactly what was capped. Regions now carry
+`branchUnitCeilings`: how many of a branch may be fielded per round, which is
+availability and pacing rather than a weapon stat, and so still inside the rule
+`regions.ts` sets. A missile here costs, flies and hits exactly as it does
+everywhere.
+
+The measured effect is specifically on the players who are running away with it,
+which is the point: the anti-snowball bonus can add a third to the enemy's purse,
+and at the old ceiling there was nothing to spend it on. Lifting the ceiling
+alone roughly doubles the attrition the dominant builds take (`automation` 4.3
+hulls → 9.5, `sensor-net` 5.3 → 10.8) and leaves the struggling builds alone.
+
+### One tension left open
+
+Missile Coast now runs at 87–98% delivery with 9 of 11 builds clearing it. Push
+it into the harness's 60–90% "balance band" and builds start dying to the
+**quota** rather than to the enemy — at 80–85% delivery, which `tuning.ts`
+already flags as "killed by the bookkeeping while still fighting well". The
+quota cliff sits exactly where the balance band begins. That is a pre-existing
+property of the campaign economy, not something these regions introduced, and it
+wants fixing on its own terms rather than by detuning a region around it.
