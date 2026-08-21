@@ -32,6 +32,17 @@ export interface CommanderProfile {
    *  run at start. Always kept valid against slots/points/unlocks. */
   loadout: string[];
   unlockedRegions: RegionId[];
+  /** DEV/TESTING: treat every region on the ladder as unlocked.
+   *
+   *  Separate from `unlockedRegions` rather than folded into it, because the
+   *  two mean different things and conflating them would be lossy: this says
+   *  "show me everything", that says "here is what you have earned". Turn it
+   *  off and the earned list is exactly what it was — nothing has been spent
+   *  or granted, and the ladder picks up where it left off.
+   *
+   *  Only reachable from Dev Mode, which is itself behind `?dev` in the URL or
+   *  the Vite dev server, so a normal player never sees it. */
+  allRegionsUnlocked: boolean;
   /** Escort Legacies unlocked with Commander XP, from the same pool the
    *  abilities are bought with — one progression currency, two things to
    *  spend it on. */
@@ -61,6 +72,7 @@ export function newProfile(): CommanderProfile {
       .map((l) => l.id),
     legacyLoadout: [],
     unlockedRegions: [FIRST_REGION],
+    allRegionsUnlocked: false,
     records: {},
     totalRuns: 0,
     totalRegionCompletions: 0,
@@ -196,7 +208,7 @@ export function sanitizedLegacyLoadout(p: CommanderProfile): string[] {
 // ---------------------------------------------------------------------------
 
 export function regionUnlocked(p: CommanderProfile, id: RegionId): boolean {
-  return p.unlockedRegions.includes(id);
+  return p.allRegionsUnlocked || p.unlockedRegions.includes(id);
 }
 
 function record(p: CommanderProfile, id: RegionId): RegionRecord {

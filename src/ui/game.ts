@@ -181,6 +181,7 @@ export class Game {
   private showDev(): void {
     this.swapScreen(
       devScreen(
+        this.profile,
         (opts: DevOptions) => {
           clearRun();
           this.run = newDevCampaign(`dev-${Date.now().toString(36)}`, opts);
@@ -188,6 +189,11 @@ export class Game {
           this.lastSettlement = null;
           this.route();
         },
+        // Same rule as the loadout screen: permanent state is persisted the
+        // moment it changes, not when something is launched. No re-render —
+        // the toggle repaints itself, and rebuilding the screen under the
+        // finger that just tapped it would be a jolt for nothing.
+        () => saveProfile(this.profile),
         () => this.showMenu(),
       ),
     );
