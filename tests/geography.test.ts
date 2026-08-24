@@ -516,6 +516,20 @@ describe('the campaign ladder', () => {
     }
   });
 
+  it('opens on a region with its whole menu on the water in round one', () => {
+    // The first region is where the game explains itself, and it cannot explain
+    // a branch that has not arrived. Missile Coast opened the ladder because a
+    // longer menu measurably made it EASIER, not harder: with smoke and
+    // electronic on the board the ROI allocator moved four fifths of the war
+    // chest onto two branches that had scored no kills, and the branch actually
+    // doing the damage was left on a fifth of the money.
+    const def = regionDef(REGION_ORDER[0]);
+    for (const b of def.enemyBranches) {
+      const debut = Math.max(ENEMY_BRANCHES[b].openRound, def.branchDebutRounds?.[b] ?? 0);
+      expect({ branch: b, debut }).toEqual({ branch: b, debut: 1 });
+    }
+  });
+
   it('escalates the completion reward down the ladder', () => {
     const xp = REGION_ORDER.map((id) => regionDef(id).completionXp);
     for (let i = 1; i < xp.length; i++) expect(xp[i]).toBeGreaterThan(xp[i - 1]);

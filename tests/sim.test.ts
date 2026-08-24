@@ -1898,6 +1898,17 @@ describe('save', () => {
     expect(healed.xp).toBe(12);
     expect(healed.unlockedRegions).toContain(FIRST_REGION);
     expect(Array.isArray(healed.loadout)).toBe(true);
+    // ...and so does a COMPLETE profile that remembers a ladder we no longer
+    // ship. Backfill only fills what is absent, so a stale unlock list would
+    // otherwise survive intact and lock the player out of region one — the one
+    // region nothing in the game can grant, because nothing precedes it.
+    const stale = migrateProfile({ xp: 40, unlockedRegions: ['someRetiredRegion'] })!;
+    expect(stale.unlockedRegions).toContain(FIRST_REGION);
+    expect(stale.unlockedRegions).toContain('someRetiredRegion');
+    // A current profile is left exactly as it was — the repair is idempotent
+    // and never reorders what is already right.
+    const current = migrateProfile({ xp: 1, unlockedRegions: [FIRST_REGION, 'later'] })!;
+    expect(current.unlockedRegions).toEqual([FIRST_REGION, 'later']);
     clearProfile();
   });
 });

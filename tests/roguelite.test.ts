@@ -694,6 +694,13 @@ describe('technology draft', () => {
     }
   });
 
+  // The draft tests below steer on MINE pressure, so they need a region whose
+  // menu actually contains mines. They used to ride on FIRST_REGION, which is
+  // a different region now — a mine counter is correctly absent from the
+  // opening region's pool, so they were asserting against a region that has
+  // nothing to assert about.
+  const MINE_REGION = 'homeStrait';
+
   it('is region-aware: region 1 never offers counters for absent families', () => {
     const c = newRegionalRun('draft-region', FIRST_REGION);
     const region = regionDef(FIRST_REGION);
@@ -715,7 +722,7 @@ describe('technology draft', () => {
   });
 
   it('wreckage from a family weights the draft toward its counters', () => {
-    const c = newRegionalRun('draft-weight', FIRST_REGION);
+    const c = newRegionalRun('draft-weight', MINE_REGION);
     const pool = draftPool(c, { mines: 4 });
     const mineCounter = pool.find((p) => candidateAnswers(p, 'mines'));
     const generic = pool.find((p) => candidateGeneric(p));
@@ -739,7 +746,7 @@ describe('technology draft', () => {
     // The reported failure: mines encountered for several rounds running, and
     // the basic mine counter never offered. Wreckage alone was the only signal,
     // so a player without escorts to spare for salvage never got the steer.
-    const c = newRegionalRun('draft-pressure', FIRST_REGION);
+    const c = newRegionalRun('draft-pressure', MINE_REGION);
     c.round = 4;
     c.threatPressure.mines = {
       rounds: 3,
@@ -799,7 +806,7 @@ describe('technology draft', () => {
   });
 
   it('an unanswered threat outweighs one the player is actually stopping', () => {
-    const c = newRegionalRun('draft-answered', FIRST_REGION);
+    const c = newRegionalRun('draft-answered', MINE_REGION);
     c.round = 4;
     const pressure = { rounds: 3, streak: 3, damage: 200, kills: 1, lastSeenRound: 3 };
     c.threatPressure.mines = { ...pressure };
@@ -901,7 +908,7 @@ describe('technology draft', () => {
     // Across many independent rolls the guarantee must hold EVERY time — that
     // is what makes it a guarantee rather than a nudge.
     for (let i = 0; i < 25; i++) {
-      const run = newRegionalRun(`counter-${i}`, FIRST_REGION);
+      const run = newRegionalRun(`counter-${i}`, MINE_REGION);
       run.round = 5;
       run.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
       const draft = generateDraft(run, {}, makeRng(`counter-roll-${i}`));
@@ -967,7 +974,7 @@ describe('technology draft', () => {
   });
 
   it('the counter slot prefers a tool that removes the threat over one that sees it', () => {
-    const c = newRegionalRun('counter-role', FIRST_REGION);
+    const c = newRegionalRun('counter-role', MINE_REGION);
     c.round = 5;
     c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
     const pool = counterSlotPool(c, 'mines');
@@ -1019,7 +1026,7 @@ describe('technology draft', () => {
   });
 
   it('the counter slot stands down once the threat is actually being handled', () => {
-    const c = newRegionalRun('counter-handled', FIRST_REGION);
+    const c = newRegionalRun('counter-handled', MINE_REGION);
     c.round = 5;
     c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
     expect(counterCandidates(c).some((p) => p.family === 'mines')).toBe(true);

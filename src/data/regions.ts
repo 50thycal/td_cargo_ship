@@ -66,9 +66,10 @@ export interface RegionDef {
    *  does have is a reload — so the way past it is more missiles arriving at
    *  once than it can service. Without this lever a missile-only region is
    *  pinned at the catalogue's 46 per round however rich the enemy gets, and
-   *  measured, it finished EASIER than the tutorial region: 98% delivery with
-   *  the enemy scrapping a third of its war chest every round for want of
-   *  anything it was allowed to buy. */
+   *  measured in a real session it delivered 100% of seven convoys while the
+   *  enemy binned more than half its war chest for want of anything it was
+   *  allowed to buy. Raising the purse could not reach the water; this is the
+   *  valve that lets it. */
   branchUnitCeilings?: Partial<Record<EnemyBranchKey, number>>;
   start: RegionStartState;
   /** Commander XP awarded for completing the region. */
@@ -108,19 +109,83 @@ const DEFAULT_START: RegionStartState = {
 };
 
 export const REGIONS: Record<RegionId, RegionDef> = {
+  missileCoast: {
+    id: 'missileCoast',
+    name: 'Missile Coast',
+    tagline: 'A hostile shore that leans out to meet you',
+    desc:
+      'Your first crossing, and the shortest lesson the war has. The coastline bulges ' +
+      'into the shipping lane at the halfway mark and the launch sites ride out with it, ' +
+      'so in the alley a missile arrives in five seconds instead of twelve. There is no ' +
+      'minefield to sweep and no boat to shoot: only the sky, and how much of it you can ' +
+      'cover. Recover what you shoot down; the wreckage is your research division now.',
+    // OPENING region — short, and deliberately about one idea. Eight rounds is
+    // the same length the ladder used to open with, and everything on the menu
+    // is on the water from round one, so there is no stretch where the region
+    // is still introducing itself.
+    completionRound: 8,
+    // ONE BRANCH. Everything else the region did with three was worse.
+    //
+    // Missiles are the only branch that opens at round 1, so a first region
+    // with a longer menu is a missile region for its first six rounds anyway —
+    // and then, measured in a real seven-round session, it got SOFTER: the ROI
+    // allocator moved 81% of the war chest onto smoke and electronic (shares
+    // 0.241 and 0.568 by round 7) which between them had scored zero kills, and
+    // the branch that was actually doing the damage was left on a fifth of the
+    // money. A region that teaches one thing should not be allowed to spend its
+    // budget on the two things it is not teaching.
+    //
+    // It also makes the geography legible. The squeeze exists to shorten
+    // warning time on incoming fire; with mines or boats on the board the
+    // player has reasons to be where they are that have nothing to do with the
+    // shore, and the alley stops being the thing they are reading.
+    enemyBranches: ['missiles'],
+    // The two numbers that decide this region, and the ceiling is the one that
+    // matters. See RegionDef.branchUnitCeilings.
+    //
+    // A missile-only menu cannot spend a wide purse: the enemy is buying the
+    // one thing on the shelf, so the per-round unit cap — not the money — is
+    // what decides how much fire crosses the water. Measured in a real session
+    // at a ceiling of 56, the enemy committed exactly 378 in each of rounds 3,
+    // 4 and 5 while its budget climbed 600 → 794 → 1065, and binned 2,941 of
+    // 5,737 funds across seven rounds. Delivery pinned at 100%, intercept rate
+    // climbed 70% → 94%, and £3,821 of the player's cash went unspent because
+    // there was nothing to answer. Raising the purse alone would have changed
+    // nothing — the money was already going in the bin.
+    //
+    // So the ceiling is set high enough NOT to bind, and the purse is what
+    // shapes the difficulty curve again. That restores the normal relationship
+    // between the two dials: budget is the region's pacing, the ceiling is only
+    // the promise that the enemy can spend what it is given.
+    //
+    // PROVISIONAL, like every number in this file, and swept at 8 seeds across
+    // the twelve personas. Scrap 51% → 0.5%; delivery 87-96%; the median build
+    // loses 18-22 hulls in eight rounds where it used to lose four. The purse
+    // is deliberately BELOW where a 26% raise put it: that run was harder in
+    // the wrong way — five of twelve builds ended on a missed quota at 85-87%
+    // delivery, which is the bookkeeping killing a build that is still
+    // fighting, and the opening region is the last place that should happen.
+    budget: { base: 37, perRound: 50, cap: 920 },
+    branchUnitCeilings: { missiles: 130 },
+    start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
+    completionXp: 60,
+    unlocks: 'homeStrait',
+    geography: 'squeeze',
+  },
   homeStrait: {
     id: 'homeStrait',
     name: 'Home Strait',
-    tagline: 'Missiles and mines over home water',
+    tagline: 'The water under you turns hostile too',
     desc:
-      'The first contested crossing. Enemy doctrine here is young: cruise missiles and ' +
-      'drifting minefields, nothing more — but every convoy teaches them where to aim. ' +
-      'Recover what you shoot down; the wreckage is your research division now.',
+      'Open water, no shore leaning over you — and for the first time the threat is not ' +
+      'all in the air. Drifting minefields go in ahead of the convoy, and nothing you ' +
+      'built to cover the sky will find one. The crossing is wider and quieter than the ' +
+      'coast was; what it asks is whether you can see.',
     completionRound: 8,
     enemyBranches: ['missiles', 'mines'],
     budget: null,
     start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
-    completionXp: 60,
+    completionXp: 90,
     unlocks: 'pirateNarrows',
   },
   pirateNarrows: {
@@ -135,52 +200,8 @@ export const REGIONS: Record<RegionId, RegionDef> = {
     enemyBranches: ['missiles', 'mines', 'attackBoats'],
     budget: null,
     start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
-    completionXp: 90,
-    unlocks: 'missileCoast',
-  },
-  missileCoast: {
-    id: 'missileCoast',
-    name: 'Missile Coast',
-    tagline: 'A hostile shore that leans out to meet you',
-    desc:
-      'The coastline bulges into the shipping lane at the halfway mark, and the launch ' +
-      'sites ride out with it. Nothing here is new — the same missiles, from the same ' +
-      'racks — but in the alley they arrive in five seconds instead of twelve, and there ' +
-      'is no minefield to sweep and no boat to shoot: only the sky, and how much of it ' +
-      'you can cover.',
-    completionRound: 11,
-    // NO MINES, and that is the point. The kit the last two regions taught you
-    // to build — sonar, sweep drones, the scan plane — buys nothing here, and a
-    // player who reaches for it has brought the wrong fleet. Smoke and the
-    // recon plane arrive late (rounds 7 and 8) as the saturation escalates from
-    // volume into deception.
-    enemyBranches: ['missiles', 'smoke', 'electronic'],
-    // BOTH levers, and each answers a different half of the problem. Left on
-    // the defaults this region finished EASIER than the tutorial: 96-99%
-    // delivery, every build surviving, `interceptor-rush` losing 2.8 hulls in
-    // eleven rounds. Missiles are the least cost-efficient thing the enemy can
-    // buy, so a menu with nothing else on it under-spends by construction.
-    //
-    // The purse is what raises the ordinary round. The ceiling is what lets the
-    // enemy answer a player who is running away with it: the anti-snowball
-    // bonus can add a third to the war chest, but at the catalogue's 46
-    // missiles a round there was nothing to spend it ON and it was scrapped.
-    // Measured against the four builds that dominate here, lifting the ceiling
-    // alone roughly doubles their attrition — automation 4.3 hulls to 9.5,
-    // sensor-net 5.3 to 10.8 — while leaving the builds that are already
-    // struggling untouched. That is the restoring force in SEESAW.md finally
-    // reaching the water.
-    //
-    // PROVISIONAL, like every number in this file: a 4-seed sweep across the
-    // twelve personas. What it buys is 9 of 11 builds clearing the region with
-    // 87-98% delivery and real attrition, against 12 of 12 clearing it
-    // untouched before.
-    budget: { base: 58, perRound: 74, cap: 1400 },
-    branchUnitCeilings: { missiles: 56 },
-    start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
     completionXp: 120,
     unlocks: 'headlands',
-    geography: 'squeeze',
   },
   headlands: {
     id: 'headlands',
@@ -232,14 +253,14 @@ export const REGIONS: Record<RegionId, RegionDef> = {
 
 /** Campaign ladder, in unlock order. The dev proving ground is excluded. */
 export const REGION_ORDER: RegionId[] = [
+  'missileCoast',
   'homeStrait',
   'pirateNarrows',
-  'missileCoast',
   'headlands',
 ];
 
 /** Where a fresh Commander Profile starts. */
-export const FIRST_REGION: RegionId = 'homeStrait';
+export const FIRST_REGION: RegionId = 'missileCoast';
 
 /** The full-roster region dev runs and the headless harness use. */
 export const DEV_REGION: RegionId = 'openSeas';
