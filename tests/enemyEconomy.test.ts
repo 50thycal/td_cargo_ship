@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import { evolveEnemy, newEvolution, planRound, targetingSkill } from '../src/sim/evolution';
 import { geography } from '../src/data/geography';
-import { REGIONS } from '../src/data/regions';
+import { REGIONS, REGION_ORDER, regionDef } from '../src/data/regions';
 import { newCampaign, newRegionalRun, planCurrentRound } from '../src/sim/campaign';
 import { migrateRun } from '../src/platform/save';
 import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../src/data/enemyBranches';
@@ -457,6 +457,39 @@ describe('per-region unit ceilings', () => {
     expect(REGIONS.homeStrait.branchUnitCeilings).toBeUndefined();
     const fielded = fieldedMissiles('homeStrait', REGIONS.homeStrait.completionRound);
     expect(Math.max(...fielded)).toBeLessThanOrEqual(ENEMY_BRANCHES.missiles.maxUnitsPerRound);
+  });
+
+  it('leaves the opening region able to spend what it is given', () => {
+    // The failure this whole lever exists for, pinned as a number.
+    //
+    // A missile-only region buys the one thing on the shelf, so if the per-round
+    // unit cap is below what the purse can afford, the surplus is SCRAPPED and
+    // the region stops getting harder however fast the budget grows. Measured in
+    // a real seven-round session at a ceiling of 56: the enemy committed exactly
+    // 378 in each of rounds 3, 4 and 5 while its budget climbed 600 → 794 →
+    // 1065, binning 2,941 of 5,737 — and delivery sat at 100%.
+    //
+    // So: across the opening region's full length the enemy must put most of its
+    // money in the water. This fails if anyone lowers the ceiling back under the
+    // budget curve, which is the mistake worth catching.
+    const c = newRegionalRun('scrap-first-region', REGION_ORDER[0], [], []);
+    let granted = 0;
+    let scrapped = 0;
+    for (let r = 0; r < regionDef(REGION_ORDER[0]).completionRound; r++) {
+      planRound(c, makeRng(`scrap-plan-${r}`));
+      granted += c.evolution.economy.budget;
+      scrapped += c.evolution.economy.scrapped;
+      c.round++;
+      c.evolution.economy.plannedForRound = 0;
+      // A player walking through it untouched — the case that used to make the
+      // enemy RICHER and no more dangerous, because the extra was unspendable.
+      evolveEnemy(
+        c.evolution,
+        metrics(c.round, { deliveredFraction: 1, interceptRate: 0.94 }),
+        makeRng(`scrap-evo-${r}`),
+      );
+    }
+    expect(scrapped / granted).toBeLessThan(0.15);
   });
 
   it('does not touch what a unit COSTS — the rule regions.ts sets', () => {

@@ -3,5 +3,5 @@ dist/
 e2e/shots/
 *.log
 .DS_Store
-playtest-out/
+playtest-out*/
 e2e/shots-batch/

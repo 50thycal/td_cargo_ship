@@ -65,7 +65,10 @@ try {
   // Region 2 must be visibly locked on a fresh profile.
   const lockedCount = await page.locator('.card.locked').count();
   if (lockedCount < 1) throw new Error('expected the second region to be locked on a fresh profile');
-  await page.getByRole('button', { name: /Deploy to Home Strait/ }).click();
+  // Name-agnostic on purpose: which region opens the ladder is a tuning
+  // decision (it has already moved once), and a smoke test should not fail
+  // because the campaign was reordered.
+  await page.getByRole('button', { name: /^Deploy to / }).first().click();
 
   // --- Commander loadout -------------------------------------------------------
   await page.waitForSelector('[data-screen="loadout"]', { timeout: 10_000 });

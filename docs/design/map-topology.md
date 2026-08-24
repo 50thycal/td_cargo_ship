@@ -18,9 +18,13 @@ the constants, exactly how much it can move them.
 > names a geography, shores and lanes are per-region profiles, and the sim asks
 > the map rather than reaching for `WORLD`. The default strait is bit-for-bit
 > the map it replaced. Two curved geographies ship — `squeeze` (4.2) and
-> `headlands` (4.3) — and the campaign ladder is now **Home Strait → Pirate
-> Narrows → Missile Coast → The Headlands**. Tier 2 (real land) is not started,
-> so Pirate Narrows is still fought on the straight strait.
+> `headlands` (4.3) — and the campaign ladder now **opens on Missile Coast**:
+> **Missile Coast → Home Strait → Pirate Narrows → The Headlands**. Tier 2
+> (real land) is not started, so Home Strait and Pirate Narrows are still
+> fought on the straight strait.
+>
+> Missile Coast leading is a play-test result, not a plan (§9). The order
+> beyond it is not settled.
 >
 > Two things the shipped regions taught that this document had wrong, both
 > written up below: a lane can be authored steeper than a hull can steer
@@ -748,3 +752,79 @@ already flags as "killed by the bookkeeping while still fighting well". The
 quota cliff sits exactly where the balance band begins. That is a pre-existing
 property of the campaign economy, not something these regions introduced, and it
 wants fixing on its own terms rather than by detuning a region around it.
+
+> Still open, and §9 puts a name to the build it costs most.
+
+---
+
+## 9. Why the ladder now opens on Missile Coast
+
+A hand-played seven-round session delivered **100% of every convoy** and the
+player's verdict was that barely anything was being sunk. The log said why, and
+it was not the thing §8 had just fixed.
+
+**The ceiling was still binding — the raise was not big enough.** At a region
+ceiling of 56, rounds 3, 4 and 5 each committed *exactly 378* while the budget
+climbed 600 → 794 → 1065. Across seven rounds the enemy binned **2,941 of
+5,737 funds — 51%**. This is the same trap as before, one notch further along:
+the lever was right and the number was timid. The fix is to set the ceiling
+high enough that it is not a dial at all (130), and let the purse be the dial
+again. Measured, scrap fell from ~51% to **0.5%**.
+
+**The longer menu was making the region softer, not harder.** By round 7 the
+ROI allocator held missiles at 0.191 of the war chest against smoke at 0.241
+and electronic at 0.568 — and smoke and electronic had scored **zero kills
+between them**. The allocator was working exactly as designed: it moves money
+towards branches the player is not countering, and the player was not
+countering the two branches that could not hurt them. On a wide menu that
+self-corrects, because the neglected branch eventually bites. On a three-branch
+menu where two branches are support, it is a one-way drain.
+
+> Generalised, and the counterpart to §8's rule: **a branch that cannot kill
+> cannot be scored by ROI, so it must not be able to win the allocation.**
+> Until that is true of the allocator, a region should not put a support
+> branch on a short menu.
+
+The region is now **missiles only**, which removes the drain rather than
+tuning around it — and that is also what makes it the right opening region.
+Missiles are the one branch that opens at round 1, so a first region with a
+longer menu is a missile region for its first six rounds regardless; the ladder
+was already opening on this fight, just on a flat map with the enemy's money
+leaking sideways. Putting it on the squeeze means the geography is the *first*
+thing the game teaches, and there is nothing else on the board to read it
+against.
+
+Measured against the region it replaced at the top of the ladder, twelve
+personas each way:
+
+| | delivery range | mean hulls lost | scrap |
+|---|---|---|---|
+| Missile Coast, as it was played | 96–100% | ~4 | 33–51% |
+| Home Strait (old region 1, 4 seeds) | 87.7–94.8% | 12–27 | 5% |
+| Missile Coast (new region 1, 8 seeds) | 86.9–96.3% | 7.8–34.5 | 0.5% |
+
+Same rung as the region it replaces, and the attrition the player asked for:
+the median build now loses 18–22 hulls in eight rounds where it used to lose
+four.
+
+**Where the purse was set, and why not higher.** Raising it a further 26% was
+measurably *worse*, not harder: five of twelve builds ended on a missed quota
+at 85–87% delivery — the §8 cliff, the bookkeeping killing a build that is
+still fighting — and the opening region is the last place that should happen.
+The shipped curve keeps eight of twelve builds at 100% survival.
+
+**Two honest outliers**, and they are the same finding at both ends:
+
+- `interceptor-rush` clears it at 96.3% losing 7.8 hulls, where on Home Strait
+  it takes 18.5. That is §8's rule in the persona table rather than the
+  aggregate — an interceptor build's answer to missiles does not care where the
+  shore is, and there are no mines here to punish it for that. It is the
+  strongest argument for Home Strait being **second**: it is the region where
+  that build learns its answer is not universal.
+- `technologist` fails 5 of 8 runs — on the quota, at 89.9% delivery, having
+  lost *fewer* hulls than the builds that survived. It sails small, valuable
+  convoys, so attrition takes it under its shipping commitment before it takes
+  it under its confidence. Chasing that with the enemy budget would mean
+  detuning a region around a bookkeeping bug, which is the thing §8 says not to
+  do; it is logged here as the strongest case for fixing the quota cliff on its
+  own terms.
