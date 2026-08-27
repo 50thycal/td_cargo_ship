@@ -1641,10 +1641,21 @@ export const ENEMY_ECONOMY = {
    *  band. It is the enemy-side half of the seesaw's restoring force: it scales
    *  with how long the player has been winning and stops the moment the fight
    *  is even again. (The player-side half is no longer a cash rebate — it is
-   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.) */
+   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.)
+   *
+   *  STRENGTHENED after the missile-region hand-play: a run that finished at
+   *  99 confidence having lost two hulls in nine rounds spent its whole back
+   *  half above the dominance threshold, and the streak bonus it earned topped
+   *  out at +33% — which the region's budget cap then discarded entirely (see
+   *  regions.ts → missileCoast). With the cap moved out of the way the streak
+   *  is doing real work again, so it is also sized to be felt: a player who
+   *  walks through five rounds untouched now draws roughly half again as much
+   *  ordnance rather than a third. It still releases the moment they drop back
+   *  into the band, which is the property that makes it a restoring force
+   *  rather than a difficulty ramp. */
   dominanceFraction: 0.85,
-  dominanceStreakStep: 0.06,
-  dominanceStreakMax: 0.33,
+  dominanceStreakStep: 0.09,
+  dominanceStreakMax: 0.5,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */
