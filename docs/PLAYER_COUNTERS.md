@@ -134,11 +134,20 @@ escort's 780 u defensive envelope, one hit kills one missile.
 Advanced Seeker (acc Extra, needs Precision Guidance); High-Velocity Motor
 (speed High, parallel).
 **Tactics:** Manual Engagement (always available — tap a missile, nearest
-ready escort in range fires) → Local Automatic Engagement (small auto radius
-280 u, separate auto cooldown High tier, toggleable) → Expanded Automatic
-Engagement (radius 460 u, **no** separate auto cooldown — launcher reload and
-ammo still limit — and never double-fires at a missile already covered by a
+ready escort in range fires) → Local Automatic Engagement (auto radius
+**700 u**, separate auto cooldown High tier, toggleable) → Expanded Automatic
+Engagement (radius **1150 u**, **no** separate auto cooldown — launcher reload
+and ammo still limit — and never double-fires at a missile already covered by a
 kill shot).
+
+Those radii were 280/460 and were never rescaled when the map doubled, which
+left the escort's automatic bubble at 7% of the map width. Measured with the
+shore batteries silenced so every automatic shot was an escort's, radius as the
+only variable across three rounds x three escorts: 280 → 26 kills, 460 → 37,
+700 → 41, 1150 → 44, 1600 → 42 (saturated). The tactic fired at 280; it simply
+landed under two-thirds of the kills it could, so a 40-intel node bought a
+launcher that mostly watched. **A range constant written before a map resize is
+a bug waiting for someone to measure it.**
 
 #### Branch: Shore-Base Missile Interceptors — shore bases, built-in, attacks Missiles
 Base node (granted): High speed/accuracy/visual size, Low reload, engages
@@ -337,16 +346,6 @@ Networked Sensor Fusion.
 **Tactics:** Precise In-Smoke Silhouette (granted) · Launch-Origin Trace ·
 Protected Target Vector.
 
-#### Branch: Player Smoke Screen — convoy ability, disrupts enemy Targeting
-Directly undermines the shared Targeting Doctrine (finish-the-wounded,
-high-value, isolation, deny-the-delivery): attacks against ships inside the
-cloud use a one-tier-less-sophisticated preference — implemented as a 50%
-reduction of the enemy's targeting-skill weighting inside the cloud (100% when
-Dense). Track-Breaking Smoke adds a 4 s re-acquisition grace after a ship
-exits (guided missiles are not permanently broken). Never a plain accuracy
-debuff, never invulnerability.
-**Tactic paths (parallel):** +1 charge · larger radius · longer duration.
-
 ### Category: Electronic Attack & Drones
 
 #### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones
@@ -388,9 +387,15 @@ changed when it worked, so the player only ever saw a missile that happened to
 miss, and a counter you cannot watch working is a counter nobody spends a
 charge on. Every kill the Warthog makes is one the player watched it make.
 
-**Nodes:** Base (granted, **1 sortie**) → 30 mm Tank-Buster Rounds (double
-damage per pass; legacy `ew1` migrates here).
-**Tactic paths (parallel):** Second Sortie (2 a round) · Extended Loiter ·
+**Sorties STACK.** Several jets can be over the strait at once, on different
+bearings — charges are the only limit. There used to be a "one flight at a
+time" gate on top of the charge count, which made the count a lie: a player
+holding four could fly one, and a two-pass sortie is most of a minute, so
+buying more bought nothing usable inside the round it was bought for.
+
+**Nodes:** Base (granted, **2 sorties on the apron**) → 30 mm Tank-Buster
+Rounds (double damage per pass; legacy `ew1` migrates here).
+**Tactic paths (parallel):** Expanded Apron (4 held) · Extended Loiter ·
 Wide Strafe Pattern.
 
 ### Category: Hull & Damage Control (sibling branches — deliberately not one chain)
@@ -422,6 +427,9 @@ Wide Strafe Pattern.
   suppression, compartmentalization, anti-boarding. **The limited slots are
   the point: no hull equips every counter.**
 - **Escorts** are **individual ships**, not a count. Each has its own name, its
+  own HULL CLASS (six of them — Cutter, Sloop, Corvette, Frigate, Patrol Boat,
+  Monitor — differing in side profile and in plan view on the map, and in
+  nothing else; a hull is a face, never a stat), its
   own loadout, and its own accumulated damage, all persisting between rounds
   and through saves. Every escort carries **built-in missile interceptors that
   consume no slot**, plus **2 specialist slots** competing between: deck gun,
@@ -433,12 +441,52 @@ Wide Strafe Pattern.
     by the **Escort Refit Bay** logistics node, letting an escort take on a
     second role without giving up its first.
   - A destroyed escort is removed by identity: the survivors keep their own
-    names and fits. A replacement is a new ship — default name, empty slots,
-    no inherited damage — so a loadout has to be bought again.
+    names and fits. A replacement is a new ship — a name never yet issued in
+    this run, empty slots, no inherited damage.
+  - **Her modules are SALVAGED, not lost.** They return to the locker and can
+    be fitted to another hull. Sinking used to destroy them, which was a far
+    worse trade than it looked: modules only arrive through the draft, so one
+    mine could erase a branch the player had spent three rounds building toward,
+    with no decision anywhere in it. What an escort loss costs now is her
+    **Legacy** (below) — a thing the player chose before the run, knows the
+    value of, and can weigh against sending that ship into the gunline.
+
+### Escort Legacies (permanent progression, per-hull)
+
+The flotilla's sibling to Commander Abilities: unlocked with the same Commander
+XP, equipped into a bounded pre-run loadout (3 berths / 22 points) on the
+Flotilla tab of the loadout screen, and folded into the effects at the same
+central point — the locked flow is base → technology/tactics → equipment →
+commander & legacies → final.
+
+What makes them a different thing is **where they live**. An ability belongs to
+the commander and is simply on for the run. A legacy belongs to a **ship**:
+assigned when that escort is commissioned, in force while she swims, and gone
+for the rest of the region when she is not. A replacement hull does not buy it
+back. The next run starts with the whole loadout again.
+
+Nothing outside `escortLegacies.ts` knows a legacy can be lost: the effects are
+derived from the legacies whose carrier is still afloat, so the absence *is* the
+rule.
+
+| Legacy | Pts | XP | Effect |
+| --- | --- | --- | --- |
+| Gunnery Drill | 8 | 0 | +7% escort interceptor accuracy |
+| Mine Plating | 8 | 0 | Escorts take 45% less mine damage |
+| Damage-Control Party | 10 | 30 | Escorts take 20% less damage from everything |
+| Rapid Rearm | 8 | 30 | Escort launchers reload 20% faster |
+| Requisition Order | 10 | 40 | A deck gun (and its base node) in the locker at region start |
+| Veteran Helm | 6 | 40 | Escorts make 18% more speed answering an order |
+| Rescue Rig | 8 | 50 | Wreckage and crews worked 30% faster |
+| Standing Contract | 6 | 60 | Commissioning an escort costs 25% less |
+
+Requisition Order grants the unit through the draft's own grant path, which
+also teaches the base node — hardware nobody has been trained on would be a gun
+that never fires.
 - **Shore bases** carry built-in missile interceptors plus a **1-slot base
   loadout**: counter-battery system (future strategic sensors join here).
 - **Convoy-wide assets** (purchased, charges refresh each round): Warthog, Scan
-  Pulse, Active Sonar Ping, Defensive Smoke Screen, Hardened/Backup Systems.
+  Pulse, Active Sonar Ping, Hardened/Backup Systems.
   Each keeps three **independent** upgrade paths — more charges vs larger
   coverage vs longer duration/persistence — never one forced chain.
 
@@ -495,12 +543,14 @@ Wide Strafe Pattern.
 | Recon plane | Air-contact cue | Flak | Hardened systems |
 | Disabling drone | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
 | Sensor jamming | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
-| Advanced targeting doctrine | Warning + target indicators | Defensive Smoke Screen | Formation/loadout choices |
+| Advanced targeting doctrine | Warning + target indicators | *No destructive counter* (Player Smoke Screen was removed; a replacement is TBD) | Formation/loadout choices |
 
 Audit results of this matrix (the "review the completed design" pass):
 
-- **Threats with no counter:** only sensor jamming (deliberate — the single
-  no-counter node) and smoke (deliberately mitigate-only).
+- **Threats with no counter:** sensor jamming (deliberate — the single
+  no-counter node), enemy smoke (deliberately mitigate-only), and — since the
+  Player Smoke Screen branch was removed — advanced targeting doctrine, which
+  has no player answer at all until a replacement mechanic lands.
 - **Counters that solve too many branches:** none — the compatibility tests
   pin each weapon to its domain. The gun run is scoped to the surface; smoke is
   scoped to targeting doctrine, not damage.

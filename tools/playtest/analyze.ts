@@ -45,10 +45,23 @@ export interface RoundRow {
   cashOnHand: number;
 }
 
-/** Why a campaign stopped. Distinguishing these matters: a run that ended
- *  because the fleet was wiped out is a LOSS, not a survival, and conflating
- *  them makes a failing build look healthy. */
-export type EndReason = 'confidence-collapse' | 'quota-failed' | 'fleet-wiped' | 'round-cap';
+/** Why a campaign stopped. Distinguishing these matters in both directions: a
+ *  run that ended because the fleet was wiped out is a LOSS, not a survival, and
+ *  a run that cleared its region's completion watermark is a WIN, not merely a
+ *  run that stopped. Conflating either way misreports the build. */
+export type EndReason =
+  | 'confidence-collapse'
+  | 'quota-failed'
+  | 'fleet-wiped'
+  | 'round-cap'
+  | 'region-complete';
+
+/** End reasons that mean the build came through. Region completion is the real
+ *  win; hitting the round cap only means the sweep stopped asking. */
+const SURVIVING_ENDS: ReadonlySet<EndReason> = new Set<EndReason>([
+  'round-cap',
+  'region-complete',
+]);
 
 export interface CampaignAnalysis {
   persona: string;
@@ -221,8 +234,10 @@ export function analyzeCampaign(
   const confReversals = reversals(confSeries);
   const pinnedHigh = meanDelivered >= 95 && totalLosses <= rows.length;
   // A wiped-out fleet is a loss just as surely as lost confidence — both mean
-  // the run did not survive, and only 'round-cap' counts as coming through.
-  const lost = final.campaignOver || final.endReason !== 'round-cap';
+  // the run did not survive. `campaignOver` alone cannot answer this any more:
+  // clearing a region's completion watermark also sets it, and reading that as
+  // a loss would score every WIN as a failure.
+  const lost = !SURVIVING_ENDS.has(final.endReason);
   // "Stuck-cold" is a statement about the SEESAW, not about whether the player
   // eventually lost. A campaign that traded blows for ten rounds and then went
   // under was a hard fight, not a jammed seesaw — so a loss only reads as cold
@@ -352,7 +367,7 @@ export function analyzeCampaign(
     seed,
     roundsPlayed: rows.length,
     endReason: final.endReason,
-    survived: final.endReason === 'round-cap' && !final.campaignOver,
+    survived: SURVIVING_ENDS.has(final.endReason),
     campaignOver: final.campaignOver,
     finalScore: final.score,
     meanDeliveredPct: Math.round(meanDelivered * 10) / 10,
@@ -381,8 +396,9 @@ export interface PersonaSummary {
   persona: string;
   campaigns: number;
   meanRoundsSurvived: number;
-  /** Fraction that reached the round cap intact (NOT merely "didn't set the
-   *  campaignOver flag" — a wiped fleet counts as a loss). */
+  /** Fraction that came through: cleared the region, or reached the round cap
+   *  intact (NOT merely "didn't set the campaignOver flag" — a wiped fleet
+   *  counts as a loss, and a region completion counts as a win). */
   survivalRate: number;
   endReasons: Record<string, number>;
   meanDeliveredPct: number;
@@ -429,7 +445,15 @@ function tally(target: Record<string, number>, source: Record<string, number>): 
   for (const [k, v] of Object.entries(source)) target[k] = (target[k] ?? 0) + v;
 }
 
-export function summarize(analyses: CampaignAnalysis[], generatedAt: string): SweepSummary {
+export function summarize(
+  analyses: CampaignAnalysis[],
+  generatedAt: string,
+  /** The region these campaigns were fought in. A shipping region deliberately
+   *  fields only PART of the arsenal, so "which branches never appeared" is a
+   *  question about the region's roster now, not about what is built. Omitted
+   *  (undefined) falls back to the catalogue, for callers that predate regions. */
+  region?: { id: string; name: string; enemyBranches: readonly string[] },
+): SweepSummary {
   const byPersona = new Map<string, CampaignAnalysis[]>();
   for (const a of analyses) {
     const list = byPersona.get(a.persona) ?? [];
@@ -538,14 +562,27 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
     );
   }
   if (branchesObserved.length < 3) {
+    const reason = region
+      ? `${region.name} only permits ${region.enemyBranches.join(', ')}`
+      : 'the rest of ENEMY_ATTACKS.md is not implemented yet';
     findings.push(
-      `Oscillation is CONTENT-LIMITED, not necessarily broken: only ${branchesObserved.length} enemy branch(es) (${branchesObserved.join(', ')}) ever caused a loss, because the rest of ENEMY_ATTACKS.md is not implemented yet. The seesaw cannot rotate through branches the enemy cannot field.`,
+      `Oscillation is ROSTER-LIMITED, not necessarily broken: only ${branchesObserved.length} enemy branch(es) (${branchesObserved.join(', ')}) ever caused a loss, because ${reason}. The seesaw cannot rotate through branches the enemy cannot field.`,
     );
+  }
+  // A branch the region permits but which never sinks anything is a real
+  // finding — it is the one the enemy is buying and getting nothing for.
+  if (region) {
+    const silent = region.enemyBranches.filter((b) => !branchesObserved.includes(b));
+    if (silent.length > 0 && branchesObserved.length > 0) {
+      findings.push(
+        `${silent.join(', ')} ${silent.length === 1 ? 'is' : 'are'} available in ${region.name} but never caused a loss anywhere in the sweep — either over-countered by every build, or priced so the allocator rarely funds ${silent.length === 1 ? 'it' : 'them'}.`,
+      );
+    }
   }
   const collapsing = personas.filter((p) => p.survivalRate < 0.5 && p.persona !== 'afk');
   for (const p of collapsing) {
     const why = Object.entries(p.endReasons)
-      .filter(([reason]) => reason !== 'round-cap')
+      .filter(([reason]) => !SURVIVING_ENDS.has(reason as EndReason))
       .sort((a, b) => b[1] - a[1])
       .map(([reason, n]) => `${reason} ×${n}`)
       .join(', ');
@@ -614,9 +651,15 @@ export function summarize(analyses: CampaignAnalysis[], generatedAt: string): Sw
       instrumented.length === analyses.length
         ? 'Enemy economy IS instrumented (budget, per-branch spend, ROI, scrap) — enemy behaviour above is measured, not inferred.'
         : `Enemy economy instrumented in ${instrumented.length}/${analyses.length} campaigns; the rest fall back to inference from the loss mix.`,
-      unbuiltBranches.length > 0
-        ? `Enemy branches not yet implemented (${unbuiltBranches.join(', ')}) never appear, so their player counters are never exercised by this sweep.`
-        : 'Every enemy branch in ENEMY_ATTACKS.md is implemented — the sweep exercises the whole arsenal.',
+      // Two different reasons a branch can be absent, and conflating them
+      // over-claims coverage: it may not be BUILT, or the region may simply not
+      // permit it. A shipping region withholding four branches is the design
+      // working, but their counters are unexercised either way.
+      region && region.enemyBranches.length < ENEMY_BRANCH_ORDER.length
+        ? `${region.name} fields only ${region.enemyBranches.join(', ')} by design — counters for ${ENEMY_BRANCH_ORDER.filter((b) => !region.enemyBranches.includes(b)).join(', ')} are NOT exercised by this sweep. Run --region openSeas for whole-arsenal coverage.`
+        : unbuiltBranches.length > 0
+          ? `Enemy branches not yet implemented (${unbuiltBranches.join(', ')}) never appear, so their player counters are never exercised by this sweep.`
+          : 'Every enemy branch in ENEMY_ATTACKS.md is implemented — the sweep exercises the whole arsenal.',
       'Bots are heuristics, not humans: they cannot judge readability, feel, or UI clarity. Use this sweep for balance/economy questions, not UX ones.',
     ],
   };

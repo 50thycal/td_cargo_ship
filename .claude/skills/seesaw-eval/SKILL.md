@@ -114,3 +114,10 @@ call out a mechanics change only when numbers can't reach the target.
   concrete tuning change with a predicted effect, tied to a specific constant.
 - **Say when you're inferring.** If enemy-economy fields are missing, every claim
   about "why the enemy did X" is inference from loss-mix — label it as such.
+- **Check the harness before blaming the game.** If the log being read is a
+  `npm run playtest` campaign — or if a sweep conclusion disagrees with a
+  hand-played session — the divergence may be the *bots*, not the balance. The
+  sweep runs the `openSeas` proving ground, never salvages and never changes
+  formation; see [`docs/PLAYTEST_FIDELITY.md`](../../../docs/PLAYTEST_FIDELITY.md)
+  for the measured gaps and run the **`playtest-fidelity`** skill before tuning
+  a number one of them touches.

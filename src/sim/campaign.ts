@@ -9,37 +9,38 @@
 // touched at run settlement. Technology comes from the post-round draft
 // (sim/draft.ts) over the counter catalogue (data/counters.ts) — the old
 // paid-research pipeline (spendable intel, one active project, completion
-// delays) is retired. Equipment purchases stay gated on each branch's base
-// node: the draft unlocks, cash equips, and neither substitutes for the other.
+// delays) is retired. Equipment is no longer bought either: the draft delivers
+// UNITS, the loadout fits them for free, and cash is left holding the two jobs
+// it does well — hulls and ordnance.
 
-import { CAMPAIGN, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
+import { CAMPAIGN, DRAFT, ECONOMY, ENEMY_ECONOMY } from '../data/tuning';
 import {
-  BASE_MODULES,
   BASE_MODULE_SLOTS,
   ESCORT_DEFAULT_NAMES,
-  ESCORT_MODULES,
   ESCORT_MODULE_SLOTS,
   ESCORT_MODULE_SLOTS_UNLOCKED,
   ESCORT_NAME_MAX,
-  MODULES,
   SHIP_CLASSES,
 } from '../data/defs';
 import {
-  ABILITY_RESEARCH_REQUIREMENT,
   allResearchableIds,
-  BASE_MODULE_RESEARCH_REQUIREMENT,
-  COUNTER_BRANCHES,
   effectiveResearch,
-  ESCORT_MODULE_RESEARCH_REQUIREMENT,
-  MODULE_RESEARCH_REQUIREMENT,
+  resolveBranchStats,
   RESEARCH_INDEX,
 } from '../data/counters';
 import { DEV_REGION, regionDef, type RegionId } from '../data/regions';
 import { foldCommanderMods } from '../data/commanderAbilities';
+import { activeLegacyIds, foldEscortLegacies } from '../data/escortLegacies';
 import { makeRng, type RNG } from './rng';
 import { createTransit } from './transit';
 import { evolveEnemy, newEvolution, planRound, targetingName } from './evolution';
-import { generateDraft, newThreatPressure } from './draft';
+import {
+  applyModuleGrant,
+  draftOptionKey,
+  generateDraft,
+  newThreatPressure,
+  recordThreatCoverage,
+} from './draft';
 import { buildTransitCards } from './aar';
 import type {
   AarCard,
@@ -52,6 +53,7 @@ import type {
   EscortModuleId,
   EscortUnit,
   FormationId,
+  ModulePlatform,
   ModuleId,
   ResearchId,
   RoundMetrics,
@@ -86,15 +88,19 @@ export function newRegionalRun(
   seed: string,
   regionId: RegionId,
   commanderAbilities: readonly string[] = [],
+  escortLegacies: readonly string[] = [],
 ): CampaignState {
   const region = regionDef(regionId);
   const start = region.start;
   const mods = foldCommanderMods(commanderAbilities);
+  const legacyMods = foldEscortLegacies(escortLegacies);
   const run: CampaignState = {
     version: SAVE_VERSION,
     seed,
     regionId: region.id,
     commanderAbilities: [...commanderAbilities],
+    escortLegacies: [...escortLegacies],
+    spentLegacies: [],
     dev: false,
     godMode: false,
     round: 1,
@@ -108,38 +114,45 @@ export function newRegionalRun(
     runOutcome: 'active',
     defeatCause: null,
     pendingDraft: null,
+    draftRerolls: 0,
     draftHistory: [],
     threatPressure: {},
+    threatCoverage: {},
     lastOfferedRound: {},
     wreckageRecovered: {},
     crewRescue: { rescued: 0, lost: 0 },
+    record: { launched: 0, lost: 0 },
     profileApplied: false,
     fleet: { ...start.fleet },
     composition: { ...start.fleet },
     classModules: { cargo: [], tanker: [], freighter: [] },
-    modulePaid: { cargo: {}, tanker: {}, freighter: {} },
+    moduleStock: { cargo: {}, escort: {}, base: {} },
     baseModules: [],
-    baseModulePaid: {},
     pendingDamage: 0,
     baseDamage: 0,
     bases: start.bases,
     escortUnits: [],
     nextEscortId: 1,
+    usedEscortNames: [],
     ammo: start.ammo,
     droneAmmo: start.droneAmmo,
     pdAmmo: start.pdAmmo,
-    warthogUnlocked: false,
-    scanUnlocked: false,
-    sonarUnlocked: false,
-    smokeUnlocked: false,
-    hardenedUnlocked: false,
+    warthogStock: 0,
+    scanStock: 0,
+    gunAmmo: 0,
+    // The convoy's own assets are in hand from the first round; only their
+    // ordnance is bought (see the note above repairCost).
+    warthogUnlocked: true,
+    scanUnlocked: true,
+    sonarUnlocked: true,
+    hardenedUnlocked: true,
     autoFire: { ...DEFAULT_AUTO_FIRE },
     protectedChannels: [],
     formation: 'tight',
     targetPriority: 'proximity',
     completedResearch: [],
     roundSpend: {},
-    roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0 },
+    roundAmmoBought: { interceptor: 0, drone: 0, selfDefense: 0, gun: 0 },
     // Enemy adaptation is scoped to the run and constrained by the region —
     // a fresh economy every attempt is a design requirement.
     evolution: newEvolution(region),
@@ -158,11 +171,18 @@ export function newRegionalRun(
   for (let i = 0; i < start.escorts; i++) {
     run.escortUnits.push({
       id: run.nextEscortId++,
-      name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+      name: claimEscortName(run),
       modules: [],
-      modulePaid: {},
       damage: 0,
+      legacy: claimEscortLegacy(run),
     });
+  }
+  // Requisition Order: a unit in the locker before the first prep phase, so the
+  // legacy is worth something on round one rather than only after a draft. It
+  // arrives through the draft's own grant path, which also teaches the base
+  // node — hardware nobody has been trained on would be a gun that never fires.
+  for (let i = 0; i < legacyMods.freeModulePicks; i++) {
+    applyModuleGrant(run, 'escort', 'deckGun');
   }
   return run;
 }
@@ -177,6 +197,77 @@ export function newCampaign(seed: string): CampaignState {
 /** Deterministic per-round, per-purpose RNG derived from the campaign seed. */
 export function roundRng(c: CampaignState, purpose: string): RNG {
   return makeRng(`${c.seed}:r${c.round}:${purpose}`);
+}
+
+// ---------------------------------------------------------------------------
+// Confidence
+// ---------------------------------------------------------------------------
+
+/** The highest confidence this run can currently reach.
+ *
+ *  THE RULE: a full bar means an operation that has never lost a ship or a
+ *  crew. Every hull on the seabed and every crew left in the water lowers the
+ *  best opinion the consortium will hold of you, for the rest of the run.
+ *
+ *  This is what turns confidence from a mood into a RECORD, and it is the piece
+ *  the old model was missing. Round-by-round arithmetic alone could never say
+ *  "you have lost a sixth of everything you ever sailed" — a hand-played log
+ *  sat pinned at 100 through two rounds that lost fifteen hulls between them,
+ *  because each round in isolation was survivable. The ledger is not.
+ *
+ *  Rate-based against hulls launched, so it is size-neutral like the rest of
+ *  the confidence model, and floored (confidenceCeilingFloor) so a bad record
+ *  never becomes an unrecoverable one: defeat is the bar reaching zero, which
+ *  the player does round by round, not a wall the ledger builds behind them. */
+export function confidenceCeiling(c: CampaignState): number {
+  const launched = c.record?.launched ?? 0;
+  if (launched <= 0) return CAMPAIGN.maxConfidence;
+  const lostShare = (c.record?.lost ?? 0) / launched;
+  const crewShare = (c.crewRescue?.lost ?? 0) / launched;
+  const drag =
+    CAMPAIGN.confidenceCeilingLossDrag * lostShare + CAMPAIGN.confidenceCeilingCrewDrag * crewShare;
+  return Math.max(
+    CAMPAIGN.confidenceCeilingFloor,
+    Math.min(CAMPAIGN.maxConfidence, CAMPAIGN.maxConfidence - drag),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Draft rerolls
+// ---------------------------------------------------------------------------
+
+/** Why the pending draft cannot be rerolled right now (null = it can). */
+export function rerollBlockReason(c: CampaignState): string | null {
+  if (!c.pendingDraft) return 'No draft is pending';
+  if ((c.draftRerolls ?? 0) <= 0) {
+    return `Rescue ${DRAFT.crewsPerReroll} crews in a round to earn one`;
+  }
+  if (c.pendingDraft.options.length === 0) return 'Nothing left to draw';
+  return null;
+}
+
+/** Spend a banked reroll: redraw the table against the SAME round's salvage,
+ *  keeping the picks it opened with.
+ *
+ *  Picks are earned by wreckage and a reroll must not touch them — this buys a
+ *  different table, not a bigger one. Picks already taken stay taken, and their
+ *  technology is already in the fleet, so the redraw naturally cannot offer it
+ *  again. Deterministic: the redraw is salted by the reroll count, so a replay
+ *  of the same run produces the same second table. */
+export function rerollDraft(c: CampaignState): boolean {
+  if (rerollBlockReason(c) !== null) return false;
+  const draft = c.pendingDraft!;
+  const used = (draft.rerolls ?? 0) + 1;
+  const fresh = generateDraft(c, draft.recoveredByBranch ?? {}, roundRng(c, `draft:reroll${used}`));
+  c.draftRerolls = (c.draftRerolls ?? 0) - 1;
+  c.pendingDraft = {
+    ...fresh,
+    round: draft.round,
+    picksLeft: draft.picksLeft,
+    picksTotal: draft.picksTotal,
+    rerolls: used,
+  };
+  return true;
 }
 
 /** The player's effective research (completed + granted built-ins). */
@@ -245,7 +336,6 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.warthogUnlocked = true;
     c.scanUnlocked = true;
     c.sonarUnlocked = true;
-    c.smokeUnlocked = true;
     c.hardenedUnlocked = true;
     // The limited loadout slots still apply, even for dev runs — but each
     // escort is fitted individually, so a dev flotilla is a MIXED one rather
@@ -255,6 +345,12 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.ammo = 999;
     c.droneAmmo = 999;
     c.pdAmmo = 999;
+    // Full magazines includes the apron: sorties and pulses are stock now, so
+    // "unlock everything" has to stock them or the dev run lands with the two
+    // aircraft commissioned and nothing to fly.
+    c.warthogStock = 999;
+    c.scanStock = 999;
+    c.gunAmmo = 999;
     c.bases = ECONOMY.maxBases;
     c.capacity = CAMPAIGN.maxCapacity;
     const devLoadouts: EscortModuleId[][] = [
@@ -265,9 +361,8 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     for (let i = 0; i < ECONOMY.maxEscorts; i++) {
       c.escortUnits.push({
         id: c.nextEscortId++,
-        name: ESCORT_DEFAULT_NAMES[i] ?? `Escort ${i + 1}`,
+        name: claimEscortName(c),
         modules: [...(devLoadouts[i % devLoadouts.length] ?? [])].slice(0, escortSlots(c)),
-        modulePaid: {},
         damage: 0,
       });
     }
@@ -349,6 +444,14 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   c.ammo = t.ammo; // unused interceptors carry over
   c.droneAmmo = t.droneAmmo; // unused drone munitions carry over
   c.pdAmmo = t.pdAmmo; // unused self-defense rounds carry over
+  // Deck-gun shells: what was fired is gone, the rest stays in the magazine.
+  // Clamped for the same god-mode reason as the sortie stocks below.
+  c.gunAmmo = Math.max(0, Math.min(c.gunAmmo, t.gunAmmo));
+  // Sorties and pulses are stock too: what was flown is gone, what was not
+  // flown is still on the apron next round. Clamped because a god-mode run
+  // hands the transit 99 of each without the campaign having bought them.
+  c.warthogStock = Math.max(0, Math.min(c.warthogStock, t.warthogCharges));
+  c.scanStock = Math.max(0, Math.min(c.scanStock, t.scanCharges));
   c.formation = t.formation; // tactical formation changes persist as the new default
   c.autoFire = { ...t.autoFire }; // in-transit automation toggles persist
 
@@ -367,6 +470,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   }
   c.crewRescue.rescued += s.survivorsRescued;
   c.crewRescue.lost += s.survivorsLost;
+  // The hull ledger the confidence ceiling reads. Kept here, beside the crew
+  // ledger it works with, and updated BEFORE confidence so this round's losses
+  // are already in the record the ceiling is drawn from — a round cannot lose
+  // ships and still be allowed to top out.
+  c.record ??= { launched: 0, lost: 0 };
+  c.record.launched += s.launched;
+  c.record.lost += s.launched - s.delivered;
 
   // --- Threat pressure ------------------------------------------------------------
   // What each enemy branch actually did this round. This is the draft's primary
@@ -396,6 +506,13 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     p.lastSeenRound = round;
   }
 
+  // --- Threat coverage -----------------------------------------------------------
+  // Pressure says what hurt; coverage says how much of it the player actually
+  // stopped. The draft weights the GAP between the two, so a branch that keeps
+  // getting through keeps drawing offers no matter how much technology
+  // nominally points at it.
+  recordThreatCoverage(c, s, round);
+
   // --- Fleet bookkeeping -------------------------------------------------------
   for (const ship of t.ships) {
     if (!ship.alive) {
@@ -409,6 +526,24 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // meaningless, because they were interchangeable.
   const sunkUnitIds = new Set(t.escorts.filter((e) => !e.alive).map((e) => e.unitId));
   if (sunkUnitIds.size > 0) {
+    // Her EQUIPMENT is salvaged; her LEGACY is not.
+    //
+    // Modules used to go down with the hull, on the theory that losing an
+    // escort should cost a capability as well as a ship. It cost too much: a
+    // module arrives through the draft, so there is no buying it back, and a
+    // single unlucky mine could delete a branch the player had spent three
+    // rounds building toward — a roll of the dice undoing a strategy, with no
+    // decision anywhere in it. Losing the hull, her fitted-out state, the cash
+    // to replace her and her legacy is already the most expensive thing that
+    // happens in a round.
+    //
+    // So the units go back to the locker to be refitted to another hull, and
+    // what the sinking permanently costs the RUN is the escort legacy she was
+    // carrying — see spendEscortLegacy. Cargo-class fits were always untouched:
+    // those live with the class.
+    for (const unit of c.escortUnits.filter((u) => sunkUnitIds.has(u.id))) {
+      spendEscortLegacy(c, unit);
+    }
     c.escortUnits = c.escortUnits.filter((u) => !sunkUnitIds.has(u.id));
   }
   if (s.basesLost > 0) {
@@ -444,15 +579,29 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // --- Confidence ----------------------------------------------------------------
   const deliveredFraction = s.launched > 0 ? s.delivered / s.launched : 0;
   let confidenceChange = 0;
-  if (deliveredFraction >= 0.9) confidenceChange += CAMPAIGN.confidenceGreatRound;
-  else if (deliveredFraction >= 0.75) confidenceChange += CAMPAIGN.confidenceGoodRound;
-  else if (deliveredFraction < 0.6) confidenceChange += CAMPAIGN.confidenceBadRound;
-  confidenceChange += Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * s.lost);
-  // Crews left in the water bite on top of the loss penalty: the sinking cost
-  // a hull, the abandonment costs trust. This is part of the ordinary disaster
-  // and so sits INSIDE the round floor below. (The rescue credit does not —
-  // see below.)
-  confidenceChange += CAMPAIGN.confidencePerCrewLost * s.survivorsLost;
+  // Confidence follows the SHARE of the convoy that arrives, not the COUNT that
+  // does not — one rate-based curve covering both the reward and the penalty,
+  // so the same performance reads the same at 20 hulls and at 45. See the
+  // CAMPAIGN.confidenceBreakEven block for the measurements behind the shape.
+  confidenceChange += Math.max(
+    CAMPAIGN.confidenceDeliveryFloor,
+    Math.min(
+      CAMPAIGN.confidenceDeliveryCeiling,
+      CAMPAIGN.confidenceDeliverySwing * (deliveredFraction - CAMPAIGN.confidenceBreakEven),
+    ),
+  );
+  // Crews left in the water bite on top of the delivery curve: the sinking cost
+  // a hull, the abandonment costs trust. Rate-scaled against the convoy sailed
+  // for the same reason the curve is. This is part of the ordinary disaster and
+  // so sits INSIDE the round floor below. (The rescue credit does not — see
+  // below.)
+  if (s.launched > 0) {
+    confidenceChange += CAMPAIGN.confidenceCrewLostRate * (s.survivorsLost / s.launched);
+  }
+  // Escorts sunk cost too. They used to be free — a logged round that lost two
+  // of them and abandoned a crew still finished at 100, because nothing in this
+  // block looked at the screen at all.
+  confidenceChange += CAMPAIGN.confidencePerEscortLost * s.escortsLost;
   // Captures bite on top of that, and OUTSIDE the loss cap — a player already
   // at the cap still feels each hull the enemy sails away with, which is what
   // stops absorbing losses from being an answer to the boarding node.
@@ -475,9 +624,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   const quotaSnapshot = { needed: c.quota.pointsNeeded, earned: c.quota.pointsEarned };
   // Captured before the window resets below (1-based round within the window).
   const quotaWindowRound = CAMPAIGN.quotaWindowRounds - Math.max(0, c.quota.roundsLeft);
-  if (quotaEvaluated && quotaMet) {
-    confidenceChange += CAMPAIGN.confidenceQuotaMet;
-  }
 
   // Floor on how far ORDINARY failure can drop confidence in a single round.
   //
@@ -497,14 +643,41 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       : 0;
   const ordinaryLoss = confidenceChange - captureLoss;
   confidenceChange = Math.max(ordinaryLoss, CAMPAIGN.confidenceRoundFloor) + captureLoss;
-  // Crews brought home are credited OUTSIDE the floor, on purpose. Inside it, a
-  // player having the disaster round the floor exists for would get nothing at
-  // all for going back for their people — the floor would simply swallow the
-  // credit — and that is precisely the round where the choice to divert an
-  // escort should still visibly mean something.
-  confidenceChange += CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued;
+  // THE CREDITS: crews brought home, and a shipping window met. Both are
+  // applied OUTSIDE the floor, on purpose — inside it, a player having the
+  // disaster round the floor exists for would get nothing at all for going back
+  // for their people, and that is precisely the round where the diversion
+  // should still visibly mean something.
+  //
+  // But they MITIGATE. They never turn a losing round into a winning one.
+  // Uncapped they did exactly that, twice over, in a hand-played log: a round
+  // that lost seven of thirty hulls but rescued six crews came out at +1.3, and
+  // a round that lost two escorts and abandoned a crew was rescued to level by
+  // the quota bonus landing on top of it. Meeting a shipping target while
+  // sinking a quarter of the convoy is not a round the consortium is pleased
+  // about. On a losing round the credits together may cancel only a share of
+  // the damage, so a worse round is always worse however much is done about it.
+  const credits =
+    Math.min(
+      CAMPAIGN.confidenceRescueCap,
+      CAMPAIGN.confidencePerCrewRescued * s.survivorsRescued,
+    ) + (quotaEvaluated && quotaMet ? CAMPAIGN.confidenceQuotaMet : 0);
+  confidenceChange +=
+    confidenceChange < 0
+      ? Math.min(credits, -confidenceChange * CAMPAIGN.confidenceCreditMitigation)
+      : credits;
 
-  c.confidence = Math.max(0, Math.min(CAMPAIGN.maxConfidence, c.confidence + confidenceChange));
+  // Confidence is a WHOLE-NUMBER bar, and the number in brackets on the debrief
+  // must be the change the player can actually see happen to it. Two things
+  // would otherwise break that. The delivery curve is continuous, so the raw
+  // change is fractional and would render as 67.43999999999998. And the bar
+  // clamps at both ends, so an unclamped delta reads "100 (+8)" on a round that
+  // really moved +2. Round the destination, then derive the reported change
+  // from where the bar actually landed.
+  c.confidence = Math.round(
+    Math.max(0, Math.min(confidenceCeiling(c), c.confidence + confidenceChange)),
+  );
+  confidenceChange = c.confidence - confidenceBefore;
 
   // --- Convoy capacity growth ----------------------------------------------------
   let capacityIncreased = false;
@@ -610,10 +783,26 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     c.campaignOver = true;
     c.runOutcome = 'defeat';
     c.defeatCause = 'quota';
-  } else if (round >= region.completionRound) {
+  } else if (round >= region.completionRound && quotaEvaluated) {
+    // Victory waits for the OPEN quota window to resolve. The completion round
+    // and the 3-round quota cycle do not generally line up, and ending the
+    // region mid-window walked away from a commitment the consortium was still
+    // counting — the player watched an active quota bar simply vanish. So the
+    // watermark round is the earliest the region can complete, and the run
+    // sails on until the window in progress is met (victory) or missed
+    // (defeat, handled above) — at most two extra rounds.
     c.campaignOver = true;
     c.runOutcome = 'victory';
     c.defeatCause = null;
+  }
+
+  // --- Draft rerolls ----------------------------------------------------------------
+  // Crews only end up in the water when hulls go down, so a round that earns a
+  // reroll is by definition a round that went badly — which is the point. The
+  // token pays for the BOAT WORK, not for the sinking: a player who leaves the
+  // survivors out there gets nothing.
+  if (s.survivorsRescued >= DRAFT.crewsPerReroll) {
+    c.draftRerolls = Math.min(DRAFT.maxRerolls, (c.draftRerolls ?? 0) + 1);
   }
 
   // --- Mandatory technology draft ---------------------------------------------------
@@ -671,7 +860,10 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       title: `Crews rescued: ${s.survivorsRescued}`,
       body:
         'Escorts pulled the survivors aboard before the water took them. The families — and ' +
-        'the operators association — will remember it.',
+        'the operators association — will remember it.' +
+        (s.survivorsRescued >= DRAFT.crewsPerReroll
+          ? ' The association has put a favour your way: a DRAFT REROLL, spendable on the technology table.'
+          : ''),
     });
   }
   if (s.survivorsLost > 0) {
@@ -679,8 +871,25 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       kind: 'rescue',
       title: `Crews lost in the water: ${s.survivorsLost}`,
       body:
-        'Survivors went unrescued and the confidence cost lands on top of the sinkings ' +
-        'themselves. An escort holding inside a survivor area brings the crew home.',
+        'Survivors went unrescued, and the cost lands on top of the sinkings themselves — ' +
+        'permanently, in the ceiling below. An escort holding inside a survivor area brings ' +
+        'the crew home.',
+    });
+  }
+  // The ceiling is a permanent cap, so it has to be stated the round it moves.
+  // Silently capping a bar the player is trying to climb is the worst version
+  // of this mechanic.
+  const ceilingNow = Math.round(confidenceCeiling(c));
+  if (ceilingNow < CAMPAIGN.maxConfidence) {
+    cards.push({
+      kind: 'warning',
+      title: `Consortium confidence capped at ${ceilingNow}`,
+      body:
+        `${c.record.lost} of ${c.record.launched} hulls have not arrived and ` +
+        `${c.crewRescue.lost} crew${c.crewRescue.lost === 1 ? ' has' : 's have'} been left in ` +
+        'the water. A full bar is reserved for an operation that has lost neither — the record ' +
+        'stands for the rest of the run, so every hull and every crew brought home from here ' +
+        'is worth more than the last.',
     });
   }
   if (capacityIncreased) {
@@ -693,14 +902,19 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   if (quotaEvaluated) {
     if (quotaMet) {
       // The window has already rolled over here, so c.quota now holds the
-      // fresh requirement — tell the player exactly what's next.
+      // fresh requirement — tell the player exactly what's next. Unless the
+      // run just ENDED on this clearance: promising a next window that will
+      // never be sailed is worse than silence.
       cards.push({
         kind: 'quota',
         title: 'Delivery quota met',
         body:
           `Delivered ${quotaSnapshot.earned} of ${quotaSnapshot.needed} cargo points — quota cleared, ` +
-          `consortium confidence rises. New quota: deliver ${c.quota.pointsNeeded} cargo points over ` +
-          `the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`,
+          `consortium confidence rises.` +
+          (c.campaignOver
+            ? ' Every commitment made to the consortium has been honoured.'
+            : ` New quota: deliver ${c.quota.pointsNeeded} cargo points over ` +
+              `the next ${CAMPAIGN.quotaWindowRounds} rounds (scaled to your recent pace).`),
       });
     } else {
       cards.push({
@@ -727,9 +941,22 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       kind: 'capacity',
       title: `${region.name} secured`,
       body:
-        `Round ${region.completionRound} cleared — the region's completion watermark. The shipping ` +
-        'lane is considered secured; Commander Experience has been earned, and the next region is ' +
-        'open. Technology and equipment built during this run stay with it.',
+        `Round ${round} cleared with every delivery quota honoured — the region's completion ` +
+        'watermark. The shipping lane is considered secured; Commander Experience has been earned, ' +
+        'and the next region is open. Technology and equipment built during this run stay with it.',
+    });
+  }
+  // Past the watermark with a quota window still open: say WHY the run is
+  // continuing, or the extra rounds read as the game failing to end.
+  if (!c.campaignOver && round >= region.completionRound) {
+    cards.push({
+      kind: 'quota',
+      title: 'One commitment left to honour',
+      body:
+        `The completion watermark is behind you, but the current delivery quota — ` +
+        `${c.quota.pointsEarned} of ${c.quota.pointsNeeded} cargo points, ${c.quota.roundsLeft} ` +
+        `round${c.quota.roundsLeft === 1 ? '' : 's'} left — is still open. Meet it and the region ` +
+        'is secured; miss it and the run ends like any other failed quota.',
     });
   }
   if (!c.campaignOver && c.confidence <= 25) {
@@ -796,7 +1023,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
         ...(c.warthogUnlocked ? ['warthog'] : []),
         ...(c.scanUnlocked ? ['scanPulse'] : []),
         ...(c.sonarUnlocked ? ['activeSonar'] : []),
-        ...(c.smokeUnlocked ? ['smokeScreen'] : []),
         ...(c.hardenedUnlocked ? ['hardened'] : []),
       ],
     },
@@ -810,6 +1036,8 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
       droneUsed: s.counter.droneLaunches,
       selfDefenseBought: c.roundAmmoBought.selfDefense,
       selfDefenseUsed: s.counter.selfDefenseShots,
+      gunShellsBought: c.roundAmmoBought.gun,
+      gunShellsUsed: s.counter.deckGunRounds,
     },
     stats: s.counter,
   };
@@ -831,6 +1059,11 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     interceptMisses: s.interceptMisses,
     ammoUsed: s.ammoUsed,
     warthogUsed: s.warthogUsed,
+    // Split out so a log can answer "is the A-10 doing anything about the
+    // boats, or only sweeping mines" — which it could not before, and which is
+    // the difference between a bot mis-flying it and the aircraft being unable
+    // to kill a boat at all.
+    warthogKills: s.warthogKills,
     scanUsed: s.scanUsed,
     minesTotal: s.minesTotal,
     minesRevealed: s.minesRevealed,
@@ -878,7 +1111,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
     survivorsSpawned: s.survivorsSpawned,
     survivorsRescued: s.survivorsRescued,
     survivorsLost: s.survivorsLost,
-    draftOffered: c.pendingDraft ? [...c.pendingDraft.options] : [],
+    draftOffered: c.pendingDraft ? c.pendingDraft.options.map(draftOptionKey) : [],
     enemyTracks: { ...c.evolution.tracks },
     newDiscoveries: [...newDiscoveries],
     counters,
@@ -887,7 +1120,7 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 
   // A fresh spend ledger for the next prep phase.
   c.roundSpend = {};
-  c.roundAmmoBought = { interceptor: 0, drone: 0, selfDefense: 0 };
+  c.roundAmmoBought = { interceptor: 0, drone: 0, selfDefense: 0, gun: 0 };
 
   c.round++;
   c.phase = 'aar';
@@ -899,65 +1132,145 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
 // Procurement actions (all return false when the purchase is invalid)
 // ---------------------------------------------------------------------------
 
-/** Priced on OWNED hulls, not the mutable convoy assignment — composition can
- *  be toggled to zero for free, which would otherwise let the player buy a
- *  class-wide refit at single-ship price. Fleet size only shrinks through
- *  real losses, so it is exploit-proof as a price basis.
- *
- *  The rate itself SOFT-CAPS: hulls up to moduleCostSoftCap are billed at the
- *  full per-ship rate (so early-game pricing is unchanged), and hulls beyond
- *  the cap are billed at a fraction of it — otherwise a late-campaign fleet of
- *  30+ ships makes every refit cost thousands and nothing is ever affordable. */
-export function moduleCost(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): number {
-  const count = Math.max(1, c.fleet[classId]);
-  const cap = ECONOMY.moduleCostSoftCap;
-  const billable = count <= cap ? count : cap + (count - cap) * ECONOMY.moduleCostTaperRate;
-  return Math.round(MODULES[moduleId].costPerShip * billable);
+// ---------------------------------------------------------------------------
+// Equipment: stock, not purchases
+// ---------------------------------------------------------------------------
+//
+// Modules used to be bought per class, per escort, per battery, at a price that
+// scaled with fleet size — and every one of them was gated behind a research
+// node the draft had to hand over first. That made the draft an IOU: the
+// technology said the fleet could field a deck gun and the bank said it could
+// not, and the player was asked to weigh that against an ability upgrade that
+// applied to the very next transit. The upgrade won every time.
+//
+// A module is now a UNIT. The draft delivers it; the shop never sells it. Units
+// are fitted and refitted for free between rounds, so the interesting question
+// stopped being "can I afford this" and became "which hull should carry it".
+// Cash buys hulls and ordnance; the draft decides what the fleet can do.
+//
+// The two platforms differ in exactly one way, deliberately:
+//   • a CARGO unit is fitted to a whole ship class and is never lost — hulls
+//     sink and are replaced, the fit stays with the class;
+//   • an ESCORT unit goes down with its escort. Losing an escort already cost
+//     600 cash; now it costs the drafted equipment aboard her too, which is
+//     what makes a flotilla worth defending.
+
+/** Units of one module type the run may ever hold. */
+export function moduleStockCap(platform: ModulePlatform): number {
+  if (platform === 'cargo') return DRAFT.cargoModuleCap;
+  if (platform === 'escort') return DRAFT.escortModuleCap;
+  return DRAFT.baseModuleCap;
 }
 
-/** Why a cargo module cannot be bought right now (null = it can). Purchase is
- *  gated on the branch's base research node — cash never skips the lab. */
+/** Units of this module the run owns — fitted and spare together. */
+export function moduleStock(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  return (c.moduleStock?.[platform] as Record<string, number> | undefined)?.[moduleId] ?? 0;
+}
+
+/** Units of this module currently bolted to something. Counted off the loadout
+ *  itself rather than tracked separately, so stock and fittings can never
+ *  drift apart. */
+export function moduleFitted(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  if (platform === 'cargo') {
+    return Object.values(c.classModules).filter((mods) =>
+      mods.includes(moduleId as ModuleId),
+    ).length;
+  }
+  if (platform === 'escort') {
+    return c.escortUnits.filter((e) => e.modules.includes(moduleId as EscortModuleId)).length;
+  }
+  return c.baseModules.includes(moduleId as BaseModuleId) ? 1 : 0;
+}
+
+/** Units in the locker, waiting for a hull. */
+export function moduleSpare(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): number {
+  return Math.max(0, moduleStock(c, platform, moduleId) - moduleFitted(c, platform, moduleId));
+}
+
+/** Deliver one unit. Returns false when the run is already at the cap for that
+ *  module — the draft checks this before offering, and this is the backstop. */
+export function grantModule(
+  c: CampaignState,
+  platform: ModulePlatform,
+  moduleId: string,
+): boolean {
+  c.moduleStock ??= { cargo: {}, escort: {}, base: {} };
+  const held = moduleStock(c, platform, moduleId);
+  if (held >= moduleStockCap(platform)) return false;
+  (c.moduleStock[platform] as Record<string, number>)[moduleId] = held + 1;
+  return true;
+}
+
+/** Module slots on a merchant class, after any refit asset. */
+export function classSlots(c: CampaignState, classId: ShipClassId): number {
+  const extra = hasResearch(c, 'logistics.modularRefit') ? 1 : 0;
+  return SHIP_CLASSES[classId].slots + extra;
+}
+
+/** Why a cargo module cannot be fitted to this class right now (null = it can). */
 export function moduleBlockReason(
   c: CampaignState,
   classId: ShipClassId,
   moduleId: ModuleId,
 ): string | null {
   const owned = c.classModules[classId];
-  if (owned.includes(moduleId)) return 'Already equipped';
-  if (owned.length >= SHIP_CLASSES[classId].slots) return 'No module slots free on this class';
-  const req = MODULE_RESEARCH_REQUIREMENT[moduleId];
-  if (req && !hasResearch(c, req)) {
-    return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
+  if (owned.includes(moduleId)) return 'Already fitted to this class';
+  if (owned.length >= classSlots(c, classId)) return 'No module slots free on this class';
+  if (moduleSpare(c, 'cargo', moduleId) <= 0) {
+    return moduleStock(c, 'cargo', moduleId) > 0
+      ? 'Every unit is fitted elsewhere — unfit one first'
+      : 'No unit held — draft one';
   }
-  if (c.cash < moduleCost(c, classId, moduleId)) return 'Not enough cash';
   return null;
 }
 
-export function buyModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+// --- Shop visibility -------------------------------------------------------
+//
+// Equipment appears in the loadout once the run HOLDS a unit of it. There is
+// nothing to save up for any more, so a module the player cannot field is not
+// a thing to plan toward — it is noise. Anything already fitted always shows,
+// so it can still be moved.
+
+export function moduleRevealed(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
+  if (c.classModules[classId].includes(moduleId)) return true;
+  return moduleStock(c, 'cargo', moduleId) > 0;
+}
+
+export function escortModuleRevealed(c: CampaignState, id: EscortModuleId): boolean {
+  if (c.escortUnits.some((u) => u.modules.includes(id))) return true;
+  return moduleStock(c, 'escort', id) > 0;
+}
+
+export function baseModuleRevealed(c: CampaignState, id: BaseModuleId): boolean {
+  if (c.baseModules.includes(id)) return true;
+  return moduleStock(c, 'base', id) > 0;
+}
+
+/** Fit a held cargo unit to a class. Free — the cost was the draft pick. */
+export function equipModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
   if (moduleBlockReason(c, classId, moduleId) !== null) return false;
-  const cost = moduleCost(c, classId, moduleId);
-  c.cash -= cost;
   c.classModules[classId].push(moduleId);
-  // Remember what was paid so unequipping refunds exactly this (not a value
-  // recomputed at a different fleet size).
-  (c.modulePaid[classId] ??= {})[moduleId] = cost;
-  recordSpend(c, moduleId, cost);
   return true;
 }
 
-/** Unequip a class module and refund exactly what was paid to fit it, so the
- *  player can freely try loadouts within a class's limited slots. */
+/** Take a cargo unit back off a class and return it to the locker. */
 export function removeModule(c: CampaignState, classId: ShipClassId, moduleId: ModuleId): boolean {
   const owned = c.classModules[classId];
   const idx = owned.indexOf(moduleId);
   if (idx < 0) return false;
   owned.splice(idx, 1);
-  const paid = c.modulePaid[classId]?.[moduleId];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete c.modulePaid[classId][moduleId];
-    recordSpend(c, moduleId, -paid);
-  }
   return true;
 }
 
@@ -992,22 +1305,86 @@ export function sanitizeEscortName(raw: string, fallback = 'Escort'): string {
   return cleaned.length > 0 ? cleaned : fallback;
 }
 
-/** The next unused default name, so a freshly commissioned escort arrives with
- *  something meaningful rather than a bare number. */
+/** A name for a freshly commissioned escort: one this run has never used.
+ *
+ *  Two things were wrong with picking the first free name off the list. It
+ *  only looked at the escorts currently AFLOAT, so a sunk ship's name was
+ *  handed straight to her replacement — the debrief then read as though
+ *  Vanguard had survived, when in fact Vanguard was on the bottom and a new
+ *  hull was flying her name with none of her equipment. And taking the list in
+ *  order meant the first escort of every run in the game's history was called
+ *  Vanguard and the second Sentinel.
+ *
+ *  So: the pool is walked in an order derived from the RUN SEED (varied
+ *  between runs, identical on replay), and every name the run has ever issued
+ *  is remembered — see `usedEscortNames` — so nothing is ever reissued. */
 function nextEscortName(c: CampaignState): string {
-  const taken = new Set(c.escortUnits.map((e) => e.name));
-  const free = ESCORT_DEFAULT_NAMES.find((n) => !taken.has(n));
+  const taken = new Set<string>([
+    ...c.escortUnits.map((e) => e.name),
+    ...(c.usedEscortNames ?? []),
+  ]);
+  const order = makeRng(`${c.seed}:escortNames`).shuffle([...ESCORT_DEFAULT_NAMES]);
+  const free = order.find((n) => !taken.has(n));
   if (free) return free;
-  for (let i = c.escortUnits.length + 1; ; i++) {
+  // Pool exhausted (a very long run losing escorts steadily). Numbered hulls
+  // keep the guarantee even past the end of the list.
+  for (let i = 1; ; i++) {
     const name = `Escort ${i}`;
     if (!taken.has(name)) return name;
   }
+}
+
+/** Take the next name AND record it, so it can never come round again. Every
+ *  place that commissions an escort goes through here. */
+export function claimEscortName(c: CampaignState): string {
+  const name = nextEscortName(c);
+  c.usedEscortNames = [...(c.usedEscortNames ?? []), name];
+  return name;
+}
+
+// ---------------------------------------------------------------------------
+// Escort legacies
+// ---------------------------------------------------------------------------
+
+/** The legacies currently in force: the ones carried by escorts still afloat.
+ *
+ *  Derived rather than stored, so there is exactly one source of truth. A
+ *  legacy is on because a specific ship is swimming; when she is not, the
+ *  effect is simply absent from this list and every consumer stops seeing it
+ *  without knowing anything about legacies. */
+export function activeEscortLegacies(c: CampaignState): string[] {
+  return activeLegacyIds(c.escortUnits);
+}
+
+/** Hand a newly commissioned escort the next legacy nobody is carrying and
+ *  nothing has burned. Returns undefined once they are all assigned or spent —
+ *  a fourth hull in a three-legacy run is just a hull. */
+function claimEscortLegacy(c: CampaignState): string | undefined {
+  const taken = new Set<string>([
+    ...c.escortUnits.map((u) => u.legacy).filter((id): id is string => !!id),
+    ...(c.spentLegacies ?? []),
+  ]);
+  return (c.escortLegacies ?? []).find((id) => !taken.has(id));
+}
+
+/** Burn the legacy a lost escort was carrying. This is what an escort loss
+ *  costs the run now that her modules are salvaged: the veteran crew and the
+ *  standing that came with them, gone until the next run. */
+function spendEscortLegacy(c: CampaignState, unit: EscortUnit): void {
+  if (!unit.legacy) return;
+  c.spentLegacies ??= [];
+  if (!c.spentLegacies.includes(unit.legacy)) c.spentLegacies.push(unit.legacy);
 }
 
 export function renameEscort(c: CampaignState, escortId: number, name: string): boolean {
   const escort = findEscort(c, escortId);
   if (!escort) return false;
   escort.name = sanitizeEscortName(name, escort.name);
+  // Burn the player's chosen name too: the automatic draw must never later
+  // hand the same name to a second hull and produce two ships alike.
+  if (!(c.usedEscortNames ?? []).includes(escort.name)) {
+    c.usedEscortNames = [...(c.usedEscortNames ?? []), escort.name];
+  }
   return true;
 }
 
@@ -1020,31 +1397,33 @@ export function escortModuleBlockReason(
   const escort = findEscort(c, escortId);
   if (!escort) return 'No such escort';
   // Fitting the same module to a DIFFERENT escort is always allowed — three
-  // gun boats is a legitimate answer to a strait full of attack boats.
+  // gun boats is a legitimate answer to a strait full of attack boats, and
+  // three drafted units is what it takes.
   if (escort.modules.includes(id)) return 'Already fitted to this escort';
   if (escort.modules.length >= escortSlots(c)) {
     return hasResearch(c, 'logistics.escortRefitBay')
       ? 'All specialist slots full on this escort'
       : 'Both specialist slots full — Escort Refit Bay unlocks a third';
   }
-  const req = ESCORT_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
-  if (c.cash < ESCORT_MODULES[id].cost) return 'Not enough cash';
+  if (moduleSpare(c, 'escort', id) <= 0) {
+    return moduleStock(c, 'escort', id) > 0
+      ? 'Every unit is fitted to another escort — unfit one first'
+      : 'No unit held — draft one';
+  }
   return null;
 }
 
-export function buyEscortModule(c: CampaignState, escortId: number, id: EscortModuleId): boolean {
+/** Fit a held escort unit. Free, and freely reversible: which escort carries
+ *  which role is a decision the player should be able to remake every round. */
+export function equipEscortModule(
+  c: CampaignState,
+  escortId: number,
+  id: EscortModuleId,
+): boolean {
   if (escortModuleBlockReason(c, escortId, id) !== null) return false;
   const escort = findEscort(c, escortId);
   if (!escort) return false;
-  const cost = ESCORT_MODULES[id].cost;
-  c.cash -= cost;
   escort.modules.push(id);
-  // Recorded against THIS escort, so unequipping refunds what this hull's
-  // fitting actually cost and a module cannot be bought cheaply on one escort
-  // and cashed out at another's price.
-  escort.modulePaid[id] = cost;
-  recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, cost);
   return true;
 }
 
@@ -1054,12 +1433,6 @@ export function removeEscortModule(c: CampaignState, escortId: number, id: Escor
   const idx = escort.modules.indexOf(id);
   if (idx < 0) return false;
   escort.modules.splice(idx, 1);
-  const paid = escort.modulePaid[id];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete escort.modulePaid[id];
-    recordSpend(c, COUNTER_BRANCHES[id === 'mcmDroneLauncher' ? 'mcmDrones' : id].id, -paid);
-  }
   return true;
 }
 
@@ -1074,19 +1447,13 @@ export function fleetHasEscortModule(c: CampaignState, id: EscortModuleId): bool
 export function baseModuleBlockReason(c: CampaignState, id: BaseModuleId): string | null {
   if (c.baseModules.includes(id)) return 'Already fitted';
   if (c.baseModules.length >= BASE_MODULE_SLOTS) return 'Base loadout slots are full';
-  const req = BASE_MODULE_RESEARCH_REQUIREMENT[id];
-  if (!hasResearch(c, req)) return `Requires technology: ${RESEARCH_INDEX[req]?.def.name ?? req}`;
-  if (c.cash < BASE_MODULES[id].cost) return 'Not enough cash';
+  if (moduleSpare(c, 'base', id) <= 0) return 'No unit held — draft one';
   return null;
 }
 
-export function buyBaseModule(c: CampaignState, id: BaseModuleId): boolean {
+export function equipBaseModule(c: CampaignState, id: BaseModuleId): boolean {
   if (baseModuleBlockReason(c, id) !== null) return false;
-  const cost = BASE_MODULES[id].cost;
-  c.cash -= cost;
   c.baseModules.push(id);
-  c.baseModulePaid[id] = cost;
-  recordSpend(c, id, cost);
   return true;
 }
 
@@ -1094,12 +1461,6 @@ export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
   const idx = c.baseModules.indexOf(id);
   if (idx < 0) return false;
   c.baseModules.splice(idx, 1);
-  const paid = c.baseModulePaid[id];
-  if (paid !== undefined) {
-    c.cash += paid;
-    delete c.baseModulePaid[id];
-    recordSpend(c, id, -paid);
-  }
   return true;
 }
 
@@ -1107,9 +1468,12 @@ export function removeBaseModule(c: CampaignState, id: BaseModuleId): boolean {
  *  module fit — a new hull sails with the class loadout, so the buyer pays for
  *  those modules too (per single ship, not the whole-fleet refit price). */
 export function shipCost(c: CampaignState, classId: ShipClassId): number {
-  const modules = c.classModules[classId] ?? [];
-  const moduleSurcharge = modules.reduce((sum, m) => sum + MODULES[m].costPerShip, 0);
-  return SHIP_CLASSES[classId].replaceCost + moduleSurcharge;
+  // No module surcharge: fits are drafted, not bought, so a replacement hull
+  // sails with the class loadout at no extra cost. Charging for it would have
+  // made every drafted module a permanent tax on replacing losses — which, in
+  // a fleet that is losing ships, is worth more than the module.
+  void c;
+  return SHIP_CLASSES[classId].replaceCost;
 }
 
 /** Interceptor round price with the Commander quartermaster modifier baked in
@@ -1154,18 +1518,27 @@ export function buyPdAmmo(c: CampaignState, buys = 1): boolean {
 /** Commission a new escort. It arrives with built-in interceptors, a default
  *  name and EMPTY specialist slots — a replacement is a new ship, not a
  *  resurrection of the one that sank, so its loadout is bought fresh. */
+/** What commissioning an escort costs, after the Standing Contract legacy. */
+export function escortCost(c: CampaignState): number {
+  const mods = foldEscortLegacies(activeEscortLegacies(c));
+  return Math.max(1, Math.round(ECONOMY.escortCost * mods.escortCost));
+}
+
 export function buyEscort(c: CampaignState): boolean {
   if (c.escortUnits.length >= ECONOMY.maxEscorts) return false;
-  if (c.cash < ECONOMY.escortCost) return false;
-  c.cash -= ECONOMY.escortCost;
+  const cost = escortCost(c);
+  if (c.cash < cost) return false;
+  c.cash -= cost;
   c.escortUnits.push({
     id: c.nextEscortId++,
-    name: nextEscortName(c),
+    name: claimEscortName(c),
     modules: [],
-    modulePaid: {},
     damage: 0,
+    // A replacement hull picks up any legacy still unassigned — but never one
+    // that went down with a previous ship.
+    legacy: claimEscortLegacy(c),
   });
-  recordSpend(c, 'escortInterceptor', ECONOMY.escortCost);
+  recordSpend(c, 'escortInterceptor', cost);
   return true;
 }
 
@@ -1178,50 +1551,71 @@ export function buyBase(c: CampaignState): boolean {
   return true;
 }
 
-export function unlockWarthog(c: CampaignState): boolean {
-  if (c.warthogUnlocked || c.cash < ECONOMY.warthogUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.warthog)) return false;
-  c.cash -= ECONOMY.warthogUnlockCost;
-  c.warthogUnlocked = true;
-  recordSpend(c, 'warthog', ECONOMY.warthogUnlockCost);
+// The convoy's own assets — the A-10 flight, the survey pulse, active sonar,
+// defensive smoke and hardened systems — are AVAILABLE FROM ROUND ONE. They
+// used to cost 150-160 each to commission on top of the technology that
+// unlocked them, which was the same IOU the module economy has shed: the tech
+// tree said the fleet had an A-10 and the bank said it did not. What is bought
+// now is only the ORDNANCE, every round, which is the decision worth keeping.
+
+/** How many A-10 sorties can be held at once. Research buys apron space; it no
+ *  longer hands out free sorties each round. */
+export function warthogCapacity(c: CampaignState): number {
+  return resolveBranchStats('warthog', researchSet(c)).grants.charges ?? 0;
+}
+
+export function scanCapacity(c: CampaignState): number {
+  return resolveBranchStats('scanPulse', researchSet(c)).grants.charges ?? 0;
+}
+
+export function warthogSortieBlockReason(c: CampaignState): string | null {
+  if (c.warthogStock >= warthogCapacity(c)) return 'Apron full';
+  if (c.cash < ECONOMY.warthogSortieCost) return 'Not enough cash';
+  return null;
+}
+
+export function buyWarthogSortie(c: CampaignState): boolean {
+  if (warthogSortieBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.warthogSortieCost;
+  c.warthogStock++;
+  recordSpend(c, 'warthog', ECONOMY.warthogSortieCost);
   return true;
 }
 
-export function unlockScan(c: CampaignState): boolean {
-  if (c.scanUnlocked || c.cash < ECONOMY.scanUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.scan)) return false;
-  c.cash -= ECONOMY.scanUnlockCost;
-  c.scanUnlocked = true;
-  recordSpend(c, 'scanPulse', ECONOMY.scanUnlockCost);
+export function scanPulseBlockReason(c: CampaignState): string | null {
+  if (c.scanStock >= scanCapacity(c)) return 'Stowage full';
+  if (c.cash < ECONOMY.scanPulseCost) return 'Not enough cash';
+  return null;
+}
+
+/** Deck-gun shells. The gun hardware arrives through the draft; every round
+ *  it fires is a shell bought here. No stowage cap — like interceptor ammo,
+ *  the constraint is the price, not the shelf. */
+export function gunShellsBlockReason(c: CampaignState): string | null {
+  if (!fleetHasEscortModule(c, 'deckGun') && c.moduleStock.escort.deckGun === undefined) {
+    return 'No deck gun in the flotilla';
+  }
+  if (c.cash < ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy) return 'Not enough cash';
+  return null;
+}
+
+export function buyGunShells(c: CampaignState): boolean {
+  if (gunShellsBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy;
+  c.gunAmmo += ECONOMY.gunShellsPerBuy;
+  c.roundAmmoBought.gun += ECONOMY.gunShellsPerBuy;
+  recordSpend(c, 'deckGunAmmo', ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy);
   return true;
 }
 
-export function unlockSonar(c: CampaignState): boolean {
-  if (c.sonarUnlocked || c.cash < ECONOMY.sonarUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.sonar)) return false;
-  c.cash -= ECONOMY.sonarUnlockCost;
-  c.sonarUnlocked = true;
-  recordSpend(c, 'activeSonar', ECONOMY.sonarUnlockCost);
+export function buyScanPulse(c: CampaignState): boolean {
+  if (scanPulseBlockReason(c) !== null) return false;
+  c.cash -= ECONOMY.scanPulseCost;
+  c.scanStock++;
+  recordSpend(c, 'scanPulse', ECONOMY.scanPulseCost);
   return true;
 }
 
-export function unlockSmoke(c: CampaignState): boolean {
-  if (c.smokeUnlocked || c.cash < ECONOMY.smokeUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.smoke)) return false;
-  c.cash -= ECONOMY.smokeUnlockCost;
-  c.smokeUnlocked = true;
-  recordSpend(c, 'smokeScreen', ECONOMY.smokeUnlockCost);
-  return true;
-}
-
-export function unlockHardened(c: CampaignState): boolean {
-  if (c.hardenedUnlocked || c.cash < ECONOMY.hardenedUnlockCost) return false;
-  if (!hasResearch(c, ABILITY_RESEARCH_REQUIREMENT.hardened)) return false;
-  c.cash -= ECONOMY.hardenedUnlockCost;
-  c.hardenedUnlocked = true;
-  recordSpend(c, 'hardened', ECONOMY.hardenedUnlockCost);
-  return true;
-}
 
 /** Pre-round protected-channel selection (hardened systems). Rejects picks
  *  beyond the researched channel capacity or unknown families. */
@@ -1253,22 +1647,109 @@ export function escortDamageTotal(c: CampaignState): number {
   return c.escortUnits.reduce((sum, e) => sum + e.damage, 0);
 }
 
-export function repairCost(c: CampaignState): number {
+/** What a repair order covers.
+ *
+ *  `escorts` takes the shore batteries with it. The two are the same class of
+ *  asset — the warships, bought and read on the Defense screen — and the
+ *  Forward Repair Yard has always treated them as one thing, patching both for
+ *  nothing while the merchant hulls still bill. Splitting them here would make
+ *  the yard's rule stop lining up with the buttons that spend it. */
+export type RepairScope = 'cargo' | 'escorts' | 'all';
+
+/** Unrepaired hp inside a scope. */
+export function scopeDamage(c: CampaignState, scope: RepairScope = 'all'): number {
+  if (scope === 'cargo') return c.pendingDamage;
+  if (scope === 'escorts') return escortDamageTotal(c) + c.baseDamage;
+  return totalPendingDamage(c);
+}
+
+/** The hp inside a scope the yard actually bills for. */
+function billableDamage(c: CampaignState, scope: RepairScope): number {
+  // The Forward Repair Yard patches the warships for nothing: only the
+  // merchant hulls still bill.
+  const yard = hasResearch(c, 'logistics.repairYard');
+  if (!yard) return scopeDamage(c, scope);
+  return scope === 'escorts' ? 0 : c.pendingDamage;
+}
+
+/** Dollars per hp, after technology and the commander modifier. */
+function repairRate(c: CampaignState): number {
   const mult = hasResearch(c, 'logistics.expandedBerthing') ? 0.5 : 1;
   // Commander modifier applied last, after technology effects — same flow as
   // combat effects (base → tech → commander).
   const commander = foldCommanderMods(c.commanderAbilities ?? []).repairCost;
-  return Math.ceil(totalPendingDamage(c) * ECONOMY.repairCostPerHp * mult * commander);
+  return ECONOMY.repairCostPerHp * mult * commander;
 }
 
-export function repairFleet(c: CampaignState): boolean {
-  const cost = repairCost(c);
-  if (cost <= 0 || c.cash < cost) return false;
+export function repairCost(c: CampaignState, scope: RepairScope = 'all'): number {
+  return Math.ceil(billableDamage(c, scope) * repairRate(c));
+}
+
+/** Clear up to `hp` of damage inside a scope, WORST-HURT HULL FIRST, and
+ *  report how much was actually cleared.
+ *
+ *  Order matters only for a partial repair, and worst-first is the doctrine
+ *  that makes one: the yard puts the money into the ship closest to going down,
+ *  not into whichever one happens to be first in the list. */
+function clearDamage(c: CampaignState, scope: RepairScope, hp: number): number {
+  let budget = Math.max(0, hp);
+  const take = (have: number): number => {
+    const used = Math.min(have, budget);
+    budget -= used;
+    return used;
+  };
+  if (scope === 'cargo' || scope === 'all') {
+    c.pendingDamage -= take(c.pendingDamage);
+  }
+  if (scope === 'escorts' || scope === 'all') {
+    for (const unit of [...c.escortUnits].sort((a, b) => b.damage - a.damage)) {
+      unit.damage -= take(unit.damage);
+    }
+    c.baseDamage -= take(c.baseDamage);
+  }
+  return Math.max(0, hp) - budget;
+}
+
+/** Repair a scope completely. Needs the whole price on hand — for anything
+ *  less, see repairPartial. */
+export function repairFleet(c: CampaignState, scope: RepairScope = 'all'): boolean {
+  const damage = scopeDamage(c, scope);
+  if (damage <= 0) return false;
+  const cost = repairCost(c, scope);
+  if (c.cash < cost) return false;
   c.cash -= cost;
-  c.pendingDamage = 0;
-  for (const unit of c.escortUnits) unit.damage = 0;
-  c.baseDamage = 0;
-  recordSpend(c, 'fleet', cost);
+  clearDamage(c, scope, damage);
+  if (cost > 0) recordSpend(c, 'fleet', cost);
+  return true;
+}
+
+/** What a spend-what-you-have repair would buy: the hp it would clear and the
+ *  cash it would cost. Quoted rather than inferred so the button can say it. */
+export function repairPartialQuote(
+  c: CampaignState,
+  scope: 'cargo' | 'escorts',
+): { hp: number; cost: number } {
+  const damage = scopeDamage(c, scope);
+  if (damage <= 0) return { hp: 0, cost: 0 };
+  // Free work (the Forward Repair Yard on warships) has nothing partial about
+  // it: the whole scope is cleared for nothing.
+  if (billableDamage(c, scope) <= 0) return { hp: damage, cost: 0 };
+  const rate = repairRate(c);
+  const hp = Math.min(damage, Math.floor(c.cash / rate));
+  return { hp, cost: Math.min(c.cash, Math.ceil(hp * rate)) };
+}
+
+/** Put whatever cash is left into a scope and patch as much as it buys.
+ *
+ *  Offered for the single-category orders only, deliberately: "repair what you
+ *  can across everything" is not a decision, it is just spending the wallet. A
+ *  player who cannot afford it all should be choosing WHICH half to patch. */
+export function repairPartial(c: CampaignState, scope: 'cargo' | 'escorts'): boolean {
+  const { hp, cost } = repairPartialQuote(c, scope);
+  if (hp <= 0) return false;
+  c.cash -= cost;
+  clearDamage(c, scope, hp);
+  if (cost > 0) recordSpend(c, 'fleet', cost);
   return true;
 }
 

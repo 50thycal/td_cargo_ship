@@ -65,7 +65,10 @@ try {
   // Region 2 must be visibly locked on a fresh profile.
   const lockedCount = await page.locator('.card.locked').count();
   if (lockedCount < 1) throw new Error('expected the second region to be locked on a fresh profile');
-  await page.getByRole('button', { name: /Deploy to Home Strait/ }).click();
+  // Name-agnostic on purpose: which region opens the ladder is a tuning
+  // decision (it has already moved once), and a smoke test should not fail
+  // because the campaign was reordered.
+  await page.getByRole('button', { name: /^Deploy to / }).first().click();
 
   // --- Commander loadout -------------------------------------------------------
   await page.waitForSelector('[data-screen="loadout"]', { timeout: 10_000 });
@@ -172,15 +175,49 @@ try {
   for (const label of [/Escort flotilla/, /Shore-base loadout/]) {
     if (!(await page.getByText(label).count())) throw new Error(`prep panel missing: ${label}`);
   }
-  // Technology-gated procurement: an ungated module (Reinforced Hull) offers a
-  // price; a gated one (Hydrophone) names its missing technology instead —
-  // the draft unlocks, cash equips, and neither substitutes for the other.
-  const hydroCard = page.locator('.module-card', { hasText: 'Hydrophone' }).first();
-  const hydroBtn = await hydroCard.locator('button').first().textContent();
-  if (!/Requires technology/i.test(hydroBtn ?? '')) {
-    throw new Error(`hydrophone should be technology-gated, button says: ${hydroBtn}`);
+  // Equipment-gated procurement: the loadout shows exactly what the run HOLDS,
+  // because equipment is no longer bought — the draft delivers units and the
+  // loadout fits them. So a module card appears if and only if there is a unit
+  // in the locker. Checked against the saved run rather than against a
+  // hard-coded module, since which unit round one delivers is a roll.
+  const held = await page.evaluate(() => {
+    const raw = window.localStorage.getItem('straitwatch.run.v1');
+    if (!raw) return null;
+    const run = JSON.parse(raw).run;
+    return {
+      cargo: Object.entries(run.moduleStock?.cargo ?? {})
+        .filter(([, n]) => n > 0)
+        .map(([id]) => id),
+    };
+  });
+  if (!held) throw new Error('no saved run to check the loadout against');
+  const cargoCards = await page.locator('.module-card').allTextContents();
+  const MODULE_NAMES = {
+    reinforcedHull: 'Reinforced Hull',
+    fireSuppression: 'Fire-Suppression',
+    mineSonar: 'Mine-Detection Sonar',
+    selfDefense: 'Self-Defense Interceptor',
+    missileWarning: 'Missile-Warning Receiver',
+    hydrophone: 'Hydrophone',
+    thermalImaging: 'Thermal/Radar Imaging',
+    flak: 'Anti-Air Flak',
+    antiBoarding: 'Anti-Boarding',
+    compartmentalization: 'Compartmentalization',
+  };
+  for (const id of held.cargo) {
+    const name = MODULE_NAMES[id];
+    if (name && !cargoCards.some((tx) => tx.includes(name))) {
+      throw new Error(`holding a ${name} unit but its loadout card is missing`);
+    }
   }
-  console.log('prep loadout panels OK (escort/base slots + technology gating)');
+  // Nothing can have drafted a hydrophone by round two, so it must be absent —
+  // an unheld item is not displayed at all, rather than shown with a label.
+  if (!held.cargo.includes('hydrophone') && cargoCards.some((tx) => tx.includes('Hydrophone'))) {
+    throw new Error('no Hydrophone unit is held, so its card should not be rendered');
+  }
+  console.log(
+    `prep loadout panels OK (escort/base slots; ${held.cargo.length} cargo unit(s) held and shown)`,
+  );
   await page.screenshot({ path: `${SHOT_DIR}/06-prep-round2.png` });
 
   // Reload → save restores prep phase.

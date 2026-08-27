@@ -2,23 +2,88 @@
 // data files — never hard-coded inside sim logic — so playtesting iterations
 // are config edits, not code changes.
 
+/**
+ * The strait. DOUBLED in both dimensions from 2000x1000.
+ *
+ * The old world was exactly the shape of a phone in landscape, so the camera's
+ * fit-zoom showed all of it and there was nowhere to pan TO — the map was the
+ * screen. Twice the water gives the fight somewhere to happen: room to work a
+ * flank, room for the convoy to be strung out with parts of it off screen, and
+ * a reason for the zoom control to exist. The shores are deeper than a straight
+ * doubling as well, so neither coast is a thin strip at the edge of the frame.
+ *
+ * Note this only produces panning room in combination with the camera's minimum
+ * zoom (see camera.ts): a bigger world at a fit-to-window floor is not a bigger
+ * map, it is the same map drawn smaller.
+ */
 export const WORLD = {
-  width: 2000,
-  height: 1000,
+  width: 4000,
+  height: 3375,
   /** Ships are delivered once past this x. */
-  deliverX: 1940,
+  deliverX: 3880,
   /** Convoy spawns with its lead ships around this x. */
-  spawnX: 40,
-  /** Y centers of the three transit lanes (north / center / south). */
-  lanes: [340, 520, 700],
-  /** Hostile shore occupies the top of the map; launch sites sit along it. */
+  spawnX: 80,
+  /** THE COASTLINES — of the DEFAULT map, the strait.
+   *
+   *  These are no longer read by the sim. They are the source the `strait`
+   *  entry in geography.ts is authored from, and the sim asks the region's
+   *  geography instead — which may bend a coast, narrow the water or curve the
+   *  lanes (see docs/design/map-topology.md). They stay here, rather than
+   *  moving wholesale into geography.ts, so the default map's numbers still
+   *  live in one place next to the world they size.
+   *
+   *  These exist because the renderer and the sim each used to carry their own
+   *  idea of where the land was — the friendly coast was drawn at
+   *  `height - 100` while shore batteries were placed at `baseLine`, and the
+   *  two agreed only by luck. When the map was resized they stopped agreeing
+   *  and the batteries stood 140 units out to sea. One number each, used by
+   *  both, so that cannot happen again.
+   *
+   *  Water runs between them; land is above hostileShoreY and below
+   *  friendlyShoreY. Both coasts undulate by +/- shoreWave around these lines,
+   *  so anything that must sit ON land needs that much clearance. */
+  /** DEEPENED so each shore is about as thick as the strait is wide, rather
+   *  than the third of it they were.
+   *
+   *  This is not scenery. The strait is a horizontal band across the middle of
+   *  the screen, so when the camera is on the convoy the top and bottom of the
+   *  viewport are exactly where the HUD sits — and with a thin shore, missiles
+   *  inbound from the hostile coast spent their first seconds underneath the
+   *  status bar. Deep land means there is somewhere to pan to that puts the
+   *  launch sites in clear view. The camera is NOT expected to show all of it
+   *  at once; it is buffer, and buffer only has to exist to be useful. */
+  hostileShoreY: 1125,
+  friendlyShoreY: 2250,
+  /** Amplitude of the drawn coastline's meander, either side of the lines
+   *  above. Anything placed on land must clear it. */
+  shoreWave: 45,
+  /** Y centers of the three transit lanes (north / center / south), spread
+   *  across the water between the two coasts. */
+  lanes: [1405, 1685, 1965],
+  /** Hostile shore: launch sites sit along it, well inland of the coastline so
+   *  they read as emplacements on land rather than rafts. */
   launchSites: [
-    { x: 350, y: 70 },
-    { x: 900, y: 55 },
-    { x: 1450, y: 70 },
+    { x: 700, y: 985 },
+    { x: 1800, y: 955 },
+    { x: 2900, y: 985 },
   ],
-  /** Friendly shore (bottom): shore batteries launch interceptors from here. */
-  baseLine: 920,
+  /** Friendly shore: shore batteries launch interceptors from here. Inland of
+   *  friendlyShoreY by more than shoreWave, so a battery is never in the sea at
+   *  any point along the coast. */
+  baseLine: 2385,
+  /** The world size every hard-coded SPRITE pixel size is authored against.
+   *
+   *  The renderer draws the world at a base scale and magnifies it with one
+   *  canvas transform, so a hull length written as "10 pixels" is really
+   *  10 / baseScale world units — which means the base scale decides how big a
+   *  ship IS out on the water. When that base was simply "fit the whole world
+   *  in the window", growing the world silently grew every sprite with it:
+   *  deepening the shores took a third off the fit zoom, every hull swelled
+   *  half again in world units while the lanes stayed put, and the convoy
+   *  read as oversized ships crammed into a shrunken strait. Anchoring the
+   *  base scale to THIS fixed reference instead means land can be added
+   *  forever and a ship stays the size a ship has always been. */
+  spriteReference: { width: 4000, height: 2250 },
 } as const;
 
 export const SIM = {
@@ -33,14 +98,17 @@ export const SIM = {
    *  broke that assumption: a large convoy now spends minutes just arriving,
    *  and a flat cap silently drowned the tail of it — measured, one loss in
    *  five across a sweep became "lost at sea" with nothing having shot at it. */
-  maxTransitTime: 900,
+  maxTransitTime: 1500,
   /** Floor on a round's time limit, so a tiny convoy still gets a real round. */
-  minTransitTime: 260,
+  minTransitTime: 430,
   /** Time allowed AFTER the last hull enters for the convoy to clear the
    *  strait. The crossing itself is about 90 seconds for the slowest class;
    *  the rest is room for the avoidance, give-way and mine-dodging that a
-   *  contested transit actually involves. */
-  transitCrossAllowance: 175,
+   *  contested transit actually involves.
+   *
+   *  SCALED with the world: the strait is twice as wide, so the crossing itself
+   *  is about 180 seconds for the slowest class rather than 90. */
+  transitCrossAllowance: 350,
 } as const;
 
 /** Convoy entry pacing.
@@ -147,12 +215,50 @@ export const NAV = {
    *  limit so the course change reads as a ship altering course. */
   escortSpeed: 50,
   escortArrive: 16,
-  escortSepBuffer: 26,
-  /** Forward distance over which an escort watches for a hull in its way. */
-  escortLookAhead: 120,
+  /** How far an escort considers merchant hulls at all.
+   *
+   *  Separate from the merchants' own `perception` (150) on purpose. The escort
+   *  now looks 240 units ahead and holds a ~102-unit bubble, and a neighbour
+   *  loop that culled at 150 would have thrown away the far half of both before
+   *  the steering ever saw it — the widened numbers would have quietly done
+   *  nothing. Raising the shared constant instead would have pulled every
+   *  merchant into considering far more neighbours than its formation-keeping
+   *  needs, which is both slower and a change to convoy behaviour nobody asked
+   *  for. */
+  escortPerception: 280,
+  /** Clear water an escort holds around a merchant hull, on top of the two
+   *  hull radii — the "bubble" the two ships keep between them.
+   *
+   *  WIDENED from 26, which put the bubble at 15 + 11 + 26 = 52 units against a
+   *  cargo hull, barely more than two hull radii. An escort only began to react
+   *  once it was already close aboard, so the correction it then had to make
+   *  was a hard one, and it read as a ship noticing a merchant late rather than
+   *  keeping out of her way. At 76 the bubble is ~102 units, about twice the
+   *  old one: the two ships start easing apart while there is still room to do
+   *  it gently. Paired with the squared falloff in the steering loop, which is
+   *  what keeps a wider bubble from turning into a mushy one — see
+   *  escortSepFalloff. */
+  escortSepBuffer: 76,
+  /** How sharply the separation force builds as the bubbles overlap.
+   *
+   *  1 is the old linear ramp: at the edge of the bubble it is already pushing
+   *  meaningfully, which across a bubble this wide would have the escort
+   *  drifting off its ordered track any time it came near the convoy at all.
+   *  Squaring it makes first contact between the bubbles a nudge and deep
+   *  overlap an emphatic shove — the response gets more severe the closer they
+   *  get, rather than being uniformly assertive across the whole radius. */
+  escortSepFalloff: 2,
+  /** Forward distance over which an escort watches for a hull in its way.
+   *
+   *  DOUBLED from 120 alongside the bubble above: the point of seeing further
+   *  is to start the alteration of course earlier, and a standoff distance the
+   *  escort cannot see far enough to plan for just becomes a late shove. */
+  escortLookAhead: 240,
   /** Lateral half-width of the escort's "in my way" corridor, added to hull
-   *  radii. */
-  escortLaneBand: 16,
+   *  radii. Widened less than the look-ahead was: this decides which hulls
+   *  count as obstacles at all, and opening it too far has the escort altering
+   *  course for merchants it was always going to pass clear of. */
+  escortLaneBand: 30,
   escortGoalWeight: 1.0,
   escortAvoidWeight: 2.0,
   escortSepWeight: 1.6,
@@ -200,11 +306,31 @@ export const NAV = {
    *  keeps the ship committed to a course for long enough to look like it meant
    *  it, and still lets a real change through inside half a second. */
   escortSteerSmoothing: 0.35,
+  /** Minimum length of the smoothed steering vector that counts as a steering
+   *  COMMAND. Below it the escort holds its heading.
+   *
+   *  A real command is order-of-1 long (the goal term alone is weighted 1.0).
+   *  What this rejects is the residue left once the escort is on station and
+   *  the goal force is spent — a hundredth of that, pointing wherever the
+   *  nearest hull last moved. Direction is meaningless at that magnitude, and
+   *  atan2 does not care: it returns an angle just as confidently for a vector
+   *  0.003 long, and the ship chases it at full rudder. */
+  escortSteerDeadband: 0.25,
   /** Once an escort has committed to passing a particular hull on a particular
    *  side, it holds that choice until the hull is this far outside the corridor
    *  it was avoiding — the hysteresis that stops the side flipping every tick
    *  as the geometry crosses dead ahead. */
   escortPassCommitSlack: 40,
+  /** Seconds a passing commitment survives with nothing in the corridor before
+   *  it is released.
+   *
+   *  The commitment used to be torn down the first tick the corridor came up
+   *  empty. A hull skimming the edge of it drops out for a tick or two at a
+   *  time, so the side was re-decided on every re-entry and could come back the
+   *  other way — a rudder reversal produced by bookkeeping rather than by
+   *  anything in the water. Long enough to ride out that flicker, short enough
+   *  that a hull genuinely left behind stops steering the ship. */
+  escortPassReleaseSeconds: 0.6,
   /** Give-way to a crossing escort.
    *
    *  An escort cutting through the column used to be a bulldozer: it drove
@@ -243,6 +369,10 @@ export const NAV = {
 } as const;
 
 export const COMBAT = {
+  /** Clear water kept between any hull and the coastline, on top of the shore's
+   *  meander. Ships look wrong nosed right up against the beach even when they
+   *  are technically afloat. */
+  shoreClearance: 26,
   missile: { speed: 60, damage: 34, hitRadius: 30, splashRadius: 55, splashDamage: 14 },
   guided: {
     speed: 50,
@@ -280,10 +410,23 @@ export const COMBAT = {
    *  and a boat left alive keeps earning. That is why they need their own
    *  weapon: interceptors point at the sky and cannot help here at all. */
   attackBoat: {
-    /** MAX speed. Faster than any cargo hull so a boat can always close and
-     *  hold station, but far slower than a missile — there is time to shoot
-     *  back. A boat accelerates and turns into this rather than snapping to it. */
-    speed: 64,
+    /** MAX speed, per variant.
+     *
+     *  SLOWED from 64. It only needs to beat the fastest merchant (a freighter
+     *  at 34) by enough to close and hold station; at 64 it was nearly twice
+     *  that and read as a speedboat tearing across the strait rather than a
+     *  craft working a convoy. A boat that crosses the screen in a couple of
+     *  seconds also gives the player almost no run-in to shoot at, which is
+     *  exactly what the physical-navigation rework was for. 42 is a quarter
+     *  clear of the fastest hull — still able to run one down and take station,
+     *  but on the same order as the ships it is hunting.
+     *
+     *  ROCKET is slower still: a hull carrying a rack is a heavier, wider
+     *  platform than the small-arms skiff, and it does not need the same
+     *  turn of speed to make its attack — it opens up from well outside
+     *  standoff instead of closing hard. Reads as a lobbing platform rather
+     *  than a speedboat. */
+    speed: { smallArms: 42, rocket: 30, boarding: 42 } as Record<string, number>,
     /** Acceleration limit (units/s²) and turn-rate limit (radians/s).
      *
      *  These two are what make a boat read as a BOAT. The old model set the
@@ -312,9 +455,15 @@ export const COMBAT = {
     /** Minimum angular spacing (radians) between two boats stationed on the
      *  same hull when their stations are assigned. */
     stationSpacing: 0.9,
-    /** Max range at which a gun boat opens fire. Comfortably inside deck-gun
-     *  reach (medium tier 420) so fielding the counter always gets a shot. */
-    engageRange: 190,
+    /** Max range at which a gun boat opens fire, per variant. Comfortably
+     *  inside deck-gun reach (medium tier 420) so fielding the counter always
+     *  gets a shot.
+     *
+     *  ROCKET opens up from much farther out — that is the point of a rack
+     *  over a machine gun. It holds the same proportion of standoff-to-range
+     *  as small arms (118/190 ≈ 0.62 → 158/260 ≈ 0.61), so it still fires
+     *  from its standoff ring rather than needing to close first. */
+    engageRange: { smallArms: 190, rocket: 260, boarding: 190 } as Record<string, number>,
     /** Contact radius for the boarding grapple. */
     boardRange: 46,
     /** Boat weapons: every point of cargo damage this branch deals now arrives
@@ -372,16 +521,23 @@ export const COMBAT = {
    *  pointed at one. The answers are counter-battery suppression and simply not
    *  sailing where the guns reach.
    *
-   *  RANGE IS THE WHOLE DESIGN. The lanes sit 270 / 450 / 630 from the hostile
+   *  RANGE IS THE WHOLE DESIGN. The lanes sit 420 / 700 / 980 from the hostile
    *  shore, so a coastal gun reaches only the near lane and ranging artillery
    *  only the near two. Lane choice is therefore a real decision rather than a
    *  cosmetic one, and it is also where the T2 nearest-to-shore doctrine this
-   *  branch grants comes from — the gun's reach IS the doctrine. */
+   *  branch grants comes from — the gun's reach IS the doctrine.
+   *
+   *  RE-DERIVED when the strait was doubled. These are not scaled numbers, they
+   *  are the ladder rebuilt against the new lane offsets: every one has to sit
+   *  in the gap between two lanes, and the gaps moved. Scaling them by 2 would
+   *  have been close enough to look right and wrong at the edges, which for a
+   *  branch whose entire identity is reach is the one thing that must not
+   *  happen. */
   artillery: {
     /** Direct fire: fast enough that a shell cannot be outrun, slow enough to
      *  read as a tracer crossing the water. */
     shellSpeed: 430,
-    range: { coastalGun: 330, ranging: 520, rollingBarrage: 330 },
+    range: { coastalGun: 540, ranging: 830, rollingBarrage: 540 },
     /** Per the design's times-to-sink on a 100hp hull: ~6 coastal hits, ~4
      *  ranging hits. A barrage fires coastal-weight shells in bulk.
      *
@@ -471,6 +627,17 @@ export const COMBAT = {
    *  safe — the enemy won't fire on a hull about to score (a missile could
    *  never arrive in time), so misses aren't wasted chasing delivered ships. */
   deliverSafeMargin: 90,
+  /** How far from the delivery line a hull has to be before an ATTACK BOAT
+   *  will commit to it.
+   *
+   *  Much deeper than deliverSafeMargin, and for a different reason. A missile
+   *  is discounted from chasing a nearly-home ship because it could not arrive
+   *  in time; a boat has to sail there, take station and then work the hull
+   *  over several bursts, so it needs far more of the map left to do it in.
+   *  Without this the boats chased the leaders — the hulls closest to scoring
+   *  and therefore usually the ones nearest the front of the convoy — and
+   *  followed them clean off the end of the map for nothing. */
+  boatCommitMargin: 520,
   /** Enemy target-selection skill ramp: skill = clamp((round - start)/span).
    *  Skill 0 = near-random (value-weighted only); skill 1 = heavily favors
    *  closer and lower-health ships. */
@@ -536,13 +703,103 @@ export const COMBAT = {
    *  probability modifier: every pass either kills something or misses in
    *  plain sight. Charges/strafe radius/loiter are tier-resolved (ability
    *  paths); the ballistics live here. */
+  /** Deck gun presentation. The gun's damage, range and accuracy live in the
+   *  counter catalogue with the rest of the branch; this is only how long a
+   *  fired round is drawn crossing the water. Purely visual — see GunShot. */
+  deckGunShell: {
+    /** Seconds a round takes to reach its aim point, whatever the range. Held
+     *  constant rather than derived from a muzzle velocity because the point is
+     *  legibility: a shell at a boat 200 units away and one at 600 should both
+     *  be visible for long enough to see. */
+    flightSeconds: 0.42,
+  },
   warthog: {
-    /** Cruise speed of the jet. */
-    planeSpeed: 240,
-    /** Orbit angular speed (radians/second) of the wheel it holds on station. */
-    orbitRate: 1.1,
-    /** Radius the jet flies around the station center. */
-    orbitRadius: 80,
+    /** Cruise speed of the jet. RAISED a quarter from 240: it is a strike
+     *  aircraft crossing a strait, and at the old speed the run-in read as a
+     *  cruise rather than an attack. */
+    planeSpeed: 300,
+    /** Half-angle (radians) of the gun cone ahead of the nose.
+     *
+     *  The jet used to hold a wheel over a point and shoot anything inside a
+     *  circle drawn round it, which is a loiter, not a gun run: direction meant
+     *  nothing and the player's only input was where to park it. Targets are
+     *  now taken from a cone off the nose, so the LINE the player draws is the
+     *  weapon — what lies along it gets strafed, what sits off to the side does
+     *  not, and lining the run up is the skill. */
+    coneHalfAngle: 0.42,
+    /** Multiplier on that half-angle with the Wide Strafe Pattern node. */
+    wideConeMult: 1.7,
+    /** How far ahead of the nose the gun reaches. */
+    coneRange: 300,
+    /** Distance beyond the map edge the jet enters from, so the run-in starts
+     *  off screen and the aircraft arrives already established on its bearing.
+     *
+     *  Measured from the WORLD BOUNDARY, not from the drawn line. It used to be
+     *  measured back from the line's near end, which meant a line drawn in the
+     *  middle of the strait put the aeroplane 220 units before it — still well
+     *  inside the map, so the jet simply appeared out of nothing a moment
+     *  before it started shooting. An aircraft that materialises where the
+     *  player pointed is a cursor, not an aircraft: it now flies in from off
+     *  the map along the bearing, however short the drawn line was. */
+    offMapMargin: 220,
+    /** How fast the jet swings its nose through the turn between passes
+     *  (radians/second). Slow enough to draw a banked arc rather than a
+     *  pirouette — the turn is a piece of the aesthetic, not just a state
+     *  change. DOUBLED from 0.8, which halves the turn radius (v/ω, 375 →
+     *  ~188 units at 300 units/s): the old arc swung so wide the jet spent
+     *  longer wandering back than attacking, and read as lost rather than
+     *  re-attacking. */
+    turnRate: 1.6,
+    /** How far ahead along the track the turning jet aims when regaining it.
+     *  Short and it cuts the corner and overshoots; long and the arc unwinds
+     *  into a lazy drift back rather than reading as a turn. Re-derived with
+     *  the tighter turn: scales with the turn radius, so it halves too. */
+    regainLead: 125,
+    /** Lateral error at which the aircraft counts as back on the line. */
+    regainTolerance: 40,
+    /** When the jet breaks off to turn, expressed in SECONDS of flight rather
+     *  than in units of distance — one buffer, measured two ways, so the break
+     *  happens at the same point in the run whichever way the player drew it:
+     *
+     *    • it has been over LAND this long (having crossed the water first), or
+     *    • it is this long from the left or right edge of the world.
+     *
+     *  A distance margin could not do this job. The strait runs east-west, so a
+     *  run drawn across it ends over land and a run drawn along it ends at the
+     *  map's edge — two completely different geometries that a single distance
+     *  measures inconsistently. Time-to-the-boundary is the thing the player
+     *  actually perceives, and it reads the same on both. */
+    turnBufferSeconds: 0.5,
+    /** Room the REVERSAL itself needs, in turn radii, on top of that buffer.
+     *
+     *  A turn is not free in the along-track direction. The jet reverses onto
+     *  the line rather than merely onto the reciprocal heading (a flat 180
+     *  rolls out a full diameter off to one side and the return pass misses
+     *  everything), and buying that lateral correction costs distance BACK
+     *  along the track. Measured, about three turn radii of it.
+     *
+     *  Left unaccounted for, the whole of that cost is taken out of the far end
+     *  of the player's line: breaking off 0.5s past the shore rolled the jet
+     *  out ~380 units INSIDE the water, and the return pass simply skipped that
+     *  stretch — measured, a mine sitting in it survived a sortie that flew
+     *  directly over it twice. Adding the arc's own footprint to the break-off
+     *  point puts the roll-out back at the buffer, so the second pass covers
+     *  the same water the first one did.
+     *
+     *  3.4, not the 3.0 the arc itself measures, so the roll-out lands just
+     *  OUTSIDE the water rather than 60 units inside it: the return pass should
+     *  be established on the line before it reaches the fighting area, not
+     *  within it. */
+    turnArcRadii: 3.4,
+    /** Shortest run-in line that counts as a gun run. Two points on top of one
+     *  another give the cone no direction to point along, so a stray tap can
+     *  never burn a sortie on a zero-length run. */
+    minRunLength: 90,
+    /** Rounds drawn in the burst streak for one engagement. A 30mm rotary
+     *  cannon fires far more than this in a second; what matters is that the
+     *  player sees a STREAM of tracer rather than a single line, so the pass
+     *  reads as gunfire. */
+    burstRounds: 14,
     /** Seconds between gun runs while on station. */
     fireInterval: 1.15,
     /** Damage one burst does to an attack boat. Mines are destroyed outright —
@@ -553,9 +810,13 @@ export const COMBAT = {
     /** How long a burst stays drawn on the water, in seconds. Purely visual —
      *  the damage lands the instant the burst is fired. */
     burstSeconds: 0.32,
-    /** Water band the station center must sit inside (off both shores/launchers). */
-    waterYMin: 150,
-    waterYMax: 860,
+    // The water band a station centre must sit inside used to be a pair of
+    // hard-coded y values here. It is the region's geography now
+    // (`airWaterTop` / `airWaterBottom`), because on a map with a bulging coast
+    // there is no single pair of numbers that describes it — and a run-in
+    // validated against the wrong band is an aeroplane cleared to fly into a
+    // headland. Aircraft get closer to the beach than hulls do; that clearance
+    // lives in geography.ts.
   },
   /** Scan plane: flies down the player-selected lane charting mines in THAT lane
    *  only, then leaves. Charges/reveal radius are tier-resolved; the charted
@@ -624,24 +885,33 @@ export const ECONOMY = {
   /** Cash per point-defense round, and how many a single purchase buys. */
   pdAmmoCost: 12,
   pdAmmoPerBuy: 3,
-  /** Module refits price on OWNED hulls of the class (exploit-proof — see
-   *  moduleCost), but a flat per-ship rate would make a late-campaign refit
-   *  balloon into many thousands of cash as the fleet grows past 30+ hulls.
-   *  Ships up to this count are billed at the full per-ship rate; ships beyond
-   *  it are billed at moduleCostTaperRate of that rate, so a big fleet can
-   *  still afford SOME upgrades without every refit consuming the whole
-   *  treasury. */
-  moduleCostSoftCap: 12,
-  moduleCostTaperRate: 0.25,
   baseCost: 300,
   maxBases: 4,
   escortCost: 600,
   maxEscorts: 3,
-  warthogUnlockCost: 150,
-  scanUnlockCost: 150,
-  sonarUnlockCost: 160,
-  smokeUnlockCost: 160,
-  hardenedUnlockCost: 160,
+  /** Per-use cost of an A-10 sortie, a scan pulse and a smoke canister.
+   *
+   *  The CAPABILITIES are free and present from round one — commissioning them
+   *  used to cost 150-160 each, which was the same IOU the module economy has
+   *  now shed: the technology said you had an A-10 and the bank said you did
+   *  not. What you buy is the ORDNANCE, every round, and that is the decision
+   *  worth keeping: an ability that refilled for free would be a question about
+   *  timing and never about cost.
+   *
+   *  Priced against what they do. A sortie is two firing passes at 26 damage
+   *  and kills mines outright, so it sits near an escort's magazine refill; a
+   *  scan pulse charts one lane, which is cheaper and more situational; a smoke
+   *  cloud protects a cluster of hulls for a while, between the two. */
+  warthogSortieCost: 95,
+  scanPulseCost: 55,
+  /** Deck-gun shells: cash per round, and how many one purchase buys. The gun
+   *  is no longer free to fire — a magazine is bought in Preparation like the
+   *  interceptor stock. Priced against work done: at quarter damage a
+   *  small-arms boat takes roughly 15 hits to sink, so a kill runs ~$40 of
+   *  shells — between an interceptor kill (~$13 for a far cheaper threat) and
+   *  an A-10 sortie ($95 for two engagements). Unused shells carry over. */
+  gunShellCost: 2,
+  gunShellsPerBuy: 12,
   /** Cash per hp of hull repair. */
   repairCostPerHp: 0.6,
 } as const;
@@ -656,12 +926,54 @@ export const CAMPAIGN = {
   strongRoundsForGrowth: 2,
   startConfidence: 60,
   maxConfidence: 100,
-  /** Confidence deltas. */
-  confidenceGreatRound: 8, // >= 90% delivered
-  confidenceGoodRound: 5, // >= 75% delivered
-  confidenceBadRound: -5, // < 60% delivered
-  confidencePerLoss: -3,
-  confidenceLossCap: -12, // max penalty from losses in one round
+  /** Confidence deltas.
+   *
+   *  Confidence follows the SHARE of the convoy that arrives, not the COUNT
+   *  that does not. The first build rewarded a delivered *fraction* with a flat
+   *  bonus (max +8) and punished each lost *hull* (-3, capped -12), which
+   *  scaled the two halves differently — so the same performance cost more
+   *  confidence the bigger the convoy got. Measured over 88 campaigns, at an
+   *  identical 80-90% delivery a sub-20-hull convoy averaged -3.6 confidence
+   *  and a 28+ hull convoy -12.1. Capacity is both the progression and the
+   *  scoring stat, so the player was punished for advancing, and every delivery
+   *  band below 90% bled confidence: -9.4 at 80-90%, -20.0 at 70-75%. SEESAW.md
+   *  calls 60-90% the HEALTHY band; the game made all of it terminal and
+   *  demanded ~90%+ forever, which is the "pinned at 100%" state the north star
+   *  explicitly rejects. Every campaign in the sweep died of it.
+   *
+   *  A single rate-based curve fixes both halves at once: it is size-neutral by
+   *  construction, and its break-even sits inside the healthy band. */
+  /** Delivered fraction that leaves confidence unchanged. Below it the round
+   *  costs confidence, above it the round earns some. Sits inside SEESAW.md's
+   *  60-90% healthy band, near the top — holding station should take a good
+   *  round, but not a perfect one.
+   *
+   *  RAISED from 0.78. At 0.78 a round that put 22% of the convoy on the
+   *  seabed was confidence-NEUTRAL, and a hand-played log showed exactly what
+   *  that bought: rounds delivering 77% and 73% — seven and eight hulls lost —
+   *  left confidence pinned at 100 for both. Confidence was not a factor in
+   *  that run because nothing short of catastrophe could move it.
+   *
+   *  BRACKETED. The first arm went to 0.86 and overshot badly: measured across
+   *  96 campaigns, mean delivery is 84.4%, so break-even sat ABOVE the
+   *  achievable operating point and the average round bled confidence every
+   *  time it sailed. Confidence deaths went 0% → 39% and became the dominant
+   *  failure system, ahead of the quota it is supposed to sit beside. Same
+   *  class of error this file already records for the quota ratchet: a failure
+   *  bar has to stay inside the band the game calls healthy, and "inside the
+   *  band" must be checked against MEASURED delivery, not against the band's
+   *  nominal edges. 0.82 sits above the old free ride and below the operating
+   *  point, so a defended round still earns and a sloppy one still pays. */
+  confidenceBreakEven: 0.82,
+  /** Confidence per unit of delivered fraction away from break-even. At 100%
+   *  delivered this reaches the ceiling below; at ~8% it reaches the floor. */
+  confidenceDeliverySwing: 36,
+  /** Ceiling on what one round's delivery can earn (hit at 100% delivered),
+   *  and floor on what it can cost. The floor is deliberately wider than the
+   *  ceiling: a disaster should outweigh a triumph, and confidenceRoundFloor
+   *  still bounds the round as a whole. */
+  confidenceDeliveryCeiling: 8,
+  confidenceDeliveryFloor: -25,
   /** Extra confidence lost per hull TAKEN by a boarding party, on top of the
    *  ordinary loss penalty and outside its cap. A captured ship is a worse
    *  outcome than a sunk one — the cargo is in enemy hands rather than on the
@@ -669,7 +981,21 @@ export const CAMPAIGN = {
    *  and push through" from answering the boarding node (ENEMY_ATTACKS.md). */
   confidencePerCapture: -7,
   confidenceCaptureCap: -21,
-  confidenceQuotaMet: 10,
+  /** Confidence lost per ESCORT sunk. Warships were free to lose: a logged
+   *  round that lost two escorts and abandoned a crew still finished at 100,
+   *  because nothing in the model looked at the screen at all. It is a per-hull
+   *  count rather than a rate because the flotilla is three ships however big
+   *  the convoy grows — there is no size to be neutral about. */
+  confidencePerEscortLost: -4,
+  /** LOWERED from 10, then part-restored to 8. The quota bonus was landing on
+   *  top of disaster rounds and turning them positive — meeting a shipping
+   *  window while losing a quarter of the convoy is not a round the consortium
+   *  is pleased about. But cutting the number was the wrong instrument and
+   *  double-counted the fix: confidenceCreditMitigation now stops the bonus
+   *  rescuing a losing round directly, so the bonus itself only needed to stop
+   *  being the largest single term in the model. On a GOOD round it still pays
+   *  nearly what it always did, which is the round it is for. */
+  confidenceQuotaMet: 8,
   /** Extra confidence lost per civilian crew left in the water (a survivor
    *  area that was never rescued). Rescue prevents the penalty entirely —
    *  that is the whole tactical bargain of diverting an escort to them.
@@ -680,8 +1006,27 @@ export const CAMPAIGN = {
    *  drag and measurably broke the game — a sweep that finished 8 of 9
    *  campaigns at the round cap beforehand collapsed 7 of 9 on confidence
    *  afterwards. Halving it restores the intended pressure while keeping the
-   *  beat on every loss. PROVISIONAL: tune through play. */
-  confidencePerCrewLost: -2,
+   *  beat on every loss.
+   *
+   *  RATE-SCALED for the same reason the delivery term is (see above): as a
+   *  per-crew count it carried the identical convoy-size flaw, adding roughly
+   *  -5 to a big convoy's round against -2.6 to a small one at equal
+   *  performance. Expressed against the convoy sailed, abandoning a quarter of
+   *  your crews costs the same wherever the fleet has grown to.
+   *
+   *  RAISED from -20. At -20 the worst round in a hand-played log — fourteen
+   *  hulls down and every one of those crews left in the water — paid -9.3 for
+   *  the abandonment, less than half of what one missed quota window used to
+   *  cost. Drowning half a convoy's crews has to be the loudest number on the
+   *  debrief, not a rounding error beside the delivery curve.
+   *
+   *  BRACKETED at -45 then -35. Sweeps abandon ~60% of crews as a matter of
+   *  course, so this is a RECURRING drag rather than an occasional one, and at
+   *  -45 it compounded with the break-even overshoot into a death spiral.
+   *  Still 1.75x the old value, and the permanent half of the crew penalty now
+   *  lives in the confidence CEILING, where a single round's floor cannot
+   *  swallow it. */
+  confidenceCrewLostRate: -35,
   /** Confidence RECOVERED per crew brought home. Deliberately smaller than
    *  the abandonment penalty: bringing the crew back does not undo losing the
    *  ship, but visibly rewards the diversion — and gives a player having a
@@ -690,6 +1035,48 @@ export const CAMPAIGN = {
    *  swallow it, which is exactly the round it matters most in. Rescue is the
    *  only way confidence moves upward inside a round other than delivering. */
   confidencePerCrewRescued: 1,
+  /** Ceiling on the rescue credit in one round. The abandonment penalty above
+   *  is now rate-scaled while this credit stays per-crew — deliberately, so a
+   *  diversion pays a predictable, legible amount — but without a ceiling a
+   *  catastrophic round on a large convoy could bank more confidence from
+   *  rescues than the sinkings cost, making a disaster profitable. */
+  confidenceRescueCap: 8,
+  /** The most of a LOSING round's damage the CREDITS may cancel between them —
+   *  crews brought home and a shipping window met.
+   *
+   *  Without this cap either credit could turn a disaster into a gain, and in a
+   *  hand-played log both did: a round that lost seven of thirty hulls but
+   *  rescued six crews came out at +1.3 confidence, and a round that lost two
+   *  escorts and abandoned a crew was carried back to level by the quota bonus
+   *  landing on top of it. Both must MITIGATE and neither may profit, so
+   *  together they can cancel only a share of what the round otherwise cost.
+   *  Going back for the crew still visibly pays; it just cannot pay more than
+   *  the sinking cost, and a worse round stays worse however much is done
+   *  about it. */
+  confidenceCreditMitigation: 0.7,
+  /** THE CONFIDENCE CEILING — the headline rule.
+   *
+   *  Confidence tops out at maxConfidence only for an operation that has never
+   *  lost a ship or a crew. Every hull on the seabed and every crew left in the
+   *  water lowers the highest number the consortium will give you, permanently,
+   *  for the rest of the run. That is what makes the bar mean something: it is
+   *  a RECORD, not a mood.
+   *
+   *  Read against the run's cumulative hulls launched, so it is size-neutral
+   *  like everything else here: losing a tenth of everything you have ever
+   *  sailed caps you at 80 whether the convoy is 20 hulls or 45.
+   *
+   *  These are ceiling points per unit of cumulative share, so 200 means each
+   *  1% of hulls lost costs 2 points of ceiling. Crews drag half again as hard
+   *  as hulls: a sinking is the sea's doing, leaving the crew in it is yours. */
+  confidenceCeilingLossDrag: 200,
+  confidenceCeilingCrewDrag: 300,
+  /** Floor under the ceiling. A terrible record must not strangle a run into
+   *  something unrecoverable — defeat is confidence reaching ZERO, and that has
+   *  to stay a thing the player does round by round rather than a wall the
+   *  ledger builds behind them. Whatever the record, the bar can always be
+   *  climbed back to here. */
+  confidenceCeilingFloor: 40,
   /** Floor on ordinary confidence lost in ONE round (captures excluded).
    *
    *  A bad round (-5), the loss cap (-12) and a missed quota (-18) all describe
@@ -734,12 +1121,23 @@ export const CAMPAIGN = {
   quotaDeliveryFraction: 0.7,
   quotaDifficultyStart: 1.0,
   quotaDifficultyMin: 0.65,
-  quotaDifficultyMax: 1.6,
+  /** Ceiling on the ratchet — LOWERED from 1.6, which was arithmetic the game
+   *  could not honour: the window demands fraction × difficulty of the SAILED
+   *  convoy value, so 1.6 asked for 112% of what was put to sea and even the
+   *  1.3s reachable mid-run asked for more than the healthy delivery band's
+   *  ceiling. Measured after the enemy-budget raise: six of twelve personas
+   *  quota-failed at 80-84% DELIVERED — killed by the bookkeeping while
+   *  fighting well — and with region completion now waiting for the open
+   *  window, that unwinnable bar was the last thing every extended run met.
+   *  1.15 tops the demand out at ~80.5% of sailed value: a real bar a sloppy
+   *  run misses and a defended one clears. */
+  quotaDifficultyMax: 1.15,
   /** Difficulty ratchets up on an easy clear (big surplus) — scaled by how far
-   *  over the target the window landed, capped at this step. There is no
-   *  downward ratchet any more: under the roguelite rules a missed quota ends
-   *  the regional run outright rather than easing the next window. */
-  quotaDifficultyUpStep: 0.1,
+   *  over the target the window landed, capped at this step. Halved alongside
+   *  the ceiling so the ratchet arrives over a campaign, not by window three.
+   *  There is no downward ratchet any more: under the roguelite rules a missed
+   *  quota ends the regional run outright rather than easing the next window. */
+  quotaDifficultyUpStep: 0.05,
   /** Hard floor so a single bad round can't trivialize the next quota:
    *  pointsNeeded never drops below capacity * this. */
   quotaFloorPerCapacity: 8,
@@ -821,11 +1219,41 @@ export const SURVIVORS = {
  * The pity rule below only guarantees a PATH exists. All PROVISIONAL.
  */
 export const DRAFT = {
-  /** Options always offered after a successfully completed round. */
-  baseChoices: 2,
+  /** Options always offered after a successfully completed round.
+   *
+   *  RAISED from 2. With more than one pick available a two-card table stops
+   *  being a choice the moment the second pick lands — the player takes both
+   *  and there was nothing to decide. The table has to stay wider than the
+   *  number of picks or the draft is just a delivery. */
+  baseChoices: 3,
+  /** Extra options offered per EXTRA pick earned, so a bigger draft is still a
+   *  choice rather than a hand-out: two picks see five cards, three see seven. */
+  choicesPerExtraPick: 2,
+  /** PICKS. Recovery buys them: every this many wreckage units recovered that
+   *  round earns one more option the player may take, up to maxPicks.
+   *
+   *  This is what recovery is FOR. It used to buy a wider table and slightly
+   *  better weighting, which is a real but nearly invisible reward — a third
+   *  card the player did not take is worth nothing to them. Turning salvage
+   *  into a second technology is a reward you can feel. */
+  unitsPerExtraPick: 3,
+  basePicks: 1,
+  maxPicks: 3,
   /** Chance of a THIRD option per wreckage unit recovered that round —
    *  recovery beyond ~3 units guarantees the wide draft. */
   thirdChoicePerUnit: 0.34,
+  /** Crews pulled out of the water in ONE round that earn a draft REROLL.
+   *
+   *  Deliberately aimed at the player who is losing ships: crews only enter the
+   *  water when hulls go down, so this is a consolation that pays exactly when
+   *  a round has gone badly — and it pays for the boat-work, not the sinking.
+   *  Recovery already buys draft breadth through wreckage; this buys a second
+   *  look at a table the player does not like, which is the thing a bad round
+   *  most often needs. */
+  crewsPerReroll: 3,
+  /** Rerolls that may be banked at once, so a run of terrible rounds cannot
+   *  turn the draft into a slot machine the player pulls until it pays. */
+  maxRerolls: 3,
   /** Extra draft weight per recovered unit applied to entries in branches
    *  that counter the recovered threat's family. */
   branchWeightPerUnit: 1.25,
@@ -838,6 +1266,13 @@ export const DRAFT = {
   /** Weight multiplier on remaining same-branch entries after one is drawn,
    *  so a draft leans toward offering distinct branches. */
   sameBranchRepeatMult: 0.35,
+  /** How sub-linearly a branch banks the pressure of the several enemy
+   *  families it claims to counter: summed pressure ÷ liveFamilies^this.
+   *  0 = full credit for every family (the old compounding behaviour),
+   *  1 = pure average. 0.5 keeps breadth worth something without letting a
+   *  branch that splits one sortie between two threats outbid the specialist
+   *  that removes one of them. */
+  breadthDampingExponent: 0.5,
 
   // --- Threat-pressure weighting -------------------------------------------
   /** Weight added per round a countered branch has been ENCOUNTERED. */
@@ -854,33 +1289,136 @@ export const DRAFT = {
    *  that has stopped appearing is not urgent. */
   pressureMemoryRounds: 4,
   /** Multiplier applied to an entry whose branch answers a threat the player
-   *  has NO counter for yet. This is where "you are being hurt by something
-   *  you cannot answer" turns into offers. */
-  unansweredMult: 2.4,
-  /** Multiplier applied to a branch's ENTRY node specifically while the
-   *  player lacks any counter to the family it answers — the basic counter
-   *  should surface before its upgrades. */
+   *  is not actually stopping. Scaled by the COVERAGE GAP (1 - coverage), so a
+   *  wide-open threat gets the full multiplier, a mostly-handled one gets
+   *  almost none, and the two ends are joined by a smooth line rather than the
+   *  boolean cliff that used to declare a threat solved the moment any tech
+   *  nominally pointed at it. */
+  coverageGapMult: 2.4,
+  /** Multiplier applied to a branch's ENTRY node specifically, scaled by the
+   *  same gap — the basic counter should surface before its upgrades. */
   entryNodeMult: 1.8,
   /** Multiplier applied to an entry offered within the last `offerCooldown`
    *  drafts, so a declined option steps aside for something else. */
   recentlyOfferedMult: 0.3,
   offerCooldownRounds: 2,
 
-  // --- The pity rule -------------------------------------------------------
-  /** Rounds a threat must have appeared in before the pity rule may fire. */
-  pityMinEncounters: 2,
-  /** Drafts an entry-level counter for that threat must have been absent
-   *  from before the rule fires — so a player who was offered it and turned
-   *  it down is not handed it again immediately. */
-  pityOfferGraceRounds: 2,
-  /** Hard guarantee: once a threat has gone unanswered for this many rounds
-   *  past the minimum, an entry-level counter is FORCED into the draft. The
-   *  slack between pityMinEncounters and this is what keeps the rule from
-   *  making every draft predictable. */
-  pityForceAfterRounds: 1,
-  /** Most pity slots one draft may spend, so a forced option never fills the
-   *  whole table and the player always keeps a real choice. */
-  pityMaxPerDraft: 1,
+  /** Flat multiplier on any `kind: 'automation'` tactic (localAuto,
+   *  strategicAuto, responsiveAuto, expandedAuto, autoNearest, …).
+   *
+   *  An automation tactic's value is orthogonal to `coverageGapMult`: it does
+   *  not make an intercept more likely to land, it changes WHO fires — freeing
+   *  the player's attention for salvage, formation, and the threats that don't
+   *  yet have an answer. The coverage-gap system correctly prices "does this
+   *  branch answer an unstopped threat", so once a branch is well covered its
+   *  upgrades — automation included — are priced down with it. That is right
+   *  for an accuracy/reload upgrade; it starves automation exactly when the
+   *  player would most want it, since good coverage is what makes hands-off
+   *  engagement worth the ammunition it burns.
+   *
+   *  Measured before this existed: a persona built and named around leaning on
+   *  automation drafted an auto-fire node in 0/9 campaigns because none were
+   *  EVER on offer — not a persona defect; when one WAS offered it was taken
+   *  6/6 times. Auto nodes appeared at 0.17 per bot draft against a
+   *  hand-played 0.55, and manual shot share read 89.8% against a human
+   *  26.1%. See docs/PLAYTEST_FIDELITY.md, 2026-08-16. */
+  automationTacticMult: 1.75,
+
+  // --- Coverage measurement ------------------------------------------------
+  /** Smoothing on the per-branch coverage ratio: how much of a round's
+   *  measurement replaces the running value. High enough that a bad round
+   *  registers immediately, low enough that one lucky transit does not read as
+   *  a solved threat. */
+  coverageSmoothing: 0.55,
+  /** Coverage at or above which a branch counts as genuinely handled — the
+   *  counter slot stops competing for it and its entries lose the gap bonus. */
+  coverageAnsweredAt: 0.8,
+  /** Coverage credited to a branch that fielded nothing measurable this round
+   *  while the player holds a real (attack/mitigate) counter for it. Keeps an
+   *  idle branch from reading as a crisis without declaring it solved. */
+  coverageIdleWithCounter: 0.6,
+  /** Credit for a mine that was REVEALED and steered around rather than
+   *  destroyed. The hull survived, so it is not nothing; the minefield is
+   *  still there, so it is not a sweep. */
+  coverageRevealCredit: 0.5,
+
+  // --- The counter slot ----------------------------------------------------
+  //  Replaces the old pity rule. Pity was a probabilistic backstop with a
+  //  narrow timing window and a boolean off-switch; the counter slot is
+  //  structural — one seat at every table belongs to the worst-covered live
+  //  threat, so a player can never again go a whole run without being shown an
+  //  answer to what is killing them.
+  /** Minimum coverage deficit (pressure × gap) before a family may claim the
+   *  counter slot. Below it the slot falls through to the open pool. */
+  counterSlotMinDeficit: 0.4,
+  /** Weight multiplier inside the counter slot for a branch that can actually
+   *  REMOVE the threat (role attack/mitigate) over one that only detects it.
+   *  Seeing a mine is not sweeping a mine. */
+  counterSlotAttackMult: 3,
+  /** Weight multiplier inside the counter slot for the entry node of a branch
+   *  the player has nothing from yet — a new tool beats a fifth upgrade to the
+   *  tool that is already failing. */
+  counterSlotNewBranchMult: 2.5,
+  /** Weight multiplier inside the counter slot for an entry shown in the last
+   *  `offerCooldownRounds` drafts. Softer than the open pool's: the guarantee
+   *  matters more than the variety. */
+  counterSlotRecentMult: 0.5,
+
+  // --- Reward categories ---------------------------------------------------
+  //  A draft can hand over four different kinds of thing, and they are not
+  //  interchangeable. A MODULE is a new capability; an UPGRADE improves every
+  //  copy of one the fleet already has; an ASSET changes the fleet's shape;
+  //  ORDNANCE is a one-off crate of consumables. Left unweighted the module
+  //  would win every table — a thing you cannot do yet always reads better than
+  //  a thing you can do slightly better — so the pool is biased back toward
+  //  upgrades and the module's advantage is spent where it belongs: answering
+  //  a threat that is actually getting through.
+  /** Base weight multiplier per category in the OPEN (development) pool. */
+  categoryWeight: {
+    upgrade: 1,
+    module: 0.75,
+    asset: 0.9,
+    ordnance: 0.28,
+  } as Record<string, number>,
+  /** A cargo module unit fits an entire ship CLASS — roughly fifteen hulls for
+   *  one card, against one hull for an escort unit. Same card, very different
+   *  gift, so the class-wide one is drawn meaningfully less often. */
+  cargoModuleRarity: 0.5,
+  /** Units of one cargo module type the player may hold: one per ship class. */
+  cargoModuleCap: 3,
+  /** Units of one escort module type: one per escort the flotilla can field. */
+  escortModuleCap: 3,
+  /** Units of one base module type (the battery loadout is a shared template
+   *  with a single slot, so a second unit could never be fitted). */
+  baseModuleCap: 1,
+  /** Ordnance never claims the counter slot — a crate of shells is not an
+   *  answer to a threat — and is held out of the pool entirely until the run
+   *  has something it would actually resupply. */
+  ordnanceMinRound: 3,
+  /** Share of the table ordnance takes when there is plenty else on offer.
+   *  Low on purpose: with a full catalogue in front of them, a crate of shells
+   *  should almost never be the interesting card. */
+  ordnanceShare: 0.05,
+  /** Extra share it claims as the alternatives run out, scaled by how far the
+   *  pool has thinned below `ordnanceRichPool`. This is the whole point of the
+   *  category — when everything worth having is already drafted or capped, the
+   *  draft should offer something real rather than a card the player resents.
+   *  A near-empty pool hands ordnance most of the table. */
+  ordnanceScarcityShare: 0.5,
+  /** Non-ordnance options that count as "plenty else on offer". */
+  ordnanceRichPool: 12,
+
+  /** Share of the run's TOTAL live danger that a branch countering nothing in
+   *  particular — reinforced hull, compartmentalization — banks as weight.
+   *
+   *  Everything else in this block prices a reward against the family it
+   *  answers, which left generic survivability with no signal at all: a hull
+   *  fit scored a flat 1 against 5-30 for a counter under pressure, and a
+   *  192-campaign sweep drafted Reinforced Hull ONCE and Compartmentalization
+   *  never. What makes armour relevant is not any one threat, it is being hurt
+   *  at all, so it prices on the sum of what is getting through. Below 1
+   *  because a specific answer should still beat a general one. */
+  survivabilityShare: 0.55,
 } as const;
 
 /** Commander progression: the permanent layer. PROVISIONAL numbers. */
@@ -892,6 +1430,21 @@ export const COMMANDER = {
   /** Commander XP earned per round survived when a run ends — losses still
    *  feed permanent progression, which is what makes them feel productive. */
   xpPerRound: 5,
+} as const;
+
+/** Escort Legacies: the flotilla's half of the permanent layer.
+ *
+ *  Bounded exactly like the commander loadout, and for the same reason — the
+ *  design forbids unbounded permanent power growth, and the slot/point caps
+ *  are what enforce it structurally. Sized to the escort cap: three berths,
+ *  three legacies, so a full flotilla can carry one each and a player who has
+ *  unlocked everything still has to choose which three sail. */
+export const ESCORT_LEGACY = {
+  /** Equipped legacy slots. Matches ECONOMY.maxEscorts: one per berth. */
+  slots: 3,
+  /** Total loadout point budget across equipped legacies. Deliberately short
+   *  of three of the dearest, so the third slot costs something to fill. */
+  loadoutPoints: 22,
 } as const;
 
 export const EVOLUTION = {
@@ -927,13 +1480,27 @@ export const EVOLUTION = {
   missileCountCap: 46,
   volleySatDivisor: 24,
   windowStartT: 6,
-  /** Extra seconds after the last ship enters, so fire covers it crossing. */
-  windowTailT: 60,
+  /** Extra seconds after the last ship enters, so fire covers it crossing.
+   *
+   *  RAISED with the strait. The crossing itself went from about 90 seconds to
+   *  about 180 when the map doubled, and this tail did not — so a round's fire
+   *  finished while the back half of the convoy was still in open water, and
+   *  the last stretch of every transit went silent. Measured before the change,
+   *  118 seconds of nothing at all with four or more hulls still at sea.
+   *
+   *  RAISED AGAIN from 150, which was still short of its own arithmetic: the
+   *  slowest healthy crossing is ~180 seconds, and a hull slowed by charted
+   *  mines or give-way takes 200-260. The shortfall hid whenever the round's
+   *  mix included boats (persistent units occupy the tail on their own) and
+   *  surfaced the moment a seed rolled a pure-missile round: measured, a 36s
+   *  silence with four hulls still crossing. 210 covers the honest crossing
+   *  plus ordinary slow-downs; a crippled straggler beyond that is accepted. */
+  windowTailT: 210,
   /** Stretch of hostile shore the enemy emplaces artillery along. Kept clear of
    *  the convoy's entry so the first guns are something the player sails toward
    *  and can route around, not an ambush at the start line. */
-  gunFieldStartX: 620,
-  gunFieldEndX: 1620,
+  gunFieldStartX: 1240,
+  gunFieldEndX: 3240,
   /** Hard ceiling on the spacing between missile volleys (seconds): fire is
    *  split into enough volleys that no gap in the schedule exceeds this, even
    *  when the volley size is large. Keeps the strait from going quiet. */
@@ -988,18 +1555,45 @@ export const ENEMY_ECONOMY = {
    *  unviable. Most of that work is done by escalationPatienceCounteredRounds
    *  instead — the enemy climbs its ladder sooner when the player counters it,
    *  rather than being handed more money to climb with. */
-  budgetBase: 50,
-  budgetPerRound: 63,
+  budgetBase: 55,
+  budgetPerRound: 67,
   /** Hard ceiling so a long campaign can't run away. Scales with prices: at the
-   *  old 900 this bought ~32 mines, at current prices barely 12. */
-  budgetCap: 1200,
+   *  old 900 this bought ~32 mines, at current prices barely 12.
+   *
+   *  RAISED with budgetPerRound (63 → 67) after hand-play and the sweep agreed
+   *  the fight had gone soft: a played 10-round campaign hit the old 1200 cap
+   *  on round 8 and sat there — three flat rounds of pressure against a player
+   *  economy that kept compounding — while 8 of 11 sweep personas were
+   *  finishing at 100% round-cap completion. The player called it: "I could
+   *  speed through the round and not do anything and still get to the final
+   *  round." The cap exists to stop runaways, not to be the operating point of
+   *  every endgame.
+   *
+   *  BRACKETED, per this file's own rule. The first arm (72 / 1550) overshot:
+   *  measured, mid-breadth builds entered an attrition spiral — convoy value
+   *  sailed fell 241 → 100 across eight rounds while per-round delivery still
+   *  read 75-90% — and died of the shrinking fleet, not of any one round.
+   *  This midpoint holds the late game under real pressure without tipping
+   *  hull replacement past its break-even. */
+  budgetCap: 1350,
 
   /** Anti-snowball, applied as multipliers to the round's budget. Success arms
    *  the enemy faster; a struggling player gets breathing room. Both ends
    *  matter — the restoring force has to work in both directions. */
   bonusStrongDelivery: 0.12, // player delivered >= 85%
   bonusHighIntercept: 0.1, // player intercepted > 70% of missiles
-  dampStruggling: 0.2, // player delivered < 55% -> budget reduced by this
+  dampStruggling: 0.2, // player delivered below the threshold -> budget cut by this
+  /** Delivered fraction under which the player counts as STRUGGLING and the
+   *  enemy's budget growth is damped.
+   *
+   *  RAISED from 0.55. The damp is the seesaw's restoring force on the player's
+   *  end, and at 0.55 it was calibrated below the band where campaigns actually
+   *  died: across 88 campaigns the median delivery over a campaign's final
+   *  three rounds was 62%, and only 8.9% of all rounds ever fell under 55%. The
+   *  brake existed but the car never reached the speed that applied it. 0.68
+   *  sits just under confidenceBreakEven (0.78), so it engages once a player is
+   *  genuinely losing ground rather than merely having an ordinary hard round. */
+  strugglingDelivery: 0.68,
 
   /** Enemy ordnance scales with the convoy value actually sailing, measured
    *  against the campaign's first convoy. Replaces a one-off "rich convoy"
@@ -1047,10 +1641,21 @@ export const ENEMY_ECONOMY = {
    *  band. It is the enemy-side half of the seesaw's restoring force: it scales
    *  with how long the player has been winning and stops the moment the fight
    *  is even again. (The player-side half is no longer a cash rebate — it is
-   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.) */
+   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.)
+   *
+   *  STRENGTHENED after the missile-region hand-play: a run that finished at
+   *  99 confidence having lost two hulls in nine rounds spent its whole back
+   *  half above the dominance threshold, and the streak bonus it earned topped
+   *  out at +33% — which the region's budget cap then discarded entirely (see
+   *  regions.ts → missileCoast). With the cap moved out of the way the streak
+   *  is doing real work again, so it is also sized to be felt: a player who
+   *  walks through five rounds untouched now draws roughly half again as much
+   *  ordnance rather than a third. It still releases the moment they drop back
+   *  into the band, which is the property that makes it a restoring force
+   *  rather than a difficulty ramp. */
   dominanceFraction: 0.85,
-  dominanceStreakStep: 0.06,
-  dominanceStreakMax: 0.33,
+  dominanceStreakStep: 0.09,
+  dominanceStreakMax: 0.5,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */

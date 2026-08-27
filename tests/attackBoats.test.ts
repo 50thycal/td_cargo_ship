@@ -113,6 +113,8 @@ const gunboatEscorts = (c: CampaignState): void => {
   c.completedResearch = ['deckGun.base', 'deckGun.autoNearest'];
   fitUniformEscorts(c, 2, ['deckGun']);
   c.autoFire = { ...c.autoFire, deckGun: true };
+  // Shells are a bought consumable now: an unstocked magazine never fires.
+  c.gunAmmo = 500;
 };
 
 // ---------------------------------------------------------------------------
@@ -220,7 +222,7 @@ describe('attack-boat behaviour', () => {
     const victim = victimOf(state, boat);
     expect(victim).toBeDefined();
     expect(Math.hypot(victim!.x - boat.x, victim!.y - boat.y)).toBeLessThanOrEqual(
-      COMBAT.attackBoat.engageRange + 1,
+      COMBAT.attackBoat.engageRange.smallArms + 1,
     );
   });
 
@@ -254,7 +256,11 @@ describe('attack-boat behaviour', () => {
     const boat = fleet[0];
     const victim = victimOf(state, boat)!;
     victim.hp = 1; // hurry the first kill along
-    run(state, rng, Math.ceil(1 / SIM.dt));
+    // The rocket boat opens up from much farther out than small arms, so its
+    // opening round can still be in flight a full second later — wait out the
+    // worst-case flight time (engage range ÷ round speed) plus slack.
+    const worstCaseFlight = COMBAT.attackBoat.engageRange.rocket / COMBAT.attackBoat.fire.rocket.speed;
+    run(state, rng, Math.ceil((worstCaseFlight + 1) / SIM.dt));
     expect(victim.alive).toBe(false);
     expect(state.stats.boatKills).toBe(1);
     expect(boat.targetShipId).toBeUndefined();
@@ -329,7 +335,7 @@ describe('attack-boat movement is physical', () => {
   it('never exceeds its speed limit — no teleporting, ever', () => {
     const { state, rng, fleet } = launch([spawn('smallArms')]);
     const boat = fleet[0];
-    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05; // 5% slack for rounding
+    const maxStep = COMBAT.attackBoat.speed.smallArms * SIM.dt * 1.05; // 5% slack for rounding
     let prevX = boat.x;
     let prevY = boat.y;
     let biggest = 0;
@@ -363,7 +369,7 @@ describe('attack-boat movement is physical', () => {
     const { state, rng, fleet } = launch([spawn('smallArms')]);
     const boat = fleet[0];
     const launchSpeed = boat.speed;
-    expect(launchSpeed).toBeLessThan(COMBAT.attackBoat.speed);
+    expect(launchSpeed).toBeLessThan(COMBAT.attackBoat.speed.smallArms);
     // Peak over the whole run-in, not an instantaneous sample: the boat
     // reaches cruise crossing the open water and then sheds pace again as it
     // settles onto the ring, so a fixed-time reading lands anywhere.
@@ -371,13 +377,13 @@ describe('attack-boat movement is physical', () => {
     for (let i = 0; i < Math.ceil(25 / SIM.dt) && !state.over && boat.alive; i++) {
       stepTransit(state, [], rng);
       peak = Math.max(peak, boat.speed);
-      expect(boat.speed).toBeLessThanOrEqual(COMBAT.attackBoat.speed + 0.001);
+      expect(boat.speed).toBeLessThanOrEqual(COMBAT.attackBoat.speed.smallArms + 0.001);
     }
     expect(peak).toBeGreaterThan(launchSpeed);
-    expect(peak).toBeCloseTo(COMBAT.attackBoat.speed, 0); // it does reach cruise
+    expect(peak).toBeCloseTo(COMBAT.attackBoat.speed.smallArms, 0); // it does reach cruise
     // ...and once alongside it matches the convoy's pace rather than idling at
     // full throttle into the hull.
-    expect(boat.speed).toBeLessThan(COMBAT.attackBoat.speed);
+    expect(boat.speed).toBeLessThan(COMBAT.attackBoat.speed.smallArms);
   });
 
   it('holds a stand-off ring BESIDE the hull and never sits on top of it', () => {
@@ -430,7 +436,7 @@ describe('attack-boat movement is physical', () => {
     // Through the reposition pause and the run-in to the next hull, every step
     // stays inside the speed limit — the boat covers the water under its own
     // power instead of being repositioned.
-    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05;
+    const maxStep = COMBAT.attackBoat.speed.rocket * SIM.dt * 1.05;
     let prevX = boat.x;
     let prevY = boat.y;
     for (
@@ -561,7 +567,10 @@ describe('attack-boat counters', () => {
       });
       const start = state.time;
       let guard = 0;
-      while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(90 / SIM.dt) && !state.over) {
+      // Quarter-damage guns make an un-armour-pierced rocket boat a LONG
+      // fight (~50 gun-seconds of contact), and contact is intermittent while
+      // the boat works its victims — give the engagement room to finish.
+      while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(300 / SIM.dt) && !state.over) {
         stepTransit(state, [], rng);
       }
       expect(state.stats.boatsSunk).toBe(1);
@@ -629,11 +638,28 @@ describe('boarding and capture', () => {
   });
 
   it('sinking the boarding boat throws the party off and loses their progress', () => {
-    const ctx = engage([spawn('boarding')], gunboatEscorts);
+    // Hold the deck guns until the party is actually up the side. Boats sail at
+    // convoy pace now, so gunners left on auto from the start routinely break
+    // one up on the run-in — which is the branch working, but it is not what
+    // THIS test is about: the claim is that progress already made is lost.
+    // Armour-piercing + rapid feed: at quarter damage, base guns can no
+    // longer break a boarding boat inside the 15-second takeover window —
+    // which is the intended shape of the branch now (stopping a boarding
+    // takes invested guns, not any gun) — and this test is about progress
+    // loss on the sink, not about the base gun's time-to-kill.
+    const ctx = engage([spawn('boarding')], (c) => {
+      gunboatEscorts(c);
+      c.completedResearch = [...c.completedResearch, 'deckGun.armorPiercing', 'deckGun.rapidFeed'];
+      c.autoFire = { ...c.autoFire, deckGun: false };
+    });
     const { state, rng } = ctx;
-    run(state, rng, 2);
+    let settle = 0;
     const victim = victimOf(state, ctx.fleet[0])!;
+    while (victim.boardingSeconds <= 0 && settle++ < Math.ceil(20 / SIM.dt) && !state.over) {
+      stepTransit(state, [], rng);
+    }
     expect(victim.boardingSeconds).toBeGreaterThan(0);
+    state.autoFire = { ...state.autoFire, deckGun: true };
     let guard = 0;
     while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(60 / SIM.dt) && !state.over) {
       stepTransit(state, [], rng);
@@ -681,8 +707,12 @@ describe('boarding and capture', () => {
   it('the capture penalty lands even when ordinary losses are already capped', () => {
     // The point of putting it outside the loss cap: a player being overrun
     // still feels every hull the enemy sails away with.
-    const lossesOnly = Math.max(CAMPAIGN.confidenceLossCap, CAMPAIGN.confidencePerLoss * 20);
-    expect(lossesOnly).toBe(CAMPAIGN.confidenceLossCap);
+    // A round that lost so much cargo the delivery curve is pinned at its floor.
+    const lossesOnly = Math.max(
+      CAMPAIGN.confidenceDeliveryFloor,
+      Math.min(CAMPAIGN.confidenceDeliveryCeiling, CAMPAIGN.confidenceDeliverySwing * (0 - CAMPAIGN.confidenceBreakEven)),
+    );
+    expect(lossesOnly).toBe(CAMPAIGN.confidenceDeliveryFloor);
     const withCapture =
       lossesOnly + Math.max(CAMPAIGN.confidenceCaptureCap, CAMPAIGN.confidencePerCapture * 1);
     expect(withCapture).toBeLessThan(lossesOnly);

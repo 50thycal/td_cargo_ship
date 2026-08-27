@@ -23,6 +23,7 @@
 // is left untouched and simply ignored.
 
 import { newCampaign } from '../sim/campaign';
+import { FIRST_REGION } from '../data/regions';
 import { newProfile, PROFILE_VERSION, type CommanderProfile } from '../sim/commander';
 import type { CampaignState } from '../sim/types';
 
@@ -91,6 +92,15 @@ export function migrateRun(raw: unknown): CampaignState | null {
     // Minimal sanity: a run must have a valid phase to route to.
     const phases = ['prep', 'transit', 'aar', 'draft'];
     if (!phases.includes(raw.phase as string)) raw.phase = 'prep';
+    // NOTE: the used-escort-name ledger is deliberately NOT reconciled here.
+    // Rewriting it to include the ships currently afloat was tried, and it
+    // costs more than it buys: healing must leave a current-format save byte
+    // for byte identical, or a run starts behaving differently purely for
+    // having been saved and loaded. The guarantee it was reaching for is
+    // enforced at the point names are ISSUED instead — nextEscortName unions
+    // the ledger with the names of every escort afloat, so a restored save can
+    // never hand out a name that is already in service. The only thing an
+    // upgraded save cannot know is the name of a ship lost before it upgraded.
     return raw as unknown as CampaignState;
   } catch {
     return null;
@@ -138,6 +148,21 @@ export function migrateProfile(raw: unknown): CommanderProfile | null {
   try {
     const template = newProfile() as unknown as Record<string, unknown>;
     deepBackfill(raw, template);
+    // The opening region is ALWAYS available, whatever the profile remembers.
+    //
+    // `deepBackfill` fills absent fields; it cannot repair a present-but-stale
+    // one. A profile saved before the ladder was reordered holds the region
+    // that used to open it, so without this a returning player finds the
+    // game's FIRST region locked and no way to unlock it — the only region
+    // whose unlock has no prerequisite is the one nothing grants. Cheap to
+    // assert, and it is an invariant of the ladder rather than a one-off
+    // patch for this particular reorder.
+    const unlocked = raw.unlockedRegions;
+    if (Array.isArray(unlocked)) {
+      if (!unlocked.includes(FIRST_REGION)) unlocked.unshift(FIRST_REGION);
+    } else {
+      raw.unlockedRegions = [FIRST_REGION];
+    }
     raw.version = PROFILE_VERSION;
     return raw as unknown as CommanderProfile;
   } catch {

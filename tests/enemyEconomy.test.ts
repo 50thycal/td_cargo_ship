@@ -9,7 +9,9 @@
 import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import { evolveEnemy, newEvolution, planRound, targetingSkill } from '../src/sim/evolution';
-import { newCampaign, planCurrentRound } from '../src/sim/campaign';
+import { geography } from '../src/data/geography';
+import { REGIONS, REGION_ORDER, regionDef } from '../src/data/regions';
+import { newCampaign, newRegionalRun, planCurrentRound } from '../src/sim/campaign';
 import { migrateRun } from '../src/platform/save';
 import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../src/data/enemyBranches';
 import { ENEMY_ECONOMY } from '../src/data/tuning';
@@ -423,6 +425,85 @@ describe('escalation guardrails', () => {
 // Integration with the round plan
 // ---------------------------------------------------------------------------
 
+describe('per-region unit ceilings', () => {
+  // A region may raise how MANY of a branch the enemy fields in a round. It is
+  // still not a weapon change — the missile costs and does what it always did —
+  // and it exists because a narrow-menu region cannot otherwise spend what it
+  // is given. See RegionDef.branchUnitCeilings.
+  const fieldedMissiles = (regionId: string, rounds: number): number[] => {
+    const c = newRegionalRun(`ceil-${regionId}`, regionId, [], []);
+    const out: number[] = [];
+    for (let r = 0; r < rounds; r++) {
+      const plan = planRound(c, makeRng(`ceil-plan-${regionId}-${r}`));
+      out.push(plan.spawns.filter((sp) => sp.kind === 'missile' || sp.kind === 'guidedMissile').length);
+      c.round++;
+      c.evolution.economy.plannedForRound = 0;
+      evolveEnemy(c.evolution, metrics(c.round, { deliveredFraction: 0.97, interceptRate: 0.85 }), makeRng(`ceil-evo-${r}`));
+    }
+    return out;
+  };
+
+  it('lets a region field more of a branch than the catalogue allows', () => {
+    const cap = ENEMY_BRANCHES.missiles.maxUnitsPerRound;
+    expect(REGIONS.missileCoast.branchUnitCeilings?.missiles).toBeGreaterThan(cap);
+    // And the raised number actually reaches the water rather than sitting in
+    // the def: somewhere in the region's length the enemy exceeds the
+    // catalogue ceiling it would have been pinned at.
+    const fielded = fieldedMissiles('missileCoast', REGIONS.missileCoast.completionRound);
+    expect(Math.max(...fielded)).toBeGreaterThan(cap);
+  });
+
+  it('leaves a region that does not raise it on the catalogue number', () => {
+    expect(REGIONS.homeStrait.branchUnitCeilings).toBeUndefined();
+    const fielded = fieldedMissiles('homeStrait', REGIONS.homeStrait.completionRound);
+    expect(Math.max(...fielded)).toBeLessThanOrEqual(ENEMY_BRANCHES.missiles.maxUnitsPerRound);
+  });
+
+  it('leaves the opening region able to spend what it is given', () => {
+    // The failure this whole lever exists for, pinned as a number.
+    //
+    // A missile-only region buys the one thing on the shelf, so if the per-round
+    // unit cap is below what the purse can afford, the surplus is SCRAPPED and
+    // the region stops getting harder however fast the budget grows. Measured in
+    // a real seven-round session at a ceiling of 56: the enemy committed exactly
+    // 378 in each of rounds 3, 4 and 5 while its budget climbed 600 → 794 →
+    // 1065, binning 2,941 of 5,737 — and delivery sat at 100%.
+    //
+    // So: across the opening region's full length the enemy must put most of its
+    // money in the water. This fails if anyone lowers the ceiling back under the
+    // budget curve, which is the mistake worth catching.
+    const c = newRegionalRun('scrap-first-region', REGION_ORDER[0], [], []);
+    let granted = 0;
+    let scrapped = 0;
+    for (let r = 0; r < regionDef(REGION_ORDER[0]).completionRound; r++) {
+      planRound(c, makeRng(`scrap-plan-${r}`));
+      granted += c.evolution.economy.budget;
+      scrapped += c.evolution.economy.scrapped;
+      c.round++;
+      c.evolution.economy.plannedForRound = 0;
+      // A player walking through it untouched — the case that used to make the
+      // enemy RICHER and no more dangerous, because the extra was unspendable.
+      evolveEnemy(
+        c.evolution,
+        metrics(c.round, { deliveredFraction: 1, interceptRate: 0.94 }),
+        makeRng(`scrap-evo-${r}`),
+      );
+    }
+    expect(scrapped / granted).toBeLessThan(0.15);
+  });
+
+  it('does not touch what a unit COSTS — the rule regions.ts sets', () => {
+    // The whole justification for the lever is that it changes availability and
+    // nothing else. If a region could ever reprice a node this would fail, and
+    // it should.
+    const region = REGIONS.missileCoast;
+    expect(Object.keys(region)).not.toContain('nodeCosts');
+    for (const node of ENEMY_BRANCHES.missiles.nodes) {
+      expect(typeof node.cost).toBe('number');
+    }
+  });
+});
+
 describe('economy drives the round plan', () => {
   it('turns purchased units into exactly that many attacks', () => {
     const c = newCampaign('plan-match');
@@ -434,6 +515,32 @@ describe('economy drives the round plan', () => {
     const guided = plan.spawns.filter((s) => s.kind === 'guidedMissile').length;
     expect(unguided).toBe(ledger.units.unguided ?? 0);
     expect(guided).toBe(ledger.units.guided ?? 0);
+  });
+
+  it('lays every mine it bought in real water, however big the debut field', () => {
+    // Regression. The cluster COUNT was decided before the lanes were chosen,
+    // and a debut field is laid in one lane — so a first minefield of more than
+    // six charges asked for `laneChoices[1]` of a one-element array, got
+    // `undefined`, and indexed the lane table with it. Every second charge was
+    // laid at y = NaN, where nothing can ever detect or detonate it: the enemy
+    // had been paying full price for charges that dissolved on contact with the
+    // water ever since the branch shipped.
+    const c = newCampaign('mine-debut');
+    c.round = 4;
+    // Stated directly rather than played into: the case is a DEBUT field of
+    // more than six charges, and whether the economy happens to buy one on a
+    // given seed is not what is under test.
+    c.evolution.economy.plannedForRound = c.round; // this round is already bought
+    c.evolution.economy.ledgers.mines.units = { standard: 8 };
+    c.evolution.firstSeen = {};
+    const plan = planRound(c, makeRng('mine-debut-plan'));
+    expect(plan.mines.length).toBeGreaterThan(6);
+    for (const mine of plan.mines) {
+      expect(Number.isFinite(mine.x)).toBe(true);
+      expect(Number.isFinite(mine.y)).toBe(true);
+      expect(mine.y).toBeGreaterThan(geography('strait').waterTop(mine.x));
+      expect(mine.y).toBeLessThan(geography('strait').waterBottom(mine.x));
+    }
   });
 
   it('lays exactly the mines it bought, low-signature ones included', () => {

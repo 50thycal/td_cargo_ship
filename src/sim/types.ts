@@ -2,6 +2,7 @@
 // touches the DOM — every type here is plain data so the core can be ported
 // to another engine (SpriteKit, Godot) without changes to the design.
 
+import type { Geography } from '../data/geography';
 import type { StatTier } from '../data/statTiers';
 
 // ---------------------------------------------------------------------------
@@ -84,13 +85,11 @@ export interface EscortUnit {
   /** Optional specialist systems fitted to THIS escort. Capped by the escort's
    *  unlocked slot count; several escorts may carry the same module. */
   modules: EscortModuleId[];
-  /** Cash actually paid for each fitted module, so unequipping refunds exactly
-   *  what was spent. Per escort rather than per module type, which is what
-   *  stops a module being fitted cheaply on one hull and refunded at another's
-   *  price. */
-  modulePaid: Partial<Record<EscortModuleId, number>>;
   /** Unrepaired hull damage this escort is carrying into the next round. */
   damage: number;
+  /** The escort legacy this ship carries, assigned when she was commissioned.
+   *  Her loss burns it for the rest of the region — see spendEscortLegacy. */
+  legacy?: string;
 }
 
 export interface BaseModuleDef {
@@ -144,9 +143,6 @@ export interface Ship {
   flakShots: number;
   /** Flak cooldown timer. */
   flakCooldown: number;
-  /** Track-breaking smoke: enemy re-acquisition ignores this ship until this
-   *  transit time (refreshed while inside a player smoke cloud). */
-  smokeGraceUntil: number;
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
@@ -288,6 +284,12 @@ export interface Threat {
   targetKind?: TargetKind;
   /** Ship this threat is homing on / was aimed at. */
   targetShipId?: number;
+  /** Escort an ATTACK BOAT has committed to, when no merchant is worth
+   *  hunting. Distinct from targetShipId rather than folded into it because a
+   *  boat working the screen skips the whole convoy-hull path — boarding,
+   *  station sharing, give-way, delivery — and conflating the two ids would
+   *  have every one of those look up an escort in the ship list. */
+  targetEscortId?: number;
   /** Escort/base this missile is aimed at (when targetKind is escort/base). */
   targetEntityId?: number;
   /** Straight-line aim point for unguided missiles. */
@@ -538,6 +540,15 @@ export interface Escort {
   /** Player-set destination. `hold` = station there instead of resuming
    *  forward on arrival. */
   moveTarget: { x: number; y: number; hold: boolean } | null;
+  /** The REST of a drawn route, in order, waiting behind moveTarget.
+   *
+   *  A path is deliberately nothing more than a queue of ordinary move targets:
+   *  arriving at one pops the next. Every bit of the steering the escort
+   *  already has — traffic avoidance, the blocked-and-parting rule, the arrival
+   *  test — applies to a drawn route without knowing routes exist, which is why
+   *  a curve around a minefield behaves like a hand-flown one rather than a
+   *  rail the ship is dragged along. */
+  waypoints: { x: number; y: number }[];
   /** True once a hold order has been reached: the escort holds position. */
   stationed: boolean;
   /** Seconds spent making no real ground toward the current destination. Past
@@ -553,6 +564,12 @@ export interface Escort {
    *  hull is well clear, so the choice cannot flip tick to tick. */
   passShipId: number | null;
   passSide: number;
+  /** Seconds the committed hull has been out of the avoidance corridor. The
+   *  commitment survives a brief dropout rather than being torn down the first
+   *  tick the geometry says "clear" — a hull sliding in and out of the corridor
+   *  used to reset the side and let it be re-decided the other way, which is a
+   *  rudder reversal produced by nothing having actually changed. */
+  passClearSeconds: number;
   /** SEPARATE automatic-fire cooldown (local automatic engagement tactic).
    *  Independent of the launcher reload `cooldown` by design. */
   autoCooldown: number;
@@ -571,6 +588,15 @@ export interface Escort {
    *  gun is committed to (sustained engagement until it ends). */
   gunCooldown: number;
   gunTargetId: number | null;
+  /** The attack boat this escort is ORDERED onto. Unlike gunTargetId (which
+   *  only holds while the boat is in gun range), a pursuit survives the boat
+   *  being out of reach: the escort steams to it, takes station inside gun
+   *  range and follows until the boat sinks or the player re-tasks the ship.
+   *  This is what makes "engage that boat" an order rather than a wish. */
+  pursueBoatId: number | null;
+  /** Speed made good last tick — lets OTHER escorts read this one as a moving
+   *  vessel (stern-passing needs to know whether a neighbour is under way). */
+  lastSpeed: number;
 }
 
 /** A fixed shore battery. Unlimited range but a long reload — the player's
@@ -663,17 +689,36 @@ export interface Aircraft {
   heading: number;
   /** inbound → fly to the work area; onStation → do the job; departing → leave. */
   phase: 'inbound' | 'onStation' | 'departing';
-  /** Scan: the lane-center Y the plane sweeps along. */
+  /** Scan: which lane the plane was sent down. The LANE is the order — a lane
+   *  can bend, so the plane follows the index rather than holding one height. */
+  laneIndex?: number;
+  /** Scan: the lane-center Y the plane is over right now. Kept up to date as it
+   *  flies, so the charting band bends with the lane. */
   laneY: number;
-  /** Warthog: center of the station wheel (and of the strafe radius). */
-  centerX: number;
-  centerY: number;
-  /** Warthog: current orbit angle (radians). */
-  orbitAngle: number;
+  /** Warthog: the run-in line the player drew, from A to B. The jet flies this
+   *  line, carries on off the map, turns, and flies it back the other way. */
+  runAx: number;
+  runAy: number;
+  runBx: number;
+  runBy: number;
+  /** Warthog: which pass is being flown — 0 is A→B, 1 is the return B→A. */
+  pass: number;
+  /** Warthog: true once the gun has been fired on THIS pass. One engagement per
+   *  pass is the whole shape of the weapon: the jet commits to a target, takes
+   *  it, and has to come round again for anything else. */
+  firedThisPass: boolean;
   /** Warthog: transit time at which the plane breaks off and departs. */
   stationUntil: number;
   /** Warthog: seconds until the gun is ready for the next pass. */
   gunCooldown: number;
+  /** Warthog: has this pass been over open water yet?
+   *
+   *  The break-off rule is "over land, having crossed the water" — without the
+   *  second half a run drawn across the strait would break off immediately,
+   *  because the jet ENTERS over the land it flew in from. */
+  wetSeen: boolean;
+  /** Warthog: seconds spent over land since last leaving the water. */
+  landSeconds: number;
 }
 
 /** One 30mm gun run: a burst drawn from the jet to the water it hit.
@@ -697,15 +742,39 @@ export interface StrafeRun {
   ttl: number;
 }
 
+/** One deck-gun round in flight, drawn from the escort to what she shot at.
+ *
+ *  VISUAL ONLY, exactly like StrafeRun and for the same reason: the sim
+ *  resolves the accuracy roll and the damage at the trigger pull, so this
+ *  object carries neither. It exists because a gun that killed attack boats
+ *  with nothing visible between the escort and the boat left the player with a
+ *  weapon they could only find in the after-action report.
+ *
+ *  The view interpolates the shell along the line over its life, so a round
+ *  that misses still flies — it simply arrives with nothing to show for it. */
+export interface GunShot {
+  id: number;
+  /** Muzzle, at fire time. */
+  x: number;
+  y: number;
+  /** Where the round is going — the target's position when it was fired. A
+   *  boat that moves is not chased: the shell was already on its way. */
+  targetX: number;
+  targetY: number;
+  /** Did the roll land? Decides whether the far end shows an impact. */
+  hit: boolean;
+  /** True when this round is what sank her, so the view can flash it. */
+  killed: boolean;
+  /** Seconds of flight left, counted down from ttlTotal. */
+  ttl: number;
+  ttlTotal: number;
+}
+
 /** A placed area effect with a lifetime: active-sonar ping (reveals the
  *  underwater picture) or defensive smoke (degrades enemy targeting). */
 export interface AreaEffect {
   id: number;
-  /** `smoke` is the PLAYER's track-breaking cloud; `enemySmoke` is the enemy's
-   *  concealment branch. They are deliberately distinct kinds — one hides the
-   *  player's ships from the enemy, the other hides the enemy's threats from
-   *  the player, and nothing should ever treat them interchangeably. */
-  kind: 'sonar' | 'smoke' | 'enemySmoke';
+  kind: 'sonar' | 'enemySmoke';
   x: number;
   y: number;
   radius: number;
@@ -786,7 +855,17 @@ export type TransitCommand =
    *  installation id — never a projectile or mobile unit). */
   | { type: 'counterBattery'; installationId: number }
   /** Placed ability: x/y is where the player put the effect on the map. */
-  | { type: 'ability'; ability: 'warthog' | 'scan' | 'sonar' | 'smoke'; x: number; y: number }
+  /** x/y is where the player put the effect. The Warthog additionally carries
+   *  x2/y2: it is aimed along a LINE the player draws, not parked on a point,
+   *  and the line is the weapon (see the gun-cone targeting in transit.ts). */
+  | {
+      type: 'ability';
+      ability: 'warthog' | 'scan' | 'sonar';
+      x: number;
+      y: number;
+      x2?: number;
+      y2?: number;
+    }
   /** Hardened systems: spend an emergency-reboot charge to shorten an active
    *  sensor-jamming blackout. */
   | { type: 'reboot' }
@@ -794,7 +873,10 @@ export type TransitCommand =
   | { type: 'toggleAuto'; system: AutoSystem; enabled: boolean }
   /** Send an escort to a point. hold=false → resume forward on arrival;
    *  hold=true → stay stationed there. */
-  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean };
+  | { type: 'moveEscort'; escortId: number; x: number; y: number; hold: boolean }
+  /** A drawn ROUTE: the escort steams the points in order. The last one
+   *  carries `hold`, exactly as a single move order would. */
+  | { type: 'pathEscort'; escortId: number; points: { x: number; y: number }[]; hold: boolean };
 
 export type TransitEventType =
   | 'delivered'
@@ -818,6 +900,7 @@ export type TransitEventType =
   | 'shipDisabled'
   | 'suppressed'
   | 'abilityUsed'
+  | 'escortTasked'
   | 'launchFailed'
   | 'techDebut'
   | 'wreckageSpawned'
@@ -891,7 +974,6 @@ export interface CounterRoundStats {
     warthog: { available: number; used: number };
     scan: { available: number; used: number };
     sonar: { available: number; used: number };
-    smoke: { available: number; used: number };
     reboot: { available: number; used: number };
   };
 }
@@ -1017,6 +1099,10 @@ export interface AbilityEffects {
   /** Extra seconds a revealed contact stays precisely tracked. */
   persistence: number;
   unlockedLowSig: boolean;
+  /** The Wide node is set. For the placed abilities this is already folded into
+   *  `radius`; the Warthog needs it separately because its wide node opens a
+   *  gun CONE rather than growing a circle. */
+  wide: boolean;
 }
 
 /** Research-derived combat effects, baked once at transit creation. Every
@@ -1026,6 +1112,14 @@ export interface CombatEffects {
   /** Global damage multiplier (1 normally; 0 in dev god mode). Per-ship
    *  compartmentalization applies separately, only to equipped hulls. */
   damageTakenMult: number;
+  /** Escort-only damage multipliers, on top of damageTakenMult. Escort
+   *  legacies live here: a flotilla can be hardened without also hardening the
+   *  merchant hulls, which is a different (and much bigger) lever. */
+  escortDamageMult: number;
+  /** Applied on top of escortDamageMult for MINE damage only. */
+  escortMineDamageMult: number;
+  /** Multiplies escort transit speed. */
+  escortSpeedMult: number;
   /** Damage one A-10 gun run does to an attack boat (mines die outright). */
   warthogDamage: number;
   /** Minesweeper drones available (branch researched AND launcher equipped). */
@@ -1175,12 +1269,6 @@ export interface CombatEffects {
   compartmentReduction: number;
   /** Fire-suppression: burn-duration multiplier / full immunity node. */
   fire: { durationMult: number; noReignite: boolean; immune: boolean };
-  /** Fraction of enemy targeting skill removed for ships inside player smoke
-   *  (one doctrine tier ≈ 0.5; dense ≈ 1.0). 0 = smoke not researched. */
-  smokeDegradation: number;
-  /** Track-breaking smoke: seconds of re-acquisition grace after a ship exits
-   *  the cloud (0 = node not researched). */
-  smokeTrackBreakSeconds: number;
   /** Probability a scan pulse reveals a low-signature mine (research-scaled). */
   scanLowSigChance: number;
   /** Recovery-operation rates. 1 = baseline; Commander Abilities are applied
@@ -1192,13 +1280,20 @@ export interface CombatEffects {
     warthog: AbilityEffects;
     scan: AbilityEffects;
     sonar: AbilityEffects;
-    smoke: AbilityEffects;
   };
 }
 
 export interface TransitState {
   time: number;
   over: boolean;
+  /** THE WATER this transit is fought in — coastlines, lanes and emplacement
+   *  lines for the region that was sailed into (see data/geography.ts).
+   *
+   *  On the state rather than reached for as a module constant because the map
+   *  is a property of the round, and everything that asks where the land is —
+   *  the sim, the renderer, the escort order resolver — has to be asking about
+   *  the SAME map. Not serialized: it is derived from the region id. */
+  geo: Geography;
   /** Notional patrol/progress reference used to position escorts and center
    *  convoy-wide ability effects — no longer a slot anchor for cargo ships,
    *  which now move individually through the corridor. */
@@ -1223,6 +1318,8 @@ export interface TransitState {
   aircraft: Aircraft[];
   /** Gun-run bursts still being drawn. Visual only — see StrafeRun. */
   strafeRuns: StrafeRun[];
+  /** Deck-gun rounds in flight. Visual only — see GunShot. */
+  gunShots: GunShot[];
   /** Placed area effects with lifetimes (active-sonar pings, smoke clouds). */
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
@@ -1254,15 +1351,19 @@ export interface TransitState {
   droneAmmo: number;
   /** Self-defense rounds remaining: each module shot draws from this pool. */
   pdAmmo: number;
+  /** Deck-gun shells remaining: every round any gun fires draws one. A gun
+   *  with an empty magazine holds its fire — shells are bought in prep. */
+  gunAmmo: number;
+  /** One "out of shells" warning per dry spell, not one per silent trigger
+   *  pull — thirty toasts a second is noise, not information. */
+  gunAmmoWarned: boolean;
+  /** Sorties in hand. Sorties STACK — several jets may be on task at once, on
+   *  different bearings — so this count is the only thing limiting the player.
+   *  There is deliberately no "one flight at a time" gate: with one, holding
+   *  four charges and flying one made the count a lie. */
   warthogCharges: number;
-  /** Transit time until which an A-10 is on task (blocks a second call). */
-  warthogActiveUntil: number;
-  /** Where the A-10 currently on task is holding its wheel. */
-  warthogCenterX: number;
-  warthogCenterY: number;
   scanCharges: number;
   sonarCharges: number;
-  smokeCharges: number;
   rebootCharges: number;
   /** Seconds of enemy sensor jamming remaining (0 = not jammed). The enemy
    *  pass activates this; hardened systems shorten it. */
@@ -1299,15 +1400,72 @@ export type ResearchId = string;
  *  option before the next round; picks activate immediately and cannot be
  *  banked or skipped (an EMPTY options list is the one exception — the
  *  catalogue has been exhausted and there is nothing left to offer). */
+/** Which kind of reward a draft card is. Four shapes, because they behave in
+ *  four different ways and the player should never have to work out which they
+ *  are looking at:
+ *
+ *   • UPGRADE — a branch node or tactic. Free, permanent, applies to EVERY copy
+ *     of that system the fleet is carrying (effects resolve per branch, not per
+ *     module), and takes effect on the next transit.
+ *   • MODULE — one physical unit of equipment. Held as stock, fitted and
+ *     refitted freely between rounds. Cargo units survive anything; an escort
+ *     unit goes down with its hull.
+ *   • ASSET — a change to the shape of the fleet itself: berthing, slots,
+ *     repair and salvage capability.
+ *   • ORDNANCE — a one-off delivery of consumables. The only category that is
+ *     spent rather than kept, and deliberately the weakest: it exists so a
+ *     draft with nothing useful left to offer still offers something real. */
+export type DraftOptionKind = 'upgrade' | 'module' | 'asset' | 'ordnance';
+
+/** Where a module unit can be fitted. `mineSonar` exists as BOTH a cargo module
+ *  and an escort module, so the platform is part of a module's identity and can
+ *  never be inferred from its id alone. */
+export type ModulePlatform = 'cargo' | 'escort' | 'base';
+
+export type DraftOption =
+  | { kind: 'upgrade'; id: ResearchId }
+  | { kind: 'asset'; id: ResearchId }
+  | { kind: 'module'; platform: 'cargo'; moduleId: ModuleId }
+  | { kind: 'module'; platform: 'escort'; moduleId: EscortModuleId }
+  | { kind: 'module'; platform: 'base'; moduleId: BaseModuleId }
+  | { kind: 'ordnance'; packId: string };
+
+/** Stock of equipment the drafts have delivered, by platform then module.
+ *  Counts every unit OWNED — fitted and spare alike; what is fitted is read off
+ *  the loadout itself, so the two can never disagree. */
+export interface ModuleStock {
+  cargo: Partial<Record<ModuleId, number>>;
+  escort: Partial<Record<EscortModuleId, number>>;
+  base: Partial<Record<BaseModuleId, number>>;
+}
+
 export interface TechDraft {
   /** Round whose transit earned this draft. */
   round: number;
-  options: ResearchId[];
+  options: DraftOption[];
   /** Wreckage units recovered that round (drove breadth and weighting). */
   recoveredUnits: number;
-  /** Enemy branches this draft was forced to answer by the pity rule, if any
-   *  — surfaced so the UI can say WHY an option is on the table. */
-  pityBranches?: string[];
+  /** The per-branch salvage the table was drawn against, kept so a REROLL can
+   *  redraw against the same round rather than against a bare pool. */
+  recoveredByBranch: Record<string, number>;
+  /** Times this table has been rerolled — shown to the player, and used to
+   *  salt the redraw so a reroll is deterministic on replay. */
+  rerolls?: number;
+  /** How many options may be TAKEN from this table. One ordinarily; recovery
+   *  buys a second and a third. Picking decrements it, and the draft closes
+   *  when it reaches zero — so a rich salvage round is a bigger shopping trip
+   *  rather than merely a wider menu it still only gets one bite of. */
+  picksLeft: number;
+  /** How many picks the table OPENED with, so the UI can say "pick 2 of 3"
+   *  rather than only counting down. */
+  picksTotal: number;
+  /** The enemy branch the COUNTER SLOT was drawn to answer (absent when no
+   *  live threat was under-covered and the slot fell through to the open
+   *  pool) — surfaced so the UI can say WHY an option is on the table. */
+  counterFamily?: string;
+  /** Key of the option that filled the counter slot (see draftOptionKey), so
+   *  the UI can badge exactly that card rather than guessing from the family. */
+  counterOption?: string;
 }
 
 /** What one enemy branch has actually been doing to this run.
@@ -1328,11 +1486,33 @@ export interface ThreatPressure {
   lastSeenRound: number;
 }
 
+/** How well the player is ACTUALLY handling one enemy branch, 0..1.
+ *
+ *  Owning a counter is not the same as answering a threat, and the difference
+ *  is what made the draft go wrong: one A-10 gun run per round against three
+ *  mines and two boats used to flip mines AND attack boats to "solved" —
+ *  because the old test was a boolean over the catalogue, not a measurement of
+ *  the water. Coverage is measured from what the round did: mines swept out of
+ *  mines laid, boats sunk out of boats launched, missiles intercepted out of
+ *  missiles fired. A branch that keeps killing hulls keeps a low coverage no
+ *  matter how much tech nominally points at it, and the draft keeps offering
+ *  answers for it. */
+export interface ThreatCoverage {
+  /** Smoothed neutralized fraction (0..1) — the number the draft weights on. */
+  ratio: number;
+  /** Units of this branch fielded against the run so far. */
+  fielded: number;
+  /** Units of it the player neutralized. */
+  neutralized: number;
+  /** Last round a measurement was taken (0 = never measured). */
+  lastMeasuredRound: number;
+}
+
 /** One draft's telemetry: what was offered and what the player took. */
 export interface DraftRecord {
   round: number;
-  offered: ResearchId[];
-  picked: ResearchId | null;
+  offered: DraftOption[];
+  picked: DraftOption | null;
 }
 
 /** Sensor families the hardened-systems protected channel can preserve. */
@@ -1395,6 +1575,8 @@ export interface EnemyEconomyState {
   /** Optional per-branch earliest-round floors from the region definition
    *  (pacing DELAYS on top of each branch's own openRound). */
   branchDebutRounds: Record<string, number>;
+  /** Per-round unit ceilings this region raises for a branch (see RegionDef). */
+  branchUnitCeilings: Record<string, number>;
   /** The region's threat-budget curve (base + perRound × round, capped). */
   budgetCurve: { base: number; perRound: number; cap: number };
   /** War funds granted this round (after anti-snowball modifiers). */
@@ -1584,6 +1766,8 @@ export interface CounterTelemetry {
     droneUsed: number;
     selfDefenseBought: number;
     selfDefenseUsed: number;
+    gunShellsBought: number;
+    gunShellsUsed: number;
   };
   stats: CounterRoundStats;
 }
@@ -1608,6 +1792,8 @@ export interface RoundTelemetry {
   interceptMisses: number;
   ammoUsed: number;
   warthogUsed: number;
+  /** Mines and boats destroyed by A-10 gun runs this round. */
+  warthogKills: number;
   scanUsed: number;
   minesTotal: number;
   minesRevealed: number;
@@ -1721,6 +1907,11 @@ export interface CampaignState {
   regionId: string;
   /** Commander Ability loadout locked in for this run at run start. */
   commanderAbilities: string[];
+  /** Escort legacies equipped for this run, snapshotted from the profile at
+   *  region start, and the ones whose ship has since gone down. A spent legacy
+   *  is never reassigned: a replacement hull is a new ship with a new crew. */
+  escortLegacies: string[];
+  spentLegacies: string[];
   /** True for a developer/test run — enables the dev tools and, with godMode,
    *  invincible ships & unlimited munitions. Never set on a normal campaign. */
   dev?: boolean;
@@ -1744,12 +1935,19 @@ export interface CampaignState {
   defeatCause: 'confidence' | 'quota' | null;
   /** Mandatory technology draft awaiting a pick (null = none pending). */
   pendingDraft: TechDraft | null;
+  /** Banked draft rerolls, earned by pulling crews out of the water. */
+  draftRerolls: number;
   /** Every draft offered this run, with what was picked (telemetry). */
   draftHistory: DraftRecord[];
   /** What each enemy branch has actually done to this run — the primary
    *  signal the draft weights against, so the technology on offer tracks the
    *  threats the player is really facing. */
   threatPressure: Record<string, ThreatPressure>;
+  /** How much of each enemy branch the player is actually neutralizing. The
+   *  draft weights on the GAP between pressure and coverage, so a threat that
+   *  keeps getting through keeps drawing offers even when the player already
+   *  owns something that nominally counters it. */
+  threatCoverage: Record<string, ThreatCoverage>;
   /** Round each technology was last OFFERED (whether or not it was taken), so
    *  the draft can avoid re-offering the same entry every round and the pity
    *  rule can tell "never offered" from "offered and declined". */
@@ -1758,6 +1956,11 @@ export interface CampaignState {
   wreckageRecovered: Record<string, number>;
   /** Crew-rescue totals across the run (drives records + AAR framing). */
   crewRescue: { rescued: number; lost: number };
+  /** The run's cumulative hull ledger — every merchant sailed and every one
+   *  that did not arrive. This is what the CONFIDENCE CEILING is read from:
+   *  the consortium's highest opinion of you is your record, not your last
+   *  round. See CAMPAIGN.confidenceCeilingLossDrag. */
+  record: { launched: number; lost: number };
   /** True once this run's ending has been applied to the Commander Profile,
    *  so a reload of the final report can never award XP twice. */
   profileApplied: boolean;
@@ -1767,13 +1970,11 @@ export interface CampaignState {
   composition: Record<ShipClassId, number>;
   /** Module templates applied per ship class. */
   classModules: Record<ShipClassId, ModuleId[]>;
-  /** Cash paid to equip each currently-fitted module, per class. Lets an
-   *  unequip refund exactly what was spent (so loadouts can be experimented
-   *  with freely without opening a buy-low / refund-high exploit). */
-  modulePaid: Record<ShipClassId, Partial<Record<ModuleId, number>>>;
+  /** Equipment units the drafts have delivered. Modules are no longer bought:
+   *  the draft grants a UNIT, and the unit is fitted and refitted for free. */
+  moduleStock: ModuleStock;
   /** Shore-base loadout template (applies to every battery; limited slots). */
   baseModules: BaseModuleId[];
-  baseModulePaid: Partial<Record<BaseModuleId, number>>;
   /** Accumulated unrepaired hull damage across the fleet. */
   pendingDamage: number;
   /** Unrepaired hull damage carried by the shore batteries. */
@@ -1793,6 +1994,11 @@ export interface CampaignState {
   /** Monotonic source of EscortUnit ids. Never reused, so a sunk escort's id
    *  cannot be confused with its replacement's in saves or telemetry. */
   nextEscortId: number;
+  /** Every escort name this run has ever issued, including those of ships that
+   *  have since gone down. A name is never reissued: a replacement hull under
+   *  a sunk ship's name made the debrief read as though she had survived, and
+   *  hid the fact that her fitted equipment went down with her. */
+  usedEscortNames: string[];
   ammo: number;
   /** Minesweeper-drone munitions in stock. Bought in prep; only escorts launch
    *  drones, and each launch spends one. Unused stock carries between rounds. */
@@ -1801,11 +2007,24 @@ export interface CampaignState {
    *  Unused stock carries between rounds. (Field name kept from the old
    *  point-defense system for save compatibility.) */
   pdAmmo: number;
-  /** Convoy-wide assets: owned => charges refresh each round. */
+  /** A-10 sorties and scan pulses in stock. Bought in preparation, spent on
+   *  use, carried over when unused — the same contract as every other
+   *  consumable above. They used to refill for free every round once the
+   *  capability was unlocked, which put the two most flexible tools in the game
+   *  outside the economy every other counter competes inside. Research now
+   *  raises how many can be HELD (see warthogCapacity / scanCapacity) rather
+   *  than handing out a fresh allowance. */
+  warthogStock: number;
+  scanStock: number;
+  /** Deck-gun shells in stock: bought in preparation, drawn one per round
+   *  fired, carried over when unused — same contract as the other consumables.
+   *  The gun hardware comes from the draft; the shells never do. */
+  gunAmmo: number;
+  /** Convoy-wide assets: owned => the capability is commissioned and its
+   *  ordnance can be bought. */
   warthogUnlocked: boolean;
   scanUnlocked: boolean;
   sonarUnlocked: boolean;
-  smokeUnlocked: boolean;
   hardenedUnlocked: boolean;
   /** Automation preferences (persist between rounds; default on when the
    *  tactic is researched). */
@@ -1826,7 +2045,7 @@ export interface CampaignState {
   /** Cash spent this prep, attributed to counter branches (telemetry). */
   roundSpend: Record<string, number>;
   /** Munitions bought this prep (telemetry). */
-  roundAmmoBought: { interceptor: number; drone: number; selfDefense: number };
+  roundAmmoBought: { interceptor: number; drone: number; selfDefense: number; gun: number };
   evolution: EvolutionState;
   quota: QuotaWindow;
   /** Rubber-band multiplier applied when sizing the NEXT quota window off the

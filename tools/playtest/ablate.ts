@@ -24,7 +24,8 @@
 //      them inverted. Builds that finish within 10% of each other cannot be
 //      ranked on a handful of campaigns.
 
-import { createRoundTransit, newCampaign, planCurrentRound, resolveTransit } from '../../src/sim/campaign';
+import { createRoundTransit, newRegionalRun, planCurrentRound, resolveTransit } from '../../src/sim/campaign';
+import { REGIONS, regionDef } from '../../src/data/regions';
 import type { CampaignState } from '../../src/sim/types';
 import { stepTransit } from '../../src/sim/transit';
 import { COUNTER_BRANCHES } from '../../src/data/counters';
@@ -44,13 +45,18 @@ import {
 
 interface Options {
   seeds: number;
+  /** 0 = derive from the region's own completion watermark. */
   rounds: number;
   persona: string;
+  region: string;
   only: string[];
 }
 
 function parseArgs(argv: string[]): Options {
-  const o: Options = { seeds: 16, rounds: 15, persona: 'balanced', only: [] };
+  // Same region default as the sweep, and for the same reason: a counter
+  // ablated in the `openSeas` proving ground is measured against an enemy
+  // roster no player faces, splitting its budget seven ways instead of three.
+  const o: Options = { seeds: 16, rounds: 0, persona: 'balanced', region: 'pirateNarrows', only: [] };
   for (let i = 0; i < argv.length; i++) {
     const next = (): string => argv[++i] ?? '';
     switch (argv[i]) {
@@ -63,6 +69,15 @@ function parseArgs(argv: string[]): Options {
       case '--persona':
         o.persona = next() || o.persona;
         break;
+      case '--region': {
+        const id = next();
+        if (!REGIONS[id]) {
+          console.error(`Unknown region "${id}". Available: ${Object.keys(REGIONS).join(', ')}`);
+          process.exit(1);
+        }
+        o.region = id;
+        break;
+      }
       case '--only':
         o.only = next().split(',').map((s) => s.trim()).filter(Boolean);
         break;
@@ -73,8 +88,9 @@ function parseArgs(argv: string[]): Options {
             'Straitwatch counter-value ablation',
             '',
             '  --seeds N       campaigns per arm (default 16 — fewer cannot separate close builds)',
-            '  --rounds N      max rounds per campaign (default 15)',
+            '  --rounds N      max rounds per campaign (default: the region watermark)',
             '  --persona NAME  build to ablate from (default balanced)',
+            '  --region ID     region to fight in (default pirateNarrows)',
             '  --only a,b      only these counter branches',
           ].join('\n'),
         );
@@ -103,7 +119,6 @@ const POLICY_FOR: Record<string, keyof Persona['transit']> = {
   mcmDrones: 'sweepMines',
   scanPulse: 'useScan',
   warthog: 'useWarthog',
-  smokeScreen: 'useSmoke',
   depthCharges: 'useDepthCharges',
   activeSonar: 'useSonar',
 };
@@ -192,18 +207,17 @@ function ownedEquipment(c: CampaignState, into: Set<string>): void {
   if (c.warthogUnlocked) into.add('ability:warthog');
   if (c.scanUnlocked) into.add('ability:scan');
   if (c.sonarUnlocked) into.add('ability:sonar');
-  if (c.smokeUnlocked) into.add('ability:smoke');
   if (c.hardenedUnlocked) into.add('ability:hardened');
   if (c.escortUnits.length > 0) into.add('builtIn:escort');
   if (c.bases > 0) into.add('builtIn:base');
 }
 
-function play(p: Persona, seeds: number, maxRounds: number): Result {
+function play(p: Persona, seeds: number, maxRounds: number, regionId: string): Result {
   const r: Result = { survived: 0, rounds: 0, delivered: 0, score: 0, losses: 0, owned: new Set() };
   let delivSum = 0;
   let delivRounds = 0;
   for (let s = 0; s < seeds; s++) {
-    const c = newCampaign(`playtest-${s}`);
+    const c = newRegionalRun(`playtest-${s}`, regionId, p.commander ?? [], p.legacies ?? []);
     let played = 0;
     for (let round = 0; round < maxRounds; round++) {
       if (c.campaignOver) break;
@@ -228,7 +242,9 @@ function play(p: Persona, seeds: number, maxRounds: number): Result {
     }
     r.rounds += played;
     r.score += c.score;
-    if (played >= maxRounds && !c.campaignOver) r.survived++;
+    // Clearing the region counts as coming through just as much as reaching the
+    // round cap — reading `campaignOver` as failure would score every WIN as a loss.
+    if (c.runOutcome === 'victory' || (played >= maxRounds && !c.campaignOver)) r.survived++;
   }
   r.delivered = delivRounds > 0 ? (delivSum / delivRounds) * 100 : 0;
   return r;
@@ -259,10 +275,17 @@ const skipped = opts.only.length > 0 ? opts.only.filter((t) => !carried.includes
 const pad = (s: string, w: number): string => (s.length >= w ? s.slice(0, w) : s + ' '.repeat(w - s.length));
 const padL = (s: string, w: number): string => (s.length >= w ? s : ' '.repeat(w - s.length) + s);
 
+const region = regionDef(opts.region);
+// Default the cap to the region's own completion watermark: a real run ENDS
+// there, and ablating a counter across rounds no player reaches prices it
+// against a fight that does not happen.
+const maxRounds = opts.rounds > 0 ? opts.rounds : Math.min(region.completionRound, 30);
+
 console.log(`\nCOUNTER-VALUE ABLATION — "${base.name}", ${opts.seeds} matched seeds`);
+console.log(`  Region: ${region.name} — ${region.enemyBranches.join(', ')}; ${maxRounds} rounds`);
 console.log('─'.repeat(80));
 
-const baseline = play(base, opts.seeds, opts.rounds);
+const baseline = play(base, opts.seeds, maxRounds, opts.region);
 console.log(
   '  ' + pad('ARM', 22) + padL('WENT', 7) + padL('ROUNDS', 8) + padL('DELIV%', 9) +
     padL('LOSSES', 8) + padL('SCORE', 8) + padL('WORTH', 9),
@@ -299,7 +322,7 @@ for (const id of targets) {
     );
     continue;
   }
-  const r = play(ablate(base, id), opts.seeds, opts.rounds);
+  const r = play(ablate(base, id), opts.seeds, maxRounds, opts.region);
   // WORTH is the baseline's advantage over the build without it: positive means
   // the counter earned its slot, negative means the build is better off
   // spending that money and research time on something else.

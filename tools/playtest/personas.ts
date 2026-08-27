@@ -15,28 +15,38 @@
 
 import {
   buyAmmo,
+  buyGunShells,
   buyBase,
-  buyBaseModule,
+  equipBaseModule,
+  moduleSpare,
   buyDroneAmmo,
   buyEscort,
-  buyEscortModule,
-  buyModule,
+  equipEscortModule,
+  equipModule,
   fleetHasEscortModule,
   buyPdAmmo,
   buyShip,
-  repairCost,
   repairFleet,
+  repairPartial,
+  scopeDamage,
+  type RepairScope,
   setComposition,
   setFormation,
-  unlockWarthog,
-  unlockHardened,
-  unlockScan,
-  unlockSmoke,
-  unlockSonar,
+  buyWarthogSortie,
+  buyScanPulse,
 } from '../../src/sim/campaign';
-import { dismissEmptyDraft, selectDraftOption } from '../../src/sim/draft';
-import { WORLD } from '../../src/data/tuning';
+import {
+  dismissEmptyDraft,
+  draftOptionResearchId,
+  selectDraftOption,
+} from '../../src/sim/draft';
+import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../src/data/counters';
+import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
+import { COMBAT, COMMANDER, ESCORT_LEGACY, NAV, WORLD } from '../../src/data/tuning';
+import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
+import { ESCORT_LEGACIES, legacyPointsUsed } from '../../src/data/escortLegacies';
 import type {
+  DraftOption,
   BaseModuleId,
   CampaignState,
   EscortModuleId,
@@ -57,12 +67,31 @@ import type {
  *  bot walks its list top to bottom, repeatedly, until nothing is affordable —
  *  so an early cheap intent is satisfied before a later expensive one. */
 export type BuyIntent =
-  | { kind: 'repair' }
+  /** Patch the fleet. `scope` picks which half (default: everything); `partial`
+   *  lets the bot spend what it has on a scope it cannot fully afford, the way
+   *  the prep screen's second repair button does. Without a persona that sets
+   *  these, the sweep could never measure a change to the split — the same
+   *  instrument gap that hid the smoke rework. */
+  | { kind: 'repair'; scope?: RepairScope; partial?: boolean }
   | { kind: 'base' }
-  | { kind: 'escort' }
+  /** Buy an escort, optionally maintaining a standing screen of `upTo` hulls.
+   *  Without `upTo` the bot buys one whenever it happens to be affordable at
+   *  this point in the list, which measured badly: escorts are the mobile
+   *  interceptor platform, they take 3-5 losses a campaign, and with the intent
+   *  sitting BELOW `ship` the bot spent its money replacing merchant hulls
+   *  instead. Half the personas peaked at 2-3 escorts and finished at zero,
+   *  sailing the endgame with no screen at all — which no human does, and which
+   *  made a launcher-throughput shortfall look like a missile-balance problem.
+   *  A screen target restores the intent a player actually has: keep the escorts
+   *  up FIRST, then grow the convoy behind them. */
+  | { kind: 'escort'; upTo?: number }
   | { kind: 'ammo'; upTo: number }
   | { kind: 'droneAmmo'; upTo: number }
   | { kind: 'selfDefenseAmmo'; upTo: number }
+  /** Deck-gun shells: the gun fires nothing without them now, so any persona
+   *  that fits a gun must also keep its magazine stocked or the sweep would
+   *  measure an armed flotilla that never shoots. */
+  | { kind: 'gunAmmo'; upTo: number }
   | { kind: 'module'; classId: ShipClassId; moduleId: ModuleId }
   /** Fit the persona's escortDoctrine across the flotilla — escort 1 gets the
    *  first loadout, escort 2 the second, and so on. Replaces a per-module
@@ -70,7 +99,7 @@ export type BuyIntent =
    *  mixed flotilla at all. */
   | { kind: 'escortFit' }
   | { kind: 'baseModule'; id: BaseModuleId }
-  | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+  | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'hardened' }
   /** Replace losses. Without `upToCapacity: false` the bot only rebuilds while
    *  the fleet is under convoy capacity — a real player restores the convoy
    *  rather than letting attrition shrink it to nothing. */
@@ -78,9 +107,16 @@ export type BuyIntent =
 
 /** How a persona fights during the transit. */
 export interface TransitPolicy {
-  /** Interceptor firing: none, or engage whenever a launcher is ready. */
-  intercept: 'none' | 'always';
-  /** Which threat a ready launcher picks. `leaders` favors the missile closest
+  /** Interceptor firing:
+   *  - `none` — never fires by hand (the AFK control).
+   *  - `always` — fires whenever a launcher is ready. Maximal, and NOT what a
+   *    human does once automation is researched: it produced an 83% manual
+   *    share against a measured 32% in a hand-played log.
+   *  - `sparing` — only takes a shot the automation is visibly not going to
+   *    take: an unclaimed threat inside `manualTakeoverSeconds` of impact.
+   *    This is what makes auto-fire technology worth anything to a bot. */
+  intercept: 'none' | 'always' | 'sparing';
+  /** Which threat a ready launcher picks. `urgent` favors the missile closest
    *  to its target (most urgent); `nearest` favors the closest to a launcher. */
   targeting: 'nearest' | 'urgent';
   /** Tap charted mines to send minesweeper drones (needs launcher + munitions). */
@@ -90,19 +126,64 @@ export interface TransitPolicy {
   /** Call the Warthog onto whatever patch of water has the most surface
    *  targets (mines and boats) sitting in it. */
   useWarthog: boolean;
-  /** Place defensive smoke over the densest cluster of hulls. */
-  useSmoke: boolean;
   /** Fire depth charges at detected torpedoes. */
   useDepthCharges: boolean;
   /** Spend active-sonar charges hunting torpedoes the passive watch missed. */
   useSonar: boolean;
+  /** Commit a deck-gun escort to an attack boat by hand. Without this the gun
+   *  only ever fires through its automation tactic, which is why the deck-gun
+   *  branch has only ever been measured at its floor. */
+  engageBoats: boolean;
+  /** Fire shore counter-battery at identified artillery positions. Same story
+   *  as the deck gun: manual fire was never exercised by any persona. */
+  useCounterBattery: boolean;
+  /** How far (world units) an escort will leave the convoy screen to work a
+   *  wreckage field or a crew in the water. 0 disables recovery entirely.
+   *
+   *  Recovery is the roguelite's reward loop — recovered wreckage widens the
+   *  technology draft from two options to three and skews it toward deeper
+   *  nodes — and no persona could reach it before, because none of them ever
+   *  issued `moveEscort`. Sweeps recovered 0.2% of wreckage against a human's
+   *  81%, so every counter-value number was measured on a narrower tree than a
+   *  player actually climbs. */
+  recoveryRange: number;
+  /** Escorts that stay on the screen no matter what. The real cost of salvage
+   *  is the hull that is not screening while it works, and a persona that
+   *  sends its whole flotilla away is not making the trade a player makes. */
+  screenReserve: number;
+  /** Work crews in the water before enemy wreckage when both are reachable.
+   *  Wreckage buys technology; a rescue buys back confidence. */
+  rescueFirst: boolean;
 }
+
+/** Seconds-to-impact inside which a `sparing` policy stops waiting for the
+ *  automation and takes the shot itself. */
+const MANUAL_TAKEOVER_SECONDS = 7;
 
 export interface Persona {
   name: string;
   /** One-line description for the report. */
   desc: string;
+  /** Default formation, and the fallback when `adaptFormation` has nothing to
+   *  go on (round 1, or a round that cost nothing). */
   formation: FormationId;
+  /** Re-pick the formation each prep phase from what the last round did, the
+   *  way a player reads their own after-action report. A fixed formation is a
+   *  persona that never touches a free per-round lever — measured: zero
+   *  formation changes across a whole sweep against three in nine hand-played
+   *  rounds. */
+  adaptFormation?: boolean;
+  /** Commander Ability loadout this build commissions with. Bounded by
+   *  COMMANDER.abilitySlots and COMMANDER.loadoutPoints, and validated at
+   *  startup — an illegal loadout is a persona bug, not something to silently
+   *  truncate. Empty means a bare commander, which no real run has. */
+  commander?: string[];
+  /** Escort Legacy loadout this build commissions with, bounded by
+   *  ESCORT_LEGACY.slots / .loadoutPoints and validated at startup the same way
+   *  as `commander`. Every persona carries some, because a sweep where nobody
+   *  equips legacies cannot measure a change to one — the same instrument bug
+   *  that hid the smoke rework (see docs/PLAYTEST_FIDELITY.md). */
+  legacies?: string[];
   /** Research priority order; the first affordable+available entry is started. */
   research: ResearchId[];
   buys: BuyIntent[];
@@ -125,14 +206,26 @@ export interface Persona {
  *  loop until the whole list stops making progress). */
 function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: Persona): boolean {
   const spendable = c.cash - reserve;
-  if (spendable <= 0 && intent.kind !== 'repair') return false;
+  // Fitting equipment costs nothing — the draft already paid for it — so those
+  // intents are never gated on cash the way purchases are.
+  const free = intent.kind === 'module' || intent.kind === 'escortFit' || intent.kind === 'baseModule';
+  if (spendable <= 0 && intent.kind !== 'repair' && !free) return false;
   switch (intent.kind) {
-    case 'repair':
-      return repairCost(c) > 0 && repairFleet(c);
+    case 'repair': {
+      const scope = intent.scope ?? 'all';
+      // Damage, not COST, is the "is there work to do" test: the Forward Repair
+      // Yard patches warships for nothing, and gating on price meant a bot that
+      // owned the yard never took the free repair it had paid for.
+      if (scopeDamage(c, scope) <= 0) return false;
+      if (repairFleet(c, scope)) return true;
+      // Cannot afford the whole order. A persona that says so patches what it
+      // can; one that does not waits and saves.
+      return intent.partial === true && scope !== 'all' && repairPartial(c, scope);
+    }
     case 'base':
       return buyBase(c);
     case 'escort':
-      return buyEscort(c);
+      return (intent.upTo === undefined || c.escortUnits.length < intent.upTo) && buyEscort(c);
     case 'ammo':
       return c.ammo < intent.upTo && buyAmmo(c, 5);
     // Consumables are gated on owning the thing that fires them — a real
@@ -150,8 +243,10 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
         c.pdAmmo < intent.upTo &&
         buyPdAmmo(c)
       );
+    case 'gunAmmo':
+      return fleetHasEscortModule(c, 'deckGun') && c.gunAmmo < intent.upTo && buyGunShells(c);
     case 'module':
-      return buyModule(c, intent.classId, intent.moduleId);
+      return equipModule(c, intent.classId, intent.moduleId);
     case 'escortFit': {
       // Walk the doctrine in order and fit the first thing that is affordable,
       // researched and has a free slot on that escort. One purchase per call so
@@ -160,25 +255,29 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
       for (let i = 0; i < c.escortUnits.length; i++) {
         const want = doctrine[i] ?? [];
         for (const moduleId of want) {
-          if (buyEscortModule(c, c.escortUnits[i].id, moduleId)) return true;
+          if (equipEscortModule(c, c.escortUnits[i].id, moduleId)) return true;
         }
       }
       return false;
     }
     case 'baseModule':
-      return buyBaseModule(c, intent.id);
+      return equipBaseModule(c, intent.id);
     case 'ability':
+      // The capabilities themselves are in hand from round one; what is bought
+      // is their ordnance. A bot that never topped up would fly exactly the
+      // starting allowance all run and the sweep would stop measuring these
+      // branches at all.
+      // Gated on the persona actually FLYING the thing, the same way the drone
+      // and self-defense magazines are gated on owning the launcher. Without
+      // it a bot can stockpile ordnance its transit policy will never spend.
       switch (intent.id) {
         case 'warthog':
-          return unlockWarthog(c);
+          return persona.transit.useWarthog && buyWarthogSortie(c);
         case 'scan':
-          return unlockScan(c);
+          return persona.transit.useScan && buyScanPulse(c);
         case 'sonar':
-          return unlockSonar(c);
-        case 'smoke':
-          return unlockSmoke(c);
         case 'hardened':
-          return unlockHardened(c);
+          return false; // no consumable to buy
       }
       return false;
     case 'ship': {
@@ -201,10 +300,41 @@ function fillConvoy(c: CampaignState): void {
   }
 }
 
+/** Pick this round's formation from what the last one cost, the way a player
+ *  reads their own after-action report and changes one thing.
+ *
+ *  The mapping is the formation table's own trade-offs (src/data/defs.ts), not
+ *  a guess: `tight` buys +8% intercept accuracy and 1.3x defensive reach at the
+ *  price of blast chaining, so it answers missiles; `wide` cuts collateral to
+ *  0.35x and kills chaining outright, so it answers mines and anything that
+ *  detonates among hulls; `sprint` is 1.22x pace with middling coverage, which
+ *  is what a clean round earns you. */
+function adaptiveFormation(c: CampaignState, persona: Persona): FormationId {
+  const last = c.telemetry[c.telemetry.length - 1];
+  if (!last) return persona.formation;
+
+  // A round that cost nothing says the screen is winning: spend the surplus on
+  // speed rather than holding a defensive posture against nothing.
+  if (last.lost === 0 && last.deliveredPct >= 95) return 'sprint';
+
+  const perBranch: Record<string, number> = {};
+  for (const loss of last.losses) {
+    const branch = LOSS_CAUSE_TO_ENEMY_BRANCH[loss.cause.replace(/^(escort|base):/, '')] ?? 'unknown';
+    perBranch[branch] = (perBranch[branch] ?? 0) + 1;
+  }
+  const top = Object.entries(perBranch).sort((a, b) => b[1] - a[1])[0]?.[0];
+  // Mines and boats do their damage IN AMONG the hulls, where sea room is the
+  // mitigation. Missiles are shot down on the way in, where reach and accuracy
+  // are. Anything else: hold the persona's own doctrine.
+  if (top === 'mines' || top === 'attackBoats' || top === 'artillery') return 'wide';
+  if (top === 'missiles') return 'tight';
+  return persona.formation;
+}
+
 /** Run a persona's whole procurement phase: formation, then the buy list until
  *  it stops making progress. */
 export function procure(c: CampaignState, persona: Persona): void {
-  setFormation(c, persona.formation);
+  setFormation(c, persona.adaptFormation ? adaptiveFormation(c, persona) : persona.formation);
   const reserve = persona.reserve ?? 0;
   // Loop the list: satisfying a cheap intent may free a later one to matter,
   // and quantity intents (ammo up to N) need repeating.
@@ -216,23 +346,107 @@ export function procure(c: CampaignState, persona: Persona): void {
       if (tryBuy(c, intent, reserve, persona)) progressed = true;
     }
   }
+  fitSpareEquipment(c);
   fillConvoy(c);
 }
 
-/** Resolve the pending technology draft the way this persona would: take the
- *  offered option it ranks highest in its research-preference list, or the
- *  first option when nothing it wanted was offered (the draft is mandatory).
- *  Returns the pick, or null when no draft was pending. */
-export function research(c: CampaignState, persona: Persona): ResearchId | null {
-  const draft = c.pendingDraft;
-  if (!draft) return null;
-  if (draft.options.length === 0) {
-    dismissEmptyDraft(c);
-    return null;
+/** Bolt on anything sitting in the locker with somewhere legal to go.
+ *
+ *  A persona's buy list names the fits its DOCTRINE wants, which was the whole
+ *  story when equipment was bought: you only ever owned what you chose. Under
+ *  the draft economy units arrive whether or not they were asked for, and a bot
+ *  that only ever fitted its shopping list left them in the locker — 3.6 units
+ *  drafted per campaign against 0.6 fitted, which is not a playstyle, it is the
+ *  harness failing to play. Nobody drafts a deck gun and forgets to bolt it on.
+ *
+ *  Doctrine still comes first: this runs AFTER the buy list, so a persona's
+ *  preferred escort fits claim their slots before the leftovers do. */
+function fitSpareEquipment(c: CampaignState): void {
+  let progressed = true;
+  let guard = 0;
+  while (progressed && guard++ < 100) {
+    progressed = false;
+    for (const moduleId of Object.keys(ESCORT_MODULES) as EscortModuleId[]) {
+      if (moduleSpare(c, 'escort', moduleId) <= 0) continue;
+      for (const unit of c.escortUnits) {
+        if (equipEscortModule(c, unit.id, moduleId)) {
+          progressed = true;
+          break;
+        }
+      }
+    }
+    for (const moduleId of Object.keys(MODULES) as ModuleId[]) {
+      if (moduleSpare(c, 'cargo', moduleId) <= 0) continue;
+      for (const classId of Object.keys(c.classModules) as ShipClassId[]) {
+        if (equipModule(c, classId, moduleId)) {
+          progressed = true;
+          break;
+        }
+      }
+    }
+    for (const moduleId of Object.keys(BASE_MODULES) as BaseModuleId[]) {
+      if (moduleSpare(c, 'base', moduleId) > 0 && equipBaseModule(c, moduleId)) progressed = true;
+    }
   }
-  const preferred = persona.research.find((id) => draft.options.includes(id));
-  const pick = preferred ?? draft.options[0];
-  return selectDraftOption(c, pick) ? pick : null;
+}
+
+/** Resolve the pending technology draft the way this persona would, SPENDING
+ *  EVERY PICK the draft granted: each time, take the offered option it ranks
+ *  highest in its research-preference list, or the first option when nothing it
+ *  wanted was offered (the draft is mandatory). Returns the picks in order, or
+ *  an empty array when no draft was pending.
+ *
+ *  Spending the whole draft is not a detail. A draft grants `DRAFT.basePicks`
+ *  plus one more per `DRAFT.unitsPerExtraPick` wreckage recovered, up to
+ *  `DRAFT.maxPicks` — recovery buys PICKS first and cards second. This function
+ *  used to take exactly one and return, so every extra pick a bot earned by
+ *  salvaging was silently abandoned and then overwritten by the next round's
+ *  draft. Measured: bots took 0.98 picks per round against a hand-played 1.38,
+ *  they completed 0.33 auto-fire nodes per campaign against the player's 2, and
+ *  53 of 66 campaigns fired ZERO automatic shots — including every run of the
+ *  persona named `automation`, which hand-fired 100% of its shots because it
+ *  could never reach the nodes it is defined by. The recovery loop was working;
+ *  its entire reward was going in the bin. */
+export function research(c: CampaignState, persona: Persona): DraftOption[] {
+  // A persona's preference list is written in RESEARCH ids, and a module option
+  // is matched by the research its first unit delivers — so every doctrine list
+  // in this file kept working when equipment stopped being bought and started
+  // being drafted. Ordnance matches nothing by name and is only ever the
+  // fallback, which is exactly its role in the draft too.
+  //
+  // A doctrine that names an UPGRADE wants the thing it upgrades. That used to
+  // go without saying, because branch base nodes were either granted or bought
+  // with cash; now they arrive as equipment from the draft, and a list naming
+  // `reinforcedHull.medium` without `reinforcedHull.base` describes a build the
+  // bot can never reach. Rather than patch every doctrine by hand, each entry
+  // implies its own branch's base — which is what a player means anyway.
+  const wanted: ResearchId[] = [];
+  for (const id of persona.research) {
+    const base = RESEARCH_INDEX[id]?.branch.nodes[0]?.id;
+    if (base && base !== id && !wanted.includes(base)) wanted.push(base);
+    if (!wanted.includes(id)) wanted.push(id);
+  }
+
+  const picks: DraftOption[] = [];
+  // Bounded by DRAFT.maxPicks in practice; the guard is against a refused pick
+  // leaving the draft open forever rather than against a legitimately wide one.
+  let guard = 0;
+  while (c.pendingDraft && guard++ < 16) {
+    const draft = c.pendingDraft;
+    if (draft.options.length === 0) {
+      dismissEmptyDraft(c);
+      break;
+    }
+    const preferred = wanted
+      .map((id) => draft.options.find((o) => draftOptionResearchId(o) === id))
+      .find((o): o is DraftOption => o !== undefined);
+    const pick = preferred ?? draft.options[0];
+    // A refused pick would otherwise spin the loop on the same card until the
+    // guard trips, quietly costing the rest of the draft.
+    if (!selectDraftOption(c, pick)) break;
+    picks.push(pick);
+  }
+  return picks;
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +455,10 @@ export function research(c: CampaignState, persona: Persona): ResearchId | null 
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
+}
+
+function clampNum(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
 }
 
 /** Is any interceptor launcher ready to fire right now? Checked before issuing
@@ -272,22 +490,56 @@ function timeToImpact(t: TransitState, threat: Threat): number {
 /** Centroid of the live convoy — where placed abilities are most useful. */
 function convoyCenter(t: TransitState): { x: number; y: number; count: number } {
   const live = t.ships.filter((s) => s.spawned && s.alive && !s.delivered);
-  if (live.length === 0) return { x: WORLD.width / 2, y: WORLD.lanes[1], count: 0 };
+  if (live.length === 0) return { x: WORLD.width / 2, y: t.geo.laneY(1, WORLD.width / 2), count: 0 };
   const x = live.reduce((sum, s) => sum + s.x, 0) / live.length;
   const y = live.reduce((sum, s) => sum + s.y, 0) / live.length;
   return { x, y, count: live.length };
 }
 
-/** Per-transit scratch state for a persona's ability pacing. */
+/** What an escort has been detached to do, so the bot issues each order ONCE
+ *  and knows when the job is finished. Re-issuing `moveEscort` every tick would
+ *  clear `stationed` on arrival and leave the escort circling its own
+ *  destination forever, never working the field it was sent to. */
+interface EscortJob {
+  kind: 'wreckage' | 'survivors';
+  targetId: number;
+  /** True once the recall order has been sent, so it is not sent every tick. */
+  recalled: boolean;
+}
+
+/** Per-transit scratch state for a persona's ability pacing and escort jobs. */
 export interface TransitMemory {
   lastScanT: number;
   lastWarthogT: number;
-  lastSmokeT: number;
   lastSonarT: number;
+  /** Escort id → the recovery job it is currently detached on. */
+  jobs: Map<number, EscortJob>;
 }
 
 export function newTransitMemory(): TransitMemory {
-  return { lastScanT: -99, lastWarthogT: -99, lastSmokeT: -99, lastSonarT: -99 };
+  return {
+    lastScanT: -99,
+    lastWarthogT: -99,
+    lastSonarT: -99,
+    jobs: new Map(),
+  };
+}
+
+/** Can an escort at (x,y) reach this job and finish it before it sinks?
+ *
+ *  Sending a hull on a trip it cannot complete is worse than not sending it:
+ *  the escort is off the screen for the whole transit AND the field expires
+ *  anyway. Transit time is `distance / escortSpeed`; the work itself is the
+ *  field's own `required` seconds, discounted by nothing — a lone escort works
+ *  at the base rate. */
+function reachableInTime(
+  t: TransitState,
+  from: { x: number; y: number },
+  job: { x: number; y: number; required: number; progress: number; expiresAt: number },
+): boolean {
+  const travel = dist(from.x, from.y, job.x, job.y) / NAV.escortSpeed;
+  const work = Math.max(0, job.required - job.progress);
+  return t.time + travel + work <= job.expiresAt;
 }
 
 /** Decide this tick's commands. Pure w.r.t. the sim — it only reads state. */
@@ -302,13 +554,19 @@ export function decideCommands(
   // --- Interceptors --------------------------------------------------------
   // One launch attempt per ready window: pick an unclaimed missile so shots
   // aren't stacked on a threat that already has a kill inbound.
-  if (p.intercept === 'always' && anyLauncherReady(t)) {
+  if (p.intercept !== 'none' && anyLauncherReady(t)) {
     let best: Threat | null = null;
     let bestKey = Infinity;
     for (const threat of t.threats) {
       if (!threat.alive) continue;
       if (threat.kind !== 'missile' && threat.kind !== 'guidedMissile') continue;
       if (threat.claimedByInterceptor) continue;
+      // `sparing`: leave the shot to the automation until the threat is close
+      // enough to impact that waiting any longer loses the hull. A bot that
+      // hand-fires everything makes every auto-fire node in the tree worthless
+      // to it, which is exactly backwards from how a human plays once they hold
+      // localAuto/strategicAuto.
+      if (p.intercept === 'sparing' && timeToImpact(t, threat) > MANUAL_TAKEOVER_SECONDS) continue;
       const key =
         p.targeting === 'urgent'
           ? timeToImpact(t, threat)
@@ -325,6 +583,148 @@ export function decideCommands(
       }
     }
     if (best) cmds.push({ type: 'intercept', threatId: best.id });
+  }
+
+  // --- Deck guns -----------------------------------------------------------
+  // Commit a gun escort to a boat that no gun is already on. The sim's model
+  // is COMMITMENT — an engage order is a pursuit that follows the boat until
+  // it sinks or the escort is re-tasked — so the only thing to avoid is
+  // re-tasking a gun that is already working. Out-of-range boats are valid
+  // orders now (the escort steams to them), bounded so the bot does not send
+  // its screen across the whole strait after a boat still forming up.
+  if (p.engageBoats && t.escorts.some((e) => e.alive && e.modules.includes('deckGun'))) {
+    const engaged = new Set(
+      t.escorts
+        .filter((e) => e.alive && (e.gunTargetId !== null || e.pursueBoatId !== null))
+        .flatMap((e) => [e.gunTargetId, e.pursueBoatId]),
+    );
+    // Chase, but with judgement: a human sends the gun after a boat that is
+    // actually menacing the convoy, not any contact a kilometre out. At 2.5×
+    // gun range there was ALWAYS a valid pursuit in this region, so the one
+    // detachable escort spent every round chasing and the recovery loop —
+    // measured — never ran at all. 1.3× keeps the new order exercised while
+    // leaving the quiet stretches recovery lives in.
+    const pursuitReach = t.effects.deckGun.range * 1.3;
+    let target: Threat | null = null;
+    let bestD = Infinity;
+    for (const boat of t.threats) {
+      if (boat.kind !== 'attackBoat' || !boat.alive || engaged.has(boat.id)) continue;
+      const d = Math.min(
+        ...t.escorts
+          .filter((e) => e.alive && e.modules.includes('deckGun'))
+          .map((e) => dist(e.x, e.y, boat.x, boat.y)),
+        Infinity,
+      );
+      if (d <= pursuitReach && d < bestD) {
+        bestD = d;
+        target = boat;
+      }
+    }
+    // Focus fire once it is researched: a boarding party that reaches a hull
+    // takes the ship outright, so a boat close to the convoy is worth every gun
+    // that can reach it.
+    if (target) {
+      const closeToConvoy = t.ships.some(
+        (s) => s.alive && !s.delivered && dist(s.x, s.y, target!.x, target!.y) < 160,
+      );
+      cmds.push({
+        type: 'engageBoat',
+        threatId: target.id,
+        focus: closeToConvoy && t.effects.deckGun.focusFire,
+      });
+    }
+  }
+
+  // --- Counter-battery -----------------------------------------------------
+  // Fire at an identified artillery POSITION, never at a shell. Gated on a
+  // base actually being ready so the bot is not spamming rejected commands.
+  if (p.useCounterBattery && t.baseModules.includes('counterBattery')) {
+    const ready = t.bases.some(
+      (b) => b.alive && b.cbCooldown <= 0 && t.time >= b.disabledUntil,
+    );
+    if (ready) {
+      const pos = t.installations.find(
+        (i) =>
+          !i.destroyed &&
+          t.time >= i.suppressedUntil &&
+          (i.variant !== 'ranging' || t.effects.counterBattery.canEngageRanging),
+      );
+      if (pos) cmds.push({ type: 'counterBattery', installationId: pos.id });
+    }
+  }
+
+  // --- Recovery & rescue ---------------------------------------------------
+  // The roguelite reward loop, and the only place a persona spends escort TIME
+  // rather than money. Two rules make this a real trade rather than free value:
+  // the screen keeps `screenReserve` hulls no matter what, and a job is only
+  // taken if the escort can finish it before the field sinks.
+  if (p.recoveryRange > 0 && t.escorts.some((e) => e.alive)) {
+    const center = convoyCenter(t);
+    // Retire finished or impossible jobs first, and recall the hull. A job
+    // whose escort has been RE-TASKED onto a boat pursuit is retired too —
+    // the engage order replaced the recovery hold, and leaving the stale job
+    // in the ledger both blocked re-assignment (jobs.size gated the detach
+    // budget) and pinned the field as "claimed" while nobody worked it.
+    for (const [escortId, job] of mem.jobs) {
+      const escort = t.escorts.find((e) => e.id === escortId);
+      const retasked = !!escort?.alive && escort.pursueBoatId !== null;
+      const done =
+        !escort ||
+        !escort.alive ||
+        retasked ||
+        (job.kind === 'wreckage'
+          ? !t.wreckage.some((f) => f.id === job.targetId && !f.recovered && !f.expired)
+          : !t.survivors.some((a) => a.id === job.targetId && !a.rescued && !a.lost));
+      if (!done) continue;
+      mem.jobs.delete(escortId);
+      // Rejoin: hold=false so the escort resumes cruising with the convoy on
+      // arrival instead of parking in empty water where it screens nothing.
+      // Never sent to a pursuing escort — a move order would cancel the very
+      // pursuit that displaced the job.
+      if (escort?.alive && !job.recalled && !retasked) {
+        cmds.push({ type: 'moveEscort', escortId, x: center.x, y: center.y, hold: false });
+      }
+    }
+
+    const free = t.escorts.filter((e) => e.alive && !mem.jobs.has(e.id));
+    const detachable = t.escorts.filter((e) => e.alive).length - p.screenReserve;
+    if (free.length > 0 && mem.jobs.size < detachable) {
+      const claimed = new Set([...mem.jobs.values()].map((j) => `${j.kind}:${j.targetId}`));
+      type Candidate = { kind: 'wreckage' | 'survivors'; id: number; x: number; y: number; required: number; progress: number; expiresAt: number };
+      const candidates: Candidate[] = [
+        ...t.wreckage
+          .filter((f) => !f.recovered && !f.expired && !claimed.has(`wreckage:${f.id}`))
+          .map((f) => ({ kind: 'wreckage' as const, id: f.id, x: f.x, y: f.y, required: f.required, progress: f.progress, expiresAt: f.expiresAt })),
+        ...t.survivors
+          .filter((a) => !a.rescued && !a.lost && !claimed.has(`survivors:${a.id}`))
+          .map((a) => ({ kind: 'survivors' as const, id: a.id, x: a.x, y: a.y, required: a.required, progress: a.progress, expiresAt: a.expiresAt })),
+      ];
+      // Nearest reachable job for the nearest free escort. A crew in the water
+      // outranks a wreck at the same distance when the persona says so — the
+      // two buy different currencies (confidence vs draft breadth).
+      let bestEscort: number | null = null;
+      let bestJob: Candidate | null = null;
+      let bestScore = Infinity;
+      for (const escort of free) {
+        for (const job of candidates) {
+          const d = dist(escort.x, escort.y, job.x, job.y);
+          if (d > p.recoveryRange) continue;
+          if (!reachableInTime(t, escort, job)) continue;
+          const score = p.rescueFirst && job.kind === 'survivors' ? d * 0.5 : d;
+          if (score < bestScore) {
+            bestScore = score;
+            bestEscort = escort.id;
+            bestJob = job;
+          }
+        }
+      }
+      if (bestEscort !== null && bestJob) {
+        mem.jobs.set(bestEscort, { kind: bestJob.kind, targetId: bestJob.id, recalled: false });
+        // hold=true: the escort has to SIT inside the radius to work the field,
+        // and progress resets completely the moment nothing is working it.
+        cmds.push({ type: 'moveEscort', escortId: bestEscort, x: bestJob.x, y: bestJob.y, hold: true });
+      }
+    }
   }
 
   // --- Minesweeping --------------------------------------------------------
@@ -386,46 +786,72 @@ export function decideCommands(
     mem.lastSonarT = t.time;
   }
 
-  // Warthog: send it wherever the most surface targets are clustered ahead of
-  // the convoy. A sortie is worth spending once there is more than one thing in
-  // the wheel — it kills mines outright and grinds boats down over passes.
-  if (
-    p.useWarthog &&
-    t.warthogCharges > 0 &&
-    t.time >= t.warthogActiveUntil &&
-    t.time - mem.lastWarthogT > 20
-  ) {
+  // Warthog: draw the run-in line through the best string of surface targets
+  // ahead of the convoy. The jet takes one target on the way out and one on the
+  // way back, so the bot wants targets STRUNG OUT along a line rather than
+  // bunched in a blob — a pair it can line up beats a cluster it cannot.
+  // Sorties stack now, so the bot is no longer gated on the flight already up —
+  // only on its own re-call spacing, which stands in for a human not spending
+  // every charge in the opening thirty seconds.
+  if (p.useWarthog && t.warthogCharges > 0 && t.time - mem.lastWarthogT > 20) {
     const surface = t.threats.filter(
-      (th) => th.alive && (th.kind === 'mine' || th.kind === 'attackBoat'),
+      (th) =>
+        th.alive &&
+        (th.kind === 'mine' || th.kind === 'attackBoat') &&
+        // Only water ahead of the convoy is worth a sortie — behind it,
+        // whatever is there has already been sailed past.
+        th.x >= center.x - 120 &&
+        th.y >= t.geo.airWaterTop(th.x) &&
+        th.y <= t.geo.airWaterBottom(th.x),
     );
-    let bestX = 0;
-    let bestY = 0;
-    let bestCount = 0;
-    for (const th of surface) {
-      // Only water ahead of the convoy is worth a sortie — behind it, whatever
-      // is there has already been sailed past.
-      if (th.x < center.x - 120) continue;
-      const near = surface.filter((o) => dist(o.x, o.y, th.x, th.y) < 200).length;
-      if (near > bestCount) {
-        bestCount = near;
-        bestX = th.x;
-        bestY = th.y;
+    // Best PAIR: the two targets whose separation makes the longest legal run.
+    // The line through them is the run, extended a little past both so each is
+    // comfortably inside the gun cone rather than sitting on the endpoint.
+    let bestA: { x: number; y: number } | null = null;
+    let bestB: { x: number; y: number } | null = null;
+    let bestScore = 0;
+    for (let i = 0; i < surface.length; i++) {
+      for (let j = i + 1; j < surface.length; j++) {
+        const a = surface[i];
+        const b = surface[j];
+        const d = dist(a.x, a.y, b.x, b.y);
+        if (d < COMBAT.warthog.minRunLength || d > COMBAT.warthog.coneRange * 2) continue;
+        // Prefer pairs with other targets near the line between them.
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const near = surface.filter((o) => dist(o.x, o.y, midX, midY) < d).length;
+        if (near > bestScore) {
+          bestScore = near;
+          bestA = { x: a.x, y: a.y };
+          bestB = { x: b.x, y: b.y };
+        }
       }
     }
-    if (bestCount >= 2) {
-      cmds.push({ type: 'ability', ability: 'warthog', x: bestX, y: bestY });
-      mem.lastWarthogT = t.time;
+    // No pair lines up? A single target is still worth a run — draw the line
+    // straight down the convoy's axis through it, which is what a player does
+    // and which keeps a bought sortie from sitting on the apron all round.
+    if (!bestA && surface.length > 0) {
+      const lone = surface.reduce((best, th) => (th.x < best.x ? th : best), surface[0]);
+      const y = clampNum(lone.y, t.geo.airWaterTop(lone.x), t.geo.airWaterBottom(lone.x));
+      bestA = { x: lone.x - COMBAT.warthog.minRunLength, y };
+      bestB = { x: lone.x + COMBAT.warthog.minRunLength * 1.5, y };
+      bestScore = 2;
     }
-  }
-
-  // Smoke: lay it over the convoy while it is genuinely under threat.
-  if (p.useSmoke && t.smokeCharges > 0 && t.time - mem.lastSmokeT > 30 && center.count >= 3) {
-    const inbound = t.threats.filter(
-      (th) => th.alive && (th.kind === 'missile' || th.kind === 'guidedMissile'),
-    ).length;
-    if (inbound >= 3) {
-      cmds.push({ type: 'ability', ability: 'smoke', x: center.x, y: center.y });
-      mem.lastSmokeT = t.time;
+    if (bestA && bestB && bestScore >= 2) {
+      const ux = (bestB.x - bestA.x) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
+      const uy = (bestB.y - bestA.y) / dist(bestA.x, bestA.y, bestB.x, bestB.y);
+      const pad = 60;
+      const ax = bestA.x - ux * pad;
+      const bx = bestB.x + ux * pad;
+      cmds.push({
+        type: 'ability',
+        ability: 'warthog',
+        x: ax,
+        y: clampNum(bestA.y - uy * pad, t.geo.airWaterTop(ax), t.geo.airWaterBottom(ax)),
+        x2: bx,
+        y2: clampNum(bestB.y + uy * pad, t.geo.airWaterTop(bx), t.geo.airWaterBottom(bx)),
+      });
+      mem.lastWarthogT = t.time;
     }
   }
 
@@ -436,15 +862,29 @@ export function decideCommands(
 // The personas
 // ---------------------------------------------------------------------------
 
+/** How far off the screen a working flotilla will send a hull. Sized from the
+ *  mechanics rather than picked: an escort makes NAV.escortSpeed units/second
+ *  and a wreckage field lives WRECKAGE.lifetimeSeconds, so a field much beyond
+ *  this cannot be reached AND worked before it sinks. `reachableInTime` is the
+ *  real gate; this is the cheap first filter. */
+const RECOVERY_RANGE = 900;
+
 const FIGHTER: TransitPolicy = {
   intercept: 'always',
   targeting: 'urgent',
   sweepMines: true,
   useScan: true,
   useWarthog: true,
-  useSmoke: true,
   useDepthCharges: true,
   useSonar: true,
+  engageBoats: true,
+  useCounterBattery: true,
+  recoveryRange: RECOVERY_RANGE,
+  // One hull always stays with the convoy. A flotilla that salvages with
+  // everything it has is not making the trade a player makes — and with a
+  // single escort it would leave the convoy completely unscreened.
+  screenReserve: 1,
+  rescueFirst: false,
 };
 
 const PASSIVE: TransitPolicy = {
@@ -453,9 +893,13 @@ const PASSIVE: TransitPolicy = {
   sweepMines: false,
   useScan: false,
   useWarthog: false,
-  useSmoke: false,
   useDepthCharges: false,
   useSonar: false,
+  engageBoats: false,
+  useCounterBattery: false,
+  recoveryRange: 0,
+  screenReserve: 0,
+  rescueFirst: false,
 };
 
 export const PERSONAS: Persona[] = [
@@ -463,6 +907,9 @@ export const PERSONAS: Persona[] = [
     name: 'balanced',
     desc: 'Generalist: one answer to every branch before depth in any of them.',
     formation: 'tight',
+    commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['gunneryDrill', 'minePlating', 'veteranHelm'],
+    adaptFormation: true,
     // BREADTH FIRST, and deliberately so. Research runs one project at a time
     // and a campaign completes roughly thirteen of them, so a list ordered by
     // depth never reaches its tail: the previous ordering front-loaded missile
@@ -502,11 +949,12 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 30 },
+      { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'droneAmmo', upTo: 6 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
@@ -528,6 +976,9 @@ export const PERSONAS: Persona[] = [
     name: 'turtle',
     desc: 'Survivability-first: hull, compartmentalization and fire suppression before firepower.',
     formation: 'wide',
+    commander: ['shipwright', 'rescueDoctrine', 'salvageTeams'],
+    legacies: ['damageControl', 'minePlating'],
+    adaptFormation: true,
     research: [
       'compartmentalization.low',
       'compartmentalization.medium',
@@ -543,7 +994,8 @@ export const PERSONAS: Persona[] = [
       'reinforcedHull.extra',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'escorts', partial: true },
+      { kind: 'repair', scope: 'cargo', partial: true },
       { kind: 'ammo', upTo: 22 },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
       { kind: 'ship', classId: 'cargo' },
@@ -561,6 +1013,8 @@ export const PERSONAS: Persona[] = [
     name: 'interceptor-rush',
     desc: 'All-in on missile defense: launchers, ammunition and interceptor research; ignores mines.',
     formation: 'tight',
+    commander: ['steadyHands', 'quartermaster', 'rescueDoctrine'],
+    legacies: ['gunneryDrill', 'rapidRearm', 'veteranHelm'],
     research: [
       'escortInterceptor.precisionGuidance',
       'baseInterceptor.extendedBurn',
@@ -577,9 +1031,9 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 40 },
+      { kind: 'escort', upTo: 4 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'ammo', upTo: 70 },
       { kind: 'ability', id: 'warthog' },
     ],
@@ -589,6 +1043,9 @@ export const PERSONAS: Persona[] = [
     name: 'sensor-net',
     desc: 'Detection-first: warning receivers, sonar and scan pulses before shooters.',
     formation: 'wide',
+    commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['rescueRig', 'gunneryDrill', 'veteranHelm'],
+    adaptFormation: true,
     research: [
       'missileWarning.base',
       'mineSonar.base',
@@ -607,6 +1064,7 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 25 },
+      { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
       { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
@@ -614,8 +1072,8 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'missileWarning' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 9 },
       { kind: 'ammo', upTo: 40 },
     ],
@@ -630,6 +1088,8 @@ export const PERSONAS: Persona[] = [
     name: 'mine-warfare',
     desc: 'Mine specialist: sonar + scan + drone launchers, minimal missile investment.',
     formation: 'wide',
+    commander: ['salvageTeams', 'quartermaster', 'shipwright'],
+    legacies: ['minePlating', 'requisitionOrder'],
     research: [
       'mineSonar.base',
       'mcmDrones.base',
@@ -646,10 +1106,11 @@ export const PERSONAS: Persona[] = [
     buys: [
       { kind: 'repair' },
       { kind: 'ammo', upTo: 20 },
+      { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 12 },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
@@ -667,6 +1128,8 @@ export const PERSONAS: Persona[] = [
     name: 'asw',
     desc: 'Underwater specialist: hydrophone watch, depth charges and sonar pings — no answer to anything airborne.',
     formation: 'wide',
+    commander: ['salvageTeams', 'rescueDoctrine', 'shipwright'],
+    legacies: ['rescueRig', 'minePlating', 'veteranHelm'],
     research: [
       'hydrophone.base',
       'depthCharges.base',
@@ -685,10 +1148,12 @@ export const PERSONAS: Persona[] = [
       'hydrophone.sharedPicture',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'escorts', partial: true },
+      { kind: 'repair', scope: 'cargo' },
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'module', classId: 'cargo', moduleId: 'hydrophone' },
       { kind: 'module', classId: 'tanker', moduleId: 'hydrophone' },
       { kind: 'ability', id: 'sonar' },
@@ -708,6 +1173,8 @@ export const PERSONAS: Persona[] = [
     name: 'gunboat',
     desc: 'Anti-surface specialist: escort deck guns and anti-boarding drills — no answer to anything it cannot shoot flat.',
     formation: 'tight',
+    commander: ['shipwright', 'quartermaster', 'salvageTeams'],
+    legacies: ['requisitionOrder', 'veteranHelm', 'standingContract'],
     research: [
       'deckGun.base',
       'deckGun.autoNearest',
@@ -729,6 +1196,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'ammo', upTo: 18 },
       { kind: 'escort' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
       { kind: 'module', classId: 'tanker', moduleId: 'antiBoarding' },
       { kind: 'escort' },
@@ -749,6 +1217,8 @@ export const PERSONAS: Persona[] = [
     name: 'shore-battery',
     desc: 'Counter-battery specialist: silences artillery from the friendly shore, and sails wide of the guns.',
     formation: 'wide',
+    commander: ['steadyHands', 'quartermaster', 'rescueDoctrine'],
+    legacies: ['gunneryDrill', 'rescueRig', 'standingContract'],
     research: [
       'counterBattery.base',
       'counterBattery.autoReturnFire',
@@ -767,8 +1237,8 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'base' },
+      { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
-      { kind: 'escort' },
       { kind: 'ammo', upTo: 34 },
     ],
     transit: FIGHTER,
@@ -784,6 +1254,9 @@ export const PERSONAS: Persona[] = [
     name: 'technologist',
     desc: 'Equips the convoy before it enlarges it — the mirror of economist.',
     formation: 'tight',
+    commander: ['salvageTeams', 'rescueDoctrine', 'quartermaster'],
+    legacies: ['damageControl', 'veteranHelm', 'standingContract'],
+    adaptFormation: true,
     research: [
       'escortInterceptor.precisionGuidance',
       'mineSonar.base',
@@ -800,7 +1273,8 @@ export const PERSONAS: Persona[] = [
       'deckGun.autoNearest',
     ],
     buys: [
-      { kind: 'repair' },
+      { kind: 'repair', scope: 'cargo', partial: true },
+      { kind: 'repair', scope: 'escorts', partial: true },
       { kind: 'ammo', upTo: 30 },
       // No hull purchase up here at all. The campaign already starts with a
       // convoy that can sail, and this build's whole point is to equip that
@@ -818,6 +1292,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'cargo', moduleId: 'compartmentalization' },
       { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'ability', id: 'warthog' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
@@ -837,6 +1312,8 @@ export const PERSONAS: Persona[] = [
     name: 'economist',
     desc: 'Greed test: buys hulls and capacity, minimal defense — should be punished if pressure is real.',
     formation: 'sprint',
+    commander: ['warChest', 'shipwright', 'quartermaster'],
+    legacies: ['standingContract', 'veteranHelm', 'requisitionOrder'],
     research: [
       'logistics.expandedBerthing',
       'escortInterceptor.precisionGuidance',
@@ -853,9 +1330,62 @@ export const PERSONAS: Persona[] = [
     transit: FIGHTER,
   },
   {
+    // Modelled directly on a hand-played pirateNarrows run (see
+    // docs/PLAYTEST_FIDELITY.md). It exists because every other persona
+    // hand-fires its launchers — an 83% manual share against the 32% that log
+    // measured — which makes every auto-fire node in the tree worthless to the
+    // sweep. This build drafts automation first and then only takes the shots
+    // the automation misses, which is how a human actually plays once they hold
+    // localAuto and strategicAuto.
+    name: 'automation',
+    desc: 'Drafts auto-fire first and lets it work: hand-fires only what the automation would miss.',
+    formation: 'tight',
+    commander: ['steadyHands', 'salvageTeams'],
+    legacies: ['rapidRearm', 'gunneryDrill', 'veteranHelm'],
+    adaptFormation: true,
+    research: [
+      'escortInterceptor.localAuto',
+      'baseInterceptor.strategicAuto',
+      'escortInterceptor.highVelocityMotor',
+      'escortInterceptor.precisionGuidance',
+      'baseInterceptor.improvedLaunchCycle',
+      'escortInterceptor.expandedAuto',
+      'baseInterceptor.responsiveAuto',
+      'warthog.extendedLoiter',
+      'warthog.tankBuster',
+      'deckGun.base',
+      'deckGun.autoNearest',
+      'antiBoarding.base',
+      'reinforcedHull.medium',
+    ],
+    buys: [
+      { kind: 'repair' },
+      { kind: 'ammo', upTo: 35 },
+      { kind: 'escort', upTo: 2 },
+      { kind: 'base' },
+      { kind: 'ability', id: 'scan' },
+      { kind: 'ability', id: 'warthog' },
+      { kind: 'ship', classId: 'cargo' },
+      { kind: 'escortFit' },
+      { kind: 'gunAmmo', upTo: 60 },
+      // The hand-played run put reinforced hull on all three classes and spent
+      // more on it than on any weapon — mitigation across the whole convoy
+      // rather than depth in one counter.
+      { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
+      { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
+      { kind: 'module', classId: 'freighter', moduleId: 'reinforcedHull' },
+      { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
+      { kind: 'ammo', upTo: 50 },
+    ],
+    escortDoctrine: [['deckGun'], ['deckGun']],
+    transit: { ...FIGHTER, intercept: 'sparing' },
+  },
+  {
     name: 'afk',
     desc: 'Control case: buys nothing, fires nothing. The floor any real build must beat.',
     formation: 'tight',
+    commander: [],
+    legacies: [],
     research: [],
     buys: [],
     transit: PASSIVE,
@@ -864,4 +1394,43 @@ export const PERSONAS: Persona[] = [
 
 export function personaByName(name: string): Persona | undefined {
   return PERSONAS.find((p) => p.name === name);
+}
+
+/** Why this persona's Commander loadout is illegal, or null when it is fine.
+ *
+ *  Checked rather than clamped on purpose. A loadout that silently loses its
+ *  third ability because it went a point over budget would make a persona quietly
+ *  different from what it says it is — which is exactly the class of bug the
+ *  fidelity work exists to catch, and it would be embarrassing to introduce one
+ *  while closing them. */
+export function commanderLoadoutError(persona: Persona): string | null {
+  const ids = persona.commander ?? [];
+  const unknown = ids.filter((id) => !COMMANDER_ABILITIES[id]);
+  if (unknown.length > 0) return `unknown Commander Ability: ${unknown.join(', ')}`;
+  if (new Set(ids).size !== ids.length) return 'duplicate Commander Ability';
+  if (ids.length > COMMANDER.abilitySlots) {
+    return `${ids.length} abilities exceeds ${COMMANDER.abilitySlots} slots`;
+  }
+  const points = loadoutPointsUsed(ids);
+  if (points > COMMANDER.loadoutPoints) {
+    return `${points} loadout points exceeds the ${COMMANDER.loadoutPoints} budget`;
+  }
+  return null;
+}
+
+/** Why this persona's Escort Legacy loadout is illegal, or null when it is
+ *  fine. Checked, not clamped, for the same reason as the Commander loadout. */
+export function legacyLoadoutError(persona: Persona): string | null {
+  const ids = persona.legacies ?? [];
+  const unknown = ids.filter((id) => !ESCORT_LEGACIES[id]);
+  if (unknown.length > 0) return `unknown Escort Legacy: ${unknown.join(', ')}`;
+  if (new Set(ids).size !== ids.length) return 'duplicate Escort Legacy';
+  if (ids.length > ESCORT_LEGACY.slots) {
+    return `${ids.length} legacies exceeds ${ESCORT_LEGACY.slots} berths`;
+  }
+  const points = legacyPointsUsed(ids);
+  if (points > ESCORT_LEGACY.loadoutPoints) {
+    return `${points} legacy points exceeds the ${ESCORT_LEGACY.loadoutPoints} budget`;
+  }
+  return null;
 }

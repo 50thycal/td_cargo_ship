@@ -25,6 +25,7 @@ import { fitUniformEscorts } from './helpers';
 import { canEngage, COUNTER_BRANCHES, deriveCounterEffects } from '../src/data/counters';
 import { COMBAT, NAV, SIM, SPAWN, WORLD } from '../src/data/tuning';
 import { SHIP_CLASSES } from '../src/data/defs';
+import { geography } from '../src/data/geography';
 import type {
   CampaignState,
   FormationId,
@@ -61,6 +62,15 @@ function emptyTransit(
   state.spawnQueue = [];
   state.threats = [];
   return { c, state, rng };
+}
+
+/** A mine the plot is HOLDING — charted by scan or sonar. The A-10's gun only
+ *  engages these, so anything testing the gun has to chart its targets. */
+function addChartedMine(state: TransitState, x: number, y: number, lowSig = false): Threat {
+  const mine = addMine(state, x, y, lowSig);
+  mine.revealed = true;
+  mine.revealedUntil = Number.POSITIVE_INFINITY;
+  return mine;
 }
 
 function addMine(state: TransitState, x: number, y: number, lowSig = false): Threat {
@@ -136,14 +146,14 @@ function soloShip(state: TransitState): Ship {
 // ---------------------------------------------------------------------------
 
 describe('A-10 Warthog', () => {
-  it('comes with ONE sortie, and a second is something you buy', () => {
+  it('comes with TWO sorties on the apron, and doubling that is something you buy', () => {
     const base = deriveCounterEffects([], { escortModules: [], baseModules: [] });
-    expect(base.abilities.warthog.charges).toBe(1);
+    expect(base.abilities.warthog.charges).toBe(2);
     const withSortie = deriveCounterEffects(['warthog.secondSortie'] as ResearchId[], {
       escortModules: [],
       baseModules: [],
     });
-    expect(withSortie.abilities.warthog.charges).toBe(2);
+    expect(withSortie.abilities.warthog.charges).toBe(4);
   });
 
   it('the loiter and radius upgrades each buy what they say they buy', () => {
@@ -177,69 +187,149 @@ describe('A-10 Warthog', () => {
     expect([...COUNTER_BRANCHES.warthog.counters].sort()).toEqual(['attackBoats', 'mines']);
   });
 
-  it('destroys mines under its wheel — charted or not', () => {
+  it('destroys charted mines along the bearing it was given', () => {
     const { state, rng } = emptyTransit('warthog-mines', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 1000;
     const cy = WORLD.lanes[1];
-    const mines = [
-      addMine(state, cx - 60, cy),
-      addMine(state, cx + 50, cy + 40),
-      addMine(state, cx, cy - 70),
-    ];
-    // Never detected by anything: the gun does not care whether the plot had it.
-    expect(mines.every((m) => !m.revealed)).toBe(true);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
-    run(state, rng, 30);
-    expect(mines.every((m) => !m.alive)).toBe(true);
-    expect(state.stats.minesSwept).toBe(3);
-    expect(state.stats.warthogKills).toBe(3);
-    expect(state.stats.counter.gunRunKills).toBe(3);
+    // Two mines strung out along the run line: one for the outbound pass, one
+    // for the return. The gun takes ONE target per pass, so a sortie is worth
+    // exactly two engagements however many targets are lying about.
+    const first = addChartedMine(state, 1000, cy);
+    const second = addChartedMine(state, 1150, cy);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 120);
+    expect(first.alive).toBe(false);
+    expect(second.alive).toBe(false);
+    expect(state.stats.minesSwept).toBe(2);
+    expect(state.stats.warthogKills).toBe(2);
+    expect(state.stats.counter.gunRunKills).toBe(2);
   });
 
-  it('leaves alone what is outside the strafe radius', () => {
-    const { state, rng } = emptyTransit('warthog-radius', (c) => {
+  it('engages once per pass, and only twice in a sortie', () => {
+    const { state, rng } = emptyTransit('warthog-passes', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 900;
     const cy = WORLD.lanes[1];
-    const radius = state.effects.abilities.warthog.radius;
-    const inside = addMine(state, cx + radius * 0.5, cy);
-    const outside = addMine(state, cx + radius + 220, cy);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
-    run(state, rng, 40);
-    expect(inside.alive).toBe(false);
-    expect(outside.alive).toBe(true);
+    // Five mines in a row. A wheel would have swept the lot; a strafing run
+    // gets two of them and has to be called again for the rest. That limit is
+    // what makes WHERE the line goes a decision.
+    for (let i = 0; i < 5; i++) addChartedMine(state, 950 + i * 60, cy);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1400, y2: cy }],
+      rng,
+    );
+    run(state, rng, 120);
+    expect(state.stats.counter.gunRuns).toBe(2);
+    expect(state.threats.filter((m) => m.kind === 'mine' && m.alive).length).toBe(3);
   });
 
-  it('grinds a boat down over several visible passes rather than one-tapping it', () => {
+  it('will not shoot a mine the plot is not holding', () => {
+    // The gun is not a search sensor. Letting it find uncharted mines made the
+    // A-10 a free area sweep that quietly did the scan plane's and the sonar's
+    // job, and made charting the water pointless.
+    const { state, rng } = emptyTransit('warthog-uncharted', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    const hidden = addMine(state, 1000, cy);
+    const charted = addChartedMine(state, 1200, cy);
+    expect(hidden.revealed).toBe(false);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 120);
+    expect(hidden.alive).toBe(true);
+    expect(charted.alive).toBe(false);
+  });
+
+  it('holds its fire through the turn between passes', () => {
+    // A gun cannot track through 180 degrees of bank, and if it could the
+    // careful run-in would not matter.
+    const { state, rng } = emptyTransit('warthog-turn', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    let firedWhileTurning = false;
+    for (let i = 0; i < Math.ceil(90 / SIM.dt); i++) {
+      const before = state.stats.counter.gunRuns;
+      const turning = state.aircraft.some((a) => a.role === 'warthog' && a.phase === 'departing');
+      stepTransit(state, [], rng);
+      if (turning && state.stats.counter.gunRuns > before) firedWhileTurning = true;
+    }
+    expect(firedWhileTurning).toBe(false);
+  });
+
+  it('leaves alone what sits off the run line, however close to the track', () => {
+    const { state, rng } = emptyTransit('warthog-cone', (c) => {
+      c.warthogUnlocked = true;
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    const cy = WORLD.lanes[1];
+    // On the line and well within reach.
+    const onLine = addChartedMine(state, 1000, cy);
+    // Abeam of the run, far outside the gun cone — a fixed gun points where the
+    // aircraft points, so this is never in the solution however near it looks.
+    const abeam = addChartedMine(state, 900, cy - 330);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
+    run(state, rng, 120);
+    expect(onLine.alive).toBe(false);
+    expect(abeam.alive).toBe(true);
+  });
+
+  it('draws a visible burst of tracer for every engagement', () => {
     const { state, rng } = emptyTransit('warthog-boat', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
-    const cx = 1000;
     const cy = WORLD.lanes[1];
-    const boat = addBoat(state, cx + 40, cy, 120);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: cx, y: cy }], rng);
+    // A light boat: two passes at the base 26 is 52, so this one breaks up
+    // inside a single sortie while a heavy one would need another call.
+    const boat = addBoat(state, 1050, cy, 40);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 800, y: cy, x2: 1300, y2: cy }],
+      rng,
+    );
     // Every point of damage crosses the water as a drawn burst.
     let sawBurst = false;
-    for (let i = 0; i < Math.ceil(40 / SIM.dt) && boat.alive; i++) {
+    for (let i = 0; i < Math.ceil(120 / SIM.dt) && boat.alive; i++) {
       stepTransit(state, [], rng);
       if (state.strafeRuns.length > 0) sawBurst = true;
     }
     expect(sawBurst).toBe(true);
     expect(boat.alive).toBe(false);
     expect(state.stats.boatsSunk).toBe(1);
-    // 120hp at the base 26 a pass is five passes, not one.
-    expect(state.stats.counter.gunRuns).toBeGreaterThanOrEqual(4);
   });
 
   it('cannot reach a missile — an air threat is not its problem', () => {
     const { state, rng } = emptyTransit('warthog-missile', (c) => {
       c.warthogUnlocked = true;
+      c.warthogStock = 1;
     });
     clearTheDecks(state);
     const cx = 1000;
@@ -275,6 +365,7 @@ describe('mine contacts', () => {
   it('a scan-plane fix expires, and the mine drops back off the plot', () => {
     const { state, rng } = emptyTransit('mine-scan-expiry', (c) => {
       c.scanUnlocked = true;
+      c.scanStock = 2;
     });
     clearTheDecks(state); // nothing with sonar anywhere near it
     const laneY = WORLD.lanes[1];
@@ -676,6 +767,14 @@ describe('convoy helmsmanship', () => {
 
     // Count direction REVERSALS in the rudder. A ship altering course turns one
     // way for a while; a shaking one changes its mind several times a second.
+    // What counts as the rudder MOVING. One tick at full rudder is
+    // escortTurnRate * dt (~87 mrad); this is ~2% of that. Below it the heading
+    // is being nudged by float noise in a steering vector that has not
+    // meaningfully changed — counting those as reversals measures arithmetic,
+    // not helmsmanship, and no such turn is visible on screen. The shake this
+    // test exists to catch alternated at the full-rudder cap, so it is still
+    // caught with room to spare.
+    const SIGNIFICANT_TURN = NAV.escortTurnRate * SIM.dt * 0.02;
     let prev = escort.heading;
     let prevTurn = 0;
     let reversals = 0;
@@ -685,7 +784,7 @@ describe('convoy helmsmanship', () => {
       stepTransit(state, [], rng);
       const turn = escort.heading - prev;
       sharpest = Math.max(sharpest, Math.abs(turn));
-      if (Math.abs(turn) > 1e-4) {
+      if (Math.abs(turn) > SIGNIFICANT_TURN) {
         if (prevTurn !== 0 && Math.sign(turn) !== Math.sign(prevTurn)) reversals++;
         prevTurn = turn;
       }
@@ -700,6 +799,52 @@ describe('convoy helmsmanship', () => {
     // And the rudder never moves faster than the ship can turn. It used to
     // snap on arrival, which is the one moment the player is watching.
     expect(sharpest).toBeLessThanOrEqual(NAV.escortTurnRate * SIM.dt + 1e-6);
+  });
+
+  it('holds its heading on station instead of chasing a collapsed steering vector', () => {
+    // An escort that has ARRIVED has no goal force left, so its steering vector
+    // is whatever residue the nearby hulls contribute — a vector two orders of
+    // magnitude shorter than a real steering command, pointing wherever the
+    // nearest merchant happened to drift that tick. atan2 returns an angle for
+    // it just as confidently as for a real one, so the ship used to put the
+    // rudder hard over, full stop to full stop, in answer to nothing at all.
+    const { state, rng } = emptyTransit('escort-on-station', (c) => {
+      fitUniformEscorts(c, 1);
+    });
+    const laneY = WORLD.lanes[1];
+    state.ships.forEach((ship, i) => {
+      if (i >= 3) {
+        ship.spawnTime = SIM.maxTransitTime * 2;
+        ship.spawned = false;
+        return;
+      }
+      ship.spawnTime = 0;
+      ship.spawned = true;
+      ship.alive = true;
+      ship.x = 900 + i * 80;
+      ship.y = laneY;
+      ship.heading = 0;
+      ship.speed = SHIP_CLASSES[ship.classId].speed;
+    });
+    // Parked on station right beside the column: no goal force, hulls close
+    // enough aboard to keep feeding it separation residue.
+    const escort = state.escorts[0];
+    escort.x = 940;
+    escort.y = laneY - 70;
+    escort.heading = 0;
+    escort.moveTarget = null;
+
+    const start = escort.heading;
+    let sharpest = 0;
+    for (let i = 0; i < Math.ceil(8 / SIM.dt); i++) {
+      const before = escort.heading;
+      stepTransit(state, [], rng);
+      sharpest = Math.max(sharpest, Math.abs(escort.heading - before));
+    }
+    // Nothing is asking this ship to turn, so it should barely have moved the
+    // rudder at all — certainly nowhere near the hard-over it used to apply.
+    expect(sharpest).toBeLessThan(NAV.escortTurnRate * SIM.dt * 0.5);
+    expect(Math.abs(escort.heading - start)).toBeLessThan(0.5);
   });
 
   it('an escort goes AROUND a hull stopped dead on its track, not through it', () => {
@@ -744,15 +889,19 @@ describe('convoy helmsmanship', () => {
 // Convoy pacing
 // ---------------------------------------------------------------------------
 
+/** The default map, for the tests below that assert against its shape. */
+const STRAIT = geography('strait');
+const STRAIT_LANES = STRAIT.laneCount;
+
 describe('convoy entry pacing', () => {
   const FORMATIONS: FormationId[] = ['wide', 'tight', 'sprint'];
 
   it('the schedule matches what the span estimate promises, per formation', () => {
     for (const formation of FORMATIONS) {
       const ships: Ship[] = Array.from({ length: 14 }, (_, i) => makeStubShip(i));
-      scheduleSpawns(ships, makeRng(`span-${formation}`), formation);
+      scheduleSpawns(ships, makeRng(`span-${formation}`), formation, STRAIT_LANES);
       const last = Math.max(...ships.map((s) => s.spawnTime));
-      const estimate = convoySpawnSpan(ships.length, formation);
+      const estimate = convoySpawnSpan(ships.length, formation, STRAIT_LANES);
       // An estimate, not a promise — the volley sizes are rolled — but it has to
       // be in the right neighbourhood or the enemy fire window is wrong.
       expect(last).toBeGreaterThan(estimate * 0.5);
@@ -762,7 +911,9 @@ describe('convoy entry pacing', () => {
 
   it('a Tight convoy is fully on the map long before a Wide one', () => {
     // The reason the estimate has to be formation-aware at all.
-    expect(convoySpawnSpan(15, 'tight')).toBeLessThan(convoySpawnSpan(15, 'wide') * 0.5);
+    expect(convoySpawnSpan(15, 'tight', STRAIT_LANES)).toBeLessThan(
+      convoySpawnSpan(15, 'wide', STRAIT_LANES) * 0.5,
+    );
   });
 
   it('the enemy fire window follows the convoy instead of staying put', () => {
@@ -785,7 +936,7 @@ describe('convoy entry pacing', () => {
     const crossing = (WORLD.deliverX - WORLD.spawnX) / (slowest * 0.95);
     for (const formation of FORMATIONS) {
       const ships: Ship[] = Array.from({ length: 24 }, (_, i) => makeStubShip(i));
-      scheduleSpawns(ships, makeRng(`cap-${formation}`), formation);
+      scheduleSpawns(ships, makeRng(`cap-${formation}`), formation, STRAIT_LANES);
       const last = Math.max(...ships.map((s) => s.spawnTime));
       expect(last + crossing).toBeLessThan(SIM.maxTransitTime);
     }
@@ -823,7 +974,133 @@ function makeStubShip(i: number): Ship {
     pdCooldown: 0,
     pdShots: 0,
     disabledUntil: -1,
-    smokeGraceUntil: -1,
     damageByBranch: {},
   } as unknown as Ship;
 }
+
+// ---------------------------------------------------------------------------
+// The run-in: where the aircraft comes FROM
+// ---------------------------------------------------------------------------
+
+describe('A-10 run-in and reversal', () => {
+  const cy = WORLD.lanes[1];
+
+  /** Fly a whole sortie and report the shape of it. */
+  function flySortie(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    seed = 'warthog-runin',
+  ): {
+    entry: { x: number; y: number };
+    turnAt: { x: number; y: number } | null;
+    rollOutAt: { x: number; y: number } | null;
+    firedOnPass: [boolean, boolean];
+    firedDuringTurn: boolean;
+  } {
+    const { state, rng } = emptyTransit(seed, (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: ax, y: ay, x2: bx, y2: by }], rng);
+    const jet = state.aircraft[0];
+    expect(jet).toBeDefined();
+    const entry = { x: jet.x, y: jet.y };
+    let turnAt: { x: number; y: number } | null = null;
+    let rollOutAt: { x: number; y: number } | null = null;
+    const firedOnPass: [boolean, boolean] = [false, false];
+    let firedDuringTurn = false;
+    let prev = { phase: jet.phase, pass: jet.pass, shots: state.strafeRuns.length };
+    for (let i = 0; i < Math.ceil(200 / SIM.dt) && state.aircraft.length > 0; i++) {
+      stepTransit(state, [], rng);
+      const ac = state.aircraft[0];
+      if (!ac) break;
+      if (prev.phase === 'onStation' && ac.phase === 'departing' && prev.pass === 0) {
+        turnAt = { x: ac.x, y: ac.y };
+      }
+      if (prev.phase === 'departing' && ac.phase === 'onStation') {
+        rollOutAt = { x: ac.x, y: ac.y };
+      }
+      if (ac.firedThisPass) firedOnPass[ac.pass === 0 ? 0 : 1] = true;
+      // A burst appearing while the aircraft is mid-reversal would mean the gun
+      // tracked through the turn, which is exactly what it must not do.
+      if (ac.phase === 'departing' && state.stats.counter.gunRuns > prev.shots) {
+        firedDuringTurn = true;
+      }
+      prev = { phase: ac.phase, pass: ac.pass, shots: state.stats.counter.gunRuns };
+    }
+    return { entry, turnAt, rollOutAt, firedOnPass, firedDuringTurn };
+  }
+
+  const offMap = (p: { x: number; y: number }): boolean =>
+    p.x < 0 || p.x > WORLD.width || p.y < 0 || p.y > WORLD.height;
+
+  it('enters from off the map however short the drawn line was', () => {
+    // A stubby line in the middle of the strait. The jet used to appear a fixed
+    // 220 units before its near end — still well inside the map — so it simply
+    // materialised beside the convoy and started shooting.
+    const { entry } = flySortie(2000, cy, 2120, cy + 12);
+    expect(offMap(entry)).toBe(true);
+  });
+
+  it('enters along the drawn bearing, not from a fixed corner', () => {
+    // Drawn west-to-east: the aeroplane must come from the WEST. Drawn
+    // east-to-west, from the east. The bearing is the whole input.
+    expect(flySortie(1400, cy, 2600, cy).entry.x).toBeLessThan(0);
+    expect(flySortie(2600, cy, 1400, cy).entry.x).toBeGreaterThan(WORLD.width);
+    // Across the strait, from the south shore northward.
+    const northbound = flySortie(2000, WORLD.lanes[2], 2000, WORLD.lanes[0]);
+    expect(northbound.entry.y).toBeGreaterThan(WORLD.height);
+  });
+
+  it('turns clear of the water and comes back down the same line', () => {
+    // The reversal costs distance back along the track. Unaccounted for, the
+    // jet rolled out INSIDE the water and the return pass skipped the stretch
+    // it had just flown over — measured, a mine directly beneath the flight
+    // path survived a sortie that crossed it twice.
+    const run = flySortie(2000, WORLD.lanes[2], 2000, WORLD.lanes[0]);
+    expect(run.turnAt).not.toBeNull();
+    expect(run.rollOutAt).not.toBeNull();
+    // Broke off past the far shore...
+    expect(run.turnAt!.y).toBeLessThan(STRAIT.airWaterTop(run.turnAt!.x));
+    // ...and was established on the line again before re-entering the water.
+    expect(run.rollOutAt!.y).toBeLessThan(STRAIT.airWaterTop(run.rollOutAt!.x));
+    // Back on the drawn track, not on a parallel one a turn-diameter away.
+    expect(Math.abs(run.rollOutAt!.x - 2000)).toBeLessThan(COMBAT.warthog.regainTolerance);
+  });
+
+  it('a run along the strait turns at the map edge instead', () => {
+    // No land to cross on this bearing, so the edge buffer is what ends the
+    // pass — and it has to fire before the jet leaves the world.
+    const run = flySortie(1400, cy, 2600, cy);
+    expect(run.turnAt).not.toBeNull();
+    expect(run.turnAt!.x).toBeLessThan(WORLD.width);
+    expect(run.rollOutAt).not.toBeNull();
+    expect(Math.abs(run.rollOutAt!.y - cy)).toBeLessThan(COMBAT.warthog.regainTolerance);
+  });
+
+  it('shoots on both passes and never through the turn', () => {
+    const { state, rng } = emptyTransit('warthog-both-passes', (c) => {
+      c.warthogStock = 1;
+    });
+    clearTheDecks(state);
+    // One target either side of the mid-point, both on the line.
+    addChartedMine(state, 1800, cy);
+    addChartedMine(state, 2200, cy);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 1600, y: cy, x2: 2400, y2: cy }], rng);
+    let firedDuringTurn = false;
+    let shots = 0;
+    for (let i = 0; i < Math.ceil(200 / SIM.dt) && state.aircraft.length > 0; i++) {
+      stepTransit(state, [], rng);
+      const ac = state.aircraft[0];
+      if (!ac) break;
+      if (ac.phase === 'departing' && state.stats.counter.gunRuns > shots) firedDuringTurn = true;
+      shots = state.stats.counter.gunRuns;
+    }
+    // Two passes, one engagement each: both mines gone.
+    expect(state.threats.filter((t) => t.alive)).toHaveLength(0);
+    expect(state.stats.counter.gunRuns).toBe(2);
+    expect(firedDuringTurn).toBe(false);
+  });
+});

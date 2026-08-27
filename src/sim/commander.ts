@@ -6,8 +6,9 @@
 // Run (src/sim/campaign.ts) must never touch it — the two layers are saved
 // separately (src/platform/save.ts).
 
-import { COMMANDER } from '../data/tuning';
+import { COMMANDER, ESCORT_LEGACY } from '../data/tuning';
 import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../data/commanderAbilities';
+import { ESCORT_LEGACIES, legacyPointsUsed } from '../data/escortLegacies';
 import { FIRST_REGION, REGIONS, regionDef, type RegionId } from '../data/regions';
 import type { CampaignState } from './types';
 
@@ -31,6 +32,35 @@ export interface CommanderProfile {
    *  run at start. Always kept valid against slots/points/unlocks. */
   loadout: string[];
   unlockedRegions: RegionId[];
+  /** DEV/TESTING: the developer tools are switched on for this profile.
+   *
+   *  Turned on from Settings, so the tools are reachable on a phone without
+   *  having to get `?dev` onto the URL — which is fine on a desktop address bar
+   *  and awkward everywhere else. The URL flag and the Vite dev server still
+   *  work; this is a third way in, not a replacement.
+   *
+   *  Turning it OFF also clears `allRegionsUnlocked` below. Leaving that set
+   *  with its switch hidden would strand a profile with every region open and
+   *  nothing on screen explaining why. */
+  devMode: boolean;
+  /** DEV/TESTING: treat every region on the ladder as unlocked.
+   *
+   *  Separate from `unlockedRegions` rather than folded into it, because the
+   *  two mean different things and conflating them would be lossy: this says
+   *  "show me everything", that says "here is what you have earned". Turn it
+   *  off and the earned list is exactly what it was — nothing has been spent
+   *  or granted, and the ladder picks up where it left off.
+   *
+   *  Only reachable from Dev Mode, which is itself behind `?dev` in the URL or
+   *  the Vite dev server, so a normal player never sees it. */
+  allRegionsUnlocked: boolean;
+  /** Escort Legacies unlocked with Commander XP, from the same pool the
+   *  abilities are bought with — one progression currency, two things to
+   *  spend it on. */
+  unlockedLegacies: string[];
+  /** Equipped legacy loadout. Handed out to individual escorts at region
+   *  start, one per hull; see claimEscortLegacy in campaign.ts. */
+  legacyLoadout: string[];
   records: Record<RegionId, RegionRecord>;
   /** Lifetime run tallies. */
   totalRuns: number;
@@ -48,7 +78,13 @@ export function newProfile(): CommanderProfile {
       .filter((a) => a.xpCost === 0)
       .map((a) => a.id),
     loadout: [],
+    unlockedLegacies: Object.values(ESCORT_LEGACIES)
+      .filter((l) => l.xpCost === 0)
+      .map((l) => l.id),
+    legacyLoadout: [],
     unlockedRegions: [FIRST_REGION],
+    devMode: false,
+    allRegionsUnlocked: false,
     records: {},
     totalRuns: 0,
     totalRegionCompletions: 0,
@@ -116,11 +152,85 @@ export function sanitizedLoadout(p: CommanderProfile): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Escort Legacy unlocks & the equipped legacy loadout
+// ---------------------------------------------------------------------------
+// Deliberately the same shape as the ability functions above, because they are
+// the same idea aimed at a different owner: spend the one XP pool, keep a
+// bounded equipped set, sanitize rather than refuse. The only thing that makes
+// legacies different lives in the run, not here — see escortLegacies.ts.
+
+/** Why a legacy cannot be unlocked right now (null = it can). */
+export function legacyUnlockBlockReason(p: CommanderProfile, id: string): string | null {
+  const def = ESCORT_LEGACIES[id];
+  if (!def) return 'Unknown legacy';
+  if ((p.unlockedLegacies ?? []).includes(id)) return 'Already unlocked';
+  if (p.xp < def.xpCost) return `Requires ${def.xpCost} Commander XP`;
+  return null;
+}
+
+export function unlockLegacy(p: CommanderProfile, id: string): boolean {
+  if (legacyUnlockBlockReason(p, id) !== null) return false;
+  p.xp -= ESCORT_LEGACIES[id].xpCost;
+  p.unlockedLegacies = [...(p.unlockedLegacies ?? []), id];
+  return true;
+}
+
+/** Why a legacy loadout is invalid for this profile (null = valid). */
+export function legacyLoadoutBlockReason(
+  p: CommanderProfile,
+  ids: readonly string[],
+): string | null {
+  if (new Set(ids).size !== ids.length) return 'Duplicate legacy';
+  for (const id of ids) {
+    if (!ESCORT_LEGACIES[id]) return 'Unknown legacy';
+    if (!(p.unlockedLegacies ?? []).includes(id)) return 'Legacy not unlocked';
+  }
+  if (ids.length > ESCORT_LEGACY.slots) {
+    return `At most ${ESCORT_LEGACY.slots} legacies may be equipped`;
+  }
+  const points = legacyPointsUsed(ids);
+  if (points > ESCORT_LEGACY.loadoutPoints) {
+    return `Loadout exceeds ${ESCORT_LEGACY.loadoutPoints} points (${points})`;
+  }
+  return null;
+}
+
+export function setLegacyLoadout(p: CommanderProfile, ids: readonly string[]): boolean {
+  if (legacyLoadoutBlockReason(p, ids) !== null) return false;
+  p.legacyLoadout = [...ids];
+  return true;
+}
+
+/** The legacy loadout as it may actually sail. */
+export function sanitizedLegacyLoadout(p: CommanderProfile): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of p.legacyLoadout ?? []) {
+    if (seen.has(id) || !ESCORT_LEGACIES[id] || !(p.unlockedLegacies ?? []).includes(id)) continue;
+    if (out.length >= ESCORT_LEGACY.slots) break;
+    if (legacyPointsUsed([...out, id]) > ESCORT_LEGACY.loadoutPoints) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Regions
 // ---------------------------------------------------------------------------
 
 export function regionUnlocked(p: CommanderProfile, id: RegionId): boolean {
-  return p.unlockedRegions.includes(id);
+  return p.allRegionsUnlocked || p.unlockedRegions.includes(id);
+}
+
+/** Switch the developer tools on or off for this profile.
+ *
+ *  Off is a full retreat: the dev-only settings go with it, so "turn the dev
+ *  version off" means the game is exactly the game again. The earned ladder is
+ *  never touched either way — see `allRegionsUnlocked`. */
+export function setDevMode(p: CommanderProfile, on: boolean): void {
+  p.devMode = on;
+  if (!on) p.allRegionsUnlocked = false;
 }
 
 function record(p: CommanderProfile, id: RegionId): RegionRecord {

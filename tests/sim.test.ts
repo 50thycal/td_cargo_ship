@@ -7,14 +7,17 @@ import { describe, expect, it } from 'vitest';
 import { makeRng } from '../src/sim/rng';
 import {
   buyAmmo,
+  buyScanPulse,
   buyBase,
   buyEscort,
-  buyModule,
+  equipModule,
   buyPdAmmo,
   buyShip,
   createRoundTransit,
   escortDamageTotal,
-  moduleCost,
+  moduleBlockReason,
+  moduleSpare,
+  moduleStock,
   newCampaign,
   newDevCampaign,
   planCurrentRound,
@@ -24,7 +27,6 @@ import {
   resolveTransit,
   setComposition,
   shipCost,
-  unlockScan,
 } from '../src/sim/campaign';
 import { selectDraftOption } from '../src/sim/draft';
 import { newProfile } from '../src/sim/commander';
@@ -43,9 +45,10 @@ import {
   saveProfile,
   saveRun,
 } from '../src/platform/save';
-import { MODULES, SHIP_CLASSES } from '../src/data/defs';
+import { SHIP_CLASSES } from '../src/data/defs';
 import { allResearchableIds } from '../src/data/counters';
 import { CAMPAIGN, COMBAT, ECONOMY, ENEMY_ECONOMY, SIM, SPAWN, WORLD } from '../src/data/tuning';
+import { geography } from '../src/data/geography';
 import type {
   AfterActionReport,
   CampaignState,
@@ -127,7 +130,10 @@ function botProcure(c: CampaignState): void {
   while (c.ammo < 22 && buyAmmo(c, 1)) {
     /* top up */
   }
-  if (!c.scanUnlocked) unlockScan(c);
+  // The scan capability is in hand from round one; only pulses are bought.
+  while (c.scanStock < 2 && buyScanPulse(c)) {
+    /* top up stowage */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -268,7 +274,7 @@ describe('enemy evolution', () => {
     expect(plan.debuts).toContain('mine');
     // First field targets the default (center) lane so the beat lands.
     for (const mine of plan.mines) {
-      expect(Math.abs(mine.y - 520)).toBeLessThanOrEqual(75);
+      expect(Math.abs(mine.y - WORLD.lanes[1])).toBeLessThanOrEqual(75);
     }
   });
 
@@ -363,13 +369,19 @@ describe('campaign', () => {
     expect(c.pendingDraft).not.toBeNull();
     expect(report.draftSize).toBe(c.pendingDraft!.options.length);
     expect(c.pendingDraft!.options.length).toBeGreaterThanOrEqual(2);
-    // Taking an option activates it immediately for the active run.
+    // Taking an option applies it immediately for the active run — whatever
+    // category it is: an upgrade lands in the research set, a module lands in
+    // the locker, ordnance lands in the magazines.
     const pick = c.pendingDraft!.options[0];
     expect(selectDraftOption(c, pick)).toBe(true);
-    expect(c.completedResearch).toContain(pick);
+    if (pick.kind === 'upgrade' || pick.kind === 'asset') {
+      expect(c.completedResearch).toContain(pick.id);
+    } else if (pick.kind === 'module') {
+      expect(moduleStock(c, pick.platform, pick.moduleId)).toBe(1);
+    }
     expect(c.pendingDraft).toBeNull();
     expect(c.draftHistory).toHaveLength(1);
-    expect(c.draftHistory[0].picked).toBe(pick);
+    expect(c.draftHistory[0].picked).toEqual(pick);
   });
 
   it('an undefended campaign eventually collapses', () => {
@@ -422,60 +434,51 @@ describe('economy hardening', () => {
     expect(c.ammo).toBe(ammo + 3);
   });
 
-  it('module price is based on owned hulls, immune to composition toggling', () => {
-    const c = newCampaign('module-exploit');
-    const fullPrice = moduleCost(c, 'cargo', 'selfDefense');
-    setComposition(c, 'cargo', 0);
-    expect(moduleCost(c, 'cargo', 'selfDefense')).toBe(fullPrice);
-    setComposition(c, 'cargo', 15);
-    // Below the soft cap this is still a flat per-ship rate; above it, the
-    // marginal hull is billed at the taper rate (see moduleCost).
-    const cap = ECONOMY.moduleCostSoftCap;
-    const billable = 15 <= cap ? 15 : cap + (15 - cap) * ECONOMY.moduleCostTaperRate;
-    expect(fullPrice).toBe(Math.round(110 * billable));
+  it('fitting a drafted unit costs nothing and frees on removal', () => {
+    // Modules used to be priced per hull with a soft cap, and gated behind a
+    // research node the draft had to hand over first — which made every
+    // equipment draft an IOU. Units are drafted now; the shop never sells them.
+    const c = newCampaign('module-free');
+    c.moduleStock.cargo.selfDefense = 1;
+    const cash0 = c.cash;
+    expect(equipModule(c, 'cargo', 'selfDefense')).toBe(true);
+    expect(c.cash).toBe(cash0);
+    expect(c.classModules.cargo).toEqual(['selfDefense']);
+    expect(moduleSpare(c, 'cargo', 'selfDefense')).toBe(0);
+
+    expect(removeModule(c, 'cargo', 'selfDefense')).toBe(true);
+    expect(c.cash).toBe(cash0);
+    expect(moduleSpare(c, 'cargo', 'selfDefense')).toBe(1);
   });
 
-  it('module refit cost soft-caps so a large fleet stays affordable', () => {
-    const c = newCampaign('module-softcap');
-    c.fleet.cargo = 40; // a big late-campaign fleet
-    const cost40 = moduleCost(c, 'cargo', 'selfDefense');
-    // Linear pricing would be 110 * 40 = 4400; the soft cap must price it well
-    // under that so upgrades stay reachable at scale.
-    expect(cost40).toBeLessThan(110 * 40 * 0.7);
-    // Still strictly more expensive than a small fleet (more hulls to refit).
-    c.fleet.cargo = 10;
-    const cost10 = moduleCost(c, 'cargo', 'selfDefense');
-    expect(cost10).toBe(110 * 10); // at/under the cap: unchanged flat rate
-    expect(cost40).toBeGreaterThan(cost10);
+  it('a class fit needs a unit in the locker, and only one per class', () => {
+    const c = newCampaign('module-stock-gate');
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBe('No unit held — draft one');
+    c.moduleStock.cargo.mineSonar = 1;
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBeNull();
+    expect(equipModule(c, 'cargo', 'mineSonar')).toBe(true);
+    // The one unit is spoken for, so no other class can have it too.
+    expect(moduleBlockReason(c, 'tanker', 'mineSonar')).toBe(
+      'Every unit is fitted elsewhere — unfit one first',
+    );
+    expect(moduleBlockReason(c, 'cargo', 'mineSonar')).toBe('Already fitted to this class');
   });
 
-  it('a new hull costs its base price plus its class module fit', () => {
-    const c = newCampaign('hull-surcharge');
+  it('a replacement hull is never surcharged for the class module fit', () => {
+    // Fits are drafted, not bought, so a hull sails with the class loadout at
+    // no extra cost. Charging for it would make every drafted module a
+    // permanent tax on replacing losses — which, in a fleet that is losing
+    // ships, is worth far more than the module.
+    const c = newCampaign('hull-no-surcharge');
     c.cash = 100_000;
-    c.completedResearch = ['selfDefense.base']; // purchases are research-gated
     const base = SHIP_CLASSES.freighter.replaceCost;
     expect(shipCost(c, 'freighter')).toBe(base);
-    // Fit a module on the freighter class (1 slot).
-    expect(buyModule(c, 'freighter', 'selfDefense')).toBe(true);
-    expect(shipCost(c, 'freighter')).toBe(base + MODULES.selfDefense.costPerShip);
+    c.moduleStock.cargo.selfDefense = 1;
+    expect(equipModule(c, 'freighter', 'selfDefense')).toBe(true);
+    expect(shipCost(c, 'freighter')).toBe(base);
     const before = c.cash;
     expect(buyShip(c, 'freighter')).toBe(true);
-    expect(c.cash).toBe(before - (base + MODULES.selfDefense.costPerShip));
-  });
-
-  it('unequipping a module refunds exactly what was paid and frees the slot', () => {
-    const c = newCampaign('module-refund');
-    c.cash = 5000;
-    const cash0 = c.cash;
-    const price = moduleCost(c, 'cargo', 'reinforcedHull');
-    expect(buyModule(c, 'cargo', 'reinforcedHull')).toBe(true);
-    expect(c.cash).toBe(cash0 - price);
-    expect(c.classModules.cargo).toContain('reinforcedHull');
-    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(true);
-    expect(c.cash).toBe(cash0); // fully refunded
-    expect(c.classModules.cargo).not.toContain('reinforcedHull');
-    // Removing something not fitted is a no-op.
-    expect(removeModule(c, 'cargo', 'reinforcedHull')).toBe(false);
+    expect(c.cash).toBe(before - base);
   });
 
   it('point-defense rounds are purchasable and carry over', () => {
@@ -567,7 +570,7 @@ describe('anti-snowball: the losing side', () => {
     // worst thing in the game while leaving rounds to recover in. (A missed
     // quota no longer costs confidence at all: it ends the run outright.)
     const unflooredWorstCase =
-      CAMPAIGN.confidenceBadRound + CAMPAIGN.confidenceLossCap + CAMPAIGN.confidencePerCrewLost * 3;
+      CAMPAIGN.confidenceDeliveryFloor + CAMPAIGN.confidenceCrewLostRate;
     expect(unflooredWorstCase).toBeLessThan(CAMPAIGN.confidenceRoundFloor);
     // The floor has to leave more than two rounds of headroom from the start.
     expect(CAMPAIGN.startConfidence / Math.abs(CAMPAIGN.confidenceRoundFloor)).toBeGreaterThan(2);
@@ -691,16 +694,66 @@ describe('a bigger convoy is a bigger target', () => {
   });
 });
 
+describe('map geometry', () => {
+  it('puts every shore installation firmly on land, at every point of the coast', () => {
+    // The renderer and the sim used to carry SEPARATE ideas of where the land
+    // was — the friendly coast was drawn at `height - 100`, the batteries were
+    // placed at `baseLine` — and they agreed only by luck. Resizing the map
+    // broke the luck and the batteries stood 140 units out to sea. Both now
+    // read the same two lines, and this is the invariant that keeps them
+    // honest: a coast MEANDERS by shoreWave, so being inland of the mean line
+    // is not enough — it has to clear the wave.
+    const { hostileShoreY, friendlyShoreY, shoreWave, baseLine, launchSites } = WORLD;
+    // Shore batteries sit below the friendly coast at its most seaward.
+    expect(baseLine).toBeGreaterThan(friendlyShoreY + shoreWave);
+    // Enemy launch sites sit above the hostile coast at its most seaward.
+    for (const site of launchSites) {
+      expect(site.y).toBeLessThan(hostileShoreY - shoreWave);
+    }
+    // And both coasts leave real water between them for the lanes to run in.
+    expect(friendlyShoreY - hostileShoreY).toBeGreaterThan(600);
+    for (const lane of WORLD.lanes) {
+      expect(lane).toBeGreaterThan(hostileShoreY + shoreWave);
+      expect(lane).toBeLessThan(friendlyShoreY - shoreWave);
+    }
+  });
+
+  it('keeps the A-10 water band inside the water', () => {
+    // Derived from the geography now rather than hard-coded beside it, so this
+    // holds at every x — including on a map whose coast bends.
+    const geo = geography('strait');
+    for (let x = 0; x <= WORLD.width; x += 250) {
+      expect(geo.airWaterTop(x)).toBeGreaterThan(geo.hostileShoreY(x) + geo.shoreWave);
+      expect(geo.airWaterBottom(x)).toBeLessThan(geo.friendlyShoreY(x) - geo.shoreWave);
+    }
+  });
+
+  it('gives artillery a reach that still picks out lanes, not all or nothing', () => {
+    // Range IS this branch's design: a coastal gun must reach the near lane and
+    // no further, ranging one lane further and no further. Re-derive it from
+    // the geometry rather than trusting the constants to have been scaled.
+    const shore = WORLD.launchSites[0].y;
+    const [near, mid, far] = WORLD.lanes.map((l) => l - shore);
+    const { coastalGun, ranging } = COMBAT.artillery.range;
+    expect(coastalGun).toBeGreaterThan(near);
+    expect(coastalGun).toBeLessThan(mid);
+    expect(ranging).toBeGreaterThan(mid);
+    expect(ranging).toBeLessThan(far);
+  });
+});
+
 describe('transit hardening', () => {
   it('a second Warthog call while one is on task does not burn a sortie', () => {
     const c = newCampaign('warthog-stack');
     c.warthogUnlocked = true;
+    c.warthogStock = 1; // sorties are bought now, not handed out each round
     const plan = planCurrentRound(c);
     const { state, rng } = createRoundTransit(c, plan);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
-    expect(state.warthogCharges).toBe(0); // base branch is a single sortie
+    const run = { x: 800, y: WORLD.lanes[1], x2: 1200, y2: WORLD.lanes[1] };
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', ...run }], rng);
+    expect(state.warthogCharges).toBe(0); // the one sortie in stock is spent
     expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1);
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: WORLD.lanes[1] }], rng);
+    stepTransit(state, [{ type: 'ability', ability: 'warthog', ...run }], rng);
     expect(state.aircraft.filter((a) => a.role === 'warthog').length).toBe(1); // rejected
   });
 
@@ -1218,7 +1271,8 @@ describe('air defense & telemetry', () => {
     // attack boat spawned at t=20 is still alongside a hull at t=80, so it
     // occupies the whole window rather than a moment of it. Treat a boat as
     // covering its engagement window and measure the silence that is left.
-    const boatOccupancy = COMBAT.attackBoat.engageRange / COMBAT.attackBoat.speed + 45;
+    const boatOccupancy =
+      COMBAT.attackBoat.engageRange.smallArms / COMBAT.attackBoat.speed.smallArms + 45;
     const covered = plan.spawns
       .map((s) => ({ from: s.time, to: s.kind === 'attackBoat' ? s.time + boatOccupancy : s.time }))
       .sort((a, b) => a.from - b.from);
@@ -1558,6 +1612,7 @@ describe('air defense & telemetry', () => {
   it('a scan plane charts mines only in the selected lane', () => {
     const c = newCampaign('scan-lane');
     c.scanUnlocked = true;
+    c.scanStock = 2; // pulses are bought now, not handed out each round
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1573,6 +1628,7 @@ describe('air defense & telemetry', () => {
   it('runs two scan sorties in one transit without error (regression)', () => {
     const c = newCampaign('scan-twice');
     c.scanUnlocked = true;
+    c.scanStock = 2;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     state.spawnQueue = [];
     state.threats = [];
@@ -1582,7 +1638,7 @@ describe('air defense & telemetry', () => {
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
     stepTransit(state, [{ type: 'ability', ability: 'scan', x: 0, y: WORLD.lanes[2] }], rng);
     for (let i = 0; i < 30 * 8; i++) stepTransit(state, [], rng);
-    expect(state.scanCharges).toBe(state.effects.abilities.scan.charges - 2);
+    expect(state.scanCharges).toBe(0); // both bought pulses flown
     expect(north.revealed).toBe(true);
     expect(south.revealed).toBe(true);
   });
@@ -1590,10 +1646,15 @@ describe('air defense & telemetry', () => {
   it('rejects a Warthog call on land (off the water band), wasting no sortie', () => {
     const c = newCampaign('warthog-land');
     c.warthogUnlocked = true;
+    c.warthogStock = 1;
     const { state, rng } = createRoundTransit(c, planCurrentRound(c));
     const charges0 = state.warthogCharges;
     // y=40 is up on the hostile shore, over the launchers — not open water.
-    stepTransit(state, [{ type: 'ability', ability: 'warthog', x: 900, y: 40 }], rng);
+    stepTransit(
+      state,
+      [{ type: 'ability', ability: 'warthog', x: 700, y: 40, x2: 1100, y2: 40 }],
+      rng,
+    );
     expect(state.warthogCharges).toBe(charges0); // no sortie spent
     expect(state.aircraft.some((a) => a.role === 'warthog')).toBe(false);
     expect(state.events.some((e) => e.type === 'launchFailed')).toBe(true);
@@ -1778,7 +1839,7 @@ describe('save', () => {
     expect(m.pdAmmo).toBe(0);
     expect(m.droneAmmo).toBe(0);
     expect(m.dev).toBe(false);
-    expect(m.modulePaid).toEqual({ cargo: {}, tanker: {}, freighter: {} });
+    expect(m.moduleStock).toEqual({ cargo: {}, escort: {}, base: {} });
     expect(m.quota.pointsNeeded).toBeGreaterThan(0);
     expect(m.evolution.formationTell).toBe(null);
     expect(Array.isArray(m.history)).toBe(true);
@@ -1797,11 +1858,11 @@ describe('save', () => {
   it('does not clobber existing nested values when healing', () => {
     const c = newCampaign('nested');
     c.classModules.cargo = ['selfDefense'];
-    c.modulePaid.cargo = { selfDefense: 220 };
+    c.moduleStock.cargo = { selfDefense: 2 };
     c.evolution.tracks.mines = 55;
     const m = migrateRun(JSON.parse(JSON.stringify(c)))!;
     expect(m.classModules.cargo).toEqual(['selfDefense']);
-    expect(m.modulePaid.cargo).toEqual({ selfDefense: 220 });
+    expect(m.moduleStock.cargo).toEqual({ selfDefense: 2 });
     expect(m.evolution.tracks.mines).toBe(55);
   });
 
@@ -1838,6 +1899,17 @@ describe('save', () => {
     expect(healed.xp).toBe(12);
     expect(healed.unlockedRegions).toContain(FIRST_REGION);
     expect(Array.isArray(healed.loadout)).toBe(true);
+    // ...and so does a COMPLETE profile that remembers a ladder we no longer
+    // ship. Backfill only fills what is absent, so a stale unlock list would
+    // otherwise survive intact and lock the player out of region one — the one
+    // region nothing in the game can grant, because nothing precedes it.
+    const stale = migrateProfile({ xp: 40, unlockedRegions: ['someRetiredRegion'] })!;
+    expect(stale.unlockedRegions).toContain(FIRST_REGION);
+    expect(stale.unlockedRegions).toContain('someRetiredRegion');
+    // A current profile is left exactly as it was — the repair is idempotent
+    // and never reorders what is already right.
+    const current = migrateProfile({ xp: 1, unlockedRegions: [FIRST_REGION, 'later'] })!;
+    expect(current.unlockedRegions).toEqual([FIRST_REGION, 'later']);
     clearProfile();
   });
 });

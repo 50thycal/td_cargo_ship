@@ -9,7 +9,8 @@
 // same screen id and must not re-trigger the stagger, so `entering()` tracks
 // the last screen id at module scope.
 
-import { COMMANDER, ECONOMY } from '../data/tuning';
+import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, ESCORT_LEGACY } from '../data/tuning';
+import type { StatTier } from '../data/statTiers';
 import {
   BASE_MODULES,
   BASE_MODULE_SLOTS,
@@ -20,9 +21,8 @@ import {
   SHIP_CLASSES,
 } from '../data/defs';
 import {
-  CATEGORY_ORDER,
   COUNTER_BRANCHES,
-  COUNTER_CATEGORY_NAMES,
+  resolveBranchStats,
   awaitingEnemyCapability,
   ENEMY_BRANCH_NAMES,
   RESEARCH_INDEX,
@@ -37,46 +37,72 @@ import {
 import {
   ammoUnitCost,
   baseModuleBlockReason,
+  baseModuleRevealed,
   buyAmmo,
   buyBase,
-  buyBaseModule,
+  equipBaseModule,
   buyDroneAmmo,
   buyEscort,
-  buyEscortModule,
-  buyModule,
+  equipEscortModule,
+  equipModule,
   buyPdAmmo,
   buyShip,
   type DevOptions,
   escortModuleBlockReason,
+  escortModuleRevealed,
   hasResearch,
   moduleBlockReason,
-  moduleCost,
+  moduleRevealed,
+  researchSet,
+  moduleSpare,
+  moduleStock,
+  moduleStockCap,
+  classSlots,
   removeBaseModule,
   removeEscortModule,
   removeModule,
   repairCost,
   repairFleet,
+  repairPartial,
+  repairPartialQuote,
+  scopeDamage,
   setComposition,
   setFormation,
-  setProtectedChannels,
   shipCost,
   totalComposition,
   totalPendingDamage,
-  unlockWarthog,
-  unlockHardened,
-  unlockScan,
-  unlockSmoke,
-  unlockSonar,
+  warthogCapacity,
+  warthogSortieBlockReason,
+  buyWarthogSortie,
+  scanCapacity,
+  scanPulseBlockReason,
+  gunShellsBlockReason,
+  buyGunShells,
+  buyScanPulse,
   escortSlots,
   renameEscort,
+  rerollBlockReason,
+  rerollDraft,
+  confidenceCeiling,
 } from '../sim/campaign';
-import { draftOptionInfo, selectDraftOption, dismissEmptyDraft } from '../sim/draft';
+import {
+  draftOptionBranch,
+  draftOptionInfo,
+  draftOptionKey,
+  selectDraftOption,
+  dismissEmptyDraft,
+} from '../sim/draft';
 import {
   loadoutBlockReason,
   setLoadout,
   unlockAbility,
   unlockBlockReason,
+  legacyLoadoutBlockReason,
+  legacyUnlockBlockReason,
+  setLegacyLoadout,
+  unlockLegacy,
   regionUnlocked,
+  setDevMode,
   type CommanderProfile,
   type RunSettlement,
 } from '../sim/commander';
@@ -85,19 +111,36 @@ import {
   COMMANDER_ABILITY_ORDER,
   loadoutPointsUsed,
 } from '../data/commanderAbilities';
+import { escortHull } from '../data/escortHulls';
+import {
+  ESCORT_LEGACIES,
+  ESCORT_LEGACY_ORDER,
+  legacyPointsUsed,
+} from '../data/escortLegacies';
 import { REGIONS, REGION_ORDER, regionDef, type RegionId } from '../data/regions';
 import { ENEMY_BRANCHES } from '../data/enemyBranches';
 import { formatInterceptSummary } from '../sim/aar';
 import { downloadGameLog } from './download';
-import { formationFigure, icon, shipFigure, SHIP_TINTS, type IconName } from './icons';
+import {
+  formationFigure,
+  icon,
+  shipFigure,
+  escortHullFigure,
+  SHIP_TINTS,
+  statTierRow,
+  statUpgradeRow,
+  type IconName,
+} from './icons';
 import type {
   AarCard,
   AarCardKind,
   AfterActionReport,
   CampaignState,
+  DraftOption,
+  DraftOptionKind,
   FormationId,
   ModuleId,
-  SensorFamily,
+  ModulePlatform,
   ShipClassId,
   TransitState,
 } from '../sim/types';
@@ -114,6 +157,7 @@ function entering(screenId: string): boolean {
   const fresh = lastScreenId !== screenId;
   lastScreenId = screenId;
   if (fresh && screenId === 'prep') {
+    prepSection = 'convoy';
     prepModuleTab = 'cargo';
     prepEscortId = null;
   }
@@ -134,6 +178,11 @@ function clickable(el: HTMLElement): HTMLElement {
   return el;
 }
 
+/** Prep-screen sections — one console page per concern, switched by the rail
+ *  keys, so the player never scrolls through the whole shop at once. */
+type PrepSectionId = 'convoy' | 'modules' | 'fleet' | 'assets';
+let prepSection: PrepSectionId = 'convoy';
+
 /** Which ship class's module loadout is open in the prep screen (persists
  *  across purchase rerenders so the tab doesn't jump). */
 let prepModuleTab: ShipClassId = 'cargo';
@@ -144,12 +193,27 @@ let prepModuleTab: ShipClassId = 'cargo';
 let prepEscortId: number | null = null;
 
 function resourceBar(c: CampaignState): HTMLElement {
+  // The ceiling rides on the confidence chip: the bar reads "82/91" once the
+  // run's record has cost it headroom, so the cap is visible where the number
+  // is rather than only on the debrief.
+  const ceiling = Math.round(confidenceCeiling(c));
+  const capped = ceiling < CAMPAIGN.maxConfidence;
   return h('div', { className: 'resource-bar' }, [
     h('span', { className: 'res-chip cash' }, [icon('coin'), h('span', { text: `$${c.cash}` })]),
-    h('span', { className: 'res-chip conf', attrs: { title: 'Confidence — the run ends if it reaches zero' } }, [
-      icon('star'),
-      h('span', { text: `${c.confidence}` }),
-    ]),
+    h(
+      'span',
+      {
+        className: 'res-chip conf',
+        attrs: {
+          title: capped
+            ? `Confidence — the run ends if it reaches zero. Capped at ${ceiling}: ` +
+              `${c.record?.lost ?? 0} of ${c.record?.launched ?? 0} hulls lost and ` +
+              `${c.crewRescue?.lost ?? 0} crews left in the water. A full bar means a clean record.`
+            : 'Confidence — the run ends if it reaches zero',
+        },
+      },
+      [icon('star'), h('span', { text: capped ? `${c.confidence}/${ceiling}` : `${c.confidence}` })],
+    ),
   ]);
 }
 
@@ -165,6 +229,10 @@ function screenShell(
   const header = h('div', { className: 'screen-header' }, [
     h('h1', { text: title }),
     h('span', { className: 'sub', text: sub }),
+    h('span', { className: 'hdr-trim', attrs: { 'aria-hidden': 'true' } }, [
+      h('span', { className: 'knob' }),
+      h('span', { className: 'knob' }),
+    ]),
   ]);
   if (c) header.append(resourceBar(c));
   const root = h(
@@ -185,6 +253,42 @@ function progressBar(fraction: number, tone: '' | 'good' | 'warn' | 'bad' = ''):
     fill.style.width = `${pct}%`;
   }));
   return bar;
+}
+
+/** A progress bar carrying a second, lighter segment stacked on the first: what
+ *  is already banked, and what the convoy currently assigned would add on top
+ *  of it. Both are fractions of the same total, and the projection is drawn
+ *  from where the earned segment ends. */
+function projectionBar(
+  earnedFraction: number,
+  projectedFraction: number,
+  tone: '' | 'good' | 'warn' | 'bad' = '',
+): HTMLElement {
+  const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+  const earned = clamp01(earnedFraction);
+  // The projection can only fill what is left of the bar, however big the
+  // convoy is — overshooting the quota should read as "clears it", not as a
+  // segment hanging off the end.
+  const projected = Math.min(clamp01(projectedFraction), 1 - earned);
+  const fill = h('div', { className: `fill ${tone}`.trim() });
+  const proj = h('div', { className: 'fill projected' });
+  const bar = h('div', { className: 'bar' }, [fill, proj]);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.width = `${earned * 100}%`;
+    proj.style.left = `${earned * 100}%`;
+    proj.style.width = `${projected * 100}%`;
+  }));
+  return bar;
+}
+
+/** Cargo points the currently assigned convoy is worth if every hull arrives.
+ *  This is the same arithmetic resolveTransit does — value delivered IS quota
+ *  progress — so the bar cannot drift from what the round will actually pay. */
+function projectedQuotaPoints(c: CampaignState): number {
+  return (Object.keys(SHIP_CLASSES) as ShipClassId[]).reduce(
+    (sum, id) => sum + c.composition[id] * SHIP_CLASSES[id].value,
+    0,
+  );
 }
 
 function chip(iconName: IconName, text: string, title = ''): HTMLElement {
@@ -221,12 +325,12 @@ function quotaSummary(c: CampaignState): { text: string; met: boolean } {
   const q = c.quota;
   const met = q.pointsEarned >= q.pointsNeeded;
   if (met) {
-    return { met: true, text: 'Quota cleared — a larger quota takes over next round.' };
+    return { met: true, text: 'Cleared — a larger quota follows next round.' };
   }
   const need = q.pointsNeeded - q.pointsEarned;
   return {
     met: false,
-    text: `Deliver ${need} more cargo point(s) within ${q.roundsLeft} round(s) to clear this quota.`,
+    text: `Deliver ${need} more cargo point(s) in ${q.roundsLeft} round(s).`,
   };
 }
 
@@ -248,6 +352,7 @@ export function menuScreen(opts: {
   onContinue: () => void;
   devAvailable: boolean;
   onDev: () => void;
+  onSettings: () => void;
 }): HTMLElement {
   entering('menu');
   const { saved, profile } = opts;
@@ -260,26 +365,27 @@ export function menuScreen(opts: {
   const buttons = h('div', { className: 'buttons' }, [
     h('button', { className: 'primary', text: 'Begin Regional Run', onClick: opts.onNewRun }),
     h('button', { text: continueLabel, disabled: !saved, onClick: opts.onContinue }),
+    h('button', { text: 'Settings', onClick: opts.onSettings }),
   ]);
   const regionsCleared = REGION_ORDER.filter((id) => (profile.records[id]?.completions ?? 0) > 0).length;
   const children: HTMLElement[] = [
     h('div', { className: 'menu-emblem' }, [icon('anchor')]),
     h('h1', { text: 'Straitwatch' }),
+    h('div', { className: 'boot-line', text: 'convoy defense command // online' }),
     h('div', {
       className: 'tagline',
       text:
-        'Shepherd civilian convoys through contested regions. Destroy the enemy’s weapons, ' +
-        'recover their wreckage, and draft their technology into your fleet — every region is a ' +
-        'fresh run, but the Commander remembers.',
+        'Shepherd convoys through hostile straits. Salvage the enemy’s weapons ' +
+        'and draft their technology into your fleet.',
     }),
     buttons,
     h('div', { className: 'menu-save-note hint' }, [
       icon('star'),
       h('span', {
         text:
-          ` Commander XP: ${profile.xp}` +
-          ` · Regions unlocked: ${profile.unlockedRegions.filter((r) => REGION_ORDER.includes(r)).length}/${REGION_ORDER.length}` +
-          ` · Regions secured: ${regionsCleared}`,
+          ` XP ${profile.xp}` +
+          ` · Regions ${profile.unlockedRegions.filter((r) => REGION_ORDER.includes(r)).length}/${REGION_ORDER.length}` +
+          ` · Secured ${regionsCleared}`,
       }),
     ]),
   ];
@@ -288,9 +394,8 @@ export function menuScreen(opts: {
       h('div', {
         className: 'menu-save-note hint',
         text:
-          `Your run is saved automatically — pick up at Round ${saved.round} ` +
-          `(${PHASE_LABELS[saved.phase]}). Beginning a new run abandons it; ` +
-          'Commander progress is never lost.',
+          `Auto-saved at Round ${saved.round} (${PHASE_LABELS[saved.phase]}). ` +
+          'A new run abandons it — Commander progress is never lost.',
       }),
     );
   }
@@ -313,14 +418,26 @@ export function regionSelectScreen(
 ): HTMLElement {
   const { root, body, footer } = screenShell(
     'Region Select',
-    'Each region is an independent run — lose it and it restarts at round 1',
+    'Each region is an independent run',
     null,
     'regionSelect',
   );
 
+  if (profile.allRegionsUnlocked) {
+    body.append(
+      h('div', {
+        className: 'hint',
+        text: 'Dev: all regions unlocked. Turn it off in Dev Mode to go back to the earned ladder.',
+      }),
+    );
+  }
+
   for (const id of REGION_ORDER) {
     const region = REGIONS[id];
     const unlocked = regionUnlocked(profile, id);
+    // A region opened by the dev flag rather than earned still says so, so a
+    // test run is never mistaken for progress.
+    const earned = profile.unlockedRegions.includes(id);
     const rec = profile.records[id];
     const threatNames = region.enemyBranches
       .filter((k) => ENEMY_BRANCHES[k].implemented)
@@ -328,15 +445,16 @@ export function regionSelectScreen(
       .join(', ');
     const tags = h('div', { className: 'chip-row' }, [
       chip('alert', threatNames || 'No threats', 'Enemy branches this region can field'),
-      chip('anchor', `Secure round ${region.completionRound}`, 'Surviving this round completes the region'),
-      chip('star', `+${region.completionXp} XP on completion`),
+      chip(
+        'anchor',
+        `Secure R${region.completionRound}`,
+        'Reach this round with every delivery quota honoured to complete the region — an open quota window plays out first',
+      ),
+      chip('star', `+${region.completionXp} XP`),
     ]);
     if (rec && rec.attempts > 0) {
       tags.append(
-        chip(
-          'check',
-          `Best round ${rec.bestRound} · ${rec.completions} completion${rec.completions === 1 ? '' : 's'} in ${rec.attempts} attempt${rec.attempts === 1 ? '' : 's'}`,
-        ),
+        chip('check', `Best R${rec.bestRound} · won ${rec.completions}/${rec.attempts}`),
       );
     }
     const card = h('div', { className: unlocked ? 'card' : 'card locked' }, [
@@ -344,8 +462,12 @@ export function regionSelectScreen(
         icon(unlocked ? 'radar' : 'lock'),
         h('h3', { text: region.name }),
       ]),
-      h('div', { className: 'hint', text: region.tagline }),
-      h('p', { text: unlocked ? region.desc : 'Complete the previous region to unlock this theater.' }),
+      h('div', {
+        className: 'hint',
+        text: unlocked
+          ? `${region.tagline}${unlocked && !earned ? ' · unlocked for testing' : ''}`
+          : 'Complete the previous region to unlock.',
+      }),
       tags,
       h('button', {
         className: 'primary',
@@ -362,8 +484,64 @@ export function regionSelectScreen(
 }
 
 // ---------------------------------------------------------------------------
-// Commander Ability loadout — the bounded pre-run build
+// Pre-run loadout — Commander Abilities and Escort Legacies
 // ---------------------------------------------------------------------------
+// Two banks off one XP pool. The cards are built by the same renderer because
+// the player is doing the same thing on both: spend XP to unlock, then fit
+// what fits. The difference is in what a slot MEANS — an ability is the
+// commander's and simply on for the run; a legacy belongs to a hull and dies
+// with her — so the copy has to carry it even though the widget cannot.
+
+/** Which bank is open. Held across rerenders so unlocking something does not
+ *  bounce the player back to the other page. */
+let loadoutTab: 'commander' | 'flotilla' = 'commander';
+
+/** One unlock/equip card, shared by both banks. */
+function progressionCard(opts: {
+  name: string;
+  desc: string;
+  points: number;
+  xpCost: number;
+  unlocked: boolean;
+  equipped: boolean;
+  /** null = the toggle is allowed; a string = why it is not. */
+  equipBlock: string | null;
+  unlockBlock: string | null;
+  onToggle: () => void;
+  onUnlock: () => void;
+}): HTMLElement {
+  const rows: HTMLElement[] = [
+    h('div', { className: 'card-head' }, [
+      icon(opts.unlocked ? (opts.equipped ? 'check' : 'star') : 'lock'),
+      h('h3', { text: opts.name }),
+    ]),
+    h('p', { text: opts.desc }),
+    h('div', { className: 'chip-row' }, [
+      chip('coin', `${opts.points} points`, 'Loadout points this consumes'),
+      ...(opts.unlocked ? [] : [chip('intel', `${opts.xpCost} XP to unlock`)]),
+    ]),
+  ];
+  if (opts.unlocked) {
+    rows.push(
+      h('button', {
+        className: opts.equipped ? '' : 'primary',
+        text: opts.equipped ? 'Unequip' : (opts.equipBlock ?? 'Equip'),
+        disabled: !opts.equipped && opts.equipBlock !== null,
+        onClick: opts.onToggle,
+      }),
+    );
+  } else {
+    rows.push(
+      h('button', {
+        className: 'primary',
+        text: opts.unlockBlock === null ? `Unlock — ${opts.xpCost} XP` : opts.unlockBlock,
+        disabled: opts.unlockBlock !== null,
+        onClick: opts.onUnlock,
+      }),
+    );
+  }
+  return h('div', { className: opts.unlocked ? 'card' : 'card locked' }, rows);
+}
 
 export function loadoutScreen(
   profile: CommanderProfile,
@@ -373,75 +551,123 @@ export function loadoutScreen(
   onBack: () => void,
 ): HTMLElement {
   const region = regionDef(regionId);
+  const legacyLoadout = profile.legacyLoadout ?? [];
+  const unlockedLegacies = profile.unlockedLegacies ?? [];
+  const onCommander = loadoutTab === 'commander';
   const { root, body, footer } = screenShell(
-    'Commander Loadout',
-    `Deploying to ${region.name} — equip up to ${COMMANDER.abilitySlots} abilities within ${COMMANDER.loadoutPoints} points`,
+    'Pre-Run Loadout',
+    onCommander
+      ? `${region.name} — ${COMMANDER.abilitySlots} slots · ${COMMANDER.loadoutPoints} pts`
+      : `${region.name} — ${ESCORT_LEGACY.slots} berths · ${ESCORT_LEGACY.loadoutPoints} pts`,
     null,
     'loadout',
   );
 
-  const used = loadoutPointsUsed(profile.loadout);
-  body.append(
-    h('div', { className: 'card' }, [
-      h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: 'Commander' })]),
-      h('div', { className: 'chip-row' }, [
-        chip('intel', `${profile.xp} XP available`, 'Commander XP unlocks new abilities'),
-        chip('slots', `${profile.loadout.length}/${COMMANDER.abilitySlots} slots`),
-        chip('coin', `${used}/${COMMANDER.loadoutPoints} points`),
-      ]),
-      h('div', {
-        className: 'hint',
-        text:
-          'Abilities are permanent once unlocked and freely swappable between runs — but the ' +
-          'equipped loadout is locked in when the run starts.',
-      }),
-    ]),
+  const tabs = h('div', { className: 'tabs' });
+  const tabButton = (id: 'commander' | 'flotilla', label: string, sub: string): HTMLElement =>
+    h(
+      'button',
+      {
+        className: loadoutTab === id ? 'tab selected' : 'tab',
+        onClick: () => {
+          loadoutTab = id;
+          rerender();
+        },
+      },
+      [
+        icon(id === 'commander' ? 'star' : 'shield'),
+        h('span', { className: 'tab-label' }, [
+          h('strong', { text: label }),
+          h('span', { className: 'muted', text: sub }),
+        ]),
+      ],
+    );
+  tabs.append(
+    tabButton('commander', 'Commander', `${profile.loadout.length}/${COMMANDER.abilitySlots}`),
+    tabButton('flotilla', 'Flotilla', `${legacyLoadout.length}/${ESCORT_LEGACY.slots}`),
   );
+  body.append(tabs);
 
-  for (const id of COMMANDER_ABILITY_ORDER) {
-    const def = COMMANDER_ABILITIES[id];
-    const unlocked = profile.unlockedAbilities.includes(id);
-    const equipped = profile.loadout.includes(id);
-    const rows: HTMLElement[] = [
-      h('div', { className: 'card-head' }, [
-        icon(unlocked ? (equipped ? 'check' : 'star') : 'lock'),
-        h('h3', { text: def.name }),
+  if (onCommander) {
+    const used = loadoutPointsUsed(profile.loadout);
+    body.append(
+      h('div', { className: 'card' }, [
+        h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: 'Commander' })]),
+        h('div', { className: 'chip-row' }, [
+          chip('intel', `${profile.xp} XP`, 'Commander XP unlocks abilities and legacies'),
+          chip('slots', `${profile.loadout.length}/${COMMANDER.abilitySlots} slots`),
+          chip('coin', `${used}/${COMMANDER.loadoutPoints} pts`),
+        ]),
+        h('div', {
+          className: 'hint',
+          text: 'Unlocks are permanent. The equipped loadout locks when the run starts.',
+        }),
       ]),
-      h('p', { text: def.desc }),
-      h('div', { className: 'chip-row' }, [
-        chip('coin', `${def.points} points`, 'Loadout points this ability consumes'),
-        ...(unlocked ? [] : [chip('intel', `${def.xpCost} XP to unlock`)]),
-      ]),
-    ];
-    if (unlocked) {
-      const next = equipped
-        ? profile.loadout.filter((a) => a !== id)
-        : [...profile.loadout, id];
-      const block = equipped ? null : loadoutBlockReason(profile, next);
-      rows.push(
-        h('button', {
-          className: equipped ? '' : 'primary',
-          text: equipped ? 'Unequip' : (block ?? 'Equip'),
-          disabled: !equipped && block !== null,
-          onClick: () => {
+    );
+
+    for (const id of COMMANDER_ABILITY_ORDER) {
+      const def = COMMANDER_ABILITIES[id];
+      const equipped = profile.loadout.includes(id);
+      const next = equipped ? profile.loadout.filter((a) => a !== id) : [...profile.loadout, id];
+      body.append(
+        progressionCard({
+          name: def.name,
+          desc: def.desc,
+          points: def.points,
+          xpCost: def.xpCost,
+          unlocked: profile.unlockedAbilities.includes(id),
+          equipped,
+          equipBlock: equipped ? null : loadoutBlockReason(profile, next),
+          unlockBlock: unlockBlockReason(profile, id),
+          onToggle: () => {
             if (setLoadout(profile, next)) rerender();
           },
-        }),
-      );
-    } else {
-      const block = unlockBlockReason(profile, id);
-      rows.push(
-        h('button', {
-          className: 'primary',
-          text: block === null ? `Unlock — ${def.xpCost} XP` : block,
-          disabled: block !== null,
-          onClick: () => {
+          onUnlock: () => {
             if (unlockAbility(profile, id)) rerender();
           },
         }),
       );
     }
-    body.append(h('div', { className: unlocked ? 'card' : 'card locked' }, rows));
+  } else {
+    const used = legacyPointsUsed(legacyLoadout);
+    body.append(
+      h('div', { className: 'card' }, [
+        h('div', { className: 'card-head' }, [icon('shield'), h('h3', { text: 'Flotilla' })]),
+        h('div', { className: 'chip-row' }, [
+          chip('intel', `${profile.xp} XP`, 'Commander XP unlocks abilities and legacies'),
+          chip('slots', `${legacyLoadout.length}/${ESCORT_LEGACY.slots} berths`),
+          chip('coin', `${used}/${ESCORT_LEGACY.loadoutPoints} pts`),
+        ]),
+        h('div', {
+          className: 'hint',
+          text: 'One legacy per escort, handed out as hulls are commissioned. A legacy goes down with its ship for the rest of the region — a replacement hull does not bring it back.',
+        }),
+      ]),
+    );
+
+    for (const id of ESCORT_LEGACY_ORDER) {
+      const def = ESCORT_LEGACIES[id];
+      const equipped = legacyLoadout.includes(id);
+      const next = equipped ? legacyLoadout.filter((a) => a !== id) : [...legacyLoadout, id];
+      body.append(
+        progressionCard({
+          name: def.name,
+          desc: def.desc,
+          points: def.points,
+          xpCost: def.xpCost,
+          unlocked: unlockedLegacies.includes(id),
+          equipped,
+          equipBlock: equipped ? null : legacyLoadoutBlockReason(profile, next),
+          unlockBlock: legacyUnlockBlockReason(profile, id),
+          onToggle: () => {
+            if (setLegacyLoadout(profile, next)) rerender();
+          },
+          onUnlock: () => {
+            if (unlockLegacy(profile, id)) rerender();
+          },
+        }),
+      );
+    }
   }
 
   footer.append(
@@ -456,6 +682,96 @@ export function loadoutScreen(
 }
 
 // ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+/** One labelled ON/OFF row. Shared by Settings and Dev Mode so the two screens
+ *  cannot drift into looking like different games. */
+function toggleRow(
+  ic: IconName,
+  label: string,
+  desc: string,
+  get: () => boolean,
+  set: (v: boolean) => void,
+): HTMLElement {
+  const btn = h('button', {
+    className: get() ? 'dev-toggle on' : 'dev-toggle',
+    text: get() ? 'ON' : 'OFF',
+    onClick: () => {
+      set(!get());
+      btn.textContent = get() ? 'ON' : 'OFF';
+      btn.className = get() ? 'dev-toggle on' : 'dev-toggle';
+    },
+  });
+  return h('div', { className: 'dev-row' }, [
+    h('div', { className: 'dev-label' }, [icon(ic), h('span', { text: label })]),
+    h('div', { className: 'dev-desc hint', text: desc }),
+    btn,
+  ]);
+}
+
+/** Settings — where the developer tools are switched on.
+ *
+ *  Exists because `?dev` on the URL is a fine gate on a desktop and a poor one
+ *  on the device this game is actually played on. Everything here is permanent
+ *  profile state, persisted the moment it changes; `onChange` re-renders so the
+ *  dev-only rows appear and disappear with the switch above them. */
+export function settingsScreen(
+  profile: CommanderProfile,
+  onChange: () => void,
+  onBack: () => void,
+): HTMLElement {
+  const { root, body, footer } = screenShell(
+    'Settings',
+    'Developer tools and testing options',
+    null,
+    'settings',
+  );
+
+  const panel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Developer' }),
+    toggleRow(
+      'wrench',
+      'Developer mode',
+      'Adds the Dev Mode launcher to the main menu and the testing options below. Turning it off puts everything back, including any regions opened for testing.',
+      () => profile.devMode,
+      (v) => {
+        setDevMode(profile, v);
+        onChange();
+      },
+    ),
+  ]);
+
+  if (profile.devMode) {
+    panel.append(
+      toggleRow(
+        'radar',
+        'Unlock all regions',
+        `Opens every region (${REGION_ORDER.map((id) => REGIONS[id].name).join(', ')}) for ordinary runs from Region Select. Nothing is granted — your earned progress is untouched, and Region Select marks anything opened this way as unlocked for testing.`,
+        () => profile.allRegionsUnlocked,
+        (v) => {
+          profile.allRegionsUnlocked = v;
+          onChange();
+        },
+      ),
+    );
+  }
+
+  body.append(
+    panel,
+    h('div', {
+      className: 'hint',
+      text: profile.devMode
+        ? 'Dev Mode is on the main menu now — that is where god mode and jump-to-round live.'
+        : 'Nothing here changes how the game plays until Developer mode is on.',
+    }),
+  );
+
+  footer.append(h('button', { text: 'Back', onClick: onBack }));
+  return root;
+}
+
+// ---------------------------------------------------------------------------
 // Dev mode — god abilities & level select for testing
 // ---------------------------------------------------------------------------
 
@@ -464,6 +780,12 @@ let devRound = 1;
 let devGod = true;
 let devUnlock = true;
 
+/** Dev Mode — the dev-RUN launcher.
+ *
+ *  Everything on this screen is an option for the run it launches. Persistent
+ *  profile state (the region unlock) lives in Settings instead: it was the odd
+ *  one out here, being the only switch that did something without launching
+ *  anything. */
 export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => void): HTMLElement {
   const { root, body, footer } = screenShell(
     'Dev Mode',
@@ -494,41 +816,18 @@ export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => vo
     ]),
   ]);
 
-  const toggle = (
-    ic: IconName,
-    label: string,
-    desc: string,
-    get: () => boolean,
-    set: (v: boolean) => void,
-  ): HTMLElement => {
-    const btn = h('button', {
-      className: get() ? 'dev-toggle on' : 'dev-toggle',
-      text: get() ? 'ON' : 'OFF',
-      onClick: () => {
-        set(!get());
-        btn.textContent = get() ? 'ON' : 'OFF';
-        btn.className = get() ? 'dev-toggle on' : 'dev-toggle';
-      },
-    });
-    return h('div', { className: 'dev-row' }, [
-      h('div', { className: 'dev-label' }, [icon(ic), h('span', { text: label })]),
-      h('div', { className: 'dev-desc hint', text: desc }),
-      btn,
-    ]);
-  };
-
   body.append(
     h('div', { className: 'panel' }, [
       h('h2', { text: 'Test loadout' }),
       roundRow,
-      toggle(
+      toggleRow(
         'shield',
         'God mode',
         'Ships, escorts and batteries are invincible; interceptors, drones, PD rounds and aircraft are unlimited.',
         () => devGod,
         (v) => (devGod = v),
       ),
-      toggle(
+      toggleRow(
         'flask',
         'Unlock everything',
         'All research complete, Warthog & scan installed, max batteries/escorts/capacity, and deep pockets.',
@@ -689,59 +988,104 @@ export function aarScreen(
       (v) => `${v} (${report.confidenceChange >= 0 ? '+' : ''}${report.confidenceChange})`,
       report.confidenceChange >= 0 ? 'good' : 'bad',
     );
+    // The ceiling is a cap the player cannot see acting on them unless it is
+    // shown. Hidden, "why did a 96% round only move me two points" has no
+    // answer on the screen anywhere.
+    const ceiling = Math.round(confidenceCeiling(c));
+    if (ceiling < CAMPAIGN.maxConfidence) {
+      animStat('Confidence ceiling', ceiling, (v) => `${v}/${CAMPAIGN.maxConfidence}`, 'bad');
+    }
     return grid;
   });
 
-  // --- Beat: defensive summary ----------------------------------------------------
-  beats.push(() =>
-    h('div', { className: 'card' }, [
+  // --- Beat: defensive summary — one short readout line per system, so the
+  //     debrief scans like an instrument panel instead of a paragraph.
+  beats.push(() => {
+    const lines: { ic: IconName; text: string }[] = [];
+    if (transit) {
+      lines.push({
+        ic: 'missile',
+        text: `${formatInterceptSummary(transit)} ${s.ammoUsed} interceptor(s) expended`,
+      });
+      if (s.minesTotal > 0) {
+        lines.push({
+          ic: 'mine',
+          text: `Mines — ${s.minesRevealed}/${s.minesTotal} charted · ${s.minesDetonated} detonated · ${s.minesSwept} swept`,
+        });
+      }
+      if (s.torpedoesLaunched > 0) {
+        lines.push({
+          ic: 'sonar',
+          text: `Torpedoes — ${s.torpedoesDetected}/${s.torpedoesLaunched} detected · ${s.torpedoesDestroyed} destroyed · ${s.torpedoesHit} hit home`,
+        });
+      }
+      if (s.boatsLaunched > 0) {
+        lines.push({
+          ic: 'burst',
+          text:
+            `Attack boats — ${s.boatsSunk}/${s.boatsLaunched} sunk · ${s.boatKills} hull(s) lost` +
+            (s.counter.boardingAttempts > 0
+              ? ` · ${s.counter.boardingInterrupted} boarding(s) repelled · ${s.shipsCaptured} CAPTURED`
+              : ''),
+        });
+      }
+      if (s.shellsFired > 0) {
+        lines.push({
+          ic: 'battery',
+          text:
+            `Shore guns — ${s.shellHits}/${s.shellsFired} shells on target` +
+            (s.counter.counterBatterySuppressions > 0
+              ? ` · ${s.counter.counterBatterySuppressions} suppressed`
+              : '') +
+            (s.batteriesDestroyed > 0 ? ` · ${s.batteriesDestroyed} silenced` : ''),
+        });
+      }
+      if (s.smokeCloudsLaid > 0) {
+        lines.push({
+          ic: 'jam',
+          text: `Enemy smoke — ${s.smokeCloudsLaid} cloud(s) · targeting blinded ${Math.round(s.concealedSeconds)}s`,
+        });
+      }
+      if (s.reconPlanes + s.disablingDrones > 0) {
+        lines.push({
+          ic: 'planeScan',
+          text:
+            `Enemy air — ${s.reconPlanes} recon · ${s.disablingDrones} drone(s) · ${s.aircraftDowned} downed` +
+            (s.shipDisabledSeconds > 0 ? ` · ${Math.round(s.shipDisabledSeconds)}s dead in the water` : ''),
+        });
+      }
+      if (s.counter.jammingSeconds > 0) {
+        lines.push({
+          ic: 'alert',
+          text:
+            `Sensors jammed ${Math.round(s.counter.jammingSeconds)}s` +
+            (s.counter.jammingMitigatedSeconds > 0
+              ? ` · ${Math.round(s.counter.jammingMitigatedSeconds)}s recovered`
+              : ''),
+        });
+      }
+      if (s.launchersDisabled > 0) {
+        lines.push({ ic: 'turret', text: `Launchers knocked offline ×${s.launchersDisabled}` });
+      }
+      if (s.escortsLost > 0) lines.push({ ic: 'flame', text: `Escorts lost — ${s.escortsLost}` });
+      if (s.basesLost > 0) lines.push({ ic: 'flame', text: `Shore batteries destroyed — ${s.basesLost}` });
+    }
+    const wrap = h('div', { className: 'card' }, [
       h('div', { className: 'card-head' }, [icon('shield'), h('h3', { text: 'Defensive summary' })]),
-      h('p', {
-        text: transit
-          ? `${formatInterceptSummary(transit)} Interceptors expended: ${s.ammoUsed}.` +
-            (s.minesTotal > 0
-              ? ` Mines: ${s.minesRevealed}/${s.minesTotal} charted, ${s.minesDetonated} detonated, ${s.minesSwept} swept.`
-              : '') +
-            (s.torpedoesLaunched > 0
-              ? ` Torpedoes: ${s.torpedoesDetected}/${s.torpedoesLaunched} detected, ` +
-                `${s.torpedoesDestroyed} destroyed, ${s.torpedoesHit} hit home.`
-              : '') +
-            (s.boatsLaunched > 0
-              ? ` Attack boats: ${s.boatsSunk}/${s.boatsLaunched} sunk, ${s.boatKills} hull(s) lost to them` +
-                (s.counter.boardingAttempts > 0
-                  ? `, ${s.counter.boardingInterrupted} boarding(s) repelled and ${s.shipsCaptured} ship(s) CAPTURED.`
-                  : '.')
-              : '') +
-            (s.shellsFired > 0
-              ? ` Shore guns: ${s.shellsFired} shells fired, ${s.shellHits} on target` +
-                (s.counter.counterBatterySuppressions > 0
-                  ? `, ${s.counter.counterBatterySuppressions} battery suppression(s)`
-                  : '') +
-                (s.batteriesDestroyed > 0 ? `, ${s.batteriesDestroyed} silenced for good.` : '.')
-              : '') +
-            (s.smokeCloudsLaid > 0
-              ? ` Enemy smoke: ${s.smokeCloudsLaid} cloud(s), ${Math.round(s.concealedSeconds)}s of threats hidden from targeting.`
-              : '') +
-            (s.reconPlanes + s.disablingDrones > 0
-              ? ` Electronic attack: ${s.reconPlanes} recon, ${s.disablingDrones} drone(s), ` +
-                `${s.aircraftDowned} shot down` +
-                (s.shipDisabledSeconds > 0 ? `, ${Math.round(s.shipDisabledSeconds)}s dead in the water.` : '.')
-              : '') +
-            (s.counter.jammingSeconds > 0
-              ? ` Sensors jammed for ${Math.round(s.counter.jammingSeconds)}s` +
-                (s.counter.jammingMitigatedSeconds > 0
-                  ? ` (${Math.round(s.counter.jammingMitigatedSeconds)}s recovered by hardened systems).`
-                  : ' — no counter exists for this; only work-arounds.')
-              : '') +
-            (s.launchersDisabled > 0
-              ? ` Launchers knocked offline ${s.launchersDisabled} time(s) by enemy fire.`
-              : '') +
-            (s.escortsLost > 0 ? ` Escorts lost: ${s.escortsLost}.` : '') +
-            (s.basesLost > 0 ? ` Shore batteries destroyed: ${s.basesLost}.` : '')
-          : 'Transit record unavailable (resumed campaign).',
-      }),
-    ]),
-  );
+    ]);
+    if (lines.length === 0) {
+      wrap.append(h('p', { text: 'Transit record unavailable (resumed campaign).' }));
+    } else {
+      wrap.append(
+        h(
+          'div',
+          { className: 'report-lines' },
+          lines.map((l) => h('div', { className: 'report-line' }, [icon(l.ic), h('span', { text: l.text })])),
+        ),
+      );
+    }
+    return wrap;
+  });
 
   // --- Beat: quota progress (only mid-window; evaluation gets its own card) -------
   if (!report.quota.evaluated) {
@@ -894,7 +1238,6 @@ const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
   antiBoarding: 'lock',
   counterBattery: 'turret',
   thermalImaging: 'eye',
-  smokeScreen: 'jam',
   flak: 'turret',
   hardened: 'shield',
   warthog: 'planeGun',
@@ -929,18 +1272,44 @@ const TACTIC_KIND_LABELS: Record<TacticKind, string> = {
   mode: 'Operating mode',
 };
 
-/** Human summary of what a node's tier assignments / grants do (hardware
- *  performance vs targets vs ammo — distinct from tactic behavior). */
-function nodeEffectSummary(def: CounterNodeDef): string {
-  const parts: string[] = [];
+/** Discrete-grant labels (magazines, charges …) for effect chips. */
+const GRANT_LABELS: Record<string, string> = {
+  magazine: 'Magazine',
+  sorties: 'Sorties',
+  charges: 'Charges',
+  reboots: 'Reboots',
+  channels: 'Channels',
+};
+
+/** What a node's tier assignments / grants do, as LED meters and chips — tier
+ *  words never reach the player. */
+/** The effect rows on a draft card. When a branch is given, each tiered stat
+ *  is shown as a CHANGE — where it sits today against where this option would
+ *  put it — because "Accuracy: High" means nothing without knowing whether the
+ *  fleet is already there. Without a branch (anywhere the option is not a
+ *  choice being weighed) it falls back to a plain level. */
+function effectRows(def: CounterNodeDef, current?: Record<string, StatTier>): HTMLElement | null {
+  const rows: HTMLElement[] = [];
   for (const s of def.set ?? []) {
-    parts.push(`${s.stat} → ${s.tier.charAt(0).toUpperCase()}${s.tier.slice(1)}`);
+    rows.push(
+      current ? statUpgradeRow(s.stat, current[s.stat], s.tier) : statTierRow(s.stat, s.tier),
+    );
   }
-  for (const [k, v] of Object.entries(def.grant ?? {})) parts.push(`${k}: ${v}`);
-  return parts.join(' · ');
+  for (const [k, v] of Object.entries(def.grant ?? {})) {
+    rows.push(chip('ammo', `${GRANT_LABELS[k] ?? k} ×${v}`));
+  }
+  if (rows.length === 0) return null;
+  return h('div', { className: 'effect-rows' }, rows);
 }
 
-function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
+function branchTagRow(
+  c: CampaignState,
+  branch: CounterBranchDef,
+  /** True when the option being rendered will FIT this branch's hardware for
+   *  free. The "buy in prep" tag would otherwise sit directly above a line
+   *  promising the same hardware at no cost, which reads as a contradiction. */
+  grantsEquipment = false,
+): HTMLElement {
   const tags = h('div', { className: 'chip-row branch-tags' }, [
     chip('anchor', PLATFORM_LABELS[branch.platform], 'Platform this branch belongs to'),
     chip('chevrons', ROLE_LABELS[branch.role], 'Whether it detects, attacks, mitigates or disrupts'),
@@ -949,7 +1318,7 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
     tags.append(chip('alert', `vs ${ENEMY_BRANCH_NAMES[enemy]}`, branch.countersDetail));
   }
   if (awaitingEnemyCapability(branch)) {
-    tags.append(chip('eye', 'awaiting enemy capability', 'The countered enemy branch has not been fielded yet — research and equipment are ready for the day it appears.'));
+    tags.append(chip('eye', 'enemy not fielded yet', 'Ready for the day this threat appears.'));
   }
   // Equipment status: what physically carries this branch, and whether it is
   // installed — research alone never equips anything.
@@ -971,48 +1340,171 @@ function branchTagRow(c: CampaignState, branch: CounterBranchDef): HTMLElement {
         (eq.id === 'warthog' && c.warthogUnlocked) ||
         (eq.id === 'scan' && c.scanUnlocked) ||
         (eq.id === 'sonar' && c.sonarUnlocked) ||
-        (eq.id === 'smoke' && c.smokeUnlocked) ||
         (eq.id === 'hardened' && c.hardenedUnlocked);
       label = 'convoy asset';
     } else {
       fitted = eq.id === 'escort' ? c.escortUnits.length > 0 : c.bases > 0;
       label = 'built-in launcher';
     }
-    tags.append(chip(fitted ? 'check' : 'lock', fitted ? `${label} ✓` : `${label} — not fitted`,
-      fitted ? 'Equipment installed' : 'Research is ready, but the hardware must be bought in Preparation'));
+    if (fitted || grantsEquipment) {
+      tags.append(
+        chip(
+          'check',
+          grantsEquipment && !fitted ? `${label} — included` : `${label} ✓`,
+          grantsEquipment && !fitted
+            ? 'Drafting this fits one free unit; more are bought in Preparation'
+            : 'Equipment installed',
+        ),
+      );
+    } else {
+      tags.append(
+        chip(
+          'lock',
+          `${label} — buy in prep`,
+          'Research is ready; the hardware must be bought in Preparation',
+        ),
+      );
+    }
   }
   return tags;
 }
 
-/** The technology a run currently holds, grouped by category — the read-only
- *  build overview shown beneath the draft. Replaces the old browsable tech
- *  tree: there is nothing to buy here any more, only what the drafts built. */
+/** The technology a run currently holds — the read-only build overview shown
+ *  beneath the draft. Grouped by WHAT CARRIES each technology (cargo modules /
+ *  escort fit / fleet-wide / consumables) rather than by the enemy it counters:
+ *  the question this list answers is "what does my fleet already have", and a
+ *  player looks that up by where the thing lives, not by which threat it was
+ *  bought against. */
+const OWNED_TECH_GROUPS = [
+  { key: 'cargo', label: 'Cargo ship modules' },
+  { key: 'escort', label: 'Escort modules' },
+  { key: 'fleet', label: 'Fleet upgrades' },
+  { key: 'consumable', label: 'Consumable upgrades' },
+] as const;
+
+function ownedTechGroup(branch: CounterBranchDef): (typeof OWNED_TECH_GROUPS)[number]['key'] {
+  const eq = branch.equipment;
+  if (!eq) return 'fleet'; // logistics and other fleet-shape branches
+  if (eq.kind === 'cargoModule') return 'cargo';
+  if (eq.kind === 'escortModule') return 'escort';
+  if (eq.kind === 'builtIn') return eq.id === 'escort' ? 'escort' : 'fleet';
+  if (eq.kind === 'ability') return 'consumable';
+  return 'fleet'; // base modules ride with the fleet's fixed installations
+}
+
 function ownedTechSummary(c: CampaignState): HTMLElement {
-  const wrap = h('div', { className: 'card' }, [
+  const wrap = h('div', { className: 'card owned-tech' }, [
     h('div', { className: 'card-head' }, [icon('check'), h('h3', { text: 'Technology held this run' })]),
   ]);
   const owned = c.completedResearch.filter((id) => RESEARCH_INDEX[id]);
   if (owned.length === 0) {
-    wrap.append(h('p', {
-      className: 'hint',
-      text: 'Nothing drafted yet — every technology this run uses will come from post-round drafts.',
-    }));
+    wrap.append(h('p', { className: 'hint', text: 'Nothing drafted yet.' }));
     return wrap;
   }
-  for (const category of CATEGORY_ORDER) {
-    const inCategory = owned.filter((id) => RESEARCH_INDEX[id].branch.category === category);
-    if (inCategory.length === 0) continue;
+  for (const group of OWNED_TECH_GROUPS) {
+    const inGroup = owned.filter((id) => ownedTechGroup(RESEARCH_INDEX[id].branch) === group.key);
+    if (inGroup.length === 0) continue;
     const row = h('div', { className: 'chip-row' });
-    for (const id of inCategory) {
+    for (const id of inGroup) {
       const entry = RESEARCH_INDEX[id];
       row.append(chip(BRANCH_ICONS[entry.branch.id], entry.def.name, entry.def.desc));
     }
-    wrap.append(
-      h('div', { className: 'hint', text: COUNTER_CATEGORY_NAMES[category] }),
-      row,
-    );
+    wrap.append(h('div', { className: 'hint', text: group.label }), row);
   }
   return wrap;
+}
+
+// ---------------------------------------------------------------------------
+// Reward categories
+// ---------------------------------------------------------------------------
+//
+// Four categories, four identities. The player should be able to tell what kind
+// of reward a card is before reading a word of it, because the four behave
+// completely differently: an upgrade improves everything you already carry, a
+// module is a physical unit you move between hulls, an asset changes the shape
+// of the fleet, and ordnance is spent and gone.
+//
+// Category owns the FILL, the ICON and the RIBBON. The counter slot owns the
+// BORDER and the badge. They are independent axes — a module can also be the
+// counter pick — so they must never fight for the same channel.
+
+const CATEGORY_STYLE: Record<DraftOptionKind, { label: string; icon: IconName }> = {
+  upgrade: { label: 'Upgrade', icon: 'chevrons' },
+  module: { label: 'Equipment', icon: 'slots' },
+  asset: { label: 'Fleet Asset', icon: 'anchor' },
+  ordnance: { label: 'Ordnance', icon: 'ammo' },
+};
+
+const PLATFORM_FIT_LINE: Record<ModulePlatform, string> = {
+  cargo: 'One unit — fits an entire ship class, and is never lost with a hull.',
+  escort: 'One unit — fits any single escort, and is salvaged if she is lost.',
+  base: 'One unit — fits the shore batteries.',
+};
+
+function modulePlacementLine(platform: ModulePlatform): string {
+  return PLATFORM_FIT_LINE[platform];
+}
+
+function draftRoleLine(
+  option: DraftOption,
+  info: ReturnType<typeof draftOptionInfo> & object,
+  branch: CounterBranchDef | null,
+  /** True when the card's TITLE is already the branch name, so repeating it
+   *  here would just say the same thing twice in two type sizes. */
+  branchTitled = false,
+): string {
+  const lead = branchTitled ? '' : `${info.branchName} · `;
+  if (option.kind === 'ordnance') return 'Consumables · delivered once · spent in play';
+  if (option.kind === 'asset') return `${lead}the fleet itself · permanent`;
+  if (option.kind === 'module') {
+    return `${lead}${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · equipment unit`;
+  }
+  const entry = RESEARCH_INDEX[(option as { id: string }).id];
+  const kindLabel = entry?.isTactic
+    ? TACTIC_KIND_LABELS[(entry.def as CounterTacticDef).kind]
+    : 'Hardware';
+  return `${lead}${PLATFORM_LABELS[branch?.platform ?? 'convoy']} · ${kindLabel}`;
+}
+
+/** A row of analog lights: filled for what the fleet already holds, one amber
+ *  pip pulsing for the rung this card would add. Deliberately ROUND, so it can
+ *  never be misread as the skewed LED bars that show stat tiers — two readouts
+ *  meaning different things must not share a shape. */
+function pipRow(filled: number, total: number, label: string, gaining: boolean): HTMLElement {
+  const cells: HTMLElement[] = [];
+  for (let i = 0; i < total; i++) {
+    const cls =
+      i < filled ? 'pip on' : gaining && i === filled ? 'pip gain' : 'pip';
+    cells.push(h('span', { className: cls }));
+  }
+  return h('div', { className: 'pip-row' }, [
+    h('span', { className: 'pip-label', text: label }),
+    h('div', { className: 'pips' }, cells),
+    h('span', { className: 'pip-count', text: `${filled + (gaining ? 1 : 0)}/${total}` }),
+  ]);
+}
+
+/** How deep a branch runs: what is taken, and the rung this pick adds. */
+function depthPips(taken: number, total: number, branchName: string): HTMLElement {
+  return pipRow(taken, total, `${branchName} upgrades`, true);
+}
+
+/** How many units of a module the run holds, and the one this pick delivers. */
+function unitPips(held: number, cap: number): HTMLElement {
+  return pipRow(held, cap, 'Units held', held < cap);
+}
+
+/** The same read-out on the loadout screens, where nothing is being gained —
+ *  it is a statement of what the locker holds, not of what a card would add. */
+function unitCountRow(held: number, cap: number, spare: number): HTMLElement {
+  const row = pipRow(held, cap, 'Units held', false);
+  row.append(
+    h('span', {
+      className: 'pip-note',
+      text: spare > 0 ? `${spare} spare` : held > 0 ? 'all fitted' : 'none',
+    }),
+  );
+  return row;
 }
 
 /** The mandatory post-round technology draft. The player MUST take one option
@@ -1026,7 +1518,9 @@ export function draftScreen(
   const draft = c.pendingDraft;
   const { root, body, footer } = screenShell(
     `Technology Draft — Round ${draft?.round ?? c.round - 1}`,
-    'Select exactly one recovered technology — it activates immediately',
+    draft && draft.picksLeft > 1
+      ? `Take ${draft.picksLeft} — salvage bought the extra picks`
+      : 'Pick one — it activates immediately',
     c,
     'draft',
   );
@@ -1038,28 +1532,57 @@ export function draftScreen(
     return root;
   }
 
-  if (draft.recoveredUnits > 0) {
-    body.append(
-      h('div', { className: 'card salvage' }, [
-        h('div', { className: 'card-head' }, [icon('crate'), h('h3', { text: 'Salvage analysis' })]),
-        h('p', {
-          text:
-            `${draft.recoveredUnits} wreckage field${draft.recoveredUnits === 1 ? '' : 's'} recovered last round. ` +
-            'Recovered enemy technology widens the draft and steers it toward counters for the ' +
-            'threat families your escorts actually brought home.',
-        }),
-      ]),
-    );
-  } else {
-    body.append(
-      h('div', {
+  const counterName = draft.counterFamily
+    ? (ENEMY_BRANCH_NAMES[draft.counterFamily as keyof typeof ENEMY_BRANCH_NAMES] ??
+      draft.counterFamily)
+    : null;
+  // How many picks this table carries, front and centre — the count used to
+  // live only in the subtitle, and a player who had earned a triple pick
+  // through salvage could walk past two of them without ever knowing.
+  const picksTotal = draft.picksTotal ?? draft.picksLeft;
+  body.append(
+    h('div', { className: 'draft-picks' }, [
+      icon('chevrons'),
+      h('strong', { text: `Pick ${picksTotal - draft.picksLeft + 1} of ${picksTotal}` }),
+      h('span', {
         className: 'hint',
         text:
-          'No wreckage came home last round — the engineers still have two proposals on the ' +
-          'table. Recovering wreckage widens future drafts and improves their quality.',
+          picksTotal > 1
+            ? `${draft.picksLeft} still to take — salvage bought the extra picks`
+            : 'One technology joins the fleet — recover wreckage to earn more picks',
       }),
-    );
-  }
+    ]),
+  );
+  body.append(
+    h('div', { className: 'chip-row' }, [
+      draft.recoveredUnits > 0
+        ? chip(
+            'crate',
+            `Salvage ×${draft.recoveredUnits} — draft widened`,
+            'Recovered wreckage widens the draft and aims it at the threats it came from',
+          )
+        : chip('crate', 'No salvage — base draft', 'Recovering wreckage widens future drafts'),
+      ...(counterName
+        ? [
+            chip(
+              'alert',
+              `Answering: ${counterName}`,
+              'One option always answers whatever is getting through to the convoy. ' +
+                'It stops appearing once you are actually stopping that threat.',
+            ),
+          ]
+        : []),
+      ...(draft.rerolls
+        ? [
+            chip(
+              'reload',
+              draft.rerolls > 1 ? `Rerolled ×${draft.rerolls}` : 'Rerolled',
+              'This table was redrawn with a reroll earned by rescuing crews',
+            ),
+          ]
+        : []),
+    ]),
+  );
 
   if (draft.options.length === 0) {
     body.append(
@@ -1083,40 +1606,105 @@ export function draftScreen(
   }
 
   const optionRow = h('div', { className: 'grid-2 draft-options' });
-  for (const id of draft.options) {
-    const entry = RESEARCH_INDEX[id];
-    const info = draftOptionInfo(id);
-    if (!entry || !info) continue;
-    const def = entry.def;
-    const branch = entry.branch;
+  // researchSet(), not the raw completedResearch array: base nodes can be
+  // GRANTED rather than drafted, and a stat the fleet already has from a
+  // granted node would otherwise read as brand new on the card.
+  const researchedSet = researchSet(c);
+  for (const option of draft.options) {
+    const info = draftOptionInfo(c, option);
+    if (!info) continue;
+    const branch = draftOptionBranch(option);
+    const meta = CATEGORY_STYLE[info.kind];
+    // The card is titled by its BRANCH — the system being improved — with the
+    // specific node beneath it. "High-Velocity Motor" alone forced the player
+    // to deduce what the motor was in; "Escort Missile Interceptors" answers
+    // the only question a card has to answer at a glance: what is this FOR.
+    const branchTitled = Boolean(branch && info.branchName && info.branchName !== info.name);
     const bits: HTMLElement[] = [
       h('div', { className: 'card-head' }, [
-        icon(BRANCH_ICONS[branch.id]),
-        h('h3', { text: def.name }),
+        icon(branch ? BRANCH_ICONS[branch.id] : meta.icon),
+        h('h3', { text: branchTitled ? info.branchName : info.name }),
+        h('span', { className: `cat-ribbon cat-${info.kind}`, text: meta.label }),
       ]),
+      ...(branchTitled ? [h('div', { className: 'draft-node-name', text: info.name })] : []),
       h('div', {
-        className: 'hint',
-        text:
-          `${branch.name} · ${PLATFORM_LABELS[branch.platform]} · ` +
-          (entry.isTactic ? TACTIC_KIND_LABELS[(def as CounterTacticDef).kind] : 'Hardware node'),
+        className: 'role-line',
+        text: draftRoleLine(option, info, branch, branchTitled),
       }),
-      h('p', { text: def.desc }),
-      branchTagRow(c, branch),
+      h('p', { text: info.desc }),
     ];
-    const effectText = nodeEffectSummary(def);
-    if (effectText) bits.push(h('div', { className: 'hint', text: `Sets: ${effectText}` }));
+
+    if (option.kind === 'upgrade' || option.kind === 'asset') {
+      const entry = RESEARCH_INDEX[option.id];
+      if (entry) {
+        const effects = effectRows(entry.def, resolveBranchStats(entry.branch.id, researchedSet).tiers);
+        if (effects) bits.push(effects);
+      }
+      // How deep this branch already runs, and the rung this card would add.
+      // The same read-out appears in Preparation, so "how far along am I" is
+      // answered the same way in both places.
+      if (info.branchDepth) {
+        bits.push(depthPips(info.branchDepth.taken, info.branchDepth.total, info.branchName));
+      }
+    }
+
+    if (option.kind === 'module') {
+      bits.push(unitPips(info.held ?? 0, info.cap ?? 1));
+      bits.push(
+        h('div', { className: 'grant-line' }, [
+          icon('check'),
+          h('span', { text: modulePlacementLine(option.platform) }),
+        ]),
+      );
+    }
+
+    if (branch) bits.push(branchTagRow(c, branch, option.kind === 'module'));
+
     bits.push(
       h('button', {
         className: 'primary',
-        text: `Draft ${def.name}`,
+        text: `Draft ${info.name}`,
         onClick: () => {
-          if (selectDraftOption(c, id)) onPicked();
+          // With picks left the draft stays open, so re-render the same screen
+          // rather than routing on; the sim decides when it is spent.
+          if (selectDraftOption(c, option)) onPicked();
         },
       }),
     );
-    optionRow.append(h('div', { className: 'card draft-option' }, bits));
+    const classes = ['card', 'draft-option', `cat-${info.kind}`];
+    if (draftOptionKey(option) === draft.counterOption) classes.push('draft-counter');
+    optionRow.append(h('div', { className: classes.join(' ') }, bits));
   }
-  body.append(optionRow, ownedTechSummary(c));
+  body.append(optionRow);
+
+  // Reroll — earned by pulling crews out of the water, so the offer to redraw
+  // sits with the table it would replace rather than in a menu somewhere.
+  const banked = c.draftRerolls ?? 0;
+  const rerollBlock = rerollBlockReason(c);
+  body.append(
+    h('div', { className: 'card reroll-card' }, [
+      h('div', { className: 'card-head' }, [
+        icon('reload'),
+        h('h3', { text: 'Reroll the table' }),
+        ...(banked > 0 ? [h('span', { className: 'cat-ribbon', text: `×${banked}` })] : []),
+      ]),
+      h('p', {
+        text:
+          banked > 0
+            ? 'Redraw every option. Picks already taken stay taken, and the number of picks does not change.'
+            : `Rescuing ${DRAFT.crewsPerReroll} crews in a single round earns a reroll.`,
+      }),
+      h('button', {
+        className: banked > 0 ? 'primary' : '',
+        text: banked > 0 ? `Reroll — ${banked} left` : (rerollBlock ?? 'Reroll'),
+        disabled: rerollBlock !== null,
+        onClick: () => {
+          if (rerollDraft(c)) onPicked();
+        },
+      }),
+    ]),
+  );
+  body.append(ownedTechSummary(c));
 
   footer.append(
     h('button', {
@@ -1125,7 +1713,7 @@ export function draftScreen(
       attrs: { style: 'margin-right:auto' },
       onClick: onQuit,
     }),
-    h('div', { className: 'hint', text: 'The draft is mandatory — select one to continue.' }),
+    h('div', { className: 'hint', text: 'The draft is mandatory.' }),
   );
   return root;
 }
@@ -1135,9 +1723,9 @@ export function draftScreen(
 // ---------------------------------------------------------------------------
 
 const SHIP_TAGLINES: Record<ShipClassId, string> = {
-  cargo: 'The backbone of the operation — dependable hull, dependable value.',
-  tanker: 'More than twice the payout — but she goes up violently when lost.',
-  freighter: 'Fast, cheap and fragile — first through the strait, first to sink when caught.',
+  cargo: 'Dependable hull, dependable value.',
+  tanker: 'Twice the payout — goes up violently.',
+  freighter: 'Fast, cheap, fragile.',
 };
 
 const MODULE_ICONS: Record<ModuleId, IconName> = {
@@ -1184,7 +1772,7 @@ export function prepScreen(
 ): HTMLElement {
   const { root, body, footer } = screenShell(
     `Preparation — Round ${c.round}`,
-    'Fit out the convoy and its defenses, then sail',
+    'Fit the convoy, then sail',
     c,
     'prep',
   );
@@ -1192,7 +1780,7 @@ export function prepScreen(
   // --- Mission brief: capacity + quota at a glance ------------------------------
   const assigned = totalComposition(c);
   const qs = quotaSummary(c);
-  body.append(
+  const briefStrip =
     h('div', { className: 'brief-strip' }, [
       h('div', { className: 'brief' }, [
         h('div', { className: 'brief-row' }, [
@@ -1211,14 +1799,22 @@ export function prepScreen(
             : h('span'),
           h('span', { className: 'brief-num', text: `${c.quota.pointsEarned}/${c.quota.pointsNeeded}` }),
         ]),
-        progressBar(
+        projectionBar(
           c.quota.pointsNeeded > 0 ? c.quota.pointsEarned / c.quota.pointsNeeded : 0,
+          c.quota.pointsNeeded > 0 ? projectedQuotaPoints(c) / c.quota.pointsNeeded : 0,
           qs.met ? 'good' : 'warn',
         ),
+        // A stacked bar is only readable if the second colour is named, so the
+        // legend is part of the control rather than something to infer.
+        h('div', { className: 'bar-legend' }, [
+          h('span', { className: 'key earned' }),
+          h('span', { text: 'banked' }),
+          h('span', { className: 'key projected' }),
+          h('span', { text: `this convoy +${projectedQuotaPoints(c)}` }),
+        ]),
         h('div', { className: 'hint', text: qs.text }),
       ]),
-    ]),
-  );
+    ]);
 
   // --- Convoy composition -----------------------------------------------------
   const compPanel = h('div', { className: 'panel' }, [
@@ -1242,7 +1838,11 @@ export function prepScreen(
             chip('crate', `${def.value} pts`, 'Points toward the delivery quota when this ship is delivered'),
             chip('shield', `${def.hp}`, 'Hull points'),
             chip('speed', `${def.speed}`, 'Cruise speed'),
-            chip('slots', `${c.classModules[classId].length}/${def.slots}`, 'Module slots used'),
+            chip(
+              'slots',
+              `${c.classModules[classId].length}/${classSlots(c, classId)}`,
+              'Module slots used',
+            ),
           ]),
         ]),
         (() => {
@@ -1307,11 +1907,11 @@ export function prepScreen(
             ]),
             h('div', { className: 'chip-row' }, [
               chip(
-                'turret',
+                'accuracy',
                 `${def.interceptAccuracy >= 0 ? '+' : ''}${Math.round(def.interceptAccuracy * 100)}%`,
                 'Interceptor accuracy from this formation',
               ),
-              chip('radar', `×${def.defenseRangeMult}`, 'Point-defense & escort reach'),
+              chip('range', `×${def.defenseRangeMult}`, 'Point-defense & escort reach'),
               chip(
                 'flame',
                 def.chainSplashRadius > 0 ? 'chains' : 'isolated',
@@ -1329,13 +1929,13 @@ export function prepScreen(
 
   // --- Ship modules: class tabs + inline-description cards -------------------------
   const modPanel = h('div', { className: 'panel' }, [
-    h('h2', { text: 'Ship modules — refit a whole class' }),
+    h('h2', { text: 'Ship modules — refit the whole class' }),
   ]);
   const tabs = h('div', { className: 'tabs' });
   for (const classId of Object.keys(SHIP_CLASSES) as ShipClassId[]) {
     const def = SHIP_CLASSES[classId];
     const owned = c.classModules[classId];
-    const dots = Array.from({ length: def.slots }, (_, i) =>
+    const dots = Array.from({ length: classSlots(c, classId) }, (_, i) =>
       h('span', { className: i < owned.length ? 'slot-dot filled' : 'slot-dot' }),
     );
     tabs.append(
@@ -1367,40 +1967,40 @@ export function prepScreen(
   const activeOwned = c.classModules[activeClass];
   const modGrid = h('div', { className: 'module-grid' });
   for (const moduleId of Object.keys(MODULES) as ModuleId[]) {
+    if (!moduleRevealed(c, activeClass, moduleId)) continue;
     const mod = MODULES[moduleId];
     const isOwned = activeOwned.includes(moduleId);
-    const cost = moduleCost(c, activeClass, moduleId);
+    const held = moduleStock(c, 'cargo', moduleId);
+    const spare = moduleSpare(c, 'cargo', moduleId);
     const block = moduleBlockReason(c, activeClass, moduleId);
-    const refund = c.modulePaid[activeClass]?.[moduleId] ?? cost;
     const roleLine = equipmentRoleLine('cargoModule', moduleId);
-    let buyLabel: string;
-    if (block === null) buyLabel = `Equip class — $${cost}`;
-    else if (block === 'Not enough cash') buyLabel = `Need $${cost}`;
-    else if (block.startsWith('Requires technology')) buyLabel = block;
-    else if (block === 'No module slots free on this class') buyLabel = 'No slots free';
-    else buyLabel = block;
+    let fitLabel: string;
+    if (block === null) fitLabel = `Fit to ${activeDef.name}`;
+    else if (block === 'No module slots free on this class') fitLabel = 'No slots free';
+    else fitLabel = block;
     modGrid.append(
       h('div', { className: isOwned ? 'module-card owned' : 'module-card' }, [
         h('div', { className: 'card-head' }, [
           icon(MODULE_ICONS[moduleId]),
           h('h3', { text: mod.name }),
-          isOwned ? h('span', { className: 'badge good', text: 'Equipped' }) : h('span'),
+          isOwned ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
         ]),
         roleLine ? h('div', { className: 'hint role-line', text: roleLine }) : h('span'),
         h('p', { text: mod.desc }),
+        unitCountRow(held, moduleStockCap('cargo'), spare),
         isOwned
           ? h('button', {
               className: 'unequip',
-              text: `Unequip — refund $${refund}`,
+              text: 'Unfit — return to the locker',
               onClick: () => {
                 if (removeModule(c, activeClass, moduleId)) rerender();
               },
             })
           : h('button', {
-              text: buyLabel,
+              text: fitLabel,
               disabled: block !== null,
               onClick: () => {
-                if (buyModule(c, activeClass, moduleId)) rerender();
+                if (equipModule(c, activeClass, moduleId)) rerender();
               },
             }),
       ]),
@@ -1411,9 +2011,9 @@ export function prepScreen(
     h('div', {
       className: 'hint',
       text:
-        `Refits apply to every ${activeDef.name} you own (${Math.max(1, c.fleet[activeClass])} hull(s)) — pricing scales with the fleet. ` +
-        'Modules unlock through the technology draft first, then compete for the class’s limited slots — no hull can carry every counter. ' +
-        'Unequip to swap loadouts freely (you get the fitting cost back), and note a fitted module raises the price of buying a new hull of that class.',
+        `One unit fits every ${activeDef.name} afloat (${Math.max(1, c.fleet[activeClass])} hull(s)). ` +
+        'Units come from the technology draft, never the bank — fitting and unfitting is free, ' +
+        'and a cargo fit is never lost when a hull is.',
     }),
   );
 
@@ -1433,38 +2033,56 @@ export function prepScreen(
     h('div', {
       className: 'hint',
       text:
-        'Missile interceptors are built into every escort and never use a slot. Each escort is fitted separately, so one can hunt boats while another hunts torpedoes — or all of them can carry deck guns when the boats are what is hurting.' +
-        (c.escortUnits.length === 0
-          ? ' You own no escorts yet. Hire one below and it arrives with interceptors and empty specialist slots.'
-          : ''),
+        'Interceptors are built in. Each escort is fitted separately — specialize them.' +
+        (c.escortUnits.length === 0 ? ' Hire your first escort above.' : ''),
     }),
   ]);
 
   if (c.escortUnits.length > 0 && selected) {
     // --- Roster: one row per escort, so roles compare at a glance -------------
+    // Built as `tabs`, exactly like the ship-module class tabs above: a profile
+    // of the ship, its name, and a row of slot lights that fill as specialists
+    // are fitted. The two screens were describing the same idea — pick a
+    // platform, see what is on it — in two different visual languages, and the
+    // escort one was the weaker of them: three lines of small text with no
+    // picture, so a flotilla read as a list rather than as ships.
     const roster = h('div', { className: 'escort-roster' });
     for (const unit of c.escortUnits) {
       const isSel = unit.id === selected.id;
+      const hull = escortHull(unit.id);
+      const dots = Array.from({ length: slotCount }, (_, i) =>
+        h('span', { className: i < unit.modules.length ? 'slot-dot filled' : 'slot-dot' }),
+      );
       const fit =
         unit.modules.length > 0
           ? unit.modules.map((m) => ESCORT_MODULES[m].name.split(' ')[0]).join(' + ')
           : 'no specialists';
       roster.append(
-        h('button', {
-          className: isSel ? 'escort-tab selected' : 'escort-tab',
-          onClick: () => {
-            prepEscortId = unit.id;
-            rerender();
+        h(
+          'button',
+          {
+            className: isSel ? 'tab escort-tab selected' : 'tab escort-tab',
+            onClick: () => {
+              prepEscortId = unit.id;
+              rerender();
+            },
           },
-        }, [
-          h('div', { className: 'escort-tab-name', text: unit.name }),
-          h('div', { className: 'escort-tab-fit', text: `interceptors + ${fit}` }),
-          h('div', {
-            className: 'escort-tab-slots',
-            text: `${unit.modules.length}/${slotCount} slots${unit.damage > 0 ? ` · ${Math.round(unit.damage)} dmg` : ''}`,
-          }),
-        ]),
+          [
+            h('span', { className: 'tab-fig' }, [escortHullFigure(unit.id)]),
+            h('span', { className: 'tab-label' }, [
+              h('span', { text: unit.name }),
+              h('span', { className: 'muted escort-tab-class', text: hull.name }),
+              h('span', { className: 'slot-dots' }, dots),
+            ]),
+          ],
+        ),
       );
+      // The fit and any damage still have to be readable — they were the point
+      // of the old rows — but as a title rather than a third line of type.
+      const last = roster.lastElementChild as HTMLElement;
+      last.title = `${unit.name} (${hull.name}) — interceptors + ${fit}${
+        unit.damage > 0 ? ` · ${Math.round(unit.damage)} damage` : ''
+      }`;
     }
     escortPanel.append(roster);
 
@@ -1497,9 +2115,7 @@ export function prepScreen(
           h('span', { className: 'badge good', text: 'Built in' }),
         ]),
         h('div', { className: 'hint role-line', text: 'Attacks missiles · every escort · no slot' }),
-        h('p', {
-          text: 'Standard on every escort and free. It does not occupy a specialist slot, so the choices below are additions to it rather than alternatives.',
-        }),
+        h('p', { text: 'Standard and free — the slots below are additions, not alternatives.' }),
       ]),
     );
 
@@ -1508,19 +2124,19 @@ export function prepScreen(
       h('div', {
         className: 'hint',
         text:
-          `${selected.name}: ${usedSlots}/${slotCount} specialist slots used.` +
-          (refitUnlocked
-            ? ''
-            : ' A third slot unlocks with the Escort Refit Bay (Logistics).'),
+          `${selected.name}: ${usedSlots}/${slotCount} specialist slots.` +
+          (refitUnlocked ? '' : ' A third slot needs the Escort Refit Bay.'),
       }),
     );
 
     const escortGrid = h('div', { className: 'module-grid' });
     for (const id of Object.keys(ESCORT_MODULES) as (keyof typeof ESCORT_MODULES)[]) {
+      if (!escortModuleRevealed(c, id)) continue;
       const def = ESCORT_MODULES[id];
       const fitted = selected.modules.includes(id);
       const block = escortModuleBlockReason(c, selected.id, id);
-      const refund = selected.modulePaid[id] ?? def.cost;
+      const held = moduleStock(c, 'escort', id);
+      const spare = moduleSpare(c, 'escort', id);
       const branch = branchForEquipment('escortModule', id);
       // How many OTHER escorts already carry this, so the player can see the
       // shape of the flotilla without clicking through every ship.
@@ -1540,25 +2156,36 @@ export function prepScreen(
                 text: `Also carried by ${elsewhere} other escort${elsewhere === 1 ? '' : 's'}.`,
               })
             : h('span'),
+          unitCountRow(held, moduleStockCap('escort'), spare),
           fitted
             ? h('button', {
                 className: 'unequip',
-                text: `Remove from ${selected.name} — refund $${refund}`,
+                text: `Remove from ${selected.name}`,
                 onClick: () => {
                   if (removeEscortModule(c, selected.id, id)) rerender();
                 },
               })
             : h('button', {
-                text: block === null ? `Fit to ${selected.name} — $${def.cost}` : block,
+                text: block === null ? `Fit to ${selected.name}` : block,
                 disabled: block !== null,
                 onClick: () => {
-                  if (buyEscortModule(c, selected.id, id)) rerender();
+                  if (equipEscortModule(c, selected.id, id)) rerender();
                 },
               }),
         ]),
       );
     }
-    escortPanel.append(escortGrid);
+    // Every escort module is technology-gated, so before the first relevant
+    // draft this grid is legitimately empty — say so rather than showing a
+    // blank panel that reads as a bug.
+    escortPanel.append(
+      escortGrid.childElementCount > 0
+        ? escortGrid
+        : h('p', {
+            className: 'hint',
+            text: 'No specialist equipment in the locker. Escort weapons and sensors arrive as units from the technology draft — and go down with the escort carrying them.',
+          }),
+    );
   }
 
   // --- Shore-base loadout ------------------------------------------------------
@@ -1566,15 +2193,15 @@ export function prepScreen(
     h('h2', { text: `Shore-base loadout — ${c.baseModules.length}/${BASE_MODULE_SLOTS} slot` }),
     h('div', {
       className: 'hint',
-      text: 'Missile interceptors are built into every battery. Optional strategic systems compete for the base network’s limited slots.',
+      text: 'Interceptors are built into every battery. Strategic systems compete for one network slot.',
     }),
   ]);
   const baseGrid = h('div', { className: 'module-grid' });
   for (const id of Object.keys(BASE_MODULES) as (keyof typeof BASE_MODULES)[]) {
+    if (!baseModuleRevealed(c, id)) continue;
     const def = BASE_MODULES[id];
     const fitted = c.baseModules.includes(id);
     const block = baseModuleBlockReason(c, id);
-    const refund = c.baseModulePaid[id] ?? def.cost;
     baseGrid.append(
       h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
         h('div', { className: 'card-head' }, [
@@ -1584,29 +2211,37 @@ export function prepScreen(
         ]),
         h('div', { className: 'hint role-line', text: equipmentRoleLine('baseModule', id) }),
         h('p', { text: def.desc }),
+        unitCountRow(moduleStock(c, 'base', id), moduleStockCap('base'), moduleSpare(c, 'base', id)),
         fitted
           ? h('button', {
               className: 'unequip',
-              text: `Remove — refund $${refund}`,
+              text: 'Remove from the batteries',
               onClick: () => {
                 if (removeBaseModule(c, id)) rerender();
               },
             })
           : h('button', {
-              text: block === null ? `Fit bases — $${def.cost}` : block,
+              text: block === null ? 'Fit bases' : block,
               disabled: block !== null,
               onClick: () => {
-                if (buyBaseModule(c, id)) rerender();
+                if (equipBaseModule(c, id)) rerender();
               },
             }),
       ]),
     );
   }
-  basePanel.append(baseGrid);
+  basePanel.append(
+    baseGrid.childElementCount > 0
+      ? baseGrid
+      : h('p', {
+          className: 'hint',
+          text: 'No battery equipment in the locker. Shore-battery fits arrive as units from the technology draft.',
+        }),
+  );
 
   // --- Support assets: every item explains itself inline ----------------------------
   const assetPanel = h('div', { className: 'panel' }, [
-    h('h2', { text: 'Air defense & support assets' }),
+    h('h2', { text: 'Air defense & support' }),
   ]);
   const assetGrid = h('div', { className: 'asset-grid' });
 
@@ -1633,12 +2268,14 @@ export function prepScreen(
     return card;
   };
 
-  assetGrid.append(
+  // Fleet procurement lives beside the flotilla it grows (the Fleet section).
+  const fleetGrid = h('div', { className: 'asset-grid' });
+  fleetGrid.append(
     assetCard(
-      'turret',
+      'battery',
       'Shore battery',
       `${c.bases}/${ECONOMY.maxBases}`,
-      'Hardened launcher on the friendly shore. Unlimited range with slow reload — it fires the FAST interceptor type, which climbs the speed tiers with Shore-Base Interceptor research. Can be struck, knocked offline and destroyed.',
+      'Fixed launcher: unlimited range, slow reload, fast interceptors. Can be struck and destroyed.',
       {
         label: `Build battery — $${ECONOMY.baseCost}`,
         disabled: c.bases >= ECONOMY.maxBases || c.cash < ECONOMY.baseCost,
@@ -1651,7 +2288,7 @@ export function prepScreen(
       'missile',
       'Escort ship',
       `${c.escortUnits.length}/${ECONOMY.maxEscorts}`,
-      'Mobile launcher that sails with the convoy: quick reload but slower interceptors and limited range. Arrives with built-in interceptors, a default name and empty specialist slots — fit it individually in the Escort flotilla panel. Tap it in transit to order it around the map.',
+      'Mobile launcher: quick reload, shorter reach. Fit its specialist slots below; order it around the map in transit.',
       {
         label: `Hire escort — $${ECONOMY.escortCost}`,
         disabled: c.escortUnits.length >= ECONOMY.maxEscorts || c.cash < ECONOMY.escortCost,
@@ -1660,11 +2297,14 @@ export function prepScreen(
         },
       },
     ),
+  );
+
+  assetGrid.append(
     assetCard(
-      'chevrons',
-      'Interceptor ammunition',
+      'ammo',
+      'Interceptor ammo',
       `${c.ammo}`,
-      'Shared magazine for every launcher — each interceptor fired, from a battery or an escort, expends one round. Unused rounds carry over.',
+      'Shared magazine for every launcher. Unused rounds carry over.',
       {
         label: `Buy 5 — $${ammoUnitCost(c) * 5}`,
         disabled: c.cash < ammoUnitCost(c) * 5,
@@ -1673,98 +2313,67 @@ export function prepScreen(
         },
       },
     ),
+    ...(c.escortUnits.some((u) => u.modules.includes('deckGun')) ||
+    (c.moduleStock.escort.deckGun ?? 0) > 0 ||
+    c.gunAmmo > 0
+      ? [
+          assetCard(
+            'turret',
+            'Deck gun shells',
+            `${c.gunAmmo}`,
+            'Every round a deck gun fires draws one. An empty magazine holds its fire — stock up before the boats come.',
+            {
+              label: `Buy ${ECONOMY.gunShellsPerBuy} — $${ECONOMY.gunShellCost * ECONOMY.gunShellsPerBuy}`,
+              disabled: gunShellsBlockReason(c) !== null,
+              onClick: () => {
+                if (buyGunShells(c)) rerender();
+              },
+            },
+          ),
+        ]
+      : []),
+    // Sorties and pulses are STOCK, not a refilling allowance: commission the
+    // flight once, then buy each one you intend to fly. The count reads
+    // "held/apron" so the cap — which research raises — is visible at the point
+    // the player would otherwise wonder why they cannot buy another.
     assetCard(
       'planeGun',
       'A-10 Warthog',
-      c.warthogUnlocked ? 'owned' : '—',
-      'Call it onto any patch of open water: it holds a wheel over that spot and guns everything hostile on the surface inside its strafe radius. Mines break up outright — charted or not — and attack boats come apart over successive passes. It cannot reach a missile in flight or a torpedo running deep. Research its parallel paths for a second sortie, a longer loiter or a wider pattern.',
-      c.warthogUnlocked
-        ? null
-        : {
-            label: `Commission — $${ECONOMY.warthogUnlockCost}`,
-            disabled: c.cash < ECONOMY.warthogUnlockCost,
-            onClick: () => {
-              if (unlockWarthog(c)) rerender();
-            },
-          },
+      `${c.warthogStock}/${warthogCapacity(c)}`,
+      'Guns a line you draw: one target on the way out, one on the way back. Mines and boats only — nothing airborne or underwater.',
+      {
+        label:
+          warthogSortieBlockReason(c) === 'Apron full'
+            ? 'Apron full'
+            : `Buy sortie — $${ECONOMY.warthogSortieCost}`,
+        disabled: warthogSortieBlockReason(c) !== null,
+        onClick: () => {
+          if (buyWarthogSortie(c)) rerender();
+        },
+      },
     ),
     assetCard(
       'planeScan',
       'Scan aircraft',
-      c.scanUnlocked ? 'owned' : '—',
-      'Pick a lane and the aircraft sweeps its full length, charting the mines in THAT lane only (low-signature mines need Composite Scan Processing). Ships always steer around charted mines — and your escorts can send drones to clear them.',
-      c.scanUnlocked
-        ? null
-        : {
-            label: `Commission — $${ECONOMY.scanUnlockCost}`,
-            disabled: c.cash < ECONOMY.scanUnlockCost,
-            onClick: () => {
-              if (unlockScan(c)) rerender();
-            },
-          },
+      `${c.scanStock}/${scanCapacity(c)}`,
+      'Sweeps one lane, charting its mines. Ships steer around charted mines.',
+      {
+        label:
+          scanPulseBlockReason(c) === 'Stowage full'
+            ? 'Stowage full'
+            : `Buy pulse — $${ECONOMY.scanPulseCost}`,
+        disabled: scanPulseBlockReason(c) !== null,
+        onClick: () => {
+          if (buyScanPulse(c)) rerender();
+        },
+      },
     ),
   );
 
-  // Active sonar: purchasable once its base node is researched.
-  if (hasResearch(c, 'activeSonar.base') || c.sonarUnlocked) {
-    assetGrid.append(
-      assetCard(
-        'radar',
-        'Active sonar ping',
-        c.sonarUnlocked ? 'owned' : '—',
-        'Placed, charge-based ping that actively reveals torpedoes in the chosen area — the underwater domain only. Detection, not destruction: depth charges do the killing.',
-        c.sonarUnlocked
-          ? null
-          : {
-              label: `Commission — $${ECONOMY.sonarUnlockCost}`,
-              disabled: c.cash < ECONOMY.sonarUnlockCost,
-              onClick: () => {
-                if (unlockSonar(c)) rerender();
-              },
-            },
-      ),
-    );
-  }
-  // Defensive smoke: purchasable once its base node is researched.
-  if (hasResearch(c, 'smokeScreen.base') || c.smokeUnlocked) {
-    assetGrid.append(
-      assetCard(
-        'jam',
-        'Defensive smoke screen',
-        c.smokeUnlocked ? 'owned' : '—',
-        'Placed cloud that degrades the enemy’s targeting doctrine for ships inside — the finish-the-wounded / high-value preference falls back a tier. It destroys nothing and never makes a ship invulnerable.',
-        c.smokeUnlocked
-          ? null
-          : {
-              label: `Commission — $${ECONOMY.smokeUnlockCost}`,
-              disabled: c.cash < ECONOMY.smokeUnlockCost,
-              onClick: () => {
-                if (unlockSmoke(c)) rerender();
-              },
-            },
-      ),
-    );
-  }
-  // Hardened systems: the sanctioned work-around for un-shootable jamming.
-  if (hasResearch(c, 'hardened.base') || c.hardenedUnlocked) {
-    assetGrid.append(
-      assetCard(
-        'shield',
-        'Hardened & backup systems',
-        c.hardenedUnlocked ? 'owned' : '—',
-        'Enemy sensor jamming cannot be shot down — this shortens its blackouts (emergency reboot) and keeps chosen sensor families partially alive through them.',
-        c.hardenedUnlocked
-          ? null
-          : {
-              label: `Commission — $${ECONOMY.hardenedUnlockCost}`,
-              disabled: c.cash < ECONOMY.hardenedUnlockCost,
-              onClick: () => {
-                if (unlockHardened(c)) rerender();
-              },
-            },
-      ),
-    );
-  }
+  // The convoy's own assets are in hand from round one — what is bought here is
+  // their ORDNANCE. Commissioning them used to cost 150-160 each on top of the
+  // technology that unlocked them, which was the same IOU the equipment economy
+  // has shed.
 
   // Drone munitions only appear once the minesweeper branch is researched
   // (nothing to buy them for otherwise).
@@ -1774,7 +2383,7 @@ export function prepScreen(
         'drone',
         'Drone munitions',
         `${c.droneAmmo}`,
-        'One munition per sweep. In transit, TAP a charted mine to send a drone from the nearest escort with a drone launcher fitted. No launcher, no sweeps; no stock, no sweeps.',
+        'One per mine sweep — in transit, tap a charted mine. Needs an escort drone launcher.',
         {
           label: `Buy ${ECONOMY.droneAmmoPerBuy} — $${ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy}`,
           disabled: c.cash < ECONOMY.droneAmmoCost * ECONOMY.droneAmmoPerBuy,
@@ -1791,10 +2400,10 @@ export function prepScreen(
   if (hasSelfDefense) {
     assetGrid.append(
       assetCard(
-        'turret',
+        'ammo',
         'Self-defense rounds',
         `${c.pdAmmo}`,
-        'Ammunition for the Self-Defense Interceptor module. Every shot draws from this shared stock (per-round magazine per ship) — a fitted module does nothing without rounds. Stock carries over.',
+        'Shared stock for the Self-Defense module — no rounds, no defense. Carries over.',
         {
           label: `Buy ${ECONOMY.pdAmmoPerBuy} — $${ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy}`,
           disabled: c.cash < ECONOMY.pdAmmoCost * ECONOMY.pdAmmoPerBuy,
@@ -1806,64 +2415,137 @@ export function prepScreen(
     );
   }
 
-  const repair = repairCost(c);
-  const totalDamage = totalPendingDamage(c);
-  assetGrid.append(
-    assetCard(
-      'wrench',
-      'Fleet repairs',
-      totalDamage > 0 ? `${totalDamage} hp` : '✓',
-      totalDamage > 0
-        ? 'Unrepaired damage sails with the next convoy — cargo hulls, escorts and batteries all carry their wounds until you pay the yard.'
-        : 'Every hull, escort and battery is at full strength.',
-      {
-        label: repair > 0 ? `Repair all — $${repair}` : 'No repairs needed',
-        disabled: repair <= 0 || c.cash < repair,
-        onClick: () => {
-          if (repairFleet(c)) rerender();
-        },
-      },
-    ),
-  );
   assetPanel.append(assetGrid);
 
-  // --- Protected-channel selection (hardened systems, pre-round choice) -------
-  if (c.hardenedUnlocked && hasResearch(c, 'hardened.protectedChannel')) {
-    const capacity = hasResearch(c, 'hardened.dualChannel') ? 2 : 1;
-    const families: { id: SensorFamily; label: string }[] = [
-      { id: 'mineDetection', label: 'Mine detection' },
-      { id: 'torpedoDetection', label: 'Torpedo detection' },
-      { id: 'missileWarning', label: 'Missile warning' },
-      { id: 'smokeImaging', label: 'Smoke-penetrating imaging' },
-    ];
-    const row = h('div', { className: 'chip-row' });
-    for (const fam of families) {
-      const selected = c.protectedChannels.includes(fam.id);
-      const btn = h('button', {
-        className: selected ? 'tab selected' : 'tab',
-        text: selected ? `${fam.label} ✓` : fam.label,
+  // Repairs are bought a SCOPE at a time. A player who cannot afford everything
+  // should be choosing which half of the fleet to patch — the merchant hulls
+  // that carry the quota, or the warships that protect them — and each
+  // single-scope order carries a spend-what-you-have variant underneath it.
+  // The cards live with the assets they patch: cargo hulls with the convoy,
+  // escorts and batteries on the Defense screen.
+  const repairCard = (
+    scope: 'cargo' | 'escorts',
+    title: string,
+    clean: string,
+    dirty: string,
+  ): HTMLElement => {
+    const damage = scopeDamage(c, scope);
+    const full = repairCost(c, scope);
+    const part = repairPartialQuote(c, scope);
+    const card = h('div', { className: 'asset-card' }, [
+      h('div', { className: 'card-head' }, [
+        icon('wrench'),
+        h('h3', { text: title }),
+        h('span', { className: 'asset-count', text: damage > 0 ? `${damage} hp` : '✓' }),
+      ]),
+      h('p', { text: damage > 0 ? dirty : clean }),
+      h('button', {
+        text: damage > 0 ? `Repair — $${full}` : 'No repairs needed',
+        disabled: damage <= 0 || c.cash < full,
         onClick: () => {
-          const next = selected
-            ? c.protectedChannels.filter((f) => f !== fam.id)
-            : [...c.protectedChannels, fam.id].slice(-capacity);
-          if (setProtectedChannels(c, next)) rerender();
+          if (repairFleet(c, scope)) rerender();
         },
-      });
-      row.append(btn);
+      }),
+    ]);
+    // The partial order only earns its place when the full one is out of
+    // reach — otherwise it is a second button that does the same thing.
+    if (damage > 0 && c.cash < full && part.hp > 0) {
+      card.append(
+        h('button', {
+          text: `Repair what you can — $${part.cost} (${part.hp} of ${damage} hp)`,
+          onClick: () => {
+            if (repairPartial(c, scope)) rerender();
+          },
+        }),
+      );
     }
-    assetPanel.append(
-      h('div', { className: 'hint', text: `Protected detection channel${capacity > 1 ? 's' : ''} — choose which sensor famil${capacity > 1 ? 'ies stay' : 'y stays'} partially functional if the enemy jams your sensors this round (${c.protectedChannels.length}/${capacity} chosen):` }),
-      row,
+    return card;
+  };
+
+  const totalDamage = totalPendingDamage(c);
+  const repairAll = repairCost(c, 'all');
+  const repairPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Fleet repairs' }),
+    h('div', { className: 'asset-grid' }, [
+      repairCard(
+        'cargo',
+        'Cargo hull repairs',
+        'Every merchant hull is at full strength.',
+        'Unrepaired damage sails with the next convoy.',
+      ),
+      assetCard(
+        'anchor',
+        'Repair everything',
+        totalDamage > 0 ? `${totalDamage} hp` : '✓',
+        totalDamage > 0
+          ? 'Merchant hulls, escorts and batteries in one order.'
+          : 'Nothing in the fleet is carrying damage.',
+        {
+          label: totalDamage > 0 ? `Repair all — $${repairAll}` : 'No repairs needed',
+          disabled: totalDamage <= 0 || c.cash < repairAll,
+          onClick: () => {
+            if (repairFleet(c, 'all')) rerender();
+          },
+        },
+      ),
+    ]),
+  ]);
+  const escortRepairPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Escort & battery repairs' }),
+    h('div', { className: 'asset-grid' }, [
+      repairCard(
+        'escorts',
+        'Escorts & batteries',
+        'Every escort and battery is at full strength.',
+        'Escorts and batteries carry their damage into the next transit.',
+      ),
+    ]),
+  ]);
+
+  // --- Assemble: a section rail instead of one endless scroll -----------------
+  const fleetPanel = h('div', { className: 'panel' }, [
+    h('h2', { text: 'Fleet procurement' }),
+    fleetGrid,
+  ]);
+
+  const sections: { id: PrepSectionId; label: string; ic: IconName; els: HTMLElement[] }[] = [
+    {
+      id: 'convoy',
+      label: 'Convoy',
+      ic: 'anchor',
+      els: [briefStrip, h('div', { className: 'grid-2' }, [compPanel, formPanel]), repairPanel],
+    },
+    { id: 'modules', label: 'Modules', ic: 'slots', els: [modPanel] },
+    {
+      id: 'fleet',
+      label: 'Defense',
+      ic: 'missile',
+      els: [fleetPanel, escortRepairPanel, escortPanel, basePanel],
+    },
+    { id: 'assets', label: 'Supplies', ic: 'crate', els: [assetPanel] },
+  ];
+
+  const rail = h('div', { className: 'prep-rail' });
+  const content = h('div', {
+    className: 'prep-content',
+    attrs: { 'data-section': prepSection },
+  });
+  for (const sec of sections) {
+    rail.append(
+      h('button', {
+        className: prepSection === sec.id ? 'rail-btn selected' : 'rail-btn',
+        onClick: () => {
+          if (prepSection === sec.id) return;
+          prepSection = sec.id;
+          rerender();
+        },
+      }, [icon(sec.ic), h('span', { text: sec.label }), h('span', { className: 'rail-led' })]),
+    );
+    content.append(
+      h('div', { className: prepSection === sec.id ? 'prep-section active' : 'prep-section' }, sec.els),
     );
   }
-
-  body.append(
-    h('div', { className: 'grid-2' }, [compPanel, formPanel]),
-    modPanel,
-    escortPanel,
-    basePanel,
-    assetPanel,
-  );
+  body.append(rail, content);
 
   const canLaunch = totalComposition(c) > 0;
   footer.append(
@@ -1876,8 +2558,8 @@ export function prepScreen(
     h('div', {
       className: 'hint',
       text: canLaunch
-        ? `${totalComposition(c)} ships will sail this round.`
-        : 'Assign at least one ship to the convoy.',
+        ? `${totalComposition(c)} / ${c.capacity} ships ready`
+        : 'Assign at least one ship.',
     }),
     h('button', {
       className: canLaunch ? 'primary launch' : 'primary',
@@ -1933,9 +2615,8 @@ export function runOverScreen(
         h('div', { className: 'card-head' }, [icon('star'), h('h3', { text: `Commander XP earned: +${settlement.xpEarned}` })]),
         h('p', {
           text: settlement.regionUnlocked
-            ? `New region unlocked: ${REGIONS[settlement.regionUnlocked]?.name ?? settlement.regionUnlocked}. ` +
-              'Commander XP can unlock new abilities from the loadout screen.'
-            : 'Commander XP persists through every defeat — spend it on new abilities from the loadout screen.',
+            ? `New region unlocked: ${REGIONS[settlement.regionUnlocked]?.name ?? settlement.regionUnlocked}.`
+            : 'XP survives every defeat — spend it on abilities in the Commander Loadout.',
         }),
       ]),
     );
@@ -1945,12 +2626,9 @@ export function runOverScreen(
       h('div', { className: 'card-head' }, [icon('anchor'), h('h3', { text: victory ? 'The lane holds' : 'The strait remembers' })]),
       h('p', {
         text: victory
-          ? 'The fleet, cash and technology built during this run retire with it — the next region ' +
-            'starts from its own footing, and only the Commander carries forward. That is the shape ' +
-            'of the war: familiarity persists; the build does not.'
-          : `The next attempt at ${region.name} restarts at round 1 with a fresh fleet and a fresh ` +
-            'enemy. Nothing the Commander earned is lost — and the enemy you just taught is gone ' +
-            'with the run; a new attempt breeds a new predator.',
+          ? 'The fleet and its technology retire with the run — only the Commander carries forward.'
+          : `The next attempt at ${region.name} restarts at round 1 — fresh fleet, fresh enemy. ` +
+            'Nothing the Commander earned is lost.',
       }),
     ]),
   );

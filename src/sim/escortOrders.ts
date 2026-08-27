@@ -108,8 +108,36 @@ export function escortStatus(t: TransitState, escort: Escort): EscortStatus {
   if (gunning) {
     return { activity: 'engaging', label: ACTIVITY_LABELS.engaging, progress: null, destination, holding };
   }
+  // A pursuit still closing the distance: same activity, but say so — and the
+  // destination is the BOAT, so the order line on the map points at the thing
+  // the escort is actually chasing.
+  const pursued =
+    escort.pursueBoatId !== null
+      ? t.threats.find((th) => th.id === escort.pursueBoatId && th.alive)
+      : undefined;
+  if (pursued) {
+    return {
+      activity: 'engaging',
+      label: 'Closing to Engage',
+      progress: null,
+      destination: { x: pursued.x, y: pursued.y },
+      holding: false,
+    };
+  }
 
   if (escort.moveTarget) {
+    // A drawn route says so, and says how much of it is left — "Moving" for a
+    // ship five legs into a curve around a minefield tells the player nothing
+    // about whether she is nearly done.
+    if (escort.waypoints.length > 0) {
+      return {
+        activity: 'moving',
+        label: `On Route · ${escort.waypoints.length + 1} legs`,
+        progress: null,
+        destination,
+        holding,
+      };
+    }
     return { activity: 'moving', label: ACTIVITY_LABELS.moving, progress: null, destination, holding };
   }
   if (escort.stationed) {

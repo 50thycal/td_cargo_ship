@@ -20,6 +20,7 @@ import {
   applyRunToProfile,
   recordRunStart,
   sanitizedLoadout,
+  sanitizedLegacyLoadout,
   type CommanderProfile,
   type RunSettlement,
 } from '../sim/commander';
@@ -42,13 +43,20 @@ import {
   prepScreen,
   regionSelectScreen,
   runOverScreen,
+  settingsScreen,
 } from './screens';
 import { TransitView } from './transitView';
 
 /** Dev tools are gated behind an explicit opt-in so they never surface for a
- *  normal player: add `?dev` (or `#dev`) to the URL, or run the Vite dev server.
- *  An existing dev save also keeps the door open. */
-function devEnabled(saved: CampaignState | null): boolean {
+ *  normal player: turn Developer mode on in Settings, add `?dev` (or `#dev`) to
+ *  the URL, or run the Vite dev server. An existing dev save also keeps the
+ *  door open.
+ *
+ *  Settings is the one that matters on a phone, where getting a query string
+ *  onto the URL is a chore. The others are kept because they cost nothing and
+ *  desktop habits rely on them. */
+function devEnabled(saved: CampaignState | null, profile: CommanderProfile): boolean {
+  if (profile.devMode) return true;
   try {
     const url = typeof location !== 'undefined' ? location.href.toLowerCase() : '';
     if (/[?#&]dev\b/.test(url) || url.includes('dev=1')) return true;
@@ -83,17 +91,31 @@ export class Game {
   private swapScreen(el: HTMLElement | null): void {
     // Preserve scroll position across rerenders (prep/loadout rebuild the
     // whole screen on every purchase — losing scroll would be brutal on
-    // phone-height viewports).
+    // phone-height viewports). The prep screen scrolls a section pane
+    // (.prep-content) instead of the body; its scroll only carries over when
+    // the SAME section is still open (data-section), so switching sections
+    // starts at the top.
     const oldBody = this.currentScreen?.querySelector('.screen-body');
     const oldScreenId = this.currentScreen?.getAttribute('data-screen');
     const scrollTop = oldBody?.scrollTop ?? 0;
+    const oldPane = this.currentScreen?.querySelector('.prep-content');
+    const paneSection = oldPane?.getAttribute('data-section');
+    const paneScrollTop = oldPane?.scrollTop ?? 0;
     this.currentScreen?.remove();
     this.currentScreen = el;
     if (el) {
       this.stage.append(el);
-      if (scrollTop > 0 && el.getAttribute('data-screen') === oldScreenId) {
-        const newBody = el.querySelector('.screen-body');
-        if (newBody) newBody.scrollTop = scrollTop;
+      if (el.getAttribute('data-screen') === oldScreenId) {
+        if (scrollTop > 0) {
+          const newBody = el.querySelector('.screen-body');
+          if (newBody) newBody.scrollTop = scrollTop;
+        }
+        if (paneScrollTop > 0) {
+          const newPane = el.querySelector('.prep-content');
+          if (newPane && newPane.getAttribute('data-section') === paneSection) {
+            newPane.scrollTop = paneScrollTop;
+          }
+        }
       }
     }
   }
@@ -112,8 +134,9 @@ export class Game {
           this.run = saved;
           this.route();
         },
-        devAvailable: devEnabled(saved),
+        devAvailable: devEnabled(saved, this.profile),
         onDev: () => this.showDev(),
+        onSettings: () => this.showSettings(),
       }),
     );
   }
@@ -154,6 +177,7 @@ export class Game {
       `run-${Date.now().toString(36)}`,
       regionId,
       sanitizedLoadout(this.profile),
+      sanitizedLegacyLoadout(this.profile),
     );
     recordRunStart(this.profile, regionId);
     saveProfile(this.profile);
@@ -171,6 +195,22 @@ export class Game {
           saveRun(this.run);
           this.lastSettlement = null;
           this.route();
+        },
+        () => this.showMenu(),
+      ),
+    );
+  }
+
+  private showSettings(): void {
+    this.swapScreen(
+      settingsScreen(
+        this.profile,
+        () => {
+          // Same rule as the loadout screen: permanent state is persisted the
+          // moment it changes. The re-render is load-bearing here — the
+          // dev-only rows appear and disappear with the switch above them.
+          saveProfile(this.profile);
+          this.showSettings();
         },
         () => this.showMenu(),
       ),
@@ -240,6 +280,15 @@ export class Game {
       (priority) => {
         c.targetPriority = priority; // persisted with the next saveRun
       },
+      () => {
+        // Straight back to preparation. The campaign has not been touched —
+        // resolveTransit is the only thing that mutates it and it has not run —
+        // so the fleet, the cash and everything bought are exactly as they were
+        // when Begin Transit was pressed. planCurrentRound is derived from the
+        // run's seed and round, so the enemy's plan is the SAME plan: this is a
+        // second visit to the shop, not a re-roll of the round.
+        this.showPrep();
+      },
       (finished) => {
         this.lastTransit = finished;
         resolveTransit(c, finished);
@@ -280,8 +329,12 @@ export class Game {
       draftScreen(
         c,
         () => {
-          // selectDraftOption / dismissEmptyDraft moved the phase to prep.
           saveRun(c);
+          // A draft can carry more than one pick. The sim clears pendingDraft
+          // when the last one is spent, so "still pending" is the signal to
+          // rebuild the table rather than route on — the screen must not decide
+          // for itself how many picks a draft was worth.
+          if (c.pendingDraft) return this.showDraft();
           this.showPrep();
         },
         () => this.quitToMenu(),

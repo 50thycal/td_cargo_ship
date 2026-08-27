@@ -19,6 +19,7 @@ import {
   createRoundTransit,
   newRegionalRun,
   planCurrentRound,
+  moduleStock,
   repairCost,
   resolveTransit,
   setComposition,
@@ -28,30 +29,42 @@ import {
   loadoutBlockReason,
   newProfile,
   recordRunStart,
+  regionUnlocked,
   sanitizedLoadout,
+  setDevMode,
   setLoadout,
   unlockAbility,
   unlockBlockReason,
 } from '../src/sim/commander';
+import { migrateProfile } from '../src/platform/save';
 import {
+  counterCandidates,
+  MODULE_CATALOGUE,
+  counterSlotPool,
   dismissEmptyDraft,
+  draftOptionKey,
+  draftOptionBranch,
   draftPool,
+  familyCoverage,
   generateDraft,
   hasCounterFor,
-  pityCandidates,
+  measureRoundCoverage,
+  recordThreatCoverage,
   selectDraftOption,
 } from '../src/sim/draft';
 import { deriveEffects, stepTransit } from '../src/sim/transit';
 import { evolveEnemy, newEvolution } from '../src/sim/evolution';
 import { COMMANDER_ABILITIES } from '../src/data/commanderAbilities';
-import { FIRST_REGION, REGIONS, regionDef } from '../src/data/regions';
+import { FIRST_REGION, REGION_ORDER, REGIONS, regionDef } from '../src/data/regions';
 import { RESEARCH_INDEX, effectiveResearch } from '../src/data/counters';
 import { CAMPAIGN, COMMANDER, DRAFT, ECONOMY, SIM, SURVIVORS, WORLD, WRECKAGE } from '../src/data/tuning';
 import type {
   CampaignState,
+  DraftOption,
   RoundMetrics,
   SurvivorArea,
   TransitState,
+  TransitStats,
   WreckageField,
 } from '../src/sim/types';
 
@@ -72,7 +85,6 @@ function quietRun(escorts = 1): {
       id: c.nextEscortId++,
       name: `Extra ${c.escortUnits.length}`,
       modules: [],
-      modulePaid: {},
       damage: 0,
     });
   }
@@ -249,6 +261,61 @@ describe('regional run lifecycle', () => {
     delete REGIONS.__testCap;
   });
 
+  it('the dev unlock opens every region without granting any of them', () => {
+    // Testing affordance, behind Dev Mode (itself behind ?dev). The two ideas
+    // have to stay separate: "show me everything" must not become "you have
+    // earned everything", or flipping it off would silently eat progress.
+    const profile = newProfile();
+    expect(regionUnlocked(profile, FIRST_REGION)).toBe(true);
+    for (const id of REGION_ORDER.filter((r) => r !== FIRST_REGION)) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: false });
+    }
+
+    profile.allRegionsUnlocked = true;
+    for (const id of REGION_ORDER) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: true });
+    }
+    // Nothing was granted — the earned ladder is untouched.
+    expect(profile.unlockedRegions).toEqual([FIRST_REGION]);
+
+    // ...and turning it off restores exactly what was earned.
+    profile.allRegionsUnlocked = false;
+    for (const id of REGION_ORDER.filter((r) => r !== FIRST_REGION)) {
+      expect({ id, open: regionUnlocked(profile, id) }).toEqual({ id, open: false });
+    }
+  });
+
+  it('developer mode is off until it is switched on, and fully retreats', () => {
+    // Off is a full retreat on purpose: leaving the region unlock set with its
+    // switch hidden would strand a profile with everything open and nothing on
+    // screen explaining why.
+    const profile = newProfile();
+    expect(profile.devMode).toBe(false);
+
+    setDevMode(profile, true);
+    profile.allRegionsUnlocked = true;
+    expect(regionUnlocked(profile, REGION_ORDER[REGION_ORDER.length - 1])).toBe(true);
+
+    setDevMode(profile, false);
+    expect(profile.allRegionsUnlocked).toBe(false);
+    expect(regionUnlocked(profile, REGION_ORDER[REGION_ORDER.length - 1])).toBe(false);
+    // ...and the earned ladder survived both directions untouched.
+    expect(profile.unlockedRegions).toEqual([FIRST_REGION]);
+  });
+
+  it('backfills the dev unlock onto a profile saved before it existed', () => {
+    // Old saves heal forward rather than being rejected — same rule the rest
+    // of the profile migration follows.
+    const legacy = newProfile() as unknown as Record<string, unknown>;
+    delete legacy.allRegionsUnlocked;
+    delete legacy.devMode;
+    const healed = migrateProfile(legacy);
+    expect(healed).not.toBeNull();
+    expect(healed!.allRegionsUnlocked).toBe(false);
+    expect(healed!.devMode).toBe(false);
+    expect(regionUnlocked(healed!, FIRST_REGION)).toBe(true);
+  });
+
   it('defeat retains Commander progression and records the attempt', () => {
     const profile = newProfile();
     const run = newRegionalRun('defeat-keeps-profile', FIRST_REGION);
@@ -420,7 +487,11 @@ describe('survivor rescue', () => {
     };
     const clean = outcome(0);
     const abandoned = outcome(2);
-    expect(abandoned).toBe(clean + CAMPAIGN.confidencePerCrewLost * 2);
+    // The penalty is rate-scaled against the convoy that sailed, so the exact
+    // figure depends on the round's hull count — what must hold is that leaving
+    // crews behind costs confidence, and costs it in proportion.
+    expect(abandoned).toBeLessThan(clean);
+    expect(CAMPAIGN.confidenceCrewLostRate).toBeLessThan(0);
   });
 
   it('rescue prevents the abandonment penalty AND recovers some confidence', () => {
@@ -442,8 +513,10 @@ describe('survivor rescue', () => {
     // Rescuing instead of abandoning is worth the difference between the two,
     // and a rescue never fully offsets having lost the ship in the first place.
     expect(outcome(2, 0)).toBeGreaterThan(outcome(0, 2));
+    // A single rescue never pays more than abandoning the whole convoy's crews
+    // would cost, so going back for people stays a mitigation, not a strategy.
     expect(CAMPAIGN.confidencePerCrewRescued).toBeLessThan(
-      Math.abs(CAMPAIGN.confidencePerCrewLost),
+      Math.abs(CAMPAIGN.confidenceCrewLostRate),
     );
   });
 
@@ -544,20 +617,67 @@ describe('survivor rescue', () => {
 // The mandatory technology draft
 // ---------------------------------------------------------------------------
 
+/** Does this reward answer that enemy family? Works across every category, so
+ *  a test can ask the question without caring whether the answer arrived as an
+ *  upgrade or as a piece of equipment. */
+function answersFamily(option: DraftOption, family: string): boolean {
+  const branch = draftOptionBranch(option);
+  return !!branch && (branch.counters as readonly string[]).includes(family);
+}
+
+/** Same question, asked of a pool candidate. */
+function candidateAnswers(cand: { branch: { counters: readonly string[] } | null }, family: string): boolean {
+  return !!cand.branch && cand.branch.counters.includes(family);
+}
+
+/** A candidate that counters nothing — damage control, logistics, ordnance. */
+function candidateGeneric(cand: { branch: { counters: readonly string[] } | null }): boolean {
+  return !cand.branch || cand.branch.counters.length === 0;
+}
+
 describe('technology draft', () => {
-  it('always offers at least the base choices after a successful round', () => {
+  it('offers a table with nothing recovered, and only one thing to take from it', () => {
     const c = newRegionalRun('draft-base', FIRST_REGION);
     const draft = generateDraft(c, {}, makeRng('draft-base'));
-    expect(draft.options.length).toBe(2);
     expect(draft.recoveredUnits).toBe(0);
+    expect(draft.picksLeft).toBe(DRAFT.basePicks);
+    expect(draft.options.length).toBeGreaterThanOrEqual(DRAFT.baseChoices);
   });
 
-  it('strong recovery produces the third option', () => {
+  it('recovery buys PICKS, and the table stays wider than them', () => {
+    // Salvage used to buy a wider menu the player still only got one bite of,
+    // which is a reward you cannot feel. It now buys another technology — and
+    // the table grows faster than the picks do, so a rich draft is a bigger
+    // decision rather than a hand-out.
     const c = newRegionalRun('draft-third', FIRST_REGION);
-    // 3+ units → third-choice chance saturates at 1.0 with the tuned rate.
     const draft = generateDraft(c, { missiles: 2, mines: 1 }, makeRng('draft-third'));
     expect(draft.recoveredUnits).toBe(3);
-    expect(draft.options.length).toBe(3);
+    expect(draft.picksLeft).toBe(2);
+    expect(draft.options.length).toBeGreaterThan(draft.picksLeft);
+  });
+
+  it('caps the picks however much is recovered', () => {
+    const c = newRegionalRun('draft-cap', FIRST_REGION);
+    const draft = generateDraft(c, { missiles: 40 }, makeRng('draft-cap'));
+    expect(draft.picksLeft).toBe(DRAFT.maxPicks);
+    expect(draft.options.length).toBeGreaterThan(DRAFT.maxPicks);
+  });
+
+  it('a multi-pick draft stays open until its picks are spent', () => {
+    const c = newRegionalRun('draft-multi', FIRST_REGION);
+    c.pendingDraft = generateDraft(c, { missiles: 3 }, makeRng('draft-multi'));
+    c.phase = 'draft';
+    const draft = c.pendingDraft;
+    expect(draft.picksLeft).toBe(2);
+    const first = draft.options[0];
+    expect(selectDraftOption(c, first)).toBe(true);
+    // Still open, one pick down, and the card taken is off the table.
+    expect(c.pendingDraft).not.toBeNull();
+    expect(c.pendingDraft!.picksLeft).toBe(1);
+    expect(c.pendingDraft!.options).not.toContainEqual(first);
+    expect(selectDraftOption(c, c.pendingDraft!.options[0])).toBe(true);
+    expect(c.pendingDraft).toBeNull();
+    expect(c.phase).toBe('prep');
   });
 
   it('never offers entries whose prerequisites are not held', () => {
@@ -565,39 +685,47 @@ describe('technology draft', () => {
     for (let i = 0; i < 30; i++) {
       const draft = generateDraft(c, { missiles: 3 }, makeRng(`prereq-${i}`));
       const owned = effectiveResearch(c.completedResearch);
-      for (const id of draft.options) {
-        for (const req of RESEARCH_INDEX[id].requires) {
-          expect(owned.has(req), `${id} requires ${req}`).toBe(true);
+      for (const option of draft.options) {
+        if (option.kind !== 'upgrade' && option.kind !== 'asset') continue;
+        for (const req of RESEARCH_INDEX[option.id].requires) {
+          expect(owned.has(req), `${option.id} requires ${req}`).toBe(true);
         }
       }
     }
   });
+
+  // The draft tests below steer on MINE pressure, so they need a region whose
+  // menu actually contains mines. They used to ride on FIRST_REGION, which is
+  // a different region now — a mine counter is correctly absent from the
+  // opening region's pool, so they were asserting against a region that has
+  // nothing to assert about.
+  const MINE_REGION = 'homeStrait';
 
   it('is region-aware: region 1 never offers counters for absent families', () => {
     const c = newRegionalRun('draft-region', FIRST_REGION);
     const region = regionDef(FIRST_REGION);
     for (let i = 0; i < 30; i++) {
       const draft = generateDraft(c, { missiles: 3 }, makeRng(`region-${i}`));
-      for (const id of draft.options) {
-        const counters = RESEARCH_INDEX[id].branch.counters;
-        if (counters.length === 0) continue; // generic survivability is fine
+      for (const option of draft.options) {
+        const branch = draftOptionBranch(option);
+        if (!branch || branch.counters.length === 0) continue; // generic is fine
         expect(
-          counters.some((k) => region.enemyBranches.includes(k)),
-          `${id} counters ${counters.join(',')} — none present in region 1`,
+          branch.counters.some((k) => region.enemyBranches.includes(k)),
+          `${draftOptionKey(option)} counters ${branch.counters.join(',')} — absent in region 1`,
         ).toBe(true);
       }
     }
     // Depth charges (torpedo counter) must be pool-ineligible in region 1.
     const pool = draftPool(c, {});
-    expect(pool.some((p) => p.entry.branch.id === 'depthCharges')).toBe(false);
-    expect(pool.some((p) => p.entry.branch.id === 'deckGun')).toBe(false);
+    expect(pool.some((p) => p.branch?.id === 'depthCharges')).toBe(false);
+    expect(pool.some((p) => p.branch?.id === 'deckGun')).toBe(false);
   });
 
   it('wreckage from a family weights the draft toward its counters', () => {
-    const c = newRegionalRun('draft-weight', FIRST_REGION);
+    const c = newRegionalRun('draft-weight', MINE_REGION);
     const pool = draftPool(c, { mines: 4 });
-    const mineCounter = pool.find((p) => p.entry.branch.counters.includes('mines'));
-    const generic = pool.find((p) => p.entry.branch.counters.length === 0);
+    const mineCounter = pool.find((p) => candidateAnswers(p, 'mines'));
+    const generic = pool.find((p) => candidateGeneric(p));
     expect(mineCounter).toBeDefined();
     expect(generic).toBeDefined();
     expect(mineCounter!.weight).toBeGreaterThan(generic!.weight);
@@ -606,9 +734,9 @@ describe('technology draft', () => {
     let total = 0;
     for (let i = 0; i < 60; i++) {
       const draft = generateDraft(c, { mines: 4 }, makeRng(`weight-${i}`));
-      for (const id of draft.options) {
+      for (const option of draft.options) {
         total++;
-        if (RESEARCH_INDEX[id].branch.counters.includes('mines')) mineOffers++;
+        if (answersFamily(option, 'mines')) mineOffers++;
       }
     }
     expect(mineOffers / total).toBeGreaterThan(0.3);
@@ -618,7 +746,7 @@ describe('technology draft', () => {
     // The reported failure: mines encountered for several rounds running, and
     // the basic mine counter never offered. Wreckage alone was the only signal,
     // so a player without escorts to spare for salvage never got the steer.
-    const c = newRegionalRun('draft-pressure', FIRST_REGION);
+    const c = newRegionalRun('draft-pressure', MINE_REGION);
     c.round = 4;
     c.threatPressure.mines = {
       rounds: 3,
@@ -628,101 +756,423 @@ describe('technology draft', () => {
       lastSeenRound: 3,
     };
     const pool = draftPool(c, {}); // NO wreckage recovered at all
-    const mineCounter = pool.find((p) => p.entry.branch.counters.includes('mines'));
-    const generic = pool.find((p) => p.entry.branch.counters.length === 0);
+    const mineCounter = pool.find((p) => candidateAnswers(p, 'mines'));
+    const generic = pool.find((p) => candidateGeneric(p));
     expect(mineCounter).toBeDefined();
     expect(generic).toBeDefined();
-    expect(mineCounter!.weight).toBeGreaterThan(generic!.weight * 3);
+    // A specific answer to what is actually killing you still beats a general
+    // one — but only by a margin, not by an order of magnitude. See the
+    // starvation test below for the other half of that.
+    expect(mineCounter!.weight).toBeGreaterThan(generic!.weight);
   });
 
-  it('an unanswered threat outweighs one the player has already solved', () => {
-    const c = newRegionalRun('draft-answered', FIRST_REGION);
+  it('SURVIVABILITY: armour is priced on total danger, not starved for lacking a target', () => {
+    // Everything else in the weighting prices a reward against the family it
+    // answers, which left reinforced hull and compartmentalization with no
+    // signal at all: a flat 1 against 5-30 for a counter under pressure. A
+    // 192-campaign sweep drafted Reinforced Hull ONCE and Compartmentalization
+    // never. What makes armour relevant is being hurt AT ALL.
+    const quiet = newRegionalRun('armour-quiet', FIRST_REGION);
+    quiet.round = 4;
+    const calm = draftPool(quiet, {}).find((p) => candidateGeneric(p))!;
+    expect(calm).toBeDefined();
+
+    const bleeding = newRegionalRun('armour-bleeding', FIRST_REGION);
+    bleeding.round = 4;
+    bleeding.threatPressure.mines = {
+      rounds: 3,
+      streak: 3,
+      damage: 260,
+      kills: 3,
+      lastSeenRound: 3,
+    };
+    bleeding.threatPressure.missiles = {
+      rounds: 3,
+      streak: 3,
+      damage: 300,
+      kills: 2,
+      lastSeenRound: 3,
+    };
+    const hurt = draftPool(bleeding, {}).find((p) => candidateGeneric(p))!;
+    // A run taking losses across the board values armour far more than a quiet
+    // one does, which is the whole signal that was missing.
+    expect(hurt.weight).toBeGreaterThan(calm.weight * 2);
+
+    // And it is genuinely on the table: reinforced hull reaches the pool.
+    const hasHull = draftPool(bleeding, {}).some(
+      (p) => draftOptionKey(p.option) === 'module:cargo:reinforcedHull',
+    );
+    expect(hasHull).toBe(true);
+  });
+
+  it('an unanswered threat outweighs one the player is actually stopping', () => {
+    const c = newRegionalRun('draft-answered', MINE_REGION);
     c.round = 4;
     const pressure = { rounds: 3, streak: 3, damage: 200, kills: 1, lastSeenRound: 3 };
     c.threatPressure.mines = { ...pressure };
     c.threatPressure.missiles = { ...pressure };
     const weightFor = (family: string, pool: ReturnType<typeof draftPool>): number => {
-      const entries = pool.filter((p) => p.entry.branch.counters.includes(family as never));
+      // Parens matter: `??` binds looser than the method call that follows it,
+      // so `p.branch?.counters ?? [].includes(family)` was actually
+      // `(p.branch?.counters) ?? ([].includes(family))` — `[].includes` is
+      // always false on a literal empty array, so the `??` never fired and this
+      // silently kept EVERY branched candidate regardless of family. It read as
+      // passing only because the pool's overall max happened to sit on a mines
+      // entry; a later change to automation-tactic weighting (which touches
+      // candidates outside the mines branch) was enough to break that
+      // coincidence and expose the bug as a failing assertion.
+      const entries = pool.filter((p) => (p.branch?.counters ?? []).includes(family as never));
       return Math.max(...entries.map((p) => p.weight));
     };
-    const before = draftPool(c, {});
-    const mineBefore = weightFor('mines', before);
-    // Now answer the mine threat and re-price the pool.
+    const mineBefore = weightFor('mines', draftPool(c, {}));
+    // Now start actually sweeping the minefield and re-price the pool.
+    c.threatCoverage.mines = {
+      ratio: 0.9,
+      fielded: 10,
+      neutralized: 9,
+      lastMeasuredRound: 3,
+    };
+    expect(weightFor('mines', draftPool(c, {}))).toBeLessThan(mineBefore);
+  });
+
+  it('AUTOMATION: is not starved by the coverage gap the way an ordinary upgrade is', () => {
+    // escortInterceptor.localAuto (kind: 'automation') and
+    // escortInterceptor.precisionGuidance (an ordinary accuracy upgrade) sit in
+    // the same branch, at the same depth, both non-entry. Everything the
+    // coverage-gap system prices them on is identical; the only difference is
+    // the automation flag. A well-covered missile threat should price DOWN the
+    // accuracy upgrade — more accuracy on a branch already stopping most of
+    // what it sees is worth less — while the automation tactic keeps its value,
+    // because what it buys (freeing the player's attention) does not shrink
+    // just because the branch got good at its job.
+    const c = newRegionalRun('draft-automation', FIRST_REGION);
+    c.round = 4;
+    c.threatCoverage.missiles = { ratio: 0.9, fielded: 20, neutralized: 18, lastMeasuredRound: 3 };
+    const pool = draftPool(c, {});
+    const auto = pool.find((p) => draftOptionKey(p.option) === 'escortInterceptor.localAuto');
+    const accuracy = pool.find(
+      (p) => draftOptionKey(p.option) === 'escortInterceptor.precisionGuidance',
+    );
+    expect(auto).toBeDefined();
+    expect(accuracy).toBeDefined();
+    expect(auto!.weight).toBeGreaterThan(accuracy!.weight);
+    // And it is a real premium, not a rounding artefact of unrelated factors —
+    // matches DRAFT.automationTacticMult exactly, since these two candidates
+    // are identical on every other axis the weighing function reads.
+    expect(auto!.weight / accuracy!.weight).toBeCloseTo(DRAFT.automationTacticMult, 5);
+  });
+
+  it('COVERAGE: scores what the round stopped, not what the fleet owns', () => {
+    const stats = {
+      missilesSpawned: 6,
+      missilesIntercepted: 5,
+      minesTotal: 4,
+      minesRevealed: 2,
+      minesSwept: 1,
+      torpedoesLaunched: 0,
+      torpedoesDestroyed: 0,
+      boatsLaunched: 4,
+      boatsSunk: 1,
+      reconPlanes: 0,
+      disablingDrones: 0,
+      aircraftDowned: 0,
+    } as unknown as TransitStats;
+    const m = measureRoundCoverage(stats);
+    expect(m.missiles).toEqual({ fielded: 6, neutralized: 5 });
+    // One mine destroyed outright, one revealed-and-avoided at partial credit.
+    expect(m.mines).toEqual({ fielded: 4, neutralized: 1 + DRAFT.coverageRevealCredit });
+    expect(m.attackBoats).toEqual({ fielded: 4, neutralized: 1 });
+    // Nothing fielded, nothing measured — an absent branch is not a failure.
+    expect(m.torpedoes).toBeUndefined();
+  });
+
+  it('the first measurement is taken as-is, not smoothed up from zero', () => {
+    const c = newRegionalRun('coverage-seed', FIRST_REGION);
+    const stats = { missilesSpawned: 6, missilesIntercepted: 5 } as unknown as TransitStats;
+    recordThreatCoverage(c, stats, 1);
+    expect(familyCoverage(c, 'missiles')).toBeCloseTo(5 / 6, 5);
+  });
+
+  it('detection alone never closes a threat — only removing it does', () => {
+    const c = newRegionalRun('draft-detect', FIRST_REGION);
+    // Mine sonar SEES mines. It does not sweep them, and the draft must not
+    // treat the subject as closed because the player can now watch the mine
+    // that is about to sink them.
     c.completedResearch.push('mineSonar.base');
-    const after = draftPool(c, {});
-    expect(weightFor('mines', after)).toBeLessThan(mineBefore);
+    expect(hasCounterFor(c, 'mines')).toBe(false);
+    c.completedResearch.push('mcmDrones.base');
+    expect(hasCounterFor(c, 'mines')).toBe(true);
   });
 
-  it('steps aside from entries it put on the table a round or two ago', () => {
-    const c = newRegionalRun('draft-recency', FIRST_REGION);
-    c.round = 5;
-    c.threatPressure.mines = { rounds: 3, streak: 3, damage: 200, kills: 1, lastSeenRound: 4 };
-    const fresh = draftPool(c, {});
-    const target = fresh.find((p) => p.entry.branch.counters.includes('mines'))!;
-    c.lastOfferedRound[target.entry.def.id] = c.round; // offered just now
-    const after = draftPool(c, {});
-    const same = after.find((p) => p.entry.def.id === target.entry.def.id)!;
-    expect(same.weight).toBeLessThan(target.weight);
-  });
-
-  it('PITY RULE: guarantees a basic counter for a repeated, unanswered threat', () => {
-    const c = newRegionalRun('draft-pity', FIRST_REGION);
-    c.round = 5;
-    // Mined for four rounds running, still no answer, nothing offered yet.
-    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
-    const candidates = pityCandidates(c);
-    expect(candidates.some((p) => p.family === 'mines')).toBe(true);
-
+  it('COUNTER SLOT: every draft answers the worst-covered live threat', () => {
     // Across many independent rolls the guarantee must hold EVERY time — that
     // is what makes it a guarantee rather than a nudge.
     for (let i = 0; i < 25; i++) {
-      const run = newRegionalRun(`pity-${i}`, FIRST_REGION);
+      const run = newRegionalRun(`counter-${i}`, MINE_REGION);
       run.round = 5;
       run.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
-      const draft = generateDraft(run, {}, makeRng(`pity-roll-${i}`));
-      const offeredMineCounter = draft.options.some((id) =>
-        RESEARCH_INDEX[id].branch.counters.includes('mines'),
-      );
-      expect(offeredMineCounter, `roll ${i} offered ${draft.options.join(', ')}`).toBe(true);
-      expect(draft.pityBranches).toContain('mines');
+      const draft = generateDraft(run, {}, makeRng(`counter-roll-${i}`));
+      const offeredMineCounter = draft.options.some((o) => answersFamily(o, 'mines'));
+      const shown = draft.options.map(draftOptionKey).join(', ');
+      expect(offeredMineCounter, `roll ${i} offered ${shown}`).toBe(true);
+      expect(draft.counterFamily).toBe('mines');
+      expect(draft.options.map(draftOptionKey)).toContain(draft.counterOption);
     }
   });
 
-  it('the pity rule leaves a real choice — it never fills the whole draft', () => {
-    const c = newRegionalRun('draft-pity-room', FIRST_REGION);
+  it('REGRESSION: an A-10 upgrade no longer marks mines and boats solved', () => {
+    // The logged failure. Taking `warthog.extendedLoiter` — a longer strafing
+    // pass — used to flip BOTH mines and attack boats to answered, because the
+    // test was a boolean over the catalogue rather than a measurement of the
+    // water. That permanently disabled the guarantee through nine more mine
+    // kills and ten more boat kills, and the run was never once offered a
+    // minesweeping drone, a deck gun or an anti-boarding fit.
+    const c = newRegionalRun('regression-warthog', 'pirateNarrows');
+    c.round = 6;
+    c.completedResearch.push('warthog.extendedLoiter');
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 200, kills: 5, lastSeenRound: 5 };
+    c.threatPressure.attackBoats = {
+      rounds: 3,
+      streak: 3,
+      damage: 180,
+      kills: 3,
+      lastSeenRound: 5,
+    };
+    // One gun run against three mines and two boats a round is not an answer,
+    // and the measurement says so.
+    c.threatCoverage.mines = { ratio: 0.2, fielded: 10, neutralized: 2, lastMeasuredRound: 5 };
+    c.threatCoverage.attackBoats = {
+      ratio: 0.25,
+      fielded: 8,
+      neutralized: 2,
+      lastMeasuredRound: 5,
+    };
+    expect(counterCandidates(c).map((p) => p.family)).toContain('mines');
+
+    // And the guarantee holds on every roll, with a REAL answer — not another
+    // upgrade to the aircraft that is already failing.
+    for (let i = 0; i < 25; i++) {
+      const run = newRegionalRun(`regression-${i}`, 'pirateNarrows');
+      run.round = 6;
+      run.completedResearch.push('warthog.extendedLoiter');
+      run.threatPressure.mines = { ...c.threatPressure.mines };
+      run.threatPressure.attackBoats = { ...c.threatPressure.attackBoats };
+      run.threatCoverage.mines = { ...c.threatCoverage.mines };
+      run.threatCoverage.attackBoats = { ...c.threatCoverage.attackBoats };
+      const draft = generateDraft(run, {}, makeRng(`regression-roll-${i}`));
+      const answered = draft.options.some((option) => {
+        const branch = draftOptionBranch(option);
+        return (
+          !!branch &&
+          branch.id !== 'warthog' &&
+          (answersFamily(option, 'mines') || answersFamily(option, 'attackBoats'))
+        );
+      });
+      const shown = draft.options.map(draftOptionKey).join(', ');
+      expect(answered, `roll ${i} offered ${shown}`).toBe(true);
+    }
+  });
+
+  it('the counter slot prefers a tool that removes the threat over one that sees it', () => {
+    const c = newRegionalRun('counter-role', MINE_REGION);
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    const pool = counterSlotPool(c, 'mines');
+    const drones = pool.find((p) => draftOptionKey(p.option) === 'module:escort:mcmDroneLauncher')!;
+    const sonar = pool.find((p) => draftOptionKey(p.option) === 'module:cargo:mineSonar')!;
+    expect(drones).toBeDefined();
+    expect(sonar).toBeDefined();
+    expect(drones.weight).toBeGreaterThan(sonar.weight);
+  });
+
+  it('a multi-family generalist no longer compounds its way past the specialists', () => {
+    // The A-10 answers mines AND attack boats, so the old per-family loop gave
+    // it 2.4² while the minesweeping drone — the only thing in the game that
+    // destroys a mine — got 2.4×1.8 on its single family. Breadth should earn
+    // more weight, but additively (it accumulates pressure from each family),
+    // never geometrically.
+    const c = newRegionalRun('draft-generalist', 'pirateNarrows');
+    c.round = 6;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 200, kills: 5, lastSeenRound: 5 };
+    c.threatPressure.attackBoats = {
+      rounds: 3,
+      streak: 3,
+      damage: 180,
+      kills: 3,
+      lastSeenRound: 5,
+    };
+    const pool = draftPool(c, {});
+    const drones = pool.find((p) => draftOptionKey(p.option) === 'module:escort:mcmDroneLauncher')!;
+    const bestWarthog = Math.max(
+      ...pool.filter((p) => p.branch?.id === 'warthog').map((p) => p.weight),
+    );
+    expect(drones).toBeDefined();
+    expect(drones.weight).toBeGreaterThan(bestWarthog);
+  });
+
+  it('the counter slot leaves a real choice — it never fills the whole draft', () => {
+    const c = newRegionalRun('counter-room', FIRST_REGION);
     c.round = 5;
     c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
     c.threatPressure.missiles = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
-    const draft = generateDraft(c, {}, makeRng('pity-room'));
+    const draft = generateDraft(c, {}, makeRng('counter-room'));
     expect(draft.options.length).toBeGreaterThanOrEqual(2);
-    expect((draft.pityBranches ?? []).length).toBeLessThanOrEqual(DRAFT.pityMaxPerDraft);
-    expect(new Set(draft.options).size).toBe(draft.options.length); // no duplicates
+    // Exactly one seat is ever claimed, so the rest of the table stays open.
+    expect(
+      draft.options.filter((o) => draftOptionKey(o) === draft.counterOption),
+    ).toHaveLength(1);
+    const keys = draft.options.map(draftOptionKey);
+    expect(new Set(keys).size).toBe(keys.length); // no duplicates
   });
 
-  it('does not fire the pity rule once the threat has an answer', () => {
-    const c = newRegionalRun('draft-pity-answered', FIRST_REGION);
+  it('the counter slot stands down once the threat is actually being handled', () => {
+    const c = newRegionalRun('counter-handled', MINE_REGION);
     c.round = 5;
     c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
-    expect(hasCounterFor(c, 'mines')).toBe(false);
-    c.completedResearch.push('mineSonar.base');
-    expect(hasCounterFor(c, 'mines')).toBe(true);
-    expect(pityCandidates(c).some((p) => p.family === 'mines')).toBe(false);
+    expect(counterCandidates(c).some((p) => p.family === 'mines')).toBe(true);
+    c.threatCoverage.mines = { ratio: 0.97, fielded: 30, neutralized: 29, lastMeasuredRound: 4 };
+    expect(counterCandidates(c).some((p) => p.family === 'mines')).toBe(false);
   });
 
   it('granted built-ins do not count as having answered a threat', () => {
     // Every run starts holding the granted entries. Counting them would report
-    // every threat as already answered from round 1, and the unanswered-threat
-    // weighting (and the pity rule with it) would never fire at all.
+    // every threat as already answered from round 1, and the coverage gap
+    // (with the counter slot behind it) would never open at all.
     const c = newRegionalRun('draft-granted', FIRST_REGION);
     expect(hasCounterFor(c, 'mines')).toBe(false);
     expect(hasCounterFor(c, 'missiles')).toBe(false);
+    expect(familyCoverage(c, 'mines')).toBe(0);
   });
 
-  it('does not fire the pity rule for a threat that has stopped appearing', () => {
-    const c = newRegionalRun('draft-pity-stale', FIRST_REGION);
+  it('the counter slot stands down for a threat that has stopped appearing', () => {
+    const c = newRegionalRun('counter-stale', FIRST_REGION);
     c.round = 20; // long since
     c.threatPressure.mines = { rounds: 4, streak: 0, damage: 300, kills: 3, lastSeenRound: 4 };
-    expect(pityCandidates(c).some((p) => p.family === 'mines')).toBe(false);
+    expect(counterCandidates(c).some((p) => p.family === 'mines')).toBe(false);
+  });
+
+  it('records threat coverage from what the round actually stopped', () => {
+    const c = newRegionalRun('coverage-recorded', FIRST_REGION);
+    const { state, rng } = createRoundTransit(c, planCurrentRound(c));
+    let guard = 0;
+    while (!state.over && guard++ < ticks(SIM.maxTransitTime) + 10) stepTransit(state, [], rng);
+    state.stats.minesTotal = 4;
+    state.stats.minesRevealed = 0;
+    state.stats.minesSwept = 0;
+    resolveTransit(c, state);
+    // Four mines laid, none swept, none even seen: coverage is zero and the
+    // gap is wide open.
+    expect(familyCoverage(c, 'mines')).toBe(0);
+    expect(c.threatCoverage.mines.fielded).toBe(4);
+  });
+
+  // -------------------------------------------------------------------------
+  // Equipment is drafted, not bought
+  // -------------------------------------------------------------------------
+
+  it('EQUIPMENT: drafting a module delivers the unit AND its base technology', () => {
+    const c = newRegionalRun('module-grant', 'pirateNarrows');
+    const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'mcmDroneLauncher' };
+    c.pendingDraft = { round: 1, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
+    c.phase = 'draft';
+    const cashBefore = c.cash;
+
+    expect(selectDraftOption(c, option)).toBe(true);
+    // A unit in the locker, at no cost, ready to fit this round.
+    expect(moduleStock(c, 'escort', 'mcmDroneLauncher')).toBe(1);
+    expect(c.cash).toBe(cashBefore);
+    // And the branch's base node came with it, so its upgrades are now
+    // draftable — you can only improve what you actually have.
+    expect(c.completedResearch).toContain('mcmDrones.base');
+  });
+
+  it('a second unit is more hardware, not more technology', () => {
+    const c = newRegionalRun('module-second', 'pirateNarrows');
+    const option: DraftOption = { kind: 'module', platform: 'escort', moduleId: 'deckGun' };
+    for (let i = 0; i < 2; i++) {
+      c.pendingDraft = { round: i + 1, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
+      c.phase = 'draft';
+      expect(selectDraftOption(c, option)).toBe(true);
+    }
+    expect(moduleStock(c, 'escort', 'deckGun')).toBe(2);
+    expect(c.completedResearch.filter((id) => id === 'deckGun.base')).toHaveLength(1);
+  });
+
+  it('stops offering a module once the run holds the cap for it', () => {
+    const c = newRegionalRun('module-cap', 'pirateNarrows');
+    c.round = 4;
+    c.moduleStock.escort.deckGun = DRAFT.escortModuleCap;
+    const pool = draftPool(c, {});
+    expect(
+      pool.some(
+        (p) => p.option.kind === 'module' && p.option.moduleId === 'deckGun',
+      ),
+    ).toBe(false);
+    // One below the cap and it is back on the table.
+    c.moduleStock.escort.deckGun = DRAFT.escortModuleCap - 1;
+    expect(
+      draftPool(c, {}).some(
+        (p) => p.option.kind === 'module' && p.option.moduleId === 'deckGun',
+      ),
+    ).toBe(true);
+  });
+
+  it('never offers the same module twice in one draft', () => {
+    const c = newRegionalRun('module-dupes', 'pirateNarrows');
+    c.round = 5;
+    c.threatPressure.mines = { rounds: 4, streak: 4, damage: 300, kills: 3, lastSeenRound: 4 };
+    for (let i = 0; i < 40; i++) {
+      const draft = generateDraft(c, { mines: 5 }, makeRng(`dupes-${i}`));
+      const keys = draft.options.map(draftOptionKey);
+      expect(new Set(keys).size, `roll ${i}: ${keys.join(', ')}`).toBe(keys.length);
+    }
+  });
+
+  it('a branch base node is never offered as a bare upgrade card', () => {
+    // The capability IS the hardware. Offering `deckGun.base` on its own would
+    // put the IOU straight back: technology saying the fleet has a deck gun
+    // while the locker says it does not.
+    const c = newRegionalRun('no-bare-base', 'pirateNarrows');
+    c.round = 5;
+    c.threatPressure.attackBoats = {
+      rounds: 4,
+      streak: 4,
+      damage: 300,
+      kills: 3,
+      lastSeenRound: 4,
+    };
+    const pool = draftPool(c, {});
+    for (const p of pool) {
+      const option = p.option;
+      if (option.kind !== 'upgrade' && option.kind !== 'asset') continue;
+      expect(MODULE_CATALOGUE.some((m) => m.research === option.id)).toBe(false);
+    }
+  });
+
+  it('the ability capabilities are in hand from round one, only ordnance is bought', () => {
+    const c = newRegionalRun('abilities-free', FIRST_REGION);
+    expect(c.warthogUnlocked).toBe(true);
+    expect(c.scanUnlocked).toBe(true);
+    expect(c.sonarUnlocked).toBe(true);
+    expect(c.hardenedUnlocked).toBe(true);
+    // And their base nodes are granted, so they never occupy a draft slot.
+    const pool = draftPool(c, {});
+    const keys = pool.map((p) => draftOptionKey(p.option));
+    expect(keys).not.toContain('warthog.base');
+  });
+
+  it('ORDNANCE is held back until the run could use it, and never answers a threat', () => {
+    const c = newRegionalRun('ordnance-late', FIRST_REGION);
+    c.round = 1;
+    expect(draftPool(c, {}).some((p) => p.option.kind === 'ordnance')).toBe(false);
+    c.round = DRAFT.ordnanceMinRound;
+    c.ammo = 0;
+    expect(draftPool(c, {}).some((p) => p.option.kind === 'ordnance')).toBe(true);
+    // A crate of shells is not an answer to a threat: the counter slot never
+    // draws one, however badly the run is being hurt.
+    c.threatPressure.mines = { rounds: 5, streak: 5, damage: 400, kills: 4, lastSeenRound: 4 };
+    c.round = 5;
+    expect(counterSlotPool(c, 'mines').every((p) => p.option.kind !== 'ordnance')).toBe(true);
   });
 
   it('keeps its randomness — the same pressure does not always yield the same table', () => {
@@ -730,7 +1180,7 @@ describe('technology draft', () => {
       const c = newRegionalRun(`variety-${seed}`, FIRST_REGION);
       c.round = 3;
       c.threatPressure.mines = { rounds: 1, streak: 1, damage: 40, kills: 0, lastSeenRound: 2 };
-      return generateDraft(c, {}, makeRng(seed)).options.join('|');
+      return generateDraft(c, {}, makeRng(seed)).options.map(draftOptionKey).join('|');
     };
     const seen = new Set(Array.from({ length: 14 }, (_, i) => offer(`seed-${i}`)));
     expect(seen.size).toBeGreaterThan(1);
@@ -759,10 +1209,11 @@ describe('technology draft', () => {
     // Cannot dismiss a non-empty draft (mandatory).
     expect(dismissEmptyDraft(c)).toBe(false);
     // Cannot take something that was not offered.
+    const offered = new Set(c.pendingDraft.options.map(draftOptionKey));
     const notOffered = Object.keys(RESEARCH_INDEX).find(
-      (id) => !c.pendingDraft!.options.includes(id) && !RESEARCH_INDEX[id].def.granted,
+      (id) => !offered.has(id) && !RESEARCH_INDEX[id].def.granted,
     )!;
-    expect(selectDraftOption(c, notOffered)).toBe(false);
+    expect(selectDraftOption(c, { kind: 'upgrade', id: notOffered })).toBe(false);
     expect(selectDraftOption(c, a)).toBe(true);
     expect(c.completedResearch.length).toBeGreaterThan(0);
     expect(c.pendingDraft).toBeNull();
@@ -777,7 +1228,12 @@ describe('technology draft', () => {
     for (let guard = 0; guard < 200; guard++) {
       const pool = draftPool(c, {});
       if (pool.length === 0) break;
-      c.completedResearch.push(pool[0].entry.def.id);
+      // Take the first thing on offer, whatever category it is, until the
+      // catalogue and every stock cap are exhausted.
+      const option = pool[0].option;
+      c.pendingDraft = { round: c.round, options: [option], recoveredUnits: 0, recoveredByBranch: {}, picksLeft: 1, picksTotal: 1 };
+      c.phase = 'draft';
+      if (!selectDraftOption(c, option)) break;
     }
     expect(draftPool(c, {}).length).toBe(0);
     const draft = generateDraft(c, {}, makeRng('empty'));
@@ -885,5 +1341,63 @@ describe('commander abilities', () => {
     const run = newRegionalRun('snapshot', FIRST_REGION, sanitizedLoadout(p));
     setLoadout(p, []);
     expect(run.commanderAbilities).toEqual(['salvageTeams']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Region completion waits for the open quota window
+// ---------------------------------------------------------------------------
+
+describe('quota-gated region completion', () => {
+  it('victory waits for the open quota window to be honoured', () => {
+    const run = newRegionalRun('quota-gated-victory', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate';
+    // A window the fleet cannot clear by the watermark round, but can one
+    // round later (empty rounds deliver the full 241-value convoy each time).
+    run.quota = { roundsLeft: 3, pointsNeeded: 700, pointsEarned: 0 };
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    // The watermark round: survived, but 482 < 700 with a round left in the
+    // window — the region must NOT complete out from under an active quota.
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    expect(run.runOutcome).toBe('active');
+    // The window resolves met: NOW it is a victory.
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('victory');
+    delete REGIONS.__quotaGate;
+  });
+
+  it('a quota missed after the watermark still ends the run in defeat', () => {
+    const run = newRegionalRun('quota-gated-defeat', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate2 = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate2';
+    run.quota = { roundsLeft: 3, pointsNeeded: 10_000, pointsEarned: 0 };
+    playEmptyRound(run);
+    playEmptyRound(run);
+    expect(run.campaignOver).toBe(false);
+    playEmptyRound(run); // window closes unmet
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('defeat');
+    expect(run.defeatCause).toBe('quota');
+    delete REGIONS.__quotaGate2;
+  });
+
+  it('a window met exactly on the watermark round completes on time', () => {
+    const run = newRegionalRun('quota-on-time', FIRST_REGION);
+    const region = regionDef(FIRST_REGION);
+    REGIONS.__quotaGate3 = { ...region, completionRound: 2 };
+    run.regionId = '__quotaGate3';
+    run.quota = { roundsLeft: 3, pointsNeeded: 400, pointsEarned: 0 };
+    playEmptyRound(run); // 241 < 400: window stays open
+    expect(run.campaignOver).toBe(false);
+    playEmptyRound(run); // 482 >= 400: met on the watermark round itself
+    expect(run.campaignOver).toBe(true);
+    expect(run.runOutcome).toBe('victory');
+    delete REGIONS.__quotaGate3;
   });
 });

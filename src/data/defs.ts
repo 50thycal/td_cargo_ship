@@ -78,61 +78,61 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   selfDefense: {
     id: 'selfDefense',
     name: 'Self-Defense Interceptor',
-    desc: 'Last-ditch automatic close-in defense: one tracer shot per equipped ship per round at a missile entering its short envelope. Draws from the shared stock of self-defense rounds bought in prep — no rounds, no defense.',
+    desc: 'Automatic last-ditch tracer shot at close-in missiles. Uses shared self-defense rounds.',
     costPerShip: 110,
   },
   missileWarning: {
     id: 'missileWarning',
     name: 'Missile-Warning Receiver',
-    desc: 'Detects and marks missiles homing on this ship and assists the interceptors defending it. Detection only — it does not shoot.',
+    desc: 'Marks missiles homing on this ship and assists its defenders. Detection only.',
     costPerShip: 45,
   },
   reinforcedHull: {
     id: 'reinforcedHull',
     name: 'Reinforced Hull',
-    desc: 'Bonus max hull points (rises with Reinforced Hull research). Generic survivability — never a substitute for the threat’s active counter.',
+    desc: 'Bonus hull points. Survivability, not a counter.',
     costPerShip: 75,
   },
   mineSonar: {
     id: 'mineSonar',
     name: 'Mine-Detection Sonar',
-    desc: 'Reveals mines around this ship so the convoy can steer clear. Detection only — clearing needs escort minesweeper drones.',
+    desc: 'Reveals nearby mines so the convoy steers clear. Clearing needs drones.',
     costPerShip: 95,
   },
   fireSuppression: {
     id: 'fireSuppression',
     name: 'Fire-Suppression System',
-    desc: 'Counters the fire (damage-over-time) that missile hits start on this ship. Research upgrades extinguish faster, up to full immunity.',
+    desc: 'Extinguishes the fires missile hits start on this ship.',
     costPerShip: 55,
   },
   hydrophone: {
     id: 'hydrophone',
     name: 'Hydrophone',
-    desc: 'Listens for torpedoes in the underwater domain and shows their bearing. Detection only — destroying them is the depth-charge launcher’s job.',
+    desc: 'Hears torpedoes and shows their bearing. Depth charges do the killing.',
     costPerShip: 85,
   },
   thermalImaging: {
     id: 'thermalImaging',
     name: 'Thermal/Radar Imaging',
-    desc: 'Sees precise threat tracks through enemy screening smoke. It removes nothing and destroys nothing — it gives your defenses their eyes back.',
+    desc: 'Sees threat tracks through enemy smoke — gives your defenses their eyes back.',
     costPerShip: 90,
   },
   flak: {
     id: 'flak',
     name: 'Anti-Air Flak Mount',
-    desc: 'Automatically engages enemy recon planes (and, with proximity fuses, ship-disabling drones) entering its arc. Separate equipment from the missile self-defense interceptor — it cannot engage missiles.',
+    desc: 'Auto-engages recon planes (and, with fuses, drones). Cannot engage missiles.',
     costPerShip: 100,
   },
   antiBoarding: {
     id: 'antiBoarding',
     name: 'Anti-Boarding Countermeasures',
-    desc: 'Slows and can reject the Boarding Boat capture mechanic on this ship. No effect on missiles, mines, torpedoes, artillery or ordinary hull damage.',
+    desc: 'Slows — and can reject — boarding attempts on this ship.',
     costPerShip: 60,
   },
   compartmentalization: {
     id: 'compartmentalization',
     name: 'Compartmentalization',
-    desc: 'Reduces the damage this ship takes after a hit lands (reduction tier from research). Never interferes with detection or interception.',
+    desc: 'Reduces the damage this ship takes after a hit lands.',
     costPerShip: 70,
   },
 };
@@ -158,39 +158,125 @@ export const ESCORT_NAME_MAX = 22;
 /** Names handed to escorts as they are commissioned, in order. Past the end of
  *  the list they fall back to a numbered hull, so the player always gets
  *  something meaningful to rename rather than "Escort 4". */
+/** Names for commissioned escorts.
+ *
+ *  Deliberately LONG, and drawn in a per-run shuffled order (see
+ *  nextEscortName): a six-name list handed out in list order meant every run
+ *  in the game's history opened with Vanguard and Sentinel, so the flotilla
+ *  had no identity of its own — the ships were furniture with the same labels
+ *  every time. A name is also never reissued inside a run, so a replacement
+ *  hull can never sail under the name of one that went down; that reuse made
+ *  the after-action report read as though a sunk escort had come back, and it
+ *  quietly hid the loss of whatever equipment went down with her.
+ *
+ *  Themed as watch-and-guard words a small maritime security outfit would
+ *  actually paint on a transom. */
 export const ESCORT_DEFAULT_NAMES: readonly string[] = [
-  'Vanguard',
-  'Sentinel',
-  'Seawatch',
-  'Bulwark',
-  'Lookout',
-  'Steadfast',
+  'Vanguard', 'Sentinel', 'Seawatch', 'Bulwark', 'Lookout', 'Steadfast',
+  'Warden', 'Picket', 'Rampart', 'Beacon', 'Aegis', 'Resolute',
+  'Fairwind', 'Nightwatch', 'Sabre', 'Kingfisher', 'Tempest', 'Marlin',
+  'Ironside', 'Redoubt', 'Harrier', 'Cutlass', 'Petrel', 'Stalwart',
+  'Longshore', 'Tideguard', 'Osprey', 'Valiant', 'Bastion', 'Corsair',
+  'Northstar', 'Barracuda', 'Trident', 'Watchman', 'Endeavour', 'Shrike',
 ];
 
 export const ESCORT_MODULES: Record<EscortModuleId, EscortModuleDef> = {
   deckGun: {
     id: 'deckGun',
     name: 'Deck Gun / Autocannon',
-    desc: 'Sustained-fire gun for attack boats — persistent HP targets the missile interceptor cannot touch. Commits to a selected boat until it sinks or leaves range.',
+    desc: 'Sustained fire against attack boats — commits until the boat sinks or escapes.',
     cost: 260,
   },
   mcmDroneLauncher: {
     id: 'mcmDroneLauncher',
     name: 'Mine-Countermeasure Drone Launcher',
-    desc: 'Launches minesweeper drones at REVEALED mines (tap a charted mine). Each sortie expends a purchased drone munition. Detection stays separate — no drone flies at an uncharted mine.',
+    desc: 'Sends drones at charted mines (tap one in transit). Each sortie costs a munition.',
     cost: 200,
   },
   depthCharges: {
     id: 'depthCharges',
     name: 'Depth-Charge Launcher',
-    desc: 'Lobbed area weapon against torpedoes: tap a point in the water and the blast destroys torpedoes inside it. Completely separate from missile interceptors — it cannot engage anything airborne.',
+    desc: 'Lobbed blast that destroys torpedoes in an area. Nothing airborne.',
     cost: 240,
   },
   mineSonar: {
     id: 'mineSonar',
     name: 'Hull-Mounted Mine Sonar',
-    desc: 'The escort can hear mines itself, and shares every contact with the whole convoy. Send her ahead and the water she is in stays charted for as long as she stays in it. Detection only — clearing still needs drones or a gun run.',
+    desc: 'Hears mines and shares every contact convoy-wide. Send her ahead to chart the water.',
     cost: 190,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Ordnance packages
+// ---------------------------------------------------------------------------
+
+/** One-off crates of consumables the draft can hand over.
+ *
+ *  Consumables are BOUGHT, every round, with cash — that stays true and is the
+ *  point: an ability that refilled itself for free is a question about timing
+ *  and never about cost. These are not a replacement for that. They exist so a
+ *  draft that has nothing else useful left to offer — every module capped,
+ *  every relevant upgrade taken — still offers something real instead of a card
+ *  the player resents. Deliberately the weakest category.
+ *
+ *  Each pack declares what it tops up. `needs` keeps a pack off the table until
+ *  the run can actually use it: drone munitions are worthless without a
+ *  launcher, self-defense rounds without the module. */
+export interface OrdnancePackDef {
+  id: string;
+  name: string;
+  desc: string;
+  /** Stock fields this pack adds to, by amount. */
+  grant: Partial<Record<'ammo' | 'droneAmmo' | 'pdAmmo' | 'warthogStock' | 'scanStock', number>>;
+  /** Capability the run must already hold for the pack to be worth offering. */
+  needs?: 'mcmDroneLauncher' | 'selfDefenseModule';
+}
+
+/** Every pack is a MIXED package — several munitions, never one.
+ *
+ *  They used to be single top-ups ("24 interceptor rounds", "two canisters"),
+ *  and a hand-played ten-round log declined every ordnance card it was ever
+ *  offered: against a technology upgrade or a piece of equipment, one line of
+ *  ammunition is not a decision, it is a consolation. A package that resupplies
+ *  a WAY OF FIGHTING — the air plan, the minesweeping plan, the magazines —
+ *  can at least be weighed against the alternatives.
+ *
+ *  Only droneAmmo and pdAmmo need a `needs` gate; the other stocks are
+ *  usable from round one (the convoy's own assets are in hand from the start),
+ *  so any pack may carry them without risking dead value. */
+export const ORDNANCE_PACKS: Record<string, OrdnancePackDef> = {
+  magazines: {
+    id: 'magazines',
+    name: 'Magazine Resupply',
+    desc: 'A pallet of 20 interceptor rounds.',
+    grant: { ammo: 20 },
+  },
+  airSupport: {
+    id: 'airSupport',
+    name: 'Air Support Package',
+    desc: 'Two A-10 sorties fuelled on the apron, and two survey pulses to find them work.',
+    grant: { warthogStock: 2, scanStock: 2 },
+  },
+  survey: {
+    id: 'survey',
+    name: 'Survey Package',
+    desc: 'Three scan pulses in stowage, with ten interceptor rounds to answer what they find.',
+    grant: { scanStock: 3, ammo: 10 },
+  },
+  counterMine: {
+    id: 'counterMine',
+    name: 'Counter-Mine Package',
+    desc: 'Six drone munitions, two survey pulses to chart the field, and six interceptor rounds.',
+    grant: { droneAmmo: 6, scanStock: 2, ammo: 6 },
+    needs: 'mcmDroneLauncher',
+  },
+  closeIn: {
+    id: 'closeIn',
+    name: 'Close-In Package',
+    desc: 'Nine self-defense rounds for the cargo mounts, and twelve interceptor rounds behind them.',
+    grant: { pdAmmo: 9, ammo: 12 },
+    needs: 'selfDefenseModule',
   },
 };
 
@@ -201,7 +287,7 @@ export const BASE_MODULES: Record<BaseModuleId, BaseModuleDef> = {
   counterBattery: {
     id: 'counterBattery',
     name: 'Counter-Battery System',
-    desc: 'Fires at identified hostile ARTILLERY POSITIONS to suppress (and with focus, destroy) them. It never engages shells in flight, ships, or any mobile unit.',
+    desc: 'Suppresses — and with focus, destroys — identified artillery positions.',
     cost: 300,
   },
 };
@@ -213,7 +299,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   tight: {
     id: 'tight',
     name: 'Tight',
-    desc: 'A concentrated column: overlapping fire makes your interceptors more accurate (+8%) and extends self-defense and escort reach (×1.3). The price — a direct hit or a mine chains blast damage into the ships packed alongside.',
+    desc: 'Overlapping fire: accurate and long-reached — but hits chain into neighbors.',
     speedMult: 0.95,
     lateralSpread: 18,
     gapBonus: 0,
@@ -225,7 +311,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   wide: {
     id: 'wide',
     name: 'Wide',
-    desc: 'Generous sea room: a hit or a mine almost never claims more than the one ship, and there is no blast chaining. But dispersed hulls stretch your defenses — interceptors are less accurate (−7%) and cover less water (×0.78).',
+    desc: 'Sea room: hits stay isolated — but defenses stretch thin.',
     speedMult: 1.0,
     lateralSpread: 42,
     gapBonus: 34,
@@ -237,7 +323,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
   sprint: {
     id: 'sprint',
     name: 'Sprint',
-    desc: 'A fast, narrow column that clears the strait quickest. Coverage sits between Tight and Wide (−3% accuracy, ×0.9 reach) and a direct hit chains a little into the line.',
+    desc: 'Fastest through the strait; middling coverage, a little chaining.',
     speedMult: 1.22,
     lateralSpread: 12,
     gapBonus: 0,

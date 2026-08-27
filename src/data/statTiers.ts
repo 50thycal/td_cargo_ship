@@ -99,7 +99,13 @@ export const STAT_TIERS = {
   underwaterDetectionRange: { low: 200, medium: 300, high: 420, extra: 540, max: 660 } as TierTable,
 
   /** Thermal/radar smoke-penetrating imaging radius (world units). */
-  imagingRange: { low: 220, medium: 330, high: 470, extra: 600, max: 720 } as TierTable,
+  /** SCALED with the strait's doubling. This range is measured from the convoy
+   *  lanes to smoke laid over the hostile shore, and that gap went from ~270 to
+   *  ~590 units — at the old table even Max could barely see the near lane's
+   *  worth of it, so the whole branch quietly stopped working. The gap has to
+   *  be cleared with slack, not exactly: a hull is rarely directly below the
+   *  smoke, and the ALONG-SHORE offset counts too. */
+  imagingRange: { low: 600, medium: 900, high: 1250, extra: 1600, max: 1900 } as TierTable,
 
   /** Minesweeper-drone flight speed. Anchor: today's drone = 95 (Medium). */
   droneSpeed: { low: 70, medium: 95, high: 140, extra: 180, max: 220 } as TierTable,
@@ -117,7 +123,12 @@ export const STAT_TIERS = {
   deckGunRange: { low: 300, medium: 420, high: 560, extra: 700, max: 840 } as TierTable,
 
   /** Deck-gun damage per round (attack boats are persistent HP targets). */
-  deckGunDamage: { low: 8, medium: 12, high: 18, extra: 24, max: 30 } as TierTable,
+  /** QUARTERED from 8/12/18/24/30. At the old figures a medium gun broke a
+   *  small-arms boat in ~3 hits and the fight was over before it read as one —
+   *  boats are meant to be persistent, sinkable UNITS the player watches being
+   *  worn down, not one-burst kills. A quarter of the damage makes a boat a
+   *  sustained engagement (~15 medium hits) without touching range or rate. */
+  deckGunDamage: { low: 2, medium: 3, high: 4.5, extra: 6, max: 7.5 } as TierTable,
 
   /** Sustained-fire interval (seconds between rounds) for deck guns / flak
    *  cycling; tier names firing RATE (higher tier = shorter interval). */

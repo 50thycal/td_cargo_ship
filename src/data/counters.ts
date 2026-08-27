@@ -54,7 +54,6 @@ export type CounterBranchId =
   | 'antiBoarding'
   | 'counterBattery'
   | 'thermalImaging'
-  | 'smokeScreen'
   | 'flak'
   | 'hardened'
   | 'warthog'
@@ -212,10 +211,10 @@ export interface CounterBranchDef {
     | { kind: 'cargoModule'; id: ModuleId }
     | { kind: 'escortModule'; id: EscortModuleId }
     | { kind: 'baseModule'; id: BaseModuleId }
-    | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+    | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'hardened' }
     | { kind: 'builtIn'; id: 'escort' | 'base' };
   /** Ammunition the branch draws on. */
-  ammo: 'interceptor' | 'selfDefense' | 'drone' | 'perRound' | 'none';
+  ammo: 'interceptor' | 'selfDefense' | 'drone' | 'gun' | 'perRound' | 'none';
   nodes: CounterNodeDef[];
   tactics: CounterTacticDef[];
   /** ladder = tactics chain; parallel = independent paths off the base node. */
@@ -253,7 +252,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'escortInterceptor.base',
         name: 'Base Escort Interceptor',
-        desc: 'Medium projectile speed, accuracy, reload and visual size. Limited to the escort’s defensive range; one hit kills one missile.',
+        desc: 'Escort-launched missile killer. Limited to the escort’s defensive range; one hit kills one missile.',
         cost: 0,
         granted: true,
         set: [
@@ -266,21 +265,21 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'escortInterceptor.precisionGuidance',
         name: 'Precision Guidance',
-        desc: 'Accuracy becomes High.',
+        desc: 'Upgrades accuracy.',
         cost: 35,
         set: [{ stat: 'accuracy', tier: 'high' }],
       },
       {
         id: 'escortInterceptor.rapidReload',
         name: 'Rapid-Reload Cells',
-        desc: 'Reload speed becomes High.',
+        desc: 'Upgrades reload speed.',
         cost: 45,
         set: [{ stat: 'reload', tier: 'high' }],
       },
       {
         id: 'escortInterceptor.advancedSeeker',
         name: 'Advanced Seeker',
-        desc: 'Accuracy becomes Extra.',
+        desc: 'Upgrades accuracy further.',
         cost: 65,
         requires: ['escortInterceptor.precisionGuidance'],
         noChain: true,
@@ -289,7 +288,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'escortInterceptor.highVelocityMotor',
         name: 'High-Velocity Motor',
-        desc: 'Projectile speed becomes High.',
+        desc: 'Upgrades projectile speed.',
         cost: 50,
         noChain: true,
         set: [{ stat: 'speed', tier: 'high' }],
@@ -337,7 +336,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'baseInterceptor.base',
         name: 'Base Shore Interceptor',
-        desc: 'High projectile speed and accuracy, Low reload speed, High visual size. Engages missiles anywhere on the map.',
+        desc: 'Fast, heavy interceptor that engages missiles anywhere on the map. Slow to reload.',
         cost: 0,
         granted: true,
         set: [
@@ -350,22 +349,22 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'baseInterceptor.extendedBurn',
         name: 'Extended-Burn Motor',
-        desc: 'Projectile speed becomes Extra.',
+        desc: 'Upgrades projectile speed further.',
         cost: 40,
         set: [{ stat: 'speed', tier: 'extra' }],
       },
       {
         id: 'baseInterceptor.advancedTracking',
         name: 'Advanced Tracking',
-        desc: 'Accuracy becomes Extra.',
+        desc: 'Upgrades accuracy further.',
         cost: 55,
         noChain: true,
         set: [{ stat: 'accuracy', tier: 'extra' }],
       },
       {
         id: 'baseInterceptor.maxVelocity',
-        name: 'Maximum-Velocity Interceptor',
-        desc: 'Projectile speed becomes Max.',
+        name: 'Boosted Interceptor',
+        desc: 'Peak projectile speed.',
         cost: 70,
         requires: ['baseInterceptor.extendedBurn'],
         noChain: true,
@@ -374,7 +373,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'baseInterceptor.improvedLaunchCycle',
         name: 'Improved Launch Cycle',
-        desc: 'Reload speed becomes Medium.',
+        desc: 'Upgrades reload speed.',
         cost: 60,
         noChain: true,
         set: [{ stat: 'reload', tier: 'medium' }],
@@ -388,7 +387,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'baseInterceptor.strategicAuto',
         name: 'Strategic Automatic Engagement',
-        desc: 'Bases automatically engage missiles anywhere on the map, starting with a Max automatic-fire cooldown (separate from reload). Can be switched off.',
+        desc: 'Bases engage missiles automatically, on a slow separate cooldown. Can be switched off.',
         cost: 50,
         kind: 'automation',
         flags: ['auto'],
@@ -397,7 +396,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'baseInterceptor.responsiveAuto',
         name: 'Responsive Automatic Engagement',
-        desc: 'Automatic-fire cooldown becomes Medium; bases prioritize the missile with the shortest time to impact and skip already-covered threats.',
+        desc: 'Faster auto-fire; bases prioritize shortest time-to-impact and skip covered threats.',
         cost: 75,
         kind: 'automation',
         flags: ['autoTti', 'autoDedupe'],
@@ -423,7 +422,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'selfDefense.base',
         name: 'Base Self-Defense Interceptor',
-        desc: 'Automatic by default. Medium accuracy, High tracer speed, Low reload speed and Low range; one shot per equipped ship per round; one hit kills one missile.',
+        desc: 'Automatic by default. One shot per equipped ship per round; one hit kills one missile.',
         cost: 35,
         set: [
           { stat: 'accuracy', tier: 'medium' },
@@ -435,14 +434,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'selfDefense.extendedEnvelope',
         name: 'Extended Engagement Envelope',
-        desc: 'Range becomes Medium.',
+        desc: 'Upgrades range.',
         cost: 30,
         set: [{ stat: 'range', tier: 'medium' }],
       },
       {
         id: 'selfDefense.improvedFireControl',
         name: 'Improved Fire Control',
-        desc: 'Accuracy becomes High.',
+        desc: 'Upgrades accuracy.',
         cost: 40,
         noChain: true,
         set: [{ stat: 'accuracy', tier: 'high' }],
@@ -450,7 +449,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'selfDefense.precisionTerminal',
         name: 'Precision Terminal Tracking',
-        desc: 'Accuracy becomes Extra.',
+        desc: 'Upgrades accuracy further.',
         cost: 65,
         requires: ['selfDefense.improvedFireControl'],
         noChain: true,
@@ -459,7 +458,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'selfDefense.longRangeCid',
         name: 'Long-Range Close-In Defense',
-        desc: 'Range becomes High (within the short cargo-module range domain).',
+        desc: 'Upgrades reach — still last-ditch range.',
         cost: 55,
         requires: ['selfDefense.extendedEnvelope'],
         noChain: true,
@@ -527,7 +526,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'missileWarning.base',
         name: 'Base Missile-Warning Receiver',
-        desc: 'Identifies missiles targeting the equipped ship at Medium warning range; gives defending interceptors a Low accuracy assist.',
+        desc: 'Identifies missiles hunting the equipped ship and assists its defenders.',
         cost: 25,
         set: [
           { stat: 'range', tier: 'medium' },
@@ -537,14 +536,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'missileWarning.longRange',
         name: 'Long-Range Warning',
-        desc: 'Warning range becomes High.',
+        desc: 'Upgrades warning range.',
         cost: 30,
         set: [{ stat: 'range', tier: 'high' }],
       },
       {
         id: 'missileWarning.precisionTrack',
         name: 'Precision Track Solution',
-        desc: 'Defensive interceptor assistance becomes High.',
+        desc: 'Upgrades the defensive assist.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'assist', tier: 'high' }],
@@ -613,21 +612,21 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'mineSonar.base',
         name: 'Base Mine Sonar',
-        desc: 'Detects standard mines at Low range.',
+        desc: 'Detects standard mines around the ship.',
         cost: 25,
         set: [{ stat: 'radius', tier: 'low' }],
       },
       {
         id: 'mineSonar.improvedRange',
         name: 'Improved Sonar Range',
-        desc: 'Detection range becomes Medium.',
+        desc: 'Upgrades detection range.',
         cost: 30,
         set: [{ stat: 'radius', tier: 'medium' }],
       },
       {
         id: 'mineSonar.longRange',
         name: 'Long-Range Sonar',
-        desc: 'Detection range becomes High.',
+        desc: 'Extends detection range.',
         cost: 45,
         set: [{ stat: 'radius', tier: 'high' }],
       },
@@ -705,7 +704,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'mcmDrones.base',
         name: 'Base Minesweeper Drone',
-        desc: 'Tap a revealed mine; the nearest ready escort in range launches. Low launch range, Medium drone speed, Low reload speed; one drone kills one mine; each launch spends a purchased munition.',
+        desc: 'Tap a revealed mine; the nearest ready escort launches. One drone kills one mine; one munition per launch.',
         cost: 40,
         set: [
           { stat: 'launchRange', tier: 'low' },
@@ -717,14 +716,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'mcmDrones.extendedLink',
         name: 'Extended Control Link',
-        desc: 'Launch range becomes Medium.',
+        desc: 'Upgrades launch range.',
         cost: 30,
         set: [{ stat: 'launchRange', tier: 'medium' }],
       },
       {
         id: 'mcmDrones.fastDrone',
         name: 'Fast-Response Drone',
-        desc: 'Drone speed becomes High.',
+        desc: 'Upgrades drone speed.',
         cost: 35,
         noChain: true,
         set: [{ stat: 'droneSpeed', tier: 'high' }],
@@ -732,7 +731,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'mcmDrones.improvedSortie',
         name: 'Improved Sortie Cycle',
-        desc: 'Reload speed becomes Medium.',
+        desc: 'Upgrades reload speed.',
         cost: 35,
         noChain: true,
         set: [{ stat: 'reload', tier: 'medium' }],
@@ -774,7 +773,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'mcmDrones.localAuto',
         name: 'Local Automatic Clearance',
-        desc: 'An escort may automatically launch at a revealed mine entering a small defensive zone, on a separate Max automatic-fire cooldown. Can be switched off.',
+        desc: 'An escort may auto-launch at a revealed mine entering its defensive zone, on a slow separate cooldown. Can be switched off.',
         cost: 45,
         kind: 'automation',
         flags: ['auto'],
@@ -808,7 +807,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'scanPulse.base',
         name: 'Base Scan Pulse',
-        desc: 'Reveals standard mines along the swept lane. Two charges per round.',
+        desc: 'Reveals standard mines along the swept lane. Pulses are bought in preparation; this is stowage for two at a time.',
         cost: 0,
         granted: true,
         grant: { charges: 2 },
@@ -832,8 +831,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'scanPulse.extraCharge',
-        name: 'Additional Charge',
-        desc: 'Two charges become three.',
+        name: 'Additional Stowage',
+        desc: 'Stowage for three pulses instead of two.',
         cost: 45,
         noChain: true,
         kind: 'mode',
@@ -879,7 +878,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'hydrophone.base',
         name: 'Base Hydrophone',
-        desc: 'Detects standard and homing torpedo noise at Medium range — initially an approximate bearing, not a precise fix.',
+        desc: 'Hears standard and homing torpedoes — an approximate bearing, not a precise fix.',
         cost: 30,
         set: [{ stat: 'range', tier: 'medium' }],
       },
@@ -893,7 +892,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'hydrophone.longRange',
         name: 'Long-Range Hydrophone',
-        desc: 'Detection range becomes High.',
+        desc: 'Extends detection range.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'range', tier: 'high' }],
@@ -963,7 +962,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'depthCharges.base',
         name: 'Base Depth-Charge Launcher',
-        desc: 'Tap a point in the water (not the torpedo). Low launch range, Medium blast radius, Low reload speed, one launch per escort per round. The blast destroys torpedoes inside its area.',
+        desc: 'Tap a point in the water; the blast destroys torpedoes inside it. One launch per escort per round.',
         cost: 45,
         set: [
           { stat: 'throwRange', tier: 'low' },
@@ -975,14 +974,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'depthCharges.extendedThrow',
         name: 'Extended Throw Range',
-        desc: 'Launch range becomes Medium.',
+        desc: 'Upgrades launch range.',
         cost: 30,
         set: [{ stat: 'throwRange', tier: 'medium' }],
       },
       {
         id: 'depthCharges.expandedPattern',
         name: 'Expanded Charge Pattern',
-        desc: 'Blast radius becomes High.',
+        desc: 'Upgrades blast radius.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'blastRadius', tier: 'high' }],
@@ -990,7 +989,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'depthCharges.improvedReload',
         name: 'Improved Reload System',
-        desc: 'Reload speed becomes Medium.',
+        desc: 'Upgrades reload speed.',
         cost: 35,
         noChain: true,
         set: [{ stat: 'reload', tier: 'medium' }],
@@ -1074,8 +1073,9 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'activeSonar.base',
         name: 'Base Active Sonar Ping',
-        desc: 'Reveals standard and homing torpedoes inside the placed area. Two charges per round.',
-        cost: 35,
+        desc: 'Reveals standard and homing torpedoes inside the placed area. Pings are bought in preparation; this is stowage for two at a time.',
+        cost: 0,
+        granted: true,
         grant: { charges: 2 },
       },
       {
@@ -1139,13 +1139,13 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'Small-arms boats at base; rocket & boarding variants stay killable with Armor-Piercing Ammunition.',
     weapon: 'deckGun',
     equipment: { kind: 'escortModule', id: 'deckGun' },
-    ammo: 'none',
+    ammo: 'gun',
     tacticStyle: 'ladder',
     nodes: [
       {
         id: 'deckGun.base',
         name: 'Base Deck Gun',
-        desc: 'Medium range, accuracy and damage with a High firing rate. Stays committed to a selected boat until it sinks, leaves range, or is re-tasked.',
+        desc: 'Rapid-fire gun. Stays committed to a selected boat until it sinks, escapes, or is re-tasked.',
         cost: 40,
         set: [
           { stat: 'range', tier: 'medium' },
@@ -1157,14 +1157,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'deckGun.stabilizedMount',
         name: 'Stabilized Mount',
-        desc: 'Accuracy becomes High.',
+        desc: 'Upgrades accuracy.',
         cost: 30,
         set: [{ stat: 'accuracy', tier: 'high' }],
       },
       {
         id: 'deckGun.heavyAutocannon',
         name: 'Heavy Autocannon',
-        desc: 'Damage becomes High.',
+        desc: 'Upgrades damage.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'damage', tier: 'high' }],
@@ -1172,7 +1172,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'deckGun.longRangeFireControl',
         name: 'Long-Range Fire Control',
-        desc: 'Range becomes High.',
+        desc: 'Upgrades range.',
         cost: 40,
         noChain: true,
         set: [{ stat: 'range', tier: 'high' }],
@@ -1180,7 +1180,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'deckGun.rapidFeed',
         name: 'Rapid Ammunition Feed',
-        desc: 'Firing rate becomes Extra.',
+        desc: 'Upgrades firing rate.',
         cost: 50,
         noChain: true,
         set: [{ stat: 'rate', tier: 'extra' }],
@@ -1343,7 +1343,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'counterBattery.base',
         name: 'Base Counter-Battery Fire',
-        desc: 'Tap an identified coastal gun position. Medium accuracy, Low reload speed; a successful strike suppresses the position for a limited duration.',
+        desc: 'Tap an identified coastal gun position; a successful strike suppresses it for a while.',
         cost: 45,
         set: [
           { stat: 'accuracy', tier: 'medium' },
@@ -1361,7 +1361,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'counterBattery.rapidCounterFire',
         name: 'Rapid Counter-Fire',
-        desc: 'Response speed becomes High.',
+        desc: 'Upgrades response speed.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'reload', tier: 'high' }],
@@ -1369,7 +1369,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'counterBattery.sustainedSuppression',
         name: 'Sustained Suppression',
-        desc: 'Suppression duration becomes High.',
+        desc: 'Upgrades suppression duration.',
         cost: 40,
         noChain: true,
         set: [{ stat: 'suppression', tier: 'high' }],
@@ -1405,7 +1405,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'counterBattery.autoReturnFire',
         name: 'Automatic Return Fire',
-        desc: 'Automatically targets the most recently firing position, starting with a Max automatic-fire cooldown.',
+        desc: 'Automatically targets the most recently firing position, on a slow cooldown.',
         cost: 45,
         kind: 'automation',
         flags: ['auto'],
@@ -1414,7 +1414,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'counterBattery.responsiveCounterFire',
         name: 'Responsive Counter-Fire',
-        desc: 'Automatic-fire cooldown becomes Medium.',
+        desc: 'Upgrades the auto-fire rate.',
         cost: 50,
         kind: 'automation',
         set: [{ stat: 'autoCooldown', tier: 'medium' }],
@@ -1460,14 +1460,14 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'thermalImaging.base',
         name: 'Base Thermal/Radar Imaging',
-        desc: 'Reveals precise threats inside Screening Smoke at Medium range.',
+        desc: 'Reveals precise threat tracks inside Screening Smoke.',
         cost: 35,
         set: [{ stat: 'range', tier: 'medium' }],
       },
       {
         id: 'thermalImaging.longRange',
         name: 'Long-Range Imaging',
-        desc: 'Detection range becomes High.',
+        desc: 'Extends detection range.',
         cost: 40,
         set: [{ stat: 'range', tier: 'high' }],
       },
@@ -1524,73 +1524,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     ],
   },
 
-  smokeScreen: {
-    id: 'smokeScreen',
-    category: 'concealment',
-    name: 'Player Smoke Screen',
-    short: 'Placed, charge-based cloud that degrades the enemy’s shared Targeting Doctrine.',
-    platform: 'convoy',
-    role: 'disrupt',
-    counters: ['missiles', 'artillery', 'torpedoes', 'attackBoats'],
-    countersDetail: 'Degrades the shared Targeting Doctrine (finish-the-wounded, high-value, isolation, deny-the-delivery) for ships inside — destroys nothing, blocks nothing outright.',
-    equipment: { kind: 'ability', id: 'smoke' },
-    ammo: 'perRound',
-    tacticStyle: 'parallel',
-    nodes: [
-      {
-        id: 'smokeScreen.base',
-        name: 'Base Defensive Smoke',
-        desc: 'Enemy attacks against ships inside the cloud use a one-tier-less-sophisticated targeting preference.',
-        cost: 40,
-        grant: { charges: 2 },
-      },
-      {
-        id: 'smokeScreen.dense',
-        name: 'Dense Defensive Smoke',
-        desc: 'Targeting degradation becomes stronger.',
-        cost: 45,
-        flags: ['dense'],
-      },
-      {
-        id: 'smokeScreen.trackBreaking',
-        name: 'Track-Breaking Smoke',
-        desc: 'Enemy targeting takes longer to reacquire a ship after it exits the cloud. Guided missiles are not permanently broken.',
-        cost: 50,
-        noChain: true,
-        flags: ['trackBreaking'],
-      },
-    ],
-    tactics: [
-      {
-        id: 'smokeScreen.extraCharge',
-        name: 'Additional Charge',
-        desc: 'Two charges become three.',
-        cost: 40,
-        noChain: true,
-        kind: 'mode',
-        grant: { charges: 3 },
-      },
-      {
-        id: 'smokeScreen.expandedCoverage',
-        name: 'Expanded Coverage',
-        desc: 'Cloud radius becomes larger.',
-        cost: 35,
-        noChain: true,
-        kind: 'mode',
-        flags: ['wide'],
-      },
-      {
-        id: 'smokeScreen.longerDuration',
-        name: 'Longer Duration',
-        desc: 'The cloud lasts longer.',
-        cost: 35,
-        noChain: true,
-        kind: 'mode',
-        flags: ['longTrack'],
-      },
-    ],
-  },
-
   // =========================================================================
   // ELECTRONIC ATTACK & DRONES
   // =========================================================================
@@ -1611,7 +1544,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'flak.base',
         name: 'Base Flak System',
-        desc: 'Automatically engages Recon Planes entering a Low defensive radius. Medium tracking accuracy, Low reload speed, one ready shot per round.',
+        desc: 'Automatically engages recon planes entering its arc. One ready shot per round.',
         cost: 40,
         set: [
           { stat: 'accuracy', tier: 'medium' },
@@ -1623,7 +1556,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'flak.improvedTracking',
         name: 'Improved Tracking Mount',
-        desc: 'Accuracy becomes High.',
+        desc: 'Upgrades accuracy.',
         cost: 35,
         set: [{ stat: 'accuracy', tier: 'high' }],
       },
@@ -1638,7 +1571,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'flak.expandedArc',
         name: 'Expanded Air-Defense Arc',
-        desc: 'Range becomes Medium.',
+        desc: 'Upgrades range.',
         cost: 35,
         noChain: true,
         set: [{ stat: 'range', tier: 'medium' }],
@@ -1646,7 +1579,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'flak.rapidCycling',
         name: 'Rapid Cycling',
-        desc: 'Reload speed becomes High.',
+        desc: 'Upgrades reload speed.',
         cost: 45,
         noChain: true,
         set: [{ stat: 'reload', tier: 'high' }],
@@ -1713,7 +1646,8 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         id: 'hardened.base',
         name: 'Base Emergency Reboot',
         desc: 'A manual activation that shortens the remaining jamming blackout.',
-        cost: 35,
+        cost: 0,
+        granted: true,
         set: [{ stat: 'recovery', tier: 'low' }],
         grant: { reboots: 1 },
       },
@@ -1811,10 +1745,10 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.base',
         name: 'Base Gun Run',
-        desc: 'One sortie a round. The jet flies to a placed point, holds a wheel over it and guns mines and attack boats inside its strafe radius until it is out of time.',
+        desc: 'The flight runs a line you draw, guns what lies ahead of it, turns and runs the line back the other way. Sorties are bought in preparation; this is room on the apron for two at a time.',
         cost: 0,
         granted: true,
-        grant: { charges: 1 },
+        grant: { charges: 2 },
       },
       {
         id: 'warthog.tankBuster',
@@ -1827,17 +1761,17 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     tactics: [
       {
         id: 'warthog.secondSortie',
-        name: 'Second Sortie',
-        desc: 'The flight comes back around: two gun runs a round instead of one.',
+        name: 'Expanded Apron',
+        desc: 'Room on the apron for four sorties instead of two.',
         cost: 45,
         noChain: true,
         kind: 'mode',
-        grant: { charges: 2 },
+        grant: { charges: 4 },
       },
       {
         id: 'warthog.extendedLoiter',
-        name: 'Extended Loiter',
-        desc: 'External tanks: the jet holds its wheel far longer, so one call covers a much bigger slice of the transit.',
+        name: 'Longer Firing Pass',
+        desc: 'External tanks and a slower run in: the jet stays in range longer on each pass, so its gun solution has further to develop.',
         cost: 40,
         noChain: true,
         kind: 'mode',
@@ -1846,7 +1780,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       {
         id: 'warthog.wideStrafe',
         name: 'Wide Strafe Pattern',
-        desc: 'Longer, looser gun runs: the radius the jet can reach from its station grows.',
+        desc: 'A broader gun cone ahead of the nose: the jet can take targets further off its run-in line.',
         cost: 40,
         noChain: true,
         kind: 'mode',
@@ -1876,27 +1810,26 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Base Hull Reinforcement',
         desc: '+50 max hull points on equipped ships.',
         cost: 0,
-        granted: true,
         set: [{ stat: 'bonus', tier: 'low' }],
       },
       {
         id: 'reinforcedHull.medium',
-        name: 'Medium Hull Reinforcement',
-        desc: 'Hull bonus rises to the Medium tier.',
+        name: 'Reinforced Plating',
+        desc: 'Upgrades the hull bonus.',
         cost: 35,
         set: [{ stat: 'bonus', tier: 'medium' }],
       },
       {
         id: 'reinforcedHull.high',
-        name: 'High Hull Reinforcement',
-        desc: 'Hull bonus rises to the High tier.',
+        name: 'Heavy Plating',
+        desc: 'Upgrades the hull bonus further.',
         cost: 50,
         set: [{ stat: 'bonus', tier: 'high' }],
       },
       {
         id: 'reinforcedHull.extra',
-        name: 'Extra Hull Reinforcement',
-        desc: 'Hull bonus rises to the Extra tier.',
+        name: 'Armoured Belt',
+        desc: 'Peak hull reinforcement.',
         cost: 70,
         set: [{ stat: 'bonus', tier: 'extra' }],
       },
@@ -1922,7 +1855,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Base Fire Suppression',
         desc: 'Missile-hit fires burn for half as long on equipped ships.',
         cost: 0,
-        granted: true,
         flags: ['halfDuration'],
       },
       {
@@ -1941,7 +1873,7 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
       },
       {
         id: 'fireSuppression.maxDamageControl',
-        name: 'Maximum Damage Control',
+        name: 'Total Damage Control',
         desc: 'The missile-hit damage-over-time effect is prevented entirely.',
         cost: 60,
         flags: ['immune'],
@@ -1965,22 +1897,22 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     nodes: [
       {
         id: 'compartmentalization.low',
-        name: 'Low Damage Reduction',
-        desc: 'Equipped ships take Low-tier reduced damage.',
+        name: 'Compartment Bracing',
+        desc: 'Equipped ships take reduced damage.',
         cost: 30,
         set: [{ stat: 'reduction', tier: 'low' }],
       },
       {
         id: 'compartmentalization.medium',
-        name: 'Medium Damage Reduction',
-        desc: 'Reduction rises to the Medium tier.',
+        name: 'Blast Shielding',
+        desc: 'Upgrades the damage reduction.',
         cost: 45,
         set: [{ stat: 'reduction', tier: 'medium' }],
       },
       {
         id: 'compartmentalization.high',
-        name: 'High Damage Reduction',
-        desc: 'Reduction rises to the High tier.',
+        name: 'Armoured Bulkheads',
+        desc: 'Upgrades the damage reduction further.',
         cost: 65,
         set: [{ stat: 'reduction', tier: 'high' }],
       },
@@ -2002,12 +1934,24 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     countersDetail: 'The economy, not a threat.',
     ammo: 'none',
     tacticStyle: 'ladder',
+    // Fleet assets are PARALLEL, not a ladder: each one is an independent
+    // change to the fleet's shape, and none is a prerequisite for another. The
+    // granted base exists purely to satisfy the index's implicit "everything
+    // requires nodes[0]" rule without making one asset gate the rest.
     nodes: [
+      {
+        id: 'logistics.base',
+        name: 'Quartermaster’s Office',
+        desc: 'The fleet keeps its own books. No effect on its own.',
+        cost: 0,
+        granted: true,
+      },
       {
         id: 'logistics.expandedBerthing',
         name: 'Expanded Berthing',
-        desc: 'Convoy capacity +5 immediately and hull repairs cost half as much.',
+        desc: 'Convoy capacity +5 immediately and merchant hull repairs cost half as much.',
         cost: 70,
+        noChain: true,
         flags: ['berthing'],
       },
       {
@@ -2015,12 +1959,46 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
         name: 'Escort Refit Bay',
         desc: 'A third specialist slot on every escort. Interceptors stay built in and never use a slot — this is room for one more optional system, so an escort can cover a second role without giving up its first.',
         cost: 110,
+        noChain: true,
         flags: ['escortRefit'],
+      },
+      {
+        id: 'logistics.repairYard',
+        name: 'Forward Repair Yard',
+        desc: 'Escorts and shore batteries are patched up between rounds at no cost. Only the merchant hulls still bill for repairs.',
+        cost: 120,
+        noChain: true,
+        flags: ['repairYard'],
+      },
+      {
+        id: 'logistics.salvageCrane',
+        name: 'Salvage Crane',
+        desc: 'Wreckage is recovered and survivors are pulled aboard in around two-thirds the time, so one escort can work more of the water before it drifts away.',
+        cost: 90,
+        noChain: true,
+        flags: ['salvageCrane'],
+      },
+      {
+        id: 'logistics.modularRefit',
+        name: 'Modular Refit Plans',
+        desc: 'One more module slot on every merchant class — including the Fast Freighter, which otherwise only ever carries one thing.',
+        cost: 130,
+        noChain: true,
+        flags: ['modularRefit'],
       },
     ],
     tactics: [],
   },
 };
+
+/** Logistics nodes are FLEET ASSETS in the draft: they change the shape of the
+ *  fleet — its berthing, its slots, what it can repair and how fast it can
+ *  salvage — rather than improving a weapon or handing over a piece of
+ *  equipment. Kept as a set so the draft can categorise without hard-coding a
+ *  branch name in three places. */
+export const FLEET_ASSET_BRANCHES: ReadonlySet<CounterBranchId> = new Set<CounterBranchId>([
+  'logistics',
+]);
 
 // ---------------------------------------------------------------------------
 // Flattened research index & prerequisite resolution
@@ -2120,8 +2098,6 @@ export const MODULE_RESEARCH_REQUIREMENT: Partial<Record<ModuleId, ResearchId>> 
   flak: 'flak.base',
   antiBoarding: 'antiBoarding.base',
   compartmentalization: 'compartmentalization.low',
-  // reinforcedHull / fireSuppression: base nodes are granted, so buyable
-  // immediately — the rule "no purchase before the base node" still holds.
   reinforcedHull: 'reinforcedHull.base',
   fireSuppression: 'fireSuppression.base',
 };
@@ -2138,13 +2114,12 @@ export const BASE_MODULE_RESEARCH_REQUIREMENT: Record<BaseModuleId, ResearchId> 
 };
 
 export const ABILITY_RESEARCH_REQUIREMENT: Record<
-  'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened',
+  'warthog' | 'scan' | 'sonar' | 'hardened',
   ResearchId
 > = {
   warthog: 'warthog.base',
   scan: 'scanPulse.base',
   sonar: 'activeSonar.base',
-  smoke: 'smokeScreen.base',
   hardened: 'hardened.base',
 };
 
@@ -2192,7 +2167,6 @@ const ABILITY_BASE = {
   warthog: { radius: 230, wideRadius: 300, duration: 14, longDuration: 26 },
   scan: { radius: 130, wideRadius: 185, duration: 0, longDuration: 0 },
   sonar: { radius: 260, wideRadius: 335, duration: 8, longDuration: 16 },
-  smoke: { radius: 200, wideRadius: 265, duration: 14, longDuration: 22 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -2226,7 +2200,6 @@ export function deriveCounterEffects(
   const ab = t('antiBoarding');
   const cb = t('counterBattery');
   const th = t('thermalImaging');
-  const smk = t('smokeScreen');
   const flk = t('flak');
   const hrd = t('hardened');
   const hull = t('reinforcedHull');
@@ -2234,11 +2207,15 @@ export function deriveCounterEffects(
   const cmp = t('compartmentalization');
 
   const ability = (
-    key: 'warthog' | 'scan' | 'sonar' | 'smoke',
+    key: 'warthog' | 'scan' | 'sonar',
     stats: { flags: Set<string>; grants: Record<string, number> },
   ) => ({
     charges: stats.grants.charges ?? 0,
     radius: stats.flags.has('wide') ? ABILITY_BASE[key].wideRadius : ABILITY_BASE[key].radius,
+    /** Exposed on its own because the Warthog's `wide` node now opens a gun
+     *  CONE rather than growing a loiter radius — the radius above is still
+     *  meaningful for the placed-area abilities, but not for the gun. */
+    wide: stats.flags.has('wide'),
     duration: stats.flags.has('longTrack')
       ? ABILITY_BASE[key].longDuration
       : ABILITY_BASE[key].duration,
@@ -2250,6 +2227,9 @@ export function deriveCounterEffects(
 
   return {
     damageTakenMult: 1,
+    escortDamageMult: 1,
+    escortMineDamageMult: 1,
+    escortSpeedMult: 1,
     warthogDamage:
       COMBAT.warthog.damage * (wart.flags.has('tankBuster') ? COMBAT.warthog.tankBusterMult : 1),
     sweepDrones: r.has('mcmDrones.base') && loadout.escortModules.includes('mcmDroneLauncher'),
@@ -2262,7 +2242,27 @@ export function deriveCounterEffects(
       reload: tierValue('reloadSeconds', esc.tiers.reload ?? 'medium'),
       projectileSize: tierValue('visualProjectileSize', esc.tiers.size ?? 'medium'),
       autoUnlocked: esc.flags.has('auto') || esc.flags.has('autoExpanded'),
-      autoRadius: esc.flags.has('autoExpanded') ? 460 : esc.flags.has('auto') ? 280 : 0,
+      // RESCALED for the deepened map. These were 280/460, written when the
+      // strait was under half its current size; the map doubling never came
+      // back for them, so the escort's automatic bubble quietly shrank to 7% of
+      // the map width.
+      //
+      // Measured with the batteries silenced, so every automatic shot is an
+      // escort's, over three rounds x three escorts, radius as the only
+      // variable:
+      //
+      //     280 ->  38 shots,  26 kills, 86.7% delivered
+      //     460 ->  56 shots,  37 kills, 90.0%
+      //     700 ->  57 shots,  41 kills, 90.0%
+      //    1150 ->  57 shots,  44 kills, 91.7%
+      //    1600 ->  59 shots,  42 kills, 91.7%   (saturated)
+      //
+      // At 280 the tactic fires, but lands under two-thirds of the kills it can
+      // — the player pays 40 intel for a launcher that mostly watches. 700/1150
+      // keeps the original 1:1.64 spacing between the two tactics and sits on
+      // the knee of that curve: local defence that works, an upgrade that is
+      // worth buying, and still nothing like the battery's whole-map reach.
+      autoRadius: esc.flags.has('autoExpanded') ? 1150 : esc.flags.has('auto') ? 700 : 0,
       autoCooldown: esc.flags.has('autoExpanded')
         ? 0
         : esc.tiers.autoCooldown
@@ -2423,8 +2423,6 @@ export function deriveCounterEffects(
       noReignite: fs.flags.has('noReignite'),
       immune: fs.flags.has('immune'),
     },
-    smokeDegradation: r.has('smokeScreen.base') ? (smk.flags.has('dense') ? 1.0 : 0.5) : 0,
-    smokeTrackBreakSeconds: smk.flags.has('trackBreaking') ? 4 : 0,
     scanLowSigChance: ms.flags.has('lowSig') ? 1.0 : scan.flags.has('lowSig') ? 0.75 : 0.35,
     // Baseline recovery rates. Commander Abilities multiply these AFTER this
     // derivation (applyCommanderCombatEffects) — the design's effect flow.
@@ -2438,7 +2436,6 @@ export function deriveCounterEffects(
         unlockedLowSig: scan.flags.has('lowSig'),
       },
       sonar: ability('sonar', asn),
-      smoke: ability('smoke', smk),
     },
   };
 }
@@ -2448,14 +2445,6 @@ export function deriveCounterEffects(
 export function scanLowSigChance(researched: ReadonlySet<ResearchId>): number {
   if (!researched.has('scanPulse.compositeScan')) return 0.35;
   return researched.has('mineSonar.compositeSignature') ? 1.0 : 0.75;
-}
-
-/** Smoke targeting degradation: fraction of the enemy's targeting skill
- *  removed for ships inside a player smoke cloud (one doctrine tier ≈ 0.5;
- *  dense smoke ≈ a full doctrine reset). */
-export function smokeDegradation(researched: ReadonlySet<ResearchId>): number {
-  if (!researched.has('smokeScreen.base')) return 0;
-  return researched.has('smokeScreen.dense') ? 1.0 : 0.5;
 }
 
 // ---------------------------------------------------------------------------
