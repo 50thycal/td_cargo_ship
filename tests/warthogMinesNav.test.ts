@@ -974,7 +974,6 @@ function makeStubShip(i: number): Ship {
     pdCooldown: 0,
     pdShots: 0,
     disabledUntil: -1,
-    smokeGraceUntil: -1,
     damageByBranch: {},
   } as unknown as Ship;
 }

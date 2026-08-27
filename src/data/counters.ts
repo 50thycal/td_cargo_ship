@@ -54,7 +54,6 @@ export type CounterBranchId =
   | 'antiBoarding'
   | 'counterBattery'
   | 'thermalImaging'
-  | 'smokeScreen'
   | 'flak'
   | 'hardened'
   | 'warthog'
@@ -212,7 +211,7 @@ export interface CounterBranchDef {
     | { kind: 'cargoModule'; id: ModuleId }
     | { kind: 'escortModule'; id: EscortModuleId }
     | { kind: 'baseModule'; id: BaseModuleId }
-    | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+    | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'hardened' }
     | { kind: 'builtIn'; id: 'escort' | 'base' };
   /** Ammunition the branch draws on. */
   ammo: 'interceptor' | 'selfDefense' | 'drone' | 'gun' | 'perRound' | 'none';
@@ -1525,74 +1524,6 @@ export const COUNTER_BRANCHES: Record<CounterBranchId, CounterBranchDef> = {
     ],
   },
 
-  smokeScreen: {
-    id: 'smokeScreen',
-    category: 'concealment',
-    name: 'Player Smoke Screen',
-    short: 'Charge-based barrage that screens a whole lane and degrades the enemy’s shared Targeting Doctrine.',
-    platform: 'convoy',
-    role: 'disrupt',
-    counters: ['missiles', 'artillery', 'torpedoes', 'attackBoats'],
-    countersDetail: 'Walked up one lane from the friendly shore, screening the stretch the convoy crosses. Degrades the shared Targeting Doctrine (finish-the-wounded, high-value, isolation, deny-the-delivery) for ships inside — destroys nothing, blocks nothing outright.',
-    equipment: { kind: 'ability', id: 'smoke' },
-    ammo: 'perRound',
-    tacticStyle: 'parallel',
-    nodes: [
-      {
-        id: 'smokeScreen.base',
-        name: 'Base Defensive Smoke',
-        desc: 'Pick a lane; the shore walks a screen up it, west to east. Enemy attacks against ships inside fall back to cruder targeting. Canisters are bought in preparation; this is stowage for two at a time.',
-        cost: 0,
-        granted: true,
-        grant: { charges: 2 },
-      },
-      {
-        id: 'smokeScreen.dense',
-        name: 'Dense Defensive Smoke',
-        desc: 'Targeting degradation becomes stronger.',
-        cost: 45,
-        flags: ['dense'],
-      },
-      {
-        id: 'smokeScreen.trackBreaking',
-        name: 'Track-Breaking Smoke',
-        desc: 'Enemy targeting takes longer to reacquire a ship after it leaves the screen. Guided missiles are not permanently broken.',
-        cost: 50,
-        noChain: true,
-        flags: ['trackBreaking'],
-      },
-    ],
-    tactics: [
-      {
-        id: 'smokeScreen.extraCharge',
-        name: 'Additional Stowage',
-        desc: 'Stowage for three canisters instead of two.',
-        cost: 40,
-        noChain: true,
-        kind: 'mode',
-        grant: { charges: 3 },
-      },
-      {
-        id: 'smokeScreen.expandedCoverage',
-        name: 'Expanded Coverage',
-        desc: 'Each pocket of the barrage covers more water, so the screen is wider and denser.',
-        cost: 35,
-        noChain: true,
-        kind: 'mode',
-        flags: ['wide'],
-      },
-      {
-        id: 'smokeScreen.longerDuration',
-        name: 'Longer Duration',
-        desc: 'The screen hangs on the water longer before it thins out.',
-        cost: 35,
-        noChain: true,
-        kind: 'mode',
-        flags: ['longTrack'],
-      },
-    ],
-  },
-
   // =========================================================================
   // ELECTRONIC ATTACK & DRONES
   // =========================================================================
@@ -2183,13 +2114,12 @@ export const BASE_MODULE_RESEARCH_REQUIREMENT: Record<BaseModuleId, ResearchId> 
 };
 
 export const ABILITY_RESEARCH_REQUIREMENT: Record<
-  'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened',
+  'warthog' | 'scan' | 'sonar' | 'hardened',
   ResearchId
 > = {
   warthog: 'warthog.base',
   scan: 'scanPulse.base',
   sonar: 'activeSonar.base',
-  smoke: 'smokeScreen.base',
   hardened: 'hardened.base',
 };
 
@@ -2237,7 +2167,6 @@ const ABILITY_BASE = {
   warthog: { radius: 230, wideRadius: 300, duration: 14, longDuration: 26 },
   scan: { radius: 130, wideRadius: 185, duration: 0, longDuration: 0 },
   sonar: { radius: 260, wideRadius: 335, duration: 8, longDuration: 16 },
-  smoke: { radius: 200, wideRadius: 265, duration: 14, longDuration: 22 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -2271,7 +2200,6 @@ export function deriveCounterEffects(
   const ab = t('antiBoarding');
   const cb = t('counterBattery');
   const th = t('thermalImaging');
-  const smk = t('smokeScreen');
   const flk = t('flak');
   const hrd = t('hardened');
   const hull = t('reinforcedHull');
@@ -2279,7 +2207,7 @@ export function deriveCounterEffects(
   const cmp = t('compartmentalization');
 
   const ability = (
-    key: 'warthog' | 'scan' | 'sonar' | 'smoke',
+    key: 'warthog' | 'scan' | 'sonar',
     stats: { flags: Set<string>; grants: Record<string, number> },
   ) => ({
     charges: stats.grants.charges ?? 0,
@@ -2495,8 +2423,6 @@ export function deriveCounterEffects(
       noReignite: fs.flags.has('noReignite'),
       immune: fs.flags.has('immune'),
     },
-    smokeDegradation: r.has('smokeScreen.base') ? (smk.flags.has('dense') ? 1.0 : 0.5) : 0,
-    smokeTrackBreakSeconds: smk.flags.has('trackBreaking') ? 4 : 0,
     scanLowSigChance: ms.flags.has('lowSig') ? 1.0 : scan.flags.has('lowSig') ? 0.75 : 0.35,
     // Baseline recovery rates. Commander Abilities multiply these AFTER this
     // derivation (applyCommanderCombatEffects) — the design's effect flow.
@@ -2510,7 +2436,6 @@ export function deriveCounterEffects(
         unlockedLowSig: scan.flags.has('lowSig'),
       },
       sonar: ability('sonar', asn),
-      smoke: ability('smoke', smk),
     },
   };
 }
@@ -2520,14 +2445,6 @@ export function deriveCounterEffects(
 export function scanLowSigChance(researched: ReadonlySet<ResearchId>): number {
   if (!researched.has('scanPulse.compositeScan')) return 0.35;
   return researched.has('mineSonar.compositeSignature') ? 1.0 : 0.75;
-}
-
-/** Smoke targeting degradation: fraction of the enemy's targeting skill
- *  removed for ships inside a player smoke cloud (one doctrine tier ≈ 0.5;
- *  dense smoke ≈ a full doctrine reset). */
-export function smokeDegradation(researched: ReadonlySet<ResearchId>): number {
-  if (!researched.has('smokeScreen.base')) return 0;
-  return researched.has('smokeScreen.dense') ? 1.0 : 0.5;
 }
 
 // ---------------------------------------------------------------------------

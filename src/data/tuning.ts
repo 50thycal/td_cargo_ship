@@ -410,7 +410,7 @@ export const COMBAT = {
    *  and a boat left alive keeps earning. That is why they need their own
    *  weapon: interceptors point at the sky and cannot help here at all. */
   attackBoat: {
-    /** MAX speed.
+    /** MAX speed, per variant.
      *
      *  SLOWED from 64. It only needs to beat the fastest merchant (a freighter
      *  at 34) by enough to close and hold station; at 64 it was nearly twice
@@ -419,8 +419,14 @@ export const COMBAT = {
      *  seconds also gives the player almost no run-in to shoot at, which is
      *  exactly what the physical-navigation rework was for. 42 is a quarter
      *  clear of the fastest hull — still able to run one down and take station,
-     *  but on the same order as the ships it is hunting. */
-    speed: 42,
+     *  but on the same order as the ships it is hunting.
+     *
+     *  ROCKET is slower still: a hull carrying a rack is a heavier, wider
+     *  platform than the small-arms skiff, and it does not need the same
+     *  turn of speed to make its attack — it opens up from well outside
+     *  standoff instead of closing hard. Reads as a lobbing platform rather
+     *  than a speedboat. */
+    speed: { smallArms: 42, rocket: 30, boarding: 42 } as Record<string, number>,
     /** Acceleration limit (units/s²) and turn-rate limit (radians/s).
      *
      *  These two are what make a boat read as a BOAT. The old model set the
@@ -449,9 +455,15 @@ export const COMBAT = {
     /** Minimum angular spacing (radians) between two boats stationed on the
      *  same hull when their stations are assigned. */
     stationSpacing: 0.9,
-    /** Max range at which a gun boat opens fire. Comfortably inside deck-gun
-     *  reach (medium tier 420) so fielding the counter always gets a shot. */
-    engageRange: 190,
+    /** Max range at which a gun boat opens fire, per variant. Comfortably
+     *  inside deck-gun reach (medium tier 420) so fielding the counter always
+     *  gets a shot.
+     *
+     *  ROCKET opens up from much farther out — that is the point of a rack
+     *  over a machine gun. It holds the same proportion of standoff-to-range
+     *  as small arms (118/190 ≈ 0.62 → 158/260 ≈ 0.61), so it still fires
+     *  from its standoff ring rather than needing to close first. */
+    engageRange: { smallArms: 190, rocket: 260, boarding: 190 } as Record<string, number>,
     /** Contact radius for the boarding grapple. */
     boardRange: 46,
     /** Boat weapons: every point of cargo damage this branch deals now arrives
@@ -560,39 +572,6 @@ export const COMBAT = {
      *  thin lands eight hits across eight different hulls and kills none of
      *  them, which is what a 340-unit sweep measured. */
     barrageSweep: 190,
-  },
-  /** The player's defensive smoke, laid as a WALKING BARRAGE down one lane.
-   *
-   *  It used to be a single cloud dropped wherever the player tapped, which
-   *  made it a spot answer to a spot problem — and the convoy is not a spot,
-   *  it is a column strung out along a lane. Screening one hull while the
-   *  eleven behind it sailed in clear air was the wrong shape for a screen.
-   *  Now the player picks a LANE, the way they pick one for the scan plane,
-   *  and the friendly shore walks a line of smoke pockets up it. */
-  smokeBarrage: {
-    /** Share of the lane's SAILED length (spawn line to delivery line) the
-     *  pockets cover. The remainder is left open at BOTH ENDS: a screen that
-     *  reached the delivery line would hide the hulls least in need of hiding,
-     *  and one that reached the start line would be spent before the convoy
-     *  was properly under way. The cover is where the crossing happens. */
-    laneCoverage: 0.75,
-    /** Spacing between pocket centres, in pocket radii. Below 2 the circles
-     *  overlap; 1.5 leaves a continuous band about 1.7 radii wide rather than
-     *  a string of separate puffs with clear water between them. */
-    pocketSpacingRadii: 1.5,
-    /** Seconds from the first pocket bursting to the last. The walk is the
-     *  point — a barrage that arrived all at once would be a rectangle
-     *  appearing on the map, and the player would learn nothing from watching
-     *  it. Long enough to read as marching fire, short enough that the near
-     *  end has not thinned out before the far end is laid. */
-    walkSeconds: 8,
-    /** Speed of a smoke round from the shore to its burst point. Matches the
-     *  enemy's shell speed: the two are the same kind of object and should
-     *  cross the water at the same rate. */
-    shellSpeed: 430,
-    /** Hard cap on pockets in one barrage, so a big coverage upgrade widens
-     *  the band rather than multiplying the area effects without limit. */
-    maxPockets: 14,
   },
   /** Enemy smoke: the CONCEALMENT branch (ENEMY_ATTACKS.md). It deals no damage
    *  at all — it denies the player's eyes, which shrinks the reaction window on
@@ -925,7 +904,6 @@ export const ECONOMY = {
    *  cloud protects a cluster of hulls for a while, between the two. */
   warthogSortieCost: 95,
   scanPulseCost: 55,
-  smokeCanisterCost: 70,
   /** Deck-gun shells: cash per round, and how many one purchase buys. The gun
    *  is no longer free to fire — a magazine is bought in Preparation like the
    *  interceptor stock. Priced against work done: at quarter damage a
@@ -1663,10 +1641,21 @@ export const ENEMY_ECONOMY = {
    *  band. It is the enemy-side half of the seesaw's restoring force: it scales
    *  with how long the player has been winning and stops the moment the fight
    *  is even again. (The player-side half is no longer a cash rebate — it is
-   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.) */
+   *  the affordable replacement hull; see SHIP_CLASSES.replaceCost.)
+   *
+   *  STRENGTHENED after the missile-region hand-play: a run that finished at
+   *  99 confidence having lost two hulls in nine rounds spent its whole back
+   *  half above the dominance threshold, and the streak bonus it earned topped
+   *  out at +33% — which the region's budget cap then discarded entirely (see
+   *  regions.ts → missileCoast). With the cap moved out of the way the streak
+   *  is doing real work again, so it is also sized to be felt: a player who
+   *  walks through five rounds untouched now draws roughly half again as much
+   *  ordnance rather than a third. It still releases the moment they drop back
+   *  into the band, which is the property that makes it a restoring force
+   *  rather than a difficulty ramp. */
   dominanceFraction: 0.85,
-  dominanceStreakStep: 0.06,
-  dominanceStreakMax: 0.33,
+  dominanceStreakStep: 0.09,
+  dominanceStreakMax: 0.5,
 
   /** ROI = result ÷ spend, where result weights a kill far above chip damage
    *  (sinking hulls is the point; scratching paint is not). */

@@ -228,9 +228,7 @@ export interface OrdnancePackDef {
   name: string;
   desc: string;
   /** Stock fields this pack adds to, by amount. */
-  grant: Partial<
-    Record<'ammo' | 'droneAmmo' | 'pdAmmo' | 'warthogStock' | 'scanStock' | 'smokeStock', number>
-  >;
+  grant: Partial<Record<'ammo' | 'droneAmmo' | 'pdAmmo' | 'warthogStock' | 'scanStock', number>>;
   /** Capability the run must already hold for the pack to be worth offering. */
   needs?: 'mcmDroneLauncher' | 'selfDefenseModule';
 }
@@ -244,27 +242,21 @@ export interface OrdnancePackDef {
  *  a WAY OF FIGHTING — the air plan, the minesweeping plan, the magazines —
  *  can at least be weighed against the alternatives.
  *
- *  Only droneAmmo and pdAmmo need a `needs` gate; the other four stocks are
+ *  Only droneAmmo and pdAmmo need a `needs` gate; the other stocks are
  *  usable from round one (the convoy's own assets are in hand from the start),
  *  so any pack may carry them without risking dead value. */
 export const ORDNANCE_PACKS: Record<string, OrdnancePackDef> = {
   magazines: {
     id: 'magazines',
     name: 'Magazine Resupply',
-    desc: 'A pallet of 20 interceptor rounds, with a smoke canister struck down alongside it.',
-    grant: { ammo: 20, smokeStock: 1 },
+    desc: 'A pallet of 20 interceptor rounds.',
+    grant: { ammo: 20 },
   },
   airSupport: {
     id: 'airSupport',
     name: 'Air Support Package',
     desc: 'Two A-10 sorties fuelled on the apron, and two survey pulses to find them work.',
     grant: { warthogStock: 2, scanStock: 2 },
-  },
-  screening: {
-    id: 'screening',
-    name: 'Screening Stores',
-    desc: 'Two smoke canisters, a survey pulse, and eight interceptor rounds.',
-    grant: { smokeStock: 2, scanStock: 1, ammo: 8 },
   },
   survey: {
     id: 'survey',

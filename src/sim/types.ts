@@ -143,9 +143,6 @@ export interface Ship {
   flakShots: number;
   /** Flak cooldown timer. */
   flakCooldown: number;
-  /** Track-breaking smoke: enemy re-acquisition ignores this ship until this
-   *  transit time (refreshed while inside a player smoke cloud). */
-  smokeGraceUntil: number;
   /** True when the ship has fallen well behind its own expected pace
    *  (damage or being blocked by another ship), not behind a formation slot. */
   straggling: boolean;
@@ -411,24 +408,6 @@ export interface Shell {
   damage: number;
   variant: ArtilleryVariant;
   alive: boolean;
-}
-
-/** A smoke round on its way from the friendly shore to its burst point.
- *
- *  Deliberately NOT a `Shell`. Those are the enemy's artillery, and every
- *  shell in that array is resolved against the convoy for splash damage — a
- *  friendly round sharing the type would either need a flag threaded through
- *  the damage path or would quietly shell the ships it was sent to protect. */
-export interface SmokeShell {
-  id: number;
-  x: number;
-  y: number;
-  targetX: number;
-  targetY: number;
-  /** Carried to the burst so the pocket it lays matches the research the
-   *  barrage was fired under, even if something changes mid-flight. */
-  radius: number;
-  duration: number;
 }
 
 /** A round fired by an attack boat: machine-gun tracer or rocket, depending on
@@ -795,11 +774,7 @@ export interface GunShot {
  *  underwater picture) or defensive smoke (degrades enemy targeting). */
 export interface AreaEffect {
   id: number;
-  /** `smoke` is the PLAYER's track-breaking cloud; `enemySmoke` is the enemy's
-   *  concealment branch. They are deliberately distinct kinds — one hides the
-   *  player's ships from the enemy, the other hides the enemy's threats from
-   *  the player, and nothing should ever treat them interchangeably. */
-  kind: 'sonar' | 'smoke' | 'enemySmoke';
+  kind: 'sonar' | 'enemySmoke';
   x: number;
   y: number;
   radius: number;
@@ -885,7 +860,7 @@ export type TransitCommand =
    *  and the line is the weapon (see the gun-cone targeting in transit.ts). */
   | {
       type: 'ability';
-      ability: 'warthog' | 'scan' | 'sonar' | 'smoke';
+      ability: 'warthog' | 'scan' | 'sonar';
       x: number;
       y: number;
       x2?: number;
@@ -999,7 +974,6 @@ export interface CounterRoundStats {
     warthog: { available: number; used: number };
     scan: { available: number; used: number };
     sonar: { available: number; used: number };
-    smoke: { available: number; used: number };
     reboot: { available: number; used: number };
   };
 }
@@ -1295,12 +1269,6 @@ export interface CombatEffects {
   compartmentReduction: number;
   /** Fire-suppression: burn-duration multiplier / full immunity node. */
   fire: { durationMult: number; noReignite: boolean; immune: boolean };
-  /** Fraction of enemy targeting skill removed for ships inside player smoke
-   *  (one doctrine tier ≈ 0.5; dense ≈ 1.0). 0 = smoke not researched. */
-  smokeDegradation: number;
-  /** Track-breaking smoke: seconds of re-acquisition grace after a ship exits
-   *  the cloud (0 = node not researched). */
-  smokeTrackBreakSeconds: number;
   /** Probability a scan pulse reveals a low-signature mine (research-scaled). */
   scanLowSigChance: number;
   /** Recovery-operation rates. 1 = baseline; Commander Abilities are applied
@@ -1312,7 +1280,6 @@ export interface CombatEffects {
     warthog: AbilityEffects;
     scan: AbilityEffects;
     sonar: AbilityEffects;
-    smoke: AbilityEffects;
   };
 }
 
@@ -1357,10 +1324,6 @@ export interface TransitState {
   areaEffects: AreaEffect[];
   /** Artillery shells in flight. Kept out of `threats` on purpose — see Shell. */
   shells: Shell[];
-  /** The player's smoke barrage: rounds in flight, and the bursts still
-   *  waiting their turn as the barrage walks up the lane. */
-  smokeShells: SmokeShell[];
-  smokeBarrage: { x: number; y: number; at: number; radius: number; duration: number }[];
   /** Attack-boat rounds in flight. Kept out of `threats` for the same reason:
    *  a boat's gunfire is not a thing the player can shoot down, only something
    *  they can see coming (and outmaneuver). Killing the BOAT is the answer. */
@@ -1401,7 +1364,6 @@ export interface TransitState {
   warthogCharges: number;
   scanCharges: number;
   sonarCharges: number;
-  smokeCharges: number;
   rebootCharges: number;
   /** Seconds of enemy sensor jamming remaining (0 = not jammed). The enemy
    *  pass activates this; hardened systems shorten it. */
@@ -2054,7 +2016,6 @@ export interface CampaignState {
    *  than handing out a fresh allowance. */
   warthogStock: number;
   scanStock: number;
-  smokeStock: number;
   /** Deck-gun shells in stock: bought in preparation, drawn one per round
    *  fired, carried over when unused — same contract as the other consumables.
    *  The gun hardware comes from the draft; the shells never do. */
@@ -2064,7 +2025,6 @@ export interface CampaignState {
   warthogUnlocked: boolean;
   scanUnlocked: boolean;
   sonarUnlocked: boolean;
-  smokeUnlocked: boolean;
   hardenedUnlocked: boolean;
   /** Automation preferences (persist between rounds; default on when the
    *  tactic is researched). */

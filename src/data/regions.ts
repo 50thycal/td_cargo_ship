@@ -165,8 +165,32 @@ export const REGIONS: Record<RegionId, RegionDef> = {
     // the wrong way — five of twelve builds ended on a missed quota at 85-87%
     // delivery, which is the bookkeeping killing a build that is still
     // fighting, and the opening region is the last place that should happen.
-    budget: { base: 37, perRound: 50, cap: 920 },
-    branchUnitCeilings: { missiles: 130 },
+    //
+    // RAISED across the board after a hand-played nine-round run finished at
+    // 99 confidence having lost two hulls. Replaying that run's metrics through
+    // the allocator reproduced it exactly, and showed the region going SOFT
+    // from round 6 rather than holding: the old 920 cap bound on round 6 and
+    // never moved again, so budget, committed spend and the missile mix were
+    // byte-identical for rounds 6-9 (920 / 918 / 92 guided + 18 unguided) while
+    // the player's tech kept compounding. Intercept rate climbed 79% → 94%
+    // across exactly the stretch that was supposed to be the hardest.
+    //
+    // The cap was also swallowing the seesaw's own restoring force. Every
+    // performance multiplier — strong delivery, high intercept, convoy
+    // richness, the dominance streak — is applied BEFORE the cap clamp in
+    // grantBudget, so once the raw figure cleared 920 a dominating player drew
+    // no extra fire at all. The anti-snowball response existed and was being
+    // thrown away. A cap should be a runaway backstop, not the operating point
+    // of the back half of the region.
+    //
+    // So: a higher opening (base/perRound) so the region starts with real
+    // pressure instead of ramping into it, and a cap set far enough out that
+    // the performance multipliers decide the late rounds instead of the clamp.
+    budget: { base: 70, perRound: 78, cap: 2200 },
+    // Raised with the purse — at the old 130 the enemy hit the unit ceiling
+    // almost immediately at the new budget and binned the difference, which is
+    // the exact failure the note above describes.
+    branchUnitCeilings: { missiles: 300 },
     start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
     completionXp: 60,
     unlocks: 'homeStrait',

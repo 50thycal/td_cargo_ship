@@ -139,14 +139,12 @@ export function newRegionalRun(
     pdAmmo: start.pdAmmo,
     warthogStock: 0,
     scanStock: 0,
-    smokeStock: 0,
     gunAmmo: 0,
     // The convoy's own assets are in hand from the first round; only their
     // ordnance is bought (see the note above repairCost).
     warthogUnlocked: true,
     scanUnlocked: true,
     sonarUnlocked: true,
-    smokeUnlocked: true,
     hardenedUnlocked: true,
     autoFire: { ...DEFAULT_AUTO_FIRE },
     protectedChannels: [],
@@ -338,7 +336,6 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     c.warthogUnlocked = true;
     c.scanUnlocked = true;
     c.sonarUnlocked = true;
-    c.smokeUnlocked = true;
     c.hardenedUnlocked = true;
     // The limited loadout slots still apply, even for dev runs — but each
     // escort is fitted individually, so a dev flotilla is a MIXED one rather
@@ -353,7 +350,6 @@ export function newDevCampaign(seed: string, opts: DevOptions): CampaignState {
     // aircraft commissioned and nothing to fly.
     c.warthogStock = 999;
     c.scanStock = 999;
-    c.smokeStock = 999;
     c.gunAmmo = 999;
     c.bases = ECONOMY.maxBases;
     c.capacity = CAMPAIGN.maxCapacity;
@@ -456,7 +452,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
   // hands the transit 99 of each without the campaign having bought them.
   c.warthogStock = Math.max(0, Math.min(c.warthogStock, t.warthogCharges));
   c.scanStock = Math.max(0, Math.min(c.scanStock, t.scanCharges));
-  c.smokeStock = Math.max(0, Math.min(c.smokeStock, t.smokeCharges));
   c.formation = t.formation; // tactical formation changes persist as the new default
   c.autoFire = { ...t.autoFire }; // in-transit automation toggles persist
 
@@ -1028,7 +1023,6 @@ export function resolveTransit(c: CampaignState, t: TransitState): AfterActionRe
         ...(c.warthogUnlocked ? ['warthog'] : []),
         ...(c.scanUnlocked ? ['scanPulse'] : []),
         ...(c.sonarUnlocked ? ['activeSonar'] : []),
-        ...(c.smokeUnlocked ? ['smokeScreen'] : []),
         ...(c.hardenedUnlocked ? ['hardened'] : []),
       ],
     },
@@ -1572,24 +1566,6 @@ export function warthogCapacity(c: CampaignState): number {
 
 export function scanCapacity(c: CampaignState): number {
   return resolveBranchStats('scanPulse', researchSet(c)).grants.charges ?? 0;
-}
-
-export function smokeCapacity(c: CampaignState): number {
-  return resolveBranchStats('smokeScreen', researchSet(c)).grants.charges ?? 0;
-}
-
-export function smokeCanisterBlockReason(c: CampaignState): string | null {
-  if (c.smokeStock >= smokeCapacity(c)) return 'Stowage full';
-  if (c.cash < ECONOMY.smokeCanisterCost) return 'Not enough cash';
-  return null;
-}
-
-export function buySmokeCanister(c: CampaignState): boolean {
-  if (smokeCanisterBlockReason(c) !== null) return false;
-  c.cash -= ECONOMY.smokeCanisterCost;
-  c.smokeStock++;
-  recordSpend(c, 'smokeScreen', ECONOMY.smokeCanisterCost);
-  return true;
 }
 
 export function warthogSortieBlockReason(c: CampaignState): string | null {

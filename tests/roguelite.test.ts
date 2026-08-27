@@ -1153,14 +1153,12 @@ describe('technology draft', () => {
     const c = newRegionalRun('abilities-free', FIRST_REGION);
     expect(c.warthogUnlocked).toBe(true);
     expect(c.scanUnlocked).toBe(true);
-    expect(c.smokeUnlocked).toBe(true);
     expect(c.sonarUnlocked).toBe(true);
     expect(c.hardenedUnlocked).toBe(true);
     // And their base nodes are granted, so they never occupy a draft slot.
     const pool = draftPool(c, {});
     const keys = pool.map((p) => draftOptionKey(p.option));
     expect(keys).not.toContain('warthog.base');
-    expect(keys).not.toContain('smokeScreen.base');
   });
 
   it('ORDNANCE is held back until the run could use it, and never answers a threat', () => {
