@@ -34,7 +34,6 @@ import {
   setFormation,
   buyWarthogSortie,
   buyScanPulse,
-  buySmokeCanister,
 } from '../../src/sim/campaign';
 import {
   dismissEmptyDraft,
@@ -100,7 +99,7 @@ export type BuyIntent =
    *  mixed flotilla at all. */
   | { kind: 'escortFit' }
   | { kind: 'baseModule'; id: BaseModuleId }
-  | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'smoke' | 'hardened' }
+  | { kind: 'ability'; id: 'warthog' | 'scan' | 'sonar' | 'hardened' }
   /** Replace losses. Without `upToCapacity: false` the bot only rebuilds while
    *  the fleet is under convoy capacity — a real player restores the convoy
    *  rather than letting attrition shrink it to nothing. */
@@ -127,8 +126,6 @@ export interface TransitPolicy {
   /** Call the Warthog onto whatever patch of water has the most surface
    *  targets (mines and boats) sitting in it. */
   useWarthog: boolean;
-  /** Place defensive smoke over the densest cluster of hulls. */
-  useSmoke: boolean;
   /** Fire depth charges at detected torpedoes. */
   useDepthCharges: boolean;
   /** Spend active-sonar charges hunting torpedoes the passive watch missed. */
@@ -278,8 +275,6 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
           return persona.transit.useWarthog && buyWarthogSortie(c);
         case 'scan':
           return persona.transit.useScan && buyScanPulse(c);
-        case 'smoke':
-          return persona.transit.useSmoke && buySmokeCanister(c);
         case 'sonar':
         case 'hardened':
           return false; // no consumable to buy
@@ -516,7 +511,6 @@ interface EscortJob {
 export interface TransitMemory {
   lastScanT: number;
   lastWarthogT: number;
-  lastSmokeT: number;
   lastSonarT: number;
   /** Escort id → the recovery job it is currently detached on. */
   jobs: Map<number, EscortJob>;
@@ -526,7 +520,6 @@ export function newTransitMemory(): TransitMemory {
   return {
     lastScanT: -99,
     lastWarthogT: -99,
-    lastSmokeT: -99,
     lastSonarT: -99,
     jobs: new Map(),
   };
@@ -862,17 +855,6 @@ export function decideCommands(
     }
   }
 
-  // Smoke: lay it over the convoy while it is genuinely under threat.
-  if (p.useSmoke && t.smokeCharges > 0 && t.time - mem.lastSmokeT > 30 && center.count >= 3) {
-    const inbound = t.threats.filter(
-      (th) => th.alive && (th.kind === 'missile' || th.kind === 'guidedMissile'),
-    ).length;
-    if (inbound >= 3) {
-      cmds.push({ type: 'ability', ability: 'smoke', x: center.x, y: center.y });
-      mem.lastSmokeT = t.time;
-    }
-  }
-
   return cmds;
 }
 
@@ -893,7 +875,6 @@ const FIGHTER: TransitPolicy = {
   sweepMines: true,
   useScan: true,
   useWarthog: true,
-  useSmoke: true,
   useDepthCharges: true,
   useSonar: true,
   engageBoats: true,
@@ -912,7 +893,6 @@ const PASSIVE: TransitPolicy = {
   sweepMines: false,
   useScan: false,
   useWarthog: false,
-  useSmoke: false,
   useDepthCharges: false,
   useSonar: false,
   engageBoats: false,
@@ -972,7 +952,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'base' },
       { kind: 'escortFit' },
       { kind: 'gunAmmo', upTo: 60 },
@@ -983,7 +962,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'ability', id: 'warthog' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'ammo', upTo: 45 },
     ],
     escortDoctrine: [
@@ -1058,7 +1036,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'ammo', upTo: 70 },
       { kind: 'ability', id: 'warthog' },
-      { kind: 'ability', id: 'smoke' },
     ],
     transit: FIGHTER,
   },
@@ -1090,7 +1067,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'module', classId: 'cargo', moduleId: 'missileWarning' },
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'missileWarning' },
@@ -1133,7 +1109,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 3 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'escortFit' },
       { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 12 },
@@ -1310,7 +1285,6 @@ export const PERSONAS: Persona[] = [
       // own modules. That misread made the first run of this comparison
       // measure the opposite of what it claimed.)
       { kind: 'ability', id: 'scan' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'base' },
       { kind: 'escort' },
       { kind: 'module', classId: 'cargo', moduleId: 'selfDefense' },
@@ -1321,7 +1295,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'gunAmmo', upTo: 60 },
       { kind: 'baseModule', id: 'counterBattery' },
       { kind: 'ability', id: 'warthog' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'selfDefenseAmmo', upTo: 9 },
       { kind: 'droneAmmo', upTo: 6 },
       // Only now does the convoy grow.
@@ -1391,7 +1364,6 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 2 },
       { kind: 'base' },
       { kind: 'ability', id: 'scan' },
-      { kind: 'ability', id: 'smoke' },
       { kind: 'ability', id: 'warthog' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'escortFit' },

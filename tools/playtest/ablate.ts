@@ -119,7 +119,6 @@ const POLICY_FOR: Record<string, keyof Persona['transit']> = {
   mcmDrones: 'sweepMines',
   scanPulse: 'useScan',
   warthog: 'useWarthog',
-  smokeScreen: 'useSmoke',
   depthCharges: 'useDepthCharges',
   activeSonar: 'useSonar',
 };
@@ -208,7 +207,6 @@ function ownedEquipment(c: CampaignState, into: Set<string>): void {
   if (c.warthogUnlocked) into.add('ability:warthog');
   if (c.scanUnlocked) into.add('ability:scan');
   if (c.sonarUnlocked) into.add('ability:sonar');
-  if (c.smokeUnlocked) into.add('ability:smoke');
   if (c.hardenedUnlocked) into.add('ability:hardened');
   if (c.escortUnits.length > 0) into.add('builtIn:escort');
   if (c.bases > 0) into.add('builtIn:base');

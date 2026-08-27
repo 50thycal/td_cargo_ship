@@ -39,7 +39,6 @@ import type {
   SensorFamily,
   Ship,
   ShipClassId,
-  SmokeShell,
   TechKey,
   Threat,
   ThreatKind,
@@ -104,7 +103,6 @@ function newCounterStats(t: {
   warthog: number;
   scan: number;
   sonar: number;
-  smoke: number;
   reboot: number;
 }): CounterRoundStats {
   return {
@@ -150,7 +148,6 @@ function newCounterStats(t: {
       warthog: { available: t.warthog, used: 0 },
       scan: { available: t.scan, used: 0 },
       sonar: { available: t.sonar, used: 0 },
-      smoke: { available: t.smoke, used: 0 },
       reboot: { available: t.reboot, used: 0 },
     },
   };
@@ -213,7 +210,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         pdShots: modules.includes('selfDefense') ? effects.selfDefense.magazine : 0,
         flakShots: modules.includes('flak') ? effects.flak.magazine : 0,
         flakCooldown: 0,
-        smokeGraceUntil: 0,
         straggling: false,
         giveWayHold: 0,
         giveWayExhausted: false,
@@ -252,7 +248,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
   const warthogCharges = god ? 99 : campaign.warthogUnlocked ? campaign.warthogStock : 0;
   const scanCharges = god ? 99 : campaign.scanUnlocked ? campaign.scanStock : 0;
   const sonarCharges = god ? 99 : campaign.sonarUnlocked ? effects.abilities.sonar.charges : 0;
-  const smokeCharges = god ? 99 : campaign.smokeUnlocked ? campaign.smokeStock : 0;
   const rebootCharges = god ? 99 : campaign.hardenedUnlocked ? effects.hardened.rebootCharges : 0;
 
   const state: TransitState = {
@@ -284,8 +279,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       barrageNextAt: 8,
     })),
     shells: [],
-    smokeShells: [],
-    smokeBarrage: [],
     boatShots: [],
     wreckage: [],
     survivors: [],
@@ -314,7 +307,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
     warthogCharges,
     scanCharges,
     sonarCharges,
-    smokeCharges,
     rebootCharges,
     jammingSeconds: 0,
     // How sharply the enemy aims comes from its Targeting Doctrine rung, which
@@ -372,7 +364,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
         warthog: warthogCharges,
         scan: scanCharges,
         sonar: sonarCharges,
-        smoke: smokeCharges,
         reboot: rebootCharges,
       }),
       enemyBranch: {},
@@ -507,15 +498,6 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
-}
-
-/** Is a point inside an active player smoke cloud? */
-function inPlayerSmoke(t: TransitState, x: number, y: number): boolean {
-  for (const fx of t.areaEffects) {
-    if (fx.kind !== 'smoke' || t.time >= fx.until) continue;
-    if (dist(x, y, fx.x, fx.y) <= fx.radius) return true;
-  }
-  return false;
 }
 
 /** Enemy smoke covering a point, if any.
@@ -766,9 +748,7 @@ type MissileTarget =
 /** Skill-scaled weight bump for how appealing a target is: closer to the firing
  *  site and more wounded targets get favored as the enemy grows more competent
  *  over the campaign. At skill 0 this returns 1 (pure value/straggler weighting,
- *  the near-random early behavior). Player smoke DEGRADES this: a ship inside a
- *  defensive cloud is targeted with a less sophisticated preference (one
- *  doctrine tier less; a full reset when dense). */
+ *  the near-random early behavior). */
 function targetingBias(
   t: TransitState,
   x: number,
@@ -777,11 +757,7 @@ function targetingBias(
   siteX: number,
   siteY: number,
 ): number {
-  let skill = t.enemyTargetingSkill;
-  if (skill <= 0) return 1;
-  if (t.effects.smokeDegradation > 0 && inPlayerSmoke(t, x, y)) {
-    skill *= 1 - t.effects.smokeDegradation;
-  }
+  const skill = t.enemyTargetingSkill;
   if (skill <= 0) return 1;
   const proximity = clamp(1 - dist(x, y, siteX, siteY) / WORLD.width, 0, 1);
   const wounded = clamp(1 - hpFrac, 0, 1);
@@ -1604,44 +1580,6 @@ function handleCommand(t: TransitState, cmd: TransitCommand, rng: RNG): void {
         t.areaEffects.push(fx);
         revealTorpedoesInPing(t, fx);
         pushEvent(t, { type: 'abilityUsed', detail: 'sonar' });
-      } else if (cmd.ability === 'smoke') {
-        // Defensive smoke: a barrage walked up ONE LANE from the friendly
-        // shore, degrading the enemy's targeting for every hull it covers. It
-        // destroys nothing and blocks nothing outright.
-        //
-        // The tap picks a lane, exactly as it does for the scan plane — the
-        // convoy is a column strung along a lane, so screening it is a lane
-        // decision, not a point one.
-        if (t.smokeCharges <= 0) return;
-        t.smokeCharges--;
-        t.stats.counter.charges.smoke.used++;
-        const laneIndex = t.geo.nearestLane(px, py);
-        const bar = COMBAT.smokeBarrage;
-        const radius = t.effects.abilities.smoke.radius;
-        const duration = t.effects.abilities.smoke.duration;
-        // Cover the middle of the sailed length; leave both ends open.
-        const sailed = WORLD.deliverX - WORLD.spawnX;
-        const covered = sailed * bar.laneCoverage;
-        const from = WORLD.spawnX + (sailed - covered) / 2;
-        const pockets = Math.max(
-          2,
-          Math.min(bar.maxPockets, Math.round(covered / (radius * bar.pocketSpacingRadii)) + 1),
-        );
-        for (let i = 0; i < pockets; i++) {
-          const f = i / (pockets - 1);
-          const px2 = from + covered * f;
-          t.smokeBarrage.push({
-            // Always west to east, whichever end the player happened to tap:
-            // the barrage walks the way the convoy sails — and it follows the
-            // lane, so a screen laid down a bending channel stays over it.
-            x: px2,
-            y: t.geo.laneY(laneIndex, px2),
-            at: t.time + bar.walkSeconds * f,
-            radius,
-            duration,
-          });
-        }
-        pushEvent(t, { type: 'abilityUsed', detail: 'smoke' });
       }
       return;
     }
@@ -2631,7 +2569,8 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
         } else {
           // Nothing to hunt (or still in the post-kill pause): coast forward and
           // bleed speed rather than freezing mid-water.
-          steerBoat(t, boat, boat.x + Math.cos(boat.heading) * 200, boat.y + Math.sin(boat.heading) * 200, fx.speed * 0.45, dt);
+          const coastSpeed = fx.speed[variant] ?? fx.speed.smallArms;
+          steerBoat(t, boat, boat.x + Math.cos(boat.heading) * 200, boat.y + Math.sin(boat.heading) * 200, coastSpeed * 0.45, dt);
           continue;
         }
       } else {
@@ -2671,7 +2610,7 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
         boat,
         esc.x + Math.cos(ang) * standoff,
         esc.y + Math.sin(ang) * standoff,
-        fx.speed,
+        fx.speed[variant] ?? fx.speed.smallArms,
         dt,
       );
       const weaponE = fx.fire[variant];
@@ -2691,6 +2630,7 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     // hull itself. That single change is what stops a boat converging onto the
     // ship: the goal it chases is already the standoff distance away.
     const standoff = fx.standoff[variant] ?? fx.standoff.smallArms;
+    const cruiseSpeed = fx.speed[variant] ?? fx.speed.smallArms;
     const stationX = target.x + Math.cos(boat.stationAngle) * standoff;
     const stationY = target.y + Math.sin(boat.stationAngle) * standoff;
     const toStation = dist(boat.x, boat.y, stationX, stationY);
@@ -2701,7 +2641,7 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     // Match the hull's pace once on station, so a boat alongside drifts with
     // the convoy instead of oscillating past it — but never sprint-close: the
     // approach speed tapers with the distance still to run.
-    const desiredSpeed = Math.min(fx.speed, target.speed + toStation * 1.6);
+    const desiredSpeed = Math.min(cruiseSpeed, target.speed + toStation * 1.6);
     steerBoat(t, boat, stationX, stationY, desiredSpeed, dt);
 
     // Buffer: a boat is pushed back out if it ends up inside the hull's
@@ -2719,7 +2659,7 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     if (dHull < minDist) {
       const nx = dHull > 0.001 ? (boat.x - target.x) / dHull : Math.cos(boat.stationAngle);
       const ny = dHull > 0.001 ? (boat.y - target.y) / dHull : Math.sin(boat.stationAngle);
-      const push = Math.min(minDist - dHull, fx.speed * dt);
+      const push = Math.min(minDist - dHull, cruiseSpeed * dt);
       boat.x += nx * push;
       boat.y += ny * push;
     }
@@ -2728,13 +2668,14 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
     // the guarantee the whole rework rests on — nothing about a boat's motion
     // is ever a jump the player could not have watched happen.
     const moved = dist(fromX, fromY, boat.x, boat.y);
-    const limit = fx.speed * dt;
+    const limit = cruiseSpeed * dt;
     if (moved > limit) {
       boat.x = fromX + ((boat.x - fromX) / moved) * limit;
       boat.y = fromY + ((boat.y - fromY) / moved) * limit;
     }
 
-    const range = variant === 'boarding' ? fx.boardRange : fx.engageRange;
+    const range =
+      variant === 'boarding' ? fx.boardRange : (fx.engageRange[variant] ?? fx.engageRange.smallArms);
     const engaged = dist(boat.x, boat.y, target.x, target.y) <= range;
     boat.engaging = engaged;
     if (!engaged) continue;
@@ -3390,73 +3331,12 @@ function updateTorpedoDetection(t: TransitState): void {
 }
 
 /** Expire placed area effects; sonar pings keep revealing torpedoes that run
- *  into them; smoke refreshes the track-breaking grace on ships inside. */
-/** Walk the player's smoke barrage: fire each pocket's round as its turn comes
- *  round, fly the rounds, and burst them into cloud where they land. */
-function updateSmokeBarrage(t: TransitState, dt: number): void {
-  // Rounds whose turn has come leave the friendly shore directly below their
-  // burst point, so the barrage reads as a line of fire marching up the lane
-  // rather than a fan from one battery.
-  if (t.smokeBarrage.length > 0) {
-    const due = t.smokeBarrage.filter((p) => p.at <= t.time);
-    if (due.length > 0) {
-      t.smokeBarrage = t.smokeBarrage.filter((p) => p.at > t.time);
-      for (const pocket of due) {
-        t.smokeShells.push({
-          id: t.nextEntityId++,
-          x: pocket.x,
-          y: t.geo.baseY(pocket.x),
-          targetX: pocket.x,
-          targetY: pocket.y,
-          radius: pocket.radius,
-          duration: pocket.duration,
-        });
-      }
-    }
-  }
-  if (t.smokeShells.length === 0) return;
-  const step = COMBAT.smokeBarrage.shellSpeed * dt;
-  const landed: SmokeShell[] = [];
-  for (const shell of t.smokeShells) {
-    const dx = shell.targetX - shell.x;
-    const dy = shell.targetY - shell.y;
-    const d = Math.hypot(dx, dy);
-    if (d <= step) {
-      shell.x = shell.targetX;
-      shell.y = shell.targetY;
-      landed.push(shell);
-      continue;
-    }
-    shell.x += (dx / d) * step;
-    shell.y += (dy / d) * step;
-  }
-  for (const shell of landed) {
-    t.areaEffects.push({
-      id: t.nextEntityId++,
-      kind: 'smoke',
-      x: shell.x,
-      y: shell.y,
-      radius: shell.radius,
-      until: t.time + shell.duration,
-    });
-  }
-  if (landed.length > 0) {
-    const done = new Set(landed.map((s) => s.id));
-    t.smokeShells = t.smokeShells.filter((s) => !done.has(s.id));
-  }
-}
-
+ *  into them. */
 function updateAreaEffects(t: TransitState): void {
   for (const fx of t.areaEffects) {
     if (t.time >= fx.until) continue;
     if (fx.kind === 'sonar') {
       revealTorpedoesInPing(t, fx);
-    } else if (fx.kind === 'smoke' && t.effects.smokeTrackBreakSeconds > 0) {
-      for (const ship of activeShips(t)) {
-        if (dist(ship.x, ship.y, fx.x, fx.y) <= fx.radius) {
-          ship.smokeGraceUntil = t.time + t.effects.smokeTrackBreakSeconds;
-        }
-      }
     }
   }
   t.areaEffects = t.areaEffects.filter((fx) => t.time < fx.until);
@@ -3569,7 +3449,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         vx: 0,
         vy: 0,
         // Current speed, not a constant: she works up to her cruise.
-        speed: COMBAT.attackBoat.speed * 0.4,
+        speed: (COMBAT.attackBoat.speed[variant] ?? COMBAT.attackBoat.speed.smallArms) * 0.4,
         alive: true,
         // Boats are surface craft in plain sight — nothing to detect.
         revealed: true,
@@ -4477,8 +4357,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     if (threat.kind === 'guidedMissile') {
       // Resolve the current homing point (escort or ship); re-acquire the
-      // nearest ship if the original target is gone. Track-breaking smoke
-      // keeps recently-cloaked ships out of the re-acquisition pool.
+      // nearest ship if the original target is gone.
       let tgtX: number | undefined;
       let tgtY: number | undefined;
       if (threat.targetKind === 'escort') {
@@ -4495,11 +4374,7 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         }
       }
       if (tgtX === undefined) {
-        let candidates = targetableShips(t);
-        if (t.effects.smokeTrackBreakSeconds > 0) {
-          const unbroken = candidates.filter((s) => s.smokeGraceUntil <= t.time);
-          if (unbroken.length > 0) candidates = unbroken;
-        }
+        const candidates = targetableShips(t);
         if (candidates.length > 0) {
           const nearest = candidates.reduce((best, s) =>
             dist(threat.x, threat.y, s.x, s.y) < dist(threat.x, threat.y, best.x, best.y) ? s : best,
@@ -4968,7 +4843,6 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
   // --- Depth charges, placed areas, support aircraft --------------------------
   updateDepthChargeShots(t, rng, dt);
-  updateSmokeBarrage(t, dt);
   updateAreaEffects(t);
   updateAircraft(t, rng, dt);
 

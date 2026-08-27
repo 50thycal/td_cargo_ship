@@ -222,7 +222,7 @@ describe('attack-boat behaviour', () => {
     const victim = victimOf(state, boat);
     expect(victim).toBeDefined();
     expect(Math.hypot(victim!.x - boat.x, victim!.y - boat.y)).toBeLessThanOrEqual(
-      COMBAT.attackBoat.engageRange + 1,
+      COMBAT.attackBoat.engageRange.smallArms + 1,
     );
   });
 
@@ -256,7 +256,11 @@ describe('attack-boat behaviour', () => {
     const boat = fleet[0];
     const victim = victimOf(state, boat)!;
     victim.hp = 1; // hurry the first kill along
-    run(state, rng, Math.ceil(1 / SIM.dt));
+    // The rocket boat opens up from much farther out than small arms, so its
+    // opening round can still be in flight a full second later — wait out the
+    // worst-case flight time (engage range ÷ round speed) plus slack.
+    const worstCaseFlight = COMBAT.attackBoat.engageRange.rocket / COMBAT.attackBoat.fire.rocket.speed;
+    run(state, rng, Math.ceil((worstCaseFlight + 1) / SIM.dt));
     expect(victim.alive).toBe(false);
     expect(state.stats.boatKills).toBe(1);
     expect(boat.targetShipId).toBeUndefined();
@@ -331,7 +335,7 @@ describe('attack-boat movement is physical', () => {
   it('never exceeds its speed limit — no teleporting, ever', () => {
     const { state, rng, fleet } = launch([spawn('smallArms')]);
     const boat = fleet[0];
-    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05; // 5% slack for rounding
+    const maxStep = COMBAT.attackBoat.speed.smallArms * SIM.dt * 1.05; // 5% slack for rounding
     let prevX = boat.x;
     let prevY = boat.y;
     let biggest = 0;
@@ -365,7 +369,7 @@ describe('attack-boat movement is physical', () => {
     const { state, rng, fleet } = launch([spawn('smallArms')]);
     const boat = fleet[0];
     const launchSpeed = boat.speed;
-    expect(launchSpeed).toBeLessThan(COMBAT.attackBoat.speed);
+    expect(launchSpeed).toBeLessThan(COMBAT.attackBoat.speed.smallArms);
     // Peak over the whole run-in, not an instantaneous sample: the boat
     // reaches cruise crossing the open water and then sheds pace again as it
     // settles onto the ring, so a fixed-time reading lands anywhere.
@@ -373,13 +377,13 @@ describe('attack-boat movement is physical', () => {
     for (let i = 0; i < Math.ceil(25 / SIM.dt) && !state.over && boat.alive; i++) {
       stepTransit(state, [], rng);
       peak = Math.max(peak, boat.speed);
-      expect(boat.speed).toBeLessThanOrEqual(COMBAT.attackBoat.speed + 0.001);
+      expect(boat.speed).toBeLessThanOrEqual(COMBAT.attackBoat.speed.smallArms + 0.001);
     }
     expect(peak).toBeGreaterThan(launchSpeed);
-    expect(peak).toBeCloseTo(COMBAT.attackBoat.speed, 0); // it does reach cruise
+    expect(peak).toBeCloseTo(COMBAT.attackBoat.speed.smallArms, 0); // it does reach cruise
     // ...and once alongside it matches the convoy's pace rather than idling at
     // full throttle into the hull.
-    expect(boat.speed).toBeLessThan(COMBAT.attackBoat.speed);
+    expect(boat.speed).toBeLessThan(COMBAT.attackBoat.speed.smallArms);
   });
 
   it('holds a stand-off ring BESIDE the hull and never sits on top of it', () => {
@@ -432,7 +436,7 @@ describe('attack-boat movement is physical', () => {
     // Through the reposition pause and the run-in to the next hull, every step
     // stays inside the speed limit — the boat covers the water under its own
     // power instead of being repositioned.
-    const maxStep = COMBAT.attackBoat.speed * SIM.dt * 1.05;
+    const maxStep = COMBAT.attackBoat.speed.rocket * SIM.dt * 1.05;
     let prevX = boat.x;
     let prevY = boat.y;
     for (

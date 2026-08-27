@@ -78,9 +78,6 @@ import {
   scanPulseBlockReason,
   gunShellsBlockReason,
   buyGunShells,
-  smokeCapacity,
-  smokeCanisterBlockReason,
-  buySmokeCanister,
   buyScanPulse,
   escortSlots,
   renameEscort,
@@ -1241,7 +1238,6 @@ const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
   antiBoarding: 'lock',
   counterBattery: 'turret',
   thermalImaging: 'eye',
-  smokeScreen: 'jam',
   flak: 'turret',
   hardened: 'shield',
   warthog: 'planeGun',
@@ -1344,7 +1340,6 @@ function branchTagRow(
         (eq.id === 'warthog' && c.warthogUnlocked) ||
         (eq.id === 'scan' && c.scanUnlocked) ||
         (eq.id === 'sonar' && c.sonarUnlocked) ||
-        (eq.id === 'smoke' && c.smokeUnlocked) ||
         (eq.id === 'hardened' && c.hardenedUnlocked);
       label = 'convoy asset';
     } else {
@@ -2379,24 +2374,6 @@ export function prepScreen(
   // their ORDNANCE. Commissioning them used to cost 150-160 each on top of the
   // technology that unlocked them, which was the same IOU the equipment economy
   // has shed.
-  assetGrid.append(
-    assetCard(
-      'jam',
-      'Defensive smoke',
-      `${c.smokeStock}/${smokeCapacity(c)}`,
-      'Pick a lane in transit; the shore walks a screen up it that dulls enemy targeting for every hull inside. Destroys nothing.',
-      {
-        label:
-          smokeCanisterBlockReason(c) === 'Stowage full'
-            ? 'Stowage full'
-            : `Buy canister — $${ECONOMY.smokeCanisterCost}`,
-        disabled: smokeCanisterBlockReason(c) !== null,
-        onClick: () => {
-          if (buySmokeCanister(c)) rerender();
-        },
-      },
-    ),
-  );
 
   // Drone munitions only appear once the minesweeper branch is researched
   // (nothing to buy them for otherwise).

@@ -32,7 +32,7 @@ import {
   effectiveResearch,
 } from '../src/data/counters';
 import { STAT_TIERS, tierValue, TIER_ORDER } from '../src/data/statTiers';
-import { COMBAT, SIM, WORLD } from '../src/data/tuning';
+import { SIM, WORLD } from '../src/data/tuning';
 import type {
   CampaignState,
   EnemyInstallation,
@@ -731,7 +731,6 @@ describe('replay determinism with counter commands', () => {
         if (tick === 30) cmds.push({ type: 'ability', ability: 'scan', x: 1100, y: WORLD.lanes[1] });
         if (tick === 60) cmds.push({ type: 'toggleAuto', system: 'baseInterceptor', enabled: false });
         if (tick === 90) cmds.push({ type: 'ability', ability: 'sonar', x: 900, y: WORLD.lanes[1] });
-        if (tick === 120) cmds.push({ type: 'ability', ability: 'smoke', x: 700, y: WORLD.lanes[1] });
         if (tick === 200) {
           const target = state.threats.find((t) => t.alive && t.kind === 'missile');
           if (target) cmds.push({ type: 'intercept', threatId: target.id });
@@ -787,21 +786,10 @@ describe('touch-input contract', () => {
     // complete interaction (no drag, no hold, no hover).
     const { state, rng } = quietTransit((c) => {
       c.sonarUnlocked = true;
-      c.smokeUnlocked = true;
-      c.smokeStock = 1; // canisters are bought now, not refilled each round
-      c.completedResearch = ['activeSonar.base', 'smokeScreen.base'];
+      c.completedResearch = ['activeSonar.base'];
     });
-    step(state, rng, [
-      { type: 'ability', ability: 'sonar', x: 800, y: WORLD.lanes[1] },
-      { type: 'ability', ability: 'smoke', x: 1000, y: WORLD.lanes[1] },
-    ]);
+    step(state, rng, [{ type: 'ability', ability: 'sonar', x: 800, y: WORLD.lanes[1] }]);
     expect(state.areaEffects.filter((f) => f.kind === 'sonar')).toHaveLength(1);
-    // Smoke is still ONE tap, but what it buys is a barrage rather than a
-    // cloud: the shore has to fire, and the rounds have to fly, before there
-    // is anything on the water.
-    expect(state.smokeBarrage.length + state.smokeShells.length).toBeGreaterThan(0);
-    step(state, rng, [], Math.ceil((COMBAT.smokeBarrage.walkSeconds + 4) / SIM.dt));
-    expect(state.areaEffects.filter((f) => f.kind === 'smoke').length).toBeGreaterThan(1);
   });
 });
 

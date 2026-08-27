@@ -1271,7 +1271,8 @@ describe('air defense & telemetry', () => {
     // attack boat spawned at t=20 is still alongside a hull at t=80, so it
     // occupies the whole window rather than a moment of it. Treat a boat as
     // covering its engagement window and measure the silence that is left.
-    const boatOccupancy = COMBAT.attackBoat.engageRange / COMBAT.attackBoat.speed + 45;
+    const boatOccupancy =
+      COMBAT.attackBoat.engageRange.smallArms / COMBAT.attackBoat.speed.smallArms + 45;
     const covered = plan.spawns
       .map((s) => ({ from: s.time, to: s.kind === 'attackBoat' ? s.time + boatOccupancy : s.time }))
       .sort((a, b) => a.from - b.from);

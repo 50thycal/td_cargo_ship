@@ -382,7 +382,7 @@ function eligibleOrdnance(c: CampaignState, pack: OrdnancePackDef): boolean {
     if (!Object.values(c.classModules).some((mods) => mods.includes('selfDefense'))) return false;
   }
   const research = effectiveResearch(c.completedResearch);
-  const capacityOf = (branchId: 'warthog' | 'scanPulse' | 'smokeScreen'): number =>
+  const capacityOf = (branchId: 'warthog' | 'scanPulse'): number =>
     resolveBranchStats(branchId, research).grants.charges ?? 0;
   // Offer the pack while ANY of its components can still land.
   //
@@ -394,7 +394,6 @@ function eligibleOrdnance(c: CampaignState, pack: OrdnancePackDef): boolean {
   const uncapped: boolean[] = [];
   if (pack.grant.warthogStock) uncapped.push(c.warthogStock < capacityOf('warthog'));
   if (pack.grant.scanStock) uncapped.push(c.scanStock < capacityOf('scanPulse'));
-  if (pack.grant.smokeStock) uncapped.push(c.smokeStock < capacityOf('smokeScreen'));
   // Ammunition stocks have no cap, so a pack carrying any of them always has
   // somewhere to put its load.
   if (pack.grant.ammo || pack.grant.droneAmmo || pack.grant.pdAmmo) uncapped.push(true);
@@ -840,7 +839,7 @@ export function applyModuleGrant(
 /** Top up stock from an ordnance package, clamped to what the fleet can hold. */
 function applyOrdnance(c: CampaignState, pack: OrdnancePackDef): void {
   const research = effectiveResearch(c.completedResearch);
-  const cap = (branchId: 'warthog' | 'scanPulse' | 'smokeScreen'): number =>
+  const cap = (branchId: 'warthog' | 'scanPulse'): number =>
     resolveBranchStats(branchId, research).grants.charges ?? 0;
   const g = pack.grant;
   if (g.ammo) c.ammo += g.ammo;
@@ -848,7 +847,6 @@ function applyOrdnance(c: CampaignState, pack: OrdnancePackDef): void {
   if (g.pdAmmo) c.pdAmmo += g.pdAmmo;
   if (g.warthogStock) c.warthogStock = Math.min(cap('warthog'), c.warthogStock + g.warthogStock);
   if (g.scanStock) c.scanStock = Math.min(cap('scanPulse'), c.scanStock + g.scanStock);
-  if (g.smokeStock) c.smokeStock = Math.min(cap('smokeScreen'), c.smokeStock + g.smokeStock);
 }
 
 /** Take one option from the pending draft. Applies IMMEDIATELY — the reward is

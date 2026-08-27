@@ -346,16 +346,6 @@ Networked Sensor Fusion.
 **Tactics:** Precise In-Smoke Silhouette (granted) · Launch-Origin Trace ·
 Protected Target Vector.
 
-#### Branch: Player Smoke Screen — convoy ability, disrupts enemy Targeting
-Directly undermines the shared Targeting Doctrine (finish-the-wounded,
-high-value, isolation, deny-the-delivery): attacks against ships inside the
-cloud use a one-tier-less-sophisticated preference — implemented as a 50%
-reduction of the enemy's targeting-skill weighting inside the cloud (100% when
-Dense). Track-Breaking Smoke adds a 4 s re-acquisition grace after a ship
-exits (guided missiles are not permanently broken). Never a plain accuracy
-debuff, never invulnerability.
-**Tactic paths (parallel):** +1 charge · larger radius · longer duration.
-
 ### Category: Electronic Attack & Drones
 
 #### Branch: Anti-Air Flak System — cargo module, attacks Recon Planes / Drones
@@ -496,7 +486,7 @@ that never fires.
 - **Shore bases** carry built-in missile interceptors plus a **1-slot base
   loadout**: counter-battery system (future strategic sensors join here).
 - **Convoy-wide assets** (purchased, charges refresh each round): Warthog, Scan
-  Pulse, Active Sonar Ping, Defensive Smoke Screen, Hardened/Backup Systems.
+  Pulse, Active Sonar Ping, Hardened/Backup Systems.
   Each keeps three **independent** upgrade paths — more charges vs larger
   coverage vs longer duration/persistence — never one forced chain.
 
@@ -553,12 +543,14 @@ that never fires.
 | Recon plane | Air-contact cue | Flak | Hardened systems |
 | Disabling drone | Air-contact cue | Flak + Proximity-Fuse | Redundancy |
 | Sensor jamming | Jamming indicator | **No shootable counter (by design)** | Hardened/backup systems |
-| Advanced targeting doctrine | Warning + target indicators | Defensive Smoke Screen | Formation/loadout choices |
+| Advanced targeting doctrine | Warning + target indicators | *No destructive counter* (Player Smoke Screen was removed; a replacement is TBD) | Formation/loadout choices |
 
 Audit results of this matrix (the "review the completed design" pass):
 
-- **Threats with no counter:** only sensor jamming (deliberate — the single
-  no-counter node) and smoke (deliberately mitigate-only).
+- **Threats with no counter:** sensor jamming (deliberate — the single
+  no-counter node), enemy smoke (deliberately mitigate-only), and — since the
+  Player Smoke Screen branch was removed — advanced targeting doctrine, which
+  has no player answer at all until a replacement mechanic lands.
 - **Counters that solve too many branches:** none — the compatibility tests
   pin each weapon to its domain. The gun run is scoped to the surface; smoke is
   scoped to targeting doctrine, not damage.

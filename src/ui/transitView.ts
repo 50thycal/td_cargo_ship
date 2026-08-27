@@ -20,7 +20,7 @@ import { Camera } from './camera';
 import { h } from './dom';
 
 /** Placeable abilities/weapons the HUD can arm; the next map tap places them. */
-type ArmedAbility = 'warthog' | 'scan' | 'sonar' | 'smoke' | 'dc';
+type ArmedAbility = 'warthog' | 'scan' | 'sonar' | 'dc';
 
 /** Automation toggle buttons, shown only for unlocked automation tactics. */
 const AUTO_TOGGLES: { system: AutoSystem; label: string; hint: string }[] = [
@@ -204,7 +204,6 @@ export class TransitView {
   private warthogBtn!: HTMLButtonElement;
   private scanBtn!: HTMLButtonElement;
   private sonarBtn!: HTMLButtonElement;
-  private smokeBtn!: HTMLButtonElement;
   private rebootBtn!: HTMLButtonElement;
   private dcBtn!: HTMLButtonElement;
   private targetBtn!: HTMLButtonElement;
@@ -379,10 +378,6 @@ export class TransitView {
       className: 'hud-btn',
       onClick: () => this.armAbility('sonar'),
     });
-    this.smokeBtn = h('button', {
-      className: 'hud-btn',
-      onClick: () => this.armAbility('smoke'),
-    });
     this.dcBtn = h('button', {
       className: 'hud-btn',
       onClick: () => this.armAbility('dc'),
@@ -488,7 +483,6 @@ export class TransitView {
     this.actionTray = h('div', { className: 'action-tray hidden' }, [
       this.warthogBtn,
       this.scanBtn,
-      this.smokeBtn,
       this.dcBtn,
       autoGroup,
     ]);
@@ -671,7 +665,6 @@ export class TransitView {
       warthog:
         'Drag the A-10\u2019s run-in line over open water, or tap its two ends — it guns what lies ahead of it, then comes back the other way',
       sonar: 'Tap the water to place the active sonar ping',
-      smoke: 'Tap a lane — the shore walks a smoke screen up it, west to east',
       dc: 'Tap a point in the WATER — the nearest ready escort lobs depth charges there',
     };
     const selected = t.escorts.find((e) => e.id === this.selectedEscort && e.alive);
@@ -716,12 +709,6 @@ export class TransitView {
     this.sonarBtn.classList.toggle('armed', this.armedAbility === 'sonar');
     this.sonarBtn.classList.toggle('hidden', t.stats.counter.charges.sonar.available === 0);
 
-    this.smokeBtn.innerHTML = `SMOKE<span class="charges">×${t.smokeCharges}</span>`;
-    this.smokeBtn.disabled = t.smokeCharges <= 0;
-    this.smokeBtn.classList.toggle('off', t.smokeCharges <= 0);
-    this.smokeBtn.classList.toggle('armed', this.armedAbility === 'smoke');
-    this.smokeBtn.classList.toggle('hidden', t.stats.counter.charges.smoke.available === 0);
-
     this.rebootBtn.innerHTML = `RBT<span class="charges">×${t.rebootCharges}</span>`;
     this.rebootBtn.disabled = t.rebootCharges <= 0 || t.jammingSeconds <= 0;
     this.rebootBtn.classList.toggle('hidden', t.stats.counter.charges.reboot.available === 0);
@@ -738,18 +725,16 @@ export class TransitView {
     // that are invisible until the player opens it. The button's own tooltip
     // ("Abilities you have in hand") is the only clue it holds anything, and a
     // `title` attribute never fires on a touchscreen: on the platform this
-    // game ships to, that clue does not exist. Two full campaigns' worth of
-    // playtest logs show the cost — smoke researched, canisters bought,
-    // upgraded, and laid ZERO times across nine rounds and then again across
-    // eight, in each case because nothing on the closed HUD ever said the
-    // charge was sitting there. A small always-visible marker on the key
-    // itself is the fix: it has to be legible with the drawer shut, since shut
-    // is the state a player who has never opened it is looking at.
+    // game ships to, that clue does not exist. Playtest logs have shown the
+    // cost of that before — a bought charge sitting unused across a whole
+    // campaign because nothing on the closed HUD ever said it was there. A
+    // small always-visible marker on the key itself is the fix: it has to be
+    // legible with the drawer shut, since shut is the state a player who has
+    // never opened it is looking at.
     // Matches the warthogBtn's own .disabled gate above: since stacked sorties
     // landed, readiness is stock alone — a charge is spendable whether or not
     // a previous A-10 is still on task.
-    const trayHasSomethingToUse =
-      t.warthogCharges > 0 || t.scanCharges > 0 || t.smokeCharges > 0 || dcReady > 0;
+    const trayHasSomethingToUse = t.warthogCharges > 0 || t.scanCharges > 0 || dcReady > 0;
     this.actionsBtn.classList.toggle('has-charges', trayHasSomethingToUse);
 
     // Automation toggle states: launcher reload and the SEPARATE auto-fire
@@ -780,7 +765,6 @@ export class TransitView {
     if (ability === 'warthog' && this.state.warthogCharges <= 0) return;
     if (ability === 'scan' && this.state.scanCharges <= 0) return;
     if (ability === 'sonar' && this.state.sonarCharges <= 0) return;
-    if (ability === 'smoke' && this.state.smokeCharges <= 0) return;
     if (
       ability === 'dc' &&
       !this.state.escorts.some((e) => e.alive && e.dcShots > 0 && e.dcCooldown <= 0)
@@ -955,10 +939,10 @@ export class TransitView {
     const wy = this.camera.screenToWorldY(cy);
 
     // 0) If an ability/weapon is armed, this tap places it where the player
-    //    touched. Scan and smoke: the Y picks a lane — one charts it, the other
-    //    screens it. A-10: the jet runs the bearing that was drawn. Sonar: a
-    //    placed area effect. DC: the nearest ready escort lobs depth charges at
-    //    the point (an AREA attack — never a lock-on).
+    //    touched. Scan: the Y picks a lane it charts. A-10: the jet runs the
+    //    bearing that was drawn. Sonar: a placed area effect. DC: the nearest
+    //    ready escort lobs depth charges at the point (an AREA attack — never
+    //    a lock-on).
     if (this.armedAbility) {
       const ability = this.armedAbility;
       // The A-10 needs a LINE, so it takes two taps: the first marks where the
@@ -1704,42 +1688,27 @@ export class TransitView {
       ctx.stroke();
     }
 
-    // Placed area effects: active sonar pings (blue) and defensive smoke (grey).
+    // Placed area effects: active sonar pings. Enemy smoke is a distinct kind
+    // with its own render below (soft grey mass, drawn with the threats).
     for (const fx of t.areaEffects) {
+      if (fx.kind !== 'sonar') continue;
       const cx = this.sx(fx.x);
       const cy = this.sy(fx.y);
       const r = fx.radius * this.scale;
-      const remain = Math.max(0, fx.until - t.time);
-      if (fx.kind === 'sonar') {
-        ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
-        ctx.setLineDash([4, 7]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // A sweeping ping arm makes the active window readable.
-        const ang = (now / 500) % (Math.PI * 2);
-        ctx.strokeStyle = 'rgba(77, 195, 255, 0.35)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
-        ctx.stroke();
-      } else {
-        // Smoke: a soft grey blob, fading as it nears expiry.
-        const fade = Math.min(1, remain / 4);
-        ctx.fillStyle = `rgba(170, 180, 190, ${0.16 * fade})`;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = `rgba(190, 200, 210, ${0.35 * fade})`;
-        ctx.setLineDash([10, 10]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      ctx.strokeStyle = 'rgba(77, 195, 255, 0.5)';
+      ctx.setLineDash([4, 7]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // A sweeping ping arm makes the active window readable.
+      const ang = (now / 500) % (Math.PI * 2);
+      ctx.strokeStyle = 'rgba(77, 195, 255, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+      ctx.stroke();
     }
 
     // Mines the fleet currently holds a contact on. A contact is not permanent:
@@ -2190,9 +2159,14 @@ export class TransitView {
       // Boats steer under a turn limit, so heading is real state — a boat
       // holding station has near-zero velocity but is still pointed somewhere.
       const ang = threat.heading ?? Math.atan2(threat.vy, threat.vx);
+      const boatVariant = threat.boatVariant ?? 'smallArms';
+      const isRocketBoat = boatVariant === 'rocket';
       // Wake: the visible tell that a boat is a moving hull rather than a
-      // marker that appears alongside. Length tracks actual speed.
-      const wake = Math.min(1, (threat.speed ?? 0) / COMBAT.attackBoat.speed);
+      // marker that appears alongside. Length tracks actual speed against that
+      // variant's own cruise, not a fleet-wide constant — a rocket boat at its
+      // (slower) cruise should still read as "at speed", not "limping".
+      const cruiseSpeed = COMBAT.attackBoat.speed[boatVariant] ?? COMBAT.attackBoat.speed.smallArms;
+      const wake = Math.min(1, (threat.speed ?? 0) / cruiseSpeed);
       if (wake > 0.15) {
         ctx.strokeStyle = `rgba(180, 210, 235, ${0.05 + 0.16 * wake})`;
         ctx.lineWidth = 3;
@@ -2204,15 +2178,37 @@ export class TransitView {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(ang);
-      ctx.fillStyle = threat.boatVariant === 'boarding' ? '#e08a5e' : '#d8626a';
+      // The rocket boat is a wider, heavier hull than the small-arms skiff —
+      // it is carrying a rack, not a machine gun — so it gets its own beam and
+      // its own color rather than sharing the small-arms silhouette.
+      const beam = isRocketBoat ? 5.5 : 4;
+      const bowX = isRocketBoat ? 10 : 9;
+      const sternX = isRocketBoat ? -10 : -9;
+      ctx.fillStyle =
+        boatVariant === 'boarding' ? '#e08a5e' : isRocketBoat ? '#c9784a' : '#d8626a';
       ctx.beginPath();
-      ctx.moveTo(9, 0);
-      ctx.lineTo(3, -4);
-      ctx.lineTo(-9, -4);
-      ctx.lineTo(-9, 4);
-      ctx.lineTo(3, 4);
+      ctx.moveTo(bowX, 0);
+      ctx.lineTo(bowX - 6, -beam);
+      ctx.lineTo(sternX, -beam);
+      ctx.lineTo(sternX, beam);
+      ctx.lineTo(bowX - 6, beam);
       ctx.closePath();
       ctx.fill();
+      // Rocket rack on the stern: a dark launcher block with a few tube marks,
+      // the visual tell that this hull's projectile is a rocket, not tracer
+      // fire, before it ever fires a round.
+      if (isRocketBoat) {
+        ctx.fillStyle = 'rgba(40, 32, 27, 0.9)';
+        ctx.fillRect(sternX + 1, -beam * 0.75, 4.5, beam * 1.5);
+        ctx.strokeStyle = 'rgba(255, 158, 110, 0.85)';
+        ctx.lineWidth = 0.6;
+        for (let tube = -1; tube <= 1; tube++) {
+          ctx.beginPath();
+          ctx.moveTo(sternX + 1.5, tube * beam * 0.5);
+          ctx.lineTo(sternX + 4.5, tube * beam * 0.5);
+          ctx.stroke();
+        }
+      }
       ctx.restore();
       if (threat.maxHp && threat.hp !== undefined && threat.hp < threat.maxHp) {
         const frac = Math.max(0, threat.hp / threat.maxHp);
@@ -2366,30 +2362,6 @@ export class TransitView {
       ctx.stroke();
     }
 
-    // The player's smoke barrage: rounds arcing up from the friendly shore,
-    // each with the pocket it is about to lay marked ahead of it. Drawn pale
-    // and cool so they are never mistaken for the enemy's artillery, which
-    // uses the same shape in hot orange.
-    for (const shell of t.smokeShells) {
-      const ix = this.sx(shell.targetX);
-      const iy = this.sy(shell.targetY);
-      ctx.strokeStyle = 'rgba(196, 206, 216, 0.35)';
-      ctx.setLineDash([3, 5]);
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(ix, iy, shell.radius * this.scale, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const sx = this.sx(shell.x);
-      const sy = this.sy(shell.y);
-      ctx.strokeStyle = 'rgba(226, 234, 240, 0.9)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      // Trail points back the way it came — straight down the lane's normal.
-      ctx.lineTo(sx, sy + 9 * Math.sign(shell.y - shell.targetY || 1));
-      ctx.stroke();
-    }
 
     // Depth-charge rounds in flight, plus their aim points.
     for (const shot of t.depthChargeShots) {
