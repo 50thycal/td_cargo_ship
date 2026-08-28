@@ -186,11 +186,16 @@ export const REGIONS: Record<RegionId, RegionDef> = {
     // So: a higher opening (base/perRound) so the region starts with real
     // pressure instead of ramping into it, and a cap set far enough out that
     // the performance multipliers decide the late rounds instead of the clamp.
-    budget: { base: 70, perRound: 78, cap: 2200 },
+    // RAISED AGAIN (~25%) after the second hand-play. The volume itself landed
+    // well — "I like the amount of missiles, I think we could turn it up even
+    // more" — so this is the same curve scaled, not a reshaping.
+    budget: { base: 88, perRound: 98, cap: 2750 },
     // Raised with the purse — at the old 130 the enemy hit the unit ceiling
     // almost immediately at the new budget and binned the difference, which is
-    // the exact failure the note above describes.
-    branchUnitCeilings: { missiles: 300 },
+    // the exact failure the note above describes. 400 keeps the ceiling clear
+    // of the new cap: at 2750 with the escalation share pinned, a fully-funded
+    // round buys roughly 330 units.
+    branchUnitCeilings: { missiles: 400 },
     start: { ...DEFAULT_START, fleet: { ...DEFAULT_START.fleet } },
     completionXp: 60,
     unlocks: 'homeStrait',

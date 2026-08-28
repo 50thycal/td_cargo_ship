@@ -1611,9 +1611,31 @@ export const ENEMY_ECONOMY = {
    *
    *  With it, a bigger convoy earns more and draws more, which is the trade-off
    *  the choice was always supposed to be. The floor is deliberately shallow —
-   *  sailing light should be a smaller target, but never a free pass. */
+   *  sailing light should be a smaller target, but never a free pass.
+   *
+   *  THE FLOOR WAS NOT SHALLOW ENOUGH. At -0.5 the scaling ran symmetrically
+   *  in both directions, and downward it was not pricing a choice — it was
+   *  rewarding attrition. A hand-played run that lost both escorts on round 4
+   *  saw the convoy multiplier swing from +0.46 on round 4 to the -0.50 floor
+   *  by round 9 purely because hulls kept sinking, so incoming fire FELL from
+   *  139 missiles to 78 across exactly the stretch the player was least able
+   *  to answer. Losing bought a compounding discount on being shot at.
+   *
+   *  The player called the shape of it before the numbers did: "I shouldn't
+   *  have been able to make the quota for as long as I did, and I should have
+   *  lost earlier instead of having rounds where there just wasn't much going
+   *  on." A collapsing run coasted five rounds to a bookkeeping defeat instead
+   *  of being finished, and the coasting rounds were the boring ones.
+   *
+   *  -0.15 keeps the honest half of the idea — a small convoy is a slightly
+   *  smaller target, and sailing light already costs income, since income IS
+   *  value delivered — without letting a shrinking fleet buy its way out of
+   *  the fight. The recovery valve for a genuinely bad round is unchanged and
+   *  lives elsewhere: dampStruggling still cuts the enemy's growth outright
+   *  below strugglingDelivery, which is a response to PERFORMANCE rather than
+   *  a standing discount for having already lost ships. */
   convoyScalePerRatio: 1.0,
-  convoyScaleMin: -0.5,
+  convoyScaleMin: -0.15,
   convoyScaleMax: 1.0,
   /** Convoy value the scaling above is measured against — the designed opening
    *  convoy (15 cargo + 3 tankers + 2 freighters = 241).
