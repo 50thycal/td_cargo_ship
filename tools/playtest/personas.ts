@@ -42,7 +42,7 @@ import {
 } from '../../src/sim/draft';
 import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../src/data/counters';
 import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
-import { COMBAT, COMMANDER, ESCORT_LEGACY, NAV, WORLD } from '../../src/data/tuning';
+import { COMBAT, COMMANDER, ECONOMY, ESCORT_LEGACY, NAV, WORLD } from '../../src/data/tuning';
 import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
 import { ESCORT_LEGACIES, legacyPointsUsed } from '../../src/data/escortLegacies';
 import type {
@@ -85,7 +85,21 @@ export type BuyIntent =
    *  A screen target restores the intent a player actually has: keep the escorts
    *  up FIRST, then grow the convoy behind them. */
   | { kind: 'escort'; upTo?: number }
-  | { kind: 'ammo'; upTo: number }
+  /** Interceptor rounds. `upTo` is a standing magazine level; `perThreat`
+   *  makes the target track the LAST ROUND'S incoming instead, which is what a
+   *  human does — they read the after-action report, see ninety missiles, and
+   *  stock for ninety.
+   *
+   *  Without `perThreat` the sweep could not measure the interceptor economy at
+   *  all. Every persona named a fixed ceiling between 18 and 70 rounds and
+   *  bought back to it forever, so as the enemy's volume climbed past 90
+   *  missiles a round the bots simply declined to answer it and their ammo
+   *  spend sat at a flat ~20% of income. A hand-played log over the same region
+   *  shows the player buying 65-75 rounds a round against 65-92 missiles —
+   *  roughly one interceptor per contact, rising with the threat. A fixed cap
+   *  cannot express that, so an economy that cannot afford the answer and a bot
+   *  that never tries to buy it look identical in the data. */
+  | { kind: 'ammo'; upTo: number; perThreat?: number }
   | { kind: 'droneAmmo'; upTo: number }
   | { kind: 'selfDefenseAmmo'; upTo: number }
   /** Deck-gun shells: the gun fires nothing without them now, so any persona
@@ -202,6 +216,19 @@ export interface Persona {
 // Procurement execution
 // ---------------------------------------------------------------------------
 
+/** The magazine level an ammo intent is aiming at this prep phase: its
+ *  standing floor, or — for a threat-scaled intent — whatever last round's
+ *  incoming says this one will ask for, whichever is larger.
+ *
+ *  Reads `missilesSpawned` rather than shots fired: a player stocks against
+ *  what CAME, not against what they managed to shoot at. */
+function ammoTarget(c: CampaignState, intent: { upTo: number; perThreat?: number }): number {
+  if (!intent.perThreat) return intent.upTo;
+  const last = c.telemetry[c.telemetry.length - 1];
+  const incoming = last?.missilesSpawned ?? 0;
+  return Math.max(intent.upTo, Math.ceil(incoming * intent.perThreat));
+}
+
 /** Attempt one intent. Returns true if cash actually moved (so the caller can
  *  loop until the whole list stops making progress). */
 function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: Persona): boolean {
@@ -227,7 +254,7 @@ function tryBuy(c: CampaignState, intent: BuyIntent, reserve: number, persona: P
     case 'escort':
       return (intent.upTo === undefined || c.escortUnits.length < intent.upTo) && buyEscort(c);
     case 'ammo':
-      return c.ammo < intent.upTo && buyAmmo(c, 5);
+      return c.ammo < ammoTarget(c, intent) && buyAmmo(c, ECONOMY.ammoPerBuy);
     // Consumables are gated on owning the thing that fires them — a real
     // player doesn't stockpile drone munitions with no launcher fitted, and
     // letting a bot do it would quietly distort the economy signal.
@@ -962,7 +989,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'ability', id: 'warthog' },
-      { kind: 'ammo', upTo: 45 },
+      { kind: 'ammo', upTo: 45, perThreat: 1.0 },
     ],
     escortDoctrine: [
       // A generalist flotilla: one of each role rather than three of one.
@@ -1005,7 +1032,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'compartmentalization' },
       { kind: 'module', classId: 'freighter', moduleId: 'reinforcedHull' },
       { kind: 'base' },
-      { kind: 'ammo', upTo: 35 },
+      { kind: 'ammo', upTo: 35, perThreat: 1.0 },
     ],
     transit: FIGHTER,
   },
@@ -1034,7 +1061,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort', upTo: 4 },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
-      { kind: 'ammo', upTo: 70 },
+      { kind: 'ammo', upTo: 70, perThreat: 1.4 },
       { kind: 'ability', id: 'warthog' },
     ],
     transit: FIGHTER,
@@ -1075,7 +1102,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escortFit' },
       { kind: 'gunAmmo', upTo: 60 },
       { kind: 'droneAmmo', upTo: 9 },
-      { kind: 'ammo', upTo: 40 },
+      { kind: 'ammo', upTo: 40, perThreat: 0.9 },
     ],
     escortDoctrine: [
       ['mcmDroneLauncher'],
@@ -1115,7 +1142,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'cargo', moduleId: 'mineSonar' },
       { kind: 'module', classId: 'tanker', moduleId: 'mineSonar' },
       { kind: 'base' },
-      { kind: 'ammo', upTo: 32 },
+      { kind: 'ammo', upTo: 32, perThreat: 0.7 },
     ],
     escortDoctrine: [
       ['mcmDroneLauncher'],
@@ -1160,7 +1187,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'freighter', moduleId: 'hydrophone' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
-      { kind: 'ammo', upTo: 30 },
+      { kind: 'ammo', upTo: 30, perThreat: 0.7 },
     ],
     escortDoctrine: [
       ['depthCharges'],
@@ -1202,7 +1229,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'escort' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
-      { kind: 'ammo', upTo: 30 },
+      { kind: 'ammo', upTo: 30, perThreat: 0.7 },
     ],
     escortDoctrine: [
       // Specialised hard: every escort is a gun boat, which the old shared
@@ -1239,7 +1266,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'base' },
       { kind: 'escort', upTo: 2 },
       { kind: 'ship', classId: 'cargo' },
-      { kind: 'ammo', upTo: 34 },
+      { kind: 'ammo', upTo: 34, perThreat: 0.8 },
     ],
     transit: FIGHTER,
   },
@@ -1299,7 +1326,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'droneAmmo', upTo: 6 },
       // Only now does the convoy grow.
       { kind: 'ship', classId: 'cargo' },
-      { kind: 'ammo', upTo: 45 },
+      { kind: 'ammo', upTo: 45, perThreat: 1.0 },
     ],
     escortDoctrine: [
       ['deckGun', 'depthCharges'],
@@ -1322,7 +1349,7 @@ export const PERSONAS: Persona[] = [
     ],
     buys: [
       { kind: 'repair' },
-      { kind: 'ammo', upTo: 18 },
+      { kind: 'ammo', upTo: 18, perThreat: 0.5 },
       { kind: 'ship', classId: 'tanker' },
       { kind: 'ship', classId: 'cargo' },
       { kind: 'base' },
@@ -1375,7 +1402,7 @@ export const PERSONAS: Persona[] = [
       { kind: 'module', classId: 'tanker', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'freighter', moduleId: 'reinforcedHull' },
       { kind: 'module', classId: 'cargo', moduleId: 'antiBoarding' },
-      { kind: 'ammo', upTo: 50 },
+      { kind: 'ammo', upTo: 50, perThreat: 1.1 },
     ],
     escortDoctrine: [['deckGun'], ['deckGun']],
     transit: { ...FIGHTER, intercept: 'sparing' },

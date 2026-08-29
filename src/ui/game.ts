@@ -274,6 +274,9 @@ export class Game {
       c.round,
       c.confidence,
       c.round === 1,
+      // The clock's fast-forward rungs follow the same gate as every other dev
+      // tool: Settings, `?dev`, the Vite dev server, or an existing dev run.
+      devEnabled(c, this.profile),
       c.quota.pointsEarned,
       c.quota.pointsNeeded,
       c.targetPriority,

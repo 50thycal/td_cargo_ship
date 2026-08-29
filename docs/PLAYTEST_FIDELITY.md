@@ -382,3 +382,70 @@ Both were reporting `MATCH` over the bug above.
 - **The player ran a bare Commander profile** (no abilities) while every persona
   commissions a loadout. Flagged as a setup mismatch, and correctly so — the
   bots get accuracy, salvage-rate and price bonuses this run did not have.
+
+---
+
+## 2026-08-29 — the ammunition ceiling the personas could not express
+
+Triggered by a hand-played Missile Coast log whose author reported the missile
+volume as *good* ("the missile pressure appears to be in a good place") and the
+counterplay as unaffordable. The sweep did not agree, and this section is why.
+
+### B — Missing capability: an ammunition intent that responds to the threat
+
+Every persona named a **fixed** interceptor ceiling — `{ kind: 'ammo', upTo: N }`
+with N between 18 and 70 — and topped back up to it forever. The enemy's volume
+on that region climbs past 90 missiles a round; the bots simply declined to
+answer it, and their ammunition spend sat at a flat ~20% of income all run.
+The hand-played log shows the opposite behaviour: the player bought 65-75
+rounds a round against 65-92 missiles, reading the after-action report and
+stocking for what they had just been shown.
+
+That gap is not a difference of style, it is the harness being unable to
+express the decision under test. **An economy that cannot afford the answer and
+a bot that never tries to buy it produce identical telemetry.** The sweep was
+reporting "ammunition is 20% of income" for a price that could not be paid.
+
+Added `perThreat` to the ammo intent (`tools/playtest/personas.ts`): the target
+magazine becomes `max(upTo, lastRound.missilesSpawned × perThreat)`, so the
+standing floor is a floor and the ceiling tracks the raid. Set per persona
+according to how much the build cares about the air — 1.4 for
+`interceptor-rush`, 1.0 for `balanced`/`turtle`/`technologist`, 0.7 for the
+builds that are looking at the water, 0.5 for `economist` (the greed control).
+It sits LAST in each buy list, so doctrine still gets first call on the money
+and persona identity is unchanged.
+
+Measured on Missile Coast, 66 campaigns, at the then-current price: interceptors
+fired per campaign 184 → **260**, ammunition spend 20% → **29%** of income, and
+campaigns reaching the region's final round 13 → **20**. The bots had been
+under-buying, and closing that was worth six campaigns before a single balance
+number moved.
+
+### The balance defect it exposed (fixed in `tuning.ts`, not here)
+
+With the harness able to buy, the arithmetic became legible. Against a
+fully-researched defender, one interceptor per incoming missile across rounds
+4-8 cost **139% of what those rounds earned**. See `ECONOMY.ammoCost` for the
+bracket and the fix; the guard now lives in
+`tests/interceptorEconomy.test.ts` so it cannot silently return.
+
+### A methodology note worth keeping
+
+The first draft of that guard played a campaign until it died and averaged the
+ratio over the whole run — and **passed against the exact numbers it was
+written to reject.** A bot with no purse dies at round 3, never reaches the
+rounds where the enemy's budget curve has arrived, and an economy that is
+catastrophic at round 8 reads as healthy averaged over three easy ones. Any
+fixture measuring a LATE-game quantity has to be underwritten to survive to the
+late game first. The bias direction is the same one this file records for the
+sweep itself: a harness that cannot reach the failure cannot see it.
+
+### Accepted — bucket C (bias unchanged, and load-bearing)
+
+The recorded **"bots waste no interceptors"** bias did real work this pass and
+should not be retired. Human duplicate-shot rate is 17.7%; bots' is 0.0%, so
+the sweep understates the ammunition bill by about a fifth. Applied to the
+bracket, that correction is what ruled out the arm one step cheaper than the
+defect and selected the shipped price. This is the case the standing
+instruction — *never conclude "ammunition is affordable" from a sweep alone* —
+was written for.
