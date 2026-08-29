@@ -12,7 +12,8 @@ import { h } from './dom';
 import type { StatTier } from '../data/statTiers';
 import { TIER_ORDER } from '../data/statTiers';
 import { escortHull } from '../data/escortHulls';
-import type { FormationId, ShipClassId } from '../sim/types';
+import type { FormationId, ModuleId, ShipClassId } from '../sim/types';
+import type { CounterBranchId } from '../data/counters';
 
 /** Wrap an svg body in the standard 24×24 stroke frame. Elements inside may
  *  override fill/stroke for filled details. */
@@ -176,6 +177,195 @@ export const ICONS = {
     '<rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/>' +
       '<rect x="4" y="13" width="7" height="7" rx="1.2"/><rect x="13" y="13" width="7" height="7" rx="1.2" opacity=".4"/>',
   ),
+  // --- missile defense: three systems, three silhouettes ---------------------
+  //
+  // These three all shoot missiles down and they are NOT interchangeable, so
+  // the glyphs are built to be told apart at a glance and at 16px. The tell is
+  // WHERE THE LAUNCHER IS, because that is the actual mechanical difference:
+  //   shore   — fixed cell on the ground, fires straight up, reaches the whole
+  //             map (the wide arc)
+  //   escort  — launcher on a hull, on the water, fires on a slant, reaches
+  //             as far as the ship it rides on (the short arc)
+  //   point   — no launcher at all, just a bubble of tracer over one ship,
+  //             killing something already on top of it
+  // The base interceptor and the cargo self-defense interceptor used to SHARE
+  // the generic turret glyph, which made the two ends of missile defense —
+  // map-wide backbone and last-ditch terminal shot — indistinguishable in the
+  // draft, the tech tree and the module cards.
+
+  /** Shore-base interceptor: a vertical launch cell, planted, reaching wide. */
+  interceptorShore: stroked(
+    '<path d="M3 20.6h18"/>' +
+      '<path d="M7 20.6v-4.2h4.6v4.2"/>' +
+      '<path d="M9.3 16.4V7.4"/>' +
+      '<path d="M7.5 9.6 9.3 5.4l1.8 4.2"/>' +
+      '<path d="M14.4 20.2a8.6 8.6 0 0 0 5.8-8.8" opacity=".5"/>',
+  ),
+  /** Escort interceptor: the same missile, launched off a hull under way. */
+  interceptorEscort: stroked(
+    '<path d="M2.6 20.8q2.3-1.7 4.6 0t4.6 0 4.6 0 4.6 0" opacity=".45"/>' +
+      '<path d="M4.8 18.6h9.4l-1.5 2.2H6.3z"/>' +
+      '<path d="M8.6 18.6v-2.4h2.6"/>' +
+      '<path d="M12.2 14.8 17.6 9.4"/>' +
+      '<path d="M15.2 8.4l3.4-1-1 3.4"/>' +
+      '<path d="M16.4 17.6a6.6 6.6 0 0 0-2.6-5" opacity=".5"/>',
+  ),
+  /** Cargo self-defense: a bubble of tracer over one hull, and the kill. */
+  interceptorPoint: stroked(
+    '<circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/>' +
+      '<path d="M5.2 18.4a7.4 7.4 0 0 1 13.6 0" opacity=".65"/>' +
+      '<path d="M12 16.6v-4M8.4 17.4 6.2 13.8M15.6 17.4l2.2-3.6"/>' +
+      '<path d="M12 7.4 13.6 9.6 12 11.8 10.4 9.6z" fill="currentColor" stroke="none"/>',
+  ),
+  /** Missile-warning receiver: a dish taking an inbound track. It never
+   *  shoots, so there is deliberately no launcher anywhere in the glyph. */
+  warningReceiver: stroked(
+    '<path d="M4 20.6h7"/>' +
+      '<path d="M7.5 20.6v-5.2"/>' +
+      '<path d="M4.4 15.4a3.4 3.4 0 0 1 6.2 0z"/>' +
+      '<path d="M20.4 4.4 12.8 12"/>' +
+      '<path d="M20.6 8.6V4.2h-4.4"/>' +
+      '<circle cx="14.6" cy="17.6" r="1.1" fill="currentColor" stroke="none" opacity=".8"/>',
+  ),
+  // --- underwater: detection and clearing stay visibly separate --------------
+  /** Mine-detection sonar: a search beam finding a moored mine. Detection
+   *  only — the mine is still there when the glyph is done. */
+  mineSonarBeam: stroked(
+    '<path d="M4 4.6h16" opacity=".55"/>' +
+      '<path d="M9.6 5.4 6.4 14.2M14.4 5.4l3.2 8.8" opacity=".6"/>' +
+      '<path d="M8.4 9.6h7.2" opacity=".3"/>' +
+      '<circle cx="12" cy="17.6" r="2.5"/>' +
+      '<path d="M12 12.8v2.3M12 20.1v1.4M8.1 17.6H6.7M17.3 17.6h1.4"/>',
+  ),
+  /** Mine-countermeasure drone: a submersible, not the quadcopter. */
+  subDrone: stroked(
+    '<path d="M2.8 4.4h18.4" opacity=".45"/>' +
+      '<path d="M8.2 12.6h6.4a3.4 3.4 0 0 1 0 6.8H8.2z"/>' +
+      '<path d="M8.2 12.6 5.4 10.4v11.2l2.8-2.2z"/>' +
+      '<circle cx="15.2" cy="16" r="1.2" fill="currentColor" stroke="none"/>' +
+      '<path d="M11.4 12.6V5.4" opacity=".45"/>',
+  ),
+  /** Hydrophone: a capsule on a cable, listening. Passive — the arcs arrive
+   *  from one side rather than radiating from it. */
+  hydrophone: stroked(
+    '<path d="M2.8 3.8h18.4" opacity=".45"/>' +
+      '<path d="M7 3.8v8.4"/>' +
+      '<rect x="5.2" y="12.2" width="3.6" height="6.2" rx="1.8"/>' +
+      '<path d="M12.4 12a5.4 5.4 0 0 1 0 6.6" opacity=".85"/>' +
+      '<path d="M16 9.6a9.6 9.6 0 0 1 0 11.4" opacity=".45"/>',
+  ),
+  /** Depth charge: a drum on its way down, and what happens under it. */
+  depthCharge: stroked(
+    '<path d="M2.8 3.8h18.4" opacity=".45"/>' +
+      '<rect x="9.2" y="5.6" width="5.6" height="6.4" rx="1"/>' +
+      '<path d="M9.2 7.8h5.6M9.2 9.8h5.6" opacity=".5"/>' +
+      '<circle cx="12" cy="18.4" r="2.4"/>' +
+      '<path d="M12 13.6v1.6M7.6 15.6l1.4 1.4M16.4 15.6 15 17M6.4 18.4h1.6M17.6 18.4H16"/>',
+  ),
+  /** Active sonar: a hull transducer pinging DOWN. The mirror of the passive
+   *  hydrophone above, and of the generic `sonar` glyph, which throws its arcs
+   *  upward from a seabed contact. */
+  activeSonar: stroked(
+    '<path d="M3 4.4h18" opacity=".45"/>' +
+      '<rect x="11" y="4.4" width="2" height="2.8" rx=".4" fill="currentColor" stroke="none"/>' +
+      '<path d="M7.4 8.6a5.6 5.6 0 0 0 9.2 0"/>' +
+      '<path d="M4.8 11.4a8.8 8.8 0 0 0 14.4 0" opacity=".55"/>' +
+      '<circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/>',
+  ),
+  // --- guns -----------------------------------------------------------------
+  /** Deck gun: a mount firing flat, at something on the water. */
+  deckGun: stroked(
+    '<path d="M3.4 20.4h17.2"/>' +
+      '<path d="M5.6 20.4v-2.8a3.2 3.2 0 0 1 6.4 0v2.8"/>' +
+      '<path d="M11.4 16.2 18.2 11"/>' +
+      '<path d="M18.6 8.6l.8-2.6M20.4 10.4l2.2-1M19.6 12.8l2.4.4" opacity=".7"/>',
+  ),
+  /** Flak: barrels up, and shells going off in the air. Nothing on this glyph
+   *  points at the water, which is the whole difference from the deck gun. */
+  flak: stroked(
+    '<path d="M4.6 20.6h8.4"/>' +
+      '<path d="M6.4 20.6v-2.8h4.8v2.8"/>' +
+      '<path d="M7.8 17.8V12M10.6 17.8V12"/>' +
+      '<circle cx="9.2" cy="7.4" r="1.5"/>' +
+      '<path d="M9.2 3.2v1.6M6.2 4.4l1.1 1.2M12.2 4.4l-1.1 1.2M5 7.4h1.6M11.8 7.4h1.6"/>' +
+      '<circle cx="17.8" cy="12.6" r="1" opacity=".6"/>' +
+      '<path d="M17.8 9.4v1.2M15.4 12.6h1.2M20.2 12.6H19M17.8 15.8v-1.2" opacity=".6"/>',
+  ),
+  /** Counter-battery: their arc comes in faint, ours goes back. It fires at
+   *  the gun, never at the shell, so both arcs land on the same ground line. */
+  counterBattery: stroked(
+    '<path d="M2.6 20.4h18.8" opacity=".5"/>' +
+      '<path d="M19.8 17.6C17.4 9.4 9.8 8.4 4.6 12.4" opacity=".5"/>' +
+      '<path d="M6.8 12.8 4.2 12l.6 2.8" opacity=".5"/>' +
+      '<path d="M4.2 17.6C6.6 9.4 14.2 8.4 19.4 12.4"/>' +
+      '<path d="M17.2 12.8 19.8 12l-.6 2.8"/>',
+  ),
+  // --- passive / survivability ----------------------------------------------
+  /** Thermal imaging: a heat signature. Sees, never shoots. */
+  thermal: stroked(
+    '<path d="M3.6 19.8h16.8"/>' +
+      '<path d="M7.8 19.8a4.2 4.2 0 0 1 8.4 0z" fill="currentColor" stroke="none" opacity=".85"/>' +
+      '<path d="M8.6 14.2c0-1.5 1.7-1.5 1.7-3.1s-1.7-1.5-1.7-3.1"/>' +
+      '<path d="M12 14.2c0-1.5 1.7-1.5 1.7-3.1s-1.7-1.5-1.7-3.1"/>' +
+      '<path d="M15.4 14.2c0-1.5 1.7-1.5 1.7-3.1s-1.7-1.5-1.7-3.1" opacity=".6"/>',
+  ),
+  /** Anti-boarding: a grapnel that does not get a purchase. */
+  antiBoarding: stroked(
+    '<path d="M3.4 19.8h17.2"/>' +
+      '<path d="M11 16.6V8.4"/>' +
+      '<path d="M11 12.8a3 3 0 0 1-3 3"/><path d="M11 12.8a3 3 0 0 0 3 3"/>' +
+      '<path d="M11 8.4 6.6 4.8" opacity=".55"/>' +
+      '<path d="M16.4 4.4 20.8 8.8M20.8 4.4l-4.4 4.4"/>',
+  ),
+  /** Hardened electronics: the sensor keeps working while the jamming glances
+   *  off it. The only counter in the game with nothing to shoot at. */
+  hardened: stroked(
+    '<path d="M8.8 20.6h6.4"/>' +
+      '<path d="M12 20.6v-6.4"/>' +
+      '<circle cx="12" cy="12.4" r="1.5" fill="currentColor" stroke="none"/>' +
+      '<path d="M4.8 14.8a7.4 7.4 0 0 1 14.4 0"/>' +
+      '<path d="M6.6 3.2 4.2 7.8h2.8l-.8 3.4" opacity=".7"/>' +
+      '<path d="M17.4 3.2 19.8 7.8H17l.8 3.4" opacity=".7"/>',
+  ),
+  /** Reinforced hull: plating, doubled. A hull section, not a shield — the
+   *  shield glyph is the generic damage-reduction stat and stays that. */
+  reinforcedHull: stroked(
+    '<rect x="4.4" y="5.6" width="15.2" height="12.8" rx="2"/>' +
+      '<path d="M4.4 12h15.2" opacity=".5"/>' +
+      '<circle cx="7.6" cy="8.8" r=".9" fill="currentColor" stroke="none"/>' +
+      '<circle cx="16.4" cy="8.8" r=".9" fill="currentColor" stroke="none"/>' +
+      '<circle cx="7.6" cy="15.2" r=".9" fill="currentColor" stroke="none"/>' +
+      '<circle cx="16.4" cy="15.2" r=".9" fill="currentColor" stroke="none"/>' +
+      '<path d="M12 21.4v-2" opacity=".55"/>',
+  ),
+  /** Fire suppression: the hose, and what it is aimed at. */
+  fireSuppression: stroked(
+    '<path d="M14.4 5.8c2.1 2.5 4 4.6 4 7.3a4 4 0 0 1-8 0c0-2.7 1.9-4.8 4-7.3z" opacity=".85"/>' +
+      '<path d="M2.4 19.4h3.8"/>' +
+      '<path d="M6.4 19.4 11 16.6M6.4 19.4l4.8 1.4M6.4 19.4l3.6-4.2"/>',
+  ),
+  /** Compartmentalization: bulkheads, and the one flooded space they hold. */
+  compartments: stroked(
+    '<path d="M2.8 7.6h11.4a5.4 5.4 0 0 1 0 8.8H2.8z"/>' +
+      '<path d="M7 7.6v8.8M11.2 7.6v8.8" opacity=".7"/>' +
+      '<path d="M2.8 7.6H7v8.8H2.8z" fill="currentColor" stroke="none" opacity=".4"/>' +
+      '<path d="M4.4 20.4h13.2" opacity=".4"/>',
+  ),
+  /** Logistics: the quayside, where berths and repairs come from. */
+  logistics: stroked(
+    '<path d="M3.4 20.6h17.2"/>' +
+      '<path d="M6.4 20.6V5.2h11"/>' +
+      '<path d="M6.4 8.6 11.2 5.2" opacity=".5"/>' +
+      '<path d="M15.4 5.2v4.4"/>' +
+      '<path d="M12.6 9.6h5.6v4.6h-5.6z"/>',
+  ),
+  /** An escort hull, for the procurement card that hires one. (The roster
+   *  draws real per-hull silhouettes — see escortHullFigure.) */
+  escortShip: stroked(
+    '<path d="M2.6 15.2h18.8l-2.8 4.8H5.4z"/>' +
+      '<path d="M8.2 15.2v-3.4h5.4l1.9 3.4z"/>' +
+      '<path d="M10.8 11.8V7.2M8.6 9h4.4"/>',
+  ),
   /** Cargo crate — used specifically for quota-points contribution, distinct
    *  from the coin (cash) icon even though both derive from a ship's value. */
   crate: stroked(
@@ -185,6 +375,66 @@ export const ICONS = {
 } as const;
 
 export type IconName = keyof typeof ICONS;
+
+/** THE icon for each counter branch — the single source of truth for what a
+ *  system looks like. Every surface that shows a branch, its research nodes or
+ *  its equipment reads this map (draft cards, the tech tree, module cards,
+ *  tooltips, the shore/escort loadouts), so an item cannot end up wearing one
+ *  glyph on one screen and another somewhere else.
+ *
+ *  EVERY ENTRY IS UNIQUE, and that is a rule rather than a coincidence. Five of
+ *  these branches used to share the generic `turret` glyph and two more shared
+ *  `sonar`, which put the shore-base interceptor and the cargo self-defense
+ *  interceptor — the map-wide backbone of missile defense and its last-ditch
+ *  terminal shot — behind the same symbol everywhere they appeared. Two systems
+ *  the player must choose between cannot look identical on the card they choose
+ *  from. The generic glyphs are still in the set; they are for stats, headings
+ *  and categories, never for a mechanically distinct system. */
+export const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
+  escortInterceptor: 'interceptorEscort',
+  baseInterceptor: 'interceptorShore',
+  selfDefense: 'interceptorPoint',
+  missileWarning: 'warningReceiver',
+  mineSonar: 'mineSonarBeam',
+  mcmDrones: 'subDrone',
+  scanPulse: 'planeScan',
+  hydrophone: 'hydrophone',
+  depthCharges: 'depthCharge',
+  activeSonar: 'activeSonar',
+  deckGun: 'deckGun',
+  antiBoarding: 'antiBoarding',
+  counterBattery: 'counterBattery',
+  thermalImaging: 'thermal',
+  flak: 'flak',
+  hardened: 'hardened',
+  warthog: 'planeGun',
+  reinforcedHull: 'reinforcedHull',
+  fireSuppression: 'fireSuppression',
+  compartmentalization: 'compartments',
+  logistics: 'logistics',
+};
+
+/** A cargo module wears its BRANCH's glyph, because it IS that branch's
+ *  equipment — the self-defense module on a container ship and the
+ *  self-defense research node in the tech tree are one system seen from two
+ *  screens. Derived rather than restated so the two can never drift apart, and
+ *  so a new module cannot be added with a stale duplicate icon. */
+export const MODULE_BRANCH: Record<ModuleId, CounterBranchId> = {
+  selfDefense: 'selfDefense',
+  missileWarning: 'missileWarning',
+  reinforcedHull: 'reinforcedHull',
+  mineSonar: 'mineSonar',
+  fireSuppression: 'fireSuppression',
+  hydrophone: 'hydrophone',
+  thermalImaging: 'thermalImaging',
+  flak: 'flak',
+  antiBoarding: 'antiBoarding',
+  compartmentalization: 'compartmentalization',
+};
+
+export const MODULE_ICONS: Record<ModuleId, IconName> = Object.fromEntries(
+  Object.entries(MODULE_BRANCH).map(([id, branch]) => [id, BRANCH_ICONS[branch]]),
+) as Record<ModuleId, IconName>;
 
 /** Build a span carrying one of the icons above. Size/color come from CSS. */
 export function icon(name: IconName, className = ''): HTMLElement {

@@ -1494,6 +1494,16 @@ button.unequip {
   text-shadow: 0 0 8px rgba(82, 229, 149, 0.4);
 }
 
+/* The system glyph on a munitions chip. Small and dimmed — the number is what
+   is being read under pressure; the glyph is only there to say WHICH magazine,
+   which the three-letter label alone leaves ambiguous between the shared
+   interceptor stock and the cargo self-defense round. */
+.hud-chip .chip-glyph {
+  width: 12px;
+  height: 12px;
+  align-self: center;
+  opacity: 0.75;
+}
 .hud-chip .hud-chip-label {
   color: var(--dim);
   font-size: 9px;
