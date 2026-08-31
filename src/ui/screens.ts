@@ -27,7 +27,6 @@ import {
   ENEMY_BRANCH_NAMES,
   RESEARCH_INDEX,
   type CounterBranchDef,
-  type CounterBranchId,
   type CounterNodeDef,
   type CounterRole,
   type CounterTacticDef,
@@ -130,6 +129,8 @@ import {
   statTierRow,
   statUpgradeRow,
   type IconName,
+  BRANCH_ICONS,
+  MODULE_ICONS,
 } from './icons';
 import type {
   AarCard,
@@ -840,6 +841,15 @@ export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => vo
       text:
         'A dev run is a normal campaign with these cheats applied and the enemy fast-forwarded to your chosen round — so later rounds field the guided missiles, mines and low-signature mines you would meet there.',
     }),
+    // The clock is not a switch on this screen — it lives on the transit HUD,
+    // where it is used — but it IS a dev tool, so this is where a tester finds
+    // out it exists. It applies to every transit while Dev Mode is on, not
+    // only to runs launched from here.
+    h('div', {
+      className: 'hint',
+      text:
+        'Dev Mode also adds 4×, 6× and 10× to the transit speed key, on top of the usual 1×/2×/3× — for pushing a build through slow rounds to reach the one you are testing. Above 3× the round is too fast to fight by hand.',
+    }),
   );
 
   footer.append(
@@ -1222,30 +1232,6 @@ export function aarScreen(
 // ---------------------------------------------------------------------------
 // Research — an interactive tech tree
 // ---------------------------------------------------------------------------
-
-const BRANCH_ICONS: Record<CounterBranchId, IconName> = {
-  escortInterceptor: 'missile',
-  baseInterceptor: 'turret',
-  selfDefense: 'turret',
-  missileWarning: 'alert',
-  mineSonar: 'sonar',
-  mcmDrones: 'drone',
-  scanPulse: 'planeScan',
-  hydrophone: 'sonar',
-  depthCharges: 'mine',
-  activeSonar: 'radar',
-  deckGun: 'turret',
-  antiBoarding: 'lock',
-  counterBattery: 'turret',
-  thermalImaging: 'eye',
-  flak: 'turret',
-  hardened: 'shield',
-  warthog: 'planeGun',
-  reinforcedHull: 'shield',
-  fireSuppression: 'flame',
-  compartmentalization: 'slots',
-  logistics: 'anchor',
-};
 
 const PLATFORM_LABELS: Record<PlatformKind, string> = {
   cargoModule: 'Cargo module',
@@ -1728,18 +1714,6 @@ const SHIP_TAGLINES: Record<ShipClassId, string> = {
   freighter: 'Fast, cheap, fragile.',
 };
 
-const MODULE_ICONS: Record<ModuleId, IconName> = {
-  selfDefense: 'turret',
-  missileWarning: 'alert',
-  reinforcedHull: 'shield',
-  mineSonar: 'sonar',
-  fireSuppression: 'flame',
-  hydrophone: 'sonar',
-  thermalImaging: 'eye',
-  flak: 'turret',
-  antiBoarding: 'lock',
-  compartmentalization: 'slots',
-};
 
 /** The counter branch a piece of equipment belongs to (for the platform /
  *  counters / role line on its card). */
@@ -2110,7 +2084,7 @@ export function prepScreen(
     escortPanel.append(
       h('div', { className: 'module-card owned built-in' }, [
         h('div', { className: 'card-head' }, [
-          icon('turret'),
+          icon(BRANCH_ICONS.escortInterceptor),
           h('h3', { text: 'Missile Interceptors' }),
           h('span', { className: 'badge good', text: 'Built in' }),
         ]),
@@ -2144,7 +2118,7 @@ export function prepScreen(
       escortGrid.append(
         h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
           h('div', { className: 'card-head' }, [
-            icon(branch ? BRANCH_ICONS[branch.id] : 'turret'),
+            icon(branch ? BRANCH_ICONS[branch.id] : 'slots'),
             h('h3', { text: def.name }),
             fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
           ]),
@@ -2205,7 +2179,9 @@ export function prepScreen(
     baseGrid.append(
       h('div', { className: fitted ? 'module-card owned' : 'module-card' }, [
         h('div', { className: 'card-head' }, [
-          icon('turret'),
+          icon(branchForEquipment('baseModule', id)?.id
+            ? BRANCH_ICONS[branchForEquipment('baseModule', id)!.id]
+            : 'slots'),
           h('h3', { text: def.name }),
           fitted ? h('span', { className: 'badge good', text: 'Fitted' }) : h('span'),
         ]),
@@ -2285,7 +2261,7 @@ export function prepScreen(
       },
     ),
     assetCard(
-      'missile',
+      'escortShip',
       'Escort ship',
       `${c.escortUnits.length}/${ECONOMY.maxEscorts}`,
       'Mobile launcher: quick reload, shorter reach. Fit its specialist slots below; order it around the map in transit.',
@@ -2306,10 +2282,10 @@ export function prepScreen(
       `${c.ammo}`,
       'Shared magazine for every launcher. Unused rounds carry over.',
       {
-        label: `Buy 5 — $${ammoUnitCost(c) * 5}`,
-        disabled: c.cash < ammoUnitCost(c) * 5,
+        label: `Buy ${ECONOMY.ammoPerBuy} — $${ammoUnitCost(c) * ECONOMY.ammoPerBuy}`,
+        disabled: c.cash < ammoUnitCost(c) * ECONOMY.ammoPerBuy,
         onClick: () => {
-          if (buyAmmo(c, 5)) rerender();
+          if (buyAmmo(c, ECONOMY.ammoPerBuy)) rerender();
         },
       },
     ),
@@ -2318,7 +2294,7 @@ export function prepScreen(
     c.gunAmmo > 0
       ? [
           assetCard(
-            'turret',
+            BRANCH_ICONS.deckGun,
             'Deck gun shells',
             `${c.gunAmmo}`,
             'Every round a deck gun fires draws one. An empty magazine holds its fire — stock up before the boats come.',
@@ -2380,7 +2356,7 @@ export function prepScreen(
   if (hasResearch(c, 'mcmDrones.base')) {
     assetGrid.append(
       assetCard(
-        'drone',
+        BRANCH_ICONS.mcmDrones,
         'Drone munitions',
         `${c.droneAmmo}`,
         'One per mine sweep — in transit, tap a charted mine. Needs an escort drone launcher.',
@@ -2400,7 +2376,7 @@ export function prepScreen(
   if (hasSelfDefense) {
     assetGrid.append(
       assetCard(
-        'ammo',
+        BRANCH_ICONS.selfDefense,
         'Self-defense rounds',
         `${c.pdAmmo}`,
         'Shared stock for the Self-Defense module — no rounds, no defense. Carries over.',

@@ -878,7 +878,69 @@ export const ECONOMY = {
   /** Cash earned per point of cargo value delivered. The ONLY source of round
    *  income — see resolveTransit. */
   cashPerValue: 4,
-  ammoCost: 8,
+  /** Interceptor rounds: cash per round, and how many one purchase buys.
+   *
+   *  REPRICED from 8, and the pack raised from 5 to 10 — so a purchase now
+   *  buys 2.7x the ammunition per dollar, and stocking a late raid takes half
+   *  the taps.
+   *
+   *  THE DEFECT. Measured on Missile Coast with a fully-researched defender —
+   *  every launcher node drafted, four batteries, a full screen, automation on
+   *  and not one manual shot needed — putting ONE interceptor up per incoming
+   *  missile across rounds 4-8 cost **139% of everything those rounds earned**.
+   *  That is the floor of the bill, not the bill: it counts one round per
+   *  contact and assumes none of them misses. The run was not hard, it was
+   *  arithmetically unwinnable, and it got worse as it went because the
+   *  shortfall compounds — unanswered missiles sink hulls, delivery falls,
+   *  income falls with it, and the next round can afford even less. Across 72
+   *  bot campaigns only 13 reached the region's final round; a hand-played run
+   *  hit the same wall from the other side, ending round 5 at 48% intercept
+   *  coverage with six hulls lost.
+   *
+   *  The price was not wrong when it was set — it went stale. Missile Coast's
+   *  purse has been raised twice (see regions.ts: "RAISED across the board",
+   *  then "RAISED AGAIN (~25%)") because hand-play kept saying the VOLUME felt
+   *  right, and it does. This is not a missile-count problem, the missile
+   *  counts are deliberately untouched, and they in fact rise slightly under
+   *  the new price: a player who can answer the raid delivers more, and the
+   *  anti-snowball multipliers spend that on more ordnance. The seesaw is
+   *  working. What never moved with the purse was the price of answering it.
+   *
+   *  BRACKETED, per this file's rule. Same fixture, same three seeds, plus a
+   *  72-campaign sweep at each arm:
+   *
+   *      $/round   bill vs income   reached the final round   late delivery
+   *        8            1.391                13 / 72             58-70%
+   *        5            0.869                14 / 72             65-74%
+   *        4            0.695                20 / 72             63-77%
+   *        3            0.521                27 / 72             70-79%
+   *
+   *  3 and not 4, because the sweep UNDERSTATES the bill by a known, measured
+   *  amount and 4 does not survive the correction. Bots waste no interceptors
+   *  — `decideCommands` filters on `claimedByInterceptor` — while a human's
+   *  duplicate-shot rate is 17.7%, so a real player's ammunition costs about a
+   *  fifth more than any sweep will show. PLAYTEST_FIDELITY.md records this as
+   *  an accepted bias with the standing instruction "never conclude ammunition
+   *  is affordable from a sweep alone". Applied, $4 puts a real player at 0.84
+   *  of income — solvent on paper and unable to buy a single hull in practice.
+   *  $3 lands at 0.63, which leaves a third of the money to argue over.
+   *
+   *  It is still the biggest line on the shopping list by a distance, which is
+   *  the point: covering a late raid costs over half the round. Nothing else in
+   *  the economy moved, so that money has to be argued out of hulls, escorts,
+   *  batteries and repairs — and money was never the only limit anyway, since
+   *  launchers, research and reload time cap what a fleet can put in the air
+   *  however full its magazine is.
+   *
+   *  Deliberately NOT fixed by raising cashPerValue. Income pays for
+   *  everything, and this shortfall is specific to one line. Measured on the
+   *  other three regions — which split the same purse across three or four
+   *  branches — the identical bill was already only 30-52% of income at the OLD
+   *  price, so an income raise would have poured cash into the regions that
+   *  needed none in order to fix the one that did. Guarded by
+   *  tests/interceptorEconomy.test.ts. */
+  ammoCost: 3,
+  ammoPerBuy: 10,
   /** Cash per minesweeper-drone munition, and how many a single purchase buys. */
   droneAmmoCost: 14,
   droneAmmoPerBuy: 3,

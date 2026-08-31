@@ -162,6 +162,15 @@ not a jammed seesaw — the verdict logic reflects that, and only calls a loss
   a human. The sweep's ammunition economy is roughly a fifth cheaper than a real
   player's — price ammunition with that in mind. This one is *accepted*, not
   fixed: modelling human misfires means a bot that plays badly on purpose.
+  It is not a footnote: applying this correction is what chose the shipped
+  interceptor price (see `ECONOMY.ammoCost`), because the arm one step cheaper
+  than the defect was solvent in the sweep and insolvent once corrected.
+- **A persona only buys ammunition it has been told to want.** The `ammo` intent
+  takes an optional `perThreat`, which makes the target magazine track last
+  round's incoming rather than a fixed number. A persona without it tops up to a
+  constant forever and will decline to answer a raid however rich it is — which
+  looks exactly like an economy that cannot afford the answer. Set it on any
+  persona whose build is supposed to care about the air.
 - **The bots still under-grow the convoy** (capacity ~30 against a hand-played
   40) and recover less than a human does (52% of wreckage against 81%).
 

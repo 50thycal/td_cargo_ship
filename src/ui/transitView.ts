@@ -18,6 +18,7 @@ import type {
 } from '../sim/types';
 import { Camera } from './camera';
 import { h } from './dom';
+import { icon, type IconName } from './icons';
 
 /** Placeable abilities/weapons the HUD can arm; the next map tap places them. */
 type ArmedAbility = 'warthog' | 'scan' | 'sonar' | 'dc';
@@ -60,6 +61,36 @@ const MAX_ASPECT = 2.6;
 /** Pointer travel (canvas px) beyond which a press is a DRAG, not a tap. Below
  *  it the gesture issues an order; above it, it pans the map. */
 const DRAG_THRESHOLD = 7;
+
+/** The clock. Tapping the speed key walks this ladder and wraps.
+ *
+ *  The first three rungs are the game: 1x is the designed pace, 2x and 3x are
+ *  the ones a player uses to get through a quiet stretch without losing the
+ *  ability to read the water and take a shot.
+ *
+ *  The rest are a TESTING instrument, not a difficulty setting, which is why
+ *  they are behind Dev Mode. At 4x and above the round stops being playable by
+ *  hand — a missile crosses the alley in about a second — and that is the
+ *  point: they exist to push a build through the slow rounds of a long run to
+ *  reach the one being balanced. 10x turns an eight-minute transit into
+ *  fifty seconds. */
+const SPEED_STEPS: readonly number[] = [1, 2, 3];
+const DEV_SPEED_STEPS: readonly number[] = [1, 2, 3, 4, 6, 10];
+
+/** Ceiling on sim steps advanced in ONE animation frame.
+ *
+ *  Without it a fast clock is a spiral risk: the loop drains the accumulator
+ *  completely every frame, so if a frame's worth of simulation ever costs more
+ *  than a frame, the next frame owes even more and the tab locks up. Ten
+ *  seconds of clock against a 30Hz step is 300 steps a frame, and a crowded
+ *  late round is not cheap to step.
+ *
+ *  Hitting this cap makes the clock run SLOWER than the number on the key
+ *  rather than freezing the page, which for a fast-forward is the right way to
+ *  fail: the round still finishes, it just finishes at whatever pace the
+ *  machine can actually sustain. Sized so a 60Hz frame can always deliver 3x
+ *  (the fastest speed normal play offers) with room to spare. */
+const MAX_STEPS_PER_FRAME = 40;
 
 /** Colour per escort activity — the same coding in the roster panel and on the
  *  map label, so a glance at either reads the same. */
@@ -223,6 +254,11 @@ export class TransitView {
     private readonly round: number,
     private readonly confidence: number,
     private readonly showTutorial: boolean,
+    /** Dev Mode is on for this player, so the clock offers its fast-forward
+     *  rungs (4x, 6x, 10x) on top of the three normal play has. A testing
+     *  instrument for reaching a late round quickly — never a difficulty
+     *  setting, and never reachable without opting into Dev Mode. */
+    private readonly devSpeeds: boolean,
     /** Cargo points already banked toward the active quota window BEFORE this
      *  transit (i.e. campaign.quota.pointsEarned at round start). The live HUD
      *  figure is this plus the round's own valueDelivered so far. */
@@ -306,10 +342,23 @@ export class TransitView {
   // HUD
   // -------------------------------------------------------------------------
 
-  /** An LCD readout chip: tiny label + live value. */
-  private static chip(label: string, cls = ''): { el: HTMLElement; val: HTMLElement } {
+  /** An LCD readout chip: optional system glyph, tiny label, live value.
+   *
+   *  The glyph is the same one the system wears in the draft, the tech tree
+   *  and the module cards — so the magazine a player is watching drain in the
+   *  HUD is recognisably the thing they bought two screens ago. It matters
+   *  most for the two that read alike in three letters: INT is the shared
+   *  interceptor magazine every launcher draws on, PD is the cargo
+   *  self-defense round, and those are different systems with different
+   *  answers when one of them runs out. */
+  private static chip(
+    label: string,
+    cls = '',
+    glyph?: IconName,
+  ): { el: HTMLElement; val: HTMLElement } {
     const val = h('span');
     const el = h('span', { className: cls ? `hud-chip ${cls}` : 'hud-chip' }, [
+      ...(glyph ? [icon(glyph, 'chip-glyph')] : []),
       h('span', { className: 'hud-chip-label', text: label }),
       val,
     ]);
@@ -336,22 +385,22 @@ export class TransitView {
     // The player's interceptor count vanished at exactly the moment they were
     // taking command of a ship. A readout you consult under pressure has to be
     // in the same place every time, so this is anchored on its own.
-    const int = TransitView.chip('INT');
+    const int = TransitView.chip('INT', '', 'ammo');
     this.hudInt = int.val;
     int.el.title = 'Interceptor rounds — the shared magazine for every launcher';
-    const drones = TransitView.chip('DRN');
+    const drones = TransitView.chip('DRN', '', 'subDrone');
     this.hudDrones = drones.val;
     this.hudDronesChip = drones.el;
     drones.el.title = 'Minesweeper drone munitions';
-    const pd = TransitView.chip('PD');
+    const pd = TransitView.chip('PD', '', 'interceptorPoint');
     this.hudPd = pd.val;
     this.hudPdChip = pd.el;
     pd.el.title = 'Cargo self-defense rounds';
-    const gun = TransitView.chip('GUN');
+    const gun = TransitView.chip('GUN', '', 'deckGun');
     this.hudGun = gun.val;
     this.hudGunChip = gun.el;
     gun.el.title = 'Deck-gun shells';
-    const dc = TransitView.chip('DC');
+    const dc = TransitView.chip('DC', '', 'depthCharge');
     this.hudDc = dc.val;
     this.hudDcChip = dc.el;
     dc.el.title = 'Depth charges remaining across the flotilla';
@@ -426,14 +475,28 @@ export class TransitView {
         this.onRestart();
       },
     });
+    // One key, one ladder, wrapping at the top. Dev Mode simply makes the
+    // ladder longer — there is no separate control to find, so a tester walks
+    // past the normal speeds into the fast ones with the same button.
+    const steps = this.devSpeeds ? DEV_SPEED_STEPS : SPEED_STEPS;
     this.speedBtn = h('button', {
       className: 'hud-btn',
-      text: '1×',
+      text: `${this.speed}×`,
       onClick: () => {
-        this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 3 : 1;
+        const at = steps.indexOf(this.speed);
+        this.speed = steps[(at + 1) % steps.length];
         this.speedBtn.textContent = `${this.speed}×`;
+        // The fast rungs are not a way to play the round, and saying so once
+        // per press is cheaper than a player wondering why they cannot hit
+        // anything. Only fires above the speeds normal play offers.
+        if (this.speed > SPEED_STEPS[SPEED_STEPS.length - 1]) {
+          this.showToast(`Dev fast-forward ${this.speed}× — too fast to fight`);
+        }
       },
     });
+    this.speedBtn.title = this.devSpeeds
+      ? 'Clock speed. Dev Mode adds 4×, 6× and 10× for pushing through slow rounds.'
+      : 'Clock speed';
 
     // Automation toggles — only for automation tactics actually researched.
     // Disabling automation NEVER removes manual fire (the sim guarantees it).
@@ -1121,12 +1184,18 @@ export class TransitView {
 
     if (!this.paused && !this.state.over) {
       this.acc += dtReal * this.speed;
-      while (this.acc >= SIM.dt) {
+      let steps = 0;
+      while (this.acc >= SIM.dt && steps < MAX_STEPS_PER_FRAME) {
         stepTransit(this.state, this.pending, this.rng);
         this.pending = [];
         this.acc -= SIM.dt;
+        steps++;
         if (this.state.over) break;
       }
+      // Whatever could not be stepped this frame is DROPPED, not carried. A
+      // fast clock that falls behind must slow down, never bank a debt it will
+      // try to repay all at once on the next frame.
+      if (this.acc >= SIM.dt) this.acc = 0;
     }
 
     // Camera: ease toward the target. Done every frame regardless of pause, so
