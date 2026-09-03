@@ -16,6 +16,9 @@ export interface TelemetryExport {
   saveVersion: number;
   /** Roguelite run identity: where this attempt was fought and how it ended. */
   regionId: string;
+  /** Region Workshop provenance: which preset (by content hash) was run, and
+   *  whether it was packaged or a local draft. Null for ordinary runs. */
+  regionAuthoring: { hash: string; schemaVersion: number; source: 'packaged' | 'local' } | null;
   runOutcome: CampaignState['runOutcome'];
   defeatCause: CampaignState['defeatCause'];
   commanderAbilities: string[];
@@ -272,6 +275,7 @@ export function buildTelemetryExport(c: CampaignState, generatedAt: string): Tel
     seed: c.seed,
     saveVersion: c.version,
     regionId: c.regionId,
+    regionAuthoring: c.workshop ? { ...c.workshop } : null,
     runOutcome: c.runOutcome,
     defeatCause: c.defeatCause,
     commanderAbilities: [...(c.commanderAbilities ?? [])],

@@ -46,7 +46,20 @@ npm test           # headless simulation tests (full campaigns, no browser)
 npm run build      # type-check + production bundle
 npm run preview -- --port 4173 &
 npm run e2e        # Playwright browser smoke test (screenshots in e2e/shots/)
+npm run e2e:workshop  # Region Workshop smoke test (library, timeline, mobile, playtest)
 ```
+
+## Region Workshop (level authoring)
+
+Settings → **Developer mode** → **Region Workshop** (also on the Dev Mode
+screen). A timeline-driven editor for regions: built-in regions ship as
+read-only templates, drafts save on the device, **Export JSON** / **Copy JSON**
+produce a portable v1 preset you can hand to a Claude session (or drop into
+`docs/presets/`) and **Import JSON** brings one back. **Playtest** launches an
+isolated run on the region that never touches the campaign save. The design
+and data contract are in
+[docs/design/region-workshop.md](docs/design/region-workshop.md); the pure
+compiler is `src/data/regionAuthoring.ts`.
 
 ## Architecture
 
