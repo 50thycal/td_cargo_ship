@@ -12,6 +12,7 @@ import {
   createRoundTransit,
   newDevCampaign,
   newRegionalRun,
+  newWorkshopPlaytest,
   planCurrentRound,
   resolveTransit,
   type DevOptions,
@@ -26,11 +27,15 @@ import {
 } from '../sim/commander';
 import {
   clearRun,
+  clearWorkshopRun,
   loadOrCreateProfile,
   loadRun,
+  loadWorkshopRun,
   saveProfile,
   saveRun,
 } from '../platform/save';
+import { registerSavedDrafts } from '../platform/workshopStore';
+import { closeEditor, workshopScreen, type PlaytestRequest } from './workshop';
 import type { RegionId } from '../data/regions';
 import type { CampaignState, TransitState } from '../sim/types';
 import { h } from './dom';
@@ -82,6 +87,9 @@ export class Game {
     this.stage = h('div', { attrs: { id: 'stage' } });
     root.append(this.stage);
     this.profile = loadOrCreateProfile();
+    // Region Workshop drafts are registered at boot so a saved playtest on a
+    // custom region still resolves its definition after a reload.
+    registerSavedDrafts();
   }
 
   start(): void {
@@ -101,7 +109,10 @@ export class Game {
     const oldPane = this.currentScreen?.querySelector('.prep-content');
     const paneSection = oldPane?.getAttribute('data-section');
     const paneScrollTop = oldPane?.scrollTop ?? 0;
-    this.currentScreen?.remove();
+    // A screen can already be detached if a change handler re-rendered from
+    // inside a removal (a focused input's change fires as it leaves the DOM);
+    // `remove()` on a detached node is a no-op, but not on one mid-removal.
+    if (this.currentScreen?.isConnected) this.currentScreen.remove();
     this.currentScreen = el;
     if (el) {
       this.stage.append(el);
@@ -197,8 +208,44 @@ export class Game {
           this.route();
         },
         () => this.showMenu(),
+        () => this.showWorkshop(),
       ),
     );
+  }
+
+  /** The Region Workshop — level authoring. Dev-gated like everything else
+   *  reachable from Dev Mode and Settings. */
+  private showWorkshop(): void {
+    const host = {
+      onBack: () => {
+        closeEditor();
+        this.showMenu();
+      },
+      onPlaytest: (req: PlaytestRequest) => this.startWorkshopPlaytest(req),
+      resumable: () => loadWorkshopRun() !== null,
+      onResume: () => {
+        const saved = loadWorkshopRun();
+        if (!saved) return;
+        this.run = saved;
+        this.route();
+      },
+      rerender: () => this.showWorkshop(),
+    };
+    this.swapScreen(workshopScreen(host));
+  }
+
+  /** An ISOLATED playtest: its own save slot, no profile settlement, and the
+   *  player's campaign run untouched. */
+  private startWorkshopPlaytest(req: PlaytestRequest): void {
+    clearWorkshopRun();
+    this.run = newWorkshopPlaytest(req.seed, req.regionId, {
+      round: req.round,
+      god: req.god,
+      source: req.source,
+    });
+    saveRun(this.run);
+    this.lastSettlement = null;
+    this.route();
   }
 
   private showSettings(): void {
@@ -213,13 +260,16 @@ export class Game {
           this.showSettings();
         },
         () => this.showMenu(),
+        () => this.showWorkshop(),
       ),
     );
   }
 
-  /** Save the current run and return to the menu (Save & Quit). */
+  /** Save the current run and return to the menu (Save & Quit). A workshop
+   *  playtest goes back to the workshop instead. */
   private quitToMenu(): void {
     if (this.run) saveRun(this.run);
+    if (this.run?.workshop) return this.showWorkshop();
     this.showMenu();
   }
 
@@ -295,9 +345,10 @@ export class Game {
       (finished) => {
         this.lastTransit = finished;
         resolveTransit(c, finished);
-        if (c.campaignOver) {
+        if (c.campaignOver && !c.workshop) {
           // Settle the profile the moment the run ends — before any screen —
           // so a reload can never lose the XP. Idempotent via profileApplied.
+          // A workshop playtest never settles: it proves a level, not progress.
           this.lastSettlement = applyRunToProfile(this.profile, c);
           saveProfile(this.profile);
         }
@@ -347,15 +398,23 @@ export class Game {
 
   private showRunOver(): void {
     const c = this.run!;
-    // Belt-and-braces: settle the profile even if the run ended before this
-    // build (or the transit callback was skipped by a reload).
-    const settlement = applyRunToProfile(this.profile, c);
-    if (settlement.xpEarned > 0) this.lastSettlement = settlement;
-    saveProfile(this.profile);
+    if (!c.workshop) {
+      // Belt-and-braces: settle the profile even if the run ended before this
+      // build (or the transit callback was skipped by a reload).
+      const settlement = applyRunToProfile(this.profile, c);
+      if (settlement.xpEarned > 0) this.lastSettlement = settlement;
+      saveProfile(this.profile);
+    }
     saveRun(c);
     this.swapScreen(
       runOverScreen(c, this.lastSettlement, () => {
         // Clearing the RUN save is the whole reset: the profile survives.
+        if (c.workshop) {
+          clearWorkshopRun();
+          this.run = null;
+          this.lastSettlement = null;
+          return this.showWorkshop();
+        }
         clearRun();
         this.run = null;
         this.lastSettlement = null;

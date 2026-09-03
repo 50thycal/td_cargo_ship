@@ -59,6 +59,10 @@ import type {
 // Construction
 // ---------------------------------------------------------------------------
 
+function cloneJson<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
 function newLedger(share: number): BranchLedger {
   return {
     spend: 0,
@@ -96,6 +100,12 @@ function newEconomy(region: RegionDef): EnemyEconomyState {
           perRound: ENEMY_ECONOMY.budgetPerRound,
           cap: ENEMY_ECONOMY.budgetCap,
         },
+    // Region Workshop extensions — absent on packaged regions, and only
+    // written when present so a packaged run's economy stays byte-identical.
+    ...(region.nodeWindows ? { nodeWindows: cloneJson(region.nodeWindows) } : {}),
+    ...(region.roundPressure ? { roundPressure: cloneJson(region.roundPressure) } : {}),
+    ...(region.beats ? { beats: cloneJson(region.beats) } : {}),
+    ...(region.intelWarnings ? { intelWarnings: cloneJson(region.intelWarnings) } : {}),
     budget: 0,
     committed: 0,
     scrapped: 0,
@@ -180,7 +190,53 @@ function grantBudget(
       mult -= ENEMY_ECONOMY.dampStruggling;
     budget *= Math.max(0.5, mult);
   }
-  return Math.min(curve.cap, Math.round(budget));
+  budget = Math.min(curve.cap, Math.round(budget));
+  // Region Workshop: an authored per-round override or multiplier sits on top
+  // of the curve AND the anti-snowball modifiers — an override is the designer
+  // saying "this round is exactly this big", so it is not subject to the cap.
+  const rule = economy.roundPressure?.[String(round)];
+  if (rule) {
+    if (rule.budgetOverride !== undefined) budget = Math.round(rule.budgetOverride);
+    else if (rule.budgetMultiplier !== undefined) budget = Math.round(budget * rule.budgetMultiplier);
+  }
+  // A `reserved` beat lifts the round's purse by what it costs, so the
+  // guaranteed units do not starve the adaptive allocator.
+  for (const beat of beatsForRound(economy, round)) {
+    if (beat.budget !== 'reserved') continue;
+    const node = ENEMY_BRANCHES[beat.branch as EnemyBranchKey]?.nodes.find((n) => n.id === beat.nodeId);
+    if (node) budget += beat.units * node.cost;
+  }
+  return budget;
+}
+
+/** Authored beats scheduled for `round`, filtered to what this region and the
+ *  catalogue can actually field. */
+export function beatsForRound(
+  economy: EnemyEconomyState,
+  round: number,
+): NonNullable<EnemyEconomyState['beats']> {
+  return (economy.beats ?? []).filter((b) => {
+    if (b.round !== round) return false;
+    const def = ENEMY_BRANCHES[b.branch as EnemyBranchKey];
+    if (!def?.implemented) return false;
+    if (!economy.allowedBranches.includes(b.branch)) return false;
+    const node = def.nodes.find((n) => n.id === b.nodeId);
+    return !!node && node.implemented && nodeAvailable(economy, b.branch as EnemyBranchKey, b.nodeId, round);
+  });
+}
+
+/** Is this node on the region's menu on `round`? Node-level windows come from
+ *  the Region Workshop; a node without one is governed by its catalogue gate
+ *  alone, which is exactly how every packaged region behaves. */
+function nodeAvailable(
+  economy: EnemyEconomyState,
+  key: EnemyBranchKey,
+  nodeId: string,
+  round: number,
+): boolean {
+  const windows = economy.nodeWindows?.[`${key}:${nodeId}`];
+  if (!windows) return true;
+  return windows.some((w) => round >= w.from && (w.until === null || round <= w.until));
 }
 
 // ---------------------------------------------------------------------------
@@ -239,7 +295,9 @@ function candidateBranches(economy: EnemyEconomyState, round: number): EnemyBran
     if (economy.openBranches.includes(key)) return true;
     if (round < def.openRound) return false;
     // Must have at least one node past its gate to be worth opening.
-    return implementedNodes(key).some((n) => round >= n.gateRound);
+    return implementedNodes(key).some(
+      (n) => round >= n.gateRound && nodeAvailable(economy, key, n.id, round),
+    );
   });
 }
 
@@ -292,9 +350,16 @@ function allocate(economy: EnemyEconomyState, round: number, rng: RNG): void {
 // Purchasing
 // ---------------------------------------------------------------------------
 
-/** Which nodes of a branch may be fielded this round. */
-function availableNodes(key: EnemyBranchKey, round: number): EnemyNodeDef[] {
-  return implementedNodes(key).filter((n) => round >= n.gateRound);
+/** Which nodes of a branch may be fielded this round: past the catalogue
+ *  gate, and inside the region's authored window if it has one. */
+function availableNodes(
+  economy: EnemyEconomyState,
+  key: EnemyBranchKey,
+  round: number,
+): EnemyNodeDef[] {
+  return implementedNodes(key).filter(
+    (n) => round >= n.gateRound && nodeAvailable(economy, key, n.id, round),
+  );
 }
 
 /** How much of a branch's money goes to its NEWEST available node. Rises with
@@ -371,8 +436,43 @@ function purchase(
     ledger.scrap = 0;
   }
   economy.nodeDebuts = [];
+  if (economy.beats) {
+    economy.authoredUnits = {};
+    economy.authoredSpend = 0;
+  }
 
   const candidates = candidateBranches(economy, round);
+  // Region Workshop beats, step 2 of the procurement contract: reserve the
+  // guaranteed units BEFORE the adaptive allocator sees the purse, so a debut
+  // the designer promised is on the water whatever ROI would prefer. The
+  // reserved spend is charged against the round (or, for `outOfBudget`, is a
+  // labelled free test beat).
+  let adaptiveBudget = budget;
+  for (const beat of beatsForRound(economy, round)) {
+    const key = beat.branch as EnemyBranchKey;
+    const def = ENEMY_BRANCHES[key];
+    const node = def.nodes.find((n) => n.id === beat.nodeId)!;
+    const ledger = economy.ledgers[key];
+    const cost = beat.units * node.cost;
+    if (!economy.openBranches.includes(key)) economy.openBranches.push(key);
+    ledger.units[node.id] = (ledger.units[node.id] ?? 0) + beat.units;
+    economy.authoredUnits![node.id] = (economy.authoredUnits![node.id] ?? 0) + beat.units;
+    if (beat.budget !== 'outOfBudget') {
+      ledger.spend += cost;
+      committed += cost;
+      adaptiveBudget = Math.max(0, adaptiveBudget - cost);
+      economy.authoredSpend = (economy.authoredSpend ?? 0) + cost;
+    }
+    purchases.push({ branch: key, node, units: beat.units });
+    if (!economy.nodesFielded.includes(node.id)) {
+      economy.nodesFielded.push(node.id);
+      economy.nodeDebuts.push(node.id);
+      if (node.grantsTargeting !== undefined && node.grantsTargeting > economy.targetingTier) {
+        economy.targetingTier = node.grantsTargeting;
+        economy.targetingDebut = node.grantsTargeting;
+      }
+    }
+  }
   // Two passes: the first spends each branch's share, the second re-offers
   // whatever came back (unaffordable opens, unit ceilings) to branches that
   // can still use it — the enemy is thrifty before it is wasteful.
@@ -392,7 +492,7 @@ function purchase(
       economy.openBranches.push(key);
     }
 
-    const nodes = availableNodes(key, round);
+    const nodes = availableNodes(economy, key, round);
     if (nodes.length === 0) return remaining;
 
     // Volume rung: sustained investment buys more of whatever it fields.
@@ -402,7 +502,10 @@ function purchase(
     // weapon change. The tactic rung still gates how much of it is unlocked,
     // so a raised ceiling is earned by sustained investment exactly as the
     // catalogue's own is.
-    const maxUnits = economy.branchUnitCeilings[key] ?? def.maxUnitsPerRound;
+    const maxUnits =
+      economy.roundPressure?.[String(round)]?.branchCeilings?.[key] ??
+      economy.branchUnitCeilings[key] ??
+      def.maxUnitsPerRound;
     const unitCeiling = Math.max(1, Math.round(maxUnits * Math.min(1, tactic.volumeMult / 1.95)));
     let unitsBought = Object.values(ledger.units).reduce((a, b) => a + b, 0);
 
@@ -499,7 +602,7 @@ function purchase(
   };
 
   for (const key of candidates) {
-    pool += spendOn(key, Math.floor(budget * economy.ledgers[key].share));
+    pool += spendOn(key, Math.floor(adaptiveBudget * economy.ledgers[key].share));
   }
   // Second pass: re-offer the leftovers to already-open branches.
   for (const key of candidates) {
@@ -521,6 +624,7 @@ function purchase(
     if (round < (economy.branchDebutRounds[key] ?? 0)) continue;
     const node = def.nodes.find((n) => n.id === scripted.node);
     if (!node || !node.implemented) continue;
+    if (!nodeAvailable(economy, key, node.id, round)) continue;
     const ledger = economy.ledgers[key];
     const have = ledger.units[node.id] ?? 0;
     if (have >= scripted.minUnits) continue;
@@ -638,6 +742,12 @@ export function evolveEnemy(evo: EvolutionState, metrics: RoundMetrics, rng: RNG
 function buildWarnings(evo: EvolutionState, nextRound: number, rng: RNG): IntelWarning[] {
   const warnings: IntelWarning[] = [];
   const economy = evo.economy;
+  // Region Workshop: an authored warning for the round AFTER next is shown
+  // now, one round ahead — the same lead the catalogue forecasts use.
+  const authored = economy.intelWarnings?.[String(nextRound + ENEMY_ECONOMY.warningLeadRounds)];
+  if (authored) {
+    warnings.push({ track: 'guidance', text: authored, confidencePct: 90 });
+  }
   for (const key of ENEMY_BRANCH_ORDER) {
     const def = ENEMY_BRANCHES[key];
     if (!def.implemented) continue;
@@ -737,6 +847,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   // The tactic rung sets how tightly launches cluster into volleys.
   const missileTactic = tacticForRounds('missiles', missileLedger.roundsInvested);
   const volleySize = Math.max(1, Math.round(missileTactic.volumeMult * 1.6));
+  const missileGroups = beatGroups(economy, round, 'missiles', basicCount + guidedCount);
 
   // Schedule the whole missile buy ONCE and assign guidance across the result,
   // the way torpedo and boat variants are assigned. Scheduling the two kinds
@@ -751,6 +862,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     'missile',
     EVOLUTION.windowStartT,
     windowEnd,
+    missileGroups,
   );
   // Spread the guided rounds through the run rather than front- or back-loading
   // them, so the harder variant is not all survivable in one stretch.
@@ -830,6 +942,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
       'torpedo',
       EVOLUTION.windowStartT,
       windowEnd,
+      beatGroups(economy, round, 'torpedoes', torpedoTotal),
     );
     // Assign variants across the scheduled runs: low-signature first (they are
     // the scarcest and nastiest), then homing, then straight runners.
@@ -872,6 +985,7 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
       'attackBoat',
       EVOLUTION.windowStartT,
       boatWindowEnd,
+      beatGroups(economy, round, 'attackBoats', boatTotal),
     );
     // Nastiest first, same as torpedoes: boarding parties, then rocket racks,
     // then small-arms craft.
@@ -984,6 +1098,26 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   return { round, spawns, mines, installations, smoke, electronic, debuts };
 }
 
+/** Region Workshop: the launch grouping an authored beat asks for on this
+ *  round, or null to leave the tactic ladder in charge. A `salvo` or `cluster`
+ *  concentrates the branch's whole buy into `groups` volleys (one, if unset);
+ *  a `wave` does the same for boats; `sustained` spreads across the window
+ *  one unit at a time. Grouping is applied to the WHOLE branch buy for the
+ *  round, because the scheduler assigns variants after it has laid out the
+ *  volleys — this keeps a beat's units in the same salvo as the rest. */
+function beatGroups(
+  economy: EnemyEconomyState,
+  round: number,
+  key: EnemyBranchKey,
+  total: number,
+): number | undefined {
+  const beats = beatsForRound(economy, round).filter((b) => b.branch === key);
+  if (beats.length === 0 || total <= 0) return undefined;
+  const beat = beats[0];
+  if (beat.pattern === 'sustained') return total;
+  return Math.max(1, Math.min(total, beat.groups ?? 1));
+}
+
 /** Spread `count` missile launches across [windowStart, windowEnd] in volleys
  *  of the given size, jittered so they never arrive on a metronome. */
 function scheduleMissiles(
@@ -994,6 +1128,10 @@ function scheduleMissiles(
   kind: 'missile' | 'guidedMissile' | 'torpedo' | 'attackBoat',
   windowStart: number,
   windowEnd: number,
+  /** Region Workshop: an authored beat fixes the number of launch groups
+   *  outright, overriding both the tactic's volley size and the max-gap
+   *  ceiling — a salvo IS a burst followed by silence. */
+  forcedVolleys?: number,
 ): SpawnEvent[] {
   const spawns: SpawnEvent[] = [];
   if (count <= 0) return spawns;
@@ -1008,13 +1146,16 @@ function scheduleMissiles(
   // Number of volley EVENTS: enough to honor the volley size, but also enough
   // that no slot is wider than maxVolleyGap — so a large volley size can't
   // collapse fire into a few widely-spaced bursts. Capped at one-per-missile.
-  const volleys = Math.max(
-    1,
-    Math.min(
-      count,
-      Math.max(Math.ceil(count / size), Math.ceil(span / EVOLUTION.maxVolleyGap)),
-    ),
-  );
+  const volleys =
+    forcedVolleys !== undefined
+      ? Math.max(1, Math.min(count, forcedVolleys))
+      : Math.max(
+          1,
+          Math.min(
+            count,
+            Math.max(Math.ceil(count / size), Math.ceil(span / EVOLUTION.maxVolleyGap)),
+          ),
+        );
   const slot = span / volleys;
   // Jitter is a FRACTION of the slot, not the whole of it. Jittering across a
   // full slot lets neighbouring volleys land at opposite ends of adjacent

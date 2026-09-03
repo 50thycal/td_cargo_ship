@@ -1577,6 +1577,33 @@ export interface EnemyEconomyState {
   branchDebutRounds: Record<string, number>;
   /** Per-round unit ceilings this region raises for a branch (see RegionDef). */
   branchUnitCeilings: Record<string, number>;
+  /** REGION WORKSHOP: node-level availability windows (`branch:nodeId`), on
+   *  top of branch gating. Absent/empty on packaged regions. */
+  nodeWindows?: Record<string, { from: number; until: number | null }[]>;
+  /** REGION WORKSHOP: per-round pressure rules keyed by round. */
+  roundPressure?: Record<
+    string,
+    { budgetOverride?: number; budgetMultiplier?: number; branchCeilings?: Record<string, number> }
+  >;
+  /** REGION WORKSHOP: authored encounter beats the buyer guarantees. */
+  beats?: {
+    id: string;
+    round: number;
+    branch: string;
+    nodeId: string;
+    pattern: 'salvo' | 'cluster' | 'wave' | 'sustained';
+    units: number;
+    groups: number | null;
+    budget: 'charged' | 'reserved' | 'outOfBudget';
+  }[];
+  /** REGION WORKSHOP: authored intel warnings keyed by the round they describe. */
+  intelWarnings?: Record<string, string>;
+  /** Units this round that came from authored beats rather than the adaptive
+   *  allocator, keyed by node id — the AAR/telemetry attribution the workshop
+   *  reads back. Reset every purchase. */
+  authoredUnits?: Record<string, number>;
+  /** Budget the beats reserved before the adaptive allocator spent. */
+  authoredSpend?: number;
   /** The region's threat-budget curve (base + perRound × round, capped). */
   budgetCurve: { base: number; perRound: number; cap: number };
   /** War funds granted this round (after anti-snowball modifiers). */
@@ -1892,6 +1919,10 @@ export interface EnemyRoundTelemetry {
   /** Current shared Targeting Doctrine rung, and its human-readable name. */
   targetingTier: number;
   targetingName: string;
+  /** Region Workshop: units guaranteed by authored beats this round (by node
+   *  id) and the budget they reserved. Absent on packaged regions. */
+  authoredUnits?: Record<string, number>;
+  authoredSpend?: number;
 }
 
 /** The active REGIONAL RUN. Everything in here is temporary to one attempt at
@@ -1918,6 +1949,10 @@ export interface CampaignState {
   /** Dev invincibility: ships/escorts/batteries take no damage and munitions are
    *  effectively unlimited during transit. Only meaningful when dev is true. */
   godMode?: boolean;
+  /** REGION WORKSHOP: this run is an isolated playtest of a compiled preset.
+   *  Saved under its own key (never the campaign slot) and never settles the
+   *  Commander Profile. Carries the preset's provenance for telemetry. */
+  workshop?: { hash: string; schemaVersion: number; source: 'packaged' | 'local' };
   /** Round about to be played (1-based). */
   round: number;
   phase: 'prep' | 'transit' | 'aar' | 'draft';

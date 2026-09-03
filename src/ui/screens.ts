@@ -218,7 +218,7 @@ function resourceBar(c: CampaignState): HTMLElement {
   ]);
 }
 
-function screenShell(
+export function screenShell(
   title: string,
   sub: string,
   c: CampaignState | null,
@@ -688,7 +688,7 @@ export function loadoutScreen(
 
 /** One labelled ON/OFF row. Shared by Settings and Dev Mode so the two screens
  *  cannot drift into looking like different games. */
-function toggleRow(
+export function toggleRow(
   ic: IconName,
   label: string,
   desc: string,
@@ -721,6 +721,7 @@ export function settingsScreen(
   profile: CommanderProfile,
   onChange: () => void,
   onBack: () => void,
+  onWorkshop?: () => void,
 ): HTMLElement {
   const { root, body, footer } = screenShell(
     'Settings',
@@ -756,6 +757,19 @@ export function settingsScreen(
         },
       ),
     );
+    if (onWorkshop) {
+      panel.append(
+        h('div', { className: 'dev-row' }, [
+          h('div', { className: 'dev-label' }, [icon('radar'), h('span', { text: 'Region Workshop' })]),
+          h('div', {
+            className: 'dev-desc hint',
+            text:
+              'Author regions on a round-by-round timeline from the canonical enemy arsenal, save them locally, export/import portable JSON, and playtest them in an isolated run that never touches your campaign save.',
+          }),
+          h('button', { text: 'Open', onClick: onWorkshop }),
+        ]),
+      );
+    }
   }
 
   body.append(
@@ -787,7 +801,11 @@ let devUnlock = true;
  *  profile state (the region unlock) lives in Settings instead: it was the odd
  *  one out here, being the only switch that did something without launching
  *  anything. */
-export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => void): HTMLElement {
+export function devScreen(
+  onLaunch: (opts: DevOptions) => void,
+  onBack: () => void,
+  onWorkshop?: () => void,
+): HTMLElement {
   const { root, body, footer } = screenShell(
     'Dev Mode',
     'God abilities and level select — for testing only',
@@ -851,6 +869,22 @@ export function devScreen(onLaunch: (opts: DevOptions) => void, onBack: () => vo
         'Dev Mode also adds 4×, 6× and 10× to the transit speed key, on top of the usual 1×/2×/3× — for pushing a build through slow rounds to reach the one you are testing. Above 3× the round is too fast to fight by hand.',
     }),
   );
+
+  if (onWorkshop) {
+    body.append(
+      h('div', { className: 'panel' }, [
+        h('h2', { text: 'Region Workshop' }),
+        h('div', { className: 'dev-row' }, [
+          h('div', { className: 'dev-label' }, [icon('radar'), h('span', { text: 'Level authoring' })]),
+          h('div', {
+            className: 'dev-desc hint',
+            text: 'Build, save, export and playtest custom regions on a round timeline.',
+          }),
+          h('button', { text: 'Open Workshop', onClick: onWorkshop }),
+        ]),
+      ]),
+    );
+  }
 
   footer.append(
     h('button', { text: 'Back', onClick: onBack }),

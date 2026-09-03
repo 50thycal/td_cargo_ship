@@ -15,6 +15,7 @@
 import type { EnemyBranchKey } from './enemyBranches';
 import { geography, type Geography, type GeographyId } from './geography';
 import type { ShipClassId } from '../sim/types';
+import type { NodeWindows, RoundPressureRule, RuntimeBeat } from './regionAuthoring';
 
 export type RegionId = string;
 
@@ -86,6 +87,25 @@ export interface RegionDef {
    *  hull has to work in — both of which the same missile, unchanged, exploits
    *  differently. */
   geography?: GeographyId;
+
+  // --- Region Workshop extensions -------------------------------------------
+  // Everything below is GENERATED from an authored preset (regionAuthoring.ts
+  // → toRegionDef) and absent on the hand-written packaged regions, which keep
+  // behaving exactly as before. Same rule as every field above: availability,
+  // pacing and scripted beats — never a weapon stat.
+
+  /** Node-level availability windows (`branch:nodeId` → rounds), on top of
+   *  branch gating. A node with no entry follows its catalogue gate. */
+  nodeWindows?: NodeWindows;
+  /** Per-round pressure rules (budget override/multiplier, ceilings). */
+  roundPressure?: Record<number, RoundPressureRule>;
+  /** Authored encounter beats the runtime guarantees. */
+  beats?: RuntimeBeat[];
+  /** Authored player-facing intel warnings, keyed by the round they describe
+   *  (shown the round before). */
+  intelWarnings?: Record<number, string>;
+  /** Provenance of a compiled preset, carried into telemetry. */
+  authoring?: { schemaVersion: number; hash: string };
 }
 
 /** The shared provisional starting state. Mirrors the pre-redesign campaign
@@ -294,8 +314,30 @@ export const FIRST_REGION: RegionId = 'missileCoast';
 /** The full-roster region dev runs and the headless harness use. */
 export const DEV_REGION: RegionId = 'openSeas';
 
+/** Regions compiled from Region Workshop presets at runtime. Kept OFF the
+ *  packaged table so an experiment can never mutate campaign progression: the
+ *  ladder, the unlock graph and Region Select only ever read REGIONS. */
+const CUSTOM_REGIONS: Record<RegionId, RegionDef> = {};
+
+export function registerCustomRegion(def: RegionDef): void {
+  if (REGIONS[def.id]) throw new Error(`"${def.id}" is a packaged region and cannot be replaced at runtime.`);
+  CUSTOM_REGIONS[def.id] = def;
+}
+
+export function unregisterCustomRegion(id: RegionId): void {
+  delete CUSTOM_REGIONS[id];
+}
+
+export function customRegion(id: RegionId): RegionDef | undefined {
+  return CUSTOM_REGIONS[id];
+}
+
+export function isPackagedRegion(id: RegionId): boolean {
+  return !!REGIONS[id];
+}
+
 export function regionDef(id: RegionId): RegionDef {
-  return REGIONS[id] ?? REGIONS[FIRST_REGION];
+  return REGIONS[id] ?? CUSTOM_REGIONS[id] ?? REGIONS[FIRST_REGION];
 }
 
 /** The water this region is fought in. One lookup for every system that needs
