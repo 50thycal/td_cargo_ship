@@ -34,17 +34,17 @@ import {
   setFormation,
   buyWarthogSortie,
   buyScanPulse,
-} from '../../src/sim/campaign';
+} from '../../sim/campaign';
 import {
   dismissEmptyDraft,
   draftOptionResearchId,
   selectDraftOption,
-} from '../../src/sim/draft';
-import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../src/data/counters';
-import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../src/data/defs';
-import { COMBAT, COMMANDER, ECONOMY, ESCORT_LEGACY, NAV, WORLD } from '../../src/data/tuning';
-import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../src/data/commanderAbilities';
-import { ESCORT_LEGACIES, legacyPointsUsed } from '../../src/data/escortLegacies';
+} from '../../sim/draft';
+import { LOSS_CAUSE_TO_ENEMY_BRANCH, RESEARCH_INDEX } from '../../data/counters';
+import { BASE_MODULES, ESCORT_MODULES, MODULES } from '../../data/defs';
+import { COMBAT, COMMANDER, ECONOMY, ESCORT_LEGACY, NAV, WORLD } from '../../data/tuning';
+import { COMMANDER_ABILITIES, loadoutPointsUsed } from '../../data/commanderAbilities';
+import { ESCORT_LEGACIES, legacyPointsUsed } from '../../data/escortLegacies';
 import type {
   DraftOption,
   BaseModuleId,
@@ -57,7 +57,7 @@ import type {
   Threat,
   TransitCommand,
   TransitState,
-} from '../../src/sim/types';
+} from '../../sim/types';
 
 // ---------------------------------------------------------------------------
 // Procurement intents

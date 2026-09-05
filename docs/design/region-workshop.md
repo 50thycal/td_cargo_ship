@@ -632,6 +632,18 @@ attack boats were spawning on the beach for one frame before the clamp pulled
 them into the water, and mines were placed wherever the planner proposed rather
 than being held in navigable water at the point they become real objects.
 
+### Balance sweep (added after slice E)
+
+The statistical half of playtesting, inside the builder. `src/sim/playtest/`
+holds the engine (`sweep.ts`), the personas and the analysis — moved out of
+`tools/` so the browser, the CLI and the tests share one implementation. The
+panel (`src/ui/workshopSweep.ts`) runs it in a Web Worker
+(`src/ui/sweepWorker.ts`) that compiles the authored preset itself, reports
+progress per campaign, can be stopped, and saves the summary keyed by the
+preset's content hash (`straitwatch.workshop.sweeps.v1`, twelve per region) so
+a result can be read against an earlier version of the same region. The CLI
+gains `--preset` for exported JSON.
+
 ### Deferred
 
 - Post-run cell-level feedback in the AAR. Telemetry already records

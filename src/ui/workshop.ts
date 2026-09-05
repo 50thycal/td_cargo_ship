@@ -50,6 +50,7 @@ import {
   type RegionAuthoringDef,
   type ValidationIssue,
 } from '../data/regionAuthoring';
+import { sweepPanel } from './workshopSweep';
 import {
   deleteDraft,
   exportJson,
@@ -574,6 +575,11 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
       validationPanel(validation.issues, st, host),
     ]),
   );
+
+  // --- balance sweep -------------------------------------------------------
+  // Sweeps the timeline as it is on screen (saved or not): the worker compiles
+  // the authored preset itself, and the result is keyed by its content hash.
+  body.append(sweepPanel(def, validation.ok, host.rerender));
 
   // --- footer -------------------------------------------------------------
   footer.append(

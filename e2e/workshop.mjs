@@ -136,6 +136,32 @@ try {
   await page.locator('.ws-matrix-wrap').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOT_DIR}/ws-03-timeline-desktop.png` });
 
+  // Balance sweep: one seed of the two cheapest personas, in the worker. The
+  // point of the smoke test is the plumbing (worker → progress → result →
+  // history), not the statistics.
+  const sweepPanel = page.locator('.ws-sweep');
+  await sweepPanel.scrollIntoViewIfNeeded();
+  await sweepPanel.getByRole('button', { name: 'None' }).click();
+  for (const name of ['afk', 'economist']) {
+    await page.locator('.ws-persona', { hasText: new RegExp(`^${name}$`) }).locator('input').check();
+  }
+  await page.locator('.ws-sweep input[type=number]').first().fill('1');
+  await page.locator('.ws-sweep input[type=number]').first().dispatchEvent('change');
+  check((await page.locator('.ws-count').textContent()).includes('2 personas × 1 seeds = 2 campaigns'), 'sweep size reflects the picks');
+  await sweepPanel.getByRole('button', { name: 'Run sweep' }).click();
+  await page.waitForSelector('.ws-sweep[data-sweep="running"]', { timeout: 10_000 });
+  check(true, 'sweep started in the worker');
+  await page.waitForSelector('.ws-results', { timeout: 240_000 });
+  check((await page.locator('.ws-tile').count()) >= 6, 'sweep result tiles rendered');
+  check((await page.locator('.ws-sweep-table tbody tr').count()) === 2, 'per-persona rows for both personas');
+  check((await page.locator('.ws-chart polyline').count()) >= 1, 'cash curve drawn');
+  check((await page.locator('.ws-history-row').count()) === 1, 'sweep saved to history');
+  await page.locator('.ws-sweep-table .ws-link').first().click();
+  await page.waitForTimeout(200);
+  check((await page.locator('.ws-chart polyline').count()) === 2, 'persona curve drawn beside the overall mean');
+  await page.locator('.ws-results').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOT_DIR}/ws-08-balance-sweep.png` });
+
   // Save + export
   await page.getByRole('button', { name: /^Save$/ }).click();
   await page.waitForTimeout(100);
@@ -159,6 +185,13 @@ try {
   const draftRow = page.locator('.ws-library tbody tr', { hasText: 'Lab Channel' });
   check((await draftRow.count()) === 1, 'draft listed after reload');
   check((await draftRow.textContent()).includes('Valid'), 'draft valid after reload');
+  await draftRow.getByRole('button', { name: 'Open' }).click();
+  await page.waitForSelector('[data-screen="workshop-editor"]');
+  await page.waitForTimeout(700);
+  check((await page.locator('.ws-history-row').count()) === 1, 'sweep history survives a reload');
+  check((await page.locator('.ws-results').count()) === 1, 'last sweep result shown after reload');
+  await page.getByRole('button', { name: 'Library' }).click();
+  await page.waitForSelector('[data-screen="workshop"]');
 
   // Mobile: round list
   await page.setViewportSize({ width: 390, height: 844 });

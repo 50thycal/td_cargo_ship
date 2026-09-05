@@ -61,6 +61,13 @@ and data contract are in
 [docs/design/region-workshop.md](docs/design/region-workshop.md); the pure
 compiler is `src/data/regionAuthoring.ts`.
 
+The builder's **Balance sweep** panel plays the bot-persona sweep on the region
+you are editing (seeds and personas are yours to choose), reports win/loss
+rates, how campaigns ended, money at the end and per round, losses by enemy
+branch and the enemy economy, and keeps results per preset version so edits can
+be compared. `npm run playtest -- --preset region.json` runs the same sweep
+headlessly on an export.
+
 Four environments ship: Open Water, Coastal Squeeze, Headlands and the Island
 Channel — a rock amidships that splits the strait into two passages a hull must
 commit to. Terrain is a typed feature of the canonical geography, so the

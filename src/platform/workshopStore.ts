@@ -227,3 +227,66 @@ export function parseImport(text: string): ImportOutcome {
 export function exportJson(def: RegionAuthoringDef): string {
   return JSON.stringify(def, null, 2);
 }
+
+// ---------------------------------------------------------------------------
+// Balance-sweep history
+// ---------------------------------------------------------------------------
+//
+// Every sweep a designer runs is kept with the region it measured, keyed by
+// the preset's CONTENT HASH — so after an edit the previous result is still
+// there to read against the new one, and a result can never be mistaken for a
+// measurement of a region that has since changed.
+
+import type { SweepSummary } from '../sim/playtest/analyze';
+
+const SWEEPS_KEY = 'straitwatch.workshop.sweeps.v1';
+/** Kept per region, newest first. */
+const SWEEP_HISTORY_LIMIT = 12;
+
+export interface SweepRecord {
+  /** Region id and the content hash of the exact preset that was swept. */
+  regionId: string;
+  hash: string;
+  regionName: string;
+  ranAt: string;
+  options: { seeds: number; personas: string[]; rounds: number };
+  /** Wall-clock seconds the sweep took. */
+  seconds: number;
+  summary: SweepSummary;
+}
+
+function readSweeps(): Record<string, SweepRecord[]> {
+  try {
+    const raw = store.getItem(SWEEPS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { v?: number; sweeps?: Record<string, SweepRecord[]> };
+    return parsed?.sweeps ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSweeps(sweeps: Record<string, SweepRecord[]>): void {
+  try {
+    store.setItem(SWEEPS_KEY, JSON.stringify({ v: 1, sweeps }));
+  } catch {
+    // A full store loses the oldest history, never the editor.
+  }
+}
+
+export function saveSweep(record: SweepRecord): void {
+  const all = readSweeps();
+  const list = [record, ...(all[record.regionId] ?? [])].slice(0, SWEEP_HISTORY_LIMIT);
+  all[record.regionId] = list;
+  writeSweeps(all);
+}
+
+export function listSweeps(regionId: string): SweepRecord[] {
+  return readSweeps()[regionId] ?? [];
+}
+
+export function deleteSweeps(regionId: string): void {
+  const all = readSweeps();
+  delete all[regionId];
+  writeSweeps(all);
+}

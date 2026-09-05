@@ -37,7 +37,7 @@ import {
   research,
   type BuyIntent,
   type Persona,
-} from './personas';
+} from '../../src/sim/playtest/personas';
 
 // ---------------------------------------------------------------------------
 // CLI

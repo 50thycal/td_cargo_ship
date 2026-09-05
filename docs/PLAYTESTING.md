@@ -29,7 +29,23 @@ npm run playtest -- --region homeStrait       # the opening ladder region
 npm run playtest -- --region openSeas --rounds 15   # dev proving ground, all 7 branches
 npm run playtest -- --personas turtle,economist
 npm run playtest -- --no-logs                 # summary only, no per-campaign JSON
+npm run playtest -- --preset region.json      # a Region Workshop export (see below)
 ```
+
+### Sweeping a Region Workshop preset
+
+The same sweep runs inside the game: open a region in the Region Workshop
+(Settings → Developer mode) and use the **Balance sweep** panel at the bottom
+of the builder. It plays the persona sweep in a Web Worker, shows win/loss and
+end-reason rates, the money curve, losses by branch, the enemy economy and the
+seesaw signals, and keeps every result against the preset's content hash so an
+edit can be compared with what came before it. **Export result JSON** hands the
+same data to a Claude session along with the preset.
+
+`--preset` takes an exported preset and compiles it exactly as the workshop
+does, so a number measured on the CLI is the number the panel would show. The
+engine both use is `src/sim/playtest/sweep.ts`; the personas and the analysis
+live beside it in `src/sim/playtest/`.
 
 A full default sweep is 72 campaigns and takes about three minutes — fast enough
 to run after any tuning change. The region is printed at the top of the report,

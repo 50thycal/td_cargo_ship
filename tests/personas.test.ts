@@ -17,7 +17,7 @@ import {
   procure,
   research,
   type Persona,
-} from '../tools/playtest/personas';
+} from '../src/sim/playtest/personas';
 import {
   createRoundTransit,
   newRegionalRun,
