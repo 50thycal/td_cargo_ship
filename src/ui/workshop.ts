@@ -21,7 +21,7 @@ import {
   TARGETING_DOCTRINE,
   type EnemyBranchKey,
 } from '../data/enemyBranches';
-import { geography } from '../data/geography';
+import { geography, islandHalfHeight } from '../data/geography';
 import { WORLD } from '../data/tuning';
 import { REGIONS } from '../data/regions';
 import {
@@ -786,7 +786,7 @@ function environmentPanel(def: RegionAuthoringDef, readOnly: boolean, touch: () 
   panel.append(
     h('div', {
       className: 'hint',
-      text: 'Environments are validated presets. A freehand map editor and the Island Channel terrain feature are not part of this build — see the design doc.',
+      text: 'Environments are validated presets — each one is a canonical geography the simulation navigates against, not a backdrop. A freehand coastline editor is not part of this build; see the design doc.',
     }),
   );
   return panel;
@@ -812,12 +812,26 @@ function mapPreview(geographyId: string): HTMLElement {
   const sites = geo.launchSites
     .map((s) => `<circle cx="${s.x}" cy="${s.y}" r="34" fill="#ff6f5e" stroke="#12140d" stroke-width="8"/>`)
     .join('');
+  // Islands, from the same definition the sim navigates against.
+  const islands = geo.islands
+    .map((island) => {
+      const top: string[] = [];
+      const bottom: string[] = [];
+      for (let x = island.fromX; x <= island.toX; x += 20) {
+        const hh = islandHalfHeight(island, x);
+        top.push(`${x.toFixed(0)},${(island.centerY - hh).toFixed(0)}`);
+        bottom.unshift(`${x.toFixed(0)},${(island.centerY + hh).toFixed(0)}`);
+      }
+      return `<polygon points="${top.join(' ')} ${bottom.join(' ')}" fill="#3a3f2a" stroke="#6b7355" stroke-width="6"/>`;
+    })
+    .join('');
   const svg =
     `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" class="ws-map">` +
     `<rect width="${W}" height="${H}" fill="#0f2a33"/>` +
     `<polygon points="${hostile}" fill="#3a3f2a"/>` +
     `<polygon points="${friendly}" fill="#2f3a26"/>` +
     lanes +
+    islands +
     sites +
     `<polyline points="${pts((x) => geo.baseY(x))}" fill="none" stroke="#52e595" stroke-width="8" stroke-dasharray="30 30" opacity="0.6"/>` +
     `</svg>`;

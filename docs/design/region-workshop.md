@@ -1,6 +1,6 @@
 # Region Workshop — Timeline-Driven Level Authoring
 
-Status: **BUILT (slices A–D); slice E (Island Channel) deferred — see "Implementation status"**
+Status: **BUILT (slices A–E) — see "Implementation status"**
 
 ## Intent
 
@@ -564,7 +564,8 @@ Where to find it:
 | Runtime: node windows, per-round pressure, beats (reserve → adaptive spend → grouping), authored intel warnings, attribution | `src/sim/evolution.ts` |
 | Isolated playtest constructor and telemetry provenance | `src/sim/campaign.ts`, `src/sim/telemetry.ts`, `src/platform/save.ts` (own save slot) |
 | Library, builder, timeline matrix, round list, inspector, arsenal browser, validation panel, import/export | `src/ui/workshop.ts` (entry points in Settings and Dev Mode) |
-| Tests | `tests/regionWorkshop.test.ts` (snapshot, compiler, validation, migration, runtime, store), `e2e/workshop.mjs` (browser) |
+| Terrain: the `IslandDef` feature, channel splitting, `isLand`/`inWater`/`clampWater`/`crossesLand`, `lanesAroundIsland`, island validation and the Island Channel map | `src/data/geography.ts` |
+| Tests | `tests/regionWorkshop.test.ts` (snapshot, compiler, validation, migration, runtime, store), `tests/islandChannel.test.ts` (terrain), `e2e/workshop.mjs` (browser) |
 
 Example exported preset: `docs/presets/lab-channel.example.json` (the region the
 browser smoke test authors: Home Strait template on the Headlands, torpedoes
@@ -601,13 +602,38 @@ run's `EnemyEconomyState` is byte-identical to before (asserted in the
 snapshot test). `enemyBranches` is treated as a set by the sim; the compiler
 emits it in catalogue order.
 
+### Slice E — the Island Channel
+
+Terrain is a typed feature on the canonical geography (`IslandDef`), and the
+renderer, lane builder, validator, hull clamp, boat steering and torpedo run
+all read that one definition. It is parametric rather than a free polygon: a
+lens, thickest amidships and tapering to a point at each tip. Every profile in
+the geography model is a function of x and the sim asks its questions that way,
+so a lens answers them with no new machinery — and, being convex, it is a shape
+the greedy boat-avoidance rule can route around without a path search.
+
+`waterTop`/`waterBottom` remain the shore-to-shore envelope; `channels(x)` cuts
+it into the navigable intervals, and `clampWater` keeps a hull in the channel it
+is already in rather than flicking it to the far side of the land. On a
+geography with no islands `channels` returns the envelope and `clampWater` is
+the old two-argument clamp, asserted by test.
+
+What crosses land and what does not is a rule, not an oversight. Missiles,
+shells and aircraft go over the top. Torpedoes run under the surface and
+therefore run aground, which is what makes the rock shelter the water behind it:
+measured, it blocks 86-92% of shore-launched runs at the southern lanes abreast
+of it and none at all at the northern one. Ships hold their lane (authored to a
+side, and the validator refuses a lane that changes channel); boats deflect
+around the land before steering, and the hull clamp is the backstop it has
+always been.
+
+Two things the acceptance criteria forced out of hiding, both fixed here:
+attack boats were spawning on the beach for one frame before the clamp pulled
+them into the water, and mines were placed wherever the planner proposed rather
+than being held in navigable water at the point they become real objects.
+
 ### Deferred
 
-- **Slice E — Island Channel.** Internal-land terrain needs the geography
-  model, renderer, lane validator, navigation, spawn placement and
-  line-of-fire checks to share one terrain definition. Not started; the
-  environment panel says so. The three existing geographies are exposed as
-  validated presets.
 - Post-run cell-level feedback in the AAR. Telemetry already records
   `regionAuthoring` (id/hash/schema/source) and per-round `authoredUnits` /
   `authoredSpend`; the link back to cells is UI work not yet done.

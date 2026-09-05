@@ -39,6 +39,39 @@ export interface GeoPoint {
   y: number;
 }
 
+/** A LANDMASS INSIDE THE WATER.
+ *
+ *  The two shore profiles describe where the water ENDS; they cannot describe
+ *  land with water on both sides of it, which is the one thing an island is.
+ *  So terrain is its own typed feature, and — this is the part that matters —
+ *  it is the SAME definition the renderer, the lane builder, the validator,
+ *  the hull clamp, boat steering and the torpedo run all read. An island
+ *  drawn by the renderer alone would be scenery that ships sail through.
+ *
+ *  Parametric rather than a free polygon, deliberately. Every profile in this
+ *  file is a function of x, and the whole sim asks its questions that way
+ *  ("where is the water at this x"). A lens — two edges, thickest amidships,
+ *  tapering to a point at each tip — is the shape that answers those questions
+ *  with no new machinery, and it is a perfectly good island. A general polygon
+ *  would need its own containment and crossing tests and would let an author
+ *  draw something the lane builder cannot route around; that is the freehand
+ *  editor the design doc explicitly rules out of this pass. */
+export interface IslandDef {
+  id: string;
+  name: string;
+  /** Western and eastern tips. The land tapers to nothing at both. */
+  fromX: number;
+  toX: number;
+  /** North-south centre of the landmass. */
+  centerY: number;
+  /** Half-height amidships — the island is `2 x halfHeight` at its widest. */
+  halfHeight: number;
+  /** Amplitude of the DRAWN meander around the island's edges, exactly the
+   *  role `shoreWave` plays for the coasts. Anything that must stay off the
+   *  land has to clear it. */
+  wave: number;
+}
+
 /** An enemy emplacement site along the hostile shore. */
 export interface LaunchSiteDef {
   x: number;
@@ -68,6 +101,11 @@ export interface GeographyDef {
    *  batteries sit. */
   baseInset: number;
   launchSites: readonly LaunchSiteDef[];
+  /** Landmasses inside the navigable water. Absent on every map whose story is
+   *  told by its coastlines alone, and absent means absent: an island-free
+   *  geography answers every question below exactly as it did before terrain
+   *  existed. */
+  islands?: readonly IslandDef[];
 }
 
 /** A resolved geography: the questions the sim actually asks, answered for any
@@ -84,10 +122,43 @@ export interface Geography {
   hostileShoreY(x: number): number;
   friendlyShoreY(x: number): number;
 
-  /** THE NAVIGABLE WATER at this x. Clears the drawn meander, so a hull held
-   *  between these is in open water at every point along the strait. */
+  /** Landmasses inside the water (empty on a map without any). */
+  readonly islands: readonly IslandDef[];
+
+  /** THE OUTER EDGES of the navigable water at this x — the shore-to-shore
+   *  envelope. Clears the drawn meander, so a hull held between these is off
+   *  both beaches at every point along the strait.
+   *
+   *  On a map WITH an island these are still the outer edges and no longer the
+   *  whole story: the water between them is cut into channels. Anything asking
+   *  "may this hull be here" must ask `inWater`/`clampWater`, which know about
+   *  the land in the middle; these two remain the right question only for the
+   *  envelope itself. */
   waterTop(x: number): number;
   waterBottom(x: number): number;
+
+  /** The navigable channels at this x, north to south. One interval on an
+   *  open map; one per gap either side of the land where an island bites. */
+  channels(x: number): { top: number; bottom: number }[];
+
+  /** Is this point navigable water for a SURFACE unit — inside the envelope
+   *  and not on an island? */
+  inWater(x: number, y: number): boolean;
+
+  /** Is this point LAND — either shore, or an island? Measured against the
+   *  DRAWN edges rather than the navigable ones, so this answers "is it
+   *  aground", not "is it too close". */
+  isLand(x: number, y: number): boolean;
+
+  /** Hold a surface point in navigable water, keeping it in the channel it is
+   *  already in (or nearest to). The island-aware replacement for clamping
+   *  between `waterTop` and `waterBottom`. */
+  clampWater(x: number, y: number): number;
+
+  /** Does the straight segment from A to B pass over land? What a torpedo run
+   *  and a lane check both need, and the reason an island shelters the water
+   *  behind it rather than merely decorating it. */
+  crossesLand(ax: number, ay: number, bx: number, by: number): boolean;
 
   /** The same band for AIRCRAFT, which are allowed closer to the beach than a
    *  hull is — a strafing run over the surf is fine, a cargo ship on it is not. */
@@ -156,12 +227,26 @@ export function flat(y: number): readonly GeoPoint[] {
 // Resolution
 // ---------------------------------------------------------------------------
 
+function clampTo(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
 /** How much clear water a HULL keeps off the drawn coastline. */
 const hullClearance = COMBAT.shoreClearance;
 
 /** How much an AIRCRAFT keeps. Smaller: a run-in may cross the surf line, and
  *  the A-10's whole job is working the water close to the hostile beach. */
 const airClearance = 15;
+
+/** Half-height of an island at x: a lens, thickest amidships and tapering to a
+ *  point at each tip. Zero outside its span. */
+export function islandHalfHeight(island: IslandDef, x: number): number {
+  const halfLen = (island.toX - island.fromX) / 2;
+  if (halfLen <= 0) return 0;
+  const u = (x - (island.fromX + halfLen)) / halfLen;
+  if (u <= -1 || u >= 1) return 0;
+  return island.halfHeight * Math.sqrt(1 - u * u);
+}
 
 export function makeGeography(def: GeographyDef): Geography {
   const hostileShoreY = (x: number): number => sample(def.hostileShore, x);
@@ -201,16 +286,103 @@ export function makeGeography(def: GeographyDef): Geography {
     return table[i] + (table[i + 1] - table[i]) * t;
   };
 
+  const islands = def.islands ?? [];
+
+  const waterTop = (x: number): number => hostileShoreY(x) + def.shoreWave + hullClearance;
+  const waterBottom = (x: number): number => friendlyShoreY(x) - def.shoreWave - hullClearance;
+
+  /** The water an island DENIES at this x: its drawn extent plus the clearance
+   *  a hull keeps off any beach. Null where the island is not. */
+  const islandBlock = (island: IslandDef, x: number): { top: number; bottom: number } | null => {
+    const h = islandHalfHeight(island, x);
+    if (h <= 0) return null;
+    return {
+      top: island.centerY - h - island.wave - hullClearance,
+      bottom: island.centerY + h + island.wave + hullClearance,
+    };
+  };
+
+  /** Cut the envelope into channels. On a map with no islands this returns the
+   *  envelope itself, allocation and all — so an island-free geography answers
+   *  exactly what it always did. */
+  const channels = (x: number): { top: number; bottom: number }[] => {
+    const top = waterTop(x);
+    const bottom = waterBottom(x);
+    if (islands.length === 0) return [{ top, bottom }];
+    const blocks = islands
+      .map((i) => islandBlock(i, x))
+      .filter((b): b is { top: number; bottom: number } => b !== null)
+      .sort((a, b) => a.top - b.top);
+    if (blocks.length === 0) return [{ top, bottom }];
+    const out: { top: number; bottom: number }[] = [];
+    let cursor = top;
+    for (const block of blocks) {
+      if (block.top > cursor) out.push({ top: cursor, bottom: Math.min(block.top, bottom) });
+      cursor = Math.max(cursor, block.bottom);
+    }
+    if (cursor < bottom) out.push({ top: cursor, bottom });
+    // A channel narrower than a hull is not a channel. Dropping it here means
+    // "nearest channel" can never pick a gap nothing fits through.
+    return out.filter((c) => c.bottom - c.top >= hullClearance * 2);
+  };
+
   return {
     id: def.id,
     name: def.name,
     shoreWave: def.shoreWave,
     laneCount,
     launchSites,
+    islands,
     hostileShoreY,
     friendlyShoreY,
-    waterTop: (x) => hostileShoreY(x) + def.shoreWave + hullClearance,
-    waterBottom: (x) => friendlyShoreY(x) - def.shoreWave - hullClearance,
+    waterTop,
+    waterBottom,
+    channels,
+    inWater: (x, y) => channels(x).some((c) => y >= c.top && y <= c.bottom),
+    isLand: (x, y) => {
+      if (y <= hostileShoreY(x) + def.shoreWave) return true;
+      if (y >= friendlyShoreY(x) - def.shoreWave) return true;
+      return islands.some((island) => {
+        const h = islandHalfHeight(island, x);
+        return h > 0 && Math.abs(y - island.centerY) <= h + island.wave;
+      });
+    },
+    clampWater: (x, y) => {
+      const cs = channels(x);
+      if (cs.length === 0) return clampTo(y, waterTop(x), waterBottom(x));
+      // The channel this point is ALREADY in wins outright — a hull nudged
+      // against the island must not be flicked to the far side of it.
+      for (const c of cs) if (y >= c.top && y <= c.bottom) return y;
+      let best = cs[0];
+      let bestD = Infinity;
+      for (const c of cs) {
+        const d = y < c.top ? c.top - y : y - c.bottom;
+        if (d < bestD) {
+          bestD = d;
+          best = c;
+        }
+      }
+      return clampTo(y, best.top, best.bottom);
+    },
+    crossesLand: (ax, ay, bx, by) => {
+      const len = Math.hypot(bx - ax, by - ay);
+      // Sampled, at a spacing well inside the smallest feature a geography can
+      // author. A tip taper is the thinnest thing on the map and it is still
+      // tens of units across; 8 cannot step over one.
+      const steps = Math.max(2, Math.ceil(len / 8));
+      for (let i = 0; i <= steps; i++) {
+        const f = i / steps;
+        const x = ax + (bx - ax) * f;
+        const y = ay + (by - ay) * f;
+        if (y <= hostileShoreY(x) + def.shoreWave) return true;
+        if (y >= friendlyShoreY(x) - def.shoreWave) return true;
+        for (const island of islands) {
+          const h = islandHalfHeight(island, x);
+          if (h > 0 && Math.abs(y - island.centerY) <= h + island.wave) return true;
+        }
+      }
+      return false;
+    },
     airWaterTop: (x) => hostileShoreY(x) + def.shoreWave + airClearance,
     airWaterBottom: (x) => friendlyShoreY(x) - def.shoreWave - airClearance,
     laneY,
@@ -383,6 +555,112 @@ export function lanesPressed(
   return lanes;
 }
 
+/** Lanes routed AROUND an island, some passing north of it and some south.
+ *
+ *  The third lane rule, and the one terrain needs. `lanesAcross` and
+ *  `lanesPressed` both assume the water at any x is a single band, so both
+ *  would happily lay a lane straight over an island — the band is still there,
+ *  the land is simply in the middle of it.
+ *
+ *  Each lane is assigned a SIDE, and the side it is given is the side it keeps
+ *  for the whole crossing: north lanes are held above the island (their ceiling
+ *  comes down as the land rises), south lanes below it (their floor comes up),
+ *  and the two groups can no more swap than they can cross. That is the region
+ *  this builds — a channel a hull commits to at the western tip and cannot
+ *  leave until the eastern one.
+ *
+ *  Ceilings and floors are slope-limited the same way `lanesPressed` limits
+ *  its floor, and for the same reason: a lane is only worth authoring if a hull
+ *  can actually follow it, so the bend has to begin far enough west of the land
+ *  to be finished before the land arrives. Smoothing the CONSTRAINT rather than
+ *  the finished lane keeps the cascade that guarantees lanes never cross. */
+export function lanesAroundIsland(
+  hostileShore: readonly GeoPoint[],
+  friendlyShore: readonly GeoPoint[],
+  shoreWave: number,
+  baseYs: readonly number[],
+  islands: readonly IslandDef[],
+  /** One entry per lane, north to south. Every 'north' must precede every
+   *  'south' — a north lane below a south one is two crossed lanes. */
+  sides: readonly ('north' | 'south')[],
+  opts: { edgeMargin?: number; minSeparation?: number; maxSlope?: number } = {},
+  samples = LANE_SAMPLES,
+): GeoPoint[][] {
+  if (sides.length !== baseYs.length) {
+    throw new Error('lanesAroundIsland: one side per lane');
+  }
+  const firstSouth = sides.indexOf('south');
+  const northCount = firstSouth === -1 ? sides.length : firstSouth;
+  if (sides.slice(northCount).some((s) => s !== 'south')) {
+    throw new Error('lanesAroundIsland: every north lane must precede every south lane');
+  }
+  const edgeMargin = opts.edgeMargin ?? LANE_MARGIN + 30;
+  const minSeparation = opts.minSeparation ?? 90;
+  const maxSlope = opts.maxSlope ?? MAX_LANE_SLOPE;
+
+  const xs: number[] = [];
+  const outerTop: number[] = [];
+  const outerBottom: number[] = [];
+  /** How far south a north lane may go, and how far north a south lane may. */
+  const ceiling: number[] = [];
+  const floor: number[] = [];
+  for (let i = 0; i < samples; i++) {
+    const x = (WORLD.width * i) / (samples - 1);
+    xs.push(x);
+    const top = sample(hostileShore, x) + shoreWave + hullClearance;
+    const bottom = sample(friendlyShore, x) - shoreWave - hullClearance;
+    outerTop.push(top + edgeMargin);
+    outerBottom.push(bottom - edgeMargin);
+    let ceil = bottom - edgeMargin;
+    let flr = top + edgeMargin;
+    for (const island of islands) {
+      const h = islandHalfHeight(island, x);
+      if (h <= 0) continue;
+      const landTop = island.centerY - h - island.wave - hullClearance;
+      const landBottom = island.centerY + h + island.wave + hullClearance;
+      ceil = Math.min(ceil, landTop - edgeMargin);
+      flr = Math.max(flr, landBottom + edgeMargin);
+    }
+    ceiling.push(ceil);
+    floor.push(flr);
+  }
+  // Both passes only ever make the constraint TIGHTER, so a smoothed limit is
+  // never less safe than the raw one — it just starts giving way sooner.
+  for (let i = samples - 2; i >= 0; i--) {
+    const dx = xs[i + 1] - xs[i];
+    ceiling[i] = Math.min(ceiling[i], ceiling[i + 1] + maxSlope * dx);
+    floor[i] = Math.max(floor[i], floor[i + 1] - maxSlope * dx);
+  }
+  for (let i = 1; i < samples; i++) {
+    const dx = xs[i] - xs[i - 1];
+    ceiling[i] = Math.min(ceiling[i], ceiling[i - 1] + maxSlope * dx);
+    floor[i] = Math.max(floor[i], floor[i - 1] - maxSlope * dx);
+  }
+
+  const lanes: GeoPoint[][] = baseYs.map(() => []);
+  for (let s = 0; s < samples; s++) {
+    // North group, built from the lane CLOSEST to the island upward, so the
+    // one the land actually pushes is the one that moves and its neighbours
+    // give way to it in turn.
+    let limit = ceiling[s];
+    for (let i = northCount - 1; i >= 0; i--) {
+      const y = Math.max(outerTop[s], Math.min(baseYs[i], limit));
+      lanes[i].push({ x: xs[s], y });
+      limit = y - minSeparation;
+    }
+    // South group, built from the island outward, exactly as `lanesPressed`
+    // builds from the shore outward.
+    let prev = floor[s] - minSeparation;
+    for (let i = northCount; i < baseYs.length; i++) {
+      const lo = Math.max(floor[s], prev + minSeparation);
+      const y = Math.min(outerBottom[s], Math.max(baseYs[i], lo));
+      lanes[i].push({ x: xs[s], y });
+      prev = y;
+    }
+  }
+  return lanes;
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -418,6 +696,47 @@ export function validateGeography(def: GeographyDef, samples = 81): GeographyPro
   }
   if (problems.length > 0) return problems;
 
+  // Islands must be ISLANDS: land with navigable water on both sides of it. An
+  // island merged into a shore is a headland, and should be authored as one —
+  // the lane builder and the channel split both assume a gap either side.
+  for (const island of def.islands ?? []) {
+    if (island.toX <= island.fromX) {
+      problems.push({ x: island.fromX, message: `island ${island.id} has no length` });
+      continue;
+    }
+    if (island.halfHeight <= 0) {
+      problems.push({ x: island.fromX, message: `island ${island.id} has no height` });
+      continue;
+    }
+    const steps = 41;
+    for (let i = 0; i <= steps; i++) {
+      const x = island.fromX + ((island.toX - island.fromX) * i) / steps;
+      const h = islandHalfHeight(island, x);
+      if (h <= 0) continue;
+      const landTop = island.centerY - h - island.wave - hullClearance;
+      const landBottom = island.centerY + h + island.wave + hullClearance;
+      if (landTop - geo.waterTop(x) < LANE_MARGIN * 2) {
+        problems.push({
+          x,
+          message: `island ${island.id} leaves only ${Math.round(landTop - geo.waterTop(x))} units between it and the hostile shore`,
+        });
+        break;
+      }
+      if (geo.waterBottom(x) - landBottom < LANE_MARGIN * 2) {
+        problems.push({
+          x,
+          message: `island ${island.id} leaves only ${Math.round(geo.waterBottom(x) - landBottom)} units between it and the friendly shore`,
+        });
+        break;
+      }
+    }
+  }
+
+  // Which channel each lane started in. A lane may bend as much as the water
+  // asks, but it may never change SIDES — a hull committed to one passage at
+  // the western tip cannot be re-routed through the land halfway across.
+  const laneChannel: (number | null)[] = [];
+
   for (let s = 0; s < samples; s++) {
     const x = (WORLD.width * s) / (samples - 1);
     const top = geo.waterTop(x);
@@ -425,6 +744,7 @@ export function validateGeography(def: GeographyDef, samples = 81): GeographyPro
     if (bottom - top < LANE_MARGIN * 2) {
       problems.push({ x, message: `navigable water is ${Math.round(bottom - top)} units wide` });
     }
+    const channels = geo.channels(x);
     for (let i = 0; i < geo.laneCount; i++) {
       const y = geo.laneY(i, x);
       if (y < top + LANE_MARGIN || y > bottom - LANE_MARGIN) {
@@ -432,6 +752,30 @@ export function validateGeography(def: GeographyDef, samples = 81): GeographyPro
           x,
           message: `lane ${i} at y=${Math.round(y)} is outside the water (${Math.round(top)}..${Math.round(bottom)}) by more than the ${LANE_MARGIN}-unit margin`,
         });
+      }
+      // A lane over land is the failure terrain introduces, and it is silent at
+      // run time: the hull clamp would simply shove the convoy sideways along
+      // the beach for the length of the island.
+      const inChannel = channels.findIndex(
+        (c) => y >= c.top + LANE_MARGIN && y <= c.bottom - LANE_MARGIN,
+      );
+      if (channels.length > 1 && inChannel === -1) {
+        problems.push({
+          x,
+          message: `lane ${i} at y=${Math.round(y)} is on land or within ${LANE_MARGIN} units of it (channels: ${channels.map((c) => `${Math.round(c.top)}..${Math.round(c.bottom)}`).join(', ')})`,
+        });
+      }
+      // Channel INDEX is only meaningful where the island actually splits the
+      // water; off the ends of it there is one channel and every lane is in it.
+      if (channels.length > 1 && inChannel !== -1) {
+        if (laneChannel[i] === undefined || laneChannel[i] === null) laneChannel[i] = inChannel;
+        else if (laneChannel[i] !== inChannel) {
+          problems.push({
+            x,
+            message: `lane ${i} has changed channel (was ${laneChannel[i]}, now ${inChannel}) — a lane may bend, never cross the land`,
+          });
+          laneChannel[i] = inChannel;
+        }
       }
       // Lanes may weave; they may never cross. See docs/design/map-topology.md
       // — crossing tracks also mean head-on convoy traffic in a narrow channel,
@@ -588,10 +932,89 @@ export const HEADLANDS: GeographyDef = {
   launchSites: [{ x: 1300 }, { x: 2200, extraInset: 30 }, { x: 3000 }],
 };
 
+/** THE ISLAND CHANNEL — a rock in the middle of the strait, and the first map
+ *  whose defining feature is not a coastline.
+ *
+ *  Straight shores on purpose. The squeeze and the headlands are both about
+ *  land LEANING IN from the side, and a third variation on that theme would be
+ *  a different amount of the same idea. What an island adds instead is water
+ *  the convoy cannot cross: for 1400 units the strait is two passages, and a
+ *  hull is in one of them or the other.
+ *
+ *  What it does, measured, with no weapon touched:
+ *
+ *    amidships (x = 2000)              north channel   south channel
+ *      navigable width                     288             343
+ *      lanes carried                         1               2
+ *      shore torpedo runs blocked            0%             92%
+ *
+ *  The two passages are not two versions of the same water. The NORTHERN one
+ *  is roomy — one lane in 288 units, more room per hull than the strait gives
+ *  anybody — and completely exposed: every straight run from the hostile shore
+ *  reaches it. The SOUTHERN one is sheltered, the rock blocking 86-92% of
+ *  shore-launched runs at the lanes abreast of it, and pays for that by putting
+ *  two lanes into 343 units and adding 88 units to the crossing.
+ *
+ *  So the region asks one question the other three cannot: where do you put
+ *  your hulls, knowing you cannot change your mind halfway? Mines and boats
+ *  are what punish the answer, because both are laid ON a lane and neither can
+ *  be dodged sideways when the sideways is a rock. That is also why the lane
+ *  rule below assigns SIDES rather than positions — a channel is a commitment,
+ *  and `validateGeography` enforces that no lane quietly changes its mind.
+ *
+ *  The centre lane is the one displaced: it bears 251 units south to clear the
+ *  rock and shoves lane 2 down 101 to make room, while the near lane gives up
+ *  21. The convoy's own middle is what visibly splits, which is the whole
+ *  reason to put the island on the centre line rather than tucked against a
+ *  shore where it would be scenery. Both bends are inside what a hull can
+ *  steer: the steepest realised lane slope is 0.59 lateral per 1 forward
+ *  against the 0.9 the steering saturates at. */
+const ISLAND_CHANNEL_ISLAND: IslandDef = {
+  id: 'midChannelIsland',
+  name: 'The Rock',
+  fromX: 1300,
+  toX: 2700,
+  centerY: 1660,
+  halfHeight: 120,
+  wave: 30,
+};
+
+const ISLAND_CHANNEL_HOSTILE: GeoPoint[] = [{ x: 0, y: WORLD.hostileShoreY }];
+const ISLAND_CHANNEL_FRIENDLY: GeoPoint[] = [{ x: 0, y: WORLD.friendlyShoreY }];
+
+export const ISLAND_CHANNEL: GeographyDef = {
+  id: 'islandChannel',
+  name: 'The Island Channel',
+  hostileShore: ISLAND_CHANNEL_HOSTILE,
+  friendlyShore: ISLAND_CHANNEL_FRIENDLY,
+  shoreWave: WORLD.shoreWave,
+  islands: [ISLAND_CHANNEL_ISLAND],
+  // Lane 0 takes the northern passage alone; lanes 1 and 2 share the southern
+  // one. The centre lane is the one the island actually displaces, and it is
+  // the lane the convoy's middle sails in — so the split is something the
+  // player watches happen to their own column, not a detail of the coastline.
+  lanes: lanesAroundIsland(
+    ISLAND_CHANNEL_HOSTILE,
+    ISLAND_CHANNEL_FRIENDLY,
+    WORLD.shoreWave,
+    WORLD.lanes,
+    [ISLAND_CHANNEL_ISLAND],
+    ['north', 'south', 'south'],
+    { edgeMargin: 100, minSeparation: 130 },
+  ),
+  launchInset: 140,
+  baseInset: 135,
+  // Spread so that no one site owns the island: the western and eastern sites
+  // shoot past its tips into both channels, the middle one is the one the rock
+  // stands in front of.
+  launchSites: [{ x: 700 }, { x: 2000, extraInset: 30 }, { x: 3300 }],
+};
+
 export const GEOGRAPHIES: Record<GeographyId, GeographyDef> = {
   strait: STRAIT,
   squeeze: SQUEEZE,
   headlands: HEADLANDS,
+  islandChannel: ISLAND_CHANNEL,
 };
 
 const resolved = new Map<GeographyId, Geography>();
