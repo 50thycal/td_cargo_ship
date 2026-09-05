@@ -106,9 +106,17 @@ try {
   check((await page.locator('td[data-key="torpedoes:straight"][data-round="6"] .ws-cell.intro').count()) === 1, 'torpedo introduced R6');
   check((await page.locator('td[data-key="torpedoes:straight"][data-round="8"] .ws-cell.active').count()) === 1, 'torpedo cumulative R8');
 
-  // Try to add a guided missile at round 1 → gated cell; inspector offers "Add from round 2".
+  // Guided missile shows as gated (before its catalogue default) at round 1 —
+  // informational, not blocking: the workshop lets a designer introduce it
+  // early anyway and flags the choice rather than refusing it.
   await page.locator('td[data-key="missiles:guided"][data-round="1"] .ws-cell').click();
-  check((await page.locator('.ws-inspector').textContent()).includes('cannot appear before round 2'), 'gate explained in inspector');
+  check((await page.locator('.ws-drawer').textContent()).includes('catalogue default is round 2'), 'catalogue default explained in the drawer, not blocking');
+  await page.getByRole('button', { name: /^Add from round 1$/ }).click();
+  await page.waitForTimeout(100);
+  check((await page.locator('td[data-key="missiles:guided"][data-round="1"] .ws-cell.intro').count()) === 1, 'early introduction accepted');
+  const earlyIssues = await page.locator('.ws-issue.warning').allTextContents();
+  check(earlyIssues.some((t) => t.includes('before its catalogue default')), 'early introduction surfaces as a warning, not an error');
+  check((await page.locator('.ws-badge.bad', { hasText: /errors/ }).count()) === 0, 'still valid/playable with an early introduction');
 
   // Scripted salvo beat on guided missiles at round 4.
   await page.locator('td[data-key="missiles:guided"][data-round="4"] .ws-cell').click();
@@ -132,6 +140,16 @@ try {
   await page.locator('.ws-inspector textarea').fill('Hydrophone chatter: shore torpedo tubes are being manned.');
   await page.locator('.ws-inspector textarea').dispatchEvent('change');
   await page.waitForTimeout(100);
+
+  // Scrolling the matrix (a designer working a later round) must survive a
+  // rerender triggered by clicking a cell — this was the reported "jumps back
+  // to the top" bug. Scroll it, click somewhere, check the scroll held.
+  await page.locator('.ws-matrix-wrap').evaluate((el) => { el.scrollLeft = 300; el.scrollTop = 40; });
+  await page.locator('td[data-key="mines:standard"][data-round="8"] .ws-cell').click();
+  await page.waitForTimeout(150);
+  const matrixScroll = await page.locator('.ws-matrix-wrap').evaluate((el) => ({ left: el.scrollLeft, top: el.scrollTop }));
+  check(matrixScroll.left > 0, 'matrix horizontal scroll survives opening the inspector');
+  check((await page.locator('.ws-drawer').count()) === 1, 'inspector opened as a floating drawer, not a scroll-to-bottom panel');
 
   await page.locator('.ws-matrix-wrap').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOT_DIR}/ws-03-timeline-desktop.png` });

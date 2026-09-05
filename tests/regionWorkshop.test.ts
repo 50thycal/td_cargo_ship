@@ -145,17 +145,30 @@ describe('compiler semantics', () => {
     expect(ids(7)).toEqual(['missiles:unguided']);
   });
 
-  it('a region can delay a capability but never hurry it past its gate', () => {
+  it('a region may introduce a capability earlier than its catalogue default — warned, never blocked', () => {
     const def = custom();
     // Two milestones on round 1 is itself an error; merge them here.
     def.milestones = [
       { round: 1, add: [{ branch: 'missiles', nodeId: 'unguided' }, { branch: 'missiles', nodeId: 'guided' }] },
     ];
     const v = validateRegionAuthoring(def);
-    expect(v.errors.map((e) => e.code)).toContain('beforeGate');
+    expect(v.errors).toEqual([]); // early introduction never blocks
+    expect(v.warnings.map((w) => w.code)).toContain('beforeGate');
     const c = compileRegion(def);
-    expect(availabilityAtRound(c, 1).map((x) => x.node.id)).toEqual(['unguided']);
-    expect(availabilityAtRound(c, 2).map((x) => x.node.id)).toEqual(['unguided', 'guided']);
+    // The AUTHORED round is the round — no clamp to the catalogue gate.
+    expect(availabilityAtRound(c, 1).map((x) => x.node.id)).toEqual(['unguided', 'guided']);
+    expect(availabilityAtRound(c, 1).find((x) => x.node.id === 'guided')?.introducedThisRound).toBe(true);
+  });
+
+  it('a region may still delay a capability past its catalogue default, as before', () => {
+    const def = custom();
+    def.milestones = [{ round: 4, add: [{ branch: 'missiles', nodeId: 'unguided' }] }];
+    const v = validateRegionAuthoring(def);
+    expect(v.errors).toEqual([]);
+    expect(v.warnings.map((w) => w.code)).not.toContain('beforeGate');
+    const c = compileRegion(def);
+    expect(availabilityAtRound(c, 3).map((x) => x.node.id)).toEqual([]);
+    expect(availabilityAtRound(c, 4).map((x) => x.node.id)).toEqual(['unguided']);
   });
 
   it('per-round pressure: override, multiplier and ceilings resolve per round', () => {
@@ -223,13 +236,16 @@ describe('validation', () => {
     d.milestones.push({ round: 2, add: [{ branch: 'missiles', nodeId: 'nope', tacticIds: ['t9'] }] });
     expect(codes(d)).toEqual(expect.arrayContaining(['milestoneOutside', 'unknownBranch', 'unknownNode']));
   });
-  it('rejects unimplemented capabilities, early introductions and removal before introduction', () => {
+  it('rejects unimplemented capabilities and removal before introduction; warns (does not reject) an early introduction', () => {
     const d = base();
     d.completionRound = 12;
     d.milestones.push({ round: 6, add: [{ branch: 'missiles', nodeId: 'seaSkimming' }] });
     d.milestones.push({ round: 2, add: [{ branch: 'mines', nodeId: 'standard' }] });
     d.milestones.push({ round: 3, add: [], remove: [{ branch: 'torpedoes', nodeId: 'straight' }] });
-    expect(codes(d)).toEqual(expect.arrayContaining(['unimplemented', 'beforeGate', 'removeBeforeIntro']));
+    expect(codes(d)).toEqual(expect.arrayContaining(['unimplemented', 'removeBeforeIntro']));
+    expect(codes(d)).not.toContain('beforeGate');
+    const warnings = validateRegionAuthoring(d, undefined, undefined, { packagedIds: REGION_ORDER }).warnings.map((w) => w.code);
+    expect(warnings).toContain('beforeGate');
   });
   it('rejects fabricated mount/platform components', () => {
     const d = base();
@@ -278,7 +294,7 @@ describe('validation', () => {
   it('issues point at the responsible round and capability', () => {
     const d = base();
     d.milestones.push({ round: 2, add: [{ branch: 'mines', nodeId: 'standard' }] });
-    const issue = validateRegionAuthoring(d).errors.find((e) => e.code === 'beforeGate')!;
+    const issue = validateRegionAuthoring(d).warnings.find((w) => w.code === 'beforeGate')!;
     expect(issue.round).toBe(2);
     expect(issue.ref).toEqual({ branch: 'mines', nodeId: 'standard' });
   });
@@ -362,6 +378,30 @@ describe('runtime integration', () => {
     expect(guidedAt[7]).toBe(0);
   });
 
+  it('the adaptive buyer can open and buy a node introduced before its catalogue gate', () => {
+    // Torpedoes gate at round 5 in the catalogue; windowed here from round 1 —
+    // full freedom, not just a delay. Proves candidateBranches/availableNodes
+    // in evolution.ts honour an early window, not just the compiler's menu.
+    const def = blankRegion('early', REGIONS.missileCoast.start);
+    def.completionRound = 6;
+    def.pressure.defaultBudget = { base: 400, perRound: 100, cap: 3000 };
+    def.milestones = [
+      { round: 1, add: [{ branch: 'missiles', nodeId: 'unguided' }, { branch: 'torpedoes', nodeId: 'straight' }] },
+    ];
+    expect(validateRegionAuthoring(def).errors).toEqual([]);
+    const region = toRegionDef(compileRegion(def));
+    expect(region.nodeWindows).toEqual({ 'torpedoes:straight': [{ from: 1, until: null }] });
+    const evo = newEvolution(region);
+    const rng = makeRng('early-torps');
+    let opened = false;
+    for (let r = 1; r <= 5 && !opened; r++) {
+      evolveEnemy(evo, metrics(r), rng);
+      if (evo.economy.openBranches.includes('torpedoes')) opened = true;
+    }
+    expect(opened).toBe(true);
+    expect(evo.economy.ledgers.torpedoes.units.straight ?? 0).toBeGreaterThan(0);
+  });
+
   it('the authored intel warning surfaces one round ahead', () => {
     const region = toRegionDef(compileRegion(labRegion()));
     const evo = newEvolution(region);
@@ -431,7 +471,9 @@ describe('draft store', () => {
 
   it('an invalid draft is kept but not playable', () => {
     const def = blankRegion('mine', REGIONS.homeStrait.start);
-    def.milestones = [{ round: 1, add: [{ branch: 'mines', nodeId: 'standard' }] }]; // before gate
+    // An early introduction no longer invalidates a draft (it is a warning);
+    // a genuinely blocking error still does.
+    def.milestones = [{ round: 1, add: [{ branch: 'mines', nodeId: 'drifting' }] }]; // designed, not implemented
     saveDraft(def);
     expect(libraryEntries().find((e) => e.id === 'mine')?.valid).toBe(false);
     expect(regionDef('mine').id).toBe('missileCoast');

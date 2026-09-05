@@ -293,11 +293,12 @@ function candidateBranches(economy: EnemyEconomyState, round: number): EnemyBran
     const debutFloor = economy.branchDebutRounds[key] ?? 0;
     if (round < debutFloor) return false;
     if (economy.openBranches.includes(key)) return true;
-    if (round < def.openRound) return false;
-    // Must have at least one node past its gate to be worth opening.
-    return implementedNodes(key).some(
-      (n) => round >= n.gateRound && nodeAvailable(economy, key, n.id, round),
-    );
+    // Not yet open: needs at least one node genuinely available this round —
+    // past its catalogue gate by default, or explicitly authored earlier
+    // (availableNodes folds both rules together; every branch's own openRound
+    // already equals its first node's gateRound, so this is exactly the old
+    // check wherever the region never touched the window).
+    return availableNodes(economy, key, round).length > 0;
   });
 }
 
@@ -357,9 +358,15 @@ function availableNodes(
   key: EnemyBranchKey,
   round: number,
 ): EnemyNodeDef[] {
-  return implementedNodes(key).filter(
-    (n) => round >= n.gateRound && nodeAvailable(economy, key, n.id, round),
-  );
+  return implementedNodes(key).filter((n) => {
+    // A node the Region Workshop has given an explicit window is judged by
+    // that window ALONE — the workshop's "no prerequisites" freedom means an
+    // authored round can sit earlier than the catalogue gate as easily as
+    // later. A node with no window (every packaged region, and any node a
+    // custom region never touched) keeps the catalogue gate as its rule.
+    if (economy.nodeWindows?.[`${key}:${n.id}`]) return nodeAvailable(economy, key, n.id, round);
+    return round >= n.gateRound;
+  });
 }
 
 /** How much of a branch's money goes to its NEWEST available node. Rises with
