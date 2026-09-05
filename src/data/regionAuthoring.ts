@@ -14,9 +14,14 @@
 //   1. Rounds are cumulative milestones — an `add` on round N holds until an
 //      explicit `remove`.
 //   2. The adaptive enemy stays the default; beats are optional and explicit.
-//   3. Canonical gates are authoritative: resolved introduction is
-//      max(catalogue gate, authored introduction). A region can delay, never
-//      hurry.
+//   3. Canonical gates are ADVISORY, not authoritative. A region is free to
+//      introduce a capability on any round it likes, earlier or later than
+//      the catalogue's own gate — the workshop is a sandbox for testing
+//      exactly that kind of question, and the balance sweep is how a
+//      designer finds out what an early introduction actually costs.
+//      Introducing a capability before its catalogue gate is flagged as a
+//      WARNING (never a blocking error), so the designer always knows they
+//      have done it without being stopped from doing it.
 //   4. Only implemented content can enter a playable region.
 //   5. Built-in regions are templates (derived, never hand-copied).
 //   7. The authored format is portable JSON — identifiers and values only.
@@ -436,7 +441,7 @@ export function validateRegionAuthoring(
         err('unimplemented', `Round ${round}: ${entry.node.name} is designed but not implemented — it cannot enter a playable region.`, { round, ref });
       }
       if (round < entry.earliestRound) {
-        err('beforeGate', `Round ${round}: ${entry.node.name} cannot appear before its catalogue gate (round ${entry.earliestRound}). Change the global gate in the arsenal data, not here.`, { round, ref });
+        warn('beforeGate', `Round ${round}: ${entry.node.name} is available before its catalogue default (round ${entry.earliestRound}) — a deliberate early introduction. Sweep the region to see what it costs.`, { round, ref });
       }
       const prevRemoved = removed.get(key);
       const prevIntro = introduced.get(key);
@@ -496,7 +501,7 @@ export function validateRegionAuthoring(
         err('unimplemented', `Round ${round}: beat uses ${entry.node.name}, which is not implemented.`, { round, ref: beat.ref });
       }
       if (round < entry.earliestRound) {
-        err('beforeGate', `Round ${round}: beat fires ${entry.node.name} before its catalogue gate (round ${entry.earliestRound}).`, { round, ref: beat.ref });
+        warn('beforeGate', `Round ${round}: beat fires ${entry.node.name} before its catalogue default (round ${entry.earliestRound}) — a deliberate early introduction.`, { round, ref: beat.ref });
       }
       const key = refKey(beat.ref);
       const intro = introduced.get(key);
@@ -641,8 +646,9 @@ export function compileRegion(
       if (!entry) continue;
       const key = refKey(ref);
       if (open.has(key)) continue; // already available — cumulative
-      // Decision 3: a region can delay a capability, never hurry it.
-      const w = { entry, from: Math.max(m.round, entry.earliestRound), until: null as number | null };
+      // Decision 3: gates are advisory — the authored round IS the round,
+      // whether it sits before or after the catalogue's own gate.
+      const w = { entry, from: m.round, until: null as number | null };
       open.set(key, w);
       (windows[key] ??= []).push(w);
     }
@@ -798,8 +804,12 @@ export function toRegionDef(compiled: CompiledRegion): RegionDef {
     if (ws.length === 0) continue;
     const entry = ws[0].entry;
     // Only record windows that differ from "catalogue gate to the end" — that
-    // keeps packaged regions byte-identical to their pre-workshop shape.
-    const trivial = ws.length === 1 && ws[0].from <= entry.earliestRound && ws[0].until === null;
+    // keeps packaged regions byte-identical to their pre-workshop shape. An
+    // EARLY introduction (from < earliestRound) is exactly the kind of
+    // deviation this must record, so the match has to be exact, not "at or
+    // before" — the latter used to be equivalent back when `from` was always
+    // clamped to the gate, and would now silently drop an early window.
+    const trivial = ws.length === 1 && ws[0].from === entry.earliestRound && ws[0].until === null;
     if (trivial) continue;
     nodeWindows[wkey] = ws.map((w) => ({ from: w.from, until: w.until }));
   }

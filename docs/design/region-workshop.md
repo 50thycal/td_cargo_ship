@@ -50,10 +50,17 @@ These decisions are part of the build, not open questions for implementation.
    pressure envelope; `evolution.ts` still chooses purchases using its existing
    adaptive logic. Scripted encounter beats are optional, explicit, and visually
    distinct from ordinary availability.
-3. **Canonical gates remain authoritative.** A region can delay a capability but
-   cannot move it earlier than its catalogue gate. The resolved introduction is
-   `max(catalogue gate, region introduction)`. Changing a global gate belongs in
-   the arsenal data, not in a region preset.
+3. **Canonical gates remain authoritative *for the packaged campaign*, and are
+   advisory in the workshop.** ~~A region can delay a capability but cannot
+   move it earlier than its catalogue gate.~~ **Amended after hands-on use of
+   the builder** (see "Amendments after playtesting" below): a designer may
+   introduce any implemented capability on any round, earlier or later than
+   its catalogue default. An early introduction is flagged as a warning, never
+   blocked — the workshop is a sandbox for asking exactly that question, and
+   the balance sweep is how a designer learns what the early introduction
+   costs. Changing a capability's *behaviour* (damage, speed, cost) still
+   belongs in the arsenal data, never in a region preset — only its
+   availability moved.
 4. **Only implemented content can enter a playable region.** Designed but
    unimplemented entries remain visible in the arsenal browser, marked as such,
    but cannot be added to a runnable preset. There must be no silent no-op.
@@ -415,7 +422,6 @@ Block playtest and packaged promotion for any error:
 - unknown branch, node, payload, platform, mount, tactic, doctrine, pattern, or
   environment reference;
 - unimplemented capability in a playable preset;
-- introduction before the canonical gate;
 - missing prerequisite or incompatible loadout/tactic combination;
 - negative or non-finite budget/count/timing values;
 - removal before introduction;
@@ -432,7 +438,9 @@ Warnings, which do not block a local test:
 - a scripted beat consumes most or all of the round budget;
 - abrupt pressure jump compared with the preceding round;
 - an unlocked tactic with no compatible active capability;
-- no player-facing warning before a dangerous first appearance.
+- no player-facing warning before a dangerous first appearance;
+- introduction before the capability's catalogue default (an early
+  introduction — see the amended decision 3).
 
 Validation messages must identify the round and capability and be clickable to
 focus the responsible cell.
@@ -601,6 +609,24 @@ The economy snapshot copies the new fields only when present, so a packaged
 run's `EnemyEconomyState` is byte-identical to before (asserted in the
 snapshot test). `enemyBranches` is treated as a set by the sim; the compiler
 emits it in catalogue order.
+
+### Amendments after playtesting
+
+**Catalogue gates became advisory (decision 3).** The original spec blocked a
+region from introducing a capability earlier than its catalogue gate, on the
+reasoning that a global gate belongs in the arsenal data. In practice this
+made the timeline feel like it had invisible walls: placing a torpedo on
+round 1 was simply refused, with no way to try it and see. Freedom to place
+anything anywhere is exactly what a sandbox for testing pacing questions
+should offer, and the balance sweep panel (added after slice E — see below)
+gives a designer a direct, measured answer to "what does this actually cost"
+instead of a rule standing in for one. `beforeGate` moved from a blocking
+error to a warning; `compileRegion` no longer clamps a window's `from` to
+`max(authored round, catalogue gate)`, and the runtime's `candidateBranches`
+/ `availableNodes` in `evolution.ts` honour an authored node window even when
+it opens earlier than the branch's own `openRound` (every branch's
+`openRound` already equals its first node's `gateRound` in the catalogue, so
+a region that never touches a window behaves exactly as before).
 
 ### Slice E — the Island Channel
 

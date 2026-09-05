@@ -109,6 +109,21 @@ export class Game {
     const oldPane = this.currentScreen?.querySelector('.prep-content');
     const paneSection = oldPane?.getAttribute('data-section');
     const paneScrollTop = oldPane?.scrollTop ?? 0;
+    // The Region Workshop timeline matrix is a wide, tall table with its OWN
+    // scroll box (independent of .screen-body) — a designer scrolled deep into
+    // later rounds who taps a cell should not be thrown back to round 1. There
+    // is only ever one on screen, so it needs no identity check the way
+    // .prep-content's section does.
+    const oldMatrix = this.currentScreen?.querySelector('.ws-matrix-wrap');
+    const matrixScrollLeft = oldMatrix?.scrollLeft ?? 0;
+    const matrixScrollTop = oldMatrix?.scrollTop ?? 0;
+    // The Inspector drawer scrolls independently too. Preserved only when the
+    // SAME thing is still selected (editing a field inside it triggers a
+    // rerender) — a genuinely new selection should open at the top of its
+    // own content, the same distinction .prep-content's data-section draws.
+    const oldDrawer = this.currentScreen?.querySelector('.ws-drawer-content');
+    const drawerSelection = oldDrawer?.getAttribute('data-selection');
+    const drawerScrollTop = oldDrawer?.scrollTop ?? 0;
     // A screen can already be detached if a change handler re-rendered from
     // inside a removal (a focused input's change fires as it leaves the DOM);
     // `remove()` on a detached node is a no-op, but not on one mid-removal.
@@ -125,6 +140,19 @@ export class Game {
           const newPane = el.querySelector('.prep-content');
           if (newPane && newPane.getAttribute('data-section') === paneSection) {
             newPane.scrollTop = paneScrollTop;
+          }
+        }
+        if (matrixScrollLeft > 0 || matrixScrollTop > 0) {
+          const newMatrix = el.querySelector('.ws-matrix-wrap');
+          if (newMatrix) {
+            newMatrix.scrollLeft = matrixScrollLeft;
+            newMatrix.scrollTop = matrixScrollTop;
+          }
+        }
+        if (drawerScrollTop > 0) {
+          const newDrawer = el.querySelector('.ws-drawer-content');
+          if (newDrawer && newDrawer.getAttribute('data-selection') === drawerSelection) {
+            newDrawer.scrollTop = drawerScrollTop;
           }
         }
       }

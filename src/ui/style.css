@@ -2150,6 +2150,62 @@ button.danger { color: var(--bad); border-color: var(--bad); }
   .ws-history-row { grid-template-columns: 1fr; }
 }
 
+/* ---------- Region Workshop: floating inspector drawer ---------- */
+.ws-drawer {
+  position: fixed;
+  z-index: 40;
+  right: 16px;
+  top: 76px;
+  /* Cleared well short of the viewport bottom: the editor's footer (Library /
+     Save / Export / Playtest, plus the round+seed+God playrow) can wrap onto
+     two rows on a narrower desktop width, and this has to stay clickable
+     underneath the drawer at every width rather than being computed from one
+     assumed footer height. */
+  bottom: 132px;
+  width: min(400px, calc(100vw - 32px));
+  display: flex;
+  pointer-events: none;
+}
+.ws-drawer-content {
+  pointer-events: auto;
+  flex: 1;
+  overflow-y: auto;
+  border-color: var(--accent);
+  box-shadow: -6px 0 28px rgba(0, 0, 0, 0.55), 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+.ws-drawer-close {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 26px;
+  min-width: 26px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--dim);
+  margin-left: auto;
+}
+.ws-drawer-close:hover { color: var(--bad); border-color: var(--bad); }
+
+/* Reserve the drawer's width so it never covers content instead of sitting
+   beside it — in particular the timeline matrix's rightmost columns, which
+   is exactly the part of the page a designer scrolled sideways to reach. */
+@media (min-width: 761px) {
+  .screen-body.ws-has-drawer { padding-right: calc(min(400px, 100vw - 32px) + 32px); }
+}
+
+@media (max-width: 760px) {
+  .ws-drawer {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: min(64vh, 520px);
+  }
+  .ws-drawer-content { border-radius: 10px 10px 0 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

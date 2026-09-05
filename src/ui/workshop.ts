@@ -557,7 +557,7 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
       legendItem('active', 'available (cumulative)'),
       legendItem('beat', 'scripted beat'),
       legendItem('removed', 'removed after'),
-      legendItem('gated', 'before catalogue gate'),
+      legendItem('gated', 'before catalogue default'),
       legendItem('warn', 'problem'),
     ]),
   ]);
@@ -568,18 +568,26 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
       : roundList(st, compiled, validation.issues, readOnly, touch, host),
   );
 
-  // --- inspector + validation --------------------------------------------
-  body.append(
-    h('div', { className: 'ws-columns' }, [
-      inspectorPanel(st, compiled, readOnly, touch, host),
-      validationPanel(validation.issues, st, host),
-    ]),
-  );
+  // --- validation -----------------------------------------------------------
+  body.append(validationPanel(validation.issues, st, host));
 
   // --- balance sweep -------------------------------------------------------
   // Sweeps the timeline as it is on screen (saved or not): the worker compiles
   // the authored preset itself, and the result is keyed by its content hash.
   body.append(sweepPanel(def, validation.ok, host.rerender));
+
+  // --- inspector, as a floating drawer --------------------------------------
+  // Pinned to the viewport rather than laid out in the flow: selecting a
+  // capability, round or beat from anywhere on a long timeline should never
+  // require scrolling down to find where its editor landed. The body gets a
+  // right margin to match — the matrix reflows narrower rather than sliding
+  // UNDER the drawer, so the drawer never sits on top of a cell a designer
+  // just scrolled the wide timeline sideways to reach.
+  const drawer = inspectorDrawer(st, compiled, readOnly, touch, host);
+  if (drawer) {
+    body.classList.add('ws-has-drawer');
+    body.append(drawer);
+  }
 
   // --- footer -------------------------------------------------------------
   footer.append(
@@ -685,6 +693,43 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
   ]);
   footer.append(playRow);
   return root;
+}
+
+/** A stable string identifying WHICH thing is selected, so a rerender caused
+ *  by editing a field inside the drawer (not by picking something new) can
+ *  tell "same selection, preserve scroll" from "new selection, start at the
+ *  top" — the same distinction `.prep-content`'s `data-section` draws for the
+ *  prep screen. */
+function selectionKey(sel: Selection): string {
+  switch (sel.kind) {
+    case 'none': return 'none';
+    case 'cell': return `cell:${sel.round}:${sel.key}`;
+    case 'pressure': return `pressure:${sel.round}`;
+    case 'round': return `round:${sel.round}`;
+    case 'beat': return `beat:${sel.round}:${sel.beatId}`;
+  }
+}
+
+/** The Inspector as a floating drawer — pinned to the viewport (right side on
+ *  desktop, a bottom sheet on phone) so editing a capability, a round or a
+ *  beat never requires scrolling down to it, wherever in the timeline it was
+ *  opened from. Returns null when nothing is selected. */
+function inspectorDrawer(
+  st: EditorState,
+  compiled: ReturnType<typeof compileRegion>,
+  readOnly: boolean,
+  touch: () => void,
+  host: WorkshopHost,
+): HTMLElement | null {
+  if (st.selection.kind === 'none') return null;
+  const onClose = () => {
+    st.selection = { kind: 'none' };
+    host.rerender();
+  };
+  const content = inspectorPanel(st, compiled, readOnly, touch, host, onClose);
+  content.classList.add('ws-drawer-content');
+  content.setAttribute('data-selection', selectionKey(st.selection));
+  return h('div', { className: 'ws-drawer' }, [content]);
 }
 
 function legendItem(cls: string, label: string): HTMLElement {
@@ -1002,7 +1047,7 @@ function matrixRow(
   const labelCell = h('th', { className: 'ws-sticky-col' }, [h('span', { text: row.label })]);
   if (row.kind === 'node' && row.entry) {
     labelCell.append(
-      h('span', { className: 'hint ws-sub', text: ` gate R${row.entry.earliestRound} · ${row.entry.node.cost}cr${row.entry.implemented ? '' : ' · designed only'}` }),
+      h('span', { className: 'hint ws-sub', text: ` default R${row.entry.earliestRound} · ${row.entry.node.cost}cr${row.entry.implemented ? '' : ' · designed only'}` }),
     );
     if (!row.entry.implemented) tr.classList.add('ws-unimplemented');
   }
@@ -1152,7 +1197,7 @@ function describeCell(state: ReturnType<typeof cellState>, entry: ArsenalEntry, 
     case 'introduced': return `${entry.node.name} introduced on round ${r}${state.until ? ` (until R${state.until})` : ''}`;
     case 'active': return `${entry.node.name} available since round ${state.from}`;
     case 'removed': return `${entry.node.name} removed after round ${r}`;
-    case 'gated': return `${entry.node.name} cannot appear before round ${state.earliest} (catalogue gate)`;
+    case 'gated': return `${entry.node.name}'s catalogue default is round ${state.earliest} — click to introduce it earlier`;
     default: return `Add ${entry.node.name} from round ${r}`;
   }
 }
@@ -1227,9 +1272,14 @@ function inspectorPanel(
   readOnly: boolean,
   touch: () => void,
   host: WorkshopHost,
+  onClose?: () => void,
 ): HTMLElement {
   const def = st.def;
-  const panel = h('div', { className: 'panel ws-panel ws-inspector' }, [h('h2', { text: 'Inspector' })]);
+  const head = h('div', { className: 'ws-panel-head' }, [h('h2', { text: 'Inspector' })]);
+  if (onClose) {
+    head.append(h('button', { className: 'ws-drawer-close', text: '\u00d7', onClick: onClose, attrs: { 'aria-label': 'Close inspector' } }));
+  }
+  const panel = h('div', { className: 'panel ws-panel ws-inspector' }, [head]);
   const sel = st.selection;
   if (sel.kind === 'none') {
     panel.append(h('div', { className: 'hint', text: 'Tap a cell to inspect or edit it. Empty cells open “Add capability” scoped to that round; round headers open round actions.' }));
@@ -1342,7 +1392,7 @@ function inspectorPanel(
     h('h3', { text: `${branch.name} › ${entry.node.name} — round ${r}` }),
     h('div', { className: 'chip-row' }, [
       h('span', { className: 'chip' }, [icon('coin'), h('span', { text: `${entry.node.cost}cr` })]),
-      h('span', { className: 'chip' }, [icon('lock'), h('span', { text: `gate R${entry.earliestRound}` })]),
+      h('span', { className: 'chip' }, [icon('lock'), h('span', { text: `default R${entry.earliestRound}` })]),
       h('span', { className: 'chip' }, [icon('eye'), h('span', { text: `debut cap ${entry.node.firstAppearanceCap}` })]),
       ...(entry.node.grantsTargeting !== undefined ? [h('span', { className: 'chip' }, [icon('accuracy'), h('span', { text: `grants doctrine T${entry.node.grantsTargeting}: ${TARGETING_DOCTRINE[entry.node.grantsTargeting].name}` })])] : []),
       h('span', { className: `ws-badge ${entry.implemented ? 'good' : 'bad'}`, text: entry.implemented ? 'implemented' : 'designed only' }),
@@ -1371,9 +1421,10 @@ function inspectorPanel(
     pruneMilestone(def, round);
   };
   if (state.kind === 'none' || state.kind === 'gated') {
-    const at = Math.max(r, entry.earliestRound);
-    actions.append(h('button', { className: 'primary', text: `Add from round ${at}`, onClick: () => { milestoneAt(def, at, true).add.push(ref); touch(); } }));
-    if (state.kind === 'gated') actions.append(h('span', { className: 'hint', text: `Gated until R${state.earliest}: the region can delay this, never hurry it.` }));
+    actions.append(h('button', { className: 'primary', text: `Add from round ${r}`, onClick: () => { milestoneAt(def, r, true).add.push(ref); touch(); } }));
+    if (state.kind === 'gated') {
+      actions.append(h('span', { className: 'hint', text: `Catalogue default is R${state.earliest} — this is an early introduction. Run the balance sweep to see what it costs.` }));
+    }
   }
   if (state.kind === 'introduced') {
     actions.append(h('button', { text: 'Undo introduction', onClick: () => { removeAdd(state.from); touch(); } }));
@@ -1416,14 +1467,13 @@ function arsenalBrowser(st: EditorState, compiled: ReturnType<typeof compileRegi
         const k = `${e.branch}:${e.node.id}`;
         const state = cellState(compiled, k, e, r);
         const used = state.kind === 'introduced' || state.kind === 'active';
-        const at = Math.max(r, e.earliestRound);
         const row = h('div', { className: `ws-arsenal-row ${e.implemented ? '' : 'ws-unimplemented'}` }, [
           h('span', { className: 'ws-arsenal-name', text: e.node.name }),
-          h('span', { className: 'hint', text: `gate R${e.earliestRound} · ${e.node.cost}cr${e.implemented ? '' : ' · designed only'}${used ? ' · in use' : ''}` }),
+          h('span', { className: 'hint', text: `default R${e.earliestRound} · ${e.node.cost}cr${e.implemented ? '' : ' · designed only'}${used ? ' · in use' : ''}` }),
           h('button', {
-            text: used ? 'In use' : at > r ? `Add @R${at}` : 'Add',
+            text: used ? 'In use' : 'Add',
             disabled: readOnly || used || !e.implemented,
-            onClick: () => { milestoneAt(def, at, true).add.push({ branch: e.branch, nodeId: e.node.id }); st.selection = { kind: 'cell', round: at, key: k }; touch(); },
+            onClick: () => { milestoneAt(def, r, true).add.push({ branch: e.branch, nodeId: e.node.id }); st.selection = { kind: 'cell', round: r, key: k }; touch(); },
           }),
         ]);
         list.append(row);
