@@ -282,6 +282,13 @@ export interface Threat {
   alive: boolean;
   /** What this missile is aimed at (default 'ship'). */
   targetKind?: TargetKind;
+  /** TORPEDOES: has this weapon reached open water yet?
+   *
+   *  Every torpedo launches from an emplacement on the hostile shore, so its
+   *  first position is on land by construction. Without this the aground test
+   *  (which is what lets an island shelter the water behind it) would destroy
+   *  every torpedo in the game on the tick it was fired. */
+  afloat?: boolean;
   /** Ship this threat is homing on / was aimed at. */
   targetShipId?: number;
   /** Escort an ATTACK BOAT has committed to, when no merchant is worth

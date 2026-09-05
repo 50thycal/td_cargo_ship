@@ -89,10 +89,15 @@ try {
   await page.waitForSelector('[data-screen="workshop-editor"]');
   await page.waitForTimeout(700);
 
-  // Environment → Headlands
+  // Environment → Island Channel. The preview has to draw the rock, because a
+  // designer picking a map they cannot see is picking blind.
   const envSelect = page.locator('.ws-panel select').nth(1);
-  await envSelect.selectOption('headlands');
-  await page.waitForTimeout(100);
+  await envSelect.selectOption('islandChannel');
+  await page.waitForTimeout(200);
+  check((await page.locator('.ws-panel').nth(1).textContent()).includes('splits the strait'), 'island environment described');
+  check((await page.locator('.ws-map polygon').count()) >= 3, 'island preview draws the landmass');
+  await page.locator('.ws-map-wrap').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOT_DIR}/ws-07-island-preview.png` });
 
   // Add torpedoes (straight) at round 6 via round header → arsenal browser.
   await page.locator('.ws-round-btn', { hasText: /^R6$/ }).click();
@@ -142,6 +147,7 @@ try {
   const path = await download.path();
   const json = JSON.parse(await (await import('node:fs/promises')).readFile(path, 'utf8'));
   check(json.schemaVersion === 1 && json.id && Array.isArray(json.milestones), 'exported JSON is a v1 preset');
+  check(json.environmentPresetId === 'islandChannel' && json.shapeType === 'islandChannel', 'exported JSON carries the island environment');
   check(json.milestones.some((m) => m.beats?.length), 'exported JSON carries the beat');
   await (await import('node:fs/promises')).writeFile(`${SHOT_DIR}/ws-export.json`, JSON.stringify(json, null, 2));
 
@@ -181,7 +187,9 @@ try {
   // Begin the transit briefly to prove the custom region plays on its geography.
   await page.getByRole('button', { name: /Begin Transit/i }).click();
   await page.waitForSelector('canvas', { timeout: 10_000 });
-  await page.waitForTimeout(1500);
+  // Long enough for the convoy to be well into the strait and the lanes to
+  // have visibly split around the rock.
+  await page.waitForTimeout(9000);
   await page.screenshot({ path: `${SHOT_DIR}/ws-06-playtest-transit.png` });
 } finally {
   await browser.close();

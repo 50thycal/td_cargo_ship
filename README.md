@@ -61,6 +61,12 @@ and data contract are in
 [docs/design/region-workshop.md](docs/design/region-workshop.md); the pure
 compiler is `src/data/regionAuthoring.ts`.
 
+Four environments ship: Open Water, Coastal Squeeze, Headlands and the Island
+Channel — a rock amidships that splits the strait into two passages a hull must
+commit to. Terrain is a typed feature of the canonical geography, so the
+renderer, the lane builder, navigation and the torpedo run all read one
+definition (`src/data/geography.ts`).
+
 ## Architecture
 
 ```

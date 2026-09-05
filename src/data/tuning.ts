@@ -438,6 +438,22 @@ export const COMBAT = {
      *  actually sail there. */
     accel: 34,
     turnRate: 1.9,
+    /** How far ahead a boat looks for LAND when picking its heading.
+     *
+     *  Only terrain makes this necessary. Against a coastline a boat is always
+     *  travelling roughly along the shore and the hull clamp is enough; put an
+     *  island between a boat and its target and a clamp alone produces a craft
+     *  grinding along a rock for the length of the transit, which is both
+     *  useless and absurd to watch.
+     *
+     *  Sized against the turn radius, because a lookahead shorter than that is
+     *  a boat noticing the rock too late to do anything: at 42 units/s and a
+     *  1.9 rad/s turn limit the tightest circle it can hold is ~22 units, and a
+     *  quarter-turn takes it about 35 units downrange. 260 is comfortably
+     *  outside that, so the deflection is a course change rather than a swerve,
+     *  and short enough that a boat does not start dodging an island it will
+     *  pass a thousand units clear of. */
+    landLookahead: 260,
     /** Where a committed boat HOLDS, per variant: the radius of the ring it
      *  keeps around its target. Gun boats stand off and shoot; a boarding boat
      *  has to make physical contact, so its ring sits just inside grapple

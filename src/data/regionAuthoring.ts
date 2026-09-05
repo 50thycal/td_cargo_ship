@@ -39,7 +39,7 @@ import type { RegionDef, RegionStartState } from './regions';
 
 export const REGION_AUTHORING_SCHEMA_VERSION = 1 as const;
 
-export type RegionShapeType = 'openWater' | 'coastalSqueeze' | 'headlands';
+export type RegionShapeType = 'openWater' | 'coastalSqueeze' | 'headlands' | 'islandChannel';
 
 /** The environment presets the workshop exposes. Each is one validated
  *  canonical geography wearing a designer-facing name and shape type. */
@@ -72,6 +72,16 @@ export const ENVIRONMENT_PRESETS: readonly EnvironmentPreset[] = [
     shapeType: 'headlands',
     geographyId: 'headlands',
     desc: 'A hostile peninsula held for two-thirds of the crossing — no lane is quietly safe.',
+  },
+  {
+    id: 'islandChannel',
+    name: 'Island Channel',
+    shapeType: 'islandChannel',
+    geographyId: 'islandChannel',
+    desc:
+      'A rock amidships splits the strait into two passages. The northern one is roomy and fully ' +
+      'exposed; the southern one shelters two crowded lanes from shore-launched torpedoes. A hull ' +
+      'commits to a channel at the western tip and cannot change sides until the eastern one.',
   },
 ];
 
