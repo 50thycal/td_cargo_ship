@@ -12,35 +12,37 @@
 //   npm run playtest -- --rounds 20        # let campaigns run longer
 //   npm run playtest -- --personas turtle,economist
 //   npm run playtest -- --out playtest-out # where logs are written
+//   npm run playtest -- --preset region.json  # a Region Workshop export
 //
 // Every campaign is written out as a TelemetryExport JSON — byte-identical in
 // shape to the in-game "Download game log" export — so any single run can be
 // handed straight to the `seesaw-eval` skill for a full hand-quality read.
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  createRoundTransit,
-  newRegionalRun,
-  planCurrentRound,
-  resolveTransit,
-} from '../../src/sim/campaign';
-import { stepTransit } from '../../src/sim/transit';
 import { buildTelemetryExport } from '../../src/sim/telemetry';
-import { REGIONS, REGION_ORDER, regionDef, type RegionDef } from '../../src/data/regions';
+import {
+  REGIONS,
+  REGION_ORDER,
+  regionDef,
+  registerCustomRegion,
+  type RegionDef,
+} from '../../src/data/regions';
 import {
   commanderLoadoutError,
   legacyLoadoutError,
-  decideCommands,
-  newTransitMemory,
   personaByName,
   PERSONAS,
-  procure,
-  research,
   type Persona,
-} from './personas';
-import { analyzeCampaign, summarize, type CampaignAnalysis, type EndReason } from './analyze';
-import type { CampaignState } from '../../src/sim/types';
+} from '../../src/sim/playtest/personas';
+import { summarize, type CampaignAnalysis } from '../../src/sim/playtest/analyze';
+import { maxRoundsFor, sweepCampaigns } from '../../src/sim/playtest/sweep';
+import {
+  compileRegion,
+  migrateRegionAuthoring,
+  toRegionDef,
+  validateRegionAuthoring,
+} from '../../src/data/regionAuthoring';
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -53,6 +55,8 @@ interface Options {
   rounds: number;
   personas: Persona[];
   region: string;
+  /** A Region Workshop JSON export to sweep instead of a packaged region. */
+  preset: string | null;
   outDir: string;
   writeLogs: boolean;
 }
@@ -74,6 +78,7 @@ function parseArgs(argv: string[]): Options {
     // nobody plays. Pass `--region openSeas` to get the old proving ground back
     // deliberately.
     region: 'pirateNarrows',
+    preset: null,
     outDir: 'playtest-out',
     writeLogs: true,
   };
@@ -99,6 +104,9 @@ function parseArgs(argv: string[]): Options {
         opts.region = id;
         break;
       }
+      case '--preset':
+        opts.preset = next() || null;
+        break;
       case '--out':
         opts.outDir = next() || opts.outDir;
         break;
@@ -133,6 +141,7 @@ function parseArgs(argv: string[]): Options {
             '  --seeds N       campaigns per persona (default 8)',
             '  --rounds N      max rounds per campaign (default: the region watermark)',
             '  --region ID     region to fight in (default pirateNarrows)',
+            '  --preset FILE   sweep a Region Workshop JSON export instead',
             '  --personas a,b  subset of personas to run',
             '  --out DIR       output directory (default playtest-out)',
             '  --no-logs       skip per-campaign JSON, summary only',
@@ -148,87 +157,6 @@ function parseArgs(argv: string[]): Options {
     }
   }
   return opts;
-}
-
-// ---------------------------------------------------------------------------
-// One campaign
-// ---------------------------------------------------------------------------
-
-interface CampaignResult {
-  campaign: CampaignState;
-  analysis: CampaignAnalysis;
-}
-
-/** Play one run to defeat, region completion or the round cap, following the
- *  real phase order: prep (procure) → transit → after-action (resolve) →
- *  technology draft.
- *
- *  Uses `newRegionalRun` rather than `newCampaign`: the latter hard-codes the
- *  `openSeas` dev proving ground, which is not a region any player can select
- *  and which changes the enemy roster, the starting state and whether the run
- *  has a win condition at all. */
-function playCampaign(
-  persona: Persona,
-  seed: string,
-  regionId: string,
-  maxRounds: number,
-): CampaignResult {
-  const c = newRegionalRun(seed, regionId, persona.commander ?? [], persona.legacies ?? []);
-  const onHand: { cash: number }[] = [];
-  // Assume the run goes the distance; the loop downgrades this if it doesn't.
-  let endReason: EndReason = 'round-cap';
-
-  // A finished run is not automatically a lost one. A shipping region has a
-  // completion watermark, so `campaignOver` now means EITHER defeat or victory
-  // — reading it as defeat (which the old three-way mapping did) would have
-  // scored every successful run as a failure the moment the sweep stopped
-  // playing the endless proving ground.
-  const finishReason = (): EndReason =>
-    c.runOutcome === 'victory'
-      ? 'region-complete'
-      : c.defeatCause === 'quota'
-        ? 'quota-failed'
-        : 'confidence-collapse';
-  for (let round = 0; round < maxRounds; round++) {
-    if (c.campaignOver) {
-      endReason = finishReason();
-      break;
-    }
-    // --- Prep --------------------------------------------------------------
-    procure(c, persona);
-    // Nothing left to sail: attrition has taken the whole fleet and the player
-    // can't afford to replace it. That is a LOSS, not a survival.
-    const assigned = Object.values(c.composition).reduce((a, b) => a + b, 0);
-    if (assigned === 0) {
-      endReason = 'fleet-wiped';
-      break;
-    }
-
-    // --- Transit -----------------------------------------------------------
-    const plan = planCurrentRound(c);
-    const { state, rng } = createRoundTransit(c, plan);
-    const mem = newTransitMemory();
-    let guard = 0;
-    while (!state.over && guard++ < 100_000) {
-      stepTransit(state, decideCommands(state, persona, mem), rng);
-    }
-
-    // --- After-action + research -------------------------------------------
-    resolveTransit(c, state);
-    onHand.push({ cash: c.cash });
-    research(c, persona);
-  }
-  // The loop can also fall out with the flag set on the final round.
-  if (c.campaignOver) endReason = finishReason();
-
-  const analysis = analyzeCampaign(
-    persona.name,
-    seed,
-    c.telemetry,
-    { campaignOver: c.campaignOver, score: c.score, cash: c.cash, endReason },
-    onHand,
-  );
-  return { campaign: c, analysis };
 }
 
 // ---------------------------------------------------------------------------
@@ -264,23 +192,31 @@ function printReport(
   );
 
   // --- Per-persona ---------------------------------------------------------
-  console.log('  WENT = share of campaigns that came through (region cleared or round cap)');
+  console.log('  WON = region cleared; WENT = cleared or reached the round cap; CASH = mean at the end');
   console.log(
-    `\n${pad('PERSONA', 17)}${padLeft('RUNS', 5)}${padLeft('WENT', 6)}${padLeft('ROUNDS', 8)}${padLeft('DELIV%', 8)}${padLeft('LOSSES', 8)}${padLeft('SCORE', 8)}${padLeft('HOARD', 7)}`,
+    `\n${pad('PERSONA', 17)}${padLeft('RUNS', 5)}${padLeft('WON', 5)}${padLeft('WENT', 6)}${padLeft('ROUNDS', 7)}${padLeft('DELIV%', 7)}${padLeft('LOSSES', 7)}${padLeft('SCORE', 7)}${padLeft('CASH', 7)}${padLeft('HOARD', 6)}`,
   );
   console.log('─'.repeat(78));
   for (const p of summary.personas) {
     console.log(
       pad(p.persona, 17) +
         padLeft(`${p.campaigns}`, 5) +
+        padLeft(`${Math.round(p.winRate * 100)}%`, 5) +
         padLeft(`${Math.round(p.survivalRate * 100)}%`, 6) +
-        padLeft(`${p.meanRoundsSurvived}`, 8) +
-        padLeft(`${p.meanDeliveredPct}`, 8) +
-        padLeft(`${p.meanLosses}`, 8) +
-        padLeft(`${p.meanScore}`, 8) +
-        padLeft(`${Math.round(p.hoardRate * 100)}%`, 7),
+        padLeft(`${p.meanRoundsSurvived}`, 7) +
+        padLeft(`${p.meanDeliveredPct}`, 7) +
+        padLeft(`${p.meanLosses}`, 7) +
+        padLeft(`${p.meanScore}`, 7) +
+        padLeft(`${p.finalCash.mean}`, 7) +
+        padLeft(`${Math.round(p.hoardRate * 100)}%`, 6),
     );
   }
+  const o = summary.overall;
+  console.log(
+    `\n  OVERALL: won ${Math.round(o.winRate * 100)}% · came through ${Math.round(o.survivalRate * 100)}% · ` +
+      `${o.meanRoundsSurvived} rounds · ${o.meanDeliveredPct}% delivered · ${o.meanLosses} hulls lost · ` +
+      `cash at end ${o.finalCash.mean} (${o.finalCash.min}–${o.finalCash.max})`,
+  );
 
   // --- Signals -------------------------------------------------------------
   const rates = summary.overall.signalPassRates;
@@ -378,42 +314,59 @@ if (badLoadouts.length > 0) {
   process.exit(1);
 }
 
+// A Region Workshop export is compiled and registered exactly as the workshop
+// does it, so a sweep here measures the same region the in-game panel would.
+if (opts.preset) {
+  const migrated = migrateRegionAuthoring(JSON.parse(readFileSync(opts.preset, 'utf8')));
+  if (!migrated.ok || !migrated.def) {
+    console.error(`Preset rejected: ${migrated.error}`);
+    process.exit(1);
+  }
+  const v = validateRegionAuthoring(migrated.def, undefined, undefined, { packagedIds: REGION_ORDER });
+  if (!v.ok) {
+    for (const e of v.errors) console.error(`  ${e.message}`);
+    console.error(`Preset "${migrated.def.id}" has ${v.errors.length} error(s) and is not playable.`);
+    process.exit(1);
+  }
+  if (REGIONS[migrated.def.id]) {
+    console.error(`Preset id "${migrated.def.id}" is a packaged region; export it under another id.`);
+    process.exit(1);
+  }
+  registerCustomRegion(toRegionDef(compileRegion(migrated.def)));
+  opts.region = migrated.def.id;
+}
+
 const region = regionDef(opts.region);
 // Default the cap to the region's own completion watermark: a real run of
 // pirateNarrows ENDS at round 10, and playing past it measures rounds no
 // player ever sees. The proving ground's watermark is 999, so it still needs an
 // explicit --rounds.
-const maxRounds = opts.rounds > 0 ? opts.rounds : Math.min(region.completionRound, 30);
+const maxRounds = maxRoundsFor(region, opts.rounds);
 
 const analyses: CampaignAnalysis[] = [];
 const started = Date.now();
-const total = opts.personas.length * opts.seeds;
-let done = 0;
 
-for (const persona of opts.personas) {
-  for (let s = 0; s < opts.seeds; s++) {
-    // Shared seed base across personas: every build faces comparable starting
-    // conditions, so score differences reflect the build, not the draw.
-    const seed = `playtest-${s}`;
-    const { campaign, analysis } = playCampaign(persona, seed, opts.region, maxRounds);
-    analyses.push(analysis);
-
-    if (opts.writeLogs) {
-      const log = buildTelemetryExport(campaign, new Date().toISOString());
-      writeFileSync(
-        join(opts.outDir, `${persona.name}-${s}.json`),
-        JSON.stringify(log, null, 2),
-        'utf8',
-      );
-    }
-
-    done++;
-    const pctDone = Math.round((done / total) * 100);
-    process.stdout.write(
-      `\r  playing… ${done}/${total} (${pctDone}%)  last: ${persona.name} seed ${s} → ` +
-        `${analysis.roundsPlayed} rounds, ${analysis.meanDeliveredPct}% delivered      `,
+for (const p of sweepCampaigns({
+  regionId: opts.region,
+  seeds: opts.seeds,
+  personas: opts.personas,
+  rounds: maxRounds,
+})) {
+  const { campaign, analysis } = p.last;
+  analyses.push(analysis);
+  if (opts.writeLogs) {
+    const log = buildTelemetryExport(campaign, new Date().toISOString());
+    writeFileSync(
+      join(opts.outDir, `${analysis.persona}-${analysis.seed.replace(/^playtest-/, '')}.json`),
+      JSON.stringify(log, null, 2),
+      'utf8',
     );
   }
+  const pctDone = Math.round((p.done / p.total) * 100);
+  process.stdout.write(
+    `\r  playing… ${p.done}/${p.total} (${pctDone}%)  last: ${analysis.persona} ${analysis.seed} → ` +
+      `${analysis.roundsPlayed} rounds, ${analysis.meanDeliveredPct}% delivered      `,
+  );
 }
 process.stdout.write('\r' + ' '.repeat(100) + '\r');
 

@@ -2100,6 +2100,56 @@ button.danger { color: var(--bad); border-color: var(--bad); }
   .ws-library th:nth-child(2), .ws-library td:nth-child(2), .ws-library th:nth-child(6), .ws-library td:nth-child(6), .ws-library th:nth-child(8), .ws-library td:nth-child(8) { display: none; }
 }
 
+/* ---------- Region Workshop: balance sweep ---------- */
+.ws-sweep-controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.ws-field.ws-inline { flex-direction: row; align-items: center; gap: 8px; }
+.ws-personas { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.ws-persona { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+.ws-persona input { accent-color: var(--accent); }
+.ws-count { margin-left: 4px; }
+.ws-progress { display: flex; flex-direction: column; gap: 4px; }
+.ws-progress .bar { height: 8px; background: var(--screen); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.ws-progress .fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+.ws-results { display: flex; flex-direction: column; gap: 10px; }
+.ws-results-head { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.ws-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.ws-tile { background: var(--screen); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; border-left-width: 3px; }
+.ws-tile.good { border-left-color: var(--good); }
+.ws-tile.warn { border-left-color: var(--warn); }
+.ws-tile.bad { border-left-color: var(--bad); }
+.ws-tile-label { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--dim); }
+.ws-tile-value { font-size: 20px; font-weight: 700; color: var(--text); font-family: var(--font); }
+.ws-tile-sub { font-size: 10.5px; }
+.ws-delta { font-size: 11px; font-family: var(--font); margin-left: 6px; padding: 1px 5px; border-radius: 8px; border: 1px solid var(--line); color: var(--dim); }
+.ws-delta.good { color: var(--good); border-color: var(--good); }
+.ws-delta.bad { color: var(--bad); border-color: var(--bad); }
+.ws-sub-panel { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ws-sub-panel h3 { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); }
+.ws-kv { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.ws-kv-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.ws-sweep-table td, .ws-sweep-table th { font-size: 11.5px; }
+.ws-sweep-table tr.selected td { background: var(--metal-hi); }
+.ws-sweep-table .ws-ended { white-space: normal; max-width: 260px; color: var(--dim); }
+.ws-link { background: none; border: none; box-shadow: none; padding: 0; min-height: 0; text-transform: none; letter-spacing: 0; color: var(--cyan); text-decoration: underline; font-size: 12px; }
+.ws-chart-wrap { background: var(--screen); border: 1px solid var(--line); border-radius: 6px; padding: 6px; overflow-x: auto; }
+.ws-chart { display: block; width: 100%; max-width: 720px; height: auto; }
+.ws-chart-grid { stroke: var(--line); stroke-width: 1; }
+.ws-chart-tick { fill: var(--dim); font-size: 9px; font-family: var(--font); }
+.ws-chart-label { fill: var(--text); font-size: 10px; font-family: var(--font); }
+.ws-chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ws-chart-line.overall, .ws-chart-dot.overall, .ws-chart-swatch.overall { stroke: var(--accent); fill: var(--accent); }
+.ws-chart-line.focus, .ws-chart-dot.focus, .ws-chart-swatch.focus { stroke: var(--cyan); fill: var(--cyan); }
+.ws-chart-line.overall, .ws-chart-line.focus { fill: none; }
+.ws-chart-swatch { display: inline-block; width: 16px; height: 3px; border-radius: 2px; }
+.ws-findings { padding-left: 18px; font-size: 12px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; }
+.ws-history { display: flex; flex-direction: column; gap: 4px; }
+.ws-history-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
+.ws-history-row.current { border-color: var(--accent); }
+.ws-history-row.compare { border-color: var(--cyan); }
+@media (max-width: 760px) {
+  .ws-history-row { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

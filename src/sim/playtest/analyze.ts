@@ -14,9 +14,9 @@
 // broken allocator — the enemy cannot rotate through branches it cannot
 // field, and reading that as a balance failure would be wrong.
 
-import { LOSS_CAUSE_TO_ENEMY_BRANCH, type EnemyBranchKey } from '../../src/data/counters';
-import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../../src/data/enemyBranches';
-import type { RoundTelemetry } from '../../src/sim/types';
+import { LOSS_CAUSE_TO_ENEMY_BRANCH } from '../../data/counters';
+import { ENEMY_BRANCHES, ENEMY_BRANCH_ORDER } from '../../data/enemyBranches';
+import type { RoundTelemetry } from '../../sim/types';
 
 export type Verdict =
   | 'oscillating'
@@ -92,6 +92,10 @@ export interface CampaignAnalysis {
   completedResearch: string[];
   /** True when resources piled up unspent — a "nothing worth buying" tell. */
   hoarding: boolean;
+  /** Cash in hand when the campaign ended. */
+  finalCash: number;
+  /** Cash in hand after each round, in round order — the money curve. */
+  cashCurve: number[];
   /** MEASURED enemy behaviour (present once the enemy economy is instrumented).
    *  Before this existed, every claim about the enemy was inferred from the
    *  player's loss mix; now the allocator can be checked directly. */
@@ -384,6 +388,8 @@ export function analyzeCampaign(
       ? [...telemetry[telemetry.length - 1].completedResearch]
       : [],
     hoarding,
+    finalCash: final.cash,
+    cashCurve: onHand.map((h) => h.cash),
     enemy,
   };
 }
@@ -407,6 +413,14 @@ export interface PersonaSummary {
   lossesByBranch: Record<string, number>;
   verdicts: Record<string, number>;
   hoardRate: number;
+  /** Share of campaigns that CLEARED the region (a real win), as distinct from
+   *  `survivalRate`, which also counts reaching the round cap intact. */
+  winRate: number;
+  /** Money at the end: mean / min / max across campaigns. */
+  finalCash: { mean: number; min: number; max: number };
+  /** Mean cash in hand after each round (index 0 = after round 1). Campaigns
+   *  that ended early stop contributing, so the tail is the survivors' curve. */
+  cashCurve: number[];
   /** Research entries completed in >=50% of this persona's campaigns. */
   commonResearch: string[];
 }
@@ -417,6 +431,14 @@ export interface SweepSummary {
   personas: PersonaSummary[];
   overall: {
     verdicts: Record<string, number>;
+    winRate: number;
+    survivalRate: number;
+    endReasons: Record<string, number>;
+    finalCash: { mean: number; min: number; max: number };
+    cashCurve: number[];
+    meanRoundsSurvived: number;
+    meanDeliveredPct: number;
+    meanLosses: number;
     signalPassRates: { oscillation: number; balance: number; scarcity: number };
     lossesByBranch: Record<string, number>;
     /** How many distinct enemy branches ever caused a loss anywhere in the
@@ -443,6 +465,23 @@ export interface SweepSummary {
 
 function tally(target: Record<string, number>, source: Record<string, number>): void {
   for (const [k, v] of Object.entries(source)) target[k] = (target[k] ?? 0) + v;
+}
+
+function cashStats(list: CampaignAnalysis[]): { mean: number; min: number; max: number } {
+  const cash = list.map((a) => a.finalCash);
+  if (cash.length === 0) return { mean: 0, min: 0, max: 0 };
+  return { mean: Math.round(mean(cash)), min: Math.min(...cash), max: Math.max(...cash) };
+}
+
+/** Mean cash after each round across campaigns still running at that round. */
+function meanCashCurve(list: CampaignAnalysis[]): number[] {
+  const longest = Math.max(0, ...list.map((a) => a.cashCurve.length));
+  const out: number[] = [];
+  for (let r = 0; r < longest; r++) {
+    const alive = list.filter((a) => a.cashCurve.length > r).map((a) => a.cashCurve[r]);
+    out.push(alive.length ? Math.round(mean(alive)) : 0);
+  }
+  return out;
 }
 
 export function summarize(
@@ -487,6 +526,9 @@ export function summarize(
       lossesByBranch,
       verdicts,
       hoardRate: list.filter((a) => a.hoarding).length / list.length,
+      winRate: list.filter((a) => a.endReason === 'region-complete').length / list.length,
+      finalCash: cashStats(list),
+      cashCurve: meanCashCurve(list),
       commonResearch: Object.entries(researchCounts)
         .filter(([, n]) => n >= list.length * 0.5)
         .map(([id]) => id)
@@ -637,6 +679,26 @@ export function summarize(
     personas,
     overall: {
       verdicts,
+      winRate:
+        analyses.length === 0
+          ? 0
+          : analyses.filter((a) => a.endReason === 'region-complete').length / analyses.length,
+      survivalRate:
+        analyses.length === 0 ? 0 : analyses.filter((a) => a.survived).length / analyses.length,
+      endReasons: analyses.reduce<Record<string, number>>((acc, a) => {
+        acc[a.endReason] = (acc[a.endReason] ?? 0) + 1;
+        return acc;
+      }, {}),
+      finalCash: cashStats(analyses),
+      cashCurve: meanCashCurve(analyses),
+      meanRoundsSurvived:
+        analyses.length === 0 ? 0 : Math.round(mean(analyses.map((a) => a.roundsPlayed)) * 10) / 10,
+      meanDeliveredPct:
+        analyses.length === 0
+          ? 0
+          : Math.round(mean(analyses.map((a) => a.meanDeliveredPct)) * 10) / 10,
+      meanLosses:
+        analyses.length === 0 ? 0 : Math.round(mean(analyses.map((a) => a.totalLosses)) * 10) / 10,
       signalPassRates: {
         oscillation: passRate((a) => a.signals.oscillation),
         balance: passRate((a) => a.signals.balance),
