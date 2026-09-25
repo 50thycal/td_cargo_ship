@@ -275,6 +275,17 @@ try {
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${SHOT_DIR}/ws-11-mobile-planner.png`, fullPage: true });
   check((await page.locator('.pl-map').count()) === 1, 'round planner renders on a phone');
+  // Editing an attack must not throw the page back to the top (reported on a
+  // phone: every tap in the scripted panel jumped the screen).
+  await page.locator('.pl-round[data-round="3"]').click();
+  const plus = page.getByRole('button', { name: 'Increase How many' });
+  await plus.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  const scrollBefore = await page.locator('.screen-body').evaluate((el) => el.scrollTop);
+  await plus.click();
+  await page.waitForTimeout(300);
+  const scrollAfter = await page.locator('.screen-body').evaluate((el) => el.scrollTop);
+  check(scrollBefore > 100 && Math.abs(scrollAfter - scrollBefore) <= 2, `editing an attack keeps the scroll position (${scrollBefore} → ${scrollAfter})`);
   await page.getByRole('tab', { name: 'Adaptive timeline' }).click();
   await page.getByRole('button', { name: 'Round list' }).click();
   await page.waitForSelector('.ws-roundlist');
@@ -288,7 +299,7 @@ try {
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.getByRole('tab', { name: 'Round planner' }).click();
   await page.locator('.pl-round[data-round="1"]').click();
-  await page.getByRole('button', { name: /Play R1$/ }).click();
+  await page.getByRole('button', { name: /play R1$/i }).click();
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
   const stored = await page.evaluate(() => ({
     campaign: localStorage.getItem('straitwatch.run.v1'),

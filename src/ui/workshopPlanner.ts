@@ -299,6 +299,11 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
   const render = () => {
     const compiled = compileRegion(def);
     const issues = ctx.issues();
+    // Rebuilding in place must not move the page. Swapping every child out at
+    // once leaves the scroll box momentarily shorter and loses the browser's
+    // scroll anchor, so a tap on "+" threw the designer back up the screen.
+    // Save every scroll position this view owns and put them back.
+    const restore = saveScroll(root);
     root.replaceChildren(
       ...(ctx.readOnly ? [readOnlyBanner(ctx)] : []),
       roundStrip(ctx, compiled, commit),
@@ -308,6 +313,7 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
       ]),
       overviewTable(ctx, compiled, commit),
     );
+    restore();
     drawLive();
   };
   mounted = { root, render };
@@ -317,6 +323,26 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
   schedulePreview(ctx, 0);
   startLoop();
   return root;
+}
+
+/** Snapshot the scroll positions around and inside the planner; the returned
+ *  function puts them back after a rebuild. */
+function saveScroll(root: HTMLElement): () => void {
+  const body = root.closest('.screen-body') as HTMLElement | null;
+  const top = body?.scrollTop ?? 0;
+  const inner = ['.pl-rounds', '.pl-overview-wrap .ws-scroll'].map((sel) => {
+    const el = root.querySelector(sel) as HTMLElement | null;
+    return { sel, left: el?.scrollLeft ?? 0, top: el?.scrollTop ?? 0 };
+  });
+  return () => {
+    if (body) body.scrollTop = top;
+    for (const s of inner) {
+      const el = root.querySelector(s.sel) as HTMLElement | null;
+      if (!el) continue;
+      el.scrollLeft = s.left;
+      el.scrollTop = s.top;
+    }
+  };
 }
 
 function selectRound(r: number, ctx: PlannerCtx): void {
