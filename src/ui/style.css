@@ -2342,3 +2342,46 @@ button.danger { color: var(--bad); border-color: var(--bad); }
   .pl-row-wide .pl-seg button small { display: none; }
   .pl-map-hint { font-size: 9.5px; padding: 2px 5px; left: 4px; bottom: 4px; }
 }
+
+/* --- Round planner: region bar, adapt, scale tool --------------------------- */
+.pl-regionbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.pl-regionbar .dev-toggle { min-height: 36px; font-size: 11px; padding: 5px 10px; }
+.pl-flash { color: var(--good); font-size: 12px; }
+.pl-adapt { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.pl-adapt .dev-toggle { min-height: 34px; min-width: 64px; font-size: 11px; padding: 4px 10px; }
+.pl-adapt-note { color: var(--intel); }
+.pl-scale { border: 1px solid var(--line-bright); border-radius: 8px; background: var(--screen); }
+.pl-scale > summary { cursor: pointer; padding: 10px 12px; font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; min-height: 44px; display: flex; align-items: center; }
+.pl-scale-body { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
+.pl-scale-preview { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.pl-scale-line { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.pl-scale-line svg { width: 13px; height: 13px; }
+.pl-scale-line b { color: var(--text); }
+.pl-scale .primary { align-self: flex-start; min-height: 40px; }
+
+/* --- All-rounds table ------------------------------------------------------- */
+.pl-overview-scroll { max-height: 70vh; }
+.pl-overview th, .pl-overview td { padding: 4px 6px; }
+.pl-overview tbody tr { cursor: default; }
+.pl-open { min-height: 34px; min-width: 46px; padding: 3px 8px; font-size: 12px; }
+.pl-open.on { color: #241403; background: linear-gradient(180deg, var(--accent-hi), #f2a13e); font-weight: 700; }
+.pl-sub { display: block; font-size: 10px; color: var(--dim); }
+.pl-cell-tag { font-size: 10.5px; color: var(--dim); margin-left: 3px; white-space: nowrap; }
+.pl-total { font-weight: 700; color: var(--text); }
+@media (max-width: 560px) {
+  .pl-overview .pl-th-name { display: none; }
+  .pl-cell-num { width: 46px; }
+}
+
+/* --- Shared table kit: sortable headers, frozen first column --------------- */
+.tk-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.tk-sortable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tk-ind { margin-left: 4px; font-size: 9px; opacity: 0.45; }
+.tk-sortable[aria-sort='ascending'] .tk-ind, .tk-sortable[aria-sort='descending'] .tk-ind { opacity: 1; color: var(--accent-hi); }
+.tk-freeze th:first-child, .tk-freeze td:first-child { position: sticky; left: 0; z-index: 2; background: var(--metal); box-shadow: 1px 0 0 var(--line); }
+.tk-freeze thead th:first-child { z-index: 4; }
+.tk-freeze tbody tr.on td:first-child, .tk-freeze tbody tr.selected td:first-child { background: #2a2a18; }
+
+/* --- Adaptive timeline intro ------------------------------------------------ */
+.ws-intro p { font-size: 12.5px; line-height: 1.45; }
+.ws-intro .dev-toggle { min-height: 36px; font-size: 11px; padding: 5px 10px; }

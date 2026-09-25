@@ -693,6 +693,40 @@ scriptable weapon, unique ids) and suppresses the Auto-only warnings (empty
 menu, unaffordable, stranded budget, pressure jump) on scripted rounds.
 Tests: `tests/scriptedRounds.test.ts`; browser: `e2e/workshop.mjs`.
 
+### Round Planner, second pass: scale-from-one-round, adapt-to-player, tables
+
+**Get one round right, then stretch it.** A scripted round's panel has *Scale
+R{n} to later rounds*: pick the last round to fill and how much each round
+adds (a fixed number of units, or a compounding percentage). Every round up to
+it becomes a copy of this one — same weapons, positions and timing — with
+growing counts; a live line shows the sequence (30 → 34 → 38 …) and which
+already-scripted rounds it replaces. Rounds past the end are added. Pure
+helper: `extrapolateRound` / `scaledCount` in `regionAuthoring.ts`.
+
+**Adapt to the player.** `RegionAuthoringDef.scriptAdapt` (region-wide switch
+in the planner's top bar — applying it clears per-round overrides) and
+`RegionRoundMilestone.adapt` (per-round switch, only stored when it differs
+from the region). An adapting scripted round multiplies its counts by the
+round's granted budget over the same curve's budget with no performance
+signal — the Auto enemy's own anti-snowball restoring force — clamped to
+×0.5–×2 (`scriptScaleFor` in `evolution.ts`). Round 1 has no signal yet, so
+it fires as written. Compiled to `RegionDef.scriptedAdaptive`; the applied
+multiplier is `economy.scriptScale` and the preview reports it.
+
+**Tables.** `src/ui/tableKit.ts` makes every workshop table sortable (tap a
+heading: ascending, descending, natural order; remembered across redraws)
+with a frozen first column for phones. The All-rounds table opens a round
+only from its round button — tapping elsewhere in a row no longer jumps — and
+shows short headings, variant tags and a Total column.
+
+**Adaptive timeline, simplified.** The tab opens with what it is for (Auto
+rounds only) and what a credit buys in this region ("a typical round here is
+390cr, which buys about 78 unguided missiles (5cr each) · 5 mines (73cr) …").
+Only the weapon types the region uses are listed (*Show all weapons* reveals
+the rest); unbuilt variants, unit caps, tactic ladders and beat rows sit
+behind *Show advanced rows*. Each weapon's label reads as "5cr · ~78 per
+round" instead of a bare credit figure.
+
 ### Slice E — the Island Channel
 
 Terrain is a typed feature on the canonical geography (`IslandDef`), and the

@@ -29,6 +29,10 @@ import {
   deleteRound,
   duplicateRound,
   environmentPreset,
+  extrapolateRound,
+  roundAdapts,
+  scaledCount,
+  type ScaleMode,
   insertRound,
   milestoneAt,
   pressureAtRound,
@@ -44,6 +48,8 @@ import {
 import { launchTimes } from '../sim/scriptedPlan';
 import { runPreview, type PreviewFrame, type PreviewRequest, type PreviewResult, type PreviewSummary } from './workshopPreviewSim';
 import type { PreviewReply } from './previewWorker';
+import { enhanceTable } from './tableKit';
+import { SCRIPT_SCALE_MAX, SCRIPT_SCALE_MIN } from '../sim/evolution';
 
 // ---------------------------------------------------------------------------
 // Host contract
@@ -90,6 +96,10 @@ interface PlannerState {
   /** Attacks removed by switching a round back to Auto, so switching again
    *  restores them rather than starting over. */
   stash: Record<number, ScriptedAttack[]>;
+  /** The "scale this round to later rounds" tool. */
+  scale: { open: boolean; to: number; amount: number; mode: ScaleMode };
+  /** One-line confirmation shown after a bulk action (cleared on next edit). */
+  flash: string | null;
 }
 
 let ps: PlannerState = freshState('');
@@ -111,6 +121,8 @@ function freshState(regionKey: string): PlannerState {
     playT: 0,
     compare: null,
     stash: {},
+    scale: { open: false, to: 0, amount: 2, mode: 'add' },
+    flash: null,
   };
 }
 
@@ -289,8 +301,9 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
   ps.round = Math.max(1, Math.min(def.completionRound, ps.round));
   const root = h('div', { className: 'pl' });
 
-  const commit = (opts: { keepCompare?: boolean } = {}) => {
+  const commit = (opts: { keepCompare?: boolean; keepFlash?: boolean } = {}) => {
     if (!opts.keepCompare) ps.compare = null;
+    if (!opts.keepFlash) ps.flash = null;
     ctx.changed();
     render();
     schedulePreview(ctx);
@@ -306,6 +319,7 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
     const restore = saveScroll(root);
     root.replaceChildren(
       ...(ctx.readOnly ? [readOnlyBanner(ctx)] : []),
+      regionBar(ctx, compiled, commit),
       roundStrip(ctx, compiled, commit),
       h('div', { className: 'pl-main' }, [
         h('div', { className: 'pl-mapcol' }, [mapPanel(ctx, compiled, commit), playerBar(ctx), resultPanel(ctx, commit)]),
@@ -392,6 +406,45 @@ function readOnlyBanner(ctx: PlannerCtx): HTMLElement {
     icon('lock'),
     h('span', { text: ' Built-in region — you can look around and preview it. Clone it to change anything.' }),
     ...(ctx.onClone ? [h('button', { className: 'primary', text: 'Clone to edit', onClick: ctx.onClone })] : []),
+  ]);
+}
+
+// --- region-wide controls -------------------------------------------------------------
+
+const ADAPT_HINT =
+  `Scripted rounds scale with the player: up to ×${SCRIPT_SCALE_MAX} when they are cruising, down to ×${SCRIPT_SCALE_MIN} when they are struggling — ` +
+  'the same signal the Auto enemy’s budget follows. Your counts are the middle of that range.';
+
+function regionBar(ctx: PlannerCtx, compiled: CompiledRegion, commit: (o?: { keepFlash?: boolean }) => void): HTMLElement {
+  const def = ctx.def;
+  const on = !!def.scriptAdapt;
+  const overrides = def.milestones.filter((m) => m.attacks && m.adapt !== undefined && m.adapt !== on).length;
+  const scriptedCount = Object.keys(compiled.attacks).length;
+  return h('div', { className: 'pl-regionbar' }, [
+    h('span', { className: 'pl-label', text: 'Whole region' }),
+    h('button', {
+      className: on ? 'dev-toggle on' : 'dev-toggle',
+      text: on ? 'Adapt to player: ON' : 'Adapt to player: OFF',
+      disabled: ctx.readOnly,
+      attrs: { title: ADAPT_HINT, 'aria-pressed': String(on) },
+      onClick: () => {
+        def.scriptAdapt = !on;
+        if (!def.scriptAdapt) delete def.scriptAdapt;
+        // "Apply to the whole region" means every round: clear the per-round
+        // overrides so nothing silently disagrees with the switch.
+        for (const m of def.milestones) {
+          delete m.adapt;
+          pruneMilestone(def, m.round);
+        }
+        ps.flash = `${def.scriptAdapt ? 'All' : 'No'} scripted rounds adapt to the player now${scriptedCount ? ` (${scriptedCount} scripted)` : ''}.`;
+        commit({ keepFlash: true });
+      },
+    }),
+    h('span', {
+      className: 'hint',
+      text: overrides ? `${overrides} round${overrides === 1 ? '' : 's'} set differently` : 'applies to every scripted round',
+    }),
+    ...(ps.flash ? [h('span', { className: 'pl-flash', text: ps.flash })] : []),
   ]);
 }
 
@@ -891,6 +944,17 @@ function resultPanel(ctx: PlannerCtx, commit: (o?: { keepCompare?: boolean }) =>
         text: `${ps.defences ? 'Defended by a bot player with the region’s starting fleet' : 'Nobody defending'} · enemy aiming: ${result.targeting} · seed ${ps.seed}`,
       }),
     );
+    if (result.scripted && roundAdapts(ctx.def, ps.round)) {
+      panel.append(
+        h('div', {
+          className: 'hint pl-adapt-note',
+          text:
+            result.scriptScale === 1
+              ? 'Adapts to the player — no adjustment on this round of the preview.'
+              : `Adapts to the player — this preview fired ×${result.scriptScale} of your counts (the preview assumes the player did fairly well so far).`,
+        }),
+      );
+    }
   }
   // Pattern comparison for the selected launched attack.
   const m = ctx.def.milestones.find((x) => x.round === ps.round);
@@ -909,7 +973,7 @@ function resultPanel(ctx: PlannerCtx, commit: (o?: { keepCompare?: boolean }) =>
     } else {
       const table = h('table', { className: 'pl-compare' });
       table.append(
-        h('thead', {}, [h('tr', {}, ['Pattern', 'Shot down', 'Hits', 'Ships lost', ''].map((t) => h('th', { text: t })))]),
+        h('thead', {}, [h('tr', {}, ['Pattern', 'Shot down', 'Hits', 'Ships lost', ''].map((t) => h('th', { text: t, attrs: t === '' ? { 'data-nosort': '' } : {} })))]),
       );
       const tbody = h('tbody');
       const current = selected.pattern ?? 'salvo';
@@ -920,7 +984,7 @@ function resultPanel(ctx: PlannerCtx, commit: (o?: { keepCompare?: boolean }) =>
             h('td', { text: `${PATTERN_LABEL[row.pattern]}` }),
             h('td', { text: s ? String(s.shotDown) : '…' }),
             h('td', { text: s ? String(s.hits) : '…' }),
-            h('td', { text: s ? `${s.shipsLost}/${s.shipsSailed}` : '…' }),
+            h('td', { text: s ? `${s.shipsLost}/${s.shipsSailed}` : '…', attrs: { 'data-sort': s ? String(s.shipsLost) : '' } }),
             h('td', {}, [
               row.pattern === current
                 ? h('span', { className: 'hint', text: 'current' })
@@ -940,6 +1004,7 @@ function resultPanel(ctx: PlannerCtx, commit: (o?: { keepCompare?: boolean }) =>
         );
       }
       table.append(tbody);
+      enhanceTable(table, 'planner-compare');
       panel.append(h('div', { className: 'pl-compare-wrap' }, [h('div', { className: 'hint', text: 'Same round, same seed — only the pattern changes:' }), table]));
     }
   }
@@ -1374,6 +1439,8 @@ function sidePanel(ctx: PlannerCtx, compiled: CompiledRegion, issues: Validation
       }
       panel.append(addRow);
     }
+    panel.append(adaptRow(ctx, r, commit));
+    if (!ro && list.length > 0) panel.append(scaleTool(ctx, r, list, commit));
   }
 
   const roundIssues = issues.filter((i) => i.round === r && !i.ref);
@@ -1419,6 +1486,112 @@ function sidePanel(ctx: PlannerCtx, compiled: CompiledRegion, issues: Validation
   return panel;
 }
 
+/** Per-round "adapt to the player" switch. Shows whether the round follows
+ *  the region default or overrides it. */
+function adaptRow(ctx: PlannerCtx, r: number, commit: () => void): HTMLElement {
+  const def = ctx.def;
+  const m = def.milestones.find((x) => x.round === r);
+  const on = roundAdapts(def, r);
+  const own = m?.adapt !== undefined;
+  const regionOn = !!def.scriptAdapt;
+  return h('div', { className: 'pl-adapt' }, [
+    h('div', { className: 'pl-row' }, [
+      h('span', { className: 'pl-label', text: 'Adapt to player' }),
+      h('button', {
+        className: on ? 'dev-toggle on' : 'dev-toggle',
+        text: on ? 'ON' : 'OFF',
+        disabled: ctx.readOnly,
+        attrs: { title: ADAPT_HINT, 'aria-pressed': String(on), 'aria-label': `Round ${r} adapts to player` },
+        onClick: () => {
+          const ms = milestoneAt(def, r, true);
+          const next = !on;
+          // Matching the region default is the same as not overriding it.
+          if (next === regionOn) delete ms.adapt;
+          else ms.adapt = next;
+          commit();
+        },
+      }),
+    ]),
+    h('p', {
+      className: 'hint',
+      text: on
+        ? `Counts scale ×${SCRIPT_SCALE_MIN}–×${SCRIPT_SCALE_MAX} with how the player is doing.${own ? ' (This round only — the region default is off.)' : ''}`
+        : `Fires exactly these counts every playthrough.${own ? ' (This round only — the region default is on.)' : ''}`,
+    }),
+  ]);
+}
+
+/** Extrapolate this round across later ones: same attacks, counts growing by
+ *  a fixed number or a percentage per round. */
+function scaleTool(ctx: PlannerCtx, r: number, list: ScriptedAttack[], commit: (o?: { keepFlash?: boolean }) => void): HTMLElement {
+  const def = ctx.def;
+  const sc = ps.scale;
+  const maxTo = def.completionRound + 20;
+  if (sc.to <= r || sc.to > maxTo) sc.to = Math.max(r + 1, def.completionRound);
+  const box = document.createElement('details');
+  box.className = 'pl-scale';
+  box.open = sc.open;
+  box.addEventListener('toggle', () => (sc.open = box.open));
+  const refresh = () => mounted?.render();
+  box.append(h('summary', { text: `Scale R${r} to later rounds` }));
+  const steps = sc.to - r;
+  const overwritten = [];
+  for (let k = r + 1; k <= sc.to; k++) {
+    if (def.milestones.find((m) => m.round === k)?.attacks) overwritten.push(`R${k}`);
+  }
+  const modeSeg = h('div', { className: 'pl-seg' }, (['add', 'percent'] as ScaleMode[]).map((mode) =>
+    h('button', {
+      className: sc.mode === mode ? 'on' : '',
+      text: mode === 'add' ? '+ units' : '+ %',
+      onClick: () => {
+        sc.mode = mode;
+        sc.amount = mode === 'add' ? 2 : 10;
+        refresh();
+      },
+    }),
+  ));
+  const preview = h('div', { className: 'pl-scale-preview' });
+  for (const a of list) {
+    const seq: number[] = [];
+    for (let k = 0; k <= steps; k++) seq.push(scaledCount(a.count, k, sc.mode, sc.amount));
+    const shown = seq.length > 7 ? [...seq.slice(0, 4), '…', ...seq.slice(-2)] : seq;
+    const line = h('div', { className: 'pl-scale-line' }, [
+      icon(BRANCH_ICON[a.ref.branch]),
+      h('span', { text: ` ${noun(a.ref.nodeId, 2)}: ` }),
+      h('b', { text: shown.join(' → ') }),
+    ]);
+    line.style.color = BRANCH_COLOR[a.ref.branch];
+    preview.append(line);
+  }
+  box.append(
+    h('div', { className: 'pl-scale-body' }, [
+      h('p', { className: 'hint', text: `Copies this round — same weapons, positions and timing — onto every later round up to the one you pick, growing each count as it goes. Get R${r} feeling right, then stretch it.` }),
+      h('div', { className: 'pl-row' }, [
+        h('span', { className: 'pl-label', text: 'Through round' }),
+        stepper(sc.to, (v) => { sc.to = v; refresh(); }, { min: r + 1, max: maxTo, label: 'last round to fill' }),
+      ]),
+      h('div', { className: 'pl-row' }, [
+        h('span', { className: 'pl-label', text: 'Each round adds' }),
+        stepper(sc.amount, (v) => { sc.amount = v; refresh(); }, { min: sc.mode === 'add' ? -50 : -50, max: sc.mode === 'add' ? 50 : 200, step: sc.mode === 'add' ? 1 : 5, unit: sc.mode === 'add' ? '' : '%', label: 'increase per round' }),
+      ]),
+      h('div', { className: 'pl-row pl-row-wide' }, [modeSeg]),
+      preview,
+      ...(overwritten.length ? [h('p', { className: 'ws-warn-text', text: `Replaces what is scripted on ${overwritten.join(', ')}.` })] : []),
+      ...(sc.to > def.completionRound ? [h('p', { className: 'hint', text: `Adds rounds ${def.completionRound + 1}–${sc.to} to the region.` })] : []),
+      h('button', {
+        className: 'primary',
+        text: `Apply to R${r + 1}–R${sc.to}`,
+        onClick: () => {
+          const written = extrapolateRound(def, r, sc.to, sc.mode, sc.amount);
+          ps.flash = `Filled R${written[0]}–R${written[written.length - 1]} from R${r}.`;
+          commit({ keepFlash: true });
+        },
+      }),
+    ]),
+  );
+  return box;
+}
+
 // --- overview table -------------------------------------------------------------------------
 
 const TABLE_BRANCHES: EnemyBranchKey[] = ['missiles', 'torpedoes', 'attackBoats', 'mines', 'artillery'];
@@ -1431,7 +1604,12 @@ function overviewTable(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => 
       h('tr', {}, [
         h('th', { text: 'Round' }),
         h('th', { text: 'Mode' }),
-        ...TABLE_BRANCHES.map((b) => h('th', {}, [icon(BRANCH_ICON[b]), h('span', { text: ` ${ENEMY_BRANCHES[b].name}` })])),
+        ...TABLE_BRANCHES.map((b) => {
+          const th = h('th', { attrs: { title: ENEMY_BRANCHES[b].name } }, [icon(BRANCH_ICON[b]), h('span', { className: 'pl-th-name', text: ` ${SHORT_BRANCH[b]}` })]);
+          th.style.color = BRANCH_COLOR[b];
+          return th;
+        }),
+        h('th', { text: 'Total' }),
       ]),
     ]),
   );
@@ -1439,28 +1617,46 @@ function overviewTable(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => 
   for (let r = 1; r <= def.completionRound; r++) {
     const attacks = def.milestones.find((m) => m.round === r)?.attacks;
     const tr = h('tr', { className: r === ps.round ? 'on' : '', attrs: { 'data-round': String(r) } });
-    tr.addEventListener('click', (ev) => {
-      if ((ev.target as Element).closest('input, button')) return;
-      selectRound(r, ctx);
+    // Opening a round is an explicit tap on its button, never a stray tap on
+    // the row — editing a count in the table must not also switch rounds.
+    const open = h('button', {
+      className: r === ps.round ? 'pl-open on' : 'pl-open',
+      text: `R${r}`,
+      attrs: { title: r === ps.round ? 'This round is open above' : `Open round ${r} above`, 'aria-label': `Open round ${r}` },
+      onClick: () => selectRound(r, ctx),
     });
-    tr.append(h('td', { text: `R${r}` }));
+    tr.append(h('td', { attrs: { 'data-sort': String(r) } }, [open]));
     if (!attacks) {
       const avail = availabilityAtRound(compiled, r);
       const budget = pressureAtRound(compiled, r).budget;
-      tr.append(h('td', {}, [h('span', { className: 'pl-auto', text: r === 1 ? 'auto · probe' : `auto · ${budget}` })]));
+      tr.append(h('td', { attrs: { 'data-sort': 'auto' } }, [
+        h('span', { className: 'pl-auto', text: 'auto' }),
+        h('span', { className: 'pl-sub', text: r === 1 ? 'opening probe' : `${budget}cr` }),
+      ]));
       for (const b of TABLE_BRANCHES) {
-        const names = avail.filter((a) => a.branch === b).map((a) => noun(a.node.id, 2));
-        tr.append(h('td', { className: 'pl-dim', text: r === 1 ? (b === 'missiles' ? `${ROUND1.missileCount} spread` : '') : names.length ? `may use ${names.join(', ')}` : '' }));
+        const may = avail.some((a) => a.branch === b);
+        const text = r === 1 ? (b === 'missiles' ? `${ROUND1.missileCount}` : '') : may ? 'may' : '';
+        tr.append(h('td', { className: 'pl-dim', text, attrs: { 'data-sort': r === 1 && b === 'missiles' ? String(ROUND1.missileCount) : '' } }));
       }
+      tr.append(h('td', { className: 'pl-dim', text: r === 1 ? String(ROUND1.missileCount) : '—', attrs: { 'data-sort': r === 1 ? String(ROUND1.missileCount) : '' } }));
     } else {
-      tr.append(h('td', {}, [h('span', { className: 'pl-scripted', text: attacks.length ? 'scripted' : 'quiet' })]));
+      const adapts = roundAdapts(def, r);
+      tr.append(h('td', { attrs: { 'data-sort': 'scripted' } }, [
+        h('span', { className: 'pl-scripted', text: attacks.length ? 'scripted' : 'quiet' }),
+        ...(adapts ? [h('span', { className: 'pl-sub', text: 'adapts' })] : []),
+      ]));
+      let total = 0;
       for (const b of TABLE_BRANCHES) {
-        const td = h('td');
-        for (const a of attacks.filter((x) => x.ref.branch === b)) {
+        const mine = attacks.filter((x) => x.ref.branch === b);
+        const sum = mine.reduce((n, a) => n + a.count, 0);
+        total += sum;
+        const td = h('td', { attrs: { 'data-sort': mine.length ? String(sum) : '' } });
+        for (const a of mine) {
           const family = attackFamily(b);
           const pattern = family === 'launched' ? PATTERN_LABEL[runtimeAttack(a).pattern].toLowerCase() : '';
           const input = document.createElement('input');
           input.type = 'number';
+          input.inputMode = 'numeric';
           input.min = '1';
           input.max = String(ATTACK_DEFAULTS.maxCount);
           input.value = String(a.count);
@@ -1473,20 +1669,49 @@ function overviewTable(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => 
             a.count = Math.min(ATTACK_DEFAULTS.maxCount, n);
             commit();
           });
-          td.append(h('div', { className: 'pl-cell' }, [input, h('span', { text: ` ${noun(a.ref.nodeId, a.count)}${pattern ? ` · ${pattern}` : ''}` })]));
+          td.append(h('div', { className: 'pl-cell' }, [
+            input,
+            h('span', { className: 'pl-cell-tag', text: `${SHORT_NODE[a.ref.nodeId] ?? ''}${pattern ? ` ${pattern}` : ''}`.trim() }),
+          ]));
         }
         tr.append(td);
       }
+      tr.append(h('td', { className: 'pl-total', text: String(total), attrs: { 'data-sort': String(total) } }));
     }
     tbody.append(tr);
   }
   table.append(tbody);
+  enhanceTable(table, 'planner-overview');
   return h('div', { className: 'pl-overview-wrap' }, [
     h('h3', { text: 'All rounds' }),
-    h('div', { className: 'hint', text: 'Every round at a glance. Scripted counts are editable right here; tap a row to open that round.' }),
-    h('div', { className: 'ws-scroll' }, [table]),
+    h('div', { className: 'hint', text: 'Edit scripted counts right in the table. Tap a round number to open it above; tap a column header to sort.' }),
+    h('div', { className: 'ws-scroll pl-overview-scroll' }, [table]),
   ]);
 }
+
+/** Column headings short enough for a phone. */
+const SHORT_BRANCH: Record<EnemyBranchKey, string> = {
+  missiles: 'Missiles',
+  torpedoes: 'Torps',
+  attackBoats: 'Boats',
+  mines: 'Mines',
+  artillery: 'Guns',
+  smoke: 'Smoke',
+  electronic: 'EW',
+};
+
+/** Variant tags shown next to a count ("guided", "homing"…); the base
+ *  variant of each branch is left bare. */
+const SHORT_NODE: Record<string, string> = {
+  guided: 'guided',
+  lowSig: 'low-sig',
+  homing: 'homing',
+  lowSigTorpedo: 'quiet',
+  rocket: 'rocket',
+  boarding: 'boarding',
+  ranging: 'ranging',
+  rollingBarrage: 'barrage',
+};
 
 // Re-exported so tests can check the plain-English copy without a DOM.
 export type { PreviewFrame };

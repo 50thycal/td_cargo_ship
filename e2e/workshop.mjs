@@ -134,6 +134,29 @@ try {
   await page.getByRole('radio', { name: /Scripted/ }).click();
   check((await page.locator('.pl-atk-desc').textContent()).includes('5 unguided missiles'), 'switching back restores the script');
 
+  // Scale R3 onto R4–R5, +2 per round → 7 and 9.
+  await page.locator('.pl-scale > summary').click();
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 8 → 7
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 7 → 6
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 6 → 5
+  check((await page.locator('.pl-scale-preview').textContent()).includes('5 → 7 → 9'), 'scale preview shows the growth per round');
+  await page.getByRole('button', { name: /^Apply to R4–R5$/ }).click();
+  await page.waitForTimeout(150);
+  check((await page.locator('tr[data-round="5"] input.pl-cell-num').inputValue()) === '9', 'scaled round lands in the table');
+  // A stray tap on a table row must not switch rounds; the round button does.
+  await page.locator('tr[data-round="5"] td').nth(1).click();
+  check((await page.locator('.pl-round.on .pl-round-n').textContent()) === 'R3', 'tapping a table row does not jump rounds');
+  await page.locator('.pl-overview th', { hasText: 'Total' }).click();
+  await page.locator('.pl-overview th', { hasText: 'Total' }).click();
+  check((await page.locator('.pl-overview tbody tr').first().getAttribute('data-round')) === '5', 'table sorts by total, largest first');
+  await page.getByRole('button', { name: 'Open round 5' }).click();
+  check((await page.locator('.pl-round.on .pl-round-n').textContent()) === 'R5', 'the round button opens that round');
+  // Region-wide adapt switch reaches every scripted round.
+  await page.getByRole('button', { name: /Adapt to player: OFF/ }).click();
+  check((await page.locator('.pl-adapt .dev-toggle').textContent()) === 'ON', 'region-wide adapt switch turns the round on');
+  await page.getByRole('button', { name: /Adapt to player: ON/ }).click();
+  await page.locator('.pl-round[data-round="3"]').click();
+
   // Environment → Island Channel (Region settings). The preview has to draw
   // the rock, because a designer picking a map they cannot see is picking blind.
   await page.getByRole('tab', { name: 'Region settings' }).click();
@@ -194,11 +217,17 @@ try {
   // Scrolling the matrix (a designer working a later round) must survive a
   // rerender triggered by clicking a cell — this was the reported "jumps back
   // to the top" bug. Scroll it, click somewhere, check the scroll held.
+  // The slimmed-down matrix fits a wide desktop, so check at tablet width
+  // where it has to scroll sideways.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.waitForTimeout(150);
+  check(await page.locator('.ws-matrix-wrap').evaluate((el) => el.scrollWidth > el.clientWidth), 'matrix scrolls sideways at tablet width');
   await page.locator('.ws-matrix-wrap').evaluate((el) => { el.scrollLeft = 300; el.scrollTop = 40; });
   await page.locator('td[data-key="mines:standard"][data-round="8"] .ws-cell').click();
   await page.waitForTimeout(150);
   const matrixScroll = await page.locator('.ws-matrix-wrap').evaluate((el) => ({ left: el.scrollLeft, top: el.scrollTop }));
   check(matrixScroll.left > 0, 'matrix horizontal scroll survives opening the inspector');
+  await page.setViewportSize({ width: 1400, height: 900 });
   check((await page.locator('.ws-drawer').count()) === 1, 'inspector opened as a floating drawer, not a scroll-to-bottom panel');
 
   await page.locator('.ws-matrix-wrap').scrollIntoViewIfNeeded();
@@ -248,6 +277,7 @@ try {
   check(json.environmentPresetId === 'islandChannel' && json.shapeType === 'islandChannel', 'exported JSON carries the island environment');
   check(json.milestones.some((m) => m.beats?.length), 'exported JSON carries the beat');
   check(json.milestones.some((m) => m.round === 3 && m.attacks?.[0]?.count === 5 && m.attacks[0].pattern === 'volleys'), 'exported JSON carries the scripted round');
+  check(json.milestones.some((m) => m.round === 5 && m.attacks?.[0]?.count === 9), 'exported JSON carries the scaled rounds');
   await (await import('node:fs/promises')).writeFile(`${SHOT_DIR}/ws-export.json`, JSON.stringify(json, null, 2));
 
   // Reload → draft persists, still playable, listed in the library.

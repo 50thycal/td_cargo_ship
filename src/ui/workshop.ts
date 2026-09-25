@@ -33,6 +33,7 @@ import {
   clearRound,
   clone,
   compileRegion,
+  compiledBranches,
   deleteRound,
   duplicateRound,
   ENVIRONMENT_PRESETS,
@@ -51,6 +52,7 @@ import {
   type ValidationIssue,
 } from '../data/regionAuthoring';
 import { sweepPanel } from './workshopSweep';
+import { enhanceTable } from './tableKit';
 import { plannerRound, plannerView, resetPlanner, setPlannerRound } from './workshopPlanner';
 import {
   deleteDraft,
@@ -110,6 +112,11 @@ interface EditorState {
   selection: Selection;
   collapsed: Set<string>;
   tab: EditorTab;
+  /** Adaptive timeline: list every catalogue weapon, not just the ones this
+   *  region uses. */
+  showAllWeapons: boolean;
+  /** Adaptive timeline: show the tactic-ladder and scripted-beat rows. */
+  showAdvanced: boolean;
   view: 'matrix' | 'rounds';
   savedAt: string | null;
   notice: string | null;
@@ -135,6 +142,8 @@ function openEditor(def: RegionAuthoringDef, source: 'packaged' | 'local', saved
     selection: { kind: 'none' },
     collapsed: new Set(),
     tab: 'planner',
+    showAllWeapons: false,
+    showAdvanced: false,
     view: typeof window !== 'undefined' && window.innerWidth < 760 ? 'rounds' : 'matrix',
     savedAt,
     notice: null,
@@ -268,12 +277,13 @@ export function workshopLibraryScreen(host: WorkshopHost): HTMLElement {
     h('thead', {}, [
       h('tr', {}, [
         'Name', 'ID', 'Source', 'Environment', 'Rounds', 'Branches / loadouts', 'State', 'Edited', 'Actions',
-      ].map((t) => h('th', { text: t }))),
+      ].map((t) => h('th', { text: t, attrs: t === 'Actions' ? { 'data-nosort': '' } : {} }))),
     ]),
   );
   const tbody = h('tbody');
   for (const e of entries) tbody.append(libraryRow(e, host));
   table.append(tbody);
+  enhanceTable(table, 'library');
 
   const actions = h('div', { className: 'ws-actions' }, [
     h('button', { className: 'primary', text: 'New Region', onClick: () => newRegionDialog(body, host) }),
@@ -370,7 +380,7 @@ function libraryRow(e: WorkshopEntry, host: WorkshopHost): HTMLElement {
     h('td', { text: String(e.def.completionRound) }),
     h('td', { text: `${branches.size} / ${loadouts}` }),
     h('td', {}, [state]),
-    h('td', { text: e.updatedAt ? new Date(e.updatedAt).toLocaleString() : '—' }),
+    h('td', { text: e.updatedAt ? new Date(e.updatedAt).toLocaleString() : '—', attrs: { 'data-sort': e.updatedAt ?? '' } }),
     h('td', {}, [actions]),
   ]);
 }
@@ -611,12 +621,7 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
       }),
     );
   } else if (st.tab === 'timeline') {
-    body.append(
-      h('div', {
-        className: 'hint',
-        text: 'What the ADAPTIVE enemy may buy on Auto rounds: which weapons are on its menu from which round, its budget, and optional beats. Scripted rounds ignore all of this.',
-      }),
-    );
+    body.append(timelineIntro(st, compiled, host));
     const viewBar = h('div', { className: 'ws-actions ws-viewbar' }, [
       h('button', {
         className: st.view === 'matrix' ? 'ws-tab on' : 'ws-tab',
@@ -635,11 +640,10 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
         },
       }),
       h('span', { className: 'ws-legend' }, [
-        legendItem('intro', 'introduced'),
-        legendItem('active', 'available (cumulative)'),
-        legendItem('beat', 'scripted beat'),
-        legendItem('removed', 'removed after'),
-        legendItem('gated', 'before catalogue default'),
+        legendItem('intro', 'first round'),
+        legendItem('active', 'on the menu'),
+        legendItem('removed', 'last round'),
+        ...(st.showAdvanced ? [legendItem('beat', 'beat'), legendItem('gated', 'earlier than usual')] : []),
         legendItem('warn', 'problem'),
       ]),
     ]);
@@ -649,7 +653,7 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
         ? timelineMatrix(st, compiled, validation.issues, readOnly, touch, host)
         : roundList(st, compiled, validation.issues, readOnly, touch, host),
     );
-    body.append(pressurePanel(def, readOnly, touch));
+    body.append(pressurePanel(def, readOnly, touch, st.showAllWeapons ? undefined : branchesInUse(compiled)));
     body.append(validationPanel(validation.issues, st, host));
     // The inspector floats over the timeline (see inspectorDrawer).
     const drawer = inspectorDrawer(st, compiled, readOnly, touch, host);
@@ -981,15 +985,22 @@ function mapPreview(geographyId: string): HTMLElement {
 
 // --- pressure -----------------------------------------------------------------
 
-function pressurePanel(def: RegionAuthoringDef, readOnly: boolean, touch: () => void): HTMLElement {
+function pressurePanel(
+  def: RegionAuthoringDef,
+  readOnly: boolean,
+  touch: () => void,
+  only?: Set<EnemyBranchKey>,
+): HTMLElement {
   const p = def.pressure;
-  const panel = h('div', { className: 'panel ws-panel' }, [h('h2', { text: 'Pressure envelope' })]);
+  const panel = h('div', { className: 'panel ws-panel' }, [h('h2', { text: 'Auto budget & limits' })]);
   const useDefault = p.defaultBudget === null;
   panel.append(
     toggleRow(
       'coin',
-      'Global economy curve',
-      useDefault ? 'Budget follows ENEMY_ECONOMY defaults.' : 'Region-specific budget curve.',
+      'Standard budget curve',
+      useDefault
+        ? 'The enemy gets the game’s usual credits each round. Turn off to set this region’s own.'
+        : 'This region’s own curve: credits = start + per round × round, never above the cap.',
       () => p.defaultBudget === null,
       (v) => {
         if (readOnly) return;
@@ -1002,15 +1013,16 @@ function pressurePanel(def: RegionAuthoringDef, readOnly: boolean, touch: () => 
     const b = p.defaultBudget;
     panel.append(
       h('div', { className: 'ws-grid3' }, [
-        field('Base', numberInput(b.base, (v) => { b.base = Math.max(0, v ?? 0); touch(); }, { min: 0, readOnly })),
+        field('Start', numberInput(b.base, (v) => { b.base = Math.max(0, v ?? 0); touch(); }, { min: 0, readOnly })),
         field('Per round', numberInput(b.perRound, (v) => { b.perRound = Math.max(0, v ?? 0); touch(); }, { min: 0, readOnly })),
         field('Cap', numberInput(b.cap, (v) => { b.cap = Math.max(0, v ?? 0); touch(); }, { min: 0, readOnly })),
       ]),
     );
   }
-  panel.append(h('div', { className: 'hint', text: 'Per-branch unit ceilings (replace the catalogue maxUnitsPerRound). Blank = catalogue value.' }));
+  panel.append(h('div', { className: 'hint', text: 'Most units of each weapon type the Auto enemy may field in one round, however rich it is. Leave blank for the game’s default (in brackets).' }));
   const grid = h('div', { className: 'ws-grid3' });
   for (const key of ENEMY_BRANCH_ORDER) {
+    if (only && !only.has(key) && p.defaultBranchCeilings[key] === undefined) continue;
     const branch = ENEMY_BRANCHES[key];
     grid.append(
       field(
@@ -1038,24 +1050,38 @@ interface RowSpec {
   key?: string;
 }
 
-function rows(collapsed: Set<string>): RowSpec[] {
+/** Weapon types this region's Auto enemy can ever use (plus any with beats). */
+function branchesInUse(compiled: ReturnType<typeof compileRegion>): Set<EnemyBranchKey> {
+  const used = new Set<EnemyBranchKey>(compiledBranches(compiled));
+  for (const b of compiled.beats) used.add(b.ref.branch);
+  return used;
+}
+
+function rows(st: EditorState, compiled: ReturnType<typeof compileRegion>): RowSpec[] {
+  const collapsed = st.collapsed;
+  const used = branchesInUse(compiled);
   const out: RowSpec[] = [];
-  out.push({ kind: 'group', group: 'pressure', label: 'Pressure' });
+  out.push({ kind: 'group', group: 'pressure', label: 'Budget' });
   if (!collapsed.has('pressure')) {
-    out.push({ kind: 'pressure', group: 'pressure', label: 'Round budget' });
-    out.push({ kind: 'ceilings', group: 'pressure', label: 'Branch ceilings' });
+    out.push({ kind: 'pressure', group: 'pressure', label: 'Credits to spend' });
+    if (st.showAdvanced) out.push({ kind: 'ceilings', group: 'pressure', label: 'Max units / round' });
   }
   for (const key of ENEMY_BRANCH_ORDER) {
+    // Only the weapon types this region actually uses, unless asked for all:
+    // seven branches × every variant is a wall of rows most regions never touch.
+    if (!st.showAllWeapons && !used.has(key)) continue;
     const branch = ENEMY_BRANCHES[key];
     out.push({ kind: 'group', group: key, label: branch.name, branch: key });
     if (collapsed.has(key)) continue;
     for (const e of arsenalEntries().filter((x) => x.branch === key)) {
+      if (!e.implemented && !st.showAllWeapons) continue;
       out.push({ kind: 'node', group: key, label: e.node.name, entry: e, branch: key, key: `${key}:${e.node.id}` });
     }
-    out.push({ kind: 'tactics', group: key, label: 'Tactic ladder', branch: key });
-    out.push({ kind: 'beats', group: key, label: 'Scripted beats', branch: key });
+    const hasBeats = compiled.beats.some((b) => b.ref.branch === key);
+    if (st.showAdvanced) out.push({ kind: 'tactics', group: key, label: 'Tactic ladder', branch: key });
+    if (st.showAdvanced || hasBeats) out.push({ kind: 'beats', group: key, label: 'Scripted beats', branch: key });
   }
-  out.push({ kind: 'group', group: 'notes', label: 'Doctrine, beats & warnings' });
+  out.push({ kind: 'group', group: 'notes', label: 'Notes for the player' });
   if (!collapsed.has('notes')) {
     out.push({ kind: 'intel', group: 'notes', label: 'Intel warning' });
     out.push({ kind: 'label', group: 'notes', label: 'Round label' });
@@ -1065,6 +1091,70 @@ function rows(collapsed: Set<string>): RowSpec[] {
 
 function issuesFor(issues: ValidationIssue[], round: number, key?: string): ValidationIssue[] {
   return issues.filter((i) => i.round === round && (key === undefined ? !i.ref : i.ref && refKey(i.ref) === key));
+}
+
+/** Typical round budget for this region: the median of its rounds. */
+function typicalBudget(def: RegionAuthoringDef): number {
+  const compiled = compileRegion(def);
+  const list: number[] = [];
+  for (let r = 1; r <= def.completionRound; r++) list.push(pressureAtRound(compiled, r).budget);
+  list.sort((a, b) => a - b);
+  return list[Math.floor(list.length / 2)] || 1;
+}
+
+/** A price in words: what share of a typical round's budget one unit is. */
+function shareOfRound(cost: number, def: RegionAuthoringDef): string {
+  const budget = typicalBudget(def);
+  const many = Math.floor(budget / cost);
+  if (many >= 2) return `~${many} per round`;
+  const pct = Math.round((100 * cost) / budget);
+  return `${pct}% of a round`;
+}
+
+/** The header of the Adaptive timeline: what the tab governs, what a credit
+ *  buys, and the filters that keep the matrix short. */
+function timelineIntro(st: EditorState, compiled: ReturnType<typeof compileRegion>, host: WorkshopHost): HTMLElement {
+  const def = st.def;
+  const typical = typicalBudget(def);
+  const used = branchesInUse(compiled);
+  const hidden = ENEMY_BRANCH_ORDER.filter((k) => !used.has(k)).length;
+  const priceOf = (branch: EnemyBranchKey, node: string) => ENEMY_BRANCHES[branch].nodes.find((n) => n.id === node)?.cost ?? 0;
+  const examples = [
+    ['missiles', 'unguided', 'unguided missiles'],
+    ['torpedoes', 'straight', 'torpedoes'],
+    ['mines', 'standard', 'mines'],
+    ['attackBoats', 'smallArms', 'gunboats'],
+    ['artillery', 'coastalGun', 'coastal guns'],
+  ] as const;
+  const buys = examples
+    .map(([b, n, label]) => ({ label, cost: priceOf(b, n), many: Math.floor(typical / Math.max(1, priceOf(b, n))) }))
+    .filter((e) => e.cost > 0)
+    .map((e) => `${e.many} ${e.label} (${e.cost}cr each)`)
+    .join(' · ');
+  return h('div', { className: 'panel ws-panel ws-intro' }, [
+    h('p', { text: 'This tab only matters for AUTO rounds: it is the menu the adaptive enemy buys from, and how much it can spend. Scripted rounds ignore it.' }),
+    h('p', { className: 'hint', text: `Credits (cr) are the enemy’s money for one round. A typical round here is ${typical}cr, which buys about: ${buys}.` }),
+    h('p', { className: 'hint', text: 'To put another weapon on the menu, tap a round number (R1, R2…) and pick it from the list.' }),
+    h('div', { className: 'ws-actions' }, [
+      h('button', {
+        className: st.showAllWeapons ? 'dev-toggle on' : 'dev-toggle',
+        text: st.showAllWeapons ? 'Showing all weapons' : `Show all weapons${hidden ? ` (+${hidden} types)` : ''}`,
+        onClick: () => {
+          st.showAllWeapons = !st.showAllWeapons;
+          host.rerender();
+        },
+      }),
+      h('button', {
+        className: st.showAdvanced ? 'dev-toggle on' : 'dev-toggle',
+        text: st.showAdvanced ? 'Advanced rows on' : 'Show advanced rows',
+        attrs: { title: 'Unit caps, tactic ladders and scripted beats' },
+        onClick: () => {
+          st.showAdvanced = !st.showAdvanced;
+          host.rerender();
+        },
+      }),
+    ]),
+  ]);
 }
 
 function timelineMatrix(
@@ -1097,7 +1187,7 @@ function timelineMatrix(
   }
   table.append(h('thead', {}, [head]));
   const tbody = h('tbody');
-  for (const row of rows(st.collapsed)) {
+  for (const row of rows(st, compiled)) {
     tbody.append(matrixRow(row, st, compiled, issues, rounds, readOnly, touch, host));
   }
   table.append(tbody);
@@ -1138,7 +1228,7 @@ function matrixRow(
   const labelCell = h('th', { className: 'ws-sticky-col' }, [h('span', { text: row.label })]);
   if (row.kind === 'node' && row.entry) {
     labelCell.append(
-      h('span', { className: 'hint ws-sub', text: ` default R${row.entry.earliestRound} · ${row.entry.node.cost}cr${row.entry.implemented ? '' : ' · designed only'}` }),
+      h('span', { className: 'hint ws-sub', text: ` ${row.entry.node.cost}cr · ${shareOfRound(row.entry.node.cost, st.def)}${row.entry.implemented ? '' : ' · not built yet'}` }),
     );
     if (!row.entry.implemented) tr.classList.add('ws-unimplemented');
   }

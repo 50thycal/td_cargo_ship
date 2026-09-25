@@ -108,6 +108,7 @@ function newEconomy(region: RegionDef): EnemyEconomyState {
     ...(region.beats ? { beats: cloneJson(region.beats) } : {}),
     ...(region.intelWarnings ? { intelWarnings: cloneJson(region.intelWarnings) } : {}),
     ...(region.scriptedRounds ? { scriptedRounds: cloneJson(region.scriptedRounds) } : {}),
+    ...(region.scriptedAdaptive ? { scriptedAdaptive: [...region.scriptedAdaptive] } : {}),
     budget: 0,
     committed: 0,
     scrapped: 0,
@@ -209,6 +210,37 @@ function grantBudget(
     if (node) budget += beat.units * node.cost;
   }
   return budget;
+}
+
+/** How far an ADAPTIVE scripted round scales its counts, from how the player
+ *  is doing: the round's granted budget (after the anti-snowball modifiers)
+ *  over what the same curve grants with no performance signal. A player
+ *  walking through untouched draws more fire, a struggling one less — the same
+ *  restoring force the adaptive enemy's purse follows. Clamped so a script
+ *  keeps its shape: never below half or above double what was written. */
+export const SCRIPT_SCALE_MIN = 0.5;
+export const SCRIPT_SCALE_MAX = 2;
+
+export function scriptScaleFor(economy: EnemyEconomyState, round: number): number {
+  if (!economy.scriptedAdaptive?.includes(round)) return 1;
+  const neutral = grantBudget(economy, round, undefined);
+  if (neutral <= 0 || economy.budget <= 0) return 1;
+  const f = economy.budget / neutral;
+  return Math.max(SCRIPT_SCALE_MIN, Math.min(SCRIPT_SCALE_MAX, Math.round(f * 100) / 100));
+}
+
+/** This round's scripted attacks with any adaptive scaling applied, or
+ *  undefined for an Auto round. Records the scale on the economy. */
+function scriptedFor(
+  economy: EnemyEconomyState,
+  round: number,
+): NonNullable<EnemyEconomyState['scriptedRounds']>[string] | undefined {
+  const list = economy.scriptedRounds?.[String(round)];
+  if (!list) return undefined;
+  const scale = scriptScaleFor(economy, round);
+  if (economy.scriptedAdaptive) economy.scriptScale = scale;
+  if (scale === 1) return list;
+  return list.map((a) => ({ ...a, count: Math.max(1, Math.round(a.count * scale)) }));
 }
 
 /** Authored beats scheduled for `round`, filtered to what this region and the
@@ -453,7 +485,7 @@ function purchase(
   // Region Workshop SCRIPTED round: exactly the authored attacks, nothing
   // adaptive. They are recorded in the ledgers as if bought, so ROI learning,
   // tactic tenure and telemetry carry on across scripted and adaptive rounds.
-  const scripted = economy.scriptedRounds?.[String(round)];
+  const scripted = scriptedFor(economy, round);
   if (scripted) {
     economy.authoredUnits = {};
     economy.authoredSpend = 0;
@@ -873,10 +905,9 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
   );
 
   // Region Workshop scripted round: the authored attacks ARE the plan.
-  const scripted = economy.scriptedRounds?.[String(round)];
-  if (scripted) {
+  if (economy.scriptedRounds?.[String(round)]) {
     ensureProcurement(evo, round, rng);
-    return scriptedRoundPlan(round, scripted, geo, rng, windowEnd, evo.firstSeen);
+    return scriptedRoundPlan(round, scriptedFor(economy, round)!, geo, rng, windowEnd, evo.firstSeen);
   }
 
   if (round === 1) {

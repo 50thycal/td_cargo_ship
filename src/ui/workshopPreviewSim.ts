@@ -83,6 +83,9 @@ export interface PreviewResult {
   fielded: Record<string, number>;
   /** First launch time per launched node, for turning Auto into a script. */
   firstLaunch: Record<string, number>;
+  /** Multiplier an adaptive scripted round applied to its counts (1 = as
+   *  written; only differs when the round adapts to the player). */
+  scriptScale: number;
   /** Enemy doctrine name in force — explains why shots pick the ships they do. */
   targeting: string;
 }
@@ -174,6 +177,7 @@ export function runPreview(req: PreviewRequest): PreviewResult {
     summary,
     fielded,
     firstLaunch,
+    scriptScale: c.evolution.economy.scriptScale ?? 1,
     targeting: TARGETING_DOCTRINE[c.evolution.economy.targetingTier]?.name ?? '',
   };
 }

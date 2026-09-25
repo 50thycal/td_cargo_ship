@@ -11,6 +11,7 @@
 // cannot: whether the region FEELS good. That still needs a human.
 
 import { h } from './dom';
+import { enhanceTable } from './tableKit';
 import { contentHash, clone, type RegionAuthoringDef } from '../data/regionAuthoring';
 import { ENEMY_BRANCH_NAMES } from '../data/counters';
 import { PERSONAS } from '../sim/playtest/personas';
@@ -309,29 +310,30 @@ function resultsView(record: SweepRecord, compare: SweepRecord | null, rerender:
   const tbody = h('tbody');
   for (const p of s.personas) {
     const before = compare?.summary.personas.find((q) => q.persona === p.persona);
-    const won = h('td', {}, [h('span', { className: `ws-badge ${winTone(p.winRate)}`, text: pct(p.winRate) })]);
+    const won = h('td', { attrs: { 'data-sort': String(p.winRate) } }, [h('span', { className: `ws-badge ${winTone(p.winRate)}`, text: pct(p.winRate) })]);
     if (before) won.append(delta(p.winRate, before.winRate, pct));
-    const cash = h('td', { text: money(p.finalCash.mean) });
+    const cash = h('td', { text: money(p.finalCash.mean), attrs: { 'data-sort': String(p.finalCash.mean) } });
     if (before) cash.append(delta(p.finalCash.mean, before.finalCash.mean, money));
     const ended = Object.entries(p.endReasons).sort((a, c) => c[1] - a[1]).map(([r, n]) => `${endReasonLabel(r)} ×${n}`).join(', ');
     const tr = h('tr', { className: sweep.focusPersona === p.persona ? 'selected' : '' }, [
       h('td', {}, [h('button', { className: 'ws-link', text: p.persona, onClick: () => { sweep.focusPersona = sweep.focusPersona === p.persona ? null : p.persona; rerender(); } })]),
       h('td', { text: `${p.campaigns}` }),
       won,
-      h('td', { text: pct(p.survivalRate) }),
+      h('td', { text: pct(p.survivalRate), attrs: { 'data-sort': String(p.survivalRate) } }),
       h('td', { text: `${p.meanRoundsSurvived}` }),
       h('td', { text: `${p.meanDeliveredPct}` }),
       h('td', { text: `${p.meanLosses}` }),
       h('td', { text: `${p.meanScore}` }),
       cash,
-      h('td', { text: pct(p.hoardRate) }),
+      h('td', { text: pct(p.hoardRate), attrs: { 'data-sort': String(p.hoardRate) } }),
       h('td', { className: 'ws-ended', text: ended }),
     ]);
     tbody.append(tr);
   }
   table.append(tbody);
+  enhanceTable(table, 'sweep-personas');
   wrap.append(h('div', { className: 'ws-sub-panel' }, [
-    h('h3', { text: 'By persona — tap a name to draw its money curve' }),
+    h('h3', { text: 'By persona — tap a name to draw its money curve, a heading to sort' }),
     h('div', { className: 'ws-scroll' }, [table]),
   ]));
 
