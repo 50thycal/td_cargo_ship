@@ -51,6 +51,7 @@ import {
   type ValidationIssue,
 } from '../data/regionAuthoring';
 import { sweepPanel } from './workshopSweep';
+import { plannerRound, plannerView, resetPlanner, setPlannerRound } from './workshopPlanner';
 import {
   deleteDraft,
   exportJson,
@@ -100,12 +101,15 @@ type Selection =
   | { kind: 'round'; round: number }
   | { kind: 'beat'; round: number; beatId: string };
 
+type EditorTab = 'planner' | 'timeline' | 'settings' | 'sweep';
+
 interface EditorState {
   def: RegionAuthoringDef;
   source: 'packaged' | 'local';
   dirty: boolean;
   selection: Selection;
   collapsed: Set<string>;
+  tab: EditorTab;
   view: 'matrix' | 'rounds';
   savedAt: string | null;
   notice: string | null;
@@ -130,6 +134,7 @@ function openEditor(def: RegionAuthoringDef, source: 'packaged' | 'local', saved
     dirty: false,
     selection: { kind: 'none' },
     collapsed: new Set(),
+    tab: 'planner',
     view: typeof window !== 'undefined' && window.innerWidth < 760 ? 'rounds' : 'matrix',
     savedAt,
     notice: null,
@@ -137,6 +142,7 @@ function openEditor(def: RegionAuthoringDef, source: 'packaged' | 'local', saved
     playGod: false,
     playSeed: `ws-${Date.now().toString(36)}`,
   };
+  resetPlanner(`${def.id}@${Date.now()}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -525,71 +531,150 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
     st.notice = null;
   }
 
-  // --- header + environment + pressure (side by side on wide screens) ---
+  // --- top bar: the few things that apply to the whole region -------------
+  const badge = h('button', { className: 'ws-validity' });
+  const subEl = root.querySelector('.screen-header .sub') as HTMLElement | null;
+  const refreshChrome = () => {
+    const v = validateDraft(def);
+    badge.className = `ws-validity ${v.ok ? (v.warnings.length ? 'warn' : 'good') : 'bad'}`;
+    badge.textContent = v.ok
+      ? v.warnings.length
+        ? `Playable · ${v.warnings.length} note${v.warnings.length === 1 ? '' : 's'}`
+        : 'Playable'
+      : `${v.errors.length} problem${v.errors.length === 1 ? '' : 's'} — not playable`;
+    if (subEl) subEl.textContent = readOnly ? 'Built-in template — clone to edit' : st.dirty ? 'Unsaved changes' : st.savedAt ? `Saved ${new Date(st.savedAt).toLocaleTimeString()}` : 'New draft';
+    if (saveBtn) saveBtn.textContent = st.dirty ? 'Save' : 'Saved';
+    if (playBtn) {
+      playBtn.disabled = !v.ok;
+      playBtn.textContent = `${readOnly || !st.dirty ? 'Play' : 'Save & play'} R${plannerRound()}`;
+    }
+  };
+  badge.addEventListener('click', () => {
+    st.tab = 'timeline';
+    host.rerender();
+    requestAnimationFrame(() => document.querySelector('.ws-issues')?.scrollIntoView({ block: 'center' }));
+  });
+  const envOptions = ENVIRONMENT_PRESETS.map((p) => ({ value: p.id, label: p.name }));
   body.append(
-    h('div', { className: 'ws-columns' }, [
-      headerPanel(st, validation, readOnly, touch),
-      environmentPanel(def, readOnly, touch),
-      pressurePanel(def, readOnly, touch),
+    h('div', { className: 'ws-topbar' }, [
+      h('label', { className: 'ws-top-field' }, [
+        h('span', { text: 'Name' }),
+        textInput(def.name, (v) => { def.name = v; touch(); }, { readOnly }),
+      ]),
+      h('label', { className: 'ws-top-field' }, [
+        h('span', { text: 'Map' }),
+        selectInput(def.environmentPresetId, envOptions, (v) => {
+          const p = environmentPreset(v);
+          if (!p) return;
+          def.environmentPresetId = p.id;
+          def.shapeType = p.shapeType;
+          touch();
+        }, readOnly),
+      ]),
+      badge,
     ]),
   );
 
-  // --- view toggle + timeline --------------------------------------------
-  const viewBar = h('div', { className: 'ws-actions ws-viewbar' }, [
-    h('button', {
-      className: st.view === 'matrix' ? 'ws-tab on' : 'ws-tab',
-      text: 'Timeline matrix',
-      onClick: () => {
-        st.view = 'matrix';
-        host.rerender();
-      },
-    }),
-    h('button', {
-      className: st.view === 'rounds' ? 'ws-tab on' : 'ws-tab',
-      text: 'Round list',
-      onClick: () => {
-        st.view = 'rounds';
-        host.rerender();
-      },
-    }),
-    h('span', { className: 'ws-legend' }, [
-      legendItem('intro', 'introduced'),
-      legendItem('active', 'available (cumulative)'),
-      legendItem('beat', 'scripted beat'),
-      legendItem('removed', 'removed after'),
-      legendItem('gated', 'before catalogue default'),
-      legendItem('warn', 'problem'),
-    ]),
-  ]);
-  body.append(viewBar);
+  // --- tabs: one job per screen ---------------------------------------------
+  const tabs: { id: EditorTab; label: string }[] = [
+    { id: 'planner', label: 'Round planner' },
+    { id: 'timeline', label: 'Adaptive timeline' },
+    { id: 'settings', label: 'Region settings' },
+    { id: 'sweep', label: 'Balance sweep' },
+  ];
   body.append(
-    st.view === 'matrix'
-      ? timelineMatrix(st, compiled, validation.issues, readOnly, touch, host)
-      : roundList(st, compiled, validation.issues, readOnly, touch, host),
+    h('div', { className: 'ws-tabs', attrs: { role: 'tablist' } }, tabs.map((t) =>
+      h('button', {
+        className: st.tab === t.id ? 'ws-tab on' : 'ws-tab',
+        text: t.label,
+        attrs: { role: 'tab', 'aria-selected': String(st.tab === t.id) },
+        onClick: () => {
+          st.tab = t.id;
+          host.rerender();
+        },
+      }),
+    )),
   );
 
-  // --- validation -----------------------------------------------------------
-  body.append(validationPanel(validation.issues, st, host));
-
-  // --- balance sweep -------------------------------------------------------
-  // Sweeps the timeline as it is on screen (saved or not): the worker compiles
-  // the authored preset itself, and the result is keyed by its content hash.
-  body.append(sweepPanel(def, validation.ok, host.rerender));
-
-  // --- inspector, as a floating drawer --------------------------------------
-  // Pinned to the viewport rather than laid out in the flow: selecting a
-  // capability, round or beat from anywhere on a long timeline should never
-  // require scrolling down to find where its editor landed. The body gets a
-  // right margin to match — the matrix reflows narrower rather than sliding
-  // UNDER the drawer, so the drawer never sits on top of a cell a designer
-  // just scrolled the wide timeline sideways to reach.
-  const drawer = inspectorDrawer(st, compiled, readOnly, touch, host);
-  if (drawer) {
-    body.classList.add('ws-has-drawer');
-    body.append(drawer);
+  if (st.tab === 'planner') {
+    body.append(
+      plannerView({
+        def,
+        readOnly,
+        issues: () => validateDraft(def).issues,
+        changed: () => {
+          st.dirty = true;
+          refreshChrome();
+        },
+        onClone: readOnly ? () => cloneToEdit(def, host) : undefined,
+        roundChanged: () => refreshChrome(),
+      }),
+    );
+  } else if (st.tab === 'timeline') {
+    body.append(
+      h('div', {
+        className: 'hint',
+        text: 'What the ADAPTIVE enemy may buy on Auto rounds: which weapons are on its menu from which round, its budget, and optional beats. Scripted rounds ignore all of this.',
+      }),
+    );
+    const viewBar = h('div', { className: 'ws-actions ws-viewbar' }, [
+      h('button', {
+        className: st.view === 'matrix' ? 'ws-tab on' : 'ws-tab',
+        text: 'Timeline matrix',
+        onClick: () => {
+          st.view = 'matrix';
+          host.rerender();
+        },
+      }),
+      h('button', {
+        className: st.view === 'rounds' ? 'ws-tab on' : 'ws-tab',
+        text: 'Round list',
+        onClick: () => {
+          st.view = 'rounds';
+          host.rerender();
+        },
+      }),
+      h('span', { className: 'ws-legend' }, [
+        legendItem('intro', 'introduced'),
+        legendItem('active', 'available (cumulative)'),
+        legendItem('beat', 'scripted beat'),
+        legendItem('removed', 'removed after'),
+        legendItem('gated', 'before catalogue default'),
+        legendItem('warn', 'problem'),
+      ]),
+    ]);
+    body.append(viewBar);
+    body.append(
+      st.view === 'matrix'
+        ? timelineMatrix(st, compiled, validation.issues, readOnly, touch, host)
+        : roundList(st, compiled, validation.issues, readOnly, touch, host),
+    );
+    body.append(pressurePanel(def, readOnly, touch));
+    body.append(validationPanel(validation.issues, st, host));
+    // The inspector floats over the timeline (see inspectorDrawer).
+    const drawer = inspectorDrawer(st, compiled, readOnly, touch, host);
+    if (drawer) {
+      body.classList.add('ws-has-drawer');
+      body.append(drawer);
+    }
+  } else if (st.tab === 'settings') {
+    body.append(
+      h('div', { className: 'ws-columns' }, [
+        headerPanel(st, validation, readOnly, touch),
+        environmentPanel(def, readOnly, touch),
+        jsonPanel(st, host),
+      ]),
+    );
+  } else {
+    // Sweeps the timeline as it is on screen (saved or not): the worker
+    // compiles the authored preset itself, and the result is keyed by its
+    // content hash.
+    body.append(sweepPanel(def, validation.ok, host.rerender));
   }
 
   // --- footer -------------------------------------------------------------
+  let saveBtn: HTMLButtonElement | null = null;
+  let playBtn: HTMLButtonElement | null = null;
   footer.append(
     h('button', {
       text: 'Library',
@@ -600,99 +685,104 @@ export function workshopEditorScreen(host: WorkshopHost): HTMLElement {
       },
     }),
   );
+  const save = (): boolean => {
+    if (REGIONS[def.id]) {
+      st.notice = `"${def.id}" is a packaged id — choose another in Region settings.`;
+      host.rerender();
+      return false;
+    }
+    saveDraft(def);
+    st.dirty = false;
+    st.savedAt = new Date().toISOString();
+    return true;
+  };
   if (readOnly) {
-    footer.append(
-      h('button', {
-        text: 'Clone to edit',
-        onClick: () => {
-          const copy = clone(def);
-          copy.id = freshId(`${def.id}Copy`);
-          copy.name = `${def.name} (copy)`;
-          copy.campaign.unlocks = null;
-          openEditor(copy, 'local', null);
-          editor!.dirty = true;
-          host.rerender();
-        },
-      }),
-    );
+    footer.append(h('button', { className: 'primary', text: 'Clone to edit', onClick: () => cloneToEdit(def, host) }));
   } else {
-    footer.append(
+    saveBtn = h('button', {
+      className: 'primary',
+      text: st.dirty ? 'Save' : 'Saved',
+      onClick: () => {
+        if (!save()) return;
+        st.notice = validateDraft(def).ok ? null : 'Saved as a draft. Fix the problems to make it playable.';
+        if (st.notice) host.rerender();
+        else refreshChrome();
+      },
+    });
+    footer.append(saveBtn);
+  }
+  playBtn = h('button', {
+    className: 'primary',
+    text: `Play R${plannerRound()}`,
+    attrs: { title: 'Play this region for real from the selected round (an isolated run — your campaign is untouched)' },
+    onClick: () => {
+      if (!readOnly && !save()) return;
+      host.onPlaytest({
+        regionId: def.id,
+        source: st.source,
+        round: st.tab === 'planner' ? plannerRound() : st.playRound,
+        god: st.playGod,
+        seed: st.playSeed,
+      });
+    },
+  });
+  footer.append(playBtn);
+  refreshChrome();
+  return root;
+}
+
+function cloneToEdit(def: RegionAuthoringDef, host: WorkshopHost): void {
+  const copy = clone(def);
+  copy.id = freshId(`${def.id}Copy`);
+  copy.name = `${def.name} (copy)`;
+  copy.campaign.unlocks = null;
+  const tab = editor?.tab ?? 'planner';
+  const round = plannerRound();
+  openEditor(copy, 'local', null);
+  setPlannerRound(round);
+  editor!.dirty = true;
+  editor!.tab = tab;
+  host.rerender();
+}
+
+/** JSON hand-off and playtest options — out of the way, one tab over. */
+function jsonPanel(st: EditorState, host: WorkshopHost): HTMLElement {
+  const def = st.def;
+  return h('div', { className: 'panel ws-panel' }, [
+    h('h2', { text: 'Share & playtest options' }),
+    h('div', { className: 'hint', text: 'Export the region as JSON to keep it, share it, or hand it to a Claude session to build on.' }),
+    h('div', { className: 'ws-actions' }, [
+      h('button', { text: 'Export JSON', onClick: () => downloadText(`region-${def.id}.json`, exportJson(def)) }),
       h('button', {
-        className: 'primary',
-        text: validation.ok ? 'Save' : 'Save draft (not playable)',
+        text: 'Copy JSON',
         onClick: () => {
-          if (REGIONS[def.id]) {
-            st.notice = `"${def.id}" is a packaged id — choose another.`;
-            host.rerender();
-            return;
-          }
-          saveDraft(def);
-          st.dirty = false;
-          st.savedAt = new Date().toISOString();
-          st.notice = validation.ok ? 'Saved — playable from the library and the Playtest button.' : 'Saved as a draft. Fix the errors below to make it playable.';
+          navigator.clipboard?.writeText(exportJson(def)).then(
+            () => {
+              st.notice = 'Preset JSON copied to the clipboard.';
+              host.rerender();
+            },
+            () => {
+              st.notice = 'Clipboard unavailable — use Export JSON instead.';
+              host.rerender();
+            },
+          );
+        },
+      }),
+    ]),
+    h('div', { className: 'ws-playrow' }, [
+      h('span', { className: 'hint', text: 'Seed' }),
+      textInput(st.playSeed, (v) => (st.playSeed = v || `ws-${Date.now().toString(36)}`), { className: 'ws-seed' }),
+      h('button', {
+        className: st.playGod ? 'dev-toggle on' : 'dev-toggle',
+        text: st.playGod ? 'GOD ON' : 'GOD OFF',
+        onClick: () => {
+          st.playGod = !st.playGod;
           host.rerender();
         },
       }),
-    );
-  }
-  footer.append(
-    h('button', { text: 'Export JSON', onClick: () => downloadText(`region-${def.id}.json`, exportJson(def)) }),
-    h('button', {
-      text: 'Copy JSON',
-      onClick: () => {
-        navigator.clipboard?.writeText(exportJson(def)).then(
-          () => {
-            st.notice = 'Preset JSON copied to the clipboard — paste it into a Claude session to build on it.';
-            host.rerender();
-          },
-          () => {
-            st.notice = 'Clipboard unavailable — use Export JSON instead.';
-            host.rerender();
-          },
-        );
-      },
-    }),
-  );
-  const playRow = h('div', { className: 'ws-playrow' }, [
-    h('span', { className: 'hint', text: 'Round' }),
-    numberInput(st.playRound, (v) => (st.playRound = Math.max(1, Math.floor(v ?? 1))), { min: 1, width: '58px' }),
-    h('span', { className: 'hint', text: 'Seed' }),
-    textInput(st.playSeed, (v) => (st.playSeed = v || `ws-${Date.now().toString(36)}`), { className: 'ws-seed' }),
-    h('button', {
-      className: st.playGod ? 'dev-toggle on' : 'dev-toggle',
-      text: st.playGod ? 'GOD ON' : 'GOD OFF',
-      onClick: () => {
-        st.playGod = !st.playGod;
-        host.rerender();
-      },
-    }),
-    h('button', {
-      className: 'primary',
-      text: readOnly ? 'Playtest' : st.dirty ? 'Save & Playtest' : 'Playtest',
-      disabled: !validation.ok,
-      onClick: () => {
-        if (!readOnly) {
-          if (REGIONS[def.id]) {
-            st.notice = `"${def.id}" is a packaged id — choose another.`;
-            host.rerender();
-            return;
-          }
-          saveDraft(def);
-          st.dirty = false;
-          st.savedAt = new Date().toISOString();
-        }
-        host.onPlaytest({
-          regionId: def.id,
-          source: st.source,
-          round: st.playRound,
-          god: st.playGod,
-          seed: st.playSeed,
-        });
-      },
-    }),
+    ]),
+    h('div', { className: 'hint', text: 'Play starts from the round selected in the Round planner. God mode makes your ships invincible for a quick look at later rounds.' }),
   ]);
-  footer.append(playRow);
-  return root;
 }
 
 /** A stable string identifying WHICH thing is selected, so a rerender caused
@@ -1002,6 +1092,7 @@ function timelineMatrix(
       }),
     ]);
     if (compiled.labels[r]) th.append(h('div', { className: 'ws-round-label', text: compiled.labels[r] }));
+    if (compiled.attacks[r]) th.append(h('div', { className: 'ws-round-label', text: 'scripted' }));
     head.append(th);
   }
   table.append(h('thead', {}, [head]));

@@ -36,6 +36,7 @@ import {
 } from '../data/enemyBranches';
 import { DEV_REGION, REGIONS, geographyOf, type RegionDef } from '../data/regions';
 import type { Geography } from '../data/geography';
+import { scriptedRoundPlan } from './scriptedPlan';
 import type { RNG } from './rng';
 import type {
   ArtilleryVariant,
@@ -106,6 +107,7 @@ function newEconomy(region: RegionDef): EnemyEconomyState {
     ...(region.roundPressure ? { roundPressure: cloneJson(region.roundPressure) } : {}),
     ...(region.beats ? { beats: cloneJson(region.beats) } : {}),
     ...(region.intelWarnings ? { intelWarnings: cloneJson(region.intelWarnings) } : {}),
+    ...(region.scriptedRounds ? { scriptedRounds: cloneJson(region.scriptedRounds) } : {}),
     budget: 0,
     committed: 0,
     scrapped: 0,
@@ -446,6 +448,46 @@ function purchase(
   if (economy.beats) {
     economy.authoredUnits = {};
     economy.authoredSpend = 0;
+  }
+
+  // Region Workshop SCRIPTED round: exactly the authored attacks, nothing
+  // adaptive. They are recorded in the ledgers as if bought, so ROI learning,
+  // tactic tenure and telemetry carry on across scripted and adaptive rounds.
+  const scripted = economy.scriptedRounds?.[String(round)];
+  if (scripted) {
+    economy.authoredUnits = {};
+    economy.authoredSpend = 0;
+    for (const a of scripted) {
+      const key = a.branch as EnemyBranchKey;
+      const node = ENEMY_BRANCHES[key]?.nodes.find((n) => n.id === a.nodeId);
+      if (!node) continue;
+      const ledger = economy.ledgers[key];
+      const cost = a.count * node.cost;
+      if (!economy.openBranches.includes(key)) economy.openBranches.push(key);
+      ledger.units[node.id] = (ledger.units[node.id] ?? 0) + a.count;
+      ledger.spend += cost;
+      committed += cost;
+      economy.authoredUnits[node.id] = (economy.authoredUnits[node.id] ?? 0) + a.count;
+      economy.authoredSpend += cost;
+      purchases.push({ branch: key, node, units: a.count });
+      if (!economy.nodesFielded.includes(node.id)) {
+        economy.nodesFielded.push(node.id);
+        economy.nodeDebuts.push(node.id);
+        if (node.grantsTargeting !== undefined && node.grantsTargeting > economy.targetingTier) {
+          economy.targetingTier = node.grantsTargeting;
+          economy.targetingDebut = node.grantsTargeting;
+        }
+      }
+    }
+    for (const key of ENEMY_BRANCH_ORDER) {
+      const ledger = economy.ledgers[key];
+      if (ledger.spend > 0) ledger.roundsInvested++;
+      else ledger.roundsInvested = 0;
+    }
+    economy.committed = committed;
+    economy.scrapped = 0;
+    economy.plannedForRound = round;
+    return purchases;
   }
 
   const candidates = candidateBranches(economy, round);
@@ -829,6 +871,13 @@ export function planRound(campaign: CampaignState, rng: RNG): RoundPlan {
     SIM.maxTransitTime - 20,
     convoySpawnSpan(shipsOut, campaign.formation, geo.laneCount) + EVOLUTION.windowTailT,
   );
+
+  // Region Workshop scripted round: the authored attacks ARE the plan.
+  const scripted = economy.scriptedRounds?.[String(round)];
+  if (scripted) {
+    ensureProcurement(evo, round, rng);
+    return scriptedRoundPlan(round, scripted, geo, rng, windowEnd, evo.firstSeen);
+  }
 
   if (round === 1) {
     // Scripted onboarding: a light unguided probe, spread across the transit.

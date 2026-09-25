@@ -1,8 +1,10 @@
 // Region Workshop browser smoke test. Expects `vite preview` (or dev) at
 // BASE_URL. Drives: Settings → Developer mode → Region Workshop → library →
-// new region from Home Strait → timeline edits (add a delayed capability, a
-// scripted beat, a removal) → save → export JSON → mobile round list →
-// playtest launch (prep screen of an isolated run). Screenshots per phase.
+// new region from Home Strait → Round planner (script a round, change the
+// salvo size, compare patterns, watch the preview) → adaptive timeline edits
+// (a delayed capability, a beat, a removal) → balance sweep → save → export
+// JSON → mobile → playtest launch (prep screen of an isolated run).
+// Screenshots per phase.
 //
 // Usage:  npm run build && npm run preview -- --port 4173 &  node e2e/workshop.mjs
 // Env:    BASE_URL (default http://localhost:4173)
@@ -77,6 +79,11 @@ try {
   await page.waitForSelector('[data-screen="workshop-editor"]');
   await page.waitForTimeout(700); // entry animation
   check((await page.locator('.screen-header h1').textContent()).includes('read-only'), 'packaged template opens read-only');
+  check((await page.locator('.pl-banner').count()) === 1, 'template opens on the round planner with a clone banner');
+  await page.waitForSelector('.pl-stats', { timeout: 20_000 });
+  check((await page.locator('.pl-stats').textContent()).includes('fired'), 'template round 1 previews');
+  await page.getByRole('tab', { name: 'Adaptive timeline' }).click();
+  await page.waitForTimeout(200);
   check((await page.locator('.ws-matrix .ws-cell.intro').count()) >= 2, 'template timeline shows resolved gates (unguided R1, guided R2)');
   await page.screenshot({ path: `${SHOT_DIR}/ws-02-template-readonly.png`, fullPage: true });
   await page.getByRole('button', { name: 'Library' }).click();
@@ -89,8 +96,48 @@ try {
   await page.waitForSelector('[data-screen="workshop-editor"]');
   await page.waitForTimeout(700);
 
-  // Environment → Island Channel. The preview has to draw the rock, because a
-  // designer picking a map they cannot see is picking blind.
+  // --- Round planner: script round 3 as a missile salvo and iterate on it ---
+  check((await page.locator('.pl-round').count()) === 8, 'round strip shows every round');
+  await page.locator('.pl-round[data-round="3"]').click();
+  await page.getByRole('radio', { name: /Scripted/ }).click();
+  await page.waitForTimeout(100);
+  check((await page.locator('.pl-atk').count()) === 1, 'scripting a round starts with one attack');
+  check((await page.locator('.pl-atk-desc').textContent()).includes('3 unguided missiles fired together'), 'attack reads as plain English');
+  await page.getByRole('button', { name: 'Increase How many' }).click();
+  await page.getByRole('button', { name: 'Increase How many' }).click();
+  await page.waitForTimeout(100);
+  check((await page.locator('.pl-atk-desc').textContent()).includes('5 unguided missiles fired together'), 'one tap per extra missile');
+  await page.waitForFunction(() => document.querySelector('.pl-stats')?.textContent?.includes('5 fired'), null, { timeout: 20_000 });
+  check(true, 'preview replays the round with exactly five missiles');
+  check((await page.locator('.pl-marker').count()) === 1, 'the launcher is on the map');
+  check((await page.locator('tr[data-round="3"] input.pl-cell-num').inputValue()) === '5', 'overview table shows the scripted count');
+  await page.screenshot({ path: `${SHOT_DIR}/ws-09-round-planner.png` });
+  await page.getByRole('button', { name: /Compare patterns/ }).click();
+  await page.waitForFunction(() => {
+    const rows = [...document.querySelectorAll('.pl-compare tbody tr')];
+    return rows.length === 4 && rows.every((r) => !r.textContent.includes('…'));
+  }, null, { timeout: 60_000 });
+  check(true, 'pattern comparison filled for salvo, volleys, stream and spread');
+  await page.locator('.pl-compare tbody tr', { hasText: 'Volleys' }).getByRole('button', { name: 'Use' }).click();
+  await page.waitForTimeout(100);
+  check((await page.locator('.pl-pattern button.on').textContent()).includes('Volleys'), 'Use switches the attack to that pattern');
+  // Tapping the map moves the selected launcher there.
+  const before = await page.locator('.pl-marker').getAttribute('transform');
+  const map = await page.locator('.pl-map svg').boundingBox();
+  await page.mouse.click(map.x + map.width * 0.2, map.y + map.height * 0.12);
+  await page.waitForTimeout(150);
+  check((await page.locator('.pl-marker').getAttribute('transform')) !== before, 'tapping the map moves the selected launcher');
+  await page.screenshot({ path: `${SHOT_DIR}/ws-10-pattern-compare.png`, fullPage: true });
+  // Back on Auto, then Scripted again: the attack comes back rather than resetting.
+  await page.getByRole('radio', { name: /Auto/ }).click();
+  check((await page.locator('.pl-atk').count()) === 0, 'Auto round has no attacks');
+  await page.getByRole('radio', { name: /Scripted/ }).click();
+  check((await page.locator('.pl-atk-desc').textContent()).includes('5 unguided missiles'), 'switching back restores the script');
+
+  // Environment → Island Channel (Region settings). The preview has to draw
+  // the rock, because a designer picking a map they cannot see is picking blind.
+  await page.getByRole('tab', { name: 'Region settings' }).click();
+  await page.waitForTimeout(200);
   const envSelect = page.locator('.ws-panel select').nth(1);
   await envSelect.selectOption('islandChannel');
   await page.waitForTimeout(200);
@@ -99,6 +146,9 @@ try {
   await page.locator('.ws-map-wrap').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${SHOT_DIR}/ws-07-island-preview.png` });
 
+  // Adaptive timeline edits.
+  await page.getByRole('tab', { name: 'Adaptive timeline' }).click();
+  await page.waitForTimeout(200);
   // Add torpedoes (straight) at round 6 via round header → arsenal browser.
   await page.locator('.ws-round-btn', { hasText: /^R6$/ }).click();
   await page.locator('.ws-arsenal-row', { hasText: 'Straight-running torpedo' }).getByRole('button').click();
@@ -157,6 +207,8 @@ try {
   // Balance sweep: one seed of the two cheapest personas, in the worker. The
   // point of the smoke test is the plumbing (worker → progress → result →
   // history), not the statistics.
+  await page.getByRole('tab', { name: 'Balance sweep' }).click();
+  await page.waitForTimeout(200);
   const sweepPanel = page.locator('.ws-sweep');
   await sweepPanel.scrollIntoViewIfNeeded();
   await sweepPanel.getByRole('button', { name: 'None' }).click();
@@ -183,7 +235,9 @@ try {
   // Save + export
   await page.getByRole('button', { name: /^Save$/ }).click();
   await page.waitForTimeout(100);
-  check((await page.locator('.ws-notice').textContent()).includes('Saved'), 'draft saved');
+  check((await page.locator('.screen-header .sub').textContent()).includes('Saved'), 'draft saved');
+  await page.getByRole('tab', { name: 'Region settings' }).click();
+  await page.waitForTimeout(200);
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Export JSON' }).click(),
@@ -193,6 +247,7 @@ try {
   check(json.schemaVersion === 1 && json.id && Array.isArray(json.milestones), 'exported JSON is a v1 preset');
   check(json.environmentPresetId === 'islandChannel' && json.shapeType === 'islandChannel', 'exported JSON carries the island environment');
   check(json.milestones.some((m) => m.beats?.length), 'exported JSON carries the beat');
+  check(json.milestones.some((m) => m.round === 3 && m.attacks?.[0]?.count === 5 && m.attacks[0].pattern === 'volleys'), 'exported JSON carries the scripted round');
   await (await import('node:fs/promises')).writeFile(`${SHOT_DIR}/ws-export.json`, JSON.stringify(json, null, 2));
 
   // Reload → draft persists, still playable, listed in the library.
@@ -206,6 +261,8 @@ try {
   await draftRow.getByRole('button', { name: 'Open' }).click();
   await page.waitForSelector('[data-screen="workshop-editor"]');
   await page.waitForTimeout(700);
+  await page.getByRole('tab', { name: 'Balance sweep' }).click();
+  await page.waitForTimeout(200);
   check((await page.locator('.ws-history-row').count()) === 1, 'sweep history survives a reload');
   check((await page.locator('.ws-results').count()) === 1, 'last sweep result shown after reload');
   await page.getByRole('button', { name: 'Library' }).click();
@@ -215,6 +272,10 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await draftRow.getByRole('button', { name: 'Open' }).click();
   await page.waitForSelector('[data-screen="workshop-editor"]');
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${SHOT_DIR}/ws-11-mobile-planner.png`, fullPage: true });
+  check((await page.locator('.pl-map').count()) === 1, 'round planner renders on a phone');
+  await page.getByRole('tab', { name: 'Adaptive timeline' }).click();
   await page.getByRole('button', { name: 'Round list' }).click();
   await page.waitForSelector('.ws-roundlist');
   await page.waitForTimeout(700);
@@ -225,7 +286,9 @@ try {
 
   // Playtest launch from the editor → an isolated run's prep screen.
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.getByRole('button', { name: /Playtest/ }).last().click();
+  await page.getByRole('tab', { name: 'Round planner' }).click();
+  await page.locator('.pl-round[data-round="1"]').click();
+  await page.getByRole('button', { name: /Play R1$/ }).click();
   await page.waitForSelector('[data-screen="prep"]', { timeout: 10_000 });
   const stored = await page.evaluate(() => ({
     campaign: localStorage.getItem('straitwatch.run.v1'),

@@ -52,7 +52,14 @@ npm run e2e:workshop  # Region Workshop smoke test (library, timeline, mobile, p
 ## Region Workshop (level authoring)
 
 Settings → **Developer mode** → **Region Workshop** (also on the Dev Mode
-screen). A timeline-driven editor for regions: built-in regions ship as
+screen). It opens on the **Round planner**: pick a round, set it to **Auto**
+(the adaptive enemy spends its budget) or **Scripted** (exactly the attacks you
+place — weapon, count, launch point on the map, and a Salvo / Volleys / Stream /
+Spread pattern), and the map replays the real round underneath with a bot
+player defending. **Compare patterns** plays the same attack all four ways on
+the same seed. An **All rounds** table below shows every round's counts and
+lets you edit them in place. The adaptive menu, region settings and balance
+sweep sit on their own tabs. A region editor for everything else: built-in regions ship as
 read-only templates, drafts save on the device, **Export JSON** / **Copy JSON**
 produce a portable v1 preset you can hand to a Claude session (or drop into
 `docs/presets/`) and **Import JSON** brings one back. **Playtest** launches an

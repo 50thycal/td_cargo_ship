@@ -15,7 +15,7 @@
 import type { EnemyBranchKey } from './enemyBranches';
 import { geography, type Geography, type GeographyId } from './geography';
 import type { ShipClassId } from '../sim/types';
-import type { NodeWindows, RoundPressureRule, RuntimeBeat } from './regionAuthoring';
+import type { NodeWindows, RoundPressureRule, RuntimeAttack, RuntimeBeat } from './regionAuthoring';
 
 export type RegionId = string;
 
@@ -104,6 +104,8 @@ export interface RegionDef {
   /** Authored player-facing intel warnings, keyed by the round they describe
    *  (shown the round before). */
   intelWarnings?: Record<number, string>;
+  /** Scripted rounds (keyed by round): exactly these attacks, nothing adaptive. */
+  scriptedRounds?: Record<number, RuntimeAttack[]>;
   /** Provenance of a compiled preset, carried into telemetry. */
   authoring?: { schemaVersion: number; hash: string };
 }

@@ -628,6 +628,71 @@ it opens earlier than the branch's own `openRound` (every branch's
 `openRound` already equals its first node's `gateRound` in the catalogue, so
 a region that never touches a window behaves exactly as before).
 
+### Round Planner and scripted rounds (added after the balance sweep)
+
+**Why.** Hands-on use showed the builder answered the wrong question first. A
+designer's question is "what does the enemy do in round 3?", and the matrix
+answered "which of 20 catalogue rows are on the menu from which round" — with
+the attack itself hidden behind budget curves, ceilings, tactic rungs and a
+five-field beat inspector (pattern / units / groups / budget treatment /
+label) that did not say what it would do. Worse, it did not do what it said:
+a `salvo` beat of 4 units forces the branch's WHOLE adaptive buy into one
+group, so on Missile Coast R3 a "4-missile salvo" launched about 70 missiles
+in one volley. The number the designer typed was not the number that fired.
+
+**What.** The workshop opens on the Round planner (`src/ui/workshopPlanner.ts`):
+
+- a round strip (R1…RN, each showing what it fires) and a round-count stepper;
+- the map, which is the editor — each scripted attack is a marker on the enemy
+  shore (launched weapons and guns) or in the water (mines); drag it, or tap
+  the map to move the selected one or place a new launcher;
+- the round editor: **Auto** (enemy decides) or **Scripted** (you decide).
+  A scripted attack is weapon + count (−/+ stepper) + pattern (Salvo / Volleys
+  / Stream / Spread) + first-launch time, with per-volley size and gap only
+  when the pattern needs them, a mini launch timeline drawn by the runtime's
+  own schedule function, and one plain-English sentence ("5 unguided missiles
+  fired together at 0:20.");
+- the preview: the REAL round played headlessly in a worker
+  (`workshopPreviewSim.ts` / `previewWorker.ts`) — same compile, same planner,
+  same transit sim — with the balance sweep's `balanced` bot defending the
+  region's starting fleet (or nobody, to see the raw attack), replayed on the
+  map with a scrubber, launch ticks and a tally (fired / shot down / hits /
+  ships lost). It re-runs automatically ~350 ms after an edit;
+- **Compare patterns**: the selected attack played as salvo, volleys, stream
+  and spread on the same seed, with a Use button per row;
+- on an Auto round, what the adaptive enemy actually fielded in the preview,
+  and **Script it like this** to start a script from it;
+- an **All rounds** table with every round's mode and counts, editable in
+  place.
+
+The matrix, pressure envelope, beats and validation list moved to the
+**Adaptive timeline** tab (they only govern Auto rounds); name/ID/start
+state/environment/JSON/playtest options to **Region settings**; the sweep to
+**Balance sweep**. The footer is Library / Save / Play R{n}.
+
+**Data contract.** `RegionRoundMilestone.attacks?: ScriptedAttack[]` — present
+means a scripted round (an empty array is a deliberately quiet round), absent
+means Auto. Additive and optional, so the schema stays v1. A `ScriptedAttack`
+is `{ id, ref, count, x, y?, pattern?, start?, perVolley?, gap? }` — references
+and numbers only. Smoke and electronic attack have no map position to author
+yet (`attackFamily` returns null) and stay adaptive-only. `toRegionDef` emits
+`RegionDef.scriptedRounds` with every default resolved (`runtimeAttack`), and
+`fromRegionDef` reads it back.
+
+**Runtime.** `planRound` checks `economy.scriptedRounds[round]` BEFORE the
+round-1 onboarding probe, so round 1 is scriptable too, and builds the plan
+with `scriptedRoundPlan` (`src/sim/scriptedPlan.ts`): exact counts, launch x
+±20, the adaptive scheduler's 0–1.4 s ripple inside a salvo, the adaptive
+planner's mine-cluster footprint, and guns 160 apart on the shore line.
+`purchase` records the scripted units in the ledgers (spend, units, tenure,
+node debuts, targeting rungs) and skips the allocator, so ROI learning and
+telemetry carry across scripted and Auto rounds; `authoredUnits` /
+`authoredSpend` attribute them. Validation checks every attack (count 1–200,
+on-map position, mines need a y, known pattern, positive gap, implemented and
+scriptable weapon, unique ids) and suppresses the Auto-only warnings (empty
+menu, unaffordable, stranded budget, pressure jump) on scripted rounds.
+Tests: `tests/scriptedRounds.test.ts`; browser: `e2e/workshop.mjs`.
+
 ### Slice E — the Island Channel
 
 Terrain is a typed feature on the canonical geography (`IslandDef`), and the

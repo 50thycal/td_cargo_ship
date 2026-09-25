@@ -35,7 +35,7 @@ import {
   type EnemyNodeDef,
 } from './enemyBranches';
 import { GEOGRAPHIES, type GeographyDef, type GeographyId } from './geography';
-import { ENEMY_ECONOMY } from './tuning';
+import { ENEMY_ECONOMY, WORLD } from './tuning';
 import type { RegionDef, RegionStartState } from './regions';
 
 // ---------------------------------------------------------------------------
@@ -133,6 +133,77 @@ export interface EncounterBeatDef {
   label?: string;
 }
 
+/** How a scripted attack's units leave the shore.
+ *
+ *  - `salvo`   — every unit at once, at `start`.
+ *  - `volleys` — groups of `perVolley`, one group every `gap` seconds.
+ *  - `stream`  — one unit every `gap` seconds.
+ *  - `spread`  — evenly across the rest of the transit (what the adaptive
+ *                enemy does with its whole buy). */
+export type AttackPattern = 'salvo' | 'volleys' | 'stream' | 'spread';
+
+export const ATTACK_PATTERNS: readonly AttackPattern[] = ['salvo', 'volleys', 'stream', 'spread'];
+
+/** Where a weapon lives on the map, which decides what a scripted attack of it
+ *  needs from the designer:
+ *  - `launched` — fired from a point on the hostile shore on a schedule
+ *                 (missiles, torpedoes, attack boats);
+ *  - `field`    — laid as a cluster at a point in the water (mines);
+ *  - `emplaced` — dug in on the hostile shore for the whole round (guns). */
+export type AttackFamily = 'launched' | 'field' | 'emplaced';
+
+export function attackFamily(branch: EnemyBranchKey): AttackFamily | null {
+  switch (branch) {
+    case 'missiles':
+    case 'torpedoes':
+    case 'attackBoats':
+      return 'launched';
+    case 'mines':
+      return 'field';
+    case 'artillery':
+      return 'emplaced';
+    default:
+      // Smoke and electronic attack have no position of their own to author
+      // yet; they stay with the adaptive enemy.
+      return null;
+  }
+}
+
+/** Defaults a new attack (and an attack with a field left out) resolves to. */
+export const ATTACK_DEFAULTS = {
+  count: 3,
+  start: 20,
+  perVolley: 3,
+  volleyGap: 15,
+  streamGap: 6,
+  /** Hard ceiling on one attack's units — a sanity rail, not a balance rule. */
+  maxCount: 200,
+} as const;
+
+/** One SCRIPTED attack: exactly `count` units of one weapon, from one place on
+ *  the map, on one timing pattern. A round with scripted attacks is played
+ *  exactly as written — the adaptive enemy does not add to it. References and
+ *  numbers only: what a missile does is still the catalogue's business. */
+export interface ScriptedAttack {
+  id: string;
+  ref: EnemyLoadoutRef;
+  /** Units fired (launched), laid (field) or dug in (emplaced). */
+  count: number;
+  /** Launch point / field centre / gun line centre, world x. */
+  x: number;
+  /** Field centre, world y (mines only; launched and emplaced weapons sit on
+   *  the hostile shore at `x`). */
+  y?: number;
+  /** Launched weapons only. Default `salvo`. */
+  pattern?: AttackPattern;
+  /** Seconds into the transit of the first launch. */
+  start?: number;
+  /** `volleys`: units per volley. */
+  perVolley?: number;
+  /** `volleys`: seconds between volleys; `stream`: seconds between units. */
+  gap?: number;
+}
+
 export interface RegionRoundMilestone {
   round: number;
   label?: string;
@@ -146,6 +217,10 @@ export interface RegionRoundMilestone {
     branchCeilings?: Partial<Record<EnemyBranchKey, number>>;
   };
   beats?: EncounterBeatDef[];
+  /** Present = a SCRIPTED round: exactly these attacks, nothing adaptive.
+   *  Absent = the adaptive enemy spends the round's budget from the menu.
+   *  An empty array is a deliberately quiet round. */
+  attacks?: ScriptedAttack[];
 }
 
 export interface RegionAuthoringDefV1 {
@@ -219,6 +294,7 @@ function normalize(def: RegionAuthoringDefV1): RegionAuthoringDefV1 {
     m.add = Array.isArray(m.add) ? m.add : [];
     if (m.remove !== undefined && !Array.isArray(m.remove)) m.remove = [];
     if (m.beats !== undefined && !Array.isArray(m.beats)) m.beats = [];
+    if (m.attacks !== undefined && !Array.isArray(m.attacks)) m.attacks = [];
   }
   return d;
 }
@@ -516,6 +592,49 @@ export function validateRegionAuthoring(
         err('beatOverCeiling', `Round ${round}: beat fields ${beat.units} ${entry.node.name}s, above the ${ceiling}-unit ceiling.`, { round, ref: beat.ref });
       }
     }
+    if (m.attacks !== undefined) {
+      if ((m.beats?.length ?? 0) > 0) {
+        warn('beatsOnScripted', `Round ${round} is scripted — its adaptive beats are ignored.`, { round });
+      }
+      const attackIds = new Set<string>();
+      for (const a of m.attacks) {
+        if (!a.id || attackIds.has(a.id)) err('attackId', `Round ${round}: every attack needs a unique id.`, { round });
+        attackIds.add(a.id);
+        const entry = a.ref ? checkRef(a.ref, round, 'attack') : null;
+        if (!entry) continue;
+        const name = entry.node.name;
+        if (!entry.implemented) {
+          err('unimplemented', `Round ${round}: ${name} is designed but not implemented — it cannot be scripted.`, { round, ref: a.ref });
+        }
+        const family = attackFamily(a.ref.branch);
+        if (!family) {
+          err('attackFamily', `Round ${round}: ${entry.branchName} cannot be scripted yet — leave it to the adaptive enemy.`, { round, ref: a.ref });
+          continue;
+        }
+        if (!Number.isInteger(a.count) || a.count < 1 || a.count > ATTACK_DEFAULTS.maxCount) {
+          err('attackCount', `Round ${round}: ${name} count must be a whole number from 1 to ${ATTACK_DEFAULTS.maxCount}.`, { round, ref: a.ref });
+        }
+        if (typeof a.x !== 'number' || !Number.isFinite(a.x) || a.x < 0 || a.x > WORLD.width) {
+          err('attackPosition', `Round ${round}: ${name} needs a position on the map.`, { round, ref: a.ref });
+        }
+        if (family === 'field' && (typeof a.y !== 'number' || !Number.isFinite(a.y) || a.y < 0 || a.y > WORLD.height)) {
+          err('attackPosition', `Round ${round}: the ${name} field needs a position in the water.`, { round, ref: a.ref });
+        }
+        if (family !== 'launched') continue;
+        if (a.pattern !== undefined && !ATTACK_PATTERNS.includes(a.pattern)) {
+          err('attackPattern', `Round ${round}: unknown pattern "${String(a.pattern)}".`, { round, ref: a.ref });
+        }
+        if (a.start !== undefined && !finitePositive(a.start)) {
+          err('attackTiming', `Round ${round}: ${name} start time must be zero or more seconds.`, { round, ref: a.ref });
+        }
+        if (a.perVolley !== undefined && (!Number.isInteger(a.perVolley) || a.perVolley < 1)) {
+          err('attackTiming', `Round ${round}: ${name} volley size must be a whole number of 1 or more.`, { round, ref: a.ref });
+        }
+        if (a.gap !== undefined && (typeof a.gap !== 'number' || !Number.isFinite(a.gap) || a.gap <= 0)) {
+          err('attackTiming', `Round ${round}: ${name} gap must be more than 0 seconds.`, { round, ref: a.ref });
+        }
+      }
+    }
   }
 
   const errors = issues.filter((i) => i.severity === 'error');
@@ -528,6 +647,12 @@ export function validateRegionAuthoring(
       const avail = availabilityAtRound(compiled, r);
       const pressure = pressureAtRound(compiled, r);
       const beats = beatsAtRound(compiled, r);
+      // A scripted round is played as written: the adaptive menu, budget and
+      // ceiling warnings say nothing about it.
+      if (compiled.attacks[r]) {
+        prevBudget = pressure.budget;
+        continue;
+      }
       if (avail.length === 0) warn('emptyRound', `Round ${r} has no available threat.`, { round: r });
       const cheapest = Math.min(...avail.map((a) => a.node.cost), Infinity);
       if (avail.length > 0 && pressure.budget < cheapest) {
@@ -613,8 +738,16 @@ export interface CompiledRegion {
   /** Per-round resolved figures, index 1..completionRound. */
   pressure: RoundPressure[];
   beats: CompiledBeat[];
+  /** Scripted rounds only, keyed by round. A round with no key is adaptive. */
+  attacks: Record<number, CompiledAttack[]>;
   intelWarnings: Record<number, string>;
   labels: Record<number, string>;
+}
+
+export interface CompiledAttack extends ScriptedAttack {
+  round: number;
+  entry: ArsenalEntry;
+  family: AttackFamily;
 }
 
 export function compileRegion(
@@ -670,6 +803,7 @@ export function compileRegion(
   const beats: CompiledBeat[] = [];
   const intelWarnings: Record<number, string> = {};
   const labels: Record<number, string> = {};
+  const attacks: Record<number, CompiledAttack[]> = {};
   const ceilingState: Partial<Record<EnemyBranchKey, number>> = { ...def.pressure.defaultBranchCeilings };
   const rounds = Math.max(1, Math.floor(def.completionRound));
   for (let r = 1; r <= rounds; r++) {
@@ -688,6 +822,15 @@ export function compileRegion(
       if (!entry) continue;
       beats.push({ ...clone(b), round: r, entry });
     }
+    if (m?.attacks) {
+      attacks[r] = [];
+      for (const a of m.attacks) {
+        const entry = a.ref ? entryFor(a.ref) : null;
+        const family = a.ref ? attackFamily(a.ref.branch) : null;
+        if (!entry || !family) continue;
+        attacks[r].push({ ...clone(a), round: r, entry, family });
+      }
+    }
   }
   return {
     def,
@@ -696,9 +839,15 @@ export function compileRegion(
     windows,
     pressure,
     beats,
+    attacks,
     intelWarnings,
     labels,
   };
+}
+
+/** The scripted attacks for `round`, or null when the round is adaptive. */
+export function attacksAtRound(compiled: CompiledRegion, round: number): CompiledAttack[] | null {
+  return compiled.attacks[round] ?? null;
 }
 
 /** The resolved set the adaptive enemy may use on `round`. */
@@ -776,6 +925,37 @@ export interface RuntimeBeat {
   budget: BeatBudget;
 }
 
+/** A scripted attack as the runtime plays it: every default resolved. */
+export interface RuntimeAttack {
+  id: string;
+  branch: EnemyBranchKey;
+  nodeId: string;
+  count: number;
+  x: number;
+  y: number | null;
+  pattern: AttackPattern;
+  start: number;
+  perVolley: number;
+  gap: number;
+}
+
+/** Resolve an authored attack's defaults into the runtime shape. */
+export function runtimeAttack(a: ScriptedAttack): RuntimeAttack {
+  const pattern = a.pattern ?? 'salvo';
+  return {
+    id: a.id,
+    branch: a.ref.branch,
+    nodeId: a.ref.nodeId,
+    count: a.count,
+    x: a.x,
+    y: a.y ?? null,
+    pattern,
+    start: a.start ?? ATTACK_DEFAULTS.start,
+    perVolley: a.perVolley ?? ATTACK_DEFAULTS.perVolley,
+    gap: a.gap ?? (pattern === 'stream' ? ATTACK_DEFAULTS.streamGap : ATTACK_DEFAULTS.volleyGap),
+  };
+}
+
 /** The RegionDef the simulation runs, generated from the compiled preset. The
  *  legacy fields (`enemyBranches`, `branchDebutRounds`, `budget`,
  *  `branchUnitCeilings`) are DERIVED here so there is one editable definition
@@ -835,6 +1015,10 @@ export function toRegionDef(compiled: CompiledRegion): RegionDef {
     budget: b.budget,
   }));
   const intelWarnings: Record<number, string> = { ...compiled.intelWarnings };
+  const scriptedRounds: Record<number, RuntimeAttack[]> = {};
+  for (const [r, list] of Object.entries(compiled.attacks)) {
+    scriptedRounds[Number(r)] = list.map((a) => runtimeAttack(a));
+  }
 
   const out: RegionDef = {
     id: def.id,
@@ -857,6 +1041,7 @@ export function toRegionDef(compiled: CompiledRegion): RegionDef {
   if (Object.keys(roundPressure).length > 0) out.roundPressure = roundPressure;
   if (beats.length > 0) out.beats = beats;
   if (Object.keys(intelWarnings).length > 0) out.intelWarnings = intelWarnings;
+  if (Object.keys(scriptedRounds).length > 0) out.scriptedRounds = scriptedRounds;
   out.authoring = { schemaVersion: def.schemaVersion, hash: compiled.hash };
   return out;
 }
@@ -921,6 +1106,19 @@ export function fromRegionDef(region: RegionDef, catalog: ArsenalCatalog = ENEMY
   for (const [r, text] of Object.entries(region.intelWarnings ?? {})) {
     milestone(Number(r)).intelWarning = text;
   }
+  for (const [r, list] of Object.entries(region.scriptedRounds ?? {})) {
+    milestone(Number(r)).attacks = list.map((a) => ({
+      id: a.id,
+      ref: { branch: a.branch, nodeId: a.nodeId },
+      count: a.count,
+      x: a.x,
+      ...(a.y !== null ? { y: a.y } : {}),
+      pattern: a.pattern,
+      start: a.start,
+      perVolley: a.perVolley,
+      gap: a.gap,
+    }));
+  }
   const milestones = [...byRound.values()].sort((a, b) => a.round - b.round);
   return {
     schemaVersion: 1,
@@ -984,6 +1182,7 @@ export function pruneMilestone(def: RegionAuthoringDef, round: number): void {
     m.add.length === 0 &&
     (m.remove?.length ?? 0) === 0 &&
     (m.beats?.length ?? 0) === 0 &&
+    m.attacks === undefined &&
     !m.label &&
     !m.intelWarning &&
     (!m.pressure || Object.keys(m.pressure).length === 0);
@@ -1012,6 +1211,7 @@ export function duplicateRound(def: RegionAuthoringDef, from: number, to: number
   const copy = clone(src);
   copy.round = to;
   copy.beats = copy.beats?.map((b, i) => ({ ...b, id: `${b.id}-r${to}-${i}` }));
+  copy.attacks = copy.attacks?.map((a, i) => ({ ...a, id: `${a.id}-r${to}-${i}` }));
   def.milestones = def.milestones.filter((m) => m.round !== to);
   def.milestones.push(copy);
   def.milestones.sort((a, b) => a.round - b.round);
