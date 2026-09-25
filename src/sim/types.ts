@@ -1605,6 +1605,23 @@ export interface EnemyEconomyState {
   }[];
   /** REGION WORKSHOP: authored intel warnings keyed by the round they describe. */
   intelWarnings?: Record<string, string>;
+  /** REGION WORKSHOP: scripted rounds keyed by round — exactly these attacks
+   *  are fired and the adaptive allocator sits the round out. */
+  scriptedRounds?: Record<
+    string,
+    {
+      id: string;
+      branch: string;
+      nodeId: string;
+      count: number;
+      x: number;
+      y: number | null;
+      pattern: 'salvo' | 'volleys' | 'stream' | 'spread';
+      start: number;
+      perVolley: number;
+      gap: number;
+    }[]
+  >;
   /** Units this round that came from authored beats rather than the adaptive
    *  allocator, keyed by node id — the AAR/telemetry attribution the workshop
    *  reads back. Reset every purchase. */
