@@ -61,7 +61,9 @@ the same seed. **Scale R1 to later rounds** stretches one tuned round across the
 region (+N units or +% per round), and **Adapt to player** lets scripted
 counts rise and fall with how the player is doing. An **All rounds** table
 (sortable, phone-friendly) shows every round's counts and lets you edit them
-in place. The adaptive menu, region settings and balance
+in place. **Play every round** charts how hard each round hits the convoy,
+**Pin this result** shows before → after for any tweak, and **set pieces** save a
+round's attacks to reuse anywhere. The adaptive menu, region settings and balance
 sweep sit on their own tabs. A region editor for everything else: built-in regions ship as
 read-only templates, drafts save on the device, **Export JSON** / **Copy JSON**
 produce a portable v1 preset you can hand to a Claude session (or drop into

@@ -49,6 +49,7 @@ import { launchTimes } from '../sim/scriptedPlan';
 import { runPreview, type PreviewFrame, type PreviewRequest, type PreviewResult, type PreviewSummary } from './workshopPreviewSim';
 import type { PreviewReply } from './previewWorker';
 import { enhanceTable } from './tableKit';
+import { deleteSetPiece, listSetPieces, saveSetPiece, setPieceAttacks } from '../platform/workshopStore';
 import { SCRIPT_SCALE_MAX, SCRIPT_SCALE_MIN } from '../sim/evolution';
 
 // ---------------------------------------------------------------------------
@@ -100,6 +101,20 @@ interface PlannerState {
   scale: { open: boolean; to: number; amount: number; mode: ScaleMode };
   /** One-line confirmation shown after a bulk action (cleared on next edit). */
   flash: string | null;
+  /** Difficulty curve: every round previewed once. `key` is the region state
+   *  it was measured on, so an edit shows it as out of date. */
+  curve: { key: string; rows: CurveRow[]; running: boolean; done: number } | null;
+  /** A pinned preview result to compare the next edits against. */
+  pin: { round: number; seed: string; defences: boolean; what: string; summary: PreviewSummary } | null;
+}
+
+interface CurveRow {
+  round: number;
+  fired: number;
+  lost: number;
+  sailed: number;
+  hits: number;
+  shotDown: number;
 }
 
 let ps: PlannerState = freshState('');
@@ -123,6 +138,8 @@ function freshState(regionKey: string): PlannerState {
     stash: {},
     scale: { open: false, to: 0, amount: 2, mode: 'add' },
     flash: null,
+    curve: null,
+    pin: null,
   };
 }
 
@@ -325,6 +342,7 @@ export function plannerView(ctx: PlannerCtx): HTMLElement {
         h('div', { className: 'pl-mapcol' }, [mapPanel(ctx, compiled, commit), playerBar(ctx), resultPanel(ctx, commit)]),
         sidePanel(ctx, compiled, issues, commit),
       ]),
+      curvePanel(ctx),
       overviewTable(ctx, compiled, commit),
     );
     restore();
@@ -956,6 +974,7 @@ function resultPanel(ctx: PlannerCtx, commit: (o?: { keepCompare?: boolean }) =>
       );
     }
   }
+  if (result && result.round === ps.round) panel.append(pinBlock(ctx, result));
   // Pattern comparison for the selected launched attack.
   const m = ctx.def.milestones.find((x) => x.round === ps.round);
   const selected = m?.attacks?.find((a) => a.id === ps.attackId);
@@ -1408,6 +1427,7 @@ function sidePanel(ctx: PlannerCtx, compiled: CompiledRegion, issues: Validation
     panel.append(
       h('p', { className: 'hint', text: 'Scripted rounds fire exactly what you place — nothing more — so a change like “5 missiles instead of 3” is one tap.' }),
     );
+    if (!ro && listSetPieces().length > 0) panel.append(setPieceBar(ctx, r, commit));
   } else {
     const list = m!.attacks!;
     if (list.length === 0) panel.append(h('p', { className: 'pl-lead', text: 'A quiet round — nothing fires. Add an attack, or tap the enemy shore on the map.' }));
@@ -1439,6 +1459,7 @@ function sidePanel(ctx: PlannerCtx, compiled: CompiledRegion, issues: Validation
       }
       panel.append(addRow);
     }
+    panel.append(setPieceBar(ctx, r, commit));
     panel.append(adaptRow(ctx, r, commit));
     if (!ro && list.length > 0) panel.append(scaleTool(ctx, r, list, commit));
   }
@@ -1592,6 +1613,271 @@ function scaleTool(ctx: PlannerCtx, r: number, list: ScriptedAttack[], commit: (
   return box;
 }
 
+// --- before / after pin ------------------------------------------------------------------
+
+/** What the round currently fires, in a few words, for the pin label. */
+function roundWhat(def: RegionAuthoringDef, round: number): string {
+  const attacks = def.milestones.find((m) => m.round === round)?.attacks;
+  if (!attacks) return 'Auto';
+  if (attacks.length === 0) return 'quiet';
+  return attacks
+    .map((a) => {
+      const f = attackFamily(a.ref.branch);
+      const pat = f === 'launched' ? ` ${runtimeAttack(a).pattern}` : '';
+      return `${a.count} ${noun(a.ref.nodeId, a.count)}${pat}`;
+    })
+    .join(' + ');
+}
+
+/** Pin the current result, then every later edit shows Pinned vs Now. */
+function pinBlock(ctx: PlannerCtx, result: PreviewResult): HTMLElement {
+  const pin = ps.pin;
+  const wrap = h('div', { className: 'pl-pin' });
+  const pinNow = () => {
+    ps.pin = { round: ps.round, seed: ps.seed, defences: ps.defences, what: roundWhat(ctx.def, ps.round), summary: result.summary };
+    mounted?.render();
+  };
+  if (!pin) {
+    wrap.append(
+      h('button', {
+        className: 'pl-pin-btn',
+        text: 'Pin this result',
+        attrs: { title: 'Keep this result on screen, then change something and compare' },
+        onClick: pinNow,
+      }),
+    );
+    return wrap;
+  }
+  const sameSetup = pin.round === ps.round && pin.seed === ps.seed && pin.defences === ps.defences;
+  if (!sameSetup) {
+    wrap.append(
+      h('div', { className: 'hint', text: `Pinned: R${pin.round} (${pin.what}). ${pin.round !== ps.round ? `Go back to R${pin.round} to compare.` : 'Seed or defence changed — re-pin to compare fairly.'}` }),
+      h('div', { className: 'pl-pin-actions' }, [
+        h('button', { text: 'Re-pin', onClick: pinNow }),
+        h('button', { text: 'Unpin', onClick: () => { ps.pin = null; mounted?.render(); } }),
+      ]),
+    );
+    return wrap;
+  }
+  const now = result.summary;
+  const was = pin.summary;
+  const rowsSpec: { label: string; a: number; b: number; goodUp: boolean; of?: number }[] = [
+    { label: 'Fired', a: was.launched + was.minesLaid + was.guns, b: now.launched + now.minesLaid + now.guns, goodUp: true },
+    { label: 'Shot down', a: was.shotDown, b: now.shotDown, goodUp: false },
+    { label: 'Hits on ships', a: was.hits, b: now.hits, goodUp: true },
+    { label: 'Ships lost', a: was.shipsLost, b: now.shipsLost, goodUp: true, of: now.shipsSailed },
+  ];
+  const table = h('table', { className: 'pl-pin-table' });
+  table.append(h('thead', {}, [h('tr', {}, [
+    h('th', { text: '' }),
+    h('th', { text: 'Pinned' }),
+    h('th', { text: 'Now' }),
+    h('th', { text: 'Change' }),
+  ])]));
+  const tbody = h('tbody');
+  for (const r of rowsSpec) {
+    const d = r.b - r.a;
+    // "Harder for the player" reads as the enemy's win: more hits, more lost.
+    const tone = d === 0 ? '' : (d > 0) === r.goodUp ? 'harder' : 'easier';
+    tbody.append(h('tr', {}, [
+      h('th', { text: r.label }),
+      h('td', { text: r.of ? `${r.a}/${r.of}` : String(r.a) }),
+      h('td', { text: r.of ? `${r.b}/${r.of}` : String(r.b) }),
+      h('td', { className: `pl-delta ${tone}`, text: d === 0 ? '—' : `${d > 0 ? '+' : ''}${d}` }),
+    ]));
+  }
+  table.append(tbody);
+  const whatNow = roundWhat(ctx.def, ps.round);
+  wrap.append(
+    h('div', { className: 'pl-pin-head' }, [
+      h('span', { className: 'pl-label', text: 'Before → after' }),
+      h('span', { className: 'hint', text: whatNow === pin.what ? pin.what : `${pin.what}  →  ${whatNow}` }),
+    ]),
+    table,
+    h('div', { className: 'pl-pin-actions' }, [
+      h('button', { text: 'Pin this instead', onClick: pinNow }),
+      h('button', { text: 'Unpin', onClick: () => { ps.pin = null; mounted?.render(); } }),
+    ]),
+  );
+  return wrap;
+}
+
+// --- set pieces -----------------------------------------------------------------------------
+
+/** Save this round's attacks as a named set piece, or drop a saved one in. */
+function setPieceBar(ctx: PlannerCtx, r: number, commit: (o?: { keepFlash?: boolean }) => void): HTMLElement {
+  const def = ctx.def;
+  const m = def.milestones.find((x) => x.round === r);
+  const attacks = m?.attacks ?? [];
+  const pieces = listSetPieces();
+  const bar = h('div', { className: 'pl-setpieces' });
+  bar.append(h('span', { className: 'pl-label', text: 'Set pieces' }));
+  const row = h('div', { className: 'pl-setpiece-row' });
+  if (pieces.length > 0) {
+    const sel = document.createElement('select');
+    sel.className = 'ws-input pl-setpiece-select';
+    sel.setAttribute('aria-label', 'Saved set piece');
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Add a saved set piece…';
+    sel.append(blank);
+    for (const p of pieces) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.name} (${p.attacks.map((a) => `${a.count} ${noun(a.ref.nodeId, a.count)}`).join(', ')})`;
+      sel.append(opt);
+    }
+    // Picking one adds it straight away: the select IS the "add" action, so
+    // there is no second button to find.
+    sel.addEventListener('change', () => {
+      const piece = pieces.find((p) => p.id === sel.value);
+      if (!piece) return;
+      const ms = milestoneAt(def, r, true);
+      const added = setPieceAttacks(piece, `r${r}-${Date.now().toString(36)}`);
+      ms.attacks = [...(ms.attacks ?? []), ...added];
+      ps.attackId = added[0]?.id ?? ps.attackId;
+      ps.flash = `Added “${piece.name}” to R${r}.`;
+      commit({ keepFlash: true });
+    });
+    row.append(sel);
+  }
+  if (attacks.length > 0) {
+    const name = document.createElement('input');
+    name.className = 'ws-input pl-setpiece-name';
+    name.placeholder = 'Name, e.g. Boat rush';
+    name.setAttribute('aria-label', 'Set piece name');
+    const save = () => {
+      const saved = saveSetPiece(name.value || `R${r} set piece`, attacks);
+      ps.flash = `Saved set piece “${saved.name}”.`;
+      commit({ keepFlash: true });
+    };
+    name.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') save();
+    });
+    row.append(h('div', { className: 'pl-setpiece-save' }, [name, h('button', { text: 'Save round', onClick: save })]));
+  }
+  if (pieces.length > 0) {
+    const manage = document.createElement('details');
+    manage.className = 'pl-setpiece-manage';
+    manage.append(h('summary', { text: `Manage (${pieces.length})` }));
+    for (const p of pieces) {
+      manage.append(h('div', { className: 'pl-row' }, [
+        h('span', { text: p.name }),
+        h('button', {
+          className: 'pl-icon-btn danger',
+          text: '✕',
+          attrs: { 'aria-label': `Delete set piece ${p.name}`, title: 'Delete this set piece' },
+          onClick: () => {
+            if (!confirm(`Delete set piece “${p.name}”?`)) return;
+            deleteSetPiece(p.id);
+            mounted?.render();
+          },
+        }),
+      ]));
+    }
+    row.append(manage);
+  }
+  bar.append(row);
+  if (pieces.length === 0 && attacks.length > 0) {
+    bar.append(h('p', { className: 'hint', text: 'Save a round you like, then add it to any round of any region.' }));
+  }
+  return bar;
+}
+
+// --- difficulty curve -----------------------------------------------------------------------
+
+function curveKey(def: RegionAuthoringDef): string {
+  return JSON.stringify([def, ps.defences, ps.seed]);
+}
+
+/** Preview every round once and chart how many ships each one sank. */
+function runCurve(ctx: PlannerCtx): void {
+  const key = curveKey(ctx.def);
+  const def: RegionAuthoringDef = JSON.parse(JSON.stringify(ctx.def));
+  const rows: CurveRow[] = [];
+  ps.curve = { key, rows, running: true, done: 0 };
+  mounted?.render();
+  let r = 1;
+  const next = () => {
+    if (!ps.curve || ps.curve.rows !== rows) return; // superseded
+    if (r > def.completionRound) {
+      ps.curve.running = false;
+      mounted?.render();
+      return;
+    }
+    const round = r++;
+    simulate({ def, round, seed: ps.seed, defences: ps.defences }, (result) => {
+      if (!ps.curve || ps.curve.rows !== rows) return;
+      if (result) {
+        const s = result.summary;
+        rows.push({ round, fired: s.launched + s.minesLaid + s.guns, lost: s.shipsLost, sailed: s.shipsSailed, hits: s.hits, shotDown: s.shotDown });
+      }
+      ps.curve.done = round;
+      mounted?.render();
+      next();
+    });
+  };
+  next();
+}
+
+function curvePanel(ctx: PlannerCtx): HTMLElement {
+  const def = ctx.def;
+  const curve = ps.curve;
+  const stale = !!curve && !curve.running && curve.key !== curveKey(def);
+  const wrap = h('div', { className: 'pl-curve-wrap' });
+  const head = h('div', { className: 'pl-curve-head' }, [
+    h('h3', { text: 'Difficulty across rounds' }),
+    h('button', {
+      className: curve ? '' : 'primary',
+      text: curve?.running ? `Playing R${Math.min(curve.done + 1, def.completionRound)} of ${def.completionRound}…` : curve ? (stale ? 'Re-run (changed)' : 'Re-run') : 'Play every round',
+      disabled: !!curve?.running,
+      onClick: () => runCurve(ctx),
+    }),
+  ]);
+  wrap.append(head);
+  if (!curve) {
+    wrap.append(h('p', { className: 'hint', text: `Plays each round once (${ps.defences ? 'bot player defending' : 'no defence'}, same seed) and charts how hard it hits the convoy, so spikes and dead rounds stand out.` }));
+    return wrap;
+  }
+  const rows = curve.rows;
+  // The bar is HITS on ships: it moves long before ships start sinking, so a
+  // well-defended region still shows which rounds lean on the player. Losses
+  // ride along as a red tag rather than a second scale.
+  const maxHits = Math.max(1, ...rows.map((x) => x.hits));
+  const chart = h('div', { className: `pl-curve ${stale ? 'stale' : ''}`, attrs: { role: 'list', 'aria-label': 'Hits on ships per round' } });
+  for (let r = 1; r <= def.completionRound; r++) {
+    const row = rows.find((x) => x.round === r);
+    const pct = row ? (100 * row.hits) / maxHits : 0;
+    const col = h('button', {
+      className: `pl-curve-col ${r === ps.round ? 'on' : ''}`,
+      attrs: {
+        role: 'listitem',
+        'aria-label': row ? `Round ${r}: ${row.lost} of ${row.sailed} ships lost, ${row.fired} fired, ${row.shotDown} shot down` : `Round ${r}: not played yet`,
+        title: row ? `R${r}: ${row.lost}/${row.sailed} ships lost · ${row.fired} fired · ${row.shotDown} shot down · ${row.hits} hits` : `R${r}: not played yet`,
+      },
+      onClick: () => selectRound(r, ctx),
+    }, [
+      h('span', { className: 'pl-curve-val', text: row ? String(row.hits) : '' }),
+      (() => {
+        const bar = h('span', { className: `pl-curve-bar ${row && row.hits === 0 ? 'zero' : ''}` });
+        bar.style.height = row ? `${Math.max(row.hits === 0 ? 2 : 6, pct)}%` : '0';
+        return h('span', { className: 'pl-curve-track' }, [bar]);
+      })(),
+      h('span', { className: 'pl-curve-sunk', text: row && row.lost > 0 ? `${row.lost} sunk` : '' }),
+      h('span', { className: 'pl-curve-r', text: `R${r}` }),
+      h('span', { className: 'pl-curve-fired', text: row ? `${row.fired} fired` : '' }),
+    ]);
+    chart.append(col);
+  }
+  wrap.append(h('div', { className: 'pl-curve-legend' }, [
+    h('span', { className: 'pl-curve-key' }),
+    h('span', { text: 'hits on ships (bar) · ships sunk in red · number fired below · tap a round to open it' }),
+  ]));
+  wrap.append(chart);
+  if (stale) wrap.append(h('p', { className: 'hint', text: 'You changed something since this ran — Re-run to update.' }));
+  return wrap;
+}
+
 // --- overview table -------------------------------------------------------------------------
 
 const TABLE_BRANCHES: EnemyBranchKey[] = ['missiles', 'torpedoes', 'attackBoats', 'mines', 'artillery'];
@@ -1610,9 +1896,11 @@ function overviewTable(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => 
           return th;
         }),
         h('th', { text: 'Total' }),
+        ...(ps.curve && ps.curve.rows.length ? [h('th', { text: 'Lost', attrs: { title: 'Ships lost when the round was played in “Difficulty across rounds”' } })] : []),
       ]),
     ]),
   );
+  const lostCol = !!ps.curve && ps.curve.rows.length > 0;
   const tbody = h('tbody');
   for (let r = 1; r <= def.completionRound; r++) {
     const attacks = def.milestones.find((m) => m.round === r)?.attacks;
@@ -1677,6 +1965,10 @@ function overviewTable(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => 
         tr.append(td);
       }
       tr.append(h('td', { className: 'pl-total', text: String(total), attrs: { 'data-sort': String(total) } }));
+    }
+    if (lostCol) {
+      const cr = ps.curve!.rows.find((x) => x.round === r);
+      tr.append(h('td', { className: 'pl-lost', text: cr ? `${cr.lost}/${cr.sailed}` : '', attrs: { 'data-sort': cr ? String(cr.lost) : '' } }));
     }
     tbody.append(tr);
   }

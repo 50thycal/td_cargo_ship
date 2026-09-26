@@ -123,6 +123,8 @@ try {
   check((await page.locator('.pl-pattern button.on').textContent()).includes('Volleys'), 'Use switches the attack to that pattern');
   // Tapping the map moves the selected launcher there.
   const before = await page.locator('.pl-marker').getAttribute('transform');
+  await page.locator('.pl-map').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
   const map = await page.locator('.pl-map svg').boundingBox();
   await page.mouse.click(map.x + map.width * 0.2, map.y + map.height * 0.12);
   await page.waitForTimeout(150);
@@ -151,6 +153,33 @@ try {
   check((await page.locator('.pl-overview tbody tr').first().getAttribute('data-round')) === '5', 'table sorts by total, largest first');
   await page.getByRole('button', { name: 'Open round 5' }).click();
   check((await page.locator('.pl-round.on .pl-round-n').textContent()) === 'R5', 'the round button opens that round');
+  // Before/after: pin R5's result, change the pattern, see both side by side.
+  await page.waitForFunction(() => document.querySelector('.pl-stats')?.textContent?.includes('9 fired'), null, { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Pin this result' }).click();
+  await page.getByRole('radio', { name: /Salvo/ }).click();
+  await page.waitForFunction(() => document.querySelector('.pl-pin-table'), null, { timeout: 20_000 });
+  check((await page.locator('.pl-pin-head').textContent()).includes('volleys') && (await page.locator('.pl-pin-head').textContent()).includes('salvo'), 'pin shows what changed (volleys → salvo)');
+  check((await page.locator('.pl-pin-table tbody tr').count()) === 4, 'pinned vs now table has fired / shot down / hits / lost');
+  await page.getByRole('button', { name: 'Unpin' }).click();
+  // Set pieces: save R5, drop it into R6.
+  await page.locator('.pl-setpiece-name').fill('Smoke test salvo');
+  await page.getByRole('button', { name: 'Save round' }).click();
+  await page.locator('.pl-round[data-round="6"]').click();
+  await page.getByRole('radio', { name: /Scripted/ }).click();
+  const before6 = await page.locator('.pl-atk').count();
+  await page.locator('.pl-setpiece-select').selectOption({ index: 1 });
+  await page.waitForTimeout(150);
+  check((await page.locator('.pl-atk').count()) === before6 + 1, 'a saved set piece drops into another round');
+  await page.getByRole('radio', { name: /Auto/ }).click();
+  await page.locator('.pl-round[data-round="5"]').click();
+  // Difficulty curve: every round played once.
+  await page.getByRole('button', { name: 'Play every round' }).click();
+  await page.waitForFunction(() => /Re-run/.test(document.querySelector('.pl-curve-head button')?.textContent ?? ''), null, { timeout: 120_000 });
+  check((await page.locator('.pl-curve-col').count()) === 8, 'difficulty curve has a column per round');
+  check((await page.locator('.pl-curve-fired', { hasText: 'fired' }).count()) === 8, 'every round was played');
+  check((await page.locator('.pl-overview th', { hasText: 'Lost' }).count()) === 1, 'table gains a Lost column once the curve has run');
+  await page.locator('.pl-curve-wrap').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOT_DIR}/ws-12-difficulty-curve.png` });
   // Region-wide adapt switch reaches every scripted round.
   await page.getByRole('button', { name: /Adapt to player: OFF/ }).click();
   check((await page.locator('.pl-adapt .dev-toggle').textContent()) === 'ON', 'region-wide adapt switch turns the round on');

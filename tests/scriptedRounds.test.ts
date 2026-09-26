@@ -26,6 +26,7 @@ import { newWorkshopPlaytest, planCurrentRound } from '../src/sim/campaign';
 import { launchTimes } from '../src/sim/scriptedPlan';
 import { SCRIPT_SCALE_MAX } from '../src/sim/evolution';
 import { runPreview } from '../src/ui/workshopPreviewSim';
+import { deleteSetPiece, listSetPieces, saveSetPiece, setPieceAttacks, useWorkshopStore } from '../src/platform/workshopStore';
 
 function labRegion(): RegionAuthoringDef {
   const def = fromRegionDef(REGIONS.missileCoast);
@@ -341,5 +342,34 @@ describe('scripted rounds that adapt to the player', () => {
     const back = fromRegionDef(region);
     expect(roundAdapts(back, 5)).toBe(true);
     expect(roundAdapts(back, 3)).toBe(false);
+  });
+});
+
+describe('set pieces', () => {
+  it('save, list, reuse with fresh ids, overwrite by name and delete', () => {
+    useWorkshopStore(null);
+    const rush = saveSetPiece('Boat rush', [
+      { id: 'b1', ref: { branch: 'attackBoats', nodeId: 'smallArms' }, count: 3, x: 1800, pattern: 'volleys', perVolley: 1, gap: 8 },
+    ]);
+    saveSetPiece('Mine wall', [{ id: 'm1', ref: { branch: 'mines', nodeId: 'standard' }, count: 6, x: 1500, y: 1700 }]);
+    expect(listSetPieces().map((p) => p.name)).toEqual(['Mine wall', 'Boat rush']);
+
+    // Reuse: dropped into a round with fresh ids, and it plays.
+    const def = labRegion();
+    const copies = setPieceAttacks(rush, 'r4');
+    expect(copies[0].id).not.toBe('b1');
+    script(def, 4, copies);
+    expect(validateRegionAuthoring(def).ok).toBe(true);
+    register(def);
+    const c = newWorkshopPlaytest('s', 'scriptLab', { round: 4, source: 'local' });
+    expect(planCurrentRound(c).spawns.filter((s) => s.kind === 'attackBoat')).toHaveLength(3);
+
+    // Same name (any case) overwrites rather than duplicating.
+    saveSetPiece('boat RUSH', [{ id: 'b2', ref: { branch: 'attackBoats', nodeId: 'rocket' }, count: 2, x: 1800 }]);
+    expect(listSetPieces()).toHaveLength(2);
+    expect(listSetPieces().find((p) => p.id === rush.id)?.attacks[0].count).toBe(2);
+
+    deleteSetPiece(rush.id);
+    expect(listSetPieces().map((p) => p.name)).toEqual(['Mine wall']);
   });
 });

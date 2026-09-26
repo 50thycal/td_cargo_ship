@@ -727,6 +727,29 @@ the rest); unbuilt variants, unit caps, tactic ladders and beat rows sit
 behind *Show advanced rows*. Each weapon's label reads as "5cr · ~78 per
 round" instead of a bare credit figure.
 
+### Round Planner, third pass: difficulty curve, before/after, set pieces
+
+**Difficulty across rounds.** *Play every round* previews each round once in
+the worker (same seed, same defender) and draws one bar per round: **hits on
+ships**, with ships sunk as a red tag and the number fired underneath. Hits,
+not losses, carry the bar because a well-defended region can sink nothing for
+several rounds while still leaning on the player harder each round; losses
+would draw a flat line there. One series, one axis; tap a round to open it.
+The All-rounds table gains a sortable *Lost* column once it has run, and the
+chart dims with a *Re-run (changed)* button after any edit.
+
+**Before → after.** *Pin this result* keeps the current preview's tally on
+screen; every later edit to the same round (same seed, same defender) shows
+Pinned / Now / Change for fired, shot down, hits and ships lost, coloured by
+whether the change made the round harder or easier for the player, under a
+one-line "12 unguided missiles salvo → 12 unguided missiles stream".
+
+**Set pieces.** Save a scripted round's attacks under a name (inline field,
+no pop-up) and add them to any round of any region from a picker — picking
+adds, there is no second button. Saved on the device
+(`straitwatch.workshop.setpieces.v1`, `platform/workshopStore.ts`), same name
+overwrites, a Manage list deletes. Inserted copies get fresh ids.
+
 ### Slice E — the Island Channel
 
 Terrain is a typed feature on the canonical geography (`IslandDef`), and the

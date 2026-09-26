@@ -14,6 +14,7 @@ import {
   toRegionDef,
   validateRegionAuthoring,
   type RegionAuthoringDef,
+  type ScriptedAttack,
 } from '../data/regionAuthoring';
 import {
   REGIONS,
@@ -289,4 +290,75 @@ export function deleteSweeps(regionId: string): void {
   const all = readSweeps();
   delete all[regionId];
   writeSweeps(all);
+}
+
+// ---------------------------------------------------------------------------
+// Set pieces — saved attack sets reused across rounds and regions
+// ---------------------------------------------------------------------------
+
+const SET_PIECES_KEY = 'straitwatch.workshop.setpieces.v1';
+
+/** A named, reusable group of scripted attacks ("boat rush + mine wall").
+ *  Stored on the device, shared by every region. Only references and numbers,
+ *  like the attacks themselves. */
+export interface SetPiece {
+  id: string;
+  name: string;
+  savedAt: string;
+  attacks: ScriptedAttack[];
+}
+
+function readSetPieces(): SetPiece[] {
+  try {
+    const raw = store.getItem(SET_PIECES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { v?: number; pieces?: SetPiece[] };
+    return Array.isArray(parsed?.pieces) ? parsed.pieces : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSetPieces(pieces: SetPiece[]): void {
+  try {
+    store.setItem(SET_PIECES_KEY, JSON.stringify({ v: 1, pieces }));
+  } catch {
+    // A full store drops the save, never the editor.
+  }
+}
+
+export function listSetPieces(): SetPiece[] {
+  return readSetPieces();
+}
+
+/** Save (or overwrite, by name) a set piece. Returns the stored record. */
+export function saveSetPiece(name: string, attacks: ScriptedAttack[], now = new Date()): SetPiece {
+  const clean = name.trim() || 'Set piece';
+  const pieces = readSetPieces();
+  const existing = pieces.find((p) => p.name.toLowerCase() === clean.toLowerCase());
+  const record: SetPiece = {
+    id: existing?.id ?? freshSetPieceId(pieces, now),
+    name: clean,
+    savedAt: now.toISOString(),
+    attacks: JSON.parse(JSON.stringify(attacks)) as ScriptedAttack[],
+  };
+  writeSetPieces([record, ...pieces.filter((p) => p.id !== record.id)]);
+  return record;
+}
+
+/** A time-based id, bumped until unique (two saves can share a millisecond). */
+function freshSetPieceId(pieces: SetPiece[], now: Date): string {
+  const base = `sp-${now.getTime().toString(36)}`;
+  let id = base;
+  for (let i = 2; pieces.some((p) => p.id === id); i++) id = `${base}-${i}`;
+  return id;
+}
+
+export function deleteSetPiece(id: string): void {
+  writeSetPieces(readSetPieces().filter((p) => p.id !== id));
+}
+
+/** Copies of a set piece's attacks with fresh ids, ready to drop into a round. */
+export function setPieceAttacks(piece: SetPiece, salt: string): ScriptedAttack[] {
+  return piece.attacks.map((a, i) => ({ ...JSON.parse(JSON.stringify(a)), id: `${piece.id}-${salt}-${i}` }));
 }
