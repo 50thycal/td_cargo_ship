@@ -1622,6 +1622,10 @@ export interface EnemyEconomyState {
       gap: number;
     }[]
   >;
+  /** REGION WORKSHOP: scripted rounds whose counts scale with the player. */
+  scriptedAdaptive?: number[];
+  /** The multiplier applied to this round's scripted counts (1 = as written). */
+  scriptScale?: number;
   /** Units this round that came from authored beats rather than the adaptive
    *  allocator, keyed by node id — the AAR/telemetry attribution the workshop
    *  reads back. Reset every purchase. */

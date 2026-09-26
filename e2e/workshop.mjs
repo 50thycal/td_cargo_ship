@@ -123,6 +123,8 @@ try {
   check((await page.locator('.pl-pattern button.on').textContent()).includes('Volleys'), 'Use switches the attack to that pattern');
   // Tapping the map moves the selected launcher there.
   const before = await page.locator('.pl-marker').getAttribute('transform');
+  await page.locator('.pl-map').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
   const map = await page.locator('.pl-map svg').boundingBox();
   await page.mouse.click(map.x + map.width * 0.2, map.y + map.height * 0.12);
   await page.waitForTimeout(150);
@@ -133,6 +135,56 @@ try {
   check((await page.locator('.pl-atk').count()) === 0, 'Auto round has no attacks');
   await page.getByRole('radio', { name: /Scripted/ }).click();
   check((await page.locator('.pl-atk-desc').textContent()).includes('5 unguided missiles'), 'switching back restores the script');
+
+  // Scale R3 onto R4–R5, +2 per round → 7 and 9.
+  await page.locator('.pl-scale > summary').click();
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 8 → 7
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 7 → 6
+  await page.getByRole('button', { name: 'Decrease last round to fill' }).click(); // 6 → 5
+  check((await page.locator('.pl-scale-preview').textContent()).includes('5 → 7 → 9'), 'scale preview shows the growth per round');
+  await page.getByRole('button', { name: /^Apply to R4–R5$/ }).click();
+  await page.waitForTimeout(150);
+  check((await page.locator('tr[data-round="5"] input.pl-cell-num').inputValue()) === '9', 'scaled round lands in the table');
+  // A stray tap on a table row must not switch rounds; the round button does.
+  await page.locator('tr[data-round="5"] td').nth(1).click();
+  check((await page.locator('.pl-round.on .pl-round-n').textContent()) === 'R3', 'tapping a table row does not jump rounds');
+  await page.locator('.pl-overview th', { hasText: 'Total' }).click();
+  await page.locator('.pl-overview th', { hasText: 'Total' }).click();
+  check((await page.locator('.pl-overview tbody tr').first().getAttribute('data-round')) === '5', 'table sorts by total, largest first');
+  await page.getByRole('button', { name: 'Open round 5' }).click();
+  check((await page.locator('.pl-round.on .pl-round-n').textContent()) === 'R5', 'the round button opens that round');
+  // Before/after: pin R5's result, change the pattern, see both side by side.
+  await page.waitForFunction(() => document.querySelector('.pl-stats')?.textContent?.includes('9 fired'), null, { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Pin this result' }).click();
+  await page.getByRole('radio', { name: /Salvo/ }).click();
+  await page.waitForFunction(() => document.querySelector('.pl-pin-table'), null, { timeout: 20_000 });
+  check((await page.locator('.pl-pin-head').textContent()).includes('volleys') && (await page.locator('.pl-pin-head').textContent()).includes('salvo'), 'pin shows what changed (volleys → salvo)');
+  check((await page.locator('.pl-pin-table tbody tr').count()) === 4, 'pinned vs now table has fired / shot down / hits / lost');
+  await page.getByRole('button', { name: 'Unpin' }).click();
+  // Set pieces: save R5, drop it into R6.
+  await page.locator('.pl-setpiece-name').fill('Smoke test salvo');
+  await page.getByRole('button', { name: 'Save round' }).click();
+  await page.locator('.pl-round[data-round="6"]').click();
+  await page.getByRole('radio', { name: /Scripted/ }).click();
+  const before6 = await page.locator('.pl-atk').count();
+  await page.locator('.pl-setpiece-select').selectOption({ index: 1 });
+  await page.waitForTimeout(150);
+  check((await page.locator('.pl-atk').count()) === before6 + 1, 'a saved set piece drops into another round');
+  await page.getByRole('radio', { name: /Auto/ }).click();
+  await page.locator('.pl-round[data-round="5"]').click();
+  // Difficulty curve: every round played once.
+  await page.getByRole('button', { name: 'Play every round' }).click();
+  await page.waitForFunction(() => /Re-run/.test(document.querySelector('.pl-curve-head button')?.textContent ?? ''), null, { timeout: 120_000 });
+  check((await page.locator('.pl-curve-col').count()) === 8, 'difficulty curve has a column per round');
+  check((await page.locator('.pl-curve-fired', { hasText: 'fired' }).count()) === 8, 'every round was played');
+  check((await page.locator('.pl-overview th', { hasText: 'Lost' }).count()) === 1, 'table gains a Lost column once the curve has run');
+  await page.locator('.pl-curve-wrap').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${SHOT_DIR}/ws-12-difficulty-curve.png` });
+  // Region-wide adapt switch reaches every scripted round.
+  await page.getByRole('button', { name: /Adapt to player: OFF/ }).click();
+  check((await page.locator('.pl-adapt .dev-toggle').textContent()) === 'ON', 'region-wide adapt switch turns the round on');
+  await page.getByRole('button', { name: /Adapt to player: ON/ }).click();
+  await page.locator('.pl-round[data-round="3"]').click();
 
   // Environment → Island Channel (Region settings). The preview has to draw
   // the rock, because a designer picking a map they cannot see is picking blind.
@@ -194,11 +246,17 @@ try {
   // Scrolling the matrix (a designer working a later round) must survive a
   // rerender triggered by clicking a cell — this was the reported "jumps back
   // to the top" bug. Scroll it, click somewhere, check the scroll held.
+  // The slimmed-down matrix fits a wide desktop, so check at tablet width
+  // where it has to scroll sideways.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.waitForTimeout(150);
+  check(await page.locator('.ws-matrix-wrap').evaluate((el) => el.scrollWidth > el.clientWidth), 'matrix scrolls sideways at tablet width');
   await page.locator('.ws-matrix-wrap').evaluate((el) => { el.scrollLeft = 300; el.scrollTop = 40; });
   await page.locator('td[data-key="mines:standard"][data-round="8"] .ws-cell').click();
   await page.waitForTimeout(150);
   const matrixScroll = await page.locator('.ws-matrix-wrap').evaluate((el) => ({ left: el.scrollLeft, top: el.scrollTop }));
   check(matrixScroll.left > 0, 'matrix horizontal scroll survives opening the inspector');
+  await page.setViewportSize({ width: 1400, height: 900 });
   check((await page.locator('.ws-drawer').count()) === 1, 'inspector opened as a floating drawer, not a scroll-to-bottom panel');
 
   await page.locator('.ws-matrix-wrap').scrollIntoViewIfNeeded();
@@ -248,6 +306,7 @@ try {
   check(json.environmentPresetId === 'islandChannel' && json.shapeType === 'islandChannel', 'exported JSON carries the island environment');
   check(json.milestones.some((m) => m.beats?.length), 'exported JSON carries the beat');
   check(json.milestones.some((m) => m.round === 3 && m.attacks?.[0]?.count === 5 && m.attacks[0].pattern === 'volleys'), 'exported JSON carries the scripted round');
+  check(json.milestones.some((m) => m.round === 5 && m.attacks?.[0]?.count === 9), 'exported JSON carries the scaled rounds');
   await (await import('node:fs/promises')).writeFile(`${SHOT_DIR}/ws-export.json`, JSON.stringify(json, null, 2));
 
   // Reload → draft persists, still playable, listed in the library.

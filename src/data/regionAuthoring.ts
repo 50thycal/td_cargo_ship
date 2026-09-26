@@ -221,6 +221,10 @@ export interface RegionRoundMilestone {
    *  Absent = the adaptive enemy spends the round's budget from the menu.
    *  An empty array is a deliberately quiet round. */
   attacks?: ScriptedAttack[];
+  /** Scripted rounds only: scale this round's counts with how the player is
+   *  doing (the same signal the adaptive enemy's budget follows). Absent =
+   *  follow the region-wide `scriptAdapt` setting. */
+  adapt?: boolean;
 }
 
 export interface RegionAuthoringDefV1 {
@@ -243,6 +247,10 @@ export interface RegionAuthoringDefV1 {
     defaultBranchCeilings: Partial<Record<EnemyBranchKey, number>>;
   };
   milestones: RegionRoundMilestone[];
+  /** Region-wide default for scripted rounds: scale their counts up when the
+   *  player is doing well and down when they are struggling. Each round can
+   *  override it (`RegionRoundMilestone.adapt`). */
+  scriptAdapt?: boolean;
 }
 
 export type RegionAuthoringDef = RegionAuthoringDefV1;
@@ -1016,8 +1024,10 @@ export function toRegionDef(compiled: CompiledRegion): RegionDef {
   }));
   const intelWarnings: Record<number, string> = { ...compiled.intelWarnings };
   const scriptedRounds: Record<number, RuntimeAttack[]> = {};
+  const scriptedAdaptive: number[] = [];
   for (const [r, list] of Object.entries(compiled.attacks)) {
     scriptedRounds[Number(r)] = list.map((a) => runtimeAttack(a));
+    if (roundAdapts(def, Number(r))) scriptedAdaptive.push(Number(r));
   }
 
   const out: RegionDef = {
@@ -1042,6 +1052,7 @@ export function toRegionDef(compiled: CompiledRegion): RegionDef {
   if (beats.length > 0) out.beats = beats;
   if (Object.keys(intelWarnings).length > 0) out.intelWarnings = intelWarnings;
   if (Object.keys(scriptedRounds).length > 0) out.scriptedRounds = scriptedRounds;
+  if (scriptedAdaptive.length > 0) out.scriptedAdaptive = scriptedAdaptive.sort((a, b) => a - b);
   out.authoring = { schemaVersion: def.schemaVersion, hash: compiled.hash };
   return out;
 }
@@ -1118,6 +1129,7 @@ export function fromRegionDef(region: RegionDef, catalog: ArsenalCatalog = ENEMY
       perVolley: a.perVolley,
       gap: a.gap,
     }));
+    if (region.scriptedAdaptive?.includes(Number(r))) milestone(Number(r)).adapt = true;
   }
   const milestones = [...byRound.values()].sort((a, b) => a.round - b.round);
   return {
@@ -1183,6 +1195,7 @@ export function pruneMilestone(def: RegionAuthoringDef, round: number): void {
     (m.remove?.length ?? 0) === 0 &&
     (m.beats?.length ?? 0) === 0 &&
     m.attacks === undefined &&
+    m.adapt === undefined &&
     !m.label &&
     !m.intelWarning &&
     (!m.pressure || Object.keys(m.pressure).length === 0);
@@ -1215,6 +1228,57 @@ export function duplicateRound(def: RegionAuthoringDef, from: number, to: number
   def.milestones = def.milestones.filter((m) => m.round !== to);
   def.milestones.push(copy);
   def.milestones.sort((a, b) => a.round - b.round);
+}
+
+/** Does this scripted round scale with the player? Its own flag wins; absent,
+ *  the region-wide default applies. */
+export function roundAdapts(def: RegionAuthoringDef, round: number): boolean {
+  const m = def.milestones.find((x) => x.round === round);
+  return m?.adapt ?? !!def.scriptAdapt;
+}
+
+export type ScaleMode = 'add' | 'percent';
+
+/** The count a scaled copy of `base` gets `steps` rounds later. */
+export function scaledCount(base: number, steps: number, mode: ScaleMode, amount: number): number {
+  const raw = mode === 'add' ? base + amount * steps : base * Math.pow(1 + amount / 100, steps);
+  return Math.max(1, Math.min(ATTACK_DEFAULTS.maxCount, Math.round(raw)));
+}
+
+/** EXTRAPOLATE one scripted round across later rounds: rounds from+1..to
+ *  become copies of `from` (same weapons, positions and timing) with each
+ *  attack's count growing by `amount` per round — added units, or a
+ *  compounding percentage. Rounds past the end are added. Returns the rounds
+ *  that were overwritten. */
+export function extrapolateRound(
+  def: RegionAuthoringDef,
+  from: number,
+  to: number,
+  mode: ScaleMode,
+  amount: number,
+): number[] {
+  const src = def.milestones.find((m) => m.round === from);
+  if (!src?.attacks || to <= from) return [];
+  if (to > def.completionRound) def.completionRound = to;
+  const written: number[] = [];
+  for (let r = from + 1; r <= to; r++) {
+    const steps = r - from;
+    let m = def.milestones.find((x) => x.round === r);
+    if (!m) {
+      m = { round: r, add: [] };
+      def.milestones.push(m);
+    }
+    m.attacks = src.attacks.map((a, i) => ({
+      ...clone(a),
+      id: `${a.id.replace(/-x\d+-\d+$/, '')}-x${r}-${i}`,
+      count: scaledCount(a.count, steps, mode, amount),
+    }));
+    if (src.adapt !== undefined) m.adapt = src.adapt;
+    else delete m.adapt;
+    written.push(r);
+  }
+  def.milestones.sort((a, b) => a.round - b.round);
+  return written;
 }
 
 export function clearRound(def: RegionAuthoringDef, round: number): void {

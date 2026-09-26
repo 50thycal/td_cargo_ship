@@ -12,7 +12,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   compileRegion,
+  extrapolateRound,
   fromRegionDef,
+  roundAdapts,
+  scaledCount,
   toRegionDef,
   validateRegionAuthoring,
   type RegionAuthoringDef,
@@ -21,7 +24,9 @@ import {
 import { REGIONS, geographyOf, registerCustomRegion, unregisterCustomRegion } from '../src/data/regions';
 import { newWorkshopPlaytest, planCurrentRound } from '../src/sim/campaign';
 import { launchTimes } from '../src/sim/scriptedPlan';
+import { SCRIPT_SCALE_MAX } from '../src/sim/evolution';
 import { runPreview } from '../src/ui/workshopPreviewSim';
+import { deleteSetPiece, listSetPieces, saveSetPiece, setPieceAttacks, useWorkshopStore } from '../src/platform/workshopStore';
 
 function labRegion(): RegionAuthoringDef {
   const def = fromRegionDef(REGIONS.missileCoast);
@@ -238,5 +243,133 @@ describe('attack preview', () => {
     expect(r.scripted).toBe(false);
     const total = Object.values(r.fielded).reduce((s, n) => s + n, 0);
     expect(total).toBe(r.summary.launched + r.summary.minesLaid + r.summary.guns);
+  });
+});
+
+describe('extrapolating one round across later rounds', () => {
+  it('copies the round with counts growing by a fixed step', () => {
+    const def = labRegion();
+    script(def, 1, [missiles(30), { id: 'f', ref: { branch: 'mines', nodeId: 'standard' }, count: 4, x: 1000, y: 1600 }]);
+    const written = extrapolateRound(def, 1, 5, 'add', 2);
+    expect(written).toEqual([2, 3, 4, 5]);
+    const counts = (r: number) => def.milestones.find((m) => m.round === r)!.attacks!.map((a) => a.count);
+    expect(counts(2)).toEqual([32, 6]);
+    expect(counts(5)).toEqual([38, 12]);
+    // Positions and timing ride along; ids stay unique per round.
+    const r5 = def.milestones.find((m) => m.round === 5)!.attacks!;
+    expect(r5[0]).toMatchObject({ x: 2000, pattern: 'salvo', start: 20 });
+    const ids = def.milestones.flatMap((m) => m.attacks ?? []).map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(validateRegionAuthoring(def).ok).toBe(true);
+  });
+
+  it('compounds a percentage and never drops below one unit', () => {
+    expect([0, 1, 2, 3].map((k) => scaledCount(30, k, 'percent', 10))).toEqual([30, 33, 36, 40]);
+    expect(scaledCount(3, 5, 'add', -2)).toBe(1);
+    expect(scaledCount(150, 5, 'add', 20)).toBe(200);
+  });
+
+  it('extends the region when asked to fill past its last round', () => {
+    const def = labRegion();
+    script(def, 8, [missiles(10)]);
+    extrapolateRound(def, 8, 10, 'add', 1);
+    expect(def.completionRound).toBe(10);
+    expect(def.milestones.find((m) => m.round === 10)!.attacks![0].count).toBe(12);
+  });
+
+  it('scaled rounds fire exactly their scaled counts in the game', () => {
+    const def = labRegion();
+    script(def, 2, [missiles(5)]);
+    extrapolateRound(def, 2, 4, 'add', 3);
+    register(def);
+    const c = newWorkshopPlaytest('s', 'scriptLab', { round: 4, source: 'local' });
+    expect(planCurrentRound(c).spawns).toHaveLength(11);
+  });
+});
+
+describe('scripted rounds that adapt to the player', () => {
+  const run = (def: RegionAuthoringDef, round: number) => {
+    register(def);
+    const c = newWorkshopPlaytest('adapt', 'scriptLab', { round, source: 'local' });
+    const plan = planCurrentRound(c);
+    return { n: plan.spawns.length, scale: c.evolution.economy.scriptScale ?? 1 };
+  };
+
+  it('fires the written count when the round does not adapt', () => {
+    const def = labRegion();
+    script(def, 4, [missiles(20)]);
+    expect(run(def, 4).n).toBe(20);
+  });
+
+  it('scales with how the player did (the fast-forward reports a strong player)', () => {
+    const def = labRegion();
+    script(def, 4, [missiles(20)]);
+    def.scriptAdapt = true;
+    const { n, scale } = run(def, 4);
+    expect(scale).toBeGreaterThan(1);
+    expect(scale).toBeLessThanOrEqual(SCRIPT_SCALE_MAX);
+    expect(n).toBe(Math.round(20 * scale));
+  });
+
+  it('a round can opt out of the region default, and vice versa', () => {
+    const def = labRegion();
+    script(def, 4, [missiles(20)]);
+    def.scriptAdapt = true;
+    def.milestones.find((m) => m.round === 4)!.adapt = false;
+    expect(roundAdapts(def, 4)).toBe(false);
+    expect(run(def, 4).n).toBe(20);
+    const def2 = labRegion();
+    script(def2, 4, [missiles(20)]);
+    def2.milestones.find((m) => m.round === 4)!.adapt = true;
+    expect(roundAdapts(def2, 4)).toBe(true);
+    expect(run(def2, 4).n).toBeGreaterThan(20);
+  });
+
+  it('round 1 has no player signal yet, so it fires as written', () => {
+    const def = labRegion();
+    script(def, 1, [missiles(12)]);
+    def.scriptAdapt = true;
+    expect(run(def, 1)).toEqual({ n: 12, scale: 1 });
+  });
+
+  it('round-trips through the runtime region', () => {
+    const def = labRegion();
+    script(def, 3, [missiles(5)]);
+    script(def, 5, [missiles(5)]);
+    def.milestones.find((m) => m.round === 5)!.adapt = true;
+    const region = toRegionDef(compileRegion(def));
+    expect(region.scriptedAdaptive).toEqual([5]);
+    const back = fromRegionDef(region);
+    expect(roundAdapts(back, 5)).toBe(true);
+    expect(roundAdapts(back, 3)).toBe(false);
+  });
+});
+
+describe('set pieces', () => {
+  it('save, list, reuse with fresh ids, overwrite by name and delete', () => {
+    useWorkshopStore(null);
+    const rush = saveSetPiece('Boat rush', [
+      { id: 'b1', ref: { branch: 'attackBoats', nodeId: 'smallArms' }, count: 3, x: 1800, pattern: 'volleys', perVolley: 1, gap: 8 },
+    ]);
+    saveSetPiece('Mine wall', [{ id: 'm1', ref: { branch: 'mines', nodeId: 'standard' }, count: 6, x: 1500, y: 1700 }]);
+    expect(listSetPieces().map((p) => p.name)).toEqual(['Mine wall', 'Boat rush']);
+
+    // Reuse: dropped into a round with fresh ids, and it plays.
+    const def = labRegion();
+    const copies = setPieceAttacks(rush, 'r4');
+    expect(copies[0].id).not.toBe('b1');
+    script(def, 4, copies);
+    expect(validateRegionAuthoring(def).ok).toBe(true);
+    register(def);
+    const c = newWorkshopPlaytest('s', 'scriptLab', { round: 4, source: 'local' });
+    expect(planCurrentRound(c).spawns.filter((s) => s.kind === 'attackBoat')).toHaveLength(3);
+
+    // Same name (any case) overwrites rather than duplicating.
+    saveSetPiece('boat RUSH', [{ id: 'b2', ref: { branch: 'attackBoats', nodeId: 'rocket' }, count: 2, x: 1800 }]);
+    expect(listSetPieces()).toHaveLength(2);
+    expect(listSetPieces().find((p) => p.id === rush.id)?.attacks[0].count).toBe(2);
+
+    deleteSetPiece(rush.id);
+    expect(listSetPieces().map((p) => p.name)).toEqual(['Mine wall']);
   });
 });

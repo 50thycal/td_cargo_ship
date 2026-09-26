@@ -106,6 +106,8 @@ export interface RegionDef {
   intelWarnings?: Record<number, string>;
   /** Scripted rounds (keyed by round): exactly these attacks, nothing adaptive. */
   scriptedRounds?: Record<number, RuntimeAttack[]>;
+  /** Scripted rounds whose counts scale with how the player is doing. */
+  scriptedAdaptive?: number[];
   /** Provenance of a compiled preset, carried into telemetry. */
   authoring?: { schemaVersion: number; hash: string };
 }

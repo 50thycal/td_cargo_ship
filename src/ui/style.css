@@ -2342,3 +2342,88 @@ button.danger { color: var(--bad); border-color: var(--bad); }
   .pl-row-wide .pl-seg button small { display: none; }
   .pl-map-hint { font-size: 9.5px; padding: 2px 5px; left: 4px; bottom: 4px; }
 }
+
+/* --- Round planner: region bar, adapt, scale tool --------------------------- */
+.pl-regionbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.pl-regionbar .dev-toggle { min-height: 36px; font-size: 11px; padding: 5px 10px; }
+.pl-flash { color: var(--good); font-size: 12px; }
+.pl-adapt { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.pl-adapt .dev-toggle { min-height: 34px; min-width: 64px; font-size: 11px; padding: 4px 10px; }
+.pl-adapt-note { color: var(--intel); }
+.pl-scale { border: 1px solid var(--line-bright); border-radius: 8px; background: var(--screen); }
+.pl-scale > summary { cursor: pointer; padding: 10px 12px; font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; min-height: 44px; display: flex; align-items: center; }
+.pl-scale-body { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px; }
+.pl-scale-preview { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.pl-scale-line { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.pl-scale-line svg { width: 13px; height: 13px; }
+.pl-scale-line b { color: var(--text); }
+.pl-scale .primary { align-self: flex-start; min-height: 40px; }
+
+/* --- All-rounds table ------------------------------------------------------- */
+.pl-overview-scroll { max-height: 70vh; }
+.pl-overview th, .pl-overview td { padding: 4px 6px; }
+.pl-overview tbody tr { cursor: default; }
+.pl-open { min-height: 34px; min-width: 46px; padding: 3px 8px; font-size: 12px; }
+.pl-open.on { color: #241403; background: linear-gradient(180deg, var(--accent-hi), #f2a13e); font-weight: 700; }
+.pl-sub { display: block; font-size: 10px; color: var(--dim); }
+.pl-cell-tag { font-size: 10.5px; color: var(--dim); margin-left: 3px; white-space: nowrap; }
+.pl-total { font-weight: 700; color: var(--text); }
+@media (max-width: 560px) {
+  .pl-overview .pl-th-name { display: none; }
+  .pl-cell-num { width: 46px; }
+}
+
+/* --- Shared table kit: sortable headers, frozen first column --------------- */
+.tk-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.tk-sortable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tk-ind { margin-left: 4px; font-size: 9px; opacity: 0.45; }
+.tk-sortable[aria-sort='ascending'] .tk-ind, .tk-sortable[aria-sort='descending'] .tk-ind { opacity: 1; color: var(--accent-hi); }
+.tk-freeze th:first-child, .tk-freeze td:first-child { position: sticky; left: 0; z-index: 2; background: var(--metal); box-shadow: 1px 0 0 var(--line); }
+.tk-freeze thead th:first-child { z-index: 4; }
+.tk-freeze tbody tr.on td:first-child, .tk-freeze tbody tr.selected td:first-child { background: #2a2a18; }
+
+/* --- Adaptive timeline intro ------------------------------------------------ */
+.ws-intro p { font-size: 12.5px; line-height: 1.45; }
+.ws-intro .dev-toggle { min-height: 36px; font-size: 11px; padding: 5px 10px; }
+
+/* --- Before / after pin ----------------------------------------------------- */
+.pl-pin { display: flex; flex-direction: column; gap: 5px; }
+.pl-pin-btn, .pl-pin-actions button { min-height: 34px; padding: 5px 10px; font-size: 11px; align-self: flex-start; }
+.pl-pin-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.pl-pin-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pl-pin-table { border-collapse: collapse; font-size: 12px; max-width: 420px; }
+.pl-pin-table th, .pl-pin-table td { padding: 3px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+.pl-pin-table th:first-child { text-align: left; color: var(--dim); font-weight: 400; }
+.pl-pin-table thead th { color: var(--accent); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.pl-delta.harder { color: var(--bad); font-weight: 700; }
+.pl-delta.easier { color: var(--good); font-weight: 700; }
+
+/* --- Set pieces ------------------------------------------------------------- */
+.pl-setpieces { border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.pl-setpiece-row { display: flex; flex-direction: column; gap: 6px; }
+.pl-setpiece-select { width: 100%; }
+.pl-setpiece-save { display: flex; gap: 6px; }
+.pl-setpiece-save input { flex: 1 1 auto; min-width: 0; }
+.pl-setpiece-save button { min-height: 38px; padding: 5px 10px; font-size: 11px; white-space: nowrap; }
+.pl-setpiece-manage summary { cursor: pointer; font-size: 11px; color: var(--dim); min-height: 30px; display: flex; align-items: center; }
+.pl-setpiece-manage .pl-row { font-size: 12px; padding: 2px 0; }
+
+/* --- Difficulty curve ------------------------------------------------------- */
+.pl-curve-wrap { display: flex; flex-direction: column; gap: 6px; }
+.pl-curve-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pl-curve-head h3 { font-size: 12.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); }
+.pl-curve-head button { min-height: 36px; padding: 5px 12px; font-size: 11px; }
+.pl-curve-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+.pl-curve-key { width: 10px; height: 10px; border-radius: 2px; background: var(--accent); }
+.pl-curve { display: flex; gap: 4px; overflow-x: auto; padding: 6px 2px 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--screen); }
+.pl-curve.stale { opacity: 0.5; }
+.pl-curve-col { flex: 1 0 44px; min-height: 0; padding: 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; box-shadow: none; text-transform: none; border-radius: 6px; }
+.pl-curve-col.on { background: rgba(255, 180, 84, 0.12); outline: 1px solid var(--accent); }
+.pl-curve-val { font-size: 12px; color: var(--text); font-weight: 700; min-height: 15px; }
+.pl-curve-track { height: 70px; width: 100%; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line-bright); }
+.pl-curve-bar { width: 60%; max-width: 26px; background: var(--accent); border-radius: 4px 4px 0 0; }
+.pl-curve-sunk { font-size: 10px; color: var(--bad); font-weight: 700; min-height: 13px; }
+.pl-curve-bar.zero { background: var(--line-bright); }
+.pl-curve-r { font-size: 11px; color: var(--text); }
+.pl-curve-fired { font-size: 9.5px; color: var(--dim); white-space: nowrap; }
+.pl-lost { color: var(--bad); font-weight: 700; }
