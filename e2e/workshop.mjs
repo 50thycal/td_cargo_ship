@@ -110,6 +110,8 @@ try {
   await page.waitForFunction(() => document.querySelector('.pl-stats')?.textContent?.includes('5 fired'), null, { timeout: 20_000 });
   check(true, 'preview replays the round with exactly five missiles');
   check((await page.locator('.pl-marker').count()) === 1, 'the launcher is on the map');
+  check((await page.locator('.pl-marker text').textContent()) === '1', 'map marker shows firing order, not munition count');
+  check((await page.locator('.pl-play').textContent()) === '▶', 'preview waits for ▶ instead of auto-playing after an edit');
   check((await page.locator('tr[data-round="3"] input.pl-cell-num').inputValue()) === '5', 'overview table shows the scripted count');
   await page.screenshot({ path: `${SHOT_DIR}/ws-09-round-planner.png` });
   await page.getByRole('button', { name: /Compare patterns/ }).click();

@@ -223,6 +223,12 @@ function noun(nodeId: string, n: number): string {
   return n === 1 ? pair[0] : pair[1];
 }
 
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 function clock(t: number): string {
   const s = Math.max(0, Math.round(t));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -410,7 +416,9 @@ function schedulePreview(ctx: PlannerCtx, delay = 350): void {
         // empty water at the top of every replay.
         const first = result.launches.length ? result.launches[0].t : 0;
         ps.playT = Math.max(0, first - 4);
-        ps.playing = true;
+        // Never auto-play: placing or tweaking an attack refreshes the tally
+        // and parks the replay just before the first launch; ▶ plays it.
+        ps.playing = false;
       }
       mounted?.render();
     });
@@ -607,7 +615,16 @@ function placeAttack(a: ScriptedAttack, p: { x: number; y: number }, geo: Geogra
   }
 }
 
-function markerSvg(a: ScriptedAttack, geo: Geography, selected: boolean): string {
+/** Firing order of a round's attacks: 1 = first to open fire. Mines and guns
+ *  are in place from the start of the crossing, so they count as time 0;
+ *  ties keep the list order. */
+function fireOrder(list: ScriptedAttack[]): Map<string, number> {
+  const when = (a: ScriptedAttack) => (attackFamily(a.ref.branch) === 'launched' ? runtimeAttack(a).start : 0);
+  const sorted = list.map((a, i) => ({ a, i })).sort((p, q) => when(p.a) - when(q.a) || p.i - q.i);
+  return new Map(sorted.map((x, k) => [x.a.id, k + 1]));
+}
+
+function markerSvg(a: ScriptedAttack, geo: Geography, selected: boolean, order: number): string {
   const p = markerPos(a, geo);
   const color = BRANCH_COLOR[a.ref.branch];
   const family = attackFamily(a.ref.branch);
@@ -627,7 +644,7 @@ function markerSvg(a: ScriptedAttack, geo: Geography, selected: boolean): string
     arrow +
     body +
     ring +
-    `<text y="22" text-anchor="middle" fill="${color}" font-size="64" font-weight="bold" font-family="monospace">${a.count}</text>` +
+    `<text y="22" text-anchor="middle" fill="${color}" font-size="64" font-weight="bold" font-family="monospace">${order}</text>` +
     `</g>`
   );
 }
@@ -639,9 +656,11 @@ function mapPanel(ctx: PlannerCtx, compiled: CompiledRegion, commit: () => void)
   const geo = geoFor(def);
   const attacks = compiled.attacks[ps.round] ?? null;
   const scripted = attacks !== null;
-  const markers = (def.milestones.find((m) => m.round === ps.round)?.attacks ?? [])
+  const roundAttacks = def.milestones.find((m) => m.round === ps.round)?.attacks ?? [];
+  const order = fireOrder(roundAttacks);
+  const markers = roundAttacks
     .filter((a) => attackFamily(a.ref.branch))
-    .map((a) => markerSvg(a, geo, a.id === ps.attackId))
+    .map((a) => markerSvg(a, geo, a.id === ps.attackId, order.get(a.id) ?? 0))
     .join('');
   const wrap = h('div', { className: 'pl-map' });
   wrap.innerHTML =
@@ -1242,7 +1261,13 @@ function attackCard(
     mounted?.render();
   });
 
+  const n = fireOrder(list).get(a.id) ?? 0;
   const head = h('div', { className: 'pl-atk-head' }, [
+    h('span', {
+      className: 'pl-order',
+      text: String(n),
+      attrs: { title: `Fires ${ordinal(n)} this round (the number on its map marker)`, 'aria-label': `Fires ${ordinal(n)}` },
+    }),
     icon(BRANCH_ICON[a.ref.branch]),
     weaponSelect(a, (ref) => {
       changeWeapon(a, ref, geo);
