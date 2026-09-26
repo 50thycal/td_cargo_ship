@@ -2427,3 +2427,6 @@ button.danger { color: var(--bad); border-color: var(--bad); }
 .pl-curve-r { font-size: 11px; color: var(--text); }
 .pl-curve-fired { font-size: 9.5px; color: var(--dim); white-space: nowrap; }
 .pl-lost { color: var(--bad); font-weight: 700; }
+
+/* Firing-order badge on an attack card (matches its map marker). */
+.pl-order { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--atk, var(--accent)); color: var(--atk, var(--accent)); font-weight: 700; font-size: 13px; background: var(--metal-deep); flex: 0 0 auto; }
