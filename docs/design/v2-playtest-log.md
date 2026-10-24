@@ -150,3 +150,55 @@ clear. New test: zero overlaps through all 12 switches at max flow on two maps.
 Screenshots of Pairs → Column show ships holding their lane for a moment, then
 falling into a clean single file; at max flow the merged file bunches briefly
 near the entry and spreads out again, which reads as traffic rather than a bug.
+
+### Cycle 4 — Do upgrades matter? (S4)
+
+**Checks run.** Per-card ablation on the Island (the hardest map) with the
+casual bot: each card granted at max level from wave 1, normal drafting
+otherwise, clear rate over 24 seeds, then 72 seeds for the cards near the
+noise floor. Hold to Fire, which only exists in the UI, was tested in Chromium:
+one press held for 2 s while following a swarm, then a release, then the same
+hold without the card. A screenshot with Shore Battery, CIWS, Chain and Twin
+active. Every card's text was checked against the code.
+
+**Noise floor.** Hold to Fire does nothing in the sim, yet its arm read 25% vs
+a 38% baseline at 24 seeds (only the later card offers changed). At 72 seeds the
+same control read 29% vs 35%, so differences under ~6 points are noise.
+
+**Measured (casual bot, Island; baseline 35–38%).**
+
+| Card | Clear rate with it | Gain |
+|---|---|---|
+| Faster Interceptors | 71–79% | large |
+| Twin Launch | 79% | large |
+| Wide Warhead | 75% | large |
+| Chain Detonation | 58% | medium |
+| Carrier CIWS | 54% | medium |
+| Bigger Rack / Quick Reload | 50% | medium |
+| Early-Warning Radar | 49% | medium (from L2 jamming) |
+| Auto-Retarget | 43% → **53%** after fix | small → medium |
+| Shore Battery | 44% → 43% after fix | small (see below) |
+
+**Problems found.**
+1. **Auto-Retarget barely did anything** (+8, near noise): it only acted once a
+   target was already dead and looked 260 px around, often picking a threat
+   already covered.
+2. **Shore Battery was a re-route, not an upgrade** (+9): it shared the
+   carrier's ammo and only changed where the shot left from.
+3. **Quick Reload's text was wrong**: "18% faster" really meant 18% less time
+   per round (a 22% faster rate).
+
+**Changes.** Auto-Retarget now looks 450 px and prefers threats nobody is
+covering. Shore Battery has its own 4-round rack that reloads alongside the
+carrier's, is drawn above the battery, and a tap fires from the nearest launcher
+that is loaded (ammo pickups and overdrive fill both). Card text corrected for
+Quick Reload, Auto-Retarget and Shore Battery.
+
+**Retest.** Auto-Retarget: 53% vs 35% baseline at 72 seeds (+18, was +8). Shore
+Battery still measures ~+8 for the bot — like Rack and Reload, extra ammo helps
+a slow reactor only a little, because reaction time rather than ammo is what
+limits it. Its real value for a person is shorter interceptor flights on its
+side of the map, which the bot doesn't capture; left as a known modest card.
+Browser: Hold to Fire fired 8 shots from one 2 s press and 0 after release;
+without the card the same hold fired once. Battery and its rack render; with
+the carrier's rack nearly empty, taps fired from the battery.

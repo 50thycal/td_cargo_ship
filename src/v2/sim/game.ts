@@ -135,6 +135,9 @@ export interface Game {
   carrierHp: number;
   ammo: number;
   reloadT: number;
+  /** The Shore Battery's own rack (empty until the card is taken). */
+  batteryAmmo: number;
+  batteryReloadT: number;
   overdriveT: number;
   ciwsT: number;
   flow: number;
@@ -188,6 +191,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     carrierHp: CARRIER.hp,
     ammo: s.rack,
     reloadT: 0,
+    batteryAmmo: 0,
+    batteryReloadT: 0,
     overdriveT: 0,
     ciwsT: 0,
     flow: DEFAULT_FLOW,
@@ -342,6 +347,7 @@ export function pickUpgrade(g: Game, id: UpgradeId): void {
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   g.stats = stats(g.levels);
   g.ammo = Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack));
+  if (id === 'battery') g.batteryAmmo = g.stats.batteryRack;
   startWave(g);
 }
 
@@ -707,23 +713,39 @@ function assigned(g: Game, threatId: number): number {
   return n;
 }
 
-function launcherFor(g: Game, x: number, y: number): Point {
-  const c = g.map.carrier;
-  if (!g.stats.battery) return c;
-  const b = g.map.battery;
-  return dist(b.x, b.y, x, y) < dist(c.x, c.y, x, y) ? b : c;
+type Launcher = 'carrier' | 'battery';
+
+function launcherPos(g: Game, l: Launcher): Point {
+  return l === 'battery' ? g.map.battery : g.map.carrier;
+}
+
+/** The nearest launcher that can fire right now, or null if every rack is dry. */
+function readyLauncher(g: Game, x: number, y: number): Launcher | null {
+  const ready: Launcher[] = [];
+  if (g.overdriveT > 0 || g.ammo >= 1) ready.push('carrier');
+  if (g.stats.batteryRack > 0 && (g.overdriveT > 0 || g.batteryAmmo >= 1)) ready.push('battery');
+  if (!ready.length) return null;
+  const d = (l: Launcher) => dist(launcherPos(g, l).x, launcherPos(g, l).y, x, y);
+  return ready.sort((a, b) => d(a) - d(b))[0];
+}
+
+/** Can a tap fire anything right now? (Bot + UI share this.) */
+export function canFire(g: Game): boolean {
+  return g.overdriveT > 0 || g.ammo >= 1 || (g.stats.batteryRack > 0 && g.batteryAmmo >= 1);
 }
 
 function fireAt(g: Game, th: Threat): boolean {
+  const from = readyLauncher(g, th.x, th.y);
+  if (!from) {
+    g.events.push({ kind: 'dry' });
+    return false;
+  }
   if (g.overdriveT <= 0) {
-    if (g.ammo < 1) {
-      g.events.push({ kind: 'dry' });
-      return false;
-    }
-    g.ammo -= 1;
+    if (from === 'battery') g.batteryAmmo -= 1;
+    else g.ammo -= 1;
   }
   g.shots += 1;
-  spawnInterceptor(g, th);
+  spawnInterceptor(g, th, from);
   // Free extras (Twin Launch) go to the tapped threat if it can still use
   // them, otherwise to its nearest neighbour that needs one.
   for (let k = 0; k < g.stats.freeExtras; k++) {
@@ -739,17 +761,17 @@ function fireAt(g: Game, th: Threat): boolean {
         }
       }
     }
-    spawnInterceptor(g, target);
+    spawnInterceptor(g, target, from);
   }
   return true;
 }
 
-function spawnInterceptor(g: Game, th: Threat): void {
-  const from = launcherFor(g, th.x, th.y);
+function spawnInterceptor(g: Game, th: Threat, from: Launcher): void {
+  const p = launcherPos(g, from);
   g.interceptors.push({
     id: g.nextId++,
-    x: from.x,
-    y: from.y - 6,
+    x: p.x,
+    y: p.y - 6,
     target: th.id,
     tx: th.x,
     ty: th.y,
@@ -758,22 +780,29 @@ function spawnInterceptor(g: Game, th: Threat): void {
 }
 
 function reload(g: Game, dt: number): void {
+  const rb = g.stats.batteryRack;
   if (g.overdriveT > 0) {
     g.overdriveT -= dt;
     g.ammo = g.stats.rack;
-    g.reloadT = 0;
+    g.batteryAmmo = rb;
+    g.reloadT = g.batteryReloadT = 0;
     return;
   }
-  if (g.ammo >= g.stats.rack) {
-    g.reloadT = 0;
-    return;
-  }
-  g.reloadT += dt;
-  while (g.reloadT >= g.stats.reload && g.ammo < g.stats.rack) {
-    g.reloadT -= g.stats.reload;
-    g.ammo += 1;
-  }
+  // Both racks reload in parallel at the same rate.
+  const refill = (ammo: number, t: number, cap: number): [number, number] => {
+    if (ammo >= cap) return [cap, 0];
+    t += dt;
+    while (t >= g.stats.reload && ammo < cap) {
+      t -= g.stats.reload;
+      ammo += 1;
+    }
+    return [ammo, ammo >= cap ? 0 : t];
+  };
+  [g.ammo, g.reloadT] = refill(g.ammo, g.reloadT, g.stats.rack);
+  [g.batteryAmmo, g.batteryReloadT] = refill(g.batteryAmmo, g.batteryReloadT, rb);
 }
+
+const RETARGET_RANGE = 450;
 
 function updateInterceptors(g: Game, dt: number): void {
   const speed = g.stats.interceptorSpeed;
@@ -784,11 +813,13 @@ function updateInterceptors(g: Game, dt: number): void {
     if (!th && it.target !== null) {
       it.target = null;
       if (g.stats.retarget) {
-        let bd = 260;
+        // Prefer the nearest threat nobody is covering yet; a covered one
+        // counts as if it were further away.
+        let bd = Infinity;
         for (const o of g.threats) {
           if (o.dead) continue;
-          const d = dist(it.x, it.y, o.x, o.y);
-          if (d < bd) {
+          const d = dist(it.x, it.y, o.x, o.y) + (assigned(g, o.id) >= o.hp ? 250 : 0);
+          if (d < bd && d < RETARGET_RANGE) {
             bd = d;
             th = o;
           }
@@ -881,6 +912,7 @@ function collect(g: Game, p: Pickup): void {
   switch (p.kind) {
     case 'ammo':
       g.ammo = g.stats.rack;
+      g.batteryAmmo = g.stats.batteryRack;
       break;
     case 'repair': {
       const hurt = g.ships.filter((s) => s.hp < SHIP.hp).sort((a, b) => a.hp - b.hp)[0];

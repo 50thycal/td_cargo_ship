@@ -47,7 +47,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     id: 'reload',
     name: 'Quick Reload',
     max: 3,
-    levels: ['Reload 18% faster', 'Reload 36% faster', 'Reload 54% faster'],
+    levels: ['Reloads in 18% less time', 'Reloads in 36% less time', 'Reloads in 54% less time'],
     answers: 'Everything',
   },
   blast: {
@@ -75,7 +75,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     id: 'retarget',
     name: 'Auto-Retarget',
     max: 1,
-    levels: ['Interceptors whose target dies find a new one'],
+    levels: ['An interceptor whose target is gone flies on to one nobody is covering'],
     answers: 'Guided',
   },
   ciws: {
@@ -96,7 +96,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     id: 'battery',
     name: 'Shore Battery',
     max: 1,
-    levels: ['A second launch point — taps fire from the nearer one'],
+    levels: ['A second launcher with its own 4-round rack; taps fire from whichever is nearer'],
     answers: 'Range',
   },
   hold: {
@@ -124,7 +124,8 @@ export interface DefenseStats {
   ciwsCooldown: number;
   radarReticle: boolean;
   threatSlow: number;
-  battery: boolean;
+  /** Shore Battery rack size (0 without the card). */
+  batteryRack: number;
   holdToFire: boolean;
 }
 
@@ -143,7 +144,7 @@ export function stats(levels: Levels): DefenseStats {
     ciwsCooldown: [0, 1.1, 0.8, 0.55][ciws],
     radarReticle: lv('radar') >= 1,
     threatSlow: lv('radar') >= 2 ? 0.88 : 1,
-    battery: lv('battery') > 0,
+    batteryRack: lv('battery') > 0 ? 4 : 0,
     holdToFire: lv('hold') > 0,
   };
 }

@@ -6,6 +6,7 @@ import { UPGRADE_ORDER, type UpgradeId } from '../data/upgrades';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import {
+  canFire,
   continueEndless,
   createGame,
   pickUpgrade,
@@ -63,7 +64,7 @@ export class Bot {
       this.lastTap = g.t;
       return;
     }
-    if (g.ammo < 1 && g.overdriveT <= 0) return;
+    if (!canFire(g)) return;
     // Most urgent first: the threat closest to whatever it is aimed at.
     let best: Threat | null = null;
     let bestScore = Infinity;
