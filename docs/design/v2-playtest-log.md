@@ -200,5 +200,8 @@ a slow reactor only a little, because reaction time rather than ammo is what
 limits it. Its real value for a person is shorter interceptor flights on its
 side of the map, which the bot doesn't capture; left as a known modest card.
 Browser: Hold to Fire fired 8 shots from one 2 s press and 0 after release;
-without the card the same hold fired once. Battery and its rack render; with
-the carrier's rack nearly empty, taps fired from the battery.
+without the card the same hold fired once. The battery and its rack render
+(screenshot). That the battery fires from its own rack when nearer, and answers
+a tap over an empty carrier, is covered by a new unit test (an earlier draft of
+this entry claimed the screenshot showed it; it didn't — the battery's rack was
+still full in that frame).

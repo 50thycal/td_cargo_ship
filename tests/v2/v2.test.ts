@@ -358,3 +358,29 @@ describe('station keeping', () => {
     }
   });
 });
+
+describe('shore battery', () => {
+  it('fires from its own rack when it is nearer, and covers for an empty carrier', () => {
+    const g = quietGame();
+    g.phase = 'draft';
+    g.offer = ['battery'];
+    pickUpgrade(g, 'battery');
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    expect(g.batteryAmmo).toBe(4);
+    const b = g.map.battery;
+    // Nearer to the battery: the battery fires and spends its own round.
+    const carrierAmmo = g.ammo;
+    addThreat(g, { x: b.x + 40, y: b.y - 200 });
+    tap(g, b.x + 40, b.y - 200, 30);
+    expect(g.batteryAmmo).toBe(3);
+    expect(g.ammo).toBe(carrierAmmo);
+    expect(g.interceptors[0].x).toBe(b.x);
+    // Carrier dry: a threat right over the carrier is still answered, by the battery.
+    g.ammo = 0;
+    const c = g.map.carrier;
+    addThreat(g, { x: c.x, y: c.y - 150 });
+    expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
+    expect(g.batteryAmmo).toBe(2);
+    expect(g.interceptors[1].x).toBe(b.x);
+  });
+});
