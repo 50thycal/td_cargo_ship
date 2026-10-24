@@ -22,6 +22,12 @@ export const SHIP = {
   slotEase: 1.6,
   /** Points per delivered ship, before the flow multiplier. */
   points: 100,
+  /** Station keeping: bow-to-bow distance a hull holds behind the ship ahead
+   *  in its lane, and the extra distance over which it eases back to speed. */
+  minGap: 66,
+  easeGap: 8,
+  /** Two hulls share a lane when their lane centres are closer than this. */
+  laneMatch: 18,
 } as const;
 
 /** Left-rail flow slider: seconds between ships, and the score multiplier. */
@@ -76,8 +82,13 @@ export const BALLISTIC = {
   /** Peak altitude as a fraction of the shot's ground distance (capped). */
   apexFrac: 0.35,
   apexMax: 260,
+  /** The arc never climbs above this y, so the whole flight stays tappable. */
+  ceiling: 26,
   /** Without radar, the impact reticle shows from this fraction of the flight. */
-  reticleFrom: 0.5,
+  reticleFrom: 0.25,
+  /** Shortest flight (s) at wave speed ×1; it shrinks as waves speed up. Close
+   *  bases would otherwise land a shot faster than a person can react. */
+  minFlight: 2.6,
 } as const;
 
 export const GUIDED = {
@@ -88,6 +99,12 @@ export const GUIDED = {
   /** From this wave on, some guided missiles go for the carrier instead. */
   carrierFromWave: 6,
   carrierShare: 0.3,
+  /** Off the rail slowly: speed ramps from this fraction to full over `boost` s,
+   *  so a launch is seen before it closes. */
+  boostFrom: 0.3,
+  boost: 1,
+  /** Guided missiles take only this share of a wave's speed-up. */
+  waveSpeedShare: 0.5,
 } as const;
 
 export const DRONE = {

@@ -34,7 +34,13 @@ export interface Ripple {
   x: number;
   y: number;
   age: number;
+  /** 'dry': the tap found nothing loaded — drawn red, optionally labelled. */
+  dry?: boolean;
+  label?: string;
 }
+
+export const RIPPLE_LIFE = 0.4;
+export const DRY_LIFE = 0.7;
 
 export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number): void {
   ctx.save();
@@ -44,7 +50,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawLanes(ctx, g);
   drawBases(ctx, g);
   drawCarrier(ctx, g);
-  if (g.stats.battery) drawBattery(ctx, g.map.battery.x, g.map.battery.y);
+  if (g.stats.batteryRack > 0) drawBattery(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t);
   for (const p of g.pickups) drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t);
@@ -61,11 +67,18 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   }
   drawFx(ctx, g);
   for (const r of ripples) {
-    ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - r.age / 0.4)})`;
-    ctx.lineWidth = 2;
+    const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
+    ctx.strokeStyle = r.dry ? `rgba(255,77,61,${0.9 * fade})` : `rgba(255,255,255,${0.5 * fade})`;
+    ctx.lineWidth = r.dry ? 4 : 2;
     ctx.beginPath();
-    ctx.arc(r.x, r.y, 10 + r.age * 70, 0, Math.PI * 2);
+    ctx.arc(r.x, r.y, r.dry ? 26 + r.age * 30 : 10 + r.age * 70, 0, Math.PI * 2);
     ctx.stroke();
+    if (r.label) {
+      ctx.fillStyle = `rgba(255,120,110,${fade})`;
+      ctx.font = 'bold 24px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(r.label, r.x, r.y - 40 - r.age * 20);
+    }
   }
   ctx.restore();
 }
@@ -208,32 +221,45 @@ function drawCarrier(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.fillRect(x - 60, y + B + 8, 120, 6);
   ctx.fillStyle = hpFrac > 0.5 ? '#5ee08a' : hpFrac > 0.25 ? '#f5c542' : C.danger;
   ctx.fillRect(x - 60, y + B + 8, 120 * hpFrac, 6);
-  const rack = g.stats.rack;
+  drawRack(ctx, x, y - B - 8, g.stats.rack, g.ammo, g.reloadT / g.stats.reload, g.overdriveT > 0);
+}
+
+function drawBattery(ctx: CanvasRenderingContext2D, g: Game): void {
+  const { x, y } = g.map.battery;
+  ctx.fillStyle = '#3c454f';
+  ctx.strokeStyle = C.hullEdge;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = C.interceptor;
+  ctx.fillRect(x - 3, y - 24, 6, 16);
+  drawRack(ctx, x, y - 30, g.stats.batteryRack, g.batteryAmmo, g.batteryReloadT / g.stats.reload, g.overdriveT > 0);
+}
+
+/** A row of rack pips centred on (x, y): full, loading (partly filled), empty. */
+function drawRack(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rack: number,
+  ammo: number,
+  loading: number,
+  overdrive: boolean,
+): void {
   const w = 9;
   const gap = 4;
   const total = rack * w + (rack - 1) * gap;
   for (let i = 0; i < rack; i++) {
     const rx = x - total / 2 + i * (w + gap);
-    const full = i < g.ammo;
-    const loading = i === g.ammo ? g.reloadT / g.stats.reload : 0;
+    const full = i < ammo;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(rx, y - B - 22, w, 14);
-    ctx.fillStyle = g.overdriveT > 0 ? '#38bdf8' : full ? C.interceptor : 'rgba(127,233,255,0.35)';
-    const h = full ? 14 : 14 * loading;
-    ctx.fillRect(rx, y - B - 8 - h, w, h);
+    ctx.fillRect(rx, y - 14, w, 14);
+    ctx.fillStyle = overdrive ? '#38bdf8' : full ? C.interceptor : 'rgba(127,233,255,0.35)';
+    const h = full ? 14 : i === ammo ? 14 * loading : 0;
+    ctx.fillRect(rx, y - h, w, h);
   }
-}
-
-function drawBattery(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = '#3c454f';
-  ctx.strokeStyle = C.hullEdge;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(x, y, 16, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = C.interceptor;
-  ctx.fillRect(x - 3, y - 22, 6, 16);
 }
 
 function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number): void {

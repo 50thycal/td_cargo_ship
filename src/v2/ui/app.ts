@@ -3,6 +3,7 @@
 // turns pointer input into `tap()` calls and draws whatever the sim holds.
 
 import {
+  CARRIER,
   DEFAULT_SPEED,
   FLOW_STEPS,
   RULES,
@@ -28,15 +29,15 @@ import {
   type Phase,
 } from '../sim/game';
 import { stepSlider, type StepSlider } from './rail';
-import { drawFrame, type Ripple } from './render';
+import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
 const RAIL_W = 80;
 
 const DEBUT_HINT: Record<ThreatKind, string> = {
-  drone: 'Slow and cheap, and they come in swarms. Tap each one.',
-  ballistic: 'Fast and arcing. The red circle is where it will land.',
-  guided: 'Homes in on a ship and takes two hits. Hit it early.',
+  drone: 'Slow, in swarms. Tap each one.',
+  ballistic: 'Fast arc. The red circle is where it lands.',
+  guided: 'Homes on a ship. Takes two hits.',
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -77,6 +78,10 @@ export class App {
 
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
+  /** Portrait while playing: the field would be a sliver, so time stops and a
+   *  "turn sideways" notice shows until the phone is rotated back. */
+  private portrait = false;
+  private rotateNote = el('div', 'v2-rotate');
   private acc = 0;
   private last = 0;
   private lastPhase: Phase | null = null;
@@ -84,6 +89,12 @@ export class App {
   private shake = 0;
   private bannerT = 0;
   private dpr = 1;
+  /** Adaptive resolution: the canvas starts sharp and steps its pixel density
+   *  down (2 → 1.5 → 1) if frames run slow for a sustained stretch. Playtest
+   *  cycle 6 found the frame cost scales with pixel count, not with the game. */
+  private pixelCap = 2;
+  private frameAvg = 1000 / 60;
+  private lastDrop = 0;
   private scale = 1;
   private offX = 0;
   private offY = 0;
@@ -91,7 +102,8 @@ export class App {
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
-    root.append(this.canvas, this.hud, this.banner, this.leftRail, this.rightRail, this.overlay);
+    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote);
+    this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
     window.addEventListener('resize', () => this.resize());
@@ -150,7 +162,7 @@ export class App {
       (s) => `${SPEED_STEPS[s]}×`,
       (s) => (this.speed = SPEED_STEPS[s]),
     );
-    this.rightRail.append(this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
   }
 
   private toggleFormations(): void {
@@ -213,7 +225,14 @@ export class App {
   private fire(x: number, y: number, quiet = false): void {
     if (!this.game) return;
     const result = tap(this.game, x, y, TAP_RADIUS_PX / this.scale);
-    if (result === 'empty' && !quiet) this.ripples.push({ x, y, age: 0 });
+    if (quiet) return;
+    if (result === 'empty') this.ripples.push({ x, y, age: 0 });
+    if (result === 'dry') {
+      // Nothing loaded: say so under the finger, and point at the rack.
+      const c = this.game.map.carrier;
+      this.ripples.push({ x, y, age: 0, dry: true, label: 'RELOADING' });
+      this.ripples.push({ x: c.x, y: c.y - CARRIER.halfBeam - 15, age: 0, dry: true });
+    }
   }
 
   private toWorld(cx: number, cy: number): { x: number; y: number } | null {
@@ -227,7 +246,9 @@ export class App {
   private resize(): void {
     const w = this.root.clientWidth || window.innerWidth;
     const h = this.root.clientHeight || window.innerHeight;
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.portrait = h > w;
+    this.root.classList.toggle('portrait', this.portrait);
+    this.dpr = Math.min(this.pixelCap, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(w * this.dpr);
     this.canvas.height = Math.round(h * this.dpr);
     this.canvas.style.width = `${w}px`;
@@ -238,16 +259,19 @@ export class App {
     this.offY = (h - VIEW.height * this.scale) / 2;
     this.root.style.setProperty('--map-left', `${this.offX}px`);
     this.root.style.setProperty('--map-width', `${VIEW.width * this.scale}px`);
+    this.placeBanner();
   }
 
   // -------------------------------------------------------------------------
   // Loop
 
   private frame(now: number): void {
-    const real = Math.min(0.1, (now - (this.last || now)) / 1000);
+    const raw = now - (this.last || now);
+    const real = Math.min(0.1, raw / 1000);
     this.last = now;
     const g = this.game;
-    if (g && !this.paused && g.phase === 'wave') {
+    this.adaptResolution(now, raw);
+    if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
       let n = 0;
       while (this.acc >= DT && n < 12) {
@@ -267,12 +291,25 @@ export class App {
       this.renderHud(g);
     }
     for (const r of this.ripples) r.age += real;
-    this.ripples = this.ripples.filter((r) => r.age < 0.4);
+    this.ripples = this.ripples.filter((r) => r.age < (r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
     this.bannerT -= real;
     this.banner.classList.toggle('show', this.bannerT > 0);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  private adaptResolution(now: number, raw: number): void {
+    const playing = this.game?.phase === 'wave' && !this.paused && !this.portrait;
+    if (!playing || raw <= 0 || raw > 100) return;
+    this.frameAvg = this.frameAvg * 0.95 + raw * 0.05;
+    const density = Math.min(this.pixelCap, window.devicePixelRatio || 1);
+    if (this.frameAvg > 22 && density > 1 && now - this.lastDrop > 1500) {
+      this.pixelCap = Math.max(1, density - 0.5);
+      this.lastDrop = now;
+      this.frameAvg = 1000 / 60;
+      this.resize();
+    }
   }
 
   private draw(): void {
@@ -293,7 +330,7 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'wave':
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap incoming threats to intercept them.' : '');
+          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down.' : '');
           break;
         case 'debut':
           this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat]);
@@ -320,6 +357,16 @@ export class App {
   private showBanner(title: string, sub: string): void {
     this.banner.replaceChildren(el('strong', '', title), ...(sub ? [el('span', '', sub)] : []));
     this.bannerT = 2.6;
+    this.placeBanner();
+  }
+
+  /** Pin the banner to the map's callout point (clear of bases and lanes). */
+  private placeBanner(): void {
+    const c = this.game?.map.callout;
+    if (!c) return;
+    this.banner.style.left = `${this.offX + c.x * this.scale}px`;
+    this.banner.style.top = `${this.offY + c.y * this.scale}px`;
+    this.banner.style.maxWidth = `${780 * this.scale}px`;
   }
 
   private renderHud(g: Game): void {
@@ -328,10 +375,9 @@ export class App {
     ).join('');
     const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
     const html =
-      `<span class="v2-hud-cell"><b>WAVE</b> ${waveLabel}</span>` +
-      `<span class="v2-hud-cell"><b>SCORE</b> ${g.score.toLocaleString()}</span>` +
-      `<span class="v2-hud-cell"><b>SAFE</b> ${g.delivered}</span>` +
-      `<span class="v2-hud-cell v2-hud-lost"><b>SUNK</b> ${pips}</span>`;
+      `<span><b>WAVE</b>${waveLabel}</span>` +
+      `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
+      `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>`;
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 
@@ -432,7 +478,7 @@ export class App {
       buttons.push(button('Try again', 'v2-btn primary', () => this.play(g.map.id)));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
-    const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk.`;
+    const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
     const title = won
       ? `${g.map.name} cleared!`
       : g.endless
@@ -457,6 +503,18 @@ export class App {
     this.overlay.replaceChildren();
     delete this.overlay.dataset.screen;
   }
+}
+
+const SUNK_BY: Record<ThreatKind, string> = {
+  drone: 'Drones did the most damage: Wide Warhead or Chain Detonation thin out swarms.',
+  ballistic: 'Ballistics did the most damage: Faster Interceptors and Spread formation help.',
+  guided: 'Guided missiles did the most damage: Twin Launch hits them twice per tap.',
+};
+
+/** One line naming what sank the most ships, and what answers it. */
+function culprit(g: Game): string {
+  const top = (Object.keys(g.sunkBy) as ThreatKind[]).sort((a, b) => g.sunkBy[b] - g.sunkBy[a])[0];
+  return g.sunkBy[top] > 0 ? SUNK_BY[top] : '';
 }
 
 /** Tiny dot diagram of a formation, three ships deep. */

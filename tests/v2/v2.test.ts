@@ -311,3 +311,103 @@ describe('waves and upgrades', () => {
     expect(g.endless).toBe(true);
   });
 });
+
+describe('ballistic arcs stay tappable', () => {
+  it('no ballistic flight ever leaves the top of the screen, on any map', () => {
+    for (const map of MAP_ORDER) {
+      const g = createGame(map, 21, 9);
+      let top = Infinity;
+      for (let i = 0; i < 60 * 60 && g.phase === 'wave'; i++) {
+        step(g, DT);
+        for (const th of g.threats) if (th.kind === 'ballistic') top = Math.min(top, th.y);
+      }
+      expect(top).toBeGreaterThanOrEqual(BALLISTIC.ceiling - 1);
+    }
+  });
+});
+
+describe('station keeping', () => {
+  it('no two hulls ever overlap, through every formation switch at max flow', () => {
+    const overlaps = (g: Game) => {
+      let n = 0;
+      const s = g.ships;
+      for (let i = 0; i < s.length; i++)
+        for (let j = i + 1; j < s.length; j++)
+          if (Math.abs(s[i].x - s[j].x) < 64 && Math.abs(s[i].y - s[j].y) < 18) n++;
+      return n;
+    };
+    const ids = Object.keys(FORMATIONS) as (keyof typeof FORMATIONS)[];
+    for (const map of ['strait', 'gauntlet'] as const) {
+      for (const from of ids) {
+        for (const to of ids) {
+          if (from === to) continue;
+          const g = createGame(map, 4);
+          g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+          setFlow(g, FLOW_STEPS.length - 1);
+          setFormation(g, from);
+          run(g, 30);
+          setFormation(g, to);
+          let worst = 0;
+          for (let i = 0; i < 60 * 8; i++) {
+            step(g, DT);
+            worst = Math.max(worst, overlaps(g));
+          }
+          expect(worst, `${map} ${from} -> ${to}`).toBe(0);
+        }
+      }
+    }
+  });
+});
+
+describe('shore battery', () => {
+  it('fires from its own rack when it is nearer, and covers for an empty carrier', () => {
+    const g = quietGame();
+    g.phase = 'draft';
+    g.offer = ['battery'];
+    pickUpgrade(g, 'battery');
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    expect(g.batteryAmmo).toBe(4);
+    const b = g.map.battery;
+    // Nearer to the battery: the battery fires and spends its own round.
+    const carrierAmmo = g.ammo;
+    addThreat(g, { x: b.x + 40, y: b.y - 200 });
+    tap(g, b.x + 40, b.y - 200, 30);
+    expect(g.batteryAmmo).toBe(3);
+    expect(g.ammo).toBe(carrierAmmo);
+    expect(g.interceptors[0].x).toBe(b.x);
+    // Carrier dry: a threat right over the carrier is still answered, by the battery.
+    g.ammo = 0;
+    const c = g.map.carrier;
+    addThreat(g, { x: c.x, y: c.y - 150 });
+    expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
+    expect(g.batteryAmmo).toBe(2);
+    expect(g.interceptors[1].x).toBe(b.x);
+  });
+});
+
+describe('progression details', () => {
+  it('skipping to a late wave hands over the cards a player would have drafted', () => {
+    const g = createGame('strait', 3, 7);
+    const picked = Object.values(g.levels).reduce((a, b) => a + (b ?? 0), 0);
+    expect(g.wave).toBe(7);
+    expect(picked).toBe(6);
+    expect(g.ammo).toBe(g.stats.rack);
+  });
+
+  it('a scoreless first run is not a "new best", but still records the wave reached', () => {
+    const p: Progress = { unlocked: 1, best: {} };
+    expect(recordResult(p, 'strait', 0, 3, false)).toBe(false);
+    expect(p.best.strait).toEqual({ score: 0, wave: 3 });
+    expect(recordResult(p, 'strait', 500, 2, false)).toBe(true);
+    expect(p.best.strait).toEqual({ score: 500, wave: 3 });
+  });
+
+  it('records which threat sank each ship', () => {
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [{ id: 950, x: 800, y: 470, hp: 1, slot: 0, channel: 0, mult: 1 }];
+    addThreat(g, { kind: 'drone', x: 800, y: 460, speed: 70, target: 950 });
+    step(g, DT);
+    expect(g.sunkBy).toEqual({ drone: 1, ballistic: 0, guided: 0 });
+  });
+});

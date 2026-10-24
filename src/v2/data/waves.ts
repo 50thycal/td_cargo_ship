@@ -15,9 +15,9 @@ export interface WaveSpec {
 }
 
 const TABLE: WaveSpec[] = [
-  { duration: 32, drones: 8, swarm: 4, ballistic: 0, guided: 0, speed: 1.0 },
-  { duration: 38, drones: 12, swarm: 4, ballistic: 0, guided: 0, speed: 1.05 },
-  { duration: 40, drones: 12, swarm: 4, ballistic: 3, guided: 0, speed: 1.1 },
+  { duration: 30, drones: 10, swarm: 3, ballistic: 0, guided: 0, speed: 1.0 },
+  { duration: 36, drones: 14, swarm: 3, ballistic: 0, guided: 0, speed: 1.05 },
+  { duration: 40, drones: 14, swarm: 4, ballistic: 3, guided: 0, speed: 1.1 },
   { duration: 44, drones: 16, swarm: 5, ballistic: 5, guided: 0, speed: 1.15 },
   { duration: 44, drones: 16, swarm: 6, ballistic: 4, guided: 2, speed: 1.2 },
   { duration: 48, drones: 20, swarm: 6, ballistic: 6, guided: 3, speed: 1.25 },
