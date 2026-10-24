@@ -248,3 +248,47 @@ back; the menu still works in portrait. Three new tests.
 | Lose → Try again | fresh game, same map, score 0 |
 | Portrait while playing | notice shown, game time advanced 0.00 s in 1 s; back to landscape: 0.98 s in 1 s |
 | After rotating back | a tap fired; no page errors in the whole session |
+
+### Cycle 6 — Smoothness under load (S6)
+
+**Checks run.** Frame times from `requestAnimationFrame` in Chromium at
+844×390, device pixel ratio 2, in the busiest case: the Island at endless wave
+14, max flow, 3× speed, with an in-page defender firing (a harness hook kept the
+run alive so the wave stayed full). Measured unthrottled and with CDP
+`setCPUThrottlingRate: 4` as a stand-in for a mid-range phone; busy frames vs
+the same scene paused; a CPU profile (dev build, readable names); and frame
+times at DPR 1, 1.5 and 2.
+
+*Caveat: headless Chromium rasterises canvas in software, so absolute numbers
+are pessimistic compared with a phone's GPU canvas. The comparisons within
+this cycle are like-for-like.*
+
+**Problems found.**
+1. My first measurement was invalid: without defending during the warm-up the
+   run had already been lost, so it timed a static result screen. Redone with
+   the run kept alive.
+2. **At 4× throttle the game ran at ~30 fps** (p50 33 ms, 98% of frames over
+   20 ms) — and **a paused frame cost the same as a busy one**, so the game
+   itself wasn't the cost.
+3. **My first fix made it worse.** Baking the water and land into cached
+   offscreen layers (two full-screen `drawImage`s per frame) raised p50 to
+   50 ms. Reverted.
+4. The profile showed JavaScript (sim + draw calls) under ~5% of CPU; 92% was
+   native raster/compositing work. Frame cost tracked pixel count: 60 fps at
+   DPR 1, 16% slow frames at 1.5, 30 fps at 2.
+
+**Change.** Adaptive resolution: the canvas starts at up to 2× density and, if
+the rolling frame time stays above 22 ms while playing, steps down (2 → 1.5 →
+1) at most once every 1.5 s. Devices that keep up never change.
+
+**Retest.**
+
+| Case | Canvas | p50 | p95 | Frames > 20 ms |
+|---|---|---|---|---|
+| Unthrottled, before | 1688×780 | 16.7 ms | 16.8 ms | 0% |
+| 4× throttle, before | 1688×780 | 33.4 ms | 50.1 ms | 98% |
+| 4× throttle, layer cache (reverted) | 1688×780 | 49.9 ms | 50.1 ms | 99% |
+| 4× throttle, adaptive | 844×390 (stepped down) | 16.7 ms | 16.8 ms | 1% |
+| Unthrottled, adaptive | 1688×780 (unchanged) | 16.7 ms | 16.8 ms | 0% |
+
+Full test suite (753) and the V2 browser smoke test pass after the change.

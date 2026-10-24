@@ -88,6 +88,12 @@ export class App {
   private shake = 0;
   private bannerT = 0;
   private dpr = 1;
+  /** Adaptive resolution: the canvas starts sharp and steps its pixel density
+   *  down (2 → 1.5 → 1) if frames run slow for a sustained stretch. Playtest
+   *  cycle 6 found the frame cost scales with pixel count, not with the game. */
+  private pixelCap = 2;
+  private frameAvg = 1000 / 60;
+  private lastDrop = 0;
   private scale = 1;
   private offX = 0;
   private offY = 0;
@@ -234,7 +240,7 @@ export class App {
     const h = this.root.clientHeight || window.innerHeight;
     this.portrait = h > w;
     this.root.classList.toggle('portrait', this.portrait);
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.dpr = Math.min(this.pixelCap, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(w * this.dpr);
     this.canvas.height = Math.round(h * this.dpr);
     this.canvas.style.width = `${w}px`;
@@ -252,9 +258,11 @@ export class App {
   // Loop
 
   private frame(now: number): void {
-    const real = Math.min(0.1, (now - (this.last || now)) / 1000);
+    const raw = now - (this.last || now);
+    const real = Math.min(0.1, raw / 1000);
     this.last = now;
     const g = this.game;
+    this.adaptResolution(now, raw);
     if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
       let n = 0;
@@ -281,6 +289,19 @@ export class App {
     this.banner.classList.toggle('show', this.bannerT > 0);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  private adaptResolution(now: number, raw: number): void {
+    const playing = this.game?.phase === 'wave' && !this.paused && !this.portrait;
+    if (!playing || raw <= 0 || raw > 100) return;
+    this.frameAvg = this.frameAvg * 0.95 + raw * 0.05;
+    const density = Math.min(this.pixelCap, window.devicePixelRatio || 1);
+    if (this.frameAvg > 22 && density > 1 && now - this.lastDrop > 1500) {
+      this.pixelCap = Math.max(1, density - 0.5);
+      this.lastDrop = now;
+      this.frameAvg = 1000 / 60;
+      this.resize();
+    }
   }
 
   private draw(): void {
