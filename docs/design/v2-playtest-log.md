@@ -332,3 +332,33 @@ tapped drone and the ring on the carrier's (empty) rack; still 0 shots fired.
 - Performance was measured in headless Chromium with software canvas and CPU
   throttling, not on a real phone.
 - No sound or haptics.
+
+### Cycle 8 — iPhone 16 Pro, from a real-device report
+
+**Reported.** On an iPhone 16 Pro the battlefield was drawn with its top at
+about half the screen height and its bottom half cut off, the left rail sat
+under the Dynamic Island, and the speed value was hidden behind the slider
+thumb.
+
+**Reproduced.** In Chromium at the iPhone 16 Pro's landscape size (874×402),
+letting the game measure a stale 811 px height and then restoring the real
+layout without a resize event put the map top at 205 px — the same offset as
+the device screenshot. Cause: layout was only recomputed on `resize`, and iOS
+can report the final size after that event during a rotation. Without
+safe-area handling the left rail started at x = 9, inside the island's 62 px
+inset.
+
+**Changes.** Layout is re-checked every frame (a cheap size comparison) as well
+as on `resize`, `orientationchange`, `visualViewport` resize, a ResizeObserver
+and `screen.orientation` change. The layout reads the safe-area insets: the
+full inset on the side the Dynamic Island is on (from the orientation angle),
+a 16 px corner margin on the other side, and the home-indicator inset at the
+bottom; overlays respect them too. The slider leaves room for the thumb's
+overhang above and below the track, and rails compress on short screens.
+
+**Retest.** Late size report → map 0–402 px (was 205–606). With CDP safe-area
+insets (62/62/0/21): island on the left → left rail starts at 66 px, right
+margin 16 px, map 652 px wide; island on the right (angle stubbed to 270, since
+Chromium kept reporting 90) → mirrored. Speed at 0.5× and flow at ×3: no
+thumb/label overlap. Draft cards span 62–858 px. Taps land in both
+orientations. Both checks are now in `npm run e2e:v2`.

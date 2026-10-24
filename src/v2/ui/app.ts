@@ -32,7 +32,9 @@ import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
-const RAIL_W = 80;
+const RAIL_W = 72;
+/** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
+const CORNER_INSET = 16;
 
 const DEBUT_HINT: Record<ThreatKind, string> = {
   drone: 'Slow, in swarms. Tap each one.',
@@ -82,6 +84,9 @@ export class App {
    *  "turn sideways" notice shows until the phone is rotated back. */
   private portrait = false;
   private rotateNote = el('div', 'v2-rotate');
+  /** Reads env(safe-area-inset-*) as pixels (notch / Dynamic Island / corners). */
+  private safeProbe = el('div', 'v2-safe-probe');
+  private layoutKey = '';
   private acc = 0;
   private last = 0;
   private lastPhase: Phase | null = null;
@@ -102,11 +107,19 @@ export class App {
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
-    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote);
+    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
+    // iOS reports the new size late after a rotation, sometimes after the
+    // resize event has already fired — so layout is also re-checked every frame
+    // (see `frame`) and on every signal that the viewport may have changed.
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => this.resize());
+    window.visualViewport?.addEventListener('resize', () => this.resize());
+    new ResizeObserver(() => this.resize()).observe(this.root);
+    // A 180° flip between the two landscapes keeps the size but moves the island.
+    screen.orientation?.addEventListener('change', () => this.resize());
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' && this.game?.phase === 'wave') {
         e.preventDefault();
@@ -243,9 +256,30 @@ export class App {
     return { x, y };
   }
 
+  /** Safe-area insets in CSS px. In landscape, iOS reports the same inset on
+   *  both sides, but only one side has the Dynamic Island; the other only has
+   *  rounded corners, so it gets a small margin instead of the full inset. */
+  private safeInsets(): { l: number; r: number; t: number; b: number } {
+    const cs = getComputedStyle(this.safeProbe);
+    let l = parseFloat(cs.paddingLeft) || 0;
+    let r = parseFloat(cs.paddingRight) || 0;
+    const t = parseFloat(cs.paddingTop) || 0;
+    const b = parseFloat(cs.paddingBottom) || 0;
+    const angle = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
+    // Turned counter-clockwise (90) puts the top of the phone, and the
+    // island, on the left; clockwise (270 / -90) puts it on the right.
+    if (l > CORNER_INSET && r > CORNER_INSET) {
+      if (angle === 90) r = CORNER_INSET;
+      else if (angle === 270 || angle === -90) l = CORNER_INSET;
+    }
+    return { l, r, t, b };
+  }
+
   private resize(): void {
     const w = this.root.clientWidth || window.innerWidth;
     const h = this.root.clientHeight || window.innerHeight;
+    const sa = this.safeInsets();
+    this.layoutKey = `${w}x${h}:${sa.l},${sa.r},${sa.t},${sa.b}`;
     this.portrait = h > w;
     this.root.classList.toggle('portrait', this.portrait);
     this.dpr = Math.min(this.pixelCap, window.devicePixelRatio || 1);
@@ -253,13 +287,25 @@ export class App {
     this.canvas.height = Math.round(h * this.dpr);
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
-    // Reserve the two rails so they never cover the battlefield.
-    this.scale = Math.min((w - RAIL_W * 2) / VIEW.width, h / VIEW.height);
-    this.offX = (w - VIEW.width * this.scale) / 2;
-    this.offY = (h - VIEW.height * this.scale) / 2;
+    // The battlefield sits inside the safe area, with the two rails reserved
+    // beside it so they never cover it (or hide under the island).
+    const availW = w - sa.l - sa.r - RAIL_W * 2;
+    const availH = h - sa.t - sa.b;
+    this.scale = Math.max(0.05, Math.min(availW / VIEW.width, availH / VIEW.height));
+    this.offX = sa.l + RAIL_W + (availW - VIEW.width * this.scale) / 2;
+    this.offY = sa.t + (availH - VIEW.height * this.scale) / 2;
     this.root.style.setProperty('--map-left', `${this.offX}px`);
     this.root.style.setProperty('--map-width', `${VIEW.width * this.scale}px`);
+    this.root.style.setProperty('--safe-l', `${sa.l}px`);
+    this.root.style.setProperty('--safe-r', `${sa.r}px`);
     this.placeBanner();
+  }
+
+  /** Cheap per-frame check that catches a late size report with no event. */
+  private checkLayout(): void {
+    const w = this.root.clientWidth || window.innerWidth;
+    const h = this.root.clientHeight || window.innerHeight;
+    if (!this.layoutKey.startsWith(`${w}x${h}:`)) this.resize();
   }
 
   // -------------------------------------------------------------------------
@@ -269,6 +315,7 @@ export class App {
     const raw = now - (this.last || now);
     const real = Math.min(0.1, raw / 1000);
     this.last = now;
+    this.checkLayout();
     const g = this.game;
     this.adaptResolution(now, raw);
     if (g && !this.paused && !this.portrait && g.phase === 'wave') {

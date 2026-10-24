@@ -132,6 +132,39 @@ try {
   const phoneShots = await phone.evaluate(() => window.__v2.game().shots);
   if (phoneShots === 0) fail('touch taps never fired');
 
+  // iPhone 16 Pro landscape (874×402, Dynamic Island inset 62 px each side,
+  // home indicator 21 px). The rails must clear the island, and a late size
+  // report (iOS after a rotation) must not leave the battlefield half off screen.
+  const iphone = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+  iphone.on('pageerror', (err) => fail(`iphone page error: ${err.message}`));
+  const cdp = await iphone.context().newCDPSession(iphone);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { left: 62, right: 62, top: 0, bottom: 21 } });
+  await iphone.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
+  await iphone.tap('[data-map="strait"]');
+  await iphone.waitForSelector('.playing');
+  await iphone.evaluate(() => {
+    const a = document.getElementById('app');
+    a.style.bottom = 'auto';
+    a.style.height = '811px';
+    window.dispatchEvent(new Event('resize'));
+  });
+  await iphone.waitForTimeout(150);
+  await iphone.evaluate(() => {
+    const a = document.getElementById('app');
+    a.style.bottom = '';
+    a.style.height = '';
+  });
+  await iphone.waitForTimeout(400);
+  const lay = await iphone.evaluate(() => {
+    const tl = window.__v2.toClient(0, 0);
+    const br = window.__v2.toClient(1600, 900);
+    const rail = document.querySelector('.v2-formation-btn').getBoundingClientRect();
+    return { top: tl.y, bottom: br.y, railLeft: rail.left, h: innerHeight };
+  });
+  if (lay.top < 0 || lay.bottom > lay.h + 0.5) fail(`battlefield off screen after a late resize: ${JSON.stringify(lay)}`);
+  if (lay.railLeft < 62) fail(`left rail under the Dynamic Island: starts at ${lay.railLeft}px`);
+  await iphone.screenshot({ path: `${SHOT_DIR}/08-iphone16pro.png` });
+
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');
 } finally {
   await browser.close();
