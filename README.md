@@ -9,6 +9,21 @@ wreckage your escorts can recover and turn into technology.
 This is the desktop-testable MVP. It is built to be ported to iPhone/App Store
 later (see [docs/IOS_PORT.md](docs/IOS_PORT.md)).
 
+## Straitwatch V2 (bare-bones rebuild)
+
+A stripped-down version lives beside the classic game: cargo ships, a
+stationary carrier, and enemy drones / ballistic / guided missiles you tap to
+intercept. Three maps, 10 waves each, pick-1-of-3 upgrade cards, a left-rail
+ship-flow slider with formations and a right-rail game-speed slider.
+
+```bash
+npm run dev:v2          # opens /v2.html
+npm run v2:sweep -- 16  # bot balance sweep across maps and skill levels
+npm run e2e:v2          # browser smoke test (needs `npm run preview -- --port 4173`)
+```
+
+Design, rules and where to tune: [docs/design/v2-plan.md](docs/design/v2-plan.md).
+
 ## Play it
 
 ```bash

@@ -367,6 +367,7 @@ export function menuScreen(opts: {
     h('button', { className: 'primary', text: 'Begin Regional Run', onClick: opts.onNewRun }),
     h('button', { text: continueLabel, disabled: !saved, onClick: opts.onContinue }),
     h('button', { text: 'Settings', onClick: opts.onSettings }),
+    h('button', { text: 'Play Straitwatch V2', onClick: () => location.assign('./v2.html') }),
   ]);
   const regionsCleared = REGION_ORDER.filter((id) => (profile.records[id]?.completions ?? 0) > 0).length;
   const children: HTMLElement[] = [

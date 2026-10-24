@@ -2,7 +2,7 @@
   "name": "straitwatch",
   "private": true,
   "version": "0.1.0",
-  "description": "Straitwatch \u2014 adaptive convoy-defense game MVP (predator vs prey arms race)",
+  "description": "Straitwatch — adaptive convoy-defense game MVP (predator vs prey arms race)",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,10 @@
     "playtest": "vite-node tools/playtest/run.ts --",
     "ablate": "vite-node tools/playtest/ablate.ts --",
     "fidelity": "vite-node tools/playtest/fidelity.ts --",
-    "e2e:workshop": "node e2e/workshop.mjs"
+    "e2e:workshop": "node e2e/workshop.mjs",
+    "dev:v2": "vite --open /v2.html",
+    "v2:sweep": "vite-node tools/v2/sweep.ts --",
+    "e2e:v2": "node e2e/v2.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",
