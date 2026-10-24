@@ -282,3 +282,41 @@ Casual players will mostly stall from map 3 on; later maps are for players
 who have learned the threats, with upgrades, Resupply and endless runs as the
 way in. The average bot's rates are not monotonic (Archipelago 94% vs Harbor
 78%) — the spammer, which is closer to how the user plays, is the one tuned.
+
+### Cycle 6 — Nothing regresses (P6)
+
+**Checks run.**
+- New test: a late Archipelago run (motherships and mini-drones confirmed in
+  play) recorded through the recorder replays to identical steps, score, kills,
+  losses-by-cause and wave history — children spawned mid-flight don't break
+  determinism.
+- `npm run e2e:v2` on a fresh build, including the iPhone 16 Pro checks (late
+  resize, Dynamic Island inset): passes. V1 browser smoke test: passes.
+- Frame times in Chromium at 874×402, DPR 2, Archipelago endless wave 14 with a
+  defender firing: unthrottled 60 fps at full 1688×780 (p95 16.7 ms, 0% slow
+  frames). At 4× CPU throttle adaptive resolution stepped to 844×390.
+- Republished the artifact build (version 2, same URL, old bundle removed,
+  `db` declaration carried forward); listed its files and read the `playtests`
+  collection (reachable, empty — no runs yet).
+
+**Problem investigated.** The first throttled run showed 11% slow frames
+(round 1: 1–3%). Re-running twice each: Archipelago 1% and 0%, Island 6% and
+4%. The 11% was run-to-run noise under software rendering and throttling, not
+a regression from the new threats or maps. Nothing changed.
+
+## Round 2 summary
+
+| Goal | Status |
+|---|---|
+| P1 Playtests reach Claude | Built and verified end to end except the first real write from the user's phone (the artifact runtime can't be driven from here) |
+| P2 Map 1 harder | Rack 5, 1.5 s reload, busier early waves; casual bot on the Strait 92% → ~60–70% clear, ~4 ships lost |
+| P3 Three-slot loadout | Built; no single plan dominates; Resupply keeps drafts live; Hold to Fire no longer a must-pick |
+| P4 New threats | Supersonic, heavy, cluster, mothership — each telegraphed and countered; lethality tuned so none dominates |
+| P5 New maps | Harbor Mouth and the Archipelago; difficulty falls monotonically across five maps for the spammer bot |
+| P6 No regressions | Suite, browser flows, iPhone layout, frame rate and replay determinism all hold |
+
+**Known limits.** All balance numbers come from bots; the spammer profile is a
+guess at how a person taps, to be replaced by the user's real logs. The
+all-ammo build stays weak. Casual players will mostly stall from map 3. The
+artifact viewer's chrome on a phone may take some screen space (untested
+here).

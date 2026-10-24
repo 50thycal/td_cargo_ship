@@ -32,12 +32,26 @@ threat (shown on the card as "vs …").
 | Threat | Behaviour | Weakness | Answered by | Debuts |
 |---|---|---|---|---|
 | Attack drone (Shahed-style) | Slow, weaving, swarms of 4–12, 1 dmg | Ammo drain | Wide Warhead, Chain Detonation, Bigger Rack, CIWS | Wave 1 |
-| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Early-Warning Radar | Wave 3 |
-| Guided missile | Homes, re-targets, 2 HP, 2 dmg; some go for the carrier from wave 6 | Must be hit early or twice | Twin Launch, Auto-Retarget | Wave 5 |
+| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Early-Warning Radar | Wave 2 |
+| Guided missile | Homes, re-targets, 2 HP, 2 dmg; some go for the carrier from wave 6 | Must be hit early or twice | Twin Launch, Auto-Retarget | Wave 4 |
+| Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Hold to Fire on the line | Gauntlet, Island, maps 4–5 |
+| Heavy cruise missile | Slow, 4 HP, 6 dmg + 1 splash | Easy to leave too late | Twin Launch, Hold to Fire | Gauntlet, Island, maps 4–5 |
+| Cluster missile | Splits into 4 bomblets near its target | Must die before the split | Faster Interceptors; Wide Warhead / Chain for bomblets | Island, maps 4–5 |
+| Drone mothership | Drifts at the carrier dropping mini-drones, 5 HP | Kill the source | Twin Launch, CIWS | Maps 4–5 |
+
+Each map adds its own threat types on top of the shared wave table
+(`extras` in `maps.ts`); bomblets and mini-drones are blamed on their parent
+on the loss screen.
 
 Threat speed rises each wave (×1.0 → ×1.5 by wave 10, capped ×1.8 in endless).
 
 ## Maps (clear 10 waves to unlock the next; endless after)
+
+Maps 4 and 5 (added in playtest round 2): **Harbor Mouth** — the channel
+funnels into a harbour under enemy headlands, so pressure peaks right before
+delivery; **The Archipelago** — enemy islets with gaps, motherships, a long
+reach to the west end.
+
 
 1. **The Strait** — enemy on the north shore, carrier near your shore.
 2. **The Gauntlet** — enemy on both shores; the carrier holds mid-channel and
@@ -64,6 +78,10 @@ damaged ship, else the carrier), overdrive (5 s of free instant fire), EMP
 
 ## Upgrade cards
 
+A loadout holds **three different cards**. Each draft deals three (favouring
+cards you hold); once three are held, new cards show as SLOTS FULL, and if
+nothing dealt can be taken, **Resupply** (repair and refill, no slot) appears.
+
 Faster Interceptors, Bigger Rack, Quick Reload, Wide Warhead, Chain
 Detonation, Twin Launch, Auto-Retarget, Carrier CIWS, Early-Warning Radar,
 Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
@@ -78,6 +96,17 @@ Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
 | Maps (land, bases, carrier, channels, per-map threat scale) | `src/v2/data/maps.ts` |
 | Cards | `src/v2/data/upgrades.ts` |
 | Formations | `src/v2/data/formations.ts` |
+
+## Playtest logs
+
+Every run is recorded as its seed plus every input (`src/v2/sim/playlog.ts`)
+and replays exactly. The last ten stay on the device. When the game is played
+as the Claude artifact, each log is also written to the artifact's `playtests`
+database, where Claude reads it directly; the Vercel build offers "Download
+log" on the result screen instead. `npm run v2:replay -- log.json` re-runs a
+log, confirms it lands on the same score and losses, and prints a per-wave
+breakdown. `node tools/v2/artifact-page.mjs <dir>` turns a build into the
+artifact page.
 
 ## Testing
 

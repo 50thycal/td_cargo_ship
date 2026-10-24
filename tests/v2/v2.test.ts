@@ -590,3 +590,34 @@ describe('new threat types', () => {
     expect(s.queue.every((l) => ['drone', 'ballistic', 'guided'].includes(l.kind))).toBe(true);
   });
 });
+
+describe('replay with the new threats', () => {
+  it('a late Archipelago run (motherships, clusters, heavies) replays exactly', async () => {
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('archipelago', 91, 8);
+    const rec = new Recorder(g, {
+      build: 'test',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      firstWave: 8,
+      device: { w: 874, h: 402, dpr: 3, touch: true, ua: 'test' },
+    });
+    const kinds = new Set<string>();
+    for (let i = 0; i < 60 * 150 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
+      if (g.phase === 'draft') rec.pick(g.offer.find((id) => canTake(g.levels, id))!);
+      for (const t of g.threats) kinds.add(t.kind);
+      if (i % 12 === 0 && g.threats.length) {
+        const t = g.threats[(i / 12) % g.threats.length];
+        rec.tap(t.x + 2, t.y - 1, 45);
+      }
+      step(g, DT);
+    }
+    const log = rec.finish(g.phase === 'lost' ? 'lost' : g.phase === 'won' ? 'won' : 'quit');
+    expect([...kinds]).toEqual(expect.arrayContaining(['mothership', 'minidrone']));
+    const r = replay(JSON.parse(JSON.stringify(log)));
+    expect(r.steps).toBe(g.steps);
+    expect(r.score).toBe(g.score);
+    expect(r.kills).toEqual(g.kills);
+    expect(r.sunkBy).toEqual(g.sunkBy);
+    expect(r.history).toEqual(g.history);
+  });
+});
