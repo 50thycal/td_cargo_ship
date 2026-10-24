@@ -384,3 +384,30 @@ describe('shore battery', () => {
     expect(g.interceptors[1].x).toBe(b.x);
   });
 });
+
+describe('progression details', () => {
+  it('skipping to a late wave hands over the cards a player would have drafted', () => {
+    const g = createGame('strait', 3, 7);
+    const picked = Object.values(g.levels).reduce((a, b) => a + (b ?? 0), 0);
+    expect(g.wave).toBe(7);
+    expect(picked).toBe(6);
+    expect(g.ammo).toBe(g.stats.rack);
+  });
+
+  it('a scoreless first run is not a "new best", but still records the wave reached', () => {
+    const p: Progress = { unlocked: 1, best: {} };
+    expect(recordResult(p, 'strait', 0, 3, false)).toBe(false);
+    expect(p.best.strait).toEqual({ score: 0, wave: 3 });
+    expect(recordResult(p, 'strait', 500, 2, false)).toBe(true);
+    expect(p.best.strait).toEqual({ score: 500, wave: 3 });
+  });
+
+  it('records which threat sank each ship', () => {
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [{ id: 950, x: 800, y: 470, hp: 1, slot: 0, channel: 0, mult: 1 }];
+    addThreat(g, { kind: 'drone', x: 800, y: 460, speed: 70, target: 950 });
+    step(g, DT);
+    expect(g.sunkBy).toEqual({ drone: 1, ballistic: 0, guided: 0 });
+  });
+});

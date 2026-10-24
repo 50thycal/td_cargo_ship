@@ -152,6 +152,8 @@ export interface Game {
   delivered: number;
   lost: number;
   kills: Record<ThreatKind, number>;
+  /** Ships sunk, by what finished them — the loss screen names the culprit. */
+  sunkBy: Record<ThreatKind, number>;
   shots: number;
   seen: Set<ThreatKind>;
   /** True once wave RULES.wavesToClear is beaten (map unlocked). */
@@ -207,12 +209,25 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     delivered: 0,
     lost: 0,
     kills: { drone: 0, ballistic: 0, guided: 0 },
+    sunkBy: { drone: 0, ballistic: 0, guided: 0 },
     shots: 0,
     seen: new Set(),
     cleared: false,
     endless: false,
     nextId: 1,
   };
+  // Skipping ahead (playtesting a late wave) also hands over the cards a
+  // player would have drafted by then, so the wave plays as it really would.
+  for (let w = 1; w < Math.floor(firstWave); w++) {
+    g.wave = w;
+    openDraft(g);
+    if (g.phase === 'draft') {
+      g.levels[g.offer[0]] = (g.levels[g.offer[0]] ?? 0) + 1;
+      g.stats = stats(g.levels);
+    }
+  }
+  g.ammo = g.stats.rack;
+  g.batteryAmmo = g.stats.batteryRack;
   g.wave = Math.max(0, Math.floor(firstWave) - 1);
   startWave(g);
   return g;
@@ -484,11 +499,12 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
   return g.ships.filter((s) => s.x > 30 && s.x < maxX);
 }
 
-function damageShip(g: Game, s: Ship, amount: number): void {
+function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind): void {
   s.hp -= amount;
   if (s.hp > 0) return;
   g.ships = g.ships.filter((o) => o !== s);
   g.lost += 1;
+  g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
   g.events.push({ kind: 'shipLost', lost: g.lost });
 }
@@ -653,7 +669,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       if (s && dist(th.x, th.y, s.x, s.y) < SHIP.hitRadius) {
         th.dead = true;
         addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
-        damageShip(g, s, dmg);
+        damageShip(g, s, dmg, th.kind);
       }
     }
   }
@@ -666,7 +682,7 @@ function impactBallistic(g: Game, th: Threat): void {
   const dmg = THREATS.ballistic.damage;
   addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: BALLISTIC.splash });
   for (const s of [...g.ships]) {
-    if (dist(s.x, s.y, th.ix, th.iy) <= BALLISTIC.splash) damageShip(g, s, dmg);
+    if (dist(s.x, s.y, th.ix, th.iy) <= BALLISTIC.splash) damageShip(g, s, dmg, 'ballistic');
   }
   if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg);
 }

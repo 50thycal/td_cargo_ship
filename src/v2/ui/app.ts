@@ -77,6 +77,10 @@ export class App {
 
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
+  /** Portrait while playing: the field would be a sliver, so time stops and a
+   *  "turn sideways" notice shows until the phone is rotated back. */
+  private portrait = false;
+  private rotateNote = el('div', 'v2-rotate');
   private acc = 0;
   private last = 0;
   private lastPhase: Phase | null = null;
@@ -91,7 +95,8 @@ export class App {
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
-    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay);
+    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote);
+    this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
     window.addEventListener('resize', () => this.resize());
@@ -227,6 +232,8 @@ export class App {
   private resize(): void {
     const w = this.root.clientWidth || window.innerWidth;
     const h = this.root.clientHeight || window.innerHeight;
+    this.portrait = h > w;
+    this.root.classList.toggle('portrait', this.portrait);
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(w * this.dpr);
     this.canvas.height = Math.round(h * this.dpr);
@@ -248,7 +255,7 @@ export class App {
     const real = Math.min(0.1, (now - (this.last || now)) / 1000);
     this.last = now;
     const g = this.game;
-    if (g && !this.paused && g.phase === 'wave') {
+    if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
       let n = 0;
       while (this.acc >= DT && n < 12) {
@@ -442,7 +449,7 @@ export class App {
       buttons.push(button('Try again', 'v2-btn primary', () => this.play(g.map.id)));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
-    const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk.`;
+    const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
     const title = won
       ? `${g.map.name} cleared!`
       : g.endless
@@ -467,6 +474,18 @@ export class App {
     this.overlay.replaceChildren();
     delete this.overlay.dataset.screen;
   }
+}
+
+const SUNK_BY: Record<ThreatKind, string> = {
+  drone: 'Drones did the most damage: Wide Warhead or Chain Detonation thin out swarms.',
+  ballistic: 'Ballistics did the most damage: Faster Interceptors and Spread formation help.',
+  guided: 'Guided missiles did the most damage: Twin Launch hits them twice per tap.',
+};
+
+/** One line naming what sank the most ships, and what answers it. */
+function culprit(g: Game): string {
+  const top = (Object.keys(g.sunkBy) as ThreatKind[]).sort((a, b) => g.sunkBy[b] - g.sunkBy[a])[0];
+  return g.sunkBy[top] > 0 ? SUNK_BY[top] : '';
 }
 
 /** Tiny dot diagram of a formation, three ships deep. */

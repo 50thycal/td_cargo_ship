@@ -41,9 +41,10 @@ export function saveProgress(p: Progress): void {
 /** Fold a finished game into progress. Returns true if it set a new best. */
 export function recordResult(p: Progress, map: MapId, score: number, wave: number, cleared: boolean): boolean {
   const prev = p.best[map];
-  const better = !prev || score > prev.score;
-  if (better) p.best[map] = { score, wave: Math.max(wave, prev?.wave ?? 0) };
-  else if (prev) prev.wave = Math.max(prev.wave, wave);
+  // A best has to beat something: a first run that scored nothing isn't one.
+  const better = score > (prev?.score ?? 0);
+  if (better || !prev) p.best[map] = { score: Math.max(score, prev?.score ?? 0), wave: Math.max(wave, prev?.wave ?? 0) };
+  else prev.wave = Math.max(prev.wave, wave);
   if (cleared) p.unlocked = Math.max(p.unlocked, Math.min(MAP_ORDER.length, MAP_ORDER.indexOf(map) + 2));
   saveProgress(p);
   return better;

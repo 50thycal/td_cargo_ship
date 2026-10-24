@@ -205,3 +205,46 @@ without the card the same hold fired once. The battery and its rack render
 a tap over an empty carrier, is covered by a new unit test (an earlier draft of
 this entry claimed the screenshot showed it; it didn't — the battery's rack was
 still full in that frame).
+
+### Cycle 5 — Progression, flows and "what just happened" (S5, S7)
+
+**Checks run.** One Chromium session at 844×390 with touch, fresh storage:
+menu lock state → start the Strait at wave 10 and defend it with real taps at
+3× → result screen → Keep going (endless) → draft → wave 11 → lose on purpose,
+screenshotting the moment a ship sinks → loss screen → reload (persistence) →
+Gauntlet → pause → Quit to menu → Gauntlet again → lose → Try again → rotate to
+portrait and back mid-game → confirm a tap still fires.
+
+**Problems found.**
+1. **`?wave=N` started late waves with zero upgrades**, so the first attempt
+   lost wave 10 outright — not what a player who drafted nine cards would face.
+   The playtest shortcut was misleading.
+2. **"score · new best!" on a 0-point run** — any first result counted as a
+   best.
+3. **The loss screen didn't say why**: "6 ships sunk." repeated the stat below
+   it and gave the player nothing to act on.
+4. **Portrait was unplayable**: rotating mid-game shrank the battlefield to a
+   ~460×260 strip with the game still running.
+
+**Changes.** Skipping ahead auto-drafts the N−1 cards a player would have
+picked. A best has to beat a previous score (the wave reached is still
+recorded). The sim tracks which threat sank each ship, and the loss screen
+names the worst one and the card that answers it ("Drones did the most damage:
+Wide Warhead or Chain Detonation thin out swarms."). In portrait during play,
+time stops behind a "Turn your phone sideways" notice and resumes on rotating
+back; the menu still works in portrait. Three new tests.
+
+**Retest (same browser script, after the fixes).**
+
+| Step | Result |
+|---|---|
+| Menu, fresh storage | Gauntlet locked |
+| Strait from wave 10 at 3× | cleared; "The Strait cleared! · The Gauntlet unlocked." |
+| Keep going → draft → wave 11 | HUD shows WAVE 11 (no "/10") |
+| Ship sinking (screenshot) | orange burst on the hull, HUD flashes red, first SUNK pip filled |
+| Endless loss | "Endless run over: wave 11 · 6 ships sunk. Drones did the most damage: …" |
+| Reload | Gauntlet unlocked; Strait card shows "Best 3,120 · wave 11" |
+| Pause → Quit to menu | menu shown, rails hidden |
+| Lose → Try again | fresh game, same map, score 0 |
+| Portrait while playing | notice shown, game time advanced 0.00 s in 1 s; back to landscape: 0.98 s in 1 s |
+| After rotating back | a tap fired; no page errors in the whole session |
