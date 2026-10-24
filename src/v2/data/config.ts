@@ -63,7 +63,24 @@ export const INTERCEPTOR = {
   maxLife: 4,
 } as const;
 
-export type ThreatKind = 'drone' | 'ballistic' | 'guided';
+export type ThreatKind =
+  | 'drone'
+  | 'ballistic'
+  | 'guided'
+  | 'supersonic'
+  | 'heavy'
+  | 'cluster'
+  | 'mothership'
+  // Children: spawned by a cluster or a mothership, never launched by a base.
+  | 'bomblet'
+  | 'minidrone';
+
+/** Threats a base launches (children excluded), in the order they debut. */
+export const PRIMARY_KINDS: ThreatKind[] = ['drone', 'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'mothership'];
+
+export function zeroCounts(): Record<ThreatKind, number> {
+  return { drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, bomblet: 0, minidrone: 0 };
+}
 
 export const THREATS: Record<
   ThreatKind,
@@ -75,7 +92,48 @@ export const THREATS: Record<
   ballistic: { speed: 380, hp: 1, damage: 2, dropChance: 0.2, label: 'Ballistic missile' },
   /** Homing missile: re-targets if its ship goes down, takes two hits. */
   guided: { speed: 150, hp: 2, damage: 2, dropChance: 0.3, label: 'Guided missile' },
+  /** Locks on visibly, then crosses the screen in about a second. */
+  supersonic: { speed: 430, hp: 1, damage: 2, dropChance: 0.25, label: 'Supersonic missile' },
+  /** Slow, armoured, big splash: needs four hits. */
+  heavy: { speed: 55, hp: 4, damage: 6, dropChance: 0.6, label: 'Heavy cruise missile' },
+  /** Splits into bomblets close to its target unless it is hit first. */
+  cluster: { speed: 170, hp: 1, damage: 0, dropChance: 0.25, label: 'Cluster missile' },
+  /** Drifts at the carrier dropping mini-drones until it is shot down. */
+  mothership: { speed: 38, hp: 5, damage: 4, dropChance: 0.7, label: 'Drone mothership' },
+  bomblet: { speed: 260, hp: 1, damage: 1, dropChance: 0.02, label: 'Bomblet' },
+  minidrone: { speed: 85, hp: 1, damage: 1, dropChance: 0.03, label: 'Mini-drone' },
 };
+
+export const SUPERSONIC = {
+  /** Seconds it sits on the rail with its lock line showing before launch. */
+  arming: 1.1,
+  turnRate: 0.9,
+  /** Share of a wave's speed-up it takes (it is already fast). */
+  waveSpeedShare: 0.3,
+} as const;
+
+export const HEAVY = {
+  turnRate: 1.2,
+  splash: 55,
+  splashDamage: 1,
+  waveSpeedShare: 0.5,
+} as const;
+
+export const CLUSTER = {
+  turnRate: 2,
+  /** It splits this far from its target. */
+  splitRange: 200,
+  bomblets: 4,
+  /** Bomblets look for ships within this range of the split. */
+  spread: 300,
+  bombletTurn: 5,
+} as const;
+
+export const MOTHERSHIP = {
+  /** Seconds between mini-drones. */
+  spawnEvery: 2.6,
+  waveSpeedShare: 0.5,
+} as const;
 
 export const BALLISTIC = {
   splash: 50,

@@ -4,6 +4,15 @@
 
 import { VIEW, type ThreatKind } from './config';
 
+/** A threat type a map adds on top of the shared wave table: `count` of them
+ *  from wave `from`, growing by `growth` per wave after that. */
+export interface ThreatExtra {
+  kind: ThreatKind;
+  from: number;
+  count: number;
+  growth: number;
+}
+
 export type MapId = 'strait' | 'gauntlet' | 'island';
 
 export interface Point {
@@ -41,6 +50,8 @@ export interface MapDef {
   channels: Channel[];
   /** Multiplies every wave's threat counts — the maps get harder in order. */
   threatScale: number;
+  /** Threat types this map adds to the shared wave table. */
+  extras: ThreatExtra[];
   /** Where wave/new-threat banners sit: open water or friendly shore, clear of
    *  every launch base and shipping lane, so a banner never hides a launch. */
   callout: Point;
@@ -105,6 +116,7 @@ export const MAPS: Record<MapId, MapDef> = {
     battery: { x: 230, y: 835 },
     channels: [{ y: 470, halfWidth: 150 }],
     threatScale: 1.15,
+    extras: [],
     callout: { x: 800, y: 845 },
   },
   gauntlet: {
@@ -118,9 +130,9 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     bases: [
       { x: 300, y: 100, kinds: ['drone'] },
-      { x: 1100, y: 95, kinds: ['drone', 'ballistic'] },
+      { x: 1100, y: 95, kinds: ['drone', 'ballistic', 'supersonic'] },
       { x: 520, y: 815, kinds: ['drone', 'guided'] },
-      { x: 1300, y: 815, kinds: ['ballistic', 'guided'] },
+      { x: 1300, y: 815, kinds: ['ballistic', 'guided', 'heavy'] },
     ],
     carrier: { x: 800, y: 450 },
     battery: { x: 120, y: 450 },
@@ -128,7 +140,11 @@ export const MAPS: Record<MapId, MapDef> = {
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
     ],
-    threatScale: 1.35,
+    threatScale: 1.2,
+    extras: [
+      { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
+      { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
+    ],
     callout: { x: 430, y: 450 },
   },
   island: {
@@ -141,16 +157,21 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'friendly', points: shore('bottom', 805, 10, 2.9) },
     ],
     bases: [
-      { x: 540, y: 362, kinds: ['drone', 'guided'] },
+      { x: 540, y: 362, kinds: ['drone', 'guided', 'cluster'] },
       { x: 1060, y: 362, kinds: ['drone', 'ballistic'] },
-      { x: 300, y: 70, kinds: ['ballistic'] },
+      { x: 300, y: 70, kinds: ['ballistic', 'supersonic', 'heavy'] },
       { x: 800, y: 62, kinds: ['drone', 'ballistic'] },
-      { x: 1300, y: 70, kinds: ['guided'] },
+      { x: 1300, y: 70, kinds: ['guided', 'supersonic', 'cluster'] },
     ],
     carrier: { x: 800, y: 760 },
     battery: { x: 300, y: 845 },
     channels: [{ y: 600, halfWidth: 100 }],
-    threatScale: 1.55,
+    threatScale: 1.2,
+    extras: [
+      { kind: 'supersonic', from: 4, count: 1, growth: 0.17 },
+      { kind: 'heavy', from: 5, count: 1, growth: 0.2 },
+      { kind: 'cluster', from: 7, count: 1, growth: 0.34 },
+    ],
     callout: { x: 800, y: 855 },
   },
 };

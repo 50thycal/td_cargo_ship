@@ -33,10 +33,14 @@ const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
 
-const DEBUT_HINT: Record<ThreatKind, string> = {
+const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one.',
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
+  supersonic: 'Watch for the red lock line, then tap fast.',
+  heavy: 'Slow but armoured. Needs four hits.',
+  cluster: 'Splits near the ships. Hit it early.',
+  mothership: 'Drops mini-drones. Kill the source.',
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -405,7 +409,7 @@ export class App {
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down.' : '');
           break;
         case 'debut':
-          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat]);
+          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
           break;
         case 'shipLost':
           this.shake = 10;
@@ -574,7 +578,7 @@ export class App {
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
       `<span><b>${g.lost}</b>ships sunk</span>` +
-      `<span><b>${g.kills.drone + g.kills.ballistic + g.kills.guided}</b>shot down</span>`;
+      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>`;
     const buttons: HTMLElement[] = [];
     if (won) {
       buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
@@ -628,16 +632,20 @@ export class App {
   }
 }
 
-const SUNK_BY: Record<ThreatKind, string> = {
+const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Wide Warhead or Chain Detonation thin out swarms.',
   ballistic: 'Ballistics did the most damage: Faster Interceptors and Spread formation help.',
   guided: 'Guided missiles did the most damage: Twin Launch hits them twice per tap.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Faster Interceptors help.',
+  heavy: 'Heavy missiles did the most damage: Twin Launch and Hold to Fire stack hits fast.',
+  cluster: 'Cluster bomblets did the most damage: hit the missile before it splits.',
+  mothership: 'Mothership drones did the most damage: take the mothership down first.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */
 function culprit(g: Game): string {
   const top = (Object.keys(g.sunkBy) as ThreatKind[]).sort((a, b) => g.sunkBy[b] - g.sunkBy[a])[0];
-  return g.sunkBy[top] > 0 ? SUNK_BY[top] : '';
+  return g.sunkBy[top] > 0 ? (SUNK_BY[top] ?? '') : '';
 }
 
 /** Tiny dot diagram of a formation, three ships deep. */

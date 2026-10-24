@@ -172,3 +172,59 @@ locked cards solid, titles aligned; Resupply repaired the carrier to 12.
 Full sweep with the cap (24 seeds): casual bot Strait 71% clear, 4.0 ships lost
 (the target for a run like the user's); Gauntlet 38%; Island 8%. Spammer
 79% / 75% / 38%.
+
+### Cycle 4 — New threat types (P4)
+
+**Built.** Four threats, each with its own telegraph and counter, introduced by
+map so the Strait still teaches the basics:
+
+| Threat | Behaviour | Telegraph | Answered by | Where |
+|---|---|---|---|---|
+| Supersonic missile (user's idea) | ~1 s on the rail, then 430 u/s, 2 damage | its base glows and a flashing red lock line marks the target while it arms | Faster Interceptors; Hold to Fire on the line | Gauntlet w7+, Island w4+ |
+| Heavy cruise missile (user's idea) | 55 u/s, 4 hits, 6 damage + 1 splash | large body, HP bar | Twin Launch, Hold to Fire | Gauntlet w5+, Island w5+ |
+| Cluster missile | splits into 4 bomblets 200 u from its target | pulsing yellow ring | hit it early; Wide Warhead / Chain for bomblets | Island w7+ |
+| Drone mothership | drifts at the carrier, a mini-drone every 2.6 s, 5 hits | large green delta, HP bar | kill the source; CIWS near the carrier | new maps (cycle 5) |
+
+Bomblets and mini-drones are blamed on their parent, so the loss screen's
+advice names the cluster or the mothership. Each has a debut hint and a
+loss-screen line. Five new tests (arming delay, heavy hits and splash, cluster
+split and blame, mothership spawning, map extras on schedule).
+
+**Checks run.** Per-threat telemetry over 24 seeds on the Gauntlet and Island
+(launched per run, median warning time, ships sunk, share shot down) for the
+casual and spammer bots; full sweeps after each change; Chromium screenshots at
+874×402 of a supersonic arming, a heavy, a cluster, a split, and a mothership.
+
+**Problems found.**
+1. **The new threats made maps 2–3 unwinnable**: casual 0% / 0%, spammer
+   21% / 4%. Heavies sank ~1.7–2.0 ships a run on the Gauntlet (splash 2 wrecked
+   neighbours); supersonics sank about one ship per three launched there and 2
+   a run on the Island (3 damage one-shot a healthy ship); and the extras
+   stacked on the threat scales raised in cycle 2.
+2. Heavies were still the Gauntlet's top killer after a first pass: bots (and
+   likely people) rank a slow missile as not urgent and then can't land 5 hits
+   in time.
+3. The Island stayed near-unwinnable even with a lower threat scale — its close
+   bases and ~9 supersonics a run were the cause.
+4. Screenshots: HP pips were tiny dashes at phone size; bomblets were hard to
+   see.
+
+**Changes.** Supersonic damage 3 → 2; heavy splash 2 → 1 and HP 5 → 4; cluster
+splits at 200 (was 240); slower growth for every extra; Gauntlet heavies from
+wave 5; Island supersonics from wave 4; threat scales Gauntlet 1.2, Island 1.2.
+Bigger outlined HP bars, larger heavy body, outlined bomblets.
+
+**Retest (32 seeds).**
+
+| Map | Spammer clear | Casual clear |
+|---|---|---|
+| Strait | 75% | 59% |
+| Gauntlet | 50% (24 seeds, after the heavy change) | 21% |
+| Island | 38% | 6% |
+
+Warning times for the new threats: supersonic 2.2–2.7 s (including the lock
+line), heavy ~10–12 s, cluster ~2.8 s to its split. No single new threat
+dominates losses now; ballistics from close shores remain the main killer on
+maps 2–3, which is those maps' character. Screenshots after the fixes: lock
+line and base glow unmistakable, heavy HP bar readable, bomblets clear as they
+fan out. Full suite: 758 tests pass.

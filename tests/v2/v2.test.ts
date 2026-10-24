@@ -56,6 +56,7 @@ function addThreat(g: Game, over: Partial<Threat>): Threat {
     iy: 0,
     dur: 1,
     apex: 0,
+    spawnT: 0,
     ...over,
   };
   g.threats.push(th);
@@ -411,7 +412,8 @@ describe('progression details', () => {
     g.ships = [{ id: 950, x: 800, y: 470, hp: 1, slot: 0, channel: 0, mult: 1 }];
     addThreat(g, { kind: 'drone', x: 800, y: 460, speed: 70, target: 950 });
     step(g, DT);
-    expect(g.sunkBy).toEqual({ drone: 1, ballistic: 0, guided: 0 });
+    expect(g.sunkBy.drone).toBe(1);
+    expect(Object.values(g.sunkBy).reduce((a, b) => a + b, 0)).toBe(1);
   });
 });
 
@@ -503,5 +505,88 @@ describe('three-slot loadout', () => {
     // 3 of 11 cards owned: about two drafts in three show one of them.
     expect(upgradable / N).toBeGreaterThan(0.55);
     expect(upgradable / N).toBeLessThan(0.8);
+  });
+});
+
+describe('new threat types', () => {
+  const shipAt = (g: Game, id: number, x: number, y: number) => {
+    const s = { id, x, y, hp: SHIP.hp, slot: 0, channel: 0, mult: 1 };
+    g.ships.push(s);
+    return s;
+  };
+
+  it('a supersonic sits on its rail while its lock line shows, then is fast', async () => {
+    const { SUPERSONIC, THREATS } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [];
+    shipAt(g, 700, 900, 470);
+    const th = addThreat(g, { kind: 'supersonic', x: 800, y: 100, speed: THREATS.supersonic.speed, target: 700 });
+    run(g, SUPERSONIC.arming * 0.8);
+    expect(Math.hypot(th.x - 800, th.y - 100)).toBeLessThan(1);
+    run(g, SUPERSONIC.arming * 0.4 + 0.3);
+    expect(Math.hypot(th.x - 800, th.y - 100)).toBeGreaterThan(80);
+  });
+
+  it('a heavy missile takes four hits and its splash hurts the ships around its target', async () => {
+    const { HEAVY } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    const th = addThreat(g, { kind: 'heavy', hp: 4, x: 800, y: 300, speed: 0 });
+    for (let k = 0; k < 3; k++) {
+      tap(g, 800, 300, 30);
+      run(g, 1.2);
+    }
+    expect(th.dead).toBe(false);
+    expect(th.hp).toBe(1);
+    // Now let one through onto a pair of ships.
+    const g2 = quietGame();
+    g2.spawnT = 999;
+    g2.ships = [];
+    const a = shipAt(g2, 801, 800, 470);
+    const b = shipAt(g2, 802, 800 + HEAVY.splash - 10, 470);
+    addThreat(g2, { kind: 'heavy', hp: 5, x: 800, y: 455, speed: 55, target: 801 });
+    run(g2, 0.5);
+    expect(g2.ships.includes(a)).toBe(false);
+    expect(b.hp).toBe(SHIP.hp - HEAVY.splashDamage);
+    expect(g2.sunkBy.heavy).toBe(1);
+  });
+
+  it('a cluster splits into bomblets near its target; the bomblets are blamed on it', async () => {
+    const { CLUSTER } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [];
+    for (let k = 0; k < 3; k++) shipAt(g, 900 + k, 760 + k * 70, 470);
+    for (const s of g.ships) s.hp = 1;
+    addThreat(g, { kind: 'cluster', x: 800, y: 470 - CLUSTER.splitRange - 40, speed: 170, target: 900 });
+    run(g, 0.5);
+    expect(g.threats.filter((t) => t.kind === 'bomblet')).toHaveLength(CLUSTER.bomblets);
+    expect(g.threats.every((t) => t.kind !== 'cluster')).toBe(true);
+    run(g, 3);
+    expect(g.sunkBy.cluster).toBeGreaterThan(0);
+    expect(g.sunkBy.bomblet).toBe(0);
+  });
+
+  it('a mothership drops mini-drones on a timer until it is shot down', async () => {
+    const { MOTHERSHIP } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    const ms = addThreat(g, { kind: 'mothership', hp: 5, x: 200, y: 200, speed: 38, spawnT: MOTHERSHIP.spawnEvery });
+    run(g, MOTHERSHIP.spawnEvery * 2 + 0.1);
+    expect(g.threats.filter((t) => t.kind === 'minidrone' && t.parent === 'mothership')).toHaveLength(2);
+    ms.hp = 1;
+    tap(g, ms.x, ms.y, 40);
+    run(g, 1.5);
+    expect(ms.dead).toBe(true);
+    const before = g.threats.filter((t) => t.kind === 'minidrone').length + g.kills.minidrone;
+    run(g, MOTHERSHIP.spawnEvery * 2);
+    expect(g.threats.filter((t) => t.kind === 'minidrone').length + g.kills.minidrone).toBeLessThanOrEqual(before);
+  });
+
+  it('map extras launch on schedule: the Island fields supersonics from wave 4', () => {
+    expect(createGame('island', 4, 3).queue.some((l) => l.kind === 'supersonic')).toBe(false);
+    const g = createGame('island', 4, 4);
+    expect(g.queue.some((l) => l.kind === 'supersonic')).toBe(true);
+    const s = createGame('strait', 4, 9);
+    expect(s.queue.every((l) => ['drone', 'ballistic', 'guided'].includes(l.kind))).toBe(true);
   });
 });

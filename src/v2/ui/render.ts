@@ -1,7 +1,7 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, PICKUPS, SHIP, VIEW, type PickupKind } from '../data/config';
+import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, VIEW, type PickupKind, type ThreatKind } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import type { Landmass } from '../data/maps';
 import { CARRIER_TARGET, reticleVisible, type Game, type Threat } from '../sim/game';
@@ -136,6 +136,16 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.setLineDash([]);
 }
 
+const BASE_GLYPH: Partial<Record<ThreatKind, string>> = {
+  drone: C.drone,
+  ballistic: C.flame,
+  guided: C.danger,
+  supersonic: '#ff8af0',
+  heavy: '#c9a26b',
+  cluster: '#ffd24a',
+  mothership: '#9fd0a8',
+};
+
 function drawBases(ctx: CanvasRenderingContext2D, g: Game): void {
   for (const b of g.map.bases) {
     ctx.save();
@@ -150,7 +160,7 @@ function drawBases(ctx: CanvasRenderingContext2D, g: Game): void {
     const live = b.kinds.filter((k) => g.seen.has(k) || k === 'drone');
     live.forEach((k, i) => {
       const x = (i - (live.length - 1) / 2) * 13;
-      ctx.fillStyle = k === 'drone' ? C.drone : k === 'ballistic' ? C.flame : C.danger;
+      ctx.fillStyle = BASE_GLYPH[k] ?? C.danger;
       if (k === 'drone') {
         ctx.beginPath();
         ctx.moveTo(x, -6);
@@ -331,6 +341,46 @@ function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat)
 
 function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const heading = Math.atan2(th.vy, th.vx) || th.heading;
+  switch (th.kind) {
+    case 'supersonic':
+      return drawSupersonic(ctx, g, th, heading);
+    case 'heavy':
+      missile(ctx, th.x, th.y, heading, 56, 15, '#5d5a52', '#c9a26b');
+      return hpPips(ctx, th.x, th.y - 30, th.hp);
+    case 'cluster': {
+      const pulse = 0.5 + 0.5 * Math.sin(g.t * 9);
+      ctx.strokeStyle = `rgba(255,210,74,${0.35 + 0.4 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, 24, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      missile(ctx, th.x, th.y, heading, 28, 8, '#ffd24a', C.danger);
+      return;
+    }
+    case 'bomblet':
+      ctx.strokeStyle = 'rgba(255,180,80,0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(th.x, th.y);
+      ctx.lineTo(th.x - Math.cos(heading) * 16, th.y - Math.sin(heading) * 16);
+      ctx.stroke();
+      ctx.fillStyle = '#ffb44f';
+      ctx.strokeStyle = '#1b1b1b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      return;
+    case 'mothership':
+      deltaWing(ctx, th.x, th.y, heading, 2, '#9fd0a8');
+      return hpPips(ctx, th.x, th.y - 40, th.hp);
+    case 'minidrone':
+      deltaWing(ctx, th.x, th.y, heading, 0.7, '#cfe8d2');
+      return;
+  }
   if (th.kind === 'ballistic') {
     // Smoke trail sampled back along the arc.
     ctx.strokeStyle = 'rgba(230,220,200,0.35)';
@@ -373,12 +423,17 @@ function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
     return;
   }
   // Shahed-style delta wing, with a shadow on the water below it.
+  deltaWing(ctx, th.x, th.y, heading, 1, C.drone);
+}
+
+function deltaWing(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fill: string): void {
   ctx.save();
-  ctx.translate(th.x, th.y);
+  ctx.translate(x, y);
   ctx.rotate(heading);
-  for (const [dx, dy, fill] of [
+  ctx.scale(k, k);
+  for (const [dx, dy, f] of [
     [7, 12, 'rgba(0,0,0,0.35)'],
-    [0, 0, C.drone],
+    [0, 0, fill],
   ] as const) {
     ctx.beginPath();
     ctx.moveTo(18 + dx, dy);
@@ -386,15 +441,57 @@ function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
     ctx.lineTo(-8 + dx, dy);
     ctx.lineTo(-13 + dx, 16 + dy);
     ctx.closePath();
-    ctx.fillStyle = fill;
+    ctx.fillStyle = f;
     ctx.fill();
   }
   ctx.strokeStyle = '#1b1b1b';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 / k;
   ctx.stroke();
   ctx.fillStyle = '#1b1b1b';
   ctx.fillRect(-9, -2, 14, 4);
   ctx.restore();
+}
+
+/** Remaining hits, as small pips over an armoured threat. */
+function hpPips(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number): void {
+  const w = 12;
+  const gap = 4;
+  const total = hp * w + (hp - 1) * gap;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(x - total / 2 - 3, y - 3, total + 6, 13);
+  ctx.fillStyle = '#ff8a7a';
+  for (let i = 0; i < hp; i++) ctx.fillRect(x - total / 2 + i * (w + gap), y, w, 7);
+}
+
+function drawSupersonic(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
+  if (th.age < SUPERSONIC.arming) {
+    // Locking on: the base glows and a flashing line marks where it will go.
+    const target = th.target === CARRIER_TARGET ? g.map.carrier : g.ships.find((s) => s.id === th.target);
+    const flash = Math.floor(g.t * 8) % 2 === 0;
+    ctx.fillStyle = `rgba(255,138,240,${0.25 + 0.25 * (th.age / SUPERSONIC.arming)})`;
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, 30, 0, Math.PI * 2);
+    ctx.fill();
+    if (target) {
+      ctx.strokeStyle = flash ? 'rgba(255,77,61,0.85)' : 'rgba(255,77,61,0.35)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(th.x, th.y);
+      ctx.lineTo(target.x, target.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    missile(ctx, th.x, th.y, th.heading, 30, 5, '#f4f1e8', '#ff8af0');
+    return;
+  }
+  ctx.strokeStyle = 'rgba(255,138,240,0.45)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(th.x, th.y);
+  ctx.lineTo(th.x - Math.cos(heading) * 90, th.y - Math.sin(heading) * 90);
+  ctx.stroke();
+  missile(ctx, th.x, th.y, heading, 34, 5, '#f4f1e8', '#ff8af0');
 }
 
 function missile(
