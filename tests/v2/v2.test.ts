@@ -325,3 +325,36 @@ describe('ballistic arcs stay tappable', () => {
     }
   });
 });
+
+describe('station keeping', () => {
+  it('no two hulls ever overlap, through every formation switch at max flow', () => {
+    const overlaps = (g: Game) => {
+      let n = 0;
+      const s = g.ships;
+      for (let i = 0; i < s.length; i++)
+        for (let j = i + 1; j < s.length; j++)
+          if (Math.abs(s[i].x - s[j].x) < 64 && Math.abs(s[i].y - s[j].y) < 18) n++;
+      return n;
+    };
+    const ids = Object.keys(FORMATIONS) as (keyof typeof FORMATIONS)[];
+    for (const map of ['strait', 'gauntlet'] as const) {
+      for (const from of ids) {
+        for (const to of ids) {
+          if (from === to) continue;
+          const g = createGame(map, 4);
+          g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+          setFlow(g, FLOW_STEPS.length - 1);
+          setFormation(g, from);
+          run(g, 30);
+          setFormation(g, to);
+          let worst = 0;
+          for (let i = 0; i < 60 * 8; i++) {
+            step(g, DT);
+            worst = Math.max(worst, overlaps(g));
+          }
+          expect(worst, `${map} ${from} -> ${to}`).toBe(0);
+        }
+      }
+    }
+  });
+});

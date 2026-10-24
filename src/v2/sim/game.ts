@@ -272,11 +272,22 @@ export function setFlow(g: Game, flow: number): void {
 export function setFormation(g: Game, id: FormationId): void {
   if (id === g.formation) return;
   g.formation = id;
-  const n = FORMATIONS[id].offsets.length;
+  const offsets = FORMATIONS[id].offsets;
   // Re-slot every hull, front of the convoy first, so the change is visible
-  // right away; the ships glide over to their new lanes.
+  // right away; the ships glide over to their new lanes. Ships sailing abreast
+  // are re-slotted as a row that keeps its top-to-bottom order, so no hull is
+  // sent across another's bow.
   const order = [...g.ships].sort((a, b) => b.x - a.x);
-  order.forEach((s, i) => (s.slot = i % n));
+  let next = 0;
+  for (let i = 0; i < order.length; ) {
+    let j = i + 1;
+    while (j < order.length && order[i].x - order[j].x < SHIP.minGap / 2) j++;
+    const row = order.slice(i, j).sort((a, b) => a.y - b.y);
+    const slots = row.map((_, k) => (next + k) % offsets.length).sort((a, b) => offsets[a] - offsets[b]);
+    row.forEach((s, k) => (s.slot = slots[k]));
+    next += row.length;
+    i = j;
+  }
   g.spawnCount = 0;
 }
 
@@ -402,7 +413,15 @@ function spawnShips(g: Game, dt: number): void {
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
-  const channel = g.channelCursor++ % g.map.channels.length;
+  const channel = g.channelCursor % g.map.channels.length;
+  // Never drop a hull on top of one still waiting at the entry: hold the spawn
+  // (it retries next tick) until the entry is clear.
+  const ch = g.map.channels[channel];
+  const entryBusy = g.ships.some(
+    (s) => s.x < -40 + SHIP.minGap + SHIP.easeGap && Math.abs(s.y - ch.y) <= ch.halfWidth + SHIP.laneMatch,
+  );
+  if (entryBusy) return;
+  g.channelCursor++;
   for (let i = 0; i < f.group; i++) {
     const slot = f.group > 1 ? i : g.spawnCount++ % f.offsets.length;
     const ship: Ship = {
@@ -422,9 +441,27 @@ function spawnShips(g: Game, dt: number): void {
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
-  for (const s of g.ships) {
-    s.x += SHIP.speed * dt;
-    s.y += (slotY(g, s) - s.y) * ease;
+  // Keep station on the rails: a hull eases off when the one ahead in its lane
+  // is too close. This is what turns two ships abreast into a single file when
+  // a formation change merges their lanes, instead of stacking them.
+  const order = [...g.ships].sort((a, b) => b.x - a.x || a.id - b.id);
+  const lane = order.map((s) => slotY(g, s));
+  for (let i = 0; i < order.length; i++) {
+    const s = order[i];
+    let gap = Infinity;
+    for (let j = 0; j < i; j++) {
+      const o = order[j];
+      if (Math.abs(lane[j] - lane[i]) < SHIP.laneMatch || Math.abs(o.y - s.y) < SHIP.laneMatch) {
+        gap = Math.min(gap, o.x - s.x);
+      }
+    }
+    const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
+    s.x += SHIP.speed * slow * dt;
+    // Only move across into the new lane once that stretch of it is empty.
+    const clear = order.every(
+      (o, j) => j === i || Math.abs(o.x - s.x) >= SHIP.minGap || Math.abs(o.y - lane[i]) >= SHIP.laneMatch,
+    );
+    if (clear) s.y += (lane[i] - s.y) * ease;
   }
   const arrived = g.ships.filter((s) => s.x > VIEW.width + 40);
   for (const s of arrived) {

@@ -22,6 +22,12 @@ export const SHIP = {
   slotEase: 1.6,
   /** Points per delivered ship, before the flow multiplier. */
   points: 100,
+  /** Station keeping: bow-to-bow distance a hull holds behind the ship ahead
+   *  in its lane, and the extra distance over which it eases back to speed. */
+  minGap: 66,
+  easeGap: 8,
+  /** Two hulls share a lane when their lane centres are closer than this. */
+  laneMatch: 18,
 } as const;
 
 /** Left-rail flow slider: seconds between ships, and the score multiplier. */

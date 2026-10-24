@@ -107,3 +107,46 @@ Casual losses are near zero for waves 1–3 and climb from wave 5 onward on ever
 map, which is the escalation we want. The average bot (0.6 s reactions, 8%
 misses) still clears every map — it never gets distracted, so real players
 will do worse; their playtests should set the final numbers.
+
+### Cycle 3 — Do the controls do what they say? (S3)
+
+**Checks run.** A sim script switched between every pair of formations (12
+switches) at maximum flow on the Strait and the Gauntlet, counting overlapping
+hulls before, during and 8 s after the switch. Throughput (ships per minute)
+measured at every flow step in every formation. In Chromium at 844×390 with
+touch: each speed step timed against the wall clock, pause via button and
+Space, Resume, the flow slider to max, the formation popup, and screenshots
+through a Pairs → Column switch.
+
+**Problems found.**
+1. **Formation changes stacked ships on top of each other — permanently.**
+   Box → Column left 18 overlapping hull pairs; Pairs → Column 8; Box → Pairs 6.
+   Ships launched abreast were re-slotted into one lane at the same x, and
+   nothing on the rails could separate them.
+2. **Lane changes crossed hulls.** Re-slotting by x alone sent the bottom ship
+   of a pair (7 px ahead from spawn jitter) to the top lane, straight across its
+   neighbour.
+3. **Spawn backlog.** At max flow in Column the follower only reached full speed
+   at a 96 px gap while ships spawned every 76 px, so a queue built off-screen
+   and new spawns appeared on top of waiting ships (caught by the new
+   regression test, not by the on-screen-only script).
+
+**Changes.** Ships now keep station on the rails: a hull eases off when the
+ship ahead in its lane is inside 66–74 px, and only moves across into a new
+lane once that stretch of lane is empty. Re-slotting treats ships abreast as a
+row and keeps their top-to-bottom order. A spawn waits until the entry is
+clear. New test: zero overlaps through all 12 switches at max flow on two maps.
+
+**Retest.**
+
+| Check | Result |
+|---|---|
+| Overlaps during/after every switch (both maps) | 0 / 0 (was up to 18 / 18) |
+| Throughput vs target, all flows × formations | on target; max flow Column/Spread 30.0 vs 31.6 per min (entry hold) |
+| Speed slider 0.5× / 1× / 2× / 3× | measured 0.49 / 1.00 / 2.01 / 3.01 game-s per real-s |
+| Pause button, Space, Resume | game time frozen; resumes |
+| Formation popup | opens, applies, closes on pick |
+
+Screenshots of Pairs → Column show ships holding their lane for a moment, then
+falling into a clean single file; at max flow the merged file bunches briefly
+near the entry and spreads out again, which reads as traffic rather than a bug.
