@@ -7,7 +7,23 @@
   --accent: #7fe9ff;
   --danger: #ff4d3d;
   --gold: #f5c542;
-  --rail-w: 80px;
+  --rail-w: 72px;
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-r: env(safe-area-inset-right, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: env(safe-area-inset-left, 0px);
+}
+
+/* Measures the safe-area insets for the layout code (never visible). */
+.v2-safe-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l);
 }
 
 * {
@@ -44,8 +60,8 @@ body {
 
 .v2-rail {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: var(--sa-t);
+  bottom: var(--sa-b);
   width: var(--rail-w);
   display: none;
   flex-direction: column;
@@ -87,7 +103,13 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  /* Room for the thumb, which overhangs the track by half its height at
+   * either end — otherwise it covers the label above or the value below. */
   padding-top: 16px;
+}
+
+.v2-slider .v2-track {
+  margin-bottom: 12px;
 }
 
 .v2-track {
@@ -334,7 +356,7 @@ body {
   align-items: center;
   justify-content: center;
   background: rgb(4 8 11 / 0.72);
-  padding: 12px;
+  padding: max(12px, var(--sa-t)) max(12px, var(--safe-r, 0px)) max(12px, var(--sa-b)) max(12px, var(--safe-l, 0px));
   z-index: 10;
 }
 
@@ -517,7 +539,17 @@ body {
     font-size: 10px;
   }
   .v2-track {
-    height: clamp(90px, 36vh, 200px);
+    height: clamp(70px, 30vh, 170px);
+  }
+  .v2-rail {
+    gap: 3px;
+  }
+  .v2-formation-btn,
+  .v2-pause {
+    min-height: 40px;
+  }
+  .v2-rail-hint {
+    display: none;
   }
 }
 
