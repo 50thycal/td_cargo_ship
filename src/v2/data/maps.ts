@@ -41,6 +41,9 @@ export interface MapDef {
   channels: Channel[];
   /** Multiplies every wave's threat counts — the maps get harder in order. */
   threatScale: number;
+  /** Where wave/new-threat banners sit: open water or friendly shore, clear of
+   *  every launch base and shipping lane, so a banner never hides a launch. */
+  callout: Point;
 }
 
 const W = VIEW.width;
@@ -102,6 +105,7 @@ export const MAPS: Record<MapId, MapDef> = {
     battery: { x: 230, y: 835 },
     channels: [{ y: 470, halfWidth: 150 }],
     threatScale: 1,
+    callout: { x: 800, y: 845 },
   },
   gauntlet: {
     id: 'gauntlet',
@@ -124,7 +128,8 @@ export const MAPS: Record<MapId, MapDef> = {
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
     ],
-    threatScale: 1.1,
+    threatScale: 1.2,
+    callout: { x: 430, y: 450 },
   },
   island: {
     id: 'island',
@@ -145,7 +150,8 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 800, y: 760 },
     battery: { x: 300, y: 845 },
     channels: [{ y: 600, halfWidth: 100 }],
-    threatScale: 1.2,
+    threatScale: 1.4,
+    callout: { x: 800, y: 855 },
   },
 };
 

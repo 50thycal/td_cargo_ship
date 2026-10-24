@@ -34,9 +34,9 @@ const DT = 1 / 60;
 const RAIL_W = 80;
 
 const DEBUT_HINT: Record<ThreatKind, string> = {
-  drone: 'Slow and cheap, and they come in swarms. Tap each one.',
-  ballistic: 'Fast and arcing. The red circle is where it will land.',
-  guided: 'Homes in on a ship and takes two hits. Hit it early.',
+  drone: 'Slow, in swarms. Tap each one.',
+  ballistic: 'Fast arc. The red circle is where it lands.',
+  guided: 'Homes on a ship. Takes two hits.',
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -91,7 +91,7 @@ export class App {
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
-    root.append(this.canvas, this.hud, this.banner, this.leftRail, this.rightRail, this.overlay);
+    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay);
     this.buildRails();
     this.bindInput();
     window.addEventListener('resize', () => this.resize());
@@ -150,7 +150,7 @@ export class App {
       (s) => `${SPEED_STEPS[s]}×`,
       (s) => (this.speed = SPEED_STEPS[s]),
     );
-    this.rightRail.append(this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
   }
 
   private toggleFormations(): void {
@@ -238,6 +238,7 @@ export class App {
     this.offY = (h - VIEW.height * this.scale) / 2;
     this.root.style.setProperty('--map-left', `${this.offX}px`);
     this.root.style.setProperty('--map-width', `${VIEW.width * this.scale}px`);
+    this.placeBanner();
   }
 
   // -------------------------------------------------------------------------
@@ -293,7 +294,7 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'wave':
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap incoming threats to intercept them.' : '');
+          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down.' : '');
           break;
         case 'debut':
           this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat]);
@@ -320,6 +321,16 @@ export class App {
   private showBanner(title: string, sub: string): void {
     this.banner.replaceChildren(el('strong', '', title), ...(sub ? [el('span', '', sub)] : []));
     this.bannerT = 2.6;
+    this.placeBanner();
+  }
+
+  /** Pin the banner to the map's callout point (clear of bases and lanes). */
+  private placeBanner(): void {
+    const c = this.game?.map.callout;
+    if (!c) return;
+    this.banner.style.left = `${this.offX + c.x * this.scale}px`;
+    this.banner.style.top = `${this.offY + c.y * this.scale}px`;
+    this.banner.style.maxWidth = `${780 * this.scale}px`;
   }
 
   private renderHud(g: Game): void {
@@ -328,10 +339,9 @@ export class App {
     ).join('');
     const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
     const html =
-      `<span class="v2-hud-cell"><b>WAVE</b> ${waveLabel}</span>` +
-      `<span class="v2-hud-cell"><b>SCORE</b> ${g.score.toLocaleString()}</span>` +
-      `<span class="v2-hud-cell"><b>SAFE</b> ${g.delivered}</span>` +
-      `<span class="v2-hud-cell v2-hud-lost"><b>SUNK</b> ${pips}</span>`;
+      `<span><b>WAVE</b>${waveLabel}</span>` +
+      `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
+      `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>`;
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 

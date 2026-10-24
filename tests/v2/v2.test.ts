@@ -311,3 +311,17 @@ describe('waves and upgrades', () => {
     expect(g.endless).toBe(true);
   });
 });
+
+describe('ballistic arcs stay tappable', () => {
+  it('no ballistic flight ever leaves the top of the screen, on any map', () => {
+    for (const map of MAP_ORDER) {
+      const g = createGame(map, 21, 9);
+      let top = Infinity;
+      for (let i = 0; i < 60 * 60 && g.phase === 'wave'; i++) {
+        step(g, DT);
+        for (const th of g.threats) if (th.kind === 'ballistic') top = Math.min(top, th.y);
+      }
+      expect(top).toBeGreaterThanOrEqual(BALLISTIC.ceiling - 1);
+    }
+  });
+});

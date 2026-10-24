@@ -4,6 +4,7 @@
 
 import { UPGRADE_ORDER, type UpgradeId } from '../data/upgrades';
 import type { MapId } from '../data/maps';
+import { makeRng, type RNG } from '../../sim/rng';
 import {
   continueEndless,
   createGame,
@@ -20,21 +21,30 @@ export interface BotSkill {
   reaction: number;
   /** Minimum seconds between taps. */
   tapGap: number;
+  /** Share of taps that miss (finger off target). Measured on a phone in
+   *  playtest cycle 1: ~8% with careful aim, ~20% when sloppy. */
+  missRate?: number;
   /** Card preference, first = most wanted. */
   prefer?: UpgradeId[];
 }
 
 export const SKILLS: Record<string, BotSkill> = {
   sharp: { reaction: 0.35, tapGap: 0.18 },
-  average: { reaction: 0.6, tapGap: 0.3 },
-  casual: { reaction: 1.0, tapGap: 0.5 },
+  average: { reaction: 0.6, tapGap: 0.3, missRate: 0.08 },
+  casual: { reaction: 1.0, tapGap: 0.5, missRate: 0.2 },
 };
 
 export class Bot {
   private seenAt = new Map<number, number>();
   private lastTap = -Infinity;
+  private rng: RNG;
 
-  constructor(private skill: BotSkill) {}
+  constructor(
+    private skill: BotSkill,
+    seed = 1,
+  ) {
+    this.rng = makeRng(seed ^ 0x5eed);
+  }
 
   act(g: Game): void {
     if (g.phase === 'draft') {
@@ -68,7 +78,9 @@ export class Bot {
       }
     }
     if (best) {
-      tap(g, best.x, best.y, 6);
+      // A miss lands well clear of the target: nothing fires, the moment is lost.
+      const miss = this.rng.chance(this.skill.missRate ?? 0);
+      tap(g, best.x + (miss ? 120 : 0), best.y + (miss ? 120 : 0), 6);
       this.lastTap = g.t;
     }
   }
@@ -100,7 +112,7 @@ export function runBot(
 ): BotRun {
   const g = createGame(map, seed);
   if (opts.flow !== undefined) g.flow = opts.flow;
-  const bot = new Bot(skill);
+  const bot = new Bot(skill, seed);
   const dt = opts.dt ?? 1 / 30;
   for (let i = 0; i < 60 * 60 * 30; i++) {
     bot.act(g);

@@ -223,9 +223,10 @@ function startWave(g: Game): void {
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
-  // Launches of each kind are spread evenly across the wave, with jitter.
+  // Launches of each kind are spread evenly across the wave. Jitter stays in
+  // the middle half of each slot so two slots never leave a long dead gap.
   const spread = (n: number, each: (at: number) => void) => {
-    for (let k = 0; k < n; k++) each(lead + (spec.duration * (k + rng.next())) / n);
+    for (let k = 0; k < n; k++) each(lead + (spec.duration * (k + 0.25 + 0.5 * rng.next())) / n);
   };
 
   // Drones fly in swarms: one base, a staggered ripple of launches.
@@ -480,7 +481,10 @@ function launch(g: Game, l: Launch): void {
     vx: 0,
     vy: 0,
     hp: def.hp,
-    speed: def.speed * g.waveSpeed * g.stats.threatSlow,
+    speed:
+      def.speed *
+      (l.kind === 'guided' ? 1 + (g.waveSpeed - 1) * GUIDED.waveSpeedShare : g.waveSpeed) *
+      g.stats.threatSlow,
     heading: 0,
     target: CARRIER_TARGET,
     age: 0,
@@ -517,8 +521,28 @@ function aimBallistic(g: Game, th: Threat): void {
   }
   th.ix = Math.min(VIEW.width - 20, ix);
   th.iy = t.y;
-  th.dur = Math.max(1.4, dur);
+  th.dur = Math.max(BALLISTIC.minFlight / g.waveSpeed, dur);
   th.apex = Math.min(BALLISTIC.apexMax, BALLISTIC.apexFrac * dist(th.sx, th.sy, th.ix, th.iy));
+  // Keep the top of the arc on screen: a missile you can't see can't be tapped.
+  let lo = 0;
+  let hi = th.apex;
+  for (let k = 0; k < 20 && arcTop(th, hi) < BALLISTIC.ceiling; k++) {
+    const mid = (lo + hi) / 2;
+    if (arcTop(th, mid) < BALLISTIC.ceiling) hi = mid;
+    else lo = mid;
+    if (hi - lo < 1) hi = lo;
+  }
+  th.apex = hi;
+}
+
+/** Highest (smallest y) point of a ballistic arc with the given apex. */
+function arcTop(th: Threat, apex: number): number {
+  let top = Math.min(th.sy, th.iy);
+  for (let i = 1; i < 32; i++) {
+    const p = i / 32;
+    top = Math.min(top, th.sy + (th.iy - th.sy) * p - 4 * apex * p * (1 - p));
+  }
+  return top;
 }
 
 function targetPos(g: Game, th: Threat): Point {
@@ -568,8 +592,12 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const turn = (GUIDED.turnRate + GUIDED.terminalTurn * close) * dt;
       th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
-    th.x += Math.cos(th.heading) * th.speed * dt;
-    th.y += Math.sin(th.heading) * th.speed * dt;
+    const boost =
+      th.kind === 'guided' && th.age < GUIDED.boost
+        ? GUIDED.boostFrom + (1 - GUIDED.boostFrom) * (th.age / GUIDED.boost)
+        : 1;
+    th.x += Math.cos(th.heading) * th.speed * boost * dt;
+    th.y += Math.sin(th.heading) * th.speed * boost * dt;
     const dmg = THREATS[th.kind].damage;
     if (th.target === CARRIER_TARGET) {
       if (onCarrier(g, th.x, th.y)) {
