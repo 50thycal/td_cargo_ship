@@ -227,4 +227,4 @@ line), heavy ~10–12 s, cluster ~2.8 s to its split. No single new threat
 dominates losses now; ballistics from close shores remain the main killer on
 maps 2–3, which is those maps' character. Screenshots after the fixes: lock
 line and base glow unmistakable, heavy HP bar readable, bomblets clear as they
-fan out. Full suite: 758 tests pass.
+fan out. Full suite: 762 tests pass.
