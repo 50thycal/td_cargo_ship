@@ -34,7 +34,13 @@ export interface Ripple {
   x: number;
   y: number;
   age: number;
+  /** 'dry': the tap found nothing loaded — drawn red, optionally labelled. */
+  dry?: boolean;
+  label?: string;
 }
+
+export const RIPPLE_LIFE = 0.4;
+export const DRY_LIFE = 0.7;
 
 export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number): void {
   ctx.save();
@@ -61,11 +67,18 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   }
   drawFx(ctx, g);
   for (const r of ripples) {
-    ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - r.age / 0.4)})`;
-    ctx.lineWidth = 2;
+    const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
+    ctx.strokeStyle = r.dry ? `rgba(255,77,61,${0.9 * fade})` : `rgba(255,255,255,${0.5 * fade})`;
+    ctx.lineWidth = r.dry ? 4 : 2;
     ctx.beginPath();
-    ctx.arc(r.x, r.y, 10 + r.age * 70, 0, Math.PI * 2);
+    ctx.arc(r.x, r.y, r.dry ? 26 + r.age * 30 : 10 + r.age * 70, 0, Math.PI * 2);
     ctx.stroke();
+    if (r.label) {
+      ctx.fillStyle = `rgba(255,120,110,${fade})`;
+      ctx.font = 'bold 24px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(r.label, r.x, r.y - 40 - r.age * 20);
+    }
   }
   ctx.restore();
 }

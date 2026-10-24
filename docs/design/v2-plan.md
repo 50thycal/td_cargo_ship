@@ -84,14 +84,19 @@ Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
 - `npm test` — includes `tests/v2/` (rules, taps, splash, re-targeting,
   formations, flow scoring, draft, clear/endless).
 - `npm run v2:sweep -- 16` — a bot plays every map at three skill levels
-  (sharp / average / casual reaction times) and prints clear rates. Baseline
-  at the time of writing: sharp and average clear everything; casual clears
-  ~38% of Strait, ~31% of Gauntlet, 0% of Island.
+  (sharp / average / casual reaction times, with phone-measured miss rates)
+  and prints clear rates. Baseline after the playtest cycles: sharp and
+  average clear everything; casual clears ~81% of Strait, ~63% of Gauntlet,
+  ~38% of Island.
 - `npm run e2e:v2` (with `npm run preview -- --port 4173` running) — real
   clicks/touches in Chromium: menu, wave 1, draft, formation popup, flow
   slider, phone landscape. Screenshots land in `e2e/shots/v2/`.
-- `v2.html?wave=7` starts any map at wave 7 for playtesting late waves;
+- `v2.html?wave=7` starts any map at wave 7 (with the 6 cards a player would
+  have drafted by then) for playtesting late waves;
   `?seed=N` replays one exact seed.
+
+The playtest cycles, what each found and what changed are in
+[v2-playtest-log.md](v2-playtest-log.md).
 
 ## Next candidates (not built)
 

@@ -292,3 +292,43 @@ the rolling frame time stays above 22 ms while playing, steps down (2 → 1.5 �
 | Unthrottled, adaptive | 1688×780 (unchanged) | 16.7 ms | 16.8 ms | 0% |
 
 Full test suite (753) and the V2 browser smoke test pass after the change.
+
+### Cycle 7 — Tapping with an empty rack (S7)
+
+**Checks run.** In Chromium at 844×390 with touch: emptied the rack mid-wave,
+tapped a drone with a real touch tap, and screenshotted 60 ms later — before and
+after the change.
+
+**Problem found.** A tap with nothing loaded showed **nothing where the finger
+was**: the tap returned "dry", which draws no ripple, and the only signal was a
+250 ms tint on the HUD in the right rail, far from where the player is looking.
+It reads as the game ignoring the tap. (Noted in cycle 1, fixed here.)
+
+**Change.** A dry tap draws a red ring and "RELOADING" at the finger, and a red
+ring over the carrier's rack so the eye goes to the ammo. Hold-to-fire repeats
+stay silent so a held finger doesn't spam it.
+
+**Retest.** Screenshot after the change shows "RELOADING" in red over the
+tapped drone and the ring on the carrier's (empty) rack; still 0 shots fired.
+
+## Where each goal stands
+
+| Goal | Status | Evidence |
+|---|---|---|
+| S1 Readable & tappable on a phone | Met | 92–100% tap hit-rate at 667/844 px with realistic aim; nothing covers bases (cycle 1) |
+| S2 Fair, escalating challenge | Met in sim | 1.7–2.3 s ballistic warning, ≤ ~8 s dead air early; casual bot 81% / 63% / 38% by map, losses climbing from wave 5 (cycle 2) |
+| S3 Controls do what they say | Met | 0 hull overlaps across all formation switches; speed 0.49/1.00/2.01/3.01×; pause/Space/resume (cycle 3) |
+| S4 Upgrades matter | Mostly | every card but Shore Battery clearly beats the noise floor; Battery stays modest for a slow reactor (cycle 4) |
+| S5 No dead ends | Met | full browser flow incl. reload persistence, endless, quit, retry, rotate (cycle 5) |
+| S6 Smooth | Met in emulation | 60 fps at 4× CPU throttle via adaptive resolution; full sharpness unthrottled (cycle 6) |
+| S7 You know what happened | Met | sink burst + HUD flash, loss screen names the culprit, dry taps say RELOADING (cycles 5, 7) |
+
+## Known limits of this playtest
+
+- No human has played these changes yet. The bots' reaction and miss rates
+  come from cycle 1's measurements, but they never get distracted and always
+  pick the right target — the average bot clearing every map probably
+  overstates how easy it is.
+- Performance was measured in headless Chromium with software canvas and CPU
+  throttling, not on a real phone.
+- No sound or haptics.

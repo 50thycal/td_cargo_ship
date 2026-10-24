@@ -3,6 +3,7 @@
 // turns pointer input into `tap()` calls and draws whatever the sim holds.
 
 import {
+  CARRIER,
   DEFAULT_SPEED,
   FLOW_STEPS,
   RULES,
@@ -28,7 +29,7 @@ import {
   type Phase,
 } from '../sim/game';
 import { stepSlider, type StepSlider } from './rail';
-import { drawFrame, type Ripple } from './render';
+import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
 const RAIL_W = 80;
@@ -224,7 +225,14 @@ export class App {
   private fire(x: number, y: number, quiet = false): void {
     if (!this.game) return;
     const result = tap(this.game, x, y, TAP_RADIUS_PX / this.scale);
-    if (result === 'empty' && !quiet) this.ripples.push({ x, y, age: 0 });
+    if (quiet) return;
+    if (result === 'empty') this.ripples.push({ x, y, age: 0 });
+    if (result === 'dry') {
+      // Nothing loaded: say so under the finger, and point at the rack.
+      const c = this.game.map.carrier;
+      this.ripples.push({ x, y, age: 0, dry: true, label: 'RELOADING' });
+      this.ripples.push({ x: c.x, y: c.y - CARRIER.halfBeam - 15, age: 0, dry: true });
+    }
   }
 
   private toWorld(cx: number, cy: number): { x: number; y: number } | null {
@@ -283,7 +291,7 @@ export class App {
       this.renderHud(g);
     }
     for (const r of this.ripples) r.age += real;
-    this.ripples = this.ripples.filter((r) => r.age < 0.4);
+    this.ripples = this.ripples.filter((r) => r.age < (r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
     this.bannerT -= real;
     this.banner.classList.toggle('show', this.bannerT > 0);
