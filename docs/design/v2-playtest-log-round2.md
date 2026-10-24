@@ -109,3 +109,66 @@ Hold to Fire L2 at 0.33 s: 83% Strait / 35% Island, level with Faster
 Interceptors L2 (81% / 33%) — still a top card, no longer a must-pick. The
 Strait→Gauntlet step is steep; final balancing waits for the loadout cap,
 which cuts upgrade power everywhere.
+
+### Cycle 3 — Three-slot loadout (P3)
+
+**Rules built.** A loadout holds at most three different cards. Each draft
+deals three cards; each draw favours a card you already hold (37%), otherwise
+any unmaxed card. A new card shows as **SLOTS FULL** (dimmed, not tappable)
+once three are held. If nothing dealt can be taken, **Resupply** (repair every
+ship and the carrier, refill the racks; takes no slot) is added, so a draft is
+never a dead end. Shore Battery and Auto-Retarget gained a second level so no
+card is a one-level dead end in a slot. The draft shows the loadout as three
+slot chips, each card's badge (NEW / LEVEL UP / SLOTS FULL / NO CARD FITS) and
+the rule in one line.
+
+**Checks run.** Draft strategies compared over 48 seeds per arm (random picks,
+Hold-first, an ammo build, an area build, a speed/twin/retarget build), for the
+casual bot and a new "spammer" bot that taps like an excited person (no waiting
+for a loaded round, no check for an already-covered target). New tests: a full
+loadout can't take a new card but can level its own; Resupply appears and
+repairs/refills; over 300 drafts a full loadout gets an upgrade in 55–80% of
+them. Chromium at 874×402 with the iPhone 16 Pro safe-area insets: an empty
+loadout draft, a full one (tapping a SLOTS FULL card did nothing), and a
+Resupply-only one.
+
+**Problems found.**
+1. **Two builds were traps.** First pass (casual bot, Strait / Island): Hold-first
+   63% / 38%, speed-twin-retarget 56% / 33%, but ammo 17% / 6% and area
+   19% / 2%. Under a three-slot cap a weak card costs a whole slot.
+2. **Carrier CIWS barely reached the convoy**: 155–245 units of range from a
+   carrier whose nearest lane is ~185–285 away.
+3. **A full loadout drew a dead draft too often**: ~2.5 Resupplies per run
+   (about 40% of late drafts).
+4. **Skipping ahead (`?wave=N`) picked `offer[0]` even when it was SLOTS FULL**,
+   so the pick silently failed.
+5. Locked cards were drawn at 45% opacity, so the battlefield showed through
+   them; "VS DRONE SWARMS" wrapped on narrow cards and threw the titles out of
+   line (screenshot).
+
+**Changes.** CIWS range 260 / 340 / 420 with faster fire; Wide Warhead doubles,
+triples, quadruples the blast; Chain 55 / 85; Bigger Rack +3 per level; Quick
+Reload 25 / 40 / 55% less time. Draft draws favour owned cards. Skip-ahead
+takes the first card it may. Locked cards solid with dimmed ink; one-line
+labels.
+
+**Retest.** Builds after the changes (Strait / Island):
+
+| Build | Casual bot | Spammer bot |
+|---|---|---|
+| Random picks | 65% / 31% | 56% / 44% |
+| Hold-first | 88% / 52% | 65% / 44% |
+| Ammo (rack, reload, battery) | 19% / 6% | 33% / 13% |
+| Area (blast, chain, CIWS) | 69% / 46% | 69% / 38% |
+| Speed, twin, retarget | 88% / 50% | 77% / 60% |
+
+No single plan dominates and random picks are viable. Resupplies fell to
+0.7–1.9 per run. The all-ammo build stays weakest for both styles: ammo mostly
+feeds wasted shots, so rack, reload and battery are support cards in a mixed
+build rather than a build of their own — a known limit, not forced.
+Screenshots: three slot chips, LEVEL UP / SLOTS FULL / NO CARD FITS badges,
+locked cards solid, titles aligned; Resupply repaired the carrier to 12.
+
+Full sweep with the cap (24 seeds): casual bot Strait 71% clear, 4.0 ships lost
+(the target for a run like the user's); Gauntlet 38%; Island 8%. Spammer
+79% / 75% / 38%.

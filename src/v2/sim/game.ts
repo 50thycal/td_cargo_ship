@@ -27,7 +27,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { MAPS, type MapDef, type MapId, type Point } from '../data/maps';
-import { UPGRADES, UPGRADE_ORDER, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
+import { UPGRADES, UPGRADE_ORDER, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
@@ -246,8 +246,9 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
   for (let w = 1; w < Math.floor(firstWave); w++) {
     g.wave = w;
     openDraft(g);
-    if (g.phase === 'draft') {
-      g.levels[g.offer[0]] = (g.levels[g.offer[0]] ?? 0) + 1;
+    const pick = g.offer.find((id) => id !== 'resupply' && canTake(g.levels, id));
+    if (pick) {
+      g.levels[pick] = (g.levels[pick] ?? 0) + 1;
       g.stats = stats(g.levels);
     }
   }
@@ -388,12 +389,21 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
 }
 
 export function pickUpgrade(g: Game, id: UpgradeId): void {
-  if (g.phase !== 'draft' || !g.offer.includes(id)) return;
+  if (g.phase !== 'draft' || !g.offer.includes(id) || !canTake(g.levels, id)) return;
+  if (id === 'resupply') {
+    for (const s of g.ships) s.hp = SHIP.hp;
+    g.carrierHp = CARRIER.hp;
+    g.ammo = g.stats.rack;
+    g.batteryAmmo = g.stats.batteryRack;
+    startWave(g);
+    return;
+  }
   const oldRack = g.stats.rack;
+  const oldBattery = g.stats.batteryRack;
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   g.stats = stats(g.levels);
   g.ammo = Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack));
-  if (id === 'battery') g.batteryAmmo = g.stats.batteryRack;
+  if (id === 'battery') g.batteryAmmo = Math.min(g.stats.batteryRack, g.batteryAmmo + g.stats.batteryRack - oldBattery);
   startWave(g);
 }
 
@@ -404,11 +414,27 @@ export function continueEndless(g: Game): void {
   openDraft(g);
 }
 
+/** Chance each draft draw comes from the loadout's own (unmaxed) cards. */
+const OWNED_DRAW = 0.37;
+
 function openDraft(g: Game): void {
+  // Three random cards from everything not yet maxed. With a full loadout, new
+  // cards still show (marked "slots full") — whether one of your own comes up
+  // is the luck of the draw — and if none can be taken, Resupply is added so
+  // the draft is never a dead end.
+  // Each of the three draws favours a card you already hold (OWNED_DRAW), so a
+  // loadout levels up in most drafts but not all.
   const open = UPGRADE_ORDER.filter((id) => (g.levels[id] ?? 0) < UPGRADES[id].max);
-  g.offer = g.rng.draft.shuffle([...open]).slice(0, 3);
-  if (g.offer.length === 0) startWave(g);
-  else g.phase = 'draft';
+  const rng = g.rng.draft;
+  const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
+  const other = rng.shuffle(open.filter((id) => !(g.levels[id] ?? 0)));
+  g.offer = [];
+  while (g.offer.length < 3 && (mine.length || other.length)) {
+    const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));
+    g.offer.push((fromMine ? mine : other).shift()!);
+  }
+  if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
+  g.phase = 'draft';
 }
 
 // ---------------------------------------------------------------------------
@@ -891,6 +917,24 @@ function updateInterceptors(g: Game, dt: number): void {
           }
         }
         if (th) it.target = th.id;
+      }
+    }
+    // Auto-Retarget L2: an extra interceptor on a target that is already
+    // covered peels off to the nearest threat nobody is covering.
+    if (th && g.stats.retarget >= 2 && assigned(g, th.id) > th.hp) {
+      let bd = RETARGET_RANGE;
+      let alt: Threat | undefined;
+      for (const o of g.threats) {
+        if (o.dead || o === th || assigned(g, o.id) >= o.hp) continue;
+        const d = dist(it.x, it.y, o.x, o.y);
+        if (d < bd) {
+          bd = d;
+          alt = o;
+        }
+      }
+      if (alt) {
+        th = alt;
+        it.target = alt.id;
       }
     }
     if (th) {

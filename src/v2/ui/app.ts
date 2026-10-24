@@ -15,7 +15,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
-import { UPGRADES } from '../data/upgrades';
+import { MAX_SLOTS, canTake, cardDef, loadout } from '../data/upgrades';
 import { loadProgress, recordResult, type Progress } from '../platform/save';
 import {
   createGame,
@@ -527,26 +527,41 @@ export class App {
   }
 
   private showDraft(g: Game): void {
+    const owned = loadout(g.levels);
+    const full = owned.length >= MAX_SLOTS;
+    const roman = (n: number) => ['', 'I', 'II', 'III'][n] ?? String(n);
+    const slots = el('div', 'v2-slots');
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const id = owned[i];
+      const chip = el('span', `v2-slot${id ? '' : ' empty'}`, id ? `${cardDef(id).name} ${roman(g.levels[id] ?? 0)}` : 'Empty slot');
+      slots.append(chip);
+    }
     const cards = g.offer.map((id) => {
-      const u = UPGRADES[id];
+      const u = cardDef(id);
       const lvl = g.levels[id] ?? 0;
-      const card = button('', 'v2-card', () => this.rec?.pick(id));
+      const takeable = canTake(g.levels, id);
+      const badge = id === 'resupply' ? 'NO CARD FITS' : !takeable ? 'SLOTS FULL' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const card = button('', `v2-card${takeable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}`, () => {
+        if (takeable) this.rec?.pick(id);
+      });
+      card.disabled = !takeable;
       card.dataset.upgrade = id;
       card.append(
-        el('span', 'v2-card-answers', `vs ${u.answers}`),
+        el('span', 'v2-card-top', ''),
         el('strong', '', u.name),
-        el('span', 'v2-card-level', `Level ${lvl + 1}/${u.max}`),
-        el('span', 'v2-card-text', u.levels[lvl]),
+        el('span', 'v2-card-level', id === 'resupply' ? 'Takes no slot' : `Level ${lvl + 1}/${u.max}`),
+        el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]),
       );
+      const top = card.querySelector('.v2-card-top')!;
+      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SLOTS FULL' ? 'off' : badge === 'NEW' ? 'new' : 'up'}`, badge));
       return card;
     });
     const row = el('div', 'v2-card-row');
     row.append(...cards);
-    this.showOverlay('v2-draft', [
-      el('h2', '', `Wave ${g.wave} cleared`),
-      el('p', 'v2-sub', 'Pick one upgrade.'),
-      row,
-    ]);
+    const rule = full
+      ? 'Your three slots are full: only cards you hold can level up.'
+      : `Pick one. You can hold ${MAX_SLOTS} different cards (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free).`;
+    this.showOverlay('v2-draft', [el('h2', '', `Wave ${g.wave} cleared`), slots, el('p', 'v2-sub', rule), row]);
   }
 
   private showResult(g: Game, won: boolean): void {

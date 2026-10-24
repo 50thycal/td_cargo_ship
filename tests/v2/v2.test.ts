@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BALLISTIC, FLOW_STEPS, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
 import { FORMATIONS } from '../../src/v2/data/formations';
 import { MAP_ORDER } from '../../src/v2/data/maps';
-import { UPGRADES, UPGRADE_ORDER } from '../../src/v2/data/upgrades';
+import { UPGRADES, UPGRADE_ORDER, canTake } from '../../src/v2/data/upgrades';
 import { waveSpec } from '../../src/v2/data/waves';
 import { recordResult, type Progress } from '../../src/v2/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v2/sim/bot';
@@ -283,8 +283,8 @@ describe('waves and upgrades', () => {
     g.offer = ['rack'];
     const before = g.ammo;
     pickUpgrade(g, 'rack');
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
-    expect(g.ammo).toBe(before + 2);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 3);
+    expect(g.ammo).toBe(before + 3);
   });
 
   it('twin launch sends a free second interceptor', () => {
@@ -306,7 +306,7 @@ describe('waves and upgrades', () => {
     expect(g.cleared).toBe(true);
     continueEndless(g);
     expect(g.phase).toBe('draft');
-    pickUpgrade(g, g.offer[0]);
+    pickUpgrade(g, g.offer.find((id) => canTake(g.levels, id))!);
     expect(g.wave).toBe(RULES.wavesToClear + 1);
     expect(g.endless).toBe(true);
   });
@@ -390,7 +390,10 @@ describe('progression details', () => {
     const g = createGame('strait', 3, 7);
     const picked = Object.values(g.levels).reduce((a, b) => a + (b ?? 0), 0);
     expect(g.wave).toBe(7);
-    expect(picked).toBe(6);
+    // Six drafts; a draft with nothing takeable (a Resupply) adds no level.
+    expect(picked).toBeGreaterThanOrEqual(4);
+    expect(picked).toBeLessThanOrEqual(6);
+    expect(Object.keys(g.levels).length).toBeLessThanOrEqual(3);
     expect(g.ammo).toBe(g.stats.rack);
   });
 
@@ -448,5 +451,57 @@ describe('playtest logs', () => {
     expect(r.kills).toEqual(g.kills);
     expect(r.taps).toEqual(g.taps);
     expect(r.history).toEqual(g.history);
+  });
+});
+
+describe('three-slot loadout', () => {
+  it('a full loadout cannot take a new card, only level up its own', async () => {
+    const { MAX_SLOTS, canTake, loadout } = await import('../../src/v2/data/upgrades');
+    const g = createGame('strait', 5);
+    g.levels = { rack: 1, speed: 1, twin: 1 };
+    expect(loadout(g.levels)).toHaveLength(MAX_SLOTS);
+    expect(canTake(g.levels, 'blast')).toBe(false);
+    expect(canTake(g.levels, 'rack')).toBe(true);
+    g.phase = 'draft';
+    g.offer = ['blast', 'rack', 'ciws'];
+    pickUpgrade(g, 'blast');
+    expect(g.levels.blast).toBeUndefined();
+    expect(g.phase).toBe('draft');
+    pickUpgrade(g, 'rack');
+    expect(g.levels.rack).toBe(2);
+    expect(g.phase).toBe('wave');
+  });
+
+  it('a draft with nothing takeable offers Resupply, which repairs and refills', async () => {
+    const g = createGame('strait', 6);
+    g.levels = { rack: 3, speed: 3, twin: 2 }; // full and all maxed
+    g.queue = [];
+    g.threats = [];
+    g.carrierHp = 4;
+    g.ammo = 0;
+    step(g, DT);
+    expect(g.phase).toBe('draft');
+    expect(g.offer).toContain('resupply');
+    pickUpgrade(g, 'resupply');
+    expect(g.carrierHp).toBe(12);
+    expect(g.ammo).toBe(g.stats.rack);
+    expect(Object.keys(g.levels)).toHaveLength(3);
+  });
+
+  it('over many drafts a full loadout sometimes gets an upgrade and sometimes not', async () => {
+    const { canTake } = await import('../../src/v2/data/upgrades');
+    let upgradable = 0;
+    const N = 300;
+    for (let seed = 1; seed <= N; seed++) {
+      const g = createGame('strait', seed);
+      g.levels = { rack: 1, hold: 1, blast: 1 };
+      g.queue = [];
+      g.threats = [];
+      step(g, DT);
+      if (g.offer.some((id) => id !== 'resupply' && canTake(g.levels, id))) upgradable++;
+    }
+    // 3 of 11 cards owned: about two drafts in three show one of them.
+    expect(upgradable / N).toBeGreaterThan(0.55);
+    expect(upgradable / N).toBeLessThan(0.8);
   });
 });
