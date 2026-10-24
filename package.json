@@ -17,7 +17,8 @@
     "e2e:workshop": "node e2e/workshop.mjs",
     "dev:v2": "vite --open /v2.html",
     "v2:sweep": "vite-node tools/v2/sweep.ts --",
-    "e2e:v2": "node e2e/v2.mjs"
+    "e2e:v2": "node e2e/v2.mjs",
+    "v2:replay": "vite-node tools/v2/replay.ts --"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",

@@ -588,3 +588,19 @@ body {
 .playing.portrait .v2-rotate {
   display: flex;
 }
+
+.v2-log-status {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.v2-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

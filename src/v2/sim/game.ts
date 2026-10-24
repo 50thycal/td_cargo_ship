@@ -110,6 +110,23 @@ export type GameEvent =
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
+/** Cumulative totals at the end of each wave (playtest logs diff these). */
+export interface WaveRecord {
+  wave: number;
+  t: number;
+  outcome: 'cleared' | 'lost';
+  score: number;
+  delivered: number;
+  lost: number;
+  carrierHp: number;
+  shots: number;
+  kills: Record<ThreatKind, number>;
+  sunkBy: Record<ThreatKind, number>;
+  taps: TapCounts;
+}
+
+export type TapCounts = Record<TapResult, number>;
+
 interface Launch {
   at: number;
   kind: ThreatKind;
@@ -160,6 +177,11 @@ export interface Game {
   cleared: boolean;
   endless: boolean;
   nextId: number;
+  /** Sim steps taken — playtest logs stamp every input with it, so a log
+   *  replays exactly. */
+  steps: number;
+  taps: TapCounts;
+  history: WaveRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +237,9 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     cleared: false,
     endless: false,
     nextId: 1,
+    steps: 0,
+    taps: { fire: 0, pickup: 0, dry: 0, empty: 0 },
+    history: [],
   };
   // Skipping ahead (playtesting a late wave) also hands over the cards a
   // player would have drafted by then, so the wave plays as it really would.
@@ -316,6 +341,12 @@ export type TapResult = 'fire' | 'pickup' | 'dry' | 'empty';
 /** A tap at (x, y) in world units, reaching `radius` world units. */
 export function tap(g: Game, x: number, y: number, radius: number): TapResult {
   if (g.phase !== 'wave') return 'empty';
+  const result = tapResult(g, x, y, radius);
+  g.taps[result] += 1;
+  return result;
+}
+
+function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   let pickup: Pickup | null = null;
   let pd = radius + PICKUPS.radius;
   for (const p of g.pickups) {
@@ -385,6 +416,7 @@ function openDraft(g: Game): void {
 
 export function step(g: Game, dt: number): void {
   if (g.phase !== 'wave') return;
+  g.steps += 1;
   g.t += dt;
   g.waveT += dt;
 
@@ -404,10 +436,12 @@ export function step(g: Game, dt: number): void {
 
   if (g.lost >= RULES.shipLossLimit || g.carrierHp <= 0) {
     g.phase = 'lost';
+    recordWave(g, 'lost');
     return;
   }
   if (g.queue.length === 0 && g.threats.length === 0) {
     g.score += 200 * g.wave;
+    recordWave(g, 'cleared');
     if (!g.endless && g.wave >= RULES.wavesToClear) {
       g.cleared = true;
       g.phase = 'won';
@@ -415,6 +449,22 @@ export function step(g: Game, dt: number): void {
       openDraft(g);
     }
   }
+}
+
+function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
+  g.history.push({
+    wave: g.wave,
+    t: Math.round(g.t * 10) / 10,
+    outcome,
+    score: g.score,
+    delivered: g.delivered,
+    lost: g.lost,
+    carrierHp: g.carrierHp,
+    shots: g.shots,
+    kills: { ...g.kills },
+    sunkBy: { ...g.sunkBy },
+    taps: { ...g.taps },
+  });
 }
 
 // ---------------------------------------------------------------------------

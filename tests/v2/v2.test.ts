@@ -411,3 +411,42 @@ describe('progression details', () => {
     expect(g.sunkBy).toEqual({ drone: 1, ballistic: 0, guided: 0 });
   });
 });
+
+describe('playtest logs', () => {
+  it('a recorded game replays exactly from its seed and inputs', async () => {
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('island', 77);
+    const rec = new Recorder(g, {
+      build: 'test',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      firstWave: 1,
+      device: { w: 844, h: 390, dpr: 2, touch: true, ua: 'test' },
+    });
+    // A scripted, imperfect player: taps a threat every 20 steps (sometimes
+    // wide), changes flow and formation, takes the first card each draft.
+    for (let i = 0; i < 60 * 60 * 6 && g.phase !== 'lost'; i++) {
+      if (g.phase === 'draft') rec.pick(g.offer[0]);
+      if (g.phase === 'won') break;
+      if (i % 20 === 0 && g.threats.length) {
+        const t = g.threats[(i / 20) % g.threats.length];
+        rec.tap(t.x + (i % 60 === 0 ? 90 : 3), t.y - 2, 40);
+      }
+      if (i === 900) rec.flow(3);
+      if (i === 1800) rec.formation('spread');
+      if (i === 2700) rec.flow(1);
+      step(g, DT);
+    }
+    const log = rec.finish(g.phase === 'lost' ? 'lost' : 'quit');
+    expect(log.commands.length).toBeGreaterThan(100);
+    expect(log.summary!.waves.length).toBeGreaterThan(2);
+
+    const r = replay(JSON.parse(JSON.stringify(log)));
+    expect(r.steps).toBe(g.steps);
+    expect(r.score).toBe(g.score);
+    expect(r.lost).toBe(g.lost);
+    expect(r.wave).toBe(g.wave);
+    expect(r.kills).toEqual(g.kills);
+    expect(r.taps).toEqual(g.taps);
+    expect(r.history).toEqual(g.history);
+  });
+});
