@@ -53,9 +53,9 @@ export const CARRIER = {
 
 export const INTERCEPTOR = {
   speed: 520,
-  rack: 6,
+  rack: 5,
   /** Seconds to reload one round into the rack. */
-  reload: 1.4,
+  reload: 1.5,
   /** Contact distance that counts as reaching the target. */
   contact: 14,
   blast: 22,

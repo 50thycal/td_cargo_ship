@@ -54,7 +54,12 @@ export class Bot {
       pickUpgrade(g, pick);
       return;
     }
-    if (g.phase !== 'wave' || g.t - this.lastTap < this.skill.tapGap) return;
+    // With Hold to Fire a finger can rest on a swarm: repeats come as fast as
+    // the card allows and aim drifts less than with separate taps.
+    const hold = g.stats.holdRepeat;
+    const gap = hold > 0 ? Math.min(this.skill.tapGap, hold) : this.skill.tapGap;
+    const missRate = (this.skill.missRate ?? 0) * (hold > 0 ? 0.5 : 1);
+    if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
 
     // Pickups first when they're cheap to grab.
@@ -80,7 +85,7 @@ export class Bot {
     }
     if (best) {
       // A miss lands well clear of the target: nothing fires, the moment is lost.
-      const miss = this.rng.chance(this.skill.missRate ?? 0);
+      const miss = this.rng.chance(missRate);
       tap(g, best.x + (miss ? 120 : 0), best.y + (miss ? 120 : 0), 6);
       this.lastTap = g.t;
     }

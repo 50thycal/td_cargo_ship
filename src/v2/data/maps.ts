@@ -104,7 +104,7 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 800, y: 705 },
     battery: { x: 230, y: 835 },
     channels: [{ y: 470, halfWidth: 150 }],
-    threatScale: 1,
+    threatScale: 1.15,
     callout: { x: 800, y: 845 },
   },
   gauntlet: {
@@ -128,7 +128,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
     ],
-    threatScale: 1.2,
+    threatScale: 1.35,
     callout: { x: 430, y: 450 },
   },
   island: {
@@ -150,7 +150,7 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 800, y: 760 },
     battery: { x: 300, y: 845 },
     channels: [{ y: 600, halfWidth: 100 }],
-    threatScale: 1.4,
+    threatScale: 1.55,
     callout: { x: 800, y: 855 },
   },
 };

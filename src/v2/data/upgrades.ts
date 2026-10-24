@@ -40,7 +40,7 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
     id: 'rack',
     name: 'Bigger Rack',
     max: 3,
-    levels: ['Hold 8 interceptors', 'Hold 10 interceptors', 'Hold 12 interceptors'],
+    levels: [1, 2, 3].map((l) => `Hold ${INTERCEPTOR.rack + 2 * l} interceptors`),
     answers: 'Drone swarms',
   },
   reload: {
@@ -102,8 +102,11 @@ export const UPGRADES: Record<UpgradeId, UpgradeDef> = {
   hold: {
     id: 'hold',
     name: 'Hold to Fire',
-    max: 1,
-    levels: ['Hold your finger down to keep firing at what is under it'],
+    max: 2,
+    levels: [
+      'Hold your finger down to keep firing at what is under it (every 0.45 s)',
+      'Hold fire repeats faster (every 0.33 s)',
+    ],
     answers: 'Swarms',
   },
 };
@@ -126,7 +129,8 @@ export interface DefenseStats {
   threatSlow: number;
   /** Shore Battery rack size (0 without the card). */
   batteryRack: number;
-  holdToFire: boolean;
+  /** Hold to Fire: seconds of game time between repeats (0 = no card). */
+  holdRepeat: number;
 }
 
 export function stats(levels: Levels): DefenseStats {
@@ -145,6 +149,6 @@ export function stats(levels: Levels): DefenseStats {
     radarReticle: lv('radar') >= 1,
     threatSlow: lv('radar') >= 2 ? 0.88 : 1,
     batteryRack: lv('battery') > 0 ? 4 : 0,
-    holdToFire: lv('hold') > 0,
+    holdRepeat: [0, 0.45, 0.33][lv('hold')],
   };
 }

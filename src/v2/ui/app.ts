@@ -243,7 +243,7 @@ export class App {
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
       this.fire(w.x, w.y);
-      this.hold = { ...w, since: performance.now(), next: performance.now() + 250, id: e.pointerId };
+      this.hold = { ...w, since: performance.now(), next: this.game.t + 0.25, id: e.pointerId };
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (!this.hold || this.hold.id !== e.pointerId) return;
@@ -351,9 +351,10 @@ export class App {
         n++;
         if (g.phase !== 'wave') break;
       }
-      if (this.hold && g.stats.holdToFire && now >= this.hold.next) {
+      // Hold-to-fire repeats on game time, so it scales with the speed slider.
+      if (this.hold && g.stats.holdRepeat > 0 && g.t >= this.hold.next) {
         this.fire(this.hold.x, this.hold.y, true);
-        this.hold.next = now + 220;
+        this.hold.next = g.t + g.stats.holdRepeat;
       }
     }
     if (g) {

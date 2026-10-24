@@ -1,7 +1,7 @@
 // V2 headless tests: the rules of the game, end to end, with no browser.
 
 import { describe, expect, it } from 'vitest';
-import { BALLISTIC, FLOW_STEPS, RULES, SHIP } from '../../src/v2/data/config';
+import { BALLISTIC, FLOW_STEPS, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
 import { FORMATIONS } from '../../src/v2/data/formations';
 import { MAP_ORDER } from '../../src/v2/data/maps';
 import { UPGRADES, UPGRADE_ORDER } from '../../src/v2/data/upgrades';
@@ -283,7 +283,7 @@ describe('waves and upgrades', () => {
     g.offer = ['rack'];
     const before = g.ammo;
     pickUpgrade(g, 'rack');
-    expect(g.stats.rack).toBe(8);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
     expect(g.ammo).toBe(before + 2);
   });
 

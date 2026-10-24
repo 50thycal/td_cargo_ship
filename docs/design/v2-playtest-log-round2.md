@@ -59,3 +59,53 @@ same score and losses, and prints a per-wave breakdown.
 user's phone: the stand-in proves the page's code path, and the read side was
 proven with a real document, but the first genuine write happens when the user
 plays.
+
+### Cycle 2 — Map 1 a bit harder; starting ammo (P2)
+
+**Reference point.** The user lost 2 ships on map 1 and found it too easy. In
+the sweep, the casual bot (1.0 s reactions, 20% phone-measured misses) lost
+2.6 there and the average bot ~0, so the user plays between the two.
+
+**Checks run.** Sweeps over 24 seeds per cell (average and casual bots, all
+three maps): starting rack 6 / 5 / 4; then rack × reload × threat volume; then
+busier early waves; ship losses tracked overall and by wave 3. A Hold to Fire
+ablation over 48 seeds per arm, with the bot taught to use the card.
+
+**Problems found.**
+1. **Rack size alone changed nothing** for the bots (identical results at 6, 5
+   and 4): they only tap when loaded, and reload — not capacity — limits them.
+   People tap faster than the rack refills (cycle 1's browser run had 10
+   empty-rack taps in wave 1), so rack matters more for a human than the bots
+   show.
+2. **Waves 1–3 cost nothing** in every configuration tried (0.0 ships by wave
+   3), even with twice the early drones: a drone does 1 damage to a 3-HP ship.
+   Making early waves lethal would mean reworking ship HP everywhere and turn a
+   warm-up into a wall, so early waves were made busier instead and the
+   difficulty raised across the map.
+3. **The bots couldn't use Hold to Fire**, so the sweep was blind to the card
+   the user called the best. Once modelled (repeats at the card's rate, half
+   the aim misses), it was by far the strongest card: Hold L2 took the casual
+   bot from 42% to 96% clears on the Strait and 4% to 56% on the Island —
+   versus 81% / 33% for the next best (Faster Interceptors L2).
+4. Hold to Fire repeated on wall-clock time, so at 3× speed it fired a third as
+   often relative to the game. Now on game time (also keeps replays exact).
+5. A new wave-4 row made wave 5 easier than wave 4 (caught by the
+   wave-table test); wave 5 raised to match.
+
+**Changes.** Starting rack 6 → 5, reload 1.4 s → 1.5 s. Waves 1–4 busier
+(14 / 16 / 18 / 20 drones, ballistics from wave 2, one guided in wave 4).
+Map threat scales 1.15 / 1.35 / 1.55. Hold to Fire now has two levels:
+0.45 s, then 0.33 s.
+
+**Retest (24 seeds; before the loadout cap in cycle 3).**
+
+| Map | Casual clear (before → after) | Casual ships lost |
+|---|---|---|
+| Strait | 92% → 79% | 2.6 → 3.7 |
+| Gauntlet | 75% → 38% | 3.2 → 5.0 |
+| Island | 46% → 21% | 4.8 → 5.6 |
+
+Hold to Fire L2 at 0.33 s: 83% Strait / 35% Island, level with Faster
+Interceptors L2 (81% / 33%) — still a top card, no longer a must-pick. The
+Strait→Gauntlet step is steep; final balancing waits for the loadout cap,
+which cuts upgrade power everywhere.
