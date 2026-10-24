@@ -2,7 +2,7 @@
 // same `tap()` a finger does — no privileged access — with a human-ish
 // reaction delay and a cap on how fast it can tap.
 
-import { UPGRADE_ORDER, type UpgradeId } from '../data/upgrades';
+import { UPGRADE_ORDER, canTake, type UpgradeId } from '../data/upgrades';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import {
@@ -27,12 +27,16 @@ export interface BotSkill {
   missRate?: number;
   /** Card preference, first = most wanted. */
   prefer?: UpgradeId[];
+  /** Taps like an excited person: without waiting for a loaded round and
+   *  without checking whether a threat is already covered. */
+  spam?: boolean;
 }
 
 export const SKILLS: Record<string, BotSkill> = {
   sharp: { reaction: 0.35, tapGap: 0.18 },
   average: { reaction: 0.6, tapGap: 0.3, missRate: 0.08 },
   casual: { reaction: 1.0, tapGap: 0.5, missRate: 0.2 },
+  spammer: { reaction: 0.8, tapGap: 0.2, missRate: 0.2, spam: true },
 };
 
 export class Bot {
@@ -50,11 +54,18 @@ export class Bot {
   act(g: Game): void {
     if (g.phase === 'draft') {
       const prefer = this.skill.prefer ?? UPGRADE_ORDER;
-      const pick = [...g.offer].sort((a, b) => rank(prefer, a) - rank(prefer, b))[0];
+      const pick = g.offer
+        .filter((id) => canTake(g.levels, id))
+        .sort((a, b) => rank(prefer, a) - rank(prefer, b))[0];
       pickUpgrade(g, pick);
       return;
     }
-    if (g.phase !== 'wave' || g.t - this.lastTap < this.skill.tapGap) return;
+    // With Hold to Fire a finger can rest on a swarm: repeats come as fast as
+    // the card allows and aim drifts less than with separate taps.
+    const hold = g.stats.holdRepeat;
+    const gap = hold > 0 ? Math.min(this.skill.tapGap, hold) : this.skill.tapGap;
+    const missRate = (this.skill.missRate ?? 0) * (hold > 0 ? 0.5 : 1);
+    if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
 
     // Pickups first when they're cheap to grab.
@@ -64,14 +75,14 @@ export class Bot {
       this.lastTap = g.t;
       return;
     }
-    if (!canFire(g)) return;
+    if (!this.skill.spam && !canFire(g)) return;
     // Most urgent first: the threat closest to whatever it is aimed at.
     let best: Threat | null = null;
     let bestScore = Infinity;
     for (const th of g.threats) {
       if (th.dead || g.t - (this.seenAt.get(th.id) ?? g.t) < this.skill.reaction) continue;
       const inFlight = g.interceptors.filter((i) => i.target === th.id).length;
-      if (inFlight >= th.hp) continue;
+      if (!this.skill.spam && inFlight >= th.hp) continue;
       const urgency = timeToImpact(g, th);
       if (urgency < bestScore) {
         bestScore = urgency;
@@ -80,7 +91,7 @@ export class Bot {
     }
     if (best) {
       // A miss lands well clear of the target: nothing fires, the moment is lost.
-      const miss = this.rng.chance(this.skill.missRate ?? 0);
+      const miss = this.rng.chance(missRate);
       tap(g, best.x + (miss ? 120 : 0), best.y + (miss ? 120 : 0), 6);
       this.lastTap = g.t;
     }

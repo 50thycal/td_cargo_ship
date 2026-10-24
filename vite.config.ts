@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 // Two pages: the classic game (index.html) and V2 (v2.html).
 export default defineConfig({
   base: './',
+  // Stamped into V2 playtest logs so a log says which build produced it.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
   build: {
     target: 'es2022',
     outDir: 'dist',

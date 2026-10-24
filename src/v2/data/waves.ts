@@ -14,12 +14,12 @@ export interface WaveSpec {
   speed: number;
 }
 
-const TABLE: WaveSpec[] = [
-  { duration: 30, drones: 10, swarm: 3, ballistic: 0, guided: 0, speed: 1.0 },
-  { duration: 36, drones: 14, swarm: 3, ballistic: 0, guided: 0, speed: 1.05 },
-  { duration: 40, drones: 14, swarm: 4, ballistic: 3, guided: 0, speed: 1.1 },
-  { duration: 44, drones: 16, swarm: 5, ballistic: 5, guided: 0, speed: 1.15 },
-  { duration: 44, drones: 16, swarm: 6, ballistic: 4, guided: 2, speed: 1.2 },
+export const WAVE_TABLE: WaveSpec[] = [
+  { duration: 30, drones: 14, swarm: 4, ballistic: 0, guided: 0, speed: 1.0 },
+  { duration: 36, drones: 16, swarm: 4, ballistic: 2, guided: 0, speed: 1.05 },
+  { duration: 40, drones: 18, swarm: 5, ballistic: 4, guided: 0, speed: 1.1 },
+  { duration: 44, drones: 20, swarm: 5, ballistic: 5, guided: 1, speed: 1.15 },
+  { duration: 44, drones: 20, swarm: 6, ballistic: 4, guided: 2, speed: 1.2 },
   { duration: 48, drones: 20, swarm: 6, ballistic: 6, guided: 3, speed: 1.25 },
   { duration: 50, drones: 24, swarm: 8, ballistic: 6, guided: 4, speed: 1.3 },
   { duration: 52, drones: 24, swarm: 8, ballistic: 8, guided: 5, speed: 1.35 },
@@ -29,8 +29,8 @@ const TABLE: WaveSpec[] = [
 
 /** Waves past the table (endless mode) keep growing from the last row. */
 export function waveSpec(wave: number, threatScale = 1): WaveSpec {
-  const base = TABLE[Math.min(wave, TABLE.length) - 1];
-  const extra = Math.max(0, wave - TABLE.length);
+  const base = WAVE_TABLE[Math.min(wave, WAVE_TABLE.length) - 1];
+  const extra = Math.max(0, wave - WAVE_TABLE.length);
   const grow = 1 + 0.12 * extra;
   const n = (v: number) => Math.round(v * grow * threatScale);
   return {

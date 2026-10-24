@@ -524,6 +524,20 @@ body {
   .v2-tag {
     font-size: 12px;
   }
+  /* Five map cards plus the title must fit a landscape phone without scrolling. */
+  .v2-menu h1 {
+    font-size: 30px;
+  }
+  .v2-menu {
+    gap: 6px;
+  }
+  .v2-map-card {
+    gap: 2px;
+  }
+  .v2-map-blurb {
+    font-size: 11px;
+    line-height: 1.25;
+  }
   .v2-hud {
     font-size: 11px;
     gap: 1px;
@@ -587,4 +601,108 @@ body {
 
 .playing.portrait .v2-rotate {
   display: flex;
+}
+
+.v2-log-status {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.v2-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- Loadout + draft cards -------------------------------------------- */
+
+.v2-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.v2-slot {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.v2-slot.empty {
+  border-style: dashed;
+  border-color: var(--panel-edge);
+  color: var(--muted);
+}
+
+.v2-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.v2-card-top .v2-card-answers {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.v2-badge.new {
+  background: var(--gold);
+  color: #1d1606;
+}
+
+.v2-badge.up {
+  background: var(--accent);
+  color: #062029;
+}
+
+.v2-badge.off {
+  background: transparent;
+  border: 1px solid var(--panel-edge);
+  color: var(--muted);
+}
+
+/* Locked cards stay solid (no see-through battlefield); only the ink dims. */
+.v2-card.locked {
+  cursor: not-allowed;
+  background: #0b141a;
+}
+
+.v2-card.locked > *,
+.v2-card.locked .v2-card-answers {
+  color: #5a6b74;
+}
+
+.v2-card.locked:hover {
+  border-color: var(--panel-edge);
+}
+
+.v2-card.resupply {
+  border-style: dashed;
+}
+
+.v2-card-row:has(.resupply) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }

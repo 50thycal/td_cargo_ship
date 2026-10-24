@@ -12,6 +12,11 @@ import { makeRng, type RNG } from '../../sim/rng';
 import {
   BALLISTIC,
   CARRIER,
+  CLUSTER,
+  HEAVY,
+  MOTHERSHIP,
+  SUPERSONIC,
+  zeroCounts,
   DEFAULT_FLOW,
   DRONE,
   FLOW_STEPS,
@@ -26,8 +31,8 @@ import {
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { MAPS, type MapDef, type MapId, type Point } from '../data/maps';
-import { UPGRADES, UPGRADE_ORDER, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
+import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
+import { UPGRADES, UPGRADE_ORDER, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
@@ -59,6 +64,10 @@ export interface Threat {
   age: number;
   phase: number;
   dead: boolean;
+  /** Children (bomblets, mini-drones) are blamed on what spawned them. */
+  parent?: ThreatKind;
+  /** Mothership: seconds until its next mini-drone. */
+  spawnT: number;
   /** Ballistic only: launch point, fixed ground impact point, flight time, apex. */
   sx: number;
   sy: number;
@@ -110,6 +119,23 @@ export type GameEvent =
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
+/** Cumulative totals at the end of each wave (playtest logs diff these). */
+export interface WaveRecord {
+  wave: number;
+  t: number;
+  outcome: 'cleared' | 'lost';
+  score: number;
+  delivered: number;
+  lost: number;
+  carrierHp: number;
+  shots: number;
+  kills: Record<ThreatKind, number>;
+  sunkBy: Record<ThreatKind, number>;
+  taps: TapCounts;
+}
+
+export type TapCounts = Record<TapResult, number>;
+
 interface Launch {
   at: number;
   kind: ThreatKind;
@@ -160,6 +186,11 @@ export interface Game {
   cleared: boolean;
   endless: boolean;
   nextId: number;
+  /** Sim steps taken — playtest logs stamp every input with it, so a log
+   *  replays exactly. */
+  steps: number;
+  taps: TapCounts;
+  history: WaveRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -208,21 +239,25 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     score: 0,
     delivered: 0,
     lost: 0,
-    kills: { drone: 0, ballistic: 0, guided: 0 },
-    sunkBy: { drone: 0, ballistic: 0, guided: 0 },
+    kills: zeroCounts(),
+    sunkBy: zeroCounts(),
     shots: 0,
     seen: new Set(),
     cleared: false,
     endless: false,
     nextId: 1,
+    steps: 0,
+    taps: { fire: 0, pickup: 0, dry: 0, empty: 0 },
+    history: [],
   };
   // Skipping ahead (playtesting a late wave) also hands over the cards a
   // player would have drafted by then, so the wave plays as it really would.
   for (let w = 1; w < Math.floor(firstWave); w++) {
     g.wave = w;
     openDraft(g);
-    if (g.phase === 'draft') {
-      g.levels[g.offer[0]] = (g.levels[g.offer[0]] ?? 0) + 1;
+    const pick = g.offer.find((id) => id !== 'resupply' && canTake(g.levels, id));
+    if (pick) {
+      g.levels[pick] = (g.levels[pick] ?? 0) + 1;
       g.stats = stats(g.levels);
     }
   }
@@ -268,6 +303,12 @@ function startWave(g: Game): void {
   spread(spec.guided, (at) =>
     queue.push({ at, kind: 'guided', base: pickBase(g, 'guided', rng) }),
   );
+  // Map-specific threat types on top of the shared table.
+  for (const x of g.map.extras) {
+    if (g.wave < x.from) continue;
+    const n = Math.round(x.count + x.growth * (g.wave - x.from));
+    spread(n, (at) => queue.push({ at, kind: x.kind, base: pickBase(g, x.kind, rng) }));
+  }
   queue.sort((a, b) => a.at - b.at);
   g.queue = queue;
   g.events.push({ kind: 'wave', wave: g.wave });
@@ -316,6 +357,12 @@ export type TapResult = 'fire' | 'pickup' | 'dry' | 'empty';
 /** A tap at (x, y) in world units, reaching `radius` world units. */
 export function tap(g: Game, x: number, y: number, radius: number): TapResult {
   if (g.phase !== 'wave') return 'empty';
+  const result = tapResult(g, x, y, radius);
+  g.taps[result] += 1;
+  return result;
+}
+
+function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   let pickup: Pickup | null = null;
   let pd = radius + PICKUPS.radius;
   for (const p of g.pickups) {
@@ -357,12 +404,21 @@ export function tap(g: Game, x: number, y: number, radius: number): TapResult {
 }
 
 export function pickUpgrade(g: Game, id: UpgradeId): void {
-  if (g.phase !== 'draft' || !g.offer.includes(id)) return;
+  if (g.phase !== 'draft' || !g.offer.includes(id) || !canTake(g.levels, id)) return;
+  if (id === 'resupply') {
+    for (const s of g.ships) s.hp = SHIP.hp;
+    g.carrierHp = CARRIER.hp;
+    g.ammo = g.stats.rack;
+    g.batteryAmmo = g.stats.batteryRack;
+    startWave(g);
+    return;
+  }
   const oldRack = g.stats.rack;
+  const oldBattery = g.stats.batteryRack;
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   g.stats = stats(g.levels);
   g.ammo = Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack));
-  if (id === 'battery') g.batteryAmmo = g.stats.batteryRack;
+  if (id === 'battery') g.batteryAmmo = Math.min(g.stats.batteryRack, g.batteryAmmo + g.stats.batteryRack - oldBattery);
   startWave(g);
 }
 
@@ -373,11 +429,27 @@ export function continueEndless(g: Game): void {
   openDraft(g);
 }
 
+/** Chance each draft draw comes from the loadout's own (unmaxed) cards. */
+const OWNED_DRAW = 0.37;
+
 function openDraft(g: Game): void {
+  // Three random cards from everything not yet maxed. With a full loadout, new
+  // cards still show (marked "slots full") — whether one of your own comes up
+  // is the luck of the draw — and if none can be taken, Resupply is added so
+  // the draft is never a dead end.
+  // Each of the three draws favours a card you already hold (OWNED_DRAW), so a
+  // loadout levels up in most drafts but not all.
   const open = UPGRADE_ORDER.filter((id) => (g.levels[id] ?? 0) < UPGRADES[id].max);
-  g.offer = g.rng.draft.shuffle([...open]).slice(0, 3);
-  if (g.offer.length === 0) startWave(g);
-  else g.phase = 'draft';
+  const rng = g.rng.draft;
+  const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
+  const other = rng.shuffle(open.filter((id) => !(g.levels[id] ?? 0)));
+  g.offer = [];
+  while (g.offer.length < 3 && (mine.length || other.length)) {
+    const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));
+    g.offer.push((fromMine ? mine : other).shift()!);
+  }
+  if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
+  g.phase = 'draft';
 }
 
 // ---------------------------------------------------------------------------
@@ -385,6 +457,7 @@ function openDraft(g: Game): void {
 
 export function step(g: Game, dt: number): void {
   if (g.phase !== 'wave') return;
+  g.steps += 1;
   g.t += dt;
   g.waveT += dt;
 
@@ -404,10 +477,12 @@ export function step(g: Game, dt: number): void {
 
   if (g.lost >= RULES.shipLossLimit || g.carrierHp <= 0) {
     g.phase = 'lost';
+    recordWave(g, 'lost');
     return;
   }
   if (g.queue.length === 0 && g.threats.length === 0) {
     g.score += 200 * g.wave;
+    recordWave(g, 'cleared');
     if (!g.endless && g.wave >= RULES.wavesToClear) {
       g.cleared = true;
       g.phase = 'won';
@@ -415,6 +490,22 @@ export function step(g: Game, dt: number): void {
       openDraft(g);
     }
   }
+}
+
+function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
+  g.history.push({
+    wave: g.wave,
+    t: Math.round(g.t * 10) / 10,
+    outcome,
+    score: g.score,
+    delivered: g.delivered,
+    lost: g.lost,
+    carrierHp: g.carrierHp,
+    shots: g.shots,
+    kills: { ...g.kills },
+    sunkBy: { ...g.sunkBy },
+    taps: { ...g.taps },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +518,7 @@ function spawnGap(g: Game): number {
 function slotY(g: Game, s: Ship): number {
   const ch = g.map.channels[s.channel];
   const offsets = FORMATIONS[g.formation].offsets;
-  return ch.y + offsets[s.slot % offsets.length] * ch.halfWidth;
+  return ch.y + offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
 }
 
 function spawnShips(g: Game, dt: number): void {
@@ -524,6 +615,19 @@ function onCarrier(g: Game, x: number, y: number, pad = 0): boolean {
 // ---------------------------------------------------------------------------
 // Threats
 
+/** How much of a wave's speed-up each threat takes (fast ones take less). */
+const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
+  drone: 1,
+  ballistic: 1,
+  guided: GUIDED.waveSpeedShare,
+  supersonic: SUPERSONIC.waveSpeedShare,
+  heavy: HEAVY.waveSpeedShare,
+  cluster: GUIDED.waveSpeedShare,
+  mothership: MOTHERSHIP.waveSpeedShare,
+  bomblet: 0.5,
+  minidrone: 1,
+};
+
 function launch(g: Game, l: Launch): void {
   const base = g.map.bases[l.base];
   const def = THREATS[l.kind];
@@ -540,15 +644,13 @@ function launch(g: Game, l: Launch): void {
     vx: 0,
     vy: 0,
     hp: def.hp,
-    speed:
-      def.speed *
-      (l.kind === 'guided' ? 1 + (g.waveSpeed - 1) * GUIDED.waveSpeedShare : g.waveSpeed) *
-      g.stats.threatSlow,
+    speed: def.speed * (1 + (g.waveSpeed - 1) * WAVE_SPEED_SHARE[l.kind]) * g.stats.threatSlow,
     heading: 0,
     target: CARRIER_TARGET,
     age: 0,
     phase: rng.range(0, Math.PI * 2),
     dead: false,
+    spawnT: MOTHERSHIP.spawnEvery * 0.5,
     sx: base.x,
     sy: base.y,
     ix: 0,
@@ -557,7 +659,8 @@ function launch(g: Game, l: Launch): void {
     apex: 0,
   };
   const goCarrier =
-    l.kind === 'guided' && g.wave >= GUIDED.carrierFromWave && rng.chance(GUIDED.carrierShare);
+    l.kind === 'mothership' ||
+    (l.kind === 'guided' && g.wave >= GUIDED.carrierFromWave && rng.chance(GUIDED.carrierShare));
   const pool = targetable(g, l.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
 
@@ -637,18 +740,26 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     th.x = th.sx + (th.ix - th.sx) * p;
     th.y = th.sy + (th.iy - th.sy) * p - 4 * th.apex * p * (1 - p);
     if (p >= 1) impactBallistic(g, th);
+  } else if (th.kind === 'supersonic' && th.age < SUPERSONIC.arming) {
+    // On the rail with its lock line showing: aim, don't move yet.
+    ensureTarget(g, th);
+    const tp = leadPoint(g, th);
+    th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
   } else {
     ensureTarget(g, th);
-    const tp = targetPos(g, th);
+    const tp = th.kind === 'supersonic' ? leadPoint(g, th) : targetPos(g, th);
     const d = dist(th.x, th.y, tp.x, tp.y);
     const want = Math.atan2(tp.y - th.y, tp.x - th.x);
-    if (th.kind === 'drone') {
+    if (th.kind === 'drone' || th.kind === 'minidrone') {
       // Shahed-style: slow and steady with a lazy weave, re-aiming as it goes.
       const weave = DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase);
       th.heading = want + (d > 80 ? weave : 0);
+    } else if (th.kind === 'mothership') {
+      th.heading = want;
     } else {
+      const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
-      const turn = (GUIDED.turnRate + GUIDED.terminalTurn * close) * dt;
+      const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
       th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
     const boost =
@@ -657,24 +768,99 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
-    const dmg = THREATS[th.kind].damage;
-    if (th.target === CARRIER_TARGET) {
-      if (onCarrier(g, th.x, th.y)) {
-        th.dead = true;
-        damageCarrier(g, dmg);
-        addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 30 });
-      }
+    if (th.kind === 'mothership') spawnChildren(g, th, dt);
+    if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
+      splitCluster(g, th);
     } else {
-      const s = g.ships.find((o) => o.id === th.target);
-      if (s && dist(th.x, th.y, s.x, s.y) < SHIP.hitRadius) {
-        th.dead = true;
-        addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
-        damageShip(g, s, dmg, th.kind);
-      }
+      checkImpact(g, th);
     }
   }
   th.vx = (th.x - px) / dt;
   th.vy = (th.y - py) / dt;
+}
+
+/** Turn rates (rad/s) for the steering threats. */
+const STEER: Partial<Record<ThreatKind, number>> = {
+  guided: GUIDED.turnRate,
+  supersonic: SUPERSONIC.turnRate,
+  heavy: HEAVY.turnRate,
+  cluster: CLUSTER.turnRate,
+  bomblet: CLUSTER.bombletTurn,
+};
+
+/** Where a ship will be when a fast threat reaches it. */
+function leadPoint(g: Game, th: Threat): Point {
+  const t = targetPos(g, th);
+  if (th.target === CARRIER_TARGET) return t;
+  const eta = dist(th.x, th.y, t.x, t.y) / th.speed;
+  return { x: t.x + SHIP.speed * eta, y: t.y };
+}
+
+function checkImpact(g: Game, th: Threat): void {
+  const dmg = THREATS[th.kind].damage;
+  const blame = th.parent ?? th.kind;
+  if (th.target === CARRIER_TARGET) {
+    if (!onCarrier(g, th.x, th.y)) return;
+    th.dead = true;
+    damageCarrier(g, dmg);
+    addFx(g, 'boom', th.x, th.y, { life: 0.7, r: th.kind === 'heavy' || th.kind === 'mothership' ? 50 : 30 });
+    return;
+  }
+  const s = g.ships.find((o) => o.id === th.target);
+  if (!s || dist(th.x, th.y, s.x, s.y) >= SHIP.hitRadius) return;
+  th.dead = true;
+  if (th.kind === 'heavy') {
+    // A heavy warhead also damages everything close by.
+    addFx(g, 'splash', th.x, th.y, { life: 0.9, r: HEAVY.splash });
+    for (const o of [...g.ships]) {
+      if (o !== s && dist(o.x, o.y, th.x, th.y) <= HEAVY.splash) damageShip(g, o, HEAVY.splashDamage, blame);
+    }
+  } else {
+    addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
+  }
+  damageShip(g, s, dmg, blame);
+}
+
+function child(g: Game, parent: Threat, kind: ThreatKind, target: number, heading: number): Threat {
+  return {
+    ...parent,
+    id: g.nextId++,
+    kind,
+    parent: parent.kind,
+    hp: THREATS[kind].hp,
+    speed: THREATS[kind].speed * (1 + (g.waveSpeed - 1) * WAVE_SPEED_SHARE[kind]) * g.stats.threatSlow,
+    heading,
+    target,
+    age: 0,
+    dead: false,
+    spawnT: 0,
+  };
+}
+
+/** A cluster that reaches its split range becomes bomblets aimed at the ships
+ *  around its target. Hit it before then and none of this happens. */
+function splitCluster(g: Game, th: Threat): void {
+  th.dead = true;
+  const near = targetable(g, VIEW.width + 40)
+    .filter((s) => dist(s.x, s.y, th.x, th.y) <= CLUSTER.spread)
+    .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y));
+  const targets = near.length ? near : [];
+  for (let k = 0; k < CLUSTER.bomblets; k++) {
+    const t = targets.length ? targets[k % targets.length].id : th.target;
+    const spreadAngle = th.heading + (k - (CLUSTER.bomblets - 1) / 2) * 0.35;
+    g.threats.push(child(g, th, 'bomblet', t, spreadAngle));
+  }
+  addFx(g, 'burst', th.x, th.y, { life: 0.5, r: 40 });
+}
+
+function spawnChildren(g: Game, th: Threat, dt: number): void {
+  th.spawnT -= dt;
+  if (th.spawnT > 0) return;
+  th.spawnT += MOTHERSHIP.spawnEvery;
+  const pool = targetable(g);
+  const t = pool.length ? g.rng.threats.pick(pool).id : CARRIER_TARGET;
+  g.threats.push(child(g, th, 'minidrone', t, th.heading + Math.PI / 2));
+  addFx(g, 'launch', th.x, th.y, { life: 0.4, r: 12 });
 }
 
 function impactBallistic(g: Game, th: Threat): void {
@@ -843,6 +1029,24 @@ function updateInterceptors(g: Game, dt: number): void {
         if (th) it.target = th.id;
       }
     }
+    // Auto-Retarget L2: an extra interceptor on a target that is already
+    // covered peels off to the nearest threat nobody is covering.
+    if (th && g.stats.retarget >= 2 && assigned(g, th.id) > th.hp) {
+      let bd = RETARGET_RANGE;
+      let alt: Threat | undefined;
+      for (const o of g.threats) {
+        if (o.dead || o === th || assigned(g, o.id) >= o.hp) continue;
+        const d = dist(it.x, it.y, o.x, o.y);
+        if (d < bd) {
+          bd = d;
+          alt = o;
+        }
+      }
+      if (alt) {
+        th = alt;
+        it.target = alt.id;
+      }
+    }
     if (th) {
       // Lead the target: aim where it will be when we get there.
       let aim: Point = th;
@@ -983,5 +1187,6 @@ export function reticleVisible(g: Game, th: Threat): boolean {
 export function timeToImpact(g: Game, th: Threat): number {
   if (th.kind === 'ballistic') return Math.max(0, th.dur - th.age);
   const t = targetPos(g, th);
-  return dist(th.x, th.y, t.x, t.y) / th.speed;
+  const arming = th.kind === 'supersonic' ? Math.max(0, SUPERSONIC.arming - th.age) : 0;
+  return arming + dist(th.x, th.y, t.x, t.y) / th.speed;
 }

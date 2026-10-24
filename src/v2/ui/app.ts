@@ -15,19 +15,16 @@ import {
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
-import { UPGRADES } from '../data/upgrades';
+import { MAX_SLOTS, canTake, cardDef, loadout } from '../data/upgrades';
 import { loadProgress, recordResult, type Progress } from '../platform/save';
 import {
-  continueEndless,
   createGame,
-  pickUpgrade,
-  setFlow,
-  setFormation,
   step,
-  tap,
   type Game,
   type Phase,
 } from '../sim/game';
+import { Recorder } from '../sim/playlog';
+import { downloadLog, flushUnsent, storeLog, type UploadState } from '../platform/playlogStore';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
@@ -36,10 +33,14 @@ const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
 
-const DEBUT_HINT: Record<ThreatKind, string> = {
+const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one.',
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
+  supersonic: 'Watch for the red lock line, then tap fast.',
+  heavy: 'Slow but armoured. Needs four hits.',
+  cluster: 'Splits near the ships. Hit it early.',
+  mothership: 'Drops mini-drones. Kill the source.',
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -63,6 +64,9 @@ function button(text: string, cls: string, onClick: () => void): HTMLButtonEleme
 export class App {
   private progress: Progress = loadProgress();
   private game: Game | null = null;
+  /** Every input goes through the recorder, so each run leaves a replayable log. */
+  private rec: Recorder | null = null;
+  private logState: UploadState | null = null;
   private seedCounter = Date.now() % 100000;
 
   private canvas = el('canvas', 'v2-canvas');
@@ -129,7 +133,26 @@ export class App {
     this.resize();
   }
 
+  /** Seal the current run's log and send it wherever this build can. Safe to
+   *  call more than once (a cleared map that continues into endless updates
+   *  the same log). */
+  private endRun(end: 'won' | 'lost' | 'quit'): void {
+    if (!this.rec) return;
+    const log = this.rec.finish(end);
+    if (end !== 'won') this.rec = null;
+    this.logState = null;
+    void storeLog(log).then((state) => {
+      this.logState = state;
+      this.renderLogStatus(log);
+    });
+  }
+
   start(): void {
+    void flushUnsent();
+    // Closing the tab mid-run still leaves a log.
+    window.addEventListener('pagehide', () => {
+      if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) this.endRun('quit');
+    });
     // Test hook for the browser smoke test: read the game, map world → screen.
     (window as unknown as { __v2: unknown }).__v2 = {
       game: () => this.game,
@@ -147,7 +170,7 @@ export class App {
       FLOW_STEPS.length,
       0,
       (s) => `×${FLOW_STEPS[s].mult}`,
-      (s) => this.game && setFlow(this.game, s),
+      (s) => this.rec?.flow(s),
     );
     const flowHint = el('div', 'v2-rail-hint', 'more ships, more points');
     this.leftRail.append(
@@ -159,7 +182,7 @@ export class App {
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
       const opt = button('', 'v2-formation-opt', () => {
-        if (this.game) setFormation(this.game, id);
+        this.rec?.formation(id);
         this.formationPop.classList.remove('open');
         this.syncFormation();
       });
@@ -173,7 +196,10 @@ export class App {
       SPEED_STEPS.length,
       DEFAULT_SPEED,
       (s) => `${SPEED_STEPS[s]}×`,
-      (s) => (this.speed = SPEED_STEPS[s]),
+      (s) => {
+        this.speed = SPEED_STEPS[s];
+        this.rec?.speed(this.speed);
+      },
     );
     this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
   }
@@ -202,6 +228,7 @@ export class App {
         button('Quit to menu', 'v2-btn', () => {
           this.paused = false;
           this.pauseBtn.textContent = 'II';
+          this.endRun('quit');
           this.showMenu();
         }),
       ]);
@@ -220,7 +247,7 @@ export class App {
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
       this.fire(w.x, w.y);
-      this.hold = { ...w, since: performance.now(), next: performance.now() + 250, id: e.pointerId };
+      this.hold = { ...w, since: performance.now(), next: this.game.t + 0.25, id: e.pointerId };
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (!this.hold || this.hold.id !== e.pointerId) return;
@@ -237,7 +264,8 @@ export class App {
   /** `quiet`: a hold-to-fire repeat, which shouldn't ripple on empty water. */
   private fire(x: number, y: number, quiet = false): void {
     if (!this.game) return;
-    const result = tap(this.game, x, y, TAP_RADIUS_PX / this.scale);
+    if (!this.rec) return;
+    const result = this.rec.tap(x, y, TAP_RADIUS_PX / this.scale);
     if (quiet) return;
     if (result === 'empty') this.ripples.push({ x, y, age: 0 });
     if (result === 'dry') {
@@ -327,9 +355,10 @@ export class App {
         n++;
         if (g.phase !== 'wave') break;
       }
-      if (this.hold && g.stats.holdToFire && now >= this.hold.next) {
+      // Hold-to-fire repeats on game time, so it scales with the speed slider.
+      if (this.hold && g.stats.holdRepeat > 0 && g.t >= this.hold.next) {
         this.fire(this.hold.x, this.hold.y, true);
-        this.hold.next = now + 220;
+        this.hold.next = g.t + g.stats.holdRepeat;
       }
     }
     if (g) {
@@ -380,7 +409,7 @@ export class App {
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down.' : '');
           break;
         case 'debut':
-          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat]);
+          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
           break;
         case 'shipLost':
           this.shake = 10;
@@ -440,6 +469,8 @@ export class App {
   }
 
   private showMenu(): void {
+    if (this.rec) this.endRun(this.game?.phase === 'won' ? 'won' : 'quit');
+    this.rec = null;
     this.game = null;
     this.lastPhase = null;
     this.root.classList.remove('playing');
@@ -460,6 +491,8 @@ export class App {
     });
     const classic = el('a', 'v2-classic', 'Play the classic version →');
     classic.href = './index.html';
+    // The artifact build ships V2 alone; there is no classic page to link to.
+    classic.hidden = 'claude' in window;
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down.'),
@@ -474,7 +507,20 @@ export class App {
     const params = new URLSearchParams(location.search);
     const skip = Number(params.get('wave')) || 1;
     const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
+    if (this.rec) this.endRun('quit');
     this.game = createGame(id, seed, skip);
+    this.rec = new Recorder(this.game, {
+      build: __BUILD__,
+      startedAt: new Date().toISOString(),
+      firstWave: skip,
+      device: {
+        w: window.innerWidth,
+        h: window.innerHeight,
+        dpr: window.devicePixelRatio || 1,
+        touch: navigator.maxTouchPoints > 0,
+        ua: navigator.userAgent.slice(0, 160),
+      },
+    });
     this.lastPhase = null;
     this.acc = 0;
     this.paused = false;
@@ -485,30 +531,46 @@ export class App {
   }
 
   private showDraft(g: Game): void {
+    const owned = loadout(g.levels);
+    const full = owned.length >= MAX_SLOTS;
+    const roman = (n: number) => ['', 'I', 'II', 'III'][n] ?? String(n);
+    const slots = el('div', 'v2-slots');
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const id = owned[i];
+      const chip = el('span', `v2-slot${id ? '' : ' empty'}`, id ? `${cardDef(id).name} ${roman(g.levels[id] ?? 0)}` : 'Empty slot');
+      slots.append(chip);
+    }
     const cards = g.offer.map((id) => {
-      const u = UPGRADES[id];
+      const u = cardDef(id);
       const lvl = g.levels[id] ?? 0;
-      const card = button('', 'v2-card', () => pickUpgrade(g, id));
+      const takeable = canTake(g.levels, id);
+      const badge = id === 'resupply' ? 'NO CARD FITS' : !takeable ? 'SLOTS FULL' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const card = button('', `v2-card${takeable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}`, () => {
+        if (takeable) this.rec?.pick(id);
+      });
+      card.disabled = !takeable;
       card.dataset.upgrade = id;
       card.append(
-        el('span', 'v2-card-answers', `vs ${u.answers}`),
+        el('span', 'v2-card-top', ''),
         el('strong', '', u.name),
-        el('span', 'v2-card-level', `Level ${lvl + 1}/${u.max}`),
-        el('span', 'v2-card-text', u.levels[lvl]),
+        el('span', 'v2-card-level', id === 'resupply' ? 'Takes no slot' : `Level ${lvl + 1}/${u.max}`),
+        el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]),
       );
+      const top = card.querySelector('.v2-card-top')!;
+      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SLOTS FULL' ? 'off' : badge === 'NEW' ? 'new' : 'up'}`, badge));
       return card;
     });
     const row = el('div', 'v2-card-row');
     row.append(...cards);
-    this.showOverlay('v2-draft', [
-      el('h2', '', `Wave ${g.wave} cleared`),
-      el('p', 'v2-sub', 'Pick one upgrade.'),
-      row,
-    ]);
+    const rule = full
+      ? 'Your three slots are full: only cards you hold can level up.'
+      : `Pick one. You can hold ${MAX_SLOTS} different cards (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free).`;
+    this.showOverlay('v2-draft', [el('h2', '', `Wave ${g.wave} cleared`), slots, el('p', 'v2-sub', rule), row]);
   }
 
   private showResult(g: Game, won: boolean): void {
     const best = recordResult(this.progress, g.map.id, g.score, g.wave, g.cleared);
+    this.endRun(won ? 'won' : 'lost');
     const idx = MAP_ORDER.indexOf(g.map.id);
     const next = MAP_ORDER[idx + 1];
     const stats = el('div', 'v2-stats');
@@ -516,10 +578,10 @@ export class App {
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
       `<span><b>${g.lost}</b>ships sunk</span>` +
-      `<span><b>${g.kills.drone + g.kills.ballistic + g.kills.guided}</b>shot down</span>`;
+      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>`;
     const buttons: HTMLElement[] = [];
     if (won) {
-      buttons.push(button('Keep going (endless)', 'v2-btn', () => continueEndless(g)));
+      buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.play(next)));
     } else {
       buttons.push(button('Try again', 'v2-btn primary', () => this.play(g.map.id)));
@@ -534,7 +596,25 @@ export class App {
     const sub = won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, row]);
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+  }
+
+  private renderLogStatus(log: import('../sim/playlog').PlayLog): void {
+    const line = this.overlay.querySelector('.v2-log-status');
+    if (!line) return;
+    if (this.logState === 'sent') {
+      line.textContent = 'Playtest log sent to Claude ✓';
+      return;
+    }
+    if (this.logState === 'failed') {
+      // Inside the artifact downloads are blocked; the log is resent on next launch.
+      line.textContent = 'Log kept on this device; it will be sent to Claude next time you open the game.';
+      return;
+    }
+    line.replaceChildren(
+      el('span', '', 'Log saved on this device. '),
+      button('Download log', 'v2-link', () => downloadLog(log)),
+    );
   }
 
   private showOverlay(cls: string, children: HTMLElement[]): void {
@@ -552,16 +632,20 @@ export class App {
   }
 }
 
-const SUNK_BY: Record<ThreatKind, string> = {
+const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Wide Warhead or Chain Detonation thin out swarms.',
   ballistic: 'Ballistics did the most damage: Faster Interceptors and Spread formation help.',
   guided: 'Guided missiles did the most damage: Twin Launch hits them twice per tap.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Faster Interceptors help.',
+  heavy: 'Heavy missiles did the most damage: Twin Launch and Hold to Fire stack hits fast.',
+  cluster: 'Cluster bomblets did the most damage: hit the missile before it splits.',
+  mothership: 'Mothership drones did the most damage: take the mothership down first.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */
 function culprit(g: Game): string {
   const top = (Object.keys(g.sunkBy) as ThreatKind[]).sort((a, b) => g.sunkBy[b] - g.sunkBy[a])[0];
-  return g.sunkBy[top] > 0 ? SUNK_BY[top] : '';
+  return g.sunkBy[top] > 0 ? (SUNK_BY[top] ?? '') : '';
 }
 
 /** Tiny dot diagram of a formation, three ships deep. */
