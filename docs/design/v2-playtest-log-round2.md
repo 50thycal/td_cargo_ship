@@ -228,3 +228,57 @@ dominates losses now; ballistics from close shores remain the main killer on
 maps 2–3, which is those maps' character. Screenshots after the fixes: lock
 line and base glow unmistakable, heavy HP bar readable, bomblets clear as they
 fan out. Full suite: 762 tests pass.
+
+### Cycle 5 — New maps (P5)
+
+**Ideas.** Archipelago (enemy islets with gaps; motherships), Harbor Mouth (the
+channel funnels into a harbour under enemy headlands, so pressure peaks right
+before delivery), and three not built yet: Open Sea (no land, launch platforms
+on every side), Night Crossing (threats visible only inside radar range),
+Storm Front (wind drifts interceptors; weather changes per wave).
+
+**Built.** Map 4 Harbor Mouth and map 5 The Archipelago, each with its own
+extras schedule. Funnelling channels are new geometry: lanes narrow with x,
+never below a floor that keeps Box formation's hulls 22+ apart; lane guides
+are drawn converging.
+
+**Checks run.** Overlaps through every formation switch at max flow on both new
+maps, and steady-state along the funnel; the ballistic-ceiling test now covers
+five maps; five-map sweeps over 32 seeds; per-threat telemetry on the new maps;
+Chromium at 874×402 with iPhone safe areas: the menu, both maps mid-wave.
+
+**Problems found.**
+1. **Both maps were unwinnable at first**: spammer 0% Archipelago / 3% Harbor,
+   casual 0% / 0%. On the Archipelago my "carrier far to the east" idea made the
+   west end indefensible — island ballistics were shot down only 55% of the time
+   (77–83% elsewhere) because interceptor flights were too long, and
+   motherships sank 1.4 ships a run. On Harbor Mouth the heavies, clusters and
+   supersonics launched beside the narrows ~800 units from the carrier
+   (shot-down rates 65% / 44% / 49%).
+2. After moving the carriers the order was inverted (Archipelago harder than
+   Harbor Mouth).
+3. With five maps the menu overflowed a landscape phone by 27 px, cutting off
+   cards 4–5.
+4. Two screenshot attempts caught the draft screen instead of play (harness
+   timing; a draft has no Quit button, which is fine — pick a card, then pause).
+
+**Changes.** Carriers moved toward the action (Archipelago x 1230 → 950, Harbor
+620 → 900); extras start a wave or two later; threat scales 1.1 / 1.05;
+the islet nearest the lanes stopped firing ballistics; map order swapped so
+Harbor Mouth is map 4 and the Archipelago the finale; compact menu on short
+screens.
+
+**Retest.**
+
+| Check | Result |
+|---|---|
+| Overlaps, all switches + steady funnel | 0 on both maps; Box keeps 23 u side-by-side at the exit |
+| Spammer clear rate, maps 1→5 (32 seeds) | 75% → 66% → 38% → 31% → 22% (monotonic) |
+| Casual clear rate | 59% → 19% → 6% → 3% → 0% |
+| Menu at 874×402 | content height 325 = viewport, no scroll; map 5 locked until map 4 is cleared |
+| Screenshots | Archipelago islets and lanes clear; Harbor coastlines and lane guides visibly converge toward the exit |
+
+Casual players will mostly stall from map 3 on; later maps are for players
+who have learned the threats, with upgrades, Resupply and endless runs as the
+way in. The average bot's rates are not monotonic (Archipelago 94% vs Harbor
+78%) — the spammer, which is closer to how the user plays, is the one tuned.

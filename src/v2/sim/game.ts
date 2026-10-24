@@ -31,7 +31,7 @@ import {
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { MAPS, type MapDef, type MapId, type Point } from '../data/maps';
+import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
 import { UPGRADES, UPGRADE_ORDER, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
@@ -518,7 +518,7 @@ function spawnGap(g: Game): number {
 function slotY(g: Game, s: Ship): number {
   const ch = g.map.channels[s.channel];
   const offsets = FORMATIONS[g.formation].offsets;
-  return ch.y + offsets[s.slot % offsets.length] * ch.halfWidth;
+  return ch.y + offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
 }
 
 function spawnShips(g: Game, dt: number): void {

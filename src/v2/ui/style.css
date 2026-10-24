@@ -524,6 +524,20 @@ body {
   .v2-tag {
     font-size: 12px;
   }
+  /* Five map cards plus the title must fit a landscape phone without scrolling. */
+  .v2-menu h1 {
+    font-size: 30px;
+  }
+  .v2-menu {
+    gap: 6px;
+  }
+  .v2-map-card {
+    gap: 2px;
+  }
+  .v2-map-blurb {
+    font-size: 11px;
+    line-height: 1.25;
+  }
   .v2-hud {
     font-size: 11px;
     gap: 1px;

@@ -3,7 +3,7 @@
 
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, VIEW, type PickupKind, type ThreatKind } from '../data/config';
 import { FORMATIONS } from '../data/formations';
-import type { Landmass } from '../data/maps';
+import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, reticleVisible, type Game, type Threat } from '../sim/game';
 
 const C = {
@@ -126,10 +126,13 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.setLineDash([18, 22]);
   for (const ch of g.map.channels) {
     for (const o of offsets) {
-      const y = ch.y + o * ch.halfWidth;
+      // Sampled across x so a funnelling channel's lanes visibly converge.
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(VIEW.width, y);
+      for (let x = 0; x <= VIEW.width; x += 80) {
+        const y = ch.y + o * halfWidthAt(ch, x);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
       ctx.stroke();
     }
   }

@@ -338,7 +338,7 @@ describe('station keeping', () => {
       return n;
     };
     const ids = Object.keys(FORMATIONS) as (keyof typeof FORMATIONS)[];
-    for (const map of ['strait', 'gauntlet'] as const) {
+    for (const map of ['strait', 'gauntlet', 'harbor'] as const) {
       for (const from of ids) {
         for (const to of ids) {
           if (from === to) continue;
