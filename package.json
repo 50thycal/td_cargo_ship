@@ -19,7 +19,9 @@
     "v2:sweep": "vite-node tools/v2/sweep.ts --",
     "e2e:v2": "node e2e/v2.mjs",
     "v2:replay": "vite-node tools/v2/replay.ts --",
-    "e2e:v2:log": "node e2e/v2-vercel-log.mjs"
+    "e2e:v2:log": "node e2e/v2-vercel-log.mjs",
+    "v2:analyze": "vite-node tools/v2/analyze.ts --",
+    "v2:formation-lab": "vite-node tools/v2/formation-lab.ts --"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",

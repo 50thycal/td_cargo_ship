@@ -165,6 +165,33 @@ try {
   if (lay.railLeft < 62) fail(`left rail under the Dynamic Island: starts at ${lay.railLeft}px`);
   await iphone.screenshot({ path: `${SHOT_DIR}/08-iphone16pro.png` });
 
+  // Swapping a card in with all three slots full, by touch, at iPhone size.
+  await iphone.evaluate(() => {
+    const g = window.__v2.game();
+    g.levels = { twin: 2, ciws: 1, speed: 1 };
+    g.queue = [];
+    g.threats = [];
+  });
+  await iphone.waitForSelector('[data-screen="draft"] .v2-card');
+  const swapCard = iphone.locator('.v2-card.swappable').first();
+  if (!(await swapCard.count())) fail('full loadout draft offered no card to swap in');
+  else {
+    const incoming = await swapCard.getAttribute('data-upgrade');
+    await swapCard.tap();
+    await iphone.waitForSelector('.v2-slot.swap');
+    if ((await iphone.locator('.v2-slot.swap').count()) !== 3) fail('swap mode should offer all three held cards');
+    await iphone.screenshot({ path: `${SHOT_DIR}/09-swap-choose.png` });
+    // Cancel goes back to the plain draft; then swap for real.
+    await iphone.locator('.v2-swap-prompt .v2-link').tap();
+    if (await iphone.locator('.v2-slot.swap').count()) fail('cancel left swap mode on');
+    await iphone.locator(`.v2-card[data-upgrade="${incoming}"]`).tap();
+    await iphone.locator('.v2-slot.swap[data-slot="ciws"]').tap();
+    await iphone.waitForFunction(() => window.__v2.game()?.phase === 'wave');
+    const levels = await iphone.evaluate(() => window.__v2.game().levels);
+    console.log('after swap:', JSON.stringify(levels));
+    if (levels.ciws || levels[incoming] !== 1 || levels.twin !== 2) fail(`swap gave ${JSON.stringify(levels)}`);
+  }
+
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');
 } finally {
   await browser.close();

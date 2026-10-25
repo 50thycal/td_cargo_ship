@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BALLISTIC, FLOW_STEPS, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
 import { FORMATIONS } from '../../src/v2/data/formations';
 import { MAP_ORDER } from '../../src/v2/data/maps';
-import { UPGRADES, UPGRADE_ORDER, canTake } from '../../src/v2/data/upgrades';
+import { UPGRADES, UPGRADE_ORDER, canTake, stats } from '../../src/v2/data/upgrades';
 import { waveSpec } from '../../src/v2/data/waves';
 import { recordResult, type Progress } from '../../src/v2/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v2/sim/bot';
@@ -491,6 +491,122 @@ describe('playtest logs', () => {
   });
 });
 
+describe('round 3: raids, carrier strikes, last-ditch CIWS', () => {
+  it('launches bunch into raids instead of a steady trickle', async () => {
+    const { RAID } = await import('../../src/v2/data/config');
+    const g = createGame('strait', 12, 8);
+    const times = g.queue.map((l) => l.at);
+    // Busiest RAID.window-second stretch vs what an even spread would give.
+    let busiest = 0;
+    for (const t0 of times) busiest = Math.max(busiest, times.filter((t) => t >= t0 && t < t0 + RAID.window).length);
+    const even = (times.length * RAID.window) / waveSpec(8, g.map.threatScale).duration;
+    expect(busiest).toBeGreaterThan(even * 1.8);
+  });
+
+  it('missiles start going for the carrier from wave 3', () => {
+    const aimedAtCarrier = (wave: number) => {
+      let n = 0;
+      for (let seed = 1; seed <= 6; seed++) {
+        const g = createGame('strait', seed, wave);
+        for (let i = 0; i < 60 * 40; i++) {
+          step(g, DT);
+          n += g.threats.filter((t) => t.kind !== 'drone' && t.target === CARRIER_TARGET && t.age < DT * 1.5).length;
+        }
+      }
+      return n;
+    };
+    // Before wave 3 only the no-ship-in-reach fallback aims at the carrier.
+    const early = aimedAtCarrier(2);
+    const later = aimedAtCarrier(4);
+    expect(early).toBeLessThanOrEqual(2);
+    expect(later).toBeGreaterThan(early + 5);
+  });
+
+  it('the CIWS only reaches threats near the carrier, and takes carrier attackers first', () => {
+    const g = quietGame();
+    g.levels = { ciws: 1 };
+    g.stats = stats(g.levels);
+    const c = g.map.carrier;
+    const far = addThreat(g, { x: c.x - g.stats.ciwsRange - 60, y: c.y - 40, speed: 0 });
+    run(g, 3);
+    expect(far.dead).toBe(false);
+    const nearShip = addThreat(g, { x: c.x - 60, y: c.y - 60, speed: 0, target: 999 });
+    const atCarrier = addThreat(g, { x: c.x - 150, y: c.y - 60, speed: 0, target: CARRIER_TARGET });
+    g.ciwsT = 0;
+    step(g, DT);
+    expect(atCarrier.dead || atCarrier.hp < 1).toBe(true);
+    expect(nearShip.dead).toBe(false);
+  });
+});
+
+describe('formations and raid themes', () => {
+  const lone = (formation: 'column' | 'pairs' | 'spread' | 'box', over: Partial<Threat>) => {
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [];
+    setFormation(g, formation);
+    const s = { id: 900, x: 700, y: 470, hp: SHIP.hp, slot: 0, channel: 0, mult: 1 };
+    g.ships.push(s);
+    addThreat(g, { x: 690, y: 470, speed: 1, target: 900, ...over });
+    run(g, 0.5);
+    return s;
+  };
+
+  it('Box armour blunts a guided hit; Spread halves a splash weapon', () => {
+    expect(lone('pairs', { kind: 'guided' }).hp).toBe(SHIP.hp - 2);
+    expect(lone('box', { kind: 'guided' }).hp).toBe(SHIP.hp - 1);
+    expect(lone('pairs', { kind: 'heavy', hp: 8 }).hp).toBeLessThanOrEqual(0);
+    expect(lone('spread', { kind: 'heavy', hp: 8 }).hp).toBe(SHIP.hp - 3);
+  });
+
+  it('a ballistic splash reaches the neighbours of a Box but never past one Spread ship', () => {
+    const blast = (formation: 'spread' | 'box') => {
+      const g = quietGame();
+      g.spawnT = 999;
+      setFormation(g, formation);
+      g.ships = [0, 1, 2].map((k) => ({ id: 800 + k, x: 800, y: 420 + k * 45, hp: SHIP.hp, slot: k, channel: 0, mult: 1 }));
+      addThreat(g, { kind: 'ballistic', x: 800, y: 465, sx: 800, sy: 200, ix: 800, iy: 465, dur: 0.05, apex: 0, age: 0, target: 801, speed: 1 });
+      run(g, 0.3);
+      return g.ships.filter((s) => s.hp < SHIP.hp).length + g.lost;
+    };
+    expect(blast('box')).toBe(3);
+    expect(blast('spread')).toBe(1);
+  });
+
+  it('Column ships move fastest and Box slowest', async () => {
+    const { shipSpeed } = await import('../../src/v2/sim/game');
+    const g = quietGame();
+    const speeds = (['column', 'pairs', 'spread', 'box'] as const).map((f) => {
+      setFormation(g, f);
+      return shipSpeed(g);
+    });
+    expect(speeds[0]).toBeGreaterThan(speeds[1]);
+    expect(speeds[1]).toBeGreaterThan(speeds[2]);
+    expect(speeds[2]).toBeGreaterThan(speeds[3]);
+  });
+
+  it('each raid is one family of threat, and its warning comes first', async () => {
+    const { RAID, RAID_THEME } = await import('../../src/v2/data/config');
+    const { raidWarning } = await import('../../src/v2/sim/game');
+    const g = createGame('island', 33, 7);
+    expect(new Set(g.raids.map((r) => r.theme)).size).toBeGreaterThan(1);
+    const launches = new Map<number, Set<string>>();
+    for (const l of g.queue) {
+      // A launch belongs to the latest raid that started before it.
+      let r = -1;
+      g.raids.forEach((raid, k) => {
+        if (raid.at <= l.at && (r < 0 || raid.at > g.raids[r].at)) r = k;
+      });
+      if (r >= 0 && l.kind !== 'drone') launches.set(r, (launches.get(r) ?? new Set()).add(RAID_THEME[l.kind]));
+    }
+    for (const themes of launches.values()) expect(themes.size).toBe(1);
+    // The warning is up before the first raid lands.
+    const first = g.raids[0];
+    while (g.waveT < first.at - RAID.warn / 2) step(g, DT);
+    expect(raidWarning(g)?.raid).toBe(first);
+  });
+});
+
 describe('three-slot loadout', () => {
   it('a full loadout cannot take a new card, only level up its own', async () => {
     const { MAX_SLOTS, canTake, loadout } = await import('../../src/v2/data/upgrades');
@@ -507,6 +623,49 @@ describe('three-slot loadout', () => {
     pickUpgrade(g, 'rack');
     expect(g.levels.rack).toBe(2);
     expect(g.phase).toBe('wave');
+  });
+
+  it('with all slots full a new card swaps in for a held one, which loses its levels', async () => {
+    const { canSwapIn, stats: statsOf } = await import('../../src/v2/data/upgrades');
+    const g = createGame('strait', 5);
+    g.levels = { rack: 2, speed: 1, twin: 1 };
+    g.stats = statsOf(g.levels);
+    g.ammo = g.stats.rack;
+    expect(canSwapIn(g.levels, 'blast')).toBe(true);
+    expect(canSwapIn(g.levels, 'rack')).toBe(false); // already held: it levels up instead
+    g.phase = 'draft';
+    g.offer = ['blast', 'rack', 'ciws'];
+    pickUpgrade(g, 'blast', 'ciws'); // not held: refused
+    expect(g.phase).toBe('draft');
+    pickUpgrade(g, 'blast', 'rack');
+    expect(g.levels).toEqual({ speed: 1, twin: 1, blast: 1 });
+    expect(g.phase).toBe('wave');
+    // Giving up the bigger rack drops the rounds it held.
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack);
+    expect(g.ammo).toBeLessThanOrEqual(g.stats.rack);
+  });
+
+  it('a log with a swap replays exactly', async () => {
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('strait', 21);
+    const rec = new Recorder(g, { build: 'test', startedAt: '2026-01-01T00:00:00.000Z', firstWave: 1, device: { w: 1, h: 1, dpr: 1, touch: true, ua: 't' } });
+    let swapped = false;
+    for (let i = 0; i < 60 * 60 * 8 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
+      if (g.phase === 'draft') {
+        const swapIn = g.offer.find((id) => id !== 'resupply' && !(g.levels[id] ?? 0) && Object.keys(g.levels).length >= 3);
+        if (swapIn && !swapped) {
+          rec.pick(swapIn, Object.keys(g.levels)[0] as never);
+          swapped = true;
+        } else rec.pick(g.offer.find((id) => id === 'resupply' || canTake(g.levels, id))!);
+      }
+      if (i % 12 === 0 && g.threats.length) rec.tap(g.threats[0].x, g.threats[0].y, 40);
+      step(g, DT);
+    }
+    expect(swapped).toBe(true);
+    const log = rec.finish(g.phase === 'lost' ? 'lost' : 'quit');
+    expect(log.commands.some((c) => c[1] === 'u' && c.length === 4)).toBe(true);
+    const r = replay(JSON.parse(JSON.stringify(log)));
+    expect({ steps: r.steps, score: r.score, lost: r.lost, levels: r.levels }).toEqual({ steps: g.steps, score: g.score, lost: g.lost, levels: g.levels });
   });
 
   it('a draft with nothing takeable offers Resupply, which repairs and refills', async () => {
@@ -563,13 +722,14 @@ describe('new threat types', () => {
     expect(Math.hypot(th.x - 800, th.y - 100)).toBeGreaterThan(80);
   });
 
-  it('a heavy missile takes four hits and its splash hurts the ships around its target', async () => {
-    const { HEAVY } = await import('../../src/v2/data/config');
+  it('a heavy missile takes eight hits and its splash hurts the ships around its target', async () => {
+    const { HEAVY, THREATS } = await import('../../src/v2/data/config');
+    expect(THREATS.heavy.hp).toBe(8);
     const g = quietGame();
-    const th = addThreat(g, { kind: 'heavy', hp: 4, x: 800, y: 300, speed: 0 });
-    for (let k = 0; k < 3; k++) {
+    const th = addThreat(g, { kind: 'heavy', hp: THREATS.heavy.hp, x: 800, y: 300, speed: 0 });
+    for (let k = 0; k < THREATS.heavy.hp - 1; k++) {
       tap(g, 800, 300, 30);
-      run(g, 1.2);
+      run(g, 1.6);
     }
     expect(th.dead).toBe(false);
     expect(th.hp).toBe(1);
@@ -606,8 +766,14 @@ describe('new threat types', () => {
     const { MOTHERSHIP } = await import('../../src/v2/data/config');
     const g = quietGame();
     const ms = addThreat(g, { kind: 'mothership', hp: 5, x: 200, y: 200, speed: 38, spawnT: MOTHERSHIP.spawnEvery });
-    run(g, MOTHERSHIP.spawnEvery * 2 + 0.1);
-    expect(g.threats.filter((t) => t.kind === 'minidrone' && t.parent === 'mothership')).toHaveLength(2);
+    // Count every mini-drone launched, not just those still flying: one can
+    // reach a nearby ship before the second is due.
+    const spawned = new Set<number>();
+    for (let t = 0; t < MOTHERSHIP.spawnEvery * 2 + 0.1; t += DT) {
+      step(g, DT);
+      for (const th of g.threats) if (th.kind === 'minidrone' && th.parent === 'mothership') spawned.add(th.id);
+    }
+    expect(spawned.size).toBe(2);
     ms.hp = 1;
     tap(g, ms.x, ms.y, 40);
     run(g, 1.5);
@@ -621,8 +787,12 @@ describe('new threat types', () => {
     expect(createGame('island', 4, 3).queue.some((l) => l.kind === 'supersonic')).toBe(false);
     const g = createGame('island', 4, 4);
     expect(g.queue.some((l) => l.kind === 'supersonic')).toBe(true);
-    const s = createGame('strait', 4, 9);
-    expect(s.queue.every((l) => ['drone', 'ballistic', 'guided'].includes(l.kind))).toBe(true);
+    // The Strait keeps to the basics until a late taste of supersonics (wave 6)
+    // and one heavy in the finale.
+    expect(createGame('strait', 4, 5).queue.every((l) => ['drone', 'ballistic', 'guided'].includes(l.kind))).toBe(true);
+    expect(createGame('strait', 4, 6).queue.some((l) => l.kind === 'supersonic')).toBe(true);
+    expect(createGame('strait', 4, 9).queue.some((l) => l.kind === 'heavy')).toBe(false);
+    expect(createGame('strait', 4, 10).queue.filter((l) => l.kind === 'heavy')).toHaveLength(1);
   });
 });
 
