@@ -102,8 +102,13 @@ Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
 Every run is recorded as its seed plus every input (`src/v2/sim/playlog.ts`)
 and replays exactly. The last ten stay on the device. When the game is played
 as the Claude artifact, each log is also written to the artifact's `playtests`
-database, where Claude reads it directly; the Vercel build offers "Download
-log" on the result screen instead. `npm run v2:replay -- log.json` re-runs a
+database, where Claude reads it directly. On the Vercel build each log is
+POSTed to `/api/playlog` (`api/playlog.ts`), which keeps it in the project's
+private Vercel Blob store; reads (`GET /api/playlog`, `?id=…`, `?all=1`) only
+answer on per-deployment URLs, which Vercel Authentication protects. A log that
+doesn't get through (no store connected yet, offline) stays on the device and
+is resent on the next launch. `npm run e2e:v2:log` checks that flow in a
+browser. `npm run v2:replay -- log.json` re-runs a
 log, confirms it lands on the same score and losses, and prints a per-wave
 breakdown. `node tools/v2/artifact-page.mjs <dir>` turns a build into the
 artifact page.

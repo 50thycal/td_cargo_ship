@@ -24,7 +24,7 @@ import {
   type Phase,
 } from '../sim/game';
 import { Recorder } from '../sim/playlog';
-import { downloadLog, flushUnsent, storeLog, type UploadState } from '../platform/playlogStore';
+import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
@@ -141,9 +141,9 @@ export class App {
     const log = this.rec.finish(end);
     if (end !== 'won') this.rec = null;
     this.logState = null;
-    void storeLog(log).then((state) => {
+    void Promise.all([storeLog(log), logChannel()]).then(([state, channel]) => {
       this.logState = state;
-      this.renderLogStatus(log);
+      this.renderLogStatus(log, channel);
     });
   }
 
@@ -599,7 +599,7 @@ export class App {
     this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, row, el('p', 'v2-log-status', 'Saving playtest log…')]);
   }
 
-  private renderLogStatus(log: import('../sim/playlog').PlayLog): void {
+  private renderLogStatus(log: import('../sim/playlog').PlayLog, channel: Channel): void {
     const line = this.overlay.querySelector('.v2-log-status');
     if (!line) return;
     if (this.logState === 'sent') {
@@ -607,8 +607,10 @@ export class App {
       return;
     }
     if (this.logState === 'failed') {
-      // Inside the artifact downloads are blocked; the log is resent on next launch.
-      line.textContent = 'Log kept on this device; it will be sent to Claude next time you open the game.';
+      // The log is resent on next launch. Inside the artifact downloads are
+      // blocked, so only the Vercel build offers one meanwhile.
+      line.textContent = 'Log kept on this device; it will be sent to Claude next time you open the game. ';
+      if (channel === 'server') line.append(button('Download log', 'v2-link', () => downloadLog(log)));
       return;
     }
     line.replaceChildren(
