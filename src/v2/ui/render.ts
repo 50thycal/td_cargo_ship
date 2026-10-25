@@ -5,6 +5,7 @@ import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type Pick
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
+import { drawBunkers, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
 const C = {
   waterDeep: '#0b2433',
@@ -49,15 +50,17 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawWater(ctx, g);
   for (const land of g.map.land) drawLand(ctx, land);
+  drawBunkers(ctx, g);
   drawLanes(ctx, g);
   drawBases(ctx, g);
+  drawRaiders(ctx, g);
   drawRaidWarning(ctx, g, bannerUp);
   drawCarrier(ctx, g);
-  if (g.stats.batteryRack > 0) drawBattery(ctx, g);
+  if (g.frigate) drawFrigate(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t);
   for (const p of g.pickups) drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t);
-  for (const th of g.threats) drawThreat(ctx, g, th);
+  for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
   for (const it of g.interceptors) {
     const a = Math.atan2(it.ty - it.y, it.tx - it.x);
     ctx.strokeStyle = 'rgba(127, 233, 255, 0.45)';
@@ -69,6 +72,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     dot(ctx, it.x, it.y, 5.5, C.interceptor);
   }
   drawFx(ctx, g);
+  // Aircraft fly above everything else, their warnings on top of that.
+  for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
+    drawPlane(ctx, g, th);
+    hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
+  }
+  drawPlaneWarnings(ctx, g);
   for (const r of ripples) {
     const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
     ctx.strokeStyle = r.dry ? `rgba(255,77,61,${0.9 * fade})` : `rgba(255,255,255,${0.5 * fade})`;
@@ -156,6 +165,7 @@ const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }>
   swarm: { color: '255,255,255', name: 'SWARM', tip: 'drones · Column hurries ships past' },
   barrage: { color: '255,180,80', name: 'BARRAGE', tip: 'splash · Spread halves it' },
   volley: { color: '255,120,230', name: 'VOLLEY', tip: 'guided · Box armour blunts it' },
+  strike: { color: '140,200,255', name: 'AIR STRIKE', tip: 'strafing · split up: Pairs or Spread' },
 };
 
 /** A raid is coming: its bases light up and its type is called out, so the
@@ -311,18 +321,66 @@ function drawCarrier(ctx: CanvasRenderingContext2D, g: Game): void {
   drawRack(ctx, x, y - B - 8, g.stats.rack, g.ammo, g.reloadT / g.stats.reload, g.overdriveT > 0);
 }
 
-function drawBattery(ctx: CanvasRenderingContext2D, g: Game): void {
-  const { x, y } = g.map.battery;
-  ctx.fillStyle = '#3c454f';
-  ctx.strokeStyle = C.hullEdge;
-  ctx.lineWidth = 2;
+/** The Escort Frigate: a slim grey warship with a launcher aft and its own
+ *  rack above it, a bow wave while it is under way. */
+function drawFrigate(ctx: CanvasRenderingContext2D, g: Game): void {
+  const f = g.frigate!;
+  const { x, y } = f;
+  const L = 46;
+  const B = 11;
+  const moving = Math.abs(f.vx) > 1;
+  ctx.save();
+  ctx.translate(x, y);
+  if (f.vx < -1) ctx.scale(-1, 1);
+  // Wake: a long V behind it while it steams, a faint ring at rest.
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
   ctx.beginPath();
-  ctx.arc(x, y, 18, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, L + 10, B + 7, 0, 0, Math.PI * 2);
   ctx.fill();
+  if (moving) {
+    const k = Math.min(1, Math.abs(f.vx) / 120);
+    ctx.strokeStyle = `rgba(230,245,255,${0.25 + 0.35 * k})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(L, 0);
+    ctx.lineTo(-L - 50 * k - 20, -B - 14 * k - 4);
+    ctx.moveTo(L, 0);
+    ctx.lineTo(-L - 50 * k - 20, B + 14 * k + 4);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.3 * k})`;
+    ctx.beginPath();
+    ctx.ellipse(L + 2, 0, 6, B * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Hull: square stern, sharp bow.
+  ctx.beginPath();
+  ctx.moveTo(-L, -B);
+  ctx.lineTo(L - 18, -B);
+  ctx.lineTo(L + 6, 0);
+  ctx.lineTo(L - 18, B);
+  ctx.lineTo(-L, B);
+  ctx.closePath();
+  ctx.fillStyle = '#6b7783';
+  ctx.fill();
+  ctx.strokeStyle = g.overdriveT > 0 ? '#7dd3fc' : '#e6edf2';
+  ctx.lineWidth = 2;
   ctx.stroke();
+  // Superstructure, mast, gun forward, launcher cells aft.
+  ctx.fillStyle = '#4a545e';
+  ctx.fillRect(-8, -7, 22, 14);
+  ctx.fillStyle = '#9aa6b1';
+  ctx.fillRect(2, -3, 6, 6);
+  ctx.fillStyle = '#4a545e';
+  ctx.beginPath();
+  ctx.arc(26, 0, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(26, -1.5, 12, 3);
   ctx.fillStyle = C.interceptor;
-  ctx.fillRect(x - 3, y - 24, 6, 16);
-  drawRack(ctx, x, y - 30, g.stats.batteryRack, g.batteryAmmo, g.batteryReloadT / g.stats.reload, g.overdriveT > 0);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) ctx.fillRect(-36 + i * 8, -6 + j * 7, 5, 5);
+  ctx.restore();
+  // Its own rack, like the carrier's.
+  const rack = g.stats.frigateRack;
+  drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / g.stats.reload, g.overdriveT > 0);
 }
 
 /** A row of rack pips centred on (x, y): full, loading (partly filled), empty. */
@@ -703,6 +761,47 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineTo(f.x2, f.y2);
         ctx.stroke();
         break;
+      case 'spray': {
+        // A missile leaving a submarine: a column of white water bursting up
+        // (seen from above: a ring and droplets flung out) with a small flare.
+        ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - u)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.6 + u * 0.8), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(220,240,250,${0.7 * (1 - u)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (1 + u * 2.4), 0, Math.PI * 2);
+        ctx.stroke();
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2 + f.x * 0.01;
+          ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - u)})`;
+          ctx.beginPath();
+          ctx.arc(f.x + Math.cos(a) * f.r * 2.4 * u, f.y + Math.sin(a) * f.r * 1.6 * u, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = `rgba(255,150,70,${0.9 * (1 - u * 2)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 5 * (1 - u), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'spout': {
+        // A gun round hitting the water: a white splash ring and droplets.
+        ctx.strokeStyle = `rgba(240,248,252,${0.85 * (1 - u)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.5 + u * 1.4), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - u)})`;
+        for (let k = 0; k < 3; k++) {
+          const a = k * 2.1 + f.x;
+          ctx.beginPath();
+          ctx.arc(f.x + Math.cos(a) * f.r * u * 1.8, f.y + Math.sin(a) * f.r * u * 1.8 - u * 10, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
       case 'text':
         ctx.fillStyle = `rgba(244,241,232,${1 - u})`;
         ctx.font = 'bold 22px system-ui, sans-serif';

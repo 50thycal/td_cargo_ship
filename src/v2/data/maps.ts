@@ -2,7 +2,7 @@
 // bases, where the carrier is anchored, and the channel(s) the convoy sails.
 // Ships ride fixed lanes inside a channel; there is no navigation.
 
-import { VIEW, type ThreatKind } from './config';
+import { VIEW, type ThreatKind, type VectorPlan } from './config';
 
 /** A threat type a map adds on top of the shared wave table: `count` of them
  *  from wave `from`, growing by `growth` per wave after that. */
@@ -50,6 +50,14 @@ export function halfWidthAt(ch: Channel, x: number): number {
   return Math.max(LANE_FLOOR, ch.halfWidth + (ch.narrow.halfWidth - ch.halfWidth) * u);
 }
 
+/** Enemy roads for missile trucks (round 4). A runner drives a whole path,
+ *  stopping to fire; a pop-up drives from `from` (off screen or a bunker) to
+ *  `to` at the shore, fires, and reverses back out. */
+export interface Roads {
+  runners: Point[][];
+  popups: { from: Point; to: Point }[];
+}
+
 export interface MapDef {
   id: MapId;
   name: string;
@@ -57,8 +65,9 @@ export interface MapDef {
   land: Landmass[];
   bases: BaseDef[];
   carrier: Point;
-  /** Where the Shore Battery upgrade is emplaced. */
-  battery: Point;
+  /** Where the Escort Frigate holds station: open water beside the carrier,
+   *  clear of the lanes, sub spots and banners (it sails in from the left). */
+  frigate: Point;
   /** Ships alternate between channels, one spawn group at a time. */
   channels: Channel[];
   /** Multiplies every wave's threat counts — the maps get harder in order. */
@@ -68,6 +77,14 @@ export interface MapDef {
   /** Where wave/new-threat banners sit: open water or friendly shore, clear of
    *  every launch base and shipping lane, so a banner never hides a launch. */
   callout: Point;
+  /** Round 4: truck roads, open-water spots where submarines surface (clear of
+   *  the shipping lanes), and from which wave each attack vector joins. */
+  roads: Roads;
+  subSpots: Point[];
+  /** Lines bombers fly along: open water outside the shipping lanes, so the
+   *  aircraft stands out against the sea and its missiles have a way to go. */
+  bomberLines: number[];
+  vectors: VectorPlan;
 }
 
 const W = VIEW.width;
@@ -137,7 +154,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { x: 1340, y: 112, kinds: ['drone', 'guided', 'ballistic', 'supersonic'] },
     ],
     carrier: { x: 800, y: 705 },
-    battery: { x: 230, y: 835 },
+    frigate: { x: 580, y: 700 },
     channels: [{ y: 470, halfWidth: 150 }],
     threatScale: 1.15,
     // Round 3: careful play lost ~0.5 ships here; a late taste of supersonics
@@ -147,6 +164,17 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'heavy', from: 10, count: 1, growth: 0 },
     ],
     callout: { x: 800, y: 845 },
+    roads: {
+      runners: [[{ x: -60, y: 124 }, { x: 400, y: 120 }, { x: 800, y: 130 }, { x: 1200, y: 122 }, { x: 1660, y: 124 }]],
+      popups: [
+        { from: { x: 540, y: -40 }, to: { x: 540, y: 128 } },
+        { from: { x: 1070, y: -40 }, to: { x: 1070, y: 130 } },
+        { from: { x: 1520, y: -40 }, to: { x: 1520, y: 124 } },
+      ],
+    },
+    subSpots: [{ x: 420, y: 250 }, { x: 1180, y: 245 }, { x: 1520, y: 250 }, { x: 260, y: 690 }, { x: 1350, y: 700 }, { x: 1100, y: 705 }],
+    bomberLines: [240, 672],
+    vectors: { trucks: 2, subs: 3, strafers: 5, bombers: 7 },
   },
   gauntlet: {
     id: 'gauntlet',
@@ -164,7 +192,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { x: 1300, y: 815, kinds: ['ballistic', 'guided', 'heavy'] },
     ],
     carrier: { x: 800, y: 450 },
-    battery: { x: 120, y: 450 },
+    frigate: { x: 1040, y: 455 },
     channels: [
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
@@ -175,6 +203,21 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
     ],
     callout: { x: 430, y: 450 },
+    roads: {
+      runners: [
+        [{ x: -60, y: 118 }, { x: 800, y: 112 }, { x: 1660, y: 118 }],
+        [{ x: 1660, y: 800 }, { x: 800, y: 805 }, { x: -60, y: 800 }],
+      ],
+      popups: [
+        { from: { x: 700, y: -40 }, to: { x: 700, y: 122 } },
+        { from: { x: 1450, y: -40 }, to: { x: 1450, y: 120 } },
+        { from: { x: 200, y: 940 }, to: { x: 200, y: 788 } },
+        { from: { x: 900, y: 940 }, to: { x: 900, y: 790 } },
+      ],
+    },
+    subSpots: [{ x: 330, y: 450 }, { x: 1300, y: 450 }, { x: 1480, y: 450 }],
+    bomberLines: [450],
+    vectors: { trucks: 2, subs: 3, strafers: 4, bombers: 6 },
   },
   island: {
     id: 'island',
@@ -193,7 +236,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { x: 1300, y: 70, kinds: ['guided', 'supersonic', 'cluster'] },
     ],
     carrier: { x: 800, y: 760 },
-    battery: { x: 300, y: 845 },
+    frigate: { x: 560, y: 760 },
     channels: [{ y: 600, halfWidth: 100 }],
     threatScale: 1.2,
     extras: [
@@ -202,6 +245,21 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'cluster', from: 7, count: 1, growth: 0.34 },
     ],
     callout: { x: 800, y: 855 },
+    roads: {
+      runners: [
+        [{ x: -60, y: 82 }, { x: 800, y: 78 }, { x: 1660, y: 82 }],
+        [{ x: 380, y: 360 }, { x: 800, y: 352 }, { x: 1220, y: 360 }],
+      ],
+      popups: [
+        { from: { x: 560, y: -40 }, to: { x: 560, y: 90 } },
+        { from: { x: 1060, y: -40 }, to: { x: 1060, y: 90 } },
+        { from: { x: 700, y: 362 }, to: { x: 700, y: 430 } },
+        { from: { x: 940, y: 362 }, to: { x: 940, y: 432 } },
+      ],
+    },
+    subSpots: [{ x: 180, y: 380 }, { x: 1430, y: 380 }, { x: 800, y: 195 }, { x: 300, y: 748 }, { x: 1300, y: 748 }],
+    bomberLines: [190, 745],
+    vectors: { trucks: 1, subs: 3, strafers: 4, bombers: 5 },
   },
   archipelago: {
     id: 'archipelago',
@@ -222,7 +280,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { x: 1050, y: 75, kinds: ['ballistic', 'supersonic', 'cluster'] },
     ],
     carrier: { x: 950, y: 730 },
-    battery: { x: 260, y: 850 },
+    frigate: { x: 1190, y: 735 },
     channels: [{ y: 575, halfWidth: 100 }],
     threatScale: 1.05,
     extras: [
@@ -232,6 +290,19 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'supersonic', from: 8, count: 1, growth: 0.25 },
     ],
     callout: { x: 700, y: 855 },
+    roads: {
+      runners: [[{ x: -60, y: 92 }, { x: 800, y: 88 }, { x: 1660, y: 92 }]],
+      popups: [
+        { from: { x: 330, y: 330 }, to: { x: 330, y: 382 } },
+        { from: { x: 800, y: 315 }, to: { x: 800, y: 376 } },
+        { from: { x: 1270, y: 330 }, to: { x: 1270, y: 378 } },
+        { from: { x: 300, y: -40 }, to: { x: 300, y: 100 } },
+        { from: { x: 1500, y: -40 }, to: { x: 1500, y: 100 } },
+      ],
+    },
+    subSpots: [{ x: 565, y: 335 }, { x: 1035, y: 335 }, { x: 120, y: 335 }, { x: 1500, y: 335 }, { x: 500, y: 742 }, { x: 1490, y: 742 }],
+    bomberLines: [205, 745],
+    vectors: { trucks: 1, subs: 2, strafers: 3, bombers: 4 },
   },
   harbor: {
     id: 'harbor',
@@ -250,7 +321,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { x: 1500, y: 740, kinds: ['ballistic', 'heavy', 'cluster'] },
     ],
     carrier: { x: 900, y: 690 },
-    battery: { x: 1000, y: 835 },
+    frigate: { x: 660, y: 690 },
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
     threatScale: 1.1,
     extras: [
@@ -260,6 +331,20 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'mothership', from: 7, count: 1, growth: 0.15 },
     ],
     callout: { x: 380, y: 855 },
+    roads: {
+      runners: [
+        [{ x: -60, y: 100 }, { x: 400, y: 140 }, { x: 800, y: 180 }, { x: 1200, y: 222 }, { x: 1660, y: 262 }],
+        [{ x: 1660, y: 690 }, { x: 1350, y: 762 }, { x: 1090, y: 822 }],
+      ],
+      popups: [
+        { from: { x: 600, y: -40 }, to: { x: 600, y: 165 } },
+        { from: { x: 1000, y: -40 }, to: { x: 1000, y: 214 } },
+        { from: { x: 1250, y: 940 }, to: { x: 1250, y: 765 } },
+      ],
+    },
+    subSpots: [{ x: 250, y: 250 }, { x: 1450, y: 345 }, { x: 300, y: 705 }],
+    bomberLines: [255, 715],
+    vectors: { trucks: 1, subs: 2, strafers: 3, bombers: 4 },
   },
 };
 

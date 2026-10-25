@@ -22,6 +22,7 @@ import {
   step,
   type Game,
   type Phase,
+  type RaiderKind,
 } from '../sim/game';
 import { Recorder } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
@@ -35,13 +36,22 @@ const RAIL_W = 72;
 const CORNER_INSET = 16;
 
 const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
-  drone: 'Slow, in swarms. Tap each one.',
+  drone: 'Slow, in swarms. Tap each one, or hold on the swarm.',
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
   supersonic: 'Watch for the red lock line, then tap fast.',
   heavy: 'Slow but heavily armoured: eight hits. Pour fire on it early.',
   cluster: 'Splits near the ships. Hit it early.',
   mothership: 'Drops mini-drones. Kill the source.',
+  strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',
+  bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
+};
+
+/** Round 4: launchers that aren't targets — what they are, what to watch for. */
+const VECTOR_HINT: Record<RaiderKind, [string, string]> = {
+  sub: ['NEW: Submarine', 'Watch for the periscope: it surfaces and fires a salvo.'],
+  popup: ['NEW: Missile truck', 'Drives to the shore, raises its launcher, fires, backs off.'],
+  runner: ['NEW: Shore runner', 'Drives the whole coast road, stopping to fire.'],
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -263,7 +273,10 @@ export class App {
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
       this.fire(w.x, w.y);
-      this.hold = { ...w, since: performance.now(), next: this.game.t + 0.25, id: e.pointerId };
+      // Everyone can hold to keep firing (round 4); the first repeat waits a
+      // beat so an ordinary tap never fires twice.
+      const first = Math.max(0.35, this.game.stats.holdRepeat);
+      this.hold = { ...w, since: performance.now(), next: this.game.t + first, id: e.pointerId };
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (!this.hold || this.hold.id !== e.pointerId) return;
@@ -375,7 +388,7 @@ export class App {
         if (g.phase !== 'wave') break;
       }
       // Hold-to-fire repeats on game time, so it scales with the speed slider.
-      if (this.hold && g.stats.holdRepeat > 0 && g.t >= this.hold.next) {
+      if (this.hold && g.t >= this.hold.next) {
         this.fire(this.hold.x, this.hold.y, true);
         this.hold.next = g.t + g.stats.holdRepeat;
       }
@@ -425,10 +438,13 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'wave':
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down.' : '');
+          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '');
           break;
         case 'debut':
           this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
+          break;
+        case 'vector':
+          this.showBanner(...VECTOR_HINT[ev.vector]);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -516,7 +532,7 @@ export class App {
     classic.hidden = 'claude' in window;
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
-      el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down.'),
+      el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down, or hold to keep firing.'),
       el('div', 'v2-map-grid', ''),
       classic,
     ]);
@@ -690,9 +706,11 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   ballistic: 'Ballistics did the most damage: Faster Interceptors and Spread formation help.',
   guided: 'Guided missiles did the most damage: Twin Launch hits them twice per tap.',
   supersonic: 'Supersonics did the most damage: tap on the lock line; Faster Interceptors help.',
-  heavy: 'Heavy missiles did the most damage: Twin Launch and Hold to Fire stack hits fast.',
+  heavy: 'Heavy missiles did the most damage: Twin Launch and Rapid Hold stack hits fast.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits.',
   mothership: 'Mothership drones did the most damage: take the mothership down first.',
+  strafer: 'Strafing runs did the most damage: split the convoy (Pairs or Spread) when the arrow shows.',
+  bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

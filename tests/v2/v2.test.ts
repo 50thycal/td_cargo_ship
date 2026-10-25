@@ -1,9 +1,9 @@
 // V2 headless tests: the rules of the game, end to end, with no browser.
 
 import { describe, expect, it } from 'vitest';
-import { BALLISTIC, FLOW_STEPS, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
+import { BALLISTIC, CARRIER, FLOW_STEPS, FRIGATE, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
 import { FORMATIONS } from '../../src/v2/data/formations';
-import { MAP_ORDER } from '../../src/v2/data/maps';
+import { MAP_ORDER, halfWidthAt } from '../../src/v2/data/maps';
 import { UPGRADES, UPGRADE_ORDER, canTake, stats } from '../../src/v2/data/upgrades';
 import { waveSpec } from '../../src/v2/data/waves';
 import { recordResult, type Progress } from '../../src/v2/platform/save';
@@ -13,6 +13,7 @@ import {
   continueEndless,
   createGame,
   pickUpgrade,
+  raidWarning,
   setFlow,
   setFormation,
   step,
@@ -270,22 +271,27 @@ describe('waves and upgrades', () => {
   it('maxed cards are never offered again', () => {
     const g = createGame('strait', 5);
     for (const id of UPGRADE_ORDER) g.levels[id] = UPGRADES[id].max;
-    g.levels.rack = UPGRADES.rack.max - 1;
+    g.levels.reload = UPGRADES.reload.max - 1;
     g.queue = [];
     g.threats = [];
+    g.raiderQueue = [];
     step(g, DT);
     expect(g.phase).toBe('draft');
-    expect(g.offer).toEqual(['rack']);
+    expect(g.offer).toEqual(['reload']);
   });
 
-  it('a bigger rack is loaded immediately', () => {
+  it('Quick Reload level 2 grows the rack (Bigger Rack folded in), loaded at once', () => {
     const g = createGame('strait', 5);
+    g.levels = { reload: 1 };
+    g.stats = stats(g.levels);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack);
     g.phase = 'draft';
-    g.offer = ['rack'];
+    g.offer = ['reload'];
     const before = g.ammo;
-    pickUpgrade(g, 'rack');
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 3);
-    expect(g.ammo).toBe(before + 3);
+    pickUpgrade(g, 'reload');
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
+    expect(g.ammo).toBe(before + 2);
+    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 4);
   });
 
   it('twin launch sends a free second interceptor', () => {
@@ -302,6 +308,7 @@ describe('waves and upgrades', () => {
   it('beating the last wave clears the map; endless continues with a draft', () => {
     const g = createGame('strait', 9, RULES.wavesToClear);
     g.queue = [];
+    g.raiderQueue = [];
     step(g, DT);
     expect(g.phase).toBe('won');
     expect(g.cleared).toBe(true);
@@ -360,29 +367,112 @@ describe('station keeping', () => {
   });
 });
 
-describe('shore battery', () => {
-  it('fires from its own rack when it is nearer, and covers for an empty carrier', () => {
+describe('escort frigate', () => {
+  const withFrigate = (level = 1) => {
     const g = quietGame();
     g.phase = 'draft';
-    g.offer = ['battery'];
-    pickUpgrade(g, 'battery');
+    g.offer = ['frigate'];
+    pickUpgrade(g, 'frigate');
+    if (level === 2) {
+      g.phase = 'draft';
+      g.offer = ['frigate'];
+      pickUpgrade(g, 'frigate');
+    }
     g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
-    expect(g.batteryAmmo).toBe(4);
-    const b = g.map.battery;
-    // Nearer to the battery: the battery fires and spends its own round.
+    g.raiderQueue = [];
+    return g;
+  };
+
+  it('sails in from the left edge to its station, and only fires once on screen', () => {
+    const g = withFrigate();
+    const f = g.frigate!;
+    expect(f.x).toBeLessThan(0);
+    expect(f.ammo).toBe(4);
+    // Off screen it cannot take a tap even when it is nearer.
+    g.ammo = 0;
+    addThreat(g, { x: 60, y: f.y - 150, speed: 0 });
+    expect(tap(g, 60, f.y - 150, 30)).toBe('dry');
+    g.threats = [];
+    run(g, 8);
+    expect(g.frigate!.x).toBeCloseTo(g.map.frigate.x, 0);
+  });
+
+  it('on maps where it stations past the carrier, it enters from the right and never crosses the carrier', () => {
+    for (const map of ['gauntlet', 'archipelago'] as const) {
+      const g = createGame(map, 1);
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = [];
+      g.phase = 'draft';
+      g.offer = ['frigate'];
+      pickUpgrade(g, 'frigate');
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = [];
+      const c = g.map.carrier;
+      expect(g.frigate!.x).toBeGreaterThan(1600);
+      for (let i = 0; i < 60 * 10; i++) {
+        step(g, DT);
+        expect(g.frigate!.x - c.x).toBeGreaterThan(CARRIER.halfLength + 50);
+      }
+      expect(g.frigate!.x).toBeCloseTo(g.map.frigate.x, 0);
+    }
+  });
+
+  it('fires from its own rack when nearer, and covers for an empty carrier', () => {
+    const g = withFrigate();
+    run(g, 8);
+    const f = g.frigate!;
     const carrierAmmo = g.ammo;
-    addThreat(g, { x: b.x + 40, y: b.y - 200 });
-    tap(g, b.x + 40, b.y - 200, 30);
-    expect(g.batteryAmmo).toBe(3);
+    addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
+    tap(g, f.x - 60, f.y - 200, 30);
+    expect(g.frigate!.ammo).toBe(3);
     expect(g.ammo).toBe(carrierAmmo);
-    expect(g.interceptors[0].x).toBe(b.x);
-    // Carrier dry: a threat right over the carrier is still answered, by the battery.
+    expect(g.interceptors[0].x).toBe(f.x + 8);
     g.ammo = 0;
     const c = g.map.carrier;
-    addThreat(g, { x: c.x, y: c.y - 150 });
+    addThreat(g, { x: c.x, y: c.y - 150, speed: 0 });
     expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
-    expect(g.batteryAmmo).toBe(2);
-    expect(g.interceptors[1].x).toBe(b.x);
+    expect(g.frigate!.ammo).toBe(2);
+  });
+
+  it('has a station on every map, in open water clear of the carrier', async () => {
+    const { MAPS } = await import('../../src/v2/data/maps');
+    for (const m of Object.values(MAPS)) {
+      const st = m.frigate;
+      expect(Math.abs(st.x - m.carrier.x)).toBeGreaterThan(CARRIER.halfLength + 50);
+      // Clear of every sub spot across its whole level-2 patrol box.
+      const c = m.carrier;
+      const lo = st.x < c.x ? st.x - FRIGATE.roam : Math.max(st.x - FRIGATE.roam, c.x + CARRIER.halfLength + FRIGATE.carrierGap);
+      const hi = st.x < c.x ? Math.min(st.x + FRIGATE.roam, c.x - CARRIER.halfLength - FRIGATE.carrierGap) : st.x + FRIGATE.roam;
+      for (const sp of m.subSpots) {
+        if (Math.abs(sp.y - st.y) > 60) continue;
+        expect(sp.x < lo - 70 || sp.x > hi + 70, `${m.id} sub spot ${sp.x}`).toBe(true);
+      }
+      for (const ch of m.channels) expect(Math.abs(ch.y - st.y)).toBeGreaterThan(halfWidthAt(ch, st.x) + 15);
+    }
+  });
+
+  it('level 2 holds 7 and steams toward the threats, never into the carrier', () => {
+    const g = withFrigate(2);
+    expect(g.stats.frigateRack).toBe(7);
+    run(g, 8);
+    const st = g.map.frigate;
+    const c = g.map.carrier;
+    const towardCarrier = Math.sign(c.x - st.x);
+    addThreat(g, { x: c.x, y: c.y - 300, speed: 0 });
+    run(g, 10);
+    const f = g.frigate!;
+    expect((f.x - st.x) * towardCarrier).toBeGreaterThan(20);
+    expect(Math.abs(f.x - c.x)).toBeGreaterThanOrEqual(CARRIER.halfLength + 59);
+  });
+
+  it('leaves when swapped out', () => {
+    const g = withFrigate();
+    g.levels = { ...g.levels, speed: 1, twin: 1 };
+    g.stats = stats(g.levels);
+    g.phase = 'draft';
+    g.offer = ['blast'];
+    pickUpgrade(g, 'blast', 'frigate');
+    expect(g.frigate).toBeNull();
   });
 });
 
@@ -491,7 +581,7 @@ describe('playtest logs', () => {
   });
 });
 
-describe('round 3: raids, carrier strikes, last-ditch CIWS', () => {
+describe('round 3: raids and carrier strikes', () => {
   it('launches bunch into raids instead of a steady trickle', async () => {
     const { RAID } = await import('../../src/v2/data/config');
     const g = createGame('strait', 12, 8);
@@ -522,20 +612,47 @@ describe('round 3: raids, carrier strikes, last-ditch CIWS', () => {
     expect(later).toBeGreaterThan(early + 5);
   });
 
-  it('the CIWS only reaches threats near the carrier, and takes carrier attackers first', () => {
-    const g = quietGame();
-    g.levels = { ciws: 1 };
+});
+
+describe('round 4 roster', () => {
+  it('has no turret defences and no folded-in cards', () => {
+    for (const gone of ['ciws', 'rack', 'retarget', 'battery']) expect(UPGRADE_ORDER).not.toContain(gone);
+  });
+
+  it('a slow hold-to-fire is free; the card speeds it up', async () => {
+    const { HOLD_FREE } = await import('../../src/v2/data/upgrades');
+    expect(stats({}).holdRepeat).toBe(HOLD_FREE);
+    expect(stats({ hold: 1 }).holdRepeat).toBeLessThan(HOLD_FREE);
+    expect(stats({ hold: 2 }).holdRepeat).toBeLessThan(stats({ hold: 1 }).holdRepeat);
+  });
+
+  it('Twin Launch level 2 re-aims an interceptor whose target died (Auto-Retarget folded in)', () => {
+    const play = (twin: number) => {
+      const g = quietGame();
+      g.levels = { twin };
+      g.stats = stats(g.levels);
+      // Both interceptors commit to a 2-hit target that then dies.
+      const a = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 300, speed: 0 });
+      const b = addThreat(g, { x: 900, y: 320, speed: 0 });
+      tap(g, 800, 300, 30);
+      a.dead = true;
+      g.threats = g.threats.filter((t) => !t.dead);
+      run(g, 2);
+      return b.dead || b.hp < 1;
+    };
+    expect(play(1)).toBe(false);
+    expect(play(2)).toBe(true);
+  });
+
+  it('Radar flags raids and aircraft 1.5 s sooner', async () => {
+    const { RAID } = await import('../../src/v2/data/config');
+    const g = createGame('strait', 12, 6);
+    const raid = g.raids[0];
+    g.waveT = raid.at - RAID.warn - 1;
+    expect(raidWarning(g)).toBeNull();
+    g.levels = { radar: 1 };
     g.stats = stats(g.levels);
-    const c = g.map.carrier;
-    const far = addThreat(g, { x: c.x - g.stats.ciwsRange - 60, y: c.y - 40, speed: 0 });
-    run(g, 3);
-    expect(far.dead).toBe(false);
-    const nearShip = addThreat(g, { x: c.x - 60, y: c.y - 60, speed: 0, target: 999 });
-    const atCarrier = addThreat(g, { x: c.x - 150, y: c.y - 60, speed: 0, target: CARRIER_TARGET });
-    g.ciwsT = 0;
-    step(g, DT);
-    expect(atCarrier.dead || atCarrier.hp < 1).toBe(true);
-    expect(nearShip.dead).toBe(false);
+    expect(raidWarning(g)).not.toBeNull();
   });
 });
 
@@ -607,40 +724,158 @@ describe('formations and raid themes', () => {
   });
 });
 
+describe('round 4: submarines, trucks and aircraft', () => {
+  const raider = (g: Game, kind: 'sub' | 'popup' | 'runner', path: { x: number; y: number }[], units: { kind: never | string; size: number }[]) =>
+    g.raiderQueue.push({ at: g.waveT, kind, path, units } as never);
+
+  it('a submarine warns, surfaces, fires 4 ballistics back to back from its spot, then dives away', async () => {
+    const { SUB } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    raider(g, 'sub', [{ x: 420, y: 250 }], [{ kind: 'ballistic', size: 1 }, { kind: 'ballistic', size: 1 }, { kind: 'ballistic', size: 1 }, { kind: 'ballistic', size: 1 }]);
+    step(g, DT);
+    expect(g.raiders[0].state).toBe('warn');
+    run(g, SUB.warn - 0.1);
+    expect(g.threats.filter((t) => t.kind === 'ballistic')).toHaveLength(0);
+    run(g, 0.1 + SUB.surface + SUB.gap * 4 + 0.1);
+    const salvo = g.threats.filter((t) => t.kind === 'ballistic');
+    expect(salvo).toHaveLength(4);
+    expect(salvo.every((t) => t.sx === 420 && t.sy === 250)).toBe(true);
+    run(g, SUB.dive + 0.2);
+    expect(g.raiders).toHaveLength(0);
+    expect(g.origins.sub).toBe(4);
+  });
+
+  it('a pop-up truck drives to the shore, fires, and reverses back out; a runner fires at stops along the road', async () => {
+    const g = quietGame();
+    raider(g, 'popup', [{ x: 540, y: -40 }, { x: 540, y: 128 }], [{ kind: 'guided', size: 1 }]);
+    step(g, DT);
+    run(g, 1);
+    expect(g.raiders[0].y).toBeGreaterThan(-40);
+    expect(g.threats).toHaveLength(0);
+    run(g, 3);
+    const m = g.threats.find((t) => t.kind === 'guided')!;
+    expect(m.sx).toBe(540);
+    expect(m.sy).toBeCloseTo(128, 0);
+    expect(['reverse', 'lower']).toContain(g.raiders[0].state);
+    run(g, 4);
+    expect(g.raiders).toHaveLength(0);
+
+    const r = quietGame();
+    const road = [{ x: -60, y: 124 }, { x: 1660, y: 124 }];
+    raider(r, 'runner', road, [{ kind: 'guided', size: 1 }, { kind: 'guided', size: 1 }, { kind: 'drone', size: 3 }]);
+    const from = new Set<number>();
+    for (let t = 0; t < 30 && (r.raiders.length || !t); t += DT) {
+      step(r, DT);
+      for (const th of r.threats) if (th.age < DT * 1.5) from.add(Math.round(th.sx / 50) * 50);
+    }
+    expect(r.origins.truck).toBe(5);
+    expect(from.size).toBe(3); // three different stops along the road
+  });
+
+  it('a strafing jet hits every hull under its line once and none outside it, then flies off', async () => {
+    const { PLANE } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [];
+    // Pairs lanes on the Strait sit at 470 ± 48: the jet flies the upper one.
+    const inBand = [0, 1, 2].map((k) => ({ id: 900 + k, x: 600 + k * 150, y: 422, hp: SHIP.hp, slot: 0, channel: 0, mult: 1 }));
+    const outside = { id: 950, x: 900, y: 518, hp: SHIP.hp, slot: 1, channel: 0, mult: 1 };
+    expect(518 - 422).toBeGreaterThan(PLANE.band);
+    g.ships.push(...inBand, outside);
+    g.queue.unshift({ at: 0, kind: 'strafer', base: -1, side: 1, y: 422 } as never);
+    run(g, 9);
+    expect(inBand.map((s) => s.hp)).toEqual([SHIP.hp - 1, SHIP.hp - 1, SHIP.hp - 1]);
+    expect(outside.hp).toBe(SHIP.hp);
+    expect(g.threats.some((t) => t.kind === 'strafer')).toBe(false);
+    expect(g.kills.strafer).toBe(0); // flew off, not shot down
+  });
+
+  it('a bomber drops nothing during its run-in, then drops its missiles on the convoy', async () => {
+    const { PLANE } = await import('../../src/v2/data/config');
+    const g = quietGame();
+    g.spawnT = 999;
+    g.ships = [{ id: 901, x: 200, y: 470, hp: SHIP.hp, slot: 0, channel: 0, mult: 1 }, { id: 902, x: 800, y: 470, hp: SHIP.hp, slot: 0, channel: 0, mult: 1 }];
+    g.queue.unshift({ at: 0, kind: 'bomber', base: -1, side: 1, y: 250 } as never);
+    step(g, DT);
+    const bomber = g.threats.find((t) => t.kind === 'bomber')!;
+    while (bomber.x < PLANE.bomberRunIn - 5) step(g, DT);
+    expect(g.threats.filter((t) => t.kind === 'guided')).toHaveLength(0);
+    run(g, 3);
+    const drops = g.threats.filter((t) => t.kind === 'guided' && t.parent === 'bomber');
+    expect(drops.length).toBeGreaterThan(0);
+    expect(drops.every((t) => t.hp === 1)).toBe(true);
+  });
+
+  it('the wave waits for every launcher, and late-wave runs with all vectors replay exactly', async () => {
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('harbor', 77, 8);
+    expect(g.raiderQueue.length).toBeGreaterThan(0);
+    expect(g.queue.some((l) => l.kind === 'strafer' || l.kind === 'bomber')).toBe(true);
+    const rec = new Recorder(g, { build: 'test', startedAt: '2026-01-01T00:00:00.000Z', firstWave: 8, device: { w: 1, h: 1, dpr: 1, touch: true, ua: 't' } });
+    let sawRaiders = false;
+    for (let i = 0; i < 60 * 70 && g.phase === 'wave'; i++) {
+      if (g.raiders.length) sawRaiders = true;
+      if (g.queue.length === 0 && g.threats.length === 0) expect(g.raiders.length + g.raiderQueue.length).toBeGreaterThan(0);
+      if (i % 10 === 0 && g.threats.length) rec.tap(g.threats[0].x, g.threats[0].y, 40);
+      step(g, DT);
+    }
+    expect(sawRaiders).toBe(true);
+    const log = rec.finish('quit');
+    const r = replay(JSON.parse(JSON.stringify(log)));
+    expect({ steps: r.steps, score: r.score, lost: r.lost, origins: r.origins }).toEqual({ steps: g.steps, score: g.score, lost: g.lost, origins: g.origins });
+  });
+
+  it('by the middle waves about half the launches come from somewhere other than a fixed base', () => {
+    let base = 0;
+    let other = 0;
+    for (let seed = 1; seed <= 4; seed++) {
+      const g = createGame('strait', seed, 7);
+      g.flow = 4;
+      for (let i = 0; i < 60 * 80 && g.phase === 'wave'; i++) {
+        for (const th of g.threats) th.hp = th.age > 0.5 ? 0 : th.hp; // keep the screen clear
+        step(g, DT);
+      }
+      base += g.origins.base;
+      other += g.origins.truck + g.origins.sub + g.origins.air;
+    }
+    expect(other / (base + other)).toBeGreaterThan(0.35);
+  });
+});
+
 describe('three-slot loadout', () => {
   it('a full loadout cannot take a new card, only level up its own', async () => {
     const { MAX_SLOTS, canTake, loadout } = await import('../../src/v2/data/upgrades');
     const g = createGame('strait', 5);
-    g.levels = { rack: 1, speed: 1, twin: 1 };
+    g.levels = { reload: 1, speed: 1, twin: 1 };
     expect(loadout(g.levels)).toHaveLength(MAX_SLOTS);
     expect(canTake(g.levels, 'blast')).toBe(false);
-    expect(canTake(g.levels, 'rack')).toBe(true);
+    expect(canTake(g.levels, 'reload')).toBe(true);
     g.phase = 'draft';
-    g.offer = ['blast', 'rack', 'ciws'];
+    g.offer = ['blast', 'reload', 'radar'];
     pickUpgrade(g, 'blast');
     expect(g.levels.blast).toBeUndefined();
     expect(g.phase).toBe('draft');
-    pickUpgrade(g, 'rack');
-    expect(g.levels.rack).toBe(2);
+    pickUpgrade(g, 'reload');
+    expect(g.levels.reload).toBe(2);
     expect(g.phase).toBe('wave');
   });
 
   it('with all slots full a new card swaps in for a held one, which loses its levels', async () => {
     const { canSwapIn, stats: statsOf } = await import('../../src/v2/data/upgrades');
     const g = createGame('strait', 5);
-    g.levels = { rack: 2, speed: 1, twin: 1 };
+    g.levels = { reload: 2, speed: 1, twin: 1 };
     g.stats = statsOf(g.levels);
     g.ammo = g.stats.rack;
     expect(canSwapIn(g.levels, 'blast')).toBe(true);
-    expect(canSwapIn(g.levels, 'rack')).toBe(false); // already held: it levels up instead
+    expect(canSwapIn(g.levels, 'reload')).toBe(false); // already held: it levels up instead
     g.phase = 'draft';
-    g.offer = ['blast', 'rack', 'ciws'];
-    pickUpgrade(g, 'blast', 'ciws'); // not held: refused
+    g.offer = ['blast', 'reload', 'radar'];
+    pickUpgrade(g, 'blast', 'radar'); // not held: refused
     expect(g.phase).toBe('draft');
-    pickUpgrade(g, 'blast', 'rack');
+    pickUpgrade(g, 'blast', 'reload');
     expect(g.levels).toEqual({ speed: 1, twin: 1, blast: 1 });
     expect(g.phase).toBe('wave');
-    // Giving up the bigger rack drops the rounds it held.
+    // Giving up Quick Reload's bigger rack drops the rounds it held.
     expect(g.stats.rack).toBe(INTERCEPTOR.rack);
     expect(g.ammo).toBeLessThanOrEqual(g.stats.rack);
   });
@@ -670,7 +905,7 @@ describe('three-slot loadout', () => {
 
   it('a draft with nothing takeable offers Resupply, which repairs and refills', async () => {
     const g = createGame('strait', 6);
-    g.levels = { rack: 3, speed: 3, twin: 2 }; // full and all maxed
+    g.levels = { reload: 3, speed: 3, twin: 3 }; // full and all maxed
     g.queue = [];
     g.threats = [];
     g.carrierHp = 4;
@@ -690,7 +925,7 @@ describe('three-slot loadout', () => {
     const N = 300;
     for (let seed = 1; seed <= N; seed++) {
       const g = createGame('strait', seed);
-      g.levels = { rack: 1, hold: 1, blast: 1 };
+      g.levels = { reload: 1, hold: 1, blast: 1 };
       g.queue = [];
       g.threats = [];
       step(g, DT);
@@ -784,15 +1019,17 @@ describe('new threat types', () => {
   });
 
   it('map extras launch on schedule: the Island fields supersonics from wave 4', () => {
-    expect(createGame('island', 4, 3).queue.some((l) => l.kind === 'supersonic')).toBe(false);
+    // A wave's launches: from the bases, plus what its trucks and subs carry.
+    const kinds = (g: Game) => [...g.queue.map((l) => l.kind), ...g.raiderQueue.flatMap((r) => r.units.map((u) => u.kind))];
+    expect(kinds(createGame('island', 4, 3)).includes('supersonic')).toBe(false);
     const g = createGame('island', 4, 4);
-    expect(g.queue.some((l) => l.kind === 'supersonic')).toBe(true);
+    expect(kinds(g).includes('supersonic')).toBe(true);
     // The Strait keeps to the basics until a late taste of supersonics (wave 6)
     // and one heavy in the finale.
-    expect(createGame('strait', 4, 5).queue.every((l) => ['drone', 'ballistic', 'guided'].includes(l.kind))).toBe(true);
-    expect(createGame('strait', 4, 6).queue.some((l) => l.kind === 'supersonic')).toBe(true);
-    expect(createGame('strait', 4, 9).queue.some((l) => l.kind === 'heavy')).toBe(false);
-    expect(createGame('strait', 4, 10).queue.filter((l) => l.kind === 'heavy')).toHaveLength(1);
+    expect(kinds(createGame('strait', 4, 5)).every((k) => ['drone', 'ballistic', 'guided', 'strafer'].includes(k))).toBe(true);
+    expect(kinds(createGame('strait', 4, 6)).includes('supersonic')).toBe(true);
+    expect(kinds(createGame('strait', 4, 9)).includes('heavy')).toBe(false);
+    expect(kinds(createGame('strait', 4, 10)).filter((k) => k === 'heavy')).toHaveLength(1);
   });
 });
 

@@ -60,9 +60,10 @@ export class Bot {
       pickUpgrade(g, pick);
       return;
     }
-    // With Hold to Fire a finger can rest on a swarm: repeats come as fast as
-    // the card allows and aim drifts less than with separate taps.
-    const hold = g.stats.holdRepeat;
+    // With the Rapid Hold card a finger can rest on a swarm: repeats come as
+    // fast as the card allows and aim drifts less than with separate taps.
+    // (The free slow hold is no faster than these bots already tap.)
+    const hold = (g.levels.hold ?? 0) > 0 ? g.stats.holdRepeat : 0;
     const gap = hold > 0 ? Math.min(this.skill.tapGap, hold) : this.skill.tapGap;
     const missRate = (this.skill.missRate ?? 0) * (hold > 0 ? 0.5 : 1);
     if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;

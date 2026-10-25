@@ -5,17 +5,17 @@
 
 import { INTERCEPTOR } from './config';
 
+/** Hold-to-fire repeat everyone gets without the card (seconds). */
+export const HOLD_FREE = 0.6;
+
 export type UpgradeId =
   | 'speed'
-  | 'rack'
   | 'reload'
   | 'blast'
   | 'chain'
   | 'twin'
-  | 'retarget'
-  | 'ciws'
   | 'radar'
-  | 'battery'
+  | 'frigate'
   | 'hold'
   | 'resupply';
 
@@ -29,6 +29,10 @@ export interface UpgradeDef {
   answers: string;
 }
 
+// Round 4 roster: no turret defences (CIWS is gone); Bigger Rack folded into
+// Quick Reload, Auto-Retarget into Twin Launch; Radar warns of everything
+// sooner; the Shore Battery became an Escort Frigate that sails in; a slow
+// hold-to-fire is free and the card only speeds it up.
 export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Partial<Record<'resupply', UpgradeDef>> = {
   speed: {
     id: 'speed',
@@ -37,18 +41,15 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     levels: ['+25% interceptor speed', '+50% interceptor speed', '+75% interceptor speed'],
     answers: 'Ballistic',
   },
-  rack: {
-    id: 'rack',
-    name: 'Bigger Rack',
-    max: 3,
-    levels: [1, 2, 3].map((l) => `Hold ${INTERCEPTOR.rack + 3 * l} interceptors`),
-    answers: 'Swarms',
-  },
   reload: {
     id: 'reload',
     name: 'Quick Reload',
     max: 3,
-    levels: ['Reloads in 25% less time', 'Reloads in 40% less time', 'Reloads in 55% less time'],
+    levels: [
+      'Reloads in 25% less time',
+      `Reloads in 40% less time, rack holds ${INTERCEPTOR.rack + 2}`,
+      `Reloads in 55% less time, rack holds ${INTERCEPTOR.rack + 4}`,
+    ],
     answers: 'Everything',
   },
   blast: {
@@ -68,51 +69,41 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
   twin: {
     id: 'twin',
     name: 'Twin Launch',
-    max: 2,
-    levels: ['Every tap fires a free 2nd interceptor', 'Every tap fires 2 free extras'],
-    answers: 'Guided',
-  },
-  retarget: {
-    id: 'retarget',
-    name: 'Auto-Retarget',
-    max: 2,
+    max: 3,
     levels: [
-      'An interceptor whose target is gone flies on to one nobody is covering',
-      'Extra interceptors on an already-covered target peel off to an uncovered one',
+      'Every tap fires a free 2nd interceptor',
+      'Interceptors whose target is gone fly on to an uncovered one',
+      'Every tap fires 2 free extras; spare ones peel off to uncovered threats',
     ],
     answers: 'Guided',
-  },
-  ciws: {
-    id: 'ciws',
-    name: 'Carrier CIWS',
-    max: 3,
-    levels: ['Last-ditch carrier gun: shoots what gets close, carrier attackers first', 'Longer reach, fires faster', 'Longest reach, fires fastest'],
-    answers: 'Leakers',
   },
   radar: {
     id: 'radar',
     name: 'Early-Warning Radar',
     max: 2,
-    levels: ['Ballistic impact points shown at launch', 'Jamming: threats fly 12% slower'],
-    answers: 'Ballistic',
+    levels: [
+      'Raids, subs and aircraft flagged 1.5 s sooner; ballistic impact points shown at launch',
+      'Jamming: threats fly 12% slower',
+    ],
+    answers: 'Surprise',
   },
-  battery: {
-    id: 'battery',
-    name: 'Shore Battery',
+  frigate: {
+    id: 'frigate',
+    name: 'Escort Frigate',
     max: 2,
     levels: [
-      'A second launcher with its own 4-round rack; taps fire from whichever is nearer',
-      'Battery rack grows to 7 rounds',
+      'A frigate sails in beside the carrier with its own 4-round rack; taps fire from whichever is nearer',
+      'Frigate rack holds 7 and it steams toward the thick of the fight',
     ],
     answers: 'Range',
   },
   hold: {
     id: 'hold',
-    name: 'Hold to Fire',
+    name: 'Rapid Hold',
     max: 2,
     levels: [
-      'Hold your finger down to keep firing at what is under it (every 0.45 s)',
-      'Hold fire repeats faster (every 0.33 s)',
+      `Holding your finger down repeats faster (every 0.45 s, not ${HOLD_FREE} s)`,
+      'Hold repeats every 0.33 s',
     ],
     answers: 'Swarms',
   },
@@ -169,36 +160,38 @@ export interface DefenseStats {
   blast: number;
   chainRadius: number;
   freeExtras: number;
-  /** Auto-Retarget level: 1 = re-aim when the target is gone, 2 = also peel
-   *  extra interceptors off an already-covered target. */
+  /** Twin Launch retargeting: 1 = re-aim when the target is gone, 2 = also
+   *  peel extra interceptors off an already-covered target. */
   retarget: number;
-  ciwsRange: number;
-  ciwsCooldown: number;
   radarReticle: boolean;
+  /** Seconds sooner that raids, subs and aircraft are flagged (Radar). */
+  radarLead: number;
   threatSlow: number;
-  /** Shore Battery rack size (0 without the card). */
-  batteryRack: number;
-  /** Hold to Fire: seconds of game time between repeats (0 = no card). */
+  /** Escort Frigate rack size (0 without the card). */
+  frigateRack: number;
+  /** Frigate L2: steams toward the threats instead of holding station. */
+  frigateRoams: boolean;
+  /** Hold to fire: seconds of game time between repeats (free, card speeds up). */
   holdRepeat: number;
 }
 
 export function stats(levels: Levels): DefenseStats {
   const lv = (id: UpgradeId) => levels[id] ?? 0;
-  const ciws = lv('ciws');
+  const reload = lv('reload');
+  const twin = lv('twin');
   return {
     interceptorSpeed: INTERCEPTOR.speed * (1 + 0.25 * lv('speed')),
-    rack: INTERCEPTOR.rack + 3 * lv('rack'),
-    reload: INTERCEPTOR.reload * [1, 0.75, 0.6, 0.45][lv('reload')],
+    rack: INTERCEPTOR.rack + [0, 0, 2, 4][reload],
+    reload: INTERCEPTOR.reload * [1, 0.75, 0.6, 0.45][reload],
     blast: INTERCEPTOR.blast * (1 + lv('blast')),
     chainRadius: [0, 55, 85][lv('chain')],
-    freeExtras: lv('twin'),
-    retarget: lv('retarget'),
-    // Measured from the carrier: the near lane sits ~185-285 units away.
-    ciwsRange: [0, 190, 240, 290][ciws],
-    ciwsCooldown: [0, 1.1, 0.9, 0.7][ciws],
+    freeExtras: [0, 1, 1, 2][twin],
+    retarget: [0, 0, 1, 2][twin],
     radarReticle: lv('radar') >= 1,
+    radarLead: lv('radar') >= 1 ? 1.5 : 0,
     threatSlow: lv('radar') >= 2 ? 0.88 : 1,
-    batteryRack: [0, 4, 7][lv('battery')],
-    holdRepeat: [0, 0.45, 0.33][lv('hold')],
+    frigateRack: [0, 4, 7][lv('frigate')],
+    frigateRoams: lv('frigate') >= 2,
+    holdRepeat: [HOLD_FREE, 0.45, 0.33][lv('hold')],
   };
 }
