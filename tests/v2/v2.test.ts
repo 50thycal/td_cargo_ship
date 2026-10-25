@@ -1,7 +1,7 @@
 // V2 headless tests: the rules of the game, end to end, with no browser.
 
 import { describe, expect, it } from 'vitest';
-import { BALLISTIC, CARRIER, FLOW_STEPS, FRIGATE, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
+import { BALLISTIC, CARRIER, FLOW_STEPS, INTERCEPTOR, RULES, SHIP } from '../../src/v2/data/config';
 import { FORMATIONS } from '../../src/v2/data/formations';
 import { MAP_ORDER, halfWidthAt } from '../../src/v2/data/maps';
 import { UPGRADES, UPGRADE_ORDER, canTake, stats } from '../../src/v2/data/upgrades';
@@ -159,7 +159,7 @@ describe('tapping', () => {
 });
 
 describe('threats', () => {
-  it('a ballistic missile splashes every ship inside its radius', () => {
+  it('a ballistic missile hits its ship in full and splashes the others inside its radius', () => {
     const g = quietGame();
     g.spawnT = 999;
     g.ships = [];
@@ -177,7 +177,7 @@ describe('threats', () => {
     step(g, DT);
     step(g, DT);
     expect(near.hp).toBe(SHIP.hp - 2);
-    expect(alsoNear.hp).toBe(SHIP.hp - 2);
+    expect(alsoNear.hp).toBe(SHIP.hp - BALLISTIC.spill);
     expect(far.hp).toBe(SHIP.hp);
   });
 
@@ -442,30 +442,47 @@ describe('escort frigate', () => {
     for (const m of Object.values(MAPS)) {
       const st = m.frigate;
       expect(Math.abs(st.x - m.carrier.x)).toBeGreaterThan(CARRIER.halfLength + 50);
-      // Clear of every sub spot across its whole level-2 patrol box.
-      const c = m.carrier;
-      const lo = st.x < c.x ? st.x - FRIGATE.roam : Math.max(st.x - FRIGATE.roam, c.x + CARRIER.halfLength + FRIGATE.carrierGap);
-      const hi = st.x < c.x ? Math.min(st.x + FRIGATE.roam, c.x - CARRIER.halfLength - FRIGATE.carrierGap) : st.x + FRIGATE.roam;
-      for (const sp of m.subSpots) {
-        if (Math.abs(sp.y - st.y) > 60) continue;
-        expect(sp.x < lo - 70 || sp.x > hi + 70, `${m.id} sub spot ${sp.x}`).toBe(true);
-      }
+      // Clear of every sub spot (a sub surfacing on the frigate would hide both).
+      for (const sp of m.subSpots) expect(Math.hypot(sp.x - st.x, sp.y - st.y), `${m.id} sub spot ${sp.x}`).toBeGreaterThan(120);
       for (const ch of m.channels) expect(Math.abs(ch.y - st.y)).toBeGreaterThan(halfWidthAt(ch, st.x) + 15);
     }
   });
 
-  it('level 2 holds 5 and steams toward the threats, never into the carrier', () => {
+  it('once on station it stays put, whatever the threats do (round 5: it read as jumpy)', () => {
+    for (const level of [1, 2]) {
+      const g = withFrigate(level);
+      run(g, 8);
+      const st = g.map.frigate;
+      expect(g.frigate!.x).toBe(st.x);
+      const c = g.map.carrier;
+      addThreat(g, { x: c.x, y: c.y - 300, speed: 0 });
+      addThreat(g, { x: 100, y: 200, speed: 0 });
+      for (let i = 0; i < 60 * 10; i++) {
+        step(g, DT);
+        expect(g.frigate!.x).toBe(st.x);
+        expect(g.frigate!.vx).toBe(0);
+      }
+    }
+  });
+
+  it('eases to a stop as it arrives (no overshoot)', () => {
+    const g = withFrigate();
+    const st = g.map.frigate;
+    let prev = Infinity;
+    for (let i = 0; i < 60 * 9; i++) {
+      step(g, DT);
+      const gap = Math.abs(st.x - g.frigate!.x);
+      expect(gap).toBeLessThanOrEqual(prev);
+      prev = gap;
+    }
+    expect(prev).toBe(0);
+  });
+
+  it('level 2 holds 5 and reloads as fast as the carrier', () => {
     const g = withFrigate(2);
     expect(g.stats.frigateRack).toBe(5);
-    run(g, 8);
-    const st = g.map.frigate;
-    const c = g.map.carrier;
-    const towardCarrier = Math.sign(c.x - st.x);
-    addThreat(g, { x: c.x, y: c.y - 300, speed: 0 });
-    run(g, 10);
-    const f = g.frigate!;
-    expect((f.x - st.x) * towardCarrier).toBeGreaterThan(20);
-    expect(Math.abs(f.x - c.x)).toBeGreaterThanOrEqual(CARRIER.halfLength + 59);
+    expect(g.stats.frigateReloadMult).toBe(1);
+    expect(stats({ frigate: 1 }).frigateReloadMult).toBeGreaterThan(1);
   });
 
   it('leaves when swapped out', () => {

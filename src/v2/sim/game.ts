@@ -1322,8 +1322,11 @@ function impactBallistic(g: Game, th: Threat): void {
     .map((s) => ({ s, d: dist(s.x, s.y, th.ix, th.iy) }))
     .filter((o) => o.d <= Math.max(reach, BALLISTIC.splash))
     .sort((a, b) => a.d - b.d);
+  // The ship it lands on takes the full hit; neighbours caught in the blast
+  // take BALLISTIC.spill (round 5: at full damage a 4-missile sub salvo sank a
+  // packed Box of 26 ships three and four at a time).
   inBlast.forEach((o, k) => {
-    if (k === 0 ? o.d <= BALLISTIC.splash : o.d <= reach) damageShip(g, o.s, dmg, 'ballistic', k === 0);
+    if (k === 0 ? o.d <= BALLISTIC.splash : o.d <= reach) damageShip(g, o.s, k === 0 ? dmg : BALLISTIC.spill, 'ballistic', k === 0);
   });
   if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg, 'ballistic');
 }
@@ -1467,34 +1470,20 @@ function reload(g: Game, dt: number): void {
     return [ammo, ammo >= cap ? 0 : t];
   };
   [g.ammo, g.reloadT] = refill(g.ammo, g.reloadT, g.stats.rack, g.stats.reload);
-  if (f) [f.ammo, f.reloadT] = refill(f.ammo, f.reloadT, g.stats.frigateRack, g.stats.reload * FRIGATE.reloadMult);
+  if (f) [f.ammo, f.reloadT] = refill(f.ammo, f.reloadT, g.stats.frigateRack, g.stats.reload * g.stats.frigateReloadMult);
 }
 
-/** The frigate sails in to its station; at level 2 it steams toward the
- *  middle of the threats, never closer to the carrier than its bow or stern. */
+/** The frigate sails in to its station, eases to a stop and holds there. */
 function updateFrigate(g: Game, dt: number): void {
   const f = g.frigate;
   if (!f) return;
-  const st = g.map.frigate;
-  let lo = st.x - FRIGATE.roam;
-  let hi = st.x + FRIGATE.roam;
-  const c = g.map.carrier;
-  if (st.x < c.x) hi = Math.min(hi, c.x - CARRIER.halfLength - FRIGATE.carrierGap);
-  else lo = Math.max(lo, c.x + CARRIER.halfLength + FRIGATE.carrierGap);
-  let tx = st.x;
-  if (g.stats.frigateRoams) {
-    let sx = 0;
-    let n = 0;
-    for (const th of g.threats) {
-      if (th.dead || th.kind === 'strafer' || th.kind === 'bomber') continue;
-      sx += th.x;
-      n++;
-    }
-    if (n) tx = Math.max(lo, Math.min(hi, sx / n));
+  const d = g.map.frigate.x - f.x;
+  if (Math.abs(d) < 0.5) {
+    f.x = g.map.frigate.x;
+    f.vx = 0;
+    return;
   }
-  // Full speed until it reaches its patrol box, then a slow steam.
-  const speed = f.x < lo || f.x > hi ? FRIGATE.sail : FRIGATE.roamSpeed;
-  const d = tx - f.x;
+  const speed = FRIGATE.sail * Math.min(1, Math.max(0.15, Math.abs(d) / FRIGATE.brake));
   const move = Math.sign(d) * Math.min(Math.abs(d), speed * dt);
   f.x += move;
   f.vx = move / dt;

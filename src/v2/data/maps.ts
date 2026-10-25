@@ -202,7 +202,9 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
     ],
-    callout: { x: 430, y: 450 },
+    // Bottom of the screen like every other map (round 5: mid-channel sat on
+    // the action), between the two south-shore bases.
+    callout: { x: 910, y: 865 },
     roads: {
       runners: [
         [{ x: -60, y: 118 }, { x: 800, y: 112 }, { x: 1660, y: 118 }],

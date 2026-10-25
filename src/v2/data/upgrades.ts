@@ -3,7 +3,7 @@
 // `stats()` turns the levels into the numbers the sim reads, so the sim never
 // asks "do I have card X"; it reads a stat.
 
-import { CARRIER, INTERCEPTOR, PICKUPS, SHIP } from './config';
+import { CARRIER, FRIGATE, INTERCEPTOR, PICKUPS, SHIP } from './config';
 
 /** Hold-to-fire repeat everyone gets without the card (seconds). */
 export const HOLD_FREE = 0.6;
@@ -102,7 +102,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     max: 2,
     levels: [
       'A frigate sails in beside the carrier with its own 3-round rack; taps fire from whichever is nearer',
-      'Frigate rack holds 5 and it steams toward the thick of the fight',
+      'Frigate rack holds 5 and reloads as fast as the carrier',
     ],
     answers: 'Range',
   },
@@ -253,8 +253,8 @@ export interface DefenseStats {
   threatSlow: number;
   /** Escort Frigate rack size (0 without the card). */
   frigateRack: number;
-  /** Frigate L2: steams toward the threats instead of holding station. */
-  frigateRoams: boolean;
+  /** Frigate reload time as a multiple of the carrier's. */
+  frigateReloadMult: number;
   /** Hold to fire: seconds of game time between repeats (free, card speeds up). */
   holdRepeat: number;
   /** Pickup cards. */
@@ -301,7 +301,7 @@ export function stats(levels: Levels): DefenseStats {
     radarLead: lv('radar') >= 1 ? 1.5 : 0,
     threatSlow: [1, 0.92, 0.82][lv('radar')],
     frigateRack: [0, 3, 5][lv('frigate')],
-    frigateRoams: lv('frigate') >= 2,
+    frigateReloadMult: lv('frigate') >= 2 ? 1 : FRIGATE.reloadMult,
     holdRepeat: [HOLD_FREE, 0.32, 0.22][lv('hold')],
     dropMult: lv('salvage') >= 1 ? 1.25 : 1,
     pickupLife: lv('salvage') >= 2 ? PICKUPS.salvageLife : PICKUPS.life,

@@ -193,6 +193,30 @@ try {
     if (frigate) fail('the Escort Frigate stayed after its card was swapped out');
   }
 
+  // Loaded with Safari's toolbar showing (874×340), then the toolbar goes away
+  // (874×402): the battlefield must grow to fill the screen, even when no
+  // resize event arrives (round 5: a black strip was left at the bottom).
+  {
+    const tb = await browser.newPage({ viewport: { width: 874, height: 340 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+    await tb.addInitScript(() => {
+      const add = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type, ...rest) {
+        if (type === 'resize' || type === 'orientationchange' || type === 'change') return undefined;
+        return add.call(this, type, ...rest);
+      };
+      window.ResizeObserver = class { observe() {} disconnect() {} };
+    });
+    await tb.goto(`${BASE_URL}/v2.html?seed=3`, { waitUntil: 'networkidle' });
+    await tb.locator('[data-map="strait"]').tap();
+    await tb.waitForSelector('.playing');
+    await tb.setViewportSize({ width: 874, height: 402 });
+    await tb.waitForTimeout(400);
+    const fill = await tb.evaluate(() => ({ root: document.getElementById('app').getBoundingClientRect().height, mapBottom: window.__v2.toClient(0, 900).y }));
+    console.log('after the toolbar hides:', JSON.stringify(fill));
+    if (fill.root !== 402 || fill.mapBottom < 401) fail(`layout stuck at the old height: ${JSON.stringify(fill)}`);
+    await tb.close();
+  }
+
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');
 } finally {
   await browser.close();

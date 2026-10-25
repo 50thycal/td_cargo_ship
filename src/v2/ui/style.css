@@ -46,7 +46,11 @@ body {
 
 #app.v2-root {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  /* JS pins width/height to the visible viewport (see App.viewport). */
+  width: 100vw;
+  height: 100dvh;
 }
 
 .v2-canvas {

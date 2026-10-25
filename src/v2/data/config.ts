@@ -146,6 +146,8 @@ export const MOTHERSHIP = {
 
 export const BALLISTIC = {
   splash: 50,
+  /** Damage to the other ships caught in the blast (the target takes full). */
+  spill: 1,
   /** Peak altitude as a fraction of the shot's ground distance (capped). */
   apexFrac: 0.35,
   apexMax: 260,
@@ -255,18 +257,16 @@ export const PLANE = {
 /** Missile trucks drive on enemy land: pop-ups drive to the shore, fire and
  *  reverse out; runners drive the whole shore road, stopping to fire. */
 /** Escort Frigate (round 4): sails in from the nearer screen edge to its station
- *  beside the carrier; at level 2 it steams toward the threats. */
+ *  beside the carrier and holds it (round 5: no roaming — it read as jumpy). */
 export const FRIGATE = {
   startX: -80,
   sail: 140,
-  roamSpeed: 45,
-  roam: 170,
-  /** Keeps this far clear of the carrier's bow or stern when roaming. */
-  carrierGap: 60,
+  /** Eases to a stop over this distance as it reaches its station. */
+  brake: 90,
   /** It fires once it is this far onto the screen. */
   fireFromX: 40,
-  /** Its rack reloads this much slower than the carrier's (round 4 tuning:
-   *  at the carrier's rate it doubled your fire rate). */
+  /** Its rack reloads this much slower than the carrier's at level 1 (at the
+   *  carrier's rate it doubled your fire rate); level 2 reloads at full rate. */
   reloadMult: 1.6,
 } as const;
 
@@ -303,9 +303,10 @@ export const PICKUPS = {
   /** Pickup life with Salvage Crews level 2. */
   salvageLife: 8,
   radius: 26,
-  weights: { ammo: 40, repair: 30, overdrive: 22, emp: 8, timewarp: 9, shield: 8, strike: 7, steam: 9 } as Record<PickupKind, number>,
+  // Round 5: repair 30 → 20 ("a little OP": 15 repairs in two games).
+  weights: { ammo: 40, repair: 20, overdrive: 22, emp: 8, timewarp: 9, shield: 8, strike: 7, steam: 9 } as Record<PickupKind, number>,
   repairHp: 2,
-  carrierRepairHp: 3,
+  carrierRepairHp: 2,
   overdriveTime: 5,
   /** Time Warp: threats move at this share of their speed. */
   warpTime: 4,
