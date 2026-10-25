@@ -12,6 +12,7 @@ import { makeRng, type RNG } from '../../sim/rng';
 import {
   BALLISTIC,
   CARRIER,
+  CARRIER_STRIKE,
   CLUSTER,
   HEAVY,
   MOTHERSHIP,
@@ -23,16 +24,19 @@ import {
   GUIDED,
   INTERCEPTOR,
   PICKUPS,
+  RAID,
+  RAID_THEME,
   RULES,
   SHIP,
   THREATS,
   VIEW,
+  type RaidTheme,
   type PickupKind,
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
-import { UPGRADES, UPGRADE_ORDER, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
+import { UPGRADES, UPGRADE_ORDER, canSwapIn, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
@@ -142,6 +146,14 @@ interface Launch {
   base: number;
 }
 
+/** A raid of the current wave: when it starts, its theme, and the bases it
+ *  fires from (lit up during the warning). */
+export interface Raid {
+  at: number;
+  theme: RaidTheme;
+  bases: number[];
+}
+
 export interface Game {
   map: MapDef;
   seed: number;
@@ -152,6 +164,7 @@ export interface Game {
   waveT: number;
   waveSpeed: number;
   queue: Launch[];
+  raids: Raid[];
   ships: Ship[];
   threats: Threat[];
   interceptors: Interceptor[];
@@ -215,6 +228,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     waveT: 0,
     waveSpeed: 1,
     queue: [],
+    raids: [],
     ships: [],
     threats: [],
     interceptors: [],
@@ -278,37 +292,56 @@ function startWave(g: Game): void {
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
-  // Launches of each kind are spread evenly across the wave. Jitter stays in
-  // the middle half of each slot so two slots never leave a long dead gap.
-  const spread = (n: number, each: (at: number) => void) => {
-    for (let k = 0; k < n; k++) each(lead + (spec.duration * (k + 0.25 + 0.5 * rng.next())) / n);
-  };
-
-  // Drones fly in swarms: one base, a staggered ripple of launches.
+  // Most launches bunch into raids: a few seconds of several bases firing
+  // at once, then a short breather. Each raid is one family of threat (a
+  // drone swarm, a splash barrage, a guided volley), so each calls for its
+  // own answer; a share of drone swarms trickles in between raids.
   const swarms: number[] = [];
   for (let left = spec.drones; left > 0; ) {
     const size = Math.min(left, Math.max(2, spec.swarm - rng.int(2)));
     swarms.push(size);
     left -= size;
   }
-  let i = 0;
-  spread(swarms.length, (at) => {
-    const base = pickBase(g, 'drone', rng);
-    for (let d = 0; d < swarms[i]; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
-    i++;
-  });
-  spread(spec.ballistic, (at) =>
-    queue.push({ at, kind: 'ballistic', base: pickBase(g, 'ballistic', rng) }),
-  );
-  spread(spec.guided, (at) =>
-    queue.push({ at, kind: 'guided', base: pickBase(g, 'guided', rng) }),
-  );
-  // Map-specific threat types on top of the shared table.
+  const trickle = Math.round(swarms.length * RAID.trickle);
+  // Everything that goes into raids, by family: a drone swarm counts as one unit.
+  const units: { kind: ThreatKind; size: number }[] = swarms.slice(trickle).map((size) => ({ kind: 'drone', size }));
+  for (let k = 0; k < spec.ballistic; k++) units.push({ kind: 'ballistic', size: 1 });
+  for (let k = 0; k < spec.guided; k++) units.push({ kind: 'guided', size: 1 });
   for (const x of g.map.extras) {
     if (g.wave < x.from) continue;
     const n = Math.round(x.count + x.growth * (g.wave - x.from));
-    spread(n, (at) => queue.push({ at, kind: x.kind, base: pickBase(g, x.kind, rng) }));
+    for (let k = 0; k < n; k++) units.push({ kind: x.kind, size: 1 });
   }
+  const themes: RaidTheme[] = ['swarm', 'barrage', 'volley'];
+  const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
+  const present = themes.filter((t) => count(t) > 0);
+  const total = Math.max(present.length, Math.round(spec.duration / RAID.every));
+  // Raids per theme, in proportion to its units (at least one each).
+  const per = new Map(present.map((t) => [t, 1]));
+  for (let k = present.length; present.length && k < total; k++) {
+    const t = present.reduce((a, b) => (count(b) / per.get(b)! > count(a) / per.get(a)! ? b : a));
+    per.set(t, per.get(t)! + 1);
+  }
+  const order = rng.shuffle(present.flatMap((t) => Array.from({ length: per.get(t)! }, () => t)));
+  const raids: Raid[] = order.map((theme, k) => ({ at: lead + RAID.warn * 0.4 + (spec.duration * k) / order.length, theme, bases: [] }));
+  const cursor = new Map<RaidTheme, number>();
+  for (const u of units) {
+    const theme = RAID_THEME[u.kind];
+    const mine = raids.filter((r) => r.theme === theme);
+    const at0 = cursor.get(theme) ?? rng.int(mine.length);
+    const raid = mine[at0 % mine.length];
+    cursor.set(theme, at0 + 1);
+    const base = pickBase(g, u.kind, rng);
+    if (!raid.bases.includes(base)) raid.bases.push(base);
+    const at = raid.at + rng.range(0, RAID.window);
+    for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base });
+  }
+  g.raids = raids;
+  swarms.slice(0, trickle).forEach((size, k) => {
+    const base = pickBase(g, 'drone', rng);
+    const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickle) + rng.range(-2, 2);
+    for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
+  });
   queue.sort((a, b) => a.at - b.at);
   g.queue = queue;
   g.events.push({ kind: 'wave', wave: g.wave });
@@ -403,8 +436,13 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   return fireAt(g, threat) ? 'fire' : 'dry';
 }
 
-export function pickUpgrade(g: Game, id: UpgradeId): void {
-  if (g.phase !== 'draft' || !g.offer.includes(id) || !canTake(g.levels, id)) return;
+/** Take a draft card. `replace` swaps a new card in for one you hold when
+ *  all slots are full: the replaced card and its levels are gone. */
+export function pickUpgrade(g: Game, id: UpgradeId, replace?: UpgradeId): void {
+  if (g.phase !== 'draft' || !g.offer.includes(id)) return;
+  const swap = replace !== undefined && canSwapIn(g.levels, id) && (g.levels[replace] ?? 0) > 0;
+  if (!swap && !canTake(g.levels, id)) return;
+  if (swap) delete g.levels[replace];
   if (id === 'resupply') {
     for (const s of g.ships) s.hp = SHIP.hp;
     g.carrierHp = CARRIER.hp;
@@ -417,7 +455,8 @@ export function pickUpgrade(g: Game, id: UpgradeId): void {
   const oldBattery = g.stats.batteryRack;
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   g.stats = stats(g.levels);
-  g.ammo = Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack));
+  g.ammo = Math.max(0, Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack)));
+  g.batteryAmmo = Math.min(g.batteryAmmo, g.stats.batteryRack);
   if (id === 'battery') g.batteryAmmo = Math.min(g.stats.batteryRack, g.batteryAmmo + g.stats.batteryRack - oldBattery);
   startWave(g);
 }
@@ -433,10 +472,10 @@ export function continueEndless(g: Game): void {
 const OWNED_DRAW = 0.37;
 
 function openDraft(g: Game): void {
-  // Three random cards from everything not yet maxed. With a full loadout, new
-  // cards still show (marked "slots full") — whether one of your own comes up
-  // is the luck of the draw — and if none can be taken, Resupply is added so
-  // the draft is never a dead end.
+  // Three random cards from everything not yet maxed. With a full loadout, a
+  // new card can still be swapped in for one you hold — whether one of your
+  // own comes up to level is the luck of the draw — and if nothing can be
+  // taken without a swap, Resupply is added so keeping your build is a choice.
   // Each of the three draws favours a card you already hold (OWNED_DRAW), so a
   // loadout levels up in most drafts but not all.
   const open = UPGRADE_ORDER.filter((id) => (g.levels[id] ?? 0) < UPGRADES[id].max);
@@ -568,7 +607,7 @@ function updateShips(g: Game, dt: number): void {
       }
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
-    s.x += SHIP.speed * slow * dt;
+    s.x += shipSpeed(g) * slow * dt;
     // Only move across into the new lane once that stretch of it is empty.
     const clear = order.every(
       (o, j) => j === i || Math.abs(o.x - s.x) >= SHIP.minGap || Math.abs(o.y - lane[i]) >= SHIP.laneMatch,
@@ -590,8 +629,21 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
   return g.ships.filter((s) => s.x > 30 && s.x < maxX);
 }
 
-function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind): void {
-  s.hp -= amount;
+/** The convoy's speed in the current formation. */
+export function shipSpeed(g: Game): number {
+  return SHIP.speed * FORMATIONS[g.formation].speed;
+}
+
+// Bomblets are blamed on the cluster that dropped them.
+const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'];
+
+/** `direct`: the hit was aimed at this ship (formation armour applies);
+ *  splash spilling over from a neighbour's hit is not reduced. Spread's
+ *  blast cut applies to splash weapons either way. */
+function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
+  const f = FORMATIONS[g.formation];
+  if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
+  s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
   if (s.hp > 0) return;
   g.ships = g.ships.filter((o) => o !== s);
   g.lost += 1;
@@ -658,9 +710,8 @@ function launch(g: Game, l: Launch): void {
     dur: 1,
     apex: 0,
   };
-  const goCarrier =
-    l.kind === 'mothership' ||
-    (l.kind === 'guided' && g.wave >= GUIDED.carrierFromWave && rng.chance(GUIDED.carrierShare));
+  const strike = CARRIER_STRIKE[l.kind];
+  const goCarrier = l.kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, l.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
 
@@ -678,7 +729,7 @@ function aimBallistic(g: Game, th: Threat): void {
   let ix = t.x;
   let dur = dist(th.sx, th.sy, t.x, t.y) / th.speed;
   for (let k = 0; k < 2; k++) {
-    ix = moving ? t.x + SHIP.speed * dur : t.x;
+    ix = moving ? t.x + shipSpeed(g) * dur : t.x;
     dur = dist(th.sx, th.sy, ix, t.y) / th.speed;
   }
   th.ix = Math.min(VIEW.width - 20, ix);
@@ -793,7 +844,7 @@ function leadPoint(g: Game, th: Threat): Point {
   const t = targetPos(g, th);
   if (th.target === CARRIER_TARGET) return t;
   const eta = dist(th.x, th.y, t.x, t.y) / th.speed;
-  return { x: t.x + SHIP.speed * eta, y: t.y };
+  return { x: t.x + shipSpeed(g) * eta, y: t.y };
 }
 
 function checkImpact(g: Game, th: Threat): void {
@@ -811,9 +862,10 @@ function checkImpact(g: Game, th: Threat): void {
   th.dead = true;
   if (th.kind === 'heavy') {
     // A heavy warhead also damages everything close by.
-    addFx(g, 'splash', th.x, th.y, { life: 0.9, r: HEAVY.splash });
+    const reach = HEAVY.splash * FORMATIONS[g.formation].splash;
+    addFx(g, 'splash', th.x, th.y, { life: 0.9, r: Math.max(reach, 24) });
     for (const o of [...g.ships]) {
-      if (o !== s && dist(o.x, o.y, th.x, th.y) <= HEAVY.splash) damageShip(g, o, HEAVY.splashDamage, blame);
+      if (o !== s && dist(o.x, o.y, th.x, th.y) <= reach) damageShip(g, o, HEAVY.splashDamage, blame, false);
     }
   } else {
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
@@ -866,10 +918,17 @@ function spawnChildren(g: Game, th: Threat, dt: number): void {
 function impactBallistic(g: Game, th: Threat): void {
   th.dead = true;
   const dmg = THREATS.ballistic.damage;
-  addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: BALLISTIC.splash });
-  for (const s of [...g.ships]) {
-    if (dist(s.x, s.y, th.ix, th.iy) <= BALLISTIC.splash) damageShip(g, s, dmg, 'ballistic');
-  }
+  // The formation sets how far the blast reaches other hulls; Spread (0)
+  // means only the nearest ship inside the blast is hit.
+  const reach = BALLISTIC.splash * FORMATIONS[g.formation].splash;
+  addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: Math.max(reach, BALLISTIC.splash) });
+  const inBlast = g.ships
+    .map((s) => ({ s, d: dist(s.x, s.y, th.ix, th.iy) }))
+    .filter((o) => o.d <= Math.max(reach, BALLISTIC.splash))
+    .sort((a, b) => a.d - b.d);
+  inBlast.forEach((o, k) => {
+    if (k === 0 ? o.d <= BALLISTIC.splash : o.d <= reach) damageShip(g, o.s, dmg, 'ballistic', k === 0);
+  });
   if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg);
 }
 
@@ -1075,14 +1134,19 @@ function updateCiws(g: Game, dt: number): void {
   if (g.stats.ciwsRange <= 0) return;
   g.ciwsT -= dt;
   if (g.ciwsT > 0) return;
+  // A last-ditch gun: it takes whatever is closest to the carrier inside its
+  // reach, threats aimed at the carrier first (round 3: at long range and
+  // fast fire it out-shot the player 47 to 5 in a wave).
   const c = g.map.carrier;
   let best: Threat | null = null;
-  let bd = g.stats.ciwsRange;
+  let bd = Infinity;
   for (const th of g.threats) {
     if (th.dead) continue;
     const d = dist(c.x, c.y, th.x, th.y);
-    if (d < bd) {
-      bd = d;
+    if (d > g.stats.ciwsRange) continue;
+    const score = d - (th.target === CARRIER_TARGET ? g.stats.ciwsRange : 0);
+    if (score < bd) {
+      bd = score;
       best = th;
     }
   }
@@ -1179,6 +1243,17 @@ function angleDiff(a: number, b: number): number {
 }
 
 /** Is the ballistic's impact reticle visible yet? (Renderer + bot share this.) */
+/** The raid about to start, while its warning is up (null otherwise), with
+ *  how far through the warning we are (0 → 1). */
+export function raidWarning(g: Game): { raid: Raid; p: number } | null {
+  if (g.phase !== 'wave') return null;
+  for (const raid of g.raids) {
+    const ahead = raid.at - g.waveT;
+    if (ahead > 0 && ahead <= RAID.warn) return { raid, p: 1 - ahead / RAID.warn };
+  }
+  return null;
+}
+
 export function reticleVisible(g: Game, th: Threat): boolean {
   return g.stats.radarReticle || th.age / th.dur >= BALLISTIC.reticleFrom;
 }

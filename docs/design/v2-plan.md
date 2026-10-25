@@ -14,7 +14,8 @@ and shares only the seeded RNG (`src/sim/rng.ts`).
 
 1. **One screen, ships on rails.** No camera, no pan/zoom, no steering. The
    whole fight is a fixed 1600×900 field scaled to the screen. Ships ride fixed
-   lanes at constant speed; a formation is just which lane each hull takes.
+   lanes; the formation sets the lanes, the convoy's speed, and how it takes
+   damage (see Formations below).
 2. **No economy at all.** No cash, intel, confidence or quota. Upgrades are a
    free pick-1-of-3 card after every wave; pickups are instant effects, not
    currency. Score = ships delivered × the flow multiplier they sailed under.
@@ -33,9 +34,9 @@ threat (shown on the card as "vs …").
 |---|---|---|---|---|
 | Attack drone (Shahed-style) | Slow, weaving, swarms of 4–12, 1 dmg | Ammo drain | Wide Warhead, Chain Detonation, Bigger Rack, CIWS | Wave 1 |
 | Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Early-Warning Radar | Wave 2 |
-| Guided missile | Homes, re-targets, 2 HP, 2 dmg; some go for the carrier from wave 6 | Must be hit early or twice | Twin Launch, Auto-Retarget | Wave 4 |
-| Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Hold to Fire on the line | Gauntlet, Island, maps 4–5 |
-| Heavy cruise missile | Slow, 4 HP, 6 dmg + 1 splash | Easy to leave too late | Twin Launch, Hold to Fire | Gauntlet, Island, maps 4–5 |
+| Guided missile | Homes, re-targets, 2 HP, 2 dmg; 40% go for the carrier from wave 3 | Must be hit early or twice | Twin Launch, Auto-Retarget | Wave 3 |
+| Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Hold to Fire on the line | Strait (wave 6+), Gauntlet, Island, maps 4–5 |
+| Heavy cruise missile | Slow, 8 HP, 6 dmg + 1 splash; 40% go for the carrier | Easy to leave too late | Twin Launch, Hold to Fire | Strait (finale), Gauntlet, Island, maps 4–5 |
 | Cluster missile | Splits into 4 bomblets near its target | Must die before the split | Faster Interceptors; Wide Warhead / Chain for bomblets | Island, maps 4–5 |
 | Drone mothership | Drifts at the carrier dropping mini-drones, 5 HP | Kill the source | Twin Launch, CIWS | Maps 4–5 |
 
@@ -44,6 +45,14 @@ Each map adds its own threat types on top of the shared wave table
 on the loss screen.
 
 Threat speed rises each wave (×1.0 → ×1.5 by wave 10, capped ×1.8 in endless).
+
+**Raids** (playtest round 3). A wave's launches bunch into raids every ~5 s
+(`RAID` in `config.ts`), with 30% of drone swarms trickling in between. Each
+raid is one family — a **swarm** (drones, motherships), a **barrage**
+(ballistics, heavies, clusters) or a **volley** (guided, supersonics) — and is
+announced 2.5 s ahead: its bases pulse in the raid's colour and a callout
+names it and its counter. Ballistics, heavies and supersonics also go for the
+carrier (`CARRIER_STRIKE`), so losing the carrier is a real risk.
 
 ## Maps (clear 10 waves to unlock the next; endless after)
 
@@ -64,7 +73,7 @@ reach to the west end.
 - **Left rail — ship flow.** A 5-step slider from one ship every 8 s to one
   every 1.9 s, with a ×1 → ×3 score multiplier. Above it, the **formation
   button** opens Column / Pairs / Spread / Box, changeable mid-wave (ships glide
-  to their new lanes).
+  to their new lanes); each option shows its strength and weakness.
 - **Right rail — game speed.** 0.5× / 1× / 2× / 3× plus pause (Space also
   pauses). Time scale only; score is unaffected.
 - **Center — tap to intercept.** A tap reaches 44 CSS px. It fires at the
@@ -73,14 +82,33 @@ reach to the west end.
   (shown above the deck) refills over time.
 
 Pickups (drop from kills, fade after 5 s): ammo (rack full), repair (most
-damaged ship, else the carrier), overdrive (5 s of free instant fire), EMP
-(rare: destroys every drone on screen).
+damaged ship, else the carrier), overdrive (5 s of free instant fire — the
+carrier glows cyan with a draining ring while it lasts), EMP (rare: destroys
+every drone on screen).
+
+## Formations
+
+Each answers one raid type and pays for it elsewhere (`formations.ts`):
+
+| Formation | Strength | Weakness | Answers |
+|---|---|---|---|
+| Column | ×1.3 speed: through soonest | splash reaches 1.5× (chains to the ship behind) | swarms |
+| Pairs | balanced | — | anything, nothing best |
+| Spread | splash weapons do half damage, hit one ship only | ×0.85 speed | barrages |
+| Box | direct hits do 1 less damage | ×0.8 speed; splash reaches 1.8× and ignores the armour | volleys |
+
+`npm run v2:formation-lab` measures this: a convoy takes one raid of each type
+per formation, undefended and defended by a bot.
 
 ## Upgrade cards
 
 A loadout holds **three different cards**. Each draft deals three (favouring
-cards you hold); once three are held, new cards show as SLOTS FULL, and if
-nothing dealt can be taken, **Resupply** (repair and refill, no slot) appears.
+cards you hold); once three are held, a new card can be **swapped in** for one
+you hold (tap it, then the card it replaces — that card's levels are lost),
+and if nothing dealt can be taken without a swap, **Resupply** (repair and
+refill, no slot) appears so keeping your build is always an option. Every
+card has its own icon and colour (`src/v2/ui/icons.ts`). The Carrier CIWS is a
+last-ditch gun: short reach, carrier attackers first.
 
 Faster Interceptors, Bigger Rack, Quick Reload, Wide Warhead, Chain
 Detonation, Twin Launch, Auto-Retarget, Carrier CIWS, Early-Warning Radar,
@@ -91,7 +119,7 @@ Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
 
 | What | File |
 |---|---|
-| Every constant (speeds, HP, damage, rack, flow steps, loss limit) | `src/v2/data/config.ts` |
+| Every constant (speeds, HP, damage, rack, flow steps, loss limit, raids, carrier strikes) | `src/v2/data/config.ts` |
 | The difficulty curve | `src/v2/data/waves.ts` |
 | Maps (land, bases, carrier, channels, per-map threat scale) | `src/v2/data/maps.ts` |
 | Cards | `src/v2/data/upgrades.ts` |
@@ -117,11 +145,14 @@ artifact page.
 
 - `npm test` — includes `tests/v2/` (rules, taps, splash, re-targeting,
   formations, flow scoring, draft, clear/endless).
-- `npm run v2:sweep -- 16` — a bot plays every map at three skill levels
-  (sharp / average / casual reaction times, with phone-measured miss rates)
-  and prints clear rates. Baseline after the playtest cycles: sharp and
-  average clear everything; casual clears ~81% of Strait, ~63% of Gauntlet,
-  ~38% of Island.
+- `npm run v2:sweep -- 16` — a bot plays every map at each skill level and
+  prints clear rates. `npm run v2:analyze -- --bot=average --map=strait
+  --flow=4` adds per-wave detail (threats on screen, empty-screen share, shots
+  vs CIWS shots, carrier pressure, heavy kills), and the same meter reads a
+  real playtest log (`npm run v2:analyze -- log.json`). Round 3 baseline, max
+  flow, 16 seeds — clears for sharp / average / spammer: Strait 15/16/5,
+  Gauntlet 14/13/7, Island 11/12/4, Harbor 11/9/1, Archipelago 12/8/2
+  (`docs/design/v2-playtest-log-round3.md`).
 - `npm run e2e:v2` (with `npm run preview -- --port 4173` running) — real
   clicks/touches in Chromium: menu, wave 1, draft, formation popup, flow
   slider, phone landscape. Screenshots land in `e2e/shots/v2/`.

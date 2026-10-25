@@ -5,7 +5,7 @@
 // losses the player saw, which proves the analysis is of the real game.
 
 import { readFileSync } from 'node:fs';
-import { replay, type PlayLog } from '../../src/v2/sim/playlog';
+import { LOG_VERSION, replay, type PlayLog } from '../../src/v2/sim/playlog';
 
 const files = process.argv.slice(2).filter((a) => a !== '--');
 if (!files.length) {
@@ -21,7 +21,9 @@ for (const log of logs) {
   const s = log.summary;
   console.log(`\n=== ${log.id}  map ${log.map}  seed ${log.seed}  build ${log.build}  ${log.device.w}x${log.device.h}${log.device.touch ? ' touch' : ''}`);
   console.log(`ended: ${log.end ?? 'still playing (mid-run save)'} on wave ${s?.wave}  score ${s?.score}  sunk ${s?.lost}  through ${s?.delivered}  carrier ${s?.carrierHp}  ${s?.seconds}s`);
-  if ((log as { truncated?: boolean }).truncated || !log.commands.length) {
+  if (log.v !== LOG_VERSION) {
+    console.log(`(log format v${log.v}, this build is v${LOG_VERSION}: the rules changed, so it can't replay here — check out a build from its date)`);
+  } else if ((log as { truncated?: boolean }).truncated || !log.commands.length) {
     console.log('(inputs not included — summary only)');
   } else {
     const g = replay(log);

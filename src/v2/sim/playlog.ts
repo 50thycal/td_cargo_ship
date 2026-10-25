@@ -20,8 +20,10 @@ import {
   type WaveRecord,
 } from './game';
 
-/** Bump when the log format or sim rules change in a way that breaks replay. */
-export const LOG_VERSION = 2;
+/** Bump when the log format or sim rules change in a way that breaks replay.
+ *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
+ *  heavies, card swaps) — a v2 log only replays on a round-2 build. */
+export const LOG_VERSION = 3;
 export const SIM_DT = 1 / 60;
 
 /** Compact input encoding: [step, code, ...args]. */
@@ -29,7 +31,7 @@ export type LogCommand =
   | [number, 't', number, number, number] // tap x y radius (world units, rounded)
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
-  | [number, 'u', UpgradeId] // upgrade picked
+  | [number, 'u', UpgradeId, UpgradeId?] // upgrade picked [, card it replaced]
   | [number, 'e'] // continue into endless
   | [number, 's', number]; // game speed (UI only; kept for context)
 
@@ -63,7 +65,7 @@ export interface PlaySummary {
   seconds: number;
   levels: Partial<Record<UpgradeId, number>>;
   /** Each card offered → picked, in order. */
-  drafts: { wave: number; offered: UpgradeId[]; picked: UpgradeId }[];
+  drafts: { wave: number; offered: UpgradeId[]; picked: UpgradeId; replaced?: UpgradeId }[];
   waves: WaveRecord[];
 }
 
@@ -104,11 +106,11 @@ export class Recorder {
     setFormation(this.game, id);
   }
 
-  pick(id: UpgradeId): void {
+  pick(id: UpgradeId, replace?: UpgradeId): void {
     if (this.game.phase !== 'draft' || !this.game.offer.includes(id)) return;
-    this.drafts.push({ wave: this.game.wave, offered: [...this.game.offer], picked: id });
-    this.log.commands.push([this.game.steps, 'u', id]);
-    pickUpgrade(this.game, id);
+    this.drafts.push({ wave: this.game.wave, offered: [...this.game.offer], picked: id, ...(replace ? { replaced: replace } : {}) });
+    this.log.commands.push(replace ? [this.game.steps, 'u', id, replace] : [this.game.steps, 'u', id]);
+    pickUpgrade(this.game, id, replace);
   }
 
   endless(): void {
@@ -179,7 +181,7 @@ export function replay(log: PlayLog): Game {
           setFormation(g, c[2]);
           break;
         case 'u':
-          pickUpgrade(g, c[2]);
+          pickUpgrade(g, c[2], c[3]);
           break;
         case 'e':
           continueEndless(g);

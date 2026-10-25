@@ -86,7 +86,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     id: 'ciws',
     name: 'Carrier CIWS',
     max: 3,
-    levels: ['Carrier gun shoots threats over the near shipping lane', 'Reaches the far lane, fires faster', 'Covers the channel, fires fastest'],
+    levels: ['Last-ditch carrier gun: shoots what gets close, carrier attackers first', 'Longer reach, fires faster', 'Longest reach, fires fastest'],
     answers: 'Leakers',
   },
   radar: {
@@ -118,8 +118,9 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
   },
 };
 
-/** Not an upgrade: offered only when a full loadout's draft has nothing it can
- *  take, so a draft is never a dead end. Takes no slot. */
+/** Not an upgrade: offered when a full loadout's draft has nothing it can
+ *  take without a swap, so keeping your build is always an option. Takes no
+ *  slot. */
 export const RESUPPLY: UpgradeDef = {
   id: 'resupply',
   name: 'Resupply',
@@ -150,6 +151,13 @@ export function canTake(levels: Levels, id: UpgradeId): boolean {
   const lv = levels[id] ?? 0;
   if (lv >= UPGRADES[id].max) return false;
   return lv > 0 || loadout(levels).length < MAX_SLOTS;
+}
+
+/** Can this new card come in by replacing one you hold? Only when every
+ *  slot is full — the replaced card and all its levels are given up. */
+export function canSwapIn(levels: Levels, id: UpgradeId): boolean {
+  if (id === 'resupply' || (levels[id] ?? 0) > 0) return false;
+  return loadout(levels).length >= MAX_SLOTS;
 }
 
 export type Levels = Partial<Record<UpgradeId, number>>;
@@ -186,8 +194,8 @@ export function stats(levels: Levels): DefenseStats {
     freeExtras: lv('twin'),
     retarget: lv('retarget'),
     // Measured from the carrier: the near lane sits ~185-285 units away.
-    ciwsRange: [0, 260, 340, 420][ciws],
-    ciwsCooldown: [0, 0.8, 0.6, 0.45][ciws],
+    ciwsRange: [0, 190, 240, 290][ciws],
+    ciwsCooldown: [0, 1.1, 0.9, 0.7][ciws],
     radarReticle: lv('radar') >= 1,
     threatSlow: lv('radar') >= 2 ? 0.88 : 1,
     batteryRack: [0, 4, 7][lv('battery')],

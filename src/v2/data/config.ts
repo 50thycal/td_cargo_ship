@@ -95,7 +95,8 @@ export const THREATS: Record<
   /** Locks on visibly, then crosses the screen in about a second. */
   supersonic: { speed: 430, hp: 1, damage: 2, dropChance: 0.25, label: 'Supersonic missile' },
   /** Slow, armoured, big splash: needs four hits. */
-  heavy: { speed: 55, hp: 4, damage: 6, dropChance: 0.6, label: 'Heavy cruise missile' },
+  // Round 3: 4 hits fell in 2–6 s in the player's run; 8 makes it a real ammo sink.
+  heavy: { speed: 55, hp: 8, damage: 6, dropChance: 0.6, label: 'Heavy cruise missile' },
   /** Splits into bomblets close to its target unless it is hit first. */
   cluster: { speed: 170, hp: 1, damage: 0, dropChance: 0.25, label: 'Cluster missile' },
   /** Drifts at the carrier dropping mini-drones until it is shot down. */
@@ -154,9 +155,6 @@ export const GUIDED = {
   /** Extra turn rate added as it closes, so it doesn't orbit its target. */
   terminalTurn: 4,
   terminalRange: 200,
-  /** From this wave on, some guided missiles go for the carrier instead. */
-  carrierFromWave: 6,
-  carrierShare: 0.3,
   /** Off the rail slowly: speed ramps from this fraction to full over `boost` s,
    *  so a launch is seen before it closes. */
   boostFrom: 0.3,
@@ -164,6 +162,47 @@ export const GUIDED = {
   /** Guided missiles take only this share of a wave's speed-up. */
   waveSpeedShare: 0.5,
 } as const;
+
+/** Which threats go for the carrier instead of a ship, and from which wave.
+ *  Playtest round 3: the carrier ended both real runs untouched, so losing
+ *  it was never a risk; now missiles start hunting it from wave 3. */
+export const CARRIER_STRIKE: Partial<Record<ThreatKind, { from: number; share: number }>> = {
+  guided: { from: 3, share: 0.4 },
+  ballistic: { from: 4, share: 0.25 },
+  heavy: { from: 1, share: 0.4 },
+  supersonic: { from: 1, share: 0.3 },
+};
+
+/** Waves come in raids: most launches bunch into a few seconds from several
+ *  bases at once, with a short breather between, instead of a steady trickle
+ *  (round 3: the screen sat empty 33–60% of every wave). */
+export const RAID = {
+  /** Seconds between raid starts. */
+  every: 5,
+  /** A raid's launches land within this many seconds of its start. */
+  window: 4.5,
+  /** Share of drones that still trickle in between raids. */
+  trickle: 0.3,
+  /** Seconds of warning before a raid: the bases about to fire light up and
+   *  the raid's type is called out, so there is time to pick a formation. */
+  warn: 2.5,
+} as const;
+
+/** Raids have a theme — one family of threat — so each calls for a
+ *  different answer (round 3: formations need a reason to switch). */
+export type RaidTheme = 'swarm' | 'barrage' | 'volley';
+
+export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
+  drone: 'swarm',
+  minidrone: 'swarm',
+  mothership: 'swarm',
+  ballistic: 'barrage',
+  heavy: 'barrage',
+  cluster: 'barrage',
+  bomblet: 'barrage',
+  guided: 'volley',
+  supersonic: 'volley',
+};
 
 export const DRONE = {
   weaveAmp: 0.35,

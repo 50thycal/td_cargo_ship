@@ -209,7 +209,7 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
-  width: 230px;
+  width: 250px;
   background: rgb(15 26 34 / 0.96);
   border: 1px solid var(--panel-edge);
   border-radius: 12px;
@@ -248,6 +248,33 @@ body {
   font-size: 10px;
   color: var(--muted);
   line-height: 1.25;
+}
+
+.v2-formation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 6px;
+}
+
+.v2-formation-head em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.v2-tag-good {
+  color: #5ee08a;
+  background: rgb(94 224 138 / 0.12);
+}
+
+.v2-tag-bad {
+  color: #ff8a7a;
+  background: rgb(255 138 122 / 0.12);
 }
 
 .v2-formation-opt.active {
@@ -637,6 +664,12 @@ body {
   font-weight: 700;
 }
 
+.v2-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .v2-slot.empty {
   border-style: dashed;
   border-color: var(--panel-edge);
@@ -705,4 +738,115 @@ body {
 
 .v2-card-row:has(.resupply) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Card head: the upgrade's icon beside its name. The icon carries the card's
+   colour, echoed by a thin bar along the card's top edge. */
+.v2-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v2-card-head strong {
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.v2-icon {
+  flex: none;
+}
+
+.v2-card {
+  box-shadow: inset 0 3px 0 var(--card-color, transparent);
+}
+
+.v2-card.locked .v2-icon {
+  opacity: 0.35;
+}
+
+/* Swapping a new card in for a held one. */
+.v2-badge.swap {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+
+.v2-card.chosen {
+  border-color: var(--gold);
+  box-shadow: inset 0 3px 0 var(--card-color, transparent), 0 0 0 2px var(--gold);
+}
+
+/* While choosing what a card replaces, the other cards step back. Solid, not
+   see-through: opacity let the battlefield show through (round 3 shot). */
+.v2-card:disabled:not(.locked) {
+  cursor: default;
+  background: #0b141a;
+  border-color: var(--panel-edge);
+}
+
+.v2-card:disabled:not(.locked) > *,
+.v2-card:disabled:not(.locked) .v2-card-answers {
+  color: #5a6b74;
+}
+
+.v2-card:disabled:not(.locked) .v2-icon,
+.v2-card:disabled:not(.locked) .v2-badge {
+  opacity: 0.35;
+}
+
+/* Room for the chosen card's ring inside the scrolling panel. */
+.v2-draft .v2-card-row {
+  padding: 3px;
+}
+
+.v2-slots.choosing .v2-slot.swap {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  cursor: pointer;
+  animation: v2-swap-pulse 1s ease-in-out infinite alternate;
+}
+
+.v2-slots.choosing .v2-slot.swap:hover {
+  background: #3a1f1f;
+  border-color: var(--danger, #ff4d3d);
+}
+
+.v2-slot-x {
+  color: var(--danger, #ff4d3d);
+  font-weight: 800;
+}
+
+@keyframes v2-swap-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(245, 197, 66, 0.5);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgba(245, 197, 66, 0);
+  }
+}
+
+.v2-swap-prompt {
+  color: var(--gold);
+}
+
+.v2-swap-prompt .v2-link {
+  margin-left: 8px;
+}
+
+/* Landscape phones: the tags say it; the long description would make the
+   formation picker fill the screen. */
+@media (max-height: 430px) {
+  .v2-formation-opt > span:last-child {
+    display: none;
+  }
+  .v2-formation-opt {
+    grid-template-rows: auto;
+    align-items: center;
+  }
 }

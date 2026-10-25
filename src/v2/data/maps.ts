@@ -132,15 +132,20 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'friendly', points: shore('bottom', 790, 12, 1.7) },
     ],
     bases: [
-      { x: 260, y: 112, kinds: ['drone'] },
-      { x: 800, y: 100, kinds: ['drone', 'ballistic'] },
-      { x: 1340, y: 112, kinds: ['drone', 'guided', 'ballistic'] },
+      { x: 260, y: 112, kinds: ['drone', 'supersonic'] },
+      { x: 800, y: 100, kinds: ['drone', 'ballistic', 'heavy'] },
+      { x: 1340, y: 112, kinds: ['drone', 'guided', 'ballistic', 'supersonic'] },
     ],
     carrier: { x: 800, y: 705 },
     battery: { x: 230, y: 835 },
     channels: [{ y: 470, halfWidth: 150 }],
     threatScale: 1.15,
-    extras: [],
+    // Round 3: careful play lost ~0.5 ships here; a late taste of supersonics
+    // and one heavy in the finale tests reaction, not just ammo.
+    extras: [
+      { kind: 'supersonic', from: 6, count: 1, growth: 0.34 },
+      { kind: 'heavy', from: 10, count: 1, growth: 0 },
+    ],
     callout: { x: 800, y: 845 },
   },
   gauntlet: {

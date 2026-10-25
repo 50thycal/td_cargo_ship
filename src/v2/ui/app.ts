@@ -15,7 +15,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
-import { MAX_SLOTS, canTake, cardDef, loadout } from '../data/upgrades';
+import { MAX_SLOTS, canSwapIn, canTake, cardDef, loadout, type UpgradeId } from '../data/upgrades';
 import { loadProgress, recordResult, type Progress } from '../platform/save';
 import {
   createGame,
@@ -25,6 +25,7 @@ import {
 } from '../sim/game';
 import { Recorder } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
@@ -38,7 +39,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
   supersonic: 'Watch for the red lock line, then tap fast.',
-  heavy: 'Slow but armoured. Needs four hits.',
+  heavy: 'Slow but heavily armoured: eight hits. Pour fire on it early.',
   cluster: 'Splits near the ships. Hit it early.',
   mothership: 'Drops mini-drones. Kill the source.',
 };
@@ -199,7 +200,10 @@ export class App {
         this.syncFormation();
       });
       opt.dataset.formation = id;
-      opt.append(formationGlyph(id), el('strong', '', f.name), el('span', '', f.hint));
+      const head = el('span', 'v2-formation-head', '');
+      head.append(el('strong', '', f.name), el('em', 'v2-tag-good', f.tags[0]));
+      if (f.tags[1] !== '—') head.append(el('em', 'v2-tag-bad', f.tags[1]));
+      opt.append(formationGlyph(id), head, el('span', '', f.hint));
       this.formationPop.append(opt);
     }
     this.leftRail.append(this.formationPop);
@@ -283,6 +287,9 @@ export class App {
     if (result === 'dry') {
       // Nothing loaded: say so under the finger, and point at the rack.
       const c = this.game.map.carrier;
+      // One label at a time: repeated dry taps restack "RELOADING" into an
+      // unreadable pile (round 3 screenshot).
+      this.ripples = this.ripples.filter((r) => !r.label);
       this.ripples.push({ x, y, age: 0, dry: true, label: 'RELOADING' });
       this.ripples.push({ x: c.x, y: c.y - CARRIER.halfBeam - 15, age: 0, dry: true });
     }
@@ -411,7 +418,7 @@ export class App {
     ctx.beginPath();
     ctx.rect(0, 0, VIEW.width, VIEW.height);
     ctx.clip();
-    drawFrame(ctx, this.game, this.ripples, this.shake);
+    drawFrame(ctx, this.game, this.ripples, this.shake, this.bannerT > 0);
   }
 
   private drainEvents(g: Game): void {
@@ -544,42 +551,72 @@ export class App {
     this.hideOverlay();
   }
 
-  private showDraft(g: Game): void {
+  /** The draft. With all slots full a new card can still be taken: tap it,
+   *  then tap the held card it replaces (round 3: "you should be able to
+   *  remove one… if you want to switch midway through a game"). */
+  private showDraft(g: Game, swapping: UpgradeId | null = null): void {
     const owned = loadout(g.levels);
     const full = owned.length >= MAX_SLOTS;
     const roman = (n: number) => ['', 'I', 'II', 'III'][n] ?? String(n);
-    const slots = el('div', 'v2-slots');
+    const slots = el('div', `v2-slots${swapping ? ' choosing' : ''}`);
     for (let i = 0; i < MAX_SLOTS; i++) {
       const id = owned[i];
-      const chip = el('span', `v2-slot${id ? '' : ' empty'}`, id ? `${cardDef(id).name} ${roman(g.levels[id] ?? 0)}` : 'Empty slot');
+      const label = id ? `${cardDef(id).name} ${roman(g.levels[id] ?? 0)}` : 'Empty slot';
+      if (swapping && id) {
+        const chip = button(label, 'v2-slot swap', () => this.rec?.pick(swapping, id));
+        chip.dataset.slot = id;
+        chip.prepend(upgradeIcon(id, 16));
+        chip.append(el('span', 'v2-slot-x', '✕'));
+        slots.append(chip);
+        continue;
+      }
+      const chip = el('span', `v2-slot${id ? '' : ' empty'}`, label);
+      if (id) chip.prepend(upgradeIcon(id, 16));
       slots.append(chip);
     }
     const cards = g.offer.map((id) => {
       const u = cardDef(id);
       const lvl = g.levels[id] ?? 0;
       const takeable = canTake(g.levels, id);
-      const badge = id === 'resupply' ? 'NO CARD FITS' : !takeable ? 'SLOTS FULL' : lvl > 0 ? 'LEVEL UP' : 'NEW';
-      const card = button('', `v2-card${takeable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}`, () => {
+      const swappable = canSwapIn(g.levels, id);
+      const badge = id === 'resupply' ? 'NO SWAP' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const chosen = swapping === id;
+      const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}`, () => {
+        if (swapping) return;
         if (takeable) this.rec?.pick(id);
+        else if (swappable) this.showDraft(g, id);
       });
-      card.disabled = !takeable;
+      card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
+      const head = el('span', 'v2-card-head', '');
+      head.append(upgradeIcon(id, 30), el('strong', '', u.name));
+      card.style.setProperty('--card-color', ICON_COLOR[id]);
       card.append(
         el('span', 'v2-card-top', ''),
-        el('strong', '', u.name),
-        el('span', 'v2-card-level', id === 'resupply' ? 'Takes no slot' : `Level ${lvl + 1}/${u.max}`),
+        head,
+        el('span', 'v2-card-level', id === 'resupply' ? 'Keeps your cards' : `Level ${lvl + 1}/${u.max}`),
         el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]),
       );
       const top = card.querySelector('.v2-card-top')!;
-      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SLOTS FULL' ? 'off' : badge === 'NEW' ? 'new' : 'up'}`, badge));
+      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : 'up'}`, badge));
       return card;
     });
     const row = el('div', 'v2-card-row');
     row.append(...cards);
-    const rule = full
-      ? 'Your three slots are full: only cards you hold can level up.'
-      : `Pick one. You can hold ${MAX_SLOTS} different cards (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free).`;
-    this.showOverlay('v2-draft', [el('h2', '', `Wave ${g.wave} cleared`), slots, el('p', 'v2-sub', rule), row]);
+    let rule: HTMLElement;
+    if (swapping) {
+      rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${cardDef(swapping).name}: tap the card it replaces above. That card and its levels are gone.`);
+      rule.append(button('Cancel', 'v2-link', () => this.showDraft(g)));
+    } else {
+      rule = el(
+        'p',
+        'v2-sub',
+        full
+          ? 'Slots full: level up a card you hold, or swap a new one in for one you hold.'
+          : `Pick one. You can hold ${MAX_SLOTS} different cards (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free).`,
+      );
+    }
+    this.showOverlay('v2-draft', [el('h2', '', `Wave ${g.wave} cleared`), slots, rule, row]);
   }
 
   private showResult(g: Game, won: boolean): void {
