@@ -18,12 +18,16 @@
     "dev:v2": "vite --open /v2.html",
     "v2:sweep": "vite-node tools/v2/sweep.ts --",
     "e2e:v2": "node e2e/v2.mjs",
-    "v2:replay": "vite-node tools/v2/replay.ts --"
+    "v2:replay": "vite-node tools/v2/replay.ts --",
+    "e2e:v2:log": "node e2e/v2-vercel-log.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
   }
 }

@@ -1,7 +1,9 @@
-// Where playtest logs go. Always: the last few on this device. When the game
-// runs as a Claude artifact with the `db` capability: the artifact's shared
-// database too, which Claude can read directly — no copy-paste. Elsewhere
-// (the Vercel build): a "Download log" button on the result screen.
+// Where playtest logs go. Always: the last few on this device. Then, so Claude
+// can read them directly with no copy-paste:
+//   - as a Claude artifact with the `db` capability: the artifact's database;
+//   - on the Vercel build: POST /api/playlog (api/playlog.ts → Vercel Blob).
+// Anything that doesn't get through is resent on the next launch. Local dev
+// has neither, so the result screen offers "Download log" instead.
 
 import type { PlayLog } from '../sim/playlog';
 
@@ -32,8 +34,16 @@ function artifactDb(): Promise<Db | null> {
   return dbPromise;
 }
 
-export async function canSendToClaude(): Promise<boolean> {
-  return (await artifactDb()) !== null;
+/** Vercel serves api/playlog.ts next to the game; dev servers don't. */
+function onVercel(): boolean {
+  return location.protocol === 'https:' && location.hostname.endsWith('.vercel.app');
+}
+
+export type Channel = 'artifact' | 'server' | null;
+
+export async function logChannel(): Promise<Channel> {
+  if (await artifactDb()) return 'artifact';
+  return onVercel() ? 'server' : null;
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -64,11 +74,24 @@ export function fitForDb(log: PlayLog): PlayLog & { truncated?: boolean } {
   return { ...log, commands: [], truncated: true };
 }
 
+async function post(log: PlayLog): Promise<boolean> {
+  const body = JSON.stringify(log);
+  const res = await fetch('/api/playlog', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body,
+    // Lets a send started as the page closes finish; browsers cap it at 64 KiB.
+    keepalive: body.length < 60_000,
+  });
+  return res.ok;
+}
+
 async function send(log: PlayLog): Promise<boolean> {
   const db = await artifactDb();
-  if (!db) return false;
+  if (!db && !onVercel()) return false;
   try {
-    await db.collection(DB_COLLECTION).doc(log.id).set(fitForDb(log));
+    if (db) await db.collection(DB_COLLECTION).doc(log.id).set(fitForDb(log));
+    else if (!(await post(log))) return false;
     const sent = readJson<string[]>(SENT_KEY, []);
     writeJson(SENT_KEY, [...sent.filter((id) => id !== log.id), log.id].slice(-50));
     return true;
@@ -80,13 +103,13 @@ async function send(log: PlayLog): Promise<boolean> {
 /** Keep the log on the device and send it on if this build can. */
 export async function storeLog(log: PlayLog): Promise<UploadState> {
   writeJson(LOCAL_KEY, [...localLogs().filter((l) => l.id !== log.id), log].slice(-KEEP));
-  if (!(await artifactDb())) return 'local-only';
+  if (!(await logChannel())) return 'local-only';
   return (await send(log)) ? 'sent' : 'failed';
 }
 
-/** On start-up, retry any kept log that never made it to the db. */
+/** On start-up, retry any kept log that never made it to Claude. */
 export async function flushUnsent(): Promise<number> {
-  if (!(await artifactDb())) return 0;
+  if (!(await logChannel())) return 0;
   const sent = new Set(readJson<string[]>(SENT_KEY, []));
   let n = 0;
   for (const log of localLogs()) if (!sent.has(log.id) && (await send(log))) n++;
