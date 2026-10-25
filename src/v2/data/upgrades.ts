@@ -3,7 +3,7 @@
 // `stats()` turns the levels into the numbers the sim reads, so the sim never
 // asks "do I have card X"; it reads a stat.
 
-import { INTERCEPTOR } from './config';
+import { CARRIER, INTERCEPTOR, PICKUPS, SHIP } from './config';
 
 /** Hold-to-fire repeat everyone gets without the card (seconds). */
 export const HOLD_FREE = 0.6;
@@ -17,6 +17,15 @@ export type UpgradeId =
   | 'radar'
   | 'frigate'
   | 'hold'
+  | 'salvage'
+  | 'supercharge'
+  | 'magnet'
+  | 'armor'
+  | 'smoke'
+  | 'flares'
+  | 'flak'
+  | 'rhythm'
+  | 'proxfuse'
   | 'resupply';
 
 export interface UpgradeDef {
@@ -107,6 +116,76 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     ],
     answers: 'Swarms',
   },
+  // ---- Round 4: ten new cards (Escort Frigate above, nine here) ----
+  salvage: {
+    id: 'salvage',
+    name: 'Salvage Crews',
+    max: 2,
+    levels: ['+25% pickup drops', `Pickups last ${PICKUPS.salvageLife} s instead of ${PICKUPS.life}`],
+    answers: 'Attrition',
+  },
+  supercharge: {
+    id: 'supercharge',
+    name: 'Supercharged Pickups',
+    max: 2,
+    levels: ['Timed pickups last 50% longer, Repair heals 1 more', 'Every pickup also reloads 2 rounds'],
+    answers: 'Attrition',
+  },
+  magnet: {
+    id: 'magnet',
+    name: 'Pickup Magnet',
+    max: 2,
+    levels: ['Grab pickups from twice as far', 'Pickups fly to the carrier on their own'],
+    answers: 'Attrition',
+  },
+  armor: {
+    id: 'armor',
+    name: 'Armored Hulls',
+    max: 2,
+    levels: [`Ships take ${SHIP.hp + 1} hits to sink`, `Ships take ${SHIP.hp + 2} hits; carrier +4 HP`],
+    answers: 'Everything',
+  },
+  smoke: {
+    id: 'smoke',
+    name: 'Smoke Screen',
+    max: 2,
+    levels: [
+      'A ship that is hit lays smoke: guided missiles lose their lock on it (recharges in 10 s)',
+      'Recharges in 6 s, and the smoke also hides ships from strafing guns',
+    ],
+    answers: 'Guided',
+  },
+  flares: {
+    id: 'flares',
+    name: 'Decoy Flares',
+    max: 2,
+    levels: [
+      'A guided missile about to hit a ship chases a flare instead (recharges in 8 s)',
+      'Recharges in 4 s, and fools supersonics too',
+    ],
+    answers: 'Guided',
+  },
+  flak: {
+    id: 'flak',
+    name: 'Flak Burst',
+    max: 2,
+    levels: ['Interceptors hit everything they pass close to on the way', 'Wider flak along the way'],
+    answers: 'Aircraft',
+  },
+  rhythm: {
+    id: 'rhythm',
+    name: 'Combat Rhythm',
+    max: 2,
+    levels: ['Every 4th kill reloads a round instantly', 'Every 3rd kill, and the frigate reloads too'],
+    answers: 'Swarms',
+  },
+  proxfuse: {
+    id: 'proxfuse',
+    name: 'Proximity Fuse',
+    max: 2,
+    levels: ['Interceptors burst when they get close: fast missiles stop slipping past', 'A fused hit does double damage'],
+    answers: 'Ballistic',
+  },
 };
 
 /** Not an upgrade: offered when a full loadout's draft has nothing it can
@@ -173,6 +252,31 @@ export interface DefenseStats {
   frigateRoams: boolean;
   /** Hold to fire: seconds of game time between repeats (free, card speeds up). */
   holdRepeat: number;
+  /** Pickup cards. */
+  dropMult: number;
+  pickupLife: number;
+  /** Multiplies timed pickups (and adds to Repair). */
+  pickupPower: number;
+  pickupReload: number;
+  grabMult: number;
+  autoCollect: boolean;
+  /** Armored Hulls. */
+  shipHp: number;
+  carrierHp: number;
+  /** Smoke Screen recharge (0 = no card); L2 smoke also blinds strafing guns. */
+  smokeEvery: number;
+  smokeVsGuns: boolean;
+  /** Decoy Flares recharge (0 = no card); L2 also fools supersonics. */
+  flareEvery: number;
+  flaresVsSupersonic: boolean;
+  /** Flak Burst radius along an interceptor's path (0 = no card). */
+  flak: number;
+  /** Combat Rhythm: kills per free round (0 = no card); L2 feeds the frigate. */
+  rhythmEvery: number;
+  rhythmFrigate: boolean;
+  /** Interceptor contact distance (Proximity Fuse widens it) and hit damage. */
+  contact: number;
+  hitDamage: number;
 }
 
 export function stats(levels: Levels): DefenseStats {
@@ -193,5 +297,22 @@ export function stats(levels: Levels): DefenseStats {
     frigateRack: [0, 4, 7][lv('frigate')],
     frigateRoams: lv('frigate') >= 2,
     holdRepeat: [HOLD_FREE, 0.45, 0.33][lv('hold')],
+    dropMult: lv('salvage') >= 1 ? 1.25 : 1,
+    pickupLife: lv('salvage') >= 2 ? PICKUPS.salvageLife : PICKUPS.life,
+    pickupPower: lv('supercharge') >= 1 ? 1.5 : 1,
+    pickupReload: lv('supercharge') >= 2 ? 2 : 0,
+    grabMult: lv('magnet') >= 1 ? 2 : 1,
+    autoCollect: lv('magnet') >= 2,
+    shipHp: SHIP.hp + lv('armor'),
+    carrierHp: CARRIER.hp + (lv('armor') >= 2 ? 4 : 0),
+    smokeEvery: [0, 10, 6][lv('smoke')],
+    smokeVsGuns: lv('smoke') >= 2,
+    flareEvery: [0, 8, 4][lv('flares')],
+    flaresVsSupersonic: lv('flares') >= 2,
+    flak: [0, 28, 45][lv('flak')],
+    rhythmEvery: [0, 4, 3][lv('rhythm')],
+    rhythmFrigate: lv('rhythm') >= 2,
+    contact: lv('proxfuse') >= 1 ? 34 : INTERCEPTOR.contact,
+    hitDamage: lv('proxfuse') >= 2 ? 2 : 1,
   };
 }

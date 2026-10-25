@@ -288,16 +288,41 @@ export const DRONE = {
   weaveFreq: 2.5,
 } as const;
 
-export type PickupKind = 'ammo' | 'repair' | 'overdrive' | 'emp';
+// The first four are unchanged from round 3; round 4 adds Time Warp, Shield,
+// Strike Package and Full Steam.
+export type PickupKind = 'ammo' | 'repair' | 'overdrive' | 'emp' | 'timewarp' | 'shield' | 'strike' | 'steam';
+
+export const PICKUP_KINDS: PickupKind[] = ['ammo', 'repair', 'overdrive', 'emp', 'timewarp', 'shield', 'strike', 'steam'];
 
 export const PICKUPS = {
   life: 5,
+  /** Pickup life with Salvage Crews level 2. */
+  salvageLife: 8,
   radius: 26,
-  weights: { ammo: 40, repair: 30, overdrive: 22, emp: 8 } as Record<PickupKind, number>,
+  weights: { ammo: 40, repair: 30, overdrive: 22, emp: 8, timewarp: 9, shield: 8, strike: 7, steam: 9 } as Record<PickupKind, number>,
   repairHp: 2,
   carrierRepairHp: 3,
   overdriveTime: 5,
+  /** Time Warp: threats move at this share of their speed. */
+  warpTime: 4,
+  warpScale: 0.4,
+  /** Shield: ships and carrier take no damage. */
+  shieldTime: 5,
+  /** Strike Package: friendly jets hit this many threats (2 damage each) and
+   *  knock out every launcher that is up and firing. */
+  strikeTargets: 4,
+  strikeDamage: 2,
+  /** Full Steam: the convoy moves this much faster. */
+  steamTime: 5,
+  steamMult: 1.6,
+  /** Pickup Magnet level 2: a pickup waits this long, then flies to the carrier. */
+  magnetDelay: 1,
+  magnetSpeed: 420,
 } as const;
+
+/** Round 4 defensive cards. */
+export const SMOKE = { time: 3, radius: 80 } as const;
+export const FLARE = { range: 90 } as const;
 
 /** Taps reach this far on screen (CSS px) — converted to world units by the UI. */
 export const TAP_RADIUS_PX = 44;

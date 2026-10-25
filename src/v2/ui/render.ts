@@ -1,7 +1,7 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
+import { BALLISTIC, CARRIER, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
@@ -58,8 +58,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawCarrier(ctx, g);
   if (g.frigate) drawFrigate(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
-  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t);
-  for (const p of g.pickups) drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t);
+  if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
+  const armored = g.stats.shipHp > SHIP.hp;
+  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp, armored);
+  drawSmoke(ctx, g);
+  if (g.shieldT > 0) drawShields(ctx, g);
+  for (const p of g.pickups) drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, g.stats.pickupLife);
   for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
   for (const it of g.interceptors) {
     const a = Math.atan2(it.ty - it.y, it.tx - it.x);
@@ -78,6 +82,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
   drawPlaneWarnings(ctx, g);
+  drawTimedPickups(ctx, g);
   for (const r of ripples) {
     const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
     ctx.strokeStyle = r.dry ? `rgba(255,77,61,${0.9 * fade})` : `rgba(255,255,255,${0.5 * fade})`;
@@ -313,7 +318,7 @@ function drawCarrier(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
 
   // HP bar and ammo rack, right where the player looks when firing.
-  const hpFrac = g.carrierHp / CARRIER.hp;
+  const hpFrac = g.carrierHp / g.stats.carrierHp;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(x - 60, y + B + 8, 120, 6);
   ctx.fillStyle = hpFrac > 0.5 ? '#5ee08a' : hpFrac > 0.25 ? '#f5c542' : C.danger;
@@ -407,7 +412,7 @@ function drawRack(
   }
 }
 
-function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number): void {
+function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number, maxHp: number = SHIP.hp, armored = false): void {
   const L = 34;
   const B = 10;
   ctx.save();
@@ -428,8 +433,9 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
   ctx.closePath();
   ctx.fillStyle = C.hull;
   ctx.fill();
-  ctx.strokeStyle = C.hullEdge;
-  ctx.lineWidth = 1.5;
+  // Armored Hulls: a heavy steel-blue edge.
+  ctx.strokeStyle = armored ? '#a3b8cc' : C.hullEdge;
+  ctx.lineWidth = armored ? 3 : 1.5;
   ctx.stroke();
   // Container stacks
   for (let i = 0; i < 5; i++) {
@@ -440,7 +446,7 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
   ctx.fillStyle = '#e8e4da';
   ctx.fillRect(-L + 2, -B + 3, 5, B * 2 - 6);
   ctx.restore();
-  if (hp < SHIP.hp) {
+  if (hp < maxHp) {
     const puff = (k: number) => (t * 1.3 + k * 0.33) % 1;
     for (let k = 0; k < 3; k++) {
       const p = puff(k);
@@ -449,6 +455,100 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
       ctx.arc(x - 6 - p * 26, y - 4 - p * 16, 4 + p * 7, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+}
+
+/** Full Steam: a white bow wave and speed streaks behind every hull. */
+function drawSteam(ctx: CanvasRenderingContext2D, x: number, y: number, t: number): void {
+  // A churned white wake fanning out astern, streaks racing back, a bow wave.
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.moveTo(x - 34, y - 9);
+  ctx.lineTo(x - 120, y - 22);
+  ctx.lineTo(x - 120, y + 22);
+  ctx.lineTo(x - 34, y + 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 3;
+  for (let k = -1; k <= 1; k++) {
+    const off = (t * 260 + k * 29) % 70;
+    ctx.beginPath();
+    ctx.moveTo(x - 40 - off, y + k * 9);
+    ctx.lineTo(x - 72 - off, y + k * 13);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(x + 30, y, 13, -1.1, 1.1);
+  ctx.stroke();
+}
+
+/** Smoke Screen clouds: billowing grey puffs riding with the ship. */
+function drawSmoke(ctx: CanvasRenderingContext2D, g: Game): void {
+  for (const sm of g.smokes) {
+    const u = sm.t / SMOKE.time;
+    const a = u < 0.15 ? u / 0.15 : 1 - Math.max(0, (u - 0.6) / 0.4);
+    for (let k = 0; k < 7; k++) {
+      const ang = k * 0.9 + sm.ship;
+      const rr = SMOKE.radius * (0.35 + 0.45 * ((k * 37) % 10) / 10) * (0.6 + 0.4 * Math.min(1, u * 4));
+      ctx.fillStyle = `rgba(200,205,210,${0.42 * a})`;
+      ctx.beginPath();
+      ctx.arc(sm.x + Math.cos(ang) * rr * 0.8 - u * 20, sm.y + Math.sin(ang) * rr * 0.5, 22 + 10 * Math.sin(k + sm.t * 2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+/** Shield pickup: a bubble over every ship and the carrier, flickering out. */
+function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
+  const ending = g.shieldT < 1.2 && Math.floor(g.t * 10) % 2 === 0;
+  if (ending) return;
+  ctx.strokeStyle = 'rgba(226,232,240,0.85)';
+  ctx.fillStyle = 'rgba(186,230,253,0.16)';
+  ctx.lineWidth = 2;
+  const bubble = (x: number, y: number, rx: number, ry: number) => {
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  };
+  for (const s of g.ships) bubble(s.x, s.y, 46, 22);
+  bubble(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 22, CARRIER.halfBeam + 20);
+}
+
+/** Time Warp tint, and a countdown chip for every timed pickup running. */
+function drawTimedPickups(ctx: CanvasRenderingContext2D, g: Game): void {
+  if (g.warpT > 0) {
+    const a = Math.min(1, g.warpT / 0.5);
+    ctx.fillStyle = `rgba(94,234,212,${0.1 * a})`;
+    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+    ctx.strokeStyle = `rgba(94,234,212,${0.6 * a})`;
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, VIEW.width - 8, VIEW.height - 8);
+  }
+  const chips: [string, number, string][] = [];
+  if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
+  if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
+  if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
+  if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
+  ctx.font = '700 22px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  let x = 24;
+  for (const [label, t, col] of chips) {
+    const text = `${label} ${Math.ceil(t)}`;
+    const w = ctx.measureText(text).width + 24;
+    ctx.fillStyle = 'rgba(8,16,24,0.75)';
+    ctx.beginPath();
+    ctx.roundRect(x, 18, w, 34, 8);
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.fillText(text, x + 12, 43);
+    x += w + 10;
   }
 }
 
@@ -668,10 +768,14 @@ const PICKUP_COLORS: Record<PickupKind, string> = {
   repair: '#4ade80',
   overdrive: '#38bdf8',
   emp: '#c084fc',
+  timewarp: '#5eead4',
+  shield: '#e2e8f0',
+  strike: '#f87171',
+  steam: '#fb923c',
 };
 
-function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, y: number, age: number, t: number): void {
-  const fading = age > PICKUPS.life - 1.5;
+function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, y: number, age: number, t: number, life: number = PICKUPS.life): void {
+  const fading = age > life - 1.5;
   if (fading && Math.floor(t * 8) % 2) return;
   const r = PICKUPS.radius * (0.92 + 0.08 * Math.sin(t * 6));
   const col = PICKUP_COLORS[kind];
@@ -699,6 +803,51 @@ function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, 
     ctx.lineTo(x, y - 2);
     ctx.closePath();
     ctx.fill();
+  } else if (kind === 'timewarp') {
+    // An hourglass.
+    ctx.beginPath();
+    ctx.moveTo(x - 9, y - 12);
+    ctx.lineTo(x + 9, y - 12);
+    ctx.lineTo(x - 9, y + 12);
+    ctx.lineTo(x + 9, y + 12);
+    ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'shield') {
+    ctx.beginPath();
+    ctx.moveTo(x, y - 13);
+    ctx.lineTo(x + 10, y - 8);
+    ctx.lineTo(x + 9, y + 2);
+    ctx.quadraticCurveTo(x + 6, y + 9, x, y + 13);
+    ctx.quadraticCurveTo(x - 6, y + 9, x - 9, y + 2);
+    ctx.lineTo(x - 10, y - 8);
+    ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'strike') {
+    // A jet seen from above, nose up.
+    ctx.beginPath();
+    ctx.moveTo(x, y - 13);
+    ctx.lineTo(x + 3, y - 4);
+    ctx.lineTo(x + 12, y + 3);
+    ctx.lineTo(x + 3, y + 3);
+    ctx.lineTo(x + 5, y + 11);
+    ctx.lineTo(x, y + 9);
+    ctx.lineTo(x - 5, y + 11);
+    ctx.lineTo(x - 3, y + 3);
+    ctx.lineTo(x - 12, y + 3);
+    ctx.lineTo(x - 3, y - 4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'steam') {
+    // Double chevron: full ahead.
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    for (const dx of [-6, 4]) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx - 4, y - 9);
+      ctx.lineTo(x + dx + 5, y);
+      ctx.lineTo(x + dx - 4, y + 9);
+      ctx.stroke();
+    }
   } else {
     ctx.lineWidth = 2.5;
     for (const rr of [5, 11]) {
@@ -759,6 +908,94 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.beginPath();
         ctx.moveTo(f.x, f.y);
         ctx.lineTo(f.x2, f.y2);
+        ctx.stroke();
+        break;
+      case 'flare': {
+        // A burning flare arcs from the ship to the decoy point (the missile
+        // chases it there), trailing sparks and smoke.
+        const k = Math.min(1, u * 2.5);
+        const px = f.x + (f.x2 - f.x) * k;
+        const py = f.y + (f.y2 - f.y) * k - Math.sin(k * Math.PI) * 30;
+        for (let j = 1; j <= 5; j++) {
+          const kk = Math.max(0, k - j * 0.08);
+          ctx.fillStyle = `rgba(210,210,215,${0.35 * (1 - u)})`;
+          ctx.beginPath();
+          ctx.arc(f.x + (f.x2 - f.x) * kk, f.y + (f.y2 - f.y) * kk - Math.sin(kk * Math.PI) * 30, 5 + j * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const glow = ctx.createRadialGradient(px, py, 0, px, py, 26);
+        glow.addColorStop(0, `rgba(255,250,220,${1 - u * 0.6})`);
+        glow.addColorStop(0.35, `rgba(255,180,70,${0.8 * (1 - u * 0.6)})`);
+        glow.addColorStop(1, 'rgba(255,140,40,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(px, py, 26, 0, Math.PI * 2);
+        ctx.fill();
+        if (u < 0.2) {
+          ctx.strokeStyle = `rgba(255,240,200,${1 - u * 5})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, 20 + u * 80, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'flak':
+        ctx.fillStyle = `rgba(70,75,82,${0.85 * (1 - u)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.6 + u), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,200,120,${1 - u * 2})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'jet': {
+        // Strike Package: a friendly jet dives across the target, leaving a trail.
+        const k = Math.min(1, u * 2.2);
+        const jx = f.x2 + (f.x + 200 - f.x2) * k;
+        const jy = f.y2 + (f.y + 40 - f.y2) * k;
+        // Contrail, then the jet itself: a white delta with a red stripe.
+        ctx.strokeStyle = `rgba(255,255,255,${0.45 * (1 - u)})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 8]);
+        ctx.beginPath();
+        ctx.moveTo(f.x2, f.y2);
+        ctx.lineTo(jx, jy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const ang = Math.atan2(f.y + 40 - f.y2, f.x + 200 - f.x2);
+        ctx.save();
+        ctx.translate(jx, jy);
+        ctx.rotate(ang);
+        ctx.globalAlpha = 1 - u * u;
+        ctx.fillStyle = '#f2f4f6';
+        ctx.beginPath();
+        ctx.moveTo(18, 0);
+        ctx.lineTo(-10, -13);
+        ctx.lineTo(-6, 0);
+        ctx.lineTo(-10, 13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#f87171';
+        ctx.fillRect(-4, -1.5, 14, 3);
+        ctx.restore();
+        ctx.strokeStyle = `rgba(255,220,180,${0.8 * (1 - u)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(f.x - 14, f.y - 14);
+        ctx.lineTo(f.x + 14, f.y + 14);
+        ctx.moveTo(f.x + 14, f.y - 14);
+        ctx.lineTo(f.x - 14, f.y + 14);
+        ctx.stroke();
+        break;
+      }
+      case 'block':
+        // A hit turned away by the Shield.
+        ctx.strokeStyle = `rgba(226,232,240,${1 - u})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (1 + u * 0.5), 0, Math.PI * 2);
         ctx.stroke();
         break;
       case 'spray': {

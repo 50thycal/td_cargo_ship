@@ -169,3 +169,41 @@ Ship damage taken from 2–3 strafing passes:
 After the fixes, the re-captured frames show the frigate entering from the right with its wake behind it, and settling clear of the carrier.
 
 **Tests:** 67/67 V2 tests pass. The CIWS, Bigger Rack and Battery tests were replaced with 9 new ones: the merged cards, the free hold, radar lead time, and the frigate's arrival, firing, entry side, stations, roaming and swap-out.
+
+## Cycle 5: ten new cards and four new pickups
+
+**Focus:** S5 and S6. Every card from the agreed list works as described, has its own icon, and is shown in the real draft UI. The four new pickups are distinct, and the old four behave exactly as before.
+
+**The roster is now 17 cards** (max 3 held). The Escort Frigate came in Cycle 4; the other nine:
+
+| Card | Level 1 | Level 2 |
+|---|---|---|
+| Salvage Crews | **+25%** pickup drops (as asked, not +50%) | Pickups last 8 s instead of 5 |
+| Supercharged Pickups | Timed pickups last 50% longer; Repair heals 1 more | Every pickup also reloads 2 rounds |
+| Pickup Magnet | Grab pickups from twice as far | Pickups fly to the carrier by themselves |
+| Armored Hulls | Ships take 4 hits (applied to hulls already at sea) | 5 hits, carrier +4 HP |
+| Smoke Screen | A ship that is hit lays smoke; guided missiles lose their lock on it and fly on blind (10 s recharge) | 6 s recharge; smoke also hides ships from strafing guns |
+| Decoy Flares | A guided missile about to hit a ship swerves after a flare and bursts on it (8 s recharge) | 4 s, and fools supersonics too |
+| Flak Burst | Interceptors clip every threat they pass within 28 px | 45 px |
+| Combat Rhythm | Every 4th kill reloads a round instantly | Every 3rd, and the frigate too |
+| Proximity Fuse | Interceptors burst within 34 px of their target, so fast missiles stop slipping past | A fused hit does double damage |
+
+**New pickups** (old four unchanged: same numbers, checked by a test):
+- **Time Warp** (teal hourglass): threats move at 40% speed for 4 s. The screen gets a teal edge and tint.
+- **Shield** (white): ships and the carrier take no damage for 5 s, shown as bubbles. A blocked hit flashes a ring.
+- **Strike Package** (red jet): friendly jets hit the 4 threats closest to landing for 2 damage each. They also knock out every launcher that is up: a sub dives, a pop-up backs off, a runner drives off without firing again.
+- **Full Steam** (orange chevrons): the convoy runs 60% faster for 5 s.
+- Each timed pickup shows a countdown chip in the top-left; Overdrive got one too. The first time each new kind drops, a banner says what it does.
+
+**End-to-end check in the build** (iPhone landscape): three drafts were dealt the nine new cards, and the middle card was tapped each time. Supercharged Pickups, Smoke Screen and Combat Rhythm each landed in the game's loadout, with no page errors. Every pickup was laid out on screen, and each new one was tapped and filmed. Smoke, flares and flak were taken through the draft UI and filmed in action.
+
+**Problems found on the sheets, and fixed:**
+1. **Decoy Flares were invisible.** A few 5 px sparks sat on the hull and the missile just vanished. Now the ship pops a ring, a glowing flare arcs out to one side trailing smoke, and "FLARE" shows. The missile is seen to swerve after the flare and burst on it. In the sim the missile now flies to the flare instead of disappearing; the test was updated.
+2. **Full Steam was too faint to notice.** It now draws a churned white wake fanning out astern, faster streaks and a bow wave.
+3. **Strike Package read as laser lines.** It now shows a white delta jet on a dashed contrail diving across each target, with an X where it hits.
+
+Smoke (the hit ship's cloud, then the guided missile flying straight past instead of turning in) and Flak (one interceptor clearing a column of 5 drones on its way to a 3-HP target, which survives) read correctly as built.
+
+**Tests:** 82/82 V2 tests pass, 15 of them new. Bugs found while writing them, all in the tests:
+- One test gave every "seed" the same seed, which showed up as an exact 2.0 ratio.
+- One ran too short for interceptors to arrive.

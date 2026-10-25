@@ -16,6 +16,7 @@ import {
   raidWarning,
   setFlow,
   setFormation,
+  shipSpeed,
   step,
   tap,
   type Game,
@@ -23,6 +24,8 @@ import {
 } from '../../src/v2/sim/game';
 
 const DT = 1 / 60;
+const PICKUPS_OD = 5;
+const shipSpeedOf = (g: Game) => shipSpeed({ ...g, steamT: 0 } as Game);
 
 function run(g: Game, seconds: number): void {
   for (let i = 0; i < seconds / DT && g.phase === 'wave'; i++) step(g, DT);
@@ -1061,5 +1064,243 @@ describe('replay with the new threats', () => {
     expect(r.kills).toEqual(g.kills);
     expect(r.sunkBy).toEqual(g.sunkBy);
     expect(r.history).toEqual(g.history);
+  });
+});
+
+describe('round 4: new cards', () => {
+  const withCards = (levels: Partial<Record<string, number>>, seed = 1) => {
+    const g = quietGame(seed);
+    g.raiderQueue = [];
+    g.levels = levels as Game['levels'];
+    g.stats = stats(g.levels);
+    return g;
+  };
+
+  it('every card has a name, an icon colour and one line per level', async () => {
+    const { ICON_COLOR } = await import('../../src/v2/ui/icons');
+    expect(UPGRADE_ORDER).toHaveLength(17);
+    for (const id of UPGRADE_ORDER) {
+      expect(UPGRADES[id].levels).toHaveLength(UPGRADES[id].max);
+      expect(ICON_COLOR[id]).toMatch(/^#/);
+    }
+  });
+
+  it('Salvage Crews: +25% drops (not +50%), and pickups last 8 s at level 2', () => {
+    expect(stats({ salvage: 1 }).dropMult).toBe(1.25);
+    expect(stats({ salvage: 1 }).pickupLife).toBe(5);
+    expect(stats({ salvage: 2 }).pickupLife).toBe(8);
+    const count = (levels: Game['levels']) => {
+      let drops = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const g = withCards(levels, seed);
+        g.overdriveT = 100; // a round for every tap
+        for (let k = 0; k < 40; k++) {
+          const th = addThreat(g, { x: 300 + k * 25, y: 300, speed: 0 });
+          tap(g, th.x, th.y, 10);
+        }
+        run(g, 2.5);
+        drops += g.pickups.length;
+      }
+      return drops;
+    };
+    const base = count({});
+    const more = count({ salvage: 1 });
+    expect(base).toBeGreaterThan(100);
+    expect(more / base).toBeGreaterThan(1.1);
+    expect(more / base).toBeLessThan(1.45);
+  });
+
+  it('Supercharged Pickups: Overdrive runs 50% longer; level 2 reloads 2 rounds per pickup', () => {
+    const g = withCards({ supercharge: 2 });
+    g.ammo = 0;
+    g.pickups.push({ id: 999, kind: 'overdrive', x: 500, y: 300, age: 0 });
+    tap(g, 500, 300, 30);
+    expect(g.overdriveT).toBeCloseTo(PICKUPS_OD * 1.5, 5);
+    const h = withCards({ supercharge: 2 });
+    h.ammo = 0;
+    h.pickups.push({ id: 998, kind: 'steam', x: 500, y: 300, age: 0 });
+    tap(h, 500, 300, 30);
+    expect(h.ammo).toBe(2);
+  });
+
+  it('Pickup Magnet: grabs from twice as far, and at level 2 pickups fly to the carrier', () => {
+    const near = withCards({});
+    near.pickups.push({ id: 900, kind: 'ammo', x: 500, y: 300, age: 0 });
+    expect(tap(near, 500 + 75, 300, 30)).not.toBe('pickup');
+    const mag = withCards({ magnet: 1 });
+    mag.pickups.push({ id: 901, kind: 'ammo', x: 500, y: 300, age: 0 });
+    expect(tap(mag, 500 + 75, 300, 30)).toBe('pickup');
+    const auto = withCards({ magnet: 2 });
+    auto.ammo = 0;
+    auto.pickups.push({ id: 902, kind: 'ammo', x: 300, y: 200, age: 0 });
+    run(auto, 3.5);
+    expect(auto.pickups).toHaveLength(0);
+    expect(auto.ammo).toBe(auto.stats.rack);
+  });
+
+  it('Armored Hulls: ships take an extra hit; level 2 adds 4 carrier HP, applied to hulls at sea', () => {
+    const g = quietGame();
+    run(g, 6);
+    expect(g.ships.length).toBeGreaterThan(0);
+    g.phase = 'draft';
+    g.offer = ['armor'];
+    pickUpgrade(g, 'armor');
+    for (const s of g.ships) expect(s.hp).toBe(SHIP.hp + 1);
+    g.phase = 'draft';
+    g.offer = ['armor'];
+    pickUpgrade(g, 'armor');
+    expect(g.carrierHp).toBe(CARRIER.hp + 4);
+  });
+
+  it('Smoke Screen: a hit ship lays smoke and a guided missile loses its lock on it', () => {
+    const play = (smoke: number) => {
+      const g = withCards(smoke ? { smoke } : {});
+      run(g, 8);
+      const s = g.ships[0];
+      // A first hit lays the smoke; then a guided missile comes in from the side.
+      g.events.length = 0;
+      const first = addThreat(g, { kind: 'drone', x: s.x + 5, y: s.y, target: s.id, speed: 0 });
+      step(g, DT);
+      expect(first.dead).toBe(true);
+      const hp = s.hp;
+      addThreat(g, { kind: 'guided', hp: 2, x: s.x + 150, y: s.y - 260, heading: Math.PI / 2, target: s.id, speed: 150 });
+      run(g, 3);
+      return hp - s.hp;
+    };
+    expect(play(0)).toBeGreaterThan(0);
+    expect(play(1)).toBe(0);
+  });
+
+  it('Decoy Flares: a guided missile closing on a ship is pulled off; recharges', () => {
+    const g = withCards({ flares: 1 });
+    run(g, 8);
+    const s = g.ships[0];
+    const m = addThreat(g, { kind: 'guided', hp: 2, x: s.x + 60, y: s.y - 60, target: s.id, speed: 150 });
+    step(g, DT);
+    expect(m.decoy).toBeDefined(); // swerving after the flare
+    run(g, 1.5);
+    expect(m.dead).toBe(true);
+    expect(s.hp).toBe(SHIP.hp);
+    expect(g.flareT).toBeGreaterThan(6); // 8 s recharge, 1.5 s spent
+    // Recharging: the next one gets through.
+    const m2 = addThreat(g, { kind: 'guided', hp: 2, x: s.x + 60, y: s.y - 60, target: s.id, speed: 150 });
+    run(g, 2);
+    expect(m2.dead).toBe(true);
+    expect(s.hp).toBeLessThan(SHIP.hp);
+  });
+
+  it('Flak Burst: an interceptor clips threats it passes on the way to its target', () => {
+    const play = (flak: number) => {
+      const g = withCards(flak ? { flak } : {});
+      const c = g.map.carrier;
+      const target = addThreat(g, { x: c.x, y: c.y - 400, speed: 0, hp: 5 });
+      const passer = addThreat(g, { x: c.x + 15, y: c.y - 200, speed: 0 });
+      tap(g, target.x, target.y, 10);
+      run(g, 1.5);
+      return passer.dead;
+    };
+    expect(play(0)).toBe(false);
+    expect(play(1)).toBe(true);
+  });
+
+  it('Combat Rhythm: every 4th kill reloads a round', () => {
+    const g = withCards({ rhythm: 1 });
+    for (let k = 0; k < 8; k++) addThreat(g, { x: 400 + k * 50, y: 300, speed: 0 });
+    // One interceptor each (Overdrive pays for them), then an empty rack.
+    g.overdriveT = 1;
+    for (const th of [...g.threats]) tap(g, th.x, th.y, 10);
+    g.overdriveT = 0;
+    g.ammo = 0;
+    g.stats = { ...g.stats, reload: 1e9 }; // no ordinary reload during the test
+    const kills = () => Object.values(g.kills).reduce((a, b) => a + b, 0);
+    for (let i = 0; i < 180 && kills() < 8; i++) step(g, DT);
+    expect(kills()).toBe(8);
+    expect(g.ammo).toBe(2);
+  });
+
+  it('Proximity Fuse: bursts close to the target; level 2 hits twice as hard', () => {
+    expect(stats({ proxfuse: 1 }).contact).toBeGreaterThan(INTERCEPTOR.contact * 2);
+    const g = withCards({ proxfuse: 2 });
+    const heavy = addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 300, speed: 0 });
+    tap(g, 800, 300, 10);
+    run(g, 1.5);
+    expect(heavy.hp).toBe(6);
+  });
+});
+
+describe('round 4: new pickups', () => {
+  const withPickup = (kind: 'timewarp' | 'shield' | 'strike' | 'steam') => {
+    const g = quietGame();
+    g.raiderQueue = [];
+    run(g, 8);
+    g.pickups.push({ id: 777, kind, x: 500, y: 450, age: 0 });
+    expect(tap(g, 500, 450, 30)).toBe('pickup');
+    return g;
+  };
+
+  it('Time Warp slows every threat but not the convoy', () => {
+    const g = withPickup('timewarp');
+    const th = addThreat(g, { kind: 'guided', x: 800, y: 200, heading: 0, speed: 150, target: CARRIER_TARGET });
+    const ship = g.ships[0];
+    const [tx, sx] = [th.x, ship.x];
+    run(g, 1);
+    const moved = Math.hypot(th.x - tx, th.y - 200);
+    expect(moved).toBeLessThan(150 * 0.5);
+    expect(ship.x - sx).toBeGreaterThan(20);
+  });
+
+  it('Shield: no ship or carrier damage while it lasts', () => {
+    const g = withPickup('shield');
+    const s = g.ships[0];
+    const hp = g.carrierHp;
+    addThreat(g, { kind: 'drone', x: s.x + 5, y: s.y, target: s.id, speed: 0 });
+    const c = g.map.carrier;
+    addThreat(g, { kind: 'drone', x: c.x, y: c.y, target: CARRIER_TARGET, speed: 0 });
+    step(g, DT);
+    expect(s.hp).toBe(SHIP.hp);
+    expect(g.carrierHp).toBe(hp);
+  });
+
+  it('Strike Package: hits the threats closest to landing and knocks out a firing sub', () => {
+    const g = quietGame();
+    g.raiderQueue = [{ at: g.waveT, kind: 'sub', path: [g.map.subSpots[0]], units: [{ kind: 'ballistic', size: 4 }] }];
+    run(g, 2.9); // warn 2 s + surface 0.8 s: now firing
+    const sub = g.raiders[0];
+    expect(sub.state).toBe('fire');
+    const launched = g.origins.sub;
+    const near = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 300, speed: 0 });
+    g.pickups.push({ id: 778, kind: 'strike', x: 300, y: 450, age: 0 });
+    tap(g, 300, 450, 30);
+    expect(near.dead).toBe(true);
+    expect(sub.state).toBe('dive');
+    run(g, 2);
+    expect(g.origins.sub).toBeLessThan(launched + 2);
+  });
+
+  it('Full Steam speeds the convoy up', () => {
+    const g = withPickup('steam');
+    const s = g.ships[0];
+    const x0 = s.x;
+    run(g, 1);
+    expect(s.x - x0).toBeGreaterThan(shipSpeedOf(g) * 0.9 * 1.4);
+  });
+
+  it('new pickups drop in play, and the old four still do exactly what they did', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 6; seed++) {
+      const g = createGame('island', seed, 6);
+      const bot = new Bot(SKILLS.average, seed);
+      for (let i = 0; i < 60 * 90 && g.phase === 'wave'; i++) {
+        for (const p of g.pickups) seen.add(p.kind);
+        bot.act(g);
+        step(g, DT);
+      }
+    }
+    for (const k of ['ammo', 'repair', 'overdrive', 'emp', 'timewarp', 'shield', 'strike', 'steam']) expect(seen.has(k), k).toBe(true);
+    // Old four, no cards: unchanged numbers.
+    const g = quietGame();
+    g.pickups.push({ id: 1, kind: 'overdrive', x: 500, y: 450, age: 0 });
+    tap(g, 500, 450, 30);
+    expect(g.overdriveT).toBe(PICKUPS_OD);
   });
 });

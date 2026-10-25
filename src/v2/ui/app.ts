@@ -12,6 +12,7 @@ import {
   THREATS,
   VIEW,
   type ThreatKind,
+  type PickupKind,
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
@@ -460,6 +461,11 @@ export class App {
           break;
         case 'pickup':
           break;
+        case 'newPickup': {
+          const hint = PICKUP_HINT[ev.pickup];
+          if (hint) this.showBanner(...hint);
+          break;
+        }
       }
     }
     g.events.length = 0;
@@ -700,6 +706,14 @@ export class App {
     delete this.overlay.dataset.screen;
   }
 }
+
+/** Round 4's new pickups get a one-line banner the first time one drops. */
+const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
+  timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
+  shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
+  strike: ['PICKUP: Strike Package', 'Tap it: jets hit the closest threats and knock out subs and trucks.'],
+  steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
+};
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Wide Warhead or Chain Detonation thin out swarms.',

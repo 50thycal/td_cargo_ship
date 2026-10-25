@@ -25,6 +25,9 @@ import {
   GUIDED,
   INTERCEPTOR,
   PICKUPS,
+  PICKUP_KINDS,
+  FLARE,
+  SMOKE,
   RAID,
   RAID_THEME,
   RULES,
@@ -92,6 +95,8 @@ export interface Threat {
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
+  /** Decoy Flares: chasing a flare here instead of its ship (harmless). */
+  decoy?: Point;
 }
 
 export interface Interceptor {
@@ -102,6 +107,8 @@ export interface Interceptor {
   tx: number;
   ty: number;
   life: number;
+  /** Flak Burst: threats this interceptor has already clipped on its way. */
+  flak?: number[];
 }
 
 export interface Pickup {
@@ -112,7 +119,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flare' | 'flak' | 'jet' | 'block';
 
 export interface Fx {
   kind: FxKind;
@@ -133,6 +140,8 @@ export type GameEvent =
   | { kind: 'shipLost'; lost: number }
   | { kind: 'carrierHit'; hp: number }
   | { kind: 'pickup'; pickup: PickupKind }
+  /** The first time a kind of pickup drops this game (UI explains it). */
+  | { kind: 'newPickup'; pickup: PickupKind }
   | { kind: 'dry' };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
@@ -209,6 +218,14 @@ export interface RaiderSpawn {
 /** Where each launch came from (the analyzer reads this). */
 export type LaunchOrigin = 'base' | 'truck' | 'sub' | 'air' | 'child';
 
+/** A Smoke Screen cloud, riding with the ship that laid it. */
+export interface Smoke {
+  ship: number;
+  x: number;
+  y: number;
+  t: number;
+}
+
 /** The Escort Frigate: its own rack, and where it is on the water. */
 export interface Frigate {
   x: number;
@@ -243,6 +260,7 @@ export interface Game {
   raiders: Raider[];
   origins: Record<LaunchOrigin, number>;
   seenVectors: Set<RaiderKind>;
+  seenPickups: Set<PickupKind>;
   ships: Ship[];
   threats: Threat[];
   interceptors: Interceptor[];
@@ -255,6 +273,16 @@ export interface Game {
   /** The Escort Frigate, once the card is taken. */
   frigate: Frigate | null;
   overdriveT: number;
+  /** Round 4 pickups: seconds left on Time Warp, Shield and Full Steam. */
+  warpT: number;
+  shieldT: number;
+  steamT: number;
+  /** Smoke Screen / Decoy Flares recharge timers, and the smoke in play. */
+  smokeT: number;
+  smokes: Smoke[];
+  flareT: number;
+  /** Combat Rhythm: kills counted toward the next free round. */
+  rhythm: number;
   flow: number;
   formation: FormationId;
   spawnT: number;
@@ -309,6 +337,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     raiders: [],
     origins: { base: 0, truck: 0, sub: 0, air: 0, child: 0 },
     seenVectors: new Set(),
+    seenPickups: new Set(),
     ships: [],
     threats: [],
     interceptors: [],
@@ -320,6 +349,13 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     reloadT: 0,
     frigate: null,
     overdriveT: 0,
+    warpT: 0,
+    shieldT: 0,
+    steamT: 0,
+    smokeT: 0,
+    smokes: [],
+    flareT: 0,
+    rhythm: 0,
     flow: DEFAULT_FLOW,
     formation: 'pairs',
     spawnT: 0,
@@ -586,7 +622,7 @@ export function tap(g: Game, x: number, y: number, radius: number): TapResult {
 
 function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   let pickup: Pickup | null = null;
-  let pd = radius + PICKUPS.radius;
+  let pd = (radius + PICKUPS.radius) * g.stats.grabMult;
   for (const p of g.pickups) {
     const d = dist(x, y, p.x, p.y);
     if (d < pd) {
@@ -633,17 +669,21 @@ export function pickUpgrade(g: Game, id: UpgradeId, replace?: UpgradeId): void {
   if (!swap && !canTake(g.levels, id)) return;
   if (swap) delete g.levels[replace];
   if (id === 'resupply') {
-    for (const s of g.ships) s.hp = SHIP.hp;
-    g.carrierHp = CARRIER.hp;
+    for (const s of g.ships) s.hp = g.stats.shipHp;
+    g.carrierHp = g.stats.carrierHp;
     g.ammo = g.stats.rack;
     if (g.frigate) g.frigate.ammo = g.stats.frigateRack;
     startWave(g);
     return;
   }
-  const oldRack = g.stats.rack;
+  const old = g.stats;
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   g.stats = stats(g.levels);
-  g.ammo = Math.max(0, Math.min(g.stats.rack, g.ammo + (g.stats.rack - oldRack)));
+  g.ammo = Math.max(0, Math.min(g.stats.rack, g.ammo + (g.stats.rack - old.rack)));
+  // Armored Hulls toughen the hulls already at sea (and a swap that gives it
+  // up never leaves a hull above the new maximum).
+  for (const s of g.ships) s.hp = Math.max(1, Math.min(g.stats.shipHp, s.hp + g.stats.shipHp - old.shipHp));
+  g.carrierHp = Math.max(1, Math.min(g.stats.carrierHp, g.carrierHp + g.stats.carrierHp - old.carrierHp));
   syncFrigate(g, false);
   startWave(g);
 }
@@ -718,13 +758,15 @@ export function step(g: Game, dt: number): void {
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
   reload(g, dt);
   updateShips(g, dt);
-  for (const th of g.threats) if (!th.dead) updateThreat(g, th, dt);
+  // Time Warp slows every threat (not the convoy, not your interceptors).
+  const tdt = g.warpT > 0 ? dt * PICKUPS.warpScale : dt;
+  for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
+  updateTimers(g, dt);
   updateFrigate(g, dt);
   updateInterceptors(g, dt);
 
   g.threats = g.threats.filter((th) => !th.dead);
-  for (const p of g.pickups) p.age += dt;
-  g.pickups = g.pickups.filter((p) => p.age < PICKUPS.life);
+  updatePickups(g, dt);
   for (const f of g.fx) f.age += dt;
   g.fx = g.fx.filter((f) => f.age < f.life);
 
@@ -793,7 +835,7 @@ function spawnShips(g: Game, dt: number): void {
       id: g.nextId++,
       x: -40 - g.rng.ships.range(0, 12),
       y: 0,
-      hp: SHIP.hp,
+      hp: g.stats.shipHp,
       slot,
       channel,
       mult: FLOW_STEPS[g.flow].mult,
@@ -845,7 +887,7 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
 
 /** The convoy's speed in the current formation. */
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed;
+  return SHIP.speed * FORMATIONS[g.formation].speed * (g.steamT > 0 ? PICKUPS.steamMult : 1);
 }
 
 // Bomblets are blamed on the cluster that dropped them.
@@ -855,6 +897,15 @@ const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'
  *  splash spilling over from a neighbour's hit is not reduced. Spread's
  *  blast cut applies to splash weapons either way. */
 function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
+  if (g.shieldT > 0) {
+    addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
+    return;
+  }
+  // Smoke Screen: the hit ship lays smoke (once per recharge).
+  if (g.stats.smokeEvery > 0 && g.smokeT <= 0) {
+    g.smokes.push({ ship: s.id, x: s.x, y: s.y, t: 0 });
+    g.smokeT = g.stats.smokeEvery;
+  }
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
@@ -867,6 +918,10 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
 }
 
 function damageCarrier(g: Game, amount: number): void {
+  if (g.shieldT > 0) {
+    addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
+    return;
+  }
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
 }
@@ -1061,6 +1116,16 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     ensureTarget(g, th);
     const tp = leadPoint(g, th);
     th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
+  } else if (th.decoy) {
+    // Decoyed: it swerves after the flare and bursts on it.
+    const want = Math.atan2(th.decoy.y - th.y, th.decoy.x - th.x);
+    th.heading += clamp(angleDiff(want, th.heading), -6 * dt, 6 * dt);
+    th.x += Math.cos(th.heading) * th.speed * dt;
+    th.y += Math.sin(th.heading) * th.speed * dt;
+    if (dist(th.x, th.y, th.decoy.x, th.decoy.y) < 18 || th.age > 30) {
+      th.dead = true;
+      addFx(g, 'boom', th.x, th.y, { life: 0.6, r: 30 });
+    }
   } else {
     ensureTarget(g, th);
     const tp = th.kind === 'supersonic' ? leadPoint(g, th) : targetPos(g, th);
@@ -1076,7 +1141,9 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
       const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
-      th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
+      // Smoke Screen: a guided missile can't see a ship in smoke and flies on blind.
+      const blind = th.kind === 'guided' && th.target !== CARRIER_TARGET && smoked(g, th.target);
+      if (!blind) th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
     const boost =
       th.kind === 'guided' && th.age < GUIDED.boost
@@ -1085,6 +1152,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
+    if (decoyed(g, th)) return;
     if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
       splitCluster(g, th);
     } else {
@@ -1113,6 +1181,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     });
     for (const s of band) {
       if (th.hits!.includes(s.id) || Math.abs(s.x - gx) > 22) continue;
+      if (g.stats.smokeVsGuns && smoked(g, s.id)) continue;
       th.hits!.push(s.id);
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
       damageShip(g, s, THREATS.strafer.damage, 'strafer');
@@ -1266,7 +1335,11 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   th.dead = true;
   g.kills[th.kind] += 1;
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
-  if (drops && g.rng.drops.chance(THREATS[th.kind].dropChance)) dropPickup(g, th.x, th.y);
+  if (drops && g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.dropMult)) dropPickup(g, th.x, th.y);
+  if (g.stats.rhythmEvery > 0 && ++g.rhythm % g.stats.rhythmEvery === 0) {
+    g.ammo = Math.min(g.stats.rack, g.ammo + 1);
+    if (g.frigate && g.stats.rhythmFrigate) g.frigate.ammo = Math.min(g.stats.frigateRack, g.frigate.ammo + 1);
+  }
   if (g.stats.chainRadius > 0) {
     addFx(g, 'burst', th.x, th.y, { life: 0.4, r: g.stats.chainRadius });
     blast(g, th.x, th.y, g.stats.chainRadius, th.id);
@@ -1467,16 +1540,19 @@ function updateInterceptors(g: Game, dt: number): void {
     }
     const d = dist(it.x, it.y, it.tx, it.ty);
     const stepLen = speed * dt;
-    if (d <= stepLen + INTERCEPTOR.contact || it.life > INTERCEPTOR.maxLife) {
+    // Proximity Fuse: it bursts as soon as it is close to the target itself.
+    const fused = th !== undefined && dist(it.x, it.y, th.x, th.y) <= g.stats.contact;
+    if (fused || d <= stepLen + g.stats.contact || it.life > INTERCEPTOR.maxLife) {
       const bx = th ? th.x : it.tx;
       const by = th ? th.y : it.ty;
       addFx(g, 'burst', bx, by, { life: 0.35, r: g.stats.blast });
-      if (th) damageThreat(g, th, 1);
+      if (th) damageThreat(g, th, g.stats.hitDamage);
       blast(g, bx, by, g.stats.blast, th ? th.id : -1);
       continue;
     }
     it.x += ((it.tx - it.x) / d) * stepLen;
     it.y += ((it.ty - it.y) / d) * stepLen;
+    if (g.stats.flak > 0) flak(g, it, th);
     live.push(it);
   }
   g.interceptors = live;
@@ -1582,18 +1658,121 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Round 4 defensive cards and timed pickups
+
+function updateTimers(g: Game, dt: number): void {
+  g.warpT = Math.max(0, g.warpT - dt);
+  g.shieldT = Math.max(0, g.shieldT - dt);
+  g.steamT = Math.max(0, g.steamT - dt);
+  g.smokeT = Math.max(0, g.smokeT - dt);
+  g.flareT = Math.max(0, g.flareT - dt);
+  for (const sm of g.smokes) {
+    sm.t += dt;
+    const s = g.ships.find((o) => o.id === sm.ship);
+    if (s) [sm.x, sm.y] = [s.x, s.y];
+  }
+  g.smokes = g.smokes.filter((sm) => sm.t < SMOKE.time);
+}
+
+/** Is this ship inside a smoke cloud? */
+function smoked(g: Game, shipId: number | null): boolean {
+  if (!g.smokes.length || shipId === null) return false;
+  const s = g.ships.find((o) => o.id === shipId);
+  return !!s && g.smokes.some((sm) => dist(sm.x, sm.y, s.x, s.y) <= SMOKE.radius);
+}
+
+/** Decoy Flares: a guided missile (or, at level 2, a supersonic) closing on
+ *  a ship chases a flare instead and is gone. One flare per recharge. */
+function decoyed(g: Game, th: Threat): boolean {
+  if (g.stats.flareEvery <= 0 || g.flareT > 0 || th.target === CARRIER_TARGET) return false;
+  if (th.kind !== 'guided' && !(th.kind === 'supersonic' && g.stats.flaresVsSupersonic)) return false;
+  const s = g.ships.find((o) => o.id === th.target);
+  if (!s || dist(th.x, th.y, s.x, s.y) > FLARE.range) return false;
+  // The flare goes up off to one side of the missile's approach, so the
+  // missile is seen to swerve away from the ship after it.
+  const a = Math.atan2(th.y - s.y, th.x - s.x) + (th.id % 2 ? 1 : -1) * 1.1;
+  th.decoy = { x: s.x + Math.cos(a) * 110, y: s.y + Math.sin(a) * 110 };
+  th.age = Math.min(th.age, 29);
+  g.flareT = g.stats.flareEvery;
+  addFx(g, 'flare', s.x, s.y, { life: 0.9, x2: th.decoy.x, y2: th.decoy.y });
+  addFx(g, 'text', s.x, s.y - 30, { life: 0.9, text: 'FLARE' });
+  return true;
+}
+
+/** Flak Burst: an interceptor clips every other threat it passes close to. */
+function flak(g: Game, it: Interceptor, target: Threat | undefined): void {
+  for (const o of g.threats) {
+    if (o.dead || o === target || dist(it.x, it.y, o.x, o.y) > g.stats.flak) continue;
+    it.flak ??= [];
+    if (it.flak.includes(o.id)) continue;
+    it.flak.push(o.id);
+    addFx(g, 'flak', o.x, o.y, { life: 0.35, r: 12 });
+    damageThreat(g, o, 1);
+  }
+}
+
+/** Strike Package: friendly jets hit the threats closest to landing and knock
+ *  out every launcher that is up: a sub dives, a truck pulls back. */
+function strike(g: Game): void {
+  const n = Math.round(PICKUPS.strikeTargets * g.stats.pickupPower);
+  const live = g.threats.filter((t) => !t.dead).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b) || a.id - b.id);
+  for (const th of live.slice(0, n)) {
+    addFx(g, 'jet', th.x, th.y, { life: 0.6, x2: th.x - 260, y2: -40 });
+    damageThreat(g, th, PICKUPS.strikeDamage);
+  }
+  for (const r of g.raiders) {
+    const up = r.kind === 'sub' ? r.state !== 'warn' && r.state !== 'dive' && r.state !== 'reverse' : r.state !== 'reverse' && r.dist > 0;
+    if (!up) continue;
+    r.units = [];
+    r.rounds = [];
+    addFx(g, 'jet', r.x, r.y, { life: 0.6, x2: r.x - 260, y2: -40 });
+    addFx(g, 'boom', r.x, r.y, { life: 0.7, r: 30 });
+    if (r.kind === 'sub') setState(r, 'dive');
+    else if (r.kind === 'popup') setState(r, 'reverse');
+    else {
+      r.stops = [];
+      setState(r, 'drive');
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pickups
+
+function updatePickups(g: Game, dt: number): void {
+  for (const p of g.pickups) p.age += dt;
+  g.pickups = g.pickups.filter((p) => p.age < g.stats.pickupLife);
+  if (!g.stats.autoCollect) return;
+  // Pickup Magnet level 2: after a beat, pickups fly to the carrier.
+  const c = g.map.carrier;
+  for (const p of [...g.pickups]) {
+    if (p.age < PICKUPS.magnetDelay) continue;
+    const d = dist(p.x, p.y, c.x, c.y);
+    const stepLen = PICKUPS.magnetSpeed * dt;
+    if (d <= stepLen + 30) {
+      collect(g, p);
+      continue;
+    }
+    p.x += ((c.x - p.x) / d) * stepLen;
+    p.y += ((c.y - p.y) / d) * stepLen;
+    p.age = Math.min(p.age, g.stats.pickupLife - 1.6);
+  }
+}
 
 function dropPickup(g: Game, x: number, y: number): void {
   const w = PICKUPS.weights;
-  let roll = g.rng.drops.next() * (w.ammo + w.repair + w.overdrive + w.emp);
+  let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PickupKind = 'ammo';
-  for (const k of ['ammo', 'repair', 'overdrive', 'emp'] as PickupKind[]) {
+  for (const k of PICKUP_KINDS) {
     roll -= w[k];
     if (roll < 0) {
       kind = k;
       break;
     }
+  }
+  if (!g.seenPickups.has(kind)) {
+    g.seenPickups.add(kind);
+    g.events.push({ kind: 'newPickup', pickup: kind });
   }
   g.pickups.push({
     id: g.nextId++,
@@ -1609,10 +1788,18 @@ const PICKUP_TEXT: Record<PickupKind, string> = {
   repair: 'REPAIRED',
   overdrive: 'OVERDRIVE',
   emp: 'EMP!',
+  timewarp: 'TIME WARP',
+  shield: 'SHIELD',
+  strike: 'STRIKE!',
+  steam: 'FULL STEAM',
 };
 
 function collect(g: Game, p: Pickup): void {
   g.pickups = g.pickups.filter((o) => o !== p);
+  const power = g.stats.pickupPower;
+  if (g.stats.pickupReload > 0) {
+    g.ammo = Math.min(g.stats.rack, g.ammo + g.stats.pickupReload);
+  }
   g.events.push({ kind: 'pickup', pickup: p.kind });
   addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: PICKUP_TEXT[p.kind] });
   switch (p.kind) {
@@ -1621,13 +1808,28 @@ function collect(g: Game, p: Pickup): void {
       if (g.frigate) g.frigate.ammo = g.stats.frigateRack;
       break;
     case 'repair': {
-      const hurt = g.ships.filter((s) => s.hp < SHIP.hp).sort((a, b) => a.hp - b.hp)[0];
-      if (hurt) hurt.hp = Math.min(SHIP.hp, hurt.hp + PICKUPS.repairHp);
-      else g.carrierHp = Math.min(CARRIER.hp, g.carrierHp + PICKUPS.carrierRepairHp);
+      // Supercharged Pickups: Repair heals one more.
+      const bonus = power > 1 ? 1 : 0;
+      const max = g.stats.shipHp;
+      const hurt = g.ships.filter((s) => s.hp < max).sort((a, b) => a.hp - b.hp)[0];
+      if (hurt) hurt.hp = Math.min(max, hurt.hp + PICKUPS.repairHp + bonus);
+      else g.carrierHp = Math.min(g.stats.carrierHp, g.carrierHp + PICKUPS.carrierRepairHp + bonus);
       break;
     }
     case 'overdrive':
-      g.overdriveT = PICKUPS.overdriveTime;
+      g.overdriveT = PICKUPS.overdriveTime * power;
+      break;
+    case 'timewarp':
+      g.warpT = PICKUPS.warpTime * power;
+      break;
+    case 'shield':
+      g.shieldT = PICKUPS.shieldTime * power;
+      break;
+    case 'steam':
+      g.steamT = PICKUPS.steamTime * power;
+      break;
+    case 'strike':
+      strike(g);
       break;
     case 'emp':
       for (const th of g.threats) if (th.kind === 'drone') damageThreat(g, th, 99, false);

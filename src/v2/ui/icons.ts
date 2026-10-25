@@ -13,6 +13,15 @@ export const ICON_COLOR: Record<UpgradeId, string> = {
   radar: '#62f0c8',
   frigate: '#d9b38c',
   hold: '#ff9ce8',
+  salvage: '#e8c27a',
+  supercharge: '#fde047',
+  magnet: '#f87171',
+  armor: '#a3b8cc',
+  smoke: '#c7ced6',
+  flares: '#fb923c',
+  flak: '#94a3b8',
+  rhythm: '#a5b4fc',
+  proxfuse: '#e879f9',
   resupply: '#8be38b',
 };
 
@@ -33,6 +42,24 @@ const PATHS: Record<UpgradeId, string> = {
   frigate: '<path d="M3 21 H27 L24 26 H7 Z"/><path d="M10 21 V17 H17 V21 M13 17 V14"/><path d="M20 19 L26 8"/><path d="M4 29 Q8 27 12 29 T20 29"/>',
   // A finger pressing, with ripples.
   hold: '<circle cx="16" cy="12" r="3"/><circle cx="16" cy="12" r="7" opacity="0.6"/><path d="M13 15 V25 Q13 28 16 28 H19 Q22 28 22 25 V19"/>',
+  // A crane hook lifting a crate.
+  salvage: '<path d="M4 5 H22 M9 5 V12"/><path d="M9 12 Q6 12 6 15 Q6 18 9 18"/><rect x="14" y="15" width="13" height="11" rx="1.5"/><path d="M14 20 H27"/>',
+  // A lightning bolt in a ring.
+  supercharge: '<circle cx="16" cy="16" r="12"/><path d="M18 7 L11 17 H16 L14 25 L21 14 H16 Z"/>',
+  // A horseshoe magnet with pull lines.
+  magnet: '<path d="M8 5 V15 A8 8 0 0 0 24 15 V5"/><path d="M5 5 H11 M21 5 H27"/><path d="M13 26 L16 29 L19 26" opacity="0.7"/>',
+  // A shield.
+  armor: '<path d="M16 3 L26 7 V15 C26 21 21 26 16 29 C11 26 6 21 6 15 V7 Z"/><path d="M11 15 H21 M16 10 V20"/>',
+  // Smoke clouds over the water.
+  smoke: '<circle cx="10" cy="18" r="5"/><circle cx="17" cy="13" r="6"/><circle cx="23" cy="19" r="4.5"/><path d="M3 27 H29"/>',
+  // A missile's path bent off toward a burning flare.
+  flares: '<circle cx="23" cy="9" r="3"/><path d="M23 2 V4 M23 14 V16 M16 9 H18 M28 9 H30"/><path d="M4 27 Q8 17 18 12" stroke-dasharray="2.5 3"/>',
+  // Flak puffs along an interceptor's line.
+  flak: '<path d="M5 27 L27 5"/><circle cx="10" cy="14" r="3.2"/><circle cx="18" cy="8" r="3.2"/><circle cx="22" cy="19" r="3.2"/>',
+  // A beat line.
+  rhythm: '<path d="M3 17 H9 L12 8 L16 25 L19 12 L21 17 H29"/>',
+  // A fuse ring around the target.
+  proxfuse: '<circle cx="16" cy="16" r="3"/><circle cx="16" cy="16" r="9.5" stroke-dasharray="3.5 3"/><path d="M16 2 V5 M16 27 V30 M2 16 H5 M27 16 H30"/>',
   // A repair cross in a crate.
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
 };
