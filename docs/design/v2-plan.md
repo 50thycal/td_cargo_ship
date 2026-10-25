@@ -33,7 +33,7 @@ threat (shown on the card as "vs …").
 | Threat | Behaviour | Weakness | Answered by | Debuts |
 |---|---|---|---|---|
 | Attack drone (Shahed-style) | Slow, weaving, swarms of 4–12, 1 dmg | Ammo drain | Wide Warhead, Chain Detonation, Flak Burst, holding fire | Wave 1 |
-| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Proximity Fuse, Early-Warning Radar | Wave 2 |
+| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg to the ship it lands on, 1 to neighbours in the blast | Short reaction window | Faster Interceptors, Proximity Fuse, Early-Warning Radar | Wave 2 |
 | Guided missile | Homes, re-targets, 2 HP, 2 dmg; 40% go for the carrier from wave 3 | Must be hit early or twice | Twin Launch, Smoke Screen, Decoy Flares | Wave 3 |
 | Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Proximity Fuse, Decoy Flares L2 | Strait (wave 6+), Gauntlet, Island, maps 4–5 |
 | Heavy cruise missile | Slow, 8 HP, 4 dmg + 1 splash; 40% go for the carrier | Easy to leave too late | Twin Launch, Proximity Fuse L2, Rapid Hold | Strait (finale), Gauntlet, Island, maps 4–5 |
@@ -104,7 +104,7 @@ Holding a finger down keeps firing at whatever is under it (every 0.6 s, free
 for everyone since round 4; Rapid Hold speeds it up).
 
 Pickups (drop from kills, fade after 5 s): ammo (rack full), repair (most
-damaged ship, else the carrier), overdrive (5 s of free instant fire — the
+damaged ship +2, else the carrier +2; rarer since round 5), overdrive (5 s of free instant fire — the
 carrier glows cyan with a draining ring while it lasts), EMP (rare: destroys
 every drone on screen). Round 4 adds **Time Warp** (threats at 40% speed for
 4 s), **Shield** (no ship or carrier damage for 5 s), **Strike Package** (jets
@@ -140,8 +140,8 @@ at least one firepower card (`FIREPOWER`), so a hand is never all support.
 
 - **Firepower:** Faster Interceptors, Quick Reload (Bigger Rack folded in),
   Wide Warhead, Chain Detonation, Twin Launch (Auto-Retarget folded in),
-  Escort Frigate (a ship that sails in beside the carrier with its own rack;
-  replaces the Shore Battery), Flak Burst, Proximity Fuse, Combat Rhythm,
+  Escort Frigate (a ship that sails in beside the carrier with its own rack
+  and holds station there; replaces the Shore Battery), Flak Burst, Proximity Fuse, Combat Rhythm,
   Rapid Hold.
 - **Support:** Early-Warning Radar (raids, subs and aircraft flagged 1.5 s
   sooner, impact points, jamming), Salvage Crews (+25% drops), Supercharged

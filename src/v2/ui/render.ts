@@ -1,7 +1,7 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, FRIGATE, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
+import { BALLISTIC, CARRIER, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
@@ -385,7 +385,7 @@ function drawFrigate(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
   // Its own rack, like the carrier's.
   const rack = g.stats.frigateRack;
-  drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / (g.stats.reload * FRIGATE.reloadMult), g.overdriveT > 0);
+  drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / (g.stats.reload * g.stats.frigateReloadMult), g.overdriveT > 0);
 }
 
 /** A row of rack pips centred on (x, y): full, loading (partly filled), empty. */

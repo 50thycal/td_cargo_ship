@@ -336,9 +336,23 @@ export class App {
     return { l, r, t, b };
   }
 
+  /** The visible viewport, read from the window rather than from the root's
+   *  own box. Round 5: on an iPhone that loaded with Safari's toolbar showing
+   *  (874×340), the fixed root kept that height after the toolbar went away,
+   *  so the game sat in the top 340 px with a black strip under it — and the
+   *  per-frame check, reading the same stale box, never noticed. */
+  private viewport(): { w: number; h: number } {
+    const vv = window.visualViewport;
+    const w = Math.round(Math.max(window.innerWidth, vv?.width ?? 0)) || this.root.clientWidth;
+    const h = Math.round(Math.max(window.innerHeight, vv?.height ?? 0)) || this.root.clientHeight;
+    return { w, h };
+  }
+
   private resize(): void {
-    const w = this.root.clientWidth || window.innerWidth;
-    const h = this.root.clientHeight || window.innerHeight;
+    const { w, h } = this.viewport();
+    // Pin the root to the real viewport so it can't lag behind it.
+    this.root.style.width = `${w}px`;
+    this.root.style.height = `${h}px`;
     const sa = this.safeInsets();
     this.layoutKey = `${w}x${h}:${sa.l},${sa.r},${sa.t},${sa.b}`;
     this.portrait = h > w;
@@ -364,8 +378,7 @@ export class App {
 
   /** Cheap per-frame check that catches a late size report with no event. */
   private checkLayout(): void {
-    const w = this.root.clientWidth || window.innerWidth;
-    const h = this.root.clientHeight || window.innerHeight;
+    const { w, h } = this.viewport();
     if (!this.layoutKey.startsWith(`${w}x${h}:`)) this.resize();
   }
 
