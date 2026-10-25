@@ -1,5 +1,5 @@
 // Read V2 games for what a summary can't show: how busy the screen was, who
-// did the killing (the player's taps or the automatic CIWS), how long heavies
+// did the killing, how long heavies
 // survived, and how hard the carrier was pressed.
 //   npm run v2:analyze -- log.json [more.json ...]        real playtest logs
 //   npm run v2:analyze -- --bot=sharp --map=strait [--seeds=8] [--flow=4]
@@ -12,7 +12,7 @@ import type { FormationId } from '../../src/v2/data/formations';
 import type { MapId } from '../../src/v2/data/maps';
 import type { UpgradeId } from '../../src/v2/data/upgrades';
 import { Bot, SKILLS } from '../../src/v2/sim/bot';
-import { CARRIER_TARGET, raidWarning, continueEndless, createGame, pickUpgrade, setFlow, setFormation, step, tap, type Game } from '../../src/v2/sim/game';
+import { CARRIER_TARGET, canFire, raidWarning, continueEndless, createGame, pickUpgrade, setFlow, setFormation, step, tap, type Game } from '../../src/v2/sim/game';
 import { LOG_VERSION, SIM_DT, type PlayLog } from '../../src/v2/sim/playlog';
 
 export interface WaveStats {
@@ -23,7 +23,6 @@ export interface WaveStats {
   quiet: number;
   dry: number;
   shots: number;
-  ciwsShots: number;
   carrierThreats: number;
   carrierDamage: number;
   lost: number;
@@ -45,15 +44,13 @@ export class Meter {
       return;
     }
     if (!this.cur || this.cur.wave !== g.wave) {
-      this.cur = { wave: g.wave, seconds: 0, threatSum: 0, threatMax: 0, quiet: 0, dry: 0, shots: 0, ciwsShots: 0, carrierThreats: 0, carrierDamage: 0, lost: 0, heavies: [] };
+      this.cur = { wave: g.wave, seconds: 0, threatSum: 0, threatMax: 0, quiet: 0, dry: 0, shots: 0, carrierThreats: 0, carrierDamage: 0, lost: 0, heavies: [] };
       this.waves.push(this.cur);
       this.shotsAtStart = g.shots;
     }
     const w = this.cur;
-    const before = { ciws: g.ciwsT, heavyKills: g.kills.heavy, hp: g.carrierHp, lost: g.lost };
+    const before = { heavyKills: g.kills.heavy, hp: g.carrierHp, lost: g.lost };
     step(g, SIM_DT);
-    // The CIWS resets its cooldown each time it fires.
-    if (g.ciwsT > before.ciws + 1e-9) w.ciwsShots++;
     // Shots are fired by taps, between steps.
     w.shots = g.shots - this.shotsAtStart;
     w.carrierDamage += Math.max(0, before.hp - g.carrierHp);
@@ -64,7 +61,7 @@ export class Meter {
     w.threatSum += live.length * SIM_DT;
     w.threatMax = Math.max(w.threatMax, live.length);
     if (!live.length) w.quiet += SIM_DT;
-    if (g.ammo < 1 && (g.stats.batteryRack <= 0 || g.batteryAmmo < 1) && g.overdriveT <= 0) w.dry += SIM_DT;
+    if (!canFire(g)) w.dry += SIM_DT;
     for (const t of live) {
       if (!this.seen.has(t.id)) {
         this.seen.add(t.id);
@@ -136,11 +133,11 @@ export function analyzeBot(map: MapId, seed: number, skill: string, flow?: numbe
 const pct = (x: number, of: number) => `${Math.round((100 * x) / Math.max(of, 1e-9))}`.padStart(5);
 
 function print(waves: WaveStats[]): void {
-  console.log('wave  secs  avgOnScreen  max  quiet%  dry%  shots  ciws  →carrier  carrierDmg  sunk  heavies(life s/hits, ! = got through)');
+  console.log('wave  secs  avgOnScreen  max  quiet%  dry%  shots  →carrier  carrierDmg  sunk  heavies(life s/hits, ! = got through)');
   for (const w of waves) {
     const hv = w.heavies.map((h) => `${h.life.toFixed(1)}/${h.hits}${h.killed ? '' : '!'}`).join(' ');
     console.log(
-      `${String(w.wave).padStart(4)}  ${w.seconds.toFixed(0).padStart(4)}  ${(w.threatSum / w.seconds).toFixed(1).padStart(11)}  ${String(Math.round(w.threatMax)).padStart(3)}  ${pct(w.quiet, w.seconds)}  ${pct(w.dry, w.seconds)}  ${String(Math.round(w.shots)).padStart(5)}  ${String(Math.round(w.ciwsShots)).padStart(4)}  ${String(Math.round(w.carrierThreats)).padStart(8)}  ${String(Math.round(w.carrierDamage)).padStart(10)}  ${String(Math.round(w.lost)).padStart(4)}  ${hv}`,
+      `${String(w.wave).padStart(4)}  ${w.seconds.toFixed(0).padStart(4)}  ${(w.threatSum / w.seconds).toFixed(1).padStart(11)}  ${String(Math.round(w.threatMax)).padStart(3)}  ${pct(w.quiet, w.seconds)}  ${pct(w.dry, w.seconds)}  ${String(Math.round(w.shots)).padStart(5)}  ${String(Math.round(w.carrierThreats)).padStart(8)}  ${String(Math.round(w.carrierDamage)).padStart(10)}  ${String(Math.round(w.lost)).padStart(4)}  ${hv}`,
     );
   }
 }
@@ -160,7 +157,6 @@ function mean(runs: WaveStats[][]): WaveStats[] {
       quiet: avg((w) => w.quiet),
       dry: avg((w) => w.dry),
       shots: avg((w) => w.shots),
-      ciwsShots: avg((w) => w.ciwsShots),
       carrierThreats: avg((w) => w.carrierThreats),
       carrierDamage: avg((w) => w.carrierDamage),
       lost: avg((w) => w.lost),

@@ -53,9 +53,9 @@ export const CARRIER = {
 
 export const INTERCEPTOR = {
   speed: 520,
-  rack: 5,
+  rack: 6,
   /** Seconds to reload one round into the rack. */
-  reload: 1.5,
+  reload: 1.35,
   /** Contact distance that counts as reaching the target. */
   contact: 14,
   blast: 22,
@@ -71,15 +71,18 @@ export type ThreatKind =
   | 'heavy'
   | 'cluster'
   | 'mothership'
+  // Aircraft (round 4): fly in from a screen edge, can be shot down.
+  | 'strafer'
+  | 'bomber'
   // Children: spawned by a cluster or a mothership, never launched by a base.
   | 'bomblet'
   | 'minidrone';
 
 /** Threats a base launches (children excluded), in the order they debut. */
-export const PRIMARY_KINDS: ThreatKind[] = ['drone', 'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'mothership'];
+export const PRIMARY_KINDS: ThreatKind[] = ['drone', 'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'mothership', 'strafer', 'bomber'];
 
 export function zeroCounts(): Record<ThreatKind, number> {
-  return { drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, bomblet: 0, minidrone: 0 };
+  return { drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, strafer: 0, bomber: 0, bomblet: 0, minidrone: 0 };
 }
 
 export const THREATS: Record<
@@ -96,11 +99,16 @@ export const THREATS: Record<
   supersonic: { speed: 430, hp: 1, damage: 2, dropChance: 0.25, label: 'Supersonic missile' },
   /** Slow, armoured, big splash: needs four hits. */
   // Round 3: 4 hits fell in 2–6 s in the player's run; 8 makes it a real ammo sink.
-  heavy: { speed: 55, hp: 8, damage: 6, dropChance: 0.6, label: 'Heavy cruise missile' },
+  // Round 4: 4 damage, not 6 — with no CIWS, two heavies were half the carrier.
+  heavy: { speed: 55, hp: 8, damage: 4, dropChance: 0.6, label: 'Heavy cruise missile' },
   /** Splits into bomblets close to its target unless it is hit first. */
   cluster: { speed: 170, hp: 1, damage: 0, dropChance: 0.25, label: 'Cluster missile' },
   /** Drifts at the carrier dropping mini-drones until it is shot down. */
   mothership: { speed: 38, hp: 5, damage: 4, dropChance: 0.7, label: 'Drone mothership' },
+  /** Jet on a strafing run along the convoy: guns hit every hull under its line. */
+  strafer: { speed: 270, hp: 3, damage: 1, dropChance: 0.6, label: 'Strike jet' },
+  /** Slower aircraft that drops guided missiles on the convoy as it passes. */
+  bomber: { speed: 175, hp: 3, damage: 0, dropChance: 0.6, label: 'Missile bomber' },
   bomblet: { speed: 260, hp: 1, damage: 1, dropChance: 0.02, label: 'Bomblet' },
   minidrone: { speed: 85, hp: 1, damage: 1, dropChance: 0.03, label: 'Mini-drone' },
 };
@@ -190,7 +198,7 @@ export const RAID = {
 
 /** Raids have a theme — one family of threat — so each calls for a
  *  different answer (round 3: formations need a reason to switch). */
-export type RaidTheme = 'swarm' | 'barrage' | 'volley';
+export type RaidTheme = 'swarm' | 'barrage' | 'volley' | 'strike';
 
 export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   drone: 'swarm',
@@ -202,23 +210,122 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   bomblet: 'barrage',
   guided: 'volley',
   supersonic: 'volley',
+  bomber: 'volley',
+  strafer: 'strike',
 };
+
+// ---- Round 4: attack vectors beyond the fixed bases -----------------------
+
+/** A submarine surfaces in open water (periscope and wake first), fires a
+ *  salvo, and dives. It is a launcher, not a target. */
+export const SUB = {
+  /** Periscope and wake before it breaks the surface. */
+  warn: 2,
+  surface: 0.8,
+  /** Seconds between launches in a salvo. */
+  gap: 0.75,
+  dive: 1,
+  /** A ballistic salvo is this long, back to back. */
+  salvo: 4,
+} as const;
+
+/** Aircraft come in from a screen edge after an arrow warns of them. */
+export const PLANE = {
+  warn: 2.2,
+  /** A strafing run's guns hit every hull within this distance of its line. */
+  band: 60,
+  /** Gun impacts walk this far ahead of the jet. */
+  gunLead: 70,
+  /** A bomber drops this many guided missiles on its pass, one every
+   *  `dropEvery` s, starting when a hull is within `dropReach` ahead of it.
+   *  It flies one of the map's `bomberLines` (open water off the lanes), and
+   *  its air-launched missiles are light (one hit): round 4's first runs had
+   *  them start on top of the ships and they sank ~2.8 ships a game. */
+  bombs: 2,
+  /** Run-in: no drops until a bomber is this far onto the screen (≈2.3 s to
+   *  shoot it down first), and no strafing until a jet is this far in. Ships
+   *  enter at the left edge, so without it a plane from the left had targets
+   *  under it the moment it appeared. */
+  bomberRunIn: 400,
+  strafeRunIn: 250,
+  dropEvery: 1.2,
+  dropReach: 280,
+} as const;
+
+/** Missile trucks drive on enemy land: pop-ups drive to the shore, fire and
+ *  reverse out; runners drive the whole shore road, stopping to fire. */
+/** Escort Frigate (round 4): sails in from the nearer screen edge to its station
+ *  beside the carrier; at level 2 it steams toward the threats. */
+export const FRIGATE = {
+  startX: -80,
+  sail: 140,
+  roamSpeed: 45,
+  roam: 170,
+  /** Keeps this far clear of the carrier's bow or stern when roaming. */
+  carrierGap: 60,
+  /** It fires once it is this far onto the screen. */
+  fireFromX: 40,
+  /** Its rack reloads this much slower than the carrier's (round 4 tuning:
+   *  at the carrier's rate it doubled your fire rate). */
+  reloadMult: 1.6,
+} as const;
+
+export const TRUCK = {
+  speed: 75,
+  runnerSpeed: 110,
+  raise: 0.6,
+  lower: 0.45,
+  /** Seconds between launches while the launcher is up. */
+  gap: 0.45,
+} as const;
+
+/** From which wave each vector joins a map, and how many per wave. */
+export interface VectorPlan {
+  trucks: number;
+  subs: number;
+  strafers: number;
+  bombers: number;
+}
 
 export const DRONE = {
   weaveAmp: 0.35,
   weaveFreq: 2.5,
 } as const;
 
-export type PickupKind = 'ammo' | 'repair' | 'overdrive' | 'emp';
+// The first four are unchanged from round 3; round 4 adds Time Warp, Shield,
+// Strike Package and Full Steam.
+export type PickupKind = 'ammo' | 'repair' | 'overdrive' | 'emp' | 'timewarp' | 'shield' | 'strike' | 'steam';
+
+export const PICKUP_KINDS: PickupKind[] = ['ammo', 'repair', 'overdrive', 'emp', 'timewarp', 'shield', 'strike', 'steam'];
 
 export const PICKUPS = {
   life: 5,
+  /** Pickup life with Salvage Crews level 2. */
+  salvageLife: 8,
   radius: 26,
-  weights: { ammo: 40, repair: 30, overdrive: 22, emp: 8 } as Record<PickupKind, number>,
+  weights: { ammo: 40, repair: 30, overdrive: 22, emp: 8, timewarp: 9, shield: 8, strike: 7, steam: 9 } as Record<PickupKind, number>,
   repairHp: 2,
   carrierRepairHp: 3,
   overdriveTime: 5,
+  /** Time Warp: threats move at this share of their speed. */
+  warpTime: 4,
+  warpScale: 0.4,
+  /** Shield: ships and carrier take no damage. */
+  shieldTime: 5,
+  /** Strike Package: friendly jets hit this many threats (2 damage each) and
+   *  knock out every launcher that is up and firing. */
+  strikeTargets: 4,
+  strikeDamage: 2,
+  /** Full Steam: the convoy moves this much faster. */
+  steamTime: 5,
+  steamMult: 1.6,
+  /** Pickup Magnet: how fast a pickup flies to the carrier. */
+  magnetSpeed: 420,
 } as const;
+
+/** Round 4 defensive cards. */
+export const SMOKE = { time: 4, radius: 100 } as const;
+export const FLARE = { range: 90 } as const;
 
 /** Taps reach this far on screen (CSS px) — converted to world units by the UI. */
 export const TAP_RADIUS_PX = 44;

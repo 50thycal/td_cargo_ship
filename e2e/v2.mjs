@@ -168,7 +168,7 @@ try {
   // Swapping a card in with all three slots full, by touch, at iPhone size.
   await iphone.evaluate(() => {
     const g = window.__v2.game();
-    g.levels = { twin: 2, ciws: 1, speed: 1 };
+    g.levels = { twin: 2, frigate: 1, speed: 1 };
     g.queue = [];
     g.threats = [];
   });
@@ -185,11 +185,12 @@ try {
     await iphone.locator('.v2-swap-prompt .v2-link').tap();
     if (await iphone.locator('.v2-slot.swap').count()) fail('cancel left swap mode on');
     await iphone.locator(`.v2-card[data-upgrade="${incoming}"]`).tap();
-    await iphone.locator('.v2-slot.swap[data-slot="ciws"]').tap();
+    await iphone.locator('.v2-slot.swap[data-slot="frigate"]').tap();
     await iphone.waitForFunction(() => window.__v2.game()?.phase === 'wave');
-    const levels = await iphone.evaluate(() => window.__v2.game().levels);
+    const { levels, frigate } = await iphone.evaluate(() => ({ levels: window.__v2.game().levels, frigate: window.__v2.game().frigate }));
     console.log('after swap:', JSON.stringify(levels));
-    if (levels.ciws || levels[incoming] !== 1 || levels.twin !== 2) fail(`swap gave ${JSON.stringify(levels)}`);
+    if (levels.frigate || levels[incoming] !== 1 || levels.twin !== 2) fail(`swap gave ${JSON.stringify(levels)}`);
+    if (frigate) fail('the Escort Frigate stayed after its card was swapped out');
   }
 
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');

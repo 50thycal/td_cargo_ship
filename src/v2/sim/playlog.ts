@@ -22,8 +22,9 @@ import {
 
 /** Bump when the log format or sim rules change in a way that breaks replay.
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
- *  heavies, card swaps) — a v2 log only replays on a round-2 build. */
-export const LOG_VERSION = 3;
+ *  heavies, card swaps) — a v2 log only replays on a round-2 build.
+ *  4: playtest round 4 (subs, trucks, aircraft, the new roster and pickups). */
+export const LOG_VERSION = 4;
 export const SIM_DT = 1 / 60;
 
 /** Compact input encoding: [step, code, ...args]. */
