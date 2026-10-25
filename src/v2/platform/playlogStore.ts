@@ -74,6 +74,10 @@ export function fitForDb(log: PlayLog): PlayLog & { truncated?: boolean } {
   return { ...log, commands: [], truncated: true };
 }
 
+/** A run is saved several times (after each wave, then at the end) under one
+ *  id; what was delivered is that id at a given step count. */
+const sentKey = (log: PlayLog): string => `${log.id}@${log.summary?.steps ?? 0}`;
+
 async function post(log: PlayLog): Promise<boolean> {
   const body = JSON.stringify(log);
   const res = await fetch('/api/playlog', {
@@ -93,7 +97,7 @@ async function send(log: PlayLog): Promise<boolean> {
     if (db) await db.collection(DB_COLLECTION).doc(log.id).set(fitForDb(log));
     else if (!(await post(log))) return false;
     const sent = readJson<string[]>(SENT_KEY, []);
-    writeJson(SENT_KEY, [...sent.filter((id) => id !== log.id), log.id].slice(-50));
+    writeJson(SENT_KEY, [...sent.filter((k) => !k.startsWith(`${log.id}@`)), sentKey(log)].slice(-50));
     return true;
   } catch {
     return false;
@@ -112,7 +116,7 @@ export async function flushUnsent(): Promise<number> {
   if (!(await logChannel())) return 0;
   const sent = new Set(readJson<string[]>(SENT_KEY, []));
   let n = 0;
-  for (const log of localLogs()) if (!sent.has(log.id) && (await send(log))) n++;
+  for (const log of localLogs()) if (!sent.has(sentKey(log)) && (await send(log))) n++;
   return n;
 }
 

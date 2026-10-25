@@ -147,11 +147,23 @@ export class App {
     });
   }
 
+  /** Save the run so far without ending it: after each wave, and whenever
+   *  the game goes to the background (on iPhone, swiping away to another app
+   *  is often the last thing that happens before the page is killed). */
+  private saveProgress(): void {
+    if (this.rec && this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) {
+      void storeLog(this.rec.snapshot());
+    }
+  }
+
   start(): void {
     void flushUnsent();
     // Closing the tab mid-run still leaves a log.
     window.addEventListener('pagehide', () => {
       if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) this.endRun('quit');
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.saveProgress();
     });
     // Test hook for the browser smoke test: read the game, map world → screen.
     (window as unknown as { __v2: unknown }).__v2 = {
@@ -463,8 +475,10 @@ export class App {
   private onPhase(g: Game): void {
     this.lastPhase = g.phase;
     if (g.phase === 'wave') this.hideOverlay();
-    else if (g.phase === 'draft') this.showDraft(g);
-    else if (g.phase === 'won') this.showResult(g, true);
+    else if (g.phase === 'draft') {
+      this.showDraft(g);
+      this.saveProgress();
+    } else if (g.phase === 'won') this.showResult(g, true);
     else if (g.phase === 'lost') this.showResult(g, false);
   }
 
