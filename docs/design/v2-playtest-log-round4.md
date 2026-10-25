@@ -207,3 +207,87 @@ Smoke (the hit ship's cloud, then the guided missile flying straight past instea
 **Tests:** 82/82 V2 tests pass, 15 of them new. Bugs found while writing them, all in the tests:
 - One test gave every "seed" the same seed, which showed up as an exact 2.0 ratio.
 - One ran too short for interceptors to arrive.
+
+## Cycle 6: balance, performance and everything end to end
+
+**Focus:** S7 (still challenging, about where round 3 sits) and S8 (nothing breaks).
+
+**Method.** Each check below ran the bots at max flow, 10 seeds per map, under two card policies:
+- **fixed:** the bots' usual preference list;
+- **random:** a shuffled list per seed, so every card gets played.
+
+The same script also ran on the round-3 build (a worktree at `e675901`), so every comparison is like for like. Clears are out of 50 (5 maps × 10 seeds).
+
+| Build | fixed: sharp / average / spammer | random: sharp / average / spammer |
+|---|---|---|
+| Round 3 | 40 / 37 / 11 | 42 / 38 / 20 |
+| Round 3 without CIWS (pushed to the end of every random list) | — | 41 / 37 / 21 |
+| Round 4, first pass | 34 / 36 / 11 | 27 / 23 / 1 |
+| **Round 4, final** | **38 / 35 / 11** | **34 / 33 / 6** |
+
+**What the first pass showed, and what changed.**
+
+**1. Card value.** The average bot took one card first, on every map, 8 seeds each (out of 40; the bots' usual opening scored 25).
+- Escort Frigate 37 and Armored Hulls 34 led. Round 3 had the same spread: Twin 39, CIWS 34, Battery 30, Radar 14.
+- Pickup Magnet 17 and Rapid Hold 16 came last. A bot already grabs every pickup and taps faster than the free hold, so these two can't score their human value here.
+- Changes:
+  - Frigate: rack 3 / 5, reloads 60% slower than the carrier. At the carrier's rate it doubled fire rate.
+  - Armored Hulls: L2 gives the carrier +5 HP instead of a 5th ship hit.
+  - Pickup Magnet: auto-collect from level 1.
+  - Rapid Hold: 0.32 s, then 0.22 s.
+  - Radar: also jams 8% at L1, 18% at L2.
+  - Smoke Screen: 7 s / 4 s recharge, 4 s clouds, also blinds supersonic and cluster homing.
+  - Flak Burst: 40 / 60 px.
+
+**2. What sinks ships** (random loadouts, average bot):
+- Ballistic sinks were 0.25 a game in round 3 and 0.88 in round 4. The sub's 4 missiles 0.4 s apart landed almost together.
+  - Now 0.75 s apart (still 4 back to back, as asked): 0.63.
+- The carrier was destroyed in 10 of 22 losses (round 3: 1 of 7).
+  - New carrier-damage tracking showed heavy missiles dealing 3.45 a game; with no CIWS, two heavies were half the carrier.
+  - Heavy damage is now 4, not 6: carrier destroyed in 5 games.
+
+**3. Was it the vectors?** No. With every vector off, round 4's random loadouts still cleared 24 / 18 / 1. Removing the new pickups changed nothing either.
+- The cause was the roster.
+  - Folding Bigger Rack, Auto-Retarget and the Battery into other cards took firepower away.
+  - With 17 cards, a random hand of three was often all support.
+- Fixes:
+  - **The draft always offers at least one firepower card.**
+  - Quick Reload's rack grows by 1 / 3 / 5.
+  - Twin Launch re-aims orphaned interceptors from level 1.
+  - Base rack 6 (Bigger Rack is gone).
+  - Base reload 1.35 s instead of 1.5.
+
+**Where it ends up.** The fixed list is within noise of round 3; 10 seeds per map swing ±2–3 clears. Map 1, the one the player has been playing, clears 9–10 of 10 for sharp and average bots under both policies.
+
+Random loadouts are still about 15% harder than round 3, and a spammer with random cards rarely clears. That is the honest residue: a random hand is weaker than round 3's, where half the random games held a CIWS. A player choosing cards with intent is close to round 3.
+
+**Performance (S8).** Real rAF frame times on Harbor wave 10 at max flow and 3× speed, at phone size, against the round-3 build in the same headless Chromium.
+
+| Run | p50 | p99 | Frames in 12 s |
+|---|---|---|---|
+| Round 3 | 16.7 ms | 16.8 ms | 720 |
+| Round 4 | 16.7 ms | 16.8 ms | 720 |
+| Round 3, CPU throttled 4× | 16.7 ms | 16.8 ms | 720 |
+| Round 4, CPU throttled 4× | 16.7 ms | 16.8 ms | 719 |
+| Round 4, 4×, with Shield + Time Warp + Full Steam + 4 smoke clouds, 3 raiders and 36 threats | 16.7 ms | 16.8 ms | 713 |
+
+**Everything end to end (S8):**
+- `npm test`: 808/808, 83 of them V2.
+- The replay tests cover a Harbor wave-8 run with every vector, a draft swap, and launch origins.
+- `npm run e2e:v2` passes: menu, wave 1, draft, formation popup, flow slider, iPhone 16 Pro, and a swap that now swaps the Escort Frigate out and checks the ship leaves.
+- `npm run e2e:v2:log` passes: the log is saved after each wave, kept when the endpoint is down, and resent.
+- The V1 smoke test (`npm run e2e`) passes.
+- `LOG_VERSION` is now 4. Round-3 logs still read in the analyzer, but don't replay on this build.
+
+## Summary
+
+| # | Goal | Result |
+|---|---|---|
+| S1 | Threats from many places | **Met.** By wave 7, 36–53% of launches come from fixed bases (round 3: 100%); the rest come from subs, trucks and aircraft. |
+| S2 | Each new vector reads clearly | **Met.** Contact sheets for 7 vector variants at phone size. Six problems were found and fixed: the launch disc hid subs, the sub warning was weak, the truck launcher was unreadable, trucks were small, planes were small and grey, the bomber line crossed land. |
+| S3 | Strafing punishes a tight block | **Met.** HP lost to strafing runs, defended by the average bot: Box 10.8, Column 6.9, Pairs 3.8, Spread 2.0. The orange band warns which lane. |
+| S4 | Frigate sails in on every map | **Met.** Captured on all 5 maps. Three problems found and fixed: it crossed the carrier, passed under the callout banner, and sat on sub spots. Tests cover entry side, stations and patrol box. |
+| S5 | Agreed roster | **Met.** CIWS, Bigger Rack, Auto-Retarget and Shore Battery are gone (merged or replaced). The ten new cards work, each with its own icon, and were picked through the real draft UI. |
+| S6 | New pickups distinct; old four unchanged | **Met.** 8 distinct glyphs and colours. Effects were filmed, and three were made more visible: flares, Full Steam and Strike. A test confirms the old four's numbers are unchanged. |
+| S7 | About round 3 | **Mostly met.** The fixed card list is within noise of round 3. Random loadouts are about 15% harder; a spammer with random cards is much harder. |
+| S8 | Nothing breaks | **Met.** All tests and the four e2e suites pass, replays are exact, and 60 fps holds at 4× CPU throttle with every effect on. |

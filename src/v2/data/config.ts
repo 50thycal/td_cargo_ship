@@ -53,9 +53,9 @@ export const CARRIER = {
 
 export const INTERCEPTOR = {
   speed: 520,
-  rack: 5,
+  rack: 6,
   /** Seconds to reload one round into the rack. */
-  reload: 1.5,
+  reload: 1.35,
   /** Contact distance that counts as reaching the target. */
   contact: 14,
   blast: 22,
@@ -99,7 +99,8 @@ export const THREATS: Record<
   supersonic: { speed: 430, hp: 1, damage: 2, dropChance: 0.25, label: 'Supersonic missile' },
   /** Slow, armoured, big splash: needs four hits. */
   // Round 3: 4 hits fell in 2–6 s in the player's run; 8 makes it a real ammo sink.
-  heavy: { speed: 55, hp: 8, damage: 6, dropChance: 0.6, label: 'Heavy cruise missile' },
+  // Round 4: 4 damage, not 6 — with no CIWS, two heavies were half the carrier.
+  heavy: { speed: 55, hp: 8, damage: 4, dropChance: 0.6, label: 'Heavy cruise missile' },
   /** Splits into bomblets close to its target unless it is hit first. */
   cluster: { speed: 170, hp: 1, damage: 0, dropChance: 0.25, label: 'Cluster missile' },
   /** Drifts at the carrier dropping mini-drones until it is shot down. */
@@ -222,7 +223,7 @@ export const SUB = {
   warn: 2,
   surface: 0.8,
   /** Seconds between launches in a salvo. */
-  gap: 0.4,
+  gap: 0.75,
   dive: 1,
   /** A ballistic salvo is this long, back to back. */
   salvo: 4,
@@ -264,6 +265,9 @@ export const FRIGATE = {
   carrierGap: 60,
   /** It fires once it is this far onto the screen. */
   fireFromX: 40,
+  /** Its rack reloads this much slower than the carrier's (round 4 tuning:
+   *  at the carrier's rate it doubled your fire rate). */
+  reloadMult: 1.6,
 } as const;
 
 export const TRUCK = {
@@ -315,13 +319,12 @@ export const PICKUPS = {
   /** Full Steam: the convoy moves this much faster. */
   steamTime: 5,
   steamMult: 1.6,
-  /** Pickup Magnet level 2: a pickup waits this long, then flies to the carrier. */
-  magnetDelay: 1,
+  /** Pickup Magnet: how fast a pickup flies to the carrier. */
   magnetSpeed: 420,
 } as const;
 
 /** Round 4 defensive cards. */
-export const SMOKE = { time: 3, radius: 80 } as const;
+export const SMOKE = { time: 4, radius: 100 } as const;
 export const FLARE = { range: 90 } as const;
 
 /** Taps reach this far on screen (CSS px) — converted to world units by the UI. */

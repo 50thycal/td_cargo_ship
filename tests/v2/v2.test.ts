@@ -287,14 +287,14 @@ describe('waves and upgrades', () => {
     const g = createGame('strait', 5);
     g.levels = { reload: 1 };
     g.stats = stats(g.levels);
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 1);
     g.phase = 'draft';
     g.offer = ['reload'];
     const before = g.ammo;
     pickUpgrade(g, 'reload');
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 3);
     expect(g.ammo).toBe(before + 2);
-    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 4);
+    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 5);
   });
 
   it('twin launch sends a free second interceptor', () => {
@@ -390,7 +390,7 @@ describe('escort frigate', () => {
     const g = withFrigate();
     const f = g.frigate!;
     expect(f.x).toBeLessThan(0);
-    expect(f.ammo).toBe(4);
+    expect(f.ammo).toBe(3);
     // Off screen it cannot take a tap even when it is nearer.
     g.ammo = 0;
     addThreat(g, { x: 60, y: f.y - 150, speed: 0 });
@@ -427,14 +427,14 @@ describe('escort frigate', () => {
     const carrierAmmo = g.ammo;
     addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
     tap(g, f.x - 60, f.y - 200, 30);
-    expect(g.frigate!.ammo).toBe(3);
+    expect(g.frigate!.ammo).toBe(2);
     expect(g.ammo).toBe(carrierAmmo);
     expect(g.interceptors[0].x).toBe(f.x + 8);
     g.ammo = 0;
     const c = g.map.carrier;
     addThreat(g, { x: c.x, y: c.y - 150, speed: 0 });
     expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
-    expect(g.frigate!.ammo).toBe(2);
+    expect(g.frigate!.ammo).toBe(1);
   });
 
   it('has a station on every map, in open water clear of the carrier', async () => {
@@ -454,9 +454,9 @@ describe('escort frigate', () => {
     }
   });
 
-  it('level 2 holds 7 and steams toward the threats, never into the carrier', () => {
+  it('level 2 holds 5 and steams toward the threats, never into the carrier', () => {
     const g = withFrigate(2);
-    expect(g.stats.frigateRack).toBe(7);
+    expect(g.stats.frigateRack).toBe(5);
     run(g, 8);
     const st = g.map.frigate;
     const c = g.map.carrier;
@@ -620,6 +620,7 @@ describe('round 3: raids and carrier strikes', () => {
 describe('round 4 roster', () => {
   it('has no turret defences and no folded-in cards', () => {
     for (const gone of ['ciws', 'rack', 'retarget', 'battery']) expect(UPGRADE_ORDER).not.toContain(gone);
+    expect(stats({}).rack).toBe(6); // Bigger Rack is gone: one more round as standard
   });
 
   it('a slow hold-to-fire is free; the card speeds it up', async () => {
@@ -629,7 +630,7 @@ describe('round 4 roster', () => {
     expect(stats({ hold: 2 }).holdRepeat).toBeLessThan(stats({ hold: 1 }).holdRepeat);
   });
 
-  it('Twin Launch level 2 re-aims an interceptor whose target died (Auto-Retarget folded in)', () => {
+  it('Twin Launch re-aims an interceptor whose target died (Auto-Retarget folded in)', () => {
     const play = (twin: number) => {
       const g = quietGame();
       g.levels = { twin };
@@ -643,8 +644,20 @@ describe('round 4 roster', () => {
       run(g, 2);
       return b.dead || b.hp < 1;
     };
-    expect(play(1)).toBe(false);
-    expect(play(2)).toBe(true);
+    expect(play(0)).toBe(false);
+    expect(play(1)).toBe(true);
+  });
+
+  it('every draft offers at least one firepower card', async () => {
+    const { FIREPOWER } = await import('../../src/v2/data/upgrades');
+    for (let seed = 1; seed <= 200; seed++) {
+      const g = createGame('strait', seed);
+      g.queue = [];
+      g.threats = [];
+      g.raiderQueue = [];
+      step(g, DT);
+      expect(g.offer.some((id) => FIREPOWER.includes(id)), `seed ${seed}: ${g.offer}`).toBe(true);
+    }
   });
 
   it('Radar flags raids and aircraft 1.5 s sooner', async () => {
@@ -676,7 +689,8 @@ describe('formations and raid themes', () => {
     expect(lone('pairs', { kind: 'guided' }).hp).toBe(SHIP.hp - 2);
     expect(lone('box', { kind: 'guided' }).hp).toBe(SHIP.hp - 1);
     expect(lone('pairs', { kind: 'heavy', hp: 8 }).hp).toBeLessThanOrEqual(0);
-    expect(lone('spread', { kind: 'heavy', hp: 8 }).hp).toBe(SHIP.hp - 3);
+    // A heavy does 4 (round 4); Spread halves it to 2.
+    expect(lone('spread', { kind: 'heavy', hp: 8 }).hp).toBe(SHIP.hp - 2);
   });
 
   it('a ballistic splash reaches the neighbours of a Box but never past one Spread ship', () => {
@@ -739,10 +753,15 @@ describe('round 4: submarines, trucks and aircraft', () => {
     expect(g.raiders[0].state).toBe('warn');
     run(g, SUB.warn - 0.1);
     expect(g.threats.filter((t) => t.kind === 'ballistic')).toHaveLength(0);
-    run(g, 0.1 + SUB.surface + SUB.gap * 4 + 0.1);
-    const salvo = g.threats.filter((t) => t.kind === 'ballistic');
-    expect(salvo).toHaveLength(4);
-    expect(salvo.every((t) => t.sx === 420 && t.sy === 250)).toBe(true);
+    // Watch every launch: all 4 leave from the sub's spot, SUB.gap apart.
+    const launches: { id: number; t: number; sx: number; sy: number }[] = [];
+    for (let i = 0; i < (0.1 + SUB.surface + SUB.gap * 4 + 0.1) / DT; i++) {
+      step(g, DT);
+      for (const t of g.threats) if (t.kind === 'ballistic' && !launches.some((l) => l.id === t.id)) launches.push({ id: t.id, t: g.t, sx: t.sx, sy: t.sy });
+    }
+    expect(launches).toHaveLength(4);
+    expect(launches.every((l) => l.sx === 420 && l.sy === 250)).toBe(true);
+    expect(launches[3].t - launches[0].t).toBeCloseTo(SUB.gap * 3, 1);
     run(g, SUB.dive + 0.2);
     expect(g.raiders).toHaveLength(0);
     expect(g.origins.sub).toBe(4);
@@ -1123,22 +1142,27 @@ describe('round 4: new cards', () => {
     expect(h.ammo).toBe(2);
   });
 
-  it('Pickup Magnet: grabs from twice as far, and at level 2 pickups fly to the carrier', () => {
+  it('Pickup Magnet: pickups fly to the carrier by themselves; level 2 at once, and grabbed from twice as far', () => {
+    const fly = (magnet: number, seconds: number) => {
+      const g = withCards({ magnet });
+      g.ammo = 0;
+      g.pickups.push({ id: 902, kind: 'ammo', x: 300, y: 200, age: 0 });
+      run(g, seconds);
+      return g.pickups.length === 0 && g.ammo === g.stats.rack;
+    };
+    // ~710 px from the carrier at 420 px/s, after a 1.5 s (L1) or 0.3 s (L2) beat.
+    expect(fly(1, 2.4)).toBe(false);
+    expect(fly(1, 3.6)).toBe(true);
+    expect(fly(2, 2.4)).toBe(true);
     const near = withCards({});
     near.pickups.push({ id: 900, kind: 'ammo', x: 500, y: 300, age: 0 });
     expect(tap(near, 500 + 75, 300, 30)).not.toBe('pickup');
-    const mag = withCards({ magnet: 1 });
-    mag.pickups.push({ id: 901, kind: 'ammo', x: 500, y: 300, age: 0 });
-    expect(tap(mag, 500 + 75, 300, 30)).toBe('pickup');
-    const auto = withCards({ magnet: 2 });
-    auto.ammo = 0;
-    auto.pickups.push({ id: 902, kind: 'ammo', x: 300, y: 200, age: 0 });
-    run(auto, 3.5);
-    expect(auto.pickups).toHaveLength(0);
-    expect(auto.ammo).toBe(auto.stats.rack);
+    const far = withCards({ magnet: 2 });
+    far.pickups.push({ id: 901, kind: 'ammo', x: 500, y: 300, age: 0 });
+    expect(tap(far, 500 + 75, 300, 30)).toBe('pickup');
   });
 
-  it('Armored Hulls: ships take an extra hit; level 2 adds 4 carrier HP, applied to hulls at sea', () => {
+  it('Armored Hulls: ships take an extra hit (hulls at sea too); level 2 adds 5 carrier HP', () => {
     const g = quietGame();
     run(g, 6);
     expect(g.ships.length).toBeGreaterThan(0);
@@ -1149,7 +1173,8 @@ describe('round 4: new cards', () => {
     g.phase = 'draft';
     g.offer = ['armor'];
     pickUpgrade(g, 'armor');
-    expect(g.carrierHp).toBe(CARRIER.hp + 4);
+    expect(g.carrierHp).toBe(CARRIER.hp + 5);
+    for (const s of g.ships) expect(s.hp).toBe(SHIP.hp + 1);
   });
 
   it('Smoke Screen: a hit ship lays smoke and a guided missile loses its lock on it', () => {

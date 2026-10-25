@@ -55,9 +55,9 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Quick Reload',
     max: 3,
     levels: [
-      'Reloads in 25% less time',
-      `Reloads in 40% less time, rack holds ${INTERCEPTOR.rack + 2}`,
-      `Reloads in 55% less time, rack holds ${INTERCEPTOR.rack + 4}`,
+      `Reloads in 25% less time, rack holds ${INTERCEPTOR.rack + 1}`,
+      `Reloads in 40% less time, rack holds ${INTERCEPTOR.rack + 3}`,
+      `Reloads in 55% less time, rack holds ${INTERCEPTOR.rack + 5}`,
     ],
     answers: 'Everything',
   },
@@ -80,9 +80,9 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Twin Launch',
     max: 3,
     levels: [
-      'Every tap fires a free 2nd interceptor',
-      'Interceptors whose target is gone fly on to an uncovered one',
-      'Every tap fires 2 free extras; spare ones peel off to uncovered threats',
+      'Every tap fires a free 2nd interceptor; one whose target is gone flies on to another',
+      'Spare interceptors peel off to threats nobody is covering',
+      'Every tap fires 2 free extras',
     ],
     answers: 'Guided',
   },
@@ -91,8 +91,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Early-Warning Radar',
     max: 2,
     levels: [
-      'Raids, subs and aircraft flagged 1.5 s sooner; ballistic impact points shown at launch',
-      'Jamming: threats fly 12% slower',
+      'Raids, subs and aircraft flagged 1.5 s sooner, impact points shown at launch; jamming slows threats 8%',
+      'Heavier jamming: threats fly 18% slower',
     ],
     answers: 'Surprise',
   },
@@ -101,8 +101,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Escort Frigate',
     max: 2,
     levels: [
-      'A frigate sails in beside the carrier with its own 4-round rack; taps fire from whichever is nearer',
-      'Frigate rack holds 7 and it steams toward the thick of the fight',
+      'A frigate sails in beside the carrier with its own 3-round rack; taps fire from whichever is nearer',
+      'Frigate rack holds 5 and it steams toward the thick of the fight',
     ],
     answers: 'Range',
   },
@@ -111,8 +111,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Rapid Hold',
     max: 2,
     levels: [
-      `Holding your finger down repeats faster (every 0.45 s, not ${HOLD_FREE} s)`,
-      'Hold repeats every 0.33 s',
+      `Holding your finger down repeats much faster (every 0.32 s, not ${HOLD_FREE} s)`,
+      'Hold repeats every 0.22 s',
     ],
     answers: 'Swarms',
   },
@@ -135,14 +135,14 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     id: 'magnet',
     name: 'Pickup Magnet',
     max: 2,
-    levels: ['Grab pickups from twice as far', 'Pickups fly to the carrier on their own'],
+    levels: ['Pickups fly to the carrier on their own after a moment', 'They come straight away, and taps grab them from twice as far'],
     answers: 'Attrition',
   },
   armor: {
     id: 'armor',
     name: 'Armored Hulls',
     max: 2,
-    levels: [`Ships take ${SHIP.hp + 1} hits to sink`, `Ships take ${SHIP.hp + 2} hits; carrier +4 HP`],
+    levels: [`Ships take ${SHIP.hp + 1} hits to sink`, 'Carrier +5 HP'],
     answers: 'Everything',
   },
   smoke: {
@@ -150,8 +150,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Smoke Screen',
     max: 2,
     levels: [
-      'A ship that is hit lays smoke: guided missiles lose their lock on it (recharges in 10 s)',
-      'Recharges in 6 s, and the smoke also hides ships from strafing guns',
+      'A ship that is hit lays smoke: homing missiles lose their lock on it (recharges in 7 s)',
+      'Recharges in 4 s, and the smoke also hides ships from strafing guns',
     ],
     answers: 'Guided',
   },
@@ -169,7 +169,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     id: 'flak',
     name: 'Flak Burst',
     max: 2,
-    levels: ['Interceptors hit everything they pass close to on the way', 'Wider flak along the way'],
+    levels: ['Interceptors hit everything they pass close to on the way', 'Much wider flak along the way'],
     answers: 'Aircraft',
   },
   rhythm: {
@@ -198,6 +198,11 @@ export const RESUPPLY: UpgradeDef = {
   levels: ['Repair every ship and the carrier, and refill the racks'],
   answers: 'Attrition',
 };
+
+/** Cards that add firepower. Every draft offers at least one (when one is
+ *  open), so a hand of three is never all support cards — with 17 cards in
+ *  the pool, a random hand often was. */
+export const FIREPOWER: UpgradeId[] = ['speed', 'reload', 'blast', 'chain', 'twin', 'frigate', 'flak', 'proxfuse', 'rhythm', 'hold'];
 
 /** Every real card (Resupply is not one). */
 export const UPGRADE_ORDER = (Object.keys(UPGRADES) as UpgradeId[]).filter((id) => id !== 'resupply');
@@ -259,7 +264,8 @@ export interface DefenseStats {
   pickupPower: number;
   pickupReload: number;
   grabMult: number;
-  autoCollect: boolean;
+  /** Pickup Magnet: seconds before a pickup flies to the carrier (0 = no card). */
+  magnetDelay: number;
   /** Armored Hulls. */
   shipHp: number;
   carrierHp: number;
@@ -285,31 +291,31 @@ export function stats(levels: Levels): DefenseStats {
   const twin = lv('twin');
   return {
     interceptorSpeed: INTERCEPTOR.speed * (1 + 0.25 * lv('speed')),
-    rack: INTERCEPTOR.rack + [0, 0, 2, 4][reload],
+    rack: INTERCEPTOR.rack + [0, 1, 3, 5][reload],
     reload: INTERCEPTOR.reload * [1, 0.75, 0.6, 0.45][reload],
     blast: INTERCEPTOR.blast * (1 + lv('blast')),
     chainRadius: [0, 55, 85][lv('chain')],
     freeExtras: [0, 1, 1, 2][twin],
-    retarget: [0, 0, 1, 2][twin],
+    retarget: [0, 1, 2, 2][twin],
     radarReticle: lv('radar') >= 1,
     radarLead: lv('radar') >= 1 ? 1.5 : 0,
-    threatSlow: lv('radar') >= 2 ? 0.88 : 1,
-    frigateRack: [0, 4, 7][lv('frigate')],
+    threatSlow: [1, 0.92, 0.82][lv('radar')],
+    frigateRack: [0, 3, 5][lv('frigate')],
     frigateRoams: lv('frigate') >= 2,
-    holdRepeat: [HOLD_FREE, 0.45, 0.33][lv('hold')],
+    holdRepeat: [HOLD_FREE, 0.32, 0.22][lv('hold')],
     dropMult: lv('salvage') >= 1 ? 1.25 : 1,
     pickupLife: lv('salvage') >= 2 ? PICKUPS.salvageLife : PICKUPS.life,
     pickupPower: lv('supercharge') >= 1 ? 1.5 : 1,
     pickupReload: lv('supercharge') >= 2 ? 2 : 0,
-    grabMult: lv('magnet') >= 1 ? 2 : 1,
-    autoCollect: lv('magnet') >= 2,
-    shipHp: SHIP.hp + lv('armor'),
-    carrierHp: CARRIER.hp + (lv('armor') >= 2 ? 4 : 0),
-    smokeEvery: [0, 10, 6][lv('smoke')],
+    grabMult: lv('magnet') >= 2 ? 2 : 1,
+    magnetDelay: [0, 1.5, 0.3][lv('magnet')],
+    shipHp: SHIP.hp + (lv('armor') >= 1 ? 1 : 0),
+    carrierHp: CARRIER.hp + (lv('armor') >= 2 ? 5 : 0),
+    smokeEvery: [0, 7, 4][lv('smoke')],
     smokeVsGuns: lv('smoke') >= 2,
     flareEvery: [0, 8, 4][lv('flares')],
     flaresVsSupersonic: lv('flares') >= 2,
-    flak: [0, 28, 45][lv('flak')],
+    flak: [0, 40, 60][lv('flak')],
     rhythmEvery: [0, 4, 3][lv('rhythm')],
     rhythmFrigate: lv('rhythm') >= 2,
     contact: lv('proxfuse') >= 1 ? 34 : INTERCEPTOR.contact,

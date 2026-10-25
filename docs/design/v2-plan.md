@@ -32,17 +32,36 @@ threat (shown on the card as "vs …").
 
 | Threat | Behaviour | Weakness | Answered by | Debuts |
 |---|---|---|---|---|
-| Attack drone (Shahed-style) | Slow, weaving, swarms of 4–12, 1 dmg | Ammo drain | Wide Warhead, Chain Detonation, Bigger Rack, CIWS | Wave 1 |
-| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Early-Warning Radar | Wave 2 |
-| Guided missile | Homes, re-targets, 2 HP, 2 dmg; 40% go for the carrier from wave 3 | Must be hit early or twice | Twin Launch, Auto-Retarget | Wave 3 |
-| Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Hold to Fire on the line | Strait (wave 6+), Gauntlet, Island, maps 4–5 |
-| Heavy cruise missile | Slow, 8 HP, 6 dmg + 1 splash; 40% go for the carrier | Easy to leave too late | Twin Launch, Hold to Fire | Strait (finale), Gauntlet, Island, maps 4–5 |
+| Attack drone (Shahed-style) | Slow, weaving, swarms of 4–12, 1 dmg | Ammo drain | Wide Warhead, Chain Detonation, Flak Burst, holding fire | Wave 1 |
+| Ballistic missile | Fast arc at where a ship *will be*; red impact circle; 2 dmg splash | Short reaction window | Faster Interceptors, Proximity Fuse, Early-Warning Radar | Wave 2 |
+| Guided missile | Homes, re-targets, 2 HP, 2 dmg; 40% go for the carrier from wave 3 | Must be hit early or twice | Twin Launch, Smoke Screen, Decoy Flares | Wave 3 |
+| Supersonic missile | ~1 s on the rail with a red lock line, then very fast; 2 dmg | Seconds of warning, then none | Faster Interceptors, Proximity Fuse, Decoy Flares L2 | Strait (wave 6+), Gauntlet, Island, maps 4–5 |
+| Heavy cruise missile | Slow, 8 HP, 4 dmg + 1 splash; 40% go for the carrier | Easy to leave too late | Twin Launch, Proximity Fuse L2, Rapid Hold | Strait (finale), Gauntlet, Island, maps 4–5 |
 | Cluster missile | Splits into 4 bomblets near its target | Must die before the split | Faster Interceptors; Wide Warhead / Chain for bomblets | Island, maps 4–5 |
-| Drone mothership | Drifts at the carrier dropping mini-drones, 5 HP | Kill the source | Twin Launch, CIWS | Maps 4–5 |
+| Drone mothership | Drifts at the carrier dropping mini-drones, 5 HP | Kill the source | Twin Launch, Escort Frigate | Maps 4–5 |
+| Strike jet (round 4) | Flies in from a screen edge along the densest band of hulls; guns hit every hull within 60 px, 1 dmg per pass; 3 HP | Tight formations | Split up (Pairs/Spread) on the orange band; Flak Burst; Smoke Screen L2 | Strait 5, Gauntlet 4, Island 4, Archipelago 3, Harbor 3 |
+| Missile bomber (round 4) | Flies a line over open water and drops light (1 HP) guided missiles after a 400 px run-in; 3 HP | Shoot it before it drops | Flak Burst, Twin Launch | Strait 7, Gauntlet 6, Island 5, Archipelago 4, Harbor 4 |
 
 Each map adds its own threat types on top of the shared wave table
 (`extras` in `maps.ts`); bomblets and mini-drones are blamed on their parent
 on the loss screen.
+
+**Attack vectors** (playtest round 4: "get away from tapping the base"). By
+the middle waves about half of all launches come from somewhere other than
+the fixed bases:
+
+- **Submarines** surface at open-water spots clear of the lanes (2 s of
+  periscope, wake and a red ring first), fire a salvo of 4 ballistics 0.75 s
+  apart or a drone swarm, and dive. They are launchers, not targets.
+- **Missile trucks** on enemy roads: **pop-ups** drive in (from off screen or
+  an island bunker), raise the launcher, fire and reverse out; **runners**
+  drive the whole shore road and stop to fire along the way.
+- **Aircraft** (see the table) come in from either edge after an arrow and a
+  band or line shows where they will fly.
+
+Trucks and subs carry launches the wave already had, and aircraft replace
+part of a wave's budget, so the vectors move where threats come from more than
+how many there are. `map.vectors` sets the wave each one starts on each map.
 
 Threat speed rises each wave (×1.0 → ×1.5 by wave 10, capped ×1.8 in endless).
 
@@ -81,10 +100,17 @@ reach to the west end.
   across a swarm), or collects a pickup if one is closer. The carrier's rack
   (shown above the deck) refills over time.
 
+Holding a finger down keeps firing at whatever is under it (every 0.6 s, free
+for everyone since round 4; Rapid Hold speeds it up).
+
 Pickups (drop from kills, fade after 5 s): ammo (rack full), repair (most
 damaged ship, else the carrier), overdrive (5 s of free instant fire — the
 carrier glows cyan with a draining ring while it lasts), EMP (rare: destroys
-every drone on screen).
+every drone on screen). Round 4 adds **Time Warp** (threats at 40% speed for
+4 s), **Shield** (no ship or carrier damage for 5 s), **Strike Package** (jets
+hit the 4 threats closest to landing and knock out every sub or truck that is
+up) and **Full Steam** (convoy 60% faster for 5 s). Timed pickups show a
+countdown chip; each new kind gets a banner the first time it drops.
 
 ## Formations
 
@@ -107,13 +133,22 @@ cards you hold); once three are held, a new card can be **swapped in** for one
 you hold (tap it, then the card it replaces — that card's levels are lost),
 and if nothing dealt can be taken without a swap, **Resupply** (repair and
 refill, no slot) appears so keeping your build is always an option. Every
-card has its own icon and colour (`src/v2/ui/icons.ts`). The Carrier CIWS is a
-last-ditch gun: short reach, carrier attackers first.
+card has its own icon and colour (`src/v2/ui/icons.ts`). Every draft includes
+at least one firepower card (`FIREPOWER`), so a hand is never all support.
 
-Faster Interceptors, Bigger Rack, Quick Reload, Wide Warhead, Chain
-Detonation, Twin Launch, Auto-Retarget, Carrier CIWS, Early-Warning Radar,
-Shore Battery (a second launch point), Hold to Fire. All levels and numbers:
-`src/v2/data/upgrades.ts`.
+17 cards since round 4 (no turret defences — the CIWS is gone):
+
+- **Firepower:** Faster Interceptors, Quick Reload (Bigger Rack folded in),
+  Wide Warhead, Chain Detonation, Twin Launch (Auto-Retarget folded in),
+  Escort Frigate (a ship that sails in beside the carrier with its own rack;
+  replaces the Shore Battery), Flak Burst, Proximity Fuse, Combat Rhythm,
+  Rapid Hold.
+- **Support:** Early-Warning Radar (raids, subs and aircraft flagged 1.5 s
+  sooner, impact points, jamming), Salvage Crews (+25% drops), Supercharged
+  Pickups, Pickup Magnet, Armored Hulls, Smoke Screen, Decoy Flares.
+
+All levels and numbers: `src/v2/data/upgrades.ts`; what each does on screen:
+`docs/design/v2-playtest-log-round4.md`.
 
 ## Where to tune
 
@@ -148,11 +183,14 @@ artifact page.
 - `npm run v2:sweep -- 16` — a bot plays every map at each skill level and
   prints clear rates. `npm run v2:analyze -- --bot=average --map=strait
   --flow=4` adds per-wave detail (threats on screen, empty-screen share, shots
-  vs CIWS shots, carrier pressure, heavy kills), and the same meter reads a
+  fired, carrier pressure, heavy kills), and the same meter reads a
   real playtest log (`npm run v2:analyze -- log.json`). Round 3 baseline, max
   flow, 16 seeds — clears for sharp / average / spammer: Strait 15/16/5,
   Gauntlet 14/13/7, Island 11/12/4, Harbor 11/9/1, Archipelago 12/8/2
-  (`docs/design/v2-playtest-log-round3.md`).
+  (`docs/design/v2-playtest-log-round3.md`). Round 4, max flow, 10 seeds per
+  map, the bots' usual card list — clears out of 50 for sharp / average /
+  spammer: 38 / 35 / 11 (round 3: 40 / 37 / 11); with random card choices
+  34 / 33 / 6 (`docs/design/v2-playtest-log-round4.md`).
 - `npm run e2e:v2` (with `npm run preview -- --port 4173` running) — real
   clicks/touches in Chromium: menu, wave 1, draft, formation popup, flow
   slider, phone landscape. Screenshots land in `e2e/shots/v2/`.

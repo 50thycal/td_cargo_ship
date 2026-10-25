@@ -43,7 +43,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
-import { UPGRADES, UPGRADE_ORDER, canSwapIn, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
+import { FIREPOWER, UPGRADES, UPGRADE_ORDER, canSwapIn, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
@@ -297,6 +297,8 @@ export interface Game {
   kills: Record<ThreatKind, number>;
   /** Ships sunk, by what finished them — the loss screen names the culprit. */
   sunkBy: Record<ThreatKind, number>;
+  /** Carrier damage taken, by what dealt it. */
+  carrierDamageBy: Record<ThreatKind, number>;
   shots: number;
   seen: Set<ThreatKind>;
   /** True once wave RULES.wavesToClear is beaten (map unlocked). */
@@ -369,6 +371,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     lost: 0,
     kills: zeroCounts(),
     sunkBy: zeroCounts(),
+    carrierDamageBy: zeroCounts(),
     shots: 0,
     seen: new Set(),
     cleared: false,
@@ -733,6 +736,13 @@ function openDraft(g: Game): void {
     const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));
     g.offer.push((fromMine ? mine : other).shift()!);
   }
+  // At least one firepower card: if none was dealt, the last card dealt from
+  // the open pool gives way to the first firepower card left in it.
+  if (!g.offer.some((id) => FIREPOWER.includes(id))) {
+    const fire = [...mine, ...other].find((id) => FIREPOWER.includes(id));
+    const k = g.offer.length - 1;
+    if (fire && k >= 0) g.offer[k] = fire;
+  }
   if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
   g.phase = 'draft';
 }
@@ -917,12 +927,13 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
   g.events.push({ kind: 'shipLost', lost: g.lost });
 }
 
-function damageCarrier(g: Game, amount: number): void {
+function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
   if (g.shieldT > 0) {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     return;
   }
   g.carrierHp = Math.max(0, g.carrierHp - amount);
+  g.carrierDamageBy[by] += amount;
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
 }
 
@@ -1141,8 +1152,9 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
       const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
-      // Smoke Screen: a guided missile can't see a ship in smoke and flies on blind.
-      const blind = th.kind === 'guided' && th.target !== CARRIER_TARGET && smoked(g, th.target);
+      // Smoke Screen: a homing missile can't see a ship in smoke and flies on blind.
+      const homing = th.kind === 'guided' || th.kind === 'supersonic' || th.kind === 'cluster';
+      const blind = homing && th.target !== CARRIER_TARGET && smoked(g, th.target);
       if (!blind) th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
     const boost =
@@ -1237,7 +1249,7 @@ function checkImpact(g: Game, th: Threat): void {
   if (th.target === CARRIER_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
-    damageCarrier(g, dmg);
+    damageCarrier(g, dmg, blame);
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: th.kind === 'heavy' || th.kind === 'mothership' ? 50 : 30 });
     return;
   }
@@ -1313,7 +1325,7 @@ function impactBallistic(g: Game, th: Threat): void {
   inBlast.forEach((o, k) => {
     if (k === 0 ? o.d <= BALLISTIC.splash : o.d <= reach) damageShip(g, o.s, dmg, 'ballistic', k === 0);
   });
-  if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg);
+  if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg, 'ballistic');
 }
 
 /** Where a threat will be `ahead` seconds from now. */
@@ -1445,17 +1457,17 @@ function reload(g: Game, dt: number): void {
     return;
   }
   // Both racks reload in parallel at the same rate.
-  const refill = (ammo: number, t: number, cap: number): [number, number] => {
+  const refill = (ammo: number, t: number, cap: number, every: number): [number, number] => {
     if (ammo >= cap) return [cap, 0];
     t += dt;
-    while (t >= g.stats.reload && ammo < cap) {
-      t -= g.stats.reload;
+    while (t >= every && ammo < cap) {
+      t -= every;
       ammo += 1;
     }
     return [ammo, ammo >= cap ? 0 : t];
   };
-  [g.ammo, g.reloadT] = refill(g.ammo, g.reloadT, g.stats.rack);
-  if (f) [f.ammo, f.reloadT] = refill(f.ammo, f.reloadT, g.stats.frigateRack);
+  [g.ammo, g.reloadT] = refill(g.ammo, g.reloadT, g.stats.rack, g.stats.reload);
+  if (f) [f.ammo, f.reloadT] = refill(f.ammo, f.reloadT, g.stats.frigateRack, g.stats.reload * FRIGATE.reloadMult);
 }
 
 /** The frigate sails in to its station; at level 2 it steams toward the
@@ -1742,11 +1754,11 @@ function strike(g: Game): void {
 function updatePickups(g: Game, dt: number): void {
   for (const p of g.pickups) p.age += dt;
   g.pickups = g.pickups.filter((p) => p.age < g.stats.pickupLife);
-  if (!g.stats.autoCollect) return;
-  // Pickup Magnet level 2: after a beat, pickups fly to the carrier.
+  if (g.stats.magnetDelay <= 0) return;
+  // Pickup Magnet: after a beat, pickups fly to the carrier.
   const c = g.map.carrier;
   for (const p of [...g.pickups]) {
-    if (p.age < PICKUPS.magnetDelay) continue;
+    if (p.age < g.stats.magnetDelay) continue;
     const d = dist(p.x, p.y, c.x, c.y);
     const stepLen = PICKUPS.magnetSpeed * dt;
     if (d <= stepLen + 30) {
