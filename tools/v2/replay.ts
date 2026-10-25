@@ -20,7 +20,7 @@ const logs: PlayLog[] = files.flatMap((f) => {
 for (const log of logs) {
   const s = log.summary;
   console.log(`\n=== ${log.id}  map ${log.map}  seed ${log.seed}  build ${log.build}  ${log.device.w}x${log.device.h}${log.device.touch ? ' touch' : ''}`);
-  console.log(`ended: ${log.end} on wave ${s?.wave}  score ${s?.score}  sunk ${s?.lost}  through ${s?.delivered}  carrier ${s?.carrierHp}  ${s?.seconds}s`);
+  console.log(`ended: ${log.end ?? 'still playing (mid-run save)'} on wave ${s?.wave}  score ${s?.score}  sunk ${s?.lost}  through ${s?.delivered}  carrier ${s?.carrierHp}  ${s?.seconds}s`);
   if ((log as { truncated?: boolean }).truncated || !log.commands.length) {
     console.log('(inputs not included — summary only)');
   } else {

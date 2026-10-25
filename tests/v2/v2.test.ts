@@ -454,6 +454,41 @@ describe('playtest logs', () => {
     expect(r.taps).toEqual(g.taps);
     expect(r.history).toEqual(g.history);
   });
+
+  it('a save taken at a wave end replays to that point, and later play does not leak into it', async () => {
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('strait', 31);
+    const rec = new Recorder(g, {
+      build: 'test',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      firstWave: 1,
+      device: { w: 844, h: 390, dpr: 2, touch: true, ua: 'test' },
+    });
+    const saves: ReturnType<typeof rec.snapshot>[] = [];
+    const at: { steps: number; score: number; lost: number }[] = [];
+    for (let i = 0; i < 60 * 60 * 5 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
+      if (g.phase === 'draft') {
+        // What the app does when the draft opens: save, then the player picks.
+        saves.push(rec.snapshot());
+        at.push({ steps: g.steps, score: g.score, lost: g.lost });
+        rec.pick(g.offer.find((id) => id === 'resupply' || canTake(g.levels, id))!);
+      }
+      if (i % 15 === 0 && g.threats.length) rec.tap(g.threats[0].x, g.threats[0].y, 40);
+      step(g, DT);
+    }
+    expect(saves.length).toBeGreaterThan(1);
+    const first = saves[0];
+    expect(first.end).toBeUndefined();
+    expect(first.summary!.steps).toBe(at[0].steps);
+    // Inputs after the save are not in it.
+    expect(first.commands.every((c) => c[0] <= at[0].steps)).toBe(true);
+    expect(first.commands.length).toBeLessThan(rec.log.commands.length);
+    for (const [k, save] of saves.entries()) {
+      const r = replay(JSON.parse(JSON.stringify(save)));
+      expect(r.phase).toBe('draft');
+      expect({ steps: r.steps, score: r.score, lost: r.lost }).toEqual(at[k]);
+    }
+  });
 });
 
 describe('three-slot loadout', () => {

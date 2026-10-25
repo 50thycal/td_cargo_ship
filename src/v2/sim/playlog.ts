@@ -43,7 +43,8 @@ export interface PlayLog {
   seed: number;
   firstWave: number;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
-  /** How the run ended: won (map cleared and stopped), lost, or quit. */
+  /** How the run ended: won (map cleared and stopped), lost, or quit.
+   *  Absent on a mid-run save. */
   end?: 'won' | 'lost' | 'quit';
   commands: LogCommand[];
   summary?: PlaySummary;
@@ -119,11 +120,25 @@ export class Recorder {
     this.log.commands.push([this.game.steps, 's', v]);
   }
 
+  /** The log so far, mid-run (no `end` yet): saved after each wave so a run
+   *  that never reaches a result screen still leaves a log. A copy, so later
+   *  inputs can't leak into it while it is being sent. */
+  snapshot(): PlayLog {
+    // A map cleared and continued into endless was sealed 'won' once; until
+    // it ends again it is still in progress.
+    const { end: _end, endedAt: _endedAt, ...log } = this.copy();
+    return log;
+  }
+
   /** Seal the log with how it ended and a readable summary. */
   finish(end: PlayLog['end']): PlayLog {
-    const g = this.game;
     this.log.end = end;
     this.log.endedAt = new Date().toISOString();
+    return this.copy();
+  }
+
+  private copy(): PlayLog {
+    const g = this.game;
     this.log.summary = {
       score: g.score,
       wave: g.wave,
@@ -136,10 +151,10 @@ export class Recorder {
       steps: g.steps,
       seconds: Math.round(g.t),
       levels: { ...g.levels },
-      drafts: this.drafts,
-      waves: g.history,
+      drafts: [...this.drafts],
+      waves: [...g.history],
     };
-    return this.log;
+    return { ...this.log, commands: [...this.log.commands] };
   }
 }
 

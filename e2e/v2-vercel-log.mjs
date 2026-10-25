@@ -7,7 +7,7 @@
 // Usage:  npm run build && node e2e/v2-vercel-log.mjs
 
 import { chromium } from 'playwright-core';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
 const ORIGIN = 'https://td-cargo-ship.vercel.app';
@@ -31,13 +31,26 @@ await context.route(`${ORIGIN}/**`, async (route) => {
   const url = new URL(route.request().url());
   if (url.pathname === '/api/playlog') {
     const log = JSON.parse(route.request().postData() ?? '{}');
-    posts.push({ id: log.id, up: apiUp, end: log.end, commands: log.commands?.length });
+    posts.push({ id: log.id, up: apiUp, end: log.end, commands: log.commands?.length, log });
     return route.fulfill({ status: apiUp ? 200 : 503, contentType: 'application/json', body: JSON.stringify(apiUp ? { ok: true } : { error: 'storage unavailable' }) });
   }
   const file = join(DIST, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!existsSync(file)) return route.fulfill({ status: 404, body: 'not found' });
   return route.fulfill({ status: 200, contentType: TYPES[extname(file)] ?? 'application/octet-stream', body: readFileSync(file) });
 });
+
+/** Tap every live threat that has no interceptor on it yet, via real clicks. */
+async function defend(page) {
+  const targets = await page.evaluate(() => {
+    const g = window.__v2.game();
+    if (!g || g.phase !== 'wave') return [];
+    return g.threats
+      .filter((t) => !g.interceptors.some((i) => i.target === t.id))
+      .slice(0, 3)
+      .map((t) => window.__v2.toClient(t.x, t.y));
+  });
+  for (const p of targets) await page.mouse.click(p.x, p.y);
+}
 
 /** Start map 1, tap a few times, then force the loss through the test hook. */
 async function playAndLose(page) {
@@ -91,7 +104,57 @@ try {
   await page.waitForSelector('[data-screen="menu"]');
   await page.waitForTimeout(1000);
   if (posts.length !== before) fail(`relaunch re-sent ${posts.length - before} delivered logs`);
-  console.log('posts:', JSON.stringify(posts));
+
+  // 5. Mid-run saves: one when a wave ends (the draft opens), one when the
+  //    game goes to the background, then the sealed log at the end — all the
+  //    same run id, the server overwriting as it goes.
+  await page.click('[data-map="strait"]');
+  await page.waitForSelector('.playing');
+  const track = page.locator('.v2-rail-right .v2-track');
+  const tb = await track.boundingBox();
+  await page.mouse.click(tb.x + tb.width / 2, tb.y + 2); // 3× speed
+  const runStart = posts.length;
+  for (let i = 0; i < 500; i++) {
+    if ((await page.evaluate(() => window.__v2.game()?.phase)) !== 'wave') break;
+    await defend(page);
+    await page.waitForTimeout(60);
+  }
+  await page.waitForSelector('[data-screen="draft"]');
+  await page.waitForTimeout(500);
+  const waveSave = posts.slice(runStart).find((p) => p.log.summary?.wave === 1);
+  console.log('wave-end save:', waveSave ? JSON.stringify({ id: waveSave.id, end: waveSave.end, steps: waveSave.log.summary.steps, commands: waveSave.commands }) : 'none');
+  if (!waveSave) fail('no save when wave 1 ended');
+  else if (waveSave.end !== undefined) fail(`wave-end save is sealed as ${waveSave.end}`);
+  if (waveSave) {
+    mkdirSync('e2e/shots/v2', { recursive: true });
+    writeFileSync('e2e/shots/v2/wave-end-save.json', JSON.stringify(waveSave.log));
+  }
+
+  const beforeHide = posts.length;
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(500);
+  const hideSave = posts.slice(beforeHide).find((p) => p.id === waveSave?.id);
+  console.log('background save:', hideSave ? 'yes' : 'none');
+  if (!hideSave) fail('no save when the game went to the background');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  });
+
+  await page.locator('.v2-card:not([disabled])').first().click();
+  await page.waitForFunction(() => window.__v2.game()?.phase === 'wave');
+  await page.evaluate(() => {
+    window.__v2.game().lost = 99;
+  });
+  await page.waitForSelector('[data-screen="result"]');
+  await page.waitForTimeout(500);
+  const final = posts.slice(runStart).filter((p) => p.id === waveSave?.id);
+  console.log('saves for this run:', JSON.stringify(final.map((p) => p.end ?? 'mid-run')));
+  if (final.at(-1)?.end !== 'lost') fail('the run was never sealed as lost');
+
+  console.log('posts:', JSON.stringify(posts.map(({ log, ...p }) => p)));
 } catch (e) {
   fail(e instanceof Error ? e.stack : String(e));
 } finally {
