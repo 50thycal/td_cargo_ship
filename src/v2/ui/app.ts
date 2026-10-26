@@ -41,7 +41,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
   supersonic: 'Watch for the red lock line, then tap fast.',
-  heavy: 'Slow but heavily armoured: eight hits. Pour fire on it early.',
+  heavy: 'Eight hits to stop. It sinks any ship it reaches and takes half the carrier.',
   cluster: 'Splits near the ships. Hit it early.',
   mothership: 'Drops mini-drones. Kill the source.',
   strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',
@@ -724,7 +724,7 @@ export class App {
 const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
-  strike: ['PICKUP: Strike Package', 'Tap it: jets hit the closest threats and knock out subs and trucks.'],
+  strike: ['PICKUP: Strike Package', 'Tap it: two friendly jets sweep the screen, shooting down what they fly over.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
 };
 

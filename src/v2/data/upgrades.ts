@@ -55,9 +55,9 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Quick Reload',
     max: 3,
     levels: [
-      `Reloads in 25% less time, rack holds ${INTERCEPTOR.rack + 1}`,
+      `Reloads in 20% less time, rack holds ${INTERCEPTOR.rack + 1}`,
+      `Reloads in 30% less time, rack holds ${INTERCEPTOR.rack + 2}`,
       `Reloads in 40% less time, rack holds ${INTERCEPTOR.rack + 3}`,
-      `Reloads in 55% less time, rack holds ${INTERCEPTOR.rack + 5}`,
     ],
     answers: 'Everything',
   },
@@ -80,9 +80,9 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Twin Launch',
     max: 3,
     levels: [
-      'Every tap fires a free 2nd interceptor; one whose target is gone flies on to another',
-      'Spare interceptors peel off to threats nobody is covering',
-      'Every tap fires 2 free extras',
+      'A tap on a tough threat (2+ hits) fires a free 2nd interceptor at it',
+      'An interceptor whose target is gone flies on to a threat close by',
+      'Up to 2 free extras at a tough threat',
     ],
     answers: 'Guided',
   },
@@ -101,8 +101,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Escort Frigate',
     max: 2,
     levels: [
-      'A frigate sails in beside the carrier with its own 3-round rack; taps fire from whichever is nearer',
-      'Frigate rack holds 5 and reloads as fast as the carrier',
+      'A frigate sails in beside the carrier: taps launch from whichever is nearer (it shares the carrier\'s rack)',
+      'The frigate gets its own 2-round rack',
     ],
     answers: 'Range',
   },
@@ -244,14 +244,17 @@ export interface DefenseStats {
   blast: number;
   chainRadius: number;
   freeExtras: number;
-  /** Twin Launch retargeting: 1 = re-aim when the target is gone, 2 = also
-   *  peel extra interceptors off an already-covered target. */
+  /** Twin Launch L2+: re-aim an interceptor whose target is gone at a threat
+   *  close by. (The round-4 peel-off level is gone: it spread one tap's
+   *  interceptors over a whole swarm.) */
   retarget: number;
   radarReticle: boolean;
   /** Seconds sooner that raids, subs and aircraft are flagged (Radar). */
   radarLead: number;
   threatSlow: number;
-  /** Escort Frigate rack size (0 without the card). */
+  /** Escort Frigate: present (level 1+), and its own rack size (level 2:
+   *  round 6 audit — a second rack that reloaded in parallel let mashing win). */
+  frigate: boolean;
   frigateRack: number;
   /** Frigate reload time as a multiple of the carrier's. */
   frigateReloadMult: number;
@@ -291,17 +294,19 @@ export function stats(levels: Levels): DefenseStats {
   const twin = lv('twin');
   return {
     interceptorSpeed: INTERCEPTOR.speed * (1 + 0.25 * lv('speed')),
-    rack: INTERCEPTOR.rack + [0, 1, 3, 5][reload],
-    reload: INTERCEPTOR.reload * [1, 0.75, 0.6, 0.45][reload],
+    rack: INTERCEPTOR.rack + [0, 1, 2, 3][reload],
+    // Round 6 audit: 55% faster with 11 rounds let mashing win (22/30).
+    reload: INTERCEPTOR.reload * [1, 0.8, 0.7, 0.6][reload],
     blast: INTERCEPTOR.blast * (1 + lv('blast')),
     chainRadius: [0, 55, 85][lv('chain')],
     freeExtras: [0, 1, 1, 2][twin],
-    retarget: [0, 1, 2, 2][twin],
+    retarget: [0, 0, 1, 1][twin],
     radarReticle: lv('radar') >= 1,
     radarLead: lv('radar') >= 1 ? 1.5 : 0,
     threatSlow: [1, 0.92, 0.82][lv('radar')],
-    frigateRack: [0, 3, 5][lv('frigate')],
-    frigateReloadMult: lv('frigate') >= 2 ? 1 : FRIGATE.reloadMult,
+    frigate: lv('frigate') >= 1,
+    frigateRack: [0, 0, 2][lv('frigate')],
+    frigateReloadMult: FRIGATE.reloadMult,
     holdRepeat: [HOLD_FREE, 0.32, 0.22][lv('hold')],
     dropMult: lv('salvage') >= 1 ? 1.25 : 1,
     pickupLife: lv('salvage') >= 2 ? PICKUPS.salvageLife : PICKUPS.life,

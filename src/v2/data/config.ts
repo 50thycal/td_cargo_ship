@@ -99,7 +99,9 @@ export const THREATS: Record<
   supersonic: { speed: 430, hp: 1, damage: 2, dropChance: 0.25, label: 'Supersonic missile' },
   /** Slow, armoured, big splash: needs four hits. */
   // Round 3: 4 hits fell in 2–6 s in the player's run; 8 makes it a real ammo sink.
-  // Round 4: 4 damage, not 6 — with no CIWS, two heavies were half the carrier.
+  // Round 7: what the big one should do — a direct hit sinks any ship (armour
+  // or not), takes half the carrier's health, and half the frigate's. The
+  // impact code special-cases it; `damage` here is not used for heavies.
   heavy: { speed: 55, hp: 8, damage: 4, dropChance: 0.6, label: 'Heavy cruise missile' },
   /** Splits into bomblets close to its target unless it is hit first. */
   cluster: { speed: 170, hp: 1, damage: 0, dropChance: 0.25, label: 'Cluster missile' },
@@ -265,9 +267,15 @@ export const FRIGATE = {
   brake: 90,
   /** It fires once it is this far onto the screen. */
   fireFromX: 40,
+  /** Hull points (round 7: heavy cruise missiles hunt it too). Sunk, it sails
+   *  back in at full strength at the start of the next wave. */
+  hp: 6,
+  hitRadius: 34,
+  /** Share of carrier-bound heavies that go for the frigate when it is out. */
+  heavyShare: 0.5,
   /** Its rack reloads this much slower than the carrier's at level 1 (at the
    *  carrier's rate it doubled your fire rate); level 2 reloads at full rate. */
-  reloadMult: 1.6,
+  reloadMult: 2,
 } as const;
 
 export const TRUCK = {
@@ -313,9 +321,14 @@ export const PICKUPS = {
   warpScale: 0.4,
   /** Shield: ships and carrier take no damage. */
   shieldTime: 5,
-  /** Strike Package: friendly jets hit this many threats (2 damage each) and
-   *  knock out every launcher that is up and firing. */
-  strikeTargets: 4,
+  /** Strike Package (round 6): two friendly jets sweep across the screen at
+   *  low level, one along the most urgent threat's line and one along a
+   *  launcher's (or the next threat's); everything within `strikeBand` of a
+   *  jet's line takes `strikeDamage` as it passes, and a sub or truck under
+   *  it is knocked out. Supercharged Pickups widen the band. */
+  strikeJets: 2,
+  strikeSpeed: 900,
+  strikeBand: 90,
   strikeDamage: 2,
   /** Full Steam: the convoy moves this much faster. */
   steamTime: 5,

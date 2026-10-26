@@ -292,9 +292,9 @@ describe('waves and upgrades', () => {
     g.offer = ['reload'];
     const before = g.ammo;
     pickUpgrade(g, 'reload');
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 3);
-    expect(g.ammo).toBe(before + 2);
-    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 5);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
+    expect(g.ammo).toBe(before + 1);
+    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 3);
   });
 
   it('twin launch sends a free second interceptor', () => {
@@ -390,7 +390,7 @@ describe('escort frigate', () => {
     const g = withFrigate();
     const f = g.frigate!;
     expect(f.x).toBeLessThan(0);
-    expect(f.ammo).toBe(3);
+    expect(f.ammo).toBe(0); // level 1 has no rack of its own
     // Off screen it cannot take a tap even when it is nearer.
     g.ammo = 0;
     addThreat(g, { x: 60, y: f.y - 150, speed: 0 });
@@ -420,21 +420,36 @@ describe('escort frigate', () => {
     }
   });
 
-  it('fires from its own rack when nearer, and covers for an empty carrier', () => {
+  it('level 1 launches from the frigate when it is nearer, using the carrier\'s rack (round 6 audit)', () => {
     const g = withFrigate();
     run(g, 8);
     const f = g.frigate!;
     const carrierAmmo = g.ammo;
     addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
-    tap(g, f.x - 60, f.y - 200, 30);
-    expect(g.frigate!.ammo).toBe(2);
-    expect(g.ammo).toBe(carrierAmmo);
+    expect(tap(g, f.x - 60, f.y - 200, 30)).toBe('fire');
     expect(g.interceptors[0].x).toBe(f.x + 8);
+    expect(g.ammo).toBe(carrierAmmo - 1);
+    // No rack of its own: with the carrier dry, it can't fire either.
+    g.ammo = 0;
+    addThreat(g, { x: f.x - 40, y: f.y - 150, speed: 0 });
+    expect(tap(g, f.x - 40, f.y - 150, 30)).toBe('dry');
+  });
+
+  it('level 2 adds its own 2-round rack, spent first, and covers for an empty carrier', () => {
+    const g = withFrigate(2);
+    run(g, 8);
+    const f = g.frigate!;
+    expect(f.ammo).toBe(2);
+    const carrierAmmo = g.ammo;
+    addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
+    tap(g, f.x - 60, f.y - 200, 30);
+    expect(g.frigate!.ammo).toBe(1);
+    expect(g.ammo).toBe(carrierAmmo);
     g.ammo = 0;
     const c = g.map.carrier;
     addThreat(g, { x: c.x, y: c.y - 150, speed: 0 });
     expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
-    expect(g.frigate!.ammo).toBe(1);
+    expect(g.frigate!.ammo).toBe(0);
   });
 
   it('has a station on every map, in open water clear of the carrier', async () => {
@@ -478,11 +493,10 @@ describe('escort frigate', () => {
     expect(prev).toBe(0);
   });
 
-  it('level 2 holds 5 and reloads as fast as the carrier', () => {
-    const g = withFrigate(2);
-    expect(g.stats.frigateRack).toBe(5);
-    expect(g.stats.frigateReloadMult).toBe(1);
-    expect(stats({ frigate: 1 }).frigateReloadMult).toBeGreaterThan(1);
+  it('its own rack reloads slower than the carrier\'s', () => {
+    expect(stats({ frigate: 2 }).frigateRack).toBe(2);
+    expect(stats({ frigate: 1 }).frigateRack).toBe(0);
+    expect(stats({ frigate: 2 }).frigateReloadMult).toBeGreaterThan(1);
   });
 
   it('leaves when swapped out', () => {
@@ -647,22 +661,44 @@ describe('round 4 roster', () => {
     expect(stats({ hold: 2 }).holdRepeat).toBeLessThan(stats({ hold: 1 }).holdRepeat);
   });
 
-  it('Twin Launch re-aims an interceptor whose target died (Auto-Retarget folded in)', () => {
+  it('Twin Launch L2 re-aims an interceptor whose target died at a threat close by (Auto-Retarget folded in)', () => {
     const play = (twin: number) => {
       const g = quietGame();
       g.levels = { twin };
       g.stats = stats(g.levels);
-      // Both interceptors commit to a 2-hit target that then dies.
-      const a = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 300, speed: 0 });
-      const b = addThreat(g, { x: 900, y: 320, speed: 0 });
-      tap(g, 800, 300, 30);
+      // Both interceptors commit to a 2-hit target that dies just before they
+      // arrive; another threat sits close by (inside the 150 px re-aim reach).
+      const a = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 250, speed: 0 });
+      const b = addThreat(g, { x: 880, y: 260, speed: 0 });
+      tap(g, 800, 250, 30);
+      run(g, 0.7);
       a.dead = true;
       g.threats = g.threats.filter((t) => !t.dead);
       run(g, 2);
       return b.dead || b.hp < 1;
     };
-    expect(play(0)).toBe(false);
-    expect(play(1)).toBe(true);
+    expect(play(1)).toBe(false);
+    expect(play(2)).toBe(true);
+  });
+
+  it('Twin Launch extras only go at the tapped threat, and only if it can take them (round 6 audit)', () => {
+    const g = quietGame();
+    g.levels = { twin: 3 };
+    g.stats = stats(g.levels);
+    // A drone (1 hit) gets no free extra, and nothing spreads to its neighbours.
+    const d = addThreat(g, { x: 800, y: 300, speed: 0 });
+    addThreat(g, { x: 860, y: 300, speed: 0 });
+    addThreat(g, { x: 740, y: 300, speed: 0 });
+    tap(g, 800, 300, 30);
+    expect(g.interceptors).toHaveLength(1);
+    expect(g.interceptors[0].target).toBe(d.id);
+    // A 2-hit guided missile gets exactly one extra; a heavy gets two.
+    const gm = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 300, speed: 0 });
+    tap(g, 500, 300, 30);
+    expect(g.interceptors.filter((i) => i.target === gm.id)).toHaveLength(2);
+    const hv = addThreat(g, { kind: 'heavy', hp: 8, x: 1100, y: 300, speed: 0 });
+    tap(g, 1100, 300, 30);
+    expect(g.interceptors.filter((i) => i.target === hv.id)).toHaveLength(3);
   });
 
   it('every draft offers at least one firepower card', async () => {
@@ -702,12 +738,11 @@ describe('formations and raid themes', () => {
     return s;
   };
 
-  it('Box armour blunts a guided hit; Spread halves a splash weapon', () => {
+  it('Box armour blunts a guided hit; nothing blunts a heavy', () => {
     expect(lone('pairs', { kind: 'guided' }).hp).toBe(SHIP.hp - 2);
     expect(lone('box', { kind: 'guided' }).hp).toBe(SHIP.hp - 1);
-    expect(lone('pairs', { kind: 'heavy', hp: 8 }).hp).toBeLessThanOrEqual(0);
-    // A heavy does 4 (round 4); Spread halves it to 2.
-    expect(lone('spread', { kind: 'heavy', hp: 8 }).hp).toBe(SHIP.hp - 2);
+    // Round 7: a heavy's direct hit sinks a ship in any formation, armour or not.
+    for (const f of ['pairs', 'spread', 'box', 'column'] as const) expect(lone(f, { kind: 'heavy', hp: 8 }).hp, f).toBeLessThanOrEqual(0);
   });
 
   it('a ballistic splash reaches the neighbours of a Box but never past one Spread ship', () => {
@@ -1303,20 +1338,27 @@ describe('round 4: new pickups', () => {
     expect(g.carrierHp).toBe(hp);
   });
 
-  it('Strike Package: hits the threats closest to landing and knocks out a firing sub', () => {
+  it('Strike Package: friendly jets sweep the screen, hitting what is on their line and knocking out a firing sub', () => {
     const g = quietGame();
-    g.raiderQueue = [{ at: g.waveT, kind: 'sub', path: [g.map.subSpots[0]], units: [{ kind: 'ballistic', size: 4 }] }];
+    const spot = g.map.subSpots[0];
+    g.raiderQueue = [{ at: g.waveT, kind: 'sub', path: [spot], units: [{ kind: 'ballistic', size: 4 }] }];
     run(g, 2.9); // warn 2 s + surface 0.8 s: now firing
     const sub = g.raiders[0];
     expect(sub.state).toBe('fire');
     const launched = g.origins.sub;
-    const near = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 300, speed: 0 });
+    // The most urgent threat sets the first jet's line; one far off any line survives.
+    const urgent = addThreat(g, { kind: 'guided', hp: 2, x: 900, y: 520, speed: 0, target: CARRIER_TARGET });
+    const away = addThreat(g, { kind: 'guided', hp: 2, x: 900, y: spot.y > 450 ? 60 : 860, speed: 0, target: CARRIER_TARGET });
     g.pickups.push({ id: 778, kind: 'strike', x: 300, y: 450, age: 0 });
     tap(g, 300, 450, 30);
-    expect(near.dead).toBe(true);
-    expect(sub.state).toBe('dive');
-    run(g, 2);
-    expect(g.origins.sub).toBeLessThan(launched + 2);
+    expect(g.allies).toHaveLength(2);
+    expect(urgent.dead).toBe(false); // not yet: the jets have to get there
+    run(g, 2.5);
+    expect(urgent.dead).toBe(true);
+    expect(away.dead).toBe(false);
+    expect(['dive', 'reverse']).toContain(sub.state);
+    expect(g.origins.sub).toBeLessThan(launched + 3);
+    expect(g.allies).toHaveLength(0); // flown off the far edge
   });
 
   it('Full Steam speeds the convoy up', () => {
@@ -1344,5 +1386,144 @@ describe('round 4: new pickups', () => {
     g.pickups.push({ id: 1, kind: 'overdrive', x: 500, y: 450, age: 0 });
     tap(g, 500, 450, 30);
     expect(g.overdriveT).toBe(PICKUPS_OD);
+  });
+});
+
+describe('round 7: the heavy cruise missile and the Island lanes', () => {
+  it('a heavy sinks an armoured ship outright', () => {
+    const g = quietGame();
+    g.levels = { armor: 2 };
+    g.stats = stats(g.levels);
+    g.spawnT = 999;
+    g.ships = [{ id: 900, x: 800, y: 470, hp: g.stats.shipHp, slot: 0, channel: 0, mult: 1 }];
+    addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 470, speed: 55, target: 900 });
+    step(g, DT);
+    expect(g.ships).toHaveLength(0);
+    expect(g.lost).toBe(1);
+  });
+
+  it('a heavy takes half the carrier\'s health, armoured carrier included', () => {
+    for (const armor of [0, 2]) {
+      const g = quietGame();
+      g.levels = armor ? { armor } : {};
+      g.stats = stats(g.levels);
+      g.carrierHp = g.stats.carrierHp;
+      const c = g.map.carrier;
+      addThreat(g, { kind: 'heavy', hp: 8, x: c.x, y: c.y, speed: 55, target: CARRIER_TARGET });
+      step(g, DT);
+      expect(g.carrierHp).toBe(g.stats.carrierHp - Math.ceil(g.stats.carrierHp / 2));
+    }
+  });
+
+  it('heavies hunt the frigate too: half its hull per hit, sunk by two, back next wave', async () => {
+    const { FRIGATE } = await import('../../src/v2/data/config');
+    const { FRIGATE_TARGET } = await import('../../src/v2/sim/game');
+    const g = quietGame();
+    g.phase = 'draft';
+    g.offer = ['frigate'];
+    pickUpgrade(g, 'frigate');
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    run(g, 8);
+    const f = g.frigate!;
+    expect(f.hp).toBe(FRIGATE.hp);
+    addThreat(g, { kind: 'heavy', hp: 8, x: f.x, y: f.y, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(g.frigate!.hp).toBe(FRIGATE.hp - Math.ceil(FRIGATE.hp / 2));
+    addThreat(g, { kind: 'heavy', hp: 8, x: f.x, y: f.y, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(g.frigate).toBeNull();
+    // A heavy already aimed at it goes for the carrier instead.
+    const late = addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 300, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(late.target).toBe(CARRIER_TARGET);
+    // Next wave it sails back in, repaired.
+    g.queue = [];
+    g.threats = [];
+    run(g, 0.1);
+    expect(g.phase).toBe('draft');
+    pickUpgrade(g, g.offer.find((id) => canTake(g.levels, id)) ?? g.offer[0]);
+    expect(g.frigate).not.toBeNull();
+    expect(g.frigate!.hp).toBe(FRIGATE.hp);
+  });
+
+  it('some carrier-bound heavies pick the frigate when it is out', async () => {
+    const { FRIGATE_TARGET } = await import('../../src/v2/sim/game');
+    let atFrigate = 0;
+    let heavies = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const g = createGame('island', seed, 8);
+      if (!g.frigate) {
+        g.levels = { ...g.levels, frigate: 1 };
+        g.stats = stats(g.levels);
+        g.frigate = { x: g.map.frigate.x, y: g.map.frigate.y, vx: 0, ammo: 0, reloadT: 0, hp: 6 };
+      }
+      for (let i = 0; i < 60 * 60 && g.phase === 'wave'; i++) {
+        step(g, DT);
+        for (const t of g.threats) if (t.kind === 'heavy' && t.age < DT * 1.5) {
+          heavies++;
+          if (t.target === FRIGATE_TARGET) atFrigate++;
+        }
+        g.lost = 0;
+        g.carrierHp = 12;
+        if (g.frigate) g.frigate.hp = 6;
+      }
+    }
+    expect(heavies).toBeGreaterThan(5);
+    expect(atFrigate).toBeGreaterThan(0);
+    expect(atFrigate).toBeLessThan(heavies);
+  });
+
+  it('Island ships use both lanes, north and south of the island', () => {
+    const g = createGame('island', 3);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const seen = new Set<number>();
+    for (let i = 0; i < 60 * 40; i++) {
+      step(g, DT);
+      for (const s of g.ships) seen.add(s.channel);
+    }
+    expect([...seen].sort()).toEqual([0, 1]);
+    const north = g.ships.filter((s) => s.channel === 1);
+    for (const s of north) expect(s.y).toBeLessThan(260);
+  });
+
+  it('the risky north lane takes one group in three, and its ships run faster', async () => {
+    const { MAPS, channelCycle } = await import('../../src/v2/data/maps');
+    expect(channelCycle(MAPS.island)).toEqual([0, 0, 1]);
+    const g = createGame('island', 4);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    let south = g.ships;
+    let north = g.ships;
+    for (let i = 0; i < 60 * 60; i++) {
+      step(g, DT);
+      south = g.ships.filter((s) => s.channel === 0 && s.x > 0);
+      north = g.ships.filter((s) => s.channel === 1 && s.x > 0);
+      if (north.length && south.length) break;
+    }
+    expect(north.length).toBeGreaterThan(0);
+    const x0 = new Map(g.ships.map((s) => [s.id, s.x]));
+    step(g, DT);
+    const moved = (list: typeof south) => Math.max(...list.map((s) => s.x - x0.get(s.id)!));
+    expect(moved(north)).toBeGreaterThan(moved(south) * 1.3);
+  });
+
+  it('Island hulls never overlap at max flow, through every formation switch', () => {
+    const g = createGame('island', 9);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    setFlow(g, FLOW_STEPS.length - 1);
+    const order = ['column', 'pairs', 'spread', 'box'] as const;
+    for (let i = 0; i < 60 * 90; i++) {
+      if (i % (60 * 9) === 0) setFormation(g, order[(i / (60 * 9)) % 4]);
+      step(g, DT);
+      for (let a = 0; a < g.ships.length; a++)
+        for (let b = a + 1; b < g.ships.length; b++) {
+          const p = g.ships[a];
+          const q = g.ships[b];
+          expect(Math.abs(p.x - q.x) < 50 && Math.abs(p.y - q.y) < 16, `overlap at step ${i}`).toBe(false);
+        }
+    }
   });
 });

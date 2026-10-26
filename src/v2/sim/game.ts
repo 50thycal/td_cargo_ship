@@ -42,11 +42,13 @@ import {
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
+import { MAPS, channelCycle, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
 import { FIREPOWER, UPGRADES, UPGRADE_ORDER, canSwapIn, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
+/** A heavy cruise missile can go for the Escort Frigate instead (round 7). */
+export const FRIGATE_TARGET = -2;
 
 export interface Ship {
   id: number;
@@ -119,7 +121,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flare' | 'flak' | 'jet' | 'block';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flare' | 'flak' | 'block';
 
 export interface Fx {
   kind: FxKind;
@@ -218,6 +220,19 @@ export interface RaiderSpawn {
 /** Where each launch came from (the analyzer reads this). */
 export type LaunchOrigin = 'base' | 'truck' | 'sub' | 'air' | 'child';
 
+/** A friendly jet from a Strike Package, sweeping one line of the screen. */
+export interface Ally {
+  id: number;
+  x: number;
+  y: number;
+  side: 1 | -1;
+  band: number;
+  /** Threats and launchers it has already hit (each once). */
+  hits: number[];
+  /** Game time of its last hit (the renderer flashes its guns). */
+  firedT: number;
+}
+
 /** A Smoke Screen cloud, riding with the ship that laid it. */
 export interface Smoke {
   ship: number;
@@ -234,6 +249,7 @@ export interface Frigate {
   vx: number;
   ammo: number;
   reloadT: number;
+  hp: number;
 }
 
 /** A raid of the current wave: when it starts, its theme, and the bases it
@@ -281,6 +297,7 @@ export interface Game {
   smokeT: number;
   smokes: Smoke[];
   flareT: number;
+  allies: Ally[];
   /** Combat Rhythm: kills counted toward the next free round. */
   rhythm: number;
   flow: number;
@@ -357,6 +374,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
     smokeT: 0,
     smokes: [],
     flareT: 0,
+    allies: [],
     rhythm: 0,
     flow: DEFAULT_FLOW,
     formation: 'pairs',
@@ -400,6 +418,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
 }
 
 function startWave(g: Game): void {
+  // A frigate sunk last wave sails back in, repaired.
+  if (g.stats.frigate && !g.frigate) syncFrigate(g, false);
   g.wave += 1;
   g.waveT = 0;
   g.phase = 'wave';
@@ -697,14 +717,14 @@ export function pickUpgrade(g: Game, id: UpgradeId, replace?: UpgradeId): void {
  *  taken, its rack grows with the level, and it leaves if swapped out. */
 function syncFrigate(g: Game, onStation: boolean): void {
   const rack = g.stats.frigateRack;
-  if (rack <= 0) {
+  if (!g.stats.frigate) {
     g.frigate = null;
     return;
   }
   if (!g.frigate) {
     const st = g.map.frigate;
     const edge = st.x < g.map.carrier.x ? FRIGATE.startX : VIEW.width - FRIGATE.startX;
-    g.frigate = { x: onStation ? st.x : edge, y: st.y, vx: 0, ammo: rack, reloadT: 0 };
+    g.frigate = { x: onStation ? st.x : edge, y: st.y, vx: 0, ammo: rack, reloadT: 0, hp: FRIGATE.hp };
     return;
   }
   g.frigate.ammo = Math.min(rack, g.frigate.ammo + 3);
@@ -772,6 +792,7 @@ export function step(g: Game, dt: number): void {
   const tdt = g.warpT > 0 ? dt * PICKUPS.warpScale : dt;
   for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
   updateTimers(g, dt);
+  updateAllies(g, dt);
   updateFrigate(g, dt);
   updateInterceptors(g, dt);
 
@@ -830,7 +851,8 @@ function spawnShips(g: Game, dt: number): void {
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
-  const channel = g.channelCursor % g.map.channels.length;
+  const cycle = channelCycle(g.map);
+  const channel = cycle[g.channelCursor % cycle.length];
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
   const ch = g.map.channels[channel];
@@ -873,7 +895,7 @@ function updateShips(g: Game, dt: number): void {
       }
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
-    s.x += shipSpeed(g) * slow * dt;
+    s.x += laneSpeed(g, s) * slow * dt;
     // Only move across into the new lane once that stretch of it is empty.
     const clear = order.every(
       (o, j) => j === i || Math.abs(o.x - s.x) >= SHIP.minGap || Math.abs(o.y - lane[i]) >= SHIP.laneMatch,
@@ -898,6 +920,17 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
 /** The convoy's speed in the current formation. */
 export function shipSpeed(g: Game): number {
   return SHIP.speed * FORMATIONS[g.formation].speed * (g.steamT > 0 ? PICKUPS.steamMult : 1);
+}
+
+/** A hull's speed in its own channel (some lanes are crossed faster). */
+function laneSpeed(g: Game, s: Ship): number {
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
+}
+
+/** How fast the ship a threat is after is moving (0 for the carrier/frigate). */
+function targetSpeed(g: Game, th: Threat): number {
+  const s = g.ships.find((o) => o.id === th.target);
+  return s ? laneSpeed(g, s) : 0;
 }
 
 // Bomblets are blamed on the cluster that dropped them.
@@ -1006,6 +1039,7 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const goCarrier = kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
+  else if (goCarrier && kind === 'heavy' && g.frigate && rng.chance(FRIGATE.heavyShare)) th.target = FRIGATE_TARGET;
 
   if (kind === 'ballistic') aimBallistic(g, th);
   const tp = targetPos(g, th);
@@ -1054,11 +1088,11 @@ function launchPlane(g: Game, l: Launch): void {
 /** Ballistics commit at launch to the point their ship will have reached. */
 function aimBallistic(g: Game, th: Threat): void {
   const t = targetPos(g, th);
-  const moving = th.target !== CARRIER_TARGET;
+  const v = targetSpeed(g, th);
   let ix = t.x;
   let dur = dist(th.sx, th.sy, t.x, t.y) / th.speed;
   for (let k = 0; k < 2; k++) {
-    ix = moving ? t.x + shipSpeed(g) * dur : t.x;
+    ix = t.x + v * dur;
     dur = dist(th.sx, th.sy, ix, t.y) / th.speed;
   }
   th.ix = Math.min(VIEW.width - 20, ix);
@@ -1088,6 +1122,7 @@ function arcTop(th: Threat, apex: number): number {
 }
 
 function targetPos(g: Game, th: Threat): Point {
+  if (th.target === FRIGATE_TARGET) return g.frigate ?? g.map.carrier;
   if (th.target !== CARRIER_TARGET) {
     const s = g.ships.find((o) => o.id === th.target);
     if (s) return s;
@@ -1097,7 +1132,8 @@ function targetPos(g: Game, th: Threat): Point {
 
 /** Drones and guided missiles find a new ship when theirs is gone. */
 function ensureTarget(g: Game, th: Threat): void {
-  if (th.target === CARRIER_TARGET) return;
+  if (th.target === FRIGATE_TARGET && !g.frigate) th.target = CARRIER_TARGET;
+  if (th.target === CARRIER_TARGET || th.target === FRIGATE_TARGET) return;
   if (g.ships.some((s) => s.id === th.target)) return;
   let best: Ship | null = null;
   let bd = Infinity;
@@ -1238,18 +1274,29 @@ const STEER: Partial<Record<ThreatKind, number>> = {
 /** Where a ship will be when a fast threat reaches it. */
 function leadPoint(g: Game, th: Threat): Point {
   const t = targetPos(g, th);
-  if (th.target === CARRIER_TARGET) return t;
+  const v = targetSpeed(g, th);
+  if (!v) return t;
   const eta = dist(th.x, th.y, t.x, t.y) / th.speed;
-  return { x: t.x + shipSpeed(g) * eta, y: t.y };
+  return { x: t.x + v * eta, y: t.y };
 }
 
 function checkImpact(g: Game, th: Threat): void {
   const dmg = THREATS[th.kind].damage;
   const blame = th.parent ?? th.kind;
-  if (th.target === CARRIER_TARGET) {
+  const heavy = th.kind === 'heavy';
+  if (th.target === FRIGATE_TARGET && g.frigate) {
+    const f = g.frigate;
+    if (dist(th.x, th.y, f.x, f.y) > FRIGATE.hitRadius) return;
+    th.dead = true;
+    addFx(g, 'boom', th.x, th.y, { life: 0.8, r: 50 });
+    damageFrigate(g, Math.ceil(FRIGATE.hp / 2));
+    return;
+  }
+  if (th.target === CARRIER_TARGET || th.target === FRIGATE_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
-    damageCarrier(g, dmg, blame);
+    // A heavy takes half the carrier's health (round 7).
+    damageCarrier(g, heavy ? Math.ceil(g.stats.carrierHp / 2) : dmg, blame);
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: th.kind === 'heavy' || th.kind === 'mothership' ? 50 : 30 });
     return;
   }
@@ -1266,7 +1313,26 @@ function checkImpact(g: Game, th: Threat): void {
   } else {
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
   }
-  damageShip(g, s, dmg, blame);
+  // A heavy's direct hit sinks the ship whatever its armour or formation.
+  damageShip(g, s, heavy ? HEAVY_SINKS : dmg, blame);
+}
+
+/** More than any hull can take, through any armour or formation cut. */
+const HEAVY_SINKS = 99;
+
+/** The frigate is hit; sunk, it is gone until the next wave. */
+function damageFrigate(g: Game, amount: number): void {
+  const f = g.frigate;
+  if (!f) return;
+  if (g.shieldT > 0) {
+    addFx(g, 'block', f.x, f.y, { life: 0.4, r: 50 });
+    return;
+  }
+  f.hp -= amount;
+  if (f.hp > 0) return;
+  addFx(g, 'sink', f.x, f.y, { life: 2.2, r: 50 });
+  addFx(g, 'text', f.x, f.y - 40, { life: 1.4, text: 'FRIGATE SUNK' });
+  g.frigate = null;
 }
 
 function child(g: Game, parent: Threat, kind: ThreatKind, target: number, heading: number): Threat {
@@ -1387,7 +1453,8 @@ function launcherPos(g: Game, l: Launcher): Point {
 function frigateReady(g: Game): boolean {
   const f = g.frigate;
   const onScreen = !!f && f.x >= FRIGATE.fireFromX && f.x <= VIEW.width - FRIGATE.fireFromX;
-  return onScreen && (g.overdriveT > 0 || f!.ammo >= 1);
+  // Level 1 fires from the carrier's rack; level 2 has its own as well.
+  return onScreen && (g.overdriveT > 0 || f!.ammo >= 1 || g.ammo >= 1);
 }
 
 /** The nearest launcher that can fire right now, or null if every rack is dry. */
@@ -1412,28 +1479,16 @@ function fireAt(g: Game, th: Threat): boolean {
     return false;
   }
   if (g.overdriveT <= 0) {
-    if (from === 'frigate') g.frigate!.ammo -= 1;
+    if (from === 'frigate' && g.frigate!.ammo >= 1) g.frigate!.ammo -= 1;
     else g.ammo -= 1;
   }
   g.shots += 1;
   spawnInterceptor(g, th, from);
-  // Free extras (Twin Launch) go to the tapped threat if it can still use
-  // them, otherwise to its nearest neighbour that needs one.
-  for (let k = 0; k < g.stats.freeExtras; k++) {
-    let target = th;
-    if (assigned(g, th.id) >= th.hp) {
-      let bd = 300;
-      for (const o of g.threats) {
-        if (o.dead || o === th || assigned(g, o.id) >= o.hp) continue;
-        const d = dist(th.x, th.y, o.x, o.y);
-        if (d < bd) {
-          bd = d;
-          target = o;
-        }
-      }
-    }
-    spawnInterceptor(g, target, from);
-  }
+  // Free extras (Twin Launch) only fly at the tapped threat, and only while it
+  // still needs them: a 2-hit guided missile dies to one tap, but a drone
+  // gets no bonus shot. (Round 6: extras used to spread to any neighbour
+  // within 300 px, so mashing the screen cleared every swarm.)
+  for (let k = 0; k < g.stats.freeExtras && assigned(g, th.id) < th.hp; k++) spawnInterceptor(g, th, from);
   return true;
 }
 
@@ -1489,7 +1544,9 @@ function updateFrigate(g: Game, dt: number): void {
   f.vx = move / dt;
 }
 
-const RETARGET_RANGE = 450;
+/** Twin Launch L2+: an interceptor whose target died re-aims at a threat this
+ *  close (round 6: 450 px let one tap hunt across the screen). */
+const RETARGET_RANGE = 150;
 
 function updateInterceptors(g: Game, dt: number): void {
   const speed = g.stats.interceptorSpeed;
@@ -1512,24 +1569,6 @@ function updateInterceptors(g: Game, dt: number): void {
           }
         }
         if (th) it.target = th.id;
-      }
-    }
-    // Auto-Retarget L2: an extra interceptor on a target that is already
-    // covered peels off to the nearest threat nobody is covering.
-    if (th && g.stats.retarget >= 2 && assigned(g, th.id) > th.hp) {
-      let bd = RETARGET_RANGE;
-      let alt: Threat | undefined;
-      for (const o of g.threats) {
-        if (o.dead || o === th || assigned(g, o.id) >= o.hp) continue;
-        const d = dist(it.x, it.y, o.x, o.y);
-        if (d < bd) {
-          bd = d;
-          alt = o;
-        }
-      }
-      if (alt) {
-        th = alt;
-        it.target = alt.id;
       }
     }
     if (th) {
@@ -1712,28 +1751,65 @@ function flak(g: Game, it: Interceptor, target: Threat | undefined): void {
   }
 }
 
-/** Strike Package: friendly jets hit the threats closest to landing and knock
- *  out every launcher that is up: a sub dives, a truck pulls back. */
+/** Strike Package: two friendly jets come in low from the left. The first
+ *  flies the most urgent threat's line; the second a launcher's line if a sub
+ *  or truck is up, else the next most urgent threat clear of the first. */
 function strike(g: Game): void {
-  const n = Math.round(PICKUPS.strikeTargets * g.stats.pickupPower);
   const live = g.threats.filter((t) => !t.dead).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b) || a.id - b.id);
-  for (const th of live.slice(0, n)) {
-    addFx(g, 'jet', th.x, th.y, { life: 0.6, x2: th.x - 260, y2: -40 });
-    damageThreat(g, th, PICKUPS.strikeDamage);
+  const band = PICKUPS.strikeBand * (g.stats.pickupPower > 1 ? 1.4 : 1);
+  const lines: number[] = [];
+  if (live.length) lines.push(live[0].y);
+  const raider = g.raiders.find((r) => raiderUp(r));
+  if (raider && lines.every((y) => Math.abs(y - raider.y) > band)) lines.push(raider.y);
+  for (const th of live) {
+    if (lines.length >= PICKUPS.strikeJets) break;
+    if (lines.every((y) => Math.abs(y - th.y) > band * 1.5)) lines.push(th.y);
   }
-  for (const r of g.raiders) {
-    const up = r.kind === 'sub' ? r.state !== 'warn' && r.state !== 'dive' && r.state !== 'reverse' : r.state !== 'reverse' && r.dist > 0;
-    if (!up) continue;
-    r.units = [];
-    r.rounds = [];
-    addFx(g, 'jet', r.x, r.y, { life: 0.6, x2: r.x - 260, y2: -40 });
-    addFx(g, 'boom', r.x, r.y, { life: 0.7, r: 30 });
-    if (r.kind === 'sub') setState(r, 'dive');
-    else if (r.kind === 'popup') setState(r, 'reverse');
-    else {
-      r.stops = [];
-      setState(r, 'drive');
+  // Nothing to hit: sweep the convoy's lanes anyway, so the pickup is seen.
+  while (lines.length < PICKUPS.strikeJets) lines.push(g.map.channels[lines.length % g.map.channels.length].y);
+  lines.forEach((y, k) => {
+    g.allies.push({ id: g.nextId++, x: -120 - k * 160, y: clamp(y, 40, VIEW.height - 40), side: 1, band, hits: [], firedT: -1 });
+  });
+}
+
+/** Is this sub or truck up and able to fire (what a strike knocks out)? */
+function raiderUp(r: Raider): boolean {
+  return r.kind === 'sub' ? r.state !== 'warn' && r.state !== 'dive' && r.state !== 'reverse' : r.state !== 'reverse' && r.dist > 0;
+}
+
+function updateAllies(g: Game, dt: number): void {
+  for (const a of g.allies) {
+    a.x += a.side * PICKUPS.strikeSpeed * dt;
+    for (const th of g.threats) {
+      if (th.dead || a.hits.includes(th.id)) continue;
+      if (Math.abs(th.y - a.y) > a.band || Math.abs(th.x - a.x) > 40) continue;
+      a.hits.push(th.id);
+      a.firedT = g.t;
+      addFx(g, 'tracer', a.x + 30, a.y, { life: 0.18, x2: th.x, y2: th.y });
+      damageThreat(g, th, PICKUPS.strikeDamage);
     }
+    for (const r of g.raiders) {
+      if (a.hits.includes(r.id) || !raiderUp(r)) continue;
+      if (Math.abs(r.y - a.y) > a.band || Math.abs(r.x - a.x) > 50) continue;
+      a.hits.push(r.id);
+      a.firedT = g.t;
+      knockOut(g, r);
+    }
+  }
+  g.allies = g.allies.filter((a) => a.x < VIEW.width + 160);
+}
+
+/** A launcher hit by a strike: its remaining rounds are lost and it leaves. */
+function knockOut(g: Game, r: Raider): void {
+  r.units = [];
+  r.rounds = [];
+  addFx(g, 'boom', r.x, r.y, { life: 0.8, r: 34 });
+  addFx(g, 'text', r.x, r.y - 30, { life: 1, text: 'KNOCKED OUT' });
+  if (r.kind === 'sub') setState(r, 'dive');
+  else if (r.kind === 'popup') setState(r, 'reverse');
+  else {
+    r.stops = [];
+    setState(r, 'drive');
   }
 }
 

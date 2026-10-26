@@ -108,8 +108,8 @@ damaged ship +2, else the carrier +2; rarer since round 5), overdrive (5 s of fr
 carrier glows cyan with a draining ring while it lasts), EMP (rare: destroys
 every drone on screen). Round 4 adds **Time Warp** (threats at 40% speed for
 4 s), **Shield** (no ship or carrier damage for 5 s), **Strike Package** (jets
-hit the 4 threats closest to landing and knock out every sub or truck that is
-up) and **Full Steam** (convoy 60% faster for 5 s). Timed pickups show a
+sweep two lines of the screen, hitting everything they fly over and
+knocking out any sub or truck under them) and **Full Steam** (convoy 60% faster for 5 s). Timed pickups show a
 countdown chip; each new kind gets a banner the first time it drops.
 
 ## Formations
@@ -140,13 +140,16 @@ at least one firepower card (`FIREPOWER`), so a hand is never all support.
 
 - **Firepower:** Faster Interceptors, Quick Reload (Bigger Rack folded in),
   Wide Warhead, Chain Detonation, Twin Launch (Auto-Retarget folded in),
-  Escort Frigate (a ship that sails in beside the carrier with its own rack
-  and holds station there; replaces the Shore Battery), Flak Burst, Proximity Fuse, Combat Rhythm,
+  Escort Frigate (a ship that sails in beside the carrier and holds station;
+  taps launch from whichever is nearer, from the carrier's rack until level 2
+  gives it a small one of its own; replaces the Shore Battery), Flak Burst, Proximity Fuse, Combat Rhythm,
   Rapid Hold.
 - **Support:** Early-Warning Radar (raids, subs and aircraft flagged 1.5 s
   sooner, impact points, jamming), Salvage Crews (+25% drops), Supercharged
   Pickups, Pickup Magnet, Armored Hulls, Smoke Screen, Decoy Flares.
 
+Round 6 audit: `npm run v2:audit` checks that no card or power-up lets
+"mashing the screen" win (see `docs/design/v2-playtest-log-round6.md`).
 All levels and numbers: `src/v2/data/upgrades.ts`; what each does on screen:
 `docs/design/v2-playtest-log-round4.md`.
 

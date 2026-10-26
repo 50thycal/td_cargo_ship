@@ -9,7 +9,7 @@
 // The only state kept here is cosmetic (dust puffs), keyed by raider id.
 
 import { PLANE, SUB, TRUCK, VIEW } from '../data/config';
-import { type Game, type Raider, type Threat } from '../sim/game';
+import { type Ally, type Game, type Raider, type Threat } from '../sim/game';
 
 const SUB_HULL = '#26302f';
 const SUB_EDGE = '#0c1212';
@@ -19,6 +19,7 @@ const TRUCK_BED = '#5a5236';
 const TUBE = '#a39874';
 const JET = '#8f99a3';
 const BOMBER = '#a3a88f';
+const ALLY = '#cfe3f7';
 /** Aircraft are drawn this much larger than their 1:1 airframe (round 4
  *  frame review: at phone size they read no bigger than a cargo ship). */
 const PLANE_SCALE = 1.35;
@@ -242,6 +243,58 @@ export function drawPlane(ctx: CanvasRenderingContext2D, g: Game, th: Threat): v
   ctx.fill();
   airframe(ctx, big, big ? BOMBER : JET, '#f2f4f6');
   ctx.restore();
+}
+
+/** A friendly Strike Package jet: pale blue with blue roundels, low over the
+ *  water (a short shadow), the band it is sweeping lit faintly ahead of it,
+ *  and its guns flashing while it is hitting something. */
+export function drawAlly(ctx: CanvasRenderingContext2D, g: Game, a: Ally): void {
+  const lead = a.side * 260;
+  ctx.save();
+  const sweep = ctx.createLinearGradient(a.x, 0, a.x + lead, 0);
+  sweep.addColorStop(0, 'rgba(96,165,250,0.22)');
+  sweep.addColorStop(1, 'rgba(96,165,250,0)');
+  ctx.fillStyle = sweep;
+  ctx.fillRect(Math.min(a.x, a.x + lead), a.y - a.band, Math.abs(lead), a.band * 2);
+  ctx.strokeStyle = 'rgba(147,197,253,0.5)';
+  ctx.setLineDash([12, 10]);
+  ctx.lineWidth = 2;
+  for (const dy of [-a.band, a.band]) {
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y + dy);
+    ctx.lineTo(a.x + lead, a.y + dy);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Contrail behind.
+  const trail = ctx.createLinearGradient(a.x, 0, a.x - a.side * 220, 0);
+  trail.addColorStop(0, 'rgba(235,245,255,0.7)');
+  trail.addColorStop(1, 'rgba(235,245,255,0)');
+  ctx.strokeStyle = trail;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(a.x - a.side * 10, a.y);
+  ctx.lineTo(a.x - a.side * 220, a.y);
+  ctx.stroke();
+  ctx.restore();
+  // Shadow, then the jet.
+  for (const shadow of [true, false]) {
+    ctx.save();
+    ctx.translate(a.x + (shadow ? 14 : 0), a.y + (shadow ? 22 : 0));
+    ctx.rotate(a.side > 0 ? 0 : Math.PI);
+    ctx.scale(PLANE_SCALE * 1.1, PLANE_SCALE * 1.1);
+    if (shadow) {
+      ctx.globalAlpha = 0.3;
+      airframe(ctx, false, '#000', '#000');
+    } else {
+      airframe(ctx, false, ALLY, '#ffffff', '#2563eb');
+    }
+    ctx.restore();
+  }
+  if (g.t - a.firedT < 0.15) {
+    ctx.fillStyle = 'rgba(255,240,170,0.95)';
+    star(ctx, a.x + a.side * 40, a.y, 10);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -475,7 +528,7 @@ function drawTruck(ctx: CanvasRenderingContext2D, g: Game, r: Raider): void {
 // Shapes
 
 /** A jet (swept wings) or a bomber (straight wings, two engines), nose +x. */
-function airframe(ctx: CanvasRenderingContext2D, big: boolean, fill: string, edge: string): void {
+function airframe(ctx: CanvasRenderingContext2D, big: boolean, fill: string, edge: string, roundel = '#d94a3a'): void {
   ctx.fillStyle = fill;
   ctx.strokeStyle = edge;
   ctx.lineWidth = 2;
@@ -543,12 +596,12 @@ function airframe(ctx: CanvasRenderingContext2D, big: boolean, fill: string, edg
     ctx.stroke();
   }
   if (edge !== '#000') {
-    // Canopy and enemy roundels.
+    // Canopy and roundels (red: enemy, blue: friendly).
     ctx.fillStyle = '#9fd3ef';
     ctx.beginPath();
     ctx.ellipse(big ? 24 : 14, 0, 5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#d94a3a';
+    ctx.fillStyle = roundel;
     for (const wy of big ? [-28, 28] : [-14, 14]) {
       ctx.beginPath();
       ctx.arc(big ? -6 : -12, wy, 3, 0, Math.PI * 2);
