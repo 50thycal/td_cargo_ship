@@ -267,7 +267,7 @@ export const FRIGATE = {
   fireFromX: 40,
   /** Its rack reloads this much slower than the carrier's at level 1 (at the
    *  carrier's rate it doubled your fire rate); level 2 reloads at full rate. */
-  reloadMult: 1.6,
+  reloadMult: 2,
 } as const;
 
 export const TRUCK = {
@@ -313,9 +313,14 @@ export const PICKUPS = {
   warpScale: 0.4,
   /** Shield: ships and carrier take no damage. */
   shieldTime: 5,
-  /** Strike Package: friendly jets hit this many threats (2 damage each) and
-   *  knock out every launcher that is up and firing. */
-  strikeTargets: 4,
+  /** Strike Package (round 6): two friendly jets sweep across the screen at
+   *  low level, one along the most urgent threat's line and one along a
+   *  launcher's (or the next threat's); everything within `strikeBand` of a
+   *  jet's line takes `strikeDamage` as it passes, and a sub or truck under
+   *  it is knocked out. Supercharged Pickups widen the band. */
+  strikeJets: 2,
+  strikeSpeed: 900,
+  strikeBand: 90,
   strikeDamage: 2,
   /** Full Steam: the convoy moves this much faster. */
   steamTime: 5,

@@ -24,8 +24,10 @@ import {
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
  *  heavies, card swaps) — a v2 log only replays on a round-2 build.
  *  4: playtest round 4 (subs, trucks, aircraft, the new roster and pickups).
- *  5: round 5 (frigate holds station, rarer repairs, 1-damage ballistic spill). */
-export const LOG_VERSION = 5;
+ *  5: round 5 (frigate holds station, rarer repairs, 1-damage ballistic spill).
+ *  6: round 6 audit (Twin Launch, Quick Reload and frigate reworked; the
+ *     Strike Package is now two jets sweeping the screen). */
+export const LOG_VERSION = 6;
 export const SIM_DT = 1 / 60;
 
 /** Compact input encoding: [step, code, ...args]. */

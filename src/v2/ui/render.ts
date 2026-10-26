@@ -5,7 +5,7 @@ import { BALLISTIC, CARRIER, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, ty
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
-import { drawBunkers, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
+import { drawAlly, drawBunkers, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
 const C = {
   waterDeep: '#0b2433',
@@ -81,6 +81,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     drawPlane(ctx, g, th);
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
+  for (const a of g.allies) drawAlly(ctx, g, a);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
   for (const r of ripples) {
@@ -383,9 +384,9 @@ function drawFrigate(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.fillStyle = C.interceptor;
   for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) ctx.fillRect(-36 + i * 8, -6 + j * 7, 5, 5);
   ctx.restore();
-  // Its own rack, like the carrier's.
+  // Level 2's own rack, like the carrier's (level 1 fires from the carrier's).
   const rack = g.stats.frigateRack;
-  drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / (g.stats.reload * g.stats.frigateReloadMult), g.overdriveT > 0);
+  if (rack > 0) drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / (g.stats.reload * g.stats.frigateReloadMult), g.overdriveT > 0);
 }
 
 /** A row of rack pips centred on (x, y): full, loading (partly filled), empty. */
@@ -950,46 +951,6 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
         ctx.fill();
         break;
-      case 'jet': {
-        // Strike Package: a friendly jet dives across the target, leaving a trail.
-        const k = Math.min(1, u * 2.2);
-        const jx = f.x2 + (f.x + 200 - f.x2) * k;
-        const jy = f.y2 + (f.y + 40 - f.y2) * k;
-        // Contrail, then the jet itself: a white delta with a red stripe.
-        ctx.strokeStyle = `rgba(255,255,255,${0.45 * (1 - u)})`;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([10, 8]);
-        ctx.beginPath();
-        ctx.moveTo(f.x2, f.y2);
-        ctx.lineTo(jx, jy);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        const ang = Math.atan2(f.y + 40 - f.y2, f.x + 200 - f.x2);
-        ctx.save();
-        ctx.translate(jx, jy);
-        ctx.rotate(ang);
-        ctx.globalAlpha = 1 - u * u;
-        ctx.fillStyle = '#f2f4f6';
-        ctx.beginPath();
-        ctx.moveTo(18, 0);
-        ctx.lineTo(-10, -13);
-        ctx.lineTo(-6, 0);
-        ctx.lineTo(-10, 13);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#f87171';
-        ctx.fillRect(-4, -1.5, 14, 3);
-        ctx.restore();
-        ctx.strokeStyle = `rgba(255,220,180,${0.8 * (1 - u)})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(f.x - 14, f.y - 14);
-        ctx.lineTo(f.x + 14, f.y + 14);
-        ctx.moveTo(f.x + 14, f.y - 14);
-        ctx.lineTo(f.x - 14, f.y + 14);
-        ctx.stroke();
-        break;
-      }
       case 'block':
         // A hit turned away by the Shield.
         ctx.strokeStyle = `rgba(226,232,240,${1 - u})`;

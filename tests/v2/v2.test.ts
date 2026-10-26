@@ -292,9 +292,9 @@ describe('waves and upgrades', () => {
     g.offer = ['reload'];
     const before = g.ammo;
     pickUpgrade(g, 'reload');
-    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 3);
-    expect(g.ammo).toBe(before + 2);
-    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 5);
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
+    expect(g.ammo).toBe(before + 1);
+    expect(stats({ reload: 3 }).rack).toBe(INTERCEPTOR.rack + 3);
   });
 
   it('twin launch sends a free second interceptor', () => {
@@ -390,7 +390,7 @@ describe('escort frigate', () => {
     const g = withFrigate();
     const f = g.frigate!;
     expect(f.x).toBeLessThan(0);
-    expect(f.ammo).toBe(3);
+    expect(f.ammo).toBe(0); // level 1 has no rack of its own
     // Off screen it cannot take a tap even when it is nearer.
     g.ammo = 0;
     addThreat(g, { x: 60, y: f.y - 150, speed: 0 });
@@ -420,21 +420,36 @@ describe('escort frigate', () => {
     }
   });
 
-  it('fires from its own rack when nearer, and covers for an empty carrier', () => {
+  it('level 1 launches from the frigate when it is nearer, using the carrier\'s rack (round 6 audit)', () => {
     const g = withFrigate();
     run(g, 8);
     const f = g.frigate!;
     const carrierAmmo = g.ammo;
     addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
-    tap(g, f.x - 60, f.y - 200, 30);
-    expect(g.frigate!.ammo).toBe(2);
-    expect(g.ammo).toBe(carrierAmmo);
+    expect(tap(g, f.x - 60, f.y - 200, 30)).toBe('fire');
     expect(g.interceptors[0].x).toBe(f.x + 8);
+    expect(g.ammo).toBe(carrierAmmo - 1);
+    // No rack of its own: with the carrier dry, it can't fire either.
+    g.ammo = 0;
+    addThreat(g, { x: f.x - 40, y: f.y - 150, speed: 0 });
+    expect(tap(g, f.x - 40, f.y - 150, 30)).toBe('dry');
+  });
+
+  it('level 2 adds its own 2-round rack, spent first, and covers for an empty carrier', () => {
+    const g = withFrigate(2);
+    run(g, 8);
+    const f = g.frigate!;
+    expect(f.ammo).toBe(2);
+    const carrierAmmo = g.ammo;
+    addThreat(g, { x: f.x - 60, y: f.y - 200, speed: 0 });
+    tap(g, f.x - 60, f.y - 200, 30);
+    expect(g.frigate!.ammo).toBe(1);
+    expect(g.ammo).toBe(carrierAmmo);
     g.ammo = 0;
     const c = g.map.carrier;
     addThreat(g, { x: c.x, y: c.y - 150, speed: 0 });
     expect(tap(g, c.x, c.y - 150, 30)).toBe('fire');
-    expect(g.frigate!.ammo).toBe(1);
+    expect(g.frigate!.ammo).toBe(0);
   });
 
   it('has a station on every map, in open water clear of the carrier', async () => {
@@ -478,11 +493,10 @@ describe('escort frigate', () => {
     expect(prev).toBe(0);
   });
 
-  it('level 2 holds 5 and reloads as fast as the carrier', () => {
-    const g = withFrigate(2);
-    expect(g.stats.frigateRack).toBe(5);
-    expect(g.stats.frigateReloadMult).toBe(1);
-    expect(stats({ frigate: 1 }).frigateReloadMult).toBeGreaterThan(1);
+  it('its own rack reloads slower than the carrier\'s', () => {
+    expect(stats({ frigate: 2 }).frigateRack).toBe(2);
+    expect(stats({ frigate: 1 }).frigateRack).toBe(0);
+    expect(stats({ frigate: 2 }).frigateReloadMult).toBeGreaterThan(1);
   });
 
   it('leaves when swapped out', () => {
@@ -647,22 +661,44 @@ describe('round 4 roster', () => {
     expect(stats({ hold: 2 }).holdRepeat).toBeLessThan(stats({ hold: 1 }).holdRepeat);
   });
 
-  it('Twin Launch re-aims an interceptor whose target died (Auto-Retarget folded in)', () => {
+  it('Twin Launch L2 re-aims an interceptor whose target died at a threat close by (Auto-Retarget folded in)', () => {
     const play = (twin: number) => {
       const g = quietGame();
       g.levels = { twin };
       g.stats = stats(g.levels);
-      // Both interceptors commit to a 2-hit target that then dies.
-      const a = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 300, speed: 0 });
-      const b = addThreat(g, { x: 900, y: 320, speed: 0 });
-      tap(g, 800, 300, 30);
+      // Both interceptors commit to a 2-hit target that dies just before they
+      // arrive; another threat sits close by (inside the 150 px re-aim reach).
+      const a = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 250, speed: 0 });
+      const b = addThreat(g, { x: 880, y: 260, speed: 0 });
+      tap(g, 800, 250, 30);
+      run(g, 0.7);
       a.dead = true;
       g.threats = g.threats.filter((t) => !t.dead);
       run(g, 2);
       return b.dead || b.hp < 1;
     };
-    expect(play(0)).toBe(false);
-    expect(play(1)).toBe(true);
+    expect(play(1)).toBe(false);
+    expect(play(2)).toBe(true);
+  });
+
+  it('Twin Launch extras only go at the tapped threat, and only if it can take them (round 6 audit)', () => {
+    const g = quietGame();
+    g.levels = { twin: 3 };
+    g.stats = stats(g.levels);
+    // A drone (1 hit) gets no free extra, and nothing spreads to its neighbours.
+    const d = addThreat(g, { x: 800, y: 300, speed: 0 });
+    addThreat(g, { x: 860, y: 300, speed: 0 });
+    addThreat(g, { x: 740, y: 300, speed: 0 });
+    tap(g, 800, 300, 30);
+    expect(g.interceptors).toHaveLength(1);
+    expect(g.interceptors[0].target).toBe(d.id);
+    // A 2-hit guided missile gets exactly one extra; a heavy gets two.
+    const gm = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 300, speed: 0 });
+    tap(g, 500, 300, 30);
+    expect(g.interceptors.filter((i) => i.target === gm.id)).toHaveLength(2);
+    const hv = addThreat(g, { kind: 'heavy', hp: 8, x: 1100, y: 300, speed: 0 });
+    tap(g, 1100, 300, 30);
+    expect(g.interceptors.filter((i) => i.target === hv.id)).toHaveLength(3);
   });
 
   it('every draft offers at least one firepower card', async () => {
@@ -1303,20 +1339,27 @@ describe('round 4: new pickups', () => {
     expect(g.carrierHp).toBe(hp);
   });
 
-  it('Strike Package: hits the threats closest to landing and knocks out a firing sub', () => {
+  it('Strike Package: friendly jets sweep the screen, hitting what is on their line and knocking out a firing sub', () => {
     const g = quietGame();
-    g.raiderQueue = [{ at: g.waveT, kind: 'sub', path: [g.map.subSpots[0]], units: [{ kind: 'ballistic', size: 4 }] }];
+    const spot = g.map.subSpots[0];
+    g.raiderQueue = [{ at: g.waveT, kind: 'sub', path: [spot], units: [{ kind: 'ballistic', size: 4 }] }];
     run(g, 2.9); // warn 2 s + surface 0.8 s: now firing
     const sub = g.raiders[0];
     expect(sub.state).toBe('fire');
     const launched = g.origins.sub;
-    const near = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 300, speed: 0 });
+    // The most urgent threat sets the first jet's line; one far off any line survives.
+    const urgent = addThreat(g, { kind: 'guided', hp: 2, x: 900, y: 520, speed: 0, target: CARRIER_TARGET });
+    const away = addThreat(g, { kind: 'guided', hp: 2, x: 900, y: spot.y > 450 ? 60 : 860, speed: 0, target: CARRIER_TARGET });
     g.pickups.push({ id: 778, kind: 'strike', x: 300, y: 450, age: 0 });
     tap(g, 300, 450, 30);
-    expect(near.dead).toBe(true);
-    expect(sub.state).toBe('dive');
-    run(g, 2);
-    expect(g.origins.sub).toBeLessThan(launched + 2);
+    expect(g.allies).toHaveLength(2);
+    expect(urgent.dead).toBe(false); // not yet: the jets have to get there
+    run(g, 2.5);
+    expect(urgent.dead).toBe(true);
+    expect(away.dead).toBe(false);
+    expect(['dive', 'reverse']).toContain(sub.state);
+    expect(g.origins.sub).toBeLessThan(launched + 3);
+    expect(g.allies).toHaveLength(0); // flown off the far edge
   });
 
   it('Full Steam speeds the convoy up', () => {
