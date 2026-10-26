@@ -738,12 +738,11 @@ describe('formations and raid themes', () => {
     return s;
   };
 
-  it('Box armour blunts a guided hit; Spread halves a splash weapon', () => {
+  it('Box armour blunts a guided hit; nothing blunts a heavy', () => {
     expect(lone('pairs', { kind: 'guided' }).hp).toBe(SHIP.hp - 2);
     expect(lone('box', { kind: 'guided' }).hp).toBe(SHIP.hp - 1);
-    expect(lone('pairs', { kind: 'heavy', hp: 8 }).hp).toBeLessThanOrEqual(0);
-    // A heavy does 4 (round 4); Spread halves it to 2.
-    expect(lone('spread', { kind: 'heavy', hp: 8 }).hp).toBe(SHIP.hp - 2);
+    // Round 7: a heavy's direct hit sinks a ship in any formation, armour or not.
+    for (const f of ['pairs', 'spread', 'box', 'column'] as const) expect(lone(f, { kind: 'heavy', hp: 8 }).hp, f).toBeLessThanOrEqual(0);
   });
 
   it('a ballistic splash reaches the neighbours of a Box but never past one Spread ship', () => {
@@ -1387,5 +1386,144 @@ describe('round 4: new pickups', () => {
     g.pickups.push({ id: 1, kind: 'overdrive', x: 500, y: 450, age: 0 });
     tap(g, 500, 450, 30);
     expect(g.overdriveT).toBe(PICKUPS_OD);
+  });
+});
+
+describe('round 7: the heavy cruise missile and the Island lanes', () => {
+  it('a heavy sinks an armoured ship outright', () => {
+    const g = quietGame();
+    g.levels = { armor: 2 };
+    g.stats = stats(g.levels);
+    g.spawnT = 999;
+    g.ships = [{ id: 900, x: 800, y: 470, hp: g.stats.shipHp, slot: 0, channel: 0, mult: 1 }];
+    addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 470, speed: 55, target: 900 });
+    step(g, DT);
+    expect(g.ships).toHaveLength(0);
+    expect(g.lost).toBe(1);
+  });
+
+  it('a heavy takes half the carrier\'s health, armoured carrier included', () => {
+    for (const armor of [0, 2]) {
+      const g = quietGame();
+      g.levels = armor ? { armor } : {};
+      g.stats = stats(g.levels);
+      g.carrierHp = g.stats.carrierHp;
+      const c = g.map.carrier;
+      addThreat(g, { kind: 'heavy', hp: 8, x: c.x, y: c.y, speed: 55, target: CARRIER_TARGET });
+      step(g, DT);
+      expect(g.carrierHp).toBe(g.stats.carrierHp - Math.ceil(g.stats.carrierHp / 2));
+    }
+  });
+
+  it('heavies hunt the frigate too: half its hull per hit, sunk by two, back next wave', async () => {
+    const { FRIGATE } = await import('../../src/v2/data/config');
+    const { FRIGATE_TARGET } = await import('../../src/v2/sim/game');
+    const g = quietGame();
+    g.phase = 'draft';
+    g.offer = ['frigate'];
+    pickUpgrade(g, 'frigate');
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    run(g, 8);
+    const f = g.frigate!;
+    expect(f.hp).toBe(FRIGATE.hp);
+    addThreat(g, { kind: 'heavy', hp: 8, x: f.x, y: f.y, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(g.frigate!.hp).toBe(FRIGATE.hp - Math.ceil(FRIGATE.hp / 2));
+    addThreat(g, { kind: 'heavy', hp: 8, x: f.x, y: f.y, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(g.frigate).toBeNull();
+    // A heavy already aimed at it goes for the carrier instead.
+    const late = addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 300, speed: 55, target: FRIGATE_TARGET });
+    step(g, DT);
+    expect(late.target).toBe(CARRIER_TARGET);
+    // Next wave it sails back in, repaired.
+    g.queue = [];
+    g.threats = [];
+    run(g, 0.1);
+    expect(g.phase).toBe('draft');
+    pickUpgrade(g, g.offer.find((id) => canTake(g.levels, id)) ?? g.offer[0]);
+    expect(g.frigate).not.toBeNull();
+    expect(g.frigate!.hp).toBe(FRIGATE.hp);
+  });
+
+  it('some carrier-bound heavies pick the frigate when it is out', async () => {
+    const { FRIGATE_TARGET } = await import('../../src/v2/sim/game');
+    let atFrigate = 0;
+    let heavies = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const g = createGame('island', seed, 8);
+      if (!g.frigate) {
+        g.levels = { ...g.levels, frigate: 1 };
+        g.stats = stats(g.levels);
+        g.frigate = { x: g.map.frigate.x, y: g.map.frigate.y, vx: 0, ammo: 0, reloadT: 0, hp: 6 };
+      }
+      for (let i = 0; i < 60 * 60 && g.phase === 'wave'; i++) {
+        step(g, DT);
+        for (const t of g.threats) if (t.kind === 'heavy' && t.age < DT * 1.5) {
+          heavies++;
+          if (t.target === FRIGATE_TARGET) atFrigate++;
+        }
+        g.lost = 0;
+        g.carrierHp = 12;
+        if (g.frigate) g.frigate.hp = 6;
+      }
+    }
+    expect(heavies).toBeGreaterThan(5);
+    expect(atFrigate).toBeGreaterThan(0);
+    expect(atFrigate).toBeLessThan(heavies);
+  });
+
+  it('Island ships use both lanes, north and south of the island', () => {
+    const g = createGame('island', 3);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const seen = new Set<number>();
+    for (let i = 0; i < 60 * 40; i++) {
+      step(g, DT);
+      for (const s of g.ships) seen.add(s.channel);
+    }
+    expect([...seen].sort()).toEqual([0, 1]);
+    const north = g.ships.filter((s) => s.channel === 1);
+    for (const s of north) expect(s.y).toBeLessThan(260);
+  });
+
+  it('the risky north lane takes one group in three, and its ships run faster', async () => {
+    const { MAPS, channelCycle } = await import('../../src/v2/data/maps');
+    expect(channelCycle(MAPS.island)).toEqual([0, 0, 1]);
+    const g = createGame('island', 4);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    let south = g.ships;
+    let north = g.ships;
+    for (let i = 0; i < 60 * 60; i++) {
+      step(g, DT);
+      south = g.ships.filter((s) => s.channel === 0 && s.x > 0);
+      north = g.ships.filter((s) => s.channel === 1 && s.x > 0);
+      if (north.length && south.length) break;
+    }
+    expect(north.length).toBeGreaterThan(0);
+    const x0 = new Map(g.ships.map((s) => [s.id, s.x]));
+    step(g, DT);
+    const moved = (list: typeof south) => Math.max(...list.map((s) => s.x - x0.get(s.id)!));
+    expect(moved(north)).toBeGreaterThan(moved(south) * 1.3);
+  });
+
+  it('Island hulls never overlap at max flow, through every formation switch', () => {
+    const g = createGame('island', 9);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    setFlow(g, FLOW_STEPS.length - 1);
+    const order = ['column', 'pairs', 'spread', 'box'] as const;
+    for (let i = 0; i < 60 * 90; i++) {
+      if (i % (60 * 9) === 0) setFormation(g, order[(i / (60 * 9)) % 4]);
+      step(g, DT);
+      for (let a = 0; a < g.ships.length; a++)
+        for (let b = a + 1; b < g.ships.length; b++) {
+          const p = g.ships[a];
+          const q = g.ships[b];
+          expect(Math.abs(p.x - q.x) < 50 && Math.abs(p.y - q.y) < 16, `overlap at step ${i}`).toBe(false);
+        }
+    }
   });
 });

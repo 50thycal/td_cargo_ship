@@ -113,3 +113,42 @@ I also tried 10% fewer threats per wave to win back the careful-play loss. It he
   - Strike: the jets need to reach a threat before it dies, a threat off their lines survives, and a firing sub is knocked out.
 - **Browser (e2e):** `e2e:v2`, `e2e:v2:log` and the V1 smoke test pass.
 - **Log version:** `LOG_VERSION` is 6.
+
+## Round 7 (same PR): Island lanes and the heavy cruise missile
+
+The player's next Island game (lost on wave 8, 6 sunk) raised two things:
+- "the ships are only going to the bottom lane … they should be able to do both";
+- the heavy cruise missile ("that big bomb that's really hard to take down") should sink any ship it hits, take half the carrier's health, and half the escort's.
+
+**The heavy.**
+- A direct hit sinks the ship whatever its armour or formation.
+- A carrier hit takes half the carrier's maximum health (6 of 12, or 9 of 17 with Armored Hulls L2).
+- Half of the heavies that would go for the carrier go for the Escort Frigate instead when it is out. The frigate now has 6 hull points shown on a bar; a heavy takes 3.
+- A sunk frigate shows "FRIGATE SUNK" and sails back in, repaired, at the start of the next wave. A heavy already heading for it switches to the carrier.
+- Splash onto other ships is still 1. Its debut banner now says what it does.
+
+**Island's north lane.**
+- Island had a single lane, south of the island. It now has a second one between the far shore and the island (y 190).
+- The first version made Island far harder. With 20 seeds, the average bot cleared 5/20 (usual cards) and 2/20 (random cards), against 15 and 14 before.
+- Measured by lane: the north lane took 4.5 sinks a game, the south 0.8. It is narrow, has bases on both sides, and sits 570 px from the carrier.
+- Tried and rejected:
+  - threat scale 1.0 or 0.85: little change;
+  - removing the middle far-shore base: worse.
+- Kept:
+  - the north lane carries one spawn group in three (`share`);
+  - its ships run 1.5× faster (`speed`, which the threats' aim also accounts for);
+  - Island's threat scale goes 1.2 → 1.1;
+  - the Island bomber line moves off the new lane (190 → 480), and a sub spot that sat in it is removed.
+- Result: 15/14 (usual cards) and 11/8 (random cards) for sharp/average, close to round 6's 13/15 and 12/14. The north lane now takes 1.25 sinks a game against 2.15 in the south.
+- Screenshot checked at phone size: groups in both lanes, and the frigate's bar at half after a heavy.
+
+**Other maps.** Measured with the heavy change, Strait, Gauntlet, Harbor and Archipelago are unchanged within noise.
+
+**Tests:** 819/819, adding checks for:
+- a heavy sinking an armoured ship;
+- half the carrier, armoured or not;
+- the frigate taking half per hit, sinking after two, and returning next wave;
+- some heavies choosing the frigate;
+- Island using both lanes, the 1-in-3 cycle, the faster north lane, and no overlapping hulls at max flow through every formation.
+
+`e2e:v2`, `e2e:v2:log` and the V1 smoke test pass.

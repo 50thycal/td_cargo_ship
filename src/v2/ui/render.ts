@@ -1,7 +1,7 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
+import { BALLISTIC, CARRIER, FRIGATE, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
@@ -387,6 +387,12 @@ function drawFrigate(ctx: CanvasRenderingContext2D, g: Game): void {
   // Level 2's own rack, like the carrier's (level 1 fires from the carrier's).
   const rack = g.stats.frigateRack;
   if (rack > 0) drawRack(ctx, x, y - B - 10, rack, f.ammo, f.reloadT / (g.stats.reload * g.stats.frigateReloadMult), g.overdriveT > 0);
+  // Its hull points (round 7: heavies hunt it), as the carrier shows its own.
+  const frac = Math.max(0, f.hp / FRIGATE.hp);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(x - 36, y + B + 7, 72, 5);
+  ctx.fillStyle = frac > 0.5 ? '#5ee08a' : frac > 0.25 ? '#f5c542' : C.danger;
+  ctx.fillRect(x - 36, y + B + 7, 72 * frac, 5);
 }
 
 /** A row of rack pips centred on (x, y): full, loading (partly filled), empty. */

@@ -41,7 +41,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   ballistic: 'Fast arc. The red circle is where it lands.',
   guided: 'Homes on a ship. Takes two hits.',
   supersonic: 'Watch for the red lock line, then tap fast.',
-  heavy: 'Slow but heavily armoured: eight hits. Pour fire on it early.',
+  heavy: 'Eight hits to stop. It sinks any ship it reaches and takes half the carrier.',
   cluster: 'Splits near the ships. Hit it early.',
   mothership: 'Drops mini-drones. Kill the source.',
   strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',

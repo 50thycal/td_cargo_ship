@@ -42,11 +42,13 @@ import {
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { MAPS, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
+import { MAPS, channelCycle, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
 import { FIREPOWER, UPGRADES, UPGRADE_ORDER, canSwapIn, canTake, stats, type DefenseStats, type Levels, type UpgradeId } from '../data/upgrades';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
+/** A heavy cruise missile can go for the Escort Frigate instead (round 7). */
+export const FRIGATE_TARGET = -2;
 
 export interface Ship {
   id: number;
@@ -247,6 +249,7 @@ export interface Frigate {
   vx: number;
   ammo: number;
   reloadT: number;
+  hp: number;
 }
 
 /** A raid of the current wave: when it starts, its theme, and the bases it
@@ -415,6 +418,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
 }
 
 function startWave(g: Game): void {
+  // A frigate sunk last wave sails back in, repaired.
+  if (g.stats.frigate && !g.frigate) syncFrigate(g, false);
   g.wave += 1;
   g.waveT = 0;
   g.phase = 'wave';
@@ -719,7 +724,7 @@ function syncFrigate(g: Game, onStation: boolean): void {
   if (!g.frigate) {
     const st = g.map.frigate;
     const edge = st.x < g.map.carrier.x ? FRIGATE.startX : VIEW.width - FRIGATE.startX;
-    g.frigate = { x: onStation ? st.x : edge, y: st.y, vx: 0, ammo: rack, reloadT: 0 };
+    g.frigate = { x: onStation ? st.x : edge, y: st.y, vx: 0, ammo: rack, reloadT: 0, hp: FRIGATE.hp };
     return;
   }
   g.frigate.ammo = Math.min(rack, g.frigate.ammo + 3);
@@ -846,7 +851,8 @@ function spawnShips(g: Game, dt: number): void {
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
-  const channel = g.channelCursor % g.map.channels.length;
+  const cycle = channelCycle(g.map);
+  const channel = cycle[g.channelCursor % cycle.length];
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
   const ch = g.map.channels[channel];
@@ -889,7 +895,7 @@ function updateShips(g: Game, dt: number): void {
       }
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
-    s.x += shipSpeed(g) * slow * dt;
+    s.x += laneSpeed(g, s) * slow * dt;
     // Only move across into the new lane once that stretch of it is empty.
     const clear = order.every(
       (o, j) => j === i || Math.abs(o.x - s.x) >= SHIP.minGap || Math.abs(o.y - lane[i]) >= SHIP.laneMatch,
@@ -914,6 +920,17 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
 /** The convoy's speed in the current formation. */
 export function shipSpeed(g: Game): number {
   return SHIP.speed * FORMATIONS[g.formation].speed * (g.steamT > 0 ? PICKUPS.steamMult : 1);
+}
+
+/** A hull's speed in its own channel (some lanes are crossed faster). */
+function laneSpeed(g: Game, s: Ship): number {
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
+}
+
+/** How fast the ship a threat is after is moving (0 for the carrier/frigate). */
+function targetSpeed(g: Game, th: Threat): number {
+  const s = g.ships.find((o) => o.id === th.target);
+  return s ? laneSpeed(g, s) : 0;
 }
 
 // Bomblets are blamed on the cluster that dropped them.
@@ -1022,6 +1039,7 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const goCarrier = kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
+  else if (goCarrier && kind === 'heavy' && g.frigate && rng.chance(FRIGATE.heavyShare)) th.target = FRIGATE_TARGET;
 
   if (kind === 'ballistic') aimBallistic(g, th);
   const tp = targetPos(g, th);
@@ -1070,11 +1088,11 @@ function launchPlane(g: Game, l: Launch): void {
 /** Ballistics commit at launch to the point their ship will have reached. */
 function aimBallistic(g: Game, th: Threat): void {
   const t = targetPos(g, th);
-  const moving = th.target !== CARRIER_TARGET;
+  const v = targetSpeed(g, th);
   let ix = t.x;
   let dur = dist(th.sx, th.sy, t.x, t.y) / th.speed;
   for (let k = 0; k < 2; k++) {
-    ix = moving ? t.x + shipSpeed(g) * dur : t.x;
+    ix = t.x + v * dur;
     dur = dist(th.sx, th.sy, ix, t.y) / th.speed;
   }
   th.ix = Math.min(VIEW.width - 20, ix);
@@ -1104,6 +1122,7 @@ function arcTop(th: Threat, apex: number): number {
 }
 
 function targetPos(g: Game, th: Threat): Point {
+  if (th.target === FRIGATE_TARGET) return g.frigate ?? g.map.carrier;
   if (th.target !== CARRIER_TARGET) {
     const s = g.ships.find((o) => o.id === th.target);
     if (s) return s;
@@ -1113,7 +1132,8 @@ function targetPos(g: Game, th: Threat): Point {
 
 /** Drones and guided missiles find a new ship when theirs is gone. */
 function ensureTarget(g: Game, th: Threat): void {
-  if (th.target === CARRIER_TARGET) return;
+  if (th.target === FRIGATE_TARGET && !g.frigate) th.target = CARRIER_TARGET;
+  if (th.target === CARRIER_TARGET || th.target === FRIGATE_TARGET) return;
   if (g.ships.some((s) => s.id === th.target)) return;
   let best: Ship | null = null;
   let bd = Infinity;
@@ -1254,18 +1274,29 @@ const STEER: Partial<Record<ThreatKind, number>> = {
 /** Where a ship will be when a fast threat reaches it. */
 function leadPoint(g: Game, th: Threat): Point {
   const t = targetPos(g, th);
-  if (th.target === CARRIER_TARGET) return t;
+  const v = targetSpeed(g, th);
+  if (!v) return t;
   const eta = dist(th.x, th.y, t.x, t.y) / th.speed;
-  return { x: t.x + shipSpeed(g) * eta, y: t.y };
+  return { x: t.x + v * eta, y: t.y };
 }
 
 function checkImpact(g: Game, th: Threat): void {
   const dmg = THREATS[th.kind].damage;
   const blame = th.parent ?? th.kind;
-  if (th.target === CARRIER_TARGET) {
+  const heavy = th.kind === 'heavy';
+  if (th.target === FRIGATE_TARGET && g.frigate) {
+    const f = g.frigate;
+    if (dist(th.x, th.y, f.x, f.y) > FRIGATE.hitRadius) return;
+    th.dead = true;
+    addFx(g, 'boom', th.x, th.y, { life: 0.8, r: 50 });
+    damageFrigate(g, Math.ceil(FRIGATE.hp / 2));
+    return;
+  }
+  if (th.target === CARRIER_TARGET || th.target === FRIGATE_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
-    damageCarrier(g, dmg, blame);
+    // A heavy takes half the carrier's health (round 7).
+    damageCarrier(g, heavy ? Math.ceil(g.stats.carrierHp / 2) : dmg, blame);
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: th.kind === 'heavy' || th.kind === 'mothership' ? 50 : 30 });
     return;
   }
@@ -1282,7 +1313,26 @@ function checkImpact(g: Game, th: Threat): void {
   } else {
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
   }
-  damageShip(g, s, dmg, blame);
+  // A heavy's direct hit sinks the ship whatever its armour or formation.
+  damageShip(g, s, heavy ? HEAVY_SINKS : dmg, blame);
+}
+
+/** More than any hull can take, through any armour or formation cut. */
+const HEAVY_SINKS = 99;
+
+/** The frigate is hit; sunk, it is gone until the next wave. */
+function damageFrigate(g: Game, amount: number): void {
+  const f = g.frigate;
+  if (!f) return;
+  if (g.shieldT > 0) {
+    addFx(g, 'block', f.x, f.y, { life: 0.4, r: 50 });
+    return;
+  }
+  f.hp -= amount;
+  if (f.hp > 0) return;
+  addFx(g, 'sink', f.x, f.y, { life: 2.2, r: 50 });
+  addFx(g, 'text', f.x, f.y - 40, { life: 1.4, text: 'FRIGATE SUNK' });
+  g.frigate = null;
 }
 
 function child(g: Game, parent: Threat, kind: ThreatKind, target: number, heading: number): Threat {

@@ -38,6 +38,17 @@ export interface Channel {
   /** A funnel: from x = `fromX` the channel narrows linearly to `halfWidth`
    *  at the right edge (never below LANE_FLOOR, so hulls never stack). */
   narrow?: { fromX: number; halfWidth: number };
+  /** Spawn groups this channel takes per cycle (default 1): a riskier lane
+   *  can carry fewer ships than a safe one. */
+  share?: number;
+  /** Ships in this channel run this much faster (default 1): a riskier lane
+   *  is crossed quickly. */
+  speed?: number;
+}
+
+/** The order ships take the channels in: each channel `share` times a cycle. */
+export function channelCycle(m: { channels: Channel[] }): number[] {
+  return m.channels.flatMap((c, i) => Array.from({ length: c.share ?? 1 }, () => i));
 }
 
 /** The narrowest a channel may get: Box formation's ±0.34 slots stay 22+ apart. */
@@ -239,8 +250,15 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     carrier: { x: 800, y: 760 },
     frigate: { x: 560, y: 760 },
-    channels: [{ y: 600, halfWidth: 100 }],
-    threatScale: 1.2,
+    // Round 7: a second lane north of the island (the player: ships only ever
+    // took the south). It runs between the far shore and the island, far from
+    // the carrier, so it is the risky route: it carries one group in three,
+    // and they make a fast run for it.
+    channels: [
+      { y: 600, halfWidth: 100, share: 2 },
+      { y: 190, halfWidth: 66, speed: 1.5 },
+    ],
+    threatScale: 1.1,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.2 },
@@ -259,8 +277,8 @@ export const MAPS: Record<MapId, MapDef> = {
         { from: { x: 940, y: 362 }, to: { x: 940, y: 432 } },
       ],
     },
-    subSpots: [{ x: 180, y: 380 }, { x: 1430, y: 380 }, { x: 800, y: 195 }, { x: 300, y: 748 }, { x: 1300, y: 748 }],
-    bomberLines: [190, 745],
+    subSpots: [{ x: 180, y: 380 }, { x: 1430, y: 380 }, { x: 300, y: 748 }, { x: 1300, y: 748 }],
+    bomberLines: [480, 745],
     vectors: { trucks: 1, subs: 3, strafers: 4, bombers: 5 },
   },
   archipelago: {
@@ -325,7 +343,7 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 900, y: 690 },
     frigate: { x: 660, y: 690 },
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
-    threatScale: 1.1,
+    threatScale: 1.0,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.2 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.15 },
