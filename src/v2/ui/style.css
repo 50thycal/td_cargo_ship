@@ -1506,3 +1506,67 @@ body {
 .v2-draft:not([data-armed]) .v2-card {
   pointer-events: none;
 }
+
+/* ---- Round 11: one loss from the end ------------------------------------ */
+
+/* The screen's edge beats red, like a pulse, while one more loss ends it. */
+.v2-danger {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 70px 18px rgb(255 40 30 / 0.55);
+}
+
+.danger .v2-danger {
+  animation: v2-heartbeat 1.1s ease-in-out infinite;
+}
+
+@keyframes v2-heartbeat {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  24% {
+    opacity: 0.35;
+  }
+  36% {
+    opacity: 0.75;
+  }
+}
+
+/* The last ship you can lose: an empty pip ringed in red, pulsing — never
+   filled, so it can't be read as already gone. */
+.v2-hud-lost i.next {
+  border-color: var(--danger);
+  background: transparent;
+  animation: v2-pip-pulse 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes v2-pip-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgb(255 77 61 / 0.9);
+  }
+  to {
+    box-shadow: 0 0 0 3px rgb(255 77 61 / 0.15);
+  }
+}
+
+.danger .v2-hud {
+  box-shadow: 0 0 0 2px rgb(255 77 61 / 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .danger .v2-danger {
+    animation: none;
+    opacity: 0.5;
+  }
+  .v2-hud-lost i.next {
+    animation: none;
+    box-shadow: 0 0 0 2px rgb(255 77 61 / 0.5);
+  }
+}

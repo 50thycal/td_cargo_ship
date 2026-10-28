@@ -58,3 +58,31 @@ All three were fixed and re-shot.
 - `npm test`: 827 passed;
 - `e2e:v2` passed, including the new check;
 - `e2e:v2:watch` passed, including bot drafts and a watched run to the end.
+
+## Part 2: the player picked two more
+
+From the three ideas pitched, the player chose "a warning when you're one ship from losing" and "a punchy hit when you take down big threats".
+
+**One loss from the end.**
+- **When it applies:** one more sunk ship ends the run, or the carrier is at ≤ 25% of its hull.
+- **What shows:**
+  - The screen's edge beats red like a pulse (a 1.1 s heartbeat).
+  - The HUD gets a red outline.
+  - The last empty loss pip turns into a hollow red ring that pulses.
+  - A banner appears once on the way in: **LAST SHIP** ("One more loss and the convoy is lost.") or **CARRIER CRITICAL**.
+- **When it stops:** during the loss finale and between waves.
+- **Reduced motion:** the edge and the pip hold still.
+
+**Big kills.**
+- **Which threats:** anything with 3+ hits: heavy missile, mothership, strike jet and bomber.
+- **What happens:** the game raises a `bigKill` event, and the screen freezes for 80 ms (shorter when watching fast), shakes, and shows a white flash that collapses into an opening gold shock ring, with **HEAVY DOWN** / **MOTHERSHIP DOWN** / **JET DOWN** / **BOMBER DOWN** rising from it.
+- **Replay:** the sim takes exactly the same steps, just a moment later in real time, so logs replay unchanged.
+
+**Checked.**
+- **A real tap on a strike jet** (left one hit from death) on Strait wave 7, sampling the game's step counter every frame: the longest freeze was **83 ms**. The screenshot at +30 ms shows the ring and "JET DOWN". The page's log then replayed to the logged step exactly (1509 = 1509).
+- **Danger states:**
+  - with `lost = limit − 1`: the danger class is on, the banner reads LAST SHIP, and one pip is marked as next;
+  - with losses reset: off again;
+  - with the carrier at 2 HP: on, and the banner reads CARRIER CRITICAL.
+- **Found and fixed:** the first version blinked the last pip *solid red*. Caught in that phase, the HUD showed six red pips, which reads as "all ships lost", the opposite of the warning. It's now a hollow ring that pulses. The HUD close-up shows five filled pips and one hollow red ring, and computed styles show the sixth pip's fill is transparent.
+- `npm test`: 827 passed. `e2e:v2` and `e2e:v2:watch` passed.

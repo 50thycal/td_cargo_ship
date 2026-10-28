@@ -34,7 +34,7 @@ import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loa
 import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
-import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
+import { DRY_LIFE, IMPACT_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
 /** A tapped card flashes this long before the next wave starts. */
@@ -50,6 +50,15 @@ const LOST_BEAT = 2.6;
 const LOST_SKIP_AFTER = 0.9;
 /** Cards ignore taps for this long after the draft appears. */
 const DRAFT_ARM_MS = 350;
+/** Round 11: a tough threat shot down freezes the action for a beat (real
+ *  seconds; the sim takes the same steps, just a moment later). */
+const HIT_STOP = 0.08;
+const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
+  heavy: 'HEAVY DOWN',
+  mothership: 'MOTHERSHIP DOWN',
+  strafer: 'JET DOWN',
+  bomber: 'BOMBER DOWN',
+};
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
 const DEAL_STAGGER_MS = 70;
@@ -139,6 +148,11 @@ export class App {
   private zoom = { z: 1, x: 800, y: 450, pull: 0 };
   private vignette = el('div', 'v2-vignette');
   private stamp = el('div', 'v2-stamp');
+  /** Seconds of hit-stop left (see HIT_STOP). */
+  private hitStop = 0;
+  /** One more loss ends the run (see `syncDanger`). */
+  private danger = false;
+  private dangerEdge = el('div', 'v2-danger');
   /** When the draft appeared (taps on its cards wait DRAFT_ARM_MS). */
   private draftShownAt = 0;
   /** The frozen scene last drawn (see `draw`). */
@@ -189,7 +203,7 @@ export class App {
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
-    root.append(this.canvas, this.vignette, this.stamp, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
@@ -504,7 +518,8 @@ export class App {
     this.checkLayout();
     const g = this.game;
     this.adaptResolution(now, raw);
-    if (g && !this.paused && !this.portrait && g.phase === 'wave') {
+    if (this.hitStop > 0) this.hitStop -= real;
+    else if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
       // Enough steps a frame to keep up at 10× on a slow frame; past that,
       // drop the backlog rather than spiral.
@@ -531,9 +546,10 @@ export class App {
       // phase, new wave, so that counts as a change too.
       if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
+      this.syncDanger(g);
     }
     for (const r of this.ripples) r.age += real;
-    this.ripples = this.ripples.filter((r) => r.age < (r.dry ? DRY_LIFE : RIPPLE_LIFE));
+    this.ripples = this.ripples.filter((r) => r.age < (r.impact ? IMPACT_LIFE : r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
     this.bannerT -= real;
     this.banner.classList.toggle('show', this.bannerT > 0);
@@ -605,6 +621,14 @@ export class App {
         case 'carrierHit':
           this.shake = 16;
           break;
+        case 'bigKill': {
+          // Watching fast, the freeze shrinks with the speed.
+          const stop = HIT_STOP / Math.sqrt(Math.max(1, this.speed));
+          this.hitStop = Math.min(0.12, this.hitStop + stop);
+          this.shake = Math.max(this.shake, 9);
+          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: BIG_KILL_LABEL[ev.threat] ?? 'DOWN' });
+          break;
+        }
         case 'dry':
           this.hud.classList.add('dry');
           setTimeout(() => this.hud.classList.remove('dry'), 250);
@@ -640,7 +664,7 @@ export class App {
 
   private renderHud(g: Game): void {
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
-      i < g.lost ? '<i class="lost"></i>' : '<i></i>',
+      i < g.lost ? '<i class="lost"></i>' : i === g.lost && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
     const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
     const html =
@@ -736,9 +760,26 @@ export class App {
     } else this.showResult(g, b.kind === 'won');
   }
 
+  /** One more loss and the run is over: the last ship, or a carrier at a
+   *  quarter of its hull. The screen's edge beats red and the last empty
+   *  pip blinks; a banner says so once, on the way in. */
+  private syncDanger(g: Game): void {
+    const lastShip = g.tempo.lossLimit - g.lost === 1;
+    const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
+    const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
+    if (on && !this.danger) this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.');
+    if (on !== this.danger) {
+      this.danger = on;
+      this.root.classList.toggle('danger', on);
+    }
+  }
+
   /** Back to a clean field (a new run, the menu). */
   private resetFinale(): void {
     this.beat = null;
+    this.hitStop = 0;
+    this.danger = false;
+    this.root.classList.remove('danger');
     this.zoom = { z: 1, x: 800, y: 450, pull: 0 };
     this.canvas.style.filter = '';
     this.vignette.style.opacity = '0';

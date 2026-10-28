@@ -40,7 +40,11 @@ export interface Ripple {
   label?: string;
   /** Watch mode: a tap the bot made — drawn as a gold fingertip. */
   bot?: boolean;
+  /** A tough threat shot down: a flash, a shock ring and its name. */
+  impact?: string;
 }
+
+export const IMPACT_LIFE = 0.75;
 
 export const RIPPLE_LIFE = 0.4;
 export const DRY_LIFE = 0.7;
@@ -87,6 +91,30 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
   for (const r of ripples) {
+    if (r.impact) {
+      const k = r.age / IMPACT_LIFE;
+      const fade = 1 - k;
+      // A white flash that collapses, a gold shock ring that opens out.
+      if (k < 0.25) {
+        ctx.fillStyle = `rgba(255,248,220,${0.85 * (1 - k / 0.25)})`;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 34 * (1 - k), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = `rgba(245,197,66,${0.9 * fade})`;
+      ctx.lineWidth = 6 * fade + 1;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 20 + k * 110, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(245,197,66,${Math.min(1, fade * 1.6)})`;
+      ctx.strokeStyle = `rgba(7,13,18,${Math.min(1, fade * 1.6)})`;
+      ctx.lineWidth = 5;
+      ctx.font = '900 30px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.strokeText(r.impact, r.x, r.y - 40 - k * 30);
+      ctx.fillText(r.impact, r.x, r.y - 40 - k * 30);
+      continue;
+    }
     const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
     if (r.bot) {
       // The bot's fingertip: a filled dot where it pressed, a ring opening out.
