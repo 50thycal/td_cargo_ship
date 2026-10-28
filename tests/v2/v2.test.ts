@@ -1620,3 +1620,46 @@ describe('round 8: dev playtest tempo', () => {
     expect(r.history).toEqual(g2.history);
   });
 });
+
+describe('round 9: the watch-mode bot', () => {
+  it('a bot game is the same game every time for a seed, and its log replays exactly', async () => {
+    const { playMimic } = await import('../../src/v2/sim/mimic');
+    const { replay } = await import('../../src/v2/sim/playlog');
+    const a = playMimic('island', 42, { tempo: { waveLen: 0.4, stride: 2, lossLimit: 2 }, firstWave: 2 });
+    const b = playMimic('island', 42, { tempo: { waveLen: 0.4, stride: 2, lossLimit: 2 }, firstWave: 2 });
+    expect(a.log.commands).toEqual(b.log.commands);
+    expect(a.log.dev?.watch).toBe(true);
+    const r = replay(JSON.parse(JSON.stringify(a.log)));
+    expect({ steps: r.steps, score: r.score, lost: r.lost, wave: r.wave }).toEqual({ steps: a.game.steps, score: a.game.score, lost: a.game.lost, wave: a.game.wave });
+    expect(r.history).toEqual(a.game.history);
+  });
+
+  it('plays like a person: bursts of taps, some dry, ships turned up, one formation change', async () => {
+    const { playMimic } = await import('../../src/v2/sim/mimic');
+    const { game, log } = playMimic('strait', 7);
+    const taps = log.commands.filter((c) => c[1] === 't');
+    expect(taps.length).toBeGreaterThan(200);
+    expect(game.taps.dry / taps.length).toBeGreaterThan(0.1);
+    expect(game.taps.dry / taps.length).toBeLessThan(0.4);
+    // Some taps come in quick succession (bursts), most don't sit on exact pixels.
+    const quick = taps.filter((c, k) => k > 0 && c[0] - taps[k - 1][0] <= 13).length;
+    expect(quick / taps.length).toBeGreaterThan(0.3);
+    expect(log.commands.some((c) => c[1] === 'f' && c[2] >= 3)).toBe(true);
+    expect(log.commands.filter((c) => c[1] === 'm').length).toBeLessThanOrEqual(1);
+  });
+
+  it('stacks cards: levels up what it holds, takes Resupply when the slots are full', async () => {
+    const { Mimic, YOU_V1 } = await import('../../src/v2/sim/mimic');
+    const bot = new Mimic(YOU_V1, 1);
+    const g = createGame('strait', 1);
+    g.levels = { blast: 1 };
+    g.offer = ['twin', 'blast', 'radar'];
+    expect(bot.choose(g).id).toBe('blast');
+    g.levels = {};
+    g.offer = ['radar', 'twin', 'chain'];
+    expect(bot.choose(g).id).toBe('twin');
+    g.levels = { blast: 3, twin: 3, rhythm: 2 };
+    g.offer = ['radar', 'chain', 'flak', 'resupply'];
+    expect(bot.choose(g).id).toBe('resupply');
+  });
+});
