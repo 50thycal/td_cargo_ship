@@ -17,7 +17,7 @@ const fail = (msg) => {
   process.exitCode = 1;
 };
 const phone = () => browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-const game = (page, f) => page.evaluate(f);
+const game = (page, f, arg) => page.evaluate(f, arg);
 
 async function devSettings(page, settings) {
   await page.evaluate((s) => {
@@ -93,6 +93,55 @@ try {
     await page.locator('.v2-card:not(.locked)').first().tap();
     await page.waitForFunction(() => window.__v2.game().phase === 'wave' && window.__v2.game().wave === 4, null, { timeout: 3000 }).catch(() => fail('second stride card did not start wave 4'));
     console.log('stride drafts:', title1, '→ wave', await game(page, () => window.__v2.game().wave));
+    await page.close();
+  }
+
+  // 3. Take over and hand back: one touch on the battlefield gives you the
+  //    controls at 1×; the BOT button hands them back at the watch speed. The
+  //    mixed run's log replays exactly.
+  {
+    const page = await phone();
+    page.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await page.goto(`${BASE_URL}/v2.html?seed=13`, { waitUntil: 'networkidle' });
+    await devSettings(page, { preset: 'half', wave: 3, watch: true, watchSpeed: 4 });
+    await page.locator('[data-map="island"]').tap();
+    await page.waitForSelector('.playing');
+    await page.waitForFunction(() => window.__v2.game().shots > 3, null, { timeout: 20000 });
+    if ((await page.locator('.v2-rail-right .v2-slider-value').textContent()) !== '4×') fail('watch speed not remembered');
+    if ((await page.locator('.v2-control b').textContent()) !== 'BOT') fail('control button does not say BOT');
+    await page.screenshot({ path: `${SHOT_DIR}/05-bot-control.png` });
+    // Touch open water mid-screen.
+    const water = await game(page, () => window.__v2.toClient(800, 500));
+    await page.touchscreen.tap(water.x, water.y);
+    const taken = await game(page, () => ({ control: window.__v2.control(), shots: window.__v2.game().shots }));
+    const speed1 = await page.locator('.v2-rail-right .v2-slider-value').textContent();
+    if (taken.control !== 'you' || speed1 !== '1×') fail(`take over: ${JSON.stringify(taken)} at ${speed1}`);
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${SHOT_DIR}/06-you-control.png` });
+    // While you have it, the bot keeps its hands off: no taps but ours.
+    const before = await game(page, () => window.__v2.log().commands.filter((c) => c[1] === 't').length);
+    await page.waitForTimeout(1500);
+    const after = await game(page, () => window.__v2.log().commands.filter((c) => c[1] === 't').length);
+    if (after !== before) fail(`bot tapped ${after - before} times while you had control`);
+    // Tap a live threat ourselves.
+    const target = await game(page, () => {
+      const g = window.__v2.game();
+      const th = g.threats.find((t) => !t.dead);
+      return th ? window.__v2.toClient(th.x, th.y) : null;
+    });
+    if (target) await page.touchscreen.tap(target.x, target.y);
+    await page.locator('.v2-control').tap();
+    const back = await game(page, () => window.__v2.control());
+    const speed2 = await page.locator('.v2-rail-right .v2-slider-value').textContent();
+    if (back !== 'bot' || speed2 !== '4×') fail(`hand back: ${back} at ${speed2}`);
+    await page.waitForFunction((n) => window.__v2.log().commands.filter((c) => c[1] === 't').length > n + 2, after, { timeout: 15000 });
+    const log = await game(page, () => window.__v2.log());
+    const controls = log.commands.filter((c) => c[1] === 'c').map((c) => c[2]);
+    if (controls.join() !== 'you,bot') fail(`control changes logged as ${controls}`);
+    const live = await game(page, () => ({ steps: window.__v2.game().steps }));
+    const r = await game(page, (l) => window.__v2.replay(l), log);
+    console.log('mixed run: controls', controls.join('→'), 'replay', JSON.stringify(r), 'live steps', live.steps);
+    if (r.steps !== log.summary.steps) fail(`mixed log replays to step ${r.steps}, logged ${log.summary.steps}`);
     await page.close();
   }
 

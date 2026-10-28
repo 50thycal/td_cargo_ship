@@ -28,7 +28,7 @@ import {
   type RaiderKind,
 } from '../sim/game';
 import { Mimic, YOU_V1, type BotIO } from '../sim/mimic';
-import { Recorder, replayTo, type Controller } from '../sim/playlog';
+import { Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -95,6 +95,8 @@ export class App {
   private formationPop = el('div', 'v2-formations');
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
+  /** Watch mode: who is playing; tap to take over or hand back. */
+  private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
   private flowSlider!: StepSlider;
   private speedSlider!: StepSlider;
 
@@ -212,6 +214,13 @@ export class App {
     (window as unknown as { __v2: unknown }).__v2 = {
       game: () => this.game,
       toClient: (x: number, y: number) => ({ x: this.offX + x * this.scale, y: this.offY + y * this.scale }),
+      control: () => this.control,
+      log: () => this.rec?.snapshot() ?? null,
+      // Re-run a log here, so a browser test can check a recorded run replays.
+      replay: (log: PlayLog) => {
+        const g = replay(log);
+        return { steps: g.steps, score: g.score, lost: g.lost, wave: g.wave };
+      },
     };
     this.showMenu();
     requestAnimationFrame((t) => this.frame(t));
@@ -251,7 +260,7 @@ export class App {
     this.leftRail.append(this.formationPop);
 
     this.speedSlider = this.buildSpeedSlider();
-    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+    this.rightRail.append(this.hud, this.pauseBtn, this.controlBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
   }
 
   private buildSpeedSlider(): StepSlider {
@@ -262,7 +271,7 @@ export class App {
       (s) => {
         this.speed = this.speedSteps[s];
         this.rec?.speed(this.speed);
-        if (this.bot) {
+        if (this.bot && this.control === 'bot') {
           this.devSettings.watchSpeed = this.speed;
           saveDevSettings(this.devSettings);
         }
@@ -331,6 +340,9 @@ export class App {
       this.formationPop.classList.remove('open');
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
+      // Watch mode: a touch on the battlefield takes the controls (and
+      // counts as your first tap).
+      if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
       // beat so an ordinary tap never fires twice.
@@ -755,6 +767,31 @@ export class App {
     this.control = watch ? 'bot' : 'you';
     this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
     this.root.classList.toggle('watching', watch);
+    this.syncControl();
+  }
+
+  /** Watch mode: take over (back to 1×) or hand back (to the watch speed). */
+  private setControl(who: Controller): void {
+    if (!this.bot || !this.rec || !this.game || who === this.control) return;
+    this.control = who;
+    this.rec.control(who);
+    this.hold = null;
+    if (who === 'you') {
+      this.setSpeed(1);
+      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.');
+    } else {
+      this.setSpeed(this.devSettings.watchSpeed);
+      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.');
+      if (this.game.phase === 'draft') this.botDraft(this.game);
+    }
+    this.syncControl();
+  }
+
+  private syncControl(): void {
+    const bot = this.control === 'bot';
+    this.controlBtn.replaceChildren(el('b', '', bot ? 'BOT' : 'YOU'), el('span', '', bot ? 'take over' : 'hand back'));
+    this.controlBtn.classList.toggle('bot', bot);
+    this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
   }
 
   /** The bot's draft: its pick lights up for a moment (shorter when

@@ -114,3 +114,24 @@ The player's Strait and Gauntlet clears were on older, easier builds. Two of the
 2. **The bot never turned up ship flow in short runs.** Its timer (2–25 s) ran per wave, and ⅛ waves end sooner (screenshot: still ×1.4 at wave 4). It now times from the start of the run. Re-checked: a watched ¼ run reached flow 3 and changed formation to Box.
 3. **At 10× every banner stayed up for 26 game-seconds.** That held the raid warning in its moved-up spot over the carrier (screenshot). Banner time now shrinks with the square root of speed: 2.6 s at 1×, 0.8 s at 10×.
 4. **The frame loop allowed at most 12 steps a frame.** At 10× on a 30 fps phone that would cap the game at 6×. The cap now scales with speed, and any backlog is dropped rather than letting the game fall further and further behind.
+
+### Cycle 3: take over and hand back (S4, S7)
+
+**Built.**
+- A control button on the right rail, shown only in watched runs. It reads **BOT** (gold) or **YOU** (cyan).
+- **Taking over:** touching the battlefield while the bot plays takes over. That touch also counts as your first tap. Speed drops to 1× and a "YOU HAVE CONTROL" banner shows.
+- **Handing back:** tapping the button hands back to the bot at the remembered watch speed. If you hand back during a draft, the bot makes the pick.
+- **What changes hands:** while you have control, the bot doesn't act and your speed changes don't overwrite the watch speed.
+- **Logging:** each change of control is logged as `[step, 'c', 'you'|'bot']`. Replay ignores it; `v2:style --who=you|bot` uses it to split the run.
+
+**Tested.** A new e2e section runs a watched ½ Island run from wave 3 at 4×:
+- **Speed:** the watch speed is remembered (the rail shows 4×).
+- **Take over:** touching open water gives you control at 1× (screenshots before and after).
+- **Bot stays off:** in 1.5 s of you having control, the bot made 0 taps.
+- **Hand back:** your own tap on a threat, then BOT, returns control at 4×, and the bot taps again.
+- **Log and replay:** the log shows `you→bot`. Replaying it in the page lands on the logged step exactly (865 = 865).
+- **Unit test:** a bot → you → bot run with a flag replays exactly (score, losses, wave, steps).
+
+**Found and fixed.**
+- **The control button's hint was unreadable.** It was 8 px and wrapped to two lines ("playing · tap to take over"), too small on a phone. It's now a one-line 10 px label ("take over" / "hand back") under BOT / YOU. The banner on each change explains the rest.
+- **A test-helper bug** in the new e2e (the page call dropped its argument) made the first run crash on the replay check. Fixed. This was a fault in the test, not the game.

@@ -1648,6 +1648,38 @@ describe('round 9: the watch-mode bot', () => {
     expect(log.commands.filter((c) => c[1] === 'm').length).toBeLessThanOrEqual(1);
   });
 
+  it('a run that changes hands (bot → you → bot), with a flag, replays exactly', async () => {
+    const { Mimic, YOU_V1 } = await import('../../src/v2/sim/mimic');
+    const { Recorder, replay } = await import('../../src/v2/sim/playlog');
+    const g = createGame('gauntlet', 5, 1, { waveLen: 0.4, stride: 1, lossLimit: 3 });
+    const rec = new Recorder(g, { build: 'test', startedAt: '2026-01-01T00:00:00.000Z', firstWave: 1, tempo: g.tempo, dev: { preset: 'half', watch: true }, device: { w: 874, h: 402, dpr: 3, touch: true, ua: 'test' } });
+    const bot = new Mimic(YOU_V1, 5);
+    const io = { tap: rec.tap.bind(rec), pick: rec.pick.bind(rec), flow: rec.flow.bind(rec), formation: rec.formation.bind(rec) };
+    let who: 'bot' | 'you' = 'bot';
+    for (let i = 0; i < 60 * 120 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
+      if (i === 600) {
+        who = 'you';
+        rec.control('you');
+      }
+      if (i === 1500) {
+        who = 'bot';
+        rec.control('bot');
+        rec.flag('hard');
+      }
+      if (who === 'bot') bot.act(g, io);
+      else {
+        if (g.phase === 'draft') rec.pick(g.offer.find((id) => id === 'resupply' || canTake(g.levels, id))!);
+        if (i % 25 === 0 && g.threats.length) rec.tap(g.threats[0].x, g.threats[0].y, 108);
+      }
+      step(g, DT);
+    }
+    const log = rec.finish('quit');
+    expect(log.commands.filter((c) => c[1] === 'c').map((c) => c[2])).toEqual(['you', 'bot']);
+    expect(log.commands.some((c) => c[1] === 'g' && c[2] === 'hard')).toBe(true);
+    const r = replay(JSON.parse(JSON.stringify(log)));
+    expect({ steps: r.steps, score: r.score, lost: r.lost, wave: r.wave }).toEqual({ steps: g.steps, score: g.score, lost: g.lost, wave: g.wave });
+  });
+
   it('stacks cards: levels up what it holds, takes Resupply when the slots are full', async () => {
     const { Mimic, YOU_V1 } = await import('../../src/v2/sim/mimic');
     const bot = new Mimic(YOU_V1, 1);

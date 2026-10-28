@@ -1034,3 +1034,47 @@ body {
   color: var(--gold);
   font-weight: 700;
 }
+
+.v2-control {
+  display: none;
+  width: 64px;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--accent);
+  font: inherit;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 2px;
+  cursor: pointer;
+}
+
+.watching .v2-control {
+  display: flex;
+}
+
+.v2-control b {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.v2-control span {
+  font-size: 10px;
+  line-height: 1.15;
+  color: var(--muted);
+}
+
+.v2-control.bot {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgb(245 197 66 / 0.12);
+}
+
+@media (max-height: 430px) {
+  .v2-control {
+    min-height: 40px;
+  }
+}
