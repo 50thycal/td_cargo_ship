@@ -31,11 +31,17 @@ import { BotRun, Mimic, YOU_V1, lostByWave, type BotIO } from '../sim/mimic';
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
+import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
+/** A tapped card flashes this long before the next wave starts. */
+const PICK_BEAT_MS = 180;
+/** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
+const DEAL_MS = 340;
+const DEAL_STAGGER_MS = 70;
 const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
@@ -114,6 +120,8 @@ export class App {
   private control: Controller = 'you';
   /** The wave whose draft is on screen (a dev stride deals several in a row). */
   private draftWave = -1;
+  /** A card was tapped and its pick is landing (see PICK_BEAT_MS). */
+  private picking = false;
   /** The frozen scene last drawn (see `draw`). */
   private drawnKey = '';
   private botIO: BotIO = {
@@ -861,22 +869,31 @@ export class App {
     this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
   }
 
+  /** Watching the bot fast, cards deal in faster too. */
+  private dealScale(): number {
+    return this.bot && this.control === 'bot' ? 1 / Math.sqrt(Math.max(1, this.speed)) : 1;
+  }
+
   /** The bot's draft: its pick lights up for a moment (shorter when
    *  watching fast), then it takes it. */
   private botDraft(g: Game): void {
     const bot = this.bot;
     if (!bot) return;
     const choice = bot.choose(g);
-    const card = this.overlay.querySelector(`[data-upgrade="${choice.id}"]`);
-    card?.classList.add('bot-pick');
-    const panel = this.overlay.querySelector('.v2-panel');
-    panel?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
     const wave = g.wave;
+    const live = () => this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot';
+    // The whole hand is dealt before the bot's pick shows, at any speed.
+    const dealt = (DEAL_MS + DEAL_STAGGER_MS * (g.offer.length - 1)) * this.dealScale();
+    setTimeout(() => {
+      if (!live()) return;
+      this.overlay.querySelector(`[data-upgrade="${choice.id}"]`)?.classList.add('bot-pick');
+      this.overlay.querySelector('.v2-panel')?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
+    }, dealt);
     setTimeout(
       () => {
-        if (this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot') this.rec?.pick(choice.id, choice.replace);
+        if (live()) this.rec?.pick(choice.id, choice.replace);
       },
-      1400 / Math.sqrt(this.speed),
+      dealt + 1400 / Math.sqrt(this.speed),
     );
   }
 
@@ -945,33 +962,50 @@ export class App {
       }
       const chip = el('span', `v2-slot${id ? '' : ' empty'}`, label);
       if (id) chip.prepend(upgradeIcon(id, 16));
+      if (id) chip.style.setProperty('--card-color', ICON_COLOR[id]);
       slots.append(chip);
     }
-    const cards = g.offer.map((id) => {
+    this.picking = false;
+    const cards = g.offer.map((id, i) => {
       const u = cardDef(id);
       const lvl = g.levels[id] ?? 0;
       const takeable = canTake(g.levels, id);
       const swappable = canSwapIn(g.levels, id);
-      const badge = id === 'resupply' ? 'NO SWAP' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const maxed = id !== 'resupply' && lvl >= u.max;
+      const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
       const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}`, () => {
-        if (swapping) return;
-        if (takeable) this.rec?.pick(id);
-        else if (swappable) this.showDraft(g, id);
+        if (swapping || this.picking) return;
+        if (takeable) {
+          // The pick lands with a beat: the card flashes gold, then the wave starts.
+          this.picking = true;
+          card.classList.add('taken');
+          const wave = g.wave;
+          setTimeout(() => {
+            this.picking = false;
+            if (this.game === g && g.phase === 'draft' && g.wave === wave) this.rec?.pick(id);
+          }, PICK_BEAT_MS);
+        } else if (swappable) this.showDraft(g, id);
       });
+      card.style.setProperty('--deal', `${i * DEAL_STAGGER_MS * this.dealScale()}ms`);
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
-      const head = el('span', 'v2-card-head', '');
-      head.append(upgradeIcon(id, 30), el('strong', '', u.name));
       card.style.setProperty('--card-color', ICON_COLOR[id]);
-      card.append(
-        el('span', 'v2-card-top', ''),
-        head,
-        el('span', 'v2-card-level', id === 'resupply' ? 'Keeps your cards' : `Level ${lvl + 1}/${u.max}`),
-        el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]),
-      );
-      const top = card.querySelector('.v2-card-top')!;
-      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : 'up'}`, badge));
+      // Round 10 (the player's reference): the picture is the card. Threat
+      // and badge across the top, the illustration filling the middle, then
+      // the name, the level it reaches, and one short line of effect.
+      const top = el('span', 'v2-card-top', '');
+      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : 'up'}`, badge));
+      const art = el('span', 'v2-card-art', '');
+      art.innerHTML = cardArtSvg(id);
+      const level = el('span', 'v2-card-level', '');
+      if (id === 'resupply') level.textContent = 'Keeps your cards';
+      else {
+        // One pip per level: those already held, the one this card adds, the rest.
+        for (let k = 1; k <= u.max; k++) level.append(el('i', k <= lvl ? 'had' : k === lvl + 1 ? 'gain' : ''));
+        level.append(el('span', '', maxed ? 'MAX' : `LV ${lvl + 1}/${u.max}`));
+      }
+      card.append(top, art, el('strong', 'v2-card-name', u.name), level, el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]));
       return card;
     });
     const row = el('div', 'v2-card-row');
@@ -993,7 +1027,12 @@ export class App {
     const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
     const title = skipped ? `Wave ${g.wave} skipped` : `Wave ${g.wave} cleared`;
     const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
-    this.showOverlay('v2-draft', [el('h2', '', title), ...more, slots, rule, row]);
+    const head = el('div', 'v2-draft-head');
+    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your upgrade'));
+    const loadoutRow = el('div', 'v2-loadout');
+    loadoutRow.append(el('span', 'v2-loadout-label', 'LOADOUT'), slots);
+    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, rule]);
+    this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
   }
 
   private showResult(g: Game, won: boolean): void {

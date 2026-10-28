@@ -129,6 +129,12 @@ per formation, undefended and defended by a bot.
 
 ## Upgrade cards
 
+Round 10 redesigned the draft screen after the player's reference ("one bold
+picture per card"): each card is a framed naval-display panel with its own
+illustration (`src/v2/ui/cardArt.ts`), the threat it answers, level pips and
+one short effect line, under a CHOOSE YOUR UPGRADE header with the loadout
+below. Goals, checks and the six cycles: [v2-card-redesign.md](v2-card-redesign.md).
+
 A loadout holds **three different cards**. Each draft deals three (favouring
 cards you hold); once three are held, a new card can be **swapped in** for one
 you hold (tap it, then the card it replaces — that card's levels are lost),

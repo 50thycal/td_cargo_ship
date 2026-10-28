@@ -82,13 +82,13 @@ try {
       g.raiders = [];
     });
     await page.waitForSelector('[data-screen="draft"] .v2-card');
-    const title1 = await page.locator('[data-screen="draft"] h2').textContent();
+    const title1 = await page.locator('[data-screen="draft"] .v2-draft-eyebrow').textContent();
     await page.locator('.v2-card:not(.locked)').first().tap();
     await page.waitForFunction(() => window.__v2.game().wave === 3 && window.__v2.game().phase === 'draft');
     // Round 8 bug: the second draft never redrew, leaving the first one's
     // cards on screen (taps on them did nothing).
     await page
-      .waitForFunction(() => document.querySelector('[data-screen="draft"] h2')?.textContent.includes('skipped'), null, { timeout: 3000 })
+      .waitForFunction(() => document.querySelector('[data-screen="draft"] .v2-draft-eyebrow')?.textContent.includes('skipped'), null, { timeout: 3000 })
       .catch(() => fail('the stride draft for the skipped wave never appeared'));
     await page.locator('.v2-card:not(.locked)').first().tap();
     await page.waitForFunction(() => window.__v2.game().phase === 'wave' && window.__v2.game().wave === 4, null, { timeout: 3000 }).catch(() => fail('second stride card did not start wave 4'));
