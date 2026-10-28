@@ -37,6 +37,8 @@ import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
+/** A tapped card flashes this long before the next wave starts. */
+const PICK_BEAT_MS = 180;
 const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
@@ -115,6 +117,8 @@ export class App {
   private control: Controller = 'you';
   /** The wave whose draft is on screen (a dev stride deals several in a row). */
   private draftWave = -1;
+  /** A card was tapped and its pick is landing (see PICK_BEAT_MS). */
+  private picking = false;
   /** The frozen scene last drawn (see `draw`). */
   private drawnKey = '';
   private botIO: BotIO = {
@@ -949,7 +953,8 @@ export class App {
       if (id) chip.style.setProperty('--card-color', ICON_COLOR[id]);
       slots.append(chip);
     }
-    const cards = g.offer.map((id) => {
+    this.picking = false;
+    const cards = g.offer.map((id, i) => {
       const u = cardDef(id);
       const lvl = g.levels[id] ?? 0;
       const takeable = canTake(g.levels, id);
@@ -958,10 +963,19 @@ export class App {
       const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
       const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}`, () => {
-        if (swapping) return;
-        if (takeable) this.rec?.pick(id);
-        else if (swappable) this.showDraft(g, id);
+        if (swapping || this.picking) return;
+        if (takeable) {
+          // The pick lands with a beat: the card flashes gold, then the wave starts.
+          this.picking = true;
+          card.classList.add('taken');
+          const wave = g.wave;
+          setTimeout(() => {
+            this.picking = false;
+            if (this.game === g && g.phase === 'draft' && g.wave === wave) this.rec?.pick(id);
+          }, PICK_BEAT_MS);
+        } else if (swappable) this.showDraft(g, id);
       });
+      card.style.setProperty('--deal', `${i * 70}ms`);
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
       card.style.setProperty('--card-color', ICON_COLOR[id]);

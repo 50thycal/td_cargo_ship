@@ -140,3 +140,24 @@ Then I ran both browser suites, which drive the swap flow and the bot's draft.
 - **The harness** uses whole wave numbers.
 
 Re-shot screenshots show all four states clearly. `e2e:v2` passed, including the swap flow on the iPhone viewport. `e2e:v2:watch` passed all sections after the selector fix.
+
+### Cycle 5: motion and feel (C6)
+
+**Built.**
+- **Deal-in.** The header settles, then the cards deal in left to right: rising and scaling up over 0.34 s, 70 ms apart.
+- **Gain pip.** The pip for the level this card would give you breathes gently.
+- **A beat on the pick.** When you tap a card, it flashes: gold edge, a 3% pop, and a sheen across its art. The pick lands 180 ms later. A guard ignores further taps meanwhile, so a fast double-tap can't pick twice.
+- **Bot unchanged.** The bot's draft timing is the same as before, since it calls the pick directly.
+- **Reduced motion.** With `prefers-reduced-motion`, all of these animations are off.
+
+**Tested** in Chromium at 844×390, with real touch taps:
+
+| Check | Result |
+|---|---|
+| Card opacity at 0 / 90 / 180 / 300 ms | 0/0/0 → 0.93/0.79/0.31 → 0.99/0.96/0.87 → 1/1/1. A clean left-to-right stagger, done by 300 ms. |
+| Fast double-tap on Twin Launch | **1** pick logged. Levels became `{blast:1, twin:1}`. |
+| Tap → next wave | 257 ms (the 180 ms beat plus frames and test overhead). |
+| Reduced motion | Cards fully visible at 0 ms. Tap → wave 201 ms, 1 pick. |
+| Screenshots | The mid-deal frame shows the stagger. The tapped frame shows the gold edge and the sheen across the art. |
+
+**Found.** Nothing to fix. The beat was meant to be short, and at 180 ms (about 0.26 s from tap to wave) it is. While dealing in, cards are briefly see-through. That lasts under 0.3 s and the screenshots don't suffer from it, so I've left it.
