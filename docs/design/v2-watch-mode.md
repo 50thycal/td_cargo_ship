@@ -193,3 +193,32 @@ The player's Strait and Gauntlet clears were on older, easier builds. Two of the
 - Run headlessly, its taps per 5 s stayed steady through wave 6 (8–14).
 - All 6 losses were ballistics, while the bot was in Box formation (weak to splash, as its tag says). One barrage finished it.
 - That's the game punishing a formation, which also happened in the player's own Box run (`20261027144051-41059`). The bot was working normally.
+
+### Cycle 6: playing it end to end as the player would (S1–S8)
+
+**Tested.**
+- **As a normal player (no dev mode), at 844×390, the smaller iPhone landscape.** No 🚩 button, no BOT button, no dev label, and the speed rail still tops out at 2×.
+- **A full-length watched Island run at 10×,** played as the player would: menu, tap the Island, watch to the end. It took **37 s of wall time**, from tap to result screen, with 6 bot draft screens and no page errors. The bot lost on wave 7 (the carrier went down), and the log replays exactly (MATCHES, 19803 steps). I took screenshots every 6 s, plus the menu and the result. The rails fit the 390 px height: the lowest item on the left rail ends at 334 px and on the right at 380 px.
+- **Retry wave on a watched ¼ run.** Losing on wave 4, then Retry, restarts wave 4 with the same cards. It's still bot-controlled at the remembered 10×, and the log carries `retryOf` and `watch`. The bot starts tapping again.
+- **The full suite:**
+  - `npm test`: 827 passed;
+  - `e2e/v2.mjs`: passed;
+  - `e2e/v2-watch.mjs`: passed (all 5 sections).
+- **Regression fit after cycle 2's change to the bot's timing** (`v2:fit`, 16 seeds a map). The style numbers are unchanged from cycle 1: dry 24%, aim 35 px, reaction 1.05 s. Island: 0/16 cleared, median wave 7.
+
+**Found.**
+1. **The result-screen line "The carrier went down" made me check whether the bot loses the carrier more than the player does.** The player's three Island runs never did. Over 16 seeds the bot lost the carrier 3 times (19%), and took 2.6 carrier damage per 100 s, against the player's 0.9 and 3.4. With only three player runs to compare, 0 of 3 is consistent with 19% (the chance is about 53%). **No change made.** I'll keep checking it as the player's logs come in.
+2. **The menu didn't say what watch mode does when you tap a map.** With Watch mode on, the dev strip now adds: "Tap a map to watch bot-you play it; touch the battlefield to take over." Checked at 844×390: it fits, with no scrolling.
+
+## Where it stands against the goals
+
+| # | Status |
+|---|---|
+| S1 | Mostly met. 13 of 16 style measures are within the target. Two are off: the most-urgent share (64% vs 48%) and the gap after a burst (0.80 vs 1.13 s). Island: the bot loses at waves 6–9 (median 7); the player lost at 7–9. The fit rests on 881 taps from two Island runs. |
+| S2 | Met. One switch in Settings → DEVELOPER, invisible without dev mode (e2e + screenshots). |
+| S3 | Met in Chromium. Measured 1.00 / 3.03 / 6.05 / 10.03× real speed-ups. 10× holds under a 4× CPU throttle (38 fps). A full watched Island run takes 37 s. **Not yet measured on the player's iPhone.** |
+| S4 | Met. One touch takes over at 1×, one tap hands back. BOT / YOU is always shown. Control changes are logged, and a mixed run replays exactly (e2e + unit test). |
+| S5 | Met. 🚩 plus a reason is two taps, and the game pauses on the step. `npm run v2:moment` rebuilds the frame, looking back in the player's real seconds. The rebuilt frame matched the live screen. |
+| S6 | Met. The ghost takes 0.8 s at normal CPU and 3.0 s at a 4× throttle, with no extra stall, and its result is saved in the log. |
+| S7 | Met. Watched, mixed, flagged and ghosted logs all replay exactly and upload like any other log. |
+| S8 | Met. The normal game is unchanged, all suites pass, and the layout fits 874×402 and 844×390. Cycle 2 also fixed a live round-8 bug (stride drafts), which is shipped separately in PR #89 too. |

@@ -211,6 +211,15 @@ artifact page.
   2×). Dev runs never touch records or unlocks, and their logs carry `tempo`
   and `dev`, so they replay exactly and stay out of balance numbers.
   [v2-playtest-log-round8.md](v2-playtest-log-round8.md) has the measurements.
+- **Watch mode** (round 9): Settings → DEVELOPER → Watch mode. A bot fitted
+  to the player's own logs (`src/v2/sim/mimic.ts`, persona `you-v1`) plays the
+  run at 1–10×; touching the battlefield takes over, BOT hands back; 🚩 flags a
+  moment (`npm run v2:moment -- log.json` screenshots it); after a run you
+  played, the result screen shows bot-you on the same seed (ghost check).
+  `npm run v2:style` measures how a log was played, `npm run v2:fit` compares
+  the bot with the player's logs, `npm run e2e:v2:watch` drives it all in a
+  browser. Design, goals and the six test cycles:
+  [v2-watch-mode.md](v2-watch-mode.md).
 
 The playtest cycles, what each found and what changed are in
 [v2-playtest-log.md](v2-playtest-log.md).

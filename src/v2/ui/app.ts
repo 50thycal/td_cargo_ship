@@ -741,7 +741,7 @@ export class App {
         el('strong', 'v2-dev-title', st.watch ? 'DEV · WATCH MODE' : 'DEV PLAYTEST'),
         presets,
         wave,
-        el('p', 'v2-dev-blurb', DEV_PRESETS[st.preset].blurb),
+        el('p', 'v2-dev-blurb', `${DEV_PRESETS[st.preset].blurb}${st.watch ? ' Tap a map to watch bot-you play it; touch the battlefield to take over.' : ''}`),
       );
     };
     render();
