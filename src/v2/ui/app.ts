@@ -101,6 +101,8 @@ export class App {
   private dev = devEnabled();
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
+  /** The wave whose draft is on screen (a dev stride deals several in a row). */
+  private draftWave = -1;
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
   /** Portrait while playing: the field would be a sliver, so time stops and a
@@ -434,7 +436,9 @@ export class App {
     }
     if (g) {
       this.drainEvents(g);
-      if (g.phase !== this.lastPhase) this.onPhase(g);
+      // A dev stride deals a second draft straight after the first: same
+      // phase, new wave, so that counts as a change too.
+      if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
     }
     for (const r of this.ripples) r.age += real;
@@ -544,6 +548,7 @@ export class App {
     this.lastPhase = g.phase;
     if (g.phase === 'wave') this.hideOverlay();
     else if (g.phase === 'draft') {
+      this.draftWave = g.wave;
       this.showDraft(g);
       this.saveProgress();
     } else if (g.phase === 'won') this.showResult(g, true);
