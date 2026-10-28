@@ -201,8 +201,8 @@ artifact page.
 - `v2.html?wave=7` starts any map at wave 7 (with the 6 cards a player would
   have drafted by then) for playtesting late waves;
   `?seed=N` replays one exact seed.
-- **Dev playtest mode** (round 8): `v2.html?dev=1` turns it on for the device
-  (`?dev=0` or the menu link turns it off). It opens every map, adds 3×/4×
+- **Dev playtest mode** (round 8): menu → ⚙ Settings → Developer mode turns
+  it on for the device (`?dev=1` / `?dev=0` in the URL work too). It opens every map, adds 3×/4×
   speed, a start-wave picker, a "Retry wave N" button on the loss screen (same
   cards, ships and score; a new log that carries the old one's inputs), and
   four run lengths, each half the last: Full (~8 min of waves), ½ (waves 0.4×

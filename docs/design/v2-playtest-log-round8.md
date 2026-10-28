@@ -44,7 +44,7 @@ Drafts are not counted in the wave times. The ¼ and ⅛ runs still have 10 pick
 
 ## The rest of dev mode
 
-- **Turning it on.** `v2.html?dev=1` turns it on and the device remembers it. `?dev=0` or "Turn dev mode off" on the menu turns it off. Players never see any of it.
+- **Turning it on.** On the menu, ⚙ Settings → Developer mode. The device remembers it until it is switched off the same way. (`?dev=1` / `?dev=0` in the URL still work.) It is off by default, so players never meet it unless they go looking.
 - **The menu.** Every map is open. A dashed DEV PLAYTEST strip holds the preset chips and a start-wave picker. Map blurbs are hidden so the strip fits a landscape phone.
 - **In a run.** The HUD shows `DEV ½` (or whichever preset). The speed rail adds 3× and 4×. The sunk pips follow the preset's loss limit. A draft for a skipped wave is titled "Wave N skipped" and says how many cards are left to pick.
 - **Retry wave N.** This button on the loss screen rebuilds the run as the lost wave began, with the same cards, ships, score and seed. It works by replaying the old log's inputs up to that point. The retry is a new log that carries those inputs and a `retryOf` link, so it replays on its own.
@@ -67,4 +67,4 @@ The steps are now 1× / 1.25× / 1.5× / 2×, starting at 1×. 0.5× and 3× are
   - the ⅛ preset starts a 2× wave 2 with one card drafted;
   - the dev strip fits on screen at 844×390;
   - Retry restores wave 2 with no losses;
-  - `?dev=0` turns it off.
+  - switching it off in Settings removes the strip, restores the 2× max and survives a reload.

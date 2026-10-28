@@ -1,6 +1,7 @@
 // Developer playtest mode (round 8: "speed up my playtesting… a mode that I
-// can enable that's only for a developer"). Off for players; `?dev=1` turns it
-// on for this device (remembered), `?dev=0` turns it off.
+// can enable that's only for a developer"). Off by default; the menu's
+// Settings screen switches it on for this device (remembered). `?dev=1` /
+// `?dev=0` in the URL do the same.
 //
 // A full run is ~8 minutes of waves plus the drafts. Each preset halves the
 // previous one with one lever, and none of them thins the screen out:
@@ -87,8 +88,8 @@ export function devEnabled(): boolean {
   return q === '1' || (q !== '0' && read(FLAG) === '1');
 }
 
-export function disableDev(): void {
-  write(FLAG, null);
+export function setDevEnabled(on: boolean): void {
+  write(FLAG, on ? '1' : null);
 }
 
 export function loadDevSettings(): DevSettings {
