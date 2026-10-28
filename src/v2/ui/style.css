@@ -1345,3 +1345,38 @@ body {
     font-size: 11px;
   }
 }
+
+/* Card states, round 10. The chamfered clip cuts off any outside ring, so a
+   picked card shows it in its own frame: a thick gold edge, lifted. */
+.v2-card.chosen,
+.v2-card.bot-pick {
+  --edge: var(--gold);
+  transform: translateY(-4px);
+  box-shadow: none;
+  filter: brightness(1.1);
+}
+
+.v2-card.chosen::before,
+.v2-card.bot-pick::before {
+  inset: 3.5px;
+}
+
+/* Stepping back: cards you can't take, or that wait while you choose what a
+   swap replaces. Solid (no battlefield showing through), art greyed. */
+.v2-card.locked,
+.v2-card:disabled:not(.locked):not(.chosen) {
+  --edge: #2b3c47;
+  background: var(--edge);
+  filter: none;
+  transform: none;
+}
+
+.v2-card.locked .v2-card-art,
+.v2-card:disabled:not(.chosen) .v2-card-art {
+  filter: grayscale(0.85) brightness(0.55);
+}
+
+.v2-card.locked .v2-card-level i,
+.v2-card:disabled:not(.chosen) .v2-card-level i {
+  box-shadow: none;
+}

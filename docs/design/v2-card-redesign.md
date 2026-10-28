@@ -115,3 +115,28 @@ The rack-sharing detail now comes from Escort Frigate L2's "gets its own 2-round
 - The text is 11 px on phones, 12 px at the larger phone size and 14 px on desktop. The only text below 11 px is the uppercase label row (badge and threat), at 9–10 px, which is the same as before.
 - "Supercharged Pickups" is the only name that wraps to two lines, and only in the four-card layout on phones. It still fits.
 - The cycle-2 overflow turned out to be an SVG glow layer, which is cropped on purpose, not text. No change needed.
+
+### Cycle 4: the special states (C5)
+
+**Tested.** I screenshotted each state at 844×390 with real taps:
+1. **Swap:** a full loadout, tap a new card, then tap the held card it replaces.
+2. **Locked:** a maxed card in the hand.
+3. **Bot pick:** watch mode, waiting for the bot's draft.
+
+Then I ran both browser suites, which drive the swap flow and the bot's draft.
+
+**Found.**
+1. **The chosen card had no highlight,** both in swap mode (Flak Burst) and for the bot's pick (Combat Rhythm). The old gold ring was a `box-shadow`, and the new chamfered clip-path cuts off anything drawn outside the card.
+2. **Cards waiting during a swap kept full-colour art,** so the chosen card didn't stand out against them.
+3. **A maxed card read "LV 4/3" with a LEVEL UP badge.** The game never deals a maxed card, but the label was wrong if one ever showed.
+4. **The `e2e:v2:watch` stride check failed.** It looked for "skipped" in the screen's `h2`, which now reads "Choose your upgrade"; "Wave 3 skipped" moved into the eyebrow line. This was a test coupling, not a behaviour change: the flow still reached wave 4.
+5. **A harness bug:** I had set a fractional wave number to force redraws, and that threw a page error when the next wave started. This was only in my screenshot harness, not the game.
+
+**Fixed and re-checked.**
+- **Picked cards** (`.chosen`, `.bot-pick`) show it inside their own frame: the edge turns gold and thickens to 3.5 px, and the card lifts 4 px.
+- **Cards that step back** (locked, or waiting during a swap) get a dark edge and their art goes greyscale and dimmed. They stay solid, with no battlefield showing through.
+- **A maxed card** shows a grey MAXED badge and "MAX" by its pips.
+- **The e2e** now reads the eyebrow.
+- **The harness** uses whole wave numbers.
+
+Re-shot screenshots show all four states clearly. `e2e:v2` passed, including the swap flow on the iPhone viewport. `e2e:v2:watch` passed all sections after the selector fix.

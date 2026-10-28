@@ -954,7 +954,8 @@ export class App {
       const lvl = g.levels[id] ?? 0;
       const takeable = canTake(g.levels, id);
       const swappable = canSwapIn(g.levels, id);
-      const badge = id === 'resupply' ? 'NO SWAP' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const maxed = id !== 'resupply' && lvl >= u.max;
+      const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
       const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}`, () => {
         if (swapping) return;
@@ -968,7 +969,7 @@ export class App {
       // and badge across the top, the illustration filling the middle, then
       // the name, the level it reaches, and one short line of effect.
       const top = el('span', 'v2-card-top', '');
-      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : 'up'}`, badge));
+      top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : 'up'}`, badge));
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
       const level = el('span', 'v2-card-level', '');
@@ -976,7 +977,7 @@ export class App {
       else {
         // One pip per level: those already held, the one this card adds, the rest.
         for (let k = 1; k <= u.max; k++) level.append(el('i', k <= lvl ? 'had' : k === lvl + 1 ? 'gain' : ''));
-        level.append(el('span', '', `LV ${lvl + 1}/${u.max}`));
+        level.append(el('span', '', maxed ? 'MAX' : `LV ${lvl + 1}/${u.max}`));
       }
       card.append(top, art, el('strong', 'v2-card-name', u.name), level, el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]));
       return card;
