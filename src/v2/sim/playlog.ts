@@ -16,7 +16,9 @@ import {
   step,
   tap,
   type Game,
+  type Phase,
   type TapResult,
+  type Tempo,
   type WaveRecord,
 } from './game';
 
@@ -26,7 +28,9 @@ import {
  *  4: playtest round 4 (subs, trucks, aircraft, the new roster and pickups).
  *  5: round 5 (frigate holds station, rarer repairs, 1-damage ballistic spill).
  *  6: round 6 audit (Twin Launch, Quick Reload and frigate reworked; the
- *     Strike Package is now two jets sweeping the screen). */
+ *     Strike Package is now two jets sweeping the screen).
+ *  (Round 8's dev `tempo` is an optional field: a log without it is a
+ *  real-game log and replays as before, so the version stays.) */
 export const LOG_VERSION = 6;
 export const SIM_DT = 1 / 60;
 
@@ -48,6 +52,11 @@ export interface PlayLog {
   map: MapId;
   seed: number;
   firstWave: number;
+  /** Developer playtest mode only: the tempo the run was played at (absent =
+   *  the real game), the preset's name, and the run a wave retry restarted
+   *  from. Balance analysis should leave these logs out. */
+  tempo?: Tempo;
+  dev?: { preset: string; retryOf?: string };
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
   /** How the run ended: won (map cleared and stopped), lost, or quit.
    *  Absent on a mid-run save. */
@@ -73,22 +82,36 @@ export interface PlaySummary {
   waves: WaveRecord[];
 }
 
+/** Where the wave in play began: enough to rebuild the run at that moment
+ *  (dev "retry wave"). */
+export interface WaveMark {
+  wave: number;
+  steps: number;
+  commands: number;
+}
+
 export class Recorder {
   readonly log: PlayLog;
   private drafts: PlaySummary['drafts'] = [];
+  mark: WaveMark;
 
+  /** `from` continues an earlier run's inputs (a dev wave retry): the game
+   *  passed in must already be that run replayed up to `from.mark`. */
   constructor(
     readonly game: Game,
     meta: Omit<PlayLog, 'v' | 'commands' | 'map' | 'seed' | 'id'> & { id?: string },
+    from?: { log: PlayLog; mark: WaveMark },
   ) {
     this.log = {
       v: LOG_VERSION,
       id: meta.id ?? `${meta.startedAt.replace(/[^0-9]/g, '').slice(0, 14)}-${game.seed}`,
       map: game.map.id,
       seed: game.seed,
-      commands: [],
+      commands: from ? from.log.commands.slice(0, from.mark.commands) : [],
       ...meta,
     };
+    if (from) this.drafts = (from.log.summary?.drafts ?? []).filter((d) => d.wave < from.mark.wave);
+    this.mark = { wave: game.wave, steps: game.steps, commands: this.log.commands.length };
   }
 
   tap(x: number, y: number, radius: number): TapResult {
@@ -115,6 +138,7 @@ export class Recorder {
     this.drafts.push({ wave: this.game.wave, offered: [...this.game.offer], picked: id, ...(replace ? { replaced: replace } : {}) });
     this.log.commands.push(replace ? [this.game.steps, 'u', id, replace] : [this.game.steps, 'u', id]);
     pickUpgrade(this.game, id, replace);
+    if ((this.game.phase as Phase) === 'wave') this.mark = { wave: this.game.wave, steps: this.game.steps, commands: this.log.commands.length };
   }
 
   endless(): void {
@@ -167,9 +191,14 @@ export class Recorder {
 /** Re-run a log from its seed and inputs. Stops at the last recorded step
  *  for a quit, or when the game ends. */
 export function replay(log: PlayLog): Game {
-  const g = createGame(log.map, log.seed, log.firstWave);
-  const cmds = log.commands;
-  const lastStep = log.summary?.steps ?? Infinity;
+  return replayTo(log, log.summary?.steps ?? Infinity, log.commands.length);
+}
+
+/** Re-run a log's first `commands` inputs, stopping at step `lastStep`:
+ *  with a `WaveMark`, the run exactly as that wave began. */
+export function replayTo(log: PlayLog, lastStep: number, commands: number): Game {
+  const g = createGame(log.map, log.seed, log.firstWave, log.tempo);
+  const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {
     while (i < cmds.length && cmds[i][0] <= g.steps) {

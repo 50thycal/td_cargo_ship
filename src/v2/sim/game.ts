@@ -260,9 +260,27 @@ export interface Raid {
   bases: number[];
 }
 
+/** Developer playtest tempo (never on for players). `waveLen` shortens every
+ *  wave and scales its launches with it, so the screen is as busy as ever for
+ *  half as long; `stride` plays every Nth wave (always ending on the last),
+ *  drafting one card per wave skipped, so the build keeps pace with the wave;
+ *  `lossLimit` is the ships you can lose, cut to match, since a shorter run
+ *  has less time for losses to pile up. */
+export interface Tempo {
+  waveLen: number;
+  stride: number;
+  lossLimit: number;
+}
+
+export const FULL_TEMPO: Tempo = { waveLen: 1, stride: 1, lossLimit: RULES.shipLossLimit };
+
 export interface Game {
   map: MapDef;
   seed: number;
+  tempo: Tempo;
+  /** Cards still to pick before the next wave (more than one when the dev
+   *  stride skips waves). */
+  draftsLeft: number;
   rng: { ships: RNG; threats: RNG; drops: RNG; draft: RNG };
   phase: Phase;
   t: number;
@@ -333,12 +351,14 @@ export interface Game {
 // Setup
 
 /** `firstWave` > 1 skips ahead (playtesting a late wave via `?wave=N`). */
-export function createGame(mapId: MapId, seed: number, firstWave = 1): Game {
+export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tempo = FULL_TEMPO): Game {
   const root = makeRng(seed);
   const s = stats({});
   const g: Game = {
     map: MAPS[mapId],
     seed,
+    tempo,
+    draftsLeft: 0,
     rng: {
       ships: root.fork('ships'),
       threats: root.fork('threats'),
@@ -425,6 +445,13 @@ function startWave(g: Game): void {
   g.phase = 'wave';
   g.offer = [];
   const spec = waveSpec(g.wave, g.map.threatScale);
+  const len = g.tempo.waveLen;
+  if (len !== 1) {
+    spec.duration *= len;
+    spec.drones = cut(spec.drones, len);
+    spec.ballistic = cut(spec.ballistic, len);
+    spec.guided = cut(spec.guided, len);
+  }
   g.waveSpeed = spec.speed;
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
@@ -446,7 +473,7 @@ function startWave(g: Game): void {
   for (let k = 0; k < spec.guided; k++) units.push({ kind: 'guided', size: 1 });
   for (const x of g.map.extras) {
     if (g.wave < x.from) continue;
-    const n = Math.round(x.count + x.growth * (g.wave - x.from));
+    const n = cut(Math.round(x.count + x.growth * (g.wave - x.from)), len);
     for (let k = 0; k < n; k++) units.push({ kind: x.kind, size: 1 });
   }
   // Aircraft join from the map's chosen wave. They stand in for part of the
@@ -460,11 +487,11 @@ function startWave(g: Game): void {
       if (i >= 0) units.splice(i, 1);
     }
   };
-  for (let k = 0; k < vectorCount(g.wave, vp.strafers, 4, 2); k++) {
+  for (let k = 0; k < cut(vectorCount(g.wave, vp.strafers, 4, 2), len); k++) {
     replace('drone', 1);
     units.push({ kind: 'strafer', size: 1 });
   }
-  for (let k = 0; k < vectorCount(g.wave, vp.bombers, 4, 2); k++) {
+  for (let k = 0; k < cut(vectorCount(g.wave, vp.bombers, 4, 2), len); k++) {
     replace('guided', PLANE.bombs);
     units.push({ kind: 'bomber', size: 1 });
   }
@@ -513,6 +540,21 @@ function startWave(g: Game): void {
   g.events.push({ kind: 'wave', wave: g.wave });
 }
 
+/** A count shortened with the wave, keeping at least one of anything the
+ *  full wave has, so every threat still shows up in a dev short wave. */
+function cut(n: number, len: number): number {
+  return len === 1 || n <= 0 ? n : Math.max(1, Math.round(n * len));
+}
+
+/** The next wave the dev stride plays after `wave`: every `stride`th,
+ *  counted back from the last so the final wave is always played. Endless
+ *  waves are never skipped. */
+export function nextPlayedWave(wave: number, stride: number): number {
+  let w = wave + 1;
+  while (stride > 1 && w < RULES.wavesToClear && (RULES.wavesToClear - w) % stride !== 0) w++;
+  return w;
+}
+
 /** How many of a vector join a wave: none before `from`, then one more every
  *  `every` waves, up to `cap`. */
 function vectorCount(wave: number, from: number, every: number, cap: number): number {
@@ -539,7 +581,7 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
   const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership';
   // Submarines: a salvo of ballistics back to back, or a drone swarm.
   const spots = rng.shuffle([...g.map.subSpots]);
-  for (let k = 0; k < vectorCount(g.wave, vp.subs, 2, 3) && spots.length; k++) {
+  for (let k = 0; k < cut(vectorCount(g.wave, vp.subs, 2, 3), g.tempo.waveLen) && spots.length; k++) {
     const options = raids.map((_, r) => r).filter((r) => raidUnits[r].some(surfaceKind));
     if (!options.length) break;
     const r = rng.pick(options);
@@ -552,7 +594,7 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
   // Trucks: pop-ups drive to the shore, fire one or two, reverse out; runners
   // drive the whole road, stopping to fire each of up to three.
   const roads = g.map.roads;
-  for (let k = 0; k < vectorCount(g.wave, vp.trucks, 2, 5); k++) {
+  for (let k = 0; k < cut(vectorCount(g.wave, vp.trucks, 2, 5), g.tempo.waveLen); k++) {
     const options = raids.map((_, r) => r).filter((r) => raidUnits[r].some(truckKind));
     if (!options.length) break;
     const r = rng.pick(options);
@@ -696,7 +738,7 @@ export function pickUpgrade(g: Game, id: UpgradeId, replace?: UpgradeId): void {
     g.carrierHp = g.stats.carrierHp;
     g.ammo = g.stats.rack;
     if (g.frigate) g.frigate.ammo = g.stats.frigateRack;
-    startWave(g);
+    afterPick(g);
     return;
   }
   const old = g.stats;
@@ -708,6 +750,18 @@ export function pickUpgrade(g: Game, id: UpgradeId, replace?: UpgradeId): void {
   for (const s of g.ships) s.hp = Math.max(1, Math.min(g.stats.shipHp, s.hp + g.stats.shipHp - old.shipHp));
   g.carrierHp = Math.max(1, Math.min(g.stats.carrierHp, g.carrierHp + g.stats.carrierHp - old.carrierHp));
   syncFrigate(g, false);
+  afterPick(g);
+}
+
+/** Into the next wave, or (dev stride) on to the next skipped wave's draft. */
+function afterPick(g: Game): void {
+  if (g.draftsLeft > 1) {
+    g.draftsLeft -= 1;
+    g.wave += 1;
+    openDraft(g);
+    return;
+  }
+  g.draftsLeft = 0;
   startWave(g);
 }
 
@@ -734,6 +788,7 @@ function syncFrigate(g: Game, onStation: boolean): void {
 export function continueEndless(g: Game): void {
   if (g.phase !== 'won') return;
   g.endless = true;
+  g.draftsLeft = 1;
   openDraft(g);
 }
 
@@ -801,7 +856,7 @@ export function step(g: Game, dt: number): void {
   for (const f of g.fx) f.age += dt;
   g.fx = g.fx.filter((f) => f.age < f.life);
 
-  if (g.lost >= RULES.shipLossLimit || g.carrierHp <= 0) {
+  if (g.lost >= g.tempo.lossLimit || g.carrierHp <= 0) {
     g.phase = 'lost';
     recordWave(g, 'lost');
     return;
@@ -813,6 +868,7 @@ export function step(g: Game, dt: number): void {
       g.cleared = true;
       g.phase = 'won';
     } else {
+      g.draftsLeft = g.endless ? 1 : nextPlayedWave(g.wave, g.tempo.stride) - g.wave;
       openDraft(g);
     }
   }

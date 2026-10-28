@@ -58,12 +58,12 @@ try {
   await page.click('[data-map="strait"]');
   await page.waitForSelector('.playing');
 
-  // 3× speed via the right rail: tap the top of its track.
+  // Top speed via the right rail (round 8: 2× is the max): tap the top of its track.
   const track = page.locator('.v2-rail-right .v2-track');
   const box = await track.boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + 2);
   const speedLabel = await page.locator('.v2-rail-right .v2-slider-value').textContent();
-  if (speedLabel !== '3×') fail(`speed slider read ${speedLabel}`);
+  if (speedLabel !== '2×') fail(`speed slider read ${speedLabel}`);
 
   let shot = false;
   for (let i = 0; i < 400; i++) {
@@ -215,6 +215,47 @@ try {
     console.log('after the toolbar hides:', JSON.stringify(fill));
     if (fill.root !== 402 || fill.mapBottom < 401) fail(`layout stuck at the old height: ${JSON.stringify(fill)}`);
     await tb.close();
+  }
+
+  // Dev playtest mode: off for players, `?dev=1` turns it on (remembered).
+  // The ⅛ preset opens on a short wave 2 at 2×, every map is open, and a lost
+  // wave can be retried with the same cards.
+  {
+    const dev = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    dev.on('pageerror', (err) => fail(`dev page error: ${err.message}`));
+    await dev.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
+    if (await dev.locator('.v2-dev').count()) fail('dev strip shows without ?dev=1');
+    await dev.goto(`${BASE_URL}/v2.html?dev=1&seed=5`, { waitUntil: 'networkidle' });
+    await dev.locator('[data-preset="eighth"]').tap();
+    await dev.screenshot({ path: `${SHOT_DIR}/09-dev-menu.png` });
+    const strip = await dev.locator('.v2-dev').boundingBox();
+    if (!strip || strip.y + strip.height > 390) fail(`dev strip off screen: ${JSON.stringify(strip)}`);
+    // Remembered without the query string; the Island is open.
+    await dev.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
+    await dev.locator('[data-map="island"]').tap();
+    await dev.waitForSelector('.playing');
+    const run = await dev.evaluate(() => {
+      const g = window.__v2.game();
+      return { wave: g.wave, tempo: g.tempo, cards: Object.keys(g.levels).length, hud: document.querySelector('.v2-hud-dev')?.textContent };
+    });
+    const speed = await dev.locator('.v2-rail-right .v2-slider-value').textContent();
+    console.log('dev ⅛ run:', JSON.stringify(run), speed);
+    if (run.wave !== 2 || run.tempo.stride !== 2 || run.tempo.waveLen >= 1 || run.cards !== 1) fail(`dev run started wrong: ${JSON.stringify(run)}`);
+    if (speed !== '2×' || run.hud !== 'DEV ⅛') fail(`dev run speed ${speed}, hud ${run.hud}`);
+    await dev.waitForTimeout(1500);
+    await dev.evaluate(() => {
+      const g = window.__v2.game();
+      g.lost = g.tempo.lossLimit;
+    });
+    await dev.waitForSelector('.v2-dev-retry');
+    await dev.screenshot({ path: `${SHOT_DIR}/10-dev-retry.png` });
+    await dev.locator('.v2-dev-retry').tap();
+    await dev.waitForSelector('.playing');
+    const retry = await dev.evaluate(() => ({ wave: window.__v2.game().wave, lost: window.__v2.game().lost, phase: window.__v2.game().phase }));
+    if (retry.wave !== 2 || retry.lost !== 0 || retry.phase !== 'wave') fail(`retry restored ${JSON.stringify(retry)}`);
+    await dev.goto(`${BASE_URL}/v2.html?dev=0`, { waitUntil: 'networkidle' });
+    if (await dev.locator('.v2-dev').count()) fail('?dev=0 left dev mode on');
+    await dev.close();
   }
 
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');

@@ -15,6 +15,7 @@ import {
   timeToImpact,
   type Game,
   type Threat,
+  type Tempo,
 } from './game';
 
 export interface BotSkill {
@@ -121,9 +122,9 @@ export function runBot(
   map: MapId,
   seed: number,
   skill: BotSkill,
-  opts: { flow?: number; endlessTo?: number; dt?: number } = {},
+  opts: { flow?: number; endlessTo?: number; dt?: number; firstWave?: number; tempo?: Tempo } = {},
 ): BotRun {
-  const g = createGame(map, seed);
+  const g = createGame(map, seed, opts.firstWave, opts.tempo);
   if (opts.flow !== undefined) g.flow = opts.flow;
   const bot = new Bot(skill, seed);
   const dt = opts.dt ?? 1 / 30;

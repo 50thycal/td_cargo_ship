@@ -93,8 +93,9 @@ reach to the west end.
   every 1.9 s, with a ×1 → ×3 score multiplier. Above it, the **formation
   button** opens Column / Pairs / Spread / Box, changeable mid-wave (ships glide
   to their new lanes); each option shows its strength and weakness.
-- **Right rail — game speed.** 0.5× / 1× / 2× / 3× plus pause (Space also
-  pauses). Time scale only; score is unaffected.
+- **Right rail — game speed.** 1× / 1.25× / 1.5× / 2× plus pause (Space also
+  pauses). Time scale only; score is unaffected. 2× is the max (round 8); dev
+  mode adds 3× and 4×.
 - **Center — tap to intercept.** A tap reaches 44 CSS px. It fires at the
   nearest threat that still needs an interceptor (so repeated taps spread
   across a swarm), or collects a pickup if one is closer. The carrier's rack
@@ -200,6 +201,16 @@ artifact page.
 - `v2.html?wave=7` starts any map at wave 7 (with the 6 cards a player would
   have drafted by then) for playtesting late waves;
   `?seed=N` replays one exact seed.
+- **Dev playtest mode** (round 8): `v2.html?dev=1` turns it on for the device
+  (`?dev=0` or the menu link turns it off). It opens every map, adds 3×/4×
+  speed, a start-wave picker, a "Retry wave N" button on the loss screen (same
+  cards, ships and score; a new log that carries the old one's inputs), and
+  four run lengths, each half the last: Full (~8 min of waves), ½ (waves 0.4×
+  as long with launches cut to match, loss limit 3), ¼ (also only waves 2, 4,
+  6, 8, 10, drafting a card per wave skipped, loss limit 2), ⅛ (the ¼ run at
+  2×). Dev runs never touch records or unlocks, and their logs carry `tempo`
+  and `dev`, so they replay exactly and stay out of balance numbers.
+  [v2-playtest-log-round8.md](v2-playtest-log-round8.md) has the measurements.
 
 The playtest cycles, what each found and what changed are in
 [v2-playtest-log.md](v2-playtest-log.md).
