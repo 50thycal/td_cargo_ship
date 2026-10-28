@@ -80,8 +80,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Twin Launch',
     max: 3,
     levels: [
-      'A tap on a tough threat (2+ hits) fires a free 2nd interceptor at it',
-      'An interceptor whose target is gone flies on to a threat close by',
+      'Tapping a tough threat (2+ hits) fires a free 2nd interceptor',
+      'An interceptor that loses its target flies on to one nearby',
       'Up to 2 free extras at a tough threat',
     ],
     answers: 'Guided',
@@ -91,7 +91,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Early-Warning Radar',
     max: 2,
     levels: [
-      'Raids, subs and aircraft flagged 1.5 s sooner, impact points shown at launch; jamming slows threats 8%',
+      'Threats spotted 1.5 s sooner, impact points shown, 8% slower',
       'Heavier jamming: threats fly 18% slower',
     ],
     answers: 'Surprise',
@@ -101,7 +101,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Escort Frigate',
     max: 2,
     levels: [
-      'A frigate sails in beside the carrier: taps launch from whichever is nearer (it shares the carrier\'s rack)',
+      'A frigate joins the carrier: taps fire from whichever is nearer',
       'The frigate gets its own 2-round rack',
     ],
     answers: 'Range',
@@ -111,7 +111,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Rapid Hold',
     max: 2,
     levels: [
-      `Holding your finger down repeats much faster (every 0.32 s, not ${HOLD_FREE} s)`,
+      `Hold to fire repeats faster: every 0.32 s instead of ${HOLD_FREE} s`,
       'Hold repeats every 0.22 s',
     ],
     answers: 'Swarms',
@@ -150,8 +150,8 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Smoke Screen',
     max: 2,
     levels: [
-      'A ship that is hit lays smoke: homing missiles lose their lock on it (recharges in 7 s)',
-      'Recharges in 4 s, and the smoke also hides ships from strafing guns',
+      'Hit ships lay smoke that breaks missile locks (7 s recharge)',
+      'Recharges in 4 s, and smoke also hides ships from strafing',
     ],
     answers: 'Guided',
   },
@@ -160,7 +160,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     name: 'Decoy Flares',
     max: 2,
     levels: [
-      'A guided missile about to hit a ship chases a flare instead (recharges in 8 s)',
+      'A flare pulls off a guided missile about to hit (8 s recharge)',
       'Recharges in 4 s, and fools supersonics too',
     ],
     answers: 'Guided',
@@ -183,7 +183,7 @@ export const UPGRADES: Record<Exclude<UpgradeId, 'resupply'>, UpgradeDef> & Part
     id: 'proxfuse',
     name: 'Proximity Fuse',
     max: 2,
-    levels: ['Interceptors burst when they get close: fast missiles stop slipping past', 'A fused hit does double damage'],
+    levels: ['Interceptors burst up close, so fast missiles can\'t slip past', 'A fused hit does double damage'],
     answers: 'Ballistic',
   },
 };

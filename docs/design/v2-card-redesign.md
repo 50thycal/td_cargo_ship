@@ -90,3 +90,28 @@ The test and bot hooks are unchanged: `.v2-card`, `data-upgrade`, `.v2-slot.swap
 - **Desktop size:** a desktop rule widens the panel, grows the art to 200 px tall and the text to 14 px. Cards are now 343×336 px.
 - **Resupply's label** is now green.
 - **Desktop labels:** 11 px instead of 9.
+
+### Cycle 3: short, readable effect lines (C2)
+
+**Measured first.** I listed every effect line by length.
+- The longest were Escort Frigate L1 (106 characters), Early-Warning Radar L1 (102) and Smoke Screen L1 (87).
+- Nine lines were over 62 characters, against about 60 on the reference's cards.
+
+**Changed.** I rewrote those nine to ≤ 63 characters. The numbers that matter are kept (1.5 s sooner, 8% slower, 7 s / 8 s recharges, 0.32 s instead of 0.6 s, 2+ hits). Examples:
+- **Escort Frigate:** "A frigate joins the carrier: taps fire from whichever is nearer".
+- **Early-Warning Radar:** "Threats spotted 1.5 s sooner, impact points shown, 8% slower".
+- **Smoke Screen:** "Hit ships lay smoke that breaks missile locks (7 s recharge)".
+
+The rack-sharing detail now comes from Escort Frigate L2's "gets its own 2-round rack". No test checks these strings, and the unit tests still pass.
+
+**Tested.** An audit tool renders **every card at every level** (38 card-levels), three at a time beside Resupply, so it uses the narrowest four-card layout. It ran at 844×390, 874×402 and 1280×720, and for each card measured:
+- the lines of effect text and of the name;
+- any overflowing HTML element;
+- the panel's scroll.
+
+**Found.**
+- At all three sizes, every effect fits in **1 or 2 lines** (at 844×390: 17 one-line, 21 two-line).
+- **No overflowing text** anywhere, and **no hand scrolls**: panel height 322–341 px of 390.
+- The text is 11 px on phones, 12 px at the larger phone size and 14 px on desktop. The only text below 11 px is the uppercase label row (badge and threat), at 9–10 px, which is the same as before.
+- "Supercharged Pickups" is the only name that wraps to two lines, and only in the four-card layout on phones. It still fits.
+- The cycle-2 overflow turned out to be an SVG glow layer, which is cropped on purpose, not text. No change needed.
