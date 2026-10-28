@@ -168,6 +168,41 @@ try {
     await page.close();
   }
 
+  // 5. Ghost check: after a run you played, bot-you plays the same seed and
+  //    the result screen compares; a run the bot played alone gets none.
+  {
+    const page = await phone();
+    page.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await page.goto(`${BASE_URL}/v2.html?seed=19`, { waitUntil: 'networkidle' });
+    await devSettings(page, { preset: 'quarter', wave: 1, watch: false, watchSpeed: 1 });
+    await page.locator('[data-map="gauntlet"]').tap();
+    await page.waitForSelector('.playing');
+    await page.waitForTimeout(800);
+    await game(page, () => {
+      const g = window.__v2.game();
+      g.lost = g.tempo.lossLimit;
+    });
+    await page.waitForSelector('.v2-ghost');
+    await page.waitForSelector('.v2-ghost.done', { timeout: 30000 }).catch(() => fail('ghost check never finished'));
+    const text = await page.locator('.v2-ghost').innerText();
+    console.log('ghost:', text.replace(/\n/g, ' | '));
+    if (!/Bot-you: (lost on wave \d+|cleared)/.test(text)) fail(`ghost line reads: ${text}`);
+    await page.screenshot({ path: `${SHOT_DIR}/08-ghost.png` });
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v2.playlogs') || '[]').at(-1));
+    if (!saved?.ghost || saved.ghost.bot !== 'you-v1') fail(`ghost not saved in the log: ${JSON.stringify(saved?.ghost)}`);
+    // A watched run (the bot alone) has nothing to compare.
+    await devSettings(page, { preset: 'eighth', wave: 1, watch: true, watchSpeed: 10 });
+    await page.locator('[data-map="strait"]').tap();
+    await page.waitForSelector('.playing');
+    await game(page, () => {
+      const g = window.__v2.game();
+      g.lost = g.tempo.lossLimit;
+    });
+    await page.waitForSelector('[data-screen="result"]');
+    if (await page.locator('.v2-ghost').count()) fail('a bot-only run showed a ghost check');
+    await page.close();
+  }
+
   console.log(process.exitCode ? 'V2 watch test FAILED' : 'V2 watch test passed');
 } finally {
   await browser.close();

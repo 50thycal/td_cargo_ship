@@ -15,7 +15,7 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import { canFire, createGame, step, timeToImpact, type Game, type TapResult, type Tempo, type Threat } from './game';
-import { Recorder, SIM_DT, type PlayLog } from './playlog';
+import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 
 export interface Persona {
   id: string;
@@ -264,33 +264,83 @@ function weighted<T extends { weight: number }>(rng: RNG, items: T[]): T {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-/** A whole bot game, recorded: the ghost check, and the fitting tools. */
+/** A bot game played a slice at a time, recorded: the ghost check runs one
+ *  in the browser between frames, the fitting tools in one go. */
+export class BotRun {
+  readonly game: Game;
+  readonly rec: Recorder;
+  private bot: Mimic;
+  private io: BotIO;
+  private guard = 0;
+
+  constructor(
+    map: MapId,
+    seed: number,
+    opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string } = {},
+  ) {
+    const g = (this.game = createGame(map, seed, opts.firstWave ?? 1, opts.tempo));
+    const rec = (this.rec = new Recorder(g, {
+      build: opts.build ?? 'sim',
+      startedAt: new Date(0).toISOString(),
+      firstWave: opts.firstWave ?? 1,
+      ...(opts.tempo ? { tempo: opts.tempo } : {}),
+      dev: { preset: 'sim', watch: true },
+      device: { w: 0, h: 0, dpr: 1, touch: true, ua: 'mimic' },
+    }));
+    this.bot = new Mimic(opts.persona ?? YOU_V1, seed);
+    this.io = {
+      tap: (x, y, r) => rec.tap(x, y, r),
+      pick: (id, rep) => rec.pick(id, rep),
+      flow: (v) => rec.flow(v),
+      formation: (id) => rec.formation(id),
+    };
+  }
+
+  get done(): boolean {
+    return this.game.phase === 'lost' || this.game.phase === 'won' || this.guard >= 60 * 60 * 40;
+  }
+
+  /** Play up to `steps` sim steps; true once the game is over. */
+  advance(steps: number): boolean {
+    for (let n = 0; n < steps && !this.done; n++, this.guard++) {
+      this.bot.act(this.game, this.io);
+      step(this.game, SIM_DT);
+    }
+    return this.done;
+  }
+
+  finish(): PlayLog {
+    const g = this.game;
+    return this.rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit');
+  }
+
+  /** What the ghost check shows and stores. */
+  result(): GhostResult {
+    const g = this.game;
+    return { bot: this.bot.persona.id, wave: g.wave, lost: g.lost, score: g.score, cleared: g.cleared, lostByWave: lostByWave(g) };
+  }
+}
+
+/** Ships sunk by the end of each wave played: index = wave − 1 (−1 for a
+ *  wave not played, as the dev stride skips some). */
+export function lostByWave(g: Game): number[] {
+  const out: number[] = [];
+  for (const h of g.history) {
+    while (out.length < h.wave - 1) out.push(-1);
+    out[h.wave - 1] = h.lost;
+  }
+  return out;
+}
+
+/** A whole bot game, recorded: the fitting tools and tests. */
 export function playMimic(
   map: MapId,
   seed: number,
   opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string } = {},
 ): { game: Game; log: PlayLog } {
-  const g = createGame(map, seed, opts.firstWave ?? 1, opts.tempo);
-  const rec = new Recorder(g, {
-    build: opts.build ?? 'sim',
-    startedAt: new Date(0).toISOString(),
-    firstWave: opts.firstWave ?? 1,
-    ...(opts.tempo ? { tempo: opts.tempo } : {}),
-    dev: { preset: 'sim', watch: true },
-    device: { w: 0, h: 0, dpr: 1, touch: true, ua: 'mimic' },
-  });
-  const bot = new Mimic(opts.persona ?? YOU_V1, seed);
-  const io: BotIO = {
-    tap: (x, y, r) => rec.tap(x, y, r),
-    pick: (id, rep) => rec.pick(id, rep),
-    flow: (v) => rec.flow(v),
-    formation: (id) => rec.formation(id),
-  };
-  for (let i = 0; i < 60 * 60 * 40 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
-    bot.act(g, io);
-    step(g, SIM_DT);
-  }
-  return { game: g, log: rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit') };
+  const run = new BotRun(map, seed, opts);
+  run.advance(Infinity);
+  return { game: run.game, log: run.finish() };
 }
 
 export const PERSONAS: Record<string, Persona> = { [YOU_V1.id]: YOU_V1 };

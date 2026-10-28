@@ -155,3 +155,41 @@ The player's Strait and Gauntlet clears were on older, easier builds. Two of the
 
 **Found and fixed.**
 - **The look-back missed what you flagged at high speed.** At 10× there is about 1 s of real reaction time between seeing something and tapping 🚩, which is about 10 game-seconds. Fixed "−1 s / −2 s game time" frames would show the aftermath, not the cause. The tool now reads the speed the log says was on at the flag and looks back in the player's real seconds. Re-run at 2×: the "−2 s" frame is 4 game-seconds earlier and shows the strafing-run and barrage warnings that led up to it.
+
+### Cycle 5: the ghost check (S6)
+
+**Built.**
+- **What runs.** After any dev run you played some of, `BotRun` plays bot-you on the same map, seed, start wave and tempo. `BotRun` is the bot game cut into slices, so the browser can run it a few milliseconds at a time between frames.
+- **What the result screen shows.**
+  - A headline: "You beat bot-you" / "Bot-you did better" / "Dead even".
+  - Both results.
+  - The first wave where your losses differed, for example "You fell behind on wave 5 (you 3 sunk by then, bot 1)".
+- **Where it's saved.** The result goes into the log as `ghost`, and the log is re-sent.
+- **When it doesn't run.** A run the bot played alone gets no ghost.
+
+**Tested.**
+- I lost a full-length Island run on purpose (seed 23) and timed the ghost to the end of its game, plus long tasks (main-thread blocks over 50 ms).
+- I did this at normal CPU and at 4× CPU throttle, then ran a control: the same screen with no ghost.
+- The e2e test covers a played ¼ Gauntlet run. The comparison appears, the log carries `ghost.bot = you-v1`, and a watched run shows none.
+
+| | Ghost time | Long tasks during it | Worst block |
+|---|---|---|---|
+| First build, normal CPU | 0.9 s | 0 | — |
+| First build, CPU ×4 | 7.6 s | 16 | 67 ms |
+| Smaller slices (4 ms), CPU ×4 | 11.4 s | 17 | 74 ms |
+| **Control: result screen, no ghost**, CPU ×4 | — | **22** | **92 ms** |
+| After the fix below, CPU ×4 | **3.0 s** | **1** | 65 ms |
+| After the fix, control (no ghost), CPU ×4 | — | 1 | 57 ms |
+
+**Found and fixed.**
+- **A frozen screen was redrawn 60 times a second.** Smaller ghost slices didn't help, and the control showed why: the stalls came from redrawing the battlefield behind the result overlay every frame, ghost or no ghost. A frozen scene (draft, result, pause, flag dialog, portrait) is now drawn once and redrawn only when it changes (a different step, size or offset), or while tap ripples or screen shake are still fading.
+  - Long tasks on the result screen: 36 → 1.
+  - Ghost time at CPU ×4: 11.4 s → 3.0 s.
+  - The one remaining long task is building the result screen itself, which happens without a ghost too.
+  - This also lightens the draft and pause screens in normal play.
+
+**Looked into, not a bug.**
+- The seed-23 ghost lost no ships in waves 1–5, then all 6 in wave 6.
+- Run headlessly, its taps per 5 s stayed steady through wave 6 (8–14).
+- All 6 losses were ballistics, while the bot was in Box formation (weak to splash, as its tag says). One barrage finished it.
+- That's the game punishing a formation, which also happened in the player's own Box run (`20261027144051-41059`). The bot was working normally.

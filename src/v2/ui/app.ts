@@ -27,7 +27,7 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Mimic, YOU_V1, type BotIO } from '../sim/mimic';
+import { BotRun, Mimic, YOU_V1, lostByWave, type BotIO } from '../sim/mimic';
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
@@ -109,9 +109,13 @@ export class App {
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   /** Watch mode: the bot in this run, and who is at the controls. */
   private bot: Mimic | null = null;
+  /** Dev ghost check in progress on the result screen. */
+  private ghostRun: BotRun | null = null;
   private control: Controller = 'you';
   /** The wave whose draft is on screen (a dev stride deals several in a row). */
   private draftWave = -1;
+  /** The frozen scene last drawn (see `draw`). */
+  private drawnKey = '';
   private botIO: BotIO = {
     tap: (x, y, r) => {
       const res = this.rec!.tap(x, y, r);
@@ -183,8 +187,8 @@ export class App {
   /** Seal the current run's log and send it wherever this build can. Safe to
    *  call more than once (a cleared map that continues into endless updates
    *  the same log). */
-  private endRun(end: 'won' | 'lost' | 'quit'): void {
-    if (!this.rec) return;
+  private endRun(end: 'won' | 'lost' | 'quit'): PlayLog | null {
+    if (!this.rec) return null;
     const log = this.rec.finish(end);
     if (end !== 'won') this.rec = null;
     this.logState = null;
@@ -192,6 +196,7 @@ export class App {
       this.logState = state;
       this.renderLogStatus(log, channel);
     });
+    return log;
   }
 
   /** Save the run so far without ending it: after each wave, and whenever
@@ -517,6 +522,14 @@ export class App {
   }
 
   private draw(): void {
+    // A frozen scene (draft, result, pause, flag dialog) is drawn once, not
+    // 60 times a second: on a phone that redraw alone stalled frames for up
+    // to 90 ms, and it slowed the ghost check running underneath.
+    const g = this.game;
+    const still = !!g && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
+    const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}` : '';
+    if (still && key === this.drawnKey) return;
+    this.drawnKey = still ? key : '';
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070d12';
@@ -901,6 +914,7 @@ export class App {
 
   private begin(): void {
     if (!this.game) return;
+    this.ghostRun = null;
     this.lastPhase = null;
     this.acc = 0;
     this.paused = false;
@@ -986,7 +1000,7 @@ export class App {
     // Dev runs never touch the real records or unlocks.
     const best = this.dev ? false : recordResult(this.progress, g.map.id, g.score, g.wave, g.cleared);
     const rec = this.rec;
-    this.endRun(won ? 'won' : 'lost');
+    const log = this.endRun(won ? 'won' : 'lost');
     const idx = MAP_ORDER.indexOf(g.map.id);
     const next = MAP_ORDER[idx + 1];
     const stats = el('div', 'v2-stats');
@@ -1013,7 +1027,55 @@ export class App {
     const sub = won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    // Dev ghost check: how bot-you does on this same seed, for any run you
+    // played some of (a run the bot played alone needs no comparing).
+    const ghost = this.dev && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
+    const ghostLine = el('div', 'v2-ghost');
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    if (ghost) this.startGhost(g, log, ghostLine);
+  }
+
+  /** Play bot-you on this run's seed between frames (a few ms at a time, so
+   *  the screen never stalls), then show both results and where they split.
+   *  The result goes into the log too. */
+  private startGhost(g: Game, log: PlayLog, line: HTMLElement): void {
+    const run = new BotRun(log.map, log.seed, { firstWave: log.firstWave, tempo: log.tempo });
+    this.ghostRun = run;
+    line.textContent = 'Bot-you is playing this seed…';
+    const tick = () => {
+      if (this.ghostRun !== run) return;
+      const t0 = performance.now();
+      while (!run.done && performance.now() - t0 < 4) run.advance(10);
+      if (!run.done) {
+        line.textContent = `Bot-you is playing this seed… wave ${run.game.wave}`;
+        setTimeout(tick, 0);
+        return;
+      }
+      this.ghostRun = null;
+      const res = run.result();
+      log.ghost = res;
+      void storeLog(log);
+      const verdict = (cleared: boolean, wave: number, lost: number) => `${cleared ? 'cleared' : `lost on wave ${wave}`} · ${lost} sunk`;
+      const mine = lostByWave(g);
+      let split = 'Same losses, wave for wave.';
+      for (let w = 0; w < Math.max(mine.length, res.lostByWave.length); w++) {
+        const a = mine[w] ?? -1;
+        const b = res.lostByWave[w] ?? -1;
+        if (a < 0 || b < 0 || a === b) continue;
+        split = a > b ? `You fell behind on wave ${w + 1} (you ${a} sunk by then, bot ${b}).` : `You pulled ahead on wave ${w + 1} (you ${a} sunk by then, bot ${b}).`;
+        break;
+      }
+      const you = (g.cleared ? 100 : g.wave) * 10 - g.lost;
+      const bot = (res.cleared ? 100 : res.wave) * 10 - res.lost;
+      const head = you > bot ? 'You beat bot-you on this seed' : you < bot ? 'Bot-you did better on this seed' : 'Dead even with bot-you';
+      line.replaceChildren(
+        el('strong', '', head),
+        el('span', '', `You: ${verdict(g.cleared, g.wave, g.lost)} — Bot-you: ${verdict(res.cleared, res.wave, res.lost)}`),
+        el('span', '', split),
+      );
+      line.classList.add('done');
+    };
+    setTimeout(tick, 0);
   }
 
   private renderLogStatus(log: import('../sim/playlog').PlayLog, channel: Channel): void {
