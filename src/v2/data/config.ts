@@ -46,6 +46,9 @@ export const DEFAULT_FLOW = 1;
 export const SPEED_STEPS: readonly number[] = [1, 1.25, 1.5, 2];
 export const DEFAULT_SPEED = 0;
 export const DEV_SPEED_STEPS: readonly number[] = [...SPEED_STEPS, 3, 4];
+/** Watch mode (round 9): the bot plays, so it can run far faster than a
+ *  person could. */
+export const WATCH_SPEED_STEPS: readonly number[] = [1, 2, 3, 4, 6, 10];
 
 export const CARRIER = {
   hp: 12,

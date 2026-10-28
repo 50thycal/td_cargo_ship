@@ -82,3 +82,35 @@ Results:
 The player's Strait and Gauntlet clears were on older, easier builds. Two of these measures are outside the target. Both rest on 881 taps from two Island runs, so each new log the player sends will refine the fit.
 
 **Unit tests added:** a bot game is identical for a seed and its log replays exactly; the bot taps in bursts, with some dry taps, one ship-flow change and at most one formation change; and it stacks cards, taking Resupply when its slots are full.
+
+### Cycle 2: watch mode in the app (S2, S3, S7)
+
+**Built.**
+- Settings has a **DEVELOPER** section, shown only when Developer mode is on, with a **Watch mode** switch.
+- In a watched run the bot drives the game through the same calls a touch makes.
+- Its taps are drawn as gold fingertips.
+- On a draft, its pick lights up with "Bot picks …" before it takes it. The pause is 1.4 s at 1× and 0.44 s at 10×.
+- The speed rail runs 1 / 2 / 3 / 4 / 6 / 10×, and the last watch speed is remembered.
+- The HUD reads `DEV ¼ · WATCH`.
+- Logs carry `dev.watch`.
+- New test: `e2e/v2-watch.mjs` (`npm run e2e:v2:watch`).
+
+**Tested.**
+- **Watched a ⅛ Island run at 10× in Chromium at iPhone landscape size (874×402).** I took screenshots of Settings, the menu, 1× and 10× play, a bot draft and the result. The whole run took 15 s of wall time with no page errors.
+- **Measured the real speed-up**, sampling inside a wave without polling:
+
+  | Speed setting | Measured | Notes |
+  |---|---|---|
+  | 1× | 1.00× | 60 fps |
+  | 3× | 3.03× | 60 fps |
+  | 6× | 6.05× | 60 fps |
+  | 10× | 10.03× | 60 fps |
+  | 10×, CPU throttled 4× (a stand-in for a phone) | 10.1× | 38 fps |
+
+- **Checked logging and replay.** A watched ¼ Gauntlet run's log was pulled from the browser's storage and replayed with `npm run v2:replay`: **MATCHES** (score 13240, 1 sunk, 8108 steps).
+
+**Found and fixed.**
+1. **The second card of a stride draft never showed (a round-8 bug that also hit human ¼ and ⅛ runs).** The game deals the next draft without leaving the draft phase, and the screen only redrew when the phase changed. The old cards stayed up and tapping them did nothing. A/B check: without the fix the screen stays on "Wave 2 cleared" with stale cards; with it, "Wave 3 skipped" and the new cards appear. The fix redraws when the draft's wave changes. The e2e test now covers it.
+2. **The bot never turned up ship flow in short runs.** Its timer (2–25 s) ran per wave, and ⅛ waves end sooner (screenshot: still ×1.4 at wave 4). It now times from the start of the run. Re-checked: a watched ¼ run reached flow 3 and changed formation to Box.
+3. **At 10× every banner stayed up for 26 game-seconds.** That held the raid warning in its moved-up spot over the carrier (screenshot). Banner time now shrinks with the square root of speed: 2.6 s at 1×, 0.8 s at 10×.
+4. **The frame loop allowed at most 12 steps a frame.** At 10× on a 30 fps phone that would cap the game at 6×. The cap now scales with speed, and any backlog is dropped rather than letting the game fall further and further behind.

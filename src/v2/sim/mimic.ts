@@ -97,6 +97,7 @@ export class Mimic {
   private nextTap = 0;
   private flowPlan: { at: number; steps: number[] } | null = null;
   private formationPlan: { wave: number; at: number; id: FormationId } | null = null;
+  private start: number | null = null;
 
   constructor(
     readonly persona: Persona,
@@ -105,9 +106,9 @@ export class Mimic {
     this.rng = makeRng(seed ^ 0x0b07);
     const p = persona;
     const flow = weighted(this.rng, p.flow).step;
-    this.flowPlan = { at: this.rng.range(2, 25), steps: Array.from({ length: flow - 1 }, (_, k) => k + 2) };
+    this.flowPlan = { at: this.rng.range(2, 12), steps: Array.from({ length: flow - 1 }, (_, k) => k + 2) };
     const wave = p.formation.from + this.rng.int(p.formation.to - p.formation.from + 1);
-    this.formationPlan = { wave, at: this.rng.range(3, 25), id: weighted(this.rng, p.formation.options).id };
+    this.formationPlan = { wave, at: this.rng.range(3, 10), id: weighted(this.rng, p.formation.options).id };
   }
 
   /** The card it would take from the offer on screen. */
@@ -200,13 +201,16 @@ export class Mimic {
 
   /** Ships up early in wave 1; one formation change a few waves in. */
   private rails(g: Game, io: BotIO): void {
+    // Timed from the start of the run (game time), not the wave: a dev short
+    // wave can be over before a per-wave timer comes due.
+    this.start ??= g.t;
     const fp = this.flowPlan;
-    if (fp && g.waveT >= fp.at) {
+    if (fp && g.t - this.start >= fp.at) {
       const next = fp.steps.find((s) => s > g.flow);
       if (next === undefined) this.flowPlan = null;
       else {
         io.flow(next);
-        fp.at = g.waveT + 0.1;
+        fp.at = g.t - this.start + 0.1;
       }
     }
     const mp = this.formationPlan;

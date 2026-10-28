@@ -38,6 +38,8 @@ export interface Ripple {
   /** 'dry': the tap found nothing loaded — drawn red, optionally labelled. */
   dry?: boolean;
   label?: string;
+  /** Watch mode: a tap the bot made — drawn as a gold fingertip. */
+  bot?: boolean;
 }
 
 export const RIPPLE_LIFE = 0.4;
@@ -86,6 +88,19 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawTimedPickups(ctx, g);
   for (const r of ripples) {
     const fade = 1 - r.age / (r.dry ? DRY_LIFE : RIPPLE_LIFE);
+    if (r.bot) {
+      // The bot's fingertip: a filled dot where it pressed, a ring opening out.
+      ctx.fillStyle = `rgba(245,197,66,${0.55 * fade})`;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(245,197,66,${0.9 * fade})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 16 + r.age * 60, 0, Math.PI * 2);
+      ctx.stroke();
+      if (!r.dry) continue;
+    }
     ctx.strokeStyle = r.dry ? `rgba(255,77,61,${0.9 * fade})` : `rgba(255,255,255,${0.5 * fade})`;
     ctx.lineWidth = r.dry ? 4 : 2;
     ctx.beginPath();

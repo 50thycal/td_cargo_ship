@@ -58,6 +58,10 @@ export interface DevSettings {
   preset: DevPreset;
   /** Wave the run starts on (earlier cards auto-drafted). */
   wave: number;
+  /** Watch mode: the you-bot plays; you watch, take over, flag moments. */
+  watch: boolean;
+  /** The speed a watched run starts at (the last one used). */
+  watchSpeed: number;
 }
 
 const FLAG = 'straitwatch.v2.dev';
@@ -98,9 +102,11 @@ export function loadDevSettings(): DevSettings {
     return {
       preset: s.preset && s.preset in DEV_PRESETS ? s.preset : 'half',
       wave: Math.max(1, Math.min(RULES.wavesToClear, Math.floor(s.wave ?? 1))),
+      watch: s.watch === true,
+      watchSpeed: typeof s.watchSpeed === 'number' ? s.watchSpeed : 1,
     };
   } catch {
-    return { preset: 'half', wave: 1 };
+    return { preset: 'half', wave: 1, watch: false, watchSpeed: 1 };
   }
 }
 

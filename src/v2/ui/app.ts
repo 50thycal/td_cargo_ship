@@ -10,6 +10,7 @@ import {
   RULES,
   SPEED_STEPS,
   TAP_RADIUS_PX,
+  WATCH_SPEED_STEPS,
   THREATS,
   VIEW,
   type ThreatKind,
@@ -26,7 +27,8 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Recorder, replayTo } from '../sim/playlog';
+import { Mimic, YOU_V1, type BotIO } from '../sim/mimic';
+import { Recorder, replayTo, type Controller } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -101,6 +103,27 @@ export class App {
   private dev = devEnabled();
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
+  /** Watch mode: the bot in this run, and who is at the controls. */
+  private bot: Mimic | null = null;
+  private control: Controller = 'you';
+  /** The wave whose draft is on screen (a dev stride deals several in a row). */
+  private draftWave = -1;
+  private botIO: BotIO = {
+    tap: (x, y, r) => {
+      const res = this.rec!.tap(x, y, r);
+      this.ripples.push({ x, y, age: 0, bot: true, dry: res === 'dry' });
+      return res;
+    },
+    pick: (id, replace) => this.rec?.pick(id, replace),
+    flow: (v) => {
+      this.rec?.flow(v);
+      this.flowSlider.set(v);
+    },
+    formation: (id) => {
+      this.rec?.formation(id);
+      this.syncFormation();
+    },
+  };
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
   /** Portrait while playing: the field would be a sliver, so time stops and a
@@ -239,6 +262,10 @@ export class App {
       (s) => {
         this.speed = this.speedSteps[s];
         this.rec?.speed(this.speed);
+        if (this.bot) {
+          this.devSettings.watchSpeed = this.speed;
+          saveDevSettings(this.devSettings);
+        }
       },
     );
   }
@@ -249,8 +276,14 @@ export class App {
     setDevEnabled(on);
     this.dev = on;
     this.root.classList.toggle('dev', on);
-    this.speedSteps = on ? DEV_SPEED_STEPS : SPEED_STEPS;
-    this.speed = this.speedSteps[DEFAULT_SPEED];
+    this.useSpeedSteps(on ? DEV_SPEED_STEPS : SPEED_STEPS);
+  }
+
+  /** Swap the speed rail's steps (normal, dev, or watch), back at 1×. */
+  private useSpeedSteps(steps: readonly number[]): void {
+    if (steps === this.speedSteps) return;
+    this.speedSteps = steps;
+    this.speed = steps[DEFAULT_SPEED];
     const slider = this.buildSpeedSlider();
     this.speedSlider.el.replaceWith(slider.el);
     this.speedSlider = slider;
@@ -419,13 +452,18 @@ export class App {
     this.adaptResolution(now, raw);
     if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
+      // Enough steps a frame to keep up at 10× on a slow frame; past that,
+      // drop the backlog rather than spiral.
+      const cap = Math.ceil((this.speed * 0.1) / DT) + 2;
       let n = 0;
-      while (this.acc >= DT && n < 12) {
+      while (this.acc >= DT && n < cap) {
+        if (this.bot && this.control === 'bot') this.bot.act(g, this.botIO, false);
         step(g, DT);
         this.acc -= DT;
         n++;
         if (g.phase !== 'wave') break;
       }
+      if (n >= cap) this.acc = Math.min(this.acc, DT);
       // Hold-to-fire repeats on game time, so it scales with the speed slider.
       if (this.hold && g.t >= this.hold.next) {
         this.fire(this.hold.x, this.hold.y, true);
@@ -434,7 +472,9 @@ export class App {
     }
     if (g) {
       this.drainEvents(g);
-      if (g.phase !== this.lastPhase) this.onPhase(g);
+      // A dev stride deals a second draft straight after the first: same
+      // phase, new wave, so that counts as a change too.
+      if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
     }
     for (const r of this.ripples) r.age += real;
@@ -511,7 +551,9 @@ export class App {
 
   private showBanner(title: string, sub: string): void {
     this.banner.replaceChildren(el('strong', '', title), ...(sub ? [el('span', '', sub)] : []));
-    this.bannerT = 2.6;
+    // Read-time, in real seconds; watching at 10× would otherwise leave every
+    // banner up for 26 game-seconds.
+    this.bannerT = 2.6 / Math.sqrt(Math.max(1, this.speed));
     this.placeBanner();
   }
 
@@ -533,7 +575,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
-      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}</span>` : '');
+      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ' · WATCH' : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 
@@ -544,7 +586,9 @@ export class App {
     this.lastPhase = g.phase;
     if (g.phase === 'wave') this.hideOverlay();
     else if (g.phase === 'draft') {
+      this.draftWave = g.wave;
       this.showDraft(g);
+      if (this.bot && this.control === 'bot') this.botDraft(g);
       this.saveProgress();
     } else if (g.phase === 'won') this.showResult(g, true);
     else if (g.phase === 'lost') this.showResult(g, false);
@@ -607,7 +651,38 @@ export class App {
       ),
     );
     row.append(text, sw);
-    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), row, button('Back', 'v2-btn primary', () => this.showMenu())]);
+    const rows: HTMLElement[] = [row];
+    if (this.dev) {
+      rows.push(el('div', 'v2-setting-group', 'DEVELOPER'));
+      rows.push(
+        this.switchRow(
+          'watch',
+          'Watch mode',
+          'A bot that plays like you takes the controls: same tap rhythm, aim, reactions and card picks, fitted to your logs. Watch at up to 10×, touch the battlefield to take over, 🚩 to flag a moment. Every watched run is logged for Claude.',
+          this.devSettings.watch,
+          (on) => {
+            this.devSettings.watch = on;
+            saveDevSettings(this.devSettings);
+          },
+        ),
+      );
+    }
+    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary', () => this.showMenu())]);
+  }
+
+  private switchRow(id: string, title: string, text: string, on: boolean, set: (on: boolean) => void): HTMLElement {
+    const sw = button('', `v2-switch${on ? ' on' : ''}`, () => {
+      set(!on);
+      this.showSettings();
+    });
+    sw.setAttribute('role', 'switch');
+    sw.setAttribute('aria-checked', String(on));
+    sw.dataset.setting = id;
+    const row = el('div', 'v2-setting');
+    const body = el('div', 'v2-setting-text');
+    body.append(el('strong', '', title), el('span', '', text));
+    row.append(body, sw);
+    return row;
   }
 
   /** Dev mode's menu strip: run length preset and start wave. */
@@ -633,7 +708,7 @@ export class App {
       };
       wave.append(el('span', '', 'Start wave'), button('−', 'v2-dev-chip', bump(-1)), el('b', '', `${st.wave}`), button('+', 'v2-dev-chip', bump(1)));
       box.replaceChildren(
-        el('strong', 'v2-dev-title', 'DEV PLAYTEST'),
+        el('strong', 'v2-dev-title', st.watch ? 'DEV · WATCH MODE' : 'DEV PLAYTEST'),
         presets,
         wave,
         el('p', 'v2-dev-blurb', DEV_PRESETS[st.preset].blurb),
@@ -652,13 +727,14 @@ export class App {
     const start = Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
+    const watch = this.dev && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
     this.game = createGame(id, seed, skip, tempo);
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
-      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset } } : {}),
+      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true } : {}) } } : {}),
       device: {
         w: window.innerWidth,
         h: window.innerHeight,
@@ -667,8 +743,37 @@ export class App {
         ua: navigator.userAgent.slice(0, 160),
       },
     });
-    if (preset) this.setSpeed(preset.speed);
+    this.startWatch(watch, seed);
+    if (watch) this.setSpeed(this.devSettings.watchSpeed);
+    else if (preset) this.setSpeed(preset.speed);
     this.begin();
+  }
+
+  /** Watch mode on or off for the run starting now. */
+  private startWatch(watch: boolean, seed: number): void {
+    this.bot = watch ? new Mimic(YOU_V1, seed) : null;
+    this.control = watch ? 'bot' : 'you';
+    this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
+    this.root.classList.toggle('watching', watch);
+  }
+
+  /** The bot's draft: its pick lights up for a moment (shorter when
+   *  watching fast), then it takes it. */
+  private botDraft(g: Game): void {
+    const bot = this.bot;
+    if (!bot) return;
+    const choice = bot.choose(g);
+    const card = this.overlay.querySelector(`[data-upgrade="${choice.id}"]`);
+    card?.classList.add('bot-pick');
+    const panel = this.overlay.querySelector('.v2-panel');
+    panel?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
+    const wave = g.wave;
+    setTimeout(
+      () => {
+        if (this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot') this.rec?.pick(choice.id, choice.replace);
+      },
+      1400 / Math.sqrt(this.speed),
+    );
   }
 
   /** Dev: restart the wave just lost, with the same cards, ships and score,
@@ -686,11 +791,13 @@ export class App {
         startedAt: new Date().toISOString(),
         firstWave: log.firstWave,
         ...(log.tempo ? { tempo: log.tempo } : {}),
-        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id },
+        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id, ...(log.dev?.watch ? { watch: true } : {}) },
         device: log.device,
       },
       { log, mark },
     );
+    this.startWatch(!!log.dev?.watch && this.dev, log.seed);
+    if (this.bot) this.setSpeed(this.devSettings.watchSpeed);
     this.begin();
   }
 
@@ -803,7 +910,7 @@ export class App {
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.play(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
-      buttons.push(button('Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
+      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
