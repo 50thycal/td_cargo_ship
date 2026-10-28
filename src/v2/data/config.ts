@@ -40,9 +40,12 @@ export const FLOW_STEPS = [
 ] as const;
 export const DEFAULT_FLOW = 1;
 
-/** Right-rail speed slider. Pure time scale: score is unaffected. */
-export const SPEED_STEPS = [0.5, 1, 2, 3] as const;
-export const DEFAULT_SPEED = 1;
+/** Right-rail speed slider. Pure time scale: score is unaffected. Round 8:
+ *  small steps up to 2× ("2 should be the max"); the dev playtest mode adds
+ *  DEV_SPEED_STEPS on top. */
+export const SPEED_STEPS: readonly number[] = [1, 1.25, 1.5, 2];
+export const DEFAULT_SPEED = 0;
+export const DEV_SPEED_STEPS: readonly number[] = [...SPEED_STEPS, 3, 4];
 
 export const CARRIER = {
   hp: 12,

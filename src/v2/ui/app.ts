@@ -5,6 +5,7 @@
 import {
   CARRIER,
   DEFAULT_SPEED,
+  DEV_SPEED_STEPS,
   FLOW_STEPS,
   RULES,
   SPEED_STEPS,
@@ -25,8 +26,9 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Recorder } from '../sim/playlog';
+import { Recorder, replayTo } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { DEV_ORDER, DEV_PRESETS, devEnabled, disableDev, firstPlayedWave, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
@@ -94,6 +96,11 @@ export class App {
   private flowSlider!: StepSlider;
   private speedSlider!: StepSlider;
 
+  /** Developer playtest mode (`?dev=1`): presets that shorten a run, all
+   *  maps open, faster speeds, and a wave retry on the loss screen. */
+  private dev = devEnabled();
+  private devSettings = loadDevSettings();
+  private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
   /** Portrait while playing: the field would be a sliver, so time stops and a
@@ -123,6 +130,7 @@ export class App {
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
+    root.classList.toggle('dev', this.dev);
     root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
@@ -220,11 +228,11 @@ export class App {
     this.leftRail.append(this.formationPop);
 
     this.speedSlider = stepSlider(
-      SPEED_STEPS.length,
+      this.speedSteps.length,
       DEFAULT_SPEED,
-      (s) => `${SPEED_STEPS[s]}×`,
+      (s) => `${this.speedSteps[s]}×`,
       (s) => {
-        this.speed = SPEED_STEPS[s];
+        this.speed = this.speedSteps[s];
         this.rec?.speed(this.speed);
       },
     );
@@ -500,14 +508,15 @@ export class App {
   }
 
   private renderHud(g: Game): void {
-    const pips = Array.from({ length: RULES.shipLossLimit }, (_, i) =>
+    const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < g.lost ? '<i class="lost"></i>' : '<i></i>',
     ).join('');
     const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
     const html =
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
-      `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>`;
+      `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
+      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 
@@ -532,7 +541,7 @@ export class App {
     this.root.classList.remove('playing');
     const cards = MAP_ORDER.map((id, i) => {
       const m = MAPS[id];
-      const locked = i >= this.progress.unlocked;
+      const locked = i >= this.progress.unlocked && !this.dev;
       const best = this.progress.best[id];
       const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.play(id));
       card.disabled = locked;
@@ -553,22 +562,66 @@ export class App {
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down, or hold to keep firing.'),
       el('div', 'v2-map-grid', ''),
+      ...(this.dev ? [this.devPanel()] : []),
       classic,
     ]);
     this.overlay.querySelector('.v2-map-grid')!.append(...cards);
   }
 
+  /** Dev mode's menu strip: run length preset and start wave. */
+  private devPanel(): HTMLElement {
+    const box = el('div', 'v2-dev');
+    const render = () => {
+      const st = this.devSettings;
+      const presets = el('div', 'v2-dev-presets');
+      for (const id of DEV_ORDER) {
+        const b = button(DEV_PRESETS[id].label, `v2-dev-chip${st.preset === id ? ' on' : ''}`, () => {
+          st.preset = id;
+          saveDevSettings(st);
+          render();
+        });
+        b.dataset.preset = id;
+        presets.append(b);
+      }
+      const wave = el('div', 'v2-dev-wave');
+      const bump = (d: number) => () => {
+        st.wave = Math.max(1, Math.min(RULES.wavesToClear, st.wave + d));
+        saveDevSettings(st);
+        render();
+      };
+      wave.append(el('span', '', 'Start wave'), button('−', 'v2-dev-chip', bump(-1)), el('b', '', `${st.wave}`), button('+', 'v2-dev-chip', bump(1)));
+      const off = button('Turn dev mode off', 'v2-link', () => {
+        disableDev();
+        location.search = '';
+      });
+      box.replaceChildren(
+        el('strong', 'v2-dev-title', 'DEV PLAYTEST'),
+        presets,
+        wave,
+        el('p', 'v2-dev-blurb', DEV_PRESETS[st.preset].blurb),
+        off,
+      );
+    };
+    render();
+    return box;
+  }
+
   private play(id: MapId): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
+    // Dev mode adds a run-length preset and a start wave.
     const params = new URLSearchParams(location.search);
-    const skip = Number(params.get('wave')) || 1;
+    const preset = this.dev ? DEV_PRESETS[this.devSettings.preset] : null;
+    const tempo = preset?.tempo;
+    const start = Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
+    const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
     if (this.rec) this.endRun('quit');
-    this.game = createGame(id, seed, skip);
+    this.game = createGame(id, seed, skip, tempo);
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
+      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset } } : {}),
       device: {
         w: window.innerWidth,
         h: window.innerHeight,
@@ -577,6 +630,42 @@ export class App {
         ua: navigator.userAgent.slice(0, 160),
       },
     });
+    if (preset) this.setSpeed(preset.speed);
+    this.begin();
+  }
+
+  /** Dev: restart the wave just lost, with the same cards, ships and score,
+   *  as a new log that carries the old run's inputs up to that wave. */
+  private retryWave(rec: Recorder): void {
+    const { mark, log } = rec;
+    const g = replayTo(log, mark.steps, mark.commands);
+    // The replay's own banners and blasts are old news.
+    g.events = [{ kind: 'wave', wave: g.wave }];
+    this.game = g;
+    this.rec = new Recorder(
+      g,
+      {
+        build: __BUILD__,
+        startedAt: new Date().toISOString(),
+        firstWave: log.firstWave,
+        ...(log.tempo ? { tempo: log.tempo } : {}),
+        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id },
+        device: log.device,
+      },
+      { log, mark },
+    );
+    this.begin();
+  }
+
+  private setSpeed(v: number): void {
+    const k = Math.max(0, this.speedSteps.indexOf(v));
+    this.speed = this.speedSteps[k];
+    this.speedSlider.set(k);
+    this.rec?.speed(this.speed);
+  }
+
+  private begin(): void {
+    if (!this.game) return;
     this.lastPhase = null;
     this.acc = 0;
     this.paused = false;
@@ -651,11 +740,17 @@ export class App {
           : `Pick one. You can hold ${MAX_SLOTS} different cards (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free).`,
       );
     }
-    this.showOverlay('v2-draft', [el('h2', '', `Wave ${g.wave} cleared`), slots, rule, row]);
+    // Dev stride: the waves it skips each still deal a card.
+    const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
+    const title = skipped ? `Wave ${g.wave} skipped` : `Wave ${g.wave} cleared`;
+    const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
+    this.showOverlay('v2-draft', [el('h2', '', title), ...more, slots, rule, row]);
   }
 
   private showResult(g: Game, won: boolean): void {
-    const best = recordResult(this.progress, g.map.id, g.score, g.wave, g.cleared);
+    // Dev runs never touch the real records or unlocks.
+    const best = this.dev ? false : recordResult(this.progress, g.map.id, g.score, g.wave, g.cleared);
+    const rec = this.rec;
     this.endRun(won ? 'won' : 'lost');
     const idx = MAP_ORDER.indexOf(g.map.id);
     const next = MAP_ORDER[idx + 1];
@@ -670,7 +765,8 @@ export class App {
       buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.play(next)));
     } else {
-      buttons.push(button('Try again', 'v2-btn primary', () => this.play(g.map.id)));
+      if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
+      buttons.push(button('Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;

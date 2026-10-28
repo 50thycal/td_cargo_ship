@@ -1527,3 +1527,96 @@ describe('round 7: the heavy cruise missile and the Island lanes', () => {
     }
   });
 });
+
+describe('round 8: dev playtest tempo', () => {
+  const SHORT = { waveLen: 0.4, stride: 1, lossLimit: 3 };
+  const launches = (g: Game) => g.queue.length + g.raiderQueue.reduce((n, r) => n + r.units.reduce((m, u) => m + u.size, 0), 0);
+
+  it('a short wave is 0.4× as long and just as busy, and keeps every threat type', () => {
+    for (const map of MAP_ORDER) {
+      const full = createGame(map, 12, 9);
+      const short = createGame(map, 12, 9, SHORT);
+      const span = (g: Game) => Math.max(...g.queue.map((l) => l.at), ...g.raids.map((r) => r.at)) - RULES.waveLeadIn;
+      const ratio = span(short) / span(full);
+      expect(ratio, map).toBeGreaterThan(0.3);
+      expect(ratio, map).toBeLessThan(0.5);
+      // Same launches per second, give or take the rounding.
+      const density = (g: Game) => launches(g) / waveSpec(9).duration / (g.tempo.waveLen);
+      expect(density(short) / density(full), map).toBeGreaterThan(0.8);
+      expect(density(short) / density(full), map).toBeLessThan(1.3);
+      const kinds = (g: Game) => new Set([...g.queue.map((l) => l.kind), ...g.raiderQueue.flatMap((r) => r.units.map((u) => u.kind))]);
+      expect([...kinds(short)].sort(), map).toEqual([...kinds(full)].sort());
+    }
+  });
+
+  it('the stride plays every other wave, ends on the last, and drafts a card per wave skipped', async () => {
+    const { nextPlayedWave } = await import('../../src/v2/sim/game');
+    expect([0, 2, 4, 8].map((w) => nextPlayedWave(w, 2))).toEqual([2, 4, 6, 10]);
+    expect(nextPlayedWave(9, 3)).toBe(10);
+    expect(nextPlayedWave(10, 2)).toBe(11);
+    const g = createGame('strait', 4, 2, { waveLen: 0.4, stride: 2, lossLimit: 2 });
+    expect(g.wave).toBe(2);
+    g.queue = [];
+    g.raiderQueue = [];
+    g.threats = [];
+    g.raiders = [];
+    step(g, DT);
+    expect(g.phase).toBe('draft');
+    expect(g.draftsLeft).toBe(2);
+    pickUpgrade(g, g.offer.find((id) => canTake(g.levels, id))!);
+    expect(g.phase).toBe('draft');
+    expect(g.wave).toBe(3);
+    pickUpgrade(g, g.offer.find((id) => canTake(g.levels, id))!);
+    expect(g.phase).toBe('wave');
+    expect(g.wave).toBe(4);
+    expect(Object.values(g.levels).reduce((a, b) => a + (b ?? 0), 0)).toBe(3);
+  });
+
+  it('the run ends at the tempo’s loss limit', () => {
+    const g = createGame('strait', 4, 1, SHORT);
+    g.lost = 2;
+    step(g, DT);
+    expect(g.phase).toBe('wave');
+    g.lost = 3;
+    step(g, DT);
+    expect(g.phase).toBe('lost');
+  });
+
+  it('a dev run with a wave retry replays exactly, and the retry starts from the wave as it began', async () => {
+    const { Recorder, replay, replayTo } = await import('../../src/v2/sim/playlog');
+    const tempo = { waveLen: 0.4, stride: 2, lossLimit: 2 };
+    const meta = { build: 'test', startedAt: '2026-01-01T00:00:00.000Z', firstWave: 2, tempo, dev: { preset: 'quarter' }, device: { w: 844, h: 390, dpr: 2, touch: true, ua: 'test' } };
+    const play = (rec: InstanceType<typeof Recorder>, g: Game, sloppy: boolean) => {
+      for (let i = 0; i < 60 * 60 * 4 && g.phase !== 'lost' && g.phase !== 'won'; i++) {
+        if (g.phase === 'draft') rec.pick(g.offer.find((id) => id === 'resupply' || canTake(g.levels, id))!);
+        if (i % (sloppy ? 45 : 12) === 0 && g.threats.length) rec.tap(g.threats[0].x, g.threats[0].y, 40);
+        step(g, DT);
+      }
+    };
+    const g = createGame('island', 8, 2, tempo);
+    const rec = new Recorder(g, meta);
+    play(rec, g, true);
+    expect(g.phase).toBe('lost');
+    const lostLog = rec.finish('lost');
+    expect(replay(JSON.parse(JSON.stringify(lostLog))).score).toBe(g.score);
+
+    // Retry: rebuild the lost wave's start, play it again as a new log.
+    const mark = rec.mark;
+    expect(mark.wave).toBe(g.wave);
+    const g2 = replayTo(rec.log, mark.steps, mark.commands);
+    expect(g2.phase).toBe('wave');
+    expect(g2.wave).toBe(g.wave);
+    expect(g2.waveT).toBe(0);
+    expect(g2.lost).toBe(g.history[g.history.length - 2]?.lost ?? 0);
+    const rec2 = new Recorder(g2, { ...meta, startedAt: '2026-01-01T00:05:00.000Z', dev: { preset: 'quarter', retryOf: lostLog.id } }, { log: rec.log, mark });
+    play(rec2, g2, false);
+    const log2 = rec2.finish(g2.phase === 'won' ? 'won' : g2.phase === 'lost' ? 'lost' : 'quit');
+    // The retry's log keeps the drafts made before the retried wave.
+    const before = lostLog.summary!.drafts.filter((d) => d.wave < mark.wave);
+    expect(before.length).toBeGreaterThan(0);
+    expect(log2.summary!.drafts.slice(0, before.length)).toEqual(before);
+    const r = replay(JSON.parse(JSON.stringify(log2)));
+    expect({ steps: r.steps, score: r.score, lost: r.lost, wave: r.wave }).toEqual({ steps: g2.steps, score: g2.score, lost: g2.lost, wave: g2.wave });
+    expect(r.history).toEqual(g2.history);
+  });
+});

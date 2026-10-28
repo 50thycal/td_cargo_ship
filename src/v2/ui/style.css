@@ -854,3 +854,83 @@ body {
     align-items: center;
   }
 }
+
+/* ---- Dev playtest mode (?dev=1) --------------------------------------- */
+
+.v2-dev {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--gold);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.v2-dev-title {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+.v2-dev-presets,
+.v2-dev-wave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.v2-dev-wave b {
+  min-width: 18px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.v2-dev-chip {
+  min-width: 36px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v2-dev-chip.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2a1f00;
+}
+
+.v2-dev-blurb {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+}
+
+.v2-hud .v2-hud-dev {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.v2-dev-more {
+  color: var(--gold);
+}
+
+/* Dev menus skip the map blurbs so the dev strip fits a landscape phone. */
+.v2-root.dev .v2-map-blurb {
+  display: none;
+}
+
+.v2-root.dev .v2-map-card {
+  min-height: 0;
+}
