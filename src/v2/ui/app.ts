@@ -39,6 +39,9 @@ import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 const DT = 1 / 60;
 /** A tapped card flashes this long before the next wave starts. */
 const PICK_BEAT_MS = 180;
+/** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
+const DEAL_MS = 340;
+const DEAL_STAGGER_MS = 70;
 const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
@@ -866,22 +869,31 @@ export class App {
     this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
   }
 
+  /** Watching the bot fast, cards deal in faster too. */
+  private dealScale(): number {
+    return this.bot && this.control === 'bot' ? 1 / Math.sqrt(Math.max(1, this.speed)) : 1;
+  }
+
   /** The bot's draft: its pick lights up for a moment (shorter when
    *  watching fast), then it takes it. */
   private botDraft(g: Game): void {
     const bot = this.bot;
     if (!bot) return;
     const choice = bot.choose(g);
-    const card = this.overlay.querySelector(`[data-upgrade="${choice.id}"]`);
-    card?.classList.add('bot-pick');
-    const panel = this.overlay.querySelector('.v2-panel');
-    panel?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
     const wave = g.wave;
+    const live = () => this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot';
+    // The whole hand is dealt before the bot's pick shows, at any speed.
+    const dealt = (DEAL_MS + DEAL_STAGGER_MS * (g.offer.length - 1)) * this.dealScale();
+    setTimeout(() => {
+      if (!live()) return;
+      this.overlay.querySelector(`[data-upgrade="${choice.id}"]`)?.classList.add('bot-pick');
+      this.overlay.querySelector('.v2-panel')?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
+    }, dealt);
     setTimeout(
       () => {
-        if (this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot') this.rec?.pick(choice.id, choice.replace);
+        if (live()) this.rec?.pick(choice.id, choice.replace);
       },
-      1400 / Math.sqrt(this.speed),
+      dealt + 1400 / Math.sqrt(this.speed),
     );
   }
 
@@ -975,7 +987,7 @@ export class App {
           }, PICK_BEAT_MS);
         } else if (swappable) this.showDraft(g, id);
       });
-      card.style.setProperty('--deal', `${i * 70}ms`);
+      card.style.setProperty('--deal', `${i * DEAL_STAGGER_MS * this.dealScale()}ms`);
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
       card.style.setProperty('--card-color', ICON_COLOR[id]);
@@ -1020,6 +1032,7 @@ export class App {
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'LOADOUT'), slots);
     this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, rule]);
+    this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
   }
 
   private showResult(g: Game, won: boolean): void {

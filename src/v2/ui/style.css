@@ -1385,7 +1385,7 @@ body {
 
 /* Dealt in left to right; the header settles first. */
 .v2-draft .v2-card {
-  animation: v2-deal 0.34s cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation: v2-deal calc(0.34s * var(--deal-k, 1)) cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
   animation-delay: var(--deal, 0ms);
 }
 

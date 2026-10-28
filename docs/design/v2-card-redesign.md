@@ -161,3 +161,47 @@ Re-shot screenshots show all four states clearly. `e2e:v2` passed, including the
 | Screenshots | The mid-deal frame shows the stagger. The tapped frame shows the gold edge and the sheen across the art. |
 
 **Found.** Nothing to fix. The beat was meant to be short, and at 180 ms (about 0.26 s from tap to wave) it is. While dealing in, cards are briefly see-through. That lasts under 0.3 s and the screenshots don't suffer from it, so I've left it.
+
+### Cycle 6: drafts reached by real play (C5, C6, C7)
+
+**Tested.** Earlier cycles forced the draft screen. This time I looked at drafts reached by clearing real waves:
+- the e2e's wave-1 draft at 1280×720;
+- its swap screen on the iPhone 16 Pro viewport;
+- the watch e2e's bot draft at 10×.
+
+Then I sampled every animation frame from a bot draft opening until its pick, at 1× and at 10×.
+
+**Found.**
+- **At 10× you'd never see the whole hand.** The bot's draft waits 1400/√speed ms, which is 443 ms at 10×, but dealing the cards in took 480 ms. The bot's highlight (added at once) and its pick both landed while the third card was still invisible. The screenshot shows only two of the three cards, and the battlefield showing through.
+- The e2e's 1280×720 draft shot is taken right as the screen opens, so it catches the deal in progress, with one card visible. That's expected (the test taps at once), not a bug.
+- The real swap screen (iPhone 16 Pro) shows the gold chosen card, greyed waiting cards and red ✕ slots, as designed.
+
+**Fixed.**
+- **Faster deal while the bot drafts:** the deal-in speeds up by 1/√speed.
+- **The bot waits for the whole hand:** its highlight and "Bot picks …" line now appear only once the hand is fully dealt, and its pause is counted from then.
+- Human play is unchanged.
+
+**Re-checked** by sampling every frame:
+
+| | Hand fully dealt | Bot's pick shown | Pick taken |
+|---|---|---|---|
+| 1× | 483 ms | 483 ms (all cards at opacity ≥ 0.9998) | about 1.9 s |
+| 10× | 167 ms | 167 ms | about 0.6 s |
+
+`npm test`: 827 passed. `e2e:v2` and `e2e:v2:watch` passed.
+
+## Where it stands against the goals
+
+| # | Status |
+|---|---|
+| C1 | **Met.** 18 unique illustrations, each distinct in colour and in greyscale. Three were redrawn after the first review. |
+| C2 | **Met.** All 38 card-levels fit in 1–2 lines with no cut-off text. The effect text is 11–14 px; the uppercase label row stays at 9–10 px. |
+| C3 | **Met.** No scrolling at 844×390, 874×402 or 1280×720, including the four-card hand and swap mode. |
+| C4 | **Met by my review.** Naval display frame, the battlefield's own pieces in the art, cyan and gold accents. The player is the judge here. |
+| C5 | **Met.** NEW / LEVEL UP / SWAP IN / MAXED, pips, threat line, locked, swap, Resupply, bot pick and dev titles all screenshotted, and the flows are covered by e2e. |
+| C6 | **Met.** Staggered deal, gain-pip pulse, 180 ms pick beat with double-tap safety, reduced motion respected. Bot drafts show the whole hand at any speed. |
+| C7 | **Met.** 827 unit tests, `e2e:v2`, `e2e:v2:watch`. |
+
+**Limits.**
+- Everything was checked in Chromium, not Safari on an actual iPhone. `color-mix()` and CSS `clip-path` polygons need iOS 16.2 or later.
+- The art is hand-drawn SVG at one level of detail per card. The illustrations don't change with the card's level.
