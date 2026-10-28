@@ -1078,3 +1078,23 @@ body {
     min-height: 40px;
   }
 }
+
+.v2-flag-btn {
+  display: none;
+  width: 52px;
+  min-height: 36px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px dashed var(--gold);
+  background: var(--panel);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.dev .v2-flag-btn {
+  display: block;
+}
+
+.v2-flag .v2-flag-kind {
+  min-width: 110px;
+}

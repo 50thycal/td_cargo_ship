@@ -28,7 +28,7 @@ import {
   type RaiderKind,
 } from '../sim/game';
 import { Mimic, YOU_V1, type BotIO } from '../sim/mimic';
-import { Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -95,6 +95,8 @@ export class App {
   private formationPop = el('div', 'v2-formations');
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
+  /** Dev: mark this moment for Claude (pauses while you say why). */
+  private flagBtn = button('🚩', 'v2-flag-btn', () => this.openFlag());
   /** Watch mode: who is playing; tap to take over or hand back. */
   private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
   private flowSlider!: StepSlider;
@@ -221,6 +223,8 @@ export class App {
         const g = replay(log);
         return { steps: g.steps, score: g.score, lost: g.lost, wave: g.wave };
       },
+      // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
+      showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
     };
     this.showMenu();
     requestAnimationFrame((t) => this.frame(t));
@@ -242,6 +246,7 @@ export class App {
       el('div', 'v2-rail-label', 'SHIPS'),
       this.flowSlider.el,
       flowHint,
+      this.flagBtn,
     );
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
@@ -768,6 +773,55 @@ export class App {
     this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
     this.root.classList.toggle('watching', watch);
     this.syncControl();
+  }
+
+  /** 🚩: pause on this exact step and ask why. The flag lands in the log at
+   *  this step, and the run is saved at once so it reaches Claude even if
+   *  the game is closed straight after. */
+  private openFlag(): void {
+    const g = this.game;
+    if (!this.dev || !g || !this.rec || g.phase !== 'wave' || this.paused) return;
+    this.paused = true;
+    this.hold = null;
+    const choose = (kind: FlagKind, label: string) =>
+      button(label, 'v2-btn v2-flag-kind', () => {
+        this.rec?.flag(kind);
+        this.saveProgress();
+        this.closeFlag();
+        this.showBanner(`🚩 FLAGGED: ${label.toUpperCase()}`, `Wave ${g.wave}, ${Math.round(g.waveT)} s in. Claude can replay this exact moment.`);
+      });
+    const kinds = el('div', 'v2-btn-row');
+    kinds.append(choose('bug', 'Bug'), choose('wrong', 'Looks wrong'), choose('hard', 'Too hard'), choose('easy', 'Too easy'));
+    this.showOverlay('v2-flag', [
+      el('h2', '', '🚩 Flag this moment'),
+      el('p', 'v2-sub', `Wave ${g.wave}, ${Math.round(g.waveT)} s in. The game is paused on it. What is it?`),
+      kinds,
+      button('Cancel', 'v2-link', () => this.closeFlag()),
+    ]);
+  }
+
+  /** Freeze the screen on a log's game as it stood at `step`. */
+  private showMoment(log: PlayLog, step: number): { wave: number; waveT: number; phase: string } {
+    const upto = log.commands.findIndex((c) => c[0] > step);
+    const g = replayTo(log, step, upto < 0 ? log.commands.length : upto);
+    g.events = [];
+    if (this.rec) this.endRun('quit');
+    this.rec = null;
+    this.bot = null;
+    this.game = g;
+    this.lastPhase = g.phase;
+    this.paused = true;
+    this.root.classList.add('playing');
+    this.root.classList.remove('watching');
+    this.hideOverlay();
+    this.flowSlider.set(g.flow);
+    this.syncFormation();
+    return { wave: g.wave, waveT: g.waveT, phase: g.phase };
+  }
+
+  private closeFlag(): void {
+    this.paused = false;
+    this.hideOverlay();
   }
 
   /** Watch mode: take over (back to 1×) or hand back (to the watch speed). */

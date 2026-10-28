@@ -145,6 +145,29 @@ try {
     await page.close();
   }
 
+  // 4. Flag a moment: 🚩 pauses on the step, a reason lands in the log there.
+  {
+    const page = await phone();
+    page.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await page.goto(`${BASE_URL}/v2.html?seed=17`, { waitUntil: 'networkidle' });
+    await devSettings(page, { preset: 'half', wave: 6, watch: true, watchSpeed: 2 });
+    await page.locator('[data-map="island"]').tap();
+    await page.waitForFunction(() => window.__v2.game().threats.length >= 3, null, { timeout: 30000, polling: 50 });
+    await page.locator('.v2-flag-btn').tap();
+    await page.waitForSelector('[data-screen="flag"]');
+    const at = await game(page, () => window.__v2.game().steps);
+    await page.waitForTimeout(700);
+    if ((await game(page, () => window.__v2.game().steps)) !== at) fail('the game ran on behind the flag dialog');
+    await page.screenshot({ path: `${SHOT_DIR}/07-flag.png` });
+    await page.locator('.v2-flag-kind', { hasText: 'Too hard' }).tap();
+    const flag = await game(page, () => window.__v2.log().commands.find((c) => c[1] === 'g'));
+    if (!flag || flag[0] !== at || flag[2] !== 'hard') fail(`flag logged as ${JSON.stringify(flag)}, paused at ${at}`);
+    if ((await page.locator('[data-screen]').count()) && (await page.locator('.v2-overlay.open').count())) fail('flag dialog did not close');
+    await page.waitForFunction((s) => window.__v2.game().steps > s + 30, at, { timeout: 5000 }).catch(() => fail('the game did not resume after flagging'));
+    console.log('flagged:', JSON.stringify(flag));
+    await page.close();
+  }
+
   console.log(process.exitCode ? 'V2 watch test FAILED' : 'V2 watch test passed');
 } finally {
   await browser.close();

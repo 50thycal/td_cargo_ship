@@ -135,3 +135,23 @@ The player's Strait and Gauntlet clears were on older, easier builds. Two of the
 **Found and fixed.**
 - **The control button's hint was unreadable.** It was 8 px and wrapped to two lines ("playing · tap to take over"), too small on a phone. It's now a one-line 10 px label ("take over" / "hand back") under BOT / YOU. The banner on each change explains the rest.
 - **A test-helper bug** in the new e2e (the page call dropped its argument) made the first run crash on the replay check. Fixed. This was a fault in the test, not the game.
+
+### Cycle 4: flag a moment (S5)
+
+**Built.**
+- **The 🚩 button.** It sits at the foot of the left rail in every dev run, watched or played. Tapping it freezes the game on that step and asks what it is: **Bug · Looks wrong · Too hard · Too easy**, or Cancel.
+- **What a pick does.** It writes `[step, 'g', kind]` into the log, saves the run at once (so the flag reaches Claude even if the app is closed straight after) and resumes. A "🚩 FLAGGED: TOO HARD — wave 6, 11 s in" banner confirms it.
+- **The moment tool:** `npm run v2:moment -- log.json`, in `tools/v2/moment.mjs`. It loads the built game, replays the log to each flag through a new `showMoment` hook, and saves PNGs at iPhone landscape size: at the flag, and 1 s and 2 s before.
+
+**Tested.**
+- **Flagging in a watched run.** A watched ½ Island run, wave 6, at 2×: flagged with four threats in the air.
+- **Pausing.** The game paused on step 639 and stayed there for 0.8 s with the dialog up. The flag was logged as `[639, 'hard']`, and the game resumed afterwards.
+- **The tool's frames.** I ran the tool on that log and put the rebuilt frame next to the live screen behind the dialog. They match:
+  - two missiles in flight over the top lane, plus one off the left base;
+  - the heavy missile with its 8-pip bar south of the island;
+  - the surfaced sub on the right, firing;
+  - the Box formation, flow ×2.4, and 1 round left in the rack.
+- **Automated check.** A new e2e section repeats this: the flag lands on the paused step, the game doesn't advance behind the dialog, and play resumes after.
+
+**Found and fixed.**
+- **The look-back missed what you flagged at high speed.** At 10× there is about 1 s of real reaction time between seeing something and tapping 🚩, which is about 10 game-seconds. Fixed "−1 s / −2 s game time" frames would show the aftermath, not the cause. The tool now reads the speed the log says was on at the flag and looks back in the player's real seconds. Re-run at 2×: the "−2 s" frame is 4 game-seconds earlier and shows the strafing-run and barrage warnings that led up to it.
