@@ -20,9 +20,13 @@
     "e2e:v2": "node e2e/v2.mjs",
     "v2:replay": "vite-node tools/v2/replay.ts --",
     "e2e:v2:log": "node e2e/v2-vercel-log.mjs",
+    "e2e:v2:watch": "node e2e/v2-watch.mjs",
     "v2:analyze": "vite-node tools/v2/analyze.ts --",
     "v2:formation-lab": "vite-node tools/v2/formation-lab.ts --",
-    "v2:audit": "vite-node tools/v2/audit.ts --"
+    "v2:audit": "vite-node tools/v2/audit.ts --",
+    "v2:style": "vite-node tools/v2/style.ts --",
+    "v2:fit": "vite-node tools/v2/fit.ts --",
+    "v2:moment": "node tools/v2/moment.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",

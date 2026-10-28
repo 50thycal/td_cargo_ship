@@ -41,7 +41,13 @@ export type LogCommand =
   | [number, 'm', FormationId] // formation
   | [number, 'u', UpgradeId, UpgradeId?] // upgrade picked [, card it replaced]
   | [number, 'e'] // continue into endless
-  | [number, 's', number]; // game speed (UI only; kept for context)
+  | [number, 's', number] // game speed (UI only; kept for context)
+  | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
+  | [number, 'g', FlagKind]; // the player flagged this moment (UI only)
+
+/** Who is at the controls: the player, or the watch-mode bot. */
+export type Controller = 'you' | 'bot';
+export type FlagKind = 'bug' | 'wrong' | 'hard' | 'easy';
 
 export interface PlayLog {
   v: number;
@@ -56,13 +62,25 @@ export interface PlayLog {
    *  the real game), the preset's name, and the run a wave retry restarted
    *  from. Balance analysis should leave these logs out. */
   tempo?: Tempo;
-  dev?: { preset: string; retryOf?: string };
+  dev?: { preset: string; retryOf?: string; watch?: boolean };
+  /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
+  ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
   /** How the run ended: won (map cleared and stopped), lost, or quit.
    *  Absent on a mid-run save. */
   end?: 'won' | 'lost' | 'quit';
   commands: LogCommand[];
   summary?: PlaySummary;
+}
+
+export interface GhostResult {
+  bot: string;
+  wave: number;
+  lost: number;
+  score: number;
+  cleared: boolean;
+  /** Ships sunk by the end of each wave, wave by wave. */
+  lostByWave: number[];
 }
 
 export interface PlaySummary {
@@ -148,6 +166,16 @@ export class Recorder {
 
   speed(v: number): void {
     this.log.commands.push([this.game.steps, 's', v]);
+  }
+
+  /** Watch mode: the bot or the player takes the controls from this step. */
+  control(who: Controller): void {
+    this.log.commands.push([this.game.steps, 'c', who]);
+  }
+
+  /** The player marked this moment for Claude to look at. */
+  flag(kind: FlagKind): void {
+    this.log.commands.push([this.game.steps, 'g', kind]);
   }
 
   /** The log so far, mid-run (no `end` yet): saved after each wave so a run

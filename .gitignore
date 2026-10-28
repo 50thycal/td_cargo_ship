@@ -5,3 +5,4 @@ e2e/shots/
 .DS_Store
 playtest-out*/
 e2e/shots-batch/
+moments/

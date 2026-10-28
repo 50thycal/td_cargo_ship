@@ -10,6 +10,7 @@ import {
   RULES,
   SPEED_STEPS,
   TAP_RADIUS_PX,
+  WATCH_SPEED_STEPS,
   THREATS,
   VIEW,
   type ThreatKind,
@@ -26,7 +27,8 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Recorder, replayTo } from '../sim/playlog';
+import { BotRun, Mimic, YOU_V1, lostByWave, type BotIO } from '../sim/mimic';
+import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -93,6 +95,10 @@ export class App {
   private formationPop = el('div', 'v2-formations');
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
+  /** Dev: mark this moment for Claude (pauses while you say why). */
+  private flagBtn = button('🚩', 'v2-flag-btn', () => this.openFlag());
+  /** Watch mode: who is playing; tap to take over or hand back. */
+  private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
   private flowSlider!: StepSlider;
   private speedSlider!: StepSlider;
 
@@ -101,6 +107,31 @@ export class App {
   private dev = devEnabled();
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
+  /** Watch mode: the bot in this run, and who is at the controls. */
+  private bot: Mimic | null = null;
+  /** Dev ghost check in progress on the result screen. */
+  private ghostRun: BotRun | null = null;
+  private control: Controller = 'you';
+  /** The wave whose draft is on screen (a dev stride deals several in a row). */
+  private draftWave = -1;
+  /** The frozen scene last drawn (see `draw`). */
+  private drawnKey = '';
+  private botIO: BotIO = {
+    tap: (x, y, r) => {
+      const res = this.rec!.tap(x, y, r);
+      this.ripples.push({ x, y, age: 0, bot: true, dry: res === 'dry' });
+      return res;
+    },
+    pick: (id, replace) => this.rec?.pick(id, replace),
+    flow: (v) => {
+      this.rec?.flow(v);
+      this.flowSlider.set(v);
+    },
+    formation: (id) => {
+      this.rec?.formation(id);
+      this.syncFormation();
+    },
+  };
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
   /** Portrait while playing: the field would be a sliver, so time stops and a
@@ -156,8 +187,8 @@ export class App {
   /** Seal the current run's log and send it wherever this build can. Safe to
    *  call more than once (a cleared map that continues into endless updates
    *  the same log). */
-  private endRun(end: 'won' | 'lost' | 'quit'): void {
-    if (!this.rec) return;
+  private endRun(end: 'won' | 'lost' | 'quit'): PlayLog | null {
+    if (!this.rec) return null;
     const log = this.rec.finish(end);
     if (end !== 'won') this.rec = null;
     this.logState = null;
@@ -165,6 +196,7 @@ export class App {
       this.logState = state;
       this.renderLogStatus(log, channel);
     });
+    return log;
   }
 
   /** Save the run so far without ending it: after each wave, and whenever
@@ -189,6 +221,15 @@ export class App {
     (window as unknown as { __v2: unknown }).__v2 = {
       game: () => this.game,
       toClient: (x: number, y: number) => ({ x: this.offX + x * this.scale, y: this.offY + y * this.scale }),
+      control: () => this.control,
+      log: () => this.rec?.snapshot() ?? null,
+      // Re-run a log here, so a browser test can check a recorded run replays.
+      replay: (log: PlayLog) => {
+        const g = replay(log);
+        return { steps: g.steps, score: g.score, lost: g.lost, wave: g.wave };
+      },
+      // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
+      showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
     };
     this.showMenu();
     requestAnimationFrame((t) => this.frame(t));
@@ -210,6 +251,7 @@ export class App {
       el('div', 'v2-rail-label', 'SHIPS'),
       this.flowSlider.el,
       flowHint,
+      this.flagBtn,
     );
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
@@ -228,7 +270,7 @@ export class App {
     this.leftRail.append(this.formationPop);
 
     this.speedSlider = this.buildSpeedSlider();
-    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+    this.rightRail.append(this.hud, this.pauseBtn, this.controlBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
   }
 
   private buildSpeedSlider(): StepSlider {
@@ -239,6 +281,10 @@ export class App {
       (s) => {
         this.speed = this.speedSteps[s];
         this.rec?.speed(this.speed);
+        if (this.bot && this.control === 'bot') {
+          this.devSettings.watchSpeed = this.speed;
+          saveDevSettings(this.devSettings);
+        }
       },
     );
   }
@@ -249,8 +295,14 @@ export class App {
     setDevEnabled(on);
     this.dev = on;
     this.root.classList.toggle('dev', on);
-    this.speedSteps = on ? DEV_SPEED_STEPS : SPEED_STEPS;
-    this.speed = this.speedSteps[DEFAULT_SPEED];
+    this.useSpeedSteps(on ? DEV_SPEED_STEPS : SPEED_STEPS);
+  }
+
+  /** Swap the speed rail's steps (normal, dev, or watch), back at 1×. */
+  private useSpeedSteps(steps: readonly number[]): void {
+    if (steps === this.speedSteps) return;
+    this.speedSteps = steps;
+    this.speed = steps[DEFAULT_SPEED];
     const slider = this.buildSpeedSlider();
     this.speedSlider.el.replaceWith(slider.el);
     this.speedSlider = slider;
@@ -298,6 +350,9 @@ export class App {
       this.formationPop.classList.remove('open');
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
+      // Watch mode: a touch on the battlefield takes the controls (and
+      // counts as your first tap).
+      if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
       // beat so an ordinary tap never fires twice.
@@ -419,13 +474,18 @@ export class App {
     this.adaptResolution(now, raw);
     if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
+      // Enough steps a frame to keep up at 10× on a slow frame; past that,
+      // drop the backlog rather than spiral.
+      const cap = Math.ceil((this.speed * 0.1) / DT) + 2;
       let n = 0;
-      while (this.acc >= DT && n < 12) {
+      while (this.acc >= DT && n < cap) {
+        if (this.bot && this.control === 'bot') this.bot.act(g, this.botIO, false);
         step(g, DT);
         this.acc -= DT;
         n++;
         if (g.phase !== 'wave') break;
       }
+      if (n >= cap) this.acc = Math.min(this.acc, DT);
       // Hold-to-fire repeats on game time, so it scales with the speed slider.
       if (this.hold && g.t >= this.hold.next) {
         this.fire(this.hold.x, this.hold.y, true);
@@ -434,7 +494,9 @@ export class App {
     }
     if (g) {
       this.drainEvents(g);
-      if (g.phase !== this.lastPhase) this.onPhase(g);
+      // A dev stride deals a second draft straight after the first: same
+      // phase, new wave, so that counts as a change too.
+      if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
     }
     for (const r of this.ripples) r.age += real;
@@ -460,6 +522,14 @@ export class App {
   }
 
   private draw(): void {
+    // A frozen scene (draft, result, pause, flag dialog) is drawn once, not
+    // 60 times a second: on a phone that redraw alone stalled frames for up
+    // to 90 ms, and it slowed the ghost check running underneath.
+    const g = this.game;
+    const still = !!g && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
+    const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}` : '';
+    if (still && key === this.drawnKey) return;
+    this.drawnKey = still ? key : '';
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070d12';
@@ -511,7 +581,9 @@ export class App {
 
   private showBanner(title: string, sub: string): void {
     this.banner.replaceChildren(el('strong', '', title), ...(sub ? [el('span', '', sub)] : []));
-    this.bannerT = 2.6;
+    // Read-time, in real seconds; watching at 10× would otherwise leave every
+    // banner up for 26 game-seconds.
+    this.bannerT = 2.6 / Math.sqrt(Math.max(1, this.speed));
     this.placeBanner();
   }
 
@@ -533,7 +605,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
-      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}</span>` : '');
+      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ' · WATCH' : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 
@@ -544,7 +616,9 @@ export class App {
     this.lastPhase = g.phase;
     if (g.phase === 'wave') this.hideOverlay();
     else if (g.phase === 'draft') {
+      this.draftWave = g.wave;
       this.showDraft(g);
+      if (this.bot && this.control === 'bot') this.botDraft(g);
       this.saveProgress();
     } else if (g.phase === 'won') this.showResult(g, true);
     else if (g.phase === 'lost') this.showResult(g, false);
@@ -607,7 +681,38 @@ export class App {
       ),
     );
     row.append(text, sw);
-    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), row, button('Back', 'v2-btn primary', () => this.showMenu())]);
+    const rows: HTMLElement[] = [row];
+    if (this.dev) {
+      rows.push(el('div', 'v2-setting-group', 'DEVELOPER'));
+      rows.push(
+        this.switchRow(
+          'watch',
+          'Watch mode',
+          'A bot that plays like you takes the controls: same tap rhythm, aim, reactions and card picks, fitted to your logs. Watch at up to 10×, touch the battlefield to take over, 🚩 to flag a moment. Every watched run is logged for Claude.',
+          this.devSettings.watch,
+          (on) => {
+            this.devSettings.watch = on;
+            saveDevSettings(this.devSettings);
+          },
+        ),
+      );
+    }
+    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary', () => this.showMenu())]);
+  }
+
+  private switchRow(id: string, title: string, text: string, on: boolean, set: (on: boolean) => void): HTMLElement {
+    const sw = button('', `v2-switch${on ? ' on' : ''}`, () => {
+      set(!on);
+      this.showSettings();
+    });
+    sw.setAttribute('role', 'switch');
+    sw.setAttribute('aria-checked', String(on));
+    sw.dataset.setting = id;
+    const row = el('div', 'v2-setting');
+    const body = el('div', 'v2-setting-text');
+    body.append(el('strong', '', title), el('span', '', text));
+    row.append(body, sw);
+    return row;
   }
 
   /** Dev mode's menu strip: run length preset and start wave. */
@@ -633,10 +738,10 @@ export class App {
       };
       wave.append(el('span', '', 'Start wave'), button('−', 'v2-dev-chip', bump(-1)), el('b', '', `${st.wave}`), button('+', 'v2-dev-chip', bump(1)));
       box.replaceChildren(
-        el('strong', 'v2-dev-title', 'DEV PLAYTEST'),
+        el('strong', 'v2-dev-title', st.watch ? 'DEV · WATCH MODE' : 'DEV PLAYTEST'),
         presets,
         wave,
-        el('p', 'v2-dev-blurb', DEV_PRESETS[st.preset].blurb),
+        el('p', 'v2-dev-blurb', `${DEV_PRESETS[st.preset].blurb}${st.watch ? ' Tap a map to watch bot-you play it; touch the battlefield to take over.' : ''}`),
       );
     };
     render();
@@ -652,13 +757,14 @@ export class App {
     const start = Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
+    const watch = this.dev && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
     this.game = createGame(id, seed, skip, tempo);
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
-      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset } } : {}),
+      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true } : {}) } } : {}),
       device: {
         w: window.innerWidth,
         h: window.innerHeight,
@@ -667,8 +773,111 @@ export class App {
         ua: navigator.userAgent.slice(0, 160),
       },
     });
-    if (preset) this.setSpeed(preset.speed);
+    this.startWatch(watch, seed);
+    if (watch) this.setSpeed(this.devSettings.watchSpeed);
+    else if (preset) this.setSpeed(preset.speed);
     this.begin();
+  }
+
+  /** Watch mode on or off for the run starting now. */
+  private startWatch(watch: boolean, seed: number): void {
+    this.bot = watch ? new Mimic(YOU_V1, seed) : null;
+    this.control = watch ? 'bot' : 'you';
+    this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
+    this.root.classList.toggle('watching', watch);
+    this.syncControl();
+  }
+
+  /** 🚩: pause on this exact step and ask why. The flag lands in the log at
+   *  this step, and the run is saved at once so it reaches Claude even if
+   *  the game is closed straight after. */
+  private openFlag(): void {
+    const g = this.game;
+    if (!this.dev || !g || !this.rec || g.phase !== 'wave' || this.paused) return;
+    this.paused = true;
+    this.hold = null;
+    const choose = (kind: FlagKind, label: string) =>
+      button(label, 'v2-btn v2-flag-kind', () => {
+        this.rec?.flag(kind);
+        this.saveProgress();
+        this.closeFlag();
+        this.showBanner(`🚩 FLAGGED: ${label.toUpperCase()}`, `Wave ${g.wave}, ${Math.round(g.waveT)} s in. Claude can replay this exact moment.`);
+      });
+    const kinds = el('div', 'v2-btn-row');
+    kinds.append(choose('bug', 'Bug'), choose('wrong', 'Looks wrong'), choose('hard', 'Too hard'), choose('easy', 'Too easy'));
+    this.showOverlay('v2-flag', [
+      el('h2', '', '🚩 Flag this moment'),
+      el('p', 'v2-sub', `Wave ${g.wave}, ${Math.round(g.waveT)} s in. The game is paused on it. What is it?`),
+      kinds,
+      button('Cancel', 'v2-link', () => this.closeFlag()),
+    ]);
+  }
+
+  /** Freeze the screen on a log's game as it stood at `step`. */
+  private showMoment(log: PlayLog, step: number): { wave: number; waveT: number; phase: string } {
+    const upto = log.commands.findIndex((c) => c[0] > step);
+    const g = replayTo(log, step, upto < 0 ? log.commands.length : upto);
+    g.events = [];
+    if (this.rec) this.endRun('quit');
+    this.rec = null;
+    this.bot = null;
+    this.game = g;
+    this.lastPhase = g.phase;
+    this.paused = true;
+    this.root.classList.add('playing');
+    this.root.classList.remove('watching');
+    this.hideOverlay();
+    this.flowSlider.set(g.flow);
+    this.syncFormation();
+    return { wave: g.wave, waveT: g.waveT, phase: g.phase };
+  }
+
+  private closeFlag(): void {
+    this.paused = false;
+    this.hideOverlay();
+  }
+
+  /** Watch mode: take over (back to 1×) or hand back (to the watch speed). */
+  private setControl(who: Controller): void {
+    if (!this.bot || !this.rec || !this.game || who === this.control) return;
+    this.control = who;
+    this.rec.control(who);
+    this.hold = null;
+    if (who === 'you') {
+      this.setSpeed(1);
+      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.');
+    } else {
+      this.setSpeed(this.devSettings.watchSpeed);
+      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.');
+      if (this.game.phase === 'draft') this.botDraft(this.game);
+    }
+    this.syncControl();
+  }
+
+  private syncControl(): void {
+    const bot = this.control === 'bot';
+    this.controlBtn.replaceChildren(el('b', '', bot ? 'BOT' : 'YOU'), el('span', '', bot ? 'take over' : 'hand back'));
+    this.controlBtn.classList.toggle('bot', bot);
+    this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
+  }
+
+  /** The bot's draft: its pick lights up for a moment (shorter when
+   *  watching fast), then it takes it. */
+  private botDraft(g: Game): void {
+    const bot = this.bot;
+    if (!bot) return;
+    const choice = bot.choose(g);
+    const card = this.overlay.querySelector(`[data-upgrade="${choice.id}"]`);
+    card?.classList.add('bot-pick');
+    const panel = this.overlay.querySelector('.v2-panel');
+    panel?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardDef(choice.id).name}`));
+    const wave = g.wave;
+    setTimeout(
+      () => {
+        if (this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot') this.rec?.pick(choice.id, choice.replace);
+      },
+      1400 / Math.sqrt(this.speed),
+    );
   }
 
   /** Dev: restart the wave just lost, with the same cards, ships and score,
@@ -686,11 +895,13 @@ export class App {
         startedAt: new Date().toISOString(),
         firstWave: log.firstWave,
         ...(log.tempo ? { tempo: log.tempo } : {}),
-        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id },
+        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id, ...(log.dev?.watch ? { watch: true } : {}) },
         device: log.device,
       },
       { log, mark },
     );
+    this.startWatch(!!log.dev?.watch && this.dev, log.seed);
+    if (this.bot) this.setSpeed(this.devSettings.watchSpeed);
     this.begin();
   }
 
@@ -703,6 +914,7 @@ export class App {
 
   private begin(): void {
     if (!this.game) return;
+    this.ghostRun = null;
     this.lastPhase = null;
     this.acc = 0;
     this.paused = false;
@@ -788,7 +1000,7 @@ export class App {
     // Dev runs never touch the real records or unlocks.
     const best = this.dev ? false : recordResult(this.progress, g.map.id, g.score, g.wave, g.cleared);
     const rec = this.rec;
-    this.endRun(won ? 'won' : 'lost');
+    const log = this.endRun(won ? 'won' : 'lost');
     const idx = MAP_ORDER.indexOf(g.map.id);
     const next = MAP_ORDER[idx + 1];
     const stats = el('div', 'v2-stats');
@@ -803,7 +1015,7 @@ export class App {
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.play(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
-      buttons.push(button('Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
+      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
@@ -815,7 +1027,55 @@ export class App {
     const sub = won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    // Dev ghost check: how bot-you does on this same seed, for any run you
+    // played some of (a run the bot played alone needs no comparing).
+    const ghost = this.dev && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
+    const ghostLine = el('div', 'v2-ghost');
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    if (ghost) this.startGhost(g, log, ghostLine);
+  }
+
+  /** Play bot-you on this run's seed between frames (a few ms at a time, so
+   *  the screen never stalls), then show both results and where they split.
+   *  The result goes into the log too. */
+  private startGhost(g: Game, log: PlayLog, line: HTMLElement): void {
+    const run = new BotRun(log.map, log.seed, { firstWave: log.firstWave, tempo: log.tempo });
+    this.ghostRun = run;
+    line.textContent = 'Bot-you is playing this seed…';
+    const tick = () => {
+      if (this.ghostRun !== run) return;
+      const t0 = performance.now();
+      while (!run.done && performance.now() - t0 < 4) run.advance(10);
+      if (!run.done) {
+        line.textContent = `Bot-you is playing this seed… wave ${run.game.wave}`;
+        setTimeout(tick, 0);
+        return;
+      }
+      this.ghostRun = null;
+      const res = run.result();
+      log.ghost = res;
+      void storeLog(log);
+      const verdict = (cleared: boolean, wave: number, lost: number) => `${cleared ? 'cleared' : `lost on wave ${wave}`} · ${lost} sunk`;
+      const mine = lostByWave(g);
+      let split = 'Same losses, wave for wave.';
+      for (let w = 0; w < Math.max(mine.length, res.lostByWave.length); w++) {
+        const a = mine[w] ?? -1;
+        const b = res.lostByWave[w] ?? -1;
+        if (a < 0 || b < 0 || a === b) continue;
+        split = a > b ? `You fell behind on wave ${w + 1} (you ${a} sunk by then, bot ${b}).` : `You pulled ahead on wave ${w + 1} (you ${a} sunk by then, bot ${b}).`;
+        break;
+      }
+      const you = (g.cleared ? 100 : g.wave) * 10 - g.lost;
+      const bot = (res.cleared ? 100 : res.wave) * 10 - res.lost;
+      const head = you > bot ? 'You beat bot-you on this seed' : you < bot ? 'Bot-you did better on this seed' : 'Dead even with bot-you';
+      line.replaceChildren(
+        el('strong', '', head),
+        el('span', '', `You: ${verdict(g.cleared, g.wave, g.lost)} — Bot-you: ${verdict(res.cleared, res.wave, res.lost)}`),
+        el('span', '', split),
+      );
+      line.classList.add('done');
+    };
+    setTimeout(tick, 0);
   }
 
   private renderLogStatus(log: import('../sim/playlog').PlayLog, channel: Channel): void {
