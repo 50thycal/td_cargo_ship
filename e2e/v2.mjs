@@ -217,20 +217,25 @@ try {
     await tb.close();
   }
 
-  // Dev playtest mode: off for players, `?dev=1` turns it on (remembered).
+  // Dev playtest mode: off by default, switched on from Settings (remembered).
   // The ⅛ preset opens on a short wave 2 at 2×, every map is open, and a lost
   // wave can be retried with the same cards.
   {
     const dev = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
     dev.on('pageerror', (err) => fail(`dev page error: ${err.message}`));
     await dev.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
-    if (await dev.locator('.v2-dev').count()) fail('dev strip shows without ?dev=1');
-    await dev.goto(`${BASE_URL}/v2.html?dev=1&seed=5`, { waitUntil: 'networkidle' });
+    if (await dev.locator('.v2-dev').count()) fail('dev strip shows before dev mode is switched on');
+    await dev.locator('.v2-settings-btn').tap();
+    await dev.waitForSelector('[data-screen="settings"]');
+    await dev.locator('[data-setting="dev"]').tap();
+    if ((await dev.locator('[data-setting="dev"]').getAttribute('aria-checked')) !== 'true') fail('dev switch did not turn on');
+    await dev.screenshot({ path: `${SHOT_DIR}/08-settings.png` });
+    await dev.locator('[data-screen="settings"] .v2-btn').tap();
     await dev.locator('[data-preset="eighth"]').tap();
     await dev.screenshot({ path: `${SHOT_DIR}/09-dev-menu.png` });
     const strip = await dev.locator('.v2-dev').boundingBox();
     if (!strip || strip.y + strip.height > 390) fail(`dev strip off screen: ${JSON.stringify(strip)}`);
-    // Remembered without the query string; the Island is open.
+    // Remembered across a reload; the Island is open.
     await dev.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
     await dev.locator('[data-map="island"]').tap();
     await dev.waitForSelector('.playing');
@@ -253,8 +258,20 @@ try {
     await dev.waitForSelector('.playing');
     const retry = await dev.evaluate(() => ({ wave: window.__v2.game().wave, lost: window.__v2.game().lost, phase: window.__v2.game().phase }));
     if (retry.wave !== 2 || retry.lost !== 0 || retry.phase !== 'wave') fail(`retry restored ${JSON.stringify(retry)}`);
-    await dev.goto(`${BASE_URL}/v2.html?dev=0`, { waitUntil: 'networkidle' });
-    if (await dev.locator('.v2-dev').count()) fail('?dev=0 left dev mode on');
+    // Switched off from Settings: strip gone, speed back to the normal steps.
+    await dev.goto(`${BASE_URL}/v2.html?seed=5`, { waitUntil: 'networkidle' });
+    await dev.locator('.v2-settings-btn').tap();
+    await dev.locator('[data-setting="dev"]').tap();
+    await dev.locator('[data-screen="settings"] .v2-btn').tap();
+    if (await dev.locator('.v2-dev').count()) fail('switching dev mode off left the dev strip');
+    await dev.locator('[data-map="strait"]').tap();
+    await dev.waitForSelector('.playing');
+    const sb = await dev.locator('.v2-rail-right .v2-track').boundingBox();
+    await dev.mouse.click(sb.x + sb.width / 2, sb.y + 2);
+    const top = await dev.locator('.v2-rail-right .v2-slider-value').textContent();
+    if (top !== '2×') fail(`speed max after dev off is ${top}`);
+    await dev.reload({ waitUntil: 'networkidle' });
+    if (await dev.locator('.v2-dev').count()) fail('dev mode came back after a reload');
     await dev.close();
   }
 

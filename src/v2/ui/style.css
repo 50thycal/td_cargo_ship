@@ -934,3 +934,82 @@ body {
 .v2-root.dev .v2-map-card {
   min-height: 0;
 }
+
+/* ---- Settings ---------------------------------------------------------- */
+
+.v2-menu-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 20px;
+}
+
+.v2-settings-btn {
+  min-height: 36px;
+  padding: 0 6px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.v2-settings {
+  max-width: 520px;
+}
+
+.v2-setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  text-align: left;
+}
+
+.v2-setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.v2-setting-text span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.v2-switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  border: 1px solid var(--panel-edge);
+  background: #1b2b35;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.v2-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.15s;
+}
+
+.v2-switch.on {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.v2-switch.on::after {
+  transform: translateX(22px);
+}

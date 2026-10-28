@@ -28,7 +28,7 @@ import {
 } from '../sim/game';
 import { Recorder, replayTo } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
-import { DEV_ORDER, DEV_PRESETS, devEnabled, disableDev, firstPlayedWave, loadDevSettings, saveDevSettings } from './dev';
+import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
@@ -227,7 +227,12 @@ export class App {
     }
     this.leftRail.append(this.formationPop);
 
-    this.speedSlider = stepSlider(
+    this.speedSlider = this.buildSpeedSlider();
+    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+  }
+
+  private buildSpeedSlider(): StepSlider {
+    return stepSlider(
       this.speedSteps.length,
       DEFAULT_SPEED,
       (s) => `${this.speedSteps[s]}×`,
@@ -236,7 +241,19 @@ export class App {
         this.rec?.speed(this.speed);
       },
     );
-    this.rightRail.append(this.hud, this.pauseBtn, el('div', 'v2-rail-label', 'SPEED'), this.speedSlider.el);
+  }
+
+  /** Settings → Developer mode. Only ever flipped from the menu, so no run is
+   *  in progress; the speed rail is rebuilt for the dev (or normal) steps. */
+  private setDev(on: boolean): void {
+    setDevEnabled(on);
+    this.dev = on;
+    this.root.classList.toggle('dev', on);
+    this.speedSteps = on ? DEV_SPEED_STEPS : SPEED_STEPS;
+    this.speed = this.speedSteps[DEFAULT_SPEED];
+    const slider = this.buildSpeedSlider();
+    this.speedSlider.el.replaceWith(slider.el);
+    this.speedSlider = slider;
   }
 
   private toggleFormations(): void {
@@ -558,14 +575,39 @@ export class App {
     classic.href = './index.html';
     // The artifact build ships V2 alone; there is no classic page to link to.
     classic.hidden = 'claude' in window;
+    const foot = el('div', 'v2-menu-foot');
+    const settings = button('⚙ Settings', 'v2-link v2-settings-btn', () => this.showSettings());
+    foot.append(settings, classic);
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down, or hold to keep firing.'),
       el('div', 'v2-map-grid', ''),
       ...(this.dev ? [this.devPanel()] : []),
-      classic,
+      foot,
     ]);
     this.overlay.querySelector('.v2-map-grid')!.append(...cards);
+  }
+
+  private showSettings(): void {
+    const sw = button('', `v2-switch${this.dev ? ' on' : ''}`, () => {
+      this.setDev(!this.dev);
+      this.showSettings();
+    });
+    sw.setAttribute('role', 'switch');
+    sw.setAttribute('aria-checked', String(this.dev));
+    sw.dataset.setting = 'dev';
+    const row = el('div', 'v2-setting');
+    const text = el('div', 'v2-setting-text');
+    text.append(
+      el('strong', '', 'Developer mode'),
+      el(
+        'span',
+        '',
+        'For playtesting. Shorter test runs (½, ¼, ⅛ length), every map open, a start-wave picker, 3× and 4× speed, and a retry button for a lost wave. Dev runs never count toward your records.',
+      ),
+    );
+    row.append(text, sw);
+    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), row, button('Back', 'v2-btn primary', () => this.showMenu())]);
   }
 
   /** Dev mode's menu strip: run length preset and start wave. */
@@ -590,16 +632,11 @@ export class App {
         render();
       };
       wave.append(el('span', '', 'Start wave'), button('−', 'v2-dev-chip', bump(-1)), el('b', '', `${st.wave}`), button('+', 'v2-dev-chip', bump(1)));
-      const off = button('Turn dev mode off', 'v2-link', () => {
-        disableDev();
-        location.search = '';
-      });
       box.replaceChildren(
         el('strong', 'v2-dev-title', 'DEV PLAYTEST'),
         presets,
         wave,
         el('p', 'v2-dev-blurb', DEV_PRESETS[st.preset].blurb),
-        off,
       );
     };
     render();
