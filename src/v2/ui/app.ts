@@ -31,6 +31,7 @@ import { BotRun, Mimic, YOU_V1, lostByWave, type BotIO } from '../sim/mimic';
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
+import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
@@ -945,6 +946,7 @@ export class App {
       }
       const chip = el('span', `v2-slot${id ? '' : ' empty'}`, label);
       if (id) chip.prepend(upgradeIcon(id, 16));
+      if (id) chip.style.setProperty('--card-color', ICON_COLOR[id]);
       slots.append(chip);
     }
     const cards = g.offer.map((id) => {
@@ -961,17 +963,22 @@ export class App {
       });
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
-      const head = el('span', 'v2-card-head', '');
-      head.append(upgradeIcon(id, 30), el('strong', '', u.name));
       card.style.setProperty('--card-color', ICON_COLOR[id]);
-      card.append(
-        el('span', 'v2-card-top', ''),
-        head,
-        el('span', 'v2-card-level', id === 'resupply' ? 'Keeps your cards' : `Level ${lvl + 1}/${u.max}`),
-        el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]),
-      );
-      const top = card.querySelector('.v2-card-top')!;
+      // Round 10 (the player's reference): the picture is the card. Threat
+      // and badge across the top, the illustration filling the middle, then
+      // the name, the level it reaches, and one short line of effect.
+      const top = el('span', 'v2-card-top', '');
       top.append(el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${u.answers}`), el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : 'up'}`, badge));
+      const art = el('span', 'v2-card-art', '');
+      art.innerHTML = cardArtSvg(id);
+      const level = el('span', 'v2-card-level', '');
+      if (id === 'resupply') level.textContent = 'Keeps your cards';
+      else {
+        // One pip per level: those already held, the one this card adds, the rest.
+        for (let k = 1; k <= u.max; k++) level.append(el('i', k <= lvl ? 'had' : k === lvl + 1 ? 'gain' : ''));
+        level.append(el('span', '', `LV ${lvl + 1}/${u.max}`));
+      }
+      card.append(top, art, el('strong', 'v2-card-name', u.name), level, el('span', 'v2-card-text', u.levels[Math.min(lvl, u.levels.length - 1)]));
       return card;
     });
     const row = el('div', 'v2-card-row');
@@ -993,7 +1000,11 @@ export class App {
     const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
     const title = skipped ? `Wave ${g.wave} skipped` : `Wave ${g.wave} cleared`;
     const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
-    this.showOverlay('v2-draft', [el('h2', '', title), ...more, slots, rule, row]);
+    const head = el('div', 'v2-draft-head');
+    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your upgrade'));
+    const loadoutRow = el('div', 'v2-loadout');
+    loadoutRow.append(el('span', 'v2-loadout-label', 'LOADOUT'), slots);
+    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, rule]);
   }
 
   private showResult(g: Game, won: boolean): void {
