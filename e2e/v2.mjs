@@ -275,6 +275,36 @@ try {
     await dev.close();
   }
 
+  // Round 11: still tapping as the wave ends must not pick a card (the
+  // draft waits a beat, and its cards arm a moment after they appear).
+  {
+    const mt = await browser.newPage({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+    mt.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await mt.goto(`${BASE_URL}/v2.html?seed=31`, { waitUntil: 'networkidle' });
+    await mt.evaluate(() => localStorage.clear());
+    await mt.reload({ waitUntil: 'networkidle' });
+    await mt.locator('[data-map="strait"]').tap();
+    await mt.waitForSelector('.playing');
+    await mt.evaluate(() => {
+      const g = window.__v2.game();
+      g.queue = [];
+      g.raiderQueue = [];
+      g.raiders = [];
+      g.threats = [];
+    });
+    const t0 = Date.now();
+    while (Date.now() - t0 < 900) {
+      await mt.touchscreen.tap(422, 230);
+      await mt.waitForTimeout(60);
+    }
+    const st = await mt.evaluate(() => ({ phase: window.__v2.game().phase, levels: Object.keys(window.__v2.game().levels).length }));
+    if (st.phase !== 'draft' || st.levels !== 0) fail(`a tap through the wave's end picked a card: ${JSON.stringify(st)}`);
+    await mt.locator('.v2-card').first().tap();
+    await mt.waitForFunction(() => window.__v2.game().phase === 'wave').catch(() => fail('a deliberate pick after the beat did not start the wave'));
+    console.log('tap-through at the wave end:', JSON.stringify(st), '→ deliberate pick ok');
+    await mt.close();
+  }
+
   console.log(process.exitCode ? 'V2 smoke test FAILED' : 'V2 smoke test passed');
 } finally {
   await browser.close();

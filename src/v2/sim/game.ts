@@ -141,6 +141,8 @@ export type GameEvent =
   | { kind: 'vector'; vector: RaiderKind }
   | { kind: 'shipLost'; lost: number }
   | { kind: 'carrierHit'; hp: number }
+  /** A tough threat (3+ hits) went down: the UI gives it a punch. */
+  | { kind: 'bigKill'; threat: ThreatKind; x: number; y: number }
   | { kind: 'pickup'; pickup: PickupKind }
   /** The first time a kind of pickup drops this game (UI explains it). */
   | { kind: 'newPickup'; pickup: PickupKind }
@@ -1472,6 +1474,7 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   th.dead = true;
   g.kills[th.kind] += 1;
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
+  if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   if (drops && g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.dropMult)) dropPickup(g, th.x, th.y);
   if (g.stats.rhythmEvery > 0 && ++g.rhythm % g.stats.rhythmEvery === 0) {
     g.ammo = Math.min(g.stats.rack, g.ammo + 1);

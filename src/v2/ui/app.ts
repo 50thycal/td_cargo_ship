@@ -34,11 +34,31 @@ import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loa
 import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
-import { DRY_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
+import { DRY_LIFE, IMPACT_LIFE, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
 /** A tapped card flashes this long before the next wave starts. */
 const PICK_BEAT_MS = 180;
+/** Round 11: the moment between a wave ending and its screen. The draft
+ *  waits a beat (the player had tapped straight into a card while still
+ *  firing at the last threat), and cards ignore taps for a moment after
+ *  they appear. Losing gets a slow, dramatic finish before the result. */
+const CLEAR_BEAT = 0.6;
+const WON_BEAT = 1.2;
+const LOST_BEAT = 2.6;
+/** A loss finale can be skipped with a tap after this long. */
+const LOST_SKIP_AFTER = 0.9;
+/** Cards ignore taps for this long after the draft appears. */
+const DRAFT_ARM_MS = 350;
+/** Round 11: a tough threat shot down freezes the action for a beat (real
+ *  seconds; the sim takes the same steps, just a moment later). */
+const HIT_STOP = 0.08;
+const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
+  heavy: 'HEAVY DOWN',
+  mothership: 'MOTHERSHIP DOWN',
+  strafer: 'JET DOWN',
+  bomber: 'BOMBER DOWN',
+};
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
 const DEAL_STAGGER_MS = 70;
@@ -122,6 +142,19 @@ export class App {
   private draftWave = -1;
   /** A card was tapped and its pick is landing (see PICK_BEAT_MS). */
   private picking = false;
+  /** The beat in progress between a wave's end and its screen. */
+  private beat: { kind: 'clear' | 'won' | 'lost'; t: number; dur: number; focus: { x: number; y: number } } | null = null;
+  /** Loss finale camera: zoom about a point (1 = none). */
+  private zoom = { z: 1, x: 800, y: 450, pull: 0 };
+  private vignette = el('div', 'v2-vignette');
+  private stamp = el('div', 'v2-stamp');
+  /** Seconds of hit-stop left (see HIT_STOP). */
+  private hitStop = 0;
+  /** One more loss ends the run (see `syncDanger`). */
+  private danger = false;
+  private dangerEdge = el('div', 'v2-danger');
+  /** When the draft appeared (taps on its cards wait DRAFT_ARM_MS). */
+  private draftShownAt = 0;
   /** The frozen scene last drawn (see `draw`). */
   private drawnKey = '';
   private botIO: BotIO = {
@@ -170,7 +203,7 @@ export class App {
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
-    root.append(this.canvas, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
@@ -220,6 +253,7 @@ export class App {
     void flushUnsent();
     // Closing the tab mid-run still leaves a log.
     window.addEventListener('pagehide', () => {
+      if (this.beat) this.finishBeat();
       if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) this.endRun('quit');
     });
     document.addEventListener('visibilitychange', () => {
@@ -356,6 +390,10 @@ export class App {
     this.canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.formationPop.classList.remove('open');
+      if (this.beat?.kind === 'lost' && (performance.now() - this.beat.t) / 1000 > LOST_SKIP_AFTER) {
+        this.finishBeat();
+        return;
+      }
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
       // Watch mode: a touch on the battlefield takes the controls (and
@@ -480,7 +518,8 @@ export class App {
     this.checkLayout();
     const g = this.game;
     this.adaptResolution(now, raw);
-    if (g && !this.paused && !this.portrait && g.phase === 'wave') {
+    if (this.hitStop > 0) this.hitStop -= real;
+    else if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       this.acc += real * this.speed;
       // Enough steps a frame to keep up at 10× on a slow frame; past that,
       // drop the backlog rather than spiral.
@@ -500,15 +539,17 @@ export class App {
         this.hold.next = g.t + g.stats.holdRepeat;
       }
     }
+    if (g && this.beat) this.runBeat(now, real);
     if (g) {
       this.drainEvents(g);
       // A dev stride deals a second draft straight after the first: same
       // phase, new wave, so that counts as a change too.
       if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
+      this.syncDanger(g);
     }
     for (const r of this.ripples) r.age += real;
-    this.ripples = this.ripples.filter((r) => r.age < (r.dry ? DRY_LIFE : RIPPLE_LIFE));
+    this.ripples = this.ripples.filter((r) => r.age < (r.impact ? IMPACT_LIFE : r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
     this.bannerT -= real;
     this.banner.classList.toggle('show', this.bannerT > 0);
@@ -534,8 +575,8 @@ export class App {
     // 60 times a second: on a phone that redraw alone stalled frames for up
     // to 90 ms, and it slowed the ghost check running underneath.
     const g = this.game;
-    const still = !!g && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
-    const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}` : '';
+    const still = !!g && !this.beat && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
+    const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}:${this.zoom.z}` : '';
     if (still && key === this.drawnKey) return;
     this.drawnKey = still ? key : '';
     const ctx = this.ctx;
@@ -548,6 +589,15 @@ export class App {
     ctx.beginPath();
     ctx.rect(0, 0, VIEW.width, VIEW.height);
     ctx.clip();
+    if (this.zoom.z !== 1) {
+      // Push in on the final blow and draw it toward the middle of the screen.
+      // Clamped so the zoomed field still covers the whole view.
+      const { z, x, y, pull } = this.zoom;
+      const cover = (t: number, p: number, size: number) => Math.min(z * p, Math.max(size - z * (size - p), t));
+      ctx.translate(cover(x + (VIEW.width / 2 - x) * pull, x, VIEW.width), cover(y + (VIEW.height / 2 - y) * pull, y, VIEW.height));
+      ctx.scale(z, z);
+      ctx.translate(-x, -y);
+    }
     drawFrame(ctx, this.game, this.ripples, this.shake, this.bannerT > 0);
   }
 
@@ -571,6 +621,14 @@ export class App {
         case 'carrierHit':
           this.shake = 16;
           break;
+        case 'bigKill': {
+          // Watching fast, the freeze shrinks with the speed.
+          const stop = HIT_STOP / Math.sqrt(Math.max(1, this.speed));
+          this.hitStop = Math.min(0.12, this.hitStop + stop);
+          this.shake = Math.max(this.shake, 9);
+          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: BIG_KILL_LABEL[ev.threat] ?? 'DOWN' });
+          break;
+        }
         case 'dry':
           this.hud.classList.add('dry');
           setTimeout(() => this.hud.classList.remove('dry'), 250);
@@ -606,7 +664,7 @@ export class App {
 
   private renderHud(g: Game): void {
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
-      i < g.lost ? '<i class="lost"></i>' : '<i></i>',
+      i < g.lost ? '<i class="lost"></i>' : i === g.lost && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
     const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
     const html =
@@ -621,18 +679,116 @@ export class App {
   // Screens
 
   private onPhase(g: Game): void {
+    const from = this.lastPhase;
     this.lastPhase = g.phase;
-    if (g.phase === 'wave') this.hideOverlay();
-    else if (g.phase === 'draft') {
+    if (g.phase === 'wave') {
+      this.beat = null;
+      this.hideOverlay();
+    } else if (g.phase === 'draft') {
       this.draftWave = g.wave;
-      this.showDraft(g);
-      if (this.bot && this.control === 'bot') this.botDraft(g);
       this.saveProgress();
-    } else if (g.phase === 'won') this.showResult(g, true);
-    else if (g.phase === 'lost') this.showResult(g, false);
+      // Straight out of a wave: a beat first. A dev stride's second draft
+      // (draft → draft) comes up at once.
+      if (from === 'wave') {
+        const last = g.history[g.history.length - 1];
+        this.showBanner(`WAVE ${last?.wave ?? g.wave} CLEARED`, `+${(200 * (last?.wave ?? g.wave)).toLocaleString()} bonus`);
+        this.startBeat('clear', CLEAR_BEAT);
+      } else this.openDraft(g);
+    } else if (g.phase === 'won') this.startBeat('won', WON_BEAT);
+    else if (g.phase === 'lost') this.startBeat('lost', LOST_BEAT);
+  }
+
+  private openDraft(g: Game): void {
+    this.showDraft(g);
+    this.draftShownAt = performance.now();
+    // Cards take taps once armed (style.css: no pointer events before).
+    const panel = this.overlay.querySelector<HTMLElement>('.v2-draft');
+    setTimeout(() => panel && (panel.dataset.armed = '1'), DRAFT_ARM_MS);
+    if (this.bot && this.control === 'bot') this.botDraft(g);
+  }
+
+  /** Hold the field for a moment before the next screen. Watching the bot
+   *  fast, the beat shortens with the speed. */
+  private startBeat(kind: 'clear' | 'won' | 'lost', seconds: number): void {
+    const g = this.game!;
+    const dur = this.bot && this.control === 'bot' ? seconds / Math.sqrt(Math.max(1, this.speed)) : seconds;
+    this.hold = null;
+    let focus = { x: g.map.carrier.x, y: g.map.carrier.y };
+    if (kind === 'lost') {
+      // Zoom in on the final blow: the carrier if it went down, else the
+      // last ship to sink.
+      const sink = [...g.fx].reverse().find((f) => f.kind === 'sink');
+      if (g.carrierHp > 0 && sink) focus = { x: sink.x, y: sink.y };
+      this.shake = 24;
+      this.bannerT = 0;
+      this.root.classList.add('finale');
+      this.stamp.textContent = g.carrierHp <= 0 ? 'CARRIER DOWN' : 'CONVOY LOST';
+    }
+    this.beat = { kind, t: performance.now(), dur, focus };
+  }
+
+  /** Per frame while a beat runs: the loss finale's slow motion, zoom and
+   *  fade to grey. */
+  private runBeat(now: number, real: number): void {
+    const b = this.beat!;
+    const g = this.game!;
+    const e = (now - b.t) / 1000;
+    // Explosions and sinkings play on (slowly, for a loss) while the field
+    // holds; the sim itself has stopped, so the log is untouched.
+    const rate = b.kind === 'lost' ? 0.3 : 1;
+    for (const f of g.fx) f.age += real * rate;
+    g.fx = g.fx.filter((f) => f.age < f.life);
+    if (b.kind === 'lost') {
+      const k = Math.min(1, e / (b.dur * 0.6));
+      const ease = 1 - (1 - k) ** 3;
+      this.zoom = { z: 1 + 0.4 * ease, x: b.focus.x, y: b.focus.y, pull: 0.6 * ease };
+      this.canvas.style.filter = `grayscale(${(0.85 * ease).toFixed(3)}) brightness(${(1 - 0.25 * ease).toFixed(3)})`;
+      this.vignette.style.opacity = String(Math.min(1, e / 0.5));
+      this.stamp.classList.toggle('show', e > b.dur * 0.3);
+    }
+    if (e >= b.dur) this.finishBeat();
+  }
+
+  private finishBeat(): void {
+    const b = this.beat;
+    const g = this.game;
+    if (!b || !g) return;
+    this.beat = null;
+    this.stamp.classList.remove('show');
+    if (b.kind === 'clear') {
+      if (g.phase === 'draft') this.openDraft(g);
+    } else this.showResult(g, b.kind === 'won');
+  }
+
+  /** One more loss and the run is over: the last ship, or a carrier at a
+   *  quarter of its hull. The screen's edge beats red and the last empty
+   *  pip blinks; a banner says so once, on the way in. */
+  private syncDanger(g: Game): void {
+    const lastShip = g.tempo.lossLimit - g.lost === 1;
+    const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
+    const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
+    if (on && !this.danger) this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.');
+    if (on !== this.danger) {
+      this.danger = on;
+      this.root.classList.toggle('danger', on);
+    }
+  }
+
+  /** Back to a clean field (a new run, the menu). */
+  private resetFinale(): void {
+    this.beat = null;
+    this.hitStop = 0;
+    this.danger = false;
+    this.root.classList.remove('danger');
+    this.zoom = { z: 1, x: 800, y: 450, pull: 0 };
+    this.canvas.style.filter = '';
+    this.vignette.style.opacity = '0';
+    this.stamp.classList.remove('show');
+    this.root.classList.remove('finale');
   }
 
   private showMenu(): void {
+    this.resetFinale();
     if (this.rec) this.endRun(this.game?.phase === 'won' ? 'won' : 'quit');
     this.rec = null;
     this.game = null;
@@ -826,6 +982,7 @@ export class App {
     const upto = log.commands.findIndex((c) => c[0] > step);
     const g = replayTo(log, step, upto < 0 ? log.commands.length : upto);
     g.events = [];
+    this.resetFinale();
     if (this.rec) this.endRun('quit');
     this.rec = null;
     this.bot = null;
@@ -931,6 +1088,7 @@ export class App {
 
   private begin(): void {
     if (!this.game) return;
+    this.resetFinale();
     this.ghostRun = null;
     this.lastPhase = null;
     this.acc = 0;
@@ -975,7 +1133,9 @@ export class App {
       const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
       const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}`, () => {
-        if (swapping || this.picking) return;
+        // Ignore taps that land as the cards appear: the player may still be
+        // firing at the wave's last threat.
+        if (swapping || this.picking || performance.now() - this.draftShownAt < DRAFT_ARM_MS) return;
         if (takeable) {
           // The pick lands with a beat: the card flashes gold, then the wave starts.
           this.picking = true;
@@ -985,7 +1145,10 @@ export class App {
             this.picking = false;
             if (this.game === g && g.phase === 'draft' && g.wave === wave) this.rec?.pick(id);
           }, PICK_BEAT_MS);
-        } else if (swappable) this.showDraft(g, id);
+        } else if (swappable) {
+          this.showDraft(g, id);
+          this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
+        }
       });
       card.style.setProperty('--deal', `${i * DEAL_STAGGER_MS * this.dealScale()}ms`);
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
@@ -1013,7 +1176,10 @@ export class App {
     let rule: HTMLElement;
     if (swapping) {
       rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${cardDef(swapping).name}: tap the card it replaces above. That card and its levels are gone.`);
-      rule.append(button('Cancel', 'v2-link', () => this.showDraft(g)));
+      rule.append(button('Cancel', 'v2-link', () => {
+        this.showDraft(g);
+        this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
+      }));
     } else {
       rule = el(
         'p',
