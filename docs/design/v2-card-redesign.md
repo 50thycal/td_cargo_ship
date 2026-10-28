@@ -41,7 +41,7 @@ Each scene is built around the one thing its card does. A few examples:
 - **Smoke Screen:** a ship laying smoke while a homing missile veers off.
 - **Combat Rhythm:** a heartbeat line that spits out a round.
 
-The art is pure SVG strings, so tools can render it too. A scratch tool lays all 18 out as a contact sheet at phone size, in colour and in greyscale.
+The art is pure SVG strings, so tools can render it too. `npm run v2:cards` (`tools/v2/card-sheet.ts`) lays all 18 out as a contact sheet at phone size, in colour and in greyscale.
 
 **Tested.** I rendered the contact sheet in Chromium (190×120 tiles, about phone size), plus a greyscale version and 3× close-ups.
 

@@ -26,7 +26,8 @@
     "v2:audit": "vite-node tools/v2/audit.ts --",
     "v2:style": "vite-node tools/v2/style.ts --",
     "v2:fit": "vite-node tools/v2/fit.ts --",
-    "v2:moment": "node tools/v2/moment.mjs"
+    "v2:moment": "node tools/v2/moment.mjs",
+    "v2:cards": "vite-node tools/v2/card-sheet.ts --"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",
