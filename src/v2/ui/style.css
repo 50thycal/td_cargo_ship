@@ -1014,6 +1014,23 @@ body {
   transform: translateX(22px);
 }
 
+/* Watch mode's bot personality picker (round 12). */
+.v2-persona .v2-setting-text {
+  width: 100%;
+}
+
+.v2-persona-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.v2-persona-chips .v2-dev-chip {
+  min-height: 30px;
+  font-size: 12px;
+}
+
 /* ---- Watch mode (round 9) ---------------------------------------------- */
 
 .v2-setting-group {

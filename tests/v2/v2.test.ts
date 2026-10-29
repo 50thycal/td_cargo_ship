@@ -1695,3 +1695,85 @@ describe('round 9: the watch-mode bot', () => {
     expect(bot.choose(g).id).toBe('resupply');
   });
 });
+
+describe('round 12: bot personalities', () => {
+  it('offers at least seven named personalities, you first', async () => {
+    const { PERSONAS, PERSONA_ORDER } = await import('../../src/v2/sim/mimic');
+    expect(PERSONA_ORDER.length).toBeGreaterThanOrEqual(7);
+    expect(PERSONA_ORDER[0]).toBe('you');
+    for (const id of PERSONA_ORDER) {
+      expect(PERSONAS[id].id).toBe(id);
+      expect(PERSONAS[id].label).toBeTruthy();
+      expect(PERSONAS[id].blurb).toBeTruthy();
+    }
+  });
+
+  it('you-v1 still plays exactly as it did on the phone (first wave of watch log 20261029135055-49676)', async () => {
+    const { playMimic, YOU_V1 } = await import('../../src/v2/sim/mimic');
+    // Recorded by the app on an iPhone, watch mode, Strait seed 49676 (speed changes left out).
+    const phone = [[243, 'f', 2], [249, 'f', 3], [688, 't', 1293, 120, 108], [699, 't', 1312, 123, 108], [711, 't', 1280, 163, 108], [737, 't', 1331, 105, 108], [839, 't', 643, 111, 108], [851, 't', 723, 136, 108], [889, 't', 689, 181, 108], [899, 't', 624, 186, 108], [910, 't', 633, 199, 108], [931, 't', 633, 248, 108], [942, 't', 627, 320, 108], [959, 't', 653, 192, 108], [1131, 't', 1323, 100, 108], [1141, 't', 1287, 140, 108], [1181, 't', 1328, 116, 108], [1190, 't', 1299, 86, 108], [1221, 't', 1317, 186, 108], [1284, 't', 283, 140, 108], [1296, 't', 257, 139, 108], [1305, 't', 323, 209, 108], [1354, 't', 303, 246, 108], [1363, 't', 327, 233, 108], [1389, 't', 275, 226, 108], [1399, 't', 318, 266, 108], [1609, 't', 247, 122, 108], [1624, 't', 289, 154, 108], [1634, 't', 330, 100, 108], [1643, 't', 328, 120, 108]];
+    const { log } = playMimic('strait', 49676, { persona: YOU_V1 });
+    expect(log.commands.slice(0, phone.length)).toEqual(phone);
+  });
+
+  it('every personality plays a repeatable game whose log replays exactly', async () => {
+    const { PERSONAS, PERSONA_ORDER, playMimic } = await import('../../src/v2/sim/mimic');
+    const { replay } = await import('../../src/v2/sim/playlog');
+    const tempo = { waveLen: 0.4, stride: 2, lossLimit: 2 };
+    for (const id of PERSONA_ORDER) {
+      const a = playMimic('island', 42, { persona: PERSONAS[id], tempo, firstWave: 2 });
+      const b = playMimic('island', 42, { persona: PERSONAS[id], tempo, firstWave: 2 });
+      expect(a.log.commands, id).toEqual(b.log.commands);
+      const r = replay(JSON.parse(JSON.stringify(a.log)));
+      expect({ steps: r.steps, score: r.score, lost: r.lost }, id).toEqual({ steps: a.game.steps, score: a.game.score, lost: a.game.lost });
+    }
+  });
+
+  it('dice give a different game on the same seed, and dice 0 is the default game', async () => {
+    const { playMimic, YOU } = await import('../../src/v2/sim/mimic');
+    const tempo = { waveLen: 0.4, stride: 2, lossLimit: 2 };
+    const base = playMimic('strait', 3, { persona: YOU, tempo }).log.commands;
+    expect(playMimic('strait', 3, { persona: YOU, tempo, dice: 0 }).log.commands).toEqual(base);
+    expect(playMimic('strait', 3, { persona: YOU, tempo, dice: 1 }).log.commands).not.toEqual(base);
+  });
+
+  it('personalities differ where they should', async () => {
+    const { MASHER, SNIPER, RUSHER, YOU, playMimic } = await import('../../src/v2/sim/mimic');
+    const run = (p: typeof YOU) => {
+      const { game, log } = playMimic('strait', 11, { persona: p, tempo: { waveLen: 0.4, stride: 1, lossLimit: 3 } });
+      const taps = log.commands.filter((c) => c[1] === 't').length;
+      return { taps, perSec: taps / (game.steps / 60), dry: game.taps.dry / Math.max(1, taps) };
+    };
+    const masher = run(MASHER);
+    const sniper = run(SNIPER);
+    // The masher taps far more, and far more of it into an empty rack.
+    expect(masher.perSec).toBeGreaterThan(sniper.perSec * 1.8);
+    expect(masher.dry).toBeGreaterThan(sniper.dry + 0.1);
+    // The rusher plays at 2×: the same person, half the game seconds per tap.
+    expect(RUSHER.speed).toBe(2);
+    expect(run(RUSHER).perSec).toBeLessThan(run(YOU).perSec * 1.4);
+  });
+});
+
+describe('round 12: the interaction taxonomy', () => {
+  it('traces every tap of a log, and the ruler reads a bot log like a human one', async () => {
+    const { playMimic, YOU } = await import('../../src/v2/sim/mimic');
+    const { trace, compare, METRICS } = await import('../../tools/v2/taxonomy');
+    const a = playMimic('strait', 21, { persona: YOU, tempo: { waveLen: 0.4, stride: 1, lossLimit: 3 } }).log;
+    const t = trace(a, { botClock: 1 / (YOU.speed ?? 1) });
+    expect(t.who).toBe('bot');
+    expect(t.taps.length).toBe(a.commands.filter((c) => c[1] === 't').length);
+    expect(t.taps.filter((x) => x.result === 'dry').length).toBe(playMimic('strait', 21, { persona: YOU, tempo: { waveLen: 0.4, stride: 1, lossLimit: 3 } }).game.taps.dry);
+    // Real seconds: the bot logs the game speed it plays at ('p', UI only),
+    // and the ruler turns game time back into its real time with it.
+    const paces = a.commands.filter((c) => c[1] === 'p').map((c) => c[2] as number);
+    expect(paces[0]).toBe(YOU.speed);
+    const game = a.summary!.steps / 60;
+    expect(t.seconds).toBeLessThanOrEqual(game / Math.min(...paces) + 0.5);
+    expect(t.seconds).toBeGreaterThanOrEqual(game / Math.max(...paces) - 0.5);
+    // A trace compared with itself passes every knob it has data for.
+    const vs = compare([t], [t]);
+    expect(vs.length).toBe(METRICS.length);
+    expect(vs.filter((v) => !v.na).every((v) => v.pass)).toBe(true);
+  });
+});

@@ -17,6 +17,7 @@
 
 import { RULES } from '../data/config';
 import { FULL_TEMPO, nextPlayedWave, type Tempo } from '../sim/game';
+import { PERSONAS, YOU } from '../sim/mimic';
 
 export type DevPreset = 'full' | 'half' | 'quarter' | 'eighth';
 
@@ -62,6 +63,8 @@ export interface DevSettings {
   watch: boolean;
   /** The speed a watched run starts at (the last one used). */
   watchSpeed: number;
+  /** Who plays in watch mode: a persona id from sim/mimic (round 12). */
+  bot: string;
 }
 
 const FLAG = 'straitwatch.v2.dev';
@@ -104,9 +107,10 @@ export function loadDevSettings(): DevSettings {
       wave: Math.max(1, Math.min(RULES.wavesToClear, Math.floor(s.wave ?? 1))),
       watch: s.watch === true,
       watchSpeed: typeof s.watchSpeed === 'number' ? s.watchSpeed : 1,
+      bot: typeof s.bot === 'string' && s.bot in PERSONAS ? s.bot : YOU.id,
     };
   } catch {
-    return { preset: 'half', wave: 1, watch: false, watchSpeed: 1 };
+    return { preset: 'half', wave: 1, watch: false, watchSpeed: 1, bot: YOU.id };
   }
 }
 
