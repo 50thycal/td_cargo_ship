@@ -29,9 +29,11 @@ import {
  *  5: round 5 (frigate holds station, rarer repairs, 1-damage ballistic spill).
  *  6: round 6 audit (Twin Launch, Quick Reload and frigate reworked; the
  *     Strike Package is now two jets sweeping the screen).
+ *  7: round 13 (a cleared wave clears the field and refills the racks,
+ *     strike jets destroy subs and trucks, truck roads moved off the bases).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 6;
+export const LOG_VERSION = 7;
 export const SIM_DT = 1 / 60;
 
 /** Compact input encoding: [step, code, ...args]. */

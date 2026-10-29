@@ -1508,6 +1508,25 @@ body {
   transform: translate(-50%, -50%) scale(1) rotate(-3deg);
 }
 
+.v2-stamp > span {
+  display: block;
+  text-align: center;
+}
+
+.v2-stamp-sub {
+  margin-top: 2px;
+  font-size: 0.34em;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+/* Round 13: a cleared wave is stamped too, in gold. */
+.v2-stamp.cleared {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 28px rgb(245 197 66 / 0.25);
+}
+
 /* The result screen rises over the greyed field rather than snapping on. */
 .finale .v2-overlay.open .v2-result {
   animation: v2-fade-down 0.45s ease-out backwards;

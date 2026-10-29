@@ -43,7 +43,9 @@ const PICK_BEAT_MS = 180;
  *  waits a beat (the player had tapped straight into a card while still
  *  firing at the last threat), and cards ignore taps for a moment after
  *  they appear. Losing gets a slow, dramatic finish before the result. */
-const CLEAR_BEAT = 0.6;
+/** Round 13: long enough to read the WAVE CLEARED stamp (it was 0.6 s, a
+ *  guard against tapping a card by accident; this still covers that). */
+const CLEAR_BEAT = 1.4;
 const WON_BEAT = 1.2;
 const LOST_BEAT = 2.6;
 /** A loss finale can be skipped with a tap after this long. */
@@ -630,7 +632,7 @@ export class App {
           const stop = HIT_STOP / Math.sqrt(Math.max(1, this.speed));
           this.hitStop = Math.min(0.12, this.hitStop + stop);
           this.shake = Math.max(this.shake, 9);
-          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: BIG_KILL_LABEL[ev.threat] ?? 'DOWN' });
+          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: ev.label ?? (ev.threat && BIG_KILL_LABEL[ev.threat]) ?? 'DOWN' });
           break;
         }
         case 'dry':
@@ -694,8 +696,6 @@ export class App {
       // Straight out of a wave: a beat first. A dev stride's second draft
       // (draft → draft) comes up at once.
       if (from === 'wave') {
-        const last = g.history[g.history.length - 1];
-        this.showBanner(`WAVE ${last?.wave ?? g.wave} CLEARED`, `+${(200 * (last?.wave ?? g.wave)).toLocaleString()} bonus`);
         this.startBeat('clear', CLEAR_BEAT);
       } else this.openDraft(g);
     } else if (g.phase === 'won') this.startBeat('won', WON_BEAT);
@@ -726,9 +726,23 @@ export class App {
       this.shake = 24;
       this.bannerT = 0;
       this.root.classList.add('finale');
-      this.stamp.textContent = g.carrierHp <= 0 ? 'CARRIER DOWN' : 'CONVOY LOST';
+      this.setStamp('lost', g.carrierHp <= 0 ? 'CARRIER DOWN' : 'CONVOY LOST');
+    } else {
+      // Round 13: a win gets a stamp too, the same slam as a loss's.
+      const last = g.history[g.history.length - 1];
+      const wave = last?.wave ?? g.wave;
+      this.bannerT = 0;
+      if (kind === 'won') this.setStamp('won', 'MAP CLEARED', `Wave ${wave} survived`);
+      else this.setStamp('won', `WAVE ${wave} CLEARED`, `+${(200 * wave).toLocaleString()} bonus`);
+      requestAnimationFrame(() => this.stamp.classList.add('show'));
     }
     this.beat = { kind, t: performance.now(), dur, focus };
+  }
+
+  /** The stamp across the field: red for a loss, gold for a cleared wave. */
+  private setStamp(kind: 'lost' | 'won', text: string, sub = ''): void {
+    this.stamp.classList.toggle('cleared', kind === 'won');
+    this.stamp.replaceChildren(el('span', 'v2-stamp-main', text), ...(sub ? [el('span', 'v2-stamp-sub', sub)] : []));
   }
 
   /** Per frame while a beat runs: the loss finale's slow motion, zoom and
