@@ -1,11 +1,11 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, FRIGATE, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme, type ThreatKind } from '../data/config';
+import { BALLISTIC, CARRIER, FRIGATE, PICKUPS, SHIP, SMOKE, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
-import { halfWidthAt, type Landmass } from '../data/maps';
+import { halfWidthAt, type Landmass, type Point } from '../data/maps';
 import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
-import { drawAlly, drawBunkers, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
+import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
 const C = {
   waterDeep: '#0b2433',
@@ -51,16 +51,17 @@ export const DRY_LIFE = 0.7;
 
 /** `bannerUp`: the wave/new-threat banner is showing at the map's callout
  *  point, so a raid warning moves above it. */
-export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number, bannerUp = false): void {
+export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number): void {
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawWater(ctx, g);
   for (const land of g.map.land) drawLand(ctx, land);
-  drawBunkers(ctx, g);
+  drawRoads(ctx, g);
   drawLanes(ctx, g);
   drawBases(ctx, g);
   drawRaiders(ctx, g);
-  drawRaidWarning(ctx, g, bannerUp);
+  drawTunnels(ctx, g);
+  drawRaidWarning(ctx, g);
   drawCarrier(ctx, g);
   if (g.frigate) drawFrigate(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
@@ -178,6 +179,32 @@ function drawLand(ctx: CanvasRenderingContext2D, land: Landmass): void {
   ctx.strokeStyle = enemy ? C.enemyEdge : C.friendlyEdge;
   ctx.lineWidth = 2;
   ctx.stroke();
+  if (land.hill) drawHill(ctx, land.points, enemy);
+}
+
+/** Round 13: the island as a hill, contour rings rising to a ridge, lit
+ *  from the north-west so it reads as high ground at a glance. */
+function drawHill(ctx: CanvasRenderingContext2D, pts: Point[], enemy: boolean): void {
+  const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+  const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+  const rings = enemy ? ['#45332a', '#4e3a30', '#584337', '#634c3f'] : ['#2c3e30', '#334736', '#3a503d', '#425944'];
+  rings.forEach((fill, i) => {
+    const k = 0.82 - i * 0.2;
+    ctx.beginPath();
+    pts.forEach((p, j) => {
+      // Rings sit a little north of centre: the light side of the hill.
+      const x = cx + (p.x - cx) * k;
+      const y = cy - 6 * (i + 1) + (p.y - cy) * k;
+      if (j) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,225,190,0.10)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
 }
 
 function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
@@ -200,17 +227,8 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.setLineDash([]);
 }
 
-const BASE_GLYPH: Partial<Record<ThreatKind, string>> = {
-  drone: C.drone,
-  ballistic: C.flame,
-  guided: C.danger,
-  supersonic: '#ff8af0',
-  heavy: '#c9a26b',
-  cluster: '#ffd24a',
-  mothership: '#9fd0a8',
-};
-
-const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }> = {
+/** Each raid's colour and call-out (the tray card in app.ts uses it too). */
+export const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }> = {
   swarm: { color: '255,255,255', name: 'SWARM', tip: 'drones · Column hurries ships past' },
   barrage: { color: '255,180,80', name: 'BARRAGE', tip: 'splash · Spread halves it' },
   volley: { color: '255,120,230', name: 'VOLLEY', tip: 'guided · Box armour blunts it' },
@@ -219,7 +237,7 @@ const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }>
 
 /** A raid is coming: its bases light up and its type is called out, so the
  *  player has a moment to pick the formation that answers it. */
-function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game, bannerUp: boolean): void {
+function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game): void {
   const w = raidWarning(g);
   if (!w) return;
   const look = RAID_LOOK[w.raid.theme];
@@ -232,70 +250,76 @@ function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game, bannerUp: boole
     ctx.arc(b.x, b.y, 30 + 10 * w.p, 0, Math.PI * 2);
     ctx.stroke();
   }
-  const fade = Math.min(1, (1 - w.p) * 6, w.p * 8);
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, fade);
-  const title = `⚠ ${look.name} INBOUND`;
-  ctx.font = '600 17px system-ui, sans-serif';
-  const tipW = ctx.measureText(look.tip).width;
-  ctx.font = '800 26px system-ui, sans-serif';
-  const width = Math.max(ctx.measureText(title).width, tipW) + 36;
-  // At the map's callout point: clear of every base and shipping lane.
-  const x = g.map.callout.x;
-  const y = g.map.callout.y - 6 - (bannerUp ? 80 : 0);
-  ctx.fillStyle = 'rgba(4,8,11,0.82)';
-  ctx.strokeStyle = `rgba(${look.color},0.8)`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x - width / 2, y - 26, width, 62, 12);
-  ctx.fill();
-  ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = `rgb(${look.color})`;
-  ctx.fillText(title, x, y + 4);
-  ctx.font = '600 17px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(220,230,235,0.9)';
-  ctx.fillText(look.tip, x, y + 26);
-  ctx.restore();
+  // The call-out itself is a card in the notification tray (ui/alerts.ts).
 }
 
+/** Round 13: each base is a missile silo, a concrete pad with a hatch that
+ *  slides open just before it fires and closes after. No symbol says what
+ *  is inside: the raid warning (drawRaidWarning) still marks a raid's bases. */
 function drawBases(ctx: CanvasRenderingContext2D, g: Game): void {
-  for (const b of g.map.bases) {
+  g.map.bases.forEach((b, i) => {
+    const open = hatchOpen(g, i);
     ctx.save();
     ctx.translate(b.x, b.y);
-    ctx.fillStyle = '#2a1d18';
-    hexagon(ctx, 26);
+    // Pad, with a red rim: enemy ground.
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(2, 4, 30, 25, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#5a524b';
     ctx.strokeStyle = C.base;
     ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 28, 23, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
-    // One small glyph per weapon the base fields.
-    const live = b.kinds.filter((k) => g.seen.has(k) || k === 'drone');
-    live.forEach((k, i) => {
-      const x = (i - (live.length - 1) / 2) * 13;
-      ctx.fillStyle = BASE_GLYPH[k] ?? C.danger;
-      if (k === 'drone') {
-        ctx.beginPath();
-        ctx.moveTo(x, -6);
-        ctx.lineTo(x + 5, 5);
-        ctx.lineTo(x - 5, 5);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.fillRect(x - 2, -8, 4, 16);
-      }
-    });
+    ctx.strokeStyle = 'rgba(30,26,22,0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 21, 17, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // The shaft, lit from below while the hatch is open.
+    ctx.fillStyle = open > 0 ? `rgb(${Math.round(40 + 120 * open)},${Math.round(18 + 40 * open)},10)` : '#141110';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Two hatch doors sliding apart.
+    const slide = 15 * open;
+    ctx.fillStyle = '#7d756c';
+    ctx.strokeStyle = '#2d2925';
+    ctx.lineWidth = 1.5;
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 15, 12, 0, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.beginPath();
+      ctx.rect(side < 0 ? -16 - slide : slide, -13, 16, 26);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
-  }
+  });
 }
 
-function hexagon(ctx: CanvasRenderingContext2D, r: number): void {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i + Math.PI / 6;
-    ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r * 0.8);
+/** How open a base's hatch is, 0..1: opening over the 0.7 s before a launch
+ *  it has queued, held while it fires, closing over 0.6 s after. */
+function hatchOpen(g: Game, i: number): number {
+  let open = 0;
+  if (g.phase === 'wave')
+    for (const l of g.queue) {
+      if (l.base !== i || l.kind === 'strafer' || l.kind === 'bomber') continue;
+      const ahead = l.at - g.waveT;
+      if (ahead > 0.7) break;
+      open = Math.max(open, 1 - ahead / 0.7);
+    }
+  const b = g.map.bases[i];
+  for (const f of g.fx) {
+    if (f.kind !== 'launch' || Math.abs(f.x - b.x) > 2 || Math.abs(f.y - b.y) > 2) continue;
+    open = Math.max(open, 1 - f.age / f.life);
   }
-  ctx.closePath();
+  return Math.min(1, open);
 }
 
 function drawCarrier(ctx: CanvasRenderingContext2D, g: Game): void {
@@ -578,28 +602,8 @@ function drawTimedPickups(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.lineWidth = 8;
     ctx.strokeRect(4, 4, VIEW.width - 8, VIEW.height - 8);
   }
-  const chips: [string, number, string][] = [];
-  if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
-  if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
-  if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
-  if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
-  ctx.font = '700 22px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  let x = 24;
-  for (const [label, t, col] of chips) {
-    const text = `${label} ${Math.ceil(t)}`;
-    const w = ctx.measureText(text).width + 24;
-    ctx.fillStyle = 'rgba(8,16,24,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(x, 18, w, 34, 8);
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = col;
-    ctx.fillText(text, x + 12, 43);
-    x += w + 10;
-  }
+  // The countdowns themselves are in the left rail (app.ts syncTimers),
+  // off the battlefield.
 }
 
 function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
@@ -813,7 +817,7 @@ function missile(
   ctx.restore();
 }
 
-const PICKUP_COLORS: Record<PickupKind, string> = {
+export const PICKUP_COLORS: Record<PickupKind, string> = {
   ammo: '#f5c542',
   repair: '#4ade80',
   overdrive: '#38bdf8',
