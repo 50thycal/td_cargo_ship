@@ -344,38 +344,88 @@ body {
   background: rgb(127 233 255 / 0.35);
 }
 
-.v2-banner {
+/* Round 14: the notification tray. One row of cards on the map's strip of
+   shore (app.ts places it), side by side, never stacked over the carrier. */
+.v2-alerts {
   position: absolute;
-  transform: translate(-50%, -50%) scale(0.96);
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 8px;
+  /* Anchored by its bottom edge: a taller card grows up, never off screen. */
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+.v2-alert {
+  --alert: var(--ink);
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  min-width: 0;
+  max-width: calc(50% - 4px);
   padding: 6px 16px;
   border-radius: 10px;
-  background: rgb(7 13 18 / 0.6);
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.25s,
-    transform 0.25s;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(7 13 18 / 0.78);
   text-align: center;
-  width: max-content;
+  opacity: 0;
+  /* Grows in from its own spot: sliding up from below would dip it past the
+     screen's bottom edge for a moment. */
+  transform: scale(0.94);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.22s,
+    transform 0.22s;
 }
 
-.v2-banner.show {
+.v2-alert.show {
   opacity: 1;
-  transform: translate(-50%, -50%);
+  transform: none;
 }
 
-.v2-banner strong {
+.v2-alerts.single .v2-alert {
+  max-width: 100%;
+}
+
+.v2-alert strong {
   font-size: 18px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
-.v2-banner span {
+.v2-alert span {
   font-size: 12px;
+  line-height: 1.25;
   color: var(--muted);
+  text-wrap: balance;
+}
+
+/* A raid on its way: its own colour, the same as the rings on its bases. */
+.v2-alert.raid {
+  border: 2px solid var(--alert);
+}
+
+.v2-alert.raid strong {
+  color: var(--alert);
+}
+
+.v2-alert.danger {
+  border: 2px solid var(--danger);
+}
+
+.v2-alert.danger strong {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-alert {
+    transition: none;
+  }
 }
 
 /* ---- Overlay screens -------------------------------------------------- */
@@ -574,13 +624,13 @@ body {
     gap: 1px;
     padding: 3px;
   }
-  .v2-banner {
+  .v2-alert {
     padding: 3px 10px;
   }
-  .v2-banner strong {
+  .v2-alert strong {
     font-size: 13px;
   }
-  .v2-banner span {
+  .v2-alert span {
     font-size: 10px;
   }
   .v2-track {
@@ -1108,6 +1158,44 @@ body {
   cursor: pointer;
 }
 
+/* Round 14: running power-ups, pinned to the foot of the left rail so the
+   rail's controls never move when one starts. */
+.v2-timers {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.v2-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 3px 1px;
+  border-radius: 6px;
+  border: 1.5px solid var(--chip);
+  background: rgb(8 16 24 / 0.85);
+  color: var(--chip);
+  line-height: 1.1;
+}
+
+.v2-timer span {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.v2-timer b {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 .dev .v2-flag-btn {
   display: block;
 }
@@ -1528,6 +1616,12 @@ body {
 }
 
 /* The result screen rises over the greyed field rather than snapping on. */
+/* Round 14: a darker backdrop behind the result, so the greyed field (the
+   carrier's rack, ships) no longer shows through between its stats. */
+.v2-overlay.open:has(.v2-result) {
+  background: rgb(4 8 11 / 0.93);
+}
+
 .finale .v2-overlay.open .v2-result {
   animation: v2-fade-down 0.45s ease-out backwards;
 }

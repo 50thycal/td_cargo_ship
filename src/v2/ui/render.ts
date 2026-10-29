@@ -51,7 +51,7 @@ export const DRY_LIFE = 0.7;
 
 /** `bannerUp`: the wave/new-threat banner is showing at the map's callout
  *  point, so a raid warning moves above it. */
-export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number, bannerUp = false): void {
+export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number): void {
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawWater(ctx, g);
@@ -61,7 +61,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawBases(ctx, g);
   drawRaiders(ctx, g);
   drawTunnels(ctx, g);
-  drawRaidWarning(ctx, g, bannerUp);
+  drawRaidWarning(ctx, g);
   drawCarrier(ctx, g);
   if (g.frigate) drawFrigate(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
@@ -227,7 +227,8 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.setLineDash([]);
 }
 
-const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }> = {
+/** Each raid's colour and call-out (the tray card in app.ts uses it too). */
+export const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }> = {
   swarm: { color: '255,255,255', name: 'SWARM', tip: 'drones · Column hurries ships past' },
   barrage: { color: '255,180,80', name: 'BARRAGE', tip: 'splash · Spread halves it' },
   volley: { color: '255,120,230', name: 'VOLLEY', tip: 'guided · Box armour blunts it' },
@@ -236,7 +237,7 @@ const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }>
 
 /** A raid is coming: its bases light up and its type is called out, so the
  *  player has a moment to pick the formation that answers it. */
-function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game, bannerUp: boolean): void {
+function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game): void {
   const w = raidWarning(g);
   if (!w) return;
   const look = RAID_LOOK[w.raid.theme];
@@ -249,31 +250,7 @@ function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game, bannerUp: boole
     ctx.arc(b.x, b.y, 30 + 10 * w.p, 0, Math.PI * 2);
     ctx.stroke();
   }
-  const fade = Math.min(1, (1 - w.p) * 6, w.p * 8);
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, fade);
-  const title = `⚠ ${look.name} INBOUND`;
-  ctx.font = '600 17px system-ui, sans-serif';
-  const tipW = ctx.measureText(look.tip).width;
-  ctx.font = '800 26px system-ui, sans-serif';
-  const width = Math.max(ctx.measureText(title).width, tipW) + 36;
-  // At the map's callout point: clear of every base and shipping lane.
-  const x = g.map.callout.x;
-  const y = g.map.callout.y - 6 - (bannerUp ? 80 : 0);
-  ctx.fillStyle = 'rgba(4,8,11,0.82)';
-  ctx.strokeStyle = `rgba(${look.color},0.8)`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x - width / 2, y - 26, width, 62, 12);
-  ctx.fill();
-  ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = `rgb(${look.color})`;
-  ctx.fillText(title, x, y + 4);
-  ctx.font = '600 17px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(220,230,235,0.9)';
-  ctx.fillText(look.tip, x, y + 26);
-  ctx.restore();
+  // The call-out itself is a card in the notification tray (ui/alerts.ts).
 }
 
 /** Round 13: each base is a missile silo, a concrete pad with a hatch that
@@ -625,28 +602,8 @@ function drawTimedPickups(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.lineWidth = 8;
     ctx.strokeRect(4, 4, VIEW.width - 8, VIEW.height - 8);
   }
-  const chips: [string, number, string][] = [];
-  if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
-  if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
-  if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
-  if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
-  ctx.font = '700 22px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  let x = 24;
-  for (const [label, t, col] of chips) {
-    const text = `${label} ${Math.ceil(t)}`;
-    const w = ctx.measureText(text).width + 24;
-    ctx.fillStyle = 'rgba(8,16,24,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(x, 18, w, 34, 8);
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = col;
-    ctx.fillText(text, x + 12, 43);
-    x += w + 10;
-  }
+  // The countdowns themselves are in the left rail (app.ts syncTimers),
+  // off the battlefield.
 }
 
 function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
@@ -860,7 +817,7 @@ function missile(
   ctx.restore();
 }
 
-const PICKUP_COLORS: Record<PickupKind, string> = {
+export const PICKUP_COLORS: Record<PickupKind, string> = {
   ammo: '#f5c542',
   repair: '#4ade80',
   overdrive: '#38bdf8',

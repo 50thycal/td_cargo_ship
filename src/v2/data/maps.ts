@@ -90,6 +90,11 @@ export interface MapDef {
   /** Where wave/new-threat banners sit: open water or friendly shore, clear of
    *  every launch base and shipping lane, so a banner never hides a launch. */
   callout: Point;
+  /** Round 14: the strip of shore the notification tray sits on, in world
+   *  units: from x0 to x1, its bottom edge at y, clear of the carrier, the
+   *  frigate's station and every base. Cards sit side by side along it and
+   *  grow upward; `max` cards at once (default 2). */
+  alerts: { x0: number; x1: number; y: number; max?: number };
   /** Round 4: truck roads, open-water spots where submarines surface (clear of
    *  the shipping lanes), and from which wave each attack vector joins. */
   roads: Roads;
@@ -243,6 +248,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'heavy', from: 10, count: 1, growth: 0 },
     ],
     callout: { x: 800, y: 845 },
+    alerts: { x0: 170, x1: 1430, y: 888 },
     roads: {
       runners: [bypass([{ x: -60, y: 124 }, { x: 400, y: 120 }, { x: 800, y: 130 }, { x: 1200, y: 122 }, { x: 1660, y: 124 }], STRAIT_BASES, -1)],
       popups: [
@@ -279,6 +285,8 @@ export const MAPS: Record<MapId, MapDef> = {
     // Bottom of the screen like every other map (round 5: mid-channel sat on
     // the action), between the two south-shore bases.
     callout: { x: 910, y: 865 },
+    // Only room for one card between the two south-shore silos.
+    alerts: { x0: 566, x1: 1254, y: 890, max: 1 },
     roads: {
       runners: [
         bypass([{ x: -60, y: 118 }, { x: 800, y: 112 }, { x: 1660, y: 118 }], GAUNTLET_BASES.slice(0, 2), -1),
@@ -326,6 +334,9 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'cluster', from: 8, count: 1, growth: 0.34 },
     ],
     callout: { x: 800, y: 855 },
+    // The carrier sits close to the shore here, with the frigate and two
+    // sub spots beside it: one wide (so short) card at a time, low down.
+    alerts: { x0: 170, x1: 1430, y: 896, max: 1 },
     roads: {
       runners: [
         bypass([{ x: -60, y: 82 }, { x: 800, y: 78 }, { x: 1660, y: 82 }], ISLAND_BASES.slice(2), -1),
@@ -374,6 +385,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'supersonic', from: 8, count: 1, growth: 0.25 },
     ],
     callout: { x: 700, y: 855 },
+    alerts: { x0: 170, x1: 1430, y: 890 },
     roads: {
       runners: [bypass([{ x: -60, y: 92 }, { x: 800, y: 88 }, { x: 1660, y: 92 }], ARCHIPELAGO_BASES.slice(3), -1)],
       popups: [
@@ -411,6 +423,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { kind: 'mothership', from: 7, count: 1, growth: 0.15 },
     ],
     callout: { x: 380, y: 855 },
+    alerts: { x0: 30, x1: 1030, y: 890 },
     roads: {
       runners: [
         bypass([{ x: -60, y: 100 }, { x: 400, y: 140 }, { x: 800, y: 180 }, { x: 1200, y: 222 }, { x: 1660, y: 262 }], HARBOR_BASES.slice(0, 3), -1),
