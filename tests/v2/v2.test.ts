@@ -1092,11 +1092,12 @@ describe('new threat types', () => {
     expect(g.threats.filter((t) => t.kind === 'minidrone').length + g.kills.minidrone).toBeLessThanOrEqual(before);
   });
 
-  it('map extras launch on schedule: the Island fields supersonics from wave 4', () => {
+  it('map extras launch on schedule: the Island fields supersonics from wave 6', () => {
     // A wave's launches: from the bases, plus what its trucks and subs carry.
+    // (Round 13 moved the Island's extras two waves later.)
     const kinds = (g: Game) => [...g.queue.map((l) => l.kind), ...g.raiderQueue.flatMap((r) => r.units.map((u) => u.kind))];
-    expect(kinds(createGame('island', 4, 3)).includes('supersonic')).toBe(false);
-    const g = createGame('island', 4, 4);
+    expect(kinds(createGame('island', 4, 5)).includes('supersonic')).toBe(false);
+    const g = createGame('island', 4, 6);
     expect(kinds(g).includes('supersonic')).toBe(true);
     // The Strait keeps to the basics until a late taste of supersonics (wave 6)
     // and one heavy in the finale.
@@ -1543,7 +1544,10 @@ describe('round 8: dev playtest tempo', () => {
       // Same launches per second, give or take the rounding.
       const density = (g: Game) => launches(g) / waveSpec(9).duration / (g.tempo.waveLen);
       expect(density(short) / density(full), map).toBeGreaterThan(0.8);
-      expect(density(short) / density(full), map).toBeLessThan(1.3);
+      // A short wave keeps one of every threat type, so where a map's extras
+      // are still few (the Island's start late since round 13) it runs a
+      // little busier than the full wave.
+      expect(density(short) / density(full), map).toBeLessThan(1.5);
       const kinds = (g: Game) => new Set([...g.queue.map((l) => l.kind), ...g.raiderQueue.flatMap((r) => r.units.map((u) => u.kind))]);
       expect([...kinds(short)].sort(), map).toEqual([...kinds(full)].sort());
     }
@@ -1775,5 +1779,61 @@ describe('round 12: the interaction taxonomy', () => {
     const vs = compare([t], [t]);
     expect(vs.length).toBe(METRICS.length);
     expect(vs.filter((v) => !v.na).every((v) => v.pass)).toBe(true);
+  });
+});
+
+describe('round 13: a fresh start each wave, strikes, roads', () => {
+  it('a cleared wave clears the field: no interceptors, pickups or power-ups carry over, and the racks are full', () => {
+    const g = createGame('strait', 3);
+    g.queue = [];
+    g.raiderQueue = [];
+    g.pickups.push({ id: 9001, kind: 'ammo', x: 700, y: 500, age: 0 });
+    g.interceptors.push({ id: 9002, x: 800, y: 600, target: 1, tx: 800, ty: 200, life: 0 });
+    g.overdriveT = 4;
+    g.shieldT = 3;
+    g.warpT = 2;
+    g.ammo = 0;
+    step(g, DT);
+    expect(g.phase).toBe('draft');
+    expect(g.pickups).toHaveLength(0);
+    expect(g.interceptors).toHaveLength(0);
+    expect([g.overdriveT, g.shieldT, g.warpT, g.steamT]).toEqual([0, 0, 0, 0]);
+    expect(g.ammo).toBe(g.stats.rack);
+  });
+
+  it('strike jets blow up a truck on the road: gone, rounds and all, with a punch', () => {
+    const g = createGame('island', 2);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    const road = g.map.roads.runners[1];
+    g.raiderQueue = [{ at: g.waveT, kind: 'runner', path: road, units: [{ kind: 'ballistic', size: 1 }, { kind: 'ballistic', size: 1 }] }];
+    run(g, 1.2);
+    const truck = g.raiders[0];
+    expect(truck.dist).toBeGreaterThan(0);
+    expect(g.origins.truck).toBe(0); // on the road, nothing fired yet
+    g.pickups.push({ id: 9003, kind: 'strike', x: 300, y: 450, age: 0 });
+    tap(g, 300, 450, 30);
+    run(g, 3);
+    expect(g.raiders).toHaveLength(0);
+    // It may get one round off before the jets arrive, never its second.
+    expect(g.origins.truck).toBeLessThan(2);
+    run(g, 6);
+    expect(g.origins.truck).toBeLessThan(2);
+    expect(g.events.some((e) => e.kind === 'bigKill' && e.label === 'TRUCK DESTROYED')).toBe(true);
+  });
+
+  it('no truck road runs over a base, on any map, and on-screen road ends are tunnels off the bases', () => {
+    const segDist = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+    };
+    for (const map of MAP_ORDER) {
+      const m = createGame(map, 1).map;
+      const routes = [...m.roads.runners, ...m.roads.popups.map((p) => [p.from, p.to])];
+      for (const path of routes)
+        for (const b of m.bases)
+          for (let i = 1; i < path.length; i++) expect(segDist(b, path[i - 1], path[i]), `${map} road near base ${b.x},${b.y}`).toBeGreaterThan(36);
+    }
   });
 });

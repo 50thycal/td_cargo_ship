@@ -23,6 +23,8 @@ export interface Point {
 export interface Landmass {
   side: 'enemy' | 'friendly';
   points: Point[];
+  /** Drawn as a hill: contour rings rising to a ridge (round 13). */
+  hill?: boolean;
 }
 
 export interface BaseDef {
@@ -150,6 +152,76 @@ function curve(x0: number, y0: number, x1: number, y1: number, phase: number): P
   return pts;
 }
 
+/** Round 13: a truck road that follows `path` but swings inland around every
+ *  base it would otherwise drive over (`inland` = -1 for a north shore, +1
+ *  for a south shore), so trucks keep to the coast and never cross a silo.
+ *  The detour is a smooth bump CLEAR px behind the base, REACH px either side. */
+const CLEAR = 54;
+const REACH = 120;
+function bypass(path: Point[], bases: { x: number; y: number }[], inland: -1 | 1): Point[] {
+  const at = (x: number): number => {
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      if ((x - a.x) * (x - b.x) <= 0 && a.x !== b.x) return a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+    }
+    return path[x < path[0].x === path[0].x < path[path.length - 1].x ? 0 : path.length - 1].y;
+  };
+  const x0 = path[0].x;
+  const x1 = path[path.length - 1].x;
+  const out: Point[] = [];
+  const n = Math.ceil(Math.abs(x1 - x0) / 20);
+  for (let k = 0; k <= n; k++) {
+    const x = x0 + ((x1 - x0) * k) / n;
+    let y = at(x);
+    for (const b of bases) {
+      const dx = Math.abs(x - b.x);
+      if (dx >= REACH) continue;
+      // How far the road has to move to sit CLEAR px behind this base.
+      const need = -inland * (y - (b.y + inland * CLEAR));
+      if (need <= 0) continue;
+      const bump = 0.5 + 0.5 * Math.cos((Math.PI * dx) / REACH);
+      y += inland * need * bump;
+    }
+    // Never so far inland that a truck hangs off the screen.
+    out.push({ x: Math.round(x), y: Math.round(Math.max(20, Math.min(880, y))) });
+  }
+  return out;
+}
+
+const STRAIT_BASES: BaseDef[] = [
+  { x: 260, y: 112, kinds: ['drone', 'supersonic'] },
+  { x: 800, y: 100, kinds: ['drone', 'ballistic', 'heavy'] },
+  { x: 1340, y: 112, kinds: ['drone', 'guided', 'ballistic', 'supersonic'] },
+];
+const GAUNTLET_BASES: BaseDef[] = [
+  { x: 300, y: 100, kinds: ['drone'] },
+  { x: 1100, y: 95, kinds: ['drone', 'ballistic', 'supersonic'] },
+  { x: 520, y: 815, kinds: ['drone', 'guided'] },
+  { x: 1300, y: 815, kinds: ['ballistic', 'guided', 'heavy'] },
+];
+const ISLAND_BASES: BaseDef[] = [
+  { x: 540, y: 362, kinds: ['drone', 'guided', 'cluster'] },
+  { x: 1060, y: 362, kinds: ['drone', 'ballistic'] },
+  { x: 300, y: 70, kinds: ['ballistic', 'supersonic', 'heavy'] },
+  { x: 800, y: 62, kinds: ['drone', 'ballistic'] },
+  { x: 1300, y: 70, kinds: ['guided', 'supersonic', 'cluster'] },
+];
+const ARCHIPELAGO_BASES: BaseDef[] = [
+  { x: 330, y: 330, kinds: ['drone', 'mothership', 'cluster'] },
+  { x: 800, y: 315, kinds: ['drone', 'guided', 'heavy'] },
+  { x: 1270, y: 330, kinds: ['drone', 'guided', 'supersonic'] },
+  { x: 560, y: 75, kinds: ['ballistic', 'heavy', 'mothership'] },
+  { x: 1050, y: 75, kinds: ['ballistic', 'supersonic', 'cluster'] },
+];
+const HARBOR_BASES: BaseDef[] = [
+  { x: 300, y: 80, kinds: ['drone', 'ballistic', 'mothership'] },
+  { x: 1180, y: 170, kinds: ['drone', 'supersonic', 'cluster'] },
+  { x: 1450, y: 210, kinds: ['ballistic', 'guided', 'heavy'] },
+  { x: 1300, y: 790, kinds: ['drone', 'guided', 'supersonic'] },
+  { x: 1500, y: 740, kinds: ['ballistic', 'heavy', 'cluster'] },
+];
+
 export const MAPS: Record<MapId, MapDef> = {
   strait: {
     id: 'strait',
@@ -159,11 +231,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'enemy', points: shore('top', 160, 16, 0.4) },
       { side: 'friendly', points: shore('bottom', 790, 12, 1.7) },
     ],
-    bases: [
-      { x: 260, y: 112, kinds: ['drone', 'supersonic'] },
-      { x: 800, y: 100, kinds: ['drone', 'ballistic', 'heavy'] },
-      { x: 1340, y: 112, kinds: ['drone', 'guided', 'ballistic', 'supersonic'] },
-    ],
+    bases: STRAIT_BASES,
     carrier: { x: 800, y: 705 },
     frigate: { x: 580, y: 700 },
     channels: [{ y: 470, halfWidth: 150 }],
@@ -176,7 +244,7 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     callout: { x: 800, y: 845 },
     roads: {
-      runners: [[{ x: -60, y: 124 }, { x: 400, y: 120 }, { x: 800, y: 130 }, { x: 1200, y: 122 }, { x: 1660, y: 124 }]],
+      runners: [bypass([{ x: -60, y: 124 }, { x: 400, y: 120 }, { x: 800, y: 130 }, { x: 1200, y: 122 }, { x: 1660, y: 124 }], STRAIT_BASES, -1)],
       popups: [
         { from: { x: 540, y: -40 }, to: { x: 540, y: 128 } },
         { from: { x: 1070, y: -40 }, to: { x: 1070, y: 130 } },
@@ -196,12 +264,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'enemy', points: shore('bottom', 760, 14, 0.9) },
       { side: 'friendly', points: islet(120, 450, 42) },
     ],
-    bases: [
-      { x: 300, y: 100, kinds: ['drone'] },
-      { x: 1100, y: 95, kinds: ['drone', 'ballistic', 'supersonic'] },
-      { x: 520, y: 815, kinds: ['drone', 'guided'] },
-      { x: 1300, y: 815, kinds: ['ballistic', 'guided', 'heavy'] },
-    ],
+    bases: GAUNTLET_BASES,
     carrier: { x: 800, y: 450 },
     frigate: { x: 1040, y: 455 },
     channels: [
@@ -218,8 +281,8 @@ export const MAPS: Record<MapId, MapDef> = {
     callout: { x: 910, y: 865 },
     roads: {
       runners: [
-        [{ x: -60, y: 118 }, { x: 800, y: 112 }, { x: 1660, y: 118 }],
-        [{ x: 1660, y: 800 }, { x: 800, y: 805 }, { x: -60, y: 800 }],
+        bypass([{ x: -60, y: 118 }, { x: 800, y: 112 }, { x: 1660, y: 118 }], GAUNTLET_BASES.slice(0, 2), -1),
+        bypass([{ x: 1660, y: 800 }, { x: 800, y: 805 }, { x: -60, y: 800 }], GAUNTLET_BASES.slice(2), 1),
       ],
       popups: [
         { from: { x: 700, y: -40 }, to: { x: 700, y: 122 } },
@@ -238,16 +301,10 @@ export const MAPS: Record<MapId, MapDef> = {
     blurb: 'The enemy holds the island AND the far shore. Island fire gives you almost no warning.',
     land: [
       { side: 'enemy', points: shore('top', 110, 12, 1.1) },
-      { side: 'enemy', points: lens(330, 1270, 360, 95) },
+      { side: 'enemy', points: lens(330, 1270, 360, 95), hill: true },
       { side: 'friendly', points: shore('bottom', 805, 10, 2.9) },
     ],
-    bases: [
-      { x: 540, y: 362, kinds: ['drone', 'guided', 'cluster'] },
-      { x: 1060, y: 362, kinds: ['drone', 'ballistic'] },
-      { x: 300, y: 70, kinds: ['ballistic', 'supersonic', 'heavy'] },
-      { x: 800, y: 62, kinds: ['drone', 'ballistic'] },
-      { x: 1300, y: 70, kinds: ['guided', 'supersonic', 'cluster'] },
-    ],
+    bases: ISLAND_BASES,
     carrier: { x: 800, y: 760 },
     frigate: { x: 560, y: 760 },
     // Round 7: a second lane north of the island (the player: ships only ever
@@ -258,23 +315,36 @@ export const MAPS: Record<MapId, MapDef> = {
       { y: 600, halfWidth: 100, share: 2 },
       { y: 190, halfWidth: 66, speed: 1.5 },
     ],
-    threatScale: 1.1,
+    // Round 13: the player never cleared it (0 of 7 runs), nor did the you-bot
+    // (2-3 of 30): a little less fire, and its extra threats come two waves
+    // later, so the mid-game (waves 5-8, where it was lost) eases. The you-bot
+    // now clears ~30%, the try-hard bot ~60% (docs/design/v2-island-round13.md).
+    threatScale: 0.95,
     extras: [
-      { kind: 'supersonic', from: 4, count: 1, growth: 0.17 },
-      { kind: 'heavy', from: 5, count: 1, growth: 0.2 },
-      { kind: 'cluster', from: 7, count: 1, growth: 0.34 },
+      { kind: 'supersonic', from: 6, count: 1, growth: 0.17 },
+      { kind: 'heavy', from: 7, count: 1, growth: 0.2 },
+      { kind: 'cluster', from: 8, count: 1, growth: 0.34 },
     ],
     callout: { x: 800, y: 855 },
     roads: {
       runners: [
-        [{ x: -60, y: 82 }, { x: 800, y: 78 }, { x: 1660, y: 82 }],
-        [{ x: 380, y: 360 }, { x: 800, y: 352 }, { x: 1220, y: 360 }],
+        bypass([{ x: -60, y: 82 }, { x: 800, y: 78 }, { x: 1660, y: 82 }], ISLAND_BASES.slice(2), -1),
+        // Round 13: the island road runs along its south flank, from a tunnel
+        // in the west of the hill to one in the east, clear of both bases.
+        [
+          { x: 492, y: 388 },
+          { x: 570, y: 412 },
+          { x: 800, y: 426 },
+          { x: 1030, y: 412 },
+          { x: 1108, y: 388 },
+        ],
       ],
       popups: [
         { from: { x: 560, y: -40 }, to: { x: 560, y: 90 } },
         { from: { x: 1060, y: -40 }, to: { x: 1060, y: 90 } },
-        { from: { x: 700, y: 362 }, to: { x: 700, y: 430 } },
-        { from: { x: 940, y: 362 }, to: { x: 940, y: 432 } },
+        // Out of caves in the hillside, across the road, down to the shore.
+        { from: { x: 700, y: 376 }, to: { x: 700, y: 444 } },
+        { from: { x: 930, y: 376 }, to: { x: 930, y: 446 } },
       ],
     },
     subSpots: [{ x: 180, y: 380 }, { x: 1430, y: 380 }, { x: 300, y: 748 }, { x: 1300, y: 748 }],
@@ -292,13 +362,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'enemy', points: islet(1270, 330, 58) },
       { side: 'friendly', points: shore('bottom', 805, 12, 2.2) },
     ],
-    bases: [
-      { x: 330, y: 330, kinds: ['drone', 'mothership', 'cluster'] },
-      { x: 800, y: 315, kinds: ['drone', 'guided', 'heavy'] },
-      { x: 1270, y: 330, kinds: ['drone', 'guided', 'supersonic'] },
-      { x: 560, y: 75, kinds: ['ballistic', 'heavy', 'mothership'] },
-      { x: 1050, y: 75, kinds: ['ballistic', 'supersonic', 'cluster'] },
-    ],
+    bases: ARCHIPELAGO_BASES,
     carrier: { x: 950, y: 730 },
     frigate: { x: 1190, y: 735 },
     channels: [{ y: 575, halfWidth: 100 }],
@@ -311,11 +375,13 @@ export const MAPS: Record<MapId, MapDef> = {
     ],
     callout: { x: 700, y: 855 },
     roads: {
-      runners: [[{ x: -60, y: 92 }, { x: 800, y: 88 }, { x: 1660, y: 92 }]],
+      runners: [bypass([{ x: -60, y: 92 }, { x: 800, y: 88 }, { x: 1660, y: 92 }], ARCHIPELAGO_BASES.slice(3), -1)],
       popups: [
-        { from: { x: 330, y: 330 }, to: { x: 330, y: 382 } },
-        { from: { x: 800, y: 315 }, to: { x: 800, y: 376 } },
-        { from: { x: 1270, y: 330 }, to: { x: 1270, y: 378 } },
+        // Round 13: out of a cave beside each islet's silo (they used to
+        // start on the silo itself), down to the water.
+        { from: { x: 374, y: 346 }, to: { x: 376, y: 386 } },
+        { from: { x: 846, y: 332 }, to: { x: 848, y: 378 } },
+        { from: { x: 1312, y: 346 }, to: { x: 1314, y: 382 } },
         { from: { x: 300, y: -40 }, to: { x: 300, y: 100 } },
         { from: { x: 1500, y: -40 }, to: { x: 1500, y: 100 } },
       ],
@@ -333,13 +399,7 @@ export const MAPS: Record<MapId, MapDef> = {
       { side: 'friendly', points: [{ x: 0, y: 900 }, ...curve(0, 800, 1050, 770, 1.6), { x: 1050, y: 900 }] },
       { side: 'enemy', points: [{ x: 1050, y: 900 }, ...curve(1050, 770, 1600, 640, 2.4), { x: 1600, y: 900 }] },
     ],
-    bases: [
-      { x: 300, y: 80, kinds: ['drone', 'ballistic', 'mothership'] },
-      { x: 1180, y: 170, kinds: ['drone', 'supersonic', 'cluster'] },
-      { x: 1450, y: 210, kinds: ['ballistic', 'guided', 'heavy'] },
-      { x: 1300, y: 790, kinds: ['drone', 'guided', 'supersonic'] },
-      { x: 1500, y: 740, kinds: ['ballistic', 'heavy', 'cluster'] },
-    ],
+    bases: HARBOR_BASES,
     carrier: { x: 900, y: 690 },
     frigate: { x: 660, y: 690 },
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
@@ -353,8 +413,8 @@ export const MAPS: Record<MapId, MapDef> = {
     callout: { x: 380, y: 855 },
     roads: {
       runners: [
-        [{ x: -60, y: 100 }, { x: 400, y: 140 }, { x: 800, y: 180 }, { x: 1200, y: 222 }, { x: 1660, y: 262 }],
-        [{ x: 1660, y: 690 }, { x: 1350, y: 762 }, { x: 1090, y: 822 }],
+        bypass([{ x: -60, y: 100 }, { x: 400, y: 140 }, { x: 800, y: 180 }, { x: 1200, y: 222 }, { x: 1660, y: 262 }], HARBOR_BASES.slice(0, 3), -1),
+        bypass([{ x: 1660, y: 690 }, { x: 1350, y: 762 }, { x: 1090, y: 822 }], HARBOR_BASES.slice(3), 1),
       ],
       popups: [
         { from: { x: 600, y: -40 }, to: { x: 600, y: 165 } },
