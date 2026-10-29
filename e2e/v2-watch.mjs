@@ -216,6 +216,63 @@ try {
     await page.close();
   }
 
+  // 6. Round 14: the notification tray, on every map, in a busy late wave
+  //    (every new threat's notice queues up at once). Cards never overlap
+  //    each other or the carrier, never leave the screen, and never exceed
+  //    the map's limit.
+  for (const [map, w, h] of [
+    ['strait', 874, 402],
+    ['gauntlet', 874, 402],
+    ['island', 874, 402],
+    ['harbor', 874, 402],
+    ['archipelago', 874, 402],
+    ['strait', 844, 390],
+    ['gauntlet', 844, 390],
+    ['island', 844, 390],
+    ['harbor', 844, 390],
+    ['archipelago', 844, 390],
+  ]) {
+    const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    page.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await page.goto(`${BASE_URL}/v2.html?seed=31`, { waitUntil: 'networkidle' });
+    await devSettings(page, { preset: 'full', wave: 6, watch: true, watchSpeed: 3, bot: 'you' });
+    await page.locator(`[data-map="${map}"]`).tap();
+    await page.waitForSelector('.playing');
+    let most = 0;
+    let samples = 0;
+    for (let k = 0; k < 70; k++) {
+      const r = await page.evaluate(() => {
+        const g = window.__v2.game();
+        const cards = [...document.querySelectorAll('.v2-alert')].map((e) => e.getBoundingClientRect());
+        const c = g.map.carrier;
+        const a = window.__v2.toClient(c.x - 80, c.y - 26);
+        const b = window.__v2.toClient(c.x + 80, c.y + 26);
+        const hit = (p, q) => p.left < q.right - 1 && q.left < p.right - 1 && p.top < q.bottom - 1 && q.top < p.bottom - 1;
+        const carrier = { left: a.x, top: a.y, right: b.x, bottom: b.y };
+        return {
+          n: cards.length,
+          max: g.map.alerts.max ?? 2,
+          overlap: cards.some((p, i) => cards.some((q, j) => j > i && hit(p, q))),
+          onCarrier: cards.some((p) => hit(p, carrier)),
+          off: cards.some((p) => p.bottom > innerHeight + 0.5 || p.top < 0 || p.left < 0 || p.right > innerWidth),
+          phase: g.phase,
+        };
+      });
+      if (r.phase !== 'wave') break;
+      samples++;
+      most = Math.max(most, r.n);
+      if (r.n > r.max) fail(`${map}: ${r.n} notices up (limit ${r.max})`);
+      if (r.overlap) fail(`${map}: notices overlap each other`);
+      if (r.onCarrier) fail(`${map}: a notice covers the carrier`);
+      if (r.off) fail(`${map}: a notice runs off the screen`);
+      if (process.exitCode) break;
+      await page.waitForTimeout(120);
+    }
+    if (most === 0) fail(`${map}: no notices seen in a busy wave`);
+    console.log(`tray on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, no overlaps`);
+    await page.close();
+  }
+
   console.log(process.exitCode ? 'V2 watch test FAILED' : 'V2 watch test passed');
 } finally {
   await browser.close();
