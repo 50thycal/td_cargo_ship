@@ -29,7 +29,10 @@
     "v2:personas": "vite-node tools/v2/personas.ts --",
     "v2:fit": "vite-node tools/v2/fit.ts --",
     "v2:moment": "node tools/v2/moment.mjs",
-    "v2:cards": "vite-node tools/v2/card-sheet.ts --"
+    "v2:cards": "vite-node tools/v2/card-sheet.ts --",
+    "dev:v3": "vite --open /v3.html",
+    "v3:sweep": "vite-node tools/v3/sweep.ts --",
+    "e2e:v3": "node e2e/v3.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.49.0",
