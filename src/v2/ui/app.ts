@@ -27,7 +27,7 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { BotRun, Mimic, YOU_V1, lostByWave, type BotIO } from '../sim/mimic';
+import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings } from './dev';
@@ -172,6 +172,7 @@ export class App {
       this.rec?.formation(id);
       this.syncFormation();
     },
+    pace: (v) => this.rec?.pace(v),
   };
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
@@ -520,10 +521,13 @@ export class App {
     this.adaptResolution(now, raw);
     if (this.hitStop > 0) this.hitStop -= real;
     else if (g && !this.paused && !this.portrait && g.phase === 'wave') {
-      this.acc += real * this.speed;
+      // A watched bot plays at its own game speed (you 1.2×, the rusher 2×),
+      // so 1× on the slider is that player's real time.
+      const pace = this.bot && this.control === 'bot' ? this.bot.pace : 1;
+      this.acc += real * this.speed * pace;
       // Enough steps a frame to keep up at 10× on a slow frame; past that,
       // drop the backlog rather than spiral.
-      const cap = Math.ceil((this.speed * 0.1) / DT) + 2;
+      const cap = Math.ceil((this.speed * pace * 0.1) / DT) + 2;
       let n = 0;
       while (this.acc >= DT && n < cap) {
         if (this.bot && this.control === 'bot') this.bot.act(g, this.botIO, false);
@@ -671,7 +675,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
-      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ' · WATCH' : ''}</span>` : '');
+      (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
 
@@ -860,8 +864,32 @@ export class App {
           },
         ),
       );
+      if (this.devSettings.watch) rows.push(this.personaRow());
     }
     this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary', () => this.showMenu())]);
+  }
+
+  /** Watch mode's bot: who plays (round 12). One chip per persona, and the
+   *  chosen one's description. */
+  private personaRow(): HTMLElement {
+    const st = this.devSettings;
+    const row = el('div', 'v2-setting v2-persona');
+    const chips = el('div', 'v2-persona-chips');
+    for (const id of PERSONA_ORDER) {
+      const b = button(PERSONAS[id].label ?? id, `v2-dev-chip${st.bot === id ? ' on' : ''}`, () => {
+        st.bot = id;
+        saveDevSettings(st);
+        this.showSettings();
+      });
+      b.dataset.persona = id;
+      chips.append(b);
+    }
+    const p = PERSONAS[st.bot] ?? YOU;
+    const body = el('div', 'v2-setting-text');
+    const pace = p.speed && p.speed !== 1 ? ` Its game runs at ${p.speed}×, the speed it plays at, so 1× here is its real time.` : '';
+    body.append(el('strong', '', 'Bot personality'), chips, el('span', 'v2-persona-blurb', `${p.blurb ?? ''}${pace}`));
+    row.append(body);
+    return row;
   }
 
   private switchRow(id: string, title: string, text: string, on: boolean, set: (on: boolean) => void): HTMLElement {
@@ -905,7 +933,7 @@ export class App {
         el('strong', 'v2-dev-title', st.watch ? 'DEV · WATCH MODE' : 'DEV PLAYTEST'),
         presets,
         wave,
-        el('p', 'v2-dev-blurb', `${DEV_PRESETS[st.preset].blurb}${st.watch ? ' Tap a map to watch bot-you play it; touch the battlefield to take over.' : ''}`),
+        el('p', 'v2-dev-blurb', `${DEV_PRESETS[st.preset].blurb}${st.watch ? ` Tap a map to watch ${st.bot === YOU.id ? 'bot-you' : `the ${PERSONAS[st.bot]?.label ?? st.bot} bot`} play it; touch the battlefield to take over.` : ''}`),
       );
     };
     render();
@@ -928,7 +956,7 @@ export class App {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
-      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true } : {}) } } : {}),
+      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: {
         w: window.innerWidth,
         h: window.innerHeight,
@@ -937,15 +965,15 @@ export class App {
         ua: navigator.userAgent.slice(0, 160),
       },
     });
-    this.startWatch(watch, seed);
+    this.startWatch(watch, seed, this.devSettings.bot);
     if (watch) this.setSpeed(this.devSettings.watchSpeed);
     else if (preset) this.setSpeed(preset.speed);
     this.begin();
   }
 
   /** Watch mode on or off for the run starting now. */
-  private startWatch(watch: boolean, seed: number): void {
-    this.bot = watch ? new Mimic(YOU_V1, seed) : null;
+  private startWatch(watch: boolean, seed: number, persona = YOU.id): void {
+    this.bot = watch ? new Mimic(PERSONAS[persona] ?? YOU, seed) : null;
     this.control = watch ? 'bot' : 'you';
     this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
     this.root.classList.toggle('watching', watch);
@@ -1069,12 +1097,13 @@ export class App {
         startedAt: new Date().toISOString(),
         firstWave: log.firstWave,
         ...(log.tempo ? { tempo: log.tempo } : {}),
-        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id, ...(log.dev?.watch ? { watch: true } : {}) },
+        dev: { preset: log.dev?.preset ?? 'full', retryOf: log.id, ...(log.dev?.watch ? { watch: true, ...(log.dev.bot ? { bot: log.dev.bot } : {}) } : {}) },
         device: log.device,
       },
       { log, mark },
     );
-    this.startWatch(!!log.dev?.watch && this.dev, log.seed);
+    // A watched run from before personas was played by you-v1.
+    this.startWatch(!!log.dev?.watch && this.dev, log.seed, log.dev?.bot ?? 'you-v1');
     if (this.bot) this.setSpeed(this.devSettings.watchSpeed);
     this.begin();
   }

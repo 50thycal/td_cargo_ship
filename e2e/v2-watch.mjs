@@ -1,5 +1,6 @@
 // V2 watch-mode browser test (round 9). Expects `vite preview` at BASE_URL.
-// Settings → Developer → Watch mode; the bot plays a watched run at 10×;
+// Settings → Developer → Watch mode and a bot personality (round 12); the
+// bot plays a watched run at 10×;
 // a human ¼ run picks both cards of a stride draft.
 //
 // Usage:  npm run build && npm run preview -- --port 4173 &  npm run e2e:v2:watch
@@ -42,6 +43,15 @@ try {
     await page.locator('[data-setting="watch"]').tap();
     if ((await page.locator('[data-setting="watch"]').getAttribute('aria-checked')) !== 'true') fail('watch switch did not turn on');
     await page.screenshot({ path: `${SHOT_DIR}/01-settings.png` });
+    // Round 12: the bot personality picker, "You" chosen by default.
+    const chips = await page.locator('[data-persona]').evaluateAll((els) => els.map((e) => [e.dataset.persona, e.classList.contains('on')]));
+    if (chips.length < 7) fail(`only ${chips.length} bot personalities offered`);
+    if (chips.find((c) => c[1])?.[0] !== 'you') fail(`default personality is ${chips.find((c) => c[1])?.[0]}`);
+    await page.locator('[data-persona="rusher"]').tap();
+    if (!(await page.locator('[data-persona="rusher"]').getAttribute('class')).includes('on')) fail('rusher chip did not light up');
+    if (!(await page.locator('.v2-persona-blurb').textContent()).includes('2×')) fail('rusher blurb not shown');
+    await page.locator('.v2-overlay.open').evaluate((e) => (e.scrollTop = e.scrollHeight));
+    await page.screenshot({ path: `${SHOT_DIR}/01b-personas.png` });
     await page.locator('[data-screen="settings"] .v2-btn').tap();
     if (!(await page.locator('.v2-dev-title').textContent()).includes('WATCH')) fail('menu strip does not say watch mode');
     await page.locator('[data-preset="eighth"]').tap();
@@ -49,6 +59,9 @@ try {
     await page.waitForSelector('.playing');
     // The bot plays on its own: taps appear without any input from us.
     await page.waitForFunction(() => window.__v2.game().shots > 0, null, { timeout: 15000 });
+    if (!(await page.locator('.v2-hud-dev').textContent()).includes('RUSHER')) fail('HUD does not name the rusher bot');
+    const meta = await game(page, () => window.__v2.log()?.dev);
+    if (meta?.bot !== 'rusher' || !meta?.watch) fail(`log says the bot was ${JSON.stringify(meta)}`);
     await page.screenshot({ path: `${SHOT_DIR}/02-watching.png` });
     const track = await page.locator('.v2-rail-right .v2-track').boundingBox();
     await page.mouse.click(track.x + track.width / 2, track.y + 2);
@@ -189,7 +202,7 @@ try {
     if (!/Bot-you: (lost on wave \d+|cleared)/.test(text)) fail(`ghost line reads: ${text}`);
     await page.screenshot({ path: `${SHOT_DIR}/08-ghost.png` });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v2.playlogs') || '[]').at(-1));
-    if (!saved?.ghost || saved.ghost.bot !== 'you-v1') fail(`ghost not saved in the log: ${JSON.stringify(saved?.ghost)}`);
+    if (!saved?.ghost || saved.ghost.bot !== 'you') fail(`ghost not saved in the log: ${JSON.stringify(saved?.ghost)}`);
     // A watched run (the bot alone) has nothing to compare.
     await devSettings(page, { preset: 'eighth', wave: 1, watch: true, watchSpeed: 10 });
     await page.locator('[data-map="strait"]').tap();

@@ -43,7 +43,8 @@ export type LogCommand =
   | [number, 'e'] // continue into endless
   | [number, 's', number] // game speed (UI only; kept for context)
   | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
-  | [number, 'g', FlagKind]; // the player flagged this moment (UI only)
+  | [number, 'g', FlagKind] // the player flagged this moment (UI only)
+  | [number, 'p', number]; // the watch-mode bot's own game speed from here on (UI only)
 
 /** Who is at the controls: the player, or the watch-mode bot. */
 export type Controller = 'you' | 'bot';
@@ -62,7 +63,7 @@ export interface PlayLog {
    *  the real game), the preset's name, and the run a wave retry restarted
    *  from. Balance analysis should leave these logs out. */
   tempo?: Tempo;
-  dev?: { preset: string; retryOf?: string; watch?: boolean };
+  dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
   /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
   ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
@@ -166,6 +167,13 @@ export class Recorder {
 
   speed(v: number): void {
     this.log.commands.push([this.game.steps, 's', v]);
+  }
+
+  /** Watch mode: the game speed the bot plays at from here on (its
+   *  persona's, and faster on a wave it rushes). UI only: the sim doesn't
+   *  read it, the analysis tools do. */
+  pace(v: number): void {
+    this.log.commands.push([this.game.steps, 'p', v]);
   }
 
   /** Watch mode: the bot or the player takes the controls from this step. */
