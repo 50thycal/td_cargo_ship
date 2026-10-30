@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 // base './' keeps asset paths relative so the built bundle works when wrapped
 // in a Capacitor iOS shell (file:// context) as well as any static host.
-// Two pages: the classic game (index.html) and V2 (v2.html).
+// Three pages: the classic game (index.html), V2 (v2.html) and V3 (v3.html).
 export default defineConfig({
   base: './',
   // Stamped into V2 playtest logs so a log says which build produced it.
@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         v2: 'v2.html',
+        v3: 'v3.html',
       },
     },
   },
