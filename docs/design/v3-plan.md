@@ -1,4 +1,4 @@
-# Straitwatch V3 — abilities and the Armory
+# Straitwatch V3 — weapon drops and the Armory
 
 V3 takes V2's game (cargo ships, the carrier, drones and missiles you tap to
 intercept, 5 maps × 10 waves, formations, flow) and changes **only the
@@ -7,12 +7,14 @@ upgrades**, after the player's brief (inspired by Survivor.io):
 - The **main gun stays as it is** inside a run: no upgrades for it in the
   draft. It gets better **before** a run, in the **Armory**, with salvage
   earned from every run, the way gear sets your weapon in Survivor.io.
-- The in-run draft deals **abilities**: new attacks that each answer a
+- The in-run draft deals **weapons**: new attacks that each answer a
   scenario. Three held at once, three levels each, level 3 **evolves** them.
-- **Nothing fires on its own.** Each ability charges from something, then the
-  player sets it off from its button at the bottom right, the way it says.
+- **Weapons drop as pickups** (playtest round 2; until then they charged and
+  fired from buttons, which was "too much managing"). A weapon you hold drops
+  from kills like the power-ups; tapping its pickup loads the main gun with
+  it for **15 s**, and every tap fires it, spending a round like any shot.
 - All of V2's passive cards are gone. **EMP and Strike Package are no longer
-  pickups**; they came back as the EMP Pulse and Air Strike abilities. The
+  power-ups**; they came back as the EMP Rounds and Air Strike weapons. The
   other pickups are unchanged.
 
 V3 lives at `/v3.html` (`npm run dev:v3`), its code in `src/v3/` (a fork of
@@ -56,60 +58,52 @@ Research summary (fan wikis and guides; some contradict each other):
 | Gear (merged, upgraded with gold) sets your starting weapon and stats | The **Armory**: 5 main-gun upgrades bought with salvage |
 | 50+ hours come from the meta (gear, chapters, events), not the in-run skills | The Armory is V3's first meta layer (see "How long the game is") |
 
-## Abilities
+## Weapons
 
-Two knobs per ability (`src/v3/data/abilities.ts`):
+Playtest round 2 replaced charging and buttons with drops
+([v3-playtest-round2.md](v3-playtest-round2.md)). `src/v3/data/abilities.ts`
+holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
-- **Charge** — what fills it: time, drone kills, main-gun hits, an accuracy
-  streak (a tap on empty water or a dry rack resets it), enemy missile
-  launches, hits on your convoy, pickups collected, launchers spotted.
-  Nothing charges from shots fired or reloads: both reward mashing, which
-  V2's round 6 audit made sure never wins.
-- **Activation** — how it goes off: a **button**; a **line** you swipe or drag;
-  a **takeover** of the main gun (for some shots or seconds, then it goes
-  back); a **hold** you press and release on a spot; a **target** you tap.
+- **Draft** a weapon to put it in the drop pool (levels and evolutions as
+  before, three slots, swaps when full).
+- **Drops**: a kill that drops no power-up drops a weapon you hold at its
+  power-up chance; after 15 s without one, the next kill drops one. One
+  weapon pickup on the water at a time; it floats 7 s (power-ups: 5).
+  Power-ups drop exactly as before (sharing one roll, weapons crowded out
+  repairs and Overdrives and the bot's clears halved).
+- **Loaded**: the pickup loads the gun for 15 s (the same weapon again
+  restarts the clock; another one takes over). Every tap fires it and spends
+  a round; a dry rack is a dry click; Overdrive makes it free. A shell fired
+  before the clock ran out still bursts as that weapon. The wave's end
+  unloads it.
 
-| Ability → evolved | Answers | Charges from | Goes off by | L1 → L2 → **L3 evolution** |
-|---|---|---|---|---|
-| EMP Pulse → **Ion Storm** | Swarms | 9 / 8 / 7 drone kills | Button | 8 drones nearest to hitting → every drone, missiles jammed 1.5 s → **4 s storm: new drones die, threats at half speed** |
-| Air Strike → **Carpet Strike** | Aircraft | 36 / 32 / 28 s | Swipe a line | 1 jet along the line, 2 dmg → 2 jets, 3 dmg → **3 jets, the line burns 4 s, launchers under it knocked out** |
-| Railgun → **Mass Driver** | Heavies | 18 / 16 / 16 main-gun hits | Takeover: next taps | 2 piercing beams, 2 dmg → 3 beams, 4 dmg → **2 wide slugs, 8 dmg: one-shot heavies** |
-| Tesla Arc → **Storm Coil** | Crowds | 8 / 8 / 7 hits in a row | Takeover: seconds | 6 s, each hit arcs to 2 → 8 s, 3 arcs → **9 s, every arc arcs again** |
-| Decoy Barrage → **Ghost Fleet** | Guided | 6 / 5 / 4 enemy missile launches | Button | guided and cluster missiles chase decoys → supersonics and bomblets too → **decoys hang 6 s, pulling in every new launch** |
-| Smoke Wall → **Fog Bank** | Strafing | 3 / 3 / 2 hits on the convoy | Drag along a lane | smoke 10 s: missiles lose ships in it → 13 s, strafing guns blind → **15 s; ballistics landing in it miss, drones go blind** |
-| Hellfire Salvo → **Saturation** | Raids | 4 / 3 / 3 pickups | Press, hold, release | 6 rockets (2 dmg) on the spot → hold for up to 10 → **14 rockets (3 dmg), each hunting a threat near the spot** |
-| Sub Hunter → **Hunter-Killer** | Launchers | 5 / 4 / 3 subs or trucks seen | Tap a launcher | destroys it before it fires → its missiles in the air too → **one press sinks every launcher on screen** |
-
-Rules:
-
-- A new ability arrives **empty** and its button fills from nothing (round 1:
-  starting half full read as a random state). A run skipped ahead to a later
-  wave (dev) hands its abilities over full, as they would have charged.
-- Each ability keeps its **button slot**: a new one takes the next free slot,
-  a swap takes the replaced one's (round 1: ordered by roster, buttons moved
-  under the thumb when a new ability arrived).
-  Charge carries across waves and survives levelling up.
-- Only one takeover at a time (the gun can't be a railgun and a coil at once).
-- An aimed ability that would do nothing (a swipe too short, a tap with no
-  launcher near) **stays armed and spends nothing**; pressing its button again
-  disarms it. Keys 1–3 press the buttons on a desktop; Escape disarms.
-- The draft favours abilities you hold (50% per draw vs V2's 37%): three
-  slots × three levels is nine picks, about one map's worth of drafts.
+| Weapon → evolved | Answers | A tap while loaded | L1 → L2 → **L3 evolution** |
+|---|---|---|---|
+| EMP Rounds → **Ion Storm** | Swarms | an EMP shell (at a threat, or onto open water) | burst fries every drone within 150 → 190, missiles in it jammed 1.5 s → **230, and a 3 s ion cloud: drones die in it, threats crawl at half speed** |
+| Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
+| Railgun → **Mass Driver** | Heavies | a beam from the carrier through the tap | 1 dmg → 2 dmg, wider → **4 dmg, wide: two bring down a heavy** |
+| Tesla Arc → **Storm Coil** | Crowds | a plain shot whose hit arcs | 3 arcs → 4 arcs, every arc arcs again → **a free second shot at the nearest uncovered threat** |
+| Decoy Flares → **Ghost Fleet** | Guided | a flare shell | every homing missile within 300 chases the flare and bursts harmlessly → 420 → **the flare hangs 4 s, pulling in any that come near** |
+| Smoke Shells → **Fog Bank** | Strafing | a smoke shell (at a threat, or onto the water over your ships) | a 110 cloud for 8 s: missiles lose ships in it, and lose lock 2.5 s flying through → 130, 10 s, strafing guns blind → **160, 12 s; ballistics landing in it miss, drones go blind** |
+| Hellfire Salvo → **Saturation** | Raids | rockets at the tapped spot | 4 rockets (1 dmg) → 6 (2 dmg) → **8, each hunting a threat near the spot** |
+| Sub Hunter → **Hunter-Killer** | Launchers | a tap on a sub or truck destroys it (a threat: a plain shot) | the launcher → its missiles in the air too → **every shot also hunts the nearest sub or truck** |
 
 ## Screen
 
-- **Right rail**: the HUD, pause, and a one-button **speed** control (it was
-  a full-height slider) at the top; the **three ability buttons** at the
-  bottom, under the right thumb. Each is a ring that fills as it charges,
-  glows when ready, turns gold when armed for its gesture, and shows its
-  level (EVO once evolved).
-- **Armed**: a banner says how to fire it; the next touch on the battlefield
-  is the ability's (a dashed line with an arrow while you swipe, a filling
-  ring while you hold, a reticle for a target), not a shot.
-- Timers for takeovers and storms show as chips beside the pickup timers.
-- Draft cards show what the ability answers, its art, its level pips, what
-  this level does, what charges it and how to set it off; the card that
-  evolves an ability is badged **EVOLVES**.
+- **Right rail**: the HUD, pause, a one-button **speed** control, and at the
+  bottom the **loadout**: one chip per weapon held (dim: it can drop), lit
+  with its rim draining and the seconds under it while it is loaded. Nothing
+  to press.
+- **On the water**: a weapon pickup is a hexagon in the weapon's colour with
+  its icon and name (bigger than a power-up); a loaded weapon rings the
+  carrier in its colour, draining, blinking in the last 2 s; shells trail
+  the weapon's colour; smoke, ion clouds and hanging flares are drawn where
+  they burst.
+- The left rail times the loaded weapon like a power-up. Loading one shows
+  a notice: its name, what a shot does now and how to fire it. The first
+  weapon drop of a run explains itself.
+- Draft cards show what the weapon answers, its art, its level pips, what
+  this level does, and "Drops as a pickup · 15 s in the gun · how to fire".
 
 ## The Armory
 
@@ -187,47 +181,50 @@ lost) a purpose. To make the whole game longer, the knobs are salvage per
 run and Armory costs (`SALVAGE`, `ARMORY_COSTS`) and how hard the later maps
 are without Armory levels.
 
-**Ability tier** (average bot, fresh Armory, the ability as its first pick,
-80 runs each across all maps; a random first pick clears 41%, ±5.5 points):
+**Weapon tier** (round 2, drops; average bot, fresh Armory, the weapon as
+its first pick, 40 runs each across all maps, ±8 points; measured at the
+previous drop rate, share 0.8 / pity 18 s, so every number has since risen a
+little):
 
-| Railgun | Air Strike | Smoke Wall | Sub Hunter | EMP Pulse | Tesla Arc | Hellfire Salvo | Decoy Barrage |
+| Tesla Arc | Railgun | Sub Hunter | EMP Rounds | Hellfire Salvo | Smoke Shells | Air Strike | Decoy Flares |
 |---|---|---|---|---|---|---|---|
-| 50% | 48% | 35% | 35% | 34% | 34% | 34% | 29% |
+| 40% | 35% | 33% | 30% | 30% | 30% | 25% | 20% |
 
-Tuning so far: Railgun came in at 70% (Mass Driver's three screen-wide
-8-damage slugs) and was cut to two slugs and a slower charge; Sub Hunter at
-57% (it charged from every launcher) now needs 5/4/3; Smoke Wall, Decoy
-Barrage, Hellfire Salvo and Tesla Arc were buffed, and the bot's rules for
-Decoy and Smoke fixed to fire when one missile is about to hit (as a person
-would), not only for two at once.
+With no weapons the same bot clears 0%. Under the button system the tier
+was 29–50% (Railgun 50%, Decoy 29%). The clear-rate table above is the
+round-1 (button) measurement; round 2's is in v3-playtest-round2.md.
 
 ## Where to tune
 
 | What | File |
 |---|---|
-| Abilities: charge needs, effect numbers (`AB`), level text | `src/v3/data/abilities.ts` |
+| Weapons: drop rules (`WEAPON`), effect numbers (`AB`), level text | `src/v3/data/abilities.ts` |
 | Armory: per-level effects, costs, salvage per run | `src/v3/data/armory.ts` |
-| How bots use abilities (sweep and watch mode) | `src/v3/sim/abilityBot.ts` |
+| How bots use weapons (grab pickups; Sub Hunter goes for launchers) | `src/v3/sim/bot.ts`, `src/v3/sim/mimic.ts` |
 | Everything else (threats, waves, maps, formations) | as in V2, under `src/v3/data/` |
 
 ## Testing
 
-- `npm test` includes `tests/v3/` (the Armory and save, the draft, every
-  charge source, every ability's levels, replay with activations, the curve).
-- `npm run v3:sweep -- [seeds] [--armory=N] [--no-abilities] [--focus=id]`
-  prints clear rates, minutes a run, salvage a run, ability uses, and the
-  whole game from an empty Armory.
+- `npm test` includes `tests/v3/` (the Armory and save, the draft, weapon
+  drops and the 15 s clock, ammo per shot, every weapon's levels, replay,
+  the curve).
+- `npm run v3:sweep -- [seeds] [--armory=N] [--no-weapons] [--focus=id]`
+  prints clear rates, minutes a run, salvage a run, the share of wave time
+  a weapon was loaded, weapon pickups taken, and the whole game from an
+  empty Armory.
 - `npm run e2e:v3` (with `npm run preview -- --port 4173` running): buys an
-  Armory level, fires each kind of activation through real clicks, drags and
-  holds, drafts, and checks the phone layout. Screenshots in `e2e/shots/v3/`.
+  Armory level, loads six weapons from their pickups and fires each through
+  real clicks, drafts, checks the loadout and the phone layout, and the
+  notice tray on every map. Screenshots in `e2e/shots/v3/`.
 
 ## Next candidates (not built)
 
-- **Fusion**: two evolved abilities fuse into one, freeing a slot (Survivor.io
+- **Fusion**: two evolved weapons fuse into one, freeing a slot (Survivor.io
   has a few two-weapon evolutions). It gives endless mode something to draft
   for after the build is complete.
-- **A boss-chest draft** after wave 5 that levels two abilities at once.
-- **Ability unlocks**: start with four abilities, unlock the rest by clearing
-  maps; pick one ability to start each run with (Survivor.io's starting weapon).
-- Fit the watch-mode personas' ability timing to real V3 logs (the
+- **A boss-chest draft** after wave 5 that levels two weapons at once.
+- **Weapon unlocks**: start with four weapons, unlock the rest by clearing
+  maps or with salvage, so the draft only deals unlocked ones.
+- **Longer clocks** as a weapon levels (15 s is the default today).
+- Fit the watch-mode personas' pickup habits to real V3 logs (the
   `playtest-fidelity` skill) once there are some.

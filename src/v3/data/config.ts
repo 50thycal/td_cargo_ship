@@ -286,18 +286,20 @@ export const DRONE = {
   weaveFreq: 2.5,
 } as const;
 
-// V3: EMP and Strike Package are no longer pickups — they came back as the
-// EMP Pulse and Air Strike abilities (data/abilities.ts).
-export type PickupKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam';
+// V3: EMP and Strike Package are no longer power-ups — they came back as the
+// EMP Rounds and Air Strike weapons (data/abilities.ts). A 'weapon' pickup
+// loads one of the weapons you hold into the gun (which one is on the pickup).
+export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam';
+export type PickupKind = PowerKind | 'weapon';
 
-export const PICKUP_KINDS: PickupKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam'];
+export const PICKUP_KINDS: PowerKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam'];
 
 export const PICKUPS = {
   life: 5,
   radius: 26,
   // Round 5: repair 30 → 20 ("a little OP": 15 repairs in two games). V3:
   // EMP (8) and Strike (7) are gone, the rest keep their weights.
-  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9 } as Record<PickupKind, number>,
+  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9 } as Record<PowerKind, number>,
   repairHp: 2,
   carrierRepairHp: 2,
   overdriveTime: 5,

@@ -4,7 +4,9 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, raidWarning, reticleVisible, type Game, type Threat } from '../sim/game';
+import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { ABILITY_MAX, SHORT_NAME, WEAPON } from '../data/abilities';
+import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
 const C = {
@@ -51,21 +53,7 @@ export const DRY_LIFE = 0.7;
 
 /** `bannerUp`: the wave/new-threat banner is showing at the map's callout
  *  point, so a raid warning moves above it. */
-/** What the player is aiming with an armed ability, drawn under the finger. */
-export interface AimPreview {
-  kind: 'line' | 'hold' | 'target';
-  x: number;
-  y: number;
-  x2: number;
-  y2: number;
-  /** Hold: 0..1 charged so far. */
-  power: number;
-  color: string;
-  /** Short label drawn by the finger. */
-  label: string;
-}
-
-export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number, aim: AimPreview | null = null): void {
+export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Ripple[], shake: number): void {
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawWater(ctx, g);
@@ -77,14 +65,19 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawTunnels(ctx, g);
   drawRaidWarning(ctx, g);
   drawCarrier(ctx, g);
+  drawLoaded(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
   if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
+  drawFields(ctx, g, 'ion');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
   drawFields(ctx, g, 'smoke');
   if (g.shieldT > 0) drawShields(ctx, g);
-  drawGhosts(ctx, g);
-  for (const p of g.pickups) drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, PICKUPS.life);
+  drawFields(ctx, g, 'flare');
+  for (const p of g.pickups) {
+    if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
+    else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
+  }
   for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
   for (const it of g.interceptors) {
     if (it.life < 0) continue;
@@ -100,13 +93,17 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
       dot(ctx, it.x, it.y, 4.5, '#ffb44f');
       continue;
     }
-    ctx.strokeStyle = g.gunMode?.id === 'tesla' ? 'rgba(165, 180, 252, 0.7)' : 'rgba(127, 233, 255, 0.45)';
+    // A weapon's shell trails that weapon's colour.
+    const col = it.weapon ? ICON_COLOR[it.weapon.id] : null;
+    ctx.strokeStyle = col ?? 'rgba(127, 233, 255, 0.45)';
+    ctx.globalAlpha = col ? 0.7 : 1;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(it.x - Math.cos(a) * 28, it.y - Math.sin(a) * 28);
     ctx.lineTo(it.x, it.y);
     ctx.stroke();
-    dot(ctx, it.x, it.y, 5.5, C.interceptor);
+    ctx.globalAlpha = 1;
+    dot(ctx, it.x, it.y, col ? 6.5 : 5.5, col ?? C.interceptor);
   }
   drawFx(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
@@ -117,7 +114,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
-  if (aim) drawAim(ctx, aim);
   for (const r of ripples) {
     if (r.impact) {
       const k = r.age / IMPACT_LIFE;
@@ -519,97 +515,149 @@ function drawSteam(ctx: CanvasRenderingContext2D, x: number, y: number, t: numbe
   ctx.stroke();
 }
 
-/** Smoke Wall smoke (grey puffs along its line) and Carpet Strike's burning
- *  line (flames along it). Both fade in fast and out slowly. */
-function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: 'smoke' | 'burn'): void {
+/** What the weapons leave on the water: smoke clouds (grey puffs), ion
+ *  clouds (a violet haze with a crackling rim), hanging flares (a burning
+ *  point with its pull ring) and Carpet Strike's burning row (flames along
+ *  it). All fade in fast and out slowly. */
+function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind']): void {
   for (const f of g.fields) {
     if (f.kind !== kind) continue;
     const u = f.t / f.life;
     const a = u < 0.08 ? u / 0.08 : 1 - Math.max(0, (u - 0.7) / 0.3);
-    const len = Math.hypot(f.x2 - f.x1, f.y2 - f.y1);
-    const n = Math.max(2, Math.round(len / 28));
-    for (let k = 0; k <= n; k++) {
-      const p = k / n;
-      const x = f.x1 + (f.x2 - f.x1) * p;
-      const y = f.y1 + (f.y2 - f.y1) * p;
-      const wob = Math.sin(k * 1.7 + f.t * 1.5);
-      if (kind === 'smoke') {
-        // Evolved (Fog Bank): denser and a touch blue.
-        ctx.fillStyle = f.level >= 3 ? `rgba(190,205,220,${0.5 * a})` : `rgba(200,205,210,${0.4 * a})`;
+    if (kind === 'burn') drawBurn(ctx, f, a);
+    else if (kind === 'smoke') {
+      // A cloud of puffs filling the circle (evolved, Fog Bank: denser, bluer).
+      ctx.fillStyle = f.level >= 3 ? `rgba(190,205,220,${0.42 * a})` : `rgba(200,205,210,${0.34 * a})`;
+      for (let k = 0; k < 9; k++) {
+        const ang = k * 2.39996 + f.t * 0.3;
+        const rr = k === 0 ? 0 : f.hw * 0.55 * Math.sqrt(k / 8);
+        const wob = Math.sin(k * 1.7 + f.t * 1.5);
         ctx.beginPath();
-        ctx.arc(x + wob * 6, y + Math.cos(k * 2.3) * f.hw * 0.4, f.hw * (0.7 + 0.2 * wob), 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = `rgba(255,${120 + Math.round(60 * wob)},40,${0.55 * a})`;
-        ctx.beginPath();
-        ctx.arc(x, y + wob * 4, 10 + 6 * Math.abs(wob), 0, Math.PI * 2);
+        ctx.arc(f.x1 + Math.cos(ang) * rr, f.y1 + Math.sin(ang) * rr, f.hw * (0.45 + 0.08 * wob), 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (kind === 'ion') {
+      const glow = ctx.createRadialGradient(f.x1, f.y1, 0, f.x1, f.y1, f.hw);
+      glow.addColorStop(0, `rgba(192,132,252,${0.28 * a})`);
+      glow.addColorStop(1, `rgba(192,132,252,${0.06 * a})`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(f.x1, f.y1, f.hw, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(216,180,254,${0.7 * a})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 8]);
+      ctx.lineDashOffset = -f.t * 60;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      // A hanging flare: a white-hot point bobbing, its pull ring around it.
+      const y = f.y1 + Math.sin(g.t * 5 + f.x1) * 4;
+      const glow = ctx.createRadialGradient(f.x1, y, 0, f.x1, y, 34);
+      glow.addColorStop(0, `rgba(255,250,220,${0.95 * a})`);
+      glow.addColorStop(0.4, `rgba(251,146,60,${0.6 * a})`);
+      glow.addColorStop(1, 'rgba(251,146,60,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(f.x1, y, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(251,146,60,${0.35 * a})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 10]);
+      ctx.beginPath();
+      ctx.arc(f.x1, f.y1, f.hw, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
 }
 
-/** Ghost Fleet: the decoys hanging over the lanes, pulsing. */
-function drawGhosts(ctx: CanvasRenderingContext2D, g: Game): void {
-  if (g.ghostT <= 0) return;
-  const a = Math.min(1, g.ghostT / 0.6);
-  for (const p of g.ghostAt) {
-    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 34);
-    glow.addColorStop(0, `rgba(255,250,220,${0.95 * a})`);
-    glow.addColorStop(0.4, `rgba(251,146,60,${0.6 * a})`);
-    glow.addColorStop(1, 'rgba(251,146,60,0)');
-    ctx.fillStyle = glow;
+/** Carpet Strike's row: flames all along it. */
+function drawBurn(ctx: CanvasRenderingContext2D, f: Field, a: number): void {
+  const len = Math.hypot(f.x2 - f.x1, f.y2 - f.y1);
+  const n = Math.max(2, Math.round(len / 28));
+  for (let k = 0; k <= n; k++) {
+    const p = k / n;
+    const x = f.x1 + (f.x2 - f.x1) * p;
+    const y = f.y1 + (f.y2 - f.y1) * p;
+    const wob = Math.sin(k * 1.7 + f.t * 1.5);
+    ctx.fillStyle = `rgba(255,${120 + Math.round(60 * wob)},40,${0.55 * a})`;
     ctx.beginPath();
-    ctx.arc(p.x, p.y + Math.sin(g.t * 5 + p.y) * 4, 34, 0, Math.PI * 2);
+    ctx.arc(x, y + wob * 4, 10 + 6 * Math.abs(wob), 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-/** An armed ability's aim: the swipe line with an arrowhead, the hold ring
- *  filling, or a target reticle. */
-function drawAim(ctx: CanvasRenderingContext2D, a: AimPreview): void {
+/** A weapon pickup: bigger than a power-up, a hexagon in the weapon's
+ *  colour with its icon, its name under it and a spinning ring, so it reads
+ *  as "a new gun", not another power-up. Blinks before it is gone. */
+function drawWeaponPickup(ctx: CanvasRenderingContext2D, g: Game, p: Pickup): void {
+  const life = pickupLife(p);
+  if (p.age > life - 1.5 && Math.floor(g.t * 8) % 2) return;
+  const id = p.weapon!;
+  const col = ICON_COLOR[id];
+  const r = PICKUPS.radius * 1.3 * (0.94 + 0.06 * Math.sin(g.t * 6));
   ctx.save();
-  ctx.strokeStyle = a.color;
-  ctx.fillStyle = a.color;
-  ctx.lineWidth = 5;
-  ctx.setLineDash(a.kind === 'line' ? [18, 10] : []);
-  if (a.kind === 'line') {
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(a.x2, a.y2);
-    ctx.stroke();
-    const ang = Math.atan2(a.y2 - a.y, a.x2 - a.x);
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(a.x2, a.y2);
-    ctx.lineTo(a.x2 - Math.cos(ang - 0.45) * 26, a.y2 - Math.sin(ang - 0.45) * 26);
-    ctx.lineTo(a.x2 - Math.cos(ang + 0.45) * 26, a.y2 - Math.sin(ang + 0.45) * 26);
-    ctx.closePath();
-    ctx.fill();
-  } else if (a.kind === 'hold') {
-    ctx.globalAlpha = 0.35;
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 110, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 60, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * a.power);
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, 40, 0, Math.PI * 2);
-    ctx.moveTo(a.x - 56, a.y);
-    ctx.lineTo(a.x + 56, a.y);
-    ctx.moveTo(a.x, a.y - 56);
-    ctx.lineTo(a.x, a.y + 56);
-    ctx.stroke();
+  ctx.translate(p.x, p.y);
+  const halo = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 2);
+  halo.addColorStop(0, `${col}55`);
+  halo.addColorStop(1, `${col}00`);
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(10,20,28,0.88)';
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const ang = Math.PI / 6 + (k * Math.PI) / 3;
+    ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
   }
-  ctx.font = '800 24px system-ui, sans-serif';
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 7]);
+  ctx.lineDashOffset = -g.t * 30;
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const img = iconImage(id);
+  if (img) ctx.drawImage(img, -r * 0.62, -r * 0.62, r * 1.24, r * 1.24);
+  const lv = g.levels[id] ?? 1;
+  const label = SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0];
+  ctx.font = '800 15px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = 'rgba(7,13,18,0.85)';
-  ctx.strokeText(a.label, a.x, a.y - 74);
-  ctx.fillText(a.label, a.x, a.y - 74);
+  ctx.strokeText(label, 0, r + 26);
+  ctx.fillStyle = col;
+  ctx.fillText(label, 0, r + 26);
+  ctx.restore();
+}
+
+/** A weapon loaded: a ring in its colour around the carrier, draining with
+ *  the seconds left (as Overdrive's does), and blinking in the last two. */
+function drawLoaded(ctx: CanvasRenderingContext2D, g: Game): void {
+  const w = g.weapon;
+  if (!w || (w.t < 2 && Math.floor(g.t * 8) % 2)) return;
+  const { x, y } = g.map.carrier;
+  const col = ICON_COLOR[w.id];
+  const rx = CARRIER.halfLength + 34;
+  const ry = CARRIER.halfBeam + 30;
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.globalAlpha = 0.25;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.95;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / WEAPON.time));
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -632,11 +680,6 @@ function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
 
 /** Time Warp tint, and a countdown chip for every timed pickup running. */
 function drawTimedPickups(ctx: CanvasRenderingContext2D, g: Game): void {
-  if (g.ionT > 0) {
-    const a = Math.min(1, g.ionT / 0.5);
-    ctx.fillStyle = `rgba(192,132,252,${0.08 * a})`;
-    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
-  }
   if (g.warpT > 0) {
     const a = Math.min(1, g.warpT / 0.5);
     ctx.fillStyle = `rgba(94,234,212,${0.1 * a})`;
@@ -861,6 +904,7 @@ function missile(
 }
 
 export const PICKUP_COLORS: Record<PickupKind, string> = {
+  weapon: '#ffd166',
   ammo: '#f5c542',
   repair: '#4ade80',
   overdrive: '#38bdf8',
@@ -1115,7 +1159,7 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         break;
       }
       case 'emp':
-        // EMP Pulse: a violet ring racing out from the carrier.
+        // EMP Rounds: a violet ring racing out from the burst.
         ctx.strokeStyle = `rgba(192,132,252,${0.9 * (1 - u)})`;
         ctx.lineWidth = 10 * (1 - u) + 2;
         ctx.beginPath();

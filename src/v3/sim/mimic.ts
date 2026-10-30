@@ -4,9 +4,9 @@
 // second apart, land ~35 px off, keep coming while the rack is empty, and
 // go to the most urgent threat only about half the time; the rest go to
 // whatever is near the finger. Ship flow goes up early, the formation changes
-// once, and cards stack: take a card, then level it up. V3: abilities go off
-// by the shared rules in abilityBot.ts, a moment after they are ready and
-// only between bursts (a person looks down at the button).
+// once, and cards stack: take a card, then level it up. V3: weapon pickups
+// are grabbed like any pickup, and with Sub Hunter loaded it goes for a sub
+// or truck between bursts.
 //
 // It acts through `BotIO`, the same calls the player's touches make, so a
 // watched run records an ordinary log that replays exactly. Its dice are
@@ -14,12 +14,11 @@
 
 import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, loadout, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
-import { chooseAbility } from './abilityBot';
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { abilityReady, canFire, createGame, step, timeToImpact, type Aim, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { canFire, createGame, step, timeToImpact, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 
 export interface Persona {
@@ -99,11 +98,8 @@ export interface Persona {
   flow: { step: number; weight: number }[];
   /** One formation change, in waves `from`–`to` (none when `to` < `from`). */
   formation: { from: number; to: number; options: { id: FormationId; weight: number }[] };
-  /** New abilities it likes, best first (it stacks whatever it already holds). */
+  /** New weapons it likes, best first (it stacks whatever it already holds). */
   taste: AbilityId[];
-  /** Seconds after an ability is ready before it reaches for the button
-   *  (default 1). */
-  abilityDelay?: number;
   /** 'stack' (default) levels what it holds; 'random' takes any card. */
   cards?: 'stack' | 'random';
 }
@@ -187,8 +183,6 @@ export const YOU: Persona = {
 export interface BotIO {
   tap(x: number, y: number, radius: number): TapResult;
   pick(id: CardId, replace?: AbilityId): void;
-  /** Set off an ability (true if it went off). */
-  activate(id: AbilityId, aim: Aim): boolean;
   flow(step: number): void;
   formation(id: FormationId): void;
   /** The game speed it plays at from now (UI and analysis only). */
@@ -220,8 +214,6 @@ export class Mimic {
   /** Each thumb's aim error for the burst in hand. */
   private offset: ([number, number] | null)[] = [null, null];
   private nextLapse: number | null = null;
-  /** When each ability was first seen ready. */
-  private readySince = new Map<AbilityId, number>();
 
   /** `dice` > 0 rolls a different (but repeatable) game of the same seed:
    *  the fitting tools want several bot games per player run. */
@@ -296,11 +288,6 @@ export class Mimic {
       const rate = p.lapse.perMin * (1 + (p.lapse.grow ?? 0) * played);
       this.nextLapse = this.lapseUntil + this.scale((-Math.log(Math.max(1e-6, this.rng.next())) * 60) / rate, false);
       this.tapsLeft = 0;
-      return;
-    }
-    // Between bursts, an ability that has been ready a moment goes off.
-    if (this.tapsLeft <= 0 && this.useAbility(g, io)) {
-      this.nextTap = Math.max(this.nextTap, t + this.scale(0.35, false));
       return;
     }
     if (t < this.nextTap) {
@@ -385,6 +372,17 @@ export class Mimic {
       this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
       return;
     }
+    // Sub Hunter loaded (below its evolution): a sub or truck it has seen
+    // for a moment gets a tap, at the same unhurried rate as a pickup.
+    if (g.weapon?.id === 'hunter' && g.weapon.level < 3 && canFire(g)) {
+      const r = g.raiders.find((o) => o.t > p.react.median && (o.kind === 'sub' ? o.state === 'surface' || o.state === 'fire' : o.dist > 0 && o.state !== 'reverse'));
+      if (r && this.rng.chance(p.pickup * SIM_DT * 6)) {
+        this.finger = { x: r.x, y: r.y };
+        io.tap(r.x + this.rng.range(-12, 12), r.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);
+        this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
+        return;
+      }
+    }
     if (!seen.length) return;
     if (!canFire(g) && this.rng.chance(p.waitDry)) {
       this.nextTap = t + this.scale(0.3, false);
@@ -421,19 +419,6 @@ export class Mimic {
 
   /** Real seconds → this player's game seconds: their game speed, and (for
    *  reactions and pauses) the wave's mood and how long they've played. */
-  private useAbility(g: Game, io: BotIO): boolean {
-    const t = g.t;
-    for (const id of ABILITY_ORDER) {
-      if (!abilityReady(g, id)) this.readySince.delete(id);
-      else if (!this.readySince.has(id)) this.readySince.set(id, t);
-    }
-    const delay = this.scale(this.persona.abilityDelay ?? 1, false);
-    const use = chooseAbility(g, (th) => (this.noticeAt.get(th.id) ?? Infinity) <= t);
-    if (!use || t - (this.readySince.get(use.id) ?? t) < delay) return false;
-    this.readySince.delete(use.id);
-    return io.activate(use.id, use.aim);
-  }
-
   private scale(sec: number, moody = true): number {
     const p = this.persona;
     let k = this.pace;
@@ -591,7 +576,6 @@ export class BotRun {
     this.io = {
       tap: (x, y, r) => rec.tap(x, y, r),
       pick: (id, rep) => rec.pick(id, rep),
-      activate: (id, aim) => rec.activate(id, aim),
       flow: (v) => rec.flow(v),
       formation: (id) => rec.formation(id),
       pace: (v) => rec.pace(v),

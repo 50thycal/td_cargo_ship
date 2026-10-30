@@ -1,7 +1,7 @@
 // V3 app shell: menu → (armory) → game → (draft between waves) → result.
-// Owns the frame loop, the two side rails, the ability buttons and the HUD.
-// The sim never sees the DOM; this file turns pointer input into `tap()` and
-// `activate()` calls and draws whatever the sim holds.
+// Owns the frame loop, the two side rails, the weapon loadout and the HUD.
+// The sim never sees the DOM; this file turns pointer input into `tap()`
+// calls and draws whatever the sim holds.
 
 import {
   CARRIER,
@@ -20,25 +20,21 @@ import {
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
 import {
-  AB,
   ABILITIES,
   ABILITY_MAX,
-  CHARGE_LABEL,
   MAX_SLOTS,
   RESUPPLY_TEXT,
   SHORT_NAME,
+  WEAPON,
   abilityName,
   canSwapIn,
   canTake,
-  need,
   type AbilityId,
   type CardId,
 } from '../data/abilities';
 import { ARMORY, ARMORY_MAX, ARMORY_ORDER, armoryLevel, nextCost, type ArmoryId, type ArmoryLevels } from '../data/armory';
 import { buyArmory, equipArmory, loadProgress, recordResult, runGun, type Progress } from '../platform/save';
 import {
-  abilityReady,
-  chargeShare,
   createGame,
   raidWarning,
   step,
@@ -54,7 +50,7 @@ import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDev
 import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
-import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type AimPreview, type Ripple } from './render';
+import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
 /** A tapped card flashes this long before the next wave starts. */
@@ -88,9 +84,9 @@ const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
 
-/** Ability feedback is about what the player just did (round 14's rule):
+/** Weapon feedback is about what the player just did (round 14's rule):
  *  shown at once, one card that each new message replaces. */
-const ABILITY_NOTE: AlertOpts = { now: true, key: 'ability' };
+const WEAPON_NOTE: AlertOpts = { now: true, key: 'weapon' };
 
 const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one, or hold on the swarm.',
@@ -157,17 +153,13 @@ export class App {
   private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
   private flowSlider!: StepSlider;
   private speedSlider!: StepSlider;
-  /** V3: one button per ability slot, at the bottom of the right rail. */
-  private abilityBar = el('div', 'v3-abilities');
-  private abilityBtns: HTMLButtonElement[] = [];
-  /** What each button shows (rebuilt only when it changes). */
-  private abilityKeys: string[] = [];
-  /** An ability waiting for its gesture (a line, a hold or a target). */
-  private armed: AbilityId | null = null;
-  /** Abilities whose first READY this run has been explained. */
-  private toldReady = new Set<AbilityId>();
-  /** The gesture in progress for the armed ability. */
-  private gesture: { id: AbilityId; pointer: number; x: number; y: number; x2: number; y2: number; since: number } | null = null;
+  /** V3: the weapons you hold, at the bottom of the right rail — nothing to
+   *  press (playtest round 2): it shows what can drop and which one is
+   *  loaded, draining as its clock runs down. */
+  private weaponBar = el('div', 'v3-weapons');
+  private weaponChips: HTMLDivElement[] = [];
+  /** What each chip shows (rebuilt only when it changes). */
+  private weaponKeys: string[] = [];
 
   /** Developer playtest mode (`?dev=1`): presets that shorten a run, all
    *  maps open, faster speeds, and a wave retry on the loss screen. */
@@ -205,7 +197,6 @@ export class App {
       return res;
     },
     pick: (id, replace) => this.rec?.pick(id, replace),
-    activate: (id, aim) => this.rec?.activate(id, aim) ?? false,
     flow: (v) => {
       this.rec?.flow(v);
       this.flowSlider.set(v);
@@ -263,10 +254,6 @@ export class App {
         e.preventDefault();
         this.togglePause();
       }
-      // Keys 1–3 press the ability buttons (desktop playtesting); Escape disarms.
-      const slot = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
-      if (slot >= 0 && this.game?.phase === 'wave') this.pressAbility(slot);
-      if (e.code === 'Escape' && this.armed) this.disarm();
     });
     this.resize();
   }
@@ -360,16 +347,15 @@ export class App {
 
     this.speedSlider = this.buildSpeedSlider();
     // V3: the speed slider shrinks to one button that steps through the
-    // speeds, leaving the bottom of the rail to the ability buttons, under
-    // the right thumb.
+    // speeds, leaving the bottom of the rail to the weapon loadout.
     for (let i = 0; i < MAX_SLOTS; i++) {
-      const b = button('', 'v3-ability empty', () => this.pressAbility(i));
-      b.dataset.slot = String(i);
-      this.abilityBtns.push(b);
-      this.abilityKeys.push('');
+      const c = el('div', 'v3-weapon empty') as HTMLDivElement;
+      c.dataset.slot = String(i);
+      this.weaponChips.push(c);
+      this.weaponKeys.push('');
     }
-    this.abilityBar.append(...this.abilityBtns);
-    this.rightRail.append(this.hud, this.pauseBtn, this.controlBtn, this.speedSlider.el, this.abilityBar);
+    this.weaponBar.append(...this.weaponChips);
+    this.rightRail.append(this.hud, this.pauseBtn, this.controlBtn, this.speedSlider.el, this.weaponBar);
   }
 
   private buildSpeedSlider(): StepSlider {
@@ -384,143 +370,46 @@ export class App {
   }
 
   // -------------------------------------------------------------------------
-  // Ability buttons
+  // Weapon loadout
 
-  /** A button pressed: fire it now (button / takeover abilities), or arm it
-   *  for the gesture it needs. Pressing an armed button disarms it. */
-  private pressAbility(slot: number): void {
-    this.handleAbility(slot);
-    // Show the result at once, not a frame later (a disarm that waited for
-    // the next frame read as a missed press).
-    if (this.game) this.renderAbilities(this.game);
-  }
-
-  private handleAbility(slot: number): void {
-    const g = this.game;
-    if (!g || !this.rec || g.phase !== 'wave' || this.paused) return;
-    const id = g.slots[slot];
-    if (!id) return;
-    if (this.bot && this.control === 'bot') this.setControl('you');
-    if (this.armed === id) {
-      this.disarm();
-      return;
-    }
-    if (!abilityReady(g, id)) {
-      const share = Math.round(chargeShare(g, id) * 100);
-      this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} CHARGING ${share}%`, CHARGE_LABEL[ABILITIES[id].charge](need(id, g.levels[id] ?? 1)), ABILITY_NOTE);
-      return;
-    }
-    const act = ABILITIES[id].activation;
-    if (act === 'button' || act === 'takeover') {
-      this.rec.activate(id);
-      return;
-    }
-    // Hunter-Killer (evolved) needs no target: one press sinks them all.
-    if (act === 'target' && (g.levels[id] ?? 0) >= ABILITY_MAX) {
-      if (!this.rec.activate(id)) this.showBanner('NO SUBS OR TRUCKS UP', 'It fires when one is on the map.', ABILITY_NOTE);
-      return;
-    }
-    this.armed = id;
-    this.hold = null;
-    this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} ARMED`, `${ABILITIES[id].how}. Tap its button again to cancel.`, ABILITY_NOTE);
-  }
-
-  private disarm(): void {
-    this.armed = null;
-    this.gesture = null;
-  }
-
-  /** The armed ability's gesture ended at (x, y): set it off if it says
-   *  enough, else stay armed and say why. */
-  private finishGesture(x: number, y: number): void {
-    const ges = this.gesture;
-    const g = this.game;
-    this.gesture = null;
-    if (!ges || !g || !this.rec) return;
-    const id = ges.id;
-    const act = ABILITIES[id].activation;
-    let ok = false;
-    if (act === 'line') {
-      ok = this.rec.activate(id, { x: ges.x, y: ges.y, x2: x, y2: y });
-      if (!ok) this.showBanner('SWIPE FURTHER', ABILITIES[id].how, ABILITY_NOTE);
-    } else if (act === 'hold') {
-      // It lands where the ring is when the finger lifts (the ring follows
-      // the finger while held, so what you see is where it goes).
-      const held = (performance.now() - ges.since) / 1000;
-      ok = this.rec.activate(id, { x, y, power: Math.min(1, held / AB.salvo.holdFull) });
-    } else if (act === 'target') {
-      ok = this.rec.activate(id, { x, y });
-      if (!ok) this.showBanner('NO SUB OR TRUCK THERE', ABILITIES[id].how, ABILITY_NOTE);
-    }
-    if (ok) this.disarm();
-    this.renderAbilities(g);
-  }
-
-  /** The armed ability's aim, for the renderer. */
-  private aimPreview(): AimPreview | null {
-    const id = this.armed;
-    if (!id) return null;
-    const color = ICON_COLOR[id];
-    const act = ABILITIES[id].activation;
-    const ges = this.gesture;
-    if (!ges) return null;
-    const label = abilityName(id, this.game?.levels[id] ?? 1).toUpperCase();
-    if (act === 'line') return { kind: 'line', x: ges.x, y: ges.y, x2: ges.x2, y2: ges.y2, power: 0, color, label };
-    if (act === 'hold') {
-      const power = Math.min(1, (performance.now() - ges.since) / 1000 / AB.salvo.holdFull);
-      return { kind: 'hold', x: ges.x2, y: ges.y2, x2: ges.x2, y2: ges.y2, power, color, label };
-    }
-    return { kind: 'target', x: ges.x2, y: ges.y2, x2: ges.x2, y2: ges.y2, power: 0, color, label };
-  }
-
-  /** Per frame: each button's ability, level, charge and state. One look
-   *  per state (V3 round 1 playtest: the buttons were hard to read):
-   *  empty (a dashed circle, nothing else), charging (the colour rises
-   *  inside the button, the tag says how far), ready (full colour, a slow
-   *  glow, READY), armed (gold, AIM), running (its shots or seconds). */
-  private renderAbilities(g: Game): void {
-    const held = g.slots;
-    if (this.armed && (!abilityReady(g, this.armed) || g.phase !== 'wave')) this.disarm();
+  /** Per frame: each chip's weapon and level, and the loaded one's clock.
+   *  Empty (a dashed circle), held (dim: it can drop), loaded (lit, the
+   *  colour draining with the seconds left). */
+  private renderWeapons(g: Game): void {
     for (let i = 0; i < MAX_SLOTS; i++) {
-      const b = this.abilityBtns[i];
-      const id = held[i];
+      const c = this.weaponChips[i];
+      const id = g.slots[i];
       const lv = id ? (g.levels[id] ?? 0) : 0;
       const key = id ? `${id}:${lv}` : '';
-      if (key !== this.abilityKeys[i]) {
-        this.abilityKeys[i] = key;
-        // A new occupant starts clean: no flash or glow carried over.
-        b.className = 'v3-ability';
-        b.replaceChildren();
-        b.dataset.ability = id ?? '';
+      if (key !== this.weaponKeys[i]) {
+        this.weaponKeys[i] = key;
+        c.className = 'v3-weapon';
+        c.replaceChildren();
+        c.dataset.ability = id ?? '';
         if (id) {
-          b.style.setProperty('--card-color', ICON_COLOR[id]);
-          b.append(
-            el('span', 'v3-ability-fill'),
-            upgradeIcon(id, 24),
-            el('span', 'v3-ability-name', SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0]),
-            el('span', 'v3-ability-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`),
-            el('span', 'v3-ability-tag'),
+          c.style.setProperty('--card-color', ICON_COLOR[id]);
+          c.append(
+            el('span', 'v3-weapon-fill'),
+            upgradeIcon(id, 22),
+            el('span', 'v3-weapon-name', SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0]),
+            el('span', 'v3-weapon-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`),
+            el('span', 'v3-weapon-tag'),
           );
-          b.setAttribute('aria-label', `${abilityName(id, lv)}, key ${i + 1}`);
+          c.title = `${abilityName(id, lv)}: drops as a pickup`;
         } else {
-          b.style.removeProperty('--card-color');
-          b.setAttribute('aria-label', 'Empty ability slot');
+          c.style.removeProperty('--card-color');
+          c.title = 'Empty weapon slot';
         }
       }
-      const ready = !!id && abilityReady(g, id);
-      const mode = id && g.gunMode?.id === id ? g.gunMode : null;
-      const armed = !!id && this.armed === id;
-      const share = id ? chargeShare(g, id) : 0;
-      b.style.setProperty('--charge', mode ? '1' : share.toFixed(3));
-      const state = !id ? 'empty' : armed ? 'armed' : mode ? 'active' : ready ? 'ready' : 'charging';
-      for (const c of ['empty', 'armed', 'active', 'ready', 'charging']) b.classList.toggle(c, c === state);
+      const w = id && g.phase === 'wave' && g.weapon?.id === id ? g.weapon : null;
+      const state = !id ? 'empty' : w ? 'loaded' : 'held';
+      for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
       if (id) {
-        const tag = b.querySelector<HTMLElement>('.v3-ability-tag')!;
-        const text =
-          state === 'armed' ? 'AIM' : mode ? (mode.id === 'railgun' ? `×${mode.shots}` : `${Math.ceil(mode.t)}s`) : ready ? 'READY' : `${Math.floor(share * 100)}%`;
+        c.style.setProperty('--left', w ? (w.t / WEAPON.time).toFixed(3) : '0');
+        const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
+        const text = w ? `${Math.ceil(w.t)}s` : '';
         if (tag.textContent !== text) tag.textContent = text;
       }
-      b.disabled = !id;
     }
   }
 
@@ -592,19 +481,6 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
-      // An armed ability takes this touch: a line, a hold or a target, not a shot.
-      if (this.armed && this.game.phase === 'wave') {
-        this.gesture = { id: this.armed, pointer: e.pointerId, x: w.x, y: w.y, x2: w.x, y2: w.y, since: performance.now() };
-        // Keep the finger for the whole gesture: a swipe or a hold that ends
-        // over a rail still ends here (playtest round 1: it fired nothing and
-        // left the ability stuck armed).
-        try {
-          this.canvas.setPointerCapture(e.pointerId);
-        } catch {
-          // a synthetic pointer can't be captured; the gesture still works on the field
-        }
-        return;
-      }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
       // beat so an ordinary tap never fires twice.
@@ -612,25 +488,14 @@ export class App {
       this.hold = { ...w, since: performance.now(), next: this.game.t + first, id: e.pointerId };
     });
     this.canvas.addEventListener('pointermove', (e) => {
-      if (this.gesture?.pointer === e.pointerId) {
-        const w = this.toWorldClamped(e.clientX, e.clientY);
-        this.gesture.x2 = w.x;
-        this.gesture.y2 = w.y;
-        return;
-      }
       if (!this.hold || this.hold.id !== e.pointerId) return;
       const w = this.toWorld(e.clientX, e.clientY);
       if (w) Object.assign(this.hold, w);
     });
     this.canvas.addEventListener('pointerup', (e) => {
-      if (this.gesture?.pointer === e.pointerId) {
-        const w = this.toWorldClamped(e.clientX, e.clientY);
-        this.finishGesture(w.x, w.y);
-      }
       if (this.hold?.id === e.pointerId) this.hold = null;
     });
     this.canvas.addEventListener('pointercancel', (e) => {
-      if (this.gesture?.pointer === e.pointerId) this.gesture = null;
       if (this.hold?.id === e.pointerId) this.hold = null;
     });
   }
@@ -651,15 +516,6 @@ export class App {
       this.ripples.push({ x, y, age: 0, dry: true, label: 'RELOADING' });
       this.ripples.push({ x: c.x, y: c.y - CARRIER.halfBeam - 15, age: 0, dry: true });
     }
-  }
-
-  /** Like `toWorld`, but a finger that slid off the field is held at its edge
-   *  (a swipe may well end past the map). */
-  private toWorldClamped(cx: number, cy: number): { x: number; y: number } {
-    const r = this.canvas.getBoundingClientRect();
-    const x = (cx - r.left - this.offX) / this.scale;
-    const y = (cy - r.top - this.offY) / this.scale;
-    return { x: Math.max(0, Math.min(VIEW.width, x)), y: Math.max(0, Math.min(VIEW.height, y)) };
   }
 
   private toWorld(cx: number, cy: number): { x: number; y: number } | null {
@@ -776,7 +632,7 @@ export class App {
       // phase, new wave, so that counts as a change too.
       if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
-      this.renderAbilities(g);
+      this.renderWeapons(g);
       this.syncDanger(g);
     }
     for (const r of this.ripples) r.age += real;
@@ -807,7 +663,7 @@ export class App {
     // 60 times a second: on a phone that redraw alone stalled frames for up
     // to 90 ms, and it slowed the ghost check running underneath.
     const g = this.game;
-    const still = !!g && !this.beat && !this.gesture && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
+    const still = !!g && !this.beat && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
     const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}:${this.zoom.z}` : '';
     if (still && key === this.drawnKey) return;
     this.drawnKey = still ? key : '';
@@ -830,7 +686,7 @@ export class App {
       ctx.scale(z, z);
       ctx.translate(-x, -y);
     }
-    drawFrame(ctx, this.game, this.ripples, this.shake, this.aimPreview());
+    drawFrame(ctx, this.game, this.ripples, this.shake);
   }
 
   private drainEvents(g: Game): void {
@@ -867,28 +723,15 @@ export class App {
           break;
         case 'pickup':
           break;
-        case 'ability': {
+        case 'weapon': {
+          // Loaded: its name, what a shot does now and how to fire it.
           const a = ABILITIES[ev.id];
-          this.showBanner(abilityName(ev.id, ev.level).toUpperCase(), a.levels[ev.level - 1].replace(/^EVOLVES: /, ''), ABILITY_NOTE);
-          this.shake = Math.max(this.shake, 6);
-          break;
-        }
-        case 'abilityReady': {
-          // A one-shot pop as it fills (it removes itself; the glow that
-          // follows belongs to the ready state alone).
-          const b = this.abilityBtns[g.slots.indexOf(ev.id)];
-          // The first time each ability fills in a run, say what to do with it.
-          if (!this.toldReady.has(ev.id)) {
-            this.toldReady.add(ev.id);
-            const lv = g.levels[ev.id] ?? 1;
-            this.showBanner(`${abilityName(ev.id, lv).toUpperCase()} READY`, `Press its button (bottom right). ${ABILITIES[ev.id].how}.`, { key: 'ability' });
-          }
-          if (b) {
-            b.classList.remove('flash');
-            void b.offsetWidth;
-            b.classList.add('flash');
-            b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
-          }
+          this.showBanner(
+            `${abilityName(ev.id, ev.level).toUpperCase()} · ${WEAPON.time}s`,
+            `${a.levels[ev.level - 1].replace(/^EVOLVES: /, '')}. ${a.how}.`,
+            WEAPON_NOTE,
+          );
+          this.shake = Math.max(this.shake, 4);
           break;
         }
         case 'newPickup': {
@@ -928,12 +771,9 @@ export class App {
   private syncTimers(g: Game | null): void {
     const chips: [string, number, string][] = [];
     if (g && g.phase === 'wave') {
+      // V3: the loaded weapon counts down first, like a power-up.
+      if (g.weapon) chips.push([SHORT_NAME[g.weapon.id][g.weapon.level >= ABILITY_MAX ? 1 : 0], g.weapon.t, ICON_COLOR[g.weapon.id]]);
       if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
-      // V3: abilities that run on a clock (a takeover, a storm) count down here too.
-      if (g.gunMode?.id === 'railgun') chips.push([`${g.gunMode.level >= 3 ? 'MASS DRIVER' : 'RAILGUN'} ×${g.gunMode.shots}`, g.gunMode.t, ICON_COLOR.railgun]);
-      if (g.gunMode?.id === 'tesla') chips.push([g.gunMode.level >= 3 ? 'STORM COIL' : 'TESLA ARC', g.gunMode.t, ICON_COLOR.tesla]);
-      if (g.ionT > 0) chips.push(['ION STORM', g.ionT, ICON_COLOR.emp]);
-      if (g.ghostT > 0) chips.push(['GHOST FLEET', g.ghostT, ICON_COLOR.decoy]);
       if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
       if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
       if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
@@ -976,7 +816,6 @@ export class App {
   private onPhase(g: Game): void {
     const from = this.lastPhase;
     this.lastPhase = g.phase;
-    if (g.phase !== 'wave') this.disarm();
     if (g.phase === 'wave') {
       this.beat = null;
       this.hideOverlay();
@@ -1128,7 +967,7 @@ export class App {
     foot.append(settings, classic);
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
-      el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft abilities between waves and fire them from the buttons at the bottom right.'),
+      el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
       this.armoryStrip(),
       el('div', 'v2-map-grid', ''),
       ...(this.dev ? [this.devPanel()] : []),
@@ -1547,8 +1386,6 @@ export class App {
 
   private begin(): void {
     if (!this.game) return;
-    this.toldReady.clear();
-    this.disarm();
     this.resetFinale();
     this.ghostRun = null;
     this.lastPhase = null;
@@ -1560,8 +1397,8 @@ export class App {
     this.hideOverlay();
   }
 
-  /** The draft: three abilities. With all slots full a new one can still be
- *  taken: tap it, then tap the held ability it replaces. */
+  /** The draft: three weapons. With all slots full a new one can still be
+ *  taken: tap it, then tap the held weapon it replaces. */
   private showDraft(g: Game, swapping: AbilityId | null = null): void {
     const owned = g.slots;
     const full = owned.length >= MAX_SLOTS;
@@ -1625,7 +1462,7 @@ export class App {
       const level = el('span', 'v2-card-level', '');
       let text: string;
       if (id === 'resupply') {
-        level.textContent = 'Keeps your abilities';
+        level.textContent = 'Keeps your weapons';
         text = RESUPPLY_TEXT;
       } else {
         // One pip per level: those already held, the one this card adds, the rest.
@@ -1635,10 +1472,7 @@ export class App {
       }
       const name = id === 'resupply' ? 'Resupply' : abilityName(id, Math.min(next, ABILITY_MAX));
       card.append(top, art, el('strong', 'v2-card-name', name), level, el('span', 'v2-card-text', text));
-      if (id !== 'resupply') {
-        const a = ABILITIES[id];
-        card.append(el('span', 'v3-card-how', `${CHARGE_LABEL[a.charge](need(id, Math.min(next, ABILITY_MAX)))} · ${a.how}`));
-      }
+      if (id !== 'resupply') card.append(el('span', 'v3-card-how', `Drops as a pickup · ${WEAPON.time} s in the gun · ${ABILITIES[id].how}`));
       return card;
     });
     const row = el('div', 'v2-card-row');
@@ -1658,10 +1492,10 @@ export class App {
         'p',
         'v2-sub',
         allEvolved
-          ? 'All three abilities evolved: swap one for a new ability, or Resupply to keep them.'
+          ? 'All three weapons evolved: swap one for a new weapon, or Resupply to keep them.'
           : full
-            ? 'Slots full: level up an ability you hold (level 3 evolves it), or swap a new one in.'
-            : `Pick one. You can hold ${MAX_SLOTS} abilities (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free); level 3 evolves.`,
+            ? 'Slots full: level up a weapon you hold (level 3 evolves it), or swap a new one in.'
+            : `Pick one. Weapons you hold drop as pickups. You can hold ${MAX_SLOTS} (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free); level 3 evolves.`,
       );
     }
     // Dev stride: the waves it skips each still deal a card.
@@ -1669,9 +1503,9 @@ export class App {
     const title = skipped ? `Wave ${g.wave} skipped` : `Wave ${g.wave} cleared`;
     const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
     const head = el('div', 'v2-draft-head');
-    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your ability'));
+    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your weapon'));
     const loadoutRow = el('div', 'v2-loadout');
-    loadoutRow.append(el('span', 'v2-loadout-label', 'ABILITIES'), slots);
+    loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
     this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, rule]);
     this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
   }
@@ -1802,20 +1636,21 @@ export class App {
 
 /** Round 4's new pickups get a one-line banner the first time one drops. */
 const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
+  weapon: ['WEAPON DROP', `Tap it: the gun fires that weapon for ${WEAPON.time} s. Each shot still uses a round.`],
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
 };
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
-  drone: 'Drones did the most damage: EMP Pulse or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
+  drone: 'Drones did the most damage: EMP Rounds or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
   ballistic: 'Ballistics did the most damage: Spread formation helps, and Fast Motors in the Armory.',
-  guided: 'Guided missiles did the most damage: Decoy Barrage pulls them off.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; Decoy Barrage level 2 fools them.',
+  guided: 'Guided missiles did the most damage: Decoy Flares pull them off.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Decoy Flares fool them.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Hellfire Salvo clears the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
-  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; Smoke Wall hides ships.',
+  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; Smoke Shells hide ships.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
 };
 
@@ -1854,7 +1689,7 @@ function cardName(id: CardId, level: number): string {
 }
 
 /** V3's speed control: one button that steps through the speeds (it used to
- *  be a full-height slider; the rail's lower half is the ability buttons'). */
+ *  be a full-height slider; the rail's lower half is the weapon loadout). */
 function speedButton(steps: readonly number[], initial: number, onChange: (step: number) => void): StepSlider {
   let current = initial;
   const b = button('', 'v3-speed', () => {
