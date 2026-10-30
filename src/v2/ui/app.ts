@@ -874,9 +874,13 @@ export class App {
     classic.href = './index.html';
     // The artifact build ships V2 alone; there is no classic page to link to.
     classic.hidden = 'claude' in window;
+    // V3 (abilities and the Armory) is its own page.
+    const v3 = el('a', 'v2-classic', 'Play V3 →');
+    v3.href = './v3.html';
+    v3.hidden = 'claude' in window;
     const foot = el('div', 'v2-menu-foot');
     const settings = button('⚙ Settings', 'v2-link v2-settings-btn', () => this.showSettings());
-    foot.append(settings, classic);
+    foot.append(settings, v3, classic);
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down, or hold to keep firing.'),
