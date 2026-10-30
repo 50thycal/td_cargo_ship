@@ -160,7 +160,7 @@ export type GameEvent =
   | { kind: 'shipLost'; lost: number }
   | { kind: 'carrierHit'; hp: number }
   /** A tough threat (3+ hits) went down: the UI gives it a punch. */
-  | { kind: 'bigKill'; threat: ThreatKind; x: number; y: number }
+  | { kind: 'bigKill'; threat?: ThreatKind; label?: string; x: number; y: number }
   | { kind: 'pickup'; pickup: PickupKind }
   /** The first time a kind of pickup drops this game (UI explains it). */
   | { kind: 'newPickup'; pickup: PickupKind }
@@ -1057,7 +1057,7 @@ const EFFECTS: Record<AbilityId, Effect> = {
     }
     if (!prey.length) return false;
     for (const r of prey) {
-      knockOut(g, r, 'SUNK');
+      knockOut(g, r);
       if (lv >= 2) for (const th of g.threats) if (!th.dead && th.from === r.id) damageThreat(g, th, 99, false);
     }
     return true;
@@ -1192,6 +1192,7 @@ export function step(g: Game, dt: number): void {
   }
   if (g.queue.length === 0 && g.threats.length === 0 && g.raiders.length === 0 && g.raiderQueue.length === 0) {
     g.score += 200 * g.wave;
+    clearField(g);
     recordWave(g, 'cleared');
     if (!g.endless && g.wave >= RULES.wavesToClear) {
       g.cleared = true;
@@ -1201,6 +1202,29 @@ export function step(g: Game, dt: number): void {
       openDraft(g);
     }
   }
+}
+
+/** V2 round 13 ("the next wave starts fresh"): a cleared wave takes
+ *  everything in flight with it. Interceptors and salvo rockets still in the
+ *  air, pickups left on the water, smoke walls and burning lines, strike
+ *  jets, running power-ups and running abilities (a takeover, a storm, the
+ *  ghost decoys) are gone, and the rack is full for the next wave. Ability
+ *  charge carries over. Explosions already on screen play out. */
+function clearField(g: Game): void {
+  g.interceptors = [];
+  g.pickups = [];
+  g.fields = [];
+  g.allies = [];
+  g.overdriveT = 0;
+  g.warpT = 0;
+  g.shieldT = 0;
+  g.steamT = 0;
+  g.gunMode = null;
+  g.ionT = 0;
+  g.ghostT = 0;
+  g.ghostAt = [];
+  g.ammo = g.stats.rack;
+  g.reloadT = 0;
 }
 
 function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
@@ -2077,7 +2101,7 @@ function updateAllies(g: Game, dt: number): void {
       if (a.hits.includes(r.id) || !raiderUp(r) || !under(r.x, r.y, 50)) continue;
       a.hits.push(r.id);
       a.firedT = g.t;
-      knockOut(g, r, 'KNOCKED OUT');
+      knockOut(g, r);
     }
   }
   // Gone once well off the far side of the screen.
@@ -2087,19 +2111,17 @@ function updateAllies(g: Game, dt: number): void {
   });
 }
 
-/** A launcher hit by a strike or a Sub Hunter: its remaining rounds are lost
- *  and it leaves. */
-function knockOut(g: Game, r: Raider, label: string): void {
+/** A launcher hit by a Carpet Strike or a Sub Hunter blows up (V2 round 13:
+ *  it used to just leave): its rounds are lost and it is gone, a sub with a
+ *  spout of water, a truck in a ball of fire. */
+function knockOut(g: Game, r: Raider): void {
   r.units = [];
   r.rounds = [];
-  addFx(g, 'boom', r.x, r.y, { life: 0.8, r: 34 });
-  addFx(g, 'text', r.x, r.y - 30, { life: 1, text: label });
-  if (r.kind === 'sub') setState(r, 'dive');
-  else if (r.kind === 'popup') setState(r, 'reverse');
-  else {
-    r.stops = [];
-    setState(r, 'drive');
-  }
+  r.state = 'reverse';
+  r.dist = 0;
+  addFx(g, 'boom', r.x, r.y, { life: 1.1, r: 52 });
+  addFx(g, r.kind === 'sub' ? 'sink' : 'burst', r.x, r.y, { life: r.kind === 'sub' ? 2 : 0.9, r: 40 });
+  g.events.push({ kind: 'bigKill', label: r.kind === 'sub' ? 'SUB DESTROYED' : 'TRUCK DESTROYED', x: r.x, y: r.y });
 }
 
 // ---------------------------------------------------------------------------

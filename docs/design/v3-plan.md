@@ -19,6 +19,30 @@ V3 lives at `/v3.html` (`npm run dev:v3`), its code in `src/v3/` (a fork of
 `src/v2/`), with its own save, logs (`game: 'v3'`, ids `v3-…`) and tools.
 V2 is untouched at `/v2.html`.
 
+## Kept in step with V2
+
+V3 is V2 plus the upgrade change, so V2's later rounds are ported one to
+one. V2 rounds 13–14 (merged into `src/v3` with a three-way merge from the
+fork point):
+
+- **Round 13**: a cleared wave clears the field and refills the rack (in
+  V3 that also ends smoke walls, burning lines and running abilities; the
+  ability charge carries over) behind a WAVE N CLEARED stamp; launchers hit
+  from the air are destroyed, not chased off (Carpet Strike and Sub Hunter
+  in V3); dirt roads routed round the bases, tunnels and caves, the Island
+  as a hill, silo bases; the Island eased (threat ×0.95, extras two waves
+  later). `LOG_VERSION` 7.
+- **Round 14**: one notification tray on each map's bottom shore (at most
+  two cards, queued, raids and alarms cut in); power-up timers moved to the
+  foot of the left rail. In V3, ability timers (Railgun, Tesla Arc, Ion
+  Storm, Ghost Fleet) live in that rail too, and ability feedback (armed,
+  charging, fired) is an at-once card, as round 14 treats feedback on the
+  player's own action.
+
+`tests/v3` and `e2e/v3.mjs` carry the same checks (fresh start, strike
+kills, roads clear of bases, the Island schedule, the tray on all five maps
+at two phone sizes) plus one that V3's maps are V2's, byte for byte.
+
 ## Survivor.io, and what V3 takes from it
 
 Research summary (fan wikis and guides; some contradict each other):
@@ -113,29 +137,30 @@ shape of the curve, not the final word — the next step is real playtests.
 **How long a run is.** One map, start to clear: **~10 minutes**. A lost
 run lasts 6–9. Each run pays **100–180 salvage**.
 
-**Clear rate by Armory level** (sharp / average / casual bot):
+**Clear rate by Armory level** (sharp / average / casual bot; measured
+after porting V2 rounds 13–14, which eased the Island):
 
 | Map | Armory 0 (fresh) | Armory 2 (~6 runs in) | Armory 5 (maxed) |
 |---|---|---|---|
-| The Strait | 100 / 70 / 0 % | 100 / 100 / 75 % | 100 / 100 / 88 % |
-| The Gauntlet | 40 / 20 / 0 % | 75 / 75 / 0 % | 100 / 100 / 75 % |
-| The Island | 60 / 10 / 0 % | 100 / 100 / 0 % | 100 / 100 / 25 % |
-| Harbor Mouth | 20 / 10 / 0 % | 63 / 88 / 0 % | 100 / 100 / 38 % |
-| The Archipelago | 30 / 10 / 0 % | 63 / 50 / 0 % | 100 / 100 / 63 % |
+| The Strait | 90 / 90 / 0 % | 100 / 100 / 38 % | 100 / 100 / 100 % |
+| The Gauntlet | 50 / 20 / 0 % | 75 / 88 / 13 % | 100 / 100 / 63 % |
+| The Island | 90 / 90 / 0 % | 100 / 100 / 0 % | 100 / 100 / 75 % |
+| Harbor Mouth | 10 / 30 / 0 % | 88 / 75 / 0 % | 100 / 100 / 63 % |
+| The Archipelago | 40 / 50 / 0 % | 75 / 75 / 0 % | 100 / 100 / 50 % |
 
-The main gun alone (no abilities, fresh Armory) clears **0%** everywhere,
-the same as V2 with no cards: the base gun really is unchanged, and the
-abilities carry a run from the first wave while the Armory carries the
-progression between runs.
+The main gun alone (no abilities, fresh Armory) clears **0–13%**, the same
+as V2 with no cards: the base gun really is unchanged, and the abilities
+carry a run from the first wave while the Armory carries the progression
+between runs.
 
 **The whole game** (all five maps cleared in order, from an empty Armory,
 spending salvage after every run):
 
 | Player | Time | Runs | Notes |
 |---|---|---|---|
-| Sharp / average bot | **~0.9 h** | 6 | Armory ~2/5 by the end |
+| Sharp / average bot | **~1 h** | 5–6 | Armory ~2/5 by the end |
 | Casual bot | **8 h+** | 60 (cap) | Armory nearly maxed; Archipelago still not cleared |
-| Average bot, main gun only | 3.9 h | 28 | the Armory alone can carry a player |
+| Average bot, main gun only | 3.4 h | 25 | the Armory alone can carry a player |
 
 For comparison, V2 took a decent player **~70 minutes** to clear all five
 maps once. The Armory doesn't make the game longer for a strong player; it

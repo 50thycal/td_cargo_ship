@@ -211,6 +211,73 @@ try {
   const rail = await page.locator('.v2-rail-right').boundingBox();
   const last = await page.locator('.v3-ability').nth(2).boundingBox();
   check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `ability buttons fit on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);
+
+  // ---- V2 round 14's notification tray, on every map ----
+  // A busy late wave played by the watch bot (which also fires abilities, so
+  // ability notices compete for the tray). Cards never overlap each other or
+  // the carrier, never leave the screen, and never exceed the map's limit.
+  for (const [map, w, h] of [
+    ['strait', 874, 402],
+    ['gauntlet', 874, 402],
+    ['island', 874, 402],
+    ['harbor', 874, 402],
+    ['archipelago', 874, 402],
+    ['strait', 844, 390],
+    ['gauntlet', 844, 390],
+    ['island', 844, 390],
+    ['harbor', 844, 390],
+    ['archipelago', 844, 390],
+  ]) {
+    const tp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    tp.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await tp.goto(`${BASE_URL}/v3.html?seed=31`, { waitUntil: 'networkidle' });
+    await tp.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('straitwatch.v3.dev', '1');
+      localStorage.setItem('straitwatch.v3.dev.settings', JSON.stringify({ preset: 'full', wave: 6, watch: true, watchSpeed: 3, bot: 'you', armory: 'yours' }));
+    });
+    await tp.reload({ waitUntil: 'networkidle' });
+    await tp.locator(`[data-map="${map}"]`).tap();
+    await tp.waitForSelector('.playing');
+    let most = 0;
+    let samples = 0;
+    for (let k = 0; k < 70; k++) {
+      const r = await tp.evaluate(() => {
+        const g = window.__v3.game();
+        const cards = [...document.querySelectorAll('.v2-alert')].map((e) => e.getBoundingClientRect());
+        const c = g.map.carrier;
+        const a = window.__v3.toClient(c.x - 80, c.y - 26);
+        const b = window.__v3.toClient(c.x + 80, c.y + 26);
+        const hit = (p, q) => p.left < q.right - 1 && q.left < p.right - 1 && p.top < q.bottom - 1 && q.top < p.bottom - 1;
+        const carrier = { left: a.x, top: a.y, right: b.x, bottom: b.y };
+        return {
+          n: cards.length,
+          max: g.map.alerts.max ?? 2,
+          overlap: cards.some((p, i) => cards.some((q, j) => j > i && hit(p, q))),
+          onCarrier: cards.some((p) => hit(p, carrier)),
+          off: cards.some((p) => p.bottom > innerHeight + 0.5 || p.top < 0 || p.left < 0 || p.right > innerWidth),
+          phase: g.phase,
+        };
+      });
+      if (r.phase !== 'wave') break;
+      samples++;
+      most = Math.max(most, r.n);
+      const bad = [
+        r.n > r.max && `${r.n} notices up (limit ${r.max})`,
+        r.overlap && 'notices overlap each other',
+        r.onCarrier && 'a notice covers the carrier',
+        r.off && 'a notice runs off the screen',
+      ].filter(Boolean);
+      for (const b of bad) fail(`${map} ${w}×${h}: ${b}`);
+      if (bad.length) break;
+      await tp.waitForTimeout(120);
+    }
+    if (most === 0) fail(`${map}: no notices seen in a busy wave`);
+    if (samples < 20) fail(`${map}: only ${samples} samples before the wave ended`);
+    console.log(`ok: tray on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, no overlaps`);
+    if (map === 'island' && w === 874) await tp.screenshot({ path: `${SHOT_DIR}/12-island-tray.png` });
+    await tp.close();
+  }
 } finally {
   await browser.close();
 }

@@ -40,11 +40,13 @@ import {
   abilityReady,
   chargeShare,
   createGame,
+  raidWarning,
   step,
   type Game,
   type Phase,
   type RaiderKind,
 } from '../sim/game';
+import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
@@ -52,7 +54,7 @@ import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDev
 import { cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
-import { DRY_LIFE, IMPACT_LIFE, RIPPLE_LIFE, drawFrame, type AimPreview, type Ripple } from './render';
+import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type AimPreview, type Ripple } from './render';
 
 const DT = 1 / 60;
 /** A tapped card flashes this long before the next wave starts. */
@@ -61,7 +63,9 @@ const PICK_BEAT_MS = 180;
  *  waits a beat (the player had tapped straight into a card while still
  *  firing at the last threat), and cards ignore taps for a moment after
  *  they appear. Losing gets a slow, dramatic finish before the result. */
-const CLEAR_BEAT = 0.6;
+/** Round 13: long enough to read the WAVE CLEARED stamp (it was 0.6 s, a
+ *  guard against tapping a card by accident; this still covers that). */
+const CLEAR_BEAT = 1.4;
 const WON_BEAT = 1.2;
 const LOST_BEAT = 2.6;
 /** A loss finale can be skipped with a tap after this long. */
@@ -83,6 +87,10 @@ const DEAL_STAGGER_MS = 70;
 const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
+
+/** Ability feedback is about what the player just did (round 14's rule):
+ *  shown at once, one card that each new message replaces. */
+const ABILITY_NOTE: AlertOpts = { now: true, key: 'ability' };
 
 const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one, or hold on the swarm.',
@@ -133,7 +141,7 @@ export class App {
   private ctx = this.canvas.getContext('2d')!;
   private overlay = el('div', 'v2-overlay');
   private hud = el('div', 'v2-hud');
-  private banner = el('div', 'v2-banner');
+  private alerts = new Alerts();
   private leftRail = el('div', 'v2-rail v2-rail-left');
   private rightRail = el('div', 'v2-rail v2-rail-right');
   private formationPop = el('div', 'v2-formations');
@@ -141,6 +149,10 @@ export class App {
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
   /** Dev: mark this moment for Claude (pauses while you say why). */
   private flagBtn = button('🚩', 'v2-flag-btn', () => this.openFlag());
+  /** Round 14: running power-ups count down here, in the rail, instead of
+   *  in a corner of the battlefield (where they sat over roads and trucks). */
+  private timers = el('div', 'v2-timers');
+  private timersKey = '';
   /** Watch mode: who is playing; tap to take over or hand back. */
   private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
   private flowSlider!: StepSlider;
@@ -216,7 +228,6 @@ export class App {
   private lastPhase: Phase | null = null;
   private ripples: Ripple[] = [];
   private shake = 0;
-  private bannerT = 0;
   private dpr = 1;
   /** Adaptive resolution: the canvas starts sharp and steps its pixel density
    *  down (2 → 1.5 → 1) if frames run slow for a sustained stretch. Playtest
@@ -232,7 +243,7 @@ export class App {
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
-    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.banner, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
@@ -327,6 +338,7 @@ export class App {
       this.flowSlider.el,
       flowHint,
       this.flagBtn,
+      this.timers,
     );
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
@@ -375,6 +387,13 @@ export class App {
   /** A button pressed: fire it now (button / takeover abilities), or arm it
    *  for the gesture it needs. Pressing an armed button disarms it. */
   private pressAbility(slot: number): void {
+    this.handleAbility(slot);
+    // Show the result at once, not a frame later (a disarm that waited for
+    // the next frame read as a missed press).
+    if (this.game) this.renderAbilities(this.game);
+  }
+
+  private handleAbility(slot: number): void {
     const g = this.game;
     if (!g || !this.rec || g.phase !== 'wave' || this.paused) return;
     const id = loadout(g.levels)[slot];
@@ -386,7 +405,7 @@ export class App {
     }
     if (!abilityReady(g, id)) {
       const share = Math.round(chargeShare(g, id) * 100);
-      this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} CHARGING ${share}%`, CHARGE_LABEL[ABILITIES[id].charge](need(id, g.levels[id] ?? 1)));
+      this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} CHARGING ${share}%`, CHARGE_LABEL[ABILITIES[id].charge](need(id, g.levels[id] ?? 1)), ABILITY_NOTE);
       return;
     }
     const act = ABILITIES[id].activation;
@@ -396,12 +415,12 @@ export class App {
     }
     // Hunter-Killer (evolved) needs no target: one press sinks them all.
     if (act === 'target' && (g.levels[id] ?? 0) >= ABILITY_MAX) {
-      if (!this.rec.activate(id)) this.showBanner('NO SUBS OR TRUCKS UP', 'It fires when one is on the map.');
+      if (!this.rec.activate(id)) this.showBanner('NO SUBS OR TRUCKS UP', 'It fires when one is on the map.', ABILITY_NOTE);
       return;
     }
     this.armed = id;
     this.hold = null;
-    this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} ARMED`, `${ABILITIES[id].how}. Tap its button again to cancel.`);
+    this.showBanner(`${abilityName(id, g.levels[id] ?? 1).toUpperCase()} ARMED`, `${ABILITIES[id].how}. Tap its button again to cancel.`, ABILITY_NOTE);
   }
 
   private disarm(): void {
@@ -421,15 +440,16 @@ export class App {
     let ok = false;
     if (act === 'line') {
       ok = this.rec.activate(id, { x: ges.x, y: ges.y, x2: x, y2: y });
-      if (!ok) this.showBanner('SWIPE FURTHER', ABILITIES[id].how);
+      if (!ok) this.showBanner('SWIPE FURTHER', ABILITIES[id].how, ABILITY_NOTE);
     } else if (act === 'hold') {
       const held = (performance.now() - ges.since) / 1000;
       ok = this.rec.activate(id, { x: ges.x, y: ges.y, power: Math.min(1, held / AB.salvo.holdFull) });
     } else if (act === 'target') {
       ok = this.rec.activate(id, { x, y });
-      if (!ok) this.showBanner('NO SUB OR TRUCK THERE', ABILITIES[id].how);
+      if (!ok) this.showBanner('NO SUB OR TRUCK THERE', ABILITIES[id].how, ABILITY_NOTE);
     }
     if (ok) this.disarm();
+    this.renderAbilities(g);
   }
 
   /** The armed ability's aim, for the renderer. */
@@ -732,8 +752,9 @@ export class App {
     for (const r of this.ripples) r.age += real;
     this.ripples = this.ripples.filter((r) => r.age < (r.impact ? IMPACT_LIFE : r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
-    this.bannerT -= real;
-    this.banner.classList.toggle('show', this.bannerT > 0);
+    this.alerts.update(real);
+    if (g) this.raidAlert(g);
+    this.syncTimers(g);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -779,7 +800,7 @@ export class App {
       ctx.scale(z, z);
       ctx.translate(-x, -y);
     }
-    drawFrame(ctx, this.game, this.ripples, this.shake, this.bannerT > 0, this.aimPreview());
+    drawFrame(ctx, this.game, this.ripples, this.shake, this.aimPreview());
   }
 
   private drainEvents(g: Game): void {
@@ -807,7 +828,7 @@ export class App {
           const stop = HIT_STOP / Math.sqrt(Math.max(1, this.speed));
           this.hitStop = Math.min(0.12, this.hitStop + stop);
           this.shake = Math.max(this.shake, 9);
-          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: BIG_KILL_LABEL[ev.threat] ?? 'DOWN' });
+          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: ev.label ?? (ev.threat && BIG_KILL_LABEL[ev.threat]) ?? 'DOWN' });
           break;
         }
         case 'dry':
@@ -818,7 +839,7 @@ export class App {
           break;
         case 'ability': {
           const a = ABILITIES[ev.id];
-          this.showBanner(abilityName(ev.id, ev.level).toUpperCase(), a.levels[ev.level - 1].replace(/^EVOLVES: /, ''));
+          this.showBanner(abilityName(ev.id, ev.level).toUpperCase(), a.levels[ev.level - 1].replace(/^EVOLVES: /, ''), ABILITY_NOTE);
           this.shake = Math.max(this.shake, 6);
           break;
         }
@@ -842,21 +863,60 @@ export class App {
     g.events.length = 0;
   }
 
-  private showBanner(title: string, sub: string): void {
-    this.banner.replaceChildren(el('strong', '', title), ...(sub ? [el('span', '', sub)] : []));
-    // Read-time, in real seconds; watching at 10× would otherwise leave every
-    // banner up for 26 game-seconds.
-    this.bannerT = 2.6 / Math.sqrt(Math.max(1, this.speed));
+  /** A notice in the tray (see alerts.ts). Read time is real seconds;
+   *  watching at 10× would otherwise leave each one up for 26 game-seconds. */
+  private showBanner(title: string, sub: string, opts: AlertOpts = {}): void {
     this.placeBanner();
+    this.alerts.notify(title, sub, { ttl: 2.6 / Math.sqrt(Math.max(1, this.speed)), ...opts });
   }
 
-  /** Pin the banner to the map's callout point (clear of bases and lanes). */
+  /** A raid on its way: its card stays up exactly as long as the warning
+   *  (the bases' rings on the map still say which ones will fire). */
+  private raidAlert(g: Game): void {
+    const w = raidWarning(g);
+    if (!w || this.beat) return;
+    const look = RAID_LOOK[w.raid.theme];
+    const raid = w.raid;
+    this.placeBanner();
+    this.alerts.notify(`⚠ ${look.name} INBOUND`, look.tip, {
+      key: `raid-${g.wave}-${raid.at}`,
+      tone: 'raid',
+      color: look.color,
+      alive: () => this.game === g && raidWarning(g)?.raid === raid,
+    });
+  }
+
+  /** The power-up countdowns in the left rail; rebuilt only when a number changes. */
+  private syncTimers(g: Game | null): void {
+    const chips: [string, number, string][] = [];
+    if (g && g.phase === 'wave') {
+      if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
+      // V3: abilities that run on a clock (a takeover, a storm) count down here too.
+      if (g.gunMode?.id === 'railgun') chips.push([`${g.gunMode.level >= 3 ? 'MASS DRIVER' : 'RAILGUN'} ×${g.gunMode.shots}`, g.gunMode.t, ICON_COLOR.railgun]);
+      if (g.gunMode?.id === 'tesla') chips.push([g.gunMode.level >= 3 ? 'STORM COIL' : 'TESLA ARC', g.gunMode.t, ICON_COLOR.tesla]);
+      if (g.ionT > 0) chips.push(['ION STORM', g.ionT, ICON_COLOR.emp]);
+      if (g.ghostT > 0) chips.push(['GHOST FLEET', g.ghostT, ICON_COLOR.decoy]);
+      if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
+      if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
+      if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
+    }
+    const key = chips.map(([l, t]) => `${l}${Math.ceil(t)}`).join();
+    if (key === this.timersKey) return;
+    this.timersKey = key;
+    this.timers.replaceChildren(
+      ...chips.map(([label, t, color]) => {
+        const chip = el('div', 'v2-timer');
+        chip.style.setProperty('--chip', color);
+        chip.append(el('span', '', label), el('b', '', `${Math.ceil(t)}`));
+        return chip;
+      }),
+    );
+  }
+
+  /** Lay the tray over the map's strip of shore (clear of bases and lanes). */
   private placeBanner(): void {
-    const c = this.game?.map.callout;
-    if (!c) return;
-    this.banner.style.left = `${this.offX + c.x * this.scale}px`;
-    this.banner.style.top = `${this.offY + c.y * this.scale}px`;
-    this.banner.style.maxWidth = `${780 * this.scale}px`;
+    const span = this.game?.map.alerts;
+    if (span) this.alerts.place(span, this.scale, this.offX, this.offY);
   }
 
   private renderHud(g: Game): void {
@@ -888,8 +948,6 @@ export class App {
       // Straight out of a wave: a beat first. A dev stride's second draft
       // (draft → draft) comes up at once.
       if (from === 'wave') {
-        const last = g.history[g.history.length - 1];
-        this.showBanner(`WAVE ${last?.wave ?? g.wave} CLEARED`, `+${(200 * (last?.wave ?? g.wave)).toLocaleString()} bonus`);
         this.startBeat('clear', CLEAR_BEAT);
       } else this.openDraft(g);
     } else if (g.phase === 'won') this.startBeat('won', WON_BEAT);
@@ -918,11 +976,25 @@ export class App {
       const sink = [...g.fx].reverse().find((f) => f.kind === 'sink');
       if (g.carrierHp > 0 && sink) focus = { x: sink.x, y: sink.y };
       this.shake = 24;
-      this.bannerT = 0;
+      this.alerts.clear();
       this.root.classList.add('finale');
-      this.stamp.textContent = g.carrierHp <= 0 ? 'CARRIER DOWN' : 'CONVOY LOST';
+      this.setStamp('lost', g.carrierHp <= 0 ? 'CARRIER DOWN' : 'CONVOY LOST');
+    } else {
+      // Round 13: a win gets a stamp too, the same slam as a loss's.
+      const last = g.history[g.history.length - 1];
+      const wave = last?.wave ?? g.wave;
+      this.alerts.clear();
+      if (kind === 'won') this.setStamp('won', 'MAP CLEARED', `Wave ${wave} survived`);
+      else this.setStamp('won', `WAVE ${wave} CLEARED`, `+${(200 * wave).toLocaleString()} bonus`);
+      requestAnimationFrame(() => this.stamp.classList.add('show'));
     }
     this.beat = { kind, t: performance.now(), dur, focus };
+  }
+
+  /** The stamp across the field: red for a loss, gold for a cleared wave. */
+  private setStamp(kind: 'lost' | 'won', text: string, sub = ''): void {
+    this.stamp.classList.toggle('cleared', kind === 'won');
+    this.stamp.replaceChildren(el('span', 'v2-stamp-main', text), ...(sub ? [el('span', 'v2-stamp-sub', sub)] : []));
   }
 
   /** Per frame while a beat runs: the loss finale's slow motion, zoom and
@@ -965,7 +1037,8 @@ export class App {
     const lastShip = g.tempo.lossLimit - g.lost === 1;
     const carrier = g.carrierHp <= Math.ceil(CARRIER.hp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
-    if (on && !this.danger) this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.');
+    if (on && !this.danger)
+      this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.', { tone: 'danger', key: 'danger' });
     if (on !== this.danger) {
       this.danger = on;
       this.root.classList.toggle('danger', on);
@@ -975,6 +1048,7 @@ export class App {
   /** Back to a clean field (a new run, the menu). */
   private resetFinale(): void {
     this.beat = null;
+    this.alerts.clear();
     this.hitStop = 0;
     this.danger = false;
     this.root.classList.remove('danger');
@@ -1254,7 +1328,7 @@ export class App {
         this.rec?.flag(kind);
         this.saveProgress();
         this.closeFlag();
-        this.showBanner(`🚩 FLAGGED: ${label.toUpperCase()}`, `Wave ${g.wave}, ${Math.round(g.waveT)} s in. Claude can replay this exact moment.`);
+        this.showBanner(`🚩 FLAGGED: ${label.toUpperCase()}`, `Wave ${g.wave}, ${Math.round(g.waveT)} s in. Claude can replay this exact moment.`, { now: true });
       });
     const kinds = el('div', 'v2-btn-row');
     kinds.append(choose('bug', 'Bug'), choose('wrong', 'Looks wrong'), choose('hard', 'Too hard'), choose('easy', 'Too easy'));
@@ -1299,10 +1373,10 @@ export class App {
     this.hold = null;
     if (who === 'you') {
       this.setSpeed(1);
-      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.');
+      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.', { now: true, key: 'control' });
     } else {
       this.setSpeed(this.devSettings.watchSpeed);
-      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.');
+      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.', { now: true, key: 'control' });
       if (this.game.phase === 'draft') this.botDraft(this.game);
     }
     this.syncControl();

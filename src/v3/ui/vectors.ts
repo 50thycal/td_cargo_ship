@@ -17,6 +17,7 @@ const TRUCK_CAB = '#7c7150';
 const TRUCK_SCALE = 1.3;
 const TRUCK_BED = '#5a5236';
 const TUBE = '#a39874';
+const ROAD = '#6e5845';
 const JET = '#8f99a3';
 const BOMBER = '#a3a88f';
 const ALLY = '#cfe3f7';
@@ -66,26 +67,84 @@ function pruneDust(g: Game): void {
 // ---------------------------------------------------------------------------
 // Entry points (called from render.ts)
 
-/** Bunker doors the island pop-ups drive out of (drawn as part of the land). */
-export function drawBunkers(ctx: CanvasRenderingContext2D, g: Game): void {
-  for (const p of g.map.roads.popups) {
-    const { from, to } = p;
-    if (from.y < 0 || from.y > VIEW.height) continue;
-    const a = Math.atan2(to.y - from.y, to.x - from.x);
-    ctx.save();
-    ctx.translate(from.x, from.y);
-    ctx.rotate(a);
-    ctx.fillStyle = '#211813';
-    ctx.strokeStyle = '#6b4a38';
-    ctx.lineWidth = 2;
+const onScreen = (p: { x: number; y: number }): boolean => p.x > 0 && p.x < VIEW.width && p.y > 0 && p.y < VIEW.height;
+
+/** The truck roads (round 13): a dirt track under every route a truck can
+ *  drive, so it is clear where they will come from. Drawn with the land. */
+export function drawRoads(ctx: CanvasRenderingContext2D, g: Game): void {
+  const routes = [...g.map.roads.runners, ...g.map.roads.popups.map((p) => [p.from, p.to])];
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  for (const [width, color] of [
+    [24, 'rgba(20,14,10,0.55)'],
+    [19, ROAD],
+  ] as const) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    for (const path of routes) {
+      ctx.beginPath();
+      path.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.stroke();
+    }
+  }
+  // Wheel ruts.
+  ctx.strokeStyle = 'rgba(30,22,16,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([10, 8]);
+  for (const path of routes) {
     ctx.beginPath();
-    ctx.roundRect(-14, -14, 28, 28, 4);
-    ctx.fill();
+    path.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
     ctx.stroke();
-    ctx.fillStyle = '#0b0807';
-    ctx.fillRect(6, -9, 8, 18);
+  }
+  ctx.setLineDash([]);
+  ctx.lineCap = 'butt';
+}
+
+/** Tunnel mouths (round 13): wherever a truck road starts or ends on screen
+ *  it goes into the hillside. Drawn after the trucks, so one coming out is
+ *  seen nosing out of the dark and one going in disappears into it. */
+export function drawTunnels(ctx: CanvasRenderingContext2D, g: Game): void {
+  for (const m of tunnelMouths(g)) {
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.facing);
+    // The hillside the road runs into, then the dark mouth facing the road.
+    ctx.fillStyle = '#4d3a2f';
+    ctx.beginPath();
+    ctx.ellipse(-12, 0, 18, 21, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#0a0705';
+    ctx.beginPath();
+    ctx.ellipse(-2, 0, 9, 15, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(-14, 15);
+    ctx.lineTo(-14, -15);
+    ctx.closePath();
+    ctx.fill();
+    // A stone arch around it.
+    ctx.strokeStyle = '#9b8468';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(-2, 0, 10, 17, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
     ctx.restore();
   }
+}
+
+/** Every on-screen road end, facing out along the road. */
+function tunnelMouths(g: Game): { x: number; y: number; facing: number }[] {
+  const out: { x: number; y: number; facing: number }[] = [];
+  const face = (p: { x: number; y: number }, q: { x: number; y: number }) => Math.atan2(q.y - p.y, q.x - p.x);
+  for (const path of g.map.roads.runners) {
+    const a = path[0];
+    const z = path[path.length - 1];
+    if (onScreen(a)) out.push({ ...a, facing: face(a, path[1]) });
+    if (onScreen(z)) out.push({ ...z, facing: face(z, path[path.length - 2]) });
+  }
+  for (const p of g.map.roads.popups) if (onScreen(p.from)) out.push({ ...p.from, facing: face(p.from, p.to) });
+  return out;
 }
 
 /** Submarines and trucks: drawn after the land and before the ships. */
@@ -414,10 +473,14 @@ function drawTruck(ctx: CanvasRenderingContext2D, g: Game, r: Raider): void {
   if (r.state === 'raise') elev = easeOut(Math.min(1, r.t / TRUCK.raise));
   else if (r.state === 'fire') elev = 1;
   else if (r.state === 'lower') elev = 1 - easeIn(Math.min(1, r.t / TRUCK.lower));
-  // A bunker pop-up fades in as it leaves the door.
-  const fadeIn = r.kind === 'popup' && r.path[0].y > 0 && r.path[0].y < VIEW.height ? Math.min(1, r.dist / 18) : 1;
+  // Out of a tunnel it fades up from the dark; into one, it fades away.
+  let fade = 1;
+  if (onScreen(r.path[0])) fade = Math.min(fade, r.dist / 22);
+  if (r.kind === 'runner' && onScreen(r.path[r.path.length - 1])) fade = Math.min(fade, (r.length - r.dist) / 22);
+  fade = Math.max(0, Math.min(1, fade));
+  if (fade <= 0) return;
   ctx.save();
-  ctx.globalAlpha = fadeIn;
+  ctx.globalAlpha = fade;
   ctx.translate(r.x, r.y);
   ctx.rotate(r.heading);
   ctx.scale(TRUCK_SCALE, TRUCK_SCALE);
