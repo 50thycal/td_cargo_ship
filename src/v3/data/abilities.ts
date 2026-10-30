@@ -110,7 +110,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
       '8 s, 3 arcs per hit',
       'EVOLVES: 9 s, and every arc arcs again',
     ],
-    how: 'Your gun is charged: keep tapping',
+    how: 'Press it, then keep tapping threats',
   },
   decoy: {
     id: 'decoy',
@@ -180,8 +180,22 @@ export const ABILITY_ORDER: AbilityId[] = ['emp', 'airstrike', 'railgun', 'tesla
 export const ABILITY_MAX = 3;
 /** Different abilities a loadout can hold at once. */
 export const MAX_SLOTS = 3;
-/** A newly drafted ability starts this full, so it is tried in its first wave. */
-export const START_CHARGE = 0.5;
+/** A newly drafted ability starts this full. Playtest (V3 round 1): starting
+ *  half full read as a random state on the button, so every ability now
+ *  starts empty and its ring fills from nothing. */
+export const START_CHARGE = 0;
+
+/** Names short enough for the 64 px button (the card shows the full name). */
+export const SHORT_NAME: Record<AbilityId, [string, string]> = {
+  emp: ['EMP', 'ION STORM'],
+  airstrike: ['AIR STRIKE', 'CARPET'],
+  railgun: ['RAILGUN', 'MASS DRIVER'],
+  tesla: ['TESLA', 'STORM COIL'],
+  decoy: ['DECOYS', 'GHOSTS'],
+  smoke: ['SMOKE', 'FOG BANK'],
+  salvo: ['SALVO', 'SATURATION'],
+  hunter: ['HUNTER', 'KILLER'],
+};
 
 /** Every effect number, so tuning stays in data. */
 export const AB = {

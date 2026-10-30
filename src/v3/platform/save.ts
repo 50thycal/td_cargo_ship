@@ -1,5 +1,7 @@
 // V3 progress: which maps are unlocked, the best result on each, and the
-// Armory — the salvage banked and the main-gun levels bought with it. One
+// Armory — the salvage banked, the main-gun levels bought with it, and the
+// one upgrade equipped for the next run (playtest: "the player should only
+// be allowed to select one… they don't get all of them"). One
 // small localStorage record, separate from every V1 and V2 save. Storage can
 // be missing or throw (private mode); progress then just lasts for the session.
 
@@ -20,6 +22,8 @@ export interface Progress {
   /** Salvage earned over every run (for the record). */
   earned: number;
   armory: ArmoryLevels;
+  /** The one Armory upgrade a run takes (null: the base gun). */
+  equipped: ArmoryId | null;
   /** Maps cleared at least once (the first clear pays a bonus). */
   cleared: MapId[];
 }
@@ -27,7 +31,7 @@ export interface Progress {
 const KEY = 'straitwatch.v3.progress';
 
 function fresh(): Progress {
-  return { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, cleared: [] };
+  return { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, equipped: null, cleared: [] };
 }
 
 export function loadProgress(): Progress {
@@ -43,6 +47,8 @@ export function loadProgress(): Progress {
         salvage: Math.max(0, Math.floor(p.salvage ?? 0)),
         earned: Math.max(0, Math.floor(p.earned ?? 0)),
         armory,
+        // Only an upgrade with a level can be equipped.
+        equipped: p.equipped && armoryLevel(armory, p.equipped) > 0 ? p.equipped : null,
         cleared: (p.cleared ?? []).filter((m) => MAP_ORDER.includes(m)),
       };
     }
@@ -97,6 +103,22 @@ export function buyArmory(p: Progress, id: ArmoryId): boolean {
   if (cost === null || cost > p.salvage) return false;
   p.salvage -= cost;
   p.armory[id] = armoryLevel(p.armory, id) + 1;
+  // The first upgrade bought is equipped at once (nothing to choose yet).
+  if (!p.equipped) p.equipped = id;
   saveProgress(p);
   return true;
+}
+
+/** Equip one upgrade for the next run (null: the base gun). Only one with a
+ *  level can be equipped. */
+export function equipArmory(p: Progress, id: ArmoryId | null): boolean {
+  if (id !== null && armoryLevel(p.armory, id) <= 0) return false;
+  p.equipped = id;
+  saveProgress(p);
+  return true;
+}
+
+/** The gun a run gets: the equipped upgrade at its level, nothing else. */
+export function runGun(p: Progress): ArmoryLevels {
+  return p.equipped ? { [p.equipped]: armoryLevel(p.armory, p.equipped) } : {};
 }

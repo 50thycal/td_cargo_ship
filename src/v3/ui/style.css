@@ -1742,12 +1742,19 @@ body {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
+  padding-bottom: 6px;
 }
 
-/* One ability: a round button whose ring fills as it charges (--charge
- * 0..1), glowing when ready, outlined when armed for its gesture. */
+/* One ability button (V3 round 1 playtest redesign). One look per state:
+ *   empty     a dashed circle, nothing in it, never animated;
+ *   charging  dim icon, the ability's colour rising inside (--charge 0..1)
+ *             and round the rim, the tag below says how far;
+ *   ready     full colour, bright icon, a slow glow, READY;
+ *   armed     gold rim, AIM (the next touch on the field aims it);
+ *   active    it has the gun (×shots or seconds left).
+ * A one-shot pop (.flash) marks the moment it fills. */
 .v3-ability {
   --charge: 0;
   position: relative;
@@ -1755,43 +1762,58 @@ body {
   height: 64px;
   border-radius: 50%;
   border: 0;
-  padding: 0;
+  padding: 0 0 6px;
   color: var(--ink);
   font: inherit;
   cursor: pointer;
   background:
-    radial-gradient(circle at 50% 50%, var(--panel) 0 57%, transparent 58%),
-    conic-gradient(var(--card-color, var(--accent)) calc(var(--charge) * 360deg), #1b2b35 0);
+    radial-gradient(circle at 50% 50%, transparent 0 56%, transparent 57%),
+    conic-gradient(var(--card-color, var(--accent)) calc(var(--charge) * 360deg), #24343f 0);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 1px;
   touch-action: manipulation;
   transition: transform 0.12s;
+  isolation: isolate;
+}
+
+/* The disc inside the rim, and the colour rising in it. */
+.v3-ability::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--panel);
+  z-index: -2;
+}
+
+.v3-ability-fill {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  z-index: -1;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--card-color) 34%, transparent) calc(var(--charge) * 100%), transparent calc(var(--charge) * 100%));
 }
 
 .v3-ability .v2-icon {
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 .v3-ability-name {
   font-size: 7.5px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   line-height: 1;
-  max-width: 50px;
-  text-align: center;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--muted);
 }
 
 .v3-ability-lv {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: -1px;
+  right: -4px;
   min-width: 20px;
   padding: 1px 4px;
   border-radius: 8px;
@@ -1802,10 +1824,33 @@ body {
   color: var(--card-color, var(--accent));
 }
 
+/* The state, written under the button. */
+.v3-ability-tag {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 34px;
+  padding: 1px 5px;
+  border-radius: 7px;
+  background: #0b141b;
+  border: 1px solid #2b3d48;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
 .v3-ability.empty {
   background: transparent;
   border: 2px dashed #2b3d48;
   cursor: default;
+}
+
+.v3-ability.empty::before {
+  display: none;
 }
 
 .v3-ability.ready .v2-icon,
@@ -1815,37 +1860,59 @@ body {
 }
 
 .v3-ability.ready .v3-ability-name,
-.v3-ability.armed .v3-ability-name {
+.v3-ability.armed .v3-ability-name,
+.v3-ability.active .v3-ability-name {
   color: var(--ink);
 }
 
+.v3-ability.ready .v3-ability-tag {
+  background: var(--card-color);
+  border-color: var(--card-color);
+  color: #071018;
+}
+
 .v3-ability.ready {
-  box-shadow: 0 0 0 2px var(--card-color), 0 0 18px 2px color-mix(in srgb, var(--card-color) 60%, transparent);
-  animation: v3-ready 1.1s ease-in-out infinite;
+  box-shadow: 0 0 0 2px var(--card-color), 0 0 16px 2px color-mix(in srgb, var(--card-color) 55%, transparent);
+  animation: v3-ready 1.4s ease-in-out infinite;
 }
 
 .v3-ability.armed {
-  transform: scale(1.08);
   box-shadow: 0 0 0 3px var(--gold), 0 0 22px 4px rgb(245 197 66 / 0.55);
+}
+
+.v3-ability.armed .v3-ability-tag {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1d1606;
 }
 
 .v3-ability.active {
   box-shadow: 0 0 0 3px var(--card-color);
 }
 
+.v3-ability.active .v3-ability-tag {
+  border-color: var(--card-color);
+  color: var(--card-color);
+}
+
+/* One pop when it fills; it never repeats and never outlives the moment. */
 .v3-ability.flash {
-  animation: v3-flash 0.5s ease-out, v3-ready 1.1s ease-in-out 0.5s infinite;
+  animation: v3-flash 0.45s ease-out;
+}
+
+.v3-ability.flash.ready {
+  animation: v3-flash 0.45s ease-out, v3-ready 1.4s ease-in-out 0.45s infinite;
 }
 
 @keyframes v3-ready {
   50% {
-    box-shadow: 0 0 0 2px var(--card-color), 0 0 28px 6px color-mix(in srgb, var(--card-color) 70%, transparent);
+    box-shadow: 0 0 0 2px var(--card-color), 0 0 26px 6px color-mix(in srgb, var(--card-color) 70%, transparent);
   }
 }
 
 @keyframes v3-flash {
   0% {
-    transform: scale(1.25);
+    transform: scale(1.22);
   }
   100% {
     transform: scale(1);
@@ -1854,7 +1921,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .v3-ability.ready,
-  .v3-ability.flash {
+  .v3-ability.flash,
+  .v3-ability.flash.ready {
     animation: none;
   }
 }
@@ -1870,7 +1938,7 @@ body {
     height: 22px;
   }
   .v3-abilities {
-    gap: 5px;
+    gap: 13px;
   }
   .v3-speed {
     min-height: 36px;
@@ -1954,7 +2022,7 @@ body {
 
 .v3-armory-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -1997,7 +2065,7 @@ body {
 
 @media (max-width: 640px), (max-height: 420px) {
   .v3-armory-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
   }
   .v3-armory-stat {
     display: none;
@@ -2012,4 +2080,219 @@ body {
   font-size: 11px;
   color: var(--muted);
   align-self: center;
+}
+
+/* V3 round 1: one Armory upgrade per run. */
+.v3-armory-row.equipped {
+  border-color: var(--gold);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.v3-equip {
+  min-width: 96px;
+}
+
+.v3-equip.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1d1606;
+}
+
+.v3-equipped {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.v3-gun-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 6px 0 10px;
+}
+
+.v3-gun {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(255 255 255 / 0.03);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-gun strong {
+  font-size: 14px;
+}
+
+.v3-gun span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.v3-gun.on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+  background: rgb(245 197 66 / 0.08);
+}
+
+.v3-gun:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-height: 420px) {
+  .v3-gun {
+    padding: 6px 9px;
+  }
+  .v3-gun-grid {
+    gap: 6px;
+    margin: 2px 0 6px;
+  }
+}
+
+/* Buttons that can't be pressed look it (Armory "Not bought", maxed). */
+.v3-armory-row .v2-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Short screens (a phone on its side): the Armory fits without scrolling.
+ * One line per upgrade (name, level pips, the two buttons); the blurb goes. */
+@media (max-height: 460px) {
+  .v3-armory .v2-sub {
+    font-size: 11.5px;
+    line-height: 1.3;
+    margin: 0;
+  }
+  .v3-armory h2 {
+    font-size: 20px;
+  }
+  .v3-armory {
+    gap: 6px;
+  }
+  .v3-armory-list {
+    gap: 4px;
+  }
+  .v3-armory-row {
+    padding: 3px 8px;
+    gap: 8px;
+  }
+  .v3-armory-text {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .v3-armory-text strong {
+    font-size: 13px;
+    min-width: 112px;
+  }
+  .v3-armory-text > span:not(.v2-card-level) {
+    display: none;
+  }
+  .v3-armory-row .v2-btn,
+  .v3-armory > .v2-btn {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .v3-equip {
+    min-width: 84px;
+  }
+  /* Keep the current value (what you compare when equipping), drop "next". */
+  .v3-armory-row {
+    grid-template-columns: 1fr auto auto auto;
+  }
+  .v3-armory-stat {
+    display: flex;
+  }
+  .v3-armory-stat span {
+    display: none;
+  }
+  .v3-armory-stat b {
+    font-size: 12.5px;
+  }
+}
+
+/* V3 playtest round 1, phone pass: the menu (taller since the Armory strip)
+ * and the draft fit a landscape phone without scrolling, and the swap step's
+ * targets are thumb-sized. */
+.v2-slots.choosing .v2-slot.swap {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.v3-cancel {
+  min-height: 36px;
+  margin-left: 10px;
+  padding: 0 14px;
+}
+
+@media (max-height: 460px) {
+  .v2-menu h1 {
+    font-size: 24px;
+    letter-spacing: 0.14em;
+  }
+  .v2-menu .v2-tag {
+    font-size: 11px;
+    line-height: 1.3;
+    margin: 0;
+  }
+  .v3-armory-strip {
+    padding: 5px 12px;
+    margin: 0;
+    gap: 2px 12px;
+  }
+  .v2-menu .v2-map-card {
+    padding: 6px 9px;
+  }
+  .v2-menu-foot {
+    margin-top: 0;
+  }
+  .v3-card-how {
+    font-size: 9.5px;
+    padding: 0 6px 5px;
+  }
+}
+
+@media (max-height: 400px) {
+  /* The smallest phones: the menu's one-line pitch gives way to the maps. */
+  .v2-menu .v2-tag {
+    display: none;
+  }
+  .v2-card-art {
+    height: 54px;
+  }
+}
+
+/* The swap prompt and its Cancel share one line. */
+.v2-swap-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.v2-swap-prompt .v3-cancel {
+  margin-left: 0;
+}
+
+@media (max-height: 460px) {
+  .v2-swap-prompt .v3-cancel {
+    min-height: 32px;
+  }
+}
+
+/* The draft's backdrop is dark enough that the rails' labels behind it don't
+ * read as part of the draft ("×1.4 ABILITIES" on a phone). */
+.v2-overlay[data-screen='draft'] {
+  background: rgb(4 8 11 / 0.86);
 }

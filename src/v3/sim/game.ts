@@ -373,6 +373,10 @@ export interface Game {
   armory: ArmoryLevels;
   /** Ability levels held this run, and how charged each one is. */
   levels: Levels;
+  /** The held abilities in button order: a new one takes the next slot, a
+   *  swap takes the replaced one's (playtest round 1: ordered by roster, the
+   *  buttons moved under the player's thumb when a new one arrived). */
+  slots: AbilityId[];
   charge: Partial<Record<AbilityId, number>>;
   /** Times each ability went off this run. */
   uses: Partial<Record<AbilityId, number>>;
@@ -456,6 +460,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     channelCursor: 0,
     armory: { ...armory },
     levels: {},
+    slots: [],
     charge: {},
     uses: {},
     stats: s,
@@ -483,6 +488,9 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     const pick = g.offer.find((id): id is AbilityId => id !== 'resupply' && canTake(g.levels, id));
     if (pick) gainLevel(g, pick);
   }
+  // They would have been charging all along: a skipped-ahead run starts with
+  // them full (playtest round 1: at 0% a wave-10 test never used them).
+  if (firstWave > 1) for (const id of ABILITY_ORDER) if ((g.levels[id] ?? 0) > 0) g.charge[id] = need(id, g.levels[id]!);
   g.ammo = g.stats.rack;
   g.wave = Math.max(0, Math.floor(firstWave) - 1);
   startWave(g);
@@ -792,6 +800,7 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
   if (swap) {
     delete g.levels[replace];
     delete g.charge[replace];
+    if (id !== 'resupply') g.slots[g.slots.indexOf(replace!)] = id;
   }
   if (id === 'resupply') {
     for (const s of g.ships) s.hp = g.stats.shipHp;
@@ -808,6 +817,7 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
 function gainLevel(g: Game, id: AbilityId): void {
   const lv = (g.levels[id] ?? 0) + 1;
   g.levels[id] = lv;
+  if (!g.slots.includes(id)) g.slots.push(id);
   if (lv === 1) g.charge[id] = need(id, 1) * START_CHARGE;
   else g.charge[id] = Math.min(need(id, lv), g.charge[id] ?? 0);
 }

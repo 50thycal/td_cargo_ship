@@ -57,6 +57,7 @@ async function equip(page, ids, level = 1) {
     ([ids, level]) => {
       const g = window.__v3.game();
       g.levels = Object.fromEntries(ids.map((id) => [id, level]));
+      g.slots = [...ids];
       g.charge = Object.fromEntries(ids.map((id) => [id, 999]));
       g.gunMode = null;
     },
@@ -66,7 +67,7 @@ async function equip(page, ids, level = 1) {
 }
 
 const uses = (page, id) => page.evaluate((id) => window.__v3.game().uses[id] ?? 0, id);
-/** The button for an ability (slots follow the roster order). */
+/** The button for an ability (buttons follow the order abilities were taken in). */
 const slotOf = (page, id) => page.locator(`.v3-ability[data-ability="${id}"]`);
 const w2c = (page, x, y) => page.evaluate(([x, y]) => window.__v3.toClient(x, y), [x, y]);
 
@@ -87,18 +88,23 @@ try {
   check((await page.locator('.v3-armory-strip').textContent()).includes('500 salvage'), 'menu shows the salvage banked');
   await page.click('.v3-armory-strip');
   await page.waitForSelector('[data-screen="armory"]');
-  await page.click('[data-armory="warhead"] .v2-btn');
+  await page.click('[data-buy="warhead"]');
   await page.screenshot({ path: `${SHOT_DIR}/02-armory.png` });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
   check(saved.armory.warhead === 1 && saved.salvage === 420, `bought Wide Warhead 1 (salvage ${saved.salvage})`);
   await page.click('[data-screen="armory"] .v2-btn.primary:has-text("Back")');
   await page.waitForSelector('[data-screen="menu"]');
 
-  // ---- A run ----
+  // ---- A run: with an upgrade owned, the map asks which ONE it takes ----
   await page.click('[data-map="strait"]');
+  await page.waitForSelector('[data-screen="loadout"]');
+  check((await page.locator('.v3-gun.on').getAttribute('data-gun')) === 'warhead', 'the gun picker has the bought upgrade equipped');
+  check(await page.locator('.v3-gun[data-gun="reload"]').isDisabled(), 'an upgrade not bought cannot be picked');
+  await page.screenshot({ path: `${SHOT_DIR}/02b-gun-picker.png` });
+  await page.click('[data-start]');
   await page.waitForSelector('.playing');
   const blast = await page.evaluate(() => window.__v3.game().stats.blast);
-  check(Math.abs(blast - 22 * 1.2) < 1e-6, `the run's gun has the Armory's warhead (blast ${blast})`);
+  check(Math.abs(blast - 22 * 1.4) < 1e-6, `the run's gun has the Armory's warhead (blast ${blast})`);
   // Speed: one button now, stepping 1× → 1.25× → 1.5× → 2×.
   for (let k = 0; k < 3; k++) await page.click('.v3-speed');
   check((await page.locator('.v3-speed b').textContent()) === '2×', 'speed button steps to 2×');
@@ -201,6 +207,10 @@ try {
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);
   check(held === 1, 'the picked ability is held');
   check((await page.locator('.v3-ability:not(.empty)').count()) === 1, 'its button appears');
+  // Playtest round 1: a new ability starts empty (it used to start half full)
+  // and only an ability that is ready glows.
+  check((await page.locator('.v3-ability.charging .v3-ability-tag').first().textContent()) === '0%', 'a new ability starts empty (0%)');
+  check((await page.locator('.v3-ability.empty').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'empty slots never animate');
 
   // ---- Phone landscape ----
   await page.setViewportSize({ width: 844, height: 390 });

@@ -82,7 +82,12 @@ Two knobs per ability (`src/v3/data/abilities.ts`):
 
 Rules:
 
-- A new ability arrives **half charged**, so it gets tried in its first wave.
+- A new ability arrives **empty** and its button fills from nothing (round 1:
+  starting half full read as a random state). A run skipped ahead to a later
+  wave (dev) hands its abilities over full, as they would have charged.
+- Each ability keeps its **button slot**: a new one takes the next free slot,
+  a swap takes the replaced one's (round 1: ordered by roster, buttons moved
+  under the thumb when a new ability arrived).
   Charge carries across waves and survives levelling up.
 - Only one takeover at a time (the gun can't be a railgun and a coil at once).
 - An aimed ability that would do nothing (a swipe too short, a tap with no
@@ -108,24 +113,34 @@ Rules:
 
 ## The Armory
 
-`src/v3/data/armory.ts`. Five upgrades, five levels each, only the main gun:
+`src/v3/data/armory.ts`. Five upgrades, five levels each, only the main gun.
+Levels are bought for good, but **a run takes ONE upgrade**: the equipped one
+(playtest round 1: "the player should only be allowed to select one… they
+don't get all of them"). The first upgrade bought is equipped; after that the
+**Choose your gun** screen comes up whenever a map is started (from the menu,
+Next or Try again), with the last choice ready, and the Armory has an Equip
+button on each owned row. The menu strip shows the gun equipped.
 
-| Upgrade | Per level | At level 5 |
-|---|---|---|
-| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) |
-| Wide Warhead | blast +20% | 2× blast |
-| Fast Motors | interceptors +12% faster | 1.6× speed |
-| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds |
-| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 |
+| Upgrade | Per level | At level 5 | Alone at L5 (average bot) |
+|---|---|---|---|
+| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) | 80% clears |
+| Wide Warhead | blast +40% | 3× blast | 68% |
+| Fast Motors | interceptors +20% faster | 2× speed | 67% |
+| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds | 83% |
+| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 | 82% |
 
-It stops short of the line V2's round 6 audit found (an 11-round rack
+The base gun clears 43% for the same bot. Round 1 strengthened Wide Warhead
+(+20% a level changed nothing on its own: 43%) and Fast Motors (+12% a level:
+53%) once a run took one upgrade instead of all five.
+
+Each stops short of the line V2's round 6 audit found (an 11-round rack
 reloading 55% faster let mashing win). Levels cost 80 / 160 / 280 / 450 /
-700 salvage (8,350 for everything). A run pays 1 salvage per ship delivered,
-6 per wave cleared, 40 for clearing the map and 80 more the first time:
-about 130–180 a run. Lost runs pay too, so a hard map is never a dead end.
+700 salvage (1,670 to max one upgrade). A run pays 1 salvage per ship
+delivered, 6 per wave cleared, 40 for clearing the map and 80 more the first
+time: about 100–180 a run. Lost runs pay too.
 
-Dev mode adds a **Gun** chip on the menu: your Armory, the base gun, or every
-upgrade maxed; dev runs never earn or spend salvage.
+Dev mode adds a **Gun** chip on the menu: the equipped upgrade, the base gun,
+or the equipped upgrade at level 5; dev runs never earn or spend salvage.
 
 ## Measurements
 
@@ -154,7 +169,10 @@ carry a run from the first wave while the Armory carries the progression
 between runs.
 
 **The whole game** (all five maps cleared in order, from an empty Armory,
-spending salvage after every run):
+spending salvage after every run). Measured before round 1's one-gun rule;
+with one gun (investing in Deep Magazine / Wide Warhead): sharp bot 1.1 /
+1.6 h, average 0.8 / 1.4 h, casual 7+ h and still stuck on map 2–3 after 60
+runs (see v3-playtest-round1.md). Before:
 
 | Player | Time | Runs | Notes |
 |---|---|---|---|

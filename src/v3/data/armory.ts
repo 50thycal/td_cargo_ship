@@ -1,7 +1,8 @@
 // THE ARMORY (V3). The main gun has no upgrades inside a run: its stats are
 // set before the run, here, the way gear sets your weapon in Survivor.io.
 // Salvage earned from every run (won or lost) buys armory levels, and the
-// levels are permanent. Five upgrades, each touching only the main gun.
+// levels are permanent. Five upgrades, each touching only the main gun; a
+// run takes ONE of them, the one equipped (playtest round 1).
 //
 // `gunStats()` turns armory levels into the numbers the sim reads; with no
 // levels it is exactly V2's base gun.
@@ -30,8 +31,11 @@ export const ARMORY_COSTS = [80, 160, 280, 450, 700] as const;
  *  faster let mashing win, so the armory stops short of that: −30% reload
  *  and a 10-round rack at the top. */
 const RELOAD = [1, 0.94, 0.88, 0.82, 0.76, 0.7];
-const WARHEAD = [1, 1.2, 1.4, 1.6, 1.8, 2];
-const MOTOR = [1, 1.12, 1.24, 1.36, 1.48, 1.6];
+// V3 round 1: a run takes one upgrade, so each must matter on its own. At
+// +20% a level Wide Warhead changed nothing (43% clears with or without it,
+// average bot); a blast needs about 3× before it reaches past the target.
+const WARHEAD = [1, 1.4, 1.8, 2.2, 2.6, 3];
+const MOTOR = [1, 1.2, 1.4, 1.6, 1.8, 2];
 const MAGAZINE = [0, 1, 2, 2, 3, 4];
 const CONTACT = [0, 5, 10, 14, 17, 20];
 
@@ -45,13 +49,13 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
   warhead: {
     id: 'warhead',
     name: 'Wide Warhead',
-    blurb: 'Interceptor blast 20% wider',
+    blurb: 'Interceptor blast 40% wider',
     show: (l) => `${Math.round(WARHEAD[l] * 100)}% blast`,
   },
   motor: {
     id: 'motor',
     name: 'Fast Motors',
-    blurb: 'Interceptors fly 12% faster',
+    blurb: 'Interceptors fly 20% faster',
     show: (l) => `${Math.round(MOTOR[l] * 100)}% speed`,
   },
   magazine: {

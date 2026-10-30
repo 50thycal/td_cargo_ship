@@ -65,13 +65,13 @@ export interface DevSettings {
   watchSpeed: number;
   /** Who plays in watch mode: a persona id from sim/mimic (round 12). */
   bot: string;
-  /** V3: the main gun a dev run uses — your Armory, the base gun, or every
-   *  upgrade maxed. */
+  /** V3: the main gun a dev run uses — your equipped upgrade, the base gun,
+   *  or the equipped upgrade at its top level. */
   armory: DevArmory;
 }
 
 export type DevArmory = 'yours' | 'none' | 'max';
-export const DEV_ARMORY: Record<DevArmory, string> = { yours: 'Yours', none: 'Base gun', max: 'Maxed' };
+export const DEV_ARMORY: Record<DevArmory, string> = { yours: 'Equipped', none: 'Base gun', max: 'Equipped, maxed' };
 
 const FLAG = 'straitwatch.v3.dev';
 const SETTINGS = 'straitwatch.v3.dev.settings';
