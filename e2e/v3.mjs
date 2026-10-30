@@ -1,7 +1,8 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
 // Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
 // map 1 → weapon pickups through real input (tap the pickup, then tap to
-// fire it: Railgun, Air Strike, Salvo, EMP, Smoke, Decoy) → defends to the
+// fire it: Railgun, Air Strike, Flak, Cryo, Gravity Well, Seekers, Laser) →
+// defends to the
 // draft → picks a weapon → phone-size layout → the notice tray on every
 // map. Fails on any page error.
 //
@@ -122,7 +123,7 @@ try {
 
   // ---- Weapons (round 2): drafted weapons drop as pickups; a tap on the
   // pickup loads the gun for 15 s; every tap then fires it. No buttons. ----
-  await equip(page, ['railgun', 'airstrike', 'salvo']);
+  await equip(page, ['railgun', 'airstrike', 'seeker']);
   await page.screenshot({ path: `${SHOT_DIR}/03-loadout.png` });
   check((await page.locator('.v3-weapon.held').count()) === 3, 'the loadout shows the three weapons held');
   check((await page.locator('.v3-weapons button, .v3-ability').count()) === 0, 'there are no ability buttons to press');
@@ -150,26 +151,40 @@ try {
   await page.waitForTimeout(60);
   await page.screenshot({ path: `${SHOT_DIR}/05-railgun-loaded.png` });
 
-  // Each of the others through the same real taps: pickup, then a tap.
+  // Each of the others through the same real taps: pickup, then a tap —
+  // on open water for the shells and the jet, on a threat for the seekers
+  // and the laser.
   const sig = {
-    airstrike: () => window.__v3.game().allies.length > 0,
-    salvo: () => window.__v3.game().interceptors.some((i) => i.src === 'salvo'),
-    emp: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'emp'),
-    smoke: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'smoke'),
-    decoy: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'decoy'),
+    airstrike: { open: true, ok: () => window.__v3.game().allies.length > 0 },
+    flak: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'flak') },
+    cryo: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'cryo') },
+    well: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'well') },
+    seeker: { open: false, ok: () => window.__v3.game().interceptors.some((i) => i.src === 'seeker') },
+    laser: { open: false, ok: () => window.__v3.game().fx.some((f) => f.kind === 'laser') },
   };
-  for (const id of Object.keys(sig)) {
+  for (const [id, how] of Object.entries(sig)) {
     await equip(page, [id]);
     await dropWeapon(page, id, 600, 520);
     const p = await w2c(page, 600, 520);
     await page.mouse.click(p.x, p.y);
     const on = await page.evaluate(() => window.__v3.game().weapon?.id);
+    if (!how.open) {
+      // A tough target that sits still, so the tap lands on it.
+      await page.evaluate(() => {
+        const g = window.__v3.game();
+        g.threats.push({ id: 80000 + g.nextId++, kind: 'heavy', x: 900, y: 300, vx: 0, vy: 0, hp: 99, speed: 0, heading: 0, target: -1, age: 0, phase: 0, dead: false, sx: 0, sy: 0, ix: 0, iy: 0, dur: 1, apex: 0, spawnT: 0, frozenT: 99 });
+      });
+    }
     const t = await w2c(page, 900, 300);
     await page.mouse.click(t.x, t.y);
-    const ok = await page.evaluate(`(${sig[id].toString()})()`);
-    check(on === id && ok, `${id}: its pickup loads it and a tap on open water fires it`);
-    await page.waitForTimeout(120);
-    if (id === 'airstrike') await page.screenshot({ path: `${SHOT_DIR}/06-airstrike.png` });
+    const ok = await page.evaluate(`(${how.ok.toString()})()`);
+    check(on === id && ok, `${id}: its pickup loads it and a tap ${how.open ? 'on open water' : 'on a threat'} fires it`);
+    await page.waitForTimeout(150);
+    if (id === 'well' || id === 'flak') await page.screenshot({ path: `${SHOT_DIR}/06-${id}.png` });
+    await page.evaluate(() => {
+      const g = window.__v3.game();
+      g.threats = g.threats.filter((th) => th.id < 80000);
+    });
   }
 
   // The log has taps only (a weapon is a pickup and a tap, nothing else).
@@ -177,7 +192,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 8 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 9 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -204,11 +219,11 @@ try {
   // ---- Phone landscape ----
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(300);
-  await equip(page, ['emp', 'railgun', 'decoy'], 3);
-  await dropWeapon(page, 'decoy', 900, 450);
+  await equip(page, ['flak', 'railgun', 'well'], 3);
+  await dropWeapon(page, 'well', 900, 450);
   await page.evaluate(() => {
     const g = window.__v3.game();
-    g.weapon = { id: 'emp', level: 3, t: 9 };
+    g.weapon = { id: 'flak', level: 3, t: 9 };
   });
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${SHOT_DIR}/11-phone.png` });

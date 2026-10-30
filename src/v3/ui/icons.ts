@@ -5,37 +5,37 @@
 import type { CardId } from '../data/abilities';
 
 export const ICON_COLOR: Record<CardId, string> = {
-  emp: '#c084fc',
+  flak: '#fb923c',
+  seeker: '#a3e635',
+  laser: '#fde047',
+  cryo: '#7dd3fc',
+  well: '#c084fc',
   airstrike: '#60a5fa',
   railgun: '#f472b6',
   tesla: '#a5b4fc',
-  decoy: '#fb923c',
-  smoke: '#c7ced6',
-  salvo: '#ffb44f',
-  hunter: '#5eead4',
   resupply: '#8be38b',
-};
+}
 
 const PATHS: Record<CardId, string> = {
-  // A pulse ring around a lightning bolt.
-  emp: '<circle cx="16" cy="16" r="12" stroke-dasharray="4 3"/><path d="M18 7 L11 17 H16 L14 25 L21 14 H16 Z"/>',
+  // A flak burst: a ring of shrapnel around a ragged cloud.
+  flak: '<circle cx="16" cy="16" r="6"/><path d="M16 3 V7 M16 25 V29 M3 16 H7 M25 16 H29 M7 7 L10 10 M25 7 L22 10 M7 25 L10 22 M25 25 L22 22"/>',
+  // Three seekers fanning out from one launch point.
+  seeker: '<path d="M5 27 L13 11 M5 27 L18 17 M5 27 L24 24"/><circle cx="14" cy="9" r="2.4"/><circle cx="20" cy="16" r="2.4"/><circle cx="26" cy="24" r="2.4"/>',
+  // A straight beam ending on a target ring.
+  laser: '<path d="M4 28 L21 11"/><circle cx="24" cy="8" r="4.5"/><path d="M24 1 V3 M24 13 V15 M17 8 H19 M29 8 H31"/>',
+  // A snowflake.
+  cryo: '<path d="M16 3 V29 M4.7 9.5 L27.3 22.5 M4.7 22.5 L27.3 9.5 M12.5 5.5 L16 9 L19.5 5.5 M12.5 26.5 L16 23 L19.5 26.5"/>',
+  // A spiral pulling inward.
+  well: '<path d="M16 16 m-2 0 a2 2 0 1 1 4 0 a5 5 0 1 1 -10 0 a8 8 0 1 1 16 0 a11 11 0 1 1 -22 0"/>',
   // A jet seen from above, its strike line ahead.
   airstrike: '<path d="M16 4 L18 12 L27 17 L18 17 L19 24 L16 22 L13 24 L14 17 L5 17 L14 12 Z"/><path d="M16 26 V30" stroke-dasharray="1.5 2"/>',
   // A beam leaving a barrel, piercing two targets.
   railgun: '<path d="M4 26 L28 6"/><path d="M3 21 L9 27" /><circle cx="15" cy="16.8" r="2.6"/><circle cx="22" cy="11" r="2.6"/>',
   // A coil throwing a forked spark.
   tesla: '<path d="M10 28 V14 M7 18 H13 M7 22 H13 M7 26 H13"/><path d="M10 14 L14 9 L12 8 L18 3 M14 9 L20 10 L19 12 L26 13"/>',
-  // A missile's path bent off toward a burning decoy.
-  decoy: '<circle cx="23" cy="9" r="3"/><path d="M23 2 V4 M23 14 V16 M16 9 H18 M28 9 H30"/><path d="M4 27 Q8 17 18 12" stroke-dasharray="2.5 3"/>',
-  // A wall of smoke clouds along a line.
-  smoke: '<circle cx="8" cy="18" r="4.5"/><circle cx="15" cy="14" r="5.5"/><circle cx="23" cy="17" r="5"/><path d="M3 26 H29" stroke-dasharray="3 2.5"/>',
-  // Rockets raining on a target ring.
-  salvo: '<circle cx="16" cy="22" r="7"/><path d="M8 4 L13 14 M16 3 V14 M24 4 L19 14"/>',
-  // A periscope under a crosshair.
-  hunter: '<circle cx="16" cy="16" r="10"/><path d="M16 2 V8 M16 24 V30 M2 16 H8 M24 16 H30"/><path d="M14 20 V13 H19"/>',
   // A repair cross in a crate.
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
-};
+}
 
 export function upgradeIcon(id: CardId, size = 32): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg';

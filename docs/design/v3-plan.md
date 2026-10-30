@@ -13,9 +13,11 @@ upgrades**, after the player's brief (inspired by Survivor.io):
   fired from buttons, which was "too much managing"). A weapon you hold drops
   from kills like the power-ups; tapping its pickup loads the main gun with
   it for **15 s**, and every tap fires it, spending a round like any shot.
+- **Round 3** replaced the five weakest weapons with five built for the
+  15 s swap ([v3-playtest-round3.md](v3-playtest-round3.md)).
 - All of V2's passive cards are gone. **EMP and Strike Package are no longer
-  power-ups**; they came back as the EMP Rounds and Air Strike weapons. The
-  other pickups are unchanged.
+  power-ups** (Strike came back as the Air Strike weapon). The other pickups
+  are unchanged.
 
 V3 lives at `/v3.html` (`npm run dev:v3`), its code in `src/v3/` (a fork of
 `src/v2/`), with its own save, logs (`game: 'v3'`, ids `v3-…`) and tools.
@@ -61,13 +63,14 @@ Research summary (fan wikis and guides; some contradict each other):
 ## Weapons
 
 Playtest round 2 replaced charging and buttons with drops
-([v3-playtest-round2.md](v3-playtest-round2.md)). `src/v3/data/abilities.ts`
+([v3-playtest-round2.md](v3-playtest-round2.md)); round 3 replaced five of
+the eight ([v3-playtest-round3.md](v3-playtest-round3.md)). `src/v3/data/abilities.ts`
 holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
 - **Draft** a weapon to put it in the drop pool (levels and evolutions as
   before, three slots, swaps when full).
-- **Drops**: a kill that drops no power-up drops a weapon you hold at its
-  power-up chance; after 15 s without one, the next kill drops one. One
+- **Drops**: a kill that drops no power-up drops a weapon you hold at 0.4×
+  its power-up chance; after 30 s without one, the next kill drops one. One
   weapon pickup on the water at a time; it floats 7 s (power-ups: 5).
   Power-ups drop exactly as before (sharing one roll, weapons crowded out
   repairs and Overdrives and the bot's clears halved).
@@ -79,14 +82,17 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
 | Weapon → evolved | Answers | A tap while loaded | L1 → L2 → **L3 evolution** |
 |---|---|---|---|
-| EMP Rounds → **Ion Storm** | Swarms | an EMP shell (at a threat, or onto open water) | burst fries every drone within 150 → 190, missiles in it jammed 1.5 s → **230, and a 3 s ion cloud: drones die in it, threats crawl at half speed** |
+| Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
+| Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
+| Point-Defense Laser → **Overcharge** | Fast missiles | an instant hit on the threat under the finger (open water: nothing) | 1 dmg → 2 dmg → **2 dmg, and a kill gives the round back** |
+| Cryo Rounds → **Absolute Zero** | Heavies | a cryo shell | everything within 100 frozen 2.5 s and bitten for 1, doubled on ice; frozen threats take double → 120, 3 s → **140, and any hit shatters a frozen threat (the burst included)** |
+| Gravity Well → **Singularity** | Spread raids | a vortex shell | drones, missiles and jets within 200 dragged in at 320/s for 1.5 s, then 2 dmg to those within 100 (ballistics fly on) → 240, 3 dmg → **260, holds 2 s, 4 dmg** |
 | Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
 | Railgun → **Mass Driver** | Heavies | a beam from the carrier through the tap | 1 dmg → 2 dmg, wider → **4 dmg, wide: two bring down a heavy** |
 | Tesla Arc → **Storm Coil** | Crowds | a plain shot whose hit arcs | 3 arcs → 4 arcs, every arc arcs again → **a free second shot at the nearest uncovered threat** |
-| Decoy Flares → **Ghost Fleet** | Guided | a flare shell | every homing missile within 300 chases the flare and bursts harmlessly → 420 → **the flare hangs 4 s, pulling in any that come near** |
-| Smoke Shells → **Fog Bank** | Strafing | a smoke shell (at a threat, or onto the water over your ships) | a 110 cloud for 8 s: missiles lose ships in it, and lose lock 2.5 s flying through → 130, 10 s, strafing guns blind → **160, 12 s; ballistics landing in it miss, drones go blind** |
-| Hellfire Salvo → **Saturation** | Raids | rockets at the tapped spot | 4 rockets (1 dmg) → 6 (2 dmg) → **8, each hunting a threat near the spot** |
-| Sub Hunter → **Hunter-Killer** | Launchers | a tap on a sub or truck destroys it (a threat: a plain shot) | the launcher → its missiles in the air too → **every shot also hunts the nearest sub or truck** |
+
+Cut in round 3 (round 2's five weakest): EMP Rounds, Hellfire Salvo, Smoke
+Shells, Decoy Flares, Sub Hunter.
 
 ## Screen
 
@@ -181,18 +187,21 @@ lost) a purpose. To make the whole game longer, the knobs are salvage per
 run and Armory costs (`SALVAGE`, `ARMORY_COSTS`) and how hard the later maps
 are without Armory levels.
 
-**Weapon tier** (round 2, drops; average bot, fresh Armory, the weapon as
-its first pick, 40 runs each across all maps, ±8 points; measured at the
-previous drop rate, share 0.8 / pity 18 s, so every number has since risen a
-little):
+**Weapon tier** (round 3; average bot, fresh Armory, each weapon **alone**:
+drafted first, every other weapon stripped from the build, 40 runs across
+all maps, ±10 points). Round 2 measured "first pick, then anything", which
+hid how strong Air Strike and Railgun were behind weak partners; alone, the
+old roster ranged 0% (Decoy Flares) to 100% (Air Strike, Railgun) at the
+old drop rate.
 
-| Tesla Arc | Railgun | Sub Hunter | EMP Rounds | Hellfire Salvo | Smoke Shells | Air Strike | Decoy Flares |
+| Air Strike | Laser | Seeker Pod | Railgun | Flak Cannon | Gravity Well | Cryo Rounds | Tesla Arc |
 |---|---|---|---|---|---|---|---|
-| 40% | 35% | 33% | 30% | 30% | 30% | 25% | 20% |
+| 78% | 70% | 55% | 50% | 40% | 38% | 30% | 28% |
 
-With no weapons the same bot clears 0%. Under the button system the tier
-was 29–50% (Railgun 50%, Decoy 29%). The clear-rate table above is the
-round-1 (button) measurement; round 2's is in v3-playtest-round2.md.
+With no weapons the same bot clears 0%. Cryo, Flak and Gravity Well were
+measured after their last buffs; the other five before them (unaffected).
+The clear-rate table above is the round-1 (button) measurement; round 3's
+is in v3-playtest-round3.md.
 
 ## Where to tune
 

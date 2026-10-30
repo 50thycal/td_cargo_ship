@@ -286,8 +286,8 @@ export const DRONE = {
   weaveFreq: 2.5,
 } as const;
 
-// V3: EMP and Strike Package are no longer power-ups — they came back as the
-// EMP Rounds and Air Strike weapons (data/abilities.ts). A 'weapon' pickup
+// V3: EMP and Strike Package are no longer power-ups (Strike came back as
+// the Air Strike weapon, data/abilities.ts). A 'weapon' pickup
 // loads one of the weapons you hold into the gun (which one is on the pickup).
 export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam';
 export type PickupKind = PowerKind | 'weapon';
