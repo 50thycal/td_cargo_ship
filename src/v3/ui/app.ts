@@ -26,16 +26,16 @@ import {
   CHARGE_LABEL,
   MAX_SLOTS,
   RESUPPLY_TEXT,
+  SHORT_NAME,
   abilityName,
   canSwapIn,
   canTake,
-  loadout,
   need,
   type AbilityId,
   type CardId,
 } from '../data/abilities';
-import { ARMORY, ARMORY_MAX, ARMORY_ORDER, armoryLevel, nextCost, type ArmoryLevels } from '../data/armory';
-import { buyArmory, loadProgress, recordResult, type Progress } from '../platform/save';
+import { ARMORY, ARMORY_MAX, ARMORY_ORDER, armoryLevel, nextCost, type ArmoryId, type ArmoryLevels } from '../data/armory';
+import { buyArmory, equipArmory, loadProgress, recordResult, runGun, type Progress } from '../platform/save';
 import {
   abilityReady,
   chargeShare,
@@ -164,6 +164,8 @@ export class App {
   private abilityKeys: string[] = [];
   /** An ability waiting for its gesture (a line, a hold or a target). */
   private armed: AbilityId | null = null;
+  /** Abilities whose first READY this run has been explained. */
+  private toldReady = new Set<AbilityId>();
   /** The gesture in progress for the armed ability. */
   private gesture: { id: AbilityId; pointer: number; x: number; y: number; x2: number; y2: number; since: number } | null = null;
 
@@ -396,7 +398,7 @@ export class App {
   private handleAbility(slot: number): void {
     const g = this.game;
     if (!g || !this.rec || g.phase !== 'wave' || this.paused) return;
-    const id = loadout(g.levels)[slot];
+    const id = g.slots[slot];
     if (!id) return;
     if (this.bot && this.control === 'bot') this.setControl('you');
     if (this.armed === id) {
@@ -442,8 +444,10 @@ export class App {
       ok = this.rec.activate(id, { x: ges.x, y: ges.y, x2: x, y2: y });
       if (!ok) this.showBanner('SWIPE FURTHER', ABILITIES[id].how, ABILITY_NOTE);
     } else if (act === 'hold') {
+      // It lands where the ring is when the finger lifts (the ring follows
+      // the finger while held, so what you see is where it goes).
       const held = (performance.now() - ges.since) / 1000;
-      ok = this.rec.activate(id, { x: ges.x, y: ges.y, power: Math.min(1, held / AB.salvo.holdFull) });
+      ok = this.rec.activate(id, { x, y, power: Math.min(1, held / AB.salvo.holdFull) });
     } else if (act === 'target') {
       ok = this.rec.activate(id, { x, y });
       if (!ok) this.showBanner('NO SUB OR TRUCK THERE', ABILITIES[id].how, ABILITY_NOTE);
@@ -469,9 +473,13 @@ export class App {
     return { kind: 'target', x: ges.x2, y: ges.y2, x2: ges.x2, y2: ges.y2, power: 0, color, label };
   }
 
-  /** Per frame: each button's ability, level, charge ring and state. */
+  /** Per frame: each button's ability, level, charge and state. One look
+   *  per state (V3 round 1 playtest: the buttons were hard to read):
+   *  empty (a dashed circle, nothing else), charging (the colour rises
+   *  inside the button, the tag says how far), ready (full colour, a slow
+   *  glow, READY), armed (gold, AIM), running (its shots or seconds). */
   private renderAbilities(g: Game): void {
-    const held = loadout(g.levels);
+    const held = g.slots;
     if (this.armed && (!abilityReady(g, this.armed) || g.phase !== 'wave')) this.disarm();
     for (let i = 0; i < MAX_SLOTS; i++) {
       const b = this.abilityBtns[i];
@@ -480,24 +488,38 @@ export class App {
       const key = id ? `${id}:${lv}` : '';
       if (key !== this.abilityKeys[i]) {
         this.abilityKeys[i] = key;
+        // A new occupant starts clean: no flash or glow carried over.
+        b.className = 'v3-ability';
         b.replaceChildren();
         b.dataset.ability = id ?? '';
         if (id) {
           b.style.setProperty('--card-color', ICON_COLOR[id]);
-          b.append(upgradeIcon(id, 26), el('span', 'v3-ability-name', abilityName(id, lv)), el('span', 'v3-ability-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`));
+          b.append(
+            el('span', 'v3-ability-fill'),
+            upgradeIcon(id, 24),
+            el('span', 'v3-ability-name', SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0]),
+            el('span', 'v3-ability-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`),
+            el('span', 'v3-ability-tag'),
+          );
           b.setAttribute('aria-label', `${abilityName(id, lv)}, key ${i + 1}`);
         } else {
-          b.append(el('span', 'v3-ability-name', 'empty'));
+          b.style.removeProperty('--card-color');
           b.setAttribute('aria-label', 'Empty ability slot');
         }
       }
       const ready = !!id && abilityReady(g, id);
-      const active = !!id && g.gunMode?.id === id;
-      b.style.setProperty('--charge', id ? (active ? '1' : chargeShare(g, id).toFixed(3)) : '0');
-      b.classList.toggle('empty', !id);
-      b.classList.toggle('ready', ready && this.armed !== id);
-      b.classList.toggle('armed', !!id && this.armed === id);
-      b.classList.toggle('active', active);
+      const mode = id && g.gunMode?.id === id ? g.gunMode : null;
+      const armed = !!id && this.armed === id;
+      const share = id ? chargeShare(g, id) : 0;
+      b.style.setProperty('--charge', mode ? '1' : share.toFixed(3));
+      const state = !id ? 'empty' : armed ? 'armed' : mode ? 'active' : ready ? 'ready' : 'charging';
+      for (const c of ['empty', 'armed', 'active', 'ready', 'charging']) b.classList.toggle(c, c === state);
+      if (id) {
+        const tag = b.querySelector<HTMLElement>('.v3-ability-tag')!;
+        const text =
+          state === 'armed' ? 'AIM' : mode ? (mode.id === 'railgun' ? `×${mode.shots}` : `${Math.ceil(mode.t)}s`) : ready ? 'READY' : `${Math.floor(share * 100)}%`;
+        if (tag.textContent !== text) tag.textContent = text;
+      }
       b.disabled = !id;
     }
   }
@@ -573,6 +595,14 @@ export class App {
       // An armed ability takes this touch: a line, a hold or a target, not a shot.
       if (this.armed && this.game.phase === 'wave') {
         this.gesture = { id: this.armed, pointer: e.pointerId, x: w.x, y: w.y, x2: w.x, y2: w.y, since: performance.now() };
+        // Keep the finger for the whole gesture: a swipe or a hold that ends
+        // over a rail still ends here (playtest round 1: it fired nothing and
+        // left the ability stuck armed).
+        try {
+          this.canvas.setPointerCapture(e.pointerId);
+        } catch {
+          // a synthetic pointer can't be captured; the gesture still works on the field
+        }
         return;
       }
       this.fire(w.x, w.y);
@@ -844,12 +874,20 @@ export class App {
           break;
         }
         case 'abilityReady': {
-          const slot = loadout(g.levels).indexOf(ev.id);
-          const b = this.abilityBtns[slot];
+          // A one-shot pop as it fills (it removes itself; the glow that
+          // follows belongs to the ready state alone).
+          const b = this.abilityBtns[g.slots.indexOf(ev.id)];
+          // The first time each ability fills in a run, say what to do with it.
+          if (!this.toldReady.has(ev.id)) {
+            this.toldReady.add(ev.id);
+            const lv = g.levels[ev.id] ?? 1;
+            this.showBanner(`${abilityName(ev.id, lv).toUpperCase()} READY`, `Press its button (bottom right). ${ABILITIES[ev.id].how}.`, { key: 'ability' });
+          }
           if (b) {
             b.classList.remove('flash');
             void b.offsetWidth;
             b.classList.add('flash');
+            b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
           }
           break;
         }
@@ -1070,7 +1108,7 @@ export class App {
       const m = MAPS[id];
       const locked = i >= this.progress.unlocked && !this.dev;
       const best = this.progress.best[id];
-      const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.play(id));
+      const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.prepare(id));
       card.disabled = locked;
       card.dataset.map = id;
       card.append(
@@ -1099,29 +1137,32 @@ export class App {
     this.overlay.querySelector('.v2-map-grid')!.append(...cards);
   }
 
-  /** Menu strip: salvage banked, the gun's levels, and the way in. */
+  /** Menu strip: salvage banked, the upgrade equipped, and the way in. */
   private armoryStrip(): HTMLElement {
     const p = this.progress;
     const strip = button('', 'v3-armory-strip', () => this.showArmory());
-    const pips = el('span', 'v3-armory-pips');
-    for (const id of ARMORY_ORDER) {
-      const lv = armoryLevel(p.armory, id);
-      pips.append(el('span', '', `${ARMORY[id].name.split(' ').pop()} ${lv}/${ARMORY_MAX}`));
-    }
+    const eq = p.equipped;
     const affordable = ARMORY_ORDER.some((id) => (nextCost(p.armory, id) ?? Infinity) <= p.salvage);
-    strip.append(el('strong', '', '⚓ ARMORY'), el('span', 'v3-salvage', `${p.salvage.toLocaleString()} salvage`), pips, el('em', affordable ? 'v3-can-buy' : '', affordable ? 'Upgrade ready →' : 'Main gun upgrades →'));
+    strip.append(
+      el('strong', '', '⚓ ARMORY'),
+      el('span', 'v3-salvage', `${p.salvage.toLocaleString()} salvage`),
+      el('span', 'v3-equipped', eq ? `Gun: ${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'Gun: base (nothing equipped)'),
+      el('em', affordable ? 'v3-can-buy' : '', affordable ? 'Upgrade ready →' : 'Main gun upgrades →'),
+    );
     return strip;
   }
 
-  /** The Armory: five permanent main-gun upgrades bought with salvage. The
-   *  gun has no upgrades inside a run; this is where it gets better. */
+  /** The Armory: five main-gun upgrades bought with salvage, levels kept
+   *  for good. A run takes ONE of them (playtest: "they don't get all of
+   *  them"): the equipped one, chosen here or when a map starts. */
   private showArmory(back: () => void = () => this.showMenu()): void {
     const p = this.progress;
     const rows = ARMORY_ORDER.map((id) => {
       const def = ARMORY[id];
       const lv = armoryLevel(p.armory, id);
       const cost = nextCost(p.armory, id);
-      const row = el('div', 'v3-armory-row');
+      const equipped = p.equipped === id;
+      const row = el('div', `v3-armory-row${equipped ? ' equipped' : ''}`);
       row.dataset.armory = id;
       const pips = el('span', 'v2-card-level');
       for (let k = 1; k <= ARMORY_MAX; k++) pips.append(el('i', k <= lv ? 'had' : ''));
@@ -1129,20 +1170,73 @@ export class App {
       text.append(el('strong', '', def.name), el('span', '', def.blurb), pips);
       const now = el('div', 'v3-armory-stat');
       now.append(el('b', '', def.show(lv)), ...(cost === null ? [] : [el('span', '', `next: ${def.show(lv + 1)}`)]));
+      const equip = button(equipped ? 'EQUIPPED' : lv > 0 ? 'Equip' : 'Not bought', `v2-btn v3-equip${equipped ? ' on' : ''}`, () => {
+        if (equipArmory(p, equipped ? null : id)) this.showArmory(back);
+      });
+      equip.disabled = lv <= 0;
+      equip.dataset.equip = id;
       const buy = button(cost === null ? 'MAXED' : `Upgrade · ${cost}`, `v2-btn${cost !== null && cost <= p.salvage ? ' primary' : ''}`, () => {
         if (buyArmory(p, id)) this.showArmory(back);
       });
       buy.disabled = cost === null || cost > p.salvage;
-      row.append(text, now, buy);
+      buy.dataset.buy = id;
+      row.append(text, now, equip, buy);
       return row;
     });
     const list = el('div', 'v3-armory-list');
     list.append(...rows);
+    const eq = p.equipped;
     this.showOverlay('v3-armory', [
       el('h2', '', 'Armory'),
-      el('p', 'v2-sub', `Your main gun, set before every run. Salvage comes from every run, won or lost: ${p.salvage.toLocaleString()} banked, ${p.earned.toLocaleString()} earned in all.`),
+      el(
+        'p',
+        'v2-sub',
+        `Levels you buy are yours for good, but each run takes ONE upgrade: ${eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'the base gun'} for now. ${p.salvage.toLocaleString()} salvage banked (salvage comes from every run, won or lost).`,
+      ),
       list,
       button('Back', 'v2-btn primary', back),
+    ]);
+  }
+
+  /** Before a run: pick the one gun upgrade it takes (the last one is
+   *  ready). With nothing bought yet there is nothing to pick. Watch mode
+   *  and the dev gun override skip it. */
+  private prepare(id: MapId): void {
+    const p = this.progress;
+    const owned = ARMORY_ORDER.filter((a) => armoryLevel(p.armory, a) > 0);
+    const watch = this.dev && this.devSettings.watch;
+    if (!owned.length || watch || (this.dev && this.devSettings.armory !== 'yours')) {
+      this.play(id);
+      return;
+    }
+    const tile = (a: ArmoryId | null) => {
+      const lv = a ? armoryLevel(p.armory, a) : 0;
+      const on = p.equipped === a;
+      const t = button('', `v3-gun${on ? ' on' : ''}`, () => {
+        equipArmory(p, a);
+        this.prepare(id);
+      });
+      t.dataset.gun = a ?? 'base';
+      t.disabled = !!a && lv <= 0;
+      if (a) {
+        const pips = el('span', 'v2-card-level');
+        for (let k = 1; k <= ARMORY_MAX; k++) pips.append(el('i', k <= lv ? 'had' : ''));
+        t.append(el('strong', '', ARMORY[a].name), pips, el('span', '', lv > 0 ? ARMORY[a].show(lv) : 'not bought'));
+      } else t.append(el('strong', '', 'Base gun'), el('span', '', 'no upgrade'));
+      return t;
+    };
+    const grid = el('div', 'v3-gun-grid');
+    grid.append(...ARMORY_ORDER.map((a) => tile(a)), tile(null));
+    const row = el('div', 'v2-btn-row');
+    const go = button(`Sail: ${MAPS[id].name} →`, 'v2-btn primary', () => this.play(id));
+    go.dataset.start = '1';
+    row.append(button('⚓ Armory', 'v2-btn', () => this.showArmory(() => this.prepare(id))), button('Menu', 'v2-btn', () => this.showMenu()), go);
+    this.showOverlay('v3-loadout', [
+      el('span', 'v2-draft-eyebrow', MAPS[id].name.toUpperCase()),
+      el('h2', '', 'Choose your gun'),
+      el('p', 'v2-sub', 'Your main gun takes ONE Armory upgrade into this run.'),
+      grid,
+      row,
     ]);
   }
 
@@ -1299,11 +1393,12 @@ export class App {
     this.begin();
   }
 
-  /** The main gun for a run: the Armory, or a dev override. */
+  /** The main gun for a run: the one equipped upgrade, or a dev override
+   *  (the base gun, or the equipped upgrade, Wide Warhead if none, maxed). */
   private runArmory(): ArmoryLevels {
-    if (!this.dev || this.devSettings.armory === 'yours') return { ...this.progress.armory };
-    const lv = this.devSettings.armory === 'max' ? ARMORY_MAX : 0;
-    return Object.fromEntries(ARMORY_ORDER.map((id) => [id, lv]));
+    if (!this.dev || this.devSettings.armory === 'yours') return runGun(this.progress);
+    if (this.devSettings.armory === 'none') return {};
+    return { [this.progress.equipped ?? 'warhead']: ARMORY_MAX };
   }
 
   /** Watch mode on or off for the run starting now. */
@@ -1452,6 +1547,8 @@ export class App {
 
   private begin(): void {
     if (!this.game) return;
+    this.toldReady.clear();
+    this.disarm();
     this.resetFinale();
     this.ghostRun = null;
     this.lastPhase = null;
@@ -1466,7 +1563,7 @@ export class App {
   /** The draft: three abilities. With all slots full a new one can still be
  *  taken: tap it, then tap the held ability it replaces. */
   private showDraft(g: Game, swapping: AbilityId | null = null): void {
-    const owned = loadout(g.levels);
+    const owned = g.slots;
     const full = owned.length >= MAX_SLOTS;
     const slots = el('div', `v2-slots${swapping ? ' choosing' : ''}`);
     for (let i = 0; i < MAX_SLOTS; i++) {
@@ -1548,18 +1645,23 @@ export class App {
     row.append(...cards);
     let rule: HTMLElement;
     if (swapping) {
-      rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${ABILITIES[swapping].name}: tap the ability it replaces above. That one and its levels are gone.`);
-      rule.append(button('Cancel', 'v2-link', () => {
+      rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${ABILITIES[swapping].name}: tap the one it replaces, above (its levels are lost).`);
+      rule.append(button('Cancel', 'v2-btn v3-cancel', () => {
         this.showDraft(g);
         this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
       }));
     } else {
+      // Say only what this hand allows (playtest round 1: with all three
+      // evolved the line still offered a level-up).
+      const allEvolved = full && owned.every((id) => (g.levels[id] ?? 0) >= ABILITY_MAX);
       rule = el(
         'p',
         'v2-sub',
-        full
-          ? 'Slots full: level up an ability you hold (level 3 evolves it), or swap a new one in.'
-          : `Pick one. You can hold ${MAX_SLOTS} abilities (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free); level 3 evolves.`,
+        allEvolved
+          ? 'All three abilities evolved: swap one for a new ability, or Resupply to keep them.'
+          : full
+            ? 'Slots full: level up an ability you hold (level 3 evolves it), or swap a new one in.'
+            : `Pick one. You can hold ${MAX_SLOTS} abilities (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free); level 3 evolves.`,
       );
     }
     // Dev stride: the waves it skips each still deal a card.
@@ -1593,10 +1695,10 @@ export class App {
     const buttons: HTMLElement[] = [];
     if (won) {
       buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
-      if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.play(next)));
+      if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.prepare(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
-      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.play(g.map.id)));
+      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id)));
     }
     if (!this.dev) {
       const affordable = ARMORY_ORDER.some((id) => (nextCost(this.progress.armory, id) ?? Infinity) <= this.progress.salvage);

@@ -3,9 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, START_CHARGE, abilityName, need, type AbilityId } from '../../src/v3/data/abilities';
-import { ARMORY_COSTS, ARMORY_MAX, ARMORY_ORDER, ARMORY_TOTAL, gunStats, nextCost, salvageFor, SALVAGE } from '../../src/v3/data/armory';
+import { ARMORY, ARMORY_COSTS, ARMORY_MAX, ARMORY_ORDER, ARMORY_TOTAL, gunStats, nextCost, salvageFor, SALVAGE } from '../../src/v3/data/armory';
 import { CARRIER, INTERCEPTOR, PICKUP_KINDS, SHIP } from '../../src/v3/data/config';
-import { buyArmory, loadProgress, recordResult, type Progress } from '../../src/v3/platform/save';
+import { buyArmory, equipArmory, loadProgress, recordResult, runGun, type Progress } from '../../src/v3/platform/save';
 import { runBot, SKILLS } from '../../src/v3/sim/bot';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
@@ -143,7 +143,7 @@ describe('the Armory (the main gun, set before a run)', () => {
   });
 
   it('every run pays salvage, a cleared map more, the first clear a bonus once', () => {
-    const p: Progress = { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, cleared: [] };
+    const p: Progress = { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, equipped: null, cleared: [] };
     const lost = recordResult(p, 'strait', { score: 900, wave: 4, cleared: false, delivered: 30, wavesCleared: 3 });
     expect(lost.salvage).toBe(30 * SALVAGE.perShip + 3 * SALVAGE.perWave);
     const won = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, delivered: 80, wavesCleared: 10 });
@@ -157,7 +157,7 @@ describe('the Armory (the main gun, set before a run)', () => {
   });
 
   it('buying spends salvage and raises the level; too dear or maxed does nothing', () => {
-    const p: Progress = { unlocked: 1, best: {}, salvage: ARMORY_COSTS[0] + 5, earned: 0, armory: {}, cleared: [] };
+    const p: Progress = { unlocked: 1, best: {}, salvage: ARMORY_COSTS[0] + 5, earned: 0, armory: {}, equipped: null, cleared: [] };
     expect(buyArmory(p, 'reload')).toBe(true);
     expect(p.armory.reload).toBe(1);
     expect(p.salvage).toBe(5);
@@ -167,10 +167,29 @@ describe('the Armory (the main gun, set before a run)', () => {
     expect(buyArmory(p, 'fuse')).toBe(false);
   });
 
+  it('a run takes ONE upgrade: the first one bought is equipped, only owned ones can be, and the gun has only it', () => {
+    const p: Progress = { unlocked: 1, best: {}, salvage: 1e6, earned: 0, armory: {}, equipped: null, cleared: [] };
+    expect(runGun(p)).toEqual({});
+    buyArmory(p, 'warhead');
+    buyArmory(p, 'warhead');
+    buyArmory(p, 'magazine');
+    expect(p.equipped).toBe('warhead');
+    expect(runGun(p)).toEqual({ warhead: 2 });
+    expect(equipArmory(p, 'reload')).toBe(false);
+    expect(equipArmory(p, 'magazine')).toBe(true);
+    expect(runGun(p)).toEqual({ magazine: 1 });
+    const g = createGame('strait', 1, 1, undefined, runGun(p));
+    expect(g.stats.rack).toBe(INTERCEPTOR.rack + 1);
+    expect(g.stats.blast).toBe(INTERCEPTOR.blast);
+    expect(equipArmory(p, null)).toBe(true);
+    expect(runGun(p)).toEqual({});
+  });
+
   it('an empty or broken save loads as a fresh record', () => {
     const p = loadProgress();
     expect(p.salvage).toBe(0);
     expect(p.armory).toEqual({});
+    expect(p.equipped).toBeNull();
     expect(p.unlocked).toBe(1);
   });
 });
@@ -189,7 +208,7 @@ describe('the draft deals abilities', () => {
     for (const id of g.offer) expect(ABILITY_ORDER).toContain(id);
   });
 
-  it('a new ability arrives half charged; levelling keeps its charge', () => {
+  it('a new ability arrives empty (START_CHARGE); levelling keeps its charge', () => {
     const g = quietGame();
     g.phase = 'draft';
     g.offer = ['emp', 'airstrike', 'railgun'];
@@ -217,6 +236,22 @@ describe('the draft deals abilities', () => {
     expect(MAX_SLOTS).toBe(3);
     expect(abilityName('railgun', 3)).toBe(ABILITIES.railgun.evolved);
     expect(abilityName('railgun', 2)).toBe(ABILITIES.railgun.name);
+  });
+
+  it('button slots are stable: a new ability takes the next slot, a swap takes the replaced one\'s', () => {
+    const g = quietGame();
+    const take = (id: 'salvo' | 'emp' | 'decoy' | 'airstrike', replace?: 'emp') => {
+      g.phase = 'draft';
+      g.offer = [id, 'tesla', 'hunter'];
+      pickUpgrade(g, id, replace);
+    };
+    take('salvo');
+    take('emp');
+    take('decoy');
+    // EMP is first in the roster, but Salvo was taken first and keeps slot 1.
+    expect(g.slots).toEqual(['salvo', 'emp', 'decoy']);
+    take('airstrike', 'emp');
+    expect(g.slots).toEqual(['salvo', 'airstrike', 'decoy']);
   });
 
   it('every ability has three levels, an evolved name, and nothing charges from shots or reloads', () => {
@@ -588,5 +623,45 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
     const v2 = await import('../../src/v2/data/maps');
     const v3 = await import('../../src/v3/data/maps');
     expect(JSON.stringify(v3.MAPS)).toBe(JSON.stringify(v2.MAPS));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest round 1: the words on the cards are the numbers in the game. These
+// drifted once already (tuning changed AB, the card text stayed).
+
+describe('card text matches the numbers', () => {
+  const L = (id: AbilityId, lv: number) => ABILITIES[id].levels[lv - 1];
+  it('every number an ability card quotes is the one the game uses', () => {
+    expect(L('emp', 1)).toContain(`${AB.emp.l1Count} drones`);
+    expect(L('emp', 3)).toContain(`${AB.emp.stormTime} s storm`);
+    expect(AB.airstrike.jets).toEqual([1, 2, 3]);
+    expect(L('airstrike', 1)).toMatch(/^A jet/);
+    expect(L('airstrike', 2)).toMatch(/^Two jets/);
+    expect(L('airstrike', 3)).toMatch(/three jets/);
+    expect(L('railgun', 1)).toContain(`next ${AB.railgun.shots[0]} taps`);
+    expect(L('railgun', 2)).toContain(`${AB.railgun.shots[1]} beams`);
+    expect(AB.railgun.damage[1]).toBe(AB.railgun.damage[0] * 2); // "twice the damage"
+    expect(L('railgun', 3)).toContain(`${AB.railgun.shots[2]} wide slugs`);
+    expect(AB.railgun.damage[2]).toBeGreaterThanOrEqual(8); // "one-shot heavy missiles" (8 HP)
+    expect(L('tesla', 1)).toContain(`${AB.tesla.time[0]} s`);
+    expect(L('tesla', 1)).toContain(`${AB.tesla.arcs[0]} threats`);
+    expect(L('tesla', 2)).toContain(`${AB.tesla.time[1]} s, ${AB.tesla.arcs[1]} arcs`);
+    expect(L('tesla', 3)).toContain(`${AB.tesla.time[2]} s`);
+    expect(L('decoy', 3)).toContain(`${AB.decoy.ghostTime} s`);
+    expect(L('smoke', 1)).toContain(`(${AB.smoke.time[0]} s)`);
+    expect(L('smoke', 2)).toContain(`${AB.smoke.time[1]} s`);
+    expect(L('salvo', 1)).toContain(`${AB.salvo.rockets[0]} rockets`);
+    expect(L('salvo', 2)).toContain(`up to ${AB.salvo.rockets[1]} rockets`);
+    expect(L('salvo', 3)).toContain(`${AB.salvo.rockets[2]} rockets`);
+  });
+
+  it('every Armory blurb quotes its real per-level change', () => {
+    const base = gunStats({});
+    const pct = (a: number, b: number) => `${Math.round(Math.abs(a / b - 1) * 100)}%`;
+    expect(ARMORY.warhead.blurb).toContain(pct(gunStats({ warhead: 1 }).blast, base.blast));
+    expect(ARMORY.motor.blurb).toContain(pct(gunStats({ motor: 1 }).interceptorSpeed, base.interceptorSpeed));
+    expect(ARMORY.reload.blurb).toContain(pct(gunStats({ reload: 1 }).reload, base.reload));
+    expect(gunStats({ fuse: ARMORY_MAX }).hitDamage).toBe(2); // "level 5 hits for 2"
   });
 });
