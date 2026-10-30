@@ -6,9 +6,10 @@
 // wave's drones and missiles at them; the player taps threats to fire
 // interceptors from the carrier (the main gun, set before the run in the
 // Armory), and taps pickups to collect them. Clear the wave → pick 1 of 3
-// ability cards → next wave. Abilities charge during play and the player sets
-// them off (`activate`). Lose at RULES.shipLossLimit ships sunk or when the
-// carrier goes down.
+// weapon cards → next wave. A weapon you hold drops as a pickup; tapping it
+// loads the gun with that weapon for WEAPON.time seconds, and every tap fires
+// it (playtest round 2: no buttons to charge and press). Lose at
+// RULES.shipLossLimit ships sunk or when the carrier goes down.
 
 import { makeRng, type RNG } from '../../sim/rng';
 import {
@@ -38,22 +39,21 @@ import {
   VIEW,
   type RaidTheme,
   type PickupKind,
+  type PowerKind,
   type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { MAPS, channelCycle, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
 import {
   AB,
-  ABILITIES,
   ABILITY_MAX,
   ABILITY_ORDER,
-  START_CHARGE,
+  WEAPON,
+  abilityName,
   canSwapIn,
   canTake,
-  need,
   type AbilityId,
   type CardId,
-  type ChargeSource,
   type Levels,
 } from '../data/abilities';
 import { gunStats, type ArmoryLevels, type GunStats } from '../data/armory';
@@ -108,9 +108,9 @@ export interface Threat {
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
-  /** Decoy Barrage: chasing a decoy here instead of its ship (harmless). */
+  /** Decoy Flares: chasing a flare here instead of its ship (harmless). */
   decoy?: Point;
-  /** EMP Pulse L2+: seconds left flying straight with its lock lost. */
+  /** EMP Rounds L2+ or smoke: seconds left flying straight, lock lost. */
   jamT?: number;
   /** The sub or truck that fired it (Sub Hunter L2 downs these with it). */
   from?: number;
@@ -124,16 +124,22 @@ export interface Interceptor {
   tx: number;
   ty: number;
   life: number;
-  /** 'gun' is the main gun (its hits charge abilities); 'salvo' is a Hellfire
-   *  rocket, with its own blast and damage. */
+  /** 'gun' is the main gun; 'salvo' is a Hellfire rocket, with its own
+   *  blast and damage. */
   src: 'gun' | 'salvo';
   blast?: number;
   dmg?: number;
+  /** The weapon loaded when it was fired: its burst does what that weapon
+   *  does (EMP, a flare, smoke, Tesla arcs), even if the weapon ran out
+   *  while it flew. */
+  weapon?: Weapon;
 }
 
 export interface Pickup {
   id: number;
   kind: PickupKind;
+  /** A weapon pickup: which of your weapons it loads. */
+  weapon?: AbilityId;
   x: number;
   y: number;
   age: number;
@@ -164,10 +170,8 @@ export type GameEvent =
   | { kind: 'pickup'; pickup: PickupKind }
   /** The first time a kind of pickup drops this game (UI explains it). */
   | { kind: 'newPickup'; pickup: PickupKind }
-  /** An ability went off (level = its level then). */
-  | { kind: 'ability'; id: AbilityId; level: number }
-  /** An ability just finished charging. */
-  | { kind: 'abilityReady'; id: AbilityId }
+  /** A weapon pickup loaded the gun (level = the weapon's level). */
+  | { kind: 'weapon'; id: AbilityId; level: number }
   | { kind: 'dry' };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
@@ -244,8 +248,8 @@ export interface RaiderSpawn {
 /** Where each launch came from (the analyzer reads this). */
 export type LaunchOrigin = 'base' | 'truck' | 'sub' | 'air' | 'child';
 
-/** A friendly jet from an Air Strike, flying one line across the screen
- *  (dx, dy: its unit heading). */
+/** A friendly jet from an Air Strike shot, flying one row across the
+ *  screen (dx, dy: its unit heading). */
 export interface Ally {
   id: number;
   x: number;
@@ -262,10 +266,12 @@ export interface Ally {
   firedT: number;
 }
 
-/** A strip laid along a line: Smoke Wall smoke, or a Carpet Strike's burning
- *  line. `hw` is its half-width; `tick` counts to a burn's next damage. */
+/** An area on the water: a smoke cloud, an ion cloud or a hanging flare
+ *  (circles: x1 = x2, y1 = y2, radius `hw`), or a Carpet Strike's burning
+ *  row (a strip from x1,y1 to x2,y2, half-width `hw`). `tick` counts to a
+ *  burn's next damage. */
 export interface Field {
-  kind: 'smoke' | 'burn';
+  kind: 'smoke' | 'burn' | 'ion' | 'flare';
   x1: number;
   y1: number;
   x2: number;
@@ -274,27 +280,15 @@ export interface Field {
   t: number;
   life: number;
   tick: number;
-  /** The level of the ability that laid it. */
+  /** The level of the weapon that laid it. */
   level: number;
 }
 
-/** The main gun taken over by an ability: Railgun for `shots` taps (or until
- *  `t` runs out), Tesla Arc for `t` seconds. */
-export interface GunMode {
-  id: 'railgun' | 'tesla';
+/** The weapon loaded in the main gun, at its level, for `t` more seconds. */
+export interface Weapon {
+  id: AbilityId;
   level: number;
-  shots: number;
   t: number;
-}
-
-/** Where an ability is aimed: a point (x, y), a line (x, y → x2, y2), and
- *  for Hellfire Salvo how long it was held (power 0..1). */
-export interface Aim {
-  x?: number;
-  y?: number;
-  x2?: number;
-  y2?: number;
-  power?: number;
 }
 
 /** A raid of the current wave: when it starts, its theme, and the bases it
@@ -355,15 +349,12 @@ export interface Game {
   shieldT: number;
   steamT: number;
   allies: Ally[];
-  /** Smoke Wall and Carpet Strike strips on the water. */
+  /** Smoke, ion clouds, hanging flares and burning rows on the water. */
   fields: Field[];
-  /** The main gun while an ability has taken it over. */
-  gunMode: GunMode | null;
-  /** Ion Storm and Ghost Fleet: seconds left. */
-  ionT: number;
-  ghostT: number;
-  /** Where Ghost Fleet's decoys hang. */
-  ghostAt: Point[];
+  /** The weapon loaded in the main gun (null: plain interceptors). */
+  weapon: Weapon | null;
+  /** Seconds of wave since a weapon pickup last dropped (WEAPON.pity). */
+  weaponDropT: number;
   flow: number;
   formation: FormationId;
   spawnT: number;
@@ -371,14 +362,12 @@ export interface Game {
   channelCursor: number;
   /** The Armory levels this run was started with (fixed for the run). */
   armory: ArmoryLevels;
-  /** Ability levels held this run, and how charged each one is. */
+  /** Weapon levels held this run. */
   levels: Levels;
-  /** The held abilities in button order: a new one takes the next slot, a
-   *  swap takes the replaced one's (playtest round 1: ordered by roster, the
-   *  buttons moved under the player's thumb when a new one arrived). */
+  /** The held weapons in the order they were drafted: a new one takes the
+   *  next slot, a swap takes the replaced one's. */
   slots: AbilityId[];
-  charge: Partial<Record<AbilityId, number>>;
-  /** Times each ability went off this run. */
+  /** Weapon pickups taken this run, by weapon. */
   uses: Partial<Record<AbilityId, number>>;
   stats: GunStats;
   offer: CardId[];
@@ -449,10 +438,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     steamT: 0,
     allies: [],
     fields: [],
-    gunMode: null,
-    ionT: 0,
-    ghostT: 0,
-    ghostAt: [],
+    weapon: null,
+    weaponDropT: 0,
     flow: DEFAULT_FLOW,
     formation: 'pairs',
     spawnT: 0,
@@ -461,7 +448,6 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     armory: { ...armory },
     levels: {},
     slots: [],
-    charge: {},
     uses: {},
     stats: s,
     offer: [],
@@ -480,7 +466,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     taps: { fire: 0, pickup: 0, dry: 0, empty: 0 },
     history: [],
   };
-  // Skipping ahead (playtesting a late wave) also hands over the abilities a
+  // Skipping ahead (playtesting a late wave) also hands over the weapons a
   // player would have drafted by then, so the wave plays as it really would.
   for (let w = 1; w < Math.floor(firstWave); w++) {
     g.wave = w;
@@ -488,9 +474,6 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     const pick = g.offer.find((id): id is AbilityId => id !== 'resupply' && canTake(g.levels, id));
     if (pick) gainLevel(g, pick);
   }
-  // They would have been charging all along: a skipped-ahead run starts with
-  // them full (playtest round 1: at 0% a wave-10 test never used them).
-  if (firstWave > 1) for (const id of ABILITY_ORDER) if ((g.levels[id] ?? 0) > 0) g.charge[id] = need(id, g.levels[id]!);
   g.ammo = g.stats.rack;
   g.wave = Math.max(0, Math.floor(firstWave) - 1);
   startWave(g);
@@ -740,8 +723,6 @@ export function tap(g: Game, x: number, y: number, radius: number): TapResult {
   if (g.phase !== 'wave') return 'empty';
   const result = tapResult(g, x, y, radius);
   g.taps[result] += 1;
-  // A tap that hit nothing (or found the rack dry) breaks an accuracy streak.
-  if (result === 'empty' || result === 'dry') breakStreak(g);
   return result;
 }
 
@@ -782,11 +763,8 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
     collect(g, pickup);
     return 'pickup';
   }
-  // Railgun: the gun fires a beam toward the tap, threat under it or not.
-  if (g.gunMode?.id === 'railgun') {
-    fireBeam(g, threat ? threat.x : x, threat ? threat.y : y);
-    return 'fire';
-  }
+  const loaded = g.weapon ? fireWeapon(g, g.weapon, x, y, threat, radius) : null;
+  if (loaded) return loaded;
   if (!threat) return 'empty';
   return fireAt(g, threat) ? 'fire' : 'dry';
 }
@@ -799,7 +777,6 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
   if (!swap && !canTake(g.levels, id)) return;
   if (swap) {
     delete g.levels[replace];
-    delete g.charge[replace];
     if (id !== 'resupply') g.slots[g.slots.indexOf(replace!)] = id;
   }
   if (id === 'resupply') {
@@ -813,13 +790,10 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
   afterPick(g);
 }
 
-/** One more level of an ability. A new one arrives half charged. */
+/** One more level of a weapon (level 1: it joins the drop pool). */
 function gainLevel(g: Game, id: AbilityId): void {
-  const lv = (g.levels[id] ?? 0) + 1;
-  g.levels[id] = lv;
+  g.levels[id] = (g.levels[id] ?? 0) + 1;
   if (!g.slots.includes(id)) g.slots.push(id);
-  if (lv === 1) g.charge[id] = need(id, 1) * START_CHARGE;
-  else g.charge[id] = Math.min(need(id, lv), g.charge[id] ?? 0);
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */
@@ -843,15 +817,15 @@ export function continueEndless(g: Game): void {
 }
 
 /** Chance each draft draw comes from the loadout's own (unevolved)
- *  abilities. V3: three slots of three levels is nine picks, about one map's
- *  worth of drafts, so held abilities come up more often than V2's cards. */
+ *  weapons. V3: three slots of three levels is nine picks, about one map's
+ *  worth of drafts, so held weapons come up more often than V2's cards. */
 const OWNED_DRAW = 0.5;
 
 function openDraft(g: Game): void {
-  // Three random abilities from everything not yet evolved. With a full
+  // Three random weapons from everything not yet evolved. With a full
   // loadout, a new one can still be swapped in for one you hold; if nothing
   // can be taken without a swap, Resupply is added so keeping your build is
-  // a choice. Each draw favours an ability you already hold (OWNED_DRAW).
+  // a choice. Each draw favours a weapon you already hold (OWNED_DRAW).
   const open = ABILITY_ORDER.filter((id) => (g.levels[id] ?? 0) < ABILITY_MAX);
   const rng = g.rng.draft;
   const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
@@ -866,239 +840,182 @@ function openDraft(g: Game): void {
 }
 
 // ---------------------------------------------------------------------------
-// Abilities: charging
+// Weapons: what a tap fires while one is loaded
 
-/** Is this held ability charged and free to go off? */
-export function abilityReady(g: Game, id: AbilityId): boolean {
-  const lv = g.levels[id] ?? 0;
-  if (lv <= 0 || (g.charge[id] ?? 0) < need(id, lv)) return false;
-  // One takeover at a time: the gun can't be a railgun and a tesla coil at once.
-  return !(ABILITIES[id].activation === 'takeover' && g.gunMode);
-}
-
-/** 0..1 for the button's ring. */
-export function chargeShare(g: Game, id: AbilityId): number {
-  const lv = g.levels[id] ?? 0;
-  return lv > 0 ? Math.min(1, (g.charge[id] ?? 0) / need(id, lv)) : 0;
-}
-
-function addCharge(g: Game, source: ChargeSource, n: number): void {
-  for (const id of ABILITY_ORDER) {
-    const lv = g.levels[id] ?? 0;
-    if (lv <= 0 || ABILITIES[id].charge !== source) continue;
-    const full = need(id, lv);
-    const before = g.charge[id] ?? 0;
-    if (before >= full) continue;
-    g.charge[id] = Math.min(full, before + n);
-    if (g.charge[id]! >= full) g.events.push({ kind: 'abilityReady', id });
+/** A tap while a weapon is loaded. Returns what the tap did, or null when
+ *  this weapon fires a plain (tagged) interceptor at the threat instead —
+ *  `fireAt` handles that, and the burst does the weapon's work. Every shot
+ *  spends a round, as the plain gun does. */
+function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | null, radius: number): TapResult | null {
+  // Aimed at the threat under the finger, else at the spot itself.
+  const ax = threat ? threat.x : x;
+  const ay = threat ? threat.y : y;
+  switch (w.id) {
+    case 'tesla':
+      return null;
+    case 'emp':
+    case 'decoy':
+    case 'smoke':
+      // A shell: at the threat as usual, or onto open water to burst there.
+      if (threat) return null;
+      if (!spend(g)) return 'dry';
+      g.interceptors.push({ id: g.nextId++, x: g.map.carrier.x, y: g.map.carrier.y - 6, target: null, tx: x, ty: y, life: 0, src: 'gun', weapon: { ...w } });
+      return 'fire';
+    case 'railgun':
+      if (!spend(g)) return 'dry';
+      fireBeam(g, w.level, ax, ay);
+      return 'fire';
+    case 'airstrike':
+      if (!spend(g)) return 'dry';
+      callJet(g, w.level, ax, ay);
+      return 'fire';
+    case 'salvo':
+      if (!spend(g)) return 'dry';
+      fireSalvo(g, w.level, ax, ay);
+      return 'fire';
+    case 'hunter': {
+      // A sub or truck under the finger (nearer than any threat) is hunted;
+      // anything else is a plain shot.
+      const prey = nearestLauncher(g, x, y, Math.max(radius, AB.hunter.reach));
+      if (!prey || (threat && dist(x, y, threat.x, threat.y) < dist(x, y, prey.x, prey.y))) return null;
+      if (!spend(g)) return 'dry';
+      hunt(g, w.level, prey);
+      return 'fire';
+    }
   }
 }
 
-/** A missed or dry tap: a streak ability that isn't full starts over. */
-function breakStreak(g: Game): void {
-  for (const id of ABILITY_ORDER) {
-    const lv = g.levels[id] ?? 0;
-    if (lv > 0 && ABILITIES[id].charge === 'streak' && (g.charge[id] ?? 0) < need(id, lv)) g.charge[id] = 0;
+/** One round from the rack (free under Overdrive). False, with a dry
+ *  click, when the rack is empty. */
+function spend(g: Game): boolean {
+  if (g.overdriveT <= 0 && g.ammo < 1) {
+    g.events.push({ kind: 'dry' });
+    return false;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Abilities: going off
-
-/** Set off a held, charged ability. `aim` is what its activation needs: a
- *  line for Air Strike and Smoke Wall, a point (and power) for Hellfire
- *  Salvo, a point near a launcher for Sub Hunter. Returns false (and spends
- *  nothing) if it can't go off: not ready, or the aim doesn't do anything. */
-export function activate(g: Game, id: AbilityId, aim: Aim = {}): boolean {
-  if (g.phase !== 'wave' || !abilityReady(g, id)) return false;
-  const lv = g.levels[id]!;
-  const ok = EFFECTS[id](g, lv, aim);
-  if (!ok) return false;
-  g.charge[id] = 0;
-  g.uses[id] = (g.uses[id] ?? 0) + 1;
-  g.events.push({ kind: 'ability', id, level: lv });
+  if (g.overdriveT <= 0) g.ammo -= 1;
+  g.shots += 1;
   return true;
 }
 
-type Effect = (g: Game, lv: number, aim: Aim) => boolean;
-
-const EFFECTS: Record<AbilityId, Effect> = {
-  emp: (g, lv) => {
-    const drones = g.threats.filter((t) => !t.dead && (t.kind === 'drone' || t.kind === 'minidrone'));
-    // Level 1: the eight drones nearest to hitting something.
-    const hit = lv >= 2 ? drones : drones.sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b)).slice(0, AB.emp.l1Count);
-    for (const th of hit) damageThreat(g, th, 99, false);
-    if (lv >= 2) {
-      for (const th of g.threats) if (!th.dead && HOMING.includes(th.kind)) th.jamT = AB.emp.jam;
+/** A tagged shell bursts: EMP, a flare or smoke where it went off. */
+function burstWeapon(g: Game, w: Weapon, x: number, y: number): void {
+  const k = w.level - 1;
+  if (w.id === 'emp') {
+    const r = AB.emp.radius[k];
+    for (const th of g.threats) {
+      if (th.dead || dist(th.x, th.y, x, y) > r) continue;
+      if (th.kind === 'drone' || th.kind === 'minidrone') damageThreat(g, th, 99, false);
+      else if (w.level >= 2 && HOMING.includes(th.kind)) th.jamT = AB.emp.jam;
     }
-    if (lv >= 3) g.ionT = AB.emp.stormTime;
-    addFx(g, 'emp', g.map.carrier.x, g.map.carrier.y, { life: 0.9, r: lv >= 2 ? 1700 : 700 });
-    return true;
-  },
+    addFx(g, 'emp', x, y, { life: 0.6, r });
+    if (w.level >= 3) addField(g, 'ion', x, y, r, AB.emp.ionTime, w.level);
+  } else if (w.id === 'decoy') {
+    const r = AB.decoy.radius[k];
+    for (const th of g.threats) if (!th.dead && decoyable(th) && dist(th.x, th.y, x, y) <= r) sendToDecoy(g, th, { x, y });
+    addFx(g, 'flare', x, y, { life: 0.9, x2: x, y2: y - 60 });
+    if (w.level >= 3) addField(g, 'flare', x, y, r, AB.decoy.ghostTime, w.level);
+  } else if (w.id === 'smoke') {
+    addField(g, 'smoke', x, y, AB.smoke.radius[k], AB.smoke.time[k], w.level);
+  }
+}
 
-  airstrike: (g, lv, aim) => {
-    const line = lineOf(aim);
-    if (!line) return false;
-    const { ux, uy } = line;
-    const k = lv - 1;
-    const jets = AB.airstrike.jets[k];
-    // Jets come in from off screen behind the swipe and fly its whole line,
-    // side by side across it.
-    const back = entryDistance(aim.x!, aim.y!, -ux, -uy) + 120;
-    for (let j = 0; j < jets; j++) {
-      const off = (j - (jets - 1) / 2) * AB.airstrike.spacing;
-      g.allies.push({
-        id: g.nextId++,
-        x: aim.x! - ux * (back + j * 60) - uy * off,
-        y: aim.y! - uy * (back + j * 60) + ux * off,
-        dx: ux,
-        dy: uy,
-        band: AB.airstrike.band,
-        damage: AB.airstrike.damage[k],
-        knock: lv >= 3,
-        hits: [],
-        firedT: -1,
-      });
-    }
-    if (lv >= 3) {
-      // The burning line, across the whole screen along the swipe.
-      const ahead = entryDistance(aim.x!, aim.y!, ux, uy);
-      g.fields.push({
-        kind: 'burn',
-        x1: aim.x! - ux * back,
-        y1: aim.y! - uy * back,
-        x2: aim.x! + ux * ahead,
-        y2: aim.y! + uy * ahead,
-        hw: AB.airstrike.burnBand,
-        t: 0,
-        life: AB.airstrike.burnTime,
-        tick: 0,
-        level: lv,
-      });
-    }
-    return true;
-  },
+function addField(g: Game, kind: Field['kind'], x: number, y: number, r: number, life: number, level: number): void {
+  g.fields.push({ kind, x1: x, y1: y, x2: x, y2: y, hw: r, t: 0, life, tick: 0, level });
+}
 
-  railgun: (g, lv) => {
-    g.gunMode = { id: 'railgun', level: lv, shots: AB.railgun.shots[lv - 1], t: AB.railgun.timeout };
-    return true;
-  },
+/** Air Strike: a jet in from the nearer edge, flying the whole row at y
+ *  (Carpet Strike: the row burns behind it). */
+function callJet(g: Game, level: number, x: number, y: number): void {
+  const k = level - 1;
+  const dir = x < VIEW.width / 2 ? 1 : -1;
+  g.allies.push({
+    id: g.nextId++,
+    x: dir > 0 ? -80 : VIEW.width + 80,
+    y,
+    dx: dir,
+    dy: 0,
+    band: AB.airstrike.band[k],
+    damage: AB.airstrike.damage[k],
+    knock: level >= 3,
+    hits: [],
+    firedT: -1,
+  });
+  if (level >= 3) {
+    g.fields.push({ kind: 'burn', x1: 0, y1: y, x2: VIEW.width, y2: y, hw: AB.airstrike.band[k] * 0.6, t: 0, life: AB.airstrike.burnTime, tick: 0, level });
+  }
+}
 
-  tesla: (g, lv) => {
-    g.gunMode = { id: 'tesla', level: lv, shots: 0, t: AB.tesla.time[lv - 1] };
-    return true;
-  },
-
-  decoy: (g, lv) => {
-    for (const th of g.threats) if (!th.dead && decoyable(th, lv)) sendToDecoy(g, th);
-    if (lv >= 3) {
-      g.ghostT = AB.decoy.ghostTime;
-      // Decoys hang over the convoy's lanes.
-      g.ghostAt = g.map.channels.map((c) => ({ x: VIEW.width * 0.55, y: c.y - 70 }));
-    }
-    addFx(g, 'flare', g.map.carrier.x, g.map.carrier.y, { life: 0.9, x2: g.map.carrier.x, y2: g.map.carrier.y - 120 });
-    return true;
-  },
-
-  smoke: (g, lv, aim) => {
-    const line = lineOf(aim);
-    if (!line) return false;
-    const len = Math.min(line.len, AB.smoke.maxLength);
-    g.fields.push({
-      kind: 'smoke',
-      x1: aim.x!,
-      y1: aim.y!,
-      x2: aim.x! + line.ux * len,
-      y2: aim.y! + line.uy * len,
-      hw: AB.smoke.halfWidth,
-      t: 0,
-      life: AB.smoke.time[lv - 1],
-      tick: 0,
-      level: lv,
+/** Hellfire Salvo: rockets saturating the spot (Saturation: each hunts one
+ *  of the threats nearest it). */
+function fireSalvo(g: Game, level: number, x: number, y: number): void {
+  const k = level - 1;
+  const n = AB.salvo.rockets[k];
+  const c = g.map.carrier;
+  const near =
+    level >= 3
+      ? g.threats
+          .filter((t) => !t.dead && dist(t.x, t.y, x, y) <= AB.salvo.hunt)
+          .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))
+      : [];
+  for (let r = 0; r < n; r++) {
+    // Impact points on a sunflower spiral around the spot (no RNG needed).
+    const ang = r * 2.39996;
+    const rad = AB.salvo.spread * Math.sqrt((r + 0.5) / n);
+    const t = near.length ? near[r % near.length] : null;
+    g.interceptors.push({
+      id: g.nextId++,
+      x: c.x + (r % 2 ? 10 : -10),
+      y: c.y - 6,
+      target: t ? t.id : null,
+      tx: t ? t.x : clamp(x + Math.cos(ang) * rad, 0, VIEW.width),
+      ty: t ? t.y : clamp(y + Math.sin(ang) * rad, 0, VIEW.height),
+      life: -r * 0.04,
+      src: 'salvo',
+      blast: AB.salvo.blast,
+      dmg: AB.salvo.damage[k],
     });
-    return true;
-  },
+  }
+}
 
-  salvo: (g, lv, aim) => {
-    if (aim.x === undefined || aim.y === undefined) return false;
-    const k = lv - 1;
-    const power = clamp(aim.power ?? 1, 0, 1);
-    const n = lv === 2 ? Math.round(AB.salvo.minRockets + (AB.salvo.rockets[1] - AB.salvo.minRockets) * power) : AB.salvo.rockets[k];
-    const c = g.map.carrier;
-    // Saturation: each rocket hunts one of the threats nearest the spot.
-    const near =
-      lv >= 3
-        ? g.threats
-            .filter((t) => !t.dead && dist(t.x, t.y, aim.x!, aim.y!) <= AB.salvo.spread * 2.4)
-            .sort((a, b) => dist(a.x, a.y, aim.x!, aim.y!) - dist(b.x, b.y, aim.x!, aim.y!))
-        : [];
-    for (let r = 0; r < n; r++) {
-      // Impact points on a sunflower spiral around the spot (no RNG needed).
-      const ang = r * 2.39996;
-      const rad = AB.salvo.spread * Math.sqrt((r + 0.5) / n);
-      const t = near.length ? near[r % near.length] : null;
-      g.interceptors.push({
-        id: g.nextId++,
-        x: c.x + (r % 2 ? 10 : -10),
-        y: c.y - 6,
-        target: t ? t.id : null,
-        tx: t ? t.x : clamp(aim.x + Math.cos(ang) * rad, 0, VIEW.width),
-        ty: t ? t.y : clamp(aim.y + Math.sin(ang) * rad, 0, VIEW.height),
-        life: -r * 0.05,
-        src: 'salvo',
-        blast: AB.salvo.blast,
-        dmg: AB.salvo.damage[k],
-      });
+/** The nearest sub or truck within `reach` of (x, y). */
+function nearestLauncher(g: Game, x: number, y: number, reach: number): Raider | null {
+  let best: Raider | null = null;
+  let bd = reach;
+  for (const r of g.raiders) {
+    if (!huntable(r)) continue;
+    const d = dist(r.x, r.y, x, y);
+    if (d <= bd) {
+      bd = d;
+      best = r;
     }
-    return true;
-  },
+  }
+  return best;
+}
 
-  hunter: (g, lv, aim) => {
-    const up = g.raiders.filter((r) => huntable(r));
-    let prey: Raider[];
-    if (lv >= 3) prey = up;
-    else {
-      if (aim.x === undefined || aim.y === undefined) return false;
-      const best = up
-        .map((r) => ({ r, d: dist(r.x, r.y, aim.x!, aim.y!) }))
-        .filter((o) => o.d <= AB.hunter.reach)
-        .sort((a, b) => a.d - b.d)[0];
-      prey = best ? [best.r] : [];
-    }
-    if (!prey.length) return false;
-    for (const r of prey) {
-      knockOut(g, r);
-      if (lv >= 2) for (const th of g.threats) if (!th.dead && th.from === r.id) damageThreat(g, th, 99, false);
-    }
-    return true;
-  },
-};
+/** Sub Hunter: the launcher is destroyed (level 2+: with its missiles
+ *  still in the air). */
+function hunt(g: Game, level: number, r: Raider): void {
+  const c = g.map.carrier;
+  addFx(g, 'tracer', c.x, c.y - 6, { life: 0.25, x2: r.x, y2: r.y });
+  knockOut(g, r);
+  if (level >= 2) for (const th of g.threats) if (!th.dead && th.from === r.id) damageThreat(g, th, 99, false);
+}
 
-/** Homing threats: the ones a jam, smoke or a decoy can fool. */
+/** Homing threats: the ones a jam, smoke or a flare can fool. */
 const HOMING: ThreatKind[] = ['guided', 'supersonic', 'cluster', 'bomblet'];
 
-function decoyable(th: Threat, lv: number): boolean {
-  if (th.decoy) return false;
-  if (th.kind === 'guided' || th.kind === 'cluster') return true;
-  return lv >= 2 && (th.kind === 'supersonic' || th.kind === 'bomblet');
+/** Every homing missile falls for a flare (the level sets how far its pull
+ *  reaches). */
+function decoyable(th: Threat): boolean {
+  return !th.decoy && HOMING.includes(th.kind);
 }
 
-/** A decoy pops up off to one side of the missile's approach; it swerves
- *  after it and bursts harmlessly (the flight code in `updateThreat`). */
-function sendToDecoy(g: Game, th: Threat, at?: Point): void {
-  const t = at ?? targetPos(g, th);
-  const a = Math.atan2(th.y - t.y, th.x - t.x) + (th.id % 2 ? 1 : -1) * 1.1;
-  th.decoy = at ?? { x: t.x + Math.cos(a) * AB.decoy.offset, y: t.y + Math.sin(a) * AB.decoy.offset };
+/** The missile swerves after a flare at `at` and bursts harmlessly on it
+ *  (the flight code in `updateThreat`). */
+function sendToDecoy(g: Game, th: Threat, at: Point): void {
+  th.decoy = { x: at.x, y: at.y };
   th.age = Math.min(th.age, 29);
-  addFx(g, 'flare', th.x, th.y, { life: 0.9, x2: th.decoy.x, y2: th.decoy.y });
-}
-
-/** A swipe's direction and length, or null if it is too short to be a line. */
-function lineOf(aim: Aim): { ux: number; uy: number; len: number } | null {
-  if (aim.x === undefined || aim.y === undefined || aim.x2 === undefined || aim.y2 === undefined) return null;
-  const len = dist(aim.x, aim.y, aim.x2, aim.y2);
-  if (len < AB.minLine) return null;
-  return { ux: (aim.x2 - aim.x) / len, uy: (aim.y2 - aim.y) / len, len };
+  addFx(g, 'flare', th.x, th.y, { life: 0.9, x2: at.x, y2: at.y });
 }
 
 /** How far from (x, y) along (ux, uy) until the screen edge. */
@@ -1117,14 +1034,13 @@ function huntable(r: Raider): boolean {
 
 /** Railgun: an instant beam from the carrier through (x, y) to the edge of
  *  the screen, hitting everything along it. */
-function fireBeam(g: Game, x: number, y: number): void {
-  const m = g.gunMode!;
+function fireBeam(g: Game, level: number, x: number, y: number): void {
   const c = g.map.carrier;
   const len0 = dist(c.x, c.y, x, y) || 1;
   const ux = (x - c.x) / len0;
   const uy = (y - c.y) / len0;
   const len = entryDistance(c.x, c.y, ux, uy);
-  const k = m.level - 1;
+  const k = level - 1;
   const width = AB.railgun.width[k];
   for (const th of [...g.threats]) {
     if (th.dead) continue;
@@ -1134,17 +1050,13 @@ function fireBeam(g: Game, x: number, y: number): void {
     if (off <= width + 8) damageThreat(g, th, AB.railgun.damage[k]);
   }
   addFx(g, 'beam', c.x, c.y - 6, { life: 0.35, x2: c.x + ux * len, y2: c.y + uy * len, r: width });
-  g.shots += 1;
-  m.shots -= 1;
-  if (m.shots <= 0) g.gunMode = null;
 }
 
-/** Tesla Arc: a main-gun hit arcs to the nearest threats around it (and,
- *  evolved, each arc arcs again). */
-function teslaArc(g: Game, x: number, y: number, fromId: number, depth: number, struck: Set<number>): void {
-  const m = g.gunMode;
-  if (!m || m.id !== 'tesla' || depth <= 0) return;
-  const k = m.level - 1;
+/** Tesla Arc: a hit arcs to the nearest threats around it (and, evolved,
+ *  each arc arcs again). */
+function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, depth: number, struck: Set<number>): void {
+  if (depth <= 0) return;
+  const k = level - 1;
   const next = g.threats
     .filter((t) => !t.dead && t.id !== fromId && !struck.has(t.id) && dist(t.x, t.y, x, y) <= AB.tesla.range)
     .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))
@@ -1155,7 +1067,7 @@ function teslaArc(g: Game, x: number, y: number, fromId: number, depth: number, 
     const tx = t.x;
     const ty = t.y;
     damageThreat(g, t, 1);
-    teslaArc(g, tx, ty, t.id, depth - 1, struck);
+    teslaArc(g, level, tx, ty, t.id, depth - 1, struck);
   }
 }
 
@@ -1181,14 +1093,14 @@ export function step(g: Game, dt: number): void {
   reload(g, dt);
   updateShips(g, dt);
   // Time Warp slows every threat (not the convoy, not your interceptors), and
-  // so does Ion Storm (EMP Pulse evolved), on top.
-  const tdt = (g.warpT > 0 ? dt * PICKUPS.warpScale : dt) * (g.ionT > 0 ? AB.emp.stormSlow : 1);
-  for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
+  // an Ion Storm cloud (EMP Rounds evolved) slows what is inside it, on top.
+  const tdt = g.warpT > 0 ? dt * PICKUPS.warpScale : dt;
+  for (const th of g.threats) if (!th.dead) updateThreat(g, th, inField(g, 'ion', th.x, th.y) ? tdt * AB.emp.ionSlow : tdt);
   updateTimers(g, dt);
   updateAllies(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
-  addCharge(g, 'time', dt);
+  g.weaponDropT += dt;
 
   g.threats = g.threats.filter((th) => !th.dead);
   updatePickups(g, dt);
@@ -1216,10 +1128,10 @@ export function step(g: Game, dt: number): void {
 
 /** V2 round 13 ("the next wave starts fresh"): a cleared wave takes
  *  everything in flight with it. Interceptors and salvo rockets still in the
- *  air, pickups left on the water, smoke walls and burning lines, strike
- *  jets, running power-ups and running abilities (a takeover, a storm, the
- *  ghost decoys) are gone, and the rack is full for the next wave. Ability
- *  charge carries over. Explosions already on screen play out. */
+ *  air, pickups left on the water, smoke, ion clouds, flares and burning
+ *  rows, strike jets, running power-ups and the loaded weapon are gone, and
+ *  the rack is full for the next wave. Explosions already on screen play
+ *  out. */
 function clearField(g: Game): void {
   g.interceptors = [];
   g.pickups = [];
@@ -1229,10 +1141,7 @@ function clearField(g: Game): void {
   g.warpT = 0;
   g.shieldT = 0;
   g.steamT = 0;
-  g.gunMode = null;
-  g.ionT = 0;
-  g.ghostT = 0;
-  g.ghostAt = [];
+  g.weapon = null;
   g.ammo = g.stats.rack;
   g.reloadT = 0;
 }
@@ -1363,7 +1272,6 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     return;
   }
-  addCharge(g, 'damage', 1);
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
@@ -1380,7 +1288,6 @@ function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     return;
   }
-  addCharge(g, 'damage', 1);
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.carrierDamageBy[by] += amount;
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
@@ -1419,9 +1326,6 @@ function launch(g: Game, l: Launch): void {
   const base = g.map.bases[l.base];
   spawnThreat(g, l.kind, base.x, base.y, 'base');
 }
-
-/** Enemy missiles (not drones, not aircraft): each launch charges Decoy Barrage. */
-const MISSILES: ThreatKind[] = ['ballistic', 'guided', 'supersonic', 'heavy', 'cluster'];
 
 /** A threat leaves a launcher at (x, y): a base, a truck or a submarine. */
 function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: LaunchOrigin): Threat {
@@ -1463,11 +1367,6 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const tp = targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
   g.threats.push(th);
-  if (MISSILES.includes(kind)) addCharge(g, 'launches', 1);
-  // Ghost Fleet: while the decoys hang, a new homing missile goes for one.
-  if (g.ghostT > 0 && g.ghostAt.length && decoyable(th, 3)) {
-    sendToDecoy(g, th, g.ghostAt[th.id % g.ghostAt.length]);
-  }
   // Launch flash by where it came from: a base's red flare, a column of spray
   // off a submarine's deck, a truck's smaller flash (round 4: the base flare
   // drawn over a sub or a truck hid it completely).
@@ -1572,10 +1471,19 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   th.age += dt;
   const px = th.x;
   const py = th.y;
-  // Ion Storm: a drone in the air while it rages is fried.
-  if (g.ionT > 0 && (th.kind === 'drone' || th.kind === 'minidrone')) {
-    damageThreat(g, th, 99, false);
-    return;
+  if (g.fields.length) {
+    // Ion Storm: a drone in an ion cloud is fried.
+    if ((th.kind === 'drone' || th.kind === 'minidrone') && inField(g, 'ion', th.x, th.y)) {
+      damageThreat(g, th, 99, false);
+      return;
+    }
+    if (HOMING.includes(th.kind) && !th.decoy) {
+      // Ghost Fleet: a hanging flare pulls in a missile that comes near.
+      const flare = g.fields.find((f) => f.kind === 'flare' && decoyable(th) && fieldDist(f, th.x, th.y) <= f.hw);
+      if (flare) sendToDecoy(g, th, { x: flare.x1, y: flare.y1 });
+      // Flying through smoke, it loses its lock for a moment.
+      else if (inSmoke(g, th.x, th.y)) th.jamT = Math.max(th.jamT ?? 0, AB.smoke.jam);
+    }
   }
   if (th.jamT !== undefined && th.jamT > 0) th.jamT -= dt;
   if (th.kind === 'strafer' || th.kind === 'bomber') {
@@ -1607,7 +1515,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     const want = Math.atan2(tp.y - th.y, tp.x - th.x);
     if (th.kind === 'drone' || th.kind === 'minidrone') {
       // Shahed-style: slow and steady with a lazy weave, re-aiming as it goes.
-      // Fog Bank (Smoke Wall evolved): a drone inside it flies on blind.
+      // Fog Bank (Smoke Shells evolved): a drone inside it flies on blind.
       const weave = DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase);
       if (!inSmoke(g, th.x, th.y, 3)) th.heading = want + (d > 80 ? weave : 0);
     } else if (th.kind === 'mothership') {
@@ -1616,8 +1524,8 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
       const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
-      // Smoke Wall: a homing missile can't see a ship in smoke and flies on
-      // blind; EMP Pulse L2 jams it for a moment.
+      // Smoke: a homing missile can't see a ship in smoke and flies on
+      // blind; smoke it flew through or EMP Rounds L2 jam it for a moment.
       const homing = HOMING.includes(th.kind);
       const blind = homing && ((th.target !== CARRIER_TARGET && smoked(g, th.target)) || (th.jamT ?? 0) > 0);
       if (!blind) th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
@@ -1657,7 +1565,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     });
     for (const s of band) {
       if (th.hits!.includes(s.id) || Math.abs(s.x - gx) > 22) continue;
-      // Smoke Wall L2+: the guns can't see a hull in the smoke.
+      // Smoke Shells L2+: the guns can't see a hull in the smoke.
       if (smoked(g, s.id, 2)) continue;
       th.hits!.push(s.id);
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
@@ -1786,7 +1694,7 @@ function spawnChildren(g: Game, th: Threat, dt: number): void {
 
 function impactBallistic(g: Game, th: Threat): void {
   th.dead = true;
-  // Fog Bank (Smoke Wall evolved): landing in the smoke, it misses.
+  // Fog Bank (Smoke Shells evolved): landing in the smoke, it misses.
   if (inSmoke(g, th.ix, th.iy, 3)) {
     addFx(g, 'splash', th.ix, th.iy, { life: 0.7, r: 20 });
     return;
@@ -1829,8 +1737,11 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   g.kills[th.kind] += 1;
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
   if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
-  if (drops && g.rng.drops.chance(THREATS[th.kind].dropChance)) dropPickup(g, th.x, th.y);
-  if (th.kind === 'drone' || th.kind === 'minidrone') addCharge(g, 'droneKills', 1);
+  if (!drops) return;
+  if (g.rng.drops.chance(THREATS[th.kind].dropChance)) dropPickup(g, th.x, th.y);
+  // Weapons drop on their own roll, on top of the power-ups (playtest round
+  // 2: sharing one roll, they crowded out the repairs and Overdrives).
+  else if (weaponDue(g, th.kind)) dropWeapon(g, th.x, th.y);
 }
 
 function blast(g: Game, x: number, y: number, radius: number, exceptId: number): void {
@@ -1851,18 +1762,30 @@ function assigned(g: Game, threatId: number): number {
 
 /** Can a tap fire anything right now? (Bot + UI share this.) */
 export function canFire(g: Game): boolean {
-  return g.overdriveT > 0 || g.ammo >= 1 || g.gunMode?.id === 'railgun';
+  return g.overdriveT > 0 || g.ammo >= 1;
 }
 
+/** A shot at a threat, tagged with the loaded weapon (its burst does that
+ *  weapon's work). Storm Coil adds a free second shot at the uncovered threat
+ *  nearest the first; Hunter-Killer sends a hunter at the nearest sub or
+ *  truck with every shot. */
 function fireAt(g: Game, th: Threat): boolean {
-  if (g.overdriveT <= 0 && g.ammo < 1) {
-    g.events.push({ kind: 'dry' });
-    return false;
-  }
-  if (g.overdriveT <= 0) g.ammo -= 1;
-  g.shots += 1;
+  if (!spend(g)) return false;
   const p = g.map.carrier;
-  g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: th.id, tx: th.x, ty: th.y, life: 0, src: 'gun' });
+  const w = g.weapon;
+  const shoot = (t: Threat) =>
+    g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', weapon: w ? { ...w } : undefined });
+  shoot(th);
+  if (w?.id === 'tesla' && w.level >= 3) {
+    const twin = g.threats
+      .filter((o) => !o.dead && o.id !== th.id && assigned(g, o.id) < o.hp && dist(o.x, o.y, th.x, th.y) <= AB.tesla.twin)
+      .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
+    if (twin) shoot(twin);
+  }
+  if (w?.id === 'hunter' && w.level >= 3) {
+    const prey = nearestLauncher(g, p.x, p.y, Infinity);
+    if (prey) hunt(g, w.level, prey);
+  }
   return true;
 }
 
@@ -1916,15 +1839,11 @@ function updateInterceptors(g: Game, dt: number): void {
       addFx(g, 'burst', bx, by, { life: 0.35, r: radius });
       if (th) {
         damageThreat(g, th, it.dmg ?? g.stats.hitDamage);
-        // A main-gun hit: charges the hit and streak abilities, and arcs
-        // while Tesla Arc has the gun.
-        if (it.src === 'gun') {
-          addCharge(g, 'hits', 1);
-          addCharge(g, 'streak', 1);
-          if (g.gunMode?.id === 'tesla') teslaArc(g, bx, by, th.id, AB.tesla.depth[g.gunMode.level - 1], new Set([th.id]));
-        }
+        // A Tesla Arc hit arcs on to the threats around it.
+        if (it.weapon?.id === 'tesla') teslaArc(g, it.weapon.level, bx, by, th.id, AB.tesla.depth[it.weapon.level - 1], new Set([th.id]));
       }
       blast(g, bx, by, radius, th ? th.id : -1);
+      if (it.weapon) burstWeapon(g, it.weapon, bx, by);
       continue;
     }
     it.x += ((it.tx - it.x) / d) * stepLen;
@@ -1942,7 +1861,6 @@ function spawnRaider(g: Game, sp: RaiderSpawn): void {
     g.seenVectors.add(sp.kind);
     g.events.push({ kind: 'vector', vector: sp.kind });
   }
-  addCharge(g, 'launchers', 1);
   const length = sp.kind === 'sub' ? 0 : pathLength(sp.path);
   const p0 = sp.path[0];
   const h0 = sp.path.length > 1 ? Math.atan2(sp.path[1].y - p0.y, sp.path[1].x - p0.x) : 0;
@@ -2041,11 +1959,9 @@ function updateTimers(g: Game, dt: number): void {
   g.warpT = Math.max(0, g.warpT - dt);
   g.shieldT = Math.max(0, g.shieldT - dt);
   g.steamT = Math.max(0, g.steamT - dt);
-  g.ionT = Math.max(0, g.ionT - dt);
-  g.ghostT = Math.max(0, g.ghostT - dt);
-  if (g.gunMode) {
-    g.gunMode.t -= dt;
-    if (g.gunMode.t <= 0) g.gunMode = null;
+  if (g.weapon) {
+    g.weapon.t -= dt;
+    if (g.weapon.t <= 0) g.weapon = null;
   }
 }
 
@@ -2058,10 +1974,15 @@ function fieldDist(f: Field, x: number, y: number): number {
   return dist(x, y, f.x1 + vx * t, f.y1 + vy * t);
 }
 
+/** Is (x, y) inside a field of this kind laid at `minLevel` or above? */
+function inField(g: Game, kind: Field['kind'], x: number, y: number, minLevel = 1): boolean {
+  for (const f of g.fields) if (f.kind === kind && f.level >= minLevel && fieldDist(f, x, y) <= f.hw) return true;
+  return false;
+}
+
 /** Is (x, y) inside smoke laid at `minLevel` or above? */
 function inSmoke(g: Game, x: number, y: number, minLevel = 1): boolean {
-  for (const f of g.fields) if (f.kind === 'smoke' && f.level >= minLevel && fieldDist(f, x, y) <= f.hw) return true;
-  return false;
+  return inField(g, 'smoke', x, y, minLevel);
 }
 
 /** Is this ship inside the smoke? */
@@ -2075,7 +1996,7 @@ function updateFields(g: Game, dt: number): void {
   for (const f of g.fields) {
     f.t += dt;
     if (f.kind !== 'burn') continue;
-    // Carpet Strike's line burns: anything crossing it is hit every tick.
+    // Carpet Strike's row burns: anything crossing it is hit every tick.
     f.tick -= dt;
     if (f.tick > 0) continue;
     f.tick += AB.airstrike.burnTick;
@@ -2121,7 +2042,7 @@ function updateAllies(g: Game, dt: number): void {
   });
 }
 
-/** A launcher hit by a Carpet Strike or a Sub Hunter blows up (V2 round 13:
+/** A launcher hit by a Carpet Strike or Sub Hunter blows up (V2 round 13:
  *  it used to just leave): its rounds are lost and it is gone, a sub with a
  *  spout of water, a truck in a ball of fire. */
 function knockOut(g: Game, r: Raider): void {
@@ -2137,15 +2058,34 @@ function knockOut(g: Game, r: Raider): void {
 // ---------------------------------------------------------------------------
 // Pickups
 
-function updatePickups(g: Game, dt: number): void {
-  for (const p of g.pickups) p.age += dt;
-  g.pickups = g.pickups.filter((p) => p.age < PICKUPS.life);
+/** How long a pickup floats before it is gone. */
+export function pickupLife(p: Pickup): number {
+  return p.kind === 'weapon' ? WEAPON.life : PICKUPS.life;
 }
 
+function updatePickups(g: Game, dt: number): void {
+  for (const p of g.pickups) p.age += dt;
+  g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
+}
+
+/** Does this kill drop a weapon? Only with one held and none already on the
+ *  water: a roll scaled by the threat's drop chance, or any kill once
+ *  WEAPON.pity seconds have gone by without one. */
+function weaponDue(g: Game, kind: ThreatKind): boolean {
+  if (!g.slots.length || g.pickups.some((p) => p.kind === 'weapon')) return false;
+  return g.weaponDropT >= WEAPON.pity || g.rng.drops.chance(THREATS[kind].dropChance * WEAPON.share);
+}
+
+function dropWeapon(g: Game, x: number, y: number): void {
+  g.weaponDropT = 0;
+  addPickup(g, 'weapon', x, y, g.rng.drops.pick(g.slots));
+}
+
+/** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
   const w = PICKUPS.weights;
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
-  let kind: PickupKind = 'ammo';
+  let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
     roll -= w[k];
     if (roll < 0) {
@@ -2153,6 +2093,10 @@ function dropPickup(g: Game, x: number, y: number): void {
       break;
     }
   }
+  addPickup(g, kind, x, y);
+}
+
+function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: AbilityId): void {
   if (!g.seenPickups.has(kind)) {
     g.seenPickups.add(kind);
     g.events.push({ kind: 'newPickup', pickup: kind });
@@ -2160,13 +2104,14 @@ function dropPickup(g: Game, x: number, y: number): void {
   g.pickups.push({
     id: g.nextId++,
     kind,
+    weapon,
     x: clamp(x, 40, VIEW.width - 40),
     y: clamp(y, 60, VIEW.height - 60),
     age: 0,
   });
 }
 
-const PICKUP_TEXT: Record<PickupKind, string> = {
+const PICKUP_TEXT: Record<PowerKind, string> = {
   ammo: 'RACK FULL',
   repair: 'REPAIRED',
   overdrive: 'OVERDRIVE',
@@ -2178,8 +2123,19 @@ const PICKUP_TEXT: Record<PickupKind, string> = {
 function collect(g: Game, p: Pickup): void {
   g.pickups = g.pickups.filter((o) => o !== p);
   g.events.push({ kind: 'pickup', pickup: p.kind });
+  if (p.kind === 'weapon') {
+    // Loads the gun for WEAPON.time (the same weapon again: a fresh clock;
+    // another one: it takes over). One you swapped out loads nothing.
+    const id = p.weapon!;
+    const level = g.levels[id] ?? 0;
+    if (level <= 0) return;
+    g.weapon = { id, level, t: WEAPON.time };
+    g.uses[id] = (g.uses[id] ?? 0) + 1;
+    g.events.push({ kind: 'weapon', id, level });
+    addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });
+    return;
+  }
   addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: PICKUP_TEXT[p.kind] });
-  addCharge(g, 'pickups', 1);
   switch (p.kind) {
     case 'ammo':
       g.ammo = g.stats.rack;

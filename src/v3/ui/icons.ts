@@ -1,6 +1,6 @@
-// One small line icon per ability (and Resupply), 32×32, drawn in the
-// ability's own colour so each one is recognisable at a glance on a phone —
-// on its draft card, its loadout chip and its button.
+// One small line icon per weapon (and Resupply), 32×32, drawn in the
+// weapon's own colour so each one is recognisable at a glance on a phone —
+// on its draft card, its loadout chip and its pickup on the water.
 
 import type { CardId } from '../data/abilities';
 
@@ -52,4 +52,20 @@ export function upgradeIcon(id: CardId, size = 32): SVGSVGElement {
   svg.classList.add('v2-icon');
   svg.innerHTML = PATHS[id];
   return svg;
+}
+
+/** The same icon as an image for the canvas (weapon pickups), cached per
+ *  weapon; null until it has loaded. */
+const images = new Map<CardId, HTMLImageElement>();
+export function iconImage(id: CardId): HTMLImageElement | null {
+  let img = images.get(id);
+  if (!img) {
+    img = new Image();
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64" fill="none" stroke="${ICON_COLOR[id]}" ` +
+      `stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${PATHS[id]}</svg>`;
+    img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    images.set(id, img);
+  }
+  return img.complete && img.naturalWidth > 0 ? img : null;
 }

@@ -24,17 +24,16 @@ npm run e2e:v2          # browser smoke test (needs `npm run preview -- --port 4
 
 Design, rules and where to tune: [docs/design/v2-plan.md](docs/design/v2-plan.md).
 
-## Straitwatch V3 (abilities and the Armory)
+## Straitwatch V3 (weapon drops and the Armory)
 
 V2's game with new upgrades, after Survivor.io: the in-run draft deals eight
-**abilities** (EMP Pulse, Air Strike, Railgun, Tesla Arc, Decoy Barrage,
-Smoke Wall, Hellfire Salvo, Sub Hunter). Hold three, level each to 3 to
-**evolve** it, and set them off from the buttons at the bottom right; each
-charges its own way (time, kills, hits, a streak, launches, damage taken,
-pickups, launchers seen) and goes off its own way (a button, a swipe, the main
-gun taken over, a press-and-hold, a tapped target). The main gun has no
-upgrades inside a run: it is set beforehand in the **Armory**, five
-permanent upgrades bought with salvage earned from every run.
+**weapons** (EMP Rounds, Air Strike, Railgun, Tesla Arc, Decoy Flares, Smoke
+Shells, Hellfire Salvo, Sub Hunter). Hold three, level each to 3 to
+**evolve** it. A weapon you hold **drops as a pickup**; tap it and the main
+gun fires that weapon for 15 s, each shot spending a round as usual. The
+main gun has no upgrades inside a run: it is set beforehand in the
+**Armory**, five permanent upgrades bought with salvage earned from every
+run (one equipped per run).
 
 ```bash
 npm run dev:v3          # opens /v3.html
@@ -42,7 +41,7 @@ npm run v3:sweep -- 12  # bot sweep: clear rates, minutes a run, salvage, whole-
 npm run e2e:v3          # browser smoke test (needs `npm run preview -- --port 4173`)
 ```
 
-Design, the ability table, measurements and where to tune:
+Design, the weapon table, measurements and where to tune:
 [docs/design/v3-plan.md](docs/design/v3-plan.md).
 
 ## Play it

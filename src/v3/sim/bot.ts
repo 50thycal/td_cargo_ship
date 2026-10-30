@@ -1,14 +1,15 @@
 // A headless player for tests and the balance sweep. It plays through the
 // same `tap()` a finger does — no privileged access — with a human-ish
-// reaction delay and a cap on how fast it can tap.
+// reaction delay and a cap on how fast it can tap. Weapons need nothing
+// extra: it grabs their pickups like any other and keeps tapping threats
+// (with Sub Hunter loaded, a sub or truck first; with the Railgun, the
+// toughest threat).
 
 import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
-import { chooseAbility } from './abilityBot';
 import {
-  activate,
   canFire,
   continueEndless,
   createGame,
@@ -29,9 +30,9 @@ export interface BotSkill {
   /** Share of taps that miss (finger off target). Measured on a phone in
    *  playtest cycle 1: ~8% with careful aim, ~20% when sloppy. */
   missRate?: number;
-  /** Ability preference, first = most wanted. */
+  /** Weapon preference, first = most wanted. */
   prefer?: AbilityId[];
-  /** Never sets off an ability (the "main gun only" baseline). */
+  /** Never picks up a weapon (the "main gun only" baseline). */
   noAbilities?: boolean;
   /** Taps like an excited person: without waiting for a loaded round and
    *  without checking whether a threat is already covered. */
@@ -60,7 +61,7 @@ export class Bot {
   act(g: Game): void {
     if (g.phase === 'draft') {
       // Level what it holds first (evolutions are the payoff), then its
-      // favourite new ability.
+      // favourite new weapon.
       const prefer = this.skill.prefer ?? ABILITY_ORDER;
       const pick = g.offer
         .filter((id) => canTake(g.levels, id))
@@ -74,26 +75,26 @@ export class Bot {
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
     const seen = (th: Threat) => g.t - (this.seenAt.get(th.id) ?? g.t) >= this.skill.reaction;
 
-    // An ability, when one is ready and worth it: it costs a tap's moment.
-    if (!this.skill.noAbilities) {
-      const use = chooseAbility(g, seen);
-      if (use && activate(g, use.id, use.aim)) {
-        this.lastTap = g.t;
-        return;
-      }
-    }
-
-    // Pickups first when they're cheap to grab.
-    const pickup = g.pickups[0];
+    // Pickups first when they're cheap to grab (the baseline leaves weapons).
+    const pickup = g.pickups.find((p) => !(this.skill.noAbilities && p.kind === 'weapon'));
     if (pickup && pickup.age > this.skill.reaction) {
       tap(g, pickup.x, pickup.y, 4);
       this.lastTap = g.t;
       return;
     }
     if (!this.skill.spam && !canFire(g)) return;
+    // Sub Hunter loaded: a sub or truck it has had time to see goes first.
+    if (g.weapon?.id === 'hunter') {
+      const r = g.raiders.find((o) => o.t >= this.skill.reaction && (o.kind === 'sub' ? o.state === 'surface' || o.state === 'fire' : o.dist > 0 && o.state !== 'reverse'));
+      if (r && g.weapon.level < 3) {
+        tap(g, r.x, r.y, 6);
+        this.lastTap = g.t;
+        return;
+      }
+    }
     // Most urgent first: the threat closest to whatever it is aimed at. With
     // the Railgun loaded, the toughest threat first (a beam is wasted on a drone).
-    const rail = g.gunMode?.id === 'railgun';
+    const rail = g.weapon?.id === 'railgun';
     let best: Threat | null = null;
     let bestScore = Infinity;
     for (const th of g.threats) {
@@ -136,8 +137,11 @@ export interface BotRun {
   seconds: number;
   /** Waves cleared (what salvage pays for). */
   wavesCleared: number;
+  /** Weapon pickups taken, by weapon. */
   uses: Partial<Record<AbilityId, number>>;
   levels: Partial<Record<AbilityId, number>>;
+  /** Share of wave time the gun had a weapon loaded. */
+  loaded: number;
 }
 
 /** Play one full game. `endlessTo` keeps going past the clear for a score run. */
@@ -151,8 +155,14 @@ export function runBot(
   if (opts.flow !== undefined) g.flow = opts.flow;
   const bot = new Bot(skill, seed);
   const dt = opts.dt ?? 1 / 30;
+  let waveSteps = 0;
+  let loadedSteps = 0;
   for (let i = 0; i < 60 * 60 * 30; i++) {
     bot.act(g);
+    if (g.phase === 'wave') {
+      waveSteps++;
+      if (g.weapon) loadedSteps++;
+    }
     if (g.phase === 'won') {
       if (opts.endlessTo && g.wave < opts.endlessTo) continueEndless(g);
       else break;
@@ -174,5 +184,6 @@ export function runBot(
     wavesCleared: g.history.filter((h) => h.outcome === 'cleared').length,
     uses: { ...g.uses },
     levels: { ...g.levels },
+    loaded: waveSteps ? loadedSteps / waveSteps : 0,
   };
 }

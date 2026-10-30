@@ -1738,7 +1738,7 @@ body {
   text-transform: uppercase;
 }
 
-.v3-abilities {
+.v3-weapons {
   margin-top: auto;
   display: flex;
   flex-direction: column;
@@ -1747,40 +1747,32 @@ body {
   padding-bottom: 6px;
 }
 
-/* One ability button (V3 round 1 playtest redesign). One look per state:
- *   empty     a dashed circle, nothing in it, never animated;
- *   charging  dim icon, the ability's colour rising inside (--charge 0..1)
- *             and round the rim, the tag below says how far;
- *   ready     full colour, bright icon, a slow glow, READY;
- *   armed     gold rim, AIM (the next touch on the field aims it);
- *   active    it has the gun (×shots or seconds left).
- * A one-shot pop (.flash) marks the moment it fills. */
-.v3-ability {
-  --charge: 0;
+/* One weapon in the loadout (V3 round 2: nothing to press — weapons drop as
+ * pickups). One look per state:
+ *   empty   a dashed circle, nothing in it;
+ *   held    dim, in its colour: it can drop;
+ *   loaded  lit, its rim draining with the seconds left (--left 1..0) and
+ *           the seconds under it. */
+.v3-weapon {
+  --left: 0;
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  border: 0;
   padding: 0 0 6px;
   color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-  background:
-    radial-gradient(circle at 50% 50%, transparent 0 56%, transparent 57%),
-    conic-gradient(var(--card-color, var(--accent)) calc(var(--charge) * 360deg), #24343f 0);
+  background: conic-gradient(var(--card-color, var(--accent)) calc(var(--left) * 360deg), #24343f 0);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  touch-action: manipulation;
-  transition: transform 0.12s;
   isolation: isolate;
+  pointer-events: none;
 }
 
-/* The disc inside the rim, and the colour rising in it. */
-.v3-ability::before {
+/* The disc inside the rim, tinted while loaded. */
+.v3-weapon::before {
   content: '';
   position: absolute;
   inset: 4px;
@@ -1789,19 +1781,18 @@ body {
   z-index: -2;
 }
 
-.v3-ability-fill {
+.v3-weapon-fill {
   position: absolute;
   inset: 4px;
   border-radius: 50%;
   z-index: -1;
-  background: linear-gradient(0deg, color-mix(in srgb, var(--card-color) 34%, transparent) calc(var(--charge) * 100%), transparent calc(var(--charge) * 100%));
 }
 
-.v3-ability .v2-icon {
-  opacity: 0.45;
+.v3-weapon .v2-icon {
+  opacity: 0.5;
 }
 
-.v3-ability-name {
+.v3-weapon-name {
   font-size: 7.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1810,7 +1801,7 @@ body {
   color: var(--muted);
 }
 
-.v3-ability-lv {
+.v3-weapon-lv {
   position: absolute;
   top: -1px;
   right: -4px;
@@ -1824,128 +1815,76 @@ body {
   color: var(--card-color, var(--accent));
 }
 
-/* The state, written under the button. */
-.v3-ability-tag {
+/* Seconds left, under a loaded weapon. */
+.v3-weapon-tag {
   position: absolute;
   bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
-  min-width: 34px;
+  min-width: 30px;
   padding: 1px 5px;
   border-radius: 7px;
-  background: #0b141b;
-  border: 1px solid #2b3d48;
+  background: var(--card-color);
   font-size: 9px;
   font-weight: 800;
   line-height: 1.25;
-  color: var(--muted);
+  color: #071018;
   text-align: center;
   white-space: nowrap;
 }
 
-.v3-ability.empty {
-  background: transparent;
-  border: 2px dashed #2b3d48;
-  cursor: default;
-}
-
-.v3-ability.empty::before {
+.v3-weapon-tag:empty {
   display: none;
 }
 
-.v3-ability.ready .v2-icon,
-.v3-ability.armed .v2-icon,
-.v3-ability.active .v2-icon {
+.v3-weapon.empty {
+  background: transparent;
+  border: 2px dashed #2b3d48;
+}
+
+.v3-weapon.empty::before {
+  display: none;
+}
+
+.v3-weapon.held {
+  background: color-mix(in srgb, var(--card-color) 35%, #24343f);
+}
+
+.v3-weapon.loaded .v2-icon {
   opacity: 1;
 }
 
-.v3-ability.ready .v3-ability-name,
-.v3-ability.armed .v3-ability-name,
-.v3-ability.active .v3-ability-name {
+.v3-weapon.loaded .v3-weapon-name {
   color: var(--ink);
 }
 
-.v3-ability.ready .v3-ability-tag {
-  background: var(--card-color);
-  border-color: var(--card-color);
-  color: #071018;
+.v3-weapon.loaded .v3-weapon-fill {
+  background: color-mix(in srgb, var(--card-color) 26%, transparent);
 }
 
-.v3-ability.ready {
-  box-shadow: 0 0 0 2px var(--card-color), 0 0 16px 2px color-mix(in srgb, var(--card-color) 55%, transparent);
-  animation: v3-ready 1.4s ease-in-out infinite;
+.v3-weapon.loaded {
+  box-shadow: 0 0 14px 2px color-mix(in srgb, var(--card-color) 50%, transparent);
 }
 
-.v3-ability.armed {
-  box-shadow: 0 0 0 3px var(--gold), 0 0 22px 4px rgb(245 197 66 / 0.55);
-}
-
-.v3-ability.armed .v3-ability-tag {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #1d1606;
-}
-
-.v3-ability.active {
-  box-shadow: 0 0 0 3px var(--card-color);
-}
-
-.v3-ability.active .v3-ability-tag {
-  border-color: var(--card-color);
-  color: var(--card-color);
-}
-
-/* One pop when it fills; it never repeats and never outlives the moment. */
-.v3-ability.flash {
-  animation: v3-flash 0.45s ease-out;
-}
-
-.v3-ability.flash.ready {
-  animation: v3-flash 0.45s ease-out, v3-ready 1.4s ease-in-out 0.45s infinite;
-}
-
-@keyframes v3-ready {
-  50% {
-    box-shadow: 0 0 0 2px var(--card-color), 0 0 26px 6px color-mix(in srgb, var(--card-color) 70%, transparent);
-  }
-}
-
-@keyframes v3-flash {
-  0% {
-    transform: scale(1.22);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .v3-ability.ready,
-  .v3-ability.flash,
-  .v3-ability.flash.ready {
-    animation: none;
-  }
-}
-
-/* Short phones: smaller buttons so three fit under the controls. */
+/* Short phones: smaller chips so three fit under the controls. */
 @media (max-height: 420px) {
-  .v3-ability {
-    width: 54px;
-    height: 54px;
+  .v3-weapon {
+    width: 50px;
+    height: 50px;
   }
-  .v3-ability .v2-icon {
-    width: 22px;
-    height: 22px;
+  .v3-weapon .v2-icon {
+    width: 20px;
+    height: 20px;
   }
-  .v3-abilities {
-    gap: 13px;
+  .v3-weapons {
+    gap: 12px;
   }
   .v3-speed {
     min-height: 36px;
   }
 }
 
-/* Draft cards: how it charges and how it goes off, and the evolution. */
+/* Draft cards: how the weapon comes (a pickup, its seconds) and how a tap fires it. */
 .v3-card-how {
   font-size: 10.5px;
   line-height: 1.25;

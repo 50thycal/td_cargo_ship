@@ -9,7 +9,6 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import {
-  activate,
   continueEndless,
   createGame,
   pickUpgrade,
@@ -18,7 +17,6 @@ import {
   step,
   tap,
   type Game,
-  type Aim,
   type Phase,
   type TapResult,
   type Tempo,
@@ -34,9 +32,11 @@ import {
  *     Strike Package is now two jets sweeping the screen).
  *  7: round 13 (a cleared wave clears the field and refills the racks,
  *     strike jets destroy subs and trucks, truck roads moved off the bases).
+ *  8: V3 round 2 (weapons drop as pickups and load the gun; no ability
+ *     activations, so no 'a' commands).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 7;
+export const LOG_VERSION = 8;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -48,7 +48,6 @@ export type LogCommand =
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
-  | [number, 'a', AbilityId, ...number[]] // ability set off [x, y[, x2, y2]] or [x, y, power×100]
   | [number, 'e'] // continue into endless
   | [number, 's', number] // game speed (UI only; kept for context)
   | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
@@ -108,7 +107,7 @@ export interface PlaySummary {
   steps: number;
   seconds: number;
   levels: Partial<Record<AbilityId, number>>;
-  /** Times each ability went off. */
+  /** Weapon pickups taken, by weapon. */
   uses: Partial<Record<AbilityId, number>>;
   /** Each card offered → picked, in order. */
   drafts: { wave: number; offered: CardId[]; picked: CardId; replaced?: AbilityId }[];
@@ -177,12 +176,7 @@ export class Recorder {
   }
 
   /** Set off an ability. Only a use that went off is logged. */
-  activate(id: AbilityId, aim: Aim = {}): boolean {
-    const a = roundAim(aim);
-    const ok = activate(this.game, id, a);
-    if (ok) this.log.commands.push([this.game.steps, 'a', id, ...encodeAim(a)]);
-    return ok;
-  }
+
 
   endless(): void {
     this.log.commands.push([this.game.steps, 'e']);
@@ -277,9 +271,6 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
         case 'u':
           pickUpgrade(g, c[2], c[3]);
           break;
-        case 'a':
-          activate(g, c[2], decodeAim(c.slice(3) as number[]));
-          break;
         case 'e':
           continueEndless(g);
           break;
@@ -296,34 +287,4 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
     step(g, SIM_DT);
   }
   return g;
-}
-
-/** Aims are logged in whole world units (power in hundredths), and the
- *  recorder applies the rounded aim, so a replay sees exactly what it did. */
-function roundAim(a: Aim): Aim {
-  const r: Aim = {};
-  if (a.x !== undefined && a.y !== undefined) {
-    r.x = Math.round(a.x);
-    r.y = Math.round(a.y);
-  }
-  if (a.x2 !== undefined && a.y2 !== undefined) {
-    r.x2 = Math.round(a.x2);
-    r.y2 = Math.round(a.y2);
-  } else if (a.power !== undefined) r.power = Math.round(a.power * 100) / 100;
-  return r;
-}
-
-/** [] · [x, y] · [x, y, x2, y2] · [x, y, -1, power×100]. */
-function encodeAim(a: Aim): number[] {
-  if (a.x === undefined || a.y === undefined) return [];
-  if (a.x2 !== undefined && a.y2 !== undefined) return [a.x, a.y, a.x2, a.y2];
-  if (a.power !== undefined) return [a.x, a.y, -1, Math.round(a.power * 100)];
-  return [a.x, a.y];
-}
-
-function decodeAim(n: number[]): Aim {
-  if (n.length < 2) return {};
-  if (n.length >= 4 && n[2] === -1) return { x: n[0], y: n[1], power: n[3] / 100 };
-  if (n.length >= 4) return { x: n[0], y: n[1], x2: n[2], y2: n[3] };
-  return { x: n[0], y: n[1] };
 }

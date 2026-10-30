@@ -1,8 +1,9 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
-// Drives: menu → Armory (buy a level with seeded salvage) → map 1 → each
-// kind of ability activation through real input (button, swipe a line,
-// press-and-hold, takeover taps, tap a target) → defends to the draft →
-// picks an ability → phone-size layout. Fails on any page error.
+// Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
+// map 1 → weapon pickups through real input (tap the pickup, then tap to
+// fire it: Railgun, Air Strike, Salvo, EMP, Smoke, Decoy) → defends to the
+// draft → picks a weapon → phone-size layout → the notice tray on every
+// map. Fails on any page error.
 //
 // Usage:  npm run build && npm run preview -- --port 4173 &  npm run e2e:v3
 
@@ -51,24 +52,27 @@ async function defend(page) {
   for (const p of targets) await page.mouse.click(p.x, p.y);
 }
 
-/** Hold these abilities (level 1, fully charged) in slots 0–2. */
+/** Hold these weapons (in the drop pool, nothing loaded), rack full. */
 async function equip(page, ids, level = 1) {
   await page.evaluate(
     ([ids, level]) => {
       const g = window.__v3.game();
       g.levels = Object.fromEntries(ids.map((id) => [id, level]));
       g.slots = [...ids];
-      g.charge = Object.fromEntries(ids.map((id) => [id, 999]));
-      g.gunMode = null;
+      g.weapon = null;
+      g.pickups = [];
+      g.ammo = g.stats.rack;
     },
     [ids, level],
   );
   await page.waitForTimeout(80);
 }
 
-const uses = (page, id) => page.evaluate((id) => window.__v3.game().uses[id] ?? 0, id);
-/** The button for an ability (buttons follow the order abilities were taken in). */
-const slotOf = (page, id) => page.locator(`.v3-ability[data-ability="${id}"]`);
+/** A weapon pickup on the water at (x, y), as a kill would drop it. */
+async function dropWeapon(page, id, x, y) {
+  await page.evaluate(([id, x, y]) => window.__v3.game().pickups.push({ id: 90000 + Math.floor(Math.random() * 9999), kind: 'weapon', weapon: id, x, y, age: 0 }), [id, x, y]);
+}
+
 const w2c = (page, x, y) => page.evaluate(([x, y]) => window.__v3.toClient(x, y), [x, y]);
 
 try {
@@ -116,78 +120,64 @@ try {
     await page.waitForTimeout(60);
   }
 
-  // Button: EMP Pulse.
-  await equip(page, ['emp', 'airstrike', 'salvo']);
-  await page.screenshot({ path: `${SHOT_DIR}/03-abilities-ready.png` });
-  check((await page.locator('.v3-ability.ready').count()) === 3, 'three ready ability buttons');
-  await slotOf(page, 'emp').click();
-  check((await uses(page, 'emp')) === 1, 'EMP Pulse fires from its button');
+  // ---- Weapons (round 2): drafted weapons drop as pickups; a tap on the
+  // pickup loads the gun for 15 s; every tap then fires it. No buttons. ----
+  await equip(page, ['railgun', 'airstrike', 'salvo']);
+  await page.screenshot({ path: `${SHOT_DIR}/03-loadout.png` });
+  check((await page.locator('.v3-weapon.held').count()) === 3, 'the loadout shows the three weapons held');
+  check((await page.locator('.v3-weapons button, .v3-ability').count()) === 0, 'there are no ability buttons to press');
+  check((await page.locator('.v3-weapon.loaded').count()) === 0, 'nothing is loaded before a pickup');
 
-  // Line: Air Strike — arm, then swipe across the screen.
-  await slotOf(page, 'airstrike').click();
-  check(await slotOf(page, 'airstrike').evaluate((b) => b.classList.contains('armed')), 'Air Strike arms');
-  const a = await w2c(page, 200, 300);
-  const b = await w2c(page, 1300, 360);
-  await page.mouse.move(a.x, a.y);
-  await page.mouse.down();
-  await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 4 });
-  await page.screenshot({ path: `${SHOT_DIR}/04-swipe-aim.png` });
-  await page.mouse.move(b.x, b.y, { steps: 4 });
-  await page.mouse.up();
-  check((await uses(page, 'airstrike')) === 1, 'Air Strike flies the swiped line');
-  await page.waitForTimeout(250);
-  await page.screenshot({ path: `${SHOT_DIR}/05-airstrike.png` });
-
-  // Hold: Hellfire Salvo — press, hold, release.
-  await slotOf(page, 'salvo').click();
-  const h = await w2c(page, 800, 300);
-  await page.mouse.move(h.x, h.y);
-  await page.mouse.down();
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: `${SHOT_DIR}/06-hold-aim.png` });
-  await page.mouse.up();
-  check((await uses(page, 'salvo')) === 1, 'Hellfire Salvo fires on release');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: `${SHOT_DIR}/07-salvo.png` });
-
-  // Takeover: Railgun — the next taps fire beams, no ammo needed.
-  await equip(page, ['railgun', 'smoke', 'hunter']);
-  await slotOf(page, 'railgun').click();
-  check((await page.evaluate(() => window.__v3.game().gunMode?.id)) === 'railgun', 'Railgun takes over the gun');
-  const r = await w2c(page, 900, 200);
-  await page.mouse.click(r.x, r.y);
+  // Drop a Railgun pickup and tap it, like any pickup.
+  await dropWeapon(page, 'railgun', 700, 500);
+  await page.waitForTimeout(120);
+  await page.screenshot({ path: `${SHOT_DIR}/04-weapon-pickup.png` });
+  const pk = await w2c(page, 700, 500);
+  await page.mouse.click(pk.x, pk.y);
+  const loaded = await page.evaluate(() => window.__v3.game().weapon);
+  check(loaded?.id === 'railgun' && loaded.t > 14, `tapping the pickup loads the Railgun for 15 s (${loaded?.t?.toFixed(1)} s)`);
+  await page.waitForTimeout(150);
+  check((await page.locator('.v3-weapon.loaded[data-ability="railgun"]').count()) === 1, 'its loadout chip lights up');
+  check(/1[45]s/.test(await page.locator('.v3-weapon.loaded .v3-weapon-tag').textContent()), 'the chip counts the seconds down');
+  check((await page.locator('.v2-timer').first().textContent()).includes('RAILGUN'), 'the left rail times it like a power-up');
+  check((await page.locator('.v2-alert').allTextContents()).some((t) => t.includes('RAILGUN')), 'a notice says what was loaded and how to fire it');
+  // A tap on open water fires a beam through it, spending a round.
+  const ammo0 = await page.evaluate(() => window.__v3.game().ammo);
+  const open = await w2c(page, 1100, 200);
+  await page.mouse.click(open.x, open.y);
+  const fired = await page.evaluate(() => ({ ammo: window.__v3.game().ammo, beam: window.__v3.game().fx.some((f) => f.kind === 'beam') }));
+  check(fired.beam && fired.ammo === ammo0 - 1, `a tap fires the Railgun's beam and spends a round (rack ${ammo0} → ${fired.ammo})`);
   await page.waitForTimeout(60);
-  await page.screenshot({ path: `${SHOT_DIR}/08-railgun.png` });
-  await page.mouse.click(r.x, r.y);
-  check((await page.evaluate(() => window.__v3.game().gunMode)) === null, 'Railgun hands the gun back after its shots');
+  await page.screenshot({ path: `${SHOT_DIR}/05-railgun-loaded.png` });
 
-  // Line again: Smoke Wall along a lane.
-  const lane = await page.evaluate(() => window.__v3.game().map.channels[0].y);
-  await slotOf(page, 'smoke').click();
-  const s1 = await w2c(page, 300, lane);
-  const s2 = await w2c(page, 900, lane);
-  await page.mouse.move(s1.x, s1.y);
-  await page.mouse.down();
-  await page.mouse.move(s2.x, s2.y, { steps: 6 });
-  await page.mouse.up();
-  check((await page.evaluate(() => window.__v3.game().fields.filter((f) => f.kind === 'smoke').length)) === 1, 'Smoke Wall lays smoke along the drag');
-  await page.screenshot({ path: `${SHOT_DIR}/09-smoke.png` });
+  // Each of the others through the same real taps: pickup, then a tap.
+  const sig = {
+    airstrike: () => window.__v3.game().allies.length > 0,
+    salvo: () => window.__v3.game().interceptors.some((i) => i.src === 'salvo'),
+    emp: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'emp'),
+    smoke: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'smoke'),
+    decoy: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'decoy'),
+  };
+  for (const id of Object.keys(sig)) {
+    await equip(page, [id]);
+    await dropWeapon(page, id, 600, 520);
+    const p = await w2c(page, 600, 520);
+    await page.mouse.click(p.x, p.y);
+    const on = await page.evaluate(() => window.__v3.game().weapon?.id);
+    const t = await w2c(page, 900, 300);
+    await page.mouse.click(t.x, t.y);
+    const ok = await page.evaluate(`(${sig[id].toString()})()`);
+    check(on === id && ok, `${id}: its pickup loads it and a tap on open water fires it`);
+    await page.waitForTimeout(120);
+    if (id === 'airstrike') await page.screenshot({ path: `${SHOT_DIR}/06-airstrike.png` });
+  }
 
-  // Target: Sub Hunter with nothing there stays armed; the cancel works.
-  await slotOf(page, 'hunter').click();
-  const empty = await w2c(page, 800, 450);
-  await page.mouse.click(empty.x, empty.y);
-  check((await uses(page, 'hunter')) === 0 && (await slotOf(page, 'hunter').evaluate((b) => b.classList.contains('armed'))), 'Sub Hunter on empty water stays armed');
-  await slotOf(page, 'hunter').click();
-  check(!(await slotOf(page, 'hunter').evaluate((b) => b.classList.contains('armed'))), 'pressing an armed button disarms it');
-
-  // The log carries those activations (EMP, Air Strike, Salvo, Railgun,
-  // Smoke — not the Sub Hunter that found nothing) and the Armory.
-  const replay = await page.evaluate(() => {
+  // The log has taps only (a weapon is a pickup and a tap, nothing else).
+  const logged = await page.evaluate(() => {
     const log = window.__v3.log();
-    return { acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
+    return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(replay.acts === 5 && replay.game === 'v3' && replay.armory.warhead === 1, `log records ${replay.acts} activations and the armory`);
+  check(logged.v === 8 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -201,30 +191,34 @@ try {
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${SHOT_DIR}/10-draft.png` });
   const offer = await page.locator('.v2-card').count();
-  check(offer >= 3, `draft deals ${offer} ability cards`);
+  check(offer >= 3, `draft deals ${offer} weapon cards`);
+  check((await page.locator('.v2-draft h2').textContent()) === 'Choose your weapon', 'the draft asks for a weapon');
+  check((await page.locator('.v3-card-how').first().textContent()).startsWith('Drops as a pickup · 15 s'), 'each card says it drops as a pickup for 15 s');
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);
-  check(held === 1, 'the picked ability is held');
-  check((await page.locator('.v3-ability:not(.empty)').count()) === 1, 'its button appears');
-  // Playtest round 1: a new ability starts empty (it used to start half full)
-  // and only an ability that is ready glows.
-  check((await page.locator('.v3-ability.charging .v3-ability-tag').first().textContent()) === '0%', 'a new ability starts empty (0%)');
-  check((await page.locator('.v3-ability.empty').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'empty slots never animate');
+  check(held === 1, 'the picked weapon is held');
+  check((await page.locator('.v3-weapon.held').count()) === 1, 'its loadout chip appears, not loaded');
+  check((await page.locator('.v3-weapon').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'nothing in the loadout animates');
 
   // ---- Phone landscape ----
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(300);
   await equip(page, ['emp', 'railgun', 'decoy'], 3);
+  await dropWeapon(page, 'decoy', 900, 450);
+  await page.evaluate(() => {
+    const g = window.__v3.game();
+    g.weapon = { id: 'emp', level: 3, t: 9 };
+  });
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${SHOT_DIR}/11-phone.png` });
   const rail = await page.locator('.v2-rail-right').boundingBox();
-  const last = await page.locator('.v3-ability').nth(2).boundingBox();
-  check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `ability buttons fit on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);
+  const last = await page.locator('.v3-weapon').nth(2).boundingBox();
+  check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `the loadout fits on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);
 
   // ---- V2 round 14's notification tray, on every map ----
-  // A busy late wave played by the watch bot (which also fires abilities, so
-  // ability notices compete for the tray). Cards never overlap each other or
+  // A busy late wave played by the watch bot (which also grabs weapons, so
+  // weapon notices compete for the tray). Cards never overlap each other or
   // the carrier, never leave the screen, and never exceed the map's limit.
   for (const [map, w, h] of [
     ['strait', 874, 402],
