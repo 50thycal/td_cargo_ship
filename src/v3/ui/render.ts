@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Dome, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { ABILITY_MAX, SHORT_NAME, WEAPON } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
@@ -69,28 +69,28 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
   if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
-  drawFields(ctx, g, 'ion');
+  drawFields(ctx, g, 'well');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
-  drawFields(ctx, g, 'smoke');
   if (g.shieldT > 0) drawShields(ctx, g);
-  drawFields(ctx, g, 'flare');
+  drawDomes(ctx, g);
   for (const p of g.pickups) {
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
   }
   for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
+  drawFields(ctx, g, 'flak');
   for (const it of g.interceptors) {
     if (it.life < 0) continue;
     const a = Math.atan2(it.ty - it.y, it.tx - it.x);
-    if (it.src === 'salvo') {
-      // A Hellfire rocket: orange, with a longer smoke trail.
-      ctx.strokeStyle = 'rgba(255, 190, 120, 0.55)';
-      ctx.lineWidth = 3;
+    if (it.src === 'seeker') {
+      // A seeker: small and lime, with a thin curling trail.
+      ctx.strokeStyle = 'rgba(163, 230, 53, 0.55)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(it.x - Math.cos(a) * 40, it.y - Math.sin(a) * 40);
+      ctx.moveTo(it.x - Math.cos(a) * 22, it.y - Math.sin(a) * 22);
       ctx.lineTo(it.x, it.y);
       ctx.stroke();
-      dot(ctx, it.x, it.y, 4.5, '#ffb44f');
+      dot(ctx, it.x, it.y, 3.5, ICON_COLOR.seeker);
       continue;
     }
     // A weapon's shell trails that weapon's colour.
@@ -111,6 +111,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     drawPlane(ctx, g, th);
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
+  for (const th of g.threats) if (th.frozenT && th.frozenT > 0) drawIce(ctx, g, th);
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
@@ -515,61 +516,114 @@ function drawSteam(ctx: CanvasRenderingContext2D, x: number, y: number, t: numbe
   ctx.stroke();
 }
 
-/** What the weapons leave on the water: smoke clouds (grey puffs), ion
- *  clouds (a violet haze with a crackling rim), hanging flares (a burning
- *  point with its pull ring) and Carpet Strike's burning row (flames along
- *  it). All fade in fast and out slowly. */
+/** What the weapons leave on the water: flak clouds (dark puffs sparking as
+ *  they hit), gravity wells (a violet spiral turning inward, tightening as
+ *  it closes) and Carpet Strike's burning row (flames along it). All fade in
+ *  fast and out slowly. */
 function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind']): void {
   for (const f of g.fields) {
     if (f.kind !== kind) continue;
     const u = f.t / f.life;
     const a = u < 0.08 ? u / 0.08 : 1 - Math.max(0, (u - 0.7) / 0.3);
     if (kind === 'burn') drawBurn(ctx, f, a);
-    else if (kind === 'smoke') {
-      // A cloud of puffs filling the circle (evolved, Fog Bank: denser, bluer).
-      ctx.fillStyle = f.level >= 3 ? `rgba(190,205,220,${0.42 * a})` : `rgba(200,205,210,${0.34 * a})`;
-      for (let k = 0; k < 9; k++) {
-        const ang = k * 2.39996 + f.t * 0.3;
-        const rr = k === 0 ? 0 : f.hw * 0.55 * Math.sqrt(k / 8);
-        const wob = Math.sin(k * 1.7 + f.t * 1.5);
+    else if (kind === 'flak') {
+      // Dark puffs filling the circle, sparks winking in them (evolved,
+      // Flak Curtain: a touch warmer).
+      ctx.fillStyle = f.level >= 3 ? `rgba(92,74,62,${0.5 * a})` : `rgba(78,82,90,${0.48 * a})`;
+      for (let k = 0; k < 8; k++) {
+        const ang = k * 2.39996 + f.t * 0.4;
+        const rr = k === 0 ? 0 : f.hw * 0.55 * Math.sqrt(k / 7);
+        const wob = Math.sin(k * 1.7 + f.t * 2);
         ctx.beginPath();
-        ctx.arc(f.x1 + Math.cos(ang) * rr, f.y1 + Math.sin(ang) * rr, f.hw * (0.45 + 0.08 * wob), 0, Math.PI * 2);
+        ctx.arc(f.x1 + Math.cos(ang) * rr, f.y1 + Math.sin(ang) * rr, f.hw * (0.42 + 0.08 * wob), 0, Math.PI * 2);
         ctx.fill();
       }
-    } else if (kind === 'ion') {
-      const glow = ctx.createRadialGradient(f.x1, f.y1, 0, f.x1, f.y1, f.hw);
-      glow.addColorStop(0, `rgba(192,132,252,${0.28 * a})`);
-      glow.addColorStop(1, `rgba(192,132,252,${0.06 * a})`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(f.x1, f.y1, f.hw, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(216,180,254,${0.7 * a})`;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([10, 8]);
-      ctx.lineDashOffset = -f.t * 60;
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(255,200,120,${0.9 * a})`;
+      for (let k = 0; k < 6; k++) {
+        const ang = k * 1.9 + Math.floor(g.t * 12) * 0.7;
+        const rr = f.hw * (0.2 + 0.7 * (((k * 37 + Math.floor(g.t * 12)) % 10) / 10));
+        ctx.beginPath();
+        ctx.arc(f.x1 + Math.cos(ang) * rr, f.y1 + Math.sin(ang) * rr, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
-      // A hanging flare: a white-hot point bobbing, its pull ring around it.
-      const y = f.y1 + Math.sin(g.t * 5 + f.x1) * 4;
-      const glow = ctx.createRadialGradient(f.x1, y, 0, f.x1, y, 34);
-      glow.addColorStop(0, `rgba(255,250,220,${0.95 * a})`);
-      glow.addColorStop(0.4, `rgba(251,146,60,${0.6 * a})`);
-      glow.addColorStop(1, 'rgba(251,146,60,0)');
+      // A gravity well: a haze, and a spiral turning in, shrinking to its
+      // core as it closes.
+      const glow = ctx.createRadialGradient(f.x1, f.y1, 0, f.x1, f.y1, f.hw);
+      glow.addColorStop(0, `rgba(192,132,252,${0.3 * a})`);
+      glow.addColorStop(1, 'rgba(192,132,252,0)');
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(f.x1, y, 34, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(251,146,60,${0.35 * a})`;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 10]);
-      ctx.beginPath();
       ctx.arc(f.x1, f.y1, f.hw, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(216,180,254,${0.8 * a})`;
+      ctx.lineWidth = 2.5;
+      const reach = f.hw * (1 - 0.6 * u);
+      for (let arm = 0; arm < 3; arm++) {
+        ctx.beginPath();
+        for (let k = 0; k <= 24; k++) {
+          const p = k / 24;
+          const ang = arm * ((Math.PI * 2) / 3) + p * 4 + f.t * 5;
+          const rr = reach * (1 - p);
+          const x = f.x1 + Math.cos(ang) * rr;
+          const y = f.y1 + Math.sin(ang) * rr;
+          if (k === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      dot(ctx, f.x1, f.y1, 5, `rgba(250,245,255,${a})`);
     }
   }
+}
+
+/** Aegis Domes: a teal bubble over each covered hull, one pip per hit it
+ *  can still take, flickering in its last second. */
+function drawDomes(ctx: CanvasRenderingContext2D, g: Game): void {
+  const one = (x: number, y: number, rx: number, ry: number, d: Dome) => {
+    if (d.t < 1 && Math.floor(g.t * 10) % 2) return;
+    ctx.fillStyle = d.level >= 3 ? 'rgba(94,234,212,0.2)' : 'rgba(94,234,212,0.13)';
+    ctx.strokeStyle = 'rgba(153,246,228,0.9)';
+    ctx.lineWidth = d.level >= 3 ? 3 : 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    for (let k = 0; k < d.hits; k++) dot(ctx, x - (d.hits - 1) * 6 + k * 12, y - ry - 8, 3.5, '#5eead4');
+  };
+  for (const s of g.ships) if (s.dome) one(s.x, s.y, 46, 24, s.dome);
+  if (g.carrierDome) one(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 24, CARRIER.halfBeam + 22, g.carrierDome);
+}
+
+/** Cryo Rounds: a frozen threat is cased in ice, cracking as it thaws. */
+function drawIce(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  const r = th.kind === 'heavy' ? 40 : th.kind === 'mothership' ? 44 : th.kind === 'strafer' || th.kind === 'bomber' ? 38 : 22;
+  const thaw = Math.min(1, (th.frozenT ?? 0) / 0.6);
+  ctx.save();
+  ctx.translate(th.x, th.y);
+  ctx.fillStyle = `rgba(186,230,253,${0.38 * thaw})`;
+  ctx.strokeStyle = `rgba(224,242,254,${0.9 * thaw})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let k = 0; k < 6; k++) {
+    const ang = (k * Math.PI) / 3 + 0.3;
+    ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r * 0.8);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  if ((th.frozenLv ?? 0) >= 3) {
+    // Absolute Zero: brittle, cracks showing (any hit shatters it).
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.5, -r * 0.3);
+    ctx.lineTo(0, 0);
+    ctx.lineTo(r * 0.4, r * 0.35);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(r * 0.2, -r * 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+  void g;
 }
 
 /** Carpet Strike's row: flames all along it. */
@@ -1034,34 +1088,26 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineTo(f.x2, f.y2);
         ctx.stroke();
         break;
-      case 'flare': {
-        // A burning flare arcs from the ship to the decoy point (the missile
-        // chases it there), trailing sparks and smoke.
-        const k = Math.min(1, u * 2.5);
-        const px = f.x + (f.x2 - f.x) * k;
-        const py = f.y + (f.y2 - f.y) * k - Math.sin(k * Math.PI) * 30;
-        for (let j = 1; j <= 5; j++) {
-          const kk = Math.max(0, k - j * 0.08);
-          ctx.fillStyle = `rgba(210,210,215,${0.35 * (1 - u)})`;
-          ctx.beginPath();
-          ctx.arc(f.x + (f.x2 - f.x) * kk, f.y + (f.y2 - f.y) * kk - Math.sin(kk * Math.PI) * 30, 5 + j * 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        const glow = ctx.createRadialGradient(px, py, 0, px, py, 26);
-        glow.addColorStop(0, `rgba(255,250,220,${1 - u * 0.6})`);
-        glow.addColorStop(0.35, `rgba(255,180,70,${0.8 * (1 - u * 0.6)})`);
-        glow.addColorStop(1, 'rgba(255,140,40,0)');
-        ctx.fillStyle = glow;
+      case 'dome': {
+        // An Aegis Dome going up: a teal ring snapping out to the dome.
+        ctx.strokeStyle = `rgba(94,234,212,${1 - u})`;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(px, py, 26, 0, Math.PI * 2);
+        ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * u), 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'frost': {
+        // Cryo burst: an icy ring and a pale flash filling the radius.
+        ctx.fillStyle = `rgba(186,230,253,${0.25 * (1 - u)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
         ctx.fill();
-        if (u < 0.2) {
-          ctx.strokeStyle = `rgba(255,240,200,${1 - u * 5})`;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(f.x, f.y, 20 + u * 80, 0, Math.PI * 2);
-          ctx.stroke();
-        }
+        ctx.strokeStyle = `rgba(224,242,254,${0.9 * (1 - u)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.6 + 0.4 * u), 0, Math.PI * 2);
+        ctx.stroke();
         break;
       }
       case 'flak':
@@ -1159,7 +1205,7 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         break;
       }
       case 'emp':
-        // EMP Rounds: a violet ring racing out from the burst.
+        // Gravity Well closing: a violet ring snapping out from its core.
         ctx.strokeStyle = `rgba(192,132,252,${0.9 * (1 - u)})`;
         ctx.lineWidth = 10 * (1 - u) + 2;
         ctx.beginPath();

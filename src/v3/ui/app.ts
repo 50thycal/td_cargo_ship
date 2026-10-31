@@ -1643,14 +1643,14 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
 };
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
-  drone: 'Drones did the most damage: EMP Rounds or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, and Fast Motors in the Armory.',
-  guided: 'Guided missiles did the most damage: Decoy Flares pull them off.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; Decoy Flares fool them.',
+  drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, Fast Motors in the Armory, and an Aegis Dome takes the hit for a ship.',
+  guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; an Aegis Dome on the ship it is after takes the hit.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
-  cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Hellfire Salvo clears the bomblets.',
+  cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
-  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; Smoke Shells hide ships.',
+  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; Cryo Rounds stop it mid-pass.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
 };
 

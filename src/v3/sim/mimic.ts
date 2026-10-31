@@ -5,8 +5,7 @@
 // go to the most urgent threat only about half the time; the rest go to
 // whatever is near the finger. Ship flow goes up early, the formation changes
 // once, and cards stack: take a card, then level it up. V3: weapon pickups
-// are grabbed like any pickup, and with Sub Hunter loaded it goes for a sub
-// or truck between bursts.
+// are grabbed like any pickup; a loaded weapon fires from the same taps.
 //
 // It acts through `BotIO`, the same calls the player's touches make, so a
 // watched run records an ordinary log that replays exactly. Its dice are
@@ -128,7 +127,7 @@ export const YOU_V1: Persona = {
       { id: 'box', weight: 1 },
     ],
   },
-  taste: ['railgun', 'emp', 'airstrike', 'decoy', 'tesla', 'salvo', 'smoke', 'hunter'],
+  taste: ['railgun', 'flak', 'airstrike', 'aegis', 'tesla', 'seeker', 'cryo', 'well'],
 };
 
 /** You, round 12: fitted knob by knob to the player's four v6 runs with
@@ -176,7 +175,7 @@ export const YOU: Persona = {
       { id: 'spread', weight: 1 },
     ],
   },
-  taste: ['emp', 'railgun', 'decoy', 'airstrike', 'salvo', 'tesla', 'smoke', 'hunter'],
+  taste: ['flak', 'railgun', 'aegis', 'airstrike', 'seeker', 'tesla', 'cryo', 'well'],
 };
 
 /** What the bot can do: exactly what a player's touches can. */
@@ -371,17 +370,6 @@ export class Mimic {
       io.tap(pickup.x + this.rng.range(-12, 12), pickup.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);
       this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
       return;
-    }
-    // Sub Hunter loaded (below its evolution): a sub or truck it has seen
-    // for a moment gets a tap, at the same unhurried rate as a pickup.
-    if (g.weapon?.id === 'hunter' && g.weapon.level < 3 && canFire(g)) {
-      const r = g.raiders.find((o) => o.t > p.react.median && (o.kind === 'sub' ? o.state === 'surface' || o.state === 'fire' : o.dist > 0 && o.state !== 'reverse'));
-      if (r && this.rng.chance(p.pickup * SIM_DT * 6)) {
-        this.finger = { x: r.x, y: r.y };
-        io.tap(r.x + this.rng.range(-12, 12), r.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);
-        this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
-        return;
-      }
     }
     if (!seen.length) return;
     if (!canFire(g) && this.rng.chance(p.waitDry)) {
@@ -788,5 +776,5 @@ export const PERSONA_ORDER = ['you', 'tryhard', 'sniper', 'casual', 'tired', 'di
 export const PERSONAS: Record<string, Persona> = Object.fromEntries(
   [YOU, TRYHARD, CASUAL, DISTRACTED, RUSHER, MASHER, SNIPER, NOVICE, TIRED, YOU_V1].map((p) => [p.id, p]),
 );
-// Ability ids the taste list may name must exist.
+// Weapon ids the taste list may name must exist.
 for (const p of Object.values(PERSONAS)) for (const id of p.taste) if (!(id in ABILITIES)) throw new Error(`persona ${p.id} names unknown ability ${id}`);

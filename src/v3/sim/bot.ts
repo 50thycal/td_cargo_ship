@@ -2,8 +2,7 @@
 // same `tap()` a finger does — no privileged access — with a human-ish
 // reaction delay and a cap on how fast it can tap. Weapons need nothing
 // extra: it grabs their pickups like any other and keeps tapping threats
-// (with Sub Hunter loaded, a sub or truck first; with the Railgun, the
-// toughest threat).
+// (with the Railgun loaded, the toughest threat first).
 
 import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
@@ -83,15 +82,6 @@ export class Bot {
       return;
     }
     if (!this.skill.spam && !canFire(g)) return;
-    // Sub Hunter loaded: a sub or truck it has had time to see goes first.
-    if (g.weapon?.id === 'hunter') {
-      const r = g.raiders.find((o) => o.t >= this.skill.reaction && (o.kind === 'sub' ? o.state === 'surface' || o.state === 'fire' : o.dist > 0 && o.state !== 'reverse'));
-      if (r && g.weapon.level < 3) {
-        tap(g, r.x, r.y, 6);
-        this.lastTap = g.t;
-        return;
-      }
-    }
     // Most urgent first: the threat closest to whatever it is aimed at. With
     // the Railgun loaded, the toughest threat first (a beam is wasted on a drone).
     const rail = g.weapon?.id === 'railgun';

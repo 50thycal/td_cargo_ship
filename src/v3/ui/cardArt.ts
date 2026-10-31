@@ -1,4 +1,4 @@
-// Ability card illustrations (V3, in round 10's card style). The player's reference was a card
+// Weapon card illustrations (V3, in round 10's card style). The player's reference was a card
 // whose picture fills most of it: one bold, unmistakable image per card, in
 // a frame that never changes. These are small scenes in the battlefield's own
 // language — ships, interceptors, red threats, the sea — each built around
@@ -79,19 +79,50 @@ const jet = (x: number, y: number, deg: number, s = 1, c = '#bfdbfe'): string =>
   `<path d="M10 0 L2 -2 L-4 -10 L-7 -10 L-4 -2 L-9 -2 L-11 -5 L-13 -5 L-12 0 L-13 5 L-11 5 L-9 2 L-4 2 L-7 10 L-4 10 L2 2 Z" fill="${c}"/>` +
   `<circle cx="-4" cy="-6" r="1.4" fill="#2563eb"/><circle cx="-4" cy="6" r="1.4" fill="#2563eb"/></g>`;
 
-/** A submarine surfaced, periscope up. */
-const sub = (x: number, y: number, s = 1): string =>
-  `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-16 0 Q-16 -5 -10 -5 H12 Q17 -5 17 0 Q17 3 12 3 H-10 Q-16 3 -16 0 Z" fill="#3b4a54"/>` +
-  `<rect x="-3" y="-10" width="7" height="6" rx="1.5" fill="#3b4a54"/><path d="M1 -10 V-15 H4" stroke="#3b4a54" stroke-width="1.4" fill="none"/></g>`;
-
 const SCENES: Record<CardId, Scene> = {
-  // A violet pulse ring sweeping out from the carrier, a swarm frying in it.
-  emp: (c) =>
-    sea(66) +
-    `<rect x="40" y="58" width="40" height="6" rx="3" fill="${HULL}"/>` +
-    `<circle cx="60" cy="58" r="44" fill="none" stroke="${c}" stroke-width="3" opacity="0.9"/>` +
-    `<circle cx="60" cy="58" r="30" fill="none" stroke="${c}" stroke-width="1.6" opacity="0.6"/>` +
-    [[24, 24], [40, 14], [78, 12], [98, 26], [60, 22]].map(([x, y]) => drone(x, y, 1) + `<path d="M${x - 5} ${y - 6} L${x - 2} ${y - 2} L${x - 5} ${y + 1} L${x - 1} ${y + 5}" stroke="${c}" stroke-width="1.2" fill="none"/>`).join(''),
+  // A ragged flak cloud hanging in the air, drones bursting as they fly in.
+  flak: (c) =>
+    sea(66) + ship(60, 62, 0.75) +
+    [[52, 30, 14], [66, 26, 12], [60, 38, 11], [74, 36, 9], [46, 40, 8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" opacity="0.32"/>`).join('') +
+    [[48, 24], [70, 22], [58, 34], [76, 40], [42, 38], [64, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.6" fill="${INK}"/>`).join('') +
+    burst(56, 30, 7, c) + burst(72, 38, 6, FLAME) + drone(30, 28, 1) + drone(96, 22, 1) + drone(88, 36, 0.9),
+
+  // One launch splitting into seekers that curve off to separate threats.
+  seeker: (c) =>
+    sea(68) +
+    `<rect x="44" y="60" width="32" height="6" rx="3" fill="${HULL}"/>` +
+    [[18, 14], [60, 8], [102, 16]].map(([x, y], k) => {
+      const mx = k === 1 ? 60 : 60 + (x - 60) * 0.3;
+      return `<path d="M60 60 Q${mx} 34 ${x} ${y + 8}" fill="none" stroke="${c}" stroke-width="1.4" stroke-dasharray="3 2"/>` + interceptor(x, y + 8, k === 0 ? -120 : k === 1 ? -90 : -60, 0.7, c) + threat(x, y - 2, k === 0 ? 30 : k === 1 ? 90 : 150, 0.8);
+    }).join(''),
+
+  // A shield dome over a ship, missiles bursting harmlessly on its skin.
+  aegis: (c) =>
+    sea(64) +
+    `<path d="M24 60 A36 32 0 0 1 96 60" fill="${c}" opacity="0.16"/>` +
+    `<path d="M24 60 A36 32 0 0 1 96 60" fill="none" stroke="${c}" stroke-width="2.4"/>` +
+    `<path d="M34 60 A26 23 0 0 1 86 60" fill="none" stroke="${c}" stroke-width="1" opacity="0.5" stroke-dasharray="3 3"/>` +
+    ship(60, 60, 0.9) +
+    burst(40, 36, 7, c) + burst(80, 32, 6, c) +
+    threat(18, 18, 40, 0.9) + threat(104, 14, 140, 0.9) +
+    `<path d="M24 22 L36 33 M98 18 L84 29" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>`,
+
+  // A heavy missile and two drones locked in ice mid-air.
+  cryo: (c) =>
+    sea(66) + ship(84, 62, 0.75) +
+    `<circle cx="54" cy="34" r="24" fill="${c}" opacity="0.16"/><circle cx="54" cy="34" r="24" fill="none" stroke="${c}" stroke-width="1.4" stroke-dasharray="3 3"/>` +
+    `<g transform="translate(54 34) rotate(20)"><rect x="-13" y="-5" width="26" height="10" rx="5" fill="${RED}"/></g>` +
+    `<g transform="translate(54 34) rotate(20)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="${c}" opacity="0.45" stroke="#e0f2fe" stroke-width="1"/></g>` +
+    [[34, 22], [72, 48]].map(([x, y]) => drone(x, y, 1) + `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3" fill="${c}" opacity="0.45" stroke="#e0f2fe" stroke-width="0.8"/>`).join('') +
+    `<path d="M54 6 V12 M51 8 L54 11 L57 8" stroke="#e0f2fe" stroke-width="1.2" fill="none"/>`,
+
+  // A vortex dragging missiles and drones into its eye.
+  well: (c) =>
+    sea(68) +
+    `<path d="M60 36 m-3 0 a3 3 0 1 1 6 0 a8 8 0 1 1 -16 0 a14 14 0 1 1 28 0 a20 20 0 1 1 -40 0 a26 26 0 1 1 52 0" fill="none" stroke="${c}" stroke-width="1.8" opacity="0.85"/>` +
+    `<circle cx="60" cy="36" r="5" fill="${INK}"/>` +
+    threat(20, 18, 30, 0.8) + threat(102, 54, 200, 0.8) + drone(98, 14, 0.9) + drone(22, 56, 0.9) +
+    `<path d="M28 22 Q44 28 52 34 M94 50 Q78 44 68 38 M92 18 Q78 26 66 32 M28 52 Q42 44 54 38" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="2 2" opacity="0.7"/>`,
 
   // Jets screaming along a dashed strike line, threats bursting under them.
   airstrike: (c) =>
@@ -119,37 +150,6 @@ const SCENES: Record<CardId, Scene> = {
       const my = (38 + y) / 2 + (k % 2 ? -5 : 5);
       return `<path d="M56 38 L${mx} ${my} L${(mx + x) / 2 + 4} ${(my + y) / 2 - 3} L${x} ${y}" stroke="${c}" stroke-width="2" fill="none" stroke-linejoin="round"/>` + drone(x, y, 1);
     }).join(''),
-
-  // Missiles peeling off toward burning decoys high over the convoy.
-  decoy: (c) =>
-    sea(66) + ship(60, 62, 0.8) +
-    `<path d="M10 20 Q40 26 52 46" fill="none" stroke="${RED}" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>` +
-    `<path d="M110 22 Q84 30 70 46" fill="none" stroke="${RED}" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>` +
-    threat(34, 22, -40, 0.9) + threat(88, 22, 220, 0.9) +
-    `<circle cx="24" cy="10" r="5" fill="${c}"/><circle cx="24" cy="10" r="9" fill="${c}" opacity="0.3"/>` +
-    `<circle cx="98" cy="10" r="5" fill="${c}"/><circle cx="98" cy="10" r="9" fill="${c}" opacity="0.3"/>` +
-    `<path d="M60 56 Q42 30 24 12 M60 56 Q80 30 98 12" fill="none" stroke="${c}" stroke-width="1.2" opacity="0.7"/>`,
-
-  // A wall of smoke laid along the lane, missiles flying blind past it.
-  smoke: (c) =>
-    sea(66) + ship(36, 56, 0.8) + ship(78, 56, 0.8) +
-    [12, 26, 40, 54, 68, 82, 96, 110].map((x, k) => `<circle cx="${x}" cy="${46 + (k % 2) * 4}" r="${10 + (k % 3) * 2}" fill="${c}" opacity="0.62"/>`).join('') +
-    threat(40, 14, 10, 1) + `<path d="M18 12 Q30 13 40 14" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" fill="none"/>` +
-    `<text x="58" y="20" font-size="10" font-weight="800" fill="${INK}" font-family="system-ui">?</text>`,
-
-  // Rockets raining into a target ring around a swarm.
-  salvo: (c) =>
-    sea(68) +
-    `<circle cx="70" cy="46" r="20" fill="${c}" opacity="0.14"/><circle cx="70" cy="46" r="20" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>` +
-    [[22, 6, 50], [36, 4, 58], [50, 6, 64], [64, 2, 72]].map(([x, y, d]) => `<path d="M${x - 10} ${y - 4} L${x} ${y}" stroke="${FLAME}" stroke-width="2" opacity="0.7"/>` + interceptor(x, y, d, 0.7, c)).join('') +
-    burst(62, 44, 6, FLAME) + burst(78, 50, 5, FLAME) + drone(70, 36, 0.9) + drone(84, 42, 0.9),
-
-  // A crosshair over a surfaced sub, a torpedo running in.
-  hunter: (c) =>
-    sea(40) + sub(70, 50, 1.3) +
-    `<circle cx="70" cy="46" r="20" fill="none" stroke="${c}" stroke-width="2"/>` +
-    `<path d="M70 20 V30 M70 62 V72 M44 46 H54 M86 46 H96" stroke="${c}" stroke-width="2"/>` +
-    `<path d="M12 60 L40 54" stroke="${INK}" stroke-width="1.2" stroke-dasharray="3 2"/><rect x="38" y="52" width="9" height="3" rx="1.5" fill="${INK}"/>`,
 
   // A supply crate with a repair cross, wrench across it, the convoy mended.
   resupply: (c) =>
