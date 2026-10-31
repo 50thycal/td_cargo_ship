@@ -1,7 +1,7 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
 // Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
 // map 1 → weapon pickups through real input (tap the pickup, then tap to
-// fire it: Railgun, Air Strike, Flak, Cryo, Gravity Well, Seekers, Laser) →
+// fire it: Railgun, Air Strike, Flak, Cryo, Gravity Well, Seekers, Aegis) →
 // defends to the
 // draft → picks a weapon → phone-size layout → the notice tray on every
 // map. Fails on any page error.
@@ -153,14 +153,14 @@ try {
 
   // Each of the others through the same real taps: pickup, then a tap —
   // on open water for the shells and the jet, on a threat for the seekers
-  // and the laser.
+  // and the Aegis Dome (it domes the hull the threat is after: the carrier).
   const sig = {
     airstrike: { open: true, ok: () => window.__v3.game().allies.length > 0 },
     flak: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'flak') },
     cryo: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'cryo') },
     well: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'well') },
     seeker: { open: false, ok: () => window.__v3.game().interceptors.some((i) => i.src === 'seeker') },
-    laser: { open: false, ok: () => window.__v3.game().fx.some((f) => f.kind === 'laser') },
+    aegis: { open: false, ok: () => !!window.__v3.game().carrierDome },
   };
   for (const [id, how] of Object.entries(sig)) {
     await equip(page, [id]);

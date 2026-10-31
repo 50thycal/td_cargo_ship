@@ -14,7 +14,9 @@ upgrades**, after the player's brief (inspired by Survivor.io):
   from kills like the power-ups; tapping its pickup loads the main gun with
   it for **15 s**, and every tap fires it, spending a round like any shot.
 - **Round 3** replaced the five weakest weapons with five built for the
-  15 s swap ([v3-playtest-round3.md](v3-playtest-round3.md)).
+  15 s swap ([v3-playtest-round3.md](v3-playtest-round3.md)); after the
+  player's look, Air Strike costs 2 rounds a jet and an Aegis Dome replaced
+  a laser that was too close to the Railgun.
 - All of V2's passive cards are gone. **EMP and Strike Package are no longer
   power-ups** (Strike came back as the Air Strike weapon). The other pickups
   are unchanged.
@@ -69,8 +71,8 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
 - **Draft** a weapon to put it in the drop pool (levels and evolutions as
   before, three slots, swaps when full).
-- **Drops**: a kill that drops no power-up drops a weapon you hold at 0.4×
-  its power-up chance; after 30 s without one, the next kill drops one. One
+- **Drops**: a kill that drops no power-up drops a weapon you hold at 0.45×
+  its power-up chance; after 28 s without one, the next kill drops one. One
   weapon pickup on the water at a time; it floats 7 s (power-ups: 5).
   Power-ups drop exactly as before (sharing one roll, weapons crowded out
   repairs and Overdrives and the bot's clears halved).
@@ -84,10 +86,10 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 |---|---|---|---|
 | Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
 | Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
-| Point-Defense Laser → **Overcharge** | Fast missiles | an instant hit on the threat under the finger (open water: nothing) | 1 dmg → 2 dmg → **2 dmg, and a kill gives the round back** |
+| Aegis Dome → **Bastion** | Ballistics | a plain shot, and a dome over the hull its target is after (open water by a hull: just the dome); the dome takes hits for the hull | 5 s, 3 hits → 6 s, 4 hits → **8 s, 6 hits, and each hit bursts back for 2 within 120** |
 | Cryo Rounds → **Absolute Zero** | Heavies | a cryo shell | everything within 100 frozen 2.5 s and bitten for 1, doubled on ice; frozen threats take double → 120, 3 s → **140, and any hit shatters a frozen threat (the burst included)** |
 | Gravity Well → **Singularity** | Spread raids | a vortex shell | drones, missiles and jets within 200 dragged in at 320/s for 1.5 s, then 2 dmg to those within 100 (ballistics fly on) → 240, 3 dmg → **260, holds 2 s, 4 dmg** |
-| Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
+| Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge, for **2 rounds** | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
 | Railgun → **Mass Driver** | Heavies | a beam from the carrier through the tap | 1 dmg → 2 dmg, wider → **4 dmg, wide: two bring down a heavy** |
 | Tesla Arc → **Storm Coil** | Crowds | a plain shot whose hit arcs | 3 arcs → 4 arcs, every arc arcs again → **a free second shot at the nearest uncovered threat** |
 
@@ -194,14 +196,14 @@ hid how strong Air Strike and Railgun were behind weak partners; alone, the
 old roster ranged 0% (Decoy Flares) to 100% (Air Strike, Railgun) at the
 old drop rate.
 
-| Air Strike | Laser | Seeker Pod | Railgun | Flak Cannon | Gravity Well | Cryo Rounds | Tesla Arc |
+| Seeker Pod | Railgun | Air Strike | Flak Cannon | Gravity Well | Aegis Dome | Cryo Rounds | Tesla Arc |
 |---|---|---|---|---|---|---|---|
-| 78% | 70% | 55% | 50% | 40% | 38% | 30% | 28% |
+| 70% | 58% | 55% | 45% | 45% | 43% | 30% | 23% |
 
-With no weapons the same bot clears 0%. Cryo, Flak and Gravity Well were
-measured after their last buffs; the other five before them (unaffected).
-The clear-rate table above is the round-1 (button) measurement; round 3's
-is in v3-playtest-round3.md.
+With no weapons the same bot clears 0%. Measured on the final build (Air
+Strike at 2 rounds a jet, drops at share 0.45 / pity 28 s). The clear-rate
+table above is the round-1 (button) measurement; round 3's is in
+v3-playtest-round3.md.
 
 ## Where to tune
 

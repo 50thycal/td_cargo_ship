@@ -18,6 +18,7 @@ import {
   tap,
   type Game,
   type Pickup,
+  type Ship,
   type Threat,
 } from '../../src/v3/sim/game';
 
@@ -302,23 +303,23 @@ describe('weapons drop as pickups and load the gun', () => {
 
   it('the same weapon again restarts its clock; another one takes over; a swapped-out one loads nothing', () => {
     const g = quietGame();
-    g.levels = { railgun: 1, laser: 2 };
-    g.slots = ['railgun', 'laser'];
+    g.levels = { railgun: 1, aegis: 2 };
+    g.slots = ['railgun', 'aegis'];
     g.weapon = { id: 'railgun', level: 1, t: 3 };
     g.pickups.push({ id: 901, kind: 'weapon', weapon: 'railgun', x: 600, y: 300, age: 0 });
     tap(g, 600, 300, 20);
     expect(g.weapon!.t).toBe(WEAPON.time);
-    g.pickups.push({ id: 902, kind: 'weapon', weapon: 'laser', x: 600, y: 300, age: 0 });
+    g.pickups.push({ id: 902, kind: 'weapon', weapon: 'aegis', x: 600, y: 300, age: 0 });
     tap(g, 600, 300, 20);
-    expect(g.weapon).toEqual({ id: 'laser', level: 2, t: WEAPON.time });
+    expect(g.weapon).toEqual({ id: 'aegis', level: 2, t: WEAPON.time });
     g.pickups.push({ id: 903, kind: 'weapon', weapon: 'tesla', x: 600, y: 300, age: 0 });
     tap(g, 600, 300, 20);
-    expect(g.weapon!.id).toBe('laser');
+    expect(g.weapon!.id).toBe('aegis');
   });
 
   it(`a weapon pickup floats ${WEAPON.life} s (longer than a power-up) before it is gone`, () => {
     const g = quietGame();
-    g.pickups.push({ id: 904, kind: 'weapon', weapon: 'laser', x: 600, y: 300, age: 0 });
+    g.pickups.push({ id: 904, kind: 'weapon', weapon: 'aegis', x: 600, y: 300, age: 0 });
     g.pickups.push({ id: 905, kind: 'ammo', x: 900, y: 300, age: 0 });
     run(g, PICKUPS.life + 0.1);
     expect(g.pickups.map((p) => p.id)).toEqual([904]);
@@ -326,20 +327,21 @@ describe('weapons drop as pickups and load the gun', () => {
     expect(g.pickups).toHaveLength(0);
   });
 
-  it('every weapon shot spends a round like a plain one: an empty rack is a dry click; Overdrive is free', () => {
+  it('every weapon shot spends its rounds (Air Strike two a jet): too few is a dry click; Overdrive is free', () => {
     for (const id of ABILITY_ORDER) {
       const g = quietGame();
       load(g, id, 1);
-      // Tough enough to outlive a shot (the laser hits at once).
+      // Tough enough to outlive a shot.
       const th = addThreat(g, { kind: 'heavy', hp: 99, x: 800, y: 300, speed: 0 });
+      const cost = id === 'airstrike' ? AB.airstrike.cost : 1;
       const before = g.ammo;
       expect(tap(g, th.x, th.y, 30), id).toBe('fire');
-      expect(g.ammo, id).toBe(before - 1);
-      g.ammo = 0;
+      expect(g.ammo, id).toBe(before - cost);
+      g.ammo = cost - 1;
       expect(tap(g, th.x, th.y, 30), id).toBe('dry');
       g.overdriveT = 2;
       expect(tap(g, th.x, th.y, 30), id).toBe('fire');
-      expect(g.ammo, id).toBe(0);
+      expect(g.ammo, id).toBe(cost - 1);
     }
   });
 
@@ -399,23 +401,51 @@ describe('what each weapon does with a tap', () => {
     expect(other.dead).toBe(true);
   });
 
-  it('Point-Defense Laser: the threat under the finger is hit at once; Overcharge refunds a killing shot', () => {
+  it('Aegis Dome: a shot at a threat also domes the ship it is after; the dome takes its hits, then is gone; Bastion bursts back', () => {
     const g = quietGame();
-    load(g, 'laser', 1);
-    const m = addThreat(g, { kind: 'supersonic', x: 900, y: 250 });
+    const ship: Ship = { id: 77, x: 900, y: 600, hp: 3, slot: 0, channel: 0, mult: 1 };
+    g.ships.push(ship);
+    load(g, 'aegis', 1);
+    const m = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 200, target: 77, speed: 0 });
     const ammo = g.ammo;
     expect(tap(g, m.x, m.y, 30)).toBe('fire');
-    expect(m.dead).toBe(true);
-    expect(g.interceptors).toHaveLength(0);
     expect(g.ammo).toBe(ammo - 1);
-    expect(tap(g, 300, 300, 20)).toBe('empty');
+    expect(ship.dome).toEqual({ t: AB.aegis.time[0], hits: AB.aegis.hits[0], level: 1 });
+    expect(g.interceptors.some((i) => i.target === m.id)).toBe(true); // and a shot
+    // Two missiles reach the ship: the dome takes both, the hull nothing.
+    for (let k = 0; k < AB.aegis.hits[0]; k++) addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y, target: 77, speed: 0 });
+    step(g, DT);
+    expect(ship.hp).toBe(3);
+    step(g, DT);
+    expect(ship.dome).toBeUndefined();
+    // The next one hits the hull.
+    addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y, target: 77, speed: 0 });
+    step(g, DT);
+    expect(ship.hp).toBeLessThan(3);
+    // A tap on open water covers the hull nearest it; far from any: nothing.
     const g2 = quietGame();
-    load(g2, 'laser', 3);
-    const a = addThreat(g2, { kind: 'guided', hp: 2, x: 900, y: 250 });
-    const ammo2 = g2.ammo;
-    tap(g2, a.x, a.y, 30);
-    expect(a.dead).toBe(true);
-    expect(g2.ammo).toBe(ammo2);
+    // (Well away from the carrier, which would otherwise be the nearer hull.)
+    g2.ships.push({ id: 78, x: 300, y: 400, hp: 3, slot: 0, channel: 0, mult: 1 });
+    load(g2, 'aegis', 3);
+    expect(tap(g2, 340, 380, 20)).toBe('fire');
+    expect(g2.ships[0].dome?.level).toBe(3);
+    expect(tap(g2, 200, 150, 20)).toBe('empty');
+    // Bastion: the absorbed hit bursts back out.
+    const near = addThreat(g2, { kind: 'guided', hp: 2, x: 360, y: 400, speed: 0 });
+    addThreat(g2, { kind: 'guided', hp: 2, x: 300, y: 400, target: 78, speed: 0 });
+    step(g2, DT);
+    expect(g2.ships[0].hp).toBe(3);
+    expect(near.dead).toBe(true);
+  });
+
+  it('Air Strike costs two rounds a jet', () => {
+    const g = quietGame();
+    load(g, 'airstrike', 1);
+    g.ammo = 3;
+    expect(tap(g, 400, 300, 20)).toBe('fire');
+    expect(g.ammo).toBe(1);
+    expect(tap(g, 400, 300, 20)).toBe('dry');
+    expect(g.allies).toHaveLength(1);
   });
 
   it('Cryo Rounds: the burst freezes threats in place, taking double; Absolute Zero shatters on any hit', () => {
@@ -471,10 +501,10 @@ describe('what each weapon does with a tap', () => {
     expect(th.hp).toBe(3 - AB.airstrike.damage[0]);
     expect(other.dead).toBe(true);
     expect(clear.dead).toBe(false);
-    // A tap on open water calls one too (a round spent).
+    // A tap on open water calls one too (its rounds spent).
     const ammo = g.ammo;
     expect(tap(g, 200, 700, 20)).toBe('fire');
-    expect(g.ammo).toBe(ammo - 1);
+    expect(g.ammo).toBe(ammo - AB.airstrike.cost);
   });
 
   it('Carpet Strike: the row burns, and a truck under the jet is destroyed, rounds and all', () => {
@@ -652,7 +682,11 @@ describe('card text matches the numbers', () => {
     expect(L('seeker', 1)).toContain(`${AB.seeker.missiles[0]} seekers`);
     expect(L('seeker', 2)).toContain(`${AB.seeker.missiles[1]} seekers`);
     expect(L('seeker', 3)).toContain(`${AB.seeker.missiles[2]} seekers`);
-    expect(L('laser', 2)).toContain(`Hits for ${AB.laser.damage[1]}`);
+    expect(L('aegis', 1)).toContain(`${AB.aegis.time[0]} s that takes ${AB.aegis.hits[0]} hits`);
+    expect(L('aegis', 2)).toContain(`${AB.aegis.time[1]} s and takes ${AB.aegis.hits[1]} hits`);
+    expect(L('aegis', 3)).toContain(`${AB.aegis.time[2]} s, ${AB.aegis.hits[2]} hits`);
+    expect(L('aegis', 3)).toContain(`for ${AB.aegis.burstDmg}`);
+    expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
     expect(L('cryo', 1)).toContain(`${AB.cryo.time[0]} s`);
     expect(AB.cryo.radius[1]).toBeGreaterThan(AB.cryo.radius[0]); // "a bigger burst"
     expect(L('well', 1)).toContain(`${AB.well.time[0]} s`);

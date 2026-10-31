@@ -70,6 +70,16 @@ export interface Ship {
   channel: number;
   /** Flow multiplier locked in when the ship set sail. */
   mult: number;
+  /** Aegis Dome over this hull, if any. */
+  dome?: Dome;
+}
+
+/** Aegis Dome: a shield over one hull for `t` s that takes `hits` more hits
+ *  (Bastion, level 3: each one bursts back out). */
+export interface Dome {
+  t: number;
+  hits: number;
+  level: number;
 }
 
 export interface Threat {
@@ -147,7 +157,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'laser' | 'frost';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frost' | 'dome';
 
 export interface Fx {
   kind: FxKind;
@@ -343,6 +353,8 @@ export interface Game {
   fx: Fx[];
   events: GameEvent[];
   carrierHp: number;
+  /** Aegis Dome over the carrier, if any. */
+  carrierDome: Dome | null;
   ammo: number;
   reloadT: number;
   overdriveT: number;
@@ -432,6 +444,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     fx: [],
     events: [],
     carrierHp: CARRIER.hp,
+    carrierDome: null,
     ammo: s.rack,
     reloadT: 0,
     overdriveT: 0,
@@ -863,12 +876,16 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       if (!spend(g)) return 'dry';
       g.interceptors.push({ id: g.nextId++, x: g.map.carrier.x, y: g.map.carrier.y - 6, target: null, tx: x, ty: y, life: 0, src: 'gun', weapon: { ...w } });
       return 'fire';
-    case 'laser':
-      // Instant: the threat under the finger is hit now (open water: nothing).
-      if (!threat) return null;
+    case 'aegis': {
+      // A threat: shot as usual, and the hull it is after domed (`fireAt`).
+      // Open water by a hull: that hull domed.
+      if (threat) return null;
+      const hull = domeTarget(g, x, y, null);
+      if (!hull) return null;
       if (!spend(g)) return 'dry';
-      fireLaser(g, w.level, threat);
+      raiseDome(g, w.level, hull);
       return 'fire';
+    }
     case 'seeker':
       return fireSeekers(g, w.level, x, y, radius);
     case 'railgun':
@@ -876,20 +893,20 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       fireBeam(g, w.level, ax, ay);
       return 'fire';
     case 'airstrike':
-      if (!spend(g)) return 'dry';
+      if (!spend(g, AB.airstrike.cost)) return 'dry';
       callJet(g, w.level, ax, ay);
       return 'fire';
   }
 }
 
-/** One round from the rack (free under Overdrive). False, with a dry
- *  click, when the rack is empty. */
-function spend(g: Game): boolean {
-  if (g.overdriveT <= 0 && g.ammo < 1) {
+/** `n` rounds from the rack (free under Overdrive). False, with a dry
+ *  click, when the rack holds fewer. */
+function spend(g: Game, n = 1): boolean {
+  if (g.overdriveT <= 0 && g.ammo < n) {
     g.events.push({ kind: 'dry' });
     return false;
   }
-  if (g.overdriveT <= 0) g.ammo -= 1;
+  if (g.overdriveT <= 0) g.ammo -= n;
   g.shots += 1;
   return true;
 }
@@ -918,13 +935,49 @@ function addField(g: Game, kind: Field['kind'], x: number, y: number, r: number,
   g.fields.push({ kind, x1: x, y1: y, x2: x, y2: y, hw: r, t: 0, life, tick: 0, level });
 }
 
-/** Point-Defense Laser: the threat is hit at once (Overcharge: a kill gives
- *  the round back). */
-function fireLaser(g: Game, level: number, th: Threat): void {
+/** The hull an Aegis tap covers: the ship (or the carrier) the tapped
+ *  threat is after; for an aircraft, or a tap on open water, the hull nearest
+ *  the tap within reach. */
+function domeTarget(g: Game, x: number, y: number, threat: Threat | null): Ship | 'carrier' | null {
+  if (threat && threat.kind !== 'strafer' && threat.kind !== 'bomber') {
+    if (threat.target === CARRIER_TARGET) return 'carrier';
+    const s = g.ships.find((o) => o.id === threat.target);
+    if (s) return s;
+  }
+  let best: Ship | 'carrier' | null = null;
   const c = g.map.carrier;
-  addFx(g, 'laser', c.x, c.y - 6, { life: 0.22, x2: th.x, y2: th.y });
-  damageThreat(g, th, AB.laser.damage[level - 1]);
-  if (th.dead && level >= 3 && g.overdriveT <= 0) g.ammo = Math.min(g.stats.rack, g.ammo + 1);
+  let bd = dist(x, y, c.x, c.y) <= AB.aegis.reach + CARRIER.halfLength ? dist(x, y, c.x, c.y) - CARRIER.halfLength : Infinity;
+  if (bd < Infinity) best = 'carrier';
+  for (const s of g.ships) {
+    const d = dist(x, y, s.x, s.y);
+    if (d <= AB.aegis.reach && d < bd) {
+      bd = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
+function raiseDome(g: Game, level: number, hull: Ship | 'carrier'): void {
+  const k = level - 1;
+  const dome: Dome = { t: AB.aegis.time[k], hits: AB.aegis.hits[k], level };
+  if (hull === 'carrier') g.carrierDome = dome;
+  else hull.dome = dome;
+  const p = hull === 'carrier' ? g.map.carrier : hull;
+  addFx(g, 'dome', p.x, p.y, { life: 0.45, r: hull === 'carrier' ? CARRIER.halfLength + 30 : 48 });
+}
+
+/** A hit on a domed hull: the dome takes it instead (Bastion bursts back
+ *  out). True if it was absorbed. */
+function domeAbsorbs(g: Game, dome: Dome | null | undefined, x: number, y: number): boolean {
+  if (!dome || dome.t <= 0 || dome.hits <= 0) return false;
+  dome.hits -= 1;
+  addFx(g, 'block', x, y, { life: 0.45, r: 44 });
+  if (dome.level >= 3) {
+    for (const th of [...g.threats]) if (!th.dead && dist(th.x, th.y, x, y) <= AB.aegis.burst) damageThreat(g, th, AB.aegis.burstDmg);
+    addFx(g, 'emp', x, y, { life: 0.45, r: AB.aegis.burst });
+  }
+  return true;
 }
 
 /** Seeker Pod: one round launches a seeker at each of the threats nearest
@@ -1122,6 +1175,8 @@ function clearField(g: Game): void {
   g.shieldT = 0;
   g.steamT = 0;
   g.weapon = null;
+  g.carrierDome = null;
+  for (const s of g.ships) s.dome = undefined;
   g.ammo = g.stats.rack;
   g.reloadT = 0;
 }
@@ -1252,6 +1307,7 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     return;
   }
+  if (domeAbsorbs(g, s.dome, s.x, s.y)) return;
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
@@ -1268,6 +1324,7 @@ function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     return;
   }
+  if (domeAbsorbs(g, g.carrierDome, g.map.carrier.x, g.map.carrier.y)) return;
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.carrierDamageBy[by] += amount;
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
@@ -1727,7 +1784,7 @@ export function canFire(g: Game): boolean {
 
 /** A shot at a threat, tagged with the loaded weapon (its burst does that
  *  weapon's work). Storm Coil adds a free second shot at the uncovered threat
- *  nearest the first. */
+ *  nearest the first; Aegis Dome also domes the hull the threat is after. */
 function fireAt(g: Game, th: Threat): boolean {
   if (!spend(g)) return false;
   const p = g.map.carrier;
@@ -1735,6 +1792,10 @@ function fireAt(g: Game, th: Threat): boolean {
   const shoot = (t: Threat) =>
     g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', weapon: w ? { ...w } : undefined });
   shoot(th);
+  if (w?.id === 'aegis') {
+    const hull = domeTarget(g, th.x, th.y, th);
+    if (hull) raiseDome(g, w.level, hull);
+  }
   if (w?.id === 'tesla' && w.level >= 3) {
     const twin = g.threats
       .filter((o) => !o.dead && o.id !== th.id && assigned(g, o.id) < o.hp && dist(o.x, o.y, th.x, th.y) <= AB.tesla.twin)
@@ -1921,6 +1982,16 @@ function updateTimers(g: Game, dt: number): void {
   if (g.weapon) {
     g.weapon.t -= dt;
     if (g.weapon.t <= 0) g.weapon = null;
+  }
+  // Aegis domes run down, and are gone once spent or out of time.
+  for (const s of g.ships) {
+    if (!s.dome) continue;
+    s.dome.t -= dt;
+    if (s.dome.t <= 0 || s.dome.hits <= 0) s.dome = undefined;
+  }
+  if (g.carrierDome) {
+    g.carrierDome.t -= dt;
+    if (g.carrierDome.t <= 0 || g.carrierDome.hits <= 0) g.carrierDome = null;
   }
 }
 

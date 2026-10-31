@@ -96,14 +96,16 @@ const SCENES: Record<CardId, Scene> = {
       return `<path d="M60 60 Q${mx} 34 ${x} ${y + 8}" fill="none" stroke="${c}" stroke-width="1.4" stroke-dasharray="3 2"/>` + interceptor(x, y + 8, k === 0 ? -120 : k === 1 ? -90 : -60, 0.7, c) + threat(x, y - 2, k === 0 ? 30 : k === 1 ? 90 : 150, 0.8);
     }).join(''),
 
-  // An instant beam from the carrier to a supersonic, no flight in between.
-  laser: (c) =>
-    sea(66) +
-    `<rect x="8" y="58" width="34" height="6" rx="3" fill="${HULL}"/>` +
-    `<path d="M26 58 L98 18" stroke="${c}" stroke-width="7" stroke-linecap="round" opacity="0.35"/>` +
-    `<path d="M26 58 L98 18" stroke="#fffbe6" stroke-width="2" stroke-linecap="round"/>` +
-    threat(98, 18, 160, 1.1) + burst(98, 18, 9, c) +
-    `<path d="M104 32 L114 30 M104 36 L116 38" stroke="${RED}" stroke-width="1" opacity="0.5"/>`,
+  // A shield dome over a ship, missiles bursting harmlessly on its skin.
+  aegis: (c) =>
+    sea(64) +
+    `<path d="M24 60 A36 32 0 0 1 96 60" fill="${c}" opacity="0.16"/>` +
+    `<path d="M24 60 A36 32 0 0 1 96 60" fill="none" stroke="${c}" stroke-width="2.4"/>` +
+    `<path d="M34 60 A26 23 0 0 1 86 60" fill="none" stroke="${c}" stroke-width="1" opacity="0.5" stroke-dasharray="3 3"/>` +
+    ship(60, 60, 0.9) +
+    burst(40, 36, 7, c) + burst(80, 32, 6, c) +
+    threat(18, 18, 40, 0.9) + threat(104, 14, 140, 0.9) +
+    `<path d="M24 22 L36 33 M98 18 L84 29" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>`,
 
   // A heavy missile and two drones locked in ice mid-air.
   cryo: (c) =>

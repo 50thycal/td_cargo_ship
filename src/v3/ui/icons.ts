@@ -7,7 +7,7 @@ import type { CardId } from '../data/abilities';
 export const ICON_COLOR: Record<CardId, string> = {
   flak: '#fb923c',
   seeker: '#a3e635',
-  laser: '#fde047',
+  aegis: '#5eead4',
   cryo: '#7dd3fc',
   well: '#c084fc',
   airstrike: '#60a5fa',
@@ -21,8 +21,8 @@ const PATHS: Record<CardId, string> = {
   flak: '<circle cx="16" cy="16" r="6"/><path d="M16 3 V7 M16 25 V29 M3 16 H7 M25 16 H29 M7 7 L10 10 M25 7 L22 10 M7 25 L10 22 M25 25 L22 22"/>',
   // Three seekers fanning out from one launch point.
   seeker: '<path d="M5 27 L13 11 M5 27 L18 17 M5 27 L24 24"/><circle cx="14" cy="9" r="2.4"/><circle cx="20" cy="16" r="2.4"/><circle cx="26" cy="24" r="2.4"/>',
-  // A straight beam ending on a target ring.
-  laser: '<path d="M4 28 L21 11"/><circle cx="24" cy="8" r="4.5"/><path d="M24 1 V3 M24 13 V15 M17 8 H19 M29 8 H31"/>',
+  // A dome over a hull, a missile glancing off it.
+  aegis: '<path d="M4 25 A12 12 0 0 1 28 25 Z"/><path d="M9 25 H23"/><path d="M22 4 L18 10 M18 10 L24 12"/>',
   // A snowflake.
   cryo: '<path d="M16 3 V29 M4.7 9.5 L27.3 22.5 M4.7 22.5 L27.3 9.5 M12.5 5.5 L16 9 L19.5 5.5 M12.5 26.5 L16 23 L19.5 26.5"/>',
   // A spiral pulling inward.

@@ -1644,9 +1644,9 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, and Fast Motors in the Armory.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, Fast Motors in the Armory, and an Aegis Dome takes the hit for a ship.',
   guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; the Point-Defense Laser hits them with no flight time.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; an Aegis Dome on the ship it is after takes the hit.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',

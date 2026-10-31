@@ -29,14 +29,15 @@ still to tap. Each answers something the main gun is bad at.
 |---|---|---|
 | **Flak Cannon → Flak Curtain** | Swarms | The shell bursts into a flak cloud (1.5 s; evolved 4 s) that hits everything flying through it. Fire it into a swarm's path and let the drones fly in. |
 | **Seeker Pod → Swarm Pod** | Raids | One round launches 3–5 seekers at the threats nearest your finger. A tap into a crowd spreads itself; evolved, a seeker whose target died finds another. |
-| **Point-Defense Laser → Overcharge** | Fast missiles | The threat under your finger is hit at once: no flight time, so supersonics and ballistics can't outrun it. Evolved, a kill gives the round back (accuracy pays for itself). |
 | **Cryo Rounds → Absolute Zero** | Heavies | The burst freezes everything in it mid-air and bites for 2 (1, doubled on ice); frozen threats take double from everything. Evolved, any hit shatters a frozen threat, so the burst itself clears what it touches. |
 | **Gravity Well → Singularity** | Spread raids | The shell opens a vortex that drags drones, missiles and jets in (ballistics fly on), then implodes on what it gathered. |
+| **Aegis Dome → Bastion** | Ballistics | Every shot also raises a shield dome over the ship (or the carrier) its target is after; a tap on the water by a ship just domes it. The dome takes 3–6 hits for the hull, then pops; evolved, each hit it takes bursts back out at threats nearby. The one weapon that protects instead of shooting. |
 
 On screen: flak clouds are dark puffs sparking as they hit; a gravity well
 is a violet spiral tightening to its core, then a snapping ring; seekers are
-small lime darts; the laser is a yellow-white line there and gone; a frozen
-threat is cased in ice (cracked when it will shatter). Each has its own icon,
+small lime darts; a domed hull sits in a teal bubble with one pip per hit it
+can still take; a frozen threat is cased in ice (cracked when it will
+shatter). Each has its own icon,
 colour and card art. Bots need nothing new: every weapon fires from the taps
 they already make.
 
@@ -67,42 +68,65 @@ Railgun 50, Cryo 30, Flak 28, Well 28, Tesla 28. Flak (bigger, faster ticks)
 and Gravity Well (wider, stronger implosion) were buffed to 40% and 38%. The
 kept three were left as they were.
 
+**Pass 5: the player's look.** Two notes after reading the roster:
+
+- *"The air strike is prbs too OP? It would use two ammo for one jet."* Air
+  Strike now costs 2 rounds a jet (too few in the rack: a dry click;
+  Overdrive: free). Alone it went from 78% to 35–55%.
+- *"The laser and the rail gun are too similar since it is just the same
+  instant attack."* The Point-Defense Laser was cut for the **Aegis Dome**,
+  the one weapon that protects instead of shooting. First version: a tap on
+  a threat raised a dome *instead of* shooting it, so for 15 s nothing died:
+  0% alone, worse than no weapon. Now every shot still fires and also domes
+  the hull its target is after (18%), and the domes last longer and take
+  more hits (43%).
+- Drops back up a little to hold the curve: share 0.45, pity 28 s (0.4 / 30
+  gave 40%, 0.5 / 25 gave 65%: the curve is steep around here).
+
+**Each weapon alone, final build** (40 runs across all maps, ±10 points):
+
+| Seeker Pod | Railgun | Air Strike | Flak Cannon | Gravity Well | Aegis Dome | Cryo Rounds | Tesla Arc |
+|---|---|---|---|---|---|---|---|
+| 70% | 58% | 55% | 45% | 45% | 43% | 30% | 23% |
+
 **Final sweep** (12 seeds a cell, fresh Armory; sharp / average / casual):
 
 | Map | Round 1 (buttons) | Round 2 (drops) | Round 3 |
 |---|---|---|---|
-| The Strait | 90 / 90 / 0 % | 92 / 75 / 17 % | 83 / 50 / 8 % |
-| The Gauntlet | 50 / 20 / 0 % | 25 / 25 / 8 % | 58 / 58 / 0 % |
-| The Island | 90 / 90 / 0 % | 83 / 50 / 8 % | 100 / 58 / 8 % |
-| Harbor Mouth | 10 / 30 / 0 % | 25 / 25 / 8 % | 58 / 50 / 0 % |
-| The Archipelago | 40 / 50 / 0 % | 25 / 25 / 0 % | 33 / 42 / 0 % |
+| The Strait | 90 / 90 / 0 % | 92 / 75 / 17 % | 92 / 75 / 17 % |
+| The Gauntlet | 50 / 20 / 0 % | 25 / 25 / 8 % | 67 / 33 / 17 % |
+| The Island | 90 / 90 / 0 % | 83 / 50 / 8 % | 67 / 75 / 8 % |
+| Harbor Mouth | 10 / 30 / 0 % | 25 / 25 / 8 % | 58 / 42 / 0 % |
+| The Archipelago | 40 / 50 / 0 % | 25 / 25 / 0 % | 58 / 17 / 8 % |
 
-The average bot clears 52% across the maps (round 1 56%, round 2 ~40%), and
-the curve is flatter: the later maps are no longer walls. Whole game from an
-empty Armory: sharp 0.8 h (5 runs), average 1.2 h (8 runs), casual 7.4 h and
-on map 3 at the 60-run cap.
+The average bot clears 48% across the maps (round 1 56%, round 2 ~40%). A
+weapon is loaded 41–50% of a wave. Whole game from an empty Armory: sharp
+0.8 h (5 runs), average 2.0 h (13 runs), casual 7.7 h and on map 3 at the
+60-run cap.
 
 The sweep's per-seed draft order rarely put the Railgun first in these 12
-seeds, so its pickup counts in the sweep are low; alone it clears 50%.
+seeds, so its pickup counts in the sweep are low; alone it clears 58%.
 
 ## Checks
 
-- `npm test`: the V3 suite (40) covers each new weapon: Flak's cloud hits
-  what is inside and not outside; seekers go to the nearest threats, one
-  round each, nothing fires with no threat near, Swarm Pod retargets; the
-  laser hits instantly with no interceptor, nothing on open water, Overcharge
-  refunds a kill; Cryo freezes in place, bites for 2 on ice, a thaw lets it
-  move, Absolute Zero shatters on any hit; the Gravity Well drags a drone and
-  a missile in and kills them. Every weapon still spends a round, clicks dry
-  on an empty rack and is free under Overdrive. Card text checked against
-  `AB`.
-- `npm run e2e:v3` (39 checks): Flak, Cryo and the Gravity Well load from
-  their pickups and fire on open water; Seekers and the Laser load and fire
-  on a threat; Railgun and Air Strike as before; log v9; draft, loadout,
+- `npm test` (877): the V3 suite (41) covers each new weapon: Flak's cloud
+  hits what is inside and not outside; seekers go to the nearest threats, one
+  round each, nothing fires with no threat near, Swarm Pod retargets; an
+  Aegis shot also domes its target's hull, the dome takes its hits for the
+  hull and pops, open water by a hull domes it, far from any does nothing,
+  Bastion bursts back; Cryo freezes in place, bites for 2 on ice, a thaw lets
+  it move, Absolute Zero shatters on any hit; the Gravity Well drags a drone
+  and a missile in and kills them. Every weapon spends its rounds (Air Strike
+  two a jet), clicks dry with too few and is free under Overdrive. Card text
+  checked against `AB`.
+- `npm run e2e:v3` (39 checks, run twice on the final build): Flak, Cryo
+  and the Gravity Well load from their pickups and fire on open water;
+  Seekers and the Aegis Dome load and fire on a threat (the dome goes up on
+  the hull it was after); Railgun and Air Strike as before; log v9; draft, loadout,
   phone, the notice tray on every map.
 - A browser probe drew all five at once (flak cloud, vortex pulling drones
-  in and imploding, laser, seekers, a heavy cased in ice); screenshots
-  checked by eye, no page errors.
+  in and imploding, seekers, a heavy cased in ice, domes over a ship and the
+  carrier); screenshots checked by eye, no page errors.
 
 ## Limitations
 

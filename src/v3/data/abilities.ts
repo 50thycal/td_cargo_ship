@@ -11,15 +11,17 @@
 // Round 3 ("make new drops … around the new pick up mechanic and the fact
 // that it replaces the main gun"): the five weakest of round 2 (EMP Rounds,
 // Hellfire Salvo, Smoke Shells, Decoy Flares, Sub Hunter) were cut and five
-// new guns built for a 15 s swap: Flak Cannon, Seeker Pod, Point-Defense
-// Laser, Cryo Rounds and Gravity Well. Each one changes what a plain tap does
-// and nothing else, so there is still only one thing to do: tap.
+// new guns built for a 15 s swap: Flak Cannon, Seeker Pod, Cryo Rounds,
+// Gravity Well and (after the player found a Point-Defense Laser too close to
+// the Railgun: both instant hits) Aegis Dome, the one that protects instead of
+// shooting. Each one changes what a plain tap does and nothing else, so there
+// is still only one thing to do: tap.
 //
 // Three held at once, three levels each; level 3 is the EVOLUTION, which
 // changes what the weapon does, not just its numbers. (Internally they are
 // still `AbilityId`s: the draft, the slots and the save were built for them.)
 
-export type AbilityId = 'airstrike' | 'railgun' | 'tesla' | 'flak' | 'seeker' | 'laser' | 'cryo' | 'well';
+export type AbilityId = 'airstrike' | 'railgun' | 'tesla' | 'flak' | 'seeker' | 'aegis' | 'cryo' | 'well';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -61,17 +63,17 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Tap in the middle of a raid',
   },
-  laser: {
-    id: 'laser',
-    name: 'Point-Defense Laser',
-    evolved: 'Overcharge',
-    answers: 'Fast missiles',
+  aegis: {
+    id: 'aegis',
+    name: 'Aegis Dome',
+    evolved: 'Bastion',
+    answers: 'Ballistics',
     levels: [
-      'Each tap hits the threat under your finger at once: no flight time to miss by',
-      'Hits for 2',
-      'EVOLVES: a hit that kills gives its round back',
+      'Each shot also raises a dome over the ship its target is after: 5 s that takes 3 hits for it',
+      'The dome holds 6 s and takes 4 hits',
+      'EVOLVES: 8 s, 6 hits, and every hit it takes bursts back out, hitting threats nearby for 2',
     ],
-    how: 'Tap a threat: the laser hits it instantly',
+    how: 'Tap threats as usual, or the water by a ship to dome it',
   },
   cryo: {
     id: 'cryo',
@@ -103,11 +105,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Strike',
     answers: 'Aircraft',
     levels: [
-      'Each shot calls a jet down the row you tapped, hitting everything under it',
+      'Each shot calls a jet down the row you tapped, hitting everything under it (2 rounds a jet)',
       'A wider run, harder hits',
       'EVOLVES: the row burns for 2 s and subs and trucks under it are destroyed',
     ],
-    how: 'Tap a row: the jet flies across it',
+    how: 'Tap a row: the jet flies across it, for 2 rounds',
   },
   railgun: {
     id: 'railgun',
@@ -135,7 +137,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   },
 };
 
-export const ABILITY_ORDER: AbilityId[] = ['flak', 'seeker', 'laser', 'cryo', 'well', 'airstrike', 'railgun', 'tesla'];
+export const ABILITY_ORDER: AbilityId[] = ['flak', 'seeker', 'aegis', 'cryo', 'well', 'airstrike', 'railgun', 'tesla'];
 
 /** Levels per weapon; the last is the evolution. */
 export const ABILITY_MAX = 3;
@@ -146,7 +148,7 @@ export const MAX_SLOTS = 3;
 export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   flak: ['FLAK', 'CURTAIN'],
   seeker: ['SEEKERS', 'SWARM POD'],
-  laser: ['LASER', 'OVERCHARGE'],
+  aegis: ['AEGIS', 'BASTION'],
   cryo: ['CRYO', 'ABS. ZERO'],
   well: ['GRAVITY', 'SINGULARITY'],
   airstrike: ['AIR STRIKE', 'CARPET'],
@@ -160,9 +162,9 @@ export const WEAPON = {
   time: 15,
   /** A kill that drops no power-up drops a weapon you hold at this share of
    *  its power-up drop chance (only one weapon pickup on the water at once). */
-  share: 0.4,
+  share: 0.45,
   /** Seconds without a weapon drop after which the next kill drops one. */
-  pity: 30,
+  pity: 28,
   /** Seconds a weapon pickup floats before it is gone (power-ups: 5). */
   life: 7,
 } as const;
@@ -176,13 +178,17 @@ export const AB = {
   /** Seekers: `missiles` per tap at the threats nearest the tap (within
    *  `reach`), each hitting for 1 with a small blast. */
   seeker: { missiles: [3, 4, 5], reach: 360, speed: 900, blast: 14 },
-  laser: { damage: [1, 2, 2] },
+  /** Aegis: a dome on one ship (or the carrier) for `time` s that takes
+   *  `hits` hits; Bastion bursts for `burstDmg` within `burst` per hit. A tap
+   *  with no threat covers the hull nearest it within `reach`. */
+  aegis: { time: [5, 6, 8], hits: [3, 4, 6], reach: 220, burst: 120, burstDmg: 2 },
   /** Cryo: threats within `radius` of the burst freeze for `time` s. */
   cryo: { radius: [100, 120, 140], time: [2.5, 3, 3] },
   /** Gravity Well: pulls threats within `radius` toward it at `pull` px/s
    *  for `time` s, then hits those within `core` for `damage`. */
   well: { radius: [200, 240, 260], time: [1.5, 1.5, 2], pull: 320, core: [100, 110, 120], damage: [2, 3, 4] },
-  airstrike: { speed: 1800, band: [80, 95, 110], damage: [2, 3, 4], burnTime: 2, burnTick: 0.5 },
+  /** A jet costs `cost` rounds (playtest: one round a jet was too strong). */
+  airstrike: { speed: 1800, band: [80, 95, 110], damage: [2, 3, 4], burnTime: 2, burnTick: 0.5, cost: 2 },
   railgun: { damage: [1, 2, 4], width: [14, 18, 26] },
   tesla: { arcs: [3, 4, 4], range: 200, depth: [1, 2, 2], twin: 260 },
 } as const;

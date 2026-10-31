@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Dome, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { ABILITY_MAX, SHORT_NAME, WEAPON } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
@@ -72,6 +72,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'well');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
   if (g.shieldT > 0) drawShields(ctx, g);
+  drawDomes(ctx, g);
   for (const p of g.pickups) {
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
@@ -576,6 +577,24 @@ function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind'])
   }
 }
 
+/** Aegis Domes: a teal bubble over each covered hull, one pip per hit it
+ *  can still take, flickering in its last second. */
+function drawDomes(ctx: CanvasRenderingContext2D, g: Game): void {
+  const one = (x: number, y: number, rx: number, ry: number, d: Dome) => {
+    if (d.t < 1 && Math.floor(g.t * 10) % 2) return;
+    ctx.fillStyle = d.level >= 3 ? 'rgba(94,234,212,0.2)' : 'rgba(94,234,212,0.13)';
+    ctx.strokeStyle = 'rgba(153,246,228,0.9)';
+    ctx.lineWidth = d.level >= 3 ? 3 : 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    for (let k = 0; k < d.hits; k++) dot(ctx, x - (d.hits - 1) * 6 + k * 12, y - ry - 8, 3.5, '#5eead4');
+  };
+  for (const s of g.ships) if (s.dome) one(s.x, s.y, 46, 24, s.dome);
+  if (g.carrierDome) one(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 24, CARRIER.halfBeam + 22, g.carrierDome);
+}
+
 /** Cryo Rounds: a frozen threat is cased in ice, cracking as it thaws. */
 function drawIce(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const r = th.kind === 'heavy' ? 40 : th.kind === 'mothership' ? 44 : th.kind === 'strafer' || th.kind === 'bomber' ? 38 : 22;
@@ -1069,20 +1088,13 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineTo(f.x2, f.y2);
         ctx.stroke();
         break;
-      case 'laser': {
-        // Point-Defense Laser: a thin yellow-white line, there and gone.
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = `rgba(253,224,71,${0.6 * (1 - u)})`;
-        ctx.lineWidth = 9;
+      case 'dome': {
+        // An Aegis Dome going up: a teal ring snapping out to the dome.
+        ctx.strokeStyle = `rgba(94,234,212,${1 - u})`;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(f.x, f.y);
-        ctx.lineTo(f.x2, f.y2);
+        ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * u), 0, Math.PI * 2);
         ctx.stroke();
-        ctx.strokeStyle = `rgba(255,255,240,${1 - u})`;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-        ctx.lineCap = 'butt';
-        dot(ctx, f.x2, f.y2, 9 * (1 - u) + 2, `rgba(255,251,230,${1 - u})`);
         break;
       }
       case 'frost': {
