@@ -206,11 +206,11 @@ describe('the draft deals weapons', () => {
     g.levels = { flak: 1, airstrike: 1, railgun: 3 };
     g.slots = ['flak', 'airstrike', 'railgun'];
     g.phase = 'draft';
-    g.offer = ['tesla', 'flak', 'cryo'];
+    g.offer = ['tesla', 'flak', 'thermo'];
     pickUpgrade(g, 'tesla');
     expect(g.levels.tesla).toBeUndefined();
     g.phase = 'draft';
-    g.offer = ['tesla', 'flak', 'cryo'];
+    g.offer = ['tesla', 'flak', 'thermo'];
     pickUpgrade(g, 'tesla', 'airstrike');
     expect(Object.keys(g.levels).sort()).toEqual(['flak', 'railgun', 'tesla']);
     expect(g.slots).toEqual(['flak', 'tesla', 'railgun']);
@@ -221,17 +221,17 @@ describe('the draft deals weapons', () => {
 
   it('loadout slots are stable: a new weapon takes the next slot, a swap takes the replaced one\'s', () => {
     const g = quietGame();
-    const take = (id: 'seeker' | 'flak' | 'cryo' | 'airstrike', replace?: 'flak') => {
+    const take = (id: 'seeker' | 'flak' | 'thermo' | 'airstrike', replace?: 'flak') => {
       g.phase = 'draft';
       g.offer = [id, 'tesla', 'well'];
       pickUpgrade(g, id, replace);
     };
     take('seeker');
     take('flak');
-    take('cryo');
-    expect(g.slots).toEqual(['seeker', 'flak', 'cryo']);
+    take('thermo');
+    expect(g.slots).toEqual(['seeker', 'flak', 'thermo']);
     take('airstrike', 'flak');
-    expect(g.slots).toEqual(['seeker', 'airstrike', 'cryo']);
+    expect(g.slots).toEqual(['seeker', 'airstrike', 'thermo']);
   });
 
   it('every weapon has three levels, an evolved name, and says how a tap fires it', () => {
@@ -467,31 +467,122 @@ describe('what each weapon does with a tap', () => {
     expect(g.allies).toHaveLength(1);
   });
 
-  it('Cryo Rounds: the burst freezes threats in place, taking double; Absolute Zero shatters on any hit', () => {
+  it('Shrapnel Shell: the burst throws its fragments out in every direction, at once, each stopping at its first hit', () => {
     const g = quietGame();
-    load(g, 'cryo', 1);
-    const shot = addThreat(g, { kind: 'heavy', hp: 8, x: 700, y: 300, speed: 55, heading: 0 });
-    const beside = addThreat(g, { kind: 'heavy', hp: 8, x: 740, y: 300, speed: 55, heading: 0 });
-    const guided = addThreat(g, { kind: 'guided', hp: 2, x: 700, y: 360, speed: 0 });
-    tap(g, shot.x, shot.y, 20);
-    run(g, 1.1);
-    expect(beside.frozenT).toBeGreaterThan(0);
-    // The frost bites for 1, doubled on ice: a guided missile (2 HP) is gone.
-    expect(guided.dead).toBe(true);
-    expect(beside.hp).toBe(8 - 2);
-    const x0 = beside.x;
-    run(g, 0.5);
-    expect(beside.x).toBe(x0);
-    run(g, AB.cryo.time[0]);
-    expect(beside.x).not.toBe(x0);
+    load(g, 'shrapnel', 1);
+    // A ring of drones round the burst, inside the fragments' reach, and a
+    // ring well outside it.
+    const near = Array.from({ length: 24 }, (_, i) => addThreat(g, { x: 700 + Math.cos((i / 24) * Math.PI * 2) * 150, y: 300 + Math.sin((i / 24) * Math.PI * 2) * 150, speed: 0 }));
+    const far = Array.from({ length: 12 }, (_, i) => addThreat(g, { x: 700 + Math.cos((i / 12) * Math.PI * 2) * (AB.shrapnel.range[0] + 60), y: 300 + Math.sin((i / 12) * Math.PI * 2) * (AB.shrapnel.range[0] + 60), speed: 0 }));
+    expect(tap(g, 700, 300, 20)).toBe('fire');
+    run(g, 1.5);
+    const killed = near.filter((t) => t.dead).length;
+    expect(killed).toBeGreaterThanOrEqual(4);
+    expect(killed).toBeLessThanOrEqual(AB.shrapnel.frags[0]);
+    expect(far.every((t) => !t.dead)).toBe(true);
+  });
+
+  it('Scattergun: a short cone of pellets toward the tap; out of reach is safe; Dragon\'s Breath pierces', () => {
+    const g = quietGame();
+    load(g, 'scatter', 1);
+    const c = g.map.carrier;
+    const inReach = addThreat(g, { kind: 'guided', hp: 2, x: c.x, y: c.y - 300, speed: 0 });
+    const behind = addThreat(g, { x: c.x, y: c.y - 330, speed: 0 });
+    const tooFar = addThreat(g, { x: c.x + 5, y: c.y - AB.scatter.range[0] - 80, speed: 0 });
+    const ammo = g.ammo;
+    expect(tap(g, inReach.x, inReach.y, 20)).toBe('fire');
+    expect(g.ammo).toBe(ammo - 1);
+    // At this range several of the cone's middle pellets hit the missile.
+    expect(inReach.dead).toBe(true);
+    expect(tooFar.dead).toBe(false);
+    void behind;
     const g2 = quietGame();
-    load(g2, 'cryo', 3);
-    const heavy = addThreat(g2, { kind: 'heavy', hp: 8, x: 700, y: 300, speed: 0 });
-    heavy.frozenT = 2;
-    heavy.frozenLv = 3;
-    load(g2, 'railgun', 1);
-    tap(g2, heavy.x, heavy.y, 30);
-    expect(heavy.dead).toBe(true);
+    load(g2, 'scatter', 3);
+    const a = addThreat(g2, { kind: 'heavy', hp: 99, x: c.x, y: c.y - 200, speed: 0 });
+    const b = addThreat(g2, { x: c.x, y: c.y - 350, speed: 0 });
+    tap(g2, c.x, c.y - 200, 20);
+    expect(a.hp).toBeLessThan(99);
+    expect(b.dead).toBe(true);
+  });
+
+  it('Thermobaric Shell: one huge blast hits everything in it, nothing past it; Daisy Cutter hits for 3', () => {
+    const g = quietGame();
+    load(g, 'thermo', 1);
+    const r = AB.thermo.radius[0];
+    const inside = [0, 1, 2, 3].map((i) => addThreat(g, { x: 700 + Math.cos(i * 1.6) * (r - 15), y: 300 + Math.sin(i * 1.6) * (r - 15), speed: 0 }));
+    const outside = addThreat(g, { x: 700 + r + 40, y: 300, speed: 0 });
+    tap(g, 700, 300, 20);
+    run(g, 1.5);
+    expect(inside.every((t) => t.dead)).toBe(true);
+    expect(outside.dead).toBe(false);
+    const g2 = quietGame();
+    load(g2, 'thermo', 3);
+    const heavy = addThreat(g2, { kind: 'heavy', hp: 8, x: 700 + AB.thermo.radius[2] - 20, y: 300, speed: 0 });
+    tap(g2, 700, 300, 20);
+    run(g2, 1.5);
+    expect(heavy.hp).toBe(8 - AB.thermo.damage[2]);
+  });
+
+  it('Boomerang: a blade out to the tap and back, cutting on both passes, then caught; Twin Blades throws two', () => {
+    const g = quietGame();
+    load(g, 'boomerang', 1);
+    const c = g.map.carrier;
+    const tough = addThreat(g, { kind: 'guided', hp: 2, x: c.x, y: c.y - 250, speed: 0 });
+    const ammo = g.ammo;
+    expect(tap(g, c.x, c.y - 400, 20)).toBe('fire');
+    expect(g.ammo).toBe(ammo - 1);
+    expect(g.blades).toHaveLength(1);
+    run(g, 0.3);
+    expect(tough.hp).toBe(1); // cut on the way out
+    run(g, 1.2);
+    expect(tough.dead).toBe(true); // and again on the way back
+    expect(g.blades).toHaveLength(0); // caught
+    const g2 = quietGame();
+    load(g2, 'boomerang', 3);
+    tap(g2, 700, 200, 20);
+    expect(g2.blades).toHaveLength(2);
+  });
+
+  it('Frigate Escort: frigates sail in, fire on their own while it lasts, then sail off; Battle Group brings three', () => {
+    const g = quietGame();
+    g.levels.frigate = 1;
+    g.slots = ['frigate'];
+    g.pickups.push({ id: 950, kind: 'weapon', weapon: 'frigate', x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+    expect(g.escorts).toHaveLength(AB.frigate.ships[0]);
+    run(g, 6); // on station
+    const e = g.escorts[0];
+    const th = addThreat(g, { kind: 'heavy', hp: 99, x: e.x + 100, y: e.y - 150, speed: 0 });
+    const ammo = g.ammo;
+    run(g, 2);
+    expect(th.hp).toBeLessThan(99); // shot by the frigates
+    expect(g.ammo).toBe(ammo); // at no cost to the rack
+    th.dead = true;
+    run(g, WEAPON.time); // the weapon runs out: they sail off
+    expect(g.weapon).toBeNull();
+    run(g, 8);
+    expect(g.escorts).toHaveLength(0);
+    const g3 = quietGame();
+    g3.levels.frigate = 3;
+    g3.slots = ['frigate'];
+    g3.pickups.push({ id: 951, kind: 'weapon', weapon: 'frigate', x: 600, y: 300, age: 0 });
+    tap(g3, 600, 300, 20);
+    expect(g3.escorts).toHaveLength(3);
+  });
+
+  it('Frigate Escort: the frigates open fire as soon as they are on screen, before reaching station', () => {
+    const g = quietGame();
+    g.levels.frigate = 1;
+    g.slots = ['frigate'];
+    g.pickups.push({ id: 952, kind: 'weapon', weapon: 'frigate', x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+    run(g, 1.5);
+    const far = g.escorts.reduce((a, b) => (b.sx > a.sx ? b : a));
+    expect(far.x).toBeGreaterThan(20);
+    expect(far.sx - far.x).toBeGreaterThan(200); // still sailing in
+    const th = addThreat(g, { kind: 'heavy', hp: 99, x: far.x + 120, y: far.y, speed: 0 });
+    run(g, 1);
+    expect(th.hp).toBeLessThan(99);
   });
 
   it('Gravity Well: the vortex drags drones and missiles in, then implodes on them; ballistics fly on', () => {
@@ -707,8 +798,24 @@ describe('card text matches the numbers', () => {
     expect(L('aegis', 3)).toContain(`for ${AB.aegis.burstDmg}`);
     expect(ABILITIES.airstrike.how).toContain(`for ${AB.airstrike.cost} rounds`);
     expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
-    expect(L('cryo', 1)).toContain(`${AB.cryo.time[0]} s`);
-    expect(AB.cryo.radius[1]).toBeGreaterThan(AB.cryo.radius[0]); // "a bigger burst"
+    expect(L('shrapnel', 1)).toContain(`${AB.shrapnel.frags[0]} fragments`);
+    expect(L('shrapnel', 2)).toContain(`${AB.shrapnel.frags[1]} fragments`);
+    expect(L('shrapnel', 3)).toContain(`${AB.shrapnel.frags[2]} fragments`);
+    expect(AB.shrapnel.range[1]).toBeGreaterThan(AB.shrapnel.range[0]); // "fly further"
+    expect(L('frigate', 1)).toMatch(/^Two frigates/);
+    expect(AB.frigate.ships[0]).toBe(2);
+    expect(AB.frigate.gap[0] / AB.frigate.gap[1]).toBeCloseTo(1.5); // "half again as fast"
+    expect(AB.frigate.ships[2]).toBe(3); // "a third frigate"
+    expect(AB.frigate.gap[2]).toBeLessThan(AB.frigate.gap[1]); // "faster still"
+    expect(AB.thermo.radius[1]).toBeGreaterThan(AB.thermo.radius[0]); // "a bigger blast"
+    expect(L('thermo', 2)).toContain(`hits for ${AB.thermo.damage[1]}`);
+    expect(L('thermo', 3)).toContain(`hitting for ${AB.thermo.damage[2]}`);
+    expect(L('scatter', 1)).toContain(`${AB.scatter.pellets[0]} pellets`);
+    expect(L('scatter', 2)).toContain(`${AB.scatter.pellets[1]} pellets`);
+    expect(L('scatter', 3)).toContain(`${AB.scatter.pellets[2]} pellets`);
+    expect(AB.scatter.range[1]).toBeGreaterThan(AB.scatter.range[0]); // "reaching further"
+    expect(AB.boomerang.width[1]).toBeGreaterThan(AB.boomerang.width[0]); // "a wider blade"
+    expect(L('boomerang', 2)).toContain(`cuts for ${AB.boomerang.damage[1]}`);
     expect(L('well', 1)).toContain(`${AB.well.time[0]} s`);
     expect(AB.well.radius[1]).toBeGreaterThan(AB.well.radius[0]); // "a wider pull"
     expect(AB.well.damage[1]).toBeGreaterThan(AB.well.damage[0]); // "a harder implosion"

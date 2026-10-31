@@ -26,9 +26,10 @@ Design, rules and where to tune: [docs/design/v2-plan.md](docs/design/v2-plan.md
 
 ## Straitwatch V3 (weapon drops and the Armory)
 
-V2's game with new upgrades, after Survivor.io: the in-run draft deals eight
-**weapons** (Flak Cannon, Seeker Pod, Aegis Dome, Cryo Rounds, Gravity
-Well, Air Strike, Railgun, Tesla Arc). Hold three, level each to 3 to
+V2's game with new upgrades, after Survivor.io: the in-run draft deals
+twelve **weapons** (Air Strike, Shrapnel Shell, Frigate Escort, Thermobaric
+Shell, Scattergun, Boomerang, Flak Cannon, Seeker Pod, Aegis Dome, Gravity
+Well, Railgun, Tesla Arc). Hold three, level each to 3 to
 **evolve** it. A weapon you hold **drops as a pickup**; tap it and the main
 gun fires that weapon for 15 s, each shot spending a round as usual. The
 main gun has no upgrades inside a run: it is set beforehand in the

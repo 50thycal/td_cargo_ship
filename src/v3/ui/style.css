@@ -746,6 +746,25 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Round 6: on a 667 px phone the three cards are 150 px wide, and next to a
+   LEVEL UP or EVOLVES badge five threat names were cut ("VS EVERY…"):
+   tighter type (and shorter names for the two longest) keeps them whole. */
+@media (max-width: 760px) {
+  .v2-card-top {
+    gap: 4px;
+  }
+
+  .v2-card-top .v2-card-answers {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  .v2-card-top .v2-badge {
+    padding: 2px 4px;
+    letter-spacing: 0.02em;
+  }
+}
+
 .v2-badge {
   font-size: 9px;
   font-weight: 800;
@@ -1852,6 +1871,11 @@ body {
 
 .v3-weapon.loaded .v2-icon {
   opacity: 1;
+}
+
+.v3-weapon-name.long {
+  font-size: 6.4px;
+  letter-spacing: 0;
 }
 
 .v3-weapon.loaded .v3-weapon-name {

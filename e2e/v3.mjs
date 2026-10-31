@@ -1,7 +1,8 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
 // Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
 // map 1 → weapon pickups through real input (tap the pickup, then tap to
-// fire it: Railgun, Air Strike, Flak, Cryo, Gravity Well, Seekers, Aegis) →
+// fire it: Railgun, Air Strike, Flak, Gravity Well, Shrapnel, Thermobaric,
+// Scattergun, Boomerang, Seekers, Aegis, Frigates) →
 // defends to the
 // draft → picks a weapon → phone-size layout → the notice tray on every
 // map. Fails on any page error.
@@ -157,7 +158,11 @@ try {
   const sig = {
     airstrike: { open: true, ok: () => window.__v3.game().allies.length > 0 },
     flak: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'flak') },
-    cryo: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'cryo') },
+    shrapnel: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'shrapnel') },
+    thermo: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'thermo') },
+    scatter: { open: true, ok: () => window.__v3.game().fx.some((f) => f.kind === 'frag') },
+    boomerang: { open: true, ok: () => window.__v3.game().blades.length > 0 },
+    frigate: { open: true, ok: () => window.__v3.game().escorts.length >= 2 },
     well: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'well') },
     seeker: { open: false, ok: () => window.__v3.game().interceptors.some((i) => i.src === 'seeker') },
     aegis: { open: false, ok: () => !!window.__v3.game().carrierDome },
@@ -172,7 +177,7 @@ try {
       // A tough target that sits still, so the tap lands on it.
       await page.evaluate(() => {
         const g = window.__v3.game();
-        g.threats.push({ id: 80000 + g.nextId++, kind: 'heavy', x: 900, y: 300, vx: 0, vy: 0, hp: 99, speed: 0, heading: 0, target: -1, age: 0, phase: 0, dead: false, sx: 0, sy: 0, ix: 0, iy: 0, dur: 1, apex: 0, spawnT: 0, frozenT: 99 });
+        g.threats.push({ id: 80000 + g.nextId++, kind: 'heavy', x: 900, y: 300, vx: 0, vy: 0, hp: 99, speed: 0, heading: 0, target: -1, age: 0, phase: 0, dead: false, sx: 0, sy: 0, ix: 0, iy: 0, dur: 1, apex: 0, spawnT: 0 });
       });
     }
     const t = await w2c(page, 900, 300);
@@ -192,7 +197,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 9 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 10 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);

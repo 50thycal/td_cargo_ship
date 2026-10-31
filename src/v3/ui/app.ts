@@ -388,10 +388,12 @@ export class App {
         c.dataset.ability = id ?? '';
         if (id) {
           c.style.setProperty('--card-color', ICON_COLOR[id]);
+          const short = SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0];
           c.append(
             el('span', 'v3-weapon-fill'),
             upgradeIcon(id, 22),
-            el('span', 'v3-weapon-name', SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0]),
+            // Nine letters and more ran past a phone's 50 px ring (round 6).
+            el('span', short.length >= 9 ? 'v3-weapon-name long' : 'v3-weapon-name', short),
             el('span', 'v3-weapon-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`),
             el('span', 'v3-weapon-tag'),
           );
@@ -1642,7 +1644,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
-  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; Cryo Rounds stop it mid-pass.',
+  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; frigates shoot jets down too.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
 };
 

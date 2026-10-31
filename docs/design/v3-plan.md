@@ -67,7 +67,9 @@ Research summary (fan wikis and guides; some contradict each other):
 
 Playtest round 2 replaced charging and buttons with drops
 ([v3-playtest-round2.md](v3-playtest-round2.md)); round 3 replaced five of
-the eight ([v3-playtest-round3.md](v3-playtest-round3.md)). `src/v3/data/abilities.ts`
+the eight ([v3-playtest-round3.md](v3-playtest-round3.md)); round 6 cut Cryo
+and added five, for twelve ([v3-playtest-round6.md](v3-playtest-round6.md)).
+`src/v3/data/abilities.ts`
 holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
 - **Draft** a weapon to put it in the drop pool (levels and evolutions as
@@ -88,14 +90,19 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 | Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
 | Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
 | Aegis Dome → **Bastion** | Ballistics | a plain shot, and a dome over the hull its target is after (open water by a hull: just the dome); the dome takes hits for the hull | 5 s, 3 hits → 6 s, 4 hits → **8 s, 6 hits, and each hit bursts back for 2 within 120** |
-| Cryo Rounds → **Absolute Zero** | Heavies | a cryo shell | everything within 100 frozen 2.5 s and bitten for 1, doubled on ice; frozen threats take double → 120, 3 s → **140, and any hit shatters a frozen threat (the burst included)** |
 | Gravity Well → **Singularity** | Spread raids | a vortex shell | drones, missiles and jets within 200 dragged in at 320/s for 1.5 s, then 2 dmg to those within 100 (ballistics fly on) → 240, 3 dmg → **260, holds 2 s, 4 dmg** |
 | Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge, for **2 rounds** | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
 | Railgun → **Mass Driver** | Heavies | a beam from the carrier through the tap | 1 dmg → 2 dmg, wider → **4 dmg, wide: two bring down a heavy** |
 | Tesla Arc → **Storm Coil** | Crowds | a plain shot whose hit arcs | 3 arcs → 4 arcs, every arc arcs again → **a free second shot at the nearest uncovered threat** |
+| Shrapnel Shell → **Fragstorm** | Swarms | a shell (at a threat, or onto open water) that bursts into fragments flying out in every direction | 10 fragments to 220, 1 dmg each to the first threat on their line → 14 to 270 → **18 to 300, each tearing through everything on its line** |
+| Frigate Escort → **Battle Group** | Everything | a plain shot; picking it up sails two frigates in to the lane's edges, firing on their own at the nearest threat within 560 until the 15 s run out, then they sail off | 2 frigates, a shot every 0.9 s each → every 0.6 s → **3 frigates, every 0.45 s** |
+| Thermobaric Shell → **Daisy Cutter** | Packs | a shell that bursts in one huge blast | 1 dmg to everything within 150 → 2 dmg, 190 → **3 dmg, 240** |
+| Scattergun → **Dragon's Breath** | Rushers | a cone of pellets from the carrier toward the tap (spread 0.32 rad), 1 dmg to the first threat each | 8 pellets to 650 → 11 to 760 → **15 to 860, each tearing through everything on its line** |
+| Boomerang → **Twin Blades** | Lines | a spinning blade out to the tapped threat (homing on it) or point, and back to the carrier, cutting each threat once a pass | 1 dmg, 34 wide → 2 dmg, 44 wide → **two blades a throw** |
 
 Cut in round 3 (round 2's five weakest): EMP Rounds, Hellfire Salvo, Smoke
-Shells, Decoy Flares, Sub Hunter.
+Shells, Decoy Flares, Sub Hunter. Cut in round 6: Cryo Rounds (the freeze
+rarely mattered: the shell usually killed what it froze).
 
 ## Screen
 
@@ -196,21 +203,20 @@ lost) a purpose. To make the whole game longer, the knobs are salvage per
 run and Armory costs (`SALVAGE`, `ARMORY_COSTS`) and how hard the later maps
 are without Armory levels.
 
-**Weapon tier** (round 3; average bot, fresh Armory, each weapon **alone**:
+**Weapon tier** (round 6; average bot, fresh Armory, each weapon **alone**:
 drafted first, every other weapon stripped from the build, 40 runs across
 all maps, ±10 points). Round 2 measured "first pick, then anything", which
-hid how strong Air Strike and Railgun were behind weak partners; alone, the
-old roster ranged 0% (Decoy Flares) to 100% (Air Strike, Railgun) at the
-old drop rate.
+hid how strong Air Strike and Railgun were behind weak partners.
 
-| Seeker Pod | Railgun | Air Strike | Flak Cannon | Gravity Well | Aegis Dome | Cryo Rounds | Tesla Arc |
-|---|---|---|---|---|---|---|---|
-| 70% | 58% | 55% | 45% | 45% | 43% | 30% | 23% |
+| Frigates | Seekers | Scattergun | Shrapnel | Gravity Well | Railgun | Boomerang | Thermobaric | Flak | Aegis | Air Strike | Tesla |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 75% | 65% | 50% | 45% | 43% | 40% | 38% | 35% | 35% | 28% | 20% | 20% |
 
-With no weapons the same bot clears 0%. Measured on the final build (Air
-Strike at 2 rounds a jet, drops at share 0.45 / pity 28 s). The clear-rate
-table above is the round-1 (button) measurement; round 3's is in
-v3-playtest-round3.md.
+With no weapons the same bot clears 0%. The bot is poor with Air Strike (it
+taps threats, not rows), so its 20% undersells it; players rate it the
+strongest. Drafting in a random order, the average bot clears 49% (32 seeds
+a map). The clear-rate table above is the round-1 (button) measurement;
+rounds 3 and 6 are in v3-playtest-round3.md and v3-playtest-round6.md.
 
 ## Where to tune
 

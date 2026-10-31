@@ -127,7 +127,7 @@ export const YOU_V1: Persona = {
       { id: 'box', weight: 1 },
     ],
   },
-  taste: ['railgun', 'flak', 'airstrike', 'aegis', 'tesla', 'seeker', 'cryo', 'well'],
+  taste: ['airstrike', 'railgun', 'flak', 'frigate', 'shrapnel', 'aegis', 'tesla', 'seeker', 'thermo', 'scatter', 'boomerang', 'well'],
 };
 
 /** You, round 12: fitted knob by knob to the player's four v6 runs with
@@ -175,7 +175,7 @@ export const YOU: Persona = {
       { id: 'spread', weight: 1 },
     ],
   },
-  taste: ['flak', 'railgun', 'aegis', 'airstrike', 'seeker', 'tesla', 'cryo', 'well'],
+  taste: ['flak', 'airstrike', 'thermo', 'railgun', 'aegis', 'shrapnel', 'seeker', 'frigate', 'tesla', 'scatter', 'boomerang', 'well'],
 };
 
 /** What the bot can do: exactly what a player's touches can. */
