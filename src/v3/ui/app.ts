@@ -724,13 +724,11 @@ export class App {
         case 'pickup':
           break;
         case 'weapon': {
-          // Loaded: its name, what a shot does now and how to fire it.
-          const a = ABILITIES[ev.id];
-          this.showBanner(
-            `${abilityName(ev.id, ev.level).toUpperCase()} · ${WEAPON.time}s`,
-            `${a.levels[ev.level - 1].replace(/^EVOLVES: /, '')}. ${a.how}.`,
-            WEAPON_NOTE,
-          );
+          // Loaded: its name, its seconds and how to fire it, in one short
+          // line (round 4: with what a shot does as well, the notice wrapped
+          // to two lines and, on the Island's one-card tray, rose onto the
+          // carrier; what it does is on the card you drafted it from).
+          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${WEAPON.time}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE);
           this.shake = Math.max(this.shake, 4);
           break;
         }

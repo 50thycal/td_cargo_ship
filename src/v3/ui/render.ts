@@ -83,14 +83,16 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     if (it.life < 0) continue;
     const a = Math.atan2(it.ty - it.y, it.tx - it.x);
     if (it.src === 'seeker') {
-      // A seeker: small and lime, with a thin curling trail.
-      ctx.strokeStyle = 'rgba(163, 230, 53, 0.55)';
-      ctx.lineWidth = 2;
+      // A seeker: a lime dart with a halo and a long trail (round 4: at
+      // 3.5 px they couldn't be followed to their targets).
+      ctx.strokeStyle = 'rgba(163, 230, 53, 0.7)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(it.x - Math.cos(a) * 22, it.y - Math.sin(a) * 22);
+      ctx.moveTo(it.x - Math.cos(a) * 38, it.y - Math.sin(a) * 38);
       ctx.lineTo(it.x, it.y);
       ctx.stroke();
-      dot(ctx, it.x, it.y, 3.5, ICON_COLOR.seeker);
+      dot(ctx, it.x, it.y, 10, 'rgba(163, 230, 53, 0.25)');
+      dot(ctx, it.x, it.y, 5.5, ICON_COLOR.seeker);
       continue;
     }
     // A weapon's shell trails that weapon's colour.
@@ -626,18 +628,26 @@ function drawIce(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   void g;
 }
 
-/** Carpet Strike's row: flames all along it. */
+/** Carpet Strike's row: a dim band of heat with small flames licking up
+ *  along it (round 4: full-strength beads across the whole screen drowned
+ *  out the threats). */
 function drawBurn(ctx: CanvasRenderingContext2D, f: Field, a: number): void {
+  ctx.strokeStyle = `rgba(255,120,40,${0.14 * a})`;
+  ctx.lineWidth = f.hw * 2;
+  ctx.beginPath();
+  ctx.moveTo(f.x1, f.y1);
+  ctx.lineTo(f.x2, f.y2);
+  ctx.stroke();
   const len = Math.hypot(f.x2 - f.x1, f.y2 - f.y1);
-  const n = Math.max(2, Math.round(len / 28));
+  const n = Math.max(2, Math.round(len / 40));
   for (let k = 0; k <= n; k++) {
     const p = k / n;
     const x = f.x1 + (f.x2 - f.x1) * p;
     const y = f.y1 + (f.y2 - f.y1) * p;
-    const wob = Math.sin(k * 1.7 + f.t * 1.5);
-    ctx.fillStyle = `rgba(255,${120 + Math.round(60 * wob)},40,${0.55 * a})`;
+    const wob = Math.sin(k * 1.7 + f.t * 6);
+    ctx.fillStyle = `rgba(255,${130 + Math.round(60 * wob)},50,${0.32 * a})`;
     ctx.beginPath();
-    ctx.arc(x, y + wob * 4, 10 + 6 * Math.abs(wob), 0, Math.PI * 2);
+    ctx.arc(x, y + wob * 3, 6 + 4 * Math.abs(wob), 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -682,13 +692,14 @@ function drawWeaponPickup(ctx: CanvasRenderingContext2D, g: Game, p: Pickup): vo
   if (img) ctx.drawImage(img, -r * 0.62, -r * 0.62, r * 1.24, r * 1.24);
   const lv = g.levels[id] ?? 1;
   const label = SHORT_NAME[id][lv >= ABILITY_MAX ? 1 : 0];
-  ctx.font = '800 15px system-ui, sans-serif';
+  // Round 4: at 15 px the name was ~7 px on a phone; 22 px reads at ~10.
+  ctx.font = '900 22px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = 'rgba(7,13,18,0.85)';
-  ctx.strokeText(label, 0, r + 26);
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(7,13,18,0.9)';
+  ctx.strokeText(label, 0, r + 30);
   ctx.fillStyle = col;
-  ctx.fillText(label, 0, r + 26);
+  ctx.fillText(label, 0, r + 30);
   ctx.restore();
 }
 
