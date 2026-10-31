@@ -317,6 +317,24 @@ describe('weapons drop as pickups and load the gun', () => {
     expect(g.weapon!.id).toBe('aegis');
   });
 
+  it('a weapon dropped at the edge of the screen lands far enough in for its name to show', () => {
+    for (const [x, y] of [[10, 30], [1590, 30], [10, 890], [1590, 890]]) {
+      const g = quietGame();
+      g.levels.flak = 1;
+      g.slots = ['flak'];
+      g.weaponDropT = 999; // due: the next kill drops a weapon
+      g.rng.drops.chance = () => false; // and not a power-up
+      const th = addThreat(g, { x, y, speed: 0 });
+      tap(g, th.x, th.y, 30);
+      run(g, 3);
+      const p = g.pickups.find((o) => o.kind === 'weapon')!;
+      expect(p, `${x},${y}`).toBeDefined();
+      expect(p.x).toBeGreaterThanOrEqual(90);
+      expect(p.x).toBeLessThanOrEqual(1510);
+      expect(p.y).toBeLessThanOrEqual(800);
+    }
+  });
+
   it(`a weapon pickup floats ${WEAPON.life} s (longer than a power-up) before it is gone`, () => {
     const g = quietGame();
     g.pickups.push({ id: 904, kind: 'weapon', weapon: 'aegis', x: 600, y: 300, age: 0 });
@@ -682,11 +700,11 @@ describe('card text matches the numbers', () => {
     expect(L('seeker', 1)).toContain(`${AB.seeker.missiles[0]} seekers`);
     expect(L('seeker', 2)).toContain(`${AB.seeker.missiles[1]} seekers`);
     expect(L('seeker', 3)).toContain(`${AB.seeker.missiles[2]} seekers`);
-    expect(L('aegis', 1)).toContain(`${AB.aegis.time[0]} s that takes ${AB.aegis.hits[0]} hits`);
-    expect(L('aegis', 2)).toContain(`${AB.aegis.time[1]} s and takes ${AB.aegis.hits[1]} hits`);
+    expect(L('aegis', 1)).toContain(`${AB.aegis.time[0]} s, ${AB.aegis.hits[0]} hits`);
+    expect(L('aegis', 2)).toContain(`${AB.aegis.time[1]} s, ${AB.aegis.hits[1]} hits`);
     expect(L('aegis', 3)).toContain(`${AB.aegis.time[2]} s, ${AB.aegis.hits[2]} hits`);
     expect(L('aegis', 3)).toContain(`for ${AB.aegis.burstDmg}`);
-    expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
+    expect(ABILITIES.airstrike.how).toContain(`for ${AB.airstrike.cost} rounds`);
     expect(L('cryo', 1)).toContain(`${AB.cryo.time[0]} s`);
     expect(AB.cryo.radius[1]).toBeGreaterThan(AB.cryo.radius[0]); // "a bigger burst"
     expect(L('well', 1)).toContain(`${AB.well.time[0]} s`);

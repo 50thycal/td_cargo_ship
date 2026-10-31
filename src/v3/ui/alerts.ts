@@ -67,7 +67,16 @@ export class Alerts {
       same.alive = opts.alive;
       return;
     }
-    if (this.waiting.some((w) => w.opts.key === key)) return;
+    // Waiting already: the newer message takes its place in the queue (round
+    // 4: a weapon loaded behind a raid warning showed the PREVIOUS weapon's
+    // notice once the raid passed).
+    const queued = this.waiting.find((w) => w.opts.key === key);
+    if (queued) {
+      queued.title = title;
+      queued.sub = sub;
+      queued.opts = { ...opts, key };
+      return;
+    }
     const urgent = opts.tone === 'raid' || opts.tone === 'danger' || !!opts.now;
     const live = this.shown.filter((c) => !c.leaving);
     if (live.length >= this.max && urgent) {
