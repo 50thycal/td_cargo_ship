@@ -17,7 +17,7 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { canFire, createGame, step, timeToImpact, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyFreePlay, canFire, createGame, step, timeToImpact, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 
 export interface Persona {
@@ -549,13 +549,15 @@ export class BotRun {
   constructor(
     map: MapId,
     seed: number,
-    opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels } = {},
+    opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels; freePlay?: FreePlaySetup } = {},
   ) {
     const g = (this.game = createGame(map, seed, opts.firstWave ?? 1, opts.tempo, opts.armory));
+    if (opts.freePlay) applyFreePlay(g, opts.freePlay);
     const rec = (this.rec = new Recorder(g, {
       build: opts.build ?? 'sim',
       startedAt: new Date(0).toISOString(),
       firstWave: opts.firstWave ?? 1,
+      ...(opts.freePlay ? { freePlay: opts.freePlay } : {}),
       ...(opts.tempo ? { tempo: opts.tempo } : {}),
       dev: { preset: 'sim', watch: true },
       device: { w: 0, h: 0, dpr: 1, touch: true, ua: 'mimic' },
@@ -610,7 +612,7 @@ export function lostByWave(g: Game): number[] {
 export function playMimic(
   map: MapId,
   seed: number,
-  opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels } = {},
+  opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels; freePlay?: FreePlaySetup } = {},
 ): { game: Game; log: PlayLog } {
   const run = new BotRun(map, seed, opts);
   run.advance(Infinity);

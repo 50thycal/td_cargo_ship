@@ -9,6 +9,7 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import {
+  applyFreePlay,
   continueEndless,
   createGame,
   pickUpgrade,
@@ -16,6 +17,7 @@ import {
   setFormation,
   step,
   tap,
+  type FreePlaySetup,
   type Game,
   type Phase,
   type TapResult,
@@ -37,9 +39,12 @@ import {
  *  9: V3 round 3 (five weapons replaced: the draft deals a new roster).
  *  10: V3 round 6 (Cryo out; Shrapnel, Frigates, Thermobaric, Scattergun
  *      and Boomerang in: twelve weapons, a new draft roster).
+ *  11: V3 round 7 (the Armory's Hull and Supply bays: `armory` can carry a
+ *      hull and a supply upgrade, and Armor Plating draws on its own random
+ *      stream; Battle Group's frigates take new stations).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 10;
+export const LOG_VERSION = 11;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -65,7 +70,7 @@ export interface PlayLog {
   v: number;
   game: typeof LOG_GAME;
   id: string;
-  /** The Armory the run was played with (the main gun). */
+  /** The Armory the run was played with (one upgrade from each bay). */
   armory: ArmoryLevels;
   build: string;
   startedAt: string;
@@ -78,6 +83,8 @@ export interface PlayLog {
    *  from. Balance analysis should leave these logs out. */
   tempo?: Tempo;
   dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
+  /** A Free Play run (round 7): its setup, applied as the game is created. */
+  freePlay?: FreePlaySetup;
   /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
   ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
@@ -256,6 +263,7 @@ export function replay(log: PlayLog): Game {
  *  with a `WaveMark`, the run exactly as that wave began. */
 export function replayTo(log: PlayLog, lastStep: number, commands: number): Game {
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
+  if (log.freePlay) applyFreePlay(g, log.freePlay);
   const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {

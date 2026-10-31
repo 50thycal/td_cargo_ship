@@ -5,7 +5,7 @@ import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type Pick
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
 import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Dome, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
-import { ABILITY_MAX, SHORT_NAME, WEAPON } from '../data/abilities';
+import { ABILITY_MAX, SHORT_NAME } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
@@ -413,7 +413,7 @@ function drawCarrier(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
 
   // HP bar and ammo rack, right where the player looks when firing.
-  const hpFrac = g.carrierHp / CARRIER.hp;
+  const hpFrac = g.carrierHp / g.stats.carrierHp;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(x - 60, y + B + 8, 120, 6);
   ctx.fillStyle = hpFrac > 0.5 ? '#5ee08a' : hpFrac > 0.25 ? '#f5c542' : C.danger;
@@ -769,7 +769,7 @@ function drawLoaded(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.stroke();
   ctx.globalAlpha = 0.95;
   ctx.beginPath();
-  ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / WEAPON.time));
+  ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / g.stats.weaponTime));
   ctx.stroke();
   ctx.restore();
 }

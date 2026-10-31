@@ -5,10 +5,11 @@ intercept, 5 maps × 10 waves, formations, flow) and changes **only the
 upgrades**, after the player's brief (inspired by Survivor.io):
 
 - The **main gun stays as it is** inside a run: no upgrades for it in the
-  draft. It gets better **before** a run, in the **Armory**, with salvage
-  earned from every run, the way gear sets your weapon in Survivor.io.
+  draft. It gets better **before** a run, in the **Armory**, with cards
+  won at the end of every run, the way gear sets your weapon in Survivor.io.
 - The in-run draft deals **weapons**: new attacks that each answer a
-  scenario. Three held at once, three levels each, level 3 **evolves** them.
+  scenario. Three held at once, three levels each; level 3 is **MAX** (shown so since round 7: "evolved"
+  read wrong to the player), where a weapon takes a new name.
 - **Weapons drop as pickups** (playtest round 2; until then they charged and
   fired from buttons, which was "too much managing"). A weapon you hold drops
   from kills like the power-ups; tapping its pickup loads the main gun with
@@ -60,7 +61,7 @@ Research summary (fan wikis and guides; some contradict each other):
 | Pick 1 of 3 at every level-up; chests give extra picks | Pick 1 of 3 after every wave (Resupply when nothing fits) |
 | Every attack is automatic; you only move | You don't move, so attacks are **active**: charged, then aimed |
 | 15-minute chapters, bosses at 5/10/15 min; ~350 chapters + challenge modes | 10 waves ≈ 8–10 min a map; 5 maps + endless |
-| Gear (merged, upgraded with gold) sets your starting weapon and stats | The **Armory**: 5 main-gun upgrades bought with salvage |
+| Gear (merged, upgraded with gold) sets your starting weapon and stats | The **Armory**: 11 upgrade cards in 3 bays, won at random after a run, a duplicate adding a level (round 7; 5 gun upgrades bought with salvage before) |
 | 50+ hours come from the meta (gear, chapters, events), not the in-run skills | The Armory is V3's first meta layer (see "How long the game is") |
 
 ## Weapons
@@ -72,7 +73,7 @@ and added five, for twelve ([v3-playtest-round6.md](v3-playtest-round6.md)).
 `src/v3/data/abilities.ts`
 holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
-- **Draft** a weapon to put it in the drop pool (levels and evolutions as
+- **Draft** a weapon to put it in the drop pool (levels to MAX as
   before, three slots, swaps when full).
 - **Drops**: a kill that drops no power-up drops a weapon you hold at 0.45×
   its power-up chance; after 28 s without one, the next kill drops one. One
@@ -85,7 +86,7 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
   before the clock ran out still bursts as that weapon. The wave's end
   unloads it.
 
-| Weapon → evolved | Answers | A tap while loaded | L1 → L2 → **L3 evolution** |
+| Weapon → MAX name | Answers | A tap while loaded | L1 → L2 → **L3 (MAX)** |
 |---|---|---|---|
 | Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
 | Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
@@ -124,39 +125,80 @@ rarely mattered: the shell usually killed what it froze).
   answers, its art, its name at the level it brings, its level pips and
   what that level does. How weapons work (they drop as pickups and load the
   gun for 15 s) is the game's rule, not repeated on every card (round 5);
-  the badge and the new name mark an evolution. The line under the cards
+  the MAX badge and the new name mark the last level. The line under the cards
   shows only when the slots are full.
 
 ## The Armory
 
-`src/v3/data/armory.ts`. Five upgrades, five levels each, only the main gun.
-Levels are bought for good, but **a run takes ONE upgrade**: the equipped one
-(playtest round 1: "the player should only be allowed to select one… they
-don't get all of them"). The first upgrade bought is equipped; after that the
-**Choose your gun** screen comes up whenever a map is started (from the menu,
-Next or Try again), with the last choice ready, and the Armory has an Equip
-button on each owned row. The menu strip shows the gun equipped.
+`src/v3/data/armory.ts`. Since round 7 ("let's overhaul that armory";
+[v3-playtest-round7.md](v3-playtest-round7.md)) every upgrade is a **card**,
+drawn like a weapon card (bay, art, name, level pips, what it does, its
+number now and next), and cards are **won at the end of a run, never
+bought**: "they need to get that card at the end of the game. They don't
+get to pick which ones… to get the next reload, you need to win another
+reload" (Survivor.io's gear). A card won again adds a level. Salvage is gone.
 
-| Upgrade | Per level | At level 5 | Alone at L5 (average bot) |
+- **Cards a run wins**: 1 for a run that cleared at least 3 waves (quitting
+  at once wins nothing), +1 for clearing the map, +1 more the first time.
+  Each is drawn at random from the upgrades not yet maxed. The result screen
+  deals them in (NEW, or the level it brought).
+- **Three bays, one card from each per run** (playtest round 1: "the player
+  should only be allowed to select one… they don't get all of them", now
+  per bay). The first card won in a bay is equipped; the Armory shows a bay
+  at a time as a row of cards (tap one you hold to equip it; ones not found
+  yet are greyed); **Choose your loadout** comes up when a map starts; the
+  menu strip shows the cards found and the loadout.
+
+| Bay | Upgrades (5 levels each) |
+|---|---|
+| **Gun** | Quick Reload, Wide Warhead, Fast Motors, Deep Magazine, Proximity Fuse |
+| **Hull** | Armor Plating, Point Defense, Damage Control |
+| **Supply** | Long Loads, Supply Lines, Stockpile |
+
+| Upgrade | Per level | At level 5 |
+|---|---|---|
+| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) |
+| Wide Warhead | blast +40% | 3× blast |
+| Fast Motors | interceptors +20% faster | 2× speed |
+| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds |
+| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 |
+| Armor Plating | 8% of hits on a ship or the carrier glance off | 40% |
+| Point Defense | the carrier fires a free interceptor at the nearest threat in reach | a shot every 3.5 s, reach 280 → every 2 s, reach 360 |
+| Damage Control | every damaged hull (ships and carrier) gets a point back | every 10 s → every 4 s |
+| Long Loads | a weapon pickup stays in the gun 4 s longer | 35 s |
+| Supply Lines | weapons drop more often | 1.4× chance, one at least every 20 s (28) |
+| Stockpile | power-ups drop more often and last longer | 1.75× chance, 1.5× time |
+
+**What each is worth alone** (round 7; average bot, fresh Armory, weapons
+drafted in a random order, 60 runs across the maps, ±12 points; the base
+gun clears 57% this way):
+
+| Bay | Upgrade | Level 1 | Level 5 |
 |---|---|---|---|
-| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) | 80% clears |
-| Wide Warhead | blast +40% | 3× blast | 68% |
-| Fast Motors | interceptors +20% faster | 2× speed | 67% |
-| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds | 83% |
-| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 | 82% |
+| Gun | Wide Warhead | — | 67% |
+| Hull | Armor Plating | 57% (70% at L3) | 85% |
+| Hull | Point Defense | 63% | 82% |
+| Hull | Damage Control | 62% | 75% |
+| Supply | Long Loads | 60% | 67% |
+| Supply | Supply Lines | ~50% | 83% |
+| Supply | Stockpile | 62% | 73% |
 
-The base gun clears 43% for the same bot. Round 1 strengthened Wide Warhead
-(+20% a level changed nothing on its own: 43%) and Fast Motors (+12% a level:
-53%) once a run took one upgrade instead of all five.
+Stacked: level 2 in all three bays clears 85%, everything at level 5 98–100%.
+(Round 1's gun-only table, base gun alone and all five maps, put the gun
+upgrades at 67–83% at level 5.)
 
-Each stops short of the line V2's round 6 audit found (an 11-round rack
-reloading 55% faster let mashing win). Levels cost 80 / 160 / 280 / 450 /
-700 salvage (1,670 to max one upgrade). A run pays 1 salvage per ship
-delivered, 6 per wave cleared, 40 for clearing the map and 80 more the first
-time: about 100–180 a run. Lost runs pay too.
+Each gun upgrade stops short of the line V2's round 6 audit found (an
+11-round rack reloading 55% faster let mashing win). Every level of every
+card is 55 cards.
 
-Dev mode adds a **Gun** chip on the menu: the equipped upgrade, the base gun,
-or the equipped upgrade at level 5; dev runs never earn or spend salvage.
+**Free Play** (round 7, on the menu): any map, any start wave (wave 7 on
+The Strait by default), three weapons at any level, one Armory card from
+each bay at any level, and optionally frequent weapon drops (one at least
+every 8 s, at twice the chance). Nothing in it counts: no records, unlocks
+or cards. Its play log records the setup, so it replays exactly.
+
+Dev mode adds a **Gun** chip on the menu: the equipped loadout, the base
+gun, or the equipped loadout at its top levels; dev runs never win cards.
 
 ## Measurements
 
@@ -166,7 +208,8 @@ person aims abilities worse and taps less precisely, so treat them as the
 shape of the curve, not the final word — the next step is real playtests.
 
 **How long a run is.** One map, start to clear: **~10 minutes**. A lost
-run lasts 6–9. Each run pays **100–180 salvage**.
+run lasts 6–9. A run that clears 3 waves wins **1 Armory card**, a clear 2,
+a first clear 3.
 
 **Clear rate by Armory level** (sharp / average / casual bot; measured
 after porting V2 rounds 13–14, which eased the Island):
@@ -199,8 +242,8 @@ runs (see v3-playtest-round1.md). Before:
 For comparison, V2 took a decent player **~70 minutes** to clear all five
 maps once. The Armory doesn't make the game longer for a strong player; it
 makes the game finishable for a weaker one, and gives every run (won or
-lost) a purpose. To make the whole game longer, the knobs are salvage per
-run and Armory costs (`SALVAGE`, `ARMORY_COSTS`) and how hard the later maps
+lost) a purpose. To make the whole game longer, the knobs are the cards a
+run wins (`CARD_DROPS`) and how hard the later maps
 are without Armory levels.
 
 **Weapon tier** (round 6; average bot, fresh Armory, each weapon **alone**:
@@ -223,7 +266,7 @@ rounds 3 and 6 are in v3-playtest-round3.md and v3-playtest-round6.md.
 | What | File |
 |---|---|
 | Weapons: drop rules (`WEAPON`), effect numbers (`AB`), level text | `src/v3/data/abilities.ts` |
-| Armory: per-level effects, costs, salvage per run | `src/v3/data/armory.ts` |
+| Armory: per-level effects, the cards a run wins | `src/v3/data/armory.ts` |
 | How bots use weapons (grab pickups; Sub Hunter goes for launchers) | `src/v3/sim/bot.ts`, `src/v3/sim/mimic.ts` |
 | Everything else (threats, waves, maps, formations) | as in V2, under `src/v3/data/` |
 
@@ -233,17 +276,19 @@ rounds 3 and 6 are in v3-playtest-round3.md and v3-playtest-round6.md.
   drops and the 15 s clock, ammo per shot, every weapon's levels, replay,
   the curve).
 - `npm run v3:sweep -- [seeds] [--armory=N] [--no-weapons] [--focus=id]`
-  prints clear rates, minutes a run, salvage a run, the share of wave time
+  prints clear rates, minutes a run, cards a run, the share of wave time
   a weapon was loaded, weapon pickups taken, and the whole game from an
   empty Armory.
-- `npm run e2e:v3` (with `npm run preview -- --port 4173` running): buys an
-  Armory level, loads six weapons from their pickups and fires each through
-  real clicks, drafts, checks the loadout and the phone layout, and the
-  notice tray on every map. Screenshots in `e2e/shots/v3/`.
+- `npm run e2e:v3` (with `npm run preview -- --port 4173` running): equips
+  Armory cards from two bays, loads every weapon from its pickup and fires
+  it through real clicks, drafts, checks the loadout and the phone layout,
+  wins an Armory card at the end of a run, plays a Free Play run (which wins
+  nothing), and checks the notice tray on every map. Screenshots in
+  `e2e/shots/v3/`.
 
 ## Next candidates (not built)
 
-- **Fusion**: two evolved weapons fuse into one, freeing a slot (Survivor.io
+- **Fusion**: two maxed weapons fuse into one, freeing a slot (Survivor.io
   has a few two-weapon evolutions). It gives endless mode something to draft
   for after the build is complete.
 - **A boss-chest draft** after wave 5 that levels two weapons at once.

@@ -29,12 +29,14 @@ Design, rules and where to tune: [docs/design/v2-plan.md](docs/design/v2-plan.md
 V2's game with new upgrades, after Survivor.io: the in-run draft deals
 twelve **weapons** (Air Strike, Shrapnel Shell, Frigate Escort, Thermobaric
 Shell, Scattergun, Boomerang, Flak Cannon, Seeker Pod, Aegis Dome, Gravity
-Well, Railgun, Tesla Arc). Hold three, level each to 3 to
-**evolve** it. A weapon you hold **drops as a pickup**; tap it and the main
+Well, Railgun, Tesla Arc). Hold three, level each to 3 (**MAX**, where it
+takes a new name). A weapon you hold **drops as a pickup**; tap it and the main
 gun fires that weapon for 15 s, each shot spending a round as usual. The
-main gun has no upgrades inside a run: it is set beforehand in the
-**Armory**, five permanent upgrades bought with salvage earned from every
-run (one equipped per run).
+main gun has no upgrades inside a run: the **Armory** sets it beforehand.
+Its eleven upgrades are cards in three bays (Gun, Hull and Supply), won at
+random at the end of a run (a card won again adds a level); a run takes one
+from each bay. **Free Play** tests any weapon and card, at any level, from
+any wave.
 
 ```bash
 npm run dev:v3          # opens /v3.html

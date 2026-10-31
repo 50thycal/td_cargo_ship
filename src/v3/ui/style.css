@@ -747,7 +747,7 @@ body {
 }
 
 /* Round 6: on a 667 px phone the three cards are 150 px wide, and next to a
-   LEVEL UP or EVOLVES badge five threat names were cut ("VS EVERY…"):
+   LEVEL UP or MAX badge five threat names were cut ("VS EVERY…"):
    tighter type (and shorter names for the two longest) keeps them whole. */
 @media (max-width: 760px) {
   .v2-card-top {
@@ -1238,7 +1238,6 @@ body {
   color: var(--gold);
   font-size: 13px;
 }
-
 
 /* ---- Upgrade cards, round 10 ------------------------------------------- */
 /* The player's reference: one bold picture per card in a frame that never
@@ -1908,12 +1907,12 @@ body {
   }
 }
 
-.v2-badge.evo {
+.v2-badge.max {
   background: linear-gradient(90deg, #f5c542, #fb923c);
   color: #1d1606;
 }
 
-.v2-card.evolves {
+.v2-card.to-max {
   box-shadow: inset 0 3px 0 var(--card-color, transparent), 0 0 0 2px #fb923c, 0 0 22px rgb(251 146 60 / 0.35);
 }
 
@@ -1945,14 +1944,6 @@ body {
   font-weight: 800;
 }
 
-.v3-armory-pips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  font-size: 11px;
-  color: var(--muted);
-}
-
 .v3-armory-strip em {
   margin-left: auto;
   font-style: normal;
@@ -1966,95 +1957,10 @@ body {
   border-color: var(--gold);
 }
 
-/* The Armory screen. */
-.v3-armory-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.v3-armory-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-edge);
-  background: rgb(255 255 255 / 0.03);
-}
-
-.v3-armory-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
-  text-align: left;
-}
-
-.v3-armory-text span {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.v3-armory-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.v3-armory-stat b {
-  font-size: 14px;
-  color: var(--accent);
-}
-
-.v3-armory-row .v2-btn {
-  min-width: 120px;
-}
-
-@media (max-width: 640px), (max-height: 420px) {
-  .v3-armory-row {
-    grid-template-columns: 1fr auto auto;
-  }
-  .v3-armory-stat {
-    display: none;
-  }
-}
-
-.v3-salvage-earned b {
-  color: var(--gold);
-}
-
 .v3-dev-label {
   font-size: 11px;
   color: var(--muted);
   align-self: center;
-}
-
-/* V3 round 1: one Armory upgrade per run. */
-.v3-armory-row.equipped {
-  border-color: var(--gold);
-  box-shadow: inset 3px 0 0 var(--gold);
-}
-
-.v3-equip {
-  min-width: 96px;
-}
-
-.v3-equip.on {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #1d1606;
-}
-
-.v3-equipped {
-  font-size: 12px;
-  color: var(--ink);
 }
 
 .v3-gun-grid {
@@ -2110,14 +2016,97 @@ body {
   }
 }
 
-/* Buttons that can't be pressed look it (Armory "Not bought", maxed). */
-.v3-armory-row .v2-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
+/* Round 7: the Armory's three bays. Tabs across the top (the bay's name and
+ * what it has equipped). */
+.v3-bay-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
 }
 
-/* Short screens (a phone on its side): the Armory fits without scrolling.
- * One line per upgrade (name, level pips, the two buttons); the blurb goes. */
+.v3-bay-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(255 255 255 / 0.03);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-bay-tab strong {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.v3-bay-tab span {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.v3-bay-tab.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 -3px 0 var(--accent);
+  background: rgb(103 232 249 / 0.08);
+}
+
+/* Choose your loadout: a row per bay, its owned upgrades and "none". */
+.v3-bay-row {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.v3-bay-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-align: left;
+}
+
+.v3-bay-row .v3-gun-grid {
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  margin: 0;
+}
+
+@media (max-height: 460px) {
+  .v3-bay-tab {
+    padding: 4px 8px;
+  }
+  .v3-bay-row {
+    margin-bottom: 3px;
+  }
+  .v3-bay-row .v3-gun {
+    gap: 1px;
+    padding: 4px 7px;
+  }
+  .v3-bay-row .v3-gun strong {
+    font-size: 12px;
+  }
+  .v3-bay-row .v3-gun span {
+    font-size: 10.5px;
+  }
+  .v3-bay-row .v3-gun .v2-card-level {
+    display: none;
+  }
+}
+
+/* Short screens (a phone on its side): the Armory fits without scrolling. */
 @media (max-height: 460px) {
   .v3-armory .v2-sub {
     font-size: 11.5px;
@@ -2130,46 +2119,10 @@ body {
   .v3-armory {
     gap: 6px;
   }
-  .v3-armory-list {
-    gap: 4px;
-  }
-  .v3-armory-row {
-    padding: 3px 8px;
-    gap: 8px;
-  }
-  .v3-armory-text {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-  }
-  .v3-armory-text strong {
-    font-size: 13px;
-    min-width: 112px;
-  }
-  .v3-armory-text > span:not(.v2-card-level) {
-    display: none;
-  }
-  .v3-armory-row .v2-btn,
   .v3-armory > .v2-btn {
     min-height: 32px;
     padding: 0 12px;
     font-size: 13px;
-  }
-  .v3-equip {
-    min-width: 84px;
-  }
-  /* Keep the current value (what you compare when equipping), drop "next". */
-  .v3-armory-row {
-    grid-template-columns: 1fr auto auto auto;
-  }
-  .v3-armory-stat {
-    display: flex;
-  }
-  .v3-armory-stat span {
-    display: none;
-  }
-  .v3-armory-stat b {
-    font-size: 12.5px;
   }
 }
 
@@ -2204,7 +2157,8 @@ body {
     gap: 2px 12px;
   }
   .v2-menu .v2-map-card {
-    padding: 6px 9px;
+    /* Round 7: with all five maps open, 6 px too tall for a 667×375 phone. */
+    padding: 4px 9px;
   }
   .v2-menu-foot {
     margin-top: 0;
@@ -2245,4 +2199,207 @@ body {
  * read as part of the draft ("×1.4 ABILITIES" on a phone). */
 .v2-overlay[data-screen='draft'] {
   background: rgb(4 8 11 / 0.86);
+}
+
+/* ---- Round 7: Armory cards and Free Play ------------------------------- */
+
+/* The Armory: a bay's cards in a row (five for the Gun bay, three for the
+ * others), drawn like the draft's weapon cards. Tap one you hold to equip
+ * it; one not found yet is greyed. */
+.v3-armory-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.v3-armory-cards.n3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(100%, 640px);
+  margin: 0 auto;
+}
+
+.v3-armory-card .v2-card-art {
+  height: clamp(42px, 17vh, 110px);
+}
+
+.v3-armory-card .v2-card-text {
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.v3-card-stat {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--card-color, var(--accent));
+  text-align: left;
+}
+
+.v3-armory-card.locked .v3-card-stat {
+  color: var(--muted);
+}
+
+.v3-bay-tab {
+  border-top: 2px solid var(--card-color, var(--panel-edge));
+}
+
+.v3-bay-tab.on {
+  border-color: var(--card-color, var(--accent));
+  box-shadow: inset 0 -3px 0 var(--card-color, var(--accent));
+  background: color-mix(in srgb, var(--card-color, var(--accent)) 10%, transparent);
+}
+
+/* The result screen: the cards a run won, dealt in one by one. */
+.v3-won {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.v3-won-cards {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.v3-won-cards .v2-card {
+  width: min(190px, 30%);
+  cursor: default;
+  animation: v2-deal 0.45s cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: var(--deal, 0ms);
+}
+
+.v3-won-cards .v2-card:active {
+  transform: none;
+}
+
+/* The menu's way into Free Play. */
+.v3-free-btn {
+  min-height: 34px;
+  padding: 0 16px;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Free Play's setup: two columns of label + picker lines. */
+.v3-fp-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 18px;
+  width: 100%;
+}
+
+.v3-fp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-fp-line {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.v3-fp-line:has(> :nth-child(2):last-child) {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.v3-fp-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.v3-select {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: #0c1a22;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.v3-fp-toggle {
+  min-height: 32px;
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.v3-fp-toggle.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .v3-fp-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.v3-armory-card .v2-card-level span {
+  white-space: nowrap;
+}
+
+@media (max-height: 460px) {
+  /* Three equipped upgrades wrapped the menu's Armory strip onto a second
+   * line, pushing the menu off a 667×375 phone: one line, the loadout cut. */
+  .v3-armory-strip {
+    flex-wrap: nowrap;
+  }
+  .v3-armory-strip .v3-equipped {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .v3-free-btn {
+    min-height: 26px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+  /* The result screen: what the card does is in the Armory; here its
+   * numbers, so three cards fit a phone. */
+  .v3-won-cards .v2-card-text {
+    display: none;
+  }
+  .v3-won-cards .v2-card-art {
+    height: 34px;
+  }
+  .v3-armory-card {
+    gap: 2px;
+    padding: 6px 7px 7px;
+  }
+  .v3-armory-card .v2-card-art {
+    height: 40px;
+  }
+  .v3-armory-card .v2-card-name {
+    font-size: 13px;
+  }
+  .v3-armory-card .v2-card-text,
+  .v3-card-stat {
+    font-size: 10.5px;
+  }
+  .v3-won-cards .v2-card {
+    width: min(170px, 30%);
+  }
+  .v3-fp-col {
+    gap: 4px;
+  }
+  .v3-select,
+  .v3-fp-toggle {
+    min-height: 28px;
+  }
 }

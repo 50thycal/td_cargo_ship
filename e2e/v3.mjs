@@ -1,5 +1,6 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
-// Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
+// Drives: menu → Armory (cards: equip a gun card and a hull card from a
+// seeded save) → loadout picker →
 // map 1 → weapon pickups through real input (tap the pickup, then tap to
 // fire it: Railgun, Air Strike, Flak, Gravity Well, Shrapnel, Thermobaric,
 // Scattergun, Boomerang, Seekers, Aegis, Frigates) →
@@ -81,36 +82,46 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on('pageerror', (err) => fail(`page error: ${err.message}`));
   await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
-  // A save with salvage to spend.
+  // A save holding a few Armory cards.
   await page.evaluate(() => {
     localStorage.clear();
-    localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, salvage: 500, earned: 500, armory: {}, cleared: [] }));
+    localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, cards: 4, armory: { warhead: 1, magazine: 2, pointdef: 1 }, equipped: { gun: 'magazine', hull: null, supply: null }, cleared: [] }));
   });
   await page.reload({ waitUntil: 'networkidle' });
 
   // ---- Menu and Armory ----
   await page.waitForSelector('[data-screen="menu"]');
   await page.screenshot({ path: `${SHOT_DIR}/01-menu.png` });
-  check((await page.locator('.v3-armory-strip').textContent()).includes('500 salvage'), 'menu shows the salvage banked');
+  check((await page.locator('.v3-armory-strip').textContent()).includes('4 cards found'), 'menu shows the Armory cards found');
   await page.click('.v3-armory-strip');
   await page.waitForSelector('[data-screen="armory"]');
-  await page.click('[data-buy="warhead"]');
+  // Round 7: every upgrade is a card; the ones not won yet are greyed out.
+  check((await page.locator('.v3-armory-card').count()) === 5, 'the Gun bay shows its five cards');
+  check(await page.locator('.v3-armory-card[data-armory="reload"]').isDisabled(), 'a card not won yet cannot be equipped');
+  check((await page.locator('.v3-armory-card[data-armory="warhead"] .v2-card-text').textContent()).length > 10, 'a card says what it does');
+  await page.click('.v3-armory-card[data-armory="warhead"]');
+  await page.click('[data-bay="hull"]');
+  await page.click('.v3-armory-card[data-armory="pointdef"]');
   await page.screenshot({ path: `${SHOT_DIR}/02-armory.png` });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
-  check(saved.armory.warhead === 1 && saved.salvage === 420, `bought Wide Warhead 1 (salvage ${saved.salvage})`);
+  check(saved.equipped.gun === 'warhead' && saved.equipped.hull === 'pointdef' && saved.armory.warhead === 1, `equipped one card from each bay (${JSON.stringify(saved.equipped)})`);
+  check(!('salvage' in saved) && !(await page.locator('[data-buy]').count()), 'nothing is bought: no salvage, no Upgrade buttons');
+  await page.click('[data-bay="supply"]');
+  check((await page.locator('.v3-armory-card:disabled').count()) === 3, 'the Supply bay: three cards, none won yet');
   await page.click('[data-screen="armory"] .v2-btn.primary:has-text("Back")');
   await page.waitForSelector('[data-screen="menu"]');
 
   // ---- A run: with an upgrade owned, the map asks which ONE it takes ----
   await page.click('[data-map="strait"]');
   await page.waitForSelector('[data-screen="loadout"]');
-  check((await page.locator('.v3-gun.on').getAttribute('data-gun')) === 'warhead', 'the gun picker has the bought upgrade equipped');
-  check(await page.locator('.v3-gun[data-gun="reload"]').isDisabled(), 'an upgrade not bought cannot be picked');
+  check((await page.locator('[data-bay="gun"] .v3-gun.on').getAttribute('data-gun')) === 'warhead' && (await page.locator('[data-bay="hull"] .v3-gun.on').getAttribute('data-gun')) === 'pointdef', 'the loadout picker has one upgrade from each open bay');
+  check(!(await page.locator('.v3-gun[data-gun="reload"]').count()) && !(await page.locator('.v3-bay-row[data-bay="supply"]').count()), 'only cards won can be picked');
   await page.screenshot({ path: `${SHOT_DIR}/02b-gun-picker.png` });
   await page.click('[data-start]');
   await page.waitForSelector('.playing');
   const blast = await page.evaluate(() => window.__v3.game().stats.blast);
   check(Math.abs(blast - 22 * 1.4) < 1e-6, `the run's gun has the Armory's warhead (blast ${blast})`);
+  check((await page.evaluate(() => window.__v3.game().stats.pdGap)) > 0, 'the run has the Hull bay\'s Point Defense');
   // Speed: one button now, stepping 1× → 1.25× → 1.5× → 2×.
   for (let k = 0; k < 3; k++) await page.click('.v3-speed');
   check((await page.locator('.v3-speed b').textContent()) === '2×', 'speed button steps to 2×');
@@ -197,7 +208,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 10 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 11 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -232,6 +243,45 @@ try {
   });
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${SHOT_DIR}/11-phone.png` });
+  const lvTags = await page.locator('.v3-weapon-lv').allTextContents();
+  check(lvTags.length === 3 && lvTags.every((t) => t === 'MAX'), `the last level reads MAX, not EVO (${lvTags.join(', ')})`);
+
+  // ---- The end of a run wins Armory cards (round 7) ----
+  // Wave 1 was cleared above; two more cleared waves make the run count.
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')).cards);
+  await page.evaluate(() => {
+    const g = window.__v3.game();
+    const h = g.history[g.history.length - 1];
+    g.history.push({ ...h, wave: h.wave + 1 }, { ...h, wave: h.wave + 2 });
+    g.carrierHp = 0;
+  });
+  await page.waitForSelector('[data-screen="result"] .v3-won-cards .v3-armory-card', { timeout: 10000 });
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: `${SHOT_DIR}/12-cards-won.png` });
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
+  check(after.cards === before + 1 && (await page.locator('.v3-won-cards .v3-armory-card').count()) === 1, `a lost run that cleared 3 waves wins one Armory card, shown as a card (${before} → ${after.cards})`);
+
+  // ---- Free Play (round 7): any map, wave, weapons and Armory; nothing counts ----
+  await page.click('[data-screen="result"] .v2-btn:has-text("Menu")');
+  await page.click('[data-free-play]');
+  await page.waitForSelector('[data-screen="freeplay"]');
+  await page.selectOption('[data-fp="weapon0"]', 'frigate');
+  await page.selectOption('[data-fp="level0"]', '3');
+  await page.selectOption('[data-fp="bay-hull"]', 'plating');
+  await page.selectOption('[data-fp="bay-level-hull"]', '5');
+  await page.screenshot({ path: `${SHOT_DIR}/13-free-play.png` });
+  const fpFits = await page.evaluate(() => { const o = document.querySelector('.v2-overlay.open .v2-panel'); return o.scrollHeight <= o.clientHeight + 1; });
+  check(fpFits, 'the Free Play setup fits a phone without scrolling');
+  await page.click('[data-free-start]');
+  await page.waitForSelector('.playing');
+  const fp = await page.evaluate(() => { const g = window.__v3.game(); return { wave: g.wave, frigate: g.levels.frigate, glance: g.stats.glance, pity: g.stats.dropPity }; });
+  check(fp.wave === 7 && fp.frigate === 3 && fp.glance > 0.3 && fp.pity <= 8, `Free Play starts on wave 7 holding Battle Group, Armor Plating 5, frequent drops (${JSON.stringify(fp)})`);
+  check((await page.locator('.v2-hud-dev').textContent()).includes('FREE PLAY'), 'the HUD says FREE PLAY');
+  const cardsBefore = after.cards;
+  await page.evaluate(() => { window.__v3.game().carrierHp = 0; });
+  await page.waitForSelector('[data-screen="result"]');
+  const cardsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')).cards);
+  check(cardsAfter === cardsBefore && (await page.locator('.v2-btn:has-text("Play it again")').count()) === 1 && !(await page.locator('.v3-won-cards').count()), 'a Free Play run wins nothing and offers to play it again');
   const rail = await page.locator('.v2-rail-right').boundingBox();
   const last = await page.locator('.v3-weapon').nth(2).boundingBox();
   check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `the loadout fits on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);

@@ -7,6 +7,7 @@
 // Pure strings (no DOM), so tools can render them too. 120×76 viewBox.
 
 import type { CardId } from '../data/abilities';
+import { ARMORY, BAYS, type ArmoryId } from '../data/armory';
 import { ICON_COLOR } from './icons';
 
 const INK = '#f4f1e8';
@@ -204,3 +205,88 @@ export function cardArtSvg(id: CardId): string {
 }
 
 export const CARD_ART_IDS = Object.keys(SCENES) as CardId[];
+
+// ---- Armory cards (round 7) ------------------------------------------------
+// Each Armory upgrade is a card won at the end of a run, drawn like a weapon
+// card, in its bay's colour.
+
+/** The carrier from the side, bow to the right, a gun on its deck. */
+const carrier = (x: number, y: number, s = 1): string =>
+  `<g transform="translate(${x} ${y}) scale(${s})">` +
+  `<path d="M-30 0 H26 L32 -4 H-26 Z" fill="#5b6b78"/><path d="M-30 0 H26 L22 5 H-27 Z" fill="${HULL}"/>` +
+  `<rect x="6" y="-10" width="8" height="6" rx="1" fill="#3c454f"/></g>`;
+
+/** A weapon pickup: a hexagon in colour `c`. */
+const hexPickup = (x: number, y: number, r: number, c: string): string => {
+  const pts = Array.from({ length: 6 }, (_, k) => {
+    const a = (Math.PI / 3) * k + Math.PI / 6;
+    return `${(x + Math.cos(a) * r).toFixed(1)},${(y + Math.sin(a) * r).toFixed(1)}`;
+  }).join(' ');
+  return `<polygon points="${pts}" fill="#10202b" stroke="${c}" stroke-width="2"/>`;
+};
+
+const ARMORY_SCENES: Record<ArmoryId, Scene> = {
+  // Rounds feeding into the gun in a quick chain, a fast clock hand.
+  reload: (c) =>
+    sea(64) + carrier(60, 58, 1.1) +
+    [0, 1, 2, 3, 4].map((k) => `<rect x="${18 + k * 9}" y="${30 - k * 3}" width="5" height="12" rx="2" fill="${k === 4 ? INK : c}" opacity="${0.4 + k * 0.15}"/>`).join('') +
+    `<circle cx="92" cy="24" r="12" fill="none" stroke="${c}" stroke-width="2"/><path d="M92 24 L100 18" stroke="${INK}" stroke-width="2" stroke-linecap="round"/><path d="M80 12 A16 16 0 0 1 104 12" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 2"/>`,
+  // One interceptor's blast, three times wide, catching a whole pack.
+  warhead: (c) =>
+    `<circle cx="60" cy="32" r="26" fill="${c}" opacity="0.18"/><circle cx="60" cy="32" r="26" fill="none" stroke="${c}" stroke-width="1.5" stroke-dasharray="3 2"/>` +
+    burst(60, 32, 11, FLAME) + drone(40, 24, 1) + drone(80, 26, 1) + drone(52, 50, 1) + drone(74, 46, 0.9) + interceptor(60, 70, -90, 0.8),
+  // An interceptor streaking across, long flame and speed lines.
+  motor: (c) =>
+    [14, 22, 30, 38].map((y, k) => `<path d="M${8 + k * 4} ${y + 6} H${50 - k * 3}" stroke="${c}" stroke-width="1.4" opacity="0.6" stroke-linecap="round"/>`).join('') +
+    `<path d="M40 32 Q22 32 10 30 Q22 35 40 34 Z" fill="${FLAME}"/>` + interceptor(70, 33, 0, 2.1) + threat(108, 22, 160, 0.9),
+  // A full rack: ten rounds standing in a row.
+  magazine: (c) =>
+    sea(66) +
+    `<rect x="18" y="20" width="84" height="38" rx="4" fill="#10202b" stroke="${c}" stroke-width="2"/>` +
+    Array.from({ length: 10 }, (_, k) => `<rect x="${24 + k * 7.6}" y="26" width="5" height="26" rx="2.4" fill="${k < 8 ? c : INK}"/>`).join(''),
+  // A fast missile, the interceptor bursting beside it inside its fuse ring.
+  fuse: (c) =>
+    threat(78, 30, 200, 1.4) + `<circle cx="62" cy="34" r="17" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="3 2"/>` +
+    burst(62, 34, 9, c) + interceptor(36, 58, -40, 1.1) + `<text x="90" y="62" font-size="11" font-weight="800" fill="${INK}" font-family="system-ui">×2</text>`,
+  // A ship with plating; a missile glancing off it in sparks.
+  plating: (c) =>
+    sea(62) + ship(56, 56, 1.8) +
+    `<path d="M26 47 H86" stroke="${c}" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M70 40 Q78 22 98 14" fill="none" stroke="${RED}" stroke-width="1.2" stroke-dasharray="2 2"/>` +
+    threat(98, 14, -30, 0.8) + burst(68, 42, 6, c) + `<path d="M60 36 L56 30 M66 34 L66 27 M72 36 L76 30" stroke="${INK}" stroke-width="1.2"/>`,
+  // The carrier's own turret firing at a missile closing on it.
+  pointdef: (c) =>
+    sea(64) + carrier(48, 58, 1.2) +
+    `<path d="M62 46 L88 22" stroke="${c}" stroke-width="2" stroke-dasharray="4 3"/>` +
+    burst(90, 20, 7, c) + threat(104, 12, 150, 0.8) + `<circle cx="62" cy="46" r="3" fill="${c}"/>`,
+  // A ship mended: a wrench and +1.
+  repair: (c) =>
+    sea(64) + ship(46, 58, 1.6) +
+    `<text x="78" y="36" font-size="18" font-weight="800" fill="${c}" font-family="system-ui">+1</text>` +
+    `<g transform="translate(62 18) rotate(40)"><rect x="-2" y="0" width="4" height="18" rx="1.5" fill="${INK}"/><path d="M-6 0 A6 6 0 1 1 6 0 L2 -3 H-2 Z" fill="${INK}"/></g>`,
+  // A weapon pickup with a long timer ring around it.
+  longload: (c) =>
+    hexPickup(60, 36, 16, c) + `<circle cx="60" cy="36" r="24" fill="none" stroke="#2b4050" stroke-width="4"/>` +
+    `<path d="M60 12 A24 24 0 1 1 36 36" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round"/>` +
+    `<path d="M60 26 V36 L67 41" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  // Weapon pickups raining down on the water.
+  drops: (c) =>
+    sea(66) + hexPickup(30, 50, 9, c) + hexPickup(60, 28, 9, c) + hexPickup(90, 44, 9, c) +
+    `<path d="M60 4 V16 M30 22 V38 M90 18 V32" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 2"/>` + ship(60, 62, 0.8),
+  // A stack of power-ups: a shield, a bolt, a clock.
+  stockpile: (c) =>
+    [[34, 40, 'M-5 -6 H5 V1 Q5 6 0 8 Q-5 6 -5 1 Z'], [60, 30, 'M2 -8 L-4 1 H0 L-2 8 L4 -1 H0 Z'], [86, 40, 'M0 -6 V0 L4 3']]
+      .map(([x, y, d]) => `<circle cx="${x}" cy="${y}" r="13" fill="#10202b" stroke="${c}" stroke-width="2"/><path transform="translate(${x} ${y})" d="${d}" fill="${INK}" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`)
+      .join('') + `<text x="54" y="66" font-size="10" font-weight="800" fill="${c}" font-family="system-ui">×3</text>`,
+};
+
+/** An Armory card's illustration as an SVG string, in its bay's colour. */
+export function armoryArtSvg(id: ArmoryId): string {
+  const c = BAYS[ARMORY[id].bay].color;
+  return (
+    `<svg viewBox="0 0 120 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="v2-card-art-svg" preserveAspectRatio="xMidYMid meet">` +
+    glow(`a-${id}`, c) +
+    ARMORY_SCENES[id](c) +
+    `</svg>`
+  );
+}

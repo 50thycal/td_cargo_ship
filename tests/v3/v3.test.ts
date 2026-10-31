@@ -4,15 +4,19 @@
 
 import { describe, expect, it } from 'vitest';
 import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, WEAPON, abilityName, type AbilityId } from '../../src/v3/data/abilities';
-import { ARMORY, ARMORY_COSTS, ARMORY_MAX, ARMORY_ORDER, ARMORY_TOTAL, gunStats, nextCost, salvageFor, SALVAGE } from '../../src/v3/data/armory';
+import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, armoryStats, bayItems, cardsFor, drawCards } from '../../src/v3/data/armory';
 import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP } from '../../src/v3/data/config';
-import { buyArmory, equipArmory, loadProgress, recordResult, runGun, type Progress } from '../../src/v3/platform/save';
+import { MAP_ORDER } from '../../src/v3/data/maps';
+import { equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v3/sim/bot';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
 import {
   CARRIER_TARGET,
   createGame,
+  applyFreePlay,
+  damageCarrier,
+  FREE_PLAY_DROPS,
   pickUpgrade,
   step,
   tap,
@@ -74,9 +78,14 @@ function load(g: Game, id: AbilityId, level = 1): void {
 
 // ---------------------------------------------------------------------------
 
-describe('the Armory (the main gun, set before a run)', () => {
-  it('with no levels it is exactly the base gun', () => {
-    const s = gunStats({});
+describe('the Armory (gun, hull and supply bays, set before a run)', () => {
+  const GUN = bayItems('gun');
+  const fresh = (): Progress => ({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [] });
+  /** A fixed card draw: always the k-th open upgrade. */
+  const draw = (k: number) => (n: number) => Math.min(k, n - 1);
+
+  it('with no levels it is exactly the base gun and the base drop rules', () => {
+    const s = armoryStats({});
     expect(s.rack).toBe(INTERCEPTOR.rack);
     expect(s.reload).toBe(INTERCEPTOR.reload);
     expect(s.blast).toBe(INTERCEPTOR.blast);
@@ -84,91 +93,220 @@ describe('the Armory (the main gun, set before a run)', () => {
     expect(s.contact).toBe(INTERCEPTOR.contact);
     expect(s.hitDamage).toBe(1);
     expect(s.shipHp).toBe(SHIP.hp);
+    expect(s.carrierHp).toBe(CARRIER.hp);
+    expect(s.pdGap).toBe(0);
+    expect(s.repairEvery).toBe(0);
+    expect(s.weaponTime).toBe(WEAPON.time);
+    expect(s.dropShare).toBe(WEAPON.share);
+    expect(s.dropPity).toBe(WEAPON.pity);
+    expect(s.powerShare).toBe(1);
+    expect(s.powerTime).toBe(1);
+    expect(s.glance).toBe(0);
+  });
+
+  it('three bays: the gun bay holds the five gun upgrades, hull and supply three each', () => {
+    expect(BAY_ORDER).toEqual(['gun', 'hull', 'supply']);
+    expect(GUN).toEqual(['reload', 'warhead', 'motor', 'magazine', 'fuse']);
+    expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair']);
+    expect(bayItems('supply')).toEqual(['longload', 'drops', 'stockpile']);
+    expect(new Set(BAY_ORDER.map((b) => BAYS[b].color)).size).toBe(3);
   });
 
   it('each upgrade makes only its own number better, level by level', () => {
-    const base = gunStats({});
-    const field = { reload: 'reload', warhead: 'blast', motor: 'interceptorSpeed', magazine: 'rack', fuse: 'contact' } as const;
+    const base = armoryStats({});
+    const field = {
+      reload: 'reload', warhead: 'blast', motor: 'interceptorSpeed', magazine: 'rack', fuse: 'contact',
+      plating: 'glance', pointdef: 'pdRange', repair: 'repairEvery', longload: 'weaponTime', drops: 'dropShare', stockpile: 'powerShare',
+    } as const;
+    const fields = Object.values(field);
     for (const id of ARMORY_ORDER) {
       let prev = base[field[id]];
-      for (let lv = 1; lv <= ARMORY_MAX; lv++) {
-        const s = gunStats({ [id]: lv });
+      for (let lv = 1; lv <= ARMORY[id].max; lv++) {
+        const s = armoryStats({ [id]: lv });
         const v = s[field[id]];
-        // Reload is a time: better is smaller.
-        if (id === 'reload') expect(v).toBeLessThan(prev);
+        // Times are better smaller (once Damage Control is bought).
+        if (id === 'reload' || (id === 'repair' && lv > 1)) expect(v).toBeLessThan(prev);
         else expect(v).toBeGreaterThanOrEqual(prev);
         prev = v;
-        for (const other of ARMORY_ORDER) if (other !== id) expect(s[field[other]]).toBe(base[field[other]]);
+        // Point Defense also sets its gap, Armor Plating the ships' hull too.
+        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime' };
+        for (const f of fields) if (f !== field[id] && also[id] !== f) expect(s[f]).toBe(base[f]);
       }
     }
   });
 
   it('stops short of the mash-wins line round 6 found (≤10 rounds, ≥70% reload time)', () => {
-    const top = gunStats(Object.fromEntries(ARMORY_ORDER.map((id) => [id, ARMORY_MAX])));
+    const top = armoryStats(Object.fromEntries(GUN.map((id) => [id, ARMORY_MAX])));
     expect(top.rack).toBeLessThanOrEqual(10);
     expect(top.reload / INTERCEPTOR.reload).toBeGreaterThanOrEqual(0.7 - 1e-9);
     expect(top.hitDamage).toBe(2);
   });
 
-  it('costs climb, cap at level 5, and the run reads its gun from the armory', () => {
-    expect([...ARMORY_COSTS]).toEqual([...ARMORY_COSTS].sort((a, b) => a - b));
-    expect(nextCost({ warhead: 0 }, 'warhead')).toBe(ARMORY_COSTS[0]);
-    expect(nextCost({ warhead: ARMORY_MAX }, 'warhead')).toBeNull();
-    expect(ARMORY_TOTAL).toBe(ARMORY_COSTS.reduce((a, b) => a + b, 0) * 5);
+  it('the run reads the armory', () => {
     const g = createGame('strait', 1, 1, undefined, { magazine: 2 });
     expect(g.stats.rack).toBe(INTERCEPTOR.rack + 2);
     expect(g.ammo).toBe(INTERCEPTOR.rack + 2);
   });
 
-  it('every run pays salvage, a cleared map more, the first clear a bonus once', () => {
-    const p: Progress = { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, equipped: null, cleared: [] };
-    const lost = recordResult(p, 'strait', { score: 900, wave: 4, cleared: false, delivered: 30, wavesCleared: 3 });
-    expect(lost.salvage).toBe(30 * SALVAGE.perShip + 3 * SALVAGE.perWave);
-    const won = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, delivered: 80, wavesCleared: 10 });
+  it('cards are won at the end of a run: one for clearing enough waves, more for a clear and a first clear', () => {
+    expect(cardsFor({ wavesCleared: 0, cleared: false }, false)).toBe(0); // quit at once: nothing
+    expect(cardsFor({ wavesCleared: CARD_DROPS.minWaves - 1, cleared: false }, false)).toBe(0);
+    expect(cardsFor({ wavesCleared: CARD_DROPS.minWaves, cleared: false }, false)).toBe(1);
+    expect(cardsFor({ wavesCleared: 10, cleared: true }, false)).toBe(2);
+    expect(cardsFor({ wavesCleared: 10, cleared: true }, true)).toBe(3);
+  });
+
+  it('a card drawn is a random upgrade not yet maxed, and a card held again adds a level', () => {
+    const levels = {};
+    expect(drawCards(levels, 1, draw(0))).toEqual(['reload']);
+    expect(drawCards(levels, 2, draw(0))).toEqual(['reload', 'reload']);
+    expect(levels).toEqual({ reload: 3 });
+    drawCards(levels, 2, draw(0));
+    expect(levels).toEqual({ reload: 5 });
+    // Maxed: it no longer drops; the next open one does.
+    expect(drawCards(levels, 1, draw(0))).toEqual(['warhead']);
+    // Every level of everything: nothing left to win.
+    const full = Object.fromEntries(ARMORY_ORDER.map((id) => [id, ARMORY[id].max]));
+    expect(drawCards(full, 3, draw(0))).toEqual([]);
+    // Draws spread over the whole Armory.
+    const many = {};
+    let seed = 7;
+    const rnd = (n: number) => ((seed = (seed * 16807) % 2147483647), seed % n);
+    drawCards(many, 30, rnd);
+    expect(Object.keys(many).length).toBeGreaterThan(6);
+  });
+
+  it('every finished run is recorded, and the cards it won go into the Armory, the first one in a bay equipped', () => {
+    const p = fresh();
+    const quit = recordResult(p, 'strait', { score: 300, wave: 2, cleared: false, wavesCleared: 1 }, draw(0));
+    expect(quit.cards).toEqual([]);
+    const lost = recordResult(p, 'strait', { score: 900, wave: 5, cleared: false, wavesCleared: 4 }, draw(6));
+    expect(lost.cards).toEqual(['pointdef']);
+    expect(p.equipped.hull).toBe('pointdef');
+    const won = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, wavesCleared: 10 }, draw(0));
     expect(won.firstClear).toBe(true);
-    expect(won.salvage).toBe(salvageFor({ delivered: 80, wavesCleared: 10, cleared: true }, true));
-    const again = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, delivered: 80, wavesCleared: 10 });
+    expect(won.cards).toEqual(['reload', 'reload', 'reload']);
+    expect(p.armory).toEqual({ pointdef: 1, reload: 3 });
+    expect(p.equipped.gun).toBe('reload');
+    expect(p.cards).toBe(4);
+    const again = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, wavesCleared: 10 }, draw(0));
     expect(again.firstClear).toBe(false);
-    expect(again.salvage).toBe(won.salvage - SALVAGE.firstClear);
+    expect(again.cards).toHaveLength(2);
     expect(p.unlocked).toBe(2);
-    expect(p.salvage).toBe(lost.salvage + won.salvage + again.salvage);
   });
 
-  it('buying spends salvage and raises the level; too dear or maxed does nothing', () => {
-    const p: Progress = { unlocked: 1, best: {}, salvage: ARMORY_COSTS[0] + 5, earned: 0, armory: {}, equipped: null, cleared: [] };
-    expect(buyArmory(p, 'reload')).toBe(true);
-    expect(p.armory.reload).toBe(1);
-    expect(p.salvage).toBe(5);
-    expect(buyArmory(p, 'reload')).toBe(false);
-    p.salvage = 1e6;
-    p.armory.fuse = ARMORY_MAX;
-    expect(buyArmory(p, 'fuse')).toBe(false);
-  });
-
-  it('a run takes ONE upgrade: the first one bought is equipped, only owned ones can be, and the gun has only it', () => {
-    const p: Progress = { unlocked: 1, best: {}, salvage: 1e6, earned: 0, armory: {}, equipped: null, cleared: [] };
-    expect(runGun(p)).toEqual({});
-    buyArmory(p, 'warhead');
-    buyArmory(p, 'warhead');
-    buyArmory(p, 'magazine');
-    expect(p.equipped).toBe('warhead');
-    expect(runGun(p)).toEqual({ warhead: 2 });
-    expect(equipArmory(p, 'reload')).toBe(false);
+  it('a run takes ONE upgrade from each bay: only held cards can be equipped, nothing else rides along', () => {
+    const p = fresh();
+    p.armory = { warhead: 2, magazine: 1, pointdef: 1, plating: 1 };
+    p.equipped = { gun: 'warhead', hull: 'pointdef', supply: null };
+    expect(runLoadout(p)).toEqual({ warhead: 2, pointdef: 1 });
+    expect(equipArmory(p, 'reload')).toBe(false); // no card for it
     expect(equipArmory(p, 'magazine')).toBe(true);
-    expect(runGun(p)).toEqual({ magazine: 1 });
-    const g = createGame('strait', 1, 1, undefined, runGun(p));
+    expect(runLoadout(p)).toEqual({ magazine: 1, pointdef: 1 });
+    expect(equipArmory(p, 'plating', 'gun')).toBe(false); // not in that bay
+    const g = createGame('strait', 1, 1, undefined, runLoadout(p));
     expect(g.stats.rack).toBe(INTERCEPTOR.rack + 1);
     expect(g.stats.blast).toBe(INTERCEPTOR.blast);
-    expect(equipArmory(p, null)).toBe(true);
-    expect(runGun(p)).toEqual({});
+    expect(g.stats.pdGap).toBeGreaterThan(0);
+    expect(equipArmory(p, null, 'gun')).toBe(true);
+    expect(runLoadout(p)).toEqual({ pointdef: 1 });
   });
 
   it('an empty or broken save loads as a fresh record', () => {
     const p = loadProgress();
-    expect(p.salvage).toBe(0);
+    expect(p.cards).toBe(0);
     expect(p.armory).toEqual({});
-    expect(p.equipped).toBeNull();
+    expect(p.equipped).toEqual({ gun: null, hull: null, supply: null });
     expect(p.unlocked).toBe(1);
+  });
+
+  it('a save from before the cards keeps its levels and its equipped gun', () => {
+    const store: Record<string, string> = {};
+    const ls = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => (store[k] = v), removeItem: (k: string) => delete store[k] };
+    const prev = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = ls;
+    try {
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 2, salvage: 90, earned: 400, armory: { warhead: 3, motor: 1 }, equipped: 'warhead', cleared: ['strait'] });
+      const p = loadProgress();
+      expect(p.armory).toMatchObject({ warhead: 3, motor: 1 });
+      expect(p.equipped).toEqual({ gun: 'warhead', hull: null, supply: null });
+      expect(runLoadout(p)).toEqual({ warhead: 3 });
+      expect('salvage' in p).toBe(false);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
+  });
+
+  it('Armor Plating: a share of hits on ships and the carrier glance off, more each level', () => {
+    expect(armoryStats({ plating: 1 }).glance).toBeGreaterThan(0);
+    expect(armoryStats({ plating: 5 }).glance).toBeLessThan(0.5);
+    const hits = (lv: number) => {
+      const g = quietGame(1, { plating: lv });
+      run(g, 4);
+      let taken = 0;
+      for (let k = 0; k < 400; k++) {
+        g.carrierHp = CARRIER.hp;
+        damageCarrier(g, 1, 'guided');
+        taken += CARRIER.hp - g.carrierHp;
+      }
+      return taken / 400;
+    };
+    expect(hits(0)).toBe(1);
+    expect(hits(1)).toBeCloseTo(1 - armoryStats({ plating: 1 }).glance, 1);
+    expect(hits(5)).toBeCloseTo(1 - armoryStats({ plating: 5 }).glance, 1);
+  });
+
+  it('Point Defense: the carrier shoots a threat near it on its own, free, and leaves one out of reach alone', () => {
+    const g = quietGame(1, { pointdef: 1 });
+    const c = g.map.carrier;
+    const near = addThreat(g, { kind: 'heavy', hp: 99, x: c.x + 150, y: c.y - 150, speed: 0 });
+    const far = addThreat(g, { kind: 'heavy', hp: 99, x: c.x + 600, y: c.y - 400, speed: 0 });
+    const ammo = g.ammo;
+    run(g, 7);
+    expect(near.hp).toBeLessThan(99);
+    expect(far.hp).toBe(99);
+    expect(g.ammo).toBe(ammo);
+    const none = quietGame(1);
+    const t = addThreat(none, { kind: 'heavy', hp: 99, x: c.x + 150, y: c.y - 150, speed: 0 });
+    run(none, 7);
+    expect(t.hp).toBe(99);
+  });
+
+  it('Damage Control: every damaged hull, ships and carrier, gets a point back every so often', () => {
+    const every = armoryStats({ repair: 5 }).repairEvery;
+    const g = quietGame(1, { repair: 5 });
+    run(g, 4); // ships on the water
+    const [a, b] = g.ships;
+    a.hp = 1;
+    b.hp = 2;
+    g.carrierHp = CARRIER.hp - 2;
+    run(g, every - 0.3);
+    expect(a.hp).toBe(1); // not yet
+    run(g, 0.5);
+    expect([a.hp, b.hp, g.carrierHp]).toEqual([2, 3, CARRIER.hp - 1]);
+    run(g, every + 0.2);
+    expect([a.hp, b.hp, g.carrierHp]).toEqual([3, 3, CARRIER.hp]); // never past full
+  });
+
+  it('Long Loads and Supply Lines: a pickup stays loaded longer; weapons drop on a shorter clock', () => {
+    const g = quietGame(1, { longload: 5 });
+    g.levels.flak = 1;
+    g.slots = ['flak'];
+    g.pickups.push({ id: 960, kind: 'weapon', weapon: 'flak', x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+    expect(g.weapon?.t).toBe(WEAPON.time + 20);
+    const s = armoryStats({ drops: 5 });
+    expect(s.dropPity).toBeLessThan(WEAPON.pity);
+    expect(s.dropShare).toBeGreaterThan(WEAPON.share);
+  });
+
+  it('Stockpile: power-ups drop more often and the timed ones last longer', () => {
+    const top = armoryStats({ stockpile: ARMORY_MAX });
+    expect(top.powerShare).toBeGreaterThan(1);
+    const g = quietGame(1, { stockpile: ARMORY_MAX });
+    g.pickups.push({ id: 961, kind: 'shield', x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+    expect(g.shieldT).toBeCloseTo(PICKUPS.shieldTime * top.powerTime);
   });
 });
 
@@ -570,6 +708,27 @@ describe('what each weapon does with a tap', () => {
     expect(g3.escorts).toHaveLength(3);
   });
 
+  it('Battle Group: three frigates sail in, hold station and sail off without one running over another', () => {
+    for (const map of MAP_ORDER) {
+      const g = createGame(map, 1);
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = [];
+      g.levels.frigate = 3;
+      g.slots = ['frigate'];
+      g.pickups.push({ id: 953, kind: 'weapon', weapon: 'frigate', x: 600, y: 300, age: 0 });
+      tap(g, 600, 300, 20);
+      expect(g.escorts).toHaveLength(3);
+      let closest = Infinity;
+      for (let t = 0; t < WEAPON.time + 10; t += 0.1) {
+        run(g, 0.1);
+        for (const a of g.escorts)
+          for (const b of g.escorts) if (a !== b && Math.abs(a.y - b.y) < 40) closest = Math.min(closest, Math.abs(a.x - b.x));
+      }
+      expect(g.escorts).toHaveLength(0);
+      expect(closest).toBeGreaterThan(210); // a hull and its wake
+    }
+  });
+
   it('Frigate Escort: the frigates open fire as soon as they are on screen, before reaching station', () => {
     const g = quietGame();
     g.levels.frigate = 1;
@@ -697,6 +856,36 @@ describe('logs, bots and the curve', () => {
     expect(again.steps).toBe(game.steps);
     expect(again.score).toBe(game.score);
     expect(again.lost).toBe(game.lost);
+    expect(again.uses).toEqual(game.uses);
+  });
+
+  it('a run with all three bays (Armor Plating\'s glancing hits included) replays exactly', () => {
+    const armory = { warhead: 2, plating: 3, stockpile: 2 };
+    const { game, log } = playMimic('gauntlet', 12, { armory });
+    expect(log.armory).toEqual(armory);
+    expect(game.wave).toBeGreaterThan(1);
+    const again = replay(log);
+    expect(again.steps).toBe(game.steps);
+    expect(again.score).toBe(game.score);
+    expect(again.levels).toEqual(game.levels);
+    expect(again.carrierHp).toBe(game.carrierHp);
+  });
+
+  it('Free Play: the run holds the weapons set up, drops them often if asked, and its log replays exactly', () => {
+    const freePlay = { weapons: [{ id: 'frigate' as const, level: 3 }, { id: 'thermo' as const, level: 2 }], frequentDrops: true };
+    const g = createGame('strait', 9, 7, undefined, { plating: 2 });
+    applyFreePlay(g, freePlay);
+    expect(g.wave).toBe(7);
+    expect(g.slots).toEqual(['frigate', 'thermo']);
+    expect(g.levels).toEqual({ frigate: 3, thermo: 2 });
+    expect(g.stats.dropPity).toBe(FREE_PLAY_DROPS.pity);
+    expect(g.stats.dropShare).toBeCloseTo(WEAPON.share * FREE_PLAY_DROPS.share);
+    const { game, log } = playMimic('strait', 9, { firstWave: 7, armory: { plating: 2 }, freePlay });
+    expect(log.freePlay).toEqual(freePlay);
+    expect(game.uses.frigate ?? 0).toBeGreaterThan(0);
+    const again = replay(log);
+    expect(again.steps).toBe(game.steps);
+    expect(again.score).toBe(game.score);
     expect(again.uses).toEqual(game.uses);
   });
 
@@ -833,11 +1022,11 @@ describe('card text matches the numbers', () => {
   });
 
   it('every Armory blurb quotes its real per-level change', () => {
-    const base = gunStats({});
+    const base = armoryStats({});
     const pct = (a: number, b: number) => `${Math.round(Math.abs(a / b - 1) * 100)}%`;
-    expect(ARMORY.warhead.blurb).toContain(pct(gunStats({ warhead: 1 }).blast, base.blast));
-    expect(ARMORY.motor.blurb).toContain(pct(gunStats({ motor: 1 }).interceptorSpeed, base.interceptorSpeed));
-    expect(ARMORY.reload.blurb).toContain(pct(gunStats({ reload: 1 }).reload, base.reload));
-    expect(gunStats({ fuse: ARMORY_MAX }).hitDamage).toBe(2); // "level 5 hits for 2"
+    expect(ARMORY.warhead.blurb).toContain(pct(armoryStats({ warhead: 1 }).blast, base.blast));
+    expect(ARMORY.motor.blurb).toContain(pct(armoryStats({ motor: 1 }).interceptorSpeed, base.interceptorSpeed));
+    expect(ARMORY.reload.blurb).toContain(pct(armoryStats({ reload: 1 }).reload, base.reload));
+    expect(armoryStats({ fuse: ARMORY_MAX }).hitDamage).toBe(2); // "level 5 hits for 2"
   });
 });
