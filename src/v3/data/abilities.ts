@@ -17,11 +17,31 @@
 // shooting. Each one changes what a plain tap does and nothing else, so there
 // is still only one thing to do: tap.
 //
+// Round 6 (the player, after playing them: Air Strike "very fun … very op in
+// a good way"; Cryo "sucks, the freeze really doesn't matter"): Cryo Rounds
+// cut, and five added, four of them the player's: Shrapnel Shell (fragments
+// out in every direction, at once), Frigate Escort (two frigates sail in and
+// fire on their own for the 15 s), Thermobaric Shell (one huge blast),
+// Scattergun (a short blast of pellets) and Boomerang (a blade out to the tap
+// and back). Each one kills on its own, none only sets up other shots.
+//
 // Three held at once, three levels each; level 3 is the EVOLUTION, which
 // changes what the weapon does, not just its numbers. (Internally they are
 // still `AbilityId`s: the draft, the slots and the save were built for them.)
 
-export type AbilityId = 'airstrike' | 'railgun' | 'tesla' | 'flak' | 'seeker' | 'aegis' | 'cryo' | 'well';
+export type AbilityId =
+  | 'airstrike'
+  | 'railgun'
+  | 'tesla'
+  | 'flak'
+  | 'seeker'
+  | 'aegis'
+  | 'well'
+  | 'shrapnel'
+  | 'frigate'
+  | 'thermo'
+  | 'scatter'
+  | 'boomerang';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -32,9 +52,10 @@ export interface AbilityDef {
   evolved: string;
   /** Which threat it answers — shown on the card. */
   answers: string;
-  /** What a shot does at levels 1, 2, 3 (index 0 = level 1). */
+  /** What a shot does at levels 1, 2, 3 (index 0 = level 1); level 3 is the
+   *  evolution (the card's badge and new name say so, the line doesn't). */
   levels: [string, string, string];
-  /** How a tap fires it, shown on the card and when it is picked up. */
+  /** How a tap fires it, shown when it is loaded. */
   how: string;
 }
 
@@ -45,9 +66,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Flak Curtain',
     answers: 'Swarms',
     levels: [
-      'Each shell bursts into a flak cloud for 1.5 s: everything flying through it is hit',
+      'Each shell leaves a flak cloud for 1.5 s that hits whatever flies through',
       'A bigger cloud that hangs for 2 s',
-      'EVOLVES: clouds hang for 4 s, a wall the swarm has to fly through',
+      'Clouds hang for 4 s, a wall the swarm has to fly through',
     ],
     how: 'Tap a swarm, or the water in its path',
   },
@@ -57,9 +78,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Swarm Pod',
     answers: 'Raids',
     levels: [
-      'Each tap launches 3 seekers at the 3 threats nearest your finger',
+      'Each tap launches 3 seekers at the threats nearest your finger',
       '4 seekers a tap',
-      'EVOLVES: 5 seekers, and one whose target is gone finds another',
+      '5 seekers, and one whose target is gone finds another',
     ],
     how: 'Tap in the middle of a raid',
   },
@@ -71,31 +92,19 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Each shot also domes the ship its target is after: 5 s, 3 hits',
       'Domes hold 6 s, 4 hits',
-      'EVOLVES: 8 s, 6 hits, and each hit bursts back out for 2',
+      '8 s, 6 hits, and each hit bursts back out for 2',
     ],
     how: 'Tap threats as usual, or the water by a ship',
-  },
-  cryo: {
-    id: 'cryo',
-    name: 'Cryo Rounds',
-    evolved: 'Absolute Zero',
-    answers: 'Heavies',
-    levels: [
-      'Each burst freezes everything in it for 2.5 s and bites for 2; frozen threats take double damage',
-      'A bigger burst that holds them 3 s',
-      'EVOLVES: any hit shatters a frozen threat outright, the burst included',
-    ],
-    how: 'Tap a threat, or the water in front of a pack',
   },
   well: {
     id: 'well',
     name: 'Gravity Well',
     evolved: 'Singularity',
-    answers: 'Spread raids',
+    answers: 'Wide raids',
     levels: [
-      'Each shell opens a vortex: drones, missiles and jets near it are dragged in for 1.5 s, then it implodes',
+      'Each shell opens a vortex that drags threats in for 1.5 s, then implodes on them',
       'A wider pull and a harder implosion',
-      'EVOLVES: it holds for 2 s and the implosion hits for 4',
+      'It holds for 2 s and the implosion hits for 4',
     ],
     how: 'Tap between the threats you want pulled together',
   },
@@ -105,9 +114,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Strike',
     answers: 'Aircraft',
     levels: [
-      'Each shot calls a jet down the row you tapped, hitting everything under it',
+      'Each tap sends a jet down that row, hitting everything under it (2 rounds a jet)',
       'A wider run, harder hits',
-      'EVOLVES: the row burns for 2 s and subs and trucks under it are destroyed',
+      'The row burns for 2 s and subs and trucks under it are destroyed',
     ],
     how: 'Tap a row: a jet flies across it, for 2 rounds',
   },
@@ -119,7 +128,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Each shot is a beam that pierces everything in line',
       'Twice the damage, a wider beam',
-      'EVOLVES: wide slugs, four times as hard: two bring down a heavy missile',
+      'Wide slugs, four times as hard: two bring down a heavy missile',
     ],
     how: 'Tap anywhere: the beam fires through it',
   },
@@ -131,13 +140,73 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Every hit arcs to 3 threats nearby',
       '4 arcs per hit, and every arc arcs again',
-      'EVOLVES: each tap fires a second, free shot at a threat nearby',
+      'Each tap fires a second, free shot at a threat nearby',
     ],
     how: 'Tap threats as usual',
   },
+  shrapnel: {
+    id: 'shrapnel',
+    name: 'Shrapnel Shell',
+    evolved: 'Fragstorm',
+    answers: 'Swarms',
+    levels: [
+      'Each shell bursts into 10 fragments that fly out in every direction',
+      '14 fragments that fly further',
+      '18 fragments that tear through everything in their path',
+    ],
+    how: 'Tap into a swarm',
+  },
+  frigate: {
+    id: 'frigate',
+    name: 'Frigate Escort',
+    evolved: 'Battle Group',
+    answers: 'Everything',
+    levels: [
+      'Two frigates sail in and fire on their own while it lasts',
+      'They fire half again as fast',
+      'A third frigate joins, and they fire faster still',
+    ],
+    how: 'Keep shooting: the frigates fire on their own',
+  },
+  thermo: {
+    id: 'thermo',
+    name: 'Thermobaric Shell',
+    evolved: 'Daisy Cutter',
+    answers: 'Packs',
+    levels: [
+      'Each shell bursts in a huge blast that hits everything in it',
+      'A bigger blast that hits for 2',
+      'The biggest blast, hitting for 3',
+    ],
+    how: 'Tap the middle of a pack',
+  },
+  scatter: {
+    id: 'scatter',
+    name: 'Scattergun',
+    evolved: "Dragon's Breath",
+    answers: 'Rushers',
+    levels: [
+      'Each tap fires a short blast of 8 pellets from the gun toward your finger',
+      '11 pellets, reaching further',
+      '15 pellets that tear through everything in their path',
+    ],
+    how: 'Tap threats closing on the gun',
+  },
+  boomerang: {
+    id: 'boomerang',
+    name: 'Boomerang',
+    evolved: 'Twin Blades',
+    answers: 'Lines',
+    levels: [
+      'Each tap throws a blade out to the threat and back, cutting everything on both passes',
+      'A wider blade that cuts for 2',
+      'Two blades at once',
+    ],
+    how: 'Tap past a line of threats',
+  },
 };
 
-export const ABILITY_ORDER: AbilityId[] = ['flak', 'seeker', 'aegis', 'cryo', 'well', 'airstrike', 'railgun', 'tesla'];
+export const ABILITY_ORDER: AbilityId[] = ['airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla'];
 
 /** Levels per weapon; the last is the evolution. */
 export const ABILITY_MAX = 3;
@@ -149,11 +218,15 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   flak: ['FLAK', 'CURTAIN'],
   seeker: ['SEEKERS', 'SWARM POD'],
   aegis: ['AEGIS', 'BASTION'],
-  cryo: ['CRYO', 'ABS. ZERO'],
   well: ['GRAVITY', 'SINGULARITY'],
   airstrike: ['AIR STRIKE', 'CARPET'],
   railgun: ['RAILGUN', 'MASS DRIVER'],
   tesla: ['TESLA', 'STORM COIL'],
+  shrapnel: ['SHRAPNEL', 'FRAGSTORM'],
+  frigate: ['FRIGATES', 'BATTLE GRP'],
+  thermo: ['THERMO', 'DAISY CUT'],
+  scatter: ['SCATTER', 'DRAGON'],
+  boomerang: ['BOOMERANG', 'TWIN BLADES'],
 };
 
 /** How weapons come and go. */
@@ -182,8 +255,6 @@ export const AB = {
    *  `hits` hits; Bastion bursts for `burstDmg` within `burst` per hit. A tap
    *  with no threat covers the hull nearest it within `reach`. */
   aegis: { time: [5, 6, 8], hits: [3, 4, 6], reach: 220, burst: 120, burstDmg: 2 },
-  /** Cryo: threats within `radius` of the burst freeze for `time` s. */
-  cryo: { radius: [100, 120, 140], time: [2.5, 3, 3] },
   /** Gravity Well: pulls threats within `radius` toward it at `pull` px/s
    *  for `time` s, then hits those within `core` for `damage`. */
   well: { radius: [200, 240, 260], time: [1.5, 1.5, 2], pull: 320, core: [100, 110, 120], damage: [2, 3, 4] },
@@ -191,6 +262,22 @@ export const AB = {
   airstrike: { speed: 1800, band: [80, 95, 110], damage: [2, 3, 4], burnTime: 2, burnTick: 0.5, cost: 2 },
   railgun: { damage: [1, 2, 4], width: [14, 18, 26] },
   tesla: { arcs: [3, 4, 4], range: 200, depth: [1, 2, 2], twin: 260 },
+  /** Shrapnel: `frags` fragments out from the burst, each reaching `range`
+   *  and hitting the first threat within `width` of its path (Fragstorm:
+   *  every threat on it). */
+  shrapnel: { frags: [10, 14, 18], range: [220, 270, 300], width: 18, damage: 1 },
+  /** Frigates: `ships` sail to stations and fire a free interceptor every
+   *  `gap` s at a threat within `range`. */
+  frigate: { ships: [2, 2, 3], gap: [0.9, 0.6, 0.45], range: 560, speed: 260 },
+  /** Thermobaric: one blast of `radius`, hitting everything in it. */
+  thermo: { radius: [150, 190, 240], damage: [1, 2, 3] },
+  /** Scattergun: `pellets` from the gun over `spread` radians toward the tap,
+   *  each reaching `range` and hitting the first threat within `width` of its
+   *  path (Dragon's Breath: every threat on it). */
+  scatter: { pellets: [8, 11, 15], spread: 0.32, range: [650, 760, 860], width: 18, damage: 1 },
+  /** Boomerang: a blade at `speed` to the tap (at most `range`) and back,
+   *  cutting each threat within `width` once a pass. */
+  boomerang: { speed: 1100, range: 900, width: [34, 44, 44], damage: [1, 2, 2] },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;

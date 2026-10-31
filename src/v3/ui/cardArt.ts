@@ -107,15 +107,6 @@ const SCENES: Record<CardId, Scene> = {
     threat(18, 18, 40, 0.9) + threat(104, 14, 140, 0.9) +
     `<path d="M24 22 L36 33 M98 18 L84 29" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>`,
 
-  // A heavy missile and two drones locked in ice mid-air.
-  cryo: (c) =>
-    sea(66) + ship(84, 62, 0.75) +
-    `<circle cx="54" cy="34" r="24" fill="${c}" opacity="0.16"/><circle cx="54" cy="34" r="24" fill="none" stroke="${c}" stroke-width="1.4" stroke-dasharray="3 3"/>` +
-    `<g transform="translate(54 34) rotate(20)"><rect x="-13" y="-5" width="26" height="10" rx="5" fill="${RED}"/></g>` +
-    `<g transform="translate(54 34) rotate(20)"><rect x="-16" y="-8" width="32" height="16" rx="4" fill="${c}" opacity="0.45" stroke="#e0f2fe" stroke-width="1"/></g>` +
-    [[34, 22], [72, 48]].map(([x, y]) => drone(x, y, 1) + `<rect x="${x - 7}" y="${y - 7}" width="14" height="14" rx="3" fill="${c}" opacity="0.45" stroke="#e0f2fe" stroke-width="0.8"/>`).join('') +
-    `<path d="M54 6 V12 M51 8 L54 11 L57 8" stroke="#e0f2fe" stroke-width="1.2" fill="none"/>`,
-
   // A vortex dragging missiles and drones into its eye.
   well: (c) =>
     sea(68) +
@@ -150,6 +141,46 @@ const SCENES: Record<CardId, Scene> = {
       const my = (38 + y) / 2 + (k % 2 ? -5 : 5);
       return `<path d="M56 38 L${mx} ${my} L${(mx + x) / 2 + 4} ${(my + y) / 2 - 3} L${x} ${y}" stroke="${c}" stroke-width="2" fill="none" stroke-linejoin="round"/>` + drone(x, y, 1);
     }).join(''),
+
+  // A shell bursting into fragments that streak out at drones all round.
+  shrapnel: (c) =>
+    sea(66) + ship(60, 62, 0.7) +
+    Array.from({ length: 12 }, (_, i) => {
+      const a = (i / 12) * Math.PI * 2 + 0.2;
+      return `<path d="M60 32 L${(60 + Math.cos(a) * 34).toFixed(1)} ${(32 + Math.sin(a) * 26).toFixed(1)}" stroke="${c}" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>`;
+    }).join('') +
+    burst(60, 32, 8, c) + drone(24, 20, 0.9) + drone(98, 24, 0.9) + drone(86, 50, 0.8) + drone(30, 46, 0.8) +
+    burst(24, 20, 4, FLAME) + burst(98, 24, 4, FLAME),
+
+  // Two warships on station, guns firing up at incoming threats.
+  frigate: (c) =>
+    sea(60) +
+    [[34, 58], [86, 56]].map(([x, y]) => `<g transform="translate(${x} ${y})"><path d="M-18 0 H18 L13 5 H-14 Z" fill="${c}"/><rect x="-8" y="-6" width="11" height="6" rx="1" fill="${c}"/><rect x="-3" y="-11" width="2" height="5" fill="${c}"/></g>`).join('') +
+    `<path d="M38 50 L52 22 M90 48 L76 18" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/>` +
+    threat(54, 18, -60, 0.8) + threat(74, 14, -120, 0.8) + burst(54, 18, 5, FLAME),
+
+  // One huge blast swallowing a whole pack.
+  thermo: (c) =>
+    sea(66) + ship(26, 62, 0.6) + ship(96, 62, 0.6) +
+    `<circle cx="60" cy="32" r="28" fill="${c}" opacity="0.22"/><circle cx="60" cy="32" r="28" fill="none" stroke="${c}" stroke-width="2.2"/>` +
+    `<circle cx="60" cy="32" r="16" fill="${FLAME}" opacity="0.5"/>` + burst(60, 32, 11, FLAME) +
+    drone(44, 22, 0.8) + drone(78, 26, 0.8) + drone(52, 46, 0.8) + drone(72, 44, 0.8),
+
+  // A short cone of pellets from the carrier's gun into close threats.
+  scatter: (c) =>
+    sea(66) +
+    `<rect x="10" y="58" width="34" height="6" rx="3" fill="${HULL}"/>` +
+    `<path d="M30 57 L84 18 L98 42 Z" fill="${c}" opacity="0.16"/>` +
+    [[84, 18], [90, 26], [95, 34], [98, 42], [78, 22]].map(([x, y]) => `<path d="M30 57 L${x} ${y}" stroke="${c}" stroke-width="1.3" stroke-dasharray="3 3"/><circle cx="${x}" cy="${y}" r="1.8" fill="${c}"/>`).join('') +
+    drone(86, 24, 0.9) + burst(86, 24, 5, FLAME) + threat(96, 38, 200, 0.8),
+
+  // A spinning blade on its way out and back past a line of drones.
+  boomerang: (c) =>
+    sea(66) +
+    `<rect x="8" y="58" width="34" height="6" rx="3" fill="${HULL}"/>` +
+    `<path d="M26 56 Q60 2 100 22 Q70 36 26 56" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="3 3"/>` +
+    `<g transform="translate(96 22) rotate(-30)"><path d="M-9 6 Q-8 -8 8 -9 Q-2 -3 -3 9 Z" fill="${c}"/></g>` +
+    drone(50, 26, 0.9) + drone(66, 20, 0.9) + drone(80, 18, 0.9) + burst(50, 26, 4, FLAME) + burst(66, 20, 4, FLAME),
 
   // A supply crate with a repair cross, wrench across it, the convoy mended.
   resupply: (c) =>

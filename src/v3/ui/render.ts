@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Dome, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Dome, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { ABILITY_MAX, SHORT_NAME, WEAPON } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
@@ -71,6 +71,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
+  for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0) drawShields(ctx, g);
   drawDomes(ctx, g);
   for (const p of g.pickups) {
@@ -113,7 +114,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     drawPlane(ctx, g, th);
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
-  for (const th of g.threats) if (th.frozenT && th.frozenT > 0) drawIce(ctx, g, th);
+  for (const b of g.blades) drawBlade(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
@@ -597,35 +598,82 @@ function drawDomes(ctx: CanvasRenderingContext2D, g: Game): void {
   if (g.carrierDome) one(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 24, CARRIER.halfBeam + 22, g.carrierDome);
 }
 
-/** Cryo Rounds: a frozen threat is cased in ice, cracking as it thaws. */
-function drawIce(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const r = th.kind === 'heavy' ? 40 : th.kind === 'mothership' ? 44 : th.kind === 'strafer' || th.kind === 'bomber' ? 38 : 22;
-  const thaw = Math.min(1, (th.frozenT ?? 0) / 0.6);
+/** A Frigate Escort frigate: a grey warship in the weapon's steel, bigger
+ *  than a cargo hull, its gun turned to its last target. */
+function drawEscort(ctx: CanvasRenderingContext2D, e: Escort): void {
+  // Round 6: at cargo-hull size and grey it read as part of the convoy; a
+  // frigate is half again as long, dark, outlined, with a wake.
   ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.fillStyle = `rgba(186,230,253,${0.38 * thaw})`;
-  ctx.strokeStyle = `rgba(224,242,254,${0.9 * thaw})`;
-  ctx.lineWidth = 2;
+  ctx.translate(e.x, e.y);
+  ctx.strokeStyle = 'rgba(226,240,255,0.35)';
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  for (let k = 0; k < 6; k++) {
-    const ang = (k * Math.PI) / 3 + 0.3;
-    ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r * 0.8);
-  }
+  ctx.moveTo(-74, -6);
+  ctx.lineTo(-130, -16);
+  ctx.moveTo(-74, 6);
+  ctx.lineTo(-130, 16);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(4, 10, 76, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3f4a55';
+  ctx.strokeStyle = ICON_COLOR.frigate;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-74, -12);
+  ctx.lineTo(52, -12);
+  ctx.lineTo(78, 0);
+  ctx.lineTo(52, 12);
+  ctx.lineTo(-74, 12);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  if ((th.frozenLv ?? 0) >= 3) {
-    // Absolute Zero: brittle, cracks showing (any hit shatters it).
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.5, -r * 0.3);
-    ctx.lineTo(0, 0);
-    ctx.lineTo(r * 0.4, r * 0.35);
-    ctx.moveTo(0, 0);
-    ctx.lineTo(r * 0.2, -r * 0.5);
-    ctx.stroke();
-  }
+  ctx.fillStyle = '#8796a3';
+  ctx.fillRect(-40, -8, 44, 16);
+  ctx.fillRect(-18, -4, 12, 8);
+  // The gun: a turret forward, its barrel toward the last target.
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.arc(30, 0, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(30, 0);
+  ctx.lineTo(30 + Math.cos(e.aim) * 24, Math.sin(e.aim) * 24);
+  ctx.stroke();
   ctx.restore();
-  void g;
+}
+
+/** A Boomerang blade: three curved arms spinning. */
+function drawBlade(ctx: CanvasRenderingContext2D, b: Blade): void {
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.spin);
+  // Round 6 cycle 3: at phone size the first blade (22 px arms) read as a
+  // small cyan dot; longer, outlined arms read as a spinning blade.
+  const r = b.level >= 2 ? 40 : 34;
+  ctx.fillStyle = ICON_COLOR.boomerang;
+  ctx.globalAlpha = 0.18;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#0e3a44';
+  ctx.lineWidth = 2.5;
+  for (let k = 0; k < 3; k++) {
+    ctx.rotate((Math.PI * 2) / 3);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(r * 0.6, -r * 0.1, r, -r * 0.75);
+    ctx.quadraticCurveTo(r * 0.45, -r * 0.02, -2, r * 0.3);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+  }
+  dot(ctx, 0, 0, 5, '#ecfeff');
+  ctx.restore();
 }
 
 /** Carpet Strike's row: a dim band of heat with small flames licking up
@@ -1108,16 +1156,33 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.stroke();
         break;
       }
-      case 'frost': {
-        // Cryo burst: an icy ring and a pale flash filling the radius.
-        ctx.fillStyle = `rgba(186,230,253,${0.25 * (1 - u)})`;
+      case 'frag': {
+        // A fragment (Shrapnel) or a pellet (Scattergun, r = 1): a bright
+        // streak from where it left to where it stopped, running out along
+        // it, then fading.
+        const k = Math.min(1, u * 3);
+        const hx = f.x + (f.x2 - f.x) * k;
+        const hy = f.y + (f.y2 - f.y) * k;
+        ctx.strokeStyle = f.r ? `rgba(245,190,255,${1 - u})` : `rgba(250,204,21,${0.9 * (1 - u)})`;
+        ctx.lineWidth = 4; // round 6 cycle 3: 2.5 px fragments were hair-thin on a phone
         ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        ctx.moveTo(f.x + (f.x2 - f.x) * Math.max(0, k - 0.45), f.y + (f.y2 - f.y) * Math.max(0, k - 0.45));
+        ctx.lineTo(hx, hy);
+        ctx.stroke();
+        dot(ctx, hx, hy, 3.5, `rgba(255,250,220,${1 - u})`);
+        break;
+      }
+      case 'thermo': {
+        // Thermobaric: a white-hot flash filling the blast, a rose shock
+        // ring racing to its edge.
+        ctx.fillStyle = `rgba(255,236,210,${0.55 * Math.max(0, 1 - u * 2.2)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * Math.min(1, 0.4 + u * 2), 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = `rgba(224,242,254,${0.9 * (1 - u)})`;
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = `rgba(251,113,133,${0.9 * (1 - u)})`;
+        ctx.lineWidth = 8 * (1 - u) + 2;
         ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r * (0.6 + 0.4 * u), 0, Math.PI * 2);
+        ctx.arc(f.x, f.y, f.r * Math.min(1, 0.3 + u * 1.4), 0, Math.PI * 2);
         ctx.stroke();
         break;
       }

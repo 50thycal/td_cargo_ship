@@ -118,10 +118,6 @@ export interface Threat {
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
-  /** Cryo Rounds: seconds left frozen in place, and the level that froze it
-   *  (hits do double; 3: any hit shatters it). */
-  frozenT?: number;
-  frozenLv?: number;
   /** The sub or truck that fired it. */
   from?: number;
 }
@@ -157,7 +153,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frost' | 'dome';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'dome' | 'frag' | 'thermo';
 
 export interface Fx {
   kind: FxKind;
@@ -262,6 +258,40 @@ export type LaunchOrigin = 'base' | 'truck' | 'sub' | 'air' | 'child';
 
 /** A friendly jet from an Air Strike shot, flying one row across the
  *  screen (dx, dy: its unit heading). */
+/** A frigate of a Frigate Escort: sails in to its station, fires on its own
+ *  while the weapon is loaded, then sails off. */
+export interface Escort {
+  id: number;
+  x: number;
+  y: number;
+  /** Its station on the water. */
+  sx: number;
+  sy: number;
+  fireT: number;
+  leaving: boolean;
+  /** Where its last shot went (the renderer turns the gun). */
+  aim: number;
+}
+
+/** A Boomerang blade: out from the gun to (tx, ty) and back, cutting each
+ *  threat once a pass. */
+export interface Blade {
+  id: number;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  back: boolean;
+  /** Caught back at the gun. */
+  home: boolean;
+  /** The threat it was thrown at: the blade follows it out (round 6: thrown
+   *  at where a moving threat had been, it arrived after it had gone). */
+  target: number | null;
+  level: number;
+  hits: number[];
+  spin: number;
+}
+
 export interface Ally {
   id: number;
   x: number;
@@ -363,6 +393,9 @@ export interface Game {
   shieldT: number;
   steamT: number;
   allies: Ally[];
+  /** Frigate Escort's frigates, and Boomerang blades in the air. */
+  escorts: Escort[];
+  blades: Blade[];
   /** Flak clouds, gravity wells and burning rows on the water. */
   fields: Field[];
   /** The weapon loaded in the main gun (null: plain interceptors). */
@@ -452,6 +485,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     shieldT: 0,
     steamT: 0,
     allies: [],
+    escorts: [],
+    blades: [],
     fields: [],
     weapon: null,
     weaponDropT: 0,
@@ -869,8 +904,9 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
     case 'tesla':
       return null;
     case 'flak':
-    case 'cryo':
     case 'well':
+    case 'shrapnel':
+    case 'thermo':
       // A shell: at the threat as usual, or onto open water to burst there.
       if (threat) return null;
       if (!spend(g)) return 'dry';
@@ -896,6 +932,17 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       if (!spend(g, AB.airstrike.cost)) return 'dry';
       callJet(g, w.level, ax, ay);
       return 'fire';
+    case 'scatter':
+      if (!spend(g)) return 'dry';
+      fireScatter(g, w.level, ax, ay);
+      return 'fire';
+    case 'boomerang':
+      if (!spend(g)) return 'dry';
+      throwBlades(g, w.level, ax, ay, threat);
+      return 'fire';
+    case 'frigate':
+      // The frigates do their own shooting; the gun is the plain gun.
+      return null;
   }
 }
 
@@ -911,24 +958,178 @@ function spend(g: Game, n = 1): boolean {
   return true;
 }
 
-/** A tagged shell bursts: a flak cloud, a freeze or a vortex where it went
- *  off. */
+/** A tagged shell bursts: a flak cloud, a vortex, fragments or a
+ *  thermobaric blast where it went off. */
 function burstWeapon(g: Game, w: Weapon, x: number, y: number): void {
   const k = w.level - 1;
   if (w.id === 'flak') addField(g, 'flak', x, y, AB.flak.radius[k], AB.flak.time[k], w.level);
   else if (w.id === 'well') addField(g, 'well', x, y, AB.well.radius[k], AB.well.time[k], w.level);
-  else if (w.id === 'cryo') {
-    const r = AB.cryo.radius[k];
-    // Frozen first, then the frost bites: a hit for 1, doubled on ice
-    // (Absolute Zero: shattered).
-    for (const th of [...g.threats]) {
-      if (th.dead || dist(th.x, th.y, x, y) > r) continue;
-      th.frozenT = AB.cryo.time[k];
-      th.frozenLv = w.level;
-      damageThreat(g, th, 1);
+  else if (w.id === 'shrapnel') {
+    // Fragments out in every direction, at once (turned a little each shot
+    // so the spokes don't line up shot after shot).
+    const n = AB.shrapnel.frags[k];
+    const turn = (g.shots % 7) * 0.37;
+    for (let i = 0; i < n; i++) {
+      const end = rayHits(g, x, y, turn + (i * Math.PI * 2) / n, AB.shrapnel.range[k], AB.shrapnel.width, w.level >= 3, AB.shrapnel.damage);
+      addFx(g, 'frag', x, y, { life: 0.28, x2: end.x, y2: end.y });
     }
-    addFx(g, 'frost', x, y, { life: 0.5, r });
+  } else if (w.id === 'thermo') {
+    const r = AB.thermo.radius[k];
+    for (const th of [...g.threats]) if (!th.dead && dist(th.x, th.y, x, y) <= r) damageThreat(g, th, AB.thermo.damage[k]);
+    addFx(g, 'thermo', x, y, { life: 0.7, r });
   }
+}
+
+/** A straight path from (x, y) at `ang`, `range` long: hits the first
+ *  threat within `width` of it for `dmg` (every one on it if `pierce`).
+ *  Returns where the path ends (the first hit, or its full length). */
+function rayHits(g: Game, x: number, y: number, ang: number, range: number, width: number, pierce: boolean, dmg: number): Point {
+  const ux = Math.cos(ang);
+  const uy = Math.sin(ang);
+  const on = g.threats
+    .filter((t) => !t.dead)
+    .map((t) => ({ t, along: (t.x - x) * ux + (t.y - y) * uy, off: Math.abs((t.x - x) * uy - (t.y - y) * ux) }))
+    .filter((o) => o.along >= 0 && o.along <= range && o.off <= width)
+    .sort((a, b) => a.along - b.along);
+  if (!on.length) return { x: x + ux * range, y: y + uy * range };
+  for (const o of pierce ? on : on.slice(0, 1)) damageThreat(g, o.t, dmg);
+  const stop = pierce ? range : on[0].along;
+  return { x: x + ux * stop, y: y + uy * stop };
+}
+
+/** Scattergun: a cone of pellets from the gun toward (x, y), short range. */
+function fireScatter(g: Game, level: number, x: number, y: number): void {
+  const k = level - 1;
+  const c = g.map.carrier;
+  const base = Math.atan2(y - c.y, x - c.x);
+  const n = AB.scatter.pellets[k];
+  for (let i = 0; i < n; i++) {
+    const ang = base + (n > 1 ? (i / (n - 1) - 0.5) * AB.scatter.spread : 0);
+    const end = rayHits(g, c.x, c.y - 6, ang, AB.scatter.range[k], AB.scatter.width, level >= 3, AB.scatter.damage);
+    addFx(g, 'frag', c.x, c.y - 6, { life: 0.3, x2: end.x, y2: end.y, r: 1 });
+  }
+  addFx(g, 'burst', c.x + Math.cos(base) * 30, c.y - 6 + Math.sin(base) * 30, { life: 0.2, r: 22 });
+}
+
+/** Boomerang: a blade out to (x, y), or after the threat tapped, and back
+ *  (Twin Blades: a second one splayed to one side). */
+function throwBlades(g: Game, level: number, x: number, y: number, threat: Threat | null): void {
+  const c = g.map.carrier;
+  const d = dist(c.x, c.y, x, y) || 1;
+  const reach = Math.min(d, AB.boomerang.range);
+  const base = Math.atan2(y - c.y, x - c.x);
+  // Twin Blades: one down the line you aimed at, the second splayed to one
+  // side, alternating (round 6: two splayed either side both missed the line).
+  const side = g.shots % 2 ? 1 : -1;
+  for (const off of level >= 3 ? [0, 0.24 * side] : [0]) {
+    g.blades.push({
+      id: g.nextId++,
+      x: c.x,
+      y: c.y - 6,
+      tx: c.x + Math.cos(base + off) * reach,
+      ty: c.y - 6 + Math.sin(base + off) * reach,
+      back: false,
+      home: false,
+      target: off === 0 && threat ? threat.id : null,
+      level,
+      hits: [],
+      spin: 0,
+    });
+  }
+}
+
+function updateBlades(g: Game, dt: number): void {
+  const c = g.map.carrier;
+  for (const b of g.blades) {
+    // Out after its threat while it lives, then on to where it was.
+    const t = !b.back && b.target !== null ? g.threats.find((o) => o.id === b.target && !o.dead) : undefined;
+    if (t) {
+      b.tx = t.x;
+      b.ty = t.y;
+    }
+    const gx = b.back ? c.x : b.tx;
+    const gy = b.back ? c.y - 6 : b.ty;
+    const d = dist(b.x, b.y, gx, gy);
+    const step = AB.boomerang.speed * dt;
+    b.spin += dt * 18;
+    if (d <= step) {
+      b.x = gx;
+      b.y = gy;
+      if (b.back) b.home = true;
+      else {
+        // Turn round: the way back is a fresh pass.
+        b.back = true;
+        b.hits = [];
+      }
+    } else {
+      b.x += ((gx - b.x) / d) * step;
+      b.y += ((gy - b.y) / d) * step;
+    }
+    const k = b.level - 1;
+    for (const th of [...g.threats]) {
+      if (th.dead || b.hits.includes(th.id) || dist(th.x, th.y, b.x, b.y) > AB.boomerang.width[k]) continue;
+      b.hits.push(th.id);
+      damageThreat(g, th, AB.boomerang.damage[k]);
+    }
+  }
+  g.blades = g.blades.filter((b) => !b.home);
+}
+
+/** Frigate Escort: the frigates sail to their stations, fire on their own,
+ *  and sail off when the weapon is spent or another takes over. */
+function launchEscorts(g: Game, level: number): void {
+  const k = level - 1;
+  const want = AB.frigate.ships[k];
+  const lanes = g.map.channels;
+  const xs = [0.3, 0.62, 0.46];
+  g.escorts = g.escorts.filter((e) => !e.leaving);
+  for (let i = g.escorts.length; i < want; i++) {
+    // On station at the edge of a lane (above it, then below), clear of the
+    // convoy sailing down its middle, still on open water.
+    const lane = lanes[i % lanes.length];
+    const sx = VIEW.width * xs[i];
+    const sy = lane.y + (i % 2 ? 1 : -1) * halfWidthAt(lane, sx) * 0.85;
+    g.escorts.push({ id: g.nextId++, x: -120 - i * 80, y: sy, sx, sy, fireT: 0.5 + i * 0.2, leaving: false, aim: 0 });
+  }
+}
+
+function updateEscorts(g: Game, dt: number): void {
+  if (!g.escorts.length) return;
+  const on = g.weapon?.id === 'frigate' ? g.weapon : null;
+  for (const e of g.escorts) {
+    if (!on) e.leaving = true;
+    const gx = e.leaving ? VIEW.width + 140 : e.sx;
+    const gy = e.leaving ? e.y : e.sy;
+    const d = dist(e.x, e.y, gx, gy);
+    const step = AB.frigate.speed * dt;
+    if (d > step) {
+      e.x += ((gx - e.x) / d) * step;
+      e.y += ((gy - e.y) / d) * step;
+    } else {
+      e.x = gx;
+      e.y = gy;
+    }
+    // Round 6 cycle 5: they used to hold fire until on station, so the far
+    // frigate spent ~4.6 s of the 15 sailing in silent; now they open up as
+    // soon as they are on screen.
+    if (e.leaving || !on || e.x < 20) continue;
+    e.fireT -= dt;
+    if (e.fireT > 0) continue;
+    // The nearest threat in reach that still needs a shot.
+    const target = g.threats
+      .filter((t) => !t.dead && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
+      .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
+    if (!target) {
+      e.fireT = 0.1;
+      continue;
+    }
+    e.fireT = AB.frigate.gap[on.level - 1];
+    e.aim = Math.atan2(target.y - e.y, target.x - e.x);
+    const mx = e.x + 30;
+    g.interceptors.push({ id: g.nextId++, x: mx, y: e.y, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
+    addFx(g, 'launch', mx, e.y, { life: 0.3, r: 10 });
+  }
+  g.escorts = g.escorts.filter((e) => !(e.leaving && e.x >= VIEW.width + 130));
 }
 
 function addField(g: Game, kind: Field['kind'], x: number, y: number, r: number, life: number, level: number): void {
@@ -1116,21 +1317,13 @@ export function step(g: Game, dt: number): void {
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
   reload(g, dt);
   updateShips(g, dt);
-  // Time Warp slows every threat (not the convoy, not your interceptors). A
-  // frozen one (Cryo Rounds) hangs where it is until it thaws.
+  // Time Warp slows every threat (not the convoy, not your interceptors).
   const tdt = g.warpT > 0 ? dt * PICKUPS.warpScale : dt;
-  for (const th of g.threats) {
-    if (th.dead) continue;
-    if (th.frozenT && th.frozenT > 0) {
-      th.frozenT -= dt;
-      th.vx = 0;
-      th.vy = 0;
-      continue;
-    }
-    updateThreat(g, th, tdt);
-  }
+  for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
   updateTimers(g, dt);
   updateAllies(g, dt);
+  updateEscorts(g, dt);
+  updateBlades(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
   g.weaponDropT += dt;
@@ -1170,6 +1363,8 @@ function clearField(g: Game): void {
   g.pickups = [];
   g.fields = [];
   g.allies = [];
+  g.escorts = [];
+  g.blades = [];
   g.overdriveT = 0;
   g.warpT = 0;
   g.shieldT = 0;
@@ -1754,8 +1949,6 @@ function predict(th: Threat, ahead: number): Point {
 
 function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   if (th.dead) return;
-  // A frozen threat (Cryo Rounds) takes double; Absolute Zero shatters it.
-  if (th.frozenT && th.frozenT > 0) amount = (th.frozenLv ?? 0) >= 3 ? th.hp : amount * 2;
   th.hp -= amount;
   if (th.hp > 0) return;
   th.dead = true;
@@ -2168,6 +2361,7 @@ function collect(g: Game, p: Pickup): void {
     const level = g.levels[id] ?? 0;
     if (level <= 0) return;
     g.weapon = { id, level, t: WEAPON.time };
+    if (id === 'frigate') launchEscorts(g, level);
     g.uses[id] = (g.uses[id] ?? 0) + 1;
     g.events.push({ kind: 'weapon', id, level });
     addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });

@@ -8,7 +8,11 @@ export const ICON_COLOR: Record<CardId, string> = {
   flak: '#fb923c',
   seeker: '#a3e635',
   aegis: '#5eead4',
-  cryo: '#7dd3fc',
+  shrapnel: '#facc15',
+  frigate: '#cbd5e1',
+  thermo: '#fb7185',
+  scatter: '#f0abfc',
+  boomerang: '#67e8f9',
   well: '#c084fc',
   airstrike: '#60a5fa',
   railgun: '#f472b6',
@@ -23,8 +27,16 @@ const PATHS: Record<CardId, string> = {
   seeker: '<path d="M5 27 L13 11 M5 27 L18 17 M5 27 L24 24"/><circle cx="14" cy="9" r="2.4"/><circle cx="20" cy="16" r="2.4"/><circle cx="26" cy="24" r="2.4"/>',
   // A dome over a hull, a missile glancing off it.
   aegis: '<path d="M4 25 A12 12 0 0 1 28 25 Z"/><path d="M9 25 H23"/><path d="M22 4 L18 10 M18 10 L24 12"/>',
-  // A snowflake.
-  cryo: '<path d="M16 3 V29 M4.7 9.5 L27.3 22.5 M4.7 22.5 L27.3 9.5 M12.5 5.5 L16 9 L19.5 5.5 M12.5 26.5 L16 23 L19.5 26.5"/>',
+  // A burst throwing fragments out in every direction.
+  shrapnel: '<circle cx="16" cy="16" r="3.5"/><path d="M16 3 V8 M16 24 V29 M3 16 H8 M24 16 H29 M7 7 L10.5 10.5 M25 7 L21.5 10.5 M7 25 L10.5 21.5 M25 25 L21.5 21.5"/><circle cx="16" cy="2.5" r="0.6"/><circle cx="29.5" cy="16" r="0.6"/>',
+  // A frigate's hull with a turret and mast.
+  frigate: '<path d="M3 21 H29 L25 26 H7 Z"/><path d="M10 21 V16 H19 V21 M19 18 H25 M14 16 V10 M12 12 H16"/>',
+  // One big blast ring with a hot core.
+  thermo: '<circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="6.5"/><circle cx="16" cy="16" r="2"/>',
+  // A cone of pellets from a muzzle.
+  scatter: '<path d="M4 26 L9 21"/><path d="M9 21 L26 6 M9 21 L28 14 M9 21 L18 4"/><circle cx="26" cy="6" r="1.3"/><circle cx="28" cy="14" r="1.3"/><circle cx="18" cy="4" r="1.3"/>',
+  // A curved blade.
+  boomerang: '<path d="M6 24 Q8 8 24 6 Q14 12 12 26 Z"/>',
   // A spiral pulling inward.
   well: '<path d="M16 16 m-2 0 a2 2 0 1 1 4 0 a5 5 0 1 1 -10 0 a8 8 0 1 1 16 0 a11 11 0 1 1 -22 0"/>',
   // A jet seen from above, its strike line ahead.

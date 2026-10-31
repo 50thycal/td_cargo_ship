@@ -35,9 +35,11 @@ import {
  *  8: V3 round 2 (weapons drop as pickups and load the gun; no ability
  *     activations, so no 'a' commands).
  *  9: V3 round 3 (five weapons replaced: the draft deals a new roster).
+ *  10: V3 round 6 (Cryo out; Shrapnel, Frigates, Thermobaric, Scattergun
+ *      and Boomerang in: twelve weapons, a new draft roster).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 9;
+export const LOG_VERSION = 10;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
