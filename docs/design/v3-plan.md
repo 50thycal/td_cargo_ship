@@ -113,8 +113,12 @@ Shells, Decoy Flares, Sub Hunter.
   does is on the card). Running out says so over the gun ("RAILGUN DONE").
   The first weapon drop of a run explains itself. Round 4's UI pass:
   [v3-playtest-round4.md](v3-playtest-round4.md).
-- Draft cards show what the weapon answers, its art, its level pips, what
-  this level does, and "Drops as a pickup · 15 s in the gun · how to fire".
+- Draft cards show only what is particular to the card: what the weapon
+  answers, its art, its name at the level it brings, its level pips and
+  what that level does. How weapons work (they drop as pickups and load the
+  gun for 15 s) is the game's rule, not repeated on every card (round 5);
+  the badge and the new name mark an evolution. The line under the cards
+  shows only when the slots are full.
 
 ## The Armory
 

@@ -1884,15 +1884,6 @@ body {
   }
 }
 
-/* Draft cards: how the weapon comes (a pickup, its seconds) and how a tap fires it. */
-.v3-card-how {
-  font-size: 10.5px;
-  line-height: 1.25;
-  color: var(--muted);
-  text-align: center;
-  padding: 0 8px 8px;
-}
-
 .v2-badge.evo {
   background: linear-gradient(90deg, #f5c542, #fb923c);
   color: #1d1606;
@@ -2193,10 +2184,6 @@ body {
   }
   .v2-menu-foot {
     margin-top: 0;
-  }
-  .v3-card-how {
-    font-size: 9.5px;
-    padding: 0 6px 5px;
   }
 }
 

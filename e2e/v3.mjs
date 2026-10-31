@@ -208,7 +208,7 @@ try {
   const offer = await page.locator('.v2-card').count();
   check(offer >= 3, `draft deals ${offer} weapon cards`);
   check((await page.locator('.v2-draft h2').textContent()) === 'Choose your weapon', 'the draft asks for a weapon');
-  check((await page.locator('.v3-card-how').first().textContent()).startsWith('Drops as a pickup · 15 s'), 'each card says it drops as a pickup for 15 s');
+  check(!(await page.locator('.v2-draft').textContent()).includes('15 s in the gun') && !/EVOLVES:/.test(await page.locator('.v2-card-row').textContent()), 'cards carry only their own text (no repeated drop rule, no "EVOLVES:")');
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);

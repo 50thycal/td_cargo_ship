@@ -32,9 +32,10 @@ export interface AbilityDef {
   evolved: string;
   /** Which threat it answers — shown on the card. */
   answers: string;
-  /** What a shot does at levels 1, 2, 3 (index 0 = level 1). */
+  /** What a shot does at levels 1, 2, 3 (index 0 = level 1); level 3 is the
+   *  evolution (the card's badge and new name say so, the line doesn't). */
   levels: [string, string, string];
-  /** How a tap fires it, shown on the card and when it is picked up. */
+  /** How a tap fires it, shown when it is loaded. */
   how: string;
 }
 
@@ -45,9 +46,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Flak Curtain',
     answers: 'Swarms',
     levels: [
-      'Each shell bursts into a flak cloud for 1.5 s: everything flying through it is hit',
+      'Each shell leaves a flak cloud for 1.5 s that hits whatever flies through',
       'A bigger cloud that hangs for 2 s',
-      'EVOLVES: clouds hang for 4 s, a wall the swarm has to fly through',
+      'Clouds hang for 4 s, a wall the swarm has to fly through',
     ],
     how: 'Tap a swarm, or the water in its path',
   },
@@ -57,9 +58,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Swarm Pod',
     answers: 'Raids',
     levels: [
-      'Each tap launches 3 seekers at the 3 threats nearest your finger',
+      'Each tap launches 3 seekers at the threats nearest your finger',
       '4 seekers a tap',
-      'EVOLVES: 5 seekers, and one whose target is gone finds another',
+      '5 seekers, and one whose target is gone finds another',
     ],
     how: 'Tap in the middle of a raid',
   },
@@ -71,7 +72,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Each shot also domes the ship its target is after: 5 s, 3 hits',
       'Domes hold 6 s, 4 hits',
-      'EVOLVES: 8 s, 6 hits, and each hit bursts back out for 2',
+      '8 s, 6 hits, and each hit bursts back out for 2',
     ],
     how: 'Tap threats as usual, or the water by a ship',
   },
@@ -83,7 +84,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Each burst freezes everything in it for 2.5 s and bites for 2; frozen threats take double damage',
       'A bigger burst that holds them 3 s',
-      'EVOLVES: any hit shatters a frozen threat outright, the burst included',
+      'Any hit shatters a frozen threat outright, the burst included',
     ],
     how: 'Tap a threat, or the water in front of a pack',
   },
@@ -93,9 +94,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Singularity',
     answers: 'Spread raids',
     levels: [
-      'Each shell opens a vortex: drones, missiles and jets near it are dragged in for 1.5 s, then it implodes',
+      'Each shell opens a vortex that drags threats in for 1.5 s, then implodes on them',
       'A wider pull and a harder implosion',
-      'EVOLVES: it holds for 2 s and the implosion hits for 4',
+      'It holds for 2 s and the implosion hits for 4',
     ],
     how: 'Tap between the threats you want pulled together',
   },
@@ -105,9 +106,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Strike',
     answers: 'Aircraft',
     levels: [
-      'Each shot calls a jet down the row you tapped, hitting everything under it',
+      'Each tap sends a jet down that row, hitting everything under it (2 rounds a jet)',
       'A wider run, harder hits',
-      'EVOLVES: the row burns for 2 s and subs and trucks under it are destroyed',
+      'The row burns for 2 s and subs and trucks under it are destroyed',
     ],
     how: 'Tap a row: a jet flies across it, for 2 rounds',
   },
@@ -119,7 +120,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Each shot is a beam that pierces everything in line',
       'Twice the damage, a wider beam',
-      'EVOLVES: wide slugs, four times as hard: two bring down a heavy missile',
+      'Wide slugs, four times as hard: two bring down a heavy missile',
     ],
     how: 'Tap anywhere: the beam fires through it',
   },
@@ -131,7 +132,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Every hit arcs to 3 threats nearby',
       '4 arcs per hit, and every arc arcs again',
-      'EVOLVES: each tap fires a second, free shot at a threat nearby',
+      'Each tap fires a second, free shot at a threat nearby',
     ],
     how: 'Tap threats as usual',
   },

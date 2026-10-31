@@ -238,7 +238,8 @@ describe('the draft deals weapons', () => {
     for (const id of ABILITY_ORDER) {
       const a = ABILITIES[id];
       expect(a.levels).toHaveLength(ABILITY_MAX);
-      expect(a.levels[2]).toMatch(/^EVOLVES/);
+      // No "EVOLVES:" on the line: the card's badge and new name say it.
+      expect(a.levels.every((t) => !/EVOLVES/i.test(t))).toBe(true);
       expect(a.evolved).not.toBe(a.name);
       expect(a.how.length).toBeGreaterThan(5);
     }
@@ -705,6 +706,7 @@ describe('card text matches the numbers', () => {
     expect(L('aegis', 3)).toContain(`${AB.aegis.time[2]} s, ${AB.aegis.hits[2]} hits`);
     expect(L('aegis', 3)).toContain(`for ${AB.aegis.burstDmg}`);
     expect(ABILITIES.airstrike.how).toContain(`for ${AB.airstrike.cost} rounds`);
+    expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
     expect(L('cryo', 1)).toContain(`${AB.cryo.time[0]} s`);
     expect(AB.cryo.radius[1]).toBeGreaterThan(AB.cryo.radius[0]); // "a bigger burst"
     expect(L('well', 1)).toContain(`${AB.well.time[0]} s`);

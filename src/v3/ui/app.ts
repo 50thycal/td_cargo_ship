@@ -1460,7 +1460,6 @@ export class App {
       const level = el('span', 'v2-card-level', '');
       let text: string;
       if (id === 'resupply') {
-        level.textContent = 'Keeps your weapons';
         text = RESUPPLY_TEXT;
       } else {
         // One pip per level: those already held, the one this card adds, the rest.
@@ -1469,32 +1468,27 @@ export class App {
         text = ABILITIES[id].levels[Math.min(lvl, ABILITY_MAX - 1)];
       }
       const name = id === 'resupply' ? 'Resupply' : abilityName(id, Math.min(next, ABILITY_MAX));
-      card.append(top, art, el('strong', 'v2-card-name', name), level, el('span', 'v2-card-text', text));
-      if (id !== 'resupply') card.append(el('span', 'v3-card-how', `Drops as a pickup · ${WEAPON.time} s in the gun · ${ABILITIES[id].how}`));
+      // Only what is particular to this card (round 5: every card said "drops
+      // as a pickup, 15 s in the gun", which is how every weapon works).
+      // A number keeps its unit on the same line ("1.5 s", not "1.5 / s").
+      card.append(top, art, el('strong', 'v2-card-name', name), level, el('span', 'v2-card-text', text.replace(/(\d) s\b/g, '$1\u00a0s')));
       return card;
     });
     const row = el('div', 'v2-card-row');
     row.append(...cards);
-    let rule: HTMLElement;
+    let rule: HTMLElement | null = null;
     if (swapping) {
       rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${ABILITIES[swapping].name}: tap the one it replaces, above (its levels are lost).`);
       rule.append(button('Cancel', 'v2-btn v3-cancel', () => {
         this.showDraft(g);
         this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
       }));
-    } else {
-      // Say only what this hand allows (playtest round 1: with all three
-      // evolved the line still offered a level-up).
-      const allEvolved = full && owned.every((id) => (g.levels[id] ?? 0) >= ABILITY_MAX);
-      rule = el(
-        'p',
-        'v2-sub',
-        allEvolved
-          ? 'All three weapons evolved: swap one for a new weapon, or Resupply to keep them.'
-          : full
-            ? 'Slots full: level up a weapon you hold (level 3 evolves it), or swap a new one in.'
-            : `Pick one. Weapons you hold drop as pickups. You can hold ${MAX_SLOTS} (${MAX_SLOTS - owned.length} slot${MAX_SLOTS - owned.length === 1 ? '' : 's'} free); level 3 evolves.`,
-      );
+    } else if (full) {
+      // A line only when the hand changes the choice (round 5: with slots
+      // free it repeated the drop rule, the slot chips and the pips). Round 1:
+      // with all three evolved it must not offer a level-up.
+      const allEvolved = owned.every((id) => (g.levels[id] ?? 0) >= ABILITY_MAX);
+      rule = el('p', 'v2-sub', allEvolved ? 'All three evolved: swap one out, or Resupply.' : 'Slots full: level one up, or swap a new one in.');
     }
     // Dev stride: the waves it skips each still deal a card.
     const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
@@ -1504,7 +1498,7 @@ export class App {
     head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your weapon'));
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
-    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, rule]);
+    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : [])]);
     this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
   }
 
