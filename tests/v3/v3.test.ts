@@ -7,7 +7,7 @@ import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, WEAPON, abilityNa
 import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, armoryStats, bayItems, cardsFor, drawCards } from '../../src/v3/data/armory';
 import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP } from '../../src/v3/data/config';
 import { MAP_ORDER } from '../../src/v3/data/maps';
-import { equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
+import { ARMORY_VERSION, equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v3/sim/bot';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
@@ -80,7 +80,7 @@ function load(g: Game, id: AbilityId, level = 1): void {
 
 describe('the Armory (gun, hull and supply bays, set before a run)', () => {
   const GUN = bayItems('gun');
-  const fresh = (): Progress => ({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [] });
+  const fresh = (): Progress => ({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION });
   /** A fixed card draw: always the k-th open upgrade. */
   const draw = (k: number) => (n: number) => Math.min(k, n - 1);
 
@@ -220,18 +220,34 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(p.unlocked).toBe(1);
   });
 
-  it('a save from before the cards keeps its levels and its equipped gun', () => {
+  it('a save from before the cards has its Armory cleared, once; its maps and bests are kept', () => {
     const store: Record<string, string> = {};
     const ls = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => (store[k] = v), removeItem: (k: string) => delete store[k] };
     const prev = (globalThis as { localStorage?: unknown }).localStorage;
     (globalThis as { localStorage?: unknown }).localStorage = ls;
     try {
-      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 2, salvage: 90, earned: 400, armory: { warhead: 3, motor: 1 }, equipped: 'warhead', cleared: ['strait'] });
+      const best = { strait: { score: 9000, wave: 10 } };
+      // The salvage era (one gun upgrade, a string) and the first card build
+      // (no version): both cleared.
+      for (const old of [
+        { unlocked: 2, best, salvage: 90, earned: 400, armory: { warhead: 3, motor: 1 }, equipped: 'warhead', cleared: ['strait'] },
+        { unlocked: 2, best, cards: 2, armory: { warhead: 3, pointdef: 2 }, equipped: { gun: 'warhead', hull: 'pointdef', supply: null }, cleared: ['strait'] },
+      ]) {
+        store['straitwatch.v3.progress'] = JSON.stringify(old);
+        const p = loadProgress();
+        expect(p.armory).toEqual({});
+        expect(p.equipped).toEqual({ gun: null, hull: null, supply: null });
+        expect(p.cards).toBe(0);
+        expect(runLoadout(p)).toEqual({});
+        expect([p.unlocked, p.best, p.cleared]).toEqual([2, best, ['strait']]);
+        expect('salvage' in p).toBe(false);
+        expect(JSON.parse(store['straitwatch.v3.progress']).armoryV).toBe(ARMORY_VERSION); // cleared for good
+      }
+      // A current save keeps its cards.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 1, armory: { reload: 1 }, equipped: { gun: 'reload', hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION });
       const p = loadProgress();
-      expect(p.armory).toMatchObject({ warhead: 3, motor: 1 });
-      expect(p.equipped).toEqual({ gun: 'warhead', hull: null, supply: null });
-      expect(runLoadout(p)).toEqual({ warhead: 3 });
-      expect('salvage' in p).toBe(false);
+      expect(p.armory).toMatchObject({ reload: 1 });
+      expect(runLoadout(p)).toEqual({ reload: 1 });
     } finally {
       (globalThis as { localStorage?: unknown }).localStorage = prev;
     }

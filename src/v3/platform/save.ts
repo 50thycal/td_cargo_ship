@@ -26,12 +26,20 @@ export interface Progress {
   equipped: Record<BayId, ArmoryId | null>;
   /** Maps cleared at least once (the first clear pays a bonus). */
   cleared: MapId[];
+  /** Which Armory the levels belong to (ARMORY_VERSION). */
+  armoryV: number;
 }
 
 const KEY = 'straitwatch.v3.progress';
 
+/** The Armory's save version. 2: upgrades are cards won after a run (round
+ *  7). A save from before it holds levels bought with salvage, which the
+ *  player asked to clear ("reset my armory as it has unlocks from the
+ *  old"): its Armory loads empty, once; maps and bests are kept. */
+export const ARMORY_VERSION = 2;
+
 function fresh(): Progress {
-  return { unlocked: 1, best: {}, cards: 0, armory: {}, equipped: noneEquipped(), cleared: [] };
+  return { unlocked: 1, best: {}, cards: 0, armory: {}, equipped: noneEquipped(), cleared: [], armoryV: ARMORY_VERSION };
 }
 
 function noneEquipped(): Record<BayId, ArmoryId | null> {
@@ -43,18 +51,21 @@ export function loadProgress(): Progress {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Partial<Progress>;
+      const current = p.armoryV === ARMORY_VERSION;
       const armory: ArmoryLevels = {};
-      for (const id of ARMORY_ORDER) armory[id] = armoryLevel(p.armory ?? {}, id);
-      return {
+      if (current) for (const id of ARMORY_ORDER) armory[id] = armoryLevel(p.armory ?? {}, id);
+      const loaded: Progress = {
         unlocked: Math.max(1, Math.min(MAP_ORDER.length, p.unlocked || 1)),
         best: p.best ?? {},
-        // A save from before the cards keeps the levels it bought (its
-        // salvage is gone with the currency).
-        cards: Math.max(0, Math.floor(p.cards ?? 0)),
+        cards: current ? Math.max(0, Math.floor(p.cards ?? 0)) : 0,
         armory,
-        equipped: readEquipped(p.equipped, armory),
+        equipped: readEquipped(current ? p.equipped : null, armory),
         cleared: (p.cleared ?? []).filter((m) => MAP_ORDER.includes(m)),
+        armoryV: ARMORY_VERSION,
       };
+      // An old Armory is cleared for good, not on every load.
+      if (!current) saveProgress(loaded);
+      return loaded;
     }
   } catch {
     // fall through to a fresh record
@@ -62,11 +73,11 @@ export function loadProgress(): Progress {
   return fresh();
 }
 
-/** The equipped upgrades from a save. Before round 7 it was one gun
- *  upgrade (a string); only an upgrade with a level, in its own bay, counts. */
+/** The equipped upgrades from a save: only an upgrade with a level, in its
+ *  own bay, counts. */
 function readEquipped(raw: unknown, armory: ArmoryLevels): Record<BayId, ArmoryId | null> {
   const eq = noneEquipped();
-  const ids: unknown[] = typeof raw === 'string' ? [raw] : raw && typeof raw === 'object' ? Object.values(raw) : [];
+  const ids: unknown[] = raw && typeof raw === 'object' ? Object.values(raw) : [];
   for (const id of ids) {
     if (typeof id === 'string' && id in ARMORY && armoryLevel(armory, id as ArmoryId) > 0) eq[ARMORY[id as ArmoryId].bay] = id as ArmoryId;
   }

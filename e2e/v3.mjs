@@ -85,8 +85,19 @@ try {
   // A save holding a few Armory cards.
   await page.evaluate(() => {
     localStorage.clear();
-    localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, cards: 4, armory: { warhead: 1, magazine: 2, pointdef: 1 }, equipped: { gun: 'magazine', hull: null, supply: null }, cleared: [] }));
+    localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, cards: 4, armory: { warhead: 1, magazine: 2, pointdef: 1 }, equipped: { gun: 'magazine', hull: null, supply: null }, cleared: [], armoryV: 2 }));
   });
+  await page.reload({ waitUntil: 'networkidle' });
+  // Round 7: a save from before the cards (salvage-era levels, no armoryV)
+  // loads with its Armory cleared; the seeded one above is current.
+  const legacy = await page.evaluate(() => {
+    const keep = localStorage.getItem('straitwatch.v3.progress');
+    localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, salvage: 500, armory: { warhead: 4 }, equipped: 'warhead', cleared: [] }));
+    return keep;
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  check((await page.locator('.v3-armory-strip').textContent()).includes('0 cards found') && !(await page.locator('.v3-armory-strip').textContent()).includes('Warhead'), 'an old salvage-era save loads with its Armory cleared');
+  await page.evaluate((keep) => localStorage.setItem('straitwatch.v3.progress', keep), legacy);
   await page.reload({ waitUntil: 'networkidle' });
 
   // ---- Menu and Armory ----
