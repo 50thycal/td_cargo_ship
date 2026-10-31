@@ -22,6 +22,7 @@ import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
 import {
   ABILITIES,
   ABILITY_MAX,
+  ABILITY_ORDER,
   MAX_SLOTS,
   RESUPPLY_TEXT,
   SHORT_NAME,
@@ -31,12 +32,14 @@ import {
   type AbilityId,
   type CardId,
 } from '../data/abilities';
-import { ARMORY, ARMORY_ORDER, BAY_ORDER, BAYS, armoryLevel, bayItems, nextCost, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
-import { buyArmory, equipArmory, loadProgress, openBay, recordResult, runLoadout, type Progress } from '../platform/save';
+import { ARMORY, ARMORY_MAX, BAY_ORDER, BAYS, CARD_DROPS, armoryLevel, bayItems, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
+import { equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
+  applyFreePlay,
   createGame,
   raidWarning,
   step,
+  type FreePlaySetup,
   type Game,
   type Phase,
   type RaiderKind,
@@ -46,7 +49,7 @@ import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } f
 import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
-import { cardArtSvg } from './cardArt';
+import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
@@ -174,6 +177,10 @@ export class App {
   private draftWave = -1;
   /** The Armory bay on show. */
   private armoryBay: BayId = 'gun';
+  /** Free Play: the setup on the menu, and the one the current run uses
+   *  (null: a real run). */
+  private freeSetup: FreeSetup = loadFreeSetup();
+  private free: FreeSetup | null = null;
   /** A card was tapped and its pick is landing (see PICK_BEAT_MS). */
   private picking = false;
   /** The beat in progress between a wave's end and its screen. */
@@ -807,6 +814,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
+      (this.free ? '<span class="v2-hud-dev">FREE PLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
@@ -965,7 +973,9 @@ export class App {
     classic.hidden = 'claude' in window;
     const foot = el('div', 'v2-menu-foot');
     const settings = button('⚙ Settings', 'v2-link v2-settings-btn', () => this.showSettings());
-    foot.append(settings, classic);
+    const freePlay = button('▶ Free Play', 'v2-btn v3-free-btn', () => this.showFreePlay());
+    freePlay.dataset.freePlay = '1';
+    foot.append(freePlay, settings, classic);
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
@@ -977,101 +987,197 @@ export class App {
     this.overlay.querySelector('.v2-map-grid')!.append(...cards);
   }
 
-  /** Menu strip: salvage banked, the loadout, and the way in. */
+  /** Menu strip: the cards found, the loadout, and the way in. */
   private armoryStrip(): HTMLElement {
     const p = this.progress;
     const strip = button('', 'v3-armory-strip', () => this.showArmory());
-    const ready = canSpend(p);
-    const loadout = BAY_ORDER.filter((b) => p.bays.includes(b))
-      .map((b) => p.equipped[b])
+    const loadout = BAY_ORDER.map((b) => p.equipped[b])
       .filter((id): id is ArmoryId => !!id)
       .map((id) => `${ARMORY[id].name} ${armoryLevel(p.armory, id)}`);
     strip.append(
       el('strong', '', '⚓ ARMORY'),
-      el('span', 'v3-salvage', `${p.salvage.toLocaleString()} salvage`),
+      el('span', 'v3-salvage', `${p.cards} card${p.cards === 1 ? '' : 's'} found`),
       el('span', 'v3-equipped', loadout.length ? loadout.join(' · ') : 'Base gun, nothing equipped'),
-      el('em', ready ? 'v3-can-buy' : '', ready ? 'Upgrade ready →' : 'Gun, hull and supply →'),
+      el('em', '', 'Your cards →'),
     );
     return strip;
   }
 
-  /** The Armory (round 7): three bays, Gun, Hull and Supply, each with its
-   *  own upgrades; the Hull and Supply bays open for salvage. Levels are
-   *  kept for good. A run takes ONE upgrade from each bay (playtest: "they
-   *  don't get all of them"): the one equipped, chosen here or when a map
-   *  starts. */
+  /** The Armory (round 7): three bays, Gun, Hull and Supply, each a row of
+   *  cards. Cards are won at the end of a run, never bought (playtest: "they
+   *  don't get to pick which ones"); a card won again adds a level. A run
+   *  takes ONE card from each bay: tap one you hold to equip it. */
   private showArmory(back: () => void = () => this.showMenu()): void {
     const p = this.progress;
     const bay = this.armoryBay;
     const again = () => this.showArmory(back);
     const tabs = el('div', 'v3-bay-tabs');
     for (const b of BAY_ORDER) {
-      const open = p.bays.includes(b);
       const eq = p.equipped[b];
-      const tab = button('', `v3-bay-tab${b === bay ? ' on' : ''}${open ? '' : ' shut'}`, () => {
+      const held = bayItems(b).filter((id) => armoryLevel(p.armory, id) > 0).length;
+      const tab = button('', `v3-bay-tab${b === bay ? ' on' : ''}`, () => {
         this.armoryBay = b;
         again();
       });
       tab.dataset.bay = b;
+      tab.style.setProperty('--card-color', BAYS[b].color);
       tab.append(
-        el('strong', '', BAYS[b].name.toUpperCase()),
-        el('span', '', open ? (eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'nothing equipped') : `🔒 ${BAYS[b].cost} salvage`),
+        el('strong', '', `${BAYS[b].name.toUpperCase()} · ${held}/${bayItems(b).length}`),
+        el('span', '', eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : held ? 'nothing equipped' : 'no cards yet'),
       );
       tabs.append(tab);
     }
-    const body = el('div', `v3-armory-list${bayItems(bay).length <= 3 ? ' roomy' : ''}`);
-    if (p.bays.includes(bay)) {
-      body.append(...bayItems(bay).map((id) => this.armoryRow(id, again)));
-    } else {
-      const shut = el('div', 'v3-bay-shut');
-      const openIt = button(`Open the ${BAYS[bay].name} bay · ${BAYS[bay].cost}`, `v2-btn${BAYS[bay].cost <= p.salvage ? ' primary' : ''}`, () => {
-        if (openBay(p, bay)) again();
-      });
-      openIt.disabled = BAYS[bay].cost > p.salvage;
-      openIt.dataset.openBay = bay;
-      shut.append(
-        el('strong', '', `${BAYS[bay].name} bay: ${BAYS[bay].blurb.toLowerCase()}`),
-        el('span', '', bayItems(bay).map((id) => `${ARMORY[id].name}: ${ARMORY[id].blurb.charAt(0).toLowerCase()}${ARMORY[id].blurb.slice(1)}`).join('. ') + '.'),
-        openIt,
-      );
-      body.append(shut);
-    }
+    const row = el('div', `v3-armory-cards n${bayItems(bay).length}`);
+    row.append(
+      ...bayItems(bay).map((id) => {
+        const lv = armoryLevel(p.armory, id);
+        const on = p.equipped[bay] === id;
+        const card = this.armoryCard(id, lv, on ? 'EQUIPPED' : lv ? 'EQUIP' : 'NOT FOUND', () => {
+          if (lv && equipArmory(p, on ? null : id, bay)) again();
+        });
+        card.classList.toggle('chosen', on);
+        card.classList.toggle('locked', !lv);
+        card.disabled = !lv;
+        return card;
+      }),
+    );
     this.showOverlay('v3-armory', [
       el('h2', '', 'Armory'),
-      el('p', 'v2-sub', `${p.salvage.toLocaleString()} salvage (from every run, won or lost). Levels are yours for good; a run takes one upgrade from each bay.`),
+      el('p', 'v2-sub', `Cards drop at the end of a run (clear ${CARD_DROPS.minWaves} waves; more for clearing a map). A card you hold again adds a level. A run takes one from each bay: tap a card to equip it.`),
       tabs,
-      body,
+      row,
       button('Back', 'v2-btn primary', back),
     ]);
   }
 
-  /** One Armory upgrade: its levels, its value now, Equip and Upgrade. */
-  private armoryRow(id: ArmoryId, again: () => void): HTMLElement {
-    const p = this.progress;
+  /** One Armory card, drawn like a weapon card: its bay, a badge, the art,
+   *  its name, its level pips, what it does and the number now and next. */
+  private armoryCard(id: ArmoryId, lv: number, badge: string, onTap?: () => void): HTMLButtonElement {
     const def = ARMORY[id];
-    const lv = armoryLevel(p.armory, id);
-    const cost = nextCost(p.armory, id);
-    const equipped = p.equipped[def.bay] === id;
-    const row = el('div', `v3-armory-row${equipped ? ' equipped' : ''}`);
-    row.dataset.armory = id;
-    const pips = el('span', 'v2-card-level');
+    const card = button('', 'v2-card v3-armory-card', () => onTap?.());
+    card.dataset.armory = id;
+    card.style.setProperty('--card-color', BAYS[def.bay].color);
+    const top = el('span', 'v2-card-top', '');
+    const badgeClass = badge === 'EQUIPPED' ? 'max' : badge === 'NEW' ? 'new' : badge === 'NOT FOUND' || badge === 'EQUIP' ? 'off' : 'up';
+    top.append(el('span', 'v2-card-answers', BAYS[def.bay].name), el('span', `v2-badge ${badgeClass}`, badge));
+    const art = el('span', 'v2-card-art', '');
+    art.innerHTML = armoryArtSvg(id);
+    const pips = el('span', 'v2-card-level', '');
     for (let k = 1; k <= def.max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
-    const text = el('div', 'v3-armory-text');
-    text.append(el('strong', '', def.name), el('span', '', def.blurb), pips);
-    const now = el('div', 'v3-armory-stat');
-    now.append(el('b', '', def.show(lv)), ...(cost === null ? [] : [el('span', '', `next: ${def.show(lv + 1)}`)]));
-    const equip = button(equipped ? 'EQUIPPED' : lv > 0 ? 'Equip' : 'Not bought', `v2-btn v3-equip${equipped ? ' on' : ''}`, () => {
-      if (equipArmory(p, equipped ? null : id, def.bay)) again();
+    pips.append(el('span', '', lv >= def.max ? 'MAX' : `LV ${lv}/${def.max}`));
+    const now = lv ? def.show(lv) : 'Not found yet';
+    const next = lv < def.max ? `${lv ? ' · next: ' : ' · first card: '}${def.show(lv + 1)}` : '';
+    card.append(top, art, el('strong', 'v2-card-name', def.name), pips, el('span', 'v2-card-text', def.blurb), el('span', 'v3-card-stat', `${now}${next}`));
+    return card;
+  }
+
+  /** The result screen's Armory drop: the cards won, each one level (NEW
+   *  for a card not held before), or why there were none. */
+  private wonCards(cards: ArmoryId[], firstClear: boolean): HTMLElement {
+    const box = el('div', 'v3-won');
+    if (!cards.length) {
+      box.append(el('p', 'v2-sub', `No Armory card this time: clear ${CARD_DROPS.minWaves} waves to win one.`));
+      return box;
+    }
+    const p = this.progress;
+    // Several of one card: each shows the level it brought.
+    const seen: Partial<Record<ArmoryId, number>> = {};
+    const total: Partial<Record<ArmoryId, number>> = {};
+    for (const id of cards) total[id] = (total[id] ?? 0) + 1;
+    const row = el('div', 'v3-won-cards');
+    row.append(
+      ...cards.map((id, i) => {
+        seen[id] = (seen[id] ?? 0) + 1;
+        const lv = armoryLevel(p.armory, id) - (total[id]! - seen[id]!);
+        const card = this.armoryCard(id, lv, lv === 1 ? 'NEW' : lv >= ARMORY[id].max ? 'MAX' : `LV ${lv}`);
+        card.tabIndex = -1;
+        card.style.setProperty('--deal', `${i * 260}ms`);
+        return card;
+      }),
+    );
+    box.append(el('span', 'v2-draft-eyebrow', `Armory card${cards.length > 1 ? 's' : ''} won${firstClear ? ' · first clear bonus' : ''}`), row);
+    return box;
+  }
+
+  /** Free Play (round 7): a test run on any map, from any wave, with any
+   *  weapons and Armory at any level. Nothing in it counts: no records, no
+   *  unlocks, no Armory cards. The setup is kept for next time. */
+  private showFreePlay(): void {
+    const fp = this.freeSetup;
+    const select = (options: [string, string][], value: string, onChange: (v: string) => void, data: string) => {
+      const s = document.createElement('select');
+      s.className = 'v3-select';
+      s.dataset.fp = data;
+      for (const [v, label] of options) {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = label;
+        s.append(o);
+      }
+      s.value = value;
+      s.addEventListener('change', () => {
+        onChange(s.value);
+        saveFreeSetup(fp);
+        this.showFreePlay();
+      });
+      return s;
+    };
+    const line = (label: string, ...controls: HTMLElement[]) => {
+      const r = el('div', 'v3-fp-line');
+      r.append(el('span', 'v3-fp-label', label), ...controls);
+      return r;
+    };
+    const left = el('div', 'v3-fp-col');
+    left.append(
+      line('Map', select(MAP_ORDER.map((m) => [m, MAPS[m].name]), fp.map, (v) => (fp.map = v as MapId), 'map')),
+      line('Start at', select(Array.from({ length: 10 }, (_, k) => [`${k + 1}`, `Wave ${k + 1}`]), `${fp.wave}`, (v) => (fp.wave = Number(v)), 'wave')),
+      ...[0, 1, 2].map((i) => {
+        const w = fp.weapons[i];
+        return line(
+          `Weapon ${i + 1}`,
+          select([['', '—'], ...ABILITY_ORDER.map((a): [string, string] => [a, ABILITIES[a].name])], w?.id ?? '', (v) => {
+            fp.weapons[i] = v ? { id: v as AbilityId, level: w?.level ?? 1 } : null;
+          }, `weapon${i}`),
+          select([['1', 'LV 1'], ['2', 'LV 2'], ['3', 'MAX']], `${w?.level ?? 1}`, (v) => {
+            if (w) w.level = Number(v);
+          }, `level${i}`),
+        );
+      }),
+    );
+    const right = el('div', 'v3-fp-col');
+    right.append(
+      ...BAY_ORDER.map((b) => {
+        const a = fp.armory[b];
+        return line(
+          BAYS[b].name,
+          select([['', '—'], ...bayItems(b).map((x): [string, string] => [x, ARMORY[x].name])], a?.id ?? '', (v) => {
+            fp.armory[b] = v ? { id: v as ArmoryId, level: Math.min(a?.level ?? 1, ARMORY[v as ArmoryId].max) } : null;
+          }, `bay-${b}`),
+          select(Array.from({ length: a ? ARMORY[a.id].max : ARMORY_MAX }, (_, k): [string, string] => [`${k + 1}`, `LV ${k + 1}`]), `${a?.level ?? 1}`, (v) => {
+            if (a) a.level = Number(v);
+          }, `bay-level-${b}`),
+        );
+      }),
+    );
+    const drops = button(fp.frequentDrops ? '✓ Frequent weapon drops' : 'Frequent weapon drops: off', `v2-btn v3-fp-toggle${fp.frequentDrops ? ' on' : ''}`, () => {
+      fp.frequentDrops = !fp.frequentDrops;
+      saveFreeSetup(fp);
+      this.showFreePlay();
     });
-    equip.disabled = lv <= 0;
-    equip.dataset.equip = id;
-    const buy = button(cost === null ? 'MAX' : `Upgrade · ${cost}`, `v2-btn${cost !== null && cost <= p.salvage ? ' primary' : ''}`, () => {
-      if (buyArmory(p, id)) again();
-    });
-    buy.disabled = cost === null || cost > p.salvage;
-    buy.dataset.buy = id;
-    row.append(text, now, equip, buy);
-    return row;
+    drops.dataset.fp = 'drops';
+    right.append(drops);
+    const cols = el('div', 'v3-fp-cols');
+    cols.append(left, right);
+    const go = button('Start free play →', 'v2-btn primary', () => this.play(fp.map, fp));
+    go.dataset.freeStart = '1';
+    const row = el('div', 'v2-btn-row');
+    row.append(button('Menu', 'v2-btn', () => this.showMenu()), go);
+    this.showOverlay('v3-freeplay', [
+      el('h2', '', 'Free Play'),
+      el('p', 'v2-sub', 'Test any weapon and any Armory upgrade, at any level, from any wave. Nothing here counts toward records or Armory cards.'),
+      cols,
+      row,
+    ]);
   }
 
   /** Before a run: pick the one upgrade it takes from each bay (the last
@@ -1079,7 +1185,7 @@ export class App {
    *  Watch mode and the dev gun override skip it. */
   private prepare(id: MapId): void {
     const p = this.progress;
-    const bays = BAY_ORDER.filter((b) => p.bays.includes(b) && bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
+    const bays = BAY_ORDER.filter((b) => bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
     const watch = this.dev && this.devSettings.watch;
     if (!bays.length || watch || (this.dev && this.devSettings.armory !== 'yours')) {
       this.play(id);
@@ -1245,22 +1351,27 @@ export class App {
     return box;
   }
 
-  private play(id: MapId): void {
+  /** Start a run on `id`; with `free`, a Free Play run set up that way. */
+  private play(id: MapId, free: FreeSetup | null = null): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     const params = new URLSearchParams(location.search);
-    const preset = this.dev ? DEV_PRESETS[this.devSettings.preset] : null;
+    const preset = this.dev && !free ? DEV_PRESETS[this.devSettings.preset] : null;
     const tempo = preset?.tempo;
-    const start = Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
+    const start = free ? free.wave : Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
-    const watch = this.dev && this.devSettings.watch;
+    const watch = this.dev && !free && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
-    this.game = createGame(id, seed, skip, tempo, this.runArmory());
+    this.free = free ? structuredClone(free) : null;
+    const freePlay = free ? freePlaySetup(free) : undefined;
+    this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
+    if (freePlay) applyFreePlay(this.game, freePlay);
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
+      ...(freePlay ? { freePlay } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: {
         w: window.innerWidth,
@@ -1552,9 +1663,10 @@ export class App {
   }
 
   private showResult(g: Game, won: boolean): void {
-    // Dev runs never touch the real records, unlocks or salvage.
+    // Dev and Free Play runs never touch the real records, unlocks or cards.
+    const free = this.free;
     const wavesCleared = g.history.filter((h) => h.outcome === 'cleared').length;
-    const res = this.dev ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, delivered: g.delivered, wavesCleared });
+    const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared });
     const best = res?.best ?? false;
     const rec = this.rec;
     const log = this.endRun(won ? 'won' : 'lost');
@@ -1565,20 +1677,21 @@ export class App {
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
       `<span><b>${g.lost}</b>ships sunk</span>` +
-      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>` +
-      (res ? `<span class="v3-salvage-earned"><b>+${res.salvage}</b>salvage${res.firstClear ? ' · first clear!' : ''}</span>` : '');
+      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>`;
+    // The Armory cards this run won, drawn at random, shown as cards.
+    const won_ = res ? this.wonCards(res.cards, res.firstClear) : null;
     const buttons: HTMLElement[] = [];
-    if (won) {
+    if (free) {
+      buttons.push(button('Play it again', 'v2-btn primary', () => this.play(g.map.id, free)));
+      buttons.push(button('Change setup', 'v2-btn', () => this.showFreePlay()));
+    } else if (won) {
       buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.prepare(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
       buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id)));
     }
-    if (!this.dev) {
-      const affordable = canSpend(this.progress);
-      buttons.push(button(affordable ? '⚓ Armory: upgrade ready' : '⚓ Armory', `v2-btn${affordable ? ' v3-can-buy' : ''}`, () => this.showArmory()));
-    }
+    if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
     const title = won
@@ -1586,14 +1699,14 @@ export class App {
       : g.endless
         ? `Endless run over: wave ${g.wave}`
         : `Convoy lost on wave ${g.wave}`;
-    const sub = won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
+    const sub = free ? `Free play · ${won ? 'cleared' : reason}` : won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
     // Dev ghost check: how bot-you does on this same seed, for any run you
     // played some of (a run the bot played alone needs no comparing).
-    const ghost = this.dev && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
+    const ghost = this.dev && !free && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
     const ghostLine = el('div', 'v2-ghost');
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
     if (ghost) this.startGhost(g, log, ghostLine);
   }
 
@@ -1682,15 +1795,6 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
 };
 
-/** Something in the Armory the salvage banked can buy: a level in an open
- *  bay, or a bay. */
-function canSpend(p: Progress): boolean {
-  return (
-    ARMORY_ORDER.some((id) => p.bays.includes(ARMORY[id].bay) && (nextCost(p.armory, id) ?? Infinity) <= p.salvage) ||
-    BAY_ORDER.some((b) => !p.bays.includes(b) && BAYS[b].cost <= p.salvage)
-  );
-}
-
 /** The first weapon drop's banner, with the run's seconds (Long Loads). */
 function weaponHint(seconds: number): [string, string] {
   return ['WEAPON DROP', `Tap it: the gun fires that weapon for ${seconds} s. Each shot still uses a round.`];
@@ -1757,4 +1861,78 @@ function speedButton(steps: readonly number[], initial: number, onChange: (step:
   };
   set(initial);
   return { el: b, set };
+}
+
+// ---------------------------------------------------------------------------
+// Free Play (round 7): the setup on its screen, kept between visits.
+
+interface FreeSetup {
+  map: MapId;
+  wave: number;
+  weapons: ({ id: AbilityId; level: number } | null)[];
+  armory: Record<BayId, { id: ArmoryId; level: number } | null>;
+  frequentDrops: boolean;
+}
+
+const FREE_KEY = 'straitwatch.v3.freeplay';
+
+/** The default: wave 7 on The Strait (late enough to test against, early
+ *  enough to last), three of round 6's weapons, frequent drops. */
+function loadFreeSetup(): FreeSetup {
+  const base: FreeSetup = {
+    map: 'strait',
+    wave: 7,
+    weapons: [
+      { id: 'shrapnel', level: 1 },
+      { id: 'frigate', level: 1 },
+      { id: 'thermo', level: 1 },
+    ],
+    armory: { gun: null, hull: null, supply: null },
+    frequentDrops: true,
+  };
+  try {
+    const raw = JSON.parse(localStorage.getItem(FREE_KEY) ?? 'null') as Partial<FreeSetup> | null;
+    if (!raw) return base;
+    const level = (n: unknown, max: number) => Math.max(1, Math.min(max, Math.floor(Number(n) || 1)));
+    return {
+      map: MAP_ORDER.includes(raw.map as MapId) ? (raw.map as MapId) : base.map,
+      wave: level(raw.wave, 10),
+      weapons: [0, 1, 2].map((i) => {
+        const w = raw.weapons?.[i];
+        return w && ABILITY_ORDER.includes(w.id) ? { id: w.id, level: level(w.level, ABILITY_MAX) } : null;
+      }),
+      armory: Object.fromEntries(
+        BAY_ORDER.map((b) => {
+          const a = raw.armory?.[b];
+          return [b, a && a.id in ARMORY && ARMORY[a.id].bay === b ? { id: a.id, level: level(a.level, ARMORY[a.id].max) } : null];
+        }),
+      ) as FreeSetup['armory'],
+      frequentDrops: raw.frequentDrops ?? base.frequentDrops,
+    };
+  } catch {
+    return base;
+  }
+}
+
+function saveFreeSetup(fp: FreeSetup): void {
+  try {
+    localStorage.setItem(FREE_KEY, JSON.stringify(fp));
+  } catch {
+    // storage unavailable: the setup lasts for the session
+  }
+}
+
+/** The Armory a Free Play run takes: its picks, at their levels. */
+function freeArmory(fp: FreeSetup): ArmoryLevels {
+  const a: ArmoryLevels = {};
+  for (const b of BAY_ORDER) {
+    const x = fp.armory[b];
+    if (x) a[x.id] = x.level;
+  }
+  return a;
+}
+
+/** What the sim (and the play log) needs from a Free Play setup. */
+function freePlaySetup(fp: FreeSetup): FreePlaySetup {
+  return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops };
 }

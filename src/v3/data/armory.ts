@@ -1,15 +1,18 @@
 // THE ARMORY (V3). Nothing in the Armory changes inside a run: it is set
-// before the run, the way gear sets your weapon in Survivor.io. Salvage
-// earned from every run (won or lost) buys armory levels, and the levels are
-// permanent.
+// before the run, the way gear sets your weapon in Survivor.io.
 //
 // Round 7 ("let's overhaul that armory too, it needs some more to it"): the
 // Armory is three BAYS, each with its own upgrades, and a run takes ONE
 // upgrade from each bay (the round-1 rule, "the player should only be
 // allowed to select one… they don't get all of them", now per bay):
-//   - Gun: the main gun (open from the start; the original five).
-//   - Hull: the carrier and the convoy (opened with salvage).
-//   - Supply: weapon drops and power-ups (opened with more salvage).
+//   - Gun: the main gun (the original five).
+//   - Hull: the carrier and the convoy.
+//   - Supply: weapon drops and power-ups.
+// And every upgrade is a CARD, won at the end of a run, not bought: "they
+// need to get that card at the end of the game. They don't get to pick
+// which ones… to get the next reload, you need to win another reload from
+// a random drop" (Survivor.io's gear). A card you hold already stacks: one
+// more level. Salvage (round 1's currency) is gone.
 //
 // `armoryStats()` turns armory levels into the numbers the sim reads; with
 // no levels it is exactly V2's base gun and the base drop rules.
@@ -37,14 +40,14 @@ export interface BayDef {
   name: string;
   /** One line: what the bay's upgrades are about. */
   blurb: string;
-  /** Salvage to open it (0: open from the start). */
-  cost: number;
+  /** The colour of its cards. */
+  color: string;
 }
 
 export const BAYS: Record<BayId, BayDef> = {
-  gun: { id: 'gun', name: 'Gun', blurb: 'The main gun', cost: 0 },
-  hull: { id: 'hull', name: 'Hull', blurb: 'The carrier and the convoy', cost: 250 },
-  supply: { id: 'supply', name: 'Supply', blurb: 'Weapon drops and power-ups', cost: 600 },
+  gun: { id: 'gun', name: 'Gun', blurb: 'The main gun', color: '#38bdf8' },
+  hull: { id: 'hull', name: 'Hull', blurb: 'The carrier and the convoy', color: '#4ade80' },
+  supply: { id: 'supply', name: 'Supply', blurb: 'Weapon drops and power-ups', color: '#fbbf24' },
 };
 
 export const BAY_ORDER: BayId[] = ['gun', 'hull', 'supply'];
@@ -55,20 +58,14 @@ export interface ArmoryDef {
   name: string;
   /** One line: what a level does. */
   blurb: string;
-  /** Levels it has. */
+  /** Levels it has: one card each. */
   max: number;
-  /** Salvage for each level: costs[level] buys level + 1. */
-  costs: readonly number[];
   /** The stat at each level (index 0 = no levels), shown as the number. */
   show: (level: number) => string;
 }
 
 /** Levels for most upgrades. */
 export const ARMORY_MAX = 5;
-
-/** Salvage for the next level of a five-level upgrade: COSTS[level] buys
- *  level + 1. */
-export const ARMORY_COSTS = [80, 160, 280, 450, 700] as const;
 
 /** Per-level effects (index = level). Round 6's audit found an 11-round rack
  *  reloading 55% faster let mashing win, so the gun stops short of that:
@@ -116,7 +113,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Quick Reload',
     blurb: 'Each round loads 6% faster',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${(INTERCEPTOR.reload * RELOAD[l]).toFixed(2)} s a round`,
   },
   warhead: {
@@ -125,7 +121,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Wide Warhead',
     blurb: 'Interceptor blast 40% wider',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${pct(WARHEAD[l])} blast`,
   },
   motor: {
@@ -134,7 +129,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Fast Motors',
     blurb: 'Interceptors fly 20% faster',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${pct(MOTOR[l])} speed`,
   },
   magazine: {
@@ -143,7 +137,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Deep Magazine',
     blurb: 'More rounds in the rack',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${INTERCEPTOR.rack + MAGAZINE[l]} rounds`,
   },
   fuse: {
@@ -152,7 +145,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Proximity Fuse',
     blurb: 'Bursts closer to a fast target; level 5 hits for 2',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${INTERCEPTOR.contact + CONTACT[l]} px fuse${l >= ARMORY_MAX ? ', 2 dmg' : ''}`,
   },
   plating: {
@@ -161,7 +153,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Armor Plating',
     blurb: 'Hits on a ship or the carrier glance off, 8% more a level',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${pct(GLANCE[l])} of hits glance off`,
   },
   pointdef: {
@@ -170,7 +161,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Point Defense',
     blurb: 'The carrier shoots the nearest threat on its own',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => (l ? `a shot every ${PD_GAP[l]} s, reach ${PD_RANGE[l]}` : 'none'),
   },
   repair: {
@@ -179,7 +169,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Damage Control',
     blurb: 'Crews patch every damaged hull, ships and carrier',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => (l ? `+1 hull every ${REPAIR[l]} s` : 'none'),
   },
   longload: {
@@ -188,7 +177,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Long Loads',
     blurb: 'A weapon pickup stays in the gun 4 s longer a level',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${WEAPON.time + LOAD_TIME[l]} s a weapon`,
   },
   drops: {
@@ -197,7 +185,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Supply Lines',
     blurb: 'Weapons drop more often',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${pct(DROP_SHARE[l])} drops, one at least every ${DROP_PITY[l]} s`,
   },
   stockpile: {
@@ -206,7 +193,6 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Stockpile',
     blurb: 'Power-ups drop more often and last longer',
     max: ARMORY_MAX,
-    costs: ARMORY_COSTS,
     show: (l) => `${pct(POWER_SHARE[l])} drops, ${pct(POWER_TIME[l])} time`,
   },
 };
@@ -281,31 +267,33 @@ export function armoryStats(a: ArmoryLevels = {}): ArmoryStats {
   };
 }
 
-/** Salvage for the next level of one upgrade, or null when it is maxed. */
-export function nextCost(a: ArmoryLevels, id: ArmoryId): number | null {
-  const l = armoryLevel(a, id);
-  return l >= ARMORY[id].max ? null : ARMORY[id].costs[l];
-}
-
-/** Salvage to open every bay and buy every level of every upgrade. */
-export const ARMORY_TOTAL =
-  BAY_ORDER.reduce((s, b) => s + BAYS[b].cost, 0) + ARMORY_ORDER.reduce((s, id) => s + ARMORY[id].costs.reduce((t, c) => t + c, 0), 0);
-
-/** Salvage a run earns: a little for every ship through, more for every wave
- *  cleared, and a bonus the first time a map is cleared. A lost run still
- *  pays, so a hard map is never a dead end. */
-export const SALVAGE = {
-  perShip: 1,
-  perWave: 6,
-  clear: 40,
-  firstClear: 80,
+/** Armory cards a finished run wins: one for any run that cleared enough
+ *  waves to count (a run quit at once wins nothing), one more for clearing
+ *  the map, one more the first time it is cleared. */
+export const CARD_DROPS = {
+  minWaves: 3,
+  run: 1,
+  clear: 1,
+  firstClear: 1,
 } as const;
 
-export function salvageFor(run: { delivered: number; wavesCleared: number; cleared: boolean }, firstClear: boolean): number {
-  return (
-    run.delivered * SALVAGE.perShip +
-    run.wavesCleared * SALVAGE.perWave +
-    (run.cleared ? SALVAGE.clear : 0) +
-    (run.cleared && firstClear ? SALVAGE.firstClear : 0)
-  );
+export function cardsFor(run: { wavesCleared: number; cleared: boolean }, firstClear: boolean): number {
+  if (run.wavesCleared < CARD_DROPS.minWaves && !run.cleared) return 0;
+  return CARD_DROPS.run + (run.cleared ? CARD_DROPS.clear : 0) + (run.cleared && firstClear ? CARD_DROPS.firstClear : 0);
+}
+
+/** Draw `n` Armory cards at random from the upgrades not yet at their last
+ *  level (a card drawn counts towards the next draw), and add them to
+ *  `levels`. Returns the cards in the order won; fewer when everything is
+ *  maxed. `pick(k)` returns an integer in [0, k). */
+export function drawCards(levels: ArmoryLevels, n: number, pick: (k: number) => number): ArmoryId[] {
+  const won: ArmoryId[] = [];
+  for (let i = 0; i < n; i++) {
+    const open = ARMORY_ORDER.filter((id) => armoryLevel(levels, id) < ARMORY[id].max);
+    if (!open.length) break;
+    const id = open[pick(open.length)];
+    levels[id] = armoryLevel(levels, id) + 1;
+    won.push(id);
+  }
+  return won;
 }

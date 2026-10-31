@@ -9,6 +9,7 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import {
+  applyFreePlay,
   continueEndless,
   createGame,
   pickUpgrade,
@@ -16,6 +17,7 @@ import {
   setFormation,
   step,
   tap,
+  type FreePlaySetup,
   type Game,
   type Phase,
   type TapResult,
@@ -81,6 +83,8 @@ export interface PlayLog {
    *  from. Balance analysis should leave these logs out. */
   tempo?: Tempo;
   dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
+  /** A Free Play run (round 7): its setup, applied as the game is created. */
+  freePlay?: FreePlaySetup;
   /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
   ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
@@ -259,6 +263,7 @@ export function replay(log: PlayLog): Game {
  *  with a `WaveMark`, the run exactly as that wave began. */
 export function replayTo(log: PlayLog, lastStep: number, commands: number): Game {
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
+  if (log.freePlay) applyFreePlay(g, log.freePlay);
   const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {

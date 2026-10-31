@@ -48,6 +48,7 @@ import {
   AB,
   ABILITY_MAX,
   ABILITY_ORDER,
+  MAX_SLOTS,
   WEAPON,
   abilityName,
   canSwapIn,
@@ -852,6 +853,32 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
 function gainLevel(g: Game, id: AbilityId): void {
   g.levels[id] = (g.levels[id] ?? 0) + 1;
   if (!g.slots.includes(id)) g.slots.push(id);
+}
+
+/** Free Play (round 7): a test run, set up on the menu. It starts holding
+ *  the weapons chosen, at their levels (in place of whatever the skip ahead
+ *  drafted), and can drop weapons far more often. */
+export interface FreePlaySetup {
+  /** The held weapons, in slot order, with their levels (1–3). */
+  weapons: { id: AbilityId; level: number }[];
+  /** Weapons drop every few seconds instead of at the normal rate. */
+  frequentDrops: boolean;
+}
+
+/** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
+export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
+
+export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
+  g.levels = {};
+  g.slots = [];
+  for (const w of setup.weapons.slice(0, MAX_SLOTS)) {
+    if (g.slots.includes(w.id)) continue;
+    g.levels[w.id] = Math.max(1, Math.min(ABILITY_MAX, Math.floor(w.level)));
+    g.slots.push(w.id);
+  }
+  if (setup.frequentDrops) {
+    g.stats = { ...g.stats, dropPity: Math.min(g.stats.dropPity, FREE_PLAY_DROPS.pity), dropShare: g.stats.dropShare * FREE_PLAY_DROPS.share };
+  }
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */

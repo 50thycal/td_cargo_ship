@@ -32,9 +32,11 @@ Shell, Scattergun, Boomerang, Flak Cannon, Seeker Pod, Aegis Dome, Gravity
 Well, Railgun, Tesla Arc). Hold three, level each to 3 (**MAX**, where it
 takes a new name). A weapon you hold **drops as a pickup**; tap it and the main
 gun fires that weapon for 15 s, each shot spending a round as usual. The
-main gun has no upgrades inside a run: the **Armory** sets it beforehand,
-with salvage earned from every run. Three bays (Gun, Hull and Supply,
-eleven permanent upgrades); a run takes one upgrade from each bay.
+main gun has no upgrades inside a run: the **Armory** sets it beforehand.
+Its eleven upgrades are cards in three bays (Gun, Hull and Supply), won at
+random at the end of a run (a card won again adds a level); a run takes one
+from each bay. **Free Play** tests any weapon and card, at any level, from
+any wave.
 
 ```bash
 npm run dev:v3          # opens /v3.html

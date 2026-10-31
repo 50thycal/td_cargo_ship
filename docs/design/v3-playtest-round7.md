@@ -1,13 +1,21 @@
-# V3 playtest round 7 — Battle Group's line, "MAX", and the Armory overhaul
+# V3 playtest round 7 — Battle Group in line, "MAX", Armory cards, Free Play
 
-The player's playtest on The Strait ("all working well") asked for three
-things:
+The player's playtest on The Strait ("all working well") asked for:
 
 1. "On the max level for the frigate the third new ship will run over the
    other; it should just be a line, no need to overlap."
 2. "For the power-ups let's not call the last level evolved, call it max, as
    that makes more sense to me."
-3. "Let's also overhaul that armory too, it needs some more to it."
+3. "Let's also overhaul that armory too, it needs some more to it." Then,
+   finishing the thought: "each item should have its own card with the
+   information on it about what it does. It should look like a weapon power
+   up… they can upgrade them just like how they are, but they need to get
+   that card at the end of the game. They don't get to pick which ones…
+   to get the next reload, you need to win another reload from a random
+   drop. I think that's kind of how the Survivor.io one works."
+4. "A free play mode where I could test out all the new weapons on any
+   level and any level of upgrade… on a challenging level, good enough to
+   test everything out: think level 8 or 7 on the Strait."
 
 ## 1. Battle Group sails in line
 
@@ -32,28 +40,48 @@ cards ("Flak Curtain MAX"), and the line under a full hand ("All three at
 max"). The weapon still takes its new name at MAX (Flak → Flak Curtain).
 The browser suite checks the chips read MAX.
 
-## 3. The Armory: three bays
+## 3. The Armory: three bays of cards
 
-Before: five upgrades for the main gun, one equipped per run. Now three
-**bays**, each with its own upgrades. **A run takes one upgrade from each
-bay**: round 1's rule ("they don't get all of them") holds per bay.
+Before: five upgrades for the main gun, bought with salvage, one equipped
+per run. Now three **bays**, each with its own upgrades, and **a run takes
+one upgrade from each bay**: round 1's rule ("they don't get all of them")
+holds per bay.
 
-| Bay | Opens for | Upgrades |
-|---|---|---|
-| **Gun** | open | Quick Reload, Wide Warhead, Fast Motors, Deep Magazine, Proximity Fuse (as before) |
-| **Hull** | 250 salvage | **Armor Plating**: 8% a level of hits on a ship or the carrier glance off. **Point Defense**: the carrier fires a free interceptor at the nearest threat in reach. **Damage Control**: every damaged hull, ships and carrier, gets a point back every 10 s (4 s at level 5). |
-| **Supply** | 600 salvage | **Long Loads**: a weapon pickup stays in the gun 4 s longer a level. **Supply Lines**: weapons drop more often, on a shorter pity clock. **Stockpile**: power-ups drop more often and the timed ones last longer. |
+| Bay | Upgrades |
+|---|---|
+| **Gun** | Quick Reload, Wide Warhead, Fast Motors, Deep Magazine, Proximity Fuse (as before) |
+| **Hull** | **Armor Plating**: 8% a level of hits on a ship or the carrier glance off. **Point Defense**: the carrier fires a free interceptor at the nearest threat in reach. **Damage Control**: every damaged hull, ships and carrier, gets a point back every 10 s (4 s at level 5). |
+| **Supply** | **Long Loads**: a weapon pickup stays in the gun 4 s longer a level. **Supply Lines**: weapons drop more often, on a shorter pity clock. **Stockpile**: power-ups drop more often and the timed ones last longer. |
 
-The screens:
+**Every upgrade is a card, won, not bought** (the rest of the player's
+thought):
 
-- **The Armory** has a tab per bay showing what it has equipped, or its
-  price while shut. A shut bay lists what it holds and opens for salvage.
-  On a phone, a bay of three keeps each upgrade's one-line description.
-- **Choose your loadout** (when a map starts) has a row per open bay: the
-  upgrades bought, and "none".
-- **The menu strip** shows the loadout.
+- **What a run wins:**
+  - 1 card for a run that cleared at least 3 waves (a run quit at once wins
+    nothing);
+  - +1 for clearing the map;
+  - +1 more the first time it is cleared.
 
-Old saves keep their equipped gun upgrade.
+  Each card is drawn at random from the upgrades not yet maxed. A card held
+  already adds a level ("to get the next reload, you need to win another
+  reload"). Salvage, the old currency, is gone. The first build of the bays
+  opened them for salvage; with cards, all three are open from the start.
+- **The cards** are drawn like the weapon draft cards, in the bay's colour:
+  - the bay;
+  - a badge (EQUIPPED, EQUIP, NOT FOUND, or NEW / LV n when won);
+  - art made for each upgrade;
+  - its name and level pips;
+  - what it does;
+  - its number now and at the next level.
+- **The result screen** deals in the cards a run won. Two of one card show
+  NEW, then LV 2.
+- **The Armory** shows a bay at a time as a row of cards: tap one you hold
+  to equip it; ones not found yet are greyed. Its tabs show each bay's cards
+  found and the one equipped.
+- **Choose your loadout** comes up when a map starts: a row per bay with
+  cards held.
+- **The menu strip** shows the cards found and the loadout.
+- **Old saves** keep the levels they bought and their equipped gun.
 
 ### Tuning: every upgrade must do something (the Cryo rule)
 
@@ -74,41 +102,66 @@ base gun clears 57% this way.
 Stacked: level 2 in all three bays clears 85%; everything at level 5,
 98–100%.
 
-**The whole game** (all five maps cleared in order from an empty Armory,
-buying the cheapest next step of Wide Warhead + Point Defense + Supply
-Lines; one chain of runs per skill):
+**The whole game** (all five maps cleared in order from an empty Armory;
+one chain of runs per skill):
 
-| Player | Gun only (as before) | Three bays |
-|---|---|---|
-| Sharp bot | 1.0 h, 6 runs (round 6) | 1.4 h, 9 runs |
-| Average bot | 1.0 h, 6 runs (round 6) | 1.3 h, 8 runs |
-| Casual bot | 7.9 h, the 60-run cap, stuck on map 3 (re-measured on this build) | **3.2 h, 22 runs, all five maps** |
+| Player | Gun only, salvage (as before) | Three bays, salvage (first build) | Three bays, cards won at random (final) |
+|---|---|---|---|
+| Sharp bot | 1.0 h, 6 runs (round 6) | 1.4 h, 9 runs | 1.3 h, 8 runs, 18 cards |
+| Average bot | 1.0 h, 6 runs (round 6) | 1.3 h, 8 runs | 1.0 h, 6 runs, 16 cards |
+| Casual bot | 7.9 h, the 60-run cap, stuck on map 3 | 3.2 h, 22 runs | **2.4 h, 16 runs, 26 cards, all five maps** |
 
-A fresh Armory plays as before (the full sweep's clear table matches round
-6's within its noise). What changed is how far salvage carries a player who
-keeps losing, which is the Armory's job. The sharp and average lines are
-one chain each, so they are within noise of round 6's.
+The cards run takes the highest-level card of each bay into each run. A
+fresh Armory plays as before (the full sweep's clear table matches round
+6's within its noise). What changed is how far the Armory carries a player
+who keeps losing, which is its job. The sharp and average lines are one
+chain each, so they are within noise of round 6's.
+
+## 4. Free Play
+
+**Free Play**, on the menu, sets up a test run:
+
+- any map and any start wave (default: wave 7 on The Strait);
+- three weapons, each at LV 1, LV 2 or MAX;
+- one Armory card from each bay, at any level;
+- optionally, frequent weapon drops: one at least every 8 s, at twice the
+  chance, so a weapon can be tried over and over.
+
+The setup is kept for next time.
+
+**Nothing in it counts**: no records, unlocks or Armory cards. The HUD says
+FREE PLAY, and the result offers "Play it again" or "Change setup". Drafts
+between waves work as usual. Its play log records the setup, and a test
+replays a watched free-play run exactly.
 
 ## Checks
 
-- `npm test`: 893 pass (V3: 57). New tests:
+- `npm test`: all pass (V3: 58). New tests:
   - Battle Group's no-overlap test on every map;
-  - bays, opening, buying, one upgrade a bay, and old-save migration;
+  - the cards a run wins and how they draw and stack;
+  - the result recorded with its cards;
+  - one card a bay, and old-save migration;
   - each Hull and Supply upgrade's effect;
-  - a run with all three bays replaying exactly.
-- `npm run e2e:v3`: 48 checks. The new ones:
-  - buys a gun level;
-  - opens the Hull bay and buys Point Defense, checking one upgrade is
-    equipped per bay;
-  - checks the Supply bay is out of reach;
+  - a run with all three bays replaying exactly;
+  - Free Play's setup, and a watched free-play run replaying exactly.
+- `npm run e2e:v3`: 55 checks. The new ones:
+  - the Armory's cards (greyed until won, each saying what it does);
+  - equipping a gun and a hull card, with nothing to buy;
   - the loadout picker;
   - the run's Point Defense;
   - the MAX chips;
+  - a lost run that cleared 3 waves winning one card, shown as a card;
+  - Free Play (wave 7, Battle Group, Armor Plating 5, frequent drops, the
+    HUD tag; it wins nothing and offers "Play it again"; its setup fits a
+    phone);
   - log version 11.
-- Browser, at 1280×720, 844×390 and 667×375, with a poor save (an old
-  gun-only one) and a rich one:
-  - every Armory tab, the shut bay, the loadout picker, the menu: no
-    scrolling, nothing clipped or off screen, no page errors;
+- Browser, at 1280×720, 844×390 and 667×375:
+  - the menu, every Armory bay's cards, the loadout picker, the result
+    with three cards won, and the Free Play setup: no scrolling, nothing
+    clipped or off screen, no page errors. Fixed in the pass: three won
+    cards overflowed a phone, so their description waits for the Armory;
+    three equipped cards wrapped the menu's strip, so the loadout is cut to
+    one line; a narrow card wrapped "LV 2/5";
   - the frigates' line;
   - MAX on chips, badge and slots;
   - Point Defense shots, "+1" patches and glancing hits in a live wave.
@@ -119,6 +172,8 @@ Fixed along the way:
   phone. This predated the overhaul and is fixed.
 - Head Start's level-2 cards said LV 1/3. Moot now that Head Start has been
   replaced.
+- Two salvage-era pieces were removed with the currency: the bay prices and
+  the Upgrade buttons.
 
 ## Limitations
 
@@ -129,3 +184,6 @@ Fixed along the way:
   "+1" and the glance ring are small on a phone.
 - The upgrades were measured one at a time and in two stacks, not in every
   combination.
+- Random cards can be streaky: a player can win the same Hull card three
+  times in a row while wanting another. Nothing evens it out yet (Survivor.io
+  has duplicates merge into something else; a pity rule is a candidate).
