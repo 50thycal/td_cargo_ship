@@ -81,7 +81,10 @@ thought):
 - **Choose your loadout** comes up when a map starts: a row per bay with
   cards held.
 - **The menu strip** shows the cards found and the loadout.
-- **Old saves** keep the levels they bought and their equipped gun.
+- **Old saves** load with an empty Armory (the player: "reset my armory as
+  it has unlocks from the old"): levels bought with salvage, and anything
+  from a save without the card-era version tag, are cleared once; maps,
+  unlocks and bests are kept.
 
 ### Tuning: every upgrade must do something (the Cryo rule)
 
