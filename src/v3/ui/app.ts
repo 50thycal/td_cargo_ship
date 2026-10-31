@@ -25,15 +25,14 @@ import {
   MAX_SLOTS,
   RESUPPLY_TEXT,
   SHORT_NAME,
-  WEAPON,
   abilityName,
   canSwapIn,
   canTake,
   type AbilityId,
   type CardId,
 } from '../data/abilities';
-import { ARMORY, ARMORY_MAX, ARMORY_ORDER, armoryLevel, nextCost, type ArmoryId, type ArmoryLevels } from '../data/armory';
-import { buyArmory, equipArmory, loadProgress, recordResult, runGun, type Progress } from '../platform/save';
+import { ARMORY, ARMORY_ORDER, BAY_ORDER, BAYS, armoryLevel, bayItems, nextCost, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
+import { buyArmory, equipArmory, loadProgress, openBay, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
   createGame,
   raidWarning,
@@ -173,6 +172,8 @@ export class App {
   private control: Controller = 'you';
   /** The wave whose draft is on screen (a dev stride deals several in a row). */
   private draftWave = -1;
+  /** The Armory bay on show. */
+  private armoryBay: BayId = 'gun';
   /** A card was tapped and its pick is landing (see PICK_BEAT_MS). */
   private picking = false;
   /** The beat in progress between a wave's end and its screen. */
@@ -394,7 +395,7 @@ export class App {
             upgradeIcon(id, 22),
             // Nine letters and more ran past a phone's 50 px ring (round 6).
             el('span', short.length >= 9 ? 'v3-weapon-name long' : 'v3-weapon-name', short),
-            el('span', 'v3-weapon-lv', lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`),
+            el('span', 'v3-weapon-lv', lv >= ABILITY_MAX ? 'MAX' : `LV ${lv}`),
             el('span', 'v3-weapon-tag'),
           );
           c.title = `${abilityName(id, lv)}: drops as a pickup`;
@@ -407,7 +408,7 @@ export class App {
       const state = !id ? 'empty' : w ? 'loaded' : 'held';
       for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
       if (id) {
-        c.style.setProperty('--left', w ? (w.t / WEAPON.time).toFixed(3) : '0');
+        c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const text = w ? `${Math.ceil(w.t)}s` : '';
         if (tag.textContent !== text) tag.textContent = text;
@@ -730,12 +731,12 @@ export class App {
           // line (round 4: with what a shot does as well, the notice wrapped
           // to two lines and, on the Island's one-card tray, rose onto the
           // carrier; what it does is on the card you drafted it from).
-          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${WEAPON.time}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE);
+          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${g.stats.weaponTime}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE);
           this.shake = Math.max(this.shake, 4);
           break;
         }
         case 'newPickup': {
-          const hint = PICKUP_HINT[ev.pickup];
+          const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
           if (hint) this.showBanner(...hint);
           break;
         }
@@ -912,7 +913,7 @@ export class App {
    *  pip blinks; a banner says so once, on the way in. */
   private syncDanger(g: Game): void {
     const lastShip = g.tempo.lossLimit - g.lost === 1;
-    const carrier = g.carrierHp <= Math.ceil(CARRIER.hp * 0.25);
+    const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
     if (on && !this.danger)
       this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.', { tone: 'danger', key: 'danger' });
@@ -976,105 +977,148 @@ export class App {
     this.overlay.querySelector('.v2-map-grid')!.append(...cards);
   }
 
-  /** Menu strip: salvage banked, the upgrade equipped, and the way in. */
+  /** Menu strip: salvage banked, the loadout, and the way in. */
   private armoryStrip(): HTMLElement {
     const p = this.progress;
     const strip = button('', 'v3-armory-strip', () => this.showArmory());
-    const eq = p.equipped;
-    const affordable = ARMORY_ORDER.some((id) => (nextCost(p.armory, id) ?? Infinity) <= p.salvage);
+    const ready = canSpend(p);
+    const loadout = BAY_ORDER.filter((b) => p.bays.includes(b))
+      .map((b) => p.equipped[b])
+      .filter((id): id is ArmoryId => !!id)
+      .map((id) => `${ARMORY[id].name} ${armoryLevel(p.armory, id)}`);
     strip.append(
       el('strong', '', '⚓ ARMORY'),
       el('span', 'v3-salvage', `${p.salvage.toLocaleString()} salvage`),
-      el('span', 'v3-equipped', eq ? `Gun: ${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'Gun: base (nothing equipped)'),
-      el('em', affordable ? 'v3-can-buy' : '', affordable ? 'Upgrade ready →' : 'Main gun upgrades →'),
+      el('span', 'v3-equipped', loadout.length ? loadout.join(' · ') : 'Base gun, nothing equipped'),
+      el('em', ready ? 'v3-can-buy' : '', ready ? 'Upgrade ready →' : 'Gun, hull and supply →'),
     );
     return strip;
   }
 
-  /** The Armory: five main-gun upgrades bought with salvage, levels kept
-   *  for good. A run takes ONE of them (playtest: "they don't get all of
-   *  them"): the equipped one, chosen here or when a map starts. */
+  /** The Armory (round 7): three bays, Gun, Hull and Supply, each with its
+   *  own upgrades; the Hull and Supply bays open for salvage. Levels are
+   *  kept for good. A run takes ONE upgrade from each bay (playtest: "they
+   *  don't get all of them"): the one equipped, chosen here or when a map
+   *  starts. */
   private showArmory(back: () => void = () => this.showMenu()): void {
     const p = this.progress;
-    const rows = ARMORY_ORDER.map((id) => {
-      const def = ARMORY[id];
-      const lv = armoryLevel(p.armory, id);
-      const cost = nextCost(p.armory, id);
-      const equipped = p.equipped === id;
-      const row = el('div', `v3-armory-row${equipped ? ' equipped' : ''}`);
-      row.dataset.armory = id;
-      const pips = el('span', 'v2-card-level');
-      for (let k = 1; k <= ARMORY_MAX; k++) pips.append(el('i', k <= lv ? 'had' : ''));
-      const text = el('div', 'v3-armory-text');
-      text.append(el('strong', '', def.name), el('span', '', def.blurb), pips);
-      const now = el('div', 'v3-armory-stat');
-      now.append(el('b', '', def.show(lv)), ...(cost === null ? [] : [el('span', '', `next: ${def.show(lv + 1)}`)]));
-      const equip = button(equipped ? 'EQUIPPED' : lv > 0 ? 'Equip' : 'Not bought', `v2-btn v3-equip${equipped ? ' on' : ''}`, () => {
-        if (equipArmory(p, equipped ? null : id)) this.showArmory(back);
+    const bay = this.armoryBay;
+    const again = () => this.showArmory(back);
+    const tabs = el('div', 'v3-bay-tabs');
+    for (const b of BAY_ORDER) {
+      const open = p.bays.includes(b);
+      const eq = p.equipped[b];
+      const tab = button('', `v3-bay-tab${b === bay ? ' on' : ''}${open ? '' : ' shut'}`, () => {
+        this.armoryBay = b;
+        again();
       });
-      equip.disabled = lv <= 0;
-      equip.dataset.equip = id;
-      const buy = button(cost === null ? 'MAXED' : `Upgrade · ${cost}`, `v2-btn${cost !== null && cost <= p.salvage ? ' primary' : ''}`, () => {
-        if (buyArmory(p, id)) this.showArmory(back);
+      tab.dataset.bay = b;
+      tab.append(
+        el('strong', '', BAYS[b].name.toUpperCase()),
+        el('span', '', open ? (eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'nothing equipped') : `🔒 ${BAYS[b].cost} salvage`),
+      );
+      tabs.append(tab);
+    }
+    const body = el('div', `v3-armory-list${bayItems(bay).length <= 3 ? ' roomy' : ''}`);
+    if (p.bays.includes(bay)) {
+      body.append(...bayItems(bay).map((id) => this.armoryRow(id, again)));
+    } else {
+      const shut = el('div', 'v3-bay-shut');
+      const openIt = button(`Open the ${BAYS[bay].name} bay · ${BAYS[bay].cost}`, `v2-btn${BAYS[bay].cost <= p.salvage ? ' primary' : ''}`, () => {
+        if (openBay(p, bay)) again();
       });
-      buy.disabled = cost === null || cost > p.salvage;
-      buy.dataset.buy = id;
-      row.append(text, now, equip, buy);
-      return row;
-    });
-    const list = el('div', 'v3-armory-list');
-    list.append(...rows);
-    const eq = p.equipped;
+      openIt.disabled = BAYS[bay].cost > p.salvage;
+      openIt.dataset.openBay = bay;
+      shut.append(
+        el('strong', '', `${BAYS[bay].name} bay: ${BAYS[bay].blurb.toLowerCase()}`),
+        el('span', '', bayItems(bay).map((id) => `${ARMORY[id].name}: ${ARMORY[id].blurb.charAt(0).toLowerCase()}${ARMORY[id].blurb.slice(1)}`).join('. ') + '.'),
+        openIt,
+      );
+      body.append(shut);
+    }
     this.showOverlay('v3-armory', [
       el('h2', '', 'Armory'),
-      el(
-        'p',
-        'v2-sub',
-        `Levels you buy are yours for good, but each run takes ONE upgrade: ${eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : 'the base gun'} for now. ${p.salvage.toLocaleString()} salvage banked (salvage comes from every run, won or lost).`,
-      ),
-      list,
+      el('p', 'v2-sub', `${p.salvage.toLocaleString()} salvage (from every run, won or lost). Levels are yours for good; a run takes one upgrade from each bay.`),
+      tabs,
+      body,
       button('Back', 'v2-btn primary', back),
     ]);
   }
 
-  /** Before a run: pick the one gun upgrade it takes (the last one is
-   *  ready). With nothing bought yet there is nothing to pick. Watch mode
-   *  and the dev gun override skip it. */
+  /** One Armory upgrade: its levels, its value now, Equip and Upgrade. */
+  private armoryRow(id: ArmoryId, again: () => void): HTMLElement {
+    const p = this.progress;
+    const def = ARMORY[id];
+    const lv = armoryLevel(p.armory, id);
+    const cost = nextCost(p.armory, id);
+    const equipped = p.equipped[def.bay] === id;
+    const row = el('div', `v3-armory-row${equipped ? ' equipped' : ''}`);
+    row.dataset.armory = id;
+    const pips = el('span', 'v2-card-level');
+    for (let k = 1; k <= def.max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
+    const text = el('div', 'v3-armory-text');
+    text.append(el('strong', '', def.name), el('span', '', def.blurb), pips);
+    const now = el('div', 'v3-armory-stat');
+    now.append(el('b', '', def.show(lv)), ...(cost === null ? [] : [el('span', '', `next: ${def.show(lv + 1)}`)]));
+    const equip = button(equipped ? 'EQUIPPED' : lv > 0 ? 'Equip' : 'Not bought', `v2-btn v3-equip${equipped ? ' on' : ''}`, () => {
+      if (equipArmory(p, equipped ? null : id, def.bay)) again();
+    });
+    equip.disabled = lv <= 0;
+    equip.dataset.equip = id;
+    const buy = button(cost === null ? 'MAX' : `Upgrade · ${cost}`, `v2-btn${cost !== null && cost <= p.salvage ? ' primary' : ''}`, () => {
+      if (buyArmory(p, id)) again();
+    });
+    buy.disabled = cost === null || cost > p.salvage;
+    buy.dataset.buy = id;
+    row.append(text, now, equip, buy);
+    return row;
+  }
+
+  /** Before a run: pick the one upgrade it takes from each bay (the last
+   *  ones are ready). With nothing bought yet there is nothing to pick.
+   *  Watch mode and the dev gun override skip it. */
   private prepare(id: MapId): void {
     const p = this.progress;
-    const owned = ARMORY_ORDER.filter((a) => armoryLevel(p.armory, a) > 0);
+    const bays = BAY_ORDER.filter((b) => p.bays.includes(b) && bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
     const watch = this.dev && this.devSettings.watch;
-    if (!owned.length || watch || (this.dev && this.devSettings.armory !== 'yours')) {
+    if (!bays.length || watch || (this.dev && this.devSettings.armory !== 'yours')) {
       this.play(id);
       return;
     }
-    const tile = (a: ArmoryId | null) => {
+    const tile = (bay: BayId, a: ArmoryId | null) => {
       const lv = a ? armoryLevel(p.armory, a) : 0;
-      const on = p.equipped === a;
+      const on = p.equipped[bay] === a;
       const t = button('', `v3-gun${on ? ' on' : ''}`, () => {
-        equipArmory(p, a);
+        equipArmory(p, a, bay);
         this.prepare(id);
       });
-      t.dataset.gun = a ?? 'base';
-      t.disabled = !!a && lv <= 0;
+      t.dataset.gun = a ?? `none-${bay}`;
       if (a) {
         const pips = el('span', 'v2-card-level');
-        for (let k = 1; k <= ARMORY_MAX; k++) pips.append(el('i', k <= lv ? 'had' : ''));
-        t.append(el('strong', '', ARMORY[a].name), pips, el('span', '', lv > 0 ? ARMORY[a].show(lv) : 'not bought'));
-      } else t.append(el('strong', '', 'Base gun'), el('span', '', 'no upgrade'));
+        for (let k = 1; k <= ARMORY[a].max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
+        t.append(el('strong', '', ARMORY[a].name), pips, el('span', '', ARMORY[a].show(lv)));
+      } else t.append(el('strong', '', bay === 'gun' ? 'Base gun' : 'None'), el('span', '', bay === 'gun' ? 'no upgrade' : 'leave it empty'));
       return t;
     };
-    const grid = el('div', 'v3-gun-grid');
-    grid.append(...ARMORY_ORDER.map((a) => tile(a)), tile(null));
+    const rows = bays.map((bay) => {
+      const row = el('div', 'v3-bay-row');
+      row.dataset.bay = bay;
+      const grid = el('div', 'v3-gun-grid');
+      const owned = bayItems(bay).filter((a) => armoryLevel(p.armory, a) > 0);
+      grid.style.setProperty('--n', String(owned.length + 1));
+      grid.append(...owned.map((a) => tile(bay, a)), tile(bay, null));
+      row.append(el('span', 'v3-bay-label', BAYS[bay].name.toUpperCase()), grid);
+      return row;
+    });
     const row = el('div', 'v2-btn-row');
     const go = button(`Sail: ${MAPS[id].name} →`, 'v2-btn primary', () => this.play(id));
     go.dataset.start = '1';
     row.append(button('⚓ Armory', 'v2-btn', () => this.showArmory(() => this.prepare(id))), button('Menu', 'v2-btn', () => this.showMenu()), go);
     this.showOverlay('v3-loadout', [
       el('span', 'v2-draft-eyebrow', MAPS[id].name.toUpperCase()),
-      el('h2', '', 'Choose your gun'),
-      el('p', 'v2-sub', 'Your main gun takes ONE Armory upgrade into this run.'),
-      grid,
+      el('h2', '', 'Choose your loadout'),
+      el('p', 'v2-sub', 'One Armory upgrade from each bay goes into this run.'),
+      ...rows,
       row,
     ]);
   }
@@ -1235,9 +1279,11 @@ export class App {
   /** The main gun for a run: the one equipped upgrade, or a dev override
    *  (the base gun, or the equipped upgrade, Wide Warhead if none, maxed). */
   private runArmory(): ArmoryLevels {
-    if (!this.dev || this.devSettings.armory === 'yours') return runGun(this.progress);
+    if (!this.dev || this.devSettings.armory === 'yours') return runLoadout(this.progress);
     if (this.devSettings.armory === 'none') return {};
-    return { [this.progress.equipped ?? 'warhead']: ARMORY_MAX };
+    const eq = this.progress.equipped;
+    const ids = [eq.gun ?? 'warhead', eq.hull, eq.supply].filter((a): a is ArmoryId => !!a);
+    return Object.fromEntries(ids.map((a) => [a, ARMORY[a].max]));
   }
 
   /** Watch mode on or off for the run starting now. */
@@ -1406,7 +1452,7 @@ export class App {
     for (let i = 0; i < MAX_SLOTS; i++) {
       const id = owned[i];
       const lv = id ? (g.levels[id] ?? 0) : 0;
-      const label = id ? `${abilityName(id, lv)} ${lv >= ABILITY_MAX ? 'EVO' : `LV ${lv}`}` : 'Empty slot';
+      const label = id ? `${abilityName(id, lv)} ${lv >= ABILITY_MAX ? 'MAX' : `LV ${lv}`}` : 'Empty slot';
       if (swapping && id) {
         const chip = button(label, 'v2-slot swap', () => this.rec?.pick(swapping, id));
         chip.dataset.slot = id;
@@ -1427,10 +1473,11 @@ export class App {
       const takeable = canTake(g.levels, id);
       const swappable = canSwapIn(g.levels, id);
       const maxed = id !== 'resupply' && lvl >= ABILITY_MAX;
-      const evolves = id !== 'resupply' && next === ABILITY_MAX;
-      const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : evolves ? 'EVOLVES' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      // The last level is called MAX, not "evolves" (round 7 playtest).
+      const toMax = id !== 'resupply' && next === ABILITY_MAX;
+      const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : toMax ? 'MAX' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
-      const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}${evolves && !swappable ? ' evolves' : ''}`, () => {
+      const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}${toMax && !swappable ? ' to-max' : ''}`, () => {
         // Ignore taps that land as the cards appear: the player may still be
         // firing at the wave's last threat.
         if (swapping || this.picking || performance.now() - this.draftShownAt < DRAFT_ARM_MS) return;
@@ -1455,7 +1502,7 @@ export class App {
       const top = el('span', 'v2-card-top', '');
       top.append(
         el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${ABILITIES[id].answers}`),
-        el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : badge === 'EVOLVES' ? 'evo' : 'up'}`, badge),
+        el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : badge === 'MAX' ? 'max' : 'up'}`, badge),
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
@@ -1488,9 +1535,9 @@ export class App {
     } else if (full) {
       // A line only when the hand changes the choice (round 5: with slots
       // free it repeated the drop rule, the slot chips and the pips). Round 1:
-      // with all three evolved it must not offer a level-up.
-      const allEvolved = owned.every((id) => (g.levels[id] ?? 0) >= ABILITY_MAX);
-      rule = el('p', 'v2-sub', allEvolved ? 'All three evolved: swap one out, or Resupply.' : 'Slots full: level one up, or swap a new one in.');
+      // with all three at max it must not offer a level-up.
+      const allMax = owned.every((id) => (g.levels[id] ?? 0) >= ABILITY_MAX);
+      rule = el('p', 'v2-sub', allMax ? 'All three at max: swap one out, or Resupply.' : 'Slots full: level one up, or swap a new one in.');
     }
     // Dev stride: the waves it skips each still deal a card.
     const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
@@ -1529,7 +1576,7 @@ export class App {
       buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id)));
     }
     if (!this.dev) {
-      const affordable = ARMORY_ORDER.some((id) => (nextCost(this.progress.armory, id) ?? Infinity) <= this.progress.salvage);
+      const affordable = canSpend(this.progress);
       buttons.push(button(affordable ? '⚓ Armory: upgrade ready' : '⚓ Armory', `v2-btn${affordable ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
@@ -1630,16 +1677,29 @@ export class App {
 
 /** Round 4's new pickups get a one-line banner the first time one drops. */
 const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
-  weapon: ['WEAPON DROP', `Tap it: the gun fires that weapon for ${WEAPON.time} s. Each shot still uses a round.`],
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
 };
 
+/** Something in the Armory the salvage banked can buy: a level in an open
+ *  bay, or a bay. */
+function canSpend(p: Progress): boolean {
+  return (
+    ARMORY_ORDER.some((id) => p.bays.includes(ARMORY[id].bay) && (nextCost(p.armory, id) ?? Infinity) <= p.salvage) ||
+    BAY_ORDER.some((b) => !p.bays.includes(b) && BAYS[b].cost <= p.salvage)
+  );
+}
+
+/** The first weapon drop's banner, with the run's seconds (Long Loads). */
+function weaponHint(seconds: number): [string, string] {
+  return ['WEAPON DROP', `Tap it: the gun fires that weapon for ${seconds} s. Each shot still uses a round.`];
+}
+
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, Fast Motors in the Armory, and an Aegis Dome takes the hit for a ship.',
-  guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, an Aegis Dome takes the hit for a ship; in the Armory, Fast Motors or Armor Plating.',
+  guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Point Defense in the Armory picks off the ones near the carrier.',
   supersonic: 'Supersonics did the most damage: tap on the lock line; an Aegis Dome on the ship it is after takes the hit.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',

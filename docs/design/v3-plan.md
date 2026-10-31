@@ -8,7 +8,8 @@ upgrades**, after the player's brief (inspired by Survivor.io):
   draft. It gets better **before** a run, in the **Armory**, with salvage
   earned from every run, the way gear sets your weapon in Survivor.io.
 - The in-run draft deals **weapons**: new attacks that each answer a
-  scenario. Three held at once, three levels each, level 3 **evolves** them.
+  scenario. Three held at once, three levels each; level 3 is **MAX** (shown so since round 7: "evolved"
+  read wrong to the player), where a weapon takes a new name.
 - **Weapons drop as pickups** (playtest round 2; until then they charged and
   fired from buttons, which was "too much managing"). A weapon you hold drops
   from kills like the power-ups; tapping its pickup loads the main gun with
@@ -72,7 +73,7 @@ and added five, for twelve ([v3-playtest-round6.md](v3-playtest-round6.md)).
 `src/v3/data/abilities.ts`
 holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
-- **Draft** a weapon to put it in the drop pool (levels and evolutions as
+- **Draft** a weapon to put it in the drop pool (levels to MAX as
   before, three slots, swaps when full).
 - **Drops**: a kill that drops no power-up drops a weapon you hold at 0.45×
   its power-up chance; after 28 s without one, the next kill drops one. One
@@ -85,7 +86,7 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
   before the clock ran out still bursts as that weapon. The wave's end
   unloads it.
 
-| Weapon → evolved | Answers | A tap while loaded | L1 → L2 → **L3 evolution** |
+| Weapon → MAX name | Answers | A tap while loaded | L1 → L2 → **L3 (MAX)** |
 |---|---|---|---|
 | Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
 | Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
@@ -124,39 +125,70 @@ rarely mattered: the shell usually killed what it froze).
   answers, its art, its name at the level it brings, its level pips and
   what that level does. How weapons work (they drop as pickups and load the
   gun for 15 s) is the game's rule, not repeated on every card (round 5);
-  the badge and the new name mark an evolution. The line under the cards
+  the MAX badge and the new name mark the last level. The line under the cards
   shows only when the slots are full.
 
 ## The Armory
 
-`src/v3/data/armory.ts`. Five upgrades, five levels each, only the main gun.
-Levels are bought for good, but **a run takes ONE upgrade**: the equipped one
-(playtest round 1: "the player should only be allowed to select one… they
-don't get all of them"). The first upgrade bought is equipped; after that the
-**Choose your gun** screen comes up whenever a map is started (from the menu,
-Next or Try again), with the last choice ready, and the Armory has an Equip
-button on each owned row. The menu strip shows the gun equipped.
+`src/v3/data/armory.ts`. Levels are bought with salvage and kept for good.
+Since round 7 ("let's overhaul that armory too, it needs some more to it";
+[v3-playtest-round7.md](v3-playtest-round7.md)) the Armory is **three bays**,
+and **a run takes ONE upgrade from each bay** (playtest round 1: "the player
+should only be allowed to select one… they don't get all of them", now per
+bay). The first upgrade bought in a bay is equipped; the **Choose your
+loadout** screen comes up whenever a map is started (from the menu, Next or
+Try again), a row per open bay with the last choices ready; the Armory has
+a tab per bay and an Equip button on each owned row. The menu strip shows
+the loadout.
 
-| Upgrade | Per level | At level 5 | Alone at L5 (average bot) |
+| Bay | Opens for | Upgrades (5 levels each) |
+|---|---|---|
+| **Gun** | open | Quick Reload, Wide Warhead, Fast Motors, Deep Magazine, Proximity Fuse |
+| **Hull** | 250 salvage | Armor Plating, Point Defense, Damage Control |
+| **Supply** | 600 salvage | Long Loads, Supply Lines, Stockpile |
+
+| Upgrade | Per level | At level 5 |
+|---|---|---|
+| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) |
+| Wide Warhead | blast +40% | 3× blast |
+| Fast Motors | interceptors +20% faster | 2× speed |
+| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds |
+| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 |
+| Armor Plating | 8% of hits on a ship or the carrier glance off | 40% |
+| Point Defense | the carrier fires a free interceptor at the nearest threat in reach | a shot every 3.5 s, reach 280 → every 2 s, reach 360 |
+| Damage Control | every damaged hull (ships and carrier) gets a point back | every 10 s → every 4 s |
+| Long Loads | a weapon pickup stays in the gun 4 s longer | 35 s |
+| Supply Lines | weapons drop more often | 1.4× chance, one at least every 20 s (28) |
+| Stockpile | power-ups drop more often and last longer | 1.75× chance, 1.5× time |
+
+**What each is worth alone** (round 7; average bot, fresh Armory, weapons
+drafted in a random order, 60 runs across the maps, ±12 points; the base
+gun clears 57% this way):
+
+| Bay | Upgrade | Level 1 | Level 5 |
 |---|---|---|---|
-| Quick Reload | a round loads 6% faster | 0.95 s a round (−30%) | 80% clears |
-| Wide Warhead | blast +40% | 3× blast | 68% |
-| Fast Motors | interceptors +20% faster | 2× speed | 67% |
-| Deep Magazine | +1 round (levels 1, 2, 4, 5) | 10 rounds | 83% |
-| Proximity Fuse | bursts closer to a fast target | 34 px fuse, hits for 2 | 82% |
+| Gun | Wide Warhead | — | 67% |
+| Hull | Armor Plating | 57% (70% at L3) | 85% |
+| Hull | Point Defense | 63% | 82% |
+| Hull | Damage Control | 62% | 75% |
+| Supply | Long Loads | 60% | 67% |
+| Supply | Supply Lines | ~50% | 83% |
+| Supply | Stockpile | 62% | 73% |
 
-The base gun clears 43% for the same bot. Round 1 strengthened Wide Warhead
-(+20% a level changed nothing on its own: 43%) and Fast Motors (+12% a level:
-53%) once a run took one upgrade instead of all five.
+Stacked: level 2 in all three bays clears 85%, everything at level 5 98–100%.
+(Round 1's gun-only table, base gun alone and all five maps, put the gun
+upgrades at 67–83% at level 5.)
 
-Each stops short of the line V2's round 6 audit found (an 11-round rack
-reloading 55% faster let mashing win). Levels cost 80 / 160 / 280 / 450 /
-700 salvage (1,670 to max one upgrade). A run pays 1 salvage per ship
-delivered, 6 per wave cleared, 40 for clearing the map and 80 more the first
-time: about 100–180 a run. Lost runs pay too.
+Each gun upgrade stops short of the line V2's round 6 audit found (an
+11-round rack reloading 55% faster let mashing win). Levels cost 80 / 160 /
+280 / 450 / 700 salvage (1,670 to max one upgrade); every level of every
+bay and both bays: 19,220. A run pays 1 salvage per ship delivered, 6 per
+wave cleared, 40 for clearing the map and 80 more the first time: about
+100–180 a run. Lost runs pay too.
 
-Dev mode adds a **Gun** chip on the menu: the equipped upgrade, the base gun,
-or the equipped upgrade at level 5; dev runs never earn or spend salvage.
+Dev mode adds a **Gun** chip on the menu: the equipped loadout, the base
+gun, or the equipped loadout at its top levels; dev runs never earn or
+spend salvage.
 
 ## Measurements
 

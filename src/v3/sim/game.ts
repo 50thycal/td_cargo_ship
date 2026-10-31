@@ -56,7 +56,7 @@ import {
   type CardId,
   type Levels,
 } from '../data/abilities';
-import { gunStats, type ArmoryLevels, type GunStats } from '../data/armory';
+import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
 import { waveSpec } from '../data/waves';
 
 export const CARRIER_TARGET = -1;
@@ -362,7 +362,7 @@ export interface Game {
   /** Cards still to pick before the next wave (more than one when the dev
    *  stride skips waves). */
   draftsLeft: number;
-  rng: { ships: RNG; threats: RNG; drops: RNG; draft: RNG };
+  rng: { ships: RNG; threats: RNG; drops: RNG; draft: RNG; armor: RNG };
   phase: Phase;
   t: number;
   wave: number;
@@ -400,8 +400,12 @@ export interface Game {
   fields: Field[];
   /** The weapon loaded in the main gun (null: plain interceptors). */
   weapon: Weapon | null;
-  /** Seconds of wave since a weapon pickup last dropped (WEAPON.pity). */
+  /** Seconds of wave since a weapon pickup last dropped (the pity clock). */
   weaponDropT: number;
+  /** Point Defense: seconds to the carrier's next shot. */
+  pdT: number;
+  /** Damage Control: seconds of wave towards the next hull point patched. */
+  repairT: number;
   flow: number;
   formation: FormationId;
   spawnT: number;
@@ -416,7 +420,8 @@ export interface Game {
   slots: AbilityId[];
   /** Weapon pickups taken this run, by weapon. */
   uses: Partial<Record<AbilityId, number>>;
-  stats: GunStats;
+  /** The run's numbers from the Armory: the gun, the hulls, the drops. */
+  stats: ArmoryStats;
   offer: CardId[];
   score: number;
   delivered: number;
@@ -443,10 +448,10 @@ export interface Game {
 // Setup
 
 /** `firstWave` > 1 skips ahead (playtesting a late wave via `?wave=N`).
- *  `armory` sets the main gun for the whole run. */
+ *  `armory` (one upgrade from each bay) sets the run's gun, hulls and drops. */
 export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tempo = FULL_TEMPO, armory: ArmoryLevels = {}): Game {
   const root = makeRng(seed);
-  const s = gunStats(armory);
+  const s = armoryStats(armory);
   const g: Game = {
     map: MAPS[mapId],
     seed,
@@ -457,6 +462,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
       threats: root.fork('threats'),
       drops: root.fork('drops'),
       draft: root.fork('draft'),
+      armor: root.fork('armor'),
     },
     phase: 'wave',
     t: 0,
@@ -476,7 +482,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     pickups: [],
     fx: [],
     events: [],
-    carrierHp: CARRIER.hp,
+    carrierHp: s.carrierHp,
     carrierDome: null,
     ammo: s.rack,
     reloadT: 0,
@@ -490,6 +496,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     fields: [],
     weapon: null,
     weaponDropT: 0,
+    pdT: 0,
+    repairT: 0,
     flow: DEFAULT_FLOW,
     formation: 'pairs',
     spawnT: 0,
@@ -831,7 +839,7 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
   }
   if (id === 'resupply') {
     for (const s of g.ships) s.hp = g.stats.shipHp;
-    g.carrierHp = CARRIER.hp;
+    g.carrierHp = g.stats.carrierHp;
     g.ammo = g.stats.rack;
     afterPick(g);
     return;
@@ -1081,15 +1089,27 @@ function launchEscorts(g: Game, level: number): void {
   const k = level - 1;
   const want = AB.frigate.ships[k];
   const lanes = g.map.channels;
-  const xs = [0.3, 0.62, 0.46];
+  // Stations across the screen. Ships 0 and 2 share an edge, so with three
+  // the first one in takes the far station and the third the near one: they
+  // sail in line astern instead of the third running through the first
+  // (round 7 playtest).
+  const xs = want >= 3 ? [0.62, 0.46, 0.3] : [0.3, 0.62];
   g.escorts = g.escorts.filter((e) => !e.leaving);
-  for (let i = g.escorts.length; i < want; i++) {
+  for (let i = 0; i < want; i++) {
     // On station at the edge of a lane (above it, then below), clear of the
     // convoy sailing down its middle, still on open water.
     const lane = lanes[i % lanes.length];
     const sx = VIEW.width * xs[i];
     const sy = lane.y + (i % 2 ? 1 : -1) * halfWidthAt(lane, sx) * 0.85;
-    g.escorts.push({ id: g.nextId++, x: -120 - i * 80, y: sy, sx, sy, fireT: 0.5 + i * 0.2, leaving: false, aim: 0 });
+    const e = g.escorts[i];
+    if (e) {
+      e.sx = sx;
+      e.sy = sy;
+    } else {
+      // A hull and its wake run ~210 long; two ships on one edge start 260
+      // apart, so they never touch.
+      g.escorts.push({ id: g.nextId++, x: -120 - i * 130, y: sy, sx, sy, fireT: 0.5 + i * 0.2, leaving: false, aim: 0 });
+    }
   }
 }
 
@@ -1130,6 +1150,53 @@ function updateEscorts(g: Game, dt: number): void {
     addFx(g, 'launch', mx, e.y, { life: 0.3, r: 10 });
   }
   g.escorts = g.escorts.filter((e) => !(e.leaving && e.x >= VIEW.width + 130));
+}
+
+/** Point Defense (Armory, Hull bay): the carrier fires a free interceptor
+ *  at the nearest threat in reach that still needs a shot, every pdGap s. */
+function updatePointDefense(g: Game, dt: number): void {
+  if (!g.stats.pdGap) return;
+  g.pdT -= dt;
+  if (g.pdT > 0) return;
+  const c = g.map.carrier;
+  const target = g.threats
+    .filter((t) => !t.dead && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
+    .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
+  if (!target) {
+    g.pdT = 0.1;
+    return;
+  }
+  g.pdT = g.stats.pdGap;
+  // From the carrier's bow end nearer the threat, so it reads as its own gun.
+  const mx = c.x + Math.sign(target.x - c.x || 1) * CARRIER.halfLength * 0.6;
+  g.interceptors.push({ id: g.nextId++, x: mx, y: c.y, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
+  addFx(g, 'launch', mx, c.y, { life: 0.3, r: 8 });
+}
+
+/** Damage Control (Armory, Hull bay): every repairEvery s of wave, every
+ *  damaged hull gets a point back, ships and carrier. The clock only runs
+ *  while something is hurt (no time banked while all hulls are whole). */
+function updateDamageControl(g: Game, dt: number): void {
+  if (!g.stats.repairEvery) return;
+  const max = g.stats.shipHp;
+  const hurt = g.ships.filter((s) => s.hp > 0 && s.hp < max);
+  const carrier = g.carrierHp > 0 && g.carrierHp < g.stats.carrierHp;
+  if (!hurt.length && !carrier) {
+    g.repairT = 0;
+    return;
+  }
+  g.repairT += dt;
+  if (g.repairT < g.stats.repairEvery) return;
+  g.repairT = 0;
+  for (const s of hurt) {
+    s.hp += 1;
+    addFx(g, 'text', s.x, s.y - 24, { life: 1, text: '+1' });
+  }
+  if (carrier) {
+    g.carrierHp += 1;
+    const c = g.map.carrier;
+    addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 24, { life: 1, text: '+1 HULL' });
+  }
 }
 
 function addField(g: Game, kind: Field['kind'], x: number, y: number, r: number, life: number, level: number): void {
@@ -1323,6 +1390,8 @@ export function step(g: Game, dt: number): void {
   updateTimers(g, dt);
   updateAllies(g, dt);
   updateEscorts(g, dt);
+  updatePointDefense(g, dt);
+  updateDamageControl(g, dt);
   updateBlades(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
@@ -1503,6 +1572,7 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     return;
   }
   if (domeAbsorbs(g, s.dome, s.x, s.y)) return;
+  if (glances(g, s.x, s.y, 30)) return;
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
@@ -1514,12 +1584,21 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
   g.events.push({ kind: 'shipLost', lost: g.lost });
 }
 
-function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
+/** Armor Plating (Armory, Hull bay): a hit on a hull may glance off. */
+function glances(g: Game, x: number, y: number, r: number): boolean {
+  if (!g.stats.glance || !g.rng.armor.chance(g.stats.glance)) return false;
+  addFx(g, 'block', x, y, { life: 0.4, r });
+  return true;
+}
+
+/** A hit on the carrier (exported so the tests can land one directly). */
+export function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
   if (g.shieldT > 0) {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     return;
   }
   if (domeAbsorbs(g, g.carrierDome, g.map.carrier.x, g.map.carrier.y)) return;
+  if (glances(g, g.map.carrier.x, g.map.carrier.y, 60)) return;
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.carrierDamageBy[by] += amount;
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
@@ -1845,6 +1924,7 @@ function checkImpact(g: Game, th: Threat): void {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
     // A heavy takes half the carrier's health (round 7).
+    // Half the BASE carrier: Armor Plating's extra hull outlasts a heavy.
     damageCarrier(g, heavy ? Math.ceil(CARRIER.hp / 2) : dmg, blame);
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: th.kind === 'heavy' || th.kind === 'mothership' ? 50 : 30 });
     return;
@@ -1956,7 +2036,7 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
   if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   if (!drops) return;
-  if (g.rng.drops.chance(THREATS[th.kind].dropChance)) dropPickup(g, th.x, th.y);
+  if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare)) dropPickup(g, th.x, th.y);
   // Weapons drop on their own roll, on top of the power-ups (playtest round
   // 2: sharing one roll, they crowded out the repairs and Overdrives).
   else if (weaponDue(g, th.kind)) dropWeapon(g, th.x, th.y);
@@ -2297,10 +2377,10 @@ function updatePickups(g: Game, dt: number): void {
 
 /** Does this kill drop a weapon? Only with one held and none already on the
  *  water: a roll scaled by the threat's drop chance, or any kill once
- *  WEAPON.pity seconds have gone by without one. */
+ *  the pity clock (WEAPON.pity; Supply Lines shortens it) has run out. */
 function weaponDue(g: Game, kind: ThreatKind): boolean {
   if (!g.slots.length || g.pickups.some((p) => p.kind === 'weapon')) return false;
-  return g.weaponDropT >= WEAPON.pity || g.rng.drops.chance(THREATS[kind].dropChance * WEAPON.share);
+  return g.weaponDropT >= g.stats.dropPity || g.rng.drops.chance(THREATS[kind].dropChance * g.stats.dropShare);
 }
 
 function dropWeapon(g: Game, x: number, y: number): void {
@@ -2355,12 +2435,13 @@ function collect(g: Game, p: Pickup): void {
   g.pickups = g.pickups.filter((o) => o !== p);
   g.events.push({ kind: 'pickup', pickup: p.kind });
   if (p.kind === 'weapon') {
-    // Loads the gun for WEAPON.time (the same weapon again: a fresh clock;
+    // Loads the gun for weaponTime (WEAPON.time, more with Long Loads; the
+    // same weapon again: a fresh clock;
     // another one: it takes over). One you swapped out loads nothing.
     const id = p.weapon!;
     const level = g.levels[id] ?? 0;
     if (level <= 0) return;
-    g.weapon = { id, level, t: WEAPON.time };
+    g.weapon = { id, level, t: g.stats.weaponTime };
     if (id === 'frigate') launchEscorts(g, level);
     g.uses[id] = (g.uses[id] ?? 0) + 1;
     g.events.push({ kind: 'weapon', id, level });
@@ -2376,20 +2457,20 @@ function collect(g: Game, p: Pickup): void {
       const max = g.stats.shipHp;
       const hurt = g.ships.filter((s) => s.hp < max).sort((a, b) => a.hp - b.hp)[0];
       if (hurt) hurt.hp = Math.min(max, hurt.hp + PICKUPS.repairHp);
-      else g.carrierHp = Math.min(CARRIER.hp, g.carrierHp + PICKUPS.carrierRepairHp);
+      else g.carrierHp = Math.min(g.stats.carrierHp, g.carrierHp + PICKUPS.carrierRepairHp);
       break;
     }
     case 'overdrive':
-      g.overdriveT = PICKUPS.overdriveTime;
+      g.overdriveT = PICKUPS.overdriveTime * g.stats.powerTime;
       break;
     case 'timewarp':
-      g.warpT = PICKUPS.warpTime;
+      g.warpT = PICKUPS.warpTime * g.stats.powerTime;
       break;
     case 'shield':
-      g.shieldT = PICKUPS.shieldTime;
+      g.shieldT = PICKUPS.shieldTime * g.stats.powerTime;
       break;
     case 'steam':
-      g.steamT = PICKUPS.steamTime;
+      g.steamT = PICKUPS.steamTime * g.stats.powerTime;
       break;
   }
 }

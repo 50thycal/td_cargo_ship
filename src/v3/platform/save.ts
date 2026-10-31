@@ -1,11 +1,12 @@
 // V3 progress: which maps are unlocked, the best result on each, and the
-// Armory — the salvage banked, the main-gun levels bought with it, and the
-// one upgrade equipped for the next run (playtest: "the player should only
-// be allowed to select one… they don't get all of them"). One
+// Armory — the salvage banked, the bays opened and the levels bought with
+// it, and the one upgrade equipped from each bay for the next run (playtest:
+// "the player should only be allowed to select one… they don't get all of
+// them"; round 7 made that one per bay). One
 // small localStorage record, separate from every V1 and V2 save. Storage can
 // be missing or throw (private mode); progress then just lasts for the session.
 
-import { ARMORY_ORDER, armoryLevel, nextCost, salvageFor, type ArmoryId, type ArmoryLevels } from '../data/armory';
+import { ARMORY, ARMORY_ORDER, BAY_ORDER, BAYS, armoryLevel, nextCost, salvageFor, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
 import { MAP_ORDER, type MapId } from '../data/maps';
 
 export interface Best {
@@ -22,8 +23,10 @@ export interface Progress {
   /** Salvage earned over every run (for the record). */
   earned: number;
   armory: ArmoryLevels;
-  /** The one Armory upgrade a run takes (null: the base gun). */
-  equipped: ArmoryId | null;
+  /** Bays opened (the Gun bay is always open). */
+  bays: BayId[];
+  /** The one upgrade a run takes from each bay (null: none; the base gun). */
+  equipped: Record<BayId, ArmoryId | null>;
   /** Maps cleared at least once (the first clear pays a bonus). */
   cleared: MapId[];
 }
@@ -31,7 +34,11 @@ export interface Progress {
 const KEY = 'straitwatch.v3.progress';
 
 function fresh(): Progress {
-  return { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, equipped: null, cleared: [] };
+  return { unlocked: 1, best: {}, salvage: 0, earned: 0, armory: {}, bays: ['gun'], equipped: noneEquipped(), cleared: [] };
+}
+
+function noneEquipped(): Record<BayId, ArmoryId | null> {
+  return { gun: null, hull: null, supply: null };
 }
 
 export function loadProgress(): Progress {
@@ -47,8 +54,8 @@ export function loadProgress(): Progress {
         salvage: Math.max(0, Math.floor(p.salvage ?? 0)),
         earned: Math.max(0, Math.floor(p.earned ?? 0)),
         armory,
-        // Only an upgrade with a level can be equipped.
-        equipped: p.equipped && armoryLevel(armory, p.equipped) > 0 ? p.equipped : null,
+        bays: BAY_ORDER.filter((b) => b === 'gun' || (p.bays ?? []).includes(b)),
+        equipped: readEquipped(p.equipped, armory),
         cleared: (p.cleared ?? []).filter((m) => MAP_ORDER.includes(m)),
       };
     }
@@ -56,6 +63,17 @@ export function loadProgress(): Progress {
     // fall through to a fresh record
   }
   return fresh();
+}
+
+/** The equipped upgrades from a save. Before round 7 it was one gun
+ *  upgrade (a string); only an upgrade with a level, in its own bay, counts. */
+function readEquipped(raw: unknown, armory: ArmoryLevels): Record<BayId, ArmoryId | null> {
+  const eq = noneEquipped();
+  const ids: unknown[] = typeof raw === 'string' ? [raw] : raw && typeof raw === 'object' ? Object.values(raw) : [];
+  for (const id of ids) {
+    if (typeof id === 'string' && id in ARMORY && armoryLevel(armory, id as ArmoryId) > 0) eq[ARMORY[id as ArmoryId].bay] = id as ArmoryId;
+  }
+  return eq;
 }
 
 export function saveProgress(p: Progress): void {
@@ -97,28 +115,45 @@ export function recordResult(
   return { best: better, salvage, firstClear };
 }
 
-/** Buy the next level of one Armory upgrade. False if maxed or too dear. */
+/** Open a bay for its salvage. False if it is open or too dear. */
+export function openBay(p: Progress, bay: BayId): boolean {
+  if (p.bays.includes(bay) || BAYS[bay].cost > p.salvage) return false;
+  p.salvage -= BAYS[bay].cost;
+  p.bays = BAY_ORDER.filter((b) => b === bay || p.bays.includes(b));
+  saveProgress(p);
+  return true;
+}
+
+/** Buy the next level of one Armory upgrade. False if its bay is shut, or
+ *  it is maxed or too dear. */
 export function buyArmory(p: Progress, id: ArmoryId): boolean {
+  const bay = ARMORY[id].bay;
   const cost = nextCost(p.armory, id);
-  if (cost === null || cost > p.salvage) return false;
+  if (!p.bays.includes(bay) || cost === null || cost > p.salvage) return false;
   p.salvage -= cost;
   p.armory[id] = armoryLevel(p.armory, id) + 1;
-  // The first upgrade bought is equipped at once (nothing to choose yet).
-  if (!p.equipped) p.equipped = id;
+  // The first upgrade bought in a bay is equipped at once (nothing to choose yet).
+  if (!p.equipped[bay]) p.equipped[bay] = id;
   saveProgress(p);
   return true;
 }
 
-/** Equip one upgrade for the next run (null: the base gun). Only one with a
- *  level can be equipped. */
-export function equipArmory(p: Progress, id: ArmoryId | null): boolean {
-  if (id !== null && armoryLevel(p.armory, id) <= 0) return false;
-  p.equipped = id;
+/** Equip one upgrade for the next run, in its bay; or clear a bay (null).
+ *  Only one with a level can be equipped. */
+export function equipArmory(p: Progress, id: ArmoryId | null, bay: BayId = id ? ARMORY[id].bay : 'gun'): boolean {
+  if (id !== null && (armoryLevel(p.armory, id) <= 0 || ARMORY[id].bay !== bay)) return false;
+  p.equipped[bay] = id;
   saveProgress(p);
   return true;
 }
 
-/** The gun a run gets: the equipped upgrade at its level, nothing else. */
-export function runGun(p: Progress): ArmoryLevels {
-  return p.equipped ? { [p.equipped]: armoryLevel(p.armory, p.equipped) } : {};
+/** What a run takes: the equipped upgrade from each bay, at its level,
+ *  nothing else. */
+export function runLoadout(p: Progress): ArmoryLevels {
+  const a: ArmoryLevels = {};
+  for (const bay of BAY_ORDER) {
+    const id = p.equipped[bay];
+    if (id && p.bays.includes(bay)) a[id] = armoryLevel(p.armory, id);
+  }
+  return a;
 }

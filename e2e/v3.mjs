@@ -1,5 +1,6 @@
 // V3 browser smoke test. Expects `vite preview` (or dev) at BASE_URL.
-// Drives: menu → Armory (buy a level with seeded salvage) → gun picker →
+// Drives: menu → Armory (buy a gun level, open the Hull bay and buy Point
+// Defense with seeded salvage) → loadout picker →
 // map 1 → weapon pickups through real input (tap the pickup, then tap to
 // fire it: Railgun, Air Strike, Flak, Gravity Well, Shrapnel, Thermobaric,
 // Scattergun, Boomerang, Seekers, Aegis, Frigates) →
@@ -98,19 +99,30 @@ try {
   await page.screenshot({ path: `${SHOT_DIR}/02-armory.png` });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
   check(saved.armory.warhead === 1 && saved.salvage === 420, `bought Wide Warhead 1 (salvage ${saved.salvage})`);
+  // Round 7: the Hull and Supply bays open for salvage.
+  await page.click('[data-bay="hull"]');
+  check(!(await page.locator('[data-buy="pointdef"]').count()), 'the Hull bay is shut: nothing in it to buy');
+  await page.click('[data-open-bay="hull"]');
+  await page.click('[data-buy="pointdef"]');
+  await page.screenshot({ path: `${SHOT_DIR}/02a-armory-hull.png` });
+  const hull = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
+  check(hull.bays.includes('hull') && hull.armory.pointdef === 1 && hull.salvage === 90 && hull.equipped.gun === 'warhead' && hull.equipped.hull === 'pointdef', `opened the Hull bay and bought Point Defense 1, one equipped per bay (salvage ${hull.salvage})`);
+  await page.click('[data-bay="supply"]');
+  check(await page.locator('[data-open-bay="supply"]').isDisabled(), 'the Supply bay is out of reach (600 salvage)');
   await page.click('[data-screen="armory"] .v2-btn.primary:has-text("Back")');
   await page.waitForSelector('[data-screen="menu"]');
 
   // ---- A run: with an upgrade owned, the map asks which ONE it takes ----
   await page.click('[data-map="strait"]');
   await page.waitForSelector('[data-screen="loadout"]');
-  check((await page.locator('.v3-gun.on').getAttribute('data-gun')) === 'warhead', 'the gun picker has the bought upgrade equipped');
-  check(await page.locator('.v3-gun[data-gun="reload"]').isDisabled(), 'an upgrade not bought cannot be picked');
+  check((await page.locator('[data-bay="gun"] .v3-gun.on').getAttribute('data-gun')) === 'warhead' && (await page.locator('[data-bay="hull"] .v3-gun.on').getAttribute('data-gun')) === 'pointdef', 'the loadout picker has one upgrade from each open bay');
+  check(!(await page.locator('.v3-gun[data-gun="reload"]').count()) && !(await page.locator('.v3-bay-row[data-bay="supply"]').count()), 'only upgrades bought, in open bays, can be picked');
   await page.screenshot({ path: `${SHOT_DIR}/02b-gun-picker.png` });
   await page.click('[data-start]');
   await page.waitForSelector('.playing');
   const blast = await page.evaluate(() => window.__v3.game().stats.blast);
   check(Math.abs(blast - 22 * 1.4) < 1e-6, `the run's gun has the Armory's warhead (blast ${blast})`);
+  check((await page.evaluate(() => window.__v3.game().stats.pdGap)) > 0, 'the run has the Hull bay\'s Point Defense');
   // Speed: one button now, stepping 1× → 1.25× → 1.5× → 2×.
   for (let k = 0; k < 3; k++) await page.click('.v3-speed');
   check((await page.locator('.v3-speed b').textContent()) === '2×', 'speed button steps to 2×');
@@ -197,7 +209,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 10 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 11 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -232,6 +244,8 @@ try {
   });
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${SHOT_DIR}/11-phone.png` });
+  const lvTags = await page.locator('.v3-weapon-lv').allTextContents();
+  check(lvTags.length === 3 && lvTags.every((t) => t === 'MAX'), `the last level reads MAX, not EVO (${lvTags.join(', ')})`);
   const rail = await page.locator('.v2-rail-right').boundingBox();
   const last = await page.locator('.v3-weapon').nth(2).boundingBox();
   check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `the loadout fits on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);

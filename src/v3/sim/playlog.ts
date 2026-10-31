@@ -37,9 +37,12 @@ import {
  *  9: V3 round 3 (five weapons replaced: the draft deals a new roster).
  *  10: V3 round 6 (Cryo out; Shrapnel, Frigates, Thermobaric, Scattergun
  *      and Boomerang in: twelve weapons, a new draft roster).
+ *  11: V3 round 7 (the Armory's Hull and Supply bays: `armory` can carry a
+ *      hull and a supply upgrade, and Armor Plating draws on its own random
+ *      stream; Battle Group's frigates take new stations).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 10;
+export const LOG_VERSION = 11;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -65,7 +68,7 @@ export interface PlayLog {
   v: number;
   game: typeof LOG_GAME;
   id: string;
-  /** The Armory the run was played with (the main gun). */
+  /** The Armory the run was played with (one upgrade from each bay). */
   armory: ArmoryLevels;
   build: string;
   startedAt: string;

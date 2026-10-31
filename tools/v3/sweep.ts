@@ -10,10 +10,12 @@
 // --no-weapons: the bot never picks a weapon pickup up (the base gun alone).
 // The last block estimates the whole game: clearing all five maps in order
 // at each skill, starting from an empty Armory and buying levels with the
-// salvage earned along the way.
+// salvage earned along the way: the cheapest next thing among --gun, the
+// Hull bay and --hull (default pointdef), the Supply bay and --supply
+// (default drops); --gun-only buys the gun alone (before round 7).
 
 import { ABILITY_ORDER, type AbilityId } from '../../src/v3/data/abilities';
-import { ARMORY_COSTS, ARMORY_MAX, nextCost, salvageFor, type ArmoryId, type ArmoryLevels } from '../../src/v3/data/armory';
+import { ARMORY, ARMORY_MAX, BAYS, nextCost, salvageFor, type ArmoryId, type ArmoryLevels, type BayId } from '../../src/v3/data/armory';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { runBot, SKILLS, type BotRun } from '../../src/v3/sim/bot';
 import { makeRng } from '../../src/sim/rng';
@@ -28,6 +30,8 @@ const skillNames = (opt('skills') ?? 'sharp,average,casual').split(',');
 const focus = opt('focus') as AbilityId | undefined;
 const gun = (opt('gun') ?? 'warhead') as ArmoryId;
 const armory: ArmoryLevels = armoryLevel > 0 ? { [gun]: armoryLevel } : {};
+const gunOnly = args.includes('--gun-only');
+const plan: ArmoryId[] = gunOnly ? [gun] : [gun, (opt('hull') ?? 'pointdef') as ArmoryId, (opt('supply') ?? 'drops') as ArmoryId];
 
 /** A seed's shuffle of the roster (deterministic), with --focus first. */
 function taste(seed: number): AbilityId[] {
@@ -71,12 +75,14 @@ for (const map of MAP_ORDER) {
 }
 
 // The whole game, played the way a person would: maps in order, retrying a
-// map until it is cleared, putting salvage into one Armory upgrade (--gun)
-// after every run and taking it into each run. Capped at 60 runs a skill.
-const ONE_GUN = ARMORY_COSTS.reduce((s, c) => s + c, 0);
-console.log(`\nWhole game (all ${MAP_ORDER.length} maps cleared, from an empty Armory, investing in ${gun}; ${ONE_GUN} salvage maxes it):`);
+// map until it is cleared, spending salvage after every run on the cheapest
+// next step of the plan (a level of one of its upgrades, or the bay it
+// sits in) and taking the plan's upgrades into each run. Capped at 60 runs
+// a skill.
+console.log(`\nWhole game (all ${MAP_ORDER.length} maps cleared, from an empty Armory, buying ${plan.join(' + ')}, cheapest step first):`);
 for (const skill of skillNames) {
   const a: ArmoryLevels = {};
+  const open = new Set<BayId>(['gun']);
   let bank = 0;
   let seconds = 0;
   let runs = 0;
@@ -90,9 +96,16 @@ for (const skill of skillNames) {
       runs++;
       seconds += realSeconds(r);
       bank += salvageFor(r, r.won && first);
-      for (let c = nextCost(a, gun); c !== null && c <= bank; c = nextCost(a, gun)) {
-        bank -= c;
-        a[gun] = (a[gun] ?? 0) + 1;
+      for (;;) {
+        const steps = plan.map((id) => {
+          const bay = ARMORY[id].bay;
+          return open.has(bay) ? { id, bay, cost: nextCost(a, id) } : { id, bay, cost: BAYS[bay].cost as number | null };
+        });
+        const next = steps.filter((x) => x.cost !== null).sort((x, y) => x.cost! - y.cost!)[0];
+        if (!next || next.cost! > bank) break;
+        bank -= next.cost!;
+        if (!open.has(next.bay)) open.add(next.bay);
+        else a[next.id] = (a[next.id] ?? 0) + 1;
       }
       if (r.won) {
         first = false;
@@ -102,5 +115,6 @@ for (const skill of skillNames) {
     }
     if (runs >= 60) break;
   }
-  console.log(`  ${skill.padEnd(8)} ${(seconds / 3600).toFixed(1)} h, ${runs} runs, ${gun} ${a[gun] ?? 0}/${ARMORY_MAX} — ${cleared.join(', ') || 'nothing cleared'}`);
+  const levels = plan.map((id) => `${id} ${a[id] ?? 0}/${ARMORY[id].max}`).join(', ');
+  console.log(`  ${skill.padEnd(8)} ${(seconds / 3600).toFixed(1)} h, ${runs} runs, ${levels} — ${cleared.join(', ') || 'nothing cleared'}`);
 }
