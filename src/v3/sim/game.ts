@@ -1513,12 +1513,16 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   if (g.fields.length && th.kind !== 'ballistic') {
     const well = g.fields.find((f) => f.kind === 'well' && fieldDist(f, th.x, th.y) <= f.hw);
     if (well) {
-      const d = dist(th.x, th.y, well.x1, well.y1);
-      const stepLen = Math.min(d, AB.well.pull * dt);
-      if (d > 0) {
-        th.x += ((well.x1 - th.x) / d) * stepLen;
-        th.y += ((well.y1 - th.y) / d) * stepLen;
-      }
+      // Drawn in, and swirled round the core once there, so what it caught
+      // stays a ring you can count (round 4: all of it stacked on one point).
+      const d = dist(th.x, th.y, well.x1, well.y1) || 1;
+      const ring = WELL_RING + (th.id % 3) * 10;
+      const inward = Math.min(Math.max(0, d - ring), AB.well.pull * dt);
+      const swirl = AB.well.pull * 0.5 * dt;
+      const ux = (well.x1 - th.x) / d;
+      const uy = (well.y1 - th.y) / d;
+      th.x += ux * inward - uy * swirl;
+      th.y += uy * inward + ux * swirl;
       th.vx = (th.x - px) / dt;
       th.vy = (th.y - py) / dt;
       return;
@@ -1666,6 +1670,10 @@ function checkImpact(g: Game, th: Threat): void {
   // A heavy's direct hit sinks the ship whatever its armour or formation.
   damageShip(g, s, heavy ? HEAVY_SINKS : dmg, blame);
 }
+
+/** Gravity Well: the radius caught threats circle the core at (well inside
+ *  AB.well.core, so the implosion still reaches them all). */
+const WELL_RING = 22;
 
 /** More than any hull can take, through any armour or formation cut. */
 const HEAVY_SINKS = 99;
@@ -1981,7 +1989,12 @@ function updateTimers(g: Game, dt: number): void {
   g.steamT = Math.max(0, g.steamT - dt);
   if (g.weapon) {
     g.weapon.t -= dt;
-    if (g.weapon.t <= 0) g.weapon = null;
+    if (g.weapon.t <= 0) {
+      // Round 4: say so over the gun, or a player keeps tapping as if loaded.
+      const c = g.map.carrier;
+      addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${abilityName(g.weapon.id, g.weapon.level).toUpperCase()} DONE` });
+      g.weapon = null;
+    }
   }
   // Aegis domes run down, and are gone once spent or out of time.
   for (const s of g.ships) {
@@ -2122,12 +2135,16 @@ function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: Abi
     g.seenPickups.add(kind);
     g.events.push({ kind: 'newPickup', pickup: kind });
   }
+  // A weapon pickup is bigger and carries its name under it: kept far
+  // enough in that both stay on screen (round 4: at the old margin the name
+  // was cut off at the edges).
+  const mx = kind === 'weapon' ? 90 : 40;
   g.pickups.push({
     id: g.nextId++,
     kind,
     weapon,
-    x: clamp(x, 40, VIEW.width - 40),
-    y: clamp(y, 60, VIEW.height - 60),
+    x: clamp(x, mx, VIEW.width - mx),
+    y: clamp(y, 60, VIEW.height - (kind === 'weapon' ? 100 : 60)),
     age: 0,
   });
 }

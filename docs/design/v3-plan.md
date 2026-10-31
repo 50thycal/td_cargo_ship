@@ -16,7 +16,8 @@ upgrades**, after the player's brief (inspired by Survivor.io):
 - **Round 3** replaced the five weakest weapons with five built for the
   15 s swap ([v3-playtest-round3.md](v3-playtest-round3.md)); after the
   player's look, Air Strike costs 2 rounds a jet and an Aegis Dome replaced
-  a laser that was too close to the Railgun.
+  a laser that was too close to the Railgun. Round 4 played the new weapons
+  through for UI and visuals ([v3-playtest-round4.md](v3-playtest-round4.md)).
 - All of V2's passive cards are gone. **EMP and Strike Package are no longer
   power-ups** (Strike came back as the Air Strike weapon). The other pickups
   are unchanged.
@@ -108,8 +109,10 @@ Shells, Decoy Flares, Sub Hunter.
   the weapon's colour; smoke, ion clouds and hanging flares are drawn where
   they burst.
 - The left rail times the loaded weapon like a power-up. Loading one shows
-  a notice: its name, what a shot does now and how to fire it. The first
-  weapon drop of a run explains itself.
+  a one-line notice: its name, its seconds and how to fire it (what a shot
+  does is on the card). Running out says so over the gun ("RAILGUN DONE").
+  The first weapon drop of a run explains itself. Round 4's UI pass:
+  [v3-playtest-round4.md](v3-playtest-round4.md).
 - Draft cards show what the weapon answers, its art, its level pips, what
   this level does, and "Drops as a pickup · 15 s in the gun · how to fire".
 

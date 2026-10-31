@@ -69,11 +69,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Bastion',
     answers: 'Ballistics',
     levels: [
-      'Each shot also raises a dome over the ship its target is after: 5 s that takes 3 hits for it',
-      'The dome holds 6 s and takes 4 hits',
-      'EVOLVES: 8 s, 6 hits, and every hit it takes bursts back out, hitting threats nearby for 2',
+      'Each shot also domes the ship its target is after: 5 s, 3 hits',
+      'Domes hold 6 s, 4 hits',
+      'EVOLVES: 8 s, 6 hits, and each hit bursts back out for 2',
     ],
-    how: 'Tap threats as usual, or the water by a ship to dome it',
+    how: 'Tap threats as usual, or the water by a ship',
   },
   cryo: {
     id: 'cryo',
@@ -105,11 +105,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Strike',
     answers: 'Aircraft',
     levels: [
-      'Each shot calls a jet down the row you tapped, hitting everything under it (2 rounds a jet)',
+      'Each shot calls a jet down the row you tapped, hitting everything under it',
       'A wider run, harder hits',
       'EVOLVES: the row burns for 2 s and subs and trucks under it are destroyed',
     ],
-    how: 'Tap a row: the jet flies across it, for 2 rounds',
+    how: 'Tap a row: a jet flies across it, for 2 rounds',
   },
   railgun: {
     id: 'railgun',
