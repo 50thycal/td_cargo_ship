@@ -1802,9 +1802,9 @@ function weaponHint(seconds: number): [string, string] {
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, an Aegis Dome takes the hit for a ship; in the Armory, Fast Motors or Armor Plating.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, Aegis Launchers fire from every ship; in the Armory, Fast Motors or Armor Plating.',
   guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Point Defense in the Armory picks off the ones near the carrier.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; an Aegis Dome on the ship it is after takes the hit.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Aegis Launchers let the ship it is after fire back.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',

@@ -71,16 +71,15 @@ export interface Ship {
   channel: number;
   /** Flow multiplier locked in when the ship set sail. */
   mult: number;
-  /** Aegis Dome over this hull, if any. */
-  dome?: Dome;
+  /** Aegis: its own interceptors while the weapon is loaded. */
+  aegis?: Launchers;
 }
 
-/** Aegis Dome: a shield over one hull for `t` s that takes `hits` more hits
- *  (Bastion, level 3: each one bursts back out). */
-export interface Dome {
-  t: number;
-  hits: number;
-  level: number;
+/** Aegis (round 8): a hull's own interceptors, fired at a threat about to
+ *  hit it; at MAX (Bastion) a spent one reloads. */
+export interface Launchers {
+  ammo: number;
+  reloadT: number;
 }
 
 export interface Threat {
@@ -154,7 +153,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'dome' | 'frag' | 'thermo';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo';
 
 export interface Fx {
   kind: FxKind;
@@ -307,6 +306,22 @@ export interface Ally {
   hits: number[];
   /** Game time of its last hit (the renderer flashes its guns). */
   firedT: number;
+  /** Carpet Strike: how far it has flown, and where it drops its next
+   *  napalm canister (none for a plain Air Strike). */
+  flown: number;
+  nextDrop: number | null;
+}
+
+/** Carpet Strike (round 8): a napalm canister tumbling down behind the jet;
+ *  it bursts after AB.airstrike.fall s and sets its stretch of the row
+ *  alight. */
+export interface Bomb {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  t: number;
+  level: number;
 }
 
 /** An area on the water: a flak cloud or a gravity well (circles: x1 = x2,
@@ -384,8 +399,8 @@ export interface Game {
   fx: Fx[];
   events: GameEvent[];
   carrierHp: number;
-  /** Aegis Dome over the carrier, if any. */
-  carrierDome: Dome | null;
+  /** Aegis Bastion: the carrier's own interceptors. */
+  carrierAegis: Launchers | null;
   ammo: number;
   reloadT: number;
   overdriveT: number;
@@ -394,6 +409,8 @@ export interface Game {
   shieldT: number;
   steamT: number;
   allies: Ally[];
+  /** Carpet Strike's napalm canisters, falling. */
+  bombs: Bomb[];
   /** Frigate Escort's frigates, and Boomerang blades in the air. */
   escorts: Escort[];
   blades: Blade[];
@@ -484,7 +501,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     fx: [],
     events: [],
     carrierHp: s.carrierHp,
-    carrierDome: null,
+    carrierAegis: null,
     ammo: s.rack,
     reloadT: 0,
     overdriveT: 0,
@@ -492,6 +509,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     shieldT: 0,
     steamT: 0,
     allies: [],
+    bombs: [],
     escorts: [],
     blades: [],
     fields: [],
@@ -947,16 +965,10 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       if (!spend(g)) return 'dry';
       g.interceptors.push({ id: g.nextId++, x: g.map.carrier.x, y: g.map.carrier.y - 6, target: null, tx: x, ty: y, life: 0, src: 'gun', weapon: { ...w } });
       return 'fire';
-    case 'aegis': {
-      // A threat: shot as usual, and the hull it is after domed (`fireAt`).
-      // Open water by a hull: that hull domed.
-      if (threat) return null;
-      const hull = domeTarget(g, x, y, null);
-      if (!hull) return null;
-      if (!spend(g)) return 'dry';
-      raiseDome(g, w.level, hull);
-      return 'fire';
-    }
+    case 'aegis':
+      // The ships fire their own interceptors (`updateAegis`); the gun is
+      // the plain gun.
+      return null;
     case 'seeker':
       return fireSeekers(g, w.level, x, y, radius);
     case 'railgun':
@@ -1179,6 +1191,50 @@ function updateEscorts(g: Game, dt: number): void {
   g.escorts = g.escorts.filter((e) => !(e.leaving && e.x >= VIEW.width + 130));
 }
 
+/** Aegis Launchers (round 8 playtest: "all cargo ships get one interceptor
+ *  missile that they can fire from their ship to hit a threat that is about
+ *  to hit them… applied to all existing cargo ships and all that spawn while
+ *  it is active"). While it is loaded every ship carries its own
+ *  interceptors and fires one at a threat closing on it, in reach; at MAX
+ *  (Bastion) a spent one reloads and the carrier has its own. When the
+ *  weapon goes, so do they. */
+function updateAegis(g: Game, dt: number): void {
+  const w = g.weapon?.id === 'aegis' ? g.weapon : null;
+  if (!w) {
+    for (const s of g.ships) s.aegis = undefined;
+    g.carrierAegis = null;
+    return;
+  }
+  const k = w.level - 1;
+  const reach = AB.aegis.reach[k];
+  const arm = (l: Launchers | undefined | null, max: number, x: number, y: number, isTarget: (t: Threat) => boolean): Launchers => {
+    const a = l ?? { ammo: max, reloadT: 0 };
+    if (w.level >= 3 && a.ammo < max) {
+      a.reloadT += dt;
+      if (a.reloadT >= AB.aegis.reload) {
+        a.ammo += 1;
+        a.reloadT = 0;
+      }
+    }
+    if (a.ammo < 1) return a;
+    const target = g.threats
+      .filter((t) => !t.dead && isTarget(t) && dist(t.x, t.y, x, y) <= reach && assigned(g, t.id) < t.hp)
+      .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0];
+    if (!target) return a;
+    a.ammo -= 1;
+    g.interceptors.push({ id: g.nextId++, x, y: y - 8, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
+    addFx(g, 'launch', x, y - 8, { life: 0.3, r: 8 });
+    return a;
+  };
+  // What is about to hit a hull: a threat aimed at it, or an aircraft over it.
+  const aircraft = (t: Threat) => t.kind === 'strafer' || t.kind === 'bomber';
+  for (const s of g.ships) s.aegis = arm(s.aegis, AB.aegis.missiles[k], s.x, s.y, (t) => t.target === s.id || aircraft(t));
+  if (w.level >= 3) {
+    const c = g.map.carrier;
+    g.carrierAegis = arm(g.carrierAegis, AB.aegis.carrier, c.x, c.y, (t) => t.target === CARRIER_TARGET || aircraft(t));
+  }
+}
+
 /** Point Defense (Armory, Hull bay): the carrier fires a free interceptor
  *  at the nearest threat in reach that still needs a shot, every pdGap s. */
 function updatePointDefense(g: Game, dt: number): void {
@@ -1230,54 +1286,12 @@ function addField(g: Game, kind: Field['kind'], x: number, y: number, r: number,
   g.fields.push({ kind, x1: x, y1: y, x2: x, y2: y, hw: r, t: 0, life, tick: 0, level });
 }
 
-/** The hull an Aegis tap covers: the ship (or the carrier) the tapped
- *  threat is after; for an aircraft, or a tap on open water, the hull nearest
- *  the tap within reach. */
-function domeTarget(g: Game, x: number, y: number, threat: Threat | null): Ship | 'carrier' | null {
-  if (threat && threat.kind !== 'strafer' && threat.kind !== 'bomber') {
-    if (threat.target === CARRIER_TARGET) return 'carrier';
-    const s = g.ships.find((o) => o.id === threat.target);
-    if (s) return s;
-  }
-  let best: Ship | 'carrier' | null = null;
-  const c = g.map.carrier;
-  let bd = dist(x, y, c.x, c.y) <= AB.aegis.reach + CARRIER.halfLength ? dist(x, y, c.x, c.y) - CARRIER.halfLength : Infinity;
-  if (bd < Infinity) best = 'carrier';
-  for (const s of g.ships) {
-    const d = dist(x, y, s.x, s.y);
-    if (d <= AB.aegis.reach && d < bd) {
-      bd = d;
-      best = s;
-    }
-  }
-  return best;
-}
-
-function raiseDome(g: Game, level: number, hull: Ship | 'carrier'): void {
-  const k = level - 1;
-  const dome: Dome = { t: AB.aegis.time[k], hits: AB.aegis.hits[k], level };
-  if (hull === 'carrier') g.carrierDome = dome;
-  else hull.dome = dome;
-  const p = hull === 'carrier' ? g.map.carrier : hull;
-  addFx(g, 'dome', p.x, p.y, { life: 0.45, r: hull === 'carrier' ? CARRIER.halfLength + 30 : 48 });
-}
-
-/** A hit on a domed hull: the dome takes it instead (Bastion bursts back
- *  out). True if it was absorbed. */
-function domeAbsorbs(g: Game, dome: Dome | null | undefined, x: number, y: number): boolean {
-  if (!dome || dome.t <= 0 || dome.hits <= 0) return false;
-  dome.hits -= 1;
-  addFx(g, 'block', x, y, { life: 0.45, r: 44 });
-  if (dome.level >= 3) {
-    for (const th of [...g.threats]) if (!th.dead && dist(th.x, th.y, x, y) <= AB.aegis.burst) damageThreat(g, th, AB.aegis.burstDmg);
-    addFx(g, 'emp', x, y, { life: 0.45, r: AB.aegis.burst });
-  }
-  return true;
-}
-
-/** Seeker Pod: one round launches a seeker at each of the threats nearest
- *  the tap (the closest again if there are fewer), as long as one is within
- *  reach of it. */
+/** Seeker Pod: one round launches seekers at the threats nearest the tap,
+ *  as long as one is within reach of it. A seeker hits for a third of a
+ *  shot (round 8 playtest: "since one shot makes like 3 or more of the
+ *  seekers… each should do about a third of the damage"), so they go in
+ *  threes: each threat, nearest first, gets as many as it takes to bring it
+ *  down, and any left over go to the nearest. */
 function fireSeekers(g: Game, level: number, x: number, y: number, radius: number): TapResult {
   const k = level - 1;
   const near = g.threats
@@ -1287,8 +1301,16 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
   if (!spend(g)) return 'dry';
   const c = g.map.carrier;
   const n = AB.seeker.missiles[k];
+  const dmg = g.stats.hitDamage * AB.seeker.damage;
+  const targets: Threat[] = [];
+  for (const t of near) {
+    let need = Math.ceil((t.hp - assigned(g, t.id)) / dmg - 1e-9);
+    while (need-- > 0 && targets.length < n) targets.push(t);
+    if (targets.length >= n) break;
+  }
+  while (targets.length < n) targets.push(near[0]);
   for (let i = 0; i < n; i++) {
-    const t = near[i % near.length];
+    const t = targets[i];
     const spread = (i - (n - 1) / 2) * 14;
     g.interceptors.push({
       id: g.nextId++,
@@ -1300,7 +1322,7 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
       life: -i * 0.03,
       src: 'seeker',
       blast: AB.seeker.blast,
-      dmg: 1,
+      dmg,
       retarget: level >= 3,
     });
   }
@@ -1338,10 +1360,39 @@ function callJet(g: Game, level: number, x: number, y: number): void {
     knock: level >= 3,
     hits: [],
     firedT: -1,
+    flown: 0,
+    // Carpet Strike: canisters from the screen's edge on (it starts 80 off),
+    // let go early by the distance they drift as they fall.
+    nextDrop: level >= 3 ? 80 + AB.airstrike.dropGap / 2 - napalmDrift() : null,
   });
-  if (level >= 3) {
-    g.fields.push({ kind: 'burn', x1: 0, y1: y, x2: VIEW.width, y2: y, hw: AB.airstrike.band[k] * 0.6, t: 0, life: AB.airstrike.burnTime, tick: 0, level });
+}
+
+/** How far a canister drifts on along the row while it falls. */
+function napalmDrift(): number {
+  return AB.airstrike.speed * AB.airstrike.drift * AB.airstrike.fall;
+}
+
+/** Carpet Strike's canisters: each tumbles AB.airstrike.fall s behind the
+ *  jet, then bursts and sets its stretch of the row burning for burnTime
+ *  (round 8 playtest: "like a napalm bomb that spins and then explodes
+ *  behind the jet, so it's like a bombing run"). The stretches meet edge to
+ *  edge, so the whole row burns, a beat behind the jet. */
+function updateBombs(g: Game, dt: number): void {
+  const live: Bomb[] = [];
+  for (const b of g.bombs) {
+    b.t += dt;
+    b.x += b.vx * dt;
+    if (b.t < AB.airstrike.fall) {
+      live.push(b);
+      continue;
+    }
+    const k = b.level - 1;
+    const half = AB.airstrike.dropGap / 2;
+    g.fields.push({ kind: 'burn', x1: b.x - half, y1: b.y, x2: b.x + half, y2: b.y, hw: AB.airstrike.band[k] * 0.6, t: 0, life: AB.airstrike.burnTime, tick: 0, level: b.level });
+    addFx(g, 'boom', b.x, b.y, { life: 0.6, r: 40 });
+    addFx(g, 'burst', b.x, b.y, { life: 0.45, r: 30 });
   }
+  g.bombs = live;
 }
 
 /** How far from (x, y) along (ux, uy) until the screen edge. */
@@ -1417,6 +1468,8 @@ export function step(g: Game, dt: number): void {
   updateTimers(g, dt);
   updateAllies(g, dt);
   updateEscorts(g, dt);
+  updateAegis(g, dt);
+  updateBombs(g, dt);
   updatePointDefense(g, dt);
   updateDamageControl(g, dt);
   updateBlades(g, dt);
@@ -1459,6 +1512,7 @@ function clearField(g: Game): void {
   g.pickups = [];
   g.fields = [];
   g.allies = [];
+  g.bombs = [];
   g.escorts = [];
   g.blades = [];
   g.overdriveT = 0;
@@ -1466,8 +1520,8 @@ function clearField(g: Game): void {
   g.shieldT = 0;
   g.steamT = 0;
   g.weapon = null;
-  g.carrierDome = null;
-  for (const s of g.ships) s.dome = undefined;
+  g.carrierAegis = null;
+  for (const s of g.ships) s.aegis = undefined;
   g.ammo = g.stats.rack;
   g.reloadT = 0;
 }
@@ -1598,7 +1652,6 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     return;
   }
-  if (domeAbsorbs(g, s.dome, s.x, s.y)) return;
   if (glances(g, s.x, s.y, 30)) return;
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
@@ -1624,7 +1677,6 @@ export function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     return;
   }
-  if (domeAbsorbs(g, g.carrierDome, g.map.carrier.x, g.map.carrier.y)) return;
   if (glances(g, g.map.carrier.x, g.map.carrier.y, 60)) return;
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.carrierDamageBy[by] += amount;
@@ -2057,7 +2109,8 @@ function predict(th: Threat, ahead: number): Point {
 function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   if (th.dead) return;
   th.hp -= amount;
-  if (th.hp > 0) return;
+  // Thirds of a hit (seekers) add up to a whole one, float error aside.
+  if (th.hp > 1e-6) return;
   th.dead = true;
   g.kills[th.kind] += 1;
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
@@ -2069,19 +2122,20 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   else if (weaponDue(g, th.kind)) dropWeapon(g, th.x, th.y);
 }
 
-function blast(g: Game, x: number, y: number, radius: number, exceptId: number): void {
+function blast(g: Game, x: number, y: number, radius: number, exceptId: number, amount = 1): void {
   for (const o of g.threats) {
     if (o.dead || o.id === exceptId) continue;
-    if (dist(x, y, o.x, o.y) <= radius) damageThreat(g, o, 1);
+    if (dist(x, y, o.x, o.y) <= radius) damageThreat(g, o, amount);
   }
 }
 
 // ---------------------------------------------------------------------------
 // Interceptors
 
+/** The damage already on its way to a threat (a seeker counts its third). */
 function assigned(g: Game, threatId: number): number {
   let n = 0;
-  for (const i of g.interceptors) if (i.target === threatId) n++;
+  for (const i of g.interceptors) if (i.target === threatId) n += i.dmg ?? g.stats.hitDamage;
   return n;
 }
 
@@ -2092,7 +2146,7 @@ export function canFire(g: Game): boolean {
 
 /** A shot at a threat, tagged with the loaded weapon (its burst does that
  *  weapon's work). Storm Coil adds a free second shot at the uncovered threat
- *  nearest the first; Aegis Dome also domes the hull the threat is after. */
+ *  nearest the first. */
 function fireAt(g: Game, th: Threat): boolean {
   if (!spend(g)) return false;
   const p = g.map.carrier;
@@ -2100,10 +2154,6 @@ function fireAt(g: Game, th: Threat): boolean {
   const shoot = (t: Threat) =>
     g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', weapon: w ? { ...w } : undefined });
   shoot(th);
-  if (w?.id === 'aegis') {
-    const hull = domeTarget(g, th.x, th.y, th);
-    if (hull) raiseDome(g, w.level, hull);
-  }
   if (w?.id === 'tesla' && w.level >= 3) {
     const twin = g.threats
       .filter((o) => !o.dead && o.id !== th.id && assigned(g, o.id) < o.hp && dist(o.x, o.y, th.x, th.y) <= AB.tesla.twin)
@@ -2170,7 +2220,8 @@ function updateInterceptors(g: Game, dt: number): void {
         // A Tesla Arc hit arcs on to the threats around it.
         if (it.weapon?.id === 'tesla') teslaArc(g, it.weapon.level, bx, by, th.id, AB.tesla.depth[it.weapon.level - 1], new Set([th.id]));
       }
-      blast(g, bx, by, radius, th ? th.id : -1);
+      // A seeker's splash is its own third of a hit.
+      blast(g, bx, by, radius, th ? th.id : -1, it.src === 'seeker' ? (it.dmg ?? 1) : 1);
       if (it.weapon) burstWeapon(g, it.weapon, bx, by);
       continue;
     }
@@ -2296,16 +2347,6 @@ function updateTimers(g: Game, dt: number): void {
       g.weapon = null;
     }
   }
-  // Aegis domes run down, and are gone once spent or out of time.
-  for (const s of g.ships) {
-    if (!s.dome) continue;
-    s.dome.t -= dt;
-    if (s.dome.t <= 0 || s.dome.hits <= 0) s.dome = undefined;
-  }
-  if (g.carrierDome) {
-    g.carrierDome.t -= dt;
-    if (g.carrierDome.t <= 0 || g.carrierDome.hits <= 0) g.carrierDome = null;
-  }
 }
 
 /** Distance from (x, y) to the segment of a field. */
@@ -2348,6 +2389,20 @@ function updateAllies(g: Game, dt: number): void {
   for (const a of g.allies) {
     a.x += a.dx * AB.airstrike.speed * dt;
     a.y += a.dy * AB.airstrike.speed * dt;
+    a.flown += AB.airstrike.speed * dt;
+    // Carpet Strike drops a canister every dropGap across the screen; each
+    // lands (and burns) dropGap wide, edge to edge, until one would land
+    // past the far edge.
+    while (a.nextDrop !== null && a.flown >= a.nextDrop) {
+      const lands = a.nextDrop - 80 + napalmDrift();
+      if (lands - AB.airstrike.dropGap / 2 >= VIEW.width) {
+        a.nextDrop = null;
+        break;
+      }
+      const x = a.x - a.dx * (a.flown - a.nextDrop);
+      g.bombs.push({ id: g.nextId++, x, y: a.y, vx: a.dx * AB.airstrike.speed * AB.airstrike.drift, t: 0, level: 3 });
+      a.nextDrop += AB.airstrike.dropGap;
+    }
     // What's under the jet: within `band` of its line, close along it.
     const under = (x: number, y: number, reach: number) => {
       const rx = x - a.x;
@@ -2470,6 +2525,11 @@ function collect(g: Game, p: Pickup): void {
     if (level <= 0) return;
     g.weapon = { id, level, t: g.stats.weaponTime };
     if (id === 'frigate') launchEscorts(g, level);
+    // Aegis: a fresh pickup rearms every hull in full.
+    if (id === 'aegis') {
+      for (const s of g.ships) s.aegis = undefined;
+      g.carrierAegis = null;
+    }
     g.uses[id] = (g.uses[id] ?? 0) + 1;
     g.events.push({ kind: 'weapon', id, level });
     addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });

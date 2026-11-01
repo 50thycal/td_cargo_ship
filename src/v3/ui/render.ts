@@ -4,8 +4,8 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { halfWidthAt, type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Dome, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
-import { ABILITY_MAX, SHORT_NAME } from '../data/abilities';
+import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { AB, ABILITY_MAX, SHORT_NAME } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 
@@ -73,7 +73,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
   for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0) drawShields(ctx, g);
-  drawDomes(ctx, g);
+  drawAegis(ctx, g);
   for (const p of g.pickups) {
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
@@ -115,6 +115,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
   for (const b of g.blades) drawBlade(ctx, b);
+  for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
@@ -580,22 +581,69 @@ function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind'])
   }
 }
 
-/** Aegis Domes: a teal bubble over each covered hull, one pip per hit it
- *  can still take, flickering in its last second. */
-function drawDomes(ctx: CanvasRenderingContext2D, g: Game): void {
-  const one = (x: number, y: number, rx: number, ry: number, d: Dome) => {
-    if (d.t < 1 && Math.floor(g.t * 10) % 2) return;
-    ctx.fillStyle = d.level >= 3 ? 'rgba(94,234,212,0.2)' : 'rgba(94,234,212,0.13)';
-    ctx.strokeStyle = 'rgba(153,246,228,0.9)';
-    ctx.lineWidth = d.level >= 3 ? 3 : 2;
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    for (let k = 0; k < d.hits; k++) dot(ctx, x - (d.hits - 1) * 6 + k * 12, y - ry - 8, 3.5, '#5eead4');
+/** Aegis Launchers: each hull's own interceptors, upright over it in the
+ *  weapon's colour (one per round left); a reloading Bastion slot fills in
+ *  as it comes back. */
+function drawAegis(ctx: CanvasRenderingContext2D, g: Game): void {
+  const col = ICON_COLOR.aegis;
+  const one = (x: number, y: number, l: Launchers, max: number) => {
+    // Round 8: half again as big, outlined: at the first size they were
+    // ~4 px on a phone.
+    for (let k = 0; k < max; k++) {
+      const mx = x - (max - 1) * 10 + k * 20;
+      const loaded = k < l.ammo;
+      ctx.save();
+      ctx.translate(mx, y);
+      ctx.globalAlpha = loaded ? 1 : 0.25 + 0.5 * Math.min(1, l.reloadT / AB.aegis.reload) * (k === l.ammo ? 1 : 0);
+      ctx.fillStyle = loaded ? col : 'rgba(255,255,255,0.35)';
+      ctx.strokeStyle = '#0b2430';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(5.5, -5);
+      ctx.lineTo(5.5, 9);
+      ctx.lineTo(-5.5, 9);
+      ctx.lineTo(-5.5, -5);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+      ctx.restore();
+    }
   };
-  for (const s of g.ships) if (s.dome) one(s.x, s.y, 46, 24, s.dome);
-  if (g.carrierDome) one(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 24, CARRIER.halfBeam + 22, g.carrierDome);
+  const w = g.weapon?.id === 'aegis' ? g.weapon : null;
+  if (!w) return;
+  const k = w.level - 1;
+  for (const s of g.ships) if (s.aegis) one(s.x, s.y - 36, s.aegis, AB.aegis.missiles[k]);
+  if (g.carrierAegis) one(g.map.carrier.x, g.map.carrier.y - CARRIER.halfBeam - 26, g.carrierAegis, AB.aegis.carrier);
+}
+
+/** Carpet Strike's napalm canisters: tumbling end over end as they fall
+ *  behind the jet, shrinking towards the water, a shadow closing in under
+ *  them. */
+function drawBomb(ctx: CanvasRenderingContext2D, b: Bomb): void {
+  const u = Math.min(1, b.t / AB.airstrike.fall);
+  ctx.save();
+  ctx.fillStyle = `rgba(0,0,0,${0.15 + 0.25 * u})`;
+  ctx.beginPath();
+  ctx.ellipse(b.x, b.y + 6, 10 - 4 * u, 4 - 1.5 * u, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.translate(b.x, b.y - 22 * (1 - u));
+  ctx.rotate(b.t * 18);
+  ctx.scale(1.25 - 0.45 * u, 1.25 - 0.45 * u);
+  ctx.fillStyle = '#3b3f45';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 11, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f97316';
+  ctx.fillRect(-3, -4.5, 3, 9);
+  ctx.fillStyle = '#2a2d31';
+  ctx.beginPath();
+  ctx.moveTo(-10, 0);
+  ctx.lineTo(-15, -6);
+  ctx.lineTo(-15, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 /** A Frigate Escort frigate: a grey warship in the weapon's steel, bigger
@@ -1147,15 +1195,6 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineTo(f.x2, f.y2);
         ctx.stroke();
         break;
-      case 'dome': {
-        // An Aegis Dome going up: a teal ring snapping out to the dome.
-        ctx.strokeStyle = `rgba(94,234,212,${1 - u})`;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * u), 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-      }
       case 'frag': {
         // A fragment (Shrapnel) or a pellet (Scattergun, r = 1): a bright
         // streak from where it left to where it stopped, running out along

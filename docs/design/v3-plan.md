@@ -89,10 +89,10 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 | Weapon → MAX name | Answers | A tap while loaded | L1 → L2 → **L3 (MAX)** |
 |---|---|---|---|
 | Flak Cannon → **Flak Curtain** | Swarms | a flak shell (at a threat, or onto open water) | a cloud of radius 95 for 1.5 s, hitting everything inside for 1 every 0.35 s → 115, 2 s → **135, 4 s** |
-| Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires) | 3 seekers (1 dmg each) → 4 → **5, and a seeker whose target is gone finds another** |
-| Aegis Dome → **Bastion** | Ballistics | a plain shot, and a dome over the hull its target is after (open water by a hull: just the dome); the dome takes hits for the hull | 5 s, 3 hits → 6 s, 4 hits → **8 s, 6 hits, and each hit bursts back for 2 within 120** |
+| Seeker Pod → **Swarm Pod** | Raids | seekers at the threats nearest the tap (within 360; none near: nothing fires), each **a third of a shot** (round 8), so they go in threes: each threat, nearest first, gets as many as bring it down | 3 seekers → 4 → **5, and a seeker whose target is gone finds another** |
+| Aegis Launchers → **Bastion** | Missiles | a plain shot; while loaded, **every ship carries its own interceptors** (ships sailing in too) and fires one at a threat closing on it within reach; gone with the weapon (round 8; it was a dome) | 1 a ship, reach 240 → 2 a ship, reach 320 → **2 a ship that reload every 3 s, and the carrier fires 3 of its own** |
 | Gravity Well → **Singularity** | Spread raids | a vortex shell | drones, missiles and jets within 200 dragged in at 320/s for 1.5 s, then 2 dmg to those within 100 (ballistics fly on) → 240, 3 dmg → **260, holds 2 s, 4 dmg** |
-| Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge, for **2 rounds** | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; the row burns 2 s and subs and trucks under the jet are destroyed** |
+| Air Strike → **Carpet Strike** | Aircraft | a jet down the tapped row, in from the nearer edge, for **2 rounds** | 2 dmg, band 80 → 3 dmg, 95 → **4 dmg, 110; napalm canisters tumble down behind the jet and burst, each setting its stretch of the row burning 2 s (round 8) and subs and trucks under the jet are destroyed** |
 | Railgun → **Mass Driver** | Heavies | a beam from the carrier through the tap | 1 dmg → 2 dmg, wider → **4 dmg, wide: two bring down a heavy** |
 | Tesla Arc → **Storm Coil** | Crowds | a plain shot whose hit arcs | 3 arcs → 4 arcs, every arc arcs again → **a free second shot at the nearest uncovered threat** |
 | Shrapnel Shell → **Fragstorm** | Swarms | a shell (at a threat, or onto open water) that bursts into fragments flying out in every direction | 10 fragments to 220, 1 dmg each to the first threat on their line → 14 to 270 → **18 to 300, each tearing through everything on its line** |
@@ -103,7 +103,10 @@ holds the roster, `WEAPON` the drop rules and `AB` every effect number.
 
 Cut in round 3 (round 2's five weakest): EMP Rounds, Hellfire Salvo, Smoke
 Shells, Decoy Flares, Sub Hunter. Cut in round 6: Cryo Rounds (the freeze
-rarely mattered: the shell usually killed what it froze).
+rarely mattered: the shell usually killed what it froze). Round 8 reworked
+Aegis (domes → every ship's own interceptors), cut Seekers to a third of a
+shot each, and gave Carpet Strike its napalm run
+([v3-playtest-round8.md](v3-playtest-round8.md)).
 
 ## Screen
 
