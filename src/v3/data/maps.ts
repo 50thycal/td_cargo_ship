@@ -99,7 +99,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     ],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.2.
-    threatScale: 0.85,
+    threatScale: 0.75,
     extras: [
       { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
@@ -151,7 +151,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     // now clears ~30%, the try-hard bot ~60% (docs/design/v2-island-round13.md).
     // The 20-map plan moves it to slot 6, with a full Armory chapter behind
     // the player: retuned there (docs/design/v3-maps-build.md). V2: 0.95.
-    threatScale: 1.12,
+    threatScale: 1.0,
     extras: [
       { kind: 'supersonic', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 7, count: 1, growth: 0.2 },
@@ -243,7 +243,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.0.
-    threatScale: 0.62,
+    threatScale: 0.6,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.2 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.15 },

@@ -263,7 +263,7 @@ const battery: MapDef = {
   carrier: { x: 520, y: 702 },
   frigate: { x: 290, y: 706 },
   channels: [{ y: 430, halfWidth: 120 }],
-  threatScale: 1.85,
+  threatScale: 2.0,
   extras: [
     { kind: 'supersonic', from: 4, count: 1, growth: 0.25 },
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
@@ -318,7 +318,7 @@ const sowers: MapDef = {
   carrier: { x: 760, y: 718 },
   frigate: { x: 540, y: 720 },
   channels: [{ y: 480, halfWidth: 125 }],
-  threatScale: 1.5,
+  threatScale: 1.55,
   extras: [
     { kind: 'mine', from: 1, count: 2, growth: 0.5 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
@@ -367,7 +367,7 @@ const rigs: MapDef = {
   carrier: { x: 900, y: 742 },
   frigate: { x: 660, y: 742 },
   channels: [{ y: 570, halfWidth: 110 }],
-  threatScale: 1.9,
+  threatScale: 1.85,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 5, count: 1, growth: 0.17 },
@@ -410,7 +410,7 @@ const lantern: MapDef = {
   carrier: { x: 905, y: 668 },
   frigate: { x: 380, y: 700 },
   channels: [{ y: 440, halfWidth: 120 }],
-  threatScale: 1.35,
+  threatScale: 1.45,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
@@ -454,7 +454,7 @@ const dreadnought: MapDef = {
   carrier: { x: 800, y: 738 },
   frigate: { x: 560, y: 738 },
   channels: [{ y: 565, halfWidth: 110 }],
-  threatScale: 0.9,
+  threatScale: 0.85,
   extras: [
     { kind: 'heavy', from: 6, count: 1, growth: 0.15 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
@@ -667,7 +667,7 @@ const tide: MapDef = {
     { y: 282, halfWidth: 86 },
     { y: 575, halfWidth: 86, tide: true },
   ],
-  threatScale: 1.37,
+  threatScale: 1.4,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'supersonic', from: 4, count: 1, growth: 0.3 },
@@ -718,7 +718,7 @@ const citadel: MapDef = {
   carrier: { x: 720, y: 752 },
   frigate: { x: 480, y: 752 },
   channels: [{ y: 565, halfWidth: 125, widths: [[-40, 125], [900, 125], [1640, 66]] }],
-  threatScale: 1.15,
+  threatScale: 1.1,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.3 },
     { kind: 'supersonic', from: 3, count: 1, growth: 0.3 },
