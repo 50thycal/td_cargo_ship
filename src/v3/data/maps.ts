@@ -58,7 +58,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     carrier: { x: 800, y: 705 },
     frigate: { x: 580, y: 700 },
     channels: [{ y: 470, halfWidth: 150 }],
-    threatScale: 1.15,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.15.
+    threatScale: 0.85,
     // Round 3: careful play lost ~0.5 ships here; a late taste of supersonics
     // and one heavy in the finale tests reaction, not just ammo.
     extras: [
@@ -95,7 +97,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
     ],
-    threatScale: 1.2,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.2.
+    threatScale: 1.0,
     extras: [
       { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
@@ -145,7 +149,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     // (2-3 of 30): a little less fire, and its extra threats come two waves
     // later, so the mid-game (waves 5-8, where it was lost) eases. The you-bot
     // now clears ~30%, the try-hard bot ~60% (docs/design/v2-island-round13.md).
-    threatScale: 0.95,
+    // The 20-map plan moves it to slot 6, with a full Armory chapter behind
+    // the player: retuned there (docs/design/v3-maps-build.md). V2: 0.95.
+    threatScale: 1.05,
     extras: [
       { kind: 'supersonic', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 7, count: 1, growth: 0.2 },
@@ -195,7 +201,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     carrier: { x: 950, y: 730 },
     frigate: { x: 1190, y: 735 },
     channels: [{ y: 575, halfWidth: 100 }],
-    threatScale: 1.05,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.05.
+    threatScale: 1.5,
     extras: [
       { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 6, count: 1, growth: 0.17 },
@@ -233,7 +241,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     carrier: { x: 900, y: 690 },
     frigate: { x: 660, y: 690 },
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
-    threatScale: 1.0,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.0.
+    threatScale: 0.75,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.2 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.15 },

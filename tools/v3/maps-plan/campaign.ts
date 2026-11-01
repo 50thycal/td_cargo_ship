@@ -15,6 +15,7 @@ import { MAPS, MAP_ORDER, type MapId } from '../../../src/v3/data/maps';
 import { runBot, SKILLS, type BotRun } from '../../../src/v3/sim/bot';
 import { playMimic } from '../../../src/v3/sim/mimic';
 import { makeRng } from '../../../src/sim/rng';
+import { targetTries } from './targets';
 
 const args = process.argv.slice(2);
 const campaigns = Number(args.find((a) => /^\d+$/.test(a)) ?? 6);
@@ -25,15 +26,8 @@ const skill = you ? 'you' : args.find((a) => a in SKILLS) ?? 'average';
 const calibrate = args.includes('--calibrate');
 const onlyMaps = args.find((a) => a.startsWith('--maps='))?.split('=')[1]?.split(',') as MapId[] | undefined;
 const CAP = 8;
-
-/** The plan's tries per slot (docs/design/v3-maps-plan.md), as a target clear rate. */
-export function targetTries(slot: number): number {
-  if (slot <= 2) return 1.1;
-  if (slot <= 5) return 1.6;
-  if (slot <= 10) return 2.1;
-  if (slot <= 15) return 2.7;
-  return 3.4;
-}
+/** Shifts every seed, so campaigns can be split across processes. */
+const offset = Number(args.find((a) => a.startsWith('--offset='))?.split('=')[1] ?? 0);
 
 const DRAFT_S = 8;
 const RUN_OVERHEAD_S = 15;
@@ -66,8 +60,8 @@ const kits: Record<string, ArmoryLevels[]> = {};
 const hours: number[] = [];
 for (let c = 0; c < campaigns; c++) {
   const owned: ArmoryLevels = {};
-  const rng = makeRng(0xa4e0 + c * 7919);
-  let seed = 5000 + c * 1000;
+  const rng = makeRng(0xa4e0 + (c + offset) * 7919);
+  let seed = 5000 + (c + offset) * 1000;
   let seconds = 0;
   for (const map of MAP_ORDER) {
     (kits[map] ??= []).push(loadout(owned));

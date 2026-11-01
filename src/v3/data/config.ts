@@ -145,7 +145,7 @@ export const THREATS: Record<
   /** Bursts out of a cove and rams a ship; leaves a white wake. */
   fastboat: { speed: 125, hp: 2, damage: 2, dropChance: 0.3, label: 'Fast attack boat' },
   /** Structures: hit points, no warhead. A kill always drops something. */
-  rig: { speed: 0, hp: 28, damage: 0, dropChance: 1, label: 'Oil rig' },
+  rig: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'Oil rig' },
   generator: { speed: 0, hp: 10, damage: 0, dropChance: 1, label: 'Shield generator' },
   citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
   dreadnought: { speed: 24, hp: 60, damage: 0, dropChance: 1, label: 'Dreadnought' },
@@ -154,7 +154,9 @@ export const THREATS: Record<
 /** The supertanker (The Behemoth Run): its hit points, the ships its loss
  *  counts as (the player's answer: three), from how far into a wave it
  *  sails, and its points multiplier when it comes through. */
-export const VIP = { hp: 6, loss: 3, after: 5, points: 4, targetShare: 0.5 } as const;
+// A heavy's direct hit sinks any ship outright, but the tanker takes
+// `heavyHit` from one: two heavies, not one, are what sink it.
+export const VIP = { hp: 8, loss: 3, after: 5, points: 4, targetShare: 0.3, heavyHit: 4 } as const;
 
 /** Locks (Saltgate Canal): where a hull waits short of a shut gate, and how
  *  long each gate stays open (the fill wait is the map's, 6 s by the

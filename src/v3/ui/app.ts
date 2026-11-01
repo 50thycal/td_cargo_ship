@@ -100,6 +100,29 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   mothership: 'Drops mini-drones. Kill the source.',
   strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',
   bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
+  mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
+  fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
+  dreadnought: 'A battleship firing broadsides as it steams through. Sixty hits to sink it, or ride it out.',
+};
+
+/** What each map's own system is, said once as the map starts (the 20-map
+ *  plan: one new idea a map). */
+const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
+  kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
+  marrow: ['RADAR TOWER', 'Its sweep tracks threats: your shots fly faster at them. The enemy wants it gone.'],
+  behemoth: ['SUPERTANKER', 'One a wave. Eight hits sink it, and it counts as three ships. Get it home.'],
+  needle: ['SINGLE FILE', 'The convoy queues at the gap. Column formation needn\'t merge.'],
+  saltgate: ['LOCK GATES', 'Ships wait in each chamber while it fills. Guard them.'],
+  battery: ['SHORE BATTERY', 'Two allied guns fire on their own. A hit knocks one out for a while.'],
+  sowers: ['MINES', 'Mines drift across the lane on the current. Clear them before a ship sails in.'],
+  rigs: ['OIL RIGS', 'Rigs launch from the sea. Bring one down and it stays down.'],
+  lantern: ['NIGHT', 'Threats show only as a glow until the beam finds them. Grab Star Shells.'],
+  dreadnought: ['DREADNOUGHT PASS', 'On waves 3, 6, 9 and 10 a battleship steams through.'],
+  coves: ['FAST BOATS', 'Boats burst out of the coves to ram the convoy.'],
+  delta: ['THE FORK', 'Tap the buoy to send the next ships north, middle or south.'],
+  crossing: ['TWO-WAY TRAFFIC', 'Outbound east up top, inbound west below. Both edges are a front.'],
+  tide: ['THE TIDE', 'The flats lane is open only at high tide. Push ships through while it lasts.'],
+  citadel: ['THE CITADEL', 'Destroy the three shield generators, then silence the Citadel.'],
 };
 
 /** Round 4: launchers that aren't targets — what they are, what to watch for. */
@@ -704,8 +727,28 @@ export class App {
   private drainEvents(g: Game): void {
     for (const ev of g.events) {
       switch (ev.kind) {
-        case 'wave':
+        case 'wave': {
+          const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '');
+          if (hint) this.showBanner(...hint);
+          break;
+        }
+        case 'tanker':
+          this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.');
+          break;
+        case 'post': {
+          const def = g.map.posts?.[ev.post];
+          if (def?.kind === 'radar' && ev.lost) this.showBanner('RADAR LOST', 'No more tracking for the rest of the run.');
+          else if (def?.kind === 'radar' && !ev.down) this.showBanner('RADAR HIT', `${g.posts[ev.post].hp} hits left.`);
+          else if (def?.kind === 'battery' && ev.down) this.showBanner('BATTERY KNOCKED OUT', 'Back in a few seconds.');
+          if (ev.down) this.shake = Math.max(this.shake, 10);
+          break;
+        }
+        case 'boss':
+          this.showBanner('DREADNOUGHT INBOUND', 'Broadsides every few seconds. Sink it, or keep the convoy alive till it passes.');
+          this.shake = Math.max(this.shake, 8);
+          break;
+        case 'fork':
           break;
         case 'debut':
           this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
@@ -1836,6 +1879,8 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
   strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; frigates shoot jets down too.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
+  mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
+  fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

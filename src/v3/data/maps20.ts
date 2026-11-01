@@ -75,7 +75,7 @@ const marrow: MapDef = {
   carrier: { x: 800, y: 742 },
   frigate: { x: 570, y: 742 },
   channels: [{ y: 575, halfWidth: 115 }],
-  threatScale: 1.1,
+  threatScale: 1.15,
   extras: [
     { kind: 'supersonic', from: 6, count: 1, growth: 0.3 },
     { kind: 'heavy', from: 9, count: 1, growth: 0 },
@@ -122,10 +122,10 @@ const behemoth: MapDef = {
     { y: 362, halfWidth: 66, speed: 0.6, share: 0, vip: true, label: 'TANKER LANE' },
     { y: 565, halfWidth: 98 },
   ],
-  threatScale: 1.15,
+  threatScale: 1.6,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
-    { kind: 'heavy', from: 3, count: 1, growth: 0.2 },
+    { kind: 'heavy', from: 5, count: 1, growth: 0.15 },
     { kind: 'mothership', from: 8, count: 1, growth: 0.15 },
   ],
   callout: { x: 380, y: 852 },
@@ -172,7 +172,7 @@ const needle: MapDef = {
   carrier: { x: 760, y: 680 },
   frigate: { x: 520, y: 718 },
   channels: [{ y: 450, halfWidth: 190, widths: NEEDLE_HW }],
-  threatScale: 1.1,
+  threatScale: 1.45,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.3 },
     { kind: 'heavy', from: 6, count: 1, growth: 0.2 },
@@ -215,7 +215,7 @@ const saltgate: MapDef = {
   carrier: { x: 880, y: 662 },
   frigate: { x: 1010, y: 622 },
   channels: [{ y: 440, halfWidth: 150, widths: [[-40, 150], [380, 150], [440, 66], [722, 66], [780, 108], [1020, 108], [1078, 66], [1362, 66], [1420, 150], [1640, 150]] }],
-  threatScale: 1.0,
+  threatScale: 1.3,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'heavy', from: 5, count: 1, growth: 0.2 },
@@ -263,7 +263,7 @@ const battery: MapDef = {
   carrier: { x: 520, y: 702 },
   frigate: { x: 290, y: 706 },
   channels: [{ y: 430, halfWidth: 120 }],
-  threatScale: 1.2,
+  threatScale: 1.9,
   extras: [
     { kind: 'supersonic', from: 4, count: 1, growth: 0.25 },
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
@@ -318,7 +318,7 @@ const sowers: MapDef = {
   carrier: { x: 760, y: 718 },
   frigate: { x: 540, y: 720 },
   channels: [{ y: 480, halfWidth: 125 }],
-  threatScale: 1.15,
+  threatScale: 1.6,
   extras: [
     { kind: 'mine', from: 1, count: 2, growth: 0.5 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
@@ -348,10 +348,10 @@ const sowers: MapDef = {
 // A destroyed rig stays down for the rest of the run, so weapon time spent on
 // rigs early buys quieter waves later. Two far silos on the shore can't be hit.
 const RIGS_BASES: BaseDef[] = [
-  { x: 300, y: 298, kinds: ['drone', 'guided'], rig: { hp: 28 } },
-  { x: 690, y: 270, kinds: ['cluster', 'ballistic'], rig: { hp: 28 } },
-  { x: 1080, y: 298, kinds: ['supersonic', 'guided'], rig: { hp: 28 } },
-  { x: 1440, y: 270, kinds: ['drone', 'mothership'], rig: { hp: 28 } },
+  { x: 300, y: 298, kinds: ['drone', 'guided'], rig: { hp: 40 } },
+  { x: 690, y: 270, kinds: ['cluster', 'ballistic'], rig: { hp: 40 } },
+  { x: 1080, y: 298, kinds: ['supersonic', 'guided'], rig: { hp: 40 } },
+  { x: 1440, y: 270, kinds: ['drone', 'mothership'], rig: { hp: 40 } },
   { x: 500, y: 68, kinds: ['ballistic', 'heavy'] },
   { x: 1250, y: 68, kinds: ['heavy', 'ballistic'] },
 ];
@@ -367,7 +367,7 @@ const rigs: MapDef = {
   carrier: { x: 900, y: 742 },
   frigate: { x: 660, y: 742 },
   channels: [{ y: 570, halfWidth: 110 }],
-  threatScale: 1.2,
+  threatScale: 2.0,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 5, count: 1, growth: 0.17 },
@@ -410,7 +410,7 @@ const lantern: MapDef = {
   carrier: { x: 905, y: 668 },
   frigate: { x: 380, y: 700 },
   channels: [{ y: 440, halfWidth: 120 }],
-  threatScale: 1.15,
+  threatScale: 1.5,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
@@ -454,7 +454,7 @@ const dreadnought: MapDef = {
   carrier: { x: 800, y: 738 },
   frigate: { x: 560, y: 738 },
   channels: [{ y: 565, halfWidth: 110 }],
-  threatScale: 1.15,
+  threatScale: 1.05,
   extras: [
     { kind: 'heavy', from: 4, count: 1, growth: 0.25 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
@@ -509,7 +509,7 @@ const coves: MapDef = {
   carrier: { x: 700, y: 722 },
   frigate: { x: 460, y: 722 },
   channels: [{ y: 470, halfWidth: 120 }],
-  threatScale: 1.25,
+  threatScale: 1.15,
   extras: [
     { kind: 'fastboat', from: 1, count: 2, growth: 0.6 },
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
@@ -565,14 +565,14 @@ const delta: MapDef = {
     { y: 400, halfWidth: DHW, path: [...RIVER, ...DM.slice(1)] },
     { y: 760, halfWidth: DHW, path: [...RIVER, ...DS.slice(1)] },
   ],
-  threatScale: 1.25,
+  threatScale: 1.5,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 5, count: 1, growth: 0.2 },
     { kind: 'supersonic', from: 5, count: 1, growth: 0.25 },
   ],
   callout: { x: 280, y: 845 },
-  alerts: { x0: 20, x1: 560, y: 890 },
+  alerts: { x0: 20, x1: 560, y: 890, max: 1 },
   roads: {
     runners: [
       bypass([{ x: -60, y: 200 }, { x: 450, y: 205 }, { x: 800, y: 150 }, { x: 1100, y: 72 }, { x: 1660, y: 46 }], DELTA_BASES.slice(0, 3), -1),
@@ -616,7 +616,7 @@ const crossing: MapDef = {
     { y: 318, halfWidth: 86, label: 'OUTBOUND →' },
     { y: 592, halfWidth: 86, path: [{ x: 1640, y: 592 }, { x: -40, y: 592 }], label: '← INBOUND' },
   ],
-  threatScale: 1.25,
+  threatScale: 1.6,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'supersonic', from: 4, count: 1, growth: 0.3 },
@@ -667,7 +667,7 @@ const tide: MapDef = {
     { y: 282, halfWidth: 86 },
     { y: 575, halfWidth: 86, tide: true },
   ],
-  threatScale: 1.3,
+  threatScale: 1.35,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'supersonic', from: 4, count: 1, growth: 0.3 },
@@ -718,7 +718,7 @@ const citadel: MapDef = {
   carrier: { x: 720, y: 752 },
   frigate: { x: 480, y: 752 },
   channels: [{ y: 565, halfWidth: 125, widths: [[-40, 125], [900, 125], [1640, 66]] }],
-  threatScale: 1.35,
+  threatScale: 1.15,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.3 },
     { kind: 'supersonic', from: 3, count: 1, growth: 0.3 },

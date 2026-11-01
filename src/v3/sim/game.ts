@@ -832,15 +832,16 @@ function pickBase(g: Game, kind: ThreatKind, rng: RNG): number {
   const live = able.filter((i) => !g.baseDown[i]);
   if (live.length) return rng.pick(live);
   const any = g.map.bases.map((b, i) => (launcher(b) && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
-  // Every base for this kind is down: half its launches move to a launcher
-  // still standing (further off, so with more warning), half are lost.
+  // Every base for this kind is down: most of its launches move to a
+  // launcher still standing (further off, so with more warning), the rest
+  // are lost.
   if (able.length) return any.length && rng.chance(STRUCTURE_REROUTE) ? rng.pick(any) : -2;
   // The original five maps: every base launches, so this is rng.int(bases).
   return any.length === g.map.bases.length ? rng.int(g.map.bases.length) : any.length ? rng.pick(any) : -2;
 }
 
 /** Share of a downed rig's launches that come from another base instead. */
-const STRUCTURE_REROUTE = 0.5;
+const STRUCTURE_REROUTE = 0.75;
 
 /** A base that fires missiles (not a generator, cove or mine chute). */
 function launcher(b: { kinds: ThreatKind[]; cove?: boolean; chute?: boolean; generator?: unknown }): boolean {
@@ -1273,7 +1274,7 @@ function updateEscorts(g: Game, dt: number): void {
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
     const target = g.threats
-      .filter((t) => !t.dead && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
+      .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
       .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
     if (!target) {
       e.fireT = 0.1;
@@ -1340,7 +1341,7 @@ function updatePointDefense(g: Game, dt: number): void {
   if (g.pdT > 0) return;
   const c = g.map.carrier;
   const target = g.threats
-    .filter((t) => !t.dead && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
+    .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
     .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
   if (!target) {
     g.pdT = 0.1;
@@ -2257,8 +2258,9 @@ function checkImpact(g: Game, th: Threat): void {
   } else {
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
   }
-  // A heavy's direct hit sinks the ship whatever its armour or formation.
-  damageShip(g, s, heavy ? HEAVY_SINKS : dmg, blame);
+  // A heavy's direct hit sinks the ship whatever its armour or formation
+  // (the supertanker takes VIP.heavyHit: it is built to take one).
+  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : dmg, blame);
 }
 
 /** Gravity Well: the radius caught threats circle the core at (well inside

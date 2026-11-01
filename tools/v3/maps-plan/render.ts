@@ -12,8 +12,12 @@ import { buildDoc, buildPage } from './page';
 const DIR = 'docs/design/v3-maps-plan';
 mkdirSync(DIR, { recursive: true });
 
+// The plan's diagrams: the original five drawn from the game's data, the
+// fifteen new ones from the plan's proposals (the game's own versions of
+// those are in src/v3/data/maps20.ts).
+const FIRST_FIVE = ['strait', 'gauntlet', 'island', 'harbor', 'archipelago'];
 export function layoutOf(id: string): ProposedMap {
-  return (MAPS as Record<string, unknown>)[id] ? fromMapDef(MAPS[id as MapId]) : PROPOSED[id];
+  return FIRST_FIVE.includes(id) ? fromMapDef(MAPS[id as MapId]) : PROPOSED[id];
 }
 
 const svgs: Record<string, string> = {};

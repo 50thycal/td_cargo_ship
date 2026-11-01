@@ -1,6 +1,6 @@
 # V3 maps plan: 20 maps in four chapters (for approval)
 
-Status: **proposal, nothing built.** Follows [v3-maps-handoff.md](v3-maps-handoff.md). The player approves or changes each layout first; a later session builds the approved set.
+Status: **approved by the player's review and built** ([v3-maps-build.md](v3-maps-build.md)). Follows [v3-maps-handoff.md](v3-maps-handoff.md). The diagrams below are the plan as approved; the game's own maps are in `src/v3/data/maps.ts` and `maps20.ts`.
 
 - **Review page:** https://claude.ai/artifact/YVdLYc3i8u3D4ZLdLAxXgE (the same diagrams, with Approve / Change / Cut and notes per map, and the open questions). Its saved marks are what the build session reads first.
 - Diagrams: `docs/design/v3-maps-plan/NN-id.svg`, one per slot. The existing five are drawn straight from `MAPS` in `src/v3/data/maps.ts`; the new fifteen from `tools/v3/maps-plan/proposed.ts`, written in the shape of `MapDef` so an approved layout becomes code mechanically. Regenerate with `npx vite-node tools/v3/maps-plan/render.ts -- page.html`.
