@@ -117,7 +117,86 @@ it will play.
 
 ## Tuning
 
-TUNING
+Each map has its own threat scale (`threatScale`), set for its slot so that
+tries rise through the game as the plan asks. The targets are about 1 try on
+maps 1–2, 1.6 on 3–5, 2.1 on 6–10, 2.7 on 11–15 and 3.4 on 16–20, never more
+than about 5 (`tools/v3/maps-plan/targets.ts`).
+
+**Who measures.** The sweep's reaction-time bots are far stronger than a
+person: the average bot cleared the Island 90% of the time against the
+player's 0 of 7. The tuning instead uses the persona fitted to the player's
+own playtests (`sim/mimic.ts`, "you"), which is much closer to a real player.
+
+**How.** It ran in passes:
+
+1. Clear rate by threat scale for each map (`calibrate.ts`, 12–24 seeds a
+   point), at the Armory a player has when they reach that map, alternating
+   two loadouts real campaigns brought.
+2. The whole 20-map campaign (`campaign.ts --you`), eight campaigns in
+   parallel, to check tries per map and the total hours.
+3. Then adjust and repeat.
+
+Campaign tries per map are noisy: a map's tries can swing by a whole try or
+more between runs of eight campaigns. Where the two measures disagreed, the
+clear-rate scans won.
+
+**Fixes the tuning found** (not scale changes):
+
+- **The Behemoth Run was unwinnable.** A heavy's direct hit sank the tanker
+  outright, costing three ships at once. It now takes 4 from a heavy (8 hits
+  in all). 30% of heavies and guided go for it, down from 50%, and the map's
+  extra heavies start two waves later.
+- **The Rig Field was trivial.** The persona shot every rig down early, and
+  every launch those rigs carried vanished. Rigs now take 40 hits, and 75% of
+  a downed rig's launches move to the shore silos.
+- **Dreadnought Pass stayed hard at any scale** (heavies and broadsides).
+  The battleship now has 50 hits, broadsides every 9 s, and the map's extra
+  heavies start at wave 6.
+
+**The result.** The persona's campaign, from an empty Armory, eight
+campaigns, before the last small adjustment:
+
+| Chapter | Tries per map (target) | Notes |
+|---|---|---|
+| 1 | 1.4, 1.2, 2.0, 2.1, 2.1 (1.1 → 1.6) | on target |
+| 2 | 2.8, 3.8, 5.8, 5.0, 5.1 (2.1) | the last adjustment eases maps 7–10 |
+| 3 | 4.8, 4.1, 3.9, 3.0, 2.6 (2.7) | maps 11–13 eased a little |
+| 4 | 2.8, 3.0, 1.5, 3.4, 2.2 (3.4) | the Crossing and the Citadel raised |
+
+The whole campaign took **8.7 hours on average** (8.1–9.5 h), inside the
+plan's 7–9 h. A strong player will be quicker.
+
+**Final threat scales**
+
+| Map | Scale | Map | Scale |
+|---|---|---|---|
+| The Strait | 0.7 (V2: 1.15) | Battery Point | 1.8 |
+| The Kesh Hook | 0.8 | Sowers' Reach | 1.45 |
+| Lee of Marrow | 0.95 | The Rig Field | 1.7 |
+| The Gauntlet | 0.75 (V2: 1.2) | The Black Strait | 1.45 |
+| Harbor Mouth | 0.6 (V2: 1.0) | Dreadnought Pass | 0.85 |
+| The Island | 1.0 (V2: 0.95) | Smugglers' Coves | 1.25 |
+| The Behemoth Run | 1.15 | The Sharra Delta | 1.5 |
+| The Needle of Bosk | 0.95 | Dunmar Crossing | 1.65 |
+| The Archipelago | 1.1 (V2: 1.05) | Tidewater Flats | 1.4 |
+| Saltgate Canal | 0.9 | Citadel of Vey | 1.25 |
+
+**Things to know.**
+
+- **The Armory fills up by about map 10.** Cards come one to three a run,
+  and 55 levels max every card, so a player reaches the second half of the
+  game with a full Armory. That is why chapters 3 and 4 run at threat scales
+  up to 1.8: they are tuned against a maxed Armory. Slowing the card economy,
+  for example no extra card for a first clear, would let the Armory carry
+  further into the game and let late maps use lower scales. That is a
+  decision for the player; it is not changed here.
+- **The persona is pessimistic about map 1.** At an empty Armory it cleared
+  the Strait under half the time even at 0.6, while the real player cleared
+  it at V2's 1.15. The Strait is eased (0.7) but not as far as the persona
+  wanted. The first real playtests should check it.
+- **The Black Strait plays harder than measured.** Bots see in the dark.
+- **Harbor Mouth barely responds to its scale for the persona**: it is the
+  funnel and its heavies. It sits at 0.6.
 
 ## Tools (`tools/v3/maps-plan/`)
 

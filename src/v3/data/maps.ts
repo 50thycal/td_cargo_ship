@@ -203,7 +203,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     channels: [{ y: 575, halfWidth: 100 }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.05.
-    threatScale: 1.25,
+    threatScale: 1.1,
     extras: [
       { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 6, count: 1, growth: 0.17 },
