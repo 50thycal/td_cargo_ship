@@ -102,7 +102,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
   mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
   fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
-  dreadnought: 'A battleship firing broadsides as it steams through. Sixty hits to sink it, or ride it out.',
+  dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map

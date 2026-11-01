@@ -148,7 +148,7 @@ export const THREATS: Record<
   rig: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'Oil rig' },
   generator: { speed: 0, hp: 10, damage: 0, dropChance: 1, label: 'Shield generator' },
   citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
-  dreadnought: { speed: 24, hp: 60, damage: 0, dropChance: 1, label: 'Dreadnought' },
+  dreadnought: { speed: 24, hp: 50, damage: 0, dropChance: 1, label: 'Dreadnought' },
 };
 
 /** The supertanker (The Behemoth Run): its hit points, the ships its loss
@@ -175,7 +175,7 @@ export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 export const MINE = { hitRadius: 30, wobble: 6 } as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
-export const BOSS = { firstShot: 6, every: 7, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
+export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
 
 export const SUPERSONIC = {
   /** Seconds it sits on the rail with its lock line showing before launch. */

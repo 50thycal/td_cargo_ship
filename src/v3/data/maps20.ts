@@ -32,7 +32,7 @@ const kesh: MapDef = {
   carrier: { x: 915, y: 480 },
   frigate: { x: 610, y: 568 },
   channels: [{ y: 720, halfWidth: 95, path: keshPath }],
-  threatScale: 1.1,
+  threatScale: 0.8,
   extras: [{ kind: 'supersonic', from: 6, count: 1, growth: 0.3 }],
   callout: { x: 380, y: 300 },
   alerts: { x0: 40, x1: 760, y: 470 },
@@ -75,7 +75,7 @@ const marrow: MapDef = {
   carrier: { x: 800, y: 742 },
   frigate: { x: 570, y: 742 },
   channels: [{ y: 575, halfWidth: 115 }],
-  threatScale: 1.15,
+  threatScale: 0.95,
   extras: [
     { kind: 'supersonic', from: 6, count: 1, growth: 0.3 },
     { kind: 'heavy', from: 9, count: 1, growth: 0 },
@@ -122,7 +122,7 @@ const behemoth: MapDef = {
     { y: 362, halfWidth: 66, speed: 0.6, share: 0, vip: true, label: 'TANKER LANE' },
     { y: 565, halfWidth: 98 },
   ],
-  threatScale: 1.6,
+  threatScale: 1.25,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'heavy', from: 5, count: 1, growth: 0.15 },
@@ -172,7 +172,7 @@ const needle: MapDef = {
   carrier: { x: 760, y: 680 },
   frigate: { x: 520, y: 718 },
   channels: [{ y: 450, halfWidth: 190, widths: NEEDLE_HW }],
-  threatScale: 1.45,
+  threatScale: 1.1,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.3 },
     { kind: 'heavy', from: 6, count: 1, growth: 0.2 },
@@ -215,7 +215,7 @@ const saltgate: MapDef = {
   carrier: { x: 880, y: 662 },
   frigate: { x: 1010, y: 622 },
   channels: [{ y: 440, halfWidth: 150, widths: [[-40, 150], [380, 150], [440, 66], [722, 66], [780, 108], [1020, 108], [1078, 66], [1362, 66], [1420, 150], [1640, 150]] }],
-  threatScale: 1.3,
+  threatScale: 1.0,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'heavy', from: 5, count: 1, growth: 0.2 },
@@ -263,7 +263,7 @@ const battery: MapDef = {
   carrier: { x: 520, y: 702 },
   frigate: { x: 290, y: 706 },
   channels: [{ y: 430, halfWidth: 120 }],
-  threatScale: 1.9,
+  threatScale: 1.85,
   extras: [
     { kind: 'supersonic', from: 4, count: 1, growth: 0.25 },
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
@@ -318,7 +318,7 @@ const sowers: MapDef = {
   carrier: { x: 760, y: 718 },
   frigate: { x: 540, y: 720 },
   channels: [{ y: 480, halfWidth: 125 }],
-  threatScale: 1.6,
+  threatScale: 1.5,
   extras: [
     { kind: 'mine', from: 1, count: 2, growth: 0.5 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
@@ -367,7 +367,7 @@ const rigs: MapDef = {
   carrier: { x: 900, y: 742 },
   frigate: { x: 660, y: 742 },
   channels: [{ y: 570, halfWidth: 110 }],
-  threatScale: 2.0,
+  threatScale: 1.9,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 5, count: 1, growth: 0.17 },
@@ -410,7 +410,7 @@ const lantern: MapDef = {
   carrier: { x: 905, y: 668 },
   frigate: { x: 380, y: 700 },
   channels: [{ y: 440, halfWidth: 120 }],
-  threatScale: 1.5,
+  threatScale: 1.35,
   extras: [
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
@@ -437,7 +437,7 @@ const lantern: MapDef = {
 // 15. Dreadnought Pass — a battleship crosses the map (chapter boss).
 // On waves 3, 6 and 9 (and the finale) an enemy battleship steams right to
 // left down the deep channel, firing broadside barrages at the convoy. It has
-// a health bar (about 60 hits); sink it and it's gone until its next pass.
+// a health bar (50 hits); sink it and it's gone until its next pass.
 const DREAD_BASES: BaseDef[] = [
   { x: 350, y: 70, kinds: ['drone', 'ballistic'] },
   { x: 1250, y: 70, kinds: ['guided', 'supersonic'] },
@@ -445,7 +445,7 @@ const DREAD_BASES: BaseDef[] = [
 const dreadnought: MapDef = {
   id: 'dreadnought',
   name: 'Dreadnought Pass',
-  blurb: 'Every third wave a battleship steams through the deep channel, firing broadsides. Sixty hits to sink it. The convoy still needs you.',
+  blurb: 'Every third wave a battleship steams through the deep channel, firing broadsides. Fifty hits to sink it. The convoy still needs you.',
   land: [
     { side: 'enemy', points: shore('top', 110, 10, 1.4) },
     { side: 'friendly', points: shore('bottom', 800, 12, 0.6) },
@@ -454,9 +454,9 @@ const dreadnought: MapDef = {
   carrier: { x: 800, y: 738 },
   frigate: { x: 560, y: 738 },
   channels: [{ y: 565, halfWidth: 110 }],
-  threatScale: 1.05,
+  threatScale: 0.9,
   extras: [
-    { kind: 'heavy', from: 4, count: 1, growth: 0.25 },
+    { kind: 'heavy', from: 6, count: 1, growth: 0.15 },
     { kind: 'cluster', from: 5, count: 1, growth: 0.25 },
     { kind: 'mothership', from: 7, count: 1, growth: 0.17 },
   ],
@@ -472,7 +472,7 @@ const dreadnought: MapDef = {
   subSpots: [{ x: 300, y: 410 }, { x: 1300, y: 410 }, { x: 200, y: 742 }, { x: 1400, y: 742 }],
   bomberLines: [172, 742],
   vectors: { trucks: 2, subs: 3, strafers: 4, bombers: 5 },
-  boss: { path: [{ x: 1720, y: 290 }, { x: -120, y: 290 }], hp: 60, waves: [3, 6, 9, 10] },
+  boss: { path: [{ x: 1720, y: 290 }, { x: -120, y: 290 }], hp: 50, waves: [3, 6, 9, 10] },
 };
 
 // ---------------------------------------------------------------------------
@@ -509,7 +509,7 @@ const coves: MapDef = {
   carrier: { x: 700, y: 722 },
   frigate: { x: 460, y: 722 },
   channels: [{ y: 470, halfWidth: 120 }],
-  threatScale: 1.15,
+  threatScale: 1.25,
   extras: [
     { kind: 'fastboat', from: 1, count: 2, growth: 0.6 },
     { kind: 'cluster', from: 4, count: 1, growth: 0.25 },
@@ -616,7 +616,7 @@ const crossing: MapDef = {
     { y: 318, halfWidth: 86, label: 'OUTBOUND →' },
     { y: 592, halfWidth: 86, path: [{ x: 1640, y: 592 }, { x: -40, y: 592 }], label: '← INBOUND' },
   ],
-  threatScale: 1.6,
+  threatScale: 1.45,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'supersonic', from: 4, count: 1, growth: 0.3 },
@@ -667,7 +667,7 @@ const tide: MapDef = {
     { y: 282, halfWidth: 86 },
     { y: 575, halfWidth: 86, tide: true },
   ],
-  threatScale: 1.35,
+  threatScale: 1.37,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
     { kind: 'supersonic', from: 4, count: 1, growth: 0.3 },

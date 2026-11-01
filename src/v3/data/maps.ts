@@ -60,7 +60,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     channels: [{ y: 470, halfWidth: 150 }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.15.
-    threatScale: 0.85,
+    threatScale: 0.7,
     // Round 3: careful play lost ~0.5 ships here; a late taste of supersonics
     // and one heavy in the finale tests reaction, not just ammo.
     extras: [
@@ -99,7 +99,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     ],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.2.
-    threatScale: 1.0,
+    threatScale: 0.85,
     extras: [
       { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
@@ -151,7 +151,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     // now clears ~30%, the try-hard bot ~60% (docs/design/v2-island-round13.md).
     // The 20-map plan moves it to slot 6, with a full Armory chapter behind
     // the player: retuned there (docs/design/v3-maps-build.md). V2: 0.95.
-    threatScale: 1.05,
+    threatScale: 1.12,
     extras: [
       { kind: 'supersonic', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 7, count: 1, growth: 0.2 },
@@ -203,7 +203,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     channels: [{ y: 575, halfWidth: 100 }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.05.
-    threatScale: 1.5,
+    threatScale: 1.25,
     extras: [
       { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 6, count: 1, growth: 0.17 },
@@ -243,7 +243,7 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.0.
-    threatScale: 0.75,
+    threatScale: 0.62,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.2 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.15 },

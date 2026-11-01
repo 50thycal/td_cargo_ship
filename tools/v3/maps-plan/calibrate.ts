@@ -15,13 +15,18 @@ const opt = (k: string) => process.argv.find((a) => a.startsWith(`--${k}=`))?.sp
 const maps = (opt('maps')?.split(',') ?? MAP_ORDER) as MapId[];
 const seeds = Number(opt('seeds') ?? 12);
 const bot = opt('bot');
-const armory: ArmoryLevels = Object.fromEntries((opt('armory') ?? '').split(',').filter(Boolean).map((p) => [p.split(':')[0] as ArmoryId, Number(p.split(':')[1])]));
-const scales = (opt('scales') ?? '0.8,0.95,1.1,1.25,1.4,1.6,1.8').split(',').map(Number);
+// --armory=a:1,b:2|c:3 : one or more loadouts ('|'), taken in turn seed by
+// seed (players reach a map with whatever cards they happened to draw).
+const kits: ArmoryLevels[] = (opt('armory') ?? '').split('|').map((k) => Object.fromEntries(k.split(',').filter(Boolean).map((p) => [p.split(':')[0] as ArmoryId, Number(p.split(':')[1])])));
+// --around: scales relative to each map's current one.
+const around = process.argv.includes('--around');
+const grid = (opt('scales') ?? (around ? '0.75,0.88,1,1.12,1.25' : '0.8,0.95,1.1,1.25,1.4,1.6,1.8')).split(',').map(Number);
 
 for (const map of maps) {
   const slot = MAP_ORDER.indexOf(map) + 1;
   const want = 1 / targetTries(slot);
   const base = MAPS[map].threatScale;
+  const scales = around ? grid.map((k) => Math.round(base * k * 100) / 100) : grid;
   const row: string[] = [];
   let best = base;
   let bestGap = Infinity;
@@ -30,6 +35,7 @@ for (const map of maps) {
     let won = 0;
     for (let s = 0; s < seeds; s++) {
       const seed = 7000 + s;
+      const armory = kits[s % kits.length];
       won += (bot ? runBot(map, seed, SKILLS[bot], { flow: 2, armory }).won : playMimic(map, seed, { armory }).game.cleared) ? 1 : 0;
     }
     const rate = won / seeds;

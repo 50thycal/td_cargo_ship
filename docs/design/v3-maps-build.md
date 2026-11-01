@@ -76,7 +76,7 @@ line and the spacing rule makes them queue in single file (the Needle).
 | System | Where | How it works |
 |---|---|---|
 | Enemy structures | `game.ts` (`raiseStructures`, `structureDown`) | Rigs, shield generators and the Citadel are threats of their own kinds with hit points, standing on their bases from the start. They never strike, never block the end of a wave and survive between waves. A downed rig or Citadel launches no more: half of its launches move to a standing launcher, half are lost. The Citadel takes no damage while any generator stands. |
-| The Dreadnought | `launchBoss`, `updateBoss` | On waves 3, 6, 9 and 10 it steams right to left along its path, firing a broadside (two ballistics and a guided) every 7 s. It has 60 hits. The wave waits for it to sink or leave. |
+| The Dreadnought | `launchBoss`, `updateBoss` | On waves 3, 6, 9 and 10 it steams right to left along its path, firing a broadside (two ballistics and a guided) every 9 s. It has 50 hits. The wave waits for it to sink or leave. |
 | Allied posts | `PostState`, `damagePost`, `updatePosts`, `tracked` | The radar (Lee of Marrow) and two shore batteries (Battery Point). 22% of guided, heavy, ballistic and supersonic launches aim at a standing post. The radar at 0 hits is lost for good. A battery is knocked out for 12 s, then comes back at full strength, firing on its own every 1.3 s in reach. |
 | Mines | `updateMine`, `mineEta` | Launched from mine chutes, a mine drifts with the map's current and a wobble. It does 3 damage to the first hull it touches. One shot clears it. |
 | Fast boats | `STEER.fastboat` | Out of the coves: steers at a ship like a fast drone, takes two hits and rams for 2. Drawn with a white wake. |
