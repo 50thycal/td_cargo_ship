@@ -52,6 +52,10 @@ import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDev
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
 import { stepSlider, type StepSlider } from './rail';
+import { AudioEngine } from '../audio/engine';
+import { CUE_IDS, LOOP_CUES, MUSIC_CUES, type CueId, type LoopCue, type MusicCue } from '../audio/cues';
+import { SOUNDS } from '../audio/manifest';
+import { activeLoops, battleMusic } from '../audio/state';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
@@ -140,6 +144,12 @@ export class App {
   private overlay = el('div', 'v2-overlay');
   private hud = el('div', 'v2-hud');
   private alerts = new Alerts();
+  /** Sound (audio/engine.ts): the sim's cues, the UI's, loops and music. */
+  private audio = new AudioEngine();
+  /** Raid warnings already sounded (one siren per raid). */
+  private raidSounded = new Set<string>();
+  /** The sound board's music choice while it is open (undefined: closed). */
+  private boardMusic: MusicCue | null | undefined = undefined;
   private leftRail = el('div', 'v2-rail v2-rail-left');
   private rightRail = el('div', 'v2-rail v2-rail-right');
   private formationPop = el('div', 'v2-formations');
@@ -248,6 +258,7 @@ export class App {
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
     this.bindInput();
+    this.bindUiSounds();
     // iOS reports the new size late after a rotation, sometimes after the
     // resize event has already fired — so layout is also re-checked every frame
     // (see `frame`) and on every signal that the viewport may have changed.
@@ -313,6 +324,13 @@ export class App {
       },
       // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
       showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
+      // Sound: the engine's play log and state (e2e checks timing with it).
+      audio: {
+        log: () => this.audio.log,
+        state: () => this.audio.state,
+        ready: () => this.audio.ready(),
+        settings: () => this.audio.settings,
+      },
     };
     this.showMenu();
     requestAnimationFrame((t) => this.frame(t));
@@ -515,6 +533,7 @@ export class App {
     if (!this.game) return;
     if (!this.rec) return;
     const result = this.rec.tap(x, y, TAP_RADIUS_PX / this.scale);
+    this.playCues(this.game);
     if (quiet) return;
     if (result === 'empty') this.ripples.push({ x, y, age: 0 });
     if (result === 'dry') {
@@ -623,7 +642,10 @@ export class App {
       let n = 0;
       while (this.acc >= DT && n < cap) {
         if (this.bot && this.control === 'bot') this.bot.act(g, this.botIO, false);
+        // Cues from taps and picks made since the last step, then the step's own.
+        this.playCues(g);
         step(g, DT);
+        this.playCues(g, true);
         this.acc -= DT;
         n++;
         if (g.phase !== 'wave') break;
@@ -651,8 +673,53 @@ export class App {
     this.alerts.update(real);
     if (g) this.raidAlert(g);
     this.syncTimers(g);
+    this.syncSound(g);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /** Play the cues the sim has asked for since the last drain. `fromStep`:
+   *  they came from the step just run (logged with it, for the browser
+   *  timing test), not from a tap or a pick between steps. */
+  private playCues(g: Game, fromStep = false): void {
+    if (!g.cues.length) return;
+    const warp = g.warpT > 0;
+    for (const c of g.cues) this.audio.play(c, fromStep ? g.steps : -1, warp);
+    g.cues.length = 0;
+  }
+
+  /** Per frame: the loops the field calls for, and the music bed. */
+  private syncSound(g: Game | null): void {
+    const live = !!g && g.phase === 'wave' && !this.paused && !this.portrait && !this.beat;
+    this.audio.setLoops(live ? activeLoops(g!) : []);
+    let music: MusicCue | null = 'menu.music';
+    if (g) {
+      if (this.beat) music = this.beat.kind === 'clear' ? battleMusic(g) : null;
+      else if (g.phase === 'wave' || g.phase === 'draft') music = battleMusic(g);
+      else music = 'result.music';
+    }
+    this.audio.setMusic(this.boardMusic !== undefined ? this.boardMusic : music);
+  }
+
+  /** Button sounds, for every button the UI makes: a tap, a step back, a
+   *  switch. Buttons with a sound of their own (cards, the Armory) set
+   *  data-sfx and are skipped here. */
+  private bindUiSounds(): void {
+    this.root.addEventListener(
+      'click',
+      (e) => {
+        const b = (e.target as HTMLElement).closest('button');
+        if (!b || b.disabled || b.dataset.sfx) return;
+        const text = (b.textContent ?? '').trim();
+        const back = /^(Back|Menu|Cancel|Quit to menu|Change setup)$/.test(text);
+        const toggle = b.classList.contains('v2-switch') || b.classList.contains('v3-fp-toggle') || b.classList.contains('v2-dev-chip');
+        this.audio.ui(back ? 'ui.back' : toggle ? 'ui.toggle' : 'ui.tap');
+      },
+      { capture: true },
+    );
+    this.root.addEventListener('change', (e) => {
+      if ((e.target as HTMLElement).tagName === 'SELECT' || (e.target as HTMLElement).tagName === 'INPUT') this.audio.ui('ui.toggle');
+    });
   }
 
   private adaptResolution(now: number, raw: number): void {
@@ -703,13 +770,14 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'wave':
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '');
+          // The wave's bell is the sim's own cue (wave.start).
+          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', {}, null);
           break;
         case 'debut':
-          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
+          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
           break;
         case 'vector':
-          this.showBanner(...VECTOR_HINT[ev.vector]);
+          this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -738,7 +806,7 @@ export class App {
           // line (round 4: with what a shot does as well, the notice wrapped
           // to two lines and, on the Island's one-card tray, rose onto the
           // carrier; what it does is on the card you drafted it from).
-          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${g.stats.weaponTime}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE);
+          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${g.stats.weaponTime}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE, null);
           this.shake = Math.max(this.shake, 4);
           break;
         }
@@ -754,8 +822,9 @@ export class App {
 
   /** A notice in the tray (see alerts.ts). Read time is real seconds;
    *  watching at 10× would otherwise leave each one up for 26 game-seconds. */
-  private showBanner(title: string, sub: string, opts: AlertOpts = {}): void {
+  private showBanner(title: string, sub: string, opts: AlertOpts = {}, sound: CueId | null = 'notice'): void {
     this.placeBanner();
+    if (sound) this.audio.ui(sound);
     this.alerts.notify(title, sub, { ttl: 2.6 / Math.sqrt(Math.max(1, this.speed)), ...opts });
   }
 
@@ -766,6 +835,12 @@ export class App {
     if (!w || this.beat) return;
     const look = RAID_LOOK[w.raid.theme];
     const raid = w.raid;
+    const key = `raid-${g.wave}-${raid.at}`;
+    if (!this.raidSounded.has(key)) {
+      // The siren for a wave's first raid; a short ping for the rest.
+      this.audio.ui(raid === g.raids[0] ? 'raid.warning' : 'raid.next');
+      this.raidSounded.add(key);
+    }
     this.placeBanner();
     this.alerts.notify(`⚠ ${look.name} INBOUND`, look.tip, {
       key: `raid-${g.wave}-${raid.at}`,
@@ -842,6 +917,7 @@ export class App {
 
   private openDraft(g: Game): void {
     this.showDraft(g);
+    this.audio.ui('draft.open');
     this.draftShownAt = performance.now();
     // Cards take taps once armed (style.css: no pointer events before).
     const panel = this.overlay.querySelector<HTMLElement>('.v2-draft');
@@ -875,6 +951,7 @@ export class App {
       requestAnimationFrame(() => this.stamp.classList.add('show'));
     }
     this.beat = { kind, t: performance.now(), dur, focus };
+    this.audio.ui(kind === 'lost' ? 'run.lost' : kind === 'won' ? 'map.cleared' : 'wave.cleared');
   }
 
   /** The stamp across the field: red for a loss, gold for a cleared wave. */
@@ -923,8 +1000,10 @@ export class App {
     const lastShip = g.tempo.lossLimit - g.lost === 1;
     const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
+    // The last ship gets its alert; a critical carrier's klaxon is a loop
+    // (audio/state.ts) that runs as long as the danger does.
     if (on && !this.danger)
-      this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.', { tone: 'danger', key: 'danger' });
+      this.showBanner(lastShip ? 'LAST SHIP' : 'CARRIER CRITICAL', lastShip ? 'One more loss and the convoy is lost.' : 'One more hit could sink the carrier.', { tone: 'danger', key: 'danger' }, lastShip ? 'last.ship' : null);
     if (on !== this.danger) {
       this.danger = on;
       this.root.classList.toggle('danger', on);
@@ -1016,10 +1095,12 @@ export class App {
       const eq = p.equipped[b];
       const held = bayItems(b).filter((id) => armoryLevel(p.armory, id) > 0).length;
       const tab = button('', `v3-bay-tab${b === bay ? ' on' : ''}`, () => {
+        this.audio.ui('armory.tab');
         this.armoryBay = b;
         again();
       });
       tab.dataset.bay = b;
+      tab.dataset.sfx = 'tab';
       tab.style.setProperty('--card-color', BAYS[b].color);
       tab.append(
         el('strong', '', `${BAYS[b].name.toUpperCase()} · ${held}/${bayItems(b).length}`),
@@ -1033,7 +1114,10 @@ export class App {
         const lv = armoryLevel(p.armory, id);
         const on = p.equipped[bay] === id;
         const card = this.armoryCard(id, lv, on ? 'EQUIPPED' : lv ? 'EQUIP' : 'NOT FOUND', () => {
-          if (lv && equipArmory(p, on ? null : id, bay)) again();
+          if (lv && equipArmory(p, on ? null : id, bay)) {
+            this.audio.ui(on ? 'ui.back' : 'armory.equip');
+            again();
+          }
         });
         card.classList.toggle('chosen', on);
         card.classList.toggle('locked', !lv);
@@ -1056,6 +1140,7 @@ export class App {
     const def = ARMORY[id];
     const card = button('', 'v2-card v3-armory-card', () => onTap?.());
     card.dataset.armory = id;
+    card.dataset.sfx = 'armory';
     card.style.setProperty('--card-color', BAYS[def.bay].color);
     const top = el('span', 'v2-card-top', '');
     const badgeClass = badge === 'EQUIPPED' ? 'max' : badge === 'NEW' ? 'new' : badge === 'NOT FOUND' || badge === 'EQUIP' ? 'off' : 'up';
@@ -1092,6 +1177,9 @@ export class App {
         const card = this.armoryCard(id, lv, lv === 1 ? 'NEW' : lv >= ARMORY[id].max ? 'MAX' : `LV ${lv}`);
         card.tabIndex = -1;
         card.style.setProperty('--deal', `${i * 260}ms`);
+        // Each card's sound lands as it is dealt in (style.css: the deal
+        // starts at --deal).
+        setTimeout(() => card.isConnected && this.audio.ui(lv === 1 ? 'card.new' : 'card.won'), i * 260);
         return card;
       }),
     );
@@ -1248,9 +1336,12 @@ export class App {
       ),
     );
     row.append(text, sw);
-    const rows: HTMLElement[] = [row];
+    const rows: HTMLElement[] = [...this.soundRows(), row];
     if (this.dev) {
       rows.push(el('div', 'v2-setting-group', 'DEVELOPER'));
+      const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
+      board.dataset.soundBoard = '1';
+      rows.push(board);
       rows.push(
         this.switchRow(
           'watch',
@@ -1266,6 +1357,73 @@ export class App {
       if (this.devSettings.watch) rows.push(this.personaRow());
     }
     this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary', () => this.showMenu())]);
+  }
+
+  /** Dev: every sound in the game, by family, with a play button, its
+   *  files and where they came from (public/v3/audio/CREDITS.json). */
+  private async showSoundBoard(): Promise<void> {
+    this.audio.unlock();
+    let credits: { file: string; source: string; licence: string }[] = [];
+    try {
+      credits = await (await fetch(`${import.meta.env.BASE_URL ?? './'}v3/audio/CREDITS.json`)).json();
+    } catch {
+      /* shown without sources */
+    }
+    const list = el('div', 'v3-board');
+    for (const id of CUE_IDS) {
+      const def = SOUNDS[id];
+      const row = el('div', 'v3-board-row');
+      const play = button('▶', 'v2-dev-chip', () => {
+        if (MUSIC_CUES.includes(id as MusicCue)) this.boardMusic = id as MusicCue;
+        else this.audio.play({ id, x: 800, y: 450 });
+      });
+      play.dataset.cue = id;
+      play.dataset.sfx = 'board';
+      const c = credits.find((x) => x.file === def.files[0]);
+      const src = c ? `${c.licence} · ${c.source.startsWith('uisfx') ? 'uisfx (recorded)' : 'synthesized'}` : '';
+      row.append(play, el('strong', '', id), el('span', '', `${def.bus} · vol ${def.volume} · ${def.files.length} file${def.files.length > 1 ? 's' : ''}${LOOP_CUES.includes(id as LoopCue) ? ' · loop (one pass)' : ''}`), el('em', '', src));
+      list.append(row);
+    }
+    const stop = button('Stop music', 'v2-btn', () => (this.boardMusic = null));
+    stop.dataset.sfx = 'board';
+    const row = el('div', 'v2-btn-row');
+    row.append(
+      stop,
+      button('Back', 'v2-btn primary', () => {
+        this.boardMusic = undefined;
+        this.showSettings();
+      }),
+    );
+    this.boardMusic = 'menu.music';
+    this.showOverlay('v3-soundboard', [el('h2', '', 'Sound board'), el('p', 'v2-sub', 'Every sound in the game. Files and licences: public/v3/audio/CREDITS.json. To change one, see docs/design/v3-sound-round1.md.'), list, row]);
+  }
+
+  /** Settings → Sound: on/off, volume, music. Saved on this device. */
+  private soundRows(): HTMLElement[] {
+    const a = this.audio.settings;
+    const mute = this.switchRow('sound', 'Sound', 'Sound effects and music. Your phone’s silent switch and volume apply too.', !a.muted, (on) => this.audio.setSettings({ muted: !on }));
+    const slider = (id: string, title: string, value: number, set: (v: number) => void) => {
+      const r = el('div', 'v2-setting v3-slider-row');
+      const body = el('div', 'v2-setting-text');
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.min = '0';
+      input.max = '100';
+      input.value = String(Math.round(value * 100));
+      input.className = 'v3-range';
+      input.dataset.setting = id;
+      input.disabled = a.muted;
+      input.addEventListener('input', () => set(Number(input.value) / 100));
+      body.append(el('strong', '', title), input);
+      r.append(body);
+      return r;
+    };
+    return [
+      el('div', 'v2-setting-group', 'SOUND'),
+      mute,
+      slider('volume', 'Volume', a.volume, (v) => this.audio.setSettings({ volume: v })),
+      slider('music', 'Music', a.music, (v) => this.audio.setSettings({ music: v })),
+    ];
   }
 
   /** Watch mode's bot: who plays (round 12). One chip per persona, and the
@@ -1565,7 +1723,11 @@ export class App {
       const lv = id ? (g.levels[id] ?? 0) : 0;
       const label = id ? `${abilityName(id, lv)} ${lv >= ABILITY_MAX ? 'MAX' : `LV ${lv}`}` : 'Empty slot';
       if (swapping && id) {
-        const chip = button(label, 'v2-slot swap', () => this.rec?.pick(swapping, id));
+        const chip = button(label, 'v2-slot swap', () => {
+          this.audio.ui('card.pick');
+          this.rec?.pick(swapping, id);
+        });
+        chip.dataset.sfx = 'card';
         chip.dataset.slot = id;
         chip.prepend(upgradeIcon(id, 16));
         chip.append(el('span', 'v2-slot-x', '✕'));
@@ -1596,12 +1758,14 @@ export class App {
           // The pick lands with a beat: the card flashes gold, then the wave starts.
           this.picking = true;
           card.classList.add('taken');
+          this.audio.ui(toMax ? 'card.max' : 'card.pick');
           const wave = g.wave;
           setTimeout(() => {
             this.picking = false;
             if (this.game === g && g.phase === 'draft' && g.wave === wave) this.rec?.pick(id);
           }, PICK_BEAT_MS);
         } else if (swappable && id !== 'resupply') {
+          this.audio.ui('card.swap');
           this.showDraft(g, id);
           this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
         }
@@ -1609,6 +1773,7 @@ export class App {
       card.style.setProperty('--deal', `${i * DEAL_STAGGER_MS * this.dealScale()}ms`);
       card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
       card.dataset.upgrade = id;
+      card.dataset.sfx = 'card';
       card.style.setProperty('--card-color', ICON_COLOR[id]);
       const top = el('span', 'v2-card-top', '');
       top.append(

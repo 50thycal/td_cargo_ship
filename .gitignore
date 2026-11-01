@@ -7,3 +7,7 @@ playtest-out*/
 e2e/shots-batch/
 moments/
 card-sheet/
+assets-src/audio/synth/
+assets-src/audio/uisfx/
+assets-src/audio/stems/
+__pycache__/

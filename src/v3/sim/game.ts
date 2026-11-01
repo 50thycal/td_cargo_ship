@@ -59,6 +59,7 @@ import {
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
 import { waveSpec } from '../data/waves';
+import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
 
@@ -398,6 +399,11 @@ export interface Game {
   pickups: Pickup[];
   fx: Fx[];
   events: GameEvent[];
+  /** Sounds asked for this step (see audio/cues.ts). Cleared at the start of
+   *  every step, so headless runs never grow it; the UI drains it after each
+   *  step and after each tap. Write-only for the sim: nothing reads it, so
+   *  it can never change a replay. */
+  cues: Cue[];
   carrierHp: number;
   /** Aegis Bastion: the carrier's own interceptors. */
   carrierAegis: Launchers | null;
@@ -500,6 +506,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     pickups: [],
     fx: [],
     events: [],
+    cues: [],
     carrierHp: s.carrierHp,
     carrierAegis: null,
     ammo: s.rack,
@@ -656,6 +663,7 @@ function startWave(g: Game): void {
   queue.sort((a, b) => a.at - b.at);
   g.queue = queue;
   g.events.push({ kind: 'wave', wave: g.wave });
+  cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
 }
 
 /** A count shortened with the wave, keeping at least one of anything the
@@ -964,6 +972,7 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       if (threat) return null;
       if (!spend(g)) return 'dry';
       g.interceptors.push({ id: g.nextId++, x: g.map.carrier.x, y: g.map.carrier.y - 6, target: null, tx: x, ty: y, life: 0, src: 'gun', weapon: { ...w } });
+      cue(g, 'gun.fire', g.map.carrier.x, g.map.carrier.y);
       return 'fire';
     case 'aegis':
       // The ships fire their own interceptors (`updateAegis`); the gun is
@@ -998,6 +1007,7 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
 function spend(g: Game, n = 1): boolean {
   if (g.overdriveT <= 0 && g.ammo < n) {
     g.events.push({ kind: 'dry' });
+    cue(g, 'gun.dry', g.map.carrier.x, g.map.carrier.y);
     return false;
   }
   if (g.overdriveT <= 0) g.ammo -= n;
@@ -1009,9 +1019,14 @@ function spend(g: Game, n = 1): boolean {
  *  thermobaric blast where it went off. */
 function burstWeapon(g: Game, w: Weapon, x: number, y: number): void {
   const k = w.level - 1;
-  if (w.id === 'flak') addField(g, 'flak', x, y, AB.flak.radius[k], AB.flak.time[k], w.level);
-  else if (w.id === 'well') addField(g, 'well', x, y, AB.well.radius[k], AB.well.time[k], w.level);
-  else if (w.id === 'shrapnel') {
+  if (w.id === 'flak') {
+    addField(g, 'flak', x, y, AB.flak.radius[k], AB.flak.time[k], w.level);
+    cue(g, 'flak.burst', x, y);
+  } else if (w.id === 'well') {
+    addField(g, 'well', x, y, AB.well.radius[k], AB.well.time[k], w.level);
+    cue(g, 'well.open', x, y);
+  } else if (w.id === 'shrapnel') {
+    cue(g, 'shrapnel.burst', x, y);
     // Fragments out in every direction, at once (turned a little each shot
     // so the spokes don't line up shot after shot).
     const n = AB.shrapnel.frags[k];
@@ -1022,6 +1037,7 @@ function burstWeapon(g: Game, w: Weapon, x: number, y: number): void {
     }
   } else if (w.id === 'thermo') {
     const r = AB.thermo.radius[k];
+    cue(g, 'thermo.burst', x, y);
     for (const th of [...g.threats]) if (!th.dead && dist(th.x, th.y, x, y) <= r) damageThreat(g, th, AB.thermo.damage[k]);
     addFx(g, 'thermo', x, y, { life: 0.7, r });
   }
@@ -1056,6 +1072,7 @@ function fireScatter(g: Game, level: number, x: number, y: number): void {
     addFx(g, 'frag', c.x, c.y - 6, { life: 0.3, x2: end.x, y2: end.y, r: 1 });
   }
   addFx(g, 'burst', c.x + Math.cos(base) * 30, c.y - 6 + Math.sin(base) * 30, { life: 0.2, r: 22 });
+  cue(g, 'scatter.blast', c.x, c.y);
 }
 
 /** Boomerang: a blade out to (x, y), or after the threat tapped, and back
@@ -1068,6 +1085,7 @@ function throwBlades(g: Game, level: number, x: number, y: number, threat: Threa
   // Twin Blades: one down the line you aimed at, the second splayed to one
   // side, alternating (round 6: two splayed either side both missed the line).
   const side = g.shots % 2 ? 1 : -1;
+  cue(g, 'blade.throw', c.x, c.y);
   for (const off of level >= 3 ? [0, 0.24 * side] : [0]) {
     g.blades.push({
       id: g.nextId++,
@@ -1102,7 +1120,10 @@ function updateBlades(g: Game, dt: number): void {
     if (d <= step) {
       b.x = gx;
       b.y = gy;
-      if (b.back) b.home = true;
+      if (b.back) {
+        b.home = true;
+        cue(g, 'blade.catch', b.x, b.y);
+      }
       else {
         // Turn round: the way back is a fresh pass.
         b.back = true;
@@ -1116,6 +1137,7 @@ function updateBlades(g: Game, dt: number): void {
     for (const th of [...g.threats]) {
       if (th.dead || b.hits.includes(th.id) || dist(th.x, th.y, b.x, b.y) > AB.boomerang.width[k]) continue;
       b.hits.push(th.id);
+      cue(g, 'blade.hit', th.x, th.y);
       damageThreat(g, th, AB.boomerang.damage[k]);
     }
   }
@@ -1134,6 +1156,7 @@ function launchEscorts(g: Game, level: number): void {
   // (round 7 playtest).
   const xs = want >= 3 ? [0.62, 0.46, 0.3] : [0.3, 0.62];
   g.escorts = g.escorts.filter((e) => !e.leaving);
+  if (g.escorts.length < want) cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
   for (let i = 0; i < want; i++) {
     // On station at the edge of a lane (above it, then below), clear of the
     // convoy sailing down its middle, still on open water.
@@ -1155,6 +1178,7 @@ function launchEscorts(g: Game, level: number): void {
 function updateEscorts(g: Game, dt: number): void {
   if (!g.escorts.length) return;
   const on = g.weapon?.id === 'frigate' ? g.weapon : null;
+  if (!on && g.escorts.some((e) => !e.leaving)) cue(g, 'frigate.leave', VIEW.width * 0.6, VIEW.height / 2, { vx: AB.frigate.speed });
   for (const e of g.escorts) {
     if (!on) e.leaving = true;
     const gx = e.leaving ? VIEW.width + 140 : e.sx;
@@ -1187,6 +1211,7 @@ function updateEscorts(g: Game, dt: number): void {
     const mx = e.x + 30;
     g.interceptors.push({ id: g.nextId++, x: mx, y: e.y, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
     addFx(g, 'launch', mx, e.y, { life: 0.3, r: 10 });
+    cue(g, 'frigate.fire', mx, e.y);
   }
   g.escorts = g.escorts.filter((e) => !(e.leaving && e.x >= VIEW.width + 130));
 }
@@ -1214,6 +1239,7 @@ function updateAegis(g: Game, dt: number): void {
       if (a.reloadT >= AB.aegis.reload) {
         a.ammo += 1;
         a.reloadT = 0;
+        cue(g, 'aegis.reload', x, y);
       }
     }
     if (a.ammo < 1) return a;
@@ -1224,6 +1250,7 @@ function updateAegis(g: Game, dt: number): void {
     a.ammo -= 1;
     g.interceptors.push({ id: g.nextId++, x, y: y - 8, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
     addFx(g, 'launch', x, y - 8, { life: 0.3, r: 8 });
+    cue(g, 'aegis.launch', x, y);
     return a;
   };
   // What is about to hit a hull: a threat aimed at it, or an aircraft over it.
@@ -1254,6 +1281,7 @@ function updatePointDefense(g: Game, dt: number): void {
   const mx = c.x + Math.sign(target.x - c.x || 1) * CARRIER.halfLength * 0.6;
   g.interceptors.push({ id: g.nextId++, x: mx, y: c.y, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
   addFx(g, 'launch', mx, c.y, { life: 0.3, r: 8 });
+  cue(g, 'pd.fire', mx, c.y);
 }
 
 /** Damage Control (Armory, Hull bay): every repairEvery s of wave, every
@@ -1271,6 +1299,7 @@ function updateDamageControl(g: Game, dt: number): void {
   g.repairT += dt;
   if (g.repairT < g.stats.repairEvery) return;
   g.repairT = 0;
+  cue(g, 'repair', g.map.carrier.x, g.map.carrier.y);
   for (const s of hurt) {
     s.hp += 1;
     addFx(g, 'text', s.x, s.y - 24, { life: 1, text: '+1' });
@@ -1309,6 +1338,7 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
     if (targets.length >= n) break;
   }
   while (targets.length < n) targets.push(near[0]);
+  cue(g, 'seeker.launch', c.x, c.y);
   for (let i = 0; i < n; i++) {
     const t = targets[i];
     const spread = (i - (n - 1) / 2) * 14;
@@ -1349,6 +1379,7 @@ function nearestThreat(g: Game, x: number, y: number): Threat | undefined {
 function callJet(g: Game, level: number, x: number, y: number): void {
   const k = level - 1;
   const dir = x < VIEW.width / 2 ? 1 : -1;
+  cue(g, 'jet.flyby', dir > 0 ? -80 : VIEW.width + 80, y, { vx: dir * AB.airstrike.speed });
   g.allies.push({
     id: g.nextId++,
     x: dir > 0 ? -80 : VIEW.width + 80,
@@ -1391,6 +1422,7 @@ function updateBombs(g: Game, dt: number): void {
     g.fields.push({ kind: 'burn', x1: b.x - half, y1: b.y, x2: b.x + half, y2: b.y, hw: AB.airstrike.band[k] * 0.6, t: 0, life: AB.airstrike.burnTime, tick: 0, level: b.level });
     addFx(g, 'boom', b.x, b.y, { life: 0.6, r: 40 });
     addFx(g, 'burst', b.x, b.y, { life: 0.45, r: 30 });
+    cue(g, 'napalm.burst', b.x, b.y);
   }
   g.bombs = live;
 }
@@ -1420,6 +1452,7 @@ function fireBeam(g: Game, level: number, x: number, y: number): void {
     if (off <= width + 8) damageThreat(g, th, AB.railgun.damage[k]);
   }
   addFx(g, 'beam', c.x, c.y - 6, { life: 0.35, x2: c.x + ux * len, y2: c.y + uy * len, r: width });
+  cue(g, 'rail.beam', c.x, c.y);
 }
 
 /** Tesla Arc: a hit arcs to the nearest threats around it (and, evolved,
@@ -1434,6 +1467,7 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
   for (const t of next) {
     struck.add(t.id);
     addFx(g, 'arc', x, y, { life: 0.3, x2: t.x, y2: t.y });
+    cue(g, 'tesla.arc', t.x, t.y);
     const tx = t.x;
     const ty = t.y;
     damageThreat(g, t, 1);
@@ -1446,6 +1480,7 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
 
 export function step(g: Game, dt: number): void {
   if (g.phase !== 'wave') return;
+  g.cues.length = 0;
   g.steps += 1;
   g.t += dt;
   g.waveT += dt;
@@ -1454,7 +1489,10 @@ export function step(g: Game, dt: number): void {
   // An aircraft's line is fixed when its warning arrow appears.
   for (const l of g.queue) {
     if (l.at - g.waveT > PLANE.warn) break;
-    if ((l.kind === 'strafer' || l.kind === 'bomber') && l.y === undefined) l.y = planeLine(g, l.kind, g.rng.threats);
+    if ((l.kind === 'strafer' || l.kind === 'bomber') && l.y === undefined) {
+      l.y = planeLine(g, l.kind, g.rng.threats);
+      cue(g, 'aircraft.warn', (l.side ?? 1) > 0 ? 0 : VIEW.width, l.y);
+    }
   }
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
   while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
@@ -1617,6 +1655,7 @@ function updateShips(g: Game, dt: number): void {
     g.delivered += 1;
     addFx(g, 'text', VIEW.width - 70, s.y, { life: 1.2, text: `+${pts}` });
   }
+  if (arrived.length) cue(g, 'ship.delivered', VIEW.width - 70, arrived[0].y);
   if (arrived.length) g.ships = g.ships.filter((s) => s.x <= VIEW.width + 40);
 }
 
@@ -1650,17 +1689,22 @@ const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'
 function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
   if (g.shieldT > 0) {
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
+    cue(g, 'shield.block', s.x, s.y);
     return;
   }
   if (glances(g, s.x, s.y, 30)) return;
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
-  if (s.hp > 0) return;
+  if (s.hp > 0) {
+    cue(g, 'ship.hit', s.x, s.y);
+    return;
+  }
   g.ships = g.ships.filter((o) => o !== s);
   g.lost += 1;
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
+  cue(g, 'ship.sunk', s.x, s.y);
   g.events.push({ kind: 'shipLost', lost: g.lost });
 }
 
@@ -1668,6 +1712,7 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
 function glances(g: Game, x: number, y: number, r: number): boolean {
   if (!g.stats.glance || !g.rng.armor.chance(g.stats.glance)) return false;
   addFx(g, 'block', x, y, { life: 0.4, r });
+  cue(g, 'glance', x, y);
   return true;
 }
 
@@ -1675,12 +1720,14 @@ function glances(g: Game, x: number, y: number, r: number): boolean {
 export function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
   if (g.shieldT > 0) {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
+    cue(g, 'shield.block', g.map.carrier.x, g.map.carrier.y);
     return;
   }
   if (glances(g, g.map.carrier.x, g.map.carrier.y, 60)) return;
   g.carrierHp = Math.max(0, g.carrierHp - amount);
   g.carrierDamageBy[by] += amount;
   g.events.push({ kind: 'carrierHit', hp: g.carrierHp });
+  cue(g, 'carrier.hit', g.map.carrier.x, g.map.carrier.y);
 }
 
 function onCarrier(g: Game, x: number, y: number, pad = 0): boolean {
@@ -1725,6 +1772,7 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   if (!g.seen.has(kind)) {
     g.seen.add(kind);
     g.events.push({ kind: 'debut', threat: kind });
+    cue(g, 'debut.sting', x, y);
   }
   const th: Threat = {
     id: g.nextId++,
@@ -1760,6 +1808,7 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   // Launch flash by where it came from: a base's red flare, a column of spray
   // off a submarine's deck, a truck's smaller flash (round 4: the base flare
   // drawn over a sub or a truck hid it completely).
+  launchCue(g, th, origin);
   if (origin === 'sub') addFx(g, 'spray', x, y, { life: 0.7, r: 16 });
   else if (origin === 'truck') addFx(g, 'launch', x, y, { life: 0.45, r: 9 });
   else if (origin === 'base') addFx(g, 'launch', x, y, { life: 0.6, r: 20 });
@@ -1884,6 +1933,9 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   if (th.kind === 'strafer' || th.kind === 'bomber') {
     updatePlane(g, th, dt);
   } else if (th.kind === 'ballistic') {
+    const left = th.dur - th.age;
+    // A short flight whistles from its first step.
+    if (left <= BALLISTIC_WHISTLE && (left + dt > BALLISTIC_WHISTLE || th.age <= dt)) cue(g, 'ballistic.whistle', th.ix, th.iy);
     const p = Math.min(1, th.age / th.dur);
     th.x = th.sx + (th.ix - th.sx) * p;
     th.y = th.sy + (th.iy - th.sy) * p - 4 * th.apex * p * (1 - p);
@@ -1939,10 +1991,12 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
   if (th.kind === 'strafer') {
     const gx = th.x + side * PLANE.gunLead;
     const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(s.y - th.y) <= PLANE.band);
+    const was = th.firing;
     th.firing = band.some((s) => {
       const ahead = (s.x - gx) * side;
       return ahead > -60 && ahead < 220;
     });
+    if (th.firing && !was) cue(g, 'strafer.guns', gx, th.y, { vx: side * th.speed });
     for (const s of band) {
       if (th.hits!.includes(s.id) || Math.abs(s.x - gx) > 22) continue;
       th.hits!.push(s.id);
@@ -1969,6 +2023,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
       const m = spawnThreat(g, 'guided', th.x, th.y, 'air');
       m.target = ahead.id;
       m.parent = 'bomber';
+      cue(g, 'bomber.drop', th.x, th.y);
       m.hp = 1;
       g.origins.air -= 1;
       g.origins.child += 1;
@@ -2015,6 +2070,7 @@ function checkImpact(g: Game, th: Threat): void {
     // A heavy warhead also damages everything close by.
     const reach = HEAVY.splash * FORMATIONS[g.formation].splash;
     addFx(g, 'splash', th.x, th.y, { life: 0.9, r: Math.max(reach, 24) });
+    cue(g, 'impact.splash', th.x, th.y);
     for (const o of [...g.ships]) {
       if (o !== s && dist(o.x, o.y, th.x, th.y) <= reach) damageShip(g, o, HEAVY.splashDamage, blame, false);
     }
@@ -2062,6 +2118,7 @@ function splitCluster(g: Game, th: Threat): void {
     g.threats.push(child(g, th, 'bomblet', t, spreadAngle));
   }
   addFx(g, 'burst', th.x, th.y, { life: 0.5, r: 40 });
+  cue(g, 'cluster.split', th.x, th.y);
 }
 
 function spawnChildren(g: Game, th: Threat, dt: number): void {
@@ -2072,6 +2129,7 @@ function spawnChildren(g: Game, th: Threat, dt: number): void {
   const t = pool.length ? g.rng.threats.pick(pool).id : CARRIER_TARGET;
   g.threats.push(child(g, th, 'minidrone', t, th.heading + Math.PI / 2));
   addFx(g, 'launch', th.x, th.y, { life: 0.4, r: 12 });
+  cue(g, 'minidrone.spawn', th.x, th.y);
 }
 
 function impactBallistic(g: Game, th: Threat): void {
@@ -2081,6 +2139,7 @@ function impactBallistic(g: Game, th: Threat): void {
   // means only the nearest ship inside the blast is hit.
   const reach = BALLISTIC.splash * FORMATIONS[g.formation].splash;
   addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: Math.max(reach, BALLISTIC.splash) });
+  cue(g, 'impact.splash', th.ix, th.iy);
   const inBlast = g.ships
     .map((s) => ({ s, d: dist(s.x, s.y, th.ix, th.iy) }))
     .filter((o) => o.d <= Math.max(reach, BALLISTIC.splash))
@@ -2114,6 +2173,7 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   th.dead = true;
   g.kills[th.kind] += 1;
   addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
+  cue(g, KILL_CUE[th.kind], th.x, th.y);
   if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   if (!drops) return;
   if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare)) dropPickup(g, th.x, th.y);
@@ -2154,6 +2214,7 @@ function fireAt(g: Game, th: Threat): boolean {
   const shoot = (t: Threat) =>
     g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', weapon: w ? { ...w } : undefined });
   shoot(th);
+  cue(g, 'gun.fire', p.x, p.y);
   if (w?.id === 'tesla' && w.level >= 3) {
     const twin = g.threats
       .filter((o) => !o.dead && o.id !== th.id && assigned(g, o.id) < o.hp && dist(o.x, o.y, th.x, th.y) <= AB.tesla.twin)
@@ -2168,6 +2229,7 @@ function reload(g: Game, dt: number): void {
     g.overdriveT -= dt;
     g.ammo = g.stats.rack;
     g.reloadT = 0;
+    if (g.overdriveT <= 0) cue(g, 'overdrive.off', g.map.carrier.x, g.map.carrier.y);
     return;
   }
   if (g.ammo >= g.stats.rack) {
@@ -2179,6 +2241,7 @@ function reload(g: Game, dt: number): void {
   while (g.reloadT >= g.stats.reload && g.ammo < g.stats.rack) {
     g.reloadT -= g.stats.reload;
     g.ammo += 1;
+    cue(g, 'gun.reload', g.map.carrier.x, g.map.carrier.y);
   }
   if (g.ammo >= g.stats.rack) g.reloadT = 0;
 }
@@ -2215,6 +2278,9 @@ function updateInterceptors(g: Game, dt: number): void {
       const by = th ? th.y : it.ty;
       const radius = it.blast ?? g.stats.blast;
       addFx(g, 'burst', bx, by, { life: 0.35, r: radius });
+      // The burst pops on its own only when it kills nothing: a kill's
+      // explosion covers it (two sounds for one flash muddied the mix).
+      if (!th || th.hp - (it.dmg ?? g.stats.hitDamage) > 1e-6) cue(g, 'gun.burst', bx, by, it.src === 'seeker' ? { gain: 0.6 } : undefined);
       if (th) {
         damageThreat(g, th, it.dmg ?? g.stats.hitDamage);
         // A Tesla Arc hit arcs on to the threats around it.
@@ -2239,6 +2305,7 @@ function spawnRaider(g: Game, sp: RaiderSpawn): void {
   if (!g.seenVectors.has(sp.kind)) {
     g.seenVectors.add(sp.kind);
     g.events.push({ kind: 'vector', vector: sp.kind });
+    cue(g, 'debut.sting', sp.path[0].x, sp.path[0].y);
   }
   const length = sp.kind === 'sub' ? 0 : pathLength(sp.path);
   const p0 = sp.path[0];
@@ -2284,17 +2351,24 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
     // Launch the loaded rounds one at a time; true once all are away.
     r.fireT -= dt;
     if (r.fireT <= 0 && r.rounds.length) {
+      cue(g, r.kind === 'sub' ? 'sub.fire' : 'truck.fire', r.x, r.y);
       spawnThreat(g, r.rounds.shift()!, r.x, r.y, origin).from = r.id;
       r.fireT = gap;
     }
     return r.rounds.length === 0 && r.fireT <= 0;
   };
   if (r.kind === 'sub') {
-    if (r.state === 'warn' && r.t >= SUB.warn) setState(r, 'surface');
+    if (r.state === 'warn' && r.t >= SUB.warn) {
+      setState(r, 'surface');
+      cue(g, 'sub.surface', r.x, r.y);
+    }
     else if (r.state === 'surface' && r.t >= SUB.surface) {
       setState(r, 'fire');
       while (r.units.length) loadUnit(r);
-    } else if (r.state === 'fire' && fire(SUB.gap)) setState(r, 'dive');
+    } else if (r.state === 'fire' && fire(SUB.gap)) {
+      setState(r, 'dive');
+      cue(g, 'sub.dive', r.x, r.y);
+    }
     else if (r.state === 'dive' && r.t >= SUB.dive) {
       r.state = 'reverse';
       r.dist = 0; // gone
@@ -2308,6 +2382,7 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
     if (next !== undefined && r.dist >= next) {
       if (r.kind === 'runner') r.stops.shift();
       setState(r, 'raise');
+      cue(g, 'truck.raise', r.x, r.y);
     } else if (r.kind === 'runner' && r.dist >= r.length) {
       r.state = 'reverse';
       r.dist = 0; // off the end of the road
@@ -2335,12 +2410,20 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
 // Timed effects, strips on the water and friendly jets
 
 function updateTimers(g: Game, dt: number): void {
+  const c0 = g.map.carrier;
+  const ends = (t: number) => t > 0 && t - dt <= 0;
+  if (ends(g.warpT)) cue(g, 'timewarp.off', c0.x, c0.y);
+  if (ends(g.shieldT)) cue(g, 'shield.off', c0.x, c0.y);
+  if (ends(g.steamT)) cue(g, 'steam.off', c0.x, c0.y);
   g.warpT = Math.max(0, g.warpT - dt);
   g.shieldT = Math.max(0, g.shieldT - dt);
   g.steamT = Math.max(0, g.steamT - dt);
   if (g.weapon) {
+    const was = g.weapon.t;
     g.weapon.t -= dt;
+    if (was > WEAPON_EXPIRING && g.weapon.t <= WEAPON_EXPIRING && g.weapon.t > 0) cue(g, 'weapon.expiring', c0.x, c0.y);
     if (g.weapon.t <= 0) {
+      cue(g, 'weapon.done', c0.x, c0.y);
       // Round 4: say so over the gun, or a player keeps tapping as if loaded.
       const c = g.map.carrier;
       addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${abilityName(g.weapon.id, g.weapon.level).toUpperCase()} DONE` });
@@ -2367,6 +2450,7 @@ function updateFields(g: Game, dt: number): void {
         const k = f.level - 1;
         for (const th of [...g.threats]) if (!th.dead && dist(th.x, th.y, f.x1, f.y1) <= AB.well.core[k]) damageThreat(g, th, AB.well.damage[k]);
         addFx(g, 'emp', f.x1, f.y1, { life: 0.5, r: AB.well.core[k] * 1.4 });
+        cue(g, 'well.implode', f.x1, f.y1);
       }
       continue;
     }
@@ -2375,6 +2459,7 @@ function updateFields(g: Game, dt: number): void {
     f.tick -= dt;
     if (f.tick > 0) continue;
     f.tick += f.kind === 'burn' ? AB.airstrike.burnTick : AB.flak.tick;
+    if (f.kind === 'flak') cue(g, 'flak.cloud', f.x1, f.y1);
     for (const th of [...g.threats]) if (!th.dead && fieldDist(f, th.x, th.y) <= f.hw) damageThreat(g, th, 1);
   }
   g.fields = g.fields.filter((f) => f.t < f.life);
@@ -2401,6 +2486,7 @@ function updateAllies(g: Game, dt: number): void {
       }
       const x = a.x - a.dx * (a.flown - a.nextDrop);
       g.bombs.push({ id: g.nextId++, x, y: a.y, vx: a.dx * AB.airstrike.speed * AB.airstrike.drift, t: 0, level: 3 });
+      cue(g, 'napalm.drop', x, a.y);
       a.nextDrop += AB.airstrike.dropGap;
     }
     // What's under the jet: within `band` of its line, close along it.
@@ -2414,6 +2500,7 @@ function updateAllies(g: Game, dt: number): void {
       a.hits.push(th.id);
       a.firedT = g.t;
       addFx(g, 'tracer', a.x + a.dx * 30, a.y + a.dy * 30, { life: 0.18, x2: th.x, y2: th.y });
+      cue(g, 'jet.guns', th.x, th.y);
       damageThreat(g, th, a.damage);
     }
     if (!a.knock) continue;
@@ -2442,6 +2529,7 @@ function knockOut(g: Game, r: Raider): void {
   addFx(g, 'boom', r.x, r.y, { life: 1.1, r: 52 });
   addFx(g, r.kind === 'sub' ? 'sink' : 'burst', r.x, r.y, { life: r.kind === 'sub' ? 2 : 0.9, r: 40 });
   g.events.push({ kind: 'bigKill', label: r.kind === 'sub' ? 'SUB DESTROYED' : 'TRUCK DESTROYED', x: r.x, y: r.y });
+  cue(g, r.kind === 'sub' ? 'sub.destroyed' : 'truck.destroyed', r.x, r.y);
 }
 
 // ---------------------------------------------------------------------------
@@ -2454,6 +2542,7 @@ export function pickupLife(p: Pickup): number {
 
 function updatePickups(g: Game, dt: number): void {
   for (const p of g.pickups) p.age += dt;
+  for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
   g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
 }
 
@@ -2494,6 +2583,7 @@ function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: Abi
   // enough in that both stay on screen (round 4: at the old margin the name
   // was cut off at the edges).
   const mx = kind === 'weapon' ? 90 : 40;
+  cue(g, kind === 'weapon' ? 'weapon.drop' : 'powerup.drop', x, y);
   g.pickups.push({
     id: g.nextId++,
     kind,
@@ -2532,10 +2622,12 @@ function collect(g: Game, p: Pickup): void {
     }
     g.uses[id] = (g.uses[id] ?? 0) + 1;
     g.events.push({ kind: 'weapon', id, level });
+    cue(g, 'weapon.load', p.x, p.y);
     addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });
     return;
   }
   addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: PICKUP_TEXT[p.kind] });
+  cue(g, PICKUP_CUE[p.kind], p.x, p.y);
   switch (p.kind) {
     case 'ammo':
       g.ammo = g.stats.rack;
@@ -2560,6 +2652,67 @@ function collect(g: Game, p: Pickup): void {
       g.steamT = PICKUPS.steamTime * g.stats.powerTime;
       break;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Sound cues (audio/cues.ts): write-only, never read by the sim.
+
+/** A sound for this moment, at (x, y) on the battlefield. */
+function cue(g: Game, id: CueId, x: number, y: number, o?: { vx?: number; gain?: number }): void {
+  g.cues.push(o ? { id, x, y, ...o } : { id, x, y });
+}
+
+/** The incoming whistle starts this long before a ballistic lands. */
+export const BALLISTIC_WHISTLE = 0.9;
+/** The loaded weapon's clock warns at this many seconds left. */
+export const WEAPON_EXPIRING = 2;
+
+export const KILL_CUE: Record<ThreatKind, CueId> = {
+  drone: 'kill.small',
+  minidrone: 'kill.small',
+  bomblet: 'kill.small',
+  ballistic: 'kill.missile',
+  guided: 'kill.missile',
+  supersonic: 'kill.missile',
+  cluster: 'kill.missile',
+  heavy: 'kill.big',
+  mothership: 'kill.big',
+  strafer: 'kill.big',
+  bomber: 'kill.big',
+};
+
+export const PICKUP_CUE: Record<PowerKind, CueId> = {
+  ammo: 'rack.full',
+  repair: 'repair.pickup',
+  overdrive: 'overdrive.on',
+  timewarp: 'timewarp.on',
+  shield: 'shield.on',
+  steam: 'steam.on',
+};
+
+/** A threat leaves its launcher: a sound by kind (aircraft and children
+ *  have their own). */
+export const LAUNCH_CUE: Record<ThreatKind, CueId> = {
+  drone: 'drone.launch',
+  minidrone: 'minidrone.spawn',
+  bomblet: 'cluster.split',
+  ballistic: 'ballistic.launch',
+  guided: 'missile.launch',
+  supersonic: 'missile.launch',
+  heavy: 'missile.launch',
+  cluster: 'missile.launch',
+  mothership: 'mothership.spawn',
+  strafer: 'strafer.pass',
+  bomber: 'bomber.pass',
+};
+
+function launchCue(g: Game, th: Threat, origin: LaunchOrigin): void {
+  // A bomber's missile has its own drop cue.
+  if (origin === 'air' && th.kind === 'guided') return;
+  // Aircraft engines are loops that follow them (audio/state.ts); their
+  // warning sounded when their arrow appeared.
+  if (th.kind === 'strafer' || th.kind === 'bomber') return;
+  cue(g, LAUNCH_CUE[th.kind], th.x, th.y);
 }
 
 // ---------------------------------------------------------------------------
