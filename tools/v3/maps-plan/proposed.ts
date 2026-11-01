@@ -54,6 +54,7 @@ export interface Lane {
 export type Feature =
   | { kind: 'note'; x: number; y: number; text: string; anchor?: 'start' | 'middle' | 'end' }
   | { kind: 'shelter'; points: Point[]; label: string; lx: number; ly: number }
+  | { kind: 'radar'; x: number; y: number; r: number; hp: number; beam: number }
   | { kind: 'lock'; x0: number; x1: number; y: number; hw: number; label: string; wait: number }
   | { kind: 'gap'; x0: number; x1: number; y: number; label: string }
   | { kind: 'queue'; x: number; y: number; label: string }
@@ -142,11 +143,12 @@ const kesh: ProposedMap = {
 };
 
 // ---------------------------------------------------------------------------
-// 3. Lee of Marrow — a friendly island to shelter behind.
+// 3. Lee of Marrow — an allied radar tower on a friendly island.
 // The Strait's layout plus a friendly island between the enemy shore and the
-// lane. Low flyers (drones, guided, supersonic, heavies) can't cross friendly
-// high ground: they go round it, so the stretch behind the island is quiet
-// and the two gaps either side are where the fight is. Ballistics arc over.
+// lane, with a radar tower on it. While the tower stands its sweep covers the
+// lane: threats inside it are tracked (a lock box) and your interceptors fly
+// half as fast again at them. The enemy aims some launches at the tower (4
+// hits); once it falls it is gone for the rest of the run (player's review).
 const MARROW_BASES: PBase[] = [
   { x: 260, y: 105, kinds: ['drone', 'guided'] },
   { x: 800, y: 95, kinds: ['drone', 'ballistic', 'heavy'] },
@@ -155,7 +157,7 @@ const MARROW_BASES: PBase[] = [
 const marrow: ProposedMap = {
   id: 'marrow',
   name: 'Lee of Marrow',
-  blurb: 'A friendly island shields the middle of the lane. Low flyers must go round it; the gaps either side are where the fight is.',
+  blurb: 'A radar tower on a friendly island sweeps the lane, speeding your shots at anything it tracks. The enemy wants it gone; once lost, it stays lost.',
   land: [
     { side: 'enemy', points: shore('top', 150, 14, 0.9) },
     { side: 'friendly', hill: true, points: lens(520, 1080, 325, 78) },
@@ -183,9 +185,7 @@ const marrow: ProposedMap = {
   bomberLines: [258, 742],
   vectors: { trucks: 2, subs: 3, strafers: 5, bombers: 7 },
   features: [
-    { kind: 'shelter', points: [{ x: 600, y: 410 }, { x: 1000, y: 410 }, { x: 960, y: 690 }, { x: 640, y: 690 }], label: 'IN THE LEE', lx: 800, ly: 480 },
-    { kind: 'note', x: 420, y: 470, text: 'GAP', anchor: 'middle' },
-    { kind: 'note', x: 1180, y: 470, text: 'GAP', anchor: 'middle' },
+    { kind: 'radar', x: 800, y: 318, r: 400, hp: 4, beam: 62 },
   ],
 };
 
@@ -633,41 +633,43 @@ const coves: ProposedMap = {
 
 // ---------------------------------------------------------------------------
 // 17. The Sharra Delta — the river forks three ways; you pick.
-// The river splits round two marsh islands. North branch: shortest, under the
-// enemy bank. Middle: between the enemy marsh and yours. South: long and
-// winding past friendly land. A buoy at the fork switches which branch the
-// next ships take (one tap). Too shallow for submarines.
-const DN = smooth([{ x: 380, y: 470 }, { x: 540, y: 390 }, { x: 760, y: 222 }, { x: 1050, y: 168 }, { x: 1350, y: 160 }, { x: 1640, y: 160 }], 8);
-const DM = smooth([{ x: 380, y: 470 }, { x: 700, y: 470 }, { x: 1000, y: 470 }, { x: 1300, y: 462 }, { x: 1640, y: 460 }], 8);
-const DS = smooth([{ x: 380, y: 470 }, { x: 540, y: 560 }, { x: 760, y: 728 }, { x: 1050, y: 770 }, { x: 1350, y: 768 }, { x: 1640, y: 758 }], 8);
-const RIVER = [{ x: -40, y: 470 }, { x: 380, y: 470 }];
+// Ships come up a broad estuary and the river splits round two marsh islands.
+// North branch: shortest, under the enemy bank. Middle: a broad channel where
+// the carrier anchors beside the lane (review: the carrier sits in real water,
+// not a pond). South: long and winding past friendly marsh. A buoy at the fork
+// switches which branch the next ships take (one tap). Too shallow for subs.
+const DN = smooth([{ x: 600, y: 400 }, { x: 760, y: 292 }, { x: 960, y: 172 }, { x: 1250, y: 132 }, { x: 1640, y: 130 }], 8);
+const DM = smooth([{ x: 600, y: 400 }, { x: 1000, y: 398 }, { x: 1640, y: 400 }], 8);
+const DS = smooth([{ x: 600, y: 400 }, { x: 770, y: 525 }, { x: 1000, y: 712 }, { x: 1260, y: 778 }, { x: 1640, y: 788 }], 8);
+const RIVER = [{ x: -40, y: 400 }, { x: 600, y: 400 }];
 const DHW = 58;
 const BANK = DHW + 14;
+const MID_BELOW = 175; // the broad middle channel's water below the lane
 const after = (pts: Point[], x: number) => pts.filter((p) => p.x >= x);
 const DELTA_BASES: PBase[] = [
-  { x: 230, y: 180, kinds: ['drone', 'ballistic'] },
-  { x: 560, y: 150, kinds: ['guided', 'supersonic'] },
-  { x: 880, y: 60, kinds: ['heavy', 'ballistic'] },
-  { x: 1000, y: 322, kinds: ['cluster', 'drone'] },
-  { x: 1420, y: 310, kinds: ['guided', 'heavy', 'mothership'] },
+  { x: 220, y: 150, kinds: ['drone', 'ballistic'] },
+  { x: 560, y: 175, kinds: ['guided', 'supersonic'] },
+  { x: 860, y: 82, kinds: ['heavy', 'ballistic'] },
+  { x: 1060, y: 285, kinds: ['cluster', 'drone'] },
+  { x: 1430, y: 272, kinds: ['guided', 'heavy', 'mothership'] },
 ];
 const delta: ProposedMap = {
   id: 'delta',
   name: 'The Sharra Delta',
-  blurb: 'The river splits three ways round the marshes. Tap the buoy at the fork to send ships north (short, hot), middle, or south (long, safe).',
+  blurb: 'The river splits three ways round the marshes. Tap the buoy at the fork to send ships north (short, hot), middle (past your carrier), or south (long, safe).',
   land: [
-    { side: 'enemy', points: [{ x: 0, y: 0 }, { x: 0, y: 340 }, { x: 330, y: 340 }, ...after(offset(DN, -BANK), 400), { x: 1600, y: 0 }] },
-    { side: 'enemy', hill: true, points: [...after(offset(DN, BANK), 700), ...rev(after(offset(DM, -BANK), 700))] },
-    { side: 'friendly', points: [...after(offset(DM, BANK), 700), ...rev(after(offset(DS, -BANK), 700))] },
-    { side: 'friendly', points: [{ x: 0, y: 900 }, { x: 0, y: 600 }, { x: 330, y: 600 }, ...after(offset(DS, BANK), 400), { x: 1600, y: 900 }] },
+    { side: 'enemy', points: [{ x: 0, y: 0 }, { x: 0, y: 262 }, { x: 520, y: 262 }, ...after(offset(DN, -BANK), 720), { x: 1600, y: 0 }] },
+    { side: 'enemy', hill: true, points: [...after(offset(DN, BANK), 880), ...rev(after(offset(DM, -BANK), 880))] },
+    { side: 'friendly', points: [...after(offset(DM, MID_BELOW), 1020), ...rev(after(offset(DS, -BANK), 1020))] },
+    { side: 'friendly', points: [{ x: 0, y: 900 }, { x: 0, y: 792 }, { x: 560, y: 792 }, ...after(offset(DS, BANK), 920), { x: 1600, y: 900 }] },
   ],
   bases: DELTA_BASES,
-  carrier: { x: 930, y: 612 },
-  frigate: { x: 1072, y: 614 },
+  carrier: { x: 1000, y: 522 },
+  frigate: { x: 1250, y: 528 },
   lanes: [
-    { path: [...RIVER, ...DN.slice(1)], hw: DHW, label: 'NORTH · short', labelAt: 0.78 },
-    { path: [...RIVER, ...DM.slice(1)], hw: DHW, label: 'MIDDLE', labelAt: 0.7 },
-    { path: [...RIVER, ...DS.slice(1)], hw: DHW, label: 'SOUTH · long', labelAt: 0.62 },
+    { path: [...RIVER, ...DN.slice(1)], hw: DHW, label: 'NORTH · short', labelAt: 0.82 },
+    { path: [...RIVER, ...DM.slice(1)], hw: DHW, label: 'MIDDLE · past the carrier', labelAt: 0.62 },
+    { path: [...RIVER, ...DS.slice(1)], hw: DHW, label: 'SOUTH · long', labelAt: 0.7 },
   ],
   threatScale: 1.25,
   extras: [
@@ -675,22 +677,19 @@ const delta: ProposedMap = {
     { kind: 'mothership', from: 5, count: 1, growth: 0.2 },
     { kind: 'supersonic', from: 5, count: 1, growth: 0.25 },
   ],
-  callout: { x: 200, y: 760 },
-  alerts: { x0: 20, x1: 640, y: 890 },
+  callout: { x: 280, y: 845 },
+  alerts: { x0: 20, x1: 560, y: 890 },
   roads: {
     runners: [
-      [{ x: -60, y: 250 }, { x: 400, y: 252 }, { x: 800, y: 120 }, { x: 1660, y: 60 }],
-      smooth([{ x: 640, y: 380 }, { x: 900, y: 360 }, { x: 1200, y: 330 }, { x: 1660, y: 312 }], 6),
+      bypass([{ x: -60, y: 200 }, { x: 450, y: 205 }, { x: 800, y: 150 }, { x: 1100, y: 72 }, { x: 1660, y: 46 }], DELTA_BASES.slice(0, 3), -1),
+      smooth([{ x: 900, y: 300 }, { x: 1200, y: 276 }, { x: 1660, y: 266 }], 6),
     ],
-    popups: [{ from: { x: 1250, y: 300 }, to: { x: 1250, y: 380 } }],
+    popups: [{ from: { x: 1250, y: 250 }, to: { x: 1250, y: 318 } }],
   },
   subSpots: [],
-  bomberLines: [612],
+  bomberLines: [600],
   vectors: { trucks: 1, subs: 99, strafers: 3, bombers: 5 },
-  features: [
-    { kind: 'water', points: smooth([{ x: 790, y: 612 }, { x: 860, y: 572 }, { x: 1000, y: 568 }, { x: 1110, y: 600 }, { x: 1080, y: 650 }, { x: 930, y: 660 }, { x: 800, y: 640 }, { x: 790, y: 612 }], 5) },
-    { kind: 'switch', x: 300, y: 470, label: 'SWITCH' },
-  ],
+  features: [{ kind: 'switch', x: 560, y: 480, label: 'SWITCH' }],
 };
 
 // ---------------------------------------------------------------------------

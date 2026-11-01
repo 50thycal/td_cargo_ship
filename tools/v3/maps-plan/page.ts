@@ -92,7 +92,7 @@ const SHARED_SYSTEMS = [
   ['Ship types', 'Size, hit points, loss weight, targeting weight.', 'behemoth', 'Small'],
   ['Lane direction', 'Spawn and delivery side per lane.', 'crossing', 'Small–medium'],
   ['Timed lanes', 'A lane that opens and closes on a clock.', 'tide', 'Small–medium'],
-  ['Masking', 'Low flyers route round friendly land.', 'marrow', 'Small'],
+  ['Allied radar', 'A friendly structure the enemy targets; its sweep tracks threats over the lane.', 'marrow', 'Small–medium'],
   ['Allied turret', 'Friendly auto-gun that a hit knocks out.', 'battery', 'Small–medium'],
   ['Surface threats', 'Mines (drift) and fast boats (ram).', 'sowers, coves', 'Medium + small'],
   ['Night', 'Darkness, light cones, Star Shell pickup.', 'lantern', 'Medium'],
@@ -100,11 +100,11 @@ const SHARED_SYSTEMS = [
 ];
 
 const CRITIQUE = [
-  ['Variety', 'Every map\'s headline idea is different. Two pairs were close and one of each was cut: fog (kept night) and an allied radar (kept the battery). The Delta and the Island both have lane choices; the Delta is the one where you choose.'],
+  ['Variety', 'Every map\'s headline idea is different. Fog was cut (kept night). The radar (map 3) and the battery (map 11) are both allied structures, but one sees and one shoots, eight maps apart. The Delta and the Island both have lane choices; the Delta is the one where you choose.'],
   ['Readability', 'Enemy land is rust with a red-orange edge, friendly land is green with a mint edge, in every diagram and in the game. Each silo shows what it fires as letter chips, so colour is never the only cue.'],
   ['Fairness', 'Every new threat has a warning and an answer: mines are slow and blink (any shot), fast boats leave a wake (2 hits), the Dreadnought telegraphs its broadsides, the night keeps a faint glow and landing circles, locks show a countdown.'],
   ['The curve', 'Each new idea arrives alone. Later maps reuse earlier ones only as support: the Citadel reuses the funnel and rigs, the Delta reuses the bend\'s path lanes, Tidewater reuses the Island\'s risky and safe lanes.'],
-  ['Order changes', 'The Gauntlet moves from slot 2 to 6 (bots clear it at 20–50% with a fresh Armory, too hard for the free trial). Harbor Mouth eases to fit slot 5.'],
+  ['Order changes', 'On review: the Gauntlet moves to slot 4 and the Island to 6, so the two island maps (Lee of Marrow and the Island) are not back to back. Harbor Mouth eases to fit slot 5.'],
 ];
 
 export function buildPage(svgs: Record<string, string>, layoutOf: (id: string) => ProposedMap): string {

@@ -172,6 +172,19 @@ function feature(ft: Feature, layer: 'under' | 'over'): string {
       return layer === 'under' ? `<polygon points="${pts(ft.points)}" fill="${COL.sea}" stroke="${COL.friendlyEdge}" stroke-width="3"/>` : '';
     case 'shelter':
       return layer === 'under' ? `<polygon points="${pts(ft.points)}" fill="url(#hatchG)" stroke="${COL.friendlyEdge}" stroke-width="3" stroke-dasharray="10 8" opacity=".9"/>` : label(ft.lx, ft.ly, ft.label, { color: COL.friendlyEdge, size: 24 });
+    case 'radar': {
+      const rad = (d: number) => (d * Math.PI) / 180;
+      if (layer === 'under') {
+        const a = { x: ft.x + Math.cos(rad(ft.beam - 14)) * ft.r, y: ft.y + Math.sin(rad(ft.beam - 14)) * ft.r };
+        const b = { x: ft.x + Math.cos(rad(ft.beam + 14)) * ft.r, y: ft.y + Math.sin(rad(ft.beam + 14)) * ft.r };
+        return `<circle cx="${ft.x}" cy="${ft.y}" r="${ft.r}" fill="rgba(143,224,162,0.06)" stroke="${COL.friendlyEdge}" stroke-width="3" stroke-dasharray="10 9"/>
+          <path d="M${ft.x},${ft.y} L${f(a.x)},${f(a.y)} A${ft.r},${ft.r} 0 0 1 ${f(b.x)},${f(b.y)} Z" fill="url(#sweep)"/>`;
+      }
+      return `<g><rect x="${ft.x - 9}" y="${ft.y - 44}" width="18" height="44" fill="#15391f" stroke="${COL.friendlyEdge}" stroke-width="4"/>
+        <path d="M${ft.x - 30},${ft.y - 52} Q${ft.x},${ft.y - 30} ${ft.x + 30},${ft.y - 52}" fill="none" stroke="${COL.friendlyEdge}" stroke-width="6" stroke-linecap="round"/>
+        ${label(ft.x, ft.y - 66, `RADAR · ${ft.hp} hp`, { color: COL.friendlyEdge, size: 22 })}
+        ${label(ft.x + ft.r - 10, ft.y + 40, 'SWEEP: tracked threats, faster shots', { color: COL.friendlyEdge, size: 22, anchor: 'end' })}</g>`;
+    }
     case 'flats':
       return layer === 'under' ? `<polygon points="${pts(ft.points)}" fill="url(#hatchSand)" stroke="#d8c08a" stroke-width="3" stroke-dasharray="12 8"/>` : label(ft.lx, ft.ly, ft.label, { color: '#ead7a4', size: 22, anchor: 'end' });
     case 'lock': {
@@ -248,6 +261,7 @@ export function renderMap(m: ProposedMap, opts: { tray?: boolean } = {}): string
     <pattern id="hatchG" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="18" height="18" fill="rgba(143,224,162,0.10)"/><line x1="0" y1="0" x2="0" y2="18" stroke="rgba(143,224,162,0.45)" stroke-width="5"/></pattern>
     <pattern id="hatchSand" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="20" height="20" fill="rgba(216,192,138,0.16)"/><line x1="0" y1="0" x2="0" y2="20" stroke="rgba(216,192,138,0.42)" stroke-width="4"/></pattern>
     <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff3c4" stop-opacity=".7"/><stop offset="1" stop-color="#fff3c4" stop-opacity=".08"/></linearGradient>
+    <radialGradient id="sweep" cx="0" cy="0" r="1"><stop offset="0" stop-color="#8fe0a2" stop-opacity=".05"/><stop offset="1" stop-color="#8fe0a2" stop-opacity=".35"/></radialGradient>
     <clipPath id="frame"><rect width="1600" height="900"/></clipPath>
   </defs>`);
   out.push(`<g clip-path="url(#frame)">`);

@@ -11,11 +11,11 @@ Status: **proposal, nothing built.** Follows [v3-maps-handoff.md](v3-maps-handof
 
 **Chapter 1: Home Waters** (1–2 tries a map). Learn the threats. Geography helps you more than it hurts. Maps 1–2 are the free trial.
 
-1. The Strait (existing) (free) · 2. The Kesh Hook (free) · 3. Lee of Marrow · 4. The Island (existing) · 5. Harbor Mouth (existing)
+1. The Strait (existing) (free) · 2. The Kesh Hook (free) · 3. Lee of Marrow · 4. The Gauntlet (existing) · 5. Harbor Mouth (existing)
 
 **Chapter 2: The Narrows** (~2 tries a map). The water squeezes the convoy: shared lanes, a VIP, single file, islets, locks.
 
-6. The Gauntlet (existing) · 7. The Behemoth Run · 8. The Needle of Bosk · 9. The Archipelago (existing) · 10. Saltgate Canal
+6. The Island (existing) · 7. The Behemoth Run · 8. The Needle of Bosk · 9. The Archipelago (existing) · 10. Saltgate Canal
 
 **Chapter 3: Dark Water** (2–3 tries a map). Hazards that are not missiles: mines, rigs to knock out, night, a battleship.
 
@@ -31,10 +31,10 @@ Status: **proposal, nothing built.** Follows [v3-maps-handoff.md](v3-maps-handof
 |---|---|---|---|---|---|---|---|
 | 1 | 1 | The Strait (free) | One enemy shore, one wide lane | drones, ballistic, guided, supersonic, heavy; trucks, subs, aircraft | ●○○○○ | 1 | Built |
 | 2 | 1 | The Kesh Hook (new) (free) | A curved lane: ships hook 90° and leave off the top edge | nothing new to fight; the turn changes every lead angle | ●○○○○ | 1 | New system |
-| 3 | 1 | Lee of Marrow (new) | Terrain masking: low flyers must route round friendly high ground | — | ●●○○○ | 1–2 | Small |
-| 4 | 1 | The Island | An enemy island in mid-strait, two lanes | cluster missiles; caves and tunnels | ●●○○○ | 1–2 | Built |
-| 5 | 1 | Harbor Mouth | A funnel: the hardest stretch is right before delivery | motherships | ●●○○○ | 2 | Data only |
-| 6 | 2 | The Gauntlet | Both shores hostile, carrier mid-channel | — | ●●●○○ | 2 | Data only |
+| 3 | 1 | Lee of Marrow (new) | An allied radar the enemy will try to kill: lost is lost | enemy fire aimed at your radar | ●●○○○ | 1–2 | Small |
+| 4 | 1 | The Gauntlet | Both shores hostile, carrier mid-channel | — | ●●○○○ | 1–2 | Data only |
+| 5 | 1 | Harbor Mouth | A funnel: the hardest stretch is right before delivery | cluster missiles, motherships | ●●○○○ | 2 | Data only |
+| 6 | 2 | The Island | An enemy island in mid-strait, two lanes | caves and tunnels | ●●●○○ | 2 | Data only |
 | 7 | 2 | The Behemoth Run (new) | A VIP ship to protect alongside the convoy | supertanker (6 hp, counts as 3 losses, heavies prefer it) | ●●●○○ | 2 | Small |
 | 8 | 2 | The Needle of Bosk (new) | Single file: ships merge into a column and queue before the gap | — | ●●●○○ | 2 | Medium |
 | 9 | 2 | The Archipelago | A chain of enemy islets; the long reach west | — | ●●●○○ | 2 | Data only |
@@ -65,7 +65,7 @@ Engine work: **Built** = exists; **Data only** = numbers in `maps.ts`; **Small**
 | Ship types | Size, hit points, loss weight, targeting weight. | behemoth | Small |
 | Lane direction | Spawn and delivery side per lane. | crossing | Small–medium |
 | Timed lanes | A lane that opens and closes on a clock. | tide | Small–medium |
-| Masking | Low flyers route round friendly land. | marrow | Small |
+| Allied radar | A friendly structure the enemy targets; its sweep tracks threats over the lane. | marrow | Small–medium |
 | Allied turret | Friendly auto-gun that a hit knocks out. | battery | Small–medium |
 | Surface threats | Mines (drift) and fast boats (ram). | sowers, coves | Medium + small |
 | Night | Darkness, light cones, Star Shell pickup. | lantern | Medium |
@@ -108,26 +108,26 @@ The strait hooks north round a friendly cape; you hold the inside of the turn.
 
 ![Lee of Marrow](v3-maps-plan/03-marrow.svg)
 
-A friendly island shields the middle of the lane; the gaps either side are the fight.
+A radar tower on a friendly island sweeps the lane. While it stands, your shots fly fast at anything in its sweep.
 
-- **The one new idea:** Terrain masking: low flyers must route round friendly high ground.
-- **First to bring:** —.
+- **The one new idea:** An allied radar the enemy will try to kill: lost is lost.
+- **First to bring:** enemy fire aimed at your radar.
 - **Enemy sources:** 3 silos; trucks from wave 2 (1 coast road, 2 pop-ups); subs from wave 3 (4 spots); strafers from wave 5, bombers from wave 7 (2 lines). Extra on this map: supersonic from wave 6, heavy cruise from wave 9.
 - **Expected tries:** 1–2. **Difficulty:** 2/5. **Threat scale:** 1.1.
-- **Engine work (Small):** Drones, guided, supersonic and heavies steer round friendly land (or a base can't lock a target masked by it). Ballistics arc over. Small.
+- **Engine work (Small):** A friendly structure with hit points that some enemy launches target; while it stands, a sweep covers the lane and threats inside it are tracked (lock box, interceptors 1.5× faster at them). Destroyed for the rest of the run. Small–medium; shares the structure code with Battery Point.
 
-#### 4. The Island (existing)
+#### 4. The Gauntlet (existing)
 
-![The Island](v3-maps-plan/04-island.svg)
+![The Gauntlet](v3-maps-plan/04-gauntlet.svg)
 
-The enemy holds the island and the far shore. A risky fast north lane, a safe south lane.
+Enemy on both shores. Your carrier holds the middle; ships pass either side.
 
-- **The one new idea:** An enemy island in mid-strait, two lanes.
-- **First to bring:** cluster missiles; caves and tunnels.
-- **Enemy sources:** 5 silos; trucks from wave 1 (2 coast roads, 4 pop-ups); subs from wave 3 (4 spots); strafers from wave 4, bombers from wave 5 (2 lines). Extra on this map: supersonic from wave 6, heavy cruise from wave 7, cluster from wave 8.
-- **Expected tries:** 1–2. **Difficulty:** 2/5. **Threat scale:** 0.95 (0.95).
-- **Engine work (Built):** Built.
-- In game: ![The Island in game](v3-maps-plan/shot-island.png)
+- **The one new idea:** Both shores hostile, carrier mid-channel.
+- **First to bring:** —.
+- **Enemy sources:** 4 silos; trucks from wave 2 (2 coast roads, 4 pop-ups); subs from wave 3 (3 spots); strafers from wave 4, bombers from wave 6 (1 line). Extra on this map: heavy cruise from wave 5, supersonic from wave 7.
+- **Expected tries:** 1–2. **Difficulty:** 2/5. **Threat scale:** 1.1 (1.2).
+- **Engine work (Data only):** Built. Moves from slot 2 to 4 (unlock order changes; the save keeps cleared maps by id). Eased a touch for slot 4.
+- In game: ![The Gauntlet in game](v3-maps-plan/shot-gauntlet.png)
 
 #### 5. Harbor Mouth (existing)
 
@@ -136,7 +136,7 @@ The enemy holds the island and the far shore. A risky fast north lane, a safe so
 The channel funnels into the harbour under enemy headlands. The worst comes last.
 
 - **The one new idea:** A funnel: the hardest stretch is right before delivery.
-- **First to bring:** motherships.
+- **First to bring:** cluster missiles, motherships.
 - **Enemy sources:** 5 silos; trucks from wave 1 (2 coast roads, 3 pop-ups); subs from wave 2 (3 spots); strafers from wave 3, bombers from wave 4 (2 lines). Extra on this map: supersonic from wave 4, heavy cruise from wave 5, cluster from wave 6, mothership from wave 7.
 - **Expected tries:** 2. **Difficulty:** 2/5. **Threat scale:** 0.9 (1.0).
 - **Engine work (Data only):** Built. Ease to fit slot 5 (bots clear it least of the five).
@@ -144,18 +144,18 @@ The channel funnels into the harbour under enemy headlands. The worst comes last
 
 ### Chapter 2: The Narrows
 
-#### 6. The Gauntlet (existing)
+#### 6. The Island (existing)
 
-![The Gauntlet](v3-maps-plan/06-gauntlet.svg)
+![The Island](v3-maps-plan/06-island.svg)
 
-Enemy on both shores. Your carrier holds the middle; ships pass either side.
+The enemy holds the island and the far shore. A risky fast north lane, a safe south lane.
 
-- **The one new idea:** Both shores hostile, carrier mid-channel.
-- **First to bring:** —.
-- **Enemy sources:** 4 silos; trucks from wave 2 (2 coast roads, 4 pop-ups); subs from wave 3 (3 spots); strafers from wave 4, bombers from wave 6 (1 line). Extra on this map: heavy cruise from wave 5, supersonic from wave 7.
-- **Expected tries:** 2. **Difficulty:** 3/5. **Threat scale:** 1.2 (1.2).
-- **Engine work (Data only):** Built. Moves from slot 2 to 6 (unlock order changes; the save keeps cleared maps by id).
-- In game: ![The Gauntlet in game](v3-maps-plan/shot-gauntlet.png)
+- **The one new idea:** An enemy island in mid-strait, two lanes.
+- **First to bring:** caves and tunnels.
+- **Enemy sources:** 5 silos; trucks from wave 1 (2 coast roads, 4 pop-ups); subs from wave 3 (4 spots); strafers from wave 4, bombers from wave 5 (2 lines). Extra on this map: supersonic from wave 6, heavy cruise from wave 7, cluster from wave 8.
+- **Expected tries:** 2. **Difficulty:** 3/5. **Threat scale:** 1.0 (0.95).
+- **Engine work (Data only):** Built. Moves from slot 3 to 6 (away from Lee of Marrow, so two island maps are not back to back); a little more fire for slot 6.
+- In game: ![The Island in game](v3-maps-plan/shot-island.png)
 
 #### 7. The Behemoth Run
 
@@ -338,11 +338,11 @@ A fortress guards the harbour narrows behind a shield fed by three generators.
 
 ## Checks before showing the player
 
-- **Variety.** Every map's headline idea is different. Two pairs were close and one of each was cut: fog (kept night) and an allied radar (kept the battery). The Delta and the Island both have lane choices; the Delta is the one where you choose.
+- **Variety.** Every map's headline idea is different. Fog was cut (kept night). The radar (map 3) and the battery (map 11) are both allied structures, but one sees and one shoots, eight maps apart. The Delta and the Island both have lane choices; the Delta is the one where you choose.
 - **Readability.** Enemy land is rust with a red-orange edge, friendly land is green with a mint edge, in every diagram and in the game. Each silo shows what it fires as letter chips, so colour is never the only cue.
 - **Fairness.** Every new threat has a warning and an answer: mines are slow and blink (any shot), fast boats leave a wake (2 hits), the Dreadnought telegraphs its broadsides, the night keeps a faint glow and landing circles, locks show a countdown.
 - **The curve.** Each new idea arrives alone. Later maps reuse earlier ones only as support: the Citadel reuses the funnel and rigs, the Delta reuses the bend's path lanes, Tidewater reuses the Island's risky and safe lanes.
-- **Order changes.** The Gauntlet moves from slot 2 to 6 (bots clear it at 20–50% with a fresh Armory, too hard for the free trial). Harbor Mouth eases to fit slot 5.
+- **Order changes.** On review: the Gauntlet moves to slot 4 and the Island to 6, so the two island maps (Lee of Marrow and the Island) are not back to back. Harbor Mouth eases to fit slot 5.
 
 ## The brainstorm (33 ideas, 15 picked)
 
@@ -377,9 +377,9 @@ A fortress guards the harbour narrows behind a shield fed by three generators.
 
 **Friendly side**
 
-- ✅ **Friendly island shelter**: Low flyers have to go round it. Stresses the gaps either side. Decision: Watch the gaps, not the middle. → Lee of Marrow.
+- ✖ **Friendly island shelter**: Low flyers have to go round it. Stresses the gaps either side. Decision: Watch the gaps, not the middle. Cut: Replaced on review by the radar tower on the same island.
 - ✅ **Allied shore battery**: Two turrets fire on their own; the enemy targets them. Stresses heavies aimed at your guns. Decision: Save the guns or the ships. → Battery Point.
-- ✖ **Allied radar**: Longer warnings while the radar stands. Stresses strikes on the radar. Decision: Defend your eyes. Cut: A second protect-the-structure map next to the battery; the battery is more visible.
+- ✅ **Allied radar**: A radar sweep tracks threats over the lane while the tower stands. Stresses strikes on the radar. Decision: Defend your eyes, or let it go. → Lee of Marrow.
 - ✖ **Second friendly port mid-map**: Half the convoy delivers early. Stresses little. Decision: Few. Cut: No real decision for the player.
 - ✖ **Carrier on the far shore**: The gun sits next to the enemy. Stresses carrier strikes. Decision: Self-defence first. Cut: Flips the readable layout for little gain.
 - ✅ **Supertanker (VIP)**: One huge slow ship a wave, worth three. Stresses heavies and guided aimed at it. Decision: Priorities: tanker or convoy. → The Behemoth Run.
