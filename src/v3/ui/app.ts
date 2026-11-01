@@ -785,6 +785,7 @@ export class App {
       if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
       if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
       if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
+      if (g.flareT > 0) chips.push(['STAR SHELL', g.flareT, PICKUP_COLORS.starshell]);
     }
     const key = chips.map(([l, t]) => `${l}${Math.ceil(t)}`).join();
     if (key === this.timersKey) return;
@@ -1793,6 +1794,7 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
+  starshell: ['PICKUP: Star Shell', 'Tap it: a flare lights the whole strait for a few seconds.'],
 };
 
 /** The first weapon drop's banner, with the run's seconds (Long Loads). */

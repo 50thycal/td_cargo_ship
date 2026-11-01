@@ -82,13 +82,34 @@ export type ThreatKind =
   | 'bomber'
   // Children: spawned by a cluster or a mothership, never launched by a base.
   | 'bomblet'
-  | 'minidrone';
+  | 'minidrone'
+  // The 20-map plan. Over the water: a mine adrift on the current (Sowers'
+  // Reach), a fast attack boat out of a cove (Smugglers' Coves).
+  | 'mine'
+  | 'fastboat'
+  // Enemy structures with hit points: an oil rig (The Rig Field), a shield
+  // generator and the Citadel (Citadel of Vey), the Dreadnought.
+  | 'rig'
+  | 'generator'
+  | 'citadel'
+  | 'dreadnought';
+
+/** Enemy structures: you can shoot them, they never strike anything
+ *  themselves, and (bar the Dreadnought) a wave can end with them standing. */
+export const STRUCTURE_KINDS: ThreatKind[] = ['rig', 'generator', 'citadel', 'dreadnought'];
+
+export function isStructure(kind: ThreatKind): boolean {
+  return kind === 'rig' || kind === 'generator' || kind === 'citadel' || kind === 'dreadnought';
+}
 
 /** Threats a base launches (children excluded), in the order they debut. */
 export const PRIMARY_KINDS: ThreatKind[] = ['drone', 'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'mothership', 'strafer', 'bomber'];
 
 export function zeroCounts(): Record<ThreatKind, number> {
-  return { drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, strafer: 0, bomber: 0, bomblet: 0, minidrone: 0 };
+  return {
+    drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, strafer: 0, bomber: 0, bomblet: 0, minidrone: 0,
+    mine: 0, fastboat: 0, rig: 0, generator: 0, citadel: 0, dreadnought: 0,
+  };
 }
 
 export const THREATS: Record<
@@ -119,7 +140,40 @@ export const THREATS: Record<
   bomber: { speed: 175, hp: 3, damage: 0, dropChance: 0.6, label: 'Missile bomber' },
   bomblet: { speed: 260, hp: 1, damage: 1, dropChance: 0.02, label: 'Bomblet' },
   minidrone: { speed: 85, hp: 1, damage: 1, dropChance: 0.03, label: 'Mini-drone' },
+  /** Drifts across the lane on the current; a ship that touches it takes 3. */
+  mine: { speed: 27, hp: 1, damage: 3, dropChance: 0.08, label: 'Drifting mine' },
+  /** Bursts out of a cove and rams a ship; leaves a white wake. */
+  fastboat: { speed: 125, hp: 2, damage: 2, dropChance: 0.3, label: 'Fast attack boat' },
+  /** Structures: hit points, no warhead. A kill always drops something. */
+  rig: { speed: 0, hp: 14, damage: 0, dropChance: 1, label: 'Oil rig' },
+  generator: { speed: 0, hp: 10, damage: 0, dropChance: 1, label: 'Shield generator' },
+  citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
+  dreadnought: { speed: 24, hp: 60, damage: 0, dropChance: 1, label: 'Dreadnought' },
 };
+
+/** The supertanker (The Behemoth Run): its hit points, the ships its loss
+ *  counts as (the player's answer: three), from how far into a wave it
+ *  sails, and its points multiplier when it comes through. */
+export const VIP = { hp: 6, loss: 3, after: 5, points: 4, targetShare: 0.5 } as const;
+
+/** Locks (Saltgate Canal): where a hull waits short of a shut gate, and how
+ *  long each gate stays open (the fill wait is the map's, 6 s by the
+ *  player's answer). */
+export const LOCK = { stand: 44, inTime: 8, outTime: 6 } as const;
+
+/** Allied structures: the radar's tracked-shot speed-up and the share of
+ *  launches the enemy aims at a structure; a battery's rate of fire and how
+ *  long a hit knocks it out. */
+export const POST = { radarBoost: 1.5, targetShare: 0.22, batteryGap: 1.3, batteryDown: 12, hitRadius: 30 } as const;
+
+/** Fast attack boats: how hard they turn onto a ship (rad/s). */
+export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
+
+/** Mines: how near a hull sets one off, and their wobble on the current. */
+export const MINE = { hitRadius: 30, wobble: 6 } as const;
+
+/** The Dreadnought: seconds between broadsides, and what each one fires. */
+export const BOSS = { firstShot: 6, every: 7, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
 
 export const SUPERSONIC = {
   /** Seconds it sits on the rail with its lock line showing before launch. */
@@ -214,6 +268,12 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   drone: 'swarm',
   minidrone: 'swarm',
   mothership: 'swarm',
+  mine: 'swarm',
+  fastboat: 'swarm',
+  rig: 'volley',
+  generator: 'volley',
+  citadel: 'volley',
+  dreadnought: 'volley',
   ballistic: 'barrage',
   heavy: 'barrage',
   cluster: 'barrage',
@@ -289,17 +349,21 @@ export const DRONE = {
 // V3: EMP and Strike Package are no longer power-ups (Strike came back as
 // the Air Strike weapon, data/abilities.ts). A 'weapon' pickup
 // loads one of the weapons you hold into the gun (which one is on the pickup).
-export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam';
+// 'starshell' (the 20-map plan, The Black Strait only): lights the dark sea.
+export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam' | 'starshell';
 export type PickupKind = PowerKind | 'weapon';
 
-export const PICKUP_KINDS: PowerKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam'];
+export const PICKUP_KINDS: PowerKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam', 'starshell'];
 
 export const PICKUPS = {
   life: 5,
   radius: 26,
   // Round 5: repair 30 → 20 ("a little OP": 15 repairs in two games). V3:
   // EMP (8) and Strike (7) are gone, the rest keep their weights.
-  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9 } as Record<PowerKind, number>,
+  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9, starshell: 0 } as Record<PowerKind, number>,
+  /** A Star Shell's weight on a night map, and how long its light lasts. */
+  starshellWeight: 16,
+  starshellTime: 6,
   repairHp: 2,
   carrierRepairHp: 2,
   overdriveTime: 5,

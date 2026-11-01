@@ -1072,6 +1072,7 @@ export const PICKUP_COLORS: Record<PickupKind, string> = {
   timewarp: '#5eead4',
   shield: '#e2e8f0',
   steam: '#fb923c',
+  starshell: '#fff1a8',
 };
 
 function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, y: number, age: number, t: number, life: number = PICKUPS.life): void {
@@ -1120,6 +1121,17 @@ function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, 
     ctx.quadraticCurveTo(x + 6, y + 9, x, y + 13);
     ctx.quadraticCurveTo(x - 6, y + 9, x - 9, y + 2);
     ctx.lineTo(x - 10, y - 8);
+    ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'starshell') {
+    // A bursting star: the light it throws over the dark sea.
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      const rr = i % 2 ? 5 : 12;
+      if (i) ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      else ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
     ctx.closePath();
     ctx.fill();
   } else if (kind === 'steam') {
