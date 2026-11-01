@@ -78,7 +78,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Swarm Pod',
     answers: 'Raids',
     levels: [
-      'Each tap launches 3 seekers at the threats nearest your finger',
+      'Each tap launches 3 seekers at the threats nearest your finger, each a third of a shot',
       '4 seekers a tap',
       '5 seekers, and one whose target is gone finds another',
     ],
@@ -86,15 +86,15 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
   },
   aegis: {
     id: 'aegis',
-    name: 'Aegis Dome',
+    name: 'Aegis Launchers',
     evolved: 'Bastion',
-    answers: 'Ballistics',
+    answers: 'Missiles',
     levels: [
-      'Each shot also domes the ship its target is after: 5 s, 3 hits',
-      'Domes hold 6 s, 4 hits',
-      '8 s, 6 hits, and each hit bursts back out for 2',
+      'Every ship carries an interceptor that fires on its own at a threat about to hit it',
+      'Two a ship, fired from further out',
+      'Spent ones reload every 3 s, and the carrier fires its own',
     ],
-    how: 'Tap threats as usual, or the water by a ship',
+    how: 'Keep shooting: every ship fires its own',
   },
   well: {
     id: 'well',
@@ -250,16 +250,20 @@ export const AB = {
   flak: { radius: [95, 115, 135], time: [1.5, 2, 4], tick: 0.35 },
   /** Seekers: `missiles` per tap at the threats nearest the tap (within
    *  `reach`), each hitting for 1 with a small blast. */
-  seeker: { missiles: [3, 4, 5], reach: 360, speed: 900, blast: 14 },
+  seeker: { missiles: [3, 4, 5], reach: 360, speed: 900, blast: 14, damage: 1 / 3 },
   /** Aegis: a dome on one ship (or the carrier) for `time` s that takes
    *  `hits` hits; Bastion bursts for `burstDmg` within `burst` per hit. A tap
    *  with no threat covers the hull nearest it within `reach`. */
-  aegis: { time: [5, 6, 8], hits: [3, 4, 6], reach: 220, burst: 120, burstDmg: 2 },
+  // Round 8: each ship's own interceptors, fired at a threat closing on it
+  // within `reach`; Bastion reloads one every `reload` s, the carrier too.
+  aegis: { missiles: [1, 2, 2], reach: [240, 320, 320], reload: 3, carrier: 3 },
   /** Gravity Well: pulls threats within `radius` toward it at `pull` px/s
    *  for `time` s, then hits those within `core` for `damage`. */
   well: { radius: [200, 240, 260], time: [1.5, 1.5, 2], pull: 320, core: [100, 110, 120], damage: [2, 3, 4] },
   /** A jet costs `cost` rounds (playtest: one round a jet was too strong). */
-  airstrike: { speed: 1800, band: [80, 95, 110], damage: [2, 3, 4], burnTime: 2, burnTick: 0.5, cost: 2 },
+  // Carpet Strike's napalm (round 8): a canister every dropGap, falling for
+  // `fall` s while drifting on at `drift` of the jet's speed.
+  airstrike: { speed: 1800, band: [80, 95, 110], damage: [2, 3, 4], burnTime: 2, burnTick: 0.5, cost: 2, dropGap: 130, fall: 0.35, drift: 0.12 },
   railgun: { damage: [1, 2, 4], width: [14, 18, 26] },
   tesla: { arcs: [3, 4, 4], range: 200, depth: [1, 2, 2], twin: 260 },
   /** Shrapnel: `frags` fragments out from the burst, each reaching `range`

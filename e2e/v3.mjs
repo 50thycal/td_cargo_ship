@@ -187,7 +187,8 @@ try {
     frigate: { open: true, ok: () => window.__v3.game().escorts.length >= 2 },
     well: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'well') },
     seeker: { open: false, ok: () => window.__v3.game().interceptors.some((i) => i.src === 'seeker') },
-    aegis: { open: false, ok: () => !!window.__v3.game().carrierDome },
+    // Round 8: the ships carry their own interceptors while it is loaded.
+    aegis: { open: false, ok: () => window.__v3.game().ships.some((sh) => sh.aegis && sh.aegis.ammo > 0) },
   };
   for (const [id, how] of Object.entries(sig)) {
     await equip(page, [id]);
@@ -219,7 +220,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 11 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 12 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);

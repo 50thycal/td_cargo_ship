@@ -42,9 +42,12 @@ import {
  *  11: V3 round 7 (the Armory's Hull and Supply bays: `armory` can carry a
  *      hull and a supply upgrade, and Armor Plating draws on its own random
  *      stream; Battle Group's frigates take new stations).
+ *  12: V3 round 8 (seekers hit for a third and go in threes; Aegis is every
+ *      ship's own interceptors, not domes; Carpet Strike burns its row
+ *      behind the jet, canister by canister).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 11;
+export const LOG_VERSION = 12;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

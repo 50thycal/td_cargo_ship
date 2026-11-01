@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, WEAPON, abilityName, type AbilityId } from '../../src/v3/data/abilities';
 import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, armoryStats, bayItems, cardsFor, drawCards } from '../../src/v3/data/armory';
-import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP } from '../../src/v3/data/config';
+import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP, VIEW } from '../../src/v3/data/config';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { ARMORY_VERSION, equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v3/sim/bot';
@@ -554,10 +554,26 @@ describe('what each weapon does with a tap', () => {
     expect(g.ammo).toBe(ammo - 1);
     const seekers = g.interceptors.filter((i) => i.src === 'seeker');
     expect(seekers).toHaveLength(AB.seeker.missiles[0]);
-    expect(new Set(seekers.map((i) => i.target))).toEqual(new Set(near.map((t) => t.id)));
+    // Round 8: a seeker hits for a third of a shot, so the three go together
+    // at the nearest drone, and bring it down.
+    expect(seekers.every((i) => Math.abs((i.dmg ?? 0) - 1 / 3) < 1e-9)).toBe(true);
+    expect(new Set(seekers.map((i) => i.target))).toEqual(new Set([near[0].id]));
     run(g, 2);
-    expect(near.every((t) => t.dead)).toBe(true);
+    expect(near[0].dead).toBe(true);
+    expect(near[1].dead || near[2].dead).toBe(false);
     expect(far.dead).toBe(false);
+    // The next tap's seekers go to the next nearest.
+    expect(tap(g, 710, 310, 20)).toBe('fire');
+    run(g, 2);
+    expect(near.filter((t) => t.dead)).toHaveLength(2);
+    // A 2-hit guided missile takes six seekers: Swarm Pod's five leave it at a third.
+    const g3 = quietGame();
+    load(g3, 'seeker', 3);
+    const m = addThreat(g3, { kind: 'guided', hp: 2, x: 700, y: 300, speed: 0 });
+    tap(g3, 700, 300, 20);
+    run(g3, 2);
+    expect(m.dead).toBe(false);
+    expect(m.hp).toBeCloseTo(1 / 3);
     // Nothing within reach: nothing fires, no round spent.
     const g0 = quietGame();
     load(g0, 'seeker', 1);
@@ -571,44 +587,71 @@ describe('what each weapon does with a tap', () => {
     tap(g2, only.x, only.y, 20);
     only.dead = true;
     run(g2, 2.5);
-    expect(other.dead).toBe(true);
+    expect(other.dead).toBe(true); // 5 seekers, a third each: enough for a drone
   });
 
-  it('Aegis Dome: a shot at a threat also domes the ship it is after; the dome takes its hits, then is gone; Bastion bursts back', () => {
+  it('Aegis Launchers: while loaded every ship fires its own interceptor at a threat closing on it, new ships too; gone with the weapon', () => {
     const g = quietGame();
     const ship: Ship = { id: 77, x: 900, y: 600, hp: 3, slot: 0, channel: 0, mult: 1 };
     g.ships.push(ship);
-    load(g, 'aegis', 1);
-    const m = addThreat(g, { kind: 'guided', hp: 2, x: 500, y: 200, target: 77, speed: 0 });
+    g.levels.aegis = 1;
+    g.slots = ['aegis'];
+    g.pickups.push({ id: 905, kind: 'weapon', weapon: 'aegis', x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+    step(g, DT);
+    expect(ship.aegis?.ammo).toBe(AB.aegis.missiles[0]);
+    // A missile out of reach, or after another hull: the ship holds fire.
+    g.ships.push({ id: 99, x: 100, y: 600, hp: 3, slot: 2, channel: 0, mult: 1 });
+    addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y - AB.aegis.reach[0] - 60, target: 77, speed: 0 });
+    addThreat(g, { kind: 'guided', hp: 2, x: ship.x + 100, y: ship.y - 100, target: 99, speed: 0 });
+    step(g, DT);
+    expect(ship.aegis?.ammo).toBe(1);
+    // A drone (one hit) closing on it: one interceptor goes, at no cost to the rack.
     const ammo = g.ammo;
-    expect(tap(g, m.x, m.y, 30)).toBe('fire');
-    expect(g.ammo).toBe(ammo - 1);
-    expect(ship.dome).toEqual({ t: AB.aegis.time[0], hits: AB.aegis.hits[0], level: 1 });
-    expect(g.interceptors.some((i) => i.target === m.id)).toBe(true); // and a shot
-    // Two missiles reach the ship: the dome takes both, the hull nothing.
-    for (let k = 0; k < AB.aegis.hits[0]; k++) addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y, target: 77, speed: 0 });
+    const d = addThreat(g, { x: ship.x + 60, y: ship.y - 120, target: 77, speed: 0 });
     step(g, DT);
-    expect(ship.hp).toBe(3);
+    expect(ship.aegis?.ammo).toBe(0);
+    expect(g.ammo).toBe(ammo);
+    run(g, 1);
+    expect(d.dead).toBe(true);
+    // Spent at level 1: it doesn't come back.
+    run(g, 5);
+    expect(ship.aegis?.ammo).toBe(0);
+    // A ship that sails in while it is loaded is armed too.
+    const late: Ship = { id: 78, x: 400, y: 600, hp: 3, slot: 1, channel: 0, mult: 1 };
+    g.ships.push(late);
     step(g, DT);
-    expect(ship.dome).toBeUndefined();
-    // The next one hits the hull.
-    addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y, target: 77, speed: 0 });
+    expect(late.aegis?.ammo).toBe(AB.aegis.missiles[0]);
+    // When the weapon goes, so do the launchers.
+    run(g, WEAPON.time);
+    expect(g.weapon).toBeNull();
+    expect(g.ships.every((s) => !s.aegis)).toBe(true);
+    // The gun fires plain shots meanwhile (the tap isn't the launcher).
+    const g1 = quietGame();
+    load(g1, 'aegis', 1);
+    const t = addThreat(g1, { x: 700, y: 300, speed: 0 });
+    expect(tap(g1, t.x, t.y, 20)).toBe('fire');
+    expect(g1.interceptors.some((i) => i.target === t.id && i.src === 'gun')).toBe(true);
+  });
+
+  it('Bastion: two a ship that reload, and the carrier fires its own', () => {
+    const g = quietGame();
+    const ship: Ship = { id: 79, x: 900, y: 600, hp: 3, slot: 0, channel: 0, mult: 1 };
+    g.ships.push(ship);
+    load(g, 'aegis', 3);
     step(g, DT);
-    expect(ship.hp).toBeLessThan(3);
-    // A tap on open water covers the hull nearest it; far from any: nothing.
-    const g2 = quietGame();
-    // (Well away from the carrier, which would otherwise be the nearer hull.)
-    g2.ships.push({ id: 78, x: 300, y: 400, hp: 3, slot: 0, channel: 0, mult: 1 });
-    load(g2, 'aegis', 3);
-    expect(tap(g2, 340, 380, 20)).toBe('fire');
-    expect(g2.ships[0].dome?.level).toBe(3);
-    expect(tap(g2, 200, 150, 20)).toBe('empty');
-    // Bastion: the absorbed hit bursts back out.
-    const near = addThreat(g2, { kind: 'guided', hp: 2, x: 360, y: 400, speed: 0 });
-    addThreat(g2, { kind: 'guided', hp: 2, x: 300, y: 400, target: 78, speed: 0 });
-    step(g2, DT);
-    expect(g2.ships[0].hp).toBe(3);
-    expect(near.dead).toBe(true);
+    expect(ship.aegis?.ammo).toBe(AB.aegis.missiles[2]);
+    expect(g.carrierAegis?.ammo).toBe(AB.aegis.carrier);
+    for (let k = 0; k < 2; k++) addThreat(g, { x: ship.x + 50 + k * 40, y: ship.y - 100, target: 79, speed: 0 });
+    step(g, DT); // one launch a step
+    step(g, DT);
+    expect(ship.aegis?.ammo).toBe(0);
+    run(g, AB.aegis.reload + 0.1);
+    expect(ship.aegis?.ammo).toBe(1);
+    const c = g.map.carrier;
+    addThreat(g, { x: c.x + 80, y: c.y - 120, target: CARRIER_TARGET, speed: 0 });
+    step(g, DT);
+    expect(g.carrierAegis?.ammo).toBe(AB.aegis.carrier - 1);
   });
 
   it('Air Strike costs two rounds a jet', () => {
@@ -802,11 +845,40 @@ describe('what each weapon does with a tap', () => {
     expect(truck.dist).toBeGreaterThan(0);
     load(g, 'airstrike', 3);
     expect(tap(g, truck.x < 800 ? 40 : 1560, truck.y, 20)).toBe('fire');
-    expect(g.fields.some((f) => f.kind === 'burn')).toBe(true);
     run(g, 2);
     expect(g.raiders).toHaveLength(0);
     expect(g.origins.truck).toBe(0);
     expect(g.events.some((e) => e.kind === 'bigKill' && e.label === 'TRUCK DESTROYED')).toBe(true);
+  });
+
+  it('Carpet Strike: napalm canisters tumble down behind the jet and burst into fire, burning the whole row a beat behind it', () => {
+    const g = quietGame();
+    load(g, 'airstrike', 3);
+    const y = 300;
+    expect(tap(g, 40, y, 20)).toBe('fire');
+    expect(g.fields.filter((f) => f.kind === 'burn')).toHaveLength(0); // nothing burns yet
+    run(g, 0.3);
+    expect(g.bombs.length).toBeGreaterThan(0); // canisters falling
+    const jet = g.allies[0];
+    const burning = g.fields.filter((f) => f.kind === 'burn');
+    // What burns is behind the jet, never ahead of it.
+    expect(burning.every((f) => f.x2 <= jet.x)).toBe(true);
+    run(g, 1.2);
+    const row = g.fields.filter((f) => f.kind === 'burn').sort((a, b) => a.x1 - b.x1);
+    expect(row[0].x1).toBeLessThan(0.01); // from the screen edge
+    expect(row[row.length - 1].x2).toBeGreaterThanOrEqual(VIEW.width - AB.airstrike.dropGap);
+    for (let i = 1; i < row.length; i++) expect(row[i].x1).toBeCloseTo(row[i - 1].x2, 0); // edge to edge
+    // A drone on the row, past the jet's pass, still burns.
+    const d = addThreat(g, { x: 800, y, speed: 0, hp: 1 });
+    run(g, 0.6);
+    expect(d.dead).toBe(true);
+    // A plain Air Strike drops nothing.
+    const g1 = quietGame();
+    load(g1, 'airstrike', 2);
+    tap(g1, 40, y, 20);
+    run(g1, 1.2);
+    expect(g1.bombs).toHaveLength(0);
+    expect(g1.fields.filter((f) => f.kind === 'burn')).toHaveLength(0);
   });
 
   it('Railgun: each tap is a beam through everything in line; Mass Driver hits four times as hard', () => {
@@ -997,10 +1069,11 @@ describe('card text matches the numbers', () => {
     expect(L('seeker', 1)).toContain(`${AB.seeker.missiles[0]} seekers`);
     expect(L('seeker', 2)).toContain(`${AB.seeker.missiles[1]} seekers`);
     expect(L('seeker', 3)).toContain(`${AB.seeker.missiles[2]} seekers`);
-    expect(L('aegis', 1)).toContain(`${AB.aegis.time[0]} s, ${AB.aegis.hits[0]} hits`);
-    expect(L('aegis', 2)).toContain(`${AB.aegis.time[1]} s, ${AB.aegis.hits[1]} hits`);
-    expect(L('aegis', 3)).toContain(`${AB.aegis.time[2]} s, ${AB.aegis.hits[2]} hits`);
-    expect(L('aegis', 3)).toContain(`for ${AB.aegis.burstDmg}`);
+    expect(AB.aegis.missiles[0]).toBe(1); // "an interceptor"
+    expect(L('aegis', 2)).toContain('Two a ship');
+    expect(AB.aegis.missiles[1]).toBe(2);
+    expect(AB.aegis.reach[1]).toBeGreaterThan(AB.aegis.reach[0]); // "further out"
+    expect(L('aegis', 3)).toContain(`every ${AB.aegis.reload} s`);
     expect(ABILITIES.airstrike.how).toContain(`for ${AB.airstrike.cost} rounds`);
     expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
     expect(L('shrapnel', 1)).toContain(`${AB.shrapnel.frags[0]} fragments`);

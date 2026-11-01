@@ -26,7 +26,7 @@ const PATHS: Record<CardId, string> = {
   // Three seekers fanning out from one launch point.
   seeker: '<path d="M5 27 L13 11 M5 27 L18 17 M5 27 L24 24"/><circle cx="14" cy="9" r="2.4"/><circle cx="20" cy="16" r="2.4"/><circle cx="26" cy="24" r="2.4"/>',
   // A dome over a hull, a missile glancing off it.
-  aegis: '<path d="M4 25 A12 12 0 0 1 28 25 Z"/><path d="M9 25 H23"/><path d="M22 4 L18 10 M18 10 L24 12"/>',
+  aegis: '<path d="M4 24 H28 L25 28 H7 Z"/><path d="M11 21 V10 M21 21 V10"/><path d="M8.5 12 L11 6 L13.5 12 M18.5 12 L21 6 L23.5 12"/>',
   // A burst throwing fragments out in every direction.
   shrapnel: '<circle cx="16" cy="16" r="3.5"/><path d="M16 3 V8 M16 24 V29 M3 16 H8 M24 16 H29 M7 7 L10.5 10.5 M25 7 L21.5 10.5 M7 25 L10.5 21.5 M25 25 L21.5 21.5"/><circle cx="16" cy="2.5" r="0.6"/><circle cx="29.5" cy="16" r="0.6"/>',
   // A frigate's hull with a turret and mast.
