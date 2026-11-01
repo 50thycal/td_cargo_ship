@@ -17,7 +17,7 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyFreePlay, canFire, createGame, step, timeToImpact, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 
 export interface Persona {
@@ -194,6 +194,7 @@ export const BOT_TAP_RADIUS = 108;
 export class Mimic {
   private rng: RNG;
   private noticeAt = new Map<number, number>();
+  private lastSwitch = 0;
   private finger = { x: 800, y: 450 };
   /** The other thumb, for two-thumb bursts. */
   private finger2 = { x: 800, y: 450 };
@@ -302,7 +303,20 @@ export class Mimic {
       const rested = p.restCap !== undefined && up && t - this.pausedAt >= this.scale(p.restCap);
       if (!fresh && !rested) return;
     }
-    const seen = g.threats.filter((th) => !th.dead && (this.noticeAt.get(th.id) ?? Infinity) <= t);
+    // Structures (rigs, the Citadel...) only get a look when nothing else is up.
+    const seen = worthShooting(g, g.threats).filter((th) => (this.noticeAt.get(th.id) ?? Infinity) <= t);
+    // The Delta: a glance at the fork now and then, and a tap on the buoy if
+    // another branch is clearly quieter.
+    const fork = g.map.fork;
+    if (fork && t - this.lastSwitch > 12 && this.tapsLeft <= 0) {
+      this.lastSwitch = t;
+      const want = quieterBranch(g);
+      if (want !== null && this.rng.chance(0.6)) {
+        io.tap(fork.x, fork.y, BOT_TAP_RADIUS);
+        this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
+        return;
+      }
+    }
 
     if (this.tapsLeft > 0) {
       const two = this.second !== null;

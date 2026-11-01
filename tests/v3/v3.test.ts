@@ -41,6 +41,11 @@ function quietGame(seed = 1, armory = {}): Game {
   return g;
 }
 
+/** A ship placed by hand at (x, y) on the first (straight) lane. */
+function handShip(g: Game, id: number, x: number, y: number, slot: number): Ship {
+  return { id, x, y, d: x + 40, lat: y - g.map.channels[0].y, heading: 0, hp: 3, slot, channel: 0, mult: 1 };
+}
+
 function addThreat(g: Game, over: Partial<Threat>): Threat {
   const th: Threat = {
     id: g.nextId++,
@@ -592,7 +597,7 @@ describe('what each weapon does with a tap', () => {
 
   it('Aegis Launchers: while loaded every ship fires its own interceptor at a threat closing on it, new ships too; gone with the weapon', () => {
     const g = quietGame();
-    const ship: Ship = { id: 77, x: 900, y: 600, hp: 3, slot: 0, channel: 0, mult: 1 };
+    const ship = handShip(g, 77, 900, 600, 0);
     g.ships.push(ship);
     g.levels.aegis = 1;
     g.slots = ['aegis'];
@@ -601,7 +606,7 @@ describe('what each weapon does with a tap', () => {
     step(g, DT);
     expect(ship.aegis?.ammo).toBe(AB.aegis.missiles[0]);
     // A missile out of reach, or after another hull: the ship holds fire.
-    g.ships.push({ id: 99, x: 100, y: 600, hp: 3, slot: 2, channel: 0, mult: 1 });
+    g.ships.push(handShip(g, 99, 100, 600, 2));
     addThreat(g, { kind: 'guided', hp: 2, x: ship.x, y: ship.y - AB.aegis.reach[0] - 60, target: 77, speed: 0 });
     addThreat(g, { kind: 'guided', hp: 2, x: ship.x + 100, y: ship.y - 100, target: 99, speed: 0 });
     step(g, DT);
@@ -618,7 +623,7 @@ describe('what each weapon does with a tap', () => {
     run(g, 5);
     expect(ship.aegis?.ammo).toBe(0);
     // A ship that sails in while it is loaded is armed too.
-    const late: Ship = { id: 78, x: 400, y: 600, hp: 3, slot: 1, channel: 0, mult: 1 };
+    const late = handShip(g, 78, 400, 600, 1);
     g.ships.push(late);
     step(g, DT);
     expect(late.aegis?.ammo).toBe(AB.aegis.missiles[0]);
@@ -636,7 +641,7 @@ describe('what each weapon does with a tap', () => {
 
   it('Bastion: two a ship that reload, and the carrier fires its own', () => {
     const g = quietGame();
-    const ship: Ship = { id: 79, x: 900, y: 600, hp: 3, slot: 0, channel: 0, mult: 1 };
+    const ship = handShip(g, 79, 900, 600, 0);
     g.ships.push(ship);
     load(g, 'aegis', 3);
     step(g, DT);
@@ -1048,10 +1053,11 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
     expect(kinds(createGame('island', 4, 6)).includes('supersonic')).toBe(true);
   });
 
-  it('V3 maps are V2 maps: same geometry and difficulty data', async () => {
+  it('V3\'s first five maps are V2\'s: the same geometry (difficulty is tuned for their new slots)', async () => {
     const v2 = await import('../../src/v2/data/maps');
     const v3 = await import('../../src/v3/data/maps');
-    expect(JSON.stringify(v3.MAPS)).toBe(JSON.stringify(v2.MAPS));
+    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [] });
+    for (const id of Object.keys(v2.MAPS) as (keyof typeof v2.MAPS)[]) expect(shape(v3.MAPS[id])).toBe(shape(v2.MAPS[id]));
   });
 });
 

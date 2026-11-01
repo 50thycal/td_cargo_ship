@@ -1,198 +1,16 @@
-// The three V2 maps. Each one is a single screen: land to draw, enemy launch
-// bases, where the carrier is anchored, and the channel(s) the convoy sails.
-// Ships ride fixed lanes inside a channel; there is no navigation.
+// The maps. Each one is a single screen: land to draw, enemy launch bases,
+// where the carrier is anchored, and the channel(s) the convoy sails. Ships
+// ride fixed lanes inside a channel; there is no navigation.
+//
+// The original five live here; the fifteen added by the 20-map plan
+// (docs/design/v3-maps-plan.md) are in maps20.ts. MAP_ORDER is the order
+// they unlock in: four chapters of five.
 
-import { VIEW, type ThreatKind, type VectorPlan } from './config';
+import { bypass, curve, islet, lens, shore } from './geo';
+import type { BaseDef, MapDef, MapId } from './mapTypes';
+import { NEW_MAPS } from './maps20';
 
-/** A threat type a map adds on top of the shared wave table: `count` of them
- *  from wave `from`, growing by `growth` per wave after that. */
-export interface ThreatExtra {
-  kind: ThreatKind;
-  from: number;
-  count: number;
-  growth: number;
-}
-
-export type MapId = 'strait' | 'gauntlet' | 'island' | 'archipelago' | 'harbor';
-
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Landmass {
-  side: 'enemy' | 'friendly';
-  points: Point[];
-  /** Drawn as a hill: contour rings rising to a ridge (round 13). */
-  hill?: boolean;
-}
-
-export interface BaseDef {
-  x: number;
-  y: number;
-  /** Which threats this base can launch. */
-  kinds: ThreatKind[];
-}
-
-export interface Channel {
-  y: number;
-  halfWidth: number;
-  /** A funnel: from x = `fromX` the channel narrows linearly to `halfWidth`
-   *  at the right edge (never below LANE_FLOOR, so hulls never stack). */
-  narrow?: { fromX: number; halfWidth: number };
-  /** Spawn groups this channel takes per cycle (default 1): a riskier lane
-   *  can carry fewer ships than a safe one. */
-  share?: number;
-  /** Ships in this channel run this much faster (default 1): a riskier lane
-   *  is crossed quickly. */
-  speed?: number;
-}
-
-/** The order ships take the channels in: each channel `share` times a cycle. */
-export function channelCycle(m: { channels: Channel[] }): number[] {
-  return m.channels.flatMap((c, i) => Array.from({ length: c.share ?? 1 }, () => i));
-}
-
-/** The narrowest a channel may get: Box formation's ±0.34 slots stay 22+ apart. */
-export const LANE_FLOOR = 66;
-
-/** The channel's half-width at x (constant unless it funnels). */
-export function halfWidthAt(ch: Channel, x: number): number {
-  if (!ch.narrow || x <= ch.narrow.fromX) return ch.halfWidth;
-  const u = Math.min(1, (x - ch.narrow.fromX) / (VIEW.width - ch.narrow.fromX));
-  return Math.max(LANE_FLOOR, ch.halfWidth + (ch.narrow.halfWidth - ch.halfWidth) * u);
-}
-
-/** Enemy roads for missile trucks (round 4). A runner drives a whole path,
- *  stopping to fire; a pop-up drives from `from` (off screen or a bunker) to
- *  `to` at the shore, fires, and reverses back out. */
-export interface Roads {
-  runners: Point[][];
-  popups: { from: Point; to: Point }[];
-}
-
-export interface MapDef {
-  id: MapId;
-  name: string;
-  blurb: string;
-  land: Landmass[];
-  bases: BaseDef[];
-  carrier: Point;
-  /** Where the Escort Frigate holds station: open water beside the carrier,
-   *  clear of the lanes, sub spots and banners (it sails in from the left). */
-  frigate: Point;
-  /** Ships alternate between channels, one spawn group at a time. */
-  channels: Channel[];
-  /** Multiplies every wave's threat counts — the maps get harder in order. */
-  threatScale: number;
-  /** Threat types this map adds to the shared wave table. */
-  extras: ThreatExtra[];
-  /** Where wave/new-threat banners sit: open water or friendly shore, clear of
-   *  every launch base and shipping lane, so a banner never hides a launch. */
-  callout: Point;
-  /** Round 14: the strip of shore the notification tray sits on, in world
-   *  units: from x0 to x1, its bottom edge at y, clear of the carrier, the
-   *  frigate's station and every base. Cards sit side by side along it and
-   *  grow upward; `max` cards at once (default 2). */
-  alerts: { x0: number; x1: number; y: number; max?: number };
-  /** Round 4: truck roads, open-water spots where submarines surface (clear of
-   *  the shipping lanes), and from which wave each attack vector joins. */
-  roads: Roads;
-  subSpots: Point[];
-  /** Lines bombers fly along: open water outside the shipping lanes, so the
-   *  aircraft stands out against the sea and its missiles have a way to go. */
-  bomberLines: number[];
-  vectors: VectorPlan;
-}
-
-const W = VIEW.width;
-const H = VIEW.height;
-
-/** A wavy coastline from x=0 to x=W, closed off against the top or bottom edge. */
-function shore(edge: 'top' | 'bottom', y: number, amp: number, phase: number): Point[] {
-  const pts: Point[] = [];
-  for (let x = 0; x <= W; x += 50) {
-    const wobble =
-      Math.sin(x / 210 + phase) * amp + Math.sin(x / 83 + phase * 2.3) * amp * 0.35;
-    pts.push({ x, y: Math.round(y + wobble) });
-  }
-  const capY = edge === 'top' ? 0 : H;
-  return [{ x: 0, y: capY }, ...pts, { x: W, y: capY }];
-}
-
-/** An island shaped like a lens: thickest amidships, tapering to each tip. */
-function lens(x0: number, x1: number, cy: number, half: number): Point[] {
-  const top: Point[] = [];
-  const bottom: Point[] = [];
-  const steps = 24;
-  for (let i = 0; i <= steps; i++) {
-    const u = i / steps;
-    const x = x0 + (x1 - x0) * u;
-    const h = half * Math.sin(Math.PI * u) ** 0.7;
-    const ripple = Math.sin(u * 17) * 6;
-    top.push({ x, y: cy - h + ripple });
-    bottom.push({ x, y: cy + h - ripple * 0.6 });
-  }
-  return [...top, ...bottom.reverse()];
-}
-
-function islet(cx: number, cy: number, r: number): Point[] {
-  const pts: Point[] = [];
-  for (let i = 0; i < 14; i++) {
-    const a = (i / 14) * Math.PI * 2;
-    const rr = r * (1 + Math.sin(i * 2.1) * 0.12);
-    pts.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr });
-  }
-  return pts;
-}
-
-/** A wavy line from (x0, y0) to (x1, y1). */
-function curve(x0: number, y0: number, x1: number, y1: number, phase: number): Point[] {
-  const pts: Point[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const u = i / 24;
-    const x = x0 + (x1 - x0) * u;
-    pts.push({ x, y: Math.round(y0 + (y1 - y0) * u + Math.sin(u * 9 + phase) * 10) });
-  }
-  return pts;
-}
-
-/** Round 13: a truck road that follows `path` but swings inland around every
- *  base it would otherwise drive over (`inland` = -1 for a north shore, +1
- *  for a south shore), so trucks keep to the coast and never cross a silo.
- *  The detour is a smooth bump CLEAR px behind the base, REACH px either side. */
-const CLEAR = 54;
-const REACH = 120;
-function bypass(path: Point[], bases: { x: number; y: number }[], inland: -1 | 1): Point[] {
-  const at = (x: number): number => {
-    for (let i = 1; i < path.length; i++) {
-      const a = path[i - 1];
-      const b = path[i];
-      if ((x - a.x) * (x - b.x) <= 0 && a.x !== b.x) return a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
-    }
-    return path[x < path[0].x === path[0].x < path[path.length - 1].x ? 0 : path.length - 1].y;
-  };
-  const x0 = path[0].x;
-  const x1 = path[path.length - 1].x;
-  const out: Point[] = [];
-  const n = Math.ceil(Math.abs(x1 - x0) / 20);
-  for (let k = 0; k <= n; k++) {
-    const x = x0 + ((x1 - x0) * k) / n;
-    let y = at(x);
-    for (const b of bases) {
-      const dx = Math.abs(x - b.x);
-      if (dx >= REACH) continue;
-      // How far the road has to move to sit CLEAR px behind this base.
-      const need = -inland * (y - (b.y + inland * CLEAR));
-      if (need <= 0) continue;
-      const bump = 0.5 + 0.5 * Math.cos((Math.PI * dx) / REACH);
-      y += inland * need * bump;
-    }
-    // Never so far inland that a truck hangs off the screen.
-    out.push({ x: Math.round(x), y: Math.round(Math.max(20, Math.min(880, y))) });
-  }
-  return out;
-}
+export * from './mapTypes';
 
 const STRAIT_BASES: BaseDef[] = [
   { x: 260, y: 112, kinds: ['drone', 'supersonic'] },
@@ -227,7 +45,7 @@ const HARBOR_BASES: BaseDef[] = [
   { x: 1500, y: 740, kinds: ['ballistic', 'heavy', 'cluster'] },
 ];
 
-export const MAPS: Record<MapId, MapDef> = {
+const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'harbor', MapDef> = {
   strait: {
     id: 'strait',
     name: 'The Strait',
@@ -240,7 +58,9 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 800, y: 705 },
     frigate: { x: 580, y: 700 },
     channels: [{ y: 470, halfWidth: 150 }],
-    threatScale: 1.15,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.15.
+    threatScale: 0.7,
     // Round 3: careful play lost ~0.5 ships here; a late taste of supersonics
     // and one heavy in the finale tests reaction, not just ammo.
     extras: [
@@ -277,7 +97,9 @@ export const MAPS: Record<MapId, MapDef> = {
       { y: 295, halfWidth: 90 },
       { y: 605, halfWidth: 90 },
     ],
-    threatScale: 1.2,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.2.
+    threatScale: 0.75,
     extras: [
       { kind: 'heavy', from: 5, count: 1, growth: 0.17 },
       { kind: 'supersonic', from: 7, count: 1, growth: 0.34 },
@@ -327,7 +149,9 @@ export const MAPS: Record<MapId, MapDef> = {
     // (2-3 of 30): a little less fire, and its extra threats come two waves
     // later, so the mid-game (waves 5-8, where it was lost) eases. The you-bot
     // now clears ~30%, the try-hard bot ~60% (docs/design/v2-island-round13.md).
-    threatScale: 0.95,
+    // The 20-map plan moves it to slot 6, with a full Armory chapter behind
+    // the player: retuned there (docs/design/v3-maps-build.md). V2: 0.95.
+    threatScale: 1.0,
     extras: [
       { kind: 'supersonic', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 7, count: 1, growth: 0.2 },
@@ -377,7 +201,9 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 950, y: 730 },
     frigate: { x: 1190, y: 735 },
     channels: [{ y: 575, halfWidth: 100 }],
-    threatScale: 1.05,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.05.
+    threatScale: 1.1,
     extras: [
       { kind: 'mothership', from: 6, count: 1, growth: 0.17 },
       { kind: 'heavy', from: 6, count: 1, growth: 0.17 },
@@ -415,7 +241,9 @@ export const MAPS: Record<MapId, MapDef> = {
     carrier: { x: 900, y: 690 },
     frigate: { x: 660, y: 690 },
     channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
-    threatScale: 1.0,
+    // The 20-map plan: retuned for its slot with the player-fitted persona
+    // (docs/design/v3-maps-build.md, Tuning). V2: 1.0.
+    threatScale: 0.6,
     extras: [
       { kind: 'supersonic', from: 4, count: 1, growth: 0.2 },
       { kind: 'heavy', from: 5, count: 1, growth: 0.15 },
@@ -441,4 +269,28 @@ export const MAPS: Record<MapId, MapDef> = {
   },
 };
 
-export const MAP_ORDER: MapId[] = ['strait', 'gauntlet', 'island', 'harbor', 'archipelago'];
+export const MAPS: Record<MapId, MapDef> = { ...FIRST_FIVE, ...NEW_MAPS };
+
+/** The unlock order (the player's review of the plan: the Gauntlet at 4, the
+ *  Island at 6, so the two island maps aren't back to back). */
+export const MAP_ORDER: MapId[] = [
+  'strait', 'kesh', 'marrow', 'gauntlet', 'harbor',
+  'island', 'behemoth', 'needle', 'archipelago', 'saltgate',
+  'battery', 'sowers', 'rigs', 'lantern', 'dreadnought',
+  'coves', 'delta', 'crossing', 'tide', 'citadel',
+];
+
+/** The order before the 20-map plan (old saves count unlocks in it). */
+export const OLD_ORDER: MapId[] = ['strait', 'gauntlet', 'island', 'harbor', 'archipelago'];
+
+export const CHAPTERS = [
+  { n: 1, name: 'Home Waters' },
+  { n: 2, name: 'The Narrows' },
+  { n: 3, name: 'Dark Water' },
+  { n: 4, name: 'Open War' },
+] as const;
+
+/** A map's chapter (1–4): five maps a chapter, in MAP_ORDER. */
+export function chapterOf(id: MapId): number {
+  return Math.floor(MAP_ORDER.indexOf(id) / 5) + 1;
+}

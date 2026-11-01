@@ -7,7 +7,7 @@
 // be missing or throw (private mode); progress then just lasts for the session.
 
 import { ARMORY, ARMORY_ORDER, BAY_ORDER, armoryLevel, cardsFor, drawCards, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
-import { MAP_ORDER, type MapId } from '../data/maps';
+import { MAP_ORDER, OLD_ORDER, type MapId } from '../data/maps';
 
 export interface Best {
   score: number;
@@ -28,6 +28,22 @@ export interface Progress {
   cleared: MapId[];
   /** Which Armory the levels belong to (ARMORY_VERSION). */
   armoryV: number;
+  /** Maps playable out of turn: ones a save from before the 20-map order had
+   *  unlocked (the order changed, so its count no longer names them). */
+  open?: MapId[];
+  /** Which map order `unlocked` counts in (MAPS_VERSION). */
+  mapsV?: number;
+}
+
+/** The map order's save version. 2: the 20-map plan's order. A save from
+ *  before it counted unlocks in the old five-map order: every map it had
+ *  open stays open, and the new count runs up the new order as far as the
+ *  maps already cleared go. */
+export const MAPS_VERSION = 2;
+
+/** Can this map be played yet? */
+export function isUnlocked(p: Progress, id: MapId): boolean {
+  return MAP_ORDER.indexOf(id) < p.unlocked || (p.open ?? []).includes(id);
 }
 
 const KEY = 'straitwatch.v3.progress';
@@ -39,7 +55,7 @@ const KEY = 'straitwatch.v3.progress';
 export const ARMORY_VERSION = 2;
 
 function fresh(): Progress {
-  return { unlocked: 1, best: {}, cards: 0, armory: {}, equipped: noneEquipped(), cleared: [], armoryV: ARMORY_VERSION };
+  return { unlocked: 1, best: {}, cards: 0, armory: {}, equipped: noneEquipped(), cleared: [], armoryV: ARMORY_VERSION, open: [], mapsV: MAPS_VERSION };
 }
 
 function noneEquipped(): Record<BayId, ArmoryId | null> {
@@ -54,17 +70,29 @@ export function loadProgress(): Progress {
       const current = p.armoryV === ARMORY_VERSION;
       const armory: ArmoryLevels = {};
       if (current) for (const id of ARMORY_ORDER) armory[id] = armoryLevel(p.armory ?? {}, id);
+      const cleared = (p.cleared ?? []).filter((m) => MAP_ORDER.includes(m));
+      const oldMaps = p.mapsV !== MAPS_VERSION;
+      let unlocked = Math.max(1, Math.min(MAP_ORDER.length, p.unlocked || 1));
+      let open = (p.open ?? []).filter((m) => MAP_ORDER.includes(m));
+      if (oldMaps) {
+        open = OLD_ORDER.slice(0, Math.max(1, Math.min(OLD_ORDER.length, p.unlocked || 1)));
+        let run = 0;
+        while (run < MAP_ORDER.length && cleared.includes(MAP_ORDER[run])) run++;
+        unlocked = Math.min(MAP_ORDER.length, run + 1);
+      }
       const loaded: Progress = {
-        unlocked: Math.max(1, Math.min(MAP_ORDER.length, p.unlocked || 1)),
+        unlocked,
         best: p.best ?? {},
         cards: current ? Math.max(0, Math.floor(p.cards ?? 0)) : 0,
         armory,
         equipped: readEquipped(current ? p.equipped : null, armory),
-        cleared: (p.cleared ?? []).filter((m) => MAP_ORDER.includes(m)),
+        cleared,
         armoryV: ARMORY_VERSION,
+        open,
+        mapsV: MAPS_VERSION,
       };
-      // An old Armory is cleared for good, not on every load.
-      if (!current) saveProgress(loaded);
+      // An old Armory or map order is converted for good, not on every load.
+      if (!current || oldMaps) saveProgress(loaded);
       return loaded;
     }
   } catch {

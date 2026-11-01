@@ -18,7 +18,7 @@ import {
   type PickupKind,
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
-import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
+import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
 import {
   ABILITIES,
   ABILITY_MAX,
@@ -33,7 +33,7 @@ import {
   type CardId,
 } from '../data/abilities';
 import { ARMORY, ARMORY_MAX, BAY_ORDER, BAYS, CARD_DROPS, armoryLevel, bayItems, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
-import { equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
+import { equipArmory, isUnlocked, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
   applyFreePlay,
   createGame,
@@ -100,6 +100,29 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   mothership: 'Drops mini-drones. Kill the source.',
   strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',
   bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
+  mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
+  fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
+  dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
+};
+
+/** What each map's own system is, said once as the map starts (the 20-map
+ *  plan: one new idea a map). */
+const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
+  kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
+  marrow: ['RADAR TOWER', 'Its sweep tracks threats: your shots fly faster at them. The enemy wants it gone.'],
+  behemoth: ['SUPERTANKER', 'One a wave. Eight hits sink it, and it counts as three ships. Get it home.'],
+  needle: ['SINGLE FILE', 'The convoy queues at the gap. Column formation needn\'t merge.'],
+  saltgate: ['LOCK GATES', 'Ships wait in each chamber while it fills. Guard them.'],
+  battery: ['SHORE BATTERY', 'Two allied guns fire on their own. A hit knocks one out for a while.'],
+  sowers: ['MINES', 'Mines drift across the lane on the current. Clear them before a ship sails in.'],
+  rigs: ['OIL RIGS', 'Rigs launch from the sea. Bring one down and it stays down.'],
+  lantern: ['NIGHT', 'Threats show only as a glow until the beam finds them. Grab Star Shells.'],
+  dreadnought: ['DREADNOUGHT PASS', 'On waves 3, 6, 9 and 10 a battleship steams through.'],
+  coves: ['FAST BOATS', 'Boats burst out of the coves to ram the convoy.'],
+  delta: ['THE FORK', 'Tap the buoy to send the next ships north, middle or south.'],
+  crossing: ['TWO-WAY TRAFFIC', 'Outbound east up top, inbound west below. Both edges are a front.'],
+  tide: ['THE TIDE', 'The flats lane is open only at high tide. Push ships through while it lasts.'],
+  citadel: ['THE CITADEL', 'Destroy the three shield generators, then silence the Citadel.'],
 };
 
 /** Round 4: launchers that aren't targets — what they are, what to watch for. */
@@ -129,6 +152,8 @@ function button(text: string, cls: string, onClick: () => void): HTMLButtonEleme
 
 export class App {
   private progress: Progress = loadProgress();
+  /** The chapter the menu is showing (0: pick the furthest one open). */
+  private menuChapter = 0;
   private game: Game | null = null;
   /** Every input goes through the recorder, so each run leaves a replayable log. */
   private rec: Recorder | null = null;
@@ -702,8 +727,28 @@ export class App {
   private drainEvents(g: Game): void {
     for (const ev of g.events) {
       switch (ev.kind) {
-        case 'wave':
+        case 'wave': {
+          const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '');
+          if (hint) this.showBanner(...hint);
+          break;
+        }
+        case 'tanker':
+          this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.');
+          break;
+        case 'post': {
+          const def = g.map.posts?.[ev.post];
+          if (def?.kind === 'radar' && ev.lost) this.showBanner('RADAR LOST', 'No more tracking for the rest of the run.');
+          else if (def?.kind === 'radar' && !ev.down) this.showBanner('RADAR HIT', `${g.posts[ev.post].hp} hits left.`);
+          else if (def?.kind === 'battery' && ev.down) this.showBanner('BATTERY KNOCKED OUT', 'Back in a few seconds.');
+          if (ev.down) this.shake = Math.max(this.shake, 10);
+          break;
+        }
+        case 'boss':
+          this.showBanner('DREADNOUGHT INBOUND', 'Broadsides every few seconds. Sink it, or keep the convoy alive till it passes.');
+          this.shake = Math.max(this.shake, 8);
+          break;
+        case 'fork':
           break;
         case 'debut':
           this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '');
@@ -785,6 +830,7 @@ export class App {
       if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
       if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
       if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
+      if (g.flareT > 0) chips.push(['STAR SHELL', g.flareT, PICKUP_COLORS.starshell]);
     }
     const key = chips.map(([l, t]) => `${l}${Math.ceil(t)}`).join();
     if (key === this.timersKey) return;
@@ -952,9 +998,29 @@ export class App {
     this.game = null;
     this.lastPhase = null;
     this.root.classList.remove('playing');
-    const cards = MAP_ORDER.map((id, i) => {
+    // Twenty maps in four chapters of five: the menu shows one chapter at a
+    // time (five cards still fit a landscape phone), with a tab per chapter.
+    const open = (id: MapId) => this.dev || isUnlocked(this.progress, id);
+    if (!this.menuChapter) {
+      const furthest = [...MAP_ORDER].reverse().find(open) ?? MAP_ORDER[0];
+      this.menuChapter = chapterOf(furthest);
+    }
+    const tabs = el('div', 'v3-chapter-tabs');
+    for (const c of CHAPTERS) {
+      const first = MAP_ORDER[(c.n - 1) * 5];
+      const shut = !open(first);
+      const tab = button('', `v3-chapter-tab${c.n === this.menuChapter ? ' on' : ''}${shut ? ' locked' : ''}`, () => {
+        this.menuChapter = c.n;
+        this.showMenu();
+      });
+      tab.dataset.chapter = String(c.n);
+      tab.append(el('b', '', `${c.n}`), el('span', '', shut ? `${c.name} 🔒` : c.name));
+      tabs.append(tab);
+    }
+    const shown = MAP_ORDER.map((id, i) => ({ id, i })).filter(({ id }) => chapterOf(id) === this.menuChapter);
+    const cards = shown.map(({ id, i }) => {
       const m = MAPS[id];
-      const locked = i >= this.progress.unlocked && !this.dev;
+      const locked = !open(id);
       const best = this.progress.best[id];
       const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.prepare(id));
       card.disabled = locked;
@@ -980,6 +1046,7 @@ export class App {
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
       this.armoryStrip(),
+      tabs,
       el('div', 'v2-map-grid', ''),
       ...(this.dev ? [this.devPanel()] : []),
       foot,
@@ -1184,6 +1251,7 @@ export class App {
    *  ones are ready). With nothing bought yet there is nothing to pick.
    *  Watch mode and the dev gun override skip it. */
   private prepare(id: MapId): void {
+    this.menuChapter = chapterOf(id);
     const p = this.progress;
     const bays = BAY_ORDER.filter((b) => bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
     const watch = this.dev && this.devSettings.watch;
@@ -1793,6 +1861,7 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
+  starshell: ['PICKUP: Star Shell', 'Tap it: a flare lights the whole strait for a few seconds.'],
 };
 
 /** The first weapon drop's banner, with the run's seconds (Long Loads). */
@@ -1810,6 +1879,8 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
   strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; frigates shoot jets down too.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
+  mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
+  fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

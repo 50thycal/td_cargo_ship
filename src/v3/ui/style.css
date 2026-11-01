@@ -483,6 +483,50 @@ body {
   width: 100%;
 }
 
+.v3-chapter-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+
+.v3-chapter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.v3-chapter-tab b {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.v3-chapter-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-chapter-tab.on {
+  border-color: var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.v3-chapter-tab.locked {
+  opacity: 0.55;
+}
+
 .v2-map-card,
 .v2-card {
   display: flex;
@@ -2162,6 +2206,13 @@ body {
   }
   .v2-menu-foot {
     margin-top: 0;
+  }
+}
+
+@media (max-height: 460px) {
+  .v3-chapter-tab {
+    padding: 3px 8px;
+    font-size: 12px;
   }
 }
 

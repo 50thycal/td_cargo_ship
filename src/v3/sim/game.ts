@@ -41,9 +41,17 @@ import {
   type PickupKind,
   type PowerKind,
   type ThreatKind,
+  BOSS,
+  FASTBOAT,
+  LOCK,
+  MINE,
+  POST,
+  VIP,
+  isStructure,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { MAPS, channelCycle, halfWidthAt, type MapDef, type MapId, type Point } from '../data/maps';
+import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
+import { laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint, laneYAtX } from './lanes';
 import {
   AB,
   ABILITY_MAX,
@@ -64,11 +72,19 @@ export const CARRIER_TARGET = -1;
 
 export interface Ship {
   id: number;
+  /** Where it is drawn and hit: worked out each step from `d` and `lat`. */
   x: number;
   y: number;
+  /** Distance along its lane, and its offset across it (lanes.ts). */
+  d: number;
+  lat: number;
+  /** The way its bow points (radians). */
+  heading: number;
   hp: number;
   slot: number;
   channel: number;
+  /** The supertanker (The Behemoth Run): sunk, it counts as VIP_LOSS ships. */
+  vip?: boolean;
   /** Flow multiplier locked in when the ship set sail. */
   mult: number;
   /** Aegis: its own interceptors while the weapon is loaded. */
@@ -120,6 +136,12 @@ export interface Threat {
   dropT?: number;
   /** The sub or truck that fired it. */
   from?: number;
+  /** A structure: the base it stands on (rigs, generators, the Citadel). */
+  base?: number;
+  /** The Dreadnought: how far along its path it has steamed, and seconds to
+   *  its next broadside. */
+  along?: number;
+  fireT?: number;
 }
 
 export interface Interceptor {
@@ -180,7 +202,13 @@ export type GameEvent =
   | { kind: 'newPickup'; pickup: PickupKind }
   /** A weapon pickup loaded the gun (level = the weapon's level). */
   | { kind: 'weapon'; id: AbilityId; level: number }
-  | { kind: 'dry' };
+  | { kind: 'dry' }
+  /** The 20-map plan: a supertanker sets sail; an allied structure is hit or
+   *  lost; the Dreadnought arrives; the Delta's switch is thrown. */
+  | { kind: 'tanker' }
+  | { kind: 'post'; post: number; down: boolean; lost: boolean }
+  | { kind: 'boss' }
+  | { kind: 'fork'; lane: number };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
@@ -460,6 +488,32 @@ export interface Game {
   steps: number;
   taps: TapCounts;
   history: WaveRecord[];
+  // ---- The 20-map plan ----
+  /** The Delta: which of the fork's lanes the next ships take. */
+  forkLane: number;
+  /** The wave the last supertanker sailed in. */
+  tankerWave: number;
+  /** Saltgate: each lock's phase (entry open / filling / exit open). */
+  lockState: { phase: 'in' | 'fill' | 'out'; t: number }[];
+  /** Allied structures, matching map.posts. */
+  posts: PostState[];
+  /** Bases whose rig or Citadel has been destroyed (they launch no more). */
+  baseDown: boolean[];
+  /** The wave the Dreadnought last sailed in. */
+  bossWave: number;
+  /** The Black Strait: seconds left of a Star Shell's light. */
+  flareT: number;
+}
+
+/** An allied structure in play: its hit points, seconds it stays knocked
+ *  out (a battery), whether it is gone for good (the radar), and its gun. */
+export interface PostState {
+  hp: number;
+  downT: number;
+  lost: boolean;
+  fireT: number;
+  /** Where its last shot went (the renderer turns the gun / the sweep). */
+  aim: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -542,7 +596,20 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     steps: 0,
     taps: { fire: 0, pickup: 0, dry: 0, empty: 0 },
     history: [],
+    forkLane: 0,
+    tankerWave: 0,
+    lockState: [],
+    posts: [],
+    baseDown: [],
+    bossWave: 0,
+    flareT: 0,
   };
+  const m = g.map;
+  if (m.fork) g.forkLane = m.fork.start;
+  g.lockState = (m.locks ?? []).map((_, i) => ({ phase: i % 2 ? 'out' : 'in', t: 0 }));
+  g.posts = (m.posts ?? []).map((p) => ({ hp: p.hp, downT: 0, lost: false, fireT: 1, aim: -Math.PI / 2 }));
+  g.baseDown = m.bases.map(() => false);
+  raiseStructures(g);
   // Skipping ahead (playtesting a late wave) also hands over the weapons a
   // player would have drafted by then, so the wave plays as it really would.
   for (let w = 1; w < Math.floor(firstWave); w++) {
@@ -643,7 +710,7 @@ function startWave(g: Game): void {
         continue;
       }
       const base = pickBase(g, u.kind, rng);
-      if (!raid.bases.includes(base)) raid.bases.push(base);
+      if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base });
     }
   });
@@ -654,8 +721,9 @@ function startWave(g: Game): void {
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
   queue.sort((a, b) => a.at - b.at);
-  g.queue = queue;
+  g.queue = queue.filter((l) => l.base !== -2);
   g.events.push({ kind: 'wave', wave: g.wave });
+  if (g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
 }
 
 /** A count shortened with the wave, keeping at least one of anything the
@@ -740,7 +808,7 @@ function pathLength(path: Point[]): number {
 }
 
 /** The point `d` along a path, and the heading of the stretch it is on. */
-function along(path: Point[], d: number): { x: number; y: number; heading: number } {
+function alongPath(path: Point[], d: number): { x: number; y: number; heading: number } {
   let left = Math.max(0, d);
   for (let k = 1; k < path.length; k++) {
     const a = path[k - 1];
@@ -755,9 +823,29 @@ function along(path: Point[], d: number): { x: number; y: number; heading: numbe
   return { x: path[0].x, y: path[0].y, heading: 0 };
 }
 
+/** A base to launch `kind` from. One whose rig or Citadel is down launches
+ *  nothing: if every base that could fire this kind is down, the launch is
+ *  dropped (-2): knocking out a rig really thins the waves. A kind no base
+ *  on the map carries (an extra) comes from any live launcher, as before. */
 function pickBase(g: Game, kind: ThreatKind, rng: RNG): number {
   const able = g.map.bases.map((b, i) => (b.kinds.includes(kind) ? i : -1)).filter((i) => i >= 0);
-  return able.length ? rng.pick(able) : rng.int(g.map.bases.length);
+  const live = able.filter((i) => !g.baseDown[i]);
+  if (live.length) return rng.pick(live);
+  const any = g.map.bases.map((b, i) => (launcher(b) && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
+  // Every base for this kind is down: most of its launches move to a
+  // launcher still standing (further off, so with more warning), the rest
+  // are lost.
+  if (able.length) return any.length && rng.chance(STRUCTURE_REROUTE) ? rng.pick(any) : -2;
+  // The original five maps: every base launches, so this is rng.int(bases).
+  return any.length === g.map.bases.length ? rng.int(g.map.bases.length) : any.length ? rng.pick(any) : -2;
+}
+
+/** Share of a downed rig's launches that come from another base instead. */
+const STRUCTURE_REROUTE = 0.75;
+
+/** A base that fires missiles (not a generator, cove or mine chute). */
+function launcher(b: { kinds: ThreatKind[]; cove?: boolean; chute?: boolean; generator?: unknown }): boolean {
+  return b.kinds.length > 0 && !b.cove && !b.chute && !b.generator;
 }
 
 // ---------------------------------------------------------------------------
@@ -779,12 +867,15 @@ export function setFormation(g: Game, id: FormationId): void {
   // right away; the ships glide over to their new lanes. Ships sailing abreast
   // are re-slotted as a row that keeps its top-to-bottom order, so no hull is
   // sent across another's bow.
-  const order = [...g.ships].sort((a, b) => b.x - a.x);
+  const order = [...g.ships].filter((s) => !s.vip).sort((a, b) => b.d - a.d);
+  // Across a straight lane a row's top-to-bottom order is its y; across a
+  // path lane it is the offset (a row on the Kesh Hook's turn runs east-west).
+  const across = (s: Ship) => (g.map.channels[s.channel].path ? s.lat : s.y);
   let next = 0;
   for (let i = 0; i < order.length; ) {
     let j = i + 1;
-    while (j < order.length && order[i].x - order[j].x < SHIP.minGap / 2) j++;
-    const row = order.slice(i, j).sort((a, b) => a.y - b.y);
+    while (j < order.length && order[i].d - order[j].d < SHIP.minGap / 2) j++;
+    const row = order.slice(i, j).sort((a, b) => across(a) - across(b));
     const slots = row.map((_, k) => (next + k) % offsets.length).sort((a, b) => offsets[a] - offsets[b]);
     row.forEach((s, k) => (s.slot = slots[k]));
     next += row.length;
@@ -838,6 +929,12 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   }
   if (pickup && (!threat || pd <= td)) {
     collect(g, pickup);
+    return 'pickup';
+  }
+  // The Delta: a tap on the fork's buoy (with no threat nearer) throws it.
+  const fork = g.map.fork;
+  if (fork && dist(x, y, fork.x, fork.y) <= radius + FORK_RADIUS && (!threat || dist(x, y, fork.x, fork.y) < td)) {
+    throwSwitch(g);
     return 'pickup';
   }
   const loaded = g.weapon ? fireWeapon(g, g.weapon, x, y, threat, radius) : null;
@@ -1138,8 +1235,9 @@ function launchEscorts(g: Game, level: number): void {
     // On station at the edge of a lane (above it, then below), clear of the
     // convoy sailing down its middle, still on open water.
     const lane = lanes[i % lanes.length];
-    const sx = VIEW.width * xs[i];
-    const sy = lane.y + (i % 2 ? 1 : -1) * halfWidthAt(lane, sx) * 0.85;
+    const station = g.map.escortStations?.[i % g.map.escortStations.length];
+    const sx = station ? station.x : VIEW.width * xs[i];
+    const sy = station ? station.y : laneYAtX(lane, sx) + (i % 2 ? 1 : -1) * halfWidthAt(lane, sx) * 0.85;
     const e = g.escorts[i];
     if (e) {
       e.sx = sx;
@@ -1176,7 +1274,7 @@ function updateEscorts(g: Game, dt: number): void {
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
     const target = g.threats
-      .filter((t) => !t.dead && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
+      .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
       .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
     if (!target) {
       e.fireT = 0.1;
@@ -1243,7 +1341,7 @@ function updatePointDefense(g: Game, dt: number): void {
   if (g.pdT > 0) return;
   const c = g.map.carrier;
   const target = g.threats
-    .filter((t) => !t.dead && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
+    .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
     .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
   if (!target) {
     g.pdT = 0.1;
@@ -1475,6 +1573,8 @@ export function step(g: Game, dt: number): void {
   updateBlades(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
+  updatePosts(g, dt);
+  updateLocks(g, dt);
   g.weaponDropT += dt;
 
   g.threats = g.threats.filter((th) => !th.dead);
@@ -1487,7 +1587,7 @@ export function step(g: Game, dt: number): void {
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.length === 0 && g.raiders.length === 0 && g.raiderQueue.length === 0) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0) {
     g.score += 200 * g.wave;
     clearField(g);
     recordWave(g, 'cleared');
@@ -1549,80 +1649,189 @@ function spawnGap(g: Game): number {
   return FLOW_STEPS[g.flow].interval * FORMATIONS[g.formation].group;
 }
 
-function slotY(g: Game, s: Ship): number {
+/** How far ahead a hull looks for a single-file gap to merge for. */
+const MERGE_AHEAD = 140;
+
+/** The offset across its lane a hull steers for: its formation slot, scaled
+ *  to the lane's width where it is. Where the lane ahead narrows below
+ *  LANE_FLOOR (a single-file gap), every hull lines up on the centre line,
+ *  one behind another; the supertanker always sails the middle. */
+function slotLat(g: Game, s: Ship): number {
+  if (s.vip) return 0;
   const ch = g.map.channels[s.channel];
+  if (ch.widths && Math.min(laneHalfWidth(ch, s.d), laneHalfWidth(ch, s.d + MERGE_AHEAD)) < LANE_FLOOR) return 0;
   const offsets = FORMATIONS[g.formation].offsets;
-  return ch.y + offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
+  return offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
+}
+
+/** Put a hull where its lane distance and offset say. */
+function placeShip(g: Game, s: Ship): void {
+  const p = laneAt(g.map.channels[s.channel], s.d, s.lat);
+  s.x = p.x;
+  s.y = p.y;
+  s.heading = Math.atan2(p.ty, p.tx);
+}
+
+/** The lane the next group sails: the spawn cycle, or the lane the Delta's
+ *  switch is set to; at low tide a tide lane is skipped. */
+function nextChannel(g: Game): number {
+  const fork = g.map.fork;
+  if (fork) return fork.lanes[g.forkLane % fork.lanes.length];
+  const cycle = channelCycle(g.map);
+  for (let k = 0; k < cycle.length; k++) {
+    const c = cycle[(g.channelCursor + k) % cycle.length];
+    if (!g.map.channels[c].tide || highTide(g)) {
+      g.channelCursor += k;
+      return c;
+    }
+  }
+  return cycle[g.channelCursor % cycle.length];
+}
+
+/** Is a hull sitting in the way of a lane's entry? */
+function entryBusy(g: Game, ch: Channel): boolean {
+  const e = lanePoint(ch, 0);
+  return g.ships.some((s) => {
+    const rx = s.x - e.x;
+    const ry = s.y - e.y;
+    const along = rx * e.tx + ry * e.ty;
+    const off = Math.abs(-rx * e.ty + ry * e.tx);
+    return along < SHIP.minGap + SHIP.easeGap && off <= ch.halfWidth + SHIP.laneMatch;
+  });
+}
+
+function newShip(g: Game, channel: number, slot: number, d: number): Ship {
+  const ship: Ship = { id: g.nextId++, x: 0, y: 0, d, lat: 0, heading: 0, hp: g.stats.shipHp, slot, channel, mult: FLOW_STEPS[g.flow].mult };
+  placeShip(g, ship);
+  ship.lat = slotLat(g, ship);
+  placeShip(g, ship);
+  return ship;
 }
 
 function spawnShips(g: Game, dt: number): void {
+  spawnTanker(g);
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
-  const cycle = channelCycle(g.map);
-  const channel = cycle[g.channelCursor % cycle.length];
+  const channel = nextChannel(g);
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
-  const ch = g.map.channels[channel];
-  const entryBusy = g.ships.some(
-    (s) => s.x < -40 + SHIP.minGap + SHIP.easeGap && Math.abs(s.y - ch.y) <= ch.halfWidth + SHIP.laneMatch,
-  );
-  if (entryBusy) return;
+  if (entryBusy(g, g.map.channels[channel])) return;
   g.channelCursor++;
   for (let i = 0; i < f.group; i++) {
     const slot = f.group > 1 ? i : g.spawnCount++ % f.offsets.length;
-    const ship: Ship = {
-      id: g.nextId++,
-      x: -40 - g.rng.ships.range(0, 12),
-      y: 0,
-      hp: g.stats.shipHp,
-      slot,
-      channel,
-      mult: FLOW_STEPS[g.flow].mult,
-    };
-    ship.y = slotY(g, ship);
-    g.ships.push(ship);
+    g.ships.push(newShip(g, channel, slot, -g.rng.ships.range(0, 12)));
   }
   g.spawnT += spawnGap(g);
+}
+
+/** The Behemoth Run: one supertanker a wave sails the tanker lane, from a
+ *  few seconds into the wave, while none is already out. */
+function spawnTanker(g: Game): void {
+  const lane = g.map.channels.findIndex((c) => c.vip);
+  if (lane < 0 || g.tankerWave >= g.wave || g.waveT < VIP.after) return;
+  if (g.ships.some((s) => s.vip) || entryBusy(g, g.map.channels[lane])) return;
+  g.tankerWave = g.wave;
+  const t = newShip(g, lane, 0, 0);
+  t.vip = true;
+  t.hp = VIP.hp;
+  g.ships.push(t);
+  g.events.push({ kind: 'tanker' });
+}
+
+/** The furthest a hull may sail this step: up to a closed lock gate. */
+function stopAt(g: Game, s: Ship): number {
+  if (!g.map.locks) return Infinity;
+  const ch = g.map.channels[s.channel];
+  let stop = Infinity;
+  g.map.locks.forEach((lock, i) => {
+    const d0 = laneDAtX(ch, lock.x0);
+    const d1 = laneDAtX(ch, lock.x1);
+    if (d0 === null || d1 === null) return;
+    const st = g.lockState[i];
+    // Short of the gates: wait at the entry while it is shut.
+    if (s.d < d0 - LOCK.stand + 1 && st.phase !== 'in') stop = Math.min(stop, d0 - LOCK.stand);
+    // In the chamber: wait at the exit while it is shut.
+    else if (s.d >= d0 - LOCK.stand && s.d < d1 && st.phase !== 'out') stop = Math.min(stop, d1 - LOCK.stand);
+  });
+  return stop;
 }
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
   // Keep station on the rails: a hull eases off when the one ahead in its lane
   // is too close. This is what turns two ships abreast into a single file when
-  // a formation change merges their lanes, instead of stacking them.
-  const order = [...g.ships].sort((a, b) => b.x - a.x || a.id - b.id);
-  const lane = order.map((s) => slotY(g, s));
+  // a formation change merges their lanes, instead of stacking them. "Ahead"
+  // and "in its lane" are measured along and across the hull's own heading,
+  // so the same rule holds on a bend, a reversed lane or a fork.
+  const order = [...g.ships].sort((a, b) => b.d - a.d || a.id - b.id);
+  const want = order.map((s) => slotLat(g, s));
+  const aim = order.map((s, i) => laneAt(g.map.channels[s.channel], s.d, want[i]));
   for (let i = 0; i < order.length; i++) {
     const s = order[i];
+    const ch = g.map.channels[s.channel];
+    const t = lanePoint(ch, s.d);
+    const nx = -t.ty;
+    const ny = t.tx;
     let gap = Infinity;
-    for (let j = 0; j < i; j++) {
+    for (let j = 0; j < order.length; j++) {
+      if (j === i) continue;
       const o = order[j];
-      if (Math.abs(lane[j] - lane[i]) < SHIP.laneMatch || Math.abs(o.y - s.y) < SHIP.laneMatch) {
-        gap = Math.min(gap, o.x - s.x);
-      }
+      const along = (o.x - s.x) * t.tx + (o.y - s.y) * t.ty;
+      if (along < 0 || (along === 0 && j > i)) continue;
+      // Sailing the other way (two-way traffic): never "ahead in my lane".
+      if (Math.cos(o.heading - s.heading) < 0.2) continue;
+      const sameSlot = Math.abs((aim[j].x - aim[i].x) * nx + (aim[j].y - aim[i].y) * ny) < SHIP.laneMatch;
+      const sameLine = Math.abs((o.x - s.x) * nx + (o.y - s.y) * ny) < SHIP.laneMatch;
+      if (sameSlot || sameLine) gap = Math.min(gap, along);
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
-    s.x += laneSpeed(g, s) * slow * dt;
+    const next = s.d + laneSpeed(g, s) * slow * dt;
+    s.d = Math.max(s.d, Math.min(next, stopAt(g, s)));
+    placeShip(g, s);
     // Only move across into the new lane once that stretch of it is empty.
-    const clear = order.every(
-      (o, j) => j === i || Math.abs(o.x - s.x) >= SHIP.minGap || Math.abs(o.y - lane[i]) >= SHIP.laneMatch,
-    );
-    if (clear) s.y += (lane[i] - s.y) * ease;
+    const clear = order.every((o, j) => {
+      if (j === i) return true;
+      const along = Math.abs((o.x - s.x) * t.tx + (o.y - s.y) * t.ty);
+      const off = Math.abs((o.x - aim[i].x) * nx + (o.y - aim[i].y) * ny);
+      return along >= SHIP.minGap || off >= SHIP.laneMatch;
+    });
+    if (clear) {
+      s.lat += (want[i] - s.lat) * ease;
+      placeShip(g, s);
+    }
   }
-  const arrived = g.ships.filter((s) => s.x > VIEW.width + 40);
+  const arrived = g.ships.filter((s) => s.d > laneLength(g.map.channels[s.channel]));
   for (const s of arrived) {
-    const pts = Math.round(SHIP.points * s.mult);
+    const pts = Math.round(SHIP.points * s.mult * (s.vip ? VIP.points : 1));
     g.score += pts;
     g.delivered += 1;
-    addFx(g, 'text', VIEW.width - 70, s.y, { life: 1.2, text: `+${pts}` });
+    addFx(g, 'text', clamp(s.x, 70, VIEW.width - 70), clamp(s.y, 40, VIEW.height - 40), { life: 1.2, text: `+${pts}` });
+    if (s.vip) tankerHome(g, s);
   }
-  if (arrived.length) g.ships = g.ships.filter((s) => s.x <= VIEW.width + 40);
+  if (arrived.length) g.ships = g.ships.filter((s) => !arrived.includes(s));
+}
+
+/** The supertanker came through: every hull gets a point back and a weapon
+ *  you hold drops by the exit. */
+function tankerHome(g: Game, s: Ship): void {
+  for (const o of g.ships) if (o.hp < g.stats.shipHp) o.hp += 1;
+  if (g.slots.length) addPickup(g, 'weapon', clamp(s.x, 120, VIEW.width - 120), clamp(s.y, 120, VIEW.height - 120), g.rng.drops.pick(g.slots));
+  g.events.push({ kind: 'bigKill', label: 'TANKER HOME', x: clamp(s.x, 160, VIEW.width - 160), y: clamp(s.y, 80, VIEW.height - 80) });
+}
+
+/** Where a ship will be `ahead` seconds from now, sailing its lane. */
+function shipAhead(g: Game, s: Ship, ahead: number): Point {
+  const p = laneAt(g.map.channels[s.channel], s.d + laneSpeed(g, s) * ahead, s.lat);
+  return { x: p.x, y: p.y };
 }
 
 /** Ships the enemy is allowed to aim at: on screen and not about to deliver. */
 function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
-  return g.ships.filter((s) => s.x > 30 && s.x < maxX);
+  // Measured along the lane, so it holds for a bend or a reversed lane: on a
+  // straight lane this is x > 30 and x < maxX.
+  const tail = VIEW.width + 40 - maxX;
+  return g.ships.filter((s) => s.d > 70 && laneLength(g.map.channels[s.channel]) - s.d > tail);
 }
 
 /** The convoy's speed in the current formation. */
@@ -1635,10 +1844,11 @@ function laneSpeed(g: Game, s: Ship): number {
   return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
-/** How fast the ship a threat is after is moving (0 for the carrier/frigate). */
-function targetSpeed(g: Game, th: Threat): number {
-  const s = g.ships.find((o) => o.id === th.target);
-  return s ? laneSpeed(g, s) : 0;
+/** Tidewater Flats: is the tide in? (A map without a tide: always.) */
+export function highTide(g: Game): boolean {
+  const t = g.map.tide;
+  if (!t) return true;
+  return g.t % (t.high + t.low) < t.high;
 }
 
 // Bomblets are blamed on the cluster that dropped them.
@@ -1658,7 +1868,7 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
   s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
   if (s.hp > 0) return;
   g.ships = g.ships.filter((o) => o !== s);
-  g.lost += 1;
+  g.lost += s.vip ? VIP.loss : 1;
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
   g.events.push({ kind: 'shipLost', lost: g.lost });
@@ -1706,6 +1916,12 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   bomber: 0.3,
   bomblet: 0.5,
   minidrone: 1,
+  mine: 0.3,
+  fastboat: 0.6,
+  rig: 0,
+  generator: 0,
+  citadel: 0,
+  dreadnought: 0,
 };
 
 function launch(g: Game, l: Launch): void {
@@ -1713,6 +1929,7 @@ function launch(g: Game, l: Launch): void {
     launchPlane(g, l);
     return;
   }
+  if (l.base < 0 || g.baseDown[l.base]) return;
   const base = g.map.bases[l.base];
   spawnThreat(g, l.kind, base.x, base.y, 'base');
 }
@@ -1752,9 +1969,13 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const goCarrier = kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
+  // The 20-map plan. Heavies and guided go for the supertanker when it is out;
+  // some missiles go for an allied radar or battery; a mine has no target.
+  if (kind === 'mine') th.target = NO_TARGET;
+  else if (g.map.channels.some((c) => c.vip) || g.map.posts) aimSpecial(g, th, pool, rng);
 
   if (kind === 'ballistic') aimBallistic(g, th);
-  const tp = targetPos(g, th);
+  const tp = kind === 'mine' ? { x: th.x + (g.map.current?.x ?? 0), y: th.y + (g.map.current?.y ?? 1) } : targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
   g.threats.push(th);
   // Launch flash by where it came from: a base's red flare, a column of spray
@@ -1800,15 +2021,15 @@ function launchPlane(g: Game, l: Launch): void {
 /** Ballistics commit at launch to the point their ship will have reached. */
 function aimBallistic(g: Game, th: Threat): void {
   const t = targetPos(g, th);
-  const v = targetSpeed(g, th);
-  let ix = t.x;
+  const ship = g.ships.find((o) => o.id === th.target);
+  let at: Point = t;
   let dur = dist(th.sx, th.sy, t.x, t.y) / th.speed;
-  for (let k = 0; k < 2; k++) {
-    ix = t.x + v * dur;
-    dur = dist(th.sx, th.sy, ix, t.y) / th.speed;
+  for (let k = 0; k < 2 && ship; k++) {
+    at = shipAhead(g, ship, dur);
+    dur = dist(th.sx, th.sy, at.x, at.y) / th.speed;
   }
-  th.ix = Math.min(VIEW.width - 20, ix);
-  th.iy = t.y;
+  th.ix = Math.min(VIEW.width - 20, at.x);
+  th.iy = at.y;
   th.dur = Math.max(BALLISTIC.minFlight / g.waveSpeed, dur);
   th.apex = Math.min(BALLISTIC.apexMax, BALLISTIC.apexFrac * dist(th.sx, th.sy, th.ix, th.iy));
   // Keep the top of the arc on screen: a missile you can't see can't be tapped.
@@ -1834,7 +2055,10 @@ function arcTop(th: Threat, apex: number): number {
 }
 
 function targetPos(g: Game, th: Threat): Point {
-  if (th.target !== CARRIER_TARGET) {
+  if (isPostTarget(th.target)) {
+    const p = g.map.posts?.[postIndex(th.target)];
+    if (p) return p;
+  } else if (th.target !== CARRIER_TARGET && th.target !== NO_TARGET) {
     const s = g.ships.find((o) => o.id === th.target);
     if (s) return s;
   }
@@ -1843,8 +2067,8 @@ function targetPos(g: Game, th: Threat): Point {
 
 /** Drones and guided missiles find a new ship when theirs is gone. */
 function ensureTarget(g: Game, th: Threat): void {
-  if (th.target === CARRIER_TARGET) return;
-  if (g.ships.some((s) => s.id === th.target)) return;
+  if (th.target === CARRIER_TARGET || th.target === NO_TARGET) return;
+  if (isPostTarget(th.target) ? postUp(g, postIndex(th.target)) : g.ships.some((s) => s.id === th.target)) return;
   let best: Ship | null = null;
   let bd = Infinity;
   for (const s of targetable(g, VIEW.width + 40)) {
@@ -1863,7 +2087,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   const py = th.y;
   // Gravity Well: dragged toward the vortex instead of flying its course
   // (a ballistic's arc is fixed, so it is not).
-  if (g.fields.length && th.kind !== 'ballistic') {
+  if (g.fields.length && th.kind !== 'ballistic' && !isStructure(th.kind)) {
     const well = g.fields.find((f) => f.kind === 'well' && fieldDist(f, th.x, th.y) <= f.hw);
     if (well) {
       // Drawn in, and swirled round the core once there, so what it caught
@@ -1881,7 +2105,11 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       return;
     }
   }
-  if (th.kind === 'strafer' || th.kind === 'bomber') {
+  if (isStructure(th.kind)) {
+    if (th.kind === 'dreadnought') updateBoss(g, th, dt);
+  } else if (th.kind === 'mine') {
+    updateMine(g, th, dt);
+  } else if (th.kind === 'strafer' || th.kind === 'bomber') {
     updatePlane(g, th, dt);
   } else if (th.kind === 'ballistic') {
     const p = Math.min(1, th.age / th.dur);
@@ -1984,21 +2212,30 @@ const STEER: Partial<Record<ThreatKind, number>> = {
   heavy: HEAVY.turnRate,
   cluster: CLUSTER.turnRate,
   bomblet: CLUSTER.bombletTurn,
+  fastboat: FASTBOAT.turnRate,
 };
 
 /** Where a ship will be when a fast threat reaches it. */
 function leadPoint(g: Game, th: Threat): Point {
   const t = targetPos(g, th);
-  const v = targetSpeed(g, th);
-  if (!v) return t;
-  const eta = dist(th.x, th.y, t.x, t.y) / th.speed;
-  return { x: t.x + v * eta, y: t.y };
+  const ship = g.ships.find((o) => o.id === th.target);
+  if (!ship) return t;
+  return shipAhead(g, ship, dist(th.x, th.y, t.x, t.y) / th.speed);
 }
 
 function checkImpact(g: Game, th: Threat): void {
   const dmg = THREATS[th.kind].damage;
   const blame = th.parent ?? th.kind;
   const heavy = th.kind === 'heavy';
+  if (isPostTarget(th.target)) {
+    const i = postIndex(th.target);
+    const p = g.map.posts![i];
+    if (dist(th.x, th.y, p.x, p.y) > POST.hitRadius) return;
+    th.dead = true;
+    addFx(g, 'boom', th.x, th.y, { life: 0.7, r: heavy ? 50 : 30 });
+    damagePost(g, i, heavy ? 99 : Math.max(1, dmg));
+    return;
+  }
   if (th.target === CARRIER_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
@@ -2021,8 +2258,9 @@ function checkImpact(g: Game, th: Threat): void {
   } else {
     addFx(g, 'boom', th.x, th.y, { life: 0.7, r: 28 });
   }
-  // A heavy's direct hit sinks the ship whatever its armour or formation.
-  damageShip(g, s, heavy ? HEAVY_SINKS : dmg, blame);
+  // A heavy's direct hit sinks the ship whatever its armour or formation
+  // (the supertanker takes VIP.heavyHit: it is built to take one).
+  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : dmg, blame);
 }
 
 /** Gravity Well: the radius caught threats circle the core at (well inside
@@ -2092,6 +2330,9 @@ function impactBallistic(g: Game, th: Threat): void {
     if (k === 0 ? o.d <= BALLISTIC.splash : o.d <= reach) damageShip(g, o.s, k === 0 ? dmg : BALLISTIC.spill, 'ballistic', k === 0);
   });
   if (onCarrier(g, th.ix, th.iy, BALLISTIC.splash * 0.5)) damageCarrier(g, dmg, 'ballistic');
+  g.map.posts?.forEach((p, i) => {
+    if (dist(p.x, p.y, th.ix, th.iy) <= BALLISTIC.splash) damagePost(g, i, dmg);
+  });
 }
 
 /** Where a threat will be `ahead` seconds from now. */
@@ -2108,13 +2349,22 @@ function predict(th: Threat, ahead: number): Point {
 
 function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   if (th.dead) return;
+  // The Citadel can't be hurt while any shield generator stands.
+  if (th.kind === 'citadel' && shieldUp(g)) {
+    if (g.steps % 3 === 0) addFx(g, 'block', th.x, th.y, { life: 0.4, r: 70 });
+    return;
+  }
   th.hp -= amount;
   // Thirds of a hit (seekers) add up to a whole one, float error aside.
   if (th.hp > 1e-6) return;
   th.dead = true;
   g.kills[th.kind] += 1;
-  addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
-  if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
+  if (isStructure(th.kind)) {
+    structureDown(g, th);
+  } else {
+    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
+    if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
+  }
   if (!drops) return;
   if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare)) dropPickup(g, th.x, th.y);
   // Weapons drop on their own roll, on top of the power-ups (playtest round
@@ -2192,8 +2442,9 @@ function updateInterceptors(g: Game, dt: number): void {
       live.push(it);
       continue;
     }
-    const speed = it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed;
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
+    // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
+    const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
     if (!th && it.target !== null) {
       // Swarm Pod: a seeker whose target is gone finds the nearest other.
       th = it.retarget ? nearestThreat(g, it.x, it.y) : undefined;
@@ -2325,7 +2576,7 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
   } else if (r.state === 'reverse') {
     r.dist = Math.max(0, r.dist - speed * dt);
   }
-  const p = along(r.path, r.dist);
+  const p = alongPath(r.path, r.dist);
   r.x = p.x;
   r.y = p.y;
   r.heading = p.heading;
@@ -2338,6 +2589,7 @@ function updateTimers(g: Game, dt: number): void {
   g.warpT = Math.max(0, g.warpT - dt);
   g.shieldT = Math.max(0, g.shieldT - dt);
   g.steamT = Math.max(0, g.steamT - dt);
+  g.flareT = Math.max(0, g.flareT - dt);
   if (g.weapon) {
     g.weapon.t -= dt;
     if (g.weapon.t <= 0) {
@@ -2445,6 +2697,318 @@ function knockOut(g: Game, r: Raider): void {
 }
 
 // ---------------------------------------------------------------------------
+// The 20-map plan: structures, allied posts, mines, locks, the fork
+
+/** A threat with no target (a mine drifts where the current takes it). */
+const NO_TARGET = -2;
+/** Allied structures are targets -10, -11, ... (map.posts order). */
+const POST_TARGET = -10;
+const isPostTarget = (t: number) => t <= POST_TARGET;
+const postIndex = (t: number) => POST_TARGET - t;
+/** How far from the Delta's buoy a tap still throws it. */
+export const FORK_RADIUS = 34;
+
+/** Can a structure still be hit? (A lost radar or a knocked-out battery can't.) */
+function postUp(g: Game, i: number): boolean {
+  const st = g.posts[i];
+  return !!st && !st.lost && st.downT <= 0;
+}
+
+/** Heavies and guided go for the supertanker while it is out; some missiles
+ *  are aimed at a standing allied structure instead of a ship. */
+function aimSpecial(g: Game, th: Threat, pool: Ship[], rng: RNG): void {
+  const tanker = pool.find((s) => s.vip);
+  if (tanker && (th.kind === 'heavy' || th.kind === 'guided') && rng.chance(VIP.targetShare)) {
+    th.target = tanker.id;
+    return;
+  }
+  if (!g.map.posts || !['guided', 'heavy', 'ballistic', 'supersonic'].includes(th.kind)) return;
+  const up = g.map.posts.map((_, i) => i).filter((i) => postUp(g, i));
+  if (up.length && rng.chance(POST.targetShare)) th.target = POST_TARGET - rng.pick(up);
+}
+
+/** A hit on an allied structure: a radar at 0 is gone for the rest of the
+ *  run (the player's review: "if it is lost it is lost"); a battery is
+ *  knocked out for a while, then back at full strength. */
+function damagePost(g: Game, i: number, amount: number): void {
+  const st = g.posts[i];
+  const def = g.map.posts?.[i];
+  if (!st || !def || !postUp(g, i)) return;
+  if (g.shieldT > 0) {
+    addFx(g, 'block', def.x, def.y, { life: 0.4, r: 34 });
+    return;
+  }
+  st.hp -= amount;
+  addFx(g, 'boom', def.x, def.y, { life: 0.6, r: 30 });
+  if (st.hp > 0) {
+    g.events.push({ kind: 'post', post: i, down: false, lost: false });
+    return;
+  }
+  st.hp = 0;
+  if (def.kind === 'radar') st.lost = true;
+  else st.downT = POST.batteryDown;
+  addFx(g, 'boom', def.x, def.y, { life: 1.1, r: 56 });
+  g.events.push({ kind: 'post', post: i, down: true, lost: st.lost });
+}
+
+/** Is a threat inside a standing radar's sweep? */
+export function tracked(g: Game, th: Threat): boolean {
+  const posts = g.map.posts;
+  if (!posts) return false;
+  for (let i = 0; i < posts.length; i++) {
+    const p = posts[i];
+    if (p.kind === 'radar' && postUp(g, i) && dist(th.x, th.y, p.x, p.y) <= p.reach) return true;
+  }
+  return false;
+}
+
+/** Radar sweeps turn; batteries fire on their own and come back after a hit. */
+function updatePosts(g: Game, dt: number): void {
+  const posts = g.map.posts;
+  if (!posts) return;
+  posts.forEach((p, i) => {
+    const st = g.posts[i];
+    if (p.kind === 'radar') {
+      if (!st.lost) st.aim += dt * ((Math.PI * 2) / 4);
+      return;
+    }
+    if (st.downT > 0) {
+      st.downT -= dt;
+      if (st.downT <= 0) {
+        st.hp = p.hp;
+        g.events.push({ kind: 'post', post: i, down: false, lost: false });
+      }
+      return;
+    }
+    st.fireT -= dt;
+    if (st.fireT > 0) return;
+    const target = g.threats
+      .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, p.x, p.y) <= p.reach && assigned(g, t.id) < t.hp)
+      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+    if (!target) {
+      st.fireT = 0.1;
+      return;
+    }
+    st.fireT = POST.batteryGap;
+    st.aim = Math.atan2(target.y - p.y, target.x - p.x);
+    g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 10, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
+    addFx(g, 'launch', p.x, p.y - 10, { life: 0.3, r: 9 });
+  });
+}
+
+/** Rigs, generators and the Citadel stand from the start, on their bases. */
+function raiseStructures(g: Game): void {
+  g.map.bases.forEach((b, i) => {
+    const kind: ThreatKind | null = b.rig ? 'rig' : b.generator ? 'generator' : b.core ? 'citadel' : null;
+    if (!kind) return;
+    const hp = b.rig?.hp ?? b.generator?.hp ?? b.core?.hp ?? THREATS[kind].hp;
+    g.threats.push(structure(g, kind, b.x, b.y, hp, i));
+  });
+}
+
+function structure(g: Game, kind: ThreatKind, x: number, y: number, hp: number, base?: number): Threat {
+  return {
+    id: g.nextId++, kind, x, y, vx: 0, vy: 0, hp, speed: THREATS[kind].speed, heading: Math.PI, target: NO_TARGET,
+    age: 0, phase: 0, dead: false, spawnT: 0, sx: x, sy: y, ix: 0, iy: 0, dur: 1, apex: 0, base,
+  };
+}
+
+/** Structures that stand between waves (a wave can end with them up). */
+function standing(th: Threat): boolean {
+  return th.kind === 'rig' || th.kind === 'generator' || th.kind === 'citadel';
+}
+
+/** Is this structure worth a shot? (Not the Citadel while it is shielded.) */
+export function hittable(g: Game, th: Threat): boolean {
+  return !(th.kind === 'citadel' && shieldUp(g));
+}
+
+/** Threats a player would bother with right now: anything that strikes; a
+ *  structure only when nothing else is up and the rack is all but full (or
+ *  a Railgun is loaded, made for big targets). */
+export function worthShooting(g: Game, list: Threat[]): Threat[] {
+  const live = list.filter((t) => !t.dead);
+  const strikers = live.filter((t) => !isStructure(t.kind));
+  const rail = g.weapon?.id === 'railgun';
+  const structures = live.filter((t) => isStructure(t.kind) && hittable(g, t));
+  if (rail) return [...strikers, ...structures];
+  if (strikers.length) return strikers;
+  return g.overdriveT > 0 || g.ammo >= g.stats.rack - 1 ? structures : [];
+}
+
+/** The fork lane a sensible player would send ships down: the branch with
+ *  the fewest threats closing on its hulls, staying put unless another is
+ *  clearly quieter (null: leave the switch alone). */
+export function quieterBranch(g: Game): number | null {
+  const fork = g.map.fork;
+  if (!fork) return null;
+  const heat = fork.lanes.map((lane) => g.threats.filter((t) => !t.dead && g.ships.some((s) => s.id === t.target && s.channel === lane)).length);
+  const cur = g.forkLane % fork.lanes.length;
+  let best = cur;
+  heat.forEach((h, i) => {
+    if (h < heat[best]) best = i;
+  });
+  return heat[cur] - heat[best] >= 2 ? best : null;
+}
+
+/** Is the Citadel's shield up? (While any generator stands.) */
+export function shieldUp(g: Game): boolean {
+  return !!g.map.shield && g.threats.some((t) => t.kind === 'generator' && !t.dead);
+}
+
+const STRUCTURE_DOWN: Partial<Record<ThreatKind, string>> = {
+  rig: 'RIG DESTROYED',
+  generator: 'GENERATOR DOWN',
+  citadel: 'CITADEL SILENCED',
+  dreadnought: 'DREADNOUGHT SUNK',
+};
+
+/** A structure falls: its base launches no more, and it goes up in a big
+ *  explosion with its name. The last generator drops the shield. */
+function structureDown(g: Game, th: Threat): void {
+  if (th.base !== undefined) g.baseDown[th.base] = true;
+  addFx(g, 'boom', th.x, th.y, { life: 1.2, r: 70 });
+  addFx(g, th.kind === 'dreadnought' ? 'sink' : 'burst', th.x, th.y, { life: 1.4, r: 60 });
+  const label = th.kind === 'generator' && !shieldUp(g) && g.map.shield ? 'SHIELD DOWN' : STRUCTURE_DOWN[th.kind] ?? 'DESTROYED';
+  g.events.push({ kind: 'bigKill', label, x: th.x, y: th.y });
+}
+
+/** The Dreadnought steams in from the right edge for this wave. */
+function launchBoss(g: Game): void {
+  const boss = g.map.boss!;
+  g.bossWave = g.wave;
+  const p = boss.path[0];
+  const th = structure(g, 'dreadnought', p.x, p.y, boss.hp);
+  th.along = 0;
+  th.fireT = BOSS.firstShot;
+  if (!g.seen.has('dreadnought')) {
+    g.seen.add('dreadnought');
+    g.events.push({ kind: 'debut', threat: 'dreadnought' });
+  }
+  g.threats.push(th);
+  g.events.push({ kind: 'boss' });
+}
+
+/** Along its path, firing a broadside every BOSS.every s; off the far end
+ *  it is gone (no kill). */
+function updateBoss(g: Game, th: Threat, dt: number): void {
+  const path = g.map.boss!.path;
+  th.along = (th.along ?? 0) + th.speed * dt;
+  const p = alongPath(path, th.along);
+  th.x = p.x;
+  th.y = p.y;
+  th.heading = p.heading;
+  th.age += 0;
+  if (th.along >= pathLength(path)) {
+    th.dead = true;
+    return;
+  }
+  th.fireT = (th.fireT ?? BOSS.every) - dt;
+  if (th.fireT > 0 || th.x > VIEW.width - 40 || th.x < 40) return;
+  th.fireT = BOSS.every;
+  BOSS.broadside.forEach((kind, k) => {
+    const m = spawnThreat(g, kind, th.x + (k - 1) * 60, th.y, 'base');
+    m.from = th.id;
+  });
+  addFx(g, 'launch', th.x, th.y, { life: 0.6, r: 40 });
+}
+
+/** A mine drifts on the current (with a little wobble), blows up the first
+ *  hull it touches, and is gone off the edge of the screen. */
+function updateMine(g: Game, th: Threat, dt: number): void {
+  const c = g.map.current ?? { x: 0, y: 1 };
+  const k = th.speed / (Math.hypot(c.x, c.y) || 1);
+  const wob = Math.sin(th.age * 1.3 + th.phase) * MINE.wobble;
+  th.x += (c.x * k + wob * (c.y * k) / (th.speed || 1)) * dt;
+  th.y += (c.y * k - wob * (c.x * k) / (th.speed || 1)) * dt;
+  th.heading = Math.atan2(c.y, c.x);
+  if (th.x < -40 || th.x > VIEW.width + 40 || th.y < -40 || th.y > VIEW.height + 40) {
+    th.dead = true;
+    return;
+  }
+  for (const s of g.ships) {
+    if (dist(s.x, s.y, th.x, th.y) > MINE.hitRadius + (s.vip ? 24 : 0)) continue;
+    th.dead = true;
+    addFx(g, 'splash', th.x, th.y, { life: 0.9, r: 46 });
+    damageShip(g, s, THREATS.mine.damage, 'mine');
+    return;
+  }
+  if (onCarrier(g, th.x, th.y)) {
+    th.dead = true;
+    addFx(g, 'splash', th.x, th.y, { life: 0.9, r: 46 });
+    damageCarrier(g, 1, 'mine');
+  }
+}
+
+/** Seconds until a mine drifts into a hull (99 if it never will). */
+function mineEta(g: Game, th: Threat): number {
+  let best = 99;
+  for (const s of g.ships) {
+    // Where the ship will be relative to the mine, over the next few seconds.
+    for (let t = 0; t <= 8; t += 0.5) {
+      const p = shipAhead(g, s, t);
+      const mx = th.x + th.vx * t;
+      const my = th.y + th.vy * t;
+      if (dist(p.x, p.y, mx, my) <= MINE.hitRadius + 6) {
+        best = Math.min(best, t);
+        break;
+      }
+    }
+  }
+  return best;
+}
+
+/** Locks: the entry gate stays open LOCK.inTime s (until no hull straddles
+ *  it), the chamber fills for the lock's wait, then the exit opens
+ *  LOCK.outTime s, until the chamber is empty. */
+function updateLocks(g: Game, dt: number): void {
+  g.map.locks?.forEach((lock, i) => {
+    const st = g.lockState[i];
+    st.t += dt;
+    const inside = (lo: number, hi: number) =>
+      g.ships.some((s) => {
+        const ch = g.map.channels[s.channel];
+        const d0 = laneDAtX(ch, lock.x0);
+        const d1 = laneDAtX(ch, lock.x1);
+        if (d0 === null || d1 === null) return false;
+        const a = lo < 0 ? d0 + lo : d0 + lo;
+        const b = hi === Infinity ? d1 : d0 + hi;
+        return s.d >= a && s.d < b;
+      });
+    if (st.phase === 'in' && st.t >= LOCK.inTime && !inside(-LOCK.stand, 14)) {
+      st.phase = 'fill';
+      st.t = 0;
+    } else if (st.phase === 'fill' && st.t >= lock.wait) {
+      st.phase = 'out';
+      st.t = 0;
+    } else if (st.phase === 'out' && st.t >= LOCK.outTime && !inside(-LOCK.stand + 1, Infinity)) {
+      st.phase = 'in';
+      st.t = 0;
+    }
+  });
+}
+
+/** Seconds left in a lock's current phase (the renderer's countdown). */
+export function lockCountdown(g: Game, i: number): number {
+  const st = g.lockState[i];
+  const lock = g.map.locks?.[i];
+  if (!st || !lock) return 0;
+  const len = st.phase === 'in' ? LOCK.inTime : st.phase === 'fill' ? lock.wait : LOCK.outTime;
+  return Math.max(0, len - st.t);
+}
+
+/** The Delta's switch: the next ships take the fork's next lane. */
+export function throwSwitch(g: Game): void {
+  const fork = g.map.fork;
+  if (!fork) return;
+  g.forkLane = (g.forkLane + 1) % fork.lanes.length;
+  addFx(g, 'text', fork.x, fork.y - 50, { life: 1, text: FORK_NAMES[g.forkLane] ?? 'SWITCHED' });
+  g.events.push({ kind: 'fork', lane: g.forkLane });
+}
+
+const FORK_NAMES = ['NORTH', 'MIDDLE', 'SOUTH'];
+
+// ---------------------------------------------------------------------------
 // Pickups
 
 /** How long a pickup floats before it is gone. */
@@ -2472,7 +3036,7 @@ function dropWeapon(g: Game, x: number, y: number): void {
 
 /** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
-  const w = PICKUPS.weights;
+  const w = g.map.night ? { ...PICKUPS.weights, starshell: PICKUPS.starshellWeight } : PICKUPS.weights;
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
@@ -2511,6 +3075,7 @@ const PICKUP_TEXT: Record<PowerKind, string> = {
   timewarp: 'TIME WARP',
   shield: 'SHIELD',
   steam: 'FULL STEAM',
+  starshell: 'STAR SHELL',
 };
 
 function collect(g: Game, p: Pickup): void {
@@ -2558,6 +3123,9 @@ function collect(g: Game, p: Pickup): void {
       break;
     case 'steam':
       g.steamT = PICKUPS.steamTime * g.stats.powerTime;
+      break;
+    case 'starshell':
+      g.flareT = PICKUPS.starshellTime * g.stats.powerTime;
       break;
   }
 }
@@ -2609,6 +3177,8 @@ export function reticleVisible(g: Game, th: Threat): boolean {
 
 /** Seconds until a threat reaches what it is aimed at (bot + UI warnings). */
 export function timeToImpact(g: Game, th: Threat): number {
+  if (isStructure(th.kind)) return 99;
+  if (th.kind === 'mine') return mineEta(g, th);
   if (th.kind === 'ballistic') return Math.max(0, th.dur - th.age);
   if (th.kind === 'strafer' || th.kind === 'bomber') {
     // Until its guns (or bombs) reach the nearest hull ahead of it.
