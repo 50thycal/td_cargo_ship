@@ -831,11 +831,16 @@ function pickBase(g: Game, kind: ThreatKind, rng: RNG): number {
   const able = g.map.bases.map((b, i) => (b.kinds.includes(kind) ? i : -1)).filter((i) => i >= 0);
   const live = able.filter((i) => !g.baseDown[i]);
   if (live.length) return rng.pick(live);
-  if (able.length) return -2;
   const any = g.map.bases.map((b, i) => (launcher(b) && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
+  // Every base for this kind is down: half its launches move to a launcher
+  // still standing (further off, so with more warning), half are lost.
+  if (able.length) return any.length && rng.chance(STRUCTURE_REROUTE) ? rng.pick(any) : -2;
   // The original five maps: every base launches, so this is rng.int(bases).
   return any.length === g.map.bases.length ? rng.int(g.map.bases.length) : any.length ? rng.pick(any) : -2;
 }
+
+/** Share of a downed rig's launches that come from another base instead. */
+const STRUCTURE_REROUTE = 0.5;
 
 /** A base that fires missiles (not a generator, cove or mine chute). */
 function launcher(b: { kinds: ThreatKind[]; cove?: boolean; chute?: boolean; generator?: unknown }): boolean {
@@ -2809,6 +2814,39 @@ function structure(g: Game, kind: ThreatKind, x: number, y: number, hp: number, 
 /** Structures that stand between waves (a wave can end with them up). */
 function standing(th: Threat): boolean {
   return th.kind === 'rig' || th.kind === 'generator' || th.kind === 'citadel';
+}
+
+/** Is this structure worth a shot? (Not the Citadel while it is shielded.) */
+export function hittable(g: Game, th: Threat): boolean {
+  return !(th.kind === 'citadel' && shieldUp(g));
+}
+
+/** Threats a player would bother with right now: anything that strikes; a
+ *  structure only when nothing else is up and the rack is all but full (or
+ *  a Railgun is loaded, made for big targets). */
+export function worthShooting(g: Game, list: Threat[]): Threat[] {
+  const live = list.filter((t) => !t.dead);
+  const strikers = live.filter((t) => !isStructure(t.kind));
+  const rail = g.weapon?.id === 'railgun';
+  const structures = live.filter((t) => isStructure(t.kind) && hittable(g, t));
+  if (rail) return [...strikers, ...structures];
+  if (strikers.length) return strikers;
+  return g.overdriveT > 0 || g.ammo >= g.stats.rack - 1 ? structures : [];
+}
+
+/** The fork lane a sensible player would send ships down: the branch with
+ *  the fewest threats closing on its hulls, staying put unless another is
+ *  clearly quieter (null: leave the switch alone). */
+export function quieterBranch(g: Game): number | null {
+  const fork = g.map.fork;
+  if (!fork) return null;
+  const heat = fork.lanes.map((lane) => g.threats.filter((t) => !t.dead && g.ships.some((s) => s.id === t.target && s.channel === lane)).length);
+  const cur = g.forkLane % fork.lanes.length;
+  let best = cur;
+  heat.forEach((h, i) => {
+    if (h < heat[best]) best = i;
+  });
+  return heat[cur] - heat[best] >= 2 ? best : null;
 }
 
 /** Is the Citadel's shield up? (While any generator stands.) */

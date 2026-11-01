@@ -18,7 +18,7 @@ import {
   type PickupKind,
 } from '../data/config';
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
-import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
+import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
 import {
   ABILITIES,
   ABILITY_MAX,
@@ -33,7 +33,7 @@ import {
   type CardId,
 } from '../data/abilities';
 import { ARMORY, ARMORY_MAX, BAY_ORDER, BAYS, CARD_DROPS, armoryLevel, bayItems, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
-import { equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
+import { equipArmory, isUnlocked, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
   applyFreePlay,
   createGame,
@@ -129,6 +129,8 @@ function button(text: string, cls: string, onClick: () => void): HTMLButtonEleme
 
 export class App {
   private progress: Progress = loadProgress();
+  /** The chapter the menu is showing (0: pick the furthest one open). */
+  private menuChapter = 0;
   private game: Game | null = null;
   /** Every input goes through the recorder, so each run leaves a replayable log. */
   private rec: Recorder | null = null;
@@ -953,9 +955,29 @@ export class App {
     this.game = null;
     this.lastPhase = null;
     this.root.classList.remove('playing');
-    const cards = MAP_ORDER.map((id, i) => {
+    // Twenty maps in four chapters of five: the menu shows one chapter at a
+    // time (five cards still fit a landscape phone), with a tab per chapter.
+    const open = (id: MapId) => this.dev || isUnlocked(this.progress, id);
+    if (!this.menuChapter) {
+      const furthest = [...MAP_ORDER].reverse().find(open) ?? MAP_ORDER[0];
+      this.menuChapter = chapterOf(furthest);
+    }
+    const tabs = el('div', 'v3-chapter-tabs');
+    for (const c of CHAPTERS) {
+      const first = MAP_ORDER[(c.n - 1) * 5];
+      const shut = !open(first);
+      const tab = button('', `v3-chapter-tab${c.n === this.menuChapter ? ' on' : ''}${shut ? ' locked' : ''}`, () => {
+        this.menuChapter = c.n;
+        this.showMenu();
+      });
+      tab.dataset.chapter = String(c.n);
+      tab.append(el('b', '', `${c.n}`), el('span', '', shut ? `${c.name} 🔒` : c.name));
+      tabs.append(tab);
+    }
+    const shown = MAP_ORDER.map((id, i) => ({ id, i })).filter(({ id }) => chapterOf(id) === this.menuChapter);
+    const cards = shown.map(({ id, i }) => {
       const m = MAPS[id];
-      const locked = i >= this.progress.unlocked && !this.dev;
+      const locked = !open(id);
       const best = this.progress.best[id];
       const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.prepare(id));
       card.disabled = locked;
@@ -981,6 +1003,7 @@ export class App {
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
       this.armoryStrip(),
+      tabs,
       el('div', 'v2-map-grid', ''),
       ...(this.dev ? [this.devPanel()] : []),
       foot,
@@ -1185,6 +1208,7 @@ export class App {
    *  ones are ready). With nothing bought yet there is nothing to pick.
    *  Watch mode and the dev gun override skip it. */
   private prepare(id: MapId): void {
+    this.menuChapter = chapterOf(id);
     const p = this.progress;
     const bays = BAY_ORDER.filter((b) => bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
     const watch = this.dev && this.devSettings.watch;

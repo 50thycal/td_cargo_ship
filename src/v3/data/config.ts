@@ -145,7 +145,7 @@ export const THREATS: Record<
   /** Bursts out of a cove and rams a ship; leaves a white wake. */
   fastboat: { speed: 125, hp: 2, damage: 2, dropChance: 0.3, label: 'Fast attack boat' },
   /** Structures: hit points, no warhead. A kill always drops something. */
-  rig: { speed: 0, hp: 14, damage: 0, dropChance: 1, label: 'Oil rig' },
+  rig: { speed: 0, hp: 28, damage: 0, dropChance: 1, label: 'Oil rig' },
   generator: { speed: 0, hp: 10, damage: 0, dropChance: 1, label: 'Shield generator' },
   citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
   dreadnought: { speed: 24, hp: 60, damage: 0, dropChance: 1, label: 'Dreadnought' },

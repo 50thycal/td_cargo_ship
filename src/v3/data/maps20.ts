@@ -257,7 +257,7 @@ const battery: MapDef = {
   blurb: 'Two allied shore guns on the headland fire on their own. The enemy wants them silenced first. Keep them firing.',
   land: [
     { side: 'enemy', points: shore('top', 150, 14, 1.3) },
-    { side: 'friendly', hill: true, points: closeBottom(smooth([{ x: 0, y: 800 }, { x: 400, y: 790 }, { x: 880, y: 782 }, { x: 990, y: 700 }, { x: 1060, y: 618 }, { x: 1200, y: 608 }, { x: 1275, y: 690 }, { x: 1360, y: 782 }, { x: 1600, y: 792 }], 8)) },
+    { side: 'friendly', points: closeBottom(smooth([{ x: 0, y: 800 }, { x: 400, y: 790 }, { x: 880, y: 782 }, { x: 990, y: 700 }, { x: 1060, y: 618 }, { x: 1200, y: 608 }, { x: 1275, y: 690 }, { x: 1360, y: 782 }, { x: 1600, y: 792 }], 8)) },
   ],
   bases: BATTERY_BASES,
   carrier: { x: 520, y: 702 },
@@ -348,10 +348,10 @@ const sowers: MapDef = {
 // A destroyed rig stays down for the rest of the run, so weapon time spent on
 // rigs early buys quieter waves later. Two far silos on the shore can't be hit.
 const RIGS_BASES: BaseDef[] = [
-  { x: 300, y: 298, kinds: ['drone', 'guided'], rig: { hp: 14 } },
-  { x: 690, y: 270, kinds: ['cluster', 'ballistic'], rig: { hp: 14 } },
-  { x: 1080, y: 298, kinds: ['supersonic', 'guided'], rig: { hp: 14 } },
-  { x: 1440, y: 270, kinds: ['drone', 'mothership'], rig: { hp: 14 } },
+  { x: 300, y: 298, kinds: ['drone', 'guided'], rig: { hp: 28 } },
+  { x: 690, y: 270, kinds: ['cluster', 'ballistic'], rig: { hp: 28 } },
+  { x: 1080, y: 298, kinds: ['supersonic', 'guided'], rig: { hp: 28 } },
+  { x: 1440, y: 270, kinds: ['drone', 'mothership'], rig: { hp: 28 } },
   { x: 500, y: 68, kinds: ['ballistic', 'heavy'] },
   { x: 1250, y: 68, kinds: ['heavy', 'ballistic'] },
 ];
@@ -403,7 +403,7 @@ const lantern: MapDef = {
   blurb: 'Night. Threats are a faint glow until the lighthouse beam sweeps over them. Watch the light, and fire Star Shells into the dark.',
   land: [
     { side: 'enemy', points: shore('top', 140, 13, 1.9) },
-    { side: 'friendly', hill: true, points: closeBottom(smooth([{ x: 0, y: 790 }, { x: 300, y: 800 }, { x: 500, y: 772 }, { x: 610, y: 712 }, { x: 680, y: 694 }, { x: 760, y: 750 }, { x: 900, y: 792 }], 8)) },
+    { side: 'friendly', points: closeBottom(smooth([{ x: 0, y: 790 }, { x: 300, y: 800 }, { x: 500, y: 772 }, { x: 610, y: 712 }, { x: 680, y: 694 }, { x: 760, y: 750 }, { x: 900, y: 792 }], 8)) },
     { side: 'enemy', points: closeBottom(smooth([{ x: 900, y: 792 }, { x: 1100, y: 765 }, { x: 1350, y: 745 }, { x: 1600, y: 752 }], 6)) },
   ],
   bases: LANTERN_BASES,
