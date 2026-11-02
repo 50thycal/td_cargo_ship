@@ -48,7 +48,7 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      behind the jet, canister by canister).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 12;
+export const LOG_VERSION = 13;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

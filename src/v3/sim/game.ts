@@ -132,6 +132,11 @@ export interface Threat {
   hits?: number[];
   /** Strafing jet: guns are firing this step (renderer draws the tracers). */
   firing?: boolean;
+  /** An aircraft on a curved lane: the lane, distance along it, the way it
+   *  flies (+1 with the shipping, -1 against), and its offset across. */
+  route?: { lane: number; s: number; dir: number; lat: number; flown: number };
+  /** Bank angle (radians, + = right wing down), from how hard it turns. */
+  bank?: number;
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
@@ -238,6 +243,11 @@ export interface Launch {
    *  the line they fly, fixed when their warning arrow appears. */
   side?: number;
   y?: number;
+  /** A curved lane (map visual-check round, "enemy jets should follow the
+   *  curve and bank around the bend"): the aircraft flies this lane's path,
+   *  `lat` across it, instead of a straight line along y. */
+  lane?: number;
+  lat?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1720,8 +1730,14 @@ export function step(g: Game, dt: number): void {
   for (const l of g.queue) {
     if (l.at - g.waveT > PLANE.warn) break;
     if ((l.kind === 'strafer' || l.kind === 'bomber') && l.y === undefined) {
-      l.y = planeLine(g, l.kind, g.rng.threats);
-      cue(g, 'aircraft.warn', (l.side ?? 1) > 0 ? 0 : VIEW.width, l.y);
+      const r = planeRoute(g, l.kind, g.rng.threats);
+      l.y = r.y;
+      if (r.lane !== undefined) {
+        l.lane = r.lane;
+        l.lat = r.lat;
+      }
+      const at = l.lane !== undefined ? planeEntry(g, l) : { x: (l.side ?? 1) > 0 ? 0 : VIEW.width, y: l.y };
+      cue(g, 'aircraft.warn', at.x, at.y);
     }
   }
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
@@ -2190,12 +2206,46 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   return th;
 }
 
+/** Does a lane curve (rather than run straight across the screen)? */
+export function laneBends(ch: Channel): boolean {
+  const p = ch.path;
+  if (!p) return false;
+  for (let i = 1; i < p.length; i++) if (Math.abs(p[i].y - p[i - 1].y) > 0.15 * Math.abs(p[i].x - p[i - 1].x) + 2) return true;
+  return false;
+}
+
 /** The line an aircraft flies. A strafing jet lines up on the densest band of
  *  hulls (a tight block is its favourite target); a bomber flies just outside
- *  a shipping channel and drops its missiles in. */
-function planeLine(g: Game, kind: ThreatKind, rng: RNG): number {
-  if (kind === 'bomber') return rng.pick(g.map.bomberLines);
-  const ch = g.map.channels[rng.int(g.map.channels.length)];
+ *  a shipping channel and drops its missiles in. Where the lane curves, the
+ *  aircraft follows it round instead: a strafer down its middle, a bomber
+ *  off its edge. */
+function planeRoute(g: Game, kind: ThreatKind, rng: RNG): { y: number; lane?: number; lat?: number } {
+  const chans = g.map.channels;
+  if (kind === 'bomber') {
+    const bent = chans.map((c, i) => i).filter((i) => laneBends(chans[i]) && !chans[i].tide);
+    if (!bent.length) return { y: rng.pick(g.map.bomberLines) };
+    const lane = rng.pick(bent);
+    // Off whichever edge keeps it on screen more (at the Kesh Hook, the inside
+    // of the turn: the outside runs along the screen's bottom edge).
+    const ch = chans[lane];
+    const off = ch.halfWidth + 70;
+    const seen = (lat: number) => {
+      let n = 0;
+      const L = laneLength(ch);
+      for (let d = 0; d <= L; d += 25) {
+        const p = laneAt(ch, d, lat);
+        if (p.x > 60 && p.x < VIEW.width - 60 && p.y > 60 && p.y < VIEW.height - 60) n++;
+      }
+      return n;
+    };
+    const a = seen(-off);
+    const b = seen(off);
+    const sign = a === b ? (rng.chance(0.5) ? 1 : -1) : a > b ? -1 : 1;
+    return { y: lanePoint(ch, 0).y, lane, lat: sign * off };
+  }
+  const lane = rng.int(chans.length);
+  const ch = chans[lane];
+  if (laneBends(ch)) return { y: lanePoint(ch, 0).y, lane, lat: 0 };
   let best = ch.y;
   let most = 0;
   for (const s of g.ships) {
@@ -2205,16 +2255,41 @@ function planeLine(g: Game, kind: ThreatKind, rng: RNG): number {
       best = s.y;
     }
   }
-  return best;
+  return { y: best };
+}
+
+/** Where an aircraft on a route is at distance s, and the way it points. */
+export function routePose(g: Game, r: { lane: number; s: number; dir: number; lat: number }): { x: number; y: number; tx: number; ty: number } {
+  const p = laneAt(g.map.channels[r.lane], r.s, r.lat);
+  return { x: p.x, y: p.y, tx: p.tx * r.dir, ty: p.ty * r.dir };
 }
 
 function launchPlane(g: Game, l: Launch): void {
   const side = l.side ?? 1;
-  const y = l.y ?? planeLine(g, l.kind, g.rng.threats);
-  const x = side > 0 ? -60 : VIEW.width + 60;
-  const th = spawnThreat(g, l.kind, x, y, 'air');
+  const route = l.y === undefined ? planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
+  const y = route.y;
+  let x = side > 0 ? -60 : VIEW.width + 60;
+  let sy = y;
+  let r: Threat['route'];
+  if (route.lane !== undefined) {
+    const ch = g.map.channels[route.lane];
+    // Enter where the lane does (or leaves, flying against the shipping),
+    // a little off screen.
+    r = { lane: route.lane, s: side > 0 ? -20 : laneLength(ch) + 20, dir: side, lat: route.lat ?? 0, flown: 0 };
+    const p = routePose(g, r);
+    x = p.x - p.tx * 40;
+    sy = p.y - p.ty * 40;
+    r.s -= side * 40;
+  }
+  const th = spawnThreat(g, l.kind, x, sy, 'air');
   th.side = side;
   th.heading = side > 0 ? 0 : Math.PI;
+  if (r) {
+    th.route = r;
+    const p = routePose(g, r);
+    th.heading = Math.atan2(p.ty, p.tx);
+    th.bank = 0;
+  }
   th.target = CARRIER_TARGET;
   th.hits = [];
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : 0;
@@ -2361,26 +2436,84 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   th.vy = (th.y - py) / dt;
 }
 
-/** Aircraft fly straight across. A strafing jet's guns walk a line of hits
- *  ahead of it, catching every hull within PLANE.band of its line once; a
- *  bomber drops guided missiles as it passes over the convoy. Off the far
- *  edge, either is gone (no kill, no pickup). */
+/** Where an aircraft on a curved lane comes on screen (its warning sits
+ *  there). */
+export function planeEntry(g: Game, l: Launch): Point {
+  const ch = g.map.channels[l.lane!];
+  const side = l.side ?? 1;
+  const L = laneLength(ch);
+  // The first point of its route on screen.
+  for (let k = 0; k <= L; k += 10) {
+    const p = laneAt(ch, side > 0 ? k : L - k, l.lat ?? 0);
+    if (p.x >= 0 && p.x <= VIEW.width && p.y >= 0 && p.y <= VIEW.height) return { x: p.x, y: p.y };
+  }
+  return laneAt(ch, side > 0 ? 0 : L, l.lat ?? 0);
+}
+
+/** A hull's place in an aircraft's frame at point (gx, gy) heading (tx, ty):
+ *  how far ahead and how far across. On its own lane, measured along the
+ *  lane (so ahead still means ahead round a bend). */
+function planeFrame(g: Game, th: Threat, s: Ship, gx: number, gy: number, tx: number, ty: number, gunS?: number): { along: number; across: number } {
+  const r = th.route;
+  if (r && gunS !== undefined && s.channel === r.lane) return { along: (s.d - gunS) * r.dir, across: s.lat - r.lat };
+  const dx = s.x - gx;
+  const dy = s.y - gy;
+  return { along: dx * tx + dy * ty, across: -dx * ty + dy * tx };
+}
+
+/** Aircraft fly straight across, or round a curved lane, banking into the
+ *  turn. A strafing jet's guns walk a line of hits ahead of it, catching
+ *  every hull within PLANE.band of its track once; a bomber drops guided
+ *  missiles as it passes over the convoy. Off the far edge, either is gone
+ *  (no kill, no pickup). */
 function updatePlane(g: Game, th: Threat, dt: number): void {
   const side = th.side ?? 1;
-  th.x += side * th.speed * dt;
-  // How far onto the screen it has flown from its entry edge.
-  const inside = side > 0 ? th.x : VIEW.width - th.x;
+  const r = th.route;
+  let tx = side;
+  let ty = 0;
+  let inside: number;
+  let gx: number;
+  let gy: number;
+  let gunS: number | undefined;
+  if (r) {
+    r.s += r.dir * th.speed * dt;
+    r.flown += th.speed * dt;
+    const p = routePose(g, r);
+    const was = th.heading;
+    th.x = p.x;
+    th.y = p.y;
+    // Heading from a little ahead on the route: smooth round the bend.
+    const q = routePose(g, { ...r, s: r.s + r.dir * 30 });
+    th.heading = Math.atan2(q.y - p.y, q.x - p.x);
+    const rate = angleDiff(th.heading, was) / Math.max(dt, 1e-6);
+    // Bank into the turn: up to ~60° at the Kesh Hook's turn rate and more.
+    const want = clamp(rate * 0.9, -1.05, 1.05);
+    th.bank = (th.bank ?? 0) + clamp(want - (th.bank ?? 0), -2.5 * dt, 2.5 * dt);
+    tx = Math.cos(th.heading);
+    ty = Math.sin(th.heading);
+    inside = r.flown - 60;
+    gunS = r.s + r.dir * PLANE.gunLead;
+    const gp = routePose(g, { ...r, s: gunS });
+    gx = gp.x;
+    gy = gp.y;
+  } else {
+    th.x += side * th.speed * dt;
+    // How far onto the screen it has flown from its entry edge.
+    inside = side > 0 ? th.x : VIEW.width - th.x;
+    gx = th.x + side * PLANE.gunLead;
+    gy = th.y;
+  }
   if (th.kind === 'strafer') {
-    const gx = th.x + side * PLANE.gunLead;
-    const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(s.y - th.y) <= PLANE.band);
+    const frame = (s: Ship) => planeFrame(g, th, s, gx, gy, tx, ty, gunS);
+    const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(frame(s).across) <= PLANE.band);
     const was = th.firing;
     th.firing = band.some((s) => {
-      const ahead = (s.x - gx) * side;
+      const ahead = frame(s).along;
       return ahead > -60 && ahead < 220;
     });
-    if (th.firing && !was) cue(g, 'strafer.guns', gx, th.y, { vx: side * th.speed });
+    if (th.firing && !was) cue(g, 'strafer.guns', gx, gy, { vx: tx * th.speed });
     for (const s of band) {
-      if (th.hits!.includes(s.id) || Math.abs(s.x - gx) > 22) continue;
+      if (th.hits!.includes(s.id) || Math.abs(frame(s).along) > 22) continue;
       th.hits!.push(s.id);
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
       damageShip(g, s, THREATS.strafer.damage, 'strafer');
@@ -2389,13 +2522,15 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     // the step count, so the sim stays reproducible).
     if (th.firing && g.steps % 2 === 0) {
       const j = ((g.steps * 7919) % 97) / 97 - 0.5;
-      addFx(g, 'spout', gx + j * 30, th.y + j * 2 * PLANE.band * 0.6, { life: 0.5, r: 8 });
+      const a = j * 30;
+      const c = j * 2 * PLANE.band * 0.6;
+      addFx(g, 'spout', gx + tx * a - ty * c, gy + ty * a + tx * c, { life: 0.5, r: 8 });
     }
   } else {
     th.dropT = (th.dropT ?? 99) + dt;
     const ahead = inside < PLANE.bomberRunIn ? undefined : g.ships
       .filter((s) => {
-        const d = (s.x - th.x) * side;
+        const d = r ? planeFrame(g, th, s, th.x, th.y, tx, ty, r.s).along : (s.x - th.x) * side;
         return d > 0 && d < PLANE.dropReach;
       })
       .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
@@ -2411,7 +2546,14 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
       g.origins.child += 1;
     }
   }
-  if (th.x < -120 || th.x > VIEW.width + 120) th.dead = true;
+  if (r) {
+    // Off the far end of its route and off screen: gone.
+    const L = laneLength(g.map.channels[r.lane]);
+    const past = r.dir > 0 ? r.s > L + 60 : r.s < -60;
+    const off = th.x < -120 || th.x > VIEW.width + 120 || th.y < -120 || th.y > VIEW.height + 120;
+    if (past && off) th.dead = true;
+    if (r.flown > 6000) th.dead = true;
+  } else if (th.x < -120 || th.x > VIEW.width + 120) th.dead = true;
 }
 
 /** Turn rates (rad/s) for the steering threats. */
@@ -3522,10 +3664,14 @@ export function timeToImpact(g: Game, th: Threat): number {
     // Until its guns (or bombs) reach the nearest hull ahead of it.
     const side = th.side ?? 1;
     const lead = th.kind === 'strafer' ? PLANE.gunLead : 0;
+    const tx = Math.cos(th.heading);
+    const ty = Math.sin(th.heading);
     let best = Infinity;
     for (const s of g.ships) {
-      const ahead = (s.x - th.x) * side - lead;
-      if (ahead >= 0 && (th.kind === 'bomber' || Math.abs(s.y - th.y) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
+      // Round a bend, ahead and across are measured along its route.
+      const f = th.route ? planeFrame(g, th, s, th.x, th.y, tx, ty, th.route.s) : { along: (s.x - th.x) * side, across: s.y - th.y };
+      const ahead = f.along - lead;
+      if (ahead >= 0 && (th.kind === 'bomber' || Math.abs(f.across) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
     }
     return best === Infinity ? 30 : best;
   }

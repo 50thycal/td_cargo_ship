@@ -220,7 +220,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 12 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 13 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
