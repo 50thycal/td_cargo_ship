@@ -2806,3 +2806,9 @@ body {
     min-height: 38px;
   }
 }
+
+/* The review and note screens sit on the same dark backdrop as the result. */
+.v2-overlay.open:has(.v3-review),
+.v2-overlay.open:has(.v3-note) {
+  background: rgb(4 8 11 / 0.93);
+}
