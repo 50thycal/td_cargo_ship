@@ -1332,11 +1332,7 @@ function escortStations(g: Game, n: number): { lane: number; d: number; lat: num
       d0 = 0;
       d1 = L;
     }
-    // Saltgate: frigates keep to the basin before the first lock (a lock
-    // would hold them for most of the weapon's time).
-    const gate = firstGate(g, ch);
-    if (gate !== null) d1 = Math.min(d1, gate - ESCORT_STAND - 90);
-    // A short basin: spread out to its ends.
+    // A short stretch: spread out to its ends.
     const want = (d1 - d0 < 600 && n >= 3 ? [0.96, 0.5, 0.04] : fracs)[i % fracs.length];
     const side = i % 2 ? 1 : -1;
     // Candidates nearest the wanted spot first, on the wanted edge first.
@@ -1389,16 +1385,12 @@ function updateEscorts(g: Game, dt: number): void {
   for (const e of g.escorts) {
     if (!on) e.leaving = true;
     const ch = g.map.channels[e.lane];
-    // Off down the lane, or (on a lane with locks) back out astern the way
-    // it came.
-    const back = firstGate(g, ch) !== null;
-    const end = back ? -300 : laneLength(ch) + 260;
+    // Off down the lane.
+    const end = laneLength(ch) + 260;
     const goal = e.leaving ? end : e.sd;
     const step = AB.frigate.speed * dt;
     const before = e.d;
     e.d = goal > e.d ? Math.min(goal, e.d + step) : Math.max(goal, e.d - step);
-    // Saltgate: a frigate waits at a shut lock gate like the convoy does.
-    if (e.d > before) e.d = Math.max(before, Math.min(e.d, gateStop(g, e.lane, before, ESCORT_STAND)));
     // Line astern: never closer than a hull and its wake to a frigate ahead
     // on its own line (through a narrows they all fall into one file).
     const dir = Math.sign(e.d - before);
@@ -1422,9 +1414,6 @@ function updateEscorts(g: Game, dt: number): void {
     const moved = e.d - before;
     // Heading: the lane's, turned a little by any sideways drift (at most
     // ~24°, a ship steering across, never crabbing sideways).
-    // Saltgate's frigates back out of the basin stern first (it is ~300 px
-    // from the edge; three hulls have no room there to swing round), so the
-    // bow keeps the lane's way.
     const aim = Math.atan2(p.ty, p.tx) + Math.atan2(dl, Math.max(step, 1e-6)) * Math.sign(moved);
     const turn = ESCORT_TURN * dt;
     e.heading += clamp(angleDiff(aim, e.heading), -turn, turn);
@@ -1453,7 +1442,7 @@ function updateEscorts(g: Game, dt: number): void {
     addFx(g, 'launch', mx, my, { life: 0.3, r: 10 });
     cue(g, 'frigate.fire', mx, my);
   }
-  g.escorts = g.escorts.filter((e) => !(e.leaving && (e.d >= laneLength(g.map.channels[e.lane]) + 250 || e.d <= -290)));
+  g.escorts = g.escorts.filter((e) => !(e.leaving && e.d >= laneLength(g.map.channels[e.lane]) + 250));
 }
 
 /** Aegis Launchers (round 8 playtest: "all cargo ships get one interceptor
@@ -1948,16 +1937,6 @@ function gateStop(g: Game, lane: number, d: number, stand: number): number {
     else if (d >= d0 - stand && d < d1 && st.phase !== 'out') stop = Math.min(stop, d1 - stand);
   });
   return stop;
-}
-
-/** Distance along a lane to its first lock gate (null: no locks on it). */
-function firstGate(g: Game, ch: Channel): number | null {
-  let best: number | null = null;
-  for (const lock of g.map.locks ?? []) {
-    const d = laneDAtX(ch, lock.x0);
-    if (d !== null && (best === null || d < best)) best = d;
-  }
-  return best;
 }
 
 /** A frigate's bow is this far ahead of its centre, plus the gap a cargo
@@ -3362,9 +3341,7 @@ function updateLocks(g: Game, dt: number): void {
   g.map.locks?.forEach((lock, i) => {
     const st = g.lockState[i];
     st.t += dt;
-    // Hulls in the way of a gate: ships, and frigates (whose hull reaches
-    // further either side of its centre).
-    const hulls = [...g.ships.map((s) => ({ lane: s.channel, d: s.d, ext: 0 })), ...g.escorts.map((e) => ({ lane: e.lane, d: e.d, ext: ESCORT_STAND - LOCK.stand }))];
+    const hulls = g.ships.map((s) => ({ lane: s.channel, d: s.d, ext: 0 }));
     const inside = (lo: number, hi: number) =>
       hulls.some((s) => {
         const ch = g.map.channels[s.lane];
@@ -3388,6 +3365,25 @@ function updateLocks(g: Game, dt: number): void {
       st.t = 0;
     }
   });
+}
+
+/** Saltgate: warships have priority passage. A lock gate swings open while a
+ *  frigate is in its gateway (the convoy still waits its turn), so a Frigate
+ *  Escort can take station anywhere on the canal within its 15 s instead of
+ *  waiting ~20 s at each lock. The renderer draws that gate open. */
+export function frigateAtGate(g: Game, x: number): boolean {
+  // Open well before the bow reaches it (a hull's length ahead), shut once
+  // the stern is through.
+  return g.escorts.some((e) => {
+    // Only under way: one holding station short of a lock leaves it shut.
+    if (!e.leaving && Math.abs(e.d - e.sd) < 1) return false;
+    const ahead = (x - e.x) * Math.sign(Math.cos(e.heading) || 1);
+    return ahead > -(ESCORT_STAND + 30) && ahead < ESCORT_STAND + 130 && Math.abs(e.y - laneYAt(g, e)) < 140;
+  });
+}
+
+function laneYAt(g: Game, e: Escort): number {
+  return lanePoint(g.map.channels[e.lane], e.d).y;
 }
 
 /** Seconds left in a lock's current phase (the renderer's countdown). */
