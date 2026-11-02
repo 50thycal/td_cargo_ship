@@ -342,7 +342,9 @@ try {
   // the carrier, never leave the screen, and never exceed the map's limit.
   // The 20-map plan: every map at one phone size, the first five at a second.
   const ORDER = ['strait', 'kesh', 'marrow', 'gauntlet', 'harbor', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'lantern', 'dreadnought', 'coves', 'delta', 'crossing', 'tide', 'citadel'];
-  const trays = [...ORDER.map((m) => [m, 874, 402]), ...['strait', 'gauntlet', 'island', 'harbor', 'archipelago'].map((m) => [m, 844, 390])];
+  // Map visual-check round: and every map at the smallest phone (667×375),
+  // where the cards stand tallest over the map (13 of 20 covered the carrier).
+  const trays = [...ORDER.map((m) => [m, 874, 402]), ...['strait', 'gauntlet', 'island', 'harbor', 'archipelago'].map((m) => [m, 844, 390]), ...ORDER.map((m) => [m, 667, 375])];
   for (const [map, w, h] of trays) {
     const tp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
     tp.on('pageerror', (err) => fail(`page error: ${err.message}`));
