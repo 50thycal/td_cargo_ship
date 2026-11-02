@@ -163,7 +163,9 @@ try {
   await page.waitForTimeout(150);
   check((await page.locator('.v3-weapon.loaded[data-ability="railgun"]').count()) === 1, 'its loadout chip lights up');
   check(/1[45]s/.test(await page.locator('.v3-weapon.loaded .v3-weapon-tag').textContent()), 'the chip counts the seconds down');
-  check((await page.locator('.v2-timer').first().textContent()).includes('RAILGUN'), 'the left rail times it like a power-up');
+  // Playthrough round: its seconds are on its chip only; a second copy in
+  // the left rail pushed the power-ups over the note button.
+  check(!(await page.locator('.v2-timer').allTextContents()).some((t) => t.includes('RAILGUN')), 'the left rail leaves the weapon to its chip (no second timer)');
   check((await page.locator('.v2-alert').allTextContents()).some((t) => t.includes('RAILGUN') && t.includes('Tap anywhere')), 'a notice says what was loaded and how to fire it');
   // A tap on open water fires a beam through it, spending a round.
   const ammo0 = await page.evaluate(() => window.__v3.game().ammo);

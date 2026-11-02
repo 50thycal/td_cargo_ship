@@ -678,7 +678,9 @@ body {
     font-size: 10px;
   }
   .v2-track {
-    height: clamp(70px, 30vh, 170px);
+    /* Playthrough round: a little shorter, so two power-up timers fit under
+       the note button at the foot of the rail. */
+    height: clamp(64px, 25vh, 170px);
   }
   .v2-rail {
     gap: 3px;
@@ -2848,4 +2850,87 @@ body {
 
 .v3-board-row em {
   opacity: 0.6;
+}
+
+/* Playthrough round: a long panel's Back stays in view, in a strip at its
+   foot that the rows scroll under. */
+.v3-sticky-foot {
+  position: sticky;
+  bottom: -1px;
+  z-index: 1;
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 4px;
+  background: linear-gradient(rgb(7 13 18 / 0), var(--bg) 45%);
+}
+
+/* Playthrough round: on a phone the timers are one line each (name, then
+   seconds), so two or three fit under the note button instead of riding
+   up over it. */
+@media (max-height: 430px) {
+  .v2-timers {
+    gap: 2px;
+    bottom: 4px;
+  }
+  .v2-timer {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 2px;
+    padding: 1px 3px;
+  }
+  .v2-timer span {
+    font-size: 7.5px;
+    letter-spacing: -0.03em;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+  .v2-timer b {
+    font-size: 11px;
+  }
+}
+
+/* Playthrough round: the loadout comes between runs: a dark backdrop, as
+   the result has, so the finished run (its HUD, its ships) doesn't show
+   through and the bay labels don't sit over the rails. */
+.v2-overlay.open:has(.v3-loadout) {
+  background: rgb(4 8 11 / 0.95);
+}
+
+/* Playthrough round: the result fits a small phone, buttons in one row
+   (at 667×375 they wrapped and Menu fell below the screen; at 874×402 a
+   loss with a card and its advice clipped the log line). */
+@media (max-height: 430px) {
+  .v2-result {
+    gap: 6px;
+  }
+  .v2-result h2 {
+    font-size: 24px;
+  }
+  .v2-result > .v2-sub {
+    font-size: 12.5px;
+    line-height: 1.3;
+    margin: 0;
+  }
+  .v2-result .v2-stats {
+    gap: 14px;
+  }
+  .v2-result .v2-stats b {
+    font-size: 18px;
+  }
+  .v2-result .v2-btn-row {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .v2-result .v2-btn {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .v2-result .v2-log-status {
+    margin: 0;
+    font-size: 11px;
+  }
 }

@@ -711,10 +711,15 @@ function startWave(g: Game): void {
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
   const total = Math.max(present.length, Math.round(spec.duration / RAID.every));
-  // Raids per theme, in proportion to its units (at least one each).
+  // Raids per theme, in proportion to its units (at least one each), and
+  // never more raids of a theme than it has units: playthrough round, wave 1
+  // planned six swarm raids for three swarms, so half its "SWARM INBOUND"
+  // warnings lit bases that never fired and the first drone came at 13 s.
   const per = new Map(present.map((t) => [t, 1]));
   for (let k = present.length; present.length && k < total; k++) {
-    const t = present.reduce((a, b) => (count(b) / per.get(b)! > count(a) / per.get(a)! ? b : a));
+    const open = present.filter((t) => per.get(t)! < count(t));
+    if (!open.length) break;
+    const t = open.reduce((a, b) => (count(b) / per.get(b)! > count(a) / per.get(a)! ? b : a));
     per.set(t, per.get(t)! + 1);
   }
   const order = rng.shuffle(present.flatMap((t) => Array.from({ length: per.get(t)! }, () => t)));
@@ -3616,6 +3621,10 @@ function addFx(
   y: number,
   o: { life: number; r?: number; x2?: number; y2?: number; text?: string },
 ): void {
+  // Words never print on top of each other (playthrough round: "JET DOWN"
+  // and "REPAIRED" landed on one spot): a new one steps up above any still
+  // fresh nearby.
+  if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
   g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text });
 }
 

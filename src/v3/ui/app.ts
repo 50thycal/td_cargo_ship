@@ -129,6 +129,25 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
 
 /** What each map's own system is, said once as the map starts (the 20-map
  *  plan: one new idea a map). */
+/** One-time tips on the first map, by wave (see drainEvents). */
+const FIRST_TIPS: Record<number, [string, string]> = {
+  2: ['MORE SHIPS, MORE POINTS', 'Slide SHIPS (left) up: ships come faster and each scores more.'],
+  3: ['FORMATIONS', 'Tap Pairs (top left) to sail in Column, Box or Spread. Each raid card says which helps.'],
+};
+const TIPS_KEY = 'straitwatch.v3.tips';
+
+/** True the first time a tip is asked for on this device. */
+function firstTime(id: string): boolean {
+  try {
+    const seen = JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]') as string[];
+    if (seen.includes(id)) return false;
+    localStorage.setItem(TIPS_KEY, JSON.stringify([...seen, id]));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
   marrow: ['RADAR TOWER', 'Its sweep tracks threats: your shots fly faster at them. The enemy wants it gone.'],
@@ -988,6 +1007,11 @@ export class App {
           // The wave's bell is the sim's own cue (wave.start).
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', {}, null);
           if (hint) this.showBanner(...hint);
+          // Playthrough round: the first map teaches the two left-rail
+          // controls a new player otherwise never learns (on a phone the
+          // slider's own hint is hidden for room). Once each, ever.
+          const tip = g.map.id === MAP_ORDER[0] && !this.free ? FIRST_TIPS[ev.wave] : undefined;
+          if (tip && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ttl: 5 });
           break;
         }
         case 'tanker':
@@ -1007,11 +1031,15 @@ export class App {
           break;
         case 'fork':
           break;
+        // Playthrough round: a new threat, launcher or pickup is explained
+        // the first time a player meets it, not again on every map (map 2
+        // re-taught all of map 1). Free Play and developer runs always show
+        // them (they test them).
         case 'debut':
-          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
+          if (this.explain(`debut:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
           break;
         case 'vector':
-          this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
+          if (this.explain(`vector:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -1026,7 +1054,14 @@ export class App {
           const stop = HIT_STOP / Math.sqrt(Math.max(1, this.speed));
           this.hitStop = Math.min(0.12, this.hitStop + stop);
           this.shake = Math.max(this.shake, 9);
-          this.ripples.push({ x: ev.x, y: ev.y, age: 0, impact: ev.label ?? (ev.threat && BIG_KILL_LABEL[ev.threat]) ?? 'DOWN' });
+          // Clear of any word already printed there (a "REPAIRED", another kill).
+          let ky = ev.y;
+          // (The label is drawn 40 above its point; a text fx at its own.)
+          const busy = () =>
+            g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - ev.x) < 70 && Math.abs(f.y - (ky - 40)) < 24) ||
+            this.ripples.some((r) => r.impact && Math.abs(r.x - ev.x) < 70 && Math.abs(r.y - ky) < 24);
+          for (let k = 0; k < 4 && busy(); k++) ky -= 26;
+          this.ripples.push({ x: ev.x, y: ky, age: 0, impact: ev.label ?? (ev.threat && BIG_KILL_LABEL[ev.threat]) ?? 'DOWN' });
           break;
         }
         case 'dry':
@@ -1046,12 +1081,19 @@ export class App {
         }
         case 'newPickup': {
           const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
-          if (hint) this.showBanner(...hint);
+          if (hint && this.explain(`pickup:${ev.pickup}`)) this.showBanner(...hint);
           break;
         }
       }
     }
     g.events.length = 0;
+  }
+
+  /** Show a first-meeting explanation? Once per device in the real game;
+   *  always in Free Play and developer mode. */
+  private explain(id: string): boolean {
+    if (this.free || this.dev) return true;
+    return firstTime(id);
   }
 
   /** A notice in the tray (see alerts.ts). Read time is real seconds;
@@ -1088,8 +1130,9 @@ export class App {
   private syncTimers(g: Game | null): void {
     const chips: [string, number, string][] = [];
     if (g && g.phase === 'wave') {
-      // V3: the loaded weapon counts down first, like a power-up.
-      if (g.weapon) chips.push([SHORT_NAME[g.weapon.id][g.weapon.level >= ABILITY_MAX ? 1 : 0], g.weapon.t, ICON_COLOR[g.weapon.id]]);
+      // The loaded weapon's seconds show on its own chip in the right rail;
+      // a second copy here pushed the power-ups up over the note button
+      // (playthrough round).
       if (g.overdriveT > 0) chips.push(['OVERDRIVE', g.overdriveT, PICKUP_COLORS.overdrive]);
       if (g.warpT > 0) chips.push(['TIME WARP', g.warpT, PICKUP_COLORS.timewarp]);
       if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
@@ -1307,7 +1350,8 @@ export class App {
     const classic = el('a', 'v2-classic', 'Play V2 →');
     classic.href = './v2.html';
     // The artifact build ships one game alone; there is no other page to link to.
-    classic.hidden = 'claude' in window;
+    // A player has no use for the old prototype: developer mode only.
+    classic.hidden = 'claude' in window || !this.dev;
     const foot = el('div', 'v2-menu-foot');
     const settings = button('⚙ Settings', 'v2-link v2-settings-btn', () => this.showSettings());
     const freePlay = button('▶ Free Play', 'v2-btn v3-free-btn', () => this.showFreePlay());
@@ -1631,7 +1675,11 @@ export class App {
       );
       if (this.devSettings.watch) rows.push(this.personaRow());
     }
-    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary', () => this.showMenu())]);
+    // On a phone the settings run past the bottom of the screen: Back stays
+    // in view at the foot of the panel (playthrough round).
+    const foot = el('div', 'v3-sticky-foot');
+    foot.append(button('Back', 'v2-btn primary', () => this.showMenu()));
+    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, foot]);
   }
 
   /** Dev: every sound in the game, by family, with a play button, its
@@ -2109,7 +2157,9 @@ export class App {
       buttons.push(button('Play it again', 'v2-btn primary', () => this.play(g.map.id, free)));
       buttons.push(button('Change setup', 'v2-btn', () => this.showFreePlay()));
     } else if (won) {
-      buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
+      // Short labels: five buttons fit one row on a small phone (playthrough
+      // round: they wrapped and Menu fell off the bottom).
+      buttons.push(button('Endless mode', 'v2-btn', () => this.rec?.endless()));
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.prepare(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
@@ -2118,7 +2168,7 @@ export class App {
     if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     if (this.notesOn && log) {
       const rated = !!log.rating;
-      buttons.push(button(rated ? '📝 Review ✓' : '📝 Rate & review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
+      buttons.push(button(rated ? '📝 Review ✓' : '📝 Review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
