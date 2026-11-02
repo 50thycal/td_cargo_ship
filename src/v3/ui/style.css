@@ -2852,13 +2852,18 @@ body {
   opacity: 0.6;
 }
 
-/* Playthrough round: a long panel's Back stays in view at its foot. */
-.v3-sticky-back {
+/* Playthrough round: a long panel's Back stays in view, in a strip at its
+   foot that the rows scroll under. */
+.v3-sticky-foot {
   position: sticky;
-  bottom: 0;
+  bottom: -1px;
   z-index: 1;
   flex: none;
-  box-shadow: 0 -10px 18px 6px var(--bg);
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 4px;
+  background: linear-gradient(rgb(7 13 18 / 0), var(--bg) 45%);
 }
 
 /* Playthrough round: on a phone the timers are one line each (name, then

@@ -1011,7 +1011,7 @@ export class App {
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
           const tip = g.map.id === MAP_ORDER[0] && !this.free ? FIRST_TIPS[ev.wave] : undefined;
-          if (tip && firstTime(tip[0])) this.showBanner(...tip);
+          if (tip && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ttl: 5 });
           break;
         }
         case 'tanker':
@@ -1666,7 +1666,9 @@ export class App {
     }
     // On a phone the settings run past the bottom of the screen: Back stays
     // in view at the foot of the panel (playthrough round).
-    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, button('Back', 'v2-btn primary v3-sticky-back', () => this.showMenu())]);
+    const foot = el('div', 'v3-sticky-foot');
+    foot.append(button('Back', 'v2-btn primary', () => this.showMenu()));
+    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, foot]);
   }
 
   /** Dev: every sound in the game, by family, with a play button, its
