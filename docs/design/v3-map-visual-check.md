@@ -192,6 +192,21 @@ The re-test frames found two more problems, both fixed:
 - a frigate on station short of lock B held that gate open; only a frigate
   under way opens one now.
 
+**Final comparison** (64 seeds a map, the same seeds before and after):
+
+| Map | Before | After | Ships lost a run |
+|---|---|---|---|
+| The Kesh Hook | 98% | 100% | 1.02 → 1.25 (jets now strafe both reaches) |
+| The Sharra Delta | 5% | 3% | 5.88 → 6.00 |
+| Saltgate Canal | 23% | 19% | 5.23 → 5.42 |
+| The Needle of Bosk | 19% | 16% | 5.31 → 5.38 |
+| Dunmar Crossing | 11% | 8% | 5.72 → 5.72 |
+| Lee of Marrow | 97% | 97% | 1.22 → 1.16 |
+| The Gauntlet | 81% | 80% | 2.48 → 2.47 |
+| The Strait | 95% | 97% | 1.36 → 1.23 |
+
+Every change is within the run-to-run noise at 64 seeds (about ±7 points).
+
 ## Checks
 
 - **`npm test`:** all pass. New:
