@@ -1031,11 +1031,15 @@ export class App {
           break;
         case 'fork':
           break;
+        // Playthrough round: a new threat, launcher or pickup is explained
+        // the first time a player meets it, not again on every map (map 2
+        // re-taught all of map 1). Free Play and developer runs always show
+        // them (they test them).
         case 'debut':
-          this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
+          if (this.explain(`debut:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
           break;
         case 'vector':
-          this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
+          if (this.explain(`vector:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -1077,12 +1081,19 @@ export class App {
         }
         case 'newPickup': {
           const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
-          if (hint) this.showBanner(...hint);
+          if (hint && this.explain(`pickup:${ev.pickup}`)) this.showBanner(...hint);
           break;
         }
       }
     }
     g.events.length = 0;
+  }
+
+  /** Show a first-meeting explanation? Once per device in the real game;
+   *  always in Free Play and developer mode. */
+  private explain(id: string): boolean {
+    if (this.free || this.dev) return true;
+    return firstTime(id);
   }
 
   /** A notice in the tray (see alerts.ts). Read time is real seconds;

@@ -2890,3 +2890,10 @@ body {
     font-size: 11px;
   }
 }
+
+/* Playthrough round: the loadout comes between runs: a dark backdrop, as
+   the result has, so the finished run (its HUD, its ships) doesn't show
+   through and the bay labels don't sit over the rails. */
+.v2-overlay.open:has(.v3-loadout) {
+  background: rgb(4 8 11 / 0.95);
+}

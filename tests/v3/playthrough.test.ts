@@ -45,3 +45,17 @@ describe('the words a player reads', () => {
       }
   });
 });
+
+describe('words on the field never print on top of each other', () => {
+  it('two pickups taken at one spot print their names apart', async () => {
+    const { tap } = await import('../../src/v3/sim/game');
+    const g = createGame(MAP_ORDER[0], 1, 1);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.pickups.push({ id: 9001, kind: 'shield', x: 600, y: 400, age: 0 }, { id: 9002, kind: 'steam', x: 610, y: 402, age: 0 });
+    tap(g, 600, 400, 20);
+    tap(g, 610, 402, 20);
+    const words = g.fx.filter((f) => f.kind === 'text');
+    expect(words).toHaveLength(2);
+    expect(Math.abs(words[0].y - words[1].y)).toBeGreaterThanOrEqual(20);
+  });
+});
