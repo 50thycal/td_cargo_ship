@@ -263,13 +263,6 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    if (ch.label) {
-      const p = samples[Math.min(samples.length - 1, 2)].p;
-      ctx.font = '800 20px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(220,238,248,0.5)';
-      ctx.fillText(ch.label, Math.max(110, Math.min(VIEW.width - 110, p.x)), p.y - ch.halfWidth - 10);
-    }
   }
   ctx.setLineDash([]);
 }
