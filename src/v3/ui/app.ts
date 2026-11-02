@@ -2157,7 +2157,9 @@ export class App {
       buttons.push(button('Play it again', 'v2-btn primary', () => this.play(g.map.id, free)));
       buttons.push(button('Change setup', 'v2-btn', () => this.showFreePlay()));
     } else if (won) {
-      buttons.push(button('Keep going (endless)', 'v2-btn', () => this.rec?.endless()));
+      // Short labels: five buttons fit one row on a small phone (playthrough
+      // round: they wrapped and Menu fell off the bottom).
+      buttons.push(button('Endless mode', 'v2-btn', () => this.rec?.endless()));
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.prepare(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
@@ -2166,7 +2168,7 @@ export class App {
     if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     if (this.notesOn && log) {
       const rated = !!log.rating;
-      buttons.push(button(rated ? '📝 Review ✓' : '📝 Rate & review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
+      buttons.push(button(rated ? '📝 Review ✓' : '📝 Review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
     }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
