@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { MAPS, MAP_ORDER, type MapId } from '../../src/v3/data/maps';
 import { laneAt, laneLength } from '../../src/v3/sim/lanes';
 import { createGame, laneBends, step, timeToImpact, type Game, type Ship } from '../../src/v3/sim/game';
-import { auditFrigates } from '../../tools/v3/route-audit';
+import { auditFrigates, auditMap } from '../../tools/v3/route-audit';
 
 const DT = 1 / 60;
 
@@ -97,5 +97,13 @@ describe('aircraft follow a curved lane round its bend', () => {
     const jet = g.threats.find((t) => t.kind === 'strafer')!;
     expect(jet.route).toBeUndefined();
     expect(Math.abs(jet.y - g.map.channels[0].y)).toBeLessThan(200);
+  });
+});
+
+describe('trucks, submarines, coves and the rest keep to their side of the coast', () => {
+  it('every map: roads on enemy land and clear of silos, pop-ups stopping at the shore, subs on open water off the lanes', () => {
+    // Bomber lines may cross land (an aircraft flies over it); everything
+    // else on the list is a fault.
+    for (const map of MAP_ORDER) expect(auditMap(map).filter((i) => !i.what.startsWith('bomber line')).map((i) => `${map}: ${i.what}`)).toEqual([]);
   });
 });

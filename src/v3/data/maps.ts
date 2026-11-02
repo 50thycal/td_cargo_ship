@@ -216,10 +216,12 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
       runners: [bypass([{ x: -60, y: 92 }, { x: 800, y: 88 }, { x: 1660, y: 92 }], ARCHIPELAGO_BASES.slice(3), -1)],
       popups: [
         // Round 13: out of a cave beside each islet's silo (they used to
-        // start on the silo itself), down to the water.
-        { from: { x: 374, y: 346 }, to: { x: 376, y: 386 } },
-        { from: { x: 846, y: 332 }, to: { x: 848, y: 378 } },
-        { from: { x: 1312, y: 346 }, to: { x: 1314, y: 382 } },
+        // start on the silo itself), down to the water. Map visual-check
+        // round: the caves sat 20 px from the shore, so a 51-long truck
+        // stopped in the sea; now it stops with its bumper at the water.
+        { from: { x: 374, y: 304 }, to: { x: 374, y: 340 } },
+        { from: { x: 846, y: 280 }, to: { x: 846, y: 332 } },
+        { from: { x: 1312, y: 308 }, to: { x: 1312, y: 337 } },
         { from: { x: 300, y: -40 }, to: { x: 300, y: 100 } },
         { from: { x: 1500, y: -40 }, to: { x: 1500, y: 100 } },
       ],
