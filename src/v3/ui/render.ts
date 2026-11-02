@@ -697,6 +697,8 @@ function drawEscort(ctx: CanvasRenderingContext2D, e: Escort): void {
   // frigate is half again as long, dark, outlined, with a wake.
   ctx.save();
   ctx.translate(e.x, e.y);
+  // It sails its lane: around a bend the hull turns with it.
+  ctx.rotate(e.heading);
   ctx.strokeStyle = 'rgba(226,240,255,0.35)';
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -733,7 +735,7 @@ function drawEscort(ctx: CanvasRenderingContext2D, e: Escort): void {
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(30, 0);
-  ctx.lineTo(30 + Math.cos(e.aim) * 24, Math.sin(e.aim) * 24);
+  ctx.lineTo(30 + Math.cos(e.aim - e.heading) * 24, Math.sin(e.aim - e.heading) * 24);
   ctx.stroke();
   ctx.restore();
 }
