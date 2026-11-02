@@ -565,7 +565,6 @@ body {
   font-size: 17px;
 }
 
-.v2-map-blurb,
 .v2-card-text {
   font-size: 12px;
   color: var(--muted);
@@ -641,27 +640,9 @@ body {
 }
 
 @media (max-height: 430px) {
-  .v2-map-card,
   .v2-card {
     min-height: 0;
     padding: 9px;
-  }
-  .v2-tag {
-    font-size: 12px;
-  }
-  /* Five map cards plus the title must fit a landscape phone without scrolling. */
-  .v2-menu h1 {
-    font-size: 30px;
-  }
-  .v2-menu {
-    gap: 6px;
-  }
-  .v2-map-card {
-    gap: 2px;
-  }
-  .v2-map-blurb {
-    font-size: 11px;
-    line-height: 1.25;
   }
   .v2-hud {
     font-size: 11px;
@@ -1041,35 +1022,7 @@ body {
   color: var(--gold);
 }
 
-/* Dev menus skip the map blurbs so the dev strip fits a landscape phone. */
-.v2-root.dev .v2-map-blurb {
-  display: none;
-}
-
-.v2-root.dev .v2-map-card {
-  min-height: 0;
-}
-
 /* ---- Settings ---------------------------------------------------------- */
-
-.v2-menu-foot {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 6px 20px;
-}
-
-.v2-settings-btn {
-  min-height: 36px;
-  padding: 0 6px;
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.v2-settings {
-  max-width: 520px;
-}
 
 .v2-setting {
   display: flex;
@@ -1962,43 +1915,8 @@ body {
   box-shadow: inset 0 3px 0 var(--card-color, transparent), 0 0 0 2px #fb923c, 0 0 22px rgb(251 146 60 / 0.35);
 }
 
-/* Menu: the Armory strip. */
-.v3-armory-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 14px;
-  width: 100%;
-  margin: 4px 0 10px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--panel-edge);
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.v3-armory-strip strong {
-  font-size: 13px;
-  letter-spacing: 0.1em;
-}
-
-.v3-salvage {
-  color: var(--gold);
-  font-weight: 800;
-}
-
-.v3-armory-strip em {
-  margin-left: auto;
-  font-style: normal;
-  font-size: 12px;
-  color: var(--accent);
-}
-
-.v3-can-buy,
-.v3-armory-strip em.v3-can-buy {
+/* The result screen's Armory button, when the run won cards. */
+.v3-can-buy {
   color: var(--gold);
   border-color: var(--gold);
 }
@@ -2125,52 +2043,14 @@ body {
   text-align: left;
 }
 
-.v3-bay-row .v3-gun-grid {
-  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
-  margin: 0;
-}
+
 
 @media (max-height: 460px) {
   .v3-bay-tab {
     padding: 4px 8px;
   }
-  .v3-bay-row {
-    margin-bottom: 3px;
-  }
-  .v3-bay-row .v3-gun {
-    gap: 1px;
-    padding: 4px 7px;
-  }
-  .v3-bay-row .v3-gun strong {
-    font-size: 12px;
-  }
-  .v3-bay-row .v3-gun span {
-    font-size: 10.5px;
-  }
-  .v3-bay-row .v3-gun .v2-card-level {
-    display: none;
-  }
 }
 
-/* Short screens (a phone on its side): the Armory fits without scrolling. */
-@media (max-height: 460px) {
-  .v3-armory .v2-sub {
-    font-size: 11.5px;
-    line-height: 1.3;
-    margin: 0;
-  }
-  .v3-armory h2 {
-    font-size: 20px;
-  }
-  .v3-armory {
-    gap: 6px;
-  }
-  .v3-armory > .v2-btn {
-    min-height: 32px;
-    padding: 0 12px;
-    font-size: 13px;
-  }
-}
 
 /* V3 playtest round 1, phone pass: the menu (taller since the Armory strip)
  * and the draft fit a landscape phone without scrolling, and the swap step's
@@ -2187,29 +2067,6 @@ body {
   padding: 0 14px;
 }
 
-@media (max-height: 460px) {
-  .v2-menu h1 {
-    font-size: 24px;
-    letter-spacing: 0.14em;
-  }
-  .v2-menu .v2-tag {
-    font-size: 11px;
-    line-height: 1.3;
-    margin: 0;
-  }
-  .v3-armory-strip {
-    padding: 5px 12px;
-    margin: 0;
-    gap: 2px 12px;
-  }
-  .v2-menu .v2-map-card {
-    /* Round 7: with all five maps open, 6 px too tall for a 667×375 phone. */
-    padding: 4px 9px;
-  }
-  .v2-menu-foot {
-    margin-top: 0;
-  }
-}
 
 @media (max-height: 460px) {
   .v3-chapter-tab {
@@ -2220,9 +2077,6 @@ body {
 
 @media (max-height: 400px) {
   /* The smallest phones: the menu's one-line pitch gives way to the maps. */
-  .v2-menu .v2-tag {
-    display: none;
-  }
   .v2-card-art {
     height: 54px;
   }
@@ -2330,14 +2184,6 @@ body {
   transform: none;
 }
 
-/* The menu's way into Free Play. */
-.v3-free-btn {
-  min-height: 34px;
-  padding: 0 16px;
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 /* Free Play's setup: two columns of label + picker lines. */
 .v3-fp-cols {
   display: grid;
@@ -2384,17 +2230,6 @@ body {
   font-size: 13px;
 }
 
-.v3-fp-toggle {
-  min-height: 32px;
-  margin-top: 2px;
-  font-size: 13px;
-}
-
-.v3-fp-toggle.on {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 @media (max-width: 560px) {
   .v3-fp-cols {
     grid-template-columns: 1fr;
@@ -2406,23 +2241,6 @@ body {
 }
 
 @media (max-height: 460px) {
-  /* Three equipped upgrades wrapped the menu's Armory strip onto a second
-   * line, pushing the menu off a 667×375 phone: one line, the loadout cut. */
-  .v3-armory-strip {
-    flex-wrap: nowrap;
-  }
-  .v3-armory-strip .v3-equipped {
-    flex: 1 1 0;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .v3-free-btn {
-    min-height: 26px;
-    padding: 0 12px;
-    font-size: 12.5px;
-  }
   /* The result screen: what the card does is in the Armory; here its
    * numbers, so three cards fit a phone. */
   .v3-won-cards .v2-card-text {
@@ -2451,8 +2269,7 @@ body {
   .v3-fp-col {
     gap: 4px;
   }
-  .v3-select,
-  .v3-fp-toggle {
+  .v3-select {
     min-height: 28px;
   }
 }
@@ -2932,5 +2749,1136 @@ body {
   .v2-result .v2-log-status {
     margin: 0;
     font-size: 11px;
+  }
+}
+
+/* ==== Menus round: the screens before a run ============================= */
+
+.v3-ic {
+  flex: none;
+  display: block;
+}
+
+/* Every pre-game screen eases in (not on a redraw of the same screen). */
+.v2-overlay.open:is([data-screen='menu'], [data-screen='armory'], [data-screen='loadout'], [data-screen='settings'], [data-screen='freeplay']) > .v2-panel:not(.v3-same) {
+  animation: v3-screen-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes v3-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* -- Main menu -- */
+
+.v2-panel.v2-menu {
+  max-width: 1040px;
+  height: 100%;
+  gap: 0;
+  justify-content: space-between;
+  overflow: visible;
+}
+
+.v3-menu-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.v3-top-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.v3-top-btn .v3-ic {
+  color: var(--accent);
+}
+
+.v3-top-btn.icon {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+.v3-top-btn:hover {
+  border-color: var(--accent);
+}
+
+.v3-top-btn:active {
+  transform: scale(0.96);
+}
+
+.v3-count {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--gold);
+  color: #241a00;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.v3-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.v3-title h1 {
+  margin: 0;
+  font-size: clamp(26px, 5.4vw, 52px);
+  letter-spacing: 0.2em;
+  /* The letter-spacing trails the last letter: keep the word centred. */
+  margin-right: -0.2em;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.6);
+}
+
+.v3-mark {
+  width: clamp(38px, 7vw, 64px);
+  height: clamp(38px, 7vw, 64px);
+  flex: none;
+}
+
+.v3-mark-sweep {
+  transform-origin: 32px 32px;
+  animation: v3-sweep 4s linear infinite;
+}
+
+@keyframes v3-sweep {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.v3-menu-maps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.v2-menu .v3-chapter-tab {
+  gap: 7px;
+  padding: 7px 11px;
+  background: rgb(7 13 18 / 0.7);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.v2-menu .v3-chapter-tab.on {
+  background: var(--panel);
+}
+
+.v3-chapter-tail {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-menu .v2-map-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-menu .v2-map-card {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgb(15 26 34 / 0.92);
+  animation: v3-card-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.2s;
+}
+
+@keyframes v3-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+.v2-menu .v2-map-card:not(.locked):hover {
+  transform: translateY(-2px);
+}
+
+.v2-menu .v2-map-card:not(.locked):active {
+  transform: scale(0.97);
+}
+
+.v2-menu .v2-map-card.locked {
+  opacity: 1;
+  cursor: pointer;
+  border-color: rgb(38 65 79 / 0.6);
+}
+
+.v2-menu .v2-map-card.next {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 22px rgb(127 233 255 / 0.25);
+  animation:
+    v3-card-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    v3-next-glow 2.4s ease-in-out 600ms infinite;
+  animation-delay: calc(var(--i, 0) * 45ms), 600ms;
+}
+
+@keyframes v3-next-glow {
+  50% {
+    box-shadow: 0 0 0 1px var(--accent), 0 0 30px rgb(127 233 255 / 0.45);
+  }
+}
+
+.v3-map-pic {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background:
+    linear-gradient(180deg, #0f2a3a, #0b1d28);
+  overflow: hidden;
+}
+
+.v3-map-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  transition: opacity 0.35s;
+}
+
+.v3-map-pic.loading img {
+  opacity: 0;
+}
+
+.v3-map-pic.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(127 233 255 / 0.08) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: v3-shimmer 1.1s linear infinite;
+}
+
+@keyframes v3-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.v2-map-card.locked .v3-map-pic img {
+  filter: grayscale(1) brightness(0.45) blur(1.5px);
+}
+
+.v3-map-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.v3-map-flag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #062029;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.v3-map-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 9px 0;
+}
+
+.v2-menu .v2-map-num {
+  flex: none;
+  font-size: 11px;
+}
+
+.v2-menu .v2-map-card strong {
+  font-size: 14px;
+  line-height: 1.2;
+  /* A long name ("The Needle of Bosk") takes two lines, never an ellipsis. */
+  overflow-wrap: anywhere;
+}
+
+.v2-menu .v2-map-card .v3-map-name {
+  flex: 1;
+}
+
+.v2-menu .v2-map-card.locked strong {
+  color: var(--muted);
+}
+
+.v2-menu .v2-map-best {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 15px;
+  margin: 2px 0 8px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-menu .v2-map-best.cleared {
+  color: var(--gold);
+}
+
+.v2-map-card.shake {
+  animation: v3-shake 0.36s;
+}
+
+@keyframes v3-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.v3-menu-maps {
+  position: relative;
+}
+
+.v3-menu-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 3;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #13232e;
+  border: 1px solid var(--panel-edge);
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+}
+
+.v3-menu-toast.show {
+  animation: v3-toast 2.2s ease both;
+}
+
+@keyframes v3-toast {
+  10%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* On a tall screen the menu gathers round the middle instead of pinning
+   the maps to the bottom edge. */
+.v2-panel.v2-menu {
+  max-height: 620px;
+}
+
+.v3-map-pic img {
+  filter: saturate(1.1) brightness(1.12);
+}
+
+/* Developer mode's strip sits under the title: the title gives it room. */
+.v2-root.dev .v2-menu .v3-title h1 {
+  font-size: clamp(22px, 4vw, 40px);
+}
+
+.v2-root.dev .v2-menu .v3-mark {
+  width: 34px;
+  height: 34px;
+}
+
+@media (max-height: 430px) {
+  .v3-top-btn {
+    min-height: 36px;
+    font-size: 13px;
+    padding: 0 12px;
+  }
+  .v3-top-btn.icon {
+    width: 36px;
+  }
+  .v2-menu .v3-chapter-tab {
+    padding: 5px 9px;
+  }
+}
+
+@media (max-width: 720px) {
+  .v2-menu .v2-map-card strong {
+    font-size: 12.5px;
+  }
+  .v3-map-name {
+    padding: 6px 7px 0;
+    gap: 5px;
+  }
+  .v2-menu .v2-map-best {
+    padding: 0 7px;
+    margin-bottom: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-overlay.open > .v2-panel,
+  .v2-menu .v2-map-card,
+  .v2-menu .v2-map-card.next,
+  .v3-mark-sweep,
+  .v2-map-card.shake,
+  .v3-map-pic.loading::after {
+    animation: none;
+  }
+  .v3-menu-toast.show {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* -- The header every screen shares -- */
+
+.v3-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.v3-head .v3-back {
+  justify-self: start;
+  padding: 0 14px 0 10px;
+  gap: 4px;
+}
+
+.v3-head-end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v3-head-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.v2-panel .v3-head h2 {
+  font-size: clamp(20px, 3.2vw, 28px);
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.v3-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.v3-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* -- The briefing (map → briefing → sail) -- */
+
+.v2-panel.v3-loadout {
+  max-width: 980px;
+  gap: 10px;
+}
+
+.v3-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+}
+
+.v3-brief-map {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.v3-brief-map .v3-map-pic {
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  flex: none;
+}
+
+.v3-brief-blurb {
+  margin: 10px 0 10px;
+  color: var(--ink);
+  opacity: 0.85;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.v3-brief-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-brief-best.cleared {
+  color: var(--gold);
+}
+
+.v3-brief-kit {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.7);
+}
+
+.v3-kit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 24px;
+}
+
+.v3-loadout .v3-bay-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  margin: 0;
+}
+
+.v3-loadout .v3-bay-label {
+  font-size: 10.5px;
+  color: var(--card-color, var(--muted));
+}
+
+.v3-loadout .v3-gun-grid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.v3-loadout .v3-gun {
+  gap: 3px;
+  padding: 6px 8px;
+  min-height: 46px;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.v3-loadout .v3-gun:active {
+  transform: scale(0.97);
+}
+
+.v3-loadout .v3-gun strong {
+  font-size: 12.5px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v3-loadout .v3-gun .v2-card-level {
+  margin: 0;
+}
+
+.v3-loadout .v3-gun .v2-card-level i {
+  width: 9px;
+}
+
+.v3-loadout .v3-bay-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  letter-spacing: 0;
+}
+
+.v3-loadout .v3-bay-label b {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--card-color, var(--muted));
+}
+
+.v3-bay-effect {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v3-loadout .v3-gun.none strong {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.v3-loadout .v3-gun.on {
+  border-color: var(--card-color, var(--gold));
+  box-shadow: 0 0 0 1px var(--card-color, var(--gold));
+  background: color-mix(in srgb, var(--card-color, var(--gold)) 10%, transparent);
+}
+
+.v3-loadout .v3-gun.none.on strong {
+  color: var(--ink);
+}
+
+.v3-kit-empty {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 6px 2px;
+  color: var(--accent);
+}
+
+.v3-kit-empty .v3-ic {
+  grid-row: span 2;
+}
+
+.v3-kit-empty strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.v3-kit-empty span {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.v3-sail {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 168px;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 6px 22px rgb(127 233 255 / 0.18);
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.v3-sail:active {
+  transform: scale(0.97);
+}
+
+/* A phone: the loadout takes more of the width, so three tiles fit a row. */
+@media (max-width: 760px) {
+  .v3-brief {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
+  .v3-brief-kit {
+    padding: 9px 10px 10px;
+  }
+  .v3-loadout .v3-gun-grid {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  }
+}
+
+@media (max-height: 430px) {
+  .v2-panel.v3-loadout {
+    gap: 8px;
+  }
+  .v3-brief {
+    gap: 12px;
+  }
+  .v3-brief-blurb {
+    font-size: 12.5px;
+    margin-top: 7px;
+  }
+  .v3-loadout .v3-gun {
+    min-height: 40px;
+    padding: 5px 8px;
+  }
+  .v3-sail {
+    min-height: 40px;
+  }
+  .v3-top-btn.v3-back {
+    min-height: 34px;
+  }
+}
+
+/* -- The Armory -- */
+
+.v2-panel.v3-armory {
+  max-width: 980px;
+  gap: 10px;
+}
+
+.v3-head-count {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.v3-head-count b {
+  color: var(--gold);
+  font-size: 15px;
+}
+
+.v3-armory .v3-bay-tab {
+  gap: 2px;
+  padding: 7px 12px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.v3-bay-tab-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.v3-bay-tab-top strong {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--card-color, var(--ink));
+}
+
+.v3-bay-tab-top i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-armory .v3-armory-card {
+  position: relative;
+  transition: transform 0.12s, box-shadow 0.2s, border-color 0.15s;
+}
+
+.v3-armory .v3-armory-card:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* The badge (EQUIPPED) or the lock sits on the art's corner, not on a row
+   of its own. */
+.v3-armory .v3-armory-card .v2-card-top {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: auto;
+  z-index: 1;
+}
+
+.v3-card-lock {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgb(7 13 18 / 0.75);
+  color: var(--muted);
+}
+
+.v3-armory .v3-armory-card.locked .v2-card-art {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.v3-armory .v3-armory-card.locked .v2-card-name {
+  color: var(--muted);
+}
+
+.v3-card-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: auto;
+}
+
+.v3-card-stat b {
+  color: var(--card-color, var(--accent));
+  font-size: 12px;
+}
+
+.v3-card-next {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.v3-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-height: 430px) {
+  .v2-panel.v3-armory {
+    gap: 7px;
+  }
+  /* The header and one-line hint left room: the art can be seen. */
+  .v3-armory .v3-armory-card .v2-card-art {
+    height: 58px;
+  }
+  .v3-armory .v3-bay-tab {
+    padding: 4px 10px;
+  }
+  .v3-hint {
+    font-size: 11px;
+  }
+}
+
+/* -- Settings -- */
+
+.v2-panel.v2-settings {
+  max-width: 900px;
+  gap: 12px;
+}
+
+.v3-set-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  align-items: start;
+}
+
+.v3-set-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+  text-align: left;
+}
+
+.v3-set-card.wide {
+  grid-column: 1 / -1;
+}
+
+.v3-set-card .v2-setting-group {
+  margin: 0 0 2px;
+  color: var(--accent);
+}
+
+/* Rows inside a card: hairlines between them, not a box each. */
+.v3-set-card .v2-setting {
+  padding: 10px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  justify-content: space-between;
+}
+
+.v3-set-card .v2-setting + .v2-setting {
+  border-top: 1px solid rgb(38 65 79 / 0.6);
+}
+
+.v3-set-card .v2-setting-text strong {
+  font-size: 14px;
+}
+
+.v3-set-card .v3-slider-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.v3-set-card .v3-slider-row strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.v3-set-card .v3-range {
+  margin: 0;
+}
+
+.v3-set-card .v3-board-btn {
+  align-self: flex-start;
+  margin: 8px 0 10px;
+}
+
+@media (max-height: 430px) {
+  .v3-set-card .v2-setting {
+    padding: 8px 0;
+  }
+  .v3-set-card .v2-switch {
+    width: 46px;
+    height: 26px;
+  }
+  .v3-set-card .v2-switch::after {
+    width: 18px;
+    height: 18px;
+  }
+  .v3-set-card .v2-switch.on::after {
+    transform: translateX(20px);
+  }
+}
+
+/* -- Free Play -- */
+
+.v2-panel.v3-freeplay {
+  max-width: 900px;
+  gap: 12px;
+}
+
+.v3-freeplay .v3-fp-cols {
+  gap: 12px;
+  align-items: start;
+}
+
+.v3-fp-card {
+  padding: 10px 12px 12px;
+}
+
+.v3-fp-card .v2-setting-group {
+  margin-bottom: 8px;
+}
+
+.v3-freeplay .v3-fp-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.v3-fp-switch {
+  grid-template-columns: 1fr auto !important;
+  cursor: pointer;
+}
+
+.v3-fp-switch .v2-switch {
+  width: 46px;
+  height: 26px;
+}
+
+.v3-fp-switch .v2-switch::after {
+  width: 18px;
+  height: 18px;
+}
+
+.v3-fp-switch .v2-switch.on::after {
+  transform: translateX(20px);
+}
+
+.v3-fp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.v3-fp-foot .v3-hint {
+  text-align: left;
+}
+
+.v3-fp-go {
+  align-self: auto;
+  flex: none;
+}
+
+@media (max-height: 430px) {
+  .v2-panel.v3-freeplay,
+  .v2-panel.v2-settings {
+    gap: 8px;
+  }
+  .v3-fp-card {
+    padding: 8px 10px 10px;
+  }
+  .v3-fp-card .v2-setting-group {
+    margin-bottom: 5px;
+  }
+}
+
+.v3-set-card .v2-setting-group {
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.v2-settings .v3-set-grid {
+  align-items: stretch;
+}
+
+@media (max-width: 760px) {
+  .v3-freeplay .v3-fp-line {
+    grid-template-columns: 62px minmax(0, 1fr) auto;
+  }
+  .v3-freeplay .v3-fp-line:has(> :nth-child(2):last-child) {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+  .v3-freeplay .v3-select {
+    padding: 0 4px;
+    font-size: 12.5px;
+  }
+}
+
+/* A screen that scrolls (developer settings, a full Armory loadout) keeps
+   its header, and so Back, in view. */
+.v2-panel > .v3-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 2px;
+}
+
+.v2-panel.scrolls > .v3-head {
+  background: linear-gradient(rgb(4 8 11 / 0.94) 75%, rgb(4 8 11 / 0));
+}
+
+/* -- The backdrop behind the screens around a run -- */
+
+/* The menu: the live map shows through the middle, darker at the edges so
+   the buttons and cards stay readable. */
+.v2-overlay.open[data-screen='menu'] {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 42%, rgb(4 8 11 / 0.42), rgb(4 8 11 / 0.78) 80%),
+    linear-gradient(rgb(4 8 11 / 0.35), rgb(4 8 11 / 0) 30%, rgb(4 8 11 / 0) 60%, rgb(4 8 11 / 0.6));
+}
+
+/* The other screens: the map stays a dim presence behind the panels. */
+.v2-overlay.open:is([data-screen='armory'], [data-screen='settings'], [data-screen='freeplay']) {
+  background: rgb(4 8 11 / 0.86);
+}
+
+.v2-overlay.open[data-screen='loadout'] {
+  background:
+    linear-gradient(90deg, rgb(4 8 11 / 0.8), rgb(4 8 11 / 0.9) 45%),
+    rgb(4 8 11 / 0.2);
+}
+
+/* -- Portrait: turn the phone, on every screen -- */
+
+.portrait .v2-rotate {
+  display: flex;
+}
+
+.v3-rotate-run {
+  display: none;
+}
+
+.playing .v3-rotate-run {
+  display: inline;
+}
+
+.playing .v3-rotate-menu {
+  display: none;
+}
+
+.v3-rotate-phone {
+  width: 72px;
+  height: 72px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  animation: v3-turn 2.4s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+}
+
+.v3-rotate-phone svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes v3-turn {
+  0%,
+  20% {
+    transform: rotate(0deg);
+  }
+  55%,
+  85% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-rotate-phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}
+
+/* The backdrop is scenery, not a second game: softened, so a map's own
+   labels don't read through the title. */
+.v2-root:not(.playing) > canvas {
+  filter: blur(1.5px) saturate(0.9);
+}
+
+.portrait .v2-rotate {
+  background: rgb(4 8 11 / 0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The entrance rule is more specific than the one above: say it plainly. */
+  .v2-overlay.open > .v2-panel,
+  .v2-menu .v2-map-card,
+  .v3-rotate-phone {
+    animation: none !important;
   }
 }

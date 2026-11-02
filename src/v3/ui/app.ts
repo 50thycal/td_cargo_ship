@@ -71,6 +71,8 @@ import { AudioEngine } from '../audio/engine';
 import { CUE_IDS, LOOP_CUES, MUSIC_CUES, type CueId, type LoopCue, type MusicCue } from '../audio/cues';
 import { SOUNDS } from '../audio/manifest';
 import { activeLoops, battleMusic } from '../audio/state';
+import { chromeSvg, MARK_SVG } from './chrome';
+import { calm, mapThumb, quietGame, thumbNow } from './thumbs';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
@@ -301,6 +303,13 @@ export class App {
   /** Portrait while playing: the field would be a sliver, so time stops and a
    *  "turn sideways" notice shows until the phone is rotated back. */
   private portrait = false;
+  /** The screens around a run draw a quiet game behind them (menus round):
+   *  the map the menu points to, or the one being briefed, its convoy
+   *  under way and nothing attacking. */
+  private backdrop: Game | null = null;
+  private backdropId: MapId | null = null;
+  private backdropAcc = 0;
+  private stillMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   private rotateNote = el('div', 'v2-rotate');
   /** Reads env(safe-area-inset-*) as pixels (notch / Dynamic Island / corners). */
   private safeProbe = el('div', 'v2-safe-probe');
@@ -327,7 +336,10 @@ export class App {
     root.classList.toggle('dev', this.dev);
     root.classList.toggle('notes', this.notesOn);
     root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
-    this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
+    // Landscape only: on every screen, not just in a run (menus round).
+    const phone = el('div', 'v3-rotate-phone');
+    phone.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="51" r="2.2" fill="currentColor"/></svg>`;
+    this.rotateNote.append(phone, el('strong', '', 'Turn your phone sideways'), el('span', 'v3-rotate-run', 'The game is paused until you do.'), el('span', 'v3-rotate-menu', 'Straitwatch is played in landscape.'));
     this.buildRails();
     this.bindInput();
     this.bindUiSounds();
@@ -389,6 +401,8 @@ export class App {
       game: () => this.game,
       toClient: (x: number, y: number) => ({ x: this.offX + x * this.scale, y: this.offY + y * this.scale }),
       control: () => this.control,
+      // The map behind the screens around a run, and how far it has sailed.
+      backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
       log: () => this.rec?.snapshot() ?? null,
       // Re-run a log here, so a browser test can check a recorded run replays.
       replay: (log: PlayLog) => {
@@ -886,6 +900,7 @@ export class App {
         this.hold.next = g.t + g.stats.holdRepeat;
       }
     }
+    else if (!g && this.backdrop && !this.portrait && !this.stillMotion && this.overlay.classList.contains('open')) this.stepBackdrop(real);
     if (g && this.beat) this.runBeat(now, real);
     if (g) {
       if (this.rec?.game === g) this.rec.observe();
@@ -945,7 +960,7 @@ export class App {
         if (!b || b.disabled || b.dataset.sfx) return;
         const text = (b.textContent ?? '').trim();
         const back = /^(Back|Menu|Cancel|Quit to menu|Change setup)$/.test(text);
-        const toggle = b.classList.contains('v2-switch') || b.classList.contains('v3-fp-toggle') || b.classList.contains('v2-dev-chip');
+        const toggle = b.classList.contains('v2-switch') || b.classList.contains('v2-dev-chip');
         this.audio.ui(back ? 'ui.back' : toggle ? 'ui.toggle' : 'ui.tap');
       },
       { capture: true },
@@ -972,16 +987,25 @@ export class App {
     // A frozen scene (draft, result, pause, flag dialog) is drawn once, not
     // 60 times a second: on a phone that redraw alone stalled frames for up
     // to 90 ms, and it slowed the ghost check running underneath.
-    const g = this.game;
-    const still = !!g && !this.beat && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
+    const g = this.game ?? this.backdrop;
+    const still = !!g && !!this.game && !this.beat && (g.phase !== 'wave' || this.paused || this.portrait) && !this.ripples.length && this.shake <= 0;
     const key = g ? `${g.phase}:${g.steps}:${this.canvas.width}x${this.canvas.height}:${this.offX}:${this.offY}:${this.zoom.z}` : '';
-    if (still && key === this.drawnKey) return;
-    this.drawnKey = still ? key : '';
+    // The backdrop redraws only when it has stepped (and never while a
+    // player who asked for reduced motion is looking at it).
+    if ((still || (!this.game && g)) && key === this.drawnKey) return;
+    this.drawnKey = still || !this.game ? key : '';
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070d12';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    if (!this.game) return;
+    if (!g) return;
+    if (!this.game) {
+      // The backdrop fills the screen edge to edge (no rails to leave room for).
+      const cover = Math.max(this.canvas.width / VIEW.width, this.canvas.height / VIEW.height);
+      ctx.setTransform(cover, 0, 0, cover, (this.canvas.width - VIEW.width * cover) / 2, (this.canvas.height - VIEW.height * cover) / 2);
+      drawFrame(ctx, g, [], 0);
+      return;
+    }
     const s = this.scale * this.dpr;
     ctx.setTransform(s, 0, 0, s, this.offX * this.dpr, this.offY * this.dpr);
     ctx.beginPath();
@@ -1292,6 +1316,54 @@ export class App {
   }
 
   /** Back to a clean field (a new run, the menu). */
+  /** Put this map behind the screens around a run (a new quiet game if it
+   *  changed). */
+  private setBackdrop(id: MapId): void {
+    if (this.backdropId === id && this.backdrop) return;
+    const g = quietGame(id);
+    // Start with the convoy already under way.
+    for (let i = 0; i < 60 * 12; i++) {
+      step(g, DT);
+      if (i % 60 === 0) calm(g);
+    }
+    calm(g);
+    this.backdrop = g;
+    this.backdropId = id;
+    this.backdropAcc = 0;
+    this.drawnKey = '';
+  }
+
+  /** The backdrop runs at a stately 0.7× and is kept clear of anything a
+   *  map's own features put in the air. */
+  private stepBackdrop(real: number): void {
+    const g = this.backdrop!;
+    this.backdropAcc += real * 0.7;
+    // Two steps at a time: it moves (and is redrawn) at 30 fps at most,
+    // which is plenty for ships at sea and half the work for a phone.
+    if (this.backdropAcc < DT * 2) return;
+    let n = 0;
+    while (this.backdropAcc >= DT && n < 6) {
+      step(g, DT);
+      this.backdropAcc -= DT;
+      n++;
+    }
+    if (n >= 6) this.backdropAcc = 0;
+    if (g.threats.length || g.fx.length || g.events.length || g.pickups.length) calm(g);
+    // A quiet game never ends, but should one ever stop, start it again.
+    if (g.phase !== 'wave') this.backdropId = null;
+    if (!this.backdropId && this.backdrop) this.setBackdrop(g.map.id);
+  }
+
+  /** Off the field for good: the run (if any) is logged and let go. */
+  private leaveRun(): void {
+    this.resetFinale();
+    if (this.rec) this.endRun(this.game?.phase === 'won' ? 'won' : 'quit');
+    this.rec = null;
+    this.game = null;
+    this.lastPhase = null;
+    this.root.classList.remove('playing');
+  }
+
   private resetFinale(): void {
     this.beat = null;
     this.alerts.clear();
@@ -1306,110 +1378,168 @@ export class App {
   }
 
   private showMenu(): void {
-    this.resetFinale();
-    if (this.rec) this.endRun(this.game?.phase === 'won' ? 'won' : 'quit');
-    this.rec = null;
-    this.game = null;
-    this.lastPhase = null;
-    this.root.classList.remove('playing');
+    this.leaveRun();
     // Twenty maps in four chapters of five: the menu shows one chapter at a
-    // time (five cards still fit a landscape phone), with a tab per chapter.
-    const open = (id: MapId) => this.dev || isUnlocked(this.progress, id);
+    // time, five picture cards in one row, with a tab per chapter.
+    const p = this.progress;
+    const open = (id: MapId) => this.dev || isUnlocked(p, id);
     if (!this.menuChapter) {
       const furthest = [...MAP_ORDER].reverse().find(open) ?? MAP_ORDER[0];
       this.menuChapter = chapterOf(furthest);
     }
     const tabs = el('div', 'v3-chapter-tabs');
+    tabs.setAttribute('role', 'tablist');
     for (const c of CHAPTERS) {
-      const first = MAP_ORDER[(c.n - 1) * 5];
-      const shut = !open(first);
+      const maps = MAP_ORDER.slice((c.n - 1) * 5, c.n * 5);
+      const shut = !open(maps[0]);
       const tab = button('', `v3-chapter-tab${c.n === this.menuChapter ? ' on' : ''}${shut ? ' locked' : ''}`, () => {
+        if (c.n === this.menuChapter) return;
+        this.audio.ui('armory.tab');
         this.menuChapter = c.n;
         this.showMenu();
       });
       tab.dataset.chapter = String(c.n);
-      tab.append(el('b', '', `${c.n}`), el('span', '', shut ? `${c.name} 🔒` : c.name));
+      tab.dataset.sfx = 'tab';
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(c.n === this.menuChapter));
+      // An open chapter shows how much of it is cleared; a shut one, a lock.
+      const done = maps.filter((m) => p.cleared.includes(m)).length;
+      const tail = el('i', 'v3-chapter-tail');
+      if (shut) tail.innerHTML = chromeSvg('lock', 13);
+      else tail.textContent = `${done}/5`;
+      tab.append(el('b', '', `${c.n}`), el('span', '', c.name), tail);
       tabs.append(tab);
     }
+    const toast = el('div', 'v3-menu-toast');
+    toast.setAttribute('role', 'status');
     const shown = MAP_ORDER.map((id, i) => ({ id, i })).filter(({ id }) => chapterOf(id) === this.menuChapter);
-    const cards = shown.map(({ id, i }) => {
+    const cards = shown.map(({ id, i }, k) => {
       const m = MAPS[id];
       const locked = !open(id);
-      const best = this.progress.best[id];
-      const card = button('', `v2-map-card${locked ? ' locked' : ''}`, () => !locked && this.prepare(id));
-      card.disabled = locked;
+      const best = p.best[id];
+      const cleared = p.cleared.includes(id);
+      // NEW marks the maps the save itself has opened and not yet played
+      // (developer mode opens every map; those aren't new to the player).
+      const fresh = !locked && !best && isUnlocked(p, id);
+      const card = button('', `v2-map-card${locked ? ' locked' : ''}${fresh ? ' next' : ''}`, () => {
+        if (!locked) {
+          this.prepare(id);
+          return;
+        }
+        // A locked map says why only when asked: a shake and one line.
+        card.classList.remove('shake');
+        void card.offsetWidth;
+        card.classList.add('shake');
+        toast.textContent = `Clear ${MAPS[MAP_ORDER[i - 1]].name} to open ${m.name}`;
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+      });
+      if (locked) card.setAttribute('aria-label', `${m.name}, locked: clear ${MAPS[MAP_ORDER[i - 1]].name} to open it`);
       card.dataset.map = id;
-      card.append(
-        el('span', 'v2-map-num', `${i + 1}`),
-        el('strong', '', m.name),
-        el('span', 'v2-map-blurb', locked ? `Clear ${MAPS[MAP_ORDER[i - 1]].name} to unlock.` : m.blurb),
-        el('span', 'v2-map-best', best ? `Best ${best.score.toLocaleString()} · wave ${best.wave}` : locked ? '🔒' : 'Not played yet'),
-      );
+      card.style.setProperty('--i', String(k));
+      const pic = el('span', 'v3-map-pic');
+      const url = thumbNow(id);
+      const img = el('img');
+      img.alt = '';
+      img.decoding = 'async';
+      if (url) img.src = url;
+      else {
+        pic.classList.add('loading');
+        void mapThumb(id).then((u) => {
+          if (!u) return;
+          img.src = u;
+          pic.classList.remove('loading');
+        });
+      }
+      pic.append(img);
+      if (locked) pic.insertAdjacentHTML('beforeend', `<span class="v3-map-lock">${chromeSvg('lock', 22)}</span>`);
+      if (fresh) pic.append(el('span', 'v3-map-flag', 'NEW'));
+      const status = el('span', 'v2-map-best');
+      if (best) {
+        if (cleared) status.innerHTML = `${chromeSvg('check', 12)} ${best.score.toLocaleString()}`;
+        else status.textContent = `Wave ${best.wave} · ${best.score.toLocaleString()}`;
+        status.classList.toggle('cleared', cleared);
+      }
+      const name = el('span', 'v3-map-name');
+      name.append(el('span', 'v2-map-num', `${i + 1}`), el('strong', '', m.name));
+      card.append(pic, name, status);
       return card;
     });
+    const grid = el('div', 'v2-map-grid');
+    grid.append(...cards);
+    // Behind the menu: the chapter's new map, else its furthest open one,
+    // else the furthest map open anywhere.
+    const here = shown.map(({ id }) => id);
+    const behind =
+      here.find((id) => isUnlocked(p, id) && !p.best[id]) ?? [...here].reverse().find((id) => isUnlocked(p, id)) ?? [...MAP_ORDER].reverse().find((id) => isUnlocked(p, id)) ?? MAP_ORDER[0];
+    this.setBackdrop(behind);
+    // The top bar: the Armory, Free Play, Settings (and the note button
+    // while playtest notes are on), all one style.
+    const bar = el('div', 'v3-menu-bar');
+    const armory = button('', 'v3-top-btn v3-armory-btn', () => this.showArmory());
+    armory.innerHTML = `${chromeSvg('anchor')}<span>Armory</span>`;
+    const count = el('b', 'v3-count', String(p.cards));
+    armory.append(count);
+    armory.setAttribute('aria-label', `Armory, ${p.cards} card${p.cards === 1 ? '' : 's'} found`);
+    armory.dataset.cards = String(p.cards);
+    const freePlay = button('', 'v3-top-btn v3-free-btn', () => this.showFreePlay());
+    freePlay.innerHTML = `${chromeSvg('play', 16)}<span>Free Play</span>`;
+    freePlay.dataset.freePlay = '1';
+    const settings = button('', 'v3-top-btn icon v2-settings-btn', () => this.showSettings());
+    settings.innerHTML = chromeSvg('gear', 20);
+    settings.setAttribute('aria-label', 'Settings');
+    bar.append(armory, freePlay);
+    if (this.notesOn) {
+      const note = button('', 'v3-top-btn v3-menu-note', () => this.openMenuNote());
+      note.innerHTML = `${chromeSvg('note', 17)}<span>Note</span>`;
+      bar.append(note);
+    }
+    bar.append(settings);
     const classic = el('a', 'v2-classic', 'Play V2 →');
     classic.href = './v2.html';
     // The artifact build ships one game alone; there is no other page to link to.
     // A player has no use for the old prototype: developer mode only.
-    classic.hidden = 'claude' in window || !this.dev;
-    const foot = el('div', 'v2-menu-foot');
-    const settings = button('⚙ Settings', 'v2-link v2-settings-btn', () => this.showSettings());
-    const freePlay = button('▶ Free Play', 'v2-btn v3-free-btn', () => this.showFreePlay());
-    freePlay.dataset.freePlay = '1';
-    foot.append(freePlay, settings, classic);
-    if (this.notesOn) foot.insertBefore(button('📝 Note', 'v2-link v3-menu-note', () => this.openMenuNote()), classic);
-    this.showOverlay('v2-menu', [
-      el('h1', '', 'STRAITWATCH'),
-      el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
-      this.armoryStrip(),
-      tabs,
-      el('div', 'v2-map-grid', ''),
-      ...(this.dev ? [this.devPanel()] : []),
-      foot,
-    ]);
-    this.overlay.querySelector('.v2-map-grid')!.append(...cards);
-  }
-
-  /** Menu strip: the cards found, the loadout, and the way in. */
-  private armoryStrip(): HTMLElement {
-    const p = this.progress;
-    const strip = button('', 'v3-armory-strip', () => this.showArmory());
-    const loadout = BAY_ORDER.map((b) => p.equipped[b])
-      .filter((id): id is ArmoryId => !!id)
-      .map((id) => `${ARMORY[id].name} ${armoryLevel(p.armory, id)}`);
-    strip.append(
-      el('strong', '', '⚓ ARMORY'),
-      el('span', 'v3-salvage', `${p.cards} card${p.cards === 1 ? '' : 's'} found`),
-      el('span', 'v3-equipped', loadout.length ? loadout.join(' · ') : 'Base gun, nothing equipped'),
-      el('em', '', 'Your cards →'),
-    );
-    return strip;
+    if (!('claude' in window) && this.dev) bar.prepend(classic);
+    const title = el('div', 'v3-title');
+    title.innerHTML = MARK_SVG;
+    title.append(el('h1', '', 'STRAITWATCH'));
+    const maps = el('div', 'v3-menu-maps');
+    // The locked-map line shows just above the tabs, under the title, where
+    // it covers nothing.
+    maps.append(toast, tabs, grid);
+    this.showOverlay('v2-menu', [bar, title, ...(this.dev ? [this.devPanel()] : []), maps]);
   }
 
   /** The Armory (round 7): three bays, Gun, Hull and Supply, each a row of
    *  cards. Cards are won at the end of a run, never bought (playtest: "they
    *  don't get to pick which ones"); a card won again adds a level. A run
-   *  takes ONE card from each bay: tap one you hold to equip it. */
+   *  takes ONE card from each bay: tap one you hold to equip it. Menus
+   *  round: each fact once (the bay is the tab, not a label on every card;
+   *  a card not found is greyed with a lock, not told three times). */
   private showArmory(back: () => void = () => this.showMenu()): void {
     const p = this.progress;
     const bay = this.armoryBay;
     const again = () => this.showArmory(back);
     const tabs = el('div', 'v3-bay-tabs');
+    tabs.setAttribute('role', 'tablist');
     for (const b of BAY_ORDER) {
       const eq = p.equipped[b];
       const held = bayItems(b).filter((id) => armoryLevel(p.armory, id) > 0).length;
       const tab = button('', `v3-bay-tab${b === bay ? ' on' : ''}`, () => {
+        if (b === this.armoryBay) return;
         this.audio.ui('armory.tab');
         this.armoryBay = b;
         again();
       });
       tab.dataset.bay = b;
       tab.dataset.sfx = 'tab';
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(b === bay));
       tab.style.setProperty('--card-color', BAYS[b].color);
-      tab.append(
-        el('strong', '', `${BAYS[b].name.toUpperCase()} · ${held}/${bayItems(b).length}`),
-        el('span', '', eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : held ? 'nothing equipped' : 'no cards yet'),
-      );
+      const top = el('span', 'v3-bay-tab-top');
+      top.append(el('strong', '', BAYS[b].name), el('i', '', `${held}/${bayItems(b).length}`));
+      tab.append(top, el('span', '', eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : held ? 'Nothing equipped' : 'No cards yet'));
       tabs.append(tab);
     }
     const row = el('div', `v3-armory-cards n${bayItems(bay).length}`);
@@ -1417,46 +1547,59 @@ export class App {
       ...bayItems(bay).map((id) => {
         const lv = armoryLevel(p.armory, id);
         const on = p.equipped[bay] === id;
-        const card = this.armoryCard(id, lv, on ? 'EQUIPPED' : lv ? 'EQUIP' : 'NOT FOUND', () => {
+        const card = this.armoryCard(id, lv, on ? 'EQUIPPED' : '', () => {
           if (lv && equipArmory(p, on ? null : id, bay)) {
             this.audio.ui(on ? 'ui.back' : 'armory.equip');
             again();
           }
-        });
+        }, false);
         card.classList.toggle('chosen', on);
         card.classList.toggle('locked', !lv);
         card.disabled = !lv;
+        card.setAttribute('aria-pressed', String(on));
         return card;
       }),
     );
-    this.showOverlay('v3-armory', [
-      el('h2', '', 'Armory'),
-      el('p', 'v2-sub', `Cards drop at the end of a run (clear ${CARD_DROPS.minWaves} waves; more for clearing a map). A card you hold again adds a level. A run takes one from each bay: tap a card to equip it.`),
-      tabs,
-      row,
-      button('Back', 'v2-btn primary', back),
-    ]);
+    const count = el('span', 'v3-head-count');
+    count.innerHTML = `<b>${p.cards}</b> card${p.cards === 1 ? '' : 's'} found`;
+    // One line of help: how cards come while there are none, how they are
+    // used once there are some.
+    const hint = p.cards
+      ? 'Tap a card to equip it, one per bay. Tap it again to take it off.'
+      : `Clear ${CARD_DROPS.minWaves} waves in a run to win a card. A card won again gains a level.`;
+    this.showOverlay('v3-armory', [this.screenHead('Armory', back, count), tabs, row, el('p', 'v3-hint', hint)]);
   }
 
-  /** One Armory card, drawn like a weapon card: its bay, a badge, the art,
-   *  its name, its level pips, what it does and the number now and next. */
-  private armoryCard(id: ArmoryId, lv: number, badge: string, onTap?: () => void): HTMLButtonElement {
+  /** One Armory card, drawn like a weapon card: a badge, the art, its
+   *  name, its level pips, what it does and the number now and next.
+   *  `bayTag`: name its bay (on the result screen; in the Armory the tab
+   *  already does). */
+  private armoryCard(id: ArmoryId, lv: number, badge: string, onTap?: () => void, bayTag = true): HTMLButtonElement {
     const def = ARMORY[id];
     const card = button('', 'v2-card v3-armory-card', () => onTap?.());
     card.dataset.armory = id;
     card.dataset.sfx = 'armory';
     card.style.setProperty('--card-color', BAYS[def.bay].color);
     const top = el('span', 'v2-card-top', '');
-    const badgeClass = badge === 'EQUIPPED' ? 'max' : badge === 'NEW' ? 'new' : badge === 'NOT FOUND' || badge === 'EQUIP' ? 'off' : 'up';
-    top.append(el('span', 'v2-card-answers', BAYS[def.bay].name), el('span', `v2-badge ${badgeClass}`, badge));
+    const badgeClass = badge === 'EQUIPPED' ? 'max' : badge === 'NEW' ? 'new' : 'up';
+    if (bayTag) top.append(el('span', 'v2-card-answers', BAYS[def.bay].name));
+    if (badge) top.append(el('span', `v2-badge ${badgeClass}`, badge));
+    else if (!lv) top.insertAdjacentHTML('beforeend', `<span class="v3-card-lock">${chromeSvg('lock', 14)}</span>`);
     const art = el('span', 'v2-card-art', '');
     art.innerHTML = armoryArtSvg(id);
-    const pips = el('span', 'v2-card-level', '');
-    for (let k = 1; k <= def.max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
-    pips.append(el('span', '', lv >= def.max ? 'MAX' : `LV ${lv}/${def.max}`));
-    const now = lv ? def.show(lv) : 'Not found yet';
-    const next = lv < def.max ? `${lv ? ' · next: ' : ' · first card: '}${def.show(lv + 1)}` : '';
-    card.append(top, art, el('strong', 'v2-card-name', def.name), pips, el('span', 'v2-card-text', def.blurb), el('span', 'v3-card-stat', `${now}${next}`));
+    const stat = el('span', 'v3-card-stat');
+    if (lv) {
+      const pips = el('span', 'v2-card-level', '');
+      for (let k = 1; k <= def.max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
+      pips.append(el('span', '', lv >= def.max ? 'MAX' : `LV ${lv}/${def.max}`));
+      stat.append(el('b', '', def.show(lv)));
+      if (lv < def.max) stat.append(el('span', 'v3-card-next', `Next: ${def.show(lv + 1)}`));
+      card.append(top, art, el('strong', 'v2-card-name', def.name), pips, el('span', 'v2-card-text', def.blurb), stat);
+    } else {
+      // Not found yet: what it does, and what the first card would give.
+      stat.append(el('span', 'v3-card-next', `First card: ${def.show(1)}`));
+      card.append(top, art, el('strong', 'v2-card-name', def.name), el('span', 'v2-card-text', def.blurb), stat);
+    }
     return card;
   }
 
@@ -1551,135 +1694,200 @@ export class App {
         );
       }),
     );
-    const drops = button(fp.frequentDrops ? '✓ Frequent weapon drops' : 'Frequent weapon drops: off', `v2-btn v3-fp-toggle${fp.frequentDrops ? ' on' : ''}`, () => {
+    const drops = button('', `v2-switch${fp.frequentDrops ? ' on' : ''}`, () => {
       fp.frequentDrops = !fp.frequentDrops;
       saveFreeSetup(fp);
       this.showFreePlay();
     });
+    drops.setAttribute('role', 'switch');
+    drops.setAttribute('aria-checked', String(fp.frequentDrops));
+    drops.setAttribute('aria-label', 'Frequent weapon drops');
     drops.dataset.fp = 'drops';
-    right.append(drops);
+    const dropLine = el('label', 'v3-fp-line v3-fp-switch');
+    dropLine.append(el('span', 'v3-fp-label', 'Frequent drops'), drops);
+    right.append(dropLine);
+    const card = (title: string, body: HTMLElement) => {
+      const c = el('section', 'v3-set-card v3-fp-card');
+      c.append(el('h3', 'v2-setting-group', title), body);
+      return c;
+    };
     const cols = el('div', 'v3-fp-cols');
-    cols.append(left, right);
-    const go = button('Start free play →', 'v2-btn primary', () => this.play(fp.map, fp));
+    cols.append(card('Map and weapons', left), card('Armory', right));
+    const go = button('', 'v2-btn primary v3-sail v3-fp-go', () => this.play(fp.map, fp));
+    go.innerHTML = `<span>Start</span>${chromeSvg('arrow', 18)}`;
     go.dataset.freeStart = '1';
-    const row = el('div', 'v2-btn-row');
-    row.append(button('Menu', 'v2-btn', () => this.showMenu()), go);
-    this.showOverlay('v3-freeplay', [
-      el('h2', '', 'Free Play'),
-      el('p', 'v2-sub', 'Test any weapon and any Armory upgrade, at any level, from any wave. Nothing here counts toward records or Armory cards.'),
-      cols,
-      row,
-    ]);
+    const foot = el('div', 'v3-fp-foot');
+    foot.append(el('p', 'v3-hint', 'Nothing in Free Play counts toward records or Armory cards.'), go);
+    this.showOverlay('v3-freeplay', [this.screenHead('Free Play', () => this.showMenu()), cols, foot]);
   }
 
-  /** Before a run: pick the one upgrade it takes from each bay (the last
-   *  ones are ready). With nothing bought yet there is nothing to pick.
-   *  Watch mode and the dev gun override skip it. */
-  private prepare(id: MapId): void {
+  /** The header every screen around a run shares: Back on the left, the
+   *  title in the middle, an optional control on the right. */
+  private screenHead(title: string, back: () => void, right?: HTMLElement, eyebrow?: string): HTMLElement {
+    const head = el('div', 'v3-head');
+    const b = button('', 'v3-top-btn v3-back', back);
+    b.innerHTML = `${chromeSvg('back', 18)}<span>Back</span>`;
+    // No data-sfx: its "Back" label gets the back sound from the shared
+    // click handler.
+    b.dataset.back = '1';
+    const mid = el('div', 'v3-head-title');
+    if (eyebrow) mid.append(el('span', 'v3-eyebrow', eyebrow));
+    mid.append(el('h2', '', title));
+    const end = el('div', 'v3-head-end');
+    if (right) end.append(right);
+    head.append(b, mid, end);
+    return head;
+  }
+
+  /** Before a run, the briefing (menus round): the map's picture, what it
+   *  is about, the best so far, and the loadout (one Armory card from each
+   *  bay that holds one). `brief` false (Try again): straight back in when
+   *  there is no loadout to change. Watch mode and the dev gun override
+   *  skip it. */
+  private prepare(id: MapId, brief = true): void {
     this.menuChapter = chapterOf(id);
+    this.leaveRun();
+    this.setBackdrop(id);
     const p = this.progress;
     const bays = BAY_ORDER.filter((b) => bayItems(b).some((a) => armoryLevel(p.armory, a) > 0));
     const watch = this.dev && this.devSettings.watch;
-    if (!bays.length || watch || (this.dev && this.devSettings.armory !== 'yours')) {
+    if ((!bays.length && !brief) || watch || (this.dev && this.devSettings.armory !== 'yours')) {
       this.play(id);
       return;
     }
     const tile = (bay: BayId, a: ArmoryId | null) => {
       const lv = a ? armoryLevel(p.armory, a) : 0;
       const on = p.equipped[bay] === a;
-      const t = button('', `v3-gun${on ? ' on' : ''}`, () => {
+      const t = button('', `v3-gun${on ? ' on' : ''}${a ? '' : ' none'}`, () => {
+        if (on) return;
+        this.audio.ui('armory.equip');
         equipArmory(p, a, bay);
-        this.prepare(id);
+        this.prepare(id, brief);
       });
       t.dataset.gun = a ?? `none-${bay}`;
+      t.dataset.sfx = 'armory';
+      t.style.setProperty('--card-color', BAYS[bay].color);
+      t.setAttribute('aria-pressed', String(on));
+      t.append(el('strong', '', a ? ARMORY[a].name : bay === 'gun' ? 'Base gun' : 'None'));
       if (a) {
         const pips = el('span', 'v2-card-level');
         for (let k = 1; k <= ARMORY[a].max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
-        t.append(el('strong', '', ARMORY[a].name), pips, el('span', '', ARMORY[a].show(lv)));
-      } else t.append(el('strong', '', bay === 'gun' ? 'Base gun' : 'None'), el('span', '', bay === 'gun' ? 'no upgrade' : 'leave it empty'));
+        pips.setAttribute('aria-label', `level ${lv} of ${ARMORY[a].max}`);
+        t.append(pips);
+      }
       return t;
     };
-    const rows = bays.map((bay) => {
-      const row = el('div', 'v3-bay-row');
-      row.dataset.bay = bay;
-      const grid = el('div', 'v3-gun-grid');
-      const owned = bayItems(bay).filter((a) => armoryLevel(p.armory, a) > 0);
-      grid.style.setProperty('--n', String(owned.length + 1));
-      grid.append(...owned.map((a) => tile(bay, a)), tile(bay, null));
-      row.append(el('span', 'v3-bay-label', BAYS[bay].name.toUpperCase()), grid);
-      return row;
-    });
-    const row = el('div', 'v2-btn-row');
-    const go = button(`Sail: ${MAPS[id].name} →`, 'v2-btn primary', () => this.play(id));
+    const kit = el('div', 'v3-brief-kit');
+    const kitHead = el('div', 'v3-kit-head');
+    kitHead.append(el('span', 'v3-eyebrow', 'Loadout'));
+    if (bays.length) {
+      const toArmory = button('', 'v3-text-btn', () => this.showArmory(() => this.prepare(id, brief)));
+      toArmory.innerHTML = `<span>Armory</span>${chromeSvg('arrow', 14)}`;
+      kitHead.append(toArmory);
+    }
+    kit.append(kitHead);
+    if (bays.length) {
+      for (const bay of bays) {
+        const row = el('div', 'v3-bay-row');
+        row.dataset.bay = bay;
+        row.style.setProperty('--card-color', BAYS[bay].color);
+        const grid = el('div', 'v3-gun-grid');
+        const owned = bayItems(bay).filter((a) => armoryLevel(p.armory, a) > 0);
+        grid.append(...owned.map((a) => tile(bay, a)), tile(bay, null));
+        // The bay's heading says what its chosen card does: once, for the
+        // card in use, not on every tile.
+        const eq = p.equipped[bay];
+        const label = el('span', 'v3-bay-label');
+        label.append(el('b', '', BAYS[bay].name), el('span', 'v3-bay-effect', eq ? ARMORY[eq].show(armoryLevel(p.armory, eq)) : 'no upgrade'));
+        row.append(label, grid);
+        kit.append(row);
+      }
+    } else {
+      // A new player's loadout is the base gun; this is where cards will go.
+      const empty = el('div', 'v3-kit-empty');
+      empty.innerHTML = chromeSvg('anchor', 26);
+      empty.append(el('strong', '', 'Base gun'), el('span', '', `Clear ${CARD_DROPS.minWaves} waves in a run to win an Armory card. Equip cards here.`));
+      kit.append(empty);
+    }
+    const m = MAPS[id];
+    const best = p.best[id];
+    const info = el('div', 'v3-brief-map');
+    const pic = el('span', 'v3-map-pic');
+    const img = el('img');
+    img.alt = `${m.name} map`;
+    const url = thumbNow(id, 640);
+    if (url) img.src = url;
+    else {
+      pic.classList.add('loading');
+      void mapThumb(id, 640).then((u) => {
+        if (!u) return;
+        img.src = u;
+        pic.classList.remove('loading');
+      });
+    }
+    pic.append(img);
+    info.append(pic, el('p', 'v3-brief-blurb', m.blurb));
+    if (best) {
+      const b = el('span', 'v3-brief-best');
+      b.innerHTML = p.cleared.includes(id) ? `${chromeSvg('check', 13)} Cleared · best ${best.score.toLocaleString()}` : `Best: wave ${best.wave} · ${best.score.toLocaleString()}`;
+      b.classList.toggle('cleared', p.cleared.includes(id));
+      info.append(b);
+    }
+    const go = button('', 'v2-btn primary v3-sail', () => this.play(id));
+    go.innerHTML = `<span>Sail</span>${chromeSvg('arrow', 18)}`;
     go.dataset.start = '1';
-    row.append(button('⚓ Armory', 'v2-btn', () => this.showArmory(() => this.prepare(id))), button('Menu', 'v2-btn', () => this.showMenu()), go);
-    this.showOverlay('v3-loadout', [
-      el('span', 'v2-draft-eyebrow', MAPS[id].name.toUpperCase()),
-      el('h2', '', 'Choose your loadout'),
-      el('p', 'v2-sub', 'One Armory upgrade from each bay goes into this run.'),
-      ...rows,
-      row,
-    ]);
+    // Sail sits under the map's description, leaving the loadout the whole
+    // right-hand column (a phone has only 375 px of height).
+    info.append(go);
+    const body = el('div', 'v3-brief');
+    body.append(info, kit);
+    const n = MAP_ORDER.indexOf(id) + 1;
+    const chapter = CHAPTERS[chapterOf(id) - 1];
+    this.showOverlay('v3-loadout', [this.screenHead(m.name, () => this.showMenu(), undefined, `Map ${n} · ${chapter.name}`), body]);
   }
 
+  /** Settings (menus round): two grouped cards side by side on a landscape
+   *  screen, Sound and Playtest, one sentence a row; the developer card
+   *  below them only while developer mode is on. */
   private showSettings(): void {
-    const sw = button('', `v2-switch${this.dev ? ' on' : ''}`, () => {
-      this.setDev(!this.dev);
-      this.showSettings();
+    const notes = this.switchRow('notes', 'Playtest notes', 'Note a moment mid-run and rate each volley; both go into the game log.', this.notesOn, (on) => {
+      this.notesOn = on;
+      setNotesEnabled(on);
+      this.root.classList.toggle('notes', on);
     });
-    sw.setAttribute('role', 'switch');
-    sw.setAttribute('aria-checked', String(this.dev));
-    sw.dataset.setting = 'dev';
-    const row = el('div', 'v2-setting');
-    const text = el('div', 'v2-setting-text');
-    text.append(
-      el('strong', '', 'Developer mode'),
-      el(
-        'span',
-        '',
-        'For playtesting. Shorter test runs (½, ¼, ⅛ length), every map open, a start-wave picker, 3× and 4× speed, and a retry button for a lost wave. Dev runs never count toward your records.',
-      ),
-    );
-    row.append(text, sw);
-    const rows: HTMLElement[] = [
-      ...this.soundRows(),
-      row,
-      this.switchRow(
-        'notes',
-        'Playtest notes',
-        'A 📝 button while you play: pause and say what happened (it reaches Claude with that exact moment). After each volley it turns to ★ RATE: difficulty, fun and intensity, 1 to 5. After a run, rate it and step through its hard moments on a timeline.',
-        this.notesOn,
-        (on) => {
-          this.notesOn = on;
-          setNotesEnabled(on);
-          this.root.classList.toggle('notes', on);
-        },
-      ),
-    ];
+    const dev = this.switchRow('dev', 'Developer mode', 'Short test runs, every map open, a start-wave picker and faster speeds. Dev runs never count.', this.dev, (on) => this.setDev(on));
+    const cards: HTMLElement[] = [this.setCard('Sound', this.soundRows()), this.setCard('Playtest', [notes, dev])];
     if (this.dev) {
-      rows.push(el('div', 'v2-setting-group', 'DEVELOPER'));
       const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
       board.dataset.soundBoard = '1';
-      rows.push(board);
-      rows.push(
+      const rows: HTMLElement[] = [
         this.switchRow(
           'watch',
           'Watch mode',
-          'A bot that plays like you takes the controls: same tap rhythm, aim, reactions and card picks, fitted to your logs. Watch at up to 10×, touch the battlefield to take over, 📝 to note a moment. Every watched run is logged for Claude.',
+          'A bot fitted to your logs plays: your tap rhythm, aim and card picks. Watch at up to 10×; touch the field to take over. Every watched run is logged.',
           this.devSettings.watch,
           (on) => {
             this.devSettings.watch = on;
             saveDevSettings(this.devSettings);
           },
         ),
-      );
+      ];
       if (this.devSettings.watch) rows.push(this.personaRow());
+      rows.push(board);
+      const card = this.setCard('Developer', rows);
+      card.classList.add('wide');
+      cards.push(card);
     }
-    // On a phone the settings run past the bottom of the screen: Back stays
-    // in view at the foot of the panel (playthrough round).
-    const foot = el('div', 'v3-sticky-foot');
-    foot.append(button('Back', 'v2-btn primary', () => this.showMenu()));
-    this.showOverlay('v2-settings', [el('h2', '', 'Settings'), ...rows, foot]);
+    const grid = el('div', 'v3-set-grid');
+    grid.append(...cards);
+    this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
+  }
+
+  /** A titled card of settings rows. */
+  private setCard(title: string, rows: HTMLElement[]): HTMLElement {
+    const card = el('section', 'v3-set-card');
+    card.append(el('h3', 'v2-setting-group', title), ...rows);
+    return card;
   }
 
   /** Dev: every sound in the game, by family, with a play button, its
@@ -1724,10 +1932,9 @@ export class App {
   /** Settings → Sound: on/off, volume, music. Saved on this device. */
   private soundRows(): HTMLElement[] {
     const a = this.audio.settings;
-    const mute = this.switchRow('sound', 'Sound', 'Sound effects and music. Your phone’s silent switch and volume apply too.', !a.muted, (on) => this.audio.setSettings({ muted: !on }));
+    const mute = this.switchRow('sound', 'Sound', 'Effects and music. The phone’s silent switch still applies.', !a.muted, (on) => this.audio.setSettings({ muted: !on }));
     const slider = (id: string, title: string, value: number, set: (v: number) => void) => {
-      const r = el('div', 'v2-setting v3-slider-row');
-      const body = el('div', 'v2-setting-text');
+      const r = el('label', 'v2-setting v3-slider-row');
       const input = document.createElement('input');
       input.type = 'range';
       input.min = '0';
@@ -1737,12 +1944,10 @@ export class App {
       input.dataset.setting = id;
       input.disabled = a.muted;
       input.addEventListener('input', () => set(Number(input.value) / 100));
-      body.append(el('strong', '', title), input);
-      r.append(body);
+      r.append(el('strong', '', title), input);
       return r;
     };
     return [
-      el('div', 'v2-setting-group', 'SOUND'),
       mute,
       slider('volume', 'Volume', a.volume, (v) => this.audio.setSettings({ volume: v })),
       slider('music', 'Music', a.music, (v) => this.audio.setSettings({ music: v })),
@@ -2163,7 +2368,7 @@ export class App {
       if (next) buttons.push(button(`Next: ${MAPS[next].name}`, 'v2-btn primary', () => this.prepare(next)));
     } else {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
-      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id)));
+      buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id, false)));
     }
     if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     if (this.notesOn && log) {
@@ -2437,10 +2642,17 @@ export class App {
 
   private showOverlay(cls: string, children: HTMLElement[]): void {
     const panel = el('div', `v2-panel ${cls}`);
+    const screen = cls.replace(/^v[23]-/, '');
+    // A redraw of the screen already up (a tab, an equip) doesn't replay
+    // its entrance.
+    if (this.overlay.classList.contains('open') && this.overlay.dataset.screen === screen) panel.classList.add('v3-same');
     panel.append(...children);
     this.overlay.replaceChildren(panel);
     this.overlay.classList.add('open');
-    this.overlay.dataset.screen = cls.replace(/^v[23]-/, '');
+    this.overlay.dataset.screen = screen;
+    // A panel taller than the screen scrolls under its header: only then
+    // does the header need a backing of its own.
+    if (panel.querySelector(':scope > .v3-head')) panel.classList.toggle('scrolls', panel.scrollHeight > panel.clientHeight + 2);
   }
 
   private hideOverlay(): void {
