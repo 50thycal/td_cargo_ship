@@ -47,7 +47,6 @@ const kesh: MapDef = {
   bomberLines: [570],
   vectors: { trucks: 2, subs: 3, strafers: 5, bombers: 7 },
   escortStations: [{ x: 480, y: 640 }, { x: 1010, y: 590 }, { x: 300, y: 800 }],
-  marks: [{ x: 1040, y: 655, text: 'THE TURN' }],
 };
 
 // ---------------------------------------------------------------------------
@@ -119,7 +118,7 @@ const behemoth: MapDef = {
   carrier: { x: 700, y: 725 },
   frigate: { x: 470, y: 728 },
   channels: [
-    { y: 362, halfWidth: 66, speed: 0.6, share: 0, vip: true, label: 'TANKER LANE' },
+    { y: 362, halfWidth: 66, speed: 0.6, share: 0, vip: true },
     { y: 565, halfWidth: 98 },
   ],
   threatScale: 1.15,
@@ -187,7 +186,6 @@ const needle: MapDef = {
   subSpots: [{ x: 200, y: 208 }, { x: 1500, y: 252 }, { x: 300, y: 718 }],
   bomberLines: [210, 735],
   vectors: { trucks: 2, subs: 3, strafers: 4, bombers: 6 },
-  marks: [{ x: 1120, y: 398, text: 'SINGLE FILE' }],
 };
 
 // ---------------------------------------------------------------------------
@@ -237,7 +235,6 @@ const saltgate: MapDef = {
     { x0: 500, x1: 660, wait: 6 },
     { x0: 1140, x1: 1300, wait: 6 },
   ],
-  marks: [{ x: 880, y: 604, text: 'BITTER LAKE' }],
 };
 
 // ---------------------------------------------------------------------------
@@ -619,8 +616,8 @@ const crossing: MapDef = {
   carrier: { x: 800, y: 455 },
   frigate: { x: 560, y: 455 },
   channels: [
-    { y: 318, halfWidth: 86, label: 'OUTBOUND →' },
-    { y: 592, halfWidth: 86, path: [{ x: 1640, y: 592 }, { x: -40, y: 592 }], label: '← INBOUND' },
+    { y: 318, halfWidth: 86 },
+    { y: 592, halfWidth: 86, path: [{ x: 1640, y: 592 }, { x: -40, y: 592 }] },
   ],
   threatScale: 1.65,
   extras: [

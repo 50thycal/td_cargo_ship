@@ -32,17 +32,13 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 }
 
 // ---------------------------------------------------------------------------
-// Under the convoy: tide flats, lock chambers, words, coves, chutes, wrecks
+// Under the convoy: tide flats, lock chambers, coves, chutes, wrecks. No
+// static words on the water (player: the Kesh Hook needn't say "THE TURN").
 
 export function drawMapUnder(ctx: CanvasRenderingContext2D, g: Game): void {
   const m = g.map;
   if (m.tide) drawTide(ctx, g);
   m.locks?.forEach((lock, i) => drawLock(ctx, g, i, lock.x0, lock.x1));
-  for (const mk of m.marks ?? []) {
-    ctx.globalAlpha = 0.55;
-    label(ctx, mk.text, mk.x, mk.y, '#dfeef7', 22);
-    ctx.globalAlpha = 1;
-  }
   m.bases.forEach((b, i) => {
     if (b.cove) drawCove(ctx, b.x, b.y);
     else if (b.chute) drawChute(ctx, b.x, b.y);

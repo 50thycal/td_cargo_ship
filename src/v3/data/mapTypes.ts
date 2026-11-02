@@ -95,8 +95,6 @@ export interface Channel {
   tide?: boolean;
   /** The supertanker's lane (The Behemoth Run): one tanker a wave sails it. */
   vip?: boolean;
-  /** Shown on the water by the lane's entry (e.g. "OUTBOUND →"). */
-  label?: string;
 }
 
 /** The order ships take the channels in: each channel `share` times a cycle. */
@@ -212,6 +210,4 @@ export interface MapDef {
   tide?: { high: number; low: number };
   /** The Citadel's shield: up while any generator stands. */
   shield?: { x: number; y: number; r: number };
-  /** Words painted on the map (lock names, "THE TURN"...). */
-  marks?: { x: number; y: number; text: string }[];
 }

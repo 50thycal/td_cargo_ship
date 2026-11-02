@@ -263,13 +263,6 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    if (ch.label) {
-      const p = samples[Math.min(samples.length - 1, 2)].p;
-      ctx.font = '800 20px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(220,238,248,0.5)';
-      ctx.fillText(ch.label, Math.max(110, Math.min(VIEW.width - 110, p.x)), p.y - ch.halfWidth - 10);
-    }
   }
   ctx.setLineDash([]);
 }
@@ -520,10 +513,8 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
     ctx.fillRect(x - 40, y - 34, 80, 8);
     ctx.fillStyle = hp > maxHp / 2 ? '#5ee08a' : hp > 2 ? '#f5c542' : '#ff4d3d';
     ctx.fillRect(x - 40, y - 34, (80 * Math.max(0, hp)) / maxHp, 8);
-    ctx.font = '800 15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd166';
-    ctx.fillText('TANKER', x, y - 40);
+    // No "TANKER" word over it (player: keep the water clean); its size and
+    // health bar mark it, and the map's first-wave hint names it.
   }
   if (hp < maxHp) {
     const puff = (k: number) => (t * 1.3 + k * 0.33) % 1;
