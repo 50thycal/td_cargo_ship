@@ -46,7 +46,22 @@ import {
 } from '../sim/game';
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
-import { Recorder, replay, replayTo, type Controller, type FlagKind, type PlayLog } from '../sim/playlog';
+import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { noteContext, type PlayNote } from '../sim/feedback';
+import {
+  MAX_THUMBS,
+  MOMENT_LOOK,
+  captureThumb,
+  noteForm,
+  notesEnabled,
+  ratingRows,
+  runStops,
+  setNotesEnabled,
+  stopWhen,
+  timeline,
+  volleyName,
+  volleySummary,
+} from './notes';
 import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
@@ -55,6 +70,9 @@ import { stepSlider, type StepSlider } from './rail';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 
 const DT = 1 / 60;
+/** "Watch it" on the review: seconds before and after the moment. */
+const PLAYBACK_BEFORE = 6;
+const PLAYBACK_AFTER = 2;
 /** A tapped card flashes this long before the next wave starts. */
 const PICK_BEAT_MS = 180;
 /** Round 11: the moment between a wave ending and its screen. The draft
@@ -170,8 +188,17 @@ export class App {
   private formationPop = el('div', 'v2-formations');
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
-  /** Dev: mark this moment for Claude (pauses while you say why). */
-  private flagBtn = button('🚩', 'v2-flag-btn', () => this.openFlag());
+  /** Playtest notes: pause and say something about this moment; after a
+   *  volley it offers to rate it (see openNote / openRate). */
+  private noteBtn = button('', 'v3-note-btn', () => (this.rateable() ? this.openRate('rail') : this.openNote('rail')));
+  private noteKey = '';
+  /** Volleys finished when the note button last pulsed. */
+  private volleysSeen = 0;
+  private notesOn = notesEnabled();
+  /** The result screen's run, kept for its review (and a replay's way back). */
+  private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
+  /** "Watch it": a marked moment playing back, and where it stops. */
+  private playback: { pb: Playback; until: number; from: number; stop: number } | null = null;
   /** Round 14: running power-ups count down here, in the rail, instead of
    *  in a corner of the battlefield (where they sat over roads and trucks). */
   private timers = el('div', 'v2-timers');
@@ -269,6 +296,7 @@ export class App {
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
+    root.classList.toggle('notes', this.notesOn);
     root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     this.rotateNote.append(el('strong', '', 'Turn your phone sideways'), el('span', '', 'The game is paused until you do.'));
     this.buildRails();
@@ -283,7 +311,8 @@ export class App {
     // A 180° flip between the two landscapes keeps the size but moves the island.
     screen.orientation?.addEventListener('change', () => this.resize());
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && this.game?.phase === 'wave') {
+      const typing = e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement;
+      if (e.code === 'Space' && this.game?.phase === 'wave' && !typing && !this.playback) {
         e.preventDefault();
         this.togglePause();
       }
@@ -359,7 +388,7 @@ export class App {
       el('div', 'v2-rail-label', 'SHIPS'),
       this.flowSlider.el,
       flowHint,
-      this.flagBtn,
+      this.noteBtn,
       this.timers,
     );
     for (const id of FORMATION_ORDER) {
@@ -481,23 +510,178 @@ export class App {
   }
 
   private togglePause(): void {
+    if (this.playback) {
+      this.endPlayback();
+      return;
+    }
     if (!this.game || this.game.phase !== 'wave') return;
     this.paused = !this.paused;
     this.pauseBtn.textContent = this.paused ? '▶' : 'II';
-    if (this.paused) {
-      this.showOverlay('v2-pause-panel', [
-        el('h2', '', 'Paused'),
-        button('Resume', 'v2-btn primary', () => this.togglePause()),
-        button('Quit to menu', 'v2-btn', () => {
-          this.paused = false;
-          this.pauseBtn.textContent = 'II';
-          this.endRun('quit');
-          this.showMenu();
-        }),
-      ]);
-    } else {
-      this.hideOverlay();
+    if (this.paused) this.showPauseMenu();
+    else this.hideOverlay();
+  }
+
+  private showPauseMenu(): void {
+    const g = this.game;
+    const extra: HTMLElement[] = [];
+    if (this.notesOn && this.rec && g) {
+      extra.push(button('📝 Add a note', 'v2-btn v3-pause-note', () => this.openNote('pause')));
+      const last = this.rec.watch.latest();
+      if (last) {
+        const b = button(`★ Rate last volley: ${volleyName(last.volley)}${last.volley.rating ? ' ✓' : ''}`, 'v2-btn v3-pause-rate', () => this.openRate('pause'));
+        extra.push(b);
+      }
     }
+    this.showOverlay('v2-pause-panel', [
+      el('h2', '', 'Paused'),
+      button('Resume', 'v2-btn primary', () => this.togglePause()),
+      ...extra,
+      button('Quit to menu', 'v2-btn', () => {
+        this.paused = false;
+        this.pauseBtn.textContent = 'II';
+        this.endRun('quit');
+        this.showMenu();
+      }),
+    ]);
+  }
+
+  // -------------------------------------------------------------------------
+  // Playtest notes and volley ratings
+
+  /** The map's part of the canvas, in canvas pixels (for a thumbnail). */
+  private thumb(log: { notes?: PlayNote[] } | null): string | undefined {
+    if ((log?.notes ?? []).filter((n) => n.thumb).length >= MAX_THUMBS) return undefined;
+    const d = this.dpr;
+    return captureThumb(this.canvas, { x: this.offX * d, y: this.offY * d, w: VIEW.width * this.scale * d, h: VIEW.height * this.scale * d });
+  }
+
+  /** Is there a finished volley this wave still to rate? */
+  private rateable(): boolean {
+    const last = this.rec?.watch.latest();
+    return !!last && !last.volley.rating && last.volley.wave === this.game?.wave;
+  }
+
+  /** The rail's note button: NOTE, or RATE after a volley (with a pulse as
+   *  it turns). Rebuilt only when that changes. */
+  private syncNoteBtn(g: Game | null): void {
+    const live = this.notesOn && !!g && !!this.rec && g.phase === 'wave' && !this.playback;
+    const rate = live && this.rateable();
+    const closed = this.rec?.watch.closed ?? 0;
+    if (live && closed > this.volleysSeen) {
+      this.volleysSeen = closed;
+      if (rate) {
+        this.noteBtn.classList.remove('pulse');
+        void this.noteBtn.offsetWidth;
+        this.noteBtn.classList.add('pulse');
+      }
+    }
+    const key = `${live}:${rate}`;
+    if (key === this.noteKey) return;
+    this.noteKey = key;
+    this.noteBtn.hidden = !live;
+    this.noteBtn.classList.toggle('rate', rate);
+    this.noteBtn.replaceChildren(el('b', '', rate ? '★' : '📝'), el('span', '', rate ? 'RATE' : 'NOTE'));
+    this.noteBtn.setAttribute('aria-label', rate ? 'Rate the volley that just ended' : 'Pause and add a note');
+  }
+
+  /** Pause on this step and say something. The note lands in the log with
+   *  the step, the game as it stands and a thumbnail, and the run is saved
+   *  at once so it reaches Claude even if the game is closed straight after. */
+  private openNote(from: 'rail' | 'pause'): void {
+    const g = this.game;
+    const rec = this.rec;
+    if (!g || !rec || g.phase !== 'wave') return;
+    if (from === 'rail' && this.paused) return;
+    this.paused = true;
+    this.hold = null;
+    const thumb = this.thumb(rec.log);
+    const form = noteForm();
+    const done = () => (from === 'pause' ? this.showPauseMenu() : this.resumeFromDialog());
+    this.showOverlay('v3-note', [
+      el('h2', '', '📝 Note'),
+      el('p', 'v2-sub', `${stopWhen(g)}. The game is paused here; Claude gets this moment with your note.`),
+      form.el,
+      this.dialogButtons('Save note', () => {
+        if (form.empty()) return;
+        rec.note({ where: 'pause', ...form.value(), ...(thumb ? { thumb } : {}) });
+        this.saveProgress();
+        done();
+        this.showBanner('📝 NOTE SAVED', `${stopWhen(g)}. It's in the log.`, { now: true });
+      }, done),
+    ]);
+  }
+
+  /** Rate the volley that just ended: difficulty, fun and intensity, 1–5,
+   *  and a note if there's more to say. */
+  private openRate(from: 'rail' | 'pause'): void {
+    const g = this.game;
+    const rec = this.rec;
+    const last = rec?.watch.latest();
+    if (!g || !rec || !last || g.phase !== 'wave') return;
+    if (from === 'rail' && this.paused) return;
+    this.paused = true;
+    this.hold = null;
+    const thumb = this.thumb(rec.log);
+    const rows = ratingRows(last.volley.rating);
+    const form = noteForm({ placeholder: 'Anything to add? (optional)' });
+    const done = () => (from === 'pause' ? this.showPauseMenu() : this.resumeFromDialog());
+    this.showOverlay('v3-note v3-rate', [
+      el('h2', '', `★ ${volleyName(last.volley)} · wave ${last.volley.wave}`),
+      el('p', 'v2-sub', volleySummary(last.volley)),
+      rows.el,
+      form.el,
+      this.dialogButtons('Save', () => {
+        if (!rows.any() && form.empty()) return;
+        if (rows.any()) rec.rateVolley(last.index, rows.value());
+        if (!form.empty()) rec.note({ where: 'volley', volley: last.index, ...form.value(), ...(thumb ? { thumb } : {}) });
+        this.saveProgress();
+        done();
+        this.showBanner('★ VOLLEY RATED', 'Thanks: it is in the log.', { now: true });
+      }, done),
+    ]);
+  }
+
+  private dialogButtons(save: string, onSave: () => void, onCancel: () => void, cancel = 'Cancel'): HTMLElement {
+    const row = el('div', 'v2-btn-row');
+    row.append(button(save, 'v2-btn primary v3-note-save', onSave), button(cancel, 'v2-btn', onCancel));
+    return row;
+  }
+
+  private resumeFromDialog(): void {
+    this.paused = false;
+    this.pauseBtn.textContent = 'II';
+    this.hideOverlay();
+  }
+
+  /** A note from the menu, about the game in general: a log of its own. */
+  private openMenuNote(): void {
+    const form = noteForm({ placeholder: 'A thought about the game (the 🎤 key dictates)' });
+    this.showOverlay('v3-note', [
+      el('h2', '', '📝 Note'),
+      el('p', 'v2-sub', 'Not about one run? Say it here: it goes to Claude with the build it was made on.'),
+      form.el,
+      this.dialogButtons('Save note', () => {
+        if (form.empty()) return;
+        const now = new Date().toISOString();
+        const log: PlayLog = {
+          v: LOG_VERSION,
+          game: LOG_GAME,
+          id: `v3-note-${now.replace(/[^0-9]/g, '').slice(0, 14)}`,
+          armory: {},
+          build: __BUILD__,
+          startedAt: now,
+          map: MAP_ORDER[0],
+          seed: 0,
+          firstWave: 1,
+          device: this.deviceInfo(),
+          commands: [],
+          notesOnly: true,
+          notes: [{ step: 0, at: now, where: 'menu', ...form.value() }],
+        };
+        void storeLog(log);
+        this.showMenu();
+      }, () => this.showMenu()),
+    ]);
   }
 
   // -------------------------------------------------------------------------
@@ -637,6 +821,7 @@ export class App {
     const g = this.game;
     this.adaptResolution(now, raw);
     if (this.hitStop > 0) this.hitStop -= real;
+    else if (g && this.playback) this.runPlayback(real);
     else if (g && !this.paused && !this.portrait && g.phase === 'wave') {
       // A watched bot plays at its own game speed (you 1.2×, the rusher 2×),
       // so 1× on the slider is that player's real time.
@@ -662,10 +847,13 @@ export class App {
     }
     if (g && this.beat) this.runBeat(now, real);
     if (g) {
+      if (this.rec?.game === g) this.rec.observe();
       this.drainEvents(g);
       // A dev stride deals a second draft straight after the first: same
-      // phase, new wave, so that counts as a change too.
-      if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
+      // phase, new wave, so that counts as a change too. A replay's phases
+      // are history: no draft or result screen for them.
+      if (this.playback) this.lastPhase = g.phase;
+      else if (g.phase !== this.lastPhase || (g.phase === 'draft' && g.wave !== this.draftWave)) this.onPhase(g);
       this.renderHud(g);
       this.renderWeapons(g);
       this.syncDanger(g);
@@ -676,6 +864,7 @@ export class App {
     this.alerts.update(real);
     if (g) this.raidAlert(g);
     this.syncTimers(g);
+    this.syncNoteBtn(g);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -861,6 +1050,7 @@ export class App {
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free ? '<span class="v2-hud-dev">FREE PLAY</span>' : '') +
+      (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
   }
@@ -1042,6 +1232,7 @@ export class App {
     const freePlay = button('▶ Free Play', 'v2-btn v3-free-btn', () => this.showFreePlay());
     freePlay.dataset.freePlay = '1';
     foot.append(freePlay, settings, classic);
+    if (this.notesOn) foot.insertBefore(button('📝 Note', 'v2-link v3-menu-note', () => this.openMenuNote()), classic);
     this.showOverlay('v2-menu', [
       el('h1', '', 'STRAITWATCH'),
       el('p', 'v2-tag', 'Keep the convoy alive. Tap the drones and missiles to shoot them down; draft weapons between waves, then tap their pickups to load the gun with them.'),
@@ -1316,14 +1507,27 @@ export class App {
       ),
     );
     row.append(text, sw);
-    const rows: HTMLElement[] = [row];
+    const rows: HTMLElement[] = [
+      row,
+      this.switchRow(
+        'notes',
+        'Playtest notes',
+        'A 📝 button while you play: pause and say what happened (it reaches Claude with that exact moment). After each volley it turns to ★ RATE: difficulty, fun and intensity, 1 to 5. After a run, rate it and step through its hard moments on a timeline.',
+        this.notesOn,
+        (on) => {
+          this.notesOn = on;
+          setNotesEnabled(on);
+          this.root.classList.toggle('notes', on);
+        },
+      ),
+    ];
     if (this.dev) {
       rows.push(el('div', 'v2-setting-group', 'DEVELOPER'));
       rows.push(
         this.switchRow(
           'watch',
           'Watch mode',
-          'A bot that plays like you takes the controls: same tap rhythm, aim, reactions and card picks, fitted to your logs. Watch at up to 10×, touch the battlefield to take over, 🚩 to flag a moment. Every watched run is logged for Claude.',
+          'A bot that plays like you takes the controls: same tap rhythm, aim, reactions and card picks, fitted to your logs. Watch at up to 10×, touch the battlefield to take over, 📝 to note a moment. Every watched run is logged for Claude.',
           this.devSettings.watch,
           (on) => {
             this.devSettings.watch = on;
@@ -1441,18 +1645,22 @@ export class App {
       firstWave: skip,
       ...(freePlay ? { freePlay } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
-      device: {
-        w: window.innerWidth,
-        h: window.innerHeight,
-        dpr: window.devicePixelRatio || 1,
-        touch: navigator.maxTouchPoints > 0,
-        ua: navigator.userAgent.slice(0, 160),
-      },
+      device: this.deviceInfo(),
     });
     this.startWatch(watch, seed, this.devSettings.bot);
     if (watch) this.setSpeed(this.devSettings.watchSpeed);
     else if (preset) this.setSpeed(preset.speed);
     this.begin();
+  }
+
+  private deviceInfo(): PlayLog['device'] {
+    return {
+      w: window.innerWidth,
+      h: window.innerHeight,
+      dpr: window.devicePixelRatio || 1,
+      touch: navigator.maxTouchPoints > 0,
+      ua: navigator.userAgent.slice(0, 160),
+    };
   }
 
   /** The main gun for a run: the one equipped upgrade, or a dev override
@@ -1474,31 +1682,6 @@ export class App {
     this.syncControl();
   }
 
-  /** 🚩: pause on this exact step and ask why. The flag lands in the log at
-   *  this step, and the run is saved at once so it reaches Claude even if
-   *  the game is closed straight after. */
-  private openFlag(): void {
-    const g = this.game;
-    if (!this.dev || !g || !this.rec || g.phase !== 'wave' || this.paused) return;
-    this.paused = true;
-    this.hold = null;
-    const choose = (kind: FlagKind, label: string) =>
-      button(label, 'v2-btn v2-flag-kind', () => {
-        this.rec?.flag(kind);
-        this.saveProgress();
-        this.closeFlag();
-        this.showBanner(`🚩 FLAGGED: ${label.toUpperCase()}`, `Wave ${g.wave}, ${Math.round(g.waveT)} s in. Claude can replay this exact moment.`, { now: true });
-      });
-    const kinds = el('div', 'v2-btn-row');
-    kinds.append(choose('bug', 'Bug'), choose('wrong', 'Looks wrong'), choose('hard', 'Too hard'), choose('easy', 'Too easy'));
-    this.showOverlay('v2-flag', [
-      el('h2', '', '🚩 Flag this moment'),
-      el('p', 'v2-sub', `Wave ${g.wave}, ${Math.round(g.waveT)} s in. The game is paused on it. What is it?`),
-      kinds,
-      button('Cancel', 'v2-link', () => this.closeFlag()),
-    ]);
-  }
-
   /** Freeze the screen on a log's game as it stood at `step`. */
   private showMoment(log: PlayLog, step: number): { wave: number; waveT: number; phase: string } {
     const upto = log.commands.findIndex((c) => c[0] > step);
@@ -1517,11 +1700,6 @@ export class App {
     this.flowSlider.set(g.flow);
     this.syncFormation();
     return { wave: g.wave, waveT: g.waveT, phase: g.phase };
-  }
-
-  private closeFlag(): void {
-    this.paused = false;
-    this.hideOverlay();
   }
 
   /** Watch mode: take over (back to 1×) or hand back (to the watch speed). */
@@ -1735,9 +1913,19 @@ export class App {
     const free = this.free;
     const wavesCleared = g.history.filter((h) => h.outcome === 'cleared').length;
     const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared });
-    const best = res?.best ?? false;
     const rec = this.rec;
     const log = this.endRun(won ? 'won' : 'lost');
+    this.review = { g, won, res, best: res?.best ?? false, log, ghosted: false, rec };
+    this.renderResult();
+  }
+
+  /** The result screen, from the run kept in `review` (shown again after
+   *  the review or a replay, without recording the result twice). */
+  private renderResult(): void {
+    const view = this.review;
+    if (!view) return;
+    const { g, won, res, best, log, rec } = view;
+    const free = this.free;
     const idx = MAP_ORDER.indexOf(g.map.id);
     const next = MAP_ORDER[idx + 1];
     const stats = el('div', 'v2-stats');
@@ -1760,6 +1948,10 @@ export class App {
       buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id)));
     }
     if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
+    if (this.notesOn && log) {
+      const rated = !!log.rating;
+      buttons.push(button(rated ? '📝 Review ✓' : '📝 Rate & review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
+    }
     buttons.push(button('Menu', 'v2-btn', () => this.showMenu()));
     const reason = g.carrierHp <= 0 ? 'The carrier went down.' : `${g.lost} ships sunk. ${culprit(g)}`;
     const title = won
@@ -1772,10 +1964,194 @@ export class App {
     row.append(...buttons);
     // Dev ghost check: how bot-you does on this same seed, for any run you
     // played some of (a run the bot played alone needs no comparing).
-    const ghost = this.dev && !free && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
+    const ghost = !view.ghosted && this.dev && !free && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
     const ghostLine = el('div', 'v2-ghost');
     this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
-    if (ghost) this.startGhost(g, log, ghostLine);
+    if (ghost && log) {
+      view.ghosted = true;
+      this.startGhost(g, log, ghostLine);
+    }
+    if (log && this.logState) void logChannel().then((c) => this.renderLogStatus(log, c));
+  }
+
+  /** The run's review: rate the whole run, then step through its marked
+   *  moments (and your notes) on a timeline, note any of them, or watch one
+   *  play back. */
+  private showReview(selected = -1): void {
+    const view = this.review;
+    const log = view?.log;
+    if (!view || !log) return;
+    const stops = runStops(log);
+    if (selected < 0 || selected >= stops.length) {
+      // Start on the worst moment: the first burst, else the last loss.
+      const burst = stops.findIndex((s) => s.kind === 'burst');
+      const sunk = stops.map((s) => s.kind).lastIndexOf('sunk');
+      selected = burst >= 0 ? burst : sunk >= 0 ? sunk : stops.length - 1;
+    }
+    const rows = ratingRows(log.rating);
+    const save = () => {
+      if (rows.any()) log.rating = rows.value();
+      this.resendReview();
+    };
+    const stop = stops[selected];
+    const detail = el('div', 'v3-stop');
+    if (stop) {
+      const look = stop.kind === 'note' ? { icon: '📝', label: 'Your note', color: 'var(--gold)' } : MOMENT_LOOK[stop.kind];
+      const head = el('div', 'v3-stop-head');
+      const icon = el('span', 'v3-stop-icon', look.icon);
+      icon.style.color = look.color;
+      head.append(
+        button('‹', 'v2-btn v3-stop-step', () => {
+          save();
+          this.showReview(Math.max(0, selected - 1));
+        }),
+        icon,
+        el('span', 'v3-stop-text', `${stopWhen(stop)} · ${stop.text}`),
+        el('span', 'v3-stop-count', `${selected + 1}/${stops.length}`),
+        button('›', 'v2-btn v3-stop-step', () => {
+          save();
+          this.showReview(Math.min(stops.length - 1, selected + 1));
+        }),
+      );
+      const acts = el('div', 'v2-btn-row');
+      if (log.commands.length && !log.notesOnly)
+        acts.append(
+          button('▶ Watch it', 'v2-btn v3-watch-btn', () => {
+            save();
+            this.startPlayback(stop.step, selected);
+          }),
+        );
+      acts.append(
+        button('📝 Note on this', 'v2-btn v3-stop-note', () => {
+          save();
+          this.reviewNote(selected, stop.moment);
+        }),
+      );
+      detail.append(head, acts);
+    } else detail.append(el('p', 'v2-sub', 'Nothing was marked this run: no ships lost, no carrier hits.'));
+    const strip = timeline(log, stops, selected, (i) => {
+      save();
+      this.showReview(i);
+    });
+    const legend = el('div', 'v3-tl-legend');
+    for (const k of ['sunk', 'burst', 'carrier', 'dry', 'debut'] as const) {
+      const item = el('span', '', `${MOMENT_LOOK[k].icon} ${MOMENT_LOOK[k].label}`);
+      item.style.color = MOMENT_LOOK[k].color;
+      legend.append(item);
+    }
+    const foot = el('div', 'v2-btn-row');
+    foot.append(
+      button('📝 Note on the run', 'v2-btn', () => {
+        save();
+        this.reviewNote(selected);
+      }),
+      button('Done', 'v2-btn primary v3-review-done', () => {
+        save();
+        this.renderResult();
+      }),
+    );
+    this.showOverlay('v3-review', [el('h2', '', 'Rate & review this run'), rows.el, strip, legend, detail, foot]);
+  }
+
+  /** A note made on the review: about a marked moment, or the run. */
+  private reviewNote(selected: number, moment?: number): void {
+    const view = this.review;
+    const log = view?.log;
+    if (!view || !log) return;
+    const m = moment !== undefined ? log.moments?.[moment] : undefined;
+    const form = noteForm();
+    this.showOverlay('v3-note', [
+      el('h2', '', m ? `📝 ${stopWhen(m)}` : '📝 Note on this run'),
+      el('p', 'v2-sub', m ? m.text : `${view.won ? 'Cleared' : `Lost on wave ${view.g.wave}`} · ${view.g.lost} ships sunk`),
+      form.el,
+      this.dialogButtons('Save note', () => {
+        if (form.empty()) return;
+        const note: PlayNote = {
+          step: m?.step ?? view.g.steps,
+          at: new Date().toISOString(),
+          where: 'review',
+          ...form.value(),
+          ...(moment !== undefined ? { moment } : {}),
+          ctx: noteContext(view.g),
+        };
+        (log.notes ??= []).push(note);
+        this.resendReview(note);
+        this.showReview(selected);
+      }, () => this.showReview(selected)),
+    ]);
+  }
+
+  /** The sealed log changed on the review (a rating, a note): send it again.
+   *  A cleared map's run is still live for endless, so the recorder gets
+   *  the same note, or its next save would drop it. */
+  private resendReview(note?: PlayNote): void {
+    const log = this.review?.log;
+    if (!log) return;
+    if (this.rec && this.rec.log.id === log.id) {
+      if (note) (this.rec.log.notes ??= []).push(note);
+      if (log.rating) this.rec.log.rating = log.rating;
+    }
+    void storeLog(log);
+  }
+
+  /** "Watch it": the run plays back from a few seconds before a moment to
+   *  just after it, inputs and all. */
+  private startPlayback(step: number, stop: number): void {
+    const log = this.review?.log;
+    if (!log) return;
+    const from = Math.max(0, step - PLAYBACK_BEFORE * 60);
+    let pb: Playback;
+    try {
+      pb = new Playback(log, from);
+    } catch {
+      return;
+    }
+    this.resetFinale();
+    this.ghostRun = null;
+    pb.game.events = [];
+    this.playback = { pb, until: step + PLAYBACK_AFTER * 60, from, stop };
+    this.game = pb.game;
+    this.lastPhase = pb.game.phase;
+    this.acc = 0;
+    this.paused = false;
+    this.ripples = [];
+    this.root.classList.add('playing', 'replaying');
+    this.flowSlider.set(pb.game.flow);
+    this.syncFormation();
+    this.hideOverlay();
+    this.pauseBtn.textContent = '■';
+    this.showBanner('▶ REPLAY', `${stopWhen(pb.game)}: the moment is ${Math.round((step - from) / 60)} s in. Tap ■ on the right to stop.`, { now: true });
+  }
+
+  /** Per frame while a replay runs: real time at 1×. */
+  private runPlayback(real: number): void {
+    const p = this.playback!;
+    this.acc += real;
+    let n = 0;
+    while (this.acc >= DT && n < 12) {
+      this.acc -= DT;
+      n++;
+      if (p.pb.game.steps >= p.until || !p.pb.advance()) {
+        this.endPlayback();
+        return;
+      }
+    }
+  }
+
+  private endPlayback(): void {
+    const p = this.playback;
+    const view = this.review;
+    if (!p) return;
+    this.playback = null;
+    this.pauseBtn.textContent = 'II';
+    this.root.classList.remove('replaying');
+    this.alerts.clear();
+    if (view) {
+      this.game = view.g;
+      this.lastPhase = view.g.phase;
+    }
+    this.paused = false;
+    this.showReview(p.stop);
   }
 
   /** Play bot-you on this run's seed between frames (a few ms at a time, so

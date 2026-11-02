@@ -24,6 +24,7 @@ import {
   type Tempo,
   type WaveRecord,
 } from './game';
+import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley } from './feedback';
 
 /** Bump when the log format or sim rules change in a way that breaks replay.
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
@@ -96,6 +97,15 @@ export interface PlayLog {
   end?: 'won' | 'lost' | 'quit';
   commands: LogCommand[];
   summary?: PlaySummary;
+  /** Playtest feedback (none of it touches replay; see sim/feedback.ts):
+   *  the player's notes, the attack volleys as met (with any rating), the
+   *  run's hard moments marked automatically, and the whole run's rating. */
+  notes?: PlayNote[];
+  /** A note made on the menu: a log with no run in it, only `notes`. */
+  notesOnly?: boolean;
+  volleys?: Volley[];
+  moments?: Moment[];
+  rating?: Rating;
 }
 
 export interface GhostResult {
@@ -139,6 +149,8 @@ export class Recorder {
   readonly log: PlayLog;
   private drafts: PlaySummary['drafts'] = [];
   mark: WaveMark;
+  /** Volleys and moments, followed frame by frame (see `observe`). */
+  readonly watch: Watch;
 
   /** `from` continues an earlier run's inputs (a dev wave retry): the game
    *  passed in must already be that run replayed up to `from.mark`. */
@@ -159,6 +171,26 @@ export class Recorder {
     };
     if (from) this.drafts = (from.log.summary?.drafts ?? []).filter((d) => d.wave < from.mark.wave);
     this.mark = { wave: game.wave, steps: game.steps, commands: this.log.commands.length };
+    this.watch = new Watch(game);
+  }
+
+  /** Once a frame (and before the UI drains the game's events): keeps the
+   *  volleys and the marked moments up to date. */
+  observe(): void {
+    this.watch.observe(this.game);
+  }
+
+  /** The player's note, stamped with this step and the game as it stands. */
+  note(n: Omit<PlayNote, 'step' | 'at' | 'ctx'>): PlayNote {
+    const note: PlayNote = { step: this.game.steps, at: new Date().toISOString(), ...n, ctx: noteContext(this.game) };
+    (this.log.notes ??= []).push(note);
+    return note;
+  }
+
+  /** The player's rating of a finished volley. */
+  rateVolley(index: number, rating: Rating): void {
+    const v = this.watch.volleys[index];
+    if (v) v.rating = { ...v.rating, ...rating };
   }
 
   tap(x: number, y: number, radius: number): TapResult {
@@ -252,7 +284,14 @@ export class Recorder {
       drafts: [...this.drafts],
       waves: [...g.history],
     };
-    return { ...this.log, commands: [...this.log.commands] };
+    const { volleys, moments } = this.watch;
+    return {
+      ...this.log,
+      commands: [...this.log.commands],
+      ...(this.log.notes ? { notes: this.log.notes.map((n) => ({ ...n })) } : {}),
+      ...(volleys.length ? { volleys: volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })) } : {}),
+      ...(moments.length ? { moments: [...moments] } : {}),
+    };
   }
 }
 
@@ -301,4 +340,38 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
     step(g, SIM_DT);
   }
   return g;
+}
+
+/** Plays a log back from a step onwards, inputs and all, a step at a time:
+ *  the result screen's "watch it" on a marked moment. */
+export class Playback {
+  readonly game: Game;
+  private i: number;
+  private cmds: LogCommand[];
+
+  constructor(log: PlayLog, from: number) {
+    const start = Math.max(0, from);
+    let upto = log.commands.findIndex((c) => c[0] > start);
+    if (upto < 0) upto = log.commands.length;
+    this.game = replayTo(log, start, upto);
+    this.cmds = log.commands;
+    this.i = upto;
+  }
+
+  /** One step: the inputs due now, then the sim. False once it can't go on
+   *  (the run ended, or it waits on a draft pick the log doesn't have). */
+  advance(): boolean {
+    const g = this.game;
+    while (this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps) {
+      const c = this.cmds[this.i++];
+      if (c[1] === 't') tap(g, c[2], c[3], c[4]);
+      else if (c[1] === 'f') setFlow(g, c[2]);
+      else if (c[1] === 'm') setFormation(g, c[2]);
+      else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);
+      else if (c[1] === 'e') continueEndless(g);
+    }
+    if (g.phase !== 'wave') return this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps;
+    step(g, SIM_DT);
+    return true;
+  }
 }

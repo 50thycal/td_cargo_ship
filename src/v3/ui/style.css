@@ -2454,3 +2454,355 @@ body {
     min-height: 28px;
   }
 }
+
+/* ---- Playtest notes and volley ratings -------------------------------- */
+
+.v3-note-btn {
+  display: none;
+  width: 56px;
+  min-height: 40px;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px dashed var(--gold);
+  background: var(--panel);
+  color: var(--gold);
+  font: inherit;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  cursor: pointer;
+  line-height: 1.05;
+}
+
+.notes .v3-note-btn:not([hidden]) {
+  display: flex;
+}
+
+.v3-note-btn b {
+  font-size: 16px;
+}
+
+.v3-note-btn span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.v3-note-btn.rate {
+  border-style: solid;
+  background: rgb(245 197 66 / 0.16);
+}
+
+.v3-note-btn.pulse {
+  animation: v3-note-pulse 0.9s ease-out;
+}
+
+@keyframes v3-note-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(245 197 66 / 0.8);
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgb(245 197 66 / 0);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-note-btn.pulse {
+    animation: none;
+  }
+}
+
+.v3-note,
+.v3-review {
+  max-width: 620px;
+  gap: 8px;
+}
+
+.v3-note .v2-sub,
+.v3-review .v2-sub {
+  margin: 0;
+}
+
+.v3-note-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.v3-note-tag {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.v3-note-tag.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1d1600;
+}
+
+.v3-note-text {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: #08131a;
+  color: var(--ink);
+  /* 16 px: anything smaller and iOS zooms the page in on focus. */
+  font: inherit;
+  font-size: 16px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.v3-rating {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v3-rating-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v3-rating-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.v3-rating-head strong {
+  font-size: 14px;
+}
+
+.v3-rating-head span {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.v3-rating-nums {
+  display: flex;
+  gap: 5px;
+}
+
+.v3-rating-n {
+  width: 40px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v3-rating-n.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #062029;
+}
+
+.v3-pause-note,
+.v3-pause-rate {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.v3-review-btn.fresh {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.v3-menu-note {
+  color: var(--gold);
+}
+
+/* The review's timeline: waves as bands, volleys as a coloured line under
+   them, the marked moments as ticks. */
+.v3-timeline {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  border-radius: 8px;
+  background: #08131a;
+  border: 1px solid var(--panel-edge);
+  overflow: hidden;
+  cursor: pointer;
+  flex: none;
+}
+
+.v3-tl-bands,
+.v3-tl-volleys,
+.v3-tl-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.v3-tl-bands {
+  top: 0;
+  bottom: 0;
+}
+
+.v3-tl-wave {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  font-size: 9px;
+  color: var(--muted);
+  padding: 2px 3px;
+  text-align: left;
+  overflow: hidden;
+}
+
+.v3-tl-wave.alt {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.v3-tl-volleys {
+  bottom: 4px;
+  height: 4px;
+}
+
+.v3-tl-volley {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--theme);
+  opacity: 0.55;
+}
+
+.v3-tl-volley.rated {
+  opacity: 1;
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.v3-tl-ticks {
+  top: 12px;
+  bottom: 10px;
+}
+
+.v3-tl-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--tick);
+}
+
+.v3-tl-tick.note {
+  top: -6px;
+}
+
+.v3-tl-tick.on {
+  width: 7px;
+  margin-left: -3.5px;
+  box-shadow: 0 0 0 2px var(--ink);
+  z-index: 1;
+}
+
+.v3-tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.v3-stop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-stop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.v3-stop-step {
+  min-width: 44px;
+  padding: 0;
+  font-size: 22px;
+}
+
+.v3-stop-icon {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.v3-stop-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.v3-stop-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-hud-replay {
+  color: var(--gold);
+}
+
+@media (max-height: 430px) {
+  .v3-note,
+  .v3-review {
+    gap: 5px;
+  }
+  .v3-note-tag {
+    min-height: 30px;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  .v3-rating-n {
+    height: 32px;
+  }
+  .v3-note-text {
+    min-height: 44px;
+  }
+  .v3-note .v2-btn,
+  .v3-review .v2-btn {
+    min-height: 38px;
+  }
+}
