@@ -1058,7 +1058,9 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
   it('V3\'s first five maps are V2\'s: the same geometry (difficulty is tuned for their new slots)', async () => {
     const v2 = await import('../../src/v2/data/maps');
     const v3 = await import('../../src/v3/data/maps');
-    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [] });
+    // Roads aside: the map visual-check round moved the Archipelago's pop-up
+    // truck stops back onto the islets in V3 (in V2 they stop in the sea).
+    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null });
     for (const id of Object.keys(v2.MAPS) as (keyof typeof v2.MAPS)[]) expect(shape(v3.MAPS[id])).toBe(shape(v2.MAPS[id]));
   });
 });
