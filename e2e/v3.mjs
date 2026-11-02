@@ -244,6 +244,44 @@ try {
   check((await page.locator('.v3-weapon.held').count()) === 1, 'its loadout chip appears, not loaded');
   check((await page.locator('.v3-weapon').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'nothing in the loadout animates');
 
+  // ---- Playtest notes: pause and say something; rate a volley ----
+  check((await page.locator('.v3-note-btn').textContent()).includes('NOTE') || (await page.locator('.v3-note-btn.rate').count()) === 1, 'the rail has the note button');
+  await page.locator('.v2-pause').click();
+  await page.locator('.v3-pause-note').click();
+  const steps0 = await page.evaluate(() => window.__v3.game().steps);
+  await page.locator('.v3-note-tag[data-tag="hard"]').click();
+  await page.locator('.v3-note-text').fill('Heavy from the north with no warning');
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: `${SHOT_DIR}/13-note.png` });
+  await page.locator('.v3-note-save').click();
+  const noted = await page.evaluate(() => window.__v3.log().notes?.[0]);
+  check(
+    noted && noted.step === steps0 && noted.tags.join() === 'hard' && noted.text.startsWith('Heavy') && noted.ctx?.wave >= 1 && /^data:image\/jpeg/.test(noted.thumb ?? ''),
+    'a note lands in the log at the paused step, with the game state and a thumbnail',
+  );
+  check((await page.locator('[data-screen="pause-panel"]').count()) === 1, 'saving a note from the pause menu goes back to it');
+  await page.locator('.v2-overlay .v2-btn.primary').click();
+  // Defend until a volley ends and the button turns to RATE.
+  let rate = false;
+  for (let i = 0; i < 600 && !rate; i++) {
+    await defend(page);
+    await page.waitForTimeout(40);
+    rate = (await page.locator('.v3-note-btn.rate').count()) === 1;
+    if ((await page.evaluate(() => window.__v3.game()?.phase)) !== 'wave') break;
+  }
+  check(rate, 'after a volley the note button offers to rate it');
+  if (rate) {
+    await page.locator('.v3-note-btn').click();
+    await page.locator('[data-axis="difficulty"] [data-n="4"]').click();
+    await page.locator('[data-axis="fun"] [data-n="5"]').click();
+    await page.locator('[data-axis="intensity"] [data-n="2"]').click();
+    await page.screenshot({ path: `${SHOT_DIR}/14-rate.png` });
+    await page.locator('.v3-note-save').click();
+    const rated = await page.evaluate(() => (window.__v3.log().volleys ?? []).filter((v) => v.rating));
+    check(rated.length === 1 && rated[0].rating.difficulty === 4 && rated[0].rating.fun === 5 && rated[0].rating.intensity === 2, 'the rating lands on its volley');
+    check((await page.evaluate(() => document.querySelector('.v2-overlay')?.classList.contains('open'))) === false, 'rating from the rail resumes the game');
+  }
+
   // ---- Phone landscape ----
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(300);
