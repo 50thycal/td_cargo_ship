@@ -302,18 +302,10 @@ try {
   // A busy late wave played by the watch bot (which also grabs weapons, so
   // weapon notices compete for the tray). Cards never overlap each other or
   // the carrier, never leave the screen, and never exceed the map's limit.
-  for (const [map, w, h] of [
-    ['strait', 874, 402],
-    ['gauntlet', 874, 402],
-    ['island', 874, 402],
-    ['harbor', 874, 402],
-    ['archipelago', 874, 402],
-    ['strait', 844, 390],
-    ['gauntlet', 844, 390],
-    ['island', 844, 390],
-    ['harbor', 844, 390],
-    ['archipelago', 844, 390],
-  ]) {
+  // The 20-map plan: every map at one phone size, the first five at a second.
+  const ORDER = ['strait', 'kesh', 'marrow', 'gauntlet', 'harbor', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'lantern', 'dreadnought', 'coves', 'delta', 'crossing', 'tide', 'citadel'];
+  const trays = [...ORDER.map((m) => [m, 874, 402]), ...['strait', 'gauntlet', 'island', 'harbor', 'archipelago'].map((m) => [m, 844, 390])];
+  for (const [map, w, h] of trays) {
     const tp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
     tp.on('pageerror', (err) => fail(`page error: ${err.message}`));
     await tp.goto(`${BASE_URL}/v3.html?seed=31`, { waitUntil: 'networkidle' });
@@ -323,6 +315,8 @@ try {
       localStorage.setItem('straitwatch.v3.dev.settings', JSON.stringify({ preset: 'full', wave: 6, watch: true, watchSpeed: 3, bot: 'you', armory: 'yours' }));
     });
     await tp.reload({ waitUntil: 'networkidle' });
+    // Twenty maps sit in four chapter tabs of five on the menu.
+    await tp.locator(`[data-chapter="${Math.floor(ORDER.indexOf(map) / 5) + 1}"]`).tap();
     await tp.locator(`[data-map="${map}"]`).tap();
     await tp.waitForSelector('.playing');
     let most = 0;

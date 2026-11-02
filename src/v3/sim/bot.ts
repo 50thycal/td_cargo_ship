@@ -16,6 +16,8 @@ import {
   step,
   tap,
   timeToImpact,
+  quieterBranch,
+  worthShooting,
   type Game,
   type Threat,
   type Tempo,
@@ -48,6 +50,7 @@ export const SKILLS: Record<string, BotSkill> = {
 export class Bot {
   private seenAt = new Map<number, number>();
   private lastTap = -Infinity;
+  private lastSwitch = 0;
   private rng: RNG;
 
   constructor(
@@ -81,17 +84,30 @@ export class Bot {
       this.lastTap = g.t;
       return;
     }
+    // The Delta: throw the switch toward a quieter branch now and then.
+    const fork = g.map.fork;
+    if (fork && g.t - this.lastSwitch > 10) {
+      this.lastSwitch = g.t;
+      const want = quieterBranch(g);
+      if (want !== null) {
+        while (g.forkLane % fork.lanes.length !== want) tap(g, fork.x, fork.y, 6);
+        this.lastTap = g.t;
+        return;
+      }
+    }
     if (!this.skill.spam && !canFire(g)) return;
     // Most urgent first: the threat closest to whatever it is aimed at. With
     // the Railgun loaded, the toughest threat first (a beam is wasted on a drone).
     const rail = g.weapon?.id === 'railgun';
     let best: Threat | null = null;
     let bestScore = Infinity;
-    for (const th of g.threats) {
+    for (const th of worthShooting(g, g.threats)) {
       if (th.dead || !seen(th)) continue;
       const inFlight = g.interceptors.filter((i) => i.target === th.id).length;
       if (!this.skill.spam && !rail && inFlight >= th.hp) continue;
-      const urgency = timeToImpact(g, th) - (rail ? th.hp * 10 : 0);
+      // A missile after the supertanker comes first: it is worth three ships.
+      const vip = g.ships.some((s) => s.vip && s.id === th.target) ? 1.5 : 0;
+      const urgency = timeToImpact(g, th) - vip - (rail ? th.hp * 10 : 0);
       if (urgency < bestScore) {
         bestScore = urgency;
         best = th;
