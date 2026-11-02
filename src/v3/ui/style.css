@@ -678,7 +678,9 @@ body {
     font-size: 10px;
   }
   .v2-track {
-    height: clamp(70px, 30vh, 170px);
+    /* Playthrough round: a little shorter, so two power-up timers fit under
+       the note button at the foot of the rail. */
+    height: clamp(64px, 25vh, 170px);
   }
   .v2-rail {
     gap: 3px;
@@ -2848,4 +2850,38 @@ body {
 
 .v3-board-row em {
   opacity: 0.6;
+}
+
+/* Playthrough round: a long panel's Back stays in view at its foot. */
+.v3-sticky-back {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex: none;
+  box-shadow: 0 -10px 18px 6px var(--bg);
+}
+
+/* Playthrough round: on a phone the timers are one line each (name, then
+   seconds), so two or three fit under the note button instead of riding
+   up over it. */
+@media (max-height: 430px) {
+  .v2-timers {
+    gap: 2px;
+    bottom: 4px;
+  }
+  .v2-timer {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 2px;
+    padding: 1px 3px;
+  }
+  .v2-timer span {
+    font-size: 7.5px;
+    letter-spacing: -0.03em;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+  .v2-timer b {
+    font-size: 11px;
+  }
 }

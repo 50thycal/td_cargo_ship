@@ -145,7 +145,9 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Proximity Fuse',
     blurb: 'Bursts closer to a fast target; level 5 hits for 2',
     max: ARMORY_MAX,
-    show: (l) => `${INTERCEPTOR.contact + CONTACT[l]} px fuse${l >= ARMORY_MAX ? ', 2 dmg' : ''}`,
+    // As a share of the plain fuse, like its neighbours' "140% blast" (it
+    // used to say "19 px fuse": a developer's unit, playthrough round).
+    show: (l) => `${Math.round((100 * (INTERCEPTOR.contact + CONTACT[l])) / INTERCEPTOR.contact)}% fuse reach${l >= ARMORY_MAX ? ', 2 dmg' : ''}`,
   },
   plating: {
     id: 'plating',
@@ -161,7 +163,8 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Point Defense',
     blurb: 'The carrier shoots the nearest threat on its own',
     max: ARMORY_MAX,
-    show: (l) => (l ? `a shot every ${PD_GAP[l]} s, reach ${PD_RANGE[l]}` : 'none'),
+    // Reach in metres (a bare "reach 280" meant nothing to a player).
+    show: (l) => (l ? `a shot every ${PD_GAP[l]} s, ${PD_RANGE[l]} m reach` : 'none'),
   },
   repair: {
     id: 'repair',
