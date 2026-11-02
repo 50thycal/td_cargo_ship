@@ -513,10 +513,8 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
     ctx.fillRect(x - 40, y - 34, 80, 8);
     ctx.fillStyle = hp > maxHp / 2 ? '#5ee08a' : hp > 2 ? '#f5c542' : '#ff4d3d';
     ctx.fillRect(x - 40, y - 34, (80 * Math.max(0, hp)) / maxHp, 8);
-    ctx.font = '800 15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd166';
-    ctx.fillText('TANKER', x, y - 40);
+    // No "TANKER" word over it (player: keep the water clean); its size and
+    // health bar mark it, and the map's first-wave hint names it.
   }
   if (hp < maxHp) {
     const puff = (k: number) => (t * 1.3 + k * 0.33) % 1;
