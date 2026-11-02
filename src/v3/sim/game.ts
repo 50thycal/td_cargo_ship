@@ -51,7 +51,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
-import { laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint, laneYAtX } from './lanes';
+import { laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
 import {
   AB,
   ABILITY_MAX,
@@ -132,6 +132,11 @@ export interface Threat {
   hits?: number[];
   /** Strafing jet: guns are firing this step (renderer draws the tracers). */
   firing?: boolean;
+  /** An aircraft on a curved lane: the lane, distance along it, the way it
+   *  flies (+1 with the shipping, -1 against), and its offset across. */
+  route?: { lane: number; s: number; dir: number; lat: number; flown: number };
+  /** Bank angle (radians, + = right wing down), from how hard it turns. */
+  bank?: number;
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
@@ -238,6 +243,11 @@ export interface Launch {
    *  the line they fly, fixed when their warning arrow appears. */
   side?: number;
   y?: number;
+  /** A curved lane (map visual-check round, "enemy jets should follow the
+   *  curve and bank around the bend"): the aircraft flies this lane's path,
+   *  `lat` across it, instead of a straight line along y. */
+  lane?: number;
+  lat?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -298,6 +308,16 @@ export interface Escort {
   sy: number;
   fireT: number;
   leaving: boolean;
+  /** Map visual-check round ("the frigates don't follow the actual water
+   *  path and just overlap the land"): a frigate sails its lane like the
+   *  convoy, `d` along it and `lat` across, to a station at (sd, slat). */
+  lane: number;
+  d: number;
+  lat: number;
+  sd: number;
+  slat: number;
+  /** The way the hull points (radians). */
+  heading: number;
   /** Where its last shot went (the renderer turns the gun). */
   aim: number;
 }
@@ -1241,36 +1261,121 @@ function updateBlades(g: Game, dt: number): void {
   g.blades = g.blades.filter((b) => !b.home);
 }
 
-/** Frigate Escort: the frigates sail to their stations, fire on their own,
- *  and sail off when the weapon is spent or another takes over. */
+/** Frigate Escort: the frigates sail in along a shipping lane to stations at
+ *  its edge, fire on their own, and sail off down the lane when the weapon is
+ *  spent or another takes over. */
 function launchEscorts(g: Game, level: number): void {
-  const k = level - 1;
-  const want = AB.frigate.ships[k];
-  const lanes = g.map.channels;
-  // Stations across the screen. Ships 0 and 2 share an edge, so with three
-  // the first one in takes the far station and the third the near one: they
-  // sail in line astern instead of the third running through the first
-  // (round 7 playtest).
-  const xs = want >= 3 ? [0.62, 0.46, 0.3] : [0.3, 0.62];
+  const want = AB.frigate.ships[level - 1];
   g.escorts = g.escorts.filter((e) => !e.leaving);
   if (g.escorts.length < want) cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
+  const stations = escortStations(g, want);
   for (let i = 0; i < want; i++) {
-    // On station at the edge of a lane (above it, then below), clear of the
-    // convoy sailing down its middle, still on open water.
-    const lane = lanes[i % lanes.length];
-    const station = g.map.escortStations?.[i % g.map.escortStations.length];
-    const sx = station ? station.x : VIEW.width * xs[i];
-    const sy = station ? station.y : laneYAtX(lane, sx) + (i % 2 ? 1 : -1) * halfWidthAt(lane, sx) * 0.85;
+    const st = stations[i];
+    const p = laneAt(g.map.channels[st.lane], st.d, st.lat);
     const e = g.escorts[i];
-    if (e) {
-      e.sx = sx;
-      e.sy = sy;
-    } else {
-      // A hull and its wake run ~210 long; two ships on one edge start 260
-      // apart, so they never touch.
-      g.escorts.push({ id: g.nextId++, x: -120 - i * 130, y: sy, sx, sy, fireT: 0.5 + i * 0.2, leaving: false, aim: 0 });
+    if (e && e.lane === st.lane) {
+      Object.assign(e, { sx: p.x, sy: p.y, sd: st.d, slat: st.lat });
+    } else if (!e) {
+      // In line astern from the lane's entry: a hull and its wake run ~210
+      // long, so ships start 260 apart and never touch.
+      const d = -80 - i * 260;
+      const at = laneAt(g.map.channels[st.lane], d, st.lat);
+      g.escorts.push({ id: g.nextId++, x: at.x, y: at.y, sx: p.x, sy: p.y, fireT: 0.5 + i * 0.2, leaving: false, aim: 0, lane: st.lane, d, lat: st.lat, sd: st.d, slat: st.lat, heading: Math.atan2(at.ty, at.tx) });
     }
   }
+}
+
+/** A station keeps this clear of the carrier, and frigates on one edge of a
+ *  lane this far apart along it. */
+const ESCORT_CARRIER_CLEAR = 200;
+const ESCORT_GAP = 280;
+const ESCORT_GAP_MIN = 180;
+/** How fast a frigate turns (rad/s): smoothly round a bend at its speed. */
+const ESCORT_TURN = 2.6;
+
+/** How far across the lane a frigate may sit at distance d: its whole hull
+ *  (76 either way along, 13 across) inside the lane, wherever the hull
+ *  reaches and a little ahead, so it moves in before a lock or a narrows
+ *  (it can't side-step faster than it sails). */
+function escortLatMax(ch: Channel, d: number, ahead = 0): number {
+  let hw = Infinity;
+  for (let k = d - 80 + Math.min(0, ahead); k <= d + 80 + Math.max(0, ahead); k += 20) hw = Math.min(hw, laneHalfWidth(ch, k));
+  return Math.max(0, Math.min(hw * 0.85, hw - 20));
+}
+
+/** Pick each frigate's lane and station: on the lane's edge, on screen, in a
+ *  stretch wide enough to sit beside the convoy, clear of the carrier and of
+ *  the other frigates. The first one in takes the furthest station. */
+function escortStations(g: Game, n: number): { lane: number; d: number; lat: number }[] {
+  const chans = g.map.channels;
+  const usable = chans.map((_, i) => i).filter((i) => !chans[i].tide && !chans[i].vip);
+  const lanes = usable.length ? usable : chans.map((_, i) => i);
+  const c = g.map.carrier;
+  // The first one in takes the furthest station, so none sails through another.
+  const fracs = n >= 3 ? [0.62, 0.46, 0.3] : [0.62, 0.3];
+  const taken: { lane: number; d: number; lat: number; x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const lane = lanes[i % lanes.length];
+    const ch = chans[lane];
+    // The lane's stretch on screen.
+    const L = laneLength(ch);
+    let d0 = Infinity;
+    let d1 = -Infinity;
+    for (let d = 0; d <= L; d += 20) {
+      const p = lanePoint(ch, d);
+      if (p.x > 90 && p.x < VIEW.width - 90 && p.y > 60 && p.y < VIEW.height - 60) {
+        d0 = Math.min(d0, d);
+        d1 = Math.max(d1, d);
+      }
+    }
+    if (d0 > d1) {
+      d0 = 0;
+      d1 = L;
+    }
+    // A short stretch: spread out to its ends.
+    const want = (d1 - d0 < 600 && n >= 3 ? [0.96, 0.5, 0.04] : fracs)[i % fracs.length];
+    const side = i % 2 ? 1 : -1;
+    // Candidates nearest the wanted spot first, on the wanted edge first.
+    const cands: { d: number; lat: number; cost: number }[] = [];
+    for (let u = 0.04; u <= 0.96; u += 0.02) {
+      const d = d0 + (d1 - d0) * u;
+      const hw = laneHalfWidth(ch, d);
+      if (hw < 70) continue; // too narrow to sit beside the convoy
+      for (const sgn of [side, -side]) cands.push({ d, lat: sgn * escortLatMax(ch, d), cost: Math.abs(u - want) + (sgn === side ? 0 : 0.25) });
+    }
+    cands.sort((a, b) => a.cost - b.cost);
+    const ok = (d: number, lat: number, gap: number) => {
+      const p = laneAt(ch, d, lat);
+      if (Math.hypot(p.x - c.x, p.y - c.y) < ESCORT_CARRIER_CLEAR) return false;
+      return taken.every((t) => (t.lane === lane && Math.sign(t.lat) === Math.sign(lat) ? Math.abs(t.d - d) >= gap : Math.hypot(t.x - p.x, t.y - p.y) >= 190));
+    };
+    // Well apart if there is room; closer (still clear of each other) in a
+    // short basin.
+    const pick =
+      cands.find((k) => ok(k.d, k.lat, ESCORT_GAP)) ??
+      cands.find((k) => ok(k.d, k.lat, ESCORT_GAP_MIN)) ??
+      cands[0] ?? { d: d0 + (d1 - d0) * want, lat: side * escortLatMax(ch, d0 + (d1 - d0) * want) };
+    const p = laneAt(ch, pick.d, pick.lat);
+    taken.push({ lane, d: pick.d, lat: pick.lat, x: p.x, y: p.y });
+  }
+  return taken.map(({ lane, d, lat }) => ({ lane, d, lat }));
+}
+
+/** Where a frigate wants to sit across the lane at distance d: its station's
+ *  edge, but midstream (or the other edge) where that edge runs past the
+ *  carrier, and never outside the lane where it narrows. */
+function escortLat(g: Game, e: Escort, ch: Channel, d: number, ahead: number): number {
+  const max = escortLatMax(ch, d, ahead);
+  let lat = clamp(e.slat, -max, max);
+  const c = g.map.carrier;
+  const p = laneAt(ch, d, lat);
+  if (Math.hypot(p.x - c.x, p.y - c.y) < 170) {
+    for (const alt of [0, -lat]) {
+      const q = laneAt(ch, d, alt);
+      if (Math.hypot(q.x - c.x, q.y - c.y) >= 170) return alt;
+    }
+  }
+  return lat;
 }
 
 function updateEscorts(g: Game, dt: number): void {
@@ -1279,21 +1384,45 @@ function updateEscorts(g: Game, dt: number): void {
   if (!on && g.escorts.some((e) => !e.leaving)) cue(g, 'frigate.leave', VIEW.width * 0.6, VIEW.height / 2, { vx: AB.frigate.speed });
   for (const e of g.escorts) {
     if (!on) e.leaving = true;
-    const gx = e.leaving ? VIEW.width + 140 : e.sx;
-    const gy = e.leaving ? e.y : e.sy;
-    const d = dist(e.x, e.y, gx, gy);
+    const ch = g.map.channels[e.lane];
+    // Off down the lane.
+    const end = laneLength(ch) + 260;
+    const goal = e.leaving ? end : e.sd;
     const step = AB.frigate.speed * dt;
-    if (d > step) {
-      e.x += ((gx - e.x) / d) * step;
-      e.y += ((gy - e.y) / d) * step;
-    } else {
-      e.x = gx;
-      e.y = gy;
+    const before = e.d;
+    e.d = goal > e.d ? Math.min(goal, e.d + step) : Math.max(goal, e.d - step);
+    // Line astern: never closer than a hull and its wake to a frigate ahead
+    // on its own line (through a narrows they all fall into one file).
+    const dir = Math.sign(e.d - before);
+    if (dir) {
+      const single = escortLatMax(ch, before, dir * 260) < 34;
+      for (const o of g.escorts) {
+        if (o === e || o.lane !== e.lane || (!single && Math.abs(o.lat - e.lat) >= 60)) continue;
+        const gap = (o.d - before) * dir;
+        if (gap > 0 && gap < 400) e.d = dir > 0 ? Math.min(e.d, Math.max(before, o.d - 190)) : Math.max(e.d, Math.min(before, o.d + 190));
+      }
     }
+    // Across the lane: steer toward where it wants to be, no faster than a
+    // ship turns, but always inside the lane where it narrows.
+    // Look ahead the way it is sailing, no further than it is going.
+    const ahead = clamp(goal - e.d, -260, 260);
+    const want = escortLat(g, e, ch, e.d, ahead);
+    const lmax = escortLatMax(ch, e.d, ahead);
+    const dl = clamp(want - e.lat, -AB.frigate.speed * 0.45 * dt, AB.frigate.speed * 0.45 * dt);
+    e.lat = clamp(e.lat + dl, -lmax, lmax);
+    const p = laneAt(ch, e.d, e.lat);
+    const moved = e.d - before;
+    // Heading: the lane's, turned a little by any sideways drift (at most
+    // ~24°, a ship steering across, never crabbing sideways).
+    const aim = Math.atan2(p.ty, p.tx) + Math.atan2(dl, Math.max(step, 1e-6)) * Math.sign(moved);
+    const turn = ESCORT_TURN * dt;
+    e.heading += clamp(angleDiff(aim, e.heading), -turn, turn);
+    e.x = p.x;
+    e.y = p.y;
     // Round 6 cycle 5: they used to hold fire until on station, so the far
     // frigate spent ~4.6 s of the 15 sailing in silent; now they open up as
     // soon as they are on screen.
-    if (e.leaving || !on || e.x < 20) continue;
+    if (e.leaving || !on || e.x < 20 || e.x > VIEW.width - 20 || e.y < 20 || e.y > VIEW.height - 20) continue;
     e.fireT -= dt;
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
@@ -1306,12 +1435,14 @@ function updateEscorts(g: Game, dt: number): void {
     }
     e.fireT = AB.frigate.gap[on.level - 1];
     e.aim = Math.atan2(target.y - e.y, target.x - e.x);
-    const mx = e.x + 30;
-    g.interceptors.push({ id: g.nextId++, x: mx, y: e.y, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
-    addFx(g, 'launch', mx, e.y, { life: 0.3, r: 10 });
-    cue(g, 'frigate.fire', mx, e.y);
+    // The forward turret.
+    const mx = e.x + Math.cos(e.heading) * 30;
+    const my = e.y + Math.sin(e.heading) * 30;
+    g.interceptors.push({ id: g.nextId++, x: mx, y: my, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
+    addFx(g, 'launch', mx, my, { life: 0.3, r: 10 });
+    cue(g, 'frigate.fire', mx, my);
   }
-  g.escorts = g.escorts.filter((e) => !(e.leaving && e.x >= VIEW.width + 130));
+  g.escorts = g.escorts.filter((e) => !(e.leaving && e.d >= laneLength(g.map.channels[e.lane]) + 250));
 }
 
 /** Aegis Launchers (round 8 playtest: "all cargo ships get one interceptor
@@ -1588,8 +1719,14 @@ export function step(g: Game, dt: number): void {
   for (const l of g.queue) {
     if (l.at - g.waveT > PLANE.warn) break;
     if ((l.kind === 'strafer' || l.kind === 'bomber') && l.y === undefined) {
-      l.y = planeLine(g, l.kind, g.rng.threats);
-      cue(g, 'aircraft.warn', (l.side ?? 1) > 0 ? 0 : VIEW.width, l.y);
+      const r = planeRoute(g, l.kind, g.rng.threats);
+      l.y = r.y;
+      if (r.lane !== undefined) {
+        l.lane = r.lane;
+        l.lat = r.lat;
+      }
+      const at = l.lane !== undefined ? planeEntry(g, l) : { x: (l.side ?? 1) > 0 ? 0 : VIEW.width, y: l.y };
+      cue(g, 'aircraft.warn', at.x, at.y);
     }
   }
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
@@ -1780,8 +1917,14 @@ function spawnTanker(g: Game): void {
 
 /** The furthest a hull may sail this step: up to a closed lock gate. */
 function stopAt(g: Game, s: Ship): number {
+  return gateStop(g, s.channel, s.d, LOCK.stand);
+}
+
+/** Up to a closed lock gate on a lane, for a hull at d whose bow reaches
+ *  `stand` ahead of it (a frigate's runs further than a cargo ship's). */
+function gateStop(g: Game, lane: number, d: number, stand: number): number {
   if (!g.map.locks) return Infinity;
-  const ch = g.map.channels[s.channel];
+  const ch = g.map.channels[lane];
   let stop = Infinity;
   g.map.locks.forEach((lock, i) => {
     const d0 = laneDAtX(ch, lock.x0);
@@ -1789,12 +1932,16 @@ function stopAt(g: Game, s: Ship): number {
     if (d0 === null || d1 === null) return;
     const st = g.lockState[i];
     // Short of the gates: wait at the entry while it is shut.
-    if (s.d < d0 - LOCK.stand + 1 && st.phase !== 'in') stop = Math.min(stop, d0 - LOCK.stand);
+    if (d < d0 - stand + 1 && st.phase !== 'in') stop = Math.min(stop, d0 - stand);
     // In the chamber: wait at the exit while it is shut.
-    else if (s.d >= d0 - LOCK.stand && s.d < d1 && st.phase !== 'out') stop = Math.min(stop, d1 - LOCK.stand);
+    else if (d >= d0 - stand && d < d1 && st.phase !== 'out') stop = Math.min(stop, d1 - stand);
   });
   return stop;
 }
+
+/** A frigate's bow is this far ahead of its centre, plus the gap a cargo
+ *  ship keeps from a gate. */
+const ESCORT_STAND = LOCK.stand + 40;
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
@@ -2038,12 +2185,46 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   return th;
 }
 
+/** Does a lane curve (rather than run straight across the screen)? */
+export function laneBends(ch: Channel): boolean {
+  const p = ch.path;
+  if (!p) return false;
+  for (let i = 1; i < p.length; i++) if (Math.abs(p[i].y - p[i - 1].y) > 0.15 * Math.abs(p[i].x - p[i - 1].x) + 2) return true;
+  return false;
+}
+
 /** The line an aircraft flies. A strafing jet lines up on the densest band of
  *  hulls (a tight block is its favourite target); a bomber flies just outside
- *  a shipping channel and drops its missiles in. */
-function planeLine(g: Game, kind: ThreatKind, rng: RNG): number {
-  if (kind === 'bomber') return rng.pick(g.map.bomberLines);
-  const ch = g.map.channels[rng.int(g.map.channels.length)];
+ *  a shipping channel and drops its missiles in. Where the lane curves, the
+ *  aircraft follows it round instead: a strafer down its middle, a bomber
+ *  off its edge. */
+function planeRoute(g: Game, kind: ThreatKind, rng: RNG): { y: number; lane?: number; lat?: number } {
+  const chans = g.map.channels;
+  if (kind === 'bomber') {
+    const bent = chans.map((c, i) => i).filter((i) => laneBends(chans[i]) && !chans[i].tide);
+    if (!bent.length) return { y: rng.pick(g.map.bomberLines) };
+    const lane = rng.pick(bent);
+    // Off whichever edge keeps it on screen more (at the Kesh Hook, the inside
+    // of the turn: the outside runs along the screen's bottom edge).
+    const ch = chans[lane];
+    const off = ch.halfWidth + 70;
+    const seen = (lat: number) => {
+      let n = 0;
+      const L = laneLength(ch);
+      for (let d = 0; d <= L; d += 25) {
+        const p = laneAt(ch, d, lat);
+        if (p.x > 60 && p.x < VIEW.width - 60 && p.y > 60 && p.y < VIEW.height - 60) n++;
+      }
+      return n;
+    };
+    const a = seen(-off);
+    const b = seen(off);
+    const sign = a === b ? (rng.chance(0.5) ? 1 : -1) : a > b ? -1 : 1;
+    return { y: lanePoint(ch, 0).y, lane, lat: sign * off };
+  }
+  const lane = rng.int(chans.length);
+  const ch = chans[lane];
+  if (laneBends(ch)) return { y: lanePoint(ch, 0).y, lane, lat: 0 };
   let best = ch.y;
   let most = 0;
   for (const s of g.ships) {
@@ -2053,16 +2234,41 @@ function planeLine(g: Game, kind: ThreatKind, rng: RNG): number {
       best = s.y;
     }
   }
-  return best;
+  return { y: best };
+}
+
+/** Where an aircraft on a route is at distance s, and the way it points. */
+export function routePose(g: Game, r: { lane: number; s: number; dir: number; lat: number }): { x: number; y: number; tx: number; ty: number } {
+  const p = laneAt(g.map.channels[r.lane], r.s, r.lat);
+  return { x: p.x, y: p.y, tx: p.tx * r.dir, ty: p.ty * r.dir };
 }
 
 function launchPlane(g: Game, l: Launch): void {
   const side = l.side ?? 1;
-  const y = l.y ?? planeLine(g, l.kind, g.rng.threats);
-  const x = side > 0 ? -60 : VIEW.width + 60;
-  const th = spawnThreat(g, l.kind, x, y, 'air');
+  const route = l.y === undefined ? planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
+  const y = route.y;
+  let x = side > 0 ? -60 : VIEW.width + 60;
+  let sy = y;
+  let r: Threat['route'];
+  if (route.lane !== undefined) {
+    const ch = g.map.channels[route.lane];
+    // Enter where the lane does (or leaves, flying against the shipping),
+    // a little off screen.
+    r = { lane: route.lane, s: side > 0 ? -20 : laneLength(ch) + 20, dir: side, lat: route.lat ?? 0, flown: 0 };
+    const p = routePose(g, r);
+    x = p.x - p.tx * 40;
+    sy = p.y - p.ty * 40;
+    r.s -= side * 40;
+  }
+  const th = spawnThreat(g, l.kind, x, sy, 'air');
   th.side = side;
   th.heading = side > 0 ? 0 : Math.PI;
+  if (r) {
+    th.route = r;
+    const p = routePose(g, r);
+    th.heading = Math.atan2(p.ty, p.tx);
+    th.bank = 0;
+  }
   th.target = CARRIER_TARGET;
   th.hits = [];
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : 0;
@@ -2209,26 +2415,84 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   th.vy = (th.y - py) / dt;
 }
 
-/** Aircraft fly straight across. A strafing jet's guns walk a line of hits
- *  ahead of it, catching every hull within PLANE.band of its line once; a
- *  bomber drops guided missiles as it passes over the convoy. Off the far
- *  edge, either is gone (no kill, no pickup). */
+/** Where an aircraft on a curved lane comes on screen (its warning sits
+ *  there). */
+export function planeEntry(g: Game, l: Launch): Point {
+  const ch = g.map.channels[l.lane!];
+  const side = l.side ?? 1;
+  const L = laneLength(ch);
+  // The first point of its route on screen.
+  for (let k = 0; k <= L; k += 10) {
+    const p = laneAt(ch, side > 0 ? k : L - k, l.lat ?? 0);
+    if (p.x >= 0 && p.x <= VIEW.width && p.y >= 0 && p.y <= VIEW.height) return { x: p.x, y: p.y };
+  }
+  return laneAt(ch, side > 0 ? 0 : L, l.lat ?? 0);
+}
+
+/** A hull's place in an aircraft's frame at point (gx, gy) heading (tx, ty):
+ *  how far ahead and how far across. On its own lane, measured along the
+ *  lane (so ahead still means ahead round a bend). */
+function planeFrame(g: Game, th: Threat, s: Ship, gx: number, gy: number, tx: number, ty: number, gunS?: number): { along: number; across: number } {
+  const r = th.route;
+  if (r && gunS !== undefined && s.channel === r.lane) return { along: (s.d - gunS) * r.dir, across: s.lat - r.lat };
+  const dx = s.x - gx;
+  const dy = s.y - gy;
+  return { along: dx * tx + dy * ty, across: -dx * ty + dy * tx };
+}
+
+/** Aircraft fly straight across, or round a curved lane, banking into the
+ *  turn. A strafing jet's guns walk a line of hits ahead of it, catching
+ *  every hull within PLANE.band of its track once; a bomber drops guided
+ *  missiles as it passes over the convoy. Off the far edge, either is gone
+ *  (no kill, no pickup). */
 function updatePlane(g: Game, th: Threat, dt: number): void {
   const side = th.side ?? 1;
-  th.x += side * th.speed * dt;
-  // How far onto the screen it has flown from its entry edge.
-  const inside = side > 0 ? th.x : VIEW.width - th.x;
+  const r = th.route;
+  let tx = side;
+  let ty = 0;
+  let inside: number;
+  let gx: number;
+  let gy: number;
+  let gunS: number | undefined;
+  if (r) {
+    r.s += r.dir * th.speed * dt;
+    r.flown += th.speed * dt;
+    const p = routePose(g, r);
+    const was = th.heading;
+    th.x = p.x;
+    th.y = p.y;
+    // Heading from a little ahead on the route: smooth round the bend.
+    const q = routePose(g, { ...r, s: r.s + r.dir * 30 });
+    th.heading = Math.atan2(q.y - p.y, q.x - p.x);
+    const rate = angleDiff(th.heading, was) / Math.max(dt, 1e-6);
+    // Bank into the turn: up to ~60° at the Kesh Hook's turn rate and more.
+    const want = clamp(rate * 0.9, -1.05, 1.05);
+    th.bank = (th.bank ?? 0) + clamp(want - (th.bank ?? 0), -2.5 * dt, 2.5 * dt);
+    tx = Math.cos(th.heading);
+    ty = Math.sin(th.heading);
+    inside = r.flown - 60;
+    gunS = r.s + r.dir * PLANE.gunLead;
+    const gp = routePose(g, { ...r, s: gunS });
+    gx = gp.x;
+    gy = gp.y;
+  } else {
+    th.x += side * th.speed * dt;
+    // How far onto the screen it has flown from its entry edge.
+    inside = side > 0 ? th.x : VIEW.width - th.x;
+    gx = th.x + side * PLANE.gunLead;
+    gy = th.y;
+  }
   if (th.kind === 'strafer') {
-    const gx = th.x + side * PLANE.gunLead;
-    const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(s.y - th.y) <= PLANE.band);
+    const frame = (s: Ship) => planeFrame(g, th, s, gx, gy, tx, ty, gunS);
+    const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(frame(s).across) <= PLANE.band);
     const was = th.firing;
     th.firing = band.some((s) => {
-      const ahead = (s.x - gx) * side;
+      const ahead = frame(s).along;
       return ahead > -60 && ahead < 220;
     });
-    if (th.firing && !was) cue(g, 'strafer.guns', gx, th.y, { vx: side * th.speed });
+    if (th.firing && !was) cue(g, 'strafer.guns', gx, gy, { vx: tx * th.speed });
     for (const s of band) {
-      if (th.hits!.includes(s.id) || Math.abs(s.x - gx) > 22) continue;
+      if (th.hits!.includes(s.id) || Math.abs(frame(s).along) > 22) continue;
       th.hits!.push(s.id);
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
       damageShip(g, s, THREATS.strafer.damage, 'strafer');
@@ -2237,13 +2501,15 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     // the step count, so the sim stays reproducible).
     if (th.firing && g.steps % 2 === 0) {
       const j = ((g.steps * 7919) % 97) / 97 - 0.5;
-      addFx(g, 'spout', gx + j * 30, th.y + j * 2 * PLANE.band * 0.6, { life: 0.5, r: 8 });
+      const a = j * 30;
+      const c = j * 2 * PLANE.band * 0.6;
+      addFx(g, 'spout', gx + tx * a - ty * c, gy + ty * a + tx * c, { life: 0.5, r: 8 });
     }
   } else {
     th.dropT = (th.dropT ?? 99) + dt;
     const ahead = inside < PLANE.bomberRunIn ? undefined : g.ships
       .filter((s) => {
-        const d = (s.x - th.x) * side;
+        const d = r ? planeFrame(g, th, s, th.x, th.y, tx, ty, r.s).along : (s.x - th.x) * side;
         return d > 0 && d < PLANE.dropReach;
       })
       .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
@@ -2259,7 +2525,14 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
       g.origins.child += 1;
     }
   }
-  if (th.x < -120 || th.x > VIEW.width + 120) th.dead = true;
+  if (r) {
+    // Off the far end of its route and off screen: gone.
+    const L = laneLength(g.map.channels[r.lane]);
+    const past = r.dir > 0 ? r.s > L + 60 : r.s < -60;
+    const off = th.x < -120 || th.x > VIEW.width + 120 || th.y < -120 || th.y > VIEW.height + 120;
+    if (past && off) th.dead = true;
+    if (r.flown > 6000) th.dead = true;
+  } else if (th.x < -120 || th.x > VIEW.width + 120) th.dead = true;
 }
 
 /** Turn rates (rad/s) for the steering threats. */
@@ -3068,14 +3341,15 @@ function updateLocks(g: Game, dt: number): void {
   g.map.locks?.forEach((lock, i) => {
     const st = g.lockState[i];
     st.t += dt;
+    const hulls = g.ships.map((s) => ({ lane: s.channel, d: s.d, ext: 0 }));
     const inside = (lo: number, hi: number) =>
-      g.ships.some((s) => {
-        const ch = g.map.channels[s.channel];
+      hulls.some((s) => {
+        const ch = g.map.channels[s.lane];
         const d0 = laneDAtX(ch, lock.x0);
         const d1 = laneDAtX(ch, lock.x1);
         if (d0 === null || d1 === null) return false;
-        const a = lo < 0 ? d0 + lo : d0 + lo;
-        const b = hi === Infinity ? d1 : d0 + hi;
+        const a = d0 + lo - s.ext;
+        const b = (hi === Infinity ? d1 : d0 + hi) + s.ext;
         return s.d >= a && s.d < b;
       });
     if (st.phase === 'in' && st.t >= LOCK.inTime && !inside(-LOCK.stand, 14)) {
@@ -3091,6 +3365,25 @@ function updateLocks(g: Game, dt: number): void {
       st.t = 0;
     }
   });
+}
+
+/** Saltgate: warships have priority passage. A lock gate swings open while a
+ *  frigate is in its gateway (the convoy still waits its turn), so a Frigate
+ *  Escort can take station anywhere on the canal within its 15 s instead of
+ *  waiting ~20 s at each lock. The renderer draws that gate open. */
+export function frigateAtGate(g: Game, x: number): boolean {
+  // Open well before the bow reaches it (a hull's length ahead), shut once
+  // the stern is through.
+  return g.escorts.some((e) => {
+    // Only under way: one holding station short of a lock leaves it shut.
+    if (!e.leaving && Math.abs(e.d - e.sd) < 1) return false;
+    const ahead = (x - e.x) * Math.sign(Math.cos(e.heading) || 1);
+    return ahead > -(ESCORT_STAND + 30) && ahead < ESCORT_STAND + 130 && Math.abs(e.y - laneYAt(g, e)) < 140;
+  });
+}
+
+function laneYAt(g: Game, e: Escort): number {
+  return lanePoint(g.map.channels[e.lane], e.d).y;
 }
 
 /** Seconds left in a lock's current phase (the renderer's countdown). */
@@ -3367,10 +3660,14 @@ export function timeToImpact(g: Game, th: Threat): number {
     // Until its guns (or bombs) reach the nearest hull ahead of it.
     const side = th.side ?? 1;
     const lead = th.kind === 'strafer' ? PLANE.gunLead : 0;
+    const tx = Math.cos(th.heading);
+    const ty = Math.sin(th.heading);
     let best = Infinity;
     for (const s of g.ships) {
-      const ahead = (s.x - th.x) * side - lead;
-      if (ahead >= 0 && (th.kind === 'bomber' || Math.abs(s.y - th.y) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
+      // Round a bend, ahead and across are measured along its route.
+      const f = th.route ? planeFrame(g, th, s, th.x, th.y, tx, ty, th.route.s) : { along: (s.x - th.x) * side, across: s.y - th.y };
+      const ahead = f.along - lead;
+      if (ahead >= 0 && (th.kind === 'bomber' || Math.abs(f.across) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
     }
     return best === Infinity ? 30 : best;
   }

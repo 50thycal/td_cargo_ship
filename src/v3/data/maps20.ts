@@ -518,7 +518,9 @@ const coves: MapDef = {
   callout: { x: 300, y: 852 },
   alerts: { x0: 30, x1: 960, y: 890 },
   roads: {
-    runners: [bypass([{ x: -60, y: 128 }, { x: 320, y: 128 }, { x: 440, y: 60 }, { x: 800, y: 132 }, { x: 960, y: 60 }, { x: 1300, y: 132 }, { x: 1440, y: 60 }, { x: 1660, y: 128 }], COVES_BASES.slice(0, 3), -1)],
+    // Over the top of each cove, clear of its water (the road used to cut
+    // across the inlet: map visual-check round).
+    runners: [bypass([{ x: -60, y: 128 }, ...[381, 911, 1401].flatMap((cx) => [{ x: cx - 100, y: 128 }, { x: cx - 55, y: 50 }, { x: cx + 55, y: 50 }, { x: cx + 100, y: 128 }]), { x: 1660, y: 128 }], COVES_BASES.slice(0, 3), -1)],
     popups: [{ from: { x: 1550, y: 940 }, to: { x: 1550, y: 730 } }],
   },
   subSpots: [{ x: 150, y: 262 }, { x: 1520, y: 262 }, { x: 180, y: 705 }],
@@ -575,8 +577,12 @@ const delta: MapDef = {
   alerts: { x0: 20, x1: 560, y: 890, max: 1 },
   roads: {
     runners: [
-      bypass([{ x: -60, y: 200 }, { x: 450, y: 205 }, { x: 800, y: 150 }, { x: 1100, y: 72 }, { x: 1660, y: 46 }], DELTA_BASES.slice(0, 3), -1),
-      smooth([{ x: 900, y: 300 }, { x: 1200, y: 276 }, { x: 1660, y: 266 }], 6),
+      // Inland of the north fork's shore all the way (east of x = 950 it ran
+      // along the waterline, half of each truck in the river).
+      bypass([{ x: -60, y: 200 }, { x: 450, y: 205 }, { x: 800, y: 150 }, { x: 1000, y: 62 }, { x: 1200, y: 40 }, { x: 1660, y: 30 }], DELTA_BASES.slice(0, 3), -1),
+      // The ridge road keeps to the island's north edge: down its middle it
+      // ran straight over both silos (map visual-check round).
+      smooth([{ x: 935, y: 288 }, { x: 1000, y: 256 }, { x: 1080, y: 238 }, { x: 1200, y: 226 }, { x: 1360, y: 219 }, { x: 1660, y: 219 }], 6),
     ],
     popups: [{ from: { x: 1250, y: 250 }, to: { x: 1250, y: 318 } }],
   },
@@ -733,8 +739,10 @@ const citadel: MapDef = {
       bypass([{ x: 1660, y: 770 }, { x: 1400, y: 812 }, { x: 1150, y: 850 }], CITADEL_BASES.slice(3, 4), 1),
     ],
     popups: [
-      { from: { x: 1180, y: 330 }, to: { x: 1180, y: 412 } },
-      { from: { x: 1320, y: 330 }, to: { x: 1320, y: 412 } },
+      // Stopping with the bumper at the shore, not in the sea (map
+      // visual-check round).
+      { from: { x: 1180, y: 330 }, to: { x: 1180, y: 355 } },
+      { from: { x: 1320, y: 330 }, to: { x: 1320, y: 356 } },
     ],
   },
   subSpots: [{ x: 200, y: 330 }, { x: 700, y: 330 }, { x: 300, y: 752 }],

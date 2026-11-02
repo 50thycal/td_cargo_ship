@@ -46,6 +46,11 @@ interface Card {
 
 /** Cards side by side in the tray (a map with a short strip of shore says 1). */
 const MAX_SHOWN = 2;
+/** The tallest a card stands (px; two lines of text under the title), the
+ *  gap it keeps from the carrier, and the width two cards need abreast. */
+const CARD_H = 66;
+const GAP = 8;
+const TWO_CARDS = 330;
 /** A card being read is not snatched away by a raid before this (s). */
 const MIN_READ = 1;
 
@@ -125,13 +130,42 @@ export class Alerts {
 
   /** Lay the tray over the map's strip of shore: `span` in world units,
    *  `scale` and `off` the canvas transform. */
-  place(span: { x0: number; x1: number; y: number; max?: number }, scale: number, offX: number, offY: number): void {
-    this.max = span.max ?? MAX_SHOWN;
+  place(
+    span: { x0: number; x1: number; y: number; max?: number },
+    scale: number,
+    offX: number,
+    offY: number,
+    avoid?: { x0: number; y0: number; x1: number; y1: number },
+  ): void {
+    let left = offX + span.x0 * scale;
+    let right = offX + span.x1 * scale;
+    const bottom = offY + span.y * scale;
+    let max = span.max ?? MAX_SHOWN;
+    // Map visual-check round: the cards are a fixed size on screen, so on a
+    // small phone they stand taller over the map and could reach the carrier
+    // (Tidewater Flats, Lee of Marrow at 667×375). Where the carrier sits in
+    // the tray's band, the tray keeps to the wider side of it.
+    if (avoid) {
+      const a0 = offX + avoid.x0 * scale;
+      const a1 = offX + avoid.x1 * scale;
+      const top = bottom - Math.max(CARD_H, this.el.offsetHeight);
+      const ay0 = offY + avoid.y0 * scale;
+      const ay1 = offY + avoid.y1 * scale;
+      if (a1 > left && a0 < right && ay1 > top && ay0 < bottom) {
+        const wLeft = a0 - GAP - left;
+        const wRight = right - (a1 + GAP);
+        if (wLeft >= wRight) right = a0 - GAP;
+        else left = a1 + GAP;
+        // Too narrow for two cards abreast: one at a time.
+        if (right - left < TWO_CARDS) max = 1;
+      }
+    }
+    this.max = max;
     this.el.classList.toggle('single', this.max === 1);
     const s = this.el.style;
-    s.left = `${offX + span.x0 * scale}px`;
-    s.width = `${(span.x1 - span.x0) * scale}px`;
-    s.top = `${offY + span.y * scale}px`;
+    s.left = `${left}px`;
+    s.width = `${Math.max(0, right - left)}px`;
+    s.top = `${bottom}px`;
   }
 
   private show(title: string, sub: string, opts: AlertOpts, key: string): void {

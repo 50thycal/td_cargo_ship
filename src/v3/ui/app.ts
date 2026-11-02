@@ -1112,7 +1112,9 @@ export class App {
   /** Lay the tray over the map's strip of shore (clear of bases and lanes). */
   private placeBanner(): void {
     const span = this.game?.map.alerts;
-    if (span) this.alerts.place(span, this.scale, this.offX, this.offY);
+    // Clear of the carrier: its deck and the rack above it.
+    const c = this.game?.map.carrier;
+    if (span) this.alerts.place(span, this.scale, this.offX, this.offY, c && { x0: c.x - CARRIER.halfLength - 6, y0: c.y - CARRIER.halfBeam - 22, x1: c.x + CARRIER.halfLength + 6, y1: c.y + CARRIER.halfBeam + 4 });
   }
 
   private renderHud(g: Game): void {

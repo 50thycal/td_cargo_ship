@@ -9,7 +9,8 @@
 // The only state kept here is cosmetic (dust puffs), keyed by raider id.
 
 import { PLANE, SUB, TRUCK, VIEW } from '../data/config';
-import { type Ally, type Game, type Raider, type Threat } from '../sim/game';
+import { planeEntry, routePose, type Ally, type Game, type Launch, type Raider, type Threat } from '../sim/game';
+import { laneAt, laneLength } from '../sim/lanes';
 
 const SUB_HULL = '#26302f';
 const SUB_EDGE = '#0c1212';
@@ -169,6 +170,10 @@ export function drawPlaneWarnings(ctx: CanvasRenderingContext2D, g: Game): void 
     const p = 1 - ahead / warn;
     const col = l.kind === 'strafer' ? WARN_JET : WARN_BOMBER;
     const flash = 0.55 + 0.45 * Math.sin(g.t * 16);
+    if (l.lane !== undefined) {
+      routeWarning(ctx, g, l, p, col, flash);
+      continue;
+    }
     // The line it will fly: which lane is about to be strafed.
     ctx.save();
     ctx.strokeStyle = `rgba(${col},${l.kind === 'strafer' ? 0.1 + 0.18 * p : 0.3 + 0.4 * p})`;
@@ -220,67 +225,180 @@ export function drawPlaneWarnings(ctx: CanvasRenderingContext2D, g: Game): void 
   }
 }
 
+/** Points of an aircraft's route `lat` across lane `lane`, every 16 world
+ *  units, from distance s0 to s1 (either way round). */
+function routePoints(g: Game, lane: number, lat: number, s0: number, s1: number): { x: number; y: number }[] {
+  const ch = g.map.channels[lane];
+  const n = Math.max(1, Math.ceil(Math.abs(s1 - s0) / 16));
+  const out: { x: number; y: number }[] = [];
+  for (let k = 0; k <= n; k++) out.push(laneAt(ch, s0 + ((s1 - s0) * k) / n, lat));
+  return out;
+}
+
+function strokePath(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]): void {
+  ctx.beginPath();
+  pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+  ctx.stroke();
+}
+
+/** The warning for an aircraft on a curved lane: its band drawn round the
+ *  lane it will fly, and the chevrons where it comes on, pointing its way. */
+function routeWarning(ctx: CanvasRenderingContext2D, g: Game, l: Launch, p: number, col: string, flash: number): void {
+  const side = l.side ?? 1;
+  const lane = l.lane!;
+  const lat = l.lat ?? 0;
+  const L = laneLength(g.map.channels[lane]);
+  const strafer = l.kind === 'strafer';
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = `rgba(${col},${strafer ? 0.1 + 0.18 * p : 0.3 + 0.4 * p})`;
+  ctx.lineWidth = strafer ? PLANE.band * 2 * (0.25 + 0.75 * p) : 3;
+  ctx.setLineDash(strafer ? [] : [14, 12]);
+  ctx.lineDashOffset = strafer ? 0 : -g.t * 60 * side;
+  strokePath(ctx, routePoints(g, lane, lat, 0, L));
+  if (strafer) {
+    ctx.strokeStyle = `rgba(${col},${0.4 + 0.4 * p})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([14, 10]);
+    ctx.lineDashOffset = -g.t * 120 * side;
+    const half = PLANE.band * (0.25 + 0.75 * p);
+    for (const d of [-half, half]) strokePath(ctx, routePoints(g, lane, lat + d, 0, L));
+  }
+  ctx.restore();
+  // Chevrons where it comes on screen, pointing the way it will fly.
+  const at = planeEntry(g, l);
+  const ch = g.map.channels[lane];
+  const near = laneAt(ch, side > 0 ? 0 : L, lat);
+  let s = side > 0 ? 0 : L;
+  for (let k = 0; k <= L; k += 10) {
+    const q = laneAt(ch, side > 0 ? k : L - k, lat);
+    if (Math.hypot(q.x - at.x, q.y - at.y) < 6) {
+      s = side > 0 ? k : L - k;
+      break;
+    }
+  }
+  void near;
+  const pose = routePose(g, { lane, s, dir: side, lat });
+  const a = Math.atan2(pose.ty, pose.tx);
+  // Pulled in from the very edge so they show.
+  const cx = Math.max(14, Math.min(VIEW.width - 14, at.x + pose.tx * 14));
+  const cy = Math.max(14, Math.min(VIEW.height - 14, at.y + pose.ty * 14));
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(a);
+  for (let k = 0; k < 3; k++) {
+    const off = ((g.t * 60 + k * 18) % 54) - 6;
+    ctx.fillStyle = `rgba(${col},${flash * (1 - off / 60)})`;
+    ctx.beginPath();
+    ctx.moveTo(off, -16);
+    ctx.lineTo(off + 16, 0);
+    ctx.lineTo(off, 16);
+    ctx.lineTo(off + 6, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  // The label beside the chevrons, inside the screen.
+  ctx.save();
+  ctx.font = '800 18px system-ui, sans-serif';
+  const lx = Math.max(90, Math.min(VIEW.width - 90, cx + pose.tx * 70 - pose.ty * 34));
+  const ly = Math.max(28, Math.min(VIEW.height - 12, cy + pose.ty * 70 + pose.tx * 34));
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${col},${0.6 + 0.4 * flash})`;
+  ctx.fillText(strafer ? '✈ STRAFING RUN' : '✈ BOMBER', lx, ly);
+  ctx.restore();
+}
+
 /** Aircraft (threats 'strafer' and 'bomber'): shadow on the water, contrails,
  *  the airframe, and a strafing jet's guns. */
 export function drawPlane(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const side = th.side ?? 1;
-  const heading = side > 0 ? 0 : Math.PI;
+  // On a curved lane it points along its route and banks into the turn.
+  const heading = th.route ? th.heading : side > 0 ? 0 : Math.PI;
+  const bank = th.bank ?? 0;
+  const roll = Math.cos(bank);
+  const hx = Math.cos(heading);
+  const hy = Math.sin(heading);
   const big = th.kind === 'bomber';
-  // Shadow far below: sells the altitude.
+  // Shadow far below: sells the altitude (thrown wider when banked).
   ctx.save();
   ctx.translate(th.x + 30, th.y + 50);
   ctx.rotate(heading);
-  ctx.scale(PLANE_SCALE * 0.9, PLANE_SCALE * 0.9);
+  ctx.scale(PLANE_SCALE * 0.9, PLANE_SCALE * 0.9 * roll);
   ctx.globalAlpha = 0.3;
   airframe(ctx, big, '#000', '#000');
   ctx.restore();
-  // Contrails from the wingtips.
+  // Contrails from the wingtips, following the way it came.
   ctx.save();
-  const span = (big ? 34 : 20) * PLANE_SCALE;
-  for (const s of [-1, 1]) {
-    const grad = ctx.createLinearGradient(th.x, 0, th.x - side * 170, 0);
-    grad.addColorStop(0, 'rgba(235,240,245,0.55)');
-    grad.addColorStop(1, 'rgba(235,240,245,0)');
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(th.x - side * 8, th.y + s * span);
-    ctx.lineTo(th.x - side * 170, th.y + s * span);
-    ctx.stroke();
+  const span = (big ? 34 : 20) * PLANE_SCALE * roll;
+  if (th.route) {
+    const r = th.route;
+    for (const s of [-1, 1]) {
+      const pts = routePoints(g, r.lane, r.lat + s * span * (r.dir > 0 ? 1 : -1), r.s - r.dir * 8, r.s - r.dir * 170);
+      for (let i = 1; i < pts.length; i++) {
+        ctx.strokeStyle = `rgba(235,240,245,${0.55 * (1 - i / pts.length)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pts[i - 1].x, pts[i - 1].y);
+        ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
+    }
+  } else {
+    for (const s of [-1, 1]) {
+      const grad = ctx.createLinearGradient(th.x, 0, th.x - side * 170, 0);
+      grad.addColorStop(0, 'rgba(235,240,245,0.55)');
+      grad.addColorStop(1, 'rgba(235,240,245,0)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(th.x - side * 8, th.y + s * span);
+      ctx.lineTo(th.x - side * 170, th.y + s * span);
+      ctx.stroke();
+    }
   }
   ctx.restore();
   // Guns: muzzle flash, tracer streams to where the rounds land.
   if (th.kind === 'strafer' && th.firing) {
-    const gx = th.x + side * PLANE.gunLead;
-    const nose = th.x + side * 26 * PLANE_SCALE;
+    const gp = th.route ? routePose(g, { ...th.route, s: th.route.s + th.route.dir * PLANE.gunLead }) : { x: th.x + side * PLANE.gunLead, y: th.y };
+    const nose = 26 * PLANE_SCALE;
     const flick = Math.floor(g.t * 30) % 2;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,224,120,0.9)';
     ctx.lineWidth = 2;
     ctx.setLineDash([10, 9]);
-    ctx.lineDashOffset = -g.t * 400 * side;
+    ctx.lineDashOffset = -g.t * 400;
     for (const dy of [-6, 6]) {
       ctx.beginPath();
-      ctx.moveTo(nose, th.y + dy);
-      ctx.lineTo(gx, th.y + dy * 4);
+      ctx.moveTo(th.x + hx * nose - hy * dy, th.y + hy * nose + hx * dy);
+      ctx.lineTo(gp.x - hy * dy * 4, gp.y + hx * dy * 4);
       ctx.stroke();
     }
     ctx.setLineDash([]);
     ctx.fillStyle = flick ? 'rgba(255,240,170,0.95)' : 'rgba(255,190,90,0.9)';
-    star(ctx, nose + side * 4, th.y, flick ? 9 : 6);
+    star(ctx, th.x + hx * (nose + 4), th.y + hy * (nose + 4), flick ? 9 : 6);
     ctx.restore();
   }
-  // The airframe, with an engine glow that flickers.
+  // The airframe, with an engine glow that flickers; banked, its wings
+  // foreshorten and the low wing shows darker.
   ctx.save();
   ctx.translate(th.x, th.y);
   ctx.rotate(heading);
-  ctx.scale(PLANE_SCALE, PLANE_SCALE);
+  ctx.scale(PLANE_SCALE, PLANE_SCALE * roll);
   const glow = 0.6 + 0.4 * Math.sin(g.t * 40 + th.id);
   ctx.fillStyle = `rgba(255,170,80,${glow})`;
   ctx.beginPath();
   ctx.arc(big ? -34 : -27, 0, big ? 5 : 4.5, 0, Math.PI * 2);
   ctx.fill();
   airframe(ctx, big, big ? BOMBER : JET, '#f2f4f6');
+  if (Math.abs(bank) > 0.08) {
+    // The lowered wing in shade: the airframe again, darkened, on that side.
+    ctx.beginPath();
+    ctx.rect(-60, bank > 0 ? 0 : -60, 120, 60);
+    ctx.clip();
+    ctx.globalAlpha = Math.min(0.4, Math.abs(bank) * 0.45);
+    airframe(ctx, big, '#000', '#000');
+  }
   ctx.restore();
 }
 

@@ -782,14 +782,16 @@ describe('what each weapon does with a tap', () => {
       g.pickups.push({ id: 953, kind: 'weapon', weapon: 'frigate', x: 600, y: 300, age: 0 });
       tap(g, 600, 300, 20);
       expect(g.escorts).toHaveLength(3);
+      // Measured along the lane they sail (map visual-check round: they
+      // follow its bends), between frigates on the same line of it.
       let closest = Infinity;
       for (let t = 0; t < WEAPON.time + 10; t += 0.1) {
         run(g, 0.1);
         for (const a of g.escorts)
-          for (const b of g.escorts) if (a !== b && Math.abs(a.y - b.y) < 40) closest = Math.min(closest, Math.abs(a.x - b.x));
+          for (const b of g.escorts) if (a !== b && a.lane === b.lane && Math.abs(a.lat - b.lat) < 40) closest = Math.min(closest, Math.abs(a.d - b.d));
       }
       expect(g.escorts).toHaveLength(0);
-      expect(closest).toBeGreaterThan(210); // a hull and its wake
+      expect(closest).toBeGreaterThan(175); // a hull (152) and a gap
     }
   });
 
@@ -1056,7 +1058,9 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
   it('V3\'s first five maps are V2\'s: the same geometry (difficulty is tuned for their new slots)', async () => {
     const v2 = await import('../../src/v2/data/maps');
     const v3 = await import('../../src/v3/data/maps');
-    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [] });
+    // Roads aside: the map visual-check round moved the Archipelago's pop-up
+    // truck stops back onto the islets in V3 (in V2 they stop in the sea).
+    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null });
     for (const id of Object.keys(v2.MAPS) as (keyof typeof v2.MAPS)[]) expect(shape(v3.MAPS[id])).toBe(shape(v2.MAPS[id]));
   });
 });
