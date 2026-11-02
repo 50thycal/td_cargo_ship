@@ -1,13 +1,15 @@
 // Canvas renderer. Reads a Game, draws one frame, mutates nothing. Everything
 // is drawn in world units (VIEW is 1600×900); the caller sets the transform.
 
-import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, type PickupKind, type RaidTheme } from '../data/config';
+import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
-import { halfWidthAt, type Landmass, type Point } from '../data/maps';
+import { type Landmass, type Point } from '../data/maps';
 import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
+import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
+import { laneSamples } from '../sim/lanes';
 
 const C = {
   waterDeep: '#0b2433',
@@ -60,6 +62,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const land of g.map.land) drawLand(ctx, land);
   drawRoads(ctx, g);
   drawLanes(ctx, g);
+  drawMapUnder(ctx, g);
   drawBases(ctx, g);
   drawRaiders(ctx, g);
   drawTunnels(ctx, g);
@@ -70,7 +73,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
-  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, g.stats.shipHp);
+  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
+  drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0) drawShields(ctx, g);
   drawAegis(ctx, g);
@@ -79,6 +83,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
   }
   for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
+  drawTracked(ctx, g);
   drawFields(ctx, g, 'flak');
   for (const it of g.interceptors) {
     if (it.life < 0) continue;
@@ -117,6 +122,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const b of g.blades) drawBlade(ctx, b);
   for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
+  drawNight(ctx, g, (th) => drawBallisticGround(ctx, g, th));
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
   for (const r of ripples) {
@@ -241,15 +247,28 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.lineWidth = 2;
   ctx.setLineDash([18, 22]);
   for (const ch of g.map.channels) {
-    for (const o of offsets) {
-      // Sampled across x so a funnelling channel's lanes visibly converge.
+    // Sampled along the lane so a funnel's lanes visibly converge and a
+    // bend's lanes follow the turn. A tide lane fades out at low water.
+    const samples = laneSamples(ch, 80);
+    const dim = ch.tide && g.map.tide && !(g.t % (g.map.tide.high + g.map.tide.low) < g.map.tide.high);
+    ctx.globalAlpha = dim ? 0.25 : 1;
+    for (const o of ch.vip ? [0] : offsets) {
       ctx.beginPath();
-      for (let x = 0; x <= VIEW.width; x += 80) {
-        const y = ch.y + o * halfWidthAt(ch, x);
-        if (x === 0) ctx.moveTo(x, y);
+      samples.forEach(({ p, hw }, k) => {
+        const x = p.x - p.ty * o * hw;
+        const y = p.y + p.tx * o * hw;
+        if (k === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
-      }
+      });
       ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    if (ch.label) {
+      const p = samples[Math.min(samples.length - 1, 2)].p;
+      ctx.font = '800 20px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(220,238,248,0.5)';
+      ctx.fillText(ch.label, Math.max(110, Math.min(VIEW.width - 110, p.x)), p.y - ch.halfWidth - 10);
     }
   }
   ctx.setLineDash([]);
@@ -286,6 +305,9 @@ function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game): void {
  *  is inside: the raid warning (drawRaidWarning) still marks a raid's bases. */
 function drawBases(ctx: CanvasRenderingContext2D, g: Game): void {
   g.map.bases.forEach((b, i) => {
+    // Rigs, generators and the Citadel draw as themselves (features.ts);
+    // coves and mine chutes are drawn under the convoy.
+    if (b.rig || b.generator || b.core || b.cove || b.chute) return;
     const open = hatchOpen(g, i);
     ctx.save();
     ctx.translate(b.x, b.y);
@@ -447,11 +469,13 @@ function drawRack(
   }
 }
 
-function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number, maxHp: number = SHIP.hp, armored = false): void {
-  const L = 34;
-  const B = 10;
+function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number, maxHp: number = SHIP.hp, armored = false, heading = 0, vip = false): void {
+  // The supertanker: twice the length, a plain red deck.
+  const L = vip ? 70 : 34;
+  const B = vip ? 16 : 10;
   ctx.save();
   ctx.translate(x, y);
+  ctx.rotate(heading);
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
   ctx.moveTo(-L - 26, 0);
@@ -472,7 +496,17 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
   ctx.strokeStyle = armored ? '#a3b8cc' : C.hullEdge;
   ctx.lineWidth = armored ? 3 : 1.5;
   ctx.stroke();
-  // Container stacks
+  // Container stacks (the tanker: a long red deck with pipework)
+  if (vip) {
+    ctx.fillStyle = '#7a2e26';
+    ctx.fillRect(-L + 14, -B + 4, L * 2 - 34, B * 2 - 8);
+    ctx.strokeStyle = 'rgba(255,220,160,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-L + 16, 0);
+    ctx.lineTo(L - 22, 0);
+    ctx.stroke();
+  } else
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = CONTAINER_TINTS[(id + i * 3) % CONTAINER_TINTS.length];
     ctx.fillRect(-L + 9 + i * 9, -B + 3, 7, B * 2 - 6);
@@ -481,6 +515,16 @@ function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: numbe
   ctx.fillStyle = '#e8e4da';
   ctx.fillRect(-L + 2, -B + 3, 5, B * 2 - 6);
   ctx.restore();
+  if (vip) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x - 40, y - 34, 80, 8);
+    ctx.fillStyle = hp > maxHp / 2 ? '#5ee08a' : hp > 2 ? '#f5c542' : '#ff4d3d';
+    ctx.fillRect(x - 40, y - 34, (80 * Math.max(0, hp)) / maxHp, 8);
+    ctx.font = '800 15px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd166';
+    ctx.fillText('TANKER', x, y - 40);
+  }
   if (hp < maxHp) {
     const puff = (k: number) => (t * 1.3 + k * 0.33) % 1;
     for (let k = 0; k < 3; k++) {
@@ -876,6 +920,7 @@ function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat)
 }
 
 function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  if (drawNewThreat(ctx, g, th)) return;
   const heading = Math.atan2(th.vy, th.vx) || th.heading;
   switch (th.kind) {
     case 'supersonic':
@@ -1072,6 +1117,7 @@ export const PICKUP_COLORS: Record<PickupKind, string> = {
   timewarp: '#5eead4',
   shield: '#e2e8f0',
   steam: '#fb923c',
+  starshell: '#fff1a8',
 };
 
 function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, y: number, age: number, t: number, life: number = PICKUPS.life): void {
@@ -1120,6 +1166,17 @@ function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, 
     ctx.quadraticCurveTo(x + 6, y + 9, x, y + 13);
     ctx.quadraticCurveTo(x - 6, y + 9, x - 9, y + 2);
     ctx.lineTo(x - 10, y - 8);
+    ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'starshell') {
+    // A bursting star: the light it throws over the dark sea.
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      const rr = i % 2 ? 5 : 12;
+      if (i) ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      else ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
     ctx.closePath();
     ctx.fill();
   } else if (kind === 'steam') {

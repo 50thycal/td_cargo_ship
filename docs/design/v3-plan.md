@@ -51,6 +51,16 @@ fork point):
 kills, roads clear of bases, the Island schedule, the tray on all five maps
 at two phone sizes) plus one that V3's maps are V2's, byte for byte.
 
+## Twenty maps
+
+V3 has 20 maps in four chapters of five, built from the player-approved plan
+([v3-maps-plan.md](v3-maps-plan.md)); [v3-maps-build.md](v3-maps-build.md)
+says how they are built and tuned. Each map after the first five brings one
+new idea: a bending lane, an allied radar, a supertanker, single file, lock
+gates, shore batteries, mines, oil rigs, night, a battleship, fast boats, a
+fork you switch, two-way traffic, the tide, and the Citadel. The original
+five keep V2's geometry, with their difficulty retuned for their new slots.
+
 ## Survivor.io, and what V3 takes from it
 
 Research summary (fan wikis and guides; some contradict each other):
@@ -60,7 +70,7 @@ Research summary (fan wikis and guides; some contradict each other):
 | 6 weapon + 6 passive slots, 5★ each; a maxed weapon + its paired passive **evolves** | 3 ability slots, 3 levels; level 3 **evolves** (no passives) |
 | Pick 1 of 3 at every level-up; chests give extra picks | Pick 1 of 3 after every wave (Resupply when nothing fits) |
 | Every attack is automatic; you only move | You don't move, so attacks are **active**: charged, then aimed |
-| 15-minute chapters, bosses at 5/10/15 min; ~350 chapters + challenge modes | 10 waves ≈ 8–10 min a map; 5 maps + endless |
+| 15-minute chapters, bosses at 5/10/15 min; ~350 chapters + challenge modes | 10 waves ≈ 8–10 min a map; 20 maps in four chapters + endless |
 | Gear (merged, upgraded with gold) sets your starting weapon and stats | The **Armory**: 11 upgrade cards in 3 bays, won at random after a run, a duplicate adding a level (round 7; 5 gun upgrades bought with salvage before) |
 | 50+ hours come from the meta (gear, chapters, events), not the in-run skills | The Armory is V3's first meta layer (see "How long the game is") |
 

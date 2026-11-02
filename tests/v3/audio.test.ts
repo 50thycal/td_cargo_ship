@@ -10,7 +10,7 @@ import { BUS_LUFS, MAX_VOICES, SOUNDS, UISFX_SOURCE } from '../../src/v3/audio/m
 import { MixPolicy, MusicDirector } from '../../src/v3/audio/policy';
 import { activeLoops, battleMusic } from '../../src/v3/audio/state';
 import { ABILITY_ORDER, AB, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
-import { PICKUP_KINDS, SUPERSONIC, type ThreatKind } from '../../src/v3/data/config';
+import { PICKUP_KINDS, POST, STRUCTURE_KINDS, SUPERSONIC, THREATS, type ThreatKind } from '../../src/v3/data/config';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
 import {
@@ -82,17 +82,19 @@ describe('sound coverage', () => {
   });
 
   it('every game event, threat, pickup and weapon maps to its sound', () => {
-    const kinds: GameEvent['kind'][] = ['wave', 'debut', 'vector', 'shipLost', 'carrierHit', 'bigKill', 'pickup', 'newPickup', 'weapon', 'dry'];
+    const kinds: GameEvent['kind'][] = ['wave', 'debut', 'vector', 'shipLost', 'carrierHit', 'bigKill', 'pickup', 'newPickup', 'weapon', 'dry', 'tanker', 'post', 'boss', 'fork'];
     const EVENT_CUES: Record<GameEvent['kind'], CueId[]> = {
       wave: ['wave.start'], debut: ['debut.sting'], vector: ['debut.sting'], shipLost: ['ship.sunk'], carrierHit: ['carrier.hit'],
       bigKill: ['kill.big', 'sub.destroyed', 'truck.destroyed'], pickup: Object.values(PICKUP_CUE), newPickup: ['powerup.drop', 'weapon.drop'],
       weapon: ['weapon.load'], dry: ['gun.dry'],
+      tanker: ['tanker.horn'], post: ['post.down', 'post.lost', 'post.up', 'ship.hit'], boss: ['boss.horn'], fork: ['fork.switch'],
     };
     for (const k of kinds) for (const c of EVENT_CUES[k]) expect(CUE_IDS).toContain(c);
-    const threats: ThreatKind[] = ['drone', 'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'mothership', 'strafer', 'bomber', 'bomblet', 'minidrone'];
+    const threats = Object.keys(THREATS) as ThreatKind[];
     for (const t of threats) {
       expect(CUE_IDS, t).toContain(KILL_CUE[t]);
-      expect(CUE_IDS, t).toContain(LAUNCH_CUE[t]);
+      // Everything launched has a launch sound; structures are raised.
+      if (!STRUCTURE_KINDS.includes(t)) expect(CUE_IDS, t).toContain(LAUNCH_CUE[t]);
     }
     for (const p of PICKUP_KINDS) expect(CUE_IDS, p).toContain(PICKUP_CUE[p]);
     expect(Object.keys(WEAPON_SIGNATURE).sort()).toEqual([...ABILITY_ORDER].sort());
@@ -282,6 +284,23 @@ describe('sound timing: a cue lands on the step its visual does', () => {
     const warn = heard.find((h) => h.id === 'weapon.expiring')!;
     const done = heard.find((h) => h.id === 'weapon.done')!;
     expect((done.step - warn.step) * DT).toBeCloseTo(2, 1);
+  });
+});
+
+describe('the 20-map mechanics sound', () => {
+  it('a shore battery knocked out says so, and again when it is back', () => {
+    const g = createGame('battery', 1, 1);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const i = g.map.posts!.findIndex((p) => p.kind === 'battery');
+    const p = g.map.posts![i];
+    // A heavy on top of the battery, aimed at it (posts are targets -10 - i).
+    addThreat(g, { kind: 'heavy', x: p.x, y: p.y, hp: 8, speed: 55, target: -10 - i });
+    const heard: Heard[] = [];
+    runHeard(g, 0.2, heard);
+    expect(heard.map((h) => h.id)).toContain('post.down');
+    runHeard(g, POST.batteryDown + 0.5, heard);
+    expect(heard.map((h) => h.id)).toContain('post.up');
   });
 });
 

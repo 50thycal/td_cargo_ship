@@ -39,11 +39,12 @@ export function panOf(x: number): number {
 export const DUCK_MS = 1000;
 
 /** Density gain: with more than DENSITY effects sounding, each new one
- *  plays quieter (by the square root of the crowd), so a busy wave thickens
- *  instead of getting louder (round 4: busy moments spiked 7-8 LU). */
+ *  plays quieter, by (DENSITY / n)^0.75, so a busy wave thickens instead of
+ *  getting louder (round 4: busy moments spiked 7-8 LU; the merge with the
+ *  20 maps: √ let a lost run's pile-up reach +4.8 LU over a calm wave). */
 export const DENSITY = 4;
 export function densityGain(sfxVoices: number): number {
-  return sfxVoices <= DENSITY ? 1 : Math.sqrt(DENSITY / sfxVoices);
+  return sfxVoices <= DENSITY ? 1 : (DENSITY / sfxVoices) ** 0.75;
 }
 
 /** Time Warp: sfx play a little lower and slower. */

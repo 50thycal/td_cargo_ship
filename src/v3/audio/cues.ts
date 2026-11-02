@@ -76,6 +76,22 @@ export const CUE_IDS = [
   'truck.fire',
   'truck.destroyed',
   'debut.sting',
+  // The 20-map mechanics
+  'mine.drop',
+  'mine.blast',
+  'fastboat.launch',
+  'fastboat.run',
+  'structure.down',
+  'shield.down',
+  'boss.horn',
+  'boss.broadside',
+  'post.down',
+  'post.lost',
+  'post.up',
+  'tanker.horn',
+  'tanker.home',
+  'fork.switch',
+  'lock.gate',
   // Hulls
   'ship.hit',
   'ship.sunk',
@@ -99,6 +115,7 @@ export const CUE_IDS = [
   'steam.on',
   'steam.off',
   'repair.pickup',
+  'starshell.on',
   // Waves and flow
   'wave.start',
   'wave.cleared',
@@ -141,7 +158,7 @@ export interface Cue {
 
 /** Cues that are held on while a state lasts, not fired once: the engine
  *  starts each when it appears in `activeLoops` and fades it when it goes. */
-export const LOOP_CUES = ['burn.loop', 'blade.spin', 'well.pull', 'supersonic.lock', 'carrier.critical', 'strafer.pass', 'bomber.pass'] as const satisfies readonly CueId[];
+export const LOOP_CUES = ['burn.loop', 'blade.spin', 'well.pull', 'supersonic.lock', 'carrier.critical', 'strafer.pass', 'bomber.pass', 'fastboat.run'] as const satisfies readonly CueId[];
 export type LoopCue = (typeof LOOP_CUES)[number];
 
 export const MUSIC_CUES = ['menu.music', 'battle.music', 'battle.intense', 'result.music'] as const satisfies readonly CueId[];

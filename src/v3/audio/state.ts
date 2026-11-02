@@ -38,6 +38,9 @@ export function activeLoops(g: Game): LoopState[] {
     const near = Math.max(...planes.map((t) => Math.min(t.x + 60, VIEW.width + 60 - t.x)));
     out.push({ id: kind === 'strafer' ? 'strafer.pass' : 'bomber.pass', x: mean(planes.map((t) => t.x)), level: Math.max(0.15, Math.min(1, near / 360)) });
   }
+  // Fast attack boats: one outboard roar, panned with them.
+  const boats = g.threats.filter((t) => !t.dead && t.kind === 'fastboat');
+  if (boats.length) out.push({ id: 'fastboat.run', x: mean(boats.map((t) => t.x)), level: Math.min(1, 0.6 + 0.2 * (boats.length - 1)) });
   if (carrierCritical(g)) out.push({ id: 'carrier.critical', x: g.map.carrier.x, level: 1 });
   return out;
 }

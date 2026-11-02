@@ -17,7 +17,7 @@ then:
     400 ms (momentary max), loops and music integrated;
   - holds true peak at or under -1.5 dBTP before encoding (a look-ahead
     limiter, only where needed), so the AAC lands under -1 dBTP;
-  - encodes AAC .m4a (96 kbps mono, 128 kbps stereo music);
+  - encodes AAC .m4a (96 kbps, mono effects, stereo music);
   - writes public/v3/audio/CREDITS.json.
 Needs ffmpeg, numpy, scipy, pyloudnorm.
 """
@@ -195,7 +195,7 @@ def encode(x, path, stereo):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as t:
         wavfile.write(t.name, SR, x.astype(np.float32))
         tmp = t.name
-    rate = "128k" if stereo else "96k"
+    rate = "96k"  # music too: synthesized pads hold up, and it keeps the set under 4 MB
     subprocess.check_call(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-c:a", "aac", "-b:a", rate, "-movflags", "+faststart", path])
     os.unlink(tmp)
 

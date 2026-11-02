@@ -14,7 +14,7 @@ matter most, it says so under *Limits*.
 
 Everything is in **`docs/audio/`** (see `docs/audio/README.md`):
 
-- `sound-board.wav`: every cue in turn at its mix level (4.1 min).
+- `sound-board.wav`: every cue in turn at its mix level (4.9 min).
   `sound-board.md` lists what plays at each timestamp.
 - `renders/calm.wav`, `busy.wav`, `win.wav`, `loss.wav`: 30 s gameplay mixes
   (stereo), each with a spectrogram PNG.
@@ -34,7 +34,7 @@ the environment's network policy. npm and PyPI were reachable. So:
 - **UI sounds (12 cues)** are recordings from **uisfx** 0.4.0 (npm; audio
   licensed **CC0-1.0**, `LICENSE-AUDIO` in the package). They come from its
   `mechanical` (console switches), `scifi` and `cinematic` packs.
-- **Everything else (90 cues)** is **synthesized** by
+- **Everything else (106 cues)** is **synthesized** by
   `tools/v3/audio/synth.py`. Explosions, guns, engines and water are layered:
   a transient, a filtered-noise body, a sub thump, debris crackle and a
   synthetic room. Metal is modal synthesis, and horns and brass are detuned
@@ -99,10 +99,10 @@ swap sounds as below.
   Settings → Sound has on/off, volume and music, saved on the device.
   `window.__v3.audio` exposes a play log for tests.
 - **Files:** AAC `.m4a`, 44.1 kHz, mono effects (96 kbps) and stereo music
-  (128 kbps). 175 files, 3.57 MB. Loops carry 0.1 s of their own tail and
+  (96 kbps too, to stay under budget). 196 files, 3.78 MB. Loops carry 0.1 s of their own tail and
   head as padding, and the engine loops between the pads (see round 2).
 
-## Coverage (102 cues)
+## Coverage (118 cues)
 
 Gun and ammo: fire, dry click, reload tick, airburst, Rack Full.
 Air/Carpet Strike: flyby, guns, napalm drop, napalm burst, burn loop.
@@ -125,6 +125,12 @@ wave cleared, map cleared, run lost, notices.
 UI: tap, back, toggle, draft dealt, card pick, swap, MAX, Armory tab and
 equip, card won (staggered with the deal), new card. Music: menu, battle,
 battle intense, result.
+The 20-map mechanics (added at the merge, below): mine dropped and mine
+blast, fast boat launch and engine loop, a structure destroyed, the
+Citadel's shield down (and shielded hits glancing off), the Dreadnought's
+horn and broadsides, shore battery out and back (its shots use the Point
+Defense sound), radar lost, the supertanker's horn and its safe arrival,
+the Delta's switch, canal lock gates, and the star shell.
 
 Tests (`tests/v3/audio.test.ts`):
 - Every cue has a manifest entry, and every cue is emitted somewhere.
@@ -238,7 +244,7 @@ Built `render.ts` (bot games mixed offline with the game's own policy) and
 - **`e2e/v3-audio.mjs`** (now part of `npm run e2e:v3`) runs Chromium with
   the gesture-required autoplay policy, like iOS:
   - no AudioContext before the first tap; running after it;
-  - all 175 files load and decode;
+  - all 196 files load and decode;
   - menu music, then battle music;
   - a tap's gun sound plays 1.1 ms after the pointerdown (≤ 20);
   - every sim cue plays in the frame its step ran (worst −0.7 ms, ≤ 20);
@@ -259,14 +265,41 @@ Built `render.ts` (bot games mixed offline with the game's own policy) and
 - **Dev Sound Board** in Settings; the sound-board WAV; final renders,
   pictures and reports.
 
+### 7. Merging in the 20-map build
+
+PR #111 landed on the base branch while this was in review: twenty maps
+with new mechanics. The textual conflicts were small (four hunks where cues
+met the new code). The design caught the rest: `KILL_CUE`, `PICKUP_CUE` and
+the event map are `Record`s over the game's kinds, so the new threats
+(mine, fast boat, rig, generator, Citadel, Dreadnought), the star shell
+pickup and the new events (tanker, post, boss, fork) failed to compile
+until each had a sound.
+
+- **15 new cues and one new loop** (`fastboat.run`), each emitted on its
+  sim step. Battery shots reuse `pd.fire` and shielded Citadel hits reuse
+  `shield.block`, since they are the same kind of event.
+- **Checked in play:** bot games on all twelve new feature maps hit every
+  new cue except a shore battery going down and coming back, which is rare
+  with those seeds; a unit test covers it.
+- **Found:** the re-render of the lost run failed the mix gate. Its
+  loudest 3 s (alerts aside) was +4.8 LU over the calm wave's. The energy
+  was spread over many cues: a big kill, four ship hits, two Gravity Wells
+  and strafer guns. Trimming the wells and capping ship hits at two at once
+  only reached +4.5. The density gain is now (4/n)^0.75 instead of √(4/n),
+  and the lost run is at +3.8, busy +2.8, win −0.2.
+- **Found:** the new sounds took the set to 4.04 MB, over budget. Music is
+  now 96 kbps stereo (synthesized pads hold up), so 196 files fit in
+  3.78 MB. `post.up` measured under level, because its clunk's peak used the
+  headroom; it got a fuller rise.
+
 ## Checks run
 
-- `npm test`: 927 tests, including 31 in `tests/v3/audio.test.ts`
+- `npm test`: 948 tests, including 32 in `tests/v3/audio.test.ts`
   (coverage, files and licences, the size budget, AAC/mono/stereo, every
   weapon, timing, determinism, the mix rules).
 - `npm run build`.
-- `npm run e2e:v3`: 72 checks, the existing V3 smoke plus the audio checks.
-- `python3 tools/v3/audio/qa.py`: 175 files, 0 failing. Leading silence
+- `npm run e2e:v3`: 87 checks, the existing V3 smoke plus the audio checks.
+- `python3 tools/v3/audio/qa.py`: 196 files, 0 failing. Leading silence
   ≤ 10 ms, true peak ≤ −1 dBTP after encoding, loudness ±2 LU of its bus
   target, duration within its class, no DC, seamless loops, ≤ 4 MB.
 - `python3 tools/v3/audio/mixcheck.py`: all four renders pass.
@@ -291,7 +324,7 @@ Built `render.ts` (bot games mixed offline with the game's own policy) and
   should use an "ambient" audio session) still need checking on a phone.
 - **The offline renderer** reproduces the engine's buses, pan, ducking,
   loops and music, but not the master safety limiter. The renders peak at
-  −2.9 dBFS or lower, so it shouldn't engage.
+  −2.4 dBFS or lower, so it shouldn't engage.
 - **The busy render starts from wave 9 in Free Play,** so it hears seven
   first-sight stings in 30 s. In a real run those are spread over the waves.
 - The spectral fingerprint ignores rhythm. Seekers' volley and Boomerang's

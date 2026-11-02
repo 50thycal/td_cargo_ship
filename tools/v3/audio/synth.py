@@ -716,6 +716,166 @@ def _(rng, v):
 
 
 # =============================================================================
+# The 20-map mechanics
+
+
+@recipe("mine.drop", 2)
+def _(rng, v):
+    # A mine slipped over the side: a plop, a short splash and bubbles.
+    d = 0.6
+    plop = osc(glide(420 + 40 * v, 160, 0.08), 0.08) * env_exp(0.08, 0.025, 0.002)
+    splash = bp(white(d, rng), 900, 5000) * env_points(d, [(0, 0), (0.01, 1), (0.15, 0.3), (d, 0)])
+    return mix(plop * 0.8, splash * 0.4, at(bubbles(rng, 0.45, 25, 400, 1100) * 0.7, 0.08))
+
+
+@recipe("mine.blast", 2)
+def _(rng, v):
+    # A sea mine: a heavy, muffled thump under the water, then the water
+    # column thrown up and falling back.
+    d = 1.8
+    under = lp(boom(rng, 0.85, 1.2, dark=0.5), 900) * 1.3
+    column = sweep(pink(d, rng), "bp", np.interp(t_axis(d), [0, 0.15, d], [600, 3000, 1200])) * env_points(d, [(0, 0), (0.08, 1), (0.6, 0.5), (d, 0)])
+    rain = bp(crackle(1.2, rng, rate=90, decay=0.006), 1500, 6000) * env_points(1.2, [(0, 0), (0.4, 1), (1.2, 0)]) * 0.4
+    return mix(under, at(column * 0.55, 0.03), at(rain, 0.35), at(bubbles(rng, 1.0, 30, 150, 600), 0.2))
+
+
+def outboard(rng, dur, f, rough=17):
+    t = t_axis(dur)
+    eng = osc(f, dur, "saw") + 0.6 * osc(f * 2.01, dur, "saw") + 0.3 * osc(f * 0.5, dur, "square")
+    chop = 0.75 + 0.25 * np.sin(2 * np.pi * rough * t)
+    spray = bp(white(dur, rng), 2500, 8000) * 0.25
+    return sat(lp(eng, 2200) * chop * 0.5 + spray, 1.8)
+
+
+@recipe("fastboat.launch", 2)
+def _(rng, v):
+    # Out of the cove: an outboard revving up hard.
+    d = 1.0
+    t = t_axis(d)
+    f = np.interp(t, [0, 0.15, 0.6, d], [70, 95 + 8 * v, 150 + 10 * v, 150])
+    eng = osc(f, d, "saw") + 0.6 * osc(f * 2.01, d, "saw")
+    eng = sat(lp(eng, 2500) * (0.75 + 0.25 * np.sin(2 * np.pi * 17 * t)), 1.8)
+    return eng * env_points(d, [(0, 0), (0.05, 0.7), (0.6, 1), (d, 0)])
+
+
+@recipe("fastboat.run", 1, loop=2.0)
+def _(rng, v):
+    # A fast attack boat at speed, held while one is out (pans with it).
+    return make_loop(outboard(rng, 2.3, 150), 2.0, 0.3)
+
+
+@recipe("structure.down", 2)
+def _(rng, v):
+    # A rig, a generator or the Citadel going up: a big blast, steel
+    # groaning as it buckles, and debris clattering down.
+    d = 2.8
+    groan = lp(osc(glide(70 + 6 * v, 35, 2.2), 2.2, "saw"), 450) * env_points(2.2, [(0, 0), (0.3, 0.6), (2.2, 0)])
+    groan *= 0.8 + 0.2 * np.sin(2 * np.pi * 2.7 * t_axis(2.2))
+    clatter = np.zeros(secs(d))
+    for i in range(12):
+        f = rng.uniform(300, 2200)
+        clatter = mix(clatter, at(ring(rng, [f, f * 1.47], 0.25, q=40) * rng.uniform(0.1, 0.3), rng.uniform(0.3, 2.2)))
+    return fit(mix(boom(rng, 1.0, 2.0, dark=0.8), at(groan * 0.5, 0.25), clatter), d)
+
+
+@recipe("shield.down")
+def _(rng, v):
+    # The Citadel's shield fails: a chord sliding down and out, with static.
+    d = 1.6
+    ch = sum(osc(glide(f, f * 0.35, d), d) * a for f, a in [(294, 0.5), (440, 0.4), (587, 0.3), (880, 0.2)])
+    stat = hp(white(d, rng), 3000) * lp((rng.random(secs(d)) > 0.7).astype(float), 600) * 0.3
+    return reverb((ch + stat) * env_points(d, [(0, 0), (0.02, 1), (d, 0)]), rng, wet=0.35, dur=1.2, tau=0.5)
+
+
+@recipe("boss.horn")
+def _(rng, v):
+    # The Dreadnought: a vast, low ship's horn, two blasts, over a drum hit.
+    a = horn(rng, 55, 1.1, 0.12)
+    b = horn(rng, 55, 1.4, 0.12)
+    hit = mix(thump(80, 45, 0.8, 0.3), lp(brown(0.5, rng), 300) * env_exp(0.5, 0.1) * 0.5)
+    return mix(a, at(b, 1.3), hit * 0.8)
+
+
+@recipe("boss.broadside", 2)
+def _(rng, v):
+    # A broadside: three heavy guns a beat apart.
+    out = np.zeros(secs(1.8))
+    for k in range(3):
+        gun = mix(click(rng, 0.006, 1200), lp(white(0.1, rng), 3500) * env_exp(0.1, 0.02), thump(85 + 5 * k, 38, 0.4, 0.1) * 1.2)
+        out = mix(out, at(gun * (1 - 0.1 * k), k * 0.11 + rng.uniform(0, 0.02)))
+    return reverb(sat(out, 2.0), rng, wet=0.35, dur=1.3, tau=0.5)
+
+
+@recipe("post.down")
+def _(rng, v):
+    # A shore battery knocked out: a blast, then its power whining down.
+    d = 1.4
+    down = lp(osc(glide(900, 90, 0.9), 0.9, "saw"), 2500) * env_points(0.9, [(0, 0.6), (0.9, 0)])
+    return mix(boom(rng, 0.6, 1.2), at(down * 0.35, 0.15))
+
+
+@recipe("post.lost")
+def _(rng, v):
+    # A radar gone for good: a warbling tone falling into static.
+    d = 1.4
+    t = t_axis(d)
+    f = glide(1400, 300, d) * (1 + 0.05 * np.sin(2 * np.pi * 9 * t))
+    tone = osc(f, d, "tri") * env_points(d, [(0, 0), (0.02, 0.8), (d, 0)])
+    stat = bp(white(d, rng), 1500, 7000) * env_points(d, [(0, 0), (0.5, 0.2), (d, 0.5)]) * 0.3
+    return reverb(fade(tone + stat, 0.002, 0.2), rng, wet=0.25, dur=0.8, tau=0.3)
+
+
+@recipe("post.up")
+def _(rng, v):
+    # Back in action: a power-up rise and a firm clunk.
+    d = 0.6
+    rise = lp(osc(glide(150, 900, d), d, "saw"), 3000) * env_points(d, [(0, 0), (0.5, 0.8), (d, 0.4)])
+    return mix(rise * 0.8, at(mix(ring(rng, [420, 760, 1300], 0.3, q=30), thump(160, 100, 0.08, 0.02) * 0.3) * 0.5, d - 0.05))
+
+
+@recipe("tanker.horn")
+def _(rng, v):
+    # The supertanker under way: a deep horn, one long blast.
+    return mix(horn(rng, 73.4, 2.0, 0.2), lp(brown(2.2, rng), 120) * env_points(2.2, [(0, 0), (0.6, 0.5), (2.2, 0)]) * 0.5)
+
+
+@recipe("tanker.home")
+def _(rng, v):
+    # The tanker through: a warm major chord and a bell.
+    out = np.zeros(secs(1.8))
+    for f in [261.6, 329.6, 392]:
+        out = mix(out, brass(f, 1.2, rng, 2500) * 0.18)
+    out = mix(out, at(bell(1046.5, 1.0) * 0.3, 0.1))
+    return reverb(out, rng, wet=0.3, dur=1.0, tau=0.5)
+
+
+@recipe("fork.switch")
+def _(rng, v):
+    # The Delta's buoy switch thrown: a lever ratchet and a heavy clunk.
+    return mix(ratchet(rng, 3, 0.04), at(mix(ring(rng, [260, 470, 910], 0.3, q=12), thump(130, 80, 0.1, 0.03) * 0.8), 0.13))
+
+
+@recipe("lock.gate")
+def _(rng, v):
+    # A canal lock gate swinging: hydraulics, a deep clank, water rushing.
+    d = 1.6
+    hyd = lp(osc(glide(90, 130, 0.8), 0.8, "saw"), 700) * env_points(0.8, [(0, 0), (0.1, 0.5), (0.8, 0.3)])
+    clank = mix(ring(rng, [140, 260, 430, 690], 0.8, q=30), thump(70, 40, 0.3, 0.1))
+    water = sweep(pink(d, rng), "lp", np.interp(t_axis(d), [0, 0.8, d], [500, 2500, 1200])) * env_points(d, [(0, 0), (0.9, 0.8), (d, 0)])
+    return mix(hyd * 0.5, at(clank * 0.8, 0.75), water * 0.4)
+
+
+@recipe("starshell.on")
+def _(rng, v):
+    # A star shell: fired up with a whistle, a pop, then the flare's hiss.
+    d = 1.4
+    up = osc(glide(900, 2600, 0.45), 0.45) * env_points(0.45, [(0, 0), (0.05, 0.4), (0.45, 0.2)])
+    pop = mix(click(rng, 0.005, 1500), thump(300, 160, 0.06, 0.015) * 0.6)
+    burn = bp(white(0.9, rng), 2000, 9000) * env_points(0.9, [(0, 0), (0.05, 0.6), (0.9, 0)]) * 0.35
+    return reverb(mix(up * 0.4, at(pop, 0.45), at(burn, 0.47)), rng, wet=0.3, dur=0.9, tau=0.35)
+
+
+# =============================================================================
 # Hulls
 
 

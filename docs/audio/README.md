@@ -5,7 +5,7 @@ these yet; they were checked by measurement only.
 
 | file | what |
 |---|---|
-| `sound-board.wav` | every cue in turn at its mix level, 4.1 min; `sound-board.md` says what plays when |
+| `sound-board.wav` | every cue in turn at its mix level, 4.9 min; `sound-board.md` says what plays when |
 | `renders/calm.wav` | wave 1 on the Strait, 30 s |
 | `renders/busy.wav` | Harbor Mouth waves 9–10 with Battle Group, Fragstorm and Carpet Strike, the busiest 30 s |
 | `renders/win.wav` | the last 30 s of a map cleared, into the result music |

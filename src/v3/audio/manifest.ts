@@ -86,9 +86,11 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'aegis.launch': sfx('aegis.launch', 3, 0.32, { pitch: [0.93, 1.08], cooldownMs: 60, maxVoices: 3 }),
   'aegis.reload': sfx('aegis.reload', 1, 0.18, { pitch: [0.97, 1.05], cooldownMs: 250, maxVoices: 1 }),
 
-  'well.open': sfx('well.open', 1, 0.6, { cooldownMs: 100, maxVoices: 2 }),
+  'well.open': sfx('well.open', 1, 0.45, { cooldownMs: 100, maxVoices: 2 }),
   'well.pull': sfx('well.pull', 1, 0.35),
-  'well.implode': sfx('well.implode', 2, 0.75, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 2 }),
+  // Wells are long and low: two at once stacked into the loudest moment of
+  // a lost run (merge round), so they sit lower than a single blast would.
+  'well.implode': sfx('well.implode', 2, 0.55, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 2 }),
   'rail.beam': sfx('rail.beam', 3, 0.75, { pitch: [0.96, 1.04], cooldownMs: 50, maxVoices: 2 }),
   'tesla.arc': sfx('tesla.arc', 4, 0.32, { pitch: [0.9, 1.15], cooldownMs: 40, maxVoices: 3 }),
 
@@ -128,8 +130,26 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'truck.destroyed': sfx('truck.destroyed', 1, 0.8, { maxVoices: 2 }),
   'debut.sting': alert('debut.sting', 1, { cooldownMs: 1500, duck: 0.35, duckMs: 900 }),
 
+  // The 20-map mechanics (mines, boats, structures, the Dreadnought,
+  // allied posts, the supertanker, the Delta's switch, the Canal's locks).
+  'mine.drop': sfx('mine.drop', 2, 0.25, { pitch: [0.92, 1.08], cooldownMs: 150, maxVoices: 2 }),
+  'mine.blast': sfx('mine.blast', 2, 0.8, { pitch: [0.94, 1.05], cooldownMs: 80, maxVoices: 2 }),
+  'fastboat.launch': sfx('fastboat.launch', 2, 0.35, { pitch: [0.94, 1.08], cooldownMs: 150, maxVoices: 2 }),
+  'fastboat.run': sfx('fastboat.run', 1, 0.3),
+  'structure.down': sfx('structure.down', 2, 0.9, { cooldownMs: 200, maxVoices: 2 }),
+  'shield.down': alert('shield.down', 0.7, { duck: 0.5, duckMs: 900 }),
+  'boss.horn': alert('boss.horn', 0.8, { duck: 0.45, duckMs: 1300 }),
+  'boss.broadside': sfx('boss.broadside', 2, 0.85, { cooldownMs: 1000, maxVoices: 1 }),
+  'post.down': sfx('post.down', 1, 0.7, { maxVoices: 2 }),
+  'post.lost': alert('post.lost', 0.7, { duck: 0.5, duckMs: 900 }),
+  'post.up': sfx('post.up', 1, 0.45, { maxVoices: 2 }),
+  'tanker.horn': sfx('tanker.horn', 1, 0.6, { maxVoices: 1 }),
+  'tanker.home': alert('tanker.home', 0.6, { duck: 0.6, duckMs: 800 }),
+  'fork.switch': sfx('fork.switch', 1, 0.5, { cooldownMs: 120, maxVoices: 1 }),
+  'lock.gate': sfx('lock.gate', 1, 0.45, { cooldownMs: 300, maxVoices: 2 }),
+
   // Hulls: your losses are louder than your kills.
-  'ship.hit': sfx('ship.hit', 3, 0.6, { pitch: [0.94, 1.05], cooldownMs: 60, maxVoices: 3 }),
+  'ship.hit': sfx('ship.hit', 3, 0.6, { pitch: [0.94, 1.05], cooldownMs: 60, maxVoices: 2 }),
   'ship.sunk': sfx('ship.sunk', 2, 0.9, { cooldownMs: 120, maxVoices: 2 }),
   'ship.delivered': ui('ship.delivered', 0.28, { pitch: [0.98, 1.02], cooldownMs: 250, maxVoices: 1 }),
   'carrier.hit': sfx('carrier.hit', 2, 0.95, { cooldownMs: 120, maxVoices: 2 }),
@@ -152,6 +172,7 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'steam.on': sfx('steam.on', 1, 0.55),
   'steam.off': sfx('steam.off', 1, 0.35),
   'repair.pickup': sfx('repair.pickup', 1, 0.55),
+  'starshell.on': sfx('starshell.on', 1, 0.55),
 
   // Waves and flow
   'wave.start': alert('wave.start', 0.4, { duck: 1 }),
