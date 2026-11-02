@@ -96,15 +96,15 @@ try {
     return keep;
   });
   await page.reload({ waitUntil: 'networkidle' });
-  check((await page.locator('.v3-armory-strip').textContent()).includes('0 cards found') && !(await page.locator('.v3-armory-strip').textContent()).includes('Warhead'), 'an old salvage-era save loads with its Armory cleared');
+  check((await page.locator('.v3-armory-btn').getAttribute('data-cards')) === '0' && !(await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')).armory.warhead)), 'an old salvage-era save loads with its Armory cleared');
   await page.evaluate((keep) => localStorage.setItem('straitwatch.v3.progress', keep), legacy);
   await page.reload({ waitUntil: 'networkidle' });
 
   // ---- Menu and Armory ----
   await page.waitForSelector('[data-screen="menu"]');
   await page.screenshot({ path: `${SHOT_DIR}/01-menu.png` });
-  check((await page.locator('.v3-armory-strip').textContent()).includes('4 cards found'), 'menu shows the Armory cards found');
-  await page.click('.v3-armory-strip');
+  check((await page.locator('.v3-armory-btn').getAttribute('data-cards')) === '4' && (await page.locator('.v3-armory-btn .v3-count').textContent()) === '4', 'menu shows the Armory cards found');
+  await page.click('.v3-armory-btn');
   await page.waitForSelector('[data-screen="armory"]');
   // Round 7: every upgrade is a card; the ones not won yet are greyed out.
   check((await page.locator('.v3-armory-card').count()) === 5, 'the Gun bay shows its five cards');
@@ -119,10 +119,10 @@ try {
   check(!('salvage' in saved) && !(await page.locator('[data-buy]').count()), 'nothing is bought: no salvage, no Upgrade buttons');
   await page.click('[data-bay="supply"]');
   check((await page.locator('.v3-armory-card:disabled').count()) === 3, 'the Supply bay: three cards, none won yet');
-  await page.click('[data-screen="armory"] .v2-btn.primary:has-text("Back")');
+  await page.click('[data-screen="armory"] [data-back]');
   await page.waitForSelector('[data-screen="menu"]');
 
-  // ---- A run: with an upgrade owned, the map asks which ONE it takes ----
+  // ---- A run: the map's briefing asks which ONE upgrade each bay gives ----
   await page.click('[data-map="strait"]');
   await page.waitForSelector('[data-screen="loadout"]');
   check((await page.locator('[data-bay="gun"] .v3-gun.on').getAttribute('data-gun')) === 'warhead' && (await page.locator('[data-bay="hull"] .v3-gun.on').getAttribute('data-gun')) === 'pointdef', 'the loadout picker has one upgrade from each open bay');
@@ -337,6 +337,65 @@ try {
   const rail = await page.locator('.v2-rail-right').boundingBox();
   const last = await page.locator('.v3-weapon').nth(2).boundingBox();
   check(last.y + last.height <= rail.y + rail.height + 1 && last.y + last.height <= 390, `the loadout fits on a phone (bottom ${Math.round(last.y + last.height)} of 390)`);
+
+  // ---- Menus round: the screens before a run, on phones, by touch ----
+  // Every one fits each landscape phone without scrolling; each fact is said
+  // once; the menu's maps have pictures; a locked map says why when tapped;
+  // a fresh player's map tap opens its briefing, and Sail starts the run.
+  for (const [w, h] of [[667, 375], [844, 390], [874, 402]]) {
+    const mp = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    mp.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await mp.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
+    await mp.evaluate(() => localStorage.clear());
+    await mp.reload({ waitUntil: 'networkidle' });
+    const fits = () =>
+      mp.evaluate(() => {
+        const o = document.querySelector('.v2-overlay.open .v2-panel');
+        const r = o.getBoundingClientRect();
+        const wide = [...o.querySelectorAll('*')].some((e) => e.getBoundingClientRect().right > innerWidth + 1);
+        return o.scrollHeight <= o.clientHeight + 2 && r.bottom <= innerHeight + 1 && !wide;
+      });
+    const screen = () => mp.evaluate(() => document.querySelector('.v2-overlay').dataset.screen);
+    await mp.waitForSelector('[data-screen="menu"]');
+    check(await fits(), `${w}×${h}: the menu fits`);
+    await mp.waitForFunction(() => [...document.querySelectorAll('.v2-map-card img')].filter((i) => i.src.startsWith('data:image')).length === 5, null, { timeout: 8000 });
+    check(true, `${w}×${h}: the five maps have pictures`);
+    const menuText = await mp.locator('.v2-overlay').innerText();
+    check(!/to unlock/i.test(menuText) && !/Not played yet/.test(menuText) && !(await mp.locator('.v2-tag').count()), `${w}×${h}: a locked map isn't spelled out on the menu, and there is no tagline`);
+    check((await mp.locator('.v2-map-card.next').count()) === 1, `${w}×${h}: one map is marked as next`);
+    await mp.locator('[data-map="kesh"]').tap();
+    check((await screen()) === 'menu' && /Clear The Strait to open The Kesh Hook/.test(await mp.locator('.v3-menu-toast').textContent()), `${w}×${h}: a locked map, tapped, says why and stays on the menu`);
+    check(await mp.evaluate(() => !!window.__v3.backdrop()), `${w}×${h}: a map sails behind the menu`);
+    await mp.locator('.v3-armory-btn').tap();
+    await mp.waitForSelector('[data-screen="armory"]');
+    check(await fits(), `${w}×${h}: the Armory fits`);
+    const armText = await mp.locator('.v2-overlay').innerText();
+    check(!/NOT FOUND|Not found yet/i.test(armText) && !(await mp.locator('.v3-armory .v2-card-answers').count()), `${w}×${h}: the Armory says "not found" once per card (a lock), and no card repeats its bay`);
+    await mp.locator('[data-back]').tap();
+    await mp.locator('.v2-settings-btn').tap();
+    await mp.waitForSelector('[data-screen="settings"]');
+    check(await fits(), `${w}×${h}: Settings fits`);
+    await mp.locator('[data-back]').tap();
+    await mp.locator('[data-free-play]').tap();
+    await mp.waitForSelector('[data-screen="freeplay"]');
+    check(await fits(), `${w}×${h}: Free Play fits`);
+    await mp.locator('[data-back]').tap();
+    await mp.locator('[data-map="strait"]').tap();
+    await mp.waitForSelector('[data-screen="loadout"]');
+    check(await fits(), `${w}×${h}: the briefing fits`);
+    check((await mp.locator('.v3-brief-blurb').textContent()).length > 10 && (await mp.evaluate(() => window.__v3.backdrop().map)) === 'strait', `${w}×${h}: the briefing says what the map is about, with that map behind it`);
+    await mp.locator('[data-start]').tap();
+    await mp.waitForSelector('.playing');
+    check((await mp.evaluate(() => window.__v3.game().map.id)) === 'strait', `${w}×${h}: Sail starts the run`);
+    await mp.close();
+  }
+  // Portrait: turn the phone, on the menu too.
+  {
+    const pp = await browser.newPage({ viewport: { width: 402, height: 874 }, hasTouch: true, isMobile: true });
+    await pp.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
+    check(await pp.locator('.v2-rotate').isVisible(), 'portrait: the menu asks to turn the phone');
+    await pp.close();
+  }
 
   // ---- V2 round 14's notification tray, on every map ----
   // A busy late wave played by the watch bot (which also grabs weapons, so
