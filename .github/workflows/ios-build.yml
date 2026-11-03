@@ -1,0 +1,98 @@
+name: iOS build
+
+# Compiles the Capacitor iOS app (store flavour) for the simulator, unsigned:
+# proves the Xcode project, the Swift Package graph, the plugins and the
+# app's own Game Center plugin build, with no Apple account or secrets.
+# Signing, archiving and TestFlight upload live in app_farm
+# (farm-capacitor-release.yml).
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'native/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - '.github/workflows/ios-build.yml'
+  push:
+    branches: [claude/mobile-game-predator-prey-tu1t5k]
+    paths:
+      - 'ios/**'
+      - 'native/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Store build + cap sync
+        run: npm run ios:sync
+      - name: Store bundle checks
+        run: |
+          test "$(grep -c 'name="app-flavor" content="store"' dist/index.html)" = 1
+          ! grep -rq '/api/playlog' dist
+          test -f ios/App/App/public/index.html
+          grep -q GameCenterPlugin ios/App/App/capacitor.config.json
+      - name: Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)" || true
+          xcodebuild -version
+      - name: Build for the simulator (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/xcodebuild.log | grep -E 'error:|warning: .*GameCenter|BUILD (SUCCEEDED|FAILED)'
+      - name: Check the built app
+        run: |
+          APP=$(find build/dd/Build/Products -name 'App.app' -maxdepth 3 | head -1)
+          echo "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :UISupportedInterfaceOrientations' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$APP/Info.plist"
+          test -f "$APP/PrivacyInfo.xcprivacy"
+          test -f "$APP/public/index.html"
+      - name: Boot a simulator and launch it
+        run: |
+          set -x
+          APP=$(find build/dd/Build/Products -name 'App.app' -maxdepth 3 | head -1)
+          DEV=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,v in sorted(d.items(), reverse=True) if "iOS" in r for x in v if x["name"].startswith("iPhone 16")))')
+          xcrun simctl boot "$DEV"
+          xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl install "$DEV" "$APP"
+          xcrun simctl launch "$DEV" com.appfarm.straitwatch
+          sleep 20
+          xcrun simctl io "$DEV" screenshot build/launch.png
+          # Still running 20 s after launch (did not crash at start).
+          xcrun simctl spawn "$DEV" launchctl list | grep -q 'com.appfarm.straitwatch'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build
+          path: |
+            build/xcodebuild.log
+            build/launch.png
+          if-no-files-found: ignore

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <!-- Launch screen: the radar mark, small, on the game's background. -->
+  <defs>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7fe9ff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#7fe9ff" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+  <rect width="2732" height="2732" fill="#070d12"/>
+  <g transform="translate(1366 1366) scale(6) translate(-32 -32)">
+    <circle cx="32" cy="32" r="29" fill="#0b1820" stroke="#7fe9ff" stroke-opacity="0.55" stroke-width="2"/>
+    <circle cx="32" cy="32" r="19" fill="none" stroke="#7fe9ff" stroke-opacity="0.22" stroke-width="1.5"/>
+    <path d="M32 32 L61 32 A29 29 0 0 0 52.5 11.5 Z" fill="url(#sweep)"/>
+    <path d="M17 37h30l-5 6H22z" fill="#f4f1e8"/>
+    <path d="M27 31h9v6h-9z" fill="#f4f1e8"/>
+    <circle cx="45" cy="19" r="2.4" fill="#ff4d3d"/>
+  </g>
+</svg>

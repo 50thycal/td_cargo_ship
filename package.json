@@ -52,6 +52,7 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",
     "@capgo/native-purchases": "^8.9.6",
-    "@vercel/blob": "^2.8.2"
+    "@vercel/blob": "^2.8.2",
+    "straitwatch-game-center": "file:native/game-center"
   }
 }
