@@ -7,6 +7,7 @@ import { RATING_AXES, NOTE_TAGS, type Moment, type NoteTag, type PlayNote, type 
 import { THREATS, type ThreatKind } from '../data/config';
 import type { PlayLog } from '../sim/playlog';
 import { RAID_LOOK } from './render';
+import { kv } from '../platform/store';
 
 /** Pre-release builds ship with playtest notes on; flip this before a store
  *  build (the setting still lets a tester turn them on). */
@@ -18,7 +19,7 @@ const THUMB_W = 320;
 
 export function notesEnabled(): boolean {
   try {
-    const v = localStorage.getItem(NOTES_KEY);
+    const v = kv.getItem(NOTES_KEY);
     return v === null ? NOTES_DEFAULT : v === '1';
   } catch {
     return NOTES_DEFAULT;
@@ -27,7 +28,7 @@ export function notesEnabled(): boolean {
 
 export function setNotesEnabled(on: boolean): void {
   try {
-    localStorage.setItem(NOTES_KEY, on ? '1' : '0');
+    kv.setItem(NOTES_KEY, on ? '1' : '0');
   } catch {
     // not remembered
   }

@@ -74,6 +74,11 @@ import { activeLoops, battleMusic } from '../audio/state';
 import { chromeSvg, MARK_SVG } from './chrome';
 import { calm, mapThumb, quietGame, thumbNow } from './thumbs';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
+import { clearAll, kv } from '../platform/store';
+import { PRIVACY_URL, STORE, VERSION } from '../platform/flavor';
+import { haptic, hapticForCue, hapticsAvailable, hapticsEnabled, setHapticsEnabled } from '../platform/haptics';
+import { earned, gameCenterAvailable, showGameCenter, submitBest, unlock } from '../platform/gamecenter';
+import { FREE_CHAPTERS, buyFullGame, chapterOwned, onEntitlementChange, ownsFullGame, purchasesAvailable, restoreFullGame, unlockPrice } from '../platform/unlock';
 
 const DT = 1 / 60;
 /** "Watch it" on the review: seconds before and after the moment. */
@@ -141,9 +146,9 @@ const TIPS_KEY = 'straitwatch.v3.tips';
 /** True the first time a tip is asked for on this device. */
 function firstTime(id: string): boolean {
   try {
-    const seen = JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]') as string[];
+    const seen = JSON.parse(kv.getItem(TIPS_KEY) ?? '[]') as string[];
     if (seen.includes(id)) return false;
-    localStorage.setItem(TIPS_KEY, JSON.stringify([...seen, id]));
+    kv.setItem(TIPS_KEY, JSON.stringify([...seen, id]));
     return true;
   } catch {
     return true;
@@ -225,7 +230,7 @@ export class App {
   private noteKey = '';
   /** Volleys finished when the note button last pulsed. */
   private volleysSeen = 0;
-  private notesOn = notesEnabled();
+  private notesOn = !STORE && notesEnabled();
   /** The result screen's run, kept for its review (and a replay's way back). */
   private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
   /** "Watch it": a marked moment playing back, and where it stops. */
@@ -248,7 +253,7 @@ export class App {
 
   /** Developer playtest mode (`?dev=1`): presets that shorten a run, all
    *  maps open, faster speeds, and a wave retry on the loss screen. */
-  private dev = devEnabled();
+  private dev = !STORE && devEnabled();
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   /** Watch mode: the bot in this run, and who is at the controls. */
@@ -386,6 +391,13 @@ export class App {
     }
   }
 
+  /** The app is going to the background (a call, the home gesture, the
+   *  app switcher): pause a wave in progress and save the run so far. */
+  background(): void {
+    if (this.game?.phase === 'wave' && !this.paused && !this.playback) this.togglePause();
+    this.saveProgress();
+  }
+
   start(): void {
     void flushUnsent();
     // Closing the tab mid-run still leaves a log.
@@ -394,7 +406,12 @@ export class App {
       if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) this.endRun('quit');
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.saveProgress();
+      if (document.visibilityState === 'hidden') this.background();
+    });
+    // A purchase or restore (or a refund seen at launch) changes which
+    // chapters are open: redraw the menu if it is up.
+    onEntitlementChange(() => {
+      if (this.overlay.dataset.screen === 'menu') this.showMenu();
     });
     // Test hook for the browser smoke test: read the game, map world → screen.
     (window as unknown as { __v3: unknown }).__v3 = {
@@ -932,7 +949,11 @@ export class App {
   private playCues(g: Game, fromStep = false): void {
     if (!g.cues.length) return;
     const warp = g.warpT > 0;
-    for (const c of g.cues) this.audio.play(c, fromStep ? g.steps : -1, warp);
+    for (const c of g.cues) {
+      this.audio.play(c, fromStep ? g.steps : -1, warp);
+      const h = fromStep && !this.playback ? hapticForCue(c.id) : null;
+      if (h) haptic(h);
+    }
     g.cues.length = 0;
   }
 
@@ -1257,6 +1278,7 @@ export class App {
     }
     this.beat = { kind, t: performance.now(), dur, focus };
     this.audio.ui(kind === 'lost' ? 'run.lost' : kind === 'won' ? 'map.cleared' : 'wave.cleared');
+    if (kind === 'won') haptic('success');
   }
 
   /** The stamp across the field: red for a loss, gold for a cleared wave. */
@@ -1382,7 +1404,9 @@ export class App {
     // Twenty maps in four chapters of five: the menu shows one chapter at a
     // time, five picture cards in one row, with a tab per chapter.
     const p = this.progress;
-    const open = (id: MapId) => this.dev || isUnlocked(p, id);
+    // The store build: chapters past the free one also need the unlock.
+    const bought = (id: MapId) => chapterOwned(chapterOf(id));
+    const open = (id: MapId) => this.dev || (isUnlocked(p, id) && bought(id));
     if (!this.menuChapter) {
       const furthest = [...MAP_ORDER].reverse().find(open) ?? MAP_ORDER[0];
       this.menuChapter = chapterOf(furthest);
@@ -1392,6 +1416,7 @@ export class App {
     for (const c of CHAPTERS) {
       const maps = MAP_ORDER.slice((c.n - 1) * 5, c.n * 5);
       const shut = !open(maps[0]);
+      const forSale = !chapterOwned(c.n);
       const tab = button('', `v3-chapter-tab${c.n === this.menuChapter ? ' on' : ''}${shut ? ' locked' : ''}`, () => {
         if (c.n === this.menuChapter) return;
         this.audio.ui('armory.tab');
@@ -1405,7 +1430,7 @@ export class App {
       // An open chapter shows how much of it is cleared; a shut one, a lock.
       const done = maps.filter((m) => p.cleared.includes(m)).length;
       const tail = el('i', 'v3-chapter-tail');
-      if (shut) tail.innerHTML = chromeSvg('lock', 13);
+      if (shut || forSale) tail.innerHTML = chromeSvg('lock', 13);
       else tail.textContent = `${done}/5`;
       tab.append(el('b', '', `${c.n}`), el('span', '', c.name), tail);
       tabs.append(tab);
@@ -1416,6 +1441,7 @@ export class App {
     const cards = shown.map(({ id, i }, k) => {
       const m = MAPS[id];
       const locked = !open(id);
+      const forSale = !this.dev && !bought(id);
       const best = p.best[id];
       const cleared = p.cleared.includes(id);
       // NEW marks the maps the save itself has opened and not yet played
@@ -1424,6 +1450,10 @@ export class App {
       const card = button('', `v2-map-card${locked ? ' locked' : ''}${fresh ? ' next' : ''}`, () => {
         if (!locked) {
           this.prepare(id);
+          return;
+        }
+        if (forSale) {
+          this.showUnlock();
           return;
         }
         // A locked map says why only when asked: a shake and one line.
@@ -1435,7 +1465,8 @@ export class App {
         void toast.offsetWidth;
         toast.classList.add('show');
       });
-      if (locked) card.setAttribute('aria-label', `${m.name}, locked: clear ${MAPS[MAP_ORDER[i - 1]].name} to open it`);
+      if (forSale) card.setAttribute('aria-label', `${m.name}, part of the full game`);
+      else if (locked) card.setAttribute('aria-label', `${m.name}, locked: clear ${MAPS[MAP_ORDER[i - 1]].name} to open it`);
       card.dataset.map = id;
       card.style.setProperty('--i', String(k));
       const pic = el('span', 'v3-map-pic');
@@ -1455,6 +1486,7 @@ export class App {
       pic.append(img);
       if (locked) pic.insertAdjacentHTML('beforeend', `<span class="v3-map-lock">${chromeSvg('lock', 22)}</span>`);
       if (fresh) pic.append(el('span', 'v3-map-flag', 'NEW'));
+      if (forSale && k === 0) pic.append(el('span', 'v3-map-flag v3-full-flag', 'FULL GAME'));
       const status = el('span', 'v2-map-best');
       if (best) {
         if (cleared) status.innerHTML = `${chromeSvg('check', 12)} ${best.score.toLocaleString()}`;
@@ -1496,11 +1528,14 @@ export class App {
       bar.append(note);
     }
     bar.append(settings);
-    const classic = el('a', 'v2-classic', 'Play V2 →');
-    classic.href = './v2.html';
     // The artifact build ships one game alone; there is no other page to link to.
-    // A player has no use for the old prototype: developer mode only.
-    if (!('claude' in window) && this.dev) bar.prepend(classic);
+    // A player has no use for the old prototype: developer mode only (and
+    // never in the store build, which has no other page).
+    if (!STORE && !('claude' in window) && this.dev) {
+      const classic = el('a', 'v2-classic', 'Play V2 →');
+      classic.href = './v2.html';
+      bar.prepend(classic);
+    }
     const title = el('div', 'v3-title');
     title.innerHTML = MARK_SVG;
     title.append(el('h1', '', 'STRAITWATCH'));
@@ -1626,7 +1661,11 @@ export class App {
         card.style.setProperty('--deal', `${i * 260}ms`);
         // Each card's sound lands as it is dealt in (style.css: the deal
         // starts at --deal).
-        setTimeout(() => card.isConnected && this.audio.ui(lv === 1 ? 'card.new' : 'card.won'), i * 260);
+        setTimeout(() => {
+          if (!card.isConnected) return;
+          this.audio.ui(lv === 1 ? 'card.new' : 'card.won');
+          if (i === 0) haptic('success');
+        }, i * 260);
         return card;
       }),
     );
@@ -1639,6 +1678,8 @@ export class App {
    *  unlocks, no Armory cards. The setup is kept for next time. */
   private showFreePlay(): void {
     const fp = this.freeSetup;
+    // The store build without the unlock: Free Play on the free chapter only.
+    if (!freeMaps().includes(fp.map)) fp.map = freeMaps()[0];
     const select = (options: [string, string][], value: string, onChange: (v: string) => void, data: string) => {
       const s = document.createElement('select');
       s.className = 'v3-select';
@@ -1664,7 +1705,7 @@ export class App {
     };
     const left = el('div', 'v3-fp-col');
     left.append(
-      line('Map', select(MAP_ORDER.map((m) => [m, MAPS[m].name]), fp.map, (v) => (fp.map = v as MapId), 'map')),
+      line('Map', select(freeMaps().map((m) => [m, MAPS[m].name]), fp.map, (v) => (fp.map = v as MapId), 'map')),
       line('Start at', select(Array.from({ length: 10 }, (_, k) => [`${k + 1}`, `Wave ${k + 1}`]), `${fp.wave}`, (v) => (fp.wave = Number(v)), 'wave')),
       ...[0, 1, 2].map((i) => {
         const w = fp.weapons[i];
@@ -1850,6 +1891,10 @@ export class App {
    *  screen, Sound and Playtest, one sentence a row; the developer card
    *  below them only while developer mode is on. */
   private showSettings(): void {
+    if (STORE) {
+      this.showStoreSettings();
+      return;
+    }
     const notes = this.switchRow('notes', 'Playtest notes', 'Note a moment mid-run and rate each volley; both go into the game log.', this.notesOn, (on) => {
       this.notesOn = on;
       setNotesEnabled(on);
@@ -1883,6 +1928,136 @@ export class App {
     this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
   }
 
+  /** Settings in the App Store build: Sound (and haptics), and the game card:
+   *  the full-game unlock, Game Center, privacy, credits, version and a
+   *  progress reset. No playtest or developer rows. */
+  private showStoreSettings(): void {
+    const sound = this.soundRows();
+    if (hapticsAvailable()) {
+      sound.push(this.switchRow('haptics', 'Haptics', 'A tap on kills, a thud when a ship is lost, a buzz for a cleared map.', hapticsEnabled(), (on) => setHapticsEnabled(on)));
+    }
+    const game: HTMLElement[] = [];
+    if (!ownsFullGame()) {
+      const row = this.infoRow('Full game', `Chapter ${FREE_CHAPTERS} is free. One purchase opens chapters 2–4: fifteen more maps.`);
+      row.append(button('Unlock', 'v2-btn primary v3-set-btn', () => this.showUnlock()));
+      row.dataset.setting = 'unlock';
+      game.push(row);
+    }
+    if (purchasesAvailable()) {
+      const row = this.infoRow('Restore purchases', ownsFullGame() ? 'The full game is unlocked on this device.' : 'Bought the full game before? Get it back here.');
+      const b = button('Restore', 'v2-btn v3-set-btn', () => {
+        b.disabled = true;
+        b.textContent = 'Restoring…';
+        void restoreFullGame().then((ok) => {
+          this.showSettings();
+          this.showBannerSoon(ok ? 'Full game restored' : 'No purchase found', ok ? 'Chapters 2–4 are open.' : 'This Apple ID has not bought the full game.');
+        });
+      });
+      b.dataset.restore = '1';
+      row.append(b);
+      game.push(row);
+    }
+    if (gameCenterAvailable()) {
+      const row = this.infoRow('Game Center', 'Your best score on each map and your achievements.');
+      row.append(button('Open', 'v2-btn v3-set-btn', () => showGameCenter()));
+      game.push(row);
+    }
+    const about: HTMLElement[] = [];
+    const privacy = this.infoRow('Privacy', 'Straitwatch collects no data. Your progress stays on this device.');
+    const link = el('a', 'v2-btn v3-set-btn v3-set-link', 'Policy');
+    link.href = PRIVACY_URL;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    privacy.append(link);
+    about.push(privacy);
+    about.push(this.infoRow('Credits', 'Made by Calvin Wampol. Sounds: CC0. Icons: Feather (MIT).'));
+    const reset = this.infoRow('Reset progress', 'Locks every map but the first and clears scores and cards. Purchases stay.');
+    const resetBtn = button('Reset', 'v2-btn v3-set-btn v3-danger', () => this.confirmReset());
+    resetBtn.dataset.reset = '1';
+    reset.append(resetBtn);
+    about.push(reset);
+    const aboutCard = this.setCard('About', about);
+    aboutCard.append(el('p', 'v3-set-foot', `Straitwatch · Version ${VERSION}`));
+    // Two columns: Sound and Game on the left, About on the right.
+    const left = el('div', 'v3-set-col');
+    left.append(this.setCard('Sound', sound));
+    if (game.length) left.append(this.setCard('Game', game));
+    const grid = el('div', 'v3-set-grid');
+    grid.append(left, aboutCard);
+    this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
+  }
+
+  /** A settings row with a title and one sentence (and room for a button). */
+  private infoRow(title: string, text: string): HTMLElement {
+    const row = el('div', 'v2-setting');
+    const body = el('div', 'v2-setting-text');
+    body.append(el('strong', '', title), el('span', '', text));
+    row.append(body);
+    return row;
+  }
+
+  /** Settings → Reset progress: ask first, then wipe everything but the
+   *  purchase and the sound settings. */
+  private confirmReset(): void {
+    const row = el('div', 'v2-btn-row');
+    row.append(
+      button('Cancel', 'v2-btn primary', () => this.showSettings()),
+      button('Reset progress', 'v2-btn v3-danger', () => {
+        clearAll(['straitwatch.v3.progress', 'straitwatch.v3.tips', 'straitwatch.v3.freeplay']);
+        this.progress = loadProgress();
+        this.freeSetup = loadFreeSetup();
+        this.menuChapter = 0;
+        this.showMenu();
+      }),
+    );
+    row.querySelector<HTMLElement>('.v3-danger')!.dataset.confirmReset = '1';
+    this.showOverlay('v3-confirm', [el('h2', '', 'Reset progress?'), el('p', 'v2-sub', 'Every map but the first locks again, and best scores and Armory cards are cleared. This cannot be undone.'), row]);
+  }
+
+  /** The full-game unlock: what it opens, the price, Unlock and Restore. */
+  private showUnlock(): void {
+    const price = el('strong', 'v3-unlock-price', '');
+    const buy = button('Unlock the full game', 'v2-btn primary v3-unlock-buy', () => {
+      buy.disabled = true;
+      void buyFullGame().then((ok) => {
+        buy.disabled = false;
+        if (ok) this.showMenu();
+      });
+    });
+    buy.dataset.unlock = '1';
+    const restore = button('Restore purchase', 'v2-btn', () => {
+      restore.disabled = true;
+      void restoreFullGame().then((ok) => {
+        restore.disabled = false;
+        if (ok) this.showMenu();
+        else restore.textContent = 'No purchase found';
+      });
+    });
+    const row = el('div', 'v2-btn-row');
+    if (purchasesAvailable()) row.append(buy, restore);
+    row.append(button('Not now', 'v2-btn', () => this.showMenu()));
+    const chapters = el('ul', 'v3-unlock-list');
+    for (const c of CHAPTERS.filter((x) => x.n > FREE_CHAPTERS)) chapters.append(el('li', '', `Chapter ${c.n}: ${c.name}`));
+    const body: HTMLElement[] = [
+      el('span', 'v3-eyebrow', 'FULL GAME'),
+      el('h2', '', 'Fifteen more maps'),
+      el('p', 'v2-sub', 'One purchase opens chapters 2–4 for good, on every device with your Apple ID. No ads, no subscriptions.'),
+      chapters,
+      price,
+      row,
+    ];
+    if (!purchasesAvailable()) body.splice(4, 0, el('p', 'v3-hint', 'Purchases are not available right now.'));
+    this.showOverlay('v3-unlock', body);
+    void unlockPrice().then((p) => {
+      if (p) price.textContent = p;
+    });
+  }
+
+  /** A banner once the screen has settled (after a redraw). */
+  private showBannerSoon(title: string, text: string): void {
+    requestAnimationFrame(() => this.showBanner(title, text, { now: true }));
+  }
+
   /** A titled card of settings rows. */
   private setCard(title: string, rows: HTMLElement[]): HTMLElement {
     const card = el('section', 'v3-set-card');
@@ -1893,40 +2068,43 @@ export class App {
   /** Dev: every sound in the game, by family, with a play button, its
    *  files and where they came from (public/v3/audio/CREDITS.json). */
   private async showSoundBoard(): Promise<void> {
-    this.audio.unlock();
-    let credits: { file: string; source: string; licence: string }[] = [];
-    try {
-      credits = await (await fetch(`${import.meta.env.BASE_URL ?? './'}v3/audio/CREDITS.json`)).json();
-    } catch {
-      /* shown without sources */
+    // Developer mode only: compiled out of the store build.
+    if (!STORE) {
+      this.audio.unlock();
+      let credits: { file: string; source: string; licence: string }[] = [];
+      try {
+        credits = await (await fetch(`${import.meta.env.BASE_URL ?? './'}v3/audio/CREDITS.json`)).json();
+      } catch {
+        /* shown without sources */
+      }
+      const list = el('div', 'v3-board');
+      for (const id of CUE_IDS) {
+        const def = SOUNDS[id];
+        const row = el('div', 'v3-board-row');
+        const play = button('▶', 'v2-dev-chip', () => {
+          if (MUSIC_CUES.includes(id as MusicCue)) this.boardMusic = id as MusicCue;
+          else this.audio.play({ id, x: 800, y: 450 });
+        });
+        play.dataset.cue = id;
+        play.dataset.sfx = 'board';
+        const c = credits.find((x) => x.file === def.files[0]);
+        const src = c ? `${c.licence} · ${c.source.startsWith('uisfx') ? 'uisfx (recorded)' : 'synthesized'}` : '';
+        row.append(play, el('strong', '', id), el('span', '', `${def.bus} · vol ${def.volume} · ${def.files.length} file${def.files.length > 1 ? 's' : ''}${LOOP_CUES.includes(id as LoopCue) ? ' · loop (one pass)' : ''}`), el('em', '', src));
+        list.append(row);
+      }
+      const stop = button('Stop music', 'v2-btn', () => (this.boardMusic = null));
+      stop.dataset.sfx = 'board';
+      const row = el('div', 'v2-btn-row');
+      row.append(
+        stop,
+        button('Back', 'v2-btn primary', () => {
+          this.boardMusic = undefined;
+          this.showSettings();
+        }),
+      );
+      this.boardMusic = 'menu.music';
+      this.showOverlay('v3-soundboard', [el('h2', '', 'Sound board'), el('p', 'v2-sub', 'Every sound in the game. Files and licences: public/v3/audio/CREDITS.json. To change one, see docs/design/v3-sound-round1.md.'), list, row]);
     }
-    const list = el('div', 'v3-board');
-    for (const id of CUE_IDS) {
-      const def = SOUNDS[id];
-      const row = el('div', 'v3-board-row');
-      const play = button('▶', 'v2-dev-chip', () => {
-        if (MUSIC_CUES.includes(id as MusicCue)) this.boardMusic = id as MusicCue;
-        else this.audio.play({ id, x: 800, y: 450 });
-      });
-      play.dataset.cue = id;
-      play.dataset.sfx = 'board';
-      const c = credits.find((x) => x.file === def.files[0]);
-      const src = c ? `${c.licence} · ${c.source.startsWith('uisfx') ? 'uisfx (recorded)' : 'synthesized'}` : '';
-      row.append(play, el('strong', '', id), el('span', '', `${def.bus} · vol ${def.volume} · ${def.files.length} file${def.files.length > 1 ? 's' : ''}${LOOP_CUES.includes(id as LoopCue) ? ' · loop (one pass)' : ''}`), el('em', '', src));
-      list.append(row);
-    }
-    const stop = button('Stop music', 'v2-btn', () => (this.boardMusic = null));
-    stop.dataset.sfx = 'board';
-    const row = el('div', 'v2-btn-row');
-    row.append(
-      stop,
-      button('Back', 'v2-btn primary', () => {
-        this.boardMusic = undefined;
-        this.showSettings();
-      }),
-    );
-    this.boardMusic = 'menu.music';
-    this.showOverlay('v3-soundboard', [el('h2', '', 'Sound board'), el('p', 'v2-sub', 'Every sound in the game. Files and licences: public/v3/audio/CREDITS.json. To change one, see docs/design/v3-sound-round1.md.'), list, row]);
   }
 
   /** Settings → Sound: on/off, volume, music. Saved on this device. */
@@ -2044,9 +2222,9 @@ export class App {
     const params = new URLSearchParams(location.search);
     const preset = this.dev && !free ? DEV_PRESETS[this.devSettings.preset] : null;
     const tempo = preset?.tempo;
-    const start = free ? free.wave : Number(params.get('wave')) || (this.dev ? this.devSettings.wave : 1);
+    const start = free ? free.wave : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
-    const seed = params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
+    const seed = !STORE && params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
     const watch = this.dev && !free && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
     this.free = free ? structuredClone(free) : null;
@@ -2334,6 +2512,10 @@ export class App {
     const free = this.free;
     const wavesCleared = g.history.filter((h) => h.outcome === 'cleared').length;
     const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared });
+    if (res) {
+      submitBest(g.map.id, g.score);
+      for (const a of earned(this.progress, g.endless ? g.wave : 0)) unlock(a);
+    }
     const rec = this.rec;
     const log = this.endRun(won ? 'won' : 'lost');
     this.review = { g, won, res, best: res?.best ?? false, log, ghosted: false, rec };
@@ -2389,12 +2571,12 @@ export class App {
     // played some of (a run the bot played alone needs no comparing).
     const ghost = !view.ghosted && this.dev && !free && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
     const ghostLine = el('div', 'v2-ghost');
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, el('p', 'v2-log-status', 'Saving playtest log…')]);
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, ...(STORE ? [] : [el('p', 'v2-log-status', 'Saving playtest log…')])]);
     if (ghost && log) {
       view.ghosted = true;
       this.startGhost(g, log, ghostLine);
     }
-    if (log && this.logState) void logChannel().then((c) => this.renderLogStatus(log, c));
+    if (!STORE && log && this.logState) void logChannel().then((c) => this.renderLogStatus(log, c));
   }
 
   /** The run's review: rate the whole run, then step through its marked
@@ -2621,23 +2803,26 @@ export class App {
   }
 
   private renderLogStatus(log: import('../sim/playlog').PlayLog, channel: Channel): void {
-    const line = this.overlay.querySelector('.v2-log-status');
-    if (!line) return;
-    if (this.logState === 'sent') {
-      line.textContent = 'Playtest log sent to Claude ✓';
-      return;
+    // Playtest logs only: compiled out of the store build.
+    if (!STORE) {
+      const line = this.overlay.querySelector('.v2-log-status');
+      if (!line) return;
+      if (this.logState === 'sent') {
+        line.textContent = 'Playtest log sent to Claude ✓';
+        return;
+      }
+      if (this.logState === 'failed') {
+        // The log is resent on next launch. Inside the artifact downloads are
+        // blocked, so only the Vercel build offers one meanwhile.
+        line.textContent = 'Log kept on this device; it will be sent to Claude next time you open the game. ';
+        if (channel === 'server') line.append(button('Download log', 'v2-link', () => downloadLog(log)));
+        return;
+      }
+      line.replaceChildren(
+        el('span', '', 'Log saved on this device. '),
+        button('Download log', 'v2-link', () => downloadLog(log)),
+      );
     }
-    if (this.logState === 'failed') {
-      // The log is resent on next launch. Inside the artifact downloads are
-      // blocked, so only the Vercel build offers one meanwhile.
-      line.textContent = 'Log kept on this device; it will be sent to Claude next time you open the game. ';
-      if (channel === 'server') line.append(button('Download log', 'v2-link', () => downloadLog(log)));
-      return;
-    }
-    line.replaceChildren(
-      el('span', '', 'Log saved on this device. '),
-      button('Download log', 'v2-link', () => downloadLog(log)),
-    );
   }
 
   private showOverlay(cls: string, children: HTMLElement[]): void {
@@ -2768,7 +2953,7 @@ function loadFreeSetup(): FreeSetup {
     frequentDrops: true,
   };
   try {
-    const raw = JSON.parse(localStorage.getItem(FREE_KEY) ?? 'null') as Partial<FreeSetup> | null;
+    const raw = JSON.parse(kv.getItem(FREE_KEY) ?? 'null') as Partial<FreeSetup> | null;
     if (!raw) return base;
     const level = (n: unknown, max: number) => Math.max(1, Math.min(max, Math.floor(Number(n) || 1)));
     return {
@@ -2791,9 +2976,15 @@ function loadFreeSetup(): FreeSetup {
   }
 }
 
+/** The maps Free Play offers: every map, or in the store build without the
+ *  unlock, the free chapter's. */
+function freeMaps(): MapId[] {
+  return MAP_ORDER.filter((m) => chapterOwned(chapterOf(m)));
+}
+
 function saveFreeSetup(fp: FreeSetup): void {
   try {
-    localStorage.setItem(FREE_KEY, JSON.stringify(fp));
+    kv.setItem(FREE_KEY, JSON.stringify(fp));
   } catch {
     // storage unavailable: the setup lasts for the session
   }

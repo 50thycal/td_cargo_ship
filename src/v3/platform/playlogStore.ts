@@ -6,6 +6,7 @@
 // has neither, so the result screen offers "Download log" instead.
 
 import type { PlayLog } from '../sim/playlog';
+import { kv } from './store';
 
 const LOCAL_KEY = 'straitwatch.v3.playlogs';
 const SENT_KEY = 'straitwatch.v3.playlogs.sent';
@@ -48,7 +49,7 @@ export async function logChannel(): Promise<Channel> {
 
 function readJson<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = kv.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
@@ -57,7 +58,7 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson(key: string, value: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    kv.setItem(key, JSON.stringify(value));
   } catch {
     // storage full or unavailable: the log still goes to the db if it can
   }

@@ -8,6 +8,7 @@
 
 import { ARMORY, ARMORY_ORDER, BAY_ORDER, armoryLevel, cardsFor, drawCards, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
 import { MAP_ORDER, OLD_ORDER, type MapId } from '../data/maps';
+import { kv } from './store';
 
 export interface Best {
   score: number;
@@ -64,7 +65,7 @@ function noneEquipped(): Record<BayId, ArmoryId | null> {
 
 export function loadProgress(): Progress {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = kv.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Partial<Progress>;
       const current = p.armoryV === ARMORY_VERSION;
@@ -114,7 +115,7 @@ function readEquipped(raw: unknown, armory: ArmoryLevels): Record<BayId, ArmoryI
 
 export function saveProgress(p: Progress): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    kv.setItem(KEY, JSON.stringify(p));
   } catch {
     // storage unavailable — keep playing without persistence
   }

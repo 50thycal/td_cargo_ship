@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Straitwatch app icon: the game's radar mark (src/v3/ui/chrome.ts
+       MARK_SVG) on the game's dark navy. Full bleed; iOS rounds the corners. -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#12303d"/>
+      <stop offset="0.55" stop-color="#0a1820"/>
+      <stop offset="1" stop-color="#070d12"/>
+    </radialGradient>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7fe9ff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#7fe9ff" stop-opacity="0.6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g transform="translate(512 512) scale(12.4) translate(-32 -32)">
+    <circle cx="32" cy="32" r="28.5" fill="#0b1820" stroke="#7fe9ff" stroke-opacity="0.85" stroke-width="3"/>
+    <circle cx="32" cy="32" r="18" fill="none" stroke="#7fe9ff" stroke-opacity="0.18" stroke-width="1.2"/>
+    <path d="M32 32 L60.5 32 A28.5 28.5 0 0 0 52.2 11.8 Z" fill="url(#sweep)"/>
+    <!-- The hull, larger than in the title mark so it reads at 40 px. -->
+    <g transform="translate(32 38) scale(1.35) translate(-32 -38)">
+      <path d="M27 31h9v6h11l-5 6H22l-5-6h10z" fill="#f4f1e8"/>
+    </g>
+    <circle cx="45.5" cy="18.5" r="3.6" fill="#ff4d3d"/>
+  </g>
+</svg>
