@@ -1,5 +1,10 @@
 # App Store Delivery Playbook (Capacitor → Xcode → TestFlight → App Store)
 
+> **2026-11 update:** the current plan is
+> [APP_STORE_HANDOFF.md](APP_STORE_HANDOFF.md): Capacitor built on a GitHub
+> Actions macOS runner and shipped through the `app_farm` pipeline, so the
+> owner needs no Mac. The phases below are background.
+>
 > **Status: PLANNING / LOGGED FOR LATER.** Nothing in here is installed yet.
 > This is the reference we follow when the game is ready to ship. The core
 > loop and content are still being built — do this *after* the game is worth
