@@ -16,6 +16,7 @@ import type { Cue, CueId, LoopCue, MusicCue } from './cues';
 import { LOOP_PAD, SOUNDS, type Bus } from './manifest';
 import { MixPolicy, MusicDirector, panOf, type Voice } from './policy';
 import type { LoopState } from './state';
+import { kv } from '../platform/store';
 
 const STORE_KEY = 'straitwatch-v3-audio';
 
@@ -31,7 +32,7 @@ export const DEFAULT_AUDIO: AudioSettings = { volume: 0.8, music: 0.6, muted: fa
 
 export function loadAudioSettings(): AudioSettings {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null') as Partial<AudioSettings> | null;
+    const raw = JSON.parse(kv.getItem(STORE_KEY) ?? 'null') as Partial<AudioSettings> | null;
     return { ...DEFAULT_AUDIO, ...(raw ?? {}) };
   } catch {
     return { ...DEFAULT_AUDIO };
@@ -40,7 +41,7 @@ export function loadAudioSettings(): AudioSettings {
 
 function saveAudioSettings(s: AudioSettings): void {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    kv.setItem(STORE_KEY, JSON.stringify(s));
   } catch {
     /* storage blocked: the setting lasts this session */
   }

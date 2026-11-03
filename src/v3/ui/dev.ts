@@ -18,6 +18,7 @@
 import { RULES } from '../data/config';
 import { FULL_TEMPO, nextPlayedWave, type Tempo } from '../sim/game';
 import { PERSONAS, YOU } from '../sim/mimic';
+import { kv } from '../platform/store';
 
 export type DevPreset = 'full' | 'half' | 'quarter' | 'eighth';
 
@@ -78,7 +79,7 @@ const SETTINGS = 'straitwatch.v3.dev.settings';
 
 function read(key: string): string | null {
   try {
-    return localStorage.getItem(key);
+    return kv.getItem(key);
   } catch {
     return null;
   }
@@ -86,8 +87,8 @@ function read(key: string): string | null {
 
 function write(key: string, value: string | null): void {
   try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
+    if (value === null) kv.removeItem(key);
+    else kv.setItem(key, value);
   } catch {
     // Private mode / blocked storage: dev mode just won't be remembered.
   }
