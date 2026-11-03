@@ -49,10 +49,13 @@ jobs:
           ! grep -rq '/api/playlog' dist
           test -f ios/App/App/public/index.html
           grep -q GameCenterPlugin ios/App/App/capacitor.config.json
-      - name: Xcode
+      - name: Xcode (the newest on the runner; App Store uploads need a current SDK)
         run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)" || true
+          ls -d /Applications/Xcode*.app
+          LATEST=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST"
           xcodebuild -version
+          mkdir -p build
       - name: Build for the simulator (unsigned)
         run: |
           set -o pipefail
