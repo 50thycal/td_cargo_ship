@@ -2,6 +2,8 @@
 
 Nothing in this document is built. It is for locking ideas before any build.
 
+> **Superseded in part by round 2:** `v3-weapon-ideas-2.md`. The player kept three categories (Active, Passive, Boost) and asked for new ideas with a real feature each.
+
 ## The ask
 
 The player, after the first weapon brainstorm:
