@@ -322,6 +322,10 @@ export const PLANE = {
   strafeRunIn: 250,
   dropEvery: 1.2,
   dropReach: 280,
+  /** A plane on a curved route steers for the point this far ahead on it,
+   *  turning at most `turnRate` rad/s: a smooth banked turn, not a lurch. */
+  look: 120,
+  turnRate: 2.4,
 } as const;
 
 /** Missile trucks drive on enemy land: pop-ups drive to the shore, fire and

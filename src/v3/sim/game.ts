@@ -51,7 +51,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
-import { laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
+import { flightAt, laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
 import {
   AB,
   ABILITY_MAX,
@@ -2244,7 +2244,9 @@ function planeRoute(g: Game, kind: ThreatKind, rng: RNG): { y: number; lane?: nu
 
 /** Where an aircraft on a route is at distance s, and the way it points. */
 export function routePose(g: Game, r: { lane: number; s: number; dir: number; lat: number }): { x: number; y: number; tx: number; ty: number } {
-  const p = laneAt(g.map.channels[r.lane], r.s, r.lat);
+  // A plane's route: the lane's smoothed flight path, not the raw offset
+  // (which doubles back on the inside of a bend).
+  const p = flightAt(g.map.channels[r.lane], r.s, r.lat);
   return { x: p.x, y: p.y, tx: p.tx * r.dir, ty: p.ty * r.dir };
 }
 
@@ -2460,15 +2462,35 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
   let gy: number;
   let gunS: number | undefined;
   if (r) {
-    r.s += r.dir * th.speed * dt;
-    r.flown += th.speed * dt;
-    const p = routePose(g, r);
+    // The plane flies its own path at its own speed, steering for a point
+    // ahead on the route and turning no faster than a plane can. Playtest:
+    // "Plane turned for the bomber was not smooth". A bomber's route runs
+    // beside the lane, so round a bend it is shorter or longer than the lane
+    // (and can jump at a corner). Stepping it along the lane at a fixed rate
+    // made the bomber lurch: 175 px/s at times reached 1,045 at the Kesh
+    // Hook and 4,600 at the Delta.
+    const step = th.speed * dt;
+    r.flown += step;
     const was = th.heading;
-    th.x = p.x;
-    th.y = p.y;
-    // Heading from a little ahead on the route: smooth round the bend.
-    const q = routePose(g, { ...r, s: r.s + r.dir * 30 });
-    th.heading = Math.atan2(q.y - p.y, q.x - p.x);
+    const look = routePose(g, { ...r, s: r.s + r.dir * PLANE.look });
+    const turn = PLANE.turnRate * dt;
+    th.heading += clamp(angleDiff(Math.atan2(look.y - th.y, look.x - th.x), th.heading), -turn, turn);
+    th.x += Math.cos(th.heading) * step;
+    th.y += Math.sin(th.heading) * step;
+    // Keep the route's place abreast of the plane: the point on it nearest
+    // the plane, searched a little either side of where it was.
+    let best = r.s;
+    let bestD = Infinity;
+    for (let j = -2; j <= 8; j++) {
+      const s = r.s + r.dir * step * j * 0.5;
+      const q = routePose(g, { ...r, s });
+      const d = (q.x - th.x) ** 2 + (q.y - th.y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    r.s = best;
     const rate = angleDiff(th.heading, was) / Math.max(dt, 1e-6);
     // Bank into the turn: up to ~60° at the Kesh Hook's turn rate and more.
     const want = clamp(rate * 0.9, -1.05, 1.05);

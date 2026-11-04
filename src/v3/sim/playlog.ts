@@ -95,6 +95,10 @@ export interface PlayLog {
   /** How the run ended: won (map cleared and stopped), lost, or quit.
    *  Absent on a mid-run save. */
   end?: 'won' | 'lost' | 'quit';
+  /** The app went to the background mid-run (on iPhone, often the last
+   *  thing that happens before it is closed): sealed `quit` in case it never
+   *  comes back. A run that resumes saves over it. */
+  left?: boolean;
   commands: LogCommand[];
   summary?: PlaySummary;
   /** Playtest feedback (none of it touches replay; see sim/feedback.ts):
@@ -257,6 +261,14 @@ export class Recorder {
     // it ends again it is still in progress.
     const { end: _end, endedAt: _endedAt, ...log } = this.copy();
     return log;
+  }
+
+  /** The app is going to the background mid-run: the run so far, sealed as
+   *  a quit in case the app is closed now (playtest: an iPhone swipe-away
+   *  left logs with no ending). If the player comes back and plays on, the
+   *  next save of this id replaces it. */
+  left(): PlayLog {
+    return { ...this.snapshot(), end: 'quit', endedAt: new Date().toISOString(), left: true };
   }
 
   /** Seal the log with how it ended and a readable summary. */

@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import { MAPS, MAP_ORDER, type MapId } from '../../src/v3/data/maps';
 import { laneAt, laneLength } from '../../src/v3/sim/lanes';
-import { createGame, laneBends, step, timeToImpact, type Game, type Ship } from '../../src/v3/sim/game';
+import { createGame, laneBends, routePose, step, timeToImpact, type Game, type Ship } from '../../src/v3/sim/game';
+import { PLANE } from '../../src/v3/data/config';
 import { auditFrigates, auditMap } from '../../tools/v3/route-audit';
 
 const DT = 1 / 60;
@@ -97,6 +98,40 @@ describe('aircraft follow a curved lane round its bend', () => {
     const jet = g.threats.find((t) => t.kind === 'strafer')!;
     expect(jet.route).toBeUndefined();
     expect(Math.abs(jet.y - g.map.channels[0].y)).toBeLessThan(200);
+  });
+});
+
+describe('aircraft fly a smooth path round a bend', () => {
+  // Playtest note (Kesh Hook, wave 7): "Plane turned for the bomber was not
+  // smooth". A bomber flies beside the lane; stepping it along the lane
+  // made it lurch (175 px/s reached 1,045 at the Kesh Hook and 4,600 at the
+  // Delta, turning at up to 14 rad/s).
+  it('bombers and strafers on every bending map keep their speed, turn gently and stay on their route', () => {
+    for (const map of MAP_ORDER) {
+      for (const seed of [1, 2, 3]) {
+        const g = createGame(map, seed, 8);
+        const prev = new Map<number, { x: number; y: number; h: number }>();
+        for (let i = 0; i < 60 * 70 && g.phase === 'wave'; i++) {
+          for (const s of g.ships) s.hp = 99;
+          g.carrierHp = 99;
+          step(g, DT);
+          for (const th of g.threats) {
+            if ((th.kind !== 'bomber' && th.kind !== 'strafer') || !th.route) continue;
+            const p = prev.get(th.id);
+            prev.set(th.id, { x: th.x, y: th.y, h: th.heading });
+            if (!p || th.x < 30 || th.x > 1570 || th.y < 30 || th.y > 870) continue;
+            const v = Math.hypot(th.x - p.x, th.y - p.y) / DT;
+            const turn = Math.abs(Math.atan2(Math.sin(th.heading - p.h), Math.cos(th.heading - p.h))) / DT;
+            const q = routePose(g, th.route);
+            const tag = `${map} seed ${seed} ${th.kind}`;
+            expect(v, `${tag}: speed`).toBeLessThan(th.speed * 1.05 + 1);
+            expect(v, `${tag}: speed`).toBeGreaterThan(th.speed * 0.95 - 1);
+            expect(turn, `${tag}: turn rate`).toBeLessThanOrEqual(PLANE.turnRate + 1e-6);
+            expect(Math.hypot(q.x - th.x, q.y - th.y), `${tag}: off its route`).toBeLessThan(40);
+          }
+        }
+      }
+    }
   });
 });
 

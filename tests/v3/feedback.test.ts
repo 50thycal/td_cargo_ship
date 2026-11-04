@@ -154,3 +154,29 @@ describe('watch it (playback)', () => {
     for (let i = 0; i < 5 && pb.game.phase === 'wave'; i++) step(pb.game, DT);
   });
 });
+
+describe('a sinking is filed under the volley that sent its killer', () => {
+  // Playtest logs: a run lost to strafers filed its last two sinkings under
+  // an empty missile volley, opened the frame the run ended.
+  it('no volley carries losses without a threat in it, even in runs that end in a loss', async () => {
+    const { MAP_ORDER } = await import('../../src/v3/data/maps');
+    let lossy = 0;
+    for (const map of MAP_ORDER.slice(0, 10)) {
+      for (const wave of [8, 10]) {
+        const g = createGame(map, 1, wave);
+        const w = new Watch(g);
+        for (let i = 0; i < 60 * 90 && g.phase === 'wave'; i++) {
+          g.carrierHp = 99;
+          step(g, 1 / 60);
+          w.observe(g);
+          g.events = [];
+        }
+        for (const v of w.volleys) {
+          if (v.sunk > 0) lossy++;
+          expect(v.sunk > 0 && Object.keys(v.threats).length === 0, `${map} wave ${wave}: a ${v.theme} volley with ${v.sunk} sunk and no threats`).toBe(false);
+        }
+      }
+    }
+    expect(lossy).toBeGreaterThan(5);
+  });
+});
