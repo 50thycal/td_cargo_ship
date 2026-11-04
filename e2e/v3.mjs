@@ -459,6 +459,66 @@ try {
     if (map === 'island' && w === 874) await tp.screenshot({ path: `${SHOT_DIR}/12-island-tray.png` });
     await tp.close();
   }
+
+  // ---- Playtest logs reach Claude (playtest-fixes round) ----
+  // The player: "I beat that island map after wave 9 and it didn't save, and
+  // then I play the next map briefly and that doesn't save either." On an
+  // iPhone a send can fail (between networks) and leaving the app fires no
+  // pagehide. The won run's sends fail twice; the next run's save carries it,
+  // and leaving that run mid-wave seals it as a quit.
+  {
+    const HOST = 'https://straitwatch-e2e.vercel.app';
+    const lc = await browser.newContext({ viewport: { width: 874, height: 402 }, hasTouch: true, isMobile: true });
+    const posts = [];
+    let wonFails = 0;
+    await lc.route(`${HOST}/**`, async (route) => {
+      const req = route.request();
+      const url = new URL(req.url());
+      if (url.pathname === '/api/playlog') {
+        if (req.method() === 'POST') {
+          const j = JSON.parse(req.postData() ?? '{}');
+          const fail = j.end === 'won' && ++wonFails <= 2;
+          posts.push({ map: j.map, end: j.end ?? null, fail });
+          if (fail) return route.fulfill({ status: 503, body: '{"error":"storage unavailable"}' });
+        }
+        return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+      }
+      const r = await fetch(`${BASE_URL}${url.pathname}${url.search}`);
+      return route.fulfill({ status: r.status, headers: Object.fromEntries(r.headers), body: Buffer.from(await r.arrayBuffer()) });
+    });
+    const lp = await lc.newPage();
+    await lp.goto(`${HOST}/v3.html?wave=10`);
+    await lp.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 2, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: 2, open: [], mapsV: 2 }));
+    });
+    await lp.reload();
+    await lp.locator('[data-map="strait"]').tap();
+    await lp.locator('[data-start]').tap();
+    await lp.waitForSelector('.playing');
+    for (let i = 0; i < 400; i++) {
+      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; return g.phase; });
+      if (ph !== 'wave') break;
+      await lp.waitForTimeout(100);
+    }
+    await lp.waitForSelector('[data-screen="result"]');
+    await lp.waitForTimeout(1200);
+    await lp.locator('[data-screen="result"] .v2-btn:has-text("Next")').tap();
+    await lp.locator('[data-start]').tap();
+    await lp.waitForSelector('.playing');
+    await lp.waitForTimeout(1500);
+    await lp.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await lp.waitForTimeout(2500);
+    const wonFailed = posts.filter((p) => p.map === 'strait' && p.end === 'won' && p.fail).length;
+    const wonArrived = posts.some((p) => p.map === 'strait' && p.end === 'won' && !p.fail);
+    const quit = posts.some((p) => p.map === 'kesh' && p.end === 'quit');
+    check(wonFailed === 2 && wonArrived, `a won run whose sends failed twice still arrives with the next save (${JSON.stringify(posts)})`);
+    check(quit, 'leaving the app mid-wave (no pagehide) seals the run as a quit');
+    await lc.close();
+  }
 } finally {
   await browser.close();
 }

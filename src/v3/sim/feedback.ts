@@ -130,6 +130,9 @@ export function volleyPlan(g: Game): { theme: RaidTheme; raids: number; start: n
 
 const hostile = (kind: ThreatKind) => !STRUCTURE_KINDS.includes(kind);
 
+/** Threats that come out of another (counted under the one that sent them). */
+const PARENT: Partial<Record<ThreatKind, ThreatKind[]>> = { bomblet: ['cluster'], minidrone: ['mothership'], guided: ['bomber'] };
+
 export function noteContext(g: Game): NoteContext {
   const threats: Partial<Record<ThreatKind, number>> = {};
   for (const th of g.threats) if (!th.dead && hostile(th.kind)) threats[th.kind] = (threats[th.kind] ?? 0) + 1;
@@ -210,6 +213,9 @@ export class Watch {
 
   /** Call once a frame, before the UI drains `g.events`. */
   observe(g: Game): void {
+    // What was open when this frame began: a loss that ends the run closes
+    // every volley this frame, and still belongs to one of them.
+    const open = [...this.live];
     if (g.phase === 'wave' && g.wave !== this.wave) {
       this.closeAll(g);
       this.wave = g.wave;
@@ -241,13 +247,20 @@ export class Watch {
 
     // Losses and shots count against the oldest volley still open (what hits
     // now was mostly launched earlier), else the newest.
-    const v = this.live.length ? this.volleys[this.live[0].index] : this.volleys[this.volleys.length - 1];
+    const was = open.length ? open : this.live;
+    const v = was.length ? this.volleys[was[0].index] : this.volleys[this.volleys.length - 1];
     for (const ev of g.events) if (ev.kind === 'debut') this.mark(g, 'debut', `New threat: ${ev.threat}`);
 
     if (g.lost > this.lost) {
       const n = g.lost - this.lost;
       const by = (Object.keys(g.sunkBy) as ThreatKind[]).filter((k) => g.sunkBy[k] > (this.sunkBy[k] ?? 0));
-      if (v) v.sunk += n;
+      // A sinking belongs to the open volley that sent its killer (a bomblet
+      // to its cluster, a mini-drone to its mothership, a missile to its
+      // bomber). Playtest logs: two ships sunk by strafers were filed under
+      // an empty missile volley that opened the frame the run was lost.
+      const sent = (vol: Volley) => by.some((k) => (vol.threats[k] ?? 0) > 0 || PARENT[k]?.some((p) => (vol.threats[p] ?? 0) > 0));
+      const owner = [...was].reverse().map((l) => this.volleys[l.index]).find(sent) ?? v;
+      if (owner) owner.sunk += n;
       this.mark(g, 'sunk', `${n > 1 ? `${n} ships` : 'Ship'} sunk${by.length ? ` by ${by.join(', ')}` : ''} (${g.lost} lost)`);
       for (let i = 0; i < n; i++) this.sinks.push(g.t);
       const recent = this.sinks.filter((t) => g.t - t <= BURST.seconds);

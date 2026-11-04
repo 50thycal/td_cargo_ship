@@ -39,6 +39,7 @@ import {
   createGame,
   raidWarning,
   step,
+  tracked,
   type FreePlaySetup,
   type Game,
   type Phase,
@@ -157,7 +158,6 @@ function firstTime(id: string): boolean {
 
 const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
-  marrow: ['RADAR TOWER', 'Its sweep tracks threats: your shots fly faster at them. The enemy wants it gone.'],
   behemoth: ['SUPERTANKER', 'One a wave. Eight hits sink it, and it counts as three ships. Get it home.'],
   needle: ['SINGLE FILE', 'The convoy queues at the gap. Column formation needn\'t merge.'],
   saltgate: ['LOCK GATES', 'Ships wait in each chamber while it fills. Guard them.'],
@@ -308,6 +308,8 @@ export class App {
   /** Portrait while playing: the field would be a sliver, so time stops and a
    *  "turn sideways" notice shows until the phone is rotated back. */
   private portrait = false;
+  /** This run has explained the radar tower (see radarHint). */
+  private radarShown = false;
   /** The screens around a run draw a quiet game behind them (menus round):
    *  the map the menu points to, or the one being briefed, its convoy
    *  under way and nothing attacking. */
@@ -395,7 +397,9 @@ export class App {
    *  app switcher): pause a wave in progress and save the run so far. */
   background(): void {
     if (this.game?.phase === 'wave' && !this.paused && !this.playback) this.togglePause();
-    this.saveProgress();
+    // Mid-run: seal what there is as a quit (iOS rarely fires pagehide when
+    // an app is swiped away, so this may be the last chance).
+    if (this.rec && this.game && (this.game.phase === 'wave' || this.game.phase === 'draft') && !this.playback) void storeLog(this.rec.left());
   }
 
   start(): void {
@@ -407,6 +411,8 @@ export class App {
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.background();
+      // Back in the app: anything that didn't get through goes now.
+      else void flushUnsent();
     });
     // A purchase or restore (or a refund seen at launch) changes which
     // chapters are open: redraw the menu if it is up.
@@ -936,6 +942,7 @@ export class App {
     this.shake = Math.max(0, this.shake - real * 40);
     this.alerts.update(real);
     if (g) this.raidAlert(g);
+    if (g) this.radarHint(g);
     this.syncTimers(g);
     this.syncNoteBtn(g);
     this.syncSound(g);
@@ -1151,6 +1158,17 @@ export class App {
 
   /** A raid on its way: its card stays up exactly as long as the warning
    *  (the bases' rings on the map still say which ones will fire). */
+  /** Lee of Marrow's radar tower, explained the first time it locks on to a
+   *  threat, when its lock boxes show what it does (playtest, wave 5: "Not
+   *  really sure what that radar tower is even doing"). It used to be a
+   *  wave-1 notice, lost among wave 1's own. */
+  private radarHint(g: Game): void {
+    if (this.radarShown || g.phase !== 'wave' || this.playback) return;
+    if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
+    this.radarShown = true;
+    if (this.explain('radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ttl: 6 });
+  }
+
   private raidAlert(g: Game): void {
     const w = raidWarning(g);
     if (!w || this.beat) return;
@@ -2228,6 +2246,7 @@ export class App {
     const watch = this.dev && !free && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
     this.free = free ? structuredClone(free) : null;
+    this.radarShown = false;
     const freePlay = free ? freePlaySetup(free) : undefined;
     this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
     if (freePlay) applyFreePlay(this.game, freePlay);

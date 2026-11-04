@@ -109,7 +109,12 @@ async function send(log: PlayLog): Promise<boolean> {
 export async function storeLog(log: PlayLog): Promise<UploadState> {
   writeJson(LOCAL_KEY, [...localLogs().filter((l) => l.id !== log.id), log].slice(-KEEP));
   if (!(await logChannel())) return 'local-only';
-  return (await send(log)) ? 'sent' : 'failed';
+  const ok = await send(log);
+  // A send that failed earlier (a phone between networks) goes again with
+  // this one, not only at the next launch (playtest: a won run never
+  // arrived while the next run's log did).
+  if (ok) void flushUnsent();
+  return ok ? 'sent' : 'failed';
 }
 
 /** On start-up, retry any kept log that never made it to Claude. */
