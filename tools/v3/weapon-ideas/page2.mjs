@@ -1,11 +1,15 @@
 // Builds the review page for round 2's weapon ideas (an HTML artifact, like
 // the maps review): every kept idea with Go further / Maybe / Drop and a note,
-// the cut ideas with "Bring back", and the open decisions. Marks save to the
-// artifact's database (collections `reviews/{ideaId}`: verdict, note;
-// `answers/{questionId}`: choice, note) so the next session can read them.
+// the cut ideas with "Bring back", and the open decisions. After the review
+// (plan.mjs) it opens on a Plan tab: the plan's questions, a Looks right /
+// Change check of every boost's levels, the specs the player's notes changed
+// and the build phases. Marks save to the artifact's database (collections
+// `reviews/{ideaId}`: verdict, note; `answers/{questionId}`: choice, note;
+// `levels/{boostId}`: verdict ok | change, note) for the next session.
 // Usage: node tools/v3/weapon-ideas/page2.mjs <out.html>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { IDEAS, CATEGORY_RULES } from './arsenal2.mjs';
+import { PLAN_DATE, CHANGED, DROPS, BOOST_LEVELS, PHASES, QUESTIONS } from './plan.mjs';
 
 const here = new URL('.', import.meta.url);
 const root = new URL('../../../', import.meta.url);
@@ -63,7 +67,7 @@ function card(i, n) {
   const proto = i.proto
     ? `<div class="proto"><div class="lbl">Prototype · runs won <span class="key">bar = with it · tick = without</span></div>${bars(i.proto)}${i.protoNote ? `<p class="pn">${esc(i.protoNote)}.</p>` : ''}${i.tune ? `<p class="pn">${esc(token(i.tune))}</p>` : ''}</div>`
     : `<div class="proto none"><div class="lbl">Not prototyped</div><p class="pn">${esc(NOT_RUN[i.id] ?? '')}</p></div>`;
-  return `<article class="idea" id="idea-${i.id}" data-id="${i.id}" data-cat="${i.cat}">
+  return `<article class="idea" id="idea-${i.id}" data-coll="reviews" data-id="${i.id}" data-cat="${i.cat}">
   <header>
     <div class="no">${i.cat[0].toUpperCase()}${n}</div>
     <div class="ttl">
@@ -82,6 +86,7 @@ function card(i, n) {
   </details>
   <dl class="sw"><div><dt>▲ Strong</dt><dd>${esc(i.strong)}</dd></div><div><dt>▼ Weak</dt><dd>${esc(i.weak)}</dd></div></dl>
   ${proto}
+  ${CHANGED.some((c) => c.id === i.id) ? '<p class="upd">Updated after your review: see the Plan tab.</p>' : ''}
   <div class="review" role="group" aria-label="Your call on ${esc(i.name)}">
     <div class="seg">
       <button type="button" data-v="go" aria-pressed="false">Go further</button>
@@ -95,14 +100,14 @@ function card(i, n) {
 }
 
 function cutRow(i) {
-  return `<li class="cut" id="idea-${i.id}" data-id="${i.id}" data-cat="${i.cat}">
+  return `<li class="cut" id="idea-${i.id}" data-coll="reviews" data-id="${i.id}" data-cat="${i.cat}">
   <div class="cutline"><b>${esc(i.name)}</b> <span class="chip">${CAT[i.cat].label}</span><p>${esc(token(i.why))}</p></div>
   <div class="review compact"><div class="seg"><button type="button" data-v="revive" aria-pressed="false">Bring back</button></div>
   <label class="note"><span>Notes</span><textarea id="n-${i.id}" rows="1" placeholder="Why bring it back?"></textarea></label><div class="saved" aria-live="polite"></div></div>
 </li>`;
 }
 
-const QUESTIONS = [
+const ROUND2_QUESTIONS = [
   { id: 'launchers', q: 'Three ideas hit the enemy launchers: Turncoat Rounds (active), Bomber Wing (passive) and Shore Bombardment (boost). How many?', options: ['Keep all three', 'Keep one or two (say which in the note)', 'None of them'] },
   { id: 'hold', q: 'While Charge Lance, Wire-Guided Missile or Grapnel is loaded, holding charges, steers or drags instead of repeating the shot. OK?', options: ['Yes, the weapon chip says “HOLD: charge”', 'No: keep hold = repeat fire, find another gesture'] },
   { id: 'droneOrigin', q: 'Where does the Drone Screen come from? (On Kesh and Gauntlet the bottom edge is enemy shore.)', options: ['Your side of the map, the carrier deck where the bottom is enemy (recommended)', 'Always the carrier deck'] },
@@ -116,6 +121,47 @@ function question(q) {
   ${q.options.map((o, k) => `<label class="opt"><input type="radio" name="q-${q.id}" value="${k}" id="q-${q.id}-${k}"><span>${esc(o)}</span></label>`).join('')}
   <label class="note"><span>Notes</span><textarea id="qn-${q.id}" rows="2"></textarea></label><div class="saved" aria-live="polite"></div></fieldset>`;
 }
+
+function levelCard(b) {
+  return `<article class="lvl" id="level-${b.id}" data-coll="levels" data-id="${b.id}">
+  <header><h3>${esc(b.name)}</h3><div class="chips">${b.from ? '<span class="chip">Was a power-up</span>' : ''}${b.ifKept ? '<span class="chip warn">If kept: see the Shield question</span>' : ''}</div></header>
+  <ol class="levels"><li><b>1</b>${esc(b.l1)}</li><li><b>2</b>${esc(b.l2)}</li><li><b>MAX</b><span><strong>${esc(b.max[0])}:</strong> ${esc(b.max[1])}</span></li></ol>
+  <div class="review" role="group" aria-label="Your call on ${esc(b.name)}'s levels">
+    <div class="seg"><button type="button" data-v="ok" aria-pressed="false">Looks right</button><button type="button" data-v="change" aria-pressed="false">Change</button></div>
+    <label class="note"><span>Notes</span><textarea id="ln-${b.id}" rows="1" placeholder="What to change"></textarea></label>
+    <div class="saved" aria-live="polite"></div>
+  </div>
+</article>`;
+}
+const R2LABEL = Object.fromEntries(ROUND2_QUESTIONS.map((q) => [q.id, q]));
+const planSection = `<section class="plan-sec" id="sec-plan" aria-labelledby="h-plan">
+  <div class="cathead"><h2 id="h-plan">The plan <span class="count" id="plan-count"></span></h2>
+  <p>Rebuilt from your marks of ${PLAN_DATE}: 17 to go further, 4 maybes, 9 dropped. Five questions before the build, then a check of each boost’s levels. The full plan is <code>docs/design/v3-weapons-plan.md</code>.</p></div>
+  <h3 class="sub">Before the build</h3>
+  <div class="qs">${QUESTIONS.map(question).join('\n')}
+    <fieldset class="q" data-q="planNotes"><legend>Anything else about the plan?</legend><label class="note"><span>Notes</span><textarea id="qn-planNotes" rows="3"></textarea></label><div class="saved" aria-live="polite"></div></fieldset>
+  </div>
+  <h3 class="sub">Boost levels: does each level change enough?</h3>
+  <p class="pn">You asked for every level to change something, like the weapons. Each boost lasts 15 s; level 2 makes it stronger, MAX changes what it does.</p>
+  <div class="grid lvls">${BOOST_LEVELS.map(levelCard).join('\n')}</div>
+  <h3 class="sub">Changed by your notes</h3>
+  <div class="grid">${CHANGED.map((c) => `<article class="spec"><h3>${esc(c.name)}</h3><blockquote>“${esc(c.quote)}”</blockquote><ul>${c.spec.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></article>`).join('')}
+  <article class="spec"><h3>Default drops</h3><blockquote>“Only ones that should remain as default … the ammo drop, a heal and then a clear screen … nuke.”</blockquote><ul>${DROPS.keep.map((d) => `<li><b>${esc(d.name)}.</b> ${esc(d.what)}</li>`).join('')}</ul><p class="pn">The others:</p><ul>${DROPS.move.map((d) => `<li><b>${esc(d.name)}:</b> ${esc(d.to)}</li>`).join('')}</ul></article>
+  </div>
+  <h3 class="sub">Build phases</h3>
+  <p class="pn">Each phase is a playable link: the new weapons appear in Free Play marked “Prototype”, and the campaign stays as it is until you lock them in.</p>
+  <ol class="phases">${PHASES.map(([n, t, d]) => `<li><span class="pno">${n}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join('')}</ol>
+  <h3 class="sub">Settled by your round 2 answers</h3>
+  <ul class="settled">
+    <li><b>Holding</b> charges or drags while Charge Lance or Grapnel is loaded; the chip says “HOLD: charge”.</li>
+    <li><b>Drone Screen</b> launches from the carrier deck on every map.</li>
+    <li><b>Boosts</b> share the 3 slots (a boost-only build is possible) and level like weapons.</li>
+    <li><b>Launchers:</b> only Bomber Wing stays.</li>
+    <li><b>Next:</b> playable prototypes on a link for your phone.</li>
+  </ul>
+  <details class="more r2"><summary>Your round 2 answers, as given (still editable)</summary><div class="qs">${ROUND2_QUESTIONS.map(question).join('\n')}
+    <fieldset class="q" data-q="general"><legend>Anything else? (round 2)</legend><label class="note"><span>Notes</span><textarea id="qn-general" rows="3"></textarea></label><div class="saved" aria-live="polite"></div></fieldset></div></details>
+</section>`;
 
 const kept = IDEAS.filter((i) => i.status === 'keep');
 const cut = IDEAS.filter((i) => i.status === 'cut');
@@ -245,21 +291,42 @@ section > h2 { font-size: 28px; text-transform: uppercase; }
   .sw { grid-template-columns: 1fr; }
   .bar { grid-template-columns: 66px 1fr 70px; }
 }
-@media (prefers-reduced-motion: no-preference) { .idea { transition: border-color .2s, opacity .2s; } }
+@media (prefers-reduced-motion: no-preference) { .idea, .lvl { transition: border-color .2s, opacity .2s; } }
+.plan-sec { display: grid; gap: 14px; }
+.sub { font-size: 21px; text-transform: uppercase; margin-top: 10px; border-top: 1px solid var(--rule); padding-top: 14px; }
+.lvl, .spec { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lvl header { display: grid; gap: 4px; }
+.lvl h3, .spec h3 { font-size: 20px; }
+.lvl[data-v="ok"] { border-color: var(--go); box-shadow: inset 4px 0 0 var(--go); }
+.lvl[data-v="change"] { border-color: var(--maybe); box-shadow: inset 4px 0 0 var(--maybe); }
+.seg button[data-v="ok"][aria-pressed="true"] { background: var(--go); border-color: var(--go); color: var(--paper); }
+.seg button[data-v="change"][aria-pressed="true"] { background: var(--maybe); border-color: var(--maybe); color: var(--paper); }
+.levels strong { font-weight: 600; }
+.spec blockquote { margin: 0; padding-left: 10px; border-left: 3px solid var(--signal); color: var(--muted); font-style: italic; }
+.spec ul, .settled { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.phases { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.phases li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; }
+.phases p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.pno { font: 700 16px/1.4 var(--mono); color: var(--signal); }
+.upd { margin: 0; font-size: 13px; font-weight: 600; color: var(--signal); }
+.r2 { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+.r2 .qs { margin-top: 10px; }
+code { font: 13px var(--mono); }
 </style>
 
 <main>
   <header class="intro">
-    <div class="eyebrow">Straitwatch V3 · weapon ideas, round 2</div>
+    <div class="eyebrow">Straitwatch V3 · weapon ideas · reviewed ${PLAN_DATE}</div>
     <h1>Weapon Ideas Shortlist</h1>
-    <p>Thirty ideas, ten per category. Mark the ones to take further, add notes, and answer the six questions at the end. Every mark saves as you make it, for the next session to read and build from.</p>
+    <p>Your round 2 marks are in, and the plan is rebuilt from them. The <b>Plan</b> tab has the five questions to answer before the build, a check of every boost’s levels, and the specs your notes changed. The other tabs keep all 30 ideas with your marks, still editable. Everything saves as you go, for the next session to read.</p>
     <p>The bars show prototype runs won on all 20 maps: an accurate player and a tap-happy one, with the tick at the no-idea baseline (${base.average.clear}% and ${base.spammer.clear}%). They measure the size of an effect, not balance.</p>
     <p class="store" id="store">Connecting to the review store…</p>
   </header>
 
   <nav class="bar-sticky" aria-label="Filter">
     <div class="tabs" role="group" aria-label="Category">
-      <button type="button" data-tab="all" aria-pressed="true">All 30</button>
+      <button type="button" data-tab="plan" aria-pressed="true">Plan</button>
+      <button type="button" data-tab="all" aria-pressed="false">All 30</button>
       <button type="button" data-tab="active" aria-pressed="false">Active</button>
       <button type="button" data-tab="passive" aria-pressed="false">Passive</button>
       <button type="button" data-tab="boost" aria-pressed="false">Boost</button>
@@ -267,6 +334,8 @@ section > h2 { font-size: 28px; text-transform: uppercase; }
     </div>
     <div class="tally" id="tally">0 of 30 marked</div>
   </nav>
+
+${planSection}
 
 ${sections}
 
@@ -276,32 +345,27 @@ ${sections}
     <ul>${cut.map(cutRow).join('\n')}</ul>
   </section>
 
-  <section id="sec-qs" aria-labelledby="h-qs">
-    <h2 id="h-qs">Six questions</h2>
-    <div class="qs">${QUESTIONS.map(question).join('\n')}
-    <fieldset class="q" data-q="general"><legend>Anything else?</legend><label class="note"><span>Notes</span><textarea id="qn-general" rows="3" placeholder="Anything about the round as a whole"></textarea></label><div class="saved" aria-live="polite"></div></fieldset>
-    </div>
-  </section>
 </main>
 
 <script>
 (() => {
   const KEPT = ${JSON.stringify(ids)};
   const CATS = ${JSON.stringify(Object.fromEntries(kept.map((i) => [i.id, i.cat])))};
-  const state = { reviews: {}, answers: {} };
+  const state = { reviews: {}, answers: {}, levels: {} };
+  const COLLS = ['reviews', 'answers', 'levels'];
+  const PLAN_QS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
+  const LEVELS = ${JSON.stringify(BOOST_LEVELS.map((b) => b.id))};
   let db = null;
   const LS = 'straitwatch-weapon-ideas-2';
   const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } };
   const lsSet = (v) => { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} };
-  let tab = 'all';
+  let tab = 'plan';
 
-  function paintIdea(id) {
-    const r = state.reviews[id] || {};
-    const el = document.getElementById('idea-' + id);
-    if (!el) return;
+  function paintItem(el) {
+    const r = state[el.dataset.coll][el.dataset.id] || {};
     el.dataset.v = r.verdict || '';
     el.querySelectorAll('[data-v]').forEach((b) => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.dataset.v === r.verdict)); });
-    const ta = document.getElementById('n-' + id);
+    const ta = el.querySelector('textarea');
     if (ta && document.activeElement !== ta && typeof r.note === 'string') ta.value = r.note;
   }
   function paintQ(id) {
@@ -320,16 +384,20 @@ ${sections}
       const list = KEPT.filter((id) => CATS[id] === c);
       if (el) el.textContent = list.filter((id) => v(id) === 'go').length + ' / ' + list.length + ' picked';
     }
+    const qa = PLAN_QS.filter((id) => state.answers[id] && state.answers[id].choice !== undefined && state.answers[id].choice !== null).length;
+    const lv = LEVELS.filter((id) => (state.levels[id] || {}).verdict).length;
+    document.getElementById('plan-count').textContent = qa + ' / ' + PLAN_QS.length + ' answered · ' + lv + ' / ' + LEVELS.length + ' boosts checked';
   }
   function paintTab() {
     document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
+    document.getElementById('sec-plan').classList.toggle('hidden-cat', tab !== 'plan');
     document.querySelectorAll('section.cat').forEach((s) => s.classList.toggle('hidden-cat', !(tab === 'all' || tab === 'go' || s.dataset.cat === tab)));
     document.querySelectorAll('.idea').forEach((el) => el.classList.toggle('hidden-cat', tab === 'go' && el.dataset.v !== 'go'));
     const extra = tab === 'all';
     document.getElementById('sec-cuts').classList.toggle('hidden-cat', !extra);
   }
   function paintAll() {
-    document.querySelectorAll('[data-id]').forEach((el) => paintIdea(el.dataset.id));
+    document.querySelectorAll('[data-coll]').forEach(paintItem);
     document.querySelectorAll('.q').forEach((f) => paintQ(f.dataset.q));
     paintTally();
     paintTab();
@@ -351,17 +419,17 @@ ${sections}
     } finally { delete busy[coll + id]; }
   }
 
-  document.querySelectorAll('[data-id]').forEach((el) => {
-    const id = el.dataset.id;
+  document.querySelectorAll('[data-coll]').forEach((el) => {
+    const id = el.dataset.id, coll = el.dataset.coll;
     const st = el.querySelector('.saved');
-    const ta = document.getElementById('n-' + id);
+    const ta = el.querySelector('textarea');
     el.querySelectorAll('button[data-v]').forEach((b) => b.addEventListener('click', () => {
-      const cur = (state.reviews[id] || {}).verdict;
-      save('reviews', id, { verdict: cur === b.dataset.v ? null : b.dataset.v, note: ta.value }, st);
+      const cur = (state[coll][id] || {}).verdict;
+      save(coll, id, { verdict: cur === b.dataset.v ? null : b.dataset.v, note: ta.value }, st);
     }));
     let t;
-    ta.addEventListener('input', () => { clearTimeout(t); flash(st, 'Typing…'); t = setTimeout(() => save('reviews', id, { note: ta.value }, st), 900); });
-    ta.addEventListener('blur', () => { clearTimeout(t); if ((state.reviews[id] || {}).note !== ta.value && ta.value !== '') save('reviews', id, { note: ta.value }, st); });
+    ta.addEventListener('input', () => { clearTimeout(t); flash(st, 'Typing…'); t = setTimeout(() => save(coll, id, { note: ta.value }, st), 900); });
+    ta.addEventListener('blur', () => { clearTimeout(t); if ((state[coll][id] || {}).note !== ta.value && ta.value !== '') save(coll, id, { note: ta.value }, st); });
   });
   document.querySelectorAll('.q').forEach((f) => {
     const id = f.dataset.q, st = f.querySelector('.saved');
@@ -373,15 +441,16 @@ ${sections}
   });
   document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
     tab = b.dataset.tab;
-    try { sessionStorage.setItem(LS + '-tab', tab); } catch {}
+    try { sessionStorage.setItem(LS + '-tab2', tab); } catch {}
     paintTab();
   }));
-  try { tab = sessionStorage.getItem(LS + '-tab') || 'all'; } catch {}
+  try { tab = sessionStorage.getItem(LS + '-tab2') || 'plan'; } catch {}
 
   // Local copy first, then the shared store.
   const local = lsGet();
   Object.assign(state.reviews, local.reviews || {});
   Object.assign(state.answers, local.answers || {});
+  Object.assign(state.levels, local.levels || {});
   paintAll();
   const note = document.getElementById('store');
   const use = window.claude && window.claude.use;
@@ -393,13 +462,13 @@ ${sections}
     note.textContent = 'Your marks save to this page for the next session to read.';
     // Anything marked here before the store answered goes up now.
     const left = lsGet();
-    for (const coll of ['reviews', 'answers']) for (const [id, v] of Object.entries(left[coll] || {})) {
+    for (const coll of COLLS) for (const [id, v] of Object.entries(left[coll] || {})) {
       if (!v || !v.pending) continue;
       const body = Object.assign({}, v, { at: new Date().toISOString() });
       delete body.pending;
       db.collection(coll).doc(id).set(body).then(() => { const now = lsGet(); if (now[coll]) { delete now[coll][id]; lsSet(now); } }).catch(() => {});
     }
-    for (const coll of ['reviews', 'answers']) {
+    for (const coll of COLLS) {
       db.collection(coll).onSnapshot((snap) => {
         clearTimeout(timer);
         snap.docs.forEach((doc) => { const v = doc.data(); if (v) state[coll][doc.id] = v; });
@@ -411,4 +480,4 @@ ${sections}
 </script>
 `;
 writeFileSync(out, html);
-console.log(`Wrote ${out} (${Math.round(html.length / 1024)} KB, ${kept.length} ideas, ${cut.length} cut, ${QUESTIONS.length} questions)`);
+console.log(`Wrote ${out} (${Math.round(html.length / 1024)} KB, ${kept.length} ideas, ${cut.length} cut, ${QUESTIONS.length} plan questions, ${BOOST_LEVELS.length} boost level sets)`);
