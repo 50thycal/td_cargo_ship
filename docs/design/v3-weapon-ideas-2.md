@@ -2,6 +2,8 @@
 
 Nothing in this document is built. It exists to lock ideas before any build.
 
+> **Reviewed 2026-11-05:** the player's picks, answers and the build plan are in [v3-weapons-plan.md](v3-weapons-plan.md).
+
 - **Review page:** https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ. It has the same 30 ideas, each marked Go further, Maybe or Drop with notes, plus the cut ideas (Bring back) and the six questions. Its saved marks are what the next session reads first:
   - `reviews/{ideaId}`: `verdict` (go, maybe, drop or revive) and `note`;
   - `answers/{questionId}`: `choice` (option index) and `note`.
