@@ -24,6 +24,11 @@ export const ICON_COLOR: Record<CardId, string> = {
   chainshot: '#d6a26b',
   firecontrol: '#38bdf8',
   cadence: '#f59e0b',
+  // Phase 2 passives.
+  droneScreen: '#7dd3fc',
+  gunships: '#a3a380',
+  bomberWing: '#9ca3af',
+  orbital: '#ff6b6b',
   resupply: '#8be38b',
 }
 
@@ -64,6 +69,14 @@ const PATHS: Record<CardId, string> = {
   firecontrol: '<circle cx="16" cy="16" r="9"/><path d="M16 3 V9 M16 23 V29 M3 16 H9 M23 16 H29"/><path d="M16 12.5 L19.5 16 L16 19.5 L12.5 16 Z"/>',
   // The beat: a pulse line.
   cadence: '<path d="M2 17 H9 L12 8 L16 25 L20 11 L23 17 H30"/>',
+  // Three small drones rising from a deck.
+  droneScreen: '<path d="M4 28 H28"/><path d="M8 20 l3 -3 l3 3 M15 13 l3 -3 l3 3 M22 20 l3 -3 l3 3"/><path d="M11 23 V27 M18 16 V27 M25 23 V27" stroke-dasharray="1.5 2"/>',
+  // A helicopter seen from above: rotor disc and tail.
+  gunships: '<circle cx="13" cy="14" r="9"/><path d="M13 14 L28 26"/><path d="M5 6 L21 22 M21 6 L5 22"/><path d="M25 22 L29 26"/>',
+  // A bomber's silhouette over a silo.
+  bomberWing: '<path d="M16 3 V20 M4 11 L16 9 L28 11 M11 20 H21"/><circle cx="16" cy="27" r="3"/><path d="M12 24 L20 30 M20 24 L12 30"/>',
+  // Three laser dots closing on a target.
+  orbital: '<circle cx="16" cy="18" r="3"/><circle cx="5" cy="27" r="1.6"/><circle cx="27" cy="27" r="1.6"/><circle cx="16" cy="4" r="1.6"/><path d="M6.5 25.5 L14 19.5 M25.5 25.5 L18 19.5 M16 5.5 V15" stroke-dasharray="2 2"/>',
   // A repair cross in a crate.
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
 }

@@ -59,6 +59,14 @@ export const CUE_IDS = [
   'cadence.beat',
   'cadence.hit',
   'nuke.blast',
+  // Phase 2 passives (placeholders, borrowed files).
+  'screen.launch',
+  'heli.arrive',
+  'heli.rockets',
+  'sortie.pass',
+  'sortie.bomb',
+  'orbital.lock',
+  'orbital.beam',
   // Weapon state
   'weapon.drop',
   'weapon.load',

@@ -237,6 +237,39 @@ const SCENES: Record<CardId, Scene> = {
     burst(62, 40, 6, c) + burst(90, 27, 6, c) +
     `<path d="M66 8 H74 L77 2 L81 13 L84 6 L86 8 H96" fill="none" stroke="${c}" stroke-width="1.8"/>`,
 
+  // Drones lifting off the carrier deck, ramming the threats in.
+  droneScreen: (c) =>
+    sea(66) +
+    `<rect x="40" y="58" width="40" height="6" rx="3" fill="${HULL}"/>` +
+    [[46, 46, -70], [58, 36, -95], [72, 44, -115], [86, 26, -60]].map(([x, y, a]) =>
+      `<g transform="translate(${x} ${y}) rotate(${a})"><path d="M5 0 L-4 -4 L-2 0 L-4 4 Z" fill="${c}"/></g>`).join('') +
+    `<path d="M60 58 Q58 46 58 36 M60 58 Q66 50 72 44" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="2 2" opacity="0.7"/>` +
+    drone(96, 14, 1) + burst(92, 20, 6, FLAME) + threat(30, 16, 40, 0.8),
+
+  // Two helicopters over the convoy, rockets into a pack.
+  gunships: (c) =>
+    sea(68) + ship(40, 64, 0.7) + ship(84, 64, 0.7) +
+    [[30, 34], [92, 32]].map(([x, y]) =>
+      `<circle cx="${x}" cy="${y}" r="11" fill="${c}" opacity="0.22"/><path d="M${x - 11} ${y - 3} L${x + 11} ${y + 3} M${x - 11} ${y + 3} L${x + 11} ${y - 3}" stroke="${INK}" stroke-width="1.2" opacity="0.7"/>` +
+      `<ellipse cx="${x}" cy="${y}" rx="5" ry="3" fill="${c}"/><path d="M${x + 4} ${y} H${x + 12}" stroke="${c}" stroke-width="2"/>`).join('') +
+    `<path d="M30 34 L60 14 M92 32 L62 16" stroke="${FLAME}" stroke-width="1.4" stroke-dasharray="3 2"/>` +
+    burst(61, 14, 9, FLAME) + drone(54, 10, 0.8) + drone(68, 12, 0.8),
+
+  // A bomber over the enemy shore, a silo going up.
+  bomberWing: (c) =>
+    `<rect width="120" height="30" fill="#4a3a2c"/>` + sea(70) +
+    `<circle cx="78" cy="18" r="7" fill="#6b5a48" stroke="${RED}" stroke-width="1.5"/>` + burst(78, 18, 11, FLAME) +
+    jet(50, 40, 0, 1.6, c) +
+    `<path d="M10 40 H38" stroke="${INK}" stroke-width="2" opacity="0.3"/>` +
+    `<rect x="24" y="26" width="10" height="5" rx="1.5" fill="#6b6b5a"/>` + burst(29, 28, 6, FLAME),
+
+  // Laser dots closing on a heavy missile, the beam from above.
+  orbital: (c) =>
+    sea(66) + ship(60, 62, 0.75) +
+    `<path d="M70 0 L74 26" stroke="${c}" stroke-width="9" opacity="0.35"/><path d="M70 0 L74 26" stroke="#fff3f3" stroke-width="3"/>` +
+    `<g transform="translate(74 30) rotate(140)"><rect x="-12" y="-4.5" width="24" height="9" rx="4.5" fill="${RED}"/></g>` + burst(74, 30, 9, FLAME) +
+    [[30, 52], [112, 44], [60, 6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="${c}"/><path d="M${x} ${y} L74 30" stroke="${c}" stroke-width="1" stroke-dasharray="2 2" opacity="0.8"/>`).join(''),
+
   resupply: (c) =>
     sea(64) + ship(24, 60, 0.75) + ship(98, 60, 0.75) +
     `<text x="20" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text><text x="94" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text>` +

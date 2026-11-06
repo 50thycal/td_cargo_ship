@@ -117,6 +117,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   }
   drawFx(ctx, g);
   drawPlanWeapons(ctx, g);
+  drawPassives(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
@@ -1044,6 +1045,157 @@ function drawPlanWeapons(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
 }
 
+/** The phase 2 passives: Drone Screen's drones, the gunships, Bomber Wing's
+ *  bombers and the silos they silenced, Orbital Strike's laser dots. */
+function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
+  ctx.save();
+  // Drones: small cyan chevrons with a short trail.
+  for (const d of g.wings) {
+    ctx.strokeStyle = 'rgba(125,211,252,0.45)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(d.x - Math.cos(d.heading) * 26, d.y - Math.sin(d.heading) * 26);
+    ctx.lineTo(d.x, d.y);
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.heading);
+    ctx.fillStyle = '#7dd3fc';
+    ctx.beginPath();
+    ctx.moveTo(12, 0);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-8, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  // Gunships: a ship-sized helicopter (the phone check: a strong silhouette
+  // and a rotor disc), its shadow on the water.
+  for (const h of g.helis) {
+    for (const shadow of [true, false]) {
+      ctx.save();
+      ctx.translate(h.x + (shadow ? 16 : 0), h.y + (shadow ? 26 : 0));
+      ctx.rotate(h.leaving ? h.heading : 0);
+      ctx.globalAlpha = shadow ? 0.28 : 1;
+      const body = shadow ? '#000' : '#6b7254';
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 22, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(14, -3, 30, 6);
+      ctx.fillRect(40, -10, 4, 20);
+      if (!shadow) {
+        ctx.fillStyle = '#c9e3ff';
+        ctx.beginPath();
+        ctx.ellipse(-10, 0, 7, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // The rotor: a disc and two blades spinning.
+        ctx.strokeStyle = 'rgba(230,240,230,0.35)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 36, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(235,245,235,0.8)';
+        ctx.lineWidth = 3;
+        const a = g.t * 30;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 36, Math.sin(a) * 36);
+        ctx.lineTo(-Math.cos(a) * 36, -Math.sin(a) * 36);
+        ctx.moveTo(Math.cos(a + 1.57) * 36, Math.sin(a + 1.57) * 36);
+        ctx.lineTo(-Math.cos(a + 1.57) * 36, -Math.sin(a + 1.57) * 36);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+  // Bombers: a heavy bomber crossing, its shadow below.
+  for (const b of g.sorties) {
+    for (const shadow of [true, false]) {
+      ctx.save();
+      ctx.translate(b.x + (shadow ? 22 : 0), b.y + (shadow ? 34 : 0));
+      if (b.vx < 0) ctx.scale(-1, 1);
+      ctx.globalAlpha = shadow ? 0.3 : 1;
+      ctx.fillStyle = shadow ? '#000' : '#9ca3af';
+      ctx.beginPath();
+      ctx.moveTo(46, 0);
+      ctx.lineTo(30, -6);
+      ctx.lineTo(-40, -6);
+      ctx.lineTo(-46, 0);
+      ctx.lineTo(-40, 6);
+      ctx.lineTo(30, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(10, -6);
+      ctx.lineTo(-12, -52);
+      ctx.lineTo(-24, -52);
+      ctx.lineTo(-14, -6);
+      ctx.moveTo(10, 6);
+      ctx.lineTo(-12, 52);
+      ctx.lineTo(-24, 52);
+      ctx.lineTo(-14, 6);
+      ctx.fill();
+      ctx.fillRect(-46, -16, 8, 32);
+      ctx.restore();
+    }
+  }
+  // Silenced silos: a red cross and the seconds left.
+  g.map.bases.forEach((b, i) => {
+    const left = (g.quietUntil[i] ?? 0) - g.t;
+    if (left <= 0) return;
+    ctx.strokeStyle = '#ff4d3d';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(b.x - 22, b.y - 22);
+    ctx.lineTo(b.x + 22, b.y + 22);
+    ctx.moveTo(b.x + 22, b.y - 22);
+    ctx.lineTo(b.x - 22, b.y + 22);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(8,16,24,0.85)';
+    ctx.fillRect(b.x - 48, b.y + 28, 96, 26);
+    ctx.fillStyle = '#ff6b5a';
+    ctx.font = '800 18px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`SILENT ${Math.ceil(left)}`, b.x, b.y + 47);
+  });
+  // Orbital Strike locking on: three laser dots slide in from the edges of
+  // the sea and close on the target, a shrinking triangle.
+  const o = g.orbital;
+  if (o) {
+    const th = g.threats.find((t) => t.id === o.id && !t.dead);
+    if (th) {
+      const u = Math.min(1, o.t / AB.orbital.lock);
+      const R = (1 - u) * 520 + 6;
+      ctx.strokeStyle = `rgba(255,107,107,${0.35 + u * 0.5})`;
+      ctx.fillStyle = '#ff4d4d';
+      ctx.lineWidth = 2;
+      const pts = [0, 1, 2].map((k) => {
+        const a = -Math.PI / 2 + (k * Math.PI * 2) / 3 + (1 - u) * 1.2;
+        return { x: th.x + Math.cos(a) * R, y: th.y + Math.sin(a) * R };
+      });
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,107,107,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(th.x, th.y);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 /** Shield pickup: a bubble over every ship and the carrier, flickering out. */
 function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
   const ending = g.shieldT < 1.2 && Math.floor(g.t * 10) % 2 === 0;
@@ -1582,6 +1734,20 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
       case 'beat':
         // Drawn by drawPlanWeapons (the aura), not here.
         break;
+      case 'orbital': {
+        // Orbital Strike: a red-white column from the top of the sea.
+        const w = f.r * (1 - u * 0.5);
+        ctx.fillStyle = `rgba(255,107,107,${0.45 * (1 - u)})`;
+        ctx.fillRect(f.x - w / 2, 0, w, f.y);
+        ctx.fillStyle = `rgba(255,245,245,${1 - u})`;
+        ctx.fillRect(f.x - w / 6, 0, w / 3, f.y);
+        ctx.strokeStyle = `rgba(255,107,107,${1 - u})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * (0.6 + u), 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
       case 'beam': {
         // Railgun: a white-hot core in a pink sheath, narrowing as it fades.
         const w = f.r * 2 * (1 - u * 0.7);

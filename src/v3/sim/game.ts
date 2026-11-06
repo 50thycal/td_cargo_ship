@@ -190,7 +190,9 @@ export interface Pickup {
 
 export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
   // The weapons plan, phase 0–1.
-  | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat';
+  | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat'
+  // Phase 2.
+  | 'orbital';
 
 export interface Fx {
   kind: FxKind;
@@ -450,6 +452,42 @@ export interface Chain {
   level: number;
 }
 
+/** Drone Screen: one of your drones, flying to ram its target. */
+export interface Wing {
+  id: number;
+  x: number;
+  y: number;
+  heading: number;
+  target: number | null;
+  life: number;
+}
+
+/** Gunship Pair: a helicopter over the convoy. `slot` picks its side. */
+export interface Heli {
+  id: number;
+  x: number;
+  y: number;
+  slot: number;
+  fireT: number;
+  heading: number;
+  leaving: boolean;
+}
+
+/** Bomber Wing: a bomber on its pass over a target on the shore. */
+export interface Sortie {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  tx: number;
+  ty: number;
+  hit: boolean;
+  /** truck: a raider's id; silo: a base's index; tunnel: the cancelled
+   *  raider spawn (already gone from the queue). */
+  kind: 'truck' | 'silo' | 'tunnel';
+  ref: number;
+}
+
 /** A Fire Control mark waiting for the salvo. */
 export interface Mark {
   id: number;
@@ -546,6 +584,15 @@ export interface Game {
   /** Cadence Gun: the last beat hit, beats hit in a row, and War Drum's
    *  broadside waiting for the next beat. */
   beat: { last: number; run: number; armed: boolean; seen: number };
+  /** Phase 2 passives: Drone Screen's drones, the Gunship Pair, Bomber
+   *  Wing's passes, the clocks to their next, and Orbital Strike's lock. */
+  wings: Wing[];
+  helis: Heli[];
+  sorties: Sortie[];
+  passiveT: number;
+  orbital: { id: number; t: number; second: boolean } | null;
+  /** Silos Bomber Wing has silenced, until when (by base index). */
+  quietUntil: number[];
   /** Seconds of wave since a weapon pickup last dropped (the pity clock). */
   weaponDropT: number;
   /** Point Defense: seconds to the carrier's next shot. */
@@ -677,6 +724,12 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     markT: 0,
     markBy: 0,
     beat: { last: -9, run: 0, armed: false, seen: -1 },
+    wings: [],
+    helis: [],
+    sorties: [],
+    passiveT: 0,
+    orbital: null,
+    quietUntil: [],
     weaponDropT: 0,
     pdT: 0,
     repairT: 0,
@@ -1217,6 +1270,12 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       return threat ? markTap(g, w, threat) : null;
     case 'cadence':
       return cadenceTap(g, w, ax, ay);
+    // Passives: they work on their own; the gun is the plain gun.
+    case 'droneScreen':
+    case 'gunships':
+    case 'bomberWing':
+    case 'orbital':
+      return null;
   }
 }
 
@@ -2198,6 +2257,200 @@ function updateBeat(g: Game): void {
 }
 
 // ---------------------------------------------------------------------------
+// The weapons plan, phase 2: the passives. Your gun stays the plain gun;
+// these work on their own while loaded and wind down when it runs out.
+
+function updatePassives(g: Game, dt: number): void {
+  const id = g.weapon?.id;
+  const level = g.weapon?.level ?? 1;
+  const k = level - 1;
+  g.passiveT -= dt;
+  const c = g.map.carrier;
+  // ---- Drone Screen: a drone off the carrier deck every gap.
+  if (id === 'droneScreen' && g.passiveT <= 0) {
+    g.passiveT += AB.droneScreen.gap[k];
+    g.wings.push({ id: g.nextId++, x: c.x, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
+    cue(g, 'screen.launch', c.x, c.y);
+  }
+  for (const d of g.wings) {
+    d.life -= dt;
+    let th = d.target === null ? undefined : g.threats.find((t) => t.id === d.target && !t.dead);
+    if (!th) {
+      // The threat closest to hitting a hull that no other drone is after.
+      const claimed = new Set(g.wings.map((o) => o.target));
+      th = g.threats.filter((t) => !t.dead && !isStructure(t.kind) && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !claimed.has(t.id)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
+      d.target = th ? th.id : null;
+    }
+    if (!th) {
+      d.y -= AB.droneScreen.speed * 0.4 * dt;
+      continue;
+    }
+    const dd = dist(d.x, d.y, th.x, th.y);
+    if (dd <= AB.droneScreen.contact) {
+      const bx = th.x;
+      const by = th.y;
+      damageThreat(g, th, AB.droneScreen.damage);
+      const r = AB.droneScreen.burst[(g.weapon?.id === 'droneScreen' ? level : 1) - 1];
+      if (r > 0) for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, 1);
+      addFx(g, 'burst', bx, by, { life: 0.3, r: Math.max(18, r) });
+      d.life = 0;
+      continue;
+    }
+    d.heading = Math.atan2(th.y - d.y, th.x - d.x);
+    const stepLen = Math.min(dd, AB.droneScreen.speed * dt);
+    d.x += Math.cos(d.heading) * stepLen;
+    d.y += Math.sin(d.heading) * stepLen;
+  }
+  g.wings = g.wings.filter((d) => d.life > 0 && d.y > -40);
+  // ---- Gunship Pair: hover over the convoy, rocket the thickest cluster.
+  if (id !== 'gunships') for (const h of g.helis) h.leaving = true;
+  const mid = g.ships.length ? { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length } : { x: c.x, y: c.y - 120 };
+  for (const h of g.helis) {
+    const n = g.helis.filter((o) => !o.leaving).length;
+    const want = h.leaving
+      ? { x: h.x < VIEW.width / 2 ? -200 : VIEW.width + 200, y: h.y }
+      : { x: clamp(mid.x + (h.slot - (n - 1) / 2) * AB.gunships.spread * 1.8, 60, VIEW.width - 60), y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
+    const dd = dist(h.x, h.y, want.x, want.y);
+    if (dd > 2) {
+      const stepLen = Math.min(dd, AB.gunships.speed * dt);
+      h.heading = Math.atan2(want.y - h.y, want.x - h.x);
+      h.x += ((want.x - h.x) / dd) * stepLen;
+      h.y += ((want.y - h.y) / dd) * stepLen;
+    }
+    if (h.leaving) continue;
+    h.fireT -= dt;
+    if (h.fireT > 0) continue;
+    h.fireT += AB.gunships.gap[k];
+    const near = g.threats.filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, h.x, h.y) <= AB.gunships.reach);
+    let best: Threat | null = null;
+    let most = 0;
+    for (const t of near) {
+      const m = near.filter((o) => dist(o.x, o.y, t.x, t.y) <= AB.gunships.blast).length;
+      if (m > most) {
+        most = m;
+        best = t;
+      }
+    }
+    if (!best) continue;
+    const bx = best.x;
+    const by = best.y;
+    addFx(g, 'tracer', h.x, h.y, { life: 0.2, x2: bx, y2: by });
+    addFx(g, 'burst', bx, by, { life: 0.4, r: AB.gunships.blast });
+    cue(g, 'heli.rockets', bx, by);
+    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[k]);
+  }
+  g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
+  // ---- Bomber Wing: a pass at the shore every gap.
+  if (id === 'bomberWing' && g.passiveT <= 0) {
+    g.passiveT += AB.bomberWing.gap[k];
+    callSorties(g, AB.bomberWing.targets[k], AB.bomberWing.quiet[k], k === 2);
+  }
+  for (const b of g.sorties) {
+    b.x += b.vx * dt;
+    if (!b.hit && (b.vx > 0 ? b.x >= b.tx : b.x <= b.tx)) {
+      b.hit = true;
+      bombTarget(g, b);
+    }
+  }
+  g.sorties = g.sorties.filter((b) => b.x > -300 && b.x < VIEW.width + 300);
+  // ---- Orbital Strike: lock on (laser dots), then the beam.
+  if (g.orbital) {
+    g.orbital.t += dt;
+    const th = g.threats.find((t) => t.id === g.orbital!.id && !t.dead);
+    if (!th) g.orbital = null;
+    else if (g.orbital.t >= AB.orbital.lock) {
+      const bx = th.x;
+      const by = th.y;
+      damageThreat(g, th, AB.orbital.damage);
+      for (const o of [...g.threats]) if (!o.dead && o !== th && dist(o.x, o.y, bx, by) <= AB.orbital.splash) damageThreat(g, o, 1);
+      addFx(g, 'orbital', bx, by, { life: 0.45, r: AB.orbital.splash * 0.8 });
+      cue(g, 'orbital.beam', th.x, th.y);
+      // Sky Spear: the beam lingers onto the next toughest.
+      const linger = g.orbital.second === false && level >= ABILITY_MAX && id === 'orbital';
+      g.orbital = null;
+      if (linger) {
+        const next = toughest(g, th.id);
+        if (next) g.orbital = { id: next.id, t: AB.orbital.lock - AB.orbital.linger, second: true };
+      }
+    }
+  }
+  if (id === 'orbital' && g.passiveT <= 0 && !g.orbital) {
+    const th = toughest(g, -1);
+    if (th) {
+      g.passiveT = AB.orbital.gap[k];
+      g.orbital = { id: th.id, t: 0, second: false };
+      cue(g, 'orbital.lock', th.x, th.y);
+    }
+  }
+}
+
+/** The toughest threat on screen (most hit points). Something that will hit
+ *  a ship comes first; a structure (a rig, a generator, the Dreadnought) only
+ *  when nothing else is up: its 10–40 hit points soaked every strike (build 2
+ *  sweep). */
+function toughest(g: Game, not: number): Threat | undefined {
+  const up = g.threats.filter((t) => !t.dead && t.id !== not && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !(t.kind === 'citadel' && shieldUp(g)));
+  const order = (a: Threat, b: Threat) => b.hp - a.hp || timeToImpact(g, a) - timeToImpact(g, b);
+  return up.filter((t) => !isStructure(t.kind)).sort(order)[0] ?? up.sort(order)[0];
+}
+
+function callGunships(g: Game, level: number): void {
+  const want = AB.gunships.count[level - 1];
+  g.helis = g.helis.filter((h) => !h.leaving);
+  if (g.helis.length < want) cue(g, 'heli.arrive', 0, VIEW.height / 2);
+  for (let i = g.helis.length; i < want; i++) {
+    const left = i % 2 === 0;
+    g.helis.push({ id: g.nextId++, x: left ? -120 : VIEW.width + 120, y: VIEW.height * 0.55, slot: i, fireT: 0.6 + i * 0.35, heading: left ? 0 : Math.PI, leaving: false });
+  }
+  g.helis.forEach((h, i) => (h.slot = i));
+}
+
+/** Bomber Wing picks its targets: trucks on screen first, then the silos or
+ *  tunnels with the most launches coming in the next `quiet` seconds. */
+/** `subs`: Carpet Raid (MAX) also bombs a surfaced submarine. */
+function callSorties(g: Game, n: number, quiet: number, subs = false): void {
+  type Pick = { kind: Sortie['kind']; ref: number; x: number; y: number; score: number };
+  const picks: Pick[] = [];
+  for (const r of g.raiders) {
+    if ((r.kind === 'sub' && !subs) || !raiderUp(r) || r.x < 0 || r.x > VIEW.width || r.y < 0 || r.y > VIEW.height) continue;
+    picks.push({ kind: 'truck', ref: r.id, x: r.x, y: r.y, score: 100 + r.rounds.length + r.units.length });
+  }
+  const horizon = g.waveT + quiet;
+  g.map.bases.forEach((b, i) => {
+    if (g.baseDown[i] || (g.quietUntil[i] ?? 0) > g.t) return;
+    const due = g.queue.filter((l) => l.base === i && l.at >= g.waveT && l.at <= horizon && l.kind !== 'strafer' && l.kind !== 'bomber').length;
+    if (due > 0) picks.push({ kind: 'silo', ref: i, x: b.x, y: b.y, score: due });
+  });
+  g.raiderQueue.forEach((sp, i) => {
+    if (sp.kind === 'sub' || sp.at < g.waveT || sp.at > horizon) return;
+    const p = sp.path[0];
+    picks.push({ kind: 'tunnel', ref: i, x: clamp(p.x, 30, VIEW.width - 30), y: clamp(p.y, 30, VIEW.height - 30), score: sp.units.reduce((a, u) => a + u.size, 0) });
+  });
+  picks.sort((a, b) => b.score - a.score);
+  const chosen = picks.slice(0, n);
+  // A tunnel's truck is cancelled now (so a later pass can't pick it again).
+  const tunnels = chosen.filter((p) => p.kind === 'tunnel').map((p) => g.raiderQueue[p.ref]);
+  g.raiderQueue = g.raiderQueue.filter((sp) => !tunnels.includes(sp));
+  for (const p of chosen) {
+    const fromLeft = p.x > VIEW.width / 2;
+    g.sorties.push({ id: g.nextId++, x: fromLeft ? -160 : VIEW.width + 160, y: p.y, vx: (fromLeft ? 1 : -1) * AB.bomberWing.speed, tx: p.x, ty: p.y, hit: false, kind: p.kind, ref: p.ref });
+    if (p.kind === 'silo') g.quietUntil[p.ref] = Math.max(g.quietUntil[p.ref] ?? 0, g.t + quiet);
+  }
+  if (chosen.length) cue(g, 'sortie.pass', chosen[0].x, chosen[0].y);
+}
+
+function bombTarget(g: Game, b: Sortie): void {
+  addFx(g, 'boom', b.tx, b.ty, { life: 0.9, r: 48 });
+  cue(g, 'sortie.bomb', b.tx, b.ty);
+  if (b.kind === 'truck') {
+    const r = g.raiders.find((o) => o.id === b.ref);
+    if (r && raiderUp(r)) knockOut(g, r);
+  } else {
+    addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: b.kind === 'silo' ? 'SILO SILENCED' : 'TUNNEL HIT' });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The step
 
 export function step(g: Game, dt: number): void {
@@ -2244,6 +2497,7 @@ export function step(g: Game, dt: number): void {
   updateChains(g, dt);
   updateMarks(g, dt);
   updateBeat(g);
+  updatePassives(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
   updatePosts(g, dt);
@@ -2299,6 +2553,11 @@ function clearField(g: Game): void {
   g.link = null;
   g.marks = [];
   g.beat = { last: -9, run: 0, armed: false, seen: -1 };
+  g.wings = [];
+  g.helis = [];
+  g.sorties = [];
+  g.orbital = null;
+  g.quietUntil = [];
   g.carrierAegis = null;
   for (const s of g.ships) s.aegis = undefined;
   g.ammo = g.stats.rack;
@@ -2630,6 +2889,8 @@ function launch(g: Game, l: Launch): void {
     return;
   }
   if (l.base < 0 || g.baseDown[l.base]) return;
+  // Bomber Wing silenced this silo: the launch is cancelled, not delayed.
+  if ((g.quietUntil[l.base] ?? 0) > g.t) return;
   const base = g.map.bases[l.base];
   spawnThreat(g, l.kind, base.x, base.y, 'base');
 }
@@ -4022,6 +4283,13 @@ function collect(g: Game, p: Pickup): void {
     if (level <= 0) return;
     g.weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
     if (id === 'cadence') g.beat = { last: -9, run: 0, armed: false, seen: -1 };
+    if (id === 'droneScreen') g.passiveT = 0.2;
+    if (id === 'bomberWing') g.passiveT = AB.bomberWing.first;
+    if (id === 'orbital') {
+      g.passiveT = AB.orbital.first;
+      g.orbital = null;
+    }
+    if (id === 'gunships') callGunships(g, level);
     if (id === 'frigate') launchEscorts(g, level);
     // Aegis: a fresh pickup rearms every hull in full.
     if (id === 'aegis') {
