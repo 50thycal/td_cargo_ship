@@ -50,6 +50,9 @@ export const MAX_VOICES = 24;
 const v = (cue: string, n: number): string[] => Array.from({ length: n }, (_, i) => `${cue}.${i + 1}.m4a`);
 
 const sfx = (cue: CueId, n: number, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, n), bus: 'sfx', volume, ...o });
+/** A placeholder: a new cue played with another cue's files until it has
+ *  its own (the weapons plan's phase 1 weapons and the Nuke). */
+const borrow = (from: CueId, n: number, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(from, n), bus: 'sfx', volume, ...o });
 const ui = (cue: CueId, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, 1), bus: 'ui', volume, ...o });
 const alert = (cue: CueId, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, 1), bus: 'alert', volume, duck: 0.5, ...o });
 
@@ -93,6 +96,23 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'well.implode': sfx('well.implode', 2, 0.55, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 2 }),
   'rail.beam': sfx('rail.beam', 3, 0.75, { pitch: [0.96, 1.04], cooldownMs: 50, maxVoices: 2 }),
   'tesla.arc': sfx('tesla.arc', 4, 0.32, { pitch: [0.9, 1.15], cooldownMs: 40, maxVoices: 3 }),
+
+  // The weapons plan, phase 1, and the Nuke: borrowed files for now.
+  'lance.charge': borrow('aegis.reload', 1, 0.3, { pitch: [0.8, 0.85], cooldownMs: 200, maxVoices: 1 }),
+  'lance.half': borrow('rail.beam', 3, 0.55, { pitch: [1.1, 1.18], cooldownMs: 50, maxVoices: 2 }),
+  'lance.full': borrow('rail.beam', 3, 0.85, { pitch: [0.78, 0.84], cooldownMs: 50, maxVoices: 2 }),
+  'cutter.swipe': borrow('blade.throw', 2, 0.5, { pitch: [1.2, 1.35], cooldownMs: 60, maxVoices: 2 }),
+  'grapnel.hook': borrow('blade.catch', 2, 0.5, { pitch: [0.8, 0.9], cooldownMs: 80, maxVoices: 1 }),
+  'grapnel.smack': borrow('blade.hit', 3, 0.45, { pitch: [0.8, 0.95], cooldownMs: 40, maxVoices: 3 }),
+  'grapnel.fling': borrow('blade.throw', 2, 0.45, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 1 }),
+  'grapnel.burst': borrow('shrapnel.burst', 3, 0.6, { pitch: [0.85, 0.95], cooldownMs: 60, maxVoices: 2 }),
+  'chain.throw': borrow('blade.throw', 2, 0.45, { pitch: [0.9, 1.0], cooldownMs: 60, maxVoices: 2 }),
+  'chain.crash': borrow('shrapnel.burst', 3, 0.6, { pitch: [0.95, 1.05], cooldownMs: 60, maxVoices: 2 }),
+  'mark.set': borrow('aegis.reload', 1, 0.35, { pitch: [1.3, 1.4], cooldownMs: 40, maxVoices: 2 }),
+  'salvo.fire': borrow('seeker.launch', 2, 0.6, { pitch: [0.9, 1.0], cooldownMs: 120, maxVoices: 1 }),
+  'cadence.beat': borrow('gun.reload', 3, 0.5, { pitch: [0.6, 0.6], cooldownMs: 200, maxVoices: 1 }),
+  'cadence.hit': borrow('rail.beam', 3, 0.7, { pitch: [1.05, 1.1], cooldownMs: 50, maxVoices: 2 }),
+  'nuke.blast': borrow('well.implode', 2, 1, { pitch: [0.7, 0.75], cooldownMs: 500, maxVoices: 1 }),
 
   'weapon.drop': sfx('weapon.drop', 1, 0.5, { cooldownMs: 200 }),
   'weapon.load': sfx('weapon.load', 2, 0.7, { cooldownMs: 150, maxVoices: 1 }),

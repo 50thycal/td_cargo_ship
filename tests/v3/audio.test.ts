@@ -158,6 +158,14 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   well: ['gun.fire', 'well.open', 'well.implode'],
   railgun: ['rail.beam'],
   tesla: ['gun.fire', 'tesla.arc'],
+  // The weapons plan, phase 1: a plain tap is a plain shot (their own sounds
+  // need a hold, a swipe, two taps or the beat: see weapons.test.ts).
+  lance: ['gun.fire'],
+  cutter: ['gun.fire'],
+  grapnel: ['gun.fire'],
+  chainshot: ['gun.fire'],
+  firecontrol: ['mark.set', 'salvo.fire'],
+  cadence: ['cadence.beat'],
 };
 
 describe('every weapon sounds, through real taps', () => {

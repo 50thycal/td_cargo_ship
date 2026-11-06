@@ -1,10 +1,12 @@
 # V3 weapons plan (after the round 2 review)
 
-**Status:** the plan for building the player's picks. Built only after the player confirms the open questions at the end.
+**Build 1 (phases 0–1) is in:** [v3-weapons-build-1.md](v3-weapons-build-1.md). It covers how to try it, the measured strength, and the tuning made during the build.
+
+**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phase 0 and Phase 1 are being built first.
 
 **Sources:**
 - [v3-weapon-ideas-2.md](v3-weapon-ideas-2.md): the ideas, the prototypes and the data.
-- The player's marks on the review page (https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ), read on 2026-11-05 and copied to `tools/v3/weapon-ideas/review-2026-11-05.json`.
+- The player's marks on the review page (https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ), read on 2026-11-05 and copied to `tools/v3/weapon-ideas/review-2026-11-05.json`. Round 3 (the Plan tab) was read on 2026-11-06 and copied to `review-2026-11-06.json`.
 
 ## What the player decided
 
@@ -199,7 +201,49 @@ The player plays it before the next phase starts.
   - A player could finish the game without seeing half of them. See open question 3.
 - **Fewer default drops changes pacing.** Overdrive was 22% of power-up drops, and it is the main relief when the rack runs dry. With it moved to a boost, ammo starvation (already in the pacing notes) needs watching. This belongs in the pacing pass.
 
-## Open questions for the player
+## Round 3: the answers (2026-11-06)
+
+**The questions:**
+
+| Question | Answer |
+|---|---|
+| The Nuke against rigs, generators, the Citadel and the Dreadnought | 3 hits, not a kill. |
+| The Nuke's rarity | About right: weight 3, not before wave 3, one on the water at a time. |
+| Shield and Full Steam | Both become boosts. |
+| The draft pool | New weapons unlock a few per chapter; Free Play has all of them. "I might cut some or add more in the future, so keep it moddable." |
+| First playable link | Phase 0 (systems) plus Phase 1 (the six actives). |
+
+**The player's summary:**
+
+> "We now have three different categories that we can draft from: passive, active and boost. … Active takes over the gun; passive allows you to keep shooting your gun, and there is a thing that comes in and supports you; boost is a new drop … and then … the defaults that are free that don't have levels, and then you can add more, and then three slots total."
+
+**Moddable** means one registry file lists every weapon with its category, the chapter it unlocks in, and whether it is live or a prototype. Adding, cutting or moving a weapon is one line there; the draft, Free Play and the cards all read from it.
+
+**Boost levels, with the player's changes:**
+- **Accepted as proposed:** Fire at Will, Supply Run, Focus, Overdrive, Full Steam.
+- **Changed by the player's notes** (where a note was open to more than one reading, the reading used is marked):
+
+| Boost | Player's note | Change |
+|---|---|---|
+| **Dual Wield** | "I don't think you will be able to have more than two weapons, so how about we just increase drop rate of weapons when active." | MAX is no longer a third weapon. **MAX:** while it lasts, weapon drops come twice as often. |
+| **Hot Streak** | "Ehhh remove the one." | **Reading:** the level 2 "streak survives one miss" is removed. **New level 2:** double at 4 hits, triple at 8. MAX is unchanged. |
+| **Overclock** | "What happens when a player already has max? Should have some small buff, maybe it drops more frequently?" | When the loaded weapon is already at MAX, Overclock instead makes that weapon drop more often for its duration. |
+| **Shield** | "Make sure there is an animation showing the shields breaking when the strafing run hits, so it is clear." | Level 2 blocks a strafing run, and the shield visibly cracks and shatters at the hit. |
+| **Time Warp** | "Yes for one and two, but time should look like it is slowing down." | **Every level:** the sea and the threats desaturate and trail, and the sound drops in pitch. **Reading:** the "Stasis" MAX is not wanted. **New MAX, Freeze Frame:** the first 2 s are near-stopped (10% speed), then 25%. |
+| **Wild Card** | "Level 1 they have active only at level 1, and level two you get one passive, and level three is actives at level max." | **Level 1:** a random active's level 1 shot. **Level 2:** a random active or passive, at level 2. **MAX:** a random active's MAX shot. |
+
+**What is built first:**
+- **Phase 0, systems:**
+  - the weapon registry, with category, unlock chapter and live or prototype;
+  - the Nuke as a default drop;
+  - hold routing, with the "HOLD: …" chip;
+  - the Prototype shelf in Free Play.
+- **Phase 1, the six actives:** Charge Lance, Laser Cutter, Grapnel, Chain Shot, Fire Control and Cadence Gun.
+
+**What waits:**
+- **Overdrive, Time Warp, Shield and Full Steam** leave the default drops in Phase 3, when they return as boosts. Until then the campaign keeps them, so it doesn't lose them with nothing in their place.
+
+## Open questions for the player (answered in round 3, above)
 
 1. **The Nuke:** does it also hit structures and the Dreadnought? The proposal is 3 hits, not a kill. And is a weight of about 3 (roughly one every three waves) the right rarity?
 2. **Shield and Full Steam:** become boosts (with the levels above), or be cut?

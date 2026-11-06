@@ -183,6 +183,60 @@ const SCENES: Record<CardId, Scene> = {
     drone(50, 26, 0.9) + drone(66, 20, 0.9) + drone(80, 18, 0.9) + burst(50, 26, 4, FLAME) + burst(66, 20, 4, FLAME),
 
   // A supply crate with a repair cross, wrench across it, the convoy mended.
+  // The gun glowing with its charge ring, the lance through a heavy missile.
+  lance: (c) =>
+    sea(66) +
+    `<rect x="6" y="58" width="34" height="6" rx="3" fill="${HULL}"/>` +
+    `<circle cx="23" cy="56" r="9" fill="none" stroke="${c}" stroke-width="2.5" opacity="0.5"/>` +
+    `<path d="M23 47 A9 9 0 1 1 14.5 59" fill="none" stroke="${c}" stroke-width="3"/>` +
+    `<path d="M23 56 L118 8" stroke="${c}" stroke-width="11" stroke-linecap="round" opacity="0.35"/>` +
+    `<path d="M23 56 L118 8" stroke="#fffbe6" stroke-width="3.5" stroke-linecap="round"/>` +
+    `<g transform="translate(88 23) rotate(152)"><rect x="-13" y="-5" width="26" height="10" rx="5" fill="${RED}"/></g>` + burst(88, 23, 10, FLAME) + burst(58, 38, 5, c),
+
+  // A glowing cut across a line of drones, each split by it.
+  cutter: (c) =>
+    sea(68) + ship(60, 64, 0.7) +
+    `<path d="M8 52 Q60 40 114 10" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" opacity="0.3"/>` +
+    `<path d="M8 52 Q60 40 114 10" fill="none" stroke="#fff0f8" stroke-width="2.2" stroke-linecap="round"/>` +
+    [[30, 46], [52, 40], [74, 31], [94, 21]].map(([x, y]) => drone(x, y, 1.05) + `<path d="M${x - 6} ${y + 3} L${x + 6} ${y - 3}" stroke="#fff0f8" stroke-width="1.4"/>`).join('') +
+    `<circle cx="114" cy="10" r="5" fill="none" stroke="${INK}" stroke-width="1.5"/>`,
+
+  // A cable from the carrier to a missile, swung into a drone.
+  grapnel: (c) =>
+    sea(66) +
+    `<rect x="4" y="58" width="30" height="6" rx="3" fill="${HULL}"/>` +
+    `<path d="M20 58 Q40 26 72 22" fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="4 2"/>` +
+    `<path d="M70 16 Q90 8 104 26" fill="none" stroke="${INK}" stroke-width="1.2" opacity="0.5" stroke-dasharray="2 3"/>` +
+    threat(76, 22, 20, 1.15) + `<path d="M72 22 l-3 -4 m3 4 l-4 2" stroke="${c}" stroke-width="1.8"/>` +
+    burst(102, 30, 9, FLAME) + drone(104, 30, 0.9),
+
+  // Two threats wrapped in a chain, crashing together.
+  chainshot: (c) =>
+    sea(68) + ship(60, 64, 0.7) +
+    threat(40, 26, 20, 1) + threat(82, 26, 160, 1) +
+    `<path d="M44 27 C52 18 60 36 68 25 C72 20 76 23 78 27" fill="none" stroke="${c}" stroke-width="2.6" stroke-dasharray="3 1.5"/>` +
+    burst(61, 27, 8, FLAME) +
+    `<circle cx="20" cy="40" r="4" fill="${c}"/><circle cx="102" cy="40" r="4" fill="${c}"/>`,
+
+  // Marked threats, and the salvo leaving at once.
+  firecontrol: (c) =>
+    sea(66) +
+    `<rect x="44" y="58" width="32" height="6" rx="3" fill="${HULL}"/>` +
+    [[20, 16], [46, 10], [74, 12], [100, 18]].map(([x, y]) =>
+      threat(x, y, 90, 0.8) + `<path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="none" stroke="${c}" stroke-width="1.6"/>` +
+      `<path d="M60 58 L${x} ${y + 12}" stroke="${c}" stroke-width="1.2" opacity="0.6"/>`,
+    ).join(''),
+
+  // The beat rings out from the gun; on the beat, a beam pierces the line.
+  cadence: (c) =>
+    sea(66) +
+    `<rect x="6" y="58" width="34" height="6" rx="3" fill="${HULL}"/>` +
+    [10, 18, 26].map((r, k) => `<circle cx="23" cy="60" r="${r}" fill="none" stroke="${c}" stroke-width="${2 - k * 0.4}" opacity="${0.75 - k * 0.2}"/>`).join('') +
+    `<path d="M23 58 L116 14" stroke="${c}" stroke-width="6" stroke-linecap="round" opacity="0.45"/>` +
+    `<path d="M23 58 L116 14" stroke="#fff6e0" stroke-width="2" stroke-linecap="round"/>` +
+    burst(62, 40, 6, c) + burst(90, 27, 6, c) +
+    `<path d="M66 8 H74 L77 2 L81 13 L84 6 L86 8 H96" fill="none" stroke="${c}" stroke-width="1.8"/>`,
+
   resupply: (c) =>
     sea(64) + ship(24, 60, 0.75) + ship(98, 60, 0.75) +
     `<text x="20" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text><text x="94" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text>` +

@@ -190,7 +190,10 @@ try {
     well: { open: true, ok: () => window.__v3.game().interceptors.some((i) => i.weapon?.id === 'well') },
     seeker: { open: false, ok: () => window.__v3.game().interceptors.some((i) => i.src === 'seeker') },
     // Round 8: the ships carry their own interceptors while it is loaded.
-    aegis: { open: false, ok: () => window.__v3.game().ships.some((sh) => sh.aegis && sh.aegis.ammo > 0) },
+    // (Armed, whether or not a hull has already fired its round at something;
+    // the weapons plan's Nuke changed the drops, so the convoy at this moment
+    // differs run to run.)
+    aegis: { open: false, ok: () => window.__v3.game().ships.length > 0 && window.__v3.game().ships.every((sh) => sh.aegis) },
   };
   for (const [id, how] of Object.entries(sig)) {
     await equip(page, [id]);
@@ -222,7 +225,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 13 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 14 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -458,6 +461,128 @@ try {
     console.log(`ok: tray on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, no overlaps`);
     if (map === 'island' && w === 874) await tp.screenshot({ path: `${SHOT_DIR}/12-island-tray.png` });
     await tp.close();
+  }
+
+  // ---- The weapons plan, phases 0–1: the prototypes in Free Play, by touch ----
+  // Each new verb through real pointer events at phone size: a hold charges
+  // the Lance, a swipe cuts, a hold on a threat hooks it, two taps chain, taps
+  // mark for the salvo; the Nuke clears the sky. The run is replayed after.
+  {
+    const wp = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 2, hasTouch: true });
+    wp.on('pageerror', (err) => fail(`page error: ${err.message}`));
+    await wp.goto(`${BASE_URL}/v3.html?seed=11`, { waitUntil: 'networkidle' });
+    await wp.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify({ map: 'strait', wave: 5, weapons: [{ id: 'lance', level: 1 }, { id: 'cutter', level: 1 }, { id: 'grapnel', level: 1 }], armory: { gun: null, hull: null, supply: null }, frequentDrops: true }));
+    });
+    await wp.reload({ waitUntil: 'networkidle' });
+    await wp.click('[data-free-play]');
+    await wp.waitForSelector('[data-screen="freeplay"]');
+    const protos = await wp.evaluate(() => [...document.querySelectorAll('[data-fp="weapon0"] option')].filter((o) => /prototype/.test(o.textContent)).length);
+    check(protos === 6, `Free Play offers the six prototypes, marked so (${protos})`);
+    await wp.click('[data-free-start]');
+    await wp.waitForSelector('.playing');
+    // Hand-placed targets on a quiet wave: the same picture every time.
+    const place = (list) => wp.evaluate((list) => {
+      const g = window.__v3.game();
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = [];
+      g.threats = [];
+      g.pickups = [];
+      g.ammo = g.stats.rack;
+      for (const [kind, hp, x, y] of list) g.threats.push({ id: g.nextId++, kind, x, y, vx: 0, vy: 0, hp, speed: 0, heading: Math.PI / 2, target: -1, age: 0, phase: 0, dead: false, sx: 0, sy: 0, ix: 0, iy: 0, dur: 1, apex: 0, spawnT: 0 });
+      for (const s of g.ships) s.hp = 99;
+    }, list);
+    const loadW = (id) => wp.evaluate((id) => { const g = window.__v3.game(); g.levels[id] = g.levels[id] ?? 1; g.weapon = { id, level: g.levels[id], t: 15, t0: g.t }; }, id);
+    const st = () => wp.evaluate(() => { const g = window.__v3.game(); return { press: g.press?.mode ?? null, ammo: g.ammo, fire: g.taps.fire, marks: g.marks.length, chains: g.chains.length, alive: g.threats.filter((t) => !t.dead).map((t) => t.hp) }; });
+    const c = (x, y) => w2c(wp, x, y);
+
+    await place([['heavy', 8, 800, 520], ['heavy', 8, 800, 300]]);
+    await loadW('lance');
+    let p = await c(800, 300);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    await wp.waitForTimeout(900);
+    const charging = await st();
+    await wp.mouse.up();
+    await wp.waitForTimeout(60);
+    let after = await st();
+    check(charging.press === 'charge' && after.alive.every((hp) => hp <= 5), `Charge Lance: a hold charges, letting go pierces the line (${JSON.stringify(after.alive)})`);
+
+    // Two thumbs: while one charges, a tap with the other is a plain shot and
+    // the charge carries on.
+    await place([['heavy', 8, 800, 300], ['drone', 1, 400, 250]]);
+    p = await c(800, 300);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    await wp.waitForTimeout(250);
+    const d = await c(400, 250);
+    await wp.touchscreen.tap(d.x, d.y);
+    const two = await wp.evaluate(() => { const g = window.__v3.game(); return { press: g.press?.mode, shots: g.interceptors.length }; });
+    await wp.mouse.up();
+    check(two.press === 'charge' && two.shots >= 1, `Charge Lance: a second finger taps a plain shot while the first keeps charging (${JSON.stringify(two)})`);
+
+    await place([['drone', 1, 600, 300], ['drone', 1, 700, 300], ['drone', 1, 800, 300], ['drone', 1, 1100, 500]]);
+    await loadW('cutter');
+    p = await c(560, 300);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    for (let k = 1; k <= 10; k++) {
+      const q = await c(560 + k * 30, 300);
+      await wp.mouse.move(q.x, q.y);
+    }
+    await wp.mouse.up();
+    after = await st();
+    check(after.alive.length === 1 && after.ammo === (await wp.evaluate(() => window.__v3.game().stats.rack)) - 1, `Laser Cutter: one swipe cuts the three drones under it for one round (${after.alive.length} left)`);
+
+    await place([['heavy', 8, 700, 300], ['guided', 2, 900, 300]]);
+    await loadW('grapnel');
+    p = await c(700, 300);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    for (let k = 1; k <= 12; k++) {
+      const q = await c(700 + k * 20, 300);
+      await wp.mouse.move(q.x, q.y);
+      await wp.waitForTimeout(25);
+    }
+    const hooked = await st();
+    await wp.mouse.up();
+    await wp.waitForTimeout(600);
+    after = await st();
+    check(hooked.press === 'hook' && after.alive.length === 1 && after.alive[0] < 8, `Grapnel: hold a heavy, swing it into the guided missile, let go and it bursts (${JSON.stringify(after.alive)})`);
+
+    await place([['heavy', 8, 700, 300], ['heavy', 8, 900, 300]]);
+    await loadW('chainshot');
+    p = await c(700, 300);
+    await wp.mouse.click(p.x, p.y);
+    p = await c(900, 300);
+    await wp.mouse.click(p.x, p.y);
+    const chained = await st();
+    await wp.waitForTimeout(500);
+    after = await st();
+    check(chained.chains === 1 && after.alive.filter((hp) => hp <= 6).length === 2, `Chain Shot: two taps chain the pair, 2 hits each (${JSON.stringify(after.alive)})`);
+
+    await place([['heavy', 8, 500, 250], ['heavy', 8, 800, 250], ['heavy', 8, 1100, 250]]);
+    await loadW('firecontrol');
+    for (const x of [500, 800, 1100]) {
+      p = await c(x, 250);
+      await wp.mouse.click(p.x, p.y);
+    }
+    const marked = await st();
+    await wp.waitForTimeout(700);
+    after = await st();
+    check(marked.marks === 3 && marked.ammo === after.ammo + 2 && after.marks === 0, `Fire Control: three taps mark, the salvo fires all three for two rounds (${marked.ammo} → ${after.ammo})`);
+
+    await place([['drone', 1, 400, 300], ['heavy', 8, 900, 300], ['strafer', 3, 1200, 200], ['rig', 10, 600, 160]]);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.pickups.push({ id: 99991, kind: 'nuke', x: 640, y: 480, age: 0 }); });
+    p = await c(640, 480);
+    await wp.mouse.click(p.x, p.y);
+    after = await st();
+    check(after.alive.length === 1 && after.alive[0] === 7, `the Nuke clears the sky; the rig takes 3 hits (${JSON.stringify(after.alive)})`);
+
+    const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
+    check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r'), `the play log records presses, moves and lifts (${replayed.kinds.join('')})`);
+    await wp.close();
   }
 
   // ---- Playtest logs reach Claude (playtest-fixes round) ----

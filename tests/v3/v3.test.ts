@@ -452,7 +452,7 @@ describe('weapons drop as pickups and load the gun', () => {
     g.slots = ['railgun'];
     g.pickups.push({ id: 900, kind: 'weapon', weapon: 'railgun', x: 600, y: 300, age: 0 });
     expect(tap(g, 600, 300, 20)).toBe('pickup');
-    expect(g.weapon).toEqual({ id: 'railgun', level: 2, t: WEAPON.time });
+    expect(g.weapon).toMatchObject({ id: 'railgun', level: 2, t: WEAPON.time });
     expect(g.events).toContainEqual({ kind: 'weapon', id: 'railgun', level: 2 });
     expect(g.uses.railgun).toBe(1);
     run(g, WEAPON.time - 0.5);
@@ -471,7 +471,7 @@ describe('weapons drop as pickups and load the gun', () => {
     expect(g.weapon!.t).toBe(WEAPON.time);
     g.pickups.push({ id: 902, kind: 'weapon', weapon: 'aegis', x: 600, y: 300, age: 0 });
     tap(g, 600, 300, 20);
-    expect(g.weapon).toEqual({ id: 'aegis', level: 2, t: WEAPON.time });
+    expect(g.weapon).toMatchObject({ id: 'aegis', level: 2, t: WEAPON.time });
     g.pickups.push({ id: 903, kind: 'weapon', weapon: 'tesla', x: 600, y: 300, age: 0 });
     tap(g, 600, 300, 20);
     expect(g.weapon!.id).toBe('aegis');
@@ -506,7 +506,9 @@ describe('weapons drop as pickups and load the gun', () => {
   });
 
   it('every weapon shot spends its rounds (Air Strike two a jet): too few is a dry click; Overdrive is free', () => {
-    for (const id of ABILITY_ORDER) {
+    // Fire Control spends its rounds when the salvo goes, not on the mark
+    // (weapons.test.ts checks that).
+    for (const id of ABILITY_ORDER.filter((w) => w !== 'firecontrol')) {
       const g = quietGame();
       load(g, id, 1);
       // Tough enough to outlive a shot.

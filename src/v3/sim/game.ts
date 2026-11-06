@@ -66,6 +66,8 @@ import {
   type Levels,
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
+import { draftPool, gestureOf } from '../data/roster';
+import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import type { Cue, CueId } from '../audio/cues';
 
@@ -144,6 +146,9 @@ export interface Threat {
   from?: number;
   /** A structure: the base it stands on (rigs, generators, the Citadel). */
   base?: number;
+  /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
+   *  (and can't hit anything) until let go. */
+  held?: boolean;
   /** The Dreadnought: how far along its path it has steamed, and seconds to
    *  its next broadside. */
   along?: number;
@@ -165,6 +170,8 @@ export interface Interceptor {
   retarget?: boolean;
   blast?: number;
   dmg?: number;
+  /** Fire Control's salvo flies this many times faster. */
+  speed?: number;
   /** The weapon loaded when it was fired: its burst does what that weapon
    *  does (flak, a freeze, a vortex, Tesla arcs), even if the weapon ran out
    *  while it flew. */
@@ -181,7 +188,9 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo';
+export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
+  // The weapons plan, phase 0–1.
+  | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat';
 
 export interface Fx {
   kind: FxKind;
@@ -378,7 +387,8 @@ export interface Bomb {
  *  x1,y1 to x2,y2, half-width `hw`). `tick` counts to the next hit of a
  *  burn or a flak cloud. */
 export interface Field {
-  kind: 'burn' | 'flak' | 'well';
+  /** laser: Searing Edge's lit cut; sun: Sunspear's burning line. */
+  kind: 'burn' | 'flak' | 'well' | 'laser' | 'sun';
   x1: number;
   y1: number;
   x2: number;
@@ -396,6 +406,54 @@ export interface Weapon {
   id: AbilityId;
   level: number;
   t: number;
+  /** When it was loaded (Cadence Gun counts its beats from here). */
+  t0?: number;
+}
+
+/** A finger on the water with a gesture weapon loaded (Charge Lance, Laser
+ *  Cutter, Grapnel): what it is doing, where it is, and since when. */
+export interface Press {
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  t0: number;
+  radius: number;
+  /** pending: no gesture yet (let go now and it is a tap). */
+  mode: 'pending' | 'charge' | 'swipe' | 'hook' | 'dry';
+  /** Grapnel: the threat on the cable. */
+  hook: number | null;
+  /** Laser Cutter: what this swipe has cut, and how far it has gone. */
+  cut: number[];
+  cutLen: number;
+  /** The finger's velocity (px/s), for the Grapnel's fling. */
+  vx: number;
+  vy: number;
+  /** Grapnel: when each threat was last smacked (id → time). */
+  smacked: Record<number, number>;
+}
+
+/** A Grapnel ball let go: it flies, then bursts. */
+export interface Fling {
+  id: number;
+  vx: number;
+  vy: number;
+  t: number;
+  level: number;
+}
+
+/** A Chain Shot link pulling two threats together. */
+export interface Chain {
+  a: number;
+  b: number;
+  t: number;
+  level: number;
+}
+
+/** A Fire Control mark waiting for the salvo. */
+export interface Mark {
+  id: number;
+  level: number;
 }
 
 /** A raid of the current wave: when it starts, its theme, and the bases it
@@ -472,6 +530,22 @@ export interface Game {
   fields: Field[];
   /** The weapon loaded in the main gun (null: plain interceptors). */
   weapon: Weapon | null;
+  /** A finger held on the water with a gesture weapon loaded. */
+  press: Press | null;
+  /** Grapnel balls in flight. */
+  flings: Fling[];
+  /** Chain Shot: links pulling pairs together, and the threat waiting for
+   *  its partner (and until when). */
+  chains: Chain[];
+  link: { id: number; until: number } | null;
+  /** Fire Control: marked threats, and seconds to the salvo. */
+  marks: Mark[];
+  markT: number;
+  /** The salvo goes by this time at the latest (from the first mark). */
+  markBy: number;
+  /** Cadence Gun: the last beat hit, beats hit in a row, and War Drum's
+   *  broadside waiting for the next beat. */
+  beat: { last: number; run: number; armed: boolean; seen: number };
   /** Seconds of wave since a weapon pickup last dropped (the pity clock). */
   weaponDropT: number;
   /** Point Defense: seconds to the carrier's next shot. */
@@ -595,6 +669,14 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     blades: [],
     fields: [],
     weapon: null,
+    press: null,
+    flings: [],
+    chains: [],
+    link: null,
+    marks: [],
+    markT: 0,
+    markBy: 0,
+    beat: { last: -9, run: 0, armed: false, seen: -1 },
     weaponDropT: 0,
     pdT: 0,
     repairT: 0,
@@ -1059,7 +1141,10 @@ function openDraft(g: Game): void {
   // loadout, a new one can still be swapped in for one you hold; if nothing
   // can be taken without a swap, Resupply is added so keeping your build is
   // a choice. Each draw favours a weapon you already hold (OWNED_DRAW).
-  const open = ABILITY_ORDER.filter((id) => (g.levels[id] ?? 0) < ABILITY_MAX);
+  // The roster (data/roster.ts) says which weapons are live and from which
+  // chapter; a held one (Free Play can hand over a prototype) can level up.
+  const pool = draftPool(chapterOf(g.map.id));
+  const open = ABILITY_ORDER.filter((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && (g.levels[id] ?? 0) < ABILITY_MAX);
   const rng = g.rng.draft;
   const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
   const other = rng.shuffle(open.filter((id) => !(g.levels[id] ?? 0)));
@@ -1121,6 +1206,17 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
     case 'frigate':
       // The frigates do their own shooting; the gun is the plain gun.
       return null;
+    // Gesture weapons: a plain tap (no hold, no swipe) is a plain shot.
+    case 'lance':
+    case 'cutter':
+    case 'grapnel':
+      return null;
+    case 'chainshot':
+      return threat ? chainTap(g, w, threat) : null;
+    case 'firecontrol':
+      return threat ? markTap(g, w, threat) : null;
+    case 'cadence':
+      return cadenceTap(g, w, ax, ay);
   }
 }
 
@@ -1710,6 +1806,398 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
 }
 
 // ---------------------------------------------------------------------------
+// The weapons plan, phase 1 (docs/design/v3-weapons-plan.md): Charge Lance,
+// Laser Cutter and Grapnel are pressed, not tapped (press / pressMove /
+// release, recorded in the play log like taps); Chain Shot, Fire Control and
+// Cadence Gun are taps with a rule. With any of them, a plain tap is a plain
+// shot, so the gun is never helpless.
+
+/** A finger down on the water. With a gesture weapon loaded it starts a
+ *  press; otherwise it does nothing (the UI taps instead). */
+export function press(g: Game, x: number, y: number, radius: number): void {
+  if (g.phase !== 'wave') return;
+  const gesture = gestureOf(g.weapon?.id);
+  if (!gesture) return;
+  g.press = { x0: x, y0: y, x, y, t0: g.t, radius, mode: 'pending', hook: null, cut: [], cutLen: 0, vx: 0, vy: 0, smacked: {} };
+  if (gesture === 'drag') {
+    const w = g.weapon!;
+    const c = g.map.carrier;
+    // Hook the threat under the finger (structures are too big to swing).
+    const th = g.threats
+      .filter((t) => !t.dead && !t.held && !isStructure(t.kind) && dist(t.x, t.y, x, y) <= radius && dist(t.x, t.y, c.x, c.y) <= AB.grapnel.reach[w.level - 1])
+      .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
+    if (!th) return;
+    // A pickup under the finger wins, as it would for a tap.
+    if (g.pickups.some((p) => dist(p.x, p.y, x, y) <= radius + PICKUPS.radius && dist(p.x, p.y, x, y) < dist(th.x, th.y, x, y))) return;
+    if (!spend(g)) {
+      g.press.mode = 'dry';
+      g.taps.dry += 1;
+      return;
+    }
+    th.held = true;
+    g.press.mode = 'hook';
+    g.press.hook = th.id;
+    g.taps.fire += 1;
+    addFx(g, 'chain', c.x, c.y - 6, { life: 0.25, x2: th.x, y2: th.y });
+    cue(g, 'grapnel.hook', th.x, th.y);
+  }
+}
+
+/** The finger moves (the UI sends a move at most once a step). */
+export function pressMove(g: Game, x: number, y: number): void {
+  const p = g.press;
+  if (!p || g.phase !== 'wave') return;
+  const px = p.x;
+  const py = p.y;
+  p.x = x;
+  p.y = y;
+  const w = g.weapon;
+  if (!w) return;
+  if (w.id === 'cutter') {
+    if (p.mode === 'pending' && dist(p.x0, p.y0, x, y) >= AB.cutter.start) {
+      if (!spend(g)) {
+        p.mode = 'dry';
+        g.taps.dry += 1;
+        return;
+      }
+      p.mode = 'swipe';
+      g.taps.fire += 1;
+      cue(g, 'cutter.swipe', x, y);
+      cutAlong(g, w, p, p.x0, p.y0, x, y);
+    } else if (p.mode === 'swipe') {
+      cutAlong(g, w, p, px, py, x, y);
+    }
+  }
+}
+
+/** The finger lifts. A press that never became a gesture is a tap. */
+export function release(g: Game, x: number, y: number, radius: number): TapResult | null {
+  const p = g.press;
+  if (!p) return null;
+  g.press = null;
+  if (g.phase !== 'wave') return null;
+  p.x = x;
+  p.y = y;
+  if (p.mode === 'pending') {
+    const w = g.weapon;
+    // Charge Lance: held long enough to charge, let go: fire what it holds.
+    if (w?.id === 'lance' && g.t - p.t0 >= AB.lance.tapHold) return fireLance(g, w, p);
+    return tap(g, p.x0, p.y0, radius);
+  }
+  if (p.mode === 'charge' && g.weapon?.id === 'lance') return fireLance(g, g.weapon, p);
+  if (p.mode === 'hook') letGo(g, p);
+  return null;
+}
+
+/** Seconds of charge a press holds (Charge Lance; level 2 charges faster). */
+export function lanceCharge(g: Game, p: Press, w: Weapon): number {
+  return Math.max(0, g.t - p.t0) * AB.lance.rate[w.level - 1];
+}
+
+function fireLance(g: Game, w: Weapon, p: Press): TapResult {
+  const ch = lanceCharge(g, p, w);
+  if (ch < AB.lance.half) {
+    // Not charged to half: a plain shot where the finger let go.
+    return tap(g, p.x, p.y, p.radius);
+  }
+  if (!spend(g)) {
+    g.taps.dry += 1;
+    return 'dry';
+  }
+  g.taps.fire += 1;
+  const c = g.map.carrier;
+  const near = g.threats.filter((t) => !t.dead && dist(t.x, t.y, p.x, p.y) <= p.radius).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+  const ax = near ? near.x : p.x;
+  const ay = near ? near.y : p.y;
+  const len0 = dist(c.x, c.y, ax, ay) || 1;
+  const ux = (ax - c.x) / len0;
+  const uy = (ay - c.y) / len0;
+  const ang = Math.atan2(uy, ux);
+  if (ch >= AB.lance.full) {
+    // The lance: everything in line, to the edge of the sea.
+    const len = entryDistance(c.x, c.y, ux, uy);
+    rayHits(g, c.x, c.y, ang, len, AB.lance.width, true, AB.lance.fullDmg);
+    addFx(g, 'lance', c.x, c.y - 6, { life: 0.5, x2: c.x + ux * len, y2: c.y + uy * len, r: AB.lance.width * 1.6 });
+    cue(g, 'lance.full', c.x, c.y);
+    if (w.level >= ABILITY_MAX) {
+      g.fields.push({ kind: 'sun', x1: c.x, y1: c.y, x2: c.x + ux * len, y2: c.y + uy * len, hw: AB.lance.width, t: 0, life: AB.lance.burn, tick: AB.airstrike.burnTick, level: w.level });
+    }
+    return 'fire';
+  }
+  // Half charge: a bolt into the first threat on the line (from level 2,
+  // through everything on it).
+  const end = rayHits(g, c.x, c.y, ang, entryDistance(c.x, c.y, ux, uy), AB.lance.width, w.level >= 2, AB.lance.halfDmg);
+  addFx(g, 'lance', c.x, c.y - 6, { life: 0.3, x2: end.x, y2: end.y, r: AB.lance.width * 0.8 });
+  cue(g, 'lance.half', c.x, c.y);
+  return 'fire';
+}
+
+/** Laser Cutter: cut the stretch from (x1, y1) to (x2, y2), as much of it as
+ *  this swipe has left. */
+function cutAlong(g: Game, w: Weapon, p: Press, x1: number, y1: number, x2: number, y2: number): void {
+  const left = AB.cutter.length[w.level - 1] - p.cutLen;
+  if (left <= 0) return;
+  let seg = dist(x1, y1, x2, y2);
+  if (seg < 1e-6) return;
+  if (seg > left) {
+    x2 = x1 + ((x2 - x1) * left) / seg;
+    y2 = y1 + ((y2 - y1) * left) / seg;
+    seg = left;
+  }
+  p.cutLen += seg;
+  const vx = x2 - x1;
+  const vy = y2 - y1;
+  const l2 = vx * vx + vy * vy;
+  for (const th of [...g.threats]) {
+    if (th.dead || p.cut.includes(th.id)) continue;
+    const t = clamp(((th.x - x1) * vx + (th.y - y1) * vy) / l2, 0, 1);
+    if (dist(th.x, th.y, x1 + vx * t, y1 + vy * t) > AB.cutter.width) continue;
+    p.cut.push(th.id);
+    damageThreat(g, th, AB.cutter.damage);
+  }
+  addFx(g, 'cut', x1, y1, { life: 0.45, x2, y2, r: AB.cutter.width });
+  if (w.level >= ABILITY_MAX) g.fields.push({ kind: 'laser', x1, y1, x2, y2, hw: AB.cutter.width * 0.7, t: 0, life: AB.cutter.lit, tick: 0, level: w.level });
+}
+
+/** Each step a press is down: a Charge Lance press becomes a charge once
+ *  held past a tap; a Grapnel ball follows the finger and smacks what it
+ *  touches. */
+function updatePress(g: Game, dt: number): void {
+  const p = g.press;
+  if (!p) return;
+  const w = g.weapon;
+  // The weapon ran out under the finger: a hook lets go, anything else
+  // just ends (the lift does nothing).
+  if (!w || !gestureOf(w.id)) {
+    if (p.mode === 'hook') letGo(g, p);
+    g.press = null;
+    return;
+  }
+  if (w.id === 'lance' && p.mode === 'pending' && g.t - p.t0 >= AB.lance.tapHold) {
+    p.mode = 'charge';
+    cue(g, 'lance.charge', g.map.carrier.x, g.map.carrier.y);
+  }
+  if (p.mode !== 'hook') return;
+  const th = g.threats.find((t) => t.id === p.hook && !t.dead);
+  if (!th) {
+    g.press = null;
+    return;
+  }
+  // The ball chases the finger as fast as the cable can swing it.
+  const d = dist(th.x, th.y, p.x, p.y);
+  const stepLen = Math.min(d, AB.grapnel.speed * dt);
+  const ox = th.x;
+  const oy = th.y;
+  if (d > 1e-6) {
+    th.x += ((p.x - th.x) / d) * stepLen;
+    th.y += ((p.y - th.y) / d) * stepLen;
+  }
+  // Its velocity is the fling when the finger lets go (eased, so a last
+  // jitter doesn't throw it the wrong way).
+  p.vx = p.vx * 0.6 + ((th.x - ox) / dt) * 0.4;
+  p.vy = p.vy * 0.6 + ((th.y - oy) / dt) * 0.4;
+  th.vx = p.vx;
+  th.vy = p.vy;
+  if (Math.hypot(th.vx, th.vy) > 30) th.heading = Math.atan2(th.vy, th.vx);
+  for (const o of [...g.threats]) {
+    if (o.dead || o === th || dist(o.x, o.y, th.x, th.y) > AB.grapnel.smackR) continue;
+    if (g.t - (p.smacked[o.id] ?? -9) < AB.grapnel.again) continue;
+    p.smacked[o.id] = g.t;
+    damageThreat(g, o, AB.grapnel.smack);
+    addFx(g, 'burst', o.x, o.y, { life: 0.3, r: AB.grapnel.smackR });
+    cue(g, 'grapnel.smack', o.x, o.y);
+  }
+  if (g.t - p.t0 >= AB.grapnel.hold) {
+    letGo(g, p);
+    g.press = null;
+  }
+}
+
+/** Grapnel: let the ball go; it flies on, then bursts. */
+function letGo(g: Game, p: Press): void {
+  const th = g.threats.find((t) => t.id === p.hook && !t.dead);
+  if (!th) return;
+  const sp = Math.hypot(p.vx, p.vy);
+  const cap = AB.grapnel.speed;
+  const k = sp > cap ? cap / sp : 1;
+  g.flings.push({ id: th.id, vx: p.vx * k, vy: p.vy * k, t: 0, level: g.weapon?.level ?? 1 });
+  cue(g, 'grapnel.fling', th.x, th.y);
+}
+
+function updateFlings(g: Game, dt: number): void {
+  for (const f of g.flings) {
+    const th = g.threats.find((t) => t.id === f.id && !t.dead);
+    f.t += dt;
+    if (!th) {
+      f.t = Infinity;
+      continue;
+    }
+    th.x = clamp(th.x + f.vx * dt, 0, VIEW.width);
+    th.y = clamp(th.y + f.vy * dt, 0, VIEW.height);
+    if (f.t < AB.grapnel.fly) continue;
+    const k = f.level - 1;
+    const r = AB.grapnel.burstR[k];
+    const bx = th.x;
+    const by = th.y;
+    th.held = false;
+    addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', bx, by, { life: 0.5, r });
+    cue(g, 'grapnel.burst', bx, by);
+    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+    f.t = Infinity;
+  }
+  g.flings = g.flings.filter((f) => f.t !== Infinity);
+}
+
+/** Chain Shot: the first tap fires and marks; a tap on a second threat in
+ *  reach chains the two (Bolas Storm: the second becomes the next link). */
+function chainTap(g: Game, w: Weapon, threat: Threat): TapResult {
+  const k = w.level - 1;
+  const first = g.link && g.link.until >= g.t ? g.threats.find((t) => t.id === g.link!.id && !t.dead && !t.held) : undefined;
+  if (first && first.id !== threat.id && !threat.held && !isStructure(threat.kind) && !isStructure(first.kind) && dist(first.x, first.y, threat.x, threat.y) <= AB.chainshot.reach[k]) {
+    // The chain is the payoff for the first shot: it costs no round.
+    first.held = true;
+    threat.held = true;
+    g.chains.push({ a: first.id, b: threat.id, t: 0, level: w.level });
+    g.link = w.level >= ABILITY_MAX ? { id: threat.id, until: g.t + AB.chainshot.window } : null;
+    cue(g, 'chain.throw', threat.x, threat.y);
+    return 'fire';
+  }
+  if (!fireAt(g, threat)) return 'dry';
+  g.link = { id: threat.id, until: g.t + AB.chainshot.window };
+  return 'fire';
+}
+
+function updateChains(g: Game, dt: number): void {
+  for (const c of g.chains) {
+    c.t += dt;
+    const a = g.threats.find((t) => t.id === c.a && !t.dead);
+    const b = g.threats.find((t) => t.id === c.b && !t.dead);
+    if (!a || !b) {
+      // One end was shot down: the other is let go.
+      if (a) a.held = false;
+      if (b) b.held = false;
+      c.t = Infinity;
+      continue;
+    }
+    // Dragged together, a little more each step.
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const pull = Math.min(1, dt / Math.max(dt, AB.chainshot.pull - c.t + dt));
+    a.x += (mx - a.x) * pull * 0.9;
+    a.y += (my - a.y) * pull * 0.9;
+    b.x += (mx - b.x) * pull * 0.9;
+    b.y += (my - b.y) * pull * 0.9;
+    if (c.t < AB.chainshot.pull) continue;
+    const dmg = AB.chainshot.damage[c.level - 1];
+    a.held = false;
+    b.held = false;
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const l2 = vx * vx + vy * vy || 1;
+    for (const o of [...g.threats]) {
+      if (o.dead) continue;
+      const t = clamp(((o.x - a.x) * vx + (o.y - a.y) * vy) / l2, 0, 1);
+      if (o === a || o === b || dist(o.x, o.y, a.x + vx * t, a.y + vy * t) <= AB.chainshot.width) damageThreat(g, o, dmg);
+    }
+    addFx(g, 'emp', mx, my, { life: 0.4, r: 40 });
+    cue(g, 'chain.crash', mx, my);
+    c.t = Infinity;
+  }
+  g.chains = g.chains.filter((c) => c.t !== Infinity);
+}
+
+/** Fire Control: mark a threat for the salvo (an urgent one is shot now). */
+function markTap(g: Game, w: Weapon, threat: Threat): TapResult | null {
+  const k = w.level - 1;
+  if (timeToImpact(g, threat) < AB.firecontrol.urgent) return null;
+  if (g.marks.some((m) => m.id === threat.id)) return 'fire';
+  if (g.marks.length >= AB.firecontrol.marks[k]) return null;
+  if (!g.marks.length) g.markBy = g.t + AB.firecontrol.latest;
+  g.marks.push({ id: threat.id, level: w.level });
+  // A full set goes at once; otherwise `wait` after the last mark (but never
+  // later than `latest` after the first, so steady marking can't hold it).
+  g.markT = g.marks.length >= AB.firecontrol.marks[k] ? 0 : AB.firecontrol.wait[k];
+  cue(g, 'mark.set', threat.x, threat.y);
+  return 'fire';
+}
+
+function updateMarks(g: Game, dt: number): void {
+  if (!g.marks.length) return;
+  g.markT -= dt;
+  g.marks = g.marks.filter((m) => g.threats.some((t) => t.id === m.id && !t.dead));
+  // A marked threat that is about to hit goes now; the rest wait for the salvo.
+  const due = g.markT <= 0 || g.t >= g.markBy ? g.marks : g.marks.filter((m) => {
+    const t = g.threats.find((o) => o.id === m.id)!;
+    return timeToImpact(g, t) < AB.firecontrol.urgent * 0.5;
+  });
+  if (!due.length) return;
+  const c = g.map.carrier;
+  const fired: Mark[] = [];
+  for (const m of due) {
+    const th = g.threats.find((o) => o.id === m.id && !o.dead);
+    // A round for every `perRound` warheads (the rest ride free); the rack
+    // ran dry: they wait for the next round.
+    if (!th || (fired.length % AB.firecontrol.perRound === 0 && !spend(g))) continue;
+    fired.push(m);
+    g.interceptors.push({ id: g.nextId++, x: c.x, y: c.y - 6, target: th.id, tx: th.x, ty: th.y, life: 0, src: 'gun', speed: AB.firecontrol.speed, blast: AB.firecontrol.burst, dmg: AB.firecontrol.damage[m.level - 1] * g.stats.hitDamage });
+  }
+  if (fired.length) cue(g, 'salvo.fire', c.x, c.y);
+  g.marks = g.marks.filter((m) => !fired.includes(m));
+}
+
+/** Cadence Gun: where we are against the beat (seconds from the nearest
+ *  beat, and that beat's number). Beats fall `period` s apart from loading. */
+export function beatClock(g: Game, w: Weapon): { off: number; n: number; phase: number } {
+  const P = AB.cadence.period;
+  const since = g.t - (w.t0 ?? g.t);
+  const n = Math.round(since / P);
+  return { off: Math.abs(since - n * P), n, phase: (since % P) / P };
+}
+
+function cadenceTap(g: Game, w: Weapon, x: number, y: number): TapResult | null {
+  const b = beatClock(g, w);
+  if (b.n < 1 || b.off > AB.cadence.window[w.level - 1]) return null;
+  if (!spend(g)) return 'dry';
+  // On the beat: a piercing shot through everything on the line.
+  const c = g.map.carrier;
+  const len0 = dist(c.x, c.y, x, y) || 1;
+  const ux = (x - c.x) / len0;
+  const uy = (y - c.y) / len0;
+  const len = entryDistance(c.x, c.y, ux, uy);
+  rayHits(g, c.x, c.y, Math.atan2(uy, ux), len, AB.cadence.width, true, AB.cadence.damage);
+  addFx(g, 'beam', c.x, c.y - 6, { life: 0.3, x2: c.x + ux * len, y2: c.y + uy * len, r: AB.cadence.width });
+  cue(g, 'cadence.hit', c.x, c.y);
+  if (b.n !== g.beat.last) {
+    g.beat.run = b.n === g.beat.last + 1 ? g.beat.run + 1 : 1;
+    g.beat.last = b.n;
+    if (w.level >= ABILITY_MAX && g.beat.run >= AB.cadence.run) g.beat.armed = true;
+  }
+  return 'fire';
+}
+
+/** The beat itself: a cue on each one, a missed beat breaks the run, and
+ *  War Drum's broadside goes on the beat after the run. */
+function updateBeat(g: Game): void {
+  const w = g.weapon;
+  if (!w || w.id !== 'cadence') return;
+  const P = AB.cadence.period;
+  const n = Math.floor((g.t - (w.t0 ?? g.t)) / P);
+  if (n < 1 || n === g.beat.seen) return;
+  g.beat.seen = n;
+  const c = g.map.carrier;
+  cue(g, 'cadence.beat', c.x, c.y);
+  addFx(g, 'beat', c.x, c.y, { life: 0.3, r: 1 });
+  if (n > g.beat.last + 1) g.beat.run = 0;
+  if (g.beat.armed && n > g.beat.last) {
+    g.beat.armed = false;
+    g.beat.run = 0;
+    const targets = worthShooting(g, g.threats).filter((t) => !t.dead).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b)).slice(0, AB.cadence.broadside);
+    for (const t of targets) g.interceptors.push({ id: g.nextId++, x: c.x, y: c.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', dmg: 2 });
+    if (targets.length) cue(g, 'salvo.fire', c.x, c.y);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The step
 
 export function step(g: Game, dt: number): void {
@@ -1751,6 +2239,11 @@ export function step(g: Game, dt: number): void {
   updatePointDefense(g, dt);
   updateDamageControl(g, dt);
   updateBlades(g, dt);
+  updatePress(g, dt);
+  updateFlings(g, dt);
+  updateChains(g, dt);
+  updateMarks(g, dt);
+  updateBeat(g);
   updateFields(g, dt);
   updateInterceptors(g, dt);
   updatePosts(g, dt);
@@ -1800,6 +2293,12 @@ function clearField(g: Game): void {
   g.shieldT = 0;
   g.steamT = 0;
   g.weapon = null;
+  g.press = null;
+  g.flings = [];
+  g.chains = [];
+  g.link = null;
+  g.marks = [];
+  g.beat = { last: -9, run: 0, armed: false, seen: -1 };
   g.carrierAegis = null;
   for (const s of g.ships) s.aegis = undefined;
   g.ammo = g.stats.rack;
@@ -2346,6 +2845,8 @@ function ensureTarget(g: Game, th: Threat): void {
 }
 
 function updateThreat(g: Game, th: Threat, dt: number): void {
+  // On a Grapnel cable or a Chain Shot link: moved by that, not by itself.
+  if (th.held) return;
   th.age += dt;
   const px = th.x;
   const py = th.y;
@@ -2810,7 +3311,7 @@ function updateInterceptors(g: Game, dt: number): void {
     }
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
     // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
-    const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
+    const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1) * (it.speed ?? 1);
     if (!th && it.target !== null) {
       // Swarm Pod: a seeker whose target is gone finds the nearest other.
       th = it.retarget ? nearestThreat(g, it.x, it.y) : undefined;
@@ -3013,7 +3514,7 @@ function updateFields(g: Game, dt: number): void {
     // every tick.
     f.tick -= dt;
     if (f.tick > 0) continue;
-    f.tick += f.kind === 'burn' ? AB.airstrike.burnTick : AB.flak.tick;
+    f.tick += f.kind === 'flak' ? AB.flak.tick : AB.airstrike.burnTick;
     if (f.kind === 'flak') cue(g, 'flak.cloud', f.x1, f.y1);
     for (const th of [...g.threats]) if (!th.dead && fieldDist(f, th.x, th.y) <= f.hw) damageThreat(g, th, 1);
   }
@@ -3463,7 +3964,9 @@ function dropWeapon(g: Game, x: number, y: number): void {
 
 /** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
-  const w = g.map.night ? { ...PICKUPS.weights, starshell: PICKUPS.starshellWeight } : PICKUPS.weights;
+  const base = g.map.night ? { ...PICKUPS.weights, starshell: PICKUPS.starshellWeight } : PICKUPS.weights;
+  // The Nuke: not before wave nukeFrom, and one on the water at a time.
+  const w = g.wave < PICKUPS.nukeFrom || g.pickups.some((p) => p.kind === 'nuke') ? { ...base, nuke: 0 } : base;
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
@@ -3504,6 +4007,7 @@ const PICKUP_TEXT: Record<PowerKind, string> = {
   shield: 'SHIELD',
   steam: 'FULL STEAM',
   starshell: 'STAR SHELL',
+  nuke: 'NUKE',
 };
 
 function collect(g: Game, p: Pickup): void {
@@ -3516,7 +4020,8 @@ function collect(g: Game, p: Pickup): void {
     const id = p.weapon!;
     const level = g.levels[id] ?? 0;
     if (level <= 0) return;
-    g.weapon = { id, level, t: g.stats.weaponTime };
+    g.weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
+    if (id === 'cadence') g.beat = { last: -9, run: 0, armed: false, seen: -1 };
     if (id === 'frigate') launchEscorts(g, level);
     // Aegis: a fresh pickup rearms every hull in full.
     if (id === 'aegis') {
@@ -3557,7 +4062,23 @@ function collect(g: Game, p: Pickup): void {
     case 'starshell':
       g.flareT = PICKUPS.starshellTime * g.stats.powerTime;
       break;
+    case 'nuke':
+      nuke(g);
+      break;
   }
+}
+
+/** The Nuke: every drone, missile, aircraft, boat and mine on screen is
+ *  destroyed (no drops: a screen-clear isn't a loot shower); structures and
+ *  the Dreadnought take nukeStructure hits. */
+function nuke(g: Game): void {
+  const c = g.map.carrier;
+  for (const th of [...g.threats]) {
+    if (th.dead || th.x < 0 || th.x > VIEW.width || th.y < 0 || th.y > VIEW.height) continue;
+    if (isStructure(th.kind)) damageThreat(g, th, PICKUPS.nukeStructure, false);
+    else damageThreat(g, th, th.hp + 99, false);
+  }
+  addFx(g, 'nuke', c.x, c.y, { life: 1.2, r: Math.hypot(VIEW.width, VIEW.height) });
 }
 
 // ---------------------------------------------------------------------------
@@ -3602,6 +4123,7 @@ export const PICKUP_CUE: Record<PowerKind, CueId> = {
   shield: 'shield.on',
   steam: 'steam.on',
   starshell: 'starshell.on',
+  nuke: 'nuke.blast',
 };
 
 /** A threat leaves its launcher: a sound by kind (aircraft and children
