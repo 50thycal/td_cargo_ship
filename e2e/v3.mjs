@@ -210,6 +210,9 @@ try {
     }
     const t = await w2c(page, 900, 300);
     await page.mouse.click(t.x, t.y);
+    // A fresh Aegis pickup rearms every hull on the next sim step (collect
+    // clears them first): read the domes a frame later.
+    if (id === 'aegis') await page.waitForTimeout(80);
     const ok = await page.evaluate(`(${how.ok.toString()})()`);
     check(on === id && ok, `${id}: its pickup loads it and a tap ${how.open ? 'on open water' : 'on a threat'} fires it`);
     await page.waitForTimeout(150);
