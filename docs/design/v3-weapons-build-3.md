@@ -107,11 +107,12 @@ All eleven are **prototypes**:
 
 ## Verified
 
-- **Unit tests:** `npm test` passes all TESTS_N. `tests/v3/boosts.test.ts` (TESTS_B) plays each boost through real taps and presses:
+- **Unit tests:** `npm test` passes all 1,074. `tests/v3/boosts.test.ts` (35 tests) plays each boost through real taps and presses:
   - the rules: a boost never replaces the weapon, a second replaces the first, it ends on time and with the wave, and Free Play's drops never include the four old power-ups while the campaign's still do;
   - each boost at each level it changes (for example: Lead Rain's 4th shot bursts into flak; Dual Wield's tap fires a beam and pellets for one round; Focus slows time only while pressed and replays exactly from the play log; Shield at level 2 takes a real strafing run and shatters, at level 1 doesn't; Reflect's bounce kills what is behind the missile).
-- **The browser suite:** `node e2e/v3.mjs`, E2E_N checks. The new ones, by real touch at 667×375: Fire at Will with the Railgun loaded (rack +4, the weapon kept), holding fires full-auto, Focus slows time under a finger and stops when it lifts, and Dual Wield's one tap fires both weapons for one round.
-- **Builds:** `tsc` is clean; the web build succeeds.
+- **The browser suite:** `node e2e/v3.mjs` passes all 156 checks; `node e2e/v3-audio.mjs` all 16. The new ones, by real touch at 667×375: Fire at Will with the Railgun loaded (rack +4, the weapon kept), holding fires full-auto, Focus slows time under a finger and stops when it lifts, and Dual Wield's one tap fires both weapons for one round.
+- **Builds:** `tsc` is clean; the web build and the App Store build both succeed.
+- **Found by the browser suite and fixed:** with a plain weapon loaded, lifting a Focus finger never reached the sim (the play log only sent a lift for a gesture press), so time stayed slow.
 - **Looked at, at 667×375:** each boost in play (the picture above) and the eleven cards.
 
 ## Limits
