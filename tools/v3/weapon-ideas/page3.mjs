@@ -184,6 +184,8 @@ const fill = (t) => t
   .replace('{{none}}', `${LR.none.l1.clear}%`)
   .replace('{{campaign}}', `${LR.campaign.l1.clear}%`)
   .replace('{{cutter}}', `${LR.cutter.max.clear}%`)
+  .replace('{{gunships}}', `${LR.gunships.max.clear}%`)
+  .replace('{{frigate}}', `${LR.frigate.max.clear}%`)
   .replace('{{sounds}}', String(SOUNDS));
 function lockBars(rows, baseLabel) {
   const row = ([who, v, b]) =>

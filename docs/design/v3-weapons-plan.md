@@ -8,7 +8,7 @@
 
 Each covers how to try it, the measured strength, and the tuning made during the build.
 
-**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–4 are built. Next, per the plan: a balance sweep, the draft pool, then the picks enter the campaign.
+**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–4 are built. The balance sweep is done and the lock-in round is on the review page (round 4, below), waiting for the player's marks.
 
 **Sources:**
 - [v3-weapon-ideas-2.md](v3-weapon-ideas-2.md): the ideas, the prototypes and the data.
@@ -259,3 +259,61 @@ The player plays it before the next phase starts.
    - (c) everything in one big pool.
 4. **Boost levels** in the table above: OK as proposed, or change any?
 5. **Order:** start with Phase 0 plus Phase 1 (systems and the six actives) as the first playable link?
+
+## Round 4: the lock-in (2026-11-06)
+
+Every phase is built. Before any prototype enters the campaign, the player marks the **lock-in round** on the same review page as rounds 2–3, on its new **Lock-in** tab: https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ
+
+**What it asks:**
+- **Keep / Change / Cut** each of the 24 prototypes, and the chapter each unlocks in.
+- **6 questions:** default drops, the draft pool, Laser Cutter, the hands-on weapons, sounds, next step.
+- **A Looks right / Change check** on each of the 17 spec changes made during the builds.
+
+**Where the marks live:**
+
+| Collection | Fields | Holds |
+|---|---|---|
+| `lockin/{weaponId}` | `verdict` (keep / change / cut), `chapter` (1–4), `note` | A weapon’s fate |
+| `checks/{checkId}` | `verdict` (ok / change), `note` | A spec change (ids in `tools/v3/weapon-ideas/lockin.mjs`) |
+| `answers/{lk-…}` | `choice`, `note` | Round 4’s questions (round 2–3 ids unchanged) |
+
+**The page is generated** by `npx tsx tools/v3/weapon-ideas/page3.mjs <out.html>` from `lockin.mjs`, the game’s own weapon text and proposed chapters, and `lockin-results.json`.
+
+### The balance sweep behind it
+
+All rows were measured again under one set of rules: the "average" bot on every map from wave 1, 100 runs a row, at a fixed level, Resupply at every draft, the plan’s drops. Builds 1 and 2 had measured with the four old power-ups still dropping, so their numbers here are lower than in their build docs.
+
+| Held | Level 1 | MAX |
+|---|---|---|
+| *Nothing held* (Free Play drops) | 5% | 5% |
+| *Nothing held* (the campaign’s drops) | 8% | 8% |
+| Flak (today’s) | 29% | 41% |
+| Railgun (today’s) | 15% | 40% |
+| Air Strike (today’s) | 8% | 47% |
+| Scattergun (today’s) | 17% | 45% |
+| Frigates (today’s) | 39% | 52% |
+| Aegis (today’s) | 19% | 51% |
+| **Charge Lance** | 15% | 30% |
+| **Laser Cutter** | 26% | 56% |
+| **Grapnel** | 21% | 47% |
+| **Chain Shot** | 19% | 22% |
+| **Fire Control** | 16% | 19% |
+| **Cadence Gun** | 19% | 28% |
+| **Drone Screen** | 24% | 36% |
+| **Gunship Pair** | 31% | 54% |
+| **Bomber Wing** | 22% | 26% |
+| **Orbital Strike** | 17% | 34% |
+| **Fire at Will** | 21% | 47% |
+| **Supply Run** | 13% | 19% |
+| **Hot Streak** | 9% | 10% |
+| **Wild Card** | 20% | 47% |
+| **Focus** | 8% | 6% |
+| **Overdrive** | 31% | 52% |
+| **Time Warp** | 15% | 29% |
+| **Shield** | 21% | 22% |
+| **Full Steam** | 7% | 12% |
+| **Tidal Cannon** | 8% | 17% |
+| **Storm Front** | 10% | 22% |
+| **Ammunition Ship** | 27% | 42% |
+| **Flak + Overclock (vs Flak + Railgun: 14% / 41%)** | 32% | 47% |
+| **Flak + Railgun + Dual Wield (vs + Scattergun: 21% / 42%)** | 22% | 44% |

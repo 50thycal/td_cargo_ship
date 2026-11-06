@@ -97,7 +97,7 @@ export const LOCK_QUESTIONS = [
   },
   {
     id: 'lk-cutter',
-    q: 'Laser Cutter at MAX (Searing Edge) wins {{cutter}} of runs, the most of any weapon. Trim it?',
+    q: 'Laser Cutter at MAX (Searing Edge) wins {{cutter}} of runs, the most of any weapon, just ahead of Gunship Pair ({{gunships}}) and Frigates ({{frigate}}). Trim it?',
     options: ['Leave it until you have played it (recommended)', 'Trim it toward the other strong ones', 'Leave it: one standout weapon is fine'],
   },
   {
