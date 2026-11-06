@@ -67,7 +67,11 @@ export type AbilityId =
   | 'overdrive'
   | 'timeWarp'
   | 'shield'
-  | 'fullSteam';
+  | 'fullSteam'
+  // Phase 4: the player's maybes, tried and kept only if they play well.
+  | 'tidal'
+  | 'storm'
+  | 'ammoShip';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -483,6 +487,43 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'The convoy runs for it',
   },
+  // ---- Phase 4: the experiments (the player's maybes).
+  tidal: {
+    id: 'tidal',
+    name: 'Tidal Cannon',
+    evolved: 'Tsunami',
+    answers: 'The sea',
+    levels: [
+      'Tap a boat, a mine or open water: a wave rolls out 300 px and swamps boats, mines, surfaced subs and drones diving low. Missiles fly over it (a tap on one is a plain shot)',
+      '420 px, and it shoves what it passes back the way it came',
+      'The wave rolls across the whole sea',
+    ],
+    how: 'Tap a boat or the water: a wave rolls out',
+  },
+  storm: {
+    id: 'storm',
+    name: 'Storm Front',
+    evolved: 'Hurricane',
+    answers: 'Drones, aircraft',
+    levels: [
+      'A storm cell drifts across with the wind: lightning hits a drone or aircraft in it every 0.8 s, and half the missiles crossing it are blown off course',
+      'A bigger, slower cell',
+      'Two cells',
+    ],
+    how: 'Keep shooting: the storm goes where the wind blows',
+  },
+  ammoShip: {
+    id: 'ammoShip',
+    name: 'Ammunition Ship',
+    evolved: 'Arsenal Ship',
+    answers: 'Running dry',
+    levels: [
+      'An ammunition ship joins the convoy: while it floats the rack reloads twice as fast. The enemy goes for it (sunk, it isn\'t a lost ship)',
+      'Reloads 2.5× as fast, and takes 6 hits',
+      'And it fires a free round at the nearest threat every 2 s',
+    ],
+    how: 'Keep it afloat: it is your reload',
+  },
 };
 
 /** Every weapon, in roster order (the draft and Free Play read which are
@@ -492,6 +533,7 @@ export const ABILITY_ORDER: AbilityId[] = [
   'lance', 'cutter', 'grapnel', 'chainshot', 'firecontrol', 'cadence',
   'droneScreen', 'gunships', 'bomberWing', 'orbital',
   'fireAtWill', 'supplyRun', 'overclock', 'dualWield', 'hotStreak', 'wildCard', 'focus', 'overdrive', 'timeWarp', 'shield', 'fullSteam',
+  'tidal', 'storm', 'ammoShip',
 ];
 
 /** Levels per weapon; the last is the evolution. */
@@ -534,6 +576,9 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   timeWarp: ['TIME WARP', 'FREEZE'],
   shield: ['SHIELD', 'REFLECT'],
   fullSteam: ['FULL STEAM', 'RAMMING'],
+  tidal: ['TIDAL', 'TSUNAMI'],
+  storm: ['STORM', 'HURRICANE'],
+  ammoShip: ['AMMO SHIP', 'ARSENAL'],
 };
 
 /** How weapons come and go. */
@@ -687,6 +732,20 @@ export const AB = {
   shield: { shatter: 0.8, bounce: 110, burst: 70 },
   /** Full Steam: the convoy's speed ×; Ramming Speed rams within `ram` px. */
   fullSteam: { mult: [1.6, 2, 2], ram: 38 },
+  // ---- Phase 4: the experiments.
+  /** Tidal Cannon: a shot on open water rolls a wave out to `reach` px at
+   *  `speed` px/s (Tsunami: the whole sea). It swamps fast boats, mines and
+   *  surfaced subs, and drones within `low` px of a hull (diving in); level 2
+   *  shoves the rest `shove` px back. Ships it reaches surge `surge` px on. */
+  tidal: { reach: [300, 420, 2000], speed: 700, low: 170, shove: [0, 70, 70], surge: 20 },
+  /** Storm Front: cells `r` px across drifting at `drift` px/s with the wind;
+   *  lightning hits a drone or aircraft in a cell every `strike` s for
+   *  `damage`; every other missile that crosses one is blown into the sea. */
+  storm: { r: [150, 200, 200], drift: [60, 40, 40], cells: [1, 1, 2], strike: 0.8, damage: 2 },
+  /** Ammunition Ship: `hp` hits; the rack reloads `reload`× as fast while it
+   *  floats; every other missile aimed at a ship goes for it. Arsenal Ship:
+   *  a free round at the nearest threat within `reach` every `gap` s. */
+  ammoShip: { hp: [4, 6, 6], reload: [2, 2.5, 2.5], gap: 2, reach: 420 },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;

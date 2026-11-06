@@ -77,6 +77,11 @@ export const CUE_IDS = [
   'shield.reflect',
   'shield.shatter',
   'steam.ram',
+  // Phase 4 experiments (placeholders, borrowed files).
+  'tidal.wave',
+  'storm.roll',
+  'storm.bolt',
+  'ammo.arrive',
   // Weapon state
   'weapon.drop',
   'weapon.load',

@@ -184,6 +184,11 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   timeWarp: ['gun.fire'],
   shield: ['gun.fire'],
   fullSteam: ['gun.fire'],
+  // Phase 4 experiments: a tap on a threat is a plain shot (the wave needs
+  // open water); the storm rolls in; the ammunition ship sails in.
+  tidal: ['gun.fire'],
+  storm: ['storm.roll'],
+  ammoShip: ['gun.fire'],
 };
 
 describe('every weapon sounds, through real taps', () => {

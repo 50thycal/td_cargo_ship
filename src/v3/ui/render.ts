@@ -76,7 +76,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'well');
   drawFields(ctx, g, 'sun');
   drawFields(ctx, g, 'laser');
-  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
+  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : s.ammo ? AB.ammoShip.hp[s.ammo - 1] : g.stats.shipHp, false, s.heading, s.vip);
+  drawAmmoShip(ctx, g);
   drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0 || boostLevel(g, 'shield')) drawShields(ctx, g);
@@ -119,6 +120,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFx(ctx, g);
   drawPlanWeapons(ctx, g);
   drawPassives(ctx, g);
+  drawExperiments(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
@@ -911,6 +913,74 @@ function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t
   ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / g.stats.weaponTime));
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/** Phase 4: Tidal Cannon's waves and Storm Front's cells, from sim state. */
+function drawExperiments(ctx: CanvasRenderingContext2D, g: Game): void {
+  ctx.save();
+  for (const wv of g.waves) {
+    const fade = wv.max > 1000 ? 1 : 1 - wv.r / wv.max;
+    ctx.strokeStyle = `rgba(56,189,248,${0.25 + 0.6 * fade})`;
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.arc(wv.x, wv.y, Math.max(1, wv.r), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(240,249,255,${0.2 + 0.6 * fade})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(wv.x, wv.y, Math.max(1, wv.r - 6), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (const c of g.storms) {
+    // A dark cell, rain streaking across it with the wind.
+    const grad = ctx.createRadialGradient(c.x, c.y, c.r * 0.2, c.x, c.y, c.r);
+    grad.addColorStop(0, 'rgba(30,41,59,0.72)');
+    grad.addColorStop(0.75, 'rgba(51,65,85,0.45)');
+    grad.addColorStop(1, 'rgba(51,65,85,0.1)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(203,213,225,0.7)';
+    ctx.setLineDash([12, 10]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(191,219,254,0.45)';
+    ctx.lineWidth = 1.5;
+    const lean = Math.sign(c.vx) * 8;
+    for (let k = 0; k < 18; k++) {
+      const a = (k * 2.39996) % (Math.PI * 2);
+      const rr = c.r * Math.sqrt(((k * 7) % 18) / 18);
+      const x = c.x + Math.cos(a) * rr;
+      const y = c.y + Math.sin(a) * rr + ((g.t * 260 + k * 31) % 40) - 20;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + lean, y + 16);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** The Ammunition Ship: rounds stacked on its deck, so the one to protect reads. */
+function drawAmmoShip(ctx: CanvasRenderingContext2D, g: Game): void {
+  const s = g.ships.find((o) => o.ammo);
+  if (!s) return;
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.strokeStyle = 'rgba(250,204,21,0.8)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.arc(0, 0, 30, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#facc15';
+  for (let k = 0; k < 3; k++) ctx.fillRect(-10 + k * 7, -26, 5, 9);
   ctx.restore();
 }
 
@@ -1858,6 +1928,24 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.arc(f.x, f.y, f.r * (0.6 + u), 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'bolt': {
+        // Storm Front's lightning: a jagged white-yellow stroke, cloud to target.
+        const x2 = f.x2 ?? f.x;
+        const y2 = f.y2 ?? f.y;
+        ctx.strokeStyle = `rgba(254,240,138,${1 - u})`;
+        ctx.lineWidth = 4 * (1 - u) + 1;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        const n = 6;
+        for (let k = 1; k < n; k++) {
+          const p = k / n;
+          const j = ((k * 37 + f.x) % 13) - 6.5;
+          ctx.lineTo(f.x + (x2 - f.x) * p + j * 2, f.y + (y2 - f.y) * p);
+        }
+        ctx.lineTo(x2, y2);
         ctx.stroke();
         break;
       }

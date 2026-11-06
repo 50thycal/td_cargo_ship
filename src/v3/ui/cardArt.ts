@@ -353,6 +353,34 @@ const SCENES: Record<CardId, Scene> = {
     `<path d="M14 30 H40 M20 38 H48 M10 22 H32" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity="0.7"/>` +
     burst(99, 50, 7, FLAME) + drone(104, 44, 0.7),
 
+  // ---- Phase 4: the experiments.
+
+  // A wave rolling out from a shot on the water, a boat and a drone going under.
+  tidal: (c) =>
+    sea(66) + carrier(60, 64, 0.8) +
+    `<path d="M16 50 Q40 26 64 30 Q88 26 108 50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/>` +
+    `<path d="M26 54 Q44 38 64 40 Q84 38 98 54" fill="none" stroke="${c}" stroke-width="2.5" opacity="0.6"/>` +
+    `<circle cx="64" cy="48" r="3" fill="${INK}"/>` +
+    `<path d="M14 46 l6 -2 l2 3 l-8 1 Z" fill="${RED}"/>` + `<path d="M8 50 Q12 44 18 46" fill="none" stroke="${INK}" stroke-width="1" opacity="0.7"/>` +
+    drone(100, 40, 0.8) + `<path d="M96 46 Q100 52 106 48" fill="none" stroke="${INK}" stroke-width="1.2"/>`,
+
+  // A storm cell over the sea: lightning into a drone, a missile blown off.
+  storm: (c) =>
+    sea(66) + ship(40, 62, 0.75) + ship(86, 62, 0.75) +
+    `<ellipse cx="56" cy="18" rx="36" ry="13" fill="#475569"/><ellipse cx="40" cy="20" rx="18" ry="10" fill="#64748b"/><ellipse cx="74" cy="16" rx="20" ry="11" fill="#64748b"/>` +
+    [30, 44, 58, 72, 86].map((x) => `<path d="M${x} 30 l-3 10" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>`).join('') +
+    `<path d="M62 28 L56 38 L62 38 L55 50" fill="none" stroke="#fef08a" stroke-width="2.4" stroke-linejoin="round"/>` +
+    drone(55, 50, 0.8) + burst(55, 50, 6, FLAME) +
+    threat(100, 36, 150, 0.7) + `<path d="M104 34 q6 -4 12 0" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/>`,
+
+  // The ammunition ship in the convoy, its rack feeding the gun.
+  ammoShip: (c) =>
+    sea(66) + ship(22, 60, 0.7) + ship(98, 60, 0.7) +
+    `<g transform="translate(60 54)"><path d="M-24 0 H24 L18 7 H-19 Z" fill="${HULL}"/>` +
+    [-16, -8, 0, 8].map((x) => `<rect x="${x}" y="-9" width="6" height="9" rx="1" fill="${c}" stroke="#7a5d00" stroke-width="0.8"/>`).join('') + `</g>` +
+    [0, 1, 2].map((k) => `<rect x="${52 + k * 8}" y="${20 - k * 3}" width="5" height="12" rx="2" fill="${c}" opacity="${0.5 + k * 0.25}"/>`).join('') +
+    threat(102, 24, 140, 0.7) + `<path d="M98 28 L68 48" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" opacity="0.7"/>`,
+
   resupply: (c) =>
     sea(64) + ship(24, 60, 0.75) + ship(98, 60, 0.75) +
     `<text x="20" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text><text x="94" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text>` +

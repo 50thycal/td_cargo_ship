@@ -92,6 +92,8 @@ export interface Ship {
   mult: number;
   /** Aegis: its own interceptors while the weapon is loaded. */
   aegis?: Launchers;
+  /** Ammunition Ship (phase 4): its level. Sunk, it isn't a lost ship. */
+  ammo?: number;
 }
 
 /** Aegis (round 8): a hull's own interceptors, fired at a threat about to
@@ -151,6 +153,8 @@ export interface Threat {
   held?: boolean;
   /** A strafer whose run a Shield (level 2) has blocked: all of it is. */
   blocked?: boolean;
+  /** Storm Front: it has crossed a storm cell (it rolls once). */
+  stormed?: boolean;
   /** The Dreadnought: how far along its path it has steamed, and seconds to
    *  its next broadside. */
   along?: number;
@@ -204,7 +208,9 @@ export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' 
   // Phase 2.
   | 'orbital'
   // Phase 3.
-  | 'shatter';
+  | 'shatter'
+  // Phase 4.
+  | 'wave' | 'bolt';
 
 export interface Fx {
   kind: FxKind;
@@ -683,6 +689,37 @@ export interface Game {
   baseStats: ArmoryStats;
   /** Free Play: the plan's drops (the power-ups that became boosts don't drop). */
   freePlay: boolean;
+  // ---- Phase 4: the experiments ----
+  /** Tidal Cannon's waves rolling out. */
+  waves: TideWave[];
+  /** Storm Front's cells drifting with the wind. */
+  storms: StormCell[];
+  /** Ammunition Ship: the level of the one waiting to sail in (0: none). */
+  ammoDue: number;
+  /** Arsenal Ship: seconds to its next free round. */
+  ammoFireT: number;
+}
+
+/** A Tidal Cannon wave: a ring rolling out from where the shot hit the water. */
+export interface TideWave {
+  id: number;
+  x: number;
+  y: number;
+  r: number;
+  max: number;
+  level: number;
+  /** What it has already reached (threats, subs, ships): each once. */
+  hit: number[];
+}
+
+/** A Storm Front cell. */
+export interface StormCell {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  r: number;
+  strikeT: number;
 }
 
 /** A boost running: its level, seconds left, and its own state. */
@@ -826,6 +863,10 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     realT: 0,
     baseStats: s,
     freePlay: false,
+    waves: [],
+    storms: [],
+    ammoDue: 0,
+    ammoFireT: 0,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -1380,6 +1421,15 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
     case 'gunships':
     case 'bomberWing':
     case 'orbital':
+      return null;
+    // Phase 4. Tidal Cannon: open water, or something the wave takes (a
+    // boat, a mine, a drone diving low), raises a wave there; a missile or an
+    // aircraft under the finger is a plain hit (on a phone a tap reaches so
+    // far there is rarely open water beside a boat).
+    case 'tidal':
+      return threat && !swampable(g, threat) ? null : fireTidal(g, w, x, y);
+    case 'storm':
+    case 'ammoShip':
       return null;
     // Boosts are never loaded (startBoost); nothing to fire.
     case 'fireAtWill':
@@ -2897,6 +2947,175 @@ function ram(g: Game): void {
 }
 
 // ---------------------------------------------------------------------------
+// The weapons plan, phase 4: the experiments (the player's maybes: Tidal
+// Cannon, Storm Front, Ammunition Ship). Built to be tried, kept only if they
+// play well.
+
+function fireTidal(g: Game, w: Weapon, x: number, y: number): TapResult {
+  if (!spend(g)) return 'dry';
+  g.waves.push({ id: g.nextId++, x, y, r: 0, max: AB.tidal.reach[w.level - 1], level: w.level, hit: [] });
+  cue(g, 'tidal.wave', x, y);
+  return 'fire';
+}
+
+/** Kinds a wave swamps outright, and kinds it never moves (aircraft fly over,
+ *  a ballistic is high in its arc). */
+const SWAMPED: ThreatKind[] = ['fastboat', 'mine'];
+const OVER_THE_WAVE: ThreatKind[] = ['strafer', 'bomber', 'ballistic'];
+/** Storm Front: what lightning strikes, and the missiles the wind can take. */
+const STORM_FLYERS: ThreatKind[] = ['drone', 'minidrone', 'bomblet', 'strafer', 'bomber', 'mothership'];
+const STORM_MISSILES: ThreatKind[] = ['guided', 'supersonic', 'cluster', 'heavy'];
+
+/** Can a wave take it: a boat, a mine, or a drone diving in on a hull? */
+function swampable(g: Game, th: Threat): boolean {
+  if (SWAMPED.includes(th.kind)) return true;
+  if (th.kind !== 'drone' && th.kind !== 'minidrone') return false;
+  const c = g.map.carrier;
+  return g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= AB.tidal.low) || dist(c.x, c.y, th.x, th.y) <= AB.tidal.low + CARRIER.halfLength * 0.5;
+}
+
+/** The convoy's middle (the carrier's water when there are no ships). */
+function convoyMid(g: Game): Point {
+  const c = g.map.carrier;
+  if (!g.ships.length) return { x: c.x, y: c.y - 120 };
+  return { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length };
+}
+
+/** Storm Front: cells roll in from the upwind side (the wind picked at
+ *  random when it is loaded), over the water between the enemy shore and
+ *  the convoy, where the threats fly. */
+function startStorm(g: Game, level: number): void {
+  const k = level - 1;
+  const wind = g.rng.drops.chance(0.5) ? 1 : -1;
+  const mid = convoyMid(g);
+  const bases = g.map.bases.length ? g.map.bases.reduce((a, b) => a + b.y, 0) / g.map.bases.length : 120;
+  const y = clamp((bases + mid.y) / 2, 160, VIEW.height - 200);
+  const r = AB.storm.r[k];
+  g.storms = [];
+  for (let i = 0; i < AB.storm.cells[k]; i++) {
+    // Upwind quarter of the screen; Hurricane's second cell further across.
+    const x = wind > 0 ? VIEW.width * (0.22 + i * 0.4) : VIEW.width * (0.78 - i * 0.4);
+    g.storms.push({ id: g.nextId++, x, y: clamp(y + (i % 2 ? 110 : 0), 160, VIEW.height - 200), vx: wind * AB.storm.drift[k], r, strikeT: 0.5 + i * 0.4 });
+  }
+  cue(g, 'storm.roll', mid.x, mid.y);
+}
+
+/** Ammunition Ship: one sails in at the convoy's entry (one at a time: a
+ *  pickup while it floats repairs it instead). */
+function callAmmoShip(g: Game, level: number): void {
+  const s = g.ships.find((o) => o.ammo);
+  if (s) {
+    s.ammo = Math.max(s.ammo ?? 0, level);
+    s.hp = AB.ammoShip.hp[s.ammo - 1];
+    addFx(g, 'text', s.x, s.y - 30, { life: 1.1, text: 'AMMO SHIP REPAIRED' });
+    return;
+  }
+  g.ammoDue = Math.max(g.ammoDue, level);
+}
+
+function spawnAmmoShip(g: Game): void {
+  if (!g.ammoDue || g.ships.some((o) => o.ammo)) return;
+  const lane = g.map.channels.findIndex((c, i) => !c.vip && !c.tide && !entryBusy(g, g.map.channels[i]));
+  if (lane < 0) return;
+  const s = newShip(g, lane, 0, 0);
+  s.ammo = g.ammoDue;
+  s.hp = AB.ammoShip.hp[s.ammo - 1];
+  g.ammoDue = 0;
+  g.ships.push(s);
+  addFx(g, 'text', clamp(s.x, 120, VIEW.width - 120), clamp(s.y - 30, 40, VIEW.height - 40), { life: 1.4, text: 'AMMO SHIP' });
+  cue(g, 'ammo.arrive', clamp(s.x, 0, VIEW.width), s.y);
+}
+
+/** How much faster the rack reloads (an Ammunition Ship afloat). */
+export function ammoReload(g: Game): number {
+  const s = g.ships.find((o) => o.ammo);
+  return s ? AB.ammoShip.reload[s.ammo! - 1] : 1;
+}
+
+function updateExperiments(g: Game, dt: number): void {
+  // ---- Tidal Cannon: the waves roll out.
+  for (const wv of g.waves) {
+    wv.r = Math.min(wv.max, wv.r + AB.tidal.speed * dt);
+    const shove = AB.tidal.shove[wv.level - 1];
+    for (const th of [...g.threats]) {
+      if (th.dead || wv.hit.includes(th.id) || dist(th.x, th.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(th.id);
+      if (swampable(g, th)) {
+        addFx(g, 'splash', th.x, th.y, { life: 0.7, r: 26 });
+        damageThreat(g, th, th.hp + 99);
+        continue;
+      }
+      // Level 2: it shoves the rest back the way it came.
+      if (shove && !isStructure(th.kind) && !OVER_THE_WAVE.includes(th.kind) && !th.held) {
+        const d = dist(th.x, th.y, wv.x, wv.y) || 1;
+        th.x += ((th.x - wv.x) / d) * shove;
+        th.y += ((th.y - wv.y) / d) * shove;
+      }
+    }
+    for (const r of g.raiders) {
+      if (r.kind !== 'sub' || !raiderUp(r) || wv.hit.includes(r.id) || dist(r.x, r.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(r.id);
+      knockOut(g, r);
+    }
+    // Your ships ride it: a surge forward along the lane.
+    for (const s of g.ships) {
+      if (wv.hit.includes(s.id) || dist(s.x, s.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(s.id);
+      s.d += AB.tidal.surge;
+      placeShip(g, s);
+    }
+  }
+  g.waves = g.waves.filter((wv) => wv.r < wv.max);
+
+  // ---- Storm Front: the cells drift; lightning; the wind takes missiles.
+  const sw = held(g, 'storm');
+  if (!sw) g.storms = [];
+  for (const cell of g.storms) {
+    cell.x += cell.vx * dt;
+    // Blown off the far side: the wind brings it round again.
+    if (cell.vx > 0 && cell.x - cell.r > VIEW.width) cell.x = -cell.r;
+    if (cell.vx < 0 && cell.x + cell.r < 0) cell.x = VIEW.width + cell.r;
+    for (const th of g.threats) {
+      if (th.dead || th.stormed || !STORM_MISSILES.includes(th.kind) || dist(th.x, th.y, cell.x, cell.y) > cell.r) continue;
+      th.stormed = true;
+      if (th.id % 2 !== 0) continue;
+      addFx(g, 'splash', th.x, th.y, { life: 0.7, r: 22 });
+      addFx(g, 'text', th.x, th.y - 24, { life: 0.9, text: 'BLOWN OFF' });
+      damageThreat(g, th, th.hp + 99, false);
+    }
+    cell.strikeT -= dt;
+    if (cell.strikeT > 0) continue;
+    const t = g.threats
+      .filter((o) => !o.dead && STORM_FLYERS.includes(o.kind) && dist(o.x, o.y, cell.x, cell.y) <= cell.r)
+      .sort((a, b) => dist(a.x, a.y, cell.x, cell.y) - dist(b.x, b.y, cell.x, cell.y))[0];
+    if (!t) {
+      cell.strikeT = 0.1;
+      continue;
+    }
+    cell.strikeT = AB.storm.strike;
+    addFx(g, 'bolt', t.x, Math.max(0, cell.y - cell.r * 0.7), { life: 0.3, x2: t.x, y2: t.y });
+    cue(g, 'storm.bolt', t.x, t.y);
+    damageThreat(g, t, AB.storm.damage);
+  }
+
+  // ---- Arsenal Ship: a free round at the nearest threat every 2 s.
+  const ship = g.ships.find((o) => o.ammo && o.ammo >= ABILITY_MAX);
+  g.ammoFireT -= dt;
+  if (ship && g.ammoFireT <= 0) {
+    const th = g.threats
+      .filter((o) => !o.dead && !isStructure(o.kind) && dist(o.x, o.y, ship.x, ship.y) <= AB.ammoShip.reach)
+      .sort((a, b) => dist(a.x, a.y, ship.x, ship.y) - dist(b.x, b.y, ship.x, ship.y))[0];
+    if (th) {
+      g.ammoFireT = AB.ammoShip.gap;
+      // Tagged with the other loaded weapon (Dual Wield), else a plain round.
+      const tag = loadedWeapons(g).find((o) => o.id !== 'ammoShip' && ROSTER[o.id].cat === 'active');
+      g.interceptors.push({ id: g.nextId++, x: ship.x, y: ship.y - 6, target: th.id, tx: th.x, ty: th.y, life: 0, src: 'gun', weapon: tag ? { ...tag } : undefined });
+      cue(g, 'gun.fire', ship.x, ship.y);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The step
 
 export function step(g: Game, dt: number): void {
@@ -2952,6 +3171,7 @@ export function step(g: Game, dt: number): void {
   updateMarks(g, dt);
   updateBeat(g);
   updatePassives(g, dt);
+  updateExperiments(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
   updatePosts(g, dt);
@@ -3015,6 +3235,9 @@ function clearField(g: Game): void {
   g.wings = [];
   g.helis = [];
   g.sorties = [];
+  g.waves = [];
+  g.storms = [];
+  g.ammoDue = 0;
   g.orbital = null;
   g.quietUntil = [];
   g.carrierAegis = null;
@@ -3107,6 +3330,7 @@ function newShip(g: Game, channel: number, slot: number, d: number): Ship {
 
 function spawnShips(g: Game, dt: number): void {
   spawnTanker(g);
+  spawnAmmoShip(g);
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
@@ -3211,6 +3435,7 @@ function updateShips(g: Game, dt: number): void {
   }
   const arrived = g.ships.filter((s) => s.d > laneLength(g.map.channels[s.channel]));
   for (const s of arrived) {
+    if (s.ammo) continue;
     const pts = Math.round(SHIP.points * s.mult * (s.vip ? VIP.points : 1));
     g.score += pts;
     g.delivered += 1;
@@ -3289,6 +3514,13 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     return;
   }
   g.ships = g.ships.filter((o) => o !== s);
+  // The Ammunition Ship: its bonus ends, but it isn't a lost ship.
+  if (s.ammo) {
+    addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
+    addFx(g, 'text', s.x, s.y - 30, { life: 1.4, text: 'AMMO SHIP SUNK' });
+    cue(g, 'ship.sunk', s.x, s.y);
+    return;
+  }
   g.lost += s.vip ? VIP.loss : 1;
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
@@ -3397,6 +3629,10 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const goCarrier = kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
+  // Ammunition Ship: every other threat aimed at a ship goes for it instead
+  // (by id, so no random roll is spent and the raid plays as before).
+  const ammo = pool.find((o) => o.ammo);
+  if (!goCarrier && ammo && th.id % 2 === 0) th.target = ammo.id;
   // The 20-map plan. Heavies and guided go for the supertanker when it is out;
   // some missiles go for an allied radar or battery; a mine has no target.
   if (kind === 'mine') th.target = NO_TARGET;
@@ -4065,7 +4301,8 @@ function reload(g: Game, dt: number): void {
     g.reloadT = 0;
     return;
   }
-  g.reloadT += dt;
+  // Ammunition Ship: the rack reloads faster while it floats.
+  g.reloadT += dt * ammoReload(g);
   while (g.reloadT >= g.stats.reload && g.ammo < g.stats.rack) {
     g.reloadT -= g.stats.reload;
     g.ammo += 1;
@@ -4868,6 +5105,8 @@ function collect(g: Game, p: Pickup): void {
       g.orbital = null;
     }
     if (id === 'gunships') callGunships(g, w.level);
+    if (id === 'storm') startStorm(g, w.level);
+    if (id === 'ammoShip') callAmmoShip(g, w.level);
     if (id === 'frigate') launchEscorts(g, w.level);
     // Aegis: a fresh pickup rearms every hull in full.
     if (id === 'aegis') {

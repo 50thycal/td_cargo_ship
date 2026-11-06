@@ -41,6 +41,10 @@ export const ICON_COLOR: Record<CardId, string> = {
   timeWarp: '#a78bfa',
   shield: '#67e8f9',
   fullSteam: '#e2e8f0',
+  // Phase 4 experiments.
+  tidal: '#38bdf8',
+  storm: '#94a3b8',
+  ammoShip: '#facc15',
   resupply: '#8be38b',
 }
 
@@ -101,6 +105,9 @@ const PATHS: Record<CardId, string> = {
   timeWarp: '<path d="M8 4 H24 M8 28 H24 M10 4 C10 12 22 12 22 16 C22 20 10 20 10 28 M22 4 C22 12 10 12 10 16 C10 20 22 20 22 28"/>',
   shield: '<path d="M16 3 L27 7 V15 C27 22 22 27 16 29 C10 27 5 22 5 15 V7 Z"/><path d="M11 16 L15 20 L21 12"/>',
   fullSteam: '<path d="M3 22 H26 L29 18 H23 V14 H11 V18 H3 Z"/><path d="M13 14 V9 M18 14 V7 M13 9 q-3 -3 0 -6 M18 7 q3 -3 0 -5"/>',
+  tidal: '<path d="M2 22 C6 14 10 14 13 18 C15 21 18 21 19 17 C20 12 15 9 12 11 C16 4 26 6 28 14 C29 19 27 24 22 26 H2 Z"/>',
+  storm: '<path d="M8 17 A6 6 0 0 1 12 7 A7 7 0 0 1 25 9 A5 5 0 0 1 25 19 H9 A4 4 0 0 1 8 17 Z"/><path d="M17 19 L13 25 H17 L14 31"/>',
+  ammoShip: '<path d="M3 22 H29 L25 27 H7 Z"/><rect x="8" y="15" width="5" height="7" rx="1"/><rect x="14" y="15" width="5" height="7" rx="1"/><rect x="20" y="15" width="5" height="7" rx="1"/><path d="M10.5 15 V12 M16.5 15 V12 M22.5 15 V12"/>',
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
 }
 

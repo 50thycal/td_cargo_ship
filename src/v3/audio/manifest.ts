@@ -129,6 +129,10 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'shield.reflect': borrow('shield.block', 3, 0.55, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 2 }),
   'shield.shatter': borrow('kill.big', 3, 0.8, { pitch: [1.3, 1.4], cooldownMs: 300, maxVoices: 1 }),
   'steam.ram': borrow('kill.big', 3, 0.5, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 2 }),
+  'tidal.wave': borrow('impact.splash', 3, 0.8, { pitch: [0.55, 0.62], cooldownMs: 120, maxVoices: 2 }),
+  'storm.roll': borrow('well.open', 1, 0.5, { pitch: [0.5, 0.55], maxVoices: 1 }),
+  'storm.bolt': borrow('tesla.arc', 4, 0.6, { pitch: [0.6, 0.75], cooldownMs: 120, maxVoices: 2 }),
+  'ammo.arrive': borrow('frigate.arrive', 1, 0.5, { pitch: [0.8, 0.85], moving: true }),
 
   'weapon.drop': sfx('weapon.drop', 1, 0.5, { cooldownMs: 200 }),
   'weapon.load': sfx('weapon.load', 2, 0.7, { cooldownMs: 150, maxVoices: 1 }),
