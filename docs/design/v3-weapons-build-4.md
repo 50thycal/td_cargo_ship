@@ -77,11 +77,11 @@ The same harness as build 3:
 ## Verified
 
 - **Unit tests:** `npm test` passes all 1,090.
-- **The browser suite:** `node e2e/v3.mjs`, E2E_N checks. The new ones, by touch at 667×375:
+- **The browser suite:** `node e2e/v3.mjs` passes all 159 checks; `node e2e/v3-audio.mjs` all 16. The new ones, by touch at 667×375:
   - a tap on a boat rolls a wave that swamps it while the missile beside it flies over;
   - a storm rolls in and lightning takes a drone;
   - the ammunition ship sails in.
-- **Builds:** `tsc` is clean; the web build succeeds.
+- **Builds:** `tsc` is clean; the web build and the App Store build both succeed.
 - **Looked at, at 667×375:** the wave, the cells, the ammunition ship (the picture above), and the cards.
 
 ## Limits
