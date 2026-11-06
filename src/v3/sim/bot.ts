@@ -287,6 +287,16 @@ Bot.prototype.useGesture = function (this: Bot, g: Game, best: Threat): boolean 
         return true;
       }
       return false;
+    case 'tidal': {
+      // Raise a wave beside what it swamps: a boat, a mine, a drone diving on
+      // a hull (a tap on the water just clear of it, so the shot is the wave).
+      const c = g.map.carrier;
+      const low = (t: Threat) => (t.kind === 'drone' || t.kind === 'minidrone') && (g.ships.some((s) => Math.hypot(s.x - t.x, s.y - t.y) <= AB.tidal.low * 0.8) || Math.hypot(c.x - t.x, c.y - t.y) <= AB.tidal.low);
+      const t = live.filter((o) => o.kind === 'fastboat' || o.kind === 'mine' || low(o)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
+      if (!t) return false;
+      tap(g, t.x + 18, t.y + 18, 6);
+      return true;
+    }
     case 'cadence': {
       // Wait for the beat unless the threat can't wait.
       const b = beatClock(g, w);

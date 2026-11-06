@@ -65,6 +65,10 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   timeWarp: { cat: 'boost', unlock: 1, status: 'prototype' },
   shield: { cat: 'boost', unlock: 2, status: 'prototype' },
   fullSteam: { cat: 'boost', unlock: 2, status: 'prototype' },
+  // Phase 4: the experiments (the player's maybes: kept only if they play well).
+  tidal: { cat: 'active', unlock: 3, status: 'prototype' },
+  storm: { cat: 'passive', unlock: 4, status: 'prototype' },
+  ammoShip: { cat: 'passive', unlock: 2, status: 'prototype' },
 };
 
 /** Is this a boost (never replaces the loaded weapon)? */
