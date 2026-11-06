@@ -89,7 +89,9 @@ export class Bot {
       if (rush && !g.finger) press(g, g.map.carrier.x, g.map.carrier.y, 1);
       else if (!rush && g.finger) release(g, g.map.carrier.x, g.map.carrier.y, 1);
     }
-    if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;
+    // Taps are paced on real time: under Focus a person gets more taps into
+    // the slowed seconds, and so does the bot.
+    if (g.phase !== 'wave' || g.realT - this.lastTap < gap) return;
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
     const seen = (th: Threat) => g.t - (this.seenAt.get(th.id) ?? g.t) >= this.skill.reaction;
 
@@ -97,7 +99,7 @@ export class Bot {
     const pickup = g.pickups.find((p) => !(this.skill.noAbilities && p.kind === 'weapon'));
     if (pickup && pickup.age > this.skill.reaction) {
       tap(g, pickup.x, pickup.y, 4);
-      this.lastTap = g.t;
+      this.lastTap = g.realT;
       return;
     }
     // The Delta: throw the switch toward a quieter branch now and then.
@@ -107,7 +109,7 @@ export class Bot {
       const want = quieterBranch(g);
       if (want !== null) {
         while (g.forkLane % fork.lanes.length !== want) tap(g, fork.x, fork.y, 6);
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
     }
@@ -125,7 +127,7 @@ export class Bot {
       if (g.t >= this.held.until) {
         release(g, p.x, p.y, 6);
         this.held = null;
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
       // Two thumbs: while one charges the Lance, the other keeps tapping.
@@ -157,11 +159,11 @@ export class Bot {
       // 'wait' (Cadence Gun, holding for the beat): no tap made, so no tap gap.
       if (used === 'wait') return;
       if (used) {
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
       tap(g, best.x + (miss ? 120 : 0), best.y + (miss ? 120 : 0), 6);
-      this.lastTap = g.t;
+      this.lastTap = g.realT;
     }
   }
 }

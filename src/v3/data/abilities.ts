@@ -381,7 +381,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Overload',
     answers: 'Your best weapon',
     levels: [
-      'The loaded weapon plays a level higher and its clock stops (nothing loaded: the next one). At MAX already: it drops more often',
+      'The loaded weapon plays a level higher and its clock stops (nothing loaded: the next one). Already at MAX: it drops more often too',
       'Every weapon picked up while it lasts is overclocked too',
       'The loaded weapon jumps straight to MAX',
     ],
@@ -669,9 +669,12 @@ export const AB = {
   /** Dual Wield: the clocks run at `clock` speed; Arsenal Drop: weapons drop
    *  `drops`× as often. */
   dualWield: { clock: [1, 0.5, 0.5], drops: [1, 1, 2] },
-  /** Hot Streak: hits in a row for double (`x2`) and triple (`x3`); On Fire
-   *  pierces at `pierce` (`pierceR` px) and stops resetting. */
-  hotStreak: { x2: [5, 4, 4], x3: [10, 8, 8], pierce: 10, pierceR: 90 },
+  /** Hot Streak: hits in a row for double (`x2`) and triple (`x3`) damage,
+   *  the burst `blast`× as wide; On Fire pierces at `pierce` (`pierceR` px)
+   *  and stops resetting. */
+  // Build 3 sweep: damage alone did nothing (most threats die to one hit:
+  // 6–9% of runs won, holding nothing 5%), so the heat widens the burst too.
+  hotStreak: { x2: [5, 4, 4], x3: [10, 8, 8], blast: [1, 1.8, 2.6], pierce: 10, pierceR: 90 },
   /** Wild Card: the passives' one-shot versions at a tap. */
   wildCard: { drones: 3 },
   /** Focus: `bank` s of slow motion at `scale` speed; Deadeye `damage`×. */

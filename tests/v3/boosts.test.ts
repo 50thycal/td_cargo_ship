@@ -235,6 +235,10 @@ describe('Overclock', () => {
     pickUp(h, 'overclock', 1);
     expect(h.boost!.drops).toBe('flak');
     expect(h.weapon!.level).toBe(3);
+    // Its clock still stops.
+    const t = h.weapon!.t;
+    run(h, 2);
+    expect(h.weapon!.t).toBe(t);
   });
 });
 
@@ -252,6 +256,22 @@ describe('Dual Wield', () => {
     expect(g.ammo).toBe(ammo - 1);
     expect(g.fx.some((f) => f.kind === 'beam')).toBe(true);
     expect(g.fx.some((f) => f.kind === 'frag')).toBe(true);
+  });
+
+  it('with a hand free it calls the next weapon in: the next kill drops one (a weapon, not a boost)', () => {
+    const g = quietGame(3);
+    g.levels.scatter = 1;
+    g.slots.push('scatter');
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    g.weaponDropT = 0;
+    for (let k = 0; k < 4 && !g.pickups.some((p) => p.kind === 'weapon'); k++) {
+      shoot(g, addThreat(g, { x: 500 + k * 200, y: 300 }), 1.2);
+      g.pickups = g.pickups.filter((p) => p.kind === 'weapon');
+    }
+    const p = g.pickups.find((o) => o.kind === 'weapon');
+    expect(p).toBeDefined();
+    expect(['railgun', 'scatter']).toContain(p!.weapon);
   });
 
   it('a passive joins too, and both passives run (two of them)', () => {
@@ -277,6 +297,11 @@ describe('Dual Wield', () => {
       h.levels.flak = 1;
       h.slots.push('flak');
       pickUp(h, 'dualWield', level);
+      // Both hands full, so it isn't calling a weapon in.
+      h.levels.railgun = 1;
+      h.levels.scatter = 1;
+      h.weapon = { id: 'railgun', level: 1, t: 99 };
+      h.weapon2 = { id: 'scatter', level: 1, t: 99 };
       h.weaponDropT = h.stats.dropPity * 0.6;
       // Kill after kill until something drops (a power-up roll comes first).
       for (let k = 0; k < 6 && !h.pickups.some((p) => p.kind === 'weapon'); k++) {
@@ -290,13 +315,16 @@ describe('Dual Wield', () => {
     expect(pity(3)).toBe(true);
   });
 
-  it('without Dual Wield, a pickup takes the whole gun', () => {
+  it('the second hand keeps the rest of its time: a new pickup takes the first hand, the same weapon refreshes its own', () => {
     const g = quietGame();
     load(g, 'railgun', 1);
     g.weapon2 = { id: 'scatter', level: 1, t: 5 };
     pickUp(g, 'flak', 1);
     expect(g.weapon?.id).toBe('flak');
-    expect(g.weapon2).toBeNull();
+    expect(g.weapon2?.id).toBe('scatter');
+    pickUp(g, 'scatter', 1);
+    expect(g.weapon2?.t).toBe(WEAPON.time);
+    expect(g.weapon?.id).toBe('flak');
   });
 });
 
@@ -311,6 +339,14 @@ describe('Hot Streak', () => {
     expect(tough.hp).toBe(4);
     tap(g, 200, 200, 10);
     expect(g.streak).toBe(0);
+  });
+
+  it('a loaded weapon’s own shots build the streak too (a Railgun beam at a threat)', () => {
+    const g = quietGame();
+    pickUp(g, 'hotStreak', 1);
+    load(g, 'railgun', 1);
+    for (let k = 0; k < 3; k++) shoot(g, addThreat(g, { x: 500 + k * 200, y: 300, hp: 9 }), 0.2);
+    expect(g.streak).toBe(3);
   });
 
   it('level 2: double at 4, triple at 8', () => {

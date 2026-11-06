@@ -479,7 +479,7 @@ try {
     await wp.click('[data-free-play]');
     await wp.waitForSelector('[data-screen="freeplay"]');
     const protos = await wp.evaluate(() => [...document.querySelectorAll('[data-fp="weapon0"] option')].filter((o) => /prototype/.test(o.textContent)).length);
-    check(protos === 10, `Free Play offers the ten prototypes (six actives, four passives), marked so (${protos})`);
+    check(protos === 21, `Free Play offers the 21 prototypes (six actives, four passives, eleven boosts), marked so (${protos})`);
     await wp.click('[data-free-start]');
     await wp.waitForSelector('.playing');
     // Hand-placed targets on a quiet wave: the same picture every time.
@@ -616,6 +616,55 @@ try {
     await wp.waitForTimeout(1000);
     after = await st();
     check(lock.locked && after.alive.some((hp) => hp <= 5), `Orbital Strike: the laser dots lock the heavy, then the beam hits it for 3 (${JSON.stringify(after.alive)})`);
+
+    // ---- Phase 3: boosts. A boost pickup never replaces the loaded weapon.
+    await place([['heavy', 30, 800, 260]]);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.fireAtWill = 1; if (!g.slots.includes('fireAtWill')) g.slots.push('fireAtWill'); });
+    await dropWeapon(wp, 'fireAtWill', 640, 560);
+    p = await c(640, 560);
+    await wp.mouse.click(p.x, p.y);
+    const faw = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id, rack: g.stats.rack, base: g.baseStats.rack }; });
+    check(faw.boost === 'fireAtWill' && faw.weapon === 'railgun' && faw.rack === faw.base + 4, `a boost runs beside the loaded weapon: Fire at Will with the Railgun, rack +4 (${JSON.stringify(faw)})`);
+    // Full-auto: hold a finger on the heavy for a second.
+    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.ammo = g.stats.rack; });
+    const shots0 = await wp.evaluate(() => window.__v3.game().shots);
+    p = await c(800, 260);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    await wp.waitForTimeout(1100);
+    await wp.mouse.up();
+    const auto = (await wp.evaluate(() => window.__v3.game().shots)) - shots0;
+    check(auto >= 4, `Fire at Will: holding fires full-auto (${auto} shots in 1.1 s; the plain gun manages 2)`);
+
+    // Focus: a finger down slows time; lifting it stops.
+    await place([['drone', 1, 600, 200]]);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.focus = 1; if (!g.slots.includes('focus')) g.slots.push('focus'); });
+    await dropWeapon(wp, 'focus', 640, 560);
+    p = await c(640, 560);
+    await wp.mouse.click(p.x, p.y);
+    p = await c(1200, 400);
+    await wp.mouse.move(p.x, p.y);
+    await wp.mouse.down();
+    await wp.waitForTimeout(400);
+    const slow = await wp.evaluate(() => { const g = window.__v3.game(); return { focusing: g.focusing, bank: g.boost?.bank }; });
+    await wp.mouse.up();
+    await wp.waitForTimeout(100);
+    const fast = await wp.evaluate(() => window.__v3.game().focusing);
+    check(slow.focusing && slow.bank < 6 && !fast, `Focus: a finger down slows time and spends the bank; lifting it stops (${JSON.stringify(slow)}, after: ${fast})`);
+
+    // Dual Wield: the Railgun loaded, the boost, then Scattergun joins it.
+    await place([['heavy', 30, 800, 260]]);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.levels.scatter = 1; g.levels.dualWield = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; });
+    await dropWeapon(wp, 'dualWield', 640, 560);
+    p = await c(640, 560);
+    await wp.mouse.click(p.x, p.y);
+    await dropWeapon(wp, 'scatter', 640, 560);
+    await wp.mouse.click(p.x, p.y);
+    const ammo0 = await wp.evaluate(() => window.__v3.game().ammo);
+    p = await c(800, 260);
+    await wp.mouse.click(p.x, p.y);
+    const dual = await wp.evaluate(() => { const g = window.__v3.game(); return { a: g.weapon?.id, b: g.weapon2?.id, ammo: g.ammo, beam: g.fx.some((f) => f.kind === 'beam'), frag: g.fx.some((f) => f.kind === 'frag') }; });
+    check(dual.a === 'railgun' && dual.b === 'scatter' && dual.beam && dual.frag && dual.ammo === ammo0 - 1, `Dual Wield: Scattergun joins the Railgun; one tap fires both for one round (${JSON.stringify(dual)})`);
 
     const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
     check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r'), `the play log records presses, moves and lifts (${replayed.kinds.join('')})`);

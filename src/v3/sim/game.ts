@@ -677,6 +677,8 @@ export interface Game {
   finger: boolean;
   /** Focus: slow motion running this step. */
   focusing: boolean;
+  /** Seconds of real (unslowed) play: Focus slows `t`, not this. */
+  realT: number;
   /** The run's own gun numbers (Fire at Will changes `stats` while it lasts). */
   baseStats: ArmoryStats;
   /** Free Play: the plan's drops (the power-ups that became boosts don't drop). */
@@ -821,6 +823,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     streak: 0,
     finger: false,
     focusing: false,
+    realT: 0,
     baseStats: s,
     freePlay: false,
   };
@@ -1185,6 +1188,9 @@ function fireLoaded(g: Game, x: number, y: number, threat: Threat | null, radius
     const r = fireWeapon(g, w, x, y, threat, radius);
     if (r === null) plain.push(w);
     else {
+      // Hot Streak: a weapon's own shot aimed at a threat counts as a hit
+      // (its interceptors count when they land).
+      if (r === 'fire' && threat && !res) streakHit(g, true, threat.x, threat.y);
       if (r === 'fire' && boostLevel(g, 'overdrive') >= ABILITY_MAX && HYPER_TWICE.includes(w.id)) {
         freeShots = 1;
         fireWeapon(g, w, x, y, threat, radius);
@@ -2671,12 +2677,12 @@ function overclockWeapon(g: Game, w: Weapon): void {
   const b = g.boost!;
   if (w.oc !== undefined || isBoost(w.id)) return;
   b.clocked += 1;
-  if (w.level >= ABILITY_MAX) {
-    b.drops = w.id;
-    return;
-  }
+  // Already at MAX (round 3: "maybe it drops more often?"): its clock still
+  // stops, and it drops more often instead of a level it can't have.
+  if (w.level >= ABILITY_MAX) b.drops = w.id;
   w.oc = w.level;
-  w.level = b.level >= ABILITY_MAX ? ABILITY_MAX : w.level + 1;
+  w.level = b.level >= ABILITY_MAX ? ABILITY_MAX : Math.min(ABILITY_MAX, w.level + 1);
+  if (w.level === w.oc) return;
   if (w.id === 'gunships') callGunships(g, w.level);
   if (w.id === 'frigate') launchEscorts(g, w.level);
   addFx(g, 'text', g.map.carrier.x, g.map.carrier.y - CARRIER.halfBeam - 64, { life: 1.1, text: `${abilityName(w.id, w.level).toUpperCase()} · OVERCLOCKED` });
@@ -2688,26 +2694,27 @@ function unclock(w: Weapon): void {
   w.oc = undefined;
 }
 
-/** A weapon pickup while a boost runs: Overclock and Dual Wield act on it.
- *  Returns true when Dual Wield loaded it beside the first. */
+/** Where a weapon pickup goes. Either hand already holding it gets a fresh
+ *  clock (an overclock carries over); under Dual Wield it joins the first
+ *  (both hands full: the one with less time left goes). Returns false when
+ *  it simply takes the first hand: the second keeps the rest of its time
+ *  (round 2: "both stay loaded together for the rest of their time"). */
 function boostLoad(g: Game, w: Weapon): boolean {
-  const b = g.boost;
-  if (!b) return false;
-  if (b.id === 'dualWield' && g.weapon && g.weapon.id !== w.id) {
-    if (g.weapon2?.id === w.id) {
-      g.weapon2 = w;
-      return true;
+  for (const hand of ['weapon', 'weapon2'] as const) {
+    const old = g[hand];
+    if (old?.id !== w.id) continue;
+    if (old.oc !== undefined) {
+      w.oc = old.oc;
+      w.level = old.level;
     }
-    if (!g.weapon2) {
-      g.weapon2 = w;
-      return true;
-    }
-    // Both hands full: the one with less time left goes.
-    if (g.weapon2.t < g.weapon.t) g.weapon2 = w;
-    else g.weapon = w;
+    g[hand] = w;
     return true;
   }
-  return false;
+  if (g.boost?.id !== 'dualWield' || !g.weapon) return false;
+  if (!g.weapon2) g.weapon2 = w;
+  else if (g.weapon2.t < g.weapon.t) g.weapon2 = w;
+  else g.weapon = w;
+  return true;
 }
 
 /** Each step a boost runs: its clock, Airdrop's crates, Focus's bank. */
@@ -2722,13 +2729,30 @@ function updateBoost(g: Game, dt: number, real: number): void {
     const weapons = g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
     if (b.crateT <= 0 && weapons.length) {
       b.crateT += AB.supplyRun.crate;
+      // Over open water, mid-screen: it drifts in to the carrier from there.
       const x = 160 + g.rng.drops.next() * (VIEW.width - 320);
-      addPickup(g, 'weapon', x, 90, g.rng.drops.pick(weapons));
+      const y = VIEW.height * 0.42;
+      addPickup(g, 'weapon', x, y, g.rng.drops.pick(weapons));
       g.pickups[g.pickups.length - 1].crate = true;
-      cue(g, 'supply.crate', x, 90);
+      cue(g, 'supply.crate', x, y);
     }
   }
   if (b.t <= 0) endBoost(g, true);
+}
+
+/** The weapons held (the slots that aren't boosts). */
+function weaponsHeld(g: Game): AbilityId[] {
+  return g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
+}
+
+/** Is the running boost waiting on a weapon pickup (Dual Wield with a hand
+ *  free; Overclock with nothing overclocked yet)? */
+function callsWeapon(g: Game): boolean {
+  const b = g.boost;
+  if (!b) return false;
+  if (b.id === 'dualWield') return !g.weapon || !g.weapon2;
+  if (b.id === 'overclock') return b.clocked === 0;
+  return false;
 }
 
 /** Drops come this many times as often (Supply Run, Dual Wield's Arsenal
@@ -2880,6 +2904,7 @@ export function step(g: Game, dt: number): void {
   // Focus: while a finger is down and the bank lasts, the whole game runs
   // slow (the bank drains in real time).
   const real = dt;
+  g.realT += real;
   g.focusing = g.finger && g.boost?.id === 'focus' && g.boost.bank > 0;
   if (g.focusing) dt *= AB.focus.scale[g.boost!.level - 1];
   g.cues.length = 0;
@@ -3990,7 +4015,8 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
   }
   // Hot Streak's heat and Deadeye (Focus MAX) multiply the hit.
   const deadeye = g.focusing && boostLevel(g, 'focus') >= ABILITY_MAX ? AB.focus.damage : 1;
-  const dmg = g.stats.hitDamage * streakMult(g) * deadeye;
+  const heat = streakMult(g);
+  const dmg = g.stats.hitDamage * heat * deadeye;
   const hot = boostLevel(g, 'hotStreak');
   const pierce = hot >= ABILITY_MAX && g.streak >= AB.hotStreak.pierce;
   const shoot = (t: Threat) =>
@@ -3999,6 +4025,9 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
       weapon: w ? { ...w } : undefined,
       ...(also.length ? { also } : {}),
       ...(dmg !== g.stats.hitDamage ? { dmg } : {}),
+      // A hot gun's shells burst wider (most threats die to one hit, so
+      // the heat has to reach the ones around it too).
+      ...(heat > 1 ? { blast: g.stats.blast * AB.hotStreak.blast[heat - 1] } : {}),
       ...(hot ? { streak: true } : {}),
       ...(pierce ? { pierce: true } : {}),
     });
@@ -4739,15 +4768,21 @@ function updatePickups(g: Game, dt: number): void {
  *  the pity clock (WEAPON.pity; Supply Lines shortens it) has run out. */
 function weaponDue(g: Game, kind: ThreatKind): boolean {
   if (!g.slots.length || g.pickups.some((p) => p.kind === 'weapon')) return false;
+  // Dual Wield with a hand free, or Overclock waiting for a weapon: the next
+  // kill drops one (at the normal rate, one rarely came inside the boost's
+  // 15 s: build 3's sweep found two hands loaded 0% of the time).
+  if (callsWeapon(g) && weaponsHeld(g).length) return true;
   const m = dropMult(g, true);
   return g.weaponDropT >= g.stats.dropPity / m || g.rng.drops.chance(THREATS[kind].dropChance * g.stats.dropShare * m);
 }
 
 function dropWeapon(g: Game, x: number, y: number): void {
   g.weaponDropT = 0;
-  // Overclock on a MAX weapon: that weapon drops more often.
+  // Overclock on a MAX weapon: that weapon drops more often. A boost that is
+  // calling a weapon gets one; the boost already running isn't dealt again.
   const pin = g.boost?.id === 'overclock' ? g.boost.drops : null;
-  addPickup(g, 'weapon', x, y, pin ?? g.rng.drops.pick(g.slots));
+  const want = callsWeapon(g) && weaponsHeld(g).length ? weaponsHeld(g) : g.slots.filter((id) => id !== g.boost?.id);
+  addPickup(g, 'weapon', x, y, pin ?? g.rng.drops.pick(want.length ? want : g.slots));
 }
 
 /** The power-ups that became boosts (phase 3). */
@@ -4821,10 +4856,7 @@ function collect(g: Game, p: Pickup): void {
     }
     const w: Weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
     // Dual Wield: it joins the loaded weapon; otherwise it takes the gun.
-    if (!boostLoad(g, w)) {
-      g.weapon = w;
-      g.weapon2 = null;
-    }
+    if (!boostLoad(g, w)) g.weapon = w;
     // Overclock: the first weapon loaded under it (level 2: every one).
     if (g.boost?.id === 'overclock' && (g.boost.level >= 2 || g.boost.clocked === 0)) overclockWeapon(g, w);
     const timer = w === g.weapon2 ? 'passiveT2' : 'passiveT';
