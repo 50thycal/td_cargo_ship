@@ -3,10 +3,11 @@
 **Built so far:**
 - **Build 1 (phases 0–1):** [v3-weapons-build-1.md](v3-weapons-build-1.md): systems and the six actives.
 - **Build 2 (phase 2):** [v3-weapons-build-2.md](v3-weapons-build-2.md): the four passives.
+- **Build 3 (phase 3):** [v3-weapons-build-3.md](v3-weapons-build-3.md): the eleven boosts, and Free Play on the plan's drops.
 
 Each covers how to try it, the measured strength, and the tuning made during the build.
 
-**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–2 are built; phase 3 (boosts) is next.
+**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–3 are built; phase 4 (the experiments) is next.
 
 **Sources:**
 - [v3-weapon-ideas-2.md](v3-weapon-ideas-2.md): the ideas, the prototypes and the data.

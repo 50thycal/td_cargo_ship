@@ -67,23 +67,26 @@ All eleven are **prototypes**:
 | **Shield** | **21%** | **22%** |
 | **Supply Run** | **13%** | **19%** |
 | **Full Steam** | **7%** | **12%** |
-| **Hot Streak** | HOT1 | HOT3 |
-| **Focus** | FOC1 | FOC3 |
+| **Hot Streak** | **9%** | **10%** |
+| **Focus** | **8%** | **6%** |
 
 **A boost with weapons** (the slot a boost takes could hold a weapon instead):
 
 | Held | Level 1 | MAX |
 |---|---|---|
 | Flak + Railgun | 14% | 41% |
-| Flak + **Overclock** | OC1 | OC3 |
-| Flak + Railgun + Scattergun | FRS1 | FRS3 |
-| Flak + Railgun + **Dual Wield** | 11% | 32% |
+| Flak + **Overclock** | **32%** | **47%** |
+| Flak at level 1 + **Overload** (Overclock MAX) | **35%** | — |
+| Flak at level 1 + Railgun at MAX | 33% | — |
+| Flak + Railgun + Scattergun | 21% | 42% |
+| Flak + Railgun + **Dual Wield** | **22%** | **44%** |
 
 **Reading it:**
 - **Losing the four power-ups costs the plain game something:** holding nothing wins 5% under the plan's drops, against 8% with the campaign's. Overdrive was the main relief when the rack ran dry (the plan's pacing note); as a boost it is now the strongest one.
 - **The strongest boosts** are the ones that put more shots in the air: Overdrive, Fire at Will (the bot doesn't hold, so this is the bigger rack and faster reload; full-auto is untested by it) and Wild Card.
 - **The weakest on their own** are Full Steam and Supply Run. Supply Run's Airdrop needs a weapon held, so it shows nothing alone. Full Steam gets ships out sooner rather than killing anything.
-- READING_PLACEHOLDER
+- **The combo boosts are worth a weapon's slot now:** Overclock beside Flak beats a Railgun there at both levels, and Dual Wield matches a third weapon. Before two fixes (below) neither did.
+- **Hot Streak and Focus** barely move the bot. Hot Streak rewards a run of clean hits and Focus rewards a person's hands in slow motion, which a bot doesn't have; the playtest decides both. If Hot Streak feels flat, a candidate is for the heat to speed up reloading too.
 - **The bot measures size, not feel.** Focus and Fire at Will's full-auto are about a person's hands; the playtest is what judges them.
 
 ### Tuning made during the build (each from a measurement)
@@ -94,6 +97,11 @@ All eleven are **prototypes**:
 | Hot Streak's hits | hits in a row (the gun's shells) | the gun's shells, and any loaded weapon's own shot aimed at a threat | With the Railgun loaded the streak never built: its beam isn't a shell. |
 | Overclock on a MAX weapon | it drops more often (round 3) | its clock still stops, and it drops more often | Reading "instead" as instead of the level only: with the drops alone, Flak at MAX was loaded 23% of the time against 43% without Overclock in the slot. |
 | Airdrop's crate | lands | parachutes in over open water mid-screen, then flies to the carrier | Crates at the top edge landed on the enemy shore. |
+| Dual Wield's second weapon | the next weapon picked up joins | the next weapon picked up joins, **and while a hand is free the next kill drops one** (a weapon, not a boost) | At the normal drop rate a second weapon almost never came inside the boost's 15 s: two hands were loaded 0% of the time, and it won 11% / 31% against a third weapon's 21% / 42%. Now 14% of the time, 22% / 44%. |
+| Overclock with nothing loaded | waits for the next weapon | waits, and the next kill drops one | The same problem as Dual Wield: Flak + Overclock won 19% at both levels; now 32% / 47%. |
+| The hands after Dual Wield | (round 2) "both stay loaded together for the rest of their time" | a pickup takes the first hand, or refreshes the hand already holding it; the second keeps its time | The first build dropped the second hand on the next pickup. |
+| A boost dropping again | | the boost already running isn't dealt again while you hold something else | Dual Wield dropped four times in a row in one traced run. |
+| Focus and the bot | | the bot paces its taps on real time and holds a finger for a rush | Otherwise slow motion could never help it. |
 
 **A harness change, found before trusting any number:** the sweep's "nothing held" row didn't use Free Play's rules, so it still had the four power-ups while every other row didn't. Both are now measured (`none` and `campaign`).
 
