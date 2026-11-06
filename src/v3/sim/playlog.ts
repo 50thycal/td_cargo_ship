@@ -13,6 +13,9 @@ import {
   continueEndless,
   createGame,
   pickUpgrade,
+  press,
+  pressMove,
+  release,
   setFlow,
   setFormation,
   step,
@@ -47,8 +50,10 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      ship's own interceptors, not domes; Carpet Strike burns its row
  *      behind the jet, canister by canister).
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
- *  real-game log and replays as before, so the version stays.) */
-export const LOG_VERSION = 13;
+ *  real-game log and replays as before, so the version stays.)
+ *  14: the weapons plan, phases 0–1: the Nuke joins the drops (a new roll),
+ *      and the gesture weapons' presses are logged ('d', 'v', 'r'). */
+export const LOG_VERSION = 14;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -57,6 +62,9 @@ export const SIM_DT = 1 / 60;
 /** Compact input encoding: [step, code, ...args]. */
 export type LogCommand =
   | [number, 't', number, number, number] // tap x y radius (world units, rounded)
+  | [number, 'd', number, number, number] // press down x y radius (a gesture weapon is loaded)
+  | [number, 'v', number, number] // the pressed finger moved to x y
+  | [number, 'r', number, number, number] // the finger lifted at x y radius
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
@@ -206,6 +214,31 @@ export class Recorder {
     return tap(this.game, rx, ry, rr);
   }
 
+  /** A finger down with a gesture weapon loaded (Charge Lance, Laser
+   *  Cutter, Grapnel): the sim's press. */
+  press(x: number, y: number, radius: number): void {
+    const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
+    if (this.game.phase !== 'wave') return;
+    this.log.commands.push([this.game.steps, 'd', rx, ry, rr]);
+    press(this.game, rx, ry, rr);
+  }
+
+  /** The pressed finger moved (the UI sends at most one a step). */
+  move(x: number, y: number): void {
+    if (!this.game.press || this.game.phase !== 'wave') return;
+    const [rx, ry] = [Math.round(x), Math.round(y)];
+    if (rx === Math.round(this.game.press.x) && ry === Math.round(this.game.press.y)) return;
+    this.log.commands.push([this.game.steps, 'v', rx, ry]);
+    pressMove(this.game, rx, ry);
+  }
+
+  release(x: number, y: number, radius: number): TapResult | null {
+    if (!this.game.press) return null;
+    const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
+    this.log.commands.push([this.game.steps, 'r', rx, ry, rr]);
+    return release(this.game, rx, ry, rr);
+  }
+
   flow(v: number): void {
     this.log.commands.push([this.game.steps, 'f', v]);
     setFlow(this.game, v);
@@ -327,6 +360,15 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
         case 't':
           tap(g, c[2], c[3], c[4]);
           break;
+        case 'd':
+          press(g, c[2], c[3], c[4]);
+          break;
+        case 'v':
+          pressMove(g, c[2], c[3]);
+          break;
+        case 'r':
+          release(g, c[2], c[3], c[4]);
+          break;
         case 'f':
           setFlow(g, c[2]);
           break;
@@ -377,6 +419,9 @@ export class Playback {
     while (this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps) {
       const c = this.cmds[this.i++];
       if (c[1] === 't') tap(g, c[2], c[3], c[4]);
+      else if (c[1] === 'd') press(g, c[2], c[3], c[4]);
+      else if (c[1] === 'v') pressMove(g, c[2], c[3]);
+      else if (c[1] === 'r') release(g, c[2], c[3], c[4]);
       else if (c[1] === 'f') setFlow(g, c[2]);
       else if (c[1] === 'm') setFormation(g, c[2]);
       else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);

@@ -42,6 +42,23 @@ export const CUE_IDS = [
   'well.implode',
   'rail.beam',
   'tesla.arc',
+  // The weapons plan, phase 1 (placeholder sounds: they reuse other cues'
+  // files until their own are made; see the manifest).
+  'lance.charge',
+  'lance.half',
+  'lance.full',
+  'cutter.swipe',
+  'grapnel.hook',
+  'grapnel.smack',
+  'grapnel.fling',
+  'grapnel.burst',
+  'chain.throw',
+  'chain.crash',
+  'mark.set',
+  'salvo.fire',
+  'cadence.beat',
+  'cadence.hit',
+  'nuke.blast',
   // Weapon state
   'weapon.drop',
   'weapon.load',

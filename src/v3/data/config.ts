@@ -356,17 +356,25 @@ export const DRONE = {
 // the Air Strike weapon, data/abilities.ts). A 'weapon' pickup
 // loads one of the weapons you hold into the gun (which one is on the pickup).
 // 'starshell' (the 20-map plan, The Black Strait only): lights the dark sea.
-export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam' | 'starshell';
+// 'nuke' (the weapons plan): clears the screen. One of the three default
+// drops the player kept (ammo, repair, nuke); the others become boosts in
+// phase 3.
+export type PowerKind = 'ammo' | 'repair' | 'overdrive' | 'timewarp' | 'shield' | 'steam' | 'starshell' | 'nuke';
 export type PickupKind = PowerKind | 'weapon';
 
-export const PICKUP_KINDS: PowerKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam', 'starshell'];
+export const PICKUP_KINDS: PowerKind[] = ['ammo', 'repair', 'overdrive', 'timewarp', 'shield', 'steam', 'starshell', 'nuke'];
 
 export const PICKUPS = {
   life: 5,
   radius: 26,
   // Round 5: repair 30 → 20 ("a little OP": 15 repairs in two games). V3:
   // EMP (8) and Strike (7) are gone, the rest keep their weights.
-  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9, starshell: 0 } as Record<PowerKind, number>,
+  weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 9, shield: 8, steam: 9, starshell: 0, nuke: 3 } as Record<PowerKind, number>,
+  /** The Nuke (the weapons plan, round 3: "about right"): the rarest drop,
+   *  not before this wave, one on the water at a time. Structures and the
+   *  Dreadnought take `nukeStructure` hits instead of dying. */
+  nukeFrom: 3,
+  nukeStructure: 3,
   /** A Star Shell's weight on a night map, and how long its light lasts. */
   starshellWeight: 16,
   starshellTime: 6,

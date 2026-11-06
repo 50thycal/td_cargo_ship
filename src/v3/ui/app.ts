@@ -48,6 +48,7 @@ import {
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { GESTURE_HINT, ROSTER, gestureOf, isPrototype } from '../data/roster';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -337,6 +338,9 @@ export class App {
   private offX = 0;
   private offY = 0;
   private hold: { x: number; y: number; since: number; next: number; id: number } | null = null;
+  /** A finger pressed with a gesture weapon loaded (Charge Lance, Laser
+   *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
+  private gesture: { id: number; x: number; y: number } | null = null;
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
@@ -545,7 +549,8 @@ export class App {
       if (id) {
         c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
-        const text = w ? `${Math.ceil(w.t)}s` : '';
+        const gesture = w ? gestureOf(w.id) : undefined;
+        const text = w ? (gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${Math.ceil(w.t)}s` : `${Math.ceil(w.t)}s`) : '';
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -668,6 +673,7 @@ export class App {
     if (from === 'rail' && this.paused) return;
     this.paused = true;
     this.hold = null;
+    this.dropGesture();
     const thumb = this.thumb(rec.log);
     const form = noteForm();
     const done = () => (from === 'pause' ? this.showPauseMenu() : this.resumeFromDialog());
@@ -695,6 +701,7 @@ export class App {
     if (from === 'rail' && this.paused) return;
     this.paused = true;
     this.hold = null;
+    this.dropGesture();
     const thumb = this.thumb(rec.log);
     const rows = ratingRows(last.volley.rating);
     const form = noteForm({ placeholder: 'Anything to add? (optional)' });
@@ -774,6 +781,16 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
+      // A gesture weapon (the weapons plan): the finger is a press, not a
+      // tap, and holding charges, swipes or drags instead of repeating.
+      // A second finger while one is pressed is a plain tap (two thumbs: one
+      // charges the Lance, the other keeps shooting).
+      if (this.game.phase === 'wave' && gestureOf(this.game.weapon?.id) && this.rec && !this.gesture) {
+        this.gesture = { id: e.pointerId, x: w.x, y: w.y };
+        this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
+        this.playCues(this.game);
+        return;
+      }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
       // beat so an ordinary tap never fires twice.
@@ -781,16 +798,44 @@ export class App {
       this.hold = { ...w, since: performance.now(), next: this.game.t + first, id: e.pointerId };
     });
     this.canvas.addEventListener('pointermove', (e) => {
+      if (this.gesture && this.gesture.id === e.pointerId) {
+        const w = this.toWorld(e.clientX, e.clientY);
+        // A move every 6 px is plenty for a swipe or a swing (and keeps the
+        // play log small).
+        if (w && Math.hypot(w.x - this.gesture.x, w.y - this.gesture.y) >= 6) {
+          this.gesture.x = w.x;
+          this.gesture.y = w.y;
+          this.rec?.move(w.x, w.y);
+          if (this.game) this.playCues(this.game);
+        }
+        return;
+      }
       if (!this.hold || this.hold.id !== e.pointerId) return;
       const w = this.toWorld(e.clientX, e.clientY);
       if (w) Object.assign(this.hold, w);
     });
-    this.canvas.addEventListener('pointerup', (e) => {
+    const lift = (e: PointerEvent) => {
+      if (this.gesture && this.gesture.id === e.pointerId) {
+        const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
+        this.gesture = null;
+        const res = this.rec?.release(w.x, w.y, TAP_RADIUS_PX / this.scale);
+        if (this.game) this.playCues(this.game);
+        if (res === 'empty') this.ripples.push({ x: w.x, y: w.y, age: 0 });
+        if (res === 'dry') this.ripples.push({ x: w.x, y: w.y, age: 0, dry: true, label: 'RELOADING' });
+      }
       if (this.hold?.id === e.pointerId) this.hold = null;
-    });
-    this.canvas.addEventListener('pointercancel', (e) => {
-      if (this.hold?.id === e.pointerId) this.hold = null;
-    });
+    };
+    this.canvas.addEventListener('pointerup', lift);
+    this.canvas.addEventListener('pointercancel', lift);
+  }
+
+  /** A press still down when play stops (pause, a note, the run ends): let
+   *  go of it where the finger last was, so nothing stays held. */
+  private dropGesture(): void {
+    if (!this.gesture) return;
+    const at = this.gesture;
+    this.gesture = null;
+    if (this.game?.phase === 'wave') this.rec?.release(at.x, at.y, TAP_RADIUS_PX / this.scale);
   }
 
   /** `quiet`: a hold-to-fire repeat, which shouldn't ripple on empty water. */
@@ -1275,6 +1320,7 @@ export class App {
     const g = this.game!;
     const dur = this.bot && this.control === 'bot' ? seconds / Math.sqrt(Math.max(1, this.speed)) : seconds;
     this.hold = null;
+    this.dropGesture();
     let focus = { x: g.map.carrier.x, y: g.map.carrier.y };
     if (kind === 'lost') {
       // Zoom in on the final blow: the carrier if it went down, else the
@@ -1729,7 +1775,8 @@ export class App {
         const w = fp.weapons[i];
         return line(
           `Weapon ${i + 1}`,
-          select([['', '—'], ...ABILITY_ORDER.map((a): [string, string] => [a, ABILITIES[a].name])], w?.id ?? '', (v) => {
+          // Prototypes (the weapons plan) are Free Play only, marked so.
+          select([['', '—'], ...ABILITY_ORDER.map((a): [string, string] => [a, `${ABILITIES[a].name}${isPrototype(a) ? ' · prototype' : ''}${ROSTER[a].cat === 'passive' ? ' (passive)' : ''}`])], w?.id ?? '', (v) => {
             fp.weapons[i] = v ? { id: v as AbilityId, level: w?.level ?? 1 } : null;
           }, `weapon${i}`),
           select([['1', 'LV 1'], ['2', 'LV 2'], ['3', 'MAX']], `${w?.level ?? 1}`, (v) => {
@@ -2319,6 +2366,7 @@ export class App {
     this.control = who;
     this.rec.control(who);
     this.hold = null;
+    this.dropGesture();
     if (who === 'you') {
       this.setSpeed(1);
       this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.', { now: true, key: 'control' });
@@ -2872,6 +2920,7 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
   starshell: ['PICKUP: Star Shell', 'Tap it: a flare lights the whole strait for a few seconds.'],
+  nuke: ['PICKUP: Nuke', 'Tap it: everything in the air and on the water is destroyed. Rare.'],
 };
 
 /** The first weapon drop's banner, with the run's seconds (Long Loads). */

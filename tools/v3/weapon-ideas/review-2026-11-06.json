@@ -1,0 +1,81 @@
+{
+ "source": "https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ",
+ "readOn": "2026-11-06",
+ "note": "Round 3 (the Plan tab). Round 2's marks are in review-2026-11-05.json and did not change.",
+ "answers": {
+  "nukeStructures": {
+   "choice": 0,
+   "option": "3 hits, not a kill (proposed)",
+   "note": ""
+  },
+  "nukeRarity": {
+   "choice": 0,
+   "option": "About right",
+   "note": ""
+  },
+  "shieldSteam": {
+   "choice": 0,
+   "option": "Both become boosts (levels below)",
+   "note": ""
+  },
+  "pool": {
+   "choice": 0,
+   "option": "New weapons unlock a few per chapter; Free Play has all (recommended)",
+   "note": "Note that I might cut some or add more in the future so keep it mode able "
+  },
+  "start": {
+   "choice": 0,
+   "option": "Yes, start there",
+   "note": ""
+  },
+  "planNotes": {
+   "note": "I think this is good. Overall the main thing is that we now have three different categories that we can draft from so passive active and boost and then they all have their own properties where active takes over the gun passive is a thing that allows you to keep shooting your gun and there is a thing that comes in and supports you and then boost is a new drop that it adds that’s like an instant effect and then we got God it will down to the default that are free that don’t have levels and then you can add more and then three slots total"
+  }
+ },
+ "levels": {
+  "fireAtWill": {
+   "verdict": "ok",
+   "note": ""
+  },
+  "supplyRun": {
+   "verdict": "ok",
+   "note": ""
+  },
+  "focus": {
+   "verdict": "ok",
+   "note": ""
+  },
+  "overdrive": {
+   "verdict": "ok",
+   "note": ""
+  },
+  "steam": {
+   "verdict": "ok",
+   "note": ""
+  },
+  "dualWield": {
+   "verdict": "change",
+   "note": "I don’t Think you will be able to ah more than two weapons so how about we just increase drip rate of weapons when active "
+  },
+  "hotStreak": {
+   "verdict": "change",
+   "note": "Ehhh remove the one "
+  },
+  "overclock": {
+   "verdict": "change",
+   "note": "What happens when a player already has max?? Should have some small buff maybe it drips more frequently??"
+  },
+  "shield": {
+   "verdict": "change",
+   "note": "For this just make sure there is an animation showing the shields breaking when the steadying run hits so it is clear "
+  },
+  "timewarp": {
+   "verdict": "change",
+   "note": "Yes for one and two but time should look like it is slowing down "
+  },
+  "wildCard": {
+   "verdict": "change",
+   "note": "How about level 1 they have active only at level 1 and level two you get one passive and level three is actives because level max"
+  }
+ }
+}

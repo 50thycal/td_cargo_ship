@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, pickupLife, raidWarning, reticleVisible, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, lanceCharge, pickupLife, raidWarning, reticleVisible, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
@@ -73,6 +73,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
+  drawFields(ctx, g, 'sun');
+  drawFields(ctx, g, 'laser');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
   drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
@@ -114,6 +116,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     dot(ctx, it.x, it.y, col ? 6.5 : 5.5, col ?? C.interceptor);
   }
   drawFx(ctx, g);
+  drawPlanWeapons(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
@@ -565,6 +568,21 @@ function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind'])
     const u = f.t / f.life;
     const a = u < 0.08 ? u / 0.08 : 1 - Math.max(0, (u - 0.7) / 0.3);
     if (kind === 'burn') drawBurn(ctx, f, a);
+    else if (kind === 'sun' || kind === 'laser') {
+      // Sunspear's burning line (gold) and Searing Edge's lit cut (pink).
+      const col = kind === 'sun' ? [255, 222, 120] : [255, 79, 163];
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(${col.join(',')},${0.28 * a})`;
+      ctx.lineWidth = f.hw * 2;
+      ctx.beginPath();
+      ctx.moveTo(f.x1, f.y1);
+      ctx.lineTo(f.x2, f.y2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,250,240,${0.8 * a})`;
+      ctx.lineWidth = 2 + Math.sin(f.t * 30) * 0.8;
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
     else if (kind === 'flak') {
       // Dark puffs filling the circle, sparks winking in them (evolved,
       // Flak Curtain: a touch warmer).
@@ -859,6 +877,173 @@ function drawLoaded(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
 }
 
+/** The weapons plan's phase 1 weapons, drawn from the live sim state:
+ *  Charge Lance's ring and aim, the Grapnel's cable and flings, Chain Shot's
+ *  links, Fire Control's marks, Cadence Gun's beat. */
+function drawPlanWeapons(ctx: CanvasRenderingContext2D, g: Game): void {
+  const c = g.map.carrier;
+  const w = g.weapon;
+  const p = g.press;
+  ctx.save();
+  // Charge Lance: the ring on the carrier fills as the press charges; the
+  // aim line follows the finger. Half and full are marked on the ring.
+  if (w?.id === 'lance' && p) {
+    const ch = lanceCharge(g, p, w);
+    const u = Math.min(1, ch / AB.lance.full);
+    const r = CARRIER.halfLength + 8;
+    const full = ch >= AB.lance.full;
+    const half = ch >= AB.lance.half;
+    ctx.strokeStyle = 'rgba(255,243,176,0.25)';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = full ? '#fffbe6' : half ? '#ffd84d' : 'rgba(255,216,77,0.7)';
+    ctx.lineWidth = full ? 9 : 7;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * u);
+    ctx.stroke();
+    // The half mark.
+    const ha = -Math.PI / 2 + Math.PI * 2 * (AB.lance.half / AB.lance.full);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(c.x + Math.cos(ha) * (r - 9), c.y + Math.sin(ha) * (r - 9));
+    ctx.lineTo(c.x + Math.cos(ha) * (r + 9), c.y + Math.sin(ha) * (r + 9));
+    ctx.stroke();
+    if (p.mode === 'charge') {
+      ctx.setLineDash([10, 8]);
+      ctx.strokeStyle = full ? 'rgba(255,251,230,0.85)' : 'rgba(255,216,77,0.55)';
+      ctx.lineWidth = full ? 4 : 2.5;
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = full ? '#fffbe6' : '#ffd84d';
+      ctx.font = '800 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(full ? 'FULL ▸ 6' : half ? 'HALF ▸ 3' : 'CHARGING', c.x, c.y - r - 16);
+    }
+  }
+  // Grapnel: the cable from the carrier to the ball, and the ball's ring.
+  if (p?.mode === 'hook') {
+    const th = g.threats.find((t) => t.id === p.hook && !t.dead);
+    if (th) {
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y - 6);
+      ctx.quadraticCurveTo((c.x + th.x) / 2, Math.max(c.y, th.y) - 20, th.x, th.y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(52,211,153,0.6)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, AB.grapnel.smackR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  for (const f of g.flings) {
+    const th = g.threats.find((t) => t.id === f.id);
+    if (!th) continue;
+    ctx.strokeStyle = 'rgba(52,211,153,0.55)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(th.x - f.vx * 0.06, th.y - f.vy * 0.06);
+    ctx.lineTo(th.x, th.y);
+    ctx.stroke();
+  }
+  // Chain Shot: the link waiting for a partner, and chains pulling pairs in.
+  if (g.link && g.link.until >= g.t) {
+    const th = g.threats.find((t) => t.id === g.link!.id && !t.dead);
+    if (th && w?.id === 'chainshot') {
+      const left = (g.link.until - g.t) / AB.chainshot.window;
+      ctx.strokeStyle = '#d6a26b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left);
+      ctx.stroke();
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(214,162,107,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, AB.chainshot.reach[w.level - 1], 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  for (const ch of g.chains) {
+    const a = g.threats.find((t) => t.id === ch.a);
+    const b = g.threats.find((t) => t.id === ch.b);
+    if (!a || !b) continue;
+    ctx.strokeStyle = '#d6a26b';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([9, 4]);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Fire Control: a red diamond on each mark, and the salvo's countdown.
+  if (g.marks.length) {
+    ctx.strokeStyle = '#ff4d4d';
+    ctx.lineWidth = 3;
+    for (const m of g.marks) {
+      const th = g.threats.find((t) => t.id === m.id);
+      if (!th) continue;
+      const s = 18 + Math.sin(g.t * 14) * 2;
+      ctx.beginPath();
+      ctx.moveTo(th.x, th.y - s);
+      ctx.lineTo(th.x + s, th.y);
+      ctx.lineTo(th.x, th.y + s);
+      ctx.lineTo(th.x - s, th.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ff6b6b';
+    ctx.font = '800 22px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${g.marks.length} · ${Math.max(0, g.markT).toFixed(1)}s`, c.x, c.y - CARRIER.halfBeam - 40);
+  }
+  // Cadence Gun (the player's note): a ring closes in from the edges of the
+  // sea onto the carrier and lands on the beat, and on the beat the whole
+  // border of the sea pulses, so the beat is easy to see and to anticipate.
+  if (w?.id === 'cadence') {
+    const b = beatClock(g, w);
+    const P = AB.cadence.period;
+    const since = g.t - (w.t0 ?? g.t);
+    const toNext = since < P ? P - since : (P - (since % P)) % P;
+    const lead = 1 - toNext / P; // 0 just after a beat, 1 on the next
+    const R0 = Math.hypot(VIEW.width, VIEW.height) * 0.55;
+    const r = 30 + (R0 - 30) * (1 - lead);
+    ctx.strokeStyle = `rgba(245,158,11,${0.25 + lead * 0.6})`;
+    ctx.lineWidth = 3 + lead * 5;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    // The on-beat window: the border glows while a tap counts.
+    const win = AB.cadence.window[w.level - 1];
+    const glow = since >= P - win ? Math.max(0, 1 - b.off / Math.max(win, 1e-6)) : 0;
+    const hit = g.fx.find((f) => f.kind === 'beat');
+    const pulse = Math.max(glow, hit ? 1 - hit.age / hit.life : 0);
+    if (pulse > 0) {
+      const t = 10 + pulse * 22;
+      ctx.strokeStyle = `rgba(245,158,11,${0.25 + pulse * 0.55})`;
+      ctx.lineWidth = t;
+      ctx.strokeRect(t / 2, t / 2, VIEW.width - t, VIEW.height - t);
+    }
+    // A thin progress bar along the top edge (the cue that survives Reduced
+    // Motion, and a clock either way).
+    ctx.fillStyle = 'rgba(245,158,11,0.85)';
+    ctx.fillRect(VIEW.width / 2 - 160, 8, 320 * lead, 6);
+    ctx.strokeStyle = 'rgba(245,158,11,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(VIEW.width / 2 - 160, 8, 320, 6);
+  }
+  ctx.restore();
+}
+
 /** Shield pickup: a bubble over every ship and the carrier, flickering out. */
 function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
   const ending = g.shieldT < 1.2 && Math.floor(g.t * 10) % 2 === 0;
@@ -1111,6 +1296,7 @@ export const PICKUP_COLORS: Record<PickupKind, string> = {
   shield: '#e2e8f0',
   steam: '#fb923c',
   starshell: '#fff1a8',
+  nuke: '#ff6b4a',
 };
 
 function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, y: number, age: number, t: number, life: number = PICKUPS.life): void {
@@ -1171,6 +1357,24 @@ function drawPickup(ctx: CanvasRenderingContext2D, kind: PickupKind, x: number, 
       else ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
     }
     ctx.closePath();
+    ctx.fill();
+  } else if (kind === 'nuke') {
+    // The trefoil: three blades round a hub.
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2) / 3 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.arc(x, y, 13, a - 0.5, a + 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(10,20,28,0.9)';
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
     ctx.fill();
   } else if (kind === 'steam') {
     // Double chevron: full ahead.
@@ -1334,6 +1538,50 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         }
         break;
       }
+      case 'lance':
+      case 'cut': {
+        // Charge Lance (gold) and Laser Cutter (pink): a hot core in a sheath.
+        const col = f.kind === 'lance' ? '255,216,77' : '255,79,163';
+        const w = f.r * (f.kind === 'lance' ? 2 : 0.9) * (1 - u * 0.6);
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = `rgba(${col},${0.6 * (1 - u)})`;
+        ctx.lineWidth = w + 8;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(f.x2, f.y2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(255,252,240,${1 - u})`;
+        ctx.lineWidth = Math.max(2, w * 0.35);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+        break;
+      }
+      case 'chain': {
+        // The Grapnel's cable snapping taut on a hook.
+        ctx.strokeStyle = `rgba(52,211,153,${1 - u})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(f.x2, f.y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        break;
+      }
+      case 'nuke': {
+        // A white flash over everything, then a shock ring rolling out.
+        ctx.fillStyle = `rgba(255,248,235,${Math.max(0, 0.75 - u * 1.6)})`;
+        ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+        ctx.strokeStyle = `rgba(255,107,74,${0.8 * (1 - u)})`;
+        ctx.lineWidth = 18 * (1 - u) + 2;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * u, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case 'beat':
+        // Drawn by drawPlanWeapons (the aura), not here.
+        break;
       case 'beam': {
         // Railgun: a white-hot core in a pink sheath, narrowing as it fades.
         const w = f.r * 2 * (1 - u * 0.7);

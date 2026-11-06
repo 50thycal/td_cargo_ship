@@ -41,7 +41,15 @@ export type AbilityId =
   | 'frigate'
   | 'thermo'
   | 'scatter'
-  | 'boomerang';
+  | 'boomerang'
+  // The weapons plan (docs/design/v3-weapons-plan.md), phase 1: six actives
+  // with new verbs. Prototypes until the player locks them (data/roster.ts).
+  | 'lance'
+  | 'cutter'
+  | 'grapnel'
+  | 'chainshot'
+  | 'firecontrol'
+  | 'cadence';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -204,9 +212,86 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Tap past a line of threats',
   },
+  lance: {
+    id: 'lance',
+    name: 'Charge Lance',
+    evolved: 'Sunspear',
+    answers: 'Heavies',
+    levels: [
+      'Tap for a quick shot; hold to charge: half for a 3-hit bolt, full for a 6-hit lance through everything in line',
+      'Charges a third faster, and the half bolt pierces',
+      'A full lance leaves a burning line for 2 s',
+    ],
+    how: 'Hold to charge, let go to fire',
+  },
+  cutter: {
+    id: 'cutter',
+    name: 'Laser Cutter',
+    evolved: 'Searing Edge',
+    answers: 'Swarms',
+    levels: [
+      'Swipe across threats: everything under your finger is cut (one round a swipe)',
+      'A longer cut',
+      'The cut stays lit for 1 s and burns what flies into it',
+    ],
+    how: 'Swipe across threats',
+  },
+  grapnel: {
+    id: 'grapnel',
+    name: 'Grapnel',
+    evolved: 'Wrecking Ball',
+    answers: 'Packs',
+    levels: [
+      'Hold on a threat to hook it, drag to swing it into others (2 hits each), let go to fling it',
+      'The cable reaches across the whole sea',
+      'The flung threat explodes for 3 in a wide blast',
+    ],
+    how: 'Hold a threat and drag it',
+  },
+  chainshot: {
+    id: 'chainshot',
+    name: 'Chain Shot',
+    evolved: 'Bolas Storm',
+    answers: 'Pairs',
+    levels: [
+      'Tap one threat, then another nearby: a chain drags them together for 2 hits each',
+      'A longer chain, 3 hits each',
+      'A third tap adds a third link, and links hit for 4',
+    ],
+    how: 'Tap one threat, then a second',
+  },
+  firecontrol: {
+    id: 'firecontrol',
+    name: 'Fire Control',
+    evolved: 'Full Broadside',
+    answers: 'Volleys',
+    levels: [
+      'Taps mark up to 6 targets; moments later the salvo fires at all of them at once, a round for every two',
+      'Up to 8 marks, 0.5 s wait',
+      'Marked threats take 2 hits each',
+    ],
+    how: 'Tap to mark, then wait',
+  },
+  cadence: {
+    id: 'cadence',
+    name: 'Cadence Gun',
+    evolved: 'War Drum',
+    answers: 'Heavies',
+    levels: [
+      'Fire on the beat for a 3-hit shot that pierces; off the beat, a normal shot',
+      'A wider beat window',
+      'Four beats in a row, and the fifth fires a free broadside',
+    ],
+    how: 'Tap on the beat',
+  },
 };
 
-export const ABILITY_ORDER: AbilityId[] = ['airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla'];
+/** Every weapon, in roster order (the draft and Free Play read which are
+ *  live and when they unlock from data/roster.ts). */
+export const ABILITY_ORDER: AbilityId[] = [
+  'airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla',
+  'lance', 'cutter', 'grapnel', 'chainshot', 'firecontrol', 'cadence',
+];
 
 /** Levels per weapon; the last is the evolution. */
 export const ABILITY_MAX = 3;
@@ -227,6 +312,12 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   thermo: ['THERMO', 'DAISY CUT'],
   scatter: ['SCATTER', 'DRAGON'],
   boomerang: ['BOOMERANG', 'TWIN BLADES'],
+  lance: ['LANCE', 'SUNSPEAR'],
+  cutter: ['CUTTER', 'SEARING'],
+  grapnel: ['GRAPNEL', 'WRECKER'],
+  chainshot: ['CHAIN SHOT', 'BOLAS'],
+  firecontrol: ['FIRE CTRL', 'BROADSIDE'],
+  cadence: ['CADENCE', 'WAR DRUM'],
 };
 
 /** How weapons come and go. */
@@ -282,6 +373,43 @@ export const AB = {
   /** Boomerang: a blade at `speed` to the tap (at most `range`) and back,
    *  cutting each threat within `width` once a pass. */
   boomerang: { speed: 1100, range: 900, width: [34, 44, 44], damage: [1, 2, 2] },
+  /** Charge Lance: a tap under `tapHold` s is a plain shot; holding charges
+   *  (× `rate` a level); let go at `half` s for a `halfDmg` bolt at the threat
+   *  under the finger, at `full` s for a `fullDmg` lance through everything
+   *  `width` either side of the line. Sunspear burns that line `burn` s. */
+  // Phase 1 sweep: a charge only for heavies barely mattered (heavies are
+  // rare); a short hold now triples any shot, so it is worth doing on most
+  // threats, and a full one pierces everything in line.
+  lance: { tapHold: 0.15, half: 0.35, full: 0.7, rate: [1, 1.33, 1.33], halfDmg: 3, fullDmg: 6, width: 22, burn: 2 },
+  /** Laser Cutter: a press that moves `start` px is a swipe; the path cuts
+   *  everything within `width` of it, up to `length` px a swipe, one round a
+   *  swipe. Searing Edge leaves the cut lit `lit` s. */
+  cutter: { start: 14, length: [320, 420, 420], width: 30, damage: 1, lit: 1 },
+  /** Grapnel: hold on a threat within `reach` of the carrier to hook it (one
+   *  round); it follows the finger at up to `speed` px/s and smacks what it
+   *  touches (`smackR`) for `smack`, a threat once every `again` s. Let go (or
+   *  after `hold` s) and it flies `fly` s and bursts: `burst` hits in `burstR`
+   *  (the ball included). Structures can't be hooked. */
+  grapnel: { reach: [620, 1800, 1800], speed: 1100, smack: 2, smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130] },
+  /** Chain Shot: a tap on a threat fires as usual and marks it `window` s; a
+   *  tap on another within `reach` chains the two: they are dragged together
+   *  over `pull` s, then each, and anything within `width` of the chain,
+   *  takes `damage`. Bolas Storm: a third tap adds a third link. */
+  // The chain itself is free (phase 1 sweep: at a round a chain it won 24%).
+  chainshot: { window: 1.5, reach: [300, 400, 400], pull: 0.3, width: 26, damage: [2, 3, 4] },
+  /** Fire Control: taps mark up to `marks` threats; `wait` s after the last
+   *  mark the salvo goes, one round a mark, at `speed`× interceptor speed; a
+   *  kill bursts `burst` px. A mark less than `urgent` s from impact fires at
+   *  once, a full set at once, and the salvo never waits past `latest` s
+   *  after the first mark. Full Broadside: `damage` 2 a mark. */
+  // Phase 1 sweep: a 0.8 s wait lost runs (25%): the salvo goes sooner.
+  // One launch, many warheads: a salvo costs a round for every `perRound` marks.
+  firecontrol: { marks: [6, 8, 8], wait: [0.4, 0.3, 0.3], latest: 1, speed: 2, urgent: 1.2, burst: 60, damage: [1, 1, 2], perRound: 2 },
+  /** Cadence Gun: a beat every `period` s; a tap within `window` s of one
+   *  fires a `damage` shot that pierces (`width`); off the beat, a plain
+   *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
+   *  free broadside at the `broadside` most urgent threats. */
+  cadence: { period: 0.6, window: [0.12, 0.18, 0.18], damage: 3, width: 18, run: 4, broadside: 5 },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;

@@ -17,6 +17,13 @@ export const ICON_COLOR: Record<CardId, string> = {
   airstrike: '#60a5fa',
   railgun: '#f472b6',
   tesla: '#a5b4fc',
+  // The weapons plan, phase 1.
+  lance: '#fff3b0',
+  cutter: '#ff4fa3',
+  grapnel: '#34d399',
+  chainshot: '#d6a26b',
+  firecontrol: '#38bdf8',
+  cadence: '#f59e0b',
   resupply: '#8be38b',
 }
 
@@ -45,6 +52,18 @@ const PATHS: Record<CardId, string> = {
   railgun: '<path d="M4 26 L28 6"/><path d="M3 21 L9 27" /><circle cx="15" cy="16.8" r="2.6"/><circle cx="22" cy="11" r="2.6"/>',
   // A coil throwing a forked spark.
   tesla: '<path d="M10 28 V14 M7 18 H13 M7 22 H13 M7 26 H13"/><path d="M10 14 L14 9 L12 8 L18 3 M14 9 L20 10 L19 12 L26 13"/>',
+  // A charge ring at the gun, the lance leaving it.
+  lance: '<circle cx="8" cy="24" r="4.5"/><path d="M11.5 20.5 L28 4"/><path d="M23 4 H28 V9"/>',
+  // A slash across the sky, sparks where it cut.
+  cutter: '<path d="M3 25 Q16 21 29 6"/><path d="M10 17 L8 13 M18 13 L17 9 M24 14 L27 12"/>',
+  // A cable from the gun to a hook.
+  grapnel: '<path d="M3 29 L15 17"/><path d="M15 17 V7 M15 17 Q22 17 22 10 M15 17 Q8 17 8 10"/>',
+  // Two shot linked by a chain.
+  chainshot: '<circle cx="6.5" cy="16" r="4"/><circle cx="25.5" cy="16" r="4"/><path d="M10.5 16 C13 11 16 21 18.5 16 C19.5 14 20.5 14.5 21.5 16"/>',
+  // A crosshair over a marked target.
+  firecontrol: '<circle cx="16" cy="16" r="9"/><path d="M16 3 V9 M16 23 V29 M3 16 H9 M23 16 H29"/><path d="M16 12.5 L19.5 16 L16 19.5 L12.5 16 Z"/>',
+  // The beat: a pulse line.
+  cadence: '<path d="M2 17 H9 L12 8 L16 25 L20 11 L23 17 H30"/>',
   // A repair cross in a crate.
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
 }
