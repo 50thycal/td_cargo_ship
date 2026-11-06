@@ -47,6 +47,11 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   firecontrol: { cat: 'active', unlock: 3, status: 'prototype' },
   grapnel: { cat: 'active', unlock: 3, status: 'prototype', gesture: 'drag' },
   cadence: { cat: 'active', unlock: 4, status: 'prototype' },
+  // Phase 2: the passives (proposed unlocks).
+  droneScreen: { cat: 'passive', unlock: 1, status: 'prototype' },
+  gunships: { cat: 'passive', unlock: 2, status: 'prototype' },
+  bomberWing: { cat: 'passive', unlock: 3, status: 'prototype' },
+  orbital: { cat: 'passive', unlock: 4, status: 'prototype' },
 };
 
 /** The weapons the campaign's draft can deal on a map of this chapter. */

@@ -49,7 +49,12 @@ export type AbilityId =
   | 'grapnel'
   | 'chainshot'
   | 'firecontrol'
-  | 'cadence';
+  | 'cadence'
+  // Phase 2: four passives (the gun stays plain while they work).
+  | 'droneScreen'
+  | 'gunships'
+  | 'bomberWing'
+  | 'orbital';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -284,6 +289,54 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Tap on the beat',
   },
+  droneScreen: {
+    id: 'droneScreen',
+    name: 'Drone Screen',
+    evolved: 'Hornet Nest',
+    answers: 'Drones',
+    levels: [
+      'Your own drones lift off the carrier one after another and ram the threats closest to your ships',
+      'A drone every 0.9 s',
+      'A drone every 0.7 s, and each ram bursts, hitting everything around it',
+    ],
+    how: 'Keep shooting: the drones ram on their own',
+  },
+  gunships: {
+    id: 'gunships',
+    name: 'Gunship Pair',
+    evolved: 'Hellfire Wing',
+    answers: 'Packs',
+    levels: [
+      'Two helicopters hover over the convoy and rocket the thickest cluster near it',
+      'They fire half again as often',
+      'A third helicopter joins, and each pod hits for 2',
+    ],
+    how: 'Keep shooting: the helicopters fire on their own',
+  },
+  bomberWing: {
+    id: 'bomberWing',
+    name: 'Bomber Wing',
+    evolved: 'Carpet Raid',
+    answers: 'Launchers',
+    levels: [
+      'Bombers hit the shore: trucks are destroyed; the busiest silo or tunnel goes quiet for 6 s, its launches cancelled',
+      'A pass every 4.5 s',
+      'A pass every 3.5 s, each hitting two targets, a surfaced sub too; silos stay silent for 8 s',
+    ],
+    how: 'Keep shooting: the bombers hit the shore',
+  },
+  orbital: {
+    id: 'orbital',
+    name: 'Orbital Strike',
+    evolved: 'Sky Spear',
+    answers: 'Heavies',
+    levels: [
+      'Laser dots close in on the toughest thing on screen, then a beam from orbit hits it for 3 (and what is around it for 1)',
+      'A strike every 1.8 s',
+      'A strike every 1.2 s, and the beam lingers onto the next toughest',
+    ],
+    how: 'Keep shooting: the satellite picks the biggest',
+  },
 };
 
 /** Every weapon, in roster order (the draft and Free Play read which are
@@ -291,6 +344,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
 export const ABILITY_ORDER: AbilityId[] = [
   'airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla',
   'lance', 'cutter', 'grapnel', 'chainshot', 'firecontrol', 'cadence',
+  'droneScreen', 'gunships', 'bomberWing', 'orbital',
 ];
 
 /** Levels per weapon; the last is the evolution. */
@@ -318,6 +372,10 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   chainshot: ['CHAIN SHOT', 'BOLAS'],
   firecontrol: ['FIRE CTRL', 'BROADSIDE'],
   cadence: ['CADENCE', 'WAR DRUM'],
+  droneScreen: ['DRONES', 'HORNETS'],
+  gunships: ['GUNSHIPS', 'HELLFIRE'],
+  bomberWing: ['BOMBERS', 'CARPET RAID'],
+  orbital: ['ORBITAL', 'SKY SPEAR'],
 };
 
 /** How weapons come and go. */
@@ -410,6 +468,35 @@ export const AB = {
    *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
    *  free broadside at the `broadside` most urgent threats. */
   cadence: { period: 0.6, window: [0.12, 0.18, 0.18], damage: 3, width: 18, run: 4, broadside: 5 },
+  /** Drone Screen (the player's idea): a drone lifts off the carrier deck
+   *  every `gap` s (the player: "always the carrier deck") and flies at
+   *  `speed` to ram the threat closest to hitting a hull that no other drone
+   *  is after, for `damage`; it gives up after `life` s. Hornet Nest: each
+   *  ram bursts `burst` px. Measured at a drone every 0.7 s it was too
+   *  strong; every 1.2 s it sat with the other strong weapons. */
+  // Build 2 sweep: at MAX 0.9 s it trailed today's passives (35% of runs
+  // won against Frigates' 55%): Hornet Nest launches every 0.7 s.
+  droneScreen: { gap: [1.2, 0.9, 0.7], speed: 420, life: 4, damage: 1, burst: [0, 0, 50], contact: 18 },
+  /** Gunship Pair (the player's idea): `count` helicopters hover `ahead` px
+   *  either side of the convoy's middle; each fires a rocket pod every `gap`
+   *  s at the thickest cluster within `reach` (a `blast` px burst, `damage`
+   *  a hit). */
+  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320 },
+  /** Bomber Wing (the player's idea): a pass every `gap` s. It destroys a
+   *  truck on screen; with none, it bombs the silo (or the tunnel a truck is
+   *  due out of) with the most launches in the next `quiet` s, and those
+   *  launches are cancelled (measured: delaying them instead did nothing).
+   *  Carpet Raid: `targets` a pass. The bomber flies at `speed`. */
+  // Build 2 sweep: Carpet Raid passes every 3.5 s (at 4.5 s it won 32%).
+  bomberWing: { gap: [6, 4.5, 3.5], quiet: [6, 6, 8], targets: [1, 1, 2], speed: 950, first: 1.5 },
+  /** Orbital Strike: every `gap` s, laser dots close on the toughest threat
+   *  for `lock` s (the player: "laser dots triangulating on my spot, then the
+   *  big beam hits"), then the beam hits it for `damage`. Sky Spear: the
+   *  beam lingers and strikes the next toughest `linger` s later. */
+  // Build 2 sweep: one target every 1.5–2.5 s trailed today's passives (33%
+  // at MAX): the beam's edge (`splash` px) hits what is around the target for
+  // 1, and Sky Spear strikes every 1.2 s.
+  orbital: { gap: [2.5, 1.8, 1.2], lock: 0.8, damage: 3, splash: 60, linger: 0.5, first: 1 },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;

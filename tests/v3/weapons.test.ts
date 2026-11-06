@@ -362,3 +362,150 @@ describe('the play log records presses, so a gesture run replays exactly', () =>
     expect(r.kills).toEqual(g.kills);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 2: the passives (the gun stays plain; they work on their own).
+
+describe('Drone Screen (drones off the carrier deck)', () => {
+  it('launches a drone off the deck every 1.2 s; each rams a different threat', () => {
+    const g = quietGame();
+    load(g, 'droneScreen');
+    const a = addThreat(g, { x: 600, y: 300 });
+    const b = addThreat(g, { x: 1000, y: 300 });
+    const c = g.map.carrier;
+    run(g, 0.25);
+    expect(g.wings).toHaveLength(1);
+    expect(Math.hypot(g.wings[0].x - c.x, g.wings[0].y - c.y)).toBeLessThan(120);
+    run(g, AB.droneScreen.gap[0]);
+    expect(g.wings.length + (a.dead ? 1 : 0) + (b.dead ? 1 : 0)).toBeGreaterThanOrEqual(2);
+    run(g, 3);
+    expect(a.dead && b.dead).toBe(true);
+    // A tap is still the plain gun.
+    const t = addThreat(g, { kind: 'heavy', hp: 8, x: 800, y: 200 });
+    expect(tap(g, t.x, t.y, 30)).toBe('fire');
+    expect(g.interceptors.length).toBeGreaterThan(0);
+  });
+
+  it('Hornet Nest: a ram bursts and hits what is around it', () => {
+    const g = quietGame();
+    load(g, 'droneScreen', 3);
+    const a = addThreat(g, { x: 800, y: 400 });
+    const near = addThreat(g, { kind: 'guided', hp: 1, x: 830, y: 400 });
+    run(g, 1.5);
+    expect(a.dead && near.dead).toBe(true);
+  });
+});
+
+describe('Gunship Pair (helicopters over the convoy)', () => {
+  it('two helicopters fly in over the convoy and rocket the thickest cluster near it, not far threats', () => {
+    const g = quietGame();
+    run(g, 6); // ships in
+    load(g, 'gunships');
+    // The pickup's load sets them up.
+    g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'gunships', x: 300, y: 820, age: 0 });
+    tap(g, 300, 820, 30);
+    expect(g.helis).toHaveLength(AB.gunships.count[0]);
+    run(g, 3);
+    const mid = { x: g.ships.reduce((s, x) => s + x.x, 0) / g.ships.length, y: g.ships.reduce((s, x) => s + x.y, 0) / g.ships.length };
+    const pack = [0, 1, 2].map((k) => addThreat(g, { x: mid.x + k * 20, y: mid.y - 120 }));
+    const far = addThreat(g, { x: mid.x > 800 ? 100 : 1500, y: 100 });
+    run(g, 2);
+    expect(pack.every((t) => t.dead)).toBe(true);
+    expect(alive(g, far)).toBe(true);
+  });
+
+  it('when the weapon runs out they fly away', () => {
+    const g = quietGame();
+    run(g, 4);
+    g.levels.gunships = 1;
+    g.slots = ['gunships'];
+    g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'gunships', x: 300, y: 820, age: 0 });
+    tap(g, 300, 820, 30);
+    g.weapon!.t = 0.01;
+    run(g, 6);
+    expect(g.helis).toHaveLength(0);
+  });
+});
+
+describe('Bomber Wing (the shore: trucks, silos, tunnels)', () => {
+  it('silences the busiest silo for 6 s: its launches in that time are cancelled, not delayed', () => {
+    const g = quietGame();
+    load(g, 'bomberWing');
+    g.passiveT = AB.bomberWing.first;
+    // Base 0 has four launches due in the next few seconds; base 1 one.
+    g.queue = [
+      ...[2, 2.5, 3, 3.5].map((dt) => ({ at: g.waveT + dt, kind: 'drone' as const, base: 0 })),
+      { at: g.waveT + 3, kind: 'drone' as const, base: 1 },
+      { at: 1e9, kind: 'drone' as const, base: 0 },
+    ];
+    run(g, 1.6);
+    expect(g.quietUntil[0]).toBeGreaterThan(g.t);
+    run(g, 4);
+    // Only base 1's launch happened.
+    expect(g.origins.base).toBe(1);
+    run(g, 6);
+    expect(g.origins.base).toBe(1);
+  });
+
+  it('destroys a truck on screen first', () => {
+    const g = createGame('island', 3, 6);
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    run(g, 0.1);
+    // Wait for a truck to roll out.
+    for (let i = 0; i < 60 * 40 && !g.raiders.some((r) => r.kind !== 'sub' && r.x > 0 && r.x < 1600 && r.y > 0 && r.y < 900 && r.rounds.length + r.units.length > 0); i++) step(g, DT);
+    const truck = g.raiders.find((r) => r.kind !== 'sub' && r.x > 0 && r.x < 1600);
+    expect(truck).toBeDefined();
+    load(g, 'bomberWing');
+    g.passiveT = 0.01;
+    run(g, 2);
+    expect(truck!.state).toBe('reverse');
+    expect(truck!.units.length + truck!.rounds.length).toBe(0);
+  });
+
+  it('Carpet Raid (MAX) also bombs a surfaced sub; level 1 leaves it alone', () => {
+    const surfaced = (level: number) => {
+      const g = createGame('strait', 5, 6);
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = g.raiderQueue.filter((sp) => sp.kind === 'sub');
+      const up = (r: (typeof g.raiders)[number]) => r.kind === 'sub' && r.state !== 'warn' && r.state !== 'dive' && r.state !== 'reverse' && r.x > 0 && r.x < 1600 && r.y > 0 && r.y < 900;
+      for (let i = 0; i < 60 * 60 && !g.raiders.some(up); i++) step(g, DT);
+      const sub = g.raiders.find(up);
+      expect(sub).toBeDefined();
+      g.quietUntil = g.map.bases.map(() => 1e9); // no silo to pick
+      load(g, 'bomberWing', level);
+      g.passiveT = 0.01;
+      run(g, 0.05);
+      return g.sorties.some((s) => s.kind === 'truck' && s.ref === sub!.id);
+    };
+    expect(surfaced(3)).toBe(true);
+    expect(surfaced(1)).toBe(false);
+  });
+});
+
+describe('Orbital Strike (laser dots, then the beam)', () => {
+  it('locks the toughest threat on screen, and the beam hits it for 3 after the lock', () => {
+    const g = quietGame();
+    load(g, 'orbital');
+    const small = addThreat(g, { x: 500, y: 300 });
+    const big = addThreat(g, { kind: 'heavy', hp: 8, x: 1000, y: 300 });
+    g.passiveT = 0.01;
+    run(g, 0.05);
+    expect(g.orbital?.id).toBe(big.id);
+    run(g, AB.orbital.lock * 0.5);
+    expect(big.hp).toBe(8);
+    run(g, AB.orbital.lock * 0.6);
+    expect(big.hp).toBe(8 - AB.orbital.damage);
+    expect(alive(g, small)).toBe(true);
+  });
+
+  it('Sky Spear: the beam lingers onto the next toughest', () => {
+    const g = quietGame();
+    load(g, 'orbital', 3);
+    const a = addThreat(g, { kind: 'heavy', hp: 8, x: 1000, y: 300 });
+    const b = addThreat(g, { kind: 'mothership', hp: 5, x: 500, y: 300 });
+    g.passiveT = 0.01;
+    run(g, AB.orbital.lock + AB.orbital.linger + 0.2);
+    expect(a.hp).toBe(8 - AB.orbital.damage);
+    expect(b.hp).toBe(5 - AB.orbital.damage);
+  });
+});

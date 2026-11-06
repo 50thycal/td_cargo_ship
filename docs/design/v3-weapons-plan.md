@@ -1,8 +1,12 @@
 # V3 weapons plan (after the round 2 review)
 
-**Build 1 (phases 0–1) is in:** [v3-weapons-build-1.md](v3-weapons-build-1.md). It covers how to try it, the measured strength, and the tuning made during the build.
+**Built so far:**
+- **Build 1 (phases 0–1):** [v3-weapons-build-1.md](v3-weapons-build-1.md): systems and the six actives.
+- **Build 2 (phase 2):** [v3-weapons-build-2.md](v3-weapons-build-2.md): the four passives.
 
-**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phase 0 and Phase 1 are being built first.
+Each covers how to try it, the measured strength, and the tuning made during the build.
+
+**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–2 are built; phase 3 (boosts) is next.
 
 **Sources:**
 - [v3-weapon-ideas-2.md](v3-weapon-ideas-2.md): the ideas, the prototypes and the data.

@@ -166,6 +166,11 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   chainshot: ['gun.fire'],
   firecontrol: ['mark.set', 'salvo.fire'],
   cadence: ['cadence.beat'],
+  // Phase 2 passives: they work on their own once loaded.
+  droneScreen: ['screen.launch'],
+  gunships: ['heli.arrive'],
+  bomberWing: [],
+  orbital: ['orbital.lock'],
 };
 
 describe('every weapon sounds, through real taps', () => {

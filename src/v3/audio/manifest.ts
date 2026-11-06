@@ -113,6 +113,13 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'cadence.beat': borrow('gun.reload', 3, 0.5, { pitch: [0.6, 0.6], cooldownMs: 200, maxVoices: 1 }),
   'cadence.hit': borrow('rail.beam', 3, 0.7, { pitch: [1.05, 1.1], cooldownMs: 50, maxVoices: 2 }),
   'nuke.blast': borrow('well.implode', 2, 1, { pitch: [0.7, 0.75], cooldownMs: 500, maxVoices: 1 }),
+  'screen.launch': borrow('seeker.launch', 2, 0.28, { pitch: [1.3, 1.45], cooldownMs: 150, maxVoices: 1 }),
+  'heli.arrive': borrow('frigate.arrive', 1, 0.45, { pitch: [1.4, 1.5], moving: true }),
+  'heli.rockets': borrow('scatter.blast', 3, 0.5, { pitch: [0.85, 0.95], cooldownMs: 120, maxVoices: 2 }),
+  'sortie.pass': borrow('jet.flyby', 2, 0.55, { pitch: [0.7, 0.75], maxVoices: 2 }),
+  'sortie.bomb': borrow('napalm.burst', 3, 0.7, { pitch: [0.75, 0.85], cooldownMs: 120, maxVoices: 2 }),
+  'orbital.lock': borrow('aegis.reload', 1, 0.4, { pitch: [1.6, 1.7], cooldownMs: 300, maxVoices: 1 }),
+  'orbital.beam': borrow('rail.beam', 3, 0.85, { pitch: [0.6, 0.66], cooldownMs: 80, maxVoices: 2 }),
 
   'weapon.drop': sfx('weapon.drop', 1, 0.5, { cooldownMs: 200 }),
   'weapon.load': sfx('weapon.load', 2, 0.7, { cooldownMs: 150, maxVoices: 1 }),

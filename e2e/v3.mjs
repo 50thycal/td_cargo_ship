@@ -479,7 +479,7 @@ try {
     await wp.click('[data-free-play]');
     await wp.waitForSelector('[data-screen="freeplay"]');
     const protos = await wp.evaluate(() => [...document.querySelectorAll('[data-fp="weapon0"] option')].filter((o) => /prototype/.test(o.textContent)).length);
-    check(protos === 6, `Free Play offers the six prototypes, marked so (${protos})`);
+    check(protos === 10, `Free Play offers the ten prototypes (six actives, four passives), marked so (${protos})`);
     await wp.click('[data-free-start]');
     await wp.waitForSelector('.playing');
     // Hand-placed targets on a quiet wave: the same picture every time.
@@ -579,6 +579,43 @@ try {
     await wp.mouse.click(p.x, p.y);
     after = await st();
     check(after.alive.length === 1 && after.alive[0] === 7, `the Nuke clears the sky; the rig takes 3 hits (${JSON.stringify(after.alive)})`);
+
+    // ---- Phase 2: the passives. Each loads from its pickup by a real tap,
+    // then acts on its own while the gun stays plain.
+    const pickup = async (id, level = 1) => {
+      await wp.evaluate(([id, level]) => { const g = window.__v3.game(); g.weapon = null; g.levels[id] = level; if (!g.slots.includes(id)) g.slots.push(id); }, [id, level]);
+      await dropWeapon(wp, id, 640, 560);
+      const q = await c(640, 560);
+      await wp.mouse.click(q.x, q.y);
+    };
+    await place([['drone', 1, 600, 250], ['drone', 1, 1000, 250]]);
+    await pickup('droneScreen');
+    await wp.waitForTimeout(1600);
+    after = await st();
+    const screen = await wp.evaluate(() => window.__v3.game().weapon?.id);
+    check(screen === 'droneScreen' && after.alive.length < 2, `Drone Screen: drones launch from the deck and ram what's coming (${after.alive.length} of 2 left)`);
+
+    await place([['drone', 1, 760, 330], ['drone', 1, 800, 300], ['drone', 1, 840, 330]]);
+    await pickup('gunships');
+    await wp.waitForTimeout(2600);
+    after = await st();
+    const helis = await wp.evaluate(() => window.__v3.game().helis.length);
+    check(helis === 2 && after.alive.length === 0, `Gunship Pair: two helicopters arrive and rocket the pack (${helis} helis, ${after.alive.length} left)`);
+
+    await place([]);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 1.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
+    await pickup('bomberWing');
+    await wp.waitForTimeout(2200);
+    const silent = await wp.evaluate(() => { const g = window.__v3.game(); return { quiet: (g.quietUntil[0] ?? 0) > g.t, launched: g.threats.length }; });
+    check(silent.quiet && silent.launched === 0, `Bomber Wing: a pass silences the busy silo, its launches cancelled (${JSON.stringify(silent)})`);
+
+    await place([['drone', 1, 500, 250], ['heavy', 8, 900, 250]]);
+    await pickup('orbital');
+    await wp.waitForTimeout(1300);
+    const lock = await wp.evaluate(() => { const g = window.__v3.game(); const th = g.threats.find((t) => t.kind === 'heavy'); return { locked: g.orbital?.id === th?.id }; });
+    await wp.waitForTimeout(1000);
+    after = await st();
+    check(lock.locked && after.alive.some((hp) => hp <= 5), `Orbital Strike: the laser dots lock the heavy, then the beam hits it for 3 (${JSON.stringify(after.alive)})`);
 
     const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
     check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r'), `the play log records presses, moves and lifts (${replayed.kinds.join('')})`);
