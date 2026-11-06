@@ -270,6 +270,89 @@ const SCENES: Record<CardId, Scene> = {
     `<g transform="translate(74 30) rotate(140)"><rect x="-12" y="-4.5" width="24" height="9" rx="4.5" fill="${RED}"/></g>` + burst(74, 30, 9, FLAME) +
     [[30, 52], [112, 44], [60, 6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="${c}"/><path d="M${x} ${y} L74 30" stroke="${c}" stroke-width="1" stroke-dasharray="2 2" opacity="0.8"/>`).join(''),
 
+  // ---- Phase 3: boosts. Each card shows the change, not a weapon.
+
+  // Full-auto: a hose of interceptors into a swarm, the rack overfull.
+  fireAtWill: (c) =>
+    sea(66) + carrier(60, 62, 0.9) +
+    [0, 1, 2, 3, 4, 5].map((k) => interceptor(66 + k * 7, 52 - k * 7, -45, 0.55, k % 2 ? c : INK)).join('') +
+    drone(110, 8, 0.8) + burst(104, 12, 7, FLAME) + drone(96, 20, 0.7) +
+    [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<rect x="${8 + k * 5}" y="44" width="3.5" height="9" rx="1.2" fill="${k > 5 ? c : INK}"/>`).join(''),
+
+  // Drops flying in to the carrier; Airdrop's crate on a parachute.
+  supplyRun: (c) =>
+    sea(66) + carrier(62, 62, 0.9) +
+    [[20, 22], [100, 30], [36, 44]].map(([x, y]) =>
+      `<path d="M${x} ${y} Q${(x + 62) / 2} ${y - 12} 62 52" fill="none" stroke="${c}" stroke-width="1.1" stroke-dasharray="2 2" opacity="0.8"/>` +
+      `<circle cx="${x}" cy="${y}" r="5" fill="#10202b" stroke="${c}" stroke-width="1.6"/><path d="M${x} ${y - 2.5} V${y + 2.5} M${x - 2.5} ${y} H${x + 2.5}" stroke="${INK}" stroke-width="1.2"/>`).join('') +
+    `<path d="M70 6 Q80 -2 90 6 L84 16 M70 6 L76 16" fill="${c}" opacity="0.85" stroke="${INK}" stroke-width="0.6"/>` +
+    `<rect x="75" y="15" width="10" height="8" rx="1" fill="#6b5a3a" stroke="${INK}" stroke-width="0.8"/>`,
+
+  // The weapon a level up: a gauge pegged in the red, its clock stopped.
+  overclock: (c) =>
+    sea(68) + carrier(60, 64, 0.8) +
+    `<path d="M30 48 A30 30 0 1 1 90 48" fill="none" stroke="${SEA_LINE}" stroke-width="6"/>` +
+    `<path d="M74 22 A30 30 0 0 1 90 48" fill="none" stroke="${RED}" stroke-width="6"/>` +
+    `<path d="M30 48 A30 30 0 0 1 74 22" fill="none" stroke="${c}" stroke-width="6"/>` +
+    `<path d="M60 48 L84 30" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><circle cx="60" cy="48" r="4" fill="${INK}"/>` +
+    `<text x="60" y="38" font-size="9" font-weight="800" fill="${c}" text-anchor="middle" font-family="system-ui">+1</text>`,
+
+  // Two weapons from one gun: a rail beam and a flak cloud.
+  dualWield: (c) =>
+    sea(66) + carrier(60, 62, 0.9) +
+    `<path d="M64 52 L30 8" stroke="#f472b6" stroke-width="5" opacity="0.35"/><path d="M64 52 L30 8" stroke="#ffe4f1" stroke-width="1.6"/>` +
+    `<circle cx="92" cy="18" r="14" fill="#fb923c" opacity="0.35"/><circle cx="86" cy="14" r="8" fill="#fb923c" opacity="0.4"/>` +
+    interceptor(80, 34, -55, 0.7) + drone(94, 18, 0.8) + drone(36, 16, 0.8) + burst(34, 14, 7, FLAME) +
+    `<text x="60" y="30" font-size="12" font-weight="900" fill="${c}" text-anchor="middle" font-family="system-ui">×2</text>`,
+
+  // Hit, hit, hit: bursts growing along the streak, the gun on fire.
+  hotStreak: (c) =>
+    sea(66) + carrier(60, 62, 0.9) +
+    [[18, 40, 4], [40, 30, 6], [64, 22, 8], [92, 14, 11]].map(([x, y, r], k) => burst(x, y, r, k === 3 ? c : FLAME)).join('') +
+    `<text x="92" y="38" font-size="10" font-weight="900" fill="${c}" text-anchor="middle" font-family="system-ui">×3</text>` +
+    `<path d="M62 58 C56 52 58 46 62 42 C62 46 64 46 65 46 C64 42 66 39 68 37 C68 42 72 44 71 50 C70 54 67 58 62 58 Z" fill="${c}" opacity="0.9"/>`,
+
+  // A fanned hand: every tap a different weapon.
+  wildCard: (c) =>
+    sea(68) + carrier(60, 64, 0.8) +
+    [[-18, 38], [0, 60], [18, 82]].map(([a, x], k) =>
+      `<g transform="translate(${x} 34) rotate(${a})"><rect x="-12" y="-18" width="24" height="34" rx="3" fill="#1b2840" stroke="${k === 1 ? c : INK}" stroke-width="1.6"/>` +
+      (k === 1 ? `<text x="0" y="6" font-size="16" font-weight="900" fill="${c}" text-anchor="middle" font-family="system-ui">?</text>` : `<circle cx="0" cy="-1" r="5" fill="none" stroke="${INK}" stroke-width="1.2" opacity="0.7"/>`) + `</g>`).join(''),
+
+  // Time slows under the finger: a missile in ghosted slow motion, a reticle.
+  focus: (c) =>
+    sea(66) + ship(40, 62, 0.75) + ship(84, 62, 0.75) +
+    [0, 1, 2].map((k) => `<g opacity="${0.18 + k * 0.18}">${threat(40 + k * 10, 14 + k * 7, 35, 0.8)}</g>`).join('') + threat(70, 35, 35, 0.8) +
+    `<circle cx="70" cy="35" r="12" fill="none" stroke="${c}" stroke-width="2"/><path d="M70 19 V25 M70 45 V51 M54 35 H60 M80 35 H86" stroke="${c}" stroke-width="2"/>` +
+    `<circle cx="20" cy="24" r="7" fill="${INK}" opacity="0.85"/><circle cx="20" cy="24" r="3" fill="${c}"/>`,
+
+  // Free rounds: a lightning bolt over a rack that never empties.
+  overdrive: (c) =>
+    sea(66) + carrier(60, 62, 0.9) +
+    `<path d="M66 4 L48 30 H60 L54 50 L76 22 H64 Z" fill="${c}" stroke="#7a5d00" stroke-width="1"/>` +
+    [0, 1, 2, 3, 4, 5].map((k) => `<rect x="${86 + (k % 3) * 8}" y="${22 + Math.floor(k / 3) * 13}" width="5" height="10" rx="1.5" fill="${c}"/>`).join('') +
+    interceptor(30, 30, -60, 0.7) + interceptor(22, 40, -60, 0.7),
+
+  // Grey, slowed threats with long ghost trails; an hourglass.
+  timeWarp: (c) =>
+    `<rect width="120" height="76" fill="#3a3f4a" opacity="0.5"/>` + sea(66) + ship(60, 62, 0.75) +
+    [[20, 12], [92, 18]].map(([x, y]) => [0, 1, 2, 3].map((k) => `<g opacity="${0.15 + k * 0.2}">${threat(x + (x < 60 ? k * 6 : -k * 6), y + k * 6, x < 60 ? 45 : 135, 0.8)}</g>`).join('')).join('') +
+    `<g transform="translate(60 26)"><path d="M-9 -14 H9 M-9 14 H9 M-7 -14 C-7 -4 7 -4 7 0 C7 4 -7 4 -7 14 M7 -14 C7 -4 -7 -4 -7 0 C-7 4 7 4 7 14" fill="none" stroke="${c}" stroke-width="2"/><path d="M-4 10 L4 10 L0 4 Z" fill="${c}"/></g>`,
+
+  // A dome over the convoy; a missile shattering on it.
+  shield: (c) =>
+    sea(66) + ship(36, 62, 0.75) + ship(82, 62, 0.75) +
+    `<path d="M14 62 A46 40 0 0 1 106 62" fill="${c}" opacity="0.16" stroke="${c}" stroke-width="2"/>` +
+    threat(76, 18, 60, 0.8) + burst(84, 26, 7, c) +
+    `<path d="M84 26 L90 20 M84 26 L92 28 M84 26 L80 34 M84 26 L78 22" stroke="${INK}" stroke-width="1.2"/>`,
+
+  // The convoy at full steam, wakes streaming; a drone rammed at the bow.
+  fullSteam: (c) =>
+    sea(60) + ship(44, 56, 0.9) + ship(84, 58, 0.9) +
+    [[24, 56], [64, 58]].map(([x, y]) => `<path d="M${x - 18} ${y + 2} H${x}" stroke="${INK}" stroke-width="1.4" opacity="0.6"/><path d="M${x - 24} ${y + 5} H${x - 4}" stroke="${INK}" stroke-width="1" opacity="0.4"/>`).join('') +
+    `<path d="M14 30 H40 M20 38 H48 M10 22 H32" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity="0.7"/>` +
+    burst(99, 50, 7, FLAME) + drone(104, 44, 0.7),
+
   resupply: (c) =>
     sea(64) + ship(24, 60, 0.75) + ship(98, 60, 0.75) +
     `<text x="20" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text><text x="94" y="44" font-size="11" font-weight="800" fill="${c}" font-family="system-ui">+</text>` +

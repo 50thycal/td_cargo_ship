@@ -2,6 +2,7 @@
 // cue has a file with a recorded free licence, each cue lands on the step its
 // visual happens, and the mix rules hold. Sound must never change the sim.
 
+import { isBoost } from '../../src/v3/data/roster';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -86,7 +87,7 @@ describe('sound coverage', () => {
     const EVENT_CUES: Record<GameEvent['kind'], CueId[]> = {
       wave: ['wave.start'], debut: ['debut.sting'], vector: ['debut.sting'], shipLost: ['ship.sunk'], carrierHit: ['carrier.hit'],
       bigKill: ['kill.big', 'sub.destroyed', 'truck.destroyed'], pickup: Object.values(PICKUP_CUE), newPickup: ['powerup.drop', 'weapon.drop'],
-      weapon: ['weapon.load'], dry: ['gun.dry'],
+      weapon: ['weapon.load', 'boost.on'], dry: ['gun.dry'],
       tanker: ['tanker.horn'], post: ['post.down', 'post.lost', 'post.up', 'ship.hit'], boss: ['boss.horn'], fork: ['fork.switch'],
     };
     for (const k of kinds) for (const c of EVENT_CUES[k]) expect(CUE_IDS).toContain(c);
@@ -171,6 +172,18 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   gunships: ['heli.arrive'],
   bomberWing: [],
   orbital: ['orbital.lock'],
+  // Phase 3 boosts (at MAX): they change the plain gun's shots.
+  fireAtWill: ['gun.fire', 'flak.burst'],
+  supplyRun: ['gun.fire'],
+  overclock: ['gun.fire'],
+  dualWield: ['gun.fire'],
+  hotStreak: ['gun.fire'],
+  wildCard: ['wild.roll'],
+  focus: ['gun.fire'],
+  overdrive: ['gun.fire'],
+  timeWarp: ['gun.fire'],
+  shield: ['gun.fire'],
+  fullSteam: ['gun.fire'],
 };
 
 describe('every weapon sounds, through real taps', () => {
@@ -196,7 +209,8 @@ describe('every weapon sounds, through real taps', () => {
       }
       runHeard(g, 4, heard);
       const ids = new Set(heard.map((h) => h.id));
-      expect(ids.has('weapon.load'), 'weapon.load').toBe(true);
+      const load = isBoost(id) ? 'boost.on' : 'weapon.load';
+      expect(ids.has(load), load).toBe(true);
       for (const c of WEAPON_SIGNATURE[id]) expect(ids.has(c), `${id} → ${c}`).toBe(true);
     });
   }

@@ -9,6 +9,7 @@ import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
+import { gestureOf } from '../data/roster';
 import {
   beatClock,
   canFire,
@@ -81,6 +82,13 @@ export class Bot {
     }
     const gap = this.skill.tapGap;
     const missRate = this.skill.missRate ?? 0;
+    // Focus (a boost): hold a finger down while a rush is about to land,
+    // lift it when it has passed (a press with a plain weapon only slows time).
+    if (g.phase === 'wave' && !gestureOf(g.weapon?.id) && !g.press) {
+      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 2.5).length >= 3;
+      if (rush && !g.finger) press(g, g.map.carrier.x, g.map.carrier.y, 1);
+      else if (!rush && g.finger) release(g, g.map.carrier.x, g.map.carrier.y, 1);
+    }
     if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
     const seen = (th: Threat) => g.t - (this.seenAt.get(th.id) ?? g.t) >= this.skill.reaction;

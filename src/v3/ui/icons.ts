@@ -29,6 +29,18 @@ export const ICON_COLOR: Record<CardId, string> = {
   gunships: '#a3a380',
   bomberWing: '#9ca3af',
   orbital: '#ff6b6b',
+  // Phase 3 boosts.
+  fireAtWill: '#fbbf24',
+  supplyRun: '#86efac',
+  overclock: '#22d3ee',
+  dualWield: '#e879f9',
+  hotStreak: '#f97316',
+  wildCard: '#c4b5fd',
+  focus: '#93c5fd',
+  overdrive: '#fde047',
+  timeWarp: '#a78bfa',
+  shield: '#67e8f9',
+  fullSteam: '#e2e8f0',
   resupply: '#8be38b',
 }
 
@@ -78,6 +90,17 @@ const PATHS: Record<CardId, string> = {
   // Three laser dots closing on a target.
   orbital: '<circle cx="16" cy="18" r="3"/><circle cx="5" cy="27" r="1.6"/><circle cx="27" cy="27" r="1.6"/><circle cx="16" cy="4" r="1.6"/><path d="M6.5 25.5 L14 19.5 M25.5 25.5 L18 19.5 M16 5.5 V15" stroke-dasharray="2 2"/>',
   // A repair cross in a crate.
+  fireAtWill: '<path d="M3 20 H18 L21 16 H24 V24 H21 L18 20"/><path d="M24 20 H29 M26 15 L29 13 M26 25 L29 27"/><path d="M8 20 V25 M12 20 V25"/>',
+  supplyRun: '<rect x="10" y="17" width="12" height="10" rx="1"/><path d="M10 17 L6 8 Q16 1 26 8 L22 17 M16 17 V3"/>',
+  overclock: '<path d="M5 24 A12 12 0 1 1 27 24"/><path d="M16 20 L24 9"/><circle cx="16" cy="20" r="2.2"/><path d="M9 11 L10.5 12.5 M16 7 V9"/>',
+  dualWield: '<path d="M4 27 L22 9 M28 27 L10 9"/><path d="M20 5 L26 11 M12 5 L6 11"/>',
+  hotStreak: '<path d="M16 29 C8 27 7 19 12 13 C12 17 14 18 15 18 C14 12 17 7 21 4 C20 10 26 13 25 21 C24 26 20 29 16 29 Z"/>',
+  wildCard: '<rect x="6" y="5" width="15" height="21" rx="2" transform="rotate(-10 13 15)"/><rect x="12" y="7" width="15" height="21" rx="2" transform="rotate(10 19 17)"/><path d="M19 13 L20.5 17 L24 17.5 L21 19.5 L22 23 L19 21 L16 23 L17 19.5 L14 17.5 L17.5 17 Z"/>',
+  focus: '<circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="4"/><path d="M16 2 V7 M16 25 V30 M2 16 H7 M25 16 H30"/>',
+  overdrive: '<path d="M18 3 L7 18 H15 L13 29 L25 13 H17 Z"/>',
+  timeWarp: '<path d="M8 4 H24 M8 28 H24 M10 4 C10 12 22 12 22 16 C22 20 10 20 10 28 M22 4 C22 12 10 12 10 16 C10 20 22 20 22 28"/>',
+  shield: '<path d="M16 3 L27 7 V15 C27 22 22 27 16 29 C10 27 5 22 5 15 V7 Z"/><path d="M11 16 L15 20 L21 12"/>',
+  fullSteam: '<path d="M3 22 H26 L29 18 H23 V14 H11 V18 H3 Z"/><path d="M13 14 V9 M18 14 V7 M13 9 q-3 -3 0 -6 M18 7 q3 -3 0 -5"/>',
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
 }
 
