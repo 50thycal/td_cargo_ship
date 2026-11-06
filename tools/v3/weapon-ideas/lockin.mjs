@@ -87,7 +87,7 @@ export const CHECKS = [
 export const LOCK_QUESTIONS = [
   {
     id: 'lk-drops',
-    q: 'When the boosts go live, the campaign’s default drops become ammo, repair and the Nuke (Overdrive, Time Warp, Shield and Full Steam drop only as boosts you drafted). Measured, holding nothing then wins {{none}} of runs instead of {{campaign}}. Go ahead?',
+    q: 'When the boosts go live, the campaign’s default drops become ammo, repair and the Nuke (Overdrive, Time Warp, Shield and Full Steam drop only as boosts you drafted). Measured, holding nothing then wins {{none}} of runs instead of {{campaign}}, and in your playtest you tapped an empty rack {{dry}} times in 10 runs. Go ahead?',
     options: ['Yes, and check running dry in the pacing pass (recommended)', 'Yes, and raise the ammo drop now to make up for Overdrive', 'Keep Overdrive as a default drop as well'],
   },
   {
@@ -115,4 +115,73 @@ export const LOCK_QUESTIONS = [
     q: 'Once you have marked everything, what next?',
     options: ['Lock in the keeps, rework the changes, then the pacing pass (recommended)', 'Another playtest build of the changes first', 'Something else (note)'],
   },
+];
+
+// ---- Round 4, part 2: the player's Free Play playtest (2026-11-06) ----
+// Ten runs and six notes, kept in playtest-2026-11-06.json. What follows is
+// built from them: a read of each weapon, the questions the notes raise, and
+// the changes they ask for.
+
+export const PLAYTEST_DATE = '2026-11-06';
+
+/** My read of each prototype after the playtest: a suggested verdict and the
+ *  one reason. The player's own mark always wins; this is a starting point. */
+export const READ = {
+  lance: { v: 'change', why: 'Passed over for Orbital Strike when offered and the bot has it near the bottom (30% at MAX). Worth one focused run before cutting.' },
+  cutter: { v: 'keep', why: 'Used in both runs it was in; the strongest weapon by the bot.' },
+  grapnel: { v: 'keep', why: 'You: “the grapple one was probably the most fun so let’s explore that.” Picked three times, to MAX.' },
+  chainshot: { v: 'cut', why: 'You called this run’s weapons mostly bad (see the question on your note); the bot has it second weakest (22% at MAX).' },
+  firecontrol: { v: 'cut', why: 'Same note; the weakest active at MAX by the bot (19%).' },
+  cadence: { v: 'change', why: 'You: slower, “tap tap tap in the same intervals”: it burned the rack too fast.' },
+  droneScreen: { v: 'keep', why: 'Picked twice to MAX over Storm Front; that run was won.' },
+  gunships: { v: 'change', why: 'Strong (54% at MAX) and picked; your notes ask for Hellfire-style missiles and natural helicopter movement.' },
+  bomberWing: { v: 'cut', why: 'Passed over for Gunship Pair, used once, stayed at level 1; the bot has it low (26% at MAX).' },
+  orbital: { v: 'keep', why: 'First pick in both runs it was in, taken to MAX.' },
+  fireAtWill: { v: null, why: 'Not played yet. The bot has it among the strongest boosts (47% at MAX).' },
+  supplyRun: { v: 'change', why: 'You: a big cargo plane should fly in and drop the crates in a row.' },
+  overclock: { v: null, why: 'Not played yet. Beside Flak it beat a Railgun in the same slot.' },
+  dualWield: { v: 'change', why: 'You: “Dual weld is great”, but the weapons should last as long as the boost.' },
+  hotStreak: { v: 'cut', why: 'Picked once in a lost run; the weakest boost but Focus by the bot (10% at MAX).' },
+  wildCard: { v: 'keep', why: 'Picked and used six times in a won run.' },
+  focus: { v: 'change', why: 'You: one finger down holds the slowdown while the other taps.' },
+  overdrive: { v: 'keep', why: 'Taken to MAX in a won run; the strongest boost by the bot.' },
+  timeWarp: { v: 'keep', why: 'Your first pick in its run, which was won.' },
+  shield: { v: 'change', why: 'Never picked when offered and flat by the bot (21% → 22%): MAX needs more.' },
+  fullSteam: { v: 'keep', why: 'Picked and used in a won run, though the bot rates it low (12% at MAX).' },
+  tidal: { v: 'keep', why: 'Your first pick in its run, used five times, and that run was won.' },
+  storm: { v: 'cut', why: 'Passed over every time it was offered and stayed at level 1; the bot rates it low.' },
+  ammoShip: { v: 'keep', why: 'Picked and used in a won run; strong by the bot (42% at MAX).' },
+};
+
+/** Questions the notes raise (new ids: `pt-…`). */
+export const NOTE_QUESTIONS = [
+  {
+    id: 'pt-fc-cs',
+    q: 'After the Fire Control, Chain Shot and Grapnel run you wrote: “most of the weapons on this one were bad. The grapple one was probably the most fun so let’s explore that but the other two are definitely in”. Did you mean the other two are out?',
+    options: ['Out: cut Fire Control and Chain Shot (keep Grapnel)', 'In: keep all three', 'Keep one of them (say which)'],
+  },
+  {
+    id: 'pt-dual',
+    q: 'Dual Wield (“great”): you want the weapons to last as long as the boost. Which?',
+    options: ['Both weapons’ clocks stop while Dual Wield runs; they run out after it ends (recommended)', 'Both weapons end exactly when the boost ends', 'Something else (note)'],
+  },
+  {
+    id: 'pt-cadence',
+    q: 'Cadence Gun: “a little slower … tap tap tap in the same intervals” (it burned the rack too fast). The beat is every 0.6 s, a round a beat shot. Which?',
+    options: ['A beat every 0.9 s (recommended)', 'A beat every 1.2 s', 'Keep 0.6 s, but beat shots cost no round'],
+  },
+  {
+    id: 'pt-focus',
+    q: 'Focus: “one finger down and then tap with the other one”. Today the finger that starts the slowdown also fires, and keeps firing while held. Which?',
+    options: ['The holding finger only slows time (no shots); the other finger taps (recommended)', 'The holding finger also fires one shot where it lands, then only slows'],
+  },
+];
+
+/** What the notes ask to be built, each for a Looks right / Change check
+ *  (collection `checks`, ids `n-…`). */
+export const NOTE_CHECKS = [
+  { id: 'n-heli-missiles', weapon: 'gunships', said: 'make their projectiles look like hellfire missiles … a missile with like a you know a streak', now: 'Each rocket pod becomes a visible missile with a smoke streak flying from the helicopter to the burst, in place of the instant tracer line.' },
+  { id: 'n-heli-move', weapon: 'gunships', said: 'should rotate and then lean into it like a helicopter', now: 'Helicopters turn toward where they are going before moving, tilt into the move, and ease in and out of their hover, with no snapping.' },
+  { id: 'n-supply-plane', weapon: 'supplyRun', said: 'a big cargo plane to come in and drop it in a row', now: 'A cargo plane crosses the screen and drops the crates in a row along its path, each under a parachute; they then fly to the carrier as now.' },
+  { id: 'n-dry', weapon: null, said: '(the logs) taps on an empty rack in every run', now: 'The pacing pass looks at running dry first: the Free Play runs had {{dry}} taps on an empty rack, most with Overdrive gone from the default drops.' },
 ];

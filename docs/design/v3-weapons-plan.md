@@ -279,6 +279,21 @@ Every phase is built. Before any prototype enters the campaign, the player marks
 
 **The page is generated** by `npx tsx tools/v3/weapon-ideas/page3.mjs <out.html>` from `lockin.mjs`, the game’s own weapon text and proposed chapters, and `lockin-results.json`.
 
+### The player's playtest (2026-11-06)
+
+The player played every prototype except Fire at Will and Overclock in Free Play: 10 runs on Kesh from wave 7.
+- **Results:** 6 won, 3 lost, 1 quit.
+- **Notes:** 6, quoted on the page and kept in `tools/v3/weapon-ideas/playtest-2026-11-06.json` with each run's setup, draft picks, levels and taps on an empty rack.
+
+The page (version 4) shows, on every card:
+- how the weapon went in those runs;
+- the notes about it;
+- a suggested verdict (`READ` in `lockin.mjs`).
+
+It also adds:
+- 4 questions the notes raise (`answers/{pt-…}`): Fire Control and Chain Shot, Dual Wield, Cadence Gun, Focus;
+- 4 checks of what the notes ask to be built (`checks/{n-…}`): the helicopters' missiles and movement, Supply Run's cargo plane, running dry.
+
 ### The balance sweep behind it
 
 All rows were measured again under one set of rules: the "average" bot on every map from wave 1, 100 runs a row, at a fixed level, Resupply at every draft, the plan’s drops. Builds 1 and 2 had measured with the four old power-ups still dropping, so their numbers here are lower than in their build docs.
