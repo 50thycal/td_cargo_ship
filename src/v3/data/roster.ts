@@ -52,7 +52,29 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   gunships: { cat: 'passive', unlock: 2, status: 'prototype' },
   bomberWing: { cat: 'passive', unlock: 3, status: 'prototype' },
   orbital: { cat: 'passive', unlock: 4, status: 'prototype' },
+  // Phase 3: the boosts (proposed unlocks). The last four were power-ups;
+  // while they are prototypes the campaign keeps their power-up drops.
+  fireAtWill: { cat: 'boost', unlock: 1, status: 'prototype' },
+  supplyRun: { cat: 'boost', unlock: 1, status: 'prototype' },
+  overclock: { cat: 'boost', unlock: 2, status: 'prototype' },
+  hotStreak: { cat: 'boost', unlock: 2, status: 'prototype' },
+  dualWield: { cat: 'boost', unlock: 3, status: 'prototype' },
+  focus: { cat: 'boost', unlock: 3, status: 'prototype' },
+  wildCard: { cat: 'boost', unlock: 4, status: 'prototype' },
+  overdrive: { cat: 'boost', unlock: 1, status: 'prototype' },
+  timeWarp: { cat: 'boost', unlock: 1, status: 'prototype' },
+  shield: { cat: 'boost', unlock: 2, status: 'prototype' },
+  fullSteam: { cat: 'boost', unlock: 2, status: 'prototype' },
+  // Phase 4: the experiments (the player's maybes: kept only if they play well).
+  tidal: { cat: 'active', unlock: 3, status: 'prototype' },
+  storm: { cat: 'passive', unlock: 4, status: 'prototype' },
+  ammoShip: { cat: 'passive', unlock: 2, status: 'prototype' },
 };
+
+/** Is this a boost (never replaces the loaded weapon)? */
+export function isBoost(id: AbilityId | undefined | null): boolean {
+  return !!id && ROSTER[id].cat === 'boost';
+}
 
 /** The weapons the campaign's draft can deal on a map of this chapter. */
 export function draftPool(chapter: number): AbilityId[] {

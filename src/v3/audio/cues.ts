@@ -67,6 +67,21 @@ export const CUE_IDS = [
   'sortie.bomb',
   'orbital.lock',
   'orbital.beam',
+  // Phase 3 boosts (placeholders, borrowed files).
+  'boost.on',
+  'boost.off',
+  'supply.crate',
+  'streak.up',
+  'streak.lost',
+  'wild.roll',
+  'shield.reflect',
+  'shield.shatter',
+  'steam.ram',
+  // Phase 4 experiments (placeholders, borrowed files).
+  'tidal.wave',
+  'storm.roll',
+  'storm.bolt',
+  'ammo.arrive',
   // Weapon state
   'weapon.drop',
   'weapon.load',

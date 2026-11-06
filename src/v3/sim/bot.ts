@@ -9,6 +9,7 @@ import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
+import { gestureOf } from '../data/roster';
 import {
   beatClock,
   canFire,
@@ -81,7 +82,16 @@ export class Bot {
     }
     const gap = this.skill.tapGap;
     const missRate = this.skill.missRate ?? 0;
-    if (g.phase !== 'wave' || g.t - this.lastTap < gap) return;
+    // Focus (a boost): hold a finger down while a rush is about to land,
+    // lift it when it has passed (a press with a plain weapon only slows time).
+    if (g.phase === 'wave' && !gestureOf(g.weapon?.id) && !g.press) {
+      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 2.5).length >= 3;
+      if (rush && !g.finger) press(g, g.map.carrier.x, g.map.carrier.y, 1);
+      else if (!rush && g.finger) release(g, g.map.carrier.x, g.map.carrier.y, 1);
+    }
+    // Taps are paced on real time: under Focus a person gets more taps into
+    // the slowed seconds, and so does the bot.
+    if (g.phase !== 'wave' || g.realT - this.lastTap < gap) return;
     for (const th of g.threats) if (!this.seenAt.has(th.id)) this.seenAt.set(th.id, g.t);
     const seen = (th: Threat) => g.t - (this.seenAt.get(th.id) ?? g.t) >= this.skill.reaction;
 
@@ -89,7 +99,7 @@ export class Bot {
     const pickup = g.pickups.find((p) => !(this.skill.noAbilities && p.kind === 'weapon'));
     if (pickup && pickup.age > this.skill.reaction) {
       tap(g, pickup.x, pickup.y, 4);
-      this.lastTap = g.t;
+      this.lastTap = g.realT;
       return;
     }
     // The Delta: throw the switch toward a quieter branch now and then.
@@ -99,7 +109,7 @@ export class Bot {
       const want = quieterBranch(g);
       if (want !== null) {
         while (g.forkLane % fork.lanes.length !== want) tap(g, fork.x, fork.y, 6);
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
     }
@@ -117,7 +127,7 @@ export class Bot {
       if (g.t >= this.held.until) {
         release(g, p.x, p.y, 6);
         this.held = null;
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
       // Two thumbs: while one charges the Lance, the other keeps tapping.
@@ -149,11 +159,11 @@ export class Bot {
       // 'wait' (Cadence Gun, holding for the beat): no tap made, so no tap gap.
       if (used === 'wait') return;
       if (used) {
-        this.lastTap = g.t;
+        this.lastTap = g.realT;
         return;
       }
       tap(g, best.x + (miss ? 120 : 0), best.y + (miss ? 120 : 0), 6);
-      this.lastTap = g.t;
+      this.lastTap = g.realT;
     }
   }
 }
@@ -277,6 +287,16 @@ Bot.prototype.useGesture = function (this: Bot, g: Game, best: Threat): boolean 
         return true;
       }
       return false;
+    case 'tidal': {
+      // Raise a wave beside what it swamps: a boat, a mine, a drone diving on
+      // a hull (a tap on the water just clear of it, so the shot is the wave).
+      const c = g.map.carrier;
+      const low = (t: Threat) => (t.kind === 'drone' || t.kind === 'minidrone') && (g.ships.some((s) => Math.hypot(s.x - t.x, s.y - t.y) <= AB.tidal.low * 0.8) || Math.hypot(c.x - t.x, c.y - t.y) <= AB.tidal.low);
+      const t = live.filter((o) => o.kind === 'fastboat' || o.kind === 'mine' || low(o)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
+      if (!t) return false;
+      tap(g, t.x + 18, t.y + 18, 6);
+      return true;
+    }
     case 'cadence': {
       // Wait for the beat unless the threat can't wait.
       const b = beatClock(g, w);

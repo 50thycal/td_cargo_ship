@@ -66,7 +66,7 @@ import {
   type Levels,
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
-import { draftPool, gestureOf } from '../data/roster';
+import { draftPool, gestureOf, isBoost, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import type { Cue, CueId } from '../audio/cues';
@@ -92,6 +92,8 @@ export interface Ship {
   mult: number;
   /** Aegis: its own interceptors while the weapon is loaded. */
   aegis?: Launchers;
+  /** Ammunition Ship (phase 4): its level. Sunk, it isn't a lost ship. */
+  ammo?: number;
 }
 
 /** Aegis (round 8): a hull's own interceptors, fired at a threat about to
@@ -149,6 +151,10 @@ export interface Threat {
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
+  /** A strafer whose run a Shield (level 2) has blocked: all of it is. */
+  blocked?: boolean;
+  /** Storm Front: it has crossed a storm cell (it rolls once). */
+  stormed?: boolean;
   /** The Dreadnought: how far along its path it has steamed, and seconds to
    *  its next broadside. */
   along?: number;
@@ -176,6 +182,12 @@ export interface Interceptor {
    *  does (flak, a freeze, a vortex, Tesla arcs), even if the weapon ran out
    *  while it flew. */
   weapon?: Weapon;
+  /** Dual Wield's second weapon, Lead Rain's flak: more tags on the shot. */
+  also?: Weapon[];
+  /** Hot Streak: a hit counts toward the streak, a fizzle breaks it. */
+  streak?: boolean;
+  /** On Fire: the hit carries on to the nearest other threat. */
+  pierce?: boolean;
 }
 
 export interface Pickup {
@@ -183,6 +195,8 @@ export interface Pickup {
   kind: PickupKind;
   /** A weapon pickup: which of your weapons it loads. */
   weapon?: AbilityId;
+  /** Airdrop (Supply Run MAX): it came down in a crate. */
+  crate?: boolean;
   x: number;
   y: number;
   age: number;
@@ -192,7 +206,11 @@ export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' 
   // The weapons plan, phase 0–1.
   | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat'
   // Phase 2.
-  | 'orbital';
+  | 'orbital'
+  // Phase 3.
+  | 'shatter'
+  // Phase 4.
+  | 'wave' | 'bolt';
 
 export interface Fx {
   kind: FxKind;
@@ -410,6 +428,8 @@ export interface Weapon {
   t: number;
   /** When it was loaded (Cadence Gun counts its beats from here). */
   t0?: number;
+  /** Overclock: its own level while it plays a level higher (clock stopped). */
+  oc?: number;
 }
 
 /** A finger on the water with a gesture weapon loaded (Charge Lance, Laser
@@ -650,6 +670,75 @@ export interface Game {
   bossWave: number;
   /** The Black Strait: seconds left of a Star Shell's light. */
   flareT: number;
+  // ---- The weapons plan, phase 3: boosts ----
+  /** The boost running (it never replaces the loaded weapon). */
+  boost: Boost | null;
+  /** Dual Wield: a second weapon loaded beside the first. */
+  weapon2: Weapon | null;
+  /** The second weapon's passive clock (two passives at once). */
+  passiveT2: number;
+  /** Hot Streak: hits in a row. */
+  streak: number;
+  /** Focus: a finger is down on the water (sent as a press). */
+  finger: boolean;
+  /** Focus: slow motion running this step. */
+  focusing: boolean;
+  /** Seconds of real (unslowed) play: Focus slows `t`, not this. */
+  realT: number;
+  /** The run's own gun numbers (Fire at Will changes `stats` while it lasts). */
+  baseStats: ArmoryStats;
+  /** Free Play: the plan's drops (the power-ups that became boosts don't drop). */
+  freePlay: boolean;
+  // ---- Phase 4: the experiments ----
+  /** Tidal Cannon's waves rolling out. */
+  waves: TideWave[];
+  /** Storm Front's cells drifting with the wind. */
+  storms: StormCell[];
+  /** Ammunition Ship: the level of the one waiting to sail in (0: none). */
+  ammoDue: number;
+  /** Arsenal Ship: seconds to its next free round. */
+  ammoFireT: number;
+}
+
+/** A Tidal Cannon wave: a ring rolling out from where the shot hit the water. */
+export interface TideWave {
+  id: number;
+  x: number;
+  y: number;
+  r: number;
+  max: number;
+  level: number;
+  /** What it has already reached (threats, subs, ships): each once. */
+  hit: number[];
+}
+
+/** A Storm Front cell. */
+export interface StormCell {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  r: number;
+  strikeT: number;
+}
+
+/** A boost running: its level, seconds left, and its own state. */
+export interface Boost {
+  id: AbilityId;
+  level: number;
+  t: number;
+  /** Shots fired under it (Lead Rain counts to its flak). */
+  n: number;
+  /** Focus: seconds of slow motion left. */
+  bank: number;
+  /** Airdrop: seconds to the next crate. */
+  crateT: number;
+  /** Overclock: weapons overclocked so far; `drops`: the MAX weapon that
+   *  drops more often instead. */
+  clocked: number;
+  drops: AbilityId | null;
+  /** Seconds it has run (Freeze Frame's first 2 s). */
+  age: number;
 }
 
 /** An allied structure in play: its hit points, seconds it stays knocked
@@ -765,6 +854,19 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     baseDown: [],
     bossWave: 0,
     flareT: 0,
+    boost: null,
+    weapon2: null,
+    passiveT2: 0,
+    streak: 0,
+    finger: false,
+    focusing: false,
+    realT: 0,
+    baseStats: s,
+    freePlay: false,
+    waves: [],
+    storms: [],
+    ammoDue: 0,
+    ammoFireT: 0,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -1105,10 +1207,52 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
     throwSwitch(g);
     return 'pickup';
   }
-  const loaded = g.weapon ? fireWeapon(g, g.weapon, x, y, threat, radius) : null;
-  if (loaded) return loaded;
-  if (!threat) return 'empty';
-  return fireAt(g, threat) ? 'fire' : 'dry';
+  return fireLoaded(g, x, y, threat, radius);
+}
+
+/** Dual Wield: the second hand's shot costs no round (one round a tap). */
+let freeShots = 0;
+/** Hyper Overdrive fires these twice (one-shot weapons with no state). */
+const HYPER_TWICE: AbilityId[] = ['railgun', 'airstrike', 'scatter', 'boomerang', 'seeker', 'flak', 'well', 'shrapnel', 'thermo'];
+
+/** A tap that is a shot: every loaded weapon fires (Dual Wield: both, for
+ *  one round); with nothing loaded, a plain interceptor or (Wild Card) a
+ *  random weapon. */
+function fireLoaded(g: Game, x: number, y: number, threat: Threat | null, radius: number): TapResult {
+  const ws = loadedWeapons(g);
+  if (!ws.length && boostLevel(g, 'wildCard')) return wildTap(g, x, y, threat, radius);
+  let res: TapResult | null = null;
+  const plain: Weapon[] = [];
+  for (const w of ws) {
+    if (res === 'dry') break;
+    freeShots = res ? 1 : 0;
+    const r = fireWeapon(g, w, x, y, threat, radius);
+    if (r === null) plain.push(w);
+    else {
+      // Hot Streak: a weapon's own shot aimed at a threat counts as a hit
+      // (its interceptors count when they land).
+      if (r === 'fire' && threat && !res) streakHit(g, true, threat.x, threat.y);
+      if (r === 'fire' && boostLevel(g, 'overdrive') >= ABILITY_MAX && HYPER_TWICE.includes(w.id)) {
+        freeShots = 1;
+        fireWeapon(g, w, x, y, threat, radius);
+      }
+      res = res ?? r;
+    }
+    freeShots = 0;
+  }
+  if (res === 'dry') return 'dry';
+  if (!threat) {
+    // Hot Streak: a tap that hits nothing breaks the streak.
+    if (!res) streakHit(g, false, x, y);
+    return res ?? 'empty';
+  }
+  if (plain.length || !ws.length) {
+    freeShots = res ? 1 : 0;
+    const ok = fireAt(g, threat, plain);
+    freeShots = 0;
+    return res ?? (ok ? 'fire' : 'dry');
+  }
+  return res!;
 }
 
 /** Take a draft card. `replace` swaps a new ability in for one you hold when
@@ -1162,6 +1306,8 @@ export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
   if (setup.frequentDrops) {
     g.stats = { ...g.stats, dropPity: Math.min(g.stats.dropPity, FREE_PLAY_DROPS.pity), dropShare: g.stats.dropShare * FREE_PLAY_DROPS.share };
   }
+  g.baseStats = g.stats;
+  g.freePlay = true;
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */
@@ -1276,18 +1422,46 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
     case 'bomberWing':
     case 'orbital':
       return null;
+    // Phase 4. Tidal Cannon: open water, or something the wave takes (a
+    // boat, a mine, a drone diving low), raises a wave there; a missile or an
+    // aircraft under the finger is a plain hit (on a phone a tap reaches so
+    // far there is rarely open water beside a boat).
+    case 'tidal':
+      return threat && !swampable(g, threat) ? null : fireTidal(g, w, x, y);
+    case 'storm':
+    case 'ammoShip':
+      return null;
+    // Boosts are never loaded (startBoost); nothing to fire.
+    case 'fireAtWill':
+    case 'supplyRun':
+    case 'overclock':
+    case 'dualWield':
+    case 'hotStreak':
+    case 'wildCard':
+    case 'focus':
+    case 'overdrive':
+    case 'timeWarp':
+    case 'shield':
+    case 'fullSteam':
+      return null;
   }
 }
 
 /** `n` rounds from the rack (free under Overdrive). False, with a dry
  *  click, when the rack holds fewer. */
 function spend(g: Game, n = 1): boolean {
-  if (g.overdriveT <= 0 && g.ammo < n) {
+  if (freeShots > 0) {
+    freeShots -= 1;
+    g.shots += 1;
+    return true;
+  }
+  const free = g.overdriveT > 0 || boostLevel(g, 'overdrive') > 0;
+  if (!free && g.ammo < n) {
     g.events.push({ kind: 'dry' });
     cue(g, 'gun.dry', g.map.carrier.x, g.map.carrier.y);
     return false;
   }
-  if (g.overdriveT <= 0) g.ammo -= n;
+  if (!free) g.ammo -= n;
   g.shots += 1;
   return true;
 }
@@ -1540,7 +1714,7 @@ function escortLat(g: Game, e: Escort, ch: Channel, d: number, ahead: number): n
 
 function updateEscorts(g: Game, dt: number): void {
   if (!g.escorts.length) return;
-  const on = g.weapon?.id === 'frigate' ? g.weapon : null;
+  const on = held(g, 'frigate');
   if (!on && g.escorts.some((e) => !e.leaving)) cue(g, 'frigate.leave', VIEW.width * 0.6, VIEW.height / 2, { vx: AB.frigate.speed });
   for (const e of g.escorts) {
     if (!on) e.leaving = true;
@@ -1613,7 +1787,7 @@ function updateEscorts(g: Game, dt: number): void {
  *  (Bastion) a spent one reloads and the carrier has its own. When the
  *  weapon goes, so do they. */
 function updateAegis(g: Game, dt: number): void {
-  const w = g.weapon?.id === 'aegis' ? g.weapon : null;
+  const w = held(g, 'aegis');
   if (!w) {
     for (const s of g.ships) s.aegis = undefined;
     g.carrierAegis = null;
@@ -1875,6 +2049,12 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
  *  press; otherwise it does nothing (the UI taps instead). */
 export function press(g: Game, x: number, y: number, radius: number): void {
   if (g.phase !== 'wave') return;
+  // Focus: a finger down is what slows time (any weapon loaded), from this
+  // moment (the tap the same finger makes is already a slow-motion shot).
+  if (g.boost?.id === 'focus') {
+    g.finger = true;
+    g.focusing = g.boost.bank > 0;
+  }
   const gesture = gestureOf(g.weapon?.id);
   if (!gesture) return;
   g.press = { x0: x, y0: y, x, y, t0: g.t, radius, mode: 'pending', hook: null, cut: [], cutLen: 0, vx: 0, vy: 0, smacked: {} };
@@ -1931,6 +2111,8 @@ export function pressMove(g: Game, x: number, y: number): void {
 
 /** The finger lifts. A press that never became a gesture is a tap. */
 export function release(g: Game, x: number, y: number, radius: number): TapResult | null {
+  g.finger = false;
+  g.focusing = false;
   const p = g.press;
   if (!p) return null;
   g.press = null;
@@ -2261,14 +2443,15 @@ function updateBeat(g: Game): void {
 // these work on their own while loaded and wind down when it runs out.
 
 function updatePassives(g: Game, dt: number): void {
-  const id = g.weapon?.id;
-  const level = g.weapon?.level ?? 1;
-  const k = level - 1;
   g.passiveT -= dt;
+  g.passiveT2 -= dt;
   const c = g.map.carrier;
+  // Each passive runs on its own hand's clock (Dual Wield: two at once).
+  const timer = (w: Weapon) => (w === g.weapon2 ? 'passiveT2' : 'passiveT');
   // ---- Drone Screen: a drone off the carrier deck every gap.
-  if (id === 'droneScreen' && g.passiveT <= 0) {
-    g.passiveT += AB.droneScreen.gap[k];
+  const dw = held(g, 'droneScreen');
+  if (dw && g[timer(dw)] <= 0) {
+    g[timer(dw)] += AB.droneScreen.gap[dw.level - 1];
     g.wings.push({ id: g.nextId++, x: c.x, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
     cue(g, 'screen.launch', c.x, c.y);
   }
@@ -2290,7 +2473,7 @@ function updatePassives(g: Game, dt: number): void {
       const bx = th.x;
       const by = th.y;
       damageThreat(g, th, AB.droneScreen.damage);
-      const r = AB.droneScreen.burst[(g.weapon?.id === 'droneScreen' ? level : 1) - 1];
+      const r = AB.droneScreen.burst[(dw?.level ?? 1) - 1];
       if (r > 0) for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, 1);
       addFx(g, 'burst', bx, by, { life: 0.3, r: Math.max(18, r) });
       d.life = 0;
@@ -2303,7 +2486,8 @@ function updatePassives(g: Game, dt: number): void {
   }
   g.wings = g.wings.filter((d) => d.life > 0 && d.y > -40);
   // ---- Gunship Pair: hover over the convoy, rocket the thickest cluster.
-  if (id !== 'gunships') for (const h of g.helis) h.leaving = true;
+  const gw = held(g, 'gunships');
+  if (!gw) for (const h of g.helis) h.leaving = true;
   const mid = g.ships.length ? { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length } : { x: c.x, y: c.y - 120 };
   for (const h of g.helis) {
     const n = g.helis.filter((o) => !o.leaving).length;
@@ -2320,7 +2504,7 @@ function updatePassives(g: Game, dt: number): void {
     if (h.leaving) continue;
     h.fireT -= dt;
     if (h.fireT > 0) continue;
-    h.fireT += AB.gunships.gap[k];
+    h.fireT += AB.gunships.gap[(gw?.level ?? 1) - 1];
     const near = g.threats.filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, h.x, h.y) <= AB.gunships.reach);
     let best: Threat | null = null;
     let most = 0;
@@ -2337,12 +2521,14 @@ function updatePassives(g: Game, dt: number): void {
     addFx(g, 'tracer', h.x, h.y, { life: 0.2, x2: bx, y2: by });
     addFx(g, 'burst', bx, by, { life: 0.4, r: AB.gunships.blast });
     cue(g, 'heli.rockets', bx, by);
-    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[k]);
+    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[(gw?.level ?? 1) - 1]);
   }
   g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
   // ---- Bomber Wing: a pass at the shore every gap.
-  if (id === 'bomberWing' && g.passiveT <= 0) {
-    g.passiveT += AB.bomberWing.gap[k];
+  const bw = held(g, 'bomberWing');
+  if (bw && g[timer(bw)] <= 0) {
+    const k = bw.level - 1;
+    g[timer(bw)] += AB.bomberWing.gap[k];
     callSorties(g, AB.bomberWing.targets[k], AB.bomberWing.quiet[k], k === 2);
   }
   for (const b of g.sorties) {
@@ -2366,7 +2552,7 @@ function updatePassives(g: Game, dt: number): void {
       addFx(g, 'orbital', bx, by, { life: 0.45, r: AB.orbital.splash * 0.8 });
       cue(g, 'orbital.beam', th.x, th.y);
       // Sky Spear: the beam lingers onto the next toughest.
-      const linger = g.orbital.second === false && level >= ABILITY_MAX && id === 'orbital';
+      const linger = g.orbital.second === false && (held(g, 'orbital')?.level ?? 0) >= ABILITY_MAX;
       g.orbital = null;
       if (linger) {
         const next = toughest(g, th.id);
@@ -2374,10 +2560,11 @@ function updatePassives(g: Game, dt: number): void {
       }
     }
   }
-  if (id === 'orbital' && g.passiveT <= 0 && !g.orbital) {
+  const ow = held(g, 'orbital');
+  if (ow && g[timer(ow)] <= 0 && !g.orbital) {
     const th = toughest(g, -1);
     if (th) {
-      g.passiveT = AB.orbital.gap[k];
+      g[timer(ow)] = AB.orbital.gap[ow.level - 1];
       g.orbital = { id: th.id, t: 0, second: false };
       cue(g, 'orbital.lock', th.x, th.y);
     }
@@ -2451,10 +2638,494 @@ function bombTarget(g: Game, b: Sortie): void {
 }
 
 // ---------------------------------------------------------------------------
+// The weapons plan, phase 3: boosts. A boost drops like a weapon, but picking
+// it up never replaces the loaded weapon: it changes how everything you fire
+// works for the weapon time. A second boost replaces the first.
+
+/** The level of this boost while it runs, else 0. */
+export function boostLevel(g: Game, id: AbilityId): number {
+  return g.boost?.id === id ? g.boost.level : 0;
+}
+
+/** The weapons loaded (Dual Wield: two). */
+export function loadedWeapons(g: Game): Weapon[] {
+  return g.weapon2 ? (g.weapon ? [g.weapon, g.weapon2] : [g.weapon2]) : g.weapon ? [g.weapon] : [];
+}
+
+/** This weapon, if it is loaded (either hand under Dual Wield). */
+export function held(g: Game, id: AbilityId): Weapon | null {
+  if (g.weapon?.id === id) return g.weapon;
+  if (g.weapon2?.id === id) return g.weapon2;
+  return null;
+}
+
+/** Threats' share of speed under Time Warp (the power-up or the boost). */
+export function warpScale(g: Game): number {
+  const lv = boostLevel(g, 'timeWarp');
+  if (lv) {
+    if (lv >= ABILITY_MAX && g.boost!.age < AB.timeWarp.freezeTime) return AB.timeWarp.freeze;
+    return AB.timeWarp.scale[lv - 1];
+  }
+  return g.warpT > 0 ? PICKUPS.warpScale : 1;
+}
+
+/** Is time warped (the world drains of colour, the sound drops)? */
+export function warping(g: Game): boolean {
+  return g.warpT > 0 || boostLevel(g, 'timeWarp') > 0;
+}
+
+function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
+  endBoost(g, false);
+  const k = level - 1;
+  g.boost = { id, level, t: g.stats.weaponTime, n: 0, bank: 0, crateT: AB.supplyRun.crate, clocked: 0, drops: null, age: 0 };
+  switch (id) {
+    case 'fireAtWill': {
+      const b = g.baseStats;
+      g.stats = { ...b, rack: b.rack + AB.fireAtWill.rack[k], reload: b.reload / AB.fireAtWill.reload[k], holdRepeat: AB.fireAtWill.repeat[k] };
+      g.ammo = Math.min(g.stats.rack, g.ammo + AB.fireAtWill.rack[k]);
+      break;
+    }
+    case 'overclock':
+      if (g.weapon) overclockWeapon(g, g.weapon);
+      break;
+    case 'focus':
+      g.boost.bank = AB.focus.bank[k];
+      break;
+    case 'hotStreak':
+      g.streak = 0;
+      break;
+  }
+  g.uses[id] = (g.uses[id] ?? 0) + 1;
+  g.events.push({ kind: 'weapon', id, level });
+  cue(g, 'boost.on', x, y);
+  addFx(g, 'text', x, y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });
+}
+
+/** The boost ends (ran out, replaced, or the wave was cleared). */
+function endBoost(g: Game, ranOut: boolean): void {
+  const b = g.boost;
+  if (!b) return;
+  g.boost = null;
+  const c = g.map.carrier;
+  if (b.id === 'fireAtWill') {
+    g.stats = g.baseStats;
+    g.ammo = Math.min(g.ammo, g.stats.rack);
+  }
+  if (b.id === 'overclock') for (const w of loadedWeapons(g)) unclock(w);
+  // Overdrive (level 2): the rack is full when it ends.
+  if (b.id === 'overdrive' && b.level >= 2) g.ammo = g.stats.rack;
+  if (b.id === 'hotStreak') g.streak = 0;
+  if (ranOut) {
+    cue(g, 'boost.off', c.x, c.y);
+    addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 64, { life: 1.2, text: `${abilityName(b.id, b.level).toUpperCase()} DONE` });
+  }
+}
+
+/** Overclock: the weapon plays a level higher (Overload: MAX) and its clock
+ *  stops. Already at MAX: it drops more often instead. */
+function overclockWeapon(g: Game, w: Weapon): void {
+  const b = g.boost!;
+  if (w.oc !== undefined || isBoost(w.id)) return;
+  b.clocked += 1;
+  // Already at MAX (round 3: "maybe it drops more often?"): its clock still
+  // stops, and it drops more often instead of a level it can't have.
+  if (w.level >= ABILITY_MAX) b.drops = w.id;
+  w.oc = w.level;
+  w.level = b.level >= ABILITY_MAX ? ABILITY_MAX : Math.min(ABILITY_MAX, w.level + 1);
+  if (w.level === w.oc) return;
+  if (w.id === 'gunships') callGunships(g, w.level);
+  if (w.id === 'frigate') launchEscorts(g, w.level);
+  addFx(g, 'text', g.map.carrier.x, g.map.carrier.y - CARRIER.halfBeam - 64, { life: 1.1, text: `${abilityName(w.id, w.level).toUpperCase()} · OVERCLOCKED` });
+}
+
+function unclock(w: Weapon): void {
+  if (w.oc === undefined) return;
+  w.level = w.oc;
+  w.oc = undefined;
+}
+
+/** Where a weapon pickup goes. Either hand already holding it gets a fresh
+ *  clock (an overclock carries over); under Dual Wield it joins the first
+ *  (both hands full: the one with less time left goes). Returns false when
+ *  it simply takes the first hand: the second keeps the rest of its time
+ *  (round 2: "both stay loaded together for the rest of their time"). */
+function boostLoad(g: Game, w: Weapon): boolean {
+  for (const hand of ['weapon', 'weapon2'] as const) {
+    const old = g[hand];
+    if (old?.id !== w.id) continue;
+    if (old.oc !== undefined) {
+      w.oc = old.oc;
+      w.level = old.level;
+    }
+    g[hand] = w;
+    return true;
+  }
+  if (g.boost?.id !== 'dualWield' || !g.weapon) return false;
+  if (!g.weapon2) g.weapon2 = w;
+  else if (g.weapon2.t < g.weapon.t) g.weapon2 = w;
+  else g.weapon = w;
+  return true;
+}
+
+/** Each step a boost runs: its clock, Airdrop's crates, Focus's bank. */
+function updateBoost(g: Game, dt: number, real: number): void {
+  const b = g.boost;
+  if (!b) return;
+  b.age += dt;
+  b.t -= dt;
+  if (b.id === 'focus' && g.focusing) b.bank = Math.max(0, b.bank - real);
+  if (b.id === 'supplyRun' && b.level >= ABILITY_MAX) {
+    b.crateT -= dt;
+    const weapons = g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
+    if (b.crateT <= 0 && weapons.length) {
+      b.crateT += AB.supplyRun.crate;
+      // Over open water, mid-screen: it drifts in to the carrier from there.
+      const x = 160 + g.rng.drops.next() * (VIEW.width - 320);
+      const y = VIEW.height * 0.42;
+      addPickup(g, 'weapon', x, y, g.rng.drops.pick(weapons));
+      g.pickups[g.pickups.length - 1].crate = true;
+      cue(g, 'supply.crate', x, y);
+    }
+  }
+  if (b.t <= 0) endBoost(g, true);
+}
+
+/** The weapons held (the slots that aren't boosts). */
+function weaponsHeld(g: Game): AbilityId[] {
+  return g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
+}
+
+/** Is the running boost waiting on a weapon pickup (Dual Wield with a hand
+ *  free; Overclock with nothing overclocked yet)? */
+function callsWeapon(g: Game): boolean {
+  const b = g.boost;
+  if (!b) return false;
+  if (b.id === 'dualWield') return !g.weapon || !g.weapon2;
+  if (b.id === 'overclock') return b.clocked === 0;
+  return false;
+}
+
+/** Drops come this many times as often (Supply Run, Dual Wield's Arsenal
+ *  Drop, Overclock on a MAX weapon). */
+function dropMult(g: Game, weapon: boolean): number {
+  const b = g.boost;
+  if (!b) return 1;
+  const k = b.level - 1;
+  if (b.id === 'supplyRun') return AB.supplyRun.mult[k];
+  if (!weapon) return 1;
+  if (b.id === 'dualWield') return AB.dualWield.drops[k];
+  if (b.id === 'overclock' && b.drops) return AB.overclock.drops;
+  return 1;
+}
+
+/** Hot Streak: the damage a shot does at the streak so far (×1, ×2, ×3). */
+export function streakMult(g: Game): number {
+  const lv = boostLevel(g, 'hotStreak');
+  if (!lv) return 1;
+  const k = lv - 1;
+  return g.streak >= AB.hotStreak.x3[k] ? 3 : g.streak >= AB.hotStreak.x2[k] ? 2 : 1;
+}
+
+/** A hit (or a miss) for Hot Streak. */
+function streakHit(g: Game, hit: boolean, x: number, y: number): void {
+  const lv = boostLevel(g, 'hotStreak');
+  if (!lv) return;
+  if (hit) {
+    const was = streakMult(g);
+    g.streak += 1;
+    const now = streakMult(g);
+    if (now > was) {
+      addFx(g, 'text', x, y - 26, { life: 0.9, text: `×${now}` });
+      cue(g, 'streak.up', x, y);
+    }
+    if (lv >= ABILITY_MAX && g.streak === AB.hotStreak.pierce) addFx(g, 'text', x, y - 44, { life: 1, text: 'ON FIRE' });
+    return;
+  }
+  // On Fire: at 10 a miss no longer resets it.
+  if (lv >= ABILITY_MAX && g.streak >= AB.hotStreak.pierce) return;
+  if (g.streak >= AB.hotStreak.x2[lv - 1]) {
+    addFx(g, 'text', x, y - 20, { life: 0.8, text: 'STREAK LOST' });
+    cue(g, 'streak.lost', x, y);
+  }
+  g.streak = 0;
+}
+
+/** Wild Card: weapons a single tap can fire (no gestures, no two-tap ones). */
+const WILD_ACTIVES: AbilityId[] = ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'well', 'railgun', 'tesla'];
+const WILD_PASSIVES: AbilityId[] = ['droneScreen', 'gunships', 'orbital', 'bomberWing'];
+
+/** Wild Card, nothing loaded: this tap is a random weapon's shot (level 1
+ *  actives; level 2 actives or passives; Jackpot: actives at MAX). */
+function wildTap(g: Game, x: number, y: number, threat: Threat | null, radius: number): TapResult {
+  const lv = boostLevel(g, 'wildCard');
+  const pool = lv === 2 ? [...WILD_ACTIVES, ...WILD_PASSIVES] : WILD_ACTIVES;
+  const id = g.rng.drops.pick(pool);
+  const level = lv;
+  const w: Weapon = { id, level, t: 0, t0: g.t };
+  addFx(g, 'text', x, y - 34, { life: 0.8, text: abilityName(id, level).toUpperCase() });
+  cue(g, 'wild.roll', x, y);
+  if (WILD_PASSIVES.includes(id)) {
+    if (!spend(g)) return 'dry';
+    passiveShot(g, w, x, y, threat);
+    return 'fire';
+  }
+  const r = fireWeapon(g, w, x, y, threat, radius);
+  if (r) return r;
+  if (!threat) return 'empty';
+  return fireAt(g, threat, [w]) ? 'fire' : 'dry';
+}
+
+/** A passive's one shot, for Wild Card: a few drones off the deck, a rocket
+ *  pod, a beam from orbit, or one bomber pass. */
+function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | null): void {
+  const c = g.map.carrier;
+  const k = w.level - 1;
+  const ax = threat ? threat.x : x;
+  const ay = threat ? threat.y : y;
+  switch (w.id) {
+    case 'droneScreen':
+      for (let i = 0; i < AB.wildCard.drones; i++) g.wings.push({ id: g.nextId++, x: c.x + (i - 1) * 16, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
+      cue(g, 'screen.launch', c.x, c.y);
+      break;
+    case 'gunships':
+      addFx(g, 'tracer', ax < VIEW.width / 2 ? 0 : VIEW.width, ay - 60, { life: 0.2, x2: ax, y2: ay });
+      addFx(g, 'burst', ax, ay, { life: 0.4, r: AB.gunships.blast });
+      cue(g, 'heli.rockets', ax, ay);
+      for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, ax, ay) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[k]);
+      break;
+    case 'orbital': {
+      const th = threat ?? toughest(g, -1);
+      if (!th) break;
+      const bx = th.x;
+      const by = th.y;
+      damageThreat(g, th, AB.orbital.damage);
+      for (const o of [...g.threats]) if (!o.dead && o !== th && dist(o.x, o.y, bx, by) <= AB.orbital.splash) damageThreat(g, o, 1);
+      addFx(g, 'orbital', bx, by, { life: 0.45, r: AB.orbital.splash * 0.8 });
+      cue(g, 'orbital.beam', bx, by);
+      break;
+    }
+    case 'bomberWing':
+      callSorties(g, 1, AB.bomberWing.quiet[k]);
+      break;
+  }
+}
+
+/** Is this hull's damage blocked (the Shield power-up, or the boost: level 1
+ *  lets a strafing run through)? */
+function shielded(g: Game, by: ThreatKind): boolean {
+  if (g.shieldT > 0) return true;
+  const lv = boostLevel(g, 'shield');
+  return lv > 0 && (by !== 'strafer' || lv >= 2);
+}
+
+/** Reflect (Shield MAX): a blocked missile bounces back the way it came and
+ *  bursts there. */
+function reflect(g: Game, th: Threat | undefined, x: number, y: number): void {
+  if (boostLevel(g, 'shield') < ABILITY_MAX || !th) return;
+  const sp = Math.hypot(th.vx, th.vy);
+  const ux = sp > 1 ? -th.vx / sp : Math.cos(th.heading + Math.PI);
+  const uy = sp > 1 ? -th.vy / sp : Math.sin(th.heading + Math.PI);
+  const bx = x + ux * AB.shield.bounce;
+  const by = y + uy * AB.shield.bounce;
+  addFx(g, 'tracer', x, y, { life: 0.2, x2: bx, y2: by });
+  addFx(g, 'burst', bx, by, { life: 0.4, r: AB.shield.burst });
+  cue(g, 'shield.reflect', bx, by);
+  for (const o of [...g.threats]) if (!o.dead && o !== th && dist(o.x, o.y, bx, by) <= AB.shield.burst) damageThreat(g, o, 1);
+}
+
+/** Ramming Speed (Full Steam MAX): ships run down drones and boats. */
+function ram(g: Game): void {
+  if (boostLevel(g, 'fullSteam') < ABILITY_MAX) return;
+  for (const th of g.threats) {
+    if (th.dead || (th.kind !== 'drone' && th.kind !== 'minidrone' && th.kind !== 'fastboat')) continue;
+    const s = g.ships.find((o) => dist(o.x, o.y, th.x, th.y) <= AB.fullSteam.ram);
+    if (!s) continue;
+    addFx(g, 'text', s.x, s.y - 30, { life: 0.7, text: 'RAMMED' });
+    cue(g, 'steam.ram', s.x, s.y);
+    damageThreat(g, th, th.hp + 99);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The weapons plan, phase 4: the experiments (the player's maybes: Tidal
+// Cannon, Storm Front, Ammunition Ship). Built to be tried, kept only if they
+// play well.
+
+function fireTidal(g: Game, w: Weapon, x: number, y: number): TapResult {
+  if (!spend(g)) return 'dry';
+  g.waves.push({ id: g.nextId++, x, y, r: 0, max: AB.tidal.reach[w.level - 1], level: w.level, hit: [] });
+  cue(g, 'tidal.wave', x, y);
+  return 'fire';
+}
+
+/** Kinds a wave swamps outright, and kinds it never moves (aircraft fly over,
+ *  a ballistic is high in its arc). */
+const SWAMPED: ThreatKind[] = ['fastboat', 'mine'];
+const OVER_THE_WAVE: ThreatKind[] = ['strafer', 'bomber', 'ballistic'];
+/** Storm Front: what lightning strikes, and the missiles the wind can take. */
+const STORM_FLYERS: ThreatKind[] = ['drone', 'minidrone', 'bomblet', 'strafer', 'bomber', 'mothership'];
+const STORM_MISSILES: ThreatKind[] = ['guided', 'supersonic', 'cluster', 'heavy'];
+
+/** Can a wave take it: a boat, a mine, or a drone diving in on a hull? */
+function swampable(g: Game, th: Threat): boolean {
+  if (SWAMPED.includes(th.kind)) return true;
+  if (th.kind !== 'drone' && th.kind !== 'minidrone') return false;
+  const c = g.map.carrier;
+  return g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= AB.tidal.low) || dist(c.x, c.y, th.x, th.y) <= AB.tidal.low + CARRIER.halfLength * 0.5;
+}
+
+/** The convoy's middle (the carrier's water when there are no ships). */
+function convoyMid(g: Game): Point {
+  const c = g.map.carrier;
+  if (!g.ships.length) return { x: c.x, y: c.y - 120 };
+  return { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length };
+}
+
+/** Storm Front: cells roll in from the upwind side (the wind picked at
+ *  random when it is loaded), over the water between the enemy shore and
+ *  the convoy, where the threats fly. */
+function startStorm(g: Game, level: number): void {
+  const k = level - 1;
+  const wind = g.rng.drops.chance(0.5) ? 1 : -1;
+  const mid = convoyMid(g);
+  const bases = g.map.bases.length ? g.map.bases.reduce((a, b) => a + b.y, 0) / g.map.bases.length : 120;
+  const y = clamp((bases + mid.y) / 2, 160, VIEW.height - 200);
+  const r = AB.storm.r[k];
+  g.storms = [];
+  for (let i = 0; i < AB.storm.cells[k]; i++) {
+    // Upwind quarter of the screen; Hurricane's second cell further across.
+    const x = wind > 0 ? VIEW.width * (0.22 + i * 0.4) : VIEW.width * (0.78 - i * 0.4);
+    g.storms.push({ id: g.nextId++, x, y: clamp(y + (i % 2 ? 110 : 0), 160, VIEW.height - 200), vx: wind * AB.storm.drift[k], r, strikeT: 0.5 + i * 0.4 });
+  }
+  cue(g, 'storm.roll', mid.x, mid.y);
+}
+
+/** Ammunition Ship: one sails in at the convoy's entry (one at a time: a
+ *  pickup while it floats repairs it instead). */
+function callAmmoShip(g: Game, level: number): void {
+  const s = g.ships.find((o) => o.ammo);
+  if (s) {
+    s.ammo = Math.max(s.ammo ?? 0, level);
+    s.hp = AB.ammoShip.hp[s.ammo - 1];
+    addFx(g, 'text', s.x, s.y - 30, { life: 1.1, text: 'AMMO SHIP REPAIRED' });
+    return;
+  }
+  g.ammoDue = Math.max(g.ammoDue, level);
+}
+
+function spawnAmmoShip(g: Game): void {
+  if (!g.ammoDue || g.ships.some((o) => o.ammo)) return;
+  const lane = g.map.channels.findIndex((c, i) => !c.vip && !c.tide && !entryBusy(g, g.map.channels[i]));
+  if (lane < 0) return;
+  const s = newShip(g, lane, 0, 0);
+  s.ammo = g.ammoDue;
+  s.hp = AB.ammoShip.hp[s.ammo - 1];
+  g.ammoDue = 0;
+  g.ships.push(s);
+  addFx(g, 'text', clamp(s.x, 120, VIEW.width - 120), clamp(s.y - 30, 40, VIEW.height - 40), { life: 1.4, text: 'AMMO SHIP' });
+  cue(g, 'ammo.arrive', clamp(s.x, 0, VIEW.width), s.y);
+}
+
+/** How much faster the rack reloads (an Ammunition Ship afloat). */
+export function ammoReload(g: Game): number {
+  const s = g.ships.find((o) => o.ammo);
+  return s ? AB.ammoShip.reload[s.ammo! - 1] : 1;
+}
+
+function updateExperiments(g: Game, dt: number): void {
+  // ---- Tidal Cannon: the waves roll out.
+  for (const wv of g.waves) {
+    wv.r = Math.min(wv.max, wv.r + AB.tidal.speed * dt);
+    const shove = AB.tidal.shove[wv.level - 1];
+    for (const th of [...g.threats]) {
+      if (th.dead || wv.hit.includes(th.id) || dist(th.x, th.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(th.id);
+      if (swampable(g, th)) {
+        addFx(g, 'splash', th.x, th.y, { life: 0.7, r: 26 });
+        damageThreat(g, th, th.hp + 99);
+        continue;
+      }
+      // Level 2: it shoves the rest back the way it came.
+      if (shove && !isStructure(th.kind) && !OVER_THE_WAVE.includes(th.kind) && !th.held) {
+        const d = dist(th.x, th.y, wv.x, wv.y) || 1;
+        th.x += ((th.x - wv.x) / d) * shove;
+        th.y += ((th.y - wv.y) / d) * shove;
+      }
+    }
+    for (const r of g.raiders) {
+      if (r.kind !== 'sub' || !raiderUp(r) || wv.hit.includes(r.id) || dist(r.x, r.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(r.id);
+      knockOut(g, r);
+    }
+    // Your ships ride it: a surge forward along the lane.
+    for (const s of g.ships) {
+      if (wv.hit.includes(s.id) || dist(s.x, s.y, wv.x, wv.y) > wv.r) continue;
+      wv.hit.push(s.id);
+      s.d += AB.tidal.surge;
+      placeShip(g, s);
+    }
+  }
+  g.waves = g.waves.filter((wv) => wv.r < wv.max);
+
+  // ---- Storm Front: the cells drift; lightning; the wind takes missiles.
+  const sw = held(g, 'storm');
+  if (!sw) g.storms = [];
+  for (const cell of g.storms) {
+    cell.x += cell.vx * dt;
+    // Blown off the far side: the wind brings it round again.
+    if (cell.vx > 0 && cell.x - cell.r > VIEW.width) cell.x = -cell.r;
+    if (cell.vx < 0 && cell.x + cell.r < 0) cell.x = VIEW.width + cell.r;
+    for (const th of g.threats) {
+      if (th.dead || th.stormed || !STORM_MISSILES.includes(th.kind) || dist(th.x, th.y, cell.x, cell.y) > cell.r) continue;
+      th.stormed = true;
+      if (th.id % 2 !== 0) continue;
+      addFx(g, 'splash', th.x, th.y, { life: 0.7, r: 22 });
+      addFx(g, 'text', th.x, th.y - 24, { life: 0.9, text: 'BLOWN OFF' });
+      damageThreat(g, th, th.hp + 99, false);
+    }
+    cell.strikeT -= dt;
+    if (cell.strikeT > 0) continue;
+    const t = g.threats
+      .filter((o) => !o.dead && STORM_FLYERS.includes(o.kind) && dist(o.x, o.y, cell.x, cell.y) <= cell.r)
+      .sort((a, b) => dist(a.x, a.y, cell.x, cell.y) - dist(b.x, b.y, cell.x, cell.y))[0];
+    if (!t) {
+      cell.strikeT = 0.1;
+      continue;
+    }
+    cell.strikeT = AB.storm.strike;
+    addFx(g, 'bolt', t.x, Math.max(0, cell.y - cell.r * 0.7), { life: 0.3, x2: t.x, y2: t.y });
+    cue(g, 'storm.bolt', t.x, t.y);
+    damageThreat(g, t, AB.storm.damage);
+  }
+
+  // ---- Arsenal Ship: a free round at the nearest threat every 2 s.
+  const ship = g.ships.find((o) => o.ammo && o.ammo >= ABILITY_MAX);
+  g.ammoFireT -= dt;
+  if (ship && g.ammoFireT <= 0) {
+    const th = g.threats
+      .filter((o) => !o.dead && !isStructure(o.kind) && dist(o.x, o.y, ship.x, ship.y) <= AB.ammoShip.reach)
+      .sort((a, b) => dist(a.x, a.y, ship.x, ship.y) - dist(b.x, b.y, ship.x, ship.y))[0];
+    if (th) {
+      g.ammoFireT = AB.ammoShip.gap;
+      // Tagged with the other loaded weapon (Dual Wield), else a plain round.
+      const tag = loadedWeapons(g).find((o) => o.id !== 'ammoShip' && ROSTER[o.id].cat === 'active');
+      g.interceptors.push({ id: g.nextId++, x: ship.x, y: ship.y - 6, target: th.id, tx: th.x, ty: th.y, life: 0, src: 'gun', weapon: tag ? { ...tag } : undefined });
+      cue(g, 'gun.fire', ship.x, ship.y);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The step
 
 export function step(g: Game, dt: number): void {
   if (g.phase !== 'wave') return;
+  // Focus: while a finger is down and the bank lasts, the whole game runs
+  // slow (the bank drains in real time).
+  const real = dt;
+  g.realT += real;
+  g.focusing = g.finger && g.boost?.id === 'focus' && g.boost.bank > 0;
+  if (g.focusing) dt *= AB.focus.scale[g.boost!.level - 1];
   g.cues.length = 0;
   g.steps += 1;
   g.t += dt;
@@ -2481,10 +3152,12 @@ export function step(g: Game, dt: number): void {
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
   reload(g, dt);
   updateShips(g, dt);
+  ram(g);
   // Time Warp slows every threat (not the convoy, not your interceptors).
-  const tdt = g.warpT > 0 ? dt * PICKUPS.warpScale : dt;
+  const tdt = dt * warpScale(g);
   for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
   updateTimers(g, dt);
+  updateBoost(g, dt, real);
   updateAllies(g, dt);
   updateEscorts(g, dt);
   updateAegis(g, dt);
@@ -2498,6 +3171,7 @@ export function step(g: Game, dt: number): void {
   updateMarks(g, dt);
   updateBeat(g);
   updatePassives(g, dt);
+  updateExperiments(g, dt);
   updateFields(g, dt);
   updateInterceptors(g, dt);
   updatePosts(g, dt);
@@ -2546,6 +3220,11 @@ function clearField(g: Game): void {
   g.warpT = 0;
   g.shieldT = 0;
   g.steamT = 0;
+  endBoost(g, false);
+  g.weapon2 = null;
+  g.streak = 0;
+  g.finger = false;
+  g.focusing = false;
   g.weapon = null;
   g.press = null;
   g.flings = [];
@@ -2556,6 +3235,9 @@ function clearField(g: Game): void {
   g.wings = [];
   g.helis = [];
   g.sorties = [];
+  g.waves = [];
+  g.storms = [];
+  g.ammoDue = 0;
   g.orbital = null;
   g.quietUntil = [];
   g.carrierAegis = null;
@@ -2648,6 +3330,7 @@ function newShip(g: Game, channel: number, slot: number, d: number): Ship {
 
 function spawnShips(g: Game, dt: number): void {
   spawnTanker(g);
+  spawnAmmoShip(g);
   g.spawnT -= dt;
   if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
@@ -2752,6 +3435,7 @@ function updateShips(g: Game, dt: number): void {
   }
   const arrived = g.ships.filter((s) => s.d > laneLength(g.map.channels[s.channel]));
   for (const s of arrived) {
+    if (s.ammo) continue;
     const pts = Math.round(SHIP.points * s.mult * (s.vip ? VIP.points : 1));
     g.score += pts;
     g.delivered += 1;
@@ -2786,8 +3470,15 @@ function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
 }
 
 /** The convoy's speed in the current formation. */
+/** Full Steam (the power-up or the boost): the convoy's speed ×. */
+function steamMult(g: Game): number {
+  const lv = boostLevel(g, 'fullSteam');
+  if (lv) return AB.fullSteam.mult[lv - 1];
+  return g.steamT > 0 ? PICKUPS.steamMult : 1;
+}
+
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * (g.steamT > 0 ? PICKUPS.steamMult : 1);
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
@@ -2809,7 +3500,7 @@ const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'
  *  splash spilling over from a neighbour's hit is not reduced. Spread's
  *  blast cut applies to splash weapons either way. */
 function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
-  if (g.shieldT > 0) {
+  if (shielded(g, by)) {
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     cue(g, 'shield.block', s.x, s.y);
     return;
@@ -2823,6 +3514,13 @@ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = t
     return;
   }
   g.ships = g.ships.filter((o) => o !== s);
+  // The Ammunition Ship: its bonus ends, but it isn't a lost ship.
+  if (s.ammo) {
+    addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
+    addFx(g, 'text', s.x, s.y - 30, { life: 1.4, text: 'AMMO SHIP SUNK' });
+    cue(g, 'ship.sunk', s.x, s.y);
+    return;
+  }
   g.lost += s.vip ? VIP.loss : 1;
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
@@ -2840,7 +3538,7 @@ function glances(g: Game, x: number, y: number, r: number): boolean {
 
 /** A hit on the carrier (exported so the tests can land one directly). */
 export function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
-  if (g.shieldT > 0) {
+  if (shielded(g, by)) {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     cue(g, 'shield.block', g.map.carrier.x, g.map.carrier.y);
     return;
@@ -2931,6 +3629,10 @@ function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: La
   const goCarrier = kind === 'mothership' || (!!strike && g.wave >= strike.from && rng.chance(strike.share));
   const pool = targetable(g, kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!goCarrier && pool.length) th.target = rng.pick(pool).id;
+  // Ammunition Ship: every other threat aimed at a ship goes for it instead
+  // (by id, so no random roll is spent and the raid plays as before).
+  const ammo = pool.find((o) => o.ammo);
+  if (!goCarrier && ammo && th.id % 2 === 0) th.target = ammo.id;
   // The 20-map plan. Heavies and guided go for the supertanker when it is out;
   // some missiles go for an allied radar or battery; a mine has no target.
   if (kind === 'mine') th.target = NO_TARGET;
@@ -3283,6 +3985,17 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     for (const s of band) {
       if (th.hits!.includes(s.id) || Math.abs(frame(s).along) > 22) continue;
       th.hits!.push(s.id);
+      // Shield (level 2): it blocks the whole run, and shatters doing it.
+      if (th.blocked || boostLevel(g, 'shield') >= 2) {
+        if (!th.blocked) {
+          th.blocked = true;
+          addFx(g, 'shatter', s.x, s.y, { life: 0.9, r: 44 });
+          cue(g, 'shield.shatter', s.x, s.y);
+          if (g.boost) g.boost.t = Math.min(g.boost.t, AB.shield.shatter);
+        }
+        addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
+        continue;
+      }
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
       damageShip(g, s, THREATS.strafer.damage, 'strafer');
     }
@@ -3358,6 +4071,7 @@ function checkImpact(g: Game, th: Threat): void {
   if (th.target === CARRIER_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
+    if (shielded(g, blame)) reflect(g, th, th.x, th.y);
     // A heavy takes half the carrier's health (round 7).
     // Half the BASE carrier: Armor Plating's extra hull outlasts a heavy.
     damageCarrier(g, heavy ? Math.ceil(CARRIER.hp / 2) : dmg, blame);
@@ -3367,6 +4081,7 @@ function checkImpact(g: Game, th: Threat): void {
   const s = g.ships.find((o) => o.id === th.target);
   if (!s || dist(th.x, th.y, s.x, s.y) >= SHIP.hitRadius) return;
   th.dead = true;
+  if (shielded(g, blame)) reflect(g, th, th.x, th.y);
   if (th.kind === 'heavy') {
     // A heavy warhead also damages everything close by.
     const reach = HEAVY.splash * FORMATIONS[g.formation].splash;
@@ -3442,6 +4157,7 @@ function impactBallistic(g: Game, th: Threat): void {
   const reach = BALLISTIC.splash * FORMATIONS[g.formation].splash;
   addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: Math.max(reach, BALLISTIC.splash) });
   cue(g, 'impact.splash', th.ix, th.iy);
+  if (shielded(g, 'ballistic')) reflect(g, th, th.ix, th.iy);
   const inBlast = g.ships
     .map((s) => ({ s, d: dist(s.x, s.y, th.ix, th.iy) }))
     .filter((o) => o.d <= Math.max(reach, BALLISTIC.splash))
@@ -3491,7 +4207,7 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }
   if (!drops) return;
-  if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare)) dropPickup(g, th.x, th.y);
+  if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare * dropMult(g, false))) dropPickup(g, th.x, th.y);
   // Weapons drop on their own roll, on top of the power-ups (playtest round
   // 2: sharing one roll, they crowded out the repairs and Overdrives).
   else if (weaponDue(g, th.kind)) dropWeapon(g, th.x, th.y);
@@ -3516,30 +4232,63 @@ function assigned(g: Game, threatId: number): number {
 
 /** Can a tap fire anything right now? (Bot + UI share this.) */
 export function canFire(g: Game): boolean {
-  return g.overdriveT > 0 || g.ammo >= 1;
+  return g.overdriveT > 0 || boostLevel(g, 'overdrive') > 0 || g.ammo >= 1;
 }
 
 /** A shot at a threat, tagged with the loaded weapon (its burst does that
  *  weapon's work). Storm Coil adds a free second shot at the uncovered threat
  *  nearest the first. */
-function fireAt(g: Game, th: Threat): boolean {
+function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean {
   if (!spend(g)) return false;
   const p = g.map.carrier;
-  const w = g.weapon;
+  const [w, ...rest] = tags;
+  const b = g.boost;
+  const also = rest.map((o) => ({ ...o }));
+  // Lead Rain (Fire at Will MAX): every 4th shot bursts into flak.
+  if (b?.id === 'fireAtWill') {
+    b.n += 1;
+    if (b.level >= ABILITY_MAX && b.n % AB.fireAtWill.flakEvery === 0) also.push({ id: 'flak', level: 1, t: 0 });
+  }
+  // Hot Streak's heat and Deadeye (Focus MAX) multiply the hit.
+  const deadeye = g.focusing && boostLevel(g, 'focus') >= ABILITY_MAX ? AB.focus.damage : 1;
+  const heat = streakMult(g);
+  const dmg = g.stats.hitDamage * heat * deadeye;
+  const hot = boostLevel(g, 'hotStreak');
+  const pierce = hot >= ABILITY_MAX && g.streak >= AB.hotStreak.pierce;
   const shoot = (t: Threat) =>
-    g.interceptors.push({ id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', weapon: w ? { ...w } : undefined });
+    g.interceptors.push({
+      id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun',
+      weapon: w ? { ...w } : undefined,
+      ...(also.length ? { also } : {}),
+      ...(dmg !== g.stats.hitDamage ? { dmg } : {}),
+      // A hot gun's shells burst wider (most threats die to one hit, so
+      // the heat has to reach the ones around it too).
+      ...(heat > 1 ? { blast: g.stats.blast * AB.hotStreak.blast[heat - 1] } : {}),
+      ...(hot ? { streak: true } : {}),
+      ...(pierce ? { pierce: true } : {}),
+    });
   shoot(th);
   cue(g, 'gun.fire', p.x, p.y);
-  if (w?.id === 'tesla' && w.level >= 3) {
-    const twin = g.threats
+  const twinOf = () =>
+    g.threats
       .filter((o) => !o.dead && o.id !== th.id && assigned(g, o.id) < o.hp && dist(o.x, o.y, th.x, th.y) <= AB.tesla.twin)
       .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
+  if (tags.some((o) => o.id === 'tesla' && o.level >= 3)) {
+    const twin = twinOf();
     if (twin) shoot(twin);
   }
+  // Hyper Overdrive: every shot fires twice (the second at the next threat).
+  if (boostLevel(g, 'overdrive') >= ABILITY_MAX) shoot(twinOf() ?? th);
   return true;
 }
 
 function reload(g: Game, dt: number): void {
+  // Overdrive the boost (level 2): the rack keeps refilling.
+  if (boostLevel(g, 'overdrive') >= 2) {
+    g.ammo = g.stats.rack;
+    g.reloadT = 0;
+    return;
+  }
   if (g.overdriveT > 0) {
     g.overdriveT -= dt;
     g.ammo = g.stats.rack;
@@ -3552,7 +4301,8 @@ function reload(g: Game, dt: number): void {
     g.reloadT = 0;
     return;
   }
-  g.reloadT += dt;
+  // Ammunition Ship: the rack reloads faster while it floats.
+  g.reloadT += dt * ammoReload(g);
   while (g.reloadT >= g.stats.reload && g.ammo < g.stats.rack) {
     g.reloadT -= g.stats.reload;
     g.ammo += 1;
@@ -3600,11 +4350,22 @@ function updateInterceptors(g: Game, dt: number): void {
       if (th) {
         damageThreat(g, th, it.dmg ?? g.stats.hitDamage);
         // A Tesla Arc hit arcs on to the threats around it.
-        if (it.weapon?.id === 'tesla') teslaArc(g, it.weapon.level, bx, by, th.id, AB.tesla.depth[it.weapon.level - 1], new Set([th.id]));
+        const arc = [it.weapon, ...(it.also ?? [])].find((o) => o?.id === 'tesla');
+        if (arc) teslaArc(g, arc.level, bx, by, th.id, AB.tesla.depth[arc.level - 1], new Set([th.id]));
+        // On Fire (Hot Streak MAX): the hit carries on to the next threat.
+        if (it.pierce) {
+          const next = g.threats.filter((o) => !o.dead && o.id !== th!.id && dist(o.x, o.y, bx, by) <= AB.hotStreak.pierceR).sort((a, b) => dist(a.x, a.y, bx, by) - dist(b.x, b.y, bx, by))[0];
+          if (next) {
+            addFx(g, 'tracer', bx, by, { life: 0.15, x2: next.x, y2: next.y });
+            damageThreat(g, next, it.dmg ?? g.stats.hitDamage);
+          }
+        }
+        if (it.streak) streakHit(g, true, bx, by);
       }
       // A seeker's splash is its own third of a hit.
       blast(g, bx, by, radius, th ? th.id : -1, it.src === 'seeker' ? (it.dmg ?? 1) : 1);
       if (it.weapon) burstWeapon(g, it.weapon, bx, by);
+      for (const o of it.also ?? []) burstWeapon(g, o, bx, by);
       continue;
     }
     it.x += ((it.tx - it.x) / d) * stepLen;
@@ -3735,17 +4496,28 @@ function updateTimers(g: Game, dt: number): void {
   g.shieldT = Math.max(0, g.shieldT - dt);
   g.steamT = Math.max(0, g.steamT - dt);
   g.flareT = Math.max(0, g.flareT - dt);
-  if (g.weapon) {
-    const was = g.weapon.t;
-    g.weapon.t -= dt;
-    if (was > WEAPON_EXPIRING && g.weapon.t <= WEAPON_EXPIRING && g.weapon.t > 0) cue(g, 'weapon.expiring', c0.x, c0.y);
-    if (g.weapon.t <= 0) {
+  // Dual Wield (level 2): both clocks at half speed. Overclock stops one.
+  const dual = boostLevel(g, 'dualWield');
+  const clock = dual ? AB.dualWield.clock[dual - 1] : 1;
+  for (const hand of ['weapon', 'weapon2'] as const) {
+    const w = g[hand];
+    if (!w) continue;
+    const was = w.t;
+    if (w.oc === undefined) w.t -= dt * clock;
+    if (was > WEAPON_EXPIRING && w.t <= WEAPON_EXPIRING && w.t > 0) cue(g, 'weapon.expiring', c0.x, c0.y);
+    if (w.t <= 0) {
       cue(g, 'weapon.done', c0.x, c0.y);
       // Round 4: say so over the gun, or a player keeps tapping as if loaded.
       const c = g.map.carrier;
-      addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${abilityName(g.weapon.id, g.weapon.level).toUpperCase()} DONE` });
-      g.weapon = null;
+      addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${abilityName(w.id, w.level).toUpperCase()} DONE` });
+      g[hand] = null;
     }
+  }
+  // The second hand moves up when the first runs out.
+  if (!g.weapon && g.weapon2) {
+    g.weapon = g.weapon2;
+    g.weapon2 = null;
+    g.passiveT = g.passiveT2;
   }
 }
 
@@ -3987,7 +4759,7 @@ export function hittable(g: Game, th: Threat): boolean {
 export function worthShooting(g: Game, list: Threat[]): Threat[] {
   const live = list.filter((t) => !t.dead);
   const strikers = live.filter((t) => !isStructure(t.kind));
-  const rail = g.weapon?.id === 'railgun';
+  const rail = !!held(g, 'railgun');
   const structures = live.filter((t) => isStructure(t.kind) && hittable(g, t));
   if (rail) return [...strikers, ...structures];
   if (strikers.length) return strikers;
@@ -4205,6 +4977,24 @@ export function pickupLife(p: Pickup): number {
 }
 
 function updatePickups(g: Game, dt: number): void {
+  // Supply Run: drops fly to the carrier and load on arrival (a boost waits
+  // for a tap: it would replace this one).
+  if (boostLevel(g, 'supplyRun')) {
+    const c = g.map.carrier;
+    for (const p of [...g.pickups]) {
+      if (p.kind === 'weapon' && isBoost(p.weapon)) continue;
+      const d = dist(p.x, p.y, c.x, c.y);
+      if (d <= CARRIER.halfBeam) {
+        collect(g, p);
+        continue;
+      }
+      if (p.age < 0.35) continue;
+      const st = Math.min(d, AB.supplyRun.speed * dt);
+      p.x += ((c.x - p.x) / d) * st;
+      p.y += ((c.y - p.y) / d) * st;
+      p.age = Math.min(p.age, 1);
+    }
+  }
   for (const p of g.pickups) p.age += dt;
   for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
   g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
@@ -4215,19 +5005,34 @@ function updatePickups(g: Game, dt: number): void {
  *  the pity clock (WEAPON.pity; Supply Lines shortens it) has run out. */
 function weaponDue(g: Game, kind: ThreatKind): boolean {
   if (!g.slots.length || g.pickups.some((p) => p.kind === 'weapon')) return false;
-  return g.weaponDropT >= g.stats.dropPity || g.rng.drops.chance(THREATS[kind].dropChance * g.stats.dropShare);
+  // Dual Wield with a hand free, or Overclock waiting for a weapon: the next
+  // kill drops one (at the normal rate, one rarely came inside the boost's
+  // 15 s: build 3's sweep found two hands loaded 0% of the time).
+  if (callsWeapon(g) && weaponsHeld(g).length) return true;
+  const m = dropMult(g, true);
+  return g.weaponDropT >= g.stats.dropPity / m || g.rng.drops.chance(THREATS[kind].dropChance * g.stats.dropShare * m);
 }
 
 function dropWeapon(g: Game, x: number, y: number): void {
   g.weaponDropT = 0;
-  addPickup(g, 'weapon', x, y, g.rng.drops.pick(g.slots));
+  // Overclock on a MAX weapon: that weapon drops more often. A boost that is
+  // calling a weapon gets one; the boost already running isn't dealt again.
+  const pin = g.boost?.id === 'overclock' ? g.boost.drops : null;
+  const want = callsWeapon(g) && weaponsHeld(g).length ? weaponsHeld(g) : g.slots.filter((id) => id !== g.boost?.id);
+  addPickup(g, 'weapon', x, y, pin ?? g.rng.drops.pick(want.length ? want : g.slots));
 }
+
+/** The power-ups that became boosts (phase 3). */
+const BOOSTED_POWERS: [PowerKind, AbilityId][] = [['overdrive', 'overdrive'], ['timewarp', 'timeWarp'], ['shield', 'shield'], ['steam', 'fullSteam']];
 
 /** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
   const base = g.map.night ? { ...PICKUPS.weights, starshell: PICKUPS.starshellWeight } : PICKUPS.weights;
   // The Nuke: not before wave nukeFrom, and one on the water at a time.
-  const w = g.wave < PICKUPS.nukeFrom || g.pickups.some((p) => p.kind === 'nuke') ? { ...base, nuke: 0 } : base;
+  const w = g.wave < PICKUPS.nukeFrom || g.pickups.some((p) => p.kind === 'nuke') ? { ...base, nuke: 0 } : { ...base };
+  // The power-ups that became boosts leave the drops once their boost is
+  // live (Free Play: now, so it plays the plan's rules).
+  for (const [k, id] of BOOSTED_POWERS) if (g.freePlay || ROSTER[id].status === 'live') w[k] = 0;
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
@@ -4281,25 +5086,37 @@ function collect(g: Game, p: Pickup): void {
     const id = p.weapon!;
     const level = g.levels[id] ?? 0;
     if (level <= 0) return;
-    g.weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
+    // A boost runs beside whatever is loaded (phase 3).
+    if (isBoost(id)) {
+      startBoost(g, id, level, p.x, p.y);
+      return;
+    }
+    const w: Weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
+    // Dual Wield: it joins the loaded weapon; otherwise it takes the gun.
+    if (!boostLoad(g, w)) g.weapon = w;
+    // Overclock: the first weapon loaded under it (level 2: every one).
+    if (g.boost?.id === 'overclock' && (g.boost.level >= 2 || g.boost.clocked === 0)) overclockWeapon(g, w);
+    const timer = w === g.weapon2 ? 'passiveT2' : 'passiveT';
     if (id === 'cadence') g.beat = { last: -9, run: 0, armed: false, seen: -1 };
-    if (id === 'droneScreen') g.passiveT = 0.2;
-    if (id === 'bomberWing') g.passiveT = AB.bomberWing.first;
+    if (id === 'droneScreen') g[timer] = 0.2;
+    if (id === 'bomberWing') g[timer] = AB.bomberWing.first;
     if (id === 'orbital') {
-      g.passiveT = AB.orbital.first;
+      g[timer] = AB.orbital.first;
       g.orbital = null;
     }
-    if (id === 'gunships') callGunships(g, level);
-    if (id === 'frigate') launchEscorts(g, level);
+    if (id === 'gunships') callGunships(g, w.level);
+    if (id === 'storm') startStorm(g, w.level);
+    if (id === 'ammoShip') callAmmoShip(g, w.level);
+    if (id === 'frigate') launchEscorts(g, w.level);
     // Aegis: a fresh pickup rearms every hull in full.
     if (id === 'aegis') {
       for (const s of g.ships) s.aegis = undefined;
       g.carrierAegis = null;
     }
     g.uses[id] = (g.uses[id] ?? 0) + 1;
-    g.events.push({ kind: 'weapon', id, level });
+    g.events.push({ kind: 'weapon', id, level: w.level });
     cue(g, 'weapon.load', p.x, p.y);
-    addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, level).toUpperCase() });
+    addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, w.level).toUpperCase() + (g.weapon2 === w ? ' + ' + abilityName(g.weapon!.id, g.weapon!.level).toUpperCase() : '') });
     return;
   }
   addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: PICKUP_TEXT[p.kind] });

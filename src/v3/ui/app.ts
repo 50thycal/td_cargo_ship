@@ -37,7 +37,10 @@ import { equipArmory, isUnlocked, loadProgress, recordResult, runLoadout, type P
 import {
   applyFreePlay,
   createGame,
+  held,
   raidWarning,
+  streakMult,
+  warping,
   step,
   tracked,
   type FreePlaySetup,
@@ -48,7 +51,7 @@ import {
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
-import { GESTURE_HINT, ROSTER, gestureOf, isPrototype } from '../data/roster';
+import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype } from '../data/roster';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -341,6 +344,8 @@ export class App {
   /** A finger pressed with a gesture weapon loaded (Charge Lance, Laser
    *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
   private gesture: { id: number; x: number; y: number } | null = null;
+  /** Focus (a boost): the finger whose press is slowing time. */
+  private focusFinger: { id: number; x: number; y: number } | null = null;
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
@@ -543,14 +548,19 @@ export class App {
           c.title = 'Empty weapon slot';
         }
       }
-      const w = id && g.phase === 'wave' && g.weapon?.id === id ? g.weapon : null;
+      // Loaded: the weapon in either hand (Dual Wield), or the boost running.
+      const w = id && g.phase === 'wave' ? (held(g, id) ?? (g.boost?.id === id ? g.boost : null)) : null;
       const state = !id ? 'empty' : w ? 'loaded' : 'held';
       for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
+      c.classList.toggle('boost', !!id && isBoost(id));
       if (id) {
         c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
-        const gesture = w ? gestureOf(w.id) : undefined;
-        const text = w ? (gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${Math.ceil(w.t)}s` : `${Math.ceil(w.t)}s`) : '';
+        const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
+        const secs = w ? `${Math.ceil(w.t)}s` : '';
+        // Overclocked: its clock is stopped; Hot Streak shows the heat.
+        const oc = w && 'oc' in w && w.oc !== undefined;
+        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'hotStreak' && streakMult(g) > 1 ? `×${streakMult(g)} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -785,11 +795,19 @@ export class App {
       // tap, and holding charges, swipes or drags instead of repeating.
       // A second finger while one is pressed is a plain tap (two thumbs: one
       // charges the Lance, the other keeps shooting).
+      // Focus (a boost): the first finger down is sent as a press, so the
+      // sim knows time should slow (and a replay slows it too).
+      const focus = this.game.phase === 'wave' && this.game.boost?.id === 'focus' && !this.focusFinger && !this.gesture;
       if (this.game.phase === 'wave' && gestureOf(this.game.weapon?.id) && this.rec && !this.gesture) {
         this.gesture = { id: e.pointerId, x: w.x, y: w.y };
+        if (focus) this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
         this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
         this.playCues(this.game);
         return;
+      }
+      if (focus && this.rec) {
+        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
+        this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
       }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
@@ -815,6 +833,16 @@ export class App {
       if (w) Object.assign(this.hold, w);
     });
     const lift = (e: PointerEvent) => {
+      // Focus with a plain weapon: the lift ends the press (a gesture's
+      // release, below, does it for a gesture weapon).
+      if (this.focusFinger?.id === e.pointerId) {
+        const at = this.focusFinger;
+        this.focusFinger = null;
+        if (!(this.gesture && this.gesture.id === e.pointerId)) {
+          const w = this.toWorld(e.clientX, e.clientY) ?? at;
+          this.rec?.release(w.x, w.y, TAP_RADIUS_PX / this.scale);
+        }
+      }
       if (this.gesture && this.gesture.id === e.pointerId) {
         const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
         this.gesture = null;
@@ -832,6 +860,11 @@ export class App {
   /** A press still down when play stops (pause, a note, the run ends): let
    *  go of it where the finger last was, so nothing stays held. */
   private dropGesture(): void {
+    if (this.focusFinger && !this.gesture) {
+      const at = this.focusFinger;
+      if (this.game?.phase === 'wave') this.rec?.release(at.x, at.y, TAP_RADIUS_PX / this.scale);
+    }
+    this.focusFinger = null;
     if (!this.gesture) return;
     const at = this.gesture;
     this.gesture = null;
@@ -1000,7 +1033,7 @@ export class App {
    *  timing test), not from a tap or a pick between steps. */
   private playCues(g: Game, fromStep = false): void {
     if (!g.cues.length) return;
-    const warp = g.warpT > 0;
+    const warp = warping(g);
     for (const c of g.cues) {
       this.audio.play(c, fromStep ? g.steps : -1, warp);
       const h = fromStep && !this.playback ? hapticForCue(c.id) : null;
@@ -1776,7 +1809,7 @@ export class App {
         return line(
           `Weapon ${i + 1}`,
           // Prototypes (the weapons plan) are Free Play only, marked so.
-          select([['', '—'], ...ABILITY_ORDER.map((a): [string, string] => [a, `${ABILITIES[a].name}${isPrototype(a) ? ' · prototype' : ''}${ROSTER[a].cat === 'passive' ? ' (passive)' : ''}`])], w?.id ?? '', (v) => {
+          select([['', '—'], ...ABILITY_ORDER.map((a): [string, string] => [a, `${ABILITIES[a].name}${isPrototype(a) ? ' · prototype' : ''}${ROSTER[a].cat === 'active' ? '' : ` (${ROSTER[a].cat})`}`])], w?.id ?? '', (v) => {
             fp.weapons[i] = v ? { id: v as AbilityId, level: w?.level ?? 1 } : null;
           }, `weapon${i}`),
           select([['1', 'LV 1'], ['2', 'LV 2'], ['3', 'MAX']], `${w?.level ?? 1}`, (v) => {

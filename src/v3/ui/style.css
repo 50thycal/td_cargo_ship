@@ -1888,6 +1888,13 @@ body {
   box-shadow: 0 0 14px 2px color-mix(in srgb, var(--card-color) 50%, transparent);
 }
 
+/* A boost (the weapons plan, phase 3): a dashed ring, so it reads as
+   "changes your gun" rather than "is your gun". */
+.v3-weapon.boost {
+  outline: 2px dashed color-mix(in srgb, var(--card-color) 70%, transparent);
+  outline-offset: 2px;
+}
+
 /* Short phones: smaller chips so three fit under the controls. */
 @media (max-height: 420px) {
   .v3-weapon {

@@ -233,7 +233,8 @@ export class Recorder {
   }
 
   release(x: number, y: number, radius: number): TapResult | null {
-    if (!this.game.press) return null;
+    // A gesture's press, or a Focus finger (a boost: the press only slows time).
+    if (!this.game.press && !this.game.finger) return null;
     const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
     this.log.commands.push([this.game.steps, 'r', rx, ry, rr]);
     return release(this.game, rx, ry, rr);

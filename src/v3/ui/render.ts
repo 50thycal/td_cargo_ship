@@ -4,9 +4,10 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, lanceCharge, pickupLife, raidWarning, reticleVisible, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
-import { AB, ABILITY_MAX, SHORT_NAME } from '../data/abilities';
+import { CARRIER_TARGET, beatClock, boostLevel, lanceCharge, pickupLife, raidWarning, reticleVisible, streakMult, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
+import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
 import { laneSamples } from '../sim/lanes';
@@ -70,15 +71,16 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawCarrier(ctx, g);
   drawLoaded(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
-  if (g.steamT > 0) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
+  if (g.steamT > 0 || boostLevel(g, 'fullSteam')) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
   drawFields(ctx, g, 'sun');
   drawFields(ctx, g, 'laser');
-  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
+  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : s.ammo ? AB.ammoShip.hp[s.ammo - 1] : g.stats.shipHp, false, s.heading, s.vip);
+  drawAmmoShip(ctx, g);
   drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
-  if (g.shieldT > 0) drawShields(ctx, g);
+  if (g.shieldT > 0 || boostLevel(g, 'shield')) drawShields(ctx, g);
   drawAegis(ctx, g);
   for (const p of g.pickups) {
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
@@ -118,6 +120,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFx(ctx, g);
   drawPlanWeapons(ctx, g);
   drawPassives(ctx, g);
+  drawExperiments(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
@@ -127,6 +130,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawNight(ctx, g, (th) => drawBallisticGround(ctx, g, th));
+  drawBoosts(ctx, g);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);
   for (const r of ripples) {
@@ -826,13 +830,37 @@ function drawWeaponPickup(ctx: CanvasRenderingContext2D, g: Game, p: Pickup): vo
   ctx.strokeStyle = col;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
-  for (let k = 0; k < 6; k++) {
-    const ang = Math.PI / 6 + (k * Math.PI) / 3;
-    ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+  // A boost is a diamond (it never replaces the loaded weapon); a weapon a
+  // hexagon.
+  if (isBoost(id)) {
+    for (let k = 0; k < 4; k++) ctx.lineTo(Math.cos((k * Math.PI) / 2) * r * 1.15, Math.sin((k * Math.PI) / 2) * r * 1.15);
+  } else {
+    for (let k = 0; k < 6; k++) {
+      const ang = Math.PI / 6 + (k * Math.PI) / 3;
+      ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+    }
   }
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+  // Airdrop: it came down on a parachute.
+  if (p.crate && p.age < 1.2) {
+    ctx.fillStyle = `${col}cc`;
+    ctx.beginPath();
+    ctx.arc(0, -r - 26, 26, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-26, -r - 26);
+    ctx.lineTo(-r * 0.5, -r * 0.6);
+    ctx.moveTo(26, -r - 26);
+    ctx.lineTo(r * 0.5, -r * 0.6);
+    ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 3.5;
+  }
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 7]);
   ctx.lineDashOffset = -g.t * 30;
@@ -858,12 +886,21 @@ function drawWeaponPickup(ctx: CanvasRenderingContext2D, g: Game, p: Pickup): vo
 /** A weapon loaded: a ring in its colour around the carrier, draining with
  *  the seconds left (as Overdrive's does), and blinking in the last two. */
 function drawLoaded(ctx: CanvasRenderingContext2D, g: Game): void {
-  const w = g.weapon;
-  if (!w || (w.t < 2 && Math.floor(g.t * 8) % 2)) return;
+  // Dual Wield: the second weapon's ring sits outside the first; a boost's
+  // ring outside both.
+  if (g.weapon2) drawLoadedRing(ctx, g, g.weapon2.id, g.weapon2.t, 14);
+  if (g.boost) drawLoadedRing(ctx, g, g.boost.id, g.boost.t, g.weapon2 ? 28 : 14, true);
+  if (g.weapon) drawLoadedRing(ctx, g, g.weapon.id, g.weapon.t, 0);
+}
+
+function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t: number, out: number, boost = false): void {
+  if (t < 2 && Math.floor(g.t * 8) % 2) return;
   const { x, y } = g.map.carrier;
-  const col = ICON_COLOR[w.id];
-  const rx = CARRIER.halfLength + 34;
-  const ry = CARRIER.halfBeam + 30;
+  const col = ICON_COLOR[id];
+  const rx = CARRIER.halfLength + 34 + out;
+  const ry = CARRIER.halfBeam + 30 + out;
+  const w = { t };
+  if (boost) ctx.setLineDash([10, 6]);
   ctx.save();
   ctx.strokeStyle = col;
   ctx.globalAlpha = 0.25;
@@ -875,7 +912,152 @@ function drawLoaded(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.beginPath();
   ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / g.stats.weaponTime));
   ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
+}
+
+/** Phase 4: Tidal Cannon's waves and Storm Front's cells, from sim state. */
+function drawExperiments(ctx: CanvasRenderingContext2D, g: Game): void {
+  ctx.save();
+  for (const wv of g.waves) {
+    const fade = wv.max > 1000 ? 1 : 1 - wv.r / wv.max;
+    ctx.strokeStyle = `rgba(56,189,248,${0.25 + 0.6 * fade})`;
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.arc(wv.x, wv.y, Math.max(1, wv.r), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(240,249,255,${0.2 + 0.6 * fade})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(wv.x, wv.y, Math.max(1, wv.r - 6), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  for (const c of g.storms) {
+    // A dark cell, rain streaking across it with the wind.
+    const grad = ctx.createRadialGradient(c.x, c.y, c.r * 0.2, c.x, c.y, c.r);
+    grad.addColorStop(0, 'rgba(30,41,59,0.72)');
+    grad.addColorStop(0.75, 'rgba(51,65,85,0.45)');
+    grad.addColorStop(1, 'rgba(51,65,85,0.1)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(203,213,225,0.7)';
+    ctx.setLineDash([12, 10]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(191,219,254,0.45)';
+    ctx.lineWidth = 1.5;
+    const lean = Math.sign(c.vx) * 8;
+    for (let k = 0; k < 18; k++) {
+      const a = (k * 2.39996) % (Math.PI * 2);
+      const rr = c.r * Math.sqrt(((k * 7) % 18) / 18);
+      const x = c.x + Math.cos(a) * rr;
+      const y = c.y + Math.sin(a) * rr + ((g.t * 260 + k * 31) % 40) - 20;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + lean, y + 16);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** The Ammunition Ship: rounds stacked on its deck, so the one to protect reads. */
+function drawAmmoShip(ctx: CanvasRenderingContext2D, g: Game): void {
+  const s = g.ships.find((o) => o.ammo);
+  if (!s) return;
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.strokeStyle = 'rgba(250,204,21,0.8)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.arc(0, 0, 30, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#facc15';
+  for (let k = 0; k < 3; k++) ctx.fillRect(-10 + k * 7, -26, 5, 9);
+  ctx.restore();
+}
+
+/** Phase 3: what the running boost looks like on the battlefield. Time
+ *  Warp drains the colour and trails the threats; Focus darkens the edges
+ *  while time is slowed; Hot Streak's heat sits over the gun. */
+function drawBoosts(ctx: CanvasRenderingContext2D, g: Game): void {
+  const c = g.map.carrier;
+  if (warping(g)) {
+    // Trails behind every threat, then the whole field drained of colour.
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const th of g.threats) {
+      if (th.dead || th.kind === 'ballistic' || THREATS[th.kind].hp >= 10) continue;
+      const sp = Math.hypot(th.vx, th.vy);
+      const ux = sp > 1 ? th.vx / sp : Math.cos(th.heading);
+      const uy = sp > 1 ? th.vy / sp : Math.sin(th.heading);
+      for (let k = 1; k <= 4; k++) {
+        ctx.globalAlpha = 0.28 - k * 0.055;
+        dot(ctx, th.x - ux * k * 14, th.y - uy * k * 14, 9 - k, '#c4b5fd');
+      }
+    }
+    ctx.globalAlpha = 0.75;
+    ctx.globalCompositeOperation = 'saturation';
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(167,139,250,0.55)';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, VIEW.width - 8, VIEW.height - 8);
+    ctx.restore();
+  }
+  if (g.focusing) {
+    ctx.save();
+    const v = ctx.createRadialGradient(VIEW.width / 2, VIEW.height / 2, VIEW.height * 0.35, VIEW.width / 2, VIEW.height / 2, VIEW.width * 0.62);
+    v.addColorStop(0, 'rgba(10,20,40,0)');
+    v.addColorStop(1, 'rgba(10,20,40,0.55)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+    ctx.strokeStyle = 'rgba(147,197,253,0.7)';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, VIEW.width - 6, VIEW.height - 6);
+    ctx.restore();
+  }
+  // Focus: the bank of slow motion, a bar over the carrier.
+  if (g.boost?.id === 'focus') {
+    const full = AB.focus.bank[g.boost.level - 1];
+    const u = g.boost.bank / full;
+    const w = 120;
+    const y = c.y - CARRIER.halfBeam - 34;
+    ctx.fillStyle = 'rgba(10,20,28,0.8)';
+    ctx.fillRect(c.x - w / 2 - 2, y - 2, w + 4, 10);
+    ctx.fillStyle = ICON_COLOR.focus;
+    ctx.fillRect(c.x - w / 2, y, w * u, 6);
+  }
+  // Hot Streak: pips for the streak, the multiplier over the gun.
+  if (g.boost?.id === 'hotStreak') {
+    const k = g.boost.level - 1;
+    const top = AB.hotStreak.x3[k];
+    const n = Math.min(g.streak, top);
+    const y = c.y - CARRIER.halfBeam - 30;
+    for (let i = 0; i < top; i++) {
+      const x = c.x + (i - (top - 1) / 2) * 13;
+      dot(ctx, x, y, 5, i < n ? (i >= AB.hotStreak.x2[k] - 1 ? '#f97316' : '#fbbf24') : 'rgba(255,255,255,0.18)');
+    }
+    const m = streakMult(g);
+    if (m > 1) {
+      ctx.font = '900 26px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.strokeText(`×${m}`, c.x, y - 14);
+      ctx.fillStyle = m >= 3 ? '#f97316' : '#fbbf24';
+      ctx.fillText(`×${m}`, c.x, y - 14);
+    }
+  }
 }
 
 /** The weapons plan's phase 1 weapons, drawn from the live sim state:
@@ -1198,7 +1380,8 @@ function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
 
 /** Shield pickup: a bubble over every ship and the carrier, flickering out. */
 function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
-  const ending = g.shieldT < 1.2 && Math.floor(g.t * 10) % 2 === 0;
+  const left = g.boost?.id === 'shield' ? g.boost.t : g.shieldT;
+  const ending = left < 1.2 && Math.floor(g.t * 10) % 2 === 0;
   if (ending) return;
   ctx.strokeStyle = 'rgba(226,232,240,0.85)';
   ctx.fillStyle = 'rgba(186,230,253,0.16)';
@@ -1746,6 +1929,53 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.beginPath();
         ctx.arc(f.x, f.y, f.r * (0.6 + u), 0, Math.PI * 2);
         ctx.stroke();
+        break;
+      }
+      case 'bolt': {
+        // Storm Front's lightning: a jagged white-yellow stroke, cloud to target.
+        const x2 = f.x2 ?? f.x;
+        const y2 = f.y2 ?? f.y;
+        ctx.strokeStyle = `rgba(254,240,138,${1 - u})`;
+        ctx.lineWidth = 4 * (1 - u) + 1;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        const n = 6;
+        for (let k = 1; k < n; k++) {
+          const p = k / n;
+          const j = ((k * 37 + f.x) % 13) - 6.5;
+          ctx.lineTo(f.x + (x2 - f.x) * p + j * 2, f.y + (y2 - f.y) * p);
+        }
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        break;
+      }
+      case 'shatter': {
+        // Shield (level 2) takes a strafing run: the bubble cracks, then
+        // its shards fly off.
+        ctx.strokeStyle = `rgba(103,232,249,${1 - u})`;
+        ctx.lineWidth = 3;
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2 + 0.3;
+          const r0 = f.r * (0.55 + u * 0.9);
+          const r1 = r0 + 14 + 10 * ((k * 7) % 3);
+          ctx.beginPath();
+          ctx.moveTo(f.x + Math.cos(a) * r0, f.y + Math.sin(a) * r0 * 0.6);
+          ctx.lineTo(f.x + Math.cos(a + 0.18) * r1, f.y + Math.sin(a + 0.18) * r1 * 0.6);
+          ctx.stroke();
+        }
+        if (u < 0.35) {
+          // The crack lines across the bubble before it breaks.
+          ctx.strokeStyle = `rgba(255,255,255,${1 - u * 2.5})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(f.x - f.r, f.y - 6);
+          ctx.lineTo(f.x - 10, f.y + 4);
+          ctx.lineTo(f.x + 6, f.y - 8);
+          ctx.lineTo(f.x + f.r, f.y + 2);
+          ctx.moveTo(f.x - 10, f.y + 4);
+          ctx.lineTo(f.x - 4, f.y + 16);
+          ctx.stroke();
+        }
         break;
       }
       case 'beam': {
