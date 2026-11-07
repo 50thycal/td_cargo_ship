@@ -56,8 +56,11 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      and the gesture weapons' presses are logged ('d', 'v', 'r').
  *  15: the lock-in: seven weapons cut, the rest dealt by chapter (a
  *      chapter's new weapons come first), the four power-ups that became
- *      boosts leave the campaign's drops. */
-export const LOG_VERSION = 15;
+ *      boosts leave the campaign's drops.
+ *  16: the enemy build: new enemies join the waves by chapter (each in
+ *      place of a drone swarm, from their own RNG stream), and Free Play
+ *      can choose them (`freePlay.enemies`). */
+export const LOG_VERSION = 16;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

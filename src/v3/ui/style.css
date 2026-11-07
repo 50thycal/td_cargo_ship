@@ -3376,6 +3376,19 @@ body {
   letter-spacing: 0.06em;
 }
 
+.v3-foe-chip {
+  --card-color: #ff7a63;
+  padding-left: 9px;
+}
+
+.v3-foe-chip.first {
+  border-color: var(--card-color);
+}
+
+.v3-foe-chip.first i {
+  color: #ffb3a6;
+}
+
 .v3-kit-head {
   display: flex;
   justify-content: space-between;

@@ -69,6 +69,8 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
+import { FOES, type FoeSetting } from '../data/foes';
+import { foeCount, foeDown, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
@@ -155,6 +157,8 @@ export interface Threat {
    *  its next broadside. */
   along?: number;
   fireT?: number;
+  /** The enemy build: a new enemy's own state (sim/foes.ts). */
+  foe?: FoeData;
 }
 
 export interface Interceptor {
@@ -555,7 +559,7 @@ export interface Game {
   /** Cards still to pick before the next wave (more than one when the dev
    *  stride skips waves). */
   draftsLeft: number;
-  rng: { ships: RNG; threats: RNG; drops: RNG; draft: RNG; armor: RNG };
+  rng: { ships: RNG; threats: RNG; drops: RNG; draft: RNG; armor: RNG; foes: RNG };
   phase: Phase;
   t: number;
   wave: number;
@@ -691,6 +695,8 @@ export interface Game {
   realT: number;
   /** Free Play: the plan's drops (the power-ups that became boosts don't drop). */
   freePlay: boolean;
+  /** The enemy build: the new enemies this run can meet, and their shots. */
+  foe: FoeState;
 }
 
 
@@ -744,6 +750,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
       drops: root.fork('drops'),
       draft: root.fork('draft'),
       armor: root.fork('armor'),
+      foes: root.fork('foes'),
     },
     phase: 'wave',
     t: 0,
@@ -831,6 +838,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     focusing: false,
     realT: 0,
     freePlay: false,
+    foe: newFoeState(mapId),
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -908,6 +916,11 @@ function startWave(g: Game): void {
     replace('guided', PLANE.bombs);
     units.push({ kind: 'bomber', size: 1 });
   }
+  // The enemy build: the new enemies, each in place of a drone swarm.
+  for (const id of planFoes(g, cut(foeCount(g.wave), len))) {
+    replace('drone', 1);
+    units.push({ kind: FOES[id].kind, size: 1 });
+  }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -940,6 +953,11 @@ function startWave(g: Game): void {
       const at = raid.at + rng.range(0, RAID.window);
       if (u.kind === 'strafer' || u.kind === 'bomber') {
         queue.push({ at, kind: u.kind, base: -1, side: rng.chance(0.5) ? 1 : -1 });
+        continue;
+      }
+      // A new enemy that doesn't come out of a base comes on its own.
+      if (isFoe(u.kind) && !fromBase(u.kind)) {
+        queue.push({ at, kind: u.kind, base: -1 });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -998,7 +1016,7 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
     return got;
   };
   const surfaceKind = (u: Unit) => u.kind === 'ballistic' || u.kind === 'drone';
-  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership';
+  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind);
   // Submarines: a salvo of ballistics back to back, or a drone swarm.
   const spots = rng.shuffle([...g.map.subSpots]);
   for (let k = 0; k < cut(vectorCount(g.wave, vp.subs, 2, 3), g.tempo.waveLen) && spots.length; k++) {
@@ -1035,14 +1053,14 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
   return out.sort((a, b) => a.at - b.at);
 }
 
-function pathLength(path: Point[]): number {
+export function pathLength(path: Point[]): number {
   let n = 0;
   for (let k = 1; k < path.length; k++) n += dist(path[k - 1].x, path[k - 1].y, path[k].x, path[k].y);
   return n;
 }
 
 /** The point `d` along a path, and the heading of the stretch it is on. */
-function alongPath(path: Point[], d: number): { x: number; y: number; heading: number } {
+export function alongPath(path: Point[], d: number): { x: number; y: number; heading: number } {
   let left = Math.max(0, d);
   for (let k = 1; k < path.length; k++) {
     const a = path[k - 1];
@@ -1249,6 +1267,8 @@ export interface FreePlaySetup {
   weapons: { id: AbilityId; level: number }[];
   /** Weapons drop every few seconds instead of at the normal rate. */
   frequentDrops: boolean;
+  /** The enemy build: which new enemies come (absent: as the campaign). */
+  enemies?: FoeSetting;
 }
 
 /** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
@@ -1266,6 +1286,17 @@ export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
     g.stats = { ...g.stats, dropPity: Math.min(g.stats.dropPity, FREE_PLAY_DROPS.pity), dropShare: g.stats.dropShare * FREE_PLAY_DROPS.share };
   }
   g.freePlay = true;
+  if (setup.enemies && setup.enemies !== 'campaign') {
+    g.foe = newFoeState(g.map.id, setup.enemies);
+    // The first wave was planned before Free Play's enemies were known:
+    // plan it again, as if it had just started.
+    if (g.phase === 'wave' && g.waveT === 0) {
+      g.events = g.events.filter((e) => e.kind !== 'wave');
+      g.cues = [];
+      g.wave -= 1;
+      startWave(g);
+    }
+  }
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */
@@ -2924,6 +2955,7 @@ export function step(g: Game, dt: number): void {
   updateInterceptors(g, dt);
   updatePosts(g, dt);
   updateLocks(g, dt);
+  updateFoeShots(g, tdt);
   g.weaponDropT += dt;
 
   g.threats = g.threats.filter((th) => !th.dead);
@@ -2937,7 +2969,7 @@ export function step(g: Game, dt: number): void {
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && g.foe.shots.length === 0) {
     g.score += 200 * g.wave;
     clearField(g);
     recordWave(g, 'cleared');
@@ -2986,6 +3018,7 @@ function clearField(g: Game): void {
   g.quietUntil = [];
   g.carrierAegis = null;
   for (const s of g.ships) s.aegis = undefined;
+  g.foe.shots = [];
   g.ammo = g.stats.rack;
   g.reloadT = 0;
 }
@@ -3198,13 +3231,13 @@ function tankerHome(g: Game, s: Ship): void {
 }
 
 /** Where a ship will be `ahead` seconds from now, sailing its lane. */
-function shipAhead(g: Game, s: Ship, ahead: number): Point {
+export function shipAhead(g: Game, s: Ship, ahead: number): Point {
   const p = laneAt(g.map.channels[s.channel], s.d + laneSpeed(g, s) * ahead, s.lat);
   return { x: p.x, y: p.y };
 }
 
 /** Ships the enemy is allowed to aim at: on screen and not about to deliver. */
-function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
+export function targetable(g: Game, maxX = VIEW.width - 90): Ship[] {
   // Measured along the lane, so it holds for a bend or a reversed lane: on a
   // straight lane this is x > 30 and x < maxX.
   const tail = VIEW.width + 40 - maxX;
@@ -3241,7 +3274,7 @@ const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'
 /** `direct`: the hit was aimed at this ship (formation armour applies);
  *  splash spilling over from a neighbour's hit is not reduced. Spread's
  *  blast cut applies to splash weapons either way. */
-function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
+export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
   if (shielded(g, by)) {
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     cue(g, 'shield.block', s.x, s.y);
@@ -3314,6 +3347,32 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   generator: 0,
   citadel: 0,
   dreadnought: 0,
+  // The enemy build: drones and missiles speed up with the wave like their
+  // kin; platforms and aircraft barely.
+  sprinter: 1,
+  decoy: 1,
+  hydra: GUIDED.waveSpeedShare,
+  dart: 0.5,
+  rocketTruck: 0,
+  loiter: 0.6,
+  attackHeli: 0.3,
+  heliRocket: 0.5,
+  torpedoSub: 0,
+  torpedo: 0.3,
+  armored: 0.6,
+  crosser: 0.6,
+  scavenger: 0.3,
+  stealthJet: 0.3,
+  stealthBomber: 0.3,
+  diveBomber: 0,
+  siege: 0,
+  spotter: 0.2,
+  tender: 0,
+  guard: 0,
+  picket: 0,
+  lure: 0,
+  barge: 0,
+  cloud: 0.3,
 };
 
 function launch(g: Game, l: Launch): void {
@@ -3321,15 +3380,20 @@ function launch(g: Game, l: Launch): void {
     launchPlane(g, l);
     return;
   }
+  if (isFoe(l.kind) && !fromBase(l.kind)) {
+    launchFoe(g, l);
+    return;
+  }
   if (l.base < 0 || g.baseDown[l.base]) return;
   // Bomber Wing silenced this silo: the launch is cancelled, not delayed.
   if ((g.quietUntil[l.base] ?? 0) > g.t) return;
   const base = g.map.bases[l.base];
-  spawnThreat(g, l.kind, base.x, base.y, 'base');
+  if (isFoe(l.kind)) launchFoe(g, l, base);
+  else spawnThreat(g, l.kind, base.x, base.y, 'base');
 }
 
 /** A threat leaves a launcher at (x, y): a base, a truck or a submarine. */
-function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: LaunchOrigin): Threat {
+export function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, origin: LaunchOrigin): Threat {
   const def = THREATS[kind];
   const rng = g.rng.threats;
   g.origins[origin] += 1;
@@ -3570,6 +3634,8 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     updateMine(g, th, dt);
   } else if (th.kind === 'strafer' || th.kind === 'bomber') {
     updatePlane(g, th, dt);
+  } else if (movesItself(th.kind)) {
+    updateFoe(g, th, dt, (t) => targetPos(g, t), (t) => checkImpact(g, t), (t) => ensureTarget(g, t));
   } else if (th.kind === 'ballistic') {
     const left = th.dur - th.age;
     // A short flight whistles from its first step.
@@ -3776,6 +3842,8 @@ const STEER: Partial<Record<ThreatKind, number>> = {
   cluster: CLUSTER.turnRate,
   bomblet: CLUSTER.bombletTurn,
   fastboat: FASTBOAT.turnRate,
+  hydra: GUIDED.turnRate,
+  dart: 5,
 };
 
 /** Where a ship will be when a fast threat reaches it. */
@@ -3786,7 +3854,7 @@ function leadPoint(g: Game, th: Threat): Point {
   return shipAhead(g, ship, dist(th.x, th.y, t.x, t.y) / th.speed);
 }
 
-function checkImpact(g: Game, th: Threat): void {
+export function checkImpact(g: Game, th: Threat): void {
   const dmg = THREATS[th.kind].damage;
   const blame = th.parent ?? th.kind;
   const heavy = th.kind === 'heavy';
@@ -3836,7 +3904,7 @@ const WELL_RING = 22;
 /** More than any hull can take, through any armour or formation cut. */
 const HEAVY_SINKS = 99;
 
-function child(g: Game, parent: Threat, kind: ThreatKind, target: number, heading: number): Threat {
+export function child(g: Game, parent: Threat, kind: ThreatKind, target: number, heading: number): Threat {
   return {
     ...parent,
     id: g.nextId++,
@@ -3917,7 +3985,7 @@ function predict(th: Threat, ahead: number): Point {
   return { x: th.x + th.vx * ahead, y: th.y + th.vy * ahead };
 }
 
-function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
+export function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   if (th.dead) return;
   // The Citadel can't be hurt while any shield generator stands.
   if (th.kind === 'citadel' && shieldUp(g)) {
@@ -3930,6 +3998,7 @@ function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
   if (th.hp > 1e-6) return;
   th.dead = true;
   g.kills[th.kind] += 1;
+  if (isFoe(th.kind)) foeDown(g, th, !drops);
   if (isStructure(th.kind)) {
     structureDown(g, th);
   } else {
@@ -4878,6 +4947,7 @@ function nuke(g: Game): void {
     if (isStructure(th.kind)) damageThreat(g, th, PICKUPS.nukeStructure, false);
     else damageThreat(g, th, th.hp + 99, false);
   }
+  g.foe.shots = [];
   addFx(g, 'nuke', c.x, c.y, { life: 1.2, r: Math.hypot(VIEW.width, VIEW.height) });
 }
 
@@ -4885,7 +4955,7 @@ function nuke(g: Game): void {
 // Sound cues (audio/cues.ts): write-only, never read by the sim.
 
 /** A sound for this moment, at (x, y) on the battlefield. */
-function cue(g: Game, id: CueId, x: number, y: number, o?: { vx?: number; gain?: number }): void {
+export function cue(g: Game, id: CueId, x: number, y: number, o?: { vx?: number; gain?: number }): void {
   g.cues.push(o ? { id, x, y, ...o } : { id, x, y });
 }
 
@@ -4913,6 +4983,31 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   generator: 'structure.down',
   citadel: 'structure.down',
   dreadnought: 'structure.down',
+  // The enemy build.
+  sprinter: 'kill.small',
+  decoy: 'kill.small',
+  hydra: 'kill.missile',
+  dart: 'kill.small',
+  rocketTruck: 'truck.destroyed',
+  loiter: 'kill.small',
+  attackHeli: 'kill.big',
+  heliRocket: 'kill.small',
+  torpedoSub: 'sub.destroyed',
+  torpedo: 'kill.missile',
+  armored: 'kill.big',
+  crosser: 'kill.small',
+  scavenger: 'kill.small',
+  stealthJet: 'kill.big',
+  stealthBomber: 'kill.big',
+  diveBomber: 'kill.big',
+  siege: 'structure.down',
+  spotter: 'kill.big',
+  tender: 'kill.big',
+  guard: 'kill.small',
+  picket: 'kill.big',
+  lure: 'kill.missile',
+  barge: 'structure.down',
+  cloud: 'kill.missile',
 };
 
 export const PICKUP_CUE: Record<PowerKind, CueId> = {
@@ -4942,6 +5037,31 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   bomber: 'bomber.pass',
   mine: 'mine.drop',
   fastboat: 'fastboat.launch',
+  // The enemy build (their own sounds come in its audio pass).
+  sprinter: 'drone.launch',
+  decoy: 'drone.launch',
+  hydra: 'missile.launch',
+  dart: 'cluster.split',
+  rocketTruck: 'truck.raise',
+  loiter: 'drone.launch',
+  attackHeli: 'strafer.pass',
+  heliRocket: 'missile.launch',
+  torpedoSub: 'sub.surface',
+  torpedo: 'sub.fire',
+  armored: 'drone.launch',
+  crosser: 'drone.launch',
+  scavenger: 'drone.launch',
+  stealthJet: 'strafer.pass',
+  stealthBomber: 'bomber.pass',
+  diveBomber: 'bomber.pass',
+  siege: 'truck.raise',
+  spotter: 'bomber.pass',
+  tender: 'sub.surface',
+  guard: 'minidrone.spawn',
+  picket: 'sub.surface',
+  lure: 'mine.drop',
+  barge: 'sub.surface',
+  cloud: 'mine.drop',
   // Structures are raised, never launched.
 };
 
@@ -4958,7 +5078,7 @@ function launchCue(g: Game, th: Threat, origin: LaunchOrigin): void {
 // ---------------------------------------------------------------------------
 // Helpers
 
-function addFx(
+export function addFx(
   g: Game,
   kind: FxKind,
   x: number,
@@ -4976,11 +5096,11 @@ export function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
 }
 
-function clamp(v: number, lo: number, hi: number): number {
+export function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-function angleDiff(a: number, b: number): number {
+export function angleDiff(a: number, b: number): number {
   let d = a - b;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;

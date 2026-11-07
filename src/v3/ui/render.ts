@@ -10,9 +10,10 @@ import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
+import { drawFoe, drawFoeGround, drawFoeShots } from './foes';
 import { laneSamples } from '../sim/lanes';
 
-const C = {
+export const C = {
   waterDeep: '#0b2433',
   waterShallow: '#12384a',
   waveLine: 'rgba(160, 210, 230, 0.07)',
@@ -71,6 +72,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawCarrier(ctx, g);
   drawLoaded(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
+  drawFoeGround(ctx, g);
   if (g.steamT > 0 || boostLevel(g, 'fullSteam')) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
@@ -117,6 +119,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     ctx.globalAlpha = 1;
     dot(ctx, it.x, it.y, col ? 6.5 : 5.5, col ?? C.interceptor);
   }
+  drawFoeShots(ctx, g);
   drawFx(ctx, g);
   drawPlanWeapons(ctx, g);
   drawPassives(ctx, g);
@@ -1327,6 +1330,7 @@ function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat)
 
 function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   if (drawNewThreat(ctx, g, th)) return;
+  if (drawFoe(ctx, g, th)) return;
   const heading = Math.atan2(th.vy, th.vx) || th.heading;
   switch (th.kind) {
     case 'supersonic':
@@ -1413,7 +1417,7 @@ function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   deltaWing(ctx, th.x, th.y, heading, 1, C.drone);
 }
 
-function deltaWing(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fill: string): void {
+export function deltaWing(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fill: string): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);
@@ -1441,7 +1445,7 @@ function deltaWing(ctx: CanvasRenderingContext2D, x: number, y: number, heading:
 
 /** Remaining hits over an armoured threat: one pip per hit, in a bar of
  *  fixed width so an 8-hit heavy stays as compact as a 5-hit mothership. */
-function hpPips(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, max: number): void {
+export function hpPips(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, max: number): void {
   const width = 66;
   const gap = 2;
   const w = (width - (max - 1) * gap) / max;
@@ -1484,7 +1488,7 @@ function drawSupersonic(ctx: CanvasRenderingContext2D, g: Game, th: Threat, head
   missile(ctx, th.x, th.y, heading, 34, 5, '#f4f1e8', '#ff8af0');
 }
 
-function missile(
+export function missile(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,

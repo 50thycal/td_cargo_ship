@@ -51,6 +51,8 @@ import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
+import { FOES, FOES_BUILT, foesInChapter, type FoeSetting } from '../data/foes';
+import { foeSetting, launchFoe, newFoeState } from '../sim/foes';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -114,6 +116,16 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   mothership: 'MOTHERSHIP DOWN',
   strafer: 'JET DOWN',
   bomber: 'BOMBER DOWN',
+  rocketTruck: 'TRUCK DOWN',
+  attackHeli: 'HELI DOWN',
+  armored: 'ARMOR DOWN',
+  stealthJet: 'STEALTH DOWN',
+  stealthBomber: 'STEALTH DOWN',
+  spotter: 'SPOTTER DOWN',
+  siege: 'BATTERY DOWN',
+  tender: 'TENDER DOWN',
+  picket: 'PICKET DOWN',
+  barge: 'BARGE DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -139,6 +151,12 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
   fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
+  // The enemy build.
+  sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
+  decoy: 'Half this swarm is fake. Up close the decoys strobe white: save your shots for the real ones.',
+  hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
+  rocketTruck: 'Its rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
+  loiter: 'They circle until a ship comes near, then all dive. Clear them while they wait.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map
@@ -434,6 +452,16 @@ export class App {
     (window as unknown as { __v3: unknown }).__v3 = {
       game: () => this.game,
       toClient: (x: number, y: number) => ({ x: this.offX + x * this.scale, y: this.offY + y * this.scale }),
+      // The enemy build's checks: bring a new enemy in now (from base 1, or
+      // from where it comes on its own).
+      foe: (kind: ThreatKind, base = 1) => {
+        const g = this.game;
+        if (g) launchFoe(g, { at: 0, kind, base }, g.map.bases[base]);
+      },
+      // Stop the clock with no pause menu over the frame (screenshots).
+      freeze: (on: boolean) => {
+        this.paused = on;
+      },
       control: () => this.control,
       // The map behind the screens around a run, and how far it has sailed.
       backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
@@ -1805,6 +1833,21 @@ export class App {
     left.append(
       line('Map', select(freeMaps().map((m) => [m, MAPS[m].name]), fp.map, (v) => (fp.map = v as MapId), 'map')),
       line('Start at', select(Array.from({ length: 10 }, (_, k) => [`${k + 1}`, `Wave ${k + 1}`]), `${fp.wave}`, (v) => (fp.wave = Number(v)), 'wave')),
+      // The enemy build: which new enemies come, or one on its own to try.
+      line(
+        'Enemies',
+        select(
+          [
+            ['campaign', 'As the campaign'],
+            ['all', 'All new enemies'],
+            ['none', 'No new enemies'],
+            ...FOES_BUILT.map((f): [string, string] => [f, `Only: ${FOES[f].name}`]),
+          ],
+          fp.enemies,
+          (v) => (fp.enemies = foeSetting(v)),
+          'enemies',
+        ),
+      ),
       ...[0, 1, 2].map((i) => {
         const w = fp.weapons[i];
         return line(
@@ -1985,6 +2028,7 @@ export class App {
     // Each chapter brings new weapons into the draft (the lock-in round):
     // the briefing names them, so a new chapter reads as new kit.
     const arrivals = newInChapter(chapterOf(id));
+    const boxes: HTMLElement[] = [];
     if (arrivals.length) {
       const box = el('div', 'v3-brief-new');
       box.dataset.newWeapons = arrivals.join(' ');
@@ -1998,8 +2042,27 @@ export class App {
         list.append(chip);
       }
       box.append(list);
-      side.prepend(box);
+      boxes.push(box);
     }
+    // The enemy build: the chapter's new enemies, the one this map leads
+    // with marked.
+    const foes = foesInChapter(chapterOf(id));
+    if (foes.length) {
+      const first = newFoeState(id).lead[newFoeState(id).cursor % foes.length];
+      const box = el('div', 'v3-brief-new v3-brief-foes');
+      box.dataset.newEnemies = foes.join(' ');
+      box.append(el('span', 'v3-eyebrow', `New enemies in ${CHAPTERS[chapterOf(id) - 1].name}`));
+      const list = el('div', 'v3-new-list');
+      for (const f of foes) {
+        const chip = el('span', `v3-new-chip v3-foe-chip${f === first ? ' first' : ''}`);
+        chip.title = FOES[f].blurb;
+        chip.append(el('b', '', FOES[f].name), el('i', '', f === first ? 'first here' : FOES[f].cat));
+        list.append(chip);
+      }
+      box.append(list);
+      boxes.push(box);
+    }
+    side.prepend(...boxes);
     body.append(info, side);
     const n = MAP_ORDER.indexOf(id) + 1;
     const chapter = CHAPTERS[chapterOf(id) - 1];
@@ -3000,6 +3063,11 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
   mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
   fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
+  sprinter: 'Sprint drones did the most damage: hit them before the booster flares; Flak or the Laser Cutter take a swarm.',
+  hydra: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
+  dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
+  rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
+  loiter: 'Loitering drones did the most damage: clear the circling group before ships reach it; Flak and Thermobaric catch it whole.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */
@@ -3062,6 +3130,8 @@ interface FreeSetup {
   weapons: ({ id: AbilityId; level: number } | null)[];
   armory: Record<BayId, { id: ArmoryId; level: number } | null>;
   frequentDrops: boolean;
+  /** The enemy build: which new enemies come. */
+  enemies: FoeSetting;
 }
 
 const FREE_KEY = 'straitwatch.v3.freeplay';
@@ -3079,6 +3149,7 @@ function loadFreeSetup(): FreeSetup {
     ],
     armory: { gun: null, hull: null, supply: null },
     frequentDrops: true,
+    enemies: 'campaign',
   };
   try {
     const raw = JSON.parse(kv.getItem(FREE_KEY) ?? 'null') as Partial<FreeSetup> | null;
@@ -3098,6 +3169,7 @@ function loadFreeSetup(): FreeSetup {
         }),
       ) as FreeSetup['armory'],
       frequentDrops: raw.frequentDrops ?? base.frequentDrops,
+      enemies: foeSetting(raw.enemies),
     };
   } catch {
     return base;
@@ -3130,5 +3202,5 @@ function freeArmory(fp: FreeSetup): ArmoryLevels {
 
 /** What the sim (and the play log) needs from a Free Play setup. */
 function freePlaySetup(fp: FreeSetup): FreePlaySetup {
-  return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops };
+  return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops, enemies: fp.enemies };
 }
