@@ -103,6 +103,9 @@ const LOST_BEAT = 2.6;
 const LOST_SKIP_AFTER = 0.9;
 /** Cards ignore taps for this long after the draft appears. */
 const DRAFT_ARM_MS = 350;
+/** Focus: a touch of the holding finger shorter than this is a tap (fired on
+ *  its lift); longer, it was a hold for slow motion. */
+const FOCUS_TAP_MS = 220;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -344,7 +347,7 @@ export class App {
    *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
   private gesture: { id: number; x: number; y: number } | null = null;
   /** Focus (a boost): the finger whose press is slowing time. */
-  private focusFinger: { id: number; x: number; y: number } | null = null;
+  private focusFinger: { id: number; x: number; y: number; at: number } | null = null;
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
@@ -793,10 +796,12 @@ export class App {
       // Focus (a boost; the player: "one finger down and then tap with the
       // other one"): while slow motion is banked, the first finger down is
       // the holding finger. It only slows time and fires nothing; every
-      // other finger taps (or presses, with a gesture weapon) as usual.
+      // other finger taps (or presses, with a gesture weapon) as usual. A
+      // quick touch of the holding finger is still a tap (on its lift), so
+      // a single finger can pick a pickup up or fire.
       const g0 = this.game;
       if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
-        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
+        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
         this.rec.focus(true);
         return;
       }
@@ -836,8 +841,10 @@ export class App {
     const lift = (e: PointerEvent) => {
       // Focus: the holding finger lifts, and time runs at speed again.
       if (this.focusFinger?.id === e.pointerId) {
+        const f = this.focusFinger;
         this.focusFinger = null;
         this.rec?.focus(false);
+        if (performance.now() - f.at < FOCUS_TAP_MS) this.fire(f.x, f.y);
         return;
       }
       if (this.gesture && this.gesture.id === e.pointerId) {

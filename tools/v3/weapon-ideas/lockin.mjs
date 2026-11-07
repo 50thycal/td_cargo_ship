@@ -185,3 +185,21 @@ export const NOTE_CHECKS = [
   { id: 'n-supply-plane', weapon: 'supplyRun', said: 'a big cargo plane to come in and drop it in a row', now: 'A cargo plane crosses the screen and drops the crates in a row along its path, each under a parachute; they then fly to the carrier as now.' },
   { id: 'n-dry', weapon: null, said: '(the logs) taps on an empty rack in every run', now: 'The pacing pass looks at running dry first: the Free Play runs had {{dry}} taps on an empty rack, most with Overdrive gone from the default drops.' },
 ];
+
+// ---- Round 4, recorded (2026-11-07): what the lock-in build made of the marks ----
+// The marks themselves are in lockin-marks-2026-11-07.json; the build is
+// docs/design/v3-weapons-lock-in.md.
+
+export const LOCKED_DATE = '2026-11-07';
+
+/** What the lock-in build did with each change the marks asked for. */
+export const BUILT = [
+  { what: 'Dual Wield', did: 'Both weapons last exactly as long as the boost, then both end (your answer). Level 2 now makes it last 20 s, since “both clocks at half speed” no longer means anything.' },
+  { what: 'Cadence Gun', did: 'A beat every 0.9 s. Buffed to the middle of the table, as you asked: beat shots cost no round, hit for 4 and wider, and War Drum comes after 3 beats with an 8-target broadside. Runs won at MAX: 20% at the slower beat → 41%.' },
+  { what: 'Focus', did: 'One finger held down only slows time; the other taps. A quick touch is still a tap. Buffed: the rack reloads at full speed in slow motion, a 10 s / 15 s bank, Deadeye hits for triple. 6% → 30%; the bot can’t play two-handed, so it undersells Focus.' },
+  { what: 'Gunship Pair', did: 'Hellfire missiles with a smoke streak that leave the rail along the nose and curve onto the target. The helicopters turn toward where they are going, then lean into it, ease into the hover, and turn to face what they shoot.' },
+  { what: 'Supply Run', did: 'A big cargo plane crosses and drops a row of crates on parachutes (ammo and repairs; at MAX, another plane every 6 s with a weapon crate). The crates then fly to the carrier.' },
+  { what: 'Sounds', did: 'Every kept weapon has its own sound now (28), plus a Hellfire hit and the cargo plane. Music re-encoded slightly smaller to keep the game under 4 MB of audio.' },
+  { what: 'Each chapter’s new weapons', did: 'The briefing lists the weapons a chapter adds; their draft cards say NEW · chapter name; and until you hold one, the first new card of a draft is one of them.' },
+  { what: 'Default drops', did: 'Ammo, repair and the Nuke. Overdrive, Time Warp, Shield and Full Steam come only as boosts you draft.' },
+];

@@ -18,9 +18,12 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { IDEAS, CATEGORY_RULES } from './arsenal2.mjs';
 import { PLAN_DATE, CHANGED, DROPS, BOOST_LEVELS, PHASES, QUESTIONS } from './plan.mjs';
-import { LOCKIN_DATE, BUILT_IN, YOURS, MAYBES, PAIRED, WATCH, CHECKS, LOCK_QUESTIONS, PLAYTEST_DATE, READ, NOTE_QUESTIONS, NOTE_CHECKS } from './lockin.mjs';
-import { ABILITIES } from '../../../src/v3/data/abilities.ts';
-import { ROSTER } from '../../../src/v3/data/roster.ts';
+import { LOCKIN_DATE, BUILT_IN, YOURS, MAYBES, PAIRED, WATCH, CHECKS, LOCK_QUESTIONS, PLAYTEST_DATE, READ, NOTE_QUESTIONS, NOTE_CHECKS, LOCKED_DATE, BUILT } from './lockin.mjs';
+// Round 4 is drawn from the weapons as the player saw them that round (the
+// lock-in build has since cut seven and changed others).
+const SNAP = JSON.parse(readFileSync(new URL('round4-snapshot.json', import.meta.url), 'utf8'));
+const ABILITIES = SNAP.abilities;
+const ROSTER = SNAP.roster;
 
 const here = new URL('.', import.meta.url);
 const root = new URL('../../../', import.meta.url);
@@ -286,9 +289,25 @@ const won = PT.filter((r) => r.end === 'won').length;
 const live = Object.keys(ROSTER).filter((id) => ROSTER[id].status === 'live');
 const pool = [1, 2, 3, 4].map((c) => live.length + PROTOS.filter((id) => ROSTER[id].unlock <= c).length);
 const REFS = [['flak', 'Flak'], ['railgun', 'Railgun'], ['airstrike', 'Air Strike'], ['scatter', 'Scattergun'], ['frigate', 'Frigates'], ['aegis', 'Aegis']];
+// The marks, read back on ${LOCKED_DATE}, and what the build made of them.
+const MARKS = JSON.parse(readFileSync(new URL('lockin-marks-2026-11-07.json', here), 'utf8'));
+const CH_NAMES = ['Home Waters', 'The Narrows', 'Dark Water', 'Open War'];
+const keptIn = (c) => Object.entries(MARKS.lockin).filter(([, m]) => m.verdict !== 'cut' && (m.chapter ?? m.chapterUsed) === c).map(([id]) => id);
+const cutIds = Object.entries(MARKS.lockin).filter(([, m]) => m.verdict === 'cut').map(([id]) => id);
+const lockedBlock = `<div class="locked">
+  <h3 class="sub">Locked in · built ${LOCKED_DATE}</h3>
+  <p class="pn">Your marks are recorded and built. ${Object.keys(MARKS.lockin).length - cutIds.length} weapons are in the campaign, each from the chapter you marked; ${cutIds.length} are cut from the game. Your marks below stay as you left them, for the record.</p>
+  <table class="chap-table"><thead><tr><th>Chapter</th><th>Joins the draft</th></tr></thead><tbody>
+  ${[1, 2, 3, 4].map((c) => `<tr><td><b>${c}</b> ${CH_NAMES[c - 1]}</td><td>${keptIn(c).map((id) => esc(ABILITIES[id].name)).join(' · ')}${c === 1 ? ' <span class="pn">(beside today’s twelve)</span>' : ''}</td></tr>`).join('')}
+  </tbody></table>
+  <p class="pn"><b>Cut:</b> ${cutIds.map((id) => esc(ABILITIES[id].name)).join(' · ')}.</p>
+  <ul class="built">${BUILT.map((b) => `<li><b>${esc(b.what)}.</b> ${esc(b.did)}</li>`).join('')}</ul>
+  <p class="pn"><b>Next:</b> your AC-130 idea as a Free Play prototype, then the pacing pass.</p>
+</div>`;
 const lockSection = `<section class="plan-sec" id="sec-lock" aria-labelledby="h-lock">
   <div class="cathead"><h2 id="h-lock">Lock-in <span class="count" id="lock-count"></span></h2>
-  <p>Updated with your Free Play playtest of ${PLAYTEST_DATE}: ${PT.length} runs and ${PT.reduce((a, r) => a + r.notes.length, 0)} notes. Each card now shows how it went for you and my read (a suggested Keep, Change or Cut); your mark decides. First the questions your notes raise, then the rest.</p></div>
+  <p>Updated with your Free Play playtest of ${PLAYTEST_DATE}: ${PT.length} runs and ${PT.reduce((a, r) => a + r.notes.length, 0)} notes. Each card shows how it went for you and my read (a suggested Keep, Change or Cut); your mark decided.</p></div>
+  ${lockedBlock}
   <h3 class="sub">Your playtest</h3>
   <p class="pn">${PT.length} runs on Kesh from wave 7: ${won} won, ${PT.filter((r) => r.end === 'lost').length} lost, ${PT.filter((r) => r.end === 'quit').length} quit. ${PROTOS.filter((id) => played(id).runs.length).length} of ${PROTOS.length} prototypes played; not yet: ${PROTOS.filter((id) => !played(id).runs.length).map((id) => esc(ABILITIES[id].name)).join(' and ')}.</p>
   <ul class="runs">${PT.map(runRow).join('')}</ul>
@@ -467,6 +486,10 @@ code { font: 13px var(--mono); }
 .read-keep { background: var(--go); color: var(--paper); }
 .read-change { background: var(--maybe); color: var(--paper); }
 .read-cut { background: var(--drop); color: var(--paper); }
+.locked { border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; background: var(--paper); }
+.chap-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.chap-table th, .chap-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.built { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
 .runs { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .runs li { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .end { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
