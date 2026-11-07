@@ -42,13 +42,11 @@ export type AbilityId =
   | 'thermo'
   | 'scatter'
   | 'boomerang'
-  // The weapons plan (docs/design/v3-weapons-plan.md), phase 1: six actives
-  // with new verbs. Prototypes until the player locks them (data/roster.ts).
+  // The weapons plan (docs/design/v3-weapons-plan.md), phase 1: the actives
+  // with new verbs (data/roster.ts: from which chapter each joins the draft).
   | 'lance'
   | 'cutter'
   | 'grapnel'
-  | 'chainshot'
-  | 'firecontrol'
   | 'cadence'
   // Phase 2: four passives (the gun stays plain while they work).
   | 'droneScreen'
@@ -57,21 +55,15 @@ export type AbilityId =
   | 'orbital'
   // Phase 3: boosts. Picking one up never replaces the loaded weapon: it
   // changes how everything you fire works while it lasts.
-  | 'fireAtWill'
   | 'supplyRun'
   | 'overclock'
   | 'dualWield'
-  | 'hotStreak'
   | 'wildCard'
   | 'focus'
   | 'overdrive'
   | 'timeWarp'
   | 'shield'
-  | 'fullSteam'
-  // Phase 4: the player's maybes, tried and kept only if they play well.
-  | 'tidal'
-  | 'storm'
-  | 'ammoShip';
+  | 'fullSteam';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
 export type CardId = AbilityId | 'resupply';
 
@@ -270,39 +262,15 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Hold a threat and drag it',
   },
-  chainshot: {
-    id: 'chainshot',
-    name: 'Chain Shot',
-    evolved: 'Bolas Storm',
-    answers: 'Pairs',
-    levels: [
-      'Tap one threat, then another nearby: a chain drags them together for 2 hits each',
-      'A longer chain, 3 hits each',
-      'A third tap adds a third link, and links hit for 4',
-    ],
-    how: 'Tap one threat, then a second',
-  },
-  firecontrol: {
-    id: 'firecontrol',
-    name: 'Fire Control',
-    evolved: 'Full Broadside',
-    answers: 'Volleys',
-    levels: [
-      'Taps mark up to 6 targets; moments later the salvo fires at all of them at once, a round for every two',
-      'Up to 8 marks, 0.5 s wait',
-      'Marked threats take 2 hits each',
-    ],
-    how: 'Tap to mark, then wait',
-  },
   cadence: {
     id: 'cadence',
     name: 'Cadence Gun',
     evolved: 'War Drum',
     answers: 'Heavies',
     levels: [
-      'Fire on the beat for a 3-hit shot that pierces; off the beat, a normal shot',
+      'A beat every 0.9 s: fire on it for a free 4-hit shot that pierces; off the beat, a normal shot',
       'A wider beat window',
-      'Four beats in a row, and the fifth fires a free broadside',
+      'Three beats in a row, and the fourth fires a free broadside at 8 threats',
     ],
     how: 'Tap on the beat',
   },
@@ -355,27 +323,15 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     how: 'Keep shooting: the satellite picks the biggest',
   },
   // ---- Phase 3: boosts (the weapons plan, round 3's levels).
-  fireAtWill: {
-    id: 'fireAtWill',
-    name: 'Fire at Will',
-    evolved: 'Lead Rain',
-    answers: 'Big raids',
-    levels: [
-      'Hold to fire full-auto (every 0.2 s), whatever is loaded; the rack holds 4 more',
-      'Every 0.15 s, the rack holds 6 more, and it reloads twice as fast',
-      'Every 4th shot bursts into flak',
-    ],
-    how: 'Hold to fire full-auto',
-  },
   supplyRun: {
     id: 'supplyRun',
     name: 'Supply Run',
     evolved: 'Airdrop',
     answers: 'Running dry',
     levels: [
-      'Kills drop twice as much, and drops fly straight to the carrier',
-      'Three times as much',
-      'And every 6 s a crate lands holding one of your weapons',
+      'A cargo plane drops 3 crates of ammo and repairs; kills drop twice as much, and drops fly straight to the carrier',
+      '4 crates, and kills drop three times as much',
+      'And every 6 s another plane drops a crate holding one of your weapons',
     ],
     how: 'Keep killing: drops fly to you',
   },
@@ -397,23 +353,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Arsenal Drop',
     answers: 'Combos',
     levels: [
-      'The next weapon picked up joins the loaded one: every tap fires both, for one round',
-      'Both clocks run at half speed',
+      'The next weapon picked up joins the loaded one: every tap fires both, for one round. Both last as long as the boost, then both end',
+      'It lasts 20 s',
       'And weapons drop twice as often while it lasts',
     ],
     how: 'Pick up a second weapon: both fire',
-  },
-  hotStreak: {
-    id: 'hotStreak',
-    name: 'Hot Streak',
-    evolved: 'On Fire',
-    answers: 'Sharp aim',
-    levels: [
-      'Hits in a row heat the gun: 5 and shots do double, 10 and triple. A miss resets it',
-      'Double at 4, triple at 8',
-      'At 10 shots pierce, and a miss no longer resets it',
-    ],
-    how: 'Hit, hit, hit: don\'t miss',
   },
   wildCard: {
     id: 'wildCard',
@@ -433,11 +377,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Deadeye',
     answers: 'Everything at once',
     levels: [
-      'Up to 6 s of half-speed time, spent only while a finger is down',
-      '9 s, at a third of the speed',
-      'Shots fired in slow motion hit for double',
+      'Hold one finger down for up to 10 s of slow motion and tap with the other; the rack reloads at full speed',
+      '15 s, at a quarter of the speed',
+      'Shots fired in slow motion hit for triple',
     ],
-    how: 'Hold a finger down: time slows',
+    how: 'Hold one finger down, tap with the other'
   },
   overdrive: {
     id: 'overdrive',
@@ -487,53 +431,15 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'The convoy runs for it',
   },
-  // ---- Phase 4: the experiments (the player's maybes).
-  tidal: {
-    id: 'tidal',
-    name: 'Tidal Cannon',
-    evolved: 'Tsunami',
-    answers: 'The sea',
-    levels: [
-      'Tap a boat, a mine or open water: a wave rolls out 300 px and swamps boats, mines, surfaced subs and drones diving low. Missiles fly over it (a tap on one is a plain shot)',
-      '420 px, and it shoves what it passes back the way it came',
-      'The wave rolls across the whole sea',
-    ],
-    how: 'Tap a boat or the water: a wave rolls out',
-  },
-  storm: {
-    id: 'storm',
-    name: 'Storm Front',
-    evolved: 'Hurricane',
-    answers: 'Drones, aircraft',
-    levels: [
-      'A storm cell drifts across with the wind: lightning hits a drone or aircraft in it every 0.8 s, and half the missiles crossing it are blown off course',
-      'A bigger, slower cell',
-      'Two cells',
-    ],
-    how: 'Keep shooting: the storm goes where the wind blows',
-  },
-  ammoShip: {
-    id: 'ammoShip',
-    name: 'Ammunition Ship',
-    evolved: 'Arsenal Ship',
-    answers: 'Running dry',
-    levels: [
-      'An ammunition ship joins the convoy: while it floats the rack reloads twice as fast. The enemy goes for it (sunk, it isn\'t a lost ship)',
-      'Reloads 2.5× as fast, and takes 6 hits',
-      'And it fires a free round at the nearest threat every 2 s',
-    ],
-    how: 'Keep it afloat: it is your reload',
-  },
 };
 
 /** Every weapon, in roster order (the draft and Free Play read which are
  *  live and when they unlock from data/roster.ts). */
 export const ABILITY_ORDER: AbilityId[] = [
   'airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla',
-  'lance', 'cutter', 'grapnel', 'chainshot', 'firecontrol', 'cadence',
+  'lance', 'cutter', 'grapnel', 'cadence',
   'droneScreen', 'gunships', 'bomberWing', 'orbital',
-  'fireAtWill', 'supplyRun', 'overclock', 'dualWield', 'hotStreak', 'wildCard', 'focus', 'overdrive', 'timeWarp', 'shield', 'fullSteam',
-  'tidal', 'storm', 'ammoShip',
+  'supplyRun', 'overclock', 'dualWield', 'wildCard', 'focus', 'overdrive', 'timeWarp', 'shield', 'fullSteam',
 ];
 
 /** Levels per weapon; the last is the evolution. */
@@ -558,27 +464,20 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   lance: ['LANCE', 'SUNSPEAR'],
   cutter: ['CUTTER', 'SEARING'],
   grapnel: ['GRAPNEL', 'WRECKER'],
-  chainshot: ['CHAIN SHOT', 'BOLAS'],
-  firecontrol: ['FIRE CTRL', 'BROADSIDE'],
   cadence: ['CADENCE', 'WAR DRUM'],
   droneScreen: ['DRONES', 'HORNETS'],
   gunships: ['GUNSHIPS', 'HELLFIRE'],
   bomberWing: ['BOMBERS', 'CARPET RAID'],
   orbital: ['ORBITAL', 'SKY SPEAR'],
-  fireAtWill: ['FIRE AT WILL', 'LEAD RAIN'],
   supplyRun: ['SUPPLY RUN', 'AIRDROP'],
   overclock: ['OVERCLOCK', 'OVERLOAD'],
   dualWield: ['DUAL WIELD', 'ARSENAL'],
-  hotStreak: ['HOT STREAK', 'ON FIRE'],
   wildCard: ['WILD CARD', 'JACKPOT'],
   focus: ['FOCUS', 'DEADEYE'],
   overdrive: ['OVERDRIVE', 'HYPER'],
   timeWarp: ['TIME WARP', 'FREEZE'],
   shield: ['SHIELD', 'REFLECT'],
   fullSteam: ['FULL STEAM', 'RAMMING'],
-  tidal: ['TIDAL', 'TSUNAMI'],
-  storm: ['STORM', 'HURRICANE'],
-  ammoShip: ['AMMO SHIP', 'ARSENAL'],
 };
 
 /** How weapons come and go. */
@@ -652,25 +551,15 @@ export const AB = {
    *  after `hold` s) and it flies `fly` s and bursts: `burst` hits in `burstR`
    *  (the ball included). Structures can't be hooked. */
   grapnel: { reach: [620, 1800, 1800], speed: 1100, smack: 2, smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130] },
-  /** Chain Shot: a tap on a threat fires as usual and marks it `window` s; a
-   *  tap on another within `reach` chains the two: they are dragged together
-   *  over `pull` s, then each, and anything within `width` of the chain,
-   *  takes `damage`. Bolas Storm: a third tap adds a third link. */
-  // The chain itself is free (phase 1 sweep: at a round a chain it won 24%).
-  chainshot: { window: 1.5, reach: [300, 400, 400], pull: 0.3, width: 26, damage: [2, 3, 4] },
-  /** Fire Control: taps mark up to `marks` threats; `wait` s after the last
-   *  mark the salvo goes, one round a mark, at `speed`× interceptor speed; a
-   *  kill bursts `burst` px. A mark less than `urgent` s from impact fires at
-   *  once, a full set at once, and the salvo never waits past `latest` s
-   *  after the first mark. Full Broadside: `damage` 2 a mark. */
-  // Phase 1 sweep: a 0.8 s wait lost runs (25%): the salvo goes sooner.
-  // One launch, many warheads: a salvo costs a round for every `perRound` marks.
-  firecontrol: { marks: [6, 8, 8], wait: [0.4, 0.3, 0.3], latest: 1, speed: 2, urgent: 1.2, burst: 60, damage: [1, 1, 2], perRound: 2 },
   /** Cadence Gun: a beat every `period` s; a tap within `window` s of one
    *  fires a `damage` shot that pierces (`width`); off the beat, a plain
    *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
    *  free broadside at the `broadside` most urgent threats. */
-  cadence: { period: 0.6, window: [0.12, 0.18, 0.18], damage: 3, width: 18, run: 4, broadside: 5 },
+  // Lock-in round: the player asked for a slower beat ("tap tap tap in the
+  // same intervals": 0.6 s burned the rack) and for it to be buffed to the
+  // middle of the table. At 0.9 s it won 20% at MAX; beat shots that cost
+  // no round (`free`), hit harder and wider, and a quicker War Drum: 41%.
+  cadence: { period: 0.9, window: [0.16, 0.24, 0.24], damage: 4, width: 40, run: 3, broadside: 8, free: true as boolean },
   /** Drone Screen (the player's idea): a drone lifts off the carrier deck
    *  every `gap` s (the player: "always the carrier deck") and flies at
    *  `speed` to ram the threat closest to hitting a hull that no other drone
@@ -681,10 +570,12 @@ export const AB = {
   // won against Frigates' 55%): Hornet Nest launches every 0.7 s.
   droneScreen: { gap: [1.2, 0.9, 0.7], speed: 420, life: 4, damage: 1, burst: [0, 0, 50], contact: 18 },
   /** Gunship Pair (the player's idea): `count` helicopters hover `ahead` px
-   *  either side of the convoy's middle; each fires a rocket pod every `gap`
+   *  either side of the convoy's middle; each fires a Hellfire every `gap`
    *  s at the thickest cluster within `reach` (a `blast` px burst, `damage`
-   *  a hit). */
-  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320 },
+   *  a hit). They fly like helicopters: top `speed`, `accel` px/s², the nose
+   *  turning `turn` rad/s, slowing over the last 1/`arrive` s; a missile
+   *  flies at `missileSpeed`, curving at `missileTurn` rad/s and harder. */
+  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320, accel: 420, turn: 3.2, arrive: 2.2, missileSpeed: 1150, missileTurn: 2.5 },
   /** Bomber Wing (the player's idea): a pass every `gap` s. It destroys a
    *  truck on screen; with none, it bombs the silo (or the tunnel a truck is
    *  due out of) with the most launches in the next `quiet` s, and those
@@ -702,28 +593,26 @@ export const AB = {
   orbital: { gap: [2.5, 1.8, 1.2], lock: 0.8, damage: 3, splash: 60, linger: 0.5, first: 1 },
   // ---- Phase 3: boosts. Each lasts the weapon time (15 s) at every level
   // (round 3: "each level should change something").
-  /** Fire at Will: hold-to-fire repeats every `repeat` s; the rack holds
-   *  `rack` more and reloads `reload`× as fast. Lead Rain: every `flakEvery`th
-   *  shot bursts into a level-1 flak cloud. */
-  fireAtWill: { repeat: [0.2, 0.15, 0.15], rack: [4, 6, 6], reload: [1, 2, 2], flakEvery: 4 },
   /** Supply Run: drop chances × `mult`; drops fly to the carrier at `speed`.
-   *  Airdrop: a weapon crate every `crate` s. */
-  supplyRun: { mult: [2, 3, 3], speed: 520, crate: 6 },
+   *  A cargo plane (the player: "a big cargo plane to come in and drop it in
+   *  a row") crosses at `planeSpeed`, dropping `crates` in a row, each under
+   *  a parachute for `chute` s. Airdrop: another plane with a weapon crate
+   *  every `crate` s. */
+  supplyRun: { mult: [2, 3, 3], speed: 520, crate: 6, crates: [3, 4, 4], planeSpeed: 460, chute: 0.9 },
   /** Overclock on a weapon already at MAX: it drops `drops`× as often. */
   overclock: { drops: 2 },
-  /** Dual Wield: the clocks run at `clock` speed; Arsenal Drop: weapons drop
-   *  `drops`× as often. */
-  dualWield: { clock: [1, 0.5, 0.5], drops: [1, 1, 2] },
-  /** Hot Streak: hits in a row for double (`x2`) and triple (`x3`) damage,
-   *  the burst `blast`× as wide; On Fire pierces at `pierce` (`pierceR` px)
-   *  and stops resetting. */
-  // Build 3 sweep: damage alone did nothing (most threats die to one hit:
-  // 6–9% of runs won, holding nothing 5%), so the heat widens the burst too.
-  hotStreak: { x2: [5, 4, 4], x3: [10, 8, 8], blast: [1, 1.8, 2.6], pierce: 10, pierceR: 90 },
+  /** Dual Wield: it lasts `time`× the weapon time, and both hands last as
+   *  long as it does, then both end (the player: "the weapons last as long
+   *  as the boost"); Arsenal Drop: weapons drop `drops`× as often. */
+  dualWield: { time: [1, 4 / 3, 4 / 3], drops: [1, 1, 2] },
   /** Wild Card: the passives' one-shot versions at a tap. */
   wildCard: { drones: 3 },
   /** Focus: `bank` s of slow motion at `scale` speed; Deadeye `damage`×. */
-  focus: { bank: [6, 9, 9], scale: [0.5, 1 / 3, 1 / 3], damage: 2 },
+  // Lock-in round, buffed toward the middle of the table (6% of runs won at
+  // MAX): the rack reloads on the real clock (game.ts), a bigger bank,
+  // slower time and Deadeye ×3: 30%. The bot can't hold one finger and tap
+  // with the other the way a person does, so it undersells Focus.
+  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3 },
   /** Time Warp: threats at `scale` speed; Freeze Frame: `freeze` for the
    *  first `freezeTime` s. */
   timeWarp: { scale: [0.4, 0.25, 0.25], freeze: 0.1, freezeTime: 2 },
@@ -732,20 +621,6 @@ export const AB = {
   shield: { shatter: 0.8, bounce: 110, burst: 70 },
   /** Full Steam: the convoy's speed ×; Ramming Speed rams within `ram` px. */
   fullSteam: { mult: [1.6, 2, 2], ram: 38 },
-  // ---- Phase 4: the experiments.
-  /** Tidal Cannon: a shot on open water rolls a wave out to `reach` px at
-   *  `speed` px/s (Tsunami: the whole sea). It swamps fast boats, mines and
-   *  surfaced subs, and drones within `low` px of a hull (diving in); level 2
-   *  shoves the rest `shove` px back. Ships it reaches surge `surge` px on. */
-  tidal: { reach: [300, 420, 2000], speed: 700, low: 170, shove: [0, 70, 70], surge: 20 },
-  /** Storm Front: cells `r` px across drifting at `drift` px/s with the wind;
-   *  lightning hits a drone or aircraft in a cell every `strike` s for
-   *  `damage`; every other missile that crosses one is blown into the sea. */
-  storm: { r: [150, 200, 200], drift: [60, 40, 40], cells: [1, 1, 2], strike: 0.8, damage: 2 },
-  /** Ammunition Ship: `hp` hits; the rack reloads `reload`× as fast while it
-   *  floats; every other missile aimed at a ship goes for it. Arsenal Ship:
-   *  a free round at the nearest threat within `reach` every `gap` s. */
-  ammoShip: { hp: [4, 6, 6], reload: [2, 2.5, 2.5], gap: 2, reach: 420 },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;

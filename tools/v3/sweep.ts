@@ -18,6 +18,7 @@ import { ARMORY, ARMORY_MAX, BAY_ORDER, bayItems, cardsFor, drawCards, type Armo
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { runBot, SKILLS, type BotRun } from '../../src/v3/sim/bot';
 import { makeRng } from '../../src/sim/rng';
+import type { FoeSetting } from '../../src/v3/data/foes';
 
 const args = process.argv.slice(2);
 const seeds = Number(args.find((a) => /^\d+$/.test(a)) ?? 12);
@@ -30,6 +31,8 @@ const focus = opt('focus') as AbilityId | undefined;
 const gun = (opt('gun') ?? 'warhead') as ArmoryId;
 const armory: ArmoryLevels = armoryLevel > 0 ? { [gun]: armoryLevel } : {};
 const gunOnly = args.includes('--gun-only');
+// The enemy build: --foes=none plays without the new enemies (to compare).
+const foes = (opt('foes') ?? 'campaign') as FoeSetting;
 
 /** A seed's shuffle of the roster (deterministic), with --focus first. */
 function taste(seed: number): AbilityId[] {
@@ -44,10 +47,10 @@ const RUN_OVERHEAD_S = 15;
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : NaN);
 const play = (map: (typeof MAP_ORDER)[number], seed: number, skill: string, a: ArmoryLevels): BotRun =>
-  runBot(map, seed, { ...SKILLS[skill], noAbilities, prefer: taste(seed) }, { flow, armory: a });
+  runBot(map, seed, { ...SKILLS[skill], noAbilities, prefer: taste(seed) }, { flow, armory: a, foes });
 const realSeconds = (r: BotRun) => r.seconds + r.wavesCleared * DRAFT_S + RUN_OVERHEAD_S;
 
-console.log(`V3 sweep — ${seeds} seeds, flow ${flow}, gun ${armoryLevel ? `${gun} ${armoryLevel}/${ARMORY_MAX}` : 'base'}${noAbilities ? ', NO weapons' : ''}${focus ? `, focus ${focus}` : ''}\n`);
+console.log(`V3 sweep — ${seeds} seeds, flow ${flow}, new enemies: ${foes}, gun ${armoryLevel ? `${gun} ${armoryLevel}/${ARMORY_MAX}` : 'base'}${noAbilities ? ', NO weapons' : ''}${focus ? `, focus ${focus}` : ''}\n`);
 console.log('map          skill     clear%  wave  lost  min/run  cards  loaded  weapon pickups/run');
 for (const map of MAP_ORDER) {
   for (const skill of skillNames) {

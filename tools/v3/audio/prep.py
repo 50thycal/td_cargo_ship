@@ -195,7 +195,10 @@ def encode(x, path, stereo):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as t:
         wavfile.write(t.name, SR, x.astype(np.float32))
         tmp = t.name
-    rate = "96k"  # music too: synthesized pads hold up, and it keeps the set under 4 MB
+    # Effects at 96 kbps mono. Music (stereo) at 72 kbps: the lock-in build's
+    # own weapon sounds took the set past the 4 MB phone budget at 96, and
+    # the synthesized pads hold up at the lower rate.
+    rate = "72k" if stereo else "96k"
     subprocess.check_call(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-c:a", "aac", "-b:a", rate, "-movflags", "+faststart", path])
     os.unlink(tmp)
 

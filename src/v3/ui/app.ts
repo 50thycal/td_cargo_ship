@@ -39,7 +39,6 @@ import {
   createGame,
   held,
   raidWarning,
-  streakMult,
   warping,
   step,
   tracked,
@@ -51,7 +50,9 @@ import {
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
-import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype } from '../data/roster';
+import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
+import { FOES, FOES_BUILT, foesInChapter, type FoeSetting } from '../data/foes';
+import { foeSetting, launchFoe, newFoeState } from '../sim/foes';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -104,6 +105,9 @@ const LOST_BEAT = 2.6;
 const LOST_SKIP_AFTER = 0.9;
 /** Cards ignore taps for this long after the draft appears. */
 const DRAFT_ARM_MS = 350;
+/** Focus: a touch of the holding finger shorter than this is a tap (fired on
+ *  its lift); longer, it was a hold for slow motion. */
+const FOCUS_TAP_MS = 220;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -112,6 +116,16 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   mothership: 'MOTHERSHIP DOWN',
   strafer: 'JET DOWN',
   bomber: 'BOMBER DOWN',
+  rocketTruck: 'TRUCK DOWN',
+  attackHeli: 'HELI DOWN',
+  armored: 'ARMOR DOWN',
+  stealthJet: 'STEALTH DOWN',
+  stealthBomber: 'STEALTH DOWN',
+  spotter: 'SPOTTER DOWN',
+  siege: 'BATTERY DOWN',
+  tender: 'TENDER DOWN',
+  picket: 'PICKET DOWN',
+  barge: 'BARGE DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -137,6 +151,28 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
   fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
+  // The enemy build.
+  sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
+  decoy: 'Half this swarm is fake. Up close the decoys strobe white: save your shots for the real ones.',
+  hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
+  rocketTruck: 'Its rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
+  loiter: 'They circle until a ship comes near, then all dive. Clear them while they wait.',
+  attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
+  torpedoSub: 'Up for a few seconds: three hits. Its torpedo runs the dashed line. Shoot it, or get off the line.',
+  armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
+  crosser: 'Two lines meet at the X, then split for six ships. One blast at the X takes them all.',
+  scavenger: 'It flies off with the pickup it is after. Shoot it, or take the pickup first.',
+  stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',
+  stealthBomber: 'No warning: a flying wing with three missiles. Six hits, or shoot what it drops.',
+  diveBomber: 'The red circle is where it hits. The plane shows for a moment: shoot it, or move the ships out.',
+  siege: 'Its shells land in the orange circles and can\'t be stopped. Silence the gun (six hits) or move.',
+  spotter: 'It marks one ship for the others and calls a strike on it. Shoot it down to call it off.',
+  tender: 'Mends the most damaged enemy near it, a green pulse at a time. Six hits.',
+  guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
+  picket: 'Shoots down your shots that fly through its ring. Sink it, or fire in bursts.',
+  lure: 'Your helpers chase it and do nothing to it. Two taps sink it.',
+  barge: 'While it floats, every raid gets one more missile per site. Twelve hits.',
+  cloud: 'Set off over your ships, it hurts them. Pop it over open water; don\'t fire into it over the convoy.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map
@@ -345,7 +381,7 @@ export class App {
    *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
   private gesture: { id: number; x: number; y: number } | null = null;
   /** Focus (a boost): the finger whose press is slowing time. */
-  private focusFinger: { id: number; x: number; y: number } | null = null;
+  private focusFinger: { id: number; x: number; y: number; at: number } | null = null;
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
@@ -432,6 +468,19 @@ export class App {
     (window as unknown as { __v3: unknown }).__v3 = {
       game: () => this.game,
       toClient: (x: number, y: number) => ({ x: this.offX + x * this.scale, y: this.offY + y * this.scale }),
+      // The enemy build's checks: bring a new enemy in now (from base 1, or
+      // from where it comes on its own).
+      foe: (kind: ThreatKind, base = 1) => {
+        const g = this.game;
+        if (!g) return;
+        // The stealth aircraft come through the queue (as in a wave).
+        if (kind === 'stealthJet' || kind === 'stealthBomber') g.queue.unshift({ at: g.waveT, kind, base: -1 });
+        else launchFoe(g, { at: 0, kind, base }, g.map.bases[base]);
+      },
+      // Stop the clock with no pause menu over the frame (screenshots).
+      freeze: (on: boolean) => {
+        this.paused = on;
+      },
       control: () => this.control,
       // The map behind the screens around a run, and how far it has sailed.
       backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
@@ -554,13 +603,13 @@ export class App {
       for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
       c.classList.toggle('boost', !!id && isBoost(id));
       if (id) {
-        c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
+        c.style.setProperty('--left', w ? Math.min(1, w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
-        // Overclocked: its clock is stopped; Hot Streak shows the heat.
+        // Overclocked: its clock is stopped.
         const oc = w && 'oc' in w && w.oc !== undefined;
-        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'hotStreak' && streakMult(g) > 1 ? `×${streakMult(g)} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
+        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -791,23 +840,27 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
+      // Focus (a boost; the player: "one finger down and then tap with the
+      // other one"): while slow motion is banked, the first finger down is
+      // the holding finger. It only slows time and fires nothing; every
+      // other finger taps (or presses, with a gesture weapon) as usual. A
+      // quick touch of the holding finger is still a tap (on its lift), so
+      // a single finger can pick a pickup up or fire.
+      const g0 = this.game;
+      if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
+        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
+        this.rec.focus(true);
+        return;
+      }
       // A gesture weapon (the weapons plan): the finger is a press, not a
       // tap, and holding charges, swipes or drags instead of repeating.
       // A second finger while one is pressed is a plain tap (two thumbs: one
       // charges the Lance, the other keeps shooting).
-      // Focus (a boost): the first finger down is sent as a press, so the
-      // sim knows time should slow (and a replay slows it too).
-      const focus = this.game.phase === 'wave' && this.game.boost?.id === 'focus' && !this.focusFinger && !this.gesture;
       if (this.game.phase === 'wave' && gestureOf(this.game.weapon?.id) && this.rec && !this.gesture) {
         this.gesture = { id: e.pointerId, x: w.x, y: w.y };
-        if (focus) this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
         this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
         this.playCues(this.game);
         return;
-      }
-      if (focus && this.rec) {
-        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
-        this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
       }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
@@ -833,15 +886,13 @@ export class App {
       if (w) Object.assign(this.hold, w);
     });
     const lift = (e: PointerEvent) => {
-      // Focus with a plain weapon: the lift ends the press (a gesture's
-      // release, below, does it for a gesture weapon).
+      // Focus: the holding finger lifts, and time runs at speed again.
       if (this.focusFinger?.id === e.pointerId) {
-        const at = this.focusFinger;
+        const f = this.focusFinger;
         this.focusFinger = null;
-        if (!(this.gesture && this.gesture.id === e.pointerId)) {
-          const w = this.toWorld(e.clientX, e.clientY) ?? at;
-          this.rec?.release(w.x, w.y, TAP_RADIUS_PX / this.scale);
-        }
+        this.rec?.focus(false);
+        if (performance.now() - f.at < FOCUS_TAP_MS) this.fire(f.x, f.y);
+        return;
       }
       if (this.gesture && this.gesture.id === e.pointerId) {
         const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
@@ -860,10 +911,7 @@ export class App {
   /** A press still down when play stops (pause, a note, the run ends): let
    *  go of it where the finger last was, so nothing stays held. */
   private dropGesture(): void {
-    if (this.focusFinger && !this.gesture) {
-      const at = this.focusFinger;
-      if (this.game?.phase === 'wave') this.rec?.release(at.x, at.y, TAP_RADIUS_PX / this.scale);
-    }
+    if (this.focusFinger && this.game?.phase === 'wave') this.rec?.focus(false);
     this.focusFinger = null;
     if (!this.gesture) return;
     const at = this.gesture;
@@ -1804,6 +1852,21 @@ export class App {
     left.append(
       line('Map', select(freeMaps().map((m) => [m, MAPS[m].name]), fp.map, (v) => (fp.map = v as MapId), 'map')),
       line('Start at', select(Array.from({ length: 10 }, (_, k) => [`${k + 1}`, `Wave ${k + 1}`]), `${fp.wave}`, (v) => (fp.wave = Number(v)), 'wave')),
+      // The enemy build: which new enemies come, or one on its own to try.
+      line(
+        'Enemies',
+        select(
+          [
+            ['campaign', 'As the campaign'],
+            ['all', 'All new enemies'],
+            ['none', 'No new enemies'],
+            ...FOES_BUILT.map((f): [string, string] => [f, `Only: ${FOES[f].name}`]),
+          ],
+          fp.enemies,
+          (v) => (fp.enemies = foeSetting(v)),
+          'enemies',
+        ),
+      ),
       ...[0, 1, 2].map((i) => {
         const w = fp.weapons[i];
         return line(
@@ -1979,7 +2042,47 @@ export class App {
     // right-hand column (a phone has only 375 px of height).
     info.append(go);
     const body = el('div', 'v3-brief');
-    body.append(info, kit);
+    const side = el('div', 'v3-brief-side');
+    side.append(kit);
+    // Each chapter brings new weapons into the draft (the lock-in round):
+    // the briefing names them, so a new chapter reads as new kit.
+    const arrivals = newInChapter(chapterOf(id));
+    const boxes: HTMLElement[] = [];
+    if (arrivals.length) {
+      const box = el('div', 'v3-brief-new');
+      box.dataset.newWeapons = arrivals.join(' ');
+      box.append(el('span', 'v3-eyebrow', `New weapons in ${CHAPTERS[chapterOf(id) - 1].name}`));
+      const list = el('div', 'v3-new-list');
+      for (const a of arrivals) {
+        const chip = el('span', 'v3-new-chip');
+        chip.style.setProperty('--card-color', ICON_COLOR[a]);
+        chip.title = ABILITIES[a].levels[0];
+        chip.append(upgradeIcon(a, 16), el('b', '', ABILITIES[a].name), el('i', '', ROSTER[a].cat));
+        list.append(chip);
+      }
+      box.append(list);
+      boxes.push(box);
+    }
+    // The enemy build: the chapter's new enemies, the one this map leads
+    // with marked.
+    const foes = foesInChapter(chapterOf(id));
+    if (foes.length) {
+      const first = newFoeState(id).lead[newFoeState(id).cursor % foes.length];
+      const box = el('div', 'v3-brief-new v3-brief-foes');
+      box.dataset.newEnemies = foes.join(' ');
+      box.append(el('span', 'v3-eyebrow', `New enemies in ${CHAPTERS[chapterOf(id) - 1].name}`));
+      const list = el('div', 'v3-new-list');
+      for (const f of foes) {
+        const chip = el('span', `v3-new-chip v3-foe-chip${f === first ? ' first' : ''}`);
+        chip.title = FOES[f].blurb;
+        chip.append(el('b', '', FOES[f].name), el('i', '', f === first ? 'first here' : FOES[f].cat));
+        list.append(chip);
+      }
+      box.append(list);
+      boxes.push(box);
+    }
+    side.prepend(...boxes);
+    body.append(info, side);
     const n = MAP_ORDER.indexOf(id) + 1;
     const chapter = CHAPTERS[chapterOf(id) - 1];
     this.showOverlay('v3-loadout', [this.screenHead(m.name, () => this.showMenu(), undefined, `Map ${n} · ${chapter.name}`), body]);
@@ -2562,6 +2665,12 @@ export class App {
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
+      // A weapon this chapter adds to the draft says so on its card.
+      const chapter = chapterOf(g.map.id);
+      if (id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id)) {
+        card.dataset.debut = String(chapter);
+        art.append(el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`));
+      }
       const level = el('span', 'v2-card-level', '');
       let text: string;
       if (id === 'resupply') {
@@ -2973,6 +3082,20 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
   mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
   fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
+  sprinter: 'Sprint drones did the most damage: hit them before the booster flares; Flak or the Laser Cutter take a swarm.',
+  hydra: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
+  dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
+  rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
+  loiter: 'Loitering drones did the most damage: clear the circling group before ships reach it; Flak and Thermobaric catch it whole.',
+  attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
+  torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
+  armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
+  crosser: 'Crossing wings did the most damage: one area shot at the X catches the whole wing.',
+  stealthJet: 'Stealth strafers did the most damage: Aegis Launchers and the Shield answer a jet you can\'t see coming.',
+  stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
+  diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
+  siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',
+  cloud: 'Volatile clouds did the most damage: pop them over open water, and hold fire while one is over the convoy.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */
@@ -3035,6 +3158,8 @@ interface FreeSetup {
   weapons: ({ id: AbilityId; level: number } | null)[];
   armory: Record<BayId, { id: ArmoryId; level: number } | null>;
   frequentDrops: boolean;
+  /** The enemy build: which new enemies come. */
+  enemies: FoeSetting;
 }
 
 const FREE_KEY = 'straitwatch.v3.freeplay';
@@ -3052,6 +3177,7 @@ function loadFreeSetup(): FreeSetup {
     ],
     armory: { gun: null, hull: null, supply: null },
     frequentDrops: true,
+    enemies: 'campaign',
   };
   try {
     const raw = JSON.parse(kv.getItem(FREE_KEY) ?? 'null') as Partial<FreeSetup> | null;
@@ -3071,6 +3197,7 @@ function loadFreeSetup(): FreeSetup {
         }),
       ) as FreeSetup['armory'],
       frequentDrops: raw.frequentDrops ?? base.frequentDrops,
+      enemies: foeSetting(raw.enemies),
     };
   } catch {
     return base;
@@ -3103,5 +3230,5 @@ function freeArmory(fp: FreeSetup): ArmoryLevels {
 
 /** What the sim (and the play log) needs from a Free Play setup. */
 function freePlaySetup(fp: FreeSetup): FreePlaySetup {
-  return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops };
+  return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops, enemies: fp.enemies };
 }

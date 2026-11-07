@@ -50,9 +50,6 @@ export const MAX_VOICES = 24;
 const v = (cue: string, n: number): string[] => Array.from({ length: n }, (_, i) => `${cue}.${i + 1}.m4a`);
 
 const sfx = (cue: CueId, n: number, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, n), bus: 'sfx', volume, ...o });
-/** A placeholder: a new cue played with another cue's files until it has
- *  its own (the weapons plan's phase 1 weapons and the Nuke). */
-const borrow = (from: CueId, n: number, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(from, n), bus: 'sfx', volume, ...o });
 const ui = (cue: CueId, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, 1), bus: 'ui', volume, ...o });
 const alert = (cue: CueId, volume: number, o: Partial<SoundDef> = {}): SoundDef => ({ files: v(cue, 1), bus: 'alert', volume, duck: 0.5, ...o });
 
@@ -97,42 +94,38 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'rail.beam': sfx('rail.beam', 3, 0.75, { pitch: [0.96, 1.04], cooldownMs: 50, maxVoices: 2 }),
   'tesla.arc': sfx('tesla.arc', 4, 0.32, { pitch: [0.9, 1.15], cooldownMs: 40, maxVoices: 3 }),
 
-  // The weapons plan, phase 1, and the Nuke: borrowed files for now.
-  'lance.charge': borrow('aegis.reload', 1, 0.3, { pitch: [0.8, 0.85], cooldownMs: 200, maxVoices: 1 }),
-  'lance.half': borrow('rail.beam', 3, 0.55, { pitch: [1.1, 1.18], cooldownMs: 50, maxVoices: 2 }),
-  'lance.full': borrow('rail.beam', 3, 0.85, { pitch: [0.78, 0.84], cooldownMs: 50, maxVoices: 2 }),
-  'cutter.swipe': borrow('blade.throw', 2, 0.5, { pitch: [1.2, 1.35], cooldownMs: 60, maxVoices: 2 }),
-  'grapnel.hook': borrow('blade.catch', 2, 0.5, { pitch: [0.8, 0.9], cooldownMs: 80, maxVoices: 1 }),
-  'grapnel.smack': borrow('blade.hit', 3, 0.45, { pitch: [0.8, 0.95], cooldownMs: 40, maxVoices: 3 }),
-  'grapnel.fling': borrow('blade.throw', 2, 0.45, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 1 }),
-  'grapnel.burst': borrow('shrapnel.burst', 3, 0.6, { pitch: [0.85, 0.95], cooldownMs: 60, maxVoices: 2 }),
-  'chain.throw': borrow('blade.throw', 2, 0.45, { pitch: [0.9, 1.0], cooldownMs: 60, maxVoices: 2 }),
-  'chain.crash': borrow('shrapnel.burst', 3, 0.6, { pitch: [0.95, 1.05], cooldownMs: 60, maxVoices: 2 }),
-  'mark.set': borrow('aegis.reload', 1, 0.35, { pitch: [1.3, 1.4], cooldownMs: 40, maxVoices: 2 }),
-  'salvo.fire': borrow('seeker.launch', 2, 0.6, { pitch: [0.9, 1.0], cooldownMs: 120, maxVoices: 1 }),
-  'cadence.beat': borrow('gun.reload', 3, 0.5, { pitch: [0.6, 0.6], cooldownMs: 200, maxVoices: 1 }),
-  'cadence.hit': borrow('rail.beam', 3, 0.7, { pitch: [1.05, 1.1], cooldownMs: 50, maxVoices: 2 }),
-  'nuke.blast': borrow('well.implode', 2, 1, { pitch: [0.7, 0.75], cooldownMs: 500, maxVoices: 1 }),
-  'screen.launch': borrow('seeker.launch', 2, 0.28, { pitch: [1.3, 1.45], cooldownMs: 150, maxVoices: 1 }),
-  'heli.arrive': borrow('frigate.arrive', 1, 0.45, { pitch: [1.4, 1.5], moving: true }),
-  'heli.rockets': borrow('scatter.blast', 3, 0.5, { pitch: [0.85, 0.95], cooldownMs: 120, maxVoices: 2 }),
-  'sortie.pass': borrow('jet.flyby', 2, 0.55, { pitch: [0.7, 0.75], maxVoices: 2 }),
-  'sortie.bomb': borrow('napalm.burst', 3, 0.7, { pitch: [0.75, 0.85], cooldownMs: 120, maxVoices: 2 }),
-  'orbital.lock': borrow('aegis.reload', 1, 0.4, { pitch: [1.6, 1.7], cooldownMs: 300, maxVoices: 1 }),
-  'orbital.beam': borrow('rail.beam', 3, 0.85, { pitch: [0.6, 0.66], cooldownMs: 80, maxVoices: 2 }),
-  'boost.on': borrow('overdrive.on', 1, 0.6, { pitch: [1.15, 1.2], maxVoices: 1 }),
-  'boost.off': borrow('weapon.done', 1, 0.45, { pitch: [1.2, 1.25], maxVoices: 1 }),
-  'supply.crate': borrow('powerup.drop', 1, 0.45, { pitch: [0.8, 0.85], cooldownMs: 300, maxVoices: 1 }),
-  'streak.up': borrow('gun.reload', 3, 0.5, { pitch: [1.5, 1.6], cooldownMs: 120, maxVoices: 1 }),
-  'streak.lost': borrow('weapon.done', 1, 0.4, { pitch: [0.7, 0.75], cooldownMs: 300, maxVoices: 1 }),
-  'wild.roll': borrow('weapon.load', 2, 0.35, { pitch: [1.4, 1.6], cooldownMs: 90, maxVoices: 1 }),
-  'shield.reflect': borrow('shield.block', 3, 0.55, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 2 }),
-  'shield.shatter': borrow('kill.big', 3, 0.8, { pitch: [1.3, 1.4], cooldownMs: 300, maxVoices: 1 }),
-  'steam.ram': borrow('kill.big', 3, 0.5, { pitch: [0.7, 0.8], cooldownMs: 80, maxVoices: 2 }),
-  'tidal.wave': borrow('impact.splash', 3, 0.8, { pitch: [0.55, 0.62], cooldownMs: 120, maxVoices: 2 }),
-  'storm.roll': borrow('well.open', 1, 0.5, { pitch: [0.5, 0.55], maxVoices: 1 }),
-  'storm.bolt': borrow('tesla.arc', 4, 0.6, { pitch: [0.6, 0.75], cooldownMs: 120, maxVoices: 2 }),
-  'ammo.arrive': borrow('frigate.arrive', 1, 0.5, { pitch: [0.8, 0.85], moving: true }),
+  // The weapons plan (phases 1-3) and the Nuke: their own synthesized
+  // sounds (synth.py; they borrowed other cues' files until then).
+  'lance.charge': sfx('lance.charge', 1, 0.35, { cooldownMs: 200, maxVoices: 1 }),
+  'lance.half': sfx('lance.half', 1, 0.55, { pitch: [0.96, 1.04], cooldownMs: 50, maxVoices: 2 }),
+  'lance.full': sfx('lance.full', 1, 0.85, { pitch: [0.97, 1.03], cooldownMs: 50, maxVoices: 2 }),
+  'cutter.swipe': sfx('cutter.swipe', 2, 0.5, { pitch: [0.94, 1.08], cooldownMs: 60, maxVoices: 2 }),
+  'grapnel.hook': sfx('grapnel.hook', 1, 0.5, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 1 }),
+  'grapnel.smack': sfx('grapnel.smack', 2, 0.45, { pitch: [0.9, 1.08], cooldownMs: 40, maxVoices: 3 }),
+  'grapnel.fling': sfx('grapnel.fling', 1, 0.45, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 1 }),
+  'grapnel.burst': sfx('grapnel.burst', 1, 0.6, { pitch: [0.93, 1.05], cooldownMs: 60, maxVoices: 2 }),
+  'salvo.fire': sfx('salvo.fire', 1, 0.6, { pitch: [0.96, 1.04], cooldownMs: 120, maxVoices: 1 }),
+  // The beat the player plays to (every 0.9 s): on the ui bus, so a busy
+  // wave's density gain and an alert's duck can't bury it.
+  'cadence.beat': ui('cadence.beat', 0.5, { cooldownMs: 200, maxVoices: 1 }),
+  'cadence.hit': sfx('cadence.hit', 2, 0.7, { pitch: [0.99, 1.01], cooldownMs: 50, maxVoices: 2 }),
+  'nuke.blast': sfx('nuke.blast', 1, 1, { cooldownMs: 500, maxVoices: 1 }),
+  'screen.launch': sfx('screen.launch', 1, 0.3, { pitch: [0.95, 1.06], cooldownMs: 150, maxVoices: 1 }),
+  'heli.arrive': sfx('heli.arrive', 1, 0.45, { moving: true }),
+  'heli.rockets': sfx('heli.rockets', 2, 0.5, { pitch: [0.94, 1.06], cooldownMs: 120, maxVoices: 2 }),
+  'heli.hit': sfx('heli.hit', 2, 0.6, { pitch: [0.92, 1.06], cooldownMs: 60, maxVoices: 2 }),
+  'sortie.pass': sfx('sortie.pass', 1, 0.55, { maxVoices: 2 }),
+  'sortie.bomb': sfx('sortie.bomb', 1, 0.7, { pitch: [0.94, 1.04], cooldownMs: 120, maxVoices: 2 }),
+  'orbital.lock': sfx('orbital.lock', 1, 0.4, { cooldownMs: 300, maxVoices: 1 }),
+  'orbital.beam': sfx('orbital.beam', 2, 0.85, { pitch: [0.95, 1.05], cooldownMs: 80, maxVoices: 2 }),
+  'boost.on': sfx('boost.on', 1, 0.6, { maxVoices: 1 }),
+  'boost.off': sfx('boost.off', 1, 0.45, { maxVoices: 1 }),
+  'supply.crate': sfx('supply.crate', 1, 0.45, { cooldownMs: 300, maxVoices: 1 }),
+  'supply.plane': sfx('supply.plane', 1, 0.5, { moving: true, maxVoices: 1 }),
+  'wild.roll': sfx('wild.roll', 1, 0.4, { cooldownMs: 90, maxVoices: 1 }),
+  'shield.reflect': sfx('shield.reflect', 1, 0.55, { pitch: [0.92, 1.1], cooldownMs: 80, maxVoices: 2 }),
+  'shield.shatter': sfx('shield.shatter', 1, 0.8, { cooldownMs: 300, maxVoices: 1 }),
+  'steam.ram': sfx('steam.ram', 1, 0.5, { pitch: [0.92, 1.06], cooldownMs: 80, maxVoices: 2 }),
 
   'weapon.drop': sfx('weapon.drop', 1, 0.5, { cooldownMs: 200 }),
   'weapon.load': sfx('weapon.load', 2, 0.7, { cooldownMs: 150, maxVoices: 1 }),
@@ -168,6 +161,19 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'truck.raise': sfx('truck.raise', 1, 0.3, { pitch: [0.95, 1.05], cooldownMs: 150, maxVoices: 2 }),
   'truck.fire': sfx('truck.fire', 2, 0.28, { pitch: [0.94, 1.06], cooldownMs: 100, maxVoices: 2 }),
   'truck.destroyed': sfx('truck.destroyed', 1, 0.8, { maxVoices: 2 }),
+  // The enemy build: the new enemies' tells.
+  'foe.flare': sfx('foe.flare', 1, 0.35, { pitch: [0.94, 1.06], cooldownMs: 120, maxVoices: 2 }),
+  'foe.split': sfx('foe.split', 1, 0.45, { pitch: [0.95, 1.05], cooldownMs: 100, maxVoices: 2 }),
+  'foe.dive': sfx('foe.dive', 1, 0.4, { pitch: [0.95, 1.05], cooldownMs: 300, maxVoices: 2 }),
+  'foe.rotor': sfx('foe.rotor', 1, 0.45, { cooldownMs: 400, maxVoices: 2 }),
+  'foe.torpedo': sfx('foe.torpedo', 1, 0.45, { pitch: [0.95, 1.05], cooldownMs: 200, maxVoices: 2 }),
+  'foe.plate': sfx('foe.plate', 1, 0.35, { pitch: [0.9, 1.1], cooldownMs: 60, maxVoices: 2 }),
+  'foe.grab': sfx('foe.grab', 1, 0.45, { cooldownMs: 200, maxVoices: 2 }),
+  'foe.whistle': sfx('foe.whistle', 1, 0.5, { cooldownMs: 300, maxVoices: 2 }),
+  'foe.shell': sfx('foe.shell', 1, 0.55, { pitch: [0.94, 1.05], cooldownMs: 120, maxVoices: 2 }),
+  'foe.paint': sfx('foe.paint', 1, 0.35, { cooldownMs: 600, maxVoices: 1 }),
+  'foe.mend': sfx('foe.mend', 1, 0.35, { pitch: [0.97, 1.03], cooldownMs: 300, maxVoices: 2 }),
+  'foe.ignite': sfx('foe.ignite', 1, 0.7, { pitch: [0.94, 1.05], cooldownMs: 120, maxVoices: 2 }),
   'debut.sting': alert('debut.sting', 1, { cooldownMs: 1500, duck: 0.35, duckMs: 900 }),
 
   // The 20-map mechanics (mines, boats, structures, the Dreadnought,

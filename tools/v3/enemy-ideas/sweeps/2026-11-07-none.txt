@@ -1,0 +1,30 @@
+
+> straitwatch@1.0.0 v3:sweep
+> vite-node tools/v3/sweep.ts -- 6 --skills=average --foes=none
+
+V3 sweep — 6 seeds, flow 2, new enemies: none, gun base
+
+map          skill     clear%  wave  lost  min/run  cards  loaded  weapon pickups/run
+strait       average     100%  10.0   0.8      9.6    2.0     43%  airstrike 3.5, frigate 1.0, thermo 1.8, scatter 1.0, boomerang 3.0, flak 3.2, aegis 1.2, well 1.3, railgun 3.3, tesla 0.8, supplyRun 2.7, timeWarp 1.8
+kesh         average     100%  10.0   1.0     10.0    2.0     39%  airstrike 3.0, frigate 0.7, thermo 1.0, scatter 1.0, boomerang 3.5, flak 4.0, aegis 1.2, well 1.8, railgun 3.2, tesla 0.8, supplyRun 3.0, timeWarp 2.2
+marrow       average     100%  10.0   1.7     10.0    2.0     40%  airstrike 3.7, frigate 1.0, thermo 1.3, scatter 1.2, boomerang 3.0, flak 4.3, aegis 0.5, well 2.0, railgun 3.3, tesla 0.5, supplyRun 2.7, timeWarp 2.2
+gauntlet     average     100%  10.0   2.2      9.8    2.0     40%  airstrike 3.7, frigate 0.8, thermo 1.0, scatter 0.7, boomerang 2.8, flak 2.8, aegis 1.2, well 1.7, railgun 3.3, tesla 0.5, supplyRun 3.0, timeWarp 2.0
+harbor       average      67%   9.8   3.7      9.3    1.7     42%  airstrike 3.2, frigate 0.7, thermo 1.5, scatter 0.8, boomerang 2.8, flak 2.0, aegis 1.2, well 1.8, railgun 3.7, tesla 0.7, supplyRun 1.8, timeWarp 2.2
+island       average      67%   9.8   4.5      9.6    1.7     35%  airstrike 2.2, thermo 1.5, scatter 1.3, flak 1.2, well 1.5, tesla 2.5, droneScreen 6.2, supplyRun 1.0, overclock 0.7, overdrive 0.7, shield 2.8, fullSteam 3.0
+behemoth     average      50%   9.7   3.3      9.2    1.5     44%  airstrike 3.0, thermo 1.7, scatter 1.7, flak 3.8, well 2.7, tesla 2.5, droneScreen 7.2, supplyRun 1.2, overclock 0.5, shield 3.3, fullSteam 5.3
+needle       average      17%   9.7   5.3      9.1    1.2     31%  airstrike 2.2, thermo 0.7, scatter 1.3, flak 1.3, well 1.2, tesla 2.3, droneScreen 5.8, supplyRun 1.2, overclock 0.5, overdrive 0.5, shield 2.7, fullSteam 4.7
+archipelago  average      33%   9.0   5.3      8.4    1.3     34%  airstrike 2.3, thermo 1.2, scatter 1.2, flak 2.2, well 1.8, tesla 2.2, droneScreen 4.8, supplyRun 1.2, overclock 0.2, overdrive 0.7, shield 1.8, fullSteam 3.5
+saltgate     average       0%   7.5   6.0      6.6    1.0     27%  airstrike 2.0, thermo 1.0, scatter 0.8, flak 0.3, tesla 1.7, droneScreen 3.8, supplyRun 0.3, overdrive 0.7, shield 1.7, fullSteam 2.8
+battery      average       0%   7.7   5.3      7.2    1.0     38%  airstrike 1.0, frigate 1.7, thermo 5.7, tesla 3.0, cutter 1.3, bomberWing 2.0, orbital 2.2, dualWield 2.7, focus 2.2, shield 0.5
+sowers       average      50%   9.3   4.2      8.9    1.5     41%  airstrike 2.3, frigate 0.5, thermo 4.2, scatter 4.2, boomerang 0.7, tesla 1.7, cutter 1.7, bomberWing 4.2, orbital 2.7, dualWield 2.2, focus 3.0, shield 1.2
+rigs         average       0%   6.5   6.2      5.7    1.0     31%  airstrike 1.8, frigate 0.7, thermo 2.5, tesla 1.3, cutter 0.5, bomberWing 1.8, orbital 2.3, dualWield 2.2, focus 1.8, shield 0.7
+lantern      average      17%   7.7   5.7      7.1    1.2     34%  airstrike 1.5, frigate 1.0, thermo 3.0, boomerang 0.7, tesla 1.2, cutter 1.5, bomberWing 1.8, orbital 1.8, dualWield 2.0, focus 3.2, shield 0.5
+dreadnought  average      33%   8.5   4.2      8.8    1.3     33%  airstrike 1.3, frigate 1.0, thermo 4.5, scatter 0.2, boomerang 0.2, tesla 1.7, cutter 2.0, bomberWing 2.8, orbital 2.5, dualWield 2.2, focus 2.5, shield 1.7
+coves        average       0%   8.5   6.2      8.0    1.0     37%  airstrike 3.3, shrapnel 0.8, thermo 0.5, scatter 2.7, boomerang 5.3, railgun 1.0, cadence 4.3, bomberWing 2.0, dualWield 0.8, wildCard 2.7, focus 0.7, timeWarp 1.2
+delta        average       0%   7.5   5.5      6.6    1.0     40%  airstrike 2.7, shrapnel 0.3, scatter 2.2, boomerang 3.7, railgun 0.7, grapnel 0.5, cadence 4.5, bomberWing 1.3, dualWield 0.3, wildCard 0.8, focus 1.0, timeWarp 0.8
+crossing     average       0%   7.5   5.7      6.8    1.0     42%  airstrike 2.2, shrapnel 0.2, thermo 0.7, scatter 2.8, boomerang 5.0, flak 0.2, railgun 1.3, cadence 4.7, bomberWing 1.0, dualWield 0.5, wildCard 1.7, focus 0.3, timeWarp 0.5
+tide         average      17%   7.0   5.8      6.5    1.2     39%  airstrike 2.7, thermo 0.8, scatter 1.3, boomerang 1.3, railgun 0.5, cadence 4.8, bomberWing 0.5, wildCard 2.0, focus 0.7, timeWarp 1.3
+citadel      average      17%   8.0   5.5      7.3    1.2     39%  airstrike 3.7, shrapnel 0.3, scatter 1.8, boomerang 4.8, flak 0.3, railgun 1.5, grapnel 0.2, cadence 5.2, bomberWing 1.0, dualWield 0.3, wildCard 1.8, focus 0.8, timeWarp 0.7
+
+Whole game (all 20 maps cleared, from an empty Armory, cards won at random):
+  average  4.2 h, 26 runs, 55 cards, last loadout Quick Reload 5, Armor Plating 5, Long Loads 5 — strait in 1, kesh in 2, marrow in 3, gauntlet in 4, harbor in 5, island in 6, behemoth in 10, needle in 11, archipelago in 12, saltgate in 13, battery in 15, sowers in 16, rigs in 17, lantern in 19, dreadnought in 20, coves in 21, delta in 22, crossing in 24, tide in 25, citadel in 26

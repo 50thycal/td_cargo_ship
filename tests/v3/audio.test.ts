@@ -77,7 +77,7 @@ describe('sound coverage', () => {
   });
 
   it('every cue is asked for somewhere: the sim, the loop state or the UI', () => {
-    const src = ['src/v3/sim/game.ts', 'src/v3/ui/app.ts', 'src/v3/audio/state.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
+    const src = ['src/v3/sim/game.ts', 'src/v3/sim/foes.ts', 'src/v3/ui/app.ts', 'src/v3/audio/state.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
     for (const id of CUE_IDS) expect(src.includes(`'${id}'`), `${id} is never emitted`).toBe(true);
     for (const id of UI_CUES) expect(readFileSync('src/v3/ui/app.ts', 'utf8').includes(`'${id}'`), id).toBe(true);
   });
@@ -164,8 +164,6 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   lance: ['gun.fire'],
   cutter: ['gun.fire'],
   grapnel: ['gun.fire'],
-  chainshot: ['gun.fire'],
-  firecontrol: ['mark.set', 'salvo.fire'],
   cadence: ['cadence.beat'],
   // Phase 2 passives: they work on their own once loaded.
   droneScreen: ['screen.launch'],
@@ -173,22 +171,15 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   bomberWing: [],
   orbital: ['orbital.lock'],
   // Phase 3 boosts (at MAX): they change the plain gun's shots.
-  fireAtWill: ['gun.fire', 'flak.burst'],
   supplyRun: ['gun.fire'],
   overclock: ['gun.fire'],
   dualWield: ['gun.fire'],
-  hotStreak: ['gun.fire'],
   wildCard: ['wild.roll'],
   focus: ['gun.fire'],
   overdrive: ['gun.fire'],
   timeWarp: ['gun.fire'],
   shield: ['gun.fire'],
   fullSteam: ['gun.fire'],
-  // Phase 4 experiments: a tap on a threat is a plain shot (the wave needs
-  // open water); the storm rolls in; the ammunition ship sails in.
-  tidal: ['gun.fire'],
-  storm: ['storm.roll'],
-  ammoShip: ['gun.fire'],
 };
 
 describe('every weapon sounds, through real taps', () => {

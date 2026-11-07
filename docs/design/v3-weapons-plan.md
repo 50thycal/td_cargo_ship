@@ -8,7 +8,7 @@
 
 Each covers how to try it, the measured strength, and the tuning made during the build.
 
-**Status:** locked on 2026-11-06. The player answered the open questions and checked every boost's levels (round 3, below), then said "start building". Phases 0–4 are built. The balance sweep is done and the lock-in round is on the review page (round 4, below), waiting for the player's marks.
+**Status:** locked in on 2026-11-07. Phases 0–4 are built, the player marked the lock-in round (round 4, below), and the lock-in build put the 17 kept weapons into the campaign, a few per chapter ([v3-weapons-lock-in.md](v3-weapons-lock-in.md)). Next: the pacing pass, and the AC-130 (the player's new idea, below).
 
 **Sources:**
 - [v3-weapon-ideas-2.md](v3-weapon-ideas-2.md): the ideas, the prototypes and the data.
@@ -278,6 +278,47 @@ Every phase is built. Before any prototype enters the campaign, the player marks
 | `answers/{lk-…}` | `choice`, `note` | Round 4’s questions (round 2–3 ids unchanged) |
 
 **The page is generated** by `npx tsx tools/v3/weapon-ideas/page3.mjs <out.html>` from `lockin.mjs`, the game’s own weapon text and proposed chapters, and `lockin-results.json`.
+
+### The player's playtest (2026-11-06)
+
+The player played every prototype except Fire at Will and Overclock in Free Play: 10 runs on Kesh from wave 7.
+- **Results:** 6 won, 3 lost, 1 quit.
+- **Notes:** 6, quoted on the page and kept in `tools/v3/weapon-ideas/playtest-2026-11-06.json` with each run's setup, draft picks, levels and taps on an empty rack.
+
+The page (version 4) shows, on every card:
+- how the weapon went in those runs;
+- the notes about it;
+- a suggested verdict (`READ` in `lockin.mjs`).
+
+It also adds:
+- 4 questions the notes raise (`answers/{pt-…}`): Fire Control and Chain Shot, Dual Wield, Cadence Gun, Focus;
+- 4 checks of what the notes ask to be built (`checks/{n-…}`): the helicopters' missiles and movement, Supply Run's cargo plane, running dry.
+
+### The player's marks (2026-11-07)
+
+Kept in `tools/v3/weapon-ideas/lockin-marks-2026-11-07.json`, built in [v3-weapons-lock-in.md](v3-weapons-lock-in.md).
+
+| Chapter | Joins the campaign's draft |
+|---|---|
+| 1, Home Waters | Laser Cutter, Drone Screen, Supply Run, Overdrive, Time Warp (beside today's twelve) |
+| 2, The Narrows | Charge Lance, Gunship Pair, Overclock, Shield, Full Steam |
+| 3, Dark Water | Grapnel, Bomber Wing, Orbital Strike, Focus, Dual Wield (left unmarked: its proposed chapter) |
+| 4, Open War | Cadence Gun, Wild Card |
+
+- **Cut (7):** Chain Shot and Fire Control (the note meant "out"), Fire at Will, Hot Streak, Tidal Cannon, Storm Front, Ammunition Ship.
+- **Answers:**
+  - default drops: ammo, repair and the Nuke, with running dry looked at in the pacing pass;
+  - a few weapons per chapter, as marked;
+  - leave Laser Cutter until played;
+  - **buff the hands-on weapons to the middle of the table now** (Focus, Cadence Gun; the other two were cut);
+  - their own sounds before they go live;
+  - next: lock in, rework the changes, then the pacing pass.
+- **From the notes:**
+  - Dual Wield: both weapons **end exactly when the boost ends** (not the recommended option);
+  - Cadence Gun: a beat every 0.9 s;
+  - Focus: the holding finger only slows time.
+- **Checks:** every spec change looks right; the three builds the notes asked for (Hellfire missiles, natural helicopter movement, the cargo plane) are approved; running dry, the player said to ignore.
+- **A new idea (round 4's notes):** "an AC 130 as an active … a gun ship that fires from above with a circling gunship. Long hold send a large radius explosive round and taps is smaller rounds." The next build makes it a Free Play prototype.
 
 ### The balance sweep behind it
 

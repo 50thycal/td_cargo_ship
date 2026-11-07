@@ -42,8 +42,7 @@ export const CUE_IDS = [
   'well.implode',
   'rail.beam',
   'tesla.arc',
-  // The weapons plan, phase 1 (placeholder sounds: they reuse other cues'
-  // files until their own are made; see the manifest).
+  // The weapons plan, phase 1 (their own sounds since the lock-in build).
   'lance.charge',
   'lance.half',
   'lance.full',
@@ -52,36 +51,28 @@ export const CUE_IDS = [
   'grapnel.smack',
   'grapnel.fling',
   'grapnel.burst',
-  'chain.throw',
-  'chain.crash',
-  'mark.set',
   'salvo.fire',
   'cadence.beat',
   'cadence.hit',
   'nuke.blast',
-  // Phase 2 passives (placeholders, borrowed files).
+  // Phase 2 passives.
   'screen.launch',
   'heli.arrive',
   'heli.rockets',
+  'heli.hit',
   'sortie.pass',
   'sortie.bomb',
   'orbital.lock',
   'orbital.beam',
-  // Phase 3 boosts (placeholders, borrowed files).
+  // Phase 3 boosts.
   'boost.on',
   'boost.off',
   'supply.crate',
-  'streak.up',
-  'streak.lost',
+  'supply.plane',
   'wild.roll',
   'shield.reflect',
   'shield.shatter',
   'steam.ram',
-  // Phase 4 experiments (placeholders, borrowed files).
-  'tidal.wave',
-  'storm.roll',
-  'storm.bolt',
-  'ammo.arrive',
   // Weapon state
   'weapon.drop',
   'weapon.load',
@@ -116,6 +107,19 @@ export const CUE_IDS = [
   'truck.fire',
   'truck.destroyed',
   'debut.sting',
+  // The enemy build: the new enemies' tells
+  'foe.flare',
+  'foe.split',
+  'foe.dive',
+  'foe.rotor',
+  'foe.torpedo',
+  'foe.plate',
+  'foe.grab',
+  'foe.whistle',
+  'foe.shell',
+  'foe.paint',
+  'foe.mend',
+  'foe.ignite',
   // The 20-map mechanics
   'mine.drop',
   'mine.blast',

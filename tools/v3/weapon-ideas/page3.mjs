@@ -18,9 +18,12 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { IDEAS, CATEGORY_RULES } from './arsenal2.mjs';
 import { PLAN_DATE, CHANGED, DROPS, BOOST_LEVELS, PHASES, QUESTIONS } from './plan.mjs';
-import { LOCKIN_DATE, BUILT_IN, YOURS, MAYBES, PAIRED, WATCH, CHECKS, LOCK_QUESTIONS } from './lockin.mjs';
-import { ABILITIES } from '../../../src/v3/data/abilities.ts';
-import { ROSTER } from '../../../src/v3/data/roster.ts';
+import { LOCKIN_DATE, BUILT_IN, YOURS, MAYBES, PAIRED, WATCH, CHECKS, LOCK_QUESTIONS, PLAYTEST_DATE, READ, NOTE_QUESTIONS, NOTE_CHECKS, LOCKED_DATE, BUILT } from './lockin.mjs';
+// Round 4 is drawn from the weapons as the player saw them that round (the
+// lock-in build has since cut seven and changed others).
+const SNAP = JSON.parse(readFileSync(new URL('round4-snapshot.json', import.meta.url), 'utf8'));
+const ABILITIES = SNAP.abilities;
+const ROSTER = SNAP.roster;
 
 const here = new URL('.', import.meta.url);
 const root = new URL('../../../', import.meta.url);
@@ -29,6 +32,7 @@ const base = R.runs.none;
 const out = process.argv[2];
 if (!out) throw new Error('usage: npx tsx page3.mjs <out.html>');
 const L = JSON.parse(readFileSync(new URL('lockin-results.json', here), 'utf8'));
+const PT = JSON.parse(readFileSync(new URL('playtest-2026-11-06.json', here), 'utf8')).runs;
 const LR = L.rows;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -180,7 +184,9 @@ const planSection = `<section class="plan-sec" id="sec-plan" aria-labelledby="h-
 const PROTOS = Object.keys(BUILT_IN);
 const nothing = LR.none.l1.clear;
 const SOUNDS = (readFileSync(new URL('src/v3/audio/manifest.ts', root), 'utf8').match(/': borrow\(/g) || []).length;
+const DRY = PT.reduce((a, r) => a + r.dry, 0);
 const fill = (t) => t
+  .replace('{{dry}}', String(DRY))
   .replace('{{none}}', `${LR.none.l1.clear}%`)
   .replace('{{campaign}}', `${LR.campaign.l1.clear}%`)
   .replace('{{cutter}}', `${LR.cutter.max.clear}%`)
@@ -194,6 +200,29 @@ function lockBars(rows, baseLabel) {
 }
 const BUILD_NAME = { 1: 'Actives (build 1)', 2: 'Passives (build 2)', 3: 'Boosts (build 3)', 4: 'Experiments (build 4)' };
 const CAT_LABEL = { active: 'Active', passive: 'Passive', boost: 'Boost' };
+const VERDICT = { keep: 'Keep', change: 'Change', cut: 'Cut' };
+function played(id) {
+  const runs = PT.filter((r) => r.setup.includes(id));
+  const offers = PT.flatMap((r) => r.drafts.filter((d) => d.offered.includes(id)));
+  const picks = offers.filter((d) => d.picked === id).length;
+  const top = Math.max(0, ...runs.map((r) => r.levels[id] ?? 0));
+  const uses = runs.reduce((a, r) => a + (r.uses[id] ?? 0), 0);
+  const notes = PT.flatMap((r) => r.notes.filter((x) => x.about.includes(id)));
+  const ends = runs.map((r) => r.end);
+  return { runs, offers: offers.length, picks, top, uses, notes, ends };
+}
+function playBlock(id) {
+  const p = played(id);
+  const read = READ[id];
+  const verdict = read.v ? `<span class="read read-${read.v}">My read: ${VERDICT[read.v]}</span>` : '<span class="read">My read: play it first</span>';
+  if (!p.runs.length) return `<div class="pt"><div class="lbl">Your playtest</div><p class="pn">Not played yet.</p><p class="pn">${verdict} ${esc(read.why)}</p></div>`;
+  const lv = p.top >= 3 ? 'MAX' : `level ${p.top}`;
+  const ends = ['won', 'lost', 'quit'].map((e) => [e, p.ends.filter((x) => x === e).length]).filter(([, k]) => k).map(([e, k]) => `${k} ${e}`).join(', ');
+  return `<div class="pt"><div class="lbl">Your playtest</div>
+    <p class="facts">${p.runs.length} run${p.runs.length > 1 ? 's' : ''} (${ends}) · picked ${p.picks} of ${p.offers} time${p.offers === 1 ? '' : 's'} offered · reached ${lv} · loaded ${p.uses} time${p.uses === 1 ? '' : 's'}</p>
+    ${p.notes.map((x) => `<blockquote class="said">“${esc(x.text)}”</blockquote>`).join('')}
+    <p class="pn">${verdict} ${esc(read.why)}</p></div>`;
+}
 function lockCard(id, n) {
   const a = ABILITIES[id];
   const r = ROSTER[id];
@@ -205,7 +234,7 @@ function lockCard(id, n) {
   const key = pair ? `${esc(pair.label)} · tick = ${esc(pair.vsLabel)}` : `tick = holding nothing (${nothing}%)`;
   const changed = CHECKS.filter((c) => c.weapon === id);
   const chapters = [1, 2, 3, 4].map((c) => `<button type="button" data-ch="${c}" aria-pressed="false"${c === r.unlock ? ' class="prop" title="Proposed"' : ''}>${c}</button>`).join('');
-  return `<article class="idea lock" id="lock-${id}" data-coll="lockin" data-id="${id}" data-prop="${r.unlock}">
+  return `<article class="idea lock" id="lock-${id}" data-coll="lockin" data-id="${id}" data-prop="${r.unlock}" data-read="${READ[id].v ?? ''}">
   <header>
     <div class="no">${BUILT_IN[id]}·${n}</div>
     <div class="ttl">
@@ -216,7 +245,8 @@ function lockCard(id, n) {
   <p class="pitch">${esc(a.levels[0])}.</p>
   ${MAYBES[id] ? `<blockquote class="said">“${esc(MAYBES[id])}”</blockquote>` : ''}
   <details class="more"><summary>Levels</summary><ol class="levels"><li><b>1</b>${esc(a.levels[0])}.</li><li><b>2</b>${esc(a.levels[1])}.</li><li><b>MAX</b><span><strong>${esc(a.evolved)}:</strong> ${esc(a.levels[2])}.</span></li></ol></details>
-  <div class="proto"><div class="lbl">Runs won · ${L.runs} runs a row <span class="key">${key}</span></div>${lockBars(rows, baseLabel)}<p class="pn"><b>On the phone:</b> ${esc(WATCH[id])}</p></div>
+  ${playBlock(id)}
+  <div class="proto"><div class="lbl">Bot: runs won · ${L.runs} runs a row <span class="key">${key}</span></div>${lockBars(rows, baseLabel)}<p class="pn"><b>On the phone:</b> ${esc(WATCH[id])}</p></div>
   ${changed.length ? `<p class="upd">Changed during the build (${changed.length}): see “Changes I made” below.</p>` : ''}
   <div class="review" role="group" aria-label="Your call on ${esc(a.name)}">
     <div class="seg">
@@ -242,12 +272,49 @@ function checkCard(c) {
   </div>
 </article>`;
 }
+function noteCheckCard(c) {
+  const name = c.weapon ? ABILITIES[c.weapon].name : 'Running dry';
+  return `<article class="lvl" id="check-${c.id}" data-coll="checks" data-id="${c.id}">
+  <header><h3>${esc(name)}</h3><div class="chips"><span class="chip yours">Your note</span></div></header>
+  <dl class="was"><div><dt>You said</dt><dd>“${esc(c.said)}”</dd></div><div><dt>I’d build</dt><dd>${esc(fill(c.now))}</dd></div></dl>
+  <div class="review" role="group" aria-label="Your call on this change to ${esc(name)}">
+    <div class="seg"><button type="button" data-v="ok" aria-pressed="false">Looks right</button><button type="button" data-v="change" aria-pressed="false">Change</button></div>
+    <label class="note"><span>Notes</span><textarea id="ck-n-${c.id}" rows="1" placeholder="What to change"></textarea></label>
+    <div class="saved" aria-live="polite"></div>
+  </div>
+</article>`;
+}
+const runRow = (r) => `<li><b>${r.setup.map((id) => esc(ABILITIES[id].name)).join(' · ')}</b> <span class="end end-${r.end}">${r.end === 'won' ? 'won' : r.end === 'lost' ? `lost at wave ${r.wave}` : `quit at wave ${r.wave}`}</span><span class="pn"> ${r.lost} ships lost · ${r.dry} taps on an empty rack${r.notes.length ? ` · ${r.notes.length} note${r.notes.length > 1 ? 's' : ''}` : ''}</span></li>`;
+const won = PT.filter((r) => r.end === 'won').length;
 const live = Object.keys(ROSTER).filter((id) => ROSTER[id].status === 'live');
 const pool = [1, 2, 3, 4].map((c) => live.length + PROTOS.filter((id) => ROSTER[id].unlock <= c).length);
 const REFS = [['flak', 'Flak'], ['railgun', 'Railgun'], ['airstrike', 'Air Strike'], ['scatter', 'Scattergun'], ['frigate', 'Frigates'], ['aegis', 'Aegis']];
+// The marks, read back on ${LOCKED_DATE}, and what the build made of them.
+const MARKS = JSON.parse(readFileSync(new URL('lockin-marks-2026-11-07.json', here), 'utf8'));
+const CH_NAMES = ['Home Waters', 'The Narrows', 'Dark Water', 'Open War'];
+const keptIn = (c) => Object.entries(MARKS.lockin).filter(([, m]) => m.verdict !== 'cut' && (m.chapter ?? m.chapterUsed) === c).map(([id]) => id);
+const cutIds = Object.entries(MARKS.lockin).filter(([, m]) => m.verdict === 'cut').map(([id]) => id);
+const lockedBlock = `<div class="locked">
+  <h3 class="sub">Locked in · built ${LOCKED_DATE}</h3>
+  <p class="pn">Your marks are recorded and built. ${Object.keys(MARKS.lockin).length - cutIds.length} weapons are in the campaign, each from the chapter you marked; ${cutIds.length} are cut from the game. Your marks below stay as you left them, for the record.</p>
+  <table class="chap-table"><thead><tr><th>Chapter</th><th>Joins the draft</th></tr></thead><tbody>
+  ${[1, 2, 3, 4].map((c) => `<tr><td><b>${c}</b> ${CH_NAMES[c - 1]}</td><td>${keptIn(c).map((id) => esc(ABILITIES[id].name)).join(' · ')}${c === 1 ? ' <span class="pn">(beside today’s twelve)</span>' : ''}</td></tr>`).join('')}
+  </tbody></table>
+  <p class="pn"><b>Cut:</b> ${cutIds.map((id) => esc(ABILITIES[id].name)).join(' · ')}.</p>
+  <ul class="built">${BUILT.map((b) => `<li><b>${esc(b.what)}.</b> ${esc(b.did)}</li>`).join('')}</ul>
+  <p class="pn"><b>Next:</b> your AC-130 idea as a Free Play prototype, then the pacing pass.</p>
+</div>`;
 const lockSection = `<section class="plan-sec" id="sec-lock" aria-labelledby="h-lock">
   <div class="cathead"><h2 id="h-lock">Lock-in <span class="count" id="lock-count"></span></h2>
-  <p>Every phase of the plan is built: ${PROTOS.length} prototypes, all in Free Play. Before any of them enter the campaign: ${LOCK_QUESTIONS.length} questions, then Keep, Change or Cut each one and pick the chapter it unlocks in, then check the changes I made to the specs along the way. Play them first on the preview link; your marks save as you go.</p></div>
+  <p>Updated with your Free Play playtest of ${PLAYTEST_DATE}: ${PT.length} runs and ${PT.reduce((a, r) => a + r.notes.length, 0)} notes. Each card shows how it went for you and my read (a suggested Keep, Change or Cut); your mark decided.</p></div>
+  ${lockedBlock}
+  <h3 class="sub">Your playtest</h3>
+  <p class="pn">${PT.length} runs on Kesh from wave 7: ${won} won, ${PT.filter((r) => r.end === 'lost').length} lost, ${PT.filter((r) => r.end === 'quit').length} quit. ${PROTOS.filter((id) => played(id).runs.length).length} of ${PROTOS.length} prototypes played; not yet: ${PROTOS.filter((id) => !played(id).runs.length).map((id) => esc(ABILITIES[id].name)).join(' and ')}.</p>
+  <ul class="runs">${PT.map(runRow).join('')}</ul>
+  <h3 class="sub">From your notes</h3>
+  <div class="qs">${NOTE_QUESTIONS.map((q) => question(q)).join('\n')}</div>
+  <h3 class="sub">What your notes ask for</h3>
+  <div class="grid lvls">${NOTE_CHECKS.map(noteCheckCard).join('\n')}</div>
   <h3 class="sub">Questions</h3>
   <div class="qs">${LOCK_QUESTIONS.map((q) => question({ ...q, q: fill(q.q) })).join('\n')}
     <fieldset class="q" data-q="lk-notes"><legend>Anything else about the lock-in?</legend><label class="note"><span>Notes</span><textarea id="qn-lk-notes" rows="3"></textarea></label><div class="saved" aria-live="polite"></div></fieldset>
@@ -412,6 +479,22 @@ section > h2 { font-size: 28px; text-transform: uppercase; }
 .r2 .qs { margin-top: 10px; }
 code { font: 13px var(--mono); }
 /* Round 4: lock-in. */
+.pt { border-top: 1px dashed var(--rule); padding-top: 8px; display: grid; gap: 6px; }
+.pt .lbl { font: 600 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--signal); }
+.facts { margin: 0; font-size: 14px; font-weight: 500; }
+.read { font: 600 11px/1 var(--body); letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 7px; border-radius: 4px; background: var(--chip); color: var(--muted); margin-right: 4px; }
+.read-keep { background: var(--go); color: var(--paper); }
+.read-change { background: var(--maybe); color: var(--paper); }
+.read-cut { background: var(--drop); color: var(--paper); }
+.locked { border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; background: var(--paper); }
+.chap-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.chap-table th, .chap-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.built { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.runs { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.runs li { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.end { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.end-won { color: var(--go); }
+.end-lost, .end-quit { color: var(--drop); }
 .idea[data-v="keep"] { border-color: var(--go); box-shadow: inset 4px 0 0 var(--go); }
 .idea[data-v="change"] { border-color: var(--maybe); box-shadow: inset 4px 0 0 var(--maybe); }
 .idea[data-v="cut"] { opacity: 0.62; }
@@ -475,8 +558,8 @@ ${sections}
   const state = { reviews: {}, answers: {}, levels: {}, lockin: {}, checks: {} };
   const COLLS = ['reviews', 'answers', 'levels', 'lockin', 'checks'];
   const PROTOS = ${JSON.stringify(PROTOS)};
-  const LOCK_QS = ${JSON.stringify(LOCK_QUESTIONS.map((q) => q.id))};
-  const CHECKS = ${JSON.stringify(CHECKS.map((c) => c.id))};
+  const LOCK_QS = ${JSON.stringify([...NOTE_QUESTIONS, ...LOCK_QUESTIONS].map((q) => q.id))};
+  const CHECKS = ${JSON.stringify([...NOTE_CHECKS, ...CHECKS].map((c) => c.id))};
   const PLAN_QS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
   const LEVELS = ${JSON.stringify(BOOST_LEVELS.map((b) => b.id))};
   let db = null;

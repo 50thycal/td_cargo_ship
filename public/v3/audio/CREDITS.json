@@ -216,6 +216,24 @@
   "changes": "mono, 44.1 kHz; loop kept whole, 0.1 s of its own tail/head padded on for the codec; levelled to -18 LUFS (-2.1 dB); AAC .m4a"
  },
  {
+  "file": "boost.off.1.m4a",
+  "cue": "boost.off",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'boost.off', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-5.9 dB); AAC .m4a"
+ },
+ {
+  "file": "boost.on.1.m4a",
+  "cue": "boost.on",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'boost.on', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.3 dB); AAC .m4a"
+ },
+ {
   "file": "boss.broadside.1.m4a",
   "cue": "boss.broadside",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'boss.broadside', variant 1)",
@@ -250,6 +268,33 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; loop kept whole, 0.1 s of its own tail/head padded on for the codec; levelled to -18 LUFS (+2.2 dB); AAC .m4a"
+ },
+ {
+  "file": "cadence.beat.1.m4a",
+  "cue": "cadence.beat",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'cadence.beat', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -20 LUFS (-11.7 dB); AAC .m4a"
+ },
+ {
+  "file": "cadence.hit.1.m4a",
+  "cue": "cadence.hit",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'cadence.hit', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-7.6 dB); AAC .m4a"
+ },
+ {
+  "file": "cadence.hit.2.m4a",
+  "cue": "cadence.hit",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'cadence.hit', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-7.7 dB); AAC .m4a"
  },
  {
   "file": "card.max.1.m4a",
@@ -340,6 +385,24 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-0.7 dB); peak-limited 0.5 dB; AAC .m4a"
+ },
+ {
+  "file": "cutter.swipe.1.m4a",
+  "cue": "cutter.swipe",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'cutter.swipe', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-3.5 dB); AAC .m4a"
+ },
+ {
+  "file": "cutter.swipe.2.m4a",
+  "cue": "cutter.swipe",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'cutter.swipe', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-4.7 dB); AAC .m4a"
  },
  {
   "file": "debut.sting.1.m4a",
@@ -468,6 +531,114 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.3 dB); AAC .m4a"
  },
  {
+  "file": "foe.dive.1.m4a",
+  "cue": "foe.dive",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.dive', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.0 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.flare.1.m4a",
+  "cue": "foe.flare",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.flare', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+3.0 dB); peak-limited 4.2 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.grab.1.m4a",
+  "cue": "foe.grab",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.grab', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.8 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.ignite.1.m4a",
+  "cue": "foe.ignite",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.ignite', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-0.3 dB); peak-limited 0.6 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.mend.1.m4a",
+  "cue": "foe.mend",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.mend', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.8 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.paint.1.m4a",
+  "cue": "foe.paint",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.paint', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-15.1 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.plate.1.m4a",
+  "cue": "foe.plate",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.plate', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.5 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.rotor.1.m4a",
+  "cue": "foe.rotor",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.rotor', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-1.8 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.shell.1.m4a",
+  "cue": "foe.shell",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.shell', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.0 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.split.1.m4a",
+  "cue": "foe.split",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.split', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+1.5 dB); peak-limited 2.7 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.torpedo.1.m4a",
+  "cue": "foe.torpedo",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.torpedo', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.4 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.whistle.1.m4a",
+  "cue": "foe.whistle",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.whistle', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-13.6 dB); AAC .m4a"
+ },
+ {
   "file": "fork.switch.1.m4a",
   "cue": "fork.switch",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'fork.switch', variant 1)",
@@ -547,6 +718,51 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-3.7 dB); AAC .m4a"
+ },
+ {
+  "file": "grapnel.burst.1.m4a",
+  "cue": "grapnel.burst",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'grapnel.burst', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-5.5 dB); AAC .m4a"
+ },
+ {
+  "file": "grapnel.fling.1.m4a",
+  "cue": "grapnel.fling",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'grapnel.fling', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.8 dB); AAC .m4a"
+ },
+ {
+  "file": "grapnel.hook.1.m4a",
+  "cue": "grapnel.hook",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'grapnel.hook', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.5 dB); AAC .m4a"
+ },
+ {
+  "file": "grapnel.smack.1.m4a",
+  "cue": "grapnel.smack",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'grapnel.smack', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-9.1 dB); AAC .m4a"
+ },
+ {
+  "file": "grapnel.smack.2.m4a",
+  "cue": "grapnel.smack",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'grapnel.smack', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.9 dB); AAC .m4a"
  },
  {
   "file": "gun.burst.1.m4a",
@@ -664,6 +880,51 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-0.5 dB); peak-limited 0.7 dB; AAC .m4a"
+ },
+ {
+  "file": "heli.arrive.1.m4a",
+  "cue": "heli.arrive",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'heli.arrive', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+0.2 dB); peak-limited 0.4 dB; AAC .m4a"
+ },
+ {
+  "file": "heli.hit.1.m4a",
+  "cue": "heli.hit",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'heli.hit', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-7.4 dB); AAC .m4a"
+ },
+ {
+  "file": "heli.hit.2.m4a",
+  "cue": "heli.hit",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'heli.hit', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-7.4 dB); AAC .m4a"
+ },
+ {
+  "file": "heli.rockets.1.m4a",
+  "cue": "heli.rockets",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'heli.rockets', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.9 dB); AAC .m4a"
+ },
+ {
+  "file": "heli.rockets.2.m4a",
+  "cue": "heli.rockets",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'heli.rockets', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-9.3 dB); AAC .m4a"
  },
  {
   "file": "impact.splash.1.m4a",
@@ -846,6 +1107,33 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-4.9 dB); AAC .m4a"
  },
  {
+  "file": "lance.charge.1.m4a",
+  "cue": "lance.charge",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'lance.charge', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-4.5 dB); AAC .m4a"
+ },
+ {
+  "file": "lance.full.1.m4a",
+  "cue": "lance.full",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'lance.full', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.9 dB); AAC .m4a"
+ },
+ {
+  "file": "lance.half.1.m4a",
+  "cue": "lance.half",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'lance.half', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.2 dB); AAC .m4a"
+ },
+ {
   "file": "last.ship.1.m4a",
   "cue": "last.ship",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'last.ship', variant 1)",
@@ -1024,6 +1312,42 @@
   "author": "Romain Simon (uisfx.com)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -20 LUFS (-3.0 dB); AAC .m4a"
+ },
+ {
+  "file": "nuke.blast.1.m4a",
+  "cue": "nuke.blast",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'nuke.blast', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-7.3 dB); AAC .m4a"
+ },
+ {
+  "file": "orbital.beam.1.m4a",
+  "cue": "orbital.beam",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'orbital.beam', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.2 dB); AAC .m4a"
+ },
+ {
+  "file": "orbital.beam.2.m4a",
+  "cue": "orbital.beam",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'orbital.beam', variant 2)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-9.0 dB); AAC .m4a"
+ },
+ {
+  "file": "orbital.lock.1.m4a",
+  "cue": "orbital.lock",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'orbital.lock', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-10.4 dB); AAC .m4a"
  },
  {
   "file": "overdrive.off.1.m4a",
@@ -1206,6 +1530,15 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -14 LUFS (-0.1 dB); peak-limited 0.7 dB; AAC .m4a"
  },
  {
+  "file": "salvo.fire.1.m4a",
+  "cue": "salvo.fire",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'salvo.fire', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.3 dB); AAC .m4a"
+ },
+ {
   "file": "scatter.blast.1.m4a",
   "cue": "scatter.blast",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'scatter.blast', variant 1)",
@@ -1231,6 +1564,15 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-10.2 dB); AAC .m4a"
+ },
+ {
+  "file": "screen.launch.1.m4a",
+  "cue": "screen.launch",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'screen.launch', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+2.1 dB); peak-limited 3.4 dB; AAC .m4a"
  },
  {
   "file": "seeker.launch.1.m4a",
@@ -1303,6 +1645,24 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-5.6 dB); AAC .m4a"
+ },
+ {
+  "file": "shield.reflect.1.m4a",
+  "cue": "shield.reflect",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'shield.reflect', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.7 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "shield.shatter.1.m4a",
+  "cue": "shield.shatter",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'shield.shatter', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+2.8 dB); peak-limited 4.5 dB; AAC .m4a"
  },
  {
   "file": "ship.delivered.1.m4a",
@@ -1386,6 +1746,24 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.9 dB); AAC .m4a"
  },
  {
+  "file": "sortie.bomb.1.m4a",
+  "cue": "sortie.bomb",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'sortie.bomb', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-5.3 dB); AAC .m4a"
+ },
+ {
+  "file": "sortie.pass.1.m4a",
+  "cue": "sortie.pass",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'sortie.pass', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-4.2 dB); AAC .m4a"
+ },
+ {
   "file": "starshell.on.1.m4a",
   "cue": "starshell.on",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'starshell.on', variant 1)",
@@ -1411,6 +1789,15 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-4.6 dB); AAC .m4a"
+ },
+ {
+  "file": "steam.ram.1.m4a",
+  "cue": "steam.ram",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'steam.ram', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.5 dB); AAC .m4a"
  },
  {
   "file": "strafer.guns.1.m4a",
@@ -1510,6 +1897,24 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; loop kept whole, 0.1 s of its own tail/head padded on for the codec; levelled to -14 LUFS (-7.1 dB); AAC .m4a"
+ },
+ {
+  "file": "supply.crate.1.m4a",
+  "cue": "supply.crate",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'supply.crate', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+5.0 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "supply.plane.1.m4a",
+  "cue": "supply.plane",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'supply.plane', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.0 dB); AAC .m4a"
  },
  {
   "file": "tanker.home.1.m4a",
@@ -1762,5 +2167,14 @@
   "author": "Straitwatch (procedural, made for this game)",
   "licence": "CC0-1.0",
   "changes": "mono, 44.1 kHz; loop kept whole, 0.1 s of its own tail/head padded on for the codec; levelled to -18 LUFS (-1.8 dB); AAC .m4a"
+ },
+ {
+  "file": "wild.roll.1.m4a",
+  "cue": "wild.roll",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'wild.roll', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-5.8 dB); AAC .m4a"
  }
 ]
