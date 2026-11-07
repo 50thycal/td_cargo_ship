@@ -50,7 +50,7 @@ import {
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
-import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype } from '../data/roster';
+import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -1978,7 +1978,27 @@ export class App {
     // right-hand column (a phone has only 375 px of height).
     info.append(go);
     const body = el('div', 'v3-brief');
-    body.append(info, kit);
+    const side = el('div', 'v3-brief-side');
+    side.append(kit);
+    // Each chapter brings new weapons into the draft (the lock-in round):
+    // the briefing names them, so a new chapter reads as new kit.
+    const arrivals = newInChapter(chapterOf(id));
+    if (arrivals.length) {
+      const box = el('div', 'v3-brief-new');
+      box.dataset.newWeapons = arrivals.join(' ');
+      box.append(el('span', 'v3-eyebrow', `New weapons in ${CHAPTERS[chapterOf(id) - 1].name}`));
+      const list = el('div', 'v3-new-list');
+      for (const a of arrivals) {
+        const chip = el('span', 'v3-new-chip');
+        chip.style.setProperty('--card-color', ICON_COLOR[a]);
+        chip.title = ABILITIES[a].levels[0];
+        chip.append(upgradeIcon(a, 16), el('b', '', ABILITIES[a].name), el('i', '', ROSTER[a].cat));
+        list.append(chip);
+      }
+      box.append(list);
+      side.prepend(box);
+    }
+    body.append(info, side);
     const n = MAP_ORDER.indexOf(id) + 1;
     const chapter = CHAPTERS[chapterOf(id) - 1];
     this.showOverlay('v3-loadout', [this.screenHead(m.name, () => this.showMenu(), undefined, `Map ${n} · ${chapter.name}`), body]);
@@ -2561,6 +2581,12 @@ export class App {
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
+      // A weapon this chapter adds to the draft says so on its card.
+      const chapter = chapterOf(g.map.id);
+      if (id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id)) {
+        card.dataset.debut = String(chapter);
+        art.append(el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`));
+      }
       const level = el('span', 'v2-card-level', '');
       let text: string;
       if (id === 'resupply') {

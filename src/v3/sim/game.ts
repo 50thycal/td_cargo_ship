@@ -66,7 +66,7 @@ import {
   type Levels,
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
-import { draftPool, gestureOf, isBoost, ROSTER } from '../data/roster';
+import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import type { Cue, CueId } from '../audio/cues';
@@ -1264,6 +1264,13 @@ function openDraft(g: Game): void {
   const rng = g.rng.draft;
   const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
   const other = rng.shuffle(open.filter((id) => !(g.levels[id] ?? 0)));
+  // Each chapter brings new weapons (the lock-in round): until you hold one
+  // of this chapter's, the first new card dealt is one of them.
+  const debut = newInChapter(chapterOf(g.map.id));
+  if (!g.freePlay && !debut.some((id) => (g.levels[id] ?? 0) > 0)) {
+    const k = other.findIndex((id) => debut.includes(id));
+    if (k > 0) other.unshift(...other.splice(k, 1));
+  }
   g.offer = [];
   while (g.offer.length < 3 && (mine.length || other.length)) {
     const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));

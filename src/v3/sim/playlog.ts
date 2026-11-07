@@ -52,8 +52,11 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *  (Round 8's dev `tempo` is an optional field: a log without it is a
  *  real-game log and replays as before, so the version stays.)
  *  14: the weapons plan, phases 0–1: the Nuke joins the drops (a new roll),
- *      and the gesture weapons' presses are logged ('d', 'v', 'r'). */
-export const LOG_VERSION = 14;
+ *      and the gesture weapons' presses are logged ('d', 'v', 'r').
+ *  15: the lock-in: seven weapons cut, the rest dealt by chapter (a
+ *      chapter's new weapons come first), the four power-ups that became
+ *      boosts leave the campaign's drops. */
+export const LOG_VERSION = 15;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

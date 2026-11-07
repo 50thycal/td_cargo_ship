@@ -77,6 +77,13 @@ export function draftPool(chapter: number): AbilityId[] {
   return ABILITY_ORDER.filter((id) => ROSTER[id].status === 'live' && ROSTER[id].unlock <= chapter);
 }
 
+/** The weapons a chapter adds to the campaign's draft (none for chapter 1:
+ *  everything that starts the game is in it). The briefing lists them, and
+ *  a draft card in that chapter marks them. */
+export function newInChapter(chapter: number): AbilityId[] {
+  return chapter <= 1 ? [] : draftPool(chapter).filter((id) => ROSTER[id].unlock === chapter);
+}
+
 /** Free Play can pick any weapon, prototypes included. */
 export function freePlayPool(): AbilityId[] {
   return [...ABILITY_ORDER];
