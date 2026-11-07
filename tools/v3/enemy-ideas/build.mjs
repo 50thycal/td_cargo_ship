@@ -178,11 +178,11 @@ export const BUILD_QUESTIONS = [
   {
     id: 'eb-lure',
     q: 'Lure Beacon: your helpers go for it. Should their shots hurt it?',
-    options: ['No: helpers waste their shots, only taps sink it (as built)', 'Yes: helpers can sink it too, so it gets more health', 'Something else (note)'],
+    options: ['No: helpers waste their shots, only taps sink it (as built, recommended)', 'Yes: helpers can sink it too, so it gets more health', 'Something else (note)'],
   },
   {
     id: 'eb-pace',
     q: 'How many of the new enemies in a wave?',
-    options: ['One from wave 2, rising to three on wave 10 (as built)', 'Fewer: they should be a surprise, not the wave', 'More: make them the main event'],
+    options: ['One from wave 2, rising to three on wave 10 (as built, recommended)', 'Fewer: they should be a surprise, not the wave', 'More: make them the main event'],
   },
 ];

@@ -709,6 +709,44 @@ try {
     await lp.close();
   }
 
+  // ---- The enemy build: new enemies by chapter, Free Play's Enemies line ----
+  {
+    const ep = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 1, hasTouch: true });
+    const errs = [];
+    ep.on('pageerror', (e) => errs.push(e.message));
+    await ep.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
+    await ep.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 20, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: 2, open: [], mapsV: 2 }));
+    });
+    await ep.reload({ waitUntil: 'networkidle' });
+    await ep.click('[data-chapter="1"]');
+    await ep.click('[data-map]:not(.locked)');
+    await ep.waitForSelector('[data-start]');
+    const foes = await ep.evaluate(() => ({ list: document.querySelector('[data-new-enemies]')?.dataset.newEnemies ?? null, first: document.querySelectorAll('.v3-foe-chip.first').length }));
+    check(foes.list === 'sprinter decoy hydra rocketTruck loiter' && foes.first === 1, `the briefing names the enemies a chapter brings, the map's first marked (${foes.list}, ${foes.first} first)`);
+    // Free Play: the Enemies line, then every new enemy brought in, drawn, no errors.
+    await ep.evaluate(() => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify({ map: 'strait', wave: 5, weapons: [{ id: 'flak', level: 1 }], armory: { gun: null, hull: null, supply: null }, frequentDrops: false, enemies: 'all' })));
+    await ep.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
+    await ep.click('[data-free-play]');
+    await ep.waitForSelector('[data-screen="freeplay"]');
+    const line = await ep.evaluate(() => { const s = document.querySelector('[data-fp="enemies"]'); return s ? { value: s.value, n: s.options.length } : null; });
+    check(line && line.value === 'all' && line.n === 24, `Free Play has an Enemies line: as the campaign, all, none, or any one of 21 (${JSON.stringify(line)})`);
+    await ep.click('[data-free-start]');
+    await ep.waitForSelector('.playing');
+    const kinds = ['sprinter', 'decoy', 'hydra', 'rocketTruck', 'loiter', 'attackHeli', 'torpedoSub', 'armored', 'crosser', 'scavenger', 'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter', 'tender', 'guard', 'picket', 'lure', 'barge', 'cloud'];
+    const seen = new Set();
+    for (const k of kinds) {
+      await ep.evaluate((kind) => { const g = window.__v3.game(); g.queue = [{ at: 1e9, kind: 'drone', base: 0 }]; g.raiderQueue = []; window.__v3.foe(kind); }, k);
+      for (let i = 0; i < 30 && !seen.has(k); i++) {
+        await ep.waitForTimeout(100);
+        if (await ep.evaluate((kind) => { const g = window.__v3.game(); return g.threats.some((t) => t.kind === kind) || g.foe.marks.length > 0; }, k)) seen.add(k);
+      }
+    }
+    check(seen.size === kinds.length && errs.length === 0, `all 21 new enemies come into play in the browser and draw without errors (${seen.size}/21${errs.length ? `; ${errs[0]}` : ''})`);
+    await ep.close();
+  }
+
   // ---- Playtest logs reach Claude (playtest-fixes round) ----
   // The player: "I beat that island map after wave 9 and it didn't save, and
   // then I play the next map briefly and that doesn't save either." On an

@@ -196,6 +196,7 @@ const html = `<title>Enemy Ideas Shortlist</title>
 body { background: var(--sea); color: var(--ink); font: 15px/1.5 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sea); }
 main { max-width: 1120px; margin: 0 auto; display: grid; gap: 26px; }
+main > * { min-width: 0; }
 h1, h2, h3, h4 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
 h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1; text-transform: uppercase; }
 .intro { display: grid; gap: 10px; padding-top: 24px; max-width: 72ch; }
@@ -306,7 +307,7 @@ code { font: 13px var(--mono); }
 
 <main>
   <header class="intro">
-    <div class="eyebrow">Straitwatch V3 · enemy round 1 · ${ROUND_DATE} · built ${BUILD_DATE}</div>
+    <div class="eyebrow">Straitwatch V3 · enemies · built ${BUILD_DATE}</div>
     <h1>Enemy Ideas Shortlist</h1>
     <p class="built"><b>Built.</b> Every enemy you marked Go further is in the game, plus the Volatile Cloud you brought back: ${BUILD.length} in all, a few debuting in each chapter. <b>Build</b> shows each one as built, with pictures from the game. Try any of them in Free Play (Enemies → “Only: …”), then mark it Keep, Tune or Cut. Your round 1 marks are kept below as they were.</p>
     <p>The same process as the weapons, for the enemy. <b>Overview</b> sorts every enemy, today’s ${TODAY.length} and every idea here, into three categories by what it does in a fight, each with its subcategories. <b>Your 18</b> has your ideas with my read on each (I’d pick ${picks.length}). <b>New 10</b> has the ten I kept from ${kept.length + cut.length}, each built to make you decide something no enemy asks today; the ${cut.length} I cut are listed with why. <b>Questions</b> has ${QUESTIONS.length} decisions before a build.</p>
