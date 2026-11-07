@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, boostLevel, lanceCharge, pickupLife, raidWarning, reticleVisible, streakMult, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, boostLevel, lanceCharge, pickupLife, raidWarning, reticleVisible, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
@@ -76,8 +76,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'well');
   drawFields(ctx, g, 'sun');
   drawFields(ctx, g, 'laser');
-  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : s.ammo ? AB.ammoShip.hp[s.ammo - 1] : g.stats.shipHp, false, s.heading, s.vip);
-  drawAmmoShip(ctx, g);
+  for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
   drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0 || boostLevel(g, 'shield')) drawShields(ctx, g);
@@ -120,7 +119,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFx(ctx, g);
   drawPlanWeapons(ctx, g);
   drawPassives(ctx, g);
-  drawExperiments(ctx, g);
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
@@ -916,77 +914,9 @@ function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t
   ctx.restore();
 }
 
-/** Phase 4: Tidal Cannon's waves and Storm Front's cells, from sim state. */
-function drawExperiments(ctx: CanvasRenderingContext2D, g: Game): void {
-  ctx.save();
-  for (const wv of g.waves) {
-    const fade = wv.max > 1000 ? 1 : 1 - wv.r / wv.max;
-    ctx.strokeStyle = `rgba(56,189,248,${0.25 + 0.6 * fade})`;
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.arc(wv.x, wv.y, Math.max(1, wv.r), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(240,249,255,${0.2 + 0.6 * fade})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(wv.x, wv.y, Math.max(1, wv.r - 6), 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  for (const c of g.storms) {
-    // A dark cell, rain streaking across it with the wind.
-    const grad = ctx.createRadialGradient(c.x, c.y, c.r * 0.2, c.x, c.y, c.r);
-    grad.addColorStop(0, 'rgba(30,41,59,0.72)');
-    grad.addColorStop(0.75, 'rgba(51,65,85,0.45)');
-    grad.addColorStop(1, 'rgba(51,65,85,0.1)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(203,213,225,0.7)';
-    ctx.setLineDash([12, 10]);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(191,219,254,0.45)';
-    ctx.lineWidth = 1.5;
-    const lean = Math.sign(c.vx) * 8;
-    for (let k = 0; k < 18; k++) {
-      const a = (k * 2.39996) % (Math.PI * 2);
-      const rr = c.r * Math.sqrt(((k * 7) % 18) / 18);
-      const x = c.x + Math.cos(a) * rr;
-      const y = c.y + Math.sin(a) * rr + ((g.t * 260 + k * 31) % 40) - 20;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + lean, y + 16);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-
-/** The Ammunition Ship: rounds stacked on its deck, so the one to protect reads. */
-function drawAmmoShip(ctx: CanvasRenderingContext2D, g: Game): void {
-  const s = g.ships.find((o) => o.ammo);
-  if (!s) return;
-  ctx.save();
-  ctx.translate(s.x, s.y);
-  ctx.strokeStyle = 'rgba(250,204,21,0.8)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 5]);
-  ctx.beginPath();
-  ctx.arc(0, 0, 30, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = '#facc15';
-  for (let k = 0; k < 3; k++) ctx.fillRect(-10 + k * 7, -26, 5, 9);
-  ctx.restore();
-}
-
 /** Phase 3: what the running boost looks like on the battlefield. Time
  *  Warp drains the colour and trails the threats; Focus darkens the edges
- *  while time is slowed; Hot Streak's heat sits over the gun. */
+ *  while time is slowed. */
 function drawBoosts(ctx: CanvasRenderingContext2D, g: Game): void {
   const c = g.map.carrier;
   if (warping(g)) {
@@ -1036,27 +966,6 @@ function drawBoosts(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.fillRect(c.x - w / 2 - 2, y - 2, w + 4, 10);
     ctx.fillStyle = ICON_COLOR.focus;
     ctx.fillRect(c.x - w / 2, y, w * u, 6);
-  }
-  // Hot Streak: pips for the streak, the multiplier over the gun.
-  if (g.boost?.id === 'hotStreak') {
-    const k = g.boost.level - 1;
-    const top = AB.hotStreak.x3[k];
-    const n = Math.min(g.streak, top);
-    const y = c.y - CARRIER.halfBeam - 30;
-    for (let i = 0; i < top; i++) {
-      const x = c.x + (i - (top - 1) / 2) * 13;
-      dot(ctx, x, y, 5, i < n ? (i >= AB.hotStreak.x2[k] - 1 ? '#f97316' : '#fbbf24') : 'rgba(255,255,255,0.18)');
-    }
-    const m = streakMult(g);
-    if (m > 1) {
-      ctx.font = '900 26px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.strokeText(`×${m}`, c.x, y - 14);
-      ctx.fillStyle = m >= 3 ? '#f97316' : '#fbbf24';
-      ctx.fillText(`×${m}`, c.x, y - 14);
-    }
   }
 }
 
@@ -1135,59 +1044,6 @@ function drawPlanWeapons(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.moveTo(th.x - f.vx * 0.06, th.y - f.vy * 0.06);
     ctx.lineTo(th.x, th.y);
     ctx.stroke();
-  }
-  // Chain Shot: the link waiting for a partner, and chains pulling pairs in.
-  if (g.link && g.link.until >= g.t) {
-    const th = g.threats.find((t) => t.id === g.link!.id && !t.dead);
-    if (th && w?.id === 'chainshot') {
-      const left = (g.link.until - g.t) / AB.chainshot.window;
-      ctx.strokeStyle = '#d6a26b';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(th.x, th.y, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left);
-      ctx.stroke();
-      ctx.setLineDash([4, 6]);
-      ctx.strokeStyle = 'rgba(214,162,107,0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(th.x, th.y, AB.chainshot.reach[w.level - 1], 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-  for (const ch of g.chains) {
-    const a = g.threats.find((t) => t.id === ch.a);
-    const b = g.threats.find((t) => t.id === ch.b);
-    if (!a || !b) continue;
-    ctx.strokeStyle = '#d6a26b';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([9, 4]);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  // Fire Control: a red diamond on each mark, and the salvo's countdown.
-  if (g.marks.length) {
-    ctx.strokeStyle = '#ff4d4d';
-    ctx.lineWidth = 3;
-    for (const m of g.marks) {
-      const th = g.threats.find((t) => t.id === m.id);
-      if (!th) continue;
-      const s = 18 + Math.sin(g.t * 14) * 2;
-      ctx.beginPath();
-      ctx.moveTo(th.x, th.y - s);
-      ctx.lineTo(th.x + s, th.y);
-      ctx.lineTo(th.x, th.y + s);
-      ctx.lineTo(th.x - s, th.y);
-      ctx.closePath();
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#ff6b6b';
-    ctx.font = '800 22px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${g.marks.length} · ${Math.max(0, g.markT).toFixed(1)}s`, c.x, c.y - CARRIER.halfBeam - 40);
   }
   // Cadence Gun (the player's note): a ring closes in from the edges of the
   // sea onto the carrier and lands on the beat, and on the beat the whole
@@ -1928,24 +1784,6 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.arc(f.x, f.y, f.r * (0.6 + u), 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-      }
-      case 'bolt': {
-        // Storm Front's lightning: a jagged white-yellow stroke, cloud to target.
-        const x2 = f.x2 ?? f.x;
-        const y2 = f.y2 ?? f.y;
-        ctx.strokeStyle = `rgba(254,240,138,${1 - u})`;
-        ctx.lineWidth = 4 * (1 - u) + 1;
-        ctx.beginPath();
-        ctx.moveTo(f.x, f.y);
-        const n = 6;
-        for (let k = 1; k < n; k++) {
-          const p = k / n;
-          const j = ((k * 37 + f.x) % 13) - 6.5;
-          ctx.lineTo(f.x + (x2 - f.x) * p + j * 2, f.y + (y2 - f.y) * p);
-        }
-        ctx.lineTo(x2, y2);
         ctx.stroke();
         break;
       }

@@ -39,7 +39,6 @@ import {
   createGame,
   held,
   raidWarning,
-  streakMult,
   warping,
   step,
   tracked,
@@ -558,9 +557,9 @@ export class App {
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
-        // Overclocked: its clock is stopped; Hot Streak shows the heat.
+        // Overclocked: its clock is stopped.
         const oc = w && 'oc' in w && w.oc !== undefined;
-        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'hotStreak' && streakMult(g) > 1 ? `×${streakMult(g)} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
+        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }

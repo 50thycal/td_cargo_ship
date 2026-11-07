@@ -67,9 +67,9 @@ function shoot(g: Game, th: Threat, wait = 1.2): void {
 const BOOSTS = ABILITY_ORDER.filter(isBoost);
 
 describe('the boost rules', () => {
-  it('eleven boosts, all prototypes for now', () => {
-    expect(BOOSTS).toHaveLength(11);
-    for (const id of BOOSTS) expect(ROSTER[id].status, id).toBe('prototype');
+  it('nine boosts, all live in the campaign (the lock-in round cut Fire at Will and Hot Streak)', () => {
+    expect(BOOSTS).toHaveLength(9);
+    for (const id of BOOSTS) expect(ROSTER[id].status, id).toBe('live');
   });
 
   it('a boost never replaces the loaded weapon; a second boost replaces the first', () => {
@@ -90,15 +90,14 @@ describe('the boost rules', () => {
     expect(g.boost?.id).toBe('shield');
     run(g, 1);
     expect(g.boost).toBeNull();
-    pickUp(g, 'fireAtWill');
+    pickUp(g, 'timeWarp');
     g.queue = [];
     run(g, 0.2);
     expect(g.phase).toBe('draft');
     expect(g.boost).toBeNull();
-    expect(g.stats.rack).toBe(g.baseStats.rack);
   });
 
-  it('Free Play plays the plan’s drops: the four power-ups that became boosts never drop; the campaign keeps them', () => {
+  it('the default drops are ammo, repair and the Nuke: the four power-ups that became boosts never drop, in Free Play or the campaign', () => {
     const count = (free: boolean) => {
       const seen = new Set<string>();
       for (let seed = 1; seed <= 6; seed++) {
@@ -116,33 +115,8 @@ describe('the boost rules', () => {
     for (const k of ['overdrive', 'timewarp', 'shield', 'steam']) expect(free.has(k), k).toBe(false);
     expect(free.has('ammo')).toBe(true);
     const campaign = count(false);
-    expect(['overdrive', 'timewarp', 'shield', 'steam'].some((k) => campaign.has(k))).toBe(true);
-  });
-});
-
-describe('Fire at Will', () => {
-  it('a bigger rack and full-auto hold while it lasts, back to normal after', () => {
-    const g = quietGame();
-    const rack = g.stats.rack;
-    pickUp(g, 'fireAtWill', 1);
-    expect(g.stats.rack).toBe(rack + AB.fireAtWill.rack[0]);
-    expect(g.ammo).toBe(rack + AB.fireAtWill.rack[0]);
-    expect(g.stats.holdRepeat).toBe(AB.fireAtWill.repeat[0]);
-    pickUp(g, 'fireAtWill', 2);
-    expect(g.stats.reload).toBeCloseTo(g.baseStats.reload / 2);
-    run(g, WEAPON.time + 0.1);
-    expect(g.stats).toBe(g.baseStats);
-    expect(g.ammo).toBeLessThanOrEqual(rack);
-  });
-
-  it('Lead Rain: every 4th shot bursts into flak', () => {
-    const g = quietGame();
-    pickUp(g, 'fireAtWill', 3);
-    const flak = () => g.fields.filter((f) => f.kind === 'flak').length;
-    for (let k = 0; k < 3; k++) shoot(g, addThreat(g, { x: 500 + k * 150, y: 300 }));
-    expect(flak()).toBe(0);
-    shoot(g, addThreat(g, { x: 1100, y: 300 }), 1.3);
-    expect(flak()).toBe(1);
+    for (const k of ['overdrive', 'timewarp', 'shield', 'steam']) expect(campaign.has(k), k).toBe(false);
+    expect(campaign.has('ammo')).toBe(true);
   });
 });
 
@@ -325,50 +299,6 @@ describe('Dual Wield', () => {
     pickUp(g, 'scatter', 1);
     expect(g.weapon2?.t).toBe(WEAPON.time);
     expect(g.weapon?.id).toBe('flak');
-  });
-});
-
-describe('Hot Streak', () => {
-  it('hits in a row double the damage at 5 and triple it at 10; a tap on nothing resets', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 1);
-    for (let k = 0; k < 5; k++) shoot(g, addThreat(g, { x: 400 + k * 160, y: 300 }));
-    expect(g.streak).toBe(5);
-    const tough = addThreat(g, { x: 800, y: 250, hp: 6 });
-    shoot(g, tough);
-    expect(tough.hp).toBe(4);
-    tap(g, 200, 200, 10);
-    expect(g.streak).toBe(0);
-  });
-
-  it('a loaded weapon’s own shots build the streak too (a Railgun beam at a threat)', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 1);
-    load(g, 'railgun', 1);
-    for (let k = 0; k < 3; k++) shoot(g, addThreat(g, { x: 500 + k * 200, y: 300, hp: 9 }), 0.2);
-    expect(g.streak).toBe(3);
-  });
-
-  it('level 2: double at 4, triple at 8', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 2);
-    for (let k = 0; k < 8; k++) shoot(g, addThreat(g, { x: 300 + k * 130, y: 300 }));
-    const tough = addThreat(g, { x: 800, y: 250, hp: 6 });
-    shoot(g, tough);
-    expect(tough.hp).toBe(3);
-  });
-
-  it('On Fire: at 10 a shot pierces to the next threat, and a miss no longer resets', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 3);
-    for (let k = 0; k < 10; k++) shoot(g, addThreat(g, { x: 300 + k * 110, y: 300 }));
-    expect(g.streak).toBe(10);
-    tap(g, 200, 200, 10);
-    expect(g.streak).toBe(10);
-    const a = addThreat(g, { x: 800, y: 250, hp: 9 });
-    const b = addThreat(g, { x: 860, y: 250, hp: 9 });
-    shoot(g, a);
-    expect(b.hp).toBeLessThan(9);
   });
 });
 

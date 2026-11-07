@@ -14,7 +14,7 @@ const seeds = Number(process.argv[2] ?? 3);
 const skill = process.argv[3] ?? 'average';
 const level = Number(process.argv[4] ?? 1);
 const only = process.argv[5]?.split(',');
-const WEAPONS: string[] = only ?? ['none', 'railgun', 'scatter', 'flak', 'airstrike', 'lance', 'cutter', 'grapnel', 'chainshot', 'firecontrol', 'cadence'];
+const WEAPONS: string[] = only ?? ['none', 'railgun', 'scatter', 'flak', 'airstrike', 'lance', 'cutter', 'grapnel', 'cadence'];
 for (const w of WEAPONS) {
   // `id@n` holds that one at level n (e.g. flak@1+overclock@3).
   const held = w === 'none' || w === 'campaign' ? [] : w.split('+').map((p) => { const [id, lv] = p.split('@'); return { id: id as AbilityId, level: lv ? Number(lv) : level }; });

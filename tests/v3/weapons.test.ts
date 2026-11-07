@@ -56,10 +56,45 @@ const alive = (g: Game, th: Threat) => g.threats.includes(th) && !th.dead;
 // Strait's carrier sits at (800, 705): a line straight up from it is x = 800.
 
 describe('the roster (moddable: one line a weapon)', () => {
-  it('every weapon has a roster line, and today’s twelve are live from chapter 1', () => {
+  it('every weapon has a roster line; all are live, and each chapter brings the ones the player marked', () => {
     for (const id of ABILITY_ORDER) expect(ROSTER[id], id).toBeDefined();
-    expect(draftPool(1)).toHaveLength(12);
-    expect(draftPool(1).some(isPrototype)).toBe(false);
+    expect(ABILITY_ORDER.some(isPrototype)).toBe(false);
+    // The lock-in round (tools/v3/weapon-ideas/lockin-marks-2026-11-07.json).
+    const NEW: Record<number, AbilityId[]> = {
+      1: ['airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla', 'cutter', 'droneScreen', 'supplyRun', 'overdrive', 'timeWarp'],
+      2: ['lance', 'gunships', 'overclock', 'shield', 'fullSteam'],
+      3: ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'],
+      4: ['cadence', 'wildCard'],
+    };
+    for (let c = 1; c <= 4; c++) {
+      const before = c > 1 ? draftPool(c - 1) : [];
+      expect(draftPool(c).filter((id) => !before.includes(id)).sort(), `chapter ${c}`).toEqual([...NEW[c]].sort());
+    }
+    expect(draftPool(4)).toEqual(ABILITY_ORDER);
+  });
+
+  it('a map deals only what its chapter has unlocked, and a later chapter deals its new weapons', () => {
+    const seen: Record<number, Set<AbilityId>> = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set() };
+    MAP_ORDER.forEach((map, i) => {
+      const chapter = Math.floor(i / 5) + 1;
+      for (let seed = 1; seed <= 12; seed++) {
+        const g = createGame(map, seed, 2);
+        g.phase = 'wave';
+        g.queue = [];
+        g.threats = [];
+        g.raiderQueue = [];
+        g.raiders = [];
+        step(g, DT);
+        if ((g.phase as string) !== 'draft') continue;
+        for (const id of g.offer) if (id !== 'resupply') {
+          expect(ROSTER[id].unlock, `${map} ${seed} ${id}`).toBeLessThanOrEqual(chapter);
+          seen[chapter].add(id);
+        }
+      }
+    });
+    for (const id of ['lance', 'gunships'] as AbilityId[]) expect(seen[2].has(id), id).toBe(true);
+    for (const id of ['grapnel', 'orbital'] as AbilityId[]) expect(seen[3].has(id), id).toBe(true);
+    for (const id of ['cadence', 'wildCard'] as AbilityId[]) expect(seen[4].has(id), id).toBe(true);
   });
 
   it('the campaign’s draft never deals a prototype, on any map', () => {
@@ -253,48 +288,6 @@ describe('Grapnel (hold a threat, drag it, let go)', () => {
     const hp = g.carrierHp;
     run(g, 2);
     expect(g.carrierHp).toBe(hp);
-  });
-});
-
-describe('Chain Shot (tap one, then a second)', () => {
-  it('the first tap fires and marks; a second in reach chains them for 2 hits each', () => {
-    const g = quietGame();
-    load(g, 'chainshot');
-    const a = addThreat(g, { kind: 'heavy', hp: 8, x: 700, y: 300 });
-    const b = addThreat(g, { kind: 'heavy', hp: 8, x: 900, y: 300 });
-    const between = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 300 });
-    expect(tap(g, a.x, a.y, 30)).toBe('fire');
-    expect(g.link?.id).toBe(a.id);
-    expect(tap(g, b.x, b.y, 30)).toBe('fire');
-    expect(a.held && b.held).toBe(true);
-    run(g, AB.chainshot.pull + 0.05);
-    expect(b.hp).toBe(8 - AB.chainshot.damage[0]);
-    expect(between.dead).toBe(true);
-    expect(g.link).toBeNull();
-  });
-});
-
-describe('Fire Control (mark, then the salvo)', () => {
-  it('taps mark without spending; the salvo fires at all of them at once, a round for every two', () => {
-    const g = quietGame();
-    load(g, 'firecontrol');
-    const ths = [600, 800, 1000].map((x) => addThreat(g, { kind: 'heavy', hp: 8, x, y: 200 }));
-    const ammo = g.ammo;
-    for (const th of ths) expect(tap(g, th.x, th.y, 30)).toBe('fire');
-    expect(g.ammo).toBe(ammo);
-    expect(g.marks).toHaveLength(3);
-    run(g, AB.firecontrol.wait[0] + 0.05);
-    expect(g.ammo).toBe(ammo - Math.ceil(3 / AB.firecontrol.perRound));
-    expect(g.interceptors).toHaveLength(3);
-  });
-
-  it('a threat about to hit is shot at once, not marked', () => {
-    const g = quietGame();
-    load(g, 'firecontrol');
-    const th = addThreat(g, { kind: 'guided', hp: 2, x: 800, y: 660, speed: 150 });
-    tap(g, th.x, th.y, 30);
-    expect(g.marks).toHaveLength(0);
-    expect(g.interceptors).toHaveLength(1);
   });
 });
 
