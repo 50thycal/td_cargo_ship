@@ -10,7 +10,7 @@ import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
-import { drawFoe, drawFoeGround, drawFoeShots } from './foes';
+import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, isFoeAircraft } from './foes';
 import { laneSamples } from '../sim/lanes';
 
 export const C = {
@@ -88,7 +88,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
   }
-  for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber') drawThreat(ctx, g, th);
+  for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber' && !isFoeAircraft(th.kind)) drawThreat(ctx, g, th);
   drawTracked(ctx, g);
   drawFields(ctx, g, 'flak');
   for (const it of g.interceptors) {
@@ -128,6 +128,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     drawPlane(ctx, g, th);
     hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
   }
+  for (const th of g.threats) if (isFoeAircraft(th.kind)) drawFoeAir(ctx, g, th);
   for (const b of g.blades) drawBlade(ctx, b);
   for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);

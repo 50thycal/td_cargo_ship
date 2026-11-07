@@ -77,7 +77,7 @@ describe('sound coverage', () => {
   });
 
   it('every cue is asked for somewhere: the sim, the loop state or the UI', () => {
-    const src = ['src/v3/sim/game.ts', 'src/v3/ui/app.ts', 'src/v3/audio/state.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
+    const src = ['src/v3/sim/game.ts', 'src/v3/sim/foes.ts', 'src/v3/ui/app.ts', 'src/v3/audio/state.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
     for (const id of CUE_IDS) expect(src.includes(`'${id}'`), `${id} is never emitted`).toBe(true);
     for (const id of UI_CUES) expect(readFileSync('src/v3/ui/app.ts', 'utf8').includes(`'${id}'`), id).toBe(true);
   });

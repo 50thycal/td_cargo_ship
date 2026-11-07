@@ -181,7 +181,7 @@ export const THREATS: Record<
   scavenger: { speed: 170, hp: 1, damage: 0, dropChance: 0.3, label: 'Scavenger drone' },
   stealthJet: { speed: 270, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
   stealthBomber: { speed: 150, hp: 6, damage: 0, dropChance: 0.8, label: 'Stealth bomber' },
-  diveBomber: { speed: 0, hp: 2, damage: 3, dropChance: 0.5, label: 'Dive bomber' },
+  diveBomber: { speed: 0, hp: 2, damage: 2, dropChance: 0.5, label: 'Dive bomber' },
   siege: { speed: 0, hp: 6, damage: 0, dropChance: 1, label: 'Siege battery' },
   spotter: { speed: 120, hp: 4, damage: 0, dropChance: 0.7, label: 'Spotter plane' },
   tender: { speed: 30, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },

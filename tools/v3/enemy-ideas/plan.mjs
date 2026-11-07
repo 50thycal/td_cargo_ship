@@ -41,7 +41,7 @@ L();
 L('## How the new enemies join the game');
 L();
 L('- **By chapter**, like the weapons (`src/v3/data/foes.ts`). A map in chapter *n* can send any enemy from chapters 1 to *n*. The chapter\'s own new ones come up most, and each map of the chapter leads with a different one.');
-L('- **How many:** one a wave from wave 2, two from wave 4, three from wave 7, four on wave 10 (more in endless). Each takes the place of part of the wave\'s table (a drone swarm, or a missile), so a wave\'s weight stays about the same; the sweep checks it.');
+L('- **How many:** one a wave on waves 2 to 5, two on 6 to 9, three on wave 10 (more in endless). Each takes the place of a drone swarm in the wave, and the heavier ones (the platforms that fire several times, the ones that bring a heavy, the barge) a missile too, so a wave\'s weight stays close; the sweep checks it.');
 L('- **Surfaced** as the weapons are: the briefing lists the chapter\'s new enemies; the first time one shows up, the "new threat" card names it and says what to do.');
 L('- **Free Play** gets an Enemies line: as the campaign (the map\'s chapter), none of the new ones, all of them, or one on its own (it comes every wave, more often), to try each.');
 L('- **The rule for anything you can\'t intercept** (Rocket Truck\'s rockets, Siege Battery\'s shells, the Dive Bomber\'s bomb): a tell first, and the source can always be shot.');

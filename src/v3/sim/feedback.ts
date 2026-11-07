@@ -131,7 +131,7 @@ export function volleyPlan(g: Game): { theme: RaidTheme; raids: number; start: n
 const hostile = (kind: ThreatKind) => !STRUCTURE_KINDS.includes(kind);
 
 /** Threats that come out of another (counted under the one that sent them). */
-const PARENT: Partial<Record<ThreatKind, ThreatKind[]>> = { bomblet: ['cluster'], minidrone: ['mothership'], guided: ['bomber'] };
+const PARENT: Partial<Record<ThreatKind, ThreatKind[]>> = { bomblet: ['cluster'], minidrone: ['mothership'], guided: ['bomber', 'stealthBomber'], dart: ['hydra'], heliRocket: ['attackHeli'] };
 
 export function noteContext(g: Game): NoteContext {
   const threats: Partial<Record<ThreatKind, number>> = {};

@@ -69,11 +69,24 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOES, type FoeSetting } from '../data/foes';
-import { foeCount, foeDown, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, picketShoots, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
+
+/** Strafing jets (the Strike jet, and the enemy build's Stealth Strafer),
+ *  bombers (the Missile bomber and the Stealth Bomber): they fly the same
+ *  way, run in as their kind does, and only the old two are warned of. */
+export function isJet(k: ThreatKind): boolean {
+  return k === 'strafer' || k === 'stealthJet';
+}
+export function isBomberKind(k: ThreatKind): boolean {
+  return k === 'bomber' || k === 'stealthBomber';
+}
+export function isPlaneKind(k: ThreatKind): boolean {
+  return isJet(k) || isBomberKind(k);
+}
 
 export interface Ship {
   id: number;
@@ -182,6 +195,9 @@ export interface Interceptor {
   weapon?: Weapon;
   /** Dual Wield's second weapon: another tag on the shot. */
   also?: Weapon[];
+  /** The enemy build: fired by the player's own tap (the Lure Beacon takes
+   *  only such shots). */
+  tap?: boolean;
 }
 
 export interface Pickup {
@@ -270,6 +286,10 @@ export interface Launch {
    *  `lat` across it, instead of a straight line along y. */
   lane?: number;
   lat?: number;
+  /** The enemy build: a launch at one ship (a Spotter's strike), and the
+   *  spotter that called it (shot down, its launches are cancelled). */
+  target?: number;
+  spotter?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -916,9 +936,11 @@ function startWave(g: Game): void {
     replace('guided', PLANE.bombs);
     units.push({ kind: 'bomber', size: 1 });
   }
-  // The enemy build: the new enemies, each in place of a drone swarm.
+  // The enemy build: the new enemies, each in place of a drone swarm (and
+  // the heavier ones, a missile too).
   for (const id of planFoes(g, cut(foeCount(g.wave), len))) {
     replace('drone', 1);
+    if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     units.push({ kind: FOES[id].kind, size: 1 });
   }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
@@ -1141,7 +1163,9 @@ export type TapResult = 'fire' | 'pickup' | 'dry' | 'empty';
 /** A tap at (x, y) in world units, reaching `radius` world units. */
 export function tap(g: Game, x: number, y: number, radius: number): TapResult {
   if (g.phase !== 'wave') return 'empty';
+  g.foe.byTap = true;
   const result = tapResult(g, x, y, radius);
+  g.foe.byTap = false;
   g.taps[result] += 1;
   return result;
 }
@@ -1741,7 +1765,8 @@ function updateEscorts(g: Game, dt: number): void {
     e.fireT -= dt;
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
-    const target = g.threats
+    // A Lure Beacon in reach draws its fire first (the enemy build).
+    const target = lureIn(g, e.x, e.y, AB.frigate.range) ?? g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
       .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
     if (!target) {
@@ -1787,7 +1812,7 @@ function updateAegis(g: Game, dt: number): void {
       }
     }
     if (a.ammo < 1) return a;
-    const target = g.threats
+    const target = lureIn(g, x, y, reach) ?? g.threats
       .filter((t) => !t.dead && isTarget(t) && dist(t.x, t.y, x, y) <= reach && assigned(g, t.id) < t.hp)
       .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0];
     if (!target) return a;
@@ -1798,7 +1823,7 @@ function updateAegis(g: Game, dt: number): void {
     return a;
   };
   // What is about to hit a hull: a threat aimed at it, or an aircraft over it.
-  const aircraft = (t: Threat) => t.kind === 'strafer' || t.kind === 'bomber';
+  const aircraft = (t: Threat) => isPlaneKind(t.kind);
   for (const s of g.ships) s.aegis = arm(s.aegis, AB.aegis.missiles[k], s.x, s.y, (t) => t.target === s.id || aircraft(t));
   if (w.level >= 3) {
     const c = g.map.carrier;
@@ -1813,7 +1838,7 @@ function updatePointDefense(g: Game, dt: number): void {
   g.pdT -= dt;
   if (g.pdT > 0) return;
   const c = g.map.carrier;
-  const target = g.threats
+  const target = lureIn(g, c.x, c.y, g.stats.pdRange) ?? g.threats
     .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
     .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
   if (!target) {
@@ -2095,6 +2120,15 @@ export function pressMove(g: Game, x: number, y: number): void {
 
 /** The finger lifts. A press that never became a gesture is a tap. */
 export function release(g: Game, x: number, y: number, radius: number): TapResult | null {
+  g.foe.byTap = true;
+  try {
+    return releaseNow(g, x, y, radius);
+  } finally {
+    g.foe.byTap = false;
+  }
+}
+
+function releaseNow(g: Game, x: number, y: number, radius: number): TapResult | null {
   const p = g.press;
   if (!p) return null;
   g.press = null;
@@ -2346,7 +2380,7 @@ function updatePassives(g: Game, dt: number): void {
     if (!th) {
       // The threat closest to hitting a hull that no other drone is after.
       const claimed = new Set(g.wings.map((o) => o.target));
-      th = g.threats.filter((t) => !t.dead && !isStructure(t.kind) && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !claimed.has(t.id)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
+      th = lureIn(g, d.x, d.y) ?? g.threats.filter((t) => !t.dead && !isStructure(t.kind) && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !claimed.has(t.id)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
       d.target = th ? th.id : null;
     }
     if (!th) {
@@ -2451,6 +2485,8 @@ function updatePassives(g: Game, dt: number): void {
  *  when nothing else is up: its 10–40 hit points soaked every strike (build 2
  *  sweep). */
 function toughest(g: Game, not: number): Threat | undefined {
+  const lure = lureIn(g, 0, 0);
+  if (lure && lure.id !== not) return lure;
   const up = g.threats.filter((t) => !t.dead && t.id !== not && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !(t.kind === 'citadel' && shieldUp(g)));
   const order = (a: Threat, b: Threat) => b.hp - a.hp || timeToImpact(g, a) - timeToImpact(g, b);
   return up.filter((t) => !isStructure(t.kind)).sort(order)[0] ?? up.sort(order)[0];
@@ -2864,7 +2900,7 @@ function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | 
 function shielded(g: Game, by: ThreatKind): boolean {
   if (g.shieldT > 0) return true;
   const lv = boostLevel(g, 'shield');
-  return lv > 0 && (by !== 'strafer' || lv >= 2);
+  return lv > 0 && (!isJet(by) || lv >= 2);
 }
 
 /** Reflect (Shield MAX): a blocked missile bounces back the way it came and
@@ -2947,8 +2983,12 @@ export function step(g: Game, dt: number): void {
   updatePointDefense(g, dt);
   updateDamageControl(g, dt);
   updateBlades(g, dt);
+  // A held finger's work (the Lance's charge, the Cutter's line) is the
+  // player's own hand.
+  g.foe.byTap = true;
   updatePress(g, dt);
   updateFlings(g, dt);
+  g.foe.byTap = false;
   updateBeat(g);
   updatePassives(g, dt);
   updateFields(g, dt);
@@ -2956,6 +2996,7 @@ export function step(g: Game, dt: number): void {
   updatePosts(g, dt);
   updateLocks(g, dt);
   updateFoeShots(g, tdt);
+  updateFoeMarks(g, tdt);
   g.weaponDropT += dt;
 
   g.threats = g.threats.filter((th) => !th.dead);
@@ -2969,7 +3010,7 @@ export function step(g: Game, dt: number): void {
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && g.foe.shots.length === 0) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g)) {
     g.score += 200 * g.wave;
     clearField(g);
     recordWave(g, 'cleared');
@@ -3019,6 +3060,7 @@ function clearField(g: Game): void {
   g.carrierAegis = null;
   for (const s of g.ships) s.aegis = undefined;
   g.foe.shots = [];
+  g.foe.marks = [];
   g.ammo = g.stats.rack;
   g.reloadT = 0;
 }
@@ -3380,6 +3422,11 @@ function launch(g: Game, l: Launch): void {
     launchPlane(g, l);
     return;
   }
+  // The stealth aircraft: no warning, so their line is picked now.
+  if (isPlaneKind(l.kind)) {
+    launchPlane(g, { ...l, side: g.rng.foes.chance(0.5) ? 1 : -1 });
+    return;
+  }
   if (isFoe(l.kind) && !fromBase(l.kind)) {
     launchFoe(g, l);
     return;
@@ -3389,7 +3436,14 @@ function launch(g: Game, l: Launch): void {
   if ((g.quietUntil[l.base] ?? 0) > g.t) return;
   const base = g.map.bases[l.base];
   if (isFoe(l.kind)) launchFoe(g, l, base);
-  else spawnThreat(g, l.kind, base.x, base.y, 'base');
+  else {
+    const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
+    // A Spotter's strike goes for its painted ship, if it is still afloat.
+    if (l.target !== undefined && g.ships.some((s) => s.id === l.target)) {
+      th.target = l.target;
+      if (th.kind === 'ballistic') aimBallistic(g, th);
+    }
+  }
 }
 
 /** A threat leaves a launcher at (x, y): a base, a truck or a submarine. */
@@ -3432,6 +3486,8 @@ export function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, ori
   // some missiles go for an allied radar or battery; a mine has no target.
   if (kind === 'mine') th.target = NO_TARGET;
   else if (g.map.channels.some((c) => c.vip) || g.map.posts) aimSpecial(g, th, pool, rng);
+  // The enemy build: a Spotter's painted ship draws most launches.
+  if (g.foe.paint) paintTarget(g, th);
 
   if (kind === 'ballistic') aimBallistic(g, th);
   const tp = kind === 'mine' ? { x: th.x + (g.map.current?.x ?? 0), y: th.y + (g.map.current?.y ?? 1) } : targetPos(g, th);
@@ -3462,7 +3518,7 @@ export function laneBends(ch: Channel): boolean {
  *  off its edge. */
 function planeRoute(g: Game, kind: ThreatKind, rng: RNG): { y: number; lane?: number; lat?: number } {
   const chans = g.map.channels;
-  if (kind === 'bomber') {
+  if (isBomberKind(kind)) {
     const bent = chans.map((c, i) => i).filter((i) => laneBends(chans[i]) && !chans[i].tide);
     if (!bent.length) return { y: rng.pick(g.map.bomberLines) };
     const lane = rng.pick(bent);
@@ -3535,7 +3591,7 @@ function launchPlane(g: Game, l: Launch): void {
   }
   th.target = CARRIER_TARGET;
   th.hits = [];
-  th.bombs = l.kind === 'bomber' ? PLANE.bombs : 0;
+  th.bombs = l.kind === 'bomber' ? PLANE.bombs : l.kind === 'stealthBomber' ? FOE.stealthBomber.bombs : 0;
   th.dropT = 99;
 }
 
@@ -3632,7 +3688,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     if (th.kind === 'dreadnought') updateBoss(g, th, dt);
   } else if (th.kind === 'mine') {
     updateMine(g, th, dt);
-  } else if (th.kind === 'strafer' || th.kind === 'bomber') {
+  } else if (isPlaneKind(th.kind)) {
     updatePlane(g, th, dt);
   } else if (movesItself(th.kind)) {
     updateFoe(g, th, dt, (t) => targetPos(g, t), (t) => checkImpact(g, t), (t) => ensureTarget(g, t));
@@ -3770,9 +3826,10 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     gx = th.x + side * PLANE.gunLead;
     gy = th.y;
   }
-  if (th.kind === 'strafer') {
+  if (isJet(th.kind)) {
     const frame = (s: Ship) => planeFrame(g, th, s, gx, gy, tx, ty, gunS);
-    const band = inside < PLANE.strafeRunIn ? [] : g.ships.filter((s) => Math.abs(frame(s).across) <= PLANE.band);
+    const runIn = th.kind === 'stealthJet' ? FOE.stealthJet.runIn : PLANE.strafeRunIn;
+    const band = inside < runIn ? [] : g.ships.filter((s) => Math.abs(frame(s).across) <= PLANE.band);
     const was = th.firing;
     th.firing = band.some((s) => {
       const ahead = frame(s).along;
@@ -3794,7 +3851,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
         continue;
       }
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
-      damageShip(g, s, THREATS.strafer.damage, 'strafer');
+      damageShip(g, s, THREATS[th.kind].damage, th.kind);
     }
     // Water spouts walk along the gun line while it fires (no RNG: jitter from
     // the step count, so the sim stays reproducible).
@@ -3806,7 +3863,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     }
   } else {
     th.dropT = (th.dropT ?? 99) + dt;
-    const ahead = inside < PLANE.bomberRunIn ? undefined : g.ships
+    const ahead = inside < (th.kind === 'stealthBomber' ? FOE.stealthBomber.runIn : PLANE.bomberRunIn) ? undefined : g.ships
       .filter((s) => {
         const d = r ? planeFrame(g, th, s, th.x, th.y, tx, ty, r.s).along : (s.x - th.x) * side;
         return d > 0 && d < PLANE.dropReach;
@@ -3817,7 +3874,7 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
       th.dropT = 0;
       const m = spawnThreat(g, 'guided', th.x, th.y, 'air');
       m.target = ahead.id;
-      m.parent = 'bomber';
+      m.parent = th.kind;
       cue(g, 'bomber.drop', th.x, th.y);
       m.hp = 1;
       g.origins.air -= 1;
@@ -3844,6 +3901,7 @@ const STEER: Partial<Record<ThreatKind, number>> = {
   fastboat: FASTBOAT.turnRate,
   hydra: GUIDED.turnRate,
   dart: 5,
+  heliRocket: 3,
 };
 
 /** Where a ship will be when a fast threat reaches it. */
@@ -3993,6 +4051,12 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
     cue(g, 'shield.block', th.x, th.y);
     return;
   }
+  // The Lure Beacon: helpers' shots pass through it; only the player's own
+  // hand sinks it.
+  if (th.kind === 'lure' && !g.foe.byTap) {
+    if (g.steps % 4 === 0) addFx(g, 'block', th.x, th.y, { life: 0.3, r: 26 });
+    return;
+  }
   th.hp -= amount;
   // Thirds of a hit (seekers) add up to a whole one, float error aside.
   if (th.hp > 1e-6) return;
@@ -4048,7 +4112,7 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
   const dmg = g.stats.hitDamage * deadeye;
   const shoot = (t: Threat) =>
     g.interceptors.push({
-      id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun',
+      id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', tap: true,
       weapon: w ? { ...w } : undefined,
       ...(also.length ? { also } : {}),
       ...(dmg !== g.stats.hitDamage ? { dmg } : {}),
@@ -4105,6 +4169,8 @@ function updateInterceptors(g: Game, dt: number): void {
       live.push(it);
       continue;
     }
+    // The enemy build: a Flak Picket shoots down shots through its ring.
+    if (picketShoots(g, it)) continue;
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
     // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
     const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
@@ -4125,6 +4191,9 @@ function updateInterceptors(g: Game, dt: number): void {
     // Proximity Fuse (Armory): it bursts as soon as it is close to the target.
     const fused = th !== undefined && dist(it.x, it.y, th.x, th.y) <= g.stats.contact;
     if (fused || d <= stepLen + g.stats.contact || it.life > INTERCEPTOR.maxLife) {
+      // A Bodyguard Ring: the shot meets a guard first.
+      if (th) th = guardFor(g, th, it) ?? th;
+      g.foe.byTap = !!it.tap;
       const bx = th ? th.x : it.tx;
       const by = th ? th.y : it.ty;
       const radius = it.blast ?? g.stats.blast;
@@ -4133,7 +4202,8 @@ function updateInterceptors(g: Game, dt: number): void {
       // explosion covers it (two sounds for one flash muddied the mix).
       if (!th || th.hp - (it.dmg ?? g.stats.hitDamage) > 1e-6) cue(g, 'gun.burst', bx, by, it.src === 'seeker' ? { gain: 0.6 } : undefined);
       if (th) {
-        damageThreat(g, th, it.dmg ?? g.stats.hitDamage);
+        // The enemy build: an Armored Drone's plate takes a shot from the front.
+        if (!absorbs(g, th, it, it.dmg ?? g.stats.hitDamage)) damageThreat(g, th, it.dmg ?? g.stats.hitDamage);
         // A Tesla Arc hit arcs on to the threats around it.
         const arc = [it.weapon, ...(it.also ?? [])].find((o) => o?.id === 'tesla');
         if (arc) teslaArc(g, arc.level, bx, by, th.id, AB.tesla.depth[arc.level - 1], new Set([th.id]));
@@ -4142,6 +4212,7 @@ function updateInterceptors(g: Game, dt: number): void {
       blast(g, bx, by, radius, th ? th.id : -1, it.src === 'seeker' ? (it.dmg ?? 1) : 1);
       if (it.weapon) burstWeapon(g, it.weapon, bx, by);
       for (const o of it.also ?? []) burstWeapon(g, o, bx, by);
+      g.foe.byTap = false;
       continue;
     }
     it.x += ((it.tx - it.x) / d) * stepLen;
@@ -4490,7 +4561,7 @@ function updatePosts(g: Game, dt: number): void {
     }
     st.fireT -= dt;
     if (st.fireT > 0) return;
-    const target = g.threats
+    const target = lureIn(g, p.x, p.y, p.reach) ?? g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, p.x, p.y) <= p.reach && assigned(g, t.id) < t.hp)
       .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
     if (!target) {
@@ -4537,7 +4608,7 @@ export function hittable(g: Game, th: Threat): boolean {
  *  structure only when nothing else is up and the rack is all but full (or
  *  a Railgun is loaded, made for big targets). */
 export function worthShooting(g: Game, list: Threat[]): Threat[] {
-  const live = list.filter((t) => !t.dead);
+  const live = list.filter((t) => !t.dead && (!isFoe(t.kind) || foeWorthShooting(g, t)));
   const strikers = live.filter((t) => !isStructure(t.kind));
   const rail = !!held(g, 'railgun');
   const structures = live.filter((t) => isStructure(t.kind) && hittable(g, t));
@@ -5044,7 +5115,7 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
   loiter: 'drone.launch',
-  attackHeli: 'strafer.pass',
+  attackHeli: 'foe.rotor',
   heliRocket: 'missile.launch',
   torpedoSub: 'sub.surface',
   torpedo: 'sub.fire',
@@ -5070,13 +5141,16 @@ function launchCue(g: Game, th: Threat, origin: LaunchOrigin): void {
   if (origin === 'air' && th.kind === 'guided') return;
   // Aircraft engines are loops that follow them (audio/state.ts); their
   // warning sounded when their arrow appeared.
-  if (th.kind === 'strafer' || th.kind === 'bomber') return;
+  if (isPlaneKind(th.kind)) return;
   const id = LAUNCH_CUE[th.kind];
   if (id) cue(g, id, th.x, th.y);
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
+
+/** Effects that are explosions (they set off a Volatile Cloud). */
+const EXPLOSIVE = new Set<FxKind>(['boom', 'burst', 'splash', 'flak', 'frag', 'thermo', 'nuke', 'orbital']);
 
 export function addFx(
   g: Game,
@@ -5088,6 +5162,8 @@ export function addFx(
   // Words never print on top of each other (playthrough round: "JET DOWN"
   // and "REPAIRED" landed on one spot): a new one steps up above any still
   // fresh nearby.
+  // The enemy build: an explosion inside a Volatile Cloud sets it off.
+  if (EXPLOSIVE.has(kind)) sparks(g, x, y);
   if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
   g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text });
 }
@@ -5129,10 +5205,14 @@ export function timeToImpact(g: Game, th: Threat): number {
   if (isStructure(th.kind)) return 99;
   if (th.kind === 'mine') return mineEta(g, th);
   if (th.kind === 'ballistic') return Math.max(0, th.dur - th.age);
-  if (th.kind === 'strafer' || th.kind === 'bomber') {
+  if (isFoe(th.kind)) {
+    const eta = foeEta(g, th);
+    if (eta !== null) return eta;
+  }
+  if (isPlaneKind(th.kind)) {
     // Until its guns (or bombs) reach the nearest hull ahead of it.
     const side = th.side ?? 1;
-    const lead = th.kind === 'strafer' ? PLANE.gunLead : 0;
+    const lead = isJet(th.kind) ? PLANE.gunLead : 0;
     const tx = Math.cos(th.heading);
     const ty = Math.sin(th.heading);
     let best = Infinity;
@@ -5140,7 +5220,7 @@ export function timeToImpact(g: Game, th: Threat): number {
       // Round a bend, ahead and across are measured along its route.
       const f = th.route ? planeFrame(g, th, s, th.x, th.y, tx, ty, th.route.s) : { along: (s.x - th.x) * side, across: s.y - th.y };
       const ahead = f.along - lead;
-      if (ahead >= 0 && (th.kind === 'bomber' || Math.abs(f.across) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
+      if (ahead >= 0 && (isBomberKind(th.kind) || Math.abs(f.across) <= PLANE.band)) best = Math.min(best, ahead / th.speed);
     }
     return best === Infinity ? 30 : best;
   }

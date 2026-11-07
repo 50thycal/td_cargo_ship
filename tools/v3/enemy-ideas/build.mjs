@@ -100,13 +100,13 @@ export const BUILD = [
   },
   {
     id: 'diveBomber', from: 'p-dive-bomber', chapter: 3, name: 'Dive Bomber', cat: 'platform', sub: 'air',
-    how: 'The player\'s redesign: a circle appears on the water where a ship is about to be. 2.2 s later the plane drops out of the sky onto it, and for 1.1 s it can be shot. If it lives, the bomb falls and nothing can stop it. The circle does not follow the ship.',
+    how: 'The player\'s redesign: a circle appears on the water where a ship is about to be. 2.2 s later the plane drops out of the sky onto it, and for 1.8 s it can be shot (enough to react and for a shot to fly there). If it lives, the bomb falls and nothing can stop it. The circle does not follow the ship.',
     tell: 'The circle, then the plane.', answer: 'Hit the plane in its window, or move the ships out of the circle.',
-    numbers: 'Plane: 2 hits. Bomb: 3 damage in the circle (sinks a fresh ship), 1 within 70 px.',
+    numbers: 'Plane: 2 hits. Bomb: 2 damage in the circle, 1 within 70 px.',
   },
   {
     id: 'siege', from: 'p-siege-battery', chapter: 3, name: 'Coastal Siege Battery', cat: 'platform', sub: 'shore',
-    how: 'A gun on the enemy shore. It marks three circles on the lane ahead of the convoy, and 3.4 s later its shells land in them. Shells can\'t be intercepted. It fires four salvos, 6 s apart. The gun can be destroyed.',
+    how: 'A gun on the enemy shore. It marks two circles on the lane ahead of the convoy, and 3.4 s later its shells land in them. Shells can\'t be intercepted. It fires three salvos, 6 s apart. The gun can be destroyed.',
     tell: 'The circles on the water.', answer: 'Silence the gun, or move the convoy out of the circles.',
     numbers: 'Gun: 6 hits. Shells: 2 damage each, 46 px.',
   },
@@ -183,6 +183,6 @@ export const BUILD_QUESTIONS = [
   {
     id: 'eb-pace',
     q: 'How many of the new enemies in a wave?',
-    options: ['One from wave 2, rising to four by wave 10 (as built)', 'Fewer: they should be a surprise, not the wave', 'More: make them the main event'],
+    options: ['One from wave 2, rising to three on wave 10 (as built)', 'Fewer: they should be a surprise, not the wave', 'More: make them the main event'],
   },
 ];

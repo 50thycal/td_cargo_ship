@@ -6,7 +6,9 @@
 // `answers/{questionId}`: choice (option index), note.
 // Usage: node tools/v3/enemy-ideas/page.mjs <out.html>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { ROUND_DATE, ANSWERS, PRESSURES, SHAPES, CATEGORIES, TODAY, PLAYER, NEW, ARSENAL, QUESTIONS } from './enemies.mjs';
+import { BUILD, BUILD_DATE, BUILD_QUESTIONS, CHAPTER_NAMES, CHAPTER_WHY, READINGS } from './build.mjs';
 
 const root = new URL('../../../', import.meta.url);
 const out = process.argv[2];
@@ -24,6 +26,39 @@ const where = (e) => `${catName(e.cat)} · ${subName(e.cat, e.sub)}`;
 const REC = { pick: 'My read: pick', merge: 'My read: merge', maybe: 'My read: maybe', skip: 'My read: skip' };
 const COST = { small: 'Small build', medium: 'Medium build', large: 'Large build' };
 const counters = (ids) => ids.map((id) => esc(ARSENAL[id])).join(', ');
+
+// The build (round 2 of the page): each enemy as built, its screenshots from
+// the game (docs/design/img/enemy-build, by foeshots.mjs), and a mark for
+// after playing it: `builds/{id}`: verdict (keep | tune | cut), note.
+const SHOTS = new URL('docs/design/img/enemy-build/', root);
+const shots = (id) => (existsSync(SHOTS) ? readdirSync(SHOTS).filter((f) => f.startsWith(`${id}-`) && f.endsWith('.jpg')).sort() : []);
+const shot = (f) => `data:image/jpeg;base64,${readFileSync(new URL(f, SHOTS)).toString('base64')}`;
+const ideaName = (id) => (PLAYER.find((p) => p.id === id) ?? NEW.find((i) => i.id === id))?.name ?? id;
+function buildCard(b) {
+  const pics = shots(b.id);
+  return `<article class="idea build" id="build-${b.id}" data-id="${b.id}" data-coll="builds" aria-labelledby="bt-${b.id}">
+  <div class="head"><h3 id="bt-${b.id}">${esc(b.name)}</h3><span class="tag">${esc(subName(b.cat, b.sub))}</span></div>
+  <p class="where">${esc(where(b))} · from “${esc(ideaName(b.from))}”</p>
+  ${pics.length ? `<div class="shots">${pics.map((f) => `<figure><img src="${shot(f)}" alt="${esc(b.name)} in the game: ${esc(f.replace(/^.*?-|\.jpg$/g, ''))}" loading="lazy" width="430" height="242"><figcaption>${esc(f.replace(/^[^-]*-|\.jpg$/g, ''))}</figcaption></figure>`).join('')}</div>` : ''}
+  <dl class="facts">
+    <div><dt>How it plays</dt><dd>${esc(b.how)}</dd></div>
+    <div><dt>The tell</dt><dd>${esc(b.tell)}</dd></div>
+    <div><dt>Your answer</dt><dd>${esc(b.answer)}</dd></div>
+    <div><dt>Numbers</dt><dd>${esc(b.numbers)}</dd></div>
+  </dl>
+  <div class="mark"><div class="verdicts" role="group" aria-label="After playing ${esc(b.name)}">
+    <button type="button" data-v="keep" aria-pressed="false">Keep</button>
+    <button type="button" data-v="tune" aria-pressed="false">Tune</button>
+    <button type="button" data-v="cut" aria-pressed="false">Cut</button>
+  </div>
+  <label class="note"><span>Notes after playing</span><textarea id="n-b-${b.id}" rows="1" placeholder="What felt off?"></textarea></label><div class="saved" aria-live="polite"></div></div>
+</article>`;
+}
+const buildPane = [1, 2, 3, 4].map((ch) => `<section class="tx" aria-labelledby="bch-${ch}">
+  <h3 id="bch-${ch}">Chapter ${ch}: ${esc(CHAPTER_NAMES[ch])}</h3>
+  <p class="rule">${esc(CHAPTER_WHY[ch])}</p>
+  <div class="grid">${BUILD.filter((b) => b.chapter === ch).map(buildCard).join('\n')}</div>
+</section>`).join('\n');
 
 const kept = NEW.filter((i) => i.status === 'keep');
 const cut = NEW.filter((i) => i.status === 'cut');
@@ -262,12 +297,18 @@ textarea { font: 14px/1.4 var(--body); color: var(--ink); background: var(--sea)
 }
 @media (prefers-reduced-motion: no-preference) { .idea { transition: border-color .2s, opacity .2s; } }
 code { font: 13px var(--mono); }
+.build .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 8px 0; }
+.build .shots figure { margin: 0; }
+.build .shots img { width: 100%; height: auto; border-radius: 8px; display: block; }
+.build .shots figcaption { font-size: 12px; color: var(--muted, #8a97a3); margin-top: 2px; }
+.built { border-left: 3px solid var(--signal, #f5c542); padding-left: 10px; }
 </style>
 
 <main>
   <header class="intro">
-    <div class="eyebrow">Straitwatch V3 · enemy round 1 · ${ROUND_DATE}</div>
+    <div class="eyebrow">Straitwatch V3 · enemy round 1 · ${ROUND_DATE} · built ${BUILD_DATE}</div>
     <h1>Enemy Ideas Shortlist</h1>
+    <p class="built"><b>Built.</b> Every enemy you marked Go further is in the game, plus the Volatile Cloud you brought back: ${BUILD.length} in all, a few debuting in each chapter. <b>Build</b> shows each one as built, with pictures from the game. Try any of them in Free Play (Enemies → “Only: …”), then mark it Keep, Tune or Cut. Your round 1 marks are kept below as they were.</p>
     <p>The same process as the weapons, for the enemy. <b>Overview</b> sorts every enemy, today’s ${TODAY.length} and every idea here, into three categories by what it does in a fight, each with its subcategories. <b>Your 18</b> has your ideas with my read on each (I’d pick ${picks.length}). <b>New 10</b> has the ten I kept from ${kept.length + cut.length}, each built to make you decide something no enemy asks today; the ${cut.length} I cut are listed with why. <b>Questions</b> has ${QUESTIONS.length} decisions before a build.</p>
     <p>Mark each idea Go further, Maybe or Drop, and add notes. Every picture is the idea drawn over a real wave, at phone size. Everything saves as you go, for the next session to read.</p>
     <p class="store" id="store">Connecting to the review store…</p>
@@ -275,7 +316,8 @@ code { font: 13px var(--mono); }
 
   <nav class="bar-sticky" aria-label="Sections">
     <div class="tabs" role="group" aria-label="Section">
-      <button type="button" data-tab="overview" aria-pressed="true">Overview</button>
+      <button type="button" data-tab="build" aria-pressed="true">Build</button>
+      <button type="button" data-tab="overview" aria-pressed="false">Overview</button>
       <button type="button" data-tab="player" aria-pressed="false">Your 18</button>
       <button type="button" data-tab="new" aria-pressed="false">New 10</button>
       <button type="button" data-tab="questions" aria-pressed="false">Questions</button>
@@ -284,7 +326,19 @@ code { font: 13px var(--mono); }
     <div class="tally" id="tally">0 of ${MARKABLE.length} marked</div>
   </nav>
 
-  <section class="pane" id="pane-overview" aria-labelledby="h-overview">
+  <section class="pane" id="pane-build" aria-labelledby="h-build">
+    <div class="cathead"><h2 id="h-build">Build <span class="count" data-count="build"></span></h2>
+    <p>Each enemy as it is in the game now, by the chapter it debuts in. Once debuted, an enemy can turn up on every later map. The numbers are first proposals.</p></div>
+    <h3 class="sub2">Readings of your marks to check</h3>
+    <ul class="axes">${READINGS.map((r) => `<li>${esc(r.text)}</li>`).join('')}</ul>
+    ${buildPane}
+    <h3 class="sub2" id="h-bq">Questions about the build</h3>
+    <div class="qs">${BUILD_QUESTIONS.map(question).join('\n')}
+      <fieldset class="q" data-q="eb-notes"><legend>Anything else after playing them?</legend><label class="note"><span>Notes</span><textarea id="qn-eb-notes" rows="3"></textarea></label><div class="saved" aria-live="polite"></div></fieldset>
+    </div>
+  </section>
+
+  <section class="pane hidden" id="pane-overview" aria-labelledby="h-overview">
     <div class="cathead"><h2 id="h-overview">Three categories</h2>
     <p>Split by role, like your weapons’ Active, Passive and Boost: the category says what kind of answer an enemy needs. Tap an idea to jump to its card.</p></div>
     <div class="legend"><span><b class="mt" style="color:var(--today)">TODAY</b> in the game now</span><span><b class="mt" style="color:var(--signal)">#N</b> your idea</span><span><b class="mt" style="color:var(--new)">NEW</b> one of my ten</span></div>
@@ -333,13 +387,15 @@ code { font: 13px var(--mono); }
   const MARKABLE = ${JSON.stringify(MARKABLE)};
   const GROUP = ${JSON.stringify(Object.fromEntries([...PLAYER.map((p) => [p.id, 'player']), ...kept.map((i) => [i.id, 'new'])]))};
   const QIDS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
-  const state = { reviews: {}, answers: {} };
-  const COLLS = ['reviews', 'answers'];
+  const BUILT = ${JSON.stringify(BUILD.map((b) => b.id))};
+  const BQIDS = ${JSON.stringify(BUILD_QUESTIONS.map((q) => q.id))};
+  const state = { reviews: {}, answers: {}, builds: {} };
+  const COLLS = ['reviews', 'answers', 'builds'];
   let db = null;
   const LS = 'straitwatch-enemy-ideas-1';
   const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } };
   const lsSet = (v) => { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} };
-  let tab = 'overview';
+  let tab = 'build';
 
   function paintItem(el) {
     const r = state[el.dataset.coll][el.dataset.id] || {};
@@ -366,23 +422,29 @@ code { font: 13px var(--mono); }
       if (el) el.textContent = list.filter((id) => v(id)).length + ' / ' + list.length + ' marked';
     }
     document.getElementById('q-count').textContent = qa + ' / ' + QIDS.length + ' answered';
+    // The build: marks after playing.
+    const bm = BUILT.filter((id) => (state.builds[id] || {}).verdict).length;
+    const bc = document.querySelector('[data-count="build"]');
+    if (bc) bc.textContent = bm + ' / ' + BUILT.length + ' marked';
+    const bq = BQIDS.filter((id) => state.answers[id] && state.answers[id].choice != null).length;
+    document.getElementById('tally').innerHTML = 'Build: <b>' + bm + ' / ' + BUILT.length + ' marked</b> · ' + bq + '/' + BQIDS.length + ' answered';
   }
   // My picks: the cards themselves move there (one card per idea, so its
   // buttons and notes stay the same element), and back when unpicked.
   const home = {};
-  document.querySelectorAll('.idea').forEach((el) => { home[el.dataset.id] = el.parentElement; });
+  document.querySelectorAll('.idea:not(.build)').forEach((el) => { home[el.dataset.id] = el.parentElement; });
   function paintPicks() {
     const grid = document.getElementById('go-grid');
     const ids = MARKABLE.filter((id) => v(id) === 'go');
     document.getElementById('go-empty').classList.toggle('hidden', ids.length > 0);
-    document.querySelectorAll('.idea').forEach((el) => {
+    document.querySelectorAll('.idea:not(.build)').forEach((el) => {
       const want = tab === 'go' && ids.includes(el.dataset.id) ? grid : home[el.dataset.id];
       if (el.parentElement !== want) want.append(el);
     });
   }
   function paintTab() {
     document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
-    for (const p of ['overview', 'player', 'new', 'questions', 'go']) document.getElementById('pane-' + p).classList.toggle('hidden', p !== tab);
+    for (const p of ['build', 'overview', 'player', 'new', 'questions', 'go']) document.getElementById('pane-' + p).classList.toggle('hidden', p !== tab);
     paintPicks();
   }
   function paintAll() {
@@ -428,7 +490,7 @@ code { font: 13px var(--mono); }
     ta.addEventListener('input', () => { clearTimeout(t); flash(st, 'Typing…'); t = setTimeout(() => save('answers', id, { note: ta.value }, st), 900); });
     ta.addEventListener('blur', () => { clearTimeout(t); if ((state.answers[id] || {}).note !== ta.value && ta.value !== '') save('answers', id, { note: ta.value }, st); });
   });
-  const setTab = (t) => { tab = t; try { sessionStorage.setItem(LS + '-tab', tab); } catch {} paintTab(); };
+  const setTab = (t) => { tab = t; try { sessionStorage.setItem(LS + '-tab2', tab); } catch {} paintTab(); };
   document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
   // Overview links jump to the idea's card on its own tab.
   document.querySelectorAll('[data-jump]').forEach((a) => a.addEventListener('click', (e) => {
@@ -437,12 +499,13 @@ code { font: 13px var(--mono); }
     const card = document.querySelector(a.getAttribute('href'));
     if (card) card.scrollIntoView({ block: 'start' });
   }));
-  try { tab = sessionStorage.getItem(LS + '-tab') || 'overview'; } catch {}
+  try { tab = sessionStorage.getItem(LS + '-tab2') || 'build'; } catch {}
 
   // Local copy first, then the shared store.
   const local = lsGet();
   Object.assign(state.reviews, local.reviews || {});
   Object.assign(state.answers, local.answers || {});
+  Object.assign(state.builds, local.builds || {});
   paintAll();
   const note = document.getElementById('store');
   const use = window.claude && window.claude.use;

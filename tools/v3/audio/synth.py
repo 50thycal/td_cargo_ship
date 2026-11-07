@@ -1639,6 +1639,104 @@ def _(rng, v):
     return reverb_circular(loop, rng, wet=0.4, dur=3.0, tau=1.2, damp=2500)
 
 
+# =============================================================================
+# The enemy build (docs/design/v3-enemy-build.md): the new enemies' tells.
+# Short, so twelve of them fit the audio budget.
+
+
+@recipe("foe.flare")
+def _(rng, v):
+    # A booster lighting: a hiss that climbs, a crack as it catches.
+    d = 0.45
+    h = sweep(white(d, rng), "bp", np.geomspace(600, 5000, secs(d))) * env_points(d, [(0, 0), (0.3, 0.6), (0.42, 1), (d, 0)])
+    return mix(h * 0.7, at(click(rng, 0.01, 1500) * 0.8, 0.38))
+
+
+@recipe("foe.split")
+def _(rng, v):
+    # A casing cracking open and two darts away.
+    return mix(ring(rng, [740, 1980, 3300], 0.18, q=18) * 0.6, at(zap(rng, 0.22, 2600, 900) * 0.4, 0.02), at(zap(rng, 0.22, 3000, 1100) * 0.35, 0.07))
+
+
+@recipe("foe.dive")
+def _(rng, v):
+    # A pack tipping over into a dive: a whine falling.
+    d = 0.6
+    w = lp(osc(glide(1700, 520, d), d, "saw"), 2600) * env_points(d, [(0, 0), (0.06, 0.5), (d * 0.8, 0.4), (d, 0)])
+    return mix(w * 0.5, hiss(rng, d, 3000, 900) * 0.25)
+
+
+@recipe("foe.rotor")
+def _(rng, v):
+    # Rotor blades beating in, the helicopter arriving.
+    d = 0.7
+    out = np.zeros(secs(d))
+    for k in range(int(d / 0.075)):
+        t = k * 0.075
+        g = 0.35 + 0.65 * (t / d)
+        out = mix(out, at(lp(thump(95, 60, 0.06) * g, 400), t, d))
+    return mix(out, lp(pink(d, rng), 800) * env_points(d, [(0, 0), (d * 0.7, 0.25), (d, 0)]))
+
+
+@recipe("foe.torpedo")
+def _(rng, v):
+    # Out of the tube: a dull thump and a stream of bubbles.
+    return mix(lp(thump(120, 50, 0.25), 500) * 0.9, at(bubbles(rng, 0.6, 40, 300, 1100) * 0.5, 0.05))
+
+
+@recipe("foe.plate")
+def _(rng, v):
+    # A shot glancing off armour: a hard metal clank.
+    return mix(ring(rng, [620, 1430, 2870, 4100], 0.22, q=25) * 0.7, click(rng, 0.004, 3000) * 0.6)
+
+
+@recipe("foe.grab")
+def _(rng, v):
+    # The claw snapping shut, and away.
+    return mix(click(rng, 0.008, 2200) * 0.8, at(click(rng, 0.006, 2600) * 0.6, 0.05), at(zap(rng, 0.25, 600, 2400) * 0.35, 0.08))
+
+
+@recipe("foe.whistle")
+def _(rng, v):
+    # The dive bomber's siren, dropping out of the sky.
+    d = 1.1
+    f = glide(2300, 800, d) * (1 + 0.02 * np.sin(np.linspace(0, 2 * np.pi * 9, secs(d))))
+    return osc(f, d, "sine") * env_points(d, [(0, 0), (0.1, 0.7), (d * 0.85, 1), (d, 0)]) * 0.6
+
+
+@recipe("foe.shell")
+def _(rng, v):
+    # A heavy gun on the shore: a deep report.
+    d = 0.7
+    return mix(lp(boom(rng, 0.7, 0.6, dark=0.6), 900) * 1.1, thump(70, 40, 0.3) * 0.6) [: secs(d)] * env_points(d, [(0, 1), (d * 0.6, 0.7), (d, 0)])
+
+
+@recipe("foe.paint")
+def _(rng, v):
+    # A target lock: three quick high tones.
+    d = 0.42
+    out = np.zeros(secs(d))
+    for k in range(3):
+        out = mix(out, at(osc(1850, 0.07, "square") * env_points(0.07, [(0, 0), (0.005, 1), (0.06, 1), (0.07, 0)]), k * 0.12, d))
+    return lp(out, 5000) * 0.4
+
+
+@recipe("foe.mend")
+def _(rng, v):
+    # A repair pulse: a soft chime climbing.
+    d = 0.6
+    return mix(bell(660, d) * 0.35, at(bell(880, d - 0.1) * 0.3, 0.1), at(bell(1320, d - 0.2) * 0.25, 0.2))
+
+
+@recipe("foe.ignite")
+def _(rng, v):
+    # Gas going up: a soft whump, then crackle.
+    d = 0.75
+    w = lp(boom(rng, 0.8, 0.6, dark=0.8), 600)[: secs(d)]
+    crack = bp(white(d, rng), 1500, 6000) * (rng.random(secs(d)) > 0.985) * env_exp(d, 0.3)
+    return mix(w, crack * 2.5, hiss(rng, d * 0.8, 2000, 500) * 0.3) * env_points(d, [(0, 1), (d * 0.6, 0.6), (d, 0)])
+
+
 MUSIC = {"menu.music", "battle.music", "battle.intense", "result.music"}
 
 

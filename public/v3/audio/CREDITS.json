@@ -531,6 +531,114 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.3 dB); AAC .m4a"
  },
  {
+  "file": "foe.dive.1.m4a",
+  "cue": "foe.dive",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.dive', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.0 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.flare.1.m4a",
+  "cue": "foe.flare",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.flare', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+3.0 dB); peak-limited 4.2 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.grab.1.m4a",
+  "cue": "foe.grab",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.grab', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.8 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.ignite.1.m4a",
+  "cue": "foe.ignite",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.ignite', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-0.3 dB); peak-limited 0.6 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.mend.1.m4a",
+  "cue": "foe.mend",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.mend', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.8 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.paint.1.m4a",
+  "cue": "foe.paint",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.paint', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-15.1 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.plate.1.m4a",
+  "cue": "foe.plate",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.plate', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.5 dB); peak-limited 6.0 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.rotor.1.m4a",
+  "cue": "foe.rotor",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.rotor', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-1.8 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.shell.1.m4a",
+  "cue": "foe.shell",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.shell', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-6.0 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.split.1.m4a",
+  "cue": "foe.split",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.split', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+1.5 dB); peak-limited 2.7 dB; AAC .m4a"
+ },
+ {
+  "file": "foe.torpedo.1.m4a",
+  "cue": "foe.torpedo",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.torpedo', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.4 dB); AAC .m4a"
+ },
+ {
+  "file": "foe.whistle.1.m4a",
+  "cue": "foe.whistle",
+  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.whistle', variant 1)",
+  "sourceUrl": "tools/v3/audio/synth.py",
+  "author": "Straitwatch (procedural, made for this game)",
+  "licence": "CC0-1.0",
+  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-13.6 dB); AAC .m4a"
+ },
+ {
   "file": "fork.switch.1.m4a",
   "cue": "fork.switch",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'fork.switch', variant 1)",

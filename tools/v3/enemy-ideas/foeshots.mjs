@@ -56,6 +56,100 @@ export const SCENES = {
       { name: 'dive', until: `foes.some((t) => t.foe.state === 2 && t.foe.t > 0.35)`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 360, y: f.py - 210, w: 720 }; })()` },
     ],
   },
+  // ---- Chapter 2.
+  attackHeli: {
+    kind: 'attackHeli',
+    moments: [
+      { name: 'arrive', until: `foes.length && foes[0].foe.state === 0 && foes[0].age > 1.6`, focus: `(() => { const t = foes[0], f = t.foe; const x = Math.min(t.x, f.px) - 160; return { x, y: Math.min(t.y, f.py) - 140, w: Math.max(640, Math.abs(t.x - f.px) + 320) }; })()` },
+      { name: 'fire', until: `g.threats.some((t) => t.kind === 'heliRocket' && t.age > 0.5)`, focus: `(() => { const t = foes[0]; return { x: t.x - 340, y: t.y - 140, w: 680 }; })()` },
+    ],
+  },
+  torpedoSub: {
+    kind: 'torpedoSub',
+    moments: [
+      { name: 'periscope', until: `g.foe.marks.some((m) => m.kind === 'periscope' && m.t > 0.9)`, focus: `(() => { const m = g.foe.marks[0]; return { x: m.x - 320, y: m.y - 180, w: 640 }; })()` },
+      { name: 'torpedo', until: `g.threats.some((t) => t.kind === 'torpedo' && t.age > 1.4)`, focus: `(() => { const t = g.threats.find((t) => t.kind === 'torpedo'); const f = t.foe; const x = Math.min(f.sx, f.px) - 120; return { x, y: Math.min(f.sy, f.py) - 120, w: Math.max(640, Math.abs(f.sx - f.px) + 240) }; })()` },
+    ],
+  },
+  armored: {
+    kind: 'armored',
+    moments: [
+      { name: 'plate', until: `foes.length && foes[0].age > 1.2 && foes[0].foe.state === 0`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 150, w: 600 }; })()` },
+      { name: 'bank', until: `foes.length && foes[0].foe.state === 1 && foes[0].foe.t > 0.6`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 170, w: 600 }; })()` },
+    ],
+  },
+  crossWing: {
+    kind: 'crosser',
+    base: 0,
+    moments: [
+      { name: 'closing', until: `foes.length && foes.every((t) => t.foe.state === 0) && foes[0].age > 1.6`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 420, y: f.py - 260, w: 840 }; })()` },
+      { name: 'peel', until: `foes.length && foes.filter((t) => t.foe.state === 1).length >= 4`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 420, y: f.py - 220, w: 840 }; })()` },
+    ],
+  },
+  scavenger: {
+    kind: 'scavenger',
+    setup: `g.pickups.push({ id: 99001, kind: 'repair', x: 760, y: 330, age: -6 })`,
+    moments: [
+      { name: 'seek', until: `foes.length && foes[0].foe.link === 99001 && foes[0].y > 150`, focus: `(() => { const t = foes[0]; return { x: Math.min(t.x, 760) - 260, y: 80, w: Math.max(600, Math.abs(t.x - 760) + 520) }; })()` },
+    ],
+  },
+  // ---- Chapter 3.
+  stealthJet: {
+    kind: 'stealthJet',
+    moments: [{ name: 'run', until: `foes.length && foes[0].x > 200 && foes[0].x < 1400`, focus: `(() => { const t = foes[0]; return { x: t.x - 330, y: t.y - 180, w: 660 }; })()` }],
+  },
+  stealthBomber: {
+    kind: 'stealthBomber',
+    moments: [{ name: 'run', until: `foes.length && foes[0].x > 260 && foes[0].x < 1340`, focus: `(() => { const t = foes[0]; return { x: t.x - 330, y: t.y - 180, w: 660 }; })()` }],
+  },
+  diveBomber: {
+    kind: 'diveBomber',
+    moments: [
+      { name: 'circle', until: `g.foe.marks.some((m) => m.kind === 'dive' && m.t > 1.3)`, focus: `(() => { const m = g.foe.marks.find((m) => m.kind === 'dive'); return { x: m.x - 300, y: m.y - 230, w: 600 }; })()` },
+      { name: 'dive', until: `foes.length && foes[0].foe.state === 0 && foes[0].foe.t > 1.0`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 300, y: f.py - 250, w: 600 }; })()` },
+    ],
+  },
+  siege: {
+    kind: 'siege',
+    moments: [
+      { name: 'circles', until: `g.foe.marks.some((m) => m.kind === 'shell' && m.t > 1.2)`, focus: `(() => { const t = foes[0]; return { x: 140, y: Math.max(0, t.y - 60), w: 1320 }; })()` },
+      { name: 'shells', until: `g.foe.marks.some((m) => m.kind === 'shell' && m.fired && m.dur - m.t < 0.6)`, focus: `(() => { const t = foes[0]; return { x: 140, y: Math.max(0, t.y - 60), w: 1320 }; })()` },
+    ],
+  },
+  spotter: {
+    kind: 'spotter',
+    moments: [{ name: 'paint', until: `!!g.foe.paint && foes.length && foes[0].foe.t > 3`, focus: `(() => { const t = foes[0]; const s = g.ships.find((o) => o.id === g.foe.paint.ship); const x = Math.min(t.x, s.x) - 180; return { x, y: Math.min(t.y, s.y) - 160, w: Math.max(680, Math.abs(t.x - s.x) + 360) }; })()` }],
+  },
+  // ---- Chapter 4.
+  tender: {
+    kind: 'tender',
+    // A hurt heavy, slow, within the tender's reach, so it mends it.
+    setup: `setTimeout(() => { const g2 = window.__v3.game(); const h = g2.threats.find((t) => t.kind === 'heavy'); const t = g2.threats.find((o) => o.kind === 'tender'); if (h && t) { h.hp = 3; h.speed = 8; h.x = t.x + 180; h.y = t.y - 40; } }, 200)`,
+    moments: [{ name: 'beam', until: `foes.length && foes[0].foe.state === 1 && foes[0].foe.t > 0.6`, focus: `(() => { const t = foes[0]; const h = g.threats.find((o) => o.id === t.foe.link) ?? t; const x = Math.min(t.x, h.x) - 200; return { x, y: Math.min(t.y, h.y) - 140, w: Math.max(640, Math.abs(t.x - h.x) + 400) }; })()` }],
+  },
+  bodyguard: {
+    kind: 'guard',
+    moments: [{ name: 'ring', until: `foes.length && foes[0].age > 1.8`, focus: `(() => { const h = g.threats.find((t) => t.kind === 'heavy'); return { x: h.x - 280, y: h.y - 150, w: 560 }; })()` }],
+  },
+  picket: {
+    kind: 'picket',
+    moments: [{ name: 'ring', until: `foes.length && foes[0].age > 1`, focus: `(() => { const t = foes[0]; return { x: t.x - 360, y: t.y - 200, w: 720 }; })()` }],
+  },
+  lure: {
+    kind: 'lure',
+    moments: [{ name: 'flash', until: `foes.length && foes[0].age > 1 && Math.floor(g.t * 5) % 2 === 0`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 170, w: 600 }; })()` }],
+  },
+  barge: {
+    kind: 'barge',
+    moments: [{ name: 'tags', until: `foes.length && foes[0].age > 1`, focus: `(() => { const t = foes[0]; return { x: 100, y: 0, w: 1400 }; })()` }],
+  },
+  cloud: {
+    kind: 'cloud',
+    moments: [
+      { name: 'drift', until: `foes.length && foes[0].age > 5`, focus: `(() => { const t = foes[0]; return { x: t.x - 330, y: t.y - 190, w: 660 }; })()` },
+      { name: 'over', until: `foes.length && g.ships.some((s) => Math.hypot(s.x - foes[0].x, s.y - foes[0].y) < 70)`, focus: `(() => { const t = foes[0]; return { x: t.x - 330, y: t.y - 190, w: 660 }; })()` },
+    ],
+  },
 };
 
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SCENES);
@@ -86,7 +180,8 @@ const shots = [];
 for (const id of ids) {
   const sc = SCENES[id];
   await quiet();
-  await page.evaluate((k) => window.__v3.foe(k), sc.kind);
+  if (sc.setup) await page.evaluate((js) => { const g = window.__v3.game(); eval(js); }, sc.setup);
+  await page.evaluate(([k, b]) => window.__v3.foe(k, b), [sc.kind, sc.base ?? 1]);
   let shot = 0;
   for (const m of sc.moments) {
     let ok = false;
@@ -122,7 +217,7 @@ for (const id of ids) {
   // Wait out the rest of it.
   for (let i = 0; i < 100; i++) {
     await page.waitForTimeout(100);
-    if (await page.evaluate((kind) => !window.__v3.game().threats.some((t) => t.kind === kind || t.kind === 'dart') && !window.__v3.game().foe.shots.length, sc.kind)) break;
+    if (await page.evaluate((kind) => !window.__v3.game().threats.some((t) => t.kind === kind || t.kind === 'dart') && !window.__v3.game().foe.shots.length && !window.__v3.game().foe.marks.length, sc.kind)) break;
   }
 }
 console.log(shots.map((s) => s.split('/').pop()).join('\n'));

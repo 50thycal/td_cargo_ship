@@ -7,6 +7,8 @@
 import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
+import { newFoeState } from './foes';
+import type { FoeSetting } from '../data/foes';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
 import {
@@ -294,9 +296,12 @@ export function runBot(
   map: MapId,
   seed: number,
   skill: BotSkill,
-  opts: { flow?: number; endlessTo?: number; dt?: number; firstWave?: number; tempo?: Tempo; armory?: ArmoryLevels } = {},
+  opts: { flow?: number; endlessTo?: number; dt?: number; firstWave?: number; tempo?: Tempo; armory?: ArmoryLevels; foes?: FoeSetting } = {},
 ): BotRun {
   const g = createGame(map, seed, opts.firstWave, opts.tempo, opts.armory);
+  // The enemy build: which new enemies come (a sweep can leave them out to
+  // compare; wave 1 never has any, so nothing is planned yet).
+  if (opts.foes && opts.foes !== 'campaign') g.foe = newFoeState(map, opts.foes);
   if (opts.flow !== undefined) g.flow = opts.flow;
   const bot = new Bot(skill, seed);
   const dt = opts.dt ?? 1 / 30;
