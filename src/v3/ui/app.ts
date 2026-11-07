@@ -39,7 +39,6 @@ import {
   createGame,
   held,
   raidWarning,
-  streakMult,
   warping,
   step,
   tracked,
@@ -51,7 +50,7 @@ import {
 import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
-import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype } from '../data/roster';
+import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -104,6 +103,9 @@ const LOST_BEAT = 2.6;
 const LOST_SKIP_AFTER = 0.9;
 /** Cards ignore taps for this long after the draft appears. */
 const DRAFT_ARM_MS = 350;
+/** Focus: a touch of the holding finger shorter than this is a tap (fired on
+ *  its lift); longer, it was a hold for slow motion. */
+const FOCUS_TAP_MS = 220;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -345,7 +347,7 @@ export class App {
    *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
   private gesture: { id: number; x: number; y: number } | null = null;
   /** Focus (a boost): the finger whose press is slowing time. */
-  private focusFinger: { id: number; x: number; y: number } | null = null;
+  private focusFinger: { id: number; x: number; y: number; at: number } | null = null;
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
@@ -554,13 +556,13 @@ export class App {
       for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
       c.classList.toggle('boost', !!id && isBoost(id));
       if (id) {
-        c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
+        c.style.setProperty('--left', w ? Math.min(1, w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
-        // Overclocked: its clock is stopped; Hot Streak shows the heat.
+        // Overclocked: its clock is stopped.
         const oc = w && 'oc' in w && w.oc !== undefined;
-        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'hotStreak' && streakMult(g) > 1 ? `×${streakMult(g)} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
+        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -791,23 +793,27 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
+      // Focus (a boost; the player: "one finger down and then tap with the
+      // other one"): while slow motion is banked, the first finger down is
+      // the holding finger. It only slows time and fires nothing; every
+      // other finger taps (or presses, with a gesture weapon) as usual. A
+      // quick touch of the holding finger is still a tap (on its lift), so
+      // a single finger can pick a pickup up or fire.
+      const g0 = this.game;
+      if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
+        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
+        this.rec.focus(true);
+        return;
+      }
       // A gesture weapon (the weapons plan): the finger is a press, not a
       // tap, and holding charges, swipes or drags instead of repeating.
       // A second finger while one is pressed is a plain tap (two thumbs: one
       // charges the Lance, the other keeps shooting).
-      // Focus (a boost): the first finger down is sent as a press, so the
-      // sim knows time should slow (and a replay slows it too).
-      const focus = this.game.phase === 'wave' && this.game.boost?.id === 'focus' && !this.focusFinger && !this.gesture;
       if (this.game.phase === 'wave' && gestureOf(this.game.weapon?.id) && this.rec && !this.gesture) {
         this.gesture = { id: e.pointerId, x: w.x, y: w.y };
-        if (focus) this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
         this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
         this.playCues(this.game);
         return;
-      }
-      if (focus && this.rec) {
-        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
-        this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
       }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
@@ -833,15 +839,13 @@ export class App {
       if (w) Object.assign(this.hold, w);
     });
     const lift = (e: PointerEvent) => {
-      // Focus with a plain weapon: the lift ends the press (a gesture's
-      // release, below, does it for a gesture weapon).
+      // Focus: the holding finger lifts, and time runs at speed again.
       if (this.focusFinger?.id === e.pointerId) {
-        const at = this.focusFinger;
+        const f = this.focusFinger;
         this.focusFinger = null;
-        if (!(this.gesture && this.gesture.id === e.pointerId)) {
-          const w = this.toWorld(e.clientX, e.clientY) ?? at;
-          this.rec?.release(w.x, w.y, TAP_RADIUS_PX / this.scale);
-        }
+        this.rec?.focus(false);
+        if (performance.now() - f.at < FOCUS_TAP_MS) this.fire(f.x, f.y);
+        return;
       }
       if (this.gesture && this.gesture.id === e.pointerId) {
         const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
@@ -860,10 +864,7 @@ export class App {
   /** A press still down when play stops (pause, a note, the run ends): let
    *  go of it where the finger last was, so nothing stays held. */
   private dropGesture(): void {
-    if (this.focusFinger && !this.gesture) {
-      const at = this.focusFinger;
-      if (this.game?.phase === 'wave') this.rec?.release(at.x, at.y, TAP_RADIUS_PX / this.scale);
-    }
+    if (this.focusFinger && this.game?.phase === 'wave') this.rec?.focus(false);
     this.focusFinger = null;
     if (!this.gesture) return;
     const at = this.gesture;
@@ -1979,7 +1980,27 @@ export class App {
     // right-hand column (a phone has only 375 px of height).
     info.append(go);
     const body = el('div', 'v3-brief');
-    body.append(info, kit);
+    const side = el('div', 'v3-brief-side');
+    side.append(kit);
+    // Each chapter brings new weapons into the draft (the lock-in round):
+    // the briefing names them, so a new chapter reads as new kit.
+    const arrivals = newInChapter(chapterOf(id));
+    if (arrivals.length) {
+      const box = el('div', 'v3-brief-new');
+      box.dataset.newWeapons = arrivals.join(' ');
+      box.append(el('span', 'v3-eyebrow', `New weapons in ${CHAPTERS[chapterOf(id) - 1].name}`));
+      const list = el('div', 'v3-new-list');
+      for (const a of arrivals) {
+        const chip = el('span', 'v3-new-chip');
+        chip.style.setProperty('--card-color', ICON_COLOR[a]);
+        chip.title = ABILITIES[a].levels[0];
+        chip.append(upgradeIcon(a, 16), el('b', '', ABILITIES[a].name), el('i', '', ROSTER[a].cat));
+        list.append(chip);
+      }
+      box.append(list);
+      side.prepend(box);
+    }
+    body.append(info, side);
     const n = MAP_ORDER.indexOf(id) + 1;
     const chapter = CHAPTERS[chapterOf(id) - 1];
     this.showOverlay('v3-loadout', [this.screenHead(m.name, () => this.showMenu(), undefined, `Map ${n} · ${chapter.name}`), body]);
@@ -2562,6 +2583,12 @@ export class App {
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
+      // A weapon this chapter adds to the draft says so on its card.
+      const chapter = chapterOf(g.map.id);
+      if (id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id)) {
+        card.dataset.debut = String(chapter);
+        art.append(el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`));
+      }
       const level = el('span', 'v2-card-level', '');
       let text: string;
       if (id === 'resupply') {

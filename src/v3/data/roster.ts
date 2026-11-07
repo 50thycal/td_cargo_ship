@@ -40,35 +40,31 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   well: { cat: 'active', unlock: 1, status: 'live' },
   railgun: { cat: 'active', unlock: 1, status: 'live' },
   tesla: { cat: 'active', unlock: 1, status: 'live' },
-  // Phase 1 (prototypes). Proposed unlocks, a few per chapter.
-  cutter: { cat: 'active', unlock: 1, status: 'prototype', gesture: 'swipe' },
-  lance: { cat: 'active', unlock: 2, status: 'prototype', gesture: 'charge' },
-  chainshot: { cat: 'active', unlock: 2, status: 'prototype' },
-  firecontrol: { cat: 'active', unlock: 3, status: 'prototype' },
-  grapnel: { cat: 'active', unlock: 3, status: 'prototype', gesture: 'drag' },
-  cadence: { cat: 'active', unlock: 4, status: 'prototype' },
-  // Phase 2: the passives (proposed unlocks).
-  droneScreen: { cat: 'passive', unlock: 1, status: 'prototype' },
-  gunships: { cat: 'passive', unlock: 2, status: 'prototype' },
-  bomberWing: { cat: 'passive', unlock: 3, status: 'prototype' },
-  orbital: { cat: 'passive', unlock: 4, status: 'prototype' },
-  // Phase 3: the boosts (proposed unlocks). The last four were power-ups;
-  // while they are prototypes the campaign keeps their power-up drops.
-  fireAtWill: { cat: 'boost', unlock: 1, status: 'prototype' },
-  supplyRun: { cat: 'boost', unlock: 1, status: 'prototype' },
-  overclock: { cat: 'boost', unlock: 2, status: 'prototype' },
-  hotStreak: { cat: 'boost', unlock: 2, status: 'prototype' },
-  dualWield: { cat: 'boost', unlock: 3, status: 'prototype' },
-  focus: { cat: 'boost', unlock: 3, status: 'prototype' },
-  wildCard: { cat: 'boost', unlock: 4, status: 'prototype' },
-  overdrive: { cat: 'boost', unlock: 1, status: 'prototype' },
-  timeWarp: { cat: 'boost', unlock: 1, status: 'prototype' },
-  shield: { cat: 'boost', unlock: 2, status: 'prototype' },
-  fullSteam: { cat: 'boost', unlock: 2, status: 'prototype' },
-  // Phase 4: the experiments (the player's maybes: kept only if they play well).
-  tidal: { cat: 'active', unlock: 3, status: 'prototype' },
-  storm: { cat: 'passive', unlock: 4, status: 'prototype' },
-  ammoShip: { cat: 'passive', unlock: 2, status: 'prototype' },
+  // The weapons plan's picks, locked in by the player on 2026-11-07 (the
+  // review page's lock-in round: tools/v3/weapon-ideas/lockin-marks-2026-11-07.json).
+  // Each joins the campaign's draft in the chapter the player marked, so
+  // every new chapter brings new weapons.
+  // Chapter 1, Home Waters.
+  cutter: { cat: 'active', unlock: 1, status: 'live', gesture: 'swipe' },
+  droneScreen: { cat: 'passive', unlock: 1, status: 'live' },
+  supplyRun: { cat: 'boost', unlock: 1, status: 'live' },
+  overdrive: { cat: 'boost', unlock: 1, status: 'live' },
+  timeWarp: { cat: 'boost', unlock: 1, status: 'live' },
+  // Chapter 2, The Narrows.
+  lance: { cat: 'active', unlock: 2, status: 'live', gesture: 'charge' },
+  gunships: { cat: 'passive', unlock: 2, status: 'live' },
+  overclock: { cat: 'boost', unlock: 2, status: 'live' },
+  shield: { cat: 'boost', unlock: 2, status: 'live' },
+  fullSteam: { cat: 'boost', unlock: 2, status: 'live' },
+  // Chapter 3, Dark Water.
+  grapnel: { cat: 'active', unlock: 3, status: 'live', gesture: 'drag' },
+  bomberWing: { cat: 'passive', unlock: 3, status: 'live' },
+  orbital: { cat: 'passive', unlock: 3, status: 'live' },
+  dualWield: { cat: 'boost', unlock: 3, status: 'live' },
+  focus: { cat: 'boost', unlock: 3, status: 'live' },
+  // Chapter 4, Open War.
+  cadence: { cat: 'active', unlock: 4, status: 'live' },
+  wildCard: { cat: 'boost', unlock: 4, status: 'live' },
 };
 
 /** Is this a boost (never replaces the loaded weapon)? */
@@ -79,6 +75,13 @@ export function isBoost(id: AbilityId | undefined | null): boolean {
 /** The weapons the campaign's draft can deal on a map of this chapter. */
 export function draftPool(chapter: number): AbilityId[] {
   return ABILITY_ORDER.filter((id) => ROSTER[id].status === 'live' && ROSTER[id].unlock <= chapter);
+}
+
+/** The weapons a chapter adds to the campaign's draft (none for chapter 1:
+ *  everything that starts the game is in it). The briefing lists them, and
+ *  a draft card in that chapter marks them. */
+export function newInChapter(chapter: number): AbilityId[] {
+  return chapter <= 1 ? [] : draftPool(chapter).filter((id) => ROSTER[id].unlock === chapter);
 }
 
 /** Free Play can pick any weapon, prototypes included. */

@@ -9,8 +9,8 @@ import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
-import { gestureOf } from '../data/roster';
 import {
+  focusHold,
   beatClock,
   canFire,
   continueEndless,
@@ -82,12 +82,11 @@ export class Bot {
     }
     const gap = this.skill.tapGap;
     const missRate = this.skill.missRate ?? 0;
-    // Focus (a boost): hold a finger down while a rush is about to land,
-    // lift it when it has passed (a press with a plain weapon only slows time).
-    if (g.phase === 'wave' && !gestureOf(g.weapon?.id) && !g.press) {
-      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 2.5).length >= 3;
-      if (rush && !g.finger) press(g, g.map.carrier.x, g.map.carrier.y, 1);
-      else if (!rush && g.finger) release(g, g.map.carrier.x, g.map.carrier.y, 1);
+    // Focus (a boost): hold one finger down while a rush is about to land,
+    // lift it when it has passed; the other finger keeps tapping.
+    if (g.phase === 'wave') {
+      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 3).length >= 2;
+      if (rush !== g.finger) focusHold(g, rush);
     }
     // Taps are paced on real time: under Focus a person gets more taps into
     // the slowed seconds, and so does the bot.
@@ -250,51 +249,6 @@ Bot.prototype.useGesture = function (this: Bot, g: Game, best: Threat): boolean 
         return true;
       }
       self.held = { until: g.t + 0.7, tx: other ? other.x : best.x, ty: other ? other.y : best.y - 200 };
-      return true;
-    }
-    case 'chainshot': {
-      // No link yet: open with a threat that has a partner in reach.
-      if (!(g.link && g.link.until >= g.t)) {
-        const reach = AB.chainshot.reach[w.level - 1];
-        const paired = live.filter((t) => timeToImpact(g, t) < 6 && live.some((o) => o !== t && Math.hypot(o.x - t.x, o.y - t.y) <= reach)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
-        if (paired && paired !== best && timeToImpact(g, best) > 1.2) {
-          tap(g, paired.x, paired.y, 6);
-          return true;
-        }
-        return false;
-      }
-      // With a link waiting, chain it to a threat in reach.
-      if (g.link && g.link.until >= g.t) {
-        const first = g.threats.find((t) => t.id === g.link!.id && !t.dead);
-        // The most urgent threat in reach of the link (a chain is worth it
-        // when that one matters soon).
-        const partner = first && live
-          .filter((t) => t !== first && Math.hypot(t.x - first.x, t.y - first.y) <= AB.chainshot.reach[w.level - 1] && timeToImpact(g, t) < 6)
-          .sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
-        if (partner) {
-          tap(g, partner.x, partner.y, 6);
-          return true;
-        }
-      }
-      return false;
-    }
-    case 'firecontrol':
-      // Don't re-mark what is already marked.
-      if (g.marks.some((m) => m.id === best.id)) {
-        const next = live.find((t) => !g.marks.some((m) => m.id === t.id));
-        if (!next) return true;
-        tap(g, next.x, next.y, 6);
-        return true;
-      }
-      return false;
-    case 'tidal': {
-      // Raise a wave beside what it swamps: a boat, a mine, a drone diving on
-      // a hull (a tap on the water just clear of it, so the shot is the wave).
-      const c = g.map.carrier;
-      const low = (t: Threat) => (t.kind === 'drone' || t.kind === 'minidrone') && (g.ships.some((s) => Math.hypot(s.x - t.x, s.y - t.y) <= AB.tidal.low * 0.8) || Math.hypot(c.x - t.x, c.y - t.y) <= AB.tidal.low);
-      const t = live.filter((o) => o.kind === 'fastboat' || o.kind === 'mine' || low(o)).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b))[0];
-      if (!t) return false;
-      tap(g, t.x + 18, t.y + 18, 6);
       return true;
     }
     case 'cadence': {

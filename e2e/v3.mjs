@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 14 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 15 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -481,8 +481,8 @@ try {
     await wp.reload({ waitUntil: 'networkidle' });
     await wp.click('[data-free-play]');
     await wp.waitForSelector('[data-screen="freeplay"]');
-    const protos = await wp.evaluate(() => [...document.querySelectorAll('[data-fp="weapon0"] option')].filter((o) => /prototype/.test(o.textContent)).length);
-    check(protos === 24, `Free Play offers the 24 prototypes (six actives, four passives, eleven boosts, three experiments), marked so (${protos})`);
+    const fpList = await wp.evaluate(() => { const o = [...document.querySelectorAll('[data-fp="weapon0"] option')]; return { all: o.filter((x) => x.value).length, protos: o.filter((x) => /prototype/.test(x.textContent)).length }; });
+    check(fpList.all === 29 && fpList.protos === 0, `Free Play offers all 29 weapons, none a prototype after the lock-in (${JSON.stringify(fpList)})`);
     await wp.click('[data-free-start]');
     await wp.waitForSelector('.playing');
     // Hand-placed targets on a quiet wave: the same picture every time.
@@ -497,7 +497,7 @@ try {
       for (const s of g.ships) s.hp = 99;
     }, list);
     const loadW = (id) => wp.evaluate((id) => { const g = window.__v3.game(); g.levels[id] = g.levels[id] ?? 1; g.weapon = { id, level: g.levels[id], t: 15, t0: g.t }; }, id);
-    const st = () => wp.evaluate(() => { const g = window.__v3.game(); return { press: g.press?.mode ?? null, ammo: g.ammo, fire: g.taps.fire, marks: g.marks.length, chains: g.chains.length, alive: g.threats.filter((t) => !t.dead).map((t) => t.hp) }; });
+    const st = () => wp.evaluate(() => { const g = window.__v3.game(); return { press: g.press?.mode ?? null, ammo: g.ammo, fire: g.taps.fire, alive: g.threats.filter((t) => !t.dead).map((t) => t.hp) }; });
     const c = (x, y) => w2c(wp, x, y);
 
     await place([['heavy', 8, 800, 520], ['heavy', 8, 800, 300]]);
@@ -554,28 +554,6 @@ try {
     after = await st();
     check(hooked.press === 'hook' && after.alive.length === 1 && after.alive[0] < 8, `Grapnel: hold a heavy, swing it into the guided missile, let go and it bursts (${JSON.stringify(after.alive)})`);
 
-    await place([['heavy', 8, 700, 300], ['heavy', 8, 900, 300]]);
-    await loadW('chainshot');
-    p = await c(700, 300);
-    await wp.mouse.click(p.x, p.y);
-    p = await c(900, 300);
-    await wp.mouse.click(p.x, p.y);
-    const chained = await st();
-    await wp.waitForTimeout(500);
-    after = await st();
-    check(chained.chains === 1 && after.alive.filter((hp) => hp <= 6).length === 2, `Chain Shot: two taps chain the pair, 2 hits each (${JSON.stringify(after.alive)})`);
-
-    await place([['heavy', 8, 500, 250], ['heavy', 8, 800, 250], ['heavy', 8, 1100, 250]]);
-    await loadW('firecontrol');
-    for (const x of [500, 800, 1100]) {
-      p = await c(x, 250);
-      await wp.mouse.click(p.x, p.y);
-    }
-    const marked = await st();
-    await wp.waitForTimeout(700);
-    after = await st();
-    check(marked.marks === 3 && marked.ammo === after.ammo + 2 && after.marks === 0, `Fire Control: three taps mark, the salvo fires all three for two rounds (${marked.ammo} → ${after.ammo})`);
-
     await place([['drone', 1, 400, 300], ['heavy', 8, 900, 300], ['strafer', 3, 1200, 200], ['rig', 10, 600, 160]]);
     await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.pickups.push({ id: 99991, kind: 'nuke', x: 640, y: 480, age: 0 }); });
     p = await c(640, 480);
@@ -600,10 +578,15 @@ try {
 
     await place([['drone', 1, 760, 330], ['drone', 1, 800, 300], ['drone', 1, 840, 330]]);
     await pickup('gunships');
-    await wp.waitForTimeout(2600);
+    let missiles = 0;
+    // They fly in, turn, ease into the hover, then fire.
+    for (let k = 0; k < 45; k++) {
+      await wp.waitForTimeout(100);
+      missiles = Math.max(missiles, await wp.evaluate(() => window.__v3.game().hellfires.length));
+    }
     after = await st();
     const helis = await wp.evaluate(() => window.__v3.game().helis.length);
-    check(helis === 2 && after.alive.length === 0, `Gunship Pair: two helicopters arrive and rocket the pack (${helis} helis, ${after.alive.length} left)`);
+    check(helis === 2 && missiles > 0 && after.alive.length === 0, `Gunship Pair: two helicopters arrive and fire Hellfires at the pack (${helis} helis, ${missiles} missiles in the air at once, ${after.alive.length} left)`);
 
     await place([]);
     await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 1.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
@@ -622,22 +605,12 @@ try {
 
     // ---- Phase 3: boosts. A boost pickup never replaces the loaded weapon.
     await place([['heavy', 30, 800, 260]]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.fireAtWill = 1; if (!g.slots.includes('fireAtWill')) g.slots.push('fireAtWill'); });
-    await dropWeapon(wp, 'fireAtWill', 640, 560);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.timeWarp = 1; if (!g.slots.includes('timeWarp')) g.slots.push('timeWarp'); });
+    await dropWeapon(wp, 'timeWarp', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
-    const faw = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id, rack: g.stats.rack, base: g.baseStats.rack }; });
-    check(faw.boost === 'fireAtWill' && faw.weapon === 'railgun' && faw.rack === faw.base + 4, `a boost runs beside the loaded weapon: Fire at Will with the Railgun, rack +4 (${JSON.stringify(faw)})`);
-    // Full-auto: hold a finger on the heavy for a second.
-    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.ammo = g.stats.rack; });
-    const shots0 = await wp.evaluate(() => window.__v3.game().shots);
-    p = await c(800, 260);
-    await wp.mouse.move(p.x, p.y);
-    await wp.mouse.down();
-    await wp.waitForTimeout(1100);
-    await wp.mouse.up();
-    const auto = (await wp.evaluate(() => window.__v3.game().shots)) - shots0;
-    check(auto >= 4, `Fire at Will: holding fires full-auto (${auto} shots in 1.1 s; the plain gun manages 2)`);
+    const tw = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
+    check(tw.boost === 'timeWarp' && tw.weapon === 'railgun', `a boost runs beside the loaded weapon: Time Warp with the Railgun (${JSON.stringify(tw)})`);
 
     // Focus: a finger down slows time; lifting it stops.
     await place([['drone', 1, 600, 200]]);
@@ -645,15 +618,25 @@ try {
     await dropWeapon(wp, 'focus', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
-    p = await c(1200, 400);
-    await wp.mouse.move(p.x, p.y);
-    await wp.mouse.down();
+    // Two fingers (the player's note): one held down only slows time; the
+    // other taps. Pointer events with their own ids, as two thumbs send.
+    const finger = (type, id, x, y) => wp.evaluate(([type, id, x, y]) => {
+      const cv = document.querySelector('canvas');
+      cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 11 }));
+    }, [type, id, x, y]);
+    const hold = await c(1200, 400);
+    const shots0f = await wp.evaluate(() => window.__v3.game().shots);
+    await finger('pointerdown', 11, hold.x, hold.y);
     await wp.waitForTimeout(400);
-    const slow = await wp.evaluate(() => { const g = window.__v3.game(); return { focusing: g.focusing, bank: g.boost?.bank }; });
-    await wp.mouse.up();
+    const slow = await wp.evaluate(() => { const g = window.__v3.game(); return { focusing: g.focusing, bank: g.boost?.bank, shots: g.shots }; });
+    const aim = await c(600, 200);
+    await finger('pointerdown', 12, aim.x, aim.y);
+    await finger('pointerup', 12, aim.x, aim.y);
+    const tapped = await wp.evaluate(() => window.__v3.game().shots);
+    await finger('pointerup', 11, hold.x, hold.y);
     await wp.waitForTimeout(100);
     const fast = await wp.evaluate(() => window.__v3.game().focusing);
-    check(slow.focusing && slow.bank < 6 && !fast, `Focus: a finger down slows time and spends the bank; lifting it stops (${JSON.stringify(slow)}, after: ${fast})`);
+    check(slow.focusing && slow.bank < 10 && slow.shots === shots0f && tapped === shots0f + 1 && !fast, `Focus: the held finger slows time and fires nothing, the other finger's tap fires; lifting it stops (${JSON.stringify(slow)}, shots ${shots0f} → ${tapped}, after: ${fast})`);
 
     // Dual Wield: the Railgun loaded, the boost, then Scattergun joins it.
     await place([['heavy', 30, 800, 260]]);
@@ -669,39 +652,61 @@ try {
     const dual = await wp.evaluate(() => { const g = window.__v3.game(); return { a: g.weapon?.id, b: g.weapon2?.id, ammo: g.ammo, beam: g.fx.some((f) => f.kind === 'beam'), frag: g.fx.some((f) => f.kind === 'frag') }; });
     check(dual.a === 'railgun' && dual.b === 'scatter' && dual.beam && dual.frag && dual.ammo === ammo0 - 1, `Dual Wield: Scattergun joins the Railgun; one tap fires both for one round (${JSON.stringify(dual)})`);
 
-    // ---- Phase 4: the experiments, by touch.
-    // Tidal Cannon: a tap on a boat rolls a wave there that swamps it.
-    await place([['fastboat', 2, 900, 400], ['guided', 2, 820, 330]]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon2 = null; g.boost = null; g.levels.tidal = 1; g.weapon = { id: 'tidal', level: 1, t: 15, t0: g.t }; });
-    p = await c(905, 405);
-    await wp.mouse.click(p.x, p.y);
-    await wp.waitForTimeout(700);
-    after = await st();
-    check(after.alive.length === 1 && after.alive[0] === 2, `Tidal Cannon: a tap on the boat rolls a wave; the boat is swamped, the missile flies over (${JSON.stringify(after.alive)})`);
+    // ... and both weapons end with the boost (lock-in round).
+    await wp.evaluate(() => { const g = window.__v3.game(); g.boost.t = 0.05; });
+    await wp.waitForTimeout(300);
+    const dualEnd = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id ?? null, a: g.weapon?.id ?? null, b: g.weapon2?.id ?? null }; });
+    check(!dualEnd.boost && !dualEnd.a && !dualEnd.b, `Dual Wield: when it ends, both weapons end with it (${JSON.stringify(dualEnd)})`);
 
-    // Storm Front: its pickup brings a cell in; lightning takes a drone in it.
+    // Supply Run: a cargo plane crosses and drops its crates in a row, each on a parachute.
     await place([]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.levels.storm = 1; if (!g.slots.includes('storm')) g.slots.push('storm'); });
-    await dropWeapon(wp, 'storm', 640, 560);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.supplyRun = 1; if (!g.slots.includes('supplyRun')) g.slots.push('supplyRun'); });
+    await dropWeapon(wp, 'supplyRun', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
-    await wp.evaluate(() => { const g = window.__v3.game(); const cell = g.storms[0]; if (cell) g.threats.push({ id: g.nextId++, kind: 'drone', x: cell.x, y: cell.y, vx: 0, vy: 0, hp: 2, speed: 0, heading: Math.PI / 2, target: -1, age: 0, phase: 0, dead: false, sx: 0, sy: 0, ix: 0, iy: 0, dur: 1, apex: 0, spawnT: 0 }); });
-    await wp.waitForTimeout(1200);
-    const storm = await wp.evaluate(() => { const g = window.__v3.game(); return { cells: g.storms.length, drones: g.threats.filter((t) => !t.dead && t.kind === 'drone').length }; });
-    check(storm.cells === 1 && storm.drones === 0, `Storm Front: a cell rolls in and lightning takes the drone inside it (${JSON.stringify(storm)})`);
-
-    // Ammunition Ship: its pickup sends one in; the rack reloads faster.
-    await wp.evaluate(() => { const g = window.__v3.game(); g.weapon = null; g.levels.ammoShip = 1; if (!g.slots.includes('ammoShip')) g.slots.push('ammoShip'); });
-    await dropWeapon(wp, 'ammoShip', 640, 560);
-    p = await c(640, 560);
-    await wp.mouse.click(p.x, p.y);
-    await wp.waitForTimeout(2500);
-    const ammo = await wp.evaluate(() => { const g = window.__v3.game(); const s = g.ships.find((o) => o.ammo); return { ship: !!s, hp: s?.hp, rate: window.__v3.ammoReload ? window.__v3.ammoReload() : null }; });
-    check(ammo.ship && ammo.hp === 4, `Ammunition Ship: its pickup sends one into the convoy (${JSON.stringify(ammo)})`);
+    let plane = 0;
+    let chutes = 0;
+    for (let k = 0; k < 30; k++) {
+      await wp.waitForTimeout(100);
+      const s = await wp.evaluate(() => { const g = window.__v3.game(); return { planes: g.planes.length, chutes: g.pickups.filter((x) => x.chute).length }; });
+      plane = Math.max(plane, s.planes);
+      chutes = Math.max(chutes, s.chutes);
+    }
+    check(plane === 1 && chutes >= 2, `Supply Run: a cargo plane crosses and drops its crates on parachutes (${plane} plane, up to ${chutes} crates in the air)`);
 
     const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
-    check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r'), `the play log records presses, moves and lifts (${replayed.kinds.join('')})`);
+    check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r') && replayed.kinds.includes('h'), `the play log records presses, moves, lifts and the Focus finger (${replayed.kinds.join('')})`);
     await wp.close();
+  }
+
+  // ---- The lock-in: each chapter brings new weapons into the campaign ----
+  {
+    const lp = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 2, hasTouch: true });
+    await lp.goto(`${BASE_URL}/v3.html?seed=5`, { waitUntil: 'networkidle' });
+    await lp.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 12, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: 2, open: [], mapsV: 2 }));
+    });
+    await lp.reload({ waitUntil: 'networkidle' });
+    await lp.click('[data-chapter="1"]');
+    await lp.click('[data-map]:not(.locked)');
+    await lp.waitForSelector('[data-start]');
+    const ch1 = await lp.evaluate(() => document.querySelector('[data-new-weapons]')?.dataset.newWeapons ?? null);
+    await lp.click('[data-back]');
+    await lp.waitForSelector('[data-chapter]');
+    await lp.click('[data-chapter="3"]');
+    await lp.click('[data-map]:not(.locked)');
+    await lp.waitForSelector('[data-start]');
+    const ch3 = await lp.evaluate(() => document.querySelector('[data-new-weapons]')?.dataset.newWeapons ?? null);
+    check(ch1 === null && ch3 === 'grapnel bomberWing orbital dualWield focus', `the briefing names the weapons a chapter brings (Home Waters: none; Dark Water: ${ch3})`);
+    await lp.click('[data-start]');
+    await lp.waitForSelector('.playing');
+    await lp.evaluate(() => { const g = window.__v3.game(); g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
+    await lp.waitForSelector('.v2-card', { timeout: 15000 });
+    const offer = await lp.evaluate(() => [...document.querySelectorAll('.v2-card')].map((c) => ({ id: c.dataset.upgrade, debut: c.dataset.debut ?? null, tag: c.querySelector('.v3-card-debut')?.textContent ?? null })));
+    const debut = offer.filter((o) => o.debut);
+    check(debut.length >= 1 && debut.every((o) => ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'].includes(o.id) && /DARK WATER/i.test(o.tag)), `the first draft in Dark Water deals one of its new weapons, marked on the card (${JSON.stringify(offer)})`);
+    await lp.close();
   }
 
   // ---- Playtest logs reach Claude (playtest-fixes round) ----

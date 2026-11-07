@@ -464,6 +464,396 @@ def _(rng, v):
 
 
 # =============================================================================
+# The weapons plan (phases 1-3) and the Nuke. Until these, each played
+# another cue's files re-pitched (manifest `borrow`). Shipped audio costs
+# ~12.5 KB a second (AAC 96 kbps), and the set is near its 4 MB budget, so
+# every tail here is cut on purpose (`cap`), not left to ring out.
+
+
+def cap(x, dur, tail=None):
+    """x cut to `dur` s, its last `tail` s faded out."""
+    tail = dur * 0.4 if tail is None else tail
+    return fit(x, dur) * env_points(dur, [(0, 1), (dur - tail, 1), (dur, 0)]) ** 1.5
+
+
+@recipe("lance.charge")
+def _(rng, v):
+    # Held: a hum that climbs as the lance charges, a soft tick at half
+    # charge and a bright ping at full, then a held shimmer while the
+    # finger stays down. The press becomes a charge at 0.15 s, half is
+    # 0.35 s and full 0.7 s (abilities.ts), so 0.2 s and 0.55 s in here.
+    d = 1.05
+    t = t_axis(d)
+    f = np.interp(t, [0, 0.55, d], [110, 440, 440])
+    rate = np.interp(t, [0, 0.55, d], [8, 26, 30])
+    trem = 0.75 + 0.25 * np.sin(2 * np.pi * np.cumsum(rate) / SR)
+    tone = osc(f, d, "saw") * 0.5 + osc(f * 2.003, d) * 0.4 + osc(f * 0.5, d) * 0.5
+    body = sweep(tone, "lp", np.interp(t, [0, 0.55, d], [400, 3800, 3000])) * trem
+    e = env_points(d, [(0, 0), (0.03, 0.35), (0.55, 1), (0.7, 0.8), (d, 0)])
+    air = hiss(rng, d, 800, 5000) * env_points(d, [(0, 0), (0.55, 0.25), (d, 0)])
+    half = bell(1318.5, 0.25, tau=0.06, partials=((1, 1), (2.76, 0.4))) * 0.25
+    full = bell(1760, 0.45, tau=0.15, partials=((1, 1), (2.76, 0.4), (5.4, 0.15))) * 0.4
+    return mix(body * e * 0.8, air, at(half, 0.2), at(full, 0.55))
+
+
+@recipe("lance.half")
+def _(rng, v):
+    # A half-charged bolt: a bright plasma "pew" on a crack, lighter than
+    # the full lance and the Railgun's beam.
+    d = 0.5
+    crack = hp(white(0.008, rng), 3000) * env_exp(0.008, 0.002) * 0.9
+    f = glide(2600, 520, 0.16)
+    pew = (osc(f, 0.16) + 0.35 * osc(f * 2, 0.16)) * env_exp(0.16, 0.05, 0.0008)
+    buzz = lp(osc(glide(330, 180, d), d, "saw"), 2500) * env_exp(d, 0.09, 0.001) * 0.35
+    sizzle = bp(white(d, rng), 4000, 10000) * env_exp(d, 0.08) * 0.25
+    x = mix(crack, pew * 0.7, buzz, sizzle, thump(160, 80, 0.08, 0.02) * 0.5)
+    return cap(reverb(sat(x, 1.4), rng, wet=0.15, dur=0.4, tau=0.12, damp=6000), d, 0.2)
+
+
+@recipe("lance.full")
+def _(rng, v):
+    # The full lance: a deep discharge, a thick beam roaring out to the
+    # edge of the sea and a low boom under it.
+    d = 1.0
+    t = t_axis(d)
+    crack = hp(white(0.012, rng), 2000) * env_exp(0.012, 0.003) * 1.1
+    f = np.interp(t, [0, 0.06, d], [220, 92, 70])
+    beam = osc(f, d, "saw") + osc(f * 1.007, d, "saw") * 0.8 + osc(f * 1.5, d, "saw") * 0.4
+    beam = sweep(beam, "lp", np.interp(t, [0, 0.03, 0.4, d], [6000, 4500, 1500, 500])) * env_points(d, [(0, 0), (0.005, 1), (0.25, 0.6), (d, 0)])
+    sizzle = hp(white(d, rng), 4500) * env_exp(d, 0.2) * 0.25 * lp((rng.random(secs(d)) > 0.5).astype(float), 2000)
+    x = mix(crack, beam * 0.55, zap(rng, 0.25, 5200, 300) * 0.5, sizzle, thump(90, 32, 0.6, 0.18) * 1.1)
+    return cap(reverb(sat(x, 1.8), rng, wet=0.25, dur=0.9, tau=0.35, damp=4000), d, 0.45)
+
+
+@recipe("cutter.swipe", 2)
+def _(rng, v):
+    # A beam swept across the sky: a buzzing laser hum whose band rises and
+    # falls with the swing ("vwom"), and a hot sizzle where it cuts.
+    d = 0.34
+    t = t_axis(d)
+    f0 = 150 + 20 * v
+    hum = osc(f0, d, "saw") + osc(f0 * 1.01, d, "saw") * 0.7 + osc(f0 * 3.0, d) * 0.3
+    top = 0.13 + 0.03 * v
+    hum = sweep(hum, "bp", np.interp(t, [0, top, d], [700, 3600 - 400 * v, 900]))
+    e = env_points(d, [(0, 0), (0.025, 0.7), (top, 1), (d, 0)])
+    sizzle = hp(white(d, rng), 5000) * lp((rng.random(secs(d)) > 0.55).astype(float), 1500) * 0.2
+    return sat((hum / (np.max(np.abs(hum)) + 1e-12) + sizzle) * e, 1.5)
+
+
+@recipe("grapnel.hook")
+def _(rng, v):
+    # The hook bites: a cable whizzing out, then a heavy iron clamp.
+    whizz = sweep(pink(0.08, rng), "bp", glide(1800, 4000, 0.08)) * env_points(0.08, [(0, 0), (0.07, 1), (0.08, 0)]) * 0.5
+    clamp = ring(rng, [310, 520, 870, 1340], 0.32, q=24, gains=[1, 0.8, 0.5, 0.3])
+    x = mix(whizz, at(mix(clamp * 0.8, thump(170, 90, 0.1, 0.03) * 0.8, click(rng, 0.004, 2000) * 0.25), 0.07))
+    return cap(sat(x, 2.0), 0.4, 0.15)
+
+
+@recipe("grapnel.smack", 2)
+def _(rng, v):
+    # A swung threat slamming into another: a blunt, heavy thud with a dull
+    # clang (low, unlike the Boomerang's bright blade hit).
+    d = 0.26
+    thud = thump(150 - 15 * v, 55, 0.18, 0.04) * 1.2
+    body = lp(white(d, rng), 1400 + 300 * v) * env_exp(d, 0.03, 0.0005)
+    clang = ring(rng, [240 + 30 * v, 410, 690, 1010], 0.24, q=10) * 0.4
+    return cap(sat(mix(thud, body * 0.8, clang, click(rng, 0.003, 1800) * 0.4), 2.2), d, 0.1)
+
+
+@recipe("grapnel.fling")
+def _(rng, v):
+    # Let go: the cable twangs and the threat goes flying ("whum").
+    # (Low on purpose: a lighter swish measured as a twin of blade.throw.)
+    d = 0.48
+    tw = 0.35
+    twang = lp(osc(glide(150, 95, tw), tw, "saw") + 0.5 * osc(glide(301, 190, tw), tw, "saw"), 1400) * env_exp(tw, 0.1, 0.002)
+    twang *= 1 + 0.35 * np.sin(2 * np.pi * 13 * t_axis(tw))
+    whoosh = sweep(brown(d, rng) * 0.6 + pink(d, rng) * 0.4, "lp", np.interp(t_axis(d), [0, 0.12, d], [300, 1100, 250])) * env_points(d, [(0, 0), (0.12, 1), (d, 0)])
+    return cap(sat(mix(twang * 0.8, whoosh, ring(rng, [620, 1040], 0.1, q=15) * 0.25), 1.4), d, 0.15)
+
+
+@recipe("grapnel.burst")
+def _(rng, v):
+    # The flung threat bursting where it lands: a solid blast with iron
+    # shards ringing off.
+    d = 0.75
+    shards = np.zeros(secs(d))
+    for i in range(8):
+        f = rng.uniform(900, 3200)
+        shards = mix(shards, at(ring(rng, [f, f * 1.41], 0.14, q=30) * rng.uniform(0.15, 0.35), rng.uniform(0.02, 0.25)))
+    return cap(mix(boom(rng, 0.55, 0.8, dark=0.8), shards), d, 0.3)
+
+
+@recipe("salvo.fire")
+def _(rng, v):
+    # War Drum's broadside: a ripple of interceptors off the rail, six
+    # launches ~65 ms apart, each a small gun.fire (thump, crack, hiss).
+    d = 0.75
+    out = np.zeros(secs(d))
+    for i in range(6):
+        hd = 0.25
+        hs = hiss(rng, hd, 800 + 60 * i, 3800) * env_points(hd, [(0, 0), (0.01, 1), (0.08, 0.4), (hd, 0)])
+        shot = mix(click(rng, 0.004, 1800), thump(165 - 6 * i, 75, 0.08, 0.02) * 0.9, hs * 0.5)
+        out = mix(out, at(shot * (1 - 0.06 * i), i * 0.065 + rng.uniform(0, 0.01)))
+    return cap(reverb(sat(out, 1.5), rng, wet=0.18, dur=0.6, tau=0.18), d, 0.25)
+
+
+@recipe("cadence.beat")
+def _(rng, v):
+    # The Cadence Gun's metronome, every 0.9 s: a clear woodblock "tok",
+    # the same every time so it can be played to. Short and mid-bright, so
+    # it cuts through the battle without tiring.
+    # (A ringing body, softly saturated: a bare 15 ms tok was all peak and
+    # measured 3 LU under its level after the limiter's cap.)
+    d = 0.2
+    wood = ring(rng, [1180, 2650, 4100], d, q=32, gains=[1, 0.4, 0.15])
+    knock = lp(white(0.012, rng), 3000) * env_exp(0.012, 0.003, 0.0003)
+    return sat(mix(wood, knock * 0.3, thump(420, 300, 0.05, 0.015) * 0.3), 2.5)
+
+
+@recipe("cadence.hit", 2)
+def _(rng, v):
+    # A shot on the beat: a tight punch and a ringing, pitched beam note
+    # (D, then A: the game's key, alternating round-robin), so the hits
+    # sound like part of the rhythm.
+    d = 0.4
+    t = t_axis(d)
+    f = [587.33, 880.0][v]
+    tone = osc(f, d, "saw") * 0.5 + osc(f * 2, d) * 0.3 + osc(f * 1.003, d, "saw") * 0.4
+    tone = sweep(tone, "lp", np.interp(t, [0, 0.02, d], [7000, 4500, 1200])) * env_exp(d, 0.09, 0.001)
+    punch = mix(thump(190, 70, 0.1, 0.025) * 1.1, click(rng, 0.004, 2500) * 0.7)
+    zing = hp(white(0.12, rng), 5000) * env_exp(0.12, 0.03) * 0.3
+    return cap(reverb(sat(mix(punch, tone * 0.6, zing), 1.6), rng, wet=0.18, dur=0.5, tau=0.15), d, 0.15)
+
+
+@recipe("nuke.blast")
+def _(rng, v):
+    # The Nuke, the biggest sound in the game: a white flash crack, a vast
+    # low punch, then the blast wave arriving as a second rolling roar and
+    # a rumble falling away. Deeper and longer than Thermobaric, with
+    # 100-300 Hz body so a phone speaker still feels it.
+    d = 2.9
+    t = t_axis(d)
+    flash = hp(white(0.05, rng), 1500) * env_exp(0.05, 0.012, 0.0005) * 0.8
+    wave = sweep(brown(d, rng) * 0.7 + pink(d, rng) * 0.3, "lp", np.interp(t, [0, 0.35, 0.6, d], [300, 300, 1800, 200]))
+    wave *= env_points(d, [(0, 0), (0.3, 0.15), (0.55, 1), (1.2, 0.6), (2.2, 0.2), (d, 0)])
+    body = lp(brown(d, rng), 260) * env_points(d, [(0, 0), (0.05, 1), (0.8, 0.6), (2.0, 0.25), (d, 0)])
+    deb = bp(crackle(2.0, rng, rate=60, decay=0.004), 500, 3500) * env_points(2.0, [(0, 0), (0.4, 1), (2.0, 0)]) * 0.35
+    x = mix(flash, boom(rng, 1.0, 1.3, dark=0.8) * 1.1, thump(70, 20, 1.6, 0.5) * 1.5, wave, body * 0.9, at(deb, 0.5))
+    x = reverb(sat(x, 1.7), rng, wet=0.3, dur=1.6, tau=0.7, damp=1500)
+    return cap(x, d, 1.2)
+
+
+@recipe("screen.launch")
+def _(rng, v):
+    # Friendly drones off the carrier's deck: a pneumatic catapult puff,
+    # then three small rotors spinning up and away (lighter and brighter
+    # than an enemy drone launch).
+    d = 0.6
+    out = np.zeros(secs(d))
+    for i in range(3):
+        rd = 0.4
+        puff = hp(white(0.05, rng), 1200) * env_exp(0.05, 0.012) * 0.6
+        rotor_ = lp(osc(glide(260 + 25 * i, 520 + 30 * i, rd), rd, "saw"), 3500) * (0.65 + 0.35 * np.sin(2 * np.pi * 70 * t_axis(rd)))
+        rotor_ *= env_points(rd, [(0, 0), (0.04, 0.8), (0.15, 0.6), (rd, 0)])
+        out = mix(out, at(mix(puff, rotor_ * 0.45, thump(200, 130, 0.05, 0.012) * 0.4), i * 0.09))
+    return cap(reverb(out, rng, wet=0.18, dur=0.4, tau=0.12), d, 0.2)
+
+
+def rotor(rng, d, rate, whine):
+    """A helicopter: blade slap (`rate`: blade passes a second, per sample),
+    the tail rotor's buzz and the turbine's whine."""
+    ph = (np.cumsum(rate) / SR) % 1.0
+    slap = lp(np.exp(-ph / 0.09), 180)
+    chop = lp(brown(d, rng), 800) * slap * 1.3 + bp(white(d, rng), 600, 2500) * slap ** 3 * 0.5
+    thwop = osc(72, d) * slap * 0.5
+    tail = bp(white(d, rng), 1800, 4500) * (0.6 + 0.4 * np.sin(2 * np.pi * np.cumsum(rate * 4.4) / SR)) * 0.12
+    return chop + thwop + tail + osc(whine, d) * 0.035 + osc(whine * 1.5, d) * 0.015
+
+
+@recipe("heli.arrive")
+def _(rng, v):
+    # The Gunship Pair coming in: rotor blades thudding closer, the turbine
+    # whine on top, the blade rate easing as they pass (pans with them).
+    d = 1.9
+    t = t_axis(d)
+    x = rotor(rng, d, np.interp(t, [0, 1.0, d], [21.5, 20, 18.5]), np.interp(t, [0, 1.0, d], [1650, 1600, 1520]))
+    return cap(reverb(sat(x * env_points(d, [(0, 0), (1.0, 1), (1.5, 0.6), (d, 0)]), 1.3), rng, wet=0.2, dur=0.6, tau=0.2), d, 0.3)
+
+
+@recipe("heli.rockets", 2)
+def _(rng, v):
+    # A Hellfire off the rail: an ignition crack, then a hard "fsssshhh"
+    # streaking away (the smoke trail), its motor tone falling as it goes.
+    # One missile, not a rocket-pod rattle.
+    d = 0.65
+    t = t_axis(d)
+    ign = mix(hp(white(0.015, rng), 2000) * env_exp(0.015, 0.003) * 0.9, thump(170 + 10 * v, 90, 0.07, 0.018) * 0.7)
+    streak = sweep(white(d, rng) * 0.6 + pink(d, rng) * 0.4, "bp", np.interp(t, [0, 0.05, d], [2500, 5500 - 400 * v, 1400]))
+    streak *= env_points(d, [(0, 0), (0.012, 1), (0.25, 0.7), (d, 0)])
+    motor = osc(glide(1700 + 120 * v, 950, d), d) * env_points(d, [(0, 0), (0.03, 0.25), (0.3, 0.15), (d, 0)])
+    roar = lp(brown(d, rng), 600) * env_exp(d, 0.12) * 0.5
+    cr = hp(crackle(d, rng, rate=150, decay=0.001), 3000) * env_exp(d, 0.2) * 0.3
+    return cap(reverb(sat(mix(ign, streak * 0.9, motor, roar, cr), 1.5), rng, wet=0.2, dur=0.6, tau=0.2), d, 0.25)
+
+
+@recipe("heli.hit", 2)
+def _(rng, v):
+    # A Hellfire striking: a sharp, punchy blast with a hard crack on top,
+    # cut short (tighter than kill.big, a crisper front than a missile kill).
+    d = 0.6
+    crack = hp(white(0.02, rng), 1800) * env_exp(0.02, 0.005, 0.0003) * 1.6
+    snap = bp(white(0.15, rng), 1200, 6000) * env_exp(0.15, 0.03, 0.0005)
+    frags = bp(crackle(0.35, rng, rate=220, decay=0.0012), 2500, 9000) * env_exp(0.35, 0.08) * 0.5
+    x = mix(crack, snap * 0.8, hp(boom(rng, 0.4 + 0.05 * v, 0.7, dark=1.3), 140) * 0.9, thump(170 + 10 * v, 80, 0.1, 0.025) * 0.5, at(frags, 0.01))
+    return cap(sat(x, 1.8), d, 0.3)
+
+
+@recipe("sortie.pass")
+def _(rng, v):
+    # Your Bomber Wing overhead: a heavy jet bomber, slower and much deeper
+    # than the Air Strike's jet, with a low rumble under its roar.
+    d = 2.0
+    x = jet(rng, d + 0.3, 0.95, 820, 560, size=2.2)
+    rumble = lp(brown(d + 0.3, rng), 150) * env_points(d + 0.3, [(0, 0), (0.95, 1), (d + 0.3, 0)]) * 0.6
+    return cap(lp(mix(x, rumble), 3500), d, 0.6)
+
+
+@recipe("sortie.bomb")
+def _(rng, v):
+    # A heavy bomb on a silo or a truck: a deep, wide blast (heavier than
+    # napalm's whoomp), with earth thrown up.
+    dirt = bp(crackle(0.8, rng, rate=80, decay=0.004), 400, 3000) * env_points(0.8, [(0, 0), (0.15, 1), (0.8, 0)]) * 0.3
+    return cap(mix(boom(rng, 0.8, 1.2, dark=0.75), thump(75, 30, 0.5, 0.15) * 1.1, at(dirt, 0.05)), 1.0, 0.45)
+
+
+@recipe("orbital.lock")
+def _(rng, v):
+    # A target painted from orbit: two quick rising blips, then a held lock
+    # tone (bright, electronic and short: it comes once per target).
+    out = np.zeros(secs(0.45))
+    for i, f in enumerate([1760, 2349]):
+        b = (osc(f, 0.05) + 0.3 * osc(f * 2, 0.05)) * env_adsr(0.05, 0.002, 0.01, 0.8, 0.015)
+        out = mix(out, at(b * 0.5, i * 0.07))
+    lock = (osc(2637, 0.28) + 0.25 * osc(3951, 0.28) + 0.4 * osc(1318.5, 0.28)) * env_adsr(0.28, 0.003, 0.03, 0.7, 0.1) * 0.45
+    return cap(mix(out, at(lock, 0.14)), 0.45, 0.08)
+
+
+@recipe("orbital.beam", 2)
+def _(rng, v):
+    # The strike from orbit, on the frame it lands: a falling scream, a
+    # thick buzzing column of light and a heavy ground thump together.
+    d = 0.8
+    t = t_axis(d)
+    scream = osc(glide(6500, 400, 0.09), 0.09) * env_points(0.09, [(0, 1), (0.09, 0)]) * 0.35
+    f0 = 55 + 6 * v
+    col = osc(f0, d, "saw") + osc(f0 * 1.008, d, "saw") * 0.8 + osc(f0 * 2.01, d, "saw") * 0.5
+    col = sweep(col, "lp", np.interp(t, [0, 0.1, d], [5000, 3000, 700])) * (0.8 + 0.2 * np.sin(2 * np.pi * 31 * t))
+    col *= env_points(d, [(0, 0), (0.005, 1), (0.3, 0.6), (d, 0)])
+    sizzle = hp(white(d, rng), 4000) * env_exp(d, 0.2) * 0.3
+    hit = mix(thump(110, 35, 0.4, 0.1) * 1.2, click(rng, 0.006, 1200) * 0.6)
+    return cap(reverb(sat(mix(scream, col * 0.6, sizzle, hit), 1.7), rng, wet=0.22, dur=0.7, tau=0.25), d, 0.35)
+
+
+@recipe("boost.on")
+def _(rng, v):
+    # A boost picked: a quick bright upward sweep into a major chord ping.
+    rise = sweep(osc(glide(220, 880, 0.18), 0.18, "saw"), "lp", glide(800, 6000, 0.18)) * env_points(0.18, [(0, 0), (0.15, 0.6), (0.18, 0.3)])
+    chord = sum(bell(f, 0.4, tau=0.15, partials=((1, 1), (2.0, 0.3), (3.0, 0.1))) * a for f, a in [(880, 0.4), (1108.7, 0.3), (1318.5, 0.3)])
+    return cap(reverb(mix(rise * 0.5, at(chord, 0.16)), rng, wet=0.25, dur=0.5, tau=0.2), 0.55, 0.15)
+
+
+@recipe("boost.off")
+def _(rng, v):
+    # A boost running out: two falling notes and a closing filter.
+    d = 0.38
+    notes = mix(osc(1318.5, 0.14, "tri") * env_exp(0.14, 0.05, 0.002), at(osc(880, 0.24, "tri") * env_exp(0.24, 0.08, 0.002), 0.11))
+    sw = sweep(osc(glide(600, 200, d), d, "saw"), "lp", glide(3000, 300, d)) * env_points(d, [(0, 0.3), (d, 0)]) * 0.3
+    return cap(mix(notes * 0.5, sw), d, 0.1)
+
+
+@recipe("supply.crate")
+def _(rng, v):
+    # A supply crate landing: a wooden thud, its contents rattling, and a
+    # small bright chime to say it is there to take.
+    thud = mix(thump(150, 80, 0.12, 0.03), ring(rng, [190, 330, 520, 760], 0.18, q=6) * 0.6, lp(white(0.06, rng), 1500) * env_exp(0.06, 0.012) * 0.5)
+    rattle = np.zeros(secs(0.25))
+    for i in range(5):
+        f = rng.uniform(1200, 2600)
+        rattle = mix(rattle, at(ring(rng, [f, f * 1.5], 0.05, q=12) * rng.uniform(0.1, 0.25), rng.uniform(0.02, 0.18)))
+    p = ((1, 1), (2.0, 0.3))
+    chime = mix(bell(1568, 0.35, tau=0.12, partials=p), at(bell(2093, 0.35, tau=0.12, partials=p), 0.06)) * 0.25
+    return cap(mix(thud, at(rattle, 0.03), at(chime, 0.12)), 0.6, 0.2)
+
+
+@recipe("supply.plane")
+def _(rng, v):
+    # The supply plane crossing (pans with it): four turboprops droning a
+    # little out of step (slow beats), their blade buzz and a turbine whine
+    # over a big low rush. Slower and heavier than a jet.
+    d = 2.6
+    t = t_axis(d)
+    dop = np.interp(t, [0, 1.2, d], [1.03, 1.0, 0.96])
+    props = sum(osc(f * dop, d, "saw") * a for f, a in [(82, 1), (83.1, 0.9), (84.6, 0.8), (85.4, 0.7)])
+    props = lp(props * (0.7 + 0.3 * np.sin(2 * np.pi * np.cumsum(41 * dop) / SR)), 900)
+    whine = osc(1150 * dop, d) * 0.05 + osc(1720 * dop, d) * 0.025
+    rush = sweep(pink(d, rng), "lp", np.interp(t, [0, 1.2, d], [900, 2600, 600])) * 0.6
+    rumble = lp(brown(d, rng), 180) * 0.8
+    e = env_points(d, [(0, 0), (0.6, 0.45), (1.2, 1), (1.8, 0.55), (d, 0)])
+    return cap(reverb(sat((props * 0.7 + whine * 1.5 + rush * 0.8 + rumble * 0.6) * e, 1.3), rng, wet=0.25, dur=1.0, tau=0.4), d, 0.5)
+
+
+@recipe("wild.roll")
+def _(rng, v):
+    # Wild Card rolling: a reel of ticks slowing down, landing on a ding.
+    out = np.zeros(secs(0.65))
+    t = 0.0
+    for i, gap in enumerate([0.03, 0.03, 0.033, 0.037, 0.043, 0.05, 0.06, 0.075]):
+        out = mix(out, at(ring(rng, [2300 + 120 * (i % 3), 3700], 0.035, q=16) * 0.45, t))
+        t += gap
+    ding = bell(1760, 0.3, tau=0.1, partials=((1, 1), (2.76, 0.3))) * 0.5
+    return cap(mix(out, at(ding, t)), 0.65, 0.12)
+
+
+@recipe("shield.reflect")
+def _(rng, v):
+    # A missile bounced off the shield: an energy "ptang" ringing up and
+    # away (the opposite of shield.block's falling zing), and a pop where
+    # it bursts.
+    d = 0.32
+    pt = osc(glide(700, 2400, d), d) * env_exp(d, 0.08, 0.001) + osc(glide(1400, 4800, d), d) * env_exp(d, 0.04, 0.001) * 0.3
+    pop = mix(hp(white(0.02, rng), 2500) * env_exp(0.02, 0.005) * 0.6, thump(220, 120, 0.06, 0.015) * 0.5)
+    return cap(mix(pt * 0.6, pop), d, 0.1)
+
+
+@recipe("shield.shatter")
+def _(rng, v):
+    # The shield breaking like glass: a hard crack, a spray of bright,
+    # inharmonic shards tinkling down, and the shield's hum dropping out.
+    d = 0.9
+    crack = hp(white(0.02, rng), 2500) * env_exp(0.02, 0.004, 0.0003)
+    shards = np.zeros(secs(d))
+    for i in range(22):
+        f = rng.uniform(2500, 8000)
+        st = rng.uniform(0, 0.45) ** 1.5
+        shards = mix(shards, at(ring(rng, [f, f * 1.53, f * 2.21], 0.18, q=120) * rng.uniform(0.15, 0.4) * (1 - st), st))
+    hum = sum(osc(glide(f, f * 0.4, 0.5), 0.5) * a for f, a in [(294, 0.4), (440, 0.3), (587, 0.2)]) * env_points(0.5, [(0, 0.8), (0.5, 0)])
+    x = mix(crack, fit(shards, d), hum * 0.5, thump(160, 70, 0.12, 0.03) * 0.5)
+    return cap(reverb(x, rng, wet=0.25, dur=0.7, tau=0.25, damp=7000), d, 0.3)
+
+
+@recipe("steam.ram")
+def _(rng, v):
+    # A ship's bow running a boat or a drone down: a hull crunch, a deep
+    # clang and the bow wave.
+    d = 0.6
+    crunch = lp(white(0.12, rng), 2500) * env_exp(0.12, 0.03, 0.001) * 0.9
+    clang = ring(rng, [128, 211, 347, 520, 790], 0.55, q=30, gains=[1, 0.8, 0.6, 0.4, 0.3]) * 0.55
+    splash = sweep(pink(d, rng), "bp", np.interp(t_axis(d), [0, 0.1, d], [900, 3000, 1500])) * env_points(d, [(0, 0), (0.06, 1), (d, 0)]) * 0.35
+    return cap(sat(mix(thump(110, 45, 0.25, 0.06) * 1.2, crunch, clang, splash), 1.6), d, 0.25)
+
+
+# =============================================================================
 # Weapon state
 
 

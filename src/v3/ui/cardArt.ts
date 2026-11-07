@@ -210,23 +210,6 @@ const SCENES: Record<CardId, Scene> = {
     threat(76, 22, 20, 1.15) + `<path d="M72 22 l-3 -4 m3 4 l-4 2" stroke="${c}" stroke-width="1.8"/>` +
     burst(102, 30, 9, FLAME) + drone(104, 30, 0.9),
 
-  // Two threats wrapped in a chain, crashing together.
-  chainshot: (c) =>
-    sea(68) + ship(60, 64, 0.7) +
-    threat(40, 26, 20, 1) + threat(82, 26, 160, 1) +
-    `<path d="M44 27 C52 18 60 36 68 25 C72 20 76 23 78 27" fill="none" stroke="${c}" stroke-width="2.6" stroke-dasharray="3 1.5"/>` +
-    burst(61, 27, 8, FLAME) +
-    `<circle cx="20" cy="40" r="4" fill="${c}"/><circle cx="102" cy="40" r="4" fill="${c}"/>`,
-
-  // Marked threats, and the salvo leaving at once.
-  firecontrol: (c) =>
-    sea(66) +
-    `<rect x="44" y="58" width="32" height="6" rx="3" fill="${HULL}"/>` +
-    [[20, 16], [46, 10], [74, 12], [100, 18]].map(([x, y]) =>
-      threat(x, y, 90, 0.8) + `<path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="none" stroke="${c}" stroke-width="1.6"/>` +
-      `<path d="M60 58 L${x} ${y + 12}" stroke="${c}" stroke-width="1.2" opacity="0.6"/>`,
-    ).join(''),
-
   // The beat rings out from the gun; on the beat, a beam pierces the line.
   cadence: (c) =>
     sea(66) +
@@ -272,13 +255,6 @@ const SCENES: Record<CardId, Scene> = {
 
   // ---- Phase 3: boosts. Each card shows the change, not a weapon.
 
-  // Full-auto: a hose of interceptors into a swarm, the rack overfull.
-  fireAtWill: (c) =>
-    sea(66) + carrier(60, 62, 0.9) +
-    [0, 1, 2, 3, 4, 5].map((k) => interceptor(66 + k * 7, 52 - k * 7, -45, 0.55, k % 2 ? c : INK)).join('') +
-    drone(110, 8, 0.8) + burst(104, 12, 7, FLAME) + drone(96, 20, 0.7) +
-    [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<rect x="${8 + k * 5}" y="44" width="3.5" height="9" rx="1.2" fill="${k > 5 ? c : INK}"/>`).join(''),
-
   // Drops flying in to the carrier; Airdrop's crate on a parachute.
   supplyRun: (c) =>
     sea(66) + carrier(62, 62, 0.9) +
@@ -304,13 +280,6 @@ const SCENES: Record<CardId, Scene> = {
     `<circle cx="92" cy="18" r="14" fill="#fb923c" opacity="0.35"/><circle cx="86" cy="14" r="8" fill="#fb923c" opacity="0.4"/>` +
     interceptor(80, 34, -55, 0.7) + drone(94, 18, 0.8) + drone(36, 16, 0.8) + burst(34, 14, 7, FLAME) +
     `<text x="60" y="30" font-size="12" font-weight="900" fill="${c}" text-anchor="middle" font-family="system-ui">×2</text>`,
-
-  // Hit, hit, hit: bursts growing along the streak, the gun on fire.
-  hotStreak: (c) =>
-    sea(66) + carrier(60, 62, 0.9) +
-    [[18, 40, 4], [40, 30, 6], [64, 22, 8], [92, 14, 11]].map(([x, y, r], k) => burst(x, y, r, k === 3 ? c : FLAME)).join('') +
-    `<text x="92" y="38" font-size="10" font-weight="900" fill="${c}" text-anchor="middle" font-family="system-ui">×3</text>` +
-    `<path d="M62 58 C56 52 58 46 62 42 C62 46 64 46 65 46 C64 42 66 39 68 37 C68 42 72 44 71 50 C70 54 67 58 62 58 Z" fill="${c}" opacity="0.9"/>`,
 
   // A fanned hand: every tap a different weapon.
   wildCard: (c) =>
@@ -352,34 +321,6 @@ const SCENES: Record<CardId, Scene> = {
     [[24, 56], [64, 58]].map(([x, y]) => `<path d="M${x - 18} ${y + 2} H${x}" stroke="${INK}" stroke-width="1.4" opacity="0.6"/><path d="M${x - 24} ${y + 5} H${x - 4}" stroke="${INK}" stroke-width="1" opacity="0.4"/>`).join('') +
     `<path d="M14 30 H40 M20 38 H48 M10 22 H32" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity="0.7"/>` +
     burst(99, 50, 7, FLAME) + drone(104, 44, 0.7),
-
-  // ---- Phase 4: the experiments.
-
-  // A wave rolling out from a shot on the water, a boat and a drone going under.
-  tidal: (c) =>
-    sea(66) + carrier(60, 64, 0.8) +
-    `<path d="M16 50 Q40 26 64 30 Q88 26 108 50" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"/>` +
-    `<path d="M26 54 Q44 38 64 40 Q84 38 98 54" fill="none" stroke="${c}" stroke-width="2.5" opacity="0.6"/>` +
-    `<circle cx="64" cy="48" r="3" fill="${INK}"/>` +
-    `<path d="M14 46 l6 -2 l2 3 l-8 1 Z" fill="${RED}"/>` + `<path d="M8 50 Q12 44 18 46" fill="none" stroke="${INK}" stroke-width="1" opacity="0.7"/>` +
-    drone(100, 40, 0.8) + `<path d="M96 46 Q100 52 106 48" fill="none" stroke="${INK}" stroke-width="1.2"/>`,
-
-  // A storm cell over the sea: lightning into a drone, a missile blown off.
-  storm: (c) =>
-    sea(66) + ship(40, 62, 0.75) + ship(86, 62, 0.75) +
-    `<ellipse cx="56" cy="18" rx="36" ry="13" fill="#475569"/><ellipse cx="40" cy="20" rx="18" ry="10" fill="#64748b"/><ellipse cx="74" cy="16" rx="20" ry="11" fill="#64748b"/>` +
-    [30, 44, 58, 72, 86].map((x) => `<path d="M${x} 30 l-3 10" stroke="#93c5fd" stroke-width="1" opacity="0.7"/>`).join('') +
-    `<path d="M62 28 L56 38 L62 38 L55 50" fill="none" stroke="#fef08a" stroke-width="2.4" stroke-linejoin="round"/>` +
-    drone(55, 50, 0.8) + burst(55, 50, 6, FLAME) +
-    threat(100, 36, 150, 0.7) + `<path d="M104 34 q6 -4 12 0" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/>`,
-
-  // The ammunition ship in the convoy, its rack feeding the gun.
-  ammoShip: (c) =>
-    sea(66) + ship(22, 60, 0.7) + ship(98, 60, 0.7) +
-    `<g transform="translate(60 54)"><path d="M-24 0 H24 L18 7 H-19 Z" fill="${HULL}"/>` +
-    [-16, -8, 0, 8].map((x) => `<rect x="${x}" y="-9" width="6" height="9" rx="1" fill="${c}" stroke="#7a5d00" stroke-width="0.8"/>`).join('') + `</g>` +
-    [0, 1, 2].map((k) => `<rect x="${52 + k * 8}" y="${20 - k * 3}" width="5" height="12" rx="2" fill="${c}" opacity="${0.5 + k * 0.25}"/>`).join('') +
-    threat(102, 24, 140, 0.7) + `<path d="M98 28 L68 48" stroke="${RED}" stroke-width="1" stroke-dasharray="2 2" opacity="0.7"/>`,
 
   resupply: (c) =>
     sea(64) + ship(24, 60, 0.75) + ship(98, 60, 0.75) +

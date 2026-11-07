@@ -10,12 +10,11 @@ import { PICKUPS } from '../../src/v3/data/config';
 import { ROSTER, isBoost } from '../../src/v3/data/roster';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
 import {
+  focusHold,
   CARRIER_TARGET,
   applyFreePlay,
   createGame,
   damageCarrier,
-  press,
-  release,
   shipSpeed,
   step,
   tap,
@@ -67,9 +66,9 @@ function shoot(g: Game, th: Threat, wait = 1.2): void {
 const BOOSTS = ABILITY_ORDER.filter(isBoost);
 
 describe('the boost rules', () => {
-  it('eleven boosts, all prototypes for now', () => {
-    expect(BOOSTS).toHaveLength(11);
-    for (const id of BOOSTS) expect(ROSTER[id].status, id).toBe('prototype');
+  it('nine boosts, all live in the campaign (the lock-in round cut Fire at Will and Hot Streak)', () => {
+    expect(BOOSTS).toHaveLength(9);
+    for (const id of BOOSTS) expect(ROSTER[id].status, id).toBe('live');
   });
 
   it('a boost never replaces the loaded weapon; a second boost replaces the first', () => {
@@ -90,15 +89,14 @@ describe('the boost rules', () => {
     expect(g.boost?.id).toBe('shield');
     run(g, 1);
     expect(g.boost).toBeNull();
-    pickUp(g, 'fireAtWill');
+    pickUp(g, 'timeWarp');
     g.queue = [];
     run(g, 0.2);
     expect(g.phase).toBe('draft');
     expect(g.boost).toBeNull();
-    expect(g.stats.rack).toBe(g.baseStats.rack);
   });
 
-  it('Free Play plays the plan’s drops: the four power-ups that became boosts never drop; the campaign keeps them', () => {
+  it('the default drops are ammo, repair and the Nuke: the four power-ups that became boosts never drop, in Free Play or the campaign', () => {
     const count = (free: boolean) => {
       const seen = new Set<string>();
       for (let seed = 1; seed <= 6; seed++) {
@@ -116,33 +114,8 @@ describe('the boost rules', () => {
     for (const k of ['overdrive', 'timewarp', 'shield', 'steam']) expect(free.has(k), k).toBe(false);
     expect(free.has('ammo')).toBe(true);
     const campaign = count(false);
-    expect(['overdrive', 'timewarp', 'shield', 'steam'].some((k) => campaign.has(k))).toBe(true);
-  });
-});
-
-describe('Fire at Will', () => {
-  it('a bigger rack and full-auto hold while it lasts, back to normal after', () => {
-    const g = quietGame();
-    const rack = g.stats.rack;
-    pickUp(g, 'fireAtWill', 1);
-    expect(g.stats.rack).toBe(rack + AB.fireAtWill.rack[0]);
-    expect(g.ammo).toBe(rack + AB.fireAtWill.rack[0]);
-    expect(g.stats.holdRepeat).toBe(AB.fireAtWill.repeat[0]);
-    pickUp(g, 'fireAtWill', 2);
-    expect(g.stats.reload).toBeCloseTo(g.baseStats.reload / 2);
-    run(g, WEAPON.time + 0.1);
-    expect(g.stats).toBe(g.baseStats);
-    expect(g.ammo).toBeLessThanOrEqual(rack);
-  });
-
-  it('Lead Rain: every 4th shot bursts into flak', () => {
-    const g = quietGame();
-    pickUp(g, 'fireAtWill', 3);
-    const flak = () => g.fields.filter((f) => f.kind === 'flak').length;
-    for (let k = 0; k < 3; k++) shoot(g, addThreat(g, { x: 500 + k * 150, y: 300 }));
-    expect(flak()).toBe(0);
-    shoot(g, addThreat(g, { x: 1100, y: 300 }), 1.3);
-    expect(flak()).toBe(1);
+    for (const k of ['overdrive', 'timewarp', 'shield', 'steam']) expect(campaign.has(k), k).toBe(false);
+    expect(campaign.has('ammo')).toBe(true);
   });
 });
 
@@ -185,14 +158,37 @@ describe('Supply Run', () => {
     expect(drops(2)).toBeGreaterThan(none * 2.3);
   });
 
-  it('Airdrop: a crate with one of your weapons every 6 s', () => {
+  it('a cargo plane crosses and drops its crates in a row, each on a parachute, then they fly to the carrier', () => {
+    const g = quietGame();
+    const hp = g.carrierHp;
+    pickUp(g, 'supplyRun', 1);
+    expect(g.planes).toHaveLength(1);
+    const seen: { kind: string; x: number; chute: number }[] = [];
+    for (let i = 0; i < 60 * 6; i++) {
+      step(g, DT);
+      for (const p of g.pickups) if (!seen.some((o) => o.x === p.x && o.kind === p.kind) && p.chute) seen.push({ kind: p.kind, x: p.x, chute: p.chute });
+    }
+    expect(seen.map((o) => o.kind)).toEqual(['ammo', 'repair', 'ammo']);
+    // In a row: evenly spaced across the middle of the screen.
+    const xs = seen.map((o) => o.x).sort((a, b) => a - b);
+    expect(xs[1] - xs[0]).toBeCloseTo(xs[2] - xs[1], 3);
+    expect(g.planes).toHaveLength(0);
+    // Down and delivered: nothing left on the water.
+    expect(g.pickups).toHaveLength(0);
+    expect(g.carrierHp).toBeGreaterThanOrEqual(hp);
+  });
+
+  it('Airdrop: another plane every 6 s drops a crate with one of your weapons', () => {
     const g = quietGame();
     g.levels.flak = 1;
     g.slots.push('flak');
     pickUp(g, 'supplyRun', 3);
-    run(g, AB.supplyRun.crate + 0.05);
-    const crates = g.pickups.filter((p) => p.crate);
-    expect(crates.length + (g.weapon?.id === 'flak' ? 1 : 0)).toBeGreaterThanOrEqual(1);
+    let weapon = false;
+    for (let i = 0; i < 60 * (AB.supplyRun.crate + 4) && !weapon; i++) {
+      step(g, DT);
+      weapon = g.pickups.some((p) => p.kind === 'weapon' && p.weapon === 'flak') || g.weapon?.id === 'flak';
+    }
+    expect(weapon).toBe(true);
   });
 });
 
@@ -285,13 +281,30 @@ describe('Dual Wield', () => {
     expect(g.wings.length).toBeGreaterThan(0);
   });
 
-  it('level 2: both clocks at half speed; MAX: weapons drop twice as often', () => {
+  it('both weapons last exactly as long as the boost, then both end', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    g.weapon!.t = 3;
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 5);
+    // The railgun had 3 s left: under the boost it keeps going.
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon!.t).toBeCloseTo(g.boost!.t, 1);
+    run(g, WEAPON.time - 5 + 0.1);
+    expect(g.boost).toBeNull();
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+  });
+
+  it('level 2: it lasts 20 s; MAX: weapons drop twice as often', () => {
     const g = quietGame();
     load(g, 'railgun', 1);
     pickUp(g, 'dualWield', 2);
-    const t = g.weapon!.t;
-    run(g, 2);
-    expect(t - g.weapon!.t).toBeCloseTo(1, 1);
+    expect(g.boost!.t).toBeCloseTo(WEAPON.time * AB.dualWield.time[1], 5);
+    run(g, WEAPON.time + 2);
+    expect(g.weapon?.id).toBe('railgun');
     const pity = (level: number) => {
       const h = quietGame(5);
       h.levels.flak = 1;
@@ -325,50 +338,6 @@ describe('Dual Wield', () => {
     pickUp(g, 'scatter', 1);
     expect(g.weapon2?.t).toBe(WEAPON.time);
     expect(g.weapon?.id).toBe('flak');
-  });
-});
-
-describe('Hot Streak', () => {
-  it('hits in a row double the damage at 5 and triple it at 10; a tap on nothing resets', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 1);
-    for (let k = 0; k < 5; k++) shoot(g, addThreat(g, { x: 400 + k * 160, y: 300 }));
-    expect(g.streak).toBe(5);
-    const tough = addThreat(g, { x: 800, y: 250, hp: 6 });
-    shoot(g, tough);
-    expect(tough.hp).toBe(4);
-    tap(g, 200, 200, 10);
-    expect(g.streak).toBe(0);
-  });
-
-  it('a loaded weapon’s own shots build the streak too (a Railgun beam at a threat)', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 1);
-    load(g, 'railgun', 1);
-    for (let k = 0; k < 3; k++) shoot(g, addThreat(g, { x: 500 + k * 200, y: 300, hp: 9 }), 0.2);
-    expect(g.streak).toBe(3);
-  });
-
-  it('level 2: double at 4, triple at 8', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 2);
-    for (let k = 0; k < 8; k++) shoot(g, addThreat(g, { x: 300 + k * 130, y: 300 }));
-    const tough = addThreat(g, { x: 800, y: 250, hp: 6 });
-    shoot(g, tough);
-    expect(tough.hp).toBe(3);
-  });
-
-  it('On Fire: at 10 a shot pierces to the next threat, and a miss no longer resets', () => {
-    const g = quietGame();
-    pickUp(g, 'hotStreak', 3);
-    for (let k = 0; k < 10; k++) shoot(g, addThreat(g, { x: 300 + k * 110, y: 300 }));
-    expect(g.streak).toBe(10);
-    tap(g, 200, 200, 10);
-    expect(g.streak).toBe(10);
-    const a = addThreat(g, { x: 800, y: 250, hp: 9 });
-    const b = addThreat(g, { x: 860, y: 250, hp: 9 });
-    shoot(g, a);
-    expect(b.hp).toBeLessThan(9);
   });
 });
 
@@ -408,35 +377,56 @@ describe('Focus', () => {
     let t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
-    press(g, 800, 300, 30);
+    focusHold(g, true);
     t = g.t;
     run(g, 2);
-    expect(g.t - t).toBeCloseTo(1, 2);
+    expect(g.t - t).toBeCloseTo(2 * AB.focus.scale[0], 2);
     expect(g.boost!.bank).toBeCloseTo(AB.focus.bank[0] - 2, 1);
-    release(g, 800, 300, 30);
+    focusHold(g, false);
     t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
   });
 
+  it('the holding finger fires nothing (the other finger taps), and the rack reloads at full speed in slow motion', () => {
+    const g = quietGame();
+    pickUp(g, 'focus', 1);
+    const shots = g.shots;
+    focusHold(g, true);
+    expect(g.shots).toBe(shots);
+    expect(g.focusing).toBe(true);
+    g.ammo = 0;
+    g.reloadT = 0;
+    // 1.5 reloads of real time at half speed: 0.75 reloads of game time,
+    // but the rack reloads on the real clock.
+    const real = g.stats.reload * 1.5;
+    run(g, real);
+    const slowed = g.ammo;
+    const h = quietGame();
+    h.ammo = 0;
+    h.reloadT = 0;
+    for (let i = 0; i < Math.round((real * AB.focus.scale[0]) / DT); i++) step(h, DT);
+    expect(slowed).toBeGreaterThan(h.ammo);
+  });
+
   it('the bank runs out: time goes back to normal with the finger still down', () => {
     const g = quietGame();
     pickUp(g, 'focus', 2);
-    press(g, 800, 300, 30);
+    focusHold(g, true);
     run(g, AB.focus.bank[1] + 0.5);
     const t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
   });
 
-  it('Deadeye: shots fired in slow motion hit for double', () => {
+  it('Deadeye: shots fired in slow motion hit for triple', () => {
     const g = quietGame();
     pickUp(g, 'focus', 3);
-    press(g, 100, 100, 5);
+    focusHold(g, true);
     const th = addThreat(g, { x: 800, y: 300, hp: 5 });
     tap(g, 800, 300, 30);
     run(g, 3);
-    expect(th.hp).toBe(3);
+    expect(th.hp).toBe(5 - AB.focus.damage);
   });
 
   it('a Focus run replays exactly from the play log', () => {
@@ -449,10 +439,10 @@ describe('Focus', () => {
       if (i % 30 === 0 && g.pickups.length) rec.tap(g.pickups[0].x, g.pickups[0].y, 30);
       const th = g.threats.find((t) => !t.dead && t.y > 100 && t.y < 800);
       if (i % 120 === 0 && g.boost?.id === 'focus') {
-        rec.press(800, 400, 30);
+        rec.focus(true);
         presses++;
       }
-      if (i % 120 === 60 && g.finger) rec.release(800, 400, 30);
+      if (i % 120 === 60 && g.finger) rec.focus(false);
       if (i % 20 === 0 && th) rec.tap(th.x, th.y, 30);
       step(g, DT);
     }

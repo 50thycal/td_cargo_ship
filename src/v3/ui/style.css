@@ -1333,6 +1333,24 @@ body {
   overflow: hidden;
 }
 
+.v3-card-debut {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  transform: translateX(-50%);
+  z-index: 1;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-color, var(--accent)) 85%, #000);
+  color: #071119;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 .v2-card-art::before,
 .v2-card-art::after {
   content: '';
@@ -3301,6 +3319,61 @@ body {
   border-radius: 12px;
   border: 1px solid var(--panel-edge);
   background: rgb(15 26 34 / 0.7);
+}
+
+/* The lock-in round: the weapons a chapter adds to the draft, under the loadout. */
+.v3-brief-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.v3-brief-side > * {
+  align-self: stretch;
+}
+
+.v3-brief-new {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.7);
+}
+
+.v3-new-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.v3-new-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--card-color) 55%, transparent);
+  background: color-mix(in srgb, var(--card-color) 12%, rgb(10 18 24 / 0.8));
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.v3-new-chip .v3-ic,
+.v3-new-chip svg {
+  color: var(--card-color);
+  flex: none;
+}
+
+.v3-new-chip i {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .v3-kit-head {
