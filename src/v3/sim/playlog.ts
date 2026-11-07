@@ -13,6 +13,7 @@ import {
   continueEndless,
   createGame,
   pickUpgrade,
+  focusHold,
   press,
   pressMove,
   release,
@@ -68,6 +69,7 @@ export type LogCommand =
   | [number, 'd', number, number, number] // press down x y radius (a gesture weapon is loaded)
   | [number, 'v', number, number] // the pressed finger moved to x y
   | [number, 'r', number, number, number] // the finger lifted at x y radius
+  | [number, 'h', 0 | 1] // Focus: the holding finger down (1) or lifted (0)
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
@@ -235,9 +237,16 @@ export class Recorder {
     pressMove(this.game, rx, ry);
   }
 
+  /** Focus (a boost): the holding finger down or lifted. It only slows
+   *  time; the other finger taps. */
+  focus(down: boolean): void {
+    if (this.game.phase !== 'wave' || this.game.finger === down) return;
+    this.log.commands.push([this.game.steps, 'h', down ? 1 : 0]);
+    focusHold(this.game, down);
+  }
+
   release(x: number, y: number, radius: number): TapResult | null {
-    // A gesture's press, or a Focus finger (a boost: the press only slows time).
-    if (!this.game.press && !this.game.finger) return null;
+    if (!this.game.press) return null;
     const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
     this.log.commands.push([this.game.steps, 'r', rx, ry, rr]);
     return release(this.game, rx, ry, rr);
@@ -373,6 +382,9 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
         case 'r':
           release(g, c[2], c[3], c[4]);
           break;
+        case 'h':
+          focusHold(g, c[2] === 1);
+          break;
         case 'f':
           setFlow(g, c[2]);
           break;
@@ -426,6 +438,7 @@ export class Playback {
       else if (c[1] === 'd') press(g, c[2], c[3], c[4]);
       else if (c[1] === 'v') pressMove(g, c[2], c[3]);
       else if (c[1] === 'r') release(g, c[2], c[3], c[4]);
+      else if (c[1] === 'h') focusHold(g, c[2] === 1);
       else if (c[1] === 'f') setFlow(g, c[2]);
       else if (c[1] === 'm') setFormation(g, c[2]);
       else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);

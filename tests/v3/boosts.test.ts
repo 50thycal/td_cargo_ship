@@ -10,12 +10,11 @@ import { PICKUPS } from '../../src/v3/data/config';
 import { ROSTER, isBoost } from '../../src/v3/data/roster';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
 import {
+  focusHold,
   CARRIER_TARGET,
   applyFreePlay,
   createGame,
   damageCarrier,
-  press,
-  release,
   shipSpeed,
   step,
   tap,
@@ -159,14 +158,37 @@ describe('Supply Run', () => {
     expect(drops(2)).toBeGreaterThan(none * 2.3);
   });
 
-  it('Airdrop: a crate with one of your weapons every 6 s', () => {
+  it('a cargo plane crosses and drops its crates in a row, each on a parachute, then they fly to the carrier', () => {
+    const g = quietGame();
+    const hp = g.carrierHp;
+    pickUp(g, 'supplyRun', 1);
+    expect(g.planes).toHaveLength(1);
+    const seen: { kind: string; x: number; chute: number }[] = [];
+    for (let i = 0; i < 60 * 6; i++) {
+      step(g, DT);
+      for (const p of g.pickups) if (!seen.some((o) => o.x === p.x && o.kind === p.kind) && p.chute) seen.push({ kind: p.kind, x: p.x, chute: p.chute });
+    }
+    expect(seen.map((o) => o.kind)).toEqual(['ammo', 'repair', 'ammo']);
+    // In a row: evenly spaced across the middle of the screen.
+    const xs = seen.map((o) => o.x).sort((a, b) => a - b);
+    expect(xs[1] - xs[0]).toBeCloseTo(xs[2] - xs[1], 3);
+    expect(g.planes).toHaveLength(0);
+    // Down and delivered: nothing left on the water.
+    expect(g.pickups).toHaveLength(0);
+    expect(g.carrierHp).toBeGreaterThanOrEqual(hp);
+  });
+
+  it('Airdrop: another plane every 6 s drops a crate with one of your weapons', () => {
     const g = quietGame();
     g.levels.flak = 1;
     g.slots.push('flak');
     pickUp(g, 'supplyRun', 3);
-    run(g, AB.supplyRun.crate + 0.05);
-    const crates = g.pickups.filter((p) => p.crate);
-    expect(crates.length + (g.weapon?.id === 'flak' ? 1 : 0)).toBeGreaterThanOrEqual(1);
+    let weapon = false;
+    for (let i = 0; i < 60 * (AB.supplyRun.crate + 4) && !weapon; i++) {
+      step(g, DT);
+      weapon = g.pickups.some((p) => p.kind === 'weapon' && p.weapon === 'flak') || g.weapon?.id === 'flak';
+    }
+    expect(weapon).toBe(true);
   });
 });
 
@@ -259,13 +281,30 @@ describe('Dual Wield', () => {
     expect(g.wings.length).toBeGreaterThan(0);
   });
 
-  it('level 2: both clocks at half speed; MAX: weapons drop twice as often', () => {
+  it('both weapons last exactly as long as the boost, then both end', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    g.weapon!.t = 3;
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 5);
+    // The railgun had 3 s left: under the boost it keeps going.
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon!.t).toBeCloseTo(g.boost!.t, 1);
+    run(g, WEAPON.time - 5 + 0.1);
+    expect(g.boost).toBeNull();
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+  });
+
+  it('level 2: it lasts 20 s; MAX: weapons drop twice as often', () => {
     const g = quietGame();
     load(g, 'railgun', 1);
     pickUp(g, 'dualWield', 2);
-    const t = g.weapon!.t;
-    run(g, 2);
-    expect(t - g.weapon!.t).toBeCloseTo(1, 1);
+    expect(g.boost!.t).toBeCloseTo(WEAPON.time * AB.dualWield.time[1], 5);
+    run(g, WEAPON.time + 2);
+    expect(g.weapon?.id).toBe('railgun');
     const pity = (level: number) => {
       const h = quietGame(5);
       h.levels.flak = 1;
@@ -338,35 +377,56 @@ describe('Focus', () => {
     let t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
-    press(g, 800, 300, 30);
+    focusHold(g, true);
     t = g.t;
     run(g, 2);
-    expect(g.t - t).toBeCloseTo(1, 2);
+    expect(g.t - t).toBeCloseTo(2 * AB.focus.scale[0], 2);
     expect(g.boost!.bank).toBeCloseTo(AB.focus.bank[0] - 2, 1);
-    release(g, 800, 300, 30);
+    focusHold(g, false);
     t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
   });
 
+  it('the holding finger fires nothing (the other finger taps), and the rack reloads at full speed in slow motion', () => {
+    const g = quietGame();
+    pickUp(g, 'focus', 1);
+    const shots = g.shots;
+    focusHold(g, true);
+    expect(g.shots).toBe(shots);
+    expect(g.focusing).toBe(true);
+    g.ammo = 0;
+    g.reloadT = 0;
+    // 1.5 reloads of real time at half speed: 0.75 reloads of game time,
+    // but the rack reloads on the real clock.
+    const real = g.stats.reload * 1.5;
+    run(g, real);
+    const slowed = g.ammo;
+    const h = quietGame();
+    h.ammo = 0;
+    h.reloadT = 0;
+    for (let i = 0; i < Math.round((real * AB.focus.scale[0]) / DT); i++) step(h, DT);
+    expect(slowed).toBeGreaterThan(h.ammo);
+  });
+
   it('the bank runs out: time goes back to normal with the finger still down', () => {
     const g = quietGame();
     pickUp(g, 'focus', 2);
-    press(g, 800, 300, 30);
+    focusHold(g, true);
     run(g, AB.focus.bank[1] + 0.5);
     const t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
   });
 
-  it('Deadeye: shots fired in slow motion hit for double', () => {
+  it('Deadeye: shots fired in slow motion hit for triple', () => {
     const g = quietGame();
     pickUp(g, 'focus', 3);
-    press(g, 100, 100, 5);
+    focusHold(g, true);
     const th = addThreat(g, { x: 800, y: 300, hp: 5 });
     tap(g, 800, 300, 30);
     run(g, 3);
-    expect(th.hp).toBe(3);
+    expect(th.hp).toBe(5 - AB.focus.damage);
   });
 
   it('a Focus run replays exactly from the play log', () => {
@@ -379,10 +439,10 @@ describe('Focus', () => {
       if (i % 30 === 0 && g.pickups.length) rec.tap(g.pickups[0].x, g.pickups[0].y, 30);
       const th = g.threats.find((t) => !t.dead && t.y > 100 && t.y < 800);
       if (i % 120 === 0 && g.boost?.id === 'focus') {
-        rec.press(800, 400, 30);
+        rec.focus(true);
         presses++;
       }
-      if (i % 120 === 60 && g.finger) rec.release(800, 400, 30);
+      if (i % 120 === 60 && g.finger) rec.focus(false);
       if (i % 20 === 0 && th) rec.tap(th.x, th.y, 30);
       step(g, DT);
     }

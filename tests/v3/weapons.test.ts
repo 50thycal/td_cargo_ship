@@ -307,11 +307,11 @@ describe('Cadence Gun (fire on the beat)', () => {
     expect(g.interceptors.length).toBeGreaterThan(0);
   });
 
-  it('War Drum: four beats in a row, and the next beat fires a free broadside', () => {
+  it('War Drum: three beats in a row, and the next beat fires a free broadside', () => {
     const g = quietGame();
     load(g, 'cadence', 3);
     const target = addThreat(g, { kind: 'citadel', hp: 999, x: 800, y: 200 });
-    for (let k = 0; k < 6; k++) addThreat(g, { kind: 'heavy', hp: 99, x: 300 + k * 150, y: 150 });
+    for (let k = 0; k < 8; k++) addThreat(g, { kind: 'heavy', hp: 99, x: 260 + k * 150, y: 150 });
     for (let k = 0; k < AB.cadence.run; k++) {
       run(g, AB.cadence.period);
       tap(g, target.x, target.y, 30);

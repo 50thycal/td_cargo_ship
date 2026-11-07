@@ -9,8 +9,8 @@ import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
-import { gestureOf } from '../data/roster';
 import {
+  focusHold,
   beatClock,
   canFire,
   continueEndless,
@@ -82,12 +82,11 @@ export class Bot {
     }
     const gap = this.skill.tapGap;
     const missRate = this.skill.missRate ?? 0;
-    // Focus (a boost): hold a finger down while a rush is about to land,
-    // lift it when it has passed (a press with a plain weapon only slows time).
-    if (g.phase === 'wave' && !gestureOf(g.weapon?.id) && !g.press) {
-      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 2.5).length >= 3;
-      if (rush && !g.finger) press(g, g.map.carrier.x, g.map.carrier.y, 1);
-      else if (!rush && g.finger) release(g, g.map.carrier.x, g.map.carrier.y, 1);
+    // Focus (a boost): hold one finger down while a rush is about to land,
+    // lift it when it has passed; the other finger keeps tapping.
+    if (g.phase === 'wave') {
+      const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 3).length >= 2;
+      if (rush !== g.finger) focusHold(g, rush);
     }
     // Taps are paced on real time: under Focus a person gets more taps into
     // the slowed seconds, and so does the bot.

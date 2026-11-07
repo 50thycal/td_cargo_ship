@@ -185,8 +185,9 @@ export interface Pickup {
   kind: PickupKind;
   /** A weapon pickup: which of your weapons it loads. */
   weapon?: AbilityId;
-  /** Airdrop (Supply Run MAX): it came down in a crate. */
-  crate?: boolean;
+  /** Supply Run: seconds left on its parachute (it drifts down, then
+   *  flies to the carrier). */
+  chute?: number;
   x: number;
   y: number;
   age: number;
@@ -463,15 +464,50 @@ export interface Wing {
   life: number;
 }
 
-/** Gunship Pair: a helicopter over the convoy. `slot` picks its side. */
+/** Gunship Pair: a helicopter over the convoy. `slot` picks its side.
+ *  It flies like one (the player: "it should rotate and then lean into
+ *  it"): `heading` is where its nose points, it turns toward where it is
+ *  going before it picks up speed, and eases into its hover; `lean` and
+ *  `roll` (−1..1) are how hard it is accelerating ahead and sideways. */
 export interface Heli {
   id: number;
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   slot: number;
   fireT: number;
   heading: number;
+  lean: number;
+  roll: number;
   leaving: boolean;
+}
+
+/** A Gunship Pair missile (the player: "make their projectiles look like
+ *  hellfire missiles … with a streak"): it leaves the rail along the
+ *  helicopter's nose, curves onto its target and bursts there. `trail` is
+ *  its smoke, the last few points it passed. */
+export interface Hellfire {
+  id: number;
+  x: number;
+  y: number;
+  heading: number;
+  target: number;
+  tx: number;
+  ty: number;
+  t: number;
+  dmg: number;
+  trail: number[];
+}
+
+/** Supply Run: a cargo plane crossing the screen, dropping its crates in a
+ *  row as it passes each spot. */
+export interface CargoPlane {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  drops: { x: number; kind: PickupKind; weapon?: AbilityId }[];
 }
 
 /** Bomber Wing: a bomber on its pass over a target on the shore. */
@@ -575,7 +611,9 @@ export interface Game {
    *  Wing's passes, the clocks to their next, and Orbital Strike's lock. */
   wings: Wing[];
   helis: Heli[];
+  hellfires: Hellfire[];
   sorties: Sortie[];
+  planes: CargoPlane[];
   passiveT: number;
   orbital: { id: number; t: number; second: boolean } | null;
   /** Silos Bomber Wing has silenced, until when (by base index). */
@@ -644,7 +682,8 @@ export interface Game {
   weapon2: Weapon | null;
   /** The second weapon's passive clock (two passives at once). */
   passiveT2: number;
-  /** Focus: a finger is down on the water (sent as a press). */
+  /** Focus: the holding finger is down (its own input, `focusHold`: it
+   *  only slows time; the other finger taps). */
   finger: boolean;
   /** Focus: slow motion running this step. */
   focusing: boolean;
@@ -744,7 +783,9 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     beat: { last: -9, run: 0, armed: false, seen: -1 },
     wings: [],
     helis: [],
+    hellfires: [],
     sorties: [],
+    planes: [],
     passiveT: 0,
     orbital: null,
     quietUntil: [],
@@ -1954,16 +1995,19 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
 // Cadence Gun are taps with a rule. With any of them, a plain tap is a plain
 // shot, so the gun is never helpless.
 
+/** Focus (a boost): the holding finger goes down or lifts. While it is
+ *  down and the bank lasts, time slows; the finger itself fires nothing
+ *  (the player: "one finger down and then tap with the other one"). */
+export function focusHold(g: Game, down: boolean): void {
+  if (g.phase !== 'wave') return;
+  g.finger = down;
+  g.focusing = down && g.boost?.id === 'focus' && g.boost.bank > 0;
+}
+
 /** A finger down on the water. With a gesture weapon loaded it starts a
  *  press; otherwise it does nothing (the UI taps instead). */
 export function press(g: Game, x: number, y: number, radius: number): void {
   if (g.phase !== 'wave') return;
-  // Focus: a finger down is what slows time (any weapon loaded), from this
-  // moment (the tap the same finger makes is already a slow-motion shot).
-  if (g.boost?.id === 'focus') {
-    g.finger = true;
-    g.focusing = g.boost.bank > 0;
-  }
   const gesture = gestureOf(g.weapon?.id);
   if (!gesture) return;
   g.press = { x0: x, y0: y, x, y, t0: g.t, radius, mode: 'pending', hook: null, cut: [], cutLen: 0, vx: 0, vy: 0, smacked: {} };
@@ -2020,8 +2064,6 @@ export function pressMove(g: Game, x: number, y: number): void {
 
 /** The finger lifts. A press that never became a gesture is a tap. */
 export function release(g: Game, x: number, y: number, radius: number): TapResult | null {
-  g.finger = false;
-  g.focusing = false;
   const p = g.press;
   if (!p) return null;
   g.press = null;
@@ -2210,7 +2252,7 @@ export function beatClock(g: Game, w: Weapon): { off: number; n: number; phase: 
 function cadenceTap(g: Game, w: Weapon, x: number, y: number): TapResult | null {
   const b = beatClock(g, w);
   if (b.n < 1 || b.off > AB.cadence.window[w.level - 1]) return null;
-  if (!spend(g)) return 'dry';
+  if (!AB.cadence.free && !spend(g)) return 'dry';
   // On the beat: a piercing shot through everything on the line.
   const c = g.map.carrier;
   const len0 = dist(c.x, c.y, x, y) || 1;
@@ -2306,13 +2348,7 @@ function updatePassives(g: Game, dt: number): void {
     const want = h.leaving
       ? { x: h.x < VIEW.width / 2 ? -200 : VIEW.width + 200, y: h.y }
       : { x: clamp(mid.x + (h.slot - (n - 1) / 2) * AB.gunships.spread * 1.8, 60, VIEW.width - 60), y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
-    const dd = dist(h.x, h.y, want.x, want.y);
-    if (dd > 2) {
-      const stepLen = Math.min(dd, AB.gunships.speed * dt);
-      h.heading = Math.atan2(want.y - h.y, want.x - h.x);
-      h.x += ((want.x - h.x) / dd) * stepLen;
-      h.y += ((want.y - h.y) / dd) * stepLen;
-    }
+    flyHeli(g, h, want, dt);
     if (h.leaving) continue;
     h.fireT -= dt;
     if (h.fireT > 0) continue;
@@ -2328,14 +2364,10 @@ function updatePassives(g: Game, dt: number): void {
       }
     }
     if (!best) continue;
-    const bx = best.x;
-    const by = best.y;
-    addFx(g, 'tracer', h.x, h.y, { life: 0.2, x2: bx, y2: by });
-    addFx(g, 'burst', bx, by, { life: 0.4, r: AB.gunships.blast });
-    cue(g, 'heli.rockets', bx, by);
-    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[(gw?.level ?? 1) - 1]);
+    launchHellfire(g, h.x, h.y, h.heading, best, AB.gunships.damage[(gw?.level ?? 1) - 1]);
   }
   g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
+  updateHellfires(g, dt);
   // ---- Bomber Wing: a pass at the shore every gap.
   const bw = held(g, 'bomberWing');
   if (bw && g[timer(bw)] <= 0) {
@@ -2393,13 +2425,96 @@ function toughest(g: Game, not: number): Threat | undefined {
   return up.filter((t) => !isStructure(t.kind)).sort(order)[0] ?? up.sort(order)[0];
 }
 
+/** A helicopter flies toward `want`: the nose turns toward where it is going
+ *  first, it accelerates only as fast as it is facing that way, and it eases
+ *  into the hover; hovering, it turns to face the nearest threat. */
+function flyHeli(g: Game, h: Heli, want: Point, dt: number): void {
+  const G = AB.gunships;
+  const dx = want.x - h.x;
+  const dy = want.y - h.y;
+  const dd = Math.hypot(dx, dy);
+  // Arrive: full speed far out, slowing over the last stretch.
+  const speed = dd > 2 ? Math.min(G.speed, dd * G.arrive) : 0;
+  const travel = Math.atan2(dy, dx);
+  let face = h.heading;
+  if (speed > G.speed * 0.25) face = travel;
+  else {
+    const th = g.threats.filter((t) => !t.dead && !isStructure(t.kind)).sort((a, b) => dist(a.x, a.y, h.x, h.y) - dist(b.x, b.y, h.x, h.y))[0];
+    face = th && dist(th.x, th.y, h.x, h.y) <= G.reach * 1.5 ? Math.atan2(th.y - h.y, th.x - h.x) : -Math.PI / 2;
+  }
+  const turn = angleDiff(face, h.heading);
+  h.heading += clamp(turn, -G.turn * dt, G.turn * dt);
+  // Thrust follows the nose: a helicopter facing away barely moves off.
+  const align = speed > 0 ? Math.max(0.15, Math.cos(angleDiff(travel, h.heading))) : 1;
+  const wantVx = dd > 0 ? (dx / dd) * speed : 0;
+  const wantVy = dd > 0 ? (dy / dd) * speed : 0;
+  let ax = wantVx - h.vx;
+  let ay = wantVy - h.vy;
+  const most = G.accel * dt * align;
+  const a = Math.hypot(ax, ay);
+  if (a > most) {
+    ax *= most / a;
+    ay *= most / a;
+  }
+  h.vx += ax;
+  h.vy += ay;
+  h.x += h.vx * dt;
+  h.y += h.vy * dt;
+  // Lean into the acceleration: ahead (nose down) and to the side (bank).
+  const full = G.accel * dt || 1;
+  const fwd = (ax * Math.cos(h.heading) + ay * Math.sin(h.heading)) / full;
+  const side = (-ax * Math.sin(h.heading) + ay * Math.cos(h.heading)) / full;
+  const k = Math.min(1, dt * 5);
+  h.lean += (clamp(fwd, -1, 1) - h.lean) * k;
+  h.roll += (clamp(side, -1, 1) - h.roll) * k;
+}
+
+/** A Hellfire leaves the rail along `heading` and homes on `target` (or a
+ *  spot on the water). */
+function launchHellfire(g: Game, x: number, y: number, heading: number, target: Threat | null, dmg: number, at?: Point): void {
+  const tx = target ? target.x : at!.x;
+  const ty = target ? target.y : at!.y;
+  g.hellfires.push({ id: g.nextId++, x, y, heading, target: target ? target.id : -1, tx, ty, t: 0, dmg, trail: [x, y] });
+  cue(g, 'heli.rockets', x, y);
+}
+
+function updateHellfires(g: Game, dt: number): void {
+  const H = AB.gunships;
+  for (const m of g.hellfires) {
+    const th = m.target >= 0 ? g.threats.find((t) => t.id === m.target && !t.dead) : undefined;
+    if (th) {
+      m.tx = th.x;
+      m.ty = th.y;
+    }
+    m.t += dt;
+    // It curves onto the target, turning harder the longer it flies.
+    const want = Math.atan2(m.ty - m.y, m.tx - m.x);
+    const turn = H.missileTurn * (1 + m.t * 6) * dt;
+    m.heading += clamp(angleDiff(want, m.heading), -turn, turn);
+    const stepLen = H.missileSpeed * dt;
+    m.x += Math.cos(m.heading) * stepLen;
+    m.y += Math.sin(m.heading) * stepLen;
+    // Smoke: a point every few frames, the last eight.
+    if (Math.floor(m.t / 0.025) !== Math.floor((m.t - dt) / 0.025)) {
+      m.trail.push(m.x, m.y);
+      if (m.trail.length > 16) m.trail.splice(0, 2);
+    }
+    if (dist(m.x, m.y, m.tx, m.ty) > stepLen + 14 && m.t < 1.4) continue;
+    m.t = Infinity;
+    addFx(g, 'burst', m.tx, m.ty, { life: 0.4, r: H.blast });
+    cue(g, 'heli.hit', m.tx, m.ty);
+    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, m.tx, m.ty) <= H.blast) damageThreat(g, o, m.dmg);
+  }
+  g.hellfires = g.hellfires.filter((m) => m.t !== Infinity);
+}
+
 function callGunships(g: Game, level: number): void {
   const want = AB.gunships.count[level - 1];
   g.helis = g.helis.filter((h) => !h.leaving);
   if (g.helis.length < want) cue(g, 'heli.arrive', 0, VIEW.height / 2);
   for (let i = g.helis.length; i < want; i++) {
     const left = i % 2 === 0;
-    g.helis.push({ id: g.nextId++, x: left ? -120 : VIEW.width + 120, y: VIEW.height * 0.55, slot: i, fireT: 0.6 + i * 0.35, heading: left ? 0 : Math.PI, leaving: false });
+    g.helis.push({ id: g.nextId++, x: left ? -120 : VIEW.width + 120, y: VIEW.height * 0.55, vx: left ? AB.gunships.speed : -AB.gunships.speed, vy: 0, slot: i, fireT: 0.6 + i * 0.35, heading: left ? 0 : Math.PI, lean: 0, roll: 0, leaving: false });
   }
   g.helis.forEach((h, i) => (h.slot = i));
 }
@@ -2489,13 +2604,18 @@ export function warping(g: Game): boolean {
 function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
   endBoost(g, false);
   const k = level - 1;
-  g.boost = { id, level, t: g.stats.weaponTime, n: 0, bank: 0, crateT: AB.supplyRun.crate, clocked: 0, drops: null, age: 0 };
+  const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : 1);
+  g.boost = { id, level, t, n: 0, bank: 0, crateT: AB.supplyRun.crate, clocked: 0, drops: null, age: 0 };
   switch (id) {
     case 'overclock':
       if (g.weapon) overclockWeapon(g, g.weapon);
       break;
     case 'focus':
       g.boost.bank = AB.focus.bank[k];
+      break;
+    case 'supplyRun':
+      // Ammo and repairs, in turn.
+      callCargoPlane(g, Array.from({ length: AB.supplyRun.crates[k] }, (_, i) => ({ kind: i % 2 ? 'repair' : 'ammo' })));
       break;
   }
   g.uses[id] = (g.uses[id] ?? 0) + 1;
@@ -2511,6 +2631,16 @@ function endBoost(g: Game, ranOut: boolean): void {
   g.boost = null;
   const c = g.map.carrier;
   if (b.id === 'overclock') for (const w of loadedWeapons(g)) unclock(w);
+  // Dual Wield: both hands end with it (lock-in round, the player's call).
+  if (b.id === 'dualWield') {
+    const names = loadedWeapons(g).map((w) => abilityName(w.id, w.level).toUpperCase());
+    g.weapon = null;
+    g.weapon2 = null;
+    if (ranOut && names.length) {
+      cue(g, 'weapon.done', c.x, c.y);
+      addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${names.join(' + ')} DONE` });
+    }
+  }
   // Overdrive (level 2): the rack is full when it ends.
   if (b.id === 'overdrive' && b.level >= 2) g.ammo = g.stats.rack;
   if (ranOut) {
@@ -2565,6 +2695,31 @@ function boostLoad(g: Game, w: Weapon): boolean {
   return true;
 }
 
+/** Supply Run's cargo plane: it crosses over open water mid-screen from a
+ *  random side and drops `load` in a row, spaced across the middle. */
+function callCargoPlane(g: Game, load: { kind: PickupKind; weapon?: AbilityId }[]): void {
+  const dir = g.rng.drops.chance(0.5) ? 1 : -1;
+  const y = VIEW.height * 0.4;
+  const n = load.length;
+  const span = Math.min(VIEW.width * 0.5, 170 * (n - 1));
+  const drops = load.map((o, i) => ({ ...o, x: VIEW.width / 2 + dir * (n > 1 ? -span / 2 + (span * i) / (n - 1) : 0) }));
+  g.planes.push({ id: g.nextId++, x: dir > 0 ? -160 : VIEW.width + 160, y, vx: dir * AB.supplyRun.planeSpeed, drops });
+  cue(g, 'supply.plane', dir > 0 ? -160 : VIEW.width + 160, y, { vx: dir * AB.supplyRun.planeSpeed });
+}
+
+function updatePlanes(g: Game, dt: number): void {
+  for (const pl of g.planes) {
+    pl.x += pl.vx * dt;
+    while (pl.drops.length && (pl.vx > 0 ? pl.x >= pl.drops[0].x : pl.x <= pl.drops[0].x)) {
+      const d = pl.drops.shift()!;
+      addPickup(g, d.kind, d.x, pl.y, d.weapon);
+      g.pickups[g.pickups.length - 1].chute = AB.supplyRun.chute;
+      cue(g, 'supply.crate', d.x, pl.y);
+    }
+  }
+  g.planes = g.planes.filter((pl) => pl.x > -200 && pl.x < VIEW.width + 200);
+}
+
 /** Each step a boost runs: its clock, Airdrop's crates, Focus's bank. */
 function updateBoost(g: Game, dt: number, real: number): void {
   const b = g.boost;
@@ -2577,12 +2732,7 @@ function updateBoost(g: Game, dt: number, real: number): void {
     const weapons = g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
     if (b.crateT <= 0 && weapons.length) {
       b.crateT += AB.supplyRun.crate;
-      // Over open water, mid-screen: it drifts in to the carrier from there.
-      const x = 160 + g.rng.drops.next() * (VIEW.width - 320);
-      const y = VIEW.height * 0.42;
-      addPickup(g, 'weapon', x, y, g.rng.drops.pick(weapons));
-      g.pickups[g.pickups.length - 1].crate = true;
-      cue(g, 'supply.crate', x, y);
+      callCargoPlane(g, [{ kind: 'weapon', weapon: g.rng.drops.pick(weapons) }]);
     }
   }
   if (b.t <= 0) endBoost(g, true);
@@ -2654,11 +2804,13 @@ function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | 
       cue(g, 'screen.launch', c.x, c.y);
       break;
     case 'gunships':
-      addFx(g, 'tracer', ax < VIEW.width / 2 ? 0 : VIEW.width, ay - 60, { life: 0.2, x2: ax, y2: ay });
-      addFx(g, 'burst', ax, ay, { life: 0.4, r: AB.gunships.blast });
-      cue(g, 'heli.rockets', ax, ay);
-      for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, ax, ay) <= AB.gunships.blast) damageThreat(g, o, AB.gunships.damage[k]);
+    {
+      // A missile from off the screen's edge (the gunship never shows).
+      const sx = ax < VIEW.width / 2 ? 0 : VIEW.width;
+      const target = threat ?? null;
+      launchHellfire(g, sx, ay - 60, Math.atan2(60, ax - sx), target, AB.gunships.damage[k], target ? undefined : { x: ax, y: ay });
       break;
+    }
     case 'orbital': {
       const th = threat ?? toughest(g, -1);
       if (!th) break;
@@ -2747,7 +2899,9 @@ export function step(g: Game, dt: number): void {
   while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
   for (const r of g.raiders) updateRaider(g, r, dt);
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
-  reload(g, dt);
+  // Focus: the rack reloads in real time, so slow motion buys shots (the
+  // lock-in round: buffed to the middle of the table).
+  reload(g, g.focusing ? real : dt);
   updateShips(g, dt);
   ram(g);
   // Time Warp slows every threat (not the convoy, not your interceptors).
@@ -2773,6 +2927,7 @@ export function step(g: Game, dt: number): void {
   g.weaponDropT += dt;
 
   g.threats = g.threats.filter((th) => !th.dead);
+  updatePlanes(g, dt);
   updatePickups(g, dt);
   for (const f of g.fx) f.age += dt;
   g.fx = g.fx.filter((f) => f.age < f.life);
@@ -2824,7 +2979,9 @@ function clearField(g: Game): void {
   g.beat = { last: -9, run: 0, armed: false, seen: -1 };
   g.wings = [];
   g.helis = [];
+  g.hellfires = [];
   g.sorties = [];
+  g.planes = [];
   g.orbital = null;
   g.quietUntil = [];
   g.carrierAegis = null;
@@ -4046,14 +4203,18 @@ function updateTimers(g: Game, dt: number): void {
   g.shieldT = Math.max(0, g.shieldT - dt);
   g.steamT = Math.max(0, g.steamT - dt);
   g.flareT = Math.max(0, g.flareT - dt);
-  // Dual Wield (level 2): both clocks at half speed. Overclock stops one.
-  const dual = boostLevel(g, 'dualWield');
-  const clock = dual ? AB.dualWield.clock[dual - 1] : 1;
+  // Dual Wield: both hands run on the boost's clock (it ends them both).
+  // Overclock stops one.
+  const dual = g.boost?.id === 'dualWield' ? g.boost : null;
   for (const hand of ['weapon', 'weapon2'] as const) {
     const w = g[hand];
     if (!w) continue;
+    if (dual) {
+      w.t = dual.t;
+      continue;
+    }
     const was = w.t;
-    if (w.oc === undefined) w.t -= dt * clock;
+    if (w.oc === undefined) w.t -= dt;
     if (was > WEAPON_EXPIRING && w.t <= WEAPON_EXPIRING && w.t > 0) cue(g, 'weapon.expiring', c0.x, c0.y);
     if (w.t <= 0) {
       cue(g, 'weapon.done', c0.x, c0.y);
@@ -4529,10 +4690,16 @@ export function pickupLife(p: Pickup): number {
 function updatePickups(g: Game, dt: number): void {
   // Supply Run: drops fly to the carrier and load on arrival (a boost waits
   // for a tap: it would replace this one).
+  // Under a parachute: drifting down, not yet ageing.
+  for (const p of g.pickups) {
+    if (!p.chute) continue;
+    p.chute = Math.max(0, p.chute - dt);
+    p.y += 45 * dt;
+  }
   if (boostLevel(g, 'supplyRun')) {
     const c = g.map.carrier;
     for (const p of [...g.pickups]) {
-      if (p.kind === 'weapon' && isBoost(p.weapon)) continue;
+      if (p.chute || (p.kind === 'weapon' && isBoost(p.weapon))) continue;
       const d = dist(p.x, p.y, c.x, c.y);
       if (d <= CARRIER.halfBeam) {
         collect(g, p);
@@ -4545,7 +4712,7 @@ function updatePickups(g: Game, dt: number): void {
       p.age = Math.min(p.age, 1);
     }
   }
-  for (const p of g.pickups) p.age += dt;
+  for (const p of g.pickups) if (!p.chute) p.age += dt;
   for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
   g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
 }

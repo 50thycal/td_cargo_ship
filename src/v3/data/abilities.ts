@@ -268,9 +268,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'War Drum',
     answers: 'Heavies',
     levels: [
-      'Fire on the beat for a 3-hit shot that pierces; off the beat, a normal shot',
+      'A beat every 0.9 s: fire on it for a free 4-hit shot that pierces; off the beat, a normal shot',
       'A wider beat window',
-      'Four beats in a row, and the fifth fires a free broadside',
+      'Three beats in a row, and the fourth fires a free broadside at 8 threats',
     ],
     how: 'Tap on the beat',
   },
@@ -329,9 +329,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Airdrop',
     answers: 'Running dry',
     levels: [
-      'Kills drop twice as much, and drops fly straight to the carrier',
-      'Three times as much',
-      'And every 6 s a crate lands holding one of your weapons',
+      'A cargo plane drops 3 crates of ammo and repairs; kills drop twice as much, and drops fly straight to the carrier',
+      '4 crates, and kills drop three times as much',
+      'And every 6 s another plane drops a crate holding one of your weapons',
     ],
     how: 'Keep killing: drops fly to you',
   },
@@ -353,8 +353,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Arsenal Drop',
     answers: 'Combos',
     levels: [
-      'The next weapon picked up joins the loaded one: every tap fires both, for one round',
-      'Both clocks run at half speed',
+      'The next weapon picked up joins the loaded one: every tap fires both, for one round. Both last as long as the boost, then both end',
+      'It lasts 20 s',
       'And weapons drop twice as often while it lasts',
     ],
     how: 'Pick up a second weapon: both fire',
@@ -377,11 +377,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Deadeye',
     answers: 'Everything at once',
     levels: [
-      'Up to 6 s of half-speed time, spent only while a finger is down',
-      '9 s, at a third of the speed',
-      'Shots fired in slow motion hit for double',
+      'Hold one finger down for up to 10 s of slow motion and tap with the other; the rack reloads at full speed',
+      '15 s, at a quarter of the speed',
+      'Shots fired in slow motion hit for triple',
     ],
-    how: 'Hold a finger down: time slows',
+    how: 'Hold one finger down, tap with the other'
   },
   overdrive: {
     id: 'overdrive',
@@ -555,7 +555,11 @@ export const AB = {
    *  fires a `damage` shot that pierces (`width`); off the beat, a plain
    *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
    *  free broadside at the `broadside` most urgent threats. */
-  cadence: { period: 0.6, window: [0.12, 0.18, 0.18], damage: 3, width: 18, run: 4, broadside: 5 },
+  // Lock-in round: the player asked for a slower beat ("tap tap tap in the
+  // same intervals": 0.6 s burned the rack) and for it to be buffed to the
+  // middle of the table. At 0.9 s it won 20% at MAX; beat shots that cost
+  // no round (`free`), hit harder and wider, and a quicker War Drum: 41%.
+  cadence: { period: 0.9, window: [0.16, 0.24, 0.24], damage: 4, width: 40, run: 3, broadside: 8, free: true as boolean },
   /** Drone Screen (the player's idea): a drone lifts off the carrier deck
    *  every `gap` s (the player: "always the carrier deck") and flies at
    *  `speed` to ram the threat closest to hitting a hull that no other drone
@@ -566,10 +570,12 @@ export const AB = {
   // won against Frigates' 55%): Hornet Nest launches every 0.7 s.
   droneScreen: { gap: [1.2, 0.9, 0.7], speed: 420, life: 4, damage: 1, burst: [0, 0, 50], contact: 18 },
   /** Gunship Pair (the player's idea): `count` helicopters hover `ahead` px
-   *  either side of the convoy's middle; each fires a rocket pod every `gap`
+   *  either side of the convoy's middle; each fires a Hellfire every `gap`
    *  s at the thickest cluster within `reach` (a `blast` px burst, `damage`
-   *  a hit). */
-  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320 },
+   *  a hit). They fly like helicopters: top `speed`, `accel` px/s², the nose
+   *  turning `turn` rad/s, slowing over the last 1/`arrive` s; a missile
+   *  flies at `missileSpeed`, curving at `missileTurn` rad/s and harder. */
+  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320, accel: 420, turn: 3.2, arrive: 2.2, missileSpeed: 1150, missileTurn: 2.5 },
   /** Bomber Wing (the player's idea): a pass every `gap` s. It destroys a
    *  truck on screen; with none, it bombs the silo (or the tunnel a truck is
    *  due out of) with the most launches in the next `quiet` s, and those
@@ -588,17 +594,25 @@ export const AB = {
   // ---- Phase 3: boosts. Each lasts the weapon time (15 s) at every level
   // (round 3: "each level should change something").
   /** Supply Run: drop chances × `mult`; drops fly to the carrier at `speed`.
-   *  Airdrop: a weapon crate every `crate` s. */
-  supplyRun: { mult: [2, 3, 3], speed: 520, crate: 6 },
+   *  A cargo plane (the player: "a big cargo plane to come in and drop it in
+   *  a row") crosses at `planeSpeed`, dropping `crates` in a row, each under
+   *  a parachute for `chute` s. Airdrop: another plane with a weapon crate
+   *  every `crate` s. */
+  supplyRun: { mult: [2, 3, 3], speed: 520, crate: 6, crates: [3, 4, 4], planeSpeed: 460, chute: 0.9 },
   /** Overclock on a weapon already at MAX: it drops `drops`× as often. */
   overclock: { drops: 2 },
-  /** Dual Wield: the clocks run at `clock` speed; Arsenal Drop: weapons drop
-   *  `drops`× as often. */
-  dualWield: { clock: [1, 0.5, 0.5], drops: [1, 1, 2] },
+  /** Dual Wield: it lasts `time`× the weapon time, and both hands last as
+   *  long as it does, then both end (the player: "the weapons last as long
+   *  as the boost"); Arsenal Drop: weapons drop `drops`× as often. */
+  dualWield: { time: [1, 4 / 3, 4 / 3], drops: [1, 1, 2] },
   /** Wild Card: the passives' one-shot versions at a tap. */
   wildCard: { drones: 3 },
   /** Focus: `bank` s of slow motion at `scale` speed; Deadeye `damage`×. */
-  focus: { bank: [6, 9, 9], scale: [0.5, 1 / 3, 1 / 3], damage: 2 },
+  // Lock-in round, buffed toward the middle of the table (6% of runs won at
+  // MAX): the rack reloads on the real clock (game.ts), a bigger bank,
+  // slower time and Deadeye ×3: 30%. The bot can't hold one finger and tap
+  // with the other the way a person does, so it undersells Focus.
+  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3 },
   /** Time Warp: threats at `scale` speed; Freeze Frame: `freeze` for the
    *  first `freezeTime` s. */
   timeWarp: { scale: [0.4, 0.25, 0.25], freeze: 0.1, freezeTime: 2 },

@@ -553,7 +553,7 @@ export class App {
       for (const k of ['empty', 'held', 'loaded']) c.classList.toggle(k, k === state);
       c.classList.toggle('boost', !!id && isBoost(id));
       if (id) {
-        c.style.setProperty('--left', w ? (w.t / g.stats.weaponTime).toFixed(3) : '0');
+        c.style.setProperty('--left', w ? Math.min(1, w.t / g.stats.weaponTime).toFixed(3) : '0');
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
@@ -790,23 +790,25 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
+      // Focus (a boost; the player: "one finger down and then tap with the
+      // other one"): while slow motion is banked, the first finger down is
+      // the holding finger. It only slows time and fires nothing; every
+      // other finger taps (or presses, with a gesture weapon) as usual.
+      const g0 = this.game;
+      if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
+        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
+        this.rec.focus(true);
+        return;
+      }
       // A gesture weapon (the weapons plan): the finger is a press, not a
       // tap, and holding charges, swipes or drags instead of repeating.
       // A second finger while one is pressed is a plain tap (two thumbs: one
       // charges the Lance, the other keeps shooting).
-      // Focus (a boost): the first finger down is sent as a press, so the
-      // sim knows time should slow (and a replay slows it too).
-      const focus = this.game.phase === 'wave' && this.game.boost?.id === 'focus' && !this.focusFinger && !this.gesture;
       if (this.game.phase === 'wave' && gestureOf(this.game.weapon?.id) && this.rec && !this.gesture) {
         this.gesture = { id: e.pointerId, x: w.x, y: w.y };
-        if (focus) this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
         this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
         this.playCues(this.game);
         return;
-      }
-      if (focus && this.rec) {
-        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y };
-        this.rec.press(w.x, w.y, TAP_RADIUS_PX / this.scale);
       }
       this.fire(w.x, w.y);
       // Everyone can hold to keep firing (round 4); the first repeat waits a
@@ -832,15 +834,11 @@ export class App {
       if (w) Object.assign(this.hold, w);
     });
     const lift = (e: PointerEvent) => {
-      // Focus with a plain weapon: the lift ends the press (a gesture's
-      // release, below, does it for a gesture weapon).
+      // Focus: the holding finger lifts, and time runs at speed again.
       if (this.focusFinger?.id === e.pointerId) {
-        const at = this.focusFinger;
         this.focusFinger = null;
-        if (!(this.gesture && this.gesture.id === e.pointerId)) {
-          const w = this.toWorld(e.clientX, e.clientY) ?? at;
-          this.rec?.release(w.x, w.y, TAP_RADIUS_PX / this.scale);
-        }
+        this.rec?.focus(false);
+        return;
       }
       if (this.gesture && this.gesture.id === e.pointerId) {
         const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
@@ -859,10 +857,7 @@ export class App {
   /** A press still down when play stops (pause, a note, the run ends): let
    *  go of it where the finger last was, so nothing stays held. */
   private dropGesture(): void {
-    if (this.focusFinger && !this.gesture) {
-      const at = this.focusFinger;
-      if (this.game?.phase === 'wave') this.rec?.release(at.x, at.y, TAP_RADIUS_PX / this.scale);
-    }
+    if (this.focusFinger && this.game?.phase === 'wave') this.rec?.focus(false);
     this.focusFinger = null;
     if (!this.gesture) return;
     const at = this.gesture;

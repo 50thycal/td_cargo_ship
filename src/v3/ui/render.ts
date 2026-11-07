@@ -82,6 +82,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   if (g.shieldT > 0 || boostLevel(g, 'shield')) drawShields(ctx, g);
   drawAegis(ctx, g);
   for (const p of g.pickups) {
+    if (p.chute) drawChute(ctx, p.x, p.y, p.chute);
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
   }
@@ -841,24 +842,6 @@ function drawWeaponPickup(ctx: CanvasRenderingContext2D, g: Game, p: Pickup): vo
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  // Airdrop: it came down on a parachute.
-  if (p.crate && p.age < 1.2) {
-    ctx.fillStyle = `${col}cc`;
-    ctx.beginPath();
-    ctx.arc(0, -r - 26, 26, Math.PI, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-26, -r - 26);
-    ctx.lineTo(-r * 0.5, -r * 0.6);
-    ctx.moveTo(26, -r - 26);
-    ctx.lineTo(r * 0.5, -r * 0.6);
-    ctx.stroke();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 3.5;
-  }
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 7]);
   ctx.lineDashOffset = -g.t * 30;
@@ -908,7 +891,7 @@ function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t
   ctx.stroke();
   ctx.globalAlpha = 0.95;
   ctx.beginPath();
-  ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, w.t / g.stats.weaponTime));
+  ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, Math.min(1, w.t / g.stats.weaponTime)));
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
@@ -1109,30 +1092,42 @@ function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.restore();
   }
   // Gunships: a ship-sized helicopter (the phone check: a strong silhouette
-  // and a rotor disc), its shadow on the water.
+  // and a rotor disc), its shadow on the water. The nose points along
+  // `heading`; it dips into its acceleration (lean: the body shortens and
+  // the shadow trails) and banks into turns (roll: the body skews), and
+  // bobs gently in the hover.
   for (const h of g.helis) {
+    const bob = Math.sin(g.t * 2.3 + h.id) * 1.6;
     for (const shadow of [true, false]) {
       ctx.save();
-      ctx.translate(h.x + (shadow ? 16 : 0), h.y + (shadow ? 26 : 0));
-      ctx.rotate(h.leaving ? h.heading : 0);
+      ctx.translate(h.x + (shadow ? 16 - Math.cos(h.heading) * h.lean * 6 : 0), h.y + (shadow ? 26 - Math.sin(h.heading) * h.lean * 6 : bob));
+      ctx.rotate(h.heading);
+      ctx.scale(1 - Math.abs(h.lean) * 0.12, 1 - Math.abs(h.roll) * 0.18);
+      ctx.transform(1, h.roll * 0.12, 0, 1, 0, 0);
       ctx.globalAlpha = shadow ? 0.28 : 1;
       const body = shadow ? '#000' : '#6b7254';
       ctx.fillStyle = body;
       ctx.beginPath();
       ctx.ellipse(0, 0, 22, 11, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillRect(14, -3, 30, 6);
-      ctx.fillRect(40, -10, 4, 20);
+      // Tail boom and fin behind (the nose is +x).
+      ctx.fillRect(-44, -3, 30, 6);
+      ctx.fillRect(-44, -10, 4, 20);
+      // Stub wings with a missile rail each side.
+      ctx.fillRect(-4, -17, 6, 34);
       if (!shadow) {
+        ctx.fillStyle = '#3f4433';
+        ctx.fillRect(-6, -19, 12, 3);
+        ctx.fillRect(-6, 16, 12, 3);
         ctx.fillStyle = '#c9e3ff';
         ctx.beginPath();
-        ctx.ellipse(-10, 0, 7, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(10, 0, 7, 6, 0, 0, Math.PI * 2);
         ctx.fill();
-        // The rotor: a disc and two blades spinning.
+        // The rotor: a disc and two blades spinning (tilted with the lean).
         ctx.strokeStyle = 'rgba(230,240,230,0.35)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(0, 0, 36, 0, Math.PI * 2);
+        ctx.ellipse(h.lean * 4, 0, 36, 36 * (1 - Math.abs(h.roll) * 0.15), 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.strokeStyle = 'rgba(235,245,235,0.8)';
         ctx.lineWidth = 3;
@@ -1147,6 +1142,48 @@ function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.restore();
     }
   }
+  // Hellfires: a smoke streak behind each missile, then the missile itself
+  // with its motor glowing.
+  for (const m of g.hellfires) {
+    const tr = m.trail;
+    ctx.lineCap = 'round';
+    for (let i = 2; i < tr.length; i += 2) {
+      const u = i / tr.length;
+      ctx.strokeStyle = `rgba(214,214,206,${0.12 + 0.45 * u})`;
+      ctx.lineWidth = 2 + (1 - u) * 6;
+      ctx.beginPath();
+      ctx.moveTo(tr[i - 2], tr[i - 1]);
+      ctx.lineTo(tr[i], tr[i + 1]);
+      ctx.stroke();
+    }
+    if (tr.length) {
+      ctx.strokeStyle = 'rgba(230,230,222,0.6)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(tr[tr.length - 2], tr[tr.length - 1]);
+      ctx.lineTo(m.x, m.y);
+      ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.heading);
+    ctx.fillStyle = '#ffb347';
+    ctx.beginPath();
+    ctx.ellipse(-12, 0, 6 + Math.sin(g.t * 60 + m.id) * 1.5, 2.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d7d9cf';
+    ctx.fillRect(-8, -2.2, 16, 4.4);
+    ctx.beginPath();
+    ctx.moveTo(8, -2.2);
+    ctx.lineTo(13, 0);
+    ctx.lineTo(8, 2.2);
+    ctx.fill();
+    ctx.fillStyle = '#7b8070';
+    ctx.fillRect(-8, -4.5, 3, 9);
+    ctx.restore();
+  }
+  // Supply Run: a big four-engine cargo plane crossing, its shadow far below.
+  for (const pl of g.planes) drawCargoPlane(ctx, g, pl);
   // Bombers: a heavy bomber crossing, its shadow below.
   for (const b of g.sorties) {
     for (const shadow of [true, false]) {
@@ -1874,4 +1911,105 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, col
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** A Supply Run crate on its parachute (`left`: seconds of descent left). */
+function drawChute(ctx: CanvasRenderingContext2D, x: number, y: number, left: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = Math.min(1, left / 0.25);
+  const sway = Math.sin(left * 7) * 0.12;
+  ctx.rotate(sway);
+  ctx.fillStyle = 'rgba(241,245,249,0.92)';
+  ctx.strokeStyle = 'rgba(148,163,184,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, -58, 30, Math.PI, 0);
+  ctx.quadraticCurveTo(15, -64, 0, -58);
+  ctx.quadraticCurveTo(-15, -64, -30, -58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#86efac';
+  ctx.beginPath();
+  ctx.arc(0, -58, 30, Math.PI, Math.PI * 1.33);
+  ctx.lineTo(0, -58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-30, -58);
+  ctx.lineTo(-10, -20);
+  ctx.moveTo(30, -58);
+  ctx.lineTo(10, -20);
+  ctx.moveTo(0, -58);
+  ctx.lineTo(0, -20);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Supply Run's cargo plane: a high wing with four turning props, a fat
+ *  fuselage and a high tail, its shadow on the water. */
+function drawCargoPlane(ctx: CanvasRenderingContext2D, g: Game, pl: { x: number; y: number; vx: number }): void {
+  for (const shadow of [true, false]) {
+    ctx.save();
+    ctx.translate(pl.x + (shadow ? 30 : 0), pl.y + (shadow ? 54 : 0));
+    if (pl.vx < 0) ctx.scale(-1, 1);
+    ctx.globalAlpha = shadow ? 0.25 : 1;
+    const hull = shadow ? '#000' : '#8a9478';
+    ctx.fillStyle = hull;
+    // Fuselage, nose to the right.
+    ctx.beginPath();
+    ctx.moveTo(70, 0);
+    ctx.quadraticCurveTo(66, -12, 50, -13);
+    ctx.lineTo(-56, -10);
+    ctx.lineTo(-76, -3);
+    ctx.lineTo(-76, 3);
+    ctx.lineTo(-56, 10);
+    ctx.lineTo(50, 13);
+    ctx.quadraticCurveTo(66, 12, 70, 0);
+    ctx.fill();
+    // Wing and tailplane.
+    ctx.beginPath();
+    ctx.moveTo(18, -12);
+    ctx.lineTo(4, -86);
+    ctx.lineTo(-10, -86);
+    ctx.lineTo(-6, -12);
+    ctx.moveTo(18, 12);
+    ctx.lineTo(4, 86);
+    ctx.lineTo(-10, 86);
+    ctx.lineTo(-6, 12);
+    ctx.moveTo(-58, -8);
+    ctx.lineTo(-70, -32);
+    ctx.lineTo(-78, -32);
+    ctx.lineTo(-74, -6);
+    ctx.moveTo(-58, 8);
+    ctx.lineTo(-70, 32);
+    ctx.lineTo(-78, 32);
+    ctx.lineTo(-74, 6);
+    ctx.fill();
+    if (!shadow) {
+      // Engines and props.
+      for (const ey of [-62, -34, 34, 62]) {
+        ctx.fillStyle = '#5f6852';
+        ctx.fillRect(4 + Math.abs(ey) * -0.12, ey - 4, 20, 8);
+        ctx.strokeStyle = 'rgba(235,240,230,0.55)';
+        ctx.lineWidth = 2;
+        const a = g.t * 40 + ey;
+        ctx.beginPath();
+        ctx.moveTo(25 + Math.abs(ey) * -0.12, ey + Math.cos(a) * 11);
+        ctx.lineTo(25 + Math.abs(ey) * -0.12, ey - Math.cos(a) * 11);
+        ctx.stroke();
+      }
+      // Cockpit glass and a cargo door line.
+      ctx.fillStyle = '#c9e3ff';
+      ctx.fillRect(54, -6, 8, 12);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-50, -9);
+      ctx.lineTo(-50, 9);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
