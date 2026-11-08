@@ -971,8 +971,8 @@ function drawStealthBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
 }
 
 /** The Dive Bomber (Test Lab round 1: "the perspective should match the
- *  rest of the game"): seen from above like every other aircraft, with its
- *  shadow on the water. It comes in from the top of the screen at its
+ *  rest of the game"; round 2: an A-10 Warthog): seen from above like every
+ *  other aircraft, with its shadow on the water. It comes in from the top of the screen at its
  *  circle and pitches down into its dive (its length foreshortens, its
  *  shadow closes in under it, it grows a touch as it gets low); it lets go
  *  of its red bomb short of the circle, then pulls up (shadow drawing away)
@@ -999,7 +999,7 @@ function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
   const fore = 1 - 0.42 * pitch;
   // Its shadow on the water, offset like the other aircraft's, closing in
   // as it dives.
-  drawStuka(ctx, th.x + 34 * alt, th.y + 52 * alt, th.heading, k * 0.92, fore, 1, 'rgba(0,0,0,0.28)', false, false);
+  drawWarthog(ctx, th.x + 34 * alt, th.y + 52 * alt, th.heading, k * 0.92, fore, Math.cos(bank), 'rgba(0,0,0,0.28)', false, false);
   // Speed streaks behind it in the dive.
   if (pitch > 0.2) {
     ctx.strokeStyle = `rgba(255,255,255,${0.3 * pitch})`;
@@ -1013,74 +1013,135 @@ function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
       ctx.stroke();
     }
   }
-  drawStuka(ctx, th.x, th.y, th.heading, k, fore, Math.cos(bank), '#7c2d12', true, f.state === 0);
+  drawWarthog(ctx, th.x, th.y, th.heading, k, fore, Math.cos(bank), '#8e979f', true, f.state === 0);
   hpPips(ctx, th.x, th.y - 44 * k, th.hp, THREATS.diveBomber.hp);
 }
 
-/** A gull-winged dive bomber from above, nose along `heading`: `fore`
- *  shortens it front to back (nosed down), `span` narrows the wings (a
- *  bank). `full`: the details (canopy, propeller, its red bomb if `bomb`). */
-function drawStuka(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fore: number, span: number, fill: string, full: boolean, bomb: boolean): void {
+/** An A-10 Warthog from above (Test Lab round 2: "make it faster and an
+ *  A-10 Warthog"), nose along `heading`: long, straight wings; a slim
+ *  fuselage with the gun's muzzle at the nose; two engine pods high on the
+ *  rear fuselage; a straight tailplane with a fin at each end; grey camo.
+ *  `fore` shortens it front to back (nosed down), `span` narrows the wings
+ *  (a bank). `full`: the details (camo, canopy, engines, its red bomb if
+ *  `bomb`); without, a flat silhouette (the shadow). */
+function drawWarthog(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fore: number, span: number, fill: string, full: boolean, bomb: boolean): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);
   ctx.scale(k * fore, k * span);
   ctx.fillStyle = fill;
-  ctx.strokeStyle = full ? '#1b1b1b' : 'transparent';
-  ctx.lineWidth = 2;
-  // Wings: an inverted gull, bent down at the roots.
-  ctx.beginPath();
-  ctx.moveTo(8, -4);
-  ctx.lineTo(4, -16);
-  ctx.lineTo(6, -40);
-  ctx.lineTo(-4, -42);
-  ctx.lineTo(-8, -18);
-  ctx.lineTo(-8, 18);
-  ctx.lineTo(-4, 42);
-  ctx.lineTo(6, 40);
-  ctx.lineTo(4, 16);
-  ctx.lineTo(8, 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // Fuselage and tailplane.
-  ctx.beginPath();
-  ctx.moveTo(26, 0);
-  ctx.lineTo(20, -6);
-  ctx.lineTo(-22, -4);
-  ctx.lineTo(-30, -14);
-  ctx.lineTo(-36, -14);
-  ctx.lineTo(-34, 0);
-  ctx.lineTo(-36, 14);
-  ctx.lineTo(-30, 14);
-  ctx.lineTo(-22, 4);
-  ctx.lineTo(20, 6);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  if (full) {
-    // Fixed landing-gear spats under the wing roots.
-    ctx.fillStyle = '#4a1d0c';
-    ctx.fillRect(2, -15, 9, 5);
-    ctx.fillRect(2, 10, 9, 5);
-    // The canopy.
-    ctx.fillStyle = '#9fc4d8';
+  ctx.strokeStyle = full ? '#1b1f24' : 'transparent';
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = 'round';
+  // Each outline wound the same way round, so the shadow (all of them in
+  // one path, filled once) has no darker overlaps.
+  const sub = (pts: number[]) => {
+    let area = 0;
+    for (let i = 0; i < pts.length; i += 2) area += pts[i] * pts[(i + 3) % pts.length] - pts[(i + 2) % pts.length] * pts[i + 1];
+    const n = pts.length / 2;
+    const at = (j: number) => (area >= 0 ? j : n - 1 - j) * 2;
+    ctx.moveTo(pts[at(0)], pts[at(0) + 1]);
+    for (let j = 1; j < n; j++) ctx.lineTo(pts[at(j)], pts[at(j) + 1]);
+    ctx.closePath();
+  };
+  const poly = (pts: number[]) => {
     ctx.beginPath();
-    ctx.ellipse(4, 0, 9, 3.5, 0, 0, Math.PI * 2);
+    sub(pts);
+  };
+  // Wings: straight and long, a little tapered, the tips turned down.
+  const wing = [8, -4, 7, -40, 4, -46, -3, -46, -6, -40, -9, -4, -9, 4, -6, 40, -3, 46, 4, 46, 7, 40, 8, 4];
+  // Tailplane: straight, right at the back.
+  const tail = [-29, -19, -29, 19, -36, 19, -36, -19];
+  // Fuselage: long and slim, a blunt nose.
+  const body = [36, -2.5, 33, -4.5, 22, -5.5, 4, -5, -24, -3.5, -38, -2.5, -38, 2.5, -24, 3.5, 4, 5, 22, 5.5, 33, 4.5, 36, 2.5];
+  const fin = (s: number) => [-24, s * 17, -26, s * 21, -41, s * 21, -41, s * 17];
+  if (!full) {
+    ctx.beginPath();
+    for (const pts of [wing, tail, body, fin(-1), fin(1)]) sub(pts);
+    for (const s of [-1, 1]) {
+      ctx.moveTo(-9.5, s * 9);
+      ctx.ellipse(-19, s * 9, 9.5, 4.6, 0, 0, Math.PI * 2);
+    }
     ctx.fill();
-    // Its bomb under the belly until it lets go.
-    if (bomb) {
-      ctx.fillStyle = RED_SHOT;
+    ctx.restore();
+    return;
+  }
+  poly(wing);
+  ctx.fill();
+  ctx.stroke();
+  poly(tail);
+  ctx.fill();
+  ctx.stroke();
+  // Its red bomb slung under the belly until it lets go: it shows either
+  // side of the slim fuselage.
+  if (bomb) {
+    ctx.fillStyle = RED_SHOT;
+    ctx.beginPath();
+    ctx.ellipse(-1, 0, 10, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = fill;
+  }
+  poly(body);
+  ctx.fill();
+  ctx.stroke();
+  // Grey camo: darker patches over the lighter grey.
+  ctx.save();
+  poly(wing);
+  ctx.clip();
+  ctx.fillStyle = '#5d6670';
+  for (const s of [-1, 1]) {
+    for (const [cx, cy, rx, ry, a] of [[2, 15, 7, 4.5, 0.6], [-4, 27, 6, 5, -0.4], [3, 39, 5, 4, 0.3]]) {
       ctx.beginPath();
-      ctx.ellipse(-2, 0, 7, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, s * cy, rx, ry, s * a, 0, Math.PI * 2);
       ctx.fill();
     }
-    // The propeller disc.
-    ctx.fillStyle = 'rgba(230,230,230,0.35)';
+  }
+  ctx.restore();
+  ctx.save();
+  poly(body);
+  ctx.clip();
+  ctx.fillStyle = '#5d6670';
+  for (const [cx, cy, rx, ry] of [[14, 2, 6, 3.5], [-9, -2, 7, 3.5], [-30, 1, 5, 3]]) {
     ctx.beginPath();
-    ctx.ellipse(28, 0, 2.5, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+  // Two engine pods high on the rear fuselage, between the wing and the
+  // tail: a dark intake at the front, a hot exhaust at the back.
+  for (const s of [-1, 1]) {
+    ctx.fillStyle = '#7f8892';
+    ctx.beginPath();
+    ctx.ellipse(-19, s * 9, 9.5, 4.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#2a2f36';
+    ctx.beginPath();
+    ctx.ellipse(-10, s * 9, 1.6, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,170,90,0.75)';
+    ctx.beginPath();
+    ctx.ellipse(-28.5, s * 9, 1.4, 2.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Twin fins, one at each end of the tailplane (edge on from above).
+  ctx.fillStyle = '#4b535c';
+  for (const s of [-1, 1]) {
+    poly(fin(s));
+    ctx.fill();
+    ctx.stroke();
+  }
+  // The canopy, well forward, and the gun's muzzle at the nose.
+  ctx.fillStyle = '#a9c9dc';
+  ctx.beginPath();
+  ctx.ellipse(24, 0, 5.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1b1f24';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(35, 0);
+  ctx.lineTo(40, 0);
+  ctx.stroke();
   ctx.restore();
 }
 

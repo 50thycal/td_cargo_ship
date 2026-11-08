@@ -64,12 +64,12 @@ const enemy = (id: FoeId, look: string, kit: AbilityId[]): LabCard => ({ id, kin
 
 /** Enemies in the order to test them: the open questions first. */
 const ENEMIES: LabCard[] = [
-  enemy('diveBomber', 'Redrawn: it flies in from the top and dives at the circle. Does it read, and is the window fair?', ['railgun', 'aegis', 'fullSteam']),
+  enemy('diveBomber', 'Now an A-10, and quicker: does it read, and is the window still fair?', ['railgun', 'aegis', 'fullSteam']),
   enemy('siege', 'It rises out of a hatch and hides between salvos: can you catch it while it is up?', ['railgun', 'lance', 'fullSteam']),
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
-  enemy('cloud', 'The firebomb: do you kill it far out, before its fireball lands on the lane?', ['flak', 'railgun', 'lance']),
+  enemy('cloud', 'It leads its ship now and comes in on the bow: do you kill it far out, before its fireball lands on the lane?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'Can you tell the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'The swarm spreads out: can you pick out each drone, and the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Is the dashed line readable? Sub, torpedo or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
@@ -165,6 +165,7 @@ export interface LabRound {
 export const LAB_ROUNDS: LabRound[] = [
   { n: 1, date: '2026-11-08', name: 'First look at the new enemies' },
   { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
+  { n: 3, date: '2026-11-08', name: 'Round 2 notes', since: '2026-11-08T23:05' },
 ];
 
 /** The round being tested now (the latest). */
@@ -179,12 +180,21 @@ export function labRound(n: number): LabRound | undefined {
 export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   rocketTruck: [{ round: 2, what: "Fires salvos of five red rockets; red shots can't be stopped" }],
   siege: [{ round: 2, what: 'Rises out of a hatch and hides between salvos; five hits' }],
-  diveBomber: [{ round: 2, what: 'Redrawn from above: flies in from the top and dives at its circle' }],
-  cloud: [{ round: 2, what: 'Now the Incendiary Missile: a fireball burns where it bursts' }],
+  diveBomber: [
+    { round: 2, what: 'Redrawn from above: flies in from the top and dives at its circle' },
+    { round: 3, what: 'Quicker, and now an A-10 Warthog' },
+  ],
+  cloud: [
+    { round: 2, what: 'Now the Incendiary Missile: a fireball burns where it bursts' },
+    { round: 3, what: 'Leads its ship and comes in on the bow' },
+  ],
   lure: [{ round: 2, what: 'Rises out of the water; wide ring; every helper fires at it' }],
   tender: [{ round: 2, what: 'Sails in from the edge and keeps clear of other boats' }],
   scavenger: [{ round: 2, what: 'Circles over the water; a quadcopter with a claw' }],
-  decoy: [{ round: 2, what: 'The tell comes later; decoys fly like real drones' }],
+  decoy: [
+    { round: 2, what: 'The tell comes later; decoys fly like real drones' },
+    { round: 3, what: 'The swarm spreads out; easier to tell apart' },
+  ],
   armored: [{ round: 2, what: 'New shield that flares on a blocked hit' }],
   spotter: [{ round: 2, what: 'Spots from further away' }],
   stealthJet: [{ round: 2, what: '17% faster' }],

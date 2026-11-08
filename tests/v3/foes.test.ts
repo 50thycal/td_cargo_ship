@@ -225,14 +225,22 @@ describe('chapter 1: Home Waters', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
     const fake = live(g, 'decoy')[0];
-    const real = live(g, 'drone')[0];
-    // Same speed, and each step a decoy turns as an attack drone would.
+    // Same speed, and each step a decoy turns as an attack drone would: a
+    // real drone of the same swarm put in its place (its slot in the
+    // swarm too), each flown on its own in the same sea.
+    const g1 = quiet();
+    launchFoe(g1, { at: 0, kind: 'decoy', base: 1 }, base(g1));
+    const real = live(g1, 'drone')[0];
     expect(fake.speed).toBe(real.speed);
     real.x = fake.x;
     real.y = fake.y;
     real.phase = fake.phase;
     real.target = fake.target;
+    real.slot = fake.slot;
+    g.threats = [fake];
+    g1.threats = [real];
     run(g, 2);
+    run(g1, 2);
     expect(Math.hypot(fake.x - real.x, fake.y - real.y)).toBeLessThan(1);
     expect(fake.heading).toBeCloseTo(real.heading, 6);
     // Close in, but too soon: still a drone. Later, close in: the strobe.
@@ -697,6 +705,77 @@ describe('chapter 4: Open War', () => {
     expect(l.dead).toBe(true);
   });
 
+});
+
+describe('Test Lab round 2 notes (2026-11-08): the Dive Bomber, the Incendiary Missile, the Decoy Drones', () => {
+  it('the Dive Bomber is quicker: its run is shorter, and its bomb still lands when the circle says', () => {
+    const D = FOE.diveBomber;
+    expect(D.window).toBeLessThan(2.2);
+    expect(D.mark + D.window + D.fall).toBeCloseTo(D.lead, 6);
+  });
+
+  it('an Incendiary Missile leads its ship: it lands ahead of where the ship was, on the bow, never trailing it', () => {
+    for (const seed of [1, 2, 3, 4]) {
+      for (const b of [0, 1, 2]) {
+        const g = quiet(seed);
+        const from = g.map.bases[b];
+        launchFoe(g, { at: 0, kind: 'cloud', base: b }, from);
+        const c = live(g, 'cloud')[0];
+        const ship = g.ships.find((s) => s.id === c.target)!;
+        expect(ship, `seed ${seed} base ${b}`).toBeDefined();
+        const at0 = { x: ship.x, y: ship.y };
+        const fwd = { x: Math.cos(ship.heading), y: Math.sin(ship.heading) };
+        let trail = 0;
+        let hitAt = { x: 0, y: 0 };
+        let rel = 0;
+        run(g, 40, () => {
+          if (!c.dead) {
+            hitAt = { x: c.x, y: c.y };
+            // Along the ship's course: + ahead of its middle, - behind it.
+            rel = (c.x - ship.x) * fwd.x + (c.y - ship.y) * fwd.y;
+            if (Math.hypot(c.x - ship.x, c.y - ship.y) < 150) trail = Math.max(trail, -rel);
+          }
+          return c.dead;
+        });
+        expect(c.dead, `seed ${seed} base ${b}`).toBe(true);
+        expect(g.ships.includes(ship) ? Math.hypot(hitAt.x - ship.x, hitAt.y - ship.y) : 0).toBeLessThan(SHIP.hitRadius + 8);
+        // It lands well ahead of where its ship was at launch...
+        expect((hitAt.x - at0.x) * fwd.x + (hitAt.y - at0.y) * fwd.y, `seed ${seed} base ${b}`).toBeGreaterThan(60);
+        // ...on the bow half, and close in it is never behind the ship.
+        expect(rel, `seed ${seed} base ${b}`).toBeGreaterThanOrEqual(0);
+        expect(trail, `seed ${seed} base ${b}`).toBeLessThan(10);
+      }
+    }
+  });
+
+  it('a Decoy Drones swarm spreads out: wide at launch, its drones apart all the way in, real and decoy alike', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
+    const swarm = g.threats.filter((t) => !t.dead && (t.kind === 'decoy' || t.kind === 'drone'));
+    expect(swarm).toHaveLength(FOE.decoy.size);
+    expect(swarm.every((t) => t.slot !== undefined)).toBe(true);
+    const width = () => {
+      const xs = swarm.map((t) => t.x);
+      const ys = swarm.map((t) => t.y);
+      return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    };
+    const gap = () => {
+      let m = Infinity;
+      for (const a of swarm) for (const o of swarm) if (a !== o && !a.dead && !o.dead) m = Math.min(m, Math.hypot(a.x - o.x, a.y - o.y));
+      return m;
+    };
+    expect(width()).toBeGreaterThanOrEqual(FOE.decoy.spread * (FOE.decoy.size - 1));
+    let least = Infinity;
+    let widest = 0;
+    for (let t = 0; t < 3.5; t += 0.25) {
+      run(g, 0.25);
+      least = Math.min(least, gap());
+      widest = Math.max(widest, width());
+    }
+    // Not one clump: no two drones on top of each other, the swarm wide.
+    expect(least).toBeGreaterThan(20);
+    expect(widest).toBeGreaterThan(200);
+  });
 });
 
 describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => {

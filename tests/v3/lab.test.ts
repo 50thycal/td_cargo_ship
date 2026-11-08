@@ -153,8 +153,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2]);
-    expect(LAB_ROUND).toBe(2);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3]);
+    expect(LAB_ROUND).toBe(3);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
@@ -164,6 +164,14 @@ describe('test rounds and card versions', () => {
     expect(cardRev('w-gunships')).toBe(2);
     expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
+    // Round 3 (the player's round 2 notes): the Dive Bomber, the Incendiary
+    // Missile and the Decoy Drones changed again.
+    expect(cardRev('diveBomber')).toBe(3);
+    expect(cardChanges('diveBomber', 2)).toEqual(['Quicker, and now an A-10 Warthog']);
+    expect(cardRev('cloud')).toBe(3);
+    expect(cardRev('decoy')).toBe(3);
+    expect(cardRev('combo-decoy-sprint')).toBe(3);
+    expect(cardRev('siege')).toBe(2);
   });
 
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {

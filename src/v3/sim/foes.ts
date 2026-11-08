@@ -24,9 +24,12 @@ import {
   pathLength,
   shipAhead,
   spawnThreat,
+  swarmAim,
+  swarmPart,
   targetable,
   type Game,
   type Launch,
+  type Ship,
   type Threat,
 } from './game';
 
@@ -216,10 +219,15 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'decoy': {
       if (!at) return;
       // Real drones and decoys, shuffled so the decoys aren't always the
-      // same places in the swarm.
-      const kinds = rng.shuffle(Array.from({ length: FOE.decoy.size }, (_, k): ThreatKind => (k < FOE.decoy.fakes ? 'decoy' : 'drone')));
+      // same places in the swarm. Spread out (Test Lab round 2: "they are
+      // just one large clump"): launched in a wide, staggered line, each
+      // keeps its place across the swarm's front until close in.
+      const D = FOE.decoy;
+      const kinds = rng.shuffle(Array.from({ length: D.size }, (_, k): ThreatKind => (k < D.fakes ? 'decoy' : 'drone')));
+      const mid = (D.size - 1) / 2;
       kinds.forEach((kind, k) => {
-        const th = spawnThreat(g, kind, at.x + (k - 2.5) * 12, at.y + (k % 2) * 8, 'base');
+        const th = spawnThreat(g, kind, at.x + (k - mid) * D.spread, at.y + (k % 2) * D.stagger, 'base');
+        th.slot = (k - mid) * D.slot;
         if (kind === 'decoy') th.foe = data();
       });
       return;
@@ -337,6 +345,23 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       if (!at) return;
       const th = spawnThreat(g, 'cloud', at.x, at.y, 'base');
       th.foe = data();
+      // It picks a ship it can meet bow or beam on (Test Lab round 2): one
+      // already past the base would only be caught up its wake, so it goes
+      // for the best placed ship instead. It leaves the rail on its lead.
+      const s = shipOf(g, th);
+      if (s) {
+        const front = (o: Ship) => {
+          const rx = at.x - o.x;
+          const ry = at.y - o.y;
+          return (rx * Math.cos(o.heading) + ry * Math.sin(o.heading)) / Math.max(1, Math.hypot(rx, ry));
+        };
+        if (front(s) < FOE.cloud.astern) {
+          const best = targetable(g).reduce<Ship | undefined>((m, o) => (!m || front(o) > front(m) ? o : m), undefined);
+          if (best && front(best) > front(s)) th.target = best.id;
+        }
+        const p = intercept(g, shipOf(g, th)!, th.x, th.y, th.speed, FOE.cloud.bow);
+        th.heading = Math.atan2(p.y - th.y, p.x - th.x);
+      }
       return;
     }
     default:
@@ -471,6 +496,32 @@ function shipOf(g: Game, th: Threat) {
   return th.target === CARRIER_TARGET ? undefined : g.ships.find((s) => s.id === th.target);
 }
 
+/** Where a missile at (x, y) flying `v` px/s meets a ship sailing its lane
+ *  (`bow` px off its bow): the time to go from the ship's speed along the
+ *  lane (the straight-line solution), then refined on the lane itself (for a
+ *  bend) a few times. Capped at `FOE.cloud.horizon` s ahead. */
+export function intercept(g: Game, s: Ship, x: number, y: number, v: number, bow = 0): Point {
+  const H = FOE.cloud.horizon;
+  const p0 = shipAhead(g, s, 0, bow);
+  const p1 = shipAhead(g, s, 1, bow);
+  const vx = p1.x - p0.x;
+  const vy = p1.y - p0.y;
+  const dx = p0.x - x;
+  const dy = p0.y - y;
+  // |p0 + V t - (x, y)| = v t: (|V|² - v²) t² + 2 (D·V) t + |D|² = 0.
+  const a = vx * vx + vy * vy - v * v;
+  const b = 2 * (dx * vx + dy * vy);
+  const c = dx * dx + dy * dy;
+  let t = Math.sqrt(c) / Math.max(1, v);
+  if (a < -1e-6) t = (-b - Math.sqrt(Math.max(0, b * b - 4 * a * c))) / (2 * a);
+  t = clamp(t, 0, H);
+  for (let k = 0; k < 3; k++) {
+    const p = shipAhead(g, s, t, bow);
+    t = Math.min(H, dist(x, y, p.x, p.y) / Math.max(1, v));
+  }
+  return shipAhead(g, s, t, bow);
+}
+
 /** Turn toward (x, y) at most `turn` rad/s and fly on at `speed`. */
 function steer(th: Threat, x: number, y: number, speed: number, turn: number, dt: number): void {
   const want = Math.atan2(y - th.y, x - th.x);
@@ -523,10 +574,11 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       const d = dist(th.x, th.y, tp.x, tp.y);
       // Flown exactly as game.ts flies the attack drone (the same weave, the
       // same speed), so nothing but the late strobe tells them apart.
-      const want = Math.atan2(tp.y - th.y, tp.x - th.x);
-      th.heading = want + (d > 80 ? DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase) : 0);
+      const at = th.slot ? swarmAim(th, tp, d) : tp;
+      th.heading = Math.atan2(at.y - th.y, at.x - th.x) + (d > 80 ? DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase) : 0);
       th.x += Math.cos(th.heading) * th.speed * dt;
       th.y += Math.sin(th.heading) * th.speed * dt;
+      swarmPart(g, th, dt);
       // The tell comes late (Test Lab round 1: "way too obvious" when they
       // strobed from launch): close in, and not in the first seconds.
       if (f.state === 0 && d <= FOE.decoy.revealAt && f.t >= FOE.decoy.revealAfter) f.state = 1;
@@ -626,7 +678,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         // the nearer side of the screen.
         const side = th.x < VIEW.width / 2 ? Math.PI : 0;
         th.heading += clamp(angleDiff(side, th.heading), -D.bank * dt, D.bank * dt);
-        f.vx = Math.min(D.exit, (f.vx ?? 200) + 400 * dt);
+        f.vx = Math.min(D.exit, (f.vx ?? 200) + 500 * dt);
         th.x += Math.cos(th.heading) * f.vx * dt;
         th.y += Math.sin(th.heading) * f.vx * dt;
         const off = th.x < -90 || th.x > VIEW.width + 90 || th.y < -90 || th.y > VIEW.height + 90;
@@ -669,14 +721,19 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       return;
     }
     case 'cloud': {
-      // Slow and heavy: it turns lazily onto where its ship will be. At the
-      // ship it hits (one hit) and bursts; the fireball does the rest.
+      // Slow and heavy, and it leads its ship (Test Lab round 2: "aim and
+      // lead the ship instead of coming through on the back"): it flies at
+      // where the ship will be when it gets there, aiming a little off the
+      // ship's bow while it is far, so it comes in on the bow or the flank,
+      // not up the wake. At the ship it hits (one hit) and bursts; the
+      // fireball does the rest.
       retarget(th);
+      const C = FOE.cloud;
       const s = shipOf(g, th);
       const tp = aim(th);
-      const lead = s ? shipAhead(g, s, Math.min(4, dist(th.x, th.y, tp.x, tp.y) / Math.max(1, th.speed))) : tp;
-      const close = dist(th.x, th.y, tp.x, tp.y) < 120;
-      steer(th, close ? tp.x : lead.x, close ? tp.y : lead.y, th.speed, FOE.cloud.turn * (close ? 3 : 1), dt);
+      const d = dist(th.x, th.y, tp.x, tp.y);
+      const p = s ? intercept(g, s, th.x, th.y, th.speed, clamp((d - C.bowFrom) * 0.5, 0, C.bow)) : tp;
+      steer(th, p.x, p.y, th.speed, C.turn * (d < C.close ? 3 : 1), dt);
       hit(th);
       if (th.dead) burstCloud(g, th);
       return;
