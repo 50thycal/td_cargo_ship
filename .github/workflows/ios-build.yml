@@ -56,25 +56,6 @@ jobs:
           sudo xcode-select -s "$LATEST"
           xcodebuild -version
           mkdir -p build
-      - name: Resolve Swift packages (with retries)
-        # On 2026-11-08 package resolution failed before any build: SwiftPM
-        # could not fetch Capacitor's xcframework zips and reported "already
-        # exists in file system" (a failed download leaves its folder
-        # behind). Check the zip downloads directly, then resolve up to three
-        # times from a clean cache.
-        run: |
-          for f in Capacitor Cordova; do
-            curl -sSL -o /dev/null -w "$f.xcframework.zip: HTTP %{http_code}, %{size_download} bytes\n" \
-              "https://github.com/ionic-team/capacitor-swift-pm/releases/download/8.6.0/$f.xcframework.zip" || true
-          done
-          for i in 1 2 3; do
-            rm -rf ~/Library/Caches/org.swift.swiftpm ~/Library/org.swift.swiftpm build/dd/SourcePackages
-            if xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App -derivedDataPath build/dd; then
-              exit 0
-            fi
-            echo "Package resolution failed (attempt $i)"; sleep 15
-          done
-          exit 1
       - name: Build for the simulator (unsigned)
         run: |
           set -o pipefail
