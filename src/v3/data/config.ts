@@ -184,12 +184,12 @@ export const THREATS: Record<
   diveBomber: { speed: 0, hp: 2, damage: 2, dropChance: 0.5, label: 'Dive bomber' },
   siege: { speed: 0, hp: 6, damage: 0, dropChance: 1, label: 'Siege battery' },
   spotter: { speed: 120, hp: 4, damage: 0, dropChance: 0.7, label: 'Spotter plane' },
-  tender: { speed: 30, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },
+  tender: { speed: 55, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },
   guard: { speed: 0, hp: 1, damage: 0, dropChance: 0.03, label: 'Guard drone' },
   picket: { speed: 0, hp: 5, damage: 0, dropChance: 0.8, label: 'Flak picket' },
   lure: { speed: 0, hp: 2, damage: 0, dropChance: 0.4, label: 'Lure beacon' },
   barge: { speed: 0, hp: 12, damage: 0, dropChance: 1, label: 'Supply barge' },
-  cloud: { speed: 22, hp: 1, damage: 2, dropChance: 0, label: 'Volatile cloud' },
+  cloud: { speed: 48, hp: 2, damage: 1, dropChance: 0.3, label: 'Volatile cloud missile' },
 };
 
 /** The supertanker (The Behemoth Run): its hit points, the ships its loss

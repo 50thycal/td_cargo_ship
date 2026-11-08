@@ -75,7 +75,7 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
       drawBarge(ctx, th);
       return true;
     case 'cloud':
-      drawCloud(ctx, g, th);
+      drawCloud(ctx, g, th, heading);
       return true;
     default:
       return false;
@@ -126,6 +126,7 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.stroke();
     }
     if (th.kind === 'barge') drawBargeTags(ctx, g);
+    if (th.kind === 'lure') drawLureRing(ctx, g, th);
     if (th.kind === 'tender' && th.foe?.state === 1) {
       const t = g.threats.find((o) => o.id === th.foe!.link && !o.dead);
       if (t) {
@@ -168,8 +169,11 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
 }
 
 /** Shots no interceptor can stop: the Rocket Truck's rockets, a dive
- *  bomber's bomb, a siege battery's shells in flight. */
+ *  bomber's bomb, a siege battery's shells in flight; and a Volatile
+ *  Cloud's gas, drawn over the ships it covers. */
 export function drawFoeShots(ctx: CanvasRenderingContext2D, g: Game): void {
+  // A Volatile Cloud's gas hangs over the water, over any ship in it.
+  for (const m of g.foe.marks) if (m.kind === 'gas') drawGas(ctx, g, m);
   for (const m of g.foe.marks) {
     if (m.kind !== 'shell' || !m.fired) continue;
     // A shell lobbed from the gun, arcing down onto its circle.
@@ -701,13 +705,16 @@ function drawCrossing(ctx: CanvasRenderingContext2D, g: Game, lead: Threat): voi
   ctx.stroke();
 }
 
-/** The Scavenger: a drone with a claw, a line to the pickup it wants, and
- *  what it took hanging under it on the way out. */
+/** The Scavenger: a quadcopter, not a winged drone like the others (the
+ *  player: "look different than the other drones"): an amber body, four
+ *  spinning rotors and a grabber claw that opens as it closes on a pickup,
+ *  a line to the pickup it wants, and what it took hanging in its claw on
+ *  the way out. */
 function drawScavenger(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
   const f = th.foe;
   const p = f && f.link >= 0 ? g.pickups.find((o) => o.id === f.link) : undefined;
   if (p) {
-    ctx.strokeStyle = 'rgba(216,180,254,0.6)';
+    ctx.strokeStyle = 'rgba(251,191,36,0.6)';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 6]);
     ctx.beginPath();
@@ -715,29 +722,89 @@ function drawScavenger(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headi
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(216,180,254,0.85)';
+    ctx.strokeStyle = 'rgba(251,191,36,0.85)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
     ctx.stroke();
   }
-  deltaWing(ctx, th.x, th.y, heading, 1.05, '#c4b5fd');
-  // The claw: two hooks under the nose.
+  if (f && f.link === -1 && f.state === 0 && f.sx !== undefined && f.sy !== undefined) {
+    // Lurking: a faint amber ring where it circles, waiting.
+    ctx.strokeStyle = 'rgba(251,191,36,0.22)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 9]);
+    ctx.beginPath();
+    ctx.arc(f.sx, f.sy, FOE.scavenger.orbit, g.t * 0.4, g.t * 0.4 + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  const near = p ? Math.hypot(p.x - th.x, p.y - th.y) : Infinity;
+  const open = f?.link === -2 ? 0.15 : near < 120 ? 1 : 0.45 + 0.15 * Math.sin(g.t * 3 + th.id);
   ctx.save();
+  // Its shadow on the water, offset as the other aircraft's.
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(th.x + 8, th.y + 13, 20, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.translate(th.x, th.y);
   ctx.rotate(heading);
+  ctx.scale(1.25, 1.25);
+  // The X frame and four rotors, blurring as they spin.
   ctx.strokeStyle = '#1b1b1b';
-  ctx.lineWidth = 3;
-  for (const s of [-1, 1]) {
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-14, -14);
+  ctx.lineTo(14, 14);
+  ctx.moveTo(-14, 14);
+  ctx.lineTo(14, -14);
+  ctx.stroke();
+  for (const [rx, ry] of [[14, 14], [14, -14], [-14, 14], [-14, -14]]) {
+    ctx.fillStyle = 'rgba(253,230,138,0.38)';
+    ctx.strokeStyle = 'rgba(245,158,11,0.9)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(10, s * 3);
-    ctx.lineTo(20, s * 8);
-    ctx.lineTo(24, s * 3);
+    ctx.arc(rx, ry, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const a = g.t * 22 + rx * 0.3 + ry;
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(rx - Math.cos(a) * 9, ry - Math.sin(a) * 9);
+    ctx.lineTo(rx + Math.cos(a) * 9, ry + Math.sin(a) * 9);
     ctx.stroke();
   }
+  // The body: an amber hull with a dark sensor eye.
+  ctx.fillStyle = '#f59e0b';
+  ctx.strokeStyle = '#1b1b1b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-9, -8, 18, 16, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#7f1d1d';
+  ctx.beginPath();
+  ctx.arc(5, 0, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // The claw: three prongs off the nose, opening as it nears its prize.
+  ctx.strokeStyle = '#1b1b1b';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  for (const s of [-1, 0, 1]) {
+    const a = s * (0.25 + 0.55 * open);
+    ctx.beginPath();
+    ctx.moveTo(9, 0);
+    ctx.lineTo(9 + Math.cos(a) * 11, Math.sin(a) * 11);
+    ctx.lineTo(9 + Math.cos(a) * 11 + Math.cos(a - s * 0.9) * 7, Math.sin(a) * 11 + Math.sin(a - s * 0.9) * 7);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
   if (f?.link === -2) {
     ctx.fillStyle = '#facc15';
-    ctx.fillRect(14, -6, 12, 12);
+    ctx.strokeStyle = '#1b1b1b';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(16, -6, 12, 12);
+    ctx.strokeRect(16, -6, 12, 12);
   }
   ctx.restore();
 }
@@ -1001,14 +1068,40 @@ function drawPaint(ctx: CanvasRenderingContext2D, g: Game, sp: Threat, ship: { x
   }
 }
 
-/** The Repair Tender: a small grey ship with a green cross on deck. */
+/** The Repair Tender: a small grey ship with a green cross on deck, bow
+ *  along its course, a wake behind it while it sails in. */
 function drawTender(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  const sp = Math.hypot(th.vx, th.vy);
   ctx.save();
   ctx.translate(th.x, th.y);
-  ctx.fillStyle = 'rgba(200,230,255,0.18)';
-  ctx.beginPath();
-  ctx.ellipse(-30, 0, 18, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.rotate(th.heading);
+  if (sp > 5) {
+    // A V of white wake off the stern, longer the faster it goes.
+    const k = Math.min(1, sp / THREATS.tender.speed);
+    ctx.strokeStyle = `rgba(220,240,255,${0.25 + 0.3 * k})`;
+    ctx.lineWidth = 3;
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-26, s * 9);
+      ctx.lineTo(-26 - 50 * k, s * (16 + 14 * k));
+      ctx.stroke();
+    }
+    ctx.fillStyle = `rgba(220,240,255,${0.2 + 0.2 * k})`;
+    ctx.beginPath();
+    ctx.ellipse(-34 - 10 * k, 0, 14 + 12 * k, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Bow wave.
+    ctx.strokeStyle = `rgba(220,240,255,${0.3 * k})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(30, 0, 9, -1.1, 1.1);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = 'rgba(200,230,255,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(-30, 0, 18, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.fillStyle = '#6b7280';
   ctx.strokeStyle = '#111827';
   ctx.lineWidth = 2;
@@ -1074,17 +1167,33 @@ function drawPicketRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
   ctx.setLineDash([]);
 }
 
-/** The Lure Beacon: a red buoy with a light that flashes, and rings. */
+/** The Lure Beacon: a red buoy that rises out of the water (ripples and
+ *  spray, its light dark until it's up), then flashes. */
 function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const on = Math.floor(g.t * 5) % 2 === 0;
-  for (let r = 0; r < 2; r++) {
-    const u = (g.t * 0.8 + r / 2) % 1;
-    ctx.strokeStyle = `rgba(253,224,71,${0.5 * (1 - u)})`;
+  const f = th.foe;
+  const rising = f?.state === 0;
+  const k = rising ? Math.min(1, (f?.t ?? 0) / FOE.lure.rise) : 1;
+  const ease = 1 - (1 - k) ** 3;
+  // Ripples off the hull: fast while it breaks the surface.
+  for (let r = 0; r < 3; r++) {
+    const u = (g.t * (rising ? 1.6 : 0.6) + r / 3) % 1;
+    ctx.strokeStyle = `rgba(200,235,255,${(rising ? 0.55 : 0.25) * (1 - u)})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(th.x, th.y, 14 + u * 60, 0, Math.PI * 2);
+    ctx.ellipse(th.x, th.y + 6, 14 + u * 34, (14 + u * 34) * 0.45, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
+  const lift = (1 - ease) * 26;
+  ctx.save();
+  // Half again the old buoy's size, so it reads at a glance.
+  ctx.translate(th.x, th.y);
+  ctx.scale(1.5, 1.5);
+  ctx.translate(-th.x, -th.y);
+  // Below the waterline (y + 8) nothing shows: it comes up through it.
+  ctx.beginPath();
+  ctx.rect(th.x - 40, th.y - 80, 80, 88);
+  ctx.clip();
+  ctx.translate(0, lift);
   ctx.fillStyle = '#dc2626';
   ctx.strokeStyle = '#111827';
   ctx.lineWidth = 2;
@@ -1092,18 +1201,84 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.ellipse(th.x, th.y + 4, 12, 8, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = '#f5f5f4';
+  ctx.fillRect(th.x - 12, th.y + 1, 24, 3);
+  ctx.fillStyle = '#dc2626';
   ctx.fillRect(th.x - 3, th.y - 16, 6, 18);
+  ctx.strokeRect(th.x - 3, th.y - 16, 6, 18);
+  const on = !rising && Math.floor(g.t * 5) % 2 === 0;
   ctx.fillStyle = on ? '#fef08a' : '#78716c';
   ctx.beginPath();
   ctx.arc(th.x, th.y - 18, 6, 0, Math.PI * 2);
   ctx.fill();
   if (on) {
-    ctx.fillStyle = 'rgba(254,240,138,0.3)';
+    ctx.fillStyle = 'rgba(254,240,138,0.35)';
     ctx.beginPath();
-    ctx.arc(th.x, th.y - 18, 16, 0, Math.PI * 2);
+    ctx.arc(th.x, th.y - 18, 18, 0, Math.PI * 2);
     ctx.fill();
   }
-  hpPips(ctx, th.x, th.y - 42, th.hp, THREATS.lure.hp);
+  ctx.restore();
+  if (rising) {
+    // Water streaming off it as it breaks the surface.
+    ctx.fillStyle = `rgba(220,240,255,${0.6 * (1 - k)})`;
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i - 2.5) * 0.45;
+      const d = 14 + 36 * k;
+      ctx.beginPath();
+      ctx.arc(th.x + Math.cos(a) * d, th.y + 4 + Math.sin(a) * d * 0.8, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  hpPips(ctx, th.x, th.y - 52, th.hp, THREATS.lure.hp);
+}
+
+/** The Lure's ring on the water, once it's up: everything a helper aims
+ *  at inside it, or any helper inside it, goes for the buoy instead. A
+ *  pulse sweeps out to the edge, and a yellow tether runs from it to each
+ *  helper drone it has drawn. */
+function drawLureRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  const f = th.foe;
+  const R = FOE.lure.radius;
+  const k = f?.state === 0 ? Math.min(1, (f.t ?? 0) / FOE.lure.rise) : 1;
+  const r = R * (f?.state === 0 ? k * k : 1);
+  ctx.fillStyle = `rgba(253,224,71,${0.06 * k})`;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(253,224,71,${0.55 * k})`;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([14, 10]);
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, r, -g.t * 0.25, -g.t * 0.25 + Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (f?.state === 0) return;
+  for (let i = 0; i < 2; i++) {
+    const u = (g.t * 0.7 + i / 2) % 1;
+    ctx.strokeStyle = `rgba(253,224,71,${0.4 * (1 - u)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, 16 + u * (R - 16), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(253,224,71,0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 6]);
+  for (const w of g.wings) {
+    if (w.target !== th.id) continue;
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y);
+    ctx.lineTo(th.x, th.y);
+    ctx.stroke();
+  }
+  for (const h of g.hellfires) {
+    if (h.target !== th.id) continue;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y);
+    ctx.lineTo(th.x, th.y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
 }
 
 /** The Supply Barge: a flat hull stacked with crates. */
@@ -1142,29 +1317,145 @@ function drawBargeTags(ctx: CanvasRenderingContext2D, g: Game): void {
   });
 }
 
-/** The Volatile Cloud: a yellow-green gas, churning. Over ships, its edge
- *  flashes red: don't fire into it. */
-function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const R = FOE.cloud.radius;
-  const over = g.ships.some((s) => Math.hypot(s.x - th.x, s.y - th.y) <= R);
-  const fade = Math.min(1, (FOE.cloud.life - (th.foe?.t ?? 0)) / 3);
-  ctx.save();
-  ctx.globalAlpha = Math.max(0.2, fade);
-  for (let k = 0; k < 7; k++) {
-    const a = k * 0.9 + g.t * 0.3 + th.id;
-    const r = R * (0.45 + 0.15 * Math.sin(g.t * 0.7 + k));
-    ctx.fillStyle = 'rgba(190,220,90,0.16)';
+/** The Volatile Cloud: a slow, chunky biohazard missile, yellow-green with
+ *  hazard bands and the trefoil, trailing green smoke, with a faint line to
+ *  the ship it's after. */
+function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
+  const target = th.target === CARRIER_TARGET ? g.map.carrier : g.ships.find((s) => s.id === th.target);
+  if (target) {
+    ctx.strokeStyle = 'rgba(190,230,80,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 8]);
     ctx.beginPath();
-    ctx.arc(th.x + Math.cos(a) * R * 0.4, th.y + Math.sin(a) * R * 0.4, r, 0, Math.PI * 2);
+    ctx.moveTo(th.x, th.y);
+    ctx.lineTo(target.x, target.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // A lazy green smoke trail: puffs back along its heading.
+  for (let i = 1; i <= 6; i++) {
+    const d = 30 + i * 11;
+    const wob = Math.sin(g.t * 4 + i) * 2.5;
+    ctx.fillStyle = `rgba(170,220,90,${0.3 - i * 0.04})`;
+    ctx.beginPath();
+    ctx.arc(th.x - Math.cos(heading) * d - Math.sin(heading) * wob, th.y - Math.sin(heading) * d + Math.cos(heading) * wob, 4 + i * 1.3, 0, Math.PI * 2);
     ctx.fill();
   }
-  const flash = over && Math.floor(g.t * 4) % 2 === 0;
-  ctx.strokeStyle = flash ? 'rgba(255,77,61,0.9)' : 'rgba(190,220,90,0.55)';
+  // A sickly glow round it, pulsing.
+  ctx.fillStyle = `rgba(190,240,60,${0.16 + 0.08 * Math.sin(g.t * 5)})`;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, 38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(th.x, th.y);
+  ctx.rotate(heading);
+  // Chunky: a third bigger than a guided missile's body.
+  ctx.scale(1.35, 1.35);
+  // Flame.
+  ctx.fillStyle = '#ffb347';
+  ctx.beginPath();
+  ctx.moveTo(-22, -5);
+  ctx.lineTo(-30 - Math.random() * 5, 0);
+  ctx.lineTo(-22, 5);
+  ctx.fill();
+  // Fins.
+  ctx.fillStyle = '#3f3f1a';
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.5;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(-12, s * 7);
+    ctx.lineTo(-24, s * 15);
+    ctx.lineTo(-22, s * 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // The body: a fat canister, yellow-green.
+  ctx.fillStyle = '#c4e03a';
+  ctx.beginPath();
+  ctx.roundRect(-22, -9, 40, 18, 5);
+  ctx.fill();
+  // Hazard bands at the tail: black on yellow.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-22, -9, 10, 18);
+  ctx.clip();
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(-22, -9, 10, 18);
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 3;
+  for (let x = -30; x < -8; x += 6) {
+    ctx.beginPath();
+    ctx.moveTo(x, 10);
+    ctx.lineTo(x + 10, -10);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-22, -9, 40, 18, 5);
+  ctx.stroke();
+  // The nose: a glowing green warhead.
+  ctx.fillStyle = '#4ade80';
+  ctx.beginPath();
+  ctx.moveTo(18, -9);
+  ctx.quadraticCurveTo(32, 0, 18, 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  // The trefoil on its side, upright so it reads.
+  bioMark(ctx, th.x - Math.cos(heading) * 3, th.y - Math.sin(heading) * 3, 9, '#111');
+  hpPips(ctx, th.x, th.y - 38, th.hp, THREATS.cloud.hp);
+}
+
+/** The biohazard trefoil: three open rings round a small one. */
+function bioMark(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1.5, r * 0.28);
+  for (let k = 0; k < 3; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI * 2) / 3;
+    const cx = x + Math.cos(a) * r * 0.55;
+    const cy = y + Math.sin(a) * r * 0.55;
+    // Open on the outside: the arc runs round from one side of the gap.
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.5, a + 0.9, a + Math.PI * 2 - 0.9);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.3, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** A Volatile Cloud's gas: a yellow-green toxic cloud churning on the
+ *  water, its edge dashed, the trefoil in it; it swells in as it bursts and
+ *  thins out at the end. A hull inside it flashes as it takes a hit. */
+function drawGas(ctx: CanvasRenderingContext2D, g: Game, m: { id: number; x: number; y: number; t: number; dur: number }): void {
+  const R = FOE.cloud.radius;
+  const grow = Math.min(1, m.t / 0.35);
+  const fade = Math.min(1, (m.dur - m.t) / 1.5);
+  const a = Math.max(0, Math.min(grow, fade));
+  ctx.save();
+  ctx.globalAlpha = a;
+  for (let k = 0; k < 9; k++) {
+    const ang = k * 0.7 + g.t * (k % 2 ? 0.35 : -0.25) + m.id;
+    const off = R * (0.2 + 0.25 * ((k * 37) % 5) / 5);
+    const r = R * (0.42 + 0.12 * Math.sin(g.t * 0.9 + k)) * (0.6 + 0.4 * grow);
+    ctx.fillStyle = k % 3 === 0 ? 'rgba(210,235,80,0.2)' : 'rgba(120,200,70,0.2)';
+    ctx.beginPath();
+    ctx.arc(m.x + Math.cos(ang) * off, m.y + Math.sin(ang) * off, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(200,240,70,0.7)';
   ctx.lineWidth = 2.5;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
-  ctx.arc(th.x, th.y, R, 0, Math.PI * 2);
+  ctx.arc(m.x, m.y, R, g.t * 0.2, g.t * 0.2 + Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.globalAlpha = a * 0.55;
+  bioMark(ctx, m.x, m.y, 18, '#1a2e05');
   ctx.restore();
 }

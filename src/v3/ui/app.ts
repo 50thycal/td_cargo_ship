@@ -177,18 +177,18 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   torpedoSub: 'Up for a few seconds: three hits. Its torpedo runs the dashed line. Shoot it, or get off the line.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
   crosser: 'Two lines meet at the X, then split for six ships. One blast at the X takes them all.',
-  scavenger: 'It flies off with the pickup it is after. Shoot it, or take the pickup first.',
+  scavenger: 'It circles over the water, then flies off with the pickup it is after. Shoot it, or take the pickup first.',
   stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',
   stealthBomber: 'No warning: a flying wing with three missiles. Six hits, or shoot what it drops.',
   diveBomber: 'The red circle is where it hits. The plane shows for a moment: shoot it, or move the ships out.',
   siege: 'Its shells land in the orange circles and can\'t be stopped. Silence the gun (six hits) or move.',
   spotter: 'It marks one ship for the others and calls a strike on it. Shoot it down to call it off.',
-  tender: 'Mends the most damaged enemy near it, a green pulse at a time. Six hits.',
+  tender: 'Sails in, then mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
   picket: 'Shoots down your shots that fly through its ring. Sink it, or fire in bursts.',
-  lure: 'Your helpers chase it and do nothing to it. Two taps sink it.',
+  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two taps sink it.',
   barge: 'While it floats, every raid gets one more missile per site. Twelve hits.',
-  cloud: 'Set off over your ships, it hurts them. Pop it over open water; don\'t fire into it over the convoy.',
+  cloud: 'A slow biohazard missile. Shot down or at its ship, it leaves toxic gas that hurts ships sailing through. Kill it far out.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map
@@ -3283,7 +3283,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
   siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',
-  cloud: 'Volatile clouds did the most damage: pop them over open water, and hold fire while one is over the convoy.',
+  cloud: 'Volatile Cloud gas did the most damage: shoot the biohazard missiles down far out, before they reach the lane.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

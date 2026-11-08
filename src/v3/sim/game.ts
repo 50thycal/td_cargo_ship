@@ -71,7 +71,7 @@ import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, picketShoots, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, picketShoots, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
@@ -545,8 +545,9 @@ export interface Sortie {
   ty: number;
   hit: boolean;
   /** truck: a raider's id; silo: a base's index; tunnel: the cancelled
-   *  raider spawn (already gone from the queue). */
-  kind: 'truck' | 'silo' | 'tunnel';
+   *  raider spawn (already gone from the queue); lure: a Lure Beacon's
+   *  threat id (the pass is wasted on it). */
+  kind: 'truck' | 'silo' | 'tunnel' | 'lure';
   ref: number;
 }
 
@@ -1806,9 +1807,9 @@ function updateEscorts(g: Game, dt: number): void {
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
     // A Lure Beacon in reach draws its fire first (the enemy build).
-    const target = lureIn(g, e.x, e.y, AB.frigate.range) ?? g.threats
+    const target = lured(g, e.x, e.y, AB.frigate.range, g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
-      .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
+      .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0]);
     if (!target) {
       e.fireT = 0.1;
       continue;
@@ -1852,9 +1853,9 @@ function updateAegis(g: Game, dt: number): void {
       }
     }
     if (a.ammo < 1) return a;
-    const target = lureIn(g, x, y, reach) ?? g.threats
+    const target = lured(g, x, y, reach, g.threats
       .filter((t) => !t.dead && isTarget(t) && dist(t.x, t.y, x, y) <= reach && assigned(g, t.id) < t.hp)
-      .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0];
+      .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0]);
     if (!target) return a;
     a.ammo -= 1;
     g.interceptors.push({ id: g.nextId++, x, y: y - 8, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
@@ -1878,9 +1879,9 @@ function updatePointDefense(g: Game, dt: number): void {
   g.pdT -= dt;
   if (g.pdT > 0) return;
   const c = g.map.carrier;
-  const target = lureIn(g, c.x, c.y, g.stats.pdRange) ?? g.threats
+  const target = lured(g, c.x, c.y, g.stats.pdRange, g.threats
     .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
-    .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
+    .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0]);
   if (!target) {
     g.pdT = 0.1;
     return;
@@ -2417,6 +2418,12 @@ function updatePassives(g: Game, dt: number): void {
   for (const d of g.wings) {
     d.life -= dt;
     let th = d.target === null ? undefined : g.threats.find((t) => t.id === d.target && !t.dead);
+    // A Lure Beacon that comes up turns a drone already on its way.
+    const lure = lureIn(g, d.x, d.y);
+    if (lure && th !== lure) {
+      th = lure;
+      d.target = lure.id;
+    }
     if (!th) {
       // The threat closest to hitting a hull that no other drone is after.
       const claimed = new Set(g.wings.map((o) => o.target));
@@ -2468,8 +2475,10 @@ function updatePassives(g: Game, dt: number): void {
         best = t;
       }
     }
-    if (!best) continue;
-    launchHellfire(g, h.x, h.y, h.heading, best, AB.gunships.damage[(gw?.level ?? 1) - 1]);
+    // A Lure Beacon in reach, or by what they'd fire at, draws the rockets.
+    const pick = lured(g, h.x, h.y, AB.gunships.reach, best ?? undefined);
+    if (!pick) continue;
+    launchHellfire(g, h.x, h.y, h.heading, pick, AB.gunships.damage[(gw?.level ?? 1) - 1]);
   }
   g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
   updateHellfires(g, dt);
@@ -2647,6 +2656,9 @@ function callSorties(g: Game, n: number, quiet: number, subs = false): void {
     const p = sp.path[0];
     picks.push({ kind: 'tunnel', ref: i, x: clamp(p.x, 30, VIEW.width - 30), y: clamp(p.y, 30, VIEW.height - 30), score: sp.units.reduce((a, u) => a + u.size, 0) });
   });
+  // A Lure Beacon that's up draws the first pass, ahead of everything.
+  const lure = lureIn(g, VIEW.width / 2, VIEW.height / 2);
+  if (lure) picks.push({ kind: 'lure', ref: lure.id, x: lure.x, y: lure.y, score: Infinity });
   picks.sort((a, b) => b.score - a.score);
   const chosen = picks.slice(0, n);
   // A tunnel's truck is cancelled now (so a later pass can't pick it again).
@@ -2666,6 +2678,9 @@ function bombTarget(g: Game, b: Sortie): void {
   if (b.kind === 'truck') {
     const r = g.raiders.find((o) => o.id === b.ref);
     if (r && raiderUp(r)) knockOut(g, r);
+  } else if (b.kind === 'lure') {
+    const t = g.threats.find((o) => o.id === b.ref && !o.dead);
+    if (t) damageThreat(g, t, 1);
   } else {
     addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: b.kind === 'silo' ? 'SILO SILENCED' : 'TUNNEL HIT' });
   }
@@ -2914,12 +2929,12 @@ function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | 
     {
       // A missile from off the screen's edge (the gunship never shows).
       const sx = ax < VIEW.width / 2 ? 0 : VIEW.width;
-      const target = threat ?? null;
+      const target = lured(g, ax, ay, AB.gunships.reach, threat ?? undefined) ?? null;
       launchHellfire(g, sx, ay - 60, Math.atan2(60, ax - sx), target, AB.gunships.damage[k], target ? undefined : { x: ax, y: ay });
       break;
     }
     case 'orbital': {
-      const th = threat ?? toughest(g, -1);
+      const th = lured(g, ax, ay, Infinity, threat ?? undefined) ?? toughest(g, -1);
       if (!th) break;
       const bx = th.x;
       const by = th.y;
@@ -4607,9 +4622,9 @@ function updatePosts(g: Game, dt: number): void {
     }
     st.fireT -= dt;
     if (st.fireT > 0) return;
-    const target = lureIn(g, p.x, p.y, p.reach) ?? g.threats
+    const target = lured(g, p.x, p.y, p.reach, g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, p.x, p.y) <= p.reach && assigned(g, t.id) < t.hp)
-      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0]);
     if (!target) {
       st.fireT = 0.1;
       return;
@@ -5178,7 +5193,7 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   picket: 'sub.surface',
   lure: 'mine.drop',
   barge: 'sub.surface',
-  cloud: 'mine.drop',
+  cloud: 'missile.launch',
   // Structures are raised, never launched.
 };
 
@@ -5195,9 +5210,6 @@ function launchCue(g: Game, th: Threat, origin: LaunchOrigin): void {
 // ---------------------------------------------------------------------------
 // Helpers
 
-/** Effects that are explosions (they set off a Volatile Cloud). */
-const EXPLOSIVE = new Set<FxKind>(['boom', 'burst', 'splash', 'flak', 'frag', 'thermo', 'nuke', 'orbital']);
-
 export function addFx(
   g: Game,
   kind: FxKind,
@@ -5208,8 +5220,6 @@ export function addFx(
   // Words never print on top of each other (playthrough round: "JET DOWN"
   // and "REPAIRED" landed on one spot): a new one steps up above any still
   // fresh nearby.
-  // The enemy build: an explosion inside a Volatile Cloud sets it off.
-  if (EXPLOSIVE.has(kind)) sparks(g, x, y);
   if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
   g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text });
 }
