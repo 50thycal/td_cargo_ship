@@ -9,7 +9,7 @@ import { MAP_ORDER } from '../../src/v3/data/maps';
 import { RULES } from '../../src/v3/data/config';
 import { labDone } from '../../src/v3/sim/lab';
 import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
-import { labResultDocs } from '../../src/v3/sim/labDocs';
+import { labResultDocs, logRound, ownNote } from '../../src/v3/sim/labDocs';
 import { addLabEntry, currentEntry, labStatus, nextCards, olderEntries, parseLabProgress, type LabEntry } from '../../src/v3/ui/lab';
 import { applyFreePlay, applyLab, createGame, damageThreat, step, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
@@ -246,6 +246,21 @@ describe('the bridge to the review pages', () => {
     // A log from before rounds is round 1, version 1.
     expect(results.torpedoSub).toMatchObject({ round: 1, rev: 1, history: [], changes: [] });
     expect(builds.rocketTruck).toMatchObject({ verdict: 'tune', round: 2 });
+  });
+
+  it('drops an earlier round\'s note copied in at the start of a new one', () => {
+    expect(ownNote('Old words.\n\n\nNew words.', ['Old words.'])).toBe('New words.');
+    expect(ownNote('Only new.', ['Old words.'])).toBe('Only new.');
+  });
+
+  it('places a log from before rounds by its build: a round-2 build counts as round 2', () => {
+    const old = { ...log('e', 'rocketTruck', '2026-11-08T04:00:00Z', 'keep', 'first look'), build: '2026-11-08T03:46' };
+    const after = { ...log('f', 'rocketTruck', '2026-11-08T16:00:00Z', 'tune', 'salvos'), build: '2026-11-08T15:07' };
+    expect(logRound(old)).toBe(1);
+    expect(logRound(after)).toBe(2);
+    const { results } = labResultDocs([old, after]);
+    expect(results.rocketTruck).toMatchObject({ round: 2, rev: 2, note: 'salvos' });
+    expect(results.rocketTruck.history).toEqual([{ round: 1, verdict: 'keep', note: 'first look', at: '2026-11-08T04:00:00Z', log: 'e' }]);
   });
 
   it('a log from before rounds still replays', () => {

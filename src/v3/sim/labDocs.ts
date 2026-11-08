@@ -5,7 +5,7 @@
 // rounds is round 1): a card's document is its latest round's latest
 // verdict, with the earlier rounds' verdicts as its history.
 
-import { cardChangeList, labCard } from '../data/lab';
+import { LAB_ROUNDS, cardChangeList, labCard } from '../data/lab';
 import { evidenceLines } from './lab';
 import type { LabResult, PlayLog } from './playlog';
 
@@ -34,8 +34,10 @@ export interface LabBuildDoc {
 }
 
 const when = (l: PlayLog) => l.endedAt ?? l.startedAt;
-/** A log's round: what it says, else round 1 (logs from before rounds). */
-export const logRound = (l: PlayLog): number => l.labResult?.round ?? l.lab?.round ?? 1;
+/** A log's round: what it says; a log from before rounds, by the build it
+ *  was played on (the latest round whose builds had started); else 1. */
+export const logRound = (l: PlayLog): number =>
+  l.labResult?.round ?? l.lab?.round ?? Math.max(1, ...LAB_ROUNDS.filter((r) => r.since && /^\d{4}-/.test(l.build ?? '') && l.build >= r.since).map((r) => r.n));
 
 export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabResultDoc>; builds: Record<string, LabBuildDoc> } {
   // card → round → its latest log.
@@ -57,16 +59,18 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const l = rounds.get(order[0])!;
     const r = l.labResult!;
     const round = order[0];
+    const note = ownNote(r.note, order.slice(1).map((n) => rounds.get(n)!.labResult!.note));
     const doc: LabResultDoc = {
       verdict: r.verdict,
       tags: r.tags,
-      note: r.note,
+      note,
       evidence: evidenceLines(card, r.stats, r.waves).join(' · '),
       ended: r.ended,
       log: l.id,
       at: when(l),
       round,
-      rev: r.rev ?? l.lab!.rev ?? 1,
+      // A log from before versions: the card's version as of its round.
+      rev: r.rev ?? l.lab!.rev ?? cardChangeList(id).filter((c) => c.round <= round).reduce((m, c) => Math.max(m, c.round), 1),
       changes: cardChangeList(id).filter((c) => c.round === round).map((c) => c.what),
       history: order.slice(1).map((n) => {
         const o = rounds.get(n)!;
@@ -75,7 +79,18 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     };
     results[id] = doc;
     // An enemy card's verdict also goes on the enemy page's Build tab.
-    if (card.kind === 'enemy' && r.verdict) builds[id] = { verdict: r.verdict, note: [r.note, r.tags.join(', ')].filter(Boolean).join(' · '), at: doc.at, round };
+    if (card.kind === 'enemy' && r.verdict) builds[id] = { verdict: r.verdict, note: [note, r.tags.join(', ')].filter(Boolean).join(' · '), at: doc.at, round };
   }
   return { results, builds };
+}
+
+/** A note without an earlier round's note copied in at its start (before
+ *  rounds, the verdict sheet filled in the last note, and the player typed
+ *  under it). */
+export function ownNote(note: string, earlier: string[]): string {
+  for (const old of earlier) {
+    const o = old.trim();
+    if (o && note.trimStart().startsWith(o)) return note.trimStart().slice(o.length).trim();
+  }
+  return note;
 }

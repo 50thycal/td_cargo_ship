@@ -1,0 +1,22 @@
+{
+ "date": "2026-11-08",
+ "round": 2,
+ "source": "Test Lab round 2 (after the enemy fixes), play logs on the Vercel playlog store; notes shown without the round-1 note the old verdict sheet copied in",
+ "verdicts": {
+  "diveBomber": {
+   "verdict": "keep",
+   "note": "Much better now the plane comes in with an animation that makes a lot more sense. I think you make it a little quicker and then Olsen said to make a prop plane make it more make it look like a 10 warthog.",
+   "log": "v3-20261108152517-86111",
+   "build": "2026-11-08T15:08"
+  },
+  "siege": {
+   "verdict": "keep",
+   "tags": [
+    "Fun"
+   ],
+   "note": "This one is good now too just note for maps. I actually have this the silo or whatever that it comes out it will be permanent and it doesn’t need to replace the other launcher ones.",
+   "log": "v3-20261108152700-86112",
+   "build": "2026-11-08T15:08"
+  }
+ }
+}

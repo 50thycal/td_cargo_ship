@@ -157,11 +157,14 @@ export interface LabRound {
   n: number;
   date: string;
   name: string;
+  /** The build stamp its builds start from: a log that predates rounds is
+   *  placed in a round by the build it was played on. */
+  since?: string;
 }
 
 export const LAB_ROUNDS: LabRound[] = [
   { n: 1, date: '2026-11-08', name: 'First look at the new enemies' },
-  { n: 2, date: '2026-11-08', name: 'After the enemy fixes' },
+  { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
 ];
 
 /** The round being tested now (the latest). */
