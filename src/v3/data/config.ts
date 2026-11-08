@@ -177,7 +177,8 @@ export const THREATS: Record<
   torpedo: { speed: 75, hp: 1, damage: 3, dropChance: 0.1, label: 'Torpedo' },
   armored: { speed: 60, hp: 2, damage: 2, dropChance: 0.4, label: 'Armored drone' },
   scavenger: { speed: 170, hp: 1, damage: 0, dropChance: 0.3, label: 'Scavenger drone' },
-  stealthJet: { speed: 270, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
+  // Test Lab round 1: "a little faster" (270, as the Strike jet, → 315).
+  stealthJet: { speed: 315, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
   stealthBomber: { speed: 150, hp: 6, damage: 0, dropChance: 0.8, label: 'Stealth bomber' },
   diveBomber: { speed: 0, hp: 2, damage: 2, dropChance: 0.5, label: 'Dive bomber' },
   siege: { speed: 0, hp: 6, damage: 0, dropChance: 1, label: 'Siege battery' },

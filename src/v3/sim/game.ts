@@ -4107,7 +4107,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
   if (isStructure(th.kind)) {
     structureDown(g, th);
   } else {
-    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
+    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' || th.kind === 'decoy' ? 18 : 26 });
     cue(g, KILL_CUE[th.kind], th.x, th.y);
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }

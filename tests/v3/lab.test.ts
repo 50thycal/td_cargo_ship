@@ -77,6 +77,7 @@ describe('a test run', () => {
   it('runs past wave 10 (no win), counts its length, and the evidence', () => {
     const g = labGame('rocketTruck', 5);
     g.lost = -99; // the test is about the clock, not the bot's skill
+    g.carrierHp = g.stats.carrierHp = 1e6; // nor the carrier's luck with ballistics
     const bot = new Bot(SKILLS.sharp, 5);
     for (let i = 0; i < 60 * 60 * 30 && !labDone(g); i++) {
       bot.act(g);

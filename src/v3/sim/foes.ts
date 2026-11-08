@@ -6,7 +6,7 @@
 // (foeDown).
 
 import type { RNG } from '../../sim/rng';
-import { THREATS, VIEW, type ThreatKind } from '../data/config';
+import { DRONE, THREATS, VIEW, type ThreatKind } from '../data/config';
 import { FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -273,7 +273,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     }
     case 'spotter': {
       const side = rng.chance(0.5) ? 1 : -1;
-      const c = heliSpot(g, rng, undefined, FOE.spotter.off);
+      const c = spotterSpot(g, rng);
       const th = spawnThreat(g, 'spotter', side > 0 ? -60 : VIEW.width + 60, clamp(c.y, 90, VIEW.height - 90), 'air');
       th.target = CARRIER_TARGET;
       th.heading = side > 0 ? 0 : Math.PI;
@@ -420,9 +420,15 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       retarget(th);
       const tp = aim(th);
       const d = dist(th.x, th.y, tp.x, tp.y);
-      steer(th, tp.x, tp.y, th.speed, Infinity, dt);
-      th.heading += d > 80 ? weave(th) * dt * 4 : 0;
-      if (f.state === 0 && d <= FOE.decoy.revealAt) f.state = 1;
+      // Flown exactly as game.ts flies the attack drone (the same weave, the
+      // same speed), so nothing but the late strobe tells them apart.
+      const want = Math.atan2(tp.y - th.y, tp.x - th.x);
+      th.heading = want + (d > 80 ? DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase) : 0);
+      th.x += Math.cos(th.heading) * th.speed * dt;
+      th.y += Math.sin(th.heading) * th.speed * dt;
+      // The tell comes late (Test Lab round 1: "way too obvious" when they
+      // strobed from launch): close in, and not in the first seconds.
+      if (f.state === 0 && d <= FOE.decoy.revealAt && f.t >= FOE.decoy.revealAfter) f.state = 1;
       if (d <= FOE.decoy.fizzle) {
         // At the convoy, a decoy is nothing: a puff and it's gone.
         th.dead = true;
@@ -673,6 +679,47 @@ function updateSiege(g: Game, th: Threat, f: FoeData): void {
   }
   // Out of shells: it packs up (gone, not a kill).
   if (f.state === 2 && f.t >= S.pack && !g.foe.marks.some((m) => m.link === th.id)) th.dead = true;
+}
+
+/** Where a Spotter circles: FOE.spotter.off past a lane's edge, part way
+ *  along, with its whole circle on screen. Of a few tries, the one that
+ *  keeps its stand-off from every lane best (a spot squeezed against the
+ *  screen's edge, or over another lane, stands in closer), then the one
+ *  furthest from the carrier. Test Lab round 1: "spot from a little
+ *  further"; the helicopter's spot, which it used to share, sat it a lane's
+ *  width closer on maps with a lane near the top. */
+function spotterSpot(g: Game, rng: RNG): Point {
+  const P = FOE.spotter;
+  const lo = { x: P.orbit + P.edge, y: P.orbit + P.edge };
+  const hi = { x: VIEW.width - lo.x, y: VIEW.height - lo.y };
+  let best: Point = { x: VIEW.width / 2, y: lo.y };
+  let bs = -Infinity;
+  for (let k = 0; k < 8; k++) {
+    const ch = rng.pick(g.map.channels);
+    const L = laneLength(ch);
+    const d = L * rng.range(0.25, 0.75);
+    const p = laneAt(ch, d, (rng.chance(0.5) ? 1 : -1) * (ch.halfWidth + P.off));
+    const q = { x: clamp(p.x, lo.x, hi.x), y: clamp(p.y, lo.y, hi.y) };
+    // The far side of the lane from the carrier (on its side, the carrier's
+    // gun and the allied batteries have it).
+    const o = laneAt(ch, d, 0);
+    const near = (p.x - o.x) * (g.map.carrier.x - o.x) + (p.y - o.y) * (g.map.carrier.y - o.y) > 0;
+    // How far it stands off the nearest lane's edge.
+    let gap = Infinity;
+    for (const c of g.map.channels) {
+      const n = Math.ceil(laneLength(c) / 30);
+      for (let i = 0; i <= n; i++) {
+        const o = laneAt(c, (laneLength(c) * i) / n, 0);
+        gap = Math.min(gap, dist(o.x, o.y, q.x, q.y) - c.halfWidth);
+      }
+    }
+    const score = Math.min(gap, P.off) + 0.25 * dist(q.x, q.y, g.map.carrier.x, g.map.carrier.y) - (near ? 150 : 0);
+    if (score > bs) {
+      bs = score;
+      best = q;
+    }
+  }
+  return best;
 }
 
 /** The Spotter: out to its circle beside the convoy, paint a ship, call a

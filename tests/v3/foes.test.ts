@@ -182,6 +182,77 @@ describe('chapter 1: Home Waters', () => {
     expect(live(g, 'dart')).toHaveLength(0);
   });
 
+  it('Test Lab round 1: a Hydra that lands whole does 2 to its hull, the sum of its two darts', () => {
+    expect(THREATS.hydra.damage).toBe(2);
+    expect(THREATS.dart.damage).toBe(1);
+    expect(THREATS.hydra.damage).toBe(FOE.hydra.darts * THREATS.dart.damage);
+    const g = quiet();
+    expect(g.formation).toBe('pairs');
+    launchFoe(g, { at: 0, kind: 'hydra', base: 1 }, base(g));
+    const h = live(g, 'hydra')[0];
+    const ship = g.ships[0];
+    h.target = ship.id;
+    const before = ship.hp;
+    run(g, 20, () => h.dead);
+    expect(h.dead).toBe(true);
+    expect(g.kills.hydra).toBe(0);
+    expect(live(g, 'dart')).toHaveLength(0);
+    expect(before - ship.hp).toBe(2);
+  });
+
+  it('Test Lab round 1: split, each of its darts that lands does 1 to its hull', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'hydra', base: 1 }, base(g));
+    const h = live(g, 'hydra')[0];
+    run(g, 0.4);
+    damageThreat(g, h, h.hp);
+    const darts = live(g, 'dart');
+    expect(darts).toHaveLength(FOE.hydra.darts);
+    // Two different hulls, the two nearest it.
+    expect(new Set(darts.map((d) => d.target)).size).toBe(FOE.hydra.darts);
+    const hp = new Map(g.ships.map((s) => [s.id, s.hp]));
+    run(g, 20, () => live(g, 'dart').length === 0);
+    expect(darts.every((d) => d.dead)).toBe(true);
+    for (const d of darts) {
+      const s = g.ships.find((o) => o.id === d.target)!;
+      expect(hp.get(s.id)! - s.hp).toBe(1);
+    }
+  });
+
+  it('Test Lab round 1: decoys fly exactly like the drones beside them and show nothing in their first seconds', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
+    const fake = live(g, 'decoy')[0];
+    const real = live(g, 'drone')[0];
+    // Same speed, and each step a decoy turns as an attack drone would.
+    expect(fake.speed).toBe(real.speed);
+    real.x = fake.x;
+    real.y = fake.y;
+    real.phase = fake.phase;
+    real.target = fake.target;
+    run(g, 2);
+    expect(Math.hypot(fake.x - real.x, fake.y - real.y)).toBeLessThan(1);
+    expect(fake.heading).toBeCloseTo(real.heading, 6);
+    // Close in, but too soon: still a drone. Later, close in: the strobe.
+    g.threats = [fake];
+    fake.foe!.t = 0;
+    const s = g.ships.find((o) => o.id === fake.target)!;
+    fake.x = s.x - FOE.decoy.revealAt + 20;
+    fake.y = s.y;
+    run(g, FOE.decoy.revealAfter - 0.5);
+    expect(fake.foe!.state).toBe(0);
+    const g2 = quiet();
+    launchFoe(g2, { at: 0, kind: 'decoy', base: 1 }, base(g2));
+    const f2 = live(g2, 'decoy')[0];
+    g2.threats = [f2];
+    run(g2, FOE.decoy.revealAfter + 0.1);
+    const s2 = g2.ships.find((o) => o.id === f2.target)!;
+    f2.x = s2.x - FOE.decoy.revealAt + 20;
+    f2.y = s2.y;
+    run(g2, 0.1);
+    expect(f2.foe!.state).toBe(1);
+  });
+
   it('a Rocket Truck drives in and raises (no rockets yet); after the raise its rockets can\'t be shot and hit ships', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'rocketTruck', base: -1 });
@@ -359,6 +430,17 @@ describe('chapter 3: Dark Water', () => {
     }
   });
 
+  it('Test Lab round 1: the Stealth Strafer is faster than the Strike jet, with a run-in still over a second long', () => {
+    expect(THREATS.stealthJet.speed).toBeGreaterThanOrEqual(THREATS.strafer.speed * 1.15);
+    expect(FOE.stealthJet.runIn / THREATS.stealthJet.speed).toBeGreaterThanOrEqual(1.1);
+    const g = quiet();
+    g.queue = [{ at: g.waveT + 0.1, kind: 'stealthJet', base: -1 }, { at: 1e9, kind: 'drone', base: 0 }];
+    run(g, 0.3);
+    const j = live(g, 'stealthJet')[0];
+    run(g, 0.5);
+    expect(Math.hypot(j.vx, j.vy)).toBeGreaterThan(THREATS.strafer.speed * 1.1);
+  });
+
   it('a Stealth Bomber drops three guided missiles; a Stealth Strafer\'s guns hit hulls in its band', () => {
     const g = quiet();
     g.queue = [{ at: g.waveT + 0.1, kind: 'stealthBomber', base: -1 }, { at: 1e9, kind: 'drone', base: 0 }];
@@ -433,6 +515,30 @@ describe('chapter 3: Dark Water', () => {
     expect(sp.dead).toBe(true);
     expect(g.queue.some((l) => l.spotter === sp.id)).toBe(false);
     expect(g.foe.paint).toBeNull();
+  });
+
+  it('Test Lab round 1: a Spotter circles further off the lane, and its whole circle stays on screen on every map', () => {
+    const P = FOE.spotter;
+    for (const map of MAP_ORDER) {
+      for (let seed = 1; seed <= 3; seed++) {
+        const g = createGame(map, seed);
+        g.threats = [];
+        launchFoe(g, { at: 0, kind: 'spotter', base: -1 });
+        const f = live(g, 'spotter')[0].foe!;
+        expect(f.px - P.orbit, map).toBeGreaterThanOrEqual(P.edge);
+        expect(f.py - P.orbit, map).toBeGreaterThanOrEqual(P.edge);
+        expect(f.px + P.orbit, map).toBeLessThanOrEqual(VIEW.width - P.edge);
+        expect(f.py + P.orbit, map).toBeLessThanOrEqual(VIEW.height - P.edge);
+      }
+    }
+    // On the lab's water (The Strait) its circle stands clear of the lane
+    // by its full stand-off, and its plane never comes within 60 px of it.
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'spotter', base: -1 });
+    const f = live(g, 'spotter')[0].foe!;
+    const ch = g.map.channels[0];
+    expect(Math.abs(f.py - ch.y) - ch.halfWidth).toBeGreaterThanOrEqual(P.off - 1);
+    expect(Math.abs(f.py - ch.y) - ch.halfWidth - P.orbit).toBeGreaterThan(60);
   });
 });
 
