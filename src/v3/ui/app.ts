@@ -421,6 +421,23 @@ export class App {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => this.resize());
     window.visualViewport?.addEventListener('resize', () => this.resize());
+    // Typing in a dialog (a note, a verdict): the phone's keyboard covers
+    // most of a landscape screen (the player: "it blocks me … make sure I can
+    // see the text box"). While a text box has the focus, the dialog is fitted
+    // to what the keyboard leaves visible and shows only the box and its
+    // buttons; the rest comes back when the keyboard goes.
+    const fit = () => this.fitTyping();
+    window.visualViewport?.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('scroll', fit);
+    this.overlay.addEventListener('focusin', (e) => {
+      if (e.target instanceof HTMLTextAreaElement) this.enterTyping(e.target);
+    });
+    this.overlay.addEventListener('focusout', () => {
+      // Late enough that a tap on Save lands on the button where it was.
+      setTimeout(() => {
+        if (!(document.activeElement instanceof HTMLTextAreaElement && this.overlay.contains(document.activeElement))) this.leaveTyping();
+      }, 250);
+    });
     new ResizeObserver(() => this.resize()).observe(this.root);
     // A 180° flip between the two landscapes keeps the size but moves the island.
     screen.orientation?.addEventListener('change', () => this.resize());
@@ -3253,15 +3270,58 @@ export class App {
     // its entrance.
     if (this.overlay.classList.contains('open') && this.overlay.dataset.screen === screen) panel.classList.add('v3-same');
     panel.append(...children);
+    this.leaveTyping();
     this.overlay.replaceChildren(panel);
     this.overlay.classList.add('open');
+    // A dialog with a text box can be used with the phone held upright too
+    // (the player: "give feedback with my phone up"): no "turn your phone"
+    // notice over it.
+    this.root.classList.toggle('noting', !!panel.querySelector('textarea'));
     this.overlay.dataset.screen = screen;
     // A panel taller than the screen scrolls under its header: only then
     // does the header need a backing of its own.
     if (panel.querySelector(':scope > .v3-head')) panel.classList.toggle('scrolls', panel.scrollHeight > panel.clientHeight + 2);
   }
 
+  /** The part of the screen the keyboard leaves visible, for the dialog
+   *  being typed in. */
+  private fitTyping(): void {
+    const vv = window.visualViewport;
+    this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
+    this.root.style.setProperty('--vv-h', `${Math.round(vv?.height ?? window.innerHeight)}px`);
+  }
+
+  /** Typing in a dialog: only the text box and the dialog's buttons stay;
+   *  everything else around them is folded away until the keyboard goes. */
+  private enterTyping(box: HTMLTextAreaElement): void {
+    const panel = this.overlay.querySelector('.v2-panel');
+    if (!panel) return;
+    this.leaveTyping();
+    const ACTS = '.v2-btn-row, .v3-lab-sheet-acts';
+    const keep = new Set<Element>();
+    const mark = (e: Element | null) => {
+      for (; e && e !== this.overlay; e = e.parentElement) keep.add(e);
+    };
+    mark(box);
+    panel.querySelectorAll(ACTS).forEach(mark);
+    for (const k of keep) {
+      if (k.matches(ACTS)) continue;
+      for (const c of Array.from(k.children)) if (!keep.has(c)) c.classList.add('typing-hide');
+    }
+    this.root.classList.add('typing');
+    this.fitTyping();
+    // Once the keyboard is up, bring the box into view.
+    setTimeout(() => box.scrollIntoView({ block: 'nearest' }), 350);
+  }
+
+  private leaveTyping(): void {
+    this.root.classList.remove('typing');
+    this.overlay.querySelectorAll('.typing-hide').forEach((e) => e.classList.remove('typing-hide'));
+  }
+
   private hideOverlay(): void {
+    this.leaveTyping();
+    this.root.classList.remove('noting');
     this.overlay.classList.remove('open');
     this.overlay.replaceChildren();
     delete this.overlay.dataset.screen;

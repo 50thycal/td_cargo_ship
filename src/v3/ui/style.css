@@ -4740,3 +4740,54 @@ a.v3-lab-page {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
   }
 }
+
+
+/* ---- Typing in a dialog: fitted above the keyboard; upright allowed ------ */
+
+.typing .v2-overlay.open {
+  top: var(--vv-top, 0px);
+  bottom: auto;
+  height: var(--vv-h, 100%);
+  align-items: flex-start;
+  padding: 6px max(8px, var(--safe-r, 0px)) 6px max(8px, var(--safe-l, 0px));
+  background: rgb(4 8 11 / 0.95);
+}
+
+.typing .v2-overlay .v2-panel {
+  max-height: 100%;
+  gap: 6px;
+}
+
+.typing .typing-hide {
+  display: none !important;
+}
+
+.typing .v3-note-text,
+.typing .v3-lab-note {
+  min-height: 3.2em;
+  height: max(3.2em, calc(var(--vv-h, 200px) - 74px));
+  max-height: 40vh;
+}
+
+.typing .v3-lab-cols {
+  display: block;
+}
+
+.typing .v2-btn-row .v2-btn,
+.typing .v3-lab-sheet-acts .v2-btn {
+  min-height: 38px;
+}
+
+/* A dialog with a text box works with the phone held upright: no "turn your
+   phone" notice over it, and a single column. */
+.portrait.noting .v2-rotate {
+  display: none;
+}
+
+.portrait.noting .v2-overlay.open {
+  background: rgb(4 8 11 / 0.96);
+}
+
+.portrait .v3-lab-cols {
+  grid-template-columns: minmax(0, 1fr);
+}
