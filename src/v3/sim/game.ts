@@ -71,7 +71,7 @@ import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
@@ -2585,14 +2585,34 @@ function flyHeli(g: Game, h: Heli, want: Point, dt: number): void {
   h.roll += (clamp(side, -1, 1) - h.roll) * k;
 }
 
-/** A Hellfire leaves the rail along `heading` and homes on `target` (or a
- *  spot on the water). */
-function launchHellfire(g: Game, x: number, y: number, heading: number, target: Threat | null, dmg: number, at?: Point): void {
+/** A Hellfire leaves the rail pointed at `target` (or a spot on the water),
+ *  kicked at most HELLFIRE_KICK off that toward the helicopter's nose so the
+ *  pair still splays a little, and homes on it. Test Lab round 1: launched
+ *  along the nose, a target behind or beside the helicopter made it fly a
+ *  loop first. */
+export function launchHellfire(g: Game, x: number, y: number, heading: number, target: Threat | null, dmg: number, at?: Point): void {
   const tx = target ? target.x : at!.x;
   const ty = target ? target.y : at!.y;
-  g.hellfires.push({ id: g.nextId++, x, y, heading, target: target ? target.id : -1, tx, ty, t: 0, dmg, trail: [x, y] });
+  const want = Math.atan2(ty - y, tx - x);
+  const aim = want + clamp(angleDiff(heading, want), -HELLFIRE_KICK, HELLFIRE_KICK);
+  g.hellfires.push({ id: g.nextId++, x, y, heading: aim, target: target ? target.id : -1, tx, ty, t: 0, dmg, trail: [x, y] });
   cue(g, 'heli.rockets', x, y);
 }
+
+/** How far off its target a Hellfire may leave the rail (rad). */
+const HELLFIRE_KICK = 0.35;
+
+/** Homing that never orbits (Test Lab round 1: "sometimes it'll circle the
+ *  entire thing"). A missile that turns at most `base` rad/s has a turning
+ *  circle of radius speed/base; a target that sits inside that circle (closer
+ *  than 2·radius·sin(error)) can't be reached, and the missile circles it.
+ *  Turning at least HOMING_K·speed/distance keeps the circle's radius under
+ *  a third of the distance left, so the target is never inside it and the
+ *  nose always comes round onto it. Far out it is the missile's own turn. */
+export function homingTurn(base: number, speed: number, d: number): number {
+  return Math.max(base, (HOMING_K * speed) / Math.max(1, d));
+}
+const HOMING_K = 3;
 
 function updateHellfires(g: Game, dt: number): void {
   const H = AB.gunships;
@@ -2603,9 +2623,12 @@ function updateHellfires(g: Game, dt: number): void {
       m.ty = th.y;
     }
     m.t += dt;
-    // It curves onto the target, turning harder the longer it flies.
-    const want = Math.atan2(m.ty - m.y, m.tx - m.x);
-    const turn = H.missileTurn * (1 + m.t * 6) * dt;
+    // It curves onto where the target will be, turning harder the longer it
+    // flies and the closer it gets (homingTurn: it can't circle it).
+    const d = dist(m.x, m.y, m.tx, m.ty);
+    const ahead = th ? d / H.missileSpeed : 0;
+    const want = Math.atan2(m.ty + (th?.vy ?? 0) * ahead - m.y, m.tx + (th?.vx ?? 0) * ahead - m.x);
+    const turn = homingTurn(H.missileTurn * (1 + m.t * 6), H.missileSpeed, d) * dt;
     m.heading += clamp(angleDiff(want, m.heading), -turn, turn);
     const stepLen = H.missileSpeed * dt;
     m.x += Math.cos(m.heading) * stepLen;
@@ -3774,7 +3797,10 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     } else {
       const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
-      const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
+      // The enemy helicopter's missiles home without circling (Test Lab
+      // round 1: "the missile for the enemy helicopter also needs to be
+      // fixed"); the rest keep their own turn.
+      const turn = (th.kind === 'heliRocket' ? homingTurn(base, th.speed, d) : base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
       th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
     const boost =
@@ -5063,17 +5089,34 @@ function collect(g: Game, p: Pickup): void {
   }
 }
 
-/** The Nuke: every drone, missile, aircraft, boat and mine on screen is
- *  destroyed (no drops: a screen-clear isn't a loot shower); structures and
- *  the Dreadnought take nukeStructure hits. */
+/** How far past the screen's edge the Nuke still reaches (px): anything
+ *  partly in view. */
+const NUKE_EDGE = 40;
+
+/** The Nuke: everything hostile on the screen is destroyed (no drops: a
+ *  screen-clear isn't a loot shower). Test Lab round 1 ("blow up everything
+ *  on the screen, even the trucks, submarines, any of the vehicles"): that
+ *  includes the launch trucks and submarines (raiders, not targets
+ *  otherwise), every new enemy platform (a siege gun down in its hatch, a
+ *  sub at periscope depth, the Lure Beacon) and every warning circle and
+ *  shot on the water. The one exception, as before: structures (rigs,
+ *  generators, the Citadel) and the Dreadnought boss take nukeStructure
+ *  hits instead of dying. */
 function nuke(g: Game): void {
   const c = g.map.carrier;
+  const M = NUKE_EDGE;
+  const onScreen = (x: number, y: number) => x >= -M && x <= VIEW.width + M && y >= -M && y <= VIEW.height + M;
+  nukeFoes(g);
+  // The Lure Beacon takes only the player's own hand; the Nuke is that.
+  const byTap = g.foe.byTap;
+  g.foe.byTap = true;
   for (const th of [...g.threats]) {
-    if (th.dead || th.x < 0 || th.x > VIEW.width || th.y < 0 || th.y > VIEW.height) continue;
+    if (th.dead || !onScreen(th.x, th.y)) continue;
     if (isStructure(th.kind)) damageThreat(g, th, PICKUPS.nukeStructure, false);
     else damageThreat(g, th, th.hp + 99, false);
   }
-  g.foe.shots = [];
+  g.foe.byTap = byTap;
+  for (const r of g.raiders) if (r.state !== 'reverse' && onScreen(r.x, r.y)) knockOut(g, r);
   addFx(g, 'nuke', c.x, c.y, { life: 1.2, r: Math.hypot(VIEW.width, VIEW.height) });
 }
 

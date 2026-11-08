@@ -64,9 +64,9 @@ const enemy = (id: FoeId, look: string, kit: AbilityId[]): LabCard => ({ id, kin
 
 /** Enemies in the order to test them: the open questions first. */
 const ENEMIES: LabCard[] = [
-  enemy('diveBomber', 'The circle, then the plane: can you shoot it in its window?', ['railgun', 'aegis', 'fullSteam']),
-  enemy('siege', 'Are the orange circles enough warning to silence the gun or move?', ['railgun', 'lance', 'fullSteam']),
-  enemy('rocketTruck', 'Is the slow raise (the red ring) enough time to kill the truck?', ['railgun', 'lance', 'bomberWing']),
+  enemy('diveBomber', 'Redrawn: it flies in from the top and dives at the circle. Does it read, and is the window fair?', ['railgun', 'aegis', 'fullSteam']),
+  enemy('siege', 'It rises out of a hatch and hides between salvos: can you catch it while it is up?', ['railgun', 'lance', 'fullSteam']),
+  enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'The biohazard missile: do you kill it far out, before its gas lands on the lane?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
   enemy('decoy', 'Can you tell the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
@@ -76,7 +76,7 @@ const ENEMIES: LabCard[] = [
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
   enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
   enemy('scavenger', 'It circles over the water waiting for a pickup: does it read apart from the other drones?', ['seeker', 'cutter', 'supplyRun']),
-  enemy('attackHeli', 'Six hits or its missiles: is it a real choice?', ['lance', 'railgun', 'gunships']),
+  enemy('attackHeli', 'Its missiles now fly straight in: six hits or its missiles, a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
   enemy('stealthBomber', 'Does the B-2 read? Six hits too many?', ['railgun', 'seeker', 'aegis']),
   enemy('tender', 'It sails in and keeps clear of other boats: do you see the green beam and change targets?', ['lance', 'railgun', 'orbital']),
@@ -88,7 +88,7 @@ const REWORKED: Partial<Record<AbilityId, string>> = {
   dualWield: 'Both hands now end with the boost: does it feel right?',
   cadence: 'The 0.9 s beat: can you keep it under pressure?',
   focus: 'Hold one finger to slow time, tap with the other: comfortable?',
-  gunships: 'The new flight and Hellfires: do they read, are they useful?',
+  gunships: 'The Hellfires now fly straight to their targets: do they read, are they useful?',
   supplyRun: 'The cargo plane and chutes: clear what you got?',
 };
 

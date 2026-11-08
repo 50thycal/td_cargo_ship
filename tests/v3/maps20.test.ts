@@ -80,8 +80,10 @@ describe('twenty maps, four chapters (the player\'s approved order)', () => {
       expect(r.wave, id).toBeGreaterThan(1);
       expect(Number.isFinite(r.score), id).toBe(true);
     }
-    const ch1 = MAP_ORDER.slice(0, 2).map((id) => runBot(id, 4, SKILLS.sharp).won);
-    expect(ch1.filter(Boolean).length).toBeGreaterThan(0);
+    // Over several seeds, not one: a single seed's win or loss swings with
+    // any change to the random draws (16 seeds a map: about 3 in 4 cleared).
+    const ch1 = MAP_ORDER.slice(0, 2).flatMap((id) => [4, 5, 6, 7].map((s) => runBot(id, s, SKILLS.sharp).won));
+    expect(ch1.filter(Boolean).length).toBeGreaterThanOrEqual(4);
   });
 
   it('an old save keeps every map it had open, and counts the new order from what it has cleared', () => {

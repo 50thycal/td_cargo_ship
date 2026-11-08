@@ -49,6 +49,8 @@ L(`## Cut after the Test Lab playtest (${CUT_DATE})`);
 L();
 L(`The player played each enemy in the Test Lab (\`tools/v3/test-lab/playtest-${CUT_DATE}.json\`) and marked ${CUT.length} as Cut. They are gone from the game: the data, the sim, the drawing, their sounds, the bots, Free Play and the Test Lab. The chapter lists below no longer have them; their designs stay on the review page's Build tab. Old play logs that name them still load without errors (their kills are just records), though a Test Lab log for one of their cards no longer replays as it was played.`);
 L();
+L('What the same playtest changed in the enemies that stayed (and in the Hellfires, the Cutter and the Nuke) is in `v3-enemy-lab-round1.md`.');
+L();
 for (const c of CUT) {
   const b = BUILD.find((x) => x.id === c.id);
   L(`- **${b.name}** (chapter ${b.chapter}): ${c.note ? `"${c.note}"` : 'cut with no note.'}`);
