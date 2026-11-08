@@ -4,11 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITY_ORDER } from '../../src/v3/data/abilities';
 import { FOES, FOE_ORDER } from '../../src/v3/data/foes';
-import { LAB_CARDS, LAB_LENGTH, LAB_SCENARIOS, LAB_START_WAVE, labCard } from '../../src/v3/data/lab';
+import { LAB_CARDS, LAB_CHANGES, LAB_LENGTH, LAB_ROUND, LAB_ROUNDS, LAB_SCENARIOS, LAB_START_WAVE, cardChanges, cardRev, labCard } from '../../src/v3/data/lab';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { RULES } from '../../src/v3/data/config';
 import { labDone } from '../../src/v3/sim/lab';
-import { Recorder, replay } from '../../src/v3/sim/playlog';
+import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
+import { labResultDocs } from '../../src/v3/sim/labDocs';
+import { addLabEntry, currentEntry, labStatus, nextCards, olderEntries, parseLabProgress, type LabEntry } from '../../src/v3/ui/lab';
 import { applyFreePlay, applyLab, createGame, damageThreat, step, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 
@@ -130,5 +132,133 @@ describe('a test run', () => {
     expect(g.map.id).toBe('coves');
     expect(g.lab!.map).toBe(true);
     expect(g.foe.lead.length).toBeGreaterThan(0);
+  });
+});
+
+// ---- Rounds and versions ----------------------------------------------------
+
+const stats = { came: 3, killed: 2, early: 1, harm: 1, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] };
+const today = new Date().toISOString().slice(0, 10);
+/** Progress as saved before rounds: one result object per card. */
+const oldShape = {
+  results: {
+    rocketTruck: { verdict: 'keep', tags: ['Fun'], note: 'best one so far', waves: 2, ended: 'done', stats, at: '2026-11-08T01:00:00Z' },
+    torpedoSub: { verdict: 'keep', tags: [], note: '', waves: 2, ended: 'done', stats, at: '2026-11-08T01:10:00Z' },
+  },
+  length: 'quick',
+  mix: 'normal',
+  queue: [],
+  session: { day: today, ids: ['rocketTruck'] },
+};
+
+describe('test rounds and card versions', () => {
+  it('the rounds are in order and every change names a real card and round', () => {
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2]);
+    expect(LAB_ROUND).toBe(2);
+    for (const [id, list] of Object.entries(LAB_CHANGES)) {
+      expect(labCard(id), id).toBeDefined();
+      for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
+    }
+    expect(cardRev('rocketTruck')).toBe(2);
+    expect(cardRev('torpedoSub')).toBe(1);
+    expect(cardRev('w-gunships')).toBe(2);
+    expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
+    expect(cardChanges('rocketTruck', 2)).toEqual([]);
+  });
+
+  it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
+    // Lure Beacon + Drone Screen has no change of its own; the Lure Beacon did.
+    expect(LAB_CHANGES['combo-lure-screen']).toBeUndefined();
+    expect(cardRev('combo-lure-screen')).toBe(2);
+    expect(cardChanges('combo-lure-screen').some((l) => l.startsWith(`${labCard('lure')!.name}:`))).toBe(true);
+    // Siege + Rocket Truck: its own line, and both enemies'.
+    expect(cardChanges('combo-siege-truck')).toHaveLength(3);
+  });
+
+  it('progress saved before rounds becomes round 1 history', () => {
+    const p = parseLabProgress(JSON.parse(JSON.stringify(oldShape)));
+    expect(p.results.rocketTruck).toHaveLength(1);
+    expect(p.results.rocketTruck[0]).toMatchObject({ verdict: 'keep', note: 'best one so far', rev: 1, round: 1 });
+    expect(p.length).toBe('quick');
+    expect(p.session.ids).toEqual(['rocketTruck']);
+    // Already-migrated progress loads as it is.
+    expect(parseLabProgress(JSON.parse(JSON.stringify(p))).results).toEqual(p.results);
+  });
+
+  it('a card changed in round 2 with only a round 1 verdict is not tested, and Next up offers it first', () => {
+    const p = parseLabProgress(JSON.parse(JSON.stringify(oldShape)));
+    expect(currentEntry(p, 'rocketTruck')).toBeUndefined();
+    expect(olderEntries(p, 'rocketTruck')).toHaveLength(1);
+    expect(labStatus(p, 'rocketTruck')).toBe('changed');
+    // The Torpedo Sub didn't change: its round 1 verdict still counts.
+    expect(labStatus(p, 'torpedoSub')).toBe('tested');
+    expect(currentEntry(p, 'torpedoSub')!.note).toBe('');
+    expect(labStatus(p, 'diveBomber')).toBe('untested');
+    // Dive Bomber comes first on the checklist, but the changed card first.
+    const next = nextCards(p, 3).map((c) => c.id);
+    expect(next[0]).toBe('rocketTruck');
+    expect(next).not.toContain('torpedoSub');
+    expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('diveBomber');
+  });
+
+  it('a new verdict is appended (the old stays) and becomes the current one', () => {
+    const p = parseLabProgress(JSON.parse(JSON.stringify(oldShape)));
+    const e: LabEntry = { verdict: 'tune', tags: [], note: 'rockets read', waves: 2, ended: 'done', stats, at: '2026-11-09T00:00:00Z', rev: cardRev('rocketTruck'), round: LAB_ROUND, build: 't' };
+    addLabEntry(p, 'rocketTruck', e);
+    expect(p.results.rocketTruck).toHaveLength(2);
+    expect(currentEntry(p, 'rocketTruck')).toEqual(e);
+    expect(olderEntries(p, 'rocketTruck').map((o) => o.note)).toEqual(['best one so far']);
+    expect(labStatus(p, 'rocketTruck')).toBe('tested');
+    expect(nextCards(p, 1)[0].id).not.toBe('rocketTruck');
+  });
+});
+
+describe('the bridge to the review pages', () => {
+  const log = (id: string, card: string, at: string, verdict: 'keep' | 'tune' | 'cut', note: string, round?: number): PlayLog =>
+    ({
+      v: 17,
+      game: 'v3',
+      id,
+      armory: {},
+      build: 't',
+      startedAt: at,
+      endedAt: at,
+      map: 'strait',
+      seed: 1,
+      firstWave: 5,
+      device: { w: 1, h: 1, dpr: 1, touch: false, ua: '' },
+      commands: [],
+      lab: { card, length: 'full', mix: 'normal', ...(round ? { rev: cardRev(card), round } : {}) },
+      labResult: { verdict, tags: [], note, waves: 2, ended: 'done', stats, ...(round ? { rev: cardRev(card), round } : {}) },
+    }) as PlayLog;
+
+  it('groups logs by card and round: the latest round on top, earlier rounds as history', () => {
+    const { results, builds } = labResultDocs([
+      log('a', 'rocketTruck', '2026-11-08T01:00:00Z', 'keep', 'round one, early'),
+      log('b', 'rocketTruck', '2026-11-08T02:00:00Z', 'keep', 'round one, later'),
+      log('c', 'rocketTruck', '2026-11-09T01:00:00Z', 'tune', 'round two', 2),
+      log('d', 'torpedoSub', '2026-11-08T01:00:00Z', 'keep', 'sub'),
+    ]);
+    const rt = results.rocketTruck;
+    expect(rt).toMatchObject({ verdict: 'tune', note: 'round two', round: 2, rev: 2, log: 'c' });
+    expect(rt.changes).toEqual(cardChanges('rocketTruck', 1));
+    expect(rt.history).toEqual([{ round: 1, verdict: 'keep', note: 'round one, later', at: '2026-11-08T02:00:00Z', log: 'b' }]);
+    // A log from before rounds is round 1, version 1.
+    expect(results.torpedoSub).toMatchObject({ round: 1, rev: 1, history: [], changes: [] });
+    expect(builds.rocketTruck).toMatchObject({ verdict: 'tune', round: 2 });
+  });
+
+  it('a log from before rounds still replays', () => {
+    const card = labCard('rocketTruck')!;
+    const g = createGame(card.map, 4, LAB_START_WAVE);
+    const free = { weapons: card.kit.map((w) => ({ id: w, level: 1 })), frequentDrops: true };
+    applyFreePlay(g, free);
+    const lab = { card: 'rocketTruck', length: 'quick' as const, mix: 'normal' as const };
+    applyLab(g, lab);
+    const rec = new Recorder(g, { build: 't', startedAt: '', firstWave: LAB_START_WAVE, freePlay: free, lab, device: { w: 1, h: 1, dpr: 1, touch: false, ua: '' } });
+    for (let i = 0; i < 60 * 10; i++) step(g, DT);
+    const old = rec.finish('quit');
+    expect(old.lab!.round).toBeUndefined();
+    expect(replay(old).steps).toBe(g.steps);
   });
 });

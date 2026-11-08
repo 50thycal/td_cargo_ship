@@ -777,14 +777,32 @@ try {
       const p = JSON.parse(localStorage.getItem('straitwatch.v3.lab'));
       const logs = JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') || '[]');
       const log = logs.find((l) => l.lab?.card === 'diveBomber');
-      return { verdict: p.results.diveBomber?.verdict, note: p.results.diveBomber?.note, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
+      const e = p.results.diveBomber?.at(-1);
+      return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 2 && saved.rev === 2 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 2 && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // A link from the review page opens a test straight away.
     await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
     const linked = await tp.evaluate(() => ({ card: window.__v3.game().lab?.setup.card, slots: window.__v3.game().slots }));
     check(linked.card === 'w-cadence' && linked.slots[0] === 'cadence' && errs.length === 0, `?lab=<card> opens that test, holding its weapon (${JSON.stringify(linked)}${errs.length ? `; ${errs[0]}` : ''})`);
+    // Rounds and versions: a verdict saved before rounds (one object per
+    // card) is round 1. The Rocket Truck changed in round 2, so its card asks
+    // to be tested again and shows the round 1 note dimmed.
+    await tp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
+    await tp.evaluate(() => {
+      const stats = { came: 4, killed: 3, early: 2, harm: 1, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] };
+      localStorage.setItem('straitwatch.v3.lab', JSON.stringify({ results: { rocketTruck: { verdict: 'keep', tags: ['Fun'], note: 'best one so far', waves: 2, ended: 'done', stats, at: '2026-11-08T01:00:00Z' } }, length: 'full', mix: 'normal', queue: [], session: { day: '2026-11-08', ids: [] } }));
+    });
+    await tp.reload({ waitUntil: 'networkidle' });
+    await tp.click('[data-lab]');
+    await tp.waitForSelector('[data-screen="lab"]');
+    const changed = await tp.evaluate(() => {
+      const row = document.querySelector('[data-card="rocketTruck"]');
+      const old = row?.querySelector('.v3-lab-old');
+      return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
+    });
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 2/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
