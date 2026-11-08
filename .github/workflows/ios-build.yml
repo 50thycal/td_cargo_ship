@@ -56,6 +56,12 @@ jobs:
           sudo xcode-select -s "$LATEST"
           xcodebuild -version
           mkdir -p build
+      - name: Clear SwiftPM's artifact cache
+        # On 2026-11-08 the runner's cache held Capacitor's xcframework
+        # folders, and Xcode 26.3 refused to re-download them ("already
+        # exists in file system"), failing package resolution before any
+        # build. A fresh cache costs one download of the two zips.
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm ~/Library/org.swift.swiftpm
       - name: Build for the simulator (unsigned)
         run: |
           set -o pipefail
