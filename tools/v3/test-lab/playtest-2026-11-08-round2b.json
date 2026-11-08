@@ -1,0 +1,135 @@
+{
+ "date": "2026-11-08",
+ "round": 2,
+ "source": "Test Lab round 2, second session (after #135); play logs on the Vercel playlog store",
+ "verdicts": {
+  "diveBomber": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261108210408-39228",
+    "round": 2
+   },
+   {
+    "verdict": "keep",
+    "tags": [
+     "Fun"
+    ],
+    "note": "",
+    "log": "v3-20261108222322-85317",
+    "round": 2
+   }
+  ],
+  "rocketTruck": [
+   {
+    "verdict": "keep",
+    "tags": [
+     "Fun"
+    ],
+    "note": "",
+    "log": "v3-20261108210528-39229",
+    "round": 2
+   }
+  ],
+  "siege": [
+   {
+    "verdict": "keep",
+    "tags": [
+     "Fun"
+    ],
+    "note": "",
+    "log": "v3-20261108222421-85318",
+    "round": 2
+   }
+  ],
+  "cloud": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Make it aim and lead the ship instead of coming through on the back",
+    "log": "v3-20261108222721-85319",
+    "round": 2
+   }
+  ],
+  "lure": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Works as expected now",
+    "log": "v3-20261108223052-85320",
+    "round": 2
+   }
+  ],
+  "decoy": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Maybe make it it either easier to see th e or spread the out more and they are just more ne large clump",
+    "log": "v3-20261108223217-85321",
+    "round": 2
+   }
+  ],
+  "armored": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Much better",
+    "log": "v3-20261108223522-85322",
+    "round": 2
+   }
+  ],
+  "spotter": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Wow that was hard once it was Ali e keep as is and then we will tune later",
+    "log": "v3-20261108223653-85323",
+    "round": 2
+   }
+  ],
+  "scavenger": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Much better",
+    "log": "v3-20261108223802-85324",
+    "round": 2
+   }
+  ],
+  "attackHeli": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261108223916-85325",
+    "round": 2
+   }
+  ],
+  "stealthJet": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261108224025-85326",
+    "round": 2
+   }
+  ],
+  "tender": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261108224145-85327",
+    "round": 2
+   }
+  ]
+ },
+ "notes": [
+  {
+   "card": "diveBomber",
+   "log": "v3-20261108210408-39228",
+   "text": "Make it faster and an a ten worthhog"
+  }
+ ]
+}

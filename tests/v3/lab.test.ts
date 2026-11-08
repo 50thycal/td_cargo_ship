@@ -253,6 +253,12 @@ describe('the bridge to the review pages', () => {
     expect(ownNote('Only new.', ['Old words.'])).toBe('Only new.');
   });
 
+  it('keeps every note from a round: a later test with no note does not drop an earlier one', () => {
+    const a = { ...log('g', 'siege', '2026-11-08T16:00:00Z', 'keep', 'rises well', 2) };
+    const b = { ...log('h', 'siege', '2026-11-08T22:00:00Z', 'keep', '', 2) };
+    expect(labResultDocs([a, b]).results.siege).toMatchObject({ round: 2, note: 'rises well', log: 'h' });
+  });
+
   it('places a log from before rounds by its build: a round-2 build counts as round 2', () => {
     const old = { ...log('e', 'rocketTruck', '2026-11-08T04:00:00Z', 'keep', 'first look'), build: '2026-11-08T03:46' };
     const after = { ...log('f', 'rocketTruck', '2026-11-08T16:00:00Z', 'tune', 'salvos'), build: '2026-11-08T15:07' };
