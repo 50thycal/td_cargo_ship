@@ -170,11 +170,11 @@ function redBall(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number
 }
 
 /** Shots no interceptor can stop, all red: the Rocket Truck's salvos, a
- *  dive bomber's bomb, a siege battery's shells in flight; and a Volatile
- *  Cloud's gas, drawn over the ships it covers. */
+ *  dive bomber's bomb, a siege battery's shells in flight; and an Incendiary
+ *  Missile's fireball, drawn over the ships it covers. */
 export function drawFoeShots(ctx: CanvasRenderingContext2D, g: Game): void {
-  // A Volatile Cloud's gas hangs over the water, over any ship in it.
-  for (const m of g.foe.marks) if (m.kind === 'gas') drawGas(ctx, g, m);
+  // An Incendiary Missile's fireball burns on the water, over any ship in it.
+  for (const m of g.foe.marks) if (m.kind === 'fire') drawFire(ctx, g, m);
   for (const m of g.foe.marks) {
     if (m.kind !== 'shell' || !m.fired) continue;
     // A shell lobbed from the gun, arcing down onto its circle; its shadow
@@ -1472,13 +1472,13 @@ function drawLureRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void 
   ctx.setLineDash([]);
 }
 
-/** The Volatile Cloud: a slow, chunky biohazard missile, yellow-green with
- *  hazard bands and the trefoil, trailing green smoke, with a faint line to
- *  the ship it's after. */
+/** The Incendiary Missile (FoeId `cloud`): a slow, chunky firebomb, dark
+ *  red with orange hazard bands and a flame mark, trailing black smoke and
+ *  sparks, with a faint line to the ship it's after. */
 function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
   const target = th.target === CARRIER_TARGET ? g.map.carrier : g.ships.find((s) => s.id === th.target);
   if (target) {
-    ctx.strokeStyle = 'rgba(190,230,80,0.25)';
+    ctx.strokeStyle = 'rgba(255,140,40,0.28)';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 8]);
     ctx.beginPath();
@@ -1487,17 +1487,25 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
     ctx.stroke();
     ctx.setLineDash([]);
   }
-  // A lazy green smoke trail: puffs back along its heading.
+  // A thick smoke trail with sparks in it.
   for (let i = 1; i <= 6; i++) {
     const d = 30 + i * 11;
     const wob = Math.sin(g.t * 4 + i) * 2.5;
-    ctx.fillStyle = `rgba(170,220,90,${0.3 - i * 0.04})`;
+    const x = th.x - Math.cos(heading) * d - Math.sin(heading) * wob;
+    const y = th.y - Math.sin(heading) * d + Math.cos(heading) * wob;
+    ctx.fillStyle = `rgba(60,50,45,${0.34 - i * 0.045})`;
     ctx.beginPath();
-    ctx.arc(th.x - Math.cos(heading) * d - Math.sin(heading) * wob, th.y - Math.sin(heading) * d + Math.cos(heading) * wob, 4 + i * 1.3, 0, Math.PI * 2);
+    ctx.arc(x, y, 4 + i * 1.4, 0, Math.PI * 2);
     ctx.fill();
+    if (i % 2) {
+      ctx.fillStyle = `rgba(255,180,60,${0.7 - i * 0.1})`;
+      ctx.beginPath();
+      ctx.arc(x + Math.sin(g.t * 9 + i) * 4, y + Math.cos(g.t * 7 + i) * 4, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
-  // A sickly glow round it, pulsing.
-  ctx.fillStyle = `rgba(190,240,60,${0.16 + 0.08 * Math.sin(g.t * 5)})`;
+  // A hot glow round it, pulsing.
+  ctx.fillStyle = `rgba(255,110,30,${0.16 + 0.08 * Math.sin(g.t * 5)})`;
   ctx.beginPath();
   ctx.arc(th.x, th.y, 38, 0, Math.PI * 2);
   ctx.fill();
@@ -1514,7 +1522,7 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   ctx.lineTo(-22, 5);
   ctx.fill();
   // Fins.
-  ctx.fillStyle = '#3f3f1a';
+  ctx.fillStyle = '#3b1d14';
   ctx.strokeStyle = '#111';
   ctx.lineWidth = 1.5;
   for (const s of [-1, 1]) {
@@ -1526,17 +1534,17 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
     ctx.fill();
     ctx.stroke();
   }
-  // The body: a fat canister, yellow-green.
-  ctx.fillStyle = '#c4e03a';
+  // The body: a fat canister, dark red.
+  ctx.fillStyle = '#9a2a14';
   ctx.beginPath();
   ctx.roundRect(-22, -9, 40, 18, 5);
   ctx.fill();
-  // Hazard bands at the tail: black on yellow.
+  // Hazard bands at the tail: black on orange.
   ctx.save();
   ctx.beginPath();
   ctx.rect(-22, -9, 10, 18);
   ctx.clip();
-  ctx.fillStyle = '#facc15';
+  ctx.fillStyle = '#f97316';
   ctx.fillRect(-22, -9, 10, 18);
   ctx.strokeStyle = '#111';
   ctx.lineWidth = 3;
@@ -1552,8 +1560,8 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   ctx.beginPath();
   ctx.roundRect(-22, -9, 40, 18, 5);
   ctx.stroke();
-  // The nose: a glowing green warhead.
-  ctx.fillStyle = '#4ade80';
+  // The nose: a glowing orange warhead.
+  ctx.fillStyle = '#fb923c';
   ctx.beginPath();
   ctx.moveTo(18, -9);
   ctx.quadraticCurveTo(32, 0, 18, 9);
@@ -1561,56 +1569,84 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-  // The trefoil on its side, upright so it reads.
-  bioMark(ctx, th.x - Math.cos(heading) * 3, th.y - Math.sin(heading) * 3, 9, '#111');
+  // A flame mark on its side, upright so it reads.
+  flameMark(ctx, th.x - Math.cos(heading) * 3, th.y - Math.sin(heading) * 3, 9, '#fde68a');
   hpPips(ctx, th.x, th.y - 38, th.hp, THREATS.cloud.hp);
 }
 
-/** The biohazard trefoil: three open rings round a small one. */
-function bioMark(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1.5, r * 0.28);
-  for (let k = 0; k < 3; k++) {
-    const a = -Math.PI / 2 + (k * Math.PI * 2) / 3;
-    const cx = x + Math.cos(a) * r * 0.55;
-    const cy = y + Math.sin(a) * r * 0.55;
-    // Open on the outside: the arc runs round from one side of the gap.
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.5, a + 0.9, a + Math.PI * 2 - 0.9);
-    ctx.stroke();
-  }
+/** A flame: a teardrop with a notch, the fire warning sign. */
+function flameMark(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
+  ctx.fillStyle = color;
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = Math.max(1, r * 0.15);
   ctx.beginPath();
-  ctx.arc(x, y, r * 0.3, 0, Math.PI * 2);
+  ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x + r * 0.9, y - r * 0.1, x + r * 0.55, y + r * 0.6);
+  ctx.quadraticCurveTo(x, y + r * 1.05, x - r * 0.55, y + r * 0.6);
+  ctx.quadraticCurveTo(x - r * 0.9, y - r * 0.1, x, y - r);
+  ctx.fill();
   ctx.stroke();
 }
 
-/** A Volatile Cloud's gas: a yellow-green toxic cloud churning on the
- *  water, its edge dashed, the trefoil in it; it swells in as it bursts and
- *  thins out at the end. A hull inside it flashes as it takes a hit. */
-function drawGas(ctx: CanvasRenderingContext2D, g: Game, m: { id: number; x: number; y: number; t: number; dur: number }): void {
+/** An Incendiary Missile's fireball: it flashes out as it bursts, then
+ *  burns on the water (flickering flames, a white-hot core, rising embers,
+ *  a dashed orange edge) and dies down at the end. A hull inside it takes a
+ *  hit every few seconds. */
+function drawFire(ctx: CanvasRenderingContext2D, g: Game, m: { id: number; x: number; y: number; t: number; dur: number }): void {
   const R = FOE.cloud.radius;
-  const grow = Math.min(1, m.t / 0.35);
+  const grow = Math.min(1, m.t / 0.3);
   const fade = Math.min(1, (m.dur - m.t) / 1.5);
   const a = Math.max(0, Math.min(grow, fade));
   ctx.save();
-  ctx.globalAlpha = a;
-  for (let k = 0; k < 9; k++) {
-    const ang = k * 0.7 + g.t * (k % 2 ? 0.35 : -0.25) + m.id;
-    const off = R * (0.2 + 0.25 * ((k * 37) % 5) / 5);
-    const r = R * (0.42 + 0.12 * Math.sin(g.t * 0.9 + k)) * (0.6 + 0.4 * grow);
-    ctx.fillStyle = k % 3 === 0 ? 'rgba(210,235,80,0.2)' : 'rgba(120,200,70,0.2)';
+  // The flash as it bursts: a white-hot ball swelling past the edge.
+  if (m.t < 0.45) {
+    const f = m.t / 0.45;
+    ctx.globalAlpha = 1 - f;
+    ctx.fillStyle = '#fff7d6';
     ctx.beginPath();
-    ctx.arc(m.x + Math.cos(ang) * off, m.y + Math.sin(ang) * off, r, 0, Math.PI * 2);
+    ctx.arc(m.x, m.y, R * (0.5 + 0.8 * f), 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.strokeStyle = 'rgba(200,240,70,0.7)';
-  ctx.lineWidth = 2.5;
+  ctx.globalAlpha = a;
+  const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, R);
+  glow.addColorStop(0, 'rgba(255,220,130,0.8)');
+  glow.addColorStop(0.55, 'rgba(255,110,30,0.55)');
+  glow.addColorStop(1, 'rgba(180,40,10,0.15)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(m.x, m.y, R, 0, Math.PI * 2);
+  ctx.fill();
+  // Tongues of flame round the pool, flickering.
+  for (let k = 0; k < 11; k++) {
+    const ang = (k / 11) * Math.PI * 2 + m.id;
+    const off = R * (0.25 + 0.45 * (((k * 37) % 7) / 7));
+    const fx = m.x + Math.cos(ang) * off;
+    const fy = m.y + Math.sin(ang) * off;
+    const h = 24 + 16 * Math.abs(Math.sin(g.t * 6 + k * 1.7));
+    ctx.fillStyle = k % 3 === 0 ? 'rgba(255,230,140,0.85)' : k % 3 === 1 ? 'rgba(255,140,40,0.8)' : 'rgba(230,60,20,0.75)';
+    ctx.beginPath();
+    ctx.moveTo(fx - 10, fy + 6);
+    ctx.quadraticCurveTo(fx - 7, fy - h * 0.5, fx, fy - h);
+    ctx.quadraticCurveTo(fx + 7, fy - h * 0.5, fx + 10, fy + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Embers rising off it.
+  for (let k = 0; k < 8; k++) {
+    const life = (g.t * 0.8 + k / 8 + m.id * 0.13) % 1;
+    const ex = m.x + Math.cos(k * 2.4 + m.id) * R * 0.6;
+    const ey = m.y - life * 40;
+    ctx.fillStyle = `rgba(255,200,80,${0.8 * (1 - life)})`;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(255,150,40,0.75)';
+  ctx.lineWidth = 3.5;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
   ctx.arc(m.x, m.y, R, g.t * 0.2, g.t * 0.2 + Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.globalAlpha = a * 0.55;
-  bioMark(ctx, m.x, m.y, 18, '#1a2e05');
   ctx.restore();
 }

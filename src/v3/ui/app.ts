@@ -182,7 +182,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   tender: 'Sails in, then mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
   lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two taps sink it.',
-  cloud: 'A slow biohazard missile. Shot down or at its ship, it leaves toxic gas that hurts ships sailing through. Kill it far out.',
+  cloud: 'A slow firebomb. Shot down or at its ship, it leaves a fireball burning on the water that hurts ships sailing through. Kill it far out.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map
@@ -3300,7 +3300,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
   siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',
-  cloud: 'Volatile Cloud gas did the most damage: shoot the biohazard missiles down far out, before they reach the lane.',
+  cloud: 'Incendiary fire did the most damage: shoot the firebombs down far out, before they reach the lane.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

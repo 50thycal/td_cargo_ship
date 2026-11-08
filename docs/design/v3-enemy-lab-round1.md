@@ -132,3 +132,11 @@ The player: "Weird how it just sits on the shore; it should circle and lurk and 
 
 - What it missed: the launch trucks and submarines (raiders, which are not targets otherwise), anything just past the screen's edge, and the warnings. Now it knocks out every raider on screen, kills every threat on or partly on the screen (40 px past the edge), brings up and kills a siege gun hidden in its hatch, sinks a sub still at periscope depth, takes the Lure Beacon however the Nuke was picked up, and clears every circle and red shot on the water.
 - The one exception stays, as documented before: structures (rigs, generators, the Citadel) and the Dreadnought boss take 3 hits instead of dying. Test: `tests/v3/nuke.test.ts`.
+
+## The player's answers (2026-11-08, after the merge)
+
+1. A missile reaching its ship does 1 hit and its fire about 1 more: **good as is**.
+2. Drone Screen, Orbital Strike and Bomber Wing going for a surfaced Lure Beacon anywhere on screen: **not too strong**, kept.
+3. The Nuke **clears every threat**: it already burned a missile in flight up with no fire left behind and cleared every mark; a test now pins that it also puts out any fire burning (`tests/v3/nuke.test.ts`).
+4. **"Make it a fire ball that lingers instead of the gas."** The Volatile Cloud is now the **Incendiary Missile** (its id stays `cloud`, so old logs replay): a dark red firebomb with orange hazard bands, a flame mark and black smoke with sparks; where it bursts, a fireball flashes out and burns on the water (flames, a white-hot core, embers, a dashed orange edge), hurting hulls inside it as the gas did (same numbers). Shots: `cloud-incendiary-missile.jpg`, `cloud-fireball.jpg`.
+5. "Event style" for the decoys: a bigger idea, **special event attacks** (a scripted phase per map: the screen clears, then e.g. ten decoy swarms at once, so spraying the decoys leaves no ammo for the real drones). That is its own design round: `v3-special-events.md`.

@@ -51,7 +51,7 @@ export const FOES: Record<FoeId, FoeDef> = {
   tender: { id: 'tender', name: 'Repair Tender', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Sails in and mends the most damaged enemy near it, a pulse at a time.' },
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
   lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your taps can sink it.' },
-  cloud: { id: 'cloud', name: 'Volatile Cloud', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow biohazard missile. Where it bursts, toxic gas lingers. Kill it far out.' },
+  cloud: { id: 'cloud', name: 'Incendiary Missile', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow firebomb. Where it bursts, a fireball burns on the water. Kill it far out.' },
 };
 
 export const FOE_ORDER = Object.keys(FOES) as FoeId[];
@@ -158,8 +158,8 @@ export const FOE = {
   /** It rises out of the water for `rise` s; then every helper within
    *  `radius` of it (or aiming at something within it) fires at it. */
   lure: { life: 20, rise: 1.4, radius: 300 },
-  /** A biohazard missile (`turn` rad/s). Shot down or at its ship, it
-   *  bursts into gas of `radius` that lingers `linger` s: a hull inside it
+  /** An incendiary missile (`turn` rad/s). Shot down or at its ship, it
+   *  bursts into a fireball of `radius` that lingers `linger` s: a hull inside it
    *  takes a hit after `first` s, then every `tick` s (a ship sailing
    *  through takes one or two). */
   cloud: { radius: 75, linger: 7, first: 0.7, tick: 2, turn: 0.9 },
