@@ -110,7 +110,6 @@ export const CUE_IDS = [
   // The enemy build: the new enemies' tells
   'foe.flare',
   'foe.split',
-  'foe.dive',
   'foe.rotor',
   'foe.torpedo',
   'foe.plate',

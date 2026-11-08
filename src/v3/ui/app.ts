@@ -51,8 +51,8 @@ import { Alerts, type AlertOpts } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
-import { FOES, FOES_BUILT, foesInChapter, type FoeSetting } from '../data/foes';
-import { foeSetting, launchFoe, newFoeState } from '../sim/foes';
+import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
+import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
 import { applyLab } from '../sim/game';
 import { labDone, type LabSetup } from '../sim/lab';
 import { LAB_LENGTH, labCard, type LabCard } from '../data/lab';
@@ -140,8 +140,6 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   spotter: 'SPOTTER DOWN',
   siege: 'BATTERY DOWN',
   tender: 'TENDER DOWN',
-  picket: 'PICKET DOWN',
-  barge: 'BARGE DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -171,24 +169,20 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   decoy: 'Half this swarm is fake. Up close the decoys strobe white: save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
-  rocketTruck: 'Its rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  loiter: 'They circle until a ship comes near, then all dive. Clear them while they wait.',
+  rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
   torpedoSub: 'Up for a few seconds: three hits. Its torpedo runs the dashed line. Shoot it, or get off the line.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
-  crosser: 'Two lines meet at the X, then split for six ships. One blast at the X takes them all.',
-  scavenger: 'It flies off with the pickup it is after. Shoot it, or take the pickup first.',
+  scavenger: 'It circles over the water, then flies off with the pickup it is after. Shoot it, or take the pickup first.',
   stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',
   stealthBomber: 'No warning: a flying wing with three missiles. Six hits, or shoot what it drops.',
-  diveBomber: 'The red circle is where it hits. The plane shows for a moment: shoot it, or move the ships out.',
-  siege: 'Its shells land in the orange circles and can\'t be stopped. Silence the gun (six hits) or move.',
+  diveBomber: 'The red circle is where it hits. The plane dives in from the top: shoot it, or move the ships out. Its red bomb can\'t be stopped.',
+  siege: 'It rises out of a hatch to shell the orange circles; its red shells can\'t be stopped. Hit the gun while it\'s up, or move.',
   spotter: 'It marks one ship for the others and calls a strike on it. Shoot it down to call it off.',
-  tender: 'Mends the most damaged enemy near it, a green pulse at a time. Six hits.',
+  tender: 'Sails in, then mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
-  picket: 'Shoots down your shots that fly through its ring. Sink it, or fire in bursts.',
-  lure: 'Your helpers chase it and do nothing to it. Two taps sink it.',
-  barge: 'While it floats, every raid gets one more missile per site. Twelve hits.',
-  cloud: 'Set off over your ships, it hurts them. Pop it over open water; don\'t fire into it over the convoy.',
+  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two taps sink it.',
+  cloud: 'A slow biohazard missile. Shot down or at its ship, it leaves toxic gas that hurts ships sailing through. Kill it far out.',
 };
 
 /** What each map's own system is, said once as the map starts (the 20-map
@@ -372,6 +366,8 @@ export class App {
   private portrait = false;
   /** This run has explained the radar tower (see radarHint). */
   private radarShown = false;
+  /** This run has said red shots can't be stopped (see redHint). */
+  private redShown = false;
   /** The screens around a run draw a quiet game behind them (menus round):
    *  the map the menu points to, or the one being briefed, its convoy
    *  under way and nothing attacking. */
@@ -951,9 +947,17 @@ export class App {
   private fire(x: number, y: number, quiet = false): void {
     if (!this.game) return;
     if (!this.rec) return;
+    // A tap on a red shot (nothing there it could shoot): say so, small,
+    // under the finger (Test Lab round 1).
+    const red = !quiet && tappedRedShot(this.game, x, y, TAP_RADIUS_PX / this.scale);
     const result = this.rec.tap(x, y, TAP_RADIUS_PX / this.scale);
     this.playCues(this.game);
     if (quiet) return;
+    if (red && result !== 'pickup' && result !== 'dry') {
+      this.ripples = this.ripples.filter((r) => !r.label);
+      this.ripples.push({ x, y, age: 0, dry: true, label: 'CAN\'T INTERCEPT' });
+      return;
+    }
     if (result === 'empty') this.ripples.push({ x, y, age: 0 });
     if (result === 'dry') {
       // Nothing loaded: say so under the finger, and point at the rack.
@@ -1097,6 +1101,7 @@ export class App {
     this.alerts.update(real);
     if (g) this.raidAlert(g);
     if (g) this.radarHint(g);
+    if (g) this.redHint(g);
     this.syncTimers(g);
     this.syncNoteBtn(g);
     this.syncSound(g);
@@ -1321,6 +1326,16 @@ export class App {
     if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
     this.radarShown = true;
     if (this.explain('radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ttl: 6 });
+  }
+
+  /** Test Lab round 1 ("make the projectiles red ... then we can mention to
+   *  the player: red projectiles you just cannot intercept"): the first red
+   *  shot in the air in a run gets one small card, without a sound. */
+  private redHint(g: Game): void {
+    if (this.redShown || g.phase !== 'wave' || this.playback) return;
+    if (!redShots(g).length) return;
+    this.redShown = true;
+    this.showBanner('RED SHOTS CAN\'T BE STOPPED', 'Hit the launcher instead.', { key: 'red-shots', ttl: 3.2 }, null);
   }
 
   private raidAlert(g: Game): void {
@@ -2264,6 +2279,9 @@ export class App {
         list.append(chip);
       }
       box.append(list);
+      // Test Lab round 1: what red means, where the enemies that fire red
+      // shots are listed.
+      if (foes.some((f) => RED_FOES.includes(f))) box.append(el('p', 'v3-brief-red', 'Red shots can\'t be stopped: hit the launcher.'));
       boxes.push(box);
     }
     side.prepend(...boxes);
@@ -2615,6 +2633,7 @@ export class App {
     if (this.rec) this.endRun('quit');
     this.free = free ? structuredClone(free) : null;
     this.radarShown = false;
+    this.redShown = false;
     const freePlay = free ? freePlaySetup(free) : undefined;
     this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
     if (freePlay) applyFreePlay(this.game, freePlay);
@@ -3274,16 +3293,14 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   hydra: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
-  loiter: 'Loitering drones did the most damage: clear the circling group before ships reach it; Flak and Thermobaric catch it whole.',
   attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
   torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
-  crosser: 'Crossing wings did the most damage: one area shot at the X catches the whole wing.',
   stealthJet: 'Stealth strafers did the most damage: Aegis Launchers and the Shield answer a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
   siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',
-  cloud: 'Volatile clouds did the most damage: pop them over open water, and hold fire while one is over the convoy.',
+  cloud: 'Volatile Cloud gas did the most damage: shoot the biohazard missiles down far out, before they reach the lane.',
 };
 
 /** One line naming what sank the most ships, and what answers it. */

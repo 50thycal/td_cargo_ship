@@ -3,13 +3,15 @@
 // card says.
 
 import { describe, expect, it } from 'vitest';
-import { THREATS, VIEW } from '../../src/v3/data/config';
+import { SHIP, THREATS, VIEW } from '../../src/v3/data/config';
+import { AB, type AbilityId } from '../../src/v3/data/abilities';
 import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
-import { absorbs, launchFoe, newFoeState } from '../../src/v3/sim/foes';
-import { addFx, applyFreePlay, createGame, damageThreat, step, tap, type Game, type Threat } from '../../src/v3/sim/game';
+import { absorbs, launchFoe, lureIn, newFoeState, onLand } from '../../src/v3/sim/foes';
+import { Bot, SKILLS } from '../../src/v3/sim/bot';
+import { applyFreePlay, applyLab, createGame, damageThreat, shipAhead, spawnThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 function run(g: Game, seconds: number, until?: () => boolean): void {
@@ -40,15 +42,15 @@ function queued(g: Game): Set<string> {
 }
 
 describe('the roster', () => {
-  it('twenty-one enemies, five, five, five and six a chapter; every chapter is built', () => {
-    expect(FOE_ORDER).toHaveLength(21);
-    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([5, 5, 5, 6]);
-    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(21);
+  it('seventeen enemies (four cut after the Test Lab playtest), four, four, five and four a chapter; every chapter is built', () => {
+    expect(FOE_ORDER).toHaveLength(17);
+    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([4, 4, 5, 4]);
+    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(17);
     for (const f of FOES_BUILT) expect(THREATS[FOES[f].kind], f).toBeDefined();
-    expect(foesInChapter(1)).toEqual(['sprinter', 'decoy', 'hydra', 'rocketTruck', 'loiter']);
-    expect(foesInChapter(2)).toEqual(['attackHeli', 'torpedoSub', 'armored', 'crossWing', 'scavenger']);
+    expect(foesInChapter(1)).toEqual(['sprinter', 'decoy', 'hydra', 'rocketTruck']);
+    expect(foesInChapter(2)).toEqual(['attackHeli', 'torpedoSub', 'armored', 'scavenger']);
     expect(foesInChapter(3)).toEqual(['stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter']);
-    expect(foesInChapter(4)).toEqual(['tender', 'bodyguard', 'picket', 'lure', 'barge', 'cloud']);
+    expect(foesInChapter(4)).toEqual(['tender', 'bodyguard', 'lure', 'cloud']);
     expect(FOES_BUILT).toEqual(FOE_ORDER);
     // Later chapters send the earlier ones too.
     expect(foesUpTo(4)).toEqual(expect.arrayContaining(foesInChapter(1)));
@@ -63,15 +65,16 @@ describe('the roster', () => {
 });
 
 describe('the campaign', () => {
-  it('each chapter 1 map leads with a different one of the chapter\'s new enemies', () => {
+  it('chapter 1\'s maps lead with each of the chapter\'s new enemies in turn', () => {
     const ch1 = MAP_ORDER.filter((m) => chapterOf(m) === 1);
     const firsts = ch1.map((m) => {
       const g = createGame(m, 3, 2);
       return [...queued(g)];
     });
-    // Wave 2 has exactly one foe, and the five maps cover all five.
+    // Wave 2 has exactly one foe, and the chapter's maps cover all of its
+    // new enemies.
     for (const f of firsts) expect(f).toHaveLength(1);
-    expect(new Set(firsts.flat()).size).toBe(5);
+    expect(new Set(firsts.flat()).size).toBe(foesInChapter(1).length);
     // The briefing's "first here" is that one.
     ch1.forEach((m, i) => {
       const st = newFoeState(m);
@@ -111,6 +114,17 @@ describe('Free Play', () => {
     expect(again.steps).toBe(game.steps);
     expect(again.score).toBe(game.score);
     expect(again.kills).toEqual(game.kills);
+  });
+
+  it('an old log naming an enemy cut after the Test Lab playtest still loads and replays', () => {
+    // Free Play "Only: Loitering Drones", and a lab card for the Supply Barge:
+    // both are just records now (no such enemy, no such card).
+    const { log } = playMimic('strait', 11, { firstWave: 5, freePlay: { weapons: [{ id: 'cutter', level: 1 }], frequentDrops: false } });
+    const old = { ...log, freePlay: { ...log.freePlay!, enemies: 'loiter' as FoeId }, lab: { card: 'barge', length: 'quick' as const, mix: 'normal' as const } };
+    const g = replay(old);
+    expect(g.lab).toBeNull();
+    expect(g.foe.pool).toEqual([]);
+    expect(g.steps).toBeGreaterThan(0);
   });
 });
 
@@ -170,6 +184,77 @@ describe('chapter 1: Home Waters', () => {
     expect(live(g, 'dart')).toHaveLength(0);
   });
 
+  it('Test Lab round 1: a Hydra that lands whole does 2 to its hull, the sum of its two darts', () => {
+    expect(THREATS.hydra.damage).toBe(2);
+    expect(THREATS.dart.damage).toBe(1);
+    expect(THREATS.hydra.damage).toBe(FOE.hydra.darts * THREATS.dart.damage);
+    const g = quiet();
+    expect(g.formation).toBe('pairs');
+    launchFoe(g, { at: 0, kind: 'hydra', base: 1 }, base(g));
+    const h = live(g, 'hydra')[0];
+    const ship = g.ships[0];
+    h.target = ship.id;
+    const before = ship.hp;
+    run(g, 20, () => h.dead);
+    expect(h.dead).toBe(true);
+    expect(g.kills.hydra).toBe(0);
+    expect(live(g, 'dart')).toHaveLength(0);
+    expect(before - ship.hp).toBe(2);
+  });
+
+  it('Test Lab round 1: split, each of its darts that lands does 1 to its hull', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'hydra', base: 1 }, base(g));
+    const h = live(g, 'hydra')[0];
+    run(g, 0.4);
+    damageThreat(g, h, h.hp);
+    const darts = live(g, 'dart');
+    expect(darts).toHaveLength(FOE.hydra.darts);
+    // Two different hulls, the two nearest it.
+    expect(new Set(darts.map((d) => d.target)).size).toBe(FOE.hydra.darts);
+    const hp = new Map(g.ships.map((s) => [s.id, s.hp]));
+    run(g, 20, () => live(g, 'dart').length === 0);
+    expect(darts.every((d) => d.dead)).toBe(true);
+    for (const d of darts) {
+      const s = g.ships.find((o) => o.id === d.target)!;
+      expect(hp.get(s.id)! - s.hp).toBe(1);
+    }
+  });
+
+  it('Test Lab round 1: decoys fly exactly like the drones beside them and show nothing in their first seconds', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
+    const fake = live(g, 'decoy')[0];
+    const real = live(g, 'drone')[0];
+    // Same speed, and each step a decoy turns as an attack drone would.
+    expect(fake.speed).toBe(real.speed);
+    real.x = fake.x;
+    real.y = fake.y;
+    real.phase = fake.phase;
+    real.target = fake.target;
+    run(g, 2);
+    expect(Math.hypot(fake.x - real.x, fake.y - real.y)).toBeLessThan(1);
+    expect(fake.heading).toBeCloseTo(real.heading, 6);
+    // Close in, but too soon: still a drone. Later, close in: the strobe.
+    g.threats = [fake];
+    fake.foe!.t = 0;
+    const s = g.ships.find((o) => o.id === fake.target)!;
+    fake.x = s.x - FOE.decoy.revealAt + 20;
+    fake.y = s.y;
+    run(g, FOE.decoy.revealAfter - 0.5);
+    expect(fake.foe!.state).toBe(0);
+    const g2 = quiet();
+    launchFoe(g2, { at: 0, kind: 'decoy', base: 1 }, base(g2));
+    const f2 = live(g2, 'decoy')[0];
+    g2.threats = [f2];
+    run(g2, FOE.decoy.revealAfter + 0.1);
+    const s2 = g2.ships.find((o) => o.id === f2.target)!;
+    f2.x = s2.x - FOE.decoy.revealAt + 20;
+    f2.y = s2.y;
+    run(g2, 0.1);
+    expect(f2.foe!.state).toBe(1);
+  });
+
   it('a Rocket Truck drives in and raises (no rockets yet); after the raise its rockets can\'t be shot and hit ships', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'rocketTruck', base: -1 });
@@ -185,13 +270,50 @@ describe('chapter 1: Home Waters', () => {
     expect(g.foe.shots.length).toBeGreaterThan(0);
     // The rockets are not threats: a tap can't reach them.
     expect(g.threats.some((th) => g.foe.shots.some((s) => s.id === th.id))).toBe(false);
-    run(g, FOE.rocketTruck.gap * FOE.rocketTruck.rockets + 2);
+    run(g, FOE.rocketTruck.gap * FOE.rocketTruck.salvos + 2);
     // They land on hulls: damage done, all of it the truck's.
     expect(g.sunkBy.rocketTruck + g.ships.filter((s) => s.hp < g.stats.shipHp).length).toBeGreaterThan(0);
     // Then it lowers the launcher and drives off: not a kill.
     run(g, 20, () => t.dead);
     expect(t.dead).toBe(true);
     expect(g.kills.rocketTruck).toBe(0);
+  });
+
+  it('each firing is a ripple of five small rockets a tenth of a second apart round one ship, and the salvo does one hit', () => {
+    const R = FOE.rocketTruck;
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'rocketTruck', base: -1 });
+    const t = live(g, 'rocketTruck')[0];
+    run(g, 40, () => g.foe.shots.length > 0);
+    const ships = [...g.ships];
+    const hull = () => ships.reduce((a, s) => a + Math.max(0, s.hp), 0);
+    const before = hull();
+    const launched: number[] = [];
+    const seen = new Set<number>();
+    const t0 = g.t;
+    for (let i = 0; i < 60 && launched.length < R.perSalvo; i++) {
+      for (const s of g.foe.shots) if (!seen.has(s.id)) {
+        seen.add(s.id);
+        launched.push(g.t - t0);
+      }
+      step(g, DT);
+    }
+    // Five, about 0.1 s apart, all one salvo, landing round one point.
+    expect(launched).toHaveLength(R.perSalvo);
+    for (let k = 1; k < launched.length; k++) expect(launched[k] - launched[k - 1]).toBeCloseTo(R.ripple, 1);
+    const salvo = g.foe.shots.filter((s) => seen.has(s.id));
+    expect(new Set(salvo.map((s) => s.salvo)).size).toBe(1);
+    const cx = salvo[0].tx;
+    const cy = salvo[0].ty;
+    for (const s of salvo) expect(Math.hypot(s.tx - cx, s.ty - cy)).toBeLessThanOrEqual(2 * R.spread + 30);
+    // All of them land; the salvo costs at most one hull point (what one
+    // rocket did before).
+    run(g, 1.2, () => g.foe.shots.every((s) => !seen.has(s.id)));
+    expect(before - hull()).toBeLessThanOrEqual(1);
+    // The whole truck: five salvos, at most five hull points.
+    run(g, 30, () => t.dead);
+    expect(t.foe!.n).toBe(0);
+    expect(before - hull()).toBeLessThanOrEqual(R.salvos);
   });
 
   it('a Rocket Truck killed while it raises fires nothing', () => {
@@ -210,24 +332,6 @@ describe('chapter 1: Home Waters', () => {
     expect(g.foe.shots).toHaveLength(0);
   });
 
-  it('Loitering Drones circle their spot until a ship comes near, then all dive at once', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'loiter', base: 1 }, base(g));
-    const group = live(g, 'loiter');
-    expect(group).toHaveLength(FOE.loiter.size);
-    const f = group[0].foe!;
-    // Waiting: they circle while no ship is inside the ring.
-    run(g, 30, () => group.every((t) => t.foe!.state === 1));
-    expect(group.every((t) => t.foe!.state === 1)).toBe(true);
-    for (const t of group) expect(Math.hypot(t.x - f.px, t.y - f.py)).toBeLessThan(FOE.loiter.orbit + 2);
-    const near = () => g.ships.some((s) => Math.hypot(s.x - f.px, s.y - f.py) <= FOE.loiter.trigger);
-    run(g, 60, () => near() || group.some((t) => t.foe!.state === 2));
-    // They dived together, and only once a ship came near.
-    expect(near()).toBe(true);
-    step(g, DT);
-    expect(group.every((t) => t.foe!.state === 2)).toBe(true);
-    expect(group.every((t) => t.x > -1 && t.x < VIEW.width + 1)).toBe(true);
-  });
 });
 
 describe('chapter 2: The Narrows', () => {
@@ -318,27 +422,6 @@ describe('chapter 2: The Narrows', () => {
     expect(banked).toBe(true);
   });
 
-  it('a Crossing Wing\'s two lines meet at the X, then each drone peels off for a different ship', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'crosser', base: 0 }, g.map.bases[0]);
-    const wing = live(g, 'crosser');
-    expect(wing).toHaveLength(FOE.crossWing.per * 2);
-    const X = { x: wing[0].foe!.px, y: wing[0].foe!.py };
-    const leaders = wing.filter((t) => t.foe!.n === 0);
-    expect(new Set(leaders.map((t) => `${t.foe!.sx}`)).size).toBe(2);
-    // Both leaders reach the X together.
-    let closest = Infinity;
-    run(g, 20, () => {
-      closest = Math.min(closest, Math.hypot(leaders[0].x - leaders[1].x, leaders[0].y - leaders[1].y));
-      return leaders.every((t) => t.foe!.state === 1);
-    });
-    expect(closest).toBeLessThan(30);
-    expect(Math.hypot(leaders[0].x - X.x, leaders[0].y - X.y)).toBeLessThan(60);
-    run(g, 6, () => wing.every((t) => t.dead || t.foe!.state === 1));
-    const targets = wing.filter((t) => !t.dead).map((t) => t.target);
-    expect(new Set(targets).size).toBe(Math.min(targets.length, g.ships.length));
-  });
-
   it('a Scavenger takes the pickup it flies to (it is gone); shot first, the pickup stays', () => {
     const g = quiet();
     g.pickups.push({ id: 7777, kind: 'repair', x: 800, y: 330, age: 0 });
@@ -386,6 +469,17 @@ describe('chapter 3: Dark Water', () => {
     }
   });
 
+  it('Test Lab round 1: the Stealth Strafer is faster than the Strike jet, with a run-in still over a second long', () => {
+    expect(THREATS.stealthJet.speed).toBeGreaterThanOrEqual(THREATS.strafer.speed * 1.15);
+    expect(FOE.stealthJet.runIn / THREATS.stealthJet.speed).toBeGreaterThanOrEqual(1.1);
+    const g = quiet();
+    g.queue = [{ at: g.waveT + 0.1, kind: 'stealthJet', base: -1 }, { at: 1e9, kind: 'drone', base: 0 }];
+    run(g, 0.3);
+    const j = live(g, 'stealthJet')[0];
+    run(g, 0.5);
+    expect(Math.hypot(j.vx, j.vy)).toBeGreaterThan(THREATS.strafer.speed * 1.1);
+  });
+
   it('a Stealth Bomber drops three guided missiles; a Stealth Strafer\'s guns hit hulls in its band', () => {
     const g = quiet();
     g.queue = [{ at: g.waveT + 0.1, kind: 'stealthBomber', base: -1 }, { at: 1e9, kind: 'drone', base: 0 }];
@@ -428,12 +522,46 @@ describe('chapter 3: Dark Water', () => {
     expect(g.threats.some((t) => t.id === bomb.id)).toBe(false);
   });
 
-  it('a Siege Battery marks circles, its shells land in them; killed first, the unfired ones are gone', () => {
+  it('a Dive Bomber flies its run in from the top of the screen at its circle, on screen all its window, then pulls away off screen', () => {
+    const D = FOE.diveBomber;
+    for (const seed of [1, 2, 3, 4]) {
+      const g = quiet(seed);
+      launchFoe(g, { at: 0, kind: 'diveBomber', base: -1 });
+      const m = g.foe.marks[0];
+      run(g, D.mark + 0.02, () => live(g, 'diveBomber').length > 0);
+      const p = live(g, 'diveBomber')[0];
+      // It starts up the screen from its circle (near the top, or its whole
+      // run above the circle), and comes down toward it.
+      expect(p.y).toBeLessThan(m.y - D.minRun + 1);
+      expect(p.y).toBeGreaterThanOrEqual(Math.min(D.top - 1, m.y - D.minRun - 1));
+      let last = Math.hypot(p.x - m.x, p.y - m.y);
+      for (let i = 0; i < Math.round(D.window / DT) - 2; i++) {
+        step(g, DT);
+        expect(p.dead).toBe(false);
+        expect(p.x >= 0 && p.x <= VIEW.width && p.y >= -40 && p.y <= VIEW.height).toBe(true);
+        const d = Math.hypot(p.x - m.x, p.y - m.y);
+        expect(d).toBeLessThan(last + 1e-6);
+        last = d;
+      }
+      run(g, 0.2, () => g.foe.shots.some((s) => s.kind === 'bomb'));
+      expect(last).toBeLessThan(D.short + 20);
+      // Then away and gone (not a kill).
+      run(g, 5, () => p.dead);
+      expect(p.dead).toBe(true);
+      expect(g.kills.diveBomber).toBe(0);
+    }
+  });
+
+  it('a Siege Battery comes up out of a hatch, marks circles, its shells land in them; killed first, the unfired ones are gone', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'siege', base: -1 });
+    // A closed hatch first: nothing to shoot.
+    expect(g.foe.marks.map((m) => m.kind)).toEqual(['hatch']);
+    expect(live(g, 'siege')).toHaveLength(0);
+    run(g, FOE.siege.first + 0.05);
     const gun = live(g, 'siege')[0];
     expect(gun.hp).toBe(THREATS.siege.hp);
-    run(g, FOE.siege.setup + FOE.siege.gap + 0.1, () => g.foe.marks.length > 0);
+    run(g, FOE.siege.rise + 0.1, () => g.foe.marks.some((m) => m.kind === 'shell'));
     const shells = g.foe.marks.filter((m) => m.kind === 'shell');
     expect(shells.length).toBeGreaterThan(0);
     expect(shells.every((m) => !m.fired)).toBe(true);
@@ -444,6 +572,41 @@ describe('chapter 3: Dark Water', () => {
     run(g, 2, () => gun.dead);
     expect(gun.dead).toBe(true);
     expect(g.foe.marks.filter((m) => m.kind === 'shell' && !m.fired)).toHaveLength(0);
+  });
+
+  it('a Siege Battery goes down into its hatch between salvos: no target for taps, blasts or bots, then up again with its hits kept', () => {
+    const S = FOE.siege;
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'siege', base: -1 });
+    run(g, S.first + 0.05);
+    const gun = live(g, 'siege')[0];
+    // Up: one hit lands on it.
+    g.ammo = 6;
+    tap(g, gun.x, gun.y, 40);
+    run(g, 2.5, () => gun.hp < THREATS.siege.hp);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    // After its shells leave, it goes down: gone from the board.
+    run(g, S.rise + S.mark + 1, () => g.foe.marks.some((m) => m.kind === 'hatch'));
+    run(g, 0.1);
+    expect(g.threats.includes(gun)).toBe(false);
+    expect(g.foe.marks.filter((m) => m.kind === 'shell' && !m.fired)).toHaveLength(0);
+    // Down: off the board, so taps, blasts, helpers and the bots (all of
+    // them work from g.threats) find nothing there; the wave waits for it.
+    g.ammo = 6;
+    tap(g, gun.x, gun.y, 40);
+    run(g, 0.8);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    expect(worthShooting(g, g.threats).includes(gun)).toBe(false);
+    expect(g.phase).toBe('wave');
+    // Up again, the same gun with its hit kept, and one salvo fewer.
+    run(g, S.down + 0.2, () => g.threats.includes(gun));
+    expect(g.threats.includes(gun)).toBe(true);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    expect(gun.foe!.n).toBe(S.salvos - 1);
+    // After its last salvo it goes down for good: not a kill.
+    run(g, 40, () => !g.threats.includes(gun) && gun.foe!.n === 0 && !g.foe.marks.some((m) => m.kind === 'hatch'));
+    expect(gun.foe!.n).toBe(0);
+    expect(g.kills.siege).toBe(0);
   });
 
   it('a Spotter paints a ship, draws launches to it, calls a strike, and its strike is cancelled when it is shot down', () => {
@@ -460,6 +623,30 @@ describe('chapter 3: Dark Water', () => {
     expect(sp.dead).toBe(true);
     expect(g.queue.some((l) => l.spotter === sp.id)).toBe(false);
     expect(g.foe.paint).toBeNull();
+  });
+
+  it('Test Lab round 1: a Spotter circles further off the lane, and its whole circle stays on screen on every map', () => {
+    const P = FOE.spotter;
+    for (const map of MAP_ORDER) {
+      for (let seed = 1; seed <= 3; seed++) {
+        const g = createGame(map, seed);
+        g.threats = [];
+        launchFoe(g, { at: 0, kind: 'spotter', base: -1 });
+        const f = live(g, 'spotter')[0].foe!;
+        expect(f.px - P.orbit, map).toBeGreaterThanOrEqual(P.edge);
+        expect(f.py - P.orbit, map).toBeGreaterThanOrEqual(P.edge);
+        expect(f.px + P.orbit, map).toBeLessThanOrEqual(VIEW.width - P.edge);
+        expect(f.py + P.orbit, map).toBeLessThanOrEqual(VIEW.height - P.edge);
+      }
+    }
+    // On the lab's water (The Strait) its circle stands clear of the lane
+    // by its full stand-off, and its plane never comes within 60 px of it.
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'spotter', base: -1 });
+    const f = live(g, 'spotter')[0].foe!;
+    const ch = g.map.channels[0];
+    expect(Math.abs(f.py - ch.y) - ch.halfWidth).toBeGreaterThanOrEqual(P.off - 1);
+    expect(Math.abs(f.py - ch.y) - ch.halfWidth - P.orbit).toBeGreaterThan(60);
   });
 });
 
@@ -495,30 +682,6 @@ describe('chapter 4: Open War', () => {
     expect(g.kills.guard).toBe(1);
   });
 
-  it('a Flak Picket shoots down shots through its ring at something else, but not shots at itself', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'picket', base: -1 });
-    const p = live(g, 'picket')[0];
-    run(g, 1);
-    // A drone beyond the picket, so the shot must cross the ring.
-    const c = g.map.carrier;
-    const far = { x: p.x + (p.x - c.x) * 0.5, y: p.y + (p.y - c.y) * 0.5 };
-    launchFoe(g, { at: 0, kind: 'armored', base: 1 }, far);
-    const target = live(g, 'armored')[0];
-    target.speed = 0;
-    g.ammo = 6;
-    tap(g, target.x, target.y, 20);
-    const fx0 = g.fx.filter((f) => f.kind === 'flak').length;
-    run(g, 3, () => g.interceptors.length === 0);
-    expect(g.fx.filter((f) => f.kind === 'flak').length).toBeGreaterThan(fx0);
-    expect(target.hp).toBe(THREATS.armored.hp);
-    // At the picket itself: they get through.
-    g.ammo = 6;
-    tap(g, p.x, p.y, 20);
-    run(g, 3, () => g.interceptors.length === 0);
-    expect(p.hp).toBe(THREATS.picket.hp - 1);
-  });
-
   it('a Lure Beacon: helpers\' shots do nothing to it, a tap does', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'lure', base: -1 });
@@ -534,46 +697,239 @@ describe('chapter 4: Open War', () => {
     expect(l.dead).toBe(true);
   });
 
-  it('a Supply Barge adds a launch from each site in every raid that starts while it floats', () => {
-    const g = createGame('strait', 6, 5);
-    applyFreePlay(g, { weapons: [], frequentDrops: false, enemies: 'none' });
-    const before = g.queue.length;
-    launchFoe(g, { at: 0, kind: 'barge', base: -1 });
-    const barge = live(g, 'barge')[0];
-    expect(barge.hp).toBe(THREATS.barge.hp);
-    const raid = g.raids[0];
-    run(g, raid.at + 0.1);
-    const added = g.queue.length + g.threats.length - before;
-    expect(added).toBeGreaterThan(0);
+});
+
+describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => {
+  /** Load a weapon the way a finger does: its pickup, tapped. */
+  function load(g: Game, id: AbilityId): void {
+    g.levels[id] = 1;
+    g.slots = [id];
+    g.pickups.push({ id: 9900 + g.steps, kind: 'weapon', weapon: id, x: 600, y: 300, age: 0 });
+    tap(g, 600, 300, 20);
+  }
+  /** A tough, still target at (x, y) the helpers would otherwise go for. */
+  function bait(g: Game, x: number, y: number): Threat {
+    const t = spawnThreat(g, 'heavy', x, y, 'base');
+    t.speed = 0;
+    t.hp = 99;
+    return t;
+  }
+  function lureAt(g: Game, x: number, y: number): Threat {
+    launchFoe(g, { at: 0, kind: 'lure', base: -1 });
+    const l = live(g, 'lure')[0];
+    l.x = x;
+    l.y = y;
+    return l;
+  }
+
+  it('a Volatile Cloud is a slow two-hit missile at a ship; shot down far out, its gas hangs there and hurts nothing', () => {
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
+    const c = live(g, 'cloud')[0];
+    expect(c.hp).toBe(2);
+    expect(g.ships.some((s) => s.id === c.target)).toBe(true);
+    expect(c.speed).toBeLessThan(THREATS.guided.speed / 2);
+    run(g, 1);
+    const hp0 = new Map(g.ships.map((s) => [s.id, s.hp]));
+    const lost0 = g.lost;
+    const at = { x: c.x, y: c.y };
+    damageThreat(g, c, 2);
+    expect(c.dead).toBe(true);
+    const gas = g.foe.marks.find((m) => m.kind === 'gas')!;
+    expect(gas).toBeDefined();
+    expect(Math.hypot(gas.x - at.x, gas.y - at.y)).toBeLessThan(1);
+    // It lingers its few seconds, then thins out; nothing near it was hurt.
+    run(g, FOE.cloud.linger - 0.5);
+    expect(g.foe.marks.some((m) => m.kind === 'gas')).toBe(true);
+    run(g, 1);
+    expect(g.foe.marks.some((m) => m.kind === 'gas')).toBe(false);
+    for (const s of g.ships) if (hp0.has(s.id)) expect(s.hp).toBe(hp0.get(s.id));
+    expect(g.lost).toBe(lost0);
+    // Launched like a missile, out of a base.
+    expect(FOES.cloud.from).toBe('base');
   });
 
-  it('a Volatile Cloud set off over ships hurts them; over open water it hurts nothing', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'cloud', base: -1 });
+  it('a Volatile Cloud left alone hits its ship and bursts there; a ship sailing through the gas takes one or two hits, not a sinking', () => {
+    const g = quiet(4);
+    launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
     const c = live(g, 'cloud')[0];
-    // Over open water, popped: nothing hurt.
-    c.x = 800;
-    c.y = 250;
-    c.foe!.px = c.x;
-    c.foe!.py = c.y;
-    const sum = () => g.ships.reduce((n, s) => n + s.hp, 0) + g.lost * 10;
-    const s0 = sum();
-    damageThreat(g, c, 1);
+    run(g, 40, () => c.dead);
     expect(c.dead).toBe(true);
-    expect(sum()).toBe(s0);
-    // Over a ship, a burst inside it sets it off.
-    launchFoe(g, { at: 0, kind: 'cloud', base: -1 });
-    const c2 = live(g, 'cloud')[0];
+    const gas = g.foe.marks.find((m) => m.kind === 'gas')!;
+    expect(gas).toBeDefined();
+    expect(g.ships.some((s) => Math.hypot(s.x - gas.x, s.y - gas.y) < FOE.cloud.radius) || g.lost > 0).toBe(true);
+    // A fresh ship crossing the middle of a cloud: one or two hits.
+    const g2 = quiet(5);
+    const ship = g2.ships[0];
+    ship.hp = 3;
+    const { x, y } = shipAhead(g2, ship, (FOE.cloud.radius + 30) / SHIP.speed);
+    g2.foe.marks.push({ id: 1, kind: 'gas', x, y, t: 0, dur: 99, dose: {} });
+    let inside = 0;
+    run(g2, 12, () => {
+      if (Math.hypot(ship.x - x, ship.y - y) <= FOE.cloud.radius) inside += DT;
+      return inside > 0 && Math.hypot(ship.x - x, ship.y - y) > FOE.cloud.radius + 5;
+    });
+    expect(inside).toBeGreaterThan(2);
+    expect(3 - ship.hp).toBeGreaterThanOrEqual(1);
+    expect(3 - ship.hp).toBeLessThanOrEqual(2);
+    expect(g2.ships).toContain(ship);
+  });
+
+  it('the Test Lab counts the gas\'s damage against the Volatile Cloud, and a missile shot down far out as stopped before harm', () => {
+    const g = createGame('strait', 3, 5);
+    applyFreePlay(g, { weapons: [], frequentDrops: false });
+    applyLab(g, { card: 'cloud', length: 'quick', mix: 'normal' });
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    run(g, 20);
+    g.threats = [];
+    launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
+    const c = live(g, 'cloud')[0];
+    run(g, 0.5);
+    const killed = g.lab!.stats.killed;
+    const early = g.lab!.stats.early;
+    damageThreat(g, c, 2);
+    expect(g.lab!.stats.killed).toBe(killed + 1);
+    expect(g.lab!.stats.early).toBe(early + 1);
+    const harm = g.lab!.stats.harm;
     const ship = g.ships[0];
-    c2.x = ship.x;
-    c2.y = ship.y;
-    c2.foe!.px = c2.x;
-    c2.foe!.py = c2.y;
-    c2.speed = 0;
-    const hp = ship.hp;
-    addFx(g, 'burst', ship.x + 10, ship.y, { life: 0.3, r: 20 });
-    step(g, DT);
-    expect(c2.dead).toBe(true);
-    expect(ship.hp < hp || g.lost > 0).toBe(true);
+    g.foe.marks.push({ id: 1, kind: 'gas', x: ship.x, y: ship.y, t: 0, dur: 99, dose: {} });
+    run(g, 3);
+    expect(g.lab!.stats.harm).toBeGreaterThan(harm);
+  });
+
+  it('the bots shoot a Volatile Cloud early, while it is still far from the convoy', () => {
+    const g = quiet(6);
+    launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
+    const c = live(g, 'cloud')[0];
+    const bot = new Bot(SKILLS.average, 6);
+    g.ammo = g.stats.rack;
+    let near = Infinity;
+    for (let i = 0; i < 60 * 30 && !c.dead; i++) {
+      bot.act(g);
+      step(g, DT);
+      if (!c.dead) near = g.ships.reduce((m, s) => Math.min(m, Math.hypot(s.x - c.x, s.y - c.y)), Infinity);
+    }
+    expect(c.dead).toBe(true);
+    expect(near).toBeGreaterThan(FOE.cloud.radius * 2);
+  });
+
+  it('a Lure Beacon rises out of the water first, then every helper goes for it over a real threat', () => {
+    // Drone Screen: drones already after a threat turn for the beacon.
+    const g = quiet();
+    load(g, 'droneScreen');
+    const c = g.map.carrier;
+    const heavy = bait(g, c.x + 650, c.y - 450);
+    run(g, 1);
+    expect(g.wings.some((w) => w.target === heavy.id)).toBe(true);
+    const l = lureAt(g, c.x - 500, c.y - 380);
+    expect(l.foe!.state).toBe(0);
+    // Rising: it draws nothing yet.
+    expect(lureIn(g, l.x, l.y)).toBeUndefined();
+    run(g, FOE.lure.rise + 0.1);
+    expect(l.foe!.state).toBe(1);
+    run(g, 0.1);
+    const after = g.wings.filter((w) => w.target !== null);
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.every((w) => w.target === l.id)).toBe(true);
+    expect(l.hp).toBe(THREATS.lure.hp); // and they do nothing to it
+
+    // Gunships: a threat beside the beacon draws them to the beacon.
+    const g2 = quiet(2);
+    load(g2, 'gunships');
+    run(g2, 4);
+    const h = g2.helis[0];
+    const t2 = bait(g2, h.x + 80, h.y - 120);
+    const l2 = lureAt(g2, t2.x + 200, t2.y - 60);
+    run(g2, FOE.lure.rise + 0.1);
+    const n0 = g2.hellfires.length;
+    run(g2, 2.5, () => g2.hellfires.length > n0);
+    expect(g2.hellfires.length).toBeGreaterThan(n0);
+    expect(g2.hellfires.every((m) => m.target === l2.id)).toBe(true);
+
+    // Frigates: a beacon beyond their reach still draws them when what they
+    // would shoot is inside its ring.
+    const g3 = quiet(3);
+    load(g3, 'frigate');
+    run(g3, 6);
+    const e = g3.escorts[0];
+    const t3 = bait(g3, e.x, e.y - 200);
+    const l3 = lureAt(g3, t3.x + 120, t3.y - 200);
+    run(g3, FOE.lure.rise + 0.1);
+    const i0 = g3.interceptors.length;
+    run(g3, 1.5);
+    const shots = g3.interceptors.slice(i0);
+    expect(shots.length).toBeGreaterThan(0);
+    expect(shots.every((s) => s.target === l3.id)).toBe(true);
+
+    // Orbital Strike locks on the beacon, not the toughest threat.
+    const g4 = quiet(4);
+    load(g4, 'orbital');
+    bait(g4, 800, 300);
+    const l4 = lureAt(g4, 300, 250);
+    run(g4, FOE.lure.rise + 0.05);
+    g4.orbital = null;
+    run(g4, AB.orbital.gap[0] + 0.2, () => !!g4.orbital);
+    expect((g4.orbital as { id: number } | null)?.id).toBe(l4.id);
+
+    // The Bomber Wing spends its pass on it.
+    const g5 = quiet(5);
+    load(g5, 'bomberWing');
+    const l5 = lureAt(g5, 700, 250);
+    run(g5, AB.bomberWing.first + 0.2, () => g5.sorties.length > 0);
+    expect(g5.sorties[0]?.kind).toBe('lure');
+    expect(g5.sorties[0]?.ref).toBe(l5.id);
+  });
+
+  it('a Repair Tender sails in from off the screen over open water to a station clear of the other boats', () => {
+    for (const map of ['strait', 'island', 'archipelago', 'harbor'] as const) {
+      const g = createGame(map, 3);
+      g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+      g.raiderQueue = [];
+      run(g, 20);
+      g.threats = [];
+      // A lure on one water spot already: the tender picks another.
+      launchFoe(g, { at: 0, kind: 'lure', base: -1 });
+      const lure = live(g, 'lure')[0];
+      launchFoe(g, { at: 0, kind: 'tender', base: -1 });
+      const t = live(g, 'tender')[0];
+      expect(t.x < 0 || t.x > VIEW.width, `${map}: starts off screen (${t.x})`).toBe(true);
+      const station = { x: t.foe!.px, y: t.foe!.py };
+      expect(Math.hypot(station.x - lure.x, station.y - lure.y), map).toBeGreaterThan(FOE.tender.clear - 1);
+      let closest = Infinity;
+      for (let i = 0; i < 60 * 40 && t.foe!.n === 0 && !t.dead; i++) {
+        step(g, DT);
+        if (t.x > 0 && t.x < VIEW.width) expect(onLand(g, t.x, t.y), `${map}: on land at ${t.x},${t.y}`).toBe(false);
+        for (const o of [...g.ships, lure]) closest = Math.min(closest, Math.hypot(o.x - t.x, o.y - t.y));
+      }
+      expect(t.foe!.n, `${map}: on station`).toBe(1);
+      expect(Math.hypot(t.x - station.x, t.y - station.y)).toBeLessThan(40);
+      expect(closest, `${map}: kept clear`).toBeGreaterThan(50);
+    }
+  });
+
+  it('a Scavenger with nothing to grab circles over the water off the convoy, not parked on the shore', () => {
+    const g = quiet();
+    g.pickups = [];
+    launchFoe(g, { at: 0, kind: 'scavenger', base: -1 });
+    const sc = live(g, 'scavenger')[0];
+    run(g, 5);
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < 60 * 6; i++) {
+      g.pickups = [];
+      step(g, DT);
+      if (i % 10 === 0) pts.push({ x: sc.x, y: sc.y });
+    }
+    expect(sc.dead).toBe(false);
+    for (const p of pts) expect(onLand(g, p.x, p.y)).toBe(false);
+    // It keeps moving, round a circle.
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(FOE.scavenger.orbit);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(FOE.scavenger.orbit);
+    // A pickup turns up: it goes for it.
+    g.pickups.push({ id: 4242, kind: 'repair', x: sc.x + 200, y: sc.y + 100, age: 0 });
+    run(g, 0.2);
+    expect(sc.foe!.link).toBe(4242);
   });
 });

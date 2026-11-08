@@ -34,11 +34,13 @@ It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
 
 ## How it works
 
-- **The hub** (main menu → Test Lab) holds 78 cards:
-  - 21 new enemies, the open questions first;
+- **The hub** (main menu → Test Lab) holds 74 cards:
+  - 17 new enemies, the open questions first;
   - 29 weapons, the 5 reworked ones first;
   - 8 combos;
   - 20 maps.
+
+  The first playtest (2026-11-08) cut four enemies: Loitering Drones, Crossing Wing, Flak Picket and Supply Barge (see [v3-enemy-build.md](v3-enemy-build.md)). Their cards are gone. Three combos used them and were remade: Siege Battery + Rocket Truck (was Supply Barge + Rocket Truck), Bodyguard Ring + Seeker Pod (was Flak Picket + Seeker Pod), and Hydra + Sprint Drones, Tesla (was Hydra + Crossing Wing). Old results and logs for the cut cards stay on the device and in the store as records; the hub and the session report skip them.
 
   Each card shows its status and what to look for. Its buttons are Next up, Play 5 (five back to back), Quick/Full, Session report and Feedback page. Progress is kept on the device (`straitwatch.v3.lab`).
 - **A test** is a Free Play run with a card (`src/v3/sim/lab.ts`):
@@ -80,7 +82,7 @@ It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
   - "Bring one" replays exactly;
   - a map card plays its own map.
 - `e2e/v3.mjs` (Test Lab block):
-  - the hub lists 78 cards with Next up;
+  - the hub lists 74 cards with Next up;
   - a test starts at wave 5 with its bar;
   - Bring one is recorded;
   - the verdict is kept on the device and goes into the log, at version 17;

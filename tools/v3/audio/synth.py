@@ -1658,14 +1658,6 @@ def _(rng, v):
     return mix(ring(rng, [740, 1980, 3300], 0.18, q=18) * 0.6, at(zap(rng, 0.22, 2600, 900) * 0.4, 0.02), at(zap(rng, 0.22, 3000, 1100) * 0.35, 0.07))
 
 
-@recipe("foe.dive")
-def _(rng, v):
-    # A pack tipping over into a dive: a whine falling.
-    d = 0.6
-    w = lp(osc(glide(1700, 520, d), d, "saw"), 2600) * env_points(d, [(0, 0), (0.06, 0.5), (d * 0.8, 0.4), (d, 0)])
-    return mix(w * 0.5, hiss(rng, d, 3000, 900) * 0.25)
-
-
 @recipe("foe.rotor")
 def _(rng, v):
     # Rotor blades beating in, the helicopter arriving.

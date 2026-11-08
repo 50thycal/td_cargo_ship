@@ -531,15 +531,6 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-2.3 dB); AAC .m4a"
  },
  {
-  "file": "foe.dive.1.m4a",
-  "cue": "foe.dive",
-  "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.dive', variant 1)",
-  "sourceUrl": "tools/v3/audio/synth.py",
-  "author": "Straitwatch (procedural, made for this game)",
-  "licence": "CC0-1.0",
-  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (-8.0 dB); AAC .m4a"
- },
- {
   "file": "foe.flare.1.m4a",
   "cue": "foe.flare",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'foe.flare', variant 1)",

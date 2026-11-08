@@ -64,27 +64,23 @@ const enemy = (id: FoeId, look: string, kit: AbilityId[]): LabCard => ({ id, kin
 
 /** Enemies in the order to test them: the open questions first. */
 const ENEMIES: LabCard[] = [
-  enemy('diveBomber', 'The circle, then the plane: can you shoot it in its window?', ['railgun', 'aegis', 'fullSteam']),
-  enemy('siege', 'Are the orange circles enough warning to silence the gun or move?', ['railgun', 'lance', 'fullSteam']),
-  enemy('rocketTruck', 'Is the slow raise (the red ring) enough time to kill the truck?', ['railgun', 'lance', 'bomberWing']),
-  enemy('cloud', 'Does "don\'t fire into it over your ships" make sense in play?', ['flak', 'railgun', 'lance']),
-  enemy('lure', 'Your helpers chase it: should their shots hurt it?', ['droneScreen', 'gunships', 'cutter']),
+  enemy('diveBomber', 'Redrawn: it flies in from the top and dives at the circle. Does it read, and is the window fair?', ['railgun', 'aegis', 'fullSteam']),
+  enemy('siege', 'It rises out of a hatch and hides between salvos: can you catch it while it is up?', ['railgun', 'lance', 'fullSteam']),
+  enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
+  enemy('cloud', 'The biohazard missile: do you kill it far out, before its gas lands on the lane?', ['flak', 'railgun', 'lance']),
+  enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
   enemy('decoy', 'Can you tell the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Is the dashed line readable? Sub, torpedo or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
   enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
-  enemy('loiter', 'Now or later: do you clear them while they wait?', ['flak', 'well', 'thermo']),
-  enemy('crossWing', 'Can you catch them at the X?', ['flak', 'thermo', 'airstrike']),
-  enemy('scavenger', 'Does losing a pickup feel fair?', ['seeker', 'cutter', 'supplyRun']),
-  enemy('attackHeli', 'Six hits or its missiles: is it a real choice?', ['lance', 'railgun', 'gunships']),
+  enemy('scavenger', 'It circles over the water waiting for a pickup: does it read apart from the other drones?', ['seeker', 'cutter', 'supplyRun']),
+  enemy('attackHeli', 'Its missiles now fly straight in: six hits or its missiles, a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
   enemy('stealthBomber', 'Does the B-2 read? Six hits too many?', ['railgun', 'seeker', 'aegis']),
-  enemy('tender', 'Do you see the green beam and change targets?', ['lance', 'railgun', 'orbital']),
+  enemy('tender', 'It sails in and keeps clear of other boats: do you see the green beam and change targets?', ['lance', 'railgun', 'orbital']),
   enemy('bodyguard', 'Do you notice the guards taking your shots?', ['flak', 'tesla', 'railgun']),
-  enemy('picket', 'Do you notice your shots dying in the ring?', ['airstrike', 'orbital', 'gunships']),
-  enemy('barge', 'Do the +1s make it a priority?', ['lance', 'railgun', 'orbital']),
 ];
 
 /** Weapons changed in the lock-in build and not played since: first. */
@@ -92,7 +88,7 @@ const REWORKED: Partial<Record<AbilityId, string>> = {
   dualWield: 'Both hands now end with the boost: does it feel right?',
   cadence: 'The 0.9 s beat: can you keep it under pressure?',
   focus: 'Hold one finger to slow time, tap with the other: comfortable?',
-  gunships: 'The new flight and Hellfires: do they read, are they useful?',
+  gunships: 'The Hellfires now fly straight to their targets: do they read, are they useful?',
   supplyRun: 'The cargo plane and chutes: clear what you got?',
 };
 
@@ -119,11 +115,11 @@ const COMBOS: LabCard[] = [
   combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam']),
   combo('tender-bodyguard', 'Repair Tender + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun']),
   combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], 'droneScreen'),
-  combo('cloud-flak', 'Volatile Cloud + Flak', 'Your area fire near your own ships.', ['cloud'], ['flak', 'thermo', 'railgun'], 'flak'),
+  combo('cloud-flak', 'Volatile Cloud + Flak', 'Flak catching the biohazard missile far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], 'flak'),
   combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter']),
-  combo('barge-truck', 'Supply Barge + Rocket Truck', 'Bigger raids and rockets you can\'t stop.', ['barge', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
-  combo('picket-seeker', 'Flak Picket + Seeker Pod', 'Does the picket shut down your seekers?', ['picket'], ['seeker', 'airstrike', 'flak'], 'seeker'),
-  combo('hydra-tesla', 'Hydra + Crossing Wing, Tesla', 'Area answers to split targets.', ['hydra', 'crossWing'], ['tesla', 'flak', 'thermo'], 'tesla'),
+  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
+  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], 'seeker'),
+  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], 'tesla'),
 ];
 
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */

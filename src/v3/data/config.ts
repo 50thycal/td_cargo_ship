@@ -95,17 +95,17 @@ export type ThreatKind =
   | 'dreadnought'
   // The enemy build (data/foes.ts): the new enemies, a chapter at a time,
   // and what some of them fire or carry.
-  | 'sprinter' | 'decoy' | 'hydra' | 'dart' | 'rocketTruck' | 'loiter'
-  | 'attackHeli' | 'heliRocket' | 'torpedoSub' | 'torpedo' | 'armored' | 'crosser' | 'scavenger'
+  | 'sprinter' | 'decoy' | 'hydra' | 'dart' | 'rocketTruck'
+  | 'attackHeli' | 'heliRocket' | 'torpedoSub' | 'torpedo' | 'armored' | 'scavenger'
   | 'stealthJet' | 'stealthBomber' | 'diveBomber' | 'siege' | 'spotter'
-  | 'tender' | 'guard' | 'picket' | 'lure' | 'barge' | 'cloud';
+  | 'tender' | 'guard' | 'lure' | 'cloud';
 
 /** The new enemies' kinds, as one list. */
 export const FOE_KINDS: ThreatKind[] = [
-  'sprinter', 'decoy', 'hydra', 'dart', 'rocketTruck', 'loiter',
-  'attackHeli', 'heliRocket', 'torpedoSub', 'torpedo', 'armored', 'crosser', 'scavenger',
+  'sprinter', 'decoy', 'hydra', 'dart', 'rocketTruck',
+  'attackHeli', 'heliRocket', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter',
-  'tender', 'guard', 'picket', 'lure', 'barge', 'cloud',
+  'tender', 'guard', 'lure', 'cloud',
 ];
 
 /** Enemy structures: you can shoot them, they never strike anything
@@ -171,25 +171,22 @@ export const THREATS: Record<
   hydra: { speed: 150, hp: 2, damage: 2, dropChance: 0.3, label: 'Hydra missile' },
   dart: { speed: 290, hp: 1, damage: 1, dropChance: 0.03, label: 'Hydra dart' },
   rocketTruck: { speed: 75, hp: 4, damage: 0, dropChance: 0.7, label: 'Rocket truck' },
-  loiter: { speed: 110, hp: 1, damage: 1, dropChance: 0.1, label: 'Loitering drone' },
   attackHeli: { speed: 160, hp: 6, damage: 0, dropChance: 0.8, label: 'Attack helicopter' },
   heliRocket: { speed: 200, hp: 1, damage: 1, dropChance: 0.05, label: 'Helicopter missile' },
   torpedoSub: { speed: 0, hp: 3, damage: 0, dropChance: 0.5, label: 'Torpedo sub' },
   torpedo: { speed: 75, hp: 1, damage: 3, dropChance: 0.1, label: 'Torpedo' },
   armored: { speed: 60, hp: 2, damage: 2, dropChance: 0.4, label: 'Armored drone' },
-  crosser: { speed: 120, hp: 1, damage: 1, dropChance: 0.08, label: 'Wing drone' },
   scavenger: { speed: 170, hp: 1, damage: 0, dropChance: 0.3, label: 'Scavenger drone' },
-  stealthJet: { speed: 270, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
+  // Test Lab round 1: "a little faster" (270, as the Strike jet, → 315).
+  stealthJet: { speed: 315, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
   stealthBomber: { speed: 150, hp: 6, damage: 0, dropChance: 0.8, label: 'Stealth bomber' },
   diveBomber: { speed: 0, hp: 2, damage: 2, dropChance: 0.5, label: 'Dive bomber' },
-  siege: { speed: 0, hp: 6, damage: 0, dropChance: 1, label: 'Siege battery' },
+  siege: { speed: 0, hp: 5, damage: 0, dropChance: 1, label: 'Siege battery' },
   spotter: { speed: 120, hp: 4, damage: 0, dropChance: 0.7, label: 'Spotter plane' },
-  tender: { speed: 30, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },
+  tender: { speed: 55, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },
   guard: { speed: 0, hp: 1, damage: 0, dropChance: 0.03, label: 'Guard drone' },
-  picket: { speed: 0, hp: 5, damage: 0, dropChance: 0.8, label: 'Flak picket' },
   lure: { speed: 0, hp: 2, damage: 0, dropChance: 0.4, label: 'Lure beacon' },
-  barge: { speed: 0, hp: 12, damage: 0, dropChance: 1, label: 'Supply barge' },
-  cloud: { speed: 22, hp: 1, damage: 2, dropChance: 0, label: 'Volatile cloud' },
+  cloud: { speed: 48, hp: 2, damage: 1, dropChance: 0.3, label: 'Volatile cloud missile' },
 };
 
 /** The supertanker (The Behemoth Run): its hit points, the ships its loss
@@ -330,13 +327,11 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   hydra: 'volley',
   dart: 'volley',
   rocketTruck: 'barrage',
-  loiter: 'swarm',
   attackHeli: 'strike',
   heliRocket: 'strike',
   torpedoSub: 'barrage',
   torpedo: 'barrage',
   armored: 'swarm',
-  crosser: 'swarm',
   scavenger: 'swarm',
   stealthJet: 'strike',
   stealthBomber: 'strike',
@@ -345,9 +340,7 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   spotter: 'strike',
   tender: 'volley',
   guard: 'volley',
-  picket: 'volley',
   lure: 'swarm',
-  barge: 'volley',
   cloud: 'barrage',
 };
 

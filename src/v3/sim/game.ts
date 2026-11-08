@@ -71,7 +71,7 @@ import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, picketShoots, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
@@ -545,8 +545,9 @@ export interface Sortie {
   ty: number;
   hit: boolean;
   /** truck: a raider's id; silo: a base's index; tunnel: the cancelled
-   *  raider spawn (already gone from the queue). */
-  kind: 'truck' | 'silo' | 'tunnel';
+   *  raider spawn (already gone from the queue); lure: a Lure Beacon's
+   *  threat id (the pass is wasted on it). */
+  kind: 'truck' | 'silo' | 'tunnel' | 'lure';
   ref: number;
 }
 
@@ -1806,9 +1807,9 @@ function updateEscorts(g: Game, dt: number): void {
     if (e.fireT > 0) continue;
     // The nearest threat in reach that still needs a shot.
     // A Lure Beacon in reach draws its fire first (the enemy build).
-    const target = lureIn(g, e.x, e.y, AB.frigate.range) ?? g.threats
+    const target = lured(g, e.x, e.y, AB.frigate.range, g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, e.x, e.y) <= AB.frigate.range && assigned(g, t.id) < t.hp)
-      .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0];
+      .sort((a, b) => dist(a.x, a.y, e.x, e.y) - dist(b.x, b.y, e.x, e.y))[0]);
     if (!target) {
       e.fireT = 0.1;
       continue;
@@ -1852,9 +1853,9 @@ function updateAegis(g: Game, dt: number): void {
       }
     }
     if (a.ammo < 1) return a;
-    const target = lureIn(g, x, y, reach) ?? g.threats
+    const target = lured(g, x, y, reach, g.threats
       .filter((t) => !t.dead && isTarget(t) && dist(t.x, t.y, x, y) <= reach && assigned(g, t.id) < t.hp)
-      .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0];
+      .sort((p, q) => dist(p.x, p.y, x, y) - dist(q.x, q.y, x, y))[0]);
     if (!target) return a;
     a.ammo -= 1;
     g.interceptors.push({ id: g.nextId++, x, y: y - 8, target: target.id, tx: target.x, ty: target.y, life: 0, src: 'gun' });
@@ -1878,9 +1879,9 @@ function updatePointDefense(g: Game, dt: number): void {
   g.pdT -= dt;
   if (g.pdT > 0) return;
   const c = g.map.carrier;
-  const target = lureIn(g, c.x, c.y, g.stats.pdRange) ?? g.threats
+  const target = lured(g, c.x, c.y, g.stats.pdRange, g.threats
     .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, c.x, c.y) <= g.stats.pdRange && assigned(g, t.id) < t.hp)
-    .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0];
+    .sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y))[0]);
   if (!target) {
     g.pdT = 0.1;
     return;
@@ -2417,6 +2418,12 @@ function updatePassives(g: Game, dt: number): void {
   for (const d of g.wings) {
     d.life -= dt;
     let th = d.target === null ? undefined : g.threats.find((t) => t.id === d.target && !t.dead);
+    // A Lure Beacon that comes up turns a drone already on its way.
+    const lure = lureIn(g, d.x, d.y);
+    if (lure && th !== lure) {
+      th = lure;
+      d.target = lure.id;
+    }
     if (!th) {
       // The threat closest to hitting a hull that no other drone is after.
       const claimed = new Set(g.wings.map((o) => o.target));
@@ -2468,8 +2475,10 @@ function updatePassives(g: Game, dt: number): void {
         best = t;
       }
     }
-    if (!best) continue;
-    launchHellfire(g, h.x, h.y, h.heading, best, AB.gunships.damage[(gw?.level ?? 1) - 1]);
+    // A Lure Beacon in reach, or by what they'd fire at, draws the rockets.
+    const pick = lured(g, h.x, h.y, AB.gunships.reach, best ?? undefined);
+    if (!pick) continue;
+    launchHellfire(g, h.x, h.y, h.heading, pick, AB.gunships.damage[(gw?.level ?? 1) - 1]);
   }
   g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
   updateHellfires(g, dt);
@@ -2576,14 +2585,34 @@ function flyHeli(g: Game, h: Heli, want: Point, dt: number): void {
   h.roll += (clamp(side, -1, 1) - h.roll) * k;
 }
 
-/** A Hellfire leaves the rail along `heading` and homes on `target` (or a
- *  spot on the water). */
-function launchHellfire(g: Game, x: number, y: number, heading: number, target: Threat | null, dmg: number, at?: Point): void {
+/** A Hellfire leaves the rail pointed at `target` (or a spot on the water),
+ *  kicked at most HELLFIRE_KICK off that toward the helicopter's nose so the
+ *  pair still splays a little, and homes on it. Test Lab round 1: launched
+ *  along the nose, a target behind or beside the helicopter made it fly a
+ *  loop first. */
+export function launchHellfire(g: Game, x: number, y: number, heading: number, target: Threat | null, dmg: number, at?: Point): void {
   const tx = target ? target.x : at!.x;
   const ty = target ? target.y : at!.y;
-  g.hellfires.push({ id: g.nextId++, x, y, heading, target: target ? target.id : -1, tx, ty, t: 0, dmg, trail: [x, y] });
+  const want = Math.atan2(ty - y, tx - x);
+  const aim = want + clamp(angleDiff(heading, want), -HELLFIRE_KICK, HELLFIRE_KICK);
+  g.hellfires.push({ id: g.nextId++, x, y, heading: aim, target: target ? target.id : -1, tx, ty, t: 0, dmg, trail: [x, y] });
   cue(g, 'heli.rockets', x, y);
 }
+
+/** How far off its target a Hellfire may leave the rail (rad). */
+const HELLFIRE_KICK = 0.35;
+
+/** Homing that never orbits (Test Lab round 1: "sometimes it'll circle the
+ *  entire thing"). A missile that turns at most `base` rad/s has a turning
+ *  circle of radius speed/base; a target that sits inside that circle (closer
+ *  than 2·radius·sin(error)) can't be reached, and the missile circles it.
+ *  Turning at least HOMING_K·speed/distance keeps the circle's radius under
+ *  a third of the distance left, so the target is never inside it and the
+ *  nose always comes round onto it. Far out it is the missile's own turn. */
+export function homingTurn(base: number, speed: number, d: number): number {
+  return Math.max(base, (HOMING_K * speed) / Math.max(1, d));
+}
+const HOMING_K = 3;
 
 function updateHellfires(g: Game, dt: number): void {
   const H = AB.gunships;
@@ -2594,9 +2623,12 @@ function updateHellfires(g: Game, dt: number): void {
       m.ty = th.y;
     }
     m.t += dt;
-    // It curves onto the target, turning harder the longer it flies.
-    const want = Math.atan2(m.ty - m.y, m.tx - m.x);
-    const turn = H.missileTurn * (1 + m.t * 6) * dt;
+    // It curves onto where the target will be, turning harder the longer it
+    // flies and the closer it gets (homingTurn: it can't circle it).
+    const d = dist(m.x, m.y, m.tx, m.ty);
+    const ahead = th ? d / H.missileSpeed : 0;
+    const want = Math.atan2(m.ty + (th?.vy ?? 0) * ahead - m.y, m.tx + (th?.vx ?? 0) * ahead - m.x);
+    const turn = homingTurn(H.missileTurn * (1 + m.t * 6), H.missileSpeed, d) * dt;
     m.heading += clamp(angleDiff(want, m.heading), -turn, turn);
     const stepLen = H.missileSpeed * dt;
     m.x += Math.cos(m.heading) * stepLen;
@@ -2647,6 +2679,9 @@ function callSorties(g: Game, n: number, quiet: number, subs = false): void {
     const p = sp.path[0];
     picks.push({ kind: 'tunnel', ref: i, x: clamp(p.x, 30, VIEW.width - 30), y: clamp(p.y, 30, VIEW.height - 30), score: sp.units.reduce((a, u) => a + u.size, 0) });
   });
+  // A Lure Beacon that's up draws the first pass, ahead of everything.
+  const lure = lureIn(g, VIEW.width / 2, VIEW.height / 2);
+  if (lure) picks.push({ kind: 'lure', ref: lure.id, x: lure.x, y: lure.y, score: Infinity });
   picks.sort((a, b) => b.score - a.score);
   const chosen = picks.slice(0, n);
   // A tunnel's truck is cancelled now (so a later pass can't pick it again).
@@ -2666,6 +2701,9 @@ function bombTarget(g: Game, b: Sortie): void {
   if (b.kind === 'truck') {
     const r = g.raiders.find((o) => o.id === b.ref);
     if (r && raiderUp(r)) knockOut(g, r);
+  } else if (b.kind === 'lure') {
+    const t = g.threats.find((o) => o.id === b.ref && !o.dead);
+    if (t) damageThreat(g, t, 1);
   } else {
     addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: b.kind === 'silo' ? 'SILO SILENCED' : 'TUNNEL HIT' });
   }
@@ -2914,12 +2952,12 @@ function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | 
     {
       // A missile from off the screen's edge (the gunship never shows).
       const sx = ax < VIEW.width / 2 ? 0 : VIEW.width;
-      const target = threat ?? null;
+      const target = lured(g, ax, ay, AB.gunships.reach, threat ?? undefined) ?? null;
       launchHellfire(g, sx, ay - 60, Math.atan2(60, ax - sx), target, AB.gunships.damage[k], target ? undefined : { x: ax, y: ay });
       break;
     }
     case 'orbital': {
-      const th = threat ?? toughest(g, -1);
+      const th = lured(g, ax, ay, Infinity, threat ?? undefined) ?? toughest(g, -1);
       if (!th) break;
       const bx = th.x;
       const by = th.y;
@@ -3439,13 +3477,11 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   hydra: GUIDED.waveSpeedShare,
   dart: 0.5,
   rocketTruck: 0,
-  loiter: 0.6,
   attackHeli: 0.3,
   heliRocket: 0.5,
   torpedoSub: 0,
   torpedo: 0.3,
   armored: 0.6,
-  crosser: 0.6,
   scavenger: 0.3,
   stealthJet: 0.3,
   stealthBomber: 0.3,
@@ -3454,9 +3490,7 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   spotter: 0.2,
   tender: 0,
   guard: 0,
-  picket: 0,
   lure: 0,
-  barge: 0,
   cloud: 0.3,
 };
 
@@ -3763,7 +3797,10 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     } else {
       const base = STEER[th.kind] ?? GUIDED.turnRate;
       const close = Math.max(0, 1 - d / GUIDED.terminalRange);
-      const turn = (base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
+      // The enemy helicopter's missiles home without circling (Test Lab
+      // round 1: "the missile for the enemy helicopter also needs to be
+      // fixed"); the rest keep their own turn.
+      const turn = (th.kind === 'heliRocket' ? homingTurn(base, th.speed, d) : base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
       th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
     const boost =
@@ -4111,7 +4148,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
   if (isStructure(th.kind)) {
     structureDown(g, th);
   } else {
-    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
+    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' || th.kind === 'decoy' ? 18 : 26 });
     cue(g, KILL_CUE[th.kind], th.x, th.y);
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }
@@ -4215,8 +4252,6 @@ function updateInterceptors(g: Game, dt: number): void {
       live.push(it);
       continue;
     }
-    // The enemy build: a Flak Picket shoots down shots through its ring.
-    if (picketShoots(g, it)) continue;
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
     // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
     const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
@@ -4607,9 +4642,9 @@ function updatePosts(g: Game, dt: number): void {
     }
     st.fireT -= dt;
     if (st.fireT > 0) return;
-    const target = lureIn(g, p.x, p.y, p.reach) ?? g.threats
+    const target = lured(g, p.x, p.y, p.reach, g.threats
       .filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, p.x, p.y) <= p.reach && assigned(g, t.id) < t.hp)
-      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0]);
     if (!target) {
       st.fireT = 0.1;
       return;
@@ -5054,17 +5089,34 @@ function collect(g: Game, p: Pickup): void {
   }
 }
 
-/** The Nuke: every drone, missile, aircraft, boat and mine on screen is
- *  destroyed (no drops: a screen-clear isn't a loot shower); structures and
- *  the Dreadnought take nukeStructure hits. */
+/** How far past the screen's edge the Nuke still reaches (px): anything
+ *  partly in view. */
+const NUKE_EDGE = 40;
+
+/** The Nuke: everything hostile on the screen is destroyed (no drops: a
+ *  screen-clear isn't a loot shower). Test Lab round 1 ("blow up everything
+ *  on the screen, even the trucks, submarines, any of the vehicles"): that
+ *  includes the launch trucks and submarines (raiders, not targets
+ *  otherwise), every new enemy platform (a siege gun down in its hatch, a
+ *  sub at periscope depth, the Lure Beacon) and every warning circle and
+ *  shot on the water. The one exception, as before: structures (rigs,
+ *  generators, the Citadel) and the Dreadnought boss take nukeStructure
+ *  hits instead of dying. */
 function nuke(g: Game): void {
   const c = g.map.carrier;
+  const M = NUKE_EDGE;
+  const onScreen = (x: number, y: number) => x >= -M && x <= VIEW.width + M && y >= -M && y <= VIEW.height + M;
+  nukeFoes(g);
+  // The Lure Beacon takes only the player's own hand; the Nuke is that.
+  const byTap = g.foe.byTap;
+  g.foe.byTap = true;
   for (const th of [...g.threats]) {
-    if (th.dead || th.x < 0 || th.x > VIEW.width || th.y < 0 || th.y > VIEW.height) continue;
+    if (th.dead || !onScreen(th.x, th.y)) continue;
     if (isStructure(th.kind)) damageThreat(g, th, PICKUPS.nukeStructure, false);
     else damageThreat(g, th, th.hp + 99, false);
   }
-  g.foe.shots = [];
+  g.foe.byTap = byTap;
+  for (const r of g.raiders) if (r.state !== 'reverse' && onScreen(r.x, r.y)) knockOut(g, r);
   addFx(g, 'nuke', c.x, c.y, { life: 1.2, r: Math.hypot(VIEW.width, VIEW.height) });
 }
 
@@ -5106,13 +5158,11 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   hydra: 'kill.missile',
   dart: 'kill.small',
   rocketTruck: 'truck.destroyed',
-  loiter: 'kill.small',
   attackHeli: 'kill.big',
   heliRocket: 'kill.small',
   torpedoSub: 'sub.destroyed',
   torpedo: 'kill.missile',
   armored: 'kill.big',
-  crosser: 'kill.small',
   scavenger: 'kill.small',
   stealthJet: 'kill.big',
   stealthBomber: 'kill.big',
@@ -5121,9 +5171,7 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   spotter: 'kill.big',
   tender: 'kill.big',
   guard: 'kill.small',
-  picket: 'kill.big',
   lure: 'kill.missile',
-  barge: 'structure.down',
   cloud: 'kill.missile',
 };
 
@@ -5160,13 +5208,11 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   hydra: 'missile.launch',
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
-  loiter: 'drone.launch',
   attackHeli: 'foe.rotor',
   heliRocket: 'missile.launch',
   torpedoSub: 'sub.surface',
   torpedo: 'sub.fire',
   armored: 'drone.launch',
-  crosser: 'drone.launch',
   scavenger: 'drone.launch',
   stealthJet: 'strafer.pass',
   stealthBomber: 'bomber.pass',
@@ -5175,10 +5221,8 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   spotter: 'bomber.pass',
   tender: 'sub.surface',
   guard: 'minidrone.spawn',
-  picket: 'sub.surface',
   lure: 'mine.drop',
-  barge: 'sub.surface',
-  cloud: 'mine.drop',
+  cloud: 'missile.launch',
   // Structures are raised, never launched.
 };
 
@@ -5195,9 +5239,6 @@ function launchCue(g: Game, th: Threat, origin: LaunchOrigin): void {
 // ---------------------------------------------------------------------------
 // Helpers
 
-/** Effects that are explosions (they set off a Volatile Cloud). */
-const EXPLOSIVE = new Set<FxKind>(['boom', 'burst', 'splash', 'flak', 'frag', 'thermo', 'nuke', 'orbital']);
-
 export function addFx(
   g: Game,
   kind: FxKind,
@@ -5208,8 +5249,6 @@ export function addFx(
   // Words never print on top of each other (playthrough round: "JET DOWN"
   // and "REPAIRED" landed on one spot): a new one steps up above any still
   // fresh nearby.
-  // The enemy build: an explosion inside a Volatile Cloud sets it off.
-  if (EXPLOSIVE.has(kind)) sparks(g, x, y);
   if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
   g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text });
 }

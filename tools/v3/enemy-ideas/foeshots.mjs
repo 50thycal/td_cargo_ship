@@ -49,13 +49,6 @@ export const SCENES = {
       { name: 'fire', until: `g.foe.shots.some((s) => s.t / s.dur > 0.45)`, focus: `(() => { const t = foes[0]; const s = g.foe.shots[0]; const x = Math.min(t.x, s.tx) - 120; return { x, y: Math.min(t.y, s.ty) - 80, w: Math.max(700, Math.abs(t.x - s.tx) + 240) }; })()` },
     ],
   },
-  loiter: {
-    kind: 'loiter',
-    moments: [
-      { name: 'circle', until: `foes.length && foes.every((t) => t.foe.state === 1) && foes[0].foe.t > 0.6`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 360, y: f.py - 230, w: 720 }; })()` },
-      { name: 'dive', until: `foes.some((t) => t.foe.state === 2 && t.foe.t > 0.35)`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 360, y: f.py - 210, w: 720 }; })()` },
-    ],
-  },
   // ---- Chapter 2.
   attackHeli: {
     kind: 'attackHeli',
@@ -76,14 +69,6 @@ export const SCENES = {
     moments: [
       { name: 'plate', until: `foes.length && foes[0].age > 1.2 && foes[0].foe.state === 0`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 150, w: 600 }; })()` },
       { name: 'bank', until: `foes.length && foes[0].foe.state === 1 && foes[0].foe.t > 0.6`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 170, w: 600 }; })()` },
-    ],
-  },
-  crossWing: {
-    kind: 'crosser',
-    base: 0,
-    moments: [
-      { name: 'closing', until: `foes.length && foes.every((t) => t.foe.state === 0) && foes[0].age > 1.6`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 420, y: f.py - 260, w: 840 }; })()` },
-      { name: 'peel', until: `foes.length && foes.filter((t) => t.foe.state === 1).length >= 4`, focus: `(() => { const f = foes[0].foe; return { x: f.px - 420, y: f.py - 220, w: 840 }; })()` },
     ],
   },
   scavenger: {
@@ -131,17 +116,9 @@ export const SCENES = {
     kind: 'guard',
     moments: [{ name: 'ring', until: `foes.length && foes[0].age > 1.8`, focus: `(() => { const h = g.threats.find((t) => t.kind === 'heavy'); return { x: h.x - 280, y: h.y - 150, w: 560 }; })()` }],
   },
-  picket: {
-    kind: 'picket',
-    moments: [{ name: 'ring', until: `foes.length && foes[0].age > 1`, focus: `(() => { const t = foes[0]; return { x: t.x - 360, y: t.y - 200, w: 720 }; })()` }],
-  },
   lure: {
     kind: 'lure',
     moments: [{ name: 'flash', until: `foes.length && foes[0].age > 1 && Math.floor(g.t * 5) % 2 === 0`, focus: `(() => { const t = foes[0]; return { x: t.x - 300, y: t.y - 170, w: 600 }; })()` }],
-  },
-  barge: {
-    kind: 'barge',
-    moments: [{ name: 'tags', until: `foes.length && foes[0].age > 1`, focus: `(() => { const t = foes[0]; return { x: 100, y: 0, w: 1400 }; })()` }],
   },
   cloud: {
     kind: 'cloud',

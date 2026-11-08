@@ -724,17 +724,17 @@ try {
     await ep.click('[data-map]:not(.locked)');
     await ep.waitForSelector('[data-start]');
     const foes = await ep.evaluate(() => ({ list: document.querySelector('[data-new-enemies]')?.dataset.newEnemies ?? null, first: document.querySelectorAll('.v3-foe-chip.first').length }));
-    check(foes.list === 'sprinter decoy hydra rocketTruck loiter' && foes.first === 1, `the briefing names the enemies a chapter brings, the map's first marked (${foes.list}, ${foes.first} first)`);
+    check(foes.list === 'sprinter decoy hydra rocketTruck' && foes.first === 1, `the briefing names the enemies a chapter brings, the map's first marked (${foes.list}, ${foes.first} first)`);
     // Free Play: the Enemies line, then every new enemy brought in, drawn, no errors.
     await ep.evaluate(() => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify({ map: 'strait', wave: 5, weapons: [{ id: 'flak', level: 1 }], armory: { gun: null, hull: null, supply: null }, frequentDrops: false, enemies: 'all' })));
     await ep.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
     await ep.click('[data-free-play]');
     await ep.waitForSelector('[data-screen="freeplay"]');
     const line = await ep.evaluate(() => { const s = document.querySelector('[data-fp="enemies"]'); return s ? { value: s.value, n: s.options.length } : null; });
-    check(line && line.value === 'all' && line.n === 24, `Free Play has an Enemies line: as the campaign, all, none, or any one of 21 (${JSON.stringify(line)})`);
+    check(line && line.value === 'all' && line.n === 20, `Free Play has an Enemies line: as the campaign, all, none, or any one of 17 (${JSON.stringify(line)})`);
     await ep.click('[data-free-start]');
     await ep.waitForSelector('.playing');
-    const kinds = ['sprinter', 'decoy', 'hydra', 'rocketTruck', 'loiter', 'attackHeli', 'torpedoSub', 'armored', 'crosser', 'scavenger', 'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter', 'tender', 'guard', 'picket', 'lure', 'barge', 'cloud'];
+    const kinds = ['sprinter', 'decoy', 'hydra', 'rocketTruck', 'attackHeli', 'torpedoSub', 'armored', 'scavenger', 'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter', 'tender', 'guard', 'lure', 'cloud'];
     const seen = new Set();
     for (const k of kinds) {
       await ep.evaluate((kind) => { const g = window.__v3.game(); g.queue = [{ at: 1e9, kind: 'drone', base: 0 }]; g.raiderQueue = []; window.__v3.foe(kind); }, k);
@@ -743,7 +743,7 @@ try {
         if (await ep.evaluate((kind) => { const g = window.__v3.game(); return g.threats.some((t) => t.kind === kind) || g.foe.marks.length > 0; }, k)) seen.add(k);
       }
     }
-    check(seen.size === kinds.length && errs.length === 0, `all 21 new enemies come into play in the browser and draw without errors (${seen.size}/21${errs.length ? `; ${errs[0]}` : ''})`);
+    check(seen.size === kinds.length && errs.length === 0, `all ${kinds.length} new enemies come into play in the browser and draw without errors (${seen.size}/${kinds.length}${errs.length ? `; ${errs[0]}` : ''})`);
     await ep.close();
   }
 
@@ -758,7 +758,7 @@ try {
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
     const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent }));
-    check(hub.rows === 78 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
+    check(hub.rows === 74 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
     await tp.click('[data-lab-next]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
