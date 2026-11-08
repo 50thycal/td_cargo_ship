@@ -263,3 +263,52 @@ Support: enemies that change the rules for the others. Last, once every other en
   1. One from wave 2, rising to three on wave 10 (as built, recommended)
   2. Fewer: they should be a surprise, not the wave
   3. More: make them the main event
+
+## Test Lab round 1 (2026-11-08)
+
+The player's verdicts and notes from the Test Lab enemy run are in `tools/v3/test-lab/playtest-2026-11-08.json`. This section is written by hand (`plan.mjs` does not make it). Screenshots: [img/enemy-lab-round1/](img/enemy-lab-round1/). The bots' Test Lab evidence before and after (`npx vite-node tools/v3/test-lab/measure.mts -- <card>`, ten seeds, three waves each) is quoted per item.
+
+### Homing missiles no longer circle (Gunship Pair's Hellfires, the Attack Helicopter's missiles)
+
+*"Sometimes it'll circle the entire thing ... there's something bugging with the math."*
+
+- **Why they circled:** both turned at a capped rate and left the rail along the helicopter's nose. A Hellfire flies 1150 px/s and turned at 2.5 rad/s at launch (a turning circle 460 px across, tightening only as it flew); the helicopter's missile turned at 3 rad/s. A target close by and off to the side or behind (always possible: a Gunship picks anything within 380 px, whatever way it faces) sits inside the missile's turning circle, and a turn-limited pursuer can never reach a point inside its own circle: it orbits until it times out. The Hellfire then burst on the target anyway after 1.4 s, so it looked like a loop and a hit.
+- **The fix:** both leave the rail pointed at their target (the Hellfire within 0.35 rad of it, so a pair still splays a little; it also aims where the target will be), and both turn at least 3 × speed / distance (`homingTurn` in `sim/game.ts`). That keeps the turning circle under a third of the distance left, so the target is never inside it and the nose always comes round. Far out, each keeps its own turn rate.
+- **Tests:** `tests/v3/homing.test.ts`: from every heading at 30 to 400 px, still and moving targets, both missiles arrive within a bounded time and turn less than a circle; a real Hellfire from six offsets and five nose headings flies within 25% of the straight line and bursts on arrival, not on timing out.
+
+### Rocket Truck: salvos of five small rockets
+
+*"Make it launch like five rockets at a time ... a lot less damage."*
+
+- Each firing is now a ripple of five small red rockets, 0.1 s apart, at one ship, landing in a cluster round it (18 px spread). The salvo does what one rocket did before: the first of its rockets to land on a hull takes 1, the rest only splash (hull damage is whole points, so the hit is split visually, not in fractions). Five salvos a truck, as there were five rockets; the gap and the raise are unchanged.
+- Bots (harm, sharp / casual): before 5 / 29, after 8 / 28: the same threat.
+
+### Red means it can't be intercepted
+
+*"Make the projectiles a color, then we can tell the player: red projectiles you just cannot intercept. Do the same with the shore battery."*
+
+- Everything no interceptor can stop is drawn red from nose to tail, with a red glow: the Rocket Truck's rockets, the Siege Battery's shells in flight, the Dive Bomber's bomb (red under its belly until it lets go). Missiles you can shoot keep their pale body and red tip. Torpedoes and the helicopter's missiles can be shot (one hit), so they are not red.
+- The first red shot of a run brings one small card, without a sound: **RED SHOTS CAN'T BE STOPPED**, *Hit the launcher instead.*
+- A tap on a red shot with nothing shootable under the finger says **CAN'T INTERCEPT** there, small, like **RELOADING** (the player asked for this one; it did not exist before).
+- The briefing's "New enemies" box says *Red shots can't be stopped: hit the launcher* when its chapter has one of them (`RED_FOES`), and the three foes' blurbs and first-sight cards say red.
+
+### Siege Battery: up out of a hatch, and back down
+
+*"Raised up from low ground and then it could go back, but it just has a vulnerable spot once it's up."*
+
+- It lives in a hatch on the enemy shore: a closed hatch first (1 s), then the doors slide open and the gun rises (1.5 s, a target from the start, its ring filling), marks its two circles, and stays up until its shells have left the gun (+0.3 s). Then it sinks back and the doors shut: for 2.4 s it is off the board (no taps, no blasts, no helpers, no bots: it is not in the threat list at all), drawn as a shut hatch with a faint ring and its hits so far, faint. Then up again, the same gun with its hits and salvos kept. After the third salvo it goes down for good (not a kill).
+- A salvo every 6.5 s (was 6). It was the deadliest enemy in the playtest (7 came, 32 hull hits, 5 sunk), and hiding made it harder for the bots (casual: sunk 19 → 41 at 6 hits), so it now takes **5 hits, not 6**. Bots (harm, sharp / casual): before 36 / 212, after 32 / 166.
+
+### Dive Bomber: seen from above, in from the top
+
+*"Instead of coming top down ... come from the top of the screen and then drop in. The perspective should match the rest of the game."*
+
+- It is drawn like every other aircraft now: a gull-winged plane from above with its shadow on the water. When its window opens it comes in near the top of the screen (up to 420 px short of its circle, at a slight slant), flies straight at the circle and pitches into its dive (it shortens front to back, its shadow closes in under it, it grows a touch as it gets low), lets go of its red bomb 36 px short of the circle (the bomb falls on into it), then pulls up, its shadow drawing away, and banks off to the nearer edge.
+- Flying in from that far, the sharp bot let three times the bombs through in the old 1.8 s window, so the window is **2.2 s** and the circle shows **1.8 s** before the plane (was 2.2): the bomb still lands 4.7 s after the circle appears. Bots (harm, sharp / casual): before 6 / 97, after 4 / 94.
+
+### The Nuke hits everything on the screen
+
+*"It should blow up everything on the screen, even the trucks, submarines, any of the vehicles."*
+
+- What it missed: the launch trucks and submarines (raiders, which are not targets otherwise), anything just past the screen's edge, and the warnings. Now it knocks out every raider on screen, kills every threat on or partly on the screen (40 px past the edge), brings up and kills a siege gun hidden in its hatch, sinks a sub still at periscope depth, takes the Lure Beacon however the Nuke was picked up, and clears every circle and red shot on the water.
+- The one exception stays, as documented before: structures (rigs, generators, the Citadel) and the Dreadnought boss take 3 hits instead of dying. Test: `tests/v3/nuke.test.ts`.

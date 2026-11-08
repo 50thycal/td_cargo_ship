@@ -3389,6 +3389,27 @@ body {
   color: #ffb3a6;
 }
 
+/* Test Lab round 1: red shots can't be stopped (said where those enemies
+   are listed). */
+.v3-brief-red {
+  margin: 0;
+  color: #ff8a80;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.v3-brief-red::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #ff2b2b;
+  box-shadow: 0 0 6px #ff2b2b;
+  vertical-align: 1px;
+}
+
 .v3-kit-head {
   display: flex;
   justify-content: space-between;

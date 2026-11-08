@@ -9,7 +9,7 @@ import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
 import { absorbs, launchFoe, newFoeState } from '../../src/v3/sim/foes';
-import { addFx, applyFreePlay, createGame, damageThreat, step, tap, type Game, type Threat } from '../../src/v3/sim/game';
+import { addFx, applyFreePlay, createGame, damageThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 function run(g: Game, seconds: number, until?: () => boolean): void {
@@ -185,13 +185,50 @@ describe('chapter 1: Home Waters', () => {
     expect(g.foe.shots.length).toBeGreaterThan(0);
     // The rockets are not threats: a tap can't reach them.
     expect(g.threats.some((th) => g.foe.shots.some((s) => s.id === th.id))).toBe(false);
-    run(g, FOE.rocketTruck.gap * FOE.rocketTruck.rockets + 2);
+    run(g, FOE.rocketTruck.gap * FOE.rocketTruck.salvos + 2);
     // They land on hulls: damage done, all of it the truck's.
     expect(g.sunkBy.rocketTruck + g.ships.filter((s) => s.hp < g.stats.shipHp).length).toBeGreaterThan(0);
     // Then it lowers the launcher and drives off: not a kill.
     run(g, 20, () => t.dead);
     expect(t.dead).toBe(true);
     expect(g.kills.rocketTruck).toBe(0);
+  });
+
+  it('each firing is a ripple of five small rockets a tenth of a second apart round one ship, and the salvo does one hit', () => {
+    const R = FOE.rocketTruck;
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'rocketTruck', base: -1 });
+    const t = live(g, 'rocketTruck')[0];
+    run(g, 40, () => g.foe.shots.length > 0);
+    const ships = [...g.ships];
+    const hull = () => ships.reduce((a, s) => a + Math.max(0, s.hp), 0);
+    const before = hull();
+    const launched: number[] = [];
+    const seen = new Set<number>();
+    const t0 = g.t;
+    for (let i = 0; i < 60 && launched.length < R.perSalvo; i++) {
+      for (const s of g.foe.shots) if (!seen.has(s.id)) {
+        seen.add(s.id);
+        launched.push(g.t - t0);
+      }
+      step(g, DT);
+    }
+    // Five, about 0.1 s apart, all one salvo, landing round one point.
+    expect(launched).toHaveLength(R.perSalvo);
+    for (let k = 1; k < launched.length; k++) expect(launched[k] - launched[k - 1]).toBeCloseTo(R.ripple, 1);
+    const salvo = g.foe.shots.filter((s) => seen.has(s.id));
+    expect(new Set(salvo.map((s) => s.salvo)).size).toBe(1);
+    const cx = salvo[0].tx;
+    const cy = salvo[0].ty;
+    for (const s of salvo) expect(Math.hypot(s.tx - cx, s.ty - cy)).toBeLessThanOrEqual(2 * R.spread + 30);
+    // All of them land; the salvo costs at most one hull point (what one
+    // rocket did before).
+    run(g, 1.2, () => g.foe.shots.every((s) => !seen.has(s.id)));
+    expect(before - hull()).toBeLessThanOrEqual(1);
+    // The whole truck: five salvos, at most five hull points.
+    run(g, 30, () => t.dead);
+    expect(t.foe!.n).toBe(0);
+    expect(before - hull()).toBeLessThanOrEqual(R.salvos);
   });
 
   it('a Rocket Truck killed while it raises fires nothing', () => {
@@ -428,12 +465,46 @@ describe('chapter 3: Dark Water', () => {
     expect(g.threats.some((t) => t.id === bomb.id)).toBe(false);
   });
 
-  it('a Siege Battery marks circles, its shells land in them; killed first, the unfired ones are gone', () => {
+  it('a Dive Bomber flies its run in from the top of the screen at its circle, on screen all its window, then pulls away off screen', () => {
+    const D = FOE.diveBomber;
+    for (const seed of [1, 2, 3, 4]) {
+      const g = quiet(seed);
+      launchFoe(g, { at: 0, kind: 'diveBomber', base: -1 });
+      const m = g.foe.marks[0];
+      run(g, D.mark + 0.02, () => live(g, 'diveBomber').length > 0);
+      const p = live(g, 'diveBomber')[0];
+      // It starts up the screen from its circle (near the top, or its whole
+      // run above the circle), and comes down toward it.
+      expect(p.y).toBeLessThan(m.y - D.minRun + 1);
+      expect(p.y).toBeGreaterThanOrEqual(Math.min(D.top - 1, m.y - D.minRun - 1));
+      let last = Math.hypot(p.x - m.x, p.y - m.y);
+      for (let i = 0; i < Math.round(D.window / DT) - 2; i++) {
+        step(g, DT);
+        expect(p.dead).toBe(false);
+        expect(p.x >= 0 && p.x <= VIEW.width && p.y >= -40 && p.y <= VIEW.height).toBe(true);
+        const d = Math.hypot(p.x - m.x, p.y - m.y);
+        expect(d).toBeLessThan(last + 1e-6);
+        last = d;
+      }
+      run(g, 0.2, () => g.foe.shots.some((s) => s.kind === 'bomb'));
+      expect(last).toBeLessThan(D.short + 20);
+      // Then away and gone (not a kill).
+      run(g, 5, () => p.dead);
+      expect(p.dead).toBe(true);
+      expect(g.kills.diveBomber).toBe(0);
+    }
+  });
+
+  it('a Siege Battery comes up out of a hatch, marks circles, its shells land in them; killed first, the unfired ones are gone', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'siege', base: -1 });
+    // A closed hatch first: nothing to shoot.
+    expect(g.foe.marks.map((m) => m.kind)).toEqual(['hatch']);
+    expect(live(g, 'siege')).toHaveLength(0);
+    run(g, FOE.siege.first + 0.05);
     const gun = live(g, 'siege')[0];
     expect(gun.hp).toBe(THREATS.siege.hp);
-    run(g, FOE.siege.setup + FOE.siege.gap + 0.1, () => g.foe.marks.length > 0);
+    run(g, FOE.siege.rise + 0.1, () => g.foe.marks.some((m) => m.kind === 'shell'));
     const shells = g.foe.marks.filter((m) => m.kind === 'shell');
     expect(shells.length).toBeGreaterThan(0);
     expect(shells.every((m) => !m.fired)).toBe(true);
@@ -444,6 +515,41 @@ describe('chapter 3: Dark Water', () => {
     run(g, 2, () => gun.dead);
     expect(gun.dead).toBe(true);
     expect(g.foe.marks.filter((m) => m.kind === 'shell' && !m.fired)).toHaveLength(0);
+  });
+
+  it('a Siege Battery goes down into its hatch between salvos: no target for taps, blasts or bots, then up again with its hits kept', () => {
+    const S = FOE.siege;
+    const g = quiet();
+    launchFoe(g, { at: 0, kind: 'siege', base: -1 });
+    run(g, S.first + 0.05);
+    const gun = live(g, 'siege')[0];
+    // Up: one hit lands on it.
+    g.ammo = 6;
+    tap(g, gun.x, gun.y, 40);
+    run(g, 2.5, () => gun.hp < THREATS.siege.hp);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    // After its shells leave, it goes down: gone from the board.
+    run(g, S.rise + S.mark + 1, () => g.foe.marks.some((m) => m.kind === 'hatch'));
+    run(g, 0.1);
+    expect(g.threats.includes(gun)).toBe(false);
+    expect(g.foe.marks.filter((m) => m.kind === 'shell' && !m.fired)).toHaveLength(0);
+    // Down: off the board, so taps, blasts, helpers and the bots (all of
+    // them work from g.threats) find nothing there; the wave waits for it.
+    g.ammo = 6;
+    tap(g, gun.x, gun.y, 40);
+    run(g, 0.8);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    expect(worthShooting(g, g.threats).includes(gun)).toBe(false);
+    expect(g.phase).toBe('wave');
+    // Up again, the same gun with its hit kept, and one salvo fewer.
+    run(g, S.down + 0.2, () => g.threats.includes(gun));
+    expect(g.threats.includes(gun)).toBe(true);
+    expect(gun.hp).toBe(THREATS.siege.hp - 1);
+    expect(gun.foe!.n).toBe(S.salvos - 1);
+    // After its last salvo it goes down for good: not a kill.
+    run(g, 40, () => !g.threats.includes(gun) && gun.foe!.n === 0 && !g.foe.marks.some((m) => m.kind === 'hatch'));
+    expect(gun.foe!.n).toBe(0);
+    expect(g.kills.siege).toBe(0);
   });
 
   it('a Spotter paints a ship, draws launches to it, calls a strike, and its strike is cancelled when it is shot down', () => {

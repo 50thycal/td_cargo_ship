@@ -46,6 +46,10 @@ export interface FoeShot {
   t: number;
   dur: number;
   from: ThreatKind;
+  /** A truck's salvo (its rockets share one hit: the first of them to land
+   *  on a hull does it; `spent`, the rest only splash). */
+  salvo?: number;
+  spent?: boolean;
 }
 
 /** A warning on the water before a foe shows (a periscope); when it runs
@@ -53,8 +57,9 @@ export interface FoeShot {
 export interface FoeMark {
   id: number;
   /** A periscope (a torpedo sub to come), a dive bomber's circle, a siege
-   *  battery's shell circle. */
-  kind: 'periscope' | 'dive' | 'shell';
+   *  battery's shell circle, a siege battery's hatch (the gun hidden under
+   *  it: no target). */
+  kind: 'periscope' | 'dive' | 'shell' | 'hatch';
   x: number;
   y: number;
   t: number;
@@ -65,6 +70,14 @@ export interface FoeMark {
   gy?: number;
   /** A shell is on its way (no longer stopped by killing the gun). */
   fired?: boolean;
+  /** A hatch: the lowered gun that comes back up when it runs out (its hits
+   *  and salvos kept); `spawn`: a new gun comes up (its first rise); neither:
+   *  the gun has packed up and the hatch just closes. */
+  gun?: Threat;
+  spawn?: boolean;
+  /** A hatch the gun has just gone down into (drawn sinking, then the
+   *  doors closing). */
+  lowered?: boolean;
 }
 
 /** A foe's own state, on its threat. `state` and `t` are its phase and the
@@ -85,6 +98,9 @@ export interface FoeData {
   /** Its own velocity (the helicopter's flight). */
   vx?: number;
   vy?: number;
+  /** A Rocket Truck's salvo in progress: its id, the ship it is at (-1: the
+   *  carrier), rockets still to go, and when the next one goes (its `t`). */
+  ripple?: { id: number; ship: number; left: number; next: number; spent?: boolean };
   /** Where it set out from (the torpedo's line, the wing's start). */
   sx?: number;
   sy?: number;
@@ -226,7 +242,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       const road = rng.pick(roads);
       const th = spawnThreat(g, 'rocketTruck', road.from.x, road.from.y, 'truck');
       th.target = CARRIER_TARGET;
-      th.foe = data({ path: [road.from, road.to], along: 0, n: FOE.rocketTruck.rockets });
+      th.foe = data({ path: [road.from, road.to], along: 0, n: FOE.rocketTruck.salvos });
       th.heading = Math.atan2(road.to.y - road.from.y, road.to.x - road.from.x);
       return;
     }
@@ -279,11 +295,10 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'siege': {
+      // A closed hatch on the shore first (Test Lab round 1: "raised up
+      // from low ground"); the gun comes up out of it when it opens.
       const gun = siegeSpot(g, rng);
-      const th = spawnThreat(g, 'siege', gun.x, gun.y, 'truck');
-      th.target = CARRIER_TARGET;
-      th.heading = Math.PI / 2;
-      th.foe = data({ n: FOE.siege.salvos });
+      g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: gun.x, y: gun.y, t: 0, dur: FOE.siege.first, spawn: true });
       return;
     }
     case 'spotter': {
@@ -646,22 +661,34 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
     case 'diveBomber': {
       const D = FOE.diveBomber;
       if (f.state === 0) {
-        // Down out of the sky onto its circle: its window to be shot.
+        // Its run (Test Lab round 1: seen from above like every other
+        // aircraft): in from the top of the screen, straight at its circle,
+        // diving as it comes; its window to be shot. It lets go just short
+        // of the circle.
         const u = Math.min(1, f.t / D.window);
-        th.x = f.px;
-        th.y = f.py - D.high + (D.high - D.low) * u;
+        const rx = f.px - Math.cos(th.heading) * D.short;
+        const ry = f.py - Math.sin(th.heading) * D.short;
+        th.x = f.sx! + (rx - f.sx!) * u;
+        th.y = f.sy! + (ry - f.sy!) * u;
         if (u >= 1) {
-          // Released: the bomb falls, and nothing stops it now.
+          // Released: the bomb falls on, onto the circle, and nothing stops
+          // it now.
           g.foe.shots.push({ id: g.nextId++, kind: 'bomb', x: th.x, y: th.y, sx: th.x, sy: th.y, tx: f.px, ty: f.py, t: 0, dur: D.fall, from: 'diveBomber' });
           cue(g, 'bomber.drop', th.x, th.y);
           f.state = 1;
           f.t = 0;
+          f.vx = dist(f.sx!, f.sy!, rx, ry) / D.window;
         }
       } else {
-        // Pulls up and away.
-        th.y -= 380 * dt;
-        th.x += (th.x < VIEW.width / 2 ? -1 : 1) * 120 * dt;
-        if (f.t > 0.9) th.dead = true;
+        // Pulls up and away: on past the circle, climbing, banking off to
+        // the nearer side of the screen.
+        const side = th.x < VIEW.width / 2 ? Math.PI : 0;
+        th.heading += clamp(angleDiff(side, th.heading), -D.bank * dt, D.bank * dt);
+        f.vx = Math.min(D.exit, (f.vx ?? 200) + 400 * dt);
+        th.x += Math.cos(th.heading) * f.vx * dt;
+        th.y += Math.sin(th.heading) * f.vx * dt;
+        const off = th.x < -90 || th.x > VIEW.width + 90 || th.y < -90 || th.y > VIEW.height + 90;
+        if (off || f.t > 4) th.dead = true;
       }
       return;
     }
@@ -830,20 +857,18 @@ export function lureIn(g: Game, x: number, y: number, reach = Infinity): Threat 
   return g.threats.find((t) => t.kind === 'lure' && !t.dead && dist(t.x, t.y, x, y) <= reach);
 }
 
-/** The Siege Battery: set up, then salvos: three circles on the lane where
- *  ships will be, shells fired at them a beat before they land. */
+/** The Siege Battery (Test Lab round 1: "raised up from low ground ... it
+ *  just has a vulnerable spot once it's up"). It lives in a hatch on the
+ *  enemy shore. Up: the gun rises out of it (`rise`, the tell), marks its
+ *  circles on the lane where ships will be, and stays up until its shells
+ *  have left the gun (and `hold`). Then it goes back down: off the board
+ *  (no taps, no blasts, no helpers) for `down`, and rises again. Its hits
+ *  and salvos carry over. After the last salvo it goes down for good (gone,
+ *  not a kill). */
 function updateSiege(g: Game, th: Threat, f: FoeData): void {
   const S = FOE.siege;
-  if (f.state === 0 && f.t >= S.setup) {
+  if (f.state === 0 && f.t >= S.rise) {
     f.state = 1;
-    f.t = S.gap;
-  }
-  if (f.state === 1 && f.t >= S.gap) {
-    if (f.n <= 0) {
-      f.state = 2;
-      f.t = 0;
-      return;
-    }
     f.t = 0;
     f.n -= 1;
     const pool = g.rng.foes.shuffle(targetable(g));
@@ -854,8 +879,26 @@ function updateSiege(g: Game, th: Threat, f: FoeData): void {
     }
     cue(g, 'truck.raise', th.x, th.y);
   }
-  // Out of shells: it packs up (gone, not a kill).
-  if (f.state === 2 && f.t >= S.pack && !g.foe.marks.some((m) => m.link === th.id)) th.dead = true;
+  if (f.state === 1 && f.t >= siegeUp()) {
+    // Down into its hatch: no longer a threat on the board until it comes
+    // back up (updateFoeMarks puts the same gun back).
+    th.dead = true;
+    const more = f.n > 0;
+    g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: th.x, y: th.y, t: 0, dur: more ? S.down : S.lower + 0.4, lowered: true, ...(more ? { gun: th } : {}) });
+    cue(g, 'sub.dive', th.x, th.y, { gain: 0.5 });
+  }
+}
+
+/** How long a siege gun stays up after marking its circles: until its
+ *  shells have left the gun, and a beat. */
+export function siegeUp(): number {
+  return FOE.siege.mark - FOE.siege.flight + FOE.siege.hold;
+}
+
+/** Is a siege gun about to go down (a shot at it now finds an empty hatch)? */
+function siegeLowering(th: Threat): boolean {
+  const f = th.foe;
+  return !!f && f.state === 1 && siegeUp() - f.t < 0.35;
 }
 
 /** The Spotter: out to its circle beside the convoy, paint a ship, call a
@@ -1000,7 +1043,10 @@ function heliRocket(g: Game, th: Threat, k: number): void {
   const y = th.y + Math.sin(th.heading + side * Math.PI / 2) * 14;
   const m = spawnThreat(g, 'heliRocket', x, y, 'air');
   m.parent = 'attackHeli';
-  m.heading = th.heading + side * 0.25;
+  // Off the rail pointed at its own ship (spawnThreat aims it), splayed a
+  // little: launched along the helicopter's nose, one at a ship behind it
+  // used to loop round first (Test Lab round 1).
+  m.heading += side * 0.2;
   g.origins.air -= 1;
   g.origins.child += 1;
 }
@@ -1084,11 +1130,33 @@ export function updateFoeMarks(g: Game, dt: number): void {
       addFx(g, 'spray', m.x, m.y, { life: 0.7, r: 22 });
     } else if (m.kind === 'dive') {
       const D = FOE.diveBomber;
-      const th = spawnThreat(g, 'diveBomber', m.x, m.y - D.high, 'air');
+      // Its run starts near the top of the screen, `run` px short of the
+      // circle (less when the circle is high up), coming down at a slant.
+      let a = Math.PI / 2 + g.rng.foes.range(-D.slant, D.slant);
+      const L = Math.max(D.minRun, Math.min(D.run, (m.y - D.top) / Math.sin(a)));
+      const sx = clamp(m.x - Math.cos(a) * L, 40, VIEW.width - 40);
+      const sy = m.y - Math.sin(a) * L;
+      a = Math.atan2(m.y - sy, m.x - sx);
+      const th = spawnThreat(g, 'diveBomber', sx, sy, 'air');
       th.target = CARRIER_TARGET;
-      th.heading = Math.PI / 2;
-      th.foe = data({ px: m.x, py: m.y });
+      th.heading = a;
+      th.foe = data({ px: m.x, py: m.y, sx, sy });
       cue(g, 'foe.whistle', m.x, m.y);
+    } else if (m.kind === 'hatch') {
+      // The hatch opens and the gun comes up: the same gun (its hits and
+      // salvos kept), or a new one on its first rise.
+      if (m.gun) {
+        const th = m.gun;
+        th.dead = false;
+        th.foe = { ...(th.foe ?? data()), state: 0, t: 0 };
+        g.threats.push(th);
+        cue(g, 'truck.raise', th.x, th.y, { gain: 0.6 });
+      } else if (m.spawn) {
+        const th = spawnThreat(g, 'siege', m.x, m.y, 'truck');
+        th.target = CARRIER_TARGET;
+        th.heading = Math.PI / 2;
+        th.foe = data({ n: FOE.siege.salvos });
+      }
     } else if (m.kind === 'shell') {
       const S = FOE.siege;
       addFx(g, 'splash', m.x, m.y, { life: 0.9, r: S.radius });
@@ -1160,11 +1228,21 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
     }
   } else if (f.state === 2) {
     if (f.t >= R.gap && f.n > 0) {
+      // A salvo (Test Lab round 1: "make it launch like five rockets at a
+      // time ... a lot less damage"): one ship, a ripple of small rockets.
       f.t = 0;
       f.n -= 1;
-      fireRocket(g, th);
+      const pool = targetable(g);
+      const s = pool.length ? g.rng.foes.pick(pool) : null;
+      f.ripple = { id: g.nextId++, ship: s ? s.id : -1, left: R.perSalvo, next: 0 };
     }
-    if (f.n <= 0 && f.t >= R.gap * 0.5) {
+    const r = f.ripple;
+    while (r && r.left > 0 && f.t >= r.next) {
+      fireRocket(g, th, r, R.perSalvo - r.left);
+      r.left -= 1;
+      r.next += R.ripple;
+    }
+    if (f.n <= 0 && (!r || r.left <= 0) && f.t >= R.gap * 0.5) {
       f.state = 3;
       f.t = 0;
     }
@@ -1184,18 +1262,22 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   th.heading = p.heading + (f.state === 4 ? Math.PI : 0);
 }
 
-/** A rocket at a ship (or the carrier), aimed where it will be. */
-function fireRocket(g: Game, th: Threat): void {
+/** The `k`th rocket of a salvo at its ship (or the carrier), aimed where the
+ *  ship will be when it lands: the first dead on, the rest spread round it
+ *  (`spread`), so the salvo lands as a cluster on and around the hull. */
+function fireRocket(g: Game, th: Threat, r: NonNullable<FoeData['ripple']>, k: number): void {
   const R = FOE.rocketTruck;
-  const rng = g.rng.foes;
-  const pool = targetable(g);
-  const s = pool.length ? rng.pick(pool) : null;
+  const s = r.ship >= 0 ? g.ships.find((o) => o.id === r.ship) : undefined;
   const t0 = s ?? g.map.carrier;
   const dur = Math.max(0.35, dist(th.x, th.y, t0.x, t0.y) / R.rocketSpeed);
   const p = s ? shipAhead(g, s, dur) : t0;
-  g.foe.shots.push({ id: g.nextId++, kind: 'rocket', x: th.x, y: th.y, sx: th.x, sy: th.y, tx: p.x, ty: p.y, t: 0, dur, from: 'rocketTruck' });
-  addFx(g, 'launch', th.x, th.y, { life: 0.4, r: 10 });
-  cue(g, 'truck.fire', th.x, th.y);
+  const a = (k / Math.max(1, R.perSalvo - 1)) * Math.PI * 2 + g.rng.foes.range(-0.5, 0.5);
+  const off = k === 0 ? 0 : R.spread * g.rng.foes.range(0.6, 1);
+  const tx = p.x + Math.cos(a) * off;
+  const ty = p.y + Math.sin(a) * off;
+  g.foe.shots.push({ id: g.nextId++, kind: 'rocket', x: th.x, y: th.y, sx: th.x, sy: th.y, tx, ty, t: 0, dur, from: 'rocketTruck', salvo: r.id, ...(r.spent ? { spent: true } : {}) });
+  addFx(g, 'launch', th.x, th.y, { life: 0.3, r: 8 });
+  cue(g, 'truck.fire', th.x, th.y, { gain: k === 0 ? 1 : 0.55 });
 }
 
 /** Shots no interceptor can stop: they fly and land. */
@@ -1221,16 +1303,74 @@ export function updateFoeShots(g: Game, dt: number): void {
       near.forEach((o, k) => damageShip(g, o.o, k === 0 && o.d <= D.hit ? THREATS.diveBomber.damage : D.splashDamage, 'diveBomber', k === 0));
       continue;
     }
-    // A rocket hits the nearest hull within reach of where it lands.
-    addFx(g, 'boom', s.tx, s.ty, { life: 0.5, r: 22 });
-    cue(g, 'impact.splash', s.tx, s.ty);
+    // A rocket hits the nearest hull within reach of where it lands. A
+    // salvo hits once: the first of its rockets on a hull does it, the
+    // rest of the salvo only splash.
+    addFx(g, 'boom', s.tx, s.ty, { life: 0.4, r: 16 });
+    cue(g, 'impact.splash', s.tx, s.ty, { gain: s.salvo !== undefined ? 0.6 : 1 });
+    if (s.spent) continue;
     const hull = g.ships
       .map((o) => ({ o, d: dist(o.x, o.y, s.tx, s.ty) }))
       .filter((o) => o.d <= FOE.rocketTruck.hitRadius)
       .sort((a, b) => a.d - b.d)[0];
-    if (hull) damageShip(g, hull.o, 1, s.from);
+    if (!hull) continue;
+    damageShip(g, hull.o, 1, s.from);
+    if (s.salvo !== undefined) spendSalvo(g, s.salvo);
   }
   g.foe.shots = live;
+}
+
+/** How high a siege shell's arc rises, at its top (px, as drawn). */
+export const SHELL_ARC = 120;
+
+/** Where a fired siege shell is on its arc from the gun to its circle. */
+export function shellAt(m: FoeMark): Point {
+  const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t) / FOE.siege.flight));
+  const gx = m.gx ?? m.x;
+  const gy = m.gy ?? m.y;
+  return { x: gx + (m.x - gx) * u, y: gy + (m.y - gy) * u - 4 * SHELL_ARC * u * (1 - u) };
+}
+
+/** Everything in the air that no interceptor can stop, where it is now:
+ *  the Rocket Truck's rockets, the Dive Bomber's bomb, the Siege Battery's
+ *  shells in flight. Test Lab round 1: these are all drawn red ("red
+ *  projectiles you just cannot intercept"). */
+export function redShots(g: Game): Point[] {
+  const out: Point[] = g.foe.shots.map((s) => ({ x: s.x, y: s.y }));
+  for (const m of g.foe.marks) if (m.kind === 'shell' && m.fired) out.push(shellAt(m));
+  return out;
+}
+
+/** A tap at (x, y) that found a red shot and nothing it could shoot: the
+ *  game says so under the finger ("cannot intercept", the player's note). */
+export function tappedRedShot(g: Game, x: number, y: number, r: number): boolean {
+  if (g.threats.some((t) => !t.dead && dist(t.x, t.y, x, y) <= r)) return false;
+  return redShots(g).some((p) => dist(p.x, p.y, x, y) <= r);
+}
+
+/** The Nuke and the new enemies (Test Lab round 1: "it should blow up
+ *  everything on the screen"): a siege gun down in its hatch is brought up
+ *  to be caught with the rest (game.ts's nuke kills every threat on the
+ *  screen next), and every warning and shot on the water is gone: a sub
+ *  still at periscope depth, a dive bomber's circle, a siege battery's
+ *  circles and shells, the rockets and bombs in the air. */
+export function nukeFoes(g: Game): void {
+  for (const m of g.foe.marks) {
+    if (m.kind === 'hatch' && m.gun) {
+      m.gun.dead = false;
+      g.threats.push(m.gun);
+    }
+    if (m.kind === 'periscope') addFx(g, 'sink', m.x, m.y, { life: 1.6, r: 26 });
+  }
+  g.foe.marks = [];
+  g.foe.shots = [];
+}
+
+/** A truck's salvo has done its hit: its other rockets, in the air or
+ *  still to go, only splash. */
+function spendSalvo(g: Game, id: number): void {
+  for (const o of g.foe.shots) if (o.salvo === id) o.spent = true;
+  for (const t of g.threats) if (t.kind === 'rocketTruck' && t.foe?.ripple?.id === id) t.foe.ripple.spent = true;
 }
 
 /** A foe is killed (not a hit that lands): what that sets off. `quiet` for
@@ -1290,7 +1430,9 @@ export function foeEta(g: Game, th: Threat): number | null {
       const S = FOE.siege;
       const due = g.foe.marks.filter((m) => m.link === th.id && !m.fired).map((m) => m.dur - m.t - S.flight);
       if (due.length) return Math.max(0.1, Math.min(...due));
-      return f.state === 0 ? S.setup - f.t + S.mark : f.state === 1 ? S.gap - f.t + S.mark : 30;
+      // Rising: its circles come at the top and its shells leave after
+      // them. Up with its shells gone, it is about to go down.
+      return f.state === 0 ? S.rise - f.t + S.mark - S.flight : 30;
     }
     case 'attackHeli':
       if (!f) return null;
@@ -1339,6 +1481,8 @@ export function foeWorthShooting(g: Game, th: Threat): boolean {
   if (revealedDecoy(th)) return false;
   if (th.kind === 'cloud') return !g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= FOE.cloud.radius + 10);
   if (th.kind === 'guard') return false;
+  // A siege gun about to go down: a shot now gets there to a shut hatch.
+  if (th.kind === 'siege' && siegeLowering(th)) return false;
   return true;
 }
 
@@ -1350,7 +1494,7 @@ export function foeHarmed(th: Threat): boolean {
   if (!f) return false;
   switch (th.kind) {
     case 'rocketTruck':
-      return f.n < FOE.rocketTruck.rockets;
+      return f.n < FOE.rocketTruck.salvos;
     case 'diveBomber':
     case 'torpedoSub':
       return f.state >= 1;

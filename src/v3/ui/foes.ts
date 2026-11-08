@@ -6,7 +6,7 @@
 import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
-import { revealedDecoy } from '../sim/foes';
+import { revealedDecoy, shellAt, siegeUp, type FoeMark } from '../sim/foes';
 import { C, deltaWing, hpPips, missile } from './render';
 
 /** Draw a new enemy; false if `th` isn't one of them. */
@@ -110,6 +110,7 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   for (const m of g.foe.marks) {
     if (m.kind === 'dive') drawTargetCircle(ctx, g, m.x, m.y, FOE.diveBomber.hit + 14, m.t / m.dur, '255,77,61');
     if (m.kind === 'shell') drawTargetCircle(ctx, g, m.x, m.y, FOE.siege.radius, m.t / m.dur, '255,170,60');
+    if (m.kind === 'hatch') drawHatch(ctx, g, m);
   }
   for (const th of g.threats) if (th.kind === 'diveBomber' && th.foe && th.foe.state === 0) drawTargetCircle(ctx, g, th.foe.px, th.foe.py, FOE.diveBomber.hit + 14, 1, '255,77,61');
   for (const s of g.foe.shots) if (s.kind === 'bomb') drawTargetCircle(ctx, g, s.tx, s.ty, FOE.diveBomber.hit + 14, 1, '255,77,61');
@@ -167,64 +168,96 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   }
 }
 
-/** Shots no interceptor can stop: the Rocket Truck's rockets, a dive
- *  bomber's bomb, a siege battery's shells in flight. */
+/** Test Lab round 1: everything no interceptor can stop is red all over,
+ *  with a red glow ("make the projectiles red, then we can tell the player:
+ *  red projectiles you just cannot intercept"). Missiles you can shoot are
+ *  pale with a red tip; these are red from nose to tail. */
+export const RED_SHOT = '#ff2b2b';
+const RED_DEEP = '#8f0d0d';
+
+/** The red glow round a shot that can't be stopped. */
+function redGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a = 0.55): void {
+  const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+  grad.addColorStop(0, `rgba(255,50,40,${a})`);
+  grad.addColorStop(1, 'rgba(255,40,40,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A red ball (a shell; a bomb seen from above) with a dark rim. */
+function redBall(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, angle = 0): void {
+  ctx.fillStyle = RED_SHOT;
+  ctx.strokeStyle = RED_DEEP;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,220,210,0.8)';
+  ctx.beginPath();
+  ctx.arc(x - rx * 0.3, y - ry * 0.35, Math.max(1.5, Math.min(rx, ry) * 0.3), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Shots no interceptor can stop, all red: the Rocket Truck's salvos, a
+ *  dive bomber's bomb, a siege battery's shells in flight. */
 export function drawFoeShots(ctx: CanvasRenderingContext2D, g: Game): void {
   for (const m of g.foe.marks) {
     if (m.kind !== 'shell' || !m.fired) continue;
-    // A shell lobbed from the gun, arcing down onto its circle.
-    const u = 1 - (m.dur - m.t) / FOE.siege.flight;
+    // A shell lobbed from the gun, arcing down onto its circle; its shadow
+    // runs straight along the ground under it.
+    const p = shellAt(m);
+    const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t) / FOE.siege.flight));
     const gx = m.gx ?? m.x;
     const gy = m.gy ?? m.y;
-    const x = gx + (m.x - gx) * u;
-    const y = gy + (m.y - gy) * u - 4 * 120 * u * (1 - u);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
     ctx.arc(gx + (m.x - gx) * u, gy + (m.y - gy) * u, 5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffd08a';
-    ctx.strokeStyle = '#1b1b1b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    redGlow(ctx, p.x, p.y, 20);
+    redBall(ctx, p.x, p.y, 7, 7);
   }
   for (const s of g.foe.shots) {
     if (s.kind === 'bomb') {
-      // Falling: it shrinks toward the water.
+      // Falling on from where the plane let go: it closes on its shadow and
+      // shrinks toward the water.
       const u = Math.min(1, s.t / s.dur);
-      ctx.fillStyle = '#1f2937';
-      ctx.strokeStyle = '#fca5a5';
-      ctx.lineWidth = 2;
+      const alt = 1 - u;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y, 9 - 4 * u, 13 - 6 * u, 0, 0, Math.PI * 2);
+      ctx.ellipse(s.x + 10 * alt, s.y + 15 * alt, 5 + 2 * u, 3 + 1.5 * u, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
+      const a = Math.atan2(s.ty - s.sy, s.tx - s.sx);
+      redGlow(ctx, s.x, s.y, 22);
+      redBall(ctx, s.x, s.y, 10 - 3 * u, 6 - 1.5 * u, a);
       continue;
     }
     const a = Math.atan2(s.ty - s.sy, s.tx - s.sx);
     // Where it lands, the moment it's fired: a small red cross on the water.
-    ctx.strokeStyle = 'rgba(255,77,61,0.75)';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(255,60,50,0.55)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(s.tx - 9, s.ty - 9);
-    ctx.lineTo(s.tx + 9, s.ty + 9);
-    ctx.moveTo(s.tx + 9, s.ty - 9);
-    ctx.lineTo(s.tx - 9, s.ty + 9);
+    ctx.moveTo(s.tx - 6, s.ty - 6);
+    ctx.lineTo(s.tx + 6, s.ty + 6);
+    ctx.moveTo(s.tx + 6, s.ty - 6);
+    ctx.lineTo(s.tx - 6, s.ty + 6);
     ctx.stroke();
-    // A white-hot streak with a smoke tail back to the truck.
-    const back = Math.min(120, Math.hypot(s.x - s.sx, s.y - s.sy));
+    // A small red rocket with a red-tinged smoke streak back toward the
+    // truck (a salvo is five of these, a tenth of a second apart).
+    const back = Math.min(70, Math.hypot(s.x - s.sx, s.y - s.sy));
     const grad = ctx.createLinearGradient(s.x - Math.cos(a) * back, s.y - Math.sin(a) * back, s.x, s.y);
-    grad.addColorStop(0, 'rgba(220,210,200,0)');
-    grad.addColorStop(1, 'rgba(255,200,140,0.85)');
+    grad.addColorStop(0, 'rgba(200,170,165,0)');
+    grad.addColorStop(1, 'rgba(255,110,90,0.8)');
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(s.x - Math.cos(a) * back, s.y - Math.sin(a) * back);
     ctx.lineTo(s.x, s.y);
     ctx.stroke();
-    missile(ctx, s.x, s.y, a, 16, 4, '#fff4e0', '#ff4d3d');
+    redGlow(ctx, s.x, s.y, 13, 0.5);
+    missile(ctx, s.x, s.y, a, 11, 3.5, RED_SHOT, RED_DEEP);
   }
 }
 
@@ -857,89 +890,279 @@ function drawStealthBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
   hpPips(ctx, th.x, th.y - 60, th.hp, THREATS.stealthBomber.hp);
 }
 
-/** The Dive Bomber, dropping onto its circle: it grows as it comes down,
- *  its shadow closing on the circle. */
+/** The Dive Bomber (Test Lab round 1: "the perspective should match the
+ *  rest of the game"): seen from above like every other aircraft, with its
+ *  shadow on the water. It comes in from the top of the screen at its
+ *  circle and pitches down into its dive (its length foreshortens, its
+ *  shadow closes in under it, it grows a touch as it gets low); it lets go
+ *  of its red bomb short of the circle, then pulls up (shadow drawing away)
+ *  and banks off. */
 function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
   const f = th.foe;
   if (!f) return;
   const D = FOE.diveBomber;
-  const u = f.state === 0 ? Math.min(1, f.t / D.window) : 1 - Math.min(1, f.t / 0.9);
-  const k = 0.75 + 0.6 * u;
-  // Shadow: from wide off to right on the circle.
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(f.px + (1 - u) * 60, f.py, 26 * k, 10 * k, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Speed lines above it.
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 2;
-  for (const dx of [-14, 0, 14]) {
-    ctx.beginPath();
-    ctx.moveTo(th.x + dx * k, th.y - 40 * k);
-    ctx.lineTo(th.x + dx * k, th.y - 70 * k);
-    ctx.stroke();
+  // Height (1 cruising, low at the release) and how far it is nosed down.
+  let alt: number;
+  let pitch: number;
+  let bank = 0;
+  if (f.state === 0) {
+    const u = Math.min(1, f.t / D.window);
+    alt = 1 - 0.8 * u * u;
+    pitch = ease(Math.min(1, u * 1.8));
+  } else {
+    const v = Math.min(1, f.t / 1.2);
+    alt = 0.2 + 0.8 * ease(v);
+    pitch = 1 - ease(Math.min(1, f.t / 0.45));
+    bank = Math.min(1, f.t / 0.5) * 0.55;
   }
+  const k = 1.1 + 0.18 * (1 - alt);
+  const fore = 1 - 0.42 * pitch;
+  // Its shadow on the water, offset like the other aircraft's, closing in
+  // as it dives.
+  drawStuka(ctx, th.x + 34 * alt, th.y + 52 * alt, th.heading, k * 0.92, fore, 1, 'rgba(0,0,0,0.28)', false, false);
+  // Speed streaks behind it in the dive.
+  if (pitch > 0.2) {
+    ctx.strokeStyle = `rgba(255,255,255,${0.3 * pitch})`;
+    ctx.lineWidth = 2;
+    for (const s of [-16, 0, 16]) {
+      const bx = th.x - Math.cos(th.heading) * 30 * k - Math.sin(th.heading) * s * k;
+      const by = th.y - Math.sin(th.heading) * 30 * k + Math.cos(th.heading) * s * k;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - Math.cos(th.heading) * 34, by - Math.sin(th.heading) * 34);
+      ctx.stroke();
+    }
+  }
+  drawStuka(ctx, th.x, th.y, th.heading, k, fore, Math.cos(bank), '#7c2d12', true, f.state === 0);
+  hpPips(ctx, th.x, th.y - 44 * k, th.hp, THREATS.diveBomber.hp);
+}
+
+/** A gull-winged dive bomber from above, nose along `heading`: `fore`
+ *  shortens it front to back (nosed down), `span` narrows the wings (a
+ *  bank). `full`: the details (canopy, propeller, its red bomb if `bomb`). */
+function drawStuka(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, k: number, fore: number, span: number, fill: string, full: boolean, bomb: boolean): void {
   ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.scale(k, k);
-  // Gull wings, seen from above as it noses down at the water.
-  ctx.fillStyle = '#7c2d12';
-  ctx.strokeStyle = '#1b1b1b';
+  ctx.translate(x, y);
+  ctx.rotate(heading);
+  ctx.scale(k * fore, k * span);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = full ? '#1b1b1b' : 'transparent';
   ctx.lineWidth = 2;
+  // Wings: an inverted gull, bent down at the roots.
   ctx.beginPath();
-  ctx.moveTo(0, 22);
-  ctx.lineTo(-10, 4);
-  ctx.lineTo(-38, -4);
-  ctx.lineTo(-36, -12);
-  ctx.lineTo(-8, -8);
-  ctx.lineTo(-4, -22);
-  ctx.lineTo(4, -22);
-  ctx.lineTo(8, -8);
-  ctx.lineTo(36, -12);
-  ctx.lineTo(38, -4);
-  ctx.lineTo(10, 4);
+  ctx.moveTo(8, -4);
+  ctx.lineTo(4, -16);
+  ctx.lineTo(6, -40);
+  ctx.lineTo(-4, -42);
+  ctx.lineTo(-8, -18);
+  ctx.lineTo(-8, 18);
+  ctx.lineTo(-4, 42);
+  ctx.lineTo(6, 40);
+  ctx.lineTo(4, 16);
+  ctx.lineTo(8, 4);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#fca5a5';
+  // Fuselage and tailplane.
   ctx.beginPath();
-  ctx.arc(0, 14, 4, 0, Math.PI * 2);
+  ctx.moveTo(26, 0);
+  ctx.lineTo(20, -6);
+  ctx.lineTo(-22, -4);
+  ctx.lineTo(-30, -14);
+  ctx.lineTo(-36, -14);
+  ctx.lineTo(-34, 0);
+  ctx.lineTo(-36, 14);
+  ctx.lineTo(-30, 14);
+  ctx.lineTo(-22, 4);
+  ctx.lineTo(20, 6);
+  ctx.closePath();
   ctx.fill();
+  ctx.stroke();
+  if (full) {
+    // Fixed landing-gear spats under the wing roots.
+    ctx.fillStyle = '#4a1d0c';
+    ctx.fillRect(2, -15, 9, 5);
+    ctx.fillRect(2, 10, 9, 5);
+    // The canopy.
+    ctx.fillStyle = '#9fc4d8';
+    ctx.beginPath();
+    ctx.ellipse(4, 0, 9, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Its bomb under the belly until it lets go.
+    if (bomb) {
+      ctx.fillStyle = RED_SHOT;
+      ctx.beginPath();
+      ctx.ellipse(-2, 0, 7, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // The propeller disc.
+    ctx.fillStyle = 'rgba(230,230,230,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(28, 0, 2.5, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 40 * k, th.hp, THREATS.diveBomber.hp);
 }
 
-/** The Siege Battery: a gun pit of sandbags with a long barrel. */
+/** The Siege Battery (Test Lab round 1): a gun that lives in a hatch on the
+ *  shore. Up, it stands out of the open hatch with a long barrel and an
+ *  orange ring (a target); rising, it climbs out of the dark (its shadow
+ *  growing); down, the hatch is shut (drawHatch). */
 function drawSiege(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const next = g.foe.marks.find((m) => m.link === th.id);
+  const f = th.foe;
+  const S = FOE.siege;
+  const next = g.foe.marks.find((m) => m.link === th.id && m.kind === 'shell');
   const aim = next ? Math.atan2(next.y - th.y, next.x - th.x) : Math.PI / 2;
-  ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.strokeStyle = 'rgba(255,170,60,0.7)';
+  const rising = f?.state === 0;
+  const e = rising ? ease(Math.min(1, (f?.t ?? 0) / S.rise)) : 1;
+  // A target from the moment it starts up: the ring fills as it rises.
+  ctx.strokeStyle = 'rgba(255,170,60,0.3)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(0, 0, 30, 0, Math.PI * 2);
+  ctx.arc(th.x, th.y, 32, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = '#8a7b5a';
-  ctx.strokeStyle = '#1b1a14';
-  ctx.lineWidth = 2;
-  for (let k = 0; k < 10; k++) {
-    const a = (k / 10) * Math.PI * 2;
+  ctx.strokeStyle = 'rgba(255,170,60,0.9)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, 32, -Math.PI / 2, -Math.PI / 2 + e * Math.PI * 2);
+  ctx.stroke();
+  drawPit(ctx, th.x, th.y, 1);
+  drawSiegeGun(ctx, th.x, th.y, aim, e);
+  // About to go back down: the ring blinks.
+  if (f?.state === 1 && siegeUp() - f.t < 0.6 && Math.floor(g.t * 10) % 2 === 0) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(Math.cos(a) * 20, Math.sin(a) * 20, 7, 5, a + Math.PI / 2, 0, Math.PI * 2);
+    ctx.arc(th.x, th.y, 32, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  hpPips(ctx, th.x, th.y - 44, th.hp, THREATS.siege.hp);
+}
+
+function ease(u: number): number {
+  return u * u * (3 - 2 * u);
+}
+
+/** A siege battery's emplacement: a ring of sandbags round a dark pit, its
+ *  two hatch doors slid `open` (0 shut, 1 open) apart. */
+function drawPit(ctx: CanvasRenderingContext2D, x: number, y: number, open: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#6f6449';
+  ctx.strokeStyle = '#1b1a14';
+  ctx.lineWidth = 1.5;
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.ellipse(Math.cos(a) * 23, Math.sin(a) * 23, 6, 4.5, a + Math.PI / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
-  ctx.rotate(aim);
-  ctx.fillStyle = '#3f3a33';
-  ctx.fillRect(-4, -5, 40, 10);
-  ctx.strokeRect(-4, -5, 40, 10);
+  ctx.fillStyle = '#0b0a08';
   ctx.beginPath();
-  ctx.arc(0, 0, 11, 0, Math.PI * 2);
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
+  ctx.fill();
+  // The doors: two steel halves sliding apart under the rim.
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
+  ctx.clip();
+  const slide = open * 18;
+  for (const side of [-1, 1]) {
+    const x0 = side < 0 ? -18 - slide : slide;
+    ctx.fillStyle = '#4d4a42';
+    ctx.fillRect(x0, -18, 18, 36);
+    ctx.strokeStyle = '#26241f';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0 + 0.75, -17.25, 16.5, 34.5);
+    // Hazard stripes on the meeting edge.
+    ctx.fillStyle = '#d6a83a';
+    const edge = side < 0 ? x0 + 14 : x0;
+    for (let k = -18; k < 18; k += 8) ctx.fillRect(edge, k, 4, 4);
+  }
+  ctx.restore();
+}
+
+/** The gun, `e` of the way up out of its pit (0 down, 1 up). */
+function drawSiegeGun(ctx: CanvasRenderingContext2D, x: number, y: number, aim: number, e: number): void {
+  if (e <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = 0.35 + 0.65 * e;
+  // Its shadow grows out from under it as it rises.
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(x + 7 * e, y + 10 * e, 11 + 3 * e, 9 + 2 * e, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.translate(x, y);
+  ctx.rotate(aim);
+  const k = 0.6 + 0.4 * e;
+  ctx.scale(k, k);
+  ctx.fillStyle = '#3f3a33';
+  ctx.strokeStyle = '#1b1a14';
+  ctx.lineWidth = 2;
+  const len = 14 + 28 * e;
+  ctx.fillRect(-4, -5, len, 10);
+  ctx.strokeRect(-4, -5, len, 10);
+  ctx.fillStyle = '#2a2622';
+  ctx.fillRect(len - 6, -6, 6, 12);
+  ctx.fillStyle = '#5b5446';
+  ctx.beginPath();
+  ctx.arc(0, 0, 13, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = '#7a705c';
+  ctx.beginPath();
+  ctx.arc(-3, -3, 5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 44, th.hp, THREATS.siege.hp);
+}
+
+/** A siege battery's hatch (the gun out of reach): the gun sinking into it
+ *  and the doors closing, then shut with a faint marker (and its hits so
+ *  far, faint), then the doors opening as it is about to come up. */
+function drawHatch(ctx: CanvasRenderingContext2D, g: Game, m: FoeMark): void {
+  const S = FOE.siege;
+  const close = 0.3;
+  let open = 0;
+  let gun = 0;
+  if (m.lowered && m.t < S.lower) {
+    open = 1;
+    gun = 1 - ease(m.t / S.lower);
+  } else if (m.lowered && m.t < S.lower + close) open = 1 - (m.t - S.lower) / close;
+  const coming = !!(m.gun || m.spawn);
+  const left = m.dur - m.t;
+  if (coming && left < S.open) open = Math.max(open, 1 - left / S.open);
+  // Packed up for good: it fades once its doors are shut.
+  const fade = coming ? 1 : Math.max(0, Math.min(1, left / 0.3));
+  ctx.save();
+  ctx.globalAlpha = fade;
+  if (open === 0 && gun === 0) {
+    // Shut: a faint dashed ring says something is under there.
+    ctx.strokeStyle = 'rgba(255,170,60,0.28)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 7]);
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 32, g.t * 0.6, g.t * 0.6 + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (coming && left < S.open) {
+    // About to rise: the ring brightens.
+    const k = 1 - left / S.open;
+    ctx.strokeStyle = `rgba(255,170,60,${0.3 + 0.6 * k})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 32, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  drawPit(ctx, m.x, m.y, open);
+  if (gun > 0) drawSiegeGun(ctx, m.x, m.y, Math.PI / 2, gun);
+  ctx.restore();
+  if (m.gun && fade > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    hpPips(ctx, m.x, m.y - 44, m.gun.hp, THREATS.siege.hp);
+    ctx.restore();
+  }
 }
 
 /** The Spotter: a pale recon plane with long straight wings. */
