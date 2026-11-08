@@ -64,7 +64,10 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      place of a drone swarm, from their own RNG stream), and Free Play
  *      can choose them (`freePlay.enemies`).
  *  17: the Test Lab: a lab run carries its card (`lab`), which sets its
- *      waves, and the verdict given after it (`labResult`, outside replay). */
+ *      waves, and the verdict given after it (`labResult`, outside replay).
+ *  (The lab's rounds add optional `rev` and `round` to `lab` and
+ *  `labResult`: the sim never reads them, and a log without them is round 1,
+ *  so the version stays.) */
 export const LOG_VERSION = 17;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
@@ -79,6 +82,10 @@ export interface LabResult {
   waves: number;
   ended: 'done' | 'length' | 'lost';
   stats: LabStats;
+  /** The card's version when tested and the test round (absent: round 1,
+   *  version 1). */
+  rev?: number;
+  round?: number;
 }
 export const SIM_DT = 1 / 60;
 

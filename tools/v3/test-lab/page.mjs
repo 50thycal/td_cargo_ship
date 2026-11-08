@@ -14,6 +14,8 @@ const root = new URL('../../../', import.meta.url);
 // The game's own card list (src/v3/data/lab.ts), and where the game lives:
 // a card's "Test in game" link opens that test.
 const LAB = JSON.parse(execSync('npx tsx tools/v3/test-lab/cards.mts', { cwd: root.pathname }).toString());
+const LAB_ROUND_NOW = LAB.rounds.find((r) => r.n === LAB.round);
+const LAB_ROUND_TITLE = `Test round ${LAB.round}${LAB_ROUND_NOW ? ` · ${LAB_ROUND_NOW.name}` : ''}`;
 const GAME_URL = process.env.GAME_URL ?? 'https://td-cargo-ship.vercel.app/v3.html';
 const out = process.argv[2];
 if (!out) throw new Error('usage: node page.mjs <out.html>');
@@ -208,7 +210,7 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
 .ph-num small { color: var(--game-dim); }
 @media (max-width: 520px) { .phone { font-size: 9px; } .phone:not(.shot) { aspect-ratio: auto; } .ph-body { grid-template-columns: 1fr 1fr; } .facts div { grid-template-columns: 1fr; gap: 0; } }
 @media (prefers-reduced-motion: no-preference) { .item, .card { transition: border-color .2s, opacity .2s; } }
-.card.result { grid-template-columns: 1fr; }
+.card.result { grid-template-columns: 1fr; align-content: start; }
 .card.result .look { font-size: 13px; }
 .res { display: grid; gap: 2px; font-size: 14px; }
 .res .rv { font-weight: 600; color: var(--muted); }
@@ -222,6 +224,17 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
 a.play { justify-self: start; font: 600 13px var(--body); color: var(--signal); text-decoration: none; border: 1px solid var(--signal); border-radius: 999px; padding: 4px 12px; }
 a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .hidden { display: none !important; }
+.rhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rround { font: 600 11px var(--mono); letter-spacing: .03em; background: var(--chip); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
+.rround:empty, .rstale:empty, .rch:empty { display: none; }
+.res .rch { font-size: 13px; color: var(--muted); }
+.res .rstale { font-size: 13px; font-weight: 600; color: var(--maybe); }
+.card.result[data-stale="1"] { border-style: dashed; border-color: var(--maybe); }
+.card.result[data-stale="1"] .rv, .card.result[data-stale="1"] .rn { opacity: .65; }
+.rhist { font-size: 13px; color: var(--muted); }
+.rhist summary { cursor: pointer; }
+.rhist ul { margin: 4px 0 0; padding-left: 18px; }
+.round-now { font-weight: 600; }
 </style>
 
 <main>
@@ -247,10 +260,12 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
   <section class="pane" id="pane-results" aria-labelledby="h-results">
     <h2 id="h-results">Results</h2>
     <p>The Test Lab is built: it's on the game's main menu. What you mark in the game shows here once Claude copies it over from your game logs (at the start of each session). Each card's link opens that test in the game.</p>
+    <p class="round-now">${esc(LAB_ROUND_TITLE)}</p>
+    <p>Each result says which test round it is from. When a build changes a card, it gets a new version: a result from before that says “changed since: retest”, and its earlier rounds fold underneath.</p>
     <p class="tally" id="results-tally"></p>
     ${LAB.sections.map((s) => `<section class="sec" aria-labelledby="rs-${s.kind}"><h3 id="rs-${s.kind}">${esc(s.name)}</h3><p>${esc(s.blurb)}</p>
       <ul class="cards">${LAB.cards.filter((c) => c.kind === s.kind).map((c) => `<li class="card result" data-result="${c.id}"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span></div>
-        <div class="res"><span class="rv" data-rv>Not tested yet</span><span class="rn" data-rn></span><span class="rs" data-rs></span></div>
+        <div class="res"><span class="rhead"><span class="rround" data-rround></span><span class="rv" data-rv>Not tested yet</span></span><span class="rch" data-rch></span><span class="rn" data-rn></span><span class="rs" data-rs></span><span class="rstale" data-rstale></span><details class="rhist hidden" data-rhist><summary></summary><ul></ul></details></div>
         <a class="play" href="${GAME_URL}?lab=${encodeURIComponent(c.id)}" target="_blank" rel="noopener">Test in game ↗</a></li>`).join('\n')}</ul></section>`).join('\n')}
   </section>
 
@@ -281,6 +296,8 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
   const PIECES = ${JSON.stringify(PIECES.map((p) => p.id))};
   const CARDS = ${JSON.stringify(CARDS.map((c) => c.id))};
   const QIDS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
+  // Each card's current version and its changes by round (src/v3/data/lab.ts).
+  const LABC = ${JSON.stringify(Object.fromEntries(LAB.cards.map((c) => [c.id, { rev: c.rev, changes: c.changes }])))};
   const state = { reviews: {}, cards: {}, answers: {}, results: {} };
   const COLLS = ['reviews', 'cards', 'answers', 'results'];
   const LS = 'straitwatch-test-lab-1';
@@ -315,17 +332,35 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
   }
   // Results: written by Claude from the game logs (read only here).
   const VLABEL = { keep: 'Keep', tune: 'Tune', cut: 'Cut' };
+  // A result from before test rounds is round 1, version 1.
   function paintResults() {
     let n = 0;
+    let stale = 0;
     document.querySelectorAll('[data-result]').forEach((el) => {
       const r = state.results[el.dataset.result];
+      const c = LABC[el.dataset.result] || { rev: 1, changes: [] };
+      const round = r ? r.round || 1 : 0;
+      const old = !!r && (r.rev || 1) < c.rev;
       el.dataset.v = r && r.verdict ? r.verdict : '';
-      if (r) n++;
+      el.dataset.stale = old ? '1' : '';
+      if (r && !old) n++;
+      if (old) stale++;
+      el.querySelector('[data-rround]').textContent = r ? 'Round ' + round : '';
       el.querySelector('[data-rv]').textContent = r ? (r.verdict ? VLABEL[r.verdict] : 'Tested') + (r.tags && r.tags.length ? ' · ' + r.tags.join(', ') : '') : 'Not tested yet';
+      const changed = r ? (Array.isArray(r.changes) ? r.changes : c.changes.filter((x) => x.round === round).map((x) => x.what)) : [];
+      el.querySelector('[data-rch]').textContent = changed.length ? 'Changed for round ' + round + ': ' + changed.join(' · ') : '';
       el.querySelector('[data-rn]').textContent = r && r.note ? '“' + r.note + '”' : '';
       el.querySelector('[data-rs]').textContent = r && r.evidence ? r.evidence : '';
+      const since = old ? c.changes.filter((x) => x.round > round).map((x) => x.what) : [];
+      el.querySelector('[data-rstale]').textContent = old ? 'Changed since: retest' + (since.length ? ' (' + since.join(' · ') + ')' : '') : '';
+      const hist = r && Array.isArray(r.history) ? r.history : [];
+      const det = el.querySelector('[data-rhist]');
+      det.classList.toggle('hidden', !hist.length);
+      det.querySelector('summary').textContent = 'Earlier rounds (' + hist.length + ')';
+      const ul = det.querySelector('ul');
+      ul.replaceChildren(...hist.map((h) => { const li = document.createElement('li'); li.textContent = ['Round ' + (h.round || 1), h.verdict ? VLABEL[h.verdict] : 'Tested', h.note ? '“' + h.note + '”' : ''].filter(Boolean).join(' · '); return li; }));
     });
-    document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]').length + ' tested';
+    document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]').length + ' tested at their current version' + (stale ? ' · ' + stale + ' changed since: retest' : '');
   }
   function paintAll() {
     paintResults();

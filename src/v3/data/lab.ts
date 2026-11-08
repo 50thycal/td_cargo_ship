@@ -145,3 +145,85 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
 export function labCard(id: string): LabCard | undefined {
   return LAB_CARDS.find((c) => c.id === id);
 }
+
+// ---- Rounds and versions ---------------------------------------------------
+// A test round is one pass of playtesting on one build. When a build changes
+// something under test, the cards it touched get a new version (the round
+// they changed in), and their old verdicts stop counting as current: the hub
+// asks for them again. To start a round: add it to LAB_ROUNDS, and a line for
+// each changed card to LAB_CHANGES under that round's number.
+
+export interface LabRound {
+  n: number;
+  date: string;
+  name: string;
+  /** The build stamp its builds start from: a log that predates rounds is
+   *  placed in a round by the build it was played on. */
+  since?: string;
+}
+
+export const LAB_ROUNDS: LabRound[] = [
+  { n: 1, date: '2026-11-08', name: 'First look at the new enemies' },
+  { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
+];
+
+/** The round being tested now (the latest). */
+export const LAB_ROUND = LAB_ROUNDS[LAB_ROUNDS.length - 1].n;
+
+export function labRound(n: number): LabRound | undefined {
+  return LAB_ROUNDS.find((r) => r.n === n);
+}
+
+/** What changed in each card, by round: one short plain line each, for the
+ *  player. A combo also takes on its enemies' and weapon's changes. */
+export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
+  rocketTruck: [{ round: 2, what: "Fires salvos of five red rockets; red shots can't be stopped" }],
+  siege: [{ round: 2, what: 'Rises out of a hatch and hides between salvos; five hits' }],
+  diveBomber: [{ round: 2, what: 'Redrawn from above: flies in from the top and dives at its circle' }],
+  cloud: [{ round: 2, what: 'Now the Incendiary Missile: a fireball burns where it bursts' }],
+  lure: [{ round: 2, what: 'Rises out of the water; wide ring; every helper fires at it' }],
+  tender: [{ round: 2, what: 'Sails in from the edge and keeps clear of other boats' }],
+  scavenger: [{ round: 2, what: 'Circles over the water; a quadcopter with a claw' }],
+  decoy: [{ round: 2, what: 'The tell comes later; decoys fly like real drones' }],
+  armored: [{ round: 2, what: 'New shield that flares on a blocked hit' }],
+  spotter: [{ round: 2, what: 'Spots from further away' }],
+  stealthJet: [{ round: 2, what: '17% faster' }],
+  attackHeli: [{ round: 2, what: 'Its missiles fly straight in' }],
+  'w-gunships': [{ round: 2, what: 'Hellfires fly straight to their targets' }],
+  'w-cutter': [{ round: 2, what: 'A red laser sight from the gun to your finger' }],
+  'combo-siege-truck': [{ round: 2, what: 'New pairing' }],
+  'combo-guard-seeker': [{ round: 2, what: 'New pairing' }],
+  'combo-hydra-tesla': [{ round: 2, what: 'New pairing' }],
+};
+
+/** The cards a card takes changes from: itself, and for a combo its
+ *  enemies' and weapon's cards. */
+function changeSources(cardId: string): string[] {
+  const card = labCard(cardId);
+  if (!card || card.kind !== 'combo') return [cardId];
+  return [cardId, ...card.foes, ...(card.weapon ? [`w-${card.weapon}`] : [])];
+}
+
+/** Every change line a card has, oldest round first; a combo's inherited
+ *  ones say which card they're from. */
+export function cardChangeList(cardId: string): { round: number; what: string }[] {
+  const out: { round: number; what: string }[] = [];
+  for (const src of changeSources(cardId)) {
+    const name = src === cardId ? '' : `${labCard(src)?.name ?? src}: `;
+    for (const c of LAB_CHANGES[src] ?? []) out.push({ round: c.round, what: name + c.what });
+  }
+  return out.sort((a, b) => a.round - b.round);
+}
+
+/** A card's current version: the latest round it (or, for a combo, one of
+ *  its enemies or its weapon) changed in; 1 if it never has. */
+export function cardRev(cardId: string): number {
+  return cardChangeList(cardId).reduce((m, c) => Math.max(m, c.round), 1);
+}
+
+/** What changed in a card after a round (all of it without one). */
+export function cardChanges(cardId: string, sinceRound?: number): string[] {
+  return cardChangeList(cardId)
+    .filter((c) => sinceRound === undefined || c.round > sinceRound)
+    .map((c) => c.what);
+}

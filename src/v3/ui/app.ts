@@ -55,8 +55,10 @@ import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../d
 import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
 import { applyLab } from '../sim/game';
 import { labDone, type LabSetup } from '../sim/lab';
-import { LAB_LENGTH, labCard, type LabCard } from '../data/lab';
+import { LAB_LENGTH, LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import {
+  addLabEntry,
+  roundTitle,
   defaultSetup,
   keepLabLog,
   labBar,
@@ -1883,7 +1885,7 @@ export class App {
     this.leaveRun();
     const p = this.labProgress;
     this.showOverlay('v3-lab', [
-      this.screenHead('Test Lab', () => this.showMenu(), undefined, 'Playtest hub'),
+      this.screenHead('Test Lab', () => this.showMenu(), undefined, roundTitle()),
       labHub(p, {
         start: (id) => this.startLab(id),
         playFive: () => {
@@ -1917,7 +1919,7 @@ export class App {
       frequentDrops: true,
       enemies: 'campaign',
     };
-    this.play(card.map, free, { card: id, length: s.length, mix: s.mix });
+    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND });
     const bar = labBar(card, {
       bring: () => this.rec?.bring(),
       note: () => this.openNote('rail'),
@@ -1974,10 +1976,13 @@ export class App {
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
     this.showOverlay('v3-lab-verdict', [
-      labVerdictSheet(run.card, stats, waves, ended, p.results[run.card.id], next, {
+      labVerdictSheet(run.card, stats, waves, ended, p, next, {
         save: (r, then) => {
-          const result = { ...r, waves, ended, stats };
-          p.results[run.card.id] = { ...result, at: new Date().toISOString() };
+          // The verdict is for this version of the card, in this round; it
+          // joins the card's history (older versions' verdicts stay).
+          const rev = cardRev(run.card.id);
+          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND };
+          addLabEntry(p, run.card.id, { ...result, at: new Date().toISOString(), build: __BUILD__ });
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
           saveLabProgress(p);

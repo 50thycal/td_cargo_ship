@@ -18,6 +18,10 @@ export interface LabSetup {
   card: string;
   length: LabLength;
   mix: LabMix;
+  /** The card's version and the test round it was played in (absent in
+   *  logs from before rounds: round 1). Not used by the sim. */
+  rev?: number;
+  round?: number;
 }
 
 /** The evidence counted for the card under test. */

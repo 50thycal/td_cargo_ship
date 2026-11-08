@@ -7,6 +7,8 @@
   --accent: #7fe9ff;
   --danger: #ff4d3d;
   --gold: #f5c542;
+  /* The Test Lab's "changed since your last test". */
+  --lab-amber: #ff9f43;
   --rail-w: 72px;
   --sa-t: env(safe-area-inset-top, 0px);
   --sa-r: env(safe-area-inset-right, 0px);
@@ -4217,6 +4219,67 @@ body {
   color: var(--ink);
 }
 
+/* Rounds and versions: a card changed since its last test asks to be
+   tested again, in amber; its old verdict is dimmed (it was about a
+   different version). */
+.v3-lab-chip.changed {
+  background: color-mix(in srgb, var(--lab-amber) 18%, transparent);
+  border-color: var(--lab-amber);
+  color: var(--lab-amber);
+  white-space: nowrap;
+}
+
+.v3-lab-row.changed {
+  border-color: color-mix(in srgb, var(--lab-amber) 45%, transparent);
+}
+
+.v3-lab-row-text small.v3-lab-what {
+  color: var(--lab-amber);
+}
+
+.v3-lab-row-text small.v3-lab-old {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.v3-lab-round {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  padding: 5px 9px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--lab-amber) 55%, transparent);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-lab-round b {
+  color: var(--lab-amber);
+}
+
+.v3-lab-round span {
+  color: var(--muted);
+}
+
+.v3-lab-round.none {
+  border-color: var(--panel-edge);
+}
+
+.v3-lab-round.none b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.v3-lab-next small.v3-lab-next-why {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
 .v3-lab-side {
   display: flex;
   flex-direction: column;
@@ -4540,6 +4603,45 @@ a.v3-lab-page {
   resize: vertical;
 }
 
+.v3-lab-changes {
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--lab-amber) 55%, transparent);
+  background: color-mix(in srgb, var(--lab-amber) 10%, transparent);
+}
+
+.v3-lab-changes .v3-eyebrow {
+  color: var(--lab-amber);
+}
+
+.v3-lab-changes p {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.v3-lab-history {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.v3-lab-history .v3-eyebrow {
+  color: var(--muted);
+}
+
+.v3-lab-evidence .v3-lab-history p {
+  font-size: 11.5px;
+  color: var(--muted);
+  opacity: 0.8;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .v3-lab-evidence {
   padding: 8px 10px;
   border-radius: 10px;
@@ -4580,6 +4682,24 @@ a.v3-lab-page {
 .v3-lab-ritem p {
   margin: 0;
   font-size: 12.5px;
+}
+
+.v3-lab-rname {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v3-lab-rround {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.v3-lab-report p.v3-lab-rtitle {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gold);
 }
 
 .v3-lab-rnote {

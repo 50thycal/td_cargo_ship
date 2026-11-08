@@ -5,7 +5,7 @@
 // game log, which reaches Claude).
 
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
-import { LAB_CARDS, LAB_LENGTH, LAB_SECTIONS, LAB_START_WAVE, labCard, type LabCard, type LabLength, type LabMix } from '../data/lab';
+import { LAB_CARDS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { evidenceLines, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
@@ -26,8 +26,18 @@ export interface LabRunSetup {
   mix: LabMix;
 }
 
+/** One test's verdict as kept on the device: the result, when, the card's
+ *  version and the test round it was played in, and the build. */
+export interface LabEntry extends LabResult {
+  at: string;
+  rev: number;
+  round: number;
+  build?: string;
+}
+
 export interface LabProgress {
-  results: Record<string, LabResult & { at: string }>;
+  /** Every verdict for each card, oldest first (a new one is appended). */
+  results: Record<string, LabEntry[]>;
   length: LabLength;
   mix: LabMix;
   /** "Play 5": the cards still queued. */
@@ -41,24 +51,84 @@ const LOGS_KEY = 'straitwatch.v3.lab.logs';
 /** Tests whose logs stay on the device to rewatch (without thumbnails). */
 const KEEP_LOGS = 6;
 
+/** A card keeps this many verdicts on the device (the logs keep them all). */
+const KEEP_ENTRIES = 20;
+
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function loadLabProgress(): LabProgress {
-  const base: LabProgress = { results: {}, length: 'full', mix: 'normal', queue: [], session: { day: today(), ids: [] } };
-  try {
-    const raw = JSON.parse(kv.getItem(KEY) ?? 'null') as Partial<LabProgress> | null;
-    if (!raw) return base;
-    const p: LabProgress = {
-      results: raw.results ?? {},
-      length: raw.length === 'quick' ? 'quick' : 'full',
-      mix: raw.mix === 'light' || raw.mix === 'heavy' ? raw.mix : 'normal',
-      queue: (raw.queue ?? []).filter((id) => !!labCard(id)),
-      session: raw.session && raw.session.day === today() ? raw.session : base.session,
-    };
-    return p;
-  } catch {
-    return base;
+/** Saved results, from any version of the store: before rounds a card held
+ *  one result object (round 1, version 1); now it holds a list. */
+function migrateResults(raw: unknown): Record<string, LabEntry[]> {
+  const out: Record<string, LabEntry[]> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
+    const list = (Array.isArray(v) ? v : v && typeof v === 'object' ? [v] : []) as Partial<LabEntry>[];
+    out[id] = list
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => ({ ...(e as LabEntry), rev: typeof e.rev === 'number' ? e.rev : 1, round: typeof e.round === 'number' ? e.round : 1 }));
   }
+  return out;
+}
+
+/** The saved progress (parsed JSON), made current. */
+export function parseLabProgress(raw: unknown): LabProgress {
+  const base: LabProgress = { results: {}, length: 'full', mix: 'normal', queue: [], session: { day: today(), ids: [] } };
+  if (!raw || typeof raw !== 'object') return base;
+  const r = raw as Partial<Record<keyof LabProgress, unknown>> & { session?: { day?: string; ids?: string[] } };
+  return {
+    results: migrateResults(r.results),
+    length: r.length === 'quick' ? 'quick' : 'full',
+    mix: r.mix === 'light' || r.mix === 'heavy' ? r.mix : 'normal',
+    queue: (Array.isArray(r.queue) ? (r.queue as string[]) : []).filter((id) => !!labCard(id)),
+    session: r.session && r.session.day === today() && Array.isArray(r.session.ids) ? { day: r.session.day, ids: r.session.ids } : base.session,
+  };
+}
+
+export function loadLabProgress(): LabProgress {
+  try {
+    return parseLabProgress(JSON.parse(kv.getItem(KEY) ?? 'null'));
+  } catch {
+    return parseLabProgress(null);
+  }
+}
+
+// ---- Versions: what counts as tested ----------------------------------------
+
+/** The newest verdict given at the card's current version (none: the card
+ *  is untested, or changed since). */
+export function currentEntry(p: LabProgress, id: string): LabEntry | undefined {
+  const rev = cardRev(id);
+  const list = p.results[id] ?? [];
+  for (let i = list.length - 1; i >= 0; i--) if (list[i].rev >= rev) return list[i];
+  return undefined;
+}
+
+/** Verdicts given on older versions of the card, newest first. */
+export function olderEntries(p: LabProgress, id: string): LabEntry[] {
+  const rev = cardRev(id);
+  return (p.results[id] ?? []).filter((e) => e.rev < rev).reverse();
+}
+
+/** Tested at its current version, changed since its last test, or never
+ *  tested. */
+export type LabStatus = 'tested' | 'changed' | 'untested';
+
+export function labStatus(p: LabProgress, id: string): LabStatus {
+  if (currentEntry(p, id)) return 'tested';
+  return (p.results[id] ?? []).length ? 'changed' : 'untested';
+}
+
+/** What changed in a card since the player last tested it (none if it is
+ *  current or never tested). */
+export function changedSince(p: LabProgress, id: string): string[] {
+  const last = olderEntries(p, id)[0];
+  return !currentEntry(p, id) && last ? cardChanges(id, last.round) : [];
+}
+
+/** Keep a new verdict: appended, so it becomes the current one and the old
+ *  ones stay as history. */
+export function addLabEntry(p: LabProgress, id: string, e: LabEntry): void {
+  p.results[id] = [...(p.results[id] ?? []), e].slice(-KEEP_ENTRIES);
 }
 
 export function saveLabProgress(p: LabProgress): void {
@@ -90,10 +160,14 @@ export function labLogs(): PlayLog[] {
   }
 }
 
-/** The next cards to test: the checklist's order, skipping what's marked. */
+/** The next cards to test: the ones changed since they were tested first
+ *  (the most useful to try again), then the untested, each in the
+ *  checklist's order. */
 export function nextCards(p: LabProgress, n: number, after?: string): LabCard[] {
-  const open = LAB_CARDS.filter((c) => !p.results[c.id] && c.id !== after);
-  return open.slice(0, n);
+  const open = LAB_CARDS.filter((c) => c.id !== after);
+  const changed = open.filter((c) => labStatus(p, c.id) === 'changed');
+  const untested = open.filter((c) => labStatus(p, c.id) === 'untested');
+  return [...changed, ...untested].slice(0, n);
 }
 
 export function defaultSetup(card: LabCard, p: LabProgress, last?: LabRunSetup): LabRunSetup {
@@ -128,6 +202,17 @@ function chip(r: LabResult | undefined): HTMLElement {
   return el('span', `v3-lab-chip ${r.verdict}`, VERDICT_LABEL[r.verdict].toUpperCase());
 }
 
+/** An old verdict in one line: "Round 1 · Keep · “note”". */
+function oldLine(e: LabEntry): string {
+  return [`Round ${e.round}`, e.verdict ? VERDICT_LABEL[e.verdict] : 'Tested', e.note ? `“${e.note}”` : ''].filter(Boolean).join(' · ');
+}
+
+/** The round being tested, as the hub and the report name it. */
+export function roundTitle(): string {
+  const r = labRound(LAB_ROUND);
+  return `Test round ${LAB_ROUND}${r ? ` · ${r.name}` : ''}`;
+}
+
 // ---- The hub ---------------------------------------------------------------
 
 export interface HubHandlers {
@@ -139,31 +224,51 @@ export interface HubHandlers {
 
 export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   const body = el('div', 'v3-lab-hub');
-  const done = LAB_CARDS.filter((c) => p.results[c.id]).length;
+  const status = new Map(LAB_CARDS.map((c) => [c.id, labStatus(p, c.id)]));
+  const count = (cards: LabCard[], s: LabStatus) => cards.filter((c) => status.get(c.id) === s).length;
+  const done = count(LAB_CARDS, 'tested');
   const list = el('div', 'v3-lab-list');
   for (const s of LAB_SECTIONS) {
     const cards = LAB_CARDS.filter((c) => c.kind === s.kind);
     const sec = el('details', 'v3-lab-sec');
     sec.open = s.kind === 'enemy' || s.kind === 'combo';
     sec.dataset.section = s.kind;
-    const marked = cards.filter((c) => p.results[c.id]).length;
+    const retest = count(cards, 'changed');
     const sum = el('summary');
-    sum.append(el('b', '', s.name), el('span', '', `${marked} of ${cards.length}`), el('i', '', s.blurb));
+    sum.append(el('b', '', s.name), el('span', '', `${count(cards, 'tested')} of ${cards.length}${retest ? ` · ${retest} to retest` : ''}`), el('i', '', s.blurb));
     sec.append(sum);
     for (const c of cards) {
-      const r = p.results[c.id];
-      const row = button('', `v3-lab-row${r ? ' done' : ''}`, () => h.start(c.id));
+      const st = status.get(c.id)!;
+      const r = currentEntry(p, c.id);
+      const row = button('', `v3-lab-row${st === 'tested' ? ' done' : st === 'changed' ? ' changed' : ''}`, () => h.start(c.id));
       row.dataset.card = c.id;
+      row.dataset.status = st;
       const text = el('span', 'v3-lab-row-text');
-      text.append(el('b', '', c.name), el('small', '', r?.note ? `“${r.note}”` : c.look));
-      row.append(text, chip(r));
+      text.append(el('b', '', c.name));
+      if (st === 'changed') {
+        // Changed since the last test: what changed, and the old verdict,
+        // dimmed (it was about a different version).
+        const what = changedSince(p, c.id);
+        text.append(el('small', 'v3-lab-what', what.length ? `New: ${what.join(' · ')}` : 'Changed since your last test'));
+        const old = el('small', 'v3-lab-old', oldLine(olderEntries(p, c.id)[0]));
+        text.append(old);
+        row.append(text, el('span', 'v3-lab-chip changed', 'CHANGED · TEST AGAIN'));
+      } else {
+        text.append(el('small', '', r?.note ? `“${r.note}”` : c.look));
+        row.append(text, chip(r));
+      }
       sec.append(row);
     }
     list.append(sec);
   }
   const side = el('div', 'v3-lab-side');
+  const round = el('div', 'v3-lab-round');
+  round.dataset.labRound = String(LAB_ROUND);
+  const retest = count(LAB_CARDS, 'changed');
+  round.append(el('b', '', `${retest} to retest`), el('span', '', `${count(LAB_CARDS, 'untested')} untested`));
+  round.classList.toggle('none', !retest);
   const bar = el('div', 'v3-lab-progress');
-  bar.append(el('span', '', `${done} of ${LAB_CARDS.length} tested`));
+  bar.append(el('span', '', `${done} of ${LAB_CARDS.length} tested this round`));
   const track = el('span', 'v3-lab-track');
   const fill = el('i');
   fill.style.width = `${Math.round((100 * done) / LAB_CARDS.length)}%`;
@@ -174,6 +279,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   go.dataset.labNext = '1';
   go.innerHTML = '';
   go.append(el('span', '', next ? 'Next up' : 'All tested'), el('small', '', next ? next.name : 'Pick any card to test again'));
+  if (next && labStatus(p, next.id) === 'changed') go.append(el('small', 'v3-lab-next-why', 'changed · test again'));
   if (!next) go.disabled = true;
   const five = button(p.queue.length ? `Play 5 (${p.queue.length} left)` : 'Play 5', 'v2-btn v3-lab-five', h.playFive);
   five.dataset.labFive = '1';
@@ -193,7 +299,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
+  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
   body.append(list, side);
   return body;
 }
@@ -325,10 +431,21 @@ export interface VerdictHandlers {
   save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note'>, then: 'next' | 'again' | 'list') => void;
 }
 
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], prior: LabResult | undefined, next: LabCard | undefined, h: VerdictHandlers): HTMLElement {
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers): HTMLElement {
   const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
   const title = ended === 'lost' ? `${card.name} · the convoy was lost` : `${card.name} · how was it?`;
   sheet.append(el('h2', '', title));
+  // Only a verdict on this version fills the sheet in: an older version's
+  // was about something else.
+  const prior = currentEntry(p, card.id);
+  const older = olderEntries(p, card.id);
+  const what = changedSince(p, card.id);
+  if (what.length) {
+    const ch = el('div', 'v3-lab-changes');
+    ch.append(el('span', 'v3-eyebrow', `Changed since your round ${older[0].round} test`));
+    for (const w of what) ch.append(el('p', '', w));
+    sheet.append(ch);
+  }
   const cols = el('div', 'v3-lab-cols');
   const left = el('div', 'v3-lab-col');
   let verdict: LabVerdict | null = prior?.verdict ?? null;
@@ -361,6 +478,18 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const right = el('div', 'v3-lab-col v3-lab-evidence');
   right.append(el('span', 'v3-eyebrow', 'Counted this test'));
   for (const line of evidenceLines(card, s, waves)) right.append(el('p', '', line));
+  if (older.length) {
+    // Earlier versions' verdicts, read only.
+    const hist = el('div', 'v3-lab-history');
+    hist.dataset.labHistory = '1';
+    hist.append(el('span', 'v3-eyebrow', 'Your earlier verdicts'));
+    for (const e of older.slice(0, 2)) {
+      const line = el('p', '', oldLine(e));
+      line.title = oldLine(e);
+      hist.append(line);
+    }
+    right.append(hist);
+  }
   cols.append(left, right);
   const acts = el('div', 'v3-lab-sheet-acts');
   const result = () => ({ verdict, tags: [...tags], note: note.value.trim() });
@@ -383,14 +512,17 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
 export function labReport(p: LabProgress, rewatch: (log: PlayLog, step: number) => void, send: (out: HTMLElement) => void): HTMLElement {
   const box = el('div', 'v3-lab-report');
   const logs = labLogs();
+  box.append(el('p', 'v3-lab-rtitle', roundTitle()));
   if (!p.session.ids.length) box.append(el('p', 'v3-hint', 'Nothing tested yet today. Tests you finish show here, with your notes.'));
   for (const id of p.session.ids) {
     const card = labCard(id);
-    const r = p.results[id];
+    const r = (p.results[id] ?? []).at(-1);
     if (!card || !r) continue;
     const item = el('div', 'v3-lab-ritem');
     const head = el('div', 'v3-lab-rhead');
-    head.append(el('b', '', card.name), chip(r));
+    const name = el('span', 'v3-lab-rname');
+    name.append(el('b', '', card.name), el('span', 'v3-lab-rround', `Round ${r.round}`));
+    head.append(name, chip(r));
     item.append(head);
     if (r.tags.length) item.append(el('p', 'v3-lab-rtags', r.tags.join(' · ')));
     if (r.note) item.append(el('p', 'v3-lab-rnote', `“${r.note}”`));
