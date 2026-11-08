@@ -3,7 +3,7 @@
 // card says.
 
 import { describe, expect, it } from 'vitest';
-import { THREATS } from '../../src/v3/data/config';
+import { THREATS, VIEW } from '../../src/v3/data/config';
 import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
