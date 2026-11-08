@@ -7,9 +7,14 @@
 //   answers/{questionId}: choice (option index), note
 // Usage: node tools/v3/test-lab/page.mjs <out.html>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { ROUND_DATE, ASK, TODAY, PIECES, SECTIONS, CARDS, QUESTIONS } from './lab.mjs';
 
 const root = new URL('../../../', import.meta.url);
+// The game's own card list (src/v3/data/lab.ts), and where the game lives:
+// a card's "Test in game" link opens that test.
+const LAB = JSON.parse(execSync('npx tsx tools/v3/test-lab/cards.mts', { cwd: root.pathname }).toString());
+const GAME_URL = process.env.GAME_URL ?? 'https://td-cargo-ship.vercel.app/v3.html';
 const out = process.argv[2];
 if (!out) throw new Error('usage: node page.mjs <out.html>');
 
@@ -203,6 +208,19 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
 .ph-num small { color: var(--game-dim); }
 @media (max-width: 520px) { .phone { font-size: 9px; } .phone:not(.shot) { aspect-ratio: auto; } .ph-body { grid-template-columns: 1fr 1fr; } .facts div { grid-template-columns: 1fr; gap: 0; } }
 @media (prefers-reduced-motion: no-preference) { .item, .card { transition: border-color .2s, opacity .2s; } }
+.card.result { grid-template-columns: 1fr; }
+.card.result .look { font-size: 13px; }
+.res { display: grid; gap: 2px; font-size: 14px; }
+.res .rv { font-weight: 600; color: var(--muted); }
+.card.result[data-v="keep"] .rv { color: var(--go); }
+.card.result[data-v="tune"] .rv { color: var(--maybe); }
+.card.result[data-v="cut"] .rv { color: var(--drop); }
+.res .rs { font: 500 12px var(--mono); color: var(--muted); }
+.card.result[data-v="keep"] { border-color: var(--go); }
+.card.result[data-v="tune"] { border-color: var(--maybe); }
+.card.result[data-v="cut"] { border-color: var(--drop); }
+a.play { justify-self: start; font: 600 13px var(--body); color: var(--signal); text-decoration: none; border: 1px solid var(--signal); border-radius: 999px; padding: 4px 12px; }
+a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .hidden { display: none !important; }
 </style>
 
@@ -210,7 +228,7 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
   <header class="intro">
     <div class="eyebrow">Straitwatch V3 · Test Lab · ${ROUND_DATE}</div>
     <h1>Test Lab Design</h1>
-    <p>A playtest mode for testing new things fast: open it, it says what's left, you play a normal-feeling wave with that thing in it, you give a verdict in three taps, and every test is recorded for me. This page is the design. Mark each piece, trim the checklist, answer the ${QUESTIONS.length} questions, and I build it.</p>
+    <p>A playtest hub for testing new things fast: open it, it says what's left, you play a fast, normal-feeling wave with that thing in it, you give a verdict in three taps, and every test is recorded. <b>Built</b> from your marks (the hub, Quick or Full length, everything on the list). <b>Results</b> shows what you've tested; the Design tabs keep the round as you marked it.</p>
     <blockquote>“${esc(ASK)}”</blockquote>
     <div><span class="lab">What makes testing slow today</span><ul class="today">${TODAY.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>
     <p class="store" id="store">Connecting to the review store…</p>
@@ -218,14 +236,25 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
 
   <nav class="bar-sticky" aria-label="Sections">
     <div class="tabs" role="group" aria-label="Section">
-      <button type="button" data-tab="design" aria-pressed="true">Design</button>
+      <button type="button" data-tab="results" aria-pressed="true">Results</button>
+      <button type="button" data-tab="design" aria-pressed="false">Design</button>
       <button type="button" data-tab="list" aria-pressed="false">Checklist</button>
       <button type="button" data-tab="questions" aria-pressed="false">Questions</button>
     </div>
     <div class="tally" id="tally"></div>
   </nav>
 
-  <section class="pane" id="pane-design" aria-labelledby="h-design">
+  <section class="pane" id="pane-results" aria-labelledby="h-results">
+    <h2 id="h-results">Results</h2>
+    <p>The Test Lab is built: it's on the game's main menu. What you mark in the game shows here once Claude copies it over from your game logs (at the start of each session). Each card's link opens that test in the game.</p>
+    <p class="tally" id="results-tally"></p>
+    ${LAB.sections.map((s) => `<section class="sec" aria-labelledby="rs-${s.kind}"><h3 id="rs-${s.kind}">${esc(s.name)}</h3><p>${esc(s.blurb)}</p>
+      <ul class="cards">${LAB.cards.filter((c) => c.kind === s.kind).map((c) => `<li class="card result" data-result="${c.id}"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span></div>
+        <div class="res"><span class="rv" data-rv>Not tested yet</span><span class="rn" data-rn></span><span class="rs" data-rs></span></div>
+        <a class="play" href="${GAME_URL}?lab=${encodeURIComponent(c.id)}" target="_blank" rel="noopener">Test in game ↗</a></li>`).join('\n')}</ul></section>`).join('\n')}
+  </section>
+
+  <section class="pane hidden" id="pane-design" aria-labelledby="h-design">
     <h2 id="h-design">The design, in the order you'd meet it</h2>
     <p>${PIECES.length} pieces, each built on something the game already has: the note form, the game log and its upload, the replay of a moment, Free Play's setup. Approve, Change (say what in the note) or Cut each one.</p>
     <div class="grid">${PIECES.map((p, k) => pieceCard(p, String(k + 1).padStart(2, '0'))).join('\n')}</div>
@@ -252,11 +281,11 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
   const PIECES = ${JSON.stringify(PIECES.map((p) => p.id))};
   const CARDS = ${JSON.stringify(CARDS.map((c) => c.id))};
   const QIDS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
-  const state = { reviews: {}, cards: {}, answers: {} };
-  const COLLS = ['reviews', 'cards', 'answers'];
+  const state = { reviews: {}, cards: {}, answers: {}, results: {} };
+  const COLLS = ['reviews', 'cards', 'answers', 'results'];
   const LS = 'straitwatch-test-lab-1';
   let db = null;
-  let tab = 'design';
+  let tab = 'results';
   const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } };
   const lsSet = (v) => { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} };
   const flash = (el, msg) => { if (el) el.textContent = msg; };
@@ -282,9 +311,24 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
   }
   function paintTab() {
     document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
-    for (const p of ['design', 'list', 'questions']) document.getElementById('pane-' + p).classList.toggle('hidden', p !== tab);
+    for (const p of ['results', 'design', 'list', 'questions']) document.getElementById('pane-' + p).classList.toggle('hidden', p !== tab);
+  }
+  // Results: written by Claude from the game logs (read only here).
+  const VLABEL = { keep: 'Keep', tune: 'Tune', cut: 'Cut' };
+  function paintResults() {
+    let n = 0;
+    document.querySelectorAll('[data-result]').forEach((el) => {
+      const r = state.results[el.dataset.result];
+      el.dataset.v = r && r.verdict ? r.verdict : '';
+      if (r) n++;
+      el.querySelector('[data-rv]').textContent = r ? (r.verdict ? VLABEL[r.verdict] : 'Tested') + (r.tags && r.tags.length ? ' · ' + r.tags.join(', ') : '') : 'Not tested yet';
+      el.querySelector('[data-rn]').textContent = r && r.note ? '“' + r.note + '”' : '';
+      el.querySelector('[data-rs]').textContent = r && r.evidence ? r.evidence : '';
+    });
+    document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]').length + ' tested';
   }
   function paintAll() {
+    paintResults();
     document.querySelectorAll('[data-coll]').forEach(paintItem);
     document.querySelectorAll('.q').forEach((f) => paintQ(f.dataset.q));
     paintTally();
@@ -324,8 +368,8 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
     ta.addEventListener('input', () => { clearTimeout(t); flash(st, 'Typing…'); t = setTimeout(() => save('answers', id, { note: ta.value }, st), 900); });
     ta.addEventListener('blur', () => { clearTimeout(t); if ((state.answers[id] || {}).note !== ta.value && ta.value !== '') save('answers', id, { note: ta.value }, st); });
   });
-  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; try { sessionStorage.setItem(LS + '-tab', tab); } catch {} paintTab(); }));
-  try { tab = sessionStorage.getItem(LS + '-tab') || 'design'; } catch {}
+  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; try { sessionStorage.setItem(LS + '-tab2', tab); } catch {} paintTab(); }));
+  try { tab = sessionStorage.getItem(LS + '-tab2') || 'results'; } catch {}
 
   const local = lsGet();
   for (const c of COLLS) Object.assign(state[c], local[c] || {});

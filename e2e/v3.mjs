@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 16 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 17 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -745,6 +745,47 @@ try {
     }
     check(seen.size === kinds.length && errs.length === 0, `all 21 new enemies come into play in the browser and draw without errors (${seen.size}/21${errs.length ? `; ${errs[0]}` : ''})`);
     await ep.close();
+  }
+
+  // ---- The Test Lab: the hub, a test with its bar, the verdict, the log ----
+  {
+    const tp = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 1, hasTouch: true });
+    const errs = [];
+    tp.on('pageerror', (e) => errs.push(e.message));
+    await tp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
+    await tp.evaluate(() => localStorage.clear());
+    await tp.reload({ waitUntil: 'networkidle' });
+    await tp.click('[data-lab]');
+    await tp.waitForSelector('[data-screen="lab"]');
+    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent }));
+    check(hub.rows === 78 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
+    await tp.click('[data-lab-next]');
+    await tp.waitForSelector('.playing.lab-on');
+    const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
+    check(run.card === 'diveBomber' && run.wave === 5 && run.endless && run.bar, `a test starts at wave 5 on the lab's water with its bar (${JSON.stringify(run)})`);
+    await tp.click('[data-lab-bring]');
+    await tp.waitForTimeout(400);
+    const brought = await tp.evaluate(() => ({ cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, marks: window.__v3.game().foe.marks.length }));
+    check(brought.cmds === 1 && brought.marks > 0, `Bring one brings the card's enemy now, as a recorded input (${JSON.stringify(brought)})`);
+    await tp.click('[data-lab-done]');
+    await tp.waitForSelector('[data-screen="lab-verdict"]');
+    await tp.click('[data-lab-verdict="keep"]');
+    await tp.fill('#lab-note', 'reads fine');
+    await tp.click('[data-lab-list]');
+    await tp.waitForSelector('[data-screen="lab"]');
+    const saved = await tp.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('straitwatch.v3.lab'));
+      const logs = JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') || '[]');
+      const log = logs.find((l) => l.lab?.card === 'diveBomber');
+      return { verdict: p.results.diveBomber?.verdict, note: p.results.diveBomber?.note, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
+    });
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device and rides in the test's log (${JSON.stringify(saved)})`);
+    // A link from the review page opens a test straight away.
+    await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
+    await tp.waitForSelector('.playing.lab-on');
+    const linked = await tp.evaluate(() => ({ card: window.__v3.game().lab?.setup.card, slots: window.__v3.game().slots }));
+    check(linked.card === 'w-cadence' && linked.slots[0] === 'cadence' && errs.length === 0, `?lab=<card> opens that test, holding its weapon (${JSON.stringify(linked)}${errs.length ? `; ${errs[0]}` : ''})`);
+    await tp.close();
   }
 
   // ---- Playtest logs reach Claude (playtest-fixes round) ----

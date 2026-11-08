@@ -4062,3 +4062,540 @@ body {
     min-height: 36px;
   }
 }
+
+/* ---- The Test Lab (docs/design/v3-test-lab.md) ---------------------------- */
+
+.v3-lab-hub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 250px);
+  gap: 14px;
+  width: 100%;
+  align-items: start;
+}
+
+.v3-lab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v3-lab-sec {
+  text-align: left;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  background: rgb(15 26 34 / 0.85);
+  padding: 4px 8px 8px;
+}
+
+.v3-lab-sec > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 6px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.v3-lab-sec > summary::-webkit-details-marker {
+  display: none;
+}
+
+.v3-lab-sec > summary b {
+  font-size: 14px;
+}
+
+.v3-lab-sec > summary span {
+  font-size: 12px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-lab-sec > summary i {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--muted);
+  flex-basis: 100%;
+}
+
+.v3-lab-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-lab-row:hover,
+.v3-lab-row:focus-visible {
+  border-color: var(--gold);
+}
+
+.v3-lab-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.v3-lab-row-text b {
+  font-size: 13.5px;
+}
+
+.v3-lab-row-text small {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-lab-row.done .v3-lab-row-text b {
+  color: var(--muted);
+}
+
+.v3-lab-chip {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--muted);
+  border: 1px solid var(--panel-edge);
+}
+
+.v3-lab-chip.keep {
+  background: #1f7a3d;
+  border-color: #1f7a3d;
+  color: #fff;
+}
+
+.v3-lab-chip.tune {
+  background: #8a6200;
+  border-color: #8a6200;
+  color: #fff;
+}
+
+.v3-lab-chip.cut {
+  background: #a33a2c;
+  border-color: #a33a2c;
+  color: #fff;
+}
+
+.v3-lab-chip.seen {
+  color: var(--ink);
+}
+
+.v3-lab-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+}
+
+.v3-lab-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.v3-lab-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.12);
+  overflow: hidden;
+}
+
+.v3-lab-track i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
+.v3-lab-next {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 12px !important;
+}
+
+.v3-lab-next span {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.v3-lab-next small,
+.v3-lab-sheet-acts .primary small {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.v3-lab-len {
+  display: flex;
+  gap: 6px;
+}
+
+.v3-lab-seg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.v3-lab-seg small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.v3-lab-seg.on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 16%, rgb(15 26 34 / 0.9));
+}
+
+.v3-lab-seg.small {
+  font-size: 12px;
+  padding: 5px 6px;
+}
+
+a.v3-lab-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* In play: one slim bar over the map's top edge. Only its buttons take
+   taps; the rest lets them through to the water. */
+.v3-lab-bar {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--sa-t) + 4px);
+  left: calc(var(--map-left) + 6px);
+  width: calc(var(--map-width) - 12px);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 3px 4px 3px 9px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  background: rgb(7 13 18 / 0.82);
+  pointer-events: none;
+}
+
+.playing.lab-on .v3-lab-bar {
+  display: flex;
+}
+
+.v3-lab-bar-head {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.v3-lab-bar-head b {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-lab-bar-head small {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-lab-count {
+  flex: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.v3-lab-acts {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  pointer-events: auto;
+}
+
+.v3-lab-act {
+  white-space: nowrap;
+  min-height: 28px;
+  padding: 2px 9px;
+  border-radius: 7px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  background: rgb(15 26 34 / 0.9);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.v3-lab-act.done {
+  border-color: var(--gold);
+}
+
+.v3-lab-act.done.ready {
+  background: var(--gold);
+  color: #10161b;
+}
+
+/* The setup and verdict sheets, and the report. */
+.v3-lab-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 640px);
+  text-align: left;
+}
+
+.v3-lab-sheet h2 {
+  margin: 0 0 2px;
+  font-size: 20px;
+}
+
+.v3-lab-line {
+  display: grid;
+  grid-template-columns: 90px auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.v3-lab-line .v3-lab-len {
+  grid-column: 2 / -1;
+}
+
+.v3-lab-step {
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.9);
+  color: var(--ink);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.v3-lab-wave {
+  min-width: 26px;
+  text-align: center;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-lab-sheet-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.v3-lab-sheet-acts .primary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The sheets over a paused test get a solid backing (the rails stay out
+   of the way). */
+.v2-panel.v3-lab-setup,
+.v2-panel.v3-lab-verdict {
+  max-width: 720px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(10 18 24 / 0.97);
+}
+
+.v3-lab-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.v3-lab-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v3-lab-v {
+  display: flex;
+  gap: 6px;
+}
+
+.v3-lab-vbtn {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.9);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v3-lab-vbtn.keep.on {
+  background: #1f7a3d;
+  border-color: #1f7a3d;
+}
+
+.v3-lab-vbtn.tune.on {
+  background: #8a6200;
+  border-color: #8a6200;
+}
+
+.v3-lab-vbtn.cut.on {
+  background: #a33a2c;
+  border-color: #a33a2c;
+}
+
+.v3-lab-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.v3-lab-tag {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.v3-lab-tag.on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+}
+
+.v3-lab-note {
+  width: 100%;
+  min-height: 60px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(7 13 18 / 0.7);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  resize: vertical;
+}
+
+.v3-lab-evidence {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.v3-lab-evidence p {
+  margin: 0;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-lab-report {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 680px);
+  text-align: left;
+}
+
+.v3-lab-ritem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+}
+
+.v3-lab-rhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.v3-lab-ritem p {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.v3-lab-rnote {
+  color: var(--ink);
+}
+
+.v3-lab-rtags,
+.v3-lab-rstats {
+  color: var(--muted);
+}
+
+.v3-lab-rewatch {
+  align-self: flex-start;
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+}
+
+.v3-lab-back {
+  position: absolute;
+  z-index: 7;
+  top: calc(var(--sa-t) + 8px);
+  left: calc(var(--map-left) + 8px);
+}
+
+@media (max-width: 720px), (max-height: 430px) {
+  .v3-lab-hub {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 200px);
+    gap: 10px;
+  }
+  .v3-lab-count {
+    font-size: 10px;
+  }
+  .v3-lab-act {
+    padding: 2px 7px;
+    font-size: 11px;
+  }
+  .v3-lab-cols {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  }
+}

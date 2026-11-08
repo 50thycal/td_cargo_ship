@@ -53,6 +53,22 @@ import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Contr
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, newFoeState } from '../sim/foes';
+import { applyLab } from '../sim/game';
+import { labDone, type LabSetup } from '../sim/lab';
+import { LAB_LENGTH, labCard, type LabCard } from '../data/lab';
+import {
+  defaultSetup,
+  keepLabLog,
+  labBar,
+  labHub,
+  labReport,
+  labSetupSheet,
+  labVerdictSheet,
+  loadLabProgress,
+  nextCards,
+  saveLabProgress,
+  type LabRunSetup,
+} from './lab';
 import { noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -294,6 +310,12 @@ export class App {
   /** Developer playtest mode (`?dev=1`): presets that shorten a run, all
    *  maps open, faster speeds, and a wave retry on the loss screen. */
   private dev = !STORE && devEnabled();
+  /** The Test Lab (docs/design/v3-test-lab.md): what has been tested, the
+   *  test running now (its card, setup and bar), and the setup to start the
+   *  next one with. */
+  private labProgress = loadLabProgress();
+  private labRun: { card: LabCard; setup: LabRunSetup; bar: ReturnType<typeof labBar> } | null = null;
+  private labLast: LabRunSetup | undefined;
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   /** Watch mode: the bot in this run, and who is at the controls. */
@@ -501,6 +523,12 @@ export class App {
       },
     };
     this.showMenu();
+    // A Test Lab link from the review page: ?lab=<card> opens that test.
+    const labLink = !STORE ? new URLSearchParams(location.search).get('lab') : null;
+    if (labLink) {
+      if (labCard(labLink)) this.startLab(labLink);
+      else this.showLab();
+    }
     requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -1350,6 +1378,7 @@ export class App {
   }
 
   private renderHud(g: Game): void {
+    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, LAB_LENGTH[g.lab.setup.length]);
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < g.lost ? '<i class="lost"></i>' : i === g.lost && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
@@ -1358,7 +1387,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
-      (this.free ? '<span class="v2-hud-dev">FREE PLAY</span>' : '') +
+      (this.free ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
@@ -1461,8 +1490,11 @@ export class App {
     this.beat = null;
     this.stamp.classList.remove('show');
     if (b.kind === 'clear') {
-      if (g.phase === 'draft') this.openDraft(g);
-    } else this.showResult(g, b.kind === 'won');
+      // A test that has run its length goes to its verdict, not a draft.
+      if (this.labRun && labDone(g)) this.showLabVerdict('length');
+      else if (g.phase === 'draft') this.openDraft(g);
+    } else if (this.labRun) this.showLabVerdict(b.kind === 'lost' ? 'lost' : 'length');
+    else this.showResult(g, b.kind === 'won');
   }
 
   /** One more loss and the run is over: the last ship, or a carrier at a
@@ -1524,6 +1556,8 @@ export class App {
   /** Off the field for good: the run (if any) is logged and let go. */
   private leaveRun(): void {
     this.resetFinale();
+    this.endLabRun();
+    this.root.querySelector('.v3-lab-back')?.remove();
     if (this.rec) this.endRun(this.game?.phase === 'won' ? 'won' : 'quit');
     this.rec = null;
     this.game = null;
@@ -1667,6 +1701,14 @@ export class App {
     settings.innerHTML = chromeSvg('gear', 20);
     settings.setAttribute('aria-label', 'Settings');
     bar.append(armory, freePlay);
+    // The Test Lab: test builds only (the player's answer: hidden in the
+    // App Store build).
+    if (!STORE) {
+      const lab = button('', 'v3-top-btn v3-lab-btn', () => this.showLab());
+      lab.innerHTML = `${chromeSvg('note', 16)}<span>Test Lab</span>`;
+      lab.dataset.lab = '1';
+      bar.append(lab);
+    }
     if (this.notesOn) {
       const note = button('', 'v3-top-btn v3-menu-note', () => this.openMenuNote());
       note.innerHTML = `${chromeSvg('note', 17)}<span>Note</span>`;
@@ -1816,6 +1858,149 @@ export class App {
     );
     box.append(el('span', 'v2-draft-eyebrow', `Armory card${cards.length > 1 ? 's' : ''} won${firstClear ? ' · first clear bonus' : ''}`), row);
     return box;
+  }
+
+  // -------------------------------------------------------------------------
+  // The Test Lab (docs/design/v3-test-lab.md)
+
+  /** The hub: the checklist, Next up, Play 5, the length, the report. */
+  private showLab(): void {
+    this.leaveRun();
+    const p = this.labProgress;
+    this.showOverlay('v3-lab', [
+      this.screenHead('Test Lab', () => this.showMenu(), undefined, 'Playtest hub'),
+      labHub(p, {
+        start: (id) => this.startLab(id),
+        playFive: () => {
+          p.queue = nextCards(p, 5).map((c) => c.id);
+          saveLabProgress(p);
+          if (p.queue.length) this.startLab(p.queue[0]);
+        },
+        setLength: (l) => {
+          p.length = l;
+          if (this.labLast) this.labLast = { ...this.labLast, length: l };
+          saveLabProgress(p);
+          this.showLab();
+        },
+        report: () => this.showLabReport(),
+      }),
+    ]);
+  }
+
+  /** Start a test: the card's water, wave 5 (or the setup's), its kit. */
+  private startLab(id: string, setup?: LabRunSetup): void {
+    const card = labCard(id);
+    if (!card) return;
+    const s = setup ?? defaultSetup(card, this.labProgress, this.labLast ? { ...this.labLast, length: this.labProgress.length, mix: this.labProgress.mix } : undefined);
+    this.labLast = s;
+    this.endLabRun();
+    const free: FreeSetup = {
+      map: card.map,
+      wave: s.wave,
+      weapons: [0, 1, 2].map((i) => s.weapons[i] ?? null),
+      armory: { gun: null, hull: null, supply: null },
+      frequentDrops: true,
+      enemies: 'campaign',
+    };
+    this.play(card.map, free, { card: id, length: s.length, mix: s.mix });
+    const bar = labBar(card, {
+      bring: () => this.rec?.bring(),
+      note: () => this.openNote('rail'),
+      setup: () => this.openLabSetup(),
+      done: () => this.showLabVerdict('done'),
+    });
+    this.labRun = { card, setup: s, bar };
+    this.root.append(bar.el);
+    this.root.classList.add('lab-on');
+    // What to look for, said once as the test starts (the bar stays slim).
+    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, card.look, { now: true }, null);
+  }
+
+  private endLabRun(): void {
+    if (!this.labRun) return;
+    this.labRun.bar.el.remove();
+    this.labRun = null;
+    this.root.classList.remove('lab-on');
+  }
+
+  /** Change the wave, weapons, mix or length: the test restarts with it. */
+  private openLabSetup(): void {
+    const run = this.labRun;
+    if (!run || !this.game || this.game.phase !== 'wave') return;
+    this.paused = true;
+    this.hold = null;
+    this.dropGesture();
+    this.showOverlay('v3-lab-setup', [
+      labSetupSheet(
+        run.card,
+        run.setup,
+        (s) => {
+          this.labProgress.length = s.length;
+          this.labProgress.mix = s.mix;
+          saveLabProgress(this.labProgress);
+          this.startLab(run.card.id, s);
+        },
+        () => this.resumeFromDialog(),
+      ),
+    ]);
+  }
+
+  /** The verdict sheet: after Done, the test's length, or the convoy lost. */
+  private showLabVerdict(ended: 'done' | 'length' | 'lost'): void {
+    const run = this.labRun;
+    const g = this.game;
+    if (!run || !g?.lab) return;
+    this.paused = true;
+    this.hold = null;
+    this.dropGesture();
+    const p = this.labProgress;
+    const stats = { ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 };
+    const waves = g.lab.waves;
+    const queued = p.queue.filter((id) => id !== run.card.id);
+    const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
+    this.showOverlay('v3-lab-verdict', [
+      labVerdictSheet(run.card, stats, waves, ended, p.results[run.card.id], next, {
+        save: (r, then) => {
+          const result = { ...r, waves, ended, stats };
+          p.results[run.card.id] = { ...result, at: new Date().toISOString() };
+          if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
+          p.queue = p.queue.filter((id) => id !== run.card.id);
+          saveLabProgress(p);
+          // The verdict rides in the test's log (it reaches Claude).
+          if (this.rec) this.rec.log.labResult = result;
+          const log = this.endRun(ended === 'lost' ? 'lost' : 'quit');
+          if (log) keepLabLog(run.card.id, log);
+          if (then === 'again') this.startLab(run.card.id, run.setup);
+          else if (then === 'next' && next) this.startLab(next.id);
+          else this.showLab();
+        },
+      }),
+    ]);
+  }
+
+  /** What was tested today: verdicts, notes, a rewatch of each note's
+   *  moment, and a way to send the logs now. */
+  private showLabReport(): void {
+    this.leaveRun();
+    this.showOverlay('v3-lab-report', [
+      this.screenHead('Session report', () => this.showLab(), undefined, 'Test Lab'),
+      labReport(
+        this.labProgress,
+        (log, step) => {
+          this.showMoment(log, step);
+          const back = button('← Back to the report', 'v2-btn primary v3-lab-back', () => {
+            back.remove();
+            this.showLabReport();
+          });
+          back.dataset.labBack = '1';
+          this.root.append(back);
+        },
+        (out) => {
+          out.textContent = 'Sending…';
+          void flushUnsent().then((n) => (out.textContent = n ? `Sent ${n} log${n === 1 ? '' : 's'}.` : 'Every log has been sent (or this device can\'t reach the log store right now).'));
+        },
+      ),
+    ]);
   }
 
   /** Free Play (round 7): a test run on any map, from any wave, with any
@@ -2417,7 +2602,7 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null): void {
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     const params = new URLSearchParams(location.search);
@@ -2433,11 +2618,14 @@ export class App {
     const freePlay = free ? freePlaySetup(free) : undefined;
     this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
     if (freePlay) applyFreePlay(this.game, freePlay);
+    if (lab) applyLab(this.game, lab);
+    if (!lab) this.endLabRun();
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
       startedAt: new Date().toISOString(),
       firstWave: skip,
       ...(freePlay ? { freePlay } : {}),
+      ...(lab ? { lab } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: this.deviceInfo(),
     });

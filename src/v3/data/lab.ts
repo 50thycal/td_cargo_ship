@@ -1,0 +1,151 @@
+// The Test Lab (docs/design/v3-test-lab.md): a playtest hub. Each card is
+// one thing to test: a new enemy, a weapon, a combo of two things that
+// should meet, or a map. New weapons and maps join it later as more cards.
+// The player's marks (tools/v3/test-lab/marks-2026-11-08.json): everything on
+// the list (all 29 weapons too), wave 5 to start, a fast even pace, normal
+// upgrades between waves, a Quick or Full length.
+
+import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
+import { FOES, type FoeId } from './foes';
+import { MAPS, MAP_ORDER, type MapId } from './maps';
+
+export type LabKind = 'enemy' | 'weapon' | 'combo' | 'map';
+
+export interface LabCard {
+  id: string;
+  kind: LabKind;
+  name: string;
+  /** What to look for: the bar shows it while you play. */
+  look: string;
+  /** The new enemies it features (a third of the new-enemy mix, one in the
+   *  first seconds of every wave). */
+  foes: FoeId[];
+  /** The weapon it features (held from the start, dropped often). */
+  weapon?: AbilityId;
+  /** The three weapons a test starts with. */
+  kit: AbilityId[];
+  /** The water it's played on: the lab's (The Strait, plain), or a map
+   *  card's own. */
+  map: MapId;
+}
+
+/** The lab's own water: open, plain, no map system to get in the way. */
+export const LAB_MAP: MapId = 'strait';
+
+/** How long a test runs (waves): Quick, or Full (about ten minutes with the
+ *  drafts). Done ends either early. */
+export const LAB_LENGTH = { quick: 2, full: 8 } as const;
+export type LabLength = keyof typeof LAB_LENGTH;
+
+/** The mix setting: the wave's size. */
+export const LAB_MIX = { light: 0.75, normal: 1, heavy: 1.35 } as const;
+export type LabMix = keyof typeof LAB_MIX;
+
+/** A test starts at a good pace (the player: "level five is probably
+ *  fine"), and lab waves don't ramp: each wave's table is wave 5's or the
+ *  one you start at, whichever is later. */
+export const LAB_START_WAVE = 5;
+
+/** Lab waves rotate through scenarios so the card meets different company:
+ *  multipliers on the wave's drones and missiles, and aircraft added. */
+export const LAB_SCENARIOS = [
+  { id: 'mixed', name: 'Mixed', drones: 1, missiles: 1, planes: 0 },
+  { id: 'swarm', name: 'Swarms', drones: 1.5, missiles: 0.6, planes: 0 },
+  { id: 'missiles', name: 'Missiles', drones: 0.6, missiles: 1.5, planes: 0 },
+  { id: 'air', name: 'Air raid', drones: 0.8, missiles: 0.8, planes: 2 },
+] as const;
+
+/** A new enemy's share of the wave's new enemies when it's under test. */
+export const LAB_SHARE = 1 / 3;
+
+// ---- The cards ------------------------------------------------------------
+
+const enemy = (id: FoeId, look: string, kit: AbilityId[]): LabCard => ({ id, kind: 'enemy', name: FOES[id].name, look, foes: [id], kit, map: LAB_MAP });
+
+/** Enemies in the order to test them: the open questions first. */
+const ENEMIES: LabCard[] = [
+  enemy('diveBomber', 'The circle, then the plane: can you shoot it in its window?', ['railgun', 'aegis', 'fullSteam']),
+  enemy('siege', 'Are the orange circles enough warning to silence the gun or move?', ['railgun', 'lance', 'fullSteam']),
+  enemy('rocketTruck', 'Is the slow raise (the red ring) enough time to kill the truck?', ['railgun', 'lance', 'bomberWing']),
+  enemy('cloud', 'Does "don\'t fire into it over your ships" make sense in play?', ['flak', 'railgun', 'lance']),
+  enemy('lure', 'Your helpers chase it: should their shots hurt it?', ['droneScreen', 'gunships', 'cutter']),
+  enemy('decoy', 'Can you tell the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
+  enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
+  enemy('torpedoSub', 'Is the dashed line readable? Sub, torpedo or move?', ['airstrike', 'bomberWing', 'fullSteam']),
+  enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
+  enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
+  enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
+  enemy('loiter', 'Now or later: do you clear them while they wait?', ['flak', 'well', 'thermo']),
+  enemy('crossWing', 'Can you catch them at the X?', ['flak', 'thermo', 'airstrike']),
+  enemy('scavenger', 'Does losing a pickup feel fair?', ['seeker', 'cutter', 'supplyRun']),
+  enemy('attackHeli', 'Six hits or its missiles: is it a real choice?', ['lance', 'railgun', 'gunships']),
+  enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
+  enemy('stealthBomber', 'Does the B-2 read? Six hits too many?', ['railgun', 'seeker', 'aegis']),
+  enemy('tender', 'Do you see the green beam and change targets?', ['lance', 'railgun', 'orbital']),
+  enemy('bodyguard', 'Do you notice the guards taking your shots?', ['flak', 'tesla', 'railgun']),
+  enemy('picket', 'Do you notice your shots dying in the ring?', ['airstrike', 'orbital', 'gunships']),
+  enemy('barge', 'Do the +1s make it a priority?', ['lance', 'railgun', 'orbital']),
+];
+
+/** Weapons changed in the lock-in build and not played since: first. */
+const REWORKED: Partial<Record<AbilityId, string>> = {
+  dualWield: 'Both hands now end with the boost: does it feel right?',
+  cadence: 'The 0.9 s beat: can you keep it under pressure?',
+  focus: 'Hold one finger to slow time, tap with the other: comfortable?',
+  gunships: 'The new flight and Hellfires: do they read, are they useful?',
+  supplyRun: 'The cargo plane and chutes: clear what you got?',
+};
+
+const weaponCard = (id: AbilityId): LabCard => {
+  const others = (['flak', 'railgun', 'scatter', 'seeker'] as AbilityId[]).filter((o) => o !== id).slice(0, 2);
+  return {
+    id: `w-${id}`,
+    kind: 'weapon',
+    name: ABILITIES[id].name,
+    look: REWORKED[id] ?? 'Worth a slot? Is it clear what it did?',
+    foes: [],
+    weapon: id,
+    kit: [id, ...others],
+    map: LAB_MAP,
+  };
+};
+const WEAPONS: LabCard[] = [
+  ...(Object.keys(REWORKED) as AbilityId[]).map(weaponCard),
+  ...ABILITY_ORDER.filter((id) => !(id in REWORKED)).map(weaponCard),
+];
+
+const combo = (id: string, name: string, look: string, foes: FoeId[], kit: AbilityId[], weapon?: AbilityId): LabCard => ({ id: `combo-${id}`, kind: 'combo', name, look, foes, kit, map: LAB_MAP, ...(weapon ? { weapon } : {}) });
+const COMBOS: LabCard[] = [
+  combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam']),
+  combo('tender-bodyguard', 'Repair Tender + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun']),
+  combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], 'droneScreen'),
+  combo('cloud-flak', 'Volatile Cloud + Flak', 'Your area fire near your own ships.', ['cloud'], ['flak', 'thermo', 'railgun'], 'flak'),
+  combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter']),
+  combo('barge-truck', 'Supply Barge + Rocket Truck', 'Bigger raids and rockets you can\'t stop.', ['barge', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
+  combo('picket-seeker', 'Flak Picket + Seeker Pod', 'Does the picket shut down your seekers?', ['picket'], ['seeker', 'airstrike', 'flak'], 'seeker'),
+  combo('hydra-tesla', 'Hydra + Crossing Wing, Tesla', 'Area answers to split targets.', ['hydra', 'crossWing'], ['tesla', 'flak', 'thermo'], 'tesla'),
+];
+
+/** Maps: a map card plays that map's own waves, with its chapter's enemies. */
+const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
+  id: `map-${id}`,
+  kind: 'map',
+  name: MAPS[id].name,
+  look: MAPS[id].blurb,
+  foes: [],
+  kit: ['flak', 'railgun', 'cutter'],
+  map: id,
+}));
+
+export const LAB_CARDS: LabCard[] = [...ENEMIES, ...WEAPONS, ...COMBOS, ...MAP_CARDS];
+
+export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
+  { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
+  { kind: 'weapon', name: 'Weapons', blurb: 'The five reworked ones first, then every other.' },
+  { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet.' },
+  { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
+];
+
+export function labCard(id: string): LabCard | undefined {
+  return LAB_CARDS.find((c) => c.id === id);
+}

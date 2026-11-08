@@ -25,6 +25,9 @@ export const KEYS = [
   'straitwatch.v3.playlogs.sent',
   'straitwatch.v3.haptics',
   'straitwatch.v3.fullgame',
+  // The Test Lab: what has been tested, and the last tests' logs to rewatch.
+  'straitwatch.v3.lab',
+  'straitwatch.v3.lab.logs',
 ] as const;
 
 /** Set once the localStorage → Preferences copy has run. */
