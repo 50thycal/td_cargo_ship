@@ -31,6 +31,8 @@ const counters = (ids) => ids.map((id) => esc(ARSENAL[id])).join(', ');
 // the game (docs/design/img/enemy-build, by foeshots.mjs), and a mark for
 // after playing it: `builds/{id}`: verdict (keep | tune | cut), note.
 const SHOTS = new URL('docs/design/img/enemy-build/', root);
+// The Test Lab: each built enemy's link opens its test in the game.
+const GAME_URL = process.env.GAME_URL ?? 'https://td-cargo-ship.vercel.app/v3.html';
 const shots = (id) => (existsSync(SHOTS) ? readdirSync(SHOTS).filter((f) => f.startsWith(`${id}-`) && f.endsWith('.jpg')).sort() : []);
 const shot = (f) => `data:image/jpeg;base64,${readFileSync(new URL(f, SHOTS)).toString('base64')}`;
 const ideaName = (id) => (PLAYER.find((p) => p.id === id) ?? NEW.find((i) => i.id === id))?.name ?? id;
@@ -40,6 +42,7 @@ function buildCard(b) {
   <div class="head"><h3 id="bt-${b.id}">${esc(b.name)}</h3><span class="tag">${esc(subName(b.cat, b.sub))}</span></div>
   <p class="where">${esc(where(b))} · from “${esc(ideaName(b.from))}”</p>
   ${pics.length ? `<div class="shots">${pics.map((f) => `<figure><img src="${shot(f)}" alt="${esc(b.name)} in the game: ${esc(f.replace(/^.*?-|\.jpg$/g, ''))}" loading="lazy" width="430" height="242"><figcaption>${esc(f.replace(/^[^-]*-|\.jpg$/g, ''))}</figcaption></figure>`).join('')}</div>` : ''}
+  <a class="playlink" href="${GAME_URL}?lab=${encodeURIComponent(b.id)}" target="_blank" rel="noopener">Test in game ↗</a>
   <dl class="facts">
     <div><dt>How it plays</dt><dd>${esc(b.how)}</dd></div>
     <div><dt>The tell</dt><dd>${esc(b.tell)}</dd></div>
@@ -303,13 +306,14 @@ code { font: 13px var(--mono); }
 .build .shots img { width: 100%; height: auto; border-radius: 8px; display: block; }
 .build .shots figcaption { font-size: 12px; color: var(--muted, #8a97a3); margin-top: 2px; }
 .built { border-left: 3px solid var(--signal, #f5c542); padding-left: 10px; }
+a.playlink { justify-self: start; align-self: flex-start; font: 600 13px var(--body); color: var(--friend); text-decoration: none; border: 1px solid var(--friend); border-radius: 999px; padding: 4px 12px; }
 </style>
 
 <main>
   <header class="intro">
     <div class="eyebrow">Straitwatch V3 · enemies · built ${BUILD_DATE}</div>
     <h1>Enemy Ideas Shortlist</h1>
-    <p class="built"><b>Built.</b> Every enemy you marked Go further is in the game, plus the Volatile Cloud you brought back: ${BUILD.length} in all, a few debuting in each chapter. <b>Build</b> shows each one as built, with pictures from the game. Try any of them in Free Play (Enemies → “Only: …”), then mark it Keep, Tune or Cut. Your round 1 marks are kept below as they were.</p>
+    <p class="built"><b>Built.</b> Every enemy you marked Go further is in the game, plus the Volatile Cloud you brought back: ${BUILD.length} in all, a few debuting in each chapter. <b>Build</b> shows each one as built, with pictures from the game. Test any of them in the game's Test Lab (its link on each card opens it), then mark it Keep, Tune or Cut. Your round 1 marks are kept below as they were.</p>
     <p>The same process as the weapons, for the enemy. <b>Overview</b> sorts every enemy, today’s ${TODAY.length} and every idea here, into three categories by what it does in a fight, each with its subcategories. <b>Your 18</b> has your ideas with my read on each (I’d pick ${picks.length}). <b>New 10</b> has the ten I kept from ${kept.length + cut.length}, each built to make you decide something no enemy asks today; the ${cut.length} I cut are listed with why. <b>Questions</b> has ${QUESTIONS.length} decisions before a build.</p>
     <p>Mark each idea Go further, Maybe or Drop, and add notes. Every picture is the idea drawn over a real wave, at phone size. Everything saves as you go, for the next session to read.</p>
     <p class="store" id="store">Connecting to the review store…</p>

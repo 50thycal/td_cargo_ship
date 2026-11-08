@@ -8,12 +8,15 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
+import type { LabSetup, LabStats } from './lab';
 import {
   applyFreePlay,
+  applyLab,
   continueEndless,
   createGame,
   pickUpgrade,
   focusHold,
+  labBring,
   press,
   pressMove,
   release,
@@ -59,11 +62,24 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      boosts leave the campaign's drops.
  *  16: the enemy build: new enemies join the waves by chapter (each in
  *      place of a drone swarm, from their own RNG stream), and Free Play
- *      can choose them (`freePlay.enemies`). */
-export const LOG_VERSION = 16;
+ *      can choose them (`freePlay.enemies`).
+ *  17: the Test Lab: a lab run carries its card (`lab`), which sets its
+ *      waves, and the verdict given after it (`labResult`, outside replay). */
+export const LOG_VERSION = 17;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
+
+/** A Test Lab verdict, as the player gave it. */
+export interface LabResult {
+  verdict: 'keep' | 'tune' | 'cut' | null;
+  tags: string[];
+  note: string;
+  /** Waves played, how the test ended, and the evidence. */
+  waves: number;
+  ended: 'done' | 'length' | 'lost';
+  stats: LabStats;
+}
 export const SIM_DT = 1 / 60;
 
 /** Compact input encoding: [step, code, ...args]. */
@@ -73,6 +89,7 @@ export type LogCommand =
   | [number, 'v', number, number] // the pressed finger moved to x y
   | [number, 'r', number, number, number] // the finger lifted at x y radius
   | [number, 'h', 0 | 1] // Focus: the holding finger down (1) or lifted (0)
+  | [number, 'b'] // Test Lab: bring the card's enemy (or weapon) in now
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
@@ -105,6 +122,11 @@ export interface PlayLog {
   dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
   /** A Free Play run (round 7): its setup, applied as the game is created. */
   freePlay?: FreePlaySetup;
+  /** A Test Lab run: its card, applied after the Free Play setup. */
+  lab?: LabSetup;
+  /** The verdict the player gave after a Test Lab run, and the evidence
+   *  the game counted (none of it touches replay). */
+  labResult?: LabResult;
   /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
   ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
@@ -242,6 +264,13 @@ export class Recorder {
 
   /** Focus (a boost): the holding finger down or lifted. It only slows
    *  time; the other finger taps. */
+  /** Test Lab: bring the card's enemy (or weapon) in now. */
+  bring(): void {
+    if (this.game.phase !== 'wave' || !this.game.lab) return;
+    this.log.commands.push([this.game.steps, 'b']);
+    labBring(this.game);
+  }
+
   focus(down: boolean): void {
     if (this.game.phase !== 'wave' || this.game.finger === down) return;
     this.log.commands.push([this.game.steps, 'h', down ? 1 : 0]);
@@ -367,6 +396,7 @@ export function replay(log: PlayLog): Game {
 export function replayTo(log: PlayLog, lastStep: number, commands: number): Game {
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
   if (log.freePlay) applyFreePlay(g, log.freePlay);
+  if (log.lab) applyLab(g, log.lab);
   const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {
@@ -387,6 +417,9 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number): Game
           break;
         case 'h':
           focusHold(g, c[2] === 1);
+          break;
+        case 'b':
+          labBring(g);
           break;
         case 'f':
           setFlow(g, c[2]);
@@ -442,6 +475,7 @@ export class Playback {
       else if (c[1] === 'v') pressMove(g, c[2], c[3]);
       else if (c[1] === 'r') release(g, c[2], c[3], c[4]);
       else if (c[1] === 'h') focusHold(g, c[2] === 1);
+      else if (c[1] === 'b') labBring(g);
       else if (c[1] === 'f') setFlow(g, c[2]);
       else if (c[1] === 'm') setFormation(g, c[2]);
       else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);

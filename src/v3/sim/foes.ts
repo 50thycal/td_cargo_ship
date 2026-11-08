@@ -270,9 +270,10 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       // the last moment.
       const D = FOE.diveBomber;
       const pool = targetable(g);
-      if (!pool.length) return;
-      const s = rng.pick(pool);
-      const p = shipAhead(g, s, D.lead);
+      // No ship on the water yet (a test's first seconds): the lane where
+      // the convoy is coming in.
+      const ch = g.map.channels[0];
+      const p = pool.length ? shipAhead(g, rng.pick(pool), D.lead) : laneAt(ch, laneLength(ch) * 0.3, 0);
       g.foe.marks.push({ id: g.nextId++, kind: 'dive', x: p.x, y: p.y, t: 0, dur: D.mark });
       cue(g, 'supersonic.lock', p.x, p.y, { gain: 0.5 });
       return;
@@ -1339,4 +1340,26 @@ export function foeWorthShooting(g: Game, th: Threat): boolean {
   if (th.kind === 'cloud') return !g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= FOE.cloud.radius + 10);
   if (th.kind === 'guard') return false;
   return true;
+}
+
+/** Had this foe already done its harm when it was killed (fired its rockets,
+ *  dropped its bomb, loosed its torpedo)? For the Test Lab's "stopped before
+ *  harm". Anything that strikes by hitting a hull hadn't, if it was shot. */
+export function foeHarmed(th: Threat): boolean {
+  const f = th.foe;
+  if (!f) return false;
+  switch (th.kind) {
+    case 'rocketTruck':
+      return f.n < FOE.rocketTruck.rockets;
+    case 'diveBomber':
+    case 'torpedoSub':
+      return f.state >= 1;
+    case 'siege':
+      return f.n < FOE.siege.salvos;
+    case 'attackHeli':
+    case 'spotter':
+      return f.n > 0;
+    default:
+      return false;
+  }
 }

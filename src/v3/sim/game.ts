@@ -70,6 +70,7 @@ import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/ros
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
+import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, picketShoots, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
@@ -717,6 +718,8 @@ export interface Game {
   freePlay: boolean;
   /** The enemy build: the new enemies this run can meet, and their shots. */
   foe: FoeState;
+  /** The Test Lab: the card under test and its evidence (null outside it). */
+  lab: LabState | null;
 }
 
 
@@ -859,6 +862,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     realT: 0,
     freePlay: false,
     foe: newFoeState(mapId),
+    lab: null,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -894,6 +898,8 @@ function startWave(g: Game): void {
     spec.guided = cut(spec.guided, len);
   }
   g.waveSpeed = spec.speed;
+  // The Test Lab: the wave's size and this wave's scenario.
+  const labMods = labWave(g, spec);
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
@@ -938,7 +944,11 @@ function startWave(g: Game): void {
   }
   // The enemy build: the new enemies, each in place of a drone swarm (and
   // the heavier ones, a missile too).
-  for (const id of planFoes(g, cut(foeCount(g.wave), len))) {
+  for (let k = 0; k < (labMods?.planes ?? 0); k++) {
+    replace('drone', 1);
+    units.push({ kind: k % 2 ? 'bomber' : 'strafer', size: 1 });
+  }
+  for (const id of labFoes(g, cut(foeCount(g.wave), len)) ?? planFoes(g, cut(foeCount(g.wave), len))) {
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     units.push({ kind: FOES[id].kind, size: 1 });
@@ -994,6 +1004,7 @@ function startWave(g: Game): void {
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
   queue.sort((a, b) => a.at - b.at);
+  labOpener(g, queue);
   g.queue = queue.filter((l) => l.base !== -2);
   g.events.push({ kind: 'wave', wave: g.wave });
   cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
@@ -1312,15 +1323,44 @@ export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
   g.freePlay = true;
   if (setup.enemies && setup.enemies !== 'campaign') {
     g.foe = newFoeState(g.map.id, setup.enemies);
-    // The first wave was planned before Free Play's enemies were known:
-    // plan it again, as if it had just started.
-    if (g.phase === 'wave' && g.waveT === 0) {
-      g.events = g.events.filter((e) => e.kind !== 'wave');
-      g.cues = [];
-      g.wave -= 1;
-      startWave(g);
-    }
+    replanWave(g);
   }
+}
+
+/** The first wave was planned before Free Play's or the Test Lab's setup
+ *  was known: plan it again, as if it had just started. */
+function replanWave(g: Game): void {
+  if (g.phase !== 'wave' || g.waveT !== 0) return;
+  g.events = g.events.filter((e) => e.kind !== 'wave');
+  g.cues = [];
+  g.wave -= 1;
+  startWave(g);
+}
+
+/** The Test Lab's "Bring one now": the card's enemy comes in at once (a
+ *  weapon card drops its weapon by the carrier). A recorded command, so a
+ *  test replays exactly. */
+export function labBring(g: Game): void {
+  const lab = g.lab;
+  if (!lab || g.phase !== 'wave') return;
+  if (lab.foes.length) {
+    const f = lab.foes[lab.cursor++ % lab.foes.length];
+    const kind = FOES[f].kind;
+    if (isPlaneKind(kind)) g.queue.unshift({ at: g.waveT, kind, base: -1 });
+    else if (fromBase(kind)) {
+      const b = pickBase(g, kind, g.rng.foes);
+      if (b >= 0) launchFoe(g, { at: g.waveT, kind, base: b }, g.map.bases[b]);
+    } else launchFoe(g, { at: g.waveT, kind, base: -1 });
+  } else if (lab.weapon) {
+    const c = g.map.carrier;
+    addPickup(g, 'weapon', c.x + g.rng.foes.range(-180, 180), c.y - 150, lab.weapon);
+  }
+}
+
+/** The Test Lab (after applyFreePlay): give the run its card. */
+export function applyLab(g: Game, setup: LabSetup): void {
+  setUpLab(g, setup);
+  replanWave(g);
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */
@@ -3066,6 +3106,7 @@ function clearField(g: Game): void {
 }
 
 function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
+  if (outcome === 'cleared') labWaveCleared(g);
   g.history.push({
     wave: g.wave,
     t: Math.round(g.t * 10) / 10,
@@ -3325,7 +3366,9 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
   if (glances(g, s.x, s.y, 30)) return;
   const f = FORMATIONS[g.formation];
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
-  s.hp -= direct ? Math.max(1, amount - f.armor) : amount;
+  const dealt = direct ? Math.max(1, amount - f.armor) : amount;
+  s.hp -= dealt;
+  if (g.lab) labHarm(g, by, dealt, s.hp <= 0);
   if (s.hp > 0) {
     cue(g, 'ship.hit', s.x, s.y);
     return;
@@ -3493,6 +3536,7 @@ export function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, ori
   const tp = kind === 'mine' ? { x: th.x + (g.map.current?.x ?? 0), y: th.y + (g.map.current?.y ?? 1) } : targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
   g.threats.push(th);
+  if (g.lab) labCame(g, th);
   // Launch flash by where it came from: a base's red flare, a column of spray
   // off a submarine's deck, a truck's smaller flash (round 4: the base flare
   // drawn over a sub or a truck hid it completely).
@@ -4063,6 +4107,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
   th.dead = true;
   g.kills[th.kind] += 1;
   if (isFoe(th.kind)) foeDown(g, th, !drops);
+  if (g.lab) labKilled(g, th, !!g.lab.weapon && !!held(g, g.lab.weapon));
   if (isStructure(th.kind)) {
     structureDown(g, th);
   } else {
@@ -4118,6 +4163,7 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
       ...(dmg !== g.stats.hitDamage ? { dmg } : {}),
     });
   shoot(th);
+  if (g.lab) labShotAt(g, th.id);
   cue(g, 'gun.fire', p.x, p.y);
   const twinOf = () =>
     g.threats
