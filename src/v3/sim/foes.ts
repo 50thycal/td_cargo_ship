@@ -53,8 +53,8 @@ export interface FoeShot {
 export interface FoeMark {
   id: number;
   /** A periscope (a torpedo sub to come), a dive bomber's circle, a siege
-   *  battery's shell circle. */
-  kind: 'periscope' | 'dive' | 'shell';
+   *  battery's shell circle, a Volatile Cloud's toxic gas lingering. */
+  kind: 'periscope' | 'dive' | 'shell' | 'gas';
   x: number;
   y: number;
   t: number;
@@ -65,6 +65,9 @@ export interface FoeMark {
   gy?: number;
   /** A shell is on its way (no longer stopped by killing the gun). */
   fired?: boolean;
+  /** Gas: seconds each hull has been in it toward its next hit (ship id,
+   *  -1 the carrier). */
+  dose?: Record<number, number>;
 }
 
 /** A foe's own state, on its threat. `state` and `t` are its phase and the
@@ -281,10 +284,15 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'tender': {
-      const p = waterSpot(g, rng);
-      const th = spawnThreat(g, 'tender', p.x, p.y, 'sub');
+      // It sails in like any ship: from off a screen edge, over open water,
+      // to a station clear of every other boat (the player: "needs to sail
+      // in like a normal ship ... checked for collisions").
+      const p = boatSpot(g, rng);
+      const from = seaEntry(g, p);
+      const th = spawnThreat(g, 'tender', from ? from.x : p.x, from ? from.y : p.y, 'sub');
       th.target = CARRIER_TARGET;
-      th.foe = data({ link: -1 });
+      th.heading = Math.atan2(p.y - th.y, p.x - th.x);
+      th.foe = data({ link: -1, px: p.x, py: p.y, n: from ? 0 : 1 });
       // It comes with the tough ones it mends: a heavy from a live site.
       const site = liveSite(g, rng);
       if (site) spawnThreat(g, 'heavy', site.x, site.y, 'base');
@@ -301,21 +309,19 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'lure': {
-      const p = waterSpot(g, rng);
+      // It rises out of the water (state 0), clear of the other boats.
+      const p = boatSpot(g, rng);
       const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
       th.target = CARRIER_TARGET;
       th.foe = data();
       return;
     }
     case 'cloud': {
-      // Off the enemy shore, drifting for a stretch of lane.
-      const site = liveSite(g, rng) ?? { x: VIEW.width / 2, y: 80 };
-      const ch = rng.pick(g.map.channels);
-      const L = laneLength(ch);
-      const to = laneAt(ch, L * rng.range(0.3, 0.7), 0);
-      const th = spawnThreat(g, 'cloud', site.x, site.y + (site.y < VIEW.height / 2 ? 40 : -40), 'base');
-      th.target = CARRIER_TARGET;
-      th.foe = data({ px: clamp(to.x, 100, VIEW.width - 100), py: clamp(to.y, 100, VIEW.height - 100) });
+      // A slow biohazard missile out of a base, at a ship (the player's
+      // rework): wherever it bursts, its gas lingers.
+      if (!at) return;
+      const th = spawnThreat(g, 'cloud', at.x, at.y, 'base');
+      th.foe = data();
       return;
     }
     default:
@@ -344,6 +350,86 @@ function waterSpot(g: Game, rng: RNG): Point {
   if (g.map.subSpots.length) return rng.pick(g.map.subSpots);
   const y = g.map.bomberLines.length ? rng.pick(g.map.bomberLines) : VIEW.height * 0.3;
   return { x: rng.range(260, VIEW.width - 260), y };
+}
+
+/** Boats on the water now or about to be: the convoy, the frigates, the
+ *  raiders' subs (up or coming), periscopes, and the enemy's own boats. */
+const BOAT_KINDS = new Set<ThreatKind>(['tender', 'lure', 'torpedoSub', 'fastboat', 'dreadnought']);
+
+function boats(g: Game, not?: Threat): Point[] {
+  const out: Point[] = [...g.ships, ...g.escorts];
+  for (const r of g.raiders) if (r.kind === 'sub') out.push(r);
+  for (const sp of g.raiderQueue) if (sp.kind === 'sub' && sp.path.length) out.push(sp.path[0]);
+  for (const m of g.foe.marks) if (m.kind === 'periscope') out.push(m);
+  for (const t of g.threats) if (t !== not && !t.dead && BOAT_KINDS.has(t.kind)) out.push(t);
+  return out;
+}
+
+/** Open water for a boat to sit on: a water spot clear of every other boat
+ *  (one taken by a sub, a frigate or another of theirs is passed over while
+ *  a clear one is left; else the least crowded). */
+function boatSpot(g: Game, rng: RNG): Point {
+  const all = g.map.subSpots.length ? rng.shuffle([...g.map.subSpots]) : Array.from({ length: 6 }, () => waterSpot(g, rng));
+  // Out from the screen's side edges, where it can be seen and tapped.
+  const inner = all.filter((p) => p.x > 160 && p.x < VIEW.width - 160);
+  const cands = [...inner, ...all.filter((p) => !inner.includes(p))];
+  const others = [...boats(g), ...g.threats.filter((t) => !t.dead && t.kind === 'tender' && t.foe).map((t) => ({ x: t.foe!.px, y: t.foe!.py }))];
+  let best = cands[0];
+  let bd = -1;
+  for (const p of cands) {
+    if (onLand(g, p.x, p.y)) continue;
+    const d = others.reduce((m, o) => Math.min(m, dist(o.x, o.y, p.x, p.y)), Infinity);
+    // Clear enough is enough: the first clear one (shuffled) keeps the
+    // choice varied.
+    if (d >= FOE.tender.clear) return p;
+    if (d > bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/** Is (x, y) on land? (Even-odd over the map's landmasses.) */
+export function onLand(g: Game, x: number, y: number): boolean {
+  for (const l of g.map.land) {
+    const pts = l.points;
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i];
+      const b = pts[j];
+      if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
+/** Where a boat bound for `to` comes on: off a side edge, the shortest
+ *  straight run to it that stays on open water all the way. Null if none
+ *  does (it then rises where it is). */
+function seaEntry(g: Game, to: Point): Point | null {
+  let best: Point | null = null;
+  let bl = Infinity;
+  for (const side of [-1, 1]) {
+    for (const dy of [0, -90, 90, -180, 180, -280, 280]) {
+      const from = { x: side < 0 ? -70 : VIEW.width + 70, y: to.y + dy };
+      if (from.y < 40 || from.y > VIEW.height - 40) continue;
+      const L = dist(from.x, from.y, to.x, to.y);
+      if (L >= bl) continue;
+      let wet = true;
+      for (let u = 0; u <= L && wet; u += 16) {
+        const x = from.x + ((to.x - from.x) * u) / L;
+        const y = from.y + ((to.y - from.y) * u) / L;
+        if (x > 0 && x < VIEW.width && onLand(g, x, y)) wet = false;
+      }
+      if (wet) {
+        bl = L;
+        best = from;
+      }
+    }
+  }
+  return best;
 }
 
 /** Where a helicopter hovers: beside a lane, part way along, on screen. */
@@ -528,7 +614,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       updateSpotter(g, th, f, dt);
       return;
     case 'tender':
-      updateTender(g, th, f);
+      updateTender(g, th, f, dt);
       return;
     case 'guard': {
       const heavy = g.threats.find((t) => t.id === f.link && !t.dead);
@@ -546,29 +632,26 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       return;
     }
     case 'lure': {
-      // Moored. It gives out after a while, or leaves once the wave has
-      // nothing else left in it.
-      if (f.t >= FOE.lure.life || alone(g, th)) leave(g, th);
+      // Rising out of the water first; it lures only once it's up.
+      if (f.state === 0 && f.t >= FOE.lure.rise) {
+        f.state = 1;
+        f.t = 0;
+        cue(g, 'foe.paint', th.x, th.y, { gain: 0.6 });
+      }
+      if ((f.state === 1 && f.t >= FOE.lure.life) || alone(g, th)) leave(g, th);
       return;
     }
     case 'cloud': {
-      const C = FOE.cloud;
-      if (f.state === 9) {
-        ignite(g, th);
-        return;
-      }
-      const d = dist(th.x, th.y, f.px, f.py);
-      if (d > 4) {
-        th.x += ((f.px - th.x) / d) * Math.min(d, th.speed * dt);
-        th.y += ((f.py - th.y) / d) * Math.min(d, th.speed * dt);
-      } else {
-        th.x += C.slow * dt;
-        f.px = th.x;
-      }
-      if (f.t >= C.life || alone(g, th)) {
-        // It thins out and is gone.
-        th.dead = true;
-      }
+      // Slow and heavy: it turns lazily onto where its ship will be. At the
+      // ship it hits (one hit) and bursts; the gas does the rest.
+      retarget(th);
+      const s = shipOf(g, th);
+      const tp = aim(th);
+      const lead = s ? shipAhead(g, s, Math.min(4, dist(th.x, th.y, tp.x, tp.y) / Math.max(1, th.speed))) : tp;
+      const close = dist(th.x, th.y, tp.x, tp.y) < 120;
+      steer(th, close ? tp.x : lead.x, close ? tp.y : lead.y, th.speed, FOE.cloud.turn * (close ? 3 : 1), dt);
+      hit(th);
+      if (th.dead) burstCloud(g, th);
       return;
     }
     default:
@@ -583,7 +666,7 @@ function alone(g: Game, th: Threat): boolean {
   return !g.threats.some((t) => t !== th && !t.dead && !SUPPORT.has(t.kind) && !['rig', 'generator', 'citadel'].includes(t.kind));
 }
 
-const SUPPORT = new Set<ThreatKind>(['tender', 'lure', 'cloud', 'guard']);
+const SUPPORT = new Set<ThreatKind>(['tender', 'lure', 'guard']);
 
 /** Gone from the water, not a kill. */
 function leave(g: Game, th: Threat): void {
@@ -591,14 +674,16 @@ function leave(g: Game, th: Threat): void {
   addFx(g, 'spray', th.x, th.y, { life: 0.6, r: 20 });
 }
 
-/** The Repair Tender: every few seconds, a beam charges on the most damaged
- *  enemy near it, then mends it. */
-function updateTender(g: Game, th: Threat, f: FoeData): void {
+/** The Repair Tender: it sails to its station (n 0, then 1 on station),
+ *  and every few seconds a beam charges on the most damaged enemy near it,
+ *  then mends it. */
+function updateTender(g: Game, th: Threat, f: FoeData, dt: number): void {
   const T = FOE.tender;
   if (alone(g, th)) {
     leave(g, th);
     return;
   }
+  sailTender(g, th, f, dt);
   if (f.state === 0 && f.t >= T.gap) {
     const hurt = g.threats
       .filter((t) => !t.dead && t !== th && t.kind !== 'tender' && dist(t.x, t.y, th.x, th.y) <= T.reach && t.hp < THREATS[t.kind].hp)
@@ -620,24 +705,82 @@ function updateTender(g: Game, th: Threat, f: FoeData): void {
   }
 }
 
-/** The Volatile Cloud goes up: every hull under it is hurt, and the carrier
- *  if it's under it too. Over open water, nothing. */
-export function ignite(g: Game, th: Threat): void {
-  const C = FOE.cloud;
-  th.dead = true;
-  addFx(g, 'thermo', th.x, th.y, { life: 0.9, r: C.radius });
-  cue(g, 'foe.ignite', th.x, th.y);
-  for (const s of [...g.ships]) if (dist(s.x, s.y, th.x, th.y) <= C.radius) damageShip(g, s, THREATS.cloud.damage, 'cloud', false);
-  const c = g.map.carrier;
-  if (dist(c.x, c.y, th.x, th.y) <= C.radius + 40) damageCarrier(g, THREATS.cloud.damage, 'cloud');
+/** The tender's helm: toward its station, easing in, giving way to any boat
+ *  near it (pushed off, and slowed when one is right ahead: ships have right
+ *  of way), and never onto land. */
+function sailTender(g: Game, th: Threat, f: FoeData, dt: number): void {
+  const T = FOE.tender;
+  const dx = f.px - th.x;
+  const dy = f.py - th.y;
+  const d = Math.hypot(dx, dy);
+  const want = Math.min(th.speed, d * 0.8 + 6);
+  let vx = d > 1 ? (dx / d) * want : 0;
+  let vy = d > 1 ? (dy / d) * want : 0;
+  for (const o of boats(g, th)) {
+    const ox = th.x - o.x;
+    const oy = th.y - o.y;
+    const od = Math.hypot(ox, oy);
+    if (od >= T.keep || od < 1e-3) continue;
+    const ahead = d > 1 && (-ox * dx - oy * dy) / (od * d) > 0.6;
+    if (ahead) {
+      vx *= 0.35;
+      vy *= 0.35;
+    }
+    const push = (1 - od / T.keep) * th.speed * 1.4;
+    vx += (ox / od) * push;
+    vy += (oy / od) * push;
+  }
+  const sp = Math.hypot(vx, vy);
+  if (sp > th.speed) {
+    vx *= th.speed / sp;
+    vy *= th.speed / sp;
+  }
+  const nx = th.x + vx * dt;
+  const ny = th.y + vy * dt;
+  // Off the screen the shore can't be under it; on it, a step onto land
+  // isn't taken.
+  if (nx < 0 || nx > VIEW.width || !onLand(g, nx, ny)) {
+    th.x = nx;
+    th.y = ny;
+  }
+  if (sp > 8) th.heading += clamp(angleDiff(Math.atan2(vy, vx), th.heading), -2 * dt, 2 * dt);
+  if (f.n === 0 && d < 10) f.n = 1;
 }
 
-/** An explosion at (x, y): a Volatile Cloud it is inside goes up (next step,
- *  so one blast can't set off a chain in the middle of another). */
-export function sparks(g: Game, x: number, y: number): void {
-  for (const t of g.threats) {
-    if (t.kind === 'cloud' && !t.dead && t.foe && t.foe.state !== 9 && dist(t.x, t.y, x, y) <= FOE.cloud.radius) t.foe.state = 9;
+/** A Volatile Cloud missile bursts (shot down, or at its ship): its gas
+ *  hangs where it burst. Its `n` says whether a hull was already near (for
+ *  the Test Lab's "stopped before harm"). */
+export function burstCloud(g: Game, th: Threat): void {
+  const C = FOE.cloud;
+  const f = (th.foe ??= data());
+  if (f.state === 9) return;
+  f.state = 9;
+  f.n = g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= C.radius * 2) ? 1 : 0;
+  g.foe.marks.push({ id: g.nextId++, kind: 'gas', x: th.x, y: th.y, t: 0, dur: C.linger, dose: {} });
+  addFx(g, 'burst', th.x, th.y, { life: 0.6, r: C.radius * 0.8 });
+  cue(g, 'foe.ignite', th.x, th.y);
+}
+
+/** Gas on the water: a hull inside takes a hit `first` s in, then one every
+ *  `tick` s while it stays (the carrier too, if it's under it). */
+function gasStep(g: Game, m: FoeMark, dt: number): void {
+  const C = FOE.cloud;
+  const dose = (m.dose ??= {});
+  const take = (key: number, inside: boolean): boolean => {
+    if (!inside) {
+      delete dose[key];
+      return false;
+    }
+    dose[key] = (dose[key] ?? C.tick - C.first) + dt;
+    if (dose[key] < C.tick) return false;
+    dose[key] -= C.tick;
+    return true;
+  };
+  for (const s of [...g.ships]) {
+    if (take(s.id, dist(s.x, s.y, m.x, m.y) <= C.radius)) damageShip(g, s, THREATS.cloud.damage, 'cloud', false);
   }
+  const c = g.map.carrier;
+  if (take(-1, dist(c.x, c.y, m.x, m.y) <= C.radius + 40)) damageCarrier(g, THREATS.cloud.damage, 'cloud');
 }
 
 /** A Bodyguard Ring: a shot at the heavy meets one of its guards first. */
@@ -648,9 +791,19 @@ export function guardFor(g: Game, th: Threat, from: Point): Threat | null {
   return guards.sort((a, b) => dist(a.x, a.y, from.x, from.y) - dist(b.x, b.y, from.x, from.y))[0];
 }
 
-/** A flashing Lure Beacon within reach of a helper: it goes for that. */
-export function lureIn(g: Game, x: number, y: number, reach = Infinity): Threat | undefined {
-  return g.threats.find((t) => t.kind === 'lure' && !t.dead && dist(t.x, t.y, x, y) <= reach);
+/** A flashing Lure Beacon a helper at (x, y) goes for: one that is up, and
+ *  within the helper's reach or the beacon's own ring of it, or whose ring
+ *  holds what the helper was about to aim at. */
+export function lureIn(g: Game, x: number, y: number, reach = Infinity, aim?: Point): Threat | undefined {
+  const R = FOE.lure.radius;
+  return g.threats.find(
+    (t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1 && (dist(t.x, t.y, x, y) <= Math.max(reach, R) || (!!aim && dist(t.x, t.y, aim.x, aim.y) <= R)),
+  );
+}
+
+/** A helper's pick, unless a Lure Beacon draws it away: the beacon first. */
+export function lured(g: Game, x: number, y: number, reach: number, pick: Threat | undefined): Threat | undefined {
+  return lureIn(g, x, y, reach, pick) ?? pick;
 }
 
 /** The Siege Battery: set up, then salvos: three circles on the lane where
@@ -899,12 +1052,15 @@ function updateScavenger(g: Game, th: Threat, f: FoeData, dt: number): void {
     f.link = p ? p.id : -1;
   }
   if (!p) {
-    // Nothing to take: hold up by the enemy shore.
-    steer(th, f.px, f.py, th.speed * 0.6, 3, dt);
-    if (dist(th.x, th.y, f.px, f.py) < 8) {
-      th.x = f.px;
-      th.y = f.py;
-    }
+    // Nothing to take: it lurks, circling slowly over the water off the
+    // convoy where the pickups fall (the player: "it should circle and
+    // lurk", not sit on the shore). The circle drifts with the convoy.
+    const c = lurkSpot(g);
+    const k = Math.min(1, dt * 0.6);
+    f.sx = f.sx === undefined ? c.x : f.sx + (c.x - f.sx) * k;
+    f.sy = f.sy === undefined ? c.y : f.sy + (c.y - f.sy) * k;
+    const a = Math.atan2(th.y - f.sy, th.x - f.sx) + 0.5;
+    steer(th, f.sx + Math.cos(a) * S.orbit, f.sy + Math.sin(a) * S.orbit, S.spin * S.orbit, 2.6, dt);
     return;
   }
   steer(th, p.x, p.y, th.speed, 5, dt);
@@ -918,12 +1074,30 @@ function updateScavenger(g: Game, th: Threat, f: FoeData, dt: number): void {
   }
 }
 
+/** Where a Scavenger circles while it waits: over open water `above` px off
+ *  the convoy's middle (either side, whichever is water and on screen), or
+ *  over the lane if there is no convoy yet. */
+function lurkSpot(g: Game): Point {
+  const S = FOE.scavenger;
+  const ch = g.map.channels[0];
+  const mid = g.ships.length
+    ? { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length }
+    : laneAt(ch, laneLength(ch) * 0.5, 0);
+  const x = clamp(mid.x, 160, VIEW.width - 160);
+  for (const dy of [-S.above, S.above, -S.above * 0.5, S.above * 0.5]) {
+    const y = mid.y + dy;
+    if (y > 120 && y < VIEW.height - 140 && !onLand(g, x, y)) return { x, y };
+  }
+  return { x, y: clamp(mid.y, 120, VIEW.height - 140) };
+}
+
 /** Warnings that come before a foe: the periscope before the sub. */
 export function updateFoeMarks(g: Game, dt: number): void {
   if (!g.foe.marks.length) return;
   const live: FoeMark[] = [];
   for (const m of g.foe.marks) {
     m.t += dt;
+    if (m.kind === 'gas') gasStep(g, m, dt);
     if (m.t < m.dur) {
       live.push(m);
       continue;
@@ -1080,8 +1254,9 @@ export function foeDown(g: Game, th: Threat, quiet: boolean): void {
     g.queue = g.queue.filter((l) => l.spotter !== th.id);
     if (g.foe.paint?.by === th.id) g.foe.paint = null;
   }
-  // A Volatile Cloud shot goes up where it is.
-  if (th.kind === 'cloud') ignite(g, th);
+  // A Volatile Cloud shot down bursts where it is: its gas hangs there
+  // (the Nuke burns it up with everything else).
+  if (th.kind === 'cloud' && !quiet) burstCloud(g, th);
   // A siege gun's circles that haven't fired yet go with it.
   if (th.kind === 'siege') g.foe.marks = g.foe.marks.filter((m) => m.link !== th.id || m.fired);
 }
@@ -1151,10 +1326,13 @@ export function foeEta(g: Game, th: Threat): number | null {
     case 'tender':
       return 5;
     case 'lure':
-      return 3;
+      return f && f.state === 0 ? 6 : 3;
     case 'cloud': {
+      // Not when it hits, but how long it can still be shot down with its
+      // gas clear of the convoy (two radii off the nearest hull), at half
+      // weight: the answer is to kill it early.
       const s = g.ships.reduce((m, o) => Math.min(m, dist(o.x, o.y, th.x, th.y)), Infinity);
-      return Math.max(0.5, (s - FOE.cloud.radius) / Math.max(1, th.speed));
+      return Math.max(0.3, ((s - FOE.cloud.radius * 2) / Math.max(1, th.speed)) * 0.5);
     }
     case 'decoy':
       return revealedDecoy(th) ? 30 : null;
@@ -1163,11 +1341,10 @@ export function foeEta(g: Game, th: Threat): number | null {
   }
 }
 
-/** Worth a shot? Not a decoy that has shown itself, and not a Volatile
- *  Cloud over your own ships. */
+/** Worth a shot? Not a decoy that has shown itself. */
 export function foeWorthShooting(g: Game, th: Threat): boolean {
+  void g;
   if (revealedDecoy(th)) return false;
-  if (th.kind === 'cloud') return !g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= FOE.cloud.radius + 10);
   if (th.kind === 'guard') return false;
   return true;
 }
@@ -1188,6 +1365,9 @@ export function foeHarmed(th: Threat): boolean {
       return f.n < FOE.siege.salvos;
     case 'attackHeli':
     case 'spotter':
+      return f.n > 0;
+    case 'cloud':
+      // Burst with a hull close by: its gas was already on the convoy.
       return f.n > 0;
     default:
       return false;

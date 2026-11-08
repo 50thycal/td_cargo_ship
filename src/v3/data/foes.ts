@@ -42,16 +42,16 @@ export const FOES: Record<FoeId, FoeDef> = {
   attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Hovers beside the lane firing missile pairs, and moves.' },
   torpedoSub: { id: 'torpedoSub', name: 'Torpedo Sub', chapter: 2, cat: 'platform', kind: 'torpedoSub', from: 'water', blurb: 'Surfaces, fires a torpedo down a line on the water, dives.' },
   armored: { id: 'armored', name: 'Armored Drone', chapter: 2, cat: 'strike', kind: 'armored', from: 'base', blurb: 'A plate on its nose. Hit it as it banks, or go round with a blast.' },
-  scavenger: { id: 'scavenger', name: 'Scavenger Drone', chapter: 2, cat: 'support', kind: 'scavenger', from: 'edge', blurb: 'Flies off with your pickups. A grabbed pickup is gone.' },
+  scavenger: { id: 'scavenger', name: 'Scavenger Drone', chapter: 2, cat: 'support', kind: 'scavenger', from: 'edge', blurb: 'Circles over the water, then flies off with your pickups. A grabbed pickup is gone.' },
   stealthJet: { id: 'stealthJet', name: 'Stealth Strafer', chapter: 3, cat: 'platform', kind: 'stealthJet', from: 'edge', blurb: 'A strafing jet with no warning. Only its short run-in.' },
   stealthBomber: { id: 'stealthBomber', name: 'Stealth Bomber', chapter: 3, cat: 'platform', kind: 'stealthBomber', from: 'edge', blurb: 'A flying wing, no warning, six hits, three missiles.' },
   diveBomber: { id: 'diveBomber', name: 'Dive Bomber', chapter: 3, cat: 'platform', kind: 'diveBomber', from: 'edge', blurb: 'A circle on the water, then the plane. Its bomb can\'t be stopped.' },
   siege: { id: 'siege', name: 'Siege Battery', chapter: 3, cat: 'platform', kind: 'siege', from: 'shore', blurb: 'Marks circles on the lane, then shells them. Silence the gun.' },
   spotter: { id: 'spotter', name: 'Spotter Plane', chapter: 3, cat: 'support', kind: 'spotter', from: 'edge', blurb: 'Paints one ship for the others, and calls a strike on it.' },
-  tender: { id: 'tender', name: 'Repair Tender', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Mends the most damaged enemy near it, a pulse at a time.' },
+  tender: { id: 'tender', name: 'Repair Tender', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Sails in and mends the most damaged enemy near it, a pulse at a time.' },
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
-  lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Your helpers chase it. Only your taps can sink it.' },
-  cloud: { id: 'cloud', name: 'Volatile Cloud', chapter: 4, cat: 'strike', kind: 'cloud', from: 'shore', blurb: 'Set off over your ships, it hurts them. Pop it over water.' },
+  lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your taps can sink it.' },
+  cloud: { id: 'cloud', name: 'Volatile Cloud', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow biohazard missile. Where it bursts, toxic gas lingers. Kill it far out.' },
 };
 
 export const FOE_ORDER = Object.keys(FOES) as FoeId[];
@@ -115,7 +115,9 @@ export const FOE = {
   attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25 },
   torpedoSub: { warn: 1.5, up: 3.5, fireAt: 1.2, run: 300, hitRadius: 24 },
   armored: { plate: 4, turnAt: 0.45, turn: 1.6, swing: 1.75, front: 70 },
-  scavenger: { grab: 24, leave: 210, wait: 14 },
+  /** It circles (`orbit` px, `spin` rad/s) over the water `above` px off
+   *  the convoy, waiting `wait` s for a pickup before it gives up. */
+  scavenger: { grab: 24, leave: 210, wait: 16, orbit: 85, spin: 0.9, above: 170 },
   // Its run-in grows with its speed (Test Lab round 1: 270 → 315 px/s), so
   // the time to shoot it before its guns open stays about 1.1 s.
   stealthJet: { runIn: 350 },
@@ -126,8 +128,16 @@ export const FOE = {
   // from a little further", 150 → 185; its circle 110 → 100 so that fits on
   // screen). `edge`: its whole circle stays this far inside the screen.
   spotter: { orbit: 100, off: 185, edge: 35, paint: 2, call: 4, strike: 3, strikeGap: 0.4, share: 0.7, stay: 22 },
-  tender: { gap: 3.5, charge: 1, mend: 2, reach: 340 },
+  /** It sails in from a screen edge to open water `clear` px from any other
+   *  boat, and keeps `keep` px off them while it moves. */
+  tender: { gap: 3.5, charge: 1, mend: 2, reach: 340, clear: 150, keep: 90 },
   bodyguard: { guards: 3, orbit: 34, spin: 2.2 },
-  lure: { life: 20 },
-  cloud: { radius: 75, drift: 22, slow: 6, life: 28 },
+  /** It rises out of the water for `rise` s; then every helper within
+   *  `radius` of it (or aiming at something within it) fires at it. */
+  lure: { life: 20, rise: 1.4, radius: 300 },
+  /** A biohazard missile (`turn` rad/s). Shot down or at its ship, it
+   *  bursts into gas of `radius` that lingers `linger` s: a hull inside it
+   *  takes a hit after `first` s, then every `tick` s (a ship sailing
+   *  through takes one or two). */
+  cloud: { radius: 75, linger: 7, first: 0.7, tick: 2, turn: 0.9 },
 } as const;

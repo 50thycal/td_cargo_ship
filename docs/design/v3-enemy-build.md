@@ -284,3 +284,45 @@ What the player's Test Lab verdicts (`tools/v3/test-lab/playtest-2026-11-08.json
 *"A sniper-like red laser beam tracking your movement... just visual, to make it look like it's coming from the ship."*
 
 - With the Cutter loaded, while your finger is down (before and during the swipe) a thin, glowing red line runs from the carrier's gun to your finger, a red dot at each end. Visual only: the cut is unchanged. Shots: `cutter-1-aim.jpg`, `cutter-2-swipe.jpg`.
+
+
+### Volatile Cloud (tune): a biohazard missile
+
+The player: "have it look like a biohazard missile that's coming in slow and then it explodes [and] releases that cloud and then that lingers [and] does damage to that area ... whenever you blow it up, [it'll] do that ... the key is just [to] get rid of it out there early."
+
+- **Now:** a slow, chunky yellow-green missile with hazard bands and the trefoil, launched from a base at a ship (it comes up in the raid warning like any missile). Shot down, or when it reaches its ship, it bursts: toxic gas hangs on that spot. A hull inside the gas takes a hit 0.7 s in, then one every 2 s while it stays. A fresh ship sailing through the middle takes one or two hits; the ships behind it sail into the same gas. The missile reaching its ship also hits it once.
+- **The play:** kill it far out, so its gas lands on open water.
+- **Gone:** the drifting cloud and "any explosion inside it sets it off".
+- **Numbers:** 2 hits, speed 48 (the guided missile's 150), turn 0.9 rad/s. Gas radius 75, lingers 7 s, 1 damage a tick. The Nuke burns it up with no gas.
+- **Bots and helpers** rank it by how long it can still be shot with its gas clear of the convoy (two radii off the nearest hull), at half weight, so they shoot it early; it is always worth a shot.
+- **Test Lab evidence:** gas damage counts against the card (`labHarm`, by `cloud`); a missile shot down with no hull within two radii counts as stopped before harm.
+- Screenshots: `cloud-missile.jpg`, `cloud-missile-close.jpg`, `cloud-gas-far-out.jpg`, `cloud-gas-on-lane.jpg`.
+
+### Lure Beacon (tune): surfaces, a wide ring, takes every helper's fire
+
+The player: "should [it] come out of [the] water? It needs to have a w[id]er radius of effect and ... forces all the passive attacks to take priority [on] attacking that."
+
+- **Surfaces:** it rises out of the water over 1.4 s (ripples, water streaming off, its light dark); it lures nothing until it's up. The buoy is drawn half again bigger.
+- **The ring:** radius 300, drawn on the water (dashed yellow edge, faint fill, a pulse sweeping out), with a yellow tether to each helper drone it has drawn.
+- **Takes focus:** every auto-targeting helper goes for it first when it's within the helper's reach, or within its ring of the helper, or when what the helper was about to fire at is inside its ring: the Frigate Escort, Aegis Launchers, Point Defense, the shore batteries, the Gunship Pair (it had no lure check at all), and the Wild Card's gunship missile. The Drone Screen and Orbital Strike go for it anywhere on screen, and a drone already on its way to something turns for it. The Bomber Wing spends its next pass on it. Their shots still do nothing to it; two taps sink it.
+- Unit test: `tests/v3/foes.test.ts`, "a Lure Beacon rises out of the water first, then every helper goes for it over a real threat" (Drone Screen, Gunships, Frigates, Orbital Strike, Bomber Wing).
+- Screenshots: `lure-rising.jpg`, `lure-up-ring.jpg`, `lure-drones-turn.jpg`.
+
+### Repair Tender (keep): sails in, keeps clear
+
+The player: "Needs to sail in like a normal ship and it should be checked for collisions with other submarine[s] and ships."
+
+- **Station:** a water spot clear (150 px) of every other boat: convoy ships, frigates, raider subs up or still to come, periscopes, and the enemy's own boats (torpedo subs, fast boats, the Dreadnought, a Lure, another tender's station). Spots near the screen's side edges come last.
+- **Sails in:** from off the nearer side edge on the shortest straight run to its station that crosses no land (a new even-odd `onLand` check against the map's landmasses); if no run is clear it rises at its station as before. It eases onto station at speed 55, with a bow wave and a wake, bow along its course.
+- **Keeps clear while it moves:** pushed off any boat within 90 px, and slowed when one is right ahead (ships have right of way); it never steps onto land. It mends as it sails.
+- Unit test: "a Repair Tender sails in from off the screen over open water to a station clear of the other boats", on the Strait, the Island, the Archipelago and the Harbor.
+- Screenshots: `tender-sailing-in.jpg`, `tender-on-station.jpg`.
+
+### Scavenger Drone (keep): lurks, and looks its own
+
+The player: "Weird how it just sits on the shore; it should circle and lurk and look different than the other drones."
+
+- **Lurks:** with no pickup to go for, it circles (radius 85, about 76 px/s) over open water 170 px off the convoy's middle, the circle drifting with the convoy, a faint amber ring marking it; it gives up after 16 s. A pickup appearing sends it straight for it, as before.
+- **Looks:** an amber quadcopter (an X frame, four spinning rotors, a dark sensor eye) with a three-pronged claw that opens as it nears its prize, instead of the winged drone shape everything else uses. The line to its pickup and the pickup's ring are amber.
+- Unit test: "a Scavenger with nothing to grab circles over the water off the convoy, not parked on the shore".
+- Screenshots: `scavenger-lurking.jpg`, `scavenger-close.jpg`, `scavenger-grab.jpg`.
