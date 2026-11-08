@@ -722,7 +722,7 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     return l;
   }
 
-  it('a Volatile Cloud is a slow two-hit missile at a ship; shot down far out, its gas hangs there and hurts nothing', () => {
+  it('a Incendiary Missile is a slow two-hit missile at a ship; shot down far out, its fireball hangs there and hurts nothing', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
     const c = live(g, 'cloud')[0];
@@ -735,35 +735,35 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     const at = { x: c.x, y: c.y };
     damageThreat(g, c, 2);
     expect(c.dead).toBe(true);
-    const gas = g.foe.marks.find((m) => m.kind === 'gas')!;
-    expect(gas).toBeDefined();
-    expect(Math.hypot(gas.x - at.x, gas.y - at.y)).toBeLessThan(1);
+    const fire = g.foe.marks.find((m) => m.kind === 'fire')!;
+    expect(fire).toBeDefined();
+    expect(Math.hypot(fire.x - at.x, fire.y - at.y)).toBeLessThan(1);
     // It lingers its few seconds, then thins out; nothing near it was hurt.
     run(g, FOE.cloud.linger - 0.5);
-    expect(g.foe.marks.some((m) => m.kind === 'gas')).toBe(true);
+    expect(g.foe.marks.some((m) => m.kind === 'fire')).toBe(true);
     run(g, 1);
-    expect(g.foe.marks.some((m) => m.kind === 'gas')).toBe(false);
+    expect(g.foe.marks.some((m) => m.kind === 'fire')).toBe(false);
     for (const s of g.ships) if (hp0.has(s.id)) expect(s.hp).toBe(hp0.get(s.id));
     expect(g.lost).toBe(lost0);
     // Launched like a missile, out of a base.
     expect(FOES.cloud.from).toBe('base');
   });
 
-  it('a Volatile Cloud left alone hits its ship and bursts there; a ship sailing through the gas takes one or two hits, not a sinking', () => {
+  it('a Incendiary Missile left alone hits its ship and bursts there; a ship sailing through the fire takes one or two hits, not a sinking', () => {
     const g = quiet(4);
     launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
     const c = live(g, 'cloud')[0];
     run(g, 40, () => c.dead);
     expect(c.dead).toBe(true);
-    const gas = g.foe.marks.find((m) => m.kind === 'gas')!;
-    expect(gas).toBeDefined();
-    expect(g.ships.some((s) => Math.hypot(s.x - gas.x, s.y - gas.y) < FOE.cloud.radius) || g.lost > 0).toBe(true);
+    const fire = g.foe.marks.find((m) => m.kind === 'fire')!;
+    expect(fire).toBeDefined();
+    expect(g.ships.some((s) => Math.hypot(s.x - fire.x, s.y - fire.y) < FOE.cloud.radius) || g.lost > 0).toBe(true);
     // A fresh ship crossing the middle of a cloud: one or two hits.
     const g2 = quiet(5);
     const ship = g2.ships[0];
     ship.hp = 3;
     const { x, y } = shipAhead(g2, ship, (FOE.cloud.radius + 30) / SHIP.speed);
-    g2.foe.marks.push({ id: 1, kind: 'gas', x, y, t: 0, dur: 99, dose: {} });
+    g2.foe.marks.push({ id: 1, kind: 'fire', x, y, t: 0, dur: 99, dose: {} });
     let inside = 0;
     run(g2, 12, () => {
       if (Math.hypot(ship.x - x, ship.y - y) <= FOE.cloud.radius) inside += DT;
@@ -775,7 +775,7 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     expect(g2.ships).toContain(ship);
   });
 
-  it('the Test Lab counts the gas\'s damage against the Volatile Cloud, and a missile shot down far out as stopped before harm', () => {
+  it('the Test Lab counts the fire\'s damage against the Incendiary Missile, and a missile shot down far out as stopped before harm', () => {
     const g = createGame('strait', 3, 5);
     applyFreePlay(g, { weapons: [], frequentDrops: false });
     applyLab(g, { card: 'cloud', length: 'quick', mix: 'normal' });
@@ -793,12 +793,12 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     expect(g.lab!.stats.early).toBe(early + 1);
     const harm = g.lab!.stats.harm;
     const ship = g.ships[0];
-    g.foe.marks.push({ id: 1, kind: 'gas', x: ship.x, y: ship.y, t: 0, dur: 99, dose: {} });
+    g.foe.marks.push({ id: 1, kind: 'fire', x: ship.x, y: ship.y, t: 0, dur: 99, dose: {} });
     run(g, 3);
     expect(g.lab!.stats.harm).toBeGreaterThan(harm);
   });
 
-  it('the bots shoot a Volatile Cloud early, while it is still far from the convoy', () => {
+  it('the bots shoot a Incendiary Missile early, while it is still far from the convoy', () => {
     const g = quiet(6);
     launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
     const c = live(g, 'cloud')[0];
