@@ -186,7 +186,7 @@ export const THREATS: Record<
   tender: { speed: 55, hp: 6, damage: 0, dropChance: 0.8, label: 'Repair tender' },
   guard: { speed: 0, hp: 1, damage: 0, dropChance: 0.03, label: 'Guard drone' },
   lure: { speed: 0, hp: 2, damage: 0, dropChance: 0.4, label: 'Lure beacon' },
-  cloud: { speed: 48, hp: 2, damage: 1, dropChance: 0.3, label: 'Volatile cloud missile' },
+  cloud: { speed: 48, hp: 2, damage: 1, dropChance: 0.3, label: 'Incendiary missile' },
 };
 
 /** The supertanker (The Behemoth Run): its hit points, the ships its loss

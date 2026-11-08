@@ -72,3 +72,20 @@ describe('the Nuke', () => {
     expect(g.raiders).toHaveLength(0);
   });
 });
+
+describe('the Nuke and the Incendiary Missile', () => {
+  it('puts out every fireball and takes a missile in flight with no new fire', () => {
+    const g = quiet(2);
+    g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: 600, y: 400, t: 0, dur: 99, dose: {} });
+    launchFoe(g, { at: 0, kind: 'cloud', base: 0 }, { x: 800, y: 60 });
+    run(g, 1);
+    const missile = g.threats.find((t) => t.kind === 'cloud')!;
+    expect(missile).toBeDefined();
+    g.pickups.push({ id: g.nextId++, kind: 'nuke', x: 500, y: 500, age: 0 });
+    expect(tap(g, 500, 500, 20)).toBe('pickup');
+    expect(missile.dead).toBe(true);
+    run(g, 1);
+    expect(g.foe.marks.filter((m) => m.kind === 'fire')).toHaveLength(0);
+    expect(g.threats.filter((t) => t.kind === 'cloud' && !t.dead)).toHaveLength(0);
+  });
+});

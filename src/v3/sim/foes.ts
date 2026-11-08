@@ -57,9 +57,9 @@ export interface FoeShot {
 export interface FoeMark {
   id: number;
   /** A periscope (a torpedo sub to come), a dive bomber's circle, a siege
-   *  battery's shell circle, a Volatile Cloud's toxic gas lingering, a siege
+   *  battery's shell circle, an Incendiary Missile's fireball burning, a siege
    *  battery's hatch (the gun hidden under it: no target). */
-  kind: 'periscope' | 'dive' | 'shell' | 'gas' | 'hatch';
+  kind: 'periscope' | 'dive' | 'shell' | 'fire' | 'hatch';
   x: number;
   y: number;
   t: number;
@@ -332,8 +332,8 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'cloud': {
-      // A slow biohazard missile out of a base, at a ship (the player's
-      // rework): wherever it bursts, its gas lingers.
+      // A slow incendiary missile out of a base, at a ship (the player's
+      // rework): wherever it bursts, its fireball burns on.
       if (!at) return;
       const th = spawnThreat(g, 'cloud', at.x, at.y, 'base');
       th.foe = data();
@@ -670,7 +670,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
     }
     case 'cloud': {
       // Slow and heavy: it turns lazily onto where its ship will be. At the
-      // ship it hits (one hit) and bursts; the gas does the rest.
+      // ship it hits (one hit) and bursts; the fireball does the rest.
       retarget(th);
       const s = shipOf(g, th);
       const tp = aim(th);
@@ -774,8 +774,8 @@ function sailTender(g: Game, th: Threat, f: FoeData, dt: number): void {
   if (f.n === 0 && d < 10) f.n = 1;
 }
 
-/** A Volatile Cloud missile bursts (shot down, or at its ship): its gas
- *  hangs where it burst. Its `n` says whether a hull was already near (for
+/** An Incendiary Missile bursts (shot down, or at its ship): its fireball
+ *  burns where it burst. Its `n` says whether a hull was already near (for
  *  the Test Lab's "stopped before harm"). */
 export function burstCloud(g: Game, th: Threat): void {
   const C = FOE.cloud;
@@ -783,14 +783,14 @@ export function burstCloud(g: Game, th: Threat): void {
   if (f.state === 9) return;
   f.state = 9;
   f.n = g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= C.radius * 2) ? 1 : 0;
-  g.foe.marks.push({ id: g.nextId++, kind: 'gas', x: th.x, y: th.y, t: 0, dur: C.linger, dose: {} });
+  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: C.linger, dose: {} });
   addFx(g, 'burst', th.x, th.y, { life: 0.6, r: C.radius * 0.8 });
   cue(g, 'foe.ignite', th.x, th.y);
 }
 
-/** Gas on the water: a hull inside takes a hit `first` s in, then one every
+/** A fireball on the water: a hull inside takes a hit `first` s in, then one every
  *  `tick` s while it stays (the carrier too, if it's under it). */
-function gasStep(g: Game, m: FoeMark, dt: number): void {
+function fireStep(g: Game, m: FoeMark, dt: number): void {
   const C = FOE.cloud;
   const dose = (m.dose ??= {});
   const take = (key: number, inside: boolean): boolean => {
@@ -1143,7 +1143,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
   const live: FoeMark[] = [];
   for (const m of g.foe.marks) {
     m.t += dt;
-    if (m.kind === 'gas') gasStep(g, m, dt);
+    if (m.kind === 'fire') fireStep(g, m, dt);
     if (m.t < m.dur) {
       live.push(m);
       continue;
@@ -1394,8 +1394,8 @@ export function foeDown(g: Game, th: Threat, quiet: boolean): void {
     g.queue = g.queue.filter((l) => l.spotter !== th.id);
     if (g.foe.paint?.by === th.id) g.foe.paint = null;
   }
-  // A Volatile Cloud shot down bursts where it is: its gas hangs there
-  // (the Nuke burns it up with everything else).
+  // An Incendiary Missile shot down bursts where it is: its fireball burns
+  // there (the Nuke takes it out with no fire, and puts out any burning).
   if (th.kind === 'cloud' && !quiet) burstCloud(g, th);
   // A siege gun's circles that haven't fired yet go with it.
   if (th.kind === 'siege') g.foe.marks = g.foe.marks.filter((m) => m.link !== th.id || m.fired);
@@ -1471,7 +1471,7 @@ export function foeEta(g: Game, th: Threat): number | null {
       return f && f.state === 0 ? 6 : 3;
     case 'cloud': {
       // Not when it hits, but how long it can still be shot down with its
-      // gas clear of the convoy (two radii off the nearest hull), at half
+      // fireball clear of the convoy (two radii off the nearest hull), at half
       // weight: the answer is to kill it early.
       const s = g.ships.reduce((m, o) => Math.min(m, dist(o.x, o.y, th.x, th.y)), Infinity);
       return Math.max(0.3, ((s - FOE.cloud.radius * 2) / Math.max(1, th.speed)) * 0.5);
@@ -1511,7 +1511,7 @@ export function foeHarmed(th: Threat): boolean {
     case 'spotter':
       return f.n > 0;
     case 'cloud':
-      // Burst with a hull close by: its gas was already on the convoy.
+      // Burst with a hull close by: its fireball was already on the convoy.
       return f.n > 0;
     default:
       return false;
