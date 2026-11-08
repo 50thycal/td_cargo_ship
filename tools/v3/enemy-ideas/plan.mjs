@@ -2,7 +2,7 @@
 // (review-2026-11-07.json), so the plan can't drift from the page.
 // Usage: node tools/v3/enemy-ideas/plan.mjs [--check]
 import { readFileSync, writeFileSync } from 'node:fs';
-import { BUILD, BUILD_DATE, CHAPTER_NAMES, CHAPTER_WHY, READINGS, ANSWER_EFFECT, BUILD_QUESTIONS } from './build.mjs';
+import { BUILD, BUILD_DATE, CHAPTER_NAMES, CHAPTER_WHY, CUT, CUT_DATE, READINGS, ANSWER_EFFECT, BUILD_QUESTIONS } from './build.mjs';
 import { CATEGORIES, QUESTIONS } from './enemies.mjs';
 
 const marks = JSON.parse(readFileSync(new URL('./review-2026-11-07.json', import.meta.url), 'utf8'));
@@ -44,16 +44,28 @@ L('### Readings to check');
 L();
 for (const r of READINGS) L(`- ${r.text}`);
 L();
+const cut = new Set(CUT.map((c) => c.id));
+L(`## Cut after the Test Lab playtest (${CUT_DATE})`);
+L();
+L(`The player played each enemy in the Test Lab (\`tools/v3/test-lab/playtest-${CUT_DATE}.json\`) and marked ${CUT.length} as Cut. They are gone from the game: the data, the sim, the drawing, their sounds, the bots, Free Play and the Test Lab. The chapter lists below no longer have them; their designs stay on the review page's Build tab. Old play logs that name them still load without errors (their kills are just records), though a Test Lab log for one of their cards no longer replays as it was played.`);
+L();
+for (const c of CUT) {
+  const b = BUILD.find((x) => x.id === c.id);
+  L(`- **${b.name}** (chapter ${b.chapter}): ${c.note ? `"${c.note}"` : 'cut with no note.'}`);
+}
+L();
+L('The Test Lab combos that used them were remade: Siege Battery + Rocket Truck, Bodyguard Ring + Seeker Pod, and Hydra + Sprint Drones with the Tesla.');
+L();
 L('## How the new enemies join the game');
 L();
-L('- **By chapter**, like the weapons (`src/v3/data/foes.ts`). A map in chapter *n* can send any enemy from chapters 1 to *n*. The chapter\'s own new ones come up most, and each map of the chapter leads with a different one.');
-L('- **How many:** one a wave on waves 2 to 5, two on 6 to 9, three on wave 10 (more in endless). Each takes the place of a drone swarm in the wave, and the heavier ones (the platforms that fire several times, the ones that bring a heavy, the barge) a missile too, so a wave\'s weight stays close; the sweep checks it.');
+L('- **By chapter**, like the weapons (`src/v3/data/foes.ts`). A map in chapter *n* can send any enemy from chapters 1 to *n*. The chapter\'s own new ones come up most, and each map of the chapter leads with the next one in turn.');
+L('- **How many:** one a wave on waves 2 to 5, two on 6 to 9, three on wave 10 (more in endless). Each takes the place of a drone swarm in the wave, and the heavier ones (the platforms that fire several times, the ones that bring a heavy) a missile too, so a wave\'s weight stays close; the sweep checks it.');
 L('- **Surfaced** as the weapons are: the briefing lists the chapter\'s new enemies; the first time one shows up, the "new threat" card names it and says what to do.');
 L('- **Free Play** gets an Enemies line: as the campaign (the map\'s chapter), none of the new ones, all of them, or one on its own (it comes every wave, more often), to try each.');
 L('- **The rule for anything you can\'t intercept** (Rocket Truck\'s rockets, Siege Battery\'s shells, the Dive Bomber\'s bomb): a tell first, and the source can always be shot.');
 L();
 for (const ch of [1, 2, 3, 4]) {
-  const list = BUILD.filter((b) => b.chapter === ch);
+  const list = BUILD.filter((b) => b.chapter === ch && !cut.has(b.id));
   L(`## Chapter ${ch}: ${CHAPTER_NAMES[ch]} (${list.length})`);
   L();
   L(CHAPTER_WHY[ch]);

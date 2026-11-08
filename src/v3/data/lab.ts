@@ -75,16 +75,12 @@ const ENEMIES: LabCard[] = [
   enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
   enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
-  enemy('loiter', 'Now or later: do you clear them while they wait?', ['flak', 'well', 'thermo']),
-  enemy('crossWing', 'Can you catch them at the X?', ['flak', 'thermo', 'airstrike']),
   enemy('scavenger', 'Does losing a pickup feel fair?', ['seeker', 'cutter', 'supplyRun']),
   enemy('attackHeli', 'Six hits or its missiles: is it a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
   enemy('stealthBomber', 'Does the B-2 read? Six hits too many?', ['railgun', 'seeker', 'aegis']),
   enemy('tender', 'Do you see the green beam and change targets?', ['lance', 'railgun', 'orbital']),
   enemy('bodyguard', 'Do you notice the guards taking your shots?', ['flak', 'tesla', 'railgun']),
-  enemy('picket', 'Do you notice your shots dying in the ring?', ['airstrike', 'orbital', 'gunships']),
-  enemy('barge', 'Do the +1s make it a priority?', ['lance', 'railgun', 'orbital']),
 ];
 
 /** Weapons changed in the lock-in build and not played since: first. */
@@ -121,9 +117,9 @@ const COMBOS: LabCard[] = [
   combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], 'droneScreen'),
   combo('cloud-flak', 'Volatile Cloud + Flak', 'Your area fire near your own ships.', ['cloud'], ['flak', 'thermo', 'railgun'], 'flak'),
   combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter']),
-  combo('barge-truck', 'Supply Barge + Rocket Truck', 'Bigger raids and rockets you can\'t stop.', ['barge', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
-  combo('picket-seeker', 'Flak Picket + Seeker Pod', 'Does the picket shut down your seekers?', ['picket'], ['seeker', 'airstrike', 'flak'], 'seeker'),
-  combo('hydra-tesla', 'Hydra + Crossing Wing, Tesla', 'Area answers to split targets.', ['hydra', 'crossWing'], ['tesla', 'flak', 'thermo'], 'tesla'),
+  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
+  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], 'seeker'),
+  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], 'tesla'),
 ];
 
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */

@@ -72,12 +72,13 @@ export interface FoeMark {
 export interface FoeData {
   state: number;
   t: number;
-  /** Rounds left (Rocket Truck), or a slot in its group (Loiter). */
+  /** Rounds left (Rocket Truck), or a slot in its group (a guard's place
+   *  in the ring). */
   n: number;
-  /** A point it works from: the loiter spot. */
+  /** A point it works from (a helicopter's spot, a dive bomber's circle). */
   px: number;
   py: number;
-  /** Its group (loiter drones share one). */
+  /** Another thing it is tied to (a guard's heavy, a scavenger's pickup). */
   link: number;
   /** A truck's road and how far along it. */
   path?: Point[];
@@ -85,7 +86,7 @@ export interface FoeData {
   /** Its own velocity (the helicopter's flight). */
   vx?: number;
   vy?: number;
-  /** Where it set out from (the torpedo's line, the wing's start). */
+  /** Where it set out from (the torpedo's line, the armored drone's start). */
   sx?: number;
   sy?: number;
 }
@@ -166,10 +167,10 @@ export function isFoe(kind: ThreatKind): boolean {
 /** Foes whose movement is their own (the missiles among them fly the shared
  *  steering code in game.ts). */
 const OWN_MOVES = new Set<ThreatKind>([
-  'sprinter', 'decoy', 'rocketTruck', 'loiter',
-  'attackHeli', 'torpedoSub', 'torpedo', 'armored', 'crosser', 'scavenger',
+  'sprinter', 'decoy', 'rocketTruck',
+  'attackHeli', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'diveBomber', 'siege', 'spotter',
-  'tender', 'guard', 'picket', 'lure', 'barge', 'cloud',
+  'tender', 'guard', 'lure', 'cloud',
 ]);
 
 export function movesItself(kind: ThreatKind): boolean {
@@ -209,17 +210,6 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       spawnThreat(g, 'hydra', at.x, at.y, 'base');
       return;
     }
-    case 'loiter': {
-      if (!at) return;
-      const spot = loiterSpot(g, rng);
-      const link = g.nextId;
-      for (let k = 0; k < FOE.loiter.size; k++) {
-        const th = spawnThreat(g, 'loiter', at.x + (k - 1.5) * 12, at.y, 'base');
-        th.target = CARRIER_TARGET;
-        th.foe = data({ px: spot.x, py: spot.y, link, n: k });
-      }
-      return;
-    }
     case 'rocketTruck': {
       const roads = g.map.roads.popups;
       if (!roads.length) return;
@@ -250,11 +240,6 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       if (!at) return;
       const th = spawnThreat(g, 'armored', at.x, at.y, 'base');
       th.foe = data({ n: FOE.armored.plate, sx: at.x, sy: at.y });
-      return;
-    }
-    case 'crossWing': {
-      if (!at) return;
-      launchWing(g, at);
       return;
     }
     case 'scavenger': {
@@ -315,28 +300,11 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       }
       return;
     }
-    case 'picket': {
-      const p = waterSpot(g, rng);
-      const th = spawnThreat(g, 'picket', p.x, p.y, 'sub');
-      th.target = CARRIER_TARGET;
-      th.foe = data();
-      return;
-    }
     case 'lure': {
       const p = waterSpot(g, rng);
       const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
       th.target = CARRIER_TARGET;
       th.foe = data();
-      return;
-    }
-    case 'barge': {
-      // Moored off the enemy shore, below a launch site.
-      const site = liveSite(g, rng) ?? { x: VIEW.width / 2, y: 80 };
-      const down = site.y < VIEW.height / 2 ? 1 : -1;
-      const th = spawnThreat(g, 'barge', clamp(site.x + rng.range(-80, 80), 120, VIEW.width - 120), site.y + down * FOE.barge.off, 'sub');
-      th.target = CARRIER_TARGET;
-      th.heading = 0;
-      th.foe = data({ n: g.raids.filter((r) => r.at <= g.waveT).length });
       return;
     }
     case 'cloud': {
@@ -395,74 +363,6 @@ function heliSpot(g: Game, rng: RNG, not?: Point, off: number = FOE.attackHeli.o
     }
   }
   return best;
-}
-
-/** The Crossing Wing: two lines of drones, from this base and the one
- *  furthest from it, timed to meet at one point over the water. */
-function launchWing(g: Game, at: Point): void {
-  const W = FOE.crossWing;
-  const bases = g.map.bases.filter((b, i) => b.kinds.length > 0 && !b.cove && !b.chute && !b.generator && !g.baseDown[i]);
-  const other = bases.reduce<Point>((m, b) => (dist(b.x, b.y, at.x, at.y) > dist(m.x, m.y, at.x, at.y) ? b : m), at);
-  // Two bases close together (or one): the second line comes in from the
-  // nearer top corner instead.
-  const b2 = dist(other.x, other.y, at.x, at.y) > 400 ? other : { x: at.x < VIEW.width / 2 ? VIEW.width + 40 : -40, y: 60 };
-  // The crossing: between the two, pulled toward the convoy's lane.
-  const mid = { x: (at.x + b2.x) / 2, y: (at.y + b2.y) / 2 };
-  const ch = g.map.channels[0];
-  const lane = laneAt(ch, laneLength(ch) * clamp(mid.x / VIEW.width, 0.1, 0.9), 0);
-  const X = { x: clamp(mid.x + (lane.x - mid.x) * 0.55, 140, VIEW.width - 140), y: clamp(mid.y + (lane.y - mid.y) * 0.55, 110, VIEW.height - 110) };
-  const link = g.nextId;
-  const far = Math.max(dist(at.x, at.y, X.x, X.y), dist(b2.x, b2.y, X.x, X.y));
-  for (const o of [at, b2]) {
-    const d = dist(o.x, o.y, X.x, X.y);
-    const ux = (X.x - o.x) / d;
-    const uy = (X.y - o.y) / d;
-    for (let k = 0; k < W.per; k++) {
-      // Each line in file, the leader first; both leaders reach the X
-      // together (the nearer line flies slower).
-      const x = o.x - ux * k * W.gap;
-      const y = o.y - uy * k * W.gap;
-      const th = spawnThreat(g, 'crosser', x, y, 'base');
-      th.target = CARRIER_TARGET;
-      th.heading = Math.atan2(uy, ux);
-      th.speed = THREATS.crosser.speed * (d / far);
-      th.foe = data({ px: X.x, py: X.y, link, n: k, sx: o.x, sy: o.y });
-    }
-  }
-}
-
-/** Where loitering drones wait: over the edge of a lane, part way along,
- *  clear of every ship for now, with ships still to come to it (of a few
- *  spots tried, the one whose nearest ship upstream is furthest off, so the
- *  wait is a real one). */
-function loiterSpot(g: Game, rng: RNG): Point {
-  const lane = rng.int(g.map.channels.length);
-  const ch = g.map.channels[lane];
-  const L = laneLength(ch);
-  const side = rng.chance(0.5) ? 1 : -1;
-  let best: Point | null = null;
-  let bestGap = -Infinity;
-  let open: Point | null = null;
-  let openD = -Infinity;
-  for (let k = 0; k < 8; k++) {
-    const d = L * rng.range(0.3, 0.8);
-    const p = laneAt(ch, d, side * ch.halfWidth * 0.55);
-    const q = { x: clamp(p.x, 80, VIEW.width - 80), y: clamp(p.y, 80, VIEW.height - 80) };
-    const nearest = g.ships.reduce((m, s) => Math.min(m, dist(s.x, s.y, q.x, q.y)), Infinity);
-    // A crowded lane may have no clear stretch: then the emptiest one.
-    if (nearest > openD) {
-      openD = nearest;
-      open = q;
-    }
-    if (nearest <= FOE.loiter.trigger + 80) continue;
-    const behind = g.ships.filter((s) => s.channel === lane && s.d < d).map((s) => d - s.d);
-    const gap = behind.length ? Math.min(...behind) : d;
-    if (gap > bestGap) {
-      bestGap = gap;
-      best = q;
-    }
-  }
-  return best ?? open!;
 }
 
 /** The ship a threat is after, if it is a ship. */
@@ -530,38 +430,6 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       }
       return;
     }
-    case 'loiter': {
-      const spin = FOE.loiter.spin;
-      const slot = (f.n / FOE.loiter.size) * Math.PI * 2;
-      if (f.state === 0) {
-        // To the spot, then into the circle.
-        const a = g.t * spin + slot;
-        const ox = f.px + Math.cos(a) * FOE.loiter.orbit;
-        const oy = f.py + Math.sin(a) * FOE.loiter.orbit;
-        steer(th, ox, oy, th.speed, 4, dt);
-        if (dist(th.x, th.y, ox, oy) < 20) {
-          f.state = 1;
-          f.t = 0;
-        }
-      } else if (f.state === 1) {
-        const a = g.t * spin + slot;
-        const ox = f.px + Math.cos(a) * FOE.loiter.orbit;
-        const oy = f.py + Math.sin(a) * FOE.loiter.orbit;
-        th.heading = Math.atan2(oy - th.y, ox - th.x);
-        th.x = ox;
-        th.y = oy;
-        // They circle a moment first whatever comes (the tell), then dive
-        // when a ship is inside the ring, or when they tire of waiting.
-        const near = f.t >= FOE.loiter.settle && g.ships.some((s) => dist(s.x, s.y, f.px, f.py) <= FOE.loiter.trigger);
-        if (near || f.t >= FOE.loiter.wait) diveGroup(g, f.link, f.px, f.py);
-      } else {
-        retarget(th);
-        const tp = aim(th);
-        steer(th, tp.x, tp.y, FOE.loiter.dive, 6, dt);
-        hit(th);
-      }
-      return;
-    }
     case 'rocketTruck':
       updateTruck(g, th, f, dt);
       return;
@@ -622,24 +490,6 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       hit(th);
       return;
     }
-    case 'crosser': {
-      const W = FOE.crossWing;
-      if (f.state === 0) {
-        // In file to the X, and a little past it.
-        const ux = Math.cos(th.heading);
-        const uy = Math.sin(th.heading);
-        th.x += ux * th.speed * dt;
-        th.y += uy * th.speed * dt;
-        const past = (th.x - f.px) * ux + (th.y - f.py) * uy;
-        if (past >= 24) peel(g, th);
-        return;
-      }
-      retarget(th);
-      const tp = aim(th);
-      steer(th, tp.x, tp.y, W.peel, W.turn, dt);
-      hit(th);
-      return;
-    }
     case 'scavenger':
       updateScavenger(g, th, f, dt);
       return;
@@ -689,13 +539,10 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       th.y = heavy.y + Math.sin(a) * B.orbit;
       return;
     }
-    case 'picket':
-    case 'lure':
-    case 'barge': {
-      // Moored. The Lure gives out after a while; all of them leave once
-      // the wave has nothing else left in it.
-      if (th.kind === 'barge') rearm(g, th, f);
-      if ((th.kind === 'lure' && f.t >= FOE.lure.life) || alone(g, th)) leave(g, th);
+    case 'lure': {
+      // Moored. It gives out after a while, or leaves once the wave has
+      // nothing else left in it.
+      if (f.t >= FOE.lure.life || alone(g, th)) leave(g, th);
       return;
     }
     case 'cloud': {
@@ -730,7 +577,7 @@ function alone(g: Game, th: Threat): boolean {
   return !g.threats.some((t) => t !== th && !t.dead && !SUPPORT.has(t.kind) && !['rig', 'generator', 'citadel'].includes(t.kind));
 }
 
-const SUPPORT = new Set<ThreatKind>(['tender', 'picket', 'lure', 'barge', 'cloud', 'guard']);
+const SUPPORT = new Set<ThreatKind>(['tender', 'lure', 'cloud', 'guard']);
 
 /** Gone from the water, not a kill. */
 function leave(g: Game, th: Threat): void {
@@ -767,22 +614,6 @@ function updateTender(g: Game, th: Threat, f: FoeData): void {
   }
 }
 
-/** The Supply Barge: each raid that starts while it floats gets one more
- *  launch from each site firing in it. */
-function rearm(g: Game, th: Threat, f: FoeData): void {
-  for (; f.n < g.raids.length && g.raids[f.n].at <= g.waveT; f.n++) {
-    const raid = g.raids[f.n];
-    raid.bases.forEach((b, k) => {
-      if (g.baseDown[b]) return;
-      const kinds = g.map.bases[b].kinds;
-      const kind: ThreatKind = kinds.includes('guided') ? 'guided' : kinds.includes('ballistic') ? 'ballistic' : 'drone';
-      g.queue.push({ at: g.waveT + 0.6 + k * 0.3, kind, base: b });
-    });
-    g.queue.sort((a, b) => a.at - b.at);
-    if (raid.bases.length) addFx(g, 'text', th.x, th.y - 30, { life: 1, r: 0, text: `+${raid.bases.length}` });
-  }
-}
-
 /** The Volatile Cloud goes up: every hull under it is hurt, and the carrier
  *  if it's under it too. Over open water, nothing. */
 export function ignite(g: Game, th: Threat): void {
@@ -809,20 +640,6 @@ export function guardFor(g: Game, th: Threat, from: Point): Threat | null {
   const guards = g.threats.filter((t) => t.kind === 'guard' && !t.dead && t.foe?.link === th.id);
   if (!guards.length) return null;
   return guards.sort((a, b) => dist(a.x, a.y, from.x, from.y) - dist(b.x, b.y, from.x, from.y))[0];
-}
-
-/** The Flak Picket: a shot flying through its ring (at anything but the
- *  picket) is shot down, one every half second. True if this one was. */
-export function picketShoots(g: Game, it: { x: number; y: number; target: number | null }): boolean {
-  for (const p of g.threats) {
-    if (p.kind !== 'picket' || p.dead || !p.foe || it.target === p.id) continue;
-    if (p.foe.t < FOE.picket.every || dist(it.x, it.y, p.x, p.y) > FOE.picket.ring) continue;
-    p.foe.t = 0;
-    addFx(g, 'flak', it.x, it.y, { life: 0.4, r: 16 });
-    cue(g, 'gun.burst', it.x, it.y, { gain: 0.5 });
-    return true;
-  }
-  return false;
 }
 
 /** A flashing Lure Beacon within reach of a helper: it goes for that. */
@@ -920,18 +737,6 @@ export function paintTarget(g: Game, th: Threat): void {
   const p = g.foe.paint;
   if (!p || th.target === CARRIER_TARGET || th.target < 0 || !g.ships.some((s) => s.id === p.ship)) return;
   if (g.rng.foes.chance(FOE.spotter.share)) th.target = p.ship;
-}
-
-/** A wing drone past the X peels off for a ship of its own: the nearest
- *  one no other drone of the wing has. */
-function peel(g: Game, th: Threat): void {
-  const f = th.foe!;
-  f.state = 1;
-  th.speed = FOE.crossWing.peel;
-  const taken = new Set(g.threats.filter((t) => t.kind === 'crosser' && t.foe?.link === f.link && t.foe.state === 1 && t !== th).map((t) => t.target));
-  const ships = targetable(g, VIEW.width + 40).sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y));
-  const s = ships.find((o) => !taken.has(o.id)) ?? ships[0];
-  th.target = s ? s.id : CARRIER_TARGET;
 }
 
 /** The Attack Helicopter: fly to a spot beside the lane (marked as it
@@ -1126,20 +931,6 @@ export function foesBusy(g: Game): boolean {
   return g.foe.shots.length > 0 || g.foe.marks.length > 0;
 }
 
-/** A loitering group dives together, each drone at a different ship (the
- *  nearest ones to the spot). */
-function diveGroup(g: Game, link: number, x: number, y: number): void {
-  const group = g.threats.filter((t) => t.kind === 'loiter' && !t.dead && t.foe?.link === link && t.foe.state < 2);
-  if (!group.length) return;
-  const ships = targetable(g, VIEW.width + 40).sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y));
-  group.forEach((t, k) => {
-    t.foe!.state = 2;
-    t.foe!.t = 0;
-    t.target = ships.length ? ships[k % ships.length].id : CARRIER_TARGET;
-  });
-  cue(g, 'foe.dive', x, y);
-}
-
 /** The Rocket Truck: drive to the shore, raise the launcher slowly (the
  *  tell), fire its rockets one by one, lower and drive back. */
 function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
@@ -1308,20 +1099,12 @@ export function foeEta(g: Game, th: Threat): number | null {
       const p = f && f.link >= 0 ? g.pickups.find((o) => o.id === f.link) : undefined;
       return p ? dist(th.x, th.y, p.x, p.y) / th.speed : 12;
     }
-    case 'crosser':
-      return f && f.state === 0 ? dist(th.x, th.y, f.px, f.py) / th.speed + 2 : null;
-    case 'loiter':
-      return f && f.state === 1 ? 6 : null;
     case 'guard':
       return 30;
     case 'tender':
       return 5;
-    case 'picket':
-      return 4;
     case 'lure':
       return 3;
-    case 'barge':
-      return 7;
     case 'cloud': {
       const s = g.ships.reduce((m, o) => Math.min(m, dist(o.x, o.y, th.x, th.y)), Infinity);
       return Math.max(0.5, (s - FOE.cloud.radius) / Math.max(1, th.speed));

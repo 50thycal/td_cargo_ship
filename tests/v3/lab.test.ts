@@ -23,12 +23,16 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every new enemy, every weapon (29), eight combos and every map, each once', () => {
+  it('every new enemy (17), every weapon (29), eight combos and every map, each once (74 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(74);
+    expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
     for (const f of FOE_ORDER) expect(LAB_CARDS.filter((c) => c.kind === 'enemy' && c.foes[0] === f), f).toHaveLength(1);
     expect(LAB_CARDS.filter((c) => c.kind === 'weapon').map((c) => c.weapon).sort()).toEqual([...ABILITY_ORDER].sort());
     expect(LAB_CARDS.filter((c) => c.kind === 'combo')).toHaveLength(8);
+    // The combos that used the enemies cut after the playtest, remade.
+    expect(LAB_CARDS.filter((c) => ['combo-siege-truck', 'combo-guard-seeker', 'combo-hydra-tesla'].includes(c.id)).map((c) => c.foes)).toEqual([['siege', 'rocketTruck'], ['bodyguard'], ['hydra', 'sprinter']]);
     expect(LAB_CARDS.filter((c) => c.kind === 'map').map((c) => c.map)).toEqual(MAP_ORDER);
     // The order: the open questions first, the reworked weapons first.
     expect(ids.slice(0, 3)).toEqual(['diveBomber', 'siege', 'rocketTruck']);

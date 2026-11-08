@@ -155,6 +155,17 @@ export const BUILD = [
   },
 ];
 
+/** Cut from the game after the Test Lab playtest (2026-11-08,
+ *  tools/v3/test-lab/playtest-2026-11-08.json): the player's Cut verdicts
+ *  and notes. BUILD keeps their designs, for the review page. */
+export const CUT_DATE = '2026-11-08';
+export const CUT = [
+  { id: 'loiter', note: 'Doesn\'t really make any sense how it goes that circle it\'s really easy to kill it before you even get there' },
+  { id: 'crossWing', note: 'Not even sure what this one is doing' },
+  { id: 'picket', note: 'Does not work well and its radius is a little too small and direct hits from guns are not hit with flak, but pass-through is, which makes no sense' },
+  { id: 'barge', note: '' },
+];
+
 /** Readings of the marks the player should check (shown on the page). */
 export const READINGS = [
   { id: 'p-dive-bomber', text: 'The Dive Bomber had a note but no verdict button pressed. The note starts "I like this", so it is built, your way (circle first, the plane only at the last moment, the falling bomb can\'t be stopped).' },

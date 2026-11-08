@@ -71,7 +71,7 @@ import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, picketShoots, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, sparks, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
 export const CARRIER_TARGET = -1;
@@ -3439,13 +3439,11 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   hydra: GUIDED.waveSpeedShare,
   dart: 0.5,
   rocketTruck: 0,
-  loiter: 0.6,
   attackHeli: 0.3,
   heliRocket: 0.5,
   torpedoSub: 0,
   torpedo: 0.3,
   armored: 0.6,
-  crosser: 0.6,
   scavenger: 0.3,
   stealthJet: 0.3,
   stealthBomber: 0.3,
@@ -3454,9 +3452,7 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   spotter: 0.2,
   tender: 0,
   guard: 0,
-  picket: 0,
   lure: 0,
-  barge: 0,
   cloud: 0.3,
 };
 
@@ -4215,8 +4211,6 @@ function updateInterceptors(g: Game, dt: number): void {
       live.push(it);
       continue;
     }
-    // The enemy build: a Flak Picket shoots down shots through its ring.
-    if (picketShoots(g, it)) continue;
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
     // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
     const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
@@ -5106,13 +5100,11 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   hydra: 'kill.missile',
   dart: 'kill.small',
   rocketTruck: 'truck.destroyed',
-  loiter: 'kill.small',
   attackHeli: 'kill.big',
   heliRocket: 'kill.small',
   torpedoSub: 'sub.destroyed',
   torpedo: 'kill.missile',
   armored: 'kill.big',
-  crosser: 'kill.small',
   scavenger: 'kill.small',
   stealthJet: 'kill.big',
   stealthBomber: 'kill.big',
@@ -5121,9 +5113,7 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   spotter: 'kill.big',
   tender: 'kill.big',
   guard: 'kill.small',
-  picket: 'kill.big',
   lure: 'kill.missile',
-  barge: 'structure.down',
   cloud: 'kill.missile',
 };
 
@@ -5160,13 +5150,11 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   hydra: 'missile.launch',
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
-  loiter: 'drone.launch',
   attackHeli: 'foe.rotor',
   heliRocket: 'missile.launch',
   torpedoSub: 'sub.surface',
   torpedo: 'sub.fire',
   armored: 'drone.launch',
-  crosser: 'drone.launch',
   scavenger: 'drone.launch',
   stealthJet: 'strafer.pass',
   stealthBomber: 'bomber.pass',
@@ -5175,9 +5163,7 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   spotter: 'bomber.pass',
   tender: 'sub.surface',
   guard: 'minidrone.spawn',
-  picket: 'sub.surface',
   lure: 'mine.drop',
-  barge: 'sub.surface',
   cloud: 'mine.drop',
   // Structures are raised, never launched.
 };

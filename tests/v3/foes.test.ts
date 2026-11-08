@@ -3,7 +3,7 @@
 // card says.
 
 import { describe, expect, it } from 'vitest';
-import { THREATS, VIEW } from '../../src/v3/data/config';
+import { THREATS } from '../../src/v3/data/config';
 import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
@@ -40,15 +40,15 @@ function queued(g: Game): Set<string> {
 }
 
 describe('the roster', () => {
-  it('twenty-one enemies, five, five, five and six a chapter; every chapter is built', () => {
-    expect(FOE_ORDER).toHaveLength(21);
-    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([5, 5, 5, 6]);
-    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(21);
+  it('seventeen enemies (four cut after the Test Lab playtest), four, four, five and four a chapter; every chapter is built', () => {
+    expect(FOE_ORDER).toHaveLength(17);
+    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([4, 4, 5, 4]);
+    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(17);
     for (const f of FOES_BUILT) expect(THREATS[FOES[f].kind], f).toBeDefined();
-    expect(foesInChapter(1)).toEqual(['sprinter', 'decoy', 'hydra', 'rocketTruck', 'loiter']);
-    expect(foesInChapter(2)).toEqual(['attackHeli', 'torpedoSub', 'armored', 'crossWing', 'scavenger']);
+    expect(foesInChapter(1)).toEqual(['sprinter', 'decoy', 'hydra', 'rocketTruck']);
+    expect(foesInChapter(2)).toEqual(['attackHeli', 'torpedoSub', 'armored', 'scavenger']);
     expect(foesInChapter(3)).toEqual(['stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter']);
-    expect(foesInChapter(4)).toEqual(['tender', 'bodyguard', 'picket', 'lure', 'barge', 'cloud']);
+    expect(foesInChapter(4)).toEqual(['tender', 'bodyguard', 'lure', 'cloud']);
     expect(FOES_BUILT).toEqual(FOE_ORDER);
     // Later chapters send the earlier ones too.
     expect(foesUpTo(4)).toEqual(expect.arrayContaining(foesInChapter(1)));
@@ -63,15 +63,16 @@ describe('the roster', () => {
 });
 
 describe('the campaign', () => {
-  it('each chapter 1 map leads with a different one of the chapter\'s new enemies', () => {
+  it('chapter 1\'s maps lead with each of the chapter\'s new enemies in turn', () => {
     const ch1 = MAP_ORDER.filter((m) => chapterOf(m) === 1);
     const firsts = ch1.map((m) => {
       const g = createGame(m, 3, 2);
       return [...queued(g)];
     });
-    // Wave 2 has exactly one foe, and the five maps cover all five.
+    // Wave 2 has exactly one foe, and the chapter's maps cover all of its
+    // new enemies.
     for (const f of firsts) expect(f).toHaveLength(1);
-    expect(new Set(firsts.flat()).size).toBe(5);
+    expect(new Set(firsts.flat()).size).toBe(foesInChapter(1).length);
     // The briefing's "first here" is that one.
     ch1.forEach((m, i) => {
       const st = newFoeState(m);
@@ -111,6 +112,17 @@ describe('Free Play', () => {
     expect(again.steps).toBe(game.steps);
     expect(again.score).toBe(game.score);
     expect(again.kills).toEqual(game.kills);
+  });
+
+  it('an old log naming an enemy cut after the Test Lab playtest still loads and replays', () => {
+    // Free Play "Only: Loitering Drones", and a lab card for the Supply Barge:
+    // both are just records now (no such enemy, no such card).
+    const { log } = playMimic('strait', 11, { firstWave: 5, freePlay: { weapons: [{ id: 'cutter', level: 1 }], frequentDrops: false } });
+    const old = { ...log, freePlay: { ...log.freePlay!, enemies: 'loiter' as FoeId }, lab: { card: 'barge', length: 'quick' as const, mix: 'normal' as const } };
+    const g = replay(old);
+    expect(g.lab).toBeNull();
+    expect(g.foe.pool).toEqual([]);
+    expect(g.steps).toBeGreaterThan(0);
   });
 });
 
@@ -210,24 +222,6 @@ describe('chapter 1: Home Waters', () => {
     expect(g.foe.shots).toHaveLength(0);
   });
 
-  it('Loitering Drones circle their spot until a ship comes near, then all dive at once', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'loiter', base: 1 }, base(g));
-    const group = live(g, 'loiter');
-    expect(group).toHaveLength(FOE.loiter.size);
-    const f = group[0].foe!;
-    // Waiting: they circle while no ship is inside the ring.
-    run(g, 30, () => group.every((t) => t.foe!.state === 1));
-    expect(group.every((t) => t.foe!.state === 1)).toBe(true);
-    for (const t of group) expect(Math.hypot(t.x - f.px, t.y - f.py)).toBeLessThan(FOE.loiter.orbit + 2);
-    const near = () => g.ships.some((s) => Math.hypot(s.x - f.px, s.y - f.py) <= FOE.loiter.trigger);
-    run(g, 60, () => near() || group.some((t) => t.foe!.state === 2));
-    // They dived together, and only once a ship came near.
-    expect(near()).toBe(true);
-    step(g, DT);
-    expect(group.every((t) => t.foe!.state === 2)).toBe(true);
-    expect(group.every((t) => t.x > -1 && t.x < VIEW.width + 1)).toBe(true);
-  });
 });
 
 describe('chapter 2: The Narrows', () => {
@@ -316,27 +310,6 @@ describe('chapter 2: The Narrows', () => {
       return a.dead;
     });
     expect(banked).toBe(true);
-  });
-
-  it('a Crossing Wing\'s two lines meet at the X, then each drone peels off for a different ship', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'crosser', base: 0 }, g.map.bases[0]);
-    const wing = live(g, 'crosser');
-    expect(wing).toHaveLength(FOE.crossWing.per * 2);
-    const X = { x: wing[0].foe!.px, y: wing[0].foe!.py };
-    const leaders = wing.filter((t) => t.foe!.n === 0);
-    expect(new Set(leaders.map((t) => `${t.foe!.sx}`)).size).toBe(2);
-    // Both leaders reach the X together.
-    let closest = Infinity;
-    run(g, 20, () => {
-      closest = Math.min(closest, Math.hypot(leaders[0].x - leaders[1].x, leaders[0].y - leaders[1].y));
-      return leaders.every((t) => t.foe!.state === 1);
-    });
-    expect(closest).toBeLessThan(30);
-    expect(Math.hypot(leaders[0].x - X.x, leaders[0].y - X.y)).toBeLessThan(60);
-    run(g, 6, () => wing.every((t) => t.dead || t.foe!.state === 1));
-    const targets = wing.filter((t) => !t.dead).map((t) => t.target);
-    expect(new Set(targets).size).toBe(Math.min(targets.length, g.ships.length));
   });
 
   it('a Scavenger takes the pickup it flies to (it is gone); shot first, the pickup stays', () => {
@@ -495,30 +468,6 @@ describe('chapter 4: Open War', () => {
     expect(g.kills.guard).toBe(1);
   });
 
-  it('a Flak Picket shoots down shots through its ring at something else, but not shots at itself', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'picket', base: -1 });
-    const p = live(g, 'picket')[0];
-    run(g, 1);
-    // A drone beyond the picket, so the shot must cross the ring.
-    const c = g.map.carrier;
-    const far = { x: p.x + (p.x - c.x) * 0.5, y: p.y + (p.y - c.y) * 0.5 };
-    launchFoe(g, { at: 0, kind: 'armored', base: 1 }, far);
-    const target = live(g, 'armored')[0];
-    target.speed = 0;
-    g.ammo = 6;
-    tap(g, target.x, target.y, 20);
-    const fx0 = g.fx.filter((f) => f.kind === 'flak').length;
-    run(g, 3, () => g.interceptors.length === 0);
-    expect(g.fx.filter((f) => f.kind === 'flak').length).toBeGreaterThan(fx0);
-    expect(target.hp).toBe(THREATS.armored.hp);
-    // At the picket itself: they get through.
-    g.ammo = 6;
-    tap(g, p.x, p.y, 20);
-    run(g, 3, () => g.interceptors.length === 0);
-    expect(p.hp).toBe(THREATS.picket.hp - 1);
-  });
-
   it('a Lure Beacon: helpers\' shots do nothing to it, a tap does', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'lure', base: -1 });
@@ -532,19 +481,6 @@ describe('chapter 4: Open War', () => {
     // It gives out on its own after a while.
     run(g, FOE.lure.life + 1, () => l.dead);
     expect(l.dead).toBe(true);
-  });
-
-  it('a Supply Barge adds a launch from each site in every raid that starts while it floats', () => {
-    const g = createGame('strait', 6, 5);
-    applyFreePlay(g, { weapons: [], frequentDrops: false, enemies: 'none' });
-    const before = g.queue.length;
-    launchFoe(g, { at: 0, kind: 'barge', base: -1 });
-    const barge = live(g, 'barge')[0];
-    expect(barge.hp).toBe(THREATS.barge.hp);
-    const raid = g.raids[0];
-    run(g, raid.at + 0.1);
-    const added = g.queue.length + g.threats.length - before;
-    expect(added).toBeGreaterThan(0);
   });
 
   it('a Volatile Cloud set off over ships hurts them; over open water it hurts nothing', () => {

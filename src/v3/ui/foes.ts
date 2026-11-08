@@ -1,7 +1,6 @@
 // The enemy build: how the new enemies look (docs/design/v3-enemy-build.md).
 // Each one is drawn so its tell reads on a phone: the booster flare, the
-// decoys' strobe, the forked tail, the launcher's slow raise, the circling
-// group.
+// decoys' strobe, the forked tail, the launcher's slow raise.
 
 import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
@@ -31,9 +30,6 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
       trail(ctx, th.x, th.y, heading, 54, 'rgba(196,140,255,0.7)', 3.5);
       missile(ctx, th.x, th.y, heading, 24, 6, '#f3e8ff', '#b07cff');
       return true;
-    case 'loiter':
-      drawLoiter(ctx, th, heading);
-      return true;
     case 'rocketTruck':
       drawRocketTruck(ctx, g, th);
       return true;
@@ -50,9 +46,6 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
     case 'armored':
       drawArmored(ctx, g, th, heading);
       return true;
-    case 'crosser':
-      deltaWing(ctx, th.x, th.y, heading, 0.85, (th.foe?.state ?? 0) === 0 ? '#7dd3c0' : '#5eead4');
-      return true;
     case 'scavenger':
       drawScavenger(ctx, g, th, heading);
       return true;
@@ -65,14 +58,8 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
     case 'guard':
       deltaWing(ctx, th.x, th.y, th.heading, 0.62, '#fde68a');
       return true;
-    case 'picket':
-      drawPicket(ctx, th);
-      return true;
     case 'lure':
       drawLure(ctx, g, th);
-      return true;
-    case 'barge':
-      drawBarge(ctx, th);
       return true;
     case 'cloud':
       drawCloud(ctx, g, th);
@@ -96,14 +83,11 @@ export function drawFoeAir(ctx: CanvasRenderingContext2D, g: Game, th: Threat): 
   else if (th.kind === 'spotter') drawSpotter(ctx, th);
 }
 
-/** Under everything that flies: the loiter spots, the trucks' targets, the
- *  periscopes, the torpedo lines, the wing's crossing. */
+/** Under everything that flies: the trucks' targets, the periscopes, the
+ *  torpedo lines. */
 export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   for (const m of g.foe.marks) if (m.kind === 'periscope') drawPeriscope(ctx, g, m.x, m.y, m.t / m.dur);
   for (const th of g.threats) if (th.kind === 'torpedo' && !th.dead) drawTorpedoLine(ctx, g, th);
-  const wings = new Map<number, Threat>();
-  for (const th of g.threats) if (th.kind === 'crosser' && !th.dead && th.foe && th.foe.state === 0) wings.set(th.foe.link, th);
-  for (const th of wings.values()) drawCrossing(ctx, g, th);
   for (const th of g.threats) if (th.kind === 'attackHeli' && !th.dead && th.foe && th.foe.state === 0) drawHeliSpot(ctx, g, th);
   // Marks on the water: a dive bomber's circle (before the plane, under it,
   // under its bomb), a siege battery's circles.
@@ -113,11 +97,9 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   }
   for (const th of g.threats) if (th.kind === 'diveBomber' && th.foe && th.foe.state === 0) drawTargetCircle(ctx, g, th.foe.px, th.foe.py, FOE.diveBomber.hit + 14, 1, '255,77,61');
   for (const s of g.foe.shots) if (s.kind === 'bomb') drawTargetCircle(ctx, g, s.tx, s.ty, FOE.diveBomber.hit + 14, 1, '255,77,61');
-  // A Flak Picket's ring; a Bodyguard Ring's orbit; a Supply Barge's +1
-  // over every live site; a Tender's beam as it charges.
+  // A Bodyguard Ring's orbit; a Tender's beam as it charges.
   for (const th of g.threats) {
     if (th.dead) continue;
-    if (th.kind === 'picket') drawPicketRing(ctx, g, th);
     if (th.kind === 'heavy' && g.threats.some((t) => t.kind === 'guard' && !t.dead && t.foe?.link === th.id)) {
       ctx.strokeStyle = 'rgba(253,230,138,0.35)';
       ctx.lineWidth = 2;
@@ -125,7 +107,6 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.arc(th.x, th.y, FOE.bodyguard.orbit, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (th.kind === 'barge') drawBargeTags(ctx, g);
     if (th.kind === 'tender' && th.foe?.state === 1) {
       const t = g.threats.find((o) => o.id === th.foe!.link && !o.dead);
       if (t) {
@@ -151,20 +132,6 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   const spotter = p && g.threats.find((t) => t.id === p.by && !t.dead);
   const ship = p && g.ships.find((o) => o.id === p.ship);
   if (spotter && ship) drawPaint(ctx, g, spotter, ship);
-  const spots = new Map<number, Threat>();
-  for (const th of g.threats) if (th.kind === 'loiter' && !th.dead && th.foe && th.foe.state < 2) spots.set(th.foe.link, th);
-  for (const th of spots.values()) {
-    const f = th.foe!;
-    // The ambush ring: how close a ship can come before they dive.
-    const pulse = 0.5 + 0.5 * Math.sin(g.t * 3);
-    ctx.strokeStyle = `rgba(255,170,90,${0.18 + 0.14 * pulse})`;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 10]);
-    ctx.beginPath();
-    ctx.arc(f.px, f.py, FOE.loiter.trigger, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
 }
 
 /** Shots no interceptor can stop: the Rocket Truck's rockets, a dive
@@ -374,13 +341,6 @@ function drawHydra(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   }
   ctx.restore();
   missile(ctx, th.x, th.y, heading, 30, 7, th.hp > 1 ? '#e9d8ff' : '#f6eaff', '#b07cff');
-}
-
-/** Loitering drones: drones in a circle; diving, they turn red. */
-function drawLoiter(ctx: CanvasRenderingContext2D, th: Threat, heading: number): void {
-  const diving = (th.foe?.state ?? 0) >= 2;
-  if (diving) trail(ctx, th.x, th.y, heading, 40, 'rgba(255,90,70,0.5)', 3);
-  deltaWing(ctx, th.x, th.y, heading, 0.9, diving ? '#ff7a63' : '#e0a971');
 }
 
 /** The Rocket Truck: a red-roofed launcher truck, unlike the grey missile
@@ -673,32 +633,6 @@ function drawArmored(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading
     }
   }
   hpPips(ctx, th.x, th.y - 42, th.hp, THREATS.armored.hp);
-}
-
-/** The Crossing Wing's plan, while its lines close: each line to the X. */
-function drawCrossing(ctx: CanvasRenderingContext2D, g: Game, lead: Threat): void {
-  const f = lead.foe!;
-  const groups = new Map<string, Threat>();
-  for (const t of g.threats) if (t.kind === 'crosser' && t.foe?.link === f.link && t.foe.state === 0 && t.foe.n === 0) groups.set(`${t.foe.sx},${t.foe.sy}`, t);
-  ctx.strokeStyle = 'rgba(125,211,192,0.4)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 8]);
-  for (const t of groups.values()) {
-    ctx.beginPath();
-    ctx.moveTo(t.x, t.y);
-    ctx.lineTo(f.px, f.py);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  const pulse = 0.5 + 0.5 * Math.sin(g.t * 7);
-  ctx.strokeStyle = `rgba(125,211,192,${0.6 + 0.4 * pulse})`;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(f.px - 16, f.py - 16);
-  ctx.lineTo(f.px + 16, f.py + 16);
-  ctx.moveTo(f.px + 16, f.py - 16);
-  ctx.lineTo(f.px - 16, f.py + 16);
-  ctx.stroke();
 }
 
 /** The Scavenger: a drone with a claw, a line to the pickup it wants, and
@@ -1029,51 +963,6 @@ function drawTender(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   void g;
 }
 
-/** The Flak Picket: a small grey warship with a gun fore and aft. */
-function drawPicket(ctx: CanvasRenderingContext2D, th: Threat): void {
-  ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.fillStyle = '#52525b';
-  ctx.strokeStyle = '#111827';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(34, 0);
-  ctx.lineTo(20, -10);
-  ctx.lineTo(-30, -10);
-  ctx.lineTo(-34, 0);
-  ctx.lineTo(-30, 10);
-  ctx.lineTo(20, 10);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#27272a';
-  for (const x of [-18, 14]) {
-    ctx.beginPath();
-    ctx.arc(x, 0, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(x, -1.5, 12, 3);
-  }
-  ctx.restore();
-  hpPips(ctx, th.x, th.y - 30, th.hp, THREATS.picket.hp);
-}
-
-/** The picket's ring, faint, and brighter as it is ready to fire again. */
-function drawPicketRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const R = FOE.picket.ring;
-  const ready = (th.foe?.t ?? 0) >= FOE.picket.every;
-  ctx.fillStyle = 'rgba(244,114,182,0.06)';
-  ctx.beginPath();
-  ctx.arc(th.x, th.y, R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = ready ? 'rgba(244,114,182,0.6)' : 'rgba(244,114,182,0.3)';
-  ctx.lineWidth = 2.5;
-  ctx.setLineDash([4, 6]);
-  ctx.beginPath();
-  ctx.arc(th.x, th.y, R, g.t * 0.3, g.t * 0.3 + Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
 /** The Lure Beacon: a red buoy with a light that flashes, and rings. */
 function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const on = Math.floor(g.t * 5) % 2 === 0;
@@ -1104,42 +993,6 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
     ctx.fill();
   }
   hpPips(ctx, th.x, th.y - 42, th.hp, THREATS.lure.hp);
-}
-
-/** The Supply Barge: a flat hull stacked with crates. */
-function drawBarge(ctx: CanvasRenderingContext2D, th: Threat): void {
-  ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.fillStyle = '#57534e';
-  ctx.strokeStyle = '#111827';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(-46, -16, 92, 32, 6);
-  ctx.fill();
-  ctx.stroke();
-  const crate = ['#b45309', '#a16207', '#92400e'];
-  for (let i = 0; i < 6; i++) {
-    ctx.fillStyle = crate[i % 3];
-    ctx.fillRect(-38 + (i % 3) * 26, -12 + Math.floor(i / 3) * 13, 22, 11);
-    ctx.strokeRect(-38 + (i % 3) * 26, -12 + Math.floor(i / 3) * 13, 22, 11);
-  }
-  ctx.restore();
-  hpPips(ctx, th.x, th.y - 32, th.hp, THREATS.barge.hp);
-}
-
-/** While a barge floats, every live launch site wears a +1. */
-function drawBargeTags(ctx: CanvasRenderingContext2D, g: Game): void {
-  ctx.font = '900 20px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  g.map.bases.forEach((b, i) => {
-    if (!b.kinds.length || b.cove || b.chute || b.generator || g.baseDown[i]) return;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.beginPath();
-    ctx.roundRect(b.x + 18, b.y - 46, 34, 24, 6);
-    ctx.fill();
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText('+1', b.x + 35, b.y - 27);
-  });
 }
 
 /** The Volatile Cloud: a yellow-green gas, churning. Over ships, its edge

@@ -164,7 +164,6 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   // The enemy build: the new enemies' tells.
   'foe.flare': sfx('foe.flare', 1, 0.35, { pitch: [0.94, 1.06], cooldownMs: 120, maxVoices: 2 }),
   'foe.split': sfx('foe.split', 1, 0.45, { pitch: [0.95, 1.05], cooldownMs: 100, maxVoices: 2 }),
-  'foe.dive': sfx('foe.dive', 1, 0.4, { pitch: [0.95, 1.05], cooldownMs: 300, maxVoices: 2 }),
   'foe.rotor': sfx('foe.rotor', 1, 0.45, { cooldownMs: 400, maxVoices: 2 }),
   'foe.torpedo': sfx('foe.torpedo', 1, 0.45, { pitch: [0.95, 1.05], cooldownMs: 200, maxVoices: 2 }),
   'foe.plate': sfx('foe.plate', 1, 0.35, { pitch: [0.9, 1.1], cooldownMs: 60, maxVoices: 2 }),

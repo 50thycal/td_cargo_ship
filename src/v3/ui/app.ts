@@ -140,8 +140,6 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   spotter: 'SPOTTER DOWN',
   siege: 'BATTERY DOWN',
   tender: 'TENDER DOWN',
-  picket: 'PICKET DOWN',
-  barge: 'BARGE DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -172,11 +170,9 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   decoy: 'Half this swarm is fake. Up close the decoys strobe white: save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  loiter: 'They circle until a ship comes near, then all dive. Clear them while they wait.',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
   torpedoSub: 'Up for a few seconds: three hits. Its torpedo runs the dashed line. Shoot it, or get off the line.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
-  crosser: 'Two lines meet at the X, then split for six ships. One blast at the X takes them all.',
   scavenger: 'It flies off with the pickup it is after. Shoot it, or take the pickup first.',
   stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',
   stealthBomber: 'No warning: a flying wing with three missiles. Six hits, or shoot what it drops.',
@@ -185,9 +181,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   spotter: 'It marks one ship for the others and calls a strike on it. Shoot it down to call it off.',
   tender: 'Mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
-  picket: 'Shoots down your shots that fly through its ring. Sink it, or fire in bursts.',
   lure: 'Your helpers chase it and do nothing to it. Two taps sink it.',
-  barge: 'While it floats, every raid gets one more missile per site. Twelve hits.',
   cloud: 'Set off over your ships, it hurts them. Pop it over open water; don\'t fire into it over the convoy.',
 };
 
@@ -3274,11 +3268,9 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   hydra: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
-  loiter: 'Loitering drones did the most damage: clear the circling group before ships reach it; Flak and Thermobaric catch it whole.',
   attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
   torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
-  crosser: 'Crossing wings did the most damage: one area shot at the X catches the whole wing.',
   stealthJet: 'Stealth strafers did the most damage: Aegis Launchers and the Shield answer a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
