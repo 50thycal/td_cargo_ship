@@ -1005,6 +1005,39 @@ function drawPlanWeapons(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.fillText(full ? 'FULL ▸ 6' : half ? 'HALF ▸ 3' : 'CHARGING', c.x, c.y - r - 16);
     }
   }
+  // Laser Cutter (the player's note): a thin red sight line from the
+  // carrier's gun to the finger while it is down, so the cut looks like it
+  // comes from the ship. Only a look: the cut is still where the finger is.
+  if (w?.id === 'cutter' && p && (p.mode === 'pending' || p.mode === 'swipe')) {
+    const gx = c.x;
+    const gy = c.y - 6;
+    const flick = 0.85 + 0.15 * Math.sin(g.t * 41);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(255,30,40,${0.16 * flick})`;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(gx, gy);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,70,70,${0.8 * flick})`;
+    ctx.lineWidth = 1.75;
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    for (const [x, y, r] of [[gx, gy, 5], [p.x, p.y, 4]] as const) {
+      ctx.fillStyle = `rgba(255,40,40,${0.3 * flick})`;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ff4a4a';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,235,235,0.95)';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   // Grapnel: the cable from the carrier to the ball, and the ball's ring.
   if (p?.mode === 'hook') {
     const th = g.threats.find((t) => t.id === p.hook && !t.dead);

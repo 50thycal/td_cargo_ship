@@ -263,3 +263,49 @@ Support: enemies that change the rules for the others. Last, once every other en
   1. One from wave 2, rising to three on wave 10 (as built, recommended)
   2. Fewer: they should be a surprise, not the wave
   3. More: make them the main event
+
+## Test Lab round 1 (2026-11-08)
+
+What the player's Test Lab verdicts (`tools/v3/test-lab/playtest-2026-11-08.json`) changed. Screenshots: `docs/design/img/enemy-lab-round1/`.
+
+### Decoy Drones (tune)
+
+*"Make the decoy drones a little less obvious, especially when they first launch... a little delay."*
+
+- **The tell comes late.** A decoy strobes only within **160 px** of its ship (was 300) **and** not before **3.5 s** after launch (new, `FOE.decoy.revealAfter`). Measured on every map: they used to show from launch (as early as 0.02 s out) and for 4 to 6 s of a 7 to 10 s flight; now never before 3.5 s, and for about the last 2 to 3 s. A decoy that reaches its ship sooner than 3.5 s fizzles without a strobe.
+- **Nothing else gives them away.** Decoys now fly exactly as the attack drones beside them (the same weave and nose swing; before, they flew dead straight while the real ones weaved), at the same speed, the same size and colour, the same launch and kill sounds, and now the same small kill burst (theirs was the bigger one). Helpers and bots still leave a decoy alone only once it has strobed.
+- Shots: `decoy-1-launch*.jpg` (six alike), `decoy-2-reveal.jpg` (one strobing near its ship, the rest still alike).
+
+### Armored Drone (keep)
+
+*"The animation just needs to be a little better for the shield."* Drawing only.
+
+- The shield is a curved steel plate across exactly the arc the sim protects (70° either side of the nose), in four segments (one per plate hit; a spent one is a dim gap, the middle holds longest), with a cyan field fanning out in front and a humming energy rim.
+- A blocked hit flares it: the rim brightens and widens, a white flash on the plate, sparks thrown off.
+- It turns with the drone, so as it banks the shield visibly swings off the carrier; while it banks, the open flank and tail glow yellow (with the tail ring as before).
+- Shots: `armored-1-shield.jpg`, `armored-2-deflect.jpg`, `armored-3-bank*.jpg`.
+
+### Spotter Plane (tune)
+
+*"Spot from a little further, not by much."*
+
+- `FOE.spotter.off` (how far past the lane's edge its circle sits) **150 → 185 px** (+23%), and its circle 110 → 100 px so the stand-off fits on screen. Its nearest pass to the lane's edge goes from 40 to 85 px; its closest pass to the painted ship +25% on the lab's water (The Strait 158 → 200 px); its average distance +4% (332 → 344 px over every map, 12 seeds): on most maps the lane is about 320 px from the top, so the screen edge caps it.
+- It has its own spot now (the helicopter's spot it shared ignored its circle): the whole circle stays at least 35 px (`FOE.spotter.edge`) inside the screen on every map (before, it flew off the top or bottom on seven of the twenty), and it prefers the lane's far side from the carrier and a spot that keeps its stand-off from every lane. Checked at 874×402 and 667×375 (`spotter-paint-*.jpg`).
+
+### Hydra Missile (keep)
+
+*"Make sure damages are correct: whole it does double, split each does one."*
+
+- They were right: a Hydra that lands whole does **2** to its hull, and each dart **1** (two darts at two different ships). New tests check both (a Formation's armour still takes 1 off a hit, down to 1, as for every threat). No change.
+
+### Stealth Strafer (keep)
+
+*"Make this one a little faster."*
+
+- Speed **270 → 315 px/s** (+17%), the whole flight (run-in and pass). Its run-in grows with it, **300 → 350 px**, so the time to shoot it before its guns open stays about 1.1 s. Its share of the wave speed-up stays 0.3.
+
+### Laser Cutter: a red sight line (player's note, Saltgate)
+
+*"A sniper-like red laser beam tracking your movement... just visual, to make it look like it's coming from the ship."*
+
+- With the Cutter loaded, while your finger is down (before and during the swipe) a thin, glowing red line runs from the carrier's gun to your finger, a red dot at each end. Visual only: the cut is unchanged. Shots: `cutter-1-aim.jpg`, `cutter-2-swipe.jpg`.

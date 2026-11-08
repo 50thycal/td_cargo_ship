@@ -109,7 +109,10 @@ export const FOE_LEAD_SHARE = 0.6;
 /** The numbers (first proposals; the plan doc has them in words). */
 export const FOE = {
   sprinter: { size: 4, boostAt: 160, flare: 0.6, sprint: 300 },
-  decoy: { size: 6, fakes: 3, revealAt: 300, fizzle: 40 },
+  // Test Lab round 1: the strobe gave them away from launch (300 px out,
+  // shown 4 to 6 s of a 7 to 10 s flight). Now within 160 px of the ship and
+  // not before 3.5 s out: about the last 2 to 3 s.
+  decoy: { size: 6, fakes: 3, revealAt: 160, revealAfter: 3.5, fizzle: 40 },
   hydra: { darts: 2, spread: 0.5, clear: 34 },
   rocketTruck: { raise: 2.4, gap: 1.5, rockets: 5, rocketSpeed: 560, hitRadius: 30, lower: 0.6 },
   loiter: { size: 4, orbit: 46, spin: 1.6, trigger: 190, dive: 230, wait: 30, settle: 1.6 },
@@ -118,11 +121,16 @@ export const FOE = {
   armored: { plate: 4, turnAt: 0.45, turn: 1.6, swing: 1.75, front: 70 },
   crossWing: { per: 3, gap: 30, peel: 130, turn: 3 },
   scavenger: { grab: 24, leave: 210, wait: 14 },
-  stealthJet: { runIn: 300 },
+  // Its run-in grows with its speed (Test Lab round 1: 270 → 315 px/s), so
+  // the time to shoot it before its guns open stays about 1.1 s.
+  stealthJet: { runIn: 350 },
   stealthBomber: { runIn: 420, bombs: 3 },
   diveBomber: { lead: 4.7, mark: 2.2, window: 1.8, fall: 0.7, high: 220, low: 50, hit: 30, splash: 70, splashDamage: 1 },
   siege: { setup: 1.5, salvos: 3, shells: 2, mark: 3.4, flight: 1.1, gap: 6, radius: 46, damage: 2, pack: 2 },
-  spotter: { orbit: 110, off: 150, paint: 2, call: 4, strike: 3, strikeGap: 0.4, share: 0.7, stay: 22 },
+  // `off`: how far past the lane's edge it circles (Test Lab round 1: "spot
+  // from a little further", 150 → 185; its circle 110 → 100 so that fits on
+  // screen). `edge`: its whole circle stays this far inside the screen.
+  spotter: { orbit: 100, off: 185, edge: 35, paint: 2, call: 4, strike: 3, strikeGap: 0.4, share: 0.7, stay: 22 },
   tender: { gap: 3.5, charge: 1, mend: 2, reach: 340 },
   bodyguard: { guards: 3, orbit: 34, spin: 2.2 },
   picket: { ring: 120, every: 0.5 },

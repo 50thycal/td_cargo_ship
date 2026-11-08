@@ -626,39 +626,118 @@ function drawTorpedo(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.restore();
 }
 
-/** The Armored Drone: a big drone with a steel plate on its nose. While it
- *  banks, a yellow ring on its tail says: now. */
+/** The Armored Drone: a big drone with a curved shield on its nose (steel
+ *  segments, one per hit it has left, in a cyan field) that flares and
+ *  throws sparks when it turns a shot away. The shield covers exactly the arc
+ *  the sim checks, so as it banks you see the shield swing off the carrier;
+ *  while it banks, its open flank glows yellow and a ring on its tail says:
+ *  now. */
 function drawArmored(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
+  void heading;
   const f = th.foe;
   const plate = f?.n ?? 0;
   const banking = (f?.state ?? 0) === 1;
-  deltaWing(ctx, th.x, th.y, th.heading, 1.5, '#8a8f6a');
-  void heading;
-  if (plate > 0) {
-    ctx.save();
-    ctx.translate(th.x, th.y);
-    ctx.rotate(th.heading);
-    ctx.strokeStyle = '#1b1b1b';
-    ctx.lineWidth = 9;
-    ctx.beginPath();
-    ctx.arc(8, 0, 26, -1.0, 1.0);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(200,215,230,${0.55 + 0.45 * (plate / FOE.armored.plate)})`;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(8, 0, 26, -1.0, 1.0);
-    ctx.stroke();
-    ctx.restore();
-  }
+  // The arc absorbs() checks: FOE.armored.front degrees either side of the
+  // nose (its sim heading, not its velocity).
+  const span = (FOE.armored.front * Math.PI) / 180;
+  const R = 33;
+  // A shot just turned away: absorbs() leaves a 20 px 'block' on its nose
+  // (it flies on 20 px or so while that lasts).
+  const nx = th.x + Math.cos(th.heading) * 16;
+  const ny = th.y + Math.sin(th.heading) * 16;
+  const hit = g.fx.find((o) => o.kind === 'block' && o.r === 20 && o.age < o.life && Math.hypot(o.x - nx, o.y - ny) < 34);
+  const flare = hit ? 1 - hit.age / hit.life : 0;
   if (banking) {
+    // The open flank and tail while it banks: the window.
+    const on = Math.floor(g.t * 8) % 2 === 0;
+    ctx.fillStyle = on ? 'rgba(253,224,71,0.2)' : 'rgba(253,224,71,0.1)';
+    ctx.beginPath();
+    ctx.moveTo(th.x, th.y);
+    ctx.arc(th.x, th.y, 44, th.heading + span, th.heading + Math.PI * 2 - span);
+    ctx.closePath();
+    ctx.fill();
     const tx = th.x - Math.cos(th.heading) * 18;
     const ty = th.y - Math.sin(th.heading) * 18;
-    const on = Math.floor(g.t * 8) % 2 === 0;
     ctx.strokeStyle = on ? '#fde047' : 'rgba(253,224,71,0.5)';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(tx, ty, 16, 0, Math.PI * 2);
     ctx.stroke();
+  }
+  deltaWing(ctx, th.x, th.y, th.heading, 1.5, '#8a8f6a');
+  if (plate > 0) {
+    ctx.save();
+    ctx.translate(th.x, th.y);
+    ctx.rotate(th.heading);
+    const hum = 0.5 + 0.5 * Math.sin(g.t * 5 + th.id);
+    // The field in front of the plate: a soft cyan fan, so which way it
+    // faces reads at a glance, even edge-on.
+    const outer = R + 16 + flare * 14;
+    const fan = ctx.createRadialGradient(0, 0, R - 2, 0, 0, outer);
+    fan.addColorStop(0, `rgba(125,211,252,${0.3 + 0.5 * flare})`);
+    fan.addColorStop(1, 'rgba(125,211,252,0)');
+    ctx.fillStyle = fan;
+    ctx.beginPath();
+    ctx.arc(0, 0, outer, -span, span);
+    ctx.arc(0, 0, R - 2, span, -span, true);
+    ctx.closePath();
+    ctx.fill();
+    // The plate: a dark backing, then one steel segment per hit left; a
+    // spent one is a dim gap. The middle holds longest.
+    const n = FOE.armored.plate;
+    const gap = 0.07;
+    const seg = (span * 2 - gap * (n - 1)) / n;
+    const lose = Array.from({ length: n }, (_, i) => i).sort((a, b) => Math.abs(b - (n - 1) / 2) - Math.abs(a - (n - 1) / 2) || a - b);
+    const spent = new Set(lose.slice(0, n - plate));
+    ctx.strokeStyle = 'rgba(15,20,26,0.9)';
+    ctx.lineWidth = 11;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, -span, span);
+    ctx.stroke();
+    for (let i = 0; i < n; i++) {
+      const a0 = -span + i * (seg + gap);
+      const live = !spent.has(i);
+      ctx.strokeStyle = !live ? 'rgba(120,135,150,0.3)' : flare > 0 ? `rgb(${Math.round(190 + 65 * flare)},${Math.round(212 + 43 * flare)},255)` : '#b8c7d6';
+      ctx.lineWidth = live ? 7 : 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, R, a0, a0 + seg);
+      ctx.stroke();
+      if (!live) continue;
+      // A bright outer edge: metal catching the light.
+      ctx.strokeStyle = 'rgba(240,248,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, R + 3, a0 + 0.04, a0 + seg - 0.04);
+      ctx.stroke();
+    }
+    // The energy rim ahead of it, humming; fainter as the plate wears.
+    ctx.strokeStyle = `rgba(125,211,252,${0.3 + 0.4 * (plate / n) * hum + 0.3 * flare})`;
+    ctx.lineWidth = 2 + 3 * flare;
+    ctx.beginPath();
+    ctx.arc(0, 0, R + 8 + flare * 4, -span * 0.95, span * 0.95);
+    ctx.stroke();
+    if (flare > 0) {
+      // The deflection: a white flash on the plate, sparks thrown off it.
+      ctx.fillStyle = `rgba(255,255,255,${0.8 * flare})`;
+      ctx.beginPath();
+      ctx.arc(R, 0, 5 + 9 * (1 - flare), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,244,200,${flare})`;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      const out = 12 + 26 * (1 - flare);
+      for (let s = 0; s < 6; s++) {
+        const a = (s - 2.5) * 0.4 + Math.sin(th.id * 3.1 + s) * 0.12;
+        const x0 = Math.cos(a) * (R + 4);
+        const y0 = Math.sin(a) * (R + 4);
+        ctx.beginPath();
+        ctx.moveTo(x0 + Math.cos(a) * (out - 10), y0 + Math.sin(a) * (out - 10));
+        ctx.lineTo(x0 + Math.cos(a) * out, y0 + Math.sin(a) * out);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+    ctx.restore();
   }
   // Plate (blue) above the body's hits (red).
   if (plate > 0) {
