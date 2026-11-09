@@ -47,9 +47,10 @@ It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
   - it plays on the lab's water (The Strait); a map card uses its own map, its own waves and its chapter's enemies;
   - it starts at wave 5 with three weapons that suit the card;
   - the card's enemy is moved up to open every wave (about 4.5 s in), and makes up about a third of that wave's other new enemies;
+  - a combo's enemies come in as a **set**, launched together and timed to be on the board at once, and a combo with a weapon drops it by the carrier just before each set (round 4, [v3-lab-round4.md](v3-lab-round4.md) has each combo's pairing rule);
   - it doesn't end at wave 10.
 - **The bar in play:** the card's name, a live count, and four buttons:
-  - **Bring one:** brings the card's enemy in now. It is a recorded command (`'b'`), so a test that used it still replays exactly.
+  - **Bring one:** brings the card's enemy in now (a combo: its whole set, and its weapon). It is a recorded command (`'b'`), so a test that used it still replays exactly.
   - **Note:** the usual note form.
   - **Setup:** wave, weapons, mix and length; the test restarts with them.
   - **Done**
@@ -72,6 +73,7 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
   1. 2026-11-08, First look at the new enemies.
   2. 2026-11-08, After the enemy fixes.
   3. 2026-11-08, Round 2 notes: the Dive Bomber, the Incendiary Missile and the Decoy Drones changed again ([v3-enemy-lab-round2.md](v3-enemy-lab-round2.md)).
+  4. 2026-11-09, Combos meet; Dual Wield and Cadence: every combo's enemies now come in together, Dual Wield's cases, War Drum blows up platforms ([v3-lab-round4.md](v3-lab-round4.md)).
 - **A card's version** (`cardRev`) is the latest round it changed in, from `LAB_CHANGES`: one short plain line per change, by round. A card that never changed is version 1. A combo also takes its enemies' and its weapon's changes (and their versions), so changing the Rocket Truck makes Siege Battery + Rocket Truck a new version too. `cardChanges(id, sinceRound)` lists what changed after a round.
 - **On the device** (`straitwatch.v3.lab`), each card keeps a list of verdicts, oldest first. Each one holds the verdict, tags, note and evidence, plus `at`, `rev` (the card's version when tested), `round` (the round it was tested in) and `build`. A new verdict is added to the list and doesn't replace the old ones. Progress saved before rounds (one result per card) loads as one round 1, version 1 verdict.
 - **Tested** means tested at the card's current version. That's the rule for the progress count, the section counts, Next up and Play 5.
@@ -109,6 +111,7 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
   - an early kill counts;
   - "Bring one" replays exactly;
   - a map card plays its own map;
+  - each combo's enemies are on the board together for 4.5 s or more, in the first wave and after Bring one; a weapon combo drops its weapon first (round 4);
   - rounds and versions: old progress becomes round 1 history; a card changed since its only verdict isn't tested, and Next up offers it first; a new verdict is added and becomes current; combos take their enemies' versions; the bridge groups logs by card and round; a log from before rounds still replays.
 - `e2e/v3.mjs` (Test Lab block):
   - the hub lists 74 cards with Next up;

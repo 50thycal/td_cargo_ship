@@ -15,6 +15,8 @@ import {
   applyFreePlay,
   createGame,
   damageCarrier,
+  loadedWeapons,
+  pickUpgrade,
   shipSpeed,
   step,
   tap,
@@ -338,6 +340,209 @@ describe('Dual Wield', () => {
     pickUp(g, 'scatter', 1);
     expect(g.weapon2?.t).toBe(WEAPON.time);
     expect(g.weapon?.id).toBe('flak');
+  });
+});
+
+// Test Lab round 4, the player on Dual Wield: "if you pick up another dual
+// wield it should reset all your current weapons that you have back to the
+// full duration ... I'm not sure there's other scenarios on there too". Every
+// case, one test each (docs/design/v3-lab-round4.md has the rule table).
+describe('Dual Wield: every case (Test Lab round 4)', () => {
+  const FULL = WEAPON.time; // level 1: the weapon time
+
+  it('another Dual Wield while it runs: the boost and both hands go back to the full time', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 9);
+    expect(g.boost!.t).toBeCloseTo(FULL - 9, 1);
+    pickUp(g, 'dualWield', 1);
+    expect(g.boost?.id).toBe('dualWield');
+    expect(g.boost!.t).toBeCloseTo(FULL, 5);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon!.t).toBeCloseTo(FULL, 5);
+    expect(g.weapon2!.t).toBeCloseTo(FULL, 5);
+    // A full time from the second pickup: still both after 14 s, both gone at 15.
+    run(g, FULL - 1);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    run(g, 1.2);
+    expect(g.boost).toBeNull();
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+  });
+
+  it('a different weapon with one hand loaded fills the second hand, on the boost\'s clock', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    run(g, 4);
+    pickUp(g, 'scatter', 1);
+    run(g, 0.1);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon2!.t).toBeCloseTo(g.boost!.t, 1);
+  });
+
+  it('a different weapon with both hands full replaces the one loaded longer ago, and keeps the boost\'s clock', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    run(g, 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 1);
+    pickUp(g, 'flak', 1);
+    // The railgun was loaded first: the Flak takes its hand.
+    expect(g.weapon?.id).toBe('flak');
+    expect(g.weapon2?.id).toBe('scatter');
+    run(g, 1);
+    pickUp(g, 'tesla', 1);
+    // Now the scatter is the older: the Tesla takes its hand.
+    expect(g.weapon?.id).toBe('flak');
+    expect(g.weapon2?.id).toBe('tesla');
+    run(g, 0.1);
+    expect(g.weapon!.t).toBeCloseTo(g.boost!.t, 1);
+    expect(g.weapon2!.t).toBeCloseTo(g.boost!.t, 1);
+  });
+
+  it('a hand\'s weapon never runs out on its own while the boost runs (1 s left when it started: it lasts the boost)', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    g.weapon!.t = 1;
+    pickUp(g, 'dualWield', 1);
+    run(g, 5);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon!.t).toBeCloseTo(g.boost!.t, 1);
+  });
+
+  it('the boost runs out: both hands end with it, said once over the gun', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    g.fx = [];
+    run(g, FULL + 0.1);
+    expect(g.boost).toBeNull();
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+    const said = g.fx.filter((f) => f.kind === 'text').map((f) => f.text);
+    expect(said).toContain('RAILGUN + SCATTERGUN DONE');
+    expect(said).toContain('DUAL WIELD DONE');
+  });
+
+  it('the same weapon as a hand holds refreshes that hand (fresh load, still on the boost\'s clock), never both hands', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 3);
+    const t0 = g.weapon2!.t0!;
+    pickUp(g, 'scatter', 1);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon2!.t0).toBeGreaterThan(t0);
+    run(g, 0.1);
+    expect(g.weapon2!.t).toBeCloseTo(g.boost!.t, 1);
+    pickUp(g, 'railgun', 1);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+  });
+
+  it('the Nuke and the power-ups leave the boost and both hands as they are', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 2);
+    const t = g.boost!.t;
+    for (const kind of ['nuke', 'ammo', 'repair'] as const) {
+      g.pickups.push({ id: g.nextId++, kind, x: 300, y: 600, age: 0 });
+      expect(tap(g, 300, 600, 30)).toBe('pickup');
+    }
+    expect(g.boost?.id).toBe('dualWield');
+    expect(g.boost!.t).toBeCloseTo(t, 5);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+  });
+
+  it('another boost replaces it: both hands keep the rest of its time and end together when it would have', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    run(g, 5);
+    pickUp(g, 'shield', 1);
+    expect(g.boost?.id).toBe('shield');
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    expect(g.weapon!.t).toBeCloseTo(FULL - 5, 1);
+    expect(g.weapon2!.t).toBeCloseTo(FULL - 5, 1);
+    run(g, FULL - 5 - 0.5);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2?.id).toBe('scatter');
+    run(g, 0.6);
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+  });
+
+  it('a cleared wave ends it and empties both hands; a level drafted after counts from the next pickup', () => {
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    pickUp(g, 'scatter', 1);
+    g.queue = [];
+    for (let i = 0; i < 60 && g.phase === 'wave'; i++) step(g, DT);
+    expect(g.phase).toBe('draft');
+    expect(g.boost).toBeNull();
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+    // The draft levels Dual Wield up: the next one picked up lasts 20 s.
+    g.offer = ['dualWield', ...g.offer.filter((o) => o !== 'dualWield')];
+    pickUpgrade(g, 'dualWield');
+    expect(g.levels.dualWield).toBe(2);
+    expect(g.phase).toBe('wave');
+    g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'dualWield', x: 300, y: 600, age: 0 });
+    tap(g, 300, 600, 30);
+    expect(g.boost!.t).toBeCloseTo(WEAPON.time * AB.dualWield.time[1], 5);
+  });
+
+  it('started with both hands empty: the first weapon takes the first hand, the next the second, both on its clock', () => {
+    const g = quietGame();
+    g.levels.railgun = 1;
+    g.slots.push('railgun');
+    pickUp(g, 'dualWield', 1);
+    expect(g.weapon).toBeNull();
+    run(g, 2);
+    pickUp(g, 'railgun', 1);
+    expect(g.weapon?.id).toBe('railgun');
+    expect(g.weapon2).toBeNull();
+    pickUp(g, 'scatter', 1);
+    expect(g.weapon2?.id).toBe('scatter');
+    run(g, 0.1);
+    expect(g.weapon!.t).toBeCloseTo(g.boost!.t, 1);
+    run(g, g.boost!.t + 0.1);
+    expect(g.weapon).toBeNull();
+    expect(g.weapon2).toBeNull();
+  });
+
+  it('started with an empty second hand: it calls a weapon in (the next kill drops one), which joins on the boost\'s clock', () => {
+    const g = quietGame(3);
+    g.levels.scatter = 1;
+    g.slots.push('scatter');
+    load(g, 'railgun', 1);
+    pickUp(g, 'dualWield', 1);
+    for (let k = 0; k < 4 && !g.pickups.some((p) => p.kind === 'weapon'); k++) {
+      shoot(g, addThreat(g, { x: 500 + k * 200, y: 300 }), 1.2);
+      g.pickups = g.pickups.filter((p) => p.kind === 'weapon');
+    }
+    const p = g.pickups.find((o) => o.kind === 'weapon')!;
+    expect(p).toBeDefined();
+    tap(g, p.x, p.y, 30);
+    expect(loadedWeapons(g).length).toBeGreaterThanOrEqual(1);
+    run(g, 0.1);
+    for (const w of loadedWeapons(g)) expect(w.t).toBeCloseTo(g.boost!.t, 1);
   });
 });
 

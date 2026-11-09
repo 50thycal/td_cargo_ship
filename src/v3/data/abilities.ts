@@ -29,6 +29,8 @@
 // changes what the weapon does, not just its numbers. (Internally they are
 // still `AbilityId`s: the draft, the slots and the save were built for them.)
 
+import type { ThreatKind } from './config';
+
 export type AbilityId =
   | 'airstrike'
   | 'railgun'
@@ -270,7 +272,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'A beat every 0.9 s: fire on it for a free 4-hit shot that pierces; off the beat, a normal shot',
       'A wider beat window',
-      'Three beats in a row, and the fourth fires a free broadside at 8 threats',
+      'On the beat it blows up any truck, siege gun, helicopter, sub or tender on its line; three beats in a row, and the fourth fires a free broadside at 8 threats',
     ],
     how: 'Tap on the beat',
   },
@@ -353,7 +355,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Arsenal Drop',
     answers: 'Combos',
     levels: [
-      'The next weapon picked up joins the loaded one: every tap fires both, for one round. Both last as long as the boost, then both end',
+      'The next weapon picked up joins the loaded one: every tap fires both, for one round. Both last as long as the boost, then both end; another Dual Wield restarts both',
       'It lasts 20 s',
       'And weapons drop twice as often while it lasts',
     ],
@@ -559,7 +561,16 @@ export const AB = {
   // same intervals": 0.6 s burned the rack) and for it to be buffed to the
   // middle of the table. At 0.9 s it won 20% at MAX; beat shots that cost
   // no round (`free`), hit harder and wider, and a quicker War Drum: 41%.
-  cadence: { period: 0.9, window: [0.16, 0.24, 0.24], damage: 4, width: 40, run: 3, broadside: 8, free: true as boolean },
+  // Test Lab round 4 ("have the third upgrade be a little bit more powerful.
+  // Maybe we could blow up the platforms and vehicles"): War Drum's beat shot
+  // also destroys outright every platform and vehicle on its line (`wrecks`;
+  // a siege gun while it is up, a torpedo sub surfaced) and every launch
+  // truck or sub up within `raider` px of it. Level 3, on the beat, only.
+  cadence: {
+    period: 0.9, window: [0.16, 0.24, 0.24], damage: 4, width: 40, run: 3, broadside: 8, free: true as boolean,
+    wrecks: ['rocketTruck', 'siege', 'attackHeli', 'torpedoSub', 'tender', 'stealthBomber', 'stealthJet', 'diveBomber', 'mothership'] as ThreatKind[],
+    raider: 50,
+  },
   /** Drone Screen (the player's idea): a drone lifts off the carrier deck
    *  every `gap` s (the player: "always the carrier deck") and flies at
    *  `speed` to ram the threat closest to hitting a hull that no other drone

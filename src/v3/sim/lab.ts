@@ -7,9 +7,9 @@
 
 import type { ThreatKind } from '../data/config';
 import { FOES, FOES_BUILT, type FoeId } from '../data/foes';
-import { LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix } from '../data/lab';
+import { LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix, type LabPair } from '../data/lab';
 import { ABILITIES, type AbilityId } from '../data/abilities';
-import { RULES } from '../data/config';
+import { RULES, VIEW } from '../data/config';
 import { foeHarmed, newFoeState } from './foes';
 import type { Game, Launch, Threat } from './game';
 
@@ -52,6 +52,25 @@ export interface LabState {
   stats: LabStats;
   /** Featured threats shown and not yet shot at: id → when they came. */
   pending: Record<number, number>;
+  /** A combo: how its set comes in, and this wave's sets still to come. */
+  pair?: LabPair;
+  sets: LabSet[];
+}
+
+/** A combo's set this wave (Test Lab round 4): its lead and the others,
+ *  launched together and timed to overlap (its card's `pair`, data/lab.ts). */
+export interface LabSet {
+  /** When the lead launches (wave clock). */
+  at: number;
+  /** The bases the wave planned for its members, where it planned them. */
+  bases: Partial<Record<FoeId, number>>;
+  /** The card's weapon has dropped (or there is none). */
+  dropped: boolean;
+  /** The lead is out: the first threat id it can have, when, its base; and
+   *  when it got to its station. */
+  led?: { id: number; t: number; base: number; station?: number };
+  /** Which followers are out. */
+  done: boolean[];
 }
 
 export function newLabState(setup: LabSetup): LabState | null {
@@ -67,6 +86,8 @@ export function newLabState(setup: LabSetup): LabState | null {
     cursor: 0,
     stats: { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] },
     pending: {},
+    ...(card.pair ? { pair: card.pair } : {}),
+    sets: [],
   };
 }
 
@@ -117,9 +138,62 @@ export function labWave(g: Game, spec: { drones: number; ballistic: number; guid
 export function labOpener(g: Game, queue: Launch[]): void {
   const lab = g.lab;
   if (!lab || !lab.kinds.length) return;
+  const open = RULES.waveLeadIn + 1.5;
+  lab.sets = [];
+  if (lab.pair) {
+    planSets(lab, queue, open);
+    return;
+  }
   const first = queue.find((l) => lab.kinds.includes(l.kind));
-  if (first) first.at = Math.min(first.at, RULES.waveLeadIn + 1.5);
+  if (first) first.at = Math.min(first.at, open);
   queue.sort((a, b) => a.at - b.at);
+}
+
+/** A combo's wave (Test Lab round 4): the launches planned for its enemies
+ *  come out of the queue and come back as whole sets, as many as the most
+ *  planned of its enemies, the first opening the wave and the rest where the
+ *  wave had them (at least LAB_SET.gap s apart). The game launches each set's
+ *  members on the pairing's cues (updateLabSets in game.ts). */
+function planSets(lab: LabState, queue: Launch[], open: number): void {
+  const mine = queue.filter((l) => lab.kinds.includes(l.kind));
+  for (let i = queue.length - 1; i >= 0; i--) if (lab.kinds.includes(queue[i].kind)) queue.splice(i, 1);
+  const per = lab.foes.map((f) => mine.filter((l) => l.kind === FOES[f].kind));
+  const n = Math.max(1, ...per.map((p) => p.length));
+  const times = mine.map((l) => l.at).sort((a, b) => a - b);
+  let prev = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const planned = k === 0 ? Math.min(open, times[0] ?? open) : times[Math.min(times.length - 1, Math.floor((k * times.length) / n))];
+    const at = Math.max(planned, prev + LAB_SET.gap);
+    prev = at;
+    const bases: Partial<Record<FoeId, number>> = {};
+    lab.foes.forEach((f, i) => {
+      const b = per[i][k]?.base;
+      if (b !== undefined && b >= 0) bases[f] = b;
+    });
+    lab.sets.push(newSet(lab, at, bases));
+  }
+}
+
+/** A set of the card's enemies, to launch at `at` (wave clock). */
+export function newSet(lab: LabState, at: number, bases: Partial<Record<FoeId, number>> = {}): LabSet {
+  return { at, bases, dropped: !lab.weapon, done: (lab.pair?.follow ?? []).map(() => false) };
+}
+
+/** Is one of this enemy on the board (on screen)? A siege gun down in its
+ *  hatch between salvos, and a torpedo sub at periscope depth, count: they
+ *  are there, and coming back up. The Hydra's darts count as the Hydra. */
+export function foeOnBoard(g: Game, f: FoeId): boolean {
+  const kind = FOES[f].kind;
+  const on = (x: number, y: number) => x >= -10 && x <= VIEW.width + 10 && y >= -10 && y <= VIEW.height + 10;
+  if (g.threats.some((t) => !t.dead && (t.kind === kind || (f === 'hydra' && t.kind === 'dart')) && on(t.x, t.y))) return true;
+  if (f === 'siege') return g.foe.marks.some((m) => m.kind === 'hatch' && !!(m.gun || m.spawn));
+  if (f === 'torpedoSub') return g.foe.marks.some((m) => m.kind === 'periscope');
+  return false;
+}
+
+/** Is a combo set still to come (it holds the wave open)? */
+export function labBusy(g: Game): boolean {
+  return !!g.lab && g.lab.sets.length > 0;
 }
 
 // ---- Evidence --------------------------------------------------------------

@@ -27,7 +27,38 @@ export interface LabCard {
   /** The water it's played on: the lab's (The Strait, plain), or a map
    *  card's own. */
   map: MapId;
+  /** A combo: how its set comes in together (LabPair). */
+  pair?: LabPair;
 }
+
+/** A combo's pairing (Test Lab round 4, the player on Spotter + Siege
+ *  Battery: "the recon drone and then the siege cannon never really appeared
+ *  at the same time"). Every featured appearance of a combo is its whole set,
+ *  launched together and timed so the set is on the board at once. */
+export interface LabPair {
+  /** Leads the set: launched at the set's time. */
+  lead: FoeId;
+  /** The others. Each comes `after` s after the lead launches, or (`on:
+   *  'station'`) after the lead gets to its station: the Spotter on its
+   *  circle, the Repair Tender on station, the Rocket Truck at the end of
+   *  its road. A lead shot down first, or one that hasn't got there in
+   *  LAB_SET.station s, lets them come at once. `on: 'arrive'`: a faster one
+   *  after a slow lead, launched once the lead is due within its own flight
+   *  time plus `after` s (the lead's sprint and its own curve make up the
+   *  rest), so they arrive together. `base: 'same'`: out of the lead's base. */
+  follow: { foe: FoeId; after: number; on?: 'launch' | 'station' | 'arrive'; base?: 'same' }[];
+  /** The lead comes out of the launch base furthest from the convoy (the
+   *  longest look at a fast pair). */
+  far?: boolean;
+  /** The rule in words (the docs, and the review page). */
+  rule: string;
+}
+
+/** Sets: the card's weapon drops by the carrier `weaponLead` s before each
+ *  set comes in (a combo with a weapon is played holding it); sets in a wave
+ *  are at least `gap` s apart; a follower waits at most `station` s for its
+ *  lead to get to its station. */
+export const LAB_SET = { weaponLead: 1.5, gap: 12, station: 14 } as const;
 
 /** The lab's own water: open, plain, no map system to get in the way. */
 export const LAB_MAP: MapId = 'strait';
@@ -85,8 +116,8 @@ const ENEMIES: LabCard[] = [
 
 /** Weapons changed in the lock-in build and not played since: first. */
 const REWORKED: Partial<Record<AbilityId, string>> = {
-  dualWield: 'Both hands now end with the boost: does it feel right?',
-  cadence: 'The 0.9 s beat: can you keep it under pressure?',
+  dualWield: 'A second Dual Wield now restarts both hands, and another boost no longer empties them: does every case feel right?',
+  cadence: 'Set it to MAX (War Drum) in Setup: on the beat it now blows up trucks, siege guns, helicopters, subs and tenders. Strong enough?',
   focus: 'Hold one finger to slow time, tap with the other: comfortable?',
   gunships: 'The Hellfires now fly straight to their targets: do they read, are they useful?',
   supplyRun: 'The cargo plane and chutes: clear what you got?',
@@ -110,16 +141,50 @@ const WEAPONS: LabCard[] = [
   ...ABILITY_ORDER.filter((id) => !(id in REWORKED)).map(weaponCard),
 ];
 
-const combo = (id: string, name: string, look: string, foes: FoeId[], kit: AbilityId[], weapon?: AbilityId): LabCard => ({ id: `combo-${id}`, kind: 'combo', name, look, foes, kit, map: LAB_MAP, ...(weapon ? { weapon } : {}) });
+const combo = (id: string, name: string, look: string, foes: FoeId[], kit: AbilityId[], pair: LabPair, weapon?: AbilityId): LabCard => ({ id: `combo-${id}`, kind: 'combo', name, look, foes, kit, map: LAB_MAP, pair, ...(weapon ? { weapon } : {}) });
+const alone = (lead: FoeId, rule: string): LabPair => ({ lead, follow: [], rule });
+/** The combos (Test Lab round 4: each one's set comes in together). */
 const COMBOS: LabCard[] = [
-  combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam']),
-  combo('tender-bodyguard', 'Repair Tender + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun']),
-  combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], 'droneScreen'),
-  combo('cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], 'flak'),
-  combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter']),
-  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing']),
-  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], 'seeker'),
-  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], 'tesla'),
+  // The Spotter gets to its circle and paints a ship; the gun rises while it
+  // paints, so its first shells land with the strike it calls.
+  combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam'], {
+    lead: 'spotter',
+    follow: [{ foe: 'siege', after: 3.5, on: 'station' }],
+    rule: 'The Spotter leads. The siege gun\'s hatch opens 3.5 s after the Spotter reaches its circle, so the gun is up while it paints and the first shells land with the strike it calls.',
+  }),
+  // The Tender sails to its station; a guarded heavy comes out as it gets
+  // there, so it has that heavy to mend while the guards take your shots.
+  combo('tender-bodyguard', 'Repair Tender + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun'], {
+    lead: 'tender',
+    follow: [{ foe: 'bodyguard', after: 0, on: 'station' }],
+    rule: 'The Repair Tender leads. The Bodyguard Ring (a fresh heavy and its guards) launches as the Tender reaches its station, so it has a guarded heavy to mend.',
+  }),
+  combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], alone('lure', 'Drone Screen drops by the carrier 1.5 s before each Lure Beacon rises.'), 'droneScreen'),
+  combo('cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], alone('cloud', 'Flak drops by the carrier 1.5 s before each Incendiary Missile launches.'), 'flak'),
+  // One raid: the decoy swarm and the sprinters out of the same base, the
+  // one furthest off (the sprinters' dash cuts their flight short).
+  combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter'], {
+    lead: 'decoy',
+    follow: [{ foe: 'sprinter', after: 0.5, base: 'same' }],
+    far: true,
+    rule: 'One raid, out of the launch base furthest from the convoy: the Decoy swarm leads and the Sprint Drones follow 0.5 s later out of the same base.',
+  }),
+  // The truck drives to its spot; the gun's hatch opens as it gets there, so
+  // the gun is up as the launcher finishes rising and both fire together.
+  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing'], {
+    lead: 'rocketTruck',
+    follow: [{ foe: 'siege', after: 0, on: 'station' }],
+    rule: 'The Rocket Truck leads. The siege gun\'s hatch opens as the truck stops to raise its launcher, so the shells and the rockets come in the same window.',
+  }),
+  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], alone('bodyguard', 'Seeker Pod drops by the carrier 1.5 s before each Bodyguard Ring launches.'), 'seeker'),
+  // The hydra is twice as fast as the sprinters: out of the same base once
+  // they are part way, it catches them up and they arrive together.
+  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], {
+    lead: 'sprinter',
+    follow: [{ foe: 'hydra', after: 1.5, on: 'arrive', base: 'same' }],
+    far: true,
+    rule: 'The Sprint Drones lead, out of the launch base furthest from the convoy. The Hydra follows out of the same base once they are part way, timed to catch them up, so they arrive together. Tesla drops by the carrier 1.5 s before each set.',
+  }, 'tesla'),
 ];
 
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */
@@ -138,7 +203,7 @@ export const LAB_CARDS: LabCard[] = [...ENEMIES, ...WEAPONS, ...COMBOS, ...MAP_C
 export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The five reworked ones first, then every other.' },
-  { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet.' },
+  { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet: they come in together.' },
   { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
 ];
 
@@ -166,6 +231,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 1, date: '2026-11-08', name: 'First look at the new enemies' },
   { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
   { n: 3, date: '2026-11-08', name: 'Round 2 notes', since: '2026-11-08T23:05' },
+  { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -201,9 +267,27 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   attackHeli: [{ round: 2, what: 'Its missiles fly straight in' }],
   'w-gunships': [{ round: 2, what: 'Hellfires fly straight to their targets' }],
   'w-cutter': [{ round: 2, what: 'A red laser sight from the gun to your finger' }],
-  'combo-siege-truck': [{ round: 2, what: 'New pairing' }],
-  'combo-guard-seeker': [{ round: 2, what: 'New pairing' }],
-  'combo-hydra-tesla': [{ round: 2, what: 'New pairing' }],
+  // Round 4 (docs/design/v3-lab-round4.md): the player's notes on Spotter +
+  // Siege Battery, Dual Wield and Cadence.
+  'w-dualWield': [{ round: 4, what: 'A second Dual Wield restarts both hands; another boost no longer empties them' }],
+  'w-cadence': [{ round: 4, what: 'War Drum (MAX): on the beat it blows up trucks, siege guns, helicopters, subs and tenders' }],
+  'combo-spotter-siege': [{ round: 4, what: 'Its enemies now arrive together' }],
+  'combo-tender-bodyguard': [{ round: 4, what: 'Its enemies now arrive together' }],
+  'combo-lure-screen': [{ round: 4, what: 'Drone Screen now drops by the carrier just before each Lure Beacon' }],
+  'combo-cloud-flak': [{ round: 4, what: 'Flak now drops by the carrier just before each Incendiary Missile' }],
+  'combo-decoy-sprint': [{ round: 4, what: 'Its enemies now arrive together' }],
+  'combo-siege-truck': [
+    { round: 2, what: 'New pairing' },
+    { round: 4, what: 'Its enemies now arrive together' },
+  ],
+  'combo-guard-seeker': [
+    { round: 2, what: 'New pairing' },
+    { round: 4, what: 'Seeker Pod now drops by the carrier just before each Bodyguard Ring' },
+  ],
+  'combo-hydra-tesla': [
+    { round: 2, what: 'New pairing' },
+    { round: 4, what: 'Its enemies now arrive together; Tesla drops by the carrier just before' },
+  ],
 };
 
 /** The cards a card takes changes from: itself, and for a combo its

@@ -4,7 +4,7 @@
 // or press / pressMove / release for the gesture weapons).
 
 import { describe, expect, it } from 'vitest';
-import { AB, ABILITY_ORDER, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
+import { AB, ABILITIES, ABILITY_ORDER, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
 import { PICKUPS, PICKUP_KINDS } from '../../src/v3/data/config';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { ROSTER, draftPool, gestureOf, isPrototype } from '../../src/v3/data/roster';
@@ -21,6 +21,7 @@ import {
   step,
   tap,
   type Game,
+  type Raider,
   type Threat,
 } from '../../src/v3/sim/game';
 
@@ -322,6 +323,68 @@ describe('Cadence Gun (fire on the beat)', () => {
     run(g, AB.cadence.period + 0.02);
     expect(g.interceptors.length).toBe(AB.cadence.broadside);
     expect(g.ammo).toBeGreaterThanOrEqual(ammo); // free (the rack only reloads)
+  });
+});
+
+// Test Lab round 4, the player: "have the third upgrade be a little bit more
+// powerful. Maybe we could blow up the platforms and vehicles."
+describe('War Drum (Cadence MAX): on the beat it blows up platforms and vehicles', () => {
+  /** A launch truck up on its road at (x, y). */
+  const truck = (g: Game, x: number, y: number): Raider => {
+    const r: Raider = { id: g.nextId++, kind: 'popup', x, y, heading: Math.PI / 2, state: 'fire', t: 0, path: [{ x, y: -40 }, { x, y }], dist: y + 40, length: y + 40, stops: [], rounds: ['drone'], units: [], fireT: 9 };
+    g.raiders.push(r);
+    return r;
+  };
+  /** One of each platform up the line x = 800, at full health, and a
+   *  structure past them; a launch truck at the top. */
+  const line = (g: Game) => ({
+    truck: addThreat(g, { kind: 'rocketTruck', hp: 4, x: 800, y: 560 }),
+    heli: addThreat(g, { kind: 'attackHeli', hp: 6, x: 800, y: 500 }),
+    sub: addThreat(g, { kind: 'torpedoSub', hp: 3, x: 810, y: 440 }),
+    tender: addThreat(g, { kind: 'tender', hp: 6, x: 790, y: 380 }),
+    siege: addThreat(g, { kind: 'siege', hp: 5, x: 800, y: 320 }),
+    bomber: addThreat(g, { kind: 'stealthBomber', hp: 6, x: 800, y: 260 }),
+    rig: addThreat(g, { kind: 'rig', hp: 40, x: 800, y: 200 }),
+    off: addThreat(g, { kind: 'tender', hp: 6, x: 1100, y: 380 }),
+    raider: truck(g, 800, 130),
+  });
+
+  it('MAX, on the beat: every platform on the line is destroyed in one hit, and the launch truck with them; a structure only takes the hit', () => {
+    const g = quietGame();
+    load(g, 'cadence', 3);
+    run(g, AB.cadence.period);
+    // Placed on the beat (hand-placed platforms don't move or fire).
+    const o = line(g);
+    expect(beatClock(g, g.weapon!).off).toBeLessThan(AB.cadence.window[2]);
+    tap(g, 800, 150, 30);
+    for (const k of ['truck', 'heli', 'sub', 'tender', 'siege', 'bomber'] as const) expect(alive(g, o[k]), k).toBe(false);
+    expect(o.rig.hp).toBe(40 - AB.cadence.damage);
+    expect(alive(g, o.off)).toBe(true);
+    expect(o.raider.state).toBe('reverse');
+    expect(g.events.some((e) => e.kind === 'bigKill' && e.label === 'TRUCK DESTROYED')).toBe(true);
+  });
+
+  it('only at MAX, and only on the beat: level 2 on the beat and MAX off it hit for 4 as before', () => {
+    const g = quietGame();
+    load(g, 'cadence', 2);
+    run(g, AB.cadence.period);
+    const o = line(g);
+    tap(g, 800, 150, 30);
+    expect(o.tender.hp).toBe(6 - AB.cadence.damage);
+    expect(o.heli.hp).toBe(6 - AB.cadence.damage);
+    expect(o.raider.state).toBe('fire');
+    const h = quietGame();
+    load(h, 'cadence', 3);
+    run(h, AB.cadence.period * 1.5); // halfway between beats: a plain shot
+    const p = line(h);
+    tap(h, p.tender.x, p.tender.y, 30);
+    expect(h.interceptors.length).toBeGreaterThan(0);
+    expect(alive(h, p.tender)).toBe(true);
+    expect(p.raider.state).toBe('fire');
+  });
+
+  it('the draft card says so', () => {
+    expect(ABILITIES.cadence.levels[2]).toMatch(/blows up any truck, siege gun, helicopter, sub or tender/);
   });
 });
 
