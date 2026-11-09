@@ -10,6 +10,7 @@ import { DRONE, THREATS, VIEW, type ThreatKind } from '../data/config';
 import { FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
+import { hydraDarts } from './events';
 import {
   CARRIER_TARGET,
   addFx,
@@ -84,6 +85,12 @@ export interface FoeMark {
   /** A hatch the gun has just gone down into (drawn sinking, then the
    *  doors closing). */
   lowered?: boolean;
+  /** Special events: a new gun's salvos (Bombardment), a periscope's sub
+   *  firing this many seconds after it surfaces (Wolf Pack). */
+  salvos?: number;
+  fireAt?: number;
+  /** A dive bomber's circle: the line its plane flies in on (its heading). */
+  a?: number;
 }
 
 /** A foe's own state, on its threat. `state` and `t` are its phase and the
@@ -108,9 +115,46 @@ export interface FoeData {
   /** A Rocket Truck's salvo in progress: its id, the ship it is at (-1: the
    *  carrier), rockets still to go, and when the next one goes (its `t`). */
   ripple?: { id: number; ship: number; left: number; next: number; spent?: boolean };
-  /** Where it set out from (the torpedo's line, the armored drone's start). */
+  /** Where it set out from (the torpedo's line, the armored drone's start,
+   *  the dive bomber's point off screen). */
   sx?: number;
   sy?: number;
+  // ---- Special events (sim/events.ts): how one behaves in an event ----
+  /** A Rocket Truck: where along its road it stops, seconds it waits there
+   *  before raising, seconds it stands stalled, and its driving speed (out,
+   *  and back) times its own. An Attack Helicopter: `wait` is how long after
+   *  the wall opens fire its first volley goes. */
+  stop?: number;
+  wait?: number;
+  stall?: number;
+  drive?: number;
+  back?: number;
+  /** An Attack Helicopter: the wave second it may open fire, that it holds
+   *  its spot, and its volleys before it leaves. */
+  hold?: number;
+  stay?: boolean;
+  volleys?: number;
+  /** A Torpedo Sub: seconds after surfacing it fires, and dives. */
+  fireAt?: number;
+  up?: number;
+  /** An Armored Drone in a block: its place in it (px off the block's
+   *  aim), and no bank of its own (the block banks together). */
+  ox?: number;
+  oy?: number;
+  nobank?: boolean;
+  /** A Spotter: strikes it still has to call, and the ship it last painted. */
+  multi?: number;
+  prev?: number;
+  /** A guard: its orbit, the guards in its ring, and which ring. */
+  r?: number;
+  of?: number;
+  ring?: number;
+  /** A Repair Tender: hull it mends, and seconds between. */
+  mend?: number;
+  every?: number;
+  /** A dive bomber's flight in: the length of its dive (px), and the
+   *  seconds it flies level before it (from off screen). */
+  dive?: { len: number; app: number };
 }
 
 /** The foes a run can meet, and their shots in the air. */
@@ -200,6 +244,8 @@ export function movesItself(kind: ThreatKind): boolean {
 }
 
 const data = (o: Partial<FoeData> = {}): FoeData => ({ state: 0, t: 0, n: 0, px: 0, py: 0, link: 0, ...o });
+/** A foe's state, fresh (for the special events' own launches). */
+export const foeData = data;
 
 /** A foe comes into play: from a base at (x, y), or from wherever it comes
  *  (a road, a screen edge, open water). */
@@ -280,13 +326,23 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'diveBomber': {
       // The circle first, where a ship is about to be; the plane only at
       // the last moment.
+      // Its line in is drawn now (Test Lab round 4: it flies in from off
+      // screen), so the circle can go where the ship will be when the bomb
+      // lands: the circle, the flight in, the bomb's fall.
       const D = FOE.diveBomber;
       const pool = targetable(g);
+      const tilt = rng.range(-D.slant, D.slant);
       // No ship on the water yet (a test's first seconds): the lane where
       // the convoy is coming in.
       const ch = g.map.channels[0];
-      const p = pool.length ? shipAhead(g, rng.pick(pool), D.lead) : laneAt(ch, laneLength(ch) * 0.3, 0);
-      g.foe.marks.push({ id: g.nextId++, kind: 'dive', x: p.x, y: p.y, t: 0, dur: D.mark });
+      const ship = pool.length ? rng.pick(pool) : null;
+      let p: Point = ship ? shipAhead(g, ship, D.mark + D.window + D.fall) : laneAt(ch, laneLength(ch) * 0.3, 0);
+      let a = diveLine(p, tilt);
+      for (let k = 0; k < 2 && ship; k++) {
+        p = shipAhead(g, ship, D.mark + divePath(p, a).app + D.window + D.fall);
+        a = diveLine(p, tilt);
+      }
+      g.foe.marks.push({ id: g.nextId++, kind: 'dive', x: p.x, y: p.y, t: 0, dur: D.mark, a });
       cue(g, 'supersonic.lock', p.x, p.y, { gain: 0.5 });
       return;
     }
@@ -379,7 +435,12 @@ function liveSite(g: Game, rng: RNG): Point | null {
  *  top of it). */
 function siegeSpot(g: Game, rng: RNG): Point {
   const sites = g.map.bases.filter((b, i) => b.kinds.length > 0 && !b.cove && !b.chute && !g.baseDown[i]);
-  const b = sites.length ? rng.pick(sites) : { x: VIEW.width / 2, y: 90 };
+  return siegeSpotAt(g, sites.length ? rng.pick(sites) : { x: VIEW.width / 2, y: 90 });
+}
+
+/** A siege gun's place beside a given site. */
+export function siegeSpotAt(g: Game, b: Point): Point {
+  void g;
   const side = b.x < VIEW.width / 2 ? 1 : -1;
   return { x: clamp(b.x + side * 95, 80, VIEW.width - 80), y: b.y + 6 };
 }
@@ -448,7 +509,7 @@ export function onLand(g: Game, x: number, y: number): boolean {
 /** Where a boat bound for `to` comes on: off a side edge, the shortest
  *  straight run to it that stays on open water all the way. Null if none
  *  does (it then rises where it is). */
-function seaEntry(g: Game, to: Point): Point | null {
+export function seaEntry(g: Game, to: Point): Point | null {
   let best: Point | null = null;
   let bl = Infinity;
   for (const side of [-1, 1]) {
@@ -597,11 +658,11 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       return;
     case 'torpedoSub': {
       const S = FOE.torpedoSub;
-      if (f.state === 0 && f.t >= S.fireAt) {
+      if (f.state === 0 && f.t >= (f.fireAt ?? S.fireAt)) {
         f.state = 1;
         fireTorpedo(g, th);
       }
-      if (f.t >= S.up) {
+      if (f.t >= (f.up ?? S.up)) {
         // It dives: gone from reach, not a kill.
         th.dead = true;
         addFx(g, 'spray', th.x, th.y, { life: 0.6, r: 18 });
@@ -627,12 +688,15 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
     case 'armored': {
       retarget(th);
       const A = FOE.armored;
-      const tp = aim(th);
-      const d = dist(th.x, th.y, tp.x, tp.y);
-      const total = dist(f.sx ?? th.x, f.sy ?? th.y, tp.x, tp.y);
+      const tp0 = aim(th);
+      const d = dist(th.x, th.y, tp0.x, tp0.y);
+      const total = dist(f.sx ?? th.x, f.sy ?? th.y, tp0.x, tp0.y);
+      // In a Shield Wall's block it keeps its place in the block until close.
+      const keep = f.ox !== undefined ? clamp((d - 80) / 260, 0, 1) : 0;
+      const tp = { x: tp0.x + (f.ox ?? 0) * keep, y: tp0.y + (f.oy ?? 0) * keep };
       // Part way in, it banks through a wide S: its side and tail face the
-      // carrier for a moment.
-      if (f.state === 0 && d <= total * (1 - A.turnAt)) {
+      // carrier for a moment. (In a block, it banks at the block's signal.)
+      if (f.state === 0 && !f.nobank && d <= total * (1 - A.turnAt)) {
         f.state = 1;
         f.t = 0;
       }
@@ -656,22 +720,20 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       const D = FOE.diveBomber;
       if (f.state === 0) {
         // Its run (Test Lab round 1: seen from above like every other
-        // aircraft): in from the top of the screen, straight at its circle,
-        // diving as it comes; its window to be shot. It lets go just short
-        // of the circle.
-        const u = Math.min(1, f.t / D.window);
-        const rx = f.px - Math.cos(th.heading) * D.short;
-        const ry = f.py - Math.sin(th.heading) * D.short;
-        th.x = f.sx! + (rx - f.sx!) * u;
-        th.y = f.sy! + (ry - f.sy!) * u;
-        if (u >= 1) {
+        // aircraft): in from off the screen (round 4), straight at its
+        // circle, level at first, then diving as it comes; its window to be
+        // shot. It lets go just short of the circle.
+        const at = diveAt(f, th.heading, f.t);
+        th.x = at.x;
+        th.y = at.y;
+        if (at.u >= 1) {
           // Released: the bomb falls on, onto the circle, and nothing stops
           // it now.
           g.foe.shots.push({ id: g.nextId++, kind: 'bomb', x: th.x, y: th.y, sx: th.x, sy: th.y, tx: f.px, ty: f.py, t: 0, dur: D.fall, from: 'diveBomber' });
           cue(g, 'bomber.drop', th.x, th.y);
           f.state = 1;
           f.t = 0;
-          f.vx = dist(f.sx!, f.sy!, rx, ry) / D.window;
+          f.vx = (f.dive?.len ?? D.run) / D.window;
         }
       } else {
         // Pulls up and away: on past the circle, climbing, banking off to
@@ -704,10 +766,13 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         return;
       }
       const B = FOE.bodyguard;
-      const a = g.t * B.spin + (f.n / B.guards) * Math.PI * 2;
-      th.heading = a + Math.PI / 2;
-      th.x = heavy.x + Math.cos(a) * B.orbit;
-      th.y = heavy.y + Math.sin(a) * B.orbit;
+      const R = f.r ?? B.orbit;
+      // Outer rings turn slower, every other one the other way round.
+      const spin = (f.ring ?? 0) % 2 ? -B.spin * 0.7 : B.spin * (B.orbit / R);
+      const a = g.t * spin + (f.n / (f.of ?? B.guards)) * Math.PI * 2;
+      th.heading = a + (spin < 0 ? -1 : 1) * (Math.PI / 2);
+      th.x = heavy.x + Math.cos(a) * R;
+      th.y = heavy.y + Math.sin(a) * R;
       return;
     }
     case 'lure': {
@@ -725,8 +790,8 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       // lead the ship instead of coming through on the back"): it flies at
       // where the ship will be when it gets there, aiming a little off the
       // ship's bow while it is far, so it comes in on the bow or the flank,
-      // not up the wake. At the ship it hits (one hit) and bursts; the
-      // fireball does the rest.
+      // not up the wake. At the ship it bursts, doing no harm itself (Test
+      // Lab round 4): its fireball does it all.
       retarget(th);
       const C = FOE.cloud;
       const s = shipOf(g, th);
@@ -746,7 +811,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
 /** Support foes that only matter while there is a fight: is this one all
  *  that's left of the wave? */
 function alone(g: Game, th: Threat): boolean {
-  if (g.queue.length || g.raiderQueue.length || g.raiders.length || g.foe.marks.length) return false;
+  if (g.queue.length || g.raiderQueue.length || g.raiders.length || g.foe.marks.length || (g.event && !g.event.done)) return false;
   return !g.threats.some((t) => t !== th && !t.dead && !SUPPORT.has(t.kind) && !['rig', 'generator', 'citadel'].includes(t.kind));
 }
 
@@ -758,7 +823,7 @@ function leave(g: Game, th: Threat): void {
   addFx(g, 'spray', th.x, th.y, { life: 0.6, r: 20 });
 }
 
-/** The Repair Tender: it sails to its station (n 0, then 1 on station),
+/** The Repair Ship (once the Repair Tender): it sails to its station (n 0, then 1 on station),
  *  and every few seconds a beam charges on the most damaged enemy near it,
  *  then mends it. */
 function updateTender(g: Game, th: Threat, f: FoeData, dt: number): void {
@@ -768,10 +833,11 @@ function updateTender(g: Game, th: Threat, f: FoeData, dt: number): void {
     return;
   }
   sailTender(g, th, f, dt);
-  if (f.state === 0 && f.t >= T.gap) {
+  if (f.state === 0 && f.t >= (f.every ?? T.gap)) {
+    const full = (t: Threat) => t.maxHp ?? THREATS[t.kind].hp;
     const hurt = g.threats
-      .filter((t) => !t.dead && t !== th && t.kind !== 'tender' && dist(t.x, t.y, th.x, th.y) <= T.reach && t.hp < THREATS[t.kind].hp)
-      .sort((a, b) => a.hp / THREATS[a.kind].hp - b.hp / THREATS[b.kind].hp)[0];
+      .filter((t) => !t.dead && t !== th && t.kind !== 'tender' && dist(t.x, t.y, th.x, th.y) <= T.reach && t.hp < full(t))
+      .sort((a, b) => a.hp / full(a) - b.hp / full(b))[0];
     if (!hurt) return;
     f.state = 1;
     f.t = 0;
@@ -779,8 +845,9 @@ function updateTender(g: Game, th: Threat, f: FoeData, dt: number): void {
   } else if (f.state === 1 && f.t >= T.charge) {
     const t = g.threats.find((o) => o.id === f.link && !o.dead);
     if (t && dist(t.x, t.y, th.x, th.y) <= T.reach * 1.3) {
-      t.hp = Math.min(THREATS[t.kind].hp, t.hp + T.mend);
-      addFx(g, 'text', t.x, t.y - 34, { life: 0.8, r: 0, text: `+${T.mend}` });
+      const mend = f.mend ?? T.mend;
+      t.hp = Math.min(t.maxHp ?? THREATS[t.kind].hp, t.hp + mend);
+      addFx(g, 'text', t.x, t.y - 34, { life: 0.8, r: 0, text: `+${mend}` });
       cue(g, 'foe.mend', t.x, t.y);
     }
     f.state = 0;
@@ -840,7 +907,7 @@ export function burstCloud(g: Game, th: Threat): void {
   if (f.state === 9) return;
   f.state = 9;
   f.n = g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= C.radius * 2) ? 1 : 0;
-  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: C.linger, dose: {} });
+  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: g.event?.linger ?? C.linger, dose: {} });
   addFx(g, 'burst', th.x, th.y, { life: 0.6, r: C.radius * 0.8 });
   cue(g, 'foe.ignite', th.x, th.y);
 }
@@ -869,7 +936,8 @@ function fireStep(g: Game, m: FoeMark, dt: number): void {
 
 /** A Bodyguard Ring: a shot at the heavy meets one of its guards first. */
 export function guardFor(g: Game, th: Threat, from: Point): Threat | null {
-  if (th.kind !== 'heavy') return null;
+  // A heavy's ring, or (Fire Mission) a Spotter's escort.
+  if (th.kind !== 'heavy' && th.kind !== 'spotter') return null;
   const guards = g.threats.filter((t) => t.kind === 'guard' && !t.dead && t.foe?.link === th.id);
   if (!guards.length) return null;
   return guards.sort((a, b) => dist(a.x, a.y, from.x, from.y) - dist(b.x, b.y, from.x, from.y))[0];
@@ -880,6 +948,11 @@ export function guardFor(g: Game, th: Threat, from: Point): Threat | null {
  *  holds what the helper was about to aim at. */
 export function lureIn(g: Game, x: number, y: number, reach = Infinity, aim?: Point): Threat | undefined {
   const R = FOE.lure.radius;
+  // Siren Field: every helper chases the nearest beacon, however far.
+  if (g.event?.rules.includes('lureAll')) {
+    const up = g.threats.filter((t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1);
+    return up.sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
+  }
   return g.threats.find(
     (t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1 && (dist(t.x, t.y, x, y) <= Math.max(reach, R) || (!!aim && dist(t.x, t.y, aim.x, aim.y) <= R)),
   );
@@ -1004,7 +1077,10 @@ function updateSpotter(g: Game, th: Threat, f: FoeData, dt: number): void {
   // Paint: the ship nearest its circle (a new one if that one is gone).
   if (f.t >= P.paint) {
     if (!g.ships.some((s) => s.id === f.link)) {
-      const s = targetable(g).sort((a2, b) => dist(a2.x, a2.y, f.px, f.py) - dist(b.x, b.y, f.px, f.py))[0];
+      // A Fire Mission's spotter paints a new ship each time.
+      const pool = targetable(g);
+      const fresh = pool.filter((o) => o.id !== f.prev);
+      const s = (fresh.length ? fresh : pool).sort((a2, b) => dist(a2.x, a2.y, f.px, f.py) - dist(b.x, b.y, f.px, f.py))[0];
       f.link = s ? s.id : -1;
       f.n = 0;
     }
@@ -1015,6 +1091,17 @@ function updateSpotter(g: Game, th: Threat, f: FoeData, dt: number): void {
     if (f.link >= 0 && f.n === 0 && f.t >= P.paint + P.call) {
       f.n = 1;
       callStrike(g, th, f.link);
+      if ((f.multi ?? 0) > 1) {
+        // Strike after strike: on to the next ship.
+        f.multi! -= 1;
+        f.n = 0;
+        f.prev = f.link;
+        f.link = -1;
+        f.t = P.paint - 1;
+      } else if (f.multi) {
+        f.multi = 0;
+        f.t = Math.max(f.t, P.stay - 4);
+      }
     }
   }
 }
@@ -1072,9 +1159,11 @@ function updateHeli(g: Game, th: Threat, f: FoeData, dt: number): void {
   if (f.state === 0 && d < 12 && sp < 30) {
     f.state = 1;
     f.t = 0;
-  } else if (f.state === 1 && f.t >= H.settle) {
+  } else if (f.state === 1 && f.t >= H.settle && (f.hold === undefined || g.waveT >= f.hold)) {
+    // A Gunship Wall's helicopters open fire together, each in its turn.
     f.state = 2;
-    f.t = H.gap;
+    // Its turn comes `wait` s after the wall opens fire (at once if late).
+    f.t = H.gap - (f.hold === undefined ? 0 : Math.max(0, f.hold + (f.wait ?? 0) - g.waveT));
     f.link = 0;
   } else if (f.state === 2) {
     if (f.t >= H.gap) {
@@ -1083,8 +1172,9 @@ function updateHeli(g: Game, th: Threat, f: FoeData, dt: number): void {
       f.link += 1;
       for (let k = 0; k < H.pair; k++) heliRocket(g, th, k);
     }
-    if (f.t >= H.gap * 0.6 && f.link >= H.perSpot) {
-      if (f.n >= H.volleys) f.state = 3;
+    const volleys = f.volleys ?? H.volleys;
+    if (f.t >= H.gap * 0.6 && f.n > 0 && (f.stay ? f.n >= volleys : f.link >= H.perSpot)) {
+      if (f.n >= volleys) f.state = 3;
       else {
         const next = heliSpot(g, g.rng.foes, { x: f.px, y: f.py });
         f.px = next.x;
@@ -1194,6 +1284,62 @@ function lurkSpot(g: Game): Point {
   return { x, y: clamp(mid.y, 120, VIEW.height - 140) };
 }
 
+/** A dive bomber's line in at a circle: down the screen, `tilt` rad off
+ *  straight down, the other way if that would start its dive off the side
+ *  of the screen. */
+function diveLine(p: Point, tilt: number): number {
+  for (const a of [Math.PI / 2 + tilt, Math.PI / 2 - tilt]) {
+    const path = divePath(p, a);
+    const x = path.rx - Math.cos(a) * path.len;
+    if (x >= 40 && x <= VIEW.width - 40) return a;
+  }
+  return Math.PI / 2;
+}
+
+/** A dive bomber's flight in at circle `p` on heading `a`: where it lets go
+ *  (`rx`, `ry`: `short` px before the circle), its dive's length (`run` px
+ *  at most, from about `top` px under the screen's top edge, `minRun` at
+ *  least), and where it sets off (`sx`, `sy`): back along the line, `off` px
+ *  past the screen's edge, so neither the plane nor its shadow is in sight;
+ *  `app` the seconds it flies level from there to its dive. */
+export function divePath(p: Point, a: number): { sx: number; sy: number; rx: number; ry: number; len: number; app: number } {
+  const D = FOE.diveBomber;
+  const ux = Math.cos(a);
+  const uy = Math.sin(a);
+  const rx = p.x - ux * D.short;
+  const ry = p.y - uy * D.short;
+  const len = clamp((p.y - D.top) / uy, D.minRun, D.run);
+  const toTop = (ry + D.off) / uy;
+  const toSide = ux > 1e-6 ? (rx + D.off) / ux : ux < -1e-6 ? (VIEW.width + D.off - rx) / -ux : Infinity;
+  const d = Math.max(len, Math.min(toTop, toSide));
+  return { sx: rx - ux * d, sy: ry - uy * d, rx, ry, len, app: (d - len) / D.cruise };
+}
+
+/** Where a dive bomber is `t` s after it set off (heading `a`): level at
+ *  `cruise` px/s from off the screen, then its dive, `window` s, easing from
+ *  that speed into its dive's own (never faster than `cruise`); `u` how far
+ *  through its dive (1: it lets go). */
+export function diveAt(f: FoeData, a: number, t: number): { x: number; y: number; u: number } {
+  const D = FOE.diveBomber;
+  const { len, app } = f.dive ?? { len: D.run, app: 0 };
+  const ux = Math.cos(a);
+  const uy = Math.sin(a);
+  const sx = f.sx ?? f.px;
+  const sy = f.sy ?? f.py;
+  const d = dist(sx, sy, f.px - ux * D.short, f.py - uy * D.short);
+  let s: number;
+  let u = 0;
+  if (t < app) s = D.cruise * t;
+  else {
+    u = Math.min(1, (t - app) / D.window);
+    // s(u) = u + k·u·(1-u)²: it enters the dive at `cruise` (k), and ends
+    // it at the dive's own speed.
+    const k = clamp((D.cruise * D.window) / len - 1, 0, 3);
+    s = d - len + len * (u + k * u * (1 - u) * (1 - u));
+  }
+  return { x: sx + ux * s, y: sy + uy * s, u };
+}
+
 /** Warnings that come before a foe: the periscope before the sub. */
 export function updateFoeMarks(g: Game, dt: number): void {
   if (!g.foe.marks.length) return;
@@ -1209,21 +1355,17 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
       th.target = CARRIER_TARGET;
       th.heading = 0;
-      th.foe = data();
+      th.foe = data(m.fireAt !== undefined ? { fireAt: m.fireAt, up: m.fireAt + FOE.torpedoSub.up - FOE.torpedoSub.fireAt } : {});
       addFx(g, 'spray', m.x, m.y, { life: 0.7, r: 22 });
     } else if (m.kind === 'dive') {
-      const D = FOE.diveBomber;
-      // Its run starts near the top of the screen, `run` px short of the
-      // circle (less when the circle is high up), coming down at a slant.
-      let a = Math.PI / 2 + g.rng.foes.range(-D.slant, D.slant);
-      const L = Math.max(D.minRun, Math.min(D.run, (m.y - D.top) / Math.sin(a)));
-      const sx = clamp(m.x - Math.cos(a) * L, 40, VIEW.width - 40);
-      const sy = m.y - Math.sin(a) * L;
-      a = Math.atan2(m.y - sy, m.x - sx);
-      const th = spawnThreat(g, 'diveBomber', sx, sy, 'air');
+      // The plane sets off from off the screen (Test Lab round 4: "it
+      // should come in off screen like the rest"), on its line in.
+      const a = m.a ?? Math.PI / 2;
+      const path = divePath(m, a);
+      const th = spawnThreat(g, 'diveBomber', path.sx, path.sy, 'air');
       th.target = CARRIER_TARGET;
       th.heading = a;
-      th.foe = data({ px: m.x, py: m.y, sx, sy });
+      th.foe = data({ px: m.x, py: m.y, sx: path.sx, sy: path.sy, dive: { len: path.len, app: path.app } });
       cue(g, 'foe.whistle', m.x, m.y);
     } else if (m.kind === 'hatch') {
       // The hatch opens and the gun comes up: the same gun (its hits and
@@ -1238,7 +1380,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
         const th = spawnThreat(g, 'siege', m.x, m.y, 'truck');
         th.target = CARRIER_TARGET;
         th.heading = Math.PI / 2;
-        th.foe = data({ n: FOE.siege.salvos });
+        th.foe = data({ n: m.salvos ?? FOE.siege.salvos });
       }
     } else if (m.kind === 'shell') {
       const S = FOE.siege;
@@ -1283,15 +1425,23 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   const R = FOE.rocketTruck;
   const path = f.path!;
   const length = pathLength(path);
+  const end = Math.min(length, f.stop ?? length);
   if (f.state === 0) {
-    f.along = Math.min(length, (f.along ?? 0) + th.speed * dt);
-    if (f.along >= length) {
+    // A Rocket Convoy truck stands while the wreck ahead blocks the road.
+    if ((f.stall ?? 0) > 0) f.stall = Math.max(0, f.stall! - dt);
+    else f.along = Math.min(end, (f.along ?? 0) + th.speed * (f.drive ?? 1) * dt);
+    if (f.along! >= end) {
       f.state = 1;
       f.t = 0;
-      cue(g, 'truck.raise', th.x, th.y);
+      if (!f.wait) cue(g, 'truck.raise', th.x, th.y);
     }
   } else if (f.state === 1) {
-    if (f.t >= R.raise) {
+    // A convoy truck waits its turn before it raises.
+    if ((f.wait ?? 0) > 0) {
+      f.wait = Math.max(0, f.wait! - dt);
+      f.t = 0;
+      if (f.wait === 0) cue(g, 'truck.raise', th.x, th.y);
+    } else if (f.t >= R.raise) {
       f.state = 2;
       f.t = R.gap;
     }
@@ -1321,7 +1471,7 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
       f.t = 0;
     }
   } else {
-    f.along = Math.max(0, (f.along ?? 0) - th.speed * dt);
+    f.along = Math.max(0, (f.along ?? 0) - th.speed * (f.drive ?? 1) * (f.back ?? 1) * dt);
     // Back off the shore and gone (not a kill).
     if (f.along <= 0) th.dead = true;
   }
@@ -1461,7 +1611,12 @@ export function foeDown(g: Game, th: Threat, quiet: boolean): void {
 /** The hit that kills a Hydra splits it into darts at the ships nearest it. */
 function splitHydra(g: Game, th: Threat): void {
   const near = targetable(g, VIEW.width + 40).sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y));
-  const n = FOE.hydra.darts;
+  const n = hydraDarts(g, th);
+  if (n <= 0) {
+    // Killed whole (Hydra Bloom, before the line).
+    addFx(g, 'burst', th.x, th.y, { life: 0.4, r: 20 });
+    return;
+  }
   for (let k = 0; k < n; k++) {
     const t = near.length ? near[k % near.length].id : CARRIER_TARGET;
     const s = near.length ? near[k % near.length] : g.map.carrier;
@@ -1491,8 +1646,8 @@ export function foeEta(g: Game, th: Threat): number | null {
     case 'rocketTruck': {
       if (!f) return null;
       const R = FOE.rocketTruck;
-      if (f.state === 0) return (pathLength(f.path!) - (f.along ?? 0)) / th.speed + R.raise;
-      if (f.state === 1) return Math.max(0.2, R.raise - f.t);
+      if (f.state === 0) return (Math.min(pathLength(f.path!), f.stop ?? Infinity) - (f.along ?? 0)) / (th.speed * (f.drive ?? 1)) + R.raise + (f.stall ?? 0) + (f.wait ?? 0);
+      if (f.state === 1) return Math.max(0.2, R.raise - f.t + (f.wait ?? 0));
       return f.state === 2 ? 0.4 : 30;
     }
     case 'siege': {
@@ -1508,11 +1663,11 @@ export function foeEta(g: Game, th: Threat): number | null {
       if (!f) return null;
       return f.state === 2 ? Math.max(0.2, FOE.attackHeli.gap - f.t) : f.state === 3 ? 30 : 3;
     case 'torpedoSub':
-      return f && f.state === 0 ? Math.max(0.1, FOE.torpedoSub.fireAt - f.t) : 30;
+      return f && f.state === 0 ? Math.max(0.1, (f.fireAt ?? FOE.torpedoSub.fireAt) - f.t) : 30;
     case 'torpedo':
       return f ? dist(th.x, th.y, f.px, f.py) / Math.max(1, th.speed) : null;
     case 'diveBomber':
-      return f && f.state === 0 ? Math.max(0.05, FOE.diveBomber.window - f.t) : 30;
+      return f && f.state === 0 ? Math.max(0.05, (f.dive?.app ?? 0) + FOE.diveBomber.window - f.t) : 30;
     case 'spotter':
       if (!f) return null;
       return f.state === 1 && f.n === 0 ? Math.max(0.5, FOE.spotter.paint + FOE.spotter.call - f.t) : 12;

@@ -5,7 +5,7 @@
 // UI makes (tap, press / release).
 
 import { describe, expect, it } from 'vitest';
-import { AB, ABILITY_ORDER, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
+import { AB, ABILITIES, ABILITY_ORDER, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
 import { PICKUPS } from '../../src/v3/data/config';
 import { ROSTER, isBoost } from '../../src/v3/data/roster';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
@@ -68,8 +68,8 @@ function shoot(g: Game, th: Threat, wait = 1.2): void {
 const BOOSTS = ABILITY_ORDER.filter(isBoost);
 
 describe('the boost rules', () => {
-  it('nine boosts, all live in the campaign (the lock-in round cut Fire at Will and Hot Streak)', () => {
-    expect(BOOSTS).toHaveLength(9);
+  it('six boosts, all live in the campaign (the lock-in round cut Fire at Will and Hot Streak; Test Lab round 5 cut Overclock and Time Warp and made Wild Card a weapon)', () => {
+    expect(BOOSTS).toEqual(['supplyRun', 'dualWield', 'focus', 'overdrive', 'shield', 'fullSteam']);
     for (const id of BOOSTS) expect(ROSTER[id].status, id).toBe('live');
   });
 
@@ -79,9 +79,9 @@ describe('the boost rules', () => {
     pickUp(g, 'overdrive');
     expect(g.weapon?.id).toBe('railgun');
     expect(g.boost?.id).toBe('overdrive');
-    pickUp(g, 'timeWarp');
+    pickUp(g, 'fullSteam');
     expect(g.weapon?.id).toBe('railgun');
-    expect(g.boost?.id).toBe('timeWarp');
+    expect(g.boost?.id).toBe('fullSteam');
   });
 
   it('it lasts the weapon time, and a cleared wave takes it with it', () => {
@@ -91,7 +91,7 @@ describe('the boost rules', () => {
     expect(g.boost?.id).toBe('shield');
     run(g, 1);
     expect(g.boost).toBeNull();
-    pickUp(g, 'timeWarp');
+    pickUp(g, 'fullSteam');
     g.queue = [];
     run(g, 0.2);
     expect(g.phase).toBe('draft');
@@ -122,21 +122,24 @@ describe('the boost rules', () => {
 });
 
 describe('Supply Run', () => {
-  it('drops fly to the carrier and load themselves; a boost pickup waits for a tap', () => {
-    const g = quietGame();
-    g.levels.railgun = 1;
-    g.slots.push('railgun');
-    pickUp(g, 'supplyRun');
-    g.ammo = 1;
-    g.pickups.push({ id: g.nextId++, kind: 'ammo', x: 300, y: 200, age: 0 });
-    g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'railgun', x: 1300, y: 200, age: 0 });
-    g.levels.focus = 1;
-    g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'focus', x: 1300, y: 500, age: 0 });
-    run(g, 2.5);
-    expect(g.ammo).toBe(g.stats.rack);
-    expect(g.weapon?.id).toBe('railgun');
-    expect(g.boost?.id).toBe('supplyRun');
-    expect(g.pickups.some((p) => p.weapon === 'focus')).toBe(true);
+  it('no magnet at any level (Test Lab round 5): drops stay where they fell until you tap them', () => {
+    for (const level of [1, 2, 3]) {
+      const g = quietGame();
+      g.levels.railgun = 1;
+      g.slots.push('railgun');
+      pickUp(g, 'supplyRun', level);
+      g.planes = [];
+      g.ammo = 1;
+      g.pickups.push({ id: g.nextId++, kind: 'ammo', x: 300, y: 200, age: 0 });
+      g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'railgun', x: 1300, y: 200, age: 0 });
+      run(g, 2.5);
+      expect(g.ammo, `level ${level}`).toBeLessThan(g.stats.rack);
+      expect(g.weapon, `level ${level}`).toBeNull();
+      const ammo = g.pickups.find((p) => p.kind === 'ammo')!;
+      expect([ammo.x, ammo.y]).toEqual([300, 200]);
+      expect(tap(g, 1300, 200, 30)).toBe('pickup');
+      expect(g.weapon?.id).toBe('railgun');
+    }
   });
 
   it('kills drop twice as much (three times at level 2)', () => {
@@ -160,83 +163,98 @@ describe('Supply Run', () => {
     expect(drops(2)).toBeGreaterThan(none * 2.3);
   });
 
-  it('a cargo plane crosses and drops its crates in a row, each on a parachute, then they fly to the carrier', () => {
-    const g = quietGame();
-    const hp = g.carrierHp;
-    pickUp(g, 'supplyRun', 1);
-    expect(g.planes).toHaveLength(1);
-    const seen: { kind: string; x: number; chute: number }[] = [];
-    for (let i = 0; i < 60 * 6; i++) {
-      step(g, DT);
-      for (const p of g.pickups) if (!seen.some((o) => o.x === p.x && o.kind === p.kind) && p.chute) seen.push({ kind: p.kind, x: p.x, chute: p.chute });
+  /** The crates a Supply Run's first plane drops, in order. */
+  const crates = (level: number, seed = 1, hold: AbilityId[] = ['flak', 'shield']) => {
+    const g = quietGame(seed);
+    for (const id of hold) {
+      g.levels[id] = 1;
+      g.slots.push(id);
     }
-    expect(seen.map((o) => o.kind)).toEqual(['ammo', 'repair', 'ammo']);
+    pickUp(g, 'supplyRun', level);
+    expect(g.planes).toHaveLength(1);
+    const seen: { kind: string; weapon?: string; x: number }[] = [];
+    for (let i = 0; i < 60 * 5; i++) {
+      step(g, DT);
+      for (const p of g.pickups) if (p.chute && !seen.some((o) => o.x === p.x)) seen.push({ kind: p.kind, weapon: p.weapon, x: p.x });
+    }
+    return { g, seen };
+  };
+
+  it('a cargo plane drops its crates in a row on parachutes: ammo, your gear (a weapon or boost) and a repair; they stay on the water', () => {
+    const { g, seen } = crates(1);
+    expect(seen.map((o) => o.kind)).toEqual(['ammo', 'weapon', 'repair']);
+    expect(['flak', 'shield']).toContain(seen[1].weapon);
     // In a row: evenly spaced across the middle of the screen.
     const xs = seen.map((o) => o.x).sort((a, b) => a - b);
     expect(xs[1] - xs[0]).toBeCloseTo(xs[2] - xs[1], 3);
     expect(g.planes).toHaveLength(0);
-    // Down and delivered: nothing left on the water.
-    expect(g.pickups).toHaveLength(0);
-    expect(g.carrierHp).toBeGreaterThanOrEqual(hp);
+    // Nothing flew to the carrier: all three still float where they fell.
+    expect(g.pickups).toHaveLength(3);
+    // Supply Run never drops itself.
+    for (let seed = 1; seed <= 8; seed++) expect(crates(2, seed, ['flak']).seen.every((o) => o.weapon !== 'supplyRun')).toBe(true);
   });
 
-  it('Airdrop: another plane every 6 s drops a crate with one of your weapons', () => {
-    const g = quietGame();
-    g.levels.flak = 1;
-    g.slots.push('flak');
-    pickUp(g, 'supplyRun', 3);
-    let weapon = false;
-    for (let i = 0; i < 60 * (AB.supplyRun.crate + 4) && !weapon; i++) {
-      step(g, DT);
-      weapon = g.pickups.some((p) => p.kind === 'weapon' && p.weapon === 'flak') || g.weapon?.id === 'flak';
+  it('level 2: five crates, two of them your gear; nothing else held: ammo in their place', () => {
+    const { seen } = crates(2);
+    expect(seen.map((o) => o.kind)).toEqual(['ammo', 'weapon', 'repair', 'weapon', 'ammo']);
+    expect(crates(2, 1, []).seen.map((o) => o.kind)).toEqual(['ammo', 'ammo', 'repair', 'ammo', 'ammo']);
+  });
+
+  it('Airdrop: another plane every 6 s drops one of your weapons or boosts, or now and then a Nuke', () => {
+    const kinds = new Set<string>();
+    let nukes = 0;
+    let gear = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = quietGame(seed);
+      g.levels.flak = 1;
+      g.slots.push('flak');
+      pickUp(g, 'supplyRun', 3);
+      g.planes = [];
+      run(g, AB.supplyRun.crate + 3);
+      for (const p of g.pickups) {
+        kinds.add(p.kind === 'weapon' ? p.weapon! : p.kind);
+        if (p.kind === 'nuke') nukes++;
+        else gear++;
+      }
     }
-    expect(weapon).toBe(true);
+    expect(kinds.has('flak')).toBe(true);
+    expect(kinds.has('nuke')).toBe(true);
+    // Now and then: well under half the crates.
+    expect(nukes).toBeLessThan(gear / 2);
+    expect(kinds.has('supplyRun')).toBe(false);
   });
 });
 
-describe('Overclock', () => {
-  it('the loaded weapon plays a level higher with its clock stopped; it comes back after', () => {
-    const g = quietGame();
-    load(g, 'flak', 1);
-    pickUp(g, 'overclock', 1);
-    expect(g.weapon!.level).toBe(2);
-    const t = g.weapon!.t;
-    run(g, 3);
-    expect(g.weapon!.t).toBe(t);
-    run(g, WEAPON.time);
-    expect(g.weapon!.level).toBe(1);
-    expect(g.weapon!.t).toBeLessThan(t);
+describe('cut weapons (Test Lab round 5): Overclock and Time Warp', () => {
+  it('are gone from the roster, the draft, Free Play and the Test Lab; Time Warp\'s power-up never drops', async () => {
+    const { ABILITIES } = await import('../../src/v3/data/abilities');
+    const { CUT_WEAPONS, draftPool, freePlayPool, knownWeapon } = await import('../../src/v3/data/roster');
+    const { LAB_CARDS } = await import('../../src/v3/data/lab');
+    for (const id of CUT_WEAPONS) {
+      expect(ABILITY_ORDER as string[]).not.toContain(id);
+      expect(id in ABILITIES).toBe(false);
+      expect(id in ROSTER).toBe(false);
+      expect(knownWeapon(id)).toBe(false);
+      for (const ch of [1, 2, 3, 4]) expect(draftPool(ch) as string[]).not.toContain(id);
+      expect(freePlayPool() as string[]).not.toContain(id);
+      expect(LAB_CARDS.some((c) => c.id === `w-${id}` || c.weapon === (id as string) || (c.kit as string[]).includes(id))).toBe(false);
+    }
+    expect(PICKUPS.weights.timewarp).toBe(0);
   });
 
-  it('nothing loaded: it waits for the next weapon (level 1: only that one; level 2: every one)', () => {
-    const g = quietGame();
-    pickUp(g, 'overclock', 1);
-    pickUp(g, 'flak', 1);
-    expect(g.weapon!.level).toBe(2);
-    pickUp(g, 'railgun', 1);
-    expect(g.weapon!.level).toBe(1);
-    pickUp(g, 'overclock', 2);
-    expect(g.weapon!.level).toBe(2);
-    pickUp(g, 'scatter', 1);
-    expect(g.weapon!.level).toBe(2);
-  });
-
-  it('Overload: straight to MAX; a weapon already at MAX drops more often instead', () => {
-    const g = quietGame();
-    load(g, 'railgun', 1);
-    pickUp(g, 'overclock', 3);
-    expect(g.weapon!.level).toBe(3);
-    const h = quietGame();
-    load(h, 'flak', 3);
-    h.slots.push('railgun');
-    h.levels.railgun = 1;
-    pickUp(h, 'overclock', 1);
-    expect(h.boost!.drops).toBe('flak');
-    expect(h.weapon!.level).toBe(3);
-    // Its clock still stops.
-    const t = h.weapon!.t;
-    run(h, 2);
-    expect(h.weapon!.t).toBe(t);
+  it('an old Free Play setup or play log naming one still starts: the cut weapon is left out', () => {
+    const g = createGame('strait', 2, 3);
+    applyFreePlay(g, { weapons: [{ id: 'overclock' as AbilityId, level: 2 }, { id: 'flak', level: 1 }, { id: 'timeWarp' as AbilityId, level: 1 }], frequentDrops: true });
+    expect(g.slots).toEqual(['flak']);
+    expect(Object.keys(g.levels)).toEqual(['flak']);
+    run(g, 20);
+    expect(g.phase === 'wave' || g.phase === 'draft').toBe(true);
+    // A draft pick naming one does nothing.
+    g.phase = 'draft';
+    g.offer = ['flak', 'resupply'];
+    pickUpgrade(g, 'overclock' as AbilityId);
+    expect(g.phase).toBe('draft');
+    expect(g.levels).not.toHaveProperty('overclock');
   });
 });
 
@@ -278,6 +296,8 @@ describe('Dual Wield', () => {
     g.passiveT = 0.1;
     pickUp(g, 'dualWield', 1);
     pickUp(g, 'gunships', 1);
+    // Something on screen for the drones to go for (they hold fire without).
+    addThreat(g, { x: 800, y: 200, hp: 99 });
     run(g, 0.5);
     expect(g.helis.length).toBe(2);
     expect(g.wings.length).toBeGreaterThan(0);
@@ -546,8 +566,21 @@ describe('Dual Wield: every case (Test Lab round 4)', () => {
   });
 });
 
-describe('Wild Card', () => {
-  it('nothing loaded: each tap is a random weapon’s shot, at the boost’s level', () => {
+describe('Wild Card (a weapon since Test Lab round 5)', () => {
+  it('it is an active: picked up, it takes over the gun, replacing the loaded weapon, for the weapon time', () => {
+    expect(ROSTER.wildCard.cat).toBe('active');
+    expect(isBoost('wildCard')).toBe(false);
+    const g = quietGame();
+    load(g, 'railgun', 1);
+    pickUp(g, 'wildCard', 1);
+    expect(g.weapon?.id).toBe('wildCard');
+    expect(g.boost).toBeNull();
+    expect(g.weapon!.t).toBe(g.stats.weaponTime);
+    run(g, WEAPON.time + 0.2);
+    expect(g.weapon).toBeNull();
+  });
+
+  it('loaded: each tap is a random weapon’s shot, at its level', () => {
     const g = quietGame();
     pickUp(g, 'wildCard', 3);
     const rolls = new Set<string>();
@@ -564,10 +597,11 @@ describe('Wild Card', () => {
     expect(g.fx.length + g.fields.length + g.blades.length + g.allies.length).toBeGreaterThan(0);
   });
 
-  it('a loaded weapon fires as usual (Wild Card waits for it to run out)', () => {
+  it('another weapon picked up replaces it, as weapons do', () => {
     const g = quietGame();
     pickUp(g, 'wildCard', 1);
-    load(g, 'railgun', 1);
+    pickUp(g, 'railgun', 1);
+    expect(g.weapon?.id).toBe('railgun');
     addThreat(g, { x: 800, y: 300, hp: 9 });
     tap(g, 800, 300, 30);
     expect(g.cues.some((c) => c.id === 'wild.roll')).toBe(false);
@@ -576,13 +610,40 @@ describe('Wild Card', () => {
 });
 
 describe('Focus', () => {
-  it('time slows only while a finger is down, spending the bank in real time', () => {
+  it('a quick tap never slows time (Test Lab round 5); a hold slows it only once held 0.3 s', () => {
+    const g = quietGame();
+    pickUp(g, 'focus', 1);
+    expect(AB.focus.hold).toBe(0.3);
+    // A tap: down for 0.2 s.
+    let t = g.t;
+    focusHold(g, true);
+    expect(g.focusing).toBe(false);
+    run(g, 0.2);
+    focusHold(g, false);
+    expect(g.t - t).toBeCloseTo(0.2, 3);
+    expect(g.boost!.bank).toBe(AB.focus.bank[0]);
+    // A hold: normal speed for the first 0.3 s, then slow.
+    focusHold(g, true);
+    t = g.t;
+    run(g, 0.3);
+    // (the step that reaches 0.3 s is already slow)
+    expect(g.t - t).toBeGreaterThan(0.3 - DT);
+    expect(g.focusing).toBe(true);
+    t = g.t;
+    run(g, 1);
+    expect(g.t - t).toBeCloseTo(AB.focus.scale[0], 2);
+    focusHold(g, false);
+    expect(g.focusing).toBe(false);
+  });
+
+  it('time slows only while a finger is held down, spending the bank in real time', () => {
     const g = quietGame();
     pickUp(g, 'focus', 1);
     let t = g.t;
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
     focusHold(g, true);
+    run(g, AB.focus.hold);
     t = g.t;
     run(g, 2);
     expect(g.t - t).toBeCloseTo(2 * AB.focus.scale[0], 2);
@@ -598,6 +659,7 @@ describe('Focus', () => {
     pickUp(g, 'focus', 1);
     const shots = g.shots;
     focusHold(g, true);
+    run(g, AB.focus.hold);
     expect(g.shots).toBe(shots);
     expect(g.focusing).toBe(true);
     g.ammo = 0;
@@ -628,6 +690,7 @@ describe('Focus', () => {
     const g = quietGame();
     pickUp(g, 'focus', 3);
     focusHold(g, true);
+    run(g, AB.focus.hold);
     const th = addThreat(g, { x: 800, y: 300, hp: 5 });
     tap(g, 800, 300, 30);
     run(g, 3);
@@ -683,24 +746,6 @@ describe('Overdrive (was a power-up)', () => {
   });
 });
 
-describe('Time Warp (was a power-up)', () => {
-  const moved = (level: number, seconds: number, after = 0) => {
-    const g = quietGame();
-    if (level) pickUp(g, 'timeWarp', level);
-    run(g, after);
-    const th = addThreat(g, { x: 800, y: 100, speed: 60, target: CARRIER_TARGET });
-    run(g, seconds);
-    return th.y - 100;
-  };
-  it('threats crawl: 40%, then 25%; Freeze Frame near-stops them for 2 s', () => {
-    const base = moved(0, 1);
-    expect(moved(1, 1) / base).toBeCloseTo(AB.timeWarp.scale[0], 1);
-    expect(moved(2, 1) / base).toBeCloseTo(AB.timeWarp.scale[1], 1);
-    expect(moved(3, 1) / base).toBeCloseTo(AB.timeWarp.freeze, 1);
-    expect(moved(3, 1, 2.1) / base).toBeCloseTo(AB.timeWarp.scale[2], 1);
-  });
-});
-
 describe('Shield (was a power-up)', () => {
   it('ships and the carrier take no damage', () => {
     const g = quietGame();
@@ -710,7 +755,7 @@ describe('Shield (was a power-up)', () => {
     expect(g.carrierHp).toBe(hp);
   });
 
-  it('level 1 lets a strafing run through; level 2 blocks it and shatters', () => {
+  it('new levels (Test Lab round 5): no level blocks a strafing run or shatters; MAX lasts 18 s', () => {
     const strafe = (level: number) => {
       const g = createGame('strait', 9, 3);
       g.queue = [{ at: g.waveT + 0.5, kind: 'strafer', side: -1 } as never, { at: 1e9, kind: 'drone', base: 0 }];
@@ -721,19 +766,34 @@ describe('Shield (was a power-up)', () => {
       const before = dmg();
       let shattered = false;
       for (let i = 0; i < 60 * 12 && g.phase === 'wave'; i++) {
-        if (g.boost) g.boost.t = Math.max(g.boost.t, g.fx.some((f) => f.kind === 'shatter') ? 0 : 5);
         step(g, DT);
         if (g.fx.some((f) => f.kind === 'shatter')) shattered = true;
       }
-      return { hurt: dmg() - before, shattered, boost: g.boost?.id ?? null };
+      return { hurt: dmg() - before, shattered };
     };
     const none = strafe(0);
     expect(none.hurt).toBeGreaterThan(0);
-    expect(strafe(1).hurt).toBe(none.hurt);
-    const two = strafe(2);
-    expect(two.hurt).toBe(0);
-    expect(two.shattered).toBe(true);
-    expect(two.boost).toBeNull();
+    for (const lv of [1, 2, 3]) expect(strafe(lv)).toEqual({ hurt: none.hurt, shattered: false });
+    const time = (lv: number) => {
+      const g = quietGame();
+      pickUp(g, 'shield', lv);
+      return g.boost!.t;
+    };
+    expect(time(1)).toBeCloseTo(WEAPON.time, 3);
+    expect(time(2)).toBeCloseTo(WEAPON.time, 3);
+    expect(time(3)).toBeCloseTo(18, 3);
+    expect(ABILITIES.shield.levels.join(' ')).not.toMatch(/strafing/i);
+  });
+
+  it('level 2: every hit it blocks puts a round back in the rack (level 1 does not)', () => {
+    for (const lv of [1, 2]) {
+      const g = quietGame();
+      pickUp(g, 'shield', lv);
+      g.ammo = 1;
+      damageCarrier(g, 2, 'guided');
+      damageCarrier(g, 2, 'drone');
+      expect(g.ammo, `level ${lv}`).toBe(lv >= 2 ? 3 : 1);
+    }
   });
 
   it('Reflect: a blocked missile bounces back and bursts on what is behind it', () => {

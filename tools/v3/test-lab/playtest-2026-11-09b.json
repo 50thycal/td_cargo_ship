@@ -1,0 +1,525 @@
+{
+ "date": "2026-11-09",
+ "round": 4,
+ "source": "Test Lab session of 2026-11-09 (04:06 to 16:48 UTC), the weapon cards of test round 4, played on build 2026-11-09T03:49; play logs on the Vercel playlog store. The notes were dictated; they are kept as the logs have them. Built in Test Lab round 5 (docs/design/v3-lab-round5-weapons.md).",
+ "verdicts": {
+  "w-dualWield": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Works as expected",
+    "log": "v3-20261109040636-56250",
+    "round": 4,
+    "rev": 4,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-cadence": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109040925-56251",
+    "round": 4,
+    "rev": 4,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-focus": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "When taping just to shoot a missile it should not do the slow down you need to long hold doe. Ti activate",
+    "log": "v3-20261109041205-56252",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 1
+   }
+  ],
+  "w-gunships": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Good overall just make sure if they are leaving the screen that they come back normally if you select another gunship instead of the existing g ones disappearing and also it should face the target when firing and also make it look more like a. Apache attack helicopter",
+    "log": "v3-20261109042206-13594",
+    "round": 4,
+    "rev": 2,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-supplyRun": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "Works good overall\n\nRemove the magnet part tho I don’t really like how that works especially if the player does not want the power up\n\nRework the levels as needed there \n\nAlso add in other weapon drops or boost to this cargo plane as well doesn’t have to be just ammo and heal it cna be weapons or the nuke too",
+    "log": "v3-20261109140245-50897",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 1
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Works good overall\n\nRemove the magnet part tho I don’t really like how that works especially if the player does not want the power up\n\nRework the levels as needed there \n\nAlso add in other weapon drops or boost to this cargo plane as well doesn’t have to be just ammo and heal it cna be weapons or the nuke too",
+    "log": "v3-20261109140603-50900",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-airstrike": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140512-50898",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-shrapnel": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140553-50899",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-frigate": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Works good but need to make sure frigets do t just disappear when they are traveling off screen and you select another friget weapon drop",
+    "log": "v3-20261109140704-50901",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 1
+   }
+  ],
+  "w-thermo": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140911-50902",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-scatter": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140921-50903",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-boomerang": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140924-50904",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-flak": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109140931-50905",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-seeker": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109141634-50907",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 3
+   }
+  ],
+  "w-aegis": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "This one is good, but can we rename it to something else? I don’t like what we have.",
+    "log": "v3-20261109142003-50908",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "This one is good, but can we rename it to something else? I don’t like what we have.",
+    "log": "v3-20261109164021-12832",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-well": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "This is a good overall, but it’s inconsistent and when it comes to the missile guide to missiles all those categories cause it does not pull those, but I’ll pull an aircraft so I think what we should do is categorize it by like size bigger stuff it just kind of slows it down while the larger stuff it does pull it in and then eventually pull in everything once it’s fully upgraded",
+    "log": "v3-20261109142016-50909",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-railgun": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109142252-50910",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-tesla": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109142256-50911",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-lance": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Kind of love hate this one. It works well once you get used to it but just kind of I guess hard to master so I think it’s OK as it is. Just keep note if there’s anything we can improve with it eventually.",
+    "log": "v3-20261109142259-50912",
+    "round": 4,
+    "rev": 1,
+    "ended": "lost",
+    "waves": 3
+   }
+  ],
+  "w-cutter": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "This is good overall, but for targets, I have like multiple points if you waive the wave back-and-forth/multiple times with one continue with ammo, it should continue using ammo to do those cuts so if your finger still holding down, I should keep using the ammo essentially, so I guess the main thing that this would changes like once you hold down, you could just burn through all your ammo, but at the same rate",
+    "log": "v3-20261109143047-50913",
+    "round": 4,
+    "rev": 2,
+    "ended": "lost",
+    "waves": 1
+   }
+  ],
+  "w-grapnel": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109144821-50914",
+    "round": 4,
+    "rev": 1,
+    "ended": "lost",
+    "waves": 3
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Make the grapple so it can always reach anywhere across the screen that shouldn’t be a level lock because it’s kind of unplayable if it isn’t so rework the levels as needed there too",
+    "log": "v3-20261109145057-50915",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-droneScreen": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Get overall, but the drone shouldn’t start firing unless there’s actually a threat on the screen because they’re just continuous stream",
+    "log": "v3-20261109150040-50916",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 1
+   }
+  ],
+  "w-bomberWing": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "Does this not attack like submarines and aircraft didn’t seem to really target at all which it should as well as the tie beats a little off silent silence before the bomber even passes over and then also it’s not giving a chance to go on the screen so there should have to at least be on the screen before the bomber hits them so you can actually see what is attacking",
+    "log": "v3-20261109150208-50917",
+    "round": 4,
+    "rev": 1,
+    "ended": "lost",
+    "waves": 2
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Does this not attack like submarines and aircraft didn’t seem to really target at all which it should as well as the tie beats a little off silent silence before the bomber even passes over and then also it’s not giving a chance to go on the screen so there should have to at least be on the screen before the bomber hits them so you can actually see what is attacking",
+    "log": "v3-20261109164516-12836",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-orbital": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "One note outside of the scope for those weapon when your plate testing one should always have an upgrade when you’re in this Tesla lab for the one that you’re actually testing so the oral strike and strike upgrade should be on the next round",
+    "log": "v3-20261109150416-50918",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-overclock": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "You should set this up so that it also reload a lot quicker. It still too slow needs to be boosted up a little bit.",
+    "log": "v3-20261109150613-50919",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   },
+   {
+    "verdict": "cut",
+    "tags": [],
+    "note": "You should set this up so that it also reload a lot quicker. It still too slow needs to be boosted up a little bit.\n\nI’m not really sure what the difference is on this one versus overclocked so we’re gonna drop this one",
+    "log": "v3-20261109164450-12835",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-wildCard": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "This works good, but it needs to be a weapon drop not a boost that shit replace whatever weapon you currently have since it takes over the main gun",
+    "log": "v3-20261109164025-12833",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 1
+   }
+  ],
+  "w-overdrive": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "What’s the difference between this one and then the other one that’s kind of like overdrive too that’s just like ammo reloading more. I think we should keep this one to drop the other one. I’ll edit the notes but then also on the last level when every shot hits two, it should like clearly show two project tiles instead of just one that should be for everything like for the beam be two laserbeam things like that so just make sure that’s clear",
+    "log": "v3-20261109164209-12834",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "What’s the difference between this one and then the other one that’s kind of like overdrive too that’s just like ammo reloading more. I think we should keep this one to drop the other one. I’ll edit the notes but then also on the last level when every shot hits two, it should like clearly show two project tiles instead of just one that should be for everything like for the beam be two laserbeam things like that so just make sure that’s clear",
+    "log": "v3-20261109164807-12840",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-timeWarp": [
+   {
+    "verdict": "cut",
+    "tags": [],
+    "note": "Too much like the focused ones were to drop this one",
+    "log": "v3-20261109164519-12837",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-shield": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Looks good overall I think you could just drop the whole straight thing and come up with new ideas that new ideas for the leveling up of this weapon",
+    "log": "v3-20261109164557-12838",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   }
+  ],
+  "w-fullSteam": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109164752-12839",
+    "round": 4,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ]
+ },
+ "notes": [
+  {
+   "card": "w-dualWield",
+   "log": "v3-20261109040636-56250",
+   "text": "Works as expected",
+   "built": "No change (tested as expected)."
+  },
+  {
+   "card": "w-focus",
+   "log": "v3-20261109041205-56252",
+   "text": "When taping just to shoot a missile it should not do the slow down you need to long hold doe. Ti activate",
+   "built": "Slow motion only after a 0.3 s hold; a quicker tap is an ordinary shot with no slow-down (round 5)."
+  },
+  {
+   "card": "w-gunships",
+   "log": "v3-20261109042206-13594",
+   "text": "Good overall just make sure if they are leaving the screen that they come back normally if you select another gunship instead of the existing g ones disappearing and also it should face the target when firing and also make it look more like a. Apache attack helicopter",
+   "built": "A new drop turns a leaving pair round (no vanishing); each gunship turns its nose onto its target before it fires; redrawn as an Apache-style attack helicopter (round 5)."
+  },
+  {
+   "card": "w-supplyRun",
+   "log": "v3-20261109140245-50897",
+   "text": "Works good overall\n\nRemove the magnet part tho I don’t really like how that works especially if the player does not want the power up\n\nRework the levels as needed there \n\nAlso add in other weapon drops or boost to this cargo plane as well doesn’t have to be just ammo and heal it cna be weapons or the nuke too",
+   "built": "No magnet at any level; the plane drops ammo, a repair and your gear (a weapon or boost), five crates at level 2, and Airdrop sometimes a Nuke (round 5)."
+  },
+  {
+   "card": "w-frigate",
+   "log": "v3-20261109140704-50901",
+   "text": "Works good but need to make sure frigets do t just disappear when they are traveling off screen and you select another friget weapon drop",
+   "built": "A new drop turns leaving frigates round and they sail back to station (round 5)."
+  },
+  {
+   "card": "w-aegis",
+   "log": "v3-20261109142003-50908",
+   "text": "This one is good, but can we rename it to something else? I don’t like what we have.",
+   "built": "Renamed Point Defense (MAX: Point Defense Grid); the id stays aegis (round 5)."
+  },
+  {
+   "card": "w-well",
+   "log": "v3-20261109142016-50909",
+   "text": "This is a good overall, but it’s inconsistent and when it comes to the missile guide to missiles all those categories cause it does not pull those, but I’ll pull an aircraft so I think what we should do is categorize it by like size bigger stuff it just kind of slows it down while the larger stuff it does pull it in and then eventually pull in everything once it’s fully upgraded",
+   "built": "By size: missiles, drones and small boats are dragged in at every level; aircraft, helicopters, motherships, vehicles, subs and big boats are only slowed (to 35%) until MAX, which drags in everything (round 5)."
+  },
+  {
+   "card": "w-lance",
+   "log": "v3-20261109142259-50912",
+   "text": "Kind of love hate this one. It works well once you get used to it but just kind of I guess hard to master so I think it’s OK as it is. Just keep note if there’s anything we can improve with it eventually.",
+   "built": "No change; kept on the list of things to improve (round 5)."
+  },
+  {
+   "card": "w-cutter",
+   "log": "v3-20261109143047-50913",
+   "text": "This is good overall, but for targets, I have like multiple points if you waive the wave back-and-forth/multiple times with one continue with ammo, it should continue using ammo to do those cuts so if your finger still holding down, I should keep using the ammo essentially, so I guess the main thing that this would changes like once you hold down, you could just burn through all your ammo, but at the same rate",
+   "built": "While the finger is down the beam keeps cutting along the drag, one round per 320 px (420 px from level 2), until the finger lifts or the rack is dry (round 5)."
+  },
+  {
+   "card": "w-grapnel",
+   "log": "v3-20261109145057-50915",
+   "text": "Make the grapple so it can always reach anywhere across the screen that shouldn’t be a level lock because it’s kind of unplayable if it isn’t so rework the levels as needed there too",
+   "built": "Hooks any threat on screen from level 1; level 2 now swings faster (1500 px/s) and smacks for 3 (round 5)."
+  },
+  {
+   "card": "w-droneScreen",
+   "log": "v3-20261109150040-50916",
+   "text": "Get overall, but the drone shouldn’t start firing unless there’s actually a threat on the screen because they’re just continuous stream",
+   "built": "The drones stay on deck while no threat is on screen; the first lifts off the moment one shows (round 5)."
+  },
+  {
+   "card": "w-bomberWing",
+   "log": "v3-20261109150208-50917",
+   "text": "Does this not attack like submarines and aircraft didn’t seem to really target at all which it should as well as the tie beats a little off silent silence before the bomber even passes over and then also it’s not giving a chance to go on the screen so there should have to at least be on the screen before the bomber hits them so you can actually see what is attacking",
+   "built": "Bombs aircraft and subs (up or at periscope depth) as well as trucks and silos, at every level; it is on screen before its bomb lands, the hit comes as it passes over, and its run sound peaks with the drop (round 5)."
+  },
+  {
+   "card": "w-orbital",
+   "log": "v3-20261109150416-50918",
+   "text": "One note outside of the scope for those weapon when your plate testing one should always have an upgrade when you’re in this Tesla lab for the one that you’re actually testing so the oral strike and strike upgrade should be on the next round",
+   "built": "Lab rule: a weapon test's every draft offers its weapon's next level until MAX (round 5)."
+  },
+  {
+   "card": "w-overclock",
+   "log": "v3-20261109164450-12835",
+   "text": "You should set this up so that it also reload a lot quicker. It still too slow needs to be boosted up a little bit.\n\nI’m not really sure what the difference is on this one versus overclocked so we’re gonna drop this one",
+   "built": "Cut (round 5)."
+  },
+  {
+   "card": "w-wildCard",
+   "log": "v3-20261109164025-12833",
+   "text": "This works good, but it needs to be a weapon drop not a boost that shit replace whatever weapon you currently have since it takes over the main gun",
+   "built": "Now an active weapon: its pickup takes over the gun like any other weapon (round 5)."
+  },
+  {
+   "card": "w-overdrive",
+   "log": "v3-20261109164209-12834",
+   "text": "What’s the difference between this one and then the other one that’s kind of like overdrive too that’s just like ammo reloading more. I think we should keep this one to drop the other one. I’ll edit the notes but then also on the last level when every shot hits two, it should like clearly show two project tiles instead of just one that should be for everything like for the beam be two laserbeam things like that so just make sure that’s clear",
+   "built": "Kept; at MAX every shot visibly fires twice: a second shell, beam, cone, blade, jet or cut from its own muzzle beside the first (round 5). Overclock was cut."
+  },
+  {
+   "card": "w-timeWarp",
+   "log": "v3-20261109164519-12837",
+   "text": "Too much like the focused ones were to drop this one",
+   "built": "Cut (round 5)."
+  },
+  {
+   "card": "w-shield",
+   "log": "v3-20261109164557-12838",
+   "text": "Looks good overall I think you could just drop the whole straight thing and come up with new ideas that new ideas for the leveling up of this weapon",
+   "built": "The strafe block is gone; level 2: a round back in the rack per blocked hit; MAX (Reflect): it lasts 18 s and a blocked missile bounces back and bursts (round 5)."
+  }
+ ]
+}

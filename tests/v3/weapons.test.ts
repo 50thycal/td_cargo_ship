@@ -62,8 +62,9 @@ describe('the roster (moddable: one line a weapon)', () => {
     expect(ABILITY_ORDER.some(isPrototype)).toBe(false);
     // The lock-in round (tools/v3/weapon-ideas/lockin-marks-2026-11-07.json).
     const NEW: Record<number, AbilityId[]> = {
-      1: ['airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla', 'cutter', 'droneScreen', 'supplyRun', 'overdrive', 'timeWarp'],
-      2: ['lance', 'gunships', 'overclock', 'shield', 'fullSteam'],
+      // (Test Lab round 5 cut Time Warp from chapter 1 and Overclock from 2.)
+      1: ['airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla', 'cutter', 'droneScreen', 'supplyRun', 'overdrive'],
+      2: ['lance', 'gunships', 'shield', 'fullSteam'],
       3: ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'],
       4: ['cadence', 'wildCard'],
     };
@@ -78,7 +79,7 @@ describe('the roster (moddable: one line a weapon)', () => {
     const seen: Record<number, Set<AbilityId>> = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set() };
     MAP_ORDER.forEach((map, i) => {
       const chapter = Math.floor(i / 5) + 1;
-      for (let seed = 1; seed <= 12; seed++) {
+      for (let seed = 1; seed <= 20; seed++) {
         const g = createGame(map, seed, 2);
         g.phase = 'wave';
         g.queue = [];
@@ -243,14 +244,17 @@ describe('Laser Cutter (swipe across threats)', () => {
     expect(g.interceptors.length).toBeGreaterThan(0);
   });
 
-  it('a swipe cuts at most its length; Searing Edge leaves the cut lit', () => {
+  it('held down, it keeps cutting past its length, a round for each length (Test Lab round 5); Searing Edge leaves the cut lit', () => {
     const g = quietGame();
     load(g, 'cutter', 3);
     const far = addThreat(g, { x: 1200, y: 300 });
+    const ammo = g.ammo;
     press(g, 100, 300, 30);
     pressMove(g, 1300, 300);
     release(g, 1300, 300, 30);
-    expect(alive(g, far)).toBe(true);
+    expect(far.dead).toBe(true);
+    // 1200 px of cut at 420 px a round: three rounds.
+    expect(ammo - g.ammo).toBe(Math.ceil(1200 / AB.cutter.length[2]));
     expect(g.fields.some((f) => f.kind === 'laser')).toBe(true);
   });
 });
@@ -384,7 +388,7 @@ describe('War Drum (Cadence MAX): on the beat it blows up platforms and vehicles
   });
 
   it('the draft card says so', () => {
-    expect(ABILITIES.cadence.levels[2]).toMatch(/blows up any truck, siege gun, helicopter, sub or tender/);
+    expect(ABILITIES.cadence.levels[2]).toMatch(/blows up any truck, siege gun, helicopter, sub or repair ship/);
   });
 });
 
@@ -490,11 +494,20 @@ describe('Bomber Wing (the shore: trucks, silos, tunnels)', () => {
     g.passiveT = AB.bomberWing.first;
     // Base 0 has four launches due in the next few seconds; base 1 one.
     g.queue = [
-      ...[2, 2.5, 3, 3.5].map((dt) => ({ at: g.waveT + dt, kind: 'drone' as const, base: 0 })),
-      { at: g.waveT + 3, kind: 'drone' as const, base: 1 },
+      ...[4.5, 5, 5.5, 6].map((dt) => ({ at: g.waveT + dt, kind: 'drone' as const, base: 0 })),
+      { at: g.waveT + 5.5, kind: 'drone' as const, base: 1 },
       { at: 1e9, kind: 'drone' as const, base: 0 },
     ];
+    // Called, but not silent until the bomber is over it (Test Lab round 5).
     run(g, 1.6);
+    expect(g.sorties).toHaveLength(1);
+    const b = g.sorties[0];
+    for (let i = 0; i < 60 * 3 && !b.hit; i++) {
+      expect(g.quietUntil[0] ?? 0).toBeLessThanOrEqual(g.t);
+      step(g, DT);
+    }
+    expect(b.hit).toBe(true);
+    expect(Math.abs(b.x - b.tx)).toBeLessThan(20);
     expect(g.quietUntil[0]).toBeGreaterThan(g.t);
     run(g, 4);
     // Only base 1's launch happened.
@@ -518,7 +531,7 @@ describe('Bomber Wing (the shore: trucks, silos, tunnels)', () => {
     expect(truck!.units.length + truck!.rounds.length).toBe(0);
   });
 
-  it('Carpet Raid (MAX) also bombs a surfaced sub; level 1 leaves it alone', () => {
+  it('bombs a surfaced sub at every level (Test Lab round 5: Carpet Raid used to be the only one)', () => {
     const surfaced = (level: number) => {
       const g = createGame('strait', 5, 6);
       g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
@@ -534,7 +547,7 @@ describe('Bomber Wing (the shore: trucks, silos, tunnels)', () => {
       return g.sorties.some((s) => s.kind === 'truck' && s.ref === sub!.id);
     };
     expect(surfaced(3)).toBe(true);
-    expect(surfaced(1)).toBe(false);
+    expect(surfaced(1)).toBe(true);
   });
 });
 

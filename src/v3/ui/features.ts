@@ -526,7 +526,8 @@ let dark: HTMLCanvasElement | null = null;
 
 export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (th: Threat) => void): void {
   const n = g.map.night;
-  if (!n) return;
+  // Blackout (a special event): night for its length, with no lighthouse.
+  if (!n && !nightEvent(g)) return;
   const flare = g.flareT > 0 ? Math.min(1, g.flareT / 1) : 0;
   const alpha = 0.78 * (1 - flare);
   if (alpha <= 0.02) return;
@@ -551,29 +552,33 @@ export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (
     d.fill();
   };
   // The lighthouse beam.
-  const beam = beamAngle(g);
-  const w = (n.width * Math.PI) / 180;
-  const grad = d.createRadialGradient(n.light.x, n.light.y, 10, n.light.x, n.light.y, n.reach);
-  grad.addColorStop(0, 'rgba(0,0,0,1)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.6)');
-  d.fillStyle = grad;
-  d.beginPath();
-  d.moveTo(n.light.x, n.light.y);
-  d.arc(n.light.x, n.light.y, n.reach, beam - w / 2, beam + w / 2);
-  d.closePath();
-  d.fill();
-  hole(n.light.x, n.light.y, 70);
+  const beam = n ? beamAngle(g) : 0;
+  const w = n ? (n.width * Math.PI) / 180 : 0;
+  if (n) {
+    const grad = d.createRadialGradient(n.light.x, n.light.y, 10, n.light.x, n.light.y, n.reach);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+    d.fillStyle = grad;
+    d.beginPath();
+    d.moveTo(n.light.x, n.light.y);
+    d.arc(n.light.x, n.light.y, n.reach, beam - w / 2, beam + w / 2);
+    d.closePath();
+    d.fill();
+    hole(n.light.x, n.light.y, 70);
+  }
   hole(g.map.carrier.x, g.map.carrier.y, 230);
   for (const f of g.fx) if (f.kind === 'launch' || f.kind === 'boom' || f.kind === 'burst') hole(f.x, f.y, 90 + f.r * 2, 1 - f.age / f.life);
   for (const s of g.ships) hole(s.x, s.y, 46, 0.5);
   ctx.drawImage(dark, 0, 0);
   // The beam itself, a pale cone.
-  ctx.fillStyle = 'rgba(255,243,196,0.07)';
-  ctx.beginPath();
-  ctx.moveTo(n.light.x, n.light.y);
-  ctx.arc(n.light.x, n.light.y, n.reach, beam - w / 2, beam + w / 2);
-  ctx.closePath();
-  ctx.fill();
+  if (n) {
+    ctx.fillStyle = 'rgba(255,243,196,0.07)';
+    ctx.beginPath();
+    ctx.moveTo(n.light.x, n.light.y);
+    ctx.arc(n.light.x, n.light.y, n.reach, beam - w / 2, beam + w / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
   // Threats in the dark: a faint glow where their engine is.
   for (const th of g.threats) {
     if (th.dead || lit(g, th.x, th.y)) continue;
@@ -589,6 +594,11 @@ export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (
   }
 }
 
+/** A special event's night (Blackout). */
+export function nightEvent(g: Game): boolean {
+  return !!g.event?.rules.includes('night');
+}
+
 /** Where the lighthouse beam points now (radians). */
 export function beamAngle(g: Game): number {
   const n = g.map.night!;
@@ -601,9 +611,10 @@ export function beamAngle(g: Game): number {
 /** Is (x, y) in light right now? */
 export function lit(g: Game, x: number, y: number): boolean {
   const n = g.map.night;
-  if (!n || g.flareT > 0) return true;
+  if ((!n && !nightEvent(g)) || g.flareT > 0) return true;
   const c = g.map.carrier;
   if (Math.hypot(x - c.x, y - c.y) < 200) return true;
+  if (!n) return false;
   const a = Math.atan2(y - n.light.y, x - n.light.x);
   let diff = a - beamAngle(g);
   while (diff > Math.PI) diff -= Math.PI * 2;

@@ -83,12 +83,13 @@ describe('sound coverage', () => {
   });
 
   it('every game event, threat, pickup and weapon maps to its sound', () => {
-    const kinds: GameEvent['kind'][] = ['wave', 'debut', 'vector', 'shipLost', 'carrierHit', 'bigKill', 'pickup', 'newPickup', 'weapon', 'dry', 'tanker', 'post', 'boss', 'fork'];
+    const kinds: GameEvent['kind'][] = ['wave', 'debut', 'vector', 'shipLost', 'carrierHit', 'bigKill', 'pickup', 'newPickup', 'weapon', 'dry', 'tanker', 'post', 'boss', 'fork', 'special', 'specialEnd'];
     const EVENT_CUES: Record<GameEvent['kind'], CueId[]> = {
       wave: ['wave.start'], debut: ['debut.sting'], vector: ['debut.sting'], shipLost: ['ship.sunk'], carrierHit: ['carrier.hit'],
       bigKill: ['kill.big', 'sub.destroyed', 'truck.destroyed'], pickup: Object.values(PICKUP_CUE), newPickup: ['powerup.drop', 'weapon.drop'],
       weapon: ['weapon.load', 'boost.on'], dry: ['gun.dry'],
       tanker: ['tanker.horn'], post: ['post.down', 'post.lost', 'post.up', 'ship.hit'], boss: ['boss.horn'], fork: ['fork.switch'],
+      special: ['debut.sting', 'wave.start'], specialEnd: ['notice'],
     };
     for (const k of kinds) for (const c of EVENT_CUES[k]) expect(CUE_IDS).toContain(c);
     const threats = Object.keys(THREATS) as ThreatKind[];
@@ -172,12 +173,10 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   orbital: ['orbital.lock'],
   // Phase 3 boosts (at MAX): they change the plain gun's shots.
   supplyRun: ['gun.fire'],
-  overclock: ['gun.fire'],
   dualWield: ['gun.fire'],
   wildCard: ['wild.roll'],
   focus: ['gun.fire'],
   overdrive: ['gun.fire'],
-  timeWarp: ['gun.fire'],
   shield: ['gun.fire'],
   fullSteam: ['gun.fire'],
 };

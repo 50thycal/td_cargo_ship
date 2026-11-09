@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 17 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 18 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -583,7 +583,7 @@ try {
     await wp.click('[data-free-play]');
     await wp.waitForSelector('[data-screen="freeplay"]');
     const fpList = await wp.evaluate(() => { const o = [...document.querySelectorAll('[data-fp="weapon0"] option')]; return { all: o.filter((x) => x.value).length, protos: o.filter((x) => /prototype/.test(x.textContent)).length }; });
-    check(fpList.all === 29 && fpList.protos === 0, `Free Play offers all 29 weapons, none a prototype after the lock-in (${JSON.stringify(fpList)})`);
+    check(fpList.all === 27 && fpList.protos === 0, `Free Play offers all 27 weapons (Overclock and Time Warp cut), none a prototype after the lock-in (${JSON.stringify(fpList)})`);
     await wp.click('[data-free-start]');
     await wp.waitForSelector('.playing');
     // Hand-placed targets on a quiet wave: the same picture every time.
@@ -690,9 +690,11 @@ try {
     check(helis === 2 && missiles > 0 && after.alive.length === 0, `Gunship Pair: two helicopters arrive and fire Hellfires at the pack (${helis} helis, ${missiles} missiles in the air at once, ${after.alive.length} left)`);
 
     await place([]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 1.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
+    await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 3.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
     await pickup('bomberWing');
-    await wp.waitForTimeout(2200);
+    // (Test Lab round 5: the silo goes quiet when the bomber is over it, ~2 s
+    // after it is called, then its launches due are cancelled.)
+    await wp.waitForTimeout(5500);
     const silent = await wp.evaluate(() => { const g = window.__v3.game(); return { quiet: (g.quietUntil[0] ?? 0) > g.t, launched: g.threats.length }; });
     check(silent.quiet && silent.launched === 0, `Bomber Wing: a pass silences the busy silo, its launches cancelled (${JSON.stringify(silent)})`);
 
@@ -706,15 +708,22 @@ try {
 
     // ---- Phase 3: boosts. A boost pickup never replaces the loaded weapon.
     await place([['heavy', 30, 800, 260]]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.timeWarp = 1; if (!g.slots.includes('timeWarp')) g.slots.push('timeWarp'); });
-    await dropWeapon(wp, 'timeWarp', 640, 560);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.fullSteam = 1; if (!g.slots.includes('fullSteam')) g.slots.push('fullSteam'); });
+    await dropWeapon(wp, 'fullSteam', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
     const tw = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
-    check(tw.boost === 'timeWarp' && tw.weapon === 'railgun', `a boost runs beside the loaded weapon: Time Warp with the Railgun (${JSON.stringify(tw)})`);
+    check(tw.boost === 'fullSteam' && tw.weapon === 'railgun', `a boost runs beside the loaded weapon: Full Steam with the Railgun (${JSON.stringify(tw)})`);
+
+    // Wild Card (Test Lab round 5): a weapon now, it replaces the Railgun.
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.wildCard = 1; if (!g.slots.includes('wildCard')) g.slots.push('wildCard'); });
+    await dropWeapon(wp, 'wildCard', 640, 560);
+    await wp.mouse.click(p.x, p.y);
+    const wc = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
+    check(wc.weapon === 'wildCard' && wc.boost === 'fullSteam', `Wild Card is a weapon: it takes over the gun from the Railgun, the boost runs on (${JSON.stringify(wc)})`);
 
     // Focus: a finger down slows time; lifting it stops.
-    await place([['drone', 1, 600, 200]]);
+    await place([['drone', 1, 600, 200], ['drone', 1, 900, 200]]);
     await wp.evaluate(() => { const g = window.__v3.game(); g.levels.focus = 1; if (!g.slots.includes('focus')) g.slots.push('focus'); });
     await dropWeapon(wp, 'focus', 640, 560);
     p = await c(640, 560);
@@ -726,6 +735,15 @@ try {
       cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 11 }));
     }, [type, id, x, y]);
     const hold = await c(1200, 400);
+    // A quick tap of it (Test Lab round 5): a shot, and no slow-down.
+    const quick0 = await wp.evaluate(() => window.__v3.game().shots);
+    const qa = await c(900, 200);
+    await finger('pointerdown', 11, qa.x, qa.y);
+    const quickSlow = await wp.evaluate(() => window.__v3.game().focusing);
+    await finger('pointerup', 11, qa.x, qa.y);
+    const quick = await wp.evaluate(() => { const g = window.__v3.game(); return { shots: g.shots, focusing: g.focusing, bank: g.boost?.bank }; });
+    check(!quickSlow && !quick.focusing && quick.shots === quick0 + 1 && quick.bank === 10, `Focus: a quick tap is just a shot, no slow-down (${JSON.stringify(quick)})`);
+    await wp.waitForTimeout(400);
     const shots0f = await wp.evaluate(() => window.__v3.game().shots);
     await finger('pointerdown', 11, hold.x, hold.y);
     await wp.waitForTimeout(400);
@@ -774,6 +792,13 @@ try {
       chutes = Math.max(chutes, s.chutes);
     }
     check(plane === 1 && chutes >= 2, `Supply Run: a cargo plane crosses and drops its crates on parachutes (${plane} plane, up to ${chutes} crates in the air)`);
+    // No magnet (Test Lab round 5): the crates stay where they came down.
+    // (Once they are down off their parachutes.)
+    await wp.waitForFunction(() => window.__v3.game().pickups.every((x) => !x.chute), null, { timeout: 5000 }).catch(() => {});
+    const crates = await wp.evaluate(() => window.__v3.game().pickups.map((x) => [Math.round(x.x), Math.round(x.y)]).join(' '));
+    await wp.waitForTimeout(800);
+    const still = await wp.evaluate(() => window.__v3.game().pickups.map((x) => [Math.round(x.x), Math.round(x.y)]).join(' '));
+    check(crates.length > 0 && crates === still, `Supply Run: its crates stay on the water for you to tap, nothing flies to the carrier (${crates} → ${still})`);
 
     const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
     check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r') && replayed.kinds.includes('h'), `the play log records presses, moves, lifts and the Focus finger (${replayed.kinds.join('')})`);
@@ -858,9 +883,9 @@ try {
     await tp.reload({ waitUntil: 'networkidle' });
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
-    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent }));
-    check(hub.rows === 74 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
-    await tp.click('[data-lab-next]');
+    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, first: document.querySelector('.v3-lab-sec')?.dataset.section }));
+    check(hub.rows === 89 && hub.events === 17 && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
     check(run.card === 'diveBomber' && run.wave === 5 && run.endless && run.bar, `a test starts at wave 5 on the lab's water with its bar (${JSON.stringify(run)})`);
@@ -881,7 +906,23 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 4 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 4 && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 5 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 5 && saved.v === 18 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    // An event card starts straight into its event on its own map, its card
+    // shown; Run it again (in place of Bring one) starts it over.
+    await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
+    await tp.waitForSelector('.playing.lab-on');
+    await tp.waitForSelector('.v3-event-card.show[data-event-card="decoy-storm"]', { timeout: 3000 });
+    const ev = await tp.evaluate(() => {
+      const g = window.__v3.game();
+      const card = document.querySelector('.v3-event-card');
+      return { event: g.event?.id, wave: g.wave, map: g.map.id, name: card?.querySelector('.v3-event-name')?.textContent, rules: [...(card?.querySelectorAll('.v3-event-rules i') ?? [])].map((i) => i.textContent), rerun: document.querySelector('[data-lab-rerun]')?.textContent, bring: !!document.querySelector('[data-lab-bring]:not([data-lab-rerun])'), hud: document.querySelector('.v2-hud')?.textContent };
+    });
+    check(ev.event === 'decoy-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Decoy Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
+    await tp.waitForTimeout(1500);
+    await tp.click('[data-lab-rerun]');
+    await tp.waitForTimeout(300);
+    const again = await tp.evaluate(() => { const g = window.__v3.game(); return { cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, t: g.event?.t, reruns: g.eventLog.filter((e) => e.outcome === 'rerun').length, card: document.querySelector('.v3-event-card.show')?.dataset.eventCard }; });
+    check(again.cmds === 1 && again.reruns === 1 && again.t < 1 && again.card === 'decoy-storm', `Run it again starts the event over, as a recorded input (${JSON.stringify(again)})`);
     // A link from the review page opens a test straight away.
     await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
@@ -903,8 +944,105 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 4/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 5/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
+  }
+
+  // ---- Typing a note on a phone (Test Lab round 5) ----
+  // The player: "I still can't see the text box all that great when writing
+  // feedback, both horizontal and vertical"; and seven round-4 cards were
+  // saved with a note and no verdict. The phone's keyboard is stood in for
+  // by a visualViewport cut to what it leaves (874×402 sideways: 150 px;
+  // 402×874 upright: 480 px), with iOS's pan of the page under it
+  // (offsetTop) too. While typing, the box is big, bright and at the top of
+  // what is left, with Keep / Tune / Cut and the Save buttons beside or under
+  // it; a verdict picked before typing is kept; Save with none asks for one.
+  {
+    const FAKE_VV = () => {
+      const t = new EventTarget();
+      const st = { kb: null };
+      const fake = {
+        get width() { return window.innerWidth; },
+        get height() { return st.kb ? st.kb.h : window.innerHeight; },
+        get offsetTop() { return st.kb ? st.kb.top : 0; },
+        get offsetLeft() { return 0; },
+        get pageTop() { return this.offsetTop; },
+        get pageLeft() { return 0; },
+        scale: 1,
+        addEventListener: (...a) => t.addEventListener(...a),
+        removeEventListener: (...a) => t.removeEventListener(...a),
+        dispatchEvent: (e) => t.dispatchEvent(e),
+      };
+      Object.defineProperty(window, 'visualViewport', { get: () => fake, configurable: true });
+      window.__kb = (o) => {
+        st.kb = o;
+        t.dispatchEvent(new Event('resize'));
+        t.dispatchEvent(new Event('scroll'));
+      };
+    };
+    const box = (p, sel) => p.evaluate((sel) => {
+      const e = document.querySelector(sel);
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height), w: Math.round(r.width), shown: getComputedStyle(e).display !== 'none' && r.height > 0 };
+    }, sel);
+    const cases = [
+      { name: 'landscape', w: 874, h: 402, kb: 150, top: 0, pick: true },
+      { name: 'portrait', w: 402, h: 874, kb: 480, top: 0, pick: false },
+      { name: 'landscape, page panned', w: 874, h: 402, kb: 150, top: 120, pick: false },
+      { name: 'portrait, page panned', w: 402, h: 874, kb: 480, top: 200, pick: true },
+    ];
+    for (const c of cases) {
+      const kc = await browser.newContext({ viewport: { width: c.w, height: c.h }, hasTouch: true, isMobile: true });
+      await kc.addInitScript(FAKE_VV);
+      const kp = await kc.newPage();
+      const errs = [];
+      kp.on('pageerror', (e) => errs.push(e.message));
+      await kp.goto(`${BASE_URL}/v3.html?lab=cloud&seed=8`, { waitUntil: 'networkidle' });
+      await kp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
+      await kp.reload({ waitUntil: 'networkidle' });
+      await kp.waitForSelector('.lab-on');
+      await kp.waitForTimeout(600);
+      await kp.evaluate(() => document.querySelector('[data-lab-done]').click());
+      await kp.waitForSelector('[data-screen="lab-verdict"]');
+      // Sideways: Keep picked first, then the note typed.
+      if (c.pick) await kp.locator('[data-lab-verdict="keep"]').tap();
+      await kp.locator('#lab-note').tap();
+      await kp.evaluate((o) => window.__kb(o), { h: c.kb, top: c.top });
+      await kp.keyboard.type('the fire reads well now');
+      await kp.waitForTimeout(250);
+      const vis = { top: c.top, bottom: c.top + c.kb };
+      const lay = {
+        typing: await kp.evaluate(() => document.querySelector('.v2-root').classList.contains('typing')),
+        font: await kp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#lab-note')).fontSize)),
+        note: await box(kp, '#lab-note'),
+        row: await box(kp, '.v3-lab-v'),
+        keepOn: await kp.evaluate(() => document.querySelector('[data-lab-verdict="keep"]').classList.contains('on')),
+        save: await box(kp, '[data-lab-list]'),
+        next: await box(kp, '[data-lab-save-next]'),
+        tags: await box(kp, '.v3-lab-tags'),
+        title: await box(kp, '.v3-lab-verdict h2'),
+      };
+      const inside = (r) => r && r.shown && r.top >= vis.top - 1 && r.bottom <= vis.bottom + 1 && r.left >= 0 && r.right <= c.w;
+      const big = c.w > c.h ? lay.note.h >= 120 && lay.note.w >= c.w * 0.6 : lay.note.h >= 300 && lay.note.w >= c.w - 20;
+      check(
+        lay.typing && lay.font >= 16 && inside(lay.note) && lay.note.top <= vis.top + 8 && big && inside(lay.row) && inside(lay.save) && inside(lay.next) && !lay.tags.shown && !lay.title.shown && lay.keepOn === c.pick,
+        `typing a verdict note, ${c.name}: the box big (${lay.note?.w}×${lay.note?.h}, ${lay.font} px) at the top of what the keyboard leaves, Keep / Tune / Cut and Save beside or under it, the rest folded away (${JSON.stringify(lay)})`,
+      );
+      if (!c.pick) {
+        // Save with no verdict: it asks, and saves nothing.
+        await kp.locator('[data-lab-list]').tap();
+        await kp.waitForTimeout(400);
+        const asked = await kp.evaluate(() => ({ screen: document.querySelector('.v2-overlay').dataset.screen, need: !document.querySelector('[data-lab-need]').hidden, saved: JSON.parse(localStorage.getItem('straitwatch.v3.lab') || '{"results":{}}').results.cloud ?? null, note: document.querySelector('#lab-note').value }));
+        check(asked.screen === 'lab-verdict' && asked.need && asked.saved === null && asked.note === 'the fire reads well now', `${c.name}: Save with no verdict asks for one and saves nothing; the note stays (${JSON.stringify(asked)})`);
+        await kp.locator('[data-lab-verdict="keep"]').tap();
+      }
+      await kp.locator('[data-lab-list]').tap();
+      await kp.waitForSelector('[data-screen="lab"]');
+      const saved = await kp.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.lab')).results.cloud?.at(-1));
+      check(saved?.verdict === 'keep' && saved?.note === 'the fire reads well now' && errs.length === 0, `${c.name}: the verdict ${c.pick ? 'picked before typing is kept through it' : 'picked when asked'} and saved with the note (${JSON.stringify({ verdict: saved?.verdict, note: saved?.note })}${errs.length ? `; ${errs[0]}` : ''})`);
+      await kc.close();
+    }
   }
 
   // ---- Playtest logs reach Claude (playtest-fixes round) ----
@@ -934,21 +1072,28 @@ try {
       return route.fulfill({ status: r.status, headers: Object.fromEntries(r.headers), body: Buffer.from(await r.arrayBuffer()) });
     });
     const lp = await lc.newPage();
-    await lp.goto(`${HOST}/v3.html?wave=10`);
+    // Wave 11: the Strait's special event (its ten waves come before it).
+    await lp.goto(`${HOST}/v3.html?wave=11`);
     await lp.evaluate(() => {
       localStorage.clear();
       localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 2, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: 2, open: [], mapsV: 2 }));
     });
     await lp.reload();
     await lp.locator('[data-map="strait"]').tap();
+    const brief = await lp.locator('[data-brief-event="rush"]').textContent();
+    check(/Special event:\s*Afterburner Rush, wave 11/.test(brief ?? ''), `the briefing names the map's special event (${brief})`);
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id }));
+    check(/WAVE\s*11\/11/.test(hud11.hud ?? '') && hud11.event === 'rush', `the wave counter shows 11 on a map with an event (${JSON.stringify(hud11)})`);
     for (let i = 0; i < 400; i++) {
-      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; return g.phase; });
+      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;
       await lp.waitForTimeout(100);
     }
     await lp.waitForSelector('[data-screen="result"]');
+    const resEv = await lp.evaluate(() => document.querySelector('[data-result-event]')?.dataset.resultEvent);
+    check(resEv === 'rush:clean', `the result screen lists the event and how it went (${resEv})`);
     await lp.waitForTimeout(1200);
     await lp.locator('[data-screen="result"] .v2-btn:has-text("Next")').tap();
     await lp.locator('[data-start]').tap();

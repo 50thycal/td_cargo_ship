@@ -49,11 +49,9 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   droneScreen: { cat: 'passive', unlock: 1, status: 'live' },
   supplyRun: { cat: 'boost', unlock: 1, status: 'live' },
   overdrive: { cat: 'boost', unlock: 1, status: 'live' },
-  timeWarp: { cat: 'boost', unlock: 1, status: 'live' },
   // Chapter 2, The Narrows.
   lance: { cat: 'active', unlock: 2, status: 'live', gesture: 'charge' },
   gunships: { cat: 'passive', unlock: 2, status: 'live' },
-  overclock: { cat: 'boost', unlock: 2, status: 'live' },
   shield: { cat: 'boost', unlock: 2, status: 'live' },
   fullSteam: { cat: 'boost', unlock: 2, status: 'live' },
   // Chapter 3, Dark Water.
@@ -64,8 +62,22 @@ export const ROSTER: Record<AbilityId, RosterEntry> = {
   focus: { cat: 'boost', unlock: 3, status: 'live' },
   // Chapter 4, Open War.
   cadence: { cat: 'active', unlock: 4, status: 'live' },
-  wildCard: { cat: 'boost', unlock: 4, status: 'live' },
+  // Test Lab round 5: Wild Card takes over the gun like any active (the
+  // player: "it needs to be a weapon drop not a boost"). Overclock and Time
+  // Warp were cut (the player: Overclock too like Overdrive, Time Warp "too
+  // much like Focus").
+  wildCard: { cat: 'active', unlock: 4, status: 'live' },
 };
+
+/** Weapons cut from the game (Test Lab round 5). Old saves, Free Play
+ *  setups, lab notes and play logs may still name them: `knownWeapon`
+ *  filters them out everywhere a stored id comes back in. */
+export const CUT_WEAPONS = ['overclock', 'timeWarp'] as const;
+
+/** Is this stored id a weapon the game still has? */
+export function knownWeapon(id: unknown): id is AbilityId {
+  return typeof id === 'string' && (ABILITY_ORDER as string[]).includes(id);
+}
 
 /** Is this a boost (never replaces the loaded weapon)? */
 export function isBoost(id: AbilityId | undefined | null): boolean {

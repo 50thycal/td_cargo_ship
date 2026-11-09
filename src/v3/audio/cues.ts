@@ -71,7 +71,6 @@ export const CUE_IDS = [
   'supply.plane',
   'wild.roll',
   'shield.reflect',
-  'shield.shatter',
   'steam.ram',
   // Weapon state
   'weapon.drop',

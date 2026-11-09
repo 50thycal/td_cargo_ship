@@ -5,6 +5,7 @@
 import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
+import type { Point } from '../data/maps';
 import { revealedDecoy, shellAt, siegeUp, type FoeMark } from '../sim/foes';
 import { C, deltaWing, hpPips, missile } from './render';
 
@@ -98,7 +99,7 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   }
   for (const th of g.threats) if (th.kind === 'diveBomber' && th.foe && th.foe.state === 0) drawTargetCircle(ctx, g, th.foe.px, th.foe.py, FOE.diveBomber.hit + 14, 1, '255,77,61');
   for (const s of g.foe.shots) if (s.kind === 'bomb') drawTargetCircle(ctx, g, s.tx, s.ty, FOE.diveBomber.hit + 14, 1, '255,77,61');
-  // A Bodyguard Ring's orbit; a Tender's beam as it charges.
+  // A Bodyguard Ring's orbit; a Repair Ship's beam as it charges.
   for (const th of g.threats) {
     if (th.dead) continue;
     if (th.kind === 'heavy' && g.threats.some((t) => t.kind === 'guard' && !t.dead && t.foe?.link === th.id)) {
@@ -439,7 +440,7 @@ function drawRocketTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   ctx.fillStyle = elev >= 1 ? '#ff6b4a' : '#1b1a14';
   for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(-18 + c * 6 + len * (1 - elev * 0.35) - 22, -5 + r * 6, 4, 4);
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 40, th.hp, THREATS.rocketTruck.hp);
+  hpPips(ctx, th.x, th.y - 40, th.hp, th.maxHp ?? THREATS.rocketTruck.hp);
 }
 
 /** A hostile helicopter from above: a dark red body, a tail boom, and a
@@ -489,7 +490,7 @@ function drawAttackHeli(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
     ctx.stroke();
   }
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 52, th.hp, THREATS.attackHeli.hp);
+  hpPips(ctx, th.x, th.y - 52, th.hp, th.maxHp ?? THREATS.attackHeli.hp);
 }
 
 /** Where the helicopter is going to hover, while it flies there. */
@@ -565,7 +566,7 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 30, th.hp, THREATS.torpedoSub.hp);
+  hpPips(ctx, th.x, th.y - 30, th.hp, th.maxHp ?? THREATS.torpedoSub.hp);
   void g;
 }
 
@@ -748,7 +749,7 @@ function drawArmored(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading
       ctx.fillRect(th.x - w / 2 + i * (pw + 2), th.y - 55, pw, 7);
     }
   }
-  hpPips(ctx, th.x, th.y - 42, th.hp, THREATS.armored.hp);
+  hpPips(ctx, th.x, th.y - 42, th.hp, th.maxHp ?? THREATS.armored.hp);
 }
 
 /** The Scavenger: a quadcopter, not a winged drone like the others (the
@@ -928,7 +929,7 @@ function drawStealthJet(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
     }
     ctx.restore();
   }
-  hpPips(ctx, th.x, th.y - 46, th.hp, THREATS.stealthJet.hp);
+  hpPips(ctx, th.x, th.y - 46, th.hp, th.maxHp ?? THREATS.stealthJet.hp);
 }
 
 /** The Stealth Bomber: a flying wing (the B-2's shape, the player asked),
@@ -967,14 +968,15 @@ function drawStealthBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
     }
     ctx.restore();
   }
-  hpPips(ctx, th.x, th.y - 60, th.hp, THREATS.stealthBomber.hp);
+  hpPips(ctx, th.x, th.y - 60, th.hp, th.maxHp ?? THREATS.stealthBomber.hp);
 }
 
 /** The Dive Bomber (Test Lab round 1: "the perspective should match the
  *  rest of the game"; round 2: an A-10 Warthog): seen from above like every
- *  other aircraft, with its shadow on the water. It comes in from the top of the screen at its
- *  circle and pitches down into its dive (its length foreshortens, its
- *  shadow closes in under it, it grows a touch as it gets low); it lets go
+ *  other aircraft, with its shadow on the water. It flies in level from off
+ *  the screen (round 4) at its circle and pitches down into its dive (its
+ *  length foreshortens, its shadow closes in under it, it grows a touch as
+ *  it gets low); it lets go
  *  of its red bomb short of the circle, then pulls up (shadow drawing away)
  *  and banks off. */
 function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
@@ -986,7 +988,8 @@ function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
   let pitch: number;
   let bank = 0;
   if (f.state === 0) {
-    const u = Math.min(1, f.t / D.window);
+    // Level from off the screen (round 4), then the dive.
+    const u = Math.max(0, Math.min(1, (f.t - (f.dive?.app ?? 0)) / D.window));
     alt = 1 - 0.8 * u * u;
     pitch = ease(Math.min(1, u * 1.8));
   } else {
@@ -1014,7 +1017,7 @@ function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
     }
   }
   drawWarthog(ctx, th.x, th.y, th.heading, k, fore, Math.cos(bank), '#8e979f', true, f.state === 0);
-  hpPips(ctx, th.x, th.y - 44 * k, th.hp, THREATS.diveBomber.hp);
+  hpPips(ctx, th.x, th.y - 44 * k, th.hp, th.maxHp ?? THREATS.diveBomber.hp);
 }
 
 /** An A-10 Warthog from above (Test Lab round 2: "make it faster and an
@@ -1177,7 +1180,7 @@ function drawSiege(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
     ctx.arc(th.x, th.y, 32, 0, Math.PI * 2);
     ctx.stroke();
   }
-  hpPips(ctx, th.x, th.y - 44, th.hp, THREATS.siege.hp);
+  hpPips(ctx, th.x, th.y - 44, th.hp, th.maxHp ?? THREATS.siege.hp);
 }
 
 function ease(u: number): number {
@@ -1339,7 +1342,7 @@ function drawSpotter(ctx: CanvasRenderingContext2D, th: Threat): void {
   ctx.arc(16, 0, 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 50, th.hp, THREATS.spotter.hp);
+  hpPips(ctx, th.x, th.y - 50, th.hp, th.maxHp ?? THREATS.spotter.hp);
 }
 
 /** The spotter's beam on its ship, and the bracket round it. */
@@ -1365,8 +1368,10 @@ function drawPaint(ctx: CanvasRenderingContext2D, g: Game, sp: Threat, ship: { x
   }
 }
 
-/** The Repair Tender: a small grey ship with a green cross on deck, bow
- *  along its course, a wake behind it while it sails in. */
+/** The Repair Ship (Test Lab round 4: "can we not call it repair tender
+ *  and just like repair ship?"; its id is still `tender`): a small grey
+ *  ship with a green cross on deck, bow along its course, a wake behind it
+ *  while it sails in. */
 function drawTender(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const sp = Math.hypot(th.vx, th.vy);
   ctx.save();
@@ -1415,7 +1420,7 @@ function drawTender(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.fillRect(-12, -3, 18, 6);
   ctx.fillRect(-6, -9, 6, 18);
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 32, th.hp, THREATS.tender.hp);
+  hpPips(ctx, th.x, th.y - 32, th.hp, th.maxHp ?? THREATS.tender.hp);
   void g;
 }
 
@@ -1481,7 +1486,7 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
       ctx.fill();
     }
   }
-  hpPips(ctx, th.x, th.y - 52, th.hp, THREATS.lure.hp);
+  hpPips(ctx, th.x, th.y - 52, th.hp, th.maxHp ?? THREATS.lure.hp);
 }
 
 /** The Lure's ring on the water, once it's up: everything a helper aims
@@ -1632,7 +1637,7 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   ctx.restore();
   // A flame mark on its side, upright so it reads.
   flameMark(ctx, th.x - Math.cos(heading) * 3, th.y - Math.sin(heading) * 3, 9, '#fde68a');
-  hpPips(ctx, th.x, th.y - 38, th.hp, THREATS.cloud.hp);
+  hpPips(ctx, th.x, th.y - 38, th.hp, th.maxHp ?? THREATS.cloud.hp);
 }
 
 /** A flame: a teardrop with a notch, the fire warning sign. */
@@ -1649,65 +1654,163 @@ function flameMark(ctx: CanvasRenderingContext2D, x: number, y: number, r: numbe
   ctx.stroke();
 }
 
-/** An Incendiary Missile's fireball: it flashes out as it bursts, then
- *  burns on the water (flickering flames, a white-hot core, rising embers,
- *  a dashed orange edge) and dies down at the end. A hull inside it takes a
- *  hit every few seconds. */
+/** A soft round sprite drawn once and stamped many times (cheaper than a
+ *  gradient a blob a frame): a flame's (white-hot core, yellow, orange, a
+ *  red edge fading out) or a smoke puff's (soft grey). */
+const sprites: Partial<Record<'flame' | 'smoke', HTMLCanvasElement>> = {};
+function sprite(kind: 'flame' | 'smoke'): HTMLCanvasElement {
+  const have = sprites[kind];
+  if (have) return have;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d')!;
+  const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  if (kind === 'flame') {
+    gr.addColorStop(0, 'rgba(255,250,228,1)');
+    gr.addColorStop(0.22, 'rgba(255,222,110,0.95)');
+    gr.addColorStop(0.5, 'rgba(255,128,32,0.75)');
+    gr.addColorStop(0.78, 'rgba(206,52,18,0.32)');
+    gr.addColorStop(1, 'rgba(160,30,10,0)');
+  } else {
+    gr.addColorStop(0, 'rgba(118,112,108,0.9)');
+    gr.addColorStop(0.55, 'rgba(96,92,90,0.55)');
+    gr.addColorStop(1, 'rgba(80,78,78,0)');
+  }
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 64, 64);
+  sprites[kind] = c;
+  return c;
+}
+
+/** A fixed pseudo-random number in [0, 1) for a fire's `k`-th piece. */
+const fireRand = (id: number, k: number) => {
+  const v = Math.sin(id * 12.9898 + k * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+/** The way the smoke drifts (and the flames lean): up and to the left, as
+ *  a damaged ship's smoke does. */
+const WIND = { x: -0.85, y: -0.53 };
+
+/** An Incendiary Missile's fireball (Test Lab round 4: "the animation for
+ *  the fire is bad and does not match the theme"), seen from above like
+ *  everything else on the water: a burning slick of fuel, dark and ragged at
+ *  the edge with a hot glow over it; tongues of flame across it, each
+ *  flickering and leaning downwind; sparks and dark smoke drifting off it;
+ *  a thin ring at its reach. It flashes out as it bursts, spreads, burns,
+ *  and dies down to smoke at the end. A hull inside it takes a hit every
+ *  few seconds. */
 function drawFire(ctx: CanvasRenderingContext2D, g: Game, m: { id: number; x: number; y: number; t: number; dur: number }): void {
   const R = FOE.cloud.radius;
-  const grow = Math.min(1, m.t / 0.3);
-  const fade = Math.min(1, (m.dur - m.t) / 1.5);
-  const a = Math.max(0, Math.min(grow, fade));
+  const t = g.t;
+  const spread = Math.min(1, m.t / 0.4);
+  const left = m.dur - m.t;
+  // Flames die down over the last 1.8 s; the slick and smoke a little later.
+  const burn = Math.max(0, Math.min(spread, left / 1.8));
+  const slick = Math.max(0, Math.min(1, m.t / 0.25, left / 1.2));
+  if (slick <= 0) return;
   ctx.save();
-  // The flash as it bursts: a white-hot ball swelling past the edge.
-  if (m.t < 0.45) {
-    const f = m.t / 0.45;
-    ctx.globalAlpha = 1 - f;
-    ctx.fillStyle = '#fff7d6';
-    ctx.beginPath();
-    ctx.arc(m.x, m.y, R * (0.5 + 0.8 * f), 0, Math.PI * 2);
-    ctx.fill();
+  // The slick: a dark, ragged pool of burning fuel on the water.
+  ctx.globalAlpha = slick;
+  ctx.fillStyle = 'rgba(16,10,8,0.55)';
+  const edge: Point[] = [];
+  for (let k = 0; k < 14; k++) {
+    const a = (k / 14) * Math.PI * 2;
+    const r = R * (0.84 + 0.14 * fireRand(m.id, k)) * (0.55 + 0.45 * spread);
+    edge.push({ x: m.x + Math.cos(a) * r, y: m.y + Math.sin(a) * r });
   }
-  ctx.globalAlpha = a;
-  const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, R);
-  glow.addColorStop(0, 'rgba(255,220,130,0.8)');
-  glow.addColorStop(0.55, 'rgba(255,110,30,0.55)');
-  glow.addColorStop(1, 'rgba(180,40,10,0.15)');
+  // A smooth, wobbly edge: through the midpoints, bending at each point.
+  ctx.beginPath();
+  edge.forEach((p, k) => {
+    const n = edge[(k + 1) % edge.length];
+    if (k === 0) ctx.moveTo((p.x + n.x) / 2, (p.y + n.y) / 2);
+    else ctx.quadraticCurveTo(p.x, p.y, (p.x + n.x) / 2, (p.y + n.y) / 2);
+  });
+  ctx.quadraticCurveTo(edge[0].x, edge[0].y, (edge[0].x + edge[1].x) / 2, (edge[0].y + edge[1].y) / 2);
+  ctx.closePath();
+  ctx.fill();
+  // The glow over it, breathing with the flames.
+  const pulse = 0.85 + 0.15 * Math.sin(t * 7.3 + m.id) * Math.sin(t * 3.1);
+  const glow = ctx.createRadialGradient(m.x, m.y, R * 0.1, m.x, m.y, R * 1.15);
+  glow.addColorStop(0, `rgba(255,170,70,${0.6 * burn * pulse})`);
+  glow.addColorStop(0.55, `rgba(240,90,30,${0.32 * burn * pulse})`);
+  glow.addColorStop(1, 'rgba(200,60,20,0)');
+  ctx.globalAlpha = 1;
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(m.x, m.y, R, 0, Math.PI * 2);
+  ctx.arc(m.x, m.y, R * 1.15, 0, Math.PI * 2);
   ctx.fill();
-  // Tongues of flame round the pool, flickering.
-  for (let k = 0; k < 11; k++) {
-    const ang = (k / 11) * Math.PI * 2 + m.id;
-    const off = R * (0.25 + 0.45 * (((k * 37) % 7) / 7));
-    const fx = m.x + Math.cos(ang) * off;
-    const fy = m.y + Math.sin(ang) * off;
-    const h = 24 + 16 * Math.abs(Math.sin(g.t * 6 + k * 1.7));
-    ctx.fillStyle = k % 3 === 0 ? 'rgba(255,230,140,0.85)' : k % 3 === 1 ? 'rgba(255,140,40,0.8)' : 'rgba(230,60,20,0.75)';
-    ctx.beginPath();
-    ctx.moveTo(fx - 10, fy + 6);
-    ctx.quadraticCurveTo(fx - 7, fy - h * 0.5, fx, fy - h);
-    ctx.quadraticCurveTo(fx + 7, fy - h * 0.5, fx + 10, fy + 6);
-    ctx.closePath();
-    ctx.fill();
-  }
-  // Embers rising off it.
-  for (let k = 0; k < 8; k++) {
-    const life = (g.t * 0.8 + k / 8 + m.id * 0.13) % 1;
-    const ex = m.x + Math.cos(k * 2.4 + m.id) * R * 0.6;
-    const ey = m.y - life * 40;
-    ctx.fillStyle = `rgba(255,200,80,${0.8 * (1 - life)})`;
-    ctx.beginPath();
-    ctx.arc(ex, ey, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.strokeStyle = 'rgba(255,150,40,0.75)';
-  ctx.lineWidth = 3.5;
-  ctx.setLineDash([10, 8]);
+  // Its reach: a thin warm ring (solid, like the game's other danger
+  // circles).
+  ctx.strokeStyle = `rgba(255,140,60,${0.55 * slick})`;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(m.x, m.y, R, g.t * 0.2, g.t * 0.2 + Math.PI * 2);
+  ctx.arc(m.x, m.y, R, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  // Tongues of flame: soft hot blobs stretched downwind, each flickering in
+  // length and size on its own beat; added together they burn white where
+  // they crowd.
+  const flame = sprite('flame');
+  const lean = Math.atan2(WIND.y, WIND.x);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 16; k++) {
+    const r = R * 0.72 * Math.sqrt(fireRand(m.id, k + 40)) * (0.5 + 0.5 * spread);
+    const a = fireRand(m.id, k + 80) * Math.PI * 2;
+    const ph = fireRand(m.id, k + 120) * 10;
+    const flick = 0.7 + 0.3 * Math.sin(t * (8 + (k % 4)) + ph) * Math.sin(t * 4.7 + ph * 0.7);
+    const size = R * (0.27 + 0.18 * fireRand(m.id, k + 160)) * burn * flick;
+    if (size < 1) continue;
+    const len = size * (1.5 + 0.7 * Math.max(0, Math.sin(t * 6.1 + ph)));
+    ctx.save();
+    ctx.translate(m.x + Math.cos(a) * r, m.y + Math.sin(a) * r);
+    ctx.rotate(lean);
+    ctx.globalAlpha = 0.75;
+    // Stretched along the wind, its hot end upwind.
+    ctx.drawImage(flame, -size, -size, len + size, size * 2);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // Sparks flying off downwind.
+  for (let k = 0; k < 7; k++) {
+    const life = (t * 0.9 + fireRand(m.id, k + 200)) % 1;
+    const a = fireRand(m.id, k + 240) * Math.PI * 2;
+    const sx = m.x + Math.cos(a) * R * 0.5 + WIND.x * life * 46 + Math.sin(life * 9 + k) * 4;
+    const sy = m.y + Math.sin(a) * R * 0.5 + WIND.y * life * 46;
+    ctx.fillStyle = `rgba(255,214,120,${0.9 * (1 - life) * burn})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 1.8 + (1 - life), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Smoke: dark puffs rising off it and drifting away, growing as they go;
+  // they outlast the flames a little.
+  const smoke = sprite('smoke');
+  const reek = Math.max(0, Math.min(1, m.t / 0.6, left / 1.0));
+  for (let k = 0; k < 6; k++) {
+    const life = (t * 0.42 + k / 6 + fireRand(m.id, k + 300) * 0.1) % 1;
+    const a = fireRand(m.id, k + 340) * Math.PI * 2;
+    const ox = m.x + WIND.x * R * 0.3 + Math.cos(a) * R * 0.3;
+    const oy = m.y + WIND.y * R * 0.3 + Math.sin(a) * R * 0.3;
+    const px = ox + WIND.x * life * R * 1.5;
+    const py = oy + WIND.y * life * R * 1.5;
+    const s = R * (0.3 + 0.5 * life);
+    ctx.globalAlpha = 0.55 * reek * Math.min(1, life * 3) * (1 - life);
+    ctx.drawImage(smoke, px - s, py - s, s * 2, s * 2);
+  }
+  // The burst: a white-hot flash swelling out, and a shock ring.
+  if (m.t < 0.5) {
+    const f = m.t / 0.5;
+    const s = R * (0.8 + 0.9 * f);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 1 - f;
+    ctx.drawImage(flame, m.x - s, m.y - s, s * 2, s * 2);
+    ctx.drawImage(flame, m.x - s * 0.6, m.y - s * 0.6, s * 1.2, s * 1.2);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = `rgba(255,236,200,${0.8 * (1 - f)})`;
+    ctx.lineWidth = 4 * (1 - f) + 1;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, R * (0.4 + 0.9 * f), 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }

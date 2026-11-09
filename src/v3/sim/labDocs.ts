@@ -54,11 +54,14 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const key = `${l.lab.card}#${r}`;
     allOf.set(key, [...(allOf.get(key) ?? []), l]);
   }
-  /** A round's notes: each test's own words, oldest first, joined. */
+  /** A round's notes: each test's own words, oldest first, joined. A later
+   *  test's note that starts with an earlier note of the same round (the
+   *  verdict sheet fills in the last note, and the player replayed the card
+   *  just to set a verdict) keeps only what it adds. */
   const roundNote = (id: string, round: number, earlier: string[]): string => {
     const seen: string[] = [];
     for (const l of [...(allOf.get(`${id}#${round}`) ?? [])].sort((a, b) => (when(a) < when(b) ? -1 : 1))) {
-      const n = ownNote(l.labResult!.note, earlier).trim();
+      const n = ownNote(l.labResult!.note, [...earlier, ...seen]).trim();
       if (n && !seen.includes(n)) seen.push(n);
     }
     return seen.join(' · ');

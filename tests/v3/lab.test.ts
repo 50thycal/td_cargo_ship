@@ -10,7 +10,7 @@ import { RULES } from '../../src/v3/data/config';
 import { foeOnBoard, labDone } from '../../src/v3/sim/lab';
 import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
 import { labResultDocs, logRound, ownNote } from '../../src/v3/sim/labDocs';
-import { addLabEntry, currentEntry, labStatus, nextCards, olderEntries, parseLabProgress, type LabEntry } from '../../src/v3/ui/lab';
+import { addLabEntry, currentEntry, labStatus, newVerdictDraft, nextCards, olderEntries, parseLabProgress, verdictResult, type LabEntry } from '../../src/v3/ui/lab';
 import { applyFreePlay, applyLab, createGame, damageThreat, labBring, step, tap, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 
@@ -25,10 +25,13 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every new enemy (17), every weapon (29), eight combos and every map, each once (74 cards)', () => {
+  it('every special event (17), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (89 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(74);
+    expect(ids).toHaveLength(89);
+    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(17);
+    expect(ids).not.toContain('w-overclock');
+    expect(ids).not.toContain('w-timeWarp');
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
     for (const f of FOE_ORDER) expect(LAB_CARDS.filter((c) => c.kind === 'enemy' && c.foes[0] === f), f).toHaveLength(1);
     expect(LAB_CARDS.filter((c) => c.kind === 'weapon').map((c) => c.weapon).sort()).toEqual([...ABILITY_ORDER].sort());
@@ -36,9 +39,11 @@ describe('the hub\'s cards', () => {
     // The combos that used the enemies cut after the playtest, remade.
     expect(LAB_CARDS.filter((c) => ['combo-siege-truck', 'combo-guard-seeker', 'combo-hydra-tesla'].includes(c.id)).map((c) => c.foes)).toEqual([['siege', 'rocketTruck'], ['bodyguard'], ['hydra', 'sprinter']]);
     expect(LAB_CARDS.filter((c) => c.kind === 'map').map((c) => c.map)).toEqual(MAP_ORDER);
-    // The order: the open questions first, the reworked weapons first.
-    expect(ids.slice(0, 3)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
-    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 5).map((c) => c.weapon)).toEqual(['dualWield', 'cadence', 'focus', 'gunships', 'supplyRun']);
+    // The order: round 5's events first, then the enemies' open questions,
+    // the reworked weapons first.
+    expect(ids.slice(0, 2)).toEqual(['ev-rush', 'ev-decoy-storm']);
+    expect(LAB_CARDS.filter((c) => c.kind === 'enemy').slice(0, 3).map((c) => c.id)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
+    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield']);
     for (const c of LAB_CARDS) {
       expect(c.kit, c.id).toHaveLength(3);
       for (const w of c.kit) expect(ABILITY_ORDER, c.id).toContain(w);
@@ -282,42 +287,59 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4]);
-    expect(LAB_ROUND).toBe(4);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5]);
+    expect(LAB_ROUND).toBe(5);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
     }
     expect(cardRev('rocketTruck')).toBe(2);
     expect(cardRev('torpedoSub')).toBe(1);
-    expect(cardRev('w-gunships')).toBe(2);
+    expect(cardRev('w-gunships')).toBe(5);
     expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
     // Round 3 (the player's round 2 notes): the Dive Bomber, the Incendiary
     // Missile and the Decoy Drones changed again.
-    expect(cardRev('diveBomber')).toBe(3);
-    expect(cardChanges('diveBomber', 2)).toEqual(['Quicker, and now an A-10 Warthog']);
-    expect(cardRev('cloud')).toBe(3);
+    expect(LAB_CHANGES.diveBomber!.find((c) => c.round === 3)).toBeDefined();
+    expect(cardChanges('diveBomber', 2)[0]).toBe('Quicker, and now an A-10 Warthog');
+    expect(LAB_CHANGES.cloud!.find((c) => c.round === 3)).toBeDefined();
     expect(cardRev('decoy')).toBe(3);
     expect(cardChanges('combo-decoy-sprint', 2)).toContain('Decoy Drones: The swarm spreads out; easier to tell apart');
     expect(cardRev('siege')).toBe(2);
     // Round 4 (the player's notes of 2026-11-09): every combo now comes in
     // together, Dual Wield's cases, War Drum blows up platforms.
+    // (Lure Beacon + Drone Screen is round 5: Drone Screen changed then.)
     for (const c of LAB_CARDS.filter((o) => o.kind === 'combo')) {
-      expect(cardRev(c.id), c.id).toBe(4);
+      expect(cardRev(c.id), c.id).toBeGreaterThanOrEqual(4);
       expect(LAB_CHANGES[c.id]!.some((l) => l.round === 4), c.id).toBe(true);
     }
     expect(cardChanges('combo-spotter-siege', 3)).toEqual(['Its enemies now arrive together']);
     expect(cardRev('w-dualWield')).toBe(4);
     expect(cardRev('w-cadence')).toBe(4);
-    expect(cardRev('w-focus')).toBe(1);
     expect(LAB_ROUNDS[3]).toEqual({ n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' });
+    // Round 5 (the player's round 4 enemy notes): the Dive Bomber, the
+    // Incendiary Missile and the Repair Ship, and the combos with them.
+    expect(LAB_ROUNDS[4]).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
+    for (const id of ['diveBomber', 'cloud', 'tender', 'combo-tender-bodyguard', 'combo-cloud-flak']) expect(cardRev(id), id).toBe(5);
+    expect(cardChanges('diveBomber', 4)).toEqual(['Flies in from off the screen; its run a little slower (2.0 s)']);
+    expect(cardChanges('combo-tender-bodyguard', 4)).toEqual(['Repair Ship: Now called the Repair Ship']);
+    expect(cardChanges('combo-cloud-flak', 4)).toEqual(['Incendiary Missile: New fire on the water; the burst does no damage, only the fire; a little faster']);
+    expect(labCard('tender')!.name).toBe('Repair Ship');
+    expect(labCard('combo-tender-bodyguard')!.name).toBe('Repair Ship + Bodyguard Ring');
+    for (const id of ['decoy', 'combo-spotter-siege']) expect(cardRev(id), id).toBeLessThan(5);
+    // Round 5 (the player's round 4 weapon notes): a line for every weapon
+    // changed, and nothing for the ones kept as they were.
+    const changed = ['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield'];
+    for (const id of changed) expect(cardRev(`w-${id}`), id).toBe(5);
+    for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
+    expect(labCard('w-aegis')!.name).toBe('Point Defense');
   });
 
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
     // Lure Beacon + Drone Screen: its own round 4 line, and the Lure Beacon's.
     expect(LAB_CHANGES['combo-lure-screen']!.map((l) => l.round)).toEqual([4]);
-    expect(cardChanges('combo-lure-screen', 3)).toHaveLength(1);
+    // Its round 4 line, and Drone Screen's round 5 one.
+    expect(cardChanges('combo-lure-screen', 3)).toEqual(['Drone Screen now drops by the carrier just before each Lure Beacon', 'Drone Screen: Drones wait on deck until a threat is on screen']);
     expect(cardChanges('combo-lure-screen').some((l) => l.startsWith(`${labCard('lure')!.name}:`))).toBe(true);
     // Siege + Rocket Truck: its own two lines, and both enemies'.
     expect(cardChanges('combo-siege-truck')).toHaveLength(4);
@@ -345,11 +367,13 @@ describe('test rounds and card versions', () => {
     expect(labStatus(p, 'torpedoSub')).toBe('tested');
     expect(currentEntry(p, 'torpedoSub')!.note).toBe('');
     expect(labStatus(p, 'diveBomber')).toBe('untested');
-    // Dive Bomber comes first on the checklist, but the changed card first.
+    // The events come first on the checklist (round 5), but the changed
+    // card first.
     const next = nextCards(p, 3).map((c) => c.id);
     expect(next[0]).toBe('rocketTruck');
     expect(next).not.toContain('torpedoSub');
-    expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('diveBomber');
+    expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('ev-rush');
+    expect(nextCards(p, 40, 'rocketTruck').map((c) => c.id).filter((id) => !id.startsWith('ev-'))[0]).toBe('diveBomber');
   });
 
   it('a new verdict is appended (the old stays) and becomes the current one', () => {
@@ -361,6 +385,26 @@ describe('test rounds and card versions', () => {
     expect(olderEntries(p, 'rocketTruck').map((o) => o.note)).toEqual(['best one so far']);
     expect(labStatus(p, 'rocketTruck')).toBe('tested');
     expect(nextCards(p, 1)[0].id).not.toBe('rocketTruck');
+  });
+});
+
+describe('the verdict sheet (Test Lab round 4: seven notes saved with no verdict)', () => {
+  it('Save with no verdict saves nothing (the sheet asks for one); with one, it keeps the verdict, the tags and the note', () => {
+    expect(verdictResult({ verdict: null, tags: ['Fun'], note: 'the fire looks off' })).toBeNull();
+    expect(verdictResult({ verdict: 'keep', tags: ['Fun'], note: '  the fire looks off \n' })).toEqual({ verdict: 'keep', tags: ['Fun'], note: 'the fire looks off' });
+  });
+
+  it('a sheet starts from the card\'s verdict at this version, and its picks are one object the sheet keeps through typing and a redraw', () => {
+    const p = parseLabProgress(null);
+    expect(newVerdictDraft(p, 'cloud')).toEqual({ verdict: null, tags: [], note: '' });
+    addLabEntry(p, 'cloud', { verdict: 'tune', tags: ['Bug'], note: 'old words', waves: 2, ended: 'done', stats, at: 'x', rev: cardRev('cloud'), round: LAB_ROUND });
+    const d = newVerdictDraft(p, 'cloud');
+    expect(d).toEqual({ verdict: 'tune', tags: ['Bug'], note: 'old words' });
+    // Its own copy: picks on the sheet don't touch the saved entry.
+    d.tags.push('Fun');
+    d.verdict = 'keep';
+    expect(currentEntry(p, 'cloud')!.tags).toEqual(['Bug']);
+    expect(verdictResult(d)).toEqual({ verdict: 'keep', tags: ['Bug', 'Fun'], note: 'old words' });
   });
 });
 
@@ -408,6 +452,17 @@ describe('the bridge to the review pages', () => {
     const a = { ...log('g', 'siege', '2026-11-08T16:00:00Z', 'keep', 'rises well', 2) };
     const b = { ...log('h', 'siege', '2026-11-08T22:00:00Z', 'keep', '', 2) };
     expect(labResultDocs([a, b]).results.siege).toMatchObject({ round: 2, note: 'rises well', log: 'h' });
+  });
+
+  it('keeps a round\'s note once: a later test of the round whose note starts with an earlier one adds only its own words', () => {
+    // Round 4: saved with a note but no verdict, then played again just to
+    // set Keep (the sheet filled the note in again).
+    const a = log('i', 'cloud', '2026-11-09T05:00:00Z', 'keep', 'the fire looks off', 4);
+    a.labResult!.verdict = null;
+    const b = log('j', 'cloud', '2026-11-09T05:10:00Z', 'keep', 'the fire looks off', 4);
+    const c = log('k', 'cloud', '2026-11-09T05:20:00Z', 'keep', 'the fire looks off\n\nquicker please', 4);
+    expect(labResultDocs([a, b]).results.cloud).toMatchObject({ round: 4, verdict: 'keep', note: 'the fire looks off', log: 'j' });
+    expect(labResultDocs([a, b, c]).results.cloud).toMatchObject({ verdict: 'keep', note: 'the fire looks off · quicker please', log: 'k' });
   });
 
   it('places a log from before rounds by its build: a round-2 build counts as round 2', () => {

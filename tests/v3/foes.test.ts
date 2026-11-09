@@ -11,7 +11,7 @@ import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
 import { absorbs, launchFoe, lureIn, newFoeState, onLand } from '../../src/v3/sim/foes';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
-import { applyFreePlay, applyLab, createGame, damageThreat, shipAhead, spawnThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
+import { CARRIER_TARGET, applyFreePlay, applyLab, createGame, damageThreat, shipAhead, spawnThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 function run(g: Game, seconds: number, until?: () => boolean): void {
@@ -510,6 +510,8 @@ describe('chapter 3: Dark Water', () => {
     run(g, FOE.diveBomber.mark + 0.05);
     const p = live(g, 'diveBomber')[0];
     expect(p).toBeDefined();
+    // It flies in from off the screen; shot once it is in sight.
+    run(g, 5, () => p.y > 80 && p.x > 0 && p.x < VIEW.width);
     g.ammo = 6;
     tap(g, p.x, p.y + 60, 80);
     tap(g, p.x, p.y + 60, 80);
@@ -523,14 +525,14 @@ describe('chapter 3: Dark Water', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'diveBomber', base: -1 });
     const m = g.foe.marks[0];
-    run(g, FOE.diveBomber.mark + FOE.diveBomber.window + 0.05);
+    run(g, 12, () => g.foe.shots.some((s) => s.kind === 'bomb'));
     const bomb = g.foe.shots.find((s) => s.kind === 'bomb')!;
     expect(bomb).toBeDefined();
     expect([bomb.tx, bomb.ty]).toEqual([m.x, m.y]);
     expect(g.threats.some((t) => t.id === bomb.id)).toBe(false);
   });
 
-  it('a Dive Bomber flies its run in from the top of the screen at its circle, on screen all its window, then pulls away off screen', () => {
+  it('a Dive Bomber flies in from off the screen at its circle, in sight all its window, then pulls away off screen', () => {
     const D = FOE.diveBomber;
     for (const seed of [1, 2, 3, 4]) {
       const g = quiet(seed);
@@ -538,20 +540,23 @@ describe('chapter 3: Dark Water', () => {
       const m = g.foe.marks[0];
       run(g, D.mark + 0.02, () => live(g, 'diveBomber').length > 0);
       const p = live(g, 'diveBomber')[0];
-      // It starts up the screen from its circle (near the top, or its whole
-      // run above the circle), and comes down toward it.
-      expect(p.y).toBeLessThan(m.y - D.minRun + 1);
-      expect(p.y).toBeGreaterThanOrEqual(Math.min(D.top - 1, m.y - D.minRun - 1));
+      // It sets off well past the screen's edge: it and its shadow (drawn
+      // up to ~100 px below and right of it) are out of sight.
+      expect(p.y < -100 || p.x < -100 || p.x > VIEW.width + 100, `seed ${seed}: (${p.x.toFixed(0)}, ${p.y.toFixed(0)})`).toBe(true);
       let last = Math.hypot(p.x - m.x, p.y - m.y);
-      for (let i = 0; i < Math.round(D.window / DT) - 2; i++) {
+      let inSight = 0;
+      while (!g.foe.shots.some((s) => s.kind === 'bomb')) {
         step(g, DT);
         expect(p.dead).toBe(false);
-        expect(p.x >= 0 && p.x <= VIEW.width && p.y >= -40 && p.y <= VIEW.height).toBe(true);
         const d = Math.hypot(p.x - m.x, p.y - m.y);
+        // Straight in at its circle, never faster than its cruise.
         expect(d).toBeLessThan(last + 1e-6);
+        expect((last - d) / DT).toBeLessThanOrEqual(D.cruise + 0.5);
         last = d;
+        if (p.x >= 0 && p.x <= VIEW.width && p.y >= 0 && p.y <= VIEW.height) inSight += DT;
       }
-      run(g, 0.2, () => g.foe.shots.some((s) => s.kind === 'bomb'));
+      // In sight for at least its whole dive (more when its circle is low).
+      expect(inSight).toBeGreaterThanOrEqual(D.window - 0.05);
       expect(last).toBeLessThan(D.short + 20);
       // Then away and gone (not a kill).
       run(g, 5, () => p.dead);
@@ -659,7 +664,7 @@ describe('chapter 3: Dark Water', () => {
 });
 
 describe('chapter 4: Open War', () => {
-  it('a Repair Tender comes with a heavy, and mends the most damaged enemy near it, a pulse at a time', () => {
+  it('a Repair Ship comes with a heavy, and mends the most damaged enemy near it, a pulse at a time', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'tender', base: -1 });
     const t = live(g, 'tender')[0];
@@ -708,10 +713,9 @@ describe('chapter 4: Open War', () => {
 });
 
 describe('Test Lab round 2 notes (2026-11-08): the Dive Bomber, the Incendiary Missile, the Decoy Drones', () => {
-  it('the Dive Bomber is quicker: its run is shorter, and its bomb still lands when the circle says', () => {
+  it('the Dive Bomber is quicker than round 1: its run is shorter', () => {
     const D = FOE.diveBomber;
     expect(D.window).toBeLessThan(2.2);
-    expect(D.mark + D.window + D.fall).toBeCloseTo(D.lead, 6);
   });
 
   it('an Incendiary Missile leads its ship: it lands ahead of where the ship was, on the bow, never trailing it', () => {
@@ -921,10 +925,13 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     const t2 = bait(g2, h.x + 80, h.y - 120);
     const l2 = lureAt(g2, t2.x + 200, t2.y - 60);
     run(g2, FOE.lure.rise + 0.1);
-    const n0 = g2.hellfires.length;
-    run(g2, 2.5, () => g2.hellfires.length > n0);
-    expect(g2.hellfires.length).toBeGreaterThan(n0);
-    expect(g2.hellfires.every((m) => m.target === l2.id)).toBe(true);
+    // (Each launched after the beacon came up; Test Lab round 5: a gunship
+    // turns to face its target before it fires, so count launches by id.)
+    const mark = g2.nextId;
+    const fresh = () => g2.hellfires.filter((m) => m.id >= mark);
+    run(g2, 2.5, () => fresh().length > 0);
+    expect(fresh().length).toBeGreaterThan(0);
+    expect(fresh().every((m) => m.target === l2.id)).toBe(true);
 
     // Frigates: a beacon beyond their reach still draws them when what they
     // would shoot is inside its ring.
@@ -960,7 +967,7 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     expect(g5.sorties[0]?.ref).toBe(l5.id);
   });
 
-  it('a Repair Tender sails in from off the screen over open water to a station clear of the other boats', () => {
+  it('a Repair Ship sails in from off the screen over open water to a station clear of the other boats', () => {
     for (const map of ['strait', 'island', 'archipelago', 'harbor'] as const) {
       const g = createGame(map, 3);
       g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
@@ -1010,5 +1017,92 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     g.pickups.push({ id: 4242, kind: 'repair', x: sc.x + 200, y: sc.y + 100, age: 0 });
     run(g, 0.2);
     expect(sc.foe!.link).toBe(4242);
+  });
+});
+
+describe('Test Lab round 4 notes (2026-11-09): the Dive Bomber, the Incendiary Missile, the Repair Ship', () => {
+  it('the Dive Bomber is a hair slower: a 2.0 s dive, flown at 210 px/s at most (10% under round 3\'s 233)', () => {
+    const D = FOE.diveBomber;
+    const before = 420 / 1.8;
+    expect(D.window).toBeCloseTo(2.0, 6);
+    expect(D.cruise).toBeLessThanOrEqual(before * 0.9 + 0.5);
+    expect(D.cruise).toBeGreaterThanOrEqual(before * 0.85);
+    // A full dive is flown at its cruise: no speed-up into it.
+    expect(D.run / D.window).toBeCloseTo(D.cruise, 6);
+  });
+
+  it('a Dive Bomber never pops in: on every map it sets off out of sight, and its bomb lands on its circle when the flight in says', () => {
+    const D = FOE.diveBomber;
+    for (const map of ['strait', 'delta', 'kesh', 'island', 'gauntlet'] as const) {
+      for (const seed of [1, 2, 3]) {
+        const g = createGame(map, seed);
+        g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+        g.raiderQueue = [];
+        g.threats = [];
+        run(g, 20);
+        g.threats = [];
+        launchFoe(g, { at: 0, kind: 'diveBomber', base: -1 });
+        const m = g.foe.marks.find((o) => o.kind === 'dive')!;
+        const t0 = g.t;
+        run(g, D.mark + 0.02, () => live(g, 'diveBomber').length > 0);
+        const p = live(g, 'diveBomber')[0];
+        const tag = `${map} seed ${seed}: (${p.x.toFixed(0)}, ${p.y.toFixed(0)})`;
+        expect(p.y < -100 || p.x < -100 || p.x > VIEW.width + 100, tag).toBe(true);
+        const app = p.foe!.dive!.app;
+        run(g, 12, () => g.foe.shots.some((s) => s.kind === 'bomb'));
+        const bomb = g.foe.shots.find((s) => s.kind === 'bomb')!;
+        expect([bomb.tx, bomb.ty], tag).toEqual([m.x, m.y]);
+        // Released `mark` + its flight in after the circle, give or take a step.
+        expect(g.t - t0, tag).toBeCloseTo(D.mark + app + D.window, 1);
+        // The circle still shows a fair warning before the plane is in sight.
+        expect(D.mark + app, tag).toBeGreaterThan(1.9);
+      }
+    }
+  });
+
+  it('an Incendiary Missile is a little quicker: 12.5% faster than round 3', () => {
+    expect(THREATS.cloud.speed).toBeGreaterThanOrEqual(48 * 1.1);
+    expect(THREATS.cloud.speed).toBeLessThanOrEqual(48 * 1.15);
+  });
+
+  it('an Incendiary Missile\'s burst does no harm: only its fire does', () => {
+    for (const seed of [4, 5, 6]) {
+      const g = quiet(seed);
+      for (const s of g.ships) s.hp = 20;
+      launchFoe(g, { at: 0, kind: 'cloud', base: 1 }, base(g));
+      const c = live(g, 'cloud')[0];
+      const ship = g.ships.find((s) => s.id === c.target)!;
+      let before = ship.hp;
+      run(g, 60, () => {
+        if (!c.dead) before = ship.hp;
+        return c.dead;
+      });
+      expect(c.dead, `seed ${seed}`).toBe(true);
+      // It reached its ship (not shot down): it burst on it, and the ship
+      // took nothing from the hit.
+      expect(Math.hypot(c.x - ship.x, c.y - ship.y), `seed ${seed}`).toBeLessThan(SHIP.hitRadius + 8);
+      expect(ship.hp, `seed ${seed}`).toBe(before);
+      expect(g.foe.marks.some((m) => m.kind === 'fire')).toBe(true);
+      // Its fire does the harm: a hit `first` s in, while the ship is in it.
+      run(g, FOE.cloud.first + 0.1);
+      expect(ship.hp, `seed ${seed}`).toBe(before - THREATS.cloud.damage);
+    }
+  });
+
+  it('an Incendiary Missile at the carrier only bursts there too', () => {
+    const g = quiet();
+    const c = spawnThreat(g, 'cloud', g.map.carrier.x, g.map.carrier.y, 'base');
+    c.foe = { state: 0, t: 0, n: 0, px: 0, py: 0, link: 0 };
+    c.target = CARRIER_TARGET;
+    const hp = g.carrierHp;
+    step(g, DT);
+    expect(c.dead).toBe(true);
+    expect(g.carrierHp).toBe(hp);
+    expect(g.foe.marks.some((m) => m.kind === 'fire')).toBe(true);
+  });
+
+  it('the Repair Tender is now called the Repair Ship wherever the player sees it (its id stays)', () => {
+    expect(FOES.tender.name).toBe('Repair Ship');
+    expect(THREATS.tender.label).toBe('Repair ship');
   });
 });

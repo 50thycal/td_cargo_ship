@@ -132,7 +132,7 @@ export const CARDS = [
   { id: 'attackHeli', section: 'enemies', name: 'Attack Helicopter', look: 'Six hits or its missiles: is it a real choice?' },
   { id: 'stealthJet', section: 'enemies', name: 'Stealth Strafer', look: 'With no warning, is the short run-in enough?' },
   { id: 'stealthBomber', section: 'enemies', name: 'Stealth Bomber', look: 'Does the B-2 read? Six hits too many?' },
-  { id: 'tender', section: 'enemies', name: 'Repair Tender', look: 'It sails in and keeps clear of other boats: do you see the green beam and change targets?' },
+  { id: 'tender', section: 'enemies', name: 'Repair Ship', look: 'It sails in and keeps clear of other boats: do you see the green beam and change targets?' },
   { id: 'bodyguard', section: 'enemies', name: 'Bodyguard Ring', look: 'Do you notice the guards taking your shots?' },
   { id: 'picket', section: 'enemies', name: 'Flak Picket', look: 'Do you notice your shots dying in the ring?' },
   { id: 'barge', section: 'enemies', name: 'Supply Barge', look: 'Do the +1s make it a priority?' },
@@ -144,7 +144,7 @@ export const CARDS = [
   { id: 'supplyRun', section: 'weapons', name: 'Supply Run', look: 'The cargo plane and chutes: clear what you got?' },
   // Combos.
   { id: 'combo-spotter-siege', section: 'combos', name: 'Spotter + Siege Battery', look: 'A painted ship and shells: which do you break first?' },
-  { id: 'combo-tender-bodyguard', section: 'combos', name: 'Repair Tender + Bodyguard Ring', look: 'A heavy that\'s guarded and mended: too much?' },
+  { id: 'combo-tender-bodyguard', section: 'combos', name: 'Repair Ship + Bodyguard Ring', look: 'A heavy that\'s guarded and mended: too much?' },
   { id: 'combo-lure-screen', section: 'combos', name: 'Lure Beacon + Drone Screen', look: 'Your drones chasing the buoy: annoying, or a good puzzle?' },
   { id: 'combo-cloud-flak', section: 'combos', name: 'Volatile Cloud + Flak loaded', look: 'Flak catching the biohazard missile far out, or too close to the convoy.' },
   { id: 'combo-decoy-sprint', section: 'combos', name: 'Decoys + Sprint Drones', look: 'What do you shoot first?' },

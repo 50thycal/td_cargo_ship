@@ -48,7 +48,7 @@ export const FOES: Record<FoeId, FoeDef> = {
   diveBomber: { id: 'diveBomber', name: 'Dive Bomber', chapter: 3, cat: 'platform', kind: 'diveBomber', from: 'edge', blurb: 'A circle on the water, then the plane dives in. Its red bomb can\'t be stopped.' },
   siege: { id: 'siege', name: 'Siege Battery', chapter: 3, cat: 'platform', kind: 'siege', from: 'shore', blurb: 'Rises from a hatch to shell circles on the lane. Red shells: hit the gun while it\'s up.' },
   spotter: { id: 'spotter', name: 'Spotter Plane', chapter: 3, cat: 'support', kind: 'spotter', from: 'edge', blurb: 'Paints one ship for the others, and calls a strike on it.' },
-  tender: { id: 'tender', name: 'Repair Tender', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Sails in and mends the most damaged enemy near it, a pulse at a time.' },
+  tender: { id: 'tender', name: 'Repair Ship', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Sails in and mends the most damaged enemy near it, a pulse at a time.' },
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
   lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your taps can sink it.' },
   cloud: { id: 'cloud', name: 'Incendiary Missile', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow firebomb. Where it bursts, a fireball burns on the water. Kill it far out.' },
@@ -147,7 +147,20 @@ export const FOE = {
   // A-10 Warthog"): its run is 1.8 s, not 2.2 (the plane flies it 22%
   // faster), and the circle shows 0.4 s longer, 2.2 s, so the bomb still
   // lands 4.7 s after the circle. It pulls away faster too.
-  diveBomber: { lead: 4.7, mark: 2.2, window: 1.8, fall: 0.7, run: 420, top: 40, minRun: 140, slant: 0.4, short: 36, bank: 2, exit: 640, hit: 30, splash: 70, splashDamage: 1 },
+  // Test Lab round 4 ("slow it down a hair, not much … it still kinda just
+  // appears, it should come in off screen like the rest"): it no longer
+  // pops in near the top. `mark` s after the circle shows, it sets off from
+  // `off` px past the screen's edge (plane and shadow out of sight), on the
+  // line of its dive, flying in level at `cruise` px/s; the last `run` px
+  // (at most) are its dive, in `window` s. Its run is 2.0 s, not 1.8: a
+  // full dive is flown at 210 px/s, not 233 (10% slower), and nothing it
+  // flies is faster than that. The circle shows 1.8 s before it sets off,
+  // so with the off-screen stretch it comes into sight about 2.4 s after the
+  // circle (2.2 before); its bomb lands `mark` + the flight in + `fall`
+  // after the circle (5.1 to 5.6 s on the lab's water, 6.2 at most on a
+  // map whose lane runs low; 4.7 before), and it is in sight 2.0 to 2.5 s
+  // before it lets go (3.1 at most; 1.8 before).
+  diveBomber: { mark: 1.8, window: 2.0, fall: 0.7, cruise: 210, off: 120, run: 420, top: 40, minRun: 140, slant: 0.4, short: 36, bank: 2, exit: 640, hit: 30, splash: 70, splashDamage: 1 },
   // Test Lab round 1: it hides in a hatch and is a target only while up.
   // `first`: the closed hatch before its first rise; `rise`: the gun coming
   // up (a target; the tell); up until its shells leave, and `hold`; then

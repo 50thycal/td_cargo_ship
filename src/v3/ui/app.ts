@@ -8,7 +8,6 @@ import {
   DEFAULT_SPEED,
   DEV_SPEED_STEPS,
   FLOW_STEPS,
-  RULES,
   SPEED_STEPS,
   TAP_RADIUS_PX,
   WATCH_SPEED_STEPS,
@@ -20,6 +19,7 @@ import {
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
 import {
+  AB,
   ABILITIES,
   ABILITY_MAX,
   ABILITY_ORDER,
@@ -54,8 +54,10 @@ import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } f
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
 import { applyLab } from '../sim/game';
-import { labDone, type LabSetup } from '../sim/lab';
-import { LAB_LENGTH, LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
+import { labDone, labWaves, type LabSetup } from '../sim/lab';
+import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
+import { lastWave } from '../sim/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, type EventId, type EventOutcome } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -66,6 +68,8 @@ import {
   labReport,
   labSetupSheet,
   labVerdictSheet,
+  newVerdictDraft,
+  type VerdictDraft,
   loadLabProgress,
   nextCards,
   saveLabProgress,
@@ -125,7 +129,7 @@ const LOST_SKIP_AFTER = 0.9;
 const DRAFT_ARM_MS = 350;
 /** Focus: a touch of the holding finger shorter than this is a tap (fired on
  *  its lift); longer, it was a hold for slow motion. */
-const FOCUS_TAP_MS = 220;
+const FOCUS_TAP_MS = AB.focus.hold * 1000;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -141,7 +145,7 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   stealthBomber: 'STEALTH DOWN',
   spotter: 'SPOTTER DOWN',
   siege: 'BATTERY DOWN',
-  tender: 'TENDER DOWN',
+  tender: 'REPAIR SHIP DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -324,6 +328,8 @@ export class App {
    *  next one with. */
   private labProgress = loadLabProgress();
   private labRun: { card: LabCard; setup: LabRunSetup; bar: ReturnType<typeof labBar> } | null = null;
+  /** The verdict sheet's picks so far, for the test it is about. */
+  private labDraft: { run: NonNullable<App['labRun']>; draft: VerdictDraft } | null = null;
   private labLast: LabRunSetup | undefined;
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
@@ -348,6 +354,10 @@ export class App {
   private zoom = { z: 1, x: 800, y: 450, pull: 0 };
   private vignette = el('div', 'v2-vignette');
   private stamp = el('div', 'v2-stamp');
+  /** A special event's card (as it begins) and its outcome banner (as it
+   *  ends): its own centred card, not a corner call-out. */
+  private eventCard = el('div', 'v3-event-card');
+  private eventCardT = 0;
   /** Seconds of hit-stop left (see HIT_STOP). */
   private hitStop = 0;
   /** One more loss ends the run (see `syncDanger`). */
@@ -420,7 +430,7 @@ export class App {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
     root.classList.toggle('notes', this.notesOn);
-    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     // Landscape only: on every screen, not just in a run (menus round).
     const phone = el('div', 'v3-rotate-phone');
     phone.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="51" r="2.2" fill="currentColor"/></svg>`;
@@ -532,6 +542,12 @@ export class App {
         this.paused = on;
       },
       control: () => this.control,
+      // Run the sim on by `seconds` at once, no inputs (screenshots of a
+      // special event in progress).
+      advance: (seconds: number) => {
+        const g = this.game;
+        for (let i = 0; g && i < seconds / DT && g.phase === 'wave'; i++) step(g, DT);
+      },
       // A call-out as the game would make it (e2e and screenshots of each kind).
       notify: (title: string, sub: string, opts?: AlertOpts) => this.alerts.notify(title, sub, opts),
       // The map behind the screens around a run, and how far it has sailed.
@@ -665,9 +681,7 @@ export class App {
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
-        // Overclocked: its clock is stopped.
-        const oc = w && 'oc' in w && w.oc !== undefined;
-        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
+        const text = !w ? '' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -900,10 +914,11 @@ export class App {
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
       // Focus (a boost; the player: "one finger down and then tap with the
       // other one"): while slow motion is banked, the first finger down is
-      // the holding finger. It only slows time and fires nothing; every
-      // other finger taps (or presses, with a gesture weapon) as usual. A
-      // quick touch of the holding finger is still a tap (on its lift), so
-      // a single finger can pick a pickup up or fire.
+      // the holding finger. Held AB.focus.hold s it slows time (the sim
+      // counts the hold) and fires nothing; every other finger taps (or
+      // presses, with a gesture weapon) as usual. A quicker touch of it is a
+      // plain tap (on its lift), with no slow-down (Test Lab round 5: "When
+      // tapping just to shoot a missile it should not do the slow down").
       const g0 = this.game;
       if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
         this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
@@ -1248,7 +1263,15 @@ export class App {
   private drainEvents(g: Game): void {
     for (const ev of g.events) {
       switch (ev.kind) {
+        case 'special':
+          this.showEventCard(ev.id, ev.wave);
+          break;
+        case 'specialEnd':
+          this.showEventOutcome(ev.id, ev.outcome, ev.bonus);
+          break;
         case 'wave': {
+          // A special event's wave has its own card instead.
+          if (g.event?.wave === ev.wave) break;
           const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
           // The wave's bell is the sim's own cue (wave.start).
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', { icon: 'wave' }, null);
@@ -1358,6 +1381,49 @@ export class App {
     this.alerts.notify(title, sub, opts);
   }
 
+  /** A special event begins: its card in the middle of the field through
+   *  the breather. It names the event and any rule in force; it never says
+   *  how to beat it (the player's rule). */
+  private showEventCard(id: EventId, wave: number): void {
+    const def = EVENTS[id];
+    const card = this.eventCard;
+    card.className = 'v3-event-card';
+    card.dataset.eventCard = id;
+    delete card.dataset.eventOutcome;
+    const rules = el('span', 'v3-event-rules');
+    for (const r of def.rules) rules.append(el('i', '', RULE_TEXT[r]));
+    card.replaceChildren(el('span', 'v3-event-eyebrow', `Special event · wave ${wave}`), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
+    this.flashEventCard(3200);
+  }
+
+  /** A special event is over: its outcome, and what it paid. */
+  private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number): void {
+    const card = this.eventCard;
+    card.className = `v3-event-card outcome ${outcome}`;
+    card.dataset.eventOutcome = outcome;
+    card.replaceChildren(
+      el('span', 'v3-event-eyebrow', EVENTS[id].name),
+      el('b', 'v3-event-name', OUTCOME_NAME[outcome]),
+      el('span', 'v3-event-bonus', bonus ? `+${bonus.toLocaleString()} bonus` : outcome === 'broken' ? 'No bonus' : ''),
+    );
+    this.audio.ui('notice');
+    this.flashEventCard(3600);
+  }
+
+  private flashEventCard(ms: number): void {
+    const card = this.eventCard;
+    const t = ++this.eventCardT;
+    requestAnimationFrame(() => card.classList.add('show'));
+    setTimeout(() => {
+      if (this.eventCardT === t) card.classList.remove('show');
+    }, ms);
+  }
+
+  private hideEventCard(): void {
+    this.eventCardT += 1;
+    this.eventCard.classList.remove('show');
+  }
+
   /** Lee of Marrow's radar tower, explained the first time it locks on to a
    *  threat, when its lock boxes show what it does (playtest, wave 5: "Not
    *  really sure what that radar tower is even doing"). It used to be a
@@ -1440,11 +1506,11 @@ export class App {
   }
 
   private renderHud(g: Game): void {
-    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, LAB_LENGTH[g.lab.setup.length]);
+    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab));
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < g.lost ? '<i class="lost"></i>' : i === g.lost && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
-    const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${RULES.wavesToClear}`;
+    const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${lastWave(g)}`;
     const html =
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
@@ -1552,9 +1618,11 @@ export class App {
     this.beat = null;
     this.stamp.classList.remove('show');
     if (b.kind === 'clear') {
-      // A test that has run its length goes to its verdict, not a draft.
+      // A test that has run its length goes to its verdict, not a draft;
+      // and a draft never covers a verdict sheet already up (Done tapped as
+      // the wave ended).
       if (this.labRun && labDone(g)) this.showLabVerdict('length');
-      else if (g.phase === 'draft') this.openDraft(g);
+      else if (g.phase === 'draft' && this.overlay.dataset.screen !== 'lab-verdict') this.openDraft(g);
     } else if (this.labRun) this.showLabVerdict(b.kind === 'lost' ? 'lost' : 'length');
     else this.showResult(g, b.kind === 'won');
   }
@@ -1629,6 +1697,7 @@ export class App {
 
   private resetFinale(): void {
     this.beat = null;
+    this.hideEventCard();
     this.alerts.clear();
     this.hitStop = 0;
     this.danger = false;
@@ -2020,6 +2089,10 @@ export class App {
     const waves = g.lab.waves;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
+    // The sheet drawn again for the same test (a wave's end coming in under
+    // it) keeps what the player has picked and typed.
+    if (this.labDraft?.run !== run) this.labDraft = { run, draft: newVerdictDraft(p, run.card.id) };
+    const draft = this.labDraft.draft;
     this.showOverlay('v3-lab-verdict', [
       labVerdictSheet(run.card, stats, waves, ended, p, next, {
         save: (r, then) => {
@@ -2035,11 +2108,12 @@ export class App {
           if (this.rec) this.rec.log.labResult = result;
           const log = this.endRun(ended === 'lost' ? 'lost' : 'quit');
           if (log) keepLabLog(run.card.id, log);
+          this.labDraft = null;
           if (then === 'again') this.startLab(run.card.id, run.setup);
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }),
+      }, draft),
     ]);
   }
 
@@ -2279,6 +2353,14 @@ export class App {
     }
     pic.append(img);
     info.append(pic, el('p', 'v3-brief-blurb', m.blurb));
+    // The map's special event, after its ten waves (its name only).
+    const evId = EVENT_MAPS[id];
+    if (evId) {
+      const line = el('p', 'v3-brief-event');
+      line.dataset.briefEvent = evId;
+      line.append(el('b', '', 'Special event:'), document.createTextNode(` ${EVENTS[evId].name}, wave ${EVENT_WAVE}`));
+      info.append(line);
+    }
     if (best) {
       const b = el('span', 'v3-brief-best');
       b.innerHTML = p.cleared.includes(id) ? `${chromeSvg('check', 13)} Cleared · best ${best.score.toLocaleString()}` : `Best: wave ${best.wave} · ${best.score.toLocaleString()}`;
@@ -2666,7 +2748,7 @@ export class App {
       }
       const wave = el('div', 'v2-dev-wave');
       const bump = (d: number) => () => {
-        st.wave = Math.max(1, Math.min(RULES.wavesToClear, st.wave + d));
+        st.wave = Math.max(1, Math.min(EVENT_WAVE, st.wave + d));
         saveDevSettings(st);
         render();
       };
@@ -3058,11 +3140,23 @@ export class App {
     const sub = free ? `Free play · ${won ? 'cleared' : reason}` : won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
+    // The special event and how it went (the map's last wave).
+    const met = g.eventLog.filter((e) => e.outcome !== 'rerun');
+    const evLine = met.length ? el('p', 'v3-result-event') : null;
+    if (evLine) {
+      evLine.dataset.resultEvent = met.map((e) => `${e.id}:${e.outcome}`).join(' ');
+      for (const e of met) {
+        const o = e.outcome as EventOutcome;
+        const chip = el('span', `v3-result-event-chip ${o}`);
+        chip.append(el('i', '', 'Special event'), el('b', '', EVENTS[e.id].name), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
+        evLine.append(chip);
+      }
+    }
     // Dev ghost check: how bot-you does on this same seed, for any run you
     // played some of (a run the bot played alone needs no comparing).
     const ghost = !view.ghosted && this.dev && !free && log && !g.endless && !(log.dev?.watch && !log.commands.some((c) => c[1] === 'c'));
     const ghostLine = el('div', 'v2-ghost');
-    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, ...(STORE ? [] : [el('p', 'v2-log-status', 'Saving playtest log…')])]);
+    this.showOverlay('v2-result', [el('h2', '', title), el('p', 'v2-sub', sub), stats, ...(evLine ? [evLine] : []), ...(won_ ? [won_] : []), ...(ghost ? [ghostLine] : []), row, ...(STORE ? [] : [el('p', 'v2-log-status', 'Saving playtest log…')])]);
     if (ghost && log) {
       view.ghosted = true;
       this.startGhost(g, log, ghostLine);
@@ -3337,39 +3431,62 @@ export class App {
   }
 
   /** The part of the screen the keyboard leaves visible, for the dialog
-   *  being typed in. */
+   *  being typed in: where it is (iOS may have panned the page under the
+   *  keyboard: offsetTop), its size, and whether it is wide (a phone held
+   *  sideways: the buttons go beside the box, not under it). */
   private fitTyping(): void {
     const vv = window.visualViewport;
+    const w = vv?.width ?? window.innerWidth;
+    const h = vv?.height ?? window.innerHeight;
     this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
-    this.root.style.setProperty('--vv-h', `${Math.round(vv?.height ?? window.innerHeight)}px`);
+    this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
+    this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);
+    this.root.style.setProperty('--vv-h', `${Math.round(h)}px`);
+    this.root.classList.toggle('typing-wide', w > h * 1.3);
   }
 
-  /** Typing in a dialog: only the text box and the dialog's buttons stay;
-   *  everything else around them is folded away until the keyboard goes. */
+  /** Typing in a dialog (Test Lab round 4: "I still can't see the text box
+   *  all that great when writing feedback, both horizontal and vertical"):
+   *  the dialog becomes the text box, big and bright, pinned to the top of
+   *  what the keyboard leaves visible, with its buttons beside it (held
+   *  sideways) or under it (upright), and the few controls it can't do
+   *  without (the verdict sheet's Keep / Tune / Cut: `data-typing-keep`).
+   *  Everything else is folded away until the keyboard goes. */
   private enterTyping(box: HTMLTextAreaElement): void {
     const panel = this.overlay.querySelector('.v2-panel');
     if (!panel) return;
     this.leaveTyping();
     const ACTS = '.v2-btn-row, .v3-lab-sheet-acts';
+    const KEEP = '[data-typing-keep]';
     const keep = new Set<Element>();
     const mark = (e: Element | null) => {
       for (; e && e !== this.overlay; e = e.parentElement) keep.add(e);
     };
     mark(box);
     panel.querySelectorAll(ACTS).forEach(mark);
+    panel.querySelectorAll(KEEP).forEach(mark);
     for (const k of keep) {
-      if (k.matches(ACTS)) continue;
+      if (!panel.contains(k) || k === panel) continue;
+      // The box, the button rows and the kept controls are laid out on the
+      // panel's own grid (style.css); what holds them steps aside.
+      if (k === box) k.classList.add('typing-box');
+      else if (k.matches(ACTS)) k.classList.add('typing-acts');
+      else if (k.matches(KEEP)) k.classList.add('typing-keep');
+      else k.classList.add('typing-flat');
+    }
+    for (const k of keep) {
+      if (k.matches(ACTS) || k.matches(KEEP) || k === box) continue;
       for (const c of Array.from(k.children)) if (!keep.has(c)) c.classList.add('typing-hide');
     }
     this.root.classList.add('typing');
     this.fitTyping();
-    // Once the keyboard is up, bring the box into view.
-    setTimeout(() => box.scrollIntoView({ block: 'nearest' }), 350);
   }
 
   private leaveTyping(): void {
-    this.root.classList.remove('typing');
-    this.overlay.querySelectorAll('.typing-hide').forEach((e) => e.classList.remove('typing-hide'));
+    this.root.classList.remove('typing', 'typing-wide');
+    for (const cls of ['typing-hide', 'typing-box', 'typing-acts', 'typing-keep', 'typing-flat']) {
+      this.overlay.querySelectorAll(`.${cls}`).forEach((e) => e.classList.remove(cls));
+    }
   }
 
   private hideOverlay(): void {
@@ -3397,9 +3514,9 @@ function weaponHint(seconds: number): [string, string] {
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, Aegis Launchers fire from every ship; in the Armory, Fast Motors or Armor Plating.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, Point Defense fires from every ship; in the Armory, Fast Motors or Armor Plating.',
   guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Point Defense in the Armory picks off the ones near the carrier.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; Aegis Launchers let the ship it is after fire back.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Point Defense lets the ship it is after fire back.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
@@ -3414,7 +3531,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
   torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
-  stealthJet: 'Stealth strafers did the most damage: Aegis Launchers and the Shield answer a jet you can\'t see coming.',
+  stealthJet: 'Stealth strafers did the most damage: Point Defense answers a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
   siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',

@@ -826,22 +826,6 @@ def _(rng, v):
     return cap(mix(pt * 0.6, pop), d, 0.1)
 
 
-@recipe("shield.shatter")
-def _(rng, v):
-    # The shield breaking like glass: a hard crack, a spray of bright,
-    # inharmonic shards tinkling down, and the shield's hum dropping out.
-    d = 0.9
-    crack = hp(white(0.02, rng), 2500) * env_exp(0.02, 0.004, 0.0003)
-    shards = np.zeros(secs(d))
-    for i in range(22):
-        f = rng.uniform(2500, 8000)
-        st = rng.uniform(0, 0.45) ** 1.5
-        shards = mix(shards, at(ring(rng, [f, f * 1.53, f * 2.21], 0.18, q=120) * rng.uniform(0.15, 0.4) * (1 - st), st))
-    hum = sum(osc(glide(f, f * 0.4, 0.5), 0.5) * a for f, a in [(294, 0.4), (440, 0.3), (587, 0.2)]) * env_points(0.5, [(0, 0.8), (0.5, 0)])
-    x = mix(crack, fit(shards, d), hum * 0.5, thump(160, 70, 0.12, 0.03) * 0.5)
-    return cap(reverb(x, rng, wet=0.25, dur=0.7, tau=0.25, damp=7000), d, 0.3)
-
-
 @recipe("steam.ram")
 def _(rng, v):
     # A ship's bow running a boat or a drone down: a hull crunch, a deep
