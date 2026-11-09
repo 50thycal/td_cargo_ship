@@ -175,10 +175,11 @@ export interface MapDef {
   /** Where wave/new-threat banners sit: open water or friendly shore, clear of
    *  every launch base and shipping lane, so a banner never hides a launch. */
   callout: Point;
-  /** Round 14: the strip of shore the notification tray sits on, in world
+  /** Round 14: the strip of shore the notification tray sat on, in world
    *  units: from x0 to x1, its bottom edge at y, clear of the carrier, the
-   *  frigate's station and every base. Cards sit side by side along it and
-   *  grow upward; `max` cards at once (default 2). */
+   *  frigate's station and every base. Since the call-outs round the game
+   *  stacks its cards in the bottom-right corner instead (ui/alerts.ts) and
+   *  no longer reads this; the maps-plan tool still draws it. */
   alerts: { x0: number; x1: number; y: number; max?: number };
   /** Round 4: truck roads, open-water spots where submarines surface (clear of
    *  the shipping lanes), and from which wave each attack vector joins. */

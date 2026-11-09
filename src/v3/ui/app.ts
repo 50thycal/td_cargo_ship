@@ -47,7 +47,7 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Alerts, type AlertOpts } from './alerts';
+import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutLevel } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
@@ -152,7 +152,12 @@ const CORNER_INSET = 16;
 
 /** Weapon feedback is about what the player just did (round 14's rule):
  *  shown at once, one card that each new message replaces. */
-const WEAPON_NOTE: AlertOpts = { now: true, key: 'weapon' };
+const WEAPON_NOTE: AlertOpts = { now: true, key: 'weapon', kind: 'ack', icon: 'zap' };
+/** A first meeting, a tip or a map's idea (call-outs round: smaller, and
+ *  only at Call-outs: All). */
+const HINT: AlertOpts = { kind: 'hint' };
+/** Something to react to now: shown at Call-outs: Essential too. */
+const WARN: AlertOpts = { kind: 'warn' };
 
 const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one, or hold on the swarm.',
@@ -195,6 +200,14 @@ const FIRST_TIPS: Record<number, [string, string]> = {
   3: ['FORMATIONS', 'Tap Pairs (top left) to sail in Column, Box or Spread. Each raid card says which helps.'],
 };
 const TIPS_KEY = 'straitwatch.v3.tips';
+
+/** The Call-outs setting, as Settings shows it. */
+const CALLOUT_LABEL: Record<CalloutLevel, string> = { all: 'All', essential: 'Essential', off: 'Off' };
+const CALLOUT_BLURB: Record<CalloutLevel, string> = {
+  all: 'Every notice: waves, tips and each new threat the first time.',
+  essential: 'Only what needs an answer now: raids, the dreadnought, the last ship.',
+  off: 'None, except the last-ship alarm.',
+};
 
 /** True the first time a tip is asked for on this device. */
 function firstTime(id: string): boolean {
@@ -519,6 +532,8 @@ export class App {
         this.paused = on;
       },
       control: () => this.control,
+      // A call-out as the game would make it (e2e and screenshots of each kind).
+      notify: (title: string, sub: string, opts?: AlertOpts) => this.alerts.notify(title, sub, opts),
       // The map behind the screens around a run, and how far it has sailed.
       backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
       log: () => this.rec?.snapshot() ?? null,
@@ -788,7 +803,7 @@ export class App {
         rec.note({ where: 'pause', ...form.value(), ...(thumb ? { thumb } : {}) });
         this.saveProgress();
         done();
-        this.showBanner('📝 NOTE SAVED', `${stopWhen(g)}. It's in the log.`, { now: true });
+        this.showBanner('NOTE SAVED', `${stopWhen(g)}. It's in the log.`, { now: true, kind: 'ack', icon: 'note' });
       }, done),
     ]);
   }
@@ -819,7 +834,7 @@ export class App {
         if (!form.empty()) rec.note({ where: 'volley', volley: last.index, ...form.value(), ...(thumb ? { thumb } : {}) });
         this.saveProgress();
         done();
-        this.showBanner('★ VOLLEY RATED', 'Thanks: it is in the log.', { now: true });
+        this.showBanner('VOLLEY RATED', 'Thanks: it is in the log.', { now: true, kind: 'ack', icon: 'star' });
       }, done),
     ]);
   }
@@ -1117,6 +1132,7 @@ export class App {
     for (const r of this.ripples) r.age += real;
     this.ripples = this.ripples.filter((r) => r.age < (r.impact ? IMPACT_LIFE : r.dry ? DRY_LIFE : RIPPLE_LIFE));
     this.shake = Math.max(0, this.shake - real * 40);
+    this.alerts.speed = this.speed;
     this.alerts.update(real);
     if (g) this.raidAlert(g);
     if (g) this.radarHint(g);
@@ -1235,20 +1251,21 @@ export class App {
         case 'wave': {
           const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
           // The wave's bell is the sim's own cue (wave.start).
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', {}, null);
-          if (hint) this.showBanner(...hint);
+          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', { icon: 'wave' }, null);
+          if (hint) this.showBanner(...hint, { ...HINT, icon: 'info' });
           // Playthrough round: the first map teaches the two left-rail
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
           const tip = g.map.id === MAP_ORDER[0] && !this.free ? FIRST_TIPS[ev.wave] : undefined;
-          if (tip && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ttl: 5 });
+          if (tip && this.hintsOn() && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ...HINT, icon: 'info' });
           break;
         }
         case 'tanker':
-          this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.', {}, null);
+          this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.', WARN, null);
           break;
         case 'post': {
           const def = g.map.posts?.[ev.post];
+          // News, not something to answer: shown at Call-outs: All only.
           if (def?.kind === 'radar' && ev.lost) this.showBanner('RADAR LOST', 'No more tracking for the rest of the run.', {}, null);
           else if (def?.kind === 'radar' && !ev.down) this.showBanner('RADAR HIT', `${g.posts[ev.post].hp} hits left.`, {}, null);
           else if (def?.kind === 'battery' && ev.down) this.showBanner('BATTERY KNOCKED OUT', 'Back in a few seconds.', {}, null);
@@ -1256,7 +1273,7 @@ export class App {
           break;
         }
         case 'boss':
-          this.showBanner('DREADNOUGHT INBOUND', 'Broadsides every few seconds. Sink it, or keep the convoy alive till it passes.', {}, null);
+          this.showBanner('DREADNOUGHT INBOUND', 'Broadsides every few seconds. Sink it, or keep the convoy alive till it passes.', WARN, null);
           this.shake = Math.max(this.shake, 8);
           break;
         case 'fork':
@@ -1266,10 +1283,10 @@ export class App {
         // re-taught all of map 1). Free Play and developer runs always show
         // them (they test them).
         case 'debut':
-          if (this.explain(`debut:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', {}, null);
+          if (this.explain(`debut:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
           break;
         case 'vector':
-          if (this.explain(`vector:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], {}, null);
+          if (this.explain(`vector:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], HINT, null);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -1311,7 +1328,7 @@ export class App {
         }
         case 'newPickup': {
           const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
-          if (hint && this.explain(`pickup:${ev.pickup}`)) this.showBanner(...hint);
+          if (hint && this.explain(`pickup:${ev.pickup}`)) this.showBanner(...hint, { ...HINT, icon: 'info' });
           break;
         }
       }
@@ -1319,23 +1336,28 @@ export class App {
     g.events.length = 0;
   }
 
-  /** Show a first-meeting explanation? Once per device in the real game;
-   *  always in Free Play and developer mode. */
+  /** Show a first-meeting explanation? Once per save in the real game;
+   *  always in Free Play and developer mode. Never while the Call-outs
+   *  setting hides hints, and then it isn't used up either: switched back
+   *  to All, the player still meets it. */
   private explain(id: string): boolean {
+    if (!this.hintsOn()) return false;
     if (this.free || this.dev) return true;
     return firstTime(id);
   }
 
-  /** A notice in the tray (see alerts.ts). Read time is real seconds;
-   *  watching at 10× would otherwise leave each one up for 26 game-seconds. */
-  private showBanner(title: string, sub: string, opts: AlertOpts = {}, sound: CueId | null = 'notice'): void {
-    this.placeBanner();
-    if (sound) this.audio.ui(sound);
-    this.alerts.notify(title, sub, { ttl: 2.6 / Math.sqrt(Math.max(1, this.speed)), ...opts });
+  private hintsOn(): boolean {
+    return calloutLook('hint', this.alerts.level) !== null;
   }
 
-  /** A raid on its way: its card stays up exactly as long as the warning
-   *  (the bases' rings on the map still say which ones will fire). */
+  /** A call-out (see alerts.ts: how long it stays and who sees it). Its
+   *  sound plays only if the card shows. */
+  private showBanner(title: string, sub: string, opts: AlertOpts = {}, sound: CueId | null = 'notice'): void {
+    this.placeBanner();
+    if (sound && calloutLook(calloutKind(opts), this.alerts.level)) this.audio.ui(sound);
+    this.alerts.notify(title, sub, opts);
+  }
+
   /** Lee of Marrow's radar tower, explained the first time it locks on to a
    *  threat, when its lock boxes show what it does (playtest, wave 5: "Not
    *  really sure what that radar tower is even doing"). It used to be a
@@ -1344,7 +1366,7 @@ export class App {
     if (this.radarShown || g.phase !== 'wave' || this.playback) return;
     if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
     this.radarShown = true;
-    if (this.explain('radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ttl: 6 });
+    if (this.explain('radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ...HINT, icon: 'info' });
   }
 
   /** Test Lab round 1 ("make the projectiles red ... then we can mention to
@@ -1354,9 +1376,13 @@ export class App {
     if (this.redShown || g.phase !== 'wave' || this.playback) return;
     if (!redShots(g).length) return;
     this.redShown = true;
-    this.showBanner('RED SHOTS CAN\'T BE STOPPED', 'Hit the launcher instead.', { key: 'red-shots', ttl: 3.2 }, null);
+    if (this.hintsOn()) this.showBanner('RED SHOTS CAN\'T BE STOPPED', 'Hit the launcher instead.', { ...HINT, key: 'red-shots' }, null);
   }
 
+  /** A raid on its way: its card stays up as long as the warning, four
+   *  seconds at the most (the bases' rings on the map still say which ones
+   *  will fire). Asked every frame: the stack keeps one card for it, and none
+   *  again once that card has gone. */
   private raidAlert(g: Game): void {
     const w = raidWarning(g);
     if (!w || this.beat) return;
@@ -1368,9 +1394,8 @@ export class App {
       this.audio.ui(raid === g.raids[0] ? 'raid.warning' : 'raid.next');
       this.raidSounded.add(key);
     }
-    this.placeBanner();
-    this.alerts.notify(`⚠ ${look.name} INBOUND`, look.tip, {
-      key: `raid-${g.wave}-${raid.at}`,
+    this.alerts.notify(`${look.name} INBOUND`, look.tip, {
+      key,
       tone: 'raid',
       color: look.color,
       alive: () => this.game === g && raidWarning(g)?.raid === raid,
@@ -1403,12 +1428,15 @@ export class App {
     );
   }
 
-  /** Lay the tray over the map's strip of shore (clear of bases and lanes). */
+  /** The call-out stack sits in the corner by CSS; here, one card at a time
+   *  where two would reach the carrier (its deck and the rack above it). */
   private placeBanner(): void {
-    const span = this.game?.map.alerts;
-    // Clear of the carrier: its deck and the rack above it.
     const c = this.game?.map.carrier;
-    if (span) this.alerts.place(span, this.scale, this.offX, this.offY, c && { x0: c.x - CARRIER.halfLength - 6, y0: c.y - CARRIER.halfBeam - 22, x1: c.x + CARRIER.halfLength + 6, y1: c.y + CARRIER.halfBeam + 4 });
+    if (!c) return;
+    const at = (x: number, y: number) => [this.offX + x * this.scale, this.offY + y * this.scale];
+    const [x0, y0] = at(c.x - CARRIER.halfLength - 6, c.y - CARRIER.halfBeam - 22);
+    const [x1, y1] = at(c.x + CARRIER.halfLength + 6, c.y + CARRIER.halfBeam + 4);
+    this.alerts.place({ x0, y0, x1, y1 });
   }
 
   private renderHud(g: Game): void {
@@ -1947,7 +1975,7 @@ export class App {
     this.root.append(bar.el);
     this.root.classList.add('lab-on');
     // What to look for, said once as the test starts (the bar stays slim).
-    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, card.look, { now: true }, null);
+    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, card.look, { now: true, icon: 'target' }, null);
   }
 
   private endLabRun(): void {
@@ -2327,7 +2355,9 @@ export class App {
       this.root.classList.toggle('notes', on);
     });
     const dev = this.switchRow('dev', 'Developer mode', 'Short test runs, every map open, a start-wave picker and faster speeds. Dev runs never count.', this.dev, (on) => this.setDev(on));
-    const cards: HTMLElement[] = [this.setCard('Sound', this.soundRows()), this.setCard('Playtest', [notes, dev])];
+    const left = el('div', 'v3-set-col');
+    left.append(this.setCard('Sound', this.soundRows()), this.setCard('Game', [this.calloutRow()]));
+    const cards: HTMLElement[] = [left, this.setCard('Playtest', [notes, dev])];
     if (this.dev) {
       const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
       board.dataset.soundBoard = '1';
@@ -2362,7 +2392,7 @@ export class App {
     if (hapticsAvailable()) {
       sound.push(this.switchRow('haptics', 'Haptics', 'A tap on kills, a thud when a ship is lost, a buzz for a cleared map.', hapticsEnabled(), (on) => setHapticsEnabled(on)));
     }
-    const game: HTMLElement[] = [];
+    const game: HTMLElement[] = [this.calloutRow()];
     if (!ownsFullGame()) {
       const row = this.infoRow('Full game', `Chapter ${FREE_CHAPTERS} is free. One purchase opens chapters 2–4: fifteen more maps.`);
       row.append(button('Unlock', 'v2-btn primary v3-set-btn', () => this.showUnlock()));
@@ -2376,7 +2406,7 @@ export class App {
         b.textContent = 'Restoring…';
         void restoreFullGame().then((ok) => {
           this.showSettings();
-          this.showBannerSoon(ok ? 'Full game restored' : 'No purchase found', ok ? 'Chapters 2–4 are open.' : 'This Apple ID has not bought the full game.');
+          this.showBannerSoon(ok ? 'Full game restored' : 'No purchase found', ok ? 'Chapters 2–4 are open.' : 'This Apple ID has not bought the full game.', ok ? 'check' : 'info');
         });
       });
       b.dataset.restore = '1';
@@ -2407,7 +2437,7 @@ export class App {
     // Two columns: Sound and Game on the left, About on the right.
     const left = el('div', 'v3-set-col');
     left.append(this.setCard('Sound', sound));
-    if (game.length) left.append(this.setCard('Game', game));
+    left.append(this.setCard('Game', game));
     const grid = el('div', 'v3-set-grid');
     grid.append(left, aboutCard);
     this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
@@ -2479,9 +2509,10 @@ export class App {
     });
   }
 
-  /** A banner once the screen has settled (after a redraw). */
-  private showBannerSoon(title: string, text: string): void {
-    requestAnimationFrame(() => this.showBanner(title, text, { now: true }));
+  /** The answer to a purchase restore, once the screen has settled (after a
+   *  redraw): shown whatever the Call-outs setting. */
+  private showBannerSoon(title: string, text: string, icon: CalloutIcon): void {
+    requestAnimationFrame(() => this.showBanner(title, text, { now: true, kind: 'alarm', icon }));
   }
 
   /** A titled card of settings rows. */
@@ -2578,6 +2609,28 @@ export class App {
     const pace = p.speed && p.speed !== 1 ? ` Its game runs at ${p.speed}×, the speed it plays at, so 1× here is its real time.` : '';
     body.append(el('strong', '', 'Bot personality'), chips, el('span', 'v2-persona-blurb', `${p.blurb ?? ''}${pace}`));
     row.append(body);
+    return row;
+  }
+
+  /** Call-outs: All (a new player's teaching), Essential (only what must be
+   *  answered now), Off (only the last-ship alarm). */
+  private calloutRow(): HTMLElement {
+    const level = this.alerts.level;
+    const row = el('div', 'v2-setting v3-choice-row');
+    const chips = el('div', 'v3-choice');
+    chips.setAttribute('role', 'radiogroup');
+    for (const id of CALLOUT_LEVELS) {
+      const b = button(CALLOUT_LABEL[id], `v2-dev-chip${id === level ? ' on' : ''}`, () => {
+        this.alerts.level = id;
+        saveCalloutLevel(id);
+        this.showSettings();
+      });
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(id === level));
+      b.dataset.callouts = id;
+      chips.append(b);
+    }
+    row.append(el('strong', '', 'Call-outs'), chips, el('span', '', CALLOUT_BLURB[level]));
     return row;
   }
 
@@ -2734,10 +2787,10 @@ export class App {
     this.dropGesture();
     if (who === 'you') {
       this.setSpeed(1);
-      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.', { now: true, key: 'control' });
+      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.', { now: true, key: 'control', kind: 'ack' });
     } else {
       this.setSpeed(this.devSettings.watchSpeed);
-      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.', { now: true, key: 'control' });
+      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.', { now: true, key: 'control', kind: 'ack' });
       if (this.game.phase === 'draft') this.botDraft(this.game);
     }
     this.syncControl();
@@ -3163,7 +3216,7 @@ export class App {
     this.syncFormation();
     this.hideOverlay();
     this.pauseBtn.textContent = '■';
-    this.showBanner('▶ REPLAY', `${stopWhen(pb.game)}: the moment is ${Math.round((step - from) / 60)} s in. Tap ■ on the right to stop.`, { now: true });
+    this.showBanner('REPLAY', `${stopWhen(pb.game)}: the moment is ${Math.round((step - from) / 60)} s in. Tap ■ on the right to stop.`, { now: true, kind: 'ack', icon: 'play' });
   }
 
   /** Per frame while a replay runs: real time at 1×. */

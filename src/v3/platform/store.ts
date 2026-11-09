@@ -25,6 +25,8 @@ export const KEYS = [
   'straitwatch.v3.playlogs.sent',
   'straitwatch.v3.haptics',
   'straitwatch.v3.fullgame',
+  // Settings: which call-outs show in play (ui/alerts.ts).
+  'straitwatch.v3.callouts',
   // The Test Lab: what has been tested, and the last tests' logs to rewatch.
   'straitwatch.v3.lab',
   'straitwatch.v3.lab.logs',

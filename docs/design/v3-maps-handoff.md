@@ -59,7 +59,9 @@ matters as much as the maps:
   - `vectors` (from which wave trucks, subs and aircraft join);
   - `extras` (threats this map adds on top of the shared wave table);
   - `threatScale`, `frigate` (Frigate Escort's station), `callout`
-    (where banners sit) and `alerts` (the notification tray strip).
+    (where banners sit) and `alerts` (the notification tray strip; since
+    the call-outs round the game no longer reads it: the cards stack in the
+    bottom-right corner, see `v3-callouts.md`).
 - **Threats**: drones, ballistic missiles (arc, with a landing circle),
   guided missiles, supersonic (lock line), heavy cruise missiles, clusters
   (split into bomblets), motherships (spawn mini-drones), strafing jets and

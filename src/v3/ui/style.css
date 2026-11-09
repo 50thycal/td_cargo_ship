@@ -10,6 +10,8 @@
   /* The Test Lab's "changed since your last test". */
   --lab-amber: #ff9f43;
   --rail-w: 72px;
+  /* The Test Lab's bar in play. */
+  --lab-bar-h: 36px;
   --sa-t: env(safe-area-inset-top, 0px);
   --sa-r: env(safe-area-inset-right, 0px);
   --sa-b: env(safe-area-inset-bottom, 0px);
@@ -346,42 +348,51 @@ body {
   background: rgb(127 233 255 / 0.35);
 }
 
-/* Round 14: the notification tray. One row of cards on the map's strip of
-   shore (app.ts places it), side by side, never stacked over the carrier. */
+/* Call-outs (ui/alerts.ts, docs/design/v3-callouts.md): a stack of small
+   cards in the bottom-right corner of the battlefield, newest at the bottom,
+   left of the right rail and above the Test Lab's bar when it shows. At most
+   a third of the field wide: every map's carrier but The Delta's ends left
+   of 65% of the field, so the stack never covers it (on The Delta it keeps
+   to one card: Alerts.place). */
 .v2-alerts {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
+  right: calc(100% - var(--map-left, 0px) - var(--map-width, 100%) + 8px);
+  bottom: calc(var(--sa-b) + 6px);
+  width: clamp(160px, calc(var(--map-width, 600px) * 0.34 - 8px), 250px);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
-  /* Anchored by its bottom edge: a taller card grows up, never off screen. */
-  transform: translateY(-100%);
+  gap: 4px;
   pointer-events: none;
 }
 
+.lab-on .v2-alerts {
+  bottom: calc(var(--sa-b) + 10px + var(--lab-bar-h));
+}
+
+/* One fixed column for the icon, one for the words: they never meet. A tap
+   sends the card away. */
 .v2-alert {
-  --alert: var(--ink);
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  max-width: calc(50% - 4px);
-  padding: 6px 16px;
-  border-radius: 10px;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  background: rgb(7 13 18 / 0.78);
-  text-align: center;
+  --alert: rgb(127 233 255 / 0.75);
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  max-width: 100%;
+  padding: 5px 8px 6px 6px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-left: 3px solid var(--alert);
+  background: rgb(7 13 18 / 0.7);
   opacity: 0;
-  /* Grows in from its own spot: sliding up from below would dip it past the
-     screen's bottom edge for a moment. */
-  transform: scale(0.94);
-  transform-origin: 50% 100%;
+  transform: translateX(14px);
   transition:
     opacity 0.22s,
-    transform 0.22s;
+    transform 0.22s,
+    margin-top 0.22s;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .v2-alert.show {
@@ -389,39 +400,139 @@ body {
   transform: none;
 }
 
-.v2-alerts.single .v2-alert {
-  max-width: 100%;
+.v2-alert.leaving {
+  opacity: 0;
+  transform: translateX(18px);
+  pointer-events: none;
+}
+
+.v2-alert-icon {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: var(--alert);
+}
+
+.v2-alert-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.v2-alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .v2-alert strong {
-  font-size: 18px;
-  letter-spacing: 0.06em;
-  line-height: 1.15;
-  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
 }
 
-.v2-alert span {
-  font-size: 12px;
+/* A long title wraps once, then ends in an ellipsis; the text under it
+   wraps in its column (six lines at the most). */
+.v2-alert strong span,
+.v2-alert-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+.v2-alert-n {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink);
+  opacity: 0.85;
+}
+
+.v2-alert-sub {
+  -webkit-line-clamp: 6;
+  font-size: 11px;
   line-height: 1.25;
   color: var(--muted);
-  text-wrap: balance;
+}
+
+/* A title alone: the icon centred on its one line. */
+.v2-alert.one {
+  align-items: center;
+}
+
+.v2-alert.one .v2-alert-icon {
+  margin-top: 0;
+}
+
+/* Teaching reads quieter than a warning. */
+.v2-alert.hint {
+  --alert: rgb(159 179 189 / 0.6);
+  background: rgb(7 13 18 / 0.62);
+}
+
+.v2-alert.hint strong {
+  font-size: 11px;
+}
+
+.v2-alert.ack {
+  --alert: var(--gold);
+}
+
+/* Essential: the answer to the player's own tap, as one short line. */
+.v2-alert.tiny {
+  padding: 3px 8px 3px 6px;
+}
+
+.v2-alert.tiny strong {
+  font-size: 11px;
 }
 
 /* A raid on its way: its own colour, the same as the rings on its bases. */
-.v2-alert.raid {
-  border: 2px solid var(--alert);
-}
-
 .v2-alert.raid strong {
   color: var(--alert);
 }
 
 .v2-alert.danger {
-  border: 2px solid var(--danger);
+  --alert: var(--danger);
+  background: rgb(46 10 8 / 0.8);
 }
 
 .v2-alert.danger strong {
   color: var(--danger);
+  font-size: 13px;
+}
+
+/* A tablet or a desktop window: room for bigger words. */
+@media (min-height: 431px) {
+  .v2-alerts {
+    width: clamp(200px, calc(var(--map-width, 800px) * 0.3), 320px);
+    gap: 6px;
+  }
+  .v2-alert {
+    grid-template-columns: 18px minmax(0, 1fr);
+    padding: 7px 12px 8px 9px;
+  }
+  .v2-alert-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .v2-alert strong {
+    font-size: 15px;
+  }
+  .v2-alert-sub {
+    font-size: 13px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -650,15 +761,6 @@ body {
     font-size: 11px;
     gap: 1px;
     padding: 3px;
-  }
-  .v2-alert {
-    padding: 3px 10px;
-  }
-  .v2-alert strong {
-    font-size: 13px;
-  }
-  .v2-alert span {
-    font-size: 10px;
   }
   .v2-track {
     /* Playthrough round: a little shorter, so two power-up timers fit under
@@ -3757,6 +3859,36 @@ body {
   font-size: 14px;
 }
 
+/* Call-outs: its name and All / Essential / Off on one line, what the
+   choice does under them. */
+.v3-set-card .v3-choice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.v3-choice-row strong {
+  font-size: 14px;
+}
+
+.v3-choice-row > span {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.v3-choice {
+  display: flex;
+  gap: 5px;
+}
+
+.v3-choice .v2-dev-chip {
+  min-height: 30px;
+  font-size: 12px;
+}
+
 .v3-set-card .v3-slider-row {
   display: grid;
   grid-template-columns: 64px 1fr;
@@ -4373,12 +4505,14 @@ a.v3-lab-page {
   text-decoration: none;
 }
 
-/* In play: one slim bar over the map's top edge. Only its buttons take
-   taps; the rest lets them through to the water. */
+/* In play: one slim bar along the bottom, between the rails (the player:
+   "put that on the bottom"). Only its buttons take taps; the rest lets them
+   through to the water. The call-outs stack above it (.lab-on .v2-alerts). */
 .v3-lab-bar {
   position: absolute;
   z-index: 6;
-  top: calc(var(--sa-t) + 4px);
+  bottom: calc(var(--sa-b) + 4px);
+  height: var(--lab-bar-h);
   left: calc(var(--map-left) + 6px);
   width: calc(var(--map-width) - 12px);
   display: none;
