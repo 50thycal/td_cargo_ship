@@ -9,6 +9,7 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { LabSetup, LabStats } from './lab';
+import type { EventRecord } from './events';
 import {
   applyFreePlay,
   applyLab,
@@ -67,8 +68,11 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      waves, and the verdict given after it (`labResult`, outside replay).
  *  (The lab's rounds add optional `rev` and `round` to `lab` and
  *  `labResult`: the sim never reads them, and a log without them is round 1,
- *  so the version stays.) */
-export const LOG_VERSION = 17;
+ *  so the version stays.)
+ *  18: special events: a campaign map with one has an 11th wave (its event),
+ *      so a run that won at wave 10 now plays on; the lab's 'b' command on an
+ *      event card starts the event over; `events` records each event met. */
+export const LOG_VERSION = 18;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -96,7 +100,7 @@ export type LogCommand =
   | [number, 'v', number, number] // the pressed finger moved to x y
   | [number, 'r', number, number, number] // the finger lifted at x y radius
   | [number, 'h', 0 | 1] // Focus: the holding finger down (1) or lifted (0)
-  | [number, 'b'] // Test Lab: bring the card's enemy (or weapon) in now
+  | [number, 'b'] // Test Lab: bring the card's enemy (or weapon) in now; an event card: run the event again
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
@@ -155,6 +159,10 @@ export interface PlayLog {
   volleys?: Volley[];
   moments?: Moment[];
   rating?: Rating;
+  /** Special events met (sim/events.ts): when each started and ended
+   *  (steps), what it sent, how it went, the shots fired in it and, on the
+   *  Decoy Storm, how many went at decoys. Derived: replay remakes them. */
+  events?: EventRecord[];
 }
 
 export interface GhostResult {
@@ -388,6 +396,7 @@ export class Recorder {
       ...(this.log.notes ? { notes: this.log.notes.map((n) => ({ ...n })) } : {}),
       ...(volleys.length ? { volleys: volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })) } : {}),
       ...(moments.length ? { moments: [...moments] } : {}),
+      ...(g.eventLog.length ? { events: g.eventLog.map((e) => ({ ...e, sent: { ...e.sent } })) } : {}),
     };
   }
 }

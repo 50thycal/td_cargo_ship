@@ -8,6 +8,7 @@ import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abi
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { newFoeState } from './foes';
+import type { EventRecord } from './events';
 import type { FoeSetting } from '../data/foes';
 import { makeRng, type RNG } from '../../sim/rng';
 import { AB } from '../data/abilities';
@@ -289,6 +290,8 @@ export interface BotRun {
   levels: Partial<Record<AbilityId, number>>;
   /** Share of wave time the gun had a weapon loaded. */
   loaded: number;
+  /** Special events met (the map's 11th wave). */
+  events: EventRecord[];
 }
 
 /** Play one full game. `endlessTo` keeps going past the clear for a score run. */
@@ -335,5 +338,6 @@ export function runBot(
     uses: { ...g.uses },
     levels: { ...g.levels },
     loaded: waveSteps ? loadedSteps / waveSteps : 0,
+    events: g.eventLog.map((e) => ({ ...e })),
   };
 }

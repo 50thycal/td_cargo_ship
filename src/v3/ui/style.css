@@ -4925,3 +4925,186 @@ a.v3-lab-page {
 .portrait .v3-lab-cols {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* ---- Special events (docs/design/v3-special-events-build.md) ------------- */
+
+/* The event's card as it begins: its own centred card (the corner stack is
+   for call-outs), in the stamp's family. It names the event and any rule in
+   force, never how to beat it. The outcome banner reuses it, higher up, so
+   it sits above a MAP CLEARED stamp. */
+.v3-event-card {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: min(86vw, 560px);
+  padding: 10px 24px 12px;
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  background: rgb(7 13 18 / 0.82);
+  box-shadow: 0 0 34px rgb(245 197 66 / 0.22);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.25);
+  transition:
+    transform 0.3s cubic-bezier(0.2, 1.4, 0.4, 1),
+    opacity 0.25s ease-out;
+}
+
+.v3-event-card.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.v3-event-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.v3-event-name {
+  font-size: clamp(24px, 5.2vw, 46px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.v3-event-rules {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.v3-event-rules i {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgb(245 197 66 / 0.6);
+  color: var(--gold);
+}
+
+.v3-event-card.outcome {
+  top: 20%;
+}
+
+.v3-event-card.outcome.clean {
+  border-color: #5fd38a;
+  box-shadow: 0 0 34px rgb(95 211 138 / 0.25);
+}
+
+.v3-event-card.outcome.clean .v3-event-name {
+  color: #5fd38a;
+}
+
+.v3-event-card.outcome.held .v3-event-name {
+  color: var(--gold);
+}
+
+.v3-event-card.outcome.broken {
+  border-color: var(--danger);
+  box-shadow: 0 0 34px rgb(255 77 61 / 0.22);
+}
+
+.v3-event-card.outcome.broken .v3-event-name {
+  color: var(--danger);
+}
+
+.v3-event-bonus {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-event-card {
+    transition: none;
+  }
+}
+
+/* The briefing names the map's event (its name and wave only). */
+.v3-brief-event {
+  margin: -4px 0 10px;
+  font-size: 12.5px;
+  color: var(--ink);
+  opacity: 0.9;
+}
+
+.v3-brief-event b {
+  color: var(--gold);
+  font-weight: 800;
+}
+
+/* The result screen lists the event and how it went. */
+.v3-result-event {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.v3-result-event-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(255 255 255 / 0.04);
+  font-size: 13px;
+}
+
+.v3-result-event-chip i {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-result-event-chip em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.v3-result-event-chip.clean em {
+  color: #5fd38a;
+}
+
+.v3-result-event-chip.held em {
+  color: var(--gold);
+}
+
+.v3-result-event-chip.broken em {
+  color: var(--danger);
+}
+
+.v3-result-event-chip small {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The review timeline: the event's stretch. */
+.v3-tl-event {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, rgb(245 197 66 / 0.32) 0 4px, rgb(245 197 66 / 0.12) 4px 8px);
+  border-left: 2px solid var(--gold);
+  pointer-events: none;
+}

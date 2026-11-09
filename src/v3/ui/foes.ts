@@ -439,7 +439,7 @@ function drawRocketTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   ctx.fillStyle = elev >= 1 ? '#ff6b4a' : '#1b1a14';
   for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(-18 + c * 6 + len * (1 - elev * 0.35) - 22, -5 + r * 6, 4, 4);
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 40, th.hp, THREATS.rocketTruck.hp);
+  hpPips(ctx, th.x, th.y - 40, th.hp, th.maxHp ?? THREATS.rocketTruck.hp);
 }
 
 /** A hostile helicopter from above: a dark red body, a tail boom, and a
@@ -489,7 +489,7 @@ function drawAttackHeli(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
     ctx.stroke();
   }
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 52, th.hp, THREATS.attackHeli.hp);
+  hpPips(ctx, th.x, th.y - 52, th.hp, th.maxHp ?? THREATS.attackHeli.hp);
 }
 
 /** Where the helicopter is going to hover, while it flies there. */
@@ -565,7 +565,7 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 30, th.hp, THREATS.torpedoSub.hp);
+  hpPips(ctx, th.x, th.y - 30, th.hp, th.maxHp ?? THREATS.torpedoSub.hp);
   void g;
 }
 
@@ -748,7 +748,7 @@ function drawArmored(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading
       ctx.fillRect(th.x - w / 2 + i * (pw + 2), th.y - 55, pw, 7);
     }
   }
-  hpPips(ctx, th.x, th.y - 42, th.hp, THREATS.armored.hp);
+  hpPips(ctx, th.x, th.y - 42, th.hp, th.maxHp ?? THREATS.armored.hp);
 }
 
 /** The Scavenger: a quadcopter, not a winged drone like the others (the
@@ -928,7 +928,7 @@ function drawStealthJet(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
     }
     ctx.restore();
   }
-  hpPips(ctx, th.x, th.y - 46, th.hp, THREATS.stealthJet.hp);
+  hpPips(ctx, th.x, th.y - 46, th.hp, th.maxHp ?? THREATS.stealthJet.hp);
 }
 
 /** The Stealth Bomber: a flying wing (the B-2's shape, the player asked),
@@ -967,7 +967,7 @@ function drawStealthBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
     }
     ctx.restore();
   }
-  hpPips(ctx, th.x, th.y - 60, th.hp, THREATS.stealthBomber.hp);
+  hpPips(ctx, th.x, th.y - 60, th.hp, th.maxHp ?? THREATS.stealthBomber.hp);
 }
 
 /** The Dive Bomber (Test Lab round 1: "the perspective should match the
@@ -1014,7 +1014,7 @@ function drawDiveBomber(ctx: CanvasRenderingContext2D, th: Threat): void {
     }
   }
   drawWarthog(ctx, th.x, th.y, th.heading, k, fore, Math.cos(bank), '#8e979f', true, f.state === 0);
-  hpPips(ctx, th.x, th.y - 44 * k, th.hp, THREATS.diveBomber.hp);
+  hpPips(ctx, th.x, th.y - 44 * k, th.hp, th.maxHp ?? THREATS.diveBomber.hp);
 }
 
 /** An A-10 Warthog from above (Test Lab round 2: "make it faster and an
@@ -1177,7 +1177,7 @@ function drawSiege(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
     ctx.arc(th.x, th.y, 32, 0, Math.PI * 2);
     ctx.stroke();
   }
-  hpPips(ctx, th.x, th.y - 44, th.hp, THREATS.siege.hp);
+  hpPips(ctx, th.x, th.y - 44, th.hp, th.maxHp ?? THREATS.siege.hp);
 }
 
 function ease(u: number): number {
@@ -1339,7 +1339,7 @@ function drawSpotter(ctx: CanvasRenderingContext2D, th: Threat): void {
   ctx.arc(16, 0, 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 50, th.hp, THREATS.spotter.hp);
+  hpPips(ctx, th.x, th.y - 50, th.hp, th.maxHp ?? THREATS.spotter.hp);
 }
 
 /** The spotter's beam on its ship, and the bracket round it. */
@@ -1415,7 +1415,7 @@ function drawTender(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.fillRect(-12, -3, 18, 6);
   ctx.fillRect(-6, -9, 6, 18);
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 32, th.hp, THREATS.tender.hp);
+  hpPips(ctx, th.x, th.y - 32, th.hp, th.maxHp ?? THREATS.tender.hp);
   void g;
 }
 
@@ -1481,7 +1481,7 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
       ctx.fill();
     }
   }
-  hpPips(ctx, th.x, th.y - 52, th.hp, THREATS.lure.hp);
+  hpPips(ctx, th.x, th.y - 52, th.hp, th.maxHp ?? THREATS.lure.hp);
 }
 
 /** The Lure's ring on the water, once it's up: everything a helper aims
@@ -1632,7 +1632,7 @@ function drawCloud(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: 
   ctx.restore();
   // A flame mark on its side, upright so it reads.
   flameMark(ctx, th.x - Math.cos(heading) * 3, th.y - Math.sin(heading) * 3, 9, '#fde68a');
-  hpPips(ctx, th.x, th.y - 38, th.hp, THREATS.cloud.hp);
+  hpPips(ctx, th.x, th.y - 38, th.hp, th.maxHp ?? THREATS.cloud.hp);
 }
 
 /** A flame: a teardrop with a notch, the fire warning sign. */

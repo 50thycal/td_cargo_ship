@@ -10,6 +10,7 @@ import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
+import { drawEventOver, drawEventUnder } from './events';
 import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, isFoeAircraft } from './foes';
 import { laneSamples } from '../sim/lanes';
 
@@ -73,6 +74,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawLoaded(ctx, g);
   for (const th of g.threats) if (th.kind === 'ballistic') drawBallisticGround(ctx, g, th);
   drawFoeGround(ctx, g);
+  drawEventUnder(ctx, g);
   if (g.steamT > 0 || boostLevel(g, 'fullSteam')) for (const s of g.ships) drawSteam(ctx, s.x, s.y, g.t);
   drawFields(ctx, g, 'burn');
   drawFields(ctx, g, 'well');
@@ -126,12 +128,13 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   // Aircraft fly above everything else, their warnings on top of that.
   for (const th of g.threats) if (th.kind === 'strafer' || th.kind === 'bomber') {
     drawPlane(ctx, g, th);
-    hpPips(ctx, th.x, th.y - 44, th.hp, THREATS[th.kind].hp);
+    hpPips(ctx, th.x, th.y - 44, th.hp, th.maxHp ?? THREATS[th.kind].hp);
   }
   for (const th of g.threats) if (isFoeAircraft(th.kind)) drawFoeAir(ctx, g, th);
   for (const b of g.blades) drawBlade(ctx, b);
   for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
+  drawEventOver(ctx, g);
   drawNight(ctx, g, (th) => drawBallisticGround(ctx, g, th));
   drawBoosts(ctx, g);
   drawPlaneWarnings(ctx, g);
@@ -1371,7 +1374,7 @@ function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
       return drawSupersonic(ctx, g, th, heading);
     case 'heavy':
       missile(ctx, th.x, th.y, heading, 64, 17, '#5d5a52', '#c9a26b');
-      return hpPips(ctx, th.x, th.y - 32, th.hp, THREATS.heavy.hp);
+      return hpPips(ctx, th.x, th.y - 32, th.hp, th.maxHp ?? THREATS.heavy.hp);
     case 'cluster': {
       const pulse = 0.5 + 0.5 * Math.sin(g.t * 9);
       ctx.strokeStyle = `rgba(255,210,74,${0.35 + 0.4 * pulse})`;
@@ -1401,7 +1404,7 @@ function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
       return;
     case 'mothership':
       deltaWing(ctx, th.x, th.y, heading, 2, '#9fd0a8');
-      return hpPips(ctx, th.x, th.y - 40, th.hp, THREATS.mothership.hp);
+      return hpPips(ctx, th.x, th.y - 40, th.hp, th.maxHp ?? THREATS.mothership.hp);
     case 'minidrone':
       deltaWing(ctx, th.x, th.y, heading, 0.7, '#cfe8d2');
       return;

@@ -7,7 +7,8 @@
 
 import type { ThreatKind } from '../data/config';
 import { FOES, FOES_BUILT, type FoeId } from '../data/foes';
-import { LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix, type LabPair } from '../data/lab';
+import { LAB_EVENT_RUNS, LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix, type LabPair } from '../data/lab';
+import type { EventId } from '../data/events';
 import { ABILITIES, type AbilityId } from '../data/abilities';
 import { RULES, VIEW } from '../data/config';
 import { foeHarmed, newFoeState } from './foes';
@@ -38,6 +39,10 @@ export interface LabStats {
   weaponUses: number;
   /** Seconds from each of its enemies showing up to your first shot at it. */
   firstShot: number[];
+  /** An event card: how each run of it went (absent on other cards). */
+  clean?: number;
+  held?: number;
+  broken?: number;
 }
 
 export interface LabState {
@@ -55,6 +60,8 @@ export interface LabState {
   /** A combo: how its set comes in, and this wave's sets still to come. */
   pair?: LabPair;
   sets: LabSet[];
+  /** An event card: the special event every wave of the test is. */
+  event?: EventId;
 }
 
 /** A combo's set this wave (Test Lab round 4): its lead and the others,
@@ -88,6 +95,7 @@ export function newLabState(setup: LabSetup): LabState | null {
     pending: {},
     ...(card.pair ? { pair: card.pair } : {}),
     sets: [],
+    ...(card.event ? { event: card.event } : {}),
   };
 }
 
@@ -98,7 +106,8 @@ export function setUpLab(g: Game, setup: LabSetup): void {
   if (!lab) return;
   g.lab = lab;
   g.endless = true;
-  if (!lab.map) {
+  // An event card plays its own map's waves and enemies, like a map card.
+  if (!lab.map && !lab.event) {
     g.foe = newFoeState(g.map.id, 'all');
     g.foe.pool = [...FOES_BUILT];
   }
@@ -108,7 +117,7 @@ export function setUpLab(g: Game, setup: LabSetup): void {
  *  then a third of the rest the card's, the others any built enemy. */
 export function labFoes(g: Game, n: number): FoeId[] | null {
   const lab = g.lab;
-  if (!lab || lab.map || !lab.foes.length) return null;
+  if (!lab || lab.map || lab.event || !lab.foes.length) return null;
   const rng = g.rng.foes;
   const others = FOES_BUILT.filter((f) => !lab.foes.includes(f));
   const out: FoeId[] = [];
@@ -124,7 +133,7 @@ export function labFoes(g: Game, n: number): FoeId[] | null {
  *  wave plays (rotating), on what the wave table gives. */
 export function labWave(g: Game, spec: { drones: number; ballistic: number; guided: number }): { planes: number; scenario: string } | null {
   const lab = g.lab;
-  if (!lab || lab.map) return null;
+  if (!lab || lab.map || lab.event) return null;
   const sc = LAB_SCENARIOS[lab.waves % LAB_SCENARIOS.length];
   const m = LAB_MIX[lab.setup.mix];
   spec.drones = Math.round(spec.drones * m * sc.drones);
@@ -226,7 +235,8 @@ export function labKilled(g: Game, th: Threat, heldWeapon: boolean): void {
 
 export function labHarm(g: Game, by: ThreatKind, amount: number, sunk: boolean): void {
   const lab = g.lab;
-  if (!lab || !lab.kinds.includes(by)) return;
+  // An event card counts everything the event costs you.
+  if (!lab || (!lab.event && !lab.kinds.includes(by))) return;
   lab.stats.harm += amount;
   if (sunk) lab.stats.sunk += 1;
 }
@@ -237,12 +247,25 @@ export function labWaveCleared(g: Game): void {
 
 /** Has the test run its length? */
 export function labDone(g: Game): boolean {
-  return !!g.lab && g.lab.waves >= LAB_LENGTH[g.lab.setup.length];
+  return !!g.lab && g.lab.waves >= labWaves(g.lab);
+}
+
+/** A test's length in waves: Quick or Full, and for an event card that
+ *  many runs of the event. */
+export function labWaves(lab: { setup: LabSetup; event?: EventId }): number {
+  return (lab.event ? LAB_EVENT_RUNS : LAB_LENGTH)[lab.setup.length];
 }
 
 /** The evidence, in words. */
 export function evidenceLines(card: LabCard, s: LabStats, waves: number): string[] {
   const out: string[] = [];
+  if (card.kind === 'event') {
+    const runs = (s.clean ?? 0) + (s.held ?? 0) + (s.broken ?? 0);
+    out.push(runs ? `Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}` : 'Not finished');
+    out.push(`They cost you ${s.harm} hull hit${s.harm === 1 ? '' : 's'}${s.sunk ? `, ${s.sunk} ship${s.sunk === 1 ? '' : 's'} sunk` : ''}`);
+    out.push(`${runs} run${runs === 1 ? '' : 's'} played`);
+    return out;
+  }
   if (card.foes.length) {
     out.push(`${s.came} came · you killed ${s.killed}`);
     if (s.came) out.push(`${s.early} stopped before they did harm`);

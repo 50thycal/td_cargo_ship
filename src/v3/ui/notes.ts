@@ -195,6 +195,15 @@ export function timeline(log: PlayLog, stops: Stop[], selected: number, pick: (i
     bands.append(band);
     prev = to;
   });
+  // Special events: their stretch, over the wave bands.
+  for (const e of log.events ?? []) {
+    const band = el('span', 'v3-tl-event');
+    band.style.left = pct(e.step);
+    band.style.width = pct(Math.max(1, e.end - e.step));
+    band.dataset.event = e.id;
+    band.title = e.outcome;
+    bands.append(band);
+  }
   const volleys = el('div', 'v3-tl-volleys');
   for (const v of log.volleys ?? []) {
     const seg = el('span', `v3-tl-volley${v.rating ? ' rated' : ''}`);

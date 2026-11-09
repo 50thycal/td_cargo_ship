@@ -74,6 +74,8 @@ import { LAB_SET } from '../data/lab';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
+import { endEvent, eventBusy, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, rerunEvent, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import type { EventId, EventOutcome } from '../data/events';
 
 export const CARRIER_TARGET = -1;
 
@@ -178,6 +180,9 @@ export interface Threat {
    *  swarm's front, px off the line to its target, so the swarm flies spread
    *  out and closes up only near the convoy (swarmAim). */
   slot?: number;
+  /** Its full hull when a special event made it tougher than its kind
+   *  (THREATS[kind].hp otherwise): what a Repair Tender mends it up to. */
+  maxHp?: number;
 }
 
 export interface Interceptor {
@@ -258,7 +263,10 @@ export type GameEvent =
   | { kind: 'tanker' }
   | { kind: 'post'; post: number; down: boolean; lost: boolean }
   | { kind: 'boss' }
-  | { kind: 'fork'; lane: number };
+  | { kind: 'fork'; lane: number }
+  /** A special event begins (its card), and how it ended (its banner). */
+  | { kind: 'special'; id: EventId; wave: number }
+  | { kind: 'specialEnd'; id: EventId; outcome: EventOutcome; bonus: number };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
@@ -726,6 +734,9 @@ export interface Game {
   foe: FoeState;
   /** The Test Lab: the card under test and its evidence (null outside it). */
   lab: LabState | null;
+  /** A special event running (sim/events.ts), and every one met this run. */
+  event: EventRun | null;
+  eventLog: EventRecord[];
 }
 
 
@@ -869,6 +880,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     freePlay: false,
     foe: newFoeState(mapId),
     lab: null,
+    event: null,
+    eventLog: [],
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -896,6 +909,15 @@ function startWave(g: Game): void {
   g.phase = 'wave';
   g.offer = [];
   const spec = waveSpec(g.wave, g.map.threatScale);
+  // A special event is a wave of its own: its script launches in place of
+  // the raid planner (sim/events.ts).
+  if (isEventWave(g)) {
+    g.waveSpeed = spec.speed;
+    g.events.push({ kind: 'wave', wave: g.wave });
+    startEvent(g);
+    cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
+    return;
+  }
   const len = g.tempo.waveLen;
   if (len !== 1) {
     spec.duration *= len;
@@ -1026,9 +1048,9 @@ function cut(n: number, len: number): number {
 /** The next wave the dev stride plays after `wave`: every `stride`th,
  *  counted back from the last so the final wave is always played. Endless
  *  waves are never skipped. */
-export function nextPlayedWave(wave: number, stride: number): number {
+export function nextPlayedWave(wave: number, stride: number, last: number = RULES.wavesToClear): number {
   let w = wave + 1;
-  while (stride > 1 && w < RULES.wavesToClear && (RULES.wavesToClear - w) % stride !== 0) w++;
+  while (stride > 1 && w < last && (last - w) % stride !== 0) w++;
   return w;
 }
 
@@ -1118,7 +1140,7 @@ export function alongPath(path: Point[], d: number): { x: number; y: number; hea
  *  nothing: if every base that could fire this kind is down, the launch is
  *  dropped (-2): knocking out a rig really thins the waves. A kind no base
  *  on the map carries (an extra) comes from any live launcher, as before. */
-function pickBase(g: Game, kind: ThreatKind, rng: RNG): number {
+export function pickBase(g: Game, kind: ThreatKind, rng: RNG): number {
   const able = g.map.bases.map((b, i) => (b.kinds.includes(kind) ? i : -1)).filter((i) => i >= 0);
   const live = able.filter((i) => !g.baseDown[i]);
   if (live.length) return rng.pick(live);
@@ -1337,7 +1359,8 @@ export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
  *  was known: plan it again, as if it had just started. */
 function replanWave(g: Game): void {
   if (g.phase !== 'wave' || g.waveT !== 0) return;
-  g.events = g.events.filter((e) => e.kind !== 'wave');
+  g.events = g.events.filter((e) => e.kind !== 'wave' && e.kind !== 'special');
+  g.event = null;
   g.cues = [];
   g.wave -= 1;
   startWave(g);
@@ -1349,6 +1372,11 @@ function replanWave(g: Game): void {
 export function labBring(g: Game): void {
   const lab = g.lab;
   if (!lab || g.phase !== 'wave') return;
+  // An event card: "Run it again" (the event starts over).
+  if (lab.event) {
+    rerunEvent(g);
+    return;
+  }
   // A combo brings its whole set, paired as in its waves (and its weapon).
   if (lab.pair) {
     lab.sets.push(newSet(lab, g.waveT));
@@ -2981,7 +3009,7 @@ function boostLoad(g: Game, w: Weapon): boolean {
 
 /** Supply Run's cargo plane: it crosses over open water mid-screen from a
  *  random side and drops `load` in a row, spaced across the middle. */
-function callCargoPlane(g: Game, load: { kind: PickupKind; weapon?: AbilityId }[]): void {
+export function callCargoPlane(g: Game, load: { kind: PickupKind; weapon?: AbilityId }[]): void {
   const dir = g.rng.drops.chance(0.5) ? 1 : -1;
   const y = VIEW.height * 0.4;
   const n = load.length;
@@ -3179,6 +3207,7 @@ export function step(g: Game, dt: number): void {
       cue(g, 'aircraft.warn', at.x, at.y);
     }
   }
+  updateEvent(g);
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
   updateLabSets(g);
   while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
@@ -3225,18 +3254,22 @@ export function step(g: Game, dt: number): void {
 
   if (g.lost >= g.tempo.lossLimit || g.carrierHp <= 0) {
     g.phase = 'lost';
+    if (g.event) endEvent(g, true);
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g)) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g) && !eventBusy(g)) {
     g.score += 200 * g.wave;
+    // A special event is graded as its wave ends (its bonus is in the
+    // wave's score).
+    if (g.event) endEvent(g, false);
     clearField(g);
     recordWave(g, 'cleared');
-    if (!g.endless && g.wave >= RULES.wavesToClear) {
+    if (!g.endless && g.wave >= lastWave(g)) {
       g.cleared = true;
       g.phase = 'won';
     } else {
-      g.draftsLeft = g.endless ? 1 : nextPlayedWave(g.wave, g.tempo.stride) - g.wave;
+      g.draftsLeft = g.endless ? 1 : nextPlayedWave(g.wave, g.tempo.stride, lastWave(g)) - g.wave;
       openDraft(g);
     }
   }
@@ -3808,7 +3841,7 @@ export function routePose(g: Game, r: { lane: number; s: number; dir: number; la
   return { x: p.x, y: p.y, tx: p.tx * r.dir, ty: p.ty * r.dir };
 }
 
-function launchPlane(g: Game, l: Launch): void {
+export function launchPlane(g: Game, l: Launch): void {
   const side = l.side ?? 1;
   const route = l.y === undefined ? planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
   const y = route.y;
@@ -4314,6 +4347,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
   th.dead = true;
   g.kills[th.kind] += 1;
   if (isFoe(th.kind)) foeDown(g, th, !drops);
+  if (g.event) eventFoeDown(g, th);
   if (g.lab) labKilled(g, th, !!g.lab.weapon && !!held(g, g.lab.weapon));
   if (isStructure(th.kind)) {
     structureDown(g, th);
@@ -4371,6 +4405,7 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
     });
   shoot(th);
   if (g.lab) labShotAt(g, th.id);
+  if (g.event) eventShotAt(g, th);
   cue(g, 'gun.fire', p.x, p.y);
   const twinOf = () =>
     g.threats
@@ -5141,6 +5176,7 @@ function dropPickup(g: Game, x: number, y: number): void {
   // The power-ups that became boosts leave the drops once their boost is
   // live (Free Play: now, so it plays the plan's rules).
   for (const [k, id] of BOOSTED_POWERS) if (g.freePlay || ROSTER[id].status === 'live') w[k] = 0;
+  eventDropWeights(g, w, PICKUPS.starshellWeight);
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
@@ -5153,7 +5189,7 @@ function dropPickup(g: Game, x: number, y: number): void {
   addPickup(g, kind, x, y);
 }
 
-function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: AbilityId): void {
+export function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: AbilityId): void {
   if (!g.seenPickups.has(kind)) {
     g.seenPickups.add(kind);
     g.events.push({ kind: 'newPickup', pickup: kind });

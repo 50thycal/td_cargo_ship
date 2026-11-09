@@ -111,7 +111,7 @@ export function loadDevSettings(): DevSettings {
     const s = JSON.parse(read(SETTINGS) ?? '{}') as Partial<DevSettings>;
     return {
       preset: s.preset && s.preset in DEV_PRESETS ? s.preset : 'half',
-      wave: Math.max(1, Math.min(RULES.wavesToClear, Math.floor(s.wave ?? 1))),
+      wave: Math.max(1, Math.min(RULES.wavesToClear + 1, Math.floor(s.wave ?? 1))),
       watch: s.watch === true,
       watchSpeed: typeof s.watchSpeed === 'number' ? s.watchSpeed : 1,
       bot: typeof s.bot === 'string' && s.bot in PERSONAS ? s.bot : YOU.id,

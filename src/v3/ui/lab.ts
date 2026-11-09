@@ -5,7 +5,7 @@
 // game log, which reaches Claude).
 
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
-import { LAB_CARDS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
+import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { evidenceLines, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
@@ -172,8 +172,9 @@ export function nextCards(p: LabProgress, n: number, after?: string): LabCard[] 
 
 export function defaultSetup(card: LabCard, p: LabProgress, last?: LabRunSetup): LabRunSetup {
   return {
-    wave: last?.wave ?? LAB_START_WAVE,
-    weapons: card.kit.map((id) => ({ id, level: 1 })),
+    // An event card starts at its event's wave, its kit levelled up.
+    wave: card.wave ?? last?.wave ?? LAB_START_WAVE,
+    weapons: card.kit.map((id) => ({ id, level: card.kind === 'event' ? LAB_EVENT_LEVEL : 1 })),
     length: p.length,
     mix: p.mix,
   };
@@ -231,7 +232,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   for (const s of LAB_SECTIONS) {
     const cards = LAB_CARDS.filter((c) => c.kind === s.kind);
     const sec = el('details', 'v3-lab-sec');
-    sec.open = s.kind === 'enemy' || s.kind === 'combo';
+    sec.open = s.kind === 'event' || s.kind === 'enemy' || s.kind === 'combo';
     sec.dataset.section = s.kind;
     const retest = count(cards, 'changed');
     const sum = el('summary');
@@ -299,7 +300,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
+  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave 11) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
   body.append(list, side);
   return body;
 }
@@ -322,8 +323,10 @@ export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update
   const acts = el('div', 'v3-lab-acts');
   const canBring = card.foes.length > 0 || !!card.weapon;
   if (canBring) {
-    const b = button(card.foes.length ? 'Bring one' : 'Drop it', 'v3-lab-act', h.bring);
+    // An event card: the same command starts the event over.
+    const b = button(card.event ? 'Run it again' : card.foes.length ? 'Bring one' : 'Drop it', 'v3-lab-act', h.bring);
     b.dataset.labBring = '1';
+    if (card.event) b.dataset.labRerun = '1';
     acts.append(b);
   }
   const note = button('Note', 'v3-lab-act', h.note);
@@ -338,7 +341,9 @@ export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update
   return {
     el: bar,
     update: (s, waves, length) => {
-      const parts = card.foes.length
+      const parts = card.event
+        ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
+        : card.foes.length
         ? [`came ${s.came}`, `killed ${s.killed}`, `hit you ${s.harm}`]
         : card.weapon
           ? [`kills ${s.weaponKills}`]
@@ -416,7 +421,9 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     return g;
   };
   sheet.append(row('Mix', seg(s.mix, [['light', 'Light'], ['normal', 'Normal'], ['heavy', 'Heavy']], (v) => (s.mix = v))));
-  sheet.append(row('Length', seg(s.length, [['quick', `Quick · ${LAB_LENGTH.quick} waves`], ['full', `Full · ${LAB_LENGTH.full} waves`]], (v) => (s.length = v))));
+  const runs = card.event ? LAB_EVENT_RUNS : LAB_LENGTH;
+  const unit = (n: number) => (card.event ? `${n} run${n === 1 ? '' : 's'}` : `${n} waves`);
+  sheet.append(row('Length', seg(s.length, [['quick', `Quick · ${unit(runs.quick)}`], ['full', `Full · ${unit(runs.full)}`]], (v) => (s.length = v))));
   const acts = el('div', 'v3-lab-sheet-acts');
   const go = button('Restart with this', 'v2-btn primary', () => apply(s));
   go.dataset.labApply = '1';

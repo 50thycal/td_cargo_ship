@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 17 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 18 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -858,9 +858,9 @@ try {
     await tp.reload({ waitUntil: 'networkidle' });
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
-    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent }));
-    check(hub.rows === 74 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
-    await tp.click('[data-lab-next]');
+    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, first: document.querySelector('.v3-lab-sec')?.dataset.section }));
+    check(hub.rows === 91 && hub.events === 17 && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
     check(run.card === 'diveBomber' && run.wave === 5 && run.endless && run.bar, `a test starts at wave 5 on the lab's water with its bar (${JSON.stringify(run)})`);
@@ -881,7 +881,23 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 4 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 4 && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 5 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 5 && saved.v === 18 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    // An event card starts straight into its event on its own map, its card
+    // shown; Run it again (in place of Bring one) starts it over.
+    await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
+    await tp.waitForSelector('.playing.lab-on');
+    await tp.waitForSelector('.v3-event-card.show[data-event-card="decoy-storm"]', { timeout: 3000 });
+    const ev = await tp.evaluate(() => {
+      const g = window.__v3.game();
+      const card = document.querySelector('.v3-event-card');
+      return { event: g.event?.id, wave: g.wave, map: g.map.id, name: card?.querySelector('.v3-event-name')?.textContent, rules: [...(card?.querySelectorAll('.v3-event-rules i') ?? [])].map((i) => i.textContent), rerun: document.querySelector('[data-lab-rerun]')?.textContent, bring: !!document.querySelector('[data-lab-bring]:not([data-lab-rerun])'), hud: document.querySelector('.v2-hud')?.textContent };
+    });
+    check(ev.event === 'decoy-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Decoy Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
+    await tp.waitForTimeout(1500);
+    await tp.click('[data-lab-rerun]');
+    await tp.waitForTimeout(300);
+    const again = await tp.evaluate(() => { const g = window.__v3.game(); return { cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, t: g.event?.t, reruns: g.eventLog.filter((e) => e.outcome === 'rerun').length, card: document.querySelector('.v3-event-card.show')?.dataset.eventCard }; });
+    check(again.cmds === 1 && again.reruns === 1 && again.t < 1 && again.card === 'decoy-storm', `Run it again starts the event over, as a recorded input (${JSON.stringify(again)})`);
     // A link from the review page opens a test straight away.
     await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
@@ -903,7 +919,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 4/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 5/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
@@ -934,21 +950,28 @@ try {
       return route.fulfill({ status: r.status, headers: Object.fromEntries(r.headers), body: Buffer.from(await r.arrayBuffer()) });
     });
     const lp = await lc.newPage();
-    await lp.goto(`${HOST}/v3.html?wave=10`);
+    // Wave 11: the Strait's special event (its ten waves come before it).
+    await lp.goto(`${HOST}/v3.html?wave=11`);
     await lp.evaluate(() => {
       localStorage.clear();
       localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 2, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: 2, open: [], mapsV: 2 }));
     });
     await lp.reload();
     await lp.locator('[data-map="strait"]').tap();
+    const brief = await lp.locator('[data-brief-event="rush"]').textContent();
+    check(/Special event:\s*Afterburner Rush, wave 11/.test(brief ?? ''), `the briefing names the map's special event (${brief})`);
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id }));
+    check(/WAVE\s*11\/11/.test(hud11.hud ?? '') && hud11.event === 'rush', `the wave counter shows 11 on a map with an event (${JSON.stringify(hud11)})`);
     for (let i = 0; i < 400; i++) {
-      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; return g.phase; });
+      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;
       await lp.waitForTimeout(100);
     }
     await lp.waitForSelector('[data-screen="result"]');
+    const resEv = await lp.evaluate(() => document.querySelector('[data-result-event]')?.dataset.resultEvent);
+    check(resEv === 'rush:clean', `the result screen lists the event and how it went (${resEv})`);
     await lp.waitForTimeout(1200);
     await lp.locator('[data-screen="result"] .v2-btn:has-text("Next")').tap();
     await lp.locator('[data-start]').tap();

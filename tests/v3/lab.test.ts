@@ -25,10 +25,11 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every new enemy (17), every weapon (29), eight combos and every map, each once (74 cards)', () => {
+  it('every special event (17), every new enemy (17), every weapon (29), eight combos and every map, each once (91 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(74);
+    expect(ids).toHaveLength(91);
+    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(17);
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
     for (const f of FOE_ORDER) expect(LAB_CARDS.filter((c) => c.kind === 'enemy' && c.foes[0] === f), f).toHaveLength(1);
     expect(LAB_CARDS.filter((c) => c.kind === 'weapon').map((c) => c.weapon).sort()).toEqual([...ABILITY_ORDER].sort());
@@ -36,8 +37,10 @@ describe('the hub\'s cards', () => {
     // The combos that used the enemies cut after the playtest, remade.
     expect(LAB_CARDS.filter((c) => ['combo-siege-truck', 'combo-guard-seeker', 'combo-hydra-tesla'].includes(c.id)).map((c) => c.foes)).toEqual([['siege', 'rocketTruck'], ['bodyguard'], ['hydra', 'sprinter']]);
     expect(LAB_CARDS.filter((c) => c.kind === 'map').map((c) => c.map)).toEqual(MAP_ORDER);
-    // The order: the open questions first, the reworked weapons first.
-    expect(ids.slice(0, 3)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
+    // The order: round 5's events first, then the enemies' open questions,
+    // the reworked weapons first.
+    expect(ids.slice(0, 2)).toEqual(['ev-rush', 'ev-decoy-storm']);
+    expect(LAB_CARDS.filter((c) => c.kind === 'enemy').slice(0, 3).map((c) => c.id)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
     expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 5).map((c) => c.weapon)).toEqual(['dualWield', 'cadence', 'focus', 'gunships', 'supplyRun']);
     for (const c of LAB_CARDS) {
       expect(c.kit, c.id).toHaveLength(3);
@@ -282,8 +285,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4]);
-    expect(LAB_ROUND).toBe(4);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5]);
+    expect(LAB_ROUND).toBe(5);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
@@ -345,11 +348,13 @@ describe('test rounds and card versions', () => {
     expect(labStatus(p, 'torpedoSub')).toBe('tested');
     expect(currentEntry(p, 'torpedoSub')!.note).toBe('');
     expect(labStatus(p, 'diveBomber')).toBe('untested');
-    // Dive Bomber comes first on the checklist, but the changed card first.
+    // The events come first on the checklist (round 5), but the changed
+    // card first.
     const next = nextCards(p, 3).map((c) => c.id);
     expect(next[0]).toBe('rocketTruck');
     expect(next).not.toContain('torpedoSub');
-    expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('diveBomber');
+    expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('ev-rush');
+    expect(nextCards(p, 40, 'rocketTruck').map((c) => c.id).filter((id) => !id.startsWith('ev-'))[0]).toBe('diveBomber');
   });
 
   it('a new verdict is appended (the old stays) and becomes the current one', () => {

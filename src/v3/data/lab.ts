@@ -8,8 +8,9 @@
 import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
+import { EVENTS, EVENT_ORDER, EVENT_WAVE, eventMap, type EventId } from './events';
 
-export type LabKind = 'enemy' | 'weapon' | 'combo' | 'map';
+export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
 export interface LabCard {
   id: string;
@@ -29,6 +30,10 @@ export interface LabCard {
   map: MapId;
   /** A combo: how its set comes in together (LabPair). */
   pair?: LabPair;
+  /** An event card: the special event (every wave of the test is it), and
+   *  the wave it starts at (its weapons' levels come from the kit). */
+  event?: EventId;
+  wave?: number;
 }
 
 /** A combo's pairing (Test Lab round 4, the player on Spotter + Siege
@@ -67,6 +72,13 @@ export const LAB_MAP: MapId = 'strait';
  *  drafts). Done ends either early. */
 export const LAB_LENGTH = { quick: 2, full: 8 } as const;
 export type LabLength = keyof typeof LAB_LENGTH;
+
+/** An event card's length: runs of the event (a draft between). */
+export const LAB_EVENT_RUNS: Record<LabLength, number> = { quick: 1, full: 3 };
+
+/** An event card's kit is at this level (a player meets the event with ten
+ *  waves of drafts behind them). */
+export const LAB_EVENT_LEVEL = 2;
 
 /** The mix setting: the wave's size. */
 export const LAB_MIX = { light: 0.75, normal: 1, heavy: 1.35 } as const;
@@ -187,6 +199,41 @@ const COMBOS: LabCard[] = [
   }, 'tesla'),
 ];
 
+/** Special events (docs/design/v3-special-events-build.md): each on its own
+ *  map, straight into it, with a kit from that map's chapter. The look line
+ *  asks one question and never says how to beat it (the player's rule). */
+const EVENT_KITS: Record<EventId, AbilityId[]> = {
+  rush: ['flak', 'railgun', 'cutter'],
+  'decoy-storm': ['scatter', 'seeker', 'aegis'],
+  'hydra-bloom': ['railgun', 'flak', 'aegis'],
+  'rocket-convoy': ['railgun', 'airstrike', 'aegis'],
+  'gunship-wall': ['lance', 'flak', 'gunships'],
+  'wolf-pack': ['airstrike', 'railgun', 'fullSteam'],
+  'shield-wall': ['thermo', 'lance', 'gunships'],
+  'supply-raid': ['seeker', 'flak', 'shield'],
+  blackout: ['scatter', 'orbital', 'shield'],
+  'carpet-run': ['railgun', 'bomberWing', 'aegis'],
+  'dive-circus': ['railgun', 'focus', 'aegis'],
+  bombardment: ['lance', 'bomberWing', 'fullSteam'],
+  'fire-mission': ['railgun', 'orbital', 'tesla'],
+  'repair-yard': ['lance', 'cadence', 'orbital'],
+  'escort-run': ['tesla', 'flak', 'railgun'],
+  'siren-field': ['droneScreen', 'gunships', 'flak'],
+  firestorm: ['flak', 'railgun', 'bomberWing'],
+};
+
+const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
+  id: `ev-${id}`,
+  kind: 'event',
+  name: EVENTS[id].name,
+  look: EVENTS[id].look,
+  foes: [EVENTS[id].foe],
+  kit: EVENT_KITS[id],
+  map: eventMap(id),
+  event: id,
+  wave: EVENT_WAVE,
+}));
+
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */
 const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
   id: `map-${id}`,
@@ -198,9 +245,10 @@ const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
   map: id,
 }));
 
-export const LAB_CARDS: LabCard[] = [...ENEMIES, ...WEAPONS, ...COMBOS, ...MAP_CARDS];
+export const LAB_CARDS: LabCard[] = [...EVENT_CARDS, ...ENEMIES, ...WEAPONS, ...COMBOS, ...MAP_CARDS];
 
 export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
+  { kind: 'event', name: 'Events', blurb: 'Each special event on its own map, straight in. Run it again starts it over.' },
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The five reworked ones first, then every other.' },
   { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet: they come in together.' },
@@ -232,6 +280,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
   { n: 3, date: '2026-11-08', name: 'Round 2 notes', since: '2026-11-08T23:05' },
   { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
+  { n: 5, date: '2026-11-09', name: 'Special events', since: '2026-11-09T18:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -288,6 +337,24 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 2, what: 'New pairing' },
     { round: 4, what: 'Its enemies now arrive together; Tesla drops by the carrier just before' },
   ],
+  // Round 5 (docs/design/v3-special-events-build.md): the special events.
+  'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
+  'ev-decoy-storm': [{ round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' }],
+  'ev-hydra-bloom': [{ round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' }],
+  'ev-rocket-convoy': [{ round: 5, what: 'New event: four armoured trucks in a column down the shore road' }],
+  'ev-gunship-wall': [{ round: 5, what: 'New event: four helicopters in a line, firing in turn (four hits each)' }],
+  'ev-wolf-pack': [{ round: 5, what: 'New event: five periscopes at once, then three more' }],
+  'ev-shield-wall': [{ round: 5, what: 'New event: a block of twelve armored drones that banks at a signal' }],
+  'ev-supply-raid': [{ round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' }],
+  'ev-blackout': [{ round: 5, what: 'New event: night, eight stealth strafers and a star shell' }],
+  'ev-carpet-run': [{ round: 5, what: 'New event: two vees of three stealth bombers (three hits each)' }],
+  'ev-dive-circus': [{ round: 5, what: 'New event: eight dive bombers on a beat' }],
+  'ev-bombardment': [{ round: 5, what: 'New event: three siege hatches taking turns (two salvos each)' }],
+  'ev-fire-mission': [{ round: 5, what: 'New event: a spotter with three escorts calling five strikes' }],
+  'ev-repair-yard': [{ round: 5, what: 'New event: a tough mothership mended by three tenders' }],
+  'ev-escort-run': [{ round: 5, what: 'New event: one heavy in three rings of guards' }],
+  'ev-siren-field': [{ round: 5, what: 'New event: five lure beacons and six swarms' }],
+  'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };
 
 /** The cards a card takes changes from: itself, and for a combo its
