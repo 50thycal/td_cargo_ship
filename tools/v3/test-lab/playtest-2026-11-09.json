@@ -1,0 +1,73 @@
+{
+ "date": "2026-11-09",
+ "round": 2,
+ "source": "Test Lab session of 2026-11-09 (01:57 to 02:08 UTC), played on build 2026-11-08T20:56 (a round 2 build); play logs on the Vercel playlog store. The notes were dictated; they are kept as the logs have them. Built in Test Lab round 4 (docs/design/v3-lab-round4.md).",
+ "verdicts": {
+  "combo-spotter-siege": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "I didn’t seem to work quite right the recon drone and then the siege cannon never really appeared at the same time so I think we need to work on the timing or test that out because I’m sure not all the pairs will have similar timings like that so I’m not gonna play test anymore until we get that kind of fixed",
+    "log": "v3-20261109015734-35571",
+    "round": 2,
+    "rev": 2,
+    "ended": "lost",
+    "waves": 2
+   }
+  ],
+  "w-dualWield": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "Worked for the most part, but we just need to think of all the different scenarios that need to be fixed. Such as when you have it picked up the new wheel that is if you pick up another dual wheel it should reset all your current weapons that you have back to the full duration of the dual wheel and then yeah essentially that should be it. I think I’m not sure there’s other scenarios on there too, but I like how it works, but just take a look.",
+    "log": "v3-20261109020159-35572",
+    "round": 2,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Worked for the most part, but we just need to think of all the different scenarios that need to be fixed. Such as when you have it picked up the new wheel that is if you pick up another dual wheel it should reset all your current weapons that you have back to the full duration of the dual wheel and then yeah essentially that should be it. I think I’m not sure there’s other scenarios on there too, but I like how it works, but just take a look.",
+    "log": "v3-20261109020445-35573",
+    "round": 2,
+    "rev": 1,
+    "ended": "done",
+    "waves": 0
+   }
+  ],
+  "w-cadence": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "This works a lot better, but I have the third upgrade be a little bit more powerful. Maybe we could blow up the platforms and vehicles.",
+    "log": "v3-20261109020457-35574",
+    "round": 2,
+    "rev": 1,
+    "ended": "done",
+    "waves": 3
+   }
+  ]
+ },
+ "notes": [
+  {
+   "card": "combo-spotter-siege",
+   "log": "v3-20261109015734-35571",
+   "text": "I didn’t seem to work quite right the recon drone and then the siege cannon never really appeared at the same time so I think we need to work on the timing or test that out because I’m sure not all the pairs will have similar timings like that so I’m not gonna play test anymore until we get that kind of fixed",
+   "built": "Every combo's enemies now come in as a set, timed to be on the board together (round 4)."
+  },
+  {
+   "card": "w-dualWield",
+   "log": "v3-20261109020445-35573",
+   "text": "Worked for the most part, but we just need to think of all the different scenarios that need to be fixed. Such as when you have it picked up the new wheel that is if you pick up another dual wheel it should reset all your current weapons that you have back to the full duration of the dual wheel and then yeah essentially that should be it. I think I’m not sure there’s other scenarios on there too, but I like how it works, but just take a look.",
+   "built": "Every Dual Wield case has a rule and a test; a second Dual Wield resets both hands to its full time (round 4)."
+  },
+  {
+   "card": "w-cadence",
+   "log": "v3-20261109020457-35574",
+   "text": "This works a lot better, but I have the third upgrade be a little bit more powerful. Maybe we could blow up the platforms and vehicles.",
+   "built": "War Drum (level 3): an on-beat shot blows up every platform and vehicle on its line (round 4)."
+  }
+ ]
+}

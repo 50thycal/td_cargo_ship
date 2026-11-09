@@ -69,8 +69,9 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
-import { labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, setUpLab, type LabSetup, type LabState } from './lab';
+import { FOE, FOES, HEAVY_FOES, type FoeId, type FoeSetting } from '../data/foes';
+import { LAB_SET } from '../data/lab';
+import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 
@@ -1348,6 +1349,12 @@ function replanWave(g: Game): void {
 export function labBring(g: Game): void {
   const lab = g.lab;
   if (!lab || g.phase !== 'wave') return;
+  // A combo brings its whole set, paired as in its waves (and its weapon).
+  if (lab.pair) {
+    lab.sets.push(newSet(lab, g.waveT));
+    updateLabSets(g);
+    return;
+  }
   if (lab.foes.length) {
     const f = lab.foes[lab.cursor++ % lab.foes.length];
     const kind = FOES[f].kind;
@@ -1360,6 +1367,89 @@ export function labBring(g: Game): void {
     const c = g.map.carrier;
     addPickup(g, 'weapon', c.x + g.rng.foes.range(-180, 180), c.y - 150, lab.weapon);
   }
+}
+
+/** Is a combo's lead at its station: the Spotter on its circle, the Repair
+ *  Tender on station, the Rocket Truck at the end of its road? */
+function atStation(th: Threat): boolean {
+  const f = th.foe;
+  if (!f) return true;
+  if (th.kind === 'tender') return f.n === 1;
+  if (th.kind === 'spotter' || th.kind === 'rocketTruck') return f.state >= 1;
+  return true;
+}
+
+/** The live launch base furthest (on average) from the convoy's ships. */
+function farBase(g: Game): number | undefined {
+  const live = g.map.bases.map((b, i) => (launcher(b) && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
+  if (!live.length) return undefined;
+  const ships = g.ships.length ? g.ships : [g.map.carrier];
+  const far = (i: number) => ships.reduce((a, s) => a + dist(s.x, s.y, g.map.bases[i].x, g.map.bases[i].y), 0);
+  return live.reduce((m, i) => (far(i) > far(m) ? i : m));
+}
+
+/** The Test Lab's combo sets (Test Lab round 4, "the recon drone and then
+ *  the siege cannon never really appeared at the same time"): each set's
+ *  weapon drops by the carrier, its lead launches, and the others follow on
+ *  the pairing's cues, so the set is on the board together. */
+function updateLabSets(g: Game): void {
+  const lab = g.lab;
+  if (!lab?.pair || !lab.sets.length) return;
+  const P = lab.pair;
+  const c = g.map.carrier;
+  // One member out now; returns its base (-1 if it came from no base).
+  const out = (f: FoeId, base?: number): number => {
+    const kind = FOES[f].kind;
+    if (isPlaneKind(kind)) {
+      g.queue.unshift({ at: g.waveT, kind, base: -1 });
+      return -1;
+    }
+    const b = fromBase(kind) ? (base ?? pickBase(g, kind, g.rng.foes)) : -1;
+    if (fromBase(kind) && b < 0) return -1;
+    launch(g, { at: g.waveT, kind, base: b });
+    return b;
+  };
+  for (const s of lab.sets) {
+    if (!s.dropped && g.waveT >= s.at - LAB_SET.weaponLead) {
+      s.dropped = true;
+      if (lab.weapon && (g.levels[lab.weapon] ?? 0) > 0) addPickup(g, 'weapon', c.x + g.rng.foes.range(-160, 160), c.y - 150, lab.weapon);
+    }
+    if (!s.led && g.waveT >= s.at) {
+      const id = g.nextId;
+      s.led = { id, t: g.waveT, base: out(P.lead, P.far ? farBase(g) : s.bases[P.lead]) };
+    }
+    const led = s.led;
+    if (!led) continue;
+    if (led.station === undefined) {
+      const th = g.threats.find((t) => t.kind === FOES[P.lead].kind && t.id >= led.id);
+      // Shot down first (or never on the board), or slow getting there: the
+      // others come now.
+      if (!th || th.dead || atStation(th) || g.waveT - led.t >= LAB_SET.station) led.station = g.waveT;
+    }
+    P.follow.forEach((f, i) => {
+      if (s.done[i]) return;
+      const base = f.base === 'same' && led.base >= 0 ? led.base : s.bases[f.foe];
+      if (f.on === 'arrive') {
+        // Out once the lead is due within this one's own flight from its
+        // base, plus `after`: they arrive together.
+        const kind = FOES[f.foe].kind;
+        const from = base !== undefined && base >= 0 ? g.map.bases[base] : c;
+        const speed = THREATS[kind].speed * (1 + (g.waveSpeed - 1) * WAVE_SPEED_SHARE[kind]);
+        const leads = g.threats.filter((t) => !t.dead && t.kind === FOES[P.lead].kind && t.id >= led.id);
+        const due = leads.some((t) => {
+          const p = targetPos(g, t);
+          return timeToImpact(g, t) <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
+        });
+        if (leads.length && !due && g.waveT - led.t < LAB_SET.station) return;
+      } else {
+        const from = f.on === 'station' ? led.station : led.t;
+        if (from === undefined || g.waveT < from + f.after) return;
+      }
+      s.done[i] = true;
+      out(f.foe, base);
+    });
+  }
+  lab.sets = lab.sets.filter((s) => !s.led || !s.dropped || s.done.some((d) => !d));
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. */
@@ -2369,6 +2459,10 @@ function cadenceTap(g: Game, w: Weapon, x: number, y: number): TapResult | null 
   const ux = (x - c.x) / len0;
   const uy = (y - c.y) / len0;
   const len = entryDistance(c.x, c.y, ux, uy);
+  // War Drum (Test Lab round 4, the player: "have the third upgrade be a
+  // little bit more powerful. Maybe we could blow up the platforms and
+  // vehicles"): on the beat it wrecks them on its line in one hit.
+  if (w.level >= ABILITY_MAX) wreckLine(g, c.x, c.y, ux, uy, len, AB.cadence.width);
   rayHits(g, c.x, c.y, Math.atan2(uy, ux), len, AB.cadence.width, true, AB.cadence.damage);
   addFx(g, 'beam', c.x, c.y - 6, { life: 0.3, x2: c.x + ux * len, y2: c.y + uy * len, r: AB.cadence.width });
   cue(g, 'cadence.hit', c.x, c.y);
@@ -2378,6 +2472,25 @@ function cadenceTap(g: Game, w: Weapon, x: number, y: number): TapResult | null 
     if (w.level >= ABILITY_MAX && g.beat.run >= AB.cadence.run) g.beat.armed = true;
   }
   return 'fire';
+}
+
+/** War Drum's beat shot: every platform and vehicle within `width` of the
+ *  line from (x, y) along (ux, uy), `len` long, is destroyed outright (the
+ *  kinds in AB.cadence.wrecks: a siege gun only while it is up, a torpedo
+ *  sub only surfaced, as they are only targets then), and so is every launch
+ *  truck or sub up within `raider` px of it. */
+function wreckLine(g: Game, x: number, y: number, ux: number, uy: number, len: number, width: number): void {
+  const on = (px: number, py: number, w: number) => {
+    const along = (px - x) * ux + (py - y) * uy;
+    return along >= 0 && along <= len && Math.abs((px - x) * uy - (py - y) * ux) <= w;
+  };
+  const wrecks: readonly ThreatKind[] = AB.cadence.wrecks;
+  for (const th of [...g.threats]) {
+    if (th.dead || !wrecks.includes(th.kind) || !on(th.x, th.y, width)) continue;
+    addFx(g, 'boom', th.x, th.y, { life: 0.9, r: 48 });
+    damageThreat(g, th, th.hp);
+  }
+  for (const r of g.raiders) if (raiderUp(r) && on(r.x, r.y, AB.cadence.raider)) knockOut(g, r);
 }
 
 /** The beat itself: a cue on each one, a missed beat breaks the run, and
@@ -2751,9 +2864,24 @@ export function warping(g: Game): boolean {
 }
 
 function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
-  endBoost(g, false);
   const k = level - 1;
   const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : 1);
+  // Dual Wield again while it runs (Test Lab round 4: "if you pick up another
+  // dual wield it should reset all your current weapons ... back to the full
+  // duration"): the boost's clock starts over, and both hands with it.
+  if (id === 'dualWield' && g.boost?.id === 'dualWield') {
+    const b = g.boost;
+    b.level = level;
+    b.t = t;
+    b.age = 0;
+    for (const w of loadedWeapons(g)) w.t = t;
+    g.uses[id] = (g.uses[id] ?? 0) + 1;
+    g.events.push({ kind: 'weapon', id, level });
+    cue(g, 'boost.on', x, y);
+    addFx(g, 'text', x, y - 20, { life: 1.1, text: `${abilityName(id, level).toUpperCase()} · RESET` });
+    return;
+  }
+  endBoost(g, false);
   g.boost = { id, level, t, n: 0, bank: 0, crateT: AB.supplyRun.crate, clocked: 0, drops: null, age: 0 };
   switch (id) {
     case 'overclock':
@@ -2781,7 +2909,12 @@ function endBoost(g: Game, ranOut: boolean): void {
   const c = g.map.carrier;
   if (b.id === 'overclock') for (const w of loadedWeapons(g)) unclock(w);
   // Dual Wield: both hands end with it (lock-in round, the player's call).
-  if (b.id === 'dualWield') {
+  // Replaced by another boost (Test Lab round 4), they aren't lost: each
+  // keeps the rest of the boost's time on its own clock, so both still end
+  // when the Dual Wield would have. (A cleared wave empties them anyway.)
+  if (b.id === 'dualWield' && !ranOut) {
+    for (const w of loadedWeapons(g)) w.t = Math.max(0, b.t);
+  } else if (b.id === 'dualWield') {
     const names = loadedWeapons(g).map((w) => abilityName(w.id, w.level).toUpperCase());
     g.weapon = null;
     g.weapon2 = null;
@@ -2822,10 +2955,12 @@ function unclock(w: Weapon): void {
 }
 
 /** Where a weapon pickup goes. Either hand already holding it gets a fresh
- *  clock (an overclock carries over); under Dual Wield it joins the first
- *  (both hands full: the one with less time left goes). Returns false when
- *  it simply takes the first hand: the second keeps the rest of its time
- *  (round 2: "both stay loaded together for the rest of their time"). */
+ *  clock (an overclock carries over; under Dual Wield the clock is still the
+ *  boost's); under Dual Wield it joins the first (both hands full: the one
+ *  loaded longer ago goes, so you hold the two newest; Test Lab round 4: it
+ *  was always the first hand, both showing the boost's time). Returns false
+ *  when it simply takes the first hand: the second keeps the rest of its
+ *  time (round 2: "both stay loaded together for the rest of their time"). */
 function boostLoad(g: Game, w: Weapon): boolean {
   for (const hand of ['weapon', 'weapon2'] as const) {
     const old = g[hand];
@@ -2839,7 +2974,7 @@ function boostLoad(g: Game, w: Weapon): boolean {
   }
   if (g.boost?.id !== 'dualWield' || !g.weapon) return false;
   if (!g.weapon2) g.weapon2 = w;
-  else if (g.weapon2.t < g.weapon.t) g.weapon2 = w;
+  else if ((g.weapon2.t0 ?? 0) < (g.weapon.t0 ?? 0)) g.weapon2 = w;
   else g.weapon = w;
   return true;
 }
@@ -3045,6 +3180,7 @@ export function step(g: Game, dt: number): void {
     }
   }
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
+  updateLabSets(g);
   while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
   for (const r of g.raiders) updateRaider(g, r, dt);
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
@@ -3092,7 +3228,7 @@ export function step(g: Game, dt: number): void {
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g)) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g)) {
     g.score += 200 * g.wave;
     clearField(g);
     recordWave(g, 'cleared');

@@ -3,15 +3,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { ABILITY_ORDER } from '../../src/v3/data/abilities';
-import { FOES, FOE_ORDER } from '../../src/v3/data/foes';
+import { FOE, FOES, FOE_ORDER, type FoeId } from '../../src/v3/data/foes';
 import { LAB_CARDS, LAB_CHANGES, LAB_LENGTH, LAB_ROUND, LAB_ROUNDS, LAB_SCENARIOS, LAB_START_WAVE, cardChanges, cardRev, labCard } from '../../src/v3/data/lab';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { RULES } from '../../src/v3/data/config';
-import { labDone } from '../../src/v3/sim/lab';
+import { foeOnBoard, labDone } from '../../src/v3/sim/lab';
 import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
 import { labResultDocs, logRound, ownNote } from '../../src/v3/sim/labDocs';
 import { addLabEntry, currentEntry, labStatus, nextCards, olderEntries, parseLabProgress, type LabEntry } from '../../src/v3/ui/lab';
-import { applyFreePlay, applyLab, createGame, damageThreat, step, type Game } from '../../src/v3/sim/game';
+import { applyFreePlay, applyLab, createGame, damageThreat, labBring, step, tap, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 
 const DT = 1 / 60;
@@ -135,6 +135,135 @@ describe('a test run', () => {
   });
 });
 
+// ---- Combos meet (Test Lab round 4) ----------------------------------------
+// The player on Spotter + Siege Battery: "the recon drone and then the siege
+// cannon never really appeared at the same time". Each combo's set now comes
+// in together, timed to overlap (data/lab.ts, each combo's `pair`).
+
+/** The longest stretch (s) with every one of the card's enemies on the
+ *  board at once, nobody shooting, over `secs` of this wave. */
+function together(g: Game, foes: FoeId[], secs: number): number {
+  let run = 0;
+  let best = 0;
+  const w = g.wave;
+  for (let i = 0; i < secs * 30 && g.phase === 'wave' && g.wave === w; i++) {
+    step(g, 1 / 30);
+    run = foes.every((f) => foeOnBoard(g, f)) ? run + 1 / 30 : 0;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
+/** A combo's test with nobody shooting (the convoy can't lose). */
+function quietLab(id: string, seed: number): Game {
+  const g = labGame(id, seed);
+  g.lost = -99;
+  g.carrierHp = g.stats.carrierHp = 1e6;
+  return g;
+}
+
+const COMBOS = LAB_CARDS.filter((c) => c.kind === 'combo');
+
+describe('combos meet (Test Lab round 4)', () => {
+  it('every combo has a pairing: a lead from its enemies, followers from the rest, and a rule in words', () => {
+    expect(COMBOS).toHaveLength(8);
+    for (const c of COMBOS) {
+      const p = c.pair!;
+      expect(p, c.id).toBeDefined();
+      expect(c.foes, c.id).toContain(p.lead);
+      expect([p.lead, ...p.follow.map((f) => f.foe)].sort(), c.id).toEqual([...c.foes].sort());
+      expect(p.rule.length, c.id).toBeGreaterThan(20);
+    }
+  });
+
+  for (const c of COMBOS) {
+    it(`${c.name}: in the first wave its enemies are on the board together for 4.5 s or more`, () => {
+      for (const seed of [1, 2, 3]) expect(together(quietLab(c.id, seed), c.foes, 90), `seed ${seed}`).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it(`${c.name}: Bring one brings the whole set, and it is on the board together too`, () => {
+      for (const seed of [1, 2]) {
+        const g = quietLab(c.id, seed);
+        // Only what the button brings: the wave's own sets are taken out.
+        g.lab!.sets = [];
+        step(g, DT);
+        labBring(g);
+        expect(together(g, c.foes, 40), `seed ${seed}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  it('the Spotter paints, then the siege gun rises while it paints: its first shells land with the strike', () => {
+    const g = quietLab('combo-spotter-siege', 1);
+    let circled = -1;
+    let gunUp = -1;
+    let shellsLand = -1;
+    let strikeLands = -1;
+    let called = -1;
+    for (let i = 0; i < 60 * 40 && strikeLands < 0; i++) {
+      step(g, DT);
+      const sp = g.threats.find((t) => t.kind === 'spotter' && !t.dead);
+      if (circled < 0 && sp?.foe && sp.foe.state >= 1) circled = g.waveT;
+      if (called < 0 && sp?.foe && sp.foe.n === 1) called = g.waveT;
+      if (gunUp < 0 && g.threats.some((t) => t.kind === 'siege' && !t.dead)) gunUp = g.waveT;
+      const shell = g.foe.marks.find((m) => m.kind === 'shell');
+      if (shellsLand < 0 && shell) shellsLand = g.waveT + shell.dur - shell.t;
+      // The strike: ballistics at the painted ship, a second after the call.
+      const st = called > 0 && g.waveT > called + 0.9 ? g.threats.find((t) => t.kind === 'ballistic' && t.target === g.foe.paint?.ship && t.age < 0.05) : undefined;
+      if (st) strikeLands = g.waveT + st.dur - st.age;
+    }
+    expect(circled).toBeGreaterThan(0);
+    // The gun comes up after the Spotter starts painting, and is up while it
+    // paints (it paints from 2 s on its circle until it leaves).
+    expect(gunUp).toBeGreaterThan(circled + FOE.spotter.paint);
+    expect(gunUp).toBeLessThan(circled + FOE.spotter.stay);
+    expect(Math.abs(shellsLand - strikeLands)).toBeLessThan(1.5);
+  });
+
+  it('a combo with a weapon drops it by the carrier before each set (and with Bring one), and picking it up holds it', () => {
+    for (const c of COMBOS.filter((o) => o.weapon)) {
+      const g = quietLab(c.id, 2);
+      const kind = FOES[c.pair!.lead].kind;
+      let dropAt = -1;
+      let leadAt = -1;
+      for (let i = 0; i < 60 * 15 && leadAt < 0; i++) {
+        step(g, DT);
+        if (dropAt < 0 && g.pickups.some((p) => p.kind === 'weapon' && p.weapon === c.weapon)) dropAt = g.waveT;
+        if (g.threats.some((t) => t.kind === kind)) leadAt = g.waveT;
+      }
+      expect(dropAt, c.id).toBeGreaterThan(0);
+      expect(dropAt, c.id).toBeLessThan(leadAt);
+      const p = g.pickups.find((o) => o.kind === 'weapon' && o.weapon === c.weapon)!;
+      expect(tap(g, p.x, p.y, 30), c.id).toBe('pickup');
+      expect(g.weapon?.id, c.id).toBe(c.weapon);
+      // Bring one: the set and the weapon.
+      g.pickups = [];
+      labBring(g);
+      expect(g.pickups.some((o) => o.kind === 'weapon' && o.weapon === c.weapon), c.id).toBe(true);
+    }
+  });
+
+  it('a combo test that used Bring one replays exactly', () => {
+    const card = labCard('combo-hydra-tesla')!;
+    const g = createGame(card.map, 9, LAB_START_WAVE);
+    const free = { weapons: card.kit.map((w) => ({ id: w, level: 1 })), frequentDrops: true };
+    applyFreePlay(g, free);
+    const lab = { card: card.id, length: 'quick' as const, mix: 'normal' as const };
+    applyLab(g, lab);
+    const rec = new Recorder(g, { build: 't', startedAt: '', firstWave: LAB_START_WAVE, freePlay: free, lab, device: { w: 1, h: 1, dpr: 1, touch: false, ua: '' } });
+    for (let i = 0; i < 60 * 40; i++) {
+      if (i === 300 || i === 1200) rec.bring();
+      if (g.phase === 'draft') rec.pick(g.offer[0]);
+      if (g.phase === 'lost') break;
+      step(g, DT);
+    }
+    const again = replay(rec.finish('quit'));
+    expect(again.steps).toBe(g.steps);
+    expect(again.lab!.stats).toEqual(g.lab!.stats);
+    expect(g.lab!.stats.came).toBeGreaterThan(0);
+  });
+});
+
 // ---- Rounds and versions ----------------------------------------------------
 
 const stats = { came: 3, killed: 2, early: 1, harm: 1, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] };
@@ -153,8 +282,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3]);
-    expect(LAB_ROUND).toBe(3);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4]);
+    expect(LAB_ROUND).toBe(4);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
@@ -170,17 +299,31 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('diveBomber', 2)).toEqual(['Quicker, and now an A-10 Warthog']);
     expect(cardRev('cloud')).toBe(3);
     expect(cardRev('decoy')).toBe(3);
-    expect(cardRev('combo-decoy-sprint')).toBe(3);
+    expect(cardChanges('combo-decoy-sprint', 2)).toContain('Decoy Drones: The swarm spreads out; easier to tell apart');
     expect(cardRev('siege')).toBe(2);
+    // Round 4 (the player's notes of 2026-11-09): every combo now comes in
+    // together, Dual Wield's cases, War Drum blows up platforms.
+    for (const c of LAB_CARDS.filter((o) => o.kind === 'combo')) {
+      expect(cardRev(c.id), c.id).toBe(4);
+      expect(LAB_CHANGES[c.id]!.some((l) => l.round === 4), c.id).toBe(true);
+    }
+    expect(cardChanges('combo-spotter-siege', 3)).toEqual(['Its enemies now arrive together']);
+    expect(cardRev('w-dualWield')).toBe(4);
+    expect(cardRev('w-cadence')).toBe(4);
+    expect(cardRev('w-focus')).toBe(1);
+    expect(LAB_ROUNDS[3]).toEqual({ n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' });
   });
 
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
-    // Lure Beacon + Drone Screen has no change of its own; the Lure Beacon did.
-    expect(LAB_CHANGES['combo-lure-screen']).toBeUndefined();
-    expect(cardRev('combo-lure-screen')).toBe(2);
+    // Lure Beacon + Drone Screen: its own round 4 line, and the Lure Beacon's.
+    expect(LAB_CHANGES['combo-lure-screen']!.map((l) => l.round)).toEqual([4]);
+    expect(cardChanges('combo-lure-screen', 3)).toHaveLength(1);
     expect(cardChanges('combo-lure-screen').some((l) => l.startsWith(`${labCard('lure')!.name}:`))).toBe(true);
-    // Siege + Rocket Truck: its own line, and both enemies'.
-    expect(cardChanges('combo-siege-truck')).toHaveLength(3);
+    // Siege + Rocket Truck: its own two lines, and both enemies'.
+    expect(cardChanges('combo-siege-truck')).toHaveLength(4);
+    // Changing a weapon changes the combos that use it: none use Cadence or
+    // Dual Wield, so their round 4 lines are their own.
+    expect(cardChanges('combo-hydra-tesla', 3)).toEqual(['Its enemies now arrive together; Tesla drops by the carrier just before']);
   });
 
   it('progress saved before rounds becomes round 1 history', () => {
