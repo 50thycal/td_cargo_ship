@@ -259,6 +259,19 @@ try {
   const steps0 = await page.evaluate(() => window.__v3.game().steps);
   await page.locator('.v3-note-tag[data-tag="hard"]').click();
   await page.locator('.v3-note-text').fill('Heavy from the north with no warning');
+  // Typing (the phone's keyboard up): only the box and its buttons, fitted
+  // to what the keyboard leaves visible (simulated here as 150 px).
+  await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.setProperty('--vv-h', '150px'));
+  await page.waitForTimeout(150);
+  const typing = await page.evaluate(() => {
+    const box = document.querySelector('.v3-note-text').getBoundingClientRect();
+    const save = document.querySelector('.v3-note-save').getBoundingClientRect();
+    return { on: !!document.querySelector('.typing'), tags: getComputedStyle(document.querySelector('.v3-note-tags')).display, box: box.bottom, save: save.bottom };
+  });
+  check(typing.on && typing.tags === 'none' && typing.box <= 150 && typing.save <= 150, `typing a note: the box and Save fit above the keyboard (${JSON.stringify(typing)})`);
+  await page.locator('.v3-note-text').blur();
+  await page.waitForTimeout(400);
+  check(!(await page.evaluate(() => !!document.querySelector('.typing'))), 'the keyboard gone, the whole note form is back');
   await page.waitForTimeout(150);
   await page.screenshot({ path: `${SHOT_DIR}/13-note.png` });
   await page.locator('.v3-note-save').click();
