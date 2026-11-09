@@ -40,8 +40,10 @@ export const logRound = (l: PlayLog): number =>
   l.labResult?.round ?? l.lab?.round ?? Math.max(1, ...LAB_ROUNDS.filter((r) => r.since && /^\d{4}-/.test(l.build ?? '') && l.build >= r.since).map((r) => r.n));
 
 export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabResultDoc>; builds: Record<string, LabBuildDoc> } {
-  // card → round → its latest log.
+  // card → round → its latest log; and every log of each round (a card
+  // tested twice in a round keeps both notes).
   const byCard = new Map<string, Map<number, PlayLog>>();
+  const allOf = new Map<string, PlayLog[]>();
   for (const l of logs) {
     if (!l.lab || !l.labResult) continue;
     const rounds = byCard.get(l.lab.card) ?? new Map<number, PlayLog>();
@@ -49,7 +51,18 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const r = logRound(l);
     const prev = rounds.get(r);
     if (!prev || when(l) > when(prev)) rounds.set(r, l);
+    const key = `${l.lab.card}#${r}`;
+    allOf.set(key, [...(allOf.get(key) ?? []), l]);
   }
+  /** A round's notes: each test's own words, oldest first, joined. */
+  const roundNote = (id: string, round: number, earlier: string[]): string => {
+    const seen: string[] = [];
+    for (const l of [...(allOf.get(`${id}#${round}`) ?? [])].sort((a, b) => (when(a) < when(b) ? -1 : 1))) {
+      const n = ownNote(l.labResult!.note, earlier).trim();
+      if (n && !seen.includes(n)) seen.push(n);
+    }
+    return seen.join(' · ');
+  };
   const results: Record<string, LabResultDoc> = {};
   const builds: Record<string, LabBuildDoc> = {};
   for (const [id, rounds] of byCard) {
@@ -59,7 +72,7 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const l = rounds.get(order[0])!;
     const r = l.labResult!;
     const round = order[0];
-    const note = ownNote(r.note, order.slice(1).map((n) => rounds.get(n)!.labResult!.note));
+    const note = roundNote(id, round, order.slice(1).flatMap((n) => (allOf.get(`${id}#${n}`) ?? []).map((o) => o.labResult!.note)));
     const doc: LabResultDoc = {
       verdict: r.verdict,
       tags: r.tags,

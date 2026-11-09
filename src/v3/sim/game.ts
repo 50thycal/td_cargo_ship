@@ -173,6 +173,10 @@ export interface Threat {
   fireT?: number;
   /** The enemy build: a new enemy's own state (sim/foes.ts). */
   foe?: FoeData;
+  /** A Decoy Drones swarm member (real or decoy): its place across the
+   *  swarm's front, px off the line to its target, so the swarm flies spread
+   *  out and closes up only near the convoy (swarmAim). */
+  slot?: number;
 }
 
 export interface Interceptor {
@@ -3351,9 +3355,36 @@ function tankerHome(g: Game, s: Ship): void {
   g.events.push({ kind: 'bigKill', label: 'TANKER HOME', x: clamp(s.x, 160, VIEW.width - 160), y: clamp(s.y, 80, VIEW.height - 80) });
 }
 
-/** Where a ship will be `ahead` seconds from now, sailing its lane. */
-export function shipAhead(g: Game, s: Ship, ahead: number): Point {
-  const p = laneAt(g.map.channels[s.channel], s.d + laneSpeed(g, s) * ahead, s.lat);
+/** Where a decoy swarm's member flies for: its target, moved across its
+ *  line of flight by its `slot`, the full slot while far out, closing up
+ *  over the last `FOE.decoy.closeUp` px. */
+export function swarmAim(th: Threat, tp: Point, d: number): Point {
+  const k = (th.slot ?? 0) * clamp((d - FOE.decoy.fizzle) / FOE.decoy.closeUp, 0, 1);
+  if (!k || d < 1) return tp;
+  return { x: tp.x - ((tp.y - th.y) / d) * k, y: tp.y + ((tp.x - th.x) / d) * k };
+}
+
+/** A decoy swarm's member keeps a little room: eased away from any other
+ *  member closer than `FOE.decoy.part` px (real drones and decoys alike, so
+ *  nothing tells them apart). */
+export function swarmPart(g: Game, th: Threat, dt: number): void {
+  const R = FOE.decoy.part;
+  for (const o of g.threats) {
+    if (o === th || o.dead || o.slot === undefined) continue;
+    const dx = th.x - o.x;
+    const dy = th.y - o.y;
+    const d = Math.hypot(dx, dy);
+    if (d >= R) continue;
+    const push = (FOE.decoy.partSpeed * (1 - d / R) * dt) / Math.max(1, d);
+    th.x += d > 0.01 ? dx * push : (th.id % 2 ? 1 : -1) * FOE.decoy.partSpeed * dt;
+    th.y += dy * push;
+  }
+}
+
+/** Where a ship will be `ahead` seconds from now, sailing its lane (and
+ *  `plus` px further along it: a point off its bow). */
+export function shipAhead(g: Game, s: Ship, ahead: number, plus = 0): Point {
+  const p = laneAt(g.map.channels[s.channel], s.d + laneSpeed(g, s) * ahead + plus, s.lat);
   return { x: p.x, y: p.y };
 }
 
@@ -3790,8 +3821,10 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     const want = Math.atan2(tp.y - th.y, tp.x - th.x);
     if (th.kind === 'drone' || th.kind === 'minidrone') {
       // Shahed-style: slow and steady with a lazy weave, re-aiming as it goes.
+      // A decoy swarm's drones keep their place in its spread.
       const weave = DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase);
-      th.heading = want + (d > 80 ? weave : 0);
+      const at = th.slot ? swarmAim(th, tp, d) : tp;
+      th.heading = Math.atan2(at.y - th.y, at.x - th.x) + (d > 80 ? weave : 0);
     } else if (th.kind === 'mothership') {
       th.heading = want;
     } else {
@@ -3809,6 +3842,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
+    if (th.slot !== undefined) swarmPart(g, th, dt);
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
     if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
       splitCluster(g, th);

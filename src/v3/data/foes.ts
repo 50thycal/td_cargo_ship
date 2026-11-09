@@ -114,7 +114,12 @@ export const FOE = {
   // Test Lab round 1: the strobe gave them away from launch (300 px out,
   // shown 4 to 6 s of a 7 to 10 s flight). Now within 160 px of the ship and
   // not before 3.5 s out: about the last 2 to 3 s.
-  decoy: { size: 6, fakes: 3, revealAt: 160, revealAfter: 3.5, fizzle: 40 },
+  // Test Lab round 2 ("spread them out more ... just one large clump"):
+  // launched `spread` px apart (every other one `stagger` px back), each
+  // flies `slot` px across the swarm's front from the next, closing up only
+  // over the last `closeUp` px to its ship; and any two closer than `part`
+  // px ease apart (at up to `partSpeed` px/s).
+  decoy: { size: 6, fakes: 3, revealAt: 160, revealAfter: 3.5, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
   hydra: { darts: 2, spread: 0.5, clear: 34 },
   // Test Lab round 1: each firing is a ripple of `perSalvo` small rockets,
   // `ripple` s apart, spread `spread` px round one aim point; the salvo
@@ -138,7 +143,11 @@ export const FOE = {
   // Flying in from that far, the window is 0.4 s longer (the bots' sharp
   // player let three times the bombs through at 1.8 s) and the circle 0.4 s
   // shorter: the bomb still lands 4.7 s after the circle shows (`lead`).
-  diveBomber: { lead: 4.7, mark: 1.8, window: 2.2, fall: 0.7, run: 420, top: 40, minRun: 140, slant: 0.4, short: 36, bank: 1.6, exit: 520, hit: 30, splash: 70, splashDamage: 1 },
+  // Test Lab round 2 ("make it a little quicker", "make it faster and an
+  // A-10 Warthog"): its run is 1.8 s, not 2.2 (the plane flies it 22%
+  // faster), and the circle shows 0.4 s longer, 2.2 s, so the bomb still
+  // lands 4.7 s after the circle. It pulls away faster too.
+  diveBomber: { lead: 4.7, mark: 2.2, window: 1.8, fall: 0.7, run: 420, top: 40, minRun: 140, slant: 0.4, short: 36, bank: 2, exit: 640, hit: 30, splash: 70, splashDamage: 1 },
   // Test Lab round 1: it hides in a hatch and is a target only while up.
   // `first`: the closed hatch before its first rise; `rise`: the gun coming
   // up (a target; the tell); up until its shells leave, and `hold`; then
@@ -161,6 +170,12 @@ export const FOE = {
   /** An incendiary missile (`turn` rad/s). Shot down or at its ship, it
    *  bursts into a fireball of `radius` that lingers `linger` s: a hull inside it
    *  takes a hit after `first` s, then every `tick` s (a ship sailing
-   *  through takes one or two). */
-  cloud: { radius: 75, linger: 7, first: 0.7, tick: 2, turn: 0.9 },
+   *  through takes one or two). Test Lab round 2: it flies at where its ship
+   *  will be when it gets there (looking at most `horizon` s ahead), aiming
+   *  up to `bow` px off the ship's bow until it is `bowFrom` px off, so it
+   *  comes in on the bow or the flank; within `close` px it turns three
+   *  times as hard. A ship whose bearing to the base is further astern than
+   *  `astern` (the cosine off its bow; -0.2 is about 12° abaft the beam) it
+   *  could only chase up its wake, so it picks the best placed ship. */
+  cloud: { radius: 75, linger: 7, first: 0.7, tick: 2, turn: 0.9, horizon: 20, bow: 60, bowFrom: 40, close: 120, astern: 0.4 },
 } as const;

@@ -1,6 +1,6 @@
 # V3 enemies: Test Lab round 1 (2026-11-08)
 
-What the player's Test Lab verdicts and notes (`tools/v3/test-lab/playtest-2026-11-08.json`) changed, besides the four cut enemies (listed in `v3-enemy-build.md`). Screenshots: `docs/design/img/enemy-lab-round1/`.
+What the player's Test Lab verdicts and notes (`tools/v3/test-lab/playtest-2026-11-08.json`) changed, besides the four cut enemies (listed in `v3-enemy-build.md`). Screenshots: `docs/design/img/enemy-lab-round1/`. The round 2 notes and what they changed: [v3-enemy-lab-round2.md](v3-enemy-lab-round2.md).
 
 What the player's Test Lab verdicts (`tools/v3/test-lab/playtest-2026-11-08.json`) changed. Screenshots: `docs/design/img/enemy-lab-round1/`.
 
