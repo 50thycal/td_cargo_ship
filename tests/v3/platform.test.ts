@@ -5,6 +5,7 @@ import { ACHIEVEMENTS, _resetGameCenterForTests, earned, leaderboardId, setGameC
 import { _resetUnlockForTests, chapterOwned, ownsFullGame } from '../../src/v3/platform/unlock';
 import { loadProgress, recordResult, saveProgress } from '../../src/v3/platform/save';
 import { MAP_ORDER } from '../../src/v3/data/maps';
+import { MAX_TTL, TTL, calloutLook, loadCalloutLevel, saveCalloutLevel } from '../../src/v3/ui/alerts';
 
 /** A localStorage stand-in. */
 function memStorage(init: Record<string, string> = {}): Storage {
@@ -205,6 +206,29 @@ describe('haptics', () => {
     expect(hapticForCue('ship.sunk')).toBe('medium');
     expect(hapticForCue('carrier.hit')).toBe('medium');
     expect(hapticForCue('gun.fire')).toBeNull();
+  });
+});
+
+describe('call-outs setting', () => {
+  it('a new save shows everything, and the choice is kept', () => {
+    expect(loadCalloutLevel()).toBe('all');
+    saveCalloutLevel('off');
+    expect(kv.getItem('straitwatch.v3.callouts')).toBe('off');
+    expect(loadCalloutLevel()).toBe('off');
+    kv.setItem('straitwatch.v3.callouts', 'nonsense');
+    expect(loadCalloutLevel()).toBe('all');
+  });
+
+  it('All shows every kind; Essential what must be answered now; Off only the alarm', () => {
+    const kinds = ['alarm', 'warn', 'info', 'hint', 'ack'] as const;
+    expect(kinds.map((k) => calloutLook(k, 'all'))).toEqual(['full', 'full', 'full', 'full', 'full']);
+    expect(kinds.map((k) => calloutLook(k, 'essential'))).toEqual(['full', 'full', null, null, 'tiny']);
+    expect(kinds.map((k) => calloutLook(k, 'off'))).toEqual(['full', null, null, null, null]);
+  });
+
+  it('every card goes away on its own within a few seconds', () => {
+    for (const t of Object.values(TTL)) expect(t).toBeLessThanOrEqual(MAX_TTL);
+    expect(MAX_TTL).toBeLessThanOrEqual(4);
   });
 });
 

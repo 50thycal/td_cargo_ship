@@ -259,6 +259,19 @@ try {
   const steps0 = await page.evaluate(() => window.__v3.game().steps);
   await page.locator('.v3-note-tag[data-tag="hard"]').click();
   await page.locator('.v3-note-text').fill('Heavy from the north with no warning');
+  // Typing (the phone's keyboard up): only the box and its buttons, fitted
+  // to what the keyboard leaves visible (simulated here as 150 px).
+  await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.setProperty('--vv-h', '150px'));
+  await page.waitForTimeout(150);
+  const typing = await page.evaluate(() => {
+    const box = document.querySelector('.v3-note-text').getBoundingClientRect();
+    const save = document.querySelector('.v3-note-save').getBoundingClientRect();
+    return { on: !!document.querySelector('.typing'), tags: getComputedStyle(document.querySelector('.v3-note-tags')).display, box: box.bottom, save: save.bottom };
+  });
+  check(typing.on && typing.tags === 'none' && typing.box <= 150 && typing.save <= 150, `typing a note: the box and Save fit above the keyboard (${JSON.stringify(typing)})`);
+  await page.locator('.v3-note-text').blur();
+  await page.waitForTimeout(400);
+  check(!(await page.evaluate(() => !!document.querySelector('.typing'))), 'the keyboard gone, the whole note form is back');
   await page.waitForTimeout(150);
   await page.screenshot({ path: `${SHOT_DIR}/13-note.png` });
   await page.locator('.v3-note-save').click();
@@ -403,10 +416,12 @@ try {
     await pp.close();
   }
 
-  // ---- V2 round 14's notification tray, on every map ----
+  // ---- The call-outs stack (round 14's tray, moved to the corner in the
+  // call-outs round), on every map ----
   // A busy late wave played by the watch bot (which also grabs weapons, so
-  // weapon notices compete for the tray). Cards never overlap each other or
-  // the carrier, never leave the screen, and never exceed the map's limit.
+  // weapon notices compete for the stack). Cards sit in the bottom-right
+  // quarter of the field, never overlap each other or the carrier, never
+  // leave the screen, and never number more than two.
   // The 20-map plan: every map at one phone size, the first five at a second.
   const ORDER = ['strait', 'kesh', 'marrow', 'gauntlet', 'harbor', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'lantern', 'dreadnought', 'coves', 'delta', 'crossing', 'tide', 'citadel'];
   // Map visual-check round: and every map at the smallest phone (667×375),
@@ -431,15 +446,25 @@ try {
     for (let k = 0; k < 70; k++) {
       const r = await tp.evaluate(() => {
         const g = window.__v3.game();
-        const cards = [...document.querySelectorAll('.v2-alert')].map((e) => e.getBoundingClientRect());
+        const cards = [...document.querySelectorAll('.v2-alert:not(.leaving)')].map((e) => e.getBoundingClientRect());
         const c = g.map.carrier;
         const a = window.__v3.toClient(c.x - 80, c.y - 26);
         const b = window.__v3.toClient(c.x + 80, c.y + 26);
         const hit = (p, q) => p.left < q.right - 1 && q.left < p.right - 1 && p.top < q.bottom - 1 && q.top < p.bottom - 1;
         const carrier = { left: a.x, top: a.y, right: b.x, bottom: b.y };
+        const tl = window.__v3.toClient(0, 0);
+        const br = window.__v3.toClient(1600, 900);
         return {
           n: cards.length,
-          max: g.map.alerts.max ?? 2,
+          max: 2,
+          // The stack's own box (a card slides in from the right) ends at the
+          // field's right edge and the screen's foot; its cards stay in the
+          // right half, below the top third (two first-sight hints stand
+          // tallest on the smallest phone).
+          corner: (() => {
+            const st = document.querySelector('.v2-alerts').getBoundingClientRect();
+            return st.right <= br.x && br.x - st.right < 12 && innerHeight - st.bottom < 12 && cards.every((p) => p.left > (tl.x + br.x) / 2 && p.top > innerHeight / 3);
+          })(),
           overlap: cards.some((p, i) => cards.some((q, j) => j > i && hit(p, q))),
           onCarrier: cards.some((p) => hit(p, carrier)),
           off: cards.some((p) => p.bottom > innerHeight + 0.5 || p.top < 0 || p.left < 0 || p.right > innerWidth),
@@ -453,6 +478,7 @@ try {
         r.n > r.max && `${r.n} notices up (limit ${r.max})`,
         r.overlap && 'notices overlap each other',
         r.onCarrier && 'a notice covers the carrier',
+        !r.corner && 'a notice is outside the bottom-right corner',
         r.off && 'a notice runs off the screen',
       ].filter(Boolean);
       for (const b of bad) fail(`${map} ${w}×${h}: ${b}`);
@@ -461,9 +487,84 @@ try {
     }
     if (most === 0) fail(`${map}: no notices seen in a busy wave`);
     if (samples < 20) fail(`${map}: only ${samples} samples before the wave ended`);
-    console.log(`ok: tray on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, no overlaps`);
+    console.log(`ok: call-outs on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, in the corner, no overlaps`);
     if (map === 'island' && w === 874) await tp.screenshot({ path: `${SHOT_DIR}/12-island-tray.png` });
     await tp.close();
+  }
+
+  // ---- Call-outs round: the lab bar at the bottom, cards in the corner that
+  // go on their own or at a tap, and the Call-outs setting ----
+  // The player: "The bar that says like done, note, and everything, put that
+  // on the bottom and then move the notifications to the bottom right hand
+  // corner ... they should also be disappearing ... you can turn them off".
+  {
+    const cp = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+    const errs = [];
+    cp.on('pageerror', (e) => errs.push(e.message));
+    await cp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
+    await cp.evaluate(() => localStorage.clear());
+    const titlesFor = async (ms) => {
+      const seen = new Set();
+      for (let t = 0; t < ms; t += 100) {
+        for (const s of await cp.locator('.v2-alert:not(.leaving) strong').allTextContents()) seen.add(s);
+        await cp.waitForTimeout(100);
+      }
+      return [...seen];
+    };
+    await cp.goto(`${BASE_URL}/v3.html?lab=cloud`, { waitUntil: 'networkidle' });
+    await cp.waitForSelector('.playing.lab-on');
+    await cp.waitForSelector('.v2-alert.show');
+    const lay = await cp.evaluate(() => {
+      const bar = document.querySelector('.v3-lab-bar').getBoundingClientRect();
+      const card = document.querySelector('.v2-alert').getBoundingClientRect();
+      const tl = window.__v3.toClient(0, 0);
+      const br = window.__v3.toClient(1600, 900);
+      return { bar: { top: bar.top, bottom: bar.bottom }, card: { left: card.left, right: card.right, top: card.top, bottom: card.bottom }, mid: (tl.x + br.x) / 2, right: br.x, h: innerHeight };
+    });
+    check(lay.bar.top > lay.h / 2 && lay.bar.bottom <= lay.h && lay.h - lay.bar.bottom < 12, `the Test Lab bar sits along the bottom (${JSON.stringify(lay.bar)})`);
+    check(lay.card.left > lay.mid && lay.card.top > lay.h / 2 && lay.card.right <= lay.right && lay.card.bottom <= lay.bar.top, `a call-out sits in the bottom-right corner, above the bar (${JSON.stringify(lay.card)})`);
+    // An info card (3.2 s) goes on its own: the game held still, so no raid
+    // hurries it along.
+    await cp.evaluate(() => window.__v3.freeze(true));
+    // (What is up or queued goes first, four seconds at the most a card.)
+    await cp.waitForFunction(() => !document.querySelector('.v2-alert'), null, { timeout: 20000 });
+    await cp.evaluate(() => window.__v3.notify('TIMED', 'Goes on its own.', { key: 'timed' }));
+    const shownAt = Date.now();
+    await cp.waitForFunction(() => !document.querySelector('.v2-alert:not(.leaving)'), null, { timeout: 5000 });
+    const lasted = (Date.now() - shownAt) / 1000;
+    check(lasted > 2.5 && lasted < 4.2, `a call-out goes on its own within its time (${lasted.toFixed(1)} s, of 3.2 s)`);
+    await cp.evaluate(() => window.__v3.freeze(false));
+    // A tap sends a card away at once, and is not a shot.
+    await cp.evaluate(() => window.__v3.notify('TAP ME', 'A tap sends this away.', { key: 'tap-me' }));
+    await cp.waitForTimeout(300);
+    const box = await cp.locator('.v2-alert:not(.leaving)', { hasText: 'TAP ME' }).boundingBox();
+    const taps0 = await cp.evaluate(() => Object.values(window.__v3.game().taps).reduce((a, b) => a + b, 0));
+    await cp.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await cp.waitForTimeout(80);
+    const tapped = await cp.evaluate(() => ({ left: [...document.querySelectorAll('.v2-alert:not(.leaving)')].some((e) => e.textContent.includes('TAP ME')), taps: Object.values(window.__v3.game().taps).reduce((a, b) => a + b, 0) }));
+    check(!tapped.left && tapped.taps === taps0, `a tap on a call-out sends it away and fires nothing (${JSON.stringify({ ...tapped, taps0 })})`);
+    // At Call-outs: All a test meets its enemy with a first-sight card.
+    await cp.click('[data-lab-bring]');
+    const all = await titlesFor(2500);
+    check(all.some((t) => t.startsWith('NEW:')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
+    // Off, from Settings: kept across a reload, and no hint, wave or test card.
+    await cp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
+    await cp.locator('.v2-settings-btn').tap();
+    await cp.waitForSelector('[data-screen="settings"]');
+    check(await cp.locator('[data-callouts="all"].on').count() === 1, 'Settings: Call-outs starts at All');
+    await cp.locator('[data-callouts="off"]').tap();
+    await cp.reload({ waitUntil: 'networkidle' });
+    await cp.locator('.v2-settings-btn').tap();
+    await cp.waitForSelector('[data-screen="settings"]');
+    const kept = await cp.evaluate(() => ({ on: document.querySelector('[data-callouts].on')?.dataset.callouts, stored: localStorage.getItem('straitwatch.v3.callouts') }));
+    check(kept.on === 'off' && kept.stored === 'off', `Call-outs: Off is kept across a reload (${JSON.stringify(kept)})`);
+    await cp.goto(`${BASE_URL}/v3.html?lab=cloud`, { waitUntil: 'networkidle' });
+    await cp.waitForSelector('.playing.lab-on');
+    await cp.click('[data-lab-bring]');
+    const off = await titlesFor(2500);
+    check(off.length === 0, `at Call-outs: Off, no first-sight, wave or test card shows (${off.join(' | ') || 'none'})`);
+    check(errs.length === 0, `the call-outs checks ran without a page error${errs.length ? `: ${errs[0]}` : ''}`);
+    await cp.close();
   }
 
   // ---- The weapons plan, phases 0–1: the prototypes in Free Play, by touch ----

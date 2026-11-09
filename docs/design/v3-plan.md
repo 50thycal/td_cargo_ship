@@ -45,7 +45,9 @@ fork point):
   foot of the left rail. In V3, ability timers (Railgun, Tesla Arc, Ion
   Storm, Ghost Fleet) live in that rail too, and ability feedback (armed,
   charging, fired) is an at-once card, as round 14 treats feedback on the
-  player's own action.
+  player's own action. The call-outs round moved the tray to a stack in the
+  bottom-right corner, made every card go away on its own, and added the
+  Call-outs setting (All / Essential / Off): see `v3-callouts.md`.
 
 `tests/v3` and `e2e/v3.mjs` carry the same checks (fresh start, strike
 kills, roads clear of bases, the Island schedule, the tray on all five maps
