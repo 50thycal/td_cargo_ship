@@ -4732,9 +4732,40 @@ a.v3-lab-page {
   background: rgb(7 13 18 / 0.7);
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
+  /* 16 px: anything smaller and iOS zooms the page in on focus. */
+  font-size: 16px;
   padding: 7px 9px;
   resize: vertical;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.v3-lab-vwrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Save with no verdict: the row asks for one. */
+.v3-lab-need {
+  margin: 0;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.v3-lab-v.need {
+  border-radius: 10px;
+  animation: v3-lab-need 0.9s ease-out 2;
+}
+
+@keyframes v3-lab-need {
+  0% {
+    box-shadow: 0 0 0 0 rgb(242 193 78 / 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(242 193 78 / 0);
+  }
 }
 
 .v3-lab-changes {
@@ -4877,39 +4908,144 @@ a.v3-lab-page {
 
 
 /* ---- Typing in a dialog: fitted above the keyboard; upright allowed ------ */
+/* Test Lab round 4 ("I still can't see the text box all that great when
+   writing feedback, both horizontal and vertical"): while a text box has the
+   focus, the dialog IS the text box: the whole of what the keyboard leaves
+   visible (app.ts sets --vv-*), the box big, bright and pinned to its top,
+   its buttons beside it (held sideways: .typing-wide) or under it (upright),
+   and the verdict sheet's Keep / Tune / Cut kept, small. Everything else is
+   folded away (.typing-hide) until the keyboard goes; what held the kept
+   pieces steps aside (.typing-flat) so they sit on the panel's own grid. */
 
 .typing .v2-overlay.open {
   top: var(--vv-top, 0px);
+  left: var(--vv-left, 0px);
+  right: auto;
   bottom: auto;
+  width: var(--vv-w, 100%);
   height: var(--vv-h, 100%);
-  align-items: flex-start;
-  padding: 6px max(8px, var(--safe-r, 0px)) 6px max(8px, var(--safe-l, 0px));
-  background: rgb(4 8 11 / 0.95);
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 6px max(6px, var(--safe-r, 0px)) 6px max(6px, var(--safe-l, 0px));
+  background: #03070a;
 }
 
-.typing .v2-overlay .v2-panel {
-  max-height: 100%;
+.typing .v2-overlay .v2-panel,
+.typing .v2-overlay .v2-panel.v3-lab-verdict {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'box' 'keep' 'acts';
+  align-items: stretch;
+  justify-items: stretch;
+  align-content: stretch;
   gap: 6px;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden auto;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  animation: none;
+}
+
+.typing.typing-wide .v2-overlay .v2-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, min(34%, 270px));
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: 'box keep' 'box acts';
+  row-gap: 0;
+}
+
+.typing.typing-wide .typing-keep {
+  margin-bottom: 6px;
 }
 
 .typing .typing-hide {
   display: none !important;
 }
 
-.typing .v3-note-text,
-.typing .v3-lab-note {
-  min-height: 3.2em;
-  height: max(3.2em, calc(var(--vv-h, 200px) - 74px));
-  max-height: 40vh;
+.typing .typing-flat {
+  display: contents !important;
 }
 
-.typing .v3-lab-cols {
-  display: block;
+.typing .typing-box {
+  grid-area: box;
+  width: 100%;
+  height: 100% !important;
+  min-height: 4.2em;
+  max-height: none;
+  margin: 0;
+  padding: 8px 11px;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  background: #0d1a24;
+  color: #ffffff;
+  caret-color: var(--gold);
+  font-size: 17px;
+  line-height: 1.35;
+  resize: none;
+  box-shadow: 0 0 0 3px rgb(242 193 78 / 0.18);
 }
 
-.typing .v2-btn-row .v2-btn,
-.typing .v3-lab-sheet-acts .v2-btn {
-  min-height: 38px;
+.typing .typing-box::placeholder {
+  color: #a9bccb;
+  opacity: 1;
+}
+
+.typing .typing-keep {
+  grid-area: keep;
+  min-width: 0;
+}
+
+.typing .typing-keep .v3-lab-vbtn {
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.typing .typing-acts {
+  grid-area: acts;
+  align-self: start;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  align-content: flex-start;
+  justify-content: stretch;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.typing .typing-acts .v2-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+/* The next card's name under "Save · next": no room for it while typing. */
+.typing .typing-acts .v2-btn small {
+  display: none;
+}
+
+.typing.typing-wide .typing-acts {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.typing.typing-wide .typing-acts .v2-btn {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 3px 8px;
 }
 
 /* A dialog with a text box works with the phone held upright: no "turn your

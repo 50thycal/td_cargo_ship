@@ -431,13 +431,36 @@ export interface VerdictHandlers {
   save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note'>, then: 'next' | 'again' | 'list') => void;
 }
 
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers): HTMLElement {
+/** What the verdict sheet holds so far (the verdict, the tags, the note):
+ *  app.ts keeps it for the test, so the sheet drawn again (a wave's end
+ *  coming in under it) starts where the player left it. */
+export interface VerdictDraft {
+  verdict: LabVerdict | null;
+  tags: string[];
+  note: string;
+}
+
+/** A fresh sheet: filled in from the card's verdict at this version, if
+ *  it has one. */
+export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
+  const prior = currentEntry(p, cardId);
+  return { verdict: prior?.verdict ?? null, tags: [...(prior?.tags ?? [])], note: prior?.note ?? '' };
+}
+
+/** What Save keeps from the sheet: nothing without a verdict (the sheet
+ *  asks for one instead). */
+export function verdictResult(d: VerdictDraft): Pick<LabResult, 'verdict' | 'tags' | 'note'> | null {
+  return d.verdict ? { verdict: d.verdict, tags: [...d.tags], note: d.note.trim() } : null;
+}
+
+/** Round 4's logs: seven cards saved with a note and no verdict. While the
+ *  player typed, the Keep / Tune / Cut row was folded away with the rest of
+ *  the sheet, and Save (all that was left) saved a null verdict. The row now
+ *  stays while typing, and Save with no verdict asks for one. */
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft): HTMLElement {
   const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
   const title = ended === 'lost' ? `${card.name} · the convoy was lost` : `${card.name} · how was it?`;
   sheet.append(el('h2', '', title));
-  // Only a verdict on this version fills the sheet in: an older version's
-  // was about something else.
-  const prior = currentEntry(p, card.id);
   const older = olderEntries(p, card.id);
   const what = changedSince(p, card.id);
   if (what.length) {
@@ -448,23 +471,45 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   }
   const cols = el('div', 'v3-lab-cols');
   const left = el('div', 'v3-lab-col');
-  let verdict: LabVerdict | null = prior?.verdict ?? null;
-  const tags = new Set<string>(prior?.tags ?? []);
+  const d = draft ?? newVerdictDraft(p, card.id);
+  const tags = new Set<string>(d.tags);
+  // The verdict row, and the ask for one: they stay in sight while the
+  // keyboard is up (app.ts, enterTyping).
+  const vwrap = el('div', 'v3-lab-vwrap');
+  vwrap.dataset.typingKeep = '1';
   const vrow = el('div', 'v3-lab-v');
+  vrow.setAttribute('role', 'group');
+  vrow.setAttribute('aria-label', 'Verdict');
+  const need = el('p', 'v3-lab-need', 'Pick Keep, Tune or Cut, then save.');
+  need.dataset.labNeed = '1';
+  need.hidden = true;
   const vbtns = (['keep', 'tune', 'cut'] as LabVerdict[]).map((v) => {
-    const b = button(VERDICT_LABEL[v], `v3-lab-vbtn ${v}${verdict === v ? ' on' : ''}`, () => {
-      verdict = verdict === v ? null : v;
-      vbtns.forEach((o, k) => o.classList.toggle('on', ['keep', 'tune', 'cut'][k] === verdict));
+    const b = button(VERDICT_LABEL[v], `v3-lab-vbtn ${v}${d.verdict === v ? ' on' : ''}`, () => {
+      d.verdict = d.verdict === v ? null : v;
+      vbtns.forEach((o, k) => {
+        o.classList.toggle('on', ['keep', 'tune', 'cut'][k] === d.verdict);
+        o.setAttribute('aria-pressed', String(['keep', 'tune', 'cut'][k] === d.verdict));
+      });
+      if (d.verdict) {
+        need.hidden = true;
+        vrow.classList.remove('need');
+      }
     });
     b.dataset.labVerdict = v;
+    b.setAttribute('aria-pressed', String(d.verdict === v));
+    // A tap here while typing leaves the text box its focus (and the
+    // keyboard up).
+    b.addEventListener('mousedown', (e) => e.preventDefault());
     return b;
   });
   vrow.append(...vbtns);
+  vwrap.append(vrow, need);
   const trow = el('div', 'v3-lab-tags');
   for (const t of LAB_TAGS) {
     const b = button(t, `v3-lab-tag${tags.has(t) ? ' on' : ''}`, () => {
       if (tags.has(t)) tags.delete(t);
       else tags.add(t);
+      d.tags = LAB_TAGS.filter((o) => tags.has(o));
       b.classList.toggle('on', tags.has(t));
     });
     trow.append(b);
@@ -473,8 +518,11 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   note.id = 'lab-note';
   note.rows = 3;
   note.placeholder = 'What did you notice? (the microphone key on the keyboard dictates)';
-  note.value = prior?.note ?? '';
-  left.append(vrow, trow, note);
+  note.value = d.note;
+  note.addEventListener('input', () => (d.note = note.value));
+  // Keys typed here are the note's, not the game's.
+  note.addEventListener('keydown', (e) => e.stopPropagation());
+  left.append(vwrap, trow, note);
   const right = el('div', 'v3-lab-col v3-lab-evidence');
   right.append(el('span', 'v3-eyebrow', 'Counted this test'));
   for (const line of evidenceLines(card, s, waves)) right.append(el('p', '', line));
@@ -492,13 +540,29 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   }
   cols.append(left, right);
   const acts = el('div', 'v3-lab-sheet-acts');
-  const result = () => ({ verdict, tags: [...tags], note: note.value.trim() });
-  const again = button('Save · test again', 'v2-btn', () => h.save(result(), 'again'));
-  const list = button('Save · back to the list', 'v2-btn', () => h.save(result(), 'list'));
+  // No verdict yet: ask for one rather than save a blank (the note and the
+  // tags stay as they are).
+  const save = (then: 'next' | 'again' | 'list') => {
+    d.note = note.value;
+    const r = verdictResult(d);
+    if (!r) {
+      // The keyboard goes, so the whole sheet (the row, and why) is back.
+      note.blur();
+      need.hidden = false;
+      vrow.classList.remove('need');
+      void vrow.offsetWidth;
+      vrow.classList.add('need');
+      return;
+    }
+    h.save(r, then);
+  };
+  const again = button('Save · test again', 'v2-btn', () => save('again'));
+  again.dataset.labAgain = '1';
+  const list = button('Save · back to the list', 'v2-btn', () => save('list'));
   list.dataset.labList = '1';
   acts.append(again, list);
   if (next) {
-    const n = button('', 'v2-btn primary', () => h.save(result(), 'next'));
+    const n = button('', 'v2-btn primary', () => save('next'));
     n.dataset.labSaveNext = '1';
     n.append(el('span', '', 'Save · next'), el('small', '', next.name));
     acts.append(n);

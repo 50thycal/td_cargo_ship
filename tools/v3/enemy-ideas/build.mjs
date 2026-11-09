@@ -118,9 +118,9 @@ export const BUILD = [
   },
   // ---- Chapter 4: Open War ----
   {
-    id: 'tender', from: 'p-repair-tender', chapter: 4, name: 'Repair Tender', cat: 'support', sub: 'shield',
+    id: 'tender', from: 'p-repair-tender', chapter: 4, name: 'Repair Ship', cat: 'support', sub: 'shield',
     how: 'An enemy vessel that sails in with a heavy missile. Every 3.5 s it charges a beam (you see it for a second) and mends the most damaged enemy near it by two hits.',
-    tell: 'The beam and its pulse.', answer: 'Finish the tough target between pulses, or sink the tender first.',
+    tell: 'The beam and its pulse.', answer: 'Finish the tough target between pulses, or sink the repair ship first.',
     numbers: '6 hits. Mends 2 within 340 px.',
   },
   {
