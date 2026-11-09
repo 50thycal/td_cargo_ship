@@ -173,12 +173,10 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   orbital: ['orbital.lock'],
   // Phase 3 boosts (at MAX): they change the plain gun's shots.
   supplyRun: ['gun.fire'],
-  overclock: ['gun.fire'],
   dualWield: ['gun.fire'],
   wildCard: ['wild.roll'],
   focus: ['gun.fire'],
   overdrive: ['gun.fire'],
-  timeWarp: ['gun.fire'],
   shield: ['gun.fire'],
   fullSteam: ['gun.fire'],
 };

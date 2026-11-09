@@ -264,15 +264,6 @@ const SCENES: Record<CardId, Scene> = {
     `<path d="M70 6 Q80 -2 90 6 L84 16 M70 6 L76 16" fill="${c}" opacity="0.85" stroke="${INK}" stroke-width="0.6"/>` +
     `<rect x="75" y="15" width="10" height="8" rx="1" fill="#6b5a3a" stroke="${INK}" stroke-width="0.8"/>`,
 
-  // The weapon a level up: a gauge pegged in the red, its clock stopped.
-  overclock: (c) =>
-    sea(68) + carrier(60, 64, 0.8) +
-    `<path d="M30 48 A30 30 0 1 1 90 48" fill="none" stroke="${SEA_LINE}" stroke-width="6"/>` +
-    `<path d="M74 22 A30 30 0 0 1 90 48" fill="none" stroke="${RED}" stroke-width="6"/>` +
-    `<path d="M30 48 A30 30 0 0 1 74 22" fill="none" stroke="${c}" stroke-width="6"/>` +
-    `<path d="M60 48 L84 30" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><circle cx="60" cy="48" r="4" fill="${INK}"/>` +
-    `<text x="60" y="38" font-size="9" font-weight="800" fill="${c}" text-anchor="middle" font-family="system-ui">+1</text>`,
-
   // Two weapons from one gun: a rail beam and a flak cloud.
   dualWield: (c) =>
     sea(66) + carrier(60, 62, 0.9) +
@@ -301,12 +292,6 @@ const SCENES: Record<CardId, Scene> = {
     `<path d="M66 4 L48 30 H60 L54 50 L76 22 H64 Z" fill="${c}" stroke="#7a5d00" stroke-width="1"/>` +
     [0, 1, 2, 3, 4, 5].map((k) => `<rect x="${86 + (k % 3) * 8}" y="${22 + Math.floor(k / 3) * 13}" width="5" height="10" rx="1.5" fill="${c}"/>`).join('') +
     interceptor(30, 30, -60, 0.7) + interceptor(22, 40, -60, 0.7),
-
-  // Grey, slowed threats with long ghost trails; an hourglass.
-  timeWarp: (c) =>
-    `<rect width="120" height="76" fill="#3a3f4a" opacity="0.5"/>` + sea(66) + ship(60, 62, 0.75) +
-    [[20, 12], [92, 18]].map(([x, y]) => [0, 1, 2, 3].map((k) => `<g opacity="${0.15 + k * 0.2}">${threat(x + (x < 60 ? k * 6 : -k * 6), y + k * 6, x < 60 ? 45 : 135, 0.8)}</g>`).join('')).join('') +
-    `<g transform="translate(60 26)"><path d="M-9 -14 H9 M-9 14 H9 M-7 -14 C-7 -4 7 -4 7 0 C7 4 -7 4 -7 14 M7 -14 C7 -4 -7 -4 -7 0 C-7 4 7 4 7 14" fill="none" stroke="${c}" stroke-width="2"/><path d="M-4 10 L4 10 L0 4 Z" fill="${c}"/></g>`,
 
   // A dome over the convoy; a missile shattering on it.
   shield: (c) =>

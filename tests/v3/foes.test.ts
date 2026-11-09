@@ -925,10 +925,13 @@ describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => 
     const t2 = bait(g2, h.x + 80, h.y - 120);
     const l2 = lureAt(g2, t2.x + 200, t2.y - 60);
     run(g2, FOE.lure.rise + 0.1);
-    const n0 = g2.hellfires.length;
-    run(g2, 2.5, () => g2.hellfires.length > n0);
-    expect(g2.hellfires.length).toBeGreaterThan(n0);
-    expect(g2.hellfires.every((m) => m.target === l2.id)).toBe(true);
+    // (Each launched after the beacon came up; Test Lab round 5: a gunship
+    // turns to face its target before it fires, so count launches by id.)
+    const mark = g2.nextId;
+    const fresh = () => g2.hellfires.filter((m) => m.id >= mark);
+    run(g2, 2.5, () => fresh().length > 0);
+    expect(fresh().length).toBeGreaterThan(0);
+    expect(fresh().every((m) => m.target === l2.id)).toBe(true);
 
     // Frigates: a beacon beyond their reach still draws them when what they
     // would shoot is inside its ring.

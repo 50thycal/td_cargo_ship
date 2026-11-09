@@ -25,11 +25,13 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every special event (17), every new enemy (17), every weapon (29), eight combos and every map, each once (91 cards)', () => {
+  it('every special event (17), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (89 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(91);
+    expect(ids).toHaveLength(89);
     expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(17);
+    expect(ids).not.toContain('w-overclock');
+    expect(ids).not.toContain('w-timeWarp');
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
     for (const f of FOE_ORDER) expect(LAB_CARDS.filter((c) => c.kind === 'enemy' && c.foes[0] === f), f).toHaveLength(1);
     expect(LAB_CARDS.filter((c) => c.kind === 'weapon').map((c) => c.weapon).sort()).toEqual([...ABILITY_ORDER].sort());
@@ -41,7 +43,7 @@ describe('the hub\'s cards', () => {
     // the reworked weapons first.
     expect(ids.slice(0, 2)).toEqual(['ev-rush', 'ev-decoy-storm']);
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy').slice(0, 3).map((c) => c.id)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
-    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 5).map((c) => c.weapon)).toEqual(['dualWield', 'cadence', 'focus', 'gunships', 'supplyRun']);
+    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield']);
     for (const c of LAB_CARDS) {
       expect(c.kit, c.id).toHaveLength(3);
       for (const w of c.kit) expect(ABILITY_ORDER, c.id).toContain(w);
@@ -293,7 +295,7 @@ describe('test rounds and card versions', () => {
     }
     expect(cardRev('rocketTruck')).toBe(2);
     expect(cardRev('torpedoSub')).toBe(1);
-    expect(cardRev('w-gunships')).toBe(2);
+    expect(cardRev('w-gunships')).toBe(5);
     expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
     // Round 3 (the player's round 2 notes): the Dive Bomber, the Incendiary
@@ -306,6 +308,7 @@ describe('test rounds and card versions', () => {
     expect(cardRev('siege')).toBe(2);
     // Round 4 (the player's notes of 2026-11-09): every combo now comes in
     // together, Dual Wield's cases, War Drum blows up platforms.
+    // (Lure Beacon + Drone Screen is round 5: Drone Screen changed then.)
     for (const c of LAB_CARDS.filter((o) => o.kind === 'combo')) {
       expect(cardRev(c.id), c.id).toBeGreaterThanOrEqual(4);
       expect(LAB_CHANGES[c.id]!.some((l) => l.round === 4), c.id).toBe(true);
@@ -313,7 +316,6 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('combo-spotter-siege', 3)).toEqual(['Its enemies now arrive together']);
     expect(cardRev('w-dualWield')).toBe(4);
     expect(cardRev('w-cadence')).toBe(4);
-    expect(cardRev('w-focus')).toBe(1);
     expect(LAB_ROUNDS[3]).toEqual({ n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' });
     // Round 5 (the player's round 4 enemy notes): the Dive Bomber, the
     // Incendiary Missile and the Repair Ship, and the combos with them.
@@ -325,12 +327,19 @@ describe('test rounds and card versions', () => {
     expect(labCard('tender')!.name).toBe('Repair Ship');
     expect(labCard('combo-tender-bodyguard')!.name).toBe('Repair Ship + Bodyguard Ring');
     for (const id of ['decoy', 'combo-spotter-siege']) expect(cardRev(id), id).toBeLessThan(5);
+    // Round 5 (the player's round 4 weapon notes): a line for every weapon
+    // changed, and nothing for the ones kept as they were.
+    const changed = ['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield'];
+    for (const id of changed) expect(cardRev(`w-${id}`), id).toBe(5);
+    for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
+    expect(labCard('w-aegis')!.name).toBe('Point Defense');
   });
 
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
     // Lure Beacon + Drone Screen: its own round 4 line, and the Lure Beacon's.
     expect(LAB_CHANGES['combo-lure-screen']!.map((l) => l.round)).toEqual([4]);
-    expect(cardChanges('combo-lure-screen', 3)).toHaveLength(1);
+    // Its round 4 line, and Drone Screen's round 5 one.
+    expect(cardChanges('combo-lure-screen', 3)).toEqual(['Drone Screen now drops by the carrier just before each Lure Beacon', 'Drone Screen: Drones wait on deck until a threat is on screen']);
     expect(cardChanges('combo-lure-screen').some((l) => l.startsWith(`${labCard('lure')!.name}:`))).toBe(true);
     // Siege + Rocket Truck: its own two lines, and both enemies'.
     expect(cardChanges('combo-siege-truck')).toHaveLength(4);

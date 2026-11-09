@@ -19,6 +19,7 @@ import {
 import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
 import {
+  AB,
   ABILITIES,
   ABILITY_MAX,
   ABILITY_ORDER,
@@ -128,7 +129,7 @@ const LOST_SKIP_AFTER = 0.9;
 const DRAFT_ARM_MS = 350;
 /** Focus: a touch of the holding finger shorter than this is a tap (fired on
  *  its lift); longer, it was a hold for slow motion. */
-const FOCUS_TAP_MS = 220;
+const FOCUS_TAP_MS = AB.focus.hold * 1000;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -680,9 +681,7 @@ export class App {
         const tag = c.querySelector<HTMLElement>('.v3-weapon-tag')!;
         const gesture = w && g.weapon === w ? gestureOf(w.id) : undefined;
         const secs = w ? `${Math.ceil(w.t)}s` : '';
-        // Overclocked: its clock is stopped.
-        const oc = w && 'oc' in w && w.oc !== undefined;
-        const text = !w ? '' : oc ? 'OC' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
+        const text = !w ? '' : gesture ? `${GESTURE_HINT[gesture].split(':')[0]} ${secs}` : id === 'focus' && g.boost?.id === 'focus' ? `HOLD ${secs}` : secs;
         if (tag.textContent !== text) tag.textContent = text;
       }
     }
@@ -915,10 +914,11 @@ export class App {
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
       // Focus (a boost; the player: "one finger down and then tap with the
       // other one"): while slow motion is banked, the first finger down is
-      // the holding finger. It only slows time and fires nothing; every
-      // other finger taps (or presses, with a gesture weapon) as usual. A
-      // quick touch of the holding finger is still a tap (on its lift), so
-      // a single finger can pick a pickup up or fire.
+      // the holding finger. Held AB.focus.hold s it slows time (the sim
+      // counts the hold) and fires nothing; every other finger taps (or
+      // presses, with a gesture weapon) as usual. A quicker touch of it is a
+      // plain tap (on its lift), with no slow-down (Test Lab round 5: "When
+      // tapping just to shoot a missile it should not do the slow down").
       const g0 = this.game;
       if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
         this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
@@ -3514,9 +3514,9 @@ function weaponHint(seconds: number): [string, string] {
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, Aegis Launchers fire from every ship; in the Armory, Fast Motors or Armor Plating.',
+  ballistic: 'Ballistics did the most damage: Spread formation helps, Point Defense fires from every ship; in the Armory, Fast Motors or Armor Plating.',
   guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Point Defense in the Armory picks off the ones near the carrier.',
-  supersonic: 'Supersonics did the most damage: tap on the lock line; Aegis Launchers let the ship it is after fire back.',
+  supersonic: 'Supersonics did the most damage: tap on the lock line; Point Defense lets the ship it is after fire back.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
@@ -3531,7 +3531,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
   torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
-  stealthJet: 'Stealth strafers did the most damage: Aegis Launchers and the Shield answer a jet you can\'t see coming.',
+  stealthJet: 'Stealth strafers did the most damage: Point Defense answers a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
   diveBomber: 'Dive bombers did the most damage: shoot the plane in its moment, or move ships out of the red circle (Full Steam).',
   siege: 'The siege battery did the most damage: silence the gun (the Railgun reaches it), or move out of the orange circles.',

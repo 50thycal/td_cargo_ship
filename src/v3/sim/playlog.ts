@@ -71,7 +71,12 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *  so the version stays.)
  *  18: special events: a campaign map with one has an 11th wave (its event),
  *      so a run that won at wave 10 now plays on; the lab's 'b' command on an
- *      event card starts the event over; `events` records each event met. */
+ *      event card starts the event over; `events` records each event met.
+ *      Also Test Lab round 5's weapon notes: Overclock and Time Warp cut, Wild
+ *      Card an active, the Gravity Well by size, the Laser Cutter cuts while
+ *      held, the Grapnel reaches the whole screen, Focus slows only after a
+ *      hold, Bomber Wing hits aircraft and subs as it passes over, Supply Run
+ *      without its magnet, Shield's new levels, Hyper Overdrive's twin shots. */
 export const LOG_VERSION = 18;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
