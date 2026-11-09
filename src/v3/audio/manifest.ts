@@ -124,7 +124,6 @@ export const SOUNDS: Record<CueId, SoundDef> = {
   'supply.plane': sfx('supply.plane', 1, 0.5, { moving: true, maxVoices: 1 }),
   'wild.roll': sfx('wild.roll', 1, 0.4, { cooldownMs: 90, maxVoices: 1 }),
   'shield.reflect': sfx('shield.reflect', 1, 0.55, { pitch: [0.92, 1.1], cooldownMs: 80, maxVoices: 2 }),
-  'shield.shatter': sfx('shield.shatter', 1, 0.8, { cooldownMs: 300, maxVoices: 1 }),
   'steam.ram': sfx('steam.ram', 1, 0.5, { pitch: [0.92, 1.06], cooldownMs: 80, maxVoices: 2 }),
 
   'weapon.drop': sfx('weapon.drop', 1, 0.5, { cooldownMs: 200 }),

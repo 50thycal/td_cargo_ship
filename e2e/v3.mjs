@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 17 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 18 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -583,7 +583,7 @@ try {
     await wp.click('[data-free-play]');
     await wp.waitForSelector('[data-screen="freeplay"]');
     const fpList = await wp.evaluate(() => { const o = [...document.querySelectorAll('[data-fp="weapon0"] option')]; return { all: o.filter((x) => x.value).length, protos: o.filter((x) => /prototype/.test(x.textContent)).length }; });
-    check(fpList.all === 29 && fpList.protos === 0, `Free Play offers all 29 weapons, none a prototype after the lock-in (${JSON.stringify(fpList)})`);
+    check(fpList.all === 27 && fpList.protos === 0, `Free Play offers all 27 weapons (Overclock and Time Warp cut), none a prototype after the lock-in (${JSON.stringify(fpList)})`);
     await wp.click('[data-free-start]');
     await wp.waitForSelector('.playing');
     // Hand-placed targets on a quiet wave: the same picture every time.
@@ -690,9 +690,11 @@ try {
     check(helis === 2 && missiles > 0 && after.alive.length === 0, `Gunship Pair: two helicopters arrive and fire Hellfires at the pack (${helis} helis, ${missiles} missiles in the air at once, ${after.alive.length} left)`);
 
     await place([]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 1.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
+    await wp.evaluate(() => { const g = window.__v3.game(); g.queue = [0.5, 1, 1.5, 2, 2.5].map((dt) => ({ at: g.waveT + 3.6 + dt, kind: 'drone', base: 0 })).concat([{ at: 1e9, kind: 'drone', base: 0 }]); });
     await pickup('bomberWing');
-    await wp.waitForTimeout(2200);
+    // (Test Lab round 5: the silo goes quiet when the bomber is over it, ~2 s
+    // after it is called, then its launches due are cancelled.)
+    await wp.waitForTimeout(5500);
     const silent = await wp.evaluate(() => { const g = window.__v3.game(); return { quiet: (g.quietUntil[0] ?? 0) > g.t, launched: g.threats.length }; });
     check(silent.quiet && silent.launched === 0, `Bomber Wing: a pass silences the busy silo, its launches cancelled (${JSON.stringify(silent)})`);
 
@@ -706,15 +708,22 @@ try {
 
     // ---- Phase 3: boosts. A boost pickup never replaces the loaded weapon.
     await place([['heavy', 30, 800, 260]]);
-    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.timeWarp = 1; if (!g.slots.includes('timeWarp')) g.slots.push('timeWarp'); });
-    await dropWeapon(wp, 'timeWarp', 640, 560);
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.railgun = 1; g.weapon = { id: 'railgun', level: 1, t: 15, t0: g.t }; g.levels.fullSteam = 1; if (!g.slots.includes('fullSteam')) g.slots.push('fullSteam'); });
+    await dropWeapon(wp, 'fullSteam', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
     const tw = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
-    check(tw.boost === 'timeWarp' && tw.weapon === 'railgun', `a boost runs beside the loaded weapon: Time Warp with the Railgun (${JSON.stringify(tw)})`);
+    check(tw.boost === 'fullSteam' && tw.weapon === 'railgun', `a boost runs beside the loaded weapon: Full Steam with the Railgun (${JSON.stringify(tw)})`);
+
+    // Wild Card (Test Lab round 5): a weapon now, it replaces the Railgun.
+    await wp.evaluate(() => { const g = window.__v3.game(); g.levels.wildCard = 1; if (!g.slots.includes('wildCard')) g.slots.push('wildCard'); });
+    await dropWeapon(wp, 'wildCard', 640, 560);
+    await wp.mouse.click(p.x, p.y);
+    const wc = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
+    check(wc.weapon === 'wildCard' && wc.boost === 'fullSteam', `Wild Card is a weapon: it takes over the gun from the Railgun, the boost runs on (${JSON.stringify(wc)})`);
 
     // Focus: a finger down slows time; lifting it stops.
-    await place([['drone', 1, 600, 200]]);
+    await place([['drone', 1, 600, 200], ['drone', 1, 900, 200]]);
     await wp.evaluate(() => { const g = window.__v3.game(); g.levels.focus = 1; if (!g.slots.includes('focus')) g.slots.push('focus'); });
     await dropWeapon(wp, 'focus', 640, 560);
     p = await c(640, 560);
@@ -726,6 +735,15 @@ try {
       cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 11 }));
     }, [type, id, x, y]);
     const hold = await c(1200, 400);
+    // A quick tap of it (Test Lab round 5): a shot, and no slow-down.
+    const quick0 = await wp.evaluate(() => window.__v3.game().shots);
+    const qa = await c(900, 200);
+    await finger('pointerdown', 11, qa.x, qa.y);
+    const quickSlow = await wp.evaluate(() => window.__v3.game().focusing);
+    await finger('pointerup', 11, qa.x, qa.y);
+    const quick = await wp.evaluate(() => { const g = window.__v3.game(); return { shots: g.shots, focusing: g.focusing, bank: g.boost?.bank }; });
+    check(!quickSlow && !quick.focusing && quick.shots === quick0 + 1 && quick.bank === 10, `Focus: a quick tap is just a shot, no slow-down (${JSON.stringify(quick)})`);
+    await wp.waitForTimeout(400);
     const shots0f = await wp.evaluate(() => window.__v3.game().shots);
     await finger('pointerdown', 11, hold.x, hold.y);
     await wp.waitForTimeout(400);
@@ -774,6 +792,13 @@ try {
       chutes = Math.max(chutes, s.chutes);
     }
     check(plane === 1 && chutes >= 2, `Supply Run: a cargo plane crosses and drops its crates on parachutes (${plane} plane, up to ${chutes} crates in the air)`);
+    // No magnet (Test Lab round 5): the crates stay where they came down.
+    // (Once they are down off their parachutes.)
+    await wp.waitForFunction(() => window.__v3.game().pickups.every((x) => !x.chute), null, { timeout: 5000 }).catch(() => {});
+    const crates = await wp.evaluate(() => window.__v3.game().pickups.map((x) => [Math.round(x.x), Math.round(x.y)]).join(' '));
+    await wp.waitForTimeout(800);
+    const still = await wp.evaluate(() => window.__v3.game().pickups.map((x) => [Math.round(x.x), Math.round(x.y)]).join(' '));
+    check(crates.length > 0 && crates === still, `Supply Run: its crates stay on the water for you to tap, nothing flies to the carrier (${crates} → ${still})`);
 
     const replayed = await wp.evaluate(() => { const r = window.__v3.replay(window.__v3.log()); const g = window.__v3.game(); return { same: r.steps === g.steps, kinds: [...new Set(window.__v3.log().commands.map((c) => c[1]))] }; });
     check(replayed.kinds.includes('d') && replayed.kinds.includes('v') && replayed.kinds.includes('r') && replayed.kinds.includes('h'), `the play log records presses, moves, lifts and the Focus finger (${replayed.kinds.join('')})`);
@@ -859,7 +884,7 @@ try {
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
     const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent }));
-    check(hub.rows === 74 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
+    check(hub.rows === 72 && hub.next === 'Dive Bomber', `the Test Lab hub lists every card, Next up first (${hub.rows} cards, next ${hub.next})`);
     await tp.click('[data-lab-next]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
@@ -881,7 +906,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 4 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 4 && saved.v === 17 && saved.next === 'Siege Battery', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 5 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 5 && saved.v === 18 && saved.next === 'Siege Battery', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // A link from the review page opens a test straight away.
     await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
@@ -903,7 +928,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 4/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 5/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 

@@ -66,7 +66,7 @@ import {
   type Levels,
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
-import { draftPool, gestureOf, isBoost, newInChapter, ROSTER } from '../data/roster';
+import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeId, type FoeSetting } from '../data/foes';
@@ -166,8 +166,6 @@ export interface Threat {
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
-  /** A strafer whose run a Shield (level 2) has blocked: all of it is. */
-  blocked?: boolean;
   /** The Dreadnought: how far along its path it has steamed, and seconds to
    *  its next broadside. */
   along?: number;
@@ -204,6 +202,9 @@ export interface Interceptor {
   /** The enemy build: fired by the player's own tap (the Lure Beacon takes
    *  only such shots). */
   tap?: boolean;
+  /** Hyper Overdrive's second shot, fired from its own muzzle beside the
+   *  first (the renderer draws it a shade lighter). */
+  twin?: boolean;
 }
 
 export interface Pickup {
@@ -237,6 +238,8 @@ export interface Fx {
   age: number;
   life: number;
   text?: string;
+  /** Drawn for Hyper Overdrive's second shot (a beam, a cut, a blast). */
+  twin?: boolean;
 }
 
 export type GameEvent =
@@ -447,8 +450,6 @@ export interface Weapon {
   t: number;
   /** When it was loaded (Cadence Gun counts its beats from here). */
   t0?: number;
-  /** Overclock: its own level while it plays a level higher (clock stopped). */
-  oc?: number;
 }
 
 /** A finger on the water with a gesture weapon loaded (Charge Lance, Laser
@@ -464,9 +465,12 @@ export interface Press {
   mode: 'pending' | 'charge' | 'swipe' | 'hook' | 'dry';
   /** Grapnel: the threat on the cable. */
   hook: number | null;
-  /** Laser Cutter: what this swipe has cut, and how far it has gone. */
+  /** Laser Cutter: what the round being cut has hit, how far it has cut
+   *  (a round per AB.cutter.length; the press keeps cutting, round after
+   *  round, until the finger lifts), and Hyper Overdrive's twin line's hits. */
   cut: number[];
   cutLen: number;
+  cut2?: number[];
   /** The finger's velocity (px/s), for the Grapnel's fling. */
   vx: number;
   vy: number;
@@ -481,6 +485,8 @@ export interface Fling {
   vy: number;
   t: number;
   level: number;
+  /** Thrown under Hyper Overdrive: it bursts twice. */
+  twin?: boolean;
 }
 
 
@@ -511,6 +517,11 @@ export interface Heli {
   lean: number;
   roll: number;
   leaving: boolean;
+  /** Test Lab round 5 ("it should face the target when firing"): the
+   *  threat it is turning to fire at (-1: none), and how long it has been
+   *  turning to it. */
+  aim: number;
+  aimT: number;
 }
 
 /** A Gunship Pair missile (the player: "make their projectiles look like
@@ -540,7 +551,9 @@ export interface CargoPlane {
   drops: { x: number; kind: PickupKind; weapon?: AbilityId }[];
 }
 
-/** Bomber Wing: a bomber on its pass over a target on the shore. */
+/** Bomber Wing: a bomber on its pass over a target. It crosses the screen
+ *  at AB.bomberWing.speed and its bomb lands as it passes over (Test Lab
+ *  round 5: nothing happens before it gets there). */
 export interface Sortie {
   id: number;
   x: number;
@@ -549,11 +562,19 @@ export interface Sortie {
   tx: number;
   ty: number;
   hit: boolean;
-  /** truck: a raider's id; silo: a base's index; tunnel: the cancelled
-   *  raider spawn (already gone from the queue); lure: a Lure Beacon's
-   *  threat id (the pass is wasted on it). */
-  kind: 'truck' | 'silo' | 'tunnel' | 'lure';
+  /** truck: a launch truck or sub (a raider's id); silo: a base's index;
+   *  tunnel: a raider spawn still to come (the spawn itself); air / sub: an
+   *  aircraft or a torpedo sub (a threat's id: it follows it); lure: a Lure
+   *  Beacon's threat id (the pass is wasted on it). */
+  kind: 'truck' | 'silo' | 'tunnel' | 'lure' | 'air' | 'sub';
   ref: number;
+  /** The tunnel's spawn (cancelled when the bomb lands). */
+  spawn?: RaiderSpawn;
+  /** Seconds it has been on screen, and whether its run sound has started. */
+  seen: number;
+  cued: boolean;
+  /** Silo: seconds of silence it brings. */
+  quiet: number;
 }
 
 
@@ -714,8 +735,10 @@ export interface Game {
   /** The second weapon's passive clock (two passives at once). */
   passiveT2: number;
   /** Focus: the holding finger is down (its own input, `focusHold`: it
-   *  only slows time; the other finger taps). */
+   *  only slows time; the other finger taps), and since when (realT): time
+   *  slows only once it has been down AB.focus.hold s. */
   finger: boolean;
+  fingerT: number;
   /** Focus: slow motion running this step. */
   focusing: boolean;
   /** Seconds of real (unslowed) play: Focus slows `t`, not this. */
@@ -741,11 +764,7 @@ export interface Boost {
   bank: number;
   /** Airdrop: seconds to the next crate. */
   crateT: number;
-  /** Overclock: weapons overclocked so far; `drops`: the MAX weapon that
-   *  drops more often instead. */
-  clocked: number;
-  drops: AbilityId | null;
-  /** Seconds it has run (Freeze Frame's first 2 s). */
+  /** Seconds it has run. */
   age: number;
 }
 
@@ -864,6 +883,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     weapon2: null,
     passiveT2: 0,
     finger: false,
+    fingerT: 0,
     focusing: false,
     realT: 0,
     freePlay: false,
@@ -1235,27 +1255,76 @@ function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
 
 /** Dual Wield: the second hand's shot costs no round (one round a tap). */
 let freeShots = 0;
-/** Hyper Overdrive fires these twice (one-shot weapons with no state). */
-const HYPER_TWICE: AbilityId[] = ['railgun', 'airstrike', 'scatter', 'boomerang', 'seeker', 'flak', 'well', 'shrapnel', 'thermo'];
+/** Hyper Overdrive fires these twice (taps that are a shot of their own;
+ *  the rest fire a tagged interceptor, which `fireAt` doubles). */
+const HYPER_TWICE: AbilityId[] = ['railgun', 'airstrike', 'scatter', 'boomerang', 'seeker', 'flak', 'well', 'shrapnel', 'thermo', 'cadence', 'wildCard'];
+
+/** Hyper Overdrive's second shot, while it is being fired: how far to the
+ *  side of the first its muzzle sits (0: an ordinary shot). Test Lab round
+ *  5 (the player: "it should clearly show two projectiles instead of just
+ *  one ... for the beam two laser beams"): the second shell, beam, cone or
+ *  blade leaves from its own muzzle beside the first, so both show. */
+let twinSide = 0;
+/** Hyper Overdrive's first shot, while it is being fired: its muzzle goes as
+ *  far to the other side, so the pair sits either side of the gun. */
+let firstSide = 0;
+
+/** Is Hyper Overdrive (Overdrive MAX) running: every shot fires twice? */
+export function hyper(g: Game): boolean {
+  return boostLevel(g, 'overdrive') >= ABILITY_MAX;
+}
+
+/** Where a shot at (x, y) leaves the gun: the carrier, or for Hyper
+ *  Overdrive's second shot a muzzle `twinSide` px to its side, square to the
+ *  line of fire (a beam from it still crosses the first at the target). */
+function muzzle(g: Game, x: number, y: number): Point {
+  const c = g.map.carrier;
+  const side = twinSide || firstSide;
+  if (!side) return { x: c.x, y: c.y };
+  const d = dist(c.x, c.y, x, y) || 1;
+  return { x: c.x - ((y - c.y) / d) * side, y: c.y + ((x - c.x) / d) * side };
+}
+
+/** Fire Hyper Overdrive's first shot of a pair: `f` runs with the first
+ *  muzzle (the other side from the twin's). Anything else: as it is. */
+function firstShot<T>(g: Game, f: () => T): T {
+  if (!hyper(g) || twinSide) return f();
+  firstSide = -AB.overdrive.twin;
+  try {
+    return f();
+  } finally {
+    firstSide = 0;
+  }
+}
+
+/** Fire Hyper Overdrive's second shot: `f` runs with the twin muzzle, for
+ *  no round. */
+function twinShot(f: () => void): void {
+  const free = freeShots;
+  freeShots = 1;
+  twinSide = AB.overdrive.twin;
+  try {
+    f();
+  } finally {
+    twinSide = 0;
+    freeShots = free;
+  }
+}
 
 /** A tap that is a shot: every loaded weapon fires (Dual Wield: both, for
  *  one round); with nothing loaded, a plain interceptor or (Wild Card) a
  *  random weapon. */
 function fireLoaded(g: Game, x: number, y: number, threat: Threat | null, radius: number): TapResult {
   const ws = loadedWeapons(g);
-  if (!ws.length && boostLevel(g, 'wildCard')) return wildTap(g, x, y, threat, radius);
   let res: TapResult | null = null;
   const plain: Weapon[] = [];
   for (const w of ws) {
     if (res === 'dry') break;
     freeShots = res ? 1 : 0;
-    const r = fireWeapon(g, w, x, y, threat, radius);
+    const r = HYPER_TWICE.includes(w.id) ? firstShot(g, () => fireWeapon(g, w, x, y, threat, radius)) : fireWeapon(g, w, x, y, threat, radius);
     if (r === null) plain.push(w);
     else {
-      if (r === 'fire' && boostLevel(g, 'overdrive') >= ABILITY_MAX && HYPER_TWICE.includes(w.id)) {
-        freeShots = 1;
-        fireWeapon(g, w, x, y, threat, radius);
-      }
+      if (r === 'fire' && hyper(g) && !twinSide && HYPER_TWICE.includes(w.id)) twinShot(() => fireWeapon(g, w, x, y, threat, radius));
       res = res ?? r;
     }
     freeShots = 0;
@@ -1318,7 +1387,9 @@ export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
 export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
   g.levels = {};
   g.slots = [];
-  for (const w of setup.weapons.slice(0, MAX_SLOTS)) {
+  // A weapon cut since the setup was saved (or logged) is left out
+  // (Test Lab round 5 cut Overclock and Time Warp).
+  for (const w of setup.weapons.filter((o) => knownWeapon(o.id)).slice(0, MAX_SLOTS)) {
     if (g.slots.includes(w.id)) continue;
     g.levels[w.id] = Math.max(1, Math.min(ABILITY_MAX, Math.floor(w.level)));
     g.slots.push(w.id);
@@ -1507,6 +1578,15 @@ function openDraft(g: Game): void {
     const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));
     g.offer.push((fromMine ? mine : other).shift()!);
   }
+  // The Test Lab (round 5, the player: "when you're play testing one, it
+  // should always have an upgrade ... for the one that you're actually
+  // testing"): a weapon test's every draft offers its weapon's next level
+  // until it is MAX.
+  const tested = g.lab?.weapon;
+  if (tested && (g.levels[tested] ?? 0) > 0 && canTake(g.levels, tested) && !g.offer.includes(tested)) {
+    g.offer.unshift(tested);
+    if (g.offer.length > 3) g.offer.pop();
+  }
   if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
   g.phase = 'draft';
 }
@@ -1532,8 +1612,13 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       // A shell: at the threat as usual, or onto open water to burst there.
       if (threat) return null;
       if (!spend(g)) return 'dry';
-      g.interceptors.push({ id: g.nextId++, x: g.map.carrier.x, y: g.map.carrier.y - 6, target: null, tx: x, ty: y, life: 0, src: 'gun', weapon: { ...w } });
-      cue(g, 'gun.fire', g.map.carrier.x, g.map.carrier.y);
+      {
+        // Hyper Overdrive's second shell lands as far aside as it left.
+        const m = muzzle(g, x, y);
+        const c = g.map.carrier;
+        g.interceptors.push({ id: g.nextId++, x: m.x, y: m.y - 6, target: null, tx: x + m.x - c.x, ty: y + m.y - c.y, life: 0, src: 'gun', weapon: { ...w }, ...(twinSide ? { twin: true } : {}) });
+        if (!twinSide) cue(g, 'gun.fire', c.x, c.y);
+      }
       return 'fire';
     case 'aegis':
       // The ships fire their own interceptors (`updateAegis`); the gun is
@@ -1567,6 +1652,9 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       return null;
     case 'cadence':
       return cadenceTap(g, w, ax, ay);
+    // Wild Card (an active since Test Lab round 5): a random weapon's shot.
+    case 'wildCard':
+      return wildTap(g, w, x, y, threat, radius);
     // Passives: they work on their own; the gun is the plain gun.
     case 'droneScreen':
     case 'gunships':
@@ -1575,12 +1663,9 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
       return null;
     // Boosts are never loaded (startBoost); nothing to fire.
     case 'supplyRun':
-    case 'overclock':
     case 'dualWield':
-    case 'wildCard':
     case 'focus':
     case 'overdrive':
-    case 'timeWarp':
     case 'shield':
     case 'fullSteam':
       return null;
@@ -1654,7 +1739,7 @@ function rayHits(g: Game, x: number, y: number, ang: number, range: number, widt
 /** Scattergun: a cone of pellets from the gun toward (x, y), short range. */
 function fireScatter(g: Game, level: number, x: number, y: number): void {
   const k = level - 1;
-  const c = g.map.carrier;
+  const c = muzzle(g, x, y);
   const base = Math.atan2(y - c.y, x - c.x);
   const n = AB.scatter.pellets[k];
   for (let i = 0; i < n; i++) {
@@ -1669,7 +1754,7 @@ function fireScatter(g: Game, level: number, x: number, y: number): void {
 /** Boomerang: a blade out to (x, y), or after the threat tapped, and back
  *  (Twin Blades: a second one splayed to one side). */
 function throwBlades(g: Game, level: number, x: number, y: number, threat: Threat | null): void {
-  const c = g.map.carrier;
+  const c = muzzle(g, x, y);
   const d = dist(c.x, c.y, x, y) || 1;
   const reach = Math.min(d, AB.boomerang.range);
   const base = Math.atan2(y - c.y, x - c.x);
@@ -1740,8 +1825,12 @@ function updateBlades(g: Game, dt: number): void {
  *  spent or another takes over. */
 function launchEscorts(g: Game, level: number): void {
   const want = AB.frigate.ships[level - 1];
-  g.escorts = g.escorts.filter((e) => !e.leaving);
-  if (g.escorts.length < want) cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
+  // Test Lab round 5 (the player: "make sure frigates don't just disappear
+  // when they are traveling off screen and you select another frigate"):
+  // frigates on their way out turn round and sail back to station; only
+  // the ones still missing sail in.
+  if (g.escorts.filter((e) => !e.leaving).length < want) cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
+  g.escorts.forEach((e, i) => (e.leaving = i >= want));
   const stations = escortStations(g, want);
   for (let i = 0; i < want; i++) {
     const st = stations[i];
@@ -1887,8 +1976,12 @@ function updateEscorts(g: Game, dt: number): void {
     const p = laneAt(ch, e.d, e.lat);
     const moved = e.d - before;
     // Heading: the lane's, turned a little by any sideways drift (at most
-    // ~24°, a ship steering across, never crabbing sideways).
-    const aim = Math.atan2(p.ty, p.tx) + Math.atan2(dl, Math.max(step, 1e-6)) * Math.sign(moved);
+    // ~24°, a ship steering across, never crabbing sideways). Sailing back
+    // up the lane (called back on its way out), it turns round and goes
+    // bow first; on station it keeps whichever way it faces.
+    const lane = Math.atan2(p.ty, p.tx);
+    const drift = Math.atan2(dl, Math.max(step, 1e-6));
+    const aim = moved > 1e-6 ? lane + drift : moved < -1e-6 ? lane + Math.PI - drift : Math.abs(angleDiff(lane + Math.PI, e.heading)) < Math.abs(angleDiff(lane, e.heading)) ? lane + Math.PI : lane;
     const turn = ESCORT_TURN * dt;
     e.heading += clamp(angleDiff(aim, e.heading), -turn, turn);
     e.x = p.x;
@@ -2032,7 +2125,7 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
     .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y));
   if (!near.length) return 'empty';
   if (!spend(g)) return 'dry';
-  const c = g.map.carrier;
+  const c = muzzle(g, x, y);
   const n = AB.seeker.missiles[k];
   const dmg = g.stats.hitDamage * AB.seeker.damage;
   const targets: Threat[] = [];
@@ -2058,6 +2151,7 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
       blast: AB.seeker.blast,
       dmg,
       retarget: level >= 3,
+      ...(twinSide ? { twin: true } : {}),
     });
   }
   return 'fire';
@@ -2083,10 +2177,12 @@ function nearestThreat(g: Game, x: number, y: number): Threat | undefined {
 function callJet(g: Game, level: number, x: number, y: number): void {
   const k = level - 1;
   const dir = x < VIEW.width / 2 ? 1 : -1;
-  cue(g, 'jet.flyby', dir > 0 ? -80 : VIEW.width + 80, y, { vx: dir * AB.airstrike.speed });
+  // Hyper Overdrive's second jet flies the same row, a length behind.
+  const behind = twinSide ? 170 : 0;
+  if (!twinSide) cue(g, 'jet.flyby', dir > 0 ? -80 : VIEW.width + 80, y, { vx: dir * AB.airstrike.speed });
   g.allies.push({
     id: g.nextId++,
-    x: dir > 0 ? -80 : VIEW.width + 80,
+    x: dir > 0 ? -80 - behind : VIEW.width + 80 + behind,
     y,
     dx: dir,
     dy: 0,
@@ -2141,7 +2237,7 @@ function entryDistance(x: number, y: number, ux: number, uy: number): number {
 /** Railgun: an instant beam from the carrier through (x, y) to the edge of
  *  the screen, hitting everything along it. */
 function fireBeam(g: Game, level: number, x: number, y: number): void {
-  const c = g.map.carrier;
+  const c = muzzle(g, x, y);
   const len0 = dist(c.x, c.y, x, y) || 1;
   const ux = (x - c.x) / len0;
   const uy = (y - c.y) / len0;
@@ -2191,8 +2287,15 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
  *  (the player: "one finger down and then tap with the other one"). */
 export function focusHold(g: Game, down: boolean): void {
   if (g.phase !== 'wave') return;
+  if (down && !g.finger) g.fingerT = g.realT;
   g.finger = down;
-  g.focusing = down && g.boost?.id === 'focus' && g.boost.bank > 0;
+  g.focusing = focusOn(g);
+}
+
+/** Is Focus slowing time: the holding finger down for AB.focus.hold s or
+ *  more (Test Lab round 5: a quick tap is only a shot), with time banked? */
+function focusOn(g: Game): boolean {
+  return g.finger && g.realT - g.fingerT >= AB.focus.hold - 1e-9 && g.boost?.id === 'focus' && g.boost.bank > 0;
 }
 
 /** A finger down on the water. With a gesture weapon loaded it starts a
@@ -2205,9 +2308,11 @@ export function press(g: Game, x: number, y: number, radius: number): void {
   if (gesture === 'drag') {
     const w = g.weapon!;
     const c = g.map.carrier;
-    // Hook the threat under the finger (structures are too big to swing).
+    // Hook the threat under the finger, anywhere on the screen (Test Lab
+    // round 5; structures are too big to swing).
+    void w;
     const th = g.threats
-      .filter((t) => !t.dead && !t.held && !isStructure(t.kind) && dist(t.x, t.y, x, y) <= radius && dist(t.x, t.y, c.x, c.y) <= AB.grapnel.reach[w.level - 1])
+      .filter((t) => !t.dead && !t.held && !isStructure(t.kind) && dist(t.x, t.y, x, y) <= radius)
       .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
     if (!th) return;
     // A pickup under the finger wins, as it would for a tap.
@@ -2297,10 +2402,19 @@ function fireLance(g: Game, w: Weapon, p: Press): TapResult {
     return 'dry';
   }
   g.taps.fire += 1;
-  const c = g.map.carrier;
   const near = g.threats.filter((t) => !t.dead && dist(t.x, t.y, p.x, p.y) <= p.radius).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
   const ax = near ? near.x : p.x;
   const ay = near ? near.y : p.y;
+  firstShot(g, () => lanceShot(g, w, ch, ax, ay));
+  // Hyper Overdrive: a second lance from its own muzzle, crossing the first
+  // at the target.
+  if (hyper(g)) twinShot(() => lanceShot(g, w, ch, ax, ay));
+  return 'fire';
+}
+
+/** The lance (or the half-charge bolt) from the gun through (ax, ay). */
+function lanceShot(g: Game, w: Weapon, ch: number, ax: number, ay: number): void {
+  const c = muzzle(g, ax, ay);
   const len0 = dist(c.x, c.y, ax, ay) || 1;
   const ux = (ax - c.x) / len0;
   const uy = (ay - c.y) / len0;
@@ -2310,41 +2424,69 @@ function fireLance(g: Game, w: Weapon, p: Press): TapResult {
     const len = entryDistance(c.x, c.y, ux, uy);
     rayHits(g, c.x, c.y, ang, len, AB.lance.width, true, AB.lance.fullDmg);
     addFx(g, 'lance', c.x, c.y - 6, { life: 0.5, x2: c.x + ux * len, y2: c.y + uy * len, r: AB.lance.width * 1.6 });
-    cue(g, 'lance.full', c.x, c.y);
+    if (!twinSide) cue(g, 'lance.full', c.x, c.y);
     if (w.level >= ABILITY_MAX) {
       g.fields.push({ kind: 'sun', x1: c.x, y1: c.y, x2: c.x + ux * len, y2: c.y + uy * len, hw: AB.lance.width, t: 0, life: AB.lance.burn, tick: AB.airstrike.burnTick, level: w.level });
     }
-    return 'fire';
+    return;
   }
   // Half charge: a bolt into the first threat on the line (from level 2,
   // through everything on it).
   const end = rayHits(g, c.x, c.y, ang, entryDistance(c.x, c.y, ux, uy), AB.lance.width, w.level >= 2, AB.lance.halfDmg);
   addFx(g, 'lance', c.x, c.y - 6, { life: 0.3, x2: end.x, y2: end.y, r: AB.lance.width * 0.8 });
-  cue(g, 'lance.half', c.x, c.y);
-  return 'fire';
+  if (!twinSide) cue(g, 'lance.half', c.x, c.y);
 }
 
-/** Laser Cutter: cut the stretch from (x1, y1) to (x2, y2), as much of it as
- *  this swipe has left. */
+/** Laser Cutter: cut the stretch from (x1, y1) to (x2, y2). A round cuts
+ *  AB.cutter.length px; while the finger stays down the cut goes on, a new
+ *  round for each length (and each threat can be cut again by it), until
+ *  the finger lifts or the rack is dry (Test Lab round 5: "once you hold
+ *  down, you could just burn through all your ammo, but at the same rate"). */
 function cutAlong(g: Game, w: Weapon, p: Press, x1: number, y1: number, x2: number, y2: number): void {
-  const left = AB.cutter.length[w.level - 1] - p.cutLen;
-  if (left <= 0) return;
+  const L = AB.cutter.length[w.level - 1];
   let seg = dist(x1, y1, x2, y2);
-  if (seg < 1e-6) return;
-  if (seg > left) {
-    x2 = x1 + ((x2 - x1) * left) / seg;
-    y2 = y1 + ((y2 - y1) * left) / seg;
-    seg = left;
+  while (seg > 1e-6 && p.mode === 'swipe') {
+    if (L - p.cutLen <= 1e-6) {
+      // This round is cut through: the next one, while the rack lasts.
+      if (!spend(g)) {
+        p.mode = 'dry';
+        return;
+      }
+      p.cutLen = 0;
+      p.cut = [];
+      p.cut2 = [];
+      cue(g, 'cutter.swipe', x1, y1);
+    }
+    const take = Math.min(seg, L - p.cutLen);
+    const ex = x1 + ((x2 - x1) * take) / seg;
+    const ey = y1 + ((y2 - y1) * take) / seg;
+    cutStretch(g, w, p.cut, x1, y1, ex, ey);
+    // Hyper Overdrive: a second beam beside the first, cutting on its own.
+    if (hyper(g)) {
+      const ox = (-(ey - y1) / take) * AB.overdrive.twin;
+      const oy = ((ex - x1) / take) * AB.overdrive.twin;
+      p.cut2 ??= [];
+      twinSide = AB.overdrive.twin;
+      cutStretch(g, w, p.cut2, x1 + ox, y1 + oy, ex + ox, ey + oy);
+      twinSide = 0;
+    }
+    p.cutLen += take;
+    seg -= take;
+    x1 = ex;
+    y1 = ey;
   }
-  p.cutLen += seg;
+}
+
+/** One stretch of a cut: every threat within reach of it not yet in `cut`. */
+function cutStretch(g: Game, w: Weapon, cut: number[], x1: number, y1: number, x2: number, y2: number): void {
   const vx = x2 - x1;
   const vy = y2 - y1;
-  const l2 = vx * vx + vy * vy;
+  const l2 = vx * vx + vy * vy || 1;
   for (const th of [...g.threats]) {
-    if (th.dead || p.cut.includes(th.id)) continue;
+    if (th.dead || cut.includes(th.id)) continue;
     const t = clamp(((th.x - x1) * vx + (th.y - y1) * vy) / l2, 0, 1);
     if (dist(th.x, th.y, x1 + vx * t, y1 + vy * t) > AB.cutter.width) continue;
-    p.cut.push(th.id);
+    cut.push(th.id);
     damageThreat(g, th, AB.cutter.damage);
   }
   addFx(g, 'cut', x1, y1, { life: 0.45, x2, y2, r: AB.cutter.width });
@@ -2376,8 +2518,9 @@ function updatePress(g: Game, dt: number): void {
     return;
   }
   // The ball chases the finger as fast as the cable can swing it.
+  const k = w.level - 1;
   const d = dist(th.x, th.y, p.x, p.y);
-  const stepLen = Math.min(d, AB.grapnel.speed * dt);
+  const stepLen = Math.min(d, AB.grapnel.speed[k] * dt);
   const ox = th.x;
   const oy = th.y;
   if (d > 1e-6) {
@@ -2395,7 +2538,7 @@ function updatePress(g: Game, dt: number): void {
     if (o.dead || o === th || dist(o.x, o.y, th.x, th.y) > AB.grapnel.smackR) continue;
     if (g.t - (p.smacked[o.id] ?? -9) < AB.grapnel.again) continue;
     p.smacked[o.id] = g.t;
-    damageThreat(g, o, AB.grapnel.smack);
+    damageThreat(g, o, AB.grapnel.smack[k]);
     addFx(g, 'burst', o.x, o.y, { life: 0.3, r: AB.grapnel.smackR });
     cue(g, 'grapnel.smack', o.x, o.y);
   }
@@ -2410,9 +2553,10 @@ function letGo(g: Game, p: Press): void {
   const th = g.threats.find((t) => t.id === p.hook && !t.dead);
   if (!th) return;
   const sp = Math.hypot(p.vx, p.vy);
-  const cap = AB.grapnel.speed;
+  const level = g.weapon?.level ?? 1;
+  const cap = AB.grapnel.speed[level - 1];
   const k = sp > cap ? cap / sp : 1;
-  g.flings.push({ id: th.id, vx: p.vx * k, vy: p.vy * k, t: 0, level: g.weapon?.level ?? 1 });
+  g.flings.push({ id: th.id, vx: p.vx * k, vy: p.vy * k, t: 0, level, ...(hyper(g) ? { twin: true } : {}) });
   cue(g, 'grapnel.fling', th.x, th.y);
 }
 
@@ -2435,6 +2579,16 @@ function updateFlings(g: Game, dt: number): void {
     addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', bx, by, { life: 0.5, r });
     cue(g, 'grapnel.burst', bx, by);
     for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+    // Hyper Overdrive: a second burst beside the first.
+    if (f.twin) {
+      const sp = Math.hypot(f.vx, f.vy) || 1;
+      const tx = bx - (f.vy / sp) * r * 0.6;
+      const ty = by + (f.vx / sp) * r * 0.6;
+      twinSide = AB.overdrive.twin;
+      addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', tx, ty, { life: 0.5, r });
+      twinSide = 0;
+      for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, tx, ty) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+    }
     f.t = Infinity;
   }
   g.flings = g.flings.filter((f) => f.t !== Infinity);
@@ -2454,7 +2608,7 @@ function cadenceTap(g: Game, w: Weapon, x: number, y: number): TapResult | null 
   if (b.n < 1 || b.off > AB.cadence.window[w.level - 1]) return null;
   if (!AB.cadence.free && !spend(g)) return 'dry';
   // On the beat: a piercing shot through everything on the line.
-  const c = g.map.carrier;
+  const c = muzzle(g, x, y);
   const len0 = dist(c.x, c.y, x, y) || 1;
   const ux = (x - c.x) / len0;
   const uy = (y - c.y) / len0;
@@ -2526,11 +2680,17 @@ function updatePassives(g: Game, dt: number): void {
   // Each passive runs on its own hand's clock (Dual Wield: two at once).
   const timer = (w: Weapon) => (w === g.weapon2 ? 'passiveT2' : 'passiveT');
   // ---- Drone Screen: a drone off the carrier deck every gap.
+  // Test Lab round 5 (the player: "the drone shouldn't start firing unless
+  // there's actually a threat on the screen"): with nothing on screen to
+  // ram, the deck holds its drones, and the next lifts off the moment
+  // something shows.
   const dw = held(g, 'droneScreen');
   if (dw && g[timer(dw)] <= 0) {
-    g[timer(dw)] += AB.droneScreen.gap[dw.level - 1];
-    g.wings.push({ id: g.nextId++, x: c.x, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
-    cue(g, 'screen.launch', c.x, c.y);
+    if (screenThreat(g)) {
+      g[timer(dw)] += AB.droneScreen.gap[dw.level - 1];
+      g.wings.push({ id: g.nextId++, x: c.x, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
+      cue(g, 'screen.launch', c.x, c.y);
+    } else g[timer(dw)] = 0;
   }
   for (const d of g.wings) {
     d.life -= dt;
@@ -2581,7 +2741,7 @@ function updatePassives(g: Game, dt: number): void {
     if (h.leaving) continue;
     h.fireT -= dt;
     if (h.fireT > 0) continue;
-    h.fireT += AB.gunships.gap[(gw?.level ?? 1) - 1];
+    const gap = AB.gunships.gap[(gw?.level ?? 1) - 1];
     const near = g.threats.filter((t) => !t.dead && !isStructure(t.kind) && dist(t.x, t.y, h.x, h.y) <= AB.gunships.reach);
     let best: Threat | null = null;
     let most = 0;
@@ -2594,26 +2754,32 @@ function updatePassives(g: Game, dt: number): void {
     }
     // A Lure Beacon in reach, or by what they'd fire at, draws the rockets.
     const pick = lured(g, h.x, h.y, AB.gunships.reach, best ?? undefined);
-    if (!pick) continue;
+    if (!pick) {
+      h.fireT += gap;
+      h.aim = -1;
+      continue;
+    }
+    // Test Lab round 5 ("it should face the target when firing"): it turns
+    // its nose onto the target first (flyHeli), and fires once it faces it.
+    h.aim = pick.id;
+    if (Math.abs(angleDiff(Math.atan2(pick.y - h.y, pick.x - h.x), h.heading)) > AB.gunships.aim && h.aimT < AB.gunships.wait) {
+      h.aimT += dt;
+      continue;
+    }
+    h.aimT = 0;
+    h.fireT = Math.max(0.2, h.fireT + gap);
     launchHellfire(g, h.x, h.y, h.heading, pick, AB.gunships.damage[(gw?.level ?? 1) - 1]);
   }
   g.helis = g.helis.filter((h) => !h.leaving || (h.x > -150 && h.x < VIEW.width + 150));
   updateHellfires(g, dt);
-  // ---- Bomber Wing: a pass at the shore every gap.
+  // ---- Bomber Wing: a pass every gap.
   const bw = held(g, 'bomberWing');
   if (bw && g[timer(bw)] <= 0) {
     const k = bw.level - 1;
     g[timer(bw)] += AB.bomberWing.gap[k];
-    callSorties(g, AB.bomberWing.targets[k], AB.bomberWing.quiet[k], k === 2);
+    callSorties(g, AB.bomberWing.targets[k], AB.bomberWing.quiet[k]);
   }
-  for (const b of g.sorties) {
-    b.x += b.vx * dt;
-    if (!b.hit && (b.vx > 0 ? b.x >= b.tx : b.x <= b.tx)) {
-      b.hit = true;
-      bombTarget(g, b);
-    }
-  }
-  g.sorties = g.sorties.filter((b) => b.x > -300 && b.x < VIEW.width + 300);
+  updateSorties(g, dt);
   // ---- Orbital Strike: lock on (laser dots), then the beam.
   if (g.orbital) {
     g.orbital.t += dt;
@@ -2646,6 +2812,11 @@ function updatePassives(g: Game, dt: number): void {
   }
 }
 
+/** Is there a threat on the screen your drones could ram? */
+export function screenThreat(g: Game): boolean {
+  return g.threats.some((t) => !t.dead && !isStructure(t.kind) && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height);
+}
+
 /** The toughest threat on screen (most hit points). Something that will hit
  *  a ship comes first; a structure (a rig, a generator, the Dreadnought) only
  *  when nothing else is up: its 10–40 hit points soaked every strike (build 2
@@ -2670,15 +2841,22 @@ function flyHeli(g: Game, h: Heli, want: Point, dt: number): void {
   const speed = dd > 2 ? Math.min(G.speed, dd * G.arrive) : 0;
   const travel = Math.atan2(dy, dx);
   let face = h.heading;
-  if (speed > G.speed * 0.25) face = travel;
+  // Turning to fire: the nose goes onto the target, moving or not.
+  const aim = h.aim >= 0 && !h.leaving ? g.threats.find((t) => t.id === h.aim && !t.dead) : undefined;
+  if (aim) face = Math.atan2(aim.y - h.y, aim.x - h.x);
+  else if (speed > G.speed * 0.25) face = travel;
   else {
     const th = g.threats.filter((t) => !t.dead && !isStructure(t.kind)).sort((a, b) => dist(a.x, a.y, h.x, h.y) - dist(b.x, b.y, h.x, h.y))[0];
     face = th && dist(th.x, th.y, h.x, h.y) <= G.reach * 1.5 ? Math.atan2(th.y - h.y, th.x - h.x) : -Math.PI / 2;
   }
   const turn = angleDiff(face, h.heading);
-  h.heading += clamp(turn, -G.turn * dt, G.turn * dt);
+  // Turning to fire it pedal-turns quicker (AB.gunships.aimTurn).
+  const rate = aim ? G.aimTurn : G.turn;
+  h.heading += clamp(turn, -rate * dt, rate * dt);
   // Thrust follows the nose: a helicopter facing away barely moves off.
-  const align = speed > 0 ? Math.max(0.15, Math.cos(angleDiff(travel, h.heading))) : 1;
+  // (Turning to fire, it sideslips: a helicopter can fly sideways, so it
+  // keeps up with the convoy while its nose is on the target.)
+  const align = speed > 0 && !aim ? Math.max(0.15, Math.cos(angleDiff(travel, h.heading))) : 1;
   const wantVx = dd > 0 ? (dx / dd) * speed : 0;
   const wantVy = dd > 0 ? (dy / dd) * speed : 0;
   let ax = wantVx - h.vx;
@@ -2766,63 +2944,186 @@ function updateHellfires(g: Game, dt: number): void {
 
 function callGunships(g: Game, level: number): void {
   const want = AB.gunships.count[level - 1];
-  g.helis = g.helis.filter((h) => !h.leaving);
-  if (g.helis.length < want) cue(g, 'heli.arrive', 0, VIEW.height / 2);
+  // Test Lab round 5 (the player: "if they are leaving the screen ... they
+  // come back normally if you select another gunship instead of the
+  // existing ones disappearing"): a pair on its way out turns round and
+  // comes back to its hover; only the ones still missing fly in.
+  const staying = g.helis.filter((h) => !h.leaving).length;
+  g.helis.sort((a, b) => Number(a.leaving) - Number(b.leaving));
+  g.helis.forEach((h, i) => (h.leaving = i >= want));
+  if (staying < want) cue(g, 'heli.arrive', 0, VIEW.height / 2);
   for (let i = g.helis.length; i < want; i++) {
     const left = i % 2 === 0;
-    g.helis.push({ id: g.nextId++, x: left ? -120 : VIEW.width + 120, y: VIEW.height * 0.55, vx: left ? AB.gunships.speed : -AB.gunships.speed, vy: 0, slot: i, fireT: 0.6 + i * 0.35, heading: left ? 0 : Math.PI, lean: 0, roll: 0, leaving: false });
+    g.helis.push({ id: g.nextId++, x: left ? -120 : VIEW.width + 120, y: VIEW.height * 0.55, vx: left ? AB.gunships.speed : -AB.gunships.speed, vy: 0, slot: i, fireT: 0.6 + i * 0.35, heading: left ? 0 : Math.PI, lean: 0, roll: 0, leaving: false, aim: -1, aimT: 0 });
   }
   g.helis.forEach((h, i) => (h.slot = i));
 }
 
-/** Bomber Wing picks its targets: trucks on screen first, then the silos or
- *  tunnels with the most launches coming in the next `quiet` seconds. */
-/** `subs`: Carpet Raid (MAX) also bombs a surfaced submarine. */
-function callSorties(g: Game, n: number, quiet: number, subs = false): void {
-  type Pick = { kind: Sortie['kind']; ref: number; x: number; y: number; score: number };
+/** Is this on the screen (a margin in from its edges)? */
+function onScreen(x: number, y: number, m = 0): boolean {
+  return x >= m && x <= VIEW.width - m && y >= m && y <= VIEW.height - m;
+}
+
+/** A launch truck or sub Bomber Wing can bomb: a truck up on its road, a
+ *  sub surfaced or at periscope depth (not diving). */
+function bombableRaider(r: Raider): boolean {
+  return r.kind === 'sub' ? r.state === 'warn' || r.state === 'surface' || r.state === 'fire' : raiderUp(r);
+}
+
+/** Bomber Wing picks its targets (Test Lab round 5: aircraft and subs too,
+ *  at every level): aircraft, subs (a torpedo sub up or its periscope, a
+ *  launch sub surfaced or at periscope depth) and trucks on screen first,
+ *  then the silos or tunnels with the most launches coming in the next
+ *  `quiet` seconds. Nothing another bomber is already after. */
+function callSorties(g: Game, n: number, quiet: number): void {
+  type Pick = { kind: Sortie['kind']; ref: number; x: number; y: number; score: number; spawn?: RaiderSpawn; from?: number };
   const picks: Pick[] = [];
+  const taken = (kind: Sortie['kind'], ref: number) => g.sorties.some((b) => !b.hit && b.kind === kind && b.ref === ref);
+  const air: readonly ThreatKind[] = AB.bomberWing.air;
+  for (const th of g.threats) {
+    if (th.dead || !onScreen(th.x, th.y)) continue;
+    const kind = air.includes(th.kind) ? 'air' : th.kind === 'torpedoSub' ? 'sub' : null;
+    if (!kind || taken(kind, th.id)) continue;
+    picks.push({ kind, ref: th.id, x: th.x, y: th.y, score: 110 + th.hp, from: sortieRun(th.x, th.vx).dir });
+  }
+  for (const m of g.foe.marks) {
+    if (m.kind !== 'periscope' || !onScreen(m.x, m.y) || taken('sub', -m.id)) continue;
+    picks.push({ kind: 'sub', ref: -m.id, x: m.x, y: m.y, score: 108 });
+  }
   for (const r of g.raiders) {
-    if ((r.kind === 'sub' && !subs) || !raiderUp(r) || r.x < 0 || r.x > VIEW.width || r.y < 0 || r.y > VIEW.height) continue;
+    if (!bombableRaider(r) || !onScreen(r.x, r.y) || taken('truck', r.id)) continue;
     picks.push({ kind: 'truck', ref: r.id, x: r.x, y: r.y, score: 100 + r.rounds.length + r.units.length });
   }
-  const horizon = g.waveT + quiet;
+  // A silo or tunnel: what is due from when the bomber gets there.
   g.map.bases.forEach((b, i) => {
-    if (g.baseDown[i] || (g.quietUntil[i] ?? 0) > g.t) return;
-    const due = g.queue.filter((l) => l.base === i && l.at >= g.waveT && l.at <= horizon && l.kind !== 'strafer' && l.kind !== 'bomber').length;
-    if (due > 0) picks.push({ kind: 'silo', ref: i, x: b.x, y: b.y, score: due });
+    if (g.baseDown[i] || (g.quietUntil[i] ?? 0) > g.t || taken('silo', i)) return;
+    const x = clamp(b.x, 30, VIEW.width - 30);
+    const from = g.waveT + sortieRun(x).eta;
+    const due = g.queue.filter((l) => l.base === i && l.at >= from && l.at <= from + quiet && l.kind !== 'strafer' && l.kind !== 'bomber').length;
+    if (due > 0) picks.push({ kind: 'silo', ref: i, x, y: clamp(b.y, 30, VIEW.height - 30), score: due });
   });
   g.raiderQueue.forEach((sp, i) => {
-    if (sp.kind === 'sub' || sp.at < g.waveT || sp.at > horizon) return;
     const p = sp.path[0];
-    picks.push({ kind: 'tunnel', ref: i, x: clamp(p.x, 30, VIEW.width - 30), y: clamp(p.y, 30, VIEW.height - 30), score: sp.units.reduce((a, u) => a + u.size, 0) });
+    const x = clamp(p.x, 30, VIEW.width - 30);
+    const from = g.waveT + sortieRun(x).eta;
+    if (sp.kind === 'sub' || sp.at < g.waveT || sp.at > from + quiet || g.sorties.some((b) => !b.hit && b.spawn === sp)) return;
+    picks.push({ kind: 'tunnel', ref: i, spawn: sp, x, y: clamp(p.y, 30, VIEW.height - 30), score: sp.units.reduce((a, u) => a + u.size, 0) });
   });
   // A Lure Beacon that's up draws the first pass, ahead of everything.
   const lure = lureIn(g, VIEW.width / 2, VIEW.height / 2);
-  if (lure) picks.push({ kind: 'lure', ref: lure.id, x: lure.x, y: lure.y, score: Infinity });
+  if (lure && !taken('lure', lure.id)) picks.push({ kind: 'lure', ref: lure.id, x: lure.x, y: lure.y, score: Infinity });
   picks.sort((a, b) => b.score - a.score);
-  const chosen = picks.slice(0, n);
-  // A tunnel's truck is cancelled now (so a later pass can't pick it again).
-  const tunnels = chosen.filter((p) => p.kind === 'tunnel').map((p) => g.raiderQueue[p.ref]);
-  g.raiderQueue = g.raiderQueue.filter((sp) => !tunnels.includes(sp));
-  for (const p of chosen) {
-    const fromLeft = p.x > VIEW.width / 2;
-    g.sorties.push({ id: g.nextId++, x: fromLeft ? -160 : VIEW.width + 160, y: p.y, vx: (fromLeft ? 1 : -1) * AB.bomberWing.speed, tx: p.x, ty: p.y, hit: false, kind: p.kind, ref: p.ref });
-    if (p.kind === 'silo') g.quietUntil[p.ref] = Math.max(g.quietUntil[p.ref] ?? 0, g.t + quiet);
+  for (const p of picks.slice(0, n)) {
+    // In from a side far enough off (or behind a plane) that it is on screen
+    // for a while before the bomb drops: you see what is attacking.
+    const dir = p.from ?? sortieRun(p.x).dir;
+    g.sorties.push({
+      id: g.nextId++, x: dir > 0 ? -SORTIE_OFF : VIEW.width + SORTIE_OFF, y: p.y, vx: dir * AB.bomberWing.speed, tx: p.x, ty: p.y, hit: false,
+      kind: p.kind, ref: p.ref, ...(p.spawn ? { spawn: p.spawn } : {}), seen: 0, cued: false, quiet,
+    });
   }
-  if (chosen.length) cue(g, 'sortie.pass', chosen[0].x, chosen[0].y);
 }
 
+/** Bomber Wing: the side a bomber comes in from to bomb at x (a target
+ *  moving at vx across the screen), and how long until it is over it. It
+ *  prefers the nearer edge (or, for a plane, coming in behind it), if that
+ *  still gives it AB.bomberWing.seen s on screen first; else the other side,
+ *  or whichever gives it longer. */
+function sortieRun(x: number, vx = 0): { dir: number; eta: number } {
+  const B = AB.bomberWing;
+  const first = Math.abs(vx) > 40 ? Math.sign(vx) : x < VIEW.width / 2 ? 1 : -1;
+  const side = (dir: number) => {
+    const from = dir > 0 ? -SORTIE_OFF : VIEW.width + SORTIE_OFF;
+    const closing = B.speed - vx * dir;
+    const eta = closing > 50 ? ((x - from) * dir) / closing : Infinity;
+    return { dir, eta, seen: eta - SORTIE_OFF / B.speed };
+  };
+  const a = side(first);
+  const b = side(-first);
+  const pick = a.seen >= B.seen && a.eta < Infinity ? a : b.seen >= B.seen && b.eta < Infinity ? b : a.eta < Infinity && (a.seen >= b.seen || b.eta === Infinity) ? a : b;
+  return { dir: pick.dir, eta: pick.eta };
+}
+
+/** How far off the screen's edge a bomber starts its run (px). */
+const SORTIE_OFF = 160;
+
+/** Bomber Wing's bombers in flight: each follows its target, its run sound
+ *  starts so the roar comes as it passes over, and the bomb lands as it
+ *  crosses the target, never before it has been on screen AB.bomberWing.seen
+ *  s (Test Lab round 5: "it should at least be on the screen before the
+ *  bomber hits them so you can actually see what is attacking"). */
+function updateSorties(g: Game, dt: number): void {
+  const B = AB.bomberWing;
+  for (const b of g.sorties) {
+    // A moving target (a plane, a sub): the bomber's line follows it.
+    const th = b.kind === 'air' || b.kind === 'sub' ? g.threats.find((t) => t.id === b.ref && !t.dead) : undefined;
+    if (!b.hit && th) {
+      b.tx = th.x;
+      b.ty = th.y;
+      // A plane that flies off the screen first is let go (no bombs out of
+      // sight): the bomber flies on.
+      if (!onScreen(th.x, th.y)) b.hit = true;
+    }
+    if (!b.hit) b.y += clamp(b.ty - b.y, -B.track * dt, B.track * dt);
+    b.x += b.vx * dt;
+    if (onScreen(b.x, b.y, -30)) b.seen += dt;
+    if (b.hit) continue;
+    const dir = Math.sign(b.vx);
+    const ahead = (b.tx - b.x) * dir;
+    // The run sound, so its roar is the drop.
+    const closing = Math.max(1, Math.abs(b.vx) - (th ? th.vx * dir : 0));
+    if (!b.cued && ahead / closing <= B.roar) {
+      b.cued = true;
+      cue(g, 'sortie.pass', b.x, b.y, { vx: b.vx });
+    }
+    if (ahead > 0) continue;
+    b.hit = true;
+    // Over it too soon to have been seen (a target that turned on it): the
+    // pass is let go, no bomb out of nowhere.
+    if (b.seen < B.seen / 2) continue;
+    if (!b.cued) cue(g, 'sortie.pass', b.x, b.y, { vx: b.vx });
+    b.cued = true;
+    bombTarget(g, b);
+  }
+  g.sorties = g.sorties.filter((b) => (b.vx > 0 ? b.x < VIEW.width + 300 : b.x > -300));
+}
+
+/** A bomber over its target: the bomb lands, and only now does what it
+ *  hits go (Test Lab round 5: a silo used to fall silent as the bomber was
+ *  called, before it had even come on screen). */
 function bombTarget(g: Game, b: Sortie): void {
   addFx(g, 'boom', b.tx, b.ty, { life: 0.9, r: 48 });
   cue(g, 'sortie.bomb', b.tx, b.ty);
   if (b.kind === 'truck') {
     const r = g.raiders.find((o) => o.id === b.ref);
-    if (r && raiderUp(r)) knockOut(g, r);
+    if (r && bombableRaider(r)) knockOut(g, r);
   } else if (b.kind === 'lure') {
     const t = g.threats.find((o) => o.id === b.ref && !o.dead);
     if (t) damageThreat(g, t, 1);
+  } else if (b.kind === 'air' || b.kind === 'sub') {
+    if (b.ref < 0) {
+      // A periscope: the sub never comes up.
+      const id = -b.ref;
+      const m = g.foe.marks.find((o) => o.id === id && o.kind === 'periscope');
+      if (m) {
+        g.foe.marks = g.foe.marks.filter((o) => o !== m);
+        addFx(g, 'sink', m.x, m.y, { life: 2, r: 40 });
+        g.events.push({ kind: 'bigKill', label: 'SUB DESTROYED', x: m.x, y: m.y });
+        cue(g, 'sub.destroyed', m.x, m.y);
+      }
+      return;
+    }
+    const t = g.threats.find((o) => o.id === b.ref && !o.dead);
+    if (t) damageThreat(g, t, t.hp + 99);
+  } else if (b.kind === 'silo') {
+    g.quietUntil[b.ref] = Math.max(g.quietUntil[b.ref] ?? 0, g.t + b.quiet);
+    addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: 'SILO SILENCED' });
   } else {
-    addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: b.kind === 'silo' ? 'SILO SILENCED' : 'TUNNEL HIT' });
+    // A tunnel: the truck due out of it is cancelled; one already out on
+    // its road by the tunnel is knocked out.
+    if (b.spawn && g.raiderQueue.includes(b.spawn)) g.raiderQueue = g.raiderQueue.filter((sp) => sp !== b.spawn);
+    else for (const r of g.raiders) if (raiderUp(r) && dist(r.x, r.y, b.tx, b.ty) <= 90) knockOut(g, r);
+    addFx(g, 'text', b.tx, b.ty - 34, { life: 1.4, text: 'TUNNEL HIT' });
   }
 }
 
@@ -2848,19 +3149,16 @@ export function held(g: Game, id: AbilityId): Weapon | null {
   return null;
 }
 
-/** Threats' share of speed under Time Warp (the power-up or the boost). */
+/** Threats' share of speed under the Time Warp power-up (the Time Warp
+ *  weapon was cut in Test Lab round 5, and the power-up no longer drops:
+ *  PICKUPS.weights). */
 export function warpScale(g: Game): number {
-  const lv = boostLevel(g, 'timeWarp');
-  if (lv) {
-    if (lv >= ABILITY_MAX && g.boost!.age < AB.timeWarp.freezeTime) return AB.timeWarp.freeze;
-    return AB.timeWarp.scale[lv - 1];
-  }
   return g.warpT > 0 ? PICKUPS.warpScale : 1;
 }
 
 /** Is time warped (the world drains of colour, the sound drops)? */
 export function warping(g: Game): boolean {
-  return g.warpT > 0 || boostLevel(g, 'timeWarp') > 0;
+  return g.warpT > 0;
 }
 
 function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
@@ -2882,17 +3180,15 @@ function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number)
     return;
   }
   endBoost(g, false);
-  g.boost = { id, level, t, n: 0, bank: 0, crateT: AB.supplyRun.crate, clocked: 0, drops: null, age: 0 };
+  g.boost = { id, level, t: id === 'shield' ? t * AB.shield.time[k] : t, n: 0, bank: 0, crateT: AB.supplyRun.crate, age: 0 };
   switch (id) {
-    case 'overclock':
-      if (g.weapon) overclockWeapon(g, g.weapon);
-      break;
     case 'focus':
       g.boost.bank = AB.focus.bank[k];
       break;
     case 'supplyRun':
-      // Ammo and repairs, in turn.
-      callCargoPlane(g, Array.from({ length: AB.supplyRun.crates[k] }, (_, i) => ({ kind: i % 2 ? 'repair' : 'ammo' })));
+      // Ammo, a repair and your gear, in turn (Test Lab round 5: "it can be
+      // weapons or the nuke too").
+      callCargoPlane(g, AB.supplyRun.load.slice(0, AB.supplyRun.crates[k]).map((c) => (c === 'gear' ? gearCrate(g, false) : { kind: c })));
       break;
   }
   g.uses[id] = (g.uses[id] ?? 0) + 1;
@@ -2907,7 +3203,6 @@ function endBoost(g: Game, ranOut: boolean): void {
   if (!b) return;
   g.boost = null;
   const c = g.map.carrier;
-  if (b.id === 'overclock') for (const w of loadedWeapons(g)) unclock(w);
   // Dual Wield: both hands end with it (lock-in round, the player's call).
   // Replaced by another boost (Test Lab round 4), they aren't lost: each
   // keeps the rest of the boost's time on its own clock, so both still end
@@ -2931,32 +3226,8 @@ function endBoost(g: Game, ranOut: boolean): void {
   }
 }
 
-/** Overclock: the weapon plays a level higher (Overload: MAX) and its clock
- *  stops. Already at MAX: it drops more often instead. */
-function overclockWeapon(g: Game, w: Weapon): void {
-  const b = g.boost!;
-  if (w.oc !== undefined || isBoost(w.id)) return;
-  b.clocked += 1;
-  // Already at MAX (round 3: "maybe it drops more often?"): its clock still
-  // stops, and it drops more often instead of a level it can't have.
-  if (w.level >= ABILITY_MAX) b.drops = w.id;
-  w.oc = w.level;
-  w.level = b.level >= ABILITY_MAX ? ABILITY_MAX : Math.min(ABILITY_MAX, w.level + 1);
-  if (w.level === w.oc) return;
-  if (w.id === 'gunships') callGunships(g, w.level);
-  if (w.id === 'frigate') launchEscorts(g, w.level);
-  addFx(g, 'text', g.map.carrier.x, g.map.carrier.y - CARRIER.halfBeam - 64, { life: 1.1, text: `${abilityName(w.id, w.level).toUpperCase()} · OVERCLOCKED` });
-}
-
-function unclock(w: Weapon): void {
-  if (w.oc === undefined) return;
-  w.level = w.oc;
-  w.oc = undefined;
-}
-
 /** Where a weapon pickup goes. Either hand already holding it gets a fresh
- *  clock (an overclock carries over; under Dual Wield the clock is still the
- *  boost's); under Dual Wield it joins the first (both hands full: the one
+ *  clock (under Dual Wield the clock is still the boost's); under Dual Wield it joins the first (both hands full: the one
  *  loaded longer ago goes, so you hold the two newest; Test Lab round 4: it
  *  was always the first hand, both showing the boost's time). Returns false
  *  when it simply takes the first hand: the second keeps the rest of its
@@ -2965,10 +3236,6 @@ function boostLoad(g: Game, w: Weapon): boolean {
   for (const hand of ['weapon', 'weapon2'] as const) {
     const old = g[hand];
     if (old?.id !== w.id) continue;
-    if (old.oc !== undefined) {
-      w.oc = old.oc;
-      w.level = old.level;
-    }
     g[hand] = w;
     return true;
   }
@@ -3013,10 +3280,9 @@ function updateBoost(g: Game, dt: number, real: number): void {
   if (b.id === 'focus' && g.focusing) b.bank = Math.max(0, b.bank - real);
   if (b.id === 'supplyRun' && b.level >= ABILITY_MAX) {
     b.crateT -= dt;
-    const weapons = g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
-    if (b.crateT <= 0 && weapons.length) {
+    if (b.crateT <= 0) {
       b.crateT += AB.supplyRun.crate;
-      callCargoPlane(g, [{ kind: 'weapon', weapon: g.rng.drops.pick(weapons) }]);
+      callCargoPlane(g, [gearCrate(g, true)]);
     }
   }
   if (b.t <= 0) endBoost(g, true);
@@ -3027,18 +3293,26 @@ function weaponsHeld(g: Game): AbilityId[] {
   return g.slots.filter((id) => !isBoost(id) && (g.levels[id] ?? 0) > 0);
 }
 
+/** Supply Run's gear crate: one of your weapons or boosts (never Supply Run
+ *  itself), or (`nuke`: Airdrop's planes) now and then a Nuke. With nothing
+ *  else held, ammo. */
+function gearCrate(g: Game, nuke: boolean): { kind: PickupKind; weapon?: AbilityId } {
+  if (nuke && g.rng.drops.chance(AB.supplyRun.nuke)) return { kind: 'nuke' };
+  const gear = g.slots.filter((id) => id !== 'supplyRun' && (g.levels[id] ?? 0) > 0);
+  return gear.length ? { kind: 'weapon', weapon: g.rng.drops.pick(gear) } : { kind: 'ammo' };
+}
+
 /** Is the running boost waiting on a weapon pickup (Dual Wield with a hand
- *  free; Overclock with nothing overclocked yet)? */
+ *  free)? */
 function callsWeapon(g: Game): boolean {
   const b = g.boost;
   if (!b) return false;
   if (b.id === 'dualWield') return !g.weapon || !g.weapon2;
-  if (b.id === 'overclock') return b.clocked === 0;
   return false;
 }
 
 /** Drops come this many times as often (Supply Run, Dual Wield's Arsenal
- *  Drop, Overclock on a MAX weapon). */
+ *  Drop). */
 function dropMult(g: Game, weapon: boolean): number {
   const b = g.boost;
   if (!b) return 1;
@@ -3046,7 +3320,6 @@ function dropMult(g: Game, weapon: boolean): number {
   if (b.id === 'supplyRun') return AB.supplyRun.mult[k];
   if (!weapon) return 1;
   if (b.id === 'dualWield') return AB.dualWield.drops[k];
-  if (b.id === 'overclock' && b.drops) return AB.overclock.drops;
   return 1;
 }
 
@@ -3054,10 +3327,10 @@ function dropMult(g: Game, weapon: boolean): number {
 const WILD_ACTIVES: AbilityId[] = ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'well', 'railgun', 'tesla'];
 const WILD_PASSIVES: AbilityId[] = ['droneScreen', 'gunships', 'orbital', 'bomberWing'];
 
-/** Wild Card, nothing loaded: this tap is a random weapon's shot (level 1
- *  actives; level 2 actives or passives; Jackpot: actives at MAX). */
-function wildTap(g: Game, x: number, y: number, threat: Threat | null, radius: number): TapResult {
-  const lv = boostLevel(g, 'wildCard');
+/** Wild Card loaded: this tap is a random weapon's shot (level 1 actives;
+ *  level 2 actives or passives; Jackpot: actives at MAX). */
+function wildTap(g: Game, wild: Weapon, x: number, y: number, threat: Threat | null, radius: number): TapResult {
+  const lv = wild.level;
   const pool = lv === 2 ? [...WILD_ACTIVES, ...WILD_PASSIVES] : WILD_ACTIVES;
   const id = g.rng.drops.pick(pool);
   const level = lv;
@@ -3112,12 +3385,17 @@ function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | 
   }
 }
 
-/** Is this hull's damage blocked (the Shield power-up, or the boost: level 1
- *  lets a strafing run through)? */
+/** Is this hull's damage blocked (the Shield power-up, or the boost, which
+ *  never blocks a strafing run: Test Lab round 5 dropped that)? */
 function shielded(g: Game, by: ThreatKind): boolean {
   if (g.shieldT > 0) return true;
+  return boostLevel(g, 'shield') > 0 && !isJet(by);
+}
+
+/** The Shield boost blocked a hit: from level 2 it puts a round back. */
+function blockRefund(g: Game): void {
   const lv = boostLevel(g, 'shield');
-  return lv > 0 && (!isJet(by) || lv >= 2);
+  if (lv > 0) g.ammo = Math.min(g.stats.rack, g.ammo + AB.shield.refund[lv - 1]);
 }
 
 /** Reflect (Shield MAX): a blocked missile bounces back the way it came and
@@ -3157,7 +3435,7 @@ export function step(g: Game, dt: number): void {
   // slow (the bank drains in real time).
   const real = dt;
   g.realT += real;
-  g.focusing = g.finger && g.boost?.id === 'focus' && g.boost.bank > 0;
+  g.focusing = focusOn(g);
   if (g.focusing) dt *= AB.focus.scale[g.boost!.level - 1];
   g.cues.length = 0;
   g.steps += 1;
@@ -3566,6 +3844,7 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
   if (shielded(g, by)) {
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     cue(g, 'shield.block', s.x, s.y);
+    blockRefund(g);
     return;
   }
   if (glances(g, s.x, s.y, 30)) return;
@@ -3599,6 +3878,7 @@ export function damageCarrier(g: Game, amount: number, by: ThreatKind): void {
   if (shielded(g, by)) {
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     cue(g, 'shield.block', g.map.carrier.x, g.map.carrier.y);
+    blockRefund(g);
     return;
   }
   if (glances(g, g.map.carrier.x, g.map.carrier.y, 60)) return;
@@ -3906,14 +4186,16 @@ function ensureTarget(g: Game, th: Threat): void {
 function updateThreat(g: Game, th: Threat, dt: number): void {
   // On a Grapnel cable or a Chain Shot link: moved by that, not by itself.
   if (th.held) return;
-  th.age += dt;
   const px = th.x;
   const py = th.y;
-  // Gravity Well: dragged toward the vortex instead of flying its course
-  // (a ballistic's arc is fixed, so it is not).
-  if (g.fields.length && th.kind !== 'ballistic' && !isStructure(th.kind)) {
+  // The step's own length, for the velocity (a Gravity Well slows the rest).
+  const dt0 = dt;
+  // Gravity Well (Test Lab round 5: by size): a small threat is dragged
+  // toward the vortex instead of flying its course; a big one only slows
+  // inside it, until MAX drags in everything.
+  if (g.fields.length && !isStructure(th.kind)) {
     const well = g.fields.find((f) => f.kind === 'well' && fieldDist(f, th.x, th.y) <= f.hw);
-    if (well) {
+    if (well && wellPulls(th.kind, well.level)) {
       // Drawn in, and swirled round the core once there, so what it caught
       // stays a ring you can count (round 4: all of it stacked on one point).
       const d = dist(th.x, th.y, well.x1, well.y1) || 1;
@@ -3924,11 +4206,23 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const uy = (well.y1 - th.y) / d;
       th.x += ux * inward - uy * swirl;
       th.y += uy * inward + ux * swirl;
+      // A ballistic missile hangs in the vortex, its whole arc carried with
+      // it (its clock stops), so it flies on from there if it gets out.
+      if (th.kind === 'ballistic') {
+        const mx = th.x - px;
+        const my = th.y - py;
+        th.sx += mx;
+        th.sy += my;
+        th.ix += mx;
+        th.iy += my;
+      } else th.age += dt;
       th.vx = (th.x - px) / dt;
       th.vy = (th.y - py) / dt;
       return;
     }
+    if (well) dt *= AB.well.slow;
   }
+  th.age += dt;
   if (isStructure(th.kind)) {
     if (th.kind === 'dreadnought') updateBoss(g, th, dt);
   } else if (th.kind === 'mine') {
@@ -3986,8 +4280,23 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       checkImpact(g, th);
     }
   }
-  th.vx = (th.x - px) / dt;
-  th.vy = (th.y - py) / dt;
+  th.vx = (th.x - px) / dt0;
+  th.vy = (th.y - py) / dt0;
+}
+
+/** Gravity Well (Test Lab round 5): what it drags in at every level, the
+ *  small threats: every missile and shot you can shoot down, drones, small
+ *  boats and mines. Everything else (aircraft, helicopters, motherships,
+ *  vehicles, subs, the tender, the buoy) it only slows, until MAX. */
+export const WELL_SMALL: ReadonlySet<ThreatKind> = new Set<ThreatKind>([
+  'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'bomblet', 'hydra', 'dart', 'heliRocket', 'torpedo', 'cloud',
+  'drone', 'minidrone', 'sprinter', 'decoy', 'armored', 'scavenger', 'guard',
+  'fastboat', 'mine',
+]);
+
+/** Does a well of this level drag this kind in (else it slows it)? */
+export function wellPulls(kind: ThreatKind, level: number): boolean {
+  return !isStructure(kind) && (WELL_SMALL.has(kind) || level >= ABILITY_MAX);
 }
 
 /** Where an aircraft on a curved lane comes on screen (its warning sits
@@ -4090,17 +4399,6 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     for (const s of band) {
       if (th.hits!.includes(s.id) || Math.abs(frame(s).along) > 22) continue;
       th.hits!.push(s.id);
-      // Shield (level 2): it blocks the whole run, and shatters doing it.
-      if (th.blocked || boostLevel(g, 'shield') >= 2) {
-        if (!th.blocked) {
-          th.blocked = true;
-          addFx(g, 'shatter', s.x, s.y, { life: 0.9, r: 44 });
-          cue(g, 'shield.shatter', s.x, s.y);
-          if (g.boost) g.boost.t = Math.min(g.boost.t, AB.shield.shatter);
-        }
-        addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
-        continue;
-      }
       addFx(g, 'boom', s.x, s.y, { life: 0.4, r: 16 });
       damageShip(g, s, THREATS[th.kind].damage, th.kind);
     }
@@ -4362,14 +4660,15 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
   // Deadeye (Focus MAX) multiplies the hit.
   const deadeye = g.focusing && boostLevel(g, 'focus') >= ABILITY_MAX ? AB.focus.damage : 1;
   const dmg = g.stats.hitDamage * deadeye;
-  const shoot = (t: Threat) =>
+  const shoot = (t: Threat, from: Point = muzzle(g, t.x, t.y)) =>
     g.interceptors.push({
-      id: g.nextId++, x: p.x, y: p.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', tap: true,
+      id: g.nextId++, x: from.x, y: from.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', tap: true,
       weapon: w ? { ...w } : undefined,
       ...(also.length ? { also } : {}),
       ...(dmg !== g.stats.hitDamage ? { dmg } : {}),
+      ...(twinSide ? { twin: true } : {}),
     });
-  shoot(th);
+  firstShot(g, () => shoot(th));
   if (g.lab) labShotAt(g, th.id);
   cue(g, 'gun.fire', p.x, p.y);
   const twinOf = () =>
@@ -4380,8 +4679,14 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
     const twin = twinOf();
     if (twin) shoot(twin);
   }
-  // Hyper Overdrive: every shot fires twice (the second at the next threat).
-  if (boostLevel(g, 'overdrive') >= ABILITY_MAX) shoot(twinOf() ?? th);
+  // Hyper Overdrive: every shot fires twice (the second at the next threat),
+  // the second from its own muzzle beside the first (Test Lab round 5).
+  if (hyper(g) && !twinSide) {
+    const t2 = twinOf() ?? th;
+    twinSide = AB.overdrive.twin;
+    shoot(t2, muzzle(g, t2.x, t2.y));
+    twinSide = 0;
+  }
   return true;
 }
 
@@ -4595,7 +4900,6 @@ function updateTimers(g: Game, dt: number): void {
   g.steamT = Math.max(0, g.steamT - dt);
   g.flareT = Math.max(0, g.flareT - dt);
   // Dual Wield: both hands run on the boost's clock (it ends them both).
-  // Overclock stops one.
   const dual = g.boost?.id === 'dualWield' ? g.boost : null;
   for (const hand of ['weapon', 'weapon2'] as const) {
     const w = g[hand];
@@ -4605,7 +4909,7 @@ function updateTimers(g: Game, dt: number): void {
       continue;
     }
     const was = w.t;
-    if (w.oc === undefined) w.t -= dt;
+    w.t -= dt;
     if (was > WEAPON_EXPIRING && w.t <= WEAPON_EXPIRING && w.t > 0) cue(g, 'weapon.expiring', c0.x, c0.y);
     if (w.t <= 0) {
       cue(g, 'weapon.done', c0.x, c0.y);
@@ -5079,29 +5383,13 @@ export function pickupLife(p: Pickup): number {
 }
 
 function updatePickups(g: Game, dt: number): void {
-  // Supply Run: drops fly to the carrier and load on arrival (a boost waits
-  // for a tap: it would replace this one).
-  // Under a parachute: drifting down, not yet ageing.
+  // Under a parachute: drifting down, not yet ageing. (Supply Run's drops
+  // used to fly to the carrier; Test Lab round 5 took that out: "especially
+  // if the player does not want the power up". You tap what you want.)
   for (const p of g.pickups) {
     if (!p.chute) continue;
     p.chute = Math.max(0, p.chute - dt);
     p.y += 45 * dt;
-  }
-  if (boostLevel(g, 'supplyRun')) {
-    const c = g.map.carrier;
-    for (const p of [...g.pickups]) {
-      if (p.chute || (p.kind === 'weapon' && isBoost(p.weapon))) continue;
-      const d = dist(p.x, p.y, c.x, c.y);
-      if (d <= CARRIER.halfBeam) {
-        collect(g, p);
-        continue;
-      }
-      if (p.age < 0.35) continue;
-      const st = Math.min(d, AB.supplyRun.speed * dt);
-      p.x += ((c.x - p.x) / d) * st;
-      p.y += ((c.y - p.y) / d) * st;
-      p.age = Math.min(p.age, 1);
-    }
   }
   for (const p of g.pickups) if (!p.chute) p.age += dt;
   for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
@@ -5123,15 +5411,15 @@ function weaponDue(g: Game, kind: ThreatKind): boolean {
 
 function dropWeapon(g: Game, x: number, y: number): void {
   g.weaponDropT = 0;
-  // Overclock on a MAX weapon: that weapon drops more often. A boost that is
-  // calling a weapon gets one; the boost already running isn't dealt again.
-  const pin = g.boost?.id === 'overclock' ? g.boost.drops : null;
+  // A boost that is calling a weapon gets one; the boost already running
+  // isn't dealt again.
   const want = callsWeapon(g) && weaponsHeld(g).length ? weaponsHeld(g) : g.slots.filter((id) => id !== g.boost?.id);
-  addPickup(g, 'weapon', x, y, pin ?? g.rng.drops.pick(want.length ? want : g.slots));
+  addPickup(g, 'weapon', x, y, g.rng.drops.pick(want.length ? want : g.slots));
 }
 
-/** The power-ups that became boosts (phase 3). */
-const BOOSTED_POWERS: [PowerKind, AbilityId][] = [['overdrive', 'overdrive'], ['timewarp', 'timeWarp'], ['shield', 'shield'], ['steam', 'fullSteam']];
+/** The power-ups that became boosts (phase 3). (Time Warp's power-up has
+ *  no boost since Test Lab round 5 cut it: its weight is 0.) */
+const BOOSTED_POWERS: [PowerKind, AbilityId][] = [['overdrive', 'overdrive'], ['shield', 'shield'], ['steam', 'fullSteam']];
 
 /** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
@@ -5202,8 +5490,6 @@ function collect(g: Game, p: Pickup): void {
     const w: Weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
     // Dual Wield: it joins the loaded weapon; otherwise it takes the gun.
     if (!boostLoad(g, w)) g.weapon = w;
-    // Overclock: the first weapon loaded under it (level 2: every one).
-    if (g.boost?.id === 'overclock' && (g.boost.level >= 2 || g.boost.clocked === 0)) overclockWeapon(g, w);
     const timer = w === g.weapon2 ? 'passiveT2' : 'passiveT';
     if (id === 'cadence') g.beat = { last: -9, run: 0, armed: false, seen: -1 };
     if (id === 'droneScreen') g[timer] = 0.2;
@@ -5420,7 +5706,7 @@ export function addFx(
   // and "REPAIRED" landed on one spot): a new one steps up above any still
   // fresh nearby.
   if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
-  g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text });
+  g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text, ...(twinSide ? { twin: true } : {}) });
 }
 
 export function dist(ax: number, ay: number, bx: number, by: number): number {

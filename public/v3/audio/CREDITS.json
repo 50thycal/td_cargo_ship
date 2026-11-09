@@ -1647,15 +1647,6 @@
   "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+4.7 dB); peak-limited 6.0 dB; AAC .m4a"
  },
  {
-  "file": "shield.shatter.1.m4a",
-  "cue": "shield.shatter",
-  "source": "synthesized by tools/v3/audio/synth.py (recipe 'shield.shatter', variant 1)",
-  "sourceUrl": "tools/v3/audio/synth.py",
-  "author": "Straitwatch (procedural, made for this game)",
-  "licence": "CC0-1.0",
-  "changes": "mono, 44.1 kHz; trimmed silence, 1 ms fade in, 10 ms fade out; levelled to -18 LUFS (+2.8 dB); peak-limited 4.5 dB; AAC .m4a"
- },
- {
   "file": "ship.delivered.1.m4a",
   "cue": "ship.delivered",
   "source": "synthesized by tools/v3/audio/synth.py (recipe 'ship.delivered', variant 1)",

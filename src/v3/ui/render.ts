@@ -107,8 +107,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
       dot(ctx, it.x, it.y, 5.5, ICON_COLOR.seeker);
       continue;
     }
-    // A weapon's shell trails that weapon's colour.
-    const col = it.weapon ? ICON_COLOR[it.weapon.id] : null;
+    // A weapon's shell trails that weapon's colour; Hyper Overdrive's second
+    // shot trails Overdrive's gold, so the pair reads as two.
+    const col = it.twin ? ICON_COLOR.overdrive : it.weapon ? ICON_COLOR[it.weapon.id] : null;
     ctx.strokeStyle = col ?? 'rgba(127, 233, 255, 0.45)';
     ctx.globalAlpha = col ? 0.7 : 1;
     ctx.lineWidth = 3;
@@ -642,7 +643,7 @@ function drawFields(ctx: CanvasRenderingContext2D, g: Game, kind: Field['kind'])
   }
 }
 
-/** Aegis Launchers: each hull's own interceptors, upright over it in the
+/** Point Defense (the id: aegis): each hull's own interceptors, upright over it in the
  *  weapon's colour (one per round left); a reloading Bastion slot fills in
  *  as it comes back. */
 function drawAegis(ctx: CanvasRenderingContext2D, g: Game): void {
@@ -1142,40 +1143,7 @@ function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.scale(1 - Math.abs(h.lean) * 0.12, 1 - Math.abs(h.roll) * 0.18);
       ctx.transform(1, h.roll * 0.12, 0, 1, 0, 0);
       ctx.globalAlpha = shadow ? 0.28 : 1;
-      const body = shadow ? '#000' : '#6b7254';
-      ctx.fillStyle = body;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 22, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Tail boom and fin behind (the nose is +x).
-      ctx.fillRect(-44, -3, 30, 6);
-      ctx.fillRect(-44, -10, 4, 20);
-      // Stub wings with a missile rail each side.
-      ctx.fillRect(-4, -17, 6, 34);
-      if (!shadow) {
-        ctx.fillStyle = '#3f4433';
-        ctx.fillRect(-6, -19, 12, 3);
-        ctx.fillRect(-6, 16, 12, 3);
-        ctx.fillStyle = '#c9e3ff';
-        ctx.beginPath();
-        ctx.ellipse(10, 0, 7, 6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // The rotor: a disc and two blades spinning (tilted with the lean).
-        ctx.strokeStyle = 'rgba(230,240,230,0.35)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(h.lean * 4, 0, 36, 36 * (1 - Math.abs(h.roll) * 0.15), 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(235,245,235,0.8)';
-        ctx.lineWidth = 3;
-        const a = g.t * 30;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 36, Math.sin(a) * 36);
-        ctx.lineTo(-Math.cos(a) * 36, -Math.sin(a) * 36);
-        ctx.moveTo(Math.cos(a + 1.57) * 36, Math.sin(a + 1.57) * 36);
-        ctx.lineTo(-Math.cos(a + 1.57) * 36, -Math.sin(a + 1.57) * 36);
-        ctx.stroke();
-      }
+      drawGunship(ctx, g, h, shadow);
       ctx.restore();
     }
   }
@@ -1306,6 +1274,105 @@ function drawPassives(ctx: CanvasRenderingContext2D, g: Game): void {
     }
   }
   ctx.restore();
+}
+
+/** A Gunship Pair helicopter, seen from above, nose along +x (Test Lab round
+ *  5, the player: "make it look more like an Apache attack helicopter"): a
+ *  long narrow fuselage with a tandem cockpit (gunner ahead, pilot behind
+ *  and higher), the sensor turret on the nose, engine pods either side of
+ *  the mast, stub wings with a rocket pod and a missile rail at each tip, a
+ *  long tail boom with its tailplane, the tail rotor on its side, and a
+ *  four-blade main rotor. Generic: no markings. */
+function drawGunship(ctx: CanvasRenderingContext2D, g: Game, h: { id: number; lean: number; roll: number }, shadow: boolean): void {
+  const body = shadow ? '#000' : '#4f5a3a';
+  const dark = shadow ? '#000' : '#363e28';
+  const round = (x: number, y: number, w: number, hh: number, r: number) => {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, hh, r);
+    ctx.fill();
+  };
+  ctx.fillStyle = body;
+  // Tail boom, tailplane and fin.
+  ctx.beginPath();
+  ctx.moveTo(-14, -5);
+  ctx.lineTo(-54, -2.5);
+  ctx.lineTo(-54, 2.5);
+  ctx.lineTo(-14, 5);
+  ctx.fill();
+  round(-52, -12, 7, 24, 2);
+  // Fuselage: narrow, tapering to the nose.
+  ctx.beginPath();
+  ctx.moveTo(30, 0);
+  ctx.quadraticCurveTo(28, -6, 18, -6.5);
+  ctx.lineTo(-10, -7.5);
+  ctx.quadraticCurveTo(-18, -6, -18, 0);
+  ctx.quadraticCurveTo(-18, 6, -10, 7.5);
+  ctx.lineTo(18, 6.5);
+  ctx.quadraticCurveTo(28, 6, 30, 0);
+  ctx.fill();
+  // Engine pods either side behind the mast.
+  ctx.fillStyle = dark;
+  round(-14, -13, 16, 6, 3);
+  round(-14, 7, 16, 6, 3);
+  // Stub wings, a rocket pod and a missile rail at each tip.
+  ctx.fillStyle = body;
+  ctx.fillRect(-2, -24, 7, 48);
+  ctx.fillStyle = dark;
+  for (const s of [-1, 1]) {
+    round(-5, s > 0 ? 15 : -21, 15, 6, 3);
+    ctx.fillRect(-4, s > 0 ? 22 : -25, 13, 3);
+  }
+  if (shadow) return;
+  // Rocket tubes on the pods' faces, and the nose turret.
+  ctx.fillStyle = '#1f2418';
+  for (const s of [-1, 1]) for (const k of [-1.5, 1.5]) {
+    ctx.beginPath();
+    ctx.arc(10, (s > 0 ? 18 : -18) + k, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#2b3022';
+  ctx.beginPath();
+  ctx.arc(30, 0, 3.4, 0, Math.PI * 2);
+  ctx.fill();
+  // Tandem cockpit: the gunner's pane ahead, the pilot's behind it.
+  ctx.fillStyle = '#b9d7ef';
+  round(13, -4, 9, 8, 3);
+  ctx.fillStyle = '#9cc3e3';
+  round(2, -4.5, 9, 9, 3);
+  ctx.strokeStyle = '#2b3022';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(11.5, -4);
+  ctx.lineTo(11.5, 4);
+  ctx.stroke();
+  // Tail rotor on the boom's side: a small blurred disc.
+  ctx.strokeStyle = 'rgba(230,240,230,0.55)';
+  ctx.lineWidth = 2;
+  const ta = g.t * 50 + h.id;
+  ctx.beginPath();
+  ctx.moveTo(-50 + Math.cos(ta) * 7, -6 + Math.sin(ta) * 2);
+  ctx.lineTo(-50 - Math.cos(ta) * 7, -6 - Math.sin(ta) * 2);
+  ctx.stroke();
+  // The main rotor: a disc and four blades spinning, tilted with the lean.
+  ctx.strokeStyle = 'rgba(230,240,230,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(-4 + h.lean * 4, 0, 40, 40 * (1 - Math.abs(h.roll) * 0.15), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(235,245,235,0.5)';
+  ctx.lineWidth = 2.5;
+  const a = g.t * 30 + h.id;
+  ctx.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const b = a + (k * Math.PI) / 2;
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(-4 + Math.cos(b) * 40, Math.sin(b) * 40);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#2b3022';
+  ctx.beginPath();
+  ctx.arc(-4, 0, 3, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Shield pickup: a bubble over every ship and the carrier, flickering out. */
@@ -1722,7 +1789,8 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         const k = Math.min(1, u * 3);
         const hx = f.x + (f.x2 - f.x) * k;
         const hy = f.y + (f.y2 - f.y) * k;
-        ctx.strokeStyle = f.r ? `rgba(245,190,255,${1 - u})` : `rgba(250,204,21,${0.9 * (1 - u)})`;
+        // (Hyper Overdrive's second cone: Overdrive's yellow.)
+        ctx.strokeStyle = f.twin && f.r ? `rgba(253,224,71,${1 - u})` : f.r ? `rgba(245,190,255,${1 - u})` : `rgba(250,204,21,${0.9 * (1 - u)})`;
         ctx.lineWidth = 4; // round 6 cycle 3: 2.5 px fragments were hair-thin on a phone
         ctx.beginPath();
         ctx.moveTo(f.x + (f.x2 - f.x) * Math.max(0, k - 0.45), f.y + (f.y2 - f.y) * Math.max(0, k - 0.45));
@@ -1807,8 +1875,10 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
       case 'lance':
       case 'cut': {
         // Charge Lance (gold) and Laser Cutter (pink): a hot core in a sheath.
-        const col = f.kind === 'lance' ? '255,216,77' : '255,79,163';
-        const w = f.r * (f.kind === 'lance' ? 2 : 0.9) * (1 - u * 0.6);
+        // Hyper Overdrive's second one: Overdrive's yellow, slimmer, so the
+        // two read apart.
+        const col = f.twin ? '253,224,71' : f.kind === 'lance' ? '255,216,77' : '255,79,163';
+        const w = f.r * (f.kind === 'lance' ? 2 : 0.9) * (1 - u * 0.6) * (f.twin ? 0.6 : 1);
         ctx.lineCap = 'round';
         ctx.strokeStyle = `rgba(${col},${0.6 * (1 - u)})`;
         ctx.lineWidth = w + 8;
@@ -1892,10 +1962,11 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         break;
       }
       case 'beam': {
-        // Railgun: a white-hot core in a pink sheath, narrowing as it fades.
-        const w = f.r * 2 * (1 - u * 0.7);
+        // Railgun: a white-hot core in a pink sheath, narrowing as it fades
+        // (Hyper Overdrive's second beam: a slimmer yellow sheath).
+        const w = f.r * 2 * (1 - u * 0.7) * (f.twin ? 0.6 : 1);
         ctx.lineCap = 'round';
-        ctx.strokeStyle = `rgba(244,114,182,${0.55 * (1 - u)})`;
+        ctx.strokeStyle = f.twin ? `rgba(253,224,71,${0.6 * (1 - u)})` : `rgba(244,114,182,${0.55 * (1 - u)})`;
         ctx.lineWidth = w + 10;
         ctx.beginPath();
         ctx.moveTo(f.x, f.y);

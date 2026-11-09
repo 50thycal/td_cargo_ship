@@ -57,13 +57,13 @@ export type AbilityId =
   | 'orbital'
   // Phase 3: boosts. Picking one up never replaces the loaded weapon: it
   // changes how everything you fire works while it lasts.
+  // (Test Lab round 5 cut Overclock and Time Warp, and moved Wild Card to
+  // the actives: data/roster.ts.)
   | 'supplyRun'
-  | 'overclock'
   | 'dualWield'
   | 'wildCard'
   | 'focus'
   | 'overdrive'
-  | 'timeWarp'
   | 'shield'
   | 'fullSteam';
 /** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
@@ -108,10 +108,12 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Tap in the middle of a raid',
   },
+  // Test Lab round 5 (the player: "can we rename it to something else? I
+  // don't like what we have"): Point Defense, the id kept.
   aegis: {
     id: 'aegis',
-    name: 'Aegis Launchers',
-    evolved: 'Bastion',
+    name: 'Point Defense',
+    evolved: 'Point Defense Grid',
     answers: 'Missiles',
     levels: [
       'Every ship carries an interceptor that fires on its own at a threat about to hit it',
@@ -126,9 +128,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Singularity',
     answers: 'Wide raids',
     levels: [
-      'Each shell opens a vortex that drags threats in for 1.5 s, then implodes on them',
-      'A wider pull and a harder implosion',
-      'It holds for 2 s and the implosion hits for 4',
+      'Each shell opens a vortex for 1.5 s, then implodes: missiles, drones and small boats are dragged in; aircraft, helicopters and other big ones are only slowed',
+      'A wider pull and a harder implosion (big ones still only slowed)',
+      'It holds for 2 s, drags in everything, big ones too, and the implosion hits for 4',
     ],
     how: 'Tap between the threats you want pulled together',
   },
@@ -246,11 +248,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Searing Edge',
     answers: 'Swarms',
     levels: [
-      'Swipe across threats: everything under your finger is cut (one round a swipe)',
-      'A longer cut',
+      'Swipe across threats: everything under your finger is cut. Keep the finger down and it keeps cutting, a round for every 320 px of cut',
+      'A round cuts 420 px',
       'The cut stays lit for 1 s and burns what flies into it',
     ],
-    how: 'Swipe across threats',
+    how: 'Swipe across threats; hold to keep cutting',
   },
   grapnel: {
     id: 'grapnel',
@@ -258,8 +260,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Wrecking Ball',
     answers: 'Packs',
     levels: [
-      'Hold on a threat to hook it, drag to swing it into others (2 hits each), let go to fling it',
-      'The cable reaches across the whole sea',
+      'Hold on any threat on screen to hook it, drag to swing it into others (2 hits each), let go to fling it',
+      'It swings faster and every smack hits for 3',
       'The flung threat explodes for 3 in a wide blast',
     ],
     how: 'Hold a threat and drag it',
@@ -282,7 +284,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hornet Nest',
     answers: 'Drones',
     levels: [
-      'Your own drones lift off the carrier one after another and ram the threats closest to your ships',
+      'Your own drones lift off the carrier one after another and ram the threats closest to your ships (none while nothing is on screen)',
       'A drone every 0.9 s',
       'A drone every 0.7 s, and each ram bursts, hitting everything around it',
     ],
@@ -306,11 +308,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Raid',
     answers: 'Launchers',
     levels: [
-      'Bombers hit the shore: trucks are destroyed; the busiest silo or tunnel goes quiet for 6 s, its launches cancelled',
+      'A bomber crosses the screen and bombs what it flies over: aircraft, subs and trucks are destroyed; with none up, the busiest silo or tunnel goes quiet for 6 s, its launches cancelled',
       'A pass every 4.5 s',
-      'A pass every 3.5 s, each hitting two targets, a surfaced sub too; silos stay silent for 8 s',
+      'A pass every 3.5 s, two bombers each hitting a target; silos stay silent for 8 s',
     ],
-    how: 'Keep shooting: the bombers hit the shore',
+    how: 'Keep shooting: the bombers hit what they fly over',
   },
   orbital: {
     id: 'orbital',
@@ -325,29 +327,21 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     how: 'Keep shooting: the satellite picks the biggest',
   },
   // ---- Phase 3: boosts (the weapons plan, round 3's levels).
+  // Test Lab round 5 (the player: "Remove the magnet part ... especially if
+  // the player does not want the power up ... it can be weapons or the nuke
+  // too"): nothing flies to the carrier any more; the crates carry weapons
+  // and boosts too, and Airdrop's now and then a Nuke.
   supplyRun: {
     id: 'supplyRun',
     name: 'Supply Run',
     evolved: 'Airdrop',
     answers: 'Running dry',
     levels: [
-      'A cargo plane drops 3 crates of ammo and repairs; kills drop twice as much, and drops fly straight to the carrier',
-      '4 crates, and kills drop three times as much',
-      'And every 6 s another plane drops a crate holding one of your weapons',
+      'A cargo plane drops 3 crates in a row: ammo, a repair and one of your weapons or boosts; kills drop twice as much. Tap the crates you want',
+      '5 crates (two of them weapons or boosts), and kills drop three times as much',
+      'And every 6 s another plane drops a crate: one of your weapons or boosts, or now and then a Nuke',
     ],
-    how: 'Keep killing: drops fly to you',
-  },
-  overclock: {
-    id: 'overclock',
-    name: 'Overclock',
-    evolved: 'Overload',
-    answers: 'Your best weapon',
-    levels: [
-      'The loaded weapon plays a level higher and its clock stops (nothing loaded: the next one). Already at MAX: it drops more often too',
-      'Every weapon picked up while it lasts is overclocked too',
-      'The loaded weapon jumps straight to MAX',
-    ],
-    how: 'Your weapon plays a level up',
+    how: 'Tap the crates you want',
   },
   dualWield: {
     id: 'dualWield',
@@ -361,13 +355,16 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     ],
     how: 'Pick up a second weapon: both fire',
   },
+  // Test Lab round 5 (the player: "it needs to be a weapon drop not a
+  // boost ... replace whatever weapon you currently have since it takes
+  // over the main gun"): an active weapon now, loaded like any other.
   wildCard: {
     id: 'wildCard',
     name: 'Wild Card',
     evolved: 'Jackpot',
     answers: 'Anything, by luck',
     levels: [
-      'With nothing loaded, each tap fires a random active weapon\'s level 1 shot',
+      'It takes over the gun: each tap fires a random weapon\'s level 1 shot',
       'A random active or passive, at level 2',
       'A random active weapon\'s MAX shot',
     ],
@@ -379,11 +376,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Deadeye',
     answers: 'Everything at once',
     levels: [
-      'Hold one finger down for up to 10 s of slow motion and tap with the other; the rack reloads at full speed',
+      'Press and hold one finger (a quick tap is just a shot) for up to 10 s of slow motion, and tap with the other; the rack reloads at full speed',
       '15 s, at a quarter of the speed',
       'Shots fired in slow motion hit for triple',
     ],
-    how: 'Hold one finger down, tap with the other'
+    how: 'Press and hold one finger, tap with the other',
   },
   overdrive: {
     id: 'overdrive',
@@ -393,21 +390,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'Rounds cost nothing',
       'And the rack keeps refilling, so it is full when the boost ends',
-      'Every shot fires twice',
+      'Every shot fires twice: two shells, two beams, two blades, side by side',
     ],
     how: 'Free rounds: keep firing',
-  },
-  timeWarp: {
-    id: 'timeWarp',
-    name: 'Time Warp',
-    evolved: 'Freeze Frame',
-    answers: 'Fast threats',
-    levels: [
-      'Every threat moves at 40% speed; the world drains of colour and sound drops',
-      '25% speed',
-      'The first 2 s near-stopped (10%), then 25%',
-    ],
-    how: 'Threats crawl: pick them off',
   },
   shield: {
     id: 'shield',
@@ -416,8 +401,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     answers: 'Missiles',
     levels: [
       'Ships and the carrier take no damage from missiles, drones and boats',
-      'It blocks a strafing run too, and shatters doing it',
-      'A blocked missile bounces back and bursts',
+      'Every hit it blocks puts a round back in the rack',
+      'It lasts 18 s, and a blocked missile bounces back and bursts on what is behind it',
     ],
     how: 'Your hulls are shielded',
   },
@@ -441,7 +426,8 @@ export const ABILITY_ORDER: AbilityId[] = [
   'airstrike', 'shrapnel', 'frigate', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'aegis', 'well', 'railgun', 'tesla',
   'lance', 'cutter', 'grapnel', 'cadence',
   'droneScreen', 'gunships', 'bomberWing', 'orbital',
-  'supplyRun', 'overclock', 'dualWield', 'wildCard', 'focus', 'overdrive', 'timeWarp', 'shield', 'fullSteam',
+  'wildCard',
+  'supplyRun', 'dualWield', 'focus', 'overdrive', 'shield', 'fullSteam',
 ];
 
 /** Levels per weapon; the last is the evolution. */
@@ -453,7 +439,7 @@ export const MAX_SLOTS = 3;
 export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   flak: ['FLAK', 'CURTAIN'],
   seeker: ['SEEKERS', 'SWARM POD'],
-  aegis: ['AEGIS', 'BASTION'],
+  aegis: ['POINT DEF', 'PD GRID'],
   well: ['GRAVITY', 'SINGULARITY'],
   airstrike: ['AIR STRIKE', 'CARPET'],
   railgun: ['RAILGUN', 'MASS DRIVER'],
@@ -472,12 +458,10 @@ export const SHORT_NAME: Record<AbilityId, [string, string]> = {
   bomberWing: ['BOMBERS', 'CARPET RAID'],
   orbital: ['ORBITAL', 'SKY SPEAR'],
   supplyRun: ['SUPPLY RUN', 'AIRDROP'],
-  overclock: ['OVERCLOCK', 'OVERLOAD'],
   dualWield: ['DUAL WIELD', 'ARSENAL'],
   wildCard: ['WILD CARD', 'JACKPOT'],
   focus: ['FOCUS', 'DEADEYE'],
   overdrive: ['OVERDRIVE', 'HYPER'],
-  timeWarp: ['TIME WARP', 'FREEZE'],
   shield: ['SHIELD', 'REFLECT'],
   fullSteam: ['FULL STEAM', 'RAMMING'],
 };
@@ -512,7 +496,14 @@ export const AB = {
   aegis: { missiles: [1, 2, 2], reach: [240, 320, 320], reload: 3, carrier: 3 },
   /** Gravity Well: pulls threats within `radius` toward it at `pull` px/s
    *  for `time` s, then hits those within `core` for `damage`. */
-  well: { radius: [200, 240, 260], time: [1.5, 1.5, 2], pull: 320, core: [100, 110, 120], damage: [2, 3, 4] },
+  // Test Lab round 5 (the player: "categorize it by size: bigger stuff it
+  // just kind of slows it down while the smaller stuff it does pull it in
+  // and then eventually pull in everything once it's fully upgraded"):
+  // small threats (every missile you can shoot, drones, small boats, mines)
+  // are dragged in at every level; big ones (aircraft, helicopters,
+  // motherships, vehicles, subs, the tender) only move at `slow` of their
+  // speed inside it until MAX, which drags in everything. Structures never.
+  well: { radius: [200, 240, 260], time: [1.5, 1.5, 2], pull: 320, core: [100, 110, 120], damage: [2, 3, 4], slow: 0.35 },
   /** A jet costs `cost` rounds (playtest: one round a jet was too strong). */
   // Carpet Strike's napalm (round 8): a canister every dropGap, falling for
   // `fall` s while drifting on at `drift` of the jet's speed.
@@ -544,15 +535,22 @@ export const AB = {
   // threats, and a full one pierces everything in line.
   lance: { tapHold: 0.15, half: 0.35, full: 0.7, rate: [1, 1.33, 1.33], halfDmg: 3, fullDmg: 6, width: 22, burn: 2 },
   /** Laser Cutter: a press that moves `start` px is a swipe; the path cuts
-   *  everything within `width` of it, up to `length` px a swipe, one round a
-   *  swipe. Searing Edge leaves the cut lit `lit` s. */
+   *  everything within `width` of it, one round for every `length` px of
+   *  path (each threat once a round). Test Lab round 5 (the player: "if your
+   *  finger is still holding down, it should keep using the ammo"): no cap
+   *  on a press, it cuts until the finger lifts or the rack runs dry.
+   *  Searing Edge leaves the cut lit `lit` s. */
   cutter: { start: 14, length: [320, 420, 420], width: 30, damage: 1, lit: 1 },
-  /** Grapnel: hold on a threat within `reach` of the carrier to hook it (one
-   *  round); it follows the finger at up to `speed` px/s and smacks what it
-   *  touches (`smackR`) for `smack`, a threat once every `again` s. Let go (or
-   *  after `hold` s) and it flies `fly` s and bursts: `burst` hits in `burstR`
-   *  (the ball included). Structures can't be hooked. */
-  grapnel: { reach: [620, 1800, 1800], speed: 1100, smack: 2, smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130] },
+  /** Grapnel: hold on any threat on screen to hook it (one round); it
+   *  follows the finger at up to `speed` px/s and smacks what it touches
+   *  (`smackR`) for `smack`, a threat once every `again` s. Let go (or after
+   *  `hold` s) and it flies `fly` s and bursts: `burst` hits in `burstR` (the
+   *  ball included). Structures can't be hooked. */
+  // Test Lab round 5 (the player: "Make the grapple so it can always reach
+  // anywhere across the screen; that shouldn't be a level lock"): the reach
+  // is the whole screen from level 1, and level 2 swings faster and smacks
+  // harder instead.
+  grapnel: { speed: [1100, 1500, 1500], smack: [2, 3, 3], smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130] },
   /** Cadence Gun: a beat every `period` s; a tap within `window` s of one
    *  fires a `damage` shot that pierces (`width`); off the beat, a plain
    *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
@@ -586,14 +584,30 @@ export const AB = {
    *  a hit). They fly like helicopters: top `speed`, `accel` px/s², the nose
    *  turning `turn` rad/s, slowing over the last 1/`arrive` s; a missile
    *  flies at `missileSpeed`, curving at `missileTurn` rad/s and harder. */
-  gunships: { count: [2, 2, 3], gap: [1.4, 1.0, 1.0], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320, accel: 420, turn: 3.2, arrive: 2.2, missileSpeed: 1150, missileTurn: 2.5 },
+  // Test Lab round 5 (the player: "it should face the target when firing"):
+  // a gunship fires only once its nose is within `aim` rad of its target,
+  // turning to it first, at `aimTurn` rad/s (a slow turn holds the shot at
+  // most `wait` s). The turning cost them shots (the sweep at MAX, 12 seeds
+  // a map: 47% → 40%), so they fire a little more often: every 1.25 / 0.9 /
+  // 0.85 s (was 1.4 / 1.0 / 1.0): 47% again.
+  gunships: { count: [2, 2, 3], gap: [1.25, 0.9, 0.85], reach: 380, blast: 65, damage: [1, 1, 2], spread: 150, above: 70, speed: 320, accel: 420, turn: 3.2, arrive: 2.2, missileSpeed: 1150, missileTurn: 2.5, aim: 0.35, wait: 0.6, aimTurn: 6 },
   /** Bomber Wing (the player's idea): a pass every `gap` s. It destroys a
    *  truck on screen; with none, it bombs the silo (or the tunnel a truck is
    *  due out of) with the most launches in the next `quiet` s, and those
    *  launches are cancelled (measured: delaying them instead did nothing).
    *  Carpet Raid: `targets` a pass. The bomber flies at `speed`. */
   // Build 2 sweep: Carpet Raid passes every 3.5 s (at 4.5 s it won 32%).
-  bomberWing: { gap: [6, 4.5, 3.5], quiet: [6, 6, 8], targets: [1, 1, 2], speed: 950, first: 1.5 },
+  // Test Lab round 5 (the player: "it doesn't attack submarines and aircraft
+  // ... silence before the bomber even passes over ... it should at least be
+  // on the screen before the bomber hits them"): aircraft (`air`) and subs
+  // are targets at every level; a bomber flies on screen at least `seen` s
+  // before its bomb lands, tracks a moving target, and everything (the hit,
+  // the silence, a cancelled tunnel) happens as it passes over. Its run
+  // sound is cued so its roar (`roar` s into the sound) is the drop.
+  bomberWing: {
+    gap: [6, 4.5, 3.5], quiet: [6, 6, 8], targets: [1, 1, 2], speed: 800, first: 1.5, seen: 0.8, roar: 0.95, track: 900,
+    air: ['strafer', 'bomber', 'attackHeli', 'stealthJet', 'stealthBomber', 'diveBomber', 'spotter'] as ThreatKind[],
+  },
   /** Orbital Strike: every `gap` s, laser dots close on the toughest threat
    *  for `lock` s (the player: "laser dots triangulating on my spot, then the
    *  big beam hits"), then the beam hits it for `damage`. Sky Spear: the
@@ -604,14 +618,13 @@ export const AB = {
   orbital: { gap: [2.5, 1.8, 1.2], lock: 0.8, damage: 3, splash: 60, linger: 0.5, first: 1 },
   // ---- Phase 3: boosts. Each lasts the weapon time (15 s) at every level
   // (round 3: "each level should change something").
-  /** Supply Run: drop chances × `mult`; drops fly to the carrier at `speed`.
-   *  A cargo plane (the player: "a big cargo plane to come in and drop it in
-   *  a row") crosses at `planeSpeed`, dropping `crates` in a row, each under
-   *  a parachute for `chute` s. Airdrop: another plane with a weapon crate
-   *  every `crate` s. */
-  supplyRun: { mult: [2, 3, 3], speed: 520, crate: 6, crates: [3, 4, 4], planeSpeed: 460, chute: 0.9 },
-  /** Overclock on a weapon already at MAX: it drops `drops`× as often. */
-  overclock: { drops: 2 },
+  /** Supply Run: drop chances × `mult`. A cargo plane (the player: "a big
+   *  cargo plane to come in and drop it in a row") crosses at `planeSpeed`,
+   *  dropping `crates` in a row (`load`: ammo, repair, gear = one of your
+   *  weapons or boosts), each under a parachute for `chute` s. Airdrop:
+   *  another plane every `crate` s with a gear crate, a Nuke `nuke` of the
+   *  time. Nothing flies to the carrier (round 5): you tap what you want. */
+  supplyRun: { mult: [2, 3, 3], crate: 6, crates: [3, 5, 5], planeSpeed: 460, chute: 0.9, nuke: 0.15, load: ['ammo', 'gear', 'repair', 'gear', 'ammo'] as ('ammo' | 'repair' | 'gear')[] },
   /** Dual Wield: it lasts `time`× the weapon time, and both hands last as
    *  long as it does, then both end (the player: "the weapons last as long
    *  as the boost"); Arsenal Drop: weapons drop `drops`× as often. */
@@ -623,13 +636,24 @@ export const AB = {
   // MAX): the rack reloads on the real clock (game.ts), a bigger bank,
   // slower time and Deadeye ×3: 30%. The bot can't hold one finger and tap
   // with the other the way a person does, so it undersells Focus.
-  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3 },
-  /** Time Warp: threats at `scale` speed; Freeze Frame: `freeze` for the
-   *  first `freezeTime` s. */
-  timeWarp: { scale: [0.4, 0.25, 0.25], freeze: 0.1, freezeTime: 2 },
-  /** Shield: it shatters `shatter` s after it blocks a strafing run; Reflect
-   *  bounces a blocked missile `bounce` px back to burst (`burst` px). */
-  shield: { shatter: 0.8, bounce: 110, burst: 70 },
+  // Test Lab round 5 (the player: "When tapping just to shoot a missile it
+  // should not do the slow down; you need to long hold to activate"): time
+  // slows only once the holding finger has been down `hold` s (real time);
+  // a quicker touch is an ordinary shot, fired as it lifts.
+  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3, hold: 0.3 },
+  /** Shield: it lasts `time`× the weapon time; from level 2 every hit it
+   *  blocks puts `refund` rounds back in the rack; Reflect bounces a blocked
+   *  missile `bounce` px back to burst (`burst` px). */
+  // Test Lab round 5 (the player: "drop the whole strafe thing and come up
+  // with new ideas for the leveling up"): strafing runs are never blocked
+  // now; level 2 refills a round a block, MAX lasts 18 s and reflects (the
+  // sweep: 20 s and a refill from level 2 won 52% at MAX, top of the table;
+  // this, 41%).
+  shield: { time: [1, 1, 1.2], refund: [0, 1, 1], bounce: 110, burst: 70 },
+  /** Hyper Overdrive (Overdrive MAX): every shot fires twice, the second
+   *  `twin` px to the side of the first (from its own muzzle) so both show
+   *  (Test Lab round 5: "it should clearly show two projectiles"). */
+  overdrive: { twin: 34 },
   /** Full Steam: the convoy's speed ×; Ramming Speed rams within `ram` px. */
   fullSteam: { mult: [1.6, 2, 2], ram: 38 },
 } as const;
