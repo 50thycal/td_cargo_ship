@@ -45,7 +45,7 @@ export interface LabPair {
   lead: FoeId;
   /** The others. Each comes `after` s after the lead launches, or (`on:
    *  'station'`) after the lead gets to its station: the Spotter on its
-   *  circle, the Repair Tender on station, the Rocket Truck at the end of
+   *  circle, the Repair Ship on station, the Rocket Truck at the end of
    *  its road. A lead shot down first, or one that hasn't got there in
    *  LAB_SET.station s, lets them come at once. `on: 'arrive'`: a faster one
    *  after a slow lead, launched once the lead is due within its own flight
@@ -107,10 +107,10 @@ const enemy = (id: FoeId, look: string, kit: AbilityId[]): LabCard => ({ id, kin
 
 /** Enemies in the order to test them: the open questions first. */
 const ENEMIES: LabCard[] = [
-  enemy('diveBomber', 'Now an A-10, and quicker: does it read, and is the window still fair?', ['railgun', 'aegis', 'fullSteam']),
+  enemy('diveBomber', 'It flies in from off the screen now, a hair slower: does the window feel fair?', ['railgun', 'aegis', 'fullSteam']),
   enemy('siege', 'It rises out of a hatch and hides between salvos: can you catch it while it is up?', ['railgun', 'lance', 'fullSteam']),
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
-  enemy('cloud', 'It leads its ship now and comes in on the bow: do you kill it far out, before its fireball lands on the lane?', ['flak', 'railgun', 'lance']),
+  enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
   enemy('decoy', 'The swarm spreads out: can you pick out each drone, and the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
@@ -129,7 +129,7 @@ const ENEMIES: LabCard[] = [
 /** Weapons changed in the lock-in build and not played since: first. */
 const REWORKED: Partial<Record<AbilityId, string>> = {
   dualWield: 'A second Dual Wield now restarts both hands, and another boost no longer empties them: does every case feel right?',
-  cadence: 'Set it to MAX (War Drum) in Setup: on the beat it now blows up trucks, siege guns, helicopters, subs and tenders. Strong enough?',
+  cadence: 'Set it to MAX (War Drum) in Setup: on the beat it now blows up trucks, siege guns, helicopters, subs and repair ships. Strong enough?',
   focus: 'Hold one finger to slow time, tap with the other: comfortable?',
   gunships: 'The Hellfires now fly straight to their targets: do they read, are they useful?',
   supplyRun: 'The cargo plane and chutes: clear what you got?',
@@ -164,12 +164,12 @@ const COMBOS: LabCard[] = [
     follow: [{ foe: 'siege', after: 3.5, on: 'station' }],
     rule: 'The Spotter leads. The siege gun\'s hatch opens 3.5 s after the Spotter reaches its circle, so the gun is up while it paints and the first shells land with the strike it calls.',
   }),
-  // The Tender sails to its station; a guarded heavy comes out as it gets
+  // The Repair Ship sails to its station; a guarded heavy comes out as it gets
   // there, so it has that heavy to mend while the guards take your shots.
-  combo('tender-bodyguard', 'Repair Tender + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun'], {
+  combo('tender-bodyguard', 'Repair Ship + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun'], {
     lead: 'tender',
     follow: [{ foe: 'bodyguard', after: 0, on: 'station' }],
-    rule: 'The Repair Tender leads. The Bodyguard Ring (a fresh heavy and its guards) launches as the Tender reaches its station, so it has a guarded heavy to mend.',
+    rule: 'The Repair Ship leads. The Bodyguard Ring (a fresh heavy and its guards) launches as the Repair Ship reaches its station, so it has a guarded heavy to mend.',
   }),
   combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], alone('lure', 'Drone Screen drops by the carrier 1.5 s before each Lure Beacon rises.'), 'droneScreen'),
   combo('cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], alone('cloud', 'Flak drops by the carrier 1.5 s before each Incendiary Missile launches.'), 'flak'),
@@ -280,7 +280,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 2, date: '2026-11-08', name: 'After the enemy fixes', since: '2026-11-08T09:40' },
   { n: 3, date: '2026-11-08', name: 'Round 2 notes', since: '2026-11-08T23:05' },
   { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
-  { n: 5, date: '2026-11-09', name: 'Special events', since: '2026-11-09T18:00' },
+  { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -298,13 +298,18 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   diveBomber: [
     { round: 2, what: 'Redrawn from above: flies in from the top and dives at its circle' },
     { round: 3, what: 'Quicker, and now an A-10 Warthog' },
+    { round: 5, what: 'Flies in from off the screen; its run a little slower (2.0 s)' },
   ],
   cloud: [
     { round: 2, what: 'Now the Incendiary Missile: a fireball burns where it bursts' },
     { round: 3, what: 'Leads its ship and comes in on the bow' },
+    { round: 5, what: 'New fire on the water; the burst does no damage, only the fire; a little faster' },
   ],
   lure: [{ round: 2, what: 'Rises out of the water; wide ring; every helper fires at it' }],
-  tender: [{ round: 2, what: 'Sails in from the edge and keeps clear of other boats' }],
+  tender: [
+    { round: 2, what: 'Sails in from the edge and keeps clear of other boats' },
+    { round: 5, what: 'Now called the Repair Ship' },
+  ],
   scavenger: [{ round: 2, what: 'Circles over the water; a quadcopter with a claw' }],
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
@@ -319,7 +324,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   // Round 4 (docs/design/v3-lab-round4.md): the player's notes on Spotter +
   // Siege Battery, Dual Wield and Cadence.
   'w-dualWield': [{ round: 4, what: 'A second Dual Wield restarts both hands; another boost no longer empties them' }],
-  'w-cadence': [{ round: 4, what: 'War Drum (MAX): on the beat it blows up trucks, siege guns, helicopters, subs and tenders' }],
+  'w-cadence': [{ round: 4, what: 'War Drum (MAX): on the beat it blows up trucks, siege guns, helicopters, subs and repair ships' }],
   'combo-spotter-siege': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-tender-bodyguard': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-lure-screen': [{ round: 4, what: 'Drone Screen now drops by the carrier just before each Lure Beacon' }],

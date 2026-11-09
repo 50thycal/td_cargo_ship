@@ -351,7 +351,7 @@ describe('the Test Lab: an Events section, one card per event', () => {
       expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(5);
       expect(cardRev(c.id)).toBe(5);
     }
-    expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events', since: '2026-11-09T18:00' });
+    expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
   });
 
   it('a card starts straight into its event, on its map, at wave 11', () => {

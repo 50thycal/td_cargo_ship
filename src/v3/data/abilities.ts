@@ -272,7 +272,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'A beat every 0.9 s: fire on it for a free 4-hit shot that pierces; off the beat, a normal shot',
       'A wider beat window',
-      'On the beat it blows up any truck, siege gun, helicopter, sub or tender on its line; three beats in a row, and the fourth fires a free broadside at 8 threats',
+      'On the beat it blows up any truck, siege gun, helicopter, sub or repair ship on its line; three beats in a row, and the fourth fires a free broadside at 8 threats',
     ],
     how: 'Tap on the beat',
   },

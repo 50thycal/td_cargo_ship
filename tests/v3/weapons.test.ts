@@ -384,7 +384,7 @@ describe('War Drum (Cadence MAX): on the beat it blows up platforms and vehicles
   });
 
   it('the draft card says so', () => {
-    expect(ABILITIES.cadence.levels[2]).toMatch(/blows up any truck, siege gun, helicopter, sub or tender/);
+    expect(ABILITIES.cadence.levels[2]).toMatch(/blows up any truck, siege gun, helicopter, sub or repair ship/);
   });
 });
 

@@ -67,6 +67,8 @@ import {
   labReport,
   labSetupSheet,
   labVerdictSheet,
+  newVerdictDraft,
+  type VerdictDraft,
   loadLabProgress,
   nextCards,
   saveLabProgress,
@@ -142,7 +144,7 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   stealthBomber: 'STEALTH DOWN',
   spotter: 'SPOTTER DOWN',
   siege: 'BATTERY DOWN',
-  tender: 'TENDER DOWN',
+  tender: 'REPAIR SHIP DOWN',
 };
 /** Cards deal in over DEAL_MS each, DEAL_STAGGER_MS apart (style.css). */
 const DEAL_MS = 340;
@@ -325,6 +327,8 @@ export class App {
    *  next one with. */
   private labProgress = loadLabProgress();
   private labRun: { card: LabCard; setup: LabRunSetup; bar: ReturnType<typeof labBar> } | null = null;
+  /** The verdict sheet's picks so far, for the test it is about. */
+  private labDraft: { run: NonNullable<App['labRun']>; draft: VerdictDraft } | null = null;
   private labLast: LabRunSetup | undefined;
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
@@ -1614,9 +1618,11 @@ export class App {
     this.beat = null;
     this.stamp.classList.remove('show');
     if (b.kind === 'clear') {
-      // A test that has run its length goes to its verdict, not a draft.
+      // A test that has run its length goes to its verdict, not a draft;
+      // and a draft never covers a verdict sheet already up (Done tapped as
+      // the wave ended).
       if (this.labRun && labDone(g)) this.showLabVerdict('length');
-      else if (g.phase === 'draft') this.openDraft(g);
+      else if (g.phase === 'draft' && this.overlay.dataset.screen !== 'lab-verdict') this.openDraft(g);
     } else if (this.labRun) this.showLabVerdict(b.kind === 'lost' ? 'lost' : 'length');
     else this.showResult(g, b.kind === 'won');
   }
@@ -2083,6 +2089,10 @@ export class App {
     const waves = g.lab.waves;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
+    // The sheet drawn again for the same test (a wave's end coming in under
+    // it) keeps what the player has picked and typed.
+    if (this.labDraft?.run !== run) this.labDraft = { run, draft: newVerdictDraft(p, run.card.id) };
+    const draft = this.labDraft.draft;
     this.showOverlay('v3-lab-verdict', [
       labVerdictSheet(run.card, stats, waves, ended, p, next, {
         save: (r, then) => {
@@ -2098,11 +2108,12 @@ export class App {
           if (this.rec) this.rec.log.labResult = result;
           const log = this.endRun(ended === 'lost' ? 'lost' : 'quit');
           if (log) keepLabLog(run.card.id, log);
+          this.labDraft = null;
           if (then === 'again') this.startLab(run.card.id, run.setup);
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }),
+      }, draft),
     ]);
   }
 
@@ -3420,39 +3431,62 @@ export class App {
   }
 
   /** The part of the screen the keyboard leaves visible, for the dialog
-   *  being typed in. */
+   *  being typed in: where it is (iOS may have panned the page under the
+   *  keyboard: offsetTop), its size, and whether it is wide (a phone held
+   *  sideways: the buttons go beside the box, not under it). */
   private fitTyping(): void {
     const vv = window.visualViewport;
+    const w = vv?.width ?? window.innerWidth;
+    const h = vv?.height ?? window.innerHeight;
     this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
-    this.root.style.setProperty('--vv-h', `${Math.round(vv?.height ?? window.innerHeight)}px`);
+    this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
+    this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);
+    this.root.style.setProperty('--vv-h', `${Math.round(h)}px`);
+    this.root.classList.toggle('typing-wide', w > h * 1.3);
   }
 
-  /** Typing in a dialog: only the text box and the dialog's buttons stay;
-   *  everything else around them is folded away until the keyboard goes. */
+  /** Typing in a dialog (Test Lab round 4: "I still can't see the text box
+   *  all that great when writing feedback, both horizontal and vertical"):
+   *  the dialog becomes the text box, big and bright, pinned to the top of
+   *  what the keyboard leaves visible, with its buttons beside it (held
+   *  sideways) or under it (upright), and the few controls it can't do
+   *  without (the verdict sheet's Keep / Tune / Cut: `data-typing-keep`).
+   *  Everything else is folded away until the keyboard goes. */
   private enterTyping(box: HTMLTextAreaElement): void {
     const panel = this.overlay.querySelector('.v2-panel');
     if (!panel) return;
     this.leaveTyping();
     const ACTS = '.v2-btn-row, .v3-lab-sheet-acts';
+    const KEEP = '[data-typing-keep]';
     const keep = new Set<Element>();
     const mark = (e: Element | null) => {
       for (; e && e !== this.overlay; e = e.parentElement) keep.add(e);
     };
     mark(box);
     panel.querySelectorAll(ACTS).forEach(mark);
+    panel.querySelectorAll(KEEP).forEach(mark);
     for (const k of keep) {
-      if (k.matches(ACTS)) continue;
+      if (!panel.contains(k) || k === panel) continue;
+      // The box, the button rows and the kept controls are laid out on the
+      // panel's own grid (style.css); what holds them steps aside.
+      if (k === box) k.classList.add('typing-box');
+      else if (k.matches(ACTS)) k.classList.add('typing-acts');
+      else if (k.matches(KEEP)) k.classList.add('typing-keep');
+      else k.classList.add('typing-flat');
+    }
+    for (const k of keep) {
+      if (k.matches(ACTS) || k.matches(KEEP) || k === box) continue;
       for (const c of Array.from(k.children)) if (!keep.has(c)) c.classList.add('typing-hide');
     }
     this.root.classList.add('typing');
     this.fitTyping();
-    // Once the keyboard is up, bring the box into view.
-    setTimeout(() => box.scrollIntoView({ block: 'nearest' }), 350);
   }
 
   private leaveTyping(): void {
-    this.root.classList.remove('typing');
-    this.overlay.querySelectorAll('.typing-hide').forEach((e) => e.classList.remove('typing-hide'));
+    this.root.classList.remove('typing', 'typing-wide');
+    for (const cls of ['typing-hide', 'typing-box', 'typing-acts', 'typing-keep', 'typing-flat']) {
+      this.overlay.querySelectorAll(`.${cls}`).forEach((e) => e.classList.remove(cls));
+    }
   }
 
   private hideOverlay(): void {

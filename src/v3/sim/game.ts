@@ -4212,6 +4212,10 @@ export function checkImpact(g: Game, th: Threat): void {
   if (th.target === CARRIER_TARGET) {
     if (!onCarrier(g, th.x, th.y)) return;
     th.dead = true;
+    // An Incendiary Missile at its target only bursts (Test Lab round 4:
+    // "the hit … should not do damage; only damage should be from the
+    // fire"): foes.ts lights its fireball there.
+    if (th.kind === 'cloud') return;
     if (shielded(g, blame)) reflect(g, th, th.x, th.y);
     // A heavy takes half the carrier's health (round 7).
     // Half the BASE carrier: Armor Plating's extra hull outlasts a heavy.
@@ -4222,6 +4226,7 @@ export function checkImpact(g: Game, th: Threat): void {
   const s = g.ships.find((o) => o.id === th.target);
   if (!s || dist(th.x, th.y, s.x, s.y) >= SHIP.hitRadius) return;
   th.dead = true;
+  if (th.kind === 'cloud') return; // only its fireball does harm (above)
   if (shielded(g, blame)) reflect(g, th, th.x, th.y);
   if (th.kind === 'heavy') {
     // A heavy warhead also damages everything close by.

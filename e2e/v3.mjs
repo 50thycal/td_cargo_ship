@@ -881,7 +881,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 5 && saved.rev === 3 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 5 && saved.v === 18 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 5 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 5 && saved.v === 18 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
@@ -921,6 +921,103 @@ try {
     });
     check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 5/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
+  }
+
+  // ---- Typing a note on a phone (Test Lab round 5) ----
+  // The player: "I still can't see the text box all that great when writing
+  // feedback, both horizontal and vertical"; and seven round-4 cards were
+  // saved with a note and no verdict. The phone's keyboard is stood in for
+  // by a visualViewport cut to what it leaves (874×402 sideways: 150 px;
+  // 402×874 upright: 480 px), with iOS's pan of the page under it
+  // (offsetTop) too. While typing, the box is big, bright and at the top of
+  // what is left, with Keep / Tune / Cut and the Save buttons beside or under
+  // it; a verdict picked before typing is kept; Save with none asks for one.
+  {
+    const FAKE_VV = () => {
+      const t = new EventTarget();
+      const st = { kb: null };
+      const fake = {
+        get width() { return window.innerWidth; },
+        get height() { return st.kb ? st.kb.h : window.innerHeight; },
+        get offsetTop() { return st.kb ? st.kb.top : 0; },
+        get offsetLeft() { return 0; },
+        get pageTop() { return this.offsetTop; },
+        get pageLeft() { return 0; },
+        scale: 1,
+        addEventListener: (...a) => t.addEventListener(...a),
+        removeEventListener: (...a) => t.removeEventListener(...a),
+        dispatchEvent: (e) => t.dispatchEvent(e),
+      };
+      Object.defineProperty(window, 'visualViewport', { get: () => fake, configurable: true });
+      window.__kb = (o) => {
+        st.kb = o;
+        t.dispatchEvent(new Event('resize'));
+        t.dispatchEvent(new Event('scroll'));
+      };
+    };
+    const box = (p, sel) => p.evaluate((sel) => {
+      const e = document.querySelector(sel);
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height), w: Math.round(r.width), shown: getComputedStyle(e).display !== 'none' && r.height > 0 };
+    }, sel);
+    const cases = [
+      { name: 'landscape', w: 874, h: 402, kb: 150, top: 0, pick: true },
+      { name: 'portrait', w: 402, h: 874, kb: 480, top: 0, pick: false },
+      { name: 'landscape, page panned', w: 874, h: 402, kb: 150, top: 120, pick: false },
+      { name: 'portrait, page panned', w: 402, h: 874, kb: 480, top: 200, pick: true },
+    ];
+    for (const c of cases) {
+      const kc = await browser.newContext({ viewport: { width: c.w, height: c.h }, hasTouch: true, isMobile: true });
+      await kc.addInitScript(FAKE_VV);
+      const kp = await kc.newPage();
+      const errs = [];
+      kp.on('pageerror', (e) => errs.push(e.message));
+      await kp.goto(`${BASE_URL}/v3.html?lab=cloud&seed=8`, { waitUntil: 'networkidle' });
+      await kp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
+      await kp.reload({ waitUntil: 'networkidle' });
+      await kp.waitForSelector('.lab-on');
+      await kp.waitForTimeout(600);
+      await kp.evaluate(() => document.querySelector('[data-lab-done]').click());
+      await kp.waitForSelector('[data-screen="lab-verdict"]');
+      // Sideways: Keep picked first, then the note typed.
+      if (c.pick) await kp.locator('[data-lab-verdict="keep"]').tap();
+      await kp.locator('#lab-note').tap();
+      await kp.evaluate((o) => window.__kb(o), { h: c.kb, top: c.top });
+      await kp.keyboard.type('the fire reads well now');
+      await kp.waitForTimeout(250);
+      const vis = { top: c.top, bottom: c.top + c.kb };
+      const lay = {
+        typing: await kp.evaluate(() => document.querySelector('.v2-root').classList.contains('typing')),
+        font: await kp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#lab-note')).fontSize)),
+        note: await box(kp, '#lab-note'),
+        row: await box(kp, '.v3-lab-v'),
+        keepOn: await kp.evaluate(() => document.querySelector('[data-lab-verdict="keep"]').classList.contains('on')),
+        save: await box(kp, '[data-lab-list]'),
+        next: await box(kp, '[data-lab-save-next]'),
+        tags: await box(kp, '.v3-lab-tags'),
+        title: await box(kp, '.v3-lab-verdict h2'),
+      };
+      const inside = (r) => r && r.shown && r.top >= vis.top - 1 && r.bottom <= vis.bottom + 1 && r.left >= 0 && r.right <= c.w;
+      const big = c.w > c.h ? lay.note.h >= 120 && lay.note.w >= c.w * 0.6 : lay.note.h >= 300 && lay.note.w >= c.w - 20;
+      check(
+        lay.typing && lay.font >= 16 && inside(lay.note) && lay.note.top <= vis.top + 8 && big && inside(lay.row) && inside(lay.save) && inside(lay.next) && !lay.tags.shown && !lay.title.shown && lay.keepOn === c.pick,
+        `typing a verdict note, ${c.name}: the box big (${lay.note?.w}×${lay.note?.h}, ${lay.font} px) at the top of what the keyboard leaves, Keep / Tune / Cut and Save beside or under it, the rest folded away (${JSON.stringify(lay)})`,
+      );
+      if (!c.pick) {
+        // Save with no verdict: it asks, and saves nothing.
+        await kp.locator('[data-lab-list]').tap();
+        await kp.waitForTimeout(400);
+        const asked = await kp.evaluate(() => ({ screen: document.querySelector('.v2-overlay').dataset.screen, need: !document.querySelector('[data-lab-need]').hidden, saved: JSON.parse(localStorage.getItem('straitwatch.v3.lab') || '{"results":{}}').results.cloud ?? null, note: document.querySelector('#lab-note').value }));
+        check(asked.screen === 'lab-verdict' && asked.need && asked.saved === null && asked.note === 'the fire reads well now', `${c.name}: Save with no verdict asks for one and saves nothing; the note stays (${JSON.stringify(asked)})`);
+        await kp.locator('[data-lab-verdict="keep"]').tap();
+      }
+      await kp.locator('[data-lab-list]').tap();
+      await kp.waitForSelector('[data-screen="lab"]');
+      const saved = await kp.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.lab')).results.cloud?.at(-1));
+      check(saved?.verdict === 'keep' && saved?.note === 'the fire reads well now' && errs.length === 0, `${c.name}: the verdict ${c.pick ? 'picked before typing is kept through it' : 'picked when asked'} and saved with the note (${JSON.stringify({ verdict: saved?.verdict, note: saved?.note })}${errs.length ? `; ${errs[0]}` : ''})`);
+      await kc.close();
+    }
   }
 
   // ---- Playtest logs reach Claude (playtest-fixes round) ----

@@ -10,7 +10,7 @@ import { RULES } from '../../src/v3/data/config';
 import { foeOnBoard, labDone } from '../../src/v3/sim/lab';
 import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
 import { labResultDocs, logRound, ownNote } from '../../src/v3/sim/labDocs';
-import { addLabEntry, currentEntry, labStatus, nextCards, olderEntries, parseLabProgress, type LabEntry } from '../../src/v3/ui/lab';
+import { addLabEntry, currentEntry, labStatus, newVerdictDraft, nextCards, olderEntries, parseLabProgress, verdictResult, type LabEntry } from '../../src/v3/ui/lab';
 import { applyFreePlay, applyLab, createGame, damageThreat, labBring, step, tap, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 
@@ -298,16 +298,16 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
     // Round 3 (the player's round 2 notes): the Dive Bomber, the Incendiary
     // Missile and the Decoy Drones changed again.
-    expect(cardRev('diveBomber')).toBe(3);
-    expect(cardChanges('diveBomber', 2)).toEqual(['Quicker, and now an A-10 Warthog']);
-    expect(cardRev('cloud')).toBe(3);
+    expect(LAB_CHANGES.diveBomber!.find((c) => c.round === 3)).toBeDefined();
+    expect(cardChanges('diveBomber', 2)[0]).toBe('Quicker, and now an A-10 Warthog');
+    expect(LAB_CHANGES.cloud!.find((c) => c.round === 3)).toBeDefined();
     expect(cardRev('decoy')).toBe(3);
     expect(cardChanges('combo-decoy-sprint', 2)).toContain('Decoy Drones: The swarm spreads out; easier to tell apart');
     expect(cardRev('siege')).toBe(2);
     // Round 4 (the player's notes of 2026-11-09): every combo now comes in
     // together, Dual Wield's cases, War Drum blows up platforms.
     for (const c of LAB_CARDS.filter((o) => o.kind === 'combo')) {
-      expect(cardRev(c.id), c.id).toBe(4);
+      expect(cardRev(c.id), c.id).toBeGreaterThanOrEqual(4);
       expect(LAB_CHANGES[c.id]!.some((l) => l.round === 4), c.id).toBe(true);
     }
     expect(cardChanges('combo-spotter-siege', 3)).toEqual(['Its enemies now arrive together']);
@@ -315,6 +315,16 @@ describe('test rounds and card versions', () => {
     expect(cardRev('w-cadence')).toBe(4);
     expect(cardRev('w-focus')).toBe(1);
     expect(LAB_ROUNDS[3]).toEqual({ n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' });
+    // Round 5 (the player's round 4 enemy notes): the Dive Bomber, the
+    // Incendiary Missile and the Repair Ship, and the combos with them.
+    expect(LAB_ROUNDS[4]).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
+    for (const id of ['diveBomber', 'cloud', 'tender', 'combo-tender-bodyguard', 'combo-cloud-flak']) expect(cardRev(id), id).toBe(5);
+    expect(cardChanges('diveBomber', 4)).toEqual(['Flies in from off the screen; its run a little slower (2.0 s)']);
+    expect(cardChanges('combo-tender-bodyguard', 4)).toEqual(['Repair Ship: Now called the Repair Ship']);
+    expect(cardChanges('combo-cloud-flak', 4)).toEqual(['Incendiary Missile: New fire on the water; the burst does no damage, only the fire; a little faster']);
+    expect(labCard('tender')!.name).toBe('Repair Ship');
+    expect(labCard('combo-tender-bodyguard')!.name).toBe('Repair Ship + Bodyguard Ring');
+    for (const id of ['decoy', 'combo-spotter-siege']) expect(cardRev(id), id).toBeLessThan(5);
   });
 
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
@@ -369,6 +379,26 @@ describe('test rounds and card versions', () => {
   });
 });
 
+describe('the verdict sheet (Test Lab round 4: seven notes saved with no verdict)', () => {
+  it('Save with no verdict saves nothing (the sheet asks for one); with one, it keeps the verdict, the tags and the note', () => {
+    expect(verdictResult({ verdict: null, tags: ['Fun'], note: 'the fire looks off' })).toBeNull();
+    expect(verdictResult({ verdict: 'keep', tags: ['Fun'], note: '  the fire looks off \n' })).toEqual({ verdict: 'keep', tags: ['Fun'], note: 'the fire looks off' });
+  });
+
+  it('a sheet starts from the card\'s verdict at this version, and its picks are one object the sheet keeps through typing and a redraw', () => {
+    const p = parseLabProgress(null);
+    expect(newVerdictDraft(p, 'cloud')).toEqual({ verdict: null, tags: [], note: '' });
+    addLabEntry(p, 'cloud', { verdict: 'tune', tags: ['Bug'], note: 'old words', waves: 2, ended: 'done', stats, at: 'x', rev: cardRev('cloud'), round: LAB_ROUND });
+    const d = newVerdictDraft(p, 'cloud');
+    expect(d).toEqual({ verdict: 'tune', tags: ['Bug'], note: 'old words' });
+    // Its own copy: picks on the sheet don't touch the saved entry.
+    d.tags.push('Fun');
+    d.verdict = 'keep';
+    expect(currentEntry(p, 'cloud')!.tags).toEqual(['Bug']);
+    expect(verdictResult(d)).toEqual({ verdict: 'keep', tags: ['Bug', 'Fun'], note: 'old words' });
+  });
+});
+
 describe('the bridge to the review pages', () => {
   const log = (id: string, card: string, at: string, verdict: 'keep' | 'tune' | 'cut', note: string, round?: number): PlayLog =>
     ({
@@ -413,6 +443,17 @@ describe('the bridge to the review pages', () => {
     const a = { ...log('g', 'siege', '2026-11-08T16:00:00Z', 'keep', 'rises well', 2) };
     const b = { ...log('h', 'siege', '2026-11-08T22:00:00Z', 'keep', '', 2) };
     expect(labResultDocs([a, b]).results.siege).toMatchObject({ round: 2, note: 'rises well', log: 'h' });
+  });
+
+  it('keeps a round\'s note once: a later test of the round whose note starts with an earlier one adds only its own words', () => {
+    // Round 4: saved with a note but no verdict, then played again just to
+    // set Keep (the sheet filled the note in again).
+    const a = log('i', 'cloud', '2026-11-09T05:00:00Z', 'keep', 'the fire looks off', 4);
+    a.labResult!.verdict = null;
+    const b = log('j', 'cloud', '2026-11-09T05:10:00Z', 'keep', 'the fire looks off', 4);
+    const c = log('k', 'cloud', '2026-11-09T05:20:00Z', 'keep', 'the fire looks off\n\nquicker please', 4);
+    expect(labResultDocs([a, b]).results.cloud).toMatchObject({ round: 4, verdict: 'keep', note: 'the fire looks off', log: 'j' });
+    expect(labResultDocs([a, b, c]).results.cloud).toMatchObject({ verdict: 'keep', note: 'the fire looks off · quicker please', log: 'k' });
   });
 
   it('places a log from before rounds by its build: a round-2 build counts as round 2', () => {
