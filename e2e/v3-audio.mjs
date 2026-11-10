@@ -92,8 +92,11 @@ const tapPlay = await page.evaluate((n) => {
 }, before);
 check(!!tapPlay && tapPlay.lag >= 0 && tapPlay.lag <= 20, `a tap's ${tapPlay?.cue ?? 'gun'} sound plays ${tapPlay ? tapPlay.lag.toFixed(1) : '?'} ms after the tap (≤ 20)`);
 
-// Let the wave run, defending, and collect cues.
-for (let i = 0; i < 40; i++) {
+// Let the wave run, defending, and collect cues: at least 10 s, and on until
+// a dozen sim cues have played (how far a wave gets in 10 s of wall time
+// varies with the machine's load), 30 s at most.
+const simCues = () => page.evaluate(() => window.__v3.audio.log().filter((e) => e.step >= 0).length);
+for (let i = 0; i < 120 && (i < 40 || (await simCues()) < 12); i++) {
   const targets = await page.evaluate(() => {
     const g = window.__v3.game();
     if (!g || g.phase !== 'wave') return [];
