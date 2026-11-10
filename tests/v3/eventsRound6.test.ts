@@ -22,7 +22,8 @@ function run(g: Game, seconds: number, done: () => boolean = () => false): void 
   for (let i = 0; i < seconds / DT && g.phase === 'wave' && !done(); i++) step(g, DT);
 }
 
-/** An event's game at its wave, the convoy unsinkable, straight in. */
+/** An event's game at its wave (the first run of the ending: the tests
+ *  stop as it ends), the convoy unsinkable, straight in. */
 function eventGame(id: EventId, seed = 1): Game {
   const g = createGame(eventMap(id), seed, EVENT_WAVE);
   g.tempo = { ...g.tempo, lossLimit: 999 };
@@ -132,7 +133,7 @@ describe('Wolf Pack: spreads, and one or two fast torpedoes', () => {
       const g = eventGame('wolf-pack', seed);
       const torps = new Map<number, Threat>();
       const when = new Map<number, number>();
-      for (let i = 0; i < 40 / DT && g.phase === 'wave'; i++) {
+      for (let i = 0; i < 40 / DT && g.phase === 'wave' && g.wave === EVENT_WAVE; i++) {
         step(g, DT);
         for (const t of g.threats)
           if (t.kind === 'torpedo' && !torps.has(t.id)) {
@@ -216,7 +217,7 @@ describe('Dive Circus: more than planes', () => {
     const dives: number[] = [];
     const missiles: number[] = [];
     const seen = new Set<number>();
-    for (let i = 0; i < 40 / DT && g.phase === 'wave'; i++) {
+    for (let i = 0; i < 40 / DT && g.phase === 'wave' && g.wave === EVENT_WAVE; i++) {
       step(g, DT);
       for (const m of g.foe.marks) if (m.kind === 'dive' && !seen.has(m.id)) (seen.add(m.id), dives.push(g.event?.t ?? 0));
       for (const t of g.threats) if (t.kind === 'guided' && !seen.has(t.id)) (seen.add(t.id), missiles.push(g.event?.t ?? 0));
@@ -265,7 +266,7 @@ describe('the new Fire Mission: spotters taking turns, walking barrages', () => 
     const barrages: { x: number; y: number; dur: number }[][] = [];
     const known = new Set<number>();
     let marks = 0;
-    for (let i = 0; i < 75 / DT && g.phase === 'wave'; i++) {
+    for (let i = 0; i < 75 / DT && g.phase === 'wave' && g.wave === EVENT_WAVE; i++) {
       const before = g.event?.barrages ?? 0;
       step(g, DT);
       for (const t of g.threats) if (t.kind === 'spotter' && !firstAt.has(t.id)) firstAt.set(t.id, { x: t.x, y: t.y });

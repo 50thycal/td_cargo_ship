@@ -8,7 +8,7 @@
 import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
-import { EVENTS, EVENT_ORDER, EVENT_WAVE, eventMap, type EventId } from './events';
+import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -73,8 +73,9 @@ export const LAB_MAP: MapId = 'strait';
 export const LAB_LENGTH = { quick: 2, full: 8 } as const;
 export type LabLength = keyof typeof LAB_LENGTH;
 
-/** An event card's length: runs of the event (a draft between). */
-export const LAB_EVENT_RUNS: Record<LabLength, number> = { quick: 1, full: 3 };
+/** An event card's length: runs of the event (a draft between). Full is
+ *  as many runs as the campaign's ending (round 7: the same three). */
+export const LAB_EVENT_RUNS: Record<LabLength, number> = { quick: 1, full: ENDING.runs };
 
 /** An event card's kit is at this level (a player meets the event with ten
  *  waves of drafts behind them). */
@@ -227,8 +228,16 @@ const EVENT_KITS: Record<EventId, AbilityId[]> = {
   'fire-mission': ['railgun', 'orbital', 'tesla'],
   'repair-yard': ['lance', 'cadence', 'orbital'],
   'escort-run': ['tesla', 'flak', 'railgun'],
-  'siren-field': ['droneScreen', 'gunships', 'flak'],
   firestorm: ['flak', 'railgun', 'bomberWing'],
+  // Round 7: the three chapter finales, and Undertow (a kit with no
+  // helpers: the event must not need them).
+  breakout: ['flak', 'railgun', 'seeker'],
+  'run-the-canal': ['lance', 'airstrike', 'flak'],
+  undertow: ['railgun', 'flak', 'cutter'],
+  'siege-of-vey': ['lance', 'tesla', 'flak'],
+  // The bonus event: two passives in the kit, as the campaign asks of it
+  // before it comes.
+  'siren-field': ['droneScreen', 'gunships', 'flak'],
 };
 
 const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
@@ -236,11 +245,13 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   kind: 'event',
   name: EVENTS[id].name,
   look: EVENTS[id].look,
-  foes: [EVENTS[id].foe],
+  // A chapter finale features all its chapter's new enemies.
+  foes: [EVENTS[id].foe, ...(EVENTS[id].also ?? [])],
   kit: EVENT_KITS[id],
   map: eventMap(id),
   event: id,
-  wave: EVENT_WAVE,
+  // A bonus event starts as it would in the campaign: after its wave.
+  wave: bonusDef(id)?.after ?? EVENT_WAVE,
 }));
 
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */
@@ -291,6 +302,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
   { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
+  { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -412,7 +424,15 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 6, what: 'The repair ships sail in from different sides to meet on the mothership\'s course; none stuck' },
   ],
   'ev-escort-run': [{ round: 5, what: 'New event: one heavy in three rings of guards' }],
-  'ev-siren-field': [{ round: 5, what: 'New event: five lure beacons and six swarms' }],
+  'ev-siren-field': [
+    { round: 5, what: 'New event: five lure beacons and six swarms' },
+    { round: 7, what: 'Now a bonus event: a bonus wave after wave 6 on any map, when you hold two passives' },
+  ],
+  // Round 7 (docs/design/v3-events-round7.md): every map has its own event.
+  'ev-breakout': [{ round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' }],
+  'ev-run-the-canal': [{ round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' }],
+  'ev-undertow': [{ round: 7, what: "New event (Dunmar Crossing): beacons by the lanes slow the ships in their rings" }],
+  'ev-siege-of-vey': [{ round: 7, what: 'New event (Citadel of Vey): repair ships, a guarded heavy and beacons, then firebombs' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };
 

@@ -39,6 +39,7 @@ import {
   createGame,
   held,
   raidWarning,
+  shipsSunk,
   warping,
   step,
   tracked,
@@ -56,8 +57,8 @@ import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../
 import { applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
-import { lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, type EventId, type EventOutcome } from '../data/events';
+import { endingOutcome, lastWave } from '../sim/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -1264,10 +1265,14 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'special':
-          this.showEventCard(ev.id, ev.wave);
+          this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? `Run ${ev.run} of ${ev.runs}` : '');
           break;
         case 'specialEnd':
-          this.showEventOutcome(ev.id, ev.outcome, ev.bonus);
+          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? `Run ${ev.run} of ${ev.runs}` : '');
+          break;
+        case 'restore':
+          // Round 7's experiment: the convoy back to full before the ending.
+          this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired.', { icon: 'info' }, null);
           break;
         case 'wave': {
           // A special event's wave has its own card instead.
@@ -1384,25 +1389,28 @@ export class App {
   /** A special event begins: its card in the middle of the field through
    *  the breather. It names the event and any rule in force; it never says
    *  how to beat it (the player's rule). */
-  private showEventCard(id: EventId, wave: number): void {
+  private showEventCard(id: EventId, wave: number, tag: string): void {
     const def = EVENTS[id];
     const card = this.eventCard;
-    card.className = 'v3-event-card';
+    card.className = `v3-event-card${tag === 'bonus' ? ' bonus' : ''}`;
     card.dataset.eventCard = id;
     delete card.dataset.eventOutcome;
     const rules = el('span', 'v3-event-rules');
     for (const r of def.rules) rules.append(el('i', '', RULE_TEXT[r]));
-    card.replaceChildren(el('span', 'v3-event-eyebrow', `Special event · wave ${wave}`), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
+    // A bonus event says so (round 7); a run of the three-run ending says
+    // which.
+    const eyebrow = tag === 'bonus' ? 'Bonus event' : `Special event · wave ${wave}${tag ? ` · ${tag}` : ''}`;
+    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
     this.flashEventCard(3200);
   }
 
   /** A special event is over: its outcome, and what it paid. */
-  private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number): void {
+  private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number, tag: string): void {
     const card = this.eventCard;
     card.className = `v3-event-card outcome ${outcome}`;
     card.dataset.eventOutcome = outcome;
     card.replaceChildren(
-      el('span', 'v3-event-eyebrow', EVENTS[id].name),
+      el('span', 'v3-event-eyebrow', `${EVENTS[id].name}${tag ? ` · ${tag}` : ''}`),
       el('b', 'v3-event-name', OUTCOME_NAME[outcome]),
       el('span', 'v3-event-bonus', bonus ? `+${bonus.toLocaleString()} bonus` : outcome === 'broken' ? 'No bonus' : ''),
     );
@@ -1507,10 +1515,12 @@ export class App {
 
   private renderHud(g: Game): void {
     if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab));
+    const sunk = shipsSunk(g);
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
-      i < g.lost ? '<i class="lost"></i>' : i === g.lost && this.danger ? '<i class="next"></i>' : '<i></i>',
+      i < sunk ? '<i class="lost"></i>' : i === sunk && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
-    const waveLabel = g.endless ? `${g.wave}` : `${g.wave}/${lastWave(g)}`;
+    // A bonus wave is not one of the map's: the counter says so.
+    const waveLabel = g.event?.bonus ? 'BONUS' : g.endless ? `${g.wave}` : `${g.wave}/${lastWave(g)}`;
     const html =
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
@@ -1631,7 +1641,7 @@ export class App {
    *  quarter of its hull. The screen's edge beats red and the last empty
    *  pip blinks; a banner says so once, on the way in. */
   private syncDanger(g: Game): void {
-    const lastShip = g.tempo.lossLimit - g.lost === 1;
+    const lastShip = g.tempo.lossLimit - shipsSunk(g) === 1;
     const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
     // The last ship gets its alert; a critical carrier's klaxon is a loop
@@ -2358,7 +2368,8 @@ export class App {
     if (evId) {
       const line = el('p', 'v3-brief-event');
       line.dataset.briefEvent = evId;
-      line.append(el('b', '', 'Special event:'), document.createTextNode(` ${EVENTS[evId].name}, wave ${EVENT_WAVE}`));
+      const last = lastEventWave();
+      line.append(el('b', '', 'Special event:'), document.createTextNode(` ${EVENTS[evId].name}, ${last > EVENT_WAVE ? `waves ${EVENT_WAVE}–${last}` : `wave ${EVENT_WAVE}`}`));
       info.append(line);
     }
     if (best) {
@@ -2748,7 +2759,7 @@ export class App {
       }
       const wave = el('div', 'v2-dev-wave');
       const bump = (d: number) => () => {
-        st.wave = Math.max(1, Math.min(EVENT_WAVE, st.wave + d));
+        st.wave = Math.max(1, Math.min(lastEventWave(), st.wave + d));
         saveDevSettings(st);
         render();
       };
@@ -3140,7 +3151,8 @@ export class App {
     const sub = free ? `Free play · ${won ? 'cleared' : reason}` : won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
-    // The special event and how it went (the map's last wave).
+    // The special events and how they went: a bonus event, and each run of
+    // the map's (round 7: three runs, and the worst of them as the whole).
     const met = g.eventLog.filter((e) => e.outcome !== 'rerun');
     const evLine = met.length ? el('p', 'v3-result-event') : null;
     if (evLine) {
@@ -3148,7 +3160,15 @@ export class App {
       for (const e of met) {
         const o = e.outcome as EventOutcome;
         const chip = el('span', `v3-result-event-chip ${o}`);
-        chip.append(el('i', '', 'Special event'), el('b', '', EVENTS[e.id].name), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
+        const label = e.kind === 'bonus' ? 'Bonus event' : e.runs ? `Run ${e.run} of ${e.runs}` : 'Special event';
+        chip.append(el('i', '', label), el('b', '', EVENTS[e.id].name), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
+        evLine.append(chip);
+      }
+      const whole = endingOutcome(g);
+      if (whole) {
+        evLine.dataset.resultEnding = whole;
+        const chip = el('span', `v3-result-event-chip ending ${whole}`);
+        chip.append(el('i', '', 'The ending'), el('b', '', 'Worst run'), el('em', '', OUTCOME_NAME[whole]));
         evLine.append(chip);
       }
     }

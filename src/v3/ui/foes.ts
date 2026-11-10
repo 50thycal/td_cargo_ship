@@ -1501,7 +1501,8 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
  *  helper drone it has drawn. */
 function drawLureRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const f = th.foe;
-  const R = FOE.lure.radius;
+  // Its own ring (Undertow's beacons) or the usual.
+  const R = f?.r ?? FOE.lure.radius;
   const k = f?.state === 0 ? Math.min(1, (f.t ?? 0) / FOE.lure.rise) : 1;
   const r = R * (f?.state === 0 ? k * k : 1);
   ctx.fillStyle = `rgba(253,224,71,${0.06 * k})`;

@@ -9,6 +9,11 @@ The special event attacks are in the game. This is what was built from the desig
 
 It also took the Nuke out of every event. This doc still describes the events as first built.
 
+**Round 7** (`docs/design/v3-events-round7.md`) changed the system:
+- Siren Field is a bonus event now: a bonus wave after wave 6 on any map, when two passives are held.
+- Every map has its own event: the three chapter finales below are built, and Undertow is Dunmar Crossing's.
+- The map's event is three runs (waves 11 to 13), with the convoy and carrier restored to full first. One flag turns this off.
+
 ## Your notes, and what they decided
 
 All seven pieces of the system were approved. Your notes on them:

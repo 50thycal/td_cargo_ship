@@ -5136,6 +5136,19 @@ a.v3-lab-page {
   top: 20%;
 }
 
+/* A bonus event (round 7): the same card in sea-green, so it reads as a
+   bonus and not the map's ending. */
+.v3-event-card.bonus {
+  border-color: #5fd3c4;
+  box-shadow: 0 0 34px rgb(95 211 196 / 0.25);
+}
+
+.v3-event-card.bonus .v3-event-eyebrow,
+.v3-event-card.bonus .v3-event-rules i {
+  color: #5fd3c4;
+  border-color: rgb(95 211 196 / 0.6);
+}
+
 .v3-event-card.outcome.clean {
   border-color: #5fd38a;
   box-shadow: 0 0 34px rgb(95 211 138 / 0.25);
@@ -5228,6 +5241,11 @@ a.v3-lab-page {
 
 .v3-result-event-chip.broken em {
   color: var(--danger);
+}
+
+/* The three-run ending as a whole (its worst run). */
+.v3-result-event-chip.ending {
+  border-width: 2px;
 }
 
 .v3-result-event-chip small {

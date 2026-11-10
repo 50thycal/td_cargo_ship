@@ -164,7 +164,8 @@ export interface FoeData {
    *  the way it came). */
   ex?: number;
   ey?: number;
-  /** A guard: its orbit, the guards in its ring, and which ring. */
+  /** A guard: its orbit, the guards in its ring, and which ring. A Lure
+   *  Beacon (Undertow, round 7): its ring when not the usual one. */
   r?: number;
   of?: number;
   ring?: number;
@@ -173,6 +174,8 @@ export interface FoeData {
   mend?: number;
   every?: number;
   skirt?: number;
+  /** A Lure Beacon (Undertow): seconds it stays up, when not the usual. */
+  life?: number;
   /** A dive bomber's flight in: the length of its dive (px), and the
    *  seconds it flies level before it (from off screen). */
   dive?: { len: number; app: number };
@@ -824,7 +827,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         f.t = 0;
         cue(g, 'foe.paint', th.x, th.y, { gain: 0.6 });
       }
-      if ((f.state === 1 && f.t >= FOE.lure.life) || alone(g, th)) leave(g, th);
+      if ((f.state === 1 && f.t >= (f.life ?? FOE.lure.life)) || alone(g, th)) leave(g, th);
       return;
     }
     case 'cloud': {
@@ -1016,8 +1019,10 @@ export function lureIn(g: Game, x: number, y: number, reach = Infinity, aim?: Po
     const up = g.threats.filter((t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1);
     return up.sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
   }
+  // A beacon with its own ring (Undertow) reaches that far, not the usual.
+  const ring = (t: Threat) => t.foe?.r ?? R;
   return g.threats.find(
-    (t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1 && (dist(t.x, t.y, x, y) <= Math.max(reach, R) || (!!aim && dist(t.x, t.y, aim.x, aim.y) <= R)),
+    (t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1 && (dist(t.x, t.y, x, y) <= Math.max(reach, ring(t)) || (!!aim && dist(t.x, t.y, aim.x, aim.y) <= ring(t))),
   );
 }
 

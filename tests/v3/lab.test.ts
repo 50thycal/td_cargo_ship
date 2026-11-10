@@ -25,11 +25,11 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every special event (17), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (89 cards)', () => {
+  it('every special event (21: round 7 added four), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (93 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(89);
-    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(17);
+    expect(ids).toHaveLength(93);
+    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(21);
     expect(ids).not.toContain('w-overclock');
     expect(ids).not.toContain('w-timeWarp');
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
@@ -287,8 +287,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(LAB_ROUND).toBe(6);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(LAB_ROUND).toBe(7);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);

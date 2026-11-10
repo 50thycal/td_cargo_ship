@@ -3,7 +3,9 @@
 // the event is under way, at a landscape phone's size (874×402).
 // Usage (with `npx vite preview --port <port>` running on a fresh build):
 //   BASE_URL=http://localhost:<port> node tools/v3/special-events/build-shots.mjs [eventId ...]
-// Writes docs/design/img/events/<eventId>.jpg (and card.jpg: an event's card).
+// Writes docs/design/img/events/<eventId>.jpg (and card.jpg: an event's
+// card; siren-card.jpg: the bonus event's card, also with the id
+// `siren-card`).
 import { createRequire } from 'node:module';
 import { mkdirSync, statSync } from 'node:fs';
 
@@ -19,8 +21,11 @@ const AT = {
   rush: 4.5, 'decoy-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 7.5, 'gunship-wall': 9, 'wolf-pack': 4.4,
   'shield-wall': 2.6, 'supply-raid': 3.2, blackout: 5, 'carpet-run': 4, 'dive-circus': 4.2, bombardment: 3.6,
   'fire-mission': 4.6, 'repair-yard': 11, 'escort-run': 6, 'siren-field': 5, firestorm: 9,
+  // Round 7: the finales and Undertow.
+  breakout: 4, 'run-the-canal': 18, undertow: 6.5, 'siege-of-vey': 10.5,
 };
-const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(AT);
+const args = process.argv.slice(2);
+const ids = args.length ? args.filter((a) => a in AT) : Object.keys(AT);
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 try {
@@ -42,8 +47,11 @@ try {
       const left = ev ? ev.t0 + 3 + at - g.waveT : 0;
       const limit = 6;
       window.__v3.advance(Math.max(0, left));
-      // Back to the real limits for the HUD.
-      g.tempo = { ...g.tempo, lossLimit: Math.max(limit, g.lost + 1) };
+      // Back to the real limits for the HUD. (Round 7: ships lost with no
+      // one playing are not counted against it, so no LAST SHIP alert
+      // covers the picture.)
+      g.lossBase = g.lost;
+      g.tempo = { ...g.tempo, lossLimit: Math.max(limit, g.lost - g.lossBase + 1) };
       g.carrierHp = Math.min(g.carrierHp, g.stats.carrierHp);
     }, AT[id]);
     await page.waitForTimeout(250);
@@ -54,8 +62,20 @@ try {
     console.log(`${id}: ${Math.round(statSync(file).size / 1024)} KB`);
     await page.close();
   }
+  // The bonus event's card as it begins (round 7: "Bonus event").
+  if (!args.length || args.includes('siren-card')) {
+    const page = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 1, hasTouch: true });
+    await page.goto(`${BASE}/v3.html?seed=7`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => localStorage.setItem('straitwatch.v3.callouts', 'off'));
+    await page.goto(`${BASE}/v3.html?lab=ev-siren-field&seed=7`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.v3-event-card.show');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${OUT}siren-card.jpg`, type: 'jpeg', quality: 72 });
+    console.log('siren-card: done');
+    await page.close();
+  }
   // The event's card as it begins (Decoy Storm: its rule on it).
-  if (!process.argv.slice(2).length) {
+  if (!args.length) {
     const page = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 1, hasTouch: true });
     await page.goto(`${BASE}/v3.html?seed=7`, { waitUntil: 'networkidle' });
     await page.evaluate(() => localStorage.setItem('straitwatch.v3.callouts', 'off'));

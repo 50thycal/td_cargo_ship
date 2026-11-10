@@ -1,27 +1,40 @@
 // Special event attacks in the sim (data/events.ts holds the table and the
-// numbers; docs/design/v3-special-events-build.md says what each one does).
-// An event is a wave of its own: wave 11 on a campaign map that has one,
-// after its ten normal waves (they stay as they were), and every wave of a
-// Test Lab event card. It starts like any wave (its card, then a breather
-// as long as a wave's lead-in), then its script launches in place of the
-// raid planner. The wave ends as any wave does, once everything it sent is
-// dealt with; the event is graded on what it cost (Clean, Held, Broken).
+// numbers; docs/design/v3-special-events-build.md says what each one does,
+// docs/design/v3-events-round7.md the round 7 changes).
+// An event is a wave of its own:
+// - a map's event: after its ten normal waves (they stay as they were).
+//   With ENDING.threeRuns on (round 7's experiment) it is three runs, waves
+//   11 to 13, back to back, and the convoy and the carrier are restored to
+//   full right before the first (restoreConvoy). Off: one run, wave 11.
+// - a bonus event: a bonus wave inserted after a set wave on any campaign
+//   map, once a run, when its condition holds (BONUS_EVENTS; Siren Field
+//   after wave 6 with two passives held). It does not count as one of the
+//   map's waves: the wave number stays, and the draft that wave earned
+//   comes after it.
+// - every wave of a Test Lab event card.
+// It starts like any wave (its card, then a breather as long as a wave's
+// lead-in), then its script launches in place of the raid planner. The wave
+// ends as any wave does, once everything it sent is dealt with; the event
+// is graded on what it cost (Clean, Held, Broken).
 //
-// game.ts calls in at: startWave (startEvent), each step (updateEvent), the
-// wave's end and a loss (endEvent), a kill (eventFoeDown), a shot (in
-// fireAt, the Decoy Storm's count), the drop roll (eventDropWeights) and the
-// lab's "Run it again" (rerunEvent). foes.ts reads the run's rules and
-// features (the line, the fire's linger) where a foe behaves differently in
-// an event. Pure and deterministic like the rest of the sim.
+// game.ts calls in at: startWave (startEvent, restoreConvoy), each step
+// (updateEvent), the wave's end (endEvent, bonusDue, startBonus) and a loss
+// (endEvent), a kill (eventFoeDown), a shot (in fireAt, the Decoy Storm's
+// count), the drop roll (eventDropWeights), a ship's speed
+// (eventShipScale) and the lab's "Run it again" (rerunEvent). foes.ts reads
+// the run's rules and features (the line, the fire's linger) where a foe
+// behaves differently in an event. Pure and deterministic like the rest of
+// the sim.
 
-import { EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, gradeEvent, type EventId, type EventOutcome, type EventRule } from '../data/events';
+import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gradeEvent, worstOutcome, type EventId, type EventOutcome, type EventRule } from '../data/events';
+import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
 import { RULES, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { foeData, launchFoe, onLand, siegeSpotAt, wetRun } from './foes';
-import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, spawnThreat, targetable, type Game, type Threat } from './game';
+import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -35,6 +48,12 @@ export interface EventStep {
 export interface EventRun {
   id: EventId;
   wave: number;
+  /** A bonus event (inserted on any map), not the map's own. */
+  bonus: boolean;
+  /** Which run of the map's event this is, of how many (1 of 1 for a bonus
+   *  event, a lab card's runs, or the ending with the experiment off). */
+  run: number;
+  runs: number;
   /** The wave clock when it began (a lab rerun begins it again), and
    *  seconds since. */
   t0: number;
@@ -94,6 +113,29 @@ export interface EventRun {
   barrages: number;
   /** Repair Yard: the spot the repair ships meet at. */
   yard?: Point;
+  /** An armored block (the Shield Wall, Run the Canal's): its numbers, and
+   *  when (event seconds) it set out. */
+  blockSpec?: BlockSpec;
+  blockT?: number;
+  /** A heavy in rings of guards (the Escort Run, Siege of Vey's): its id,
+   *  its own speed, and how much each ring stripped speeds it up. */
+  escort?: { id: number; speed: number; slow: number; per: number; rings: number };
+  /** Undertow: the ships slowed now (ids), for the barrages to fall on. */
+  caught?: number[];
+}
+
+/** An armored block's numbers (the Shield Wall's, or a finale's smaller
+ *  one). */
+export interface BlockSpec {
+  drones: number;
+  cols: number;
+  dx: number;
+  dy: number;
+  banks: readonly number[];
+  spread: number;
+  muster: number;
+  form: number;
+  wait: number;
 }
 
 /** An event as it went, for the play log and the result screen. */
@@ -107,6 +149,11 @@ export interface EventRecord {
   sent: Partial<Record<ThreatKind, number>>;
   /** 'rerun': a Test Lab "Run it again" cut it short. */
   outcome: EventOutcome | 'rerun';
+  /** A bonus event (absent: the map's own, or a lab card's). */
+  kind?: 'bonus';
+  /** The ending's run, of how many (absent: one run). */
+  run?: number;
+  runs?: number;
   lost: number;
   carrierHit: boolean;
   shots: number;
@@ -123,17 +170,75 @@ export function eventFor(g: Game): EventId | null {
   return EVENT_MAPS[g.map.id] ?? null;
 }
 
-/** The wave that wins the map: the tenth, or the event after it. */
+/** The wave that wins the map: the tenth, or the last run of its event
+ *  (the 13th with the three-run ending, the 11th without). */
 export function lastWave(g: Game): number {
-  return RULES.wavesToClear + (!g.lab && eventFor(g) ? 1 : 0);
+  return RULES.wavesToClear + (!g.lab && eventFor(g) ? endingRuns() : 0);
 }
 
-/** Is the wave starting now an event? (Every wave of a lab event card.) */
+/** Is the wave starting now an event? (Every wave of a lab event card; in
+ *  the campaign, each run of the map's event.) */
 export function isEventWave(g: Game): boolean {
   const id = eventFor(g);
   if (!id) return false;
   if (g.lab) return true;
-  return !g.endless && g.wave === EVENT_WAVE;
+  return !g.endless && g.wave >= EVENT_WAVE && g.wave <= lastWave(g);
+}
+
+/** Which run of the map's event a campaign wave is (1 for wave 11). */
+function runOf(g: Game): number {
+  return g.lab ? 1 : g.wave - EVENT_WAVE + 1;
+}
+
+/** The campaign's next run of the map's event follows straight on, with no
+ *  draft between (the three-run ending). */
+export function nextRunDue(g: Game): boolean {
+  return !g.lab && !g.endless && !!eventFor(g) && g.wave >= EVENT_WAVE && g.wave < lastWave(g);
+}
+
+/** The run's passive weapons held (roster.ts's passives, level 1 or more). */
+export function passivesHeld(g: Game): AbilityId[] {
+  return g.slots.filter((id) => (g.levels[id] ?? 0) > 0 && ROSTER[id]?.cat === 'passive');
+}
+
+/** A bonus event due as the wave just cleared ends: in the campaign (not
+ *  Free Play, the lab or endless), on any map, once a run, after its wave,
+ *  when its condition holds. */
+export function bonusDue(g: Game): EventId | null {
+  if (g.lab || g.freePlay || g.endless) return null;
+  const held = g.slots.filter((id) => (g.levels[id] ?? 0) > 0);
+  const ctx = { map: g.map.id, wave: g.wave, held, passives: passivesHeld(g).length };
+  for (const b of BONUS_EVENTS) if (b.after === g.wave && !g.bonusDone.includes(b.id) && b.when(ctx)) return b.id;
+  return null;
+}
+
+/** The bonus wave starts, straight after the wave it follows (that wave's
+ *  draft comes after it). Its number stays that wave's. */
+export function startBonus(g: Game, id: EventId): void {
+  g.bonusDone.push(id);
+  g.waveT = 0;
+  g.phase = 'wave';
+  g.offer = [];
+  startEvent(g, id);
+  cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
+}
+
+/** Round 7's experiment: right before the ending's first run, the convoy
+ *  and the carrier are restored to full. The ships lost so far stop
+ *  counting against the run's limit (they stay in its tally), every ship
+ *  afloat is mended, and the carrier's hull is full. */
+export function restoreConvoy(g: Game): void {
+  g.lossBase = g.lost;
+  g.carrierHp = Math.max(g.carrierHp, g.stats.carrierHp);
+  for (const s of g.ships) s.hp = Math.max(s.hp, g.stats.shipHp);
+  g.events.push({ kind: 'restore' });
+  cue(g, 'tanker.home', g.map.carrier.x, g.map.carrier.y);
+}
+
+/** The three-run ending as a whole, so far: its worst run. */
+export function endingOutcome(g: Game): EventOutcome | null {
+  const runs = g.eventLog.filter((e) => e.kind !== 'bonus' && e.outcome !== 'rerun' && e.runs !== undefined && e.runs > 1);
+  return worstOutcome(runs.map((e) => e.outcome as EventOutcome));
 }
 
 /** Is the event's script still running (it holds the wave open)? */
@@ -148,21 +253,31 @@ export function hasRule(g: Game, r: EventRule): boolean {
 // ---------------------------------------------------------------------------
 // Start, run, end
 
-/** The wave starting now is the event: its card, its script. */
-export function startEvent(g: Game): void {
-  const id = eventFor(g)!;
+/** The wave starting now is the event (the map's, a lab card's, or the
+ *  bonus `id`): its card, its script. */
+export function startEvent(g: Game, id: EventId = eventFor(g)!): void {
   g.queue = [];
   g.raids = [];
   g.raiderQueue = [];
   g.event = newRun(g, id);
-  g.events.push({ kind: 'special', id, wave: g.wave });
+  g.events.push(cardEvent(g.event));
   cue(g, 'debut.sting', VIEW.width / 2, VIEW.height / 2);
 }
 
+/** The card's event: the event, its wave, a bonus, and the run. */
+function cardEvent(ev: EventRun): Extract<Game['events'][number], { kind: 'special' }> {
+  return { kind: 'special', id: ev.id, wave: ev.wave, ...(ev.bonus ? { bonus: true } : {}), ...(ev.runs > 1 ? { run: ev.run, runs: ev.runs } : {}) };
+}
+
 function newRun(g: Game, id: EventId): EventRun {
+  const bonus = EVENTS[id].kind === 'bonus';
+  const runs = bonus || g.lab ? 1 : endingRuns();
   const ev: EventRun = {
     id,
     wave: g.wave,
+    bonus,
+    run: runs > 1 ? clamp(runOf(g), 1, runs) : 1,
+    runs,
     t0: g.waveT,
     t: 0,
     step: g.steps,
@@ -217,7 +332,7 @@ export function endEvent(g: Game, mapLost: boolean): void {
   const bonus = mapLost ? 0 : EVENT.bonus[outcome];
   g.score += bonus;
   record(g, ev, outcome, bonus);
-  g.events.push({ kind: 'specialEnd', id: ev.id, outcome, bonus });
+  g.events.push({ kind: 'specialEnd', id: ev.id, outcome, bonus, ...(ev.bonus ? { bonusEvent: true } : {}), ...(ev.runs > 1 ? { run: ev.run, runs: ev.runs } : {}) });
   if (g.lab) {
     const s = g.lab.stats;
     if (outcome === 'clean') s.clean = (s.clean ?? 0) + 1;
@@ -236,6 +351,8 @@ function record(g: Game, ev: EventRun, outcome: EventRecord['outcome'], bonus: n
     seconds: Math.round(ev.t * 10) / 10,
     sent: { ...ev.sent },
     outcome,
+    ...(ev.bonus ? { kind: 'bonus' as const } : {}),
+    ...(ev.runs > 1 ? { run: ev.run, runs: ev.runs } : {}),
     lost: g.lost - ev.lost0,
     carrierHit: g.carrierHp < ev.carrier0,
     shots: g.shots - ev.shots0,
@@ -256,7 +373,7 @@ export function rerunEvent(g: Game): void {
   g.raiderQueue = [];
   g.raiders = [];
   g.event = newRun(g, id);
-  g.events.push({ kind: 'special', id, wave: g.wave });
+  g.events.push(cardEvent(g.event));
   cue(g, 'debut.sting', VIEW.width / 2, VIEW.height / 2);
 }
 
@@ -275,6 +392,23 @@ function flush(g: Game): void {
   }
 }
 
+/** The Breakout's opening: no ammo drops until its Hydras come. */
+function openingDry(g: Game): boolean {
+  return hasRule(g, 'noAmmoOpening') && g.event!.id === 'breakout' && g.event!.t < EVENT.breather + EV.breakout.open;
+}
+
+/** Undertow: a ship inside an up beacon's ring sails at `slow` of its
+ *  speed (1 otherwise, and in every other event). */
+export function eventShipScale(g: Game, s: Ship): number {
+  if (!g.event || !hasRule(g, 'undertow')) return 1;
+  return caughtBy(g, s) ? EV.undertow.slow : 1;
+}
+
+/** The beacon (up, standing) whose ring holds this ship, if any. */
+export function caughtBy(g: Game, s: { x: number; y: number }): Threat | undefined {
+  return g.threats.find((t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 0) >= 1 && t.foe?.r !== undefined && dist(t.x, t.y, s.x, s.y) <= t.foe.r);
+}
+
 /** A shot at a threat (the Decoy Storm counts the ones at decoys). */
 export function eventShotAt(g: Game, th: Threat): void {
   if (g.event && th.kind === 'decoy') g.event.decoyShots += 1;
@@ -286,7 +420,7 @@ export function eventShotAt(g: Game, th: Threat): void {
 export function eventDropWeights(g: Game, w: Record<string, number>, starshell: number): void {
   if (!g.event) return;
   w.nuke = 0;
-  if (hasRule(g, 'noAmmo')) w.ammo = 0;
+  if (hasRule(g, 'noAmmo') || openingDry(g)) w.ammo = 0;
   if (hasRule(g, 'night')) w.starshell = Math.max(w.starshell ?? 0, starshell);
 }
 
@@ -380,6 +514,51 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       const E = EV.firestorm;
       ev.linger = E.linger;
       return [...steps(1, () => 0, 'ring'), ...steps(1, () => E.gap, 'ring2')];
+    }
+    case 'breakout': {
+      // The opening (decoy swarms, sprint swarms among them, no ammo drops),
+      // then a Hydra fan, then trucks down the shore road.
+      const E = EV.breakout;
+      return [
+        ...steps(E.decoys, (k) => k * E.gap, 'decoys'),
+        ...steps(E.sprintAt.length, (k) => E.sprintAt[k], 'sprint'),
+        ...steps(E.fan, (k) => E.fanAt + k * E.fanGap, 'fan'),
+        ...steps(E.roads * E.trucks, (k) => E.truckAt + Math.floor(k / E.trucks) * 1.5 + (k % E.trucks) * E.gapT, 'truck'),
+      ];
+    }
+    case 'run-the-canal': {
+      // A pack as the convoy comes in, gunships over the banks, thieves,
+      // then an armored block.
+      const E = EV['run-the-canal'];
+      return [
+        ...steps(1, () => 0, 'pack'),
+        ...steps(E.helis, () => E.heliAt, 'heli'),
+        ...steps(E.scav, (k) => E.scavAt + k * 0.7, 'scav'),
+        ...steps(1, () => E.blockAt, 'block'),
+        ...steps(E.swarms, (k) => 4 + k * 8, 'swarm'),
+      ];
+    }
+    case 'undertow': {
+      // Pairs of beacons by the lanes; barrages on the ships they hold.
+      const E = EV.undertow;
+      return [
+        ...steps(E.at.length, (k) => E.at[k], 'beacons'),
+        ...steps(E.barrages, (k) => E.from + k * E.every, 'barrage'),
+        ...steps(E.swarms, (k) => 2 + k * 6, 'swarm'),
+      ];
+    }
+    case 'siege-of-vey': {
+      // The Repair Yard on the Citadel, then a guarded heavy and beacons,
+      // then firebombs from every side.
+      const E = EV['siege-of-vey'];
+      ev.linger = E.linger;
+      return [
+        ...steps(1, () => 0, 'yard'),
+        ...steps(1, () => E.escortAt, 'escort'),
+        ...steps(1, () => E.escortAt + 1, 'lures'),
+        ...steps(1, () => E.fireAt, 'ring'),
+        ...steps(E.swarms, (k) => 4 + k * 9, 'swarm'),
+      ];
     }
   }
 }
@@ -531,33 +710,8 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // launch point (round 6: "they all come from the same launcher"). The
       // rows fly to a muster point and form up there, then the block sets
       // off as one.
-      const E = EV['shield-wall'];
-      if (s.op === 'row') {
-        shieldRow(g, ev, s.k);
-        return;
-      }
-      const rows = Math.ceil(E.drones / E.cols);
-      const pts = shieldPoints(g, rows);
-      const pool = targetable(g);
-      const ship = pool.length ? pool[Math.floor(pool.length / 2)] : null;
-      const tp = ship ?? c;
-      const mx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
-      const my = pts.reduce((a, p) => a + p.y, 0) / pts.length;
-      const d = Math.max(1, dist(mx, my, tp.x, tp.y));
-      ev.rows = pts;
-      ev.ship = ship ? ship.id : CARRIER_TARGET;
-      ev.face = { x: (tp.x - mx) / d, y: (tp.y - my) / d };
-      ev.muster = { x: clamp(mx + (tp.x - mx) * E.muster, 80, VIEW.width - 80), y: clamp(my + (tp.y - my) * E.muster, 80, VIEW.height - 80) };
-      // The furthest row sets out now, the nearer ones in turn, so the rows
-      // all reach the muster point together.
-      const m = ev.muster;
-      const far = Math.max(...pts.map((p) => dist(p.x, p.y, m.x, m.y)));
-      const speed = shieldRow(g, ev, pts.findIndex((p) => dist(p.x, p.y, m.x, m.y) === far)) * E.form;
-      pts.forEach((p, k) => {
-        const lag = (far - dist(p.x, p.y, m.x, m.y)) / Math.max(1, speed);
-        if (lag > 0) ev.plan.push({ at: ev.t + lag, op: 'row', k });
-      });
-      ev.plan.sort((a, b) => a.at - b.at);
+      if (s.op === 'row') shieldRow(g, ev, s.k);
+      else armoredBlock(g, ev, EV['shield-wall']);
       return;
     }
     case 'supply-raid': {
@@ -682,26 +836,9 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // ships sailing in from different sides of the screen to one spot on
       // its course (round 6: "come from multiple directions and converge on
       // the same spot"; one used to rise in a closed cove and never move).
-      const E = EV['repair-yard'];
       const bs = liveBases(g, 'mothership');
       const bi = bs.reduce((m, i) => (dist(g.map.bases[i].x, g.map.bases[i].y, c.x, c.y) > dist(g.map.bases[m].x, g.map.bases[m].y, c.x, c.y) ? i : m), bs[0]);
-      const b = g.map.bases[bi];
-      const ms = spawnThreat(g, 'mothership', b.x, b.y, 'base');
-      ms.hp = ms.maxHp = E.hp;
-      ms.speed *= E.speed;
-      ms.target = CARRIER_TARGET;
-      ev.boss = ms.id;
-      sent(ev, 'mothership');
-      const yard = yardSpot(g, b, c);
-      ev.yard = yard;
-      for (const { from, at } of yardRuns(g, yard, E.tenders)) {
-        const th = spawnThreat(g, 'tender', from.x, from.y, 'sub');
-        th.target = CARRIER_TARGET;
-        th.heading = Math.atan2(at.y - th.y, at.x - th.x);
-        th.speed *= E.sail;
-        th.foe = foeData({ link: -1, px: at.x, py: at.y, n: dist(from.x, from.y, at.x, at.y) < 2 ? 1 : 0, mend: E.mend, every: E.every });
-        sent(ev, 'tender');
-      }
+      repairYard(g, ev, g.map.bases[bi], EV['repair-yard']);
       return;
     }
     case 'escort-run': {
@@ -710,26 +847,11 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
         return;
       }
       // One heavy at the carrier, slow, in three rings of guards.
-      const E = EV['escort-run'];
       const bs = liveBases(g, 'heavy');
       const bi = bs.reduce((m, i) => (dist(g.map.bases[i].x, g.map.bases[i].y, c.x, c.y) > dist(g.map.bases[m].x, g.map.bases[m].y, c.x, c.y) ? i : m), bs[0]);
-      const b = g.map.bases[bi];
-      const hv = spawnThreat(g, 'heavy', b.x, b.y, 'base');
-      hv.hp = hv.maxHp = E.hp;
-      hv.target = CARRIER_TARGET;
-      hv.heading = Math.atan2(c.y - b.y, c.x - b.x);
+      const hv = escortHeavy(g, ev, g.map.bases[bi], EV['escort-run']);
       ev.boss = hv.id;
-      ev.bossSpeed = hv.speed;
-      hv.speed = ev.bossSpeed * E.slow;
-      sent(ev, 'heavy');
-      E.rings.forEach((n, ring) => {
-        for (let k = 0; k < n; k++) {
-          const t = spawnThreat(g, 'guard', b.x, b.y, 'base');
-          t.target = CARRIER_TARGET;
-          t.foe = foeData({ link: hv.id, n: k, of: n, r: E.radii[ring], ring });
-          sent(ev, 'guard');
-        }
-      });
+      ev.bossSpeed = ev.escort!.speed;
       return;
     }
     case 'siren-field': {
@@ -749,18 +871,274 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // From every side: each launch base, and both side edges.
       const E = EV.firestorm;
       const n = s.op === 'ring' ? E.first : E.second;
-      const from: Point[] = [...liveBases(g).map((i) => g.map.bases[i]), { x: -20, y: clamp(c.y - 260, 120, VIEW.height - 160) }, { x: VIEW.width + 20, y: clamp(c.y - 260, 120, VIEW.height - 160) }];
-      const order = rng.shuffle(from.map((_, i) => i));
-      for (let k = 0; k < n; k++) {
-        const at = from[order[k % order.length]];
+      firebombs(g, ev, n, E.slow);
+      return;
+    }
+    case 'breakout': {
+      const E = EV.breakout;
+      if (s.op === 'decoys') {
+        // A decoy swarm out of the next drone base, most of it fake.
+        const bs = liveBases(g, 'drone');
+        decoySwarm(g, ev, g.map.bases[bs[s.k % bs.length]], E.size, E.fakes);
+      } else if (s.op === 'sprint') {
+        const bs = liveBases(g, 'drone');
+        const b = bs[(s.k + 1) % bs.length];
+        launchFoe(g, { at: g.waveT, kind: 'sprinter', base: b }, g.map.bases[b]);
+        sent(ev, 'sprinter', FOE.sprinter.size);
+      } else if (s.op === 'fan') {
+        // The fan: a Hydra out of each of the bases furthest from the
+        // carrier in turn, a beat apart.
+        const bs = [...liveBases(g)].sort((a, b) => dist(g.map.bases[b].x, g.map.bases[b].y, c.x, c.y) - dist(g.map.bases[a].x, g.map.bases[a].y, c.x, c.y));
+        const b = bs[s.k % bs.length];
         const id0 = g.nextId;
-        launchFoe(g, { at: g.waveT, kind: 'cloud', base: -1 }, at);
-        for (const t of since(g, id0, 'cloud')) t.speed *= E.slow;
-        sent(ev, 'cloud');
-      }
+        launchFoe(g, { at: g.waveT, kind: 'hydra', base: b }, g.map.bases[b]);
+        for (const t of since(g, id0, 'hydra')) t.speed *= E.slow;
+        sent(ev, 'hydra');
+      } else truck(g, ev, Math.floor(s.k / E.trucks), s.k % E.trucks, E);
+      return;
+    }
+    case 'run-the-canal': {
+      const E = EV['run-the-canal'];
+      if (s.op === 'pack') {
+        // A pack of periscopes, each sub a spread, on a stagger.
+        const S = FOE.torpedoSub;
+        openWater(g, E.subs, 150).forEach((p, k) => {
+          g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + E.aim + k * E.stagger, spread: E.spread, fast: -1 });
+          sent(ev, 'torpedoSub');
+        });
+        cue(g, 'sub.surface', VIEW.width / 2, VIEW.height / 2, { gain: 0.7 });
+      } else if (s.op === 'heli') {
+        // Over the far bank by each lock (or spread across the screen
+        // without locks), firing in turn.
+        const locks = g.map.locks ?? [];
+        const x = locks.length ? (locks[s.k % locks.length].x0 + locks[s.k % locks.length].x1) / 2 : VIEW.width * (0.3 + (0.4 * s.k) / Math.max(1, E.helis - 1));
+        heliOnStation(g, ev, x, s.k, E);
+      } else if (s.op === 'scav') scavenger(g, ev, s.k);
+      else if (s.op === 'block') armoredBlock(g, ev, { ...EV['shield-wall'], drones: E.drones, cols: E.cols, banks: E.banks });
+      else if (s.op === 'row') shieldRow(g, ev, s.k);
+      else swarm(g, ev, E.size);
+      return;
+    }
+    case 'undertow': {
+      const E = EV.undertow;
+      if (s.op === 'beacons') undertowBeacons(g, ev, s.k);
+      else if (s.op === 'barrage') {
+        // Shells from the shore at the ships the rings hold; with none held,
+        // a lone shell at any ship.
+        const held = g.ships.filter((o) => caughtBy(g, o));
+        const pool = held.length ? held : targetable(g);
+        const bs = rng.shuffle(liveBases(g, 'ballistic'));
+        const n = held.length ? E.shells : E.loose;
+        for (let k = 0; k < n && pool.length && bs.length; k++) {
+          g.queue.push({ at: g.waveT + k * 0.35, kind: 'ballistic', base: bs[k % bs.length], target: pool[k % pool.length].id });
+          sent(ev, 'ballistic');
+        }
+        g.queue.sort((a, b) => a.at - b.at);
+      } else swarm(g, ev, E.size);
+      return;
+    }
+    case 'siege-of-vey': {
+      const E = EV['siege-of-vey'];
+      // The Citadel, or (shot down already) the base furthest from the
+      // carrier.
+      const core = g.map.bases.findIndex((b, i) => !!b.core && !g.baseDown[i]);
+      const far = liveBases(g).reduce((m, i) => (dist(g.map.bases[i].x, g.map.bases[i].y, c.x, c.y) > dist(g.map.bases[m].x, g.map.bases[m].y, c.x, c.y) ? i : m), liveBases(g)[0]);
+      const home = g.map.bases[core >= 0 ? core : far];
+      if (s.op === 'yard') repairYard(g, ev, home, E);
+      else if (s.op === 'escort') escortHeavy(g, ev, home, { hp: E.heavyHp, rings: E.rings, radii: E.radii, slow: E.slow, per: E.per });
+      else if (s.op === 'lures') {
+        for (const p of openWater(g, E.lures, 200)) {
+          const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
+          th.target = CARRIER_TARGET;
+          th.foe = foeData();
+          sent(ev, 'lure');
+        }
+      } else if (s.op === 'ring') firebombs(g, ev, E.fire, E.fslow);
+      else swarm(g, ev, E.size);
       return;
     }
   }
+}
+
+/** Firebombs from every side: each launch base and both side edges of the
+ *  screen, at `slow` of their speed. */
+function firebombs(g: Game, ev: EventRun, n: number, slow: number): void {
+  const c = g.map.carrier;
+  const from: Point[] = [...liveBases(g).map((i) => g.map.bases[i]), { x: -20, y: clamp(c.y - 260, 120, VIEW.height - 160) }, { x: VIEW.width + 20, y: clamp(c.y - 260, 120, VIEW.height - 160) }];
+  const order = g.rng.foes.shuffle(from.map((_, i) => i));
+  for (let k = 0; k < n; k++) {
+    const at = from[order[k % order.length]];
+    const id0 = g.nextId;
+    launchFoe(g, { at: g.waveT, kind: 'cloud', base: -1 }, at);
+    for (const t of since(g, id0, 'cloud')) t.speed *= slow;
+    sent(ev, 'cloud');
+  }
+}
+
+/** A decoy swarm of `size` out of `at`, `fakes` of it fake, with the late
+ *  strobe as always. */
+function decoySwarm(g: Game, ev: EventRun, at: Point, size: number, fakes: number): void {
+  const D = FOE.decoy;
+  const kinds = g.rng.foes.shuffle(Array.from({ length: size }, (_, k): ThreatKind => (k < fakes ? 'decoy' : 'drone')));
+  const mid = (size - 1) / 2;
+  kinds.forEach((kind, k) => {
+    const th = spawnThreat(g, kind, at.x + (k - mid) * D.spread, at.y + (k % 2) * D.stagger, 'base');
+    th.slot = (k - mid) * D.slot;
+    if (kind === 'decoy') th.foe = foeData();
+    sent(ev, kind);
+  });
+}
+
+/** A rocket truck down a shore road in a column (`col`: which road, `i`:
+ *  its place), stopping behind the one ahead and raising after it. */
+function truck(g: Game, ev: EventRun, col: number, i: number, E: { trucks: number; stop: number; spacing: number; stagger: number; salvos: number; hp: number; drive: number; back: number }): void {
+  const path = roadFor(g, col);
+  const L = pathLength(path);
+  const th = spawnThreat(g, 'rocketTruck', path[0].x, path[0].y, 'truck');
+  th.target = CARRIER_TARGET;
+  th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
+  th.hp = th.maxHp = E.hp;
+  th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive, back: E.back });
+  sent(ev, 'rocketTruck');
+}
+
+/** An attack helicopter flown in from the nearer side to hold at `x` over
+ *  the lane's far side, opening fire `hold` s after it is called, the `k`th
+ *  `turn` s after the first. */
+function heliOnStation(g: Game, ev: EventRun, x: number, k: number, E: { hp: number; volleys: number; hold: number; turn: number }): void {
+  const c = g.map.carrier;
+  const ch = g.map.channels[0];
+  const far = ch.y <= c.y ? -1 : 1;
+  const y = clamp(ch.y + far * (ch.halfWidth + 95), 90, VIEW.height - 90);
+  const side = x < VIEW.width / 2 ? 1 : -1;
+  const th = spawnThreat(g, 'attackHeli', side > 0 ? -50 : VIEW.width + 50, y, 'air');
+  th.target = CARRIER_TARGET;
+  th.heading = side > 0 ? 0 : Math.PI;
+  th.hp = th.maxHp = E.hp;
+  th.foe = foeData({ px: x, py: y, vx: side * 120, vy: 0, hold: g.waveT + E.hold, stay: true, volleys: E.volleys, wait: k * E.turn });
+  sent(ev, 'attackHeli');
+}
+
+/** A scavenger in from the `k`th side of the screen in turn (left, right,
+ *  top, bottom), leaving the way it came. */
+function scavenger(g: Game, ev: EventRun, k: number): void {
+  const rng = g.rng.foes;
+  const side = k % 4;
+  const m = 40;
+  const p =
+    side === 0 ? { x: -m, y: rng.range(150, VIEW.height - 150) }
+    : side === 1 ? { x: VIEW.width + m, y: rng.range(150, VIEW.height - 150) }
+    : side === 2 ? { x: rng.range(220, VIEW.width - 220), y: -m }
+    : { x: rng.range(220, VIEW.width - 220), y: VIEW.height + m };
+  const th = spawnThreat(g, 'scavenger', p.x, p.y, 'air');
+  th.target = CARRIER_TARGET;
+  th.heading = Math.atan2(VIEW.height / 2 - p.y, VIEW.width / 2 - p.x);
+  th.foe = foeData({ link: -1, px: p.x, py: p.y, ex: p.x + Math.sign(p.x - VIEW.width / 2) * (side < 2 ? 80 : 0), ey: p.y + Math.sign(p.y - VIEW.height / 2) * (side >= 2 ? 80 : 0) });
+  sent(ev, 'scavenger');
+}
+
+/** An armored block (`B`): rows from launch points along the far shore,
+ *  forming up at a muster point, then flying at one ship as one. */
+function armoredBlock(g: Game, ev: EventRun, B: BlockSpec): void {
+  const c = g.map.carrier;
+  ev.blockSpec = B;
+  ev.blockT = ev.t;
+  const rows = Math.ceil(B.drones / B.cols);
+  const pts = shieldPoints(g, rows, B.spread);
+  const pool = targetable(g);
+  const ship = pool.length ? pool[Math.floor(pool.length / 2)] : null;
+  const tp = ship ?? c;
+  const mx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+  const my = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+  const d = Math.max(1, dist(mx, my, tp.x, tp.y));
+  ev.rows = pts;
+  ev.ship = ship ? ship.id : CARRIER_TARGET;
+  ev.face = { x: (tp.x - mx) / d, y: (tp.y - my) / d };
+  ev.muster = { x: clamp(mx + (tp.x - mx) * B.muster, 80, VIEW.width - 80), y: clamp(my + (tp.y - my) * B.muster, 80, VIEW.height - 80) };
+  // The furthest row sets out now, the nearer ones in turn, so the rows
+  // all reach the muster point together.
+  const m = ev.muster;
+  const far = Math.max(...pts.map((p) => dist(p.x, p.y, m.x, m.y)));
+  const speed = shieldRow(g, ev, pts.findIndex((p) => dist(p.x, p.y, m.x, m.y) === far)) * B.form;
+  pts.forEach((p, k) => {
+    const lag = (far - dist(p.x, p.y, m.x, m.y)) / Math.max(1, speed);
+    if (lag > 0) ev.plan.push({ at: ev.t + lag, op: 'row', k });
+  });
+  ev.plan.sort((a, b) => a.at - b.at);
+}
+
+/** A tough mothership out of `b` at the carrier, and repair ships sailing
+ *  in from different sides to meet on its course (the Repair Yard; Siege of
+ *  Vey's by the Citadel). */
+function repairYard(g: Game, ev: EventRun, b: Point, E: { hp: number; speed: number; tenders: number; mend: number; every: number; sail: number; meet: number; ring: number; apart: number }): void {
+  const c = g.map.carrier;
+  const ms = spawnThreat(g, 'mothership', b.x, b.y, 'base');
+  ms.hp = ms.maxHp = E.hp;
+  ms.speed *= E.speed;
+  ms.target = CARRIER_TARGET;
+  ev.boss = ms.id;
+  sent(ev, 'mothership');
+  const yard = yardSpot(g, b, c, E.meet, E.ring);
+  ev.yard = yard;
+  for (const { from, at } of yardRuns(g, yard, E.tenders, E.ring, E.apart)) {
+    const th = spawnThreat(g, 'tender', from.x, from.y, 'sub');
+    th.target = CARRIER_TARGET;
+    th.heading = Math.atan2(at.y - th.y, at.x - th.x);
+    th.speed *= E.sail;
+    th.foe = foeData({ link: -1, px: at.x, py: at.y, n: dist(from.x, from.y, at.x, at.y) < 2 ? 1 : 0, mend: E.mend, every: E.every });
+    sent(ev, 'tender');
+  }
+}
+
+/** A heavy at the carrier out of `b`, slow, in rings of guards (each ring
+ *  stripped speeds it up). */
+function escortHeavy(g: Game, ev: EventRun, b: Point, E: { hp: number; rings: readonly number[]; radii: readonly number[]; slow: number; per: number }): Threat {
+  const c = g.map.carrier;
+  const hv = spawnThreat(g, 'heavy', b.x, b.y, 'base');
+  hv.hp = hv.maxHp = E.hp;
+  hv.target = CARRIER_TARGET;
+  hv.heading = Math.atan2(c.y - b.y, c.x - b.x);
+  ev.escort = { id: hv.id, speed: hv.speed, slow: E.slow, per: E.per, rings: E.rings.length };
+  hv.speed = hv.speed * E.slow;
+  sent(ev, 'heavy');
+  E.rings.forEach((n, ring) => {
+    for (let k = 0; k < n; k++) {
+      const t = spawnThreat(g, 'guard', b.x, b.y, 'base');
+      t.target = CARRIER_TARGET;
+      t.foe = foeData({ link: hv.id, n: k, of: n, r: E.radii[ring], ring });
+      sent(ev, 'guard');
+    }
+  });
+  return hv;
+}
+
+/** Undertow: a pair of beacons, one by each lane (a map with one lane: two
+ *  along it), rising just off the lane's enemy-side edge ahead of the
+ *  ships in it, each with its ring. */
+function undertowBeacons(g: Game, ev: EventRun, k: number): void {
+  const E = EV.undertow;
+  const c = g.map.carrier;
+  const lanes = g.map.channels.length > 1 ? g.map.channels.slice(0, 2) : [g.map.channels[0], g.map.channels[0]];
+  lanes.forEach((ch, i) => {
+    const L = laneLength(ch);
+    // Ahead of the middle of that lane's convoy (`lead` px on from its
+    // middle ship), so ships sail into the ring; with no ships in the lane,
+    // `ahead` of the way along it.
+    const lane = g.map.channels.indexOf(ch);
+    const afloat = g.ships.filter((s) => s.channel === lane && s.d > 0).sort((a, b) => a.d - b.d);
+    const mid = afloat[Math.floor(afloat.length / 2)];
+    const at = mid ? clamp(mid.d + E.lead, L * 0.15, L * 0.85) : L * (E.ahead[k % E.ahead.length] + (lanes[0] === lanes[1] ? i * 0.2 : 0));
+    // The side away from the carrier (the enemy's side of the lane), unless
+    // that is land or off the screen.
+    const sidesOf = [1, -1].map((sg) => laneAt(ch, at, sg * (ch.halfWidth + E.off)));
+    const ok = (q: Point) => !onLand(g, q.x, q.y) && q.y >= 60 && q.y <= VIEW.height - 60;
+    sidesOf.sort((a, b) => Number(ok(b)) - Number(ok(a)) || dist(b.x, b.y, c.x, c.y) - dist(a.x, a.y, c.x, c.y));
+    const p = sidesOf[0];
+    const th = spawnThreat(g, 'lure', clamp(p.x, 60, VIEW.width - 60), clamp(p.y, 60, VIEW.height - 60), 'sub');
+    th.target = CARRIER_TARGET;
+    th.foe = foeData({ r: E.ring, life: E.life });
+    sent(ev, 'lure');
+  });
 }
 
 /** Open water for `n` boats, each `apart` px from the others: the map's sub
@@ -795,8 +1173,8 @@ function roadFor(g: Game, col: number): Point[] {
  *  drone base furthest from the carrier: that base, another drone base on
  *  the same shore if there is one near, and launchers set up on the shore
  *  `spread` px either side of it. */
-function shieldPoints(g: Game, rows: number): Point[] {
-  const E = EV['shield-wall'];
+function shieldPoints(g: Game, rows: number, spread: number): Point[] {
+  const E = { spread };
   const c = g.map.carrier;
   const bs = liveBases(g, 'drone').map((i) => g.map.bases[i]);
   const far = bs.reduce((m, b) => (dist(b.x, b.y, c.x, c.y) > dist(m.x, m.y, c.x, c.y) ? b : m), bs[0] ?? { x: VIEW.width / 2, y: 40 });
@@ -818,7 +1196,7 @@ function shieldPoints(g: Game, rows: number): Point[] {
 /** One row of the Shield Wall out of its launch point, each drone bound
  *  for its place in the block at the muster point; returns its speed. */
 function shieldRow(g: Game, ev: EventRun, row: number): number {
-  const E = EV['shield-wall'];
+  const E = ev.blockSpec ?? EV['shield-wall'];
   const p = ev.rows![row];
   const u = ev.face!;
   const m = ev.muster!;
@@ -896,8 +1274,8 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
 /** The Repair Yard's meeting spot: open water on the mothership's course
  *  (from its base to the carrier), about `meet` of the way along, clear of
  *  land, that ships can sail to from at least two sides. */
-function yardSpot(g: Game, from: Point, to: Point): Point {
-  const E = EV['repair-yard'];
+function yardSpot(g: Game, from: Point, to: Point, meet: number, ring: number): Point {
+  const E = { meet, ring };
   const d = Math.max(1, dist(from.x, from.y, to.x, to.y));
   const ux = (to.x - from.x) / d;
   const uy = (to.y - from.y) / d;
@@ -953,8 +1331,8 @@ function sides(g: Game, to: Point): number {
  *  round from the others as the water allows, seen from the yard), to its
  *  place in a ring round the spot. With no way in from the screen's edges,
  *  one comes up on the spot itself (never in a closed cove). */
-function yardRuns(g: Game, yard: Point, n: number): { from: Point; at: Point }[] {
-  const E = EV['repair-yard'];
+function yardRuns(g: Game, yard: Point, n: number, ring: number, apart: number): { from: Point; at: Point }[] {
+  const E = { ring, apart };
   const cands = entries(g, yard).sort((a, b) => dist(a.x, a.y, yard.x, yard.y) - dist(b.x, b.y, yard.x, yard.y));
   const bear = (p: Point) => Math.atan2(p.y - yard.y, p.x - yard.x);
   const gap = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
@@ -1017,9 +1395,11 @@ function tick(g: Game, ev: EventRun): void {
       }
       return;
     }
-    case 'shield-wall': {
+    case 'shield-wall':
+    case 'run-the-canal': {
       // The block banks together at each signal (a horn and a flash).
-      const E = EV['shield-wall'];
+      const E = ev.blockSpec;
+      if (!E) return;
       const block = g.threats.filter((t) => !t.dead && ev.block.includes(t.id));
       if (!block.length) return;
       if (!ev.formed) {
@@ -1027,7 +1407,7 @@ function tick(g: Game, ev: EventRun): void {
         // waited long enough: the block sets off, as one.
         const m = ev.muster!;
         const placed = block.every((t) => dist(t.x, t.y, m.x + (t.foe!.ox ?? 0), m.y + (t.foe!.oy ?? 0)) <= 14);
-        if (!placed && ev.t < EVENT.breather + E.wait) return;
+        if (!placed && ev.t < (ev.blockT ?? EVENT.breather) + E.wait) return;
         if (ev.plan.some((p) => p.op === 'row')) return;
         ev.formed = true;
         for (const t of block) {
@@ -1065,13 +1445,21 @@ function tick(g: Game, ev: EventRun): void {
       }
       return;
     }
-    case 'escort-run': {
+    case 'escort-run':
+    case 'siege-of-vey': {
       // Each ring stripped, the heavy goes faster.
-      const E = EV['escort-run'];
-      const hv = g.threats.find((t) => t.id === ev.boss && !t.dead);
+      const E = ev.escort;
+      if (!E) return;
+      const hv = g.threats.find((t) => t.id === E.id && !t.dead);
       if (!hv) return;
       const left = new Set(g.threats.filter((t) => !t.dead && t.kind === 'guard' && t.foe?.link === hv.id).map((t) => t.foe!.ring ?? 0));
-      hv.speed = ev.bossSpeed * (E.slow + E.per * (E.rings.length - left.size));
+      hv.speed = E.speed * (E.slow + E.per * (E.rings - left.size));
+      return;
+    }
+    case 'undertow': {
+      // Which ships the rings hold (the barrages' targets, and the
+      // renderer's drag ripples).
+      ev.caught = g.ships.filter((s) => caughtBy(g, s)).map((s) => s.id);
       return;
     }
   }
@@ -1095,8 +1483,8 @@ export function eventFoeDown(g: Game, th: Threat): void {
     }
     return;
   }
-  if (ev.id !== 'rocket-convoy' || th.kind !== 'rocketTruck') return;
-  const E = EV['rocket-convoy'];
+  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout') || th.kind !== 'rocketTruck') return;
+  const E = ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy'];
   const at = th.foe?.along ?? 0;
   for (const t of g.threats) {
     const f = t.foe;

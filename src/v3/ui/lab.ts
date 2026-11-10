@@ -300,7 +300,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave 11) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
+  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
   body.append(list, side);
   return body;
 }

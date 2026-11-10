@@ -15,7 +15,7 @@
 // Every dev log carries its tempo, so it replays exactly and stays out of the
 // balance numbers.
 
-import { RULES } from '../data/config';
+import { lastEventWave } from '../data/events';
 import { FULL_TEMPO, nextPlayedWave, type Tempo } from '../sim/game';
 import { PERSONAS, YOU } from '../sim/mimic';
 import { kv } from '../platform/store';
@@ -111,7 +111,7 @@ export function loadDevSettings(): DevSettings {
     const s = JSON.parse(read(SETTINGS) ?? '{}') as Partial<DevSettings>;
     return {
       preset: s.preset && s.preset in DEV_PRESETS ? s.preset : 'half',
-      wave: Math.max(1, Math.min(RULES.wavesToClear + 1, Math.floor(s.wave ?? 1))),
+      wave: Math.max(1, Math.min(lastEventWave(), Math.floor(s.wave ?? 1))),
       watch: s.watch === true,
       watchSpeed: typeof s.watchSpeed === 'number' ? s.watchSpeed : 1,
       bot: typeof s.bot === 'string' && s.bot in PERSONAS ? s.bot : YOU.id,

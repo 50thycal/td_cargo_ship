@@ -1,17 +1,18 @@
-// Special event attacks (docs/design/v3-special-events-build.md): the 11th
-// wave on every map with an event, what each event sends, its rules, its
-// grading, the Test Lab's event cards, and the play log.
+// Special event attacks (docs/design/v3-special-events-build.md): the event
+// after the ten waves on every map (round 7: three runs, waves 11 to 13),
+// what each event sends, its rules, its grading, the Test Lab's event cards,
+// and the play log. Round 7's own tests are in eventsRound7.test.ts.
 
 import { describe, expect, it } from 'vitest';
 import { RULES, VIEW, type ThreatKind } from '../../src/v3/data/config';
-import { EVENT, EVENTS, EVENT_MAPS, EVENT_ORDER, EVENT_WAVE, RULE_TEXT, campaignWaves, eventMap, gradeEvent, type EventId } from '../../src/v3/data/events';
-import { FOES } from '../../src/v3/data/foes';
+import { ENDING, EVENT, EVENTS, EVENT_MAPS, EVENT_ORDER, EVENT_WAVE, RULE_TEXT, bonusDef, campaignWaves, eventMap, gradeEvent, type EventId } from '../../src/v3/data/events';
+import { FOES, FOES_BUILT } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { LAB_CARDS, LAB_CHANGES, LAB_EVENT_RUNS, LAB_ROUNDS, LAB_SECTIONS, cardRev, labCard } from '../../src/v3/data/lab';
 import { draftPool } from '../../src/v3/data/roster';
 import { canTake } from '../../src/v3/data/abilities';
 import { applyFreePlay, applyLab, createGame, labBring, pickUpgrade, step, type Game } from '../../src/v3/sim/game';
-import { eventDropWeights, eventFor, hasRule, hydraDarts, lastWave } from '../../src/v3/sim/events';
+import { eventDropWeights, eventFor, hasRule, hydraDarts, lastWave, startBonus } from '../../src/v3/sim/events';
 import { lureIn } from '../../src/v3/sim/foes';
 import { labDone } from '../../src/v3/sim/lab';
 import { evidenceLines } from '../../src/v3/sim/lab';
@@ -26,10 +27,16 @@ function run(g: Game, seconds: number, done: () => boolean = () => false): void 
   for (let i = 0; i < seconds / DT && g.phase === 'wave' && !done(); i++) step(g, DT);
 }
 
-/** An event's game at its wave, with the convoy unsinkable so the whole
- *  script runs whatever it does. */
+/** An event's game at its wave (a bonus event: after its wave, started as
+ *  the campaign starts it), with the convoy unsinkable so the whole script
+ *  runs whatever it does. */
 function eventGame(id: EventId, seed = 1): Game {
-  const g = createGame(eventMap(id), seed, EVENT_WAVE);
+  const bonus = bonusDef(id);
+  const g = createGame(eventMap(id), seed, bonus ? bonus.after + 1 : EVENT_WAVE);
+  if (bonus) {
+    g.wave = bonus.after;
+    startBonus(g, id);
+  }
   g.tempo = { ...g.tempo, lossLimit: 999 };
   g.carrierHp = 999;
   // Straight in, without waiting for the convoy to sail in.
@@ -42,7 +49,7 @@ function sentBy(id: EventId, seed = 1): { g: Game; sent: Partial<Record<ThreatKi
   const g = eventGame(id, seed);
   const seen = new Set<ThreatKind>();
   let sent: Partial<Record<ThreatKind, number>> = {};
-  for (let i = 0; i < 90 / DT && g.phase === 'wave'; i++) {
+  for (let i = 0; i < 90 / DT && g.phase === 'wave' && !g.eventLog.length; i++) {
     for (const t of g.threats) seen.add(t.kind);
     if (g.event) sent = { ...g.event.sent };
     if (g.event?.done && g.event.t > EVENT.breather + 4) break;
@@ -51,22 +58,31 @@ function sentBy(id: EventId, seed = 1): { g: Game; sent: Partial<Record<ThreatKi
   return { g, sent, seen };
 }
 
-describe('the table: one event per new enemy, on its debut map', () => {
-  it('seventeen events, each on the map whose debut enemy it is built on', () => {
-    expect(EVENT_ORDER).toHaveLength(17);
-    expect(new Set(EVENT_ORDER.map((id) => EVENTS[id].foe)).size).toBe(17);
-    for (const id of EVENT_ORDER) {
+describe('the table: an event for every map, built on its debut enemy', () => {
+  it('twenty map events, each on its own map, built on its debut enemy (a finale: its chapter\'s new enemies); one bonus event', () => {
+    const maps = EVENT_ORDER.filter((id) => EVENTS[id].kind === 'map');
+    expect(maps).toHaveLength(20);
+    expect(EVENT_ORDER.filter((id) => EVENTS[id].kind === 'bonus')).toEqual(['siren-field']);
+    for (const id of maps) {
       const map = eventMap(id);
       expect(EVENT_MAPS[map]).toBe(id);
-      // The map's debut (the foe it leads with) is the event's enemy.
       const g = createGame(map, 1);
-      expect(g.foe.lead[g.foe.cursor % g.foe.lead.length], id).toBe(EVENTS[id].foe);
+      const finale = ['breakout', 'run-the-canal', 'siege-of-vey'].includes(id);
+      // The map's debut (the foe it leads with) is the event's enemy; a
+      // finale brings its chapter's four.
+      if (!finale) expect(g.foe.lead[g.foe.cursor % g.foe.lead.length], id).toBe(EVENTS[id].foe);
+      else expect([EVENTS[id].foe, ...EVENTS[id].also!].sort(), id).toEqual(FOES_BUILT.filter((f) => FOES[f].chapter === chapterOf(map)).sort());
       expect(FOES[EVENTS[id].foe].chapter, id).toBe(chapterOf(map));
     }
   });
 
-  it('the chapter finales are not in this build: Harbor Mouth, Saltgate Canal and Citadel of Vey have no event', () => {
-    expect(MAP_ORDER.filter((m) => !EVENT_MAPS[m])).toEqual(['harbor', 'saltgate', 'citadel']);
+  it('every one of the twenty maps has its own event (round 7: the finales, and Undertow on Dunmar Crossing)', () => {
+    expect(MAP_ORDER.filter((m) => !EVENT_MAPS[m])).toEqual([]);
+    expect(new Set(MAP_ORDER.map((m) => EVENT_MAPS[m])).size).toBe(20);
+    expect(EVENT_MAPS.harbor).toBe('breakout');
+    expect(EVENT_MAPS.saltgate).toBe('run-the-canal');
+    expect(EVENT_MAPS.citadel).toBe('siege-of-vey');
+    expect(EVENT_MAPS.crossing).toBe('undertow');
   });
 
   it('the card says the event and its rules, never how to beat it', () => {
@@ -79,11 +95,18 @@ describe('the table: one event per new enemy, on its debut map', () => {
   });
 });
 
-describe('an 11th wave: the event, after the ten as they were', () => {
-  it('a map with an event has 11 waves; the three finale maps keep 10', () => {
-    for (const m of MAP_ORDER) expect(campaignWaves(m), m).toBe(EVENT_MAPS[m] ? 11 : 10);
-    expect(lastWave(createGame('kesh', 1))).toBe(11);
-    expect(lastWave(createGame('harbor', 1))).toBe(10);
+describe('the event after the ten waves as they were (round 7: three runs)', () => {
+  it('every map has 13 waves: its ten and three runs of its event (11 with the experiment off)', () => {
+    for (const m of MAP_ORDER) expect(campaignWaves(m), m).toBe(13);
+    expect(lastWave(createGame('kesh', 1))).toBe(13);
+    expect(lastWave(createGame('harbor', 1))).toBe(13);
+    ENDING.threeRuns = false;
+    try {
+      for (const m of MAP_ORDER) expect(campaignWaves(m), m).toBe(11);
+      expect(lastWave(createGame('kesh', 1))).toBe(11);
+    } finally {
+      ENDING.threeRuns = true;
+    }
   });
 
   it('waves 1 to 10 plan as before (no event); wave 11 is the event and replaces the raid planner', () => {
@@ -96,7 +119,7 @@ describe('an 11th wave: the event, after the ten as they were', () => {
     expect(e.events.some((ev) => ev.kind === 'special' && ev.id === 'decoy-storm' && ev.wave === 11)).toBe(true);
   });
 
-  it('clearing wave 10 on an event map goes on to a draft, then the event; clearing the event wins the map', () => {
+  it('clearing wave 10 goes on to a draft, then the event; clearing its three runs wins the map', () => {
     const g = createGame('strait', 5, 10);
     g.queue = [];
     g.raiderQueue = [];
@@ -111,20 +134,27 @@ describe('an 11th wave: the event, after the ten as they were', () => {
     const w = createGame('strait', 5, 11);
     w.tempo = { ...w.tempo, lossLimit: 999 };
     w.carrierHp = 999;
-    run(w, 120);
+    run(w, 300);
     expect(w.phase).toBe('won');
     expect(w.cleared).toBe(true);
-    expect(w.eventLog.map((e) => e.id)).toEqual(['rush']);
+    expect(w.wave).toBe(13);
+    expect(w.eventLog.map((e) => `${e.id} ${e.run}/${e.runs}`)).toEqual(['rush 1/3', 'rush 2/3', 'rush 3/3']);
   });
 
-  it('on a finale map, clearing wave 10 wins it as before', () => {
-    const g = createGame('harbor', 5, 10);
-    g.queue = [];
-    g.raiderQueue = [];
-    g.threats = g.threats.filter(() => false);
-    step(g, DT);
-    expect(g.phase).toBe('won');
-    expect(g.eventLog).toEqual([]);
+  it('with the experiment off, clearing wave 11 wins the map as before', () => {
+    ENDING.threeRuns = false;
+    try {
+      const w = createGame('strait', 5, 11);
+      w.tempo = { ...w.tempo, lossLimit: 999 };
+      w.carrierHp = 999;
+      run(w, 120);
+      expect(w.phase).toBe('won');
+      expect(w.wave).toBe(11);
+      expect(w.eventLog.map((e) => e.id)).toEqual(['rush']);
+      expect(w.eventLog[0].runs).toBeUndefined();
+    } finally {
+      ENDING.threeRuns = true;
+    }
   });
 
   it('a sharp bot plays a whole campaign map through its event', () => {
@@ -134,11 +164,12 @@ describe('an 11th wave: the event, after the ten as they were', () => {
       bot.act(g);
       step(g, 1 / 30);
     }
+    const ending = g.eventLog.filter((e) => e.kind !== 'bonus');
     if (g.phase === 'won') {
-      expect(g.wave).toBe(11);
-      expect(g.eventLog).toHaveLength(1);
-      expect(['clean', 'held', 'broken']).toContain(g.eventLog[0].outcome);
-    } else expect(g.wave).toBeLessThanOrEqual(11);
+      expect(g.wave).toBe(13);
+      expect(ending).toHaveLength(3);
+      for (const e of ending) expect(['clean', 'held', 'broken']).toContain(e.outcome);
+    } else expect(g.wave).toBeLessThanOrEqual(13);
   });
 
   it('Free Play has no events (not in this build): ten waves', () => {
@@ -168,6 +199,11 @@ describe('each event sends what it should', () => {
     'escort-run': { heavy: 1, guard: 12 },
     'siren-field': { lure: 5 },
     firestorm: { cloud: 9 },
+    // Round 7: the finales, and Undertow.
+    breakout: { decoy: 9, sprinter: 4, hydra: 3, rocketTruck: 2 },
+    'run-the-canal': { torpedoSub: 3, attackHeli: 2, scavenger: 3, armored: 8 },
+    undertow: { lure: 4 },
+    'siege-of-vey': { mothership: 1, tender: 3, heavy: 1, guard: 7, lure: 2, cloud: 5 },
   };
   for (const id of EVENT_ORDER) {
     it(`${EVENTS[id].name}: its debut enemy, as many as the script says`, () => {
@@ -267,6 +303,7 @@ describe('event rules: on for the event, off after', () => {
 
   it('Siren Field: every helper chases a beacon, however far; not after the event', () => {
     const g = eventGame('siren-field');
+    expect(g.event!.bonus).toBe(true);
     run(g, EVENT.breather + 3);
     const lures = g.threats.filter((t) => t.kind === 'lure');
     expect(lures.length).toBe(5);
@@ -317,8 +354,10 @@ describe('grading', () => {
   it('an event run to its end is graded, scored and recorded; a loss in it is Broken', () => {
     const g = eventGame('dive-circus', 4);
     const before = g.score;
-    run(g, 120);
-    expect(g.phase).toBe('won');
+    run(g, 120, () => g.eventLog.length > 0);
+    // The next run follows straight on (the three-run ending).
+    expect(g.phase).toBe('wave');
+    expect(g.wave).toBe(EVENT_WAVE + 1);
     const e = g.eventLog[0];
     expect(e.id).toBe('dive-circus');
     expect(['clean', 'held', 'broken']).toContain(e.outcome);
@@ -344,26 +383,28 @@ describe('the Test Lab: an Events section, one card per event', () => {
     return g;
   };
 
-  it('seventeen event cards, on their own maps, with a kit from that map\'s chapter, first in the list', () => {
+  it('twenty-one event cards, on their own maps, with a kit from that map\'s chapter, first in the list', () => {
     const cards = LAB_CARDS.filter((c) => c.kind === 'event');
     expect(cards.map((c) => c.event)).toEqual(EVENT_ORDER);
+    expect(cards).toHaveLength(21);
     expect(LAB_SECTIONS[0].kind).toBe('event');
+    const fresh = ['breakout', 'run-the-canal', 'undertow', 'siege-of-vey'];
     for (const c of cards) {
       expect(c.map).toBe(eventMap(c.event!));
       expect(c.kit).toHaveLength(3);
       for (const w of c.kit) expect(draftPool(chapterOf(c.map)), `${c.id} ${w}`).toContain(w);
-      expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(5);
-      // Round 6 changed some of them (the playtest's notes).
-      expect(cardRev(c.id)).toBe(LAB_CHANGES[c.id].some((x) => x.round === 6) ? 6 : 5);
+      // Round 5's events, and round 7's new ones.
+      expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(fresh.includes(c.event!) ? 7 : 5);
+      expect(cardRev(c.id)).toBe(Math.max(...LAB_CHANGES[c.id].map((x) => x.round)));
     }
     expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
   });
 
-  it('a card starts straight into its event, on its map, at wave 11', () => {
+  it('a card starts straight into its event, on its map, at wave 11 (a bonus event: after its wave)', () => {
     for (const id of EVENT_ORDER) {
       const g = labGame(`ev-${id}`);
       expect(g.map.id).toBe(eventMap(id));
-      expect(g.wave).toBe(EVENT_WAVE);
+      expect(g.wave).toBe(bonusDef(id)?.after ?? EVENT_WAVE);
       expect(g.event?.id).toBe(id);
       expect(g.events.some((e) => e.kind === 'special' && e.id === id)).toBe(true);
       // No convoy yet: the attack waits for it.
@@ -410,15 +451,15 @@ describe('the play log', () => {
     const rec = new Recorder(g, { build: 't', startedAt: '2026-11-09T00:00:00Z', firstWave: EVENT_WAVE, device: { w: 1, h: 1, dpr: 1, touch: false, ua: '' } });
     // Taps only through the recorder (so the log replays): every second, at
     // the nearest threat.
-    for (let i = 0; i < 60 * 80 && g.phase === 'wave'; i++) {
+    for (let i = 0; i < 60 * 80 && g.phase === 'wave' && !g.eventLog.length; i++) {
       if (i % 12 === 0) {
         const t = g.threats.find((o) => !o.dead && o.x > 0 && o.x < VIEW.width && o.y > 0 && o.y < VIEW.height);
         if (t) rec.tap(t.x, t.y, 40);
       }
       step(g, DT);
     }
-    const log = rec.finish(g.phase === 'won' ? 'won' : 'lost');
-    expect(log.v).toBe(18);
+    const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
+    expect(log.v).toBe(19);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('decoy-storm');
