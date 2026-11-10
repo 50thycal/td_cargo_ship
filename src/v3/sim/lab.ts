@@ -256,6 +256,22 @@ export function labWaves(lab: { setup: LabSetup; event?: EventId }): number {
   return (lab.event ? LAB_EVENT_RUNS : LAB_LENGTH)[lab.setup.length];
 }
 
+/** The bar's count in play: the card's tally, then how far into the test
+ *  it is. An event card counts its runs (Test Lab round 6: "I thought it
+ *  would be one and done"): "Run 1 of 3". */
+export function labCountText(card: LabCard, s: LabStats, waves: number, length: number): string {
+  const parts = card.event
+    ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
+    : card.foes.length
+      ? [`came ${s.came}`, `killed ${s.killed}`, `hit you ${s.harm}`]
+      : card.weapon
+        ? [`kills ${s.weaponKills}`]
+        : [];
+  const n = Math.min(waves + 1, length);
+  parts.push(card.event ? `Run ${n} of ${length}` : `${n}/${length}`);
+  return parts.join(' · ');
+}
+
 /** The evidence, in words. */
 export function evidenceLines(card: LabCard, s: LabStats, waves: number): string[] {
   const out: string[] = [];

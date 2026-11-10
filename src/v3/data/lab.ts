@@ -290,6 +290,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 3, date: '2026-11-08', name: 'Round 2 notes', since: '2026-11-08T23:05' },
   { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
   { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
+  { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -370,21 +371,46 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 2, what: 'New pairing' },
     { round: 4, what: 'Its enemies now arrive together; Tesla drops by the carrier just before' },
   ],
-  // Round 5 (docs/design/v3-special-events-build.md): the special events.
+  // Round 5 (docs/design/v3-special-events-build.md): the special events;
+  // round 6 (docs/design/v3-events-round6.md): the player's notes on them.
   'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
   'ev-decoy-storm': [{ round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' }],
   'ev-hydra-bloom': [{ round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' }],
-  'ev-rocket-convoy': [{ round: 5, what: 'New event: four armoured trucks in a column down the shore road' }],
+  'ev-rocket-convoy': [
+    { round: 5, what: 'New event: four armoured trucks in a column down the shore road' },
+    { round: 6, what: 'Two columns of four trucks, one down each shore road, firing closer together' },
+  ],
   'ev-gunship-wall': [{ round: 5, what: 'New event: four helicopters in a line, firing in turn (four hits each)' }],
-  'ev-wolf-pack': [{ round: 5, what: 'New event: five periscopes at once, then three more' }],
-  'ev-shield-wall': [{ round: 5, what: 'New event: a block of twelve armored drones that banks at a signal' }],
-  'ev-supply-raid': [{ round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' }],
+  'ev-wolf-pack': [
+    { round: 5, what: 'New event: five periscopes at once, then three more' },
+    { round: 6, what: 'Each sub fires two or three torpedoes; one or two fast ones (an amber line)' },
+  ],
+  'ev-shield-wall': [
+    { round: 5, what: 'New event: a block of twelve armored drones that banks at a signal' },
+    { round: 6, what: 'Its rows come from three launch points and form up into the block' },
+  ],
+  'ev-supply-raid': [
+    { round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' },
+    { round: 6, what: 'No Nuke in the cargo; twelve scavengers, from every side' },
+  ],
   'ev-blackout': [{ round: 5, what: 'New event: night, eight stealth strafers and a star shell' }],
   'ev-carpet-run': [{ round: 5, what: 'New event: two vees of three stealth bombers (three hits each)' }],
-  'ev-dive-circus': [{ round: 5, what: 'New event: eight dive bombers on a beat' }],
-  'ev-bombardment': [{ round: 5, what: 'New event: three siege hatches taking turns (two salvos each)' }],
-  'ev-fire-mission': [{ round: 5, what: 'New event: a spotter with three escorts calling five strikes' }],
-  'ev-repair-yard': [{ round: 5, what: 'New event: a tough mothership mended by three tenders' }],
+  'ev-dive-circus': [
+    { round: 5, what: 'New event: eight dive bombers on a beat' },
+    { round: 6, what: 'Pairs of guided missiles between the dives' },
+  ],
+  'ev-bombardment': [
+    { round: 5, what: 'New event: three siege hatches taking turns (two salvos each)' },
+    { round: 6, what: 'Supply drones that drop pickups when shot down; the guns take turns further apart' },
+  ],
+  'ev-fire-mission': [
+    { round: 5, what: 'New event: a spotter with three escorts calling five strikes' },
+    { round: 6, what: 'New: three spotters take turns from three sides, each calling shells that walk down the lane' },
+  ],
+  'ev-repair-yard': [
+    { round: 5, what: 'New event: a tough mothership mended by three tenders' },
+    { round: 6, what: 'The repair ships sail in from different sides to meet on the mothership\'s course; none stuck' },
+  ],
   'ev-escort-run': [{ round: 5, what: 'New event: one heavy in three rings of guards' }],
   'ev-siren-field': [{ round: 5, what: 'New event: five lure beacons and six swarms' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],

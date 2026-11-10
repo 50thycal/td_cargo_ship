@@ -2,6 +2,13 @@
 
 The special event attacks are in the game. This is what was built from the design round (`docs/design/v3-special-events.md`, the review page of 2026-11-08), what each event does, how it is graded, what the bots made of it, and what is left.
 
+**Round 6** (`docs/design/v3-events-round6.md`) changed eight of these events after your first playtest of them, and the pictures of those eight show them as they are now:
+- Rocket Convoy, Wolf Pack, Shield Wall, Supply Raid, Dive Circus and Bombardment;
+- Fire Mission, which is a new design;
+- Repair Yard, whose stuck repair ship is fixed.
+
+It also took the Nuke out of every event. This doc still describes the events as first built.
+
 ## Your notes, and what they decided
 
 All seven pieces of the system were approved. Your notes on them:

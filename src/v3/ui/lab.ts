@@ -6,7 +6,7 @@
 
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
-import { evidenceLines, type LabStats } from '../sim/lab';
+import { evidenceLines, labCountText, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 
@@ -341,15 +341,7 @@ export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update
   return {
     el: bar,
     update: (s, waves, length) => {
-      const parts = card.event
-        ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
-        : card.foes.length
-        ? [`came ${s.came}`, `killed ${s.killed}`, `hit you ${s.harm}`]
-        : card.weapon
-          ? [`kills ${s.weaponKills}`]
-          : [];
-      parts.push(`${Math.min(waves + 1, length)}/${length}`);
-      const k = parts.join(' · ');
+      const k = labCountText(card, s, waves, length);
       if (k === key) return;
       key = k;
       count.textContent = k;

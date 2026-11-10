@@ -287,8 +287,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5]);
-    expect(LAB_ROUND).toBe(5);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(LAB_ROUND).toBe(6);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);

@@ -74,7 +74,7 @@ import { LAB_SET } from '../data/lab';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
-import { endEvent, eventBusy, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, rerunEvent, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import { endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, rerunEvent, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import type { EventId, EventOutcome } from '../data/events';
 
 export const CARRIER_TARGET = -1;
@@ -181,6 +181,8 @@ export interface Threat {
   /** Its full hull when a special event made it tougher than its kind
    *  (THREATS[kind].hp otherwise): what a Repair Tender mends it up to. */
   maxHp?: number;
+  /** A special event's supply drone: shot down, it drops a pickup. */
+  cargo?: boolean;
 }
 
 export interface Interceptor {
@@ -307,6 +309,9 @@ export interface Launch {
    *  spotter that called it (shot down, its launches are cancelled). */
   target?: number;
   spotter?: number;
+  /** A special event's supply drone (the Bombardment): shot down, it drops
+   *  a pickup. */
+  cargo?: boolean;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -3325,7 +3330,8 @@ function weaponsHeld(g: Game): AbilityId[] {
  *  itself), or (`nuke`: Airdrop's planes) now and then a Nuke. With nothing
  *  else held, ammo. */
 function gearCrate(g: Game, nuke: boolean): { kind: PickupKind; weapon?: AbilityId } {
-  if (nuke && g.rng.drops.chance(AB.supplyRun.nuke)) return { kind: 'nuke' };
+  // No Nuke in a special event (Test Lab round 6).
+  if (nuke && !g.event && g.rng.drops.chance(AB.supplyRun.nuke)) return { kind: 'nuke' };
   const gear = g.slots.filter((id) => id !== 'supplyRun' && (g.levels[id] ?? 0) > 0);
   return gear.length ? { kind: 'weapon', weapon: g.rng.drops.pick(gear) } : { kind: 'ammo' };
 }
@@ -3995,6 +4001,11 @@ function launch(g: Game, l: Launch): void {
   if (isFoe(l.kind)) launchFoe(g, l, base);
   else {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
+    // A supply drone (the Bombardment's) heads for the carrier.
+    if (l.cargo) {
+      th.cargo = true;
+      th.target = CARRIER_TARGET;
+    }
     // A Spotter's strike goes for its painted ship, if it is still afloat.
     if (l.target !== undefined && g.ships.some((s) => s.id === l.target)) {
       th.target = l.target;
@@ -4660,6 +4671,12 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true):
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }
   if (!drops) return;
+  // A special event's supply drone always drops (the Bombardment's).
+  if (th.cargo && g.event) {
+    const c = eventCargo(g);
+    addPickup(g, c.kind, th.x, th.y, c.weapon);
+    return;
+  }
   if (g.rng.drops.chance(THREATS[th.kind].dropChance * g.stats.powerShare * dropMult(g, false))) dropPickup(g, th.x, th.y);
   // Weapons drop on their own roll, on top of the power-ups (playtest round
   // 2: sharing one roll, they crowded out the repairs and Overdrives).
@@ -5483,6 +5500,10 @@ function dropPickup(g: Game, x: number, y: number): void {
 }
 
 export function addPickup(g: Game, kind: PickupKind, x: number, y: number, weapon?: AbilityId): void {
+  // No Nuke appears during a special event (Test Lab round 6: "no nukes for
+  // these special events"), whatever would drop one: the drop table and the
+  // cargo already leave it out; anything else gets a repair in its place.
+  if (kind === 'nuke' && g.event) kind = 'repair';
   if (!g.seenPickups.has(kind)) {
     g.seenPickups.add(kind);
     g.events.push({ kind: 'newPickup', pickup: kind });
