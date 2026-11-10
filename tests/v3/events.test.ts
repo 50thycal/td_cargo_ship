@@ -154,16 +154,16 @@ describe('each event sends what it should', () => {
     rush: { sprinter: 24 },
     'decoy-storm': { decoy: 40, drone: 20 },
     'hydra-bloom': { hydra: 6 },
-    'rocket-convoy': { rocketTruck: 4 },
+    'rocket-convoy': { rocketTruck: 8 },
     'gunship-wall': { attackHeli: 4 },
-    'wolf-pack': { torpedoSub: 8 },
+    'wolf-pack': { torpedoSub: 7 },
     'shield-wall': { armored: 12 },
-    'supply-raid': { scavenger: 6 },
+    'supply-raid': { scavenger: 12 },
     blackout: { stealthJet: 8 },
     'carpet-run': { stealthBomber: 6 },
-    'dive-circus': { diveBomber: 8 },
-    bombardment: { siege: 3 },
-    'fire-mission': { spotter: 1, guard: 3 },
+    'dive-circus': { diveBomber: 8, guided: 6 },
+    bombardment: { siege: 3, drone: 16 },
+    'fire-mission': { spotter: 6, drone: 15 },
     'repair-yard': { mothership: 1, tender: 3 },
     'escort-run': { heavy: 1, guard: 12 },
     'siren-field': { lure: 5 },
@@ -177,16 +177,20 @@ describe('each event sends what it should', () => {
     });
   }
 
-  it('the Rocket Convoy drives one road in a column, each truck stopping behind the one ahead and raising after it', () => {
+  it('the Rocket Convoy drives a column down each shore road, each truck stopping behind the one ahead and raising after it', () => {
     const g = eventGame('rocket-convoy', 2);
-    run(g, EVENT.breather + 12);
-    const trucks = g.threats.filter((t) => t.kind === 'rocketTruck').sort((a, b) => (b.foe!.stop ?? 0) - (a.foe!.stop ?? 0));
-    expect(trucks).toHaveLength(4);
-    expect(new Set(trucks.map((t) => t.foe!.path)).size).toBe(1);
-    for (let k = 1; k < 4; k++) expect(trucks[k].foe!.stop!).toBeLessThan(trucks[k - 1].foe!.stop!);
-    // The lead raises first; the last is still waiting its turn.
-    expect(trucks[0].foe!.wait).toBe(0);
-    expect(trucks[3].foe!.wait!).toBeGreaterThan(0);
+    run(g, EVENT.breather + 6);
+    const all = g.threats.filter((t) => t.kind === 'rocketTruck');
+    expect(all).toHaveLength(8);
+    const roads = [...new Set(all.map((t) => t.foe!.path))];
+    // Round 6: two columns, one on each of the Gauntlet's shore roads.
+    expect(roads).toHaveLength(2);
+    expect(roads).toEqual(expect.arrayContaining(g.map.roads.runners));
+    for (const road of roads) {
+      const col = all.filter((t) => t.foe!.path === road).sort((a, b) => (b.foe!.stop ?? 0) - (a.foe!.stop ?? 0));
+      expect(col).toHaveLength(4);
+      for (let k = 1; k < col.length; k++) expect(col[k].foe!.stop!).toBeLessThan(col[k - 1].foe!.stop!);
+    }
   });
 
   it('the Gunship Wall holds a line and fires in turn, left to right', () => {
@@ -349,7 +353,8 @@ describe('the Test Lab: an Events section, one card per event', () => {
       expect(c.kit).toHaveLength(3);
       for (const w of c.kit) expect(draftPool(chapterOf(c.map)), `${c.id} ${w}`).toContain(w);
       expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(5);
-      expect(cardRev(c.id)).toBe(5);
+      // Round 6 changed some of them (the playtest's notes).
+      expect(cardRev(c.id)).toBe(LAB_CHANGES[c.id].some((x) => x.round === 6) ? 6 : 5);
     }
     expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
   });

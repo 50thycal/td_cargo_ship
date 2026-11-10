@@ -571,25 +571,29 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
 }
 
 /** The torpedo's line on the water: dashed to where it meets its ship (an
- *  X there), fainter beyond. */
+ *  X there), fainter beyond. A fast one (the Wolf Pack's, Test Lab round
+ *  6): an amber line in short, quick dashes that run along it. */
 function drawTorpedoLine(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const f = th.foe;
   if (!f) return;
+  const fast = !!f.fast;
   const ex = (f.sx ?? th.x) + Math.cos(th.heading) * (f.along ?? 0);
   const ey = (f.sy ?? th.y) + Math.sin(th.heading) * (f.along ?? 0);
-  ctx.setLineDash([10, 9]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-  ctx.lineWidth = 2;
+  ctx.setLineDash(fast ? [5, 5] : [10, 9]);
+  if (fast) ctx.lineDashOffset = -((g.t * 60) % 10);
+  ctx.strokeStyle = fast ? 'rgba(255,184,64,0.9)' : 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = fast ? 3 : 2;
   ctx.beginPath();
   ctx.moveTo(th.x, th.y);
   ctx.lineTo(f.px, f.py);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.strokeStyle = fast ? 'rgba(255,184,64,0.3)' : 'rgba(255,255,255,0.18)';
   ctx.beginPath();
   ctx.moveTo(f.px, f.py);
   ctx.lineTo(ex, ey);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
   const flash = Math.floor(g.t * 6) % 2 === 0;
   ctx.strokeStyle = flash ? 'rgba(255,77,61,0.95)' : 'rgba(255,77,61,0.55)';
   ctx.lineWidth = 3;
@@ -601,12 +605,14 @@ function drawTorpedoLine(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   ctx.stroke();
 }
 
-/** The torpedo: a dark shape just under the surface with a white wake. */
+/** The torpedo: a dark shape just under the surface with a white wake (a
+ *  fast one: a longer wake, amber). */
 function drawTorpedo(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const back = 60;
+  const fast = !!th.foe?.fast;
+  const back = fast ? 110 : 60;
   for (let k = 0; k < 6; k++) {
     const u = k / 6;
-    ctx.fillStyle = `rgba(235,245,255,${0.45 * (1 - u)})`;
+    ctx.fillStyle = fast ? `rgba(255,196,96,${0.55 * (1 - u)})` : `rgba(235,245,255,${0.45 * (1 - u)})`;
     ctx.beginPath();
     ctx.arc(th.x - Math.cos(th.heading) * (10 + u * back) + Math.sin(g.t * 20 + k) * 2, th.y - Math.sin(th.heading) * (10 + u * back), 4 + u * 3, 0, Math.PI * 2);
     ctx.fill();

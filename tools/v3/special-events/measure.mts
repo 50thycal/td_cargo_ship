@@ -3,12 +3,16 @@
 // `?wave=11` start does), over N seeds, for each bot skill. Prints the
 // Clean / Held / Broken rates and the ships lost in the event, as the table
 // in docs/design/v3-special-events-build.md.
-// Usage: npx tsx tools/v3/special-events/measure.mts [seeds=20] [--skills=sharp,average] [--only=id,id] [--md] [--campaign]
+// Usage: npx tsx tools/v3/special-events/measure.mts [seeds=20] [--skills=sharp,average] [--only=id,id] [--md] [--campaign] [--lab]
+// --lab plays each event as its Test Lab card does (round 6): its kit at
+// level 2 with frequent drops, the default flow, and the event waiting for
+// the convoy to sail in; the first run of the card.
 import { ABILITY_ORDER, type AbilityId } from '../../../src/v3/data/abilities';
 import { EVENTS, EVENT_ORDER, EVENT_WAVE, eventMap, type EventId } from '../../../src/v3/data/events';
 import { MAPS } from '../../../src/v3/data/maps';
 import { Bot, SKILLS } from '../../../src/v3/sim/bot';
-import { createGame, step } from '../../../src/v3/sim/game';
+import { applyFreePlay, applyLab, createGame, step } from '../../../src/v3/sim/game';
+import { labCard } from '../../../src/v3/data/lab';
 import type { EventRecord } from '../../../src/v3/sim/events';
 import { makeRng } from '../../../src/sim/rng';
 
@@ -19,7 +23,8 @@ const skills = (opt('skills') ?? 'sharp,average').split(',');
 const only = opt('only')?.split(',') as EventId[] | undefined;
 const md = args.includes('--md');
 /** The convoy's flow (the sweep plays at 2: more ships than the default 1). */
-const flow = Number(opt('flow') ?? 2);
+const lab = args.includes('--lab');
+const flow = Number(opt('flow') ?? (lab ? 1 : 2));
 
 /** A seed's shuffle of the roster (as the sweep's), so every weapon gets
  *  drafted across the seeds. */
@@ -29,9 +34,13 @@ const taste = (seed: number): AbilityId[] => makeRng(seed ^ 0x7a57e).shuffle([..
  *  on the water as it is in the campaign (ten waves in, ships are always
  *  under way), then played by the bot to the end. */
 const WARM = 45;
-function play(map: ReturnType<typeof eventMap>, seed: number, skill: string): EventRecord | undefined {
+function play(map: ReturnType<typeof eventMap>, seed: number, skill: string, id: EventId): EventRecord | undefined {
   const g = createGame(map, seed, EVENT_WAVE);
-  if (g.event) g.event.t0 = WARM;
+  if (lab) {
+    const card = labCard(`ev-${id}`)!;
+    applyFreePlay(g, { weapons: card.kit.map((w) => ({ id: w, level: 2 })), frequentDrops: true });
+    applyLab(g, { card: card.id, length: 'quick', mix: 'normal' });
+  } else if (g.event) g.event.t0 = WARM;
   g.flow = flow;
   const bot = new Bot({ ...SKILLS[skill], prefer: taste(seed) }, seed);
   for (let i = 0; i < 30 * 200 && g.phase === 'wave'; i++) {
@@ -46,13 +55,13 @@ const rows: string[] = [];
 if (md) {
   rows.push(`| Event | Map | Bot | Clean | Held | Broken | Ships lost (avg) | Seconds (avg) |`);
   rows.push('|---|---|---|---|---|---|---|---|');
-} else if (!args.includes('--campaign')) console.log(`Special events, ${seeds} seeds each, from wave ${EVENT_WAVE}, flow ${flow}\n`);
+} else if (!args.includes('--campaign')) console.log(`Special events, ${seeds} seeds each, from wave ${EVENT_WAVE}, flow ${flow}${lab ? ', as the Test Lab card plays it' : ''}\n`);
 for (const id of args.includes('--campaign') ? [] : (only ?? EVENT_ORDER)) {
   const map = eventMap(id);
   for (const skill of skills) {
     const out = { clean: 0, held: 0, broken: 0, lost: 0, secs: 0, n: 0, shots: 0, decoy: 0 };
     for (let i = 0; i < seeds; i++) {
-      const e = play(map, 2000 + i, skill);
+      const e = play(map, 2000 + i, skill, id);
       if (!e) continue;
       out.n += 1;
       out[e.outcome as 'clean' | 'held' | 'broken'] += 1;

@@ -14,10 +14,11 @@ const OUT = new URL('../../../docs/design/img/events/', import.meta.url).pathnam
 mkdirSync(OUT, { recursive: true });
 
 // Seconds into each event (after its breather) to take the picture.
+// (Round 6: new moments for the eight events it changed.)
 const AT = {
-  rush: 4.5, 'decoy-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 10, 'gunship-wall': 9, 'wolf-pack': 3.2,
-  'shield-wall': 5, 'supply-raid': 4, blackout: 5, 'carpet-run': 4, 'dive-circus': 6.5, bombardment: 6,
-  'fire-mission': 10, 'repair-yard': 9, 'escort-run': 6, 'siren-field': 5, firestorm: 9,
+  rush: 4.5, 'decoy-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 7.5, 'gunship-wall': 9, 'wolf-pack': 4.4,
+  'shield-wall': 2.6, 'supply-raid': 3.2, blackout: 5, 'carpet-run': 4, 'dive-circus': 4.2, bombardment: 3.6,
+  'fire-mission': 4.6, 'repair-yard': 11, 'escort-run': 6, 'siren-field': 5, firestorm: 9,
 };
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(AT);
 
