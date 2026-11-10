@@ -353,8 +353,9 @@ describe('the Test Lab: an Events section, one card per event', () => {
       expect(c.kit).toHaveLength(3);
       for (const w of c.kit) expect(draftPool(chapterOf(c.map)), `${c.id} ${w}`).toContain(w);
       expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(5);
-      // Round 6 changed some of them (the playtest's notes).
-      expect(cardRev(c.id)).toBe(LAB_CHANGES[c.id].some((x) => x.round === 6) ? 6 : 5);
+      // Later rounds changed some of them (round 6: the playtest's notes;
+      // round 7: the Decoy Drones and the Hydra everywhere).
+      expect(cardRev(c.id)).toBe(Math.max(...LAB_CHANGES[c.id].map((x) => x.round)));
     }
     expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
   });

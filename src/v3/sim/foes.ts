@@ -86,13 +86,18 @@ export interface FoeMark {
   /** A hatch the gun has just gone down into (drawn sinking, then the
    *  doors closing). */
   lowered?: boolean;
-  /** Special events: a new gun's salvos (Bombardment), a periscope's sub
-   *  firing this many seconds after it surfaces, the torpedoes in its spread
-   *  and which of them is fast (-1: none) (Wolf Pack). */
+  /** A new gun's salvos (Bombardment); a periscope's sub firing this many
+   *  seconds after it surfaces, the torpedoes in its spread and which of
+   *  them is fast (-1: none) (every sub from round 7; the Wolf Pack's own). */
   salvos?: number;
   fireAt?: number;
   spread?: number;
   fast?: number;
+  /** How many of its spread may go for ships of their own (the rest fan out
+   *  round the first; all of them when not set, the Wolf Pack's), and the
+   *  least angle between two of its headings (rad). */
+  aimed?: number;
+  fan?: number;
   /** A shell's damage when not a siege gun's (the Fire Mission's barrage). */
   dmg?: number;
   /** A dive bomber's circle: the line its plane flies in on (its heading). */
@@ -140,13 +145,15 @@ export interface FoeData {
   hold?: number;
   stay?: boolean;
   volleys?: number;
-  /** A Torpedo Sub: seconds after surfacing it fires, and dives; a Wolf
-   *  Pack sub's spread (torpedoes) and which of them is fast (-1: none). A
-   *  torpedo: `fast`, 1 when it is a fast one. */
+  /** A Torpedo Sub: seconds after surfacing it fires, and dives; its
+   *  spread (torpedoes) and which of them is fast (-1: none). A torpedo:
+   *  `fast`, 1 when it is a fast one. */
   fireAt?: number;
   up?: number;
   spread?: number;
   fast?: number;
+  aimed?: number;
+  fan?: number;
   /** An Armored Drone in a block: its place in it (px off the block's
    *  aim), and no bank of its own (the block banks together). */
   ox?: number;
@@ -324,9 +331,14 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'torpedoSub': {
-      // A periscope first; the sub itself comes up when it runs out.
+      // A periscope first; the sub itself comes up when it runs out. Round
+      // 7: it fires a spread of three to five, and about one sub in four
+      // puts a fast one in it (which of them, at random).
+      const S = FOE.torpedoSub;
       const p = waterSpot(g, rng);
-      g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: FOE.torpedoSub.warn });
+      const spread = S.spread[0] + rng.int(S.spread[1] - S.spread[0] + 1);
+      const fast = rng.chance(S.fastChance) ? rng.int(spread) : -1;
+      g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + S.aim, spread, fast, aimed: S.aimed, fan: S.fan });
       cue(g, 'sub.surface', p.x, p.y, { gain: 0.5 });
       return;
     }
@@ -661,15 +673,16 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       const tp = aim(th);
       const d = dist(th.x, th.y, tp.x, tp.y);
       // Flown exactly as game.ts flies the attack drone (the same weave, the
-      // same speed), so nothing but the late strobe tells them apart.
+      // same speed), so nothing but its tint tells them apart.
       const at = th.slot ? swarmAim(th, tp, d) : tp;
       th.heading = Math.atan2(at.y - th.y, at.x - th.x) + (d > 80 ? DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase) : 0);
       th.x += Math.cos(th.heading) * th.speed * dt;
       th.y += Math.sin(th.heading) * th.speed * dt;
       swarmPart(g, th, dt);
-      // The tell comes late (Test Lab round 1: "way too obvious" when they
-      // strobed from launch): close in, and not in the first seconds.
-      if (f.state === 0 && d <= FOE.decoy.revealAt && f.t >= FOE.decoy.revealAfter) f.state = 1;
+      // Round 7: no strobe; its tint is there all the way in. `state` 1 is
+      // when a careful player has told it apart (read): close enough to be
+      // looking at the swarm, and not in its first seconds. Nothing draws it.
+      if (f.state === 0 && d <= FOE.decoy.readAt && f.t >= FOE.decoy.readAfter) f.state = 1;
       if (d <= FOE.decoy.fizzle) {
         // At the convoy, a decoy is nothing: a puff and it's gone.
         th.dead = true;
@@ -687,7 +700,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       const S = FOE.torpedoSub;
       if (f.state === 0 && f.t >= (f.fireAt ?? S.fireAt)) {
         f.state = 1;
-        if (f.spread) fireSpread(g, th, f.spread, f.fast ?? -1);
+        if (f.spread) fireSpread(g, th, f.spread, f.fast ?? -1, f.aimed ?? f.spread, f.fan ?? S.fan);
         else fireTorpedo(g, th);
       }
       if (f.t >= (f.up ?? S.up)) {
@@ -1303,10 +1316,10 @@ function heliRocket(g: Game, th: Threat, k: number): void {
 
 /** The torpedo: down a straight line to where its ship will be, and on past
  *  it; the line is drawn. `aim`: at this ship, or (no ship) down this
- *  heading; `fast`: a Wolf Pack's fast one. */
+ *  heading; `fast`: a fast one (an amber line). */
 function fireTorpedo(g: Game, sub: Threat, aim?: { ship?: Ship | null; heading?: number }, fast = false): number {
   const S = FOE.torpedoSub;
-  const speed = THREATS.torpedo.speed * (1 + (g.waveSpeed - 1) * 0.3) * (fast ? EV['wolf-pack'].fastSpeed : 1);
+  const speed = THREATS.torpedo.speed * (1 + (g.waveSpeed - 1) * 0.3) * (fast ? S.fastSpeed : 1);
   const pool = targetable(g);
   const s = aim ? aim.ship ?? null : pool.length ? g.rng.foes.pick(pool) : null;
   if (aim?.heading !== undefined && !s) {
@@ -1343,27 +1356,39 @@ function fireTorpedo(g: Game, sub: Threat, aim?: { ship?: Ship | null; heading?:
   return m.heading;
 }
 
-/** A Wolf Pack sub's spread (Test Lab round 6: "shoot multiple torpedoes
- *  each in different directions"): `n` torpedoes, each at a different ship
- *  where one lies on a heading clear of the others (`fan` rad), else fanned
- *  out round the first; the `fast`th of them is a fast one. */
-function fireSpread(g: Game, sub: Threat, n: number, fast: number): void {
-  const fan = EV['wolf-pack'].fan;
+/** A sub's spread (the Wolf Pack's, Test Lab round 6: "shoot multiple
+ *  torpedoes each in different directions"; every sub's from round 7):
+ *  `n` torpedoes; the first `aimed` each at a different ship where one lies
+ *  on a heading clear of the others (`fan` rad), the rest (and any with no
+ *  such ship) fanned out round the first, over water; the `fast`th of them
+ *  is a fast one. */
+function fireSpread(g: Game, sub: Threat, n: number, fast: number, aimed: number, fan: number): void {
   const pool = g.rng.foes.shuffle([...targetable(g)]);
   const gap = (a: number, b: number) => Math.abs(angleDiff(a, b));
   const used: number[] = [];
   for (let k = 0; k < n; k++) {
-    const clear = (h: number) => used.every((u) => gap(u, h) >= fan);
-    const ship = pool.find((o) => clear(Math.atan2(o.y - sub.y, o.x - sub.x)));
+    // (A hair under `fan`: a heading fanned exactly `fan` off another can
+    // come out a rounding error short of it.)
+    const clear = (h: number) => used.every((u) => gap(u, h) >= fan - 1e-6);
+    const ship = k < aimed ? pool.find((o) => clear(Math.atan2(o.y - sub.y, o.x - sub.x))) : undefined;
     if (ship) {
       pool.splice(pool.indexOf(ship), 1);
       used.push(fireTorpedo(g, sub, { ship }, k === fast));
       continue;
     }
-    // No ship on a clear heading: fanned out round the first.
+    // No ship on a clear heading: fanned out round the first, on the
+    // nearest heading clear of the others that runs over water to its mark
+    // (round 7: a fan of five off a sub by the shore sent some up the beach).
     const h0 = used[0] ?? Math.atan2(g.map.carrier.y - sub.y, g.map.carrier.x - sub.x);
+    const wet = (h: number) => wetRun(g, sub, { x: sub.x + Math.cos(h) * 480, y: sub.y + Math.sin(h) * 480 });
+    const turn = (j: number) => h0 + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * fan;
     let h = h0;
-    for (let j = 1; j <= 6 && !clear(h); j++) h = h0 + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * fan;
+    for (let j = 1; j <= 8 && !(clear(h) && wet(h)); j++) h = turn(j);
+    if (!(clear(h) && wet(h))) {
+      // Nowhere wet and clear: as before, the nearest clear heading.
+      h = h0;
+      for (let j = 1; j <= 6 && !clear(h); j++) h = turn(j);
+    }
     used.push(fireTorpedo(g, sub, { heading: h }, k === fast));
   }
 }
@@ -1496,7 +1521,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
       th.target = CARRIER_TARGET;
       th.heading = 0;
-      th.foe = data(m.fireAt !== undefined ? { fireAt: m.fireAt, up: m.fireAt + FOE.torpedoSub.up - FOE.torpedoSub.fireAt, spread: m.spread, fast: m.fast } : {});
+      th.foe = data(m.fireAt !== undefined ? { fireAt: m.fireAt, up: m.fireAt + FOE.torpedoSub.up - FOE.torpedoSub.fireAt, spread: m.spread, fast: m.fast, aimed: m.aimed, fan: m.fan } : {});
       addFx(g, 'spray', m.x, m.y, { life: 0.7, r: 22 });
     } else if (m.kind === 'dive') {
       // The plane sets off from off the screen (Test Lab round 4: "it
@@ -1774,7 +1799,8 @@ function splitHydra(g: Game, th: Threat): void {
   cue(g, 'foe.split', th.x, th.y);
 }
 
-/** Has this decoy shown itself? (Helpers and bots leave it alone then.) */
+/** Has a careful player told this decoy apart by now (its tint, round 7)?
+ *  The bots and the broadside leave it alone then. */
 export function revealedDecoy(th: Threat): boolean {
   return th.kind === 'decoy' && (th.foe?.state ?? 0) >= 1;
 }
@@ -1836,7 +1862,7 @@ export function foeEta(g: Game, th: Threat): number | null {
   }
 }
 
-/** Worth a shot? Not a decoy that has shown itself. */
+/** Worth a shot? Not a decoy a careful player has told apart. */
 export function foeWorthShooting(g: Game, th: Threat): boolean {
   void g;
   if (revealedDecoy(th)) return false;

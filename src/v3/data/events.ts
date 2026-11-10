@@ -8,7 +8,7 @@
 // to beat it. Nothing in this file (or anywhere in the game) does.
 
 import { RULES } from './config';
-import type { FoeId } from './foes';
+import { FOE, type FoeId } from './foes';
 import type { MapId } from './maps';
 
 export type EventId =
@@ -168,8 +168,11 @@ export const EV = {
    *  `fan` rad apart, and `fast` of the event's torpedoes in all run at
    *  `fastSpeed` × a torpedo's speed. With a spread to fire, a sub fires
    *  `aim` s later than a lone one, and the packs are four and three (five
-   *  and three). */
-  'wolf-pack': { packs: [4, 3], gap: 11, stagger: 1.1, spread: [2, 3], fan: 0.42, fast: 2, fastSpeed: 2.2, aim: 0.6 },
+   *  and three). Round 7: every Torpedo Sub fires a spread now (three to
+   *  five, fanned wider, FOE.torpedoSub); a Wolf Pack sub keeps its two or
+   *  three, each at a ship of its own, its `fan` and its `aim`. A fast
+   *  torpedo is as fast as any sub's (FOE.torpedoSub.fastSpeed). */
+  'wolf-pack': { packs: [4, 3], gap: 11, stagger: 1.1, spread: [2, 3], fan: 0.42, fast: 2, fastSpeed: FOE.torpedoSub.fastSpeed, aim: 0.6 },
   /** `drones` armored drones in a block `cols` wide, `dx` by `dy` px apart;
    *  the block banks together at each of `banks` (share of the way in).
    *  Round 6 ("they all come from the same launcher"): each row of the block
