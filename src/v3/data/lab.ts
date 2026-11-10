@@ -113,12 +113,12 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The swarm spreads out: can you pick out each drone, and the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'No strobe now: the decoys are a shade cooler. Can you tell them apart when you look, and not at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
-  enemy('torpedoSub', 'Is the dashed line readable? Sub, torpedo or move?', ['airstrike', 'bomberWing', 'fullSteam']),
+  enemy('torpedoSub', 'Three to five torpedoes now, now and then a fast one: can you read the lines? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
-  enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
+  enemy('hydra', 'Slower before it splits: does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
   enemy('scavenger', 'It circles over the water waiting for a pickup: does it read apart from the other drones?', ['seeker', 'cutter', 'supplyRun']),
   enemy('attackHeli', 'Its missiles now fly straight in: six hits or its missiles, a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
@@ -336,7 +336,13 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
     { round: 3, what: 'The swarm spreads out; easier to tell apart' },
+    { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream) all the way in' },
   ],
+  // Round 7 (docs/design/v3-enemies-round7.md): the player's enemy notes
+  // from the round 6 event playtest. The combos with these enemies take
+  // the lines on (cardChangeList).
+  hydra: [{ round: 7, what: '25% slower before it splits; its darts as fast as before' }],
+  torpedoSub: [{ round: 7, what: 'Fires a fan of three to five torpedoes; about one sub in four puts a fast one (amber) in it' }],
   armored: [{ round: 2, what: 'New shield that flares on a blocked hit' }],
   spotter: [{ round: 2, what: 'Spots from further away' }],
   stealthJet: [{ round: 2, what: '17% faster' }],
@@ -386,8 +392,14 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   // Round 5 (docs/design/v3-special-events-build.md): the special events;
   // round 6 (docs/design/v3-events-round6.md): the player's notes on them.
   'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
-  'ev-decoy-storm': [{ round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' }],
-  'ev-hydra-bloom': [{ round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' }],
+  'ev-decoy-storm': [
+    { round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' },
+    { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream)' },
+  ],
+  'ev-hydra-bloom': [
+    { round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' },
+    { round: 7, what: 'The Hydras are 25% slower before they split' },
+  ],
   'ev-rocket-convoy': [
     { round: 5, what: 'New event: four armoured trucks in a column down the shore road' },
     { round: 6, what: 'Two columns of four trucks, one down each shore road, firing closer together' },

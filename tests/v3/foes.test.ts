@@ -142,7 +142,7 @@ describe('chapter 1: Home Waters', () => {
     expect(Math.hypot(d0.vx, d0.vy)).toBeGreaterThan(250);
   });
 
-  it('Decoys look like drones far out, strobe up close, and fizzle at the convoy without harm', () => {
+  it('Decoys are read close in (round 7: no strobe, the tint) and fizzle at the convoy without harm', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
     expect(live(g, 'decoy')).toHaveLength(FOE.decoy.fakes);
@@ -243,21 +243,22 @@ describe('chapter 1: Home Waters', () => {
     run(g1, 2);
     expect(Math.hypot(fake.x - real.x, fake.y - real.y)).toBeLessThan(1);
     expect(fake.heading).toBeCloseTo(real.heading, 6);
-    // Close in, but too soon: still a drone. Later, close in: the strobe.
+    // Close in, but too soon: not read yet. Later, close in: read (round
+    // 7: when a careful player has told its tint apart).
     g.threats = [fake];
     fake.foe!.t = 0;
     const s = g.ships.find((o) => o.id === fake.target)!;
-    fake.x = s.x - FOE.decoy.revealAt + 20;
+    fake.x = s.x - FOE.decoy.readAt + 20;
     fake.y = s.y;
-    run(g, FOE.decoy.revealAfter - 0.5);
+    run(g, FOE.decoy.readAfter - 0.5);
     expect(fake.foe!.state).toBe(0);
     const g2 = quiet();
     launchFoe(g2, { at: 0, kind: 'decoy', base: 1 }, base(g2));
     const f2 = live(g2, 'decoy')[0];
     g2.threats = [f2];
-    run(g2, FOE.decoy.revealAfter + 0.1);
+    run(g2, FOE.decoy.readAfter + 0.1);
     const s2 = g2.ships.find((o) => o.id === f2.target)!;
-    f2.x = s2.x - FOE.decoy.revealAt + 20;
+    f2.x = s2.x - FOE.decoy.readAt + 20;
     f2.y = s2.y;
     run(g2, 0.1);
     expect(f2.foe!.state).toBe(1);
@@ -366,7 +367,7 @@ describe('chapter 2: The Narrows', () => {
     expect(g.kills.attackHeli).toBe(0);
   });
 
-  it('a Torpedo Sub shows a periscope first, comes up for 3.5 s (a target), fires one torpedo down a line, and dives', () => {
+  it('a Torpedo Sub shows a periscope first, comes up (a target), fires its spread down lines, and dives', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
     // The periscope is a warning, not a target.
@@ -375,21 +376,25 @@ describe('chapter 2: The Narrows', () => {
     run(g, FOE.torpedoSub.warn + 0.05);
     const sub = live(g, 'torpedoSub')[0];
     expect(sub.hp).toBe(THREATS.torpedoSub.hp);
-    run(g, FOE.torpedoSub.fireAt + 0.05);
+    run(g, FOE.torpedoSub.fireAt + FOE.torpedoSub.aim + 0.05);
     const torp = live(g, 'torpedo')[0];
     expect(torp).toBeDefined();
+    expect(live(g, 'torpedo').length).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
     // It runs straight.
     const h0 = torp.heading;
     run(g, 1);
     expect(torp.heading).toBe(h0);
-    run(g, FOE.torpedoSub.up);
+    run(g, FOE.torpedoSub.up + FOE.torpedoSub.aim);
     expect(sub.dead).toBe(true);
     expect(g.kills.torpedoSub).toBe(0);
-    // One hit stops the torpedo.
+    // One hit stops a torpedo (one on the screen and clear of the hulls, so
+    // the shot gets there before it reaches one).
     g.ammo = 6;
-    if (!torp.dead) {
-      tap(g, torp.x, torp.y, 40);
-      run(g, 3, () => torp.dead);
+    const clear = (t: Threat) => Math.min(...g.ships.map((s) => Math.hypot(s.x - t.x, s.y - t.y)));
+    const near = live(g, 'torpedo').filter((t) => t.y > 20 && t.x > 20 && t.x < VIEW.width - 20).sort((a, b) => clear(b) - clear(a))[0];
+    if (near) {
+      tap(g, near.x, near.y, 12);
+      run(g, 3, () => near.dead);
       expect(g.kills.torpedo).toBe(1);
     }
   });
@@ -397,7 +402,7 @@ describe('chapter 2: The Narrows', () => {
   it('a torpedo hits whatever hull is on its line', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
-    run(g, FOE.torpedoSub.warn + FOE.torpedoSub.fireAt + 0.1);
+    run(g, FOE.torpedoSub.warn + FOE.torpedoSub.fireAt + FOE.torpedoSub.aim + 0.1);
     const torp = live(g, 'torpedo')[0];
     // A hull put right in its path.
     const s = g.ships[0];

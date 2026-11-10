@@ -179,11 +179,11 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
-  decoy: 'Half this swarm is fake. Up close the decoys strobe white: save your shots for the real ones.',
+  decoy: 'Half this swarm is fake. The decoys are a shade cooler, grey not cream: save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
-  torpedoSub: 'Up for a few seconds: three hits. Its torpedo runs the dashed line. Shoot it, or get off the line.',
+  torpedoSub: 'Up for a few seconds: three hits. It fires three to five torpedoes, now and then a fast amber one. Shoot it first, or get off the dashed lines.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
   scavenger: 'It circles over the water, then flies off with the pickup it is after. Shoot it, or take the pickup first.',
   stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',

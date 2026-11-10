@@ -699,7 +699,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
         const spread = E.spread[0] + rng.int(E.spread[1] - E.spread[0] + 1);
         const fast = ev.fastAt.includes(ev.subs) ? rng.int(spread) : -1;
         ev.subs += 1;
-        g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + E.aim + k * E.stagger, spread, fast });
+        g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + E.aim + k * E.stagger, spread, fast, fan: E.fan });
         sent(ev, 'torpedoSub');
       });
       cue(g, 'sub.surface', VIEW.width / 2, VIEW.height / 2, { gain: 0.7 });

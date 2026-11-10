@@ -395,6 +395,8 @@ describe('the Test Lab: an Events section, one card per event', () => {
       for (const w of c.kit) expect(draftPool(chapterOf(c.map)), `${c.id} ${w}`).toContain(w);
       // Round 5's events, and round 7's new ones.
       expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(fresh.includes(c.event!) ? 7 : 5);
+      // Later rounds changed some of them (round 6: the playtest's notes;
+      // round 7: the Decoy Drones and the Hydra everywhere).
       expect(cardRev(c.id)).toBe(Math.max(...LAB_CHANGES[c.id].map((x) => x.round)));
     }
     expect(LAB_ROUNDS.find((r) => r.n === 5)).toEqual({ n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' });
