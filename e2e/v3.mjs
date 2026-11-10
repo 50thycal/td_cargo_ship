@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 18 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 19 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -884,7 +884,7 @@ try {
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
     const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, first: document.querySelector('.v3-lab-sec')?.dataset.section }));
-    check(hub.rows === 89 && hub.events === 17 && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    check(hub.rows === 93 && hub.events === 21 && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
@@ -906,7 +906,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 6 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 6 && saved.v === 18 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 7 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 7 && saved.v === 19 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
@@ -944,7 +944,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 6/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 7/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
@@ -1072,7 +1072,8 @@ try {
       return route.fulfill({ status: r.status, headers: Object.fromEntries(r.headers), body: Buffer.from(await r.arrayBuffer()) });
     });
     const lp = await lc.newPage();
-    // Wave 11: the Strait's special event (its ten waves come before it).
+    // Wave 11: the Strait's special event (its ten waves come before it;
+    // round 7: three runs, waves 11 to 13, the convoy restored first).
     await lp.goto(`${HOST}/v3.html?wave=11`);
     await lp.evaluate(() => {
       localStorage.clear();
@@ -1081,19 +1082,19 @@ try {
     await lp.reload();
     await lp.locator('[data-map="strait"]').tap();
     const brief = await lp.locator('[data-brief-event="rush"]').textContent();
-    check(/Special event:\s*Afterburner Rush, wave 11/.test(brief ?? ''), `the briefing names the map's special event (${brief})`);
+    check(/Special event:\s*Afterburner Rush, waves 11–13/.test(brief ?? ''), `the briefing names the map's special event and its waves (${brief})`);
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
-    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id }));
-    check(/WAVE\s*11\/11/.test(hud11.hud ?? '') && hud11.event === 'rush', `the wave counter shows 11 on a map with an event (${JSON.stringify(hud11)})`);
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent }));
+    check(/WAVE\s*11\/13/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /Run 1 of 3/.test(hud11.eyebrow ?? ''), `the wave counter reads 11/13 and the card says Run 1 of 3 (${JSON.stringify(hud11)})`);
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;
       await lp.waitForTimeout(100);
     }
     await lp.waitForSelector('[data-screen="result"]');
-    const resEv = await lp.evaluate(() => document.querySelector('[data-result-event]')?.dataset.resultEvent);
-    check(resEv === 'rush:clean', `the result screen lists the event and how it went (${resEv})`);
+    const resEv = await lp.evaluate(() => { const e = document.querySelector('[data-result-event]'); return `${e?.dataset.resultEvent} | ${e?.dataset.resultEnding}`; });
+    check(resEv === 'rush:clean rush:clean rush:clean | clean', `the result screen lists the three runs and the ending as a whole (${resEv})`);
     await lp.waitForTimeout(1200);
     await lp.locator('[data-screen="result"] .v2-btn:has-text("Next")').tap();
     await lp.locator('[data-start]').tap();

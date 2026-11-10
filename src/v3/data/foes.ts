@@ -36,11 +36,11 @@ export interface FoeDef {
 
 export const FOES: Record<FoeId, FoeDef> = {
   sprinter: { id: 'sprinter', name: 'Sprint Drones', chapter: 1, cat: 'strike', kind: 'sprinter', from: 'base', blurb: 'A swarm that flares a booster near its ship and sprints in.' },
-  decoy: { id: 'decoy', name: 'Decoy Drones', chapter: 1, cat: 'support', kind: 'decoy', from: 'base', blurb: 'Half the swarm is fake. Up close the decoys strobe white.' },
+  decoy: { id: 'decoy', name: 'Decoy Drones', chapter: 1, cat: 'support', kind: 'decoy', from: 'base', blurb: 'Half the swarm is fake. The decoys are a shade cooler, grey not cream: look closely.' },
   hydra: { id: 'hydra', name: 'Hydra Missile', chapter: 1, cat: 'strike', kind: 'hydra', from: 'base', blurb: 'Kill it and it splits into two darts. Kill it early.' },
   rocketTruck: { id: 'rocketTruck', name: 'Rocket Truck', chapter: 1, cat: 'platform', kind: 'rocketTruck', from: 'road', blurb: 'Raises a launcher, then fires salvos of red rockets you can\'t stop. Kill the truck.' },
   attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Hovers beside the lane firing missile pairs, and moves.' },
-  torpedoSub: { id: 'torpedoSub', name: 'Torpedo Sub', chapter: 2, cat: 'platform', kind: 'torpedoSub', from: 'water', blurb: 'Surfaces, fires a torpedo down a line on the water, dives.' },
+  torpedoSub: { id: 'torpedoSub', name: 'Torpedo Sub', chapter: 2, cat: 'platform', kind: 'torpedoSub', from: 'water', blurb: 'Surfaces, fires three to five torpedoes down lines on the water, now and then a fast one, and dives.' },
   armored: { id: 'armored', name: 'Armored Drone', chapter: 2, cat: 'strike', kind: 'armored', from: 'base', blurb: 'A plate on its nose. Hit it as it banks, or go round with a blast.' },
   scavenger: { id: 'scavenger', name: 'Scavenger Drone', chapter: 2, cat: 'support', kind: 'scavenger', from: 'edge', blurb: 'Circles over the water, then flies off with your pickups. A grabbed pickup is gone.' },
   stealthJet: { id: 'stealthJet', name: 'Stealth Strafer', chapter: 3, cat: 'platform', kind: 'stealthJet', from: 'edge', blurb: 'A strafing jet with no warning. Only its short run-in.' },
@@ -119,14 +119,36 @@ export const FOE = {
   // flies `slot` px across the swarm's front from the next, closing up only
   // over the last `closeUp` px to its ship; and any two closer than `part`
   // px ease apart (at up to `partSpeed` px/s).
-  decoy: { size: 6, fakes: 3, revealAt: 160, revealAfter: 3.5, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
+  // Round 7 ("give just a faint color difference everywhere, instead of the
+  // flash on, flash off"): no strobe. A decoy is drawn a shade cooler than
+  // a real drone (ui/foes.ts DECOY_TINT) all the way in. `readAt` and
+  // `readAfter` are when a careful player, looking at the swarm, has told
+  // the tint apart: within `readAt` px of its ship and not before
+  // `readAfter` s out. The bots and the broadside leave a decoy alone from
+  // then (revealAt 160 / revealAfter 3.5 was the strobe's).
+  decoy: { size: 6, fakes: 3, readAt: 320, readAfter: 2, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
+  // Round 7 ("about 25% slower before the split"): the missile itself is
+  // 25% slower (THREATS.hydra: 150 → 112.5 px/s); its darts are as fast as
+  // before (THREATS.dart, 290).
   hydra: { darts: 2, spread: 0.5, clear: 34 },
   // Test Lab round 1: each firing is a ripple of `perSalvo` small rockets,
   // `ripple` s apart, spread `spread` px round one aim point; the salvo
   // does what one rocket did (1 to the first hull it hits).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6 },
   attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25 },
-  torpedoSub: { warn: 1.5, up: 3.5, fireAt: 1.2, run: 300, hitRadius: 24 },
+  // Round 7 ("the torpedo sub will fire three to five, and then sometimes
+  // fast ones"): every sub fires a spread of `spread` torpedoes (three to
+  // five) on headings at least `fan` rad apart: the first `aimed` at a
+  // ship, the rest fanned out round it over the water (as a Rocket Truck's
+  // salvo lands on and round its ship). With a spread to fire it fires `aim`
+  // s later than a lone torpedo went (2.4 s after it comes up, not 1.2), and
+  // stays up as long after. A sub carries a fast one in its spread with
+  // chance `fastChance` (about one sub in four): it runs at `fastSpeed` × a
+  // torpedo's speed, its line amber. Tuned with the Test Lab bots (80 seeds
+  // of the card, three bots): the Wolf Pack's way (every torpedo at a ship
+  // of its own, 0.6 s later) did 5.3× the lone torpedo's harm to the
+  // convoy; this does about 2.4×.
+  torpedoSub: { warn: 1.5, up: 3.5, fireAt: 1.2, run: 300, hitRadius: 24, spread: [3, 5], aimed: 1, fan: 0.55, aim: 1.2, fastChance: 0.25, fastSpeed: 2.2 },
   armored: { plate: 4, turnAt: 0.45, turn: 1.6, swing: 1.75, front: 70 },
   /** It circles (`orbit` px, `spin` rad/s) over the water `above` px off
    *  the convoy, waiting `wait` s for a pickup before it gives up. */

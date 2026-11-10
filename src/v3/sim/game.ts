@@ -74,8 +74,8 @@ import { LAB_SET } from '../data/lab';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
-import { endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, rerunEvent, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
-import type { EventId, EventOutcome } from '../data/events';
+import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShipScale, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 
 export const CARRIER_TARGET = -1;
 
@@ -269,9 +269,13 @@ export type GameEvent =
   | { kind: 'post'; post: number; down: boolean; lost: boolean }
   | { kind: 'boss' }
   | { kind: 'fork'; lane: number }
-  /** A special event begins (its card), and how it ended (its banner). */
-  | { kind: 'special'; id: EventId; wave: number }
-  | { kind: 'specialEnd'; id: EventId; outcome: EventOutcome; bonus: number };
+  /** A special event begins (its card), and how it ended (its banner): a
+   *  bonus event, or which run of the map's event of how many. */
+  | { kind: 'special'; id: EventId; wave: number; bonus?: boolean; run?: number; runs?: number }
+  | { kind: 'specialEnd'; id: EventId; outcome: EventOutcome; bonus: number; bonusEvent?: boolean; run?: number; runs?: number }
+  /** Round 7's experiment: the convoy and the carrier restored to full
+   *  before the ending's first run. */
+  | { kind: 'restore' };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
@@ -765,6 +769,12 @@ export interface Game {
   /** A special event running (sim/events.ts), and every one met this run. */
   event: EventRun | null;
   eventLog: EventRecord[];
+  /** Bonus events played this run (each plays once). */
+  bonusDone: EventId[];
+  /** Ships lost before the convoy was restored (round 7's three-run
+   *  ending): they stay in `lost`, but no longer count against the run's
+   *  limit. */
+  lossBase: number;
 }
 
 
@@ -907,6 +917,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     lab: null,
     event: null,
     eventLog: [],
+    bonusDone: [],
+    lossBase: 0,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -939,6 +951,9 @@ function startWave(g: Game): void {
   if (isEventWave(g)) {
     g.waveSpeed = spec.speed;
     g.events.push({ kind: 'wave', wave: g.wave });
+    // Round 7's experiment: the convoy and the carrier restored to full
+    // right before the ending's first run.
+    if (!g.lab && ENDING.threeRuns && g.wave === EVENT_WAVE) restoreConvoy(g);
     startEvent(g);
     cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
     return;
@@ -1435,7 +1450,7 @@ export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
  *  was known: plan it again, as if it had just started. */
 function replanWave(g: Game): void {
   if (g.phase !== 'wave' || g.waveT !== 0) return;
-  g.events = g.events.filter((e) => e.kind !== 'wave' && e.kind !== 'special');
+  g.events = g.events.filter((e) => e.kind !== 'wave' && e.kind !== 'special' && e.kind !== 'restore');
   g.event = null;
   g.cues = [];
   g.wave -= 1;
@@ -3536,27 +3551,40 @@ export function step(g: Game, dt: number): void {
   for (const f of g.fx) f.age += dt;
   g.fx = g.fx.filter((f) => f.age < f.life);
 
-  if (g.lost >= g.tempo.lossLimit || g.carrierHp <= 0) {
+  if (shipsSunk(g) >= g.tempo.lossLimit || g.carrierHp <= 0) {
     g.phase = 'lost';
     if (g.event) endEvent(g, true);
     recordWave(g, 'lost');
     return;
   }
   if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g) && !eventBusy(g)) {
-    g.score += 200 * g.wave;
+    // A bonus wave is not one of the map's: no wave score (its event bonus
+    // is its reward) and no wave record, and the draft the wave before it
+    // earned comes now.
+    const bonus = !!g.event?.bonus;
+    if (!bonus) g.score += 200 * g.wave;
     // A special event is graded as its wave ends (its bonus is in the
     // wave's score).
     if (g.event) endEvent(g, false);
     clearField(g);
-    recordWave(g, 'cleared');
-    if (!g.endless && g.wave >= lastWave(g)) {
+    if (!bonus) recordWave(g, 'cleared');
+    const due = bonus ? null : bonusDue(g);
+    if (!bonus && !g.endless && g.wave >= lastWave(g)) {
       g.cleared = true;
       g.phase = 'won';
-    } else {
+    } else if (due) startBonus(g, due);
+    else if (nextRunDue(g)) startWave(g);
+    else {
       g.draftsLeft = g.endless ? 1 : nextPlayedWave(g.wave, g.tempo.stride, lastWave(g)) - g.wave;
       openDraft(g);
     }
   }
+}
+
+/** Ships sunk that count against the run's limit (all of them, unless the
+ *  convoy was restored before the ending: then those since). */
+export function shipsSunk(g: Game): number {
+  return g.lost - g.lossBase;
 }
 
 /** V2 round 13 ("the next wave starts fresh"): a cleared wave takes
@@ -3863,7 +3891,8 @@ export function shipSpeed(g: Game): number {
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
 function laneSpeed(g: Game, s: Ship): number {
-  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
+  // Undertow (round 7): slower inside a beacon's ring.
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1) * eventShipScale(g, s);
 }
 
 /** Tidewater Flats: is the tide in? (A map without a tide: always.) */

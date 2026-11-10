@@ -1,12 +1,12 @@
 // The enemy build: how the new enemies look (docs/design/v3-enemy-build.md).
 // Each one is drawn so its tell reads on a phone: the booster flare, the
-// decoys' strobe, the forked tail, the launcher's slow raise.
+// decoys' cooler tint, the forked tail, the launcher's slow raise.
 
 import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
 import type { Point } from '../data/maps';
-import { revealedDecoy, shellAt, siegeUp, type FoeMark } from '../sim/foes';
+import { shellAt, siegeUp, type FoeMark } from '../sim/foes';
 import { C, deltaWing, hpPips, missile } from './render';
 
 /** Draw a new enemy; false if `th` isn't one of them. */
@@ -17,7 +17,7 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
       drawSprinter(ctx, g, th, heading);
       return true;
     case 'decoy':
-      drawDecoy(ctx, g, th, heading);
+      drawDecoy(ctx, th, heading);
       return true;
     case 'hydra':
       drawHydra(ctx, g, th, heading);
@@ -296,47 +296,18 @@ function drawSprinter(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headin
   ctx.restore();
 }
 
-/** Far off, a decoy is an attack drone, light and all. Up close it gives
- *  itself away: a white strobe and a dotted trail. */
-function drawDecoy(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
-  if (!revealedDecoy(th)) {
-    drawDroneLike(ctx, th, heading);
-    return;
-  }
-  ctx.strokeStyle = 'rgba(230,240,255,0.55)';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([3, 6]);
-  ctx.beginPath();
-  ctx.moveTo(th.x, th.y);
-  ctx.lineTo(th.x - Math.cos(heading) * 46, th.y - Math.sin(heading) * 46);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 0.75;
-  deltaWing(ctx, th.x, th.y, heading, 1, '#b9c4cf');
-  ctx.globalAlpha = 1;
-  // A white ring round every decoy, and the strobe on top.
-  ctx.strokeStyle = 'rgba(235,245,255,0.6)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(th.x, th.y, 20, 0, Math.PI * 2);
-  ctx.stroke();
-  const on = Math.floor(g.t * 10 + th.id) % 3 === 0;
-  if (on) {
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, 16, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
+/** A decoy's body (round 7: "give just a faint color difference
+ *  everywhere, instead of the flash on, flash off"): the attack drone's
+ *  warm cream (C.drone, #e4dccb) turned a shade cooler, a pale grey with a
+ *  hint of blue: the same lightness, its warmth gone (saturation 32% → 10%;
+ *  CIE76 ΔE about 11).
+ *  Side by side it reads; at a glance in a swarm it is easy to miss. */
+export const DECOY_TINT = '#d4dcdc';
 
-/** The attack drone exactly as render.ts draws it, so a hidden decoy
- *  matches the real ones in its swarm. */
-function drawDroneLike(ctx: CanvasRenderingContext2D, th: Threat, heading: number): void {
-  deltaWing(ctx, th.x, th.y, heading, 1, C.drone);
+/** A decoy: the attack drone's shape, flight and shadow, in DECOY_TINT, the
+ *  whole way in. No strobe, ring or trail. */
+function drawDecoy(ctx: CanvasRenderingContext2D, th: Threat, heading: number): void {
+  deltaWing(ctx, th.x, th.y, heading, 1, DECOY_TINT);
 }
 
 /** A two-hit missile with a forked tail: two fins and two exhausts. */
@@ -537,7 +508,7 @@ function drawPeriscope(ctx: CanvasRenderingContext2D, g: Game, x: number, y: num
 /** The torpedo sub, up: a dark hull with its tower, and a ring that empties
  *  as its time on top runs out. */
 function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const left = 1 - Math.min(1, (th.foe?.t ?? 0) / FOE.torpedoSub.up);
+  const left = 1 - Math.min(1, (th.foe?.t ?? 0) / (th.foe?.up ?? FOE.torpedoSub.up));
   ctx.strokeStyle = 'rgba(255,255,255,0.18)';
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -571,8 +542,9 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
 }
 
 /** The torpedo's line on the water: dashed to where it meets its ship (an
- *  X there), fainter beyond. A fast one (the Wolf Pack's, Test Lab round
- *  6): an amber line in short, quick dashes that run along it. */
+ *  X there), fainter beyond. A fast one (Test Lab round 6's Wolf Pack, and
+ *  any sub's from round 7): an amber line in short, quick dashes that run
+ *  along it. */
 function drawTorpedoLine(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const f = th.foe;
   if (!f) return;
@@ -1501,7 +1473,8 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
  *  helper drone it has drawn. */
 function drawLureRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const f = th.foe;
-  const R = FOE.lure.radius;
+  // Its own ring (Undertow's beacons) or the usual.
+  const R = f?.r ?? FOE.lure.radius;
   const k = f?.state === 0 ? Math.min(1, (f.t ?? 0) / FOE.lure.rise) : 1;
   const r = R * (f?.state === 0 ? k * k : 1);
   ctx.fillStyle = `rgba(253,224,71,${0.06 * k})`;

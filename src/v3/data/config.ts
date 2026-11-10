@@ -168,7 +168,9 @@ export const THREATS: Record<
   // The enemy build (data/foes.ts has their other numbers).
   sprinter: { speed: 70, hp: 1, damage: 1, dropChance: 0.1, label: 'Sprint drone' },
   decoy: { speed: 70, hp: 1, damage: 0, dropChance: 0.05, label: 'Decoy drone' },
-  hydra: { speed: 150, hp: 2, damage: 2, dropChance: 0.3, label: 'Hydra missile' },
+  // Round 7 ("about 25% slower before the split"): 150 → 112.5, 0.75×. The
+  // darts it splits into keep their speed.
+  hydra: { speed: 112.5, hp: 2, damage: 2, dropChance: 0.3, label: 'Hydra missile' },
   dart: { speed: 290, hp: 1, damage: 1, dropChance: 0.03, label: 'Hydra dart' },
   rocketTruck: { speed: 75, hp: 4, damage: 0, dropChance: 0.7, label: 'Rocket truck' },
   attackHeli: { speed: 160, hp: 6, damage: 0, dropChance: 0.8, label: 'Attack helicopter' },

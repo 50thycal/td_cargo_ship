@@ -76,8 +76,13 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      Card an active, the Gravity Well by size, the Laser Cutter cuts while
  *      held, the Grapnel reaches the whole screen, Focus slows only after a
  *      hold, Bomber Wing hits aircraft and subs as it passes over, Supply Run
- *      without its magnet, Shield's new levels, Hyper Overdrive's twin shots. */
-export const LOG_VERSION = 18;
+ *      without its magnet, Shield's new levels, Hyper Overdrive's twin shots.
+ *  19: special events, round 7: every map has an event (the three chapter
+ *      finales, Undertow on Dunmar Crossing), the map's event is three runs
+ *      (waves 11 to 13) with the convoy restored before the first, and a
+ *      bonus Siren Field wave after wave 6 when two passives are held. A run
+ *      that won at wave 11 now plays on. */
+export const LOG_VERSION = 19;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

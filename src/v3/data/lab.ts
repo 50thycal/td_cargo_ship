@@ -8,7 +8,7 @@
 import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
-import { EVENTS, EVENT_ORDER, EVENT_WAVE, eventMap, type EventId } from './events';
+import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -73,8 +73,9 @@ export const LAB_MAP: MapId = 'strait';
 export const LAB_LENGTH = { quick: 2, full: 8 } as const;
 export type LabLength = keyof typeof LAB_LENGTH;
 
-/** An event card's length: runs of the event (a draft between). */
-export const LAB_EVENT_RUNS: Record<LabLength, number> = { quick: 1, full: 3 };
+/** An event card's length: runs of the event (a draft between). Full is
+ *  as many runs as the campaign's ending (round 7: the same three). */
+export const LAB_EVENT_RUNS: Record<LabLength, number> = { quick: 1, full: ENDING.runs };
 
 /** An event card's kit is at this level (a player meets the event with ten
  *  waves of drafts behind them). */
@@ -112,12 +113,12 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The swarm spreads out: can you pick out each drone, and the decoys up close? Is waiting worth it?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'No strobe now: the decoys are a shade cooler. Can you tell them apart when you look, and not at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
-  enemy('torpedoSub', 'Is the dashed line readable? Sub, torpedo or move?', ['airstrike', 'bomberWing', 'fullSteam']),
+  enemy('torpedoSub', 'Three to five torpedoes now, now and then a fast one: can you read the lines? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
-  enemy('hydra', 'Does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
+  enemy('hydra', 'Slower before it splits: does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
   enemy('scavenger', 'It circles over the water waiting for a pickup: does it read apart from the other drones?', ['seeker', 'cutter', 'supplyRun']),
   enemy('attackHeli', 'Its missiles now fly straight in: six hits or its missiles, a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
@@ -227,8 +228,16 @@ const EVENT_KITS: Record<EventId, AbilityId[]> = {
   'fire-mission': ['railgun', 'orbital', 'tesla'],
   'repair-yard': ['lance', 'cadence', 'orbital'],
   'escort-run': ['tesla', 'flak', 'railgun'],
-  'siren-field': ['droneScreen', 'gunships', 'flak'],
   firestorm: ['flak', 'railgun', 'bomberWing'],
+  // Round 7: the three chapter finales, and Undertow (a kit with no
+  // helpers: the event must not need them).
+  breakout: ['flak', 'railgun', 'seeker'],
+  'run-the-canal': ['lance', 'airstrike', 'flak'],
+  undertow: ['railgun', 'flak', 'cutter'],
+  'siege-of-vey': ['lance', 'tesla', 'flak'],
+  // The bonus event: two passives in the kit, as the campaign asks of it
+  // before it comes.
+  'siren-field': ['droneScreen', 'gunships', 'flak'],
 };
 
 const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
@@ -236,11 +245,13 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   kind: 'event',
   name: EVENTS[id].name,
   look: EVENTS[id].look,
-  foes: [EVENTS[id].foe],
+  // A chapter finale features all its chapter's new enemies.
+  foes: [EVENTS[id].foe, ...(EVENTS[id].also ?? [])],
   kit: EVENT_KITS[id],
   map: eventMap(id),
   event: id,
-  wave: EVENT_WAVE,
+  // A bonus event starts as it would in the campaign: after its wave.
+  wave: bonusDef(id)?.after ?? EVENT_WAVE,
 }));
 
 /** Maps: a map card plays that map's own waves, with its chapter's enemies. */
@@ -291,6 +302,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' },
   { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
+  { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -324,7 +336,13 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
     { round: 3, what: 'The swarm spreads out; easier to tell apart' },
+    { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream) all the way in' },
   ],
+  // Round 7 (docs/design/v3-enemies-round7.md): the player's enemy notes
+  // from the round 6 event playtest. The combos with these enemies take
+  // the lines on (cardChangeList).
+  hydra: [{ round: 7, what: '25% slower before it splits; its darts as fast as before' }],
+  torpedoSub: [{ round: 7, what: 'Fires a fan of three to five torpedoes; about one sub in four puts a fast one (amber) in it' }],
   armored: [{ round: 2, what: 'New shield that flares on a blocked hit' }],
   spotter: [{ round: 2, what: 'Spots from further away' }],
   stealthJet: [{ round: 2, what: '17% faster' }],
@@ -374,8 +392,14 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   // Round 5 (docs/design/v3-special-events-build.md): the special events;
   // round 6 (docs/design/v3-events-round6.md): the player's notes on them.
   'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
-  'ev-decoy-storm': [{ round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' }],
-  'ev-hydra-bloom': [{ round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' }],
+  'ev-decoy-storm': [
+    { round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' },
+    { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream)' },
+  ],
+  'ev-hydra-bloom': [
+    { round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' },
+    { round: 7, what: 'The Hydras are 25% slower before they split' },
+  ],
   'ev-rocket-convoy': [
     { round: 5, what: 'New event: four armoured trucks in a column down the shore road' },
     { round: 6, what: 'Two columns of four trucks, one down each shore road, firing closer together' },
@@ -412,7 +436,15 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 6, what: 'The repair ships sail in from different sides to meet on the mothership\'s course; none stuck' },
   ],
   'ev-escort-run': [{ round: 5, what: 'New event: one heavy in three rings of guards' }],
-  'ev-siren-field': [{ round: 5, what: 'New event: five lure beacons and six swarms' }],
+  'ev-siren-field': [
+    { round: 5, what: 'New event: five lure beacons and six swarms' },
+    { round: 7, what: 'Now a bonus event: a bonus wave after wave 6 on any map, when you hold two passives' },
+  ],
+  // Round 7 (docs/design/v3-events-round7.md): every map has its own event.
+  'ev-breakout': [{ round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' }],
+  'ev-run-the-canal': [{ round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' }],
+  'ev-undertow': [{ round: 7, what: "New event (Dunmar Crossing): beacons by the lanes slow the ships in their rings" }],
+  'ev-siege-of-vey': [{ round: 7, what: 'New event (Citadel of Vey): repair ships, a guarded heavy and beacons, then firebombs' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };
 

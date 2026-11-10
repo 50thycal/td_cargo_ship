@@ -25,11 +25,11 @@ function labGame(id: string, seed = 3, length: 'quick' | 'full' = 'full'): Game 
 }
 
 describe('the hub\'s cards', () => {
-  it('every special event (17), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (89 cards)', () => {
+  it('every special event (21: round 7 added four), every new enemy (17), every weapon (27: Test Lab round 5 cut two), eight combos and every map, each once (93 cards)', () => {
     const ids = LAB_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(89);
-    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(17);
+    expect(ids).toHaveLength(93);
+    expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(21);
     expect(ids).not.toContain('w-overclock');
     expect(ids).not.toContain('w-timeWarp');
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy')).toHaveLength(17);
@@ -277,7 +277,7 @@ const today = new Date().toISOString().slice(0, 10);
 const oldShape = {
   results: {
     rocketTruck: { verdict: 'keep', tags: ['Fun'], note: 'best one so far', waves: 2, ended: 'done', stats, at: '2026-11-08T01:00:00Z' },
-    torpedoSub: { verdict: 'keep', tags: [], note: '', waves: 2, ended: 'done', stats, at: '2026-11-08T01:10:00Z' },
+    sprinter: { verdict: 'keep', tags: [], note: '', waves: 2, ended: 'done', stats, at: '2026-11-08T01:10:00Z' },
   },
   length: 'quick',
   mix: 'normal',
@@ -287,14 +287,15 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(LAB_ROUND).toBe(6);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(LAB_ROUND).toBe(7);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
     }
     expect(cardRev('rocketTruck')).toBe(2);
-    expect(cardRev('torpedoSub')).toBe(1);
+    // The Torpedo Sub first changed in round 7 (its spread).
+    expect(LAB_CHANGES.torpedoSub!.map((c) => c.round)).toEqual([7]);
     expect(cardRev('w-gunships')).toBe(5);
     expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
@@ -303,7 +304,7 @@ describe('test rounds and card versions', () => {
     expect(LAB_CHANGES.diveBomber!.find((c) => c.round === 3)).toBeDefined();
     expect(cardChanges('diveBomber', 2)[0]).toBe('Quicker, and now an A-10 Warthog');
     expect(LAB_CHANGES.cloud!.find((c) => c.round === 3)).toBeDefined();
-    expect(cardRev('decoy')).toBe(3);
+    expect(LAB_CHANGES.decoy!.map((c) => c.round)).toEqual([2, 3, 7]);
     expect(cardChanges('combo-decoy-sprint', 2)).toContain('Decoy Drones: The swarm spreads out; easier to tell apart');
     expect(cardRev('siege')).toBe(2);
     // Round 4 (the player's notes of 2026-11-09): every combo now comes in
@@ -326,7 +327,8 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('combo-cloud-flak', 4)).toEqual(['Incendiary Missile: New fire on the water; the burst does no damage, only the fire; a little faster']);
     expect(labCard('tender')!.name).toBe('Repair Ship');
     expect(labCard('combo-tender-bodyguard')!.name).toBe('Repair Ship + Bodyguard Ring');
-    for (const id of ['decoy', 'combo-spotter-siege']) expect(cardRev(id), id).toBeLessThan(5);
+    expect(cardRev('combo-spotter-siege')).toBeLessThan(5);
+    expect(LAB_CHANGES.decoy!.some((c) => c.round === 5)).toBe(false);
     // Round 5 (the player's round 4 weapon notes): a line for every weapon
     // changed, and nothing for the ones kept as they were.
     const changed = ['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield'];
@@ -345,7 +347,8 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('combo-siege-truck')).toHaveLength(4);
     // Changing a weapon changes the combos that use it: none use Cadence or
     // Dual Wield, so their round 4 lines are their own.
-    expect(cardChanges('combo-hydra-tesla', 3)).toEqual(['Its enemies now arrive together; Tesla drops by the carrier just before']);
+    // (Round 7: the Hydra changed, and the combo takes its line on.)
+    expect(cardChanges('combo-hydra-tesla', 3)).toEqual(['Its enemies now arrive together; Tesla drops by the carrier just before', 'Hydra Missile: 25% slower before it splits; its darts as fast as before']);
   });
 
   it('progress saved before rounds becomes round 1 history', () => {
@@ -363,15 +366,16 @@ describe('test rounds and card versions', () => {
     expect(currentEntry(p, 'rocketTruck')).toBeUndefined();
     expect(olderEntries(p, 'rocketTruck')).toHaveLength(1);
     expect(labStatus(p, 'rocketTruck')).toBe('changed');
-    // The Torpedo Sub didn't change: its round 1 verdict still counts.
-    expect(labStatus(p, 'torpedoSub')).toBe('tested');
-    expect(currentEntry(p, 'torpedoSub')!.note).toBe('');
+    // The Sprint Drones didn't change: their round 1 verdict still counts.
+    // (This was the Torpedo Sub until it changed in round 7.)
+    expect(labStatus(p, 'sprinter')).toBe('tested');
+    expect(currentEntry(p, 'sprinter')!.note).toBe('');
     expect(labStatus(p, 'diveBomber')).toBe('untested');
     // The events come first on the checklist (round 5), but the changed
     // card first.
     const next = nextCards(p, 3).map((c) => c.id);
     expect(next[0]).toBe('rocketTruck');
-    expect(next).not.toContain('torpedoSub');
+    expect(next).not.toContain('sprinter');
     expect(nextCards(p, 1, 'rocketTruck')[0].id).toBe('ev-rush');
     expect(nextCards(p, 40, 'rocketTruck').map((c) => c.id).filter((id) => !id.startsWith('ev-'))[0]).toBe('diveBomber');
   });
