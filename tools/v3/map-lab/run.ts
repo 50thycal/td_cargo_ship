@@ -9,6 +9,10 @@
 //                                             bot runs on every map: on/off equivalence, replay, reconciliation
 //   npm run v3:map-lab -- bench               what telemetry costs: time, bytes, and the sampling rate's error
 //   npm run v3:map-lab -- preview             what the baseline's telemetry adds up to, map by map
+//   npm run v3:map-lab -- experiment [--seeds=8] [--maps=a,b] [--personas=you,tryhard]
+//                                             the convoy policies A to D on the same seeds, with their denominators
+//   npx vite-node tools/v3/map-lab/page.ts -- report.html --logs=a.json,b.json
+//                                             a report page (maps, layers, numbers) from any play logs
 //
 // A sidecar is a pure function of the build and the log, so nothing here
 // needs a sidecar to have been saved when the run was played.
@@ -22,6 +26,11 @@ import { PERSONAS, playMimic } from '../../../src/v3/sim/mimic';
 import { LOG_VERSION, Playback, replay, type PlayLog } from '../../../src/v3/sim/playlog';
 import { TEL_SAMPLING, reconcile, sidecarDigest, type TelemetrySidecar } from '../../../src/v3/sim/telemetry';
 import { PLATFORMS, SCOPES, buildPreview } from './preview';
+import { CONVOY_REV, mapConvoy } from '../../../src/v3/data/convoy';
+import { cohort, paired, runTrial, type Cohort, type TrialSpec } from '../../../src/v3/sim/convoyLab';
+import { REFERENCE_MAPS } from '../../../src/v3/sim/mapLab';
+
+import { ENCOUNTER_REV } from '../../../src/v3/data/encounters';
 
 const DIR = 'tests/v3/fixtures/map-lab';
 const args = process.argv.slice(2).filter((a) => a !== '--');
@@ -322,7 +331,61 @@ function preview(): void {
   }
 }
 
+/** The convoy experiment: the same maps, seeds, bots and Armory under each
+ *  policy. Two tables a map, never mixed: a fixed schedule (equal ships
+ *  asked of every policy, no run ended by ships lost) and each policy under
+ *  its own rules. Every row says what it is out of. */
+function experiment(): void {
+  const maps = (opt('maps')?.split(',') ?? REFERENCE_MAPS) as MapId[];
+  const seeds = Array.from({ length: Number(opt('seeds') ?? 8) }, (_, k) => 500 + k);
+  const personas = (opt('personas') ?? 'you,tryhard').split(',');
+  const kit = (p: string) => (p === 'you' ? {} : { warhead: 3 });
+  const enc = flag('encounters');
+  const out: Record<string, unknown>[] = [];
+  const num = (c: Cohort, k: string, d = 0) => c.m[k].mean.toFixed(d);
+  const range = (c: Cohort, k: string, d = 0) => `${c.m[k].mean.toFixed(d)} (${c.m[k].min.toFixed(d)}-${c.m[k].max.toFixed(d)})`;
+  for (const map of maps)
+    for (const persona of personas) {
+      const mk = (name: string, o: Partial<TrialSpec>): Cohort => cohort(name, seeds.map((seed) => runTrial({ map, seed, policy: 'auto', obligation: 'fixed', pilot: 'never', persona, armory: kit(persona), ...(enc ? { encounters: { rev: ENCOUNTER_REV } } : {}), ...o })));
+      const blocks: [string, Cohort[]][] = [
+        [
+          `fixed schedule (the map's flow, step ${mapConvoy(map).flow}; no run ends on ships lost)`,
+          [
+            mk('A automatic', { policy: 'auto' }),
+            mk('B formations', { policy: 'formation' }),
+            mk('D tactical, never used', { policy: 'tactical', pilot: 'never' }),
+            mk('D tactical, sharp', { policy: 'tactical', pilot: 'sharp' }),
+            mk('D tactical, random', { policy: 'tactical', pilot: 'random' }),
+            mk('D tactical, spam', { policy: 'tactical', pilot: 'spam' }),
+          ],
+        ],
+        ['fixed schedule at the fastest flow (step 4)', [mk('A automatic', { policy: 'auto', flow: 4 }), mk('B formations', { policy: 'formation', flow: 4 }), mk('D tactical, sharp', { policy: 'tactical', pilot: 'sharp', flow: 4 })]],
+        [
+          'each policy under its own rules (the game\'s loss limit; C keeps its flow slider and its score)',
+          [mk('A automatic', { policy: 'auto', obligation: 'natural' }), mk('B formations', { policy: 'formation', obligation: 'natural' }), mk('C current controls', { policy: 'current', obligation: 'natural' }), mk('D tactical, sharp', { policy: 'tactical', pilot: 'sharp', obligation: 'natural' })],
+        ],
+      ];
+      console.log(`\n${map} · bot ${persona} · Armory ${persona === 'you' ? 'base gun' : 'Wide Warhead 3'} · ${seeds.length} seeds${enc ? ` · encounters rev ${ENCOUNTER_REV}` : ''}`);
+      for (const [title, cohorts] of blocks) {
+        console.log(`  ${title}`);
+        console.log(`    ${pad('policy', 24)} ${lpad('wave', 5)} ${lpad('done', 4)} ${lpad("groups", 6)} ${lpad('sailed', 6)} ${lpad('deliv', 6)} ${lpad('sunk', 12)} ${lpad('hull lost', 14)} ${lpad('carrier', 7)} ${lpad('ship-min', 8)} ${lpad('hull/ship-min', 18)} ${lpad('score', 7)} ${lpad('cmds', 5)}  vs A: hull, sunk (seeds lower)`);
+        const a = cohorts[0];
+        for (const c of cohorts) {
+          const bad = c.trials.filter((t) => t.problems.length).length;
+          const dh = paired(a, c, (t) => t.hpShip);
+          const ds = paired(a, c, (t) => t.sunk);
+          console.log(
+            `    ${pad(c.name, 24)} ${lpad(num(c, 'wave', 1), 5)} ${lpad(`${c.finished}/${c.n}`, 4)} ${lpad(num(c, 'scheduled'), 6)} ${lpad(num(c, 'sailed'), 6)} ${lpad(num(c, 'delivered'), 6)} ${lpad(range(c, 'sunk', 1), 12)} ${lpad(range(c, 'hpShip'), 14)} ${lpad(num(c, 'hpCarrier', 1), 7)} ${lpad(num(c, 'shipMinutes'), 8)} ${lpad(range(c, 'risk', 2), 18)} ${lpad(num(c, 'score'), 7)} ${lpad(num(c, 'commands', 1), 5)}  ${c === a ? '-' : `${dh.mean >= 0 ? '+' : ''}${dh.mean.toFixed(1)} (${dh.lower}/${dh.n}), ${ds.mean >= 0 ? '+' : ''}${ds.mean.toFixed(1)} (${ds.lower}/${ds.n})`}${bad ? `  ${bad} DO NOT ADD UP` : ''}`,
+          );
+          out.push({ map, persona, block: title, policy: c.name, n: c.n, finished: c.finished, m: c.m, vsA: c === a ? null : { hull: dh, sunk: ds, delivered: paired(a, c, (t) => t.delivered), score: paired(a, c, (t) => t.score) }, problems: bad });
+        }
+      }
+    }
+  saveJson({ seeds: seeds.length, convoyRev: CONVOY_REV, encounters: enc ? ENCOUNTER_REV : null, rows: out });
+}
+
 if (cmd === 'baseline') baseline();
+else if (cmd === 'experiment') experiment();
 else if (cmd === 'preview') preview();
 else if (cmd === 'telemetry') telemetry();
 else if (cmd === 'audit') audit();

@@ -27,6 +27,7 @@ import {
   RULES, SHIP, SUB, SUPERSONIC, THREATS, TRUCK, VIEW, VIP, type PickupKind, type ThreatKind,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
+import type { CommandId, ConvoyPolicy, Obligation } from '../data/convoy';
 import { AB, WEAPON, type AbilityId, type CardId } from '../data/abilities';
 import { FOE, FOES, FOE_WAVE, HEAVY_FOES } from '../data/foes';
 import { WAVE_TABLE } from '../data/waves';
@@ -110,10 +111,12 @@ export interface TelHeader {
   rules: { shipHp: number; carrierHp: number; lossLimit: number; vipLoss: number; lastWave: number; eventWave: number; rack: number };
   /** The convoy controls in force: the current five flow steps and four
    *  formations, and where they stood at the start. */
-  convoy: { policy: 'current'; rev: 1; flow: number; formation: FormationId; flowSteps: number; formations: FormationId[] };
+  convoy: { policy: ConvoyPolicy; obligation?: Obligation; rev: number; flow: number; formation: FormationId; flowSteps: number; formations: FormationId[]; commands?: CommandId[] };
   /** A Test Lab run: its card, its length, and the card's version and
    *  test round (the lab's own versioning). */
   lab?: { card: string; length?: string; rev?: number; round?: number };
+  /** The authored encounters' revision, when they were on. */
+  encounters?: number;
   freePlay?: boolean;
   sampling: { ship: number; threat: number; dt: number };
 }
@@ -160,6 +163,8 @@ export type TelEvent = Base &
         raid?: number;
         paired?: 1;
         cargo?: 1;
+        /** The authored encounter that sent it (data/encounters.ts). */
+        enc?: string;
         /** The same threat back on the board (a siege gun up from its
          *  hatch, a Spotter back for its next turn). */
         back?: 1;
@@ -255,13 +260,21 @@ export type TelEvent = Base &
       }
     | {
         k: 'cmd';
-        what: 'flow' | 'formation' | 'fork';
-        /** What was asked for and what stood before. `ok` 0: nothing
-         *  changed (`why` says: it was already set, or out of range). */
-        req: number | FormationId;
-        was: number | FormationId;
+        /** Flow, formation and the fork are today's controls; rush,
+         *  disperse, hold and release are the lab's tactical commands
+         *  (sim/convoy.ts). */
+        what: 'flow' | 'formation' | 'fork' | 'rush' | 'disperse' | 'hold' | 'release';
+        /** What was asked for and what stood before (a release: who
+         *  ended the Hold, and the groups that were waiting). `ok` 0:
+         *  nothing changed, and `why` says: already set (`same`), not this
+         *  policy's to give (`policy`, `fixed`), `cooldown`, another
+         *  posture running (`busy`), no ship afloat (`none`). */
+        req: number | string;
+        was: number | string;
         ok: 0 | 1;
-        why?: 'same';
+        why?: string;
+        /** The ships a Rush or a Disperse took hold of. */
+        ids?: number[];
         /** Ships afloat it reaches, and seconds to the next sailing. */
         ships: number;
         next: number;
@@ -270,7 +283,7 @@ export type TelEvent = Base &
     | { k: 'mark+'; id: number; kind: FoeMark['kind']; x: number; y: number; dur: number; link?: number }
     | { k: 'mark-'; id: number; kind: FoeMark['kind']; x: number; y: number; done: 0 | 1 }
     | { k: 'warn'; what: 'raid' | 'aircraft'; x?: number; y?: number; theme?: string; bases?: number[]; lead: number; raid?: number; kind?: ThreatKind }
-    | { k: 'env'; what: 'lock' | 'tide' | 'post' | 'base' | 'flare' | 'shield'; i?: number; st: string | number }
+    | { k: 'env'; what: 'lock' | 'tide' | 'post' | 'base' | 'flare' | 'shield' | 'encounter'; i?: number; st: string | number }
     | { k: 'audit'; what: 'hp' | 'ship' | 'pickup' | 'threat' | 'carrier' | 'post'; id: number; want?: number; got?: number }
   );
 
@@ -382,6 +395,9 @@ export function contentHash(): string {
 export function attachTelemetry(g: Game, meta: TelMeta): Telemetry {
   const tel = new Telemetry(g, meta, contentHash());
   g.tel = tel;
+  // Attached after the first wave was planned: its authored encounters are
+  // told of now, as later waves' are when they are planned.
+  if (g.enc && g.enc.wave === g.wave) for (const id of g.enc.now) tel.encounter(g, id);
   return tel;
 }
 
@@ -446,8 +462,17 @@ export class Telemetry {
       armory: { ...g.armory },
       levels: { ...g.levels },
       rules: { shipHp: g.stats.shipHp, carrierHp: g.stats.carrierHp, lossLimit: g.tempo.lossLimit, vipLoss: VIP.loss, lastWave: lastWave(g), eventWave: EVENT_WAVE, rack: g.stats.rack },
-      convoy: { policy: 'current', rev: 1, flow: g.flow, formation: g.formation, flowSteps: FLOW_STEPS.length, formations: Object.keys(FORMATIONS) as FormationId[] },
+      convoy: {
+        policy: g.convoy?.setup.policy ?? 'current',
+        ...(g.convoy ? { obligation: g.convoy.setup.obligation, commands: g.convoy.setup.policy === 'tactical' ? [...g.convoy.def.commands] : [] } : {}),
+        rev: g.convoy?.setup.rev ?? 1,
+        flow: g.flow,
+        formation: g.formation,
+        flowSteps: FLOW_STEPS.length,
+        formations: Object.keys(FORMATIONS) as FormationId[],
+      },
       ...(meta.lab ? { lab: meta.lab } : {}),
+      ...(g.enc ? { encounters: g.enc.setup.rev } : {}),
       ...(g.freePlay ? { freePlay: true } : {}),
       sampling: { ship: TEL_SAMPLING.ship, threat: TEL_SAMPLING.threat, dt: 1 / 60 },
     };
@@ -554,6 +579,7 @@ export class Telemetry {
       if (from !== undefined) e.from = from;
       if (th.paired) e.paired = 1;
       if (th.cargo) e.cargo = 1;
+      if (th.enc) e.enc = th.enc;
       if (th.kind === 'ballistic') {
         e.ix = r1(th.ix);
         e.iy = r1(th.iy);
@@ -1010,13 +1036,20 @@ export class Telemetry {
 
   /** A convoy command: what was asked, what stood, and whether anything
    *  changed. */
-  command(g: Game, what: Extract<TelEvent, { k: 'cmd' }>['what'], req: number | FormationId, was: number | FormationId, ok: boolean): void {
+  command(g: Game, what: Extract<TelEvent, { k: 'cmd' }>['what'], req: number | string, was: number | string, ok: boolean, why?: string, ids?: number[]): void {
+    this.sync(g);
     this.totals.commands += 1;
     this.push({
-      ...this.base(g), k: 'cmd', what, req, was, ok: ok ? 1 : 0, ...(ok ? {} : { why: 'same' as const }),
+      ...this.base(g), k: 'cmd', what, req, was, ok: ok ? 1 : 0, ...(ok ? {} : { why: why ?? 'same' }), ...(ids ? { ids } : {}),
       ships: g.ships.filter((s) => !s.vip).length,
       next: r3(Math.max(0, g.spawnT)),
     });
+  }
+
+  /** An authored encounter is in this wave (data/encounters.ts). */
+  encounter(g: Game, id: string): void {
+    this.sync(g);
+    this.push({ ...this.base(g), k: 'env', what: 'encounter', st: id });
   }
 
   /** An aircraft's warning arrow goes up. */

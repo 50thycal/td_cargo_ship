@@ -1,0 +1,31 @@
+{
+ "date": "2026-11-12",
+ "tests": {
+  "total": 1476,
+  "files": 53,
+  "byFile": {
+   "mapAnalytics.test.ts": 21,
+   "convoy.test.ts": 21,
+   "encounters.test.ts": 15,
+   "telemetry.test.ts": 26,
+   "mapLabBaseline.test.ts": 6
+  }
+ },
+ "e2e": {
+  "v3": 215,
+  "v3-map-lab": 18,
+  "v3-map-analytics": 24,
+  "v3-convoy": 22,
+  "v3-encounters": 14
+ },
+ "baseline": {
+  "runs": 12,
+  "same": true
+ },
+ "build": {
+  "mainKb": 588.75,
+  "mainGz": 197.3,
+  "viewerKb": 28.97,
+  "viewerGz": 11.58
+ }
+}

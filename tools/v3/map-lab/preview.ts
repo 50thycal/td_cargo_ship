@@ -240,11 +240,24 @@ function addRun(sc: TelemetrySidecar, into: Record<Scope, ScopeData>): void {
   }
 }
 
-export function buildPreview(): MapPreview[] {
-  return REFERENCE_MAPS.map((map) => {
+/** The baseline's runs, map by map; or, given play logs (a report), those. */
+export function buildPreview(logs?: PlayLog[]): MapPreview[] {
+  const sources: { map: MapId; id: string; covers: string; sidecar: () => TelemetrySidecar }[] = logs
+    ? logs.map((log) => ({
+        map: log.map,
+        id: log.id,
+        covers: `${log.dev?.bot ? `bot ${log.dev.bot}` : 'a person'}, ${log.lab ? `Test Lab card ${log.lab.card}` : `from wave ${log.firstWave}`}, ended ${log.end ?? 'unfinished'}`,
+        sidecar: () => {
+          const g = replay(log, { telemetry: true });
+          return g.tel!.sidecar(g);
+        },
+      }))
+    : BASELINE.map((r) => ({ map: r.map, id: r.id, covers: r.covers, sidecar: () => sidecarOf(r.id) }));
+  const maps = logs ? [...new Set(sources.map((s) => s.map))] : REFERENCE_MAPS;
+  return maps.map((map) => {
     const scopes: Record<Scope, ScopeData> = { waves: emptyScope(), events: emptyScope() };
-    const runs = BASELINE.filter((r) => r.map === map).map((r) => {
-      const sc = sidecarOf(r.id);
+    const runs = sources.filter((r) => r.map === map).map((r) => {
+      const sc = r.sidecar();
       addRun(sc, scopes);
       return { id: r.id, covers: r.covers, phases: sc.phases.map((p) => `${p.wave}${p.kind === 'wave' ? '' : p.kind === 'bonusEvent' ? '+bonus' : `:run ${p.run}`}`) };
     });
@@ -354,6 +367,8 @@ export function gridTop(kind: 'exposure' | 'risk', d: ScopeData): number {
 /** One map as an SVG: the game's own map drawing, dimmed, with every layer
  *  for both scopes on top (the page shows one at a time). */
 export function renderPreview(p: MapPreview): string {
+  // (The diagram renderer draws straight lanes: right for the first five maps. On a map with path lanes the
+  // game's own Map Analytics screen has the real picture.)
   const base = renderMap(fromMapDef(MAPS[p.map]));
   const body = base.slice(base.indexOf('>') + 1, base.lastIndexOf('</svg>'));
   const c = MAPS[p.map].carrier;

@@ -11,13 +11,17 @@
 // watched run records an ordinary log that replays exactly. Its dice are
 // its own (seeded from the game seed), so a seed always plays out the same.
 
+import { applyConvoy } from './convoy';
+import { ConvoyPilot, type PilotSkill } from './convoyPilot';
+import type { ConvoySetup } from '../data/convoy';
+import type { EncounterSetup } from '../data/encounters';
 import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, loadout, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
 
@@ -552,6 +556,23 @@ function weighted<T extends { weight: number }>(rng: RNG, items: T[]): T {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** How a bot game is set up. `convoy`, `pilot` and `undefended` are the
+ *  Map & Convoy Lab's: a convoy policy, the skill its commands are given
+ *  with, and a run with no shooting at all (the geometry alone). */
+export interface RunOpts {
+  persona?: Persona;
+  firstWave?: number;
+  tempo?: Tempo;
+  build?: string;
+  dice?: number;
+  armory?: ArmoryLevels;
+  freePlay?: FreePlaySetup;
+  convoy?: ConvoySetup;
+  encounters?: EncounterSetup;
+  pilot?: PilotSkill;
+  undefended?: boolean;
+}
+
 /** A bot game played a slice at a time, recorded: the ghost check runs one
  *  in the browser between frames, the fitting tools in one go. */
 export class BotRun {
@@ -560,20 +581,30 @@ export class BotRun {
   private bot: Mimic;
   private io: BotIO;
   private guard = 0;
+  private pilot: ConvoyPilot | null = null;
+  private shoots = true;
 
   constructor(
     map: MapId,
     seed: number,
-    opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels; freePlay?: FreePlaySetup } = {},
+    opts: RunOpts = {},
   ) {
     const g = (this.game = createGame(map, seed, opts.firstWave ?? 1, opts.tempo, opts.armory));
     if (opts.freePlay) applyFreePlay(g, opts.freePlay);
+    // The Map & Convoy Lab: authored encounters, a convoy policy, and who
+    // gives its commands.
+    if (opts.encounters) applyEncounters(g, opts.encounters);
+    if (opts.convoy) applyConvoy(g, opts.convoy);
+    if (opts.pilot && opts.pilot !== 'never') this.pilot = new ConvoyPilot(opts.pilot, seed);
+    this.shoots = !opts.undefended;
     const rec = (this.rec = new Recorder(g, {
       build: opts.build ?? 'sim',
       startedAt: new Date(0).toISOString(),
       firstWave: opts.firstWave ?? 1,
       ...(opts.freePlay ? { freePlay: opts.freePlay } : {}),
       ...(opts.tempo ? { tempo: opts.tempo } : {}),
+      ...(opts.encounters ? { encounters: opts.encounters } : {}),
+      ...(opts.convoy ? { convoy: opts.convoy } : {}),
       dev: { preset: 'sim', watch: true },
       device: { w: 0, h: 0, dpr: 1, touch: true, ua: 'mimic' },
     }));
@@ -594,7 +625,9 @@ export class BotRun {
   /** Play up to `steps` sim steps; true once the game is over. */
   advance(steps: number): boolean {
     for (let n = 0; n < steps && !this.done; n++, this.guard++) {
-      this.bot.act(this.game, this.io);
+      if (this.shoots) this.bot.act(this.game, this.io);
+      else if (this.game.phase === 'draft') this.io.pick(this.game.offer[0]);
+      this.pilot?.act(this.game, (id) => this.rec.command(id));
       step(this.game, SIM_DT);
     }
     return this.done;
@@ -624,11 +657,7 @@ export function lostByWave(g: Game): number[] {
 }
 
 /** A whole bot game, recorded: the fitting tools and tests. */
-export function playMimic(
-  map: MapId,
-  seed: number,
-  opts: { persona?: Persona; firstWave?: number; tempo?: Tempo; build?: string; dice?: number; armory?: ArmoryLevels; freePlay?: FreePlaySetup } = {},
-): { game: Game; log: PlayLog } {
+export function playMimic(map: MapId, seed: number, opts: RunOpts = {}): { game: Game; log: PlayLog } {
   const run = new BotRun(map, seed, opts);
   run.advance(Infinity);
   return { game: run.game, log: run.finish() };

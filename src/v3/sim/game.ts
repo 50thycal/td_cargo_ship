@@ -78,6 +78,8 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
+import { encountersFor, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupDue, groupOwed, groupSailed, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -165,6 +167,9 @@ export interface Threat {
   dropT?: number;
   /** The sub or truck that fired it. */
   from?: number;
+  /** Telemetry only: the authored encounter (data/encounters.ts) that
+   *  sent it. */
+  enc?: string;
   /** Telemetry only (nothing in the sim reads it): what launched it when
    *  that is not a base, a sub or a truck: the bomber or helicopter that
    *  dropped it, the threat it split off, the warning mark it came up from. */
@@ -332,6 +337,10 @@ export interface Launch {
   cargo?: boolean;
   /** Brought by an enemy pair's set (data/pairs.ts). */
   paired?: boolean;
+  /** An authored encounter's launch (data/encounters.ts): its id, and who
+   *  it is aimed at as it leaves. */
+  enc?: string;
+  aim?: BeatAim;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -367,6 +376,9 @@ export interface Raider {
   /** Whole units left (a runner fires one unit per stop). */
   units: Unit[];
   fireT: number;
+  /** An authored encounter's launcher: its id and its aim. */
+  enc?: string;
+  aim?: BeatAim;
 }
 
 export interface RaiderSpawn {
@@ -374,6 +386,8 @@ export interface RaiderSpawn {
   kind: RaiderKind;
   path: Point[];
   units: Unit[];
+  enc?: string;
+  aim?: BeatAim;
 }
 
 /** Where each launch came from (the analyzer reads this). */
@@ -806,6 +820,12 @@ export interface Game {
   /** The Map & Convoy Lab's telemetry (sim/telemetry.ts): null unless a
    *  run asked for it. It only watches: nothing in the sim reads it. */
   tel: Telemetry | null;
+  /** The Map & Convoy Lab's convoy policy and commands (sim/convoy.ts):
+   *  null in every campaign run, which plays as it always has. */
+  convoy: ConvoyState | null;
+  /** The Map & Convoy Lab's authored encounters (data/encounters.ts): null
+   *  in every campaign run, which plays the shared waves alone. */
+  enc: { setup: EncounterSetup; played: string[]; wave: number; now: string[] } | null;
 }
 
 
@@ -953,6 +973,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     bonusDone: [],
     lossBase: 0,
     tel: null,
+    convoy: null,
+    enc: null,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -1000,6 +1022,8 @@ function startWave(g: Game): void {
     spec.guided = cut(spec.guided, len);
   }
   g.waveSpeed = spec.speed;
+  const only = g.enc?.setup.only;
+  const authored = g.enc ? encountersFor(g.map.id, g.wave).filter((e) => !only || only.includes(e.id)) : [];
   // The Test Lab: the wave's size and this wave's scenario.
   const labMods = labWave(g, spec);
   const rng = g.rng.threats;
@@ -1055,6 +1079,11 @@ function startWave(g: Game): void {
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     units.push({ kind: FOES[id].kind, size: 1 });
   }
+  // The lab's authored encounters: what each will send comes out of the
+  // wave as it now stands (after the aircraft and the new enemies took
+  // their places), launch for launch, so the wave is no bigger for them.
+  const trickled = swarms.slice(0, trickle);
+  if (authored.length) makeRoom(units, trickled, authored);
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -1100,9 +1129,10 @@ function startWave(g: Game): void {
     }
   });
   g.raids = raids;
-  swarms.slice(0, trickle).forEach((size, k) => {
+  if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
+  trickled.forEach((size, k) => {
     const base = pickBase(g, 'drone', rng);
-    const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickle) + rng.range(-2, 2);
+    const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
   queue.sort((a, b) => a.at - b.at);
@@ -1111,6 +1141,90 @@ function startWave(g: Game): void {
   g.events.push({ kind: 'wave', wave: g.wave });
   cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
   if (g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
+}
+
+/** Takes out of a planned wave what its authored encounters replace: each
+ *  missile by kind (one the wave doesn't have comes out of its drones
+ *  instead), then the drones, from the raids' swarms first and the swarms
+ *  that trickle in between after. A wave with fewer drones than that
+ *  keeps its missiles (taking them would empty a submarine's salvo): the
+ *  encounter's own drones are then the wave's drones. */
+function makeRoom(units: { kind: ThreatKind; size: number }[], trickled: number[], list: Encounter[]): void {
+  let drones = 0;
+  for (const e of list) {
+    drones += e.replaces.drones ?? 0;
+    for (const kind of ['ballistic', 'guided'] as const)
+      for (let n = e.replaces[kind] ?? 0; n > 0; n--) {
+        const i = units.findIndex((u) => u.kind === kind);
+        if (i >= 0) units.splice(i, 1);
+        else drones++;
+      }
+  }
+  for (let i = units.length - 1; i >= 0 && drones > 0; i--) {
+    if (units[i].kind !== 'drone') continue;
+    const take = Math.min(drones, units[i].size);
+    drones -= take;
+    if (take === units[i].size) units.splice(i, 1);
+    else units[i] = { ...units[i], size: units[i].size - take };
+  }
+  for (let i = trickled.length - 1; i >= 0 && drones > 0; i--) {
+    const take = Math.min(drones, trickled[i]);
+    drones -= take;
+    if (take === trickled[i]) trickled.splice(i, 1);
+    else trickled[i] -= take;
+  }
+}
+
+/** The lab's authored encounters for this wave: each beat's launches at
+ *  its moment, from its launcher, with the game's own warning before it (a
+ *  raid's lit bases, a submarine's periscope, an aircraft's arrow). No RNG:
+ *  an encounter is the same every time. */
+function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: number, duration: number): void {
+  // A wave planned again (a policy or a card applied before its first
+  // step) is still the one wave: its encounters are noted once.
+  const fresh = g.enc!.wave !== g.wave;
+  if (fresh) {
+    g.enc!.wave = g.wave;
+    g.enc!.now = list.map((e) => e.id);
+    g.enc!.played.push(...g.enc!.now);
+  }
+  for (const e of list) {
+    if (fresh && g.tel) g.tel.encounter(g, e.id);
+    for (const b of e.beats) {
+      // Never sooner than a raid's warning after the wave's lead-in.
+      const at = lead + RAID.warn + b.at * duration + (b.plus ?? 0);
+      const aim = b.aim && b.aim !== 'any' ? { aim: b.aim } : {};
+      if ('base' in b.from) {
+        const gap = b.gap ?? 0.35;
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim });
+        g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
+      } else if ('sub' in b.from) {
+        // It shows its periscope and surfaces first, so its salvo starts at `at`.
+        g.raiderQueue.push({ at: Math.max(0.2, at - SUB.warn - SUB.surface), kind: 'sub', path: [g.map.subSpots[b.from.sub]], units: Array.from({ length: b.count }, () => ({ kind: b.kind, size: 1 })), enc: e.id, ...aim });
+        g.raiderQueue.sort((x, y) => x.at - y.at);
+      } else {
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, side: b.from.air, enc: e.id });
+      }
+    }
+  }
+}
+
+/** An authored launch's target, picked as it leaves: the ship furthest
+ *  along its lane, or the one nearest the mouth of the narrows. */
+function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
+  const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
+  if (!pool.length) return;
+  const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
+  let pick = pool.reduce((a, b) => (along(b) > along(a) ? b : a));
+  if (aim === 'narrows') {
+    const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
+    const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);
+    if (near.length) pick = near.reduce((a, b) => (Math.abs(b.x - mouth!) < Math.abs(a.x - mouth!) ? b : a));
+  }
+  th.target = pick.id;
+  if (th.kind === 'ballistic') aimBallistic(g, th);
+  const tp = targetPos(g, th);
+  th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
 }
 
 /** A count shortened with the wave, keeping at least one of anything the
@@ -1240,6 +1354,12 @@ function launcher(b: { kinds: ThreatKind[]; cove?: boolean; chute?: boolean; gen
 
 export function setFlow(g: Game, flow: number): void {
   const next = Math.max(0, Math.min(FLOW_STEPS.length - 1, Math.round(flow)));
+  // A lab policy may leave the flow to the map (sim/convoy.ts).
+  const lock = flowLocked(g);
+  if (lock) {
+    if (g.tel) g.tel.command(g, 'flow', flow, g.flow, false, lock);
+    return;
+  }
   if (g.tel) g.tel.command(g, 'flow', flow, g.flow, next !== g.flow);
   if (next === g.flow) return;
   g.flow = next;
@@ -1248,6 +1368,11 @@ export function setFlow(g: Game, flow: number): void {
 }
 
 export function setFormation(g: Game, id: FormationId): void {
+  const lock = formationLocked(g);
+  if (lock) {
+    if (g.tel) g.tel.command(g, 'formation', id, g.formation, false, lock);
+    return;
+  }
   if (g.tel) g.tel.command(g, 'formation', id, g.formation, id !== g.formation);
   if (id === g.formation) return;
   g.formation = id;
@@ -1708,6 +1833,14 @@ function ringGuards(g: Game, th: Threat): void {
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. */
+/** The Map & Convoy Lab: turn the map's authored encounters on (after the
+ *  game is created, before its first step). The wave is planned again with
+ *  them in it. */
+export function applyEncounters(g: Game, setup: EncounterSetup): void {
+  g.enc = { setup: { rev: setup.rev, ...(setup.only ? { only: [...setup.only] } : {}) }, played: [], wave: -1, now: [] };
+  replanWave(g);
+}
+
 export function applyLab(g: Game, setup: LabSetup): void {
   setUpLab(g, setup);
   replanWave(g);
@@ -3743,6 +3876,7 @@ function stepSim(g: Game, dt: number): void {
   g.t += dt;
   g.waveT += dt;
 
+  if (g.convoy) updateConvoy(g, dt);
   spawnShips(g, dt);
   // An aircraft's line is fixed when its warning arrow appears.
   for (const l of g.queue) {
@@ -3847,6 +3981,7 @@ export function shipsSunk(g: Game): number {
  *  the rack is full for the next wave. Explosions already on screen play
  *  out. */
 function clearField(g: Game): void {
+  if (g.convoy) convoyWaveEnd(g);
   g.interceptors = [];
   if (g.tel) for (const p of g.pickups) g.tel.pickupOut(g, p, 'cleared');
   g.pickups = [];
@@ -3918,7 +4053,7 @@ function slotLat(g: Game, s: Ship): number {
   if (s.vip) return 0;
   const ch = g.map.channels[s.channel];
   if (ch.widths && Math.min(laneHalfWidth(ch, s.d), laneHalfWidth(ch, s.d + MERGE_AHEAD)) < LANE_FLOOR) return 0;
-  const offsets = FORMATIONS[g.formation].offsets;
+  const offsets = formationNow(g).offsets;
   return offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
 }
 
@@ -3969,12 +4104,20 @@ function newShip(g: Game, channel: number, slot: number, d: number): Ship {
 function spawnShips(g: Game, dt: number): void {
   spawnTanker(g);
   g.spawnT -= dt;
-  if (g.spawnT > 0) return;
+  // The lab's Hold (sim/convoy.ts): a group that waited off the entry sails
+  // as soon as it is clear, ahead of the schedule's next.
+  const owed = groupOwed(g);
+  if (g.spawnT > 0 && !owed) return;
   const f = FORMATIONS[g.formation];
   const channel = nextChannel(g);
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
   if (entryBusy(g, g.map.channels[channel])) return;
+  // The schedule's group is due: under a Hold it waits, and the schedule moves on.
+  if (!owed && !groupDue(g)) {
+    g.spawnT += spawnGap(g);
+    return;
+  }
   g.channelCursor++;
   for (let i = 0; i < f.group; i++) {
     const slot = f.group > 1 ? i : g.spawnCount++ % f.offsets.length;
@@ -3982,7 +4125,8 @@ function spawnShips(g: Game, dt: number): void {
     g.ships.push(ship);
     if (g.tel) g.tel.shipIn(g, ship);
   }
-  g.spawnT += spawnGap(g);
+  groupSailed(g, owed);
+  if (!owed) g.spawnT += spawnGap(g);
 }
 
 /** The Behemoth Run: one supertanker a wave sails the tanker lane, from a
@@ -4149,7 +4293,7 @@ function steamMult(g: Game): number {
 }
 
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g) * convoySpeed(g);
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
@@ -4182,7 +4326,7 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
     if (g.tel) g.tel.shipBlocked(g, s, amount, by, direct, 'glance', imp);
     return;
   }
-  const f = FORMATIONS[g.formation];
+  const f = formationNow(g);
   const nominal = amount;
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   const dealt = direct ? Math.max(1, amount - f.armor) : amount;
@@ -4305,6 +4449,8 @@ function launch(g: Game, l: Launch): void {
   if (isFoe(l.kind)) launchFoe(g, l, base);
   else {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
+    if (l.enc) th.enc = l.enc;
+    if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
     // A supply drone (the Bombardment's) heads for the carrier.
@@ -4457,6 +4603,7 @@ export function launchPlane(g: Game, l: Launch): void {
     r.s -= side * 40;
   }
   const th = spawnThreat(g, l.kind, x, sy, 'air');
+  if (l.enc) th.enc = l.enc;
   th.side = side;
   th.heading = side > 0 ? 0 : Math.PI;
   if (r) {
@@ -4849,7 +4996,7 @@ export function checkImpact(g: Game, th: Threat): void {
   if (shielded(g, blame)) reflect(g, th, th.x, th.y);
   if (th.kind === 'heavy') {
     // A heavy warhead also damages everything close by.
-    const reach = HEAVY.splash * FORMATIONS[g.formation].splash;
+    const reach = HEAVY.splash * formationNow(g).splash;
     addFx(g, 'splash', th.x, th.y, { life: 0.9, r: Math.max(reach, 24) });
     cue(g, 'impact.splash', th.x, th.y);
     for (const o of [...g.ships]) {
@@ -4922,7 +5069,7 @@ function impactBallistic(g: Game, th: Threat): void {
   const dmg = THREATS.ballistic.damage;
   // The formation sets how far the blast reaches other hulls; Spread (0)
   // means only the nearest ship inside the blast is hit.
-  const reach = BALLISTIC.splash * FORMATIONS[g.formation].splash;
+  const reach = BALLISTIC.splash * formationNow(g).splash;
   addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: Math.max(reach, BALLISTIC.splash) });
   cue(g, 'impact.splash', th.ix, th.iy);
   if (shielded(g, 'ballistic')) reflect(g, th, th.ix, th.iy);
@@ -5179,6 +5326,8 @@ function spawnRaider(g: Game, sp: RaiderSpawn): void {
     rounds: [],
     units: [...sp.units],
     fireT: 0,
+    ...(sp.enc ? { enc: sp.enc } : {}),
+    ...(sp.aim ? { aim: sp.aim } : {}),
   });
 }
 
@@ -5202,7 +5351,10 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
     r.fireT -= dt;
     if (r.fireT <= 0 && r.rounds.length) {
       cue(g, r.kind === 'sub' ? 'sub.fire' : 'truck.fire', r.x, r.y);
-      spawnThreat(g, r.rounds.shift()!, r.x, r.y, origin).from = r.id;
+      const th = spawnThreat(g, r.rounds.shift()!, r.x, r.y, origin);
+      th.from = r.id;
+      if (r.enc) th.enc = r.enc;
+      if (r.aim) aimBeat(g, th, r.aim);
       r.fireT = gap;
     }
     return r.rounds.length === 0 && r.fireT <= 0;

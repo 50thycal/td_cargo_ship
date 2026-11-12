@@ -54,7 +54,7 @@ import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Contr
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
-import { applyLab } from '../sim/game';
+import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
@@ -66,6 +66,7 @@ import {
   keepLabLog,
   labBar,
   labHub,
+  labLogs,
   labReport,
   labSetupSheet,
   labVerdictSheet,
@@ -91,8 +92,12 @@ import {
   volleyName,
   volleySummary,
 } from './notes';
-import { downloadLog, downloadTelemetry, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
+import type { MapLabMemory } from './mapLab';
+import { COMMANDS, CONVOY, CONVOY_REV, POLICY_ORDER, type CommandId, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
+import { applyConvoy, commandState, convoyCommands, formationLocked } from '../sim/convoy';
+import { ENCOUNTERS, ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -290,6 +295,11 @@ export class App {
   private leftRail = el('div', 'v2-rail v2-rail-left');
   private rightRail = el('div', 'v2-rail v2-rail-right');
   private formationPop = el('div', 'v2-formations');
+  /** The Map & Convoy Lab's tactical commands (a lab run under policy D):
+   *  one button each, in place of the formation button and the flow slider. */
+  private commandBox = el('div', 'v3-commands');
+  private commandBtns: { id: CommandId; el: HTMLButtonElement; state: HTMLElement; bar: HTMLElement; key: string }[] = [];
+  private commandsTaught = new Set<CommandId>();
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
   /** Playtest notes: pause and say something about this moment; after a
@@ -302,7 +312,7 @@ export class App {
   /** The result screen's run, kept for its review (and a replay's way back). */
   private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
   /** "Watch it": a marked moment playing back, and where it stops. */
-  private playback: { pb: Playback; until: number; from: number; stop: number } | null = null;
+  private playback: { pb: Playback; until: number; from: number; stop: number; after?: () => void } | null = null;
   /** Round 14: running power-ups count down here, in the rail, instead of
    *  in a corner of the battlefield (where they sat over roads and trucks). */
   private timers = el('div', 'v2-timers');
@@ -590,6 +600,8 @@ export class App {
         return { digest: sidecarDigest(sc), problems: reconcile(sc, g), steps: g.steps, events: sc.events.length };
       },
       telemetryDigest: (sc: TelemetrySidecar) => sidecarDigest(sc),
+      // The Map Analytics screen's own numbers, as shown.
+      mapLab: () => (this.overlay.querySelector('[data-maplab]') as (HTMLElement & { maplab?: unknown }) | null)?.maplab ?? null,
       // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
       showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
       // Sound: the engine's play log and state (e2e checks timing with it).
@@ -603,7 +615,9 @@ export class App {
     this.showMenu();
     // A Test Lab link from the review page: ?lab=<card> opens that test.
     const labLink = !STORE ? new URLSearchParams(location.search).get('lab') : null;
-    if (labLink) {
+    // ?maplab=1 opens the Map & Convoy Lab's viewer.
+    if (!STORE && new URLSearchParams(location.search).get('maplab') === '1') this.showMapLab();
+    else if (labLink) {
       if (labCard(labLink)) this.startLab(labLink);
       else this.showLab();
     }
@@ -621,9 +635,16 @@ export class App {
       (s) => this.rec?.flow(s),
     );
     const flowHint = el('div', 'v2-rail-hint', 'more ships, more points');
+    const flowLabel = el('div', 'v2-rail-label', 'SHIPS');
+    // The Map & Convoy Lab hides today's controls under a policy that
+    // leaves them to the map (see syncConvoy).
+    flowLabel.dataset.flow = '1';
+    this.flowSlider.el.dataset.flow = '1';
+    flowHint.dataset.flow = '1';
     this.leftRail.append(
       this.formationBtn,
-      el('div', 'v2-rail-label', 'SHIPS'),
+      this.commandBox,
+      flowLabel,
       this.flowSlider.el,
       flowHint,
       this.noteBtn,
@@ -1391,6 +1412,10 @@ export class App {
           // The wave's bell is the sim's own cue (wave.start).
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', { icon: 'wave' }, null);
           if (hint) this.showBanner(...hint, { ...HINT, icon: 'info' });
+          // The Map & Convoy Lab: this wave's authored encounter, by name,
+          // so a tester knows which one they are judging.
+          const enc = g.enc?.wave === ev.wave ? ENCOUNTERS.find((e) => e.id === g.enc!.now[0]) : undefined;
+          if (enc) this.showBanner(`ENCOUNTER: ${enc.name.toUpperCase()}`, enc.premise, { icon: 'info' }, null);
           // Playthrough round: the first map teaches the two left-rail
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
@@ -1585,7 +1610,10 @@ export class App {
       this.audio.ui(raid === g.raids[0] ? 'raid.warning' : 'raid.next');
       this.raidSounded.add(key);
     }
-    this.alerts.notify(`${look.name} INBOUND`, look.tip, {
+    // Under a lab policy that leaves the formation to the map, the advice
+    // about formations is dropped: only what is coming.
+    const tip = formationLocked(g) ? look.tip.split(' · ')[0] : look.tip;
+    this.alerts.notify(`${look.name} INBOUND`, tip, {
       key,
       tone: 'raid',
       color: look.color,
@@ -1634,6 +1662,7 @@ export class App {
   }
 
   private renderHud(g: Game): void {
+    if (this.commandBtns.length) this.renderCommands(g);
     if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab));
     const sunk = shipsSunk(g);
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
@@ -2144,8 +2173,35 @@ export class App {
           this.showLab();
         },
         report: () => this.showLabReport(),
+        analytics: () => this.showMapLab(),
       }),
     ]);
+  }
+
+  /** The Map & Convoy Lab's viewer: the runs kept on this device, as
+   *  layers on the map (ui/mapLab.ts). A developer screen. */
+  private mapLabMemory: MapLabMemory = {};
+
+  private showMapLab(): void {
+    this.leaveRun();
+    const seen = new Set<string>();
+    const logs = [...labLogs(), ...localLogs().reverse()].filter((l) => !seen.has(l.id) && !!seen.add(l.id));
+    const head = this.screenHead('Map Analytics', () => this.showLab(), undefined, 'Test Lab');
+    this.showOverlay('v3-maplab-screen', [head, el('p', 'v3-hint', 'Opening…')]);
+    // Its own chunk, fetched when it is first opened: nothing of it is in
+    // the game a player downloads.
+    void import('./mapLab').then(({ mapLabScreen }) => {
+      if (this.overlay.dataset.screen !== 'maplab-screen') return;
+      this.showOverlay('v3-maplab-screen', [
+        head,
+        mapLabScreen({
+          logs: () => logs,
+          memory: this.mapLabMemory,
+          // The replay from just before it, inputs and all; then back here.
+          watch: (log, step) => this.startPlayback(step + PLAYBACK_BEFORE * 60, 0, { log, after: () => this.showMapLab() }),
+        }),
+      ]);
+    });
   }
 
   /** Start a test: the card's water, wave 5 (or the setup's), its kit. */
@@ -2163,7 +2219,14 @@ export class App {
       frequentDrops: true,
       enemies: 'campaign',
     };
-    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND });
+    // A convoy policy from the setup sheet, or a link's ?convoy=tactical.
+    const asked = !setup ? new URLSearchParams(location.search).get('convoy') : null;
+    if (asked && (POLICY_ORDER as string[]).includes(asked)) s.convoy = asked as ConvoyPolicy;
+    const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
+    // The map's authored encounters, from the sheet or a link's ?enc=1.
+    if (!setup && new URLSearchParams(location.search).get('enc') === '1') s.encounters = true;
+    const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
+    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND }, convoy, encounters);
     const bar = labBar(card, {
       bring: () => this.rec?.bring(),
       note: () => this.openNote('rail'),
@@ -2908,7 +2971,7 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null): void {
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     const params = new URLSearchParams(location.search);
@@ -2926,6 +2989,10 @@ export class App {
     this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
     if (freePlay) applyFreePlay(this.game, freePlay);
     if (lab) applyLab(this.game, lab);
+    // The Map & Convoy Lab: the map's authored encounters, then the convoy
+    // policy this test is played under (the order a replay applies them in).
+    if (encounters) applyEncounters(this.game, encounters);
+    if (convoy) applyConvoy(this.game, convoy);
     if (!lab) this.endLabRun();
     this.rec = new Recorder(this.game, {
       build: __BUILD__,
@@ -2933,6 +3000,8 @@ export class App {
       firstWave: skip,
       ...(freePlay ? { freePlay } : {}),
       ...(lab ? { lab } : {}),
+      ...(encounters ? { encounters } : {}),
+      ...(convoy ? { convoy } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: this.deviceInfo(),
     });
@@ -2997,6 +3066,7 @@ export class App {
     this.hideOverlay();
     this.flowSlider.set(g.flow);
     this.syncFormation();
+    this.syncConvoy();
     return { wave: g.wave, waveT: g.waveT, phase: g.phase };
   }
 
@@ -3097,7 +3167,91 @@ export class App {
     this.root.classList.add('playing');
     this.flowSlider.set(this.game.flow);
     this.syncFormation();
+    this.syncConvoy();
     this.hideOverlay();
+  }
+
+  /** The Map & Convoy Lab: the left rail for the run's convoy policy.
+   *  Today's controls (and every campaign run): as ever. Automatic: no
+   *  convoy control at all. Formations: no flow slider. Tactical: the map's
+   *  command buttons in their place. */
+  private syncConvoy(): void {
+    const g = this.game;
+    const policy = g?.convoy?.setup.policy ?? 'current';
+    for (const p of ['auto', 'formation', 'tactical']) this.root.classList.toggle(`convoy-${p}`, policy === p);
+    this.commandBox.replaceChildren();
+    this.commandBtns = [];
+    this.commandsTaught.clear();
+    if (!g || policy === 'current') return;
+    this.formationPop.classList.remove('open');
+    if (policy === 'auto' || (policy === 'tactical' && !convoyCommands(g).length)) {
+      const note = el('div', 'v3-convoy-auto', 'CONVOY');
+      note.append(el('small', '', 'sails itself'));
+      this.commandBox.append(note);
+      return;
+    }
+    for (const id of convoyCommands(g)) {
+      const def = COMMANDS[id];
+      const b = button('', 'v3-command', () => this.giveCommand(id));
+      b.dataset.command = id;
+      const state = el('small', '', 'READY');
+      const bar = el('i');
+      b.append(el('b', '', def.name), state, bar);
+      this.commandBox.append(b);
+      this.commandBtns.push({ id, el: b, state, bar, key: '' });
+    }
+  }
+
+  /** A tap on a command's button: given through the recorder (a logged
+   *  input). The first time each is given in a run its cost is said once;
+   *  a refusal shakes the button and says why. */
+  private giveCommand(id: CommandId): void {
+    const g = this.game;
+    if (!g || !this.rec || this.paused || this.playback || g.phase !== 'wave') return;
+    const was = g.convoy?.holding;
+    const res = this.rec.command(id);
+    const c = this.commandBtns.find((o) => o.id === id);
+    if (!res.ok) {
+      this.audio.ui('ui.back');
+      if (c) {
+        c.el.classList.remove('refused');
+        void c.el.offsetWidth;
+        c.el.classList.add('refused');
+      }
+      return;
+    }
+    this.audio.ui('ui.toggle');
+    if (!this.commandsTaught.has(id)) {
+      this.commandsTaught.add(id);
+      const def = COMMANDS[id];
+      this.showBanner(def.name.toUpperCase(), `${def.says} ${def.cost}`, { now: true, kind: 'ack', icon: 'wave' }, null);
+    } else if (id === 'hold' && was) this.showBanner('RELEASED', 'The held ships sail now.', { now: true, kind: 'ack', icon: 'wave' }, null);
+  }
+
+  /** Each frame: every command button says where it stands. */
+  private renderCommands(g: Game): void {
+    for (const c of this.commandBtns) {
+      const st = commandState(g, c.id);
+      const def = COMMANDS[c.id];
+      const total = c.id === 'rush' ? CONVOY.rush.time : c.id === 'disperse' ? CONVOY.disperse.time : CONVOY.hold.max;
+      const cool = c.id === 'rush' ? CONVOY.rush.cooldown : c.id === 'disperse' ? CONVOY.disperse.cooldown : CONVOY.hold.cooldown;
+      const coasting = c.id === 'rush' && !st.active && (g.convoy?.coastT ?? 0) > 0;
+      // Rush and Disperse are one posture at a time: the other says so.
+      const other = c.id !== 'hold' && (c.id === 'rush' ? (g.convoy?.disperseT ?? 0) > 0 : (g.convoy?.rushT ?? 0) > 0);
+      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : coasting ? `SLOW ${Math.ceil(g.convoy!.coastT)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : other ? 'BUSY' : st.ready || c.id === 'hold' ? 'READY' : 'NO SHIPS';
+      const name = c.id === 'hold' && st.active ? 'Release' : def.name;
+      const fill = st.active ? st.left / total : st.cool > 0 ? 1 - st.cool / cool : st.ready ? 1 : 0;
+      const key = `${name}|${label}|${st.active ? 'a' : st.ready ? 'r' : 'w'}|${Math.round(fill * 40)}`;
+      if (key === c.key) continue;
+      c.key = key;
+      c.el.firstElementChild!.textContent = name;
+      c.state.textContent = label;
+      c.bar.style.width = `${Math.round(fill * 100)}%`;
+      c.el.classList.toggle('active', st.active);
+      c.el.classList.toggle('waiting', !st.active && !st.ready);
+      c.el.setAttribute('aria-disabled', String(!st.ready));
+      c.el.setAttribute('aria-label', `${name}: ${def.says} ${def.cost} ${label.toLowerCase()}`);
+    }
   }
 
   /** The draft: three weapons. With all slots full a new one can still be
@@ -3442,8 +3596,8 @@ export class App {
 
   /** "Watch it": the run plays back from a few seconds before a moment to
    *  just after it, inputs and all. */
-  private startPlayback(step: number, stop: number): void {
-    const log = this.review?.log;
+  private startPlayback(step: number, stop: number, other?: { log: PlayLog; after: () => void }): void {
+    const log = other?.log ?? this.review?.log;
     if (!log) return;
     const from = Math.max(0, step - PLAYBACK_BEFORE * 60);
     let pb: Playback;
@@ -3455,7 +3609,7 @@ export class App {
     this.resetFinale();
     this.ghostRun = null;
     pb.game.events = [];
-    this.playback = { pb, until: step + PLAYBACK_AFTER * 60, from, stop };
+    this.playback = { pb, until: step + PLAYBACK_AFTER * 60 + (other ? 4 * 60 : 0), from, stop, ...(other ? { after: other.after } : {}) };
     this.game = pb.game;
     this.lastPhase = pb.game.phase;
     this.acc = 0;
@@ -3464,6 +3618,7 @@ export class App {
     this.root.classList.add('playing', 'replaying');
     this.flowSlider.set(pb.game.flow);
     this.syncFormation();
+    this.syncConvoy();
     this.hideOverlay();
     this.pauseBtn.textContent = '■';
     this.showBanner('REPLAY', `${stopWhen(pb.game)}: the moment is ${Math.round((step - from) / 60)} s in. Tap ■ on the right to stop.`, { now: true, kind: 'ack', icon: 'play' });
@@ -3492,6 +3647,14 @@ export class App {
     this.pauseBtn.textContent = 'II';
     this.root.classList.remove('replaying');
     this.alerts.clear();
+    // A replay opened from the Map Analytics screen goes back to it.
+    if (p.after) {
+      this.game = null;
+      this.paused = false;
+      this.root.classList.remove('playing');
+      p.after();
+      return;
+    }
     if (view) {
       this.game = view.g;
       this.lastPhase = view.g.phase;

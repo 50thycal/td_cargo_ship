@@ -51,6 +51,8 @@ Design, the weapon table, measurements and where to tune:
 
 **Map & Convoy Lab, slices 0 and 1 (built):** [the baseline and the telemetry](docs/design/v3-map-lab-slice0-1.md) — twelve stored baseline runs on The Strait, The Gauntlet and Harbor Mouth, and a telemetry sidecar (launches, hits with the attacker named, pickups, taps, convoy commands, ship positions) that any play log replays to. `npm run v3:map-lab -- baseline | telemetry <log.json> | audit | bench | preview`; browser check `node e2e/v3-map-lab.mjs`.
 
+**Map & Convoy Lab, slices 2 to 5 (built, Test Lab only):** [the viewer, convoy policies, commands and encounters](docs/design/v3-map-lab-slices2-5.md) — a Map Analytics screen in the Test Lab (heatmaps of launches, damage, pickups, shots and convoy traffic, with a jump to the replay), four convoy policies to compare (`?convoy=auto|formation|tactical`), three map commands (Rush, Disperse, Hold) and nine authored encounters on the three reference maps (`?enc=1`). The campaign is unchanged; `npm run v3:map-lab -- experiment` runs the policy comparison.
+
 ## Play it
 
 ```bash
