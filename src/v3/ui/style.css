@@ -5871,6 +5871,67 @@ a.v3-lab-page {
   }
 }
 
+/* Hold on: the button beats in gold, as the hold line on the board does. */
+.v3-command.active[data-command='hold'] {
+  border-width: 2px;
+  animation: v3-hold-beat 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes v3-hold-beat {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+  to {
+    box-shadow: 0 0 14px 4px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
+
+/* What a press did, beside the buttons, over the board's edge: a refusal's
+   reason (round 9: "the command did not work at all"), or what a Hold
+   stopped. */
+.v3-commands {
+  position: relative;
+}
+
+.v3-command-says {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  z-index: 5;
+  transform: translate(-6px, -50%);
+  max-width: 240px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.v3-command-says.refused {
+  border-color: var(--danger);
+  color: #ffd2cc;
+}
+
+.v3-command-says.on {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-command.active[data-command='hold'] {
+    animation: none;
+    box-shadow: 0 0 10px 3px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
+
 .v3-command:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;

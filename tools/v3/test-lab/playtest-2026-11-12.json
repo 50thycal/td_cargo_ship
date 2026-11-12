@@ -1,0 +1,306 @@
+{
+ "date": "2026-11-12",
+ "round": 8,
+ "source": "Test Lab session of 2026-11-12 (14:38 to 21:45 UTC) on an iPhone at 874 x 402, build 2026-11-12T14:36: the reference map cards under the Map & Convoy Lab's policies, Decoys + Sprint Drones, and six event cards; play logs on the Vercel playlog store. The notes were dictated; they are kept as the logs have them. Every run with a verdict was Keep, and only these three notes were written. Runs with no verdict were quit before one was given. Built in Test Lab round 9 (docs/design/v3-round9-fixes.md).",
+ "verdicts": {
+  "map-strait": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112143833-55253",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112144126-75259",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112144324-94283",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112172037-26902",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112172129-83262",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112172141-83263",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null,
+    "convoy": "tactical"
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112173103-50653",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112173126-50654",
+    "round": 8,
+    "rev": 1,
+    "ended": "done",
+    "waves": 4,
+    "convoy": "tactical"
+   }
+  ],
+  "map-gauntlet": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112144756-76737",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null,
+    "convoy": "tactical",
+    "encounters": true
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112162512-12826",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null,
+    "convoy": "tactical",
+    "encounters": true
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112213724-31822",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112213731-31823",
+    "round": 8,
+    "rev": 1,
+    "ended": "done",
+    "waves": 2,
+    "convoy": "tactical"
+   }
+  ],
+  "combo-decoy-sprint": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112164742-30394",
+    "round": 8,
+    "rev": 8,
+    "ended": "quit",
+    "waves": null
+   }
+  ],
+  "ev-decoy-storm": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112193918-50850",
+    "round": 8,
+    "rev": 8,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Yeah still. Rees to be more distinct I say just go full extreme and make it very obvious say make it flash the whole time like it used too or kinda far in and out I think that is the right move",
+    "log": "v3-20261112193930-50851",
+    "round": 8,
+    "rev": 8,
+    "ended": "done",
+    "waves": 1,
+    "convoy": "tactical",
+    "events": [
+     "broken"
+    ]
+   }
+  ],
+  "ev-hydra-bloom": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112194122-50852",
+    "round": 8,
+    "rev": 8,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "clean",
+     "broken",
+     "held"
+    ]
+   }
+  ],
+  "ev-breakout": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112194240-50853",
+    "round": 8,
+    "rev": 8,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "clean",
+     "broken",
+     "clean"
+    ]
+   }
+  ],
+  "map-harbor": [
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112214023-31824",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null
+   },
+   {
+    "verdict": null,
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112214027-31825",
+    "round": 8,
+    "rev": 1,
+    "ended": "quit",
+    "waves": null,
+    "convoy": "tactical"
+   }
+  ],
+  "ev-supply-raid": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112214142-31826",
+    "round": 8,
+    "rev": 8,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "clean",
+     "clean",
+     "clean"
+    ]
+   }
+  ],
+  "ev-run-the-canal": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112214356-31827",
+    "round": 8,
+    "rev": 8,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "held",
+     "broken",
+     "clean"
+    ]
+   }
+  ],
+  "ev-fire-mission": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261112214535-31828",
+    "round": 8,
+    "rev": 8,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "broken",
+     "broken",
+     "broken"
+    ]
+   }
+  ]
+ },
+ "notes": [
+  {
+   "card": "ev-decoy-storm",
+   "log": "v3-20261112193930-50851",
+   "text": "Yeah still. Rees to be more distinct I say just go full extreme and make it very obvious say make it flash the whole time like it used too or kinda far in and out I think that is the right move",
+   "built": "Every decoy now fades in and out the whole way in, from its launch (1.6 beats a second, from full down to 15% and back, a pale halo at the top of each beat), in every swarm, pair and event; the steel-blue tint stays. The bots read a decoy from launch. Decoy Storm got easy with it, so it now sends twelve swarms (ten), the second half 2 s sooner (round 9)."
+  },
+  {
+   "card": "map-harbor",
+   "log": "v3-20261112214027-31825",
+   "text": "The good command did not work at all",
+   "built": "Bug fixed. The press was accepted but changed nothing on the water: Hold only kept back the groups that came due while it was on, off the map, and the next one was 5.2 s away (it sailed 0.7 s late). Hold now stops every ship short of the hold line where it is, within 0.4 s; the line is drawn on the water and pulses while Hold is on, each held ship carries a pause mark, the button beats and reads Release / HOLDING n, and a refused press says why beside the button (round 9, convoy rules rev 2).",
+   "where": "Harbor Mouth, Commands policy (D), paused on wave 5; no verdict given (the run was quit)."
+  },
+  {
+   "card": "ev-supply-raid",
+   "log": "v3-20261112214142-31826",
+   "text": "Radius for the drom s could be about twice as large and make sure it applies to the drones normally outside of the special event here",
+   "built": "The Scavenger's ring is 240 px (120), for every scavenger: its card, its pairs and Supply Raid share the one number, and the ring is drawn from it (round 9).",
+   "where": "Supply Raid, written in a pause; the card's verdict was Keep with no note."
+  }
+ ]
+}

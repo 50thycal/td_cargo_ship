@@ -13,7 +13,8 @@ import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from '
 import { drawEventOver, drawEventUnder } from './events';
 import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, isFoeAircraft } from './foes';
 import { pickupLocked } from '../sim/foes';
-import { laneSamples } from '../sim/lanes';
+import { laneHalfWidth, laneSamples, lanePoint } from '../sim/lanes';
+import { commandState, convoyCommands, holdable, holdLineD } from '../sim/convoy';
 
 export const C = {
   waterDeep: '#0b2433',
@@ -66,6 +67,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const land of g.map.land) drawLand(ctx, land);
   drawRoads(ctx, g);
   drawLanes(ctx, g);
+  drawHoldLine(ctx, g);
   drawMapUnder(ctx, g);
   drawBases(ctx, g);
   drawRaiders(ctx, g);
@@ -82,6 +84,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'sun');
   drawFields(ctx, g, 'laser');
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
+  drawHeldShips(ctx, g);
   drawPosts(ctx, g);
   for (const e of g.escorts) drawEscort(ctx, e);
   if (g.shieldT > 0 || boostLevel(g, 'shield')) drawShields(ctx, g);
@@ -283,6 +286,84 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
     ctx.globalAlpha = 1;
   }
   ctx.setLineDash([]);
+}
+
+/** The Map & Convoy Lab's Hold (sim/convoy.ts), on a map whose commands
+ *  include it: the hold line across the lane, always there so the player
+ *  knows where it is (a faint dashed gold line, "HOLD LINE"); while a Hold
+ *  is on, a solid line that pulses, with "HOLD" and its seconds left.
+ *  Round 9: a Hold that changed nothing on the board "did not work at all". */
+function drawHoldLine(ctx: CanvasRenderingContext2D, g: Game): void {
+  const c = g.convoy;
+  if (!c?.def.stage || !convoyCommands(g).includes('hold')) return;
+  const on = c.holding;
+  const pulse = on ? 0.5 + 0.5 * Math.sin(g.t * 9) : 0;
+  g.map.channels.forEach((ch, lane) => {
+    const d = holdLineD(g, lane);
+    if (d === null || ch.vip) return;
+    const p = lanePoint(ch, d);
+    const hw = laneHalfWidth(ch, d) + 14;
+    const ax = p.x + p.ty * hw;
+    const ay = p.y - p.tx * hw;
+    const bx = p.x - p.ty * hw;
+    const by = p.y + p.tx * hw;
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (on) {
+      // A glow, then the line itself: thick and bright, beating.
+      ctx.strokeStyle = `rgba(245,197,66,${0.25 + 0.25 * pulse})`;
+      ctx.lineWidth = 22 + 10 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = 7;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(245,197,66,0.45)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([14, 12]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // Its label above the lane's top edge.
+    const top = ay < by ? { x: ax, y: ay } : { x: bx, y: by };
+    const text = on ? `HOLD ${Math.ceil(commandState(g, 'hold').left)}` : 'HOLD LINE';
+    ctx.font = on ? '900 30px system-ui, sans-serif' : '800 20px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(7,13,18,0.9)';
+    ctx.fillStyle = on ? '#f5c542' : 'rgba(245,197,66,0.7)';
+    ctx.strokeText(text, top.x, top.y - 6);
+    ctx.fillText(text, top.x, top.y - 6);
+    ctx.restore();
+  });
+}
+
+/** While a Hold is on, every hull it stopped carries a pause mark. */
+function drawHeldShips(ctx: CanvasRenderingContext2D, g: Game): void {
+  if (!g.convoy?.holding) return;
+  ctx.save();
+  for (const s of holdable(g)) {
+    const x = s.x;
+    const y = s.y - 34;
+    ctx.fillStyle = 'rgba(7,13,18,0.85)';
+    ctx.beginPath();
+    ctx.arc(x, y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f5c542';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#f5c542';
+    ctx.fillRect(x - 6, y - 7, 4, 14);
+    ctx.fillRect(x + 2, y - 7, 4, 14);
+  }
+  ctx.restore();
 }
 
 /** Each raid's colour and call-out (the tray card in app.ts uses it too). */

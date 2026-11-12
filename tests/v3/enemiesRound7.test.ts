@@ -78,7 +78,11 @@ describe('round 7: the round and its lines', () => {
 });
 
 describe('Decoy Drones: "a faint color difference everywhere, instead of the flash on, flash off"', () => {
-  it('a decoy is drawn the same at every moment, in its tint, with no strobe, ring or trail; a real drone is cream', () => {
+  // Round 9 turned this round back (the player: "go full extreme ... make
+  // it flash the whole time like it used to, or fade in and out"): the
+  // tint stays, and on top a decoy fades in and out from its launch. What
+  // round 7 asked for that still holds: its tint, no white strobe, no dash.
+  it('a decoy keeps its tint and fades in and out from launch, read or not (round 9); no white strobe or dashes; a real drone is cream and never fades', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, g.map.bases[1]);
     const fake = live(g, 'decoy')[0];
@@ -91,21 +95,31 @@ describe('Decoy Drones: "a faint color difference everywhere, instead of the fla
       }
       return r.ops;
     };
+    const alpha = (ops: string[]) => Number(ops.find((o) => o.startsWith('globalAlpha='))!.split('=')[1]);
+    fake.age = 0;
     const first = draw(fake);
     expect(first).toContain(`fillStyle=${DECOY_TINT}`);
-    // Nothing white or near it, no arcs (the old ring and strobe), no dashes.
+    expect(alpha(first)).toBeCloseTo(1, 5);
+    // Nothing white or near it, no dashes.
     expect(first.some((o) => /fillStyle=rgba\(255,255,255/.test(o) || /strokeStyle=rgba\(23\d,24\d,255/.test(o))).toBe(false);
-    expect(first.some((o) => o.startsWith('arc(') || o.startsWith('setLineDash('))).toBe(false);
-    // Far out, close in, read or not, and at every tenth of a second: the
-    // same drawing (the strobe was on one tenth in three).
+    expect(first.some((o) => o.startsWith('setLineDash('))).toBe(false);
+    // Over its flight, read or not: deep troughs and full peaks, again and again.
     for (const state of [0, 1]) {
       fake.foe!.state = state;
-      for (let k = 0; k < 30; k++) {
-        g.t = 10 + k * 0.1;
-        expect(draw(fake)).toEqual(first);
+      const seen: number[] = [];
+      for (let k = 0; k < 40; k++) {
+        fake.age = k * 0.05;
+        seen.push(alpha(draw(fake)));
       }
+      expect(Math.min(...seen)).toBeLessThan(0.25);
+      expect(Math.max(...seen)).toBeGreaterThan(0.95);
+      // At least two full beats in its first two seconds, and under 3 a second.
+      const troughs = seen.filter((a, i) => i > 0 && i < seen.length - 1 && a <= seen[i - 1] && a < seen[i + 1]).length;
+      expect(troughs).toBeGreaterThanOrEqual(2);
+      expect(troughs).toBeLessThanOrEqual(6);
     }
     expect(draw(real)).toContain(`fillStyle=${C.drone}`);
+    expect(draw(real).some((o) => o.startsWith('globalAlpha='))).toBe(false);
   });
 
   it('the tint keeps the drone\'s lightness and turns its warmth cool (round 8 made it about twice as strong)', () => {

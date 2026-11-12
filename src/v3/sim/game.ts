@@ -79,7 +79,7 @@ import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDo
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { encountersFor, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
-import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupDue, groupOwed, groupSailed, updateConvoy, type ConvoyState } from './convoy';
+import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, holdStop, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -1778,7 +1778,10 @@ function updateLabSets(g: Game): void {
         const leads = g.threats.filter((t) => !t.dead && isLead(t, led));
         const due = leads.some((t) => {
           const p = targetPos(g, t);
-          return timeToImpact(g, t) <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
+          // A decoy's own flight: its "told apart, not urgent" for the bots
+          // (from launch since round 9) is not when it gets there.
+          const eta = t.kind === 'decoy' ? dist(t.x, t.y, p.x, p.y) / Math.max(1, t.speed) : timeToImpact(g, t);
+          return eta <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
         });
         if (leads.length && !due && g.waveT - led.t < LAB_SET.station) return;
       } else {
@@ -3950,6 +3953,9 @@ function stepSim(g: Game, dt: number): void {
     // earned comes now.
     const bonus = !!g.event?.bonus;
     if (!bonus) g.score += 200 * g.wave;
+    // The lab's Hold ends with the wave, told of while the wave (or the
+    // event's run) is still the telemetry's phase.
+    if (g.convoy) convoyWaveEnd(g);
     // A special event is graded as its wave ends (its bonus is in the
     // wave's score).
     if (g.event) endEvent(g, false);
@@ -4104,20 +4110,12 @@ function newShip(g: Game, channel: number, slot: number, d: number): Ship {
 function spawnShips(g: Game, dt: number): void {
   spawnTanker(g);
   g.spawnT -= dt;
-  // The lab's Hold (sim/convoy.ts): a group that waited off the entry sails
-  // as soon as it is clear, ahead of the schedule's next.
-  const owed = groupOwed(g);
-  if (g.spawnT > 0 && !owed) return;
+  if (g.spawnT > 0) return;
   const f = FORMATIONS[g.formation];
   const channel = nextChannel(g);
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
   if (entryBusy(g, g.map.channels[channel])) return;
-  // The schedule's group is due: under a Hold it waits, and the schedule moves on.
-  if (!owed && !groupDue(g)) {
-    g.spawnT += spawnGap(g);
-    return;
-  }
   g.channelCursor++;
   for (let i = 0; i < f.group; i++) {
     const slot = f.group > 1 ? i : g.spawnCount++ % f.offsets.length;
@@ -4125,8 +4123,8 @@ function spawnShips(g: Game, dt: number): void {
     g.ships.push(ship);
     if (g.tel) g.tel.shipIn(g, ship);
   }
-  groupSailed(g, owed);
-  if (!owed) g.spawnT += spawnGap(g);
+  groupSailed(g);
+  g.spawnT += spawnGap(g);
 }
 
 /** The Behemoth Run: one supertanker a wave sails the tanker lane, from a
@@ -4145,9 +4143,11 @@ function spawnTanker(g: Game): void {
   cue(g, 'tanker.horn', t.x, t.y);
 }
 
-/** The furthest a hull may sail this step: up to a closed lock gate. */
+/** The furthest a hull may sail this step: up to a closed lock gate, or
+ *  (the lab's Hold, sim/convoy.ts) the staging line. */
 function stopAt(g: Game, s: Ship): number {
-  return gateStop(g, s.channel, s.d, LOCK.stand);
+  const gate = gateStop(g, s.channel, s.d, LOCK.stand);
+  return g.convoy ? Math.min(gate, holdStop(g, s)) : gate;
 }
 
 /** Up to a closed lock gate on a lane, for a hull at d whose bow reaches
@@ -4202,7 +4202,8 @@ function updateShips(g: Game, dt: number): void {
       if (sameSlot || sameLine) gap = Math.min(gap, along);
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
-    const next = s.d + laneSpeed(g, s) * slow * dt;
+    // (The lab's Hold, sim/convoy.ts: a held hull eases to a stop.)
+    const next = s.d + laneSpeed(g, s) * slow * (g.convoy ? holdPace(g, s) : 1) * dt;
     s.d = Math.max(s.d, Math.min(next, stopAt(g, s)));
     placeShip(g, s);
     // Only move across into the new lane once that stretch of it is empty.

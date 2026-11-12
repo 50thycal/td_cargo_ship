@@ -93,7 +93,7 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The decoys are a pale blue now, twice the difference: can you tell which is which?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Its torpedoes now go one by one, each at a ship: can you read the lines in time? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'It comes and goes now, hits kept, and calls shells in from off the map: do you see them coming?', ['railgun', 'aegis', 'shield']),
@@ -266,6 +266,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
   { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
+  { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -298,12 +299,14 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   scavenger: [
     { round: 2, what: 'Circles over the water; a quadcopter with a claw' },
     { round: 8, what: 'Reworked: it no longer steals; pickups inside its ring are locked until you shoot it down' },
+    { round: 9, what: 'Its ring is twice as wide (240 px): it locks every pickup within it' },
   ],
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
     { round: 3, what: 'The swarm spreads out; easier to tell apart' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream) all the way in' },
     { round: 8, what: 'The tint is about twice as strong: the decoys are a pale blue' },
+    { round: 9, what: 'The decoys fade in and out the whole way in, from launch' },
   ],
   // Round 7 (docs/design/v3-enemies-round7.md): the player's enemy notes
   // from the round 6 event playtest. The combos with these enemies take
@@ -394,6 +397,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream)' },
     { round: 8, what: 'The decoys are a pale blue, about twice the difference' },
+    { round: 9, what: 'The decoys fade in and out the whole way in, from launch; twelve swarms (ten), the second half 2 s sooner' },
   ],
   'ev-hydra-bloom': [
     { round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' },
@@ -417,6 +421,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' },
     { round: 6, what: 'No Nuke in the cargo; twelve scavengers, from every side' },
     { round: 8, what: 'The new Scavengers: six, each locking the pickups in its ring until shot down' },
+    { round: 9, what: 'The scavengers\' rings are twice as wide (240 px)' },
   ],
   'ev-blackout': [{ round: 5, what: 'New event: night, eight stealth strafers and a star shell' }],
   'ev-carpet-run': [{ round: 5, what: 'New event: two vees of three stealth bombers (three hits each)' }],
@@ -446,7 +451,11 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-breakout': [
     { round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' },
     { round: 8, what: 'Its decoys are a pale blue; its Hydras a little slower' },
+    { round: 9, what: 'Its decoys fade in and out the whole way in' },
   ],
+  // Round 9 (docs/design/v3-round9-fixes.md): under the Commands policy,
+  // Hold now stops every ship short of the hold line, on the water.
+  'map-harbor': [{ round: 9, what: 'Commands policy: Hold stops every ship short of the hold line where it is; the line and the held ships are marked' }],
   'ev-run-the-canal': [
     { round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' },
     { round: 8, what: 'Cut down: two subs (no torpedo crosses land), one gunship, then a block of six; no scavengers' },

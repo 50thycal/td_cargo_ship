@@ -97,8 +97,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      longer instead of refilling, Wild Card's pickup brings a random
  *      passive from level 2, a thrown Grapnel ball bursts on the first
  *      threat it hits, idle drones fly home, a new Frigate drop sends a
- *      fresh set in, and a lab draft always deals the tested weapon first. */
-export const LOG_VERSION = 20;
+ *      fresh set in, and a lab draft always deals the tested weapon first.
+ *  21: round 9 (docs/design/v3-round9-fixes.md): the Scavenger's ring is
+ *      twice as wide (240 px), decoys are told apart from launch (the bots,
+ *      the broadside and the helpers leave them be), the Decoy Storm sends
+ *      twelve swarms with the second half sooner, and the Map & Convoy Lab's
+ *      Hold stops the ships short of its line (convoy rules rev 2). */
+export const LOG_VERSION = 21;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

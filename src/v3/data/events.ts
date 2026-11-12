@@ -71,7 +71,7 @@ export interface EventDef {
 
 export const EVENTS: Record<EventId, EventDef> = {
   rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Six sprint swarms and a dashed line on the water: does the line read before it matters?' },
-  'decoy-storm': { id: 'decoy-storm', kind: 'map', name: 'Decoy Storm', foe: 'decoy', rules: ['noAmmo'], look: 'Ten swarms and no ammo drops: did you run dry, and was that on you?' },
+  'decoy-storm': { id: 'decoy-storm', kind: 'map', name: 'Decoy Storm', foe: 'decoy', rules: ['noAmmo'], look: 'Twelve swarms and no ammo drops: did you run dry, and was that on you?' },
   'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
   breakout: { id: 'breakout', kind: 'map', name: 'The Breakout', foe: 'decoy', also: ['sprinter', 'hydra', 'rocketTruck'], rules: ['noAmmoOpening'], look: 'The whole chapter in one go, decoys to trucks: does it feel like an ending?' },
@@ -249,8 +249,13 @@ export const EV = {
    *  the lane's near edge. */
   rush: { swarms: 6, every: 1.5, cruise: 0.5, line: 0.75 },
   /** `swarms` decoy swarms of `size`, `fakes` of each fake, half at the
-   *  start and half `second` s later. */
-  'decoy-storm': { swarms: 10, size: 6, fakes: 4, second: 9, gap: 0.45 },
+   *  start and half `second` s later. Round 9: the decoys now fade in and
+   *  out from launch and the bots read them at once, which took the lab
+   *  card from Broken 20% to never; two more swarms (10 → 12, so 24 real
+   *  drones, not 20) and the second half 2 s sooner (9 → 7) bring it back
+   *  to round 8's (docs/design/v3-round9-fixes.md). No ammo drops, as
+   *  before. */
+  'decoy-storm': { swarms: 12, size: 6, fakes: 4, second: 7, gap: 0.45 },
   /** `fans` fans of Hydras, `gap` s apart, one from each base, at `slow` of
    *  their speed; each killed splits into `darts`. `swarms` drone swarms of
    *  `size` between. Round 8 ("Hydras should split even before the line is

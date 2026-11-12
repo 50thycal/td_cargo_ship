@@ -7,8 +7,9 @@
 //   water beside the rail fires and never gives a command;
 // - a refusal (cooling down, another posture running) is logged, shakes
 //   the button, and changes nothing;
-// - Hold on Harbor Mouth keeps the next ships out, counts down, and ends
-//   by itself;
+// - Hold on Harbor Mouth (round 9, at 874 x 402 and 667 x 375): the ships
+//   short of the hold line stop and stay stopped, the button and the board
+//   say so, it ends by itself, and a refusal's reason is on the screen;
 // - the other policies hide what the map has taken over;
 // - the test's log carries its policy and commands and replays to the
 //   same telemetry; an ordinary run has none of this.
@@ -69,6 +70,64 @@ const open = async (page, q) => {
   // Ships on the water before anything is asked of them.
   await page.waitForFunction(() => window.__v3.game().ships.length >= 4, null, { timeout: 30000 });
 };
+
+
+/** Hold on Harbor Mouth, by touch, at this page's size (round 9: the
+ *  player's Hold "did not work at all" on an iPhone at 874 x 402). The
+ *  button is where a thumb lands and nothing covers it; a touch holds; the
+ *  ships short of the line stop and stay stopped; the board shows the line
+ *  and a pause mark on each; the button reads Release / HOLDING n and beats;
+ *  words beside it say what it stopped; left alone it ends by itself; a
+ *  press while it cools down is refused and the reason is on the screen. */
+async function holdCheck(page, shot) {
+  const size = page.viewportSize();
+  const tag = `${size.width} x ${size.height}`;
+  await open(page, 'lab=map-harbor&convoy=tactical&seed=7');
+  const hb = await page.evaluate(() => [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command).join());
+  const hold = await centre(page, '[data-command="hold"]');
+  const top = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-command]')?.dataset.command ?? document.elementFromPoint(x, y)?.className, hold);
+  check(hb === 'hold' && top === 'hold' && hold.w >= 44 && hold.h >= 44 && hold.y + hold.h / 2 <= size.height, `${tag}: Harbor Mouth has Hold alone, a thumb's size, on screen, and nothing covers it (${hold.w.toFixed(0)}x${hold.h.toFixed(0)}; under the thumb: ${top})`);
+  const h0 = await snap(page);
+  await page.touchscreen.tap(hold.x, hold.y);
+  await page.waitForTimeout(700);
+  const h1 = await snap(page);
+  const d1 = await page.evaluate(() => window.__v3.game().ships.map((s) => [s.id, s.d]));
+  // The words beside the buttons (up for two seconds).
+  const said = await page.evaluate(() => {
+    const says = document.querySelector('.v3-command-says');
+    const r = says.getBoundingClientRect();
+    return { says: says.textContent, saysOn: says.classList.contains('on'), saysBox: { l: r.left, r: r.right, t: r.top, b: r.bottom } };
+  });
+  await page.waitForTimeout(1200);
+  const st = await page.evaluate(() => {
+    const g = window.__v3.game();
+    const line = g.convoy.def.stage.x;
+    return { ships: g.ships.map((s) => [s.id, s.d, s.x < line - 40]), owed: g.convoy.owed, holding: g.convoy.holding };
+  });
+  const before = new Map(d1);
+  const short = st.ships.filter(([id, , isShort]) => isShort && before.has(id));
+  const still = short.every(([id, d]) => Math.abs(d - before.get(id)) < 0.5);
+  const hui = await page.evaluate(() => {
+    return { name: document.querySelector('[data-command="hold"] b').textContent, label: document.querySelector('[data-command="hold"] small').textContent, cls: document.querySelector('[data-command="hold"]').className, anim: getComputedStyle(document.querySelector('[data-command="hold"]')).animationName };
+  });
+  check(h1.holding && h1.ks.join() === 'hold' && h1.taps === h0.taps && h1.shots === h0.shots, `${tag}: a touch on Hold holds, as a logged input, and fires nothing (${h1.ks.join()})`);
+  check(st.holding && short.length >= 2 && still && st.owed >= short.length, `${tag}: every ship short of the hold line has stopped and stays stopped (${short.length} stopped, ${st.owed} held)`);
+  check(hui.name === 'Release' && /^HOLDING \d$/.test(hui.label) && /active/.test(hui.cls) && hui.anim === 'v3-hold-beat', `${tag}: the button reads Release / ${hui.label} and beats gold`);
+  check(said.saysOn && /^HOLDING: \d+ ships? stopped$/.test(said.says) && said.saysBox.r <= size.width && said.saysBox.t >= 0 && said.saysBox.b <= size.height, `${tag}: words beside it say what it did ("${said.says}")`);
+  await page.screenshot({ path: `${OUT_DIR}/${shot}-${size.width}.png` });
+  // Left alone it ends by itself, and the ships sail on.
+  await page.waitForFunction(() => !window.__v3.game().convoy.holding, null, { timeout: 9000 });
+  const h2 = await page.evaluate(() => ({ label: document.querySelector('[data-command="hold"] small').textContent, name: document.querySelector('[data-command="hold"] b').textContent, waited: window.__v3.game().convoy.waited, rel: window.__v3.telemetry().events.filter((e) => e.k === 'cmd' && e.what === 'release').map((e) => e.req) }));
+  check(h2.name === 'Hold' && /^WAIT \d+$/.test(h2.label) && h2.waited <= 6.05 && h2.rel[0] === 'max', `${tag}: left alone, the Hold ends by itself (${h2.rel[0]}, after ${h2.waited.toFixed(1)} s) and cools down ("${h2.label}")`);
+  const d2 = await page.evaluate(() => window.__v3.game().ships.map((s) => [s.id, s.d]));
+  await page.waitForTimeout(800);
+  const d3 = new Map(await page.evaluate(() => window.__v3.game().ships.map((s) => [s.id, s.d])));
+  check(d2.filter(([id]) => d3.has(id)).every(([id, d]) => d3.get(id) > d + 10), `${tag}: released, they sail on`);
+  await page.touchscreen.tap(hold.x, hold.y);
+  await page.waitForTimeout(150);
+  const r = await page.evaluate(() => { const says = document.querySelector('.v3-command-says'); return { refused: window.__v3.game().convoy.refused, says: says.textContent, on: says.classList.contains('on'), red: says.classList.contains('refused'), op: getComputedStyle(says).opacity }; });
+  check(r.refused === 1 && r.on && r.red && /^HOLD: Ready again in \d+ s$/.test(r.says), `${tag}: Hold while cooling down is refused, and the reason is on the screen ("${r.says}")`);
+}
 
 try {
   const page = await browser.newPage(PHONE);
@@ -143,7 +202,7 @@ try {
     const again = window.__v3.replayTelemetry(log);
     return { convoy: log.convoy, ks: log.commands.filter((c) => c[1] === 'k').map((c) => c[2]), v: log.v, same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems, header: live.header.convoy, cmds: live.events.filter((e) => e.k === 'cmd').map((e) => `${e.what}:${e.ok}${e.why ? `:${e.why}` : ''}`) };
   });
-  check(done.convoy?.policy === 'tactical' && done.ks.join() === 'rush,rush,disperse' && done.v === 20, `the log carries its policy and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
+  check(done.convoy?.policy === 'tactical' && done.ks.join() === 'rush,rush,disperse' && done.v === 21, `the log carries its policy and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
   check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'rush:1,rush:0:cooldown,disperse:0:busy', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
 
   // The Map Analytics screen lists them.
@@ -154,24 +213,8 @@ try {
   const listed = await page.evaluate(() => [...document.querySelectorAll('.v3-maplab-refs li span')].map((s) => s.textContent));
   check(listed.some((t) => /rush \(\d+ ships\)/.test(t)) && listed.some((t) => /rush, refused \(cooldown\)/.test(t)) && listed.some((t) => /disperse, refused \(busy\)/.test(t)), `Map Analytics lists the commands in time, with the ships each took and why each was refused (${listed.join(' | ')})`);
 
-  // ---- Harbor Mouth: Hold, and its release ----
-  await open(page, 'lab=map-harbor&convoy=tactical&seed=7');
-  const hb = await page.evaluate(() => [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command).join());
-  const h0 = await snap(page);
-  const hold = await centre(page, '[data-command="hold"]');
-  await page.touchscreen.tap(hold.x, hold.y);
-  await page.waitForTimeout(300);
-  const h1 = await snap(page);
-  const hui = await page.evaluate(() => ({ name: document.querySelector('[data-command="hold"] b').textContent, label: document.querySelector('[data-command="hold"] small').textContent, cls: document.querySelector('[data-command="hold"]').className }));
-  check(hb === 'hold' && h1.holding && h1.ks.join() === 'hold' && h1.taps === h0.taps && hui.name === 'Release' && /^RELEASE \d$/.test(hui.label) && /active/.test(hui.cls), `Harbor Mouth has Hold alone; a touch holds, and the button becomes Release with its seconds ("${hui.name}", "${hui.label}")`);
-  await page.screenshot({ path: `${OUT_DIR}/harbor-holding.png` });
-  // Left alone it ends by itself.
-  await page.waitForFunction(() => !window.__v3.game().convoy.holding, null, { timeout: 9000 });
-  const h2 = await page.evaluate(() => ({ label: document.querySelector('[data-command="hold"] small').textContent, name: document.querySelector('[data-command="hold"] b').textContent, waited: window.__v3.game().convoy.waited, rel: window.__v3.telemetry().events.filter((e) => e.k === 'cmd' && e.what === 'release').map((e) => e.req) }));
-  check(h2.name === 'Hold' && /^WAIT \d+$/.test(h2.label) && h2.waited <= 6.05 && ['max', 'queue'].includes(h2.rel[0]), `left alone, the Hold ends by itself (${h2.rel[0]}, after ${h2.waited.toFixed(1)} s) and cools down ("${h2.label}")`);
-  await page.touchscreen.tap(hold.x, hold.y);
-  await page.waitForTimeout(100);
-  check((await snap(page)).refused === 1, 'Hold while cooling down is refused');
+  // ---- Harbor Mouth: Hold, and its release (round 9: "did not work at all") ----
+  await holdCheck(page, 'harbor-holding');
 
   // ---- The other policies hide what the map has taken over ----
   for (const [policy, want] of [['auto', { formation: false, flow: false, note: true }], ['formation', { formation: true, flow: false, note: false }]]) {
@@ -209,6 +252,7 @@ try {
   });
   check(!fit.overlap && fit.bottom <= fit.h && fit.sw <= fit.iw, `at 667 x 375 the rail's parts fit without overlapping (${JSON.stringify(fit)})`);
   await small.screenshot({ path: `${OUT_DIR}/strait-tactical-667.png` });
+  await holdCheck(small, 'harbor-holding');
   await small.close();
 
   // ---- An ordinary campaign run ----

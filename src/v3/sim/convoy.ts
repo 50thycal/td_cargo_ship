@@ -4,15 +4,17 @@
 // exactly as before, and nothing here runs.
 //
 // game.ts calls in at: the flow and formation commands (may the player?),
-// the convoy's speed and the formation's traits (Rush, Disperse), the
-// spawner (Hold), each step (the clocks), the wave's end (a Hold is
-// released), and `convoyCommand` (a recorded input, 'k'). Pure and
-// deterministic like the rest of the sim: no RNG at all.
+// the convoy's speed and the formation's traits (Rush, Disperse), each
+// hull's furthest step (Hold: the staging line), the spawner (the ledger),
+// each step (the clocks), the wave's end (a Hold is released), and
+// `convoyCommand` (a recorded input, 'k'). Pure and deterministic like the
+// rest of the sim: no RNG at all.
 
 import { CONVOY, CONVOY_REV, mapConvoy, type CommandId, type ConvoySetup, type MapConvoy } from '../data/convoy';
-import { FLOW_STEPS } from '../data/config';
+import { FLOW_STEPS, LOCK } from '../data/config';
 import { FORMATIONS, type FormationDef } from '../data/formations';
-import type { Game } from './game';
+import type { Game, Ship } from './game';
+import { laneDAtX } from './lanes';
 
 export interface ConvoyState {
   setup: ConvoySetup;
@@ -21,14 +23,15 @@ export interface ConvoyState {
   rushT: number;
   coastT: number;
   disperseT: number;
-  /** Hold: on, seconds so far, and groups waiting off the entry. */
+  /** Hold: on, seconds so far, and the hulls stopped short of the line now. */
   holding: boolean;
   holdT: number;
   owed: number;
   /** Seconds until each command can be given again. */
   cool: Record<CommandId, number>;
   /** The ledger: groups the schedule called for, groups that sailed,
-   *  groups held at some point, and the longest any waited (s). */
+   *  hulls held at the line (counted at each release), and the longest a
+   *  Hold lasted (s). */
   scheduled: number;
   released: number;
   held: number;
@@ -39,6 +42,25 @@ export interface ConvoyState {
 }
 
 export type CommandWhy = 'policy' | 'fixed' | 'cooldown' | 'busy' | 'none' | 'same';
+
+/** A refusal in words a player reads on the screen (round 9: the button
+ *  shaking alone was not enough). */
+export function refusalText(g: Game, id: CommandId, why: CommandWhy | undefined): string {
+  const c = g.convoy;
+  switch (why) {
+    case 'cooldown':
+      return `Ready again in ${Math.max(1, Math.ceil(c?.cool[id] ?? 0))} s`;
+    case 'busy':
+      return id === 'rush' ? 'Not while dispersed' : 'Not while rushing';
+    case 'none':
+      return id === 'hold' ? 'No ship short of the hold line' : 'No ships afloat';
+    case 'policy':
+    case 'fixed':
+      return 'Not a command on this map';
+    default:
+      return 'Not now';
+  }
+}
 export interface CommandResult {
   ok: boolean;
   why?: CommandWhy;
@@ -48,6 +70,45 @@ const tune = (g: Game) => g.convoy?.setup.tune ?? {};
 const rushSpeed = (g: Game) => tune(g).rushSpeed ?? CONVOY.rush.speed;
 const rushTime = (g: Game) => tune(g).rushTime ?? CONVOY.rush.time;
 const holdMax = (g: Game) => tune(g).holdMax ?? CONVOY.hold.max;
+
+/** Hold's staging line on a lane, as a distance along it (null: the map
+ *  has none, or the lane never crosses it). */
+export function holdLineD(g: Game, lane: number): number | null {
+  const x = g.convoy?.def.stage?.x;
+  if (x === undefined) return null;
+  return laneDAtX(g.map.channels[lane], x);
+}
+
+/** Is a hull short of the hold line (its bow not yet at it)? The
+ *  supertanker is never held. */
+function shortOfLine(g: Game, s: Ship): boolean {
+  if (s.vip) return false;
+  const d = holdLineD(g, s.channel);
+  return d !== null && s.d < d - LOCK.stand + 1;
+}
+
+/** The furthest a hull may sail this step under a Hold: up to the line,
+ *  its bow `LOCK.stand` short of it as at a lock gate. Infinity when no
+ *  Hold is on, or the hull is past the line. */
+export function holdStop(g: Game, s: Ship): number {
+  const c = g.convoy;
+  if (!c || !c.holding || !shortOfLine(g, s)) return Infinity;
+  return holdLineD(g, s.channel)! - LOCK.stand;
+}
+
+/** A held hull's pace (its speed's share): easing from full to still over
+ *  `CONVOY.hold.ease` s of the Hold, so every ship short of the line can
+ *  be seen to stop at once. 1 for every other hull. */
+export function holdPace(g: Game, s: Ship): number {
+  const c = g.convoy;
+  if (!c || !c.holding || !shortOfLine(g, s)) return 1;
+  return Math.max(0, 1 - c.holdT / CONVOY.hold.ease);
+}
+
+/** The hulls a Hold stops (or would stop, given now). */
+export function holdable(g: Game): Ship[] {
+  return g.convoy?.def.stage ? g.ships.filter((s) => shortOfLine(g, s)) : [];
+}
 /** The coast pays back what the rush gained: the same distance in the end. */
 const coastTime = (g: Game) => ((rushSpeed(g) - 1) * rushTime(g)) / (1 - CONVOY.rush.coastSpeed);
 
@@ -107,7 +168,7 @@ export function commandState(g: Game, id: CommandId): { ready: boolean; active: 
   const left = id === 'rush' ? c.rushT : id === 'disperse' ? c.disperseT : c.holding ? Math.max(0, holdMax(g) - c.holdT) : 0;
   const busy = id !== 'hold' && (id === 'rush' ? c.disperseT > 0 : c.rushT > 0);
   // A Hold that is on is always ready: the tap releases it.
-  const ready = id === 'hold' && c.holding ? true : !active && !busy && c.cool[id] <= 0 && (id === 'hold' || g.ships.some((s) => !s.vip));
+  const ready = id === 'hold' && c.holding ? true : !active && !busy && c.cool[id] <= 0 && (id === 'hold' ? holdable(g).length > 0 : g.ships.some((s) => !s.vip));
   return { ready, active, left, cool: Math.max(0, c.cool[id]) };
 }
 
@@ -119,8 +180,10 @@ export function convoyCommand(g: Game, id: CommandId): CommandResult {
   const res = decide(g, id);
   if (g.tel) {
     const releasing = id === 'hold' && !!c?.holding && res.ok;
-    // A Rush or a Disperse: the ships it took hold of. A Hold or its release: the groups waiting.
-    g.tel.command(g, releasing ? 'release' : id, releasing ? 'player' : id, id === 'hold' ? (c?.owed ?? 0) : 'idle', res.ok, res.why, res.ok && id !== 'hold' ? g.ships.filter((s) => !s.vip).map((s) => s.id) : undefined);
+    // A Rush or a Disperse: the ships it took hold of. A Hold: the ships
+    // short of the line it stops. Its release: how many waited at the line.
+    const took = !res.ok || releasing ? undefined : id === 'hold' ? holdable(g).map((s) => s.id) : g.ships.filter((s) => !s.vip).map((s) => s.id);
+    g.tel.command(g, releasing ? 'release' : id, releasing ? 'player' : id, id === 'hold' ? (c?.owed ?? 0) : 'idle', res.ok, res.why, took);
   }
   if (!c) return res;
   if (!res.ok) {
@@ -151,20 +214,25 @@ function decide(g: Game, id: CommandId): CommandResult {
   // Rush and Disperse are one posture at a time.
   if ((id === 'rush' && c.disperseT > 0) || (id === 'disperse' && c.rushT > 0)) return { ok: false, why: 'busy' };
   if (id !== 'hold' && !g.ships.some((s) => !s.vip)) return { ok: false, why: 'none' };
+  // A Hold with no ship short of the line would change nothing: refused,
+  // and the screen says so (round 9: a Hold that was accepted and changed
+  // nothing read as "the command did not work at all").
+  if (id === 'hold' && !holdable(g).length) return { ok: false, why: 'none' };
   return { ok: true };
 }
 
-/** The Hold ends: the waiting groups sail (the spawner sends them one
- *  behind another as the entry clears), and the cooldown starts. */
-function release(g: Game, why: 'max' | 'queue' | 'wave' | null = null): void {
+/** The Hold ends: the hulls at the line sail on, and the cooldown starts. */
+function release(g: Game, why: 'max' | 'wave' | null = null): void {
   const c = g.convoy!;
   if (!c.holding) return;
   c.holding = false;
   c.waited = Math.max(c.waited, c.holdT);
   c.holdT = 0;
   c.cool.hold = CONVOY.hold.cooldown;
+  c.held += c.owed;
   // The player's own release was told of with the command; a forced one here.
   if (why && g.tel) g.tel.command(g, 'release', why, c.owed, true);
+  c.owed = 0;
 }
 
 /** Each step: the commands' clocks. */
@@ -177,6 +245,7 @@ export function updateConvoy(g: Game, dt: number): void {
   if (c.disperseT > 0) c.disperseT = Math.max(0, c.disperseT - dt);
   if (c.holding) {
     c.holdT += dt;
+    c.owed = holdable(g).length;
     // No waiting a barrage out for good: the Hold ends by itself.
     if (c.holdT >= holdMax(g)) release(g, 'max');
   }
@@ -210,31 +279,13 @@ export function formationNow(g: Game): FormationDef {
   return d;
 }
 
-/** The spawner asks: a group is due; may it sail now? While a Hold is on
- *  it waits off the entry (and is owed). False: it was deferred. */
-export function groupDue(g: Game): boolean {
-  const c = g.convoy;
-  if (!c) return true;
-  c.scheduled += 1;
-  if (!c.holding) return true;
-  c.owed += 1;
-  c.held += 1;
-  // The staging water is full: the Hold ends, and they all sail.
-  if (c.owed >= CONVOY.hold.groups) release(g, 'queue');
-  return false;
-}
-
-/** The spawner asks: is a held group waiting to sail (no Hold on)? */
-export function groupOwed(g: Game): boolean {
-  const c = g.convoy;
-  return !!c && !c.holding && c.owed > 0;
-}
-
-export function groupSailed(g: Game, owed: boolean): void {
+/** The spawner: a group sailed on schedule (the ledger). Under a Hold it
+ *  still comes in, and queues behind the line. */
+export function groupSailed(g: Game): void {
   const c = g.convoy;
   if (!c) return;
+  c.scheduled += 1;
   c.released += 1;
-  if (owed) c.owed -= 1;
 }
 
 /** The wave is over (or the ending's restore is here): a Hold never

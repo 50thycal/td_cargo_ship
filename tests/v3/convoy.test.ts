@@ -7,18 +7,20 @@
 // denominators; and no command is a way to wait a fight out, to be
 // invulnerable, or to farm score.
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FLOW_STEPS, SHIP, VIEW } from '../../src/v3/data/config';
 import { CONVOY, CONVOY_REV, MAP_CONVOY, mapConvoy, type CommandId, type ConvoyPolicy, type ConvoySetup } from '../../src/v3/data/convoy';
 import { FORMATIONS } from '../../src/v3/data/formations';
 import { MAP_ORDER } from '../../src/v3/data/maps';
-import { applyConvoy, commandState, convoyCommand, convoyCommands, formationNow } from '../../src/v3/sim/convoy';
+import { applyConvoy, commandState, convoyCommand, convoyCommands, formationNow, holdLineD, refusalText } from '../../src/v3/sim/convoy';
+import { laneDAtX } from '../../src/v3/sim/lanes';
 import { cohort, paired, runTrial, type TrialSpec } from '../../src/v3/sim/convoyLab';
 import { createGame, damageShip, setFlow, setFormation, shipSpeed, step, type Game } from '../../src/v3/sim/game';
 import { onLand } from '../../src/v3/sim/foes';
 import { lockstep, logHash, stateHash } from '../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
-import { LOG_VERSION, logTelemetry, replay } from '../../src/v3/sim/playlog';
+import { LOG_VERSION, logTelemetry, replay, replayTo, type PlayLog } from '../../src/v3/sim/playlog';
 import { reconcile, type TelEvent } from '../../src/v3/sim/telemetry';
 
 const DT = 1 / 60;
@@ -211,48 +213,100 @@ describe('Disperse', () => {
 });
 
 describe('Hold (Harbor Mouth)', () => {
-  it('holds the next groups off the entry, never the ships afloat; released, they sail one behind another', () => {
-    const g = lab('harbor', 'tactical', 20);
-    const afloat = g.ships.map((s) => [s.id, s.d] as const);
-    const sailed = () => g.tel!.sidecar(g).events.filter((e) => e.k === 'ship+').length;
-    const n0 = sailed();
+  // Round 9, the player's run v3-20261112214027-31825 (Harbor Mouth, policy
+  // D, from wave 5): "The [Hold] command did not work at all". Rev 1 took
+  // the press (ok) and changed nothing that could be seen: it kept only the
+  // groups that came due while it was on off the map, and the next was 5.2 s
+  // away, so one group sailed 0.7 s late and every ship on the water sailed
+  // on. Rev 2: every ship short of the hold line stops, there and then.
+  it('the player\'s press: every ship short of the hold line stops within half a second and stays stopped; the line is on the lane, in the wide water', () => {
+    const log = JSON.parse(readFileSync(new URL('./fixtures/round9-hold-31825.json', import.meta.url), 'utf8')) as PlayLog;
+    const press = log.commands.findIndex((c) => c[1] === 'k');
+    expect(log.commands[press]).toEqual([646, 'k', 'hold']);
+    const g = replayTo(log, 646, press + 1, { telemetry: true });
+    expect(g.steps).toBe(646);
+    expect(g.convoy).toMatchObject({ holding: true, used: { hold: 1, rush: 0, disperse: 0 }, refused: 0 });
+    // The ships on the water (two pairs, all short of the line).
+    const line = holdLineD(g, 0)!;
+    const ch = g.map.channels[0];
+    expect(laneDAtX(ch, 700)! - line).toBeGreaterThan(80);
+    expect(g.ships.length).toBe(4);
+    expect(g.ships.every((s) => s.d < line - 100)).toBe(true);
+    const at0 = new Map(g.ships.map((s) => [s.id, s.d] as const));
+    run(g, CONVOY.hold.ease + 0.1);
+    const at1 = new Map(g.ships.map((s) => [s.id, s.d] as const));
+    run(g, 4);
+    for (const s of g.ships.filter((s) => at0.has(s.id))) {
+      // Under rev 1 each sailed on at full speed (about 160 px in these 4.5 s).
+      expect(s.d - at0.get(s.id)!, `ship ${s.id}`).toBeLessThan(SHIP.speed * CONVOY.hold.ease);
+      expect(s.d, `ship ${s.id} stopped`).toBe(at1.get(s.id));
+    }
+    expect(g.convoy!.owed).toBeGreaterThanOrEqual(4);
+    // The telemetry names the ships the press stopped.
+    expect(cmds(g).find((c) => c.what === 'hold')).toMatchObject({ ok: 1, ids: [...at0.keys()] });
+    // Left alone it ends by itself, and they sail on.
+    run(g, CONVOY.hold.max);
+    expect(g.convoy!.holding).toBe(false);
+    expect(cmds(g).at(-1)).toMatchObject({ what: 'release', req: 'max' });
+    const d0 = g.ships[0].d;
+    run(g, 1);
+    expect(g.ships[0].d - d0).toBeGreaterThan(SHIP.speed * 0.8);
+  });
+
+  it('stops the ships short of the line, never the ships past it; released, they sail on; then it cools down', () => {
+    const g = lab('harbor', 'tactical', 26);
+    const line = holdLineD(g, 0)!;
+    const past = g.ships.filter((s) => s.d >= line);
+    const short = g.ships.filter((s) => s.d < line - 60);
+    expect(past.length, 'a ship already past the line').toBeGreaterThan(0);
+    expect(short.length, 'a ship short of it').toBeGreaterThan(0);
+    const before = new Map(g.ships.map((s) => [s.id, s.d] as const));
     expect(convoyCommand(g, 'hold')).toEqual({ ok: true });
     expect(commandState(g, 'hold')).toMatchObject({ active: true, ready: true });
-    run(g, 4.5);
-    // Ships already out keep sailing.
-    for (const [id, d] of afloat) expect(g.ships.find((s) => s.id === id)!.d).toBeGreaterThan(d + 100);
-    expect(sailed()).toBe(n0);
-    expect(g.convoy!.owed).toBe(1);
-    // Release: the held group sails at once, and the schedule's next follows at its own time.
+    run(g, 3);
+    for (const s of past) if (g.ships.includes(s)) expect(s.d).toBeGreaterThan(before.get(s.id)! + 100);
+    for (const s of short) {
+      expect(s.d - before.get(s.id)!).toBeLessThan(SHIP.speed * CONVOY.hold.ease);
+      expect(s.d).toBeLessThan(line);
+    }
+    // Release: they sail on at once.
     expect(convoyCommand(g, 'hold')).toEqual({ ok: true });
+    const held = short.map((s) => s.d);
     run(g, 1);
-    expect(sailed()).toBe(n0 + FORMATIONS.pairs.group);
+    short.forEach((s, i) => expect(s.d - held[i]).toBeGreaterThan(SHIP.speed * 0.8));
     expect(g.convoy).toMatchObject({ owed: 0, holding: false });
     expect(convoyCommand(g, 'hold')).toEqual({ ok: false, why: 'cooldown' });
+    expect(refusalText(g, 'hold', 'cooldown')).toMatch(/^Ready again in \d+ s$/);
     expect(cmds(g).map((c) => [c.what, c.req, c.ok])).toEqual([['hold', 'hold', 1], ['release', 'player', 1], ['hold', 'hold', 0]]);
   });
 
-  it('never for long: it ends by itself after its seconds, or when the staging water is full', () => {
+  it('refused, and said so, when no ship is short of the line; no other map has a hold line', () => {
+    const g = lab('harbor', 'tactical', 26);
+    const line = holdLineD(g, 0)!;
+    g.ships = g.ships.filter((s) => s.d >= line);
+    g.spawnT = 99;
+    expect(commandState(g, 'hold')).toMatchObject({ ready: false, active: false });
+    expect(convoyCommand(g, 'hold')).toEqual({ ok: false, why: 'none' });
+    expect(refusalText(g, 'hold', 'none')).toBe('No ship short of the hold line');
+    expect(refusalText(g, 'rush', 'busy')).toBe('Not while dispersed');
+    expect(cmds(g).at(-1)).toMatchObject({ what: 'hold', ok: 0, why: 'none' });
+    for (const [id, def] of Object.entries(MAP_CONVOY)) expect(!!def!.stage, id).toBe(def!.commands.includes('hold'));
+  });
+
+  it('never for long: it ends by itself after its seconds; the next ships wait at the entry meanwhile', () => {
     const g = lab('harbor', 'tactical', 20);
+    const n = g.ships.length;
     convoyCommand(g, 'hold');
     run(g, CONVOY.hold.max + 0.2);
     expect(g.convoy!.holding).toBe(false);
-    expect(cmds(g).at(-1)).toMatchObject({ what: 'release', ok: 1 });
-    expect(['max', 'queue']).toContain(cmds(g).at(-1)!.req);
+    expect(cmds(g).at(-1)).toMatchObject({ what: 'release', req: 'max', ok: 1 });
     expect(g.convoy!.waited).toBeLessThanOrEqual(CONVOY.hold.max + 0.05);
-    // A faster schedule fills the staging water first.
-    const fast = createGame('harbor', 4, 1);
-    applyConvoy(fast, { ...setup('tactical'), flow: 4, tune: { holdMax: 12 } });
-    logTelemetry(fast, { id: 't', build: 'test', v: LOG_VERSION, firstWave: 1, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'test');
-    fast.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
-    run(fast, 12);
-    convoyCommand(fast, 'hold');
-    run(fast, 12);
-    expect(cmds(fast).find((c) => c.what === 'release')).toMatchObject({ req: 'queue', was: CONVOY.hold.groups });
-    expect(fast.convoy!.waited).toBeLessThan(12);
+    // A ship that came in during the Hold waited at the entry, never on top of another.
+    expect(g.ships.length).toBeGreaterThanOrEqual(n);
+    for (const a of g.ships) for (const b of g.ships) if (a.id < b.id) expect(Math.hypot(a.x - b.x, a.y - b.y), `${a.id}/${b.id}`).toBeGreaterThan(20);
   });
 
-  it('holding as often as allowed delays ships and never drops one: every group the schedule called for sails', () => {
+  it('holding as often as allowed delays ships and never drops one', () => {
     const spam = lab('harbor', 'tactical', 0);
     const plain = lab('harbor', 'auto', 0);
     for (let i = 0; i < 180 / DT; i++) {
@@ -262,16 +316,15 @@ describe('Hold (Harbor Mouth)', () => {
     }
     const c = spam.convoy!;
     expect(c.used.hold).toBeGreaterThan(8);
-    expect(c.scheduled).toBe(plain.convoy!.scheduled);
-    // Released = scheduled, less what is waiting right now (at most the staging water's two).
-    expect(c.scheduled - c.released).toBe(c.owed);
-    expect(c.owed).toBeLessThanOrEqual(CONVOY.hold.groups);
+    expect(c.held).toBeGreaterThan(c.used.hold);
+    // Every group that came due sailed (a held entry can put the schedule a few seconds behind).
+    expect(c.scheduled).toBe(c.released);
+    expect(plain.convoy!.scheduled - c.scheduled).toBeLessThanOrEqual(3);
     // Held at most a third of the time: 6 s on, then 12 s before the next.
     expect(c.used.hold * CONVOY.hold.max).toBeLessThanOrEqual(180 * (CONVOY.hold.max / (CONVOY.hold.max + CONVOY.hold.cooldown)) + CONVOY.hold.max);
-    // Deliveries fall behind by no more than the ships still held or just released.
-    expect(plain.delivered - spam.delivered).toBeLessThanOrEqual(6);
-    expect(spam.delivered).toBeGreaterThan(plain.delivered * 0.8);
-    // No hull sails on top of another at the entry.
+    // Deliveries fall behind by no more than a third (the time held), and never stop.
+    expect(spam.delivered).toBeGreaterThan(plain.delivered * 0.6);
+    // No hull sails on top of another.
     for (const a of spam.ships) for (const b of spam.ships) if (a.id < b.id) expect(Math.hypot(a.x - b.x, a.y - b.y), `${a.id}/${b.id}`).toBeGreaterThan(20);
   });
 
@@ -334,13 +387,18 @@ describe('no command is a way round the fight', () => {
       const spam = of(map, 'tactical', 'spam');
       for (const t of spam.trials) {
         expect(t.problems, `${map} seed ${t.spec.seed}`).toEqual([]);
-        // Every ship asked for sailed (less any held or due as the run ended).
-        expect(t.owed).toBeLessThanOrEqual(CONVOY.hold.groups);
+        // Every ship asked for sailed (any held as the run ended are still afloat).
+        expect(t.owed).toBeLessThanOrEqual(t.afloat);
         expect(t.waited).toBeLessThanOrEqual(CONVOY.hold.max + 0.05);
         expect(t.commands.rush ?? t.commands.hold ?? 0).toBeGreaterThan(5);
       }
-      // The same waves were played, so the same ships were asked for (to within what was held at the end).
-      expect(Math.abs(spam.m.scheduled.mean - auto.m.scheduled.mean) / auto.m.scheduled.mean, map).toBeLessThan(0.06);
+      // The same schedule: as many ships asked for a second of play (a run
+      // lost a wave or two sooner asks for fewer in all; round 9 moved the
+      // seeds' outcomes when the decoys and scavengers changed). Rev 2's
+      // Hold keeps the next ships at the entry while it is on, so Harbor
+      // Mouth's can run a little behind.
+      const rate = (c: typeof auto) => c.trials.reduce((a, t) => a + t.scheduled / Math.max(1, t.seconds), 0) / c.trials.length;
+      expect(Math.abs(rate(spam) - rate(auto)) / rate(auto), map).toBeLessThan(map === 'harbor' ? 0.1 : 0.06);
       // Not invulnerable: the convoy still takes hull, and still loses it at a comparable rate.
       expect(spam.m.hpShip.mean, map).toBeGreaterThan(auto.m.hpShip.mean * 0.5);
       // Not starved: deliveries are not bought by keeping ships off the map.

@@ -571,7 +571,7 @@ export function timeline(runs: RunData[], f: Filter): EventRef[] {
         e.what === 'flow' || e.what === 'formation' || e.what === 'fork'
           ? `${e.what}: ${e.was} to ${e.req}${e.ok ? ` (${e.ships} ships afloat)` : refused}`
           : e.what === 'release'
-            ? `release (${e.req}): ${e.was} group${e.was === 1 ? '' : 's'} waiting`
+            ? `release (${e.req}): ${e.was} ship${e.was === 1 ? '' : 's'} waiting at the line`
             : `${e.what}${e.ok ? (e.ids ? ` (${e.ids.length} ships)` : '') : refused}`;
       out.push({ run: w.run.id, s: e.s, t: e.t, wave: w.ph.wave, text });
     }
@@ -635,9 +635,12 @@ export function trace(sc: TelemetrySidecar, imp: number): TraceStep[] {
       }
     }
   }
+  // Up to the impact: an attacker that lives through its hit (a strafer)
+  // can be shot again after it, and that is not part of this hit's story.
+  const end = hits[hits.length - 1].s;
   chain.forEach((c, i) => {
     steps.push({ what: i === 0 ? 'launch' : 'split', s: c.s, t: c.t, x: c.x, y: c.y, text: i === 0 ? `${c.kind} launched from ${c.o === 'base' && c.base !== undefined ? `base ${c.base}` : c.o}` : `${c.kind} came off the ${chain[i - 1].kind}` });
-    for (const o of sc.events) if (o.k === 'hurt' && o.id === c.id && !o.kill) steps.push({ what: 'hurt', s: o.s, t: o.t, x: o.x, y: o.y, text: `hit by ${o.w ?? o.by} for ${o.dmg}, ${o.left} left: not stopped` });
+    for (const o of sc.events) if (o.k === 'hurt' && o.id === c.id && !o.kill && o.s <= end) steps.push({ what: 'hurt', s: o.s, t: o.t, x: o.x, y: o.y, text: `hit by ${o.w ?? o.by} for ${o.dmg}, ${o.left} left: not stopped` });
   });
   const h0 = hits[0];
   steps.push({ what: 'impact', s: h0.s, t: h0.t, x: h0.x, y: h0.y, text: `${h0.by} landed${first ? `, ${(h0.t - first.t).toFixed(1)} s after launch` : ''}` });

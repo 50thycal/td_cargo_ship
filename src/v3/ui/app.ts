@@ -96,7 +96,7 @@ import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, sto
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, CONVOY_REV, POLICY_ORDER, type CommandId, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
-import { applyConvoy, commandState, convoyCommands, formationLocked } from '../sim/convoy';
+import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
 import { ENCOUNTERS, ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
@@ -182,7 +182,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
-  decoy: 'Half this swarm is fake. The decoys are a pale blue, the real ones cream: save your shots for the real ones.',
+  decoy: 'Half this swarm is fake. The decoys are pale blue and fade in and out; the real ones stay solid cream. Save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
@@ -300,6 +300,10 @@ export class App {
   private commandBox = el('div', 'v3-commands');
   private commandBtns: { id: CommandId; el: HTMLButtonElement; state: HTMLElement; bar: HTMLElement; key: string }[] = [];
   private commandsTaught = new Set<CommandId>();
+  /** What a command press did, in words beside the buttons: a refusal's
+   *  reason, or what a Hold stopped (round 9: a shake alone said nothing). */
+  private commandSays = el('div', 'v3-command-says');
+  private commandSaysT = 0;
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
   /** Playtest notes: pause and say something about this moment; after a
@@ -3182,6 +3186,7 @@ export class App {
     this.commandBox.replaceChildren();
     this.commandBtns = [];
     this.commandsTaught.clear();
+    this.commandSays.classList.remove('on');
     if (!g || policy === 'current') return;
     this.formationPop.classList.remove('open');
     if (policy === 'auto' || (policy === 'tactical' && !convoyCommands(g).length)) {
@@ -3200,6 +3205,21 @@ export class App {
       this.commandBox.append(b);
       this.commandBtns.push({ id, el: b, state, bar, key: '' });
     }
+    this.commandBox.append(this.commandSays);
+  }
+
+  /** Words beside the command buttons for a couple of seconds. */
+  private sayCommand(text: string, refused: boolean): void {
+    const t = this.commandSays;
+    t.textContent = text;
+    t.classList.toggle('refused', refused);
+    t.classList.remove('on');
+    void t.offsetWidth;
+    t.classList.add('on');
+    const n = ++this.commandSaysT;
+    window.setTimeout(() => {
+      if (n === this.commandSaysT) t.classList.remove('on');
+    }, refused ? 2600 : 2000);
   }
 
   /** A tap on a command's button: given through the recorder (a logged
@@ -3209,10 +3229,12 @@ export class App {
     const g = this.game;
     if (!g || !this.rec || this.paused || this.playback || g.phase !== 'wave') return;
     const was = g.convoy?.holding;
+    const stopping = id === 'hold' && !was ? holdable(g).length : 0;
     const res = this.rec.command(id);
     const c = this.commandBtns.find((o) => o.id === id);
     if (!res.ok) {
       this.audio.ui('ui.back');
+      this.sayCommand(`${COMMANDS[id].name.toUpperCase()}: ${refusalText(g, id, res.why)}`, true);
       if (c) {
         c.el.classList.remove('refused');
         void c.el.offsetWidth;
@@ -3221,11 +3243,12 @@ export class App {
       return;
     }
     this.audio.ui('ui.toggle');
+    if (id === 'hold') this.sayCommand(was ? 'RELEASED: the held ships sail on' : `HOLDING: ${stopping} ship${stopping === 1 ? '' : 's'} stopped`, false);
     if (!this.commandsTaught.has(id)) {
       this.commandsTaught.add(id);
       const def = COMMANDS[id];
       this.showBanner(def.name.toUpperCase(), `${def.says} ${def.cost}`, { now: true, kind: 'ack', icon: 'wave' }, null);
-    } else if (id === 'hold' && was) this.showBanner('RELEASED', 'The held ships sail now.', { now: true, kind: 'ack', icon: 'wave' }, null);
+    }
   }
 
   /** Each frame: every command button says where it stands. */
@@ -3238,7 +3261,7 @@ export class App {
       const coasting = c.id === 'rush' && !st.active && (g.convoy?.coastT ?? 0) > 0;
       // Rush and Disperse are one posture at a time: the other says so.
       const other = c.id !== 'hold' && (c.id === 'rush' ? (g.convoy?.disperseT ?? 0) > 0 : (g.convoy?.rushT ?? 0) > 0);
-      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : coasting ? `SLOW ${Math.ceil(g.convoy!.coastT)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : other ? 'BUSY' : st.ready || c.id === 'hold' ? 'READY' : 'NO SHIPS';
+      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : coasting ? `SLOW ${Math.ceil(g.convoy!.coastT)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : other ? 'BUSY' : st.ready ? 'READY' : 'NO SHIPS';
       const name = c.id === 'hold' && st.active ? 'Release' : def.name;
       const fill = st.active ? st.left / total : st.cool > 0 ? 1 - st.cool / cool : st.ready ? 1 : 0;
       const key = `${name}|${label}|${st.active ? 'a' : st.ready ? 'r' : 'w'}|${Math.round(fill * 40)}`;
