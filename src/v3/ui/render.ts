@@ -11,7 +11,8 @@ import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
 import { drawEventOver, drawEventUnder } from './events';
-import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, isFoeAircraft } from './foes';
+import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, isFoeAircraft } from './foes';
+import { pickupLocked } from '../sim/foes';
 import { laneSamples } from '../sim/lanes';
 
 export const C = {
@@ -89,6 +90,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
     if (p.chute) drawChute(ctx, p.x, p.y, p.chute);
     if (p.kind === 'weapon') drawWeaponPickup(ctx, g, p);
     else drawPickup(ctx, p.kind, p.x, p.y, p.age, g.t, pickupLife(p));
+    // Locked by a Scavenger's ring (round 8).
+    if (pickupLocked(g, p)) drawLockedPickup(ctx, g, p);
   }
   for (const th of g.threats) if (th.kind !== 'strafer' && th.kind !== 'bomber' && !isFoeAircraft(th.kind)) drawThreat(ctx, g, th);
   drawTracked(ctx, g);

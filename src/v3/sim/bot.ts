@@ -7,7 +7,7 @@
 import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
-import { newFoeState } from './foes';
+import { newFoeState, pickupLocked } from './foes';
 import type { EventRecord } from './events';
 import type { FoeSetting } from '../data/foes';
 import { makeRng, type RNG } from '../../sim/rng';
@@ -98,7 +98,8 @@ export class Bot {
     const seen = (th: Threat) => g.t - (this.seenAt.get(th.id) ?? g.t) >= this.skill.reaction;
 
     // Pickups first when they're cheap to grab (the baseline leaves weapons).
-    const pickup = g.pickups.find((p) => !(this.skill.noAbilities && p.kind === 'weapon'));
+    // (Not one a Scavenger's ring locks, round 8: the drone is shot first.)
+    const pickup = g.pickups.find((p) => !(this.skill.noAbilities && p.kind === 'weapon') && !pickupLocked(g, p));
     if (pickup && pickup.age > this.skill.reaction) {
       tap(g, pickup.x, pickup.y, 4);
       this.lastTap = g.realT;

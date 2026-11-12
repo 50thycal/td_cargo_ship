@@ -21,8 +21,10 @@ const AT = {
   rush: 4.5, 'decoy-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 7.5, 'gunship-wall': 9, 'wolf-pack': 4.4,
   'shield-wall': 2.6, 'supply-raid': 3.2, blackout: 5, 'carpet-run': 4, 'dive-circus': 4.2, bombardment: 3.6,
   'fire-mission': 4.6, 'repair-yard': 11, 'escort-run': 6, 'siren-field': 5, firestorm: 9,
-  // Round 7: the finales and Undertow.
-  breakout: 4, 'run-the-canal': 18, undertow: 6.5, 'siege-of-vey': 10.5,
+  // Round 7: the finales.
+  breakout: 4, 'run-the-canal': 18, 'siege-of-vey': 10.5,
+  // Round 8: Beacon Strike in place of Undertow.
+  'beacon-strike': 6.2,
 };
 const args = process.argv.slice(2);
 const ids = args.length ? args.filter((a) => a in AT) : Object.keys(AT);

@@ -211,17 +211,18 @@ describe('combos meet (Test Lab round 4)', () => {
       if (circled < 0 && sp?.foe && sp.foe.state >= 1) circled = g.waveT;
       if (called < 0 && sp?.foe && sp.foe.n === 1) called = g.waveT;
       if (gunUp < 0 && g.threats.some((t) => t.kind === 'siege' && !t.dead)) gunUp = g.waveT;
-      const shell = g.foe.marks.find((m) => m.kind === 'shell');
+      const shell = g.foe.marks.find((m) => m.kind === 'shell' && !m.far);
       if (shellsLand < 0 && shell) shellsLand = g.waveT + shell.dur - shell.t;
-      // The strike: ballistics at the painted ship, a second after the call.
-      const st = called > 0 && g.waveT > called + 0.9 ? g.threats.find((t) => t.kind === 'ballistic' && t.target === g.foe.paint?.ship && t.age < 0.05) : undefined;
-      if (st) strikeLands = g.waveT + st.dur - st.age;
+      // The strike (round 8): the Spotter's shells from off the map, called
+      // as it leaves its circle.
+      const st = g.foe.marks.find((m) => m.kind === 'shell' && m.far);
+      if (strikeLands < 0 && st) strikeLands = g.waveT + st.dur - st.t;
     }
     expect(circled).toBeGreaterThan(0);
     // The gun comes up after the Spotter starts painting, and is up while it
-    // paints (it paints from 2 s on its circle until it leaves).
+    // paints (it paints from 2 s on its circle until it calls and leaves).
     expect(gunUp).toBeGreaterThan(circled + FOE.spotter.paint);
-    expect(gunUp).toBeLessThan(circled + FOE.spotter.stay);
+    expect(gunUp).toBeLessThan(circled + FOE.spotter.paint + FOE.spotter.call);
     expect(Math.abs(shellsLand - strikeLands)).toBeLessThan(1.5);
   });
 
@@ -287,15 +288,16 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(LAB_ROUND).toBe(7);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(LAB_ROUND).toBe(8);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
     }
     expect(cardRev('rocketTruck')).toBe(2);
-    // The Torpedo Sub first changed in round 7 (its spread).
-    expect(LAB_CHANGES.torpedoSub!.map((c) => c.round)).toEqual([7]);
+    // The Torpedo Sub first changed in round 7 (its spread), then round 8
+    // (one by one, each at a ship).
+    expect(LAB_CHANGES.torpedoSub!.map((c) => c.round)).toEqual([7, 8]);
     expect(cardRev('w-gunships')).toBe(5);
     expect(cardChanges('rocketTruck', 1)).toHaveLength(1);
     expect(cardChanges('rocketTruck', 2)).toEqual([]);
@@ -304,7 +306,7 @@ describe('test rounds and card versions', () => {
     expect(LAB_CHANGES.diveBomber!.find((c) => c.round === 3)).toBeDefined();
     expect(cardChanges('diveBomber', 2)[0]).toBe('Quicker, and now an A-10 Warthog');
     expect(LAB_CHANGES.cloud!.find((c) => c.round === 3)).toBeDefined();
-    expect(LAB_CHANGES.decoy!.map((c) => c.round)).toEqual([2, 3, 7]);
+    expect(LAB_CHANGES.decoy!.map((c) => c.round)).toEqual([2, 3, 7, 8]);
     expect(cardChanges('combo-decoy-sprint', 2)).toContain('Decoy Drones: The swarm spreads out; easier to tell apart');
     expect(cardRev('siege')).toBe(2);
     // Round 4 (the player's notes of 2026-11-09): every combo now comes in
@@ -314,7 +316,7 @@ describe('test rounds and card versions', () => {
       expect(cardRev(c.id), c.id).toBeGreaterThanOrEqual(4);
       expect(LAB_CHANGES[c.id]!.some((l) => l.round === 4), c.id).toBe(true);
     }
-    expect(cardChanges('combo-spotter-siege', 3)).toEqual(['Its enemies now arrive together']);
+    expect(cardChanges('combo-spotter-siege', 3)[0]).toBe('Its enemies now arrive together');
     expect(cardRev('w-dualWield')).toBe(4);
     expect(cardRev('w-cadence')).toBe(4);
     expect(LAB_ROUNDS[3]).toEqual({ n: 4, date: '2026-11-09', name: 'Combos meet; Dual Wield and Cadence', since: '2026-11-09T03:00' });
@@ -327,7 +329,9 @@ describe('test rounds and card versions', () => {
     expect(cardChanges('combo-cloud-flak', 4)).toEqual(['Incendiary Missile: New fire on the water; the burst does no damage, only the fire; a little faster']);
     expect(labCard('tender')!.name).toBe('Repair Ship');
     expect(labCard('combo-tender-bodyguard')!.name).toBe('Repair Ship + Bodyguard Ring');
-    expect(cardRev('combo-spotter-siege')).toBeLessThan(5);
+    // (It was not changed in round 5; round 8 changed the Spotter, so it took that on.)
+    expect(LAB_CHANGES['combo-spotter-siege']!.some((c) => c.round === 5)).toBe(false);
+    expect(cardRev('combo-spotter-siege')).toBe(8);
     expect(LAB_CHANGES.decoy!.some((c) => c.round === 5)).toBe(false);
     // Round 5 (the player's round 4 weapon notes): a line for every weapon
     // changed, and nothing for the ones kept as they were.
@@ -348,7 +352,8 @@ describe('test rounds and card versions', () => {
     // Changing a weapon changes the combos that use it: none use Cadence or
     // Dual Wield, so their round 4 lines are their own.
     // (Round 7: the Hydra changed, and the combo takes its line on.)
-    expect(cardChanges('combo-hydra-tesla', 3)).toEqual(['Its enemies now arrive together; Tesla drops by the carrier just before', 'Hydra Missile: 25% slower before it splits; its darts as fast as before']);
+    // (Round 8: and again.)
+    expect(cardChanges('combo-hydra-tesla', 3)).toEqual(['Its enemies now arrive together; Tesla drops by the carrier just before', 'Hydra Missile: 25% slower before it splits; its darts as fast as before', 'Hydra Missile: A little slower again: 11% before it splits, its darts 12%']);
   });
 
   it('progress saved before rounds becomes round 1 history', () => {

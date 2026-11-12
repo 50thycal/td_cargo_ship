@@ -19,6 +19,7 @@ import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
 import { applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
+import { pickupLocked } from './foes';
 
 export interface Persona {
   id: string;
@@ -378,7 +379,7 @@ export class Mimic {
       return;
     }
 
-    const pickup = g.pickups.find((pk) => pk.age > p.react.median * (p.speed ?? 1));
+    const pickup = g.pickups.find((pk) => pk.age > p.react.median * (p.speed ?? 1) && !pickupLocked(g, pk));
     if (pickup && this.rng.chance(p.pickup * SIM_DT * 6)) {
       this.finger = { x: pickup.x, y: pickup.y };
       io.tap(pickup.x + this.rng.range(-12, 12), pickup.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);

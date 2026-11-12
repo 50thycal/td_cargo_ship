@@ -72,9 +72,9 @@ import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeId, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
 import type { Cue, CueId } from '../audio/cues';
-import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShipScale, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 
 export const CARRIER_TARGET = -1;
@@ -1252,12 +1252,23 @@ export function tap(g: Game, x: number, y: number, radius: number): TapResult {
 function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   let pickup: Pickup | null = null;
   let pd = radius + PICKUPS.radius;
+  // A pickup in a Scavenger's ring (round 8) can't be taken: the tap goes
+  // on to whatever it would hit, and says so on the pickup.
+  let locked: Pickup | null = null;
   for (const p of g.pickups) {
     const d = dist(x, y, p.x, p.y);
+    if (d < pd && pickupLocked(g, p)) {
+      if (!locked || d < dist(x, y, locked.x, locked.y)) locked = p;
+      continue;
+    }
     if (d < pd) {
       pd = d;
       pickup = p;
     }
+  }
+  if (locked && !pickup) {
+    addFx(g, 'text', locked.x, locked.y - 34, { life: 0.7, r: 0, text: 'LOCKED' });
+    cue(g, 'powerup.expire', locked.x, locked.y, { gain: 0.5 });
   }
   // Prefer a threat that still needs an interceptor, so repeated taps on a
   // swarm spread across it instead of piling onto one drone.
@@ -2364,7 +2375,7 @@ export function press(g: Game, x: number, y: number, radius: number): void {
       .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
     if (!th) return;
     // A pickup under the finger wins, as it would for a tap.
-    if (g.pickups.some((p) => dist(p.x, p.y, x, y) <= radius + PICKUPS.radius && dist(p.x, p.y, x, y) < dist(th.x, th.y, x, y))) return;
+    if (g.pickups.some((p) => dist(p.x, p.y, x, y) <= radius + PICKUPS.radius && dist(p.x, p.y, x, y) < dist(th.x, th.y, x, y) && !pickupLocked(g, p))) return;
     if (!spend(g)) {
       g.press.mode = 'dry';
       g.taps.dry += 1;
@@ -3891,8 +3902,7 @@ export function shipSpeed(g: Game): number {
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
 function laneSpeed(g: Game, s: Ship): number {
-  // Undertow (round 7): slower inside a beacon's ring.
-  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1) * eventShipScale(g, s);
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
 /** Tidewater Flats: is the tide in? (A map without a tide: always.) */
@@ -5477,7 +5487,9 @@ function updatePickups(g: Game, dt: number): void {
     p.chute = Math.max(0, p.chute - dt);
     p.y += 45 * dt;
   }
-  for (const p of g.pickups) if (!p.chute) p.age += dt;
+  // A pickup locked by a Scavenger's ring (round 8) waits: it doesn't age
+  // until the drone is gone.
+  for (const p of g.pickups) if (!p.chute && !pickupLocked(g, p)) p.age += dt;
   for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
   g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
 }

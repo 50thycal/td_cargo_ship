@@ -81,8 +81,13 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      finales, Undertow on Dunmar Crossing), the map's event is three runs
  *      (waves 11 to 13) with the convoy restored before the first, and a
  *      bonus Siren Field wave after wave 6 when two passives are held. A run
- *      that won at wave 11 now plays on. */
-export const LOG_VERSION = 19;
+ *      that won at wave 11 now plays on.
+ *  20: enemies and events, round 8: the Torpedo Sub fires one by one at
+ *      ships, the Scavenger locks pickups instead of taking them, the
+ *      Spotter flies turns and calls shells from off the map, slower
+ *      Hydras, Hydra Bloom without its line, Run the Canal cut down, and
+ *      Beacon Strike in place of Undertow on Dunmar Crossing. */
+export const LOG_VERSION = 20;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

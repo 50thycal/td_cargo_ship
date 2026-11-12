@@ -9,7 +9,7 @@ import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, ty
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
-import { absorbs, launchFoe, lureIn, newFoeState, onLand } from '../../src/v3/sim/foes';
+import { absorbs, launchFoe, lureIn, newFoeState, onLand, pickupLocked } from '../../src/v3/sim/foes';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 import { CARRIER_TARGET, applyFreePlay, applyLab, createGame, damageThreat, shipAhead, spawnThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
 
@@ -247,6 +247,8 @@ describe('chapter 1: Home Waters', () => {
     // 7: when a careful player has told its tint apart).
     g.threats = [fake];
     fake.foe!.t = 0;
+    // (Round 8 reads it from further out: it may be read already.)
+    fake.foe!.state = 0;
     const s = g.ships.find((o) => o.id === fake.target)!;
     fake.x = s.x - FOE.decoy.readAt + 20;
     fake.y = s.y;
@@ -379,21 +381,28 @@ describe('chapter 2: The Narrows', () => {
     run(g, FOE.torpedoSub.fireAt + FOE.torpedoSub.aim + 0.05);
     const torp = live(g, 'torpedo')[0];
     expect(torp).toBeDefined();
-    expect(live(g, 'torpedo').length).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
+    // Round 8: one by one; the rest of its spread follows.
+    run(g, (FOE.torpedoSub.spread[0] - 1) * FOE.torpedoSub.stagger);
+    expect(sub.foe!.n).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
     // It runs straight.
     const h0 = torp.heading;
     run(g, 1);
     expect(torp.heading).toBe(h0);
-    run(g, FOE.torpedoSub.up + FOE.torpedoSub.aim);
+    run(g, FOE.torpedoSub.after + 2 * FOE.torpedoSub.stagger + 0.1);
     expect(sub.dead).toBe(true);
     expect(g.kills.torpedoSub).toBe(0);
     // One hit stops a torpedo (one on the screen and clear of the hulls, so
     // the shot gets there before it reaches one).
     g.ammo = 6;
     const clear = (t: Threat) => Math.min(...g.ships.map((s) => Math.hypot(s.x - t.x, s.y - t.y)));
-    const near = live(g, 'torpedo').filter((t) => t.y > 20 && t.x > 20 && t.x < VIEW.width - 20).sort((a, b) => clear(b) - clear(a))[0];
+    const left = (t: Threat) => (t.foe!.along ?? 0) - Math.hypot(t.x - t.foe!.sx!, t.y - t.foe!.sy!);
+    const near = live(g, 'torpedo').filter((t) => t.y > 20 && t.x > 20 && t.x < VIEW.width - 20 && left(t) > 150).sort((a, b) => clear(b) - clear(a))[0];
     if (near) {
-      tap(g, near.x, near.y, 12);
+      // (Round 8: every torpedo is at a ship; hold this one still so the
+      // shot, not a hull, is what stops it.)
+      near.speed = 0;
+      const r = tap(g, near.x, near.y, 12);
+      expect(r).toBe('fire');
       run(g, 3, () => near.dead);
       expect(g.kills.torpedo).toBe(1);
     }
@@ -435,35 +444,28 @@ describe('chapter 2: The Narrows', () => {
     expect(banked).toBe(true);
   });
 
-  it('a Scavenger takes the pickup it flies to (it is gone); shot first, the pickup stays', () => {
+  it('a Scavenger flies to a pickup and holds it locked (round 8: it takes nothing); shot down, the pickup is free', () => {
     const g = quiet();
     g.pickups.push({ id: 7777, kind: 'repair', x: 800, y: 330, age: 0 });
     launchFoe(g, { at: 0, kind: 'scavenger', base: -1 });
     const sc = live(g, 'scavenger')[0];
     run(g, 0.1);
     expect(sc.foe!.link).toBe(7777);
-    // Pickups don't sit forever: keep this one fresh while it flies.
-    run(g, 15, () => {
-      for (const p of g.pickups) p.age = 0;
-      return !g.pickups.some((p) => p.id === 7777);
-    });
-    expect(g.pickups.some((p) => p.id === 7777)).toBe(false);
-    run(g, 8, () => sc.dead);
-    expect(sc.dead).toBe(true);
-    expect(g.kills.scavenger).toBe(0);
-    // Again, but shoot it on the way.
-    g.pickups.push({ id: 8888, kind: 'ammo', x: 800, y: 330, age: 0 });
-    launchFoe(g, { at: 0, kind: 'scavenger', base: -1 });
-    const sc2 = live(g, 'scavenger')[0];
-    run(g, 1.2);
+    run(g, 10, () => Math.hypot(sc.x - 800, sc.y - 330) <= FOE.scavenger.deny);
+    run(g, 5);
+    // Still there, locked, and not ageing.
+    const p = g.pickups.find((o) => o.id === 7777)!;
+    expect(p).toBeDefined();
+    expect(pickupLocked(g, p)).toBe(true);
+    const age = p.age;
+    run(g, 1);
+    expect(p.age).toBe(age);
     g.ammo = 6;
-    tap(g, sc2.x, sc2.y, 40);
-    run(g, 3, () => {
-      for (const p of g.pickups) p.age = 0;
-      return sc2.dead;
-    });
+    tap(g, sc.x, sc.y, 40);
+    run(g, 3, () => sc.dead);
     expect(g.kills.scavenger).toBe(1);
-    expect(g.pickups.some((p) => p.id === 8888)).toBe(true);
+    expect(pickupLocked(g, p)).toBe(false);
+    expect(tap(g, p.x, p.y, 4)).toBe('pickup');
   });
 });
 
@@ -627,19 +629,23 @@ describe('chapter 3: Dark Water', () => {
     expect(g.kills.siege).toBe(0);
   });
 
-  it('a Spotter paints a ship, draws launches to it, calls a strike, and its strike is cancelled when it is shot down', () => {
+  it('a Spotter paints a ship, draws launches to it, calls shells on it, and its shells are called off when it is shot down', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'spotter', base: -1 });
     const sp = live(g, 'spotter')[0];
     run(g, 30, () => !!g.foe.paint);
     expect(g.foe.paint?.by).toBe(sp.id);
-    run(g, FOE.spotter.call + 0.2, () => g.queue.some((l) => l.spotter === sp.id));
-    const strike = g.queue.filter((l) => l.spotter === sp.id);
-    expect(strike).toHaveLength(FOE.spotter.strike);
-    expect(strike.every((l) => l.target === g.foe.paint!.ship)).toBe(true);
+    const ship = g.foe.paint!.ship;
+    // Round 8: its call is shells from off the map, round where the ship
+    // will be.
+    run(g, FOE.spotter.call + 0.2, () => g.foe.marks.some((m) => m.kind === 'shell' && m.link === sp.id));
+    const shells = g.foe.marks.filter((m) => m.kind === 'shell' && m.link === sp.id);
+    expect(shells).toHaveLength(FOE.spotter.shells);
+    const s = g.ships.find((o) => o.id === ship)!;
+    for (const m of shells) expect(Math.hypot(m.x - s.x, m.y - s.y)).toBeLessThan(400);
     damageThreat(g, sp, sp.hp);
     expect(sp.dead).toBe(true);
-    expect(g.queue.some((l) => l.spotter === sp.id)).toBe(false);
+    expect(g.foe.marks.some((m) => m.kind === 'shell' && m.link === sp.id)).toBe(false);
     expect(g.foe.paint).toBeNull();
   });
 
