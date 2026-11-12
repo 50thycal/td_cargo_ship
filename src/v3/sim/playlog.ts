@@ -81,8 +81,15 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      finales, Undertow on Dunmar Crossing), the map's event is three runs
  *      (waves 11 to 13) with the convoy restored before the first, and a
  *      bonus Siren Field wave after wave 6 when two passives are held. A run
- *      that won at wave 11 now plays on. */
-export const LOG_VERSION = 19;
+ *      that won at wave 11 now plays on.
+ *  20: Test Lab round 8's weapon notes: Focus slows time while its button
+ *      is held ('h' commands, no long-press any more), Overdrive level 2
+ *      lasts longer instead of refilling, Wild Card's pickup brings a random
+ *      passive from level 2, a thrown Grapnel ball bursts on the first
+ *      threat it hits, idle drones fly home, a new Frigate drop sends a
+ *      fresh set in, and a lab draft always deals the tested weapon first.
+ *      (The parallel round-8 builds may bump this too: reconcile at merge.) */
+export const LOG_VERSION = 20;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';

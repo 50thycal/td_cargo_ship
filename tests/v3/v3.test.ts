@@ -1073,53 +1073,121 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
 
 describe('card text matches the numbers', () => {
   const L = (id: AbilityId, lv: number) => ABILITIES[id].levels[lv - 1];
+  // Test Lab round 8 (the player: "it needs to be more clear and direct ...
+  // like 'increases fire rate by xxx'"): every level line says what changes
+  // in numbers, and each number is checked against AB here.
   it('every number a weapon card quotes is the one the game uses', () => {
+    // A rise from a to b, as the card says it ("21%").
+    const up = (a: number, b: number) => `${Math.round((b / a - 1) * 100)}%`;
+    // A gap from a to b as a fire rate ("+50%").
+    const rate = (a: number, b: number) => `+${Math.round((a / b - 1) * 100)}%`;
+    const T = WEAPON.time;
     expect(L('flak', 1)).toContain(`${AB.flak.time[0]} s`);
-    expect(L('flak', 2)).toContain(`${AB.flak.time[1]} s`);
-    expect(L('flak', 3)).toContain(`${AB.flak.time[2]} s`);
-    expect(AB.flak.radius[1]).toBeGreaterThan(AB.flak.radius[0]); // "a bigger cloud"
-    expect(L('seeker', 1)).toContain(`${AB.seeker.missiles[0]} seekers`);
-    expect(L('seeker', 2)).toContain(`${AB.seeker.missiles[1]} seekers`);
-    expect(L('seeker', 3)).toContain(`${AB.seeker.missiles[2]} seekers`);
-    expect(AB.aegis.missiles[0]).toBe(1); // "an interceptor"
-    expect(L('aegis', 2)).toContain('Two a ship');
-    expect(AB.aegis.missiles[1]).toBe(2);
-    expect(AB.aegis.reach[1]).toBeGreaterThan(AB.aegis.reach[0]); // "further out"
-    expect(L('aegis', 3)).toContain(`every ${AB.aegis.reload} s`);
+    expect(L('flak', 1)).toContain(`1 hit every ${AB.flak.tick} s`);
+    expect(L('flak', 2)).toContain(`${up(AB.flak.radius[0], AB.flak.radius[1])} wider; lasts ${AB.flak.time[1]} s`);
+    expect(L('flak', 3)).toContain(`last ${AB.flak.time[2]} s and are ${up(AB.flak.radius[1], AB.flak.radius[2])} wider`);
+    for (const lv of [1, 2, 3]) expect(L('seeker', lv)).toContain(`${AB.seeker.missiles[lv - 1]} seekers`);
+    expect(AB.seeker.damage).toBeCloseTo(1 / 3);
+    expect(L('aegis', 1)).toContain(`${AB.aegis.missiles[0]} interceptor`);
+    expect(L('aegis', 2)).toContain(`${AB.aegis.missiles[1]} interceptors a ship; they fire from ${up(AB.aegis.reach[0], AB.aegis.reach[1])} further out`);
+    expect(L('aegis', 3)).toContain(`every ${AB.aegis.reload} s; the carrier gets ${AB.aegis.carrier}`);
+    expect(L('well', 1)).toContain(`${AB.well.time[0]} s, then implodes for ${AB.well.damage[0]} hits`);
+    expect(L('well', 1)).toContain(`slowed to ${AB.well.slow * 100}%`);
+    expect(L('well', 2)).toBe(`Pull ${up(AB.well.radius[0], AB.well.radius[1])} wider; implosion hits for ${AB.well.damage[1]}`);
+    expect(L('well', 3)).toContain(`Lasts ${AB.well.time[2]} s`);
+    expect(L('well', 3)).toContain(`implodes for ${AB.well.damage[2]}`);
     expect(ABILITIES.airstrike.how).toContain(`for ${AB.airstrike.cost} rounds`);
+    expect(L('airstrike', 1)).toContain(`${AB.airstrike.damage[0]} hits on everything`);
     expect(L('airstrike', 1)).toContain(`${AB.airstrike.cost} rounds a jet`);
-    expect(L('shrapnel', 1)).toContain(`${AB.shrapnel.frags[0]} fragments`);
-    expect(L('shrapnel', 2)).toContain(`${AB.shrapnel.frags[1]} fragments`);
-    expect(L('shrapnel', 3)).toContain(`${AB.shrapnel.frags[2]} fragments`);
-    expect(AB.shrapnel.range[1]).toBeGreaterThan(AB.shrapnel.range[0]); // "fly further"
-    expect(L('frigate', 1)).toMatch(/^Two frigates/);
-    expect(AB.frigate.ships[0]).toBe(2);
-    expect(AB.frigate.gap[0] / AB.frigate.gap[1]).toBeCloseTo(1.5); // "half again as fast"
-    expect(AB.frigate.ships[2]).toBe(3); // "a third frigate"
-    expect(AB.frigate.gap[2]).toBeLessThan(AB.frigate.gap[1]); // "faster still"
-    expect(AB.thermo.radius[1]).toBeGreaterThan(AB.thermo.radius[0]); // "a bigger blast"
-    expect(L('thermo', 2)).toContain(`hits for ${AB.thermo.damage[1]}`);
-    expect(L('thermo', 3)).toContain(`hitting for ${AB.thermo.damage[2]}`);
-    expect(L('scatter', 1)).toContain(`${AB.scatter.pellets[0]} pellets`);
-    expect(L('scatter', 2)).toContain(`${AB.scatter.pellets[1]} pellets`);
-    expect(L('scatter', 3)).toContain(`${AB.scatter.pellets[2]} pellets`);
-    expect(AB.scatter.range[1]).toBeGreaterThan(AB.scatter.range[0]); // "reaching further"
-    expect(AB.boomerang.width[1]).toBeGreaterThan(AB.boomerang.width[0]); // "a wider blade"
-    expect(L('boomerang', 2)).toContain(`cuts for ${AB.boomerang.damage[1]}`);
-    expect(L('well', 1)).toContain(`${AB.well.time[0]} s`);
-    expect(AB.well.radius[1]).toBeGreaterThan(AB.well.radius[0]); // "a wider pull"
-    expect(AB.well.damage[1]).toBeGreaterThan(AB.well.damage[0]); // "a harder implosion"
-    expect(L('well', 3)).toContain(`${AB.well.time[2]} s`);
-    expect(L('well', 3)).toContain(`hits for ${AB.well.damage[2]}`);
-    expect(AB.airstrike.band[1]).toBeGreaterThan(AB.airstrike.band[0]); // "a wider run"
-    expect(AB.airstrike.damage[1]).toBeGreaterThan(AB.airstrike.damage[0]); // "harder hits"
-    expect(L('airstrike', 3)).toContain(`burns for ${AB.airstrike.burnTime} s`);
-    expect(AB.railgun.damage[1]).toBe(AB.railgun.damage[0] * 2); // "twice the damage"
-    expect(AB.railgun.damage[2]).toBe(AB.railgun.damage[0] * 4); // "four times as hard"
+    expect(L('airstrike', 2)).toBe(`Row ${up(AB.airstrike.band[0], AB.airstrike.band[1])} wider; hits for ${AB.airstrike.damage[1]}`);
+    expect(L('airstrike', 3)).toContain(`Hits for ${AB.airstrike.damage[2]}; the row burns for ${AB.airstrike.burnTime} s`);
+    expect(L('railgun', 1)).toContain(`${AB.railgun.damage[0]} hit each`);
+    expect(L('railgun', 2)).toBe(`Beam hits for ${AB.railgun.damage[1]} and is ${up(AB.railgun.width[0], AB.railgun.width[1])} wider`);
+    expect(L('railgun', 3)).toContain(`Beam hits for ${AB.railgun.damage[2]} and is ${up(AB.railgun.width[1], AB.railgun.width[2])} wider`);
     expect(AB.railgun.damage[2] * 2).toBeGreaterThanOrEqual(8); // "two bring down a heavy" (8 HP)
     expect(L('tesla', 1)).toContain(`${AB.tesla.arcs[0]} threats`);
     expect(L('tesla', 2)).toContain(`${AB.tesla.arcs[1]} arcs`);
     expect(AB.tesla.depth[1]).toBe(2); // "every arc arcs again"
+    expect(L('shrapnel', 1)).toContain(`${AB.shrapnel.frags[0]} fragments`);
+    expect(L('shrapnel', 2)).toBe(`${AB.shrapnel.frags[1]} fragments, reaching ${up(AB.shrapnel.range[0], AB.shrapnel.range[1])} further`);
+    expect(L('shrapnel', 3)).toContain(`${AB.shrapnel.frags[2]} fragments`);
+    expect(L('frigate', 1)).toMatch(/^Two frigates/);
+    expect(AB.frigate.ships[0]).toBe(2);
+    expect(L('frigate', 1)).toContain(`every ${AB.frigate.gap[0]} s`);
+    expect(L('frigate', 2)).toBe(`Fire rate ${rate(AB.frigate.gap[0], AB.frigate.gap[1])}`);
+    expect(AB.frigate.ships[2]).toBe(3); // "a third frigate"
+    expect(L('frigate', 3)).toContain(`fire rate ${rate(AB.frigate.gap[1], AB.frigate.gap[2])}`);
+    expect(L('thermo', 1)).toContain(`${AB.thermo.damage[0]} hit on everything`);
+    expect(L('thermo', 2)).toBe(`Blast ${up(AB.thermo.radius[0], AB.thermo.radius[1])} wider; hits for ${AB.thermo.damage[1]}`);
+    expect(L('thermo', 3)).toBe(`Blast ${up(AB.thermo.radius[1], AB.thermo.radius[2])} wider again; hits for ${AB.thermo.damage[2]}`);
+    expect(L('scatter', 1)).toContain(`${AB.scatter.pellets[0]} pellets`);
+    expect(L('scatter', 2)).toBe(`${AB.scatter.pellets[1]} pellets, reaching ${up(AB.scatter.range[0], AB.scatter.range[1])} further`);
+    expect(L('scatter', 3)).toContain(`${AB.scatter.pellets[2]} pellets`);
+    expect(L('boomerang', 1)).toContain(`${AB.boomerang.damage[0]} hit on everything`);
+    expect(L('boomerang', 2)).toBe(`Blade ${up(AB.boomerang.width[0], AB.boomerang.width[1])} wider; hits for ${AB.boomerang.damage[1]}`);
+    expect(L('lance', 1)).toBe(`Tap: a normal shot. Hold ${AB.lance.half} s: a ${AB.lance.halfDmg}-hit bolt. Hold ${AB.lance.full} s: a ${AB.lance.fullDmg}-hit lance through everything in line`);
+    expect(L('lance', 2)).toContain(`Charges ${up(1, AB.lance.rate[1])} faster`);
+    expect(L('lance', 3)).toContain(`burns for ${AB.lance.burn} s`);
+    expect(L('cutter', 1)).toContain(`${AB.cutter.damage} hit on everything`);
+    expect(L('cutter', 1)).toContain(`1 round per ${AB.cutter.length[0]} px`);
+    expect(L('cutter', 2)).toBe(`Each round cuts ${up(AB.cutter.length[0], AB.cutter.length[1])} further (${AB.cutter.length[1]} px)`);
+    expect(L('cutter', 3)).toContain(`lit for ${AB.cutter.lit} s`);
+    expect(L('grapnel', 1)).toContain(`(${AB.grapnel.smack[0]} hits each)`);
+    expect(L('grapnel', 1)).toContain(`bursts for ${AB.grapnel.burst[0]}`);
+    expect(L('grapnel', 2)).toBe(`Swings ${up(AB.grapnel.speed[0], AB.grapnel.speed[1])} faster; smashes hit for ${AB.grapnel.smack[1]}`);
+    expect(L('grapnel', 3)).toBe(`The burst hits for ${AB.grapnel.burst[2]} and is ${up(AB.grapnel.burstR[1], AB.grapnel.burstR[2])} wider`);
+    expect(L('cadence', 1)).toContain(`every ${AB.cadence.period} s`);
+    expect(L('cadence', 1)).toContain(`free ${AB.cadence.damage}-hit shot`);
+    expect(L('cadence', 2)).toBe(`Beat window ${up(AB.cadence.window[0], AB.cadence.window[1])} longer`);
+    expect(L('cadence', 3)).toContain(`${AB.cadence.run} beats in a row and the ${AB.cadence.run + 1}th fires a free broadside at ${AB.cadence.broadside} threats`);
+    expect(L('droneScreen', 1)).toContain(`every ${AB.droneScreen.gap[0]} s`);
+    expect(L('droneScreen', 1)).toContain(`${AB.droneScreen.damage} hit`);
+    expect(L('droneScreen', 2)).toBe(`Launch rate ${rate(AB.droneScreen.gap[0], AB.droneScreen.gap[1])} (a drone every ${AB.droneScreen.gap[1]} s)`);
+    expect(L('droneScreen', 3)).toContain(`Launch rate ${rate(AB.droneScreen.gap[1], AB.droneScreen.gap[2])} (every ${AB.droneScreen.gap[2]} s)`);
+    expect(AB.droneScreen.burst[2]).toBeGreaterThan(0);
+    expect(AB.gunships.count[0]).toBe(2);
+    expect(L('gunships', 1)).toContain(`every ${AB.gunships.gap[0]} s, ${AB.gunships.damage[0]} hit`);
+    expect(L('gunships', 2)).toBe(`Fire rate ${rate(AB.gunships.gap[0], AB.gunships.gap[1])}`);
+    expect(AB.gunships.count[2]).toBe(3);
+    expect(L('gunships', 3)).toContain(`rockets hit for ${AB.gunships.damage[2]}`);
+    expect(L('bomberWing', 1)).toContain(`Every ${AB.bomberWing.gap[0]} s`);
+    expect(L('bomberWing', 1)).toContain(`for ${AB.bomberWing.quiet[0]} s`);
+    expect(L('bomberWing', 2)).toBe(`A pass every ${AB.bomberWing.gap[1]} s`);
+    expect(L('bomberWing', 3)).toContain(`every ${AB.bomberWing.gap[2]} s with ${AB.bomberWing.targets[2]} bombers`);
+    expect(L('bomberWing', 3)).toContain(`silent ${AB.bomberWing.quiet[2]} s`);
+    expect(L('orbital', 1)).toContain(`Every ${AB.orbital.gap[0]} s`);
+    expect(L('orbital', 1)).toContain(`for ${AB.orbital.damage} (1 to`);
+    expect(L('orbital', 2)).toBe(`A strike every ${AB.orbital.gap[1]} s`);
+    expect(L('orbital', 3)).toContain(`every ${AB.orbital.gap[2]} s`);
+    expect(L('supplyRun', 1)).toContain(`drops ${AB.supplyRun.crates[0]} crates`);
+    expect(L('supplyRun', 1)).toContain(`kills drop ${AB.supplyRun.mult[0]}×`);
+    expect(L('supplyRun', 2)).toContain(`${AB.supplyRun.crates[1]} crates (${AB.supplyRun.load.slice(0, AB.supplyRun.crates[1]).filter((c) => c === 'gear').length} of them gear); kills drop ${AB.supplyRun.mult[1]}×`);
+    expect(L('supplyRun', 3)).toContain(`Every ${AB.supplyRun.crate} s`);
+    expect(L('dualWield', 1)).toContain(`Lasts ${T * AB.dualWield.time[0]} s`);
+    expect(L('dualWield', 2)).toBe(`Lasts ${T * AB.dualWield.time[1]} s`);
+    expect(L('dualWield', 3)).toContain(`${AB.dualWield.drops[2]}× as often`);
+    expect(L('wildCard', 2)).toContain(`for ${T * AB.wildCard.time} s; shots at level 2`);
+    expect(AB.wildCard.passive[1]).toBe(1);
+    expect(L('wildCard', 3)).toContain(`the passive at level ${AB.wildCard.passive[2]}`);
+    expect(L('focus', 1)).toContain(`(${AB.focus.scale[0] * 100}% speed), up to ${AB.focus.bank[0]} s`);
+    expect(L('focus', 2)).toBe(`${AB.focus.bank[1]} s of slow motion, at ${AB.focus.scale[1] * 100}% speed`);
+    expect(L('focus', 3)).toContain(`hit for ${AB.focus.damage}×`);
+    expect(L('overdrive', 1)).toContain(`for ${T * AB.overdrive.time[0]} s`);
+    expect(L('overdrive', 2)).toBe(`Lasts ${T * AB.overdrive.time[1]} s`);
+    expect(L('shield', 1)).toContain(`For ${T * AB.shield.time[0]} s`);
+    expect(L('shield', 2)).toContain(`puts ${AB.shield.refund[1]} round back`);
+    expect(L('shield', 3)).toContain(`Lasts ${T * AB.shield.time[2]} s`);
+    expect(L('fullSteam', 1)).toContain(`${AB.fullSteam.mult[0]}× faster for ${T} s`);
+    expect(L('fullSteam', 2)).toBe(`Speed ${AB.fullSteam.mult[1]}×`);
+  });
+
+  it('no level line says how much in words where a number would do (round 8 audit)', () => {
+    for (const id of Object.keys(ABILITIES) as AbilityId[]) {
+      for (const line of ABILITIES[id].levels) {
+        expect(line, id).not.toMatch(/half (again|as)|faster still|a bigger|harder hits|a wider|twice as|half again/i);
+        expect(line.length, `${id}: ${line}`).toBeLessThanOrEqual(150);
+      }
+    }
   });
 
   it('every Armory blurb quotes its real per-level change', () => {

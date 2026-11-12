@@ -128,9 +128,6 @@ const LOST_BEAT = 2.6;
 const LOST_SKIP_AFTER = 0.9;
 /** Cards ignore taps for this long after the draft appears. */
 const DRAFT_ARM_MS = 350;
-/** Focus: a touch of the holding finger shorter than this is a tap (fired on
- *  its lift); longer, it was a hold for slow motion. */
-const FOCUS_TAP_MS = AB.focus.hold * 1000;
 /** Round 11: a tough threat shot down freezes the action for a beat (real
  *  seconds; the sim takes the same steps, just a moment later). */
 const HIT_STOP = 0.08;
@@ -424,14 +421,19 @@ export class App {
   /** A finger pressed with a gesture weapon loaded (Charge Lance, Laser
    *  Cutter, Grapnel): its pointer, and where it last told the sim it was. */
   private gesture: { id: number; x: number; y: number } | null = null;
-  /** Focus (a boost): the finger whose press is slowing time. */
-  private focusFinger: { id: number; x: number; y: number; at: number } | null = null;
+  /** Focus (a boost; Test Lab round 8: "a button you hold on the left side
+   *  of the screen with your left thumb"): the button, shown while Focus
+   *  runs, its meter (the slow motion banked, and the boost's own clock),
+   *  and the pointer holding it. */
+  private focusBtn = el('div', 'v3-focus-btn');
+  private focusPointer: number | null = null;
+  private focusKey = '';
 
   constructor(private root: HTMLElement) {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
     root.classList.toggle('notes', this.notesOn);
-    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.focusBtn, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     // Landscape only: on every screen, not just in a run (menus round).
     const phone = el('div', 'v3-rotate-phone');
     phone.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="51" r="2.2" fill="currentColor"/></svg>`;
@@ -727,6 +729,9 @@ export class App {
     }
     if (!this.game || this.game.phase !== 'wave') return;
     this.paused = !this.paused;
+    // Nothing stays held through a pause (Test Lab round 8: Focus's slow
+    // motion came back on Resume with no finger down).
+    if (this.paused) this.releaseFocus();
     this.pauseBtn.textContent = this.paused ? '▶' : 'II';
     if (this.paused) this.showPauseMenu();
     else this.hideOverlay();
@@ -913,19 +918,8 @@ export class App {
       // Watch mode: a touch on the battlefield takes the controls (and
       // counts as your first tap).
       if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
-      // Focus (a boost; the player: "one finger down and then tap with the
-      // other one"): while slow motion is banked, the first finger down is
-      // the holding finger. Held AB.focus.hold s it slows time (the sim
-      // counts the hold) and fires nothing; every other finger taps (or
-      // presses, with a gesture weapon) as usual. A quicker touch of it is a
-      // plain tap (on its lift), with no slow-down (Test Lab round 5: "When
-      // tapping just to shoot a missile it should not do the slow down").
-      const g0 = this.game;
-      if (g0.phase === 'wave' && g0.boost?.id === 'focus' && g0.boost.bank > 0 && !this.focusFinger && this.rec) {
-        this.focusFinger = { id: e.pointerId, x: w.x, y: w.y, at: performance.now() };
-        this.rec.focus(true);
-        return;
-      }
+      // Focus slows time only from its own button (Test Lab round 8): a
+      // touch on the water is always a shot.
       // A gesture weapon (the weapons plan): the finger is a press, not a
       // tap, and holding charges, swipes or drags instead of repeating.
       // A second finger while one is pressed is a plain tap (two thumbs: one
@@ -960,14 +954,6 @@ export class App {
       if (w) Object.assign(this.hold, w);
     });
     const lift = (e: PointerEvent) => {
-      // Focus: the holding finger lifts, and time runs at speed again.
-      if (this.focusFinger?.id === e.pointerId) {
-        const f = this.focusFinger;
-        this.focusFinger = null;
-        this.rec?.focus(false);
-        if (performance.now() - f.at < FOCUS_TAP_MS) this.fire(f.x, f.y);
-        return;
-      }
       if (this.gesture && this.gesture.id === e.pointerId) {
         const w = this.toWorld(e.clientX, e.clientY) ?? this.gesture;
         this.gesture = null;
@@ -980,13 +966,107 @@ export class App {
     };
     this.canvas.addEventListener('pointerup', lift);
     this.canvas.addEventListener('pointercancel', lift);
+    this.bindFocusButton();
+  }
+
+  /** The Focus button (Test Lab round 8). Held, time slows; let go, and it
+   *  runs at speed again. It never fires, and a tap anywhere else is a shot.
+   *  The round-7 note ("the slow motion was still going even though I was
+   *  not touching the screen") came from a lift that never reached the game:
+   *  the slow-motion finger was whichever touched the water first, and only
+   *  the canvas's own pointerup let it go. Pausing (the pause button, or the
+   *  app going to the background, when iOS may never send the lift) kept it
+   *  held, so Resume went straight back into slow motion with no finger
+   *  down. Now every way a touch can end lets the button go: its pointer's
+   *  up, cancel or lost capture, a touchend anywhere that leaves no touch
+   *  on the button, the window losing focus, a pause, the page hiding, the
+   *  boost ending. */
+  private bindFocusButton(): void {
+    const b = this.focusBtn;
+    b.setAttribute('role', 'button');
+    b.setAttribute('aria-label', 'Hold for slow motion');
+    b.dataset.focusBtn = '';
+    b.innerHTML = '<span class="v3-focus-ring"></span><span class="v3-focus-face"><b class="v3-focus-secs"></b><small>HOLD</small></span>';
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const g = this.game;
+      if (!g || !this.rec || this.paused || this.playback || g.phase !== 'wave' || g.boost?.id !== 'focus') return;
+      if (this.bot && this.control === 'bot') this.setControl('you');
+      if (this.focusPointer !== null) return;
+      this.focusPointer = e.pointerId;
+      try {
+        b.setPointerCapture(e.pointerId);
+      } catch {
+        // A synthetic pointer (tests) can't be captured; the window's
+        // listeners still see it go.
+      }
+      b.classList.add('held');
+      this.rec.focus(true);
+    });
+    const up = (e: PointerEvent) => {
+      if (e.pointerId === this.focusPointer) this.releaseFocus();
+    };
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
+    b.addEventListener('lostpointercapture', up);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    // iOS can lose a pointerup in a crowd of fingers; its touch list never
+    // lies: no touch left that started on the button, and it is let go.
+    const touches = (e: TouchEvent) => {
+      if (this.focusPointer === null) return;
+      if (![...e.touches].some((t) => t.target instanceof Node && b.contains(t.target))) this.releaseFocus();
+    };
+    window.addEventListener('touchend', touches, true);
+    window.addEventListener('touchcancel', touches, true);
+    window.addEventListener('blur', () => this.releaseFocus());
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  /** Let the Focus button go: time runs at speed again. */
+  private releaseFocus(): void {
+    if (this.focusPointer === null) return;
+    this.focusPointer = null;
+    this.focusBtn.classList.remove('held');
+    if (this.game?.phase === 'wave') this.rec?.focus(false);
+  }
+
+  /** Each frame: the Focus button shows while Focus runs, its ring the
+   *  slow motion still banked (the seconds in the middle) and its outer
+   *  edge the boost's own clock. Gone, it lets go. */
+  private renderFocus(g: Game | null): void {
+    const b = g?.boost;
+    const on = !!g && !!b && b.id === 'focus' && g.phase === 'wave' && !this.playback && !this.beat;
+    if (!on && this.focusPointer !== null) this.releaseFocus();
+    // Still held through a fresh Focus pickup (the sim lets go as the old
+    // boost ends): the thumb on the button holds the new one.
+    if (on && this.focusPointer !== null && !g!.finger) this.rec?.focus(true);
+    const bank = on ? b!.bank : 0;
+    const full = on ? AB.focus.bank[b!.level - 1] : 1;
+    const left = on ? Math.max(0, b!.t) / g!.stats.weaponTime : 0;
+    const key = on ? `${bank.toFixed(1)}|${left.toFixed(2)}|${g!.focusing ? 1 : 0}` : '';
+    if (key === this.focusKey) return;
+    this.focusKey = key;
+    const el0 = this.focusBtn;
+    el0.classList.toggle('on', on);
+    if (!on) return;
+    el0.classList.toggle('slow', g!.focusing);
+    el0.classList.toggle('empty', bank <= 0);
+    el0.style.setProperty('--bank', (bank / full).toFixed(3));
+    el0.style.setProperty('--left', Math.min(1, left).toFixed(3));
+    const secs = el0.querySelector<HTMLElement>('.v3-focus-secs')!;
+    const text = bank <= 0 ? 'EMPTY' : `${bank.toFixed(1)}s`;
+    if (secs.textContent !== text) secs.textContent = text;
+    const tag = el0.querySelector<HTMLElement>('small')!;
+    const t2 = g!.focusing ? 'SLOW' : 'HOLD';
+    if (tag.textContent !== t2) tag.textContent = t2;
   }
 
   /** A press still down when play stops (pause, a note, the run ends): let
    *  go of it where the finger last was, so nothing stays held. */
   private dropGesture(): void {
-    if (this.focusFinger && this.game?.phase === 'wave') this.rec?.focus(false);
-    this.focusFinger = null;
+    this.releaseFocus();
     if (!this.gesture) return;
     const at = this.gesture;
     this.gesture = null;
@@ -1154,6 +1234,7 @@ export class App {
     if (g) this.radarHint(g);
     if (g) this.redHint(g);
     this.syncTimers(g);
+    this.renderFocus(g);
     this.syncNoteBtn(g);
     this.syncSound(g);
     this.draw();
@@ -1350,10 +1431,17 @@ export class App {
           // line (round 4: with what a shot does as well, the notice wrapped
           // to two lines and, on the Island's one-card tray, rose onto the
           // carrier; what it does is on the card you drafted it from).
-          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${g.stats.weaponTime}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE, null);
+          // A boost's own time (Overdrive lasts longer from level 2).
+          const secs = g.boost?.id === ev.id ? Math.round(g.boost.t) : g.stats.weaponTime;
+          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${secs}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE, null);
           this.shake = Math.max(this.shake, 4);
           break;
         }
+        case 'wild':
+          // Wild Card's pickup brought a passive (Test Lab round 8): the
+          // banner names both (it takes the plain one's place).
+          this.showBanner(`WILD CARD + ${abilityName(ev.id, ev.level).toUpperCase()} · ${Math.round(g.wildPassive?.t ?? g.stats.weaponTime * AB.wildCard.time)}s`, `Each tap is a random weapon; the ${ABILITIES[ev.id].name} works on its own.`, WEAPON_NOTE, null);
+          break;
         case 'newPickup': {
           const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
           if (hint && this.explain(`pickup:${ev.pickup}`)) this.showBanner(...hint, { ...HINT, icon: 'info' });
@@ -1488,6 +1576,9 @@ export class App {
       if (g.shieldT > 0) chips.push(['SHIELD', g.shieldT, PICKUP_COLORS.shield]);
       if (g.steamT > 0) chips.push(['FULL STEAM', g.steamT, PICKUP_COLORS.steam]);
       if (g.flareT > 0) chips.push(['STAR SHELL', g.flareT, PICKUP_COLORS.starshell]);
+      // Wild Card's passive (Test Lab round 8): what it brought, and for how long.
+      const wp = g.wildPassive;
+      if (wp) chips.push([SHORT_NAME[wp.id][wp.level >= ABILITY_MAX ? 1 : 0], wp.t, ICON_COLOR[wp.id]]);
     }
     const key = chips.map(([l, t]) => `${l}${Math.ceil(t)}`).join();
     if (key === this.timersKey) return;
@@ -3045,6 +3136,12 @@ export class App {
       if (id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id)) {
         card.dataset.debut = String(chapter);
         art.append(el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`));
+      }
+      // The Test Lab (round 8: "I didn't see the grapple upgrade"): the
+      // weapon under test is the first card, and says so.
+      if (id !== 'resupply' && g.lab?.weapon === id) {
+        card.dataset.testing = '1';
+        art.append(el('span', 'v3-card-testing', 'TESTING'));
       }
       const level = el('span', 'v2-card-level', '');
       let text: string;

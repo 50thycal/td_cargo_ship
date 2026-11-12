@@ -43,7 +43,8 @@ describe('the hub\'s cards', () => {
     // the reworked weapons first.
     expect(ids.slice(0, 2)).toEqual(['ev-rush', 'ev-decoy-storm']);
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy').slice(0, 3).map((c) => c.id)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
-    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield']);
+    // Round 8's reworked weapons first, then round 5's.
+    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['focus', 'wildCard', 'grapnel', 'overdrive', 'frigate', 'droneScreen', 'aegis', 'well', 'cutter', 'gunships', 'supplyRun', 'bomberWing', 'shield']);
     for (const c of LAB_CARDS) {
       expect(c.kit, c.id).toHaveLength(3);
       for (const w of c.kit) expect(ABILITY_ORDER, c.id).toContain(w);
@@ -287,8 +288,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(LAB_ROUND).toBe(7);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(LAB_ROUND).toBe(8);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
@@ -331,8 +332,13 @@ describe('test rounds and card versions', () => {
     expect(LAB_CHANGES.decoy!.some((c) => c.round === 5)).toBe(false);
     // Round 5 (the player's round 4 weapon notes): a line for every weapon
     // changed, and nothing for the ones kept as they were.
-    const changed = ['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield'];
+    const changed = ['aegis', 'well', 'cutter', 'gunships', 'supplyRun', 'bomberWing', 'shield'];
     for (const id of changed) expect(cardRev(`w-${id}`), id).toBe(5);
+    // Round 8 (the player's round 7 weapon notes): a line for each weapon
+    // whose play changed; the text-only rewrite (every card) asks for no
+    // retest, so Gunship Pair stays at 5.
+    for (const id of ['grapnel', 'droneScreen', 'focus', 'frigate', 'overdrive', 'wildCard']) expect(cardRev(`w-${id}`), id).toBe(8);
+    expect(LAB_ROUNDS[LAB_ROUNDS.length - 1]).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
     expect(labCard('w-aegis')!.name).toBe('Point Defense');
   });
@@ -340,8 +346,8 @@ describe('test rounds and card versions', () => {
   it('a combo takes on its enemies\' and weapon\'s versions and changes', () => {
     // Lure Beacon + Drone Screen: its own round 4 line, and the Lure Beacon's.
     expect(LAB_CHANGES['combo-lure-screen']!.map((l) => l.round)).toEqual([4]);
-    // Its round 4 line, and Drone Screen's round 5 one.
-    expect(cardChanges('combo-lure-screen', 3)).toEqual(['Drone Screen now drops by the carrier just before each Lure Beacon', 'Drone Screen: Drones wait on deck until a threat is on screen']);
+    // Its round 4 line, and Drone Screen's round 5 and round 8 ones.
+    expect(cardChanges('combo-lure-screen', 3)).toEqual(['Drone Screen now drops by the carrier just before each Lure Beacon', 'Drone Screen: Drones wait on deck until a threat is on screen', 'Drone Screen: Drones with nothing left to ram fly home and land on the deck']);
     expect(cardChanges('combo-lure-screen').some((l) => l.startsWith(`${labCard('lure')!.name}:`))).toBe(true);
     // Siege + Rocket Truck: its own two lines, and both enemies'.
     expect(cardChanges('combo-siege-truck')).toHaveLength(4);

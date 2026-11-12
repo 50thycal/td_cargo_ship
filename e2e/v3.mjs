@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 19 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 20 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -721,41 +721,86 @@ try {
     await wp.mouse.click(p.x, p.y);
     const wc = await wp.evaluate(() => { const g = window.__v3.game(); return { boost: g.boost?.id, weapon: g.weapon?.id }; });
     check(wc.weapon === 'wildCard' && wc.boost === 'fullSteam', `Wild Card is a weapon: it takes over the gun from the Railgun, the boost runs on (${JSON.stringify(wc)})`);
+    // Wild Card level 2 (Test Lab round 8): its pickup brings a random
+    // passive, named in the left rail with its seconds.
+    await wp.evaluate(() => { window.__v3.game().levels.wildCard = 2; });
+    await dropWeapon(wp, 'wildCard', 640, 560);
+    await wp.mouse.click(p.x, p.y);
+    await wp.waitForTimeout(200);
+    const wild2 = await wp.evaluate(() => { const g = window.__v3.game(); return { weapon: g.weapon?.id, passive: g.wildPassive?.id ?? null, level: g.wildPassive?.level, chip: document.querySelector('.v2-timers')?.textContent ?? '' }; });
+    check(wild2.weapon === 'wildCard' && ['frigate', 'aegis', 'droneScreen', 'gunships', 'bomberWing', 'orbital'].includes(wild2.passive) && wild2.level === 1 && /\d/.test(wild2.chip), `Wild Card level 2: the pickup brings a random passive (level 1), shown in the rail (${JSON.stringify(wild2)})`);
 
-    // Focus: a finger down slows time; lifting it stops.
-    await place([['drone', 1, 600, 200], ['drone', 1, 900, 200]]);
+    // Focus (Test Lab round 8): a button on the left edge, held with the
+    // left thumb, slows time; every touch on the water is a shot.
+    await wp.evaluate(() => { const g = window.__v3.game(); g.wildPassive = null; g.helis = []; g.escorts = []; g.wings = []; g.sorties = []; g.orbital = null; });
+    await place([['drone', 9, 600, 200], ['drone', 9, 900, 200]]);
     await wp.evaluate(() => { const g = window.__v3.game(); g.levels.focus = 1; if (!g.slots.includes('focus')) g.slots.push('focus'); });
     await dropWeapon(wp, 'focus', 640, 560);
     p = await c(640, 560);
     await wp.mouse.click(p.x, p.y);
-    // Two fingers (the player's note): one held down only slows time; the
-    // other taps. Pointer events with their own ids, as two thumbs send.
+    // Pointer events with their own ids, as two thumbs send.
     const finger = (type, id, x, y) => wp.evaluate(([type, id, x, y]) => {
       const cv = document.querySelector('canvas');
       cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 11 }));
     }, [type, id, x, y]);
-    const hold = await c(1200, 400);
-    // A quick tap of it (Test Lab round 5): a shot, and no slow-down.
-    const quick0 = await wp.evaluate(() => window.__v3.game().shots);
+    const thumb = (type, id) => wp.evaluate(([type, id]) => {
+      const b = document.querySelector('[data-focus-btn]');
+      const r = b.getBoundingClientRect();
+      b.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, bubbles: true, cancelable: true, pointerType: 'touch' }));
+    }, [type, id]);
+    const fstate = () => wp.evaluate(() => { const g = window.__v3.game(); const b = document.querySelector('[data-focus-btn]'); return { focusing: g.focusing, finger: g.finger, bank: g.boost?.bank, shots: g.shots, on: b.classList.contains('on'), held: b.classList.contains('held'), text: b.textContent }; });
+    // It shows from the next frame.
+    await wp.waitForSelector('[data-focus-btn].on', { timeout: 2000 }).catch(() => {});
+    const fbox = await wp.evaluate(() => {
+      const b = document.querySelector('[data-focus-btn]').getBoundingClientRect();
+      const rail = document.querySelector('.v2-rail-left').getBoundingClientRect();
+      const cv = document.querySelector('canvas').getBoundingClientRect();
+      return { w: b.width, h: b.height, left: b.left, right: b.right, top: b.top, bottom: b.bottom, rail: rail.right, cvLeft: cv.left, cvBottom: cv.bottom, mid: (cv.left + cv.right) / 2 };
+    });
+    const f0 = await fstate();
+    check(f0.on && fbox.w >= 72 && fbox.h >= 72 && fbox.left >= fbox.rail && fbox.right < fbox.mid && fbox.bottom <= fbox.cvBottom && /10\.0s/.test(f0.text), `Focus: its button shows on the left edge, thumb-sized, clear of the rail, with the slow motion banked (${JSON.stringify({ ...fbox, text: f0.text })})`);
+    // A tap on the water: a shot, and no slow-down (whatever finger it is).
     const qa = await c(900, 200);
     await finger('pointerdown', 11, qa.x, qa.y);
-    const quickSlow = await wp.evaluate(() => window.__v3.game().focusing);
     await finger('pointerup', 11, qa.x, qa.y);
-    const quick = await wp.evaluate(() => { const g = window.__v3.game(); return { shots: g.shots, focusing: g.focusing, bank: g.boost?.bank }; });
-    check(!quickSlow && !quick.focusing && quick.shots === quick0 + 1 && quick.bank === 10, `Focus: a quick tap is just a shot, no slow-down (${JSON.stringify(quick)})`);
     await wp.waitForTimeout(400);
-    const shots0f = await wp.evaluate(() => window.__v3.game().shots);
-    await finger('pointerdown', 11, hold.x, hold.y);
+    const quick = await fstate();
+    check(!quick.focusing && quick.shots === f0.shots + 1 && quick.bank === 10, `Focus: a tap on the water is a shot and never slows time (${JSON.stringify(quick)})`);
+    // Hold the button: time slows and nothing fires; a tap elsewhere shoots.
+    await thumb('pointerdown', 21);
     await wp.waitForTimeout(400);
-    const slow = await wp.evaluate(() => { const g = window.__v3.game(); return { focusing: g.focusing, bank: g.boost?.bank, shots: g.shots }; });
+    const slow = await fstate();
     const aim = await c(600, 200);
     await finger('pointerdown', 12, aim.x, aim.y);
     await finger('pointerup', 12, aim.x, aim.y);
-    const tapped = await wp.evaluate(() => window.__v3.game().shots);
-    await finger('pointerup', 11, hold.x, hold.y);
+    const tapped = await fstate();
+    await thumb('pointerup', 21);
     await wp.waitForTimeout(100);
-    const fast = await wp.evaluate(() => window.__v3.game().focusing);
-    check(slow.focusing && slow.bank < 10 && slow.shots === shots0f && tapped === shots0f + 1 && !fast, `Focus: the held finger slows time and fires nothing, the other finger's tap fires; lifting it stops (${JSON.stringify(slow)}, shots ${shots0f} → ${tapped}, after: ${fast})`);
+    const fast = await fstate();
+    check(slow.focusing && slow.held && slow.bank < 10 && slow.shots === quick.shots && tapped.shots === quick.shots + 1 && tapped.focusing && !fast.focusing && !fast.held, `Focus: holding the button slows time and fires nothing, a tap elsewhere fires; letting go resumes at once (${JSON.stringify({ slow, tapped: tapped.shots, fast: fast.focusing })})`);
+    // The round 7 quirk: held, then paused (where iOS may never send the
+    // lift), then resumed: no slow motion with nothing touching.
+    await thumb('pointerdown', 22);
+    await wp.waitForTimeout(150);
+    await wp.keyboard.press('Space');
+    await wp.waitForTimeout(150);
+    await wp.keyboard.press('Space');
+    await wp.waitForTimeout(300);
+    const paused = await fstate();
+    // ... and a lift lost in a crowd of touches: a touchend that leaves no
+    // touch on the button lets it go.
+    await thumb('pointerdown', 23);
+    await wp.waitForTimeout(150);
+    const before = await fstate();
+    await wp.evaluate(() => window.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [], bubbles: true })));
+    await wp.waitForTimeout(150);
+    const lost = await fstate();
+    check(!paused.focusing && !paused.finger && !paused.held && before.focusing && !lost.focusing && !lost.held, `Focus: a pause or a lost lift never leaves slow motion running (${JSON.stringify({ paused: paused.focusing, before: before.focusing, lost: lost.focusing })})`);
+    // The boost ends: the button goes.
+    await wp.evaluate(() => { window.__v3.game().boost.t = 0.05; });
+    await wp.waitForTimeout(300);
+    const gone = await fstate();
+    check(!gone.on && !gone.focusing, `Focus: when the boost ends its button goes (${JSON.stringify(gone)})`);
 
     // Dual Wield: the Railgun loaded, the boost, then Scattergun joins it.
     await place([['heavy', 30, 800, 260]]);
@@ -906,7 +951,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 7 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 7 && saved.v === 19 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 8 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 8 && saved.v === 20 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
@@ -944,7 +989,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 7/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 8/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 

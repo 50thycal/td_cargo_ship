@@ -461,7 +461,7 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(19);
+    expect(log.v).toBe(20);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('decoy-storm');
