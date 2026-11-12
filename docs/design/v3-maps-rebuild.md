@@ -8,7 +8,7 @@ The 20 campaign maps were laid out in the maps plan ([v3-maps-plan.md](v3-maps-p
 
 ## The review page
 
-- **Built by** `node tools/v3/maps-rebuild/page.mjs <out.html>` (it runs `facts.mts` through vite-node and refuses to build if the plan breaks its rules). It is published as an Artifact with `capabilities: {db: {}}`; the link goes here once it is published.
+- **Built by** `node tools/v3/maps-rebuild/page.mjs <out.html>` (it runs `facts.mts` through vite-node and refuses to build if the plan breaks its rules). It is published as an Artifact with `capabilities: {db: {}}`: https://claude.ai/artifact/652LYxsxEqVdph6vp8ab4V
 - **Tabs:** Scope (the questions), one per chapter (its five maps), Systems, All notes, My marks (with the "Anything else?" box).
 - **Checked** at 390 px and 874 px wide, light and dark, in Chromium: no console errors, no sideways scroll on any tab, a verdict saves (to the browser off claude.ai) and Bring back shows on a Cut.
 
