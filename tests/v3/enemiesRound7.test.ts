@@ -69,8 +69,9 @@ describe('round 7: the round and its lines', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 7)).toEqual({ n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' });
     for (const id of ['decoy', 'hydra', 'torpedoSub', 'ev-decoy-storm', 'ev-hydra-bloom']) expect(LAB_CHANGES[id]!.filter((c) => c.round === 7), id).toHaveLength(1);
     // The combos take their enemies' lines on.
-    expect(cardChanges('combo-decoy-sprint', 6)).toEqual(['Decoy Drones: No strobe: the decoys are a shade cooler (grey, not cream) all the way in']);
-    expect(cardChanges('combo-hydra-tesla', 6)).toEqual(['Hydra Missile: 25% slower before it splits; its darts as fast as before']);
+    expect(cardChanges('combo-decoy-sprint', 6)).toContain('Decoy Drones: No strobe: the decoys are a shade cooler (grey, not cream) all the way in');
+    // (Round 8: the Hydra's combos are enemy pairs; they take the line on too.)
+    expect(cardChanges('combo-hydra-swarm', 6)).toContain('Hydra Missile: 25% slower before it splits; its darts as fast as before');
     // The Wolf Pack is as it was (its subs keep their two or three).
     expect((LAB_CHANGES['ev-wolf-pack'] ?? []).some((c) => c.round === 7)).toBe(false);
   });
@@ -107,13 +108,14 @@ describe('Decoy Drones: "a faint color difference everywhere, instead of the fla
     expect(draw(real)).toContain(`fillStyle=${C.drone}`);
   });
 
-  it('the tint is faint: the drone\'s lightness, its warmth taken out (15 to 25 points less saturation)', () => {
+  it('the tint keeps the drone\'s lightness and turns its warmth cool (round 8 made it about twice as strong)', () => {
     const d = hsl(C.drone);
     const t = hsl(DECOY_TINT);
     expect(DECOY_TINT).not.toBe(C.drone);
-    expect(Math.abs(t.l - d.l)).toBeLessThan(0.02);
-    expect(d.s - t.s).toBeGreaterThanOrEqual(0.15);
-    expect(d.s - t.s).toBeLessThanOrEqual(0.25);
+    expect(Math.abs(t.l - d.l)).toBeLessThan(0.04);
+    // Cream (hue about 40°) to a cool blue-grey (180° to 220°).
+    expect(t.h).toBeGreaterThan(180);
+    expect(t.h).toBeLessThan(220);
   });
 
   it('the Decoy Storm\'s decoys are the same decoys (drawn in the tint)', () => {
@@ -145,51 +147,58 @@ describe('Decoy Drones: "a faint color difference everywhere, instead of the fla
 });
 
 describe('Hydra Missile: "about 25% slower before the split"', () => {
-  it('its first stage flies 0.75 × its old 150 px/s; its darts keep their speed', () => {
-    expect(THREATS.hydra.speed).toBe(150 * 0.75);
-    expect(THREATS.dart.speed).toBe(290);
+  it('its first stage flies slower than its old 150 px/s (0.75 × in round 7, two thirds from round 8); its darts at their own speed', () => {
+    // Round 8 slowed both stages a little more (enemiesRound8.test.ts).
+    expect(THREATS.hydra.speed).toBeLessThanOrEqual(150 * 0.75);
     const g = quiet();
     g.waveSpeed = 1.2;
     launchFoe(g, { at: 0, kind: 'hydra', base: 1 }, g.map.bases[1]);
     const h = live(g, 'hydra')[0];
     const share = (h.speed / THREATS.hydra.speed - 1) / 0.2;
-    expect(h.speed).toBeCloseTo(150 * 0.75 * (1 + 0.2 * share), 6);
+    expect(h.speed).toBeCloseTo(THREATS.hydra.speed * (1 + 0.2 * share), 6);
     run(g, 0.5);
     damageThreat(g, h, 99);
     const darts = live(g, 'dart');
     expect(darts).toHaveLength(FOE.hydra.darts);
-    for (const d of darts) expect(d.speed).toBeCloseTo(290 * (1 + 0.2 * share), 6);
+    for (const d of darts) expect(d.speed).toBeCloseTo(THREATS.dart.speed * (1 + 0.2 * share), 6);
   });
 
-  it('in the Hydra Bloom too: 25% slower than before, the event\'s own slow on top', () => {
+  it('in the Hydra Bloom too: the Hydra\'s own speed, the event\'s own slow on top', () => {
     const g = createGame(eventMap('hydra-bloom'), 1, EVENT_WAVE);
     g.event!.t0 = 0;
     run(g, 6, () => live(g, 'hydra').length > 0);
     const h = live(g, 'hydra')[0];
-    const before = 150 * EV['hydra-bloom'].slow;
-    const share = (h.speed / (THREATS.hydra.speed * EV['hydra-bloom'].slow) - 1) / Math.max(1e-9, g.waveSpeed - 1);
-    expect(h.speed / (before * (1 + (g.waveSpeed - 1) * (Number.isFinite(share) ? share : 0)))).toBeCloseTo(0.75, 6);
+    const base = THREATS.hydra.speed * EV['hydra-bloom'].slow;
+    expect(h.speed).toBeGreaterThanOrEqual(base - 1e-6);
+    expect(h.speed).toBeLessThanOrEqual(base * g.waveSpeed + 1e-6);
   });
 });
 
 describe('Torpedo Sub: "the torpedo sub will fire three to five, and then sometimes fast ones"', () => {
-  /** Launches one normal sub at a time and collects each one's spread. */
+  /** Launches one normal sub at a time and collects each one's spread (all
+   *  of it: round 8 fires them one by one). */
   function spreads(seed: number, subs: number): Threat[][] {
     const g = quiet(seed);
     const out: Threat[][] = [];
+    const S = FOE.torpedoSub;
+    // Unsinkable, so every sub has ships to aim at.
+    g.lost = -99;
+    g.carrierHp = 999;
     for (let n = 0; n < subs; n++) {
       g.threats = [];
       g.foe.marks = [];
       launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
       const seen = new Map<number, Threat>();
-      run(g, FOE.torpedoSub.warn + FOE.torpedoSub.fireAt + FOE.torpedoSub.aim + 0.1);
-      for (const t of g.threats) if (t.kind === 'torpedo' && !seen.has(t.id)) seen.set(t.id, { ...t, foe: { ...t.foe! } });
+      for (let i = 0; i < (S.warn + S.fireAt + S.aim + (S.spread[1] - 1) * S.stagger + 0.1) / DT && g.phase === 'wave'; i++) {
+        step(g, DT);
+        for (const t of g.threats) if (t.kind === 'torpedo' && !seen.has(t.id)) seen.set(t.id, { ...t, foe: { ...t.foe! } });
+      }
       out.push([...seen.values()]);
     }
     return out;
   }
 
-  it('every sub fires three to five torpedoes on headings of their own (a dashed line each); about one in four carries a fast one', () => {
+  it('every sub fires three to five torpedoes (a dashed line each); about one in four carries a fast one', () => {
     let fastSubs = 0;
     let total = 0;
     const counts = new Set<number>();
@@ -199,14 +208,9 @@ describe('Torpedo Sub: "the torpedo sub will fire three to five, and then someti
         counts.add(spread.length);
         expect(spread.length).toBeGreaterThanOrEqual(3);
         expect(spread.length).toBeLessThanOrEqual(5);
-        // All from the sub, at once, each on its own heading, fanned at
-        // least `fan` apart.
+        // All from the sub. (Round 8: one by one, each at a ship, in place
+        // of the fan: enemiesRound8.test.ts.)
         expect(new Set(spread.map((t) => `${t.foe!.sx},${t.foe!.sy}`)).size).toBe(1);
-        for (let a = 0; a < spread.length; a++)
-          for (let b = a + 1; b < spread.length; b++) {
-            const d = Math.abs(Math.atan2(Math.sin(spread[a].heading - spread[b].heading), Math.cos(spread[a].heading - spread[b].heading)));
-            expect(d).toBeGreaterThan(FOE.torpedoSub.fan - 1e-6);
-          }
         const fast = spread.filter((t) => t.foe!.fast);
         expect(fast.length).toBeLessThanOrEqual(1);
         if (fast.length) {
@@ -222,19 +226,18 @@ describe('Torpedo Sub: "the torpedo sub will fire three to five, and then someti
     expect(fastSubs / total).toBeLessThan(0.45);
   });
 
-  it('it fires later than the lone torpedo did (2.4 s up, not 1.2), and a sub killed before then fires nothing', () => {
+  it('it fires later than the lone torpedo did (3.0 s up from round 8; 2.4 in round 7), and a sub killed before then fires nothing', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
     run(g, FOE.torpedoSub.warn + 0.05);
     const sub = live(g, 'torpedoSub')[0];
-    expect(sub.foe!.fireAt).toBeCloseTo(2.4, 6);
-    run(g, 2.2);
+    expect(sub.foe!.fireAt).toBeCloseTo(3, 6);
+    run(g, 2.8);
     expect(live(g, 'torpedo')).toHaveLength(0);
     damageThreat(g, sub, 99);
     run(g, 2);
     expect(live(g, 'torpedo')).toHaveLength(0);
   });
-
   it('the same seed fires the same spreads, and a Free Play run with the sub replays exactly from its log', () => {
     const a = spreads(5, 6).map((s) => s.map((t) => [t.heading, t.speed, t.foe!.fast ?? 0]));
     const b = spreads(5, 6).map((s) => s.map((t) => [t.heading, t.speed, t.foe!.fast ?? 0]));

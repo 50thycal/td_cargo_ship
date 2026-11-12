@@ -1,6 +1,8 @@
 // Scratch: the bots' Test Lab evidence for a few enemy cards (came, killed,
 // stopped early, hull harm, ships sunk), summed over seeds.
 // Usage: npx vite-node tools/v3/test-lab/measure.mts -- siege rocketTruck
+// SEEDS=80 SKILLS=sharp,average,casual for the round docs' tables (each run
+// is three Full waves of the card).
 import { labCard, LAB_START_WAVE } from '../../../src/v3/data/lab';
 import { applyFreePlay, applyLab, createGame, step } from '../../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../../src/v3/sim/bot';
@@ -17,9 +19,10 @@ for (const kv of (process.env.SET ?? '').split(',').filter(Boolean)) {
 const cards = process.argv.slice(2).filter((a) => a !== '--');
 const DT = 1 / 30;
 for (const id of cards.length ? cards : ['siege', 'rocketTruck', 'diveBomber', 'attackHeli']) {
-  for (const skill of ['sharp', 'casual'] as const) {
+  for (const skill of (process.env.SKILLS ?? 'sharp,casual').split(',')) {
     const sum = { came: 0, killed: 0, early: 0, harm: 0, sunk: 0 };
-    for (let seed = 1; seed <= 10; seed++) {
+    let pickups = 0;
+    for (let seed = 1; seed <= Number(process.env.SEEDS ?? 10); seed++) {
       const card = labCard(id)!;
       const g = createGame(card.map, seed, LAB_START_WAVE);
       applyFreePlay(g, { weapons: card.kit.map((w) => ({ id: w, level: 1 })), frequentDrops: true });
@@ -34,7 +37,8 @@ for (const id of cards.length ? cards : ['siege', 'rocketTruck', 'diveBomber', '
       }
       const s = g.lab!.stats;
       for (const k of Object.keys(sum) as (keyof typeof sum)[]) sum[k] += s[k];
+      pickups += g.taps.pickup;
     }
-    console.log(id.padEnd(12), skill.padEnd(7), JSON.stringify(sum));
+    console.log(id.padEnd(12), skill.padEnd(7), JSON.stringify({ ...sum, pickups }));
   }
 }

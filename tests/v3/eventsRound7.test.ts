@@ -13,7 +13,7 @@ import { ROSTER } from '../../src/v3/data/roster';
 import { LAB_CARDS, LAB_CHANGES, LAB_EVENT_RUNS, LAB_ROUNDS, cardRev, labCard } from '../../src/v3/data/lab';
 import { canTake, type AbilityId } from '../../src/v3/data/abilities';
 import { applyFreePlay, applyLab, createGame, pickUpgrade, shipsSunk, step, type Game } from '../../src/v3/sim/game';
-import { bonusDue, caughtBy, endingOutcome, eventDropWeights, eventShipScale, lastWave, passivesHeld, startBonus } from '../../src/v3/sim/events';
+import { bonusDue, endingOutcome, eventDropWeights, lastWave, passivesHeld, startBonus } from '../../src/v3/sim/events';
 import { labCountText } from '../../src/v3/sim/lab';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
@@ -177,67 +177,13 @@ describe('every map has its own event', () => {
   it('all twenty, each different; the card names it and its rules, never how to beat it', () => {
     expect(MAP_ORDER.map((m) => EVENT_MAPS[m]).every(Boolean)).toBe(true);
     expect(new Set(MAP_ORDER.map((m) => EVENT_MAPS[m])).size).toBe(MAP_ORDER.length);
-    expect(RULE_TEXT.undertow).toBe("Ships slow inside a beacon's ring");
+    // (Round 8: Beacon Strike took Undertow's place on Dunmar Crossing.)
+    expect(RULE_TEXT.beaconCall).toBe('Beacons call missiles on the ship nearest them');
     expect(EVENTS.breakout.rules.map((r) => RULE_TEXT[r])).toEqual(['No ammo drops at first']);
-    for (const id of ['breakout', 'run-the-canal', 'undertow', 'siege-of-vey'] as EventId[]) {
+    for (const id of ['breakout', 'run-the-canal', 'beacon-strike', 'siege-of-vey'] as EventId[]) {
       const words = [EVENTS[id].name, EVENTS[id].look, ...EVENTS[id].rules.map((r) => RULE_TEXT[r])].join(' ').toLowerCase();
       for (const tell of ['sink the', 'shoot the', 'kill the', 'pop', 'first, then', 'save the', 'hold fire']) expect(words, `${id}: ${tell}`).not.toContain(tell);
     }
-  });
-});
-
-describe('Undertow (Dunmar Crossing): beacons by the lanes slow the ships in their rings', () => {
-  it('a pair of beacons, one by each lane, rise off the lane on the enemy side; then a second pair further on', () => {
-    const g = eventGame('undertow', 2);
-    run(g, EVENT.breather + 0.2);
-    const first = g.threats.filter((t) => t.kind === 'lure');
-    expect(first).toHaveLength(2);
-    const [north, south] = g.map.channels;
-    // One by each lane, just outside it, away from the carrier.
-    const by = (y: number) => first.find((t) => Math.abs(t.y - y) < north.halfWidth + 40)!;
-    expect(by(north.y).y).toBeLessThan(north.y - north.halfWidth + 1);
-    expect(by(south.y).y).toBeGreaterThan(south.y + south.halfWidth - 1);
-    for (const t of first) expect(t.foe!.r).toBe(EV.undertow.ring);
-    run(g, EV.undertow.at[1] + 0.5);
-    expect(g.event!.sent.lure).toBe(4);
-  });
-
-  it('a ship inside an up beacon\'s ring sails slower (and only then); the barrages fall on it', () => {
-    const g = eventGame('undertow', 3);
-    run(g, EVENT.breather + 3);
-    const lure = g.threats.find((t) => t.kind === 'lure' && t.foe!.state >= 1)!;
-    expect(lure).toBeDefined();
-    const s = g.ships[0];
-    s.x = lure.x + 20;
-    s.y = lure.y + 20;
-    expect(caughtBy(g, s)).toBe(lure);
-    expect(eventShipScale(g, s)).toBe(EV.undertow.slow);
-    s.x = lure.x + EV.undertow.ring + 30;
-    expect(eventShipScale(g, s)).toBe(1);
-    // Not in another event.
-    const other = eventGame('escort-run', 3);
-    expect(eventShipScale(other, s)).toBe(1);
-  });
-
-  it('a held ship really falls behind: in a ring it covers a fraction of the water it would', () => {
-    const progress = (snare: boolean): number => {
-      const g = eventGame('undertow', 4);
-      run(g, EVENT.breather + 3);
-      const lure = g.threats.find((t) => t.kind === 'lure' && t.foe!.state >= 1)!;
-      const s = [...g.ships].sort((a, b) => b.d - a.d)[0];
-      const d0 = s.d;
-      for (let i = 0; i < 60; i++) {
-        // Keep the beacon on the ship (or far off it).
-        lure.x = snare ? s.x : -500;
-        lure.y = snare ? s.y : -500;
-        step(g, DT);
-      }
-      return s.d - d0;
-    };
-    const free = progress(false);
-    const held = progress(true);
-    expect(free).toBeGreaterThan(5);
-    expect(held).toBeLessThan(free * (EV.undertow.slow + 0.1));
   });
 });
 
@@ -259,17 +205,17 @@ describe('the three chapter finales', () => {
     expect(e.sent.hydra).toBe(EV.breakout.fan);
   });
 
-  it('Run the Canal (Saltgate): a pack, gunships over the locks, scavengers, then an armored block that banks together', () => {
+  it('Run the Canal (Saltgate): subs, a gunship over a lock, then an armored block that banks together (round 8: cut down)', () => {
     const g = eventGame('run-the-canal', 2);
     run(g, EVENT.breather + EV['run-the-canal'].heliAt + 1);
     const helis = g.threats.filter((t) => t.kind === 'attackHeli');
-    expect(helis).toHaveLength(2);
+    expect(helis).toHaveLength(EV['run-the-canal'].helis);
     const locks = g.map.locks!;
-    expect(helis.map((t) => t.foe!.px).sort((a, b) => a - b)).toEqual(locks.map((l) => (l.x0 + l.x1) / 2));
+    expect(helis.map((t) => t.foe!.px)).toEqual([(locks[0].x0 + locks[0].x1) / 2]);
     run(g, 30, () => (g.event?.signals ?? 0) > 0);
     expect(g.event!.blockSpec?.drones).toBe(EV['run-the-canal'].drones);
     const block = g.threats.filter((t) => t.kind === 'armored');
-    expect(block.length).toBeGreaterThan(3);
+    expect(block.length).toBeGreaterThan(2);
     expect(block.every((t) => t.foe!.state === 1)).toBe(true);
   });
 
@@ -379,27 +325,28 @@ describe('the three-run ending, the convoy restored first (one flag)', () => {
 
   it('the Test Lab\'s Full test plays as many runs as the campaign\'s ending', () => {
     expect(LAB_EVENT_RUNS.full).toBe(ENDING.runs);
-    expect(labCountText(labCard('ev-undertow')!, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 1, LAB_EVENT_RUNS.full)).toMatch(/Run 2 of 3$/);
+    expect(labCountText(labCard('ev-beacon-strike')!, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 1, LAB_EVENT_RUNS.full)).toMatch(/Run 2 of 3$/);
   });
 });
 
 describe('the Test Lab: round 7', () => {
   it('round 7, a card for each new event, and a round 7 line for each new or changed event card', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 7)).toEqual({ n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' });
-    for (const id of ['breakout', 'run-the-canal', 'undertow', 'siege-of-vey', 'siren-field']) {
+    for (const id of ['breakout', 'run-the-canal', 'siege-of-vey', 'siren-field']) {
       const card = labCard(`ev-${id}`)!;
       expect(card, id).toBeDefined();
       expect(card.kind).toBe('event');
       expect(LAB_CHANGES[card.id].filter((c) => c.round === 7), id).toHaveLength(1);
-      expect(cardRev(card.id)).toBe(7);
+      // (Round 8 changed The Breakout and Run the Canal again.)
+      expect(cardRev(card.id)).toBe(['breakout', 'run-the-canal'].includes(id) ? 8 : 7);
     }
-    // Undertow's kit has no helpers: it must not need them.
-    expect(labCard('ev-undertow')!.kit.filter((w) => ROSTER[w].cat === 'passive')).toEqual([]);
+    // Undertow was cut in round 8; its place's kit has no helpers either.
+    expect(labCard('ev-beacon-strike')!.kit.filter((w) => ROSTER[w].cat === 'passive')).toEqual([]);
     expect(LAB_CARDS.filter((c) => c.kind === 'event')).toHaveLength(21);
   });
 
   it('each new card starts straight into its event on its own map', () => {
-    for (const id of ['breakout', 'run-the-canal', 'undertow', 'siege-of-vey'] as EventId[]) {
+    for (const id of ['breakout', 'run-the-canal', 'beacon-strike', 'siege-of-vey'] as EventId[]) {
       const card = labCard(`ev-${id}`)!;
       const g = createGame(card.map, 5, card.wave);
       applyFreePlay(g, { weapons: card.kit.map((w) => ({ id: w, level: 2 })), frequentDrops: true });
@@ -438,9 +385,9 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit');
-    expect(log.v).toBe(19);
+    expect(log.v).toBe(20);
     expect(log.events!.length).toBeGreaterThanOrEqual(1);
-    expect(log.events![0].id).toBe('undertow');
+    expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);
     expect(again.steps).toBe(g.steps);
     expect(again.score).toBe(g.score);

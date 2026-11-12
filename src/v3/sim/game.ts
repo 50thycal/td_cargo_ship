@@ -69,12 +69,13 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOE, FOES, HEAVY_FOES, type FoeId, type FoeSetting } from '../data/foes';
+import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
+import { OLD_THREATS, isOldThreat, memberKind, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
-import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShipScale, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 
 export const CARRIER_TARGET = -1;
@@ -183,6 +184,9 @@ export interface Threat {
   maxHp?: number;
   /** A special event's supply drone: shot down, it drops a pickup. */
   cargo?: boolean;
+  /** An original threat an enemy pair's set brought (data/pairs.ts), not
+   *  the wave's own. */
+  paired?: boolean;
 }
 
 export interface Interceptor {
@@ -262,6 +266,8 @@ export type GameEvent =
   | { kind: 'newPickup'; pickup: PickupKind }
   /** A weapon pickup loaded the gun (level = the weapon's level). */
   | { kind: 'weapon'; id: AbilityId; level: number }
+  /** Wild Card's pickup brought this passive (Test Lab round 8). */
+  | { kind: 'wild'; id: AbilityId; level: number }
   | { kind: 'dry' }
   /** The 20-map plan: a supertanker sets sail; an allied structure is hit or
    *  lost; the Dreadnought arrives; the Delta's switch is thrown. */
@@ -316,6 +322,8 @@ export interface Launch {
   /** A special event's supply drone (the Bombardment): shot down, it drops
    *  a pickup. */
   cargo?: boolean;
+  /** Brought by an enemy pair's set (data/pairs.ts). */
+  paired?: boolean;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -504,6 +512,8 @@ export interface Fling {
   level: number;
   /** Thrown under Hyper Overdrive: it bursts twice. */
   twin?: boolean;
+  /** The threats it has run into (each set off one burst). */
+  hits?: number[];
 }
 
 
@@ -514,7 +524,10 @@ export interface Wing {
   y: number;
   heading: number;
   target: number | null;
+  /** Seconds it may still hunt; then it flies home (Test Lab round 8). */
   life: number;
+  /** Back on the deck: it is gone. */
+  landed?: boolean;
 }
 
 /** Gunship Pair: a helicopter over the convoy. `slot` picks its side.
@@ -751,9 +764,16 @@ export interface Game {
   weapon2: Weapon | null;
   /** The second weapon's passive clock (two passives at once). */
   passiveT2: number;
-  /** Focus: the holding finger is down (its own input, `focusHold`: it
-   *  only slows time; the other finger taps), and since when (realT): time
-   *  slows only once it has been down AB.focus.hold s. */
+  /** Wild Card (level 2 up, Test Lab round 8: "it should just give you a
+   *  random one, so it can be escort or heli etc., just one you get for the
+   *  pickup"): the random passive its pickup brought, working on its own
+   *  clock beside the gun, and that passive's own clock. */
+  wildPassive: Weapon | null;
+  passiveTW: number;
+  /** Focus: its button is held (its own input, `focusHold`: it only slows
+   *  time; every tap on the water is a shot), and since when (realT). Test
+   *  Lab round 8 made it a button on the left edge, held with the left
+   *  thumb: no long-press to tell a hold from a tap any more. */
   finger: boolean;
   fingerT: number;
   /** Focus: slow motion running this step. */
@@ -908,6 +928,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     boost: null,
     weapon2: null,
     passiveT2: 0,
+    wildPassive: null,
+    passiveTW: 0,
     finger: false,
     fingerT: 0,
     focusing: false,
@@ -1252,12 +1274,23 @@ export function tap(g: Game, x: number, y: number, radius: number): TapResult {
 function tapResult(g: Game, x: number, y: number, radius: number): TapResult {
   let pickup: Pickup | null = null;
   let pd = radius + PICKUPS.radius;
+  // A pickup in a Scavenger's ring (round 8) can't be taken: the tap goes
+  // on to whatever it would hit, and says so on the pickup.
+  let locked: Pickup | null = null;
   for (const p of g.pickups) {
     const d = dist(x, y, p.x, p.y);
+    if (d < pd && pickupLocked(g, p)) {
+      if (!locked || d < dist(x, y, locked.x, locked.y)) locked = p;
+      continue;
+    }
     if (d < pd) {
       pd = d;
       pickup = p;
     }
+  }
+  if (locked && !pickup) {
+    addFx(g, 'text', locked.x, locked.y - 34, { life: 0.7, r: 0, text: 'LOCKED' });
+    cue(g, 'powerup.expire', locked.x, locked.y, { gain: 0.5 });
   }
   // Prefer a threat that still needs an interceptor, so repeated taps on a
   // swarm spread across it instead of piling onto one drone.
@@ -1468,7 +1501,7 @@ export function labBring(g: Game): void {
     rerunEvent(g);
     return;
   }
-  // A combo brings its whole set, paired as in its waves (and its weapon).
+  // A combo brings its whole set, paired as in its waves.
   if (lab.pair) {
     lab.sets.push(newSet(lab, g.waveT));
     updateLabSets(g);
@@ -1488,13 +1521,14 @@ export function labBring(g: Game): void {
   }
 }
 
-/** Is a combo's lead at its station: the Spotter on its circle, the Repair
- *  Tender on station, the Rocket Truck at the end of its road? */
+/** Is a pair's lead at its station: the Spotter on its circle, the Repair
+ *  Ship on station, the Rocket Truck at the end of its road, the Attack
+ *  Helicopter at its hover, the Lure Beacon risen? */
 function atStation(th: Threat): boolean {
   const f = th.foe;
   if (!f) return true;
   if (th.kind === 'tender') return f.n === 1;
-  if (th.kind === 'spotter' || th.kind === 'rocketTruck') return f.state >= 1;
+  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
   return true;
 }
 
@@ -1507,18 +1541,49 @@ function farBase(g: Game): number | undefined {
   return live.reduce((m, i) => (far(i) > far(m) ? i : m));
 }
 
+/** Water near (x, y) for a boat: the point itself, or the first one on
+ *  water stepping from it toward the convoy's lane, `clear` px past the
+ *  shore. */
+function waterNear(g: Game, x: number, y: number, clear: number): Point {
+  const ch = g.map.channels[0];
+  const to = laneAt(ch, laneLength(ch) * clamp(x / VIEW.width, 0.05, 0.95), 0);
+  const d = Math.max(1, dist(x, y, to.x, to.y));
+  for (let k = 0; k <= d; k += 10) {
+    const px = x + ((to.x - x) * k) / d;
+    const py = y + ((to.y - y) * k) / d;
+    if (onLand(g, px, py)) continue;
+    const u = Math.min(d, k + (k > 0 ? clear : 0));
+    return { x: x + ((to.x - x) * u) / d, y: y + ((to.y - y) * u) / d };
+  }
+  return to;
+}
+
 /** The Test Lab's combo sets (Test Lab round 4, "the recon drone and then
- *  the siege cannon never really appeared at the same time"): each set's
- *  weapon drops by the carrier, its lead launches, and the others follow on
- *  the pairing's cues, so the set is on the board together. */
+ *  the siege cannon never really appeared at the same time"; round 8, enemy
+ *  pairs, data/pairs.ts): each set's lead launches, and the others follow on
+ *  the pairing's cues, so the set is on the board together. A map script
+ *  placing a pair in a wave would launch it the same way. */
 function updateLabSets(g: Game): void {
   const lab = g.lab;
   if (!lab?.pair || !lab.sets.length) return;
   const P = lab.pair;
   const c = g.map.carrier;
-  // One member out now; returns its base (-1 if it came from no base).
-  const out = (f: FoeId, base?: number): number => {
-    const kind = FOES[f].kind;
+  const leadKind = memberKind(P.lead);
+  const isLead = (t: Threat, led: { id: number }) => t.kind === leadKind && t.id >= led.id && (!isOldThreat(P.lead) || !!t.paired);
+  // One member out now; returns its base (-1 if it came from no base). An
+  // original threat is its swarm or volley out of one base: the first now,
+  // the rest queued.
+  const out = (f: PairMember, base?: number): number => {
+    const kind = memberKind(f);
+    if (isOldThreat(f)) {
+      const b = base ?? pickBase(g, kind, g.rng.foes);
+      if (b < 0) return -1;
+      const O = OLD_THREATS[f];
+      launch(g, { at: g.waveT, kind, base: b, paired: true });
+      for (let k = 1; k < O.size; k++) g.queue.push({ at: g.waveT + k * O.every, kind, base: b, paired: true });
+      g.queue.sort((a, b2) => a.at - b2.at);
+      return b;
+    }
     if (isPlaneKind(kind)) {
       g.queue.unshift({ at: g.waveT, kind, base: -1 });
       return -1;
@@ -1529,18 +1594,25 @@ function updateLabSets(g: Game): void {
     return b;
   };
   for (const s of lab.sets) {
-    if (!s.dropped && g.waveT >= s.at - LAB_SET.weaponLead) {
-      s.dropped = true;
-      if (lab.weapon && (g.levels[lab.weapon] ?? 0) > 0) addPickup(g, 'weapon', c.x + g.rng.foes.range(-160, 160), c.y - 150, lab.weapon);
-    }
     if (!s.led && g.waveT >= s.at) {
       const id = g.nextId;
       s.led = { id, t: g.waveT, base: out(P.lead, P.far ? farBase(g) : s.bases[P.lead]) };
+      // A Repair Ship whose truck it places: moored off the end of the
+      // shore road nearest its station.
+      const roads = g.map.roads.popups;
+      const tender = P.lead === 'tender' && P.follow.some((f) => f.near && f.foe === 'rocketTruck') ? g.threats.find((t) => t.kind === 'tender' && t.id >= id) : undefined;
+      if (tender?.foe && roads.length) {
+        const k = roads.reduce((m, r, i) => (dist(r.to.x, r.to.y, tender.foe!.px, tender.foe!.py) < dist(roads[m].to.x, roads[m].to.y, tender.foe!.px, tender.foe!.py) ? i : m), 0);
+        const p = waterNear(g, roads[k].to.x, roads[k].to.y, PAIR_MOOR);
+        tender.foe.px = p.x;
+        tender.foe.py = p.y;
+        s.road = k;
+      }
     }
     const led = s.led;
     if (!led) continue;
     if (led.station === undefined) {
-      const th = g.threats.find((t) => t.kind === FOES[P.lead].kind && t.id >= led.id);
+      const th = g.threats.find((t) => isLead(t, led));
       // Shot down first (or never on the board), or slow getting there: the
       // others come now.
       if (!th || th.dead || atStation(th) || g.waveT - led.t >= LAB_SET.station) led.station = g.waveT;
@@ -1551,10 +1623,10 @@ function updateLabSets(g: Game): void {
       if (f.on === 'arrive') {
         // Out once the lead is due within this one's own flight from its
         // base, plus `after`: they arrive together.
-        const kind = FOES[f.foe].kind;
+        const kind = memberKind(f.foe);
         const from = base !== undefined && base >= 0 ? g.map.bases[base] : c;
         const speed = THREATS[kind].speed * (1 + (g.waveSpeed - 1) * WAVE_SPEED_SHARE[kind]);
-        const leads = g.threats.filter((t) => !t.dead && t.kind === FOES[P.lead].kind && t.id >= led.id);
+        const leads = g.threats.filter((t) => !t.dead && isLead(t, led));
         const due = leads.some((t) => {
           const p = targetPos(g, t);
           return timeToImpact(g, t) <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
@@ -1565,10 +1637,50 @@ function updateLabSets(g: Game): void {
         if (from === undefined || g.waveT < from + f.after) return;
       }
       s.done[i] = true;
+      const lead = g.threats.find((t) => !t.dead && isLead(t, led));
+      if (f.near && f.foe === 'bodyguard') {
+        // A ring round the lead, no heavy of its own (gone with the lead).
+        if (lead) ringGuards(g, lead);
+        return;
+      }
+      const id0 = g.nextId;
       out(f.foe, base);
+      if (!f.near) return;
+      if (f.foe === 'torpedoSub' && lead?.foe) {
+        // The sub surfaces under the helicopter's hover.
+        const m = g.foe.marks.find((o) => o.kind === 'periscope' && o.id >= id0);
+        if (m) {
+          const p = waterNear(g, lead.foe.px, lead.foe.py, 30);
+          m.x = p.x;
+          m.y = p.y;
+        }
+      } else if (f.foe === 'rocketTruck' && s.road !== undefined) {
+        // The truck takes its Repair Ship's road.
+        const road = g.map.roads.popups[s.road];
+        const th = g.threats.find((o) => o.kind === 'rocketTruck' && o.id >= id0);
+        if (th?.foe && road) {
+          th.foe.path = [road.from, road.to];
+          th.x = road.from.x;
+          th.y = road.from.y;
+          th.heading = Math.atan2(road.to.y - road.from.y, road.to.x - road.from.x);
+        }
+      }
     });
   }
-  lab.sets = lab.sets.filter((s) => !s.led || !s.dropped || s.done.some((d) => !d));
+  lab.sets = lab.sets.filter((s) => !s.led || s.done.some((d) => !d));
+}
+
+/** How far off the shore a pair's Repair Ship moors (px of water). */
+const PAIR_MOOR = 70;
+
+/** A Bodyguard Ring round a threat already on the board (an enemy pair's:
+ *  a guarded Spotter). */
+function ringGuards(g: Game, th: Threat): void {
+  for (let k = 0; k < FOE.bodyguard.guards; k++) {
+    const t = spawnThreat(g, 'guard', th.x, th.y, 'base');
+    t.target = CARRIER_TARGET;
+    t.foe = foeData({ link: th.id, n: k });
+  }
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. */
@@ -1630,10 +1742,15 @@ function openDraft(g: Game): void {
   // should always have an upgrade ... for the one that you're actually
   // testing"): a weapon test's every draft offers its weapon's next level
   // until it is MAX.
+  // Round 8 (the player: "I didn't see the grapple upgrade after the first
+  // wave I completed, so make sure that's a thing"): it is always the first
+  // card (it used to stay wherever the deal put it, so it could be the last
+  // of three), the card says it is the one under test (the UI's TESTING
+  // tag), and one swapped out of the loadout comes back as a card to swap
+  // in.
   const tested = g.lab?.weapon;
-  if (tested && (g.levels[tested] ?? 0) > 0 && canTake(g.levels, tested) && !g.offer.includes(tested)) {
-    g.offer.unshift(tested);
-    if (g.offer.length > 3) g.offer.pop();
+  if (tested && (canTake(g.levels, tested) || canSwapIn(g.levels, tested))) {
+    g.offer = [tested, ...g.offer.filter((id) => id !== tested)].slice(0, 3);
   }
   if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
   g.phase = 'draft';
@@ -1873,27 +1990,32 @@ function updateBlades(g: Game, dt: number): void {
  *  spent or another takes over. */
 function launchEscorts(g: Game, level: number): void {
   const want = AB.frigate.ships[level - 1];
-  // Test Lab round 5 (the player: "make sure frigates don't just disappear
-  // when they are traveling off screen and you select another frigate"):
-  // frigates on their way out turn round and sail back to station; only
-  // the ones still missing sail in.
-  if (g.escorts.filter((e) => !e.leaving).length < want) cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
-  g.escorts.forEach((e, i) => (e.leaving = i >= want));
+  // Test Lab round 8 (the player: "the ship should just not turn around.
+  // They should just run [off] the screen and then new ones should come on
+  // the screen"): frigates on their way out keep going; a fresh set sails
+  // in to station. (Round 5 turned the leaving ones round.) Frigates still
+  // on station stay there, on a fresh clock; only the missing ones come.
+  const staying = g.escorts.filter((e) => !e.leaving);
+  staying.slice(want).forEach((e) => (e.leaving = true));
+  const kept = staying.slice(0, want);
+  if (kept.length >= want) return;
+  cue(g, 'frigate.arrive', 0, VIEW.height / 2, { vx: AB.frigate.speed });
   const stations = escortStations(g, want);
-  for (let i = 0; i < want; i++) {
-    const st = stations[i];
+  // Ones on station keep theirs (no ship turns about to move up); the new
+  // ones take the stations furthest from them.
+  const free = stations.filter((st) => {
     const p = laneAt(g.map.channels[st.lane], st.d, st.lat);
-    const e = g.escorts[i];
-    if (e && e.lane === st.lane) {
-      Object.assign(e, { sx: p.x, sy: p.y, sd: st.d, slat: st.lat });
-    } else if (!e) {
-      // In line astern from the lane's entry: a hull and its wake run ~210
-      // long, so ships start 260 apart and never touch.
-      const d = -80 - i * 260;
-      const at = laneAt(g.map.channels[st.lane], d, st.lat);
-      g.escorts.push({ id: g.nextId++, x: at.x, y: at.y, sx: p.x, sy: p.y, fireT: 0.5 + i * 0.2, leaving: false, aim: 0, lane: st.lane, d, lat: st.lat, sd: st.d, slat: st.lat, heading: Math.atan2(at.ty, at.tx) });
-    }
-  }
+    return !kept.some((e) => Math.hypot(e.sx - p.x, e.sy - p.y) < 120);
+  });
+  const open = (free.length >= want - kept.length ? free : stations).slice(0, want - kept.length);
+  open.forEach((st, k) => {
+    const p = laneAt(g.map.channels[st.lane], st.d, st.lat);
+    // In line astern from the lane's entry: a hull and its wake run ~210
+    // long, so ships start 260 apart and never touch.
+    const d = -80 - k * 260;
+    const at = laneAt(g.map.channels[st.lane], d, st.lat);
+    g.escorts.push({ id: g.nextId++, x: at.x, y: at.y, sx: p.x, sy: p.y, fireT: 0.5 + k * 0.2, leaving: false, aim: 0, lane: st.lane, d, lat: st.lat, sd: st.d, slat: st.lat, heading: Math.atan2(at.ty, at.tx) });
+  });
 }
 
 /** A station keeps this clear of the carrier, and frigates on one edge of a
@@ -2330,9 +2452,11 @@ function teslaArc(g: Game, level: number, x: number, y: number, fromId: number, 
 // Cadence Gun are taps with a rule. With any of them, a plain tap is a plain
 // shot, so the gun is never helpless.
 
-/** Focus (a boost): the holding finger goes down or lifts. While it is
- *  down and the bank lasts, time slows; the finger itself fires nothing
- *  (the player: "one finger down and then tap with the other one"). */
+/** Focus (a boost): its button goes down or comes up (Test Lab round 8:
+ *  "a button you hold on the left side of the screen with your left thumb
+ *  ... so it doesn't waste ammo"). While it is held and the bank lasts, time
+ *  slows; the button fires nothing, and every tap on the water is a shot.
+ *  Recorded in the play log as 'h' commands, so a run replays exactly. */
 export function focusHold(g: Game, down: boolean): void {
   if (g.phase !== 'wave') return;
   if (down && !g.finger) g.fingerT = g.realT;
@@ -2340,10 +2464,10 @@ export function focusHold(g: Game, down: boolean): void {
   g.focusing = focusOn(g);
 }
 
-/** Is Focus slowing time: the holding finger down for AB.focus.hold s or
- *  more (Test Lab round 5: a quick tap is only a shot), with time banked? */
+/** Is Focus slowing time: the button held, with time banked? (Round 5's
+ *  0.3 s long-press is gone: the button is only ever a hold.) */
 function focusOn(g: Game): boolean {
-  return g.finger && g.realT - g.fingerT >= AB.focus.hold - 1e-9 && g.boost?.id === 'focus' && g.boost.bank > 0;
+  return g.finger && g.boost?.id === 'focus' && g.boost.bank > 0;
 }
 
 /** A finger down on the water. With a gesture weapon loaded it starts a
@@ -2364,7 +2488,7 @@ export function press(g: Game, x: number, y: number, radius: number): void {
       .sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
     if (!th) return;
     // A pickup under the finger wins, as it would for a tap.
-    if (g.pickups.some((p) => dist(p.x, p.y, x, y) <= radius + PICKUPS.radius && dist(p.x, p.y, x, y) < dist(th.x, th.y, x, y))) return;
+    if (g.pickups.some((p) => dist(p.x, p.y, x, y) <= radius + PICKUPS.radius && dist(p.x, p.y, x, y) < dist(th.x, th.y, x, y) && !pickupLocked(g, p))) return;
     if (!spend(g)) {
       g.press.mode = 'dry';
       g.taps.dry += 1;
@@ -2618,28 +2742,51 @@ function updateFlings(g: Game, dt: number): void {
     }
     th.x = clamp(th.x + f.vx * dt, 0, VIEW.width);
     th.y = clamp(th.y + f.vy * dt, 0, VIEW.height);
-    if (f.t < AB.grapnel.fly) continue;
-    const k = f.level - 1;
-    const r = AB.grapnel.burstR[k];
-    const bx = th.x;
-    const by = th.y;
-    th.held = false;
-    addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', bx, by, { life: 0.5, r });
-    cue(g, 'grapnel.burst', bx, by);
-    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
-    // Hyper Overdrive: a second burst beside the first.
-    if (f.twin) {
-      const sp = Math.hypot(f.vx, f.vy) || 1;
-      const tx = bx - (f.vy / sp) * r * 0.6;
-      const ty = by + (f.vx / sp) * r * 0.6;
-      twinSide = AB.overdrive.twin;
-      addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', tx, ty, { life: 0.5, r });
-      twinSide = 0;
-      for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, tx, ty) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+    // Test Lab round 8 (the player: "if it runs into another enemy [it]
+    // explodes, unless it will still have some health"): the first threat
+    // the ball runs into sets off its burst there and then. A ball with hit
+    // points left after its own burst keeps them and flies on (and can run
+    // into the next one); one that doesn't is gone in the blast.
+    if (!f.hits) f.hits = [];
+    const hits = f.hits;
+    const into = g.threats.find((o) => !o.dead && o !== th && !hits.includes(o.id) && dist(o.x, o.y, th.x, th.y) <= AB.grapnel.impactR);
+    if (into) {
+      hits.push(into.id);
+      flingBurst(g, f, th.x, th.y);
+      if (th.dead) {
+        f.t = Infinity;
+        continue;
+      }
+      cue(g, 'grapnel.smack', th.x, th.y);
     }
+    if (f.t < AB.grapnel.fly) continue;
+    th.held = false;
+    // Flown its course without running into anything: it bursts where it is,
+    // as before. One that already burst on a threat is just let go.
+    if (!hits.length) flingBurst(g, f, th.x, th.y);
     f.t = Infinity;
   }
   g.flings = g.flings.filter((f) => f.t !== Infinity);
+}
+
+/** A flung Grapnel ball bursts at (bx, by): `burst` hits on everything in
+ *  `burstR`, the ball included (Hyper Overdrive: a second burst beside it). */
+function flingBurst(g: Game, f: Fling, bx: number, by: number): void {
+  const k = f.level - 1;
+  const r = AB.grapnel.burstR[k];
+  addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', bx, by, { life: 0.5, r });
+  cue(g, 'grapnel.burst', bx, by);
+  for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+  // Hyper Overdrive: a second burst beside the first.
+  if (f.twin) {
+    const sp = Math.hypot(f.vx, f.vy) || 1;
+    const tx = bx - (f.vy / sp) * r * 0.6;
+    const ty = by + (f.vx / sp) * r * 0.6;
+    twinSide = AB.overdrive.twin;
+    addFx(g, f.level >= ABILITY_MAX ? 'thermo' : 'burst', tx, ty, { life: 0.5, r });
+    twinSide = 0;
+    for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, tx, ty) <= r) damageThreat(g, o, AB.grapnel.burst[k]);
+  }
 }
 
 /** Cadence Gun: where we are against the beat (seconds from the nearest
@@ -2726,7 +2873,8 @@ function updatePassives(g: Game, dt: number): void {
   g.passiveT2 -= dt;
   const c = g.map.carrier;
   // Each passive runs on its own hand's clock (Dual Wield: two at once).
-  const timer = (w: Weapon) => (w === g.weapon2 ? 'passiveT2' : 'passiveT');
+  g.passiveTW -= dt;
+  const timer = (w: Weapon) => passiveTimer(g, w);
   // ---- Drone Screen: a drone off the carrier deck every gap.
   // Test Lab round 5 (the player: "the drone shouldn't start firing unless
   // there's actually a threat on the screen"): with nothing on screen to
@@ -2742,6 +2890,15 @@ function updatePassives(g: Game, dt: number): void {
   }
   for (const d of g.wings) {
     d.life -= dt;
+    // Test Lab round 8 (the player: "the drone kind of drives away
+    // awkwardly once all the targets have been destroyed"): a drone with
+    // nothing left to ram, or out of time, flies home and lands on the deck
+    // (homeDrone); it used to drift up off the top of the screen.
+    if (d.life <= 0) {
+      d.target = null;
+      if (homeDrone(g, d, dt)) d.landed = true;
+      continue;
+    }
     let th = d.target === null ? undefined : g.threats.find((t) => t.id === d.target && !t.dead);
     // A Lure Beacon that comes up turns a drone already on its way.
     const lure = lureIn(g, d.x, d.y);
@@ -2756,7 +2913,10 @@ function updatePassives(g: Game, dt: number): void {
       d.target = th ? th.id : null;
     }
     if (!th) {
-      d.y -= AB.droneScreen.speed * 0.4 * dt;
+      // Threats up but each one already has a drone on it: it waits over
+      // the deck for one to come free. Nothing left: home.
+      if (screenThreat(g)) homeDrone(g, d, dt, AB.droneScreen.wait);
+      else if (homeDrone(g, d, dt)) d.landed = true;
       continue;
     }
     const dd = dist(d.x, d.y, th.x, th.y);
@@ -2767,7 +2927,8 @@ function updatePassives(g: Game, dt: number): void {
       const r = AB.droneScreen.burst[(dw?.level ?? 1) - 1];
       if (r > 0) for (const o of [...g.threats]) if (!o.dead && dist(o.x, o.y, bx, by) <= r) damageThreat(g, o, 1);
       addFx(g, 'burst', bx, by, { life: 0.3, r: Math.max(18, r) });
-      d.life = 0;
+      // Spent in the ram.
+      d.landed = true;
       continue;
     }
     d.heading = Math.atan2(th.y - d.y, th.x - d.x);
@@ -2775,7 +2936,7 @@ function updatePassives(g: Game, dt: number): void {
     d.x += Math.cos(d.heading) * stepLen;
     d.y += Math.sin(d.heading) * stepLen;
   }
-  g.wings = g.wings.filter((d) => d.life > 0 && d.y > -40);
+  g.wings = g.wings.filter((d) => !d.landed);
   // ---- Gunship Pair: hover over the convoy, rocket the thickest cluster.
   const gw = held(g, 'gunships');
   if (!gw) for (const h of g.helis) h.leaving = true;
@@ -2858,6 +3019,37 @@ function updatePassives(g: Game, dt: number): void {
       cue(g, 'orbital.lock', th.x, th.y);
     }
   }
+}
+
+/** A Drone Screen drone with nothing to ram flies back to the carrier deck
+ *  (AB.droneScreen.home of its speed, its nose turning at most `turn`
+ *  rad/s, so it banks round rather than snapping about) and lands. True
+ *  once it is down. */
+function homeDrone(g: Game, d: Wing, dt: number, above = 0): boolean {
+  const c = g.map.carrier;
+  const hx = c.x;
+  const hy = c.y - 8 - above;
+  const dd = dist(d.x, d.y, hx, hy);
+  const speed = AB.droneScreen.speed * AB.droneScreen.home;
+  if (dd <= Math.max(6, speed * dt)) {
+    // Waiting over the deck: it circles there.
+    if (above > 0) {
+      d.heading += AB.droneScreen.turn * 0.5 * dt;
+      d.x = hx + Math.cos(d.heading - Math.PI / 2) * 4;
+      d.y = hy + Math.sin(d.heading - Math.PI / 2) * 4;
+      return false;
+    }
+    return true;
+  }
+  const want = Math.atan2(hy - d.y, hx - d.x);
+  const turn = AB.droneScreen.turn * dt;
+  d.heading += clamp(angleDiff(want, d.heading), -turn, turn);
+  // Close in, it comes straight in.
+  if (dd < 60) d.heading = want;
+  // Banking round near an edge, it stays on the screen.
+  d.x = clamp(d.x + Math.cos(d.heading) * speed * dt, 8, VIEW.width - 8);
+  d.y = clamp(d.y + Math.sin(d.heading) * speed * dt, 8, VIEW.height - 8);
+  return false;
 }
 
 /** Is there a threat on the screen your drones could ram? */
@@ -3194,7 +3386,35 @@ export function loadedWeapons(g: Game): Weapon[] {
 export function held(g: Game, id: AbilityId): Weapon | null {
   if (g.weapon?.id === id) return g.weapon;
   if (g.weapon2?.id === id) return g.weapon2;
+  if (g.wildPassive?.id === id) return g.wildPassive;
   return null;
+}
+
+/** Which clock a working passive fires on: the first hand's, the second's
+ *  (Dual Wield) or Wild Card's passive's. */
+function passiveTimer(g: Game, w: Weapon): 'passiveT' | 'passiveT2' | 'passiveTW' {
+  return w === g.weapon2 ? 'passiveT2' : w === g.wildPassive ? 'passiveTW' : 'passiveT';
+}
+
+/** A passive starts working (its pickup, or Wild Card's roll): the first
+ *  drone, bomber or beam is due soon; the helicopters and frigates come in;
+ *  Point Defense rearms every hull. */
+function startPassive(g: Game, w: Weapon): void {
+  const timer = passiveTimer(g, w);
+  const id = w.id;
+  if (id === 'droneScreen') g[timer] = 0.2;
+  if (id === 'bomberWing') g[timer] = AB.bomberWing.first;
+  if (id === 'orbital') {
+    g[timer] = AB.orbital.first;
+    g.orbital = null;
+  }
+  if (id === 'gunships') callGunships(g, w.level);
+  if (id === 'frigate') launchEscorts(g, w.level);
+  // Aegis: a fresh pickup rearms every hull in full.
+  if (id === 'aegis') {
+    for (const s of g.ships) s.aegis = undefined;
+    g.carrierAegis = null;
+  }
 }
 
 /** Threats' share of speed under the Time Warp power-up (the Time Warp
@@ -3211,7 +3431,8 @@ export function warping(g: Game): boolean {
 
 function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
   const k = level - 1;
-  const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : 1);
+  // Dual Wield and (Test Lab round 8) Overdrive last longer from level 2.
+  const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : id === 'overdrive' ? AB.overdrive.time[k] : 1);
   // Dual Wield again while it runs (Test Lab round 4: "if you pick up another
   // dual wield it should reset all your current weapons ... back to the full
   // duration"): the boost's clock starts over, and both hands with it.
@@ -3250,6 +3471,12 @@ function endBoost(g: Game, ranOut: boolean): void {
   const b = g.boost;
   if (!b) return;
   g.boost = null;
+  // Focus ends: its button goes, and nothing stays held (Test Lab round 8:
+  // "the slow motion was still going even though I was not touching").
+  if (b.id === 'focus') {
+    g.finger = false;
+    g.focusing = false;
+  }
   const c = g.map.carrier;
   // Dual Wield: both hands end with it (lock-in round, the player's call).
   // Replaced by another boost (Test Lab round 4), they aren't lost: each
@@ -3266,8 +3493,6 @@ function endBoost(g: Game, ranOut: boolean): void {
       addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${names.join(' + ')} DONE` });
     }
   }
-  // Overdrive (level 2): the rack is full when it ends.
-  if (b.id === 'overdrive' && b.level >= 2) g.ammo = g.stats.rack;
   if (ranOut) {
     cue(g, 'boost.off', c.x, c.y);
     addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 64, { life: 1.2, text: `${abilityName(b.id, b.level).toUpperCase()} DONE` });
@@ -3374,64 +3599,40 @@ function dropMult(g: Game, weapon: boolean): number {
 
 /** Wild Card: weapons a single tap can fire (no gestures, no two-tap ones). */
 const WILD_ACTIVES: AbilityId[] = ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'well', 'railgun', 'tesla'];
-const WILD_PASSIVES: AbilityId[] = ['droneScreen', 'gunships', 'orbital', 'bomberWing'];
+/** Wild Card's passives: one comes with each pickup from level 2 (Test Lab
+ *  round 8), every passive in the roster. */
+export const WILD_PASSIVES: AbilityId[] = ['frigate', 'aegis', 'droneScreen', 'gunships', 'bomberWing', 'orbital'];
 
-/** Wild Card loaded: this tap is a random weapon's shot (level 1 actives;
- *  level 2 actives or passives; Jackpot: actives at MAX). */
+/** Wild Card's pickup at level 2 up: one random passive (not one already
+ *  loaded in a hand) works beside the gun for the weapon time, at the Wild
+ *  Card's level (AB.wildCard.passive). A second pickup rolls again: the new
+ *  one replaces the old (the same one again: a fresh clock). */
+function wildPassive(g: Game, level: number, x: number, y: number): void {
+  const pool = WILD_PASSIVES.filter((id) => g.weapon?.id !== id && g.weapon2?.id !== id);
+  const id = g.rng.drops.pick(pool);
+  const lv = AB.wildCard.passive[level - 1];
+  const w: Weapon = { id, level: lv, t: g.stats.weaponTime * AB.wildCard.time, t0: g.t };
+  g.wildPassive = w;
+  startPassive(g, w);
+  g.events.push({ kind: 'wild', id, level: lv });
+  cue(g, 'wild.roll', x, y);
+  addFx(g, 'text', x, y - 44, { life: 1.4, text: `+ ${abilityName(id, lv).toUpperCase()}` });
+}
+
+/** Wild Card loaded: this tap is a random active weapon's shot, at the Wild
+ *  Card's level (Test Lab round 8: the passives come with the pickup now,
+ *  not on a tap). */
 function wildTap(g: Game, wild: Weapon, x: number, y: number, threat: Threat | null, radius: number): TapResult {
   const lv = wild.level;
-  const pool = lv === 2 ? [...WILD_ACTIVES, ...WILD_PASSIVES] : WILD_ACTIVES;
-  const id = g.rng.drops.pick(pool);
+  const id = g.rng.drops.pick(WILD_ACTIVES);
   const level = lv;
   const w: Weapon = { id, level, t: 0, t0: g.t };
   addFx(g, 'text', x, y - 34, { life: 0.8, text: abilityName(id, level).toUpperCase() });
   cue(g, 'wild.roll', x, y);
-  if (WILD_PASSIVES.includes(id)) {
-    if (!spend(g)) return 'dry';
-    passiveShot(g, w, x, y, threat);
-    return 'fire';
-  }
   const r = fireWeapon(g, w, x, y, threat, radius);
   if (r) return r;
   if (!threat) return 'empty';
   return fireAt(g, threat, [w]) ? 'fire' : 'dry';
-}
-
-/** A passive's one shot, for Wild Card: a few drones off the deck, a rocket
- *  pod, a beam from orbit, or one bomber pass. */
-function passiveShot(g: Game, w: Weapon, x: number, y: number, threat: Threat | null): void {
-  const c = g.map.carrier;
-  const k = w.level - 1;
-  const ax = threat ? threat.x : x;
-  const ay = threat ? threat.y : y;
-  switch (w.id) {
-    case 'droneScreen':
-      for (let i = 0; i < AB.wildCard.drones; i++) g.wings.push({ id: g.nextId++, x: c.x + (i - 1) * 16, y: c.y - 8, heading: -Math.PI / 2, target: null, life: AB.droneScreen.life });
-      cue(g, 'screen.launch', c.x, c.y);
-      break;
-    case 'gunships':
-    {
-      // A missile from off the screen's edge (the gunship never shows).
-      const sx = ax < VIEW.width / 2 ? 0 : VIEW.width;
-      const target = lured(g, ax, ay, AB.gunships.reach, threat ?? undefined) ?? null;
-      launchHellfire(g, sx, ay - 60, Math.atan2(60, ax - sx), target, AB.gunships.damage[k], target ? undefined : { x: ax, y: ay });
-      break;
-    }
-    case 'orbital': {
-      const th = lured(g, ax, ay, Infinity, threat ?? undefined) ?? toughest(g, -1);
-      if (!th) break;
-      const bx = th.x;
-      const by = th.y;
-      damageThreat(g, th, AB.orbital.damage);
-      for (const o of [...g.threats]) if (!o.dead && o !== th && dist(o.x, o.y, bx, by) <= AB.orbital.splash) damageThreat(g, o, 1);
-      addFx(g, 'orbital', bx, by, { life: 0.45, r: AB.orbital.splash * 0.8 });
-      cue(g, 'orbital.beam', bx, by);
-      break;
-    }
-    case 'bomberWing':
-      callSorties(g, 1, AB.bomberWing.quiet[k]);
-      break;
-  }
 }
 
 /** Is this hull's damage blocked (the Shield power-up, or the boost, which
@@ -3607,6 +3808,7 @@ function clearField(g: Game): void {
   g.steamT = 0;
   endBoost(g, false);
   g.weapon2 = null;
+  g.wildPassive = null;
   g.finger = false;
   g.focusing = false;
   g.weapon = null;
@@ -3891,8 +4093,7 @@ export function shipSpeed(g: Game): number {
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
 function laneSpeed(g: Game, s: Ship): number {
-  // Undertow (round 7): slower inside a beacon's ring.
-  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1) * eventShipScale(g, s);
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
 /** Tidewater Flats: is the tide in? (A map without a tide: always.) */
@@ -4030,6 +4231,7 @@ function launch(g: Game, l: Launch): void {
   if (isFoe(l.kind)) launchFoe(g, l, base);
   else {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
+    if (l.paired) th.paired = true;
     // A supply drone (the Bombardment's) heads for the carrier.
     if (l.cargo) {
       th.cargo = true;
@@ -4777,12 +4979,6 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
 }
 
 function reload(g: Game, dt: number): void {
-  // Overdrive the boost (level 2): the rack keeps refilling.
-  if (boostLevel(g, 'overdrive') >= 2) {
-    g.ammo = g.stats.rack;
-    g.reloadT = 0;
-    return;
-  }
   if (g.overdriveT > 0) {
     g.overdriveT -= dt;
     g.ammo = g.stats.rack;
@@ -5003,6 +5199,16 @@ function updateTimers(g: Game, dt: number): void {
       const c = g.map.carrier;
       addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.2, text: `${abilityName(w.id, w.level).toUpperCase()} DONE` });
       g[hand] = null;
+    }
+  }
+  // Wild Card's passive runs out on its own clock (the pickup's time).
+  const wp = g.wildPassive;
+  if (wp) {
+    wp.t -= dt;
+    if (wp.t <= 0) {
+      g.wildPassive = null;
+      const c = g.map.carrier;
+      addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 64, { life: 1.2, text: `${abilityName(wp.id, wp.level).toUpperCase()} DONE` });
     }
   }
   // The second hand moves up when the first runs out.
@@ -5477,7 +5683,9 @@ function updatePickups(g: Game, dt: number): void {
     p.chute = Math.max(0, p.chute - dt);
     p.y += 45 * dt;
   }
-  for (const p of g.pickups) if (!p.chute) p.age += dt;
+  // A pickup locked by a Scavenger's ring (round 8) waits: it doesn't age
+  // until the drone is gone.
+  for (const p of g.pickups) if (!p.chute && !pickupLocked(g, p)) p.age += dt;
   for (const p of g.pickups) if (p.age >= pickupLife(p)) cue(g, 'powerup.expire', p.x, p.y);
   g.pickups = g.pickups.filter((p) => p.age < pickupLife(p));
 }
@@ -5581,25 +5789,17 @@ function collect(g: Game, p: Pickup): void {
     const w: Weapon = { id, level, t: g.stats.weaponTime, t0: g.t };
     // Dual Wield: it joins the loaded weapon; otherwise it takes the gun.
     if (!boostLoad(g, w)) g.weapon = w;
-    const timer = w === g.weapon2 ? 'passiveT2' : 'passiveT';
     if (id === 'cadence') g.beat = { last: -9, run: 0, armed: false, seen: -1 };
-    if (id === 'droneScreen') g[timer] = 0.2;
-    if (id === 'bomberWing') g[timer] = AB.bomberWing.first;
-    if (id === 'orbital') {
-      g[timer] = AB.orbital.first;
-      g.orbital = null;
-    }
-    if (id === 'gunships') callGunships(g, w.level);
-    if (id === 'frigate') launchEscorts(g, w.level);
-    // Aegis: a fresh pickup rearms every hull in full.
-    if (id === 'aegis') {
-      for (const s of g.ships) s.aegis = undefined;
-      g.carrierAegis = null;
-    }
+    // The same passive Wild Card brought is now loaded for real: the
+    // loaded one takes over (no second set of frigates).
+    if (g.wildPassive?.id === id) g.wildPassive = null;
+    startPassive(g, w);
     g.uses[id] = (g.uses[id] ?? 0) + 1;
     g.events.push({ kind: 'weapon', id, level: w.level });
     cue(g, 'weapon.load', p.x, p.y);
     addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: abilityName(id, w.level).toUpperCase() + (g.weapon2 === w ? ' + ' + abilityName(g.weapon!.id, g.weapon!.level).toUpperCase() : '') });
+    // Wild Card from level 2: its pickup brings one random passive too.
+    if (id === 'wildCard' && w.level >= 2) wildPassive(g, w.level, p.x, p.y);
     return;
   }
   addFx(g, 'text', p.x, p.y - 20, { life: 1.1, text: PICKUP_TEXT[p.kind] });

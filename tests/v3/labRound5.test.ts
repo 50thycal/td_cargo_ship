@@ -119,9 +119,10 @@ describe('Gravity Well: by size', () => {
   });
 
   it('the level text says so', () => {
-    expect(ABILITIES.well.levels[0]).toMatch(/missiles, drones and small boats are dragged in/);
-    expect(ABILITIES.well.levels[0]).toMatch(/only slowed/);
-    expect(ABILITIES.well.levels[2]).toMatch(/drags in everything/);
+    // (Round 8's text audit: the same rules, in numbers.)
+    expect(ABILITIES.well.levels[0]).toMatch(/Missiles, drones and small boats are pulled in/);
+    expect(ABILITIES.well.levels[0]).toMatch(/slowed to 35%/);
+    expect(ABILITIES.well.levels[2]).toMatch(/pulls in everything/);
   });
 });
 
@@ -237,27 +238,8 @@ describe('Gunship Pair and Frigate Escort: a new drop calls a leaving group back
     for (const h of g.helis) expect(h.x > 0 && h.x < 1600 && h.y > 0 && h.y < 900, `${h.x},${h.y}`).toBe(true);
   });
 
-  it('frigates on their way out turn round and sail back to station', () => {
-    const g = quietGame();
-    pickUp(g, 'frigate', 1);
-    run(g, 8);
-    const ids = g.escorts.map((e) => e.id);
-    expect(ids).toHaveLength(2);
-    g.weapon!.t = 0.01;
-    run(g, 1.5);
-    expect(g.escorts.every((e) => e.leaving)).toBe(true);
-    const out = g.escorts.map((e) => e.d);
-    pickUp(g, 'frigate', 1);
-    expect(g.escorts.map((e) => e.id)).toEqual(ids);
-    expect(g.escorts.every((e) => !e.leaving)).toBe(true);
-    run(g, 8);
-    expect(g.escorts.map((e) => e.id)).toEqual(ids);
-    // Back up the lane to station, bow first.
-    g.escorts.forEach((e, i) => {
-      expect(e.d).toBeLessThan(out[i]);
-      expect(Math.abs(e.d - e.sd)).toBeLessThan(2);
-    });
-  });
+  // (Frigates turning back was replaced in Test Lab round 8: the leaving
+  // ones sail on and a fresh set comes in. labRound8.test.ts.)
 
   it('each gunship faces its target when it fires', () => {
     const g = quietGame();
@@ -464,8 +446,9 @@ describe('the Test Lab: a weapon test always offers the tested weapon\'s next le
     return { offers, weapon: c.weapon! };
   };
 
-  it('in every draft, for a weapon card and a combo with a weapon, across seeds', () => {
-    for (const card of ['w-orbital', 'w-railgun', 'w-shield', 'combo-cloud-flak']) {
+  // (Round 8: no combo has a weapon now, so weapon cards only.)
+  it('in every draft, for a weapon card, across seeds', () => {
+    for (const card of ['w-orbital', 'w-railgun', 'w-shield']) {
       for (const seed of [1, 2, 3]) {
         const { offers, weapon } = draftOffers(card, seed);
         expect(offers.length, card).toBeGreaterThan(1);

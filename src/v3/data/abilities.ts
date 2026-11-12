@@ -90,9 +90,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Flak Curtain',
     answers: 'Swarms',
     levels: [
-      'Each shell leaves a flak cloud for 1.5 s that hits whatever flies through',
-      'A bigger cloud that hangs for 2 s',
-      'Clouds hang for 4 s, a wall the swarm has to fly through',
+      'Each shell leaves a flak cloud for 1.5 s; anything in it takes 1 hit every 0.35 s',
+      'Cloud 21% wider; lasts 2 s',
+      'Clouds last 4 s and are 17% wider: a wall the swarm must fly through',
     ],
     how: 'Tap a swarm, or the water in its path',
   },
@@ -102,9 +102,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Swarm Pod',
     answers: 'Raids',
     levels: [
-      'Each tap launches 3 seekers at the threats nearest your finger, each a third of a shot',
+      'Each tap launches 3 seekers at the threats nearest your finger, 1/3 hit each',
       '4 seekers a tap',
-      '5 seekers, and one whose target is gone finds another',
+      '5 seekers a tap; one whose target dies finds another',
     ],
     how: 'Tap in the middle of a raid',
   },
@@ -116,9 +116,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Point Defense Grid',
     answers: 'Missiles',
     levels: [
-      'Every ship carries an interceptor that fires on its own at a threat about to hit it',
-      'Two a ship, fired from further out',
-      'Spent ones reload every 3 s, and the carrier fires its own',
+      'Every ship carries 1 interceptor that fires on its own at a threat about to hit it',
+      '2 interceptors a ship; they fire from 33% further out',
+      'Spent interceptors reload every 3 s; the carrier gets 3 of its own',
     ],
     how: 'Keep shooting: every ship fires its own',
   },
@@ -128,9 +128,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Singularity',
     answers: 'Wide raids',
     levels: [
-      'Each shell opens a vortex for 1.5 s, then implodes: missiles, drones and small boats are dragged in; aircraft, helicopters and other big ones are only slowed',
-      'A wider pull and a harder implosion (big ones still only slowed)',
-      'It holds for 2 s, drags in everything, big ones too, and the implosion hits for 4',
+      'Each shell opens a vortex for 1.5 s, then implodes for 2 hits. Missiles, drones and small boats are pulled in; big ones are slowed to 35%',
+      'Pull 20% wider; implosion hits for 3',
+      'Lasts 2 s, pulls in everything (big ones too) and implodes for 4',
     ],
     how: 'Tap between the threats you want pulled together',
   },
@@ -140,9 +140,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Strike',
     answers: 'Aircraft',
     levels: [
-      'Each tap sends a jet down that row, hitting everything under it (2 rounds a jet)',
-      'A wider run, harder hits',
-      'The row burns for 2 s and subs and trucks under it are destroyed',
+      'Each tap sends a jet down that row: 2 hits on everything under it. 2 rounds a jet',
+      'Row 19% wider; hits for 3',
+      'Hits for 4; the row burns for 2 s, and subs and trucks under it are destroyed',
     ],
     how: 'Tap a row: a jet flies across it, for 2 rounds',
   },
@@ -152,9 +152,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Mass Driver',
     answers: 'Heavies',
     levels: [
-      'Each shot is a beam that pierces everything in line',
-      'Twice the damage, a wider beam',
-      'Wide slugs, four times as hard: two bring down a heavy missile',
+      'Each shot is a beam that pierces everything in line, 1 hit each',
+      'Beam hits for 2 and is 29% wider',
+      'Beam hits for 4 and is 44% wider: two bring down a heavy missile',
     ],
     how: 'Tap anywhere: the beam fires through it',
   },
@@ -164,9 +164,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Storm Coil',
     answers: 'Crowds',
     levels: [
-      'Every hit arcs to 3 threats nearby',
-      '4 arcs per hit, and every arc arcs again',
-      'Each tap fires a second, free shot at a threat nearby',
+      'Every hit arcs to 3 threats nearby, 1 hit each',
+      '4 arcs a hit, and every arc arcs again',
+      'Each tap also fires a free second shot at a threat nearby',
     ],
     how: 'Tap threats as usual',
   },
@@ -176,9 +176,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Fragstorm',
     answers: 'Swarms',
     levels: [
-      'Each shell bursts into 10 fragments that fly out in every direction',
-      '14 fragments that fly further',
-      '18 fragments that tear through everything in their path',
+      'Each shell bursts into 10 fragments in every direction, 1 hit each',
+      '14 fragments, reaching 23% further',
+      '18 fragments that pierce everything in their path',
     ],
     how: 'Tap into a swarm',
   },
@@ -188,9 +188,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Battle Group',
     answers: 'Everything',
     levels: [
-      'Two frigates sail in and fire on their own while it lasts',
-      'They fire half again as fast',
-      'A third frigate joins, and they fire faster still',
+      'Two frigates sail in and fire on their own, a shot every 0.9 s each',
+      'Fire rate +50%',
+      'A third frigate joins; fire rate +33%',
     ],
     how: 'Keep shooting: the frigates fire on their own',
   },
@@ -200,9 +200,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Daisy Cutter',
     answers: 'Packs',
     levels: [
-      'Each shell bursts in a huge blast that hits everything in it',
-      'A bigger blast that hits for 2',
-      'The biggest blast, hitting for 3',
+      'Each shell bursts in a huge blast: 1 hit on everything in it',
+      'Blast 27% wider; hits for 2',
+      'Blast 26% wider again; hits for 3',
     ],
     how: 'Tap the middle of a pack',
   },
@@ -212,9 +212,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: "Dragon's Breath",
     answers: 'Rushers',
     levels: [
-      'Each tap fires a short blast of 8 pellets from the gun toward your finger',
-      '11 pellets, reaching further',
-      '15 pellets that tear through everything in their path',
+      'Each tap fires 8 pellets in a short cone toward your finger, 1 hit each',
+      '11 pellets, reaching 17% further',
+      '15 pellets that pierce everything in their path',
     ],
     how: 'Tap threats closing on the gun',
   },
@@ -224,9 +224,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Twin Blades',
     answers: 'Lines',
     levels: [
-      'Each tap throws a blade out to the threat and back, cutting everything on both passes',
-      'A wider blade that cuts for 2',
-      'Two blades at once',
+      'Each tap throws a blade to the threat and back: 1 hit on everything it passes, both ways',
+      'Blade 29% wider; hits for 2',
+      'Two blades a tap',
     ],
     how: 'Tap past a line of threats',
   },
@@ -236,9 +236,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Sunspear',
     answers: 'Heavies',
     levels: [
-      'Tap for a quick shot; hold to charge: half for a 3-hit bolt, full for a 6-hit lance through everything in line',
-      'Charges a third faster, and the half bolt pierces',
-      'A full lance leaves a burning line for 2 s',
+      'Tap: a normal shot. Hold 0.35 s: a 3-hit bolt. Hold 0.7 s: a 6-hit lance through everything in line',
+      'Charges 33% faster; the 3-hit bolt pierces',
+      'A full lance leaves a line that burns for 2 s',
     ],
     how: 'Hold to charge, let go to fire',
   },
@@ -248,8 +248,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Searing Edge',
     answers: 'Swarms',
     levels: [
-      'Swipe across threats: everything under your finger is cut. Keep the finger down and it keeps cutting, a round for every 320 px of cut',
-      'A round cuts 420 px',
+      'Swipe across threats: 1 hit on everything under your finger. Keep it down to keep cutting, 1 round per 320 px',
+      'Each round cuts 31% further (420 px)',
       'The cut stays lit for 1 s and burns what flies into it',
     ],
     how: 'Swipe across threats; hold to keep cutting',
@@ -260,11 +260,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Wrecking Ball',
     answers: 'Packs',
     levels: [
-      'Hold on any threat on screen to hook it, drag to swing it into others (2 hits each), let go to fling it',
-      'It swings faster and every smack hits for 3',
-      'The flung threat explodes for 3 in a wide blast',
+      'Hold a threat to hook it, drag to smash it into others (2 hits each), let go to throw it: it bursts for 2 on the first threat it hits',
+      'Swings 36% faster; smashes hit for 3',
+      'The burst hits for 3 and is 86% wider',
     ],
-    how: 'Hold a threat and drag it',
+    how: 'Hold a threat, drag, let go to throw',
   },
   cadence: {
     id: 'cadence',
@@ -272,9 +272,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'War Drum',
     answers: 'Heavies',
     levels: [
-      'A beat every 0.9 s: fire on it for a free 4-hit shot that pierces; off the beat, a normal shot',
-      'A wider beat window',
-      'On the beat it blows up any truck, siege gun, helicopter, sub or repair ship on its line; three beats in a row, and the fourth fires a free broadside at 8 threats',
+      'A beat every 0.9 s. Tap on it for a free 4-hit shot that pierces; off it, a normal shot',
+      'Beat window 50% longer',
+      'On the beat it destroys any truck, siege gun, helicopter, sub or repair ship in line; 3 beats in a row and the 4th fires a free broadside at 8 threats',
     ],
     how: 'Tap on the beat',
   },
@@ -284,9 +284,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hornet Nest',
     answers: 'Drones',
     levels: [
-      'Your own drones lift off the carrier one after another and ram the threats closest to your ships (none while nothing is on screen)',
-      'A drone every 0.9 s',
-      'A drone every 0.7 s, and each ram bursts, hitting everything around it',
+      'A drone lifts off the carrier every 1.2 s and rams the threat closest to your ships, 1 hit (none while nothing is on screen)',
+      'Launch rate +33% (a drone every 0.9 s)',
+      'Launch rate +29% (every 0.7 s); each ram bursts, hitting everything around it',
     ],
     how: 'Keep shooting: the drones ram on their own',
   },
@@ -296,9 +296,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hellfire Wing',
     answers: 'Packs',
     levels: [
-      'Two helicopters hover over the convoy and rocket the thickest cluster near it',
-      'They fire half again as often',
-      'A third helicopter joins, and each pod hits for 2',
+      'Two helicopters hover over the convoy, each firing a rocket at the thickest cluster every 1.25 s, 1 hit in a blast',
+      'Fire rate +39%',
+      'A third helicopter joins; rockets hit for 2',
     ],
     how: 'Keep shooting: the helicopters fire on their own',
   },
@@ -308,9 +308,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Carpet Raid',
     answers: 'Launchers',
     levels: [
-      'A bomber crosses the screen and bombs what it flies over: aircraft, subs and trucks are destroyed; with none up, the busiest silo or tunnel goes quiet for 6 s, its launches cancelled',
+      'Every 6 s a bomber crosses and destroys an aircraft, sub or truck it flies over; with none up, it silences the busiest silo or tunnel for 6 s',
       'A pass every 4.5 s',
-      'A pass every 3.5 s, two bombers each hitting a target; silos stay silent for 8 s',
+      'A pass every 3.5 s with 2 bombers, each on its own target; silos stay silent 8 s',
     ],
     how: 'Keep shooting: the bombers hit what they fly over',
   },
@@ -320,9 +320,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Sky Spear',
     answers: 'Heavies',
     levels: [
-      'Laser dots close in on the toughest thing on screen, then a beam from orbit hits it for 3 (and what is around it for 1)',
+      'Every 2.5 s a beam from orbit hits the toughest threat on screen for 3 (1 to what is around it)',
       'A strike every 1.8 s',
-      'A strike every 1.2 s, and the beam lingers onto the next toughest',
+      'A strike every 1.2 s; each beam strikes the next toughest too',
     ],
     how: 'Keep shooting: the satellite picks the biggest',
   },
@@ -337,9 +337,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Airdrop',
     answers: 'Running dry',
     levels: [
-      'A cargo plane drops 3 crates in a row: ammo, a repair and one of your weapons or boosts; kills drop twice as much. Tap the crates you want',
-      '5 crates (two of them weapons or boosts), and kills drop three times as much',
-      'And every 6 s another plane drops a crate: one of your weapons or boosts, or now and then a Nuke',
+      'A cargo plane drops 3 crates: ammo, a repair and one of your weapons or boosts; kills drop 2× as much. Tap the crates you want',
+      '5 crates (2 of them gear); kills drop 3× as much',
+      'Every 6 s another plane drops a crate of gear, now and then a Nuke',
     ],
     how: 'Tap the crates you want',
   },
@@ -349,9 +349,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Arsenal Drop',
     answers: 'Combos',
     levels: [
-      'The next weapon picked up joins the loaded one: every tap fires both, for one round. Both last as long as the boost, then both end; another Dual Wield restarts both',
-      'It lasts 20 s',
-      'And weapons drop twice as often while it lasts',
+      'The next weapon you pick up joins the loaded one: every tap fires both, for 1 round. Lasts 15 s; another Dual Wield restarts it',
+      'Lasts 20 s',
+      'Weapons drop 2× as often while it lasts',
     ],
     how: 'Pick up a second weapon: both fire',
   },
@@ -364,9 +364,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Jackpot',
     answers: 'Anything, by luck',
     levels: [
-      'It takes over the gun: each tap fires a random weapon\'s level 1 shot',
-      'A random active or passive, at level 2',
-      'A random active weapon\'s MAX shot',
+      'Takes over the gun: each tap fires a random weapon\'s level 1 shot',
+      'Each pickup also brings 1 random passive (frigates, gunships, drones…) for 8 s; shots at level 2',
+      'Shots at MAX; the passive at level 2',
     ],
     how: 'Each tap is a random weapon',
   },
@@ -376,11 +376,11 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Deadeye',
     answers: 'Everything at once',
     levels: [
-      'Press and hold one finger (a quick tap is just a shot) for up to 10 s of slow motion, and tap with the other; the rack reloads at full speed',
-      '15 s, at a quarter of the speed',
-      'Shots fired in slow motion hit for triple',
+      'Hold the button on the left for slow motion (35% speed), up to 10 s in all; tap anywhere to shoot. The rack reloads at full speed',
+      '15 s of slow motion, at 25% speed',
+      'Shots fired in slow motion hit for 3×',
     ],
-    how: 'Press and hold one finger, tap with the other',
+    how: 'Hold the left button to slow time; tap to shoot',
   },
   overdrive: {
     id: 'overdrive',
@@ -388,8 +388,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hyper Overdrive',
     answers: 'Running dry',
     levels: [
-      'Rounds cost nothing',
-      'And the rack keeps refilling, so it is full when the boost ends',
+      'Shots cost no rounds for 15 s',
+      'Lasts 18 s',
       'Every shot fires twice: two shells, two beams, two blades, side by side',
     ],
     how: 'Free rounds: keep firing',
@@ -400,9 +400,9 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Reflect',
     answers: 'Missiles',
     levels: [
-      'Ships and the carrier take no damage from missiles, drones and boats',
-      'Every hit it blocks puts a round back in the rack',
-      'It lasts 18 s, and a blocked missile bounces back and bursts on what is behind it',
+      'For 15 s, ships and the carrier take no damage from missiles, drones and boats',
+      'Every hit it blocks puts 1 round back in the rack',
+      'Lasts 18 s; a blocked missile bounces back and bursts on what is behind it',
     ],
     how: 'Your hulls are shielded',
   },
@@ -412,8 +412,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Ramming Speed',
     answers: 'Getting ships home',
     levels: [
-      'The convoy steams at 1.6× speed',
-      '2× speed',
+      'The convoy sails 1.6× faster for 15 s',
+      'Speed 2×',
       'Ships at full steam ram drones and boats out of the water',
     ],
     how: 'The convoy runs for it',
@@ -550,7 +550,11 @@ export const AB = {
   // anywhere across the screen; that shouldn't be a level lock"): the reach
   // is the whole screen from level 1, and level 2 swings faster and smacks
   // harder instead.
-  grapnel: { speed: [1100, 1500, 1500], smack: [2, 3, 3], smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130] },
+  // Test Lab round 8 (the player: "if it runs into another enemy [it]
+  // explodes, unless it will still have some health"): a flung ball that
+  // comes within `impactR` of another threat bursts there at once; one that
+  // survives its own burst keeps its hit points and flies on.
+  grapnel: { speed: [1100, 1500, 1500], smack: [2, 3, 3], smackR: 34, again: 0.5, hold: 2.5, fly: 0.35, burst: [2, 2, 3], burstR: [70, 70, 130], impactR: 34 },
   /** Cadence Gun: a beat every `period` s; a tap within `window` s of one
    *  fires a `damage` shot that pierces (`width`); off the beat, a plain
    *  shot. War Drum: `run` beats hit in a row, and the next beat fires a
@@ -577,7 +581,12 @@ export const AB = {
    *  strong; every 1.2 s it sat with the other strong weapons. */
   // Build 2 sweep: at MAX 0.9 s it trailed today's passives (35% of runs
   // won against Frigates' 55%): Hornet Nest launches every 0.7 s.
-  droneScreen: { gap: [1.2, 0.9, 0.7], speed: 420, life: 4, damage: 1, burst: [0, 0, 50], contact: 18 },
+  // Test Lab round 8 (the player: "the drone kind of drives away awkwardly
+  // once all the targets have been destroyed"): a drone with nothing to ram
+  // (or out of `life`) flies home at `home` of its speed, its nose turning
+  // at most `turn` rad/s, and lands on the deck; while every threat up has
+  // a drone on it, a spare one waits `wait` px over the deck.
+  droneScreen: { gap: [1.2, 0.9, 0.7], speed: 420, life: 4, damage: 1, burst: [0, 0, 50], contact: 18, home: 0.75, turn: 5, wait: 70 },
   /** Gunship Pair (the player's idea): `count` helicopters hover `ahead` px
    *  either side of the convoy's middle; each fires a Hellfire every `gap`
    *  s at the thickest cluster within `reach` (a `blast` px burst, `damage`
@@ -629,8 +638,12 @@ export const AB = {
    *  long as it does, then both end (the player: "the weapons last as long
    *  as the boost"); Arsenal Drop: weapons drop `drops`× as often. */
   dualWield: { time: [1, 4 / 3, 4 / 3], drops: [1, 1, 2] },
-  /** Wild Card: the passives' one-shot versions at a tap. */
-  wildCard: { drones: 3 },
+  /** Wild Card: from level 2 its pickup brings one random passive (Test Lab
+   *  round 8), working beside the gun for `time`× the weapon time (8 s) at
+   *  `passive`'s level. The sweep: at level 2 and 15 s it won 45% at level 2
+   *  (was 22%) and 56% at MAX (was 40%), two weapons at once nearly all the
+   *  time; at 8 s and level 1 (level 2 at MAX), about 39% and 46%. */
+  wildCard: { passive: [0, 1, 2], time: 8 / 15 },
   /** Focus: `bank` s of slow motion at `scale` speed; Deadeye `damage`×. */
   // Lock-in round, buffed toward the middle of the table (6% of runs won at
   // MAX): the rack reloads on the real clock (game.ts), a bigger bank,
@@ -640,7 +653,10 @@ export const AB = {
   // should not do the slow down; you need to long hold to activate"): time
   // slows only once the holding finger has been down `hold` s (real time);
   // a quicker touch is an ordinary shot, fired as it lifts.
-  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3, hold: 0.3 },
+  // Test Lab round 8 (the player: "the slow motion should just be a button
+  // you hold on the left side of the screen with your left thumb"): time
+  // slows while the Focus button is held; no long-press any more.
+  focus: { bank: [10, 15, 15], scale: [0.35, 0.25, 0.25], damage: 3 },
   /** Shield: it lasts `time`× the weapon time; from level 2 every hit it
    *  blocks puts `refund` rounds back in the rack; Reflect bounces a blocked
    *  missile `bounce` px back to burst (`burst` px). */
@@ -653,14 +669,18 @@ export const AB = {
   /** Hyper Overdrive (Overdrive MAX): every shot fires twice, the second
    *  `twin` px to the side of the first (from its own muzzle) so both show
    *  (Test Lab round 5: "it should clearly show two projectiles"). */
-  overdrive: { twin: 34 },
+  // Test Lab round 8 (the player: level 2 "doesn't make sense if it fills
+  // the rack but it is already full at the end"): level 2 lasts `time`× the
+  // weapon time (18 s) instead, and so does MAX. (At 20 s, MAX won 54% of
+  // the sweep's runs, the top of the table, up from 41%; at 18 s, 49%.)
+  overdrive: { twin: 34, time: [1, 1.2, 1.2] },
   /** Full Steam: the convoy's speed ×; Ramming Speed rams within `ram` px. */
   fullSteam: { mult: [1.6, 2, 2], ram: 38 },
 } as const;
 
 export type Levels = Partial<Record<AbilityId, number>>;
 
-export const RESUPPLY_TEXT = 'Repair every ship and the carrier, refill the rack';
+export const RESUPPLY_TEXT = 'Every ship and the carrier fully repaired; rack full';
 
 /** The weapon's name at a level (evolved at level 3). */
 export function abilityName(id: AbilityId, level: number): string {

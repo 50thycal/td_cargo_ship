@@ -9,6 +9,7 @@ import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
+import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -36,34 +37,13 @@ export interface LabCard {
   wave?: number;
 }
 
-/** A combo's pairing (Test Lab round 4, the player on Spotter + Siege
- *  Battery: "the recon drone and then the siege cannon never really appeared
- *  at the same time"). Every featured appearance of a combo is its whole set,
- *  launched together and timed so the set is on the board at once. */
-export interface LabPair {
-  /** Leads the set: launched at the set's time. */
-  lead: FoeId;
-  /** The others. Each comes `after` s after the lead launches, or (`on:
-   *  'station'`) after the lead gets to its station: the Spotter on its
-   *  circle, the Repair Ship on station, the Rocket Truck at the end of
-   *  its road. A lead shot down first, or one that hasn't got there in
-   *  LAB_SET.station s, lets them come at once. `on: 'arrive'`: a faster one
-   *  after a slow lead, launched once the lead is due within its own flight
-   *  time plus `after` s (the lead's sprint and its own curve make up the
-   *  rest), so they arrive together. `base: 'same'`: out of the lead's base. */
-  follow: { foe: FoeId; after: number; on?: 'launch' | 'station' | 'arrive'; base?: 'same' }[];
-  /** The lead comes out of the launch base furthest from the convoy (the
-   *  longest look at a fast pair). */
-  far?: boolean;
-  /** The rule in words (the docs, and the review page). */
-  rule: string;
-}
+/** A combo's pairing: data/pairs.ts (the enemy pairs, round 8). */
+export type { LabPair, PairFollow, PairMember } from './pairs';
 
-/** Sets: the card's weapon drops by the carrier `weaponLead` s before each
- *  set comes in (a combo with a weapon is played holding it); sets in a wave
- *  are at least `gap` s apart; a follower waits at most `station` s for its
- *  lead to get to its station. */
-export const LAB_SET = { weaponLead: 1.5, gap: 12, station: 14 } as const;
+/** Sets: sets in a wave are at least `gap` s apart (a pair can ask for
+ *  more); a follower waits at most `station` s for its lead to get to its
+ *  station. (Round 8: no combo holds a weapon now, so no weapon drop.) */
+export const LAB_SET = { gap: 12, station: 14 } as const;
 
 /** The lab's own water: open, plain, no map system to get in the way. */
 export const LAB_MAP: MapId = 'strait';
@@ -113,13 +93,13 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'No strobe now: the decoys are a shade cooler. Can you tell them apart when you look, and not at a glance?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'The decoys are a pale blue now, twice the difference: can you tell which is which?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
-  enemy('torpedoSub', 'Three to five torpedoes now, now and then a fast one: can you read the lines? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
-  enemy('spotter', 'Do you notice the painted ship before the strike comes?', ['railgun', 'aegis', 'shield']),
+  enemy('torpedoSub', 'Its torpedoes now go one by one, each at a ship: can you read the lines in time? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
+  enemy('spotter', 'It comes and goes now, hits kept, and calls shells in from off the map: do you see them coming?', ['railgun', 'aegis', 'shield']),
   enemy('sprinter', 'Do you see the flare in time?', ['flak', 'cutter', 'scatter']),
-  enemy('hydra', 'Slower before it splits: does killing it early feel worth it?', ['flak', 'thermo', 'tesla']),
-  enemy('scavenger', 'It circles over the water waiting for a pickup: does it read apart from the other drones?', ['seeker', 'cutter', 'supplyRun']),
+  enemy('hydra', 'A little slower again, before the split and after: about right now?', ['flak', 'thermo', 'tesla']),
+  enemy('scavenger', 'It no longer steals: it hovers over your pickups and locks those in its red ring. Can you see which are locked?', ['seeker', 'cutter', 'supplyRun']),
   enemy('attackHeli', 'Its missiles now fly straight in: six hits or its missiles, a real choice?', ['lance', 'railgun', 'gunships']),
   enemy('stealthJet', 'With no warning, is the short run-in enough?', ['cutter', 'scatter', 'shield']),
   enemy('stealthBomber', 'Does the B-2 read? Six hits too many?', ['railgun', 'seeker', 'aegis']),
@@ -127,21 +107,21 @@ const ENEMIES: LabCard[] = [
   enemy('bodyguard', 'Do you notice the guards taking your shots?', ['flak', 'tesla', 'railgun']),
 ];
 
-/** Weapons changed since they were last played: first (Test Lab round 5:
- *  the player's round-4 weapon notes). */
+/** Weapons changed since they were last played: first (Test Lab round 8:
+ *  the player's round-7 weapon notes; then round 5's, from round 4). */
 const REWORKED: Partial<Record<AbilityId, string>> = {
+  focus: 'Now a button on the left edge: hold it with your left thumb to slow time, tap anywhere else to shoot. Is the meter clear?',
+  wildCard: 'From level 2 each pickup also brings one random passive (frigates, gunships, drones...) for 8 s. Fun?',
+  grapnel: 'A thrown threat now bursts on the first threat it hits; a tough one keeps its health and flies on. Right?',
+  overdrive: 'Level 2 now lasts 18 s (was a refill you never saw). Worth the level?',
+  frigate: 'A new drop while they sail off: they keep going and a fresh pair sails in. Smoother?',
+  droneScreen: 'Out of targets, the drones fly home and land on the deck. Better?',
   aegis: 'Renamed Point Defense: does the name fit?',
   well: 'Missiles, drones and small boats are pulled in; aircraft and other big ones only slowed until MAX. Consistent now?',
   cutter: 'Keep your finger down and it keeps cutting, a round per stretch: does it feel right?',
-  grapnel: 'Hooks anything on screen from level 1; level 2 swings faster and smacks harder. Playable now?',
-  droneScreen: 'The drones wait on deck until something is on screen: better?',
-  focus: 'A quick tap is just a shot; press and hold to slow time. Comfortable?',
   gunships: 'Now Apache-style, nose on the target when they fire, and a new drop calls a leaving pair back: right?',
-  frigate: 'A new drop while they sail off turns them round: do they come back cleanly?',
   supplyRun: 'No magnet: tap the crates you want; they can hold your weapons, boosts and (Airdrop) a Nuke. Better?',
   bomberWing: 'Hits aircraft and subs too, and you see the bomber cross before the bomb lands: does it read?',
-  overdrive: 'Set it to MAX in Setup: every shot fires twice, two shells, two beams, side by side. Clear?',
-  wildCard: 'Now a weapon: it takes over the gun like any other. Right?',
   shield: 'New levels: a round back per block at level 2; 18 s and Reflect at MAX. Worth a slot?',
 };
 
@@ -163,51 +143,33 @@ const WEAPONS: LabCard[] = [
   ...ABILITY_ORDER.filter((id) => !(id in REWORKED)).map(weaponCard),
 ];
 
-const combo = (id: string, name: string, look: string, foes: FoeId[], kit: AbilityId[], pair: LabPair, weapon?: AbilityId): LabCard => ({ id: `combo-${id}`, kind: 'combo', name, look, foes, kit, map: LAB_MAP, pair, ...(weapon ? { weapon } : {}) });
-const alone = (lead: FoeId, rule: string): LabPair => ({ lead, follow: [], rule });
-/** The combos (Test Lab round 4: each one's set comes in together). */
-const COMBOS: LabCard[] = [
-  // The Spotter gets to its circle and paints a ship; the gun rises while it
-  // paints, so its first shells land with the strike it calls.
-  combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam'], {
-    lead: 'spotter',
-    follow: [{ foe: 'siege', after: 3.5, on: 'station' }],
-    rule: 'The Spotter leads. The siege gun\'s hatch opens 3.5 s after the Spotter reaches its circle, so the gun is up while it paints and the first shells land with the strike it calls.',
-  }),
-  // The Repair Ship sails to its station; a guarded heavy comes out as it gets
-  // there, so it has that heavy to mend while the guards take your shots.
-  combo('tender-bodyguard', 'Repair Ship + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun'], {
-    lead: 'tender',
-    follow: [{ foe: 'bodyguard', after: 0, on: 'station' }],
-    rule: 'The Repair Ship leads. The Bodyguard Ring (a fresh heavy and its guards) launches as the Repair Ship reaches its station, so it has a guarded heavy to mend.',
-  }),
-  combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], alone('lure', 'Drone Screen drops by the carrier 1.5 s before each Lure Beacon rises.'), 'droneScreen'),
-  combo('cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], alone('cloud', 'Flak drops by the carrier 1.5 s before each Incendiary Missile launches.'), 'flak'),
-  // One raid: the decoy swarm and the sprinters out of the same base, the
-  // one furthest off (the sprinters' dash cuts their flight short).
-  combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter'], {
-    lead: 'decoy',
-    follow: [{ foe: 'sprinter', after: 0.5, base: 'same' }],
-    far: true,
-    rule: 'One raid, out of the launch base furthest from the convoy: the Decoy swarm leads and the Sprint Drones follow 0.5 s later out of the same base.',
-  }),
-  // The truck drives to its spot; the gun's hatch opens as it gets there, so
-  // the gun is up as the launcher finishes rising and both fire together.
-  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing'], {
-    lead: 'rocketTruck',
-    follow: [{ foe: 'siege', after: 0, on: 'station' }],
-    rule: 'The Rocket Truck leads. The siege gun\'s hatch opens as the truck stops to raise its launcher, so the shells and the rockets come in the same window.',
-  }),
-  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], alone('bodyguard', 'Seeker Pod drops by the carrier 1.5 s before each Bodyguard Ring launches.'), 'seeker'),
-  // The hydra is twice as fast as the sprinters: out of the same base once
-  // they are part way, it catches them up and they arrive together.
-  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], {
-    lead: 'sprinter',
-    follow: [{ foe: 'hydra', after: 1.5, on: 'arrive', base: 'same' }],
-    far: true,
-    rule: 'The Sprint Drones lead, out of the launch base furthest from the convoy. The Hydra follows out of the same base once they are part way, timed to catch them up, so they arrive together. Tesla drops by the carrier 1.5 s before each set.',
-  }, 'tesla'),
+/** The combos (round 8, the player: "the pairs should be enemy pairs, not
+ *  player and enemy attack pairs"): one card per enemy pair (data/pairs.ts),
+ *  its set coming in together on the pair's rule. */
+const COMBOS: LabCard[] = PAIRS.map((p) => ({ id: pairCardId(p.id), kind: 'combo', name: p.name, look: p.look, foes: pairFoes(p), kit: p.kit, map: LAB_MAP, pair: p.pair }));
+
+/** Cards cut from the lab (the player's round 7 notes on the combos:
+ *  "Looking for enemy and enemy attack pairs"), kept so their old verdicts
+ *  still have a card to sit on in the review page's Results (sim/labDocs.ts,
+ *  tools/v3/test-lab/page.mjs). Not in LAB_CARDS: the hub doesn't list them
+ *  and a saved queue drops them. */
+export interface RetiredCard extends LabCard {
+  /** The round it was cut in, and why. */
+  cut: number;
+  why: string;
+}
+const WHY_PAIRS = 'A player weapon with an enemy: the combos are enemy pairs now';
+const retired = (id: string, name: string, look: string, foes: FoeId[], weapon: AbilityId): RetiredCard => ({ id, kind: 'combo', name, look, foes, weapon, kit: [], map: LAB_MAP, cut: 8, why: WHY_PAIRS });
+export const LAB_RETIRED: RetiredCard[] = [
+  retired('combo-lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], 'droneScreen'),
+  retired('combo-cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], 'flak'),
+  retired('combo-guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], 'seeker'),
+  retired('combo-hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], 'tesla'),
 ];
+
+export function retiredCard(id: string): RetiredCard | undefined {
+  return LAB_RETIRED.find((c) => c.id === id);
+}
 
 /** Special events (docs/design/v3-special-events-build.md): each on its own
  *  map, straight into it, with a kit from that map's chapter. The look line
@@ -229,11 +191,11 @@ const EVENT_KITS: Record<EventId, AbilityId[]> = {
   'repair-yard': ['lance', 'cadence', 'orbital'],
   'escort-run': ['tesla', 'flak', 'railgun'],
   firestorm: ['flak', 'railgun', 'bomberWing'],
-  // Round 7: the three chapter finales, and Undertow (a kit with no
-  // helpers: the event must not need them).
+  // Round 7: the three chapter finales. Round 8: Beacon Strike, Dunmar
+  // Crossing's event in place of Undertow (a kit with no helpers: it must not need them).
   breakout: ['flak', 'railgun', 'seeker'],
   'run-the-canal': ['lance', 'airstrike', 'flak'],
-  undertow: ['railgun', 'flak', 'cutter'],
+  'beacon-strike': ['railgun', 'flak', 'cutter'],
   'siege-of-vey': ['lance', 'tesla', 'flak'],
   // The bonus event: two passives in the kit, as the campaign asks of it
   // before it comes.
@@ -271,7 +233,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'event', name: 'Events', blurb: 'Each special event on its own map, straight in. Run it again starts it over.' },
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
-  { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet: they come in together.' },
+  { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
   { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
 ];
 
@@ -303,6 +265,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
   { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
+  { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -332,19 +295,32 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 2, what: 'Sails in from the edge and keeps clear of other boats' },
     { round: 5, what: 'Now called the Repair Ship' },
   ],
-  scavenger: [{ round: 2, what: 'Circles over the water; a quadcopter with a claw' }],
+  scavenger: [
+    { round: 2, what: 'Circles over the water; a quadcopter with a claw' },
+    { round: 8, what: 'Reworked: it no longer steals; pickups inside its ring are locked until you shoot it down' },
+  ],
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
     { round: 3, what: 'The swarm spreads out; easier to tell apart' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream) all the way in' },
+    { round: 8, what: 'The tint is about twice as strong: the decoys are a pale blue' },
   ],
   // Round 7 (docs/design/v3-enemies-round7.md): the player's enemy notes
   // from the round 6 event playtest. The combos with these enemies take
   // the lines on (cardChangeList).
-  hydra: [{ round: 7, what: '25% slower before it splits; its darts as fast as before' }],
-  torpedoSub: [{ round: 7, what: 'Fires a fan of three to five torpedoes; about one sub in four puts a fast one (amber) in it' }],
+  hydra: [
+    { round: 7, what: '25% slower before it splits; its darts as fast as before' },
+    { round: 8, what: 'A little slower again: 11% before it splits, its darts 12%' },
+  ],
+  torpedoSub: [
+    { round: 7, what: 'Fires a fan of three to five torpedoes; about one sub in four puts a fast one (amber) in it' },
+    { round: 8, what: 'Its torpedoes go one by one, each aimed at a ship; never across land' },
+  ],
   armored: [{ round: 2, what: 'New shield that flares on a blocked hit' }],
-  spotter: [{ round: 2, what: 'Spots from further away' }],
+  spotter: [
+    { round: 2, what: 'Spots from further away' },
+    { round: 8, what: 'Flies turns like the Fire Mission\'s: paints, calls, leaves and comes back with its hits kept; artillery shells from off the map' },
+  ],
   stealthJet: [{ round: 2, what: '17% faster' }],
   attackHeli: [{ round: 2, what: 'Its missiles fly straight in' }],
   'w-gunships': [
@@ -359,46 +335,70 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   // weapon notes. (Overclock and Time Warp were cut: their cards are gone.)
   'w-aegis': [{ round: 5, what: 'Renamed Point Defense' }],
   'w-well': [{ round: 5, what: 'Pulls missiles, drones and small boats; only slows big ones until MAX' }],
-  'w-grapnel': [{ round: 5, what: 'Reaches the whole screen from level 1; level 2 swings faster and smacks for 3' }],
-  'w-droneScreen': [{ round: 5, what: 'Drones wait on deck until a threat is on screen' }],
-  'w-focus': [{ round: 5, what: 'A quick tap is a shot; slow motion only after a 0.3 s hold' }],
-  'w-frigate': [{ round: 5, what: 'A new drop turns leaving frigates round instead of replacing them' }],
+  'w-grapnel': [
+    { round: 5, what: 'Reaches the whole screen from level 1; level 2 swings faster and smacks for 3' },
+    { round: 8, what: 'A thrown threat bursts on the first threat it hits; a tough one keeps its health and flies on' },
+  ],
+  'w-droneScreen': [
+    { round: 5, what: 'Drones wait on deck until a threat is on screen' },
+    { round: 8, what: 'Drones with nothing left to ram fly home and land on the deck' },
+  ],
+  'w-focus': [
+    { round: 5, what: 'A quick tap is a shot; slow motion only after a 0.3 s hold' },
+    { round: 8, what: 'A button on the left edge: hold it to slow time; every tap elsewhere is a shot' },
+  ],
+  'w-frigate': [
+    { round: 5, what: 'A new drop turns leaving frigates round instead of replacing them' },
+    { round: 8, what: 'A new drop while frigates sail off: they keep going and a fresh set sails in' },
+  ],
   'w-supplyRun': [{ round: 5, what: 'No magnet; crates can hold your weapons and boosts, and Airdrop now and then a Nuke' }],
   'w-bomberWing': [{ round: 5, what: 'Bombs aircraft and subs too; on screen before its bomb lands, as it passes over' }],
-  'w-overdrive': [{ round: 5, what: 'MAX: every shot visibly fires twice (two shells, two beams)' }],
-  'w-wildCard': [{ round: 5, what: 'Now a weapon that takes over the gun, not a boost' }],
+  'w-overdrive': [
+    { round: 5, what: 'MAX: every shot visibly fires twice (two shells, two beams)' },
+    { round: 8, what: 'Level 2 lasts 18 s (was a rack refill at the end)' },
+  ],
+  'w-wildCard': [
+    { round: 5, what: 'Now a weapon that takes over the gun, not a boost' },
+    { round: 8, what: 'From level 2 each pickup also brings one random passive for 8 s; taps fire actives only' },
+  ],
   'w-shield': [{ round: 5, what: 'New levels: no strafe block; a round back per block, then 18 s and Reflect' }],
+  // Round 8 (docs/design/v3-lab-round8-weapons.md): the player's round-7
+  // weapon notes. (Every weapon's level text was rewritten to say what it
+  // does directly; a text-only change asks for no retest.)
   // Round 4 (docs/design/v3-lab-round4.md): the player's notes on Spotter +
   // Siege Battery, Dual Wield and Cadence.
   'w-dualWield': [{ round: 4, what: 'A second Dual Wield restarts both hands; another boost no longer empties them' }],
   'w-cadence': [{ round: 4, what: 'War Drum (MAX): on the beat it blows up trucks, siege guns, helicopters, subs and repair ships' }],
   'combo-spotter-siege': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-tender-bodyguard': [{ round: 4, what: 'Its enemies now arrive together' }],
-  'combo-lure-screen': [{ round: 4, what: 'Drone Screen now drops by the carrier just before each Lure Beacon' }],
-  'combo-cloud-flak': [{ round: 4, what: 'Flak now drops by the carrier just before each Incendiary Missile' }],
   'combo-decoy-sprint': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-siege-truck': [
     { round: 2, what: 'New pairing' },
     { round: 4, what: 'Its enemies now arrive together' },
+    { round: 8, what: 'They take turns: the gun rises as the truck fires its last salvos, so the shells land after the rockets' },
   ],
-  'combo-guard-seeker': [
-    { round: 2, what: 'New pairing' },
-    { round: 4, what: 'Seeker Pod now drops by the carrier just before each Bodyguard Ring' },
-  ],
-  'combo-hydra-tesla': [
-    { round: 2, what: 'New pairing' },
-    { round: 4, what: 'Its enemies now arrive together; Tesla drops by the carrier just before' },
-  ],
+  // Round 8 (docs/design/v3-enemy-pairs.md): the new enemy pairs.
+  'combo-decoy-cluster': [{ round: 8, what: 'New pair: two cluster missiles arrive with the decoy swarm' }],
+  'combo-hydra-swarm': [{ round: 8, what: 'New pair: a Hydra flies in a drone swarm' }],
+  'combo-scavenger-swarm': [{ round: 8, what: 'New pair: a drone swarm comes while the Scavenger circles' }],
+  'combo-heli-sub': [{ round: 8, what: 'New pair: a Torpedo Sub surfaces under the helicopter\'s hover' }],
+  'combo-armored-hydra': [{ round: 8, what: 'New pair: a Hydra arrives with two armored drones' }],
+  'combo-spotter-dive': [{ round: 8, what: 'New pair: dive bombers put their circles on the painted ship' }],
+  'combo-tender-truck': [{ round: 8, what: 'New pair: the Repair Ship moors off the truck\'s road and mends it' }],
+  'combo-lure-stealth': [{ round: 8, what: 'New pair: stealth strafers come in while the beacon draws your helpers' }],
+  'combo-guard-spotter': [{ round: 8, what: 'New pair: a ring of guards flies in round the Spotter' }],
   // Round 5 (docs/design/v3-special-events-build.md): the special events;
   // round 6 (docs/design/v3-events-round6.md): the player's notes on them.
   'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
   'ev-decoy-storm': [
     { round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream)' },
+    { round: 8, what: 'The decoys are a pale blue, about twice the difference' },
   ],
   'ev-hydra-bloom': [
     { round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' },
     { round: 7, what: 'The Hydras are 25% slower before they split' },
+    { round: 8, what: 'No line: every Hydra splits into three wherever it is killed; Hydras and darts a little slower' },
   ],
   'ev-rocket-convoy': [
     { round: 5, what: 'New event: four armoured trucks in a column down the shore road' },
@@ -416,6 +416,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-supply-raid': [
     { round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' },
     { round: 6, what: 'No Nuke in the cargo; twelve scavengers, from every side' },
+    { round: 8, what: 'The new Scavengers: six, each locking the pickups in its ring until shot down' },
   ],
   'ev-blackout': [{ round: 5, what: 'New event: night, eight stealth strafers and a star shell' }],
   'ev-carpet-run': [{ round: 5, what: 'New event: two vees of three stealth bombers (three hits each)' }],
@@ -430,6 +431,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-fire-mission': [
     { round: 5, what: 'New event: a spotter with three escorts calling five strikes' },
     { round: 6, what: 'New: three spotters take turns from three sides, each calling shells that walk down the lane' },
+    { round: 8, what: 'The shells are artillery from off the map: each comes in from the edge' },
   ],
   'ev-repair-yard': [
     { round: 5, what: 'New event: a tough mothership mended by three tenders' },
@@ -441,9 +443,15 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 7, what: 'Now a bonus event: a bonus wave after wave 6 on any map, when you hold two passives' },
   ],
   // Round 7 (docs/design/v3-events-round7.md): every map has its own event.
-  'ev-breakout': [{ round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' }],
-  'ev-run-the-canal': [{ round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' }],
-  'ev-undertow': [{ round: 7, what: "New event (Dunmar Crossing): beacons by the lanes slow the ships in their rings" }],
+  'ev-breakout': [
+    { round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' },
+    { round: 8, what: 'Its decoys are a pale blue; its Hydras a little slower' },
+  ],
+  'ev-run-the-canal': [
+    { round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' },
+    { round: 8, what: 'Cut down: two subs (no torpedo crosses land), one gunship, then a block of six; no scavengers' },
+  ],
+  'ev-beacon-strike': [{ round: 8, what: 'New event (Dunmar Crossing), in place of Undertow: beacons by the lanes call missiles on the ship nearest them' }],
   'ev-siege-of-vey': [{ round: 7, what: 'New event (Citadel of Vey): repair ships, a guarded heavy and beacons, then firebombs' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };

@@ -70,19 +70,21 @@ describe('the table: an event for every map, built on its debut enemy', () => {
       const finale = ['breakout', 'run-the-canal', 'siege-of-vey'].includes(id);
       // The map's debut (the foe it leads with) is the event's enemy; a
       // finale brings its chapter's four.
+      // (Round 8 took the scavengers out of Run the Canal: "way too much
+      // going on".)
       if (!finale) expect(g.foe.lead[g.foe.cursor % g.foe.lead.length], id).toBe(EVENTS[id].foe);
-      else expect([EVENTS[id].foe, ...EVENTS[id].also!].sort(), id).toEqual(FOES_BUILT.filter((f) => FOES[f].chapter === chapterOf(map)).sort());
+      else expect([EVENTS[id].foe, ...EVENTS[id].also!].sort(), id).toEqual(FOES_BUILT.filter((f) => FOES[f].chapter === chapterOf(map) && !(id === 'run-the-canal' && f === 'scavenger')).sort());
       expect(FOES[EVENTS[id].foe].chapter, id).toBe(chapterOf(map));
     }
   });
 
-  it('every one of the twenty maps has its own event (round 7: the finales, and Undertow on Dunmar Crossing)', () => {
+  it('every one of the twenty maps has its own event (round 7: the finales; round 8: Beacon Strike on Dunmar Crossing)', () => {
     expect(MAP_ORDER.filter((m) => !EVENT_MAPS[m])).toEqual([]);
     expect(new Set(MAP_ORDER.map((m) => EVENT_MAPS[m])).size).toBe(20);
     expect(EVENT_MAPS.harbor).toBe('breakout');
     expect(EVENT_MAPS.saltgate).toBe('run-the-canal');
     expect(EVENT_MAPS.citadel).toBe('siege-of-vey');
-    expect(EVENT_MAPS.crossing).toBe('undertow');
+    expect(EVENT_MAPS.crossing).toBe('beacon-strike');
   });
 
   it('the card says the event and its rules, never how to beat it', () => {
@@ -189,7 +191,7 @@ describe('each event sends what it should', () => {
     'gunship-wall': { attackHeli: 4 },
     'wolf-pack': { torpedoSub: 7 },
     'shield-wall': { armored: 12 },
-    'supply-raid': { scavenger: 12 },
+    'supply-raid': { scavenger: 6 },
     blackout: { stealthJet: 8 },
     'carpet-run': { stealthBomber: 6 },
     'dive-circus': { diveBomber: 8, guided: 6 },
@@ -199,10 +201,10 @@ describe('each event sends what it should', () => {
     'escort-run': { heavy: 1, guard: 12 },
     'siren-field': { lure: 5 },
     firestorm: { cloud: 9 },
-    // Round 7: the finales, and Undertow.
+    // Round 7: the finales; round 8: Beacon Strike.
     breakout: { decoy: 9, sprinter: 4, hydra: 3, rocketTruck: 2 },
-    'run-the-canal': { torpedoSub: 3, attackHeli: 2, scavenger: 3, armored: 8 },
-    undertow: { lure: 4 },
+    'run-the-canal': { torpedoSub: 2, attackHeli: 1, armored: 4 },
+    'beacon-strike': { lure: 4 },
     'siege-of-vey': { mothership: 1, tender: 3, heavy: 1, guard: 7, lure: 2, cloud: 5 },
   };
   for (const id of EVENT_ORDER) {
@@ -317,14 +319,12 @@ describe('event rules: on for the event, off after', () => {
     g.event = ev;
   });
 
-  it('Hydra Bloom: killed before the line a Hydra dies whole; past it, three darts', () => {
+  it('Hydra Bloom: a Hydra splits into three wherever it is killed (round 8: no line); after it, two', () => {
     const g = eventGame('hydra-bloom');
-    const line = g.event!.line!;
-    const th = { y: line.y - line.dir * 50 } as never;
-    expect(hydraDarts(g, th)).toBe(0);
-    expect(hydraDarts(g, { y: line.y + line.dir * 50 } as never)).toBe(3);
+    expect(g.event!.line).toBeUndefined();
+    for (const y of [-50, 200, 600]) expect(hydraDarts(g, { y } as never)).toBe(3);
     g.event = null;
-    expect(hydraDarts(g, th)).toBe(2);
+    expect(hydraDarts(g, { y: 200 } as never)).toBe(2);
   });
 
   it('Supply Raid: the cargo rains pickups down', () => {
@@ -388,13 +388,13 @@ describe('the Test Lab: an Events section, one card per event', () => {
     expect(cards.map((c) => c.event)).toEqual(EVENT_ORDER);
     expect(cards).toHaveLength(21);
     expect(LAB_SECTIONS[0].kind).toBe('event');
-    const fresh = ['breakout', 'run-the-canal', 'undertow', 'siege-of-vey'];
+    const fresh: Record<string, number> = { breakout: 7, 'run-the-canal': 7, 'siege-of-vey': 7, 'beacon-strike': 8 };
     for (const c of cards) {
       expect(c.map).toBe(eventMap(c.event!));
       expect(c.kit).toHaveLength(3);
       for (const w of c.kit) expect(draftPool(chapterOf(c.map)), `${c.id} ${w}`).toContain(w);
       // Round 5's events, and round 7's new ones.
-      expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(fresh.includes(c.event!) ? 7 : 5);
+      expect(LAB_CHANGES[c.id]?.[0]?.round, c.id).toBe(fresh[c.event!] ?? 5);
       // Later rounds changed some of them (round 6: the playtest's notes;
       // round 7: the Decoy Drones and the Hydra everywhere).
       expect(cardRev(c.id)).toBe(Math.max(...LAB_CHANGES[c.id].map((x) => x.round)));
@@ -461,7 +461,7 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(19);
+    expect(log.v).toBe(20);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('decoy-storm');

@@ -20,8 +20,8 @@
 // game.ts calls in at: startWave (startEvent, restoreConvoy), each step
 // (updateEvent), the wave's end (endEvent, bonusDue, startBonus) and a loss
 // (endEvent), a kill (eventFoeDown), a shot (in fireAt, the Decoy Storm's
-// count), the drop roll (eventDropWeights), a ship's speed
-// (eventShipScale) and the lab's "Run it again" (rerunEvent). foes.ts reads
+// count), the drop roll (eventDropWeights)
+// and the lab's "Run it again" (rerunEvent). foes.ts reads
 // the run's rules and features (the line, the fire's linger) where a foe
 // behaves differently in an event. Pure and deterministic like the rest of
 // the sim.
@@ -33,7 +33,7 @@ import { RULES, VIEW, isStructure, type PickupKind, type ThreatKind } from '../d
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
-import { foeData, launchFoe, onLand, siegeSpotAt, wetRun } from './foes';
+import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSpot, wetRun } from './foes';
 import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
@@ -73,9 +73,9 @@ export interface EventRun {
   /** The script has run out. */
   done: boolean;
   rules: EventRule[];
-  /** A line on the water (Afterburner Rush's boost line, Hydra Bloom's
-   *  halfway line): its y, and +1 when the threats come down the screen to
-   *  it, -1 when up. */
+  /** A line on the water (Afterburner Rush's boost line; Hydra Bloom's
+   *  halfway line until round 8): its y, and +1 when the threats come down
+   *  the screen to it, -1 when up. */
   line?: { y: number; dir: number };
   /** Shield Wall: signals given, and when the last came (event seconds). */
   signals: number;
@@ -120,8 +120,6 @@ export interface EventRun {
   /** A heavy in rings of guards (the Escort Run, Siege of Vey's): its id,
    *  its own speed, and how much each ring stripped speeds it up. */
   escort?: { id: number; speed: number; slow: number; per: number; rings: number };
-  /** Undertow: the ships slowed now (ids), for the barrages to fall on. */
-  caught?: number[];
 }
 
 /** An armored block's numbers (the Shield Wall's, or a finale's smaller
@@ -397,16 +395,12 @@ function openingDry(g: Game): boolean {
   return hasRule(g, 'noAmmoOpening') && g.event!.id === 'breakout' && g.event!.t < EVENT.breather + EV.breakout.open;
 }
 
-/** Undertow: a ship inside an up beacon's ring sails at `slow` of its
- *  speed (1 otherwise, and in every other event). */
-export function eventShipScale(g: Game, s: Ship): number {
-  if (!g.event || !hasRule(g, 'undertow')) return 1;
-  return caughtBy(g, s) ? EV.undertow.slow : 1;
-}
-
-/** The beacon (up, standing) whose ring holds this ship, if any. */
-export function caughtBy(g: Game, s: { x: number; y: number }): Threat | undefined {
-  return g.threats.find((t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 0) >= 1 && t.foe?.r !== undefined && dist(t.x, t.y, s.x, s.y) <= t.foe.r);
+/** Beacon Strike (round 8): the ship a beacon has marked for its next
+ *  call, if it has one now (the renderer draws the line). */
+export function beaconMark(g: Game, th: Threat): Ship | undefined {
+  if (!g.event || !hasRule(g, 'beaconCall') || th.kind !== 'lure' || th.dead) return undefined;
+  const id = th.foe?.marked;
+  return id === undefined || id < 0 ? undefined : g.ships.find((s) => s.id === id);
 }
 
 /** A shot at a threat (the Decoy Storm counts the ones at decoys). */
@@ -443,8 +437,9 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'decoys');
     }
     case 'hydra-bloom': {
+      // Round 8 ("Hydras should split even before the line is crossed; you
+      // can remove that line"): no line; every Hydra splits into three.
       const E = EV['hydra-bloom'];
-      ev.line = lineFrom(g, E.line, false);
       return [...steps(E.fans, (k) => k * E.gap, 'fan'), ...steps(E.swarms, (k) => 3 + k * E.gap, 'swarm')];
     }
     case 'rocket-convoy': {
@@ -527,25 +522,21 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'run-the-canal': {
-      // A pack as the convoy comes in, gunships over the banks, thieves,
-      // then an armored block.
+      // Round 8, cut down: the subs as the convoy comes in, then one
+      // gunship over the bank, then a smaller armored block.
       const E = EV['run-the-canal'];
       return [
-        ...steps(1, () => 0, 'pack'),
+        ...steps(E.subs, (k) => k * E.stagger, 'sub'),
         ...steps(E.helis, () => E.heliAt, 'heli'),
-        ...steps(E.scav, (k) => E.scavAt + k * 0.7, 'scav'),
         ...steps(1, () => E.blockAt, 'block'),
-        ...steps(E.swarms, (k) => 4 + k * 8, 'swarm'),
+        ...steps(E.swarms, (k) => 5 + k * 8, 'swarm'),
       ];
     }
-    case 'undertow': {
-      // Pairs of beacons by the lanes; barrages on the ships they hold.
-      const E = EV.undertow;
-      return [
-        ...steps(E.at.length, (k) => E.at[k], 'beacons'),
-        ...steps(E.barrages, (k) => E.from + k * E.every, 'barrage'),
-        ...steps(E.swarms, (k) => 2 + k * 6, 'swarm'),
-      ];
+    case 'beacon-strike': {
+      // Round 8: pairs of beacons by the lanes, each calling missiles on
+      // the ship nearest it (tick does the calls).
+      const E = EV['beacon-strike'];
+      return [...steps(E.at.length, (k) => E.at[k], 'beacons'), ...steps(E.swarms, (k) => 4 + k * 8, 'swarm')];
     }
     case 'siege-of-vey': {
       // The Repair Yard on the Citadel, then a guarded heavy and beacons,
@@ -732,18 +723,8 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       } else if (s.op === 'scav') {
         // From every side of the screen in turn (round 6: "have them come
         // from all side"), each leaving the way it came.
-        const side = (s.k % 100) % 4;
-        const m = 40;
-        const p =
-          side === 0 ? { x: -m, y: rng.range(150, VIEW.height - 150) }
-          : side === 1 ? { x: VIEW.width + m, y: rng.range(150, VIEW.height - 150) }
-          : side === 2 ? { x: rng.range(220, VIEW.width - 220), y: -m }
-          : { x: rng.range(220, VIEW.width - 220), y: VIEW.height + m };
-        const th = spawnThreat(g, 'scavenger', p.x, p.y, 'air');
-        th.target = CARRIER_TARGET;
-        th.heading = Math.atan2(VIEW.height / 2 - p.y, VIEW.width / 2 - p.x);
-        th.foe = foeData({ link: -1, px: p.x, py: p.y, ex: p.x + Math.sign(p.x - VIEW.width / 2) * (side < 2 ? 80 : 0), ey: p.y + Math.sign(p.y - VIEW.height / 2) * (side >= 2 ? 80 : 0) });
-        sent(ev, 'scavenger');
+        // (Round 8: three a run, the second run's going on round the sides.)
+        scavenger(g, ev, Math.floor(s.k / 100) * EV['supply-raid'].scav[0] + (s.k % 100));
       } else swarm(g, ev, EV['supply-raid'].size);
       return;
     }
@@ -899,42 +880,30 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'run-the-canal': {
       const E = EV['run-the-canal'];
-      if (s.op === 'pack') {
-        // A pack of periscopes, each sub a spread, on a stagger.
+      if (s.op === 'sub') {
+        // Round 8: a Torpedo Sub as any other now (its torpedoes one by one,
+        // each at a ship, never across land), from open water that has a
+        // run of water to the canal, clear of the other sub.
         const S = FOE.torpedoSub;
-        openWater(g, E.subs, 150).forEach((p, k) => {
-          g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + E.aim + k * E.stagger, spread: E.spread, fast: -1 });
-          sent(ev, 'torpedoSub');
-        });
-        cue(g, 'sub.surface', VIEW.width / 2, VIEW.height / 2, { gain: 0.7 });
+        const taken = [...g.foe.marks.filter((m) => m.kind === 'periscope'), ...g.threats.filter((t) => t.kind === 'torpedoSub' && !t.dead)];
+        const p = openWater(g, 8, 150).find((o) => seesLane(g, o) && taken.every((q) => dist(q.x, q.y, o.x, o.y) >= 150)) ?? subSpot(g, rng);
+        const fast = -1;
+        g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + E.aim, spread: E.spread, fast, stagger: S.stagger });
+        sent(ev, 'torpedoSub');
+        cue(g, 'sub.surface', p.x, p.y, { gain: 0.6 });
       } else if (s.op === 'heli') {
-        // Over the far bank by each lock (or spread across the screen
-        // without locks), firing in turn.
+        // Over the far bank by a lock (or across the screen without locks).
         const locks = g.map.locks ?? [];
         const x = locks.length ? (locks[s.k % locks.length].x0 + locks[s.k % locks.length].x1) / 2 : VIEW.width * (0.3 + (0.4 * s.k) / Math.max(1, E.helis - 1));
         heliOnStation(g, ev, x, s.k, E);
-      } else if (s.op === 'scav') scavenger(g, ev, s.k);
-      else if (s.op === 'block') armoredBlock(g, ev, { ...EV['shield-wall'], drones: E.drones, cols: E.cols, banks: E.banks });
+      } else if (s.op === 'block') armoredBlock(g, ev, { ...EV['shield-wall'], drones: E.drones, cols: E.cols, banks: E.banks });
       else if (s.op === 'row') shieldRow(g, ev, s.k);
       else swarm(g, ev, E.size);
       return;
     }
-    case 'undertow': {
-      const E = EV.undertow;
-      if (s.op === 'beacons') undertowBeacons(g, ev, s.k);
-      else if (s.op === 'barrage') {
-        // Shells from the shore at the ships the rings hold; with none held,
-        // a lone shell at any ship.
-        const held = g.ships.filter((o) => caughtBy(g, o));
-        const pool = held.length ? held : targetable(g);
-        const bs = rng.shuffle(liveBases(g, 'ballistic'));
-        const n = held.length ? E.shells : E.loose;
-        for (let k = 0; k < n && pool.length && bs.length; k++) {
-          g.queue.push({ at: g.waveT + k * 0.35, kind: 'ballistic', base: bs[k % bs.length], target: pool[k % pool.length].id });
-          sent(ev, 'ballistic');
-        }
-        g.queue.sort((a, b) => a.at - b.at);
-      } else swarm(g, ev, E.size);
+    case 'beacon-strike': {
+      if (s.op === 'beacons') laneBeacons(g, ev, s.k);
+      else swarm(g, ev, EV['beacon-strike'].size);
       return;
     }
     case 'siege-of-vey': {
@@ -1112,11 +1081,11 @@ function escortHeavy(g: Game, ev: EventRun, b: Point, E: { hp: number; rings: re
   return hv;
 }
 
-/** Undertow: a pair of beacons, one by each lane (a map with one lane: two
- *  along it), rising just off the lane's enemy-side edge ahead of the
- *  ships in it, each with its ring. */
-function undertowBeacons(g: Game, ev: EventRun, k: number): void {
-  const E = EV.undertow;
+/** Beacon Strike (round 8; Undertow's placing, round 7): a pair of beacons,
+ *  one by each lane (a map with one lane: two along it), rising off the
+ *  lane's enemy-side edge ahead of the ships in it. */
+function laneBeacons(g: Game, ev: EventRun, k: number): void {
+  const E = EV['beacon-strike'];
   const c = g.map.carrier;
   const lanes = g.map.channels.length > 1 ? g.map.channels.slice(0, 2) : [g.map.channels[0], g.map.channels[0]];
   lanes.forEach((ch, i) => {
@@ -1136,7 +1105,7 @@ function undertowBeacons(g: Game, ev: EventRun, k: number): void {
     const p = sidesOf[0];
     const th = spawnThreat(g, 'lure', clamp(p.x, 60, VIEW.width - 60), clamp(p.y, 60, VIEW.height - 60), 'sub');
     th.target = CARRIER_TARGET;
-    th.foe = foeData({ r: E.ring, life: E.life });
+    th.foe = foeData({ life: E.life, call: E.first, marked: -1 });
     sent(ev, 'lure');
   });
 }
@@ -1252,8 +1221,11 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
   const E = EV['fire-mission'];
   const s = g.ships.find((o) => o.id === shipId);
   if (!s) return;
-  const sites = liveBases(g);
-  const gun = sites.length ? g.map.bases[g.rng.foes.pick(sites)] : { x: sp.x, y: sp.y };
+  // Round 8 (the player, on this event: "the projectile coming in should be
+  // like an artillery shell coming in from off the map"): from a battery
+  // off the map, not a shore base; each shell comes into sight at the
+  // map's edge FOE.spotter.flight s before it lands.
+  const gun = offMapGun(g, s, g.rng.foes);
   for (let k = 0; k < E.shells; k++) {
     const t = E.mark + k * E.beat;
     const p = shipAhead(g, s, t);
@@ -1262,7 +1234,7 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
     const ux = d > 0.5 ? (q.x - p.x) / d : Math.cos(s.heading);
     const uy = d > 0.5 ? (q.y - p.y) / d : Math.sin(s.heading);
     const off = (k - (E.shells - 1) / 2) * E.walk;
-    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg });
+    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg, far: true, flight: FOE.spotter.flight });
   }
   if (g.event) {
     g.event.painted = shipId;
@@ -1456,10 +1428,35 @@ function tick(g: Game, ev: EventRun): void {
       hv.speed = E.speed * (E.slow + E.per * (E.rings - left.size));
       return;
     }
-    case 'undertow': {
-      // Which ships the rings hold (the barrages' targets, and the
-      // renderer's drag ripples).
-      ev.caught = g.ships.filter((s) => caughtBy(g, s)).map((s) => s.id);
+    case 'beacon-strike': {
+      // Round 8: each beacon that is up marks the ship nearest it `charge`
+      // s before each of its calls, and at the call a missile goes for that
+      // ship from the launch base nearest the beacon.
+      const E = EV['beacon-strike'];
+      for (const t of g.threats) {
+        const f = t.foe;
+        if (t.kind !== 'lure' || t.dead || !f || f.state < 1 || f.call === undefined) continue;
+        if ((f.marked ?? -1) >= 0 && !g.ships.some((s) => s.id === f.marked)) f.marked = -1;
+        if ((f.marked ?? -1) < 0 && f.t >= f.call - E.charge) {
+          const s = targetable(g).sort((a, b) => dist(a.x, a.y, t.x, t.y) - dist(b.x, b.y, t.x, t.y))[0];
+          if (s) {
+            f.marked = s.id;
+            cue(g, 'foe.paint', t.x, t.y, { gain: 0.7 });
+          }
+        }
+        if (f.t < f.call) continue;
+        f.call += E.every;
+        const ship = f.marked ?? -1;
+        f.marked = -1;
+        if (ship < 0) continue;
+        const bs = liveBases(g, 'ballistic');
+        const b = bs.reduce((m, i) => (dist(g.map.bases[i].x, g.map.bases[i].y, t.x, t.y) < dist(g.map.bases[m].x, g.map.bases[m].y, t.x, t.y) ? i : m), bs[0]);
+        if (b === undefined) continue;
+        g.queue.push({ at: g.waveT, kind: 'ballistic', base: b, target: ship });
+        g.queue.sort((a, c) => a.at - c.at);
+        sent(ev, 'ballistic');
+        addFx(g, 'burst', t.x, t.y, { life: 0.35, r: 30 });
+      }
       return;
     }
   }
@@ -1510,9 +1507,15 @@ export function eventCargo(g: Game): { kind: PickupKind; weapon?: AbilityId } {
 }
 
 /** A Hydra killed in an event: how many darts it splits into (Hydra Bloom:
- *  none before the line, three past it). */
+ *  three, wherever it is killed; round 8 took out the line before which it
+ *  split into none). */
 export function hydraDarts(g: Game, th: Threat): number {
-  const ev = g.event;
-  if (!ev || ev.id !== 'hydra-bloom' || !ev.line) return FOE.hydra.darts;
-  return (th.y - ev.line.y) * ev.line.dir >= 0 ? EV['hydra-bloom'].darts : 0;
+  void th;
+  return g.event && hasRule(g, 'hydraThree') ? EV['hydra-bloom'].darts : FOE.hydra.darts;
+}
+
+/** A Hydra's darts' pace in an event (Hydra Bloom, round 8: three darts
+ *  from every Hydra now, so they fly at `dartSlow` of their speed). */
+export function hydraDartPace(g: Game): number {
+  return g.event && hasRule(g, 'hydraThree') ? EV['hydra-bloom'].dartSlow : 1;
 }

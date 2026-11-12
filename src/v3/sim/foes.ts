@@ -11,7 +11,7 @@ import { FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { EV } from '../data/events';
-import { hydraDarts, walkingBarrage } from './events';
+import { hydraDartPace, hydraDarts, walkingBarrage } from './events';
 import {
   CARRIER_TARGET,
   addFx,
@@ -63,8 +63,9 @@ export interface FoeMark {
   id: number;
   /** A periscope (a torpedo sub to come), a dive bomber's circle, a siege
    *  battery's shell circle, an Incendiary Missile's fireball burning, a siege
-   *  battery's hatch (the gun hidden under it: no target). */
-  kind: 'periscope' | 'dive' | 'shell' | 'fire' | 'hatch';
+   *  battery's hatch (the gun hidden under it: no target); a Spotter away
+   *  off the screen between its turns (round 8; `gun` is the plane). */
+  kind: 'periscope' | 'dive' | 'shell' | 'fire' | 'hatch' | 'recall';
   x: number;
   y: number;
   t: number;
@@ -98,8 +99,16 @@ export interface FoeMark {
    *  least angle between two of its headings (rad). */
   aimed?: number;
   fan?: number;
+  /** A sub that fires its spread one by one (every sub's from round 8, not
+   *  the Wolf Pack's): seconds between its torpedoes. */
+  stagger?: number;
   /** A shell's damage when not a siege gun's (the Fire Mission's barrage). */
   dmg?: number;
+  /** A shell from a battery off the map (round 8: the Spotter's call, the
+   *  Fire Mission's barrage): `far`, and the seconds it is in the air
+   *  (FOE.siege.flight when not set). */
+  far?: boolean;
+  flight?: number;
   /** A dive bomber's circle: the line its plane flies in on (its heading). */
   a?: number;
 }
@@ -154,6 +163,10 @@ export interface FoeData {
   fast?: number;
   aimed?: number;
   fan?: number;
+  /** A sub firing one by one (round 8): seconds between its torpedoes, and
+   *  the ships it has fired at so far (ids, in order). */
+  stagger?: number;
+  aimedAt?: number[];
   /** An Armored Drone in a block: its place in it (px off the block's
    *  aim), and no bank of its own (the block banks together). */
   ox?: number;
@@ -172,7 +185,7 @@ export interface FoeData {
   ex?: number;
   ey?: number;
   /** A guard: its orbit, the guards in its ring, and which ring. A Lure
-   *  Beacon (Undertow, round 7): its ring when not the usual one. */
+   *  Beacon (an event's own, from round 7): its ring when not the usual one. */
   r?: number;
   of?: number;
   ring?: number;
@@ -181,8 +194,12 @@ export interface FoeData {
   mend?: number;
   every?: number;
   skirt?: number;
-  /** A Lure Beacon (Undertow): seconds it stays up, when not the usual. */
+  /** A Lure Beacon (an event's): seconds it stays up, when not the usual. */
   life?: number;
+  /** A Beacon Strike beacon (round 8): its seconds up at its next call,
+   *  and the ship it has marked for it (-1: none yet). */
+  call?: number;
+  marked?: number;
   /** A dive bomber's flight in: the length of its dive (px), and the
    *  seconds it flies level before it (from off screen). */
   dive?: { len: number; app: number };
@@ -336,12 +353,13 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'torpedoSub': {
       // A periscope first; the sub itself comes up when it runs out. Round
       // 7: it fires a spread of three to five, and about one sub in four
-      // puts a fast one in it (which of them, at random).
+      // puts a fast one in it (which of them, at random). Round 8: one by
+      // one, each at a ship, from water with open water to the lanes.
       const S = FOE.torpedoSub;
-      const p = waterSpot(g, rng);
+      const p = subSpot(g, rng);
       const spread = S.spread[0] + rng.int(S.spread[1] - S.spread[0] + 1);
       const fast = rng.chance(S.fastChance) ? rng.int(spread) : -1;
-      g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + S.aim, spread, fast, aimed: S.aimed, fan: S.fan });
+      g.foe.marks.push({ id: g.nextId++, kind: 'periscope', x: p.x, y: p.y, t: 0, dur: S.warn, fireAt: S.fireAt + S.aim, spread, fast, stagger: S.stagger });
       cue(g, 'sub.surface', p.x, p.y, { gain: 0.5 });
       return;
     }
@@ -371,7 +389,11 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       // No ship on the water yet (a test's first seconds): the lane where
       // the convoy is coming in.
       const ch = g.map.channels[0];
-      const ship = pool.length ? rng.pick(pool) : null;
+      // A ship a Spotter is painting gets the circle (the enemy pairs,
+      // round 8: Spotter + Dive Bombers). The pick is drawn either way, so
+      // the rest of the run's draws don't move.
+      const pick = pool.length ? rng.pick(pool) : null;
+      const ship = (g.foe.paint && pool.find((s) => s.id === g.foe.paint!.ship)) || pick;
       let p: Point = ship ? shipAhead(g, ship, D.mark + D.window + D.fall) : laneAt(ch, laneLength(ch) * 0.3, 0);
       let a = diveLine(p, tilt);
       for (let k = 0; k < 2 && ship; k++) {
@@ -487,6 +509,43 @@ function waterSpot(g: Game, rng: RNG): Point {
   if (g.map.subSpots.length) return rng.pick(g.map.subSpots);
   const y = g.map.bomberLines.length ? rng.pick(g.map.bomberLines) : VIEW.height * 0.3;
   return { x: rng.range(260, VIEW.width - 260), y };
+}
+
+/** Where a Torpedo Sub surfaces (round 8): a water spot with a straight
+ *  run of open water to some stretch of a lane, so its torpedoes have ships
+ *  to go for without crossing land (on Saltgate Canal some of the open
+ *  water lies behind the banks). Any water spot if none has. */
+export function subSpot(g: Game, rng: RNG): Point {
+  const cands = g.map.subSpots.length ? rng.shuffle([...g.map.subSpots]) : Array.from({ length: 6 }, () => waterSpot(g, rng));
+  // The spot with the most ships in reach over open water now; with none
+  // in reach anywhere (no convoy yet), one that sees a lane.
+  const ships = targetable(g);
+  let best: Point | undefined;
+  let bn = 0;
+  for (const p of cands) {
+    if (onLand(g, p.x, p.y)) continue;
+    const n = ships.filter((s) => torpedoWet(g, p, s)).length;
+    if (n > bn) {
+      bn = n;
+      best = p;
+    }
+  }
+  return best ?? cands.find((p) => !onLand(g, p.x, p.y) && seesLane(g, p)) ?? cands[0];
+}
+
+/** Is there a straight run of open water from `p` to the middle of some
+ *  lane, along a good part of it (a fifth of its points at least)? */
+export function seesLane(g: Game, p: Point): boolean {
+  for (const ch of g.map.channels) {
+    const L = laneLength(ch);
+    let wet = 0;
+    for (let k = 1; k < 10; k++) {
+      const o = laneAt(ch, (L * k) / 10, 0);
+      if (o.x > 0 && o.x < VIEW.width && wetRun(g, p, o)) wet += 1;
+    }
+    if (wet >= 2) return true;
+  }
+  return false;
 }
 
 /** Boats on the water now or about to be: the convoy, the frigates, the
@@ -701,7 +760,15 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       return;
     case 'torpedoSub': {
       const S = FOE.torpedoSub;
-      if (f.state === 0 && f.t >= (f.fireAt ?? S.fireAt)) {
+      const at = f.fireAt ?? S.fireAt;
+      if (f.stagger !== undefined && f.spread) {
+        // Round 8: one by one, each at a ship (`n`: fired so far).
+        while (f.n < f.spread && f.t >= at + f.n * f.stagger) {
+          f.state = 1;
+          fireAimed(g, th, f, f.n === f.fast);
+          f.n += 1;
+        }
+      } else if (f.state === 0 && f.t >= at) {
         f.state = 1;
         if (f.spread) fireSpread(g, th, f.spread, f.fast ?? -1, f.aimed ?? f.spread, f.fan ?? S.fan);
         else fireTorpedo(g, th);
@@ -727,6 +794,15 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         return;
       }
       if (dist(th.x, th.y, f.sx ?? th.x, f.sy ?? th.y) >= (f.along ?? 0)) th.dead = true;
+      // A shore that wasn't there when it was fired (Saltgate's lock gates
+      // swing shut across the water): it ends against it, never on it
+      // (round 8). Its nose is checked a step ahead.
+      const nx = th.x + Math.cos(th.heading) * (th.speed * dt + 3);
+      const ny = th.y + Math.sin(th.heading) * (th.speed * dt + 3);
+      if (!th.dead && nx > 0 && nx < VIEW.width && ny > 0 && ny < VIEW.height && onLand(g, nx, ny)) {
+        th.dead = true;
+        addFx(g, 'splash', th.x, th.y, { life: 0.5, r: 16 });
+      }
       return;
     }
     case 'armored': {
@@ -873,7 +949,7 @@ function alone(g: Game, th: Threat): boolean {
   return !g.threats.some((t) => t !== th && !t.dead && !SUPPORT.has(t.kind) && !['rig', 'generator', 'citadel'].includes(t.kind));
 }
 
-const SUPPORT = new Set<ThreatKind>(['tender', 'lure', 'guard']);
+const SUPPORT = new Set<ThreatKind>(['tender', 'lure', 'guard', 'scavenger']);
 
 /** Gone from the water, not a kill. */
 function leave(g: Game, th: Threat): void {
@@ -1032,7 +1108,7 @@ export function lureIn(g: Game, x: number, y: number, reach = Infinity, aim?: Po
     const up = g.threats.filter((t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1);
     return up.sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0];
   }
-  // A beacon with its own ring (Undertow) reaches that far, not the usual.
+  // A beacon with its own ring (an event's own) reaches that far, not the usual.
   const ring = (t: Threat) => t.foe?.r ?? R;
   return g.threats.find(
     (t) => t.kind === 'lure' && !t.dead && (t.foe?.state ?? 1) >= 1 && (dist(t.x, t.y, x, y) <= Math.max(reach, ring(t)) || (!!aim && dist(t.x, t.y, aim.x, aim.y) <= ring(t))),
@@ -1129,8 +1205,14 @@ function spotterSpot(g: Game, rng: RNG): Point {
   return best;
 }
 
-/** The Spotter: out to its circle beside the convoy, paint a ship, call a
- *  strike on it, and leave after a while. */
+/** The Spotter (round 8: every one flies turns, as the Fire Mission's do).
+ *  State 0: flying in to its circle; 1: on it, painting a ship from `paint`
+ *  s and calling the guns on it at `paint` + `call` s; 2: flying off the
+ *  screen the nearer way. Off the screen it is gone from the board (no
+ *  target, not a kill) and comes back `away` s later with the hits it took,
+ *  to a new circle (updateFoeMarks, a 'recall' mark), for up to `turns`
+ *  turns, while the rest of the wave is on. `n`: turns it has called;
+ *  `prev`: the ship it painted last. */
 function updateSpotter(g: Game, th: Threat, f: FoeData, dt: number): void {
   const P = FOE.spotter;
   if (f.mission) {
@@ -1141,7 +1223,12 @@ function updateSpotter(g: Game, th: Threat, f: FoeData, dt: number): void {
     th.heading += clamp(angleDiff(th.x < VIEW.width / 2 ? Math.PI : 0, th.heading), -1.5 * dt, 1.5 * dt);
     th.x += Math.cos(th.heading) * th.speed * 1.4 * dt;
     th.y += Math.sin(th.heading) * th.speed * 1.4 * dt;
-    if (th.x < -120 || th.x > VIEW.width + 120) th.dead = true;
+    if (th.x < -120 || th.x > VIEW.width + 120 || th.y < -120 || th.y > VIEW.height + 120) {
+      // Off the screen: gone for now (not a kill). It comes back for its
+      // next turn if it has one and there is still a fight.
+      th.dead = true;
+      if (f.n < P.turns && !waveOver(g, th)) g.foe.marks.push({ id: g.nextId++, kind: 'recall', x: th.x, y: th.y, t: 0, dur: P.away, gun: th });
+    }
     return;
   }
   // Fly the circle (counter-clockwise), steering for a point ahead on it.
@@ -1151,30 +1238,92 @@ function updateSpotter(g: Game, th: Threat, f: FoeData, dt: number): void {
     if (dist(th.x, th.y, f.px, f.py) <= P.orbit + 30) {
       f.state = 1;
       f.t = 0;
+      f.link = -1;
     }
     return;
   }
-  if (f.t >= P.stay) {
-    f.state = 2;
-    if (g.foe.paint?.by === th.id) g.foe.paint = null;
-    return;
-  }
-  // Paint: the ship nearest its circle (a new one if that one is gone).
+  // Paint: the ship nearest its circle that it didn't paint last turn (a
+  // new one if that one is gone).
   if (f.t >= P.paint) {
     if (!g.ships.some((s) => s.id === f.link)) {
-      const s = targetable(g).sort((a2, b) => dist(a2.x, a2.y, f.px, f.py) - dist(b.x, b.y, f.px, f.py))[0];
+      const pool = targetable(g);
+      const fresh = pool.filter((o) => o.id !== f.prev);
+      const s = (fresh.length ? fresh : pool).sort((a2, b) => dist(a2.x, a2.y, f.px, f.py) - dist(b.x, b.y, f.px, f.py))[0];
       f.link = s ? s.id : -1;
-      f.n = 0;
     }
     if (f.link >= 0 && g.foe.paint?.ship !== f.link) cue(g, 'foe.paint', th.x, th.y);
     if (f.link >= 0) g.foe.paint = { ship: f.link, by: th.id };
-    // The strike it calls: missiles from the bases at that ship, cancelled
-    // if the spotter is shot down first.
-    if (f.link >= 0 && f.n === 0 && f.t >= P.paint + P.call) {
-      f.n = 1;
-      callStrike(g, th, f.link);
+    if (f.t >= P.paint + P.call) {
+      // The call: shells from off the map on the painted ship; then off.
+      if (f.link >= 0) {
+        callShells(g, th, f.link);
+        f.prev = f.link;
+      }
+      f.n += 1;
+      f.state = 2;
+      f.t = 0;
+      if (g.foe.paint?.by === th.id) g.foe.paint = null;
     }
   }
+}
+
+/** Is the rest of the wave over (nothing but this and support foes left,
+ *  nothing to come)? A Spotter doesn't come back then. */
+function waveOver(g: Game, th: Threat): boolean {
+  if (g.queue.length || g.raiderQueue.length || g.raiders.length || (g.event && !g.event.done)) return false;
+  if (g.foe.marks.some((m) => m.kind !== 'recall' && !(m.kind === 'shell' && m.link === th.id))) return false;
+  return !g.threats.some((t) => t !== th && !t.dead && !SUPPORT.has(t.kind) && t.kind !== 'spotter' && !['rig', 'generator', 'citadel'].includes(t.kind));
+}
+
+/** A Spotter back for its next turn (round 8): the same plane, with the
+ *  hits it took, in from off the nearer side to a new circle. */
+function recallSpotter(g: Game, m: FoeMark): void {
+  const th = m.gun!;
+  const f = th.foe!;
+  const c = spotterSpot(g, g.rng.foes);
+  const side = c.x < VIEW.width / 2 ? 1 : -1;
+  th.x = side > 0 ? -60 : VIEW.width + 60;
+  th.y = clamp(c.y, 90, VIEW.height - 90);
+  th.heading = side > 0 ? 0 : Math.PI;
+  th.dead = false;
+  f.state = 0;
+  f.t = 0;
+  f.px = c.x;
+  f.py = c.y;
+  f.link = -1;
+  g.threats.push(th);
+  cue(g, 'bomber.pass', th.x, th.y, { gain: 0.5 });
+}
+
+/** The Spotter's call (round 8): `shells` artillery shells from a battery
+ *  off the map (beyond the enemy's shore, off the screen), landing round
+ *  where the painted ship will be, one after another. Each shows its circle
+ *  from the call and comes into sight from the map's edge `flight` s
+ *  before it lands; until it is fired, shooting the spotter calls it off. */
+export function callShells(g: Game, th: Threat, ship: number): void {
+  const P = FOE.spotter;
+  const s = g.ships.find((o) => o.id === ship);
+  if (!s) return;
+  const gun = offMapGun(g, s, g.rng.foes);
+  for (let k = 0; k < P.shells; k++) {
+    const t = P.mark + k * P.gap;
+    const p = shipAhead(g, s, t);
+    const q = shipAhead(g, s, t + 0.5);
+    const d = dist(p.x, p.y, q.x, q.y);
+    const ux = d > 0.5 ? (q.x - p.x) / d : Math.cos(s.heading);
+    const uy = d > 0.5 ? (q.y - p.y) / d : Math.sin(s.heading);
+    const off = (k - (P.shells - 1) / 2) * P.spread;
+    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: P.dmg, link: th.id, flight: P.flight, far: true });
+  }
+  cue(g, 'notice', th.x, th.y);
+}
+
+/** Where an off-map battery fires from (round 8: "an artillery shell
+ *  coming in from off the map"): off the screen's edge on the enemy's side
+ *  (away from the carrier), up to 260 px either way of the ship it is at. */
+export function offMapGun(g: Game, s: Point, rng: RNG): Point {
+  const top = g.map.carrier.y > VIEW.height / 2;
+  return { x: clamp(s.x + rng.range(-260, 260), -60, VIEW.width + 60), y: top ? -180 : VIEW.height + 180 };
 }
 
 /** A Fire Mission spotter's turn (Test Lab round 6's new Fire Mission): in
@@ -1220,19 +1369,6 @@ function updateMissionSpotter(g: Game, th: Threat, f: FoeData, dt: number): void
     f.state = 2;
     f.t = 0;
   }
-}
-
-/** The Spotter's strike: three ballistics from the live launch sites, a
- *  moment apart, at the painted ship. */
-function callStrike(g: Game, th: Threat, ship: number): void {
-  const P = FOE.spotter;
-  const sites = g.map.bases.map((b, i) => i).filter((i) => g.map.bases[i].kinds.length > 0 && !g.map.bases[i].cove && !g.map.bases[i].chute && !g.map.bases[i].generator && !g.baseDown[i]);
-  if (!sites.length) return;
-  for (let k = 0; k < P.strike; k++) {
-    g.queue.push({ at: g.waveT + 1 + k * P.strikeGap, kind: 'ballistic', base: g.rng.foes.pick(sites), target: ship, spotter: th.id });
-  }
-  g.queue.sort((a, b) => a.at - b.at);
-  cue(g, 'notice', th.x, th.y);
 }
 
 /** While a Spotter paints a ship, most new launches go for it. */
@@ -1319,54 +1455,115 @@ function heliRocket(g: Game, th: Threat, k: number): void {
   g.origins.child += 1;
 }
 
-/** The torpedo: down a straight line to where its ship will be, and on past
- *  it; the line is drawn. `aim`: at this ship, or (no ship) down this
- *  heading; `fast`: a fast one (an amber line). */
-function fireTorpedo(g: Game, sub: Threat, aim?: { ship?: Ship | null; heading?: number }, fast = false): number {
-  const S = FOE.torpedoSub;
-  const speed = THREATS.torpedo.speed * (1 + (g.waveSpeed - 1) * 0.3) * (fast ? S.fastSpeed : 1);
-  const pool = targetable(g);
-  const s = aim ? aim.ship ?? null : pool.length ? g.rng.foes.pick(pool) : null;
-  if (aim?.heading !== undefined && !s) {
-    // Down a heading: as far as a torpedo at a ship would run.
-    const run = 520 + S.run;
-    const m = spawnThreat(g, 'torpedo', sub.x, sub.y, 'sub');
-    m.speed = speed;
-    m.heading = aim.heading;
-    m.target = CARRIER_TARGET;
-    const px = sub.x + Math.cos(aim.heading) * 520;
-    const py = sub.y + Math.sin(aim.heading) * 520;
-    m.foe = data({ sx: sub.x, sy: sub.y, along: run, px, py, ...(fast ? { fast: 1 } : {}) });
-    cue(g, 'foe.torpedo', sub.x, sub.y);
-    if (g.event) g.event.sent.torpedo = (g.event.sent.torpedo ?? 0) + 1;
-    return m.heading;
+/** Where a torpedo fired from `sub` at ship `s` meets it (where the ship
+ *  will be when it gets there). */
+function torpedoMeet(g: Game, sub: Point, s: Ship, speed: number): Point {
+  let p: Point = s;
+  let t = dist(sub.x, sub.y, s.x, s.y) / speed;
+  for (let k = 0; k < 6; k++) {
+    p = shipAhead(g, s, t);
+    t = dist(sub.x, sub.y, p.x, p.y) / speed;
   }
-  let p: Point = s ?? g.map.carrier;
-  if (s) {
-    // Where the ship will be when the torpedo gets there.
-    let t = dist(sub.x, sub.y, s.x, s.y) / speed;
-    for (let k = 0; k < 6; k++) {
-      p = shipAhead(g, s, t);
-      t = dist(sub.x, sub.y, p.x, p.y) / speed;
-    }
-  }
-  const run = dist(sub.x, sub.y, p.x, p.y) + S.run;
-  const m = spawnThreat(g, 'torpedo', sub.x, sub.y, 'sub');
-  m.speed = speed;
-  m.heading = Math.atan2(p.y - sub.y, p.x - sub.x);
-  m.target = s ? s.id : CARRIER_TARGET;
-  m.foe = data({ sx: sub.x, sy: sub.y, along: run, px: p.x, py: p.y, ...(fast ? { fast: 1 } : {}) });
-  cue(g, 'foe.torpedo', sub.x, sub.y);
-  if (g.event) g.event.sent.torpedo = (g.event.sent.torpedo ?? 0) + 1;
-  return m.heading;
+  return p;
 }
 
-/** A sub's spread (the Wolf Pack's, Test Lab round 6: "shoot multiple
- *  torpedoes each in different directions"; every sub's from round 7):
- *  `n` torpedoes; the first `aimed` each at a different ship where one lies
- *  on a heading clear of the others (`fan` rad), the rest (and any with no
+/** A torpedo's speed: its own, a little more with the wave, and a fast
+ *  one's. */
+function torpedoSpeed(g: Game, fast: boolean): number {
+  return THREATS.torpedo.speed * (1 + (g.waveSpeed - 1) * 0.3) * (fast ? FOE.torpedoSub.fastSpeed : 1);
+}
+
+/** How far a torpedo can run from `from` on `heading` before a shore (at
+ *  most `max`; checked every 2 px on the screen, where the land is: a lock
+ *  gate on Saltgate is a thin sliver of land). Round 8: "the subs shoot
+ *  torpedoes from water to land". */
+export function wetReach(g: Game, from: Point, heading: number, max: number): number {
+  const ux = Math.cos(heading);
+  const uy = Math.sin(heading);
+  // (A little past `max` too: a torpedo runs a step beyond its end before
+  // it is gone, and a shore just past it would have its nose in.)
+  for (let u = 2; u <= max + 16; u += 2) {
+    const x = from.x + ux * u;
+    const y = from.y + uy * u;
+    if (x > 0 && x < VIEW.width && y > 0 && y < VIEW.height && onLand(g, x, y)) return Math.min(max, Math.max(0, u - 14));
+  }
+  return max;
+}
+
+/** Is the run from `from` to `to` open water all the way, for a torpedo
+ *  (finer than a boat's wetRun)? */
+export function torpedoWet(g: Game, from: Point, to: Point): boolean {
+  const d = dist(from.x, from.y, to.x, to.y);
+  return wetReach(g, from, Math.atan2(to.y - from.y, to.x - from.x), d) >= d;
+}
+
+/** Launch a torpedo from `sub` toward `p` (its X), `target` the ship it
+ *  is at (or the carrier's mark for none), running `run` px past it at
+ *  most and never onto land. */
+function launchTorpedo(g: Game, sub: Threat, p: Point, target: number, speed: number, fast: boolean, over: number): number {
+  const heading = Math.atan2(p.y - sub.y, p.x - sub.x);
+  const along = wetReach(g, sub, heading, dist(sub.x, sub.y, p.x, p.y) + over);
+  const m = spawnThreat(g, 'torpedo', sub.x, sub.y, 'sub');
+  m.speed = speed;
+  m.heading = heading;
+  m.target = target;
+  m.foe = data({ sx: sub.x, sy: sub.y, along, px: p.x, py: p.y, ...(fast ? { fast: 1 } : {}) });
+  cue(g, 'foe.torpedo', sub.x, sub.y);
+  if (g.event) g.event.sent.torpedo = (g.event.sent.torpedo ?? 0) + 1;
+  return heading;
+}
+
+/** The ships a torpedo from `sub` can be aimed at: those it meets down a
+ *  line of open water (round 8), with where it meets each. */
+function torpedoTargets(g: Game, sub: Point, speed: number): { s: Ship; p: Point }[] {
+  return targetable(g)
+    .map((s) => ({ s, p: torpedoMeet(g, sub, s, speed) }))
+    .filter(({ p }) => torpedoWet(g, sub, p));
+}
+
+/** The lone torpedo (a sub with no spread): at a ship it can reach over
+ *  water, or (`aim`) at this ship or down this heading. Returns its
+ *  heading, or null when it had nowhere to go over water (not fired). */
+function fireTorpedo(g: Game, sub: Threat, aim?: { ship?: Ship | null; heading?: number }, fast = false): number | null {
+  const S = FOE.torpedoSub;
+  const speed = torpedoSpeed(g, fast);
+  if (aim?.heading !== undefined && !aim.ship) {
+    // Down a heading: as far as a torpedo at a ship would run, short of
+    // any shore.
+    const p = { x: sub.x + Math.cos(aim.heading) * 520, y: sub.y + Math.sin(aim.heading) * 520 };
+    return launchTorpedo(g, sub, p, CARRIER_TARGET, speed, fast, S.run);
+  }
+  if (aim?.ship) {
+    const p = torpedoMeet(g, sub, aim.ship, speed);
+    return torpedoWet(g, sub, p) ? launchTorpedo(g, sub, p, aim.ship.id, speed, fast, S.run) : null;
+  }
+  const pool = torpedoTargets(g, sub, speed);
+  if (!pool.length) return null;
+  const { s, p } = g.rng.foes.pick(pool);
+  return launchTorpedo(g, sub, p, s.id, speed, fast, S.run);
+}
+
+/** A sub's next torpedo, one by one (round 8): at the ship it has fired at
+ *  least at so far, of those it can reach over water (the nearest of those
+ *  breaking a tie), so a spread goes round the convoy before it comes back
+ *  to a ship. None reachable: that torpedo isn't fired. */
+function fireAimed(g: Game, sub: Threat, f: FoeData, fast: boolean): void {
+  const pool = torpedoTargets(g, sub, torpedoSpeed(g, fast));
+  if (!pool.length) return;
+  const used = (f.aimedAt ??= []);
+  const times = (id: number) => used.filter((o) => o === id).length;
+  const pick = pool.reduce((m, o) => (times(o.s.id) < times(m.s.id) || (times(o.s.id) === times(m.s.id) && dist(o.s.x, o.s.y, sub.x, sub.y) < dist(m.s.x, m.s.y, sub.x, sub.y)) ? o : m));
+  used.push(pick.s.id);
+  launchTorpedo(g, sub, pick.p, pick.s.id, torpedoSpeed(g, fast), fast, FOE.torpedoSub.run);
+}
+
+/** A sub's spread, all at once (the Wolf Pack's, Test Lab round 6: "shoot
+ *  multiple torpedoes each in different directions"): `n` torpedoes; the
+ *  first `aimed` each at a different ship where one lies on a heading clear
+ *  of the others (`fan` rad) down open water, the rest (and any with no
  *  such ship) fanned out round the first, over water; the `fast`th of them
- *  is a fast one. */
+ *  is a fast one. A heading with no open water left to fan onto isn't
+ *  fired (round 8: never up a beach). */
 function fireSpread(g: Game, sub: Threat, n: number, fast: number, aimed: number, fan: number): void {
   const pool = g.rng.foes.shuffle([...targetable(g)]);
   const gap = (a: number, b: number) => Math.abs(angleDiff(a, b));
@@ -1375,48 +1572,59 @@ function fireSpread(g: Game, sub: Threat, n: number, fast: number, aimed: number
     // (A hair under `fan`: a heading fanned exactly `fan` off another can
     // come out a rounding error short of it.)
     const clear = (h: number) => used.every((u) => gap(u, h) >= fan - 1e-6);
-    const ship = k < aimed ? pool.find((o) => clear(Math.atan2(o.y - sub.y, o.x - sub.x))) : undefined;
+    const speed = torpedoSpeed(g, k === fast);
+    const ship = k < aimed ? pool.find((o) => clear(Math.atan2(o.y - sub.y, o.x - sub.x)) && torpedoWet(g, sub, torpedoMeet(g, sub, o, speed))) : undefined;
     if (ship) {
       pool.splice(pool.indexOf(ship), 1);
-      used.push(fireTorpedo(g, sub, { ship }, k === fast));
+      const h = fireTorpedo(g, sub, { ship }, k === fast);
+      if (h !== null) used.push(h);
       continue;
     }
     // No ship on a clear heading: fanned out round the first, on the
     // nearest heading clear of the others that runs over water to its mark
     // (round 7: a fan of five off a sub by the shore sent some up the beach).
     const h0 = used[0] ?? Math.atan2(g.map.carrier.y - sub.y, g.map.carrier.x - sub.x);
-    const wet = (h: number) => wetRun(g, sub, { x: sub.x + Math.cos(h) * 480, y: sub.y + Math.sin(h) * 480 });
+    const wet = (h: number) => torpedoWet(g, sub, { x: sub.x + Math.cos(h) * 480, y: sub.y + Math.sin(h) * 480 });
     const turn = (j: number) => h0 + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * fan;
     let h = h0;
     for (let j = 1; j <= 8 && !(clear(h) && wet(h)); j++) h = turn(j);
-    if (!(clear(h) && wet(h))) {
-      // Nowhere wet and clear: as before, the nearest clear heading.
-      h = h0;
-      for (let j = 1; j <= 6 && !clear(h); j++) h = turn(j);
-    }
-    used.push(fireTorpedo(g, sub, { heading: h }, k === fast));
+    // Nowhere wet and clear: this one isn't fired.
+    if (!(clear(h) && wet(h))) continue;
+    const fired = fireTorpedo(g, sub, { heading: h }, k === fast);
+    if (fired !== null) used.push(fired);
   }
 }
 
-/** The Scavenger: to the nearest pickup no other is after; grab it (it is
- *  gone) and off the top. With nothing on the water, wait up there. */
+/** The Scavenger (round 8's rework): it takes nothing; it denies. Any
+ *  pickup inside its ring is locked (pickupLocked). It goes to the pickup
+ *  no other scavenger's ring covers (a weapon first, then the nearest) and
+ *  hovers over it while it has a pickup in its ring; with nothing on the
+ *  water it lurks over the water off the convoy. It leaves (its ring off)
+ *  once the rest of the wave is done, or after `stay` s: then whatever it
+ *  locked is free. `state` 1: leaving. */
 function updateScavenger(g: Game, th: Threat, f: FoeData, dt: number): void {
   const S = FOE.scavenger;
-  if (f.state === 1 || (f.state === 0 && f.t >= S.wait && f.link < 0)) {
+  if (f.state === 0 && (f.t >= S.stay || alone(g, th))) {
     f.state = 1;
+    f.link = -1;
+  }
+  if (f.state === 1) {
     // Off the top, or (a Supply Raid's, round 6) the way it came.
     steer(th, f.ex ?? th.x, f.ey ?? -120, S.leave, 4, dt);
     if (th.y < -60 || th.y > VIEW.height + 60 || th.x < -60 || th.x > VIEW.width + 60) th.dead = true;
     return;
   }
+  // Keep to the pickup it is over while it is there; else the next one no
+  // other scavenger covers.
   let p = g.pickups.find((o) => o.id === f.link);
   if (!p) {
-    const claimed = new Set(g.threats.filter((t) => t.kind === 'scavenger' && t !== th && !t.dead).map((t) => t.foe?.link));
-    p = g.pickups.filter((o) => !claimed.has(o.id)).sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
+    const others = g.threats.filter((t) => t.kind === 'scavenger' && t !== th && !t.dead && t.foe?.state === 0);
+    const free = g.pickups.filter((o) => !o.chute && !others.some((t) => dist(t.x, t.y, o.x, o.y) <= S.deny || t.foe?.link === o.id));
+    p = free.sort((a, b) => Number(b.kind === 'weapon') - Number(a.kind === 'weapon') || dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
     f.link = p ? p.id : -1;
   }
   if (!p) {
-    // Nothing to take: it lurks, circling slowly over the water off the
+    // Nothing to deny: it lurks, circling slowly over the water off the
     // convoy where the pickups fall (the player: "it should circle and
     // lurk", not sit on the shore). The circle drifts with the convoy.
     const c = lurkSpot(g);
@@ -1427,15 +1635,25 @@ function updateScavenger(g: Game, th: Threat, f: FoeData, dt: number): void {
     steer(th, f.sx + Math.cos(a) * S.orbit, f.sy + Math.sin(a) * S.orbit, S.spin * S.orbit, 2.6, dt);
     return;
   }
-  steer(th, p.x, p.y, th.speed, 5, dt);
-  if (dist(th.x, th.y, p.x, p.y) <= S.grab) {
-    // Taken: the pickup is gone for good (the player's note).
-    g.pickups = g.pickups.filter((o) => o !== p);
-    addFx(g, 'burst', p.x, p.y, { life: 0.4, r: 20 });
-    cue(g, 'foe.grab', p.x, p.y);
-    f.state = 1;
-    f.link = -2;
+  // Over it: a tight circle round it, so its ring sits on the pickup.
+  const d = dist(th.x, th.y, p.x, p.y);
+  if (d > S.hover * 2) steer(th, p.x, p.y, th.speed, 5, dt);
+  else {
+    const a = Math.atan2(th.y - p.y, th.x - p.x) + 0.7;
+    steer(th, p.x + Math.cos(a) * S.hover, p.y + Math.sin(a) * S.hover, S.hoverSpin * S.hover * 1.6, 6, dt);
   }
+  if (d <= S.deny && f.n === 0) {
+    // The lock closes: once per pickup it reaches.
+    cue(g, 'foe.grab', p.x, p.y, { gain: 0.6 });
+    f.n = 1;
+  }
+  if (d > S.deny) f.n = 0;
+}
+
+/** Is this pickup locked by a Scavenger's ring (round 8)? A scavenger on
+ *  the screen and not leaving locks every pickup within `deny` px of it. */
+export function pickupLocked(g: Game, p: { x: number; y: number }): boolean {
+  return g.threats.some((t) => t.kind === 'scavenger' && !t.dead && (t.foe?.state ?? 0) === 0 && t.x > -20 && t.x < VIEW.width + 20 && t.y > -20 && t.y < VIEW.height + 20 && dist(t.x, t.y, p.x, p.y) <= FOE.scavenger.deny);
 }
 
 /** Where a Scavenger circles while it waits: over open water `above` px off
@@ -1518,6 +1736,9 @@ export function updateFoeMarks(g: Game, dt: number): void {
   for (const m of g.foe.marks) {
     m.t += dt;
     if (m.kind === 'fire') fireStep(g, m, dt);
+    // A Spotter away between turns doesn't come back once the rest of the
+    // wave is over (round 8).
+    if (m.kind === 'recall' && (!m.gun || waveOver(g, m.gun))) continue;
     if (m.t < m.dur) {
       live.push(m);
       continue;
@@ -1526,7 +1747,10 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
       th.target = CARRIER_TARGET;
       th.heading = 0;
-      th.foe = data(m.fireAt !== undefined ? { fireAt: m.fireAt, up: m.fireAt + FOE.torpedoSub.up - FOE.torpedoSub.fireAt, spread: m.spread, fast: m.fast, aimed: m.aimed, fan: m.fan } : {});
+      const S = FOE.torpedoSub;
+      // One by one (round 8): up until `after` s past its last torpedo.
+      const up = m.fireAt === undefined ? undefined : m.stagger !== undefined ? m.fireAt + ((m.spread ?? 1) - 1) * m.stagger + S.after : m.fireAt + S.up - S.fireAt;
+      th.foe = data(m.fireAt !== undefined ? { fireAt: m.fireAt, up, spread: m.spread, fast: m.fast, aimed: m.aimed, fan: m.fan, ...(m.stagger !== undefined ? { stagger: m.stagger, aimedAt: [] } : {}) } : {});
       addFx(g, 'spray', m.x, m.y, { life: 0.7, r: 22 });
     } else if (m.kind === 'dive') {
       // The plane sets off from off the screen (Test Lab round 4: "it
@@ -1553,7 +1777,8 @@ export function updateFoeMarks(g: Game, dt: number): void {
         th.heading = Math.PI / 2;
         th.foe = data({ n: m.salvos ?? FOE.siege.salvos });
       }
-    } else if (m.kind === 'shell') {
+    } else if (m.kind === 'recall') recallSpotter(g, m);
+    else if (m.kind === 'shell') {
       const S = FOE.siege;
       addFx(g, 'splash', m.x, m.y, { life: 0.9, r: S.radius });
       cue(g, 'impact.splash', m.x, m.y);
@@ -1564,8 +1789,14 @@ export function updateFoeMarks(g: Game, dt: number): void {
   // A siege shell leaves the gun a beat before it lands (from then on,
   // killing the gun doesn't stop it).
   for (const m of g.foe.marks) {
-    if (m.kind === 'shell' && !m.fired && m.dur - m.t <= FOE.siege.flight) {
+    if (m.kind === 'shell' && !m.fired && m.dur - m.t <= (m.flight ?? FOE.siege.flight)) {
       m.fired = true;
+      if (m.far) {
+        // From off the map: no flash at a gun, the whistle as it comes in
+        // (heard at the edge it comes in from).
+        cue(g, 'foe.whistle', clamp(m.gx ?? m.x, 0, VIEW.width), clamp(m.gy ?? m.y, 0, VIEW.height), { gain: 0.7 });
+        continue;
+      }
       addFx(g, 'launch', m.gx ?? m.x, m.gy ?? m.y, { life: 0.4, r: 14 });
       cue(g, 'foe.shell', m.gx ?? m.x, m.gy ?? m.y);
     }
@@ -1714,11 +1945,13 @@ export function updateFoeShots(g: Game, dt: number): void {
 export const SHELL_ARC = 120;
 
 /** Where a fired siege shell is on its arc from the gun to its circle. */
-export function shellAt(m: FoeMark): Point {
-  const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t) / FOE.siege.flight));
+export function shellAt(m: FoeMark, back = 0): Point {
+  const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t + back) / (m.flight ?? FOE.siege.flight)));
   const gx = m.gx ?? m.x;
   const gy = m.gy ?? m.y;
-  return { x: gx + (m.x - gx) * u, y: gy + (m.y - gy) * u - 4 * SHELL_ARC * u * (1 - u) };
+  // From off the map (round 8) it comes in on a flatter, longer arc.
+  const arc = m.far ? SHELL_ARC * 0.5 : SHELL_ARC;
+  return { x: gx + (m.x - gx) * u, y: gy + (m.y - gy) * u - 4 * arc * u * (1 - u) };
 }
 
 /** Everything in the air that no interceptor can stop, where it is now:
@@ -1776,24 +2009,22 @@ export function foeDown(g: Game, th: Threat, quiet: boolean): void {
   // there (the Nuke takes it out with no fire, and puts out any burning).
   if (th.kind === 'cloud' && !quiet) burstCloud(g, th);
   // A siege gun's circles that haven't fired yet go with it.
-  if (th.kind === 'siege') g.foe.marks = g.foe.marks.filter((m) => m.link !== th.id || m.fired);
+  // So do a Spotter's shells not yet fired (round 8: shot down, its call
+  // is off; the Fire Mission's barrage, once called, comes).
+  if (th.kind === 'siege' || th.kind === 'spotter') g.foe.marks = g.foe.marks.filter((m) => m.link !== th.id || m.fired);
 }
 
 /** The hit that kills a Hydra splits it into darts at the ships nearest it. */
 function splitHydra(g: Game, th: Threat): void {
   const near = targetable(g, VIEW.width + 40).sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y));
   const n = hydraDarts(g, th);
-  if (n <= 0) {
-    // Killed whole (Hydra Bloom, before the line).
-    addFx(g, 'burst', th.x, th.y, { life: 0.4, r: 20 });
-    return;
-  }
   for (let k = 0; k < n; k++) {
     const t = near.length ? near[k % near.length].id : CARRIER_TARGET;
     const s = near.length ? near[k % near.length] : g.map.carrier;
     const heading = Math.atan2(s.y - th.y, s.x - th.x) + (k - (n - 1) / 2) * FOE.hydra.spread;
     const d = child(g, th, 'dart', t, heading);
     d.hp = THREATS.dart.hp;
+    d.speed *= hydraDartPace(g);
     // They fly out of the blast that split it (the gun's own splash would
     // take them with it); a wider blast (Flak, a Wide Warhead) still does.
     d.x += Math.cos(heading) * FOE.hydra.clear;
@@ -1835,6 +2066,8 @@ export function foeEta(g: Game, th: Threat): number | null {
       if (!f) return null;
       return f.state === 2 ? Math.max(0.2, FOE.attackHeli.gap - f.t) : f.state === 3 ? 30 : 3;
     case 'torpedoSub':
+      // One by one (round 8): until its next torpedo, while it has any left.
+      if (f && f.stagger !== undefined && f.spread) return f.n < f.spread ? Math.max(0.1, (f.fireAt ?? FOE.torpedoSub.fireAt) + f.n * f.stagger - f.t) : 30;
       return f && f.state === 0 ? Math.max(0.1, (f.fireAt ?? FOE.torpedoSub.fireAt) - f.t) : 30;
     case 'torpedo':
       return f ? dist(th.x, th.y, f.px, f.py) / Math.max(1, th.speed) : null;
@@ -1842,10 +2075,18 @@ export function foeEta(g: Game, th: Threat): number | null {
       return f && f.state === 0 ? Math.max(0.05, (f.dive?.app ?? 0) + FOE.diveBomber.window - f.t) : 30;
     case 'spotter':
       if (!f) return null;
-      return f.state === 1 && f.n === 0 ? Math.max(0.5, FOE.spotter.paint + FOE.spotter.call - f.t) : 12;
+      // Round 8: every turn it calls, so the call to come is what counts;
+      // flying off, it is out of reach soon and its call already made.
+      if (f.mission) return f.state === 1 && f.n === 0 ? Math.max(0.5, FOE.spotter.paint + FOE.spotter.call - f.t) : 12;
+      return f.state === 1 ? Math.max(0.5, FOE.spotter.paint + FOE.spotter.call - f.t) : f.state === 0 ? FOE.spotter.paint + FOE.spotter.call + 2 : 30;
     case 'scavenger': {
-      const p = f && f.link >= 0 ? g.pickups.find((o) => o.id === f.link) : undefined;
-      return p ? dist(th.x, th.y, p.x, p.y) / th.speed : 12;
+      // Round 8: worth a shot as soon as it locks a pickup (a weapon most),
+      // and soon when it is on its way to one.
+      if (!f || f.state !== 0) return 30;
+      const locked = g.pickups.filter((o) => dist(th.x, th.y, o.x, o.y) <= FOE.scavenger.deny);
+      if (locked.length) return locked.some((o) => o.kind === 'weapon') ? 1 : 2;
+      const p = f.link >= 0 ? g.pickups.find((o) => o.id === f.link) : undefined;
+      return p ? 2 + dist(th.x, th.y, p.x, p.y) / th.speed : 12;
     }
     case 'guard':
       return 30;

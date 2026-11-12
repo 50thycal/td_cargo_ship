@@ -30,7 +30,7 @@ export type EventId =
   // Chapter 3: Dark Water
   | 'blackout' | 'carpet-run' | 'dive-circus' | 'bombardment' | 'fire-mission'
   // Chapter 4: Open War
-  | 'repair-yard' | 'escort-run' | 'undertow' | 'firestorm' | 'siege-of-vey'
+  | 'repair-yard' | 'escort-run' | 'beacon-strike' | 'firestorm' | 'siege-of-vey'
   // Bonus events (any map)
   | 'siren-field';
 
@@ -40,7 +40,7 @@ export type EventKind = 'map' | 'bonus';
 
 /** A rule an event switches on (named on its card). Most last the whole
  *  event; `noAmmoOpening` only its first phase. */
-export type EventRule = 'noAmmo' | 'noAmmoOpening' | 'hydraThree' | 'pickupRain' | 'night' | 'starShell' | 'lureAll' | 'undertow';
+export type EventRule = 'noAmmo' | 'noAmmoOpening' | 'hydraThree' | 'pickupRain' | 'night' | 'starShell' | 'lureAll' | 'beaconCall';
 
 /** What the card says for each rule: the rule, never the answer to it. */
 export const RULE_TEXT: Record<EventRule, string> = {
@@ -51,7 +51,7 @@ export const RULE_TEXT: Record<EventRule, string> = {
   night: 'Night',
   starShell: 'A star shell is on the way',
   lureAll: 'Helpers chase the beacons',
-  undertow: "Ships slow inside a beacon's ring",
+  beaconCall: 'Beacons call missiles on the ship nearest them',
 };
 
 export interface EventDef {
@@ -72,14 +72,14 @@ export interface EventDef {
 export const EVENTS: Record<EventId, EventDef> = {
   rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Six sprint swarms and a dashed line on the water: does the line read before it matters?' },
   'decoy-storm': { id: 'decoy-storm', kind: 'map', name: 'Decoy Storm', foe: 'decoy', rules: ['noAmmo'], look: 'Ten swarms and no ammo drops: did you run dry, and was that on you?' },
-  'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'Six Hydras and a dashed line: did you work out what the line means?' },
+  'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
   breakout: { id: 'breakout', kind: 'map', name: 'The Breakout', foe: 'decoy', also: ['sprinter', 'hydra', 'rocketTruck'], rules: ['noAmmoOpening'], look: 'The whole chapter in one go, decoys to trucks: does it feel like an ending?' },
   'gunship-wall': { id: 'gunship-wall', kind: 'map', name: 'Gunship Wall', foe: 'attackHeli', rules: [], look: 'Four helicopters firing in turn: does the wall feel like a set piece or a slog?' },
   'wolf-pack': { id: 'wolf-pack', kind: 'map', name: 'Wolf Pack', foe: 'torpedoSub', rules: [], look: 'Every sub fires a spread, and one or two torpedoes are fast: can you read the lines?' },
   'shield-wall': { id: 'shield-wall', kind: 'map', name: 'Shield Wall', foe: 'armored', rules: [], look: 'Armored drones from three bases joining into one block: does it read as one wall?' },
-  'supply-raid': { id: 'supply-raid', kind: 'map', name: 'Supply Raid', foe: 'scavenger', rules: ['pickupRain'], look: 'Pickups raining and thieves from every side: fun scramble or busywork?' },
-  'run-the-canal': { id: 'run-the-canal', kind: 'map', name: 'Run the Canal', foe: 'torpedoSub', also: ['attackHeli', 'scavenger', 'armored'], rules: [], look: 'Subs, gunships over the banks, then an armored block: a fair way to end the chapter?' },
+  'supply-raid': { id: 'supply-raid', kind: 'map', name: 'Supply Raid', foe: 'scavenger', rules: ['pickupRain'], look: 'Pickups raining, and drones locking the ones in their rings: fun scramble or busywork?' },
+  'run-the-canal': { id: 'run-the-canal', kind: 'map', name: 'Run the Canal', foe: 'torpedoSub', also: ['attackHeli', 'armored'], rules: [], look: 'Cut down: two subs, a gunship over the bank, then a smaller armored block. Fair now?' },
   blackout: { id: 'blackout', kind: 'map', name: 'Blackout', foe: 'stealthJet', rules: ['night', 'starShell'], look: 'The lights go out: can you still see enough on your phone?' },
   'carpet-run': { id: 'carpet-run', kind: 'map', name: 'Carpet Run', foe: 'stealthBomber', rules: [], look: 'Three bombers abreast across the lane: big enough to feel like an event?' },
   'dive-circus': { id: 'dive-circus', kind: 'map', name: 'Dive Circus', foe: 'diveBomber', rules: [], look: 'Dives on the beat and missiles between them: does it still find a rhythm?' },
@@ -87,7 +87,7 @@ export const EVENTS: Record<EventId, EventDef> = {
   'fire-mission': { id: 'fire-mission', kind: 'map', name: 'Fire Mission', foe: 'spotter', rules: [], look: 'Three spotters taking turns and shells walking down the lane: hard in a good way?' },
   'repair-yard': { id: 'repair-yard', kind: 'map', name: 'Repair Yard', foe: 'tender', rules: [], look: 'Three repair ships from three sides meeting the mothership: did the meeting catch your eye?' },
   'escort-run': { id: 'escort-run', kind: 'map', name: 'Escort Run', foe: 'bodyguard', rules: [], look: 'One missile in three rings of guards: does it speeding up feel fair?' },
-  undertow: { id: 'undertow', kind: 'map', name: 'Undertow', foe: 'lure', rules: ['undertow'], look: 'Beacons by the lanes and ships slowing in their rings: can you tell which ships are caught?' },
+  'beacon-strike': { id: 'beacon-strike', kind: 'map', name: 'Beacon Strike', foe: 'lure', rules: ['beaconCall'], look: 'Each beacon marks the ship nearest it and calls a missile on it: is the idea clear at a glance?' },
   firestorm: { id: 'firestorm', kind: 'map', name: 'Firestorm', foe: 'cloud', rules: [], look: 'Firebombs from every side: do the fires on the water read as lasting?' },
   'siege-of-vey': { id: 'siege-of-vey', kind: 'map', name: 'Siege of Vey', foe: 'tender', also: ['bodyguard', 'lure', 'cloud'], rules: [], look: 'Repair ships, a guarded heavy, then firebombs round the Citadel: a real last stand?' },
   'siren-field': { id: 'siren-field', kind: 'bonus', name: 'Siren Field', foe: 'lure', rules: ['lureAll'], look: 'A bonus wave for a player with helpers: five beacons and every helper pulled away. Did you feel alone?' },
@@ -101,8 +101,9 @@ export const EVENT_ORDER = Object.keys(EVENTS) as EventId[];
  *  on its own debut enemy. Harbor Mouth, Saltgate Canal and Citadel of Vey
  *  repeat an earlier map's debut, so they get their chapter's finale (round
  *  7). Dunmar Crossing's Siren Field became a bonus event in round 7, and the
- *  Lure Beacon's second event, Undertow, took its place. Every map has its
- *  own (the player: "so each map has its own"). */
+ *  Lure Beacon's second event, Undertow, took its place; round 8 cut
+ *  Undertow for Beacon Strike. Every map has its own (the player: "so each
+ *  map has its own"). */
 export const EVENT_MAPS: Partial<Record<MapId, EventId>> = {
   strait: 'rush',
   kesh: 'decoy-storm',
@@ -121,7 +122,7 @@ export const EVENT_MAPS: Partial<Record<MapId, EventId>> = {
   dreadnought: 'fire-mission',
   coves: 'repair-yard',
   delta: 'escort-run',
-  crossing: 'undertow',
+  crossing: 'beacon-strike',
   tide: 'firestorm',
   citadel: 'siege-of-vey',
 };
@@ -251,9 +252,15 @@ export const EV = {
    *  start and half `second` s later. */
   'decoy-storm': { swarms: 10, size: 6, fakes: 4, second: 9, gap: 0.45 },
   /** `fans` fans of Hydras, `gap` s apart, one from each base, at `slow` of
-   *  their speed; one killed past the line `line` of the way to the lane
-   *  splits into `darts`. `swarms` drone swarms of `size` between. */
-  'hydra-bloom': { fans: 2, gap: 8, slow: 0.85, line: 0.5, darts: 3, swarms: 2, size: 5 },
+   *  their speed; each killed splits into `darts`. `swarms` drone swarms of
+   *  `size` between. Round 8 ("Hydras should split even before the line is
+   *  crossed; you can remove that line"): the halfway line is gone (a Hydra
+   *  killed before it used to split into none); every Hydra splits into
+   *  three, wherever it is killed, its darts at `dartSlow` of their speed.
+   *  That alone took the lab card from never Broken to Broken 30% (sharp
+   *  bot) and 65% (average), so the event eased elsewhere: its Hydras at
+   *  0.75 of their speed (0.85), the fans 9 s apart (8), one swarm (two). */
+  'hydra-bloom': { fans: 2, gap: 9, slow: 0.75, darts: 3, dartSlow: 0.7, swarms: 1, size: 5 },
   /** `columns` columns (one down each shore road the map has, the second
    *  `second` s after the first) of `trucks` trucks, `gap` s apart at
    *  `drive` × their speed; the lead stops `stop` of the road along, the
@@ -296,8 +303,12 @@ export const EV = {
    *  at `scavAt` s, `apart` s between them, each from the next side of the
    *  screen in turn) and `swarms` drone swarms of `size` every `every` s.
    *  Round 6: no Nuke in the cargo, and six scavengers a run (three before)
-   *  from all four sides. */
-  'supply-raid': { drops: [8, 6], dropAt: [0, 12], scav: [6, 6], scavAt: [1.5, 12.5], apart: 0.5, swarms: 5, size: 6, every: 3.5 },
+   *  from all four sides. Round 8 (the Scavenger's rework: it no longer
+   *  steals, it locks every pickup in its ring): three a run, a beat later
+   *  (as the cargo lands), each hovering over a part of the drop no other
+   *  covers. A ring holds several pickups, so three are enough to lock most
+   *  of a drop; shooting one down frees what it held. */
+  'supply-raid': { drops: [8, 6], dropAt: [0, 12], scav: [3, 3], scavAt: [2.5, 13.5], apart: 0.8, swarms: 5, size: 6, every: 3.5 },
   /** `strafers` stealth strafers, one every `every` s from alternate sides;
    *  a star shell drops at `shellAt` s. */
   blackout: { strafers: 8, every: 2.4, shellAt: 6 },
@@ -360,27 +371,36 @@ export const EV = {
    *  `stagger` s apart raising, `salvos` salvos, `hp` hits; a wreck stalls
    *  the one behind it `stall` s). */
   breakout: { decoys: 3, size: 5, fakes: 3, gap: 0.9, sprintAt: [2.4], open: 8, fanAt: 12, fan: 3, fanGap: 1.2, slow: 0.65, truckAt: 16, trucks: 2, roads: 1, gapT: 0.6, drive: 2.4, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, hp: 4, stall: 2, back: 2.5 },
-  /** Run the Canal (Saltgate Canal): chapter 2's four. As the convoy comes
-   *  in, a pack of `subs` periscopes (each sub a spread of `spread`
-   *  torpedoes, `stagger` s apart, firing `aim` s later than a lone sub);
-   *  from `heliAt` s `helis` attack helicopters hold over the banks by the
-   *  locks (`hp` hits, `volleys` volleys each, opening fire `hold` s after
-   *  they are called, `turn` s apart); `scav` scavengers from `scavAt` s
-   *  for the pickups the fight drops; from `blockAt` s a block of
-   *  `drones` armored drones `cols` wide from the enemy shore, banking
-   *  together at `banks`; `swarms` drone swarms of `size` for company. */
-  'run-the-canal': { subs: 3, spread: 2, stagger: 1.4, aim: 0.6, heliAt: 7, helis: 2, hp: 4, volleys: 3, hold: 5, turn: 1.1, scav: 3, scavAt: 9, blockAt: 17, drones: 8, cols: 4, banks: [0.35, 0.65], swarms: 2, size: 5 },
-  /** Undertow (Dunmar Crossing, the Lure Beacon's second event; round 7,
-   *  needs no helpers): beacons rise beside the lanes, a pair at each of
-   *  `at` (one by each lane, `lead` px ahead of the middle ship of that
-   *  lane's convoy; with no ships in it, `ahead` of the way along), `off`
-   *  px off the lane's edge on the enemy side.
-   *  Once up, a ship inside a beacon's ring (`ring` px) sails at `slow` of
-   *  its speed, and the ships behind it close up on it. A beacon stays
-   *  `life` s. Ballistic barrages of `shells` (every `every` s from `from`)
-   *  fall on the slowed ships; with no ship slowed, a barrage is `loose`
-   *  shells at any ship. `swarms` drone swarms of `size` come for company. */
-  undertow: { at: [0, 9], ahead: [0.3, 0.6], lead: 170, off: 6, ring: 130, slow: 0.3, life: 16, barrages: 5, shells: 3, loose: 1, every: 3.6, from: 3, swarms: 3, size: 5 },
+  /** Run the Canal (Saltgate Canal): chapter 2's finale. Round 8 ("Really
+   *  bad, the subs shoot torpedoes from water to land … way too difficult,
+   *  way too much going on"): cut to three phases one after another, each
+   *  mostly done before the next. As the convoy comes in, `subs` Torpedo
+   *  Subs (the round 8 sub: `spread` torpedoes one by one, each at a ship,
+   *  never across land), the second `stagger` s after the first, from
+   *  water with open water to the canal; from `heliAt` s `helis` attack
+   *  helicopter holds over the far bank by a lock (`hp` hits, `volleys`
+   *  volleys, opening fire `hold` s after it is called); from `blockAt` s a
+   *  block of `drones` armored drones `cols` wide from the enemy shore,
+   *  banking together at `banks`; `swarms` drone swarm of `size`. (Round 7:
+   *  three subs firing two at once, two helicopters, three scavengers, a
+   *  block of eight and two swarms, the phases overlapping.) */
+  'run-the-canal': { subs: 2, spread: 3, stagger: 2.5, aim: 1.8, heliAt: 9, helis: 1, hp: 4, volleys: 3, hold: 5, turn: 1.1, blockAt: 19, drones: 4, cols: 2, banks: [0.35, 0.65], swarms: 1, size: 5 },
+  /** Beacon Strike (Dunmar Crossing, the Lure Beacon's second event; round
+   *  8, in place of Undertow, which the player cut: "Not sure what this was
+   *  even trying to line up and synergy"). In one sentence: beacons rise
+   *  beside the lanes, and every few seconds each one marks the ship nearest
+   *  it and calls a missile down on that ship, until you sink it with your
+   *  taps. A pair of beacons at each of `at` (one by each lane, `lead` px
+   *  ahead of the middle ship of that lane's convoy; with no ships in it,
+   *  `ahead` of the way along), `off` px off the lane's edge on the enemy
+   *  side; each stays `life` s (it is still a Lure Beacon: its ring draws
+   *  your helpers, and only taps sink it). Up, a beacon marks the ship
+   *  nearest it `charge` s before each call (a dashed line from the beacon
+   *  to the ship), its first call `first` s after it is up and then every
+   *  `every` s: a ballistic missile from the launch base nearest the beacon
+   *  at the marked ship (it can be shot down). `swarms` drone swarms of
+   *  `size` for company. */
+  'beacon-strike': { at: [0, 10], ahead: [0.3, 0.6], lead: 150, off: 40, life: 18, first: 2.6, every: 4.4, charge: 1.6, swarms: 2, size: 5 },
   /** Siege of Vey (Citadel of Vey): chapter 4's four round the Citadel.
    *  First a Repair Yard on the Citadel: a mothership (`hp`, `speed` of its
    *  own) out of it, and `tenders` repair ships meeting by the Citadel

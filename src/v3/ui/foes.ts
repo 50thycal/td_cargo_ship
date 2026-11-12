@@ -2,7 +2,7 @@
 // Each one is drawn so its tell reads on a phone: the booster flare, the
 // decoys' cooler tint, the forked tail, the launcher's slow raise.
 
-import { THREATS } from '../data/config';
+import { THREATS, VIEW } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
 import type { Point } from '../data/maps';
@@ -181,13 +181,17 @@ export function drawFoeShots(ctx: CanvasRenderingContext2D, g: Game): void {
     // A shell lobbed from the gun, arcing down onto its circle; its shadow
     // runs straight along the ground under it.
     const p = shellAt(m);
-    const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t) / FOE.siege.flight));
+    const u = Math.max(0, Math.min(1, 1 - (m.dur - m.t) / (m.flight ?? FOE.siege.flight)));
     const gx = m.gx ?? m.x;
     const gy = m.gy ?? m.y;
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
     ctx.arc(gx + (m.x - gx) * u, gy + (m.y - gy) * u, 5, 0, Math.PI * 2);
     ctx.fill();
+    if (m.far) {
+      drawIncoming(ctx, g, m, p, u);
+      continue;
+    }
     redGlow(ctx, p.x, p.y, 20);
     redBall(ctx, p.x, p.y, 7, 7);
   }
@@ -231,6 +235,61 @@ export function drawFoeShots(ctx: CanvasRenderingContext2D, g: Game): void {
     redGlow(ctx, s.x, s.y, 13, 0.5);
     missile(ctx, s.x, s.y, a, 11, 3.5, RED_SHOT, RED_DEEP);
   }
+}
+
+/** An artillery shell coming in from off the map (round 8: the Spotter's
+ *  call, the Fire Mission's barrage): while it is still beyond the edge, a
+ *  red chevron pulses on the edge where it will come in; then the shell
+ *  itself, red, with a smoke trail back along its arc, and its path ahead
+ *  of it to the circle, dotted. */
+function drawIncoming(ctx: CanvasRenderingContext2D, g: Game, m: FoeMark, p: Point, u: number): void {
+  const VIEW_W = VIEW.width;
+  const VIEW_H = VIEW.height;
+  const on = p.x >= 0 && p.x <= VIEW_W && p.y >= 0 && p.y <= VIEW_H;
+  ctx.save();
+  // The path still to fly, dotted, down onto its circle.
+  ctx.strokeStyle = 'rgba(255,90,70,0.45)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 7]);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  for (let k = 1; k <= 8; k++) {
+    const q = shellAt(m, -((1 - u) * (m.flight ?? 1) * k) / 8);
+    ctx.lineTo(q.x, q.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (!on) {
+    // Beyond the edge: a chevron on the edge where it will come in.
+    const e = { x: Math.max(14, Math.min(VIEW_W - 14, p.x)), y: Math.max(14, Math.min(VIEW_H - 14, p.y)) };
+    const a = Math.atan2(m.y - e.y, m.x - e.x);
+    const k = 0.55 + 0.45 * Math.sin(g.t * 14);
+    ctx.fillStyle = `rgba(255,60,45,${k})`;
+    ctx.translate(e.x, e.y);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-8, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // The smoke trail behind it, back along its arc.
+  for (let k = 6; k >= 1; k--) {
+    const q = shellAt(m, k * 0.06);
+    ctx.fillStyle = `rgba(230,220,215,${0.35 * (1 - k / 7)})`;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, 3 + k * 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const q = shellAt(m, 0.04);
+  const a = Math.atan2(p.y - q.y, p.x - q.x);
+  ctx.restore();
+  redGlow(ctx, p.x, p.y, 22);
+  redBall(ctx, p.x, p.y, 9, 6, a);
 }
 
 function trail(ctx: CanvasRenderingContext2D, x: number, y: number, heading: number, len: number, color: string, w: number): void {
@@ -296,13 +355,15 @@ function drawSprinter(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headin
   ctx.restore();
 }
 
-/** A decoy's body (round 7: "give just a faint color difference
- *  everywhere, instead of the flash on, flash off"): the attack drone's
- *  warm cream (C.drone, #e4dccb) turned a shade cooler, a pale grey with a
- *  hint of blue: the same lightness, its warmth gone (saturation 32% → 10%;
- *  CIE76 ΔE about 11).
- *  Side by side it reads; at a glance in a swarm it is easy to miss. */
-export const DECOY_TINT = '#d4dcdc';
+/** A decoy's body. Round 7 ("give just a faint color difference
+ *  everywhere, instead of the flash on, flash off"): the attack drone's warm
+ *  cream (C.drone, #e4dccb) turned a shade cooler, #d4dcdc (CIE76 ΔE about
+ *  11). Round 8 ("Still can't tell which is which", "make them slightly
+ *  more of a difference"): a pale steel blue, about twice as far from the
+ *  cream (ΔE about 20): the same lightness within 5 points, the warmth
+ *  turned cool (hue 41° → 209°, about as saturated). Still a pale drone,
+ *  not a coloured one. */
+export const DECOY_TINT = '#c2d3e3';
 
 /** A decoy: the attack drone's shape, flight and shadow, in DECOY_TINT, the
  *  whole way in. No strobe, ring or trail. */
@@ -732,39 +793,33 @@ function drawArmored(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading
 
 /** The Scavenger: a quadcopter, not a winged drone like the others (the
  *  player: "look different than the other drones"): an amber body, four
- *  spinning rotors and a grabber claw that opens as it closes on a pickup,
- *  a line to the pickup it wants, and what it took hanging in its claw on
- *  the way out. */
+ *  spinning rotors and a claw. Round 8: it denies, so what reads is its
+ *  ring: a dashed red-amber circle of FOE.scavenger.deny round it, turning
+ *  slowly, brighter and filled while it locks a pickup; the pickups inside
+ *  it carry a padlock (drawLockedPickup). Leaving, the ring is gone. */
 function drawScavenger(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
   const f = th.foe;
-  const p = f && f.link >= 0 ? g.pickups.find((o) => o.id === f.link) : undefined;
-  if (p) {
-    ctx.strokeStyle = 'rgba(251,191,36,0.6)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 6]);
+  const S = FOE.scavenger;
+  const leaving = (f?.state ?? 0) !== 0;
+  const holding = !leaving && g.pickups.some((o) => Math.hypot(o.x - th.x, o.y - th.y) <= S.deny);
+  if (!leaving) {
+    ctx.save();
+    ctx.fillStyle = holding ? 'rgba(255,90,60,0.12)' : 'rgba(251,146,60,0.05)';
     ctx.beginPath();
-    ctx.moveTo(th.x, th.y);
-    ctx.lineTo(p.x, p.y);
+    ctx.arc(th.x, th.y, S.deny, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = holding ? 'rgba(255,110,70,0.9)' : 'rgba(251,146,60,0.5)';
+    ctx.lineWidth = holding ? 3 : 2;
+    ctx.setLineDash([12, 8]);
+    ctx.lineDashOffset = -g.t * 18;
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, S.deny, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.strokeStyle = 'rgba(251,191,36,0.85)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.lineDashOffset = 0;
+    ctx.restore();
   }
-  if (f && f.link === -1 && f.state === 0 && f.sx !== undefined && f.sy !== undefined) {
-    // Lurking: a faint amber ring where it circles, waiting.
-    ctx.strokeStyle = 'rgba(251,191,36,0.22)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 9]);
-    ctx.beginPath();
-    ctx.arc(f.sx, f.sy, FOE.scavenger.orbit, g.t * 0.4, g.t * 0.4 + Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  const near = p ? Math.hypot(p.x - th.x, p.y - th.y) : Infinity;
-  const open = f?.link === -2 ? 0.15 : near < 120 ? 1 : 0.45 + 0.15 * Math.sin(g.t * 3 + th.id);
+  const open = holding ? 1 : 0.45 + 0.15 * Math.sin(g.t * 3 + th.id);
   ctx.save();
   // Its shadow on the water, offset as the other aircraft's.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -824,13 +879,41 @@ function drawScavenger(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headi
     ctx.stroke();
   }
   ctx.lineCap = 'butt';
-  if (f?.link === -2) {
-    ctx.fillStyle = '#facc15';
-    ctx.strokeStyle = '#1b1b1b';
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(16, -6, 12, 12);
-    ctx.strokeRect(16, -6, 12, 12);
-  }
+  ctx.restore();
+}
+
+/** A pickup a Scavenger's ring locks (round 8): dimmed under a dark veil,
+ *  a red ring round it and a padlock on it. */
+export function drawLockedPickup(ctx: CanvasRenderingContext2D, g: Game, p: { x: number; y: number; kind: string }): void {
+  const r = p.kind === 'weapon' ? 34 : 28;
+  ctx.save();
+  ctx.fillStyle = 'rgba(12,16,22,0.55)';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,90,60,${0.7 + 0.25 * Math.sin(g.t * 6)})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  // The padlock: a shackle over a body, with a keyhole.
+  ctx.strokeStyle = '#ffe4dc';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y - 4, 6, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillStyle = '#ff5a3c';
+  ctx.strokeStyle = '#1b1b1b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(p.x - 9, p.y - 4, 18, 14, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1b1b1b';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y + 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(p.x - 1, p.y + 2, 2, 5);
   ctx.restore();
 }
 
@@ -1473,7 +1556,7 @@ function drawLure(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
  *  helper drone it has drawn. */
 function drawLureRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   const f = th.foe;
-  // Its own ring (Undertow's beacons) or the usual.
+  // Its own ring (an event beacon's own) or the usual.
   const R = f?.r ?? FOE.lure.radius;
   const k = f?.state === 0 ? Math.min(1, (f.t ?? 0) / FOE.lure.rise) : 1;
   const r = R * (f?.state === 0 ? k * k : 1);

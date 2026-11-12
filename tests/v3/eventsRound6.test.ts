@@ -198,10 +198,10 @@ describe('Shield Wall: from several launch points, joining up', () => {
 });
 
 describe('Supply Raid: more scavengers, from every side', () => {
-  it('six scavengers a run, from all four sides of the screen, each leaving the way it came', () => {
+  it('scavengers each run (three from round 8), from all four sides of the screen, each leaving the way it came', () => {
     const g = eventGame('supply-raid', 2);
     const from = new Map<number, { x: number; y: number }>();
-    for (let i = 0; i < 40 / DT && g.phase === 'wave'; i++) {
+    for (let i = 0; i < 40 / DT && g.phase === 'wave' && !g.eventLog.length; i++) {
       step(g, DT);
       for (const t of g.threats) if (t.kind === 'scavenger' && !from.has(t.id)) from.set(t.id, { x: t.x, y: t.y });
     }

@@ -1,16 +1,18 @@
 // Special events on the battlefield (sim/events.ts): the line on the water
-// (Afterburner Rush's boost line, Hydra Bloom's halfway line) and the Shield
+// (Afterburner Rush's boost line; Hydra Bloom lost its line in round 8) and the Shield
 // Wall's signal. Drawn plainly, with no words: the player works out what
 // they mean (the player's rule: no telling how to beat an event).
 
 import { VIEW } from '../data/config';
+import { EV } from '../data/events';
+import { beaconMark } from '../sim/events';
 import type { Game } from '../sim/game';
 
-/** Under the threats: the event's dashed line across the water, and
- *  Undertow's drag on the ships a beacon's ring holds. */
+/** Under the threats: the event's dashed line across the water, and Beacon
+ *  Strike's marks (each beacon to the ship it has marked). */
 export function drawEventUnder(ctx: CanvasRenderingContext2D, g: Game): void {
   const ev = g.event;
-  if (ev?.caught?.length) drawUndertow(ctx, g, ev.caught);
+  if (ev && ev.id === 'beacon-strike') drawBeaconMarks(ctx, g);
   if (!ev?.line) return;
   const y = ev.line.y;
   const hot = ev.id === 'rush';
@@ -29,19 +31,38 @@ export function drawEventUnder(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.restore();
 }
 
-/** Undertow (round 7): a ship held in a beacon's ring drags a churn of
- *  water round its hull, rings closing in on it, so the slowed ships stand
- *  out from the rest. */
-function drawUndertow(ctx: CanvasRenderingContext2D, g: Game, ids: number[]): void {
+/** Beacon Strike (round 8): while a beacon charges its call, a dashed
+ *  yellow line runs from it to the ship it has marked, the dashes marching
+ *  toward the ship, and a bracket closes in on that ship as the call comes
+ *  (it goes red in the last half second). */
+function drawBeaconMarks(ctx: CanvasRenderingContext2D, g: Game): void {
+  const E = EV['beacon-strike'];
   ctx.save();
-  for (const s of g.ships) {
-    if (!ids.includes(s.id)) continue;
-    for (let i = 0; i < 2; i++) {
-      const u = 1 - ((g.t * 0.9 + i / 2) % 1);
-      ctx.strokeStyle = `rgba(253,224,71,${0.55 * (1 - u)})`;
-      ctx.lineWidth = 2.5;
+  for (const t of g.threats) {
+    const s = beaconMark(g, t);
+    const f = t.foe;
+    if (!s || !f || f.call === undefined) continue;
+    const k = Math.max(0, Math.min(1, 1 - (f.call - f.t) / E.charge));
+    const hot = f.call - f.t < 0.5;
+    const col = hot ? '255,90,60' : '253,224,71';
+    ctx.strokeStyle = `rgba(${col},${0.45 + 0.4 * k})`;
+    ctx.lineWidth = 2 + k;
+    ctx.setLineDash([10, 8]);
+    ctx.lineDashOffset = -g.t * 40;
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y);
+    ctx.lineTo(s.x, s.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // The bracket: four corners closing in on the ship.
+    const r = 44 - 16 * k;
+    ctx.strokeStyle = `rgba(${col},0.95)`;
+    ctx.lineWidth = 3;
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y, 22 + u * 26, 12 + u * 14, s.heading, 0, Math.PI * 2);
+      ctx.moveTo(s.x + sx * r, s.y + sy * (r - 10));
+      ctx.lineTo(s.x + sx * r, s.y + sy * r);
+      ctx.lineTo(s.x + sx * (r - 10), s.y + sy * r);
       ctx.stroke();
     }
   }
