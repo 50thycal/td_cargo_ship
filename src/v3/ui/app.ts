@@ -66,6 +66,7 @@ import {
   keepLabLog,
   labBar,
   labHub,
+  labLogs,
   labReport,
   labSetupSheet,
   labVerdictSheet,
@@ -91,8 +92,9 @@ import {
   volleyName,
   volleySummary,
 } from './notes';
-import { downloadLog, downloadTelemetry, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
+import type { MapLabMemory } from './mapLab';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -302,7 +304,7 @@ export class App {
   /** The result screen's run, kept for its review (and a replay's way back). */
   private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
   /** "Watch it": a marked moment playing back, and where it stops. */
-  private playback: { pb: Playback; until: number; from: number; stop: number } | null = null;
+  private playback: { pb: Playback; until: number; from: number; stop: number; after?: () => void } | null = null;
   /** Round 14: running power-ups count down here, in the rail, instead of
    *  in a corner of the battlefield (where they sat over roads and trucks). */
   private timers = el('div', 'v2-timers');
@@ -590,6 +592,8 @@ export class App {
         return { digest: sidecarDigest(sc), problems: reconcile(sc, g), steps: g.steps, events: sc.events.length };
       },
       telemetryDigest: (sc: TelemetrySidecar) => sidecarDigest(sc),
+      // The Map Analytics screen's own numbers, as shown.
+      mapLab: () => (this.overlay.querySelector('[data-maplab]') as (HTMLElement & { maplab?: unknown }) | null)?.maplab ?? null,
       // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
       showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
       // Sound: the engine's play log and state (e2e checks timing with it).
@@ -603,7 +607,9 @@ export class App {
     this.showMenu();
     // A Test Lab link from the review page: ?lab=<card> opens that test.
     const labLink = !STORE ? new URLSearchParams(location.search).get('lab') : null;
-    if (labLink) {
+    // ?maplab=1 opens the Map & Convoy Lab's viewer.
+    if (!STORE && new URLSearchParams(location.search).get('maplab') === '1') this.showMapLab();
+    else if (labLink) {
       if (labCard(labLink)) this.startLab(labLink);
       else this.showLab();
     }
@@ -2144,8 +2150,35 @@ export class App {
           this.showLab();
         },
         report: () => this.showLabReport(),
+        analytics: () => this.showMapLab(),
       }),
     ]);
+  }
+
+  /** The Map & Convoy Lab's viewer: the runs kept on this device, as
+   *  layers on the map (ui/mapLab.ts). A developer screen. */
+  private mapLabMemory: MapLabMemory = {};
+
+  private showMapLab(): void {
+    this.leaveRun();
+    const seen = new Set<string>();
+    const logs = [...labLogs(), ...localLogs().reverse()].filter((l) => !seen.has(l.id) && !!seen.add(l.id));
+    const head = this.screenHead('Map Analytics', () => this.showLab(), undefined, 'Test Lab');
+    this.showOverlay('v3-maplab-screen', [head, el('p', 'v3-hint', 'Opening…')]);
+    // Its own chunk, fetched when it is first opened: nothing of it is in
+    // the game a player downloads.
+    void import('./mapLab').then(({ mapLabScreen }) => {
+      if (this.overlay.dataset.screen !== 'maplab-screen') return;
+      this.showOverlay('v3-maplab-screen', [
+        head,
+        mapLabScreen({
+          logs: () => logs,
+          memory: this.mapLabMemory,
+          // The replay from just before it, inputs and all; then back here.
+          watch: (log, step) => this.startPlayback(step + PLAYBACK_BEFORE * 60, 0, { log, after: () => this.showMapLab() }),
+        }),
+      ]);
+    });
   }
 
   /** Start a test: the card's water, wave 5 (or the setup's), its kit. */
@@ -3442,8 +3475,8 @@ export class App {
 
   /** "Watch it": the run plays back from a few seconds before a moment to
    *  just after it, inputs and all. */
-  private startPlayback(step: number, stop: number): void {
-    const log = this.review?.log;
+  private startPlayback(step: number, stop: number, other?: { log: PlayLog; after: () => void }): void {
+    const log = other?.log ?? this.review?.log;
     if (!log) return;
     const from = Math.max(0, step - PLAYBACK_BEFORE * 60);
     let pb: Playback;
@@ -3455,7 +3488,7 @@ export class App {
     this.resetFinale();
     this.ghostRun = null;
     pb.game.events = [];
-    this.playback = { pb, until: step + PLAYBACK_AFTER * 60, from, stop };
+    this.playback = { pb, until: step + PLAYBACK_AFTER * 60 + (other ? 4 * 60 : 0), from, stop, ...(other ? { after: other.after } : {}) };
     this.game = pb.game;
     this.lastPhase = pb.game.phase;
     this.acc = 0;
@@ -3492,6 +3525,14 @@ export class App {
     this.pauseBtn.textContent = 'II';
     this.root.classList.remove('replaying');
     this.alerts.clear();
+    // A replay opened from the Map Analytics screen goes back to it.
+    if (p.after) {
+      this.game = null;
+      this.paused = false;
+      this.root.classList.remove('playing');
+      p.after();
+      return;
+    }
     if (view) {
       this.game = view.g;
       this.lastPhase = view.g.phase;

@@ -221,6 +221,8 @@ export interface HubHandlers {
   playFive: () => void;
   setLength: (l: LabLength) => void;
   report: () => void;
+  /** The Map & Convoy Lab's viewer (ui/mapLab.ts). */
+  analytics: () => void;
 }
 
 export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
@@ -296,11 +298,13 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   }
   const report = button(`Session report${p.session.ids.length ? ` (${p.session.ids.length})` : ''}`, 'v2-btn v3-lab-report-btn', h.report);
   report.dataset.labReport = '1';
+  const analytics = button('Map Analytics', 'v2-btn v3-lab-analytics', h.analytics);
+  analytics.dataset.maplabOpen = '1';
   const page = el('a', 'v2-btn v3-lab-page', 'Feedback page ↗');
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(round, bar, go, five, len, report, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
+  side.append(round, bar, go, five, len, report, analytics, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
   body.append(list, side);
   return body;
 }

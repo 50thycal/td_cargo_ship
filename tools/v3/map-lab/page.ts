@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { BASELINE, type BaselineResult } from '../../../src/v3/sim/mapLab';
 import { TEL_SAMPLING, TEL_SCHEMA } from '../../../src/v3/sim/telemetry';
-import { LOG_VERSION } from '../../../src/v3/sim/playlog';
+import { LOG_VERSION, type PlayLog } from '../../../src/v3/sim/playlog';
 import { GRID, LAYERS, PLATFORMS, RAMPS, SCOPES, THIN, buildPreview, gridTop, renderPreview, type MapPreview, type Scope, type ScopeData } from './preview';
 // @ts-expect-error a plain data module, shared with the notes
 import { FINDINGS, GAPS, GROUPS, MAP_ITEMS, QUESTIONS, ROUND } from './review.mjs';
@@ -131,7 +131,15 @@ ${verdicts(f.id)}
 
 // ---- The first maps ---------------------------------------------------------
 
-const previews = buildPreview();
+// `--logs=a.json,b.json`: a report of those play logs alone (the maps and their numbers, nothing to mark).
+const logArg = process.argv.slice(2).find((a) => a.startsWith('--logs='));
+const reportLogs: PlayLog[] | undefined = logArg
+  ? logArg.slice(7).split(',').flatMap((path) => {
+      const raw = json<PlayLog | PlayLog[] | { logs: PlayLog[] }>(path);
+      return (Array.isArray(raw) ? raw : 'logs' in raw ? raw.logs : [raw]).filter((l) => l.game === 'v3' && l.v === LOG_VERSION && !l.notesOnly && l.commands?.length);
+    })
+  : undefined;
+const previews = buildPreview(reportLogs);
 const per = (hp: number, min: number) => (min > 0.5 ? n(hp / min, 2) : 'too little');
 /** A threat's kind as the sim names it, for the start of a sentence. */
 const cap = (s: string) => `The ${s.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
@@ -203,9 +211,9 @@ function legends(p: MapPreview): string {
 
 const maps = previews
   .map((p) => {
-    const item = (MAP_ITEMS as { id: string; map: string; ask: string }[]).find((m) => m.map === p.map)!;
+    const item = (reportLogs ? undefined : (MAP_ITEMS as { id: string; map: string; ask: string }[]).find((m) => m.map === p.map)) ?? { id: `report-${p.map}`, map: p.map, ask: '' };
     return `<article class="item map" data-id="${item.id}" id="${item.id}" data-map="${p.map}">
-<header><span class="kind" data-kind="measured">${p.runs.length} bot runs</span><h3>${esc(p.name)}</h3></header>
+<header><span class="kind" data-kind="measured">${p.runs.length} ${reportLogs ? 'runs' : 'bot runs'}</span><h3>${esc(p.name)}</h3></header>
 <ul class="take">${takeaways(p).map((t) => `<li>${t}</li>`).join('')}</ul>
 <div class="controls">
   <div class="segs" role="group" aria-label="Which waves">${SCOPES.map((s, i) => `<button type="button" class="seg" data-pick-scope="${s.id}" aria-pressed="${i === 0}">${esc(s.name)}</button>`).join('')}</div>
@@ -214,8 +222,7 @@ const maps = previews
 <figure class="board"><div class="pan">${renderPreview(p)}</div><figcaption class="muted">The game's own map (1600 x 900 world units, ${GRID.cell}-unit squares). Hover or focus a mark for its numbers; every number is also in the table below. Tap the map to enlarge it.</figcaption></figure>
 ${legends(p)}
 <details><summary>The numbers behind this map</summary>${statsTable(p)}<p class="muted">From: ${p.runs.map((r) => esc(r.id)).join(', ')}.</p></details>
-<p class="ask">${esc(item.ask)}</p>
-${verdicts(item.id, 'Reads right', 'Something is off')}
+${reportLogs ? `<ul class="take muted">${p.runs.map((r) => `<li>${esc(r.id)}: ${esc(r.covers)}</li>`).join('')}</ul>` : `<p class="ask">${esc(item.ask)}</p>\n${verdicts(item.id, 'Reads right', 'Something is off')}`}
 </article>`;
   })
   .join('');
@@ -382,6 +389,7 @@ const script = `
     const id = card.dataset.id;
     const st = card.querySelector(".saved");
     const ta = document.getElementById("n-" + id);
+    if (!ta) return;
     card.querySelectorAll("[data-verdict]").forEach((b) => b.addEventListener("click", () => {
       const cur = (state.reviews[id] || {}).verdict;
       save("reviews", id, { verdict: cur === b.dataset.verdict ? null : b.dataset.verdict, note: ta.value }, st);
@@ -497,6 +505,13 @@ const html = `<title>Map & Convoy Lab</title>
 `;
 
 const out = process.argv.slice(2).find((a) => a.endsWith('.html'));
-if (!out) throw new Error('usage: page.ts -- <out.html>');
+if (!out) throw new Error('usage: page.ts -- <out.html> [--logs=a.json,b.json]');
+if (reportLogs) {
+  // A file to open in a browser: the maps alone, with their own page frame.
+  const report = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Map telemetry report</title><style>body{margin:0}[hidden]{display:none!important}${css}</style></head><body><main class="wrap"><header class="intro"><div class="eyebrow">Straitwatch V3 · Map &amp; Convoy Lab · report</div><h1>Map telemetry</h1><p class="lede">${reportLogs.length} play log${reportLogs.length === 1 ? '' : 's'}, replayed to telemetry on this build (log version ${LOG_VERSION}). Pick the waves and one layer at a time.</p><p class="dbnote" id="dbnote" hidden></p><span id="tally" hidden></span></header><section id="maps">${maps}</section></main><script>${script}</script></body></html>`;
+  writeFileSync(out, report);
+  console.log(`wrote ${out} (${(report.length / 1024).toFixed(0)} KiB): ${reportLogs.length} logs on ${previews.length} map(s)`);
+  process.exit(0);
+}
 writeFileSync(out, html);
 console.log(`wrote ${out} (${(html.length / 1024).toFixed(0)} KiB): ${ITEM_IDS.length} items, ${Q_IDS.length} questions`);

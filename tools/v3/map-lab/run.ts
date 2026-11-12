@@ -9,6 +9,8 @@
 //                                             bot runs on every map: on/off equivalence, replay, reconciliation
 //   npm run v3:map-lab -- bench               what telemetry costs: time, bytes, and the sampling rate's error
 //   npm run v3:map-lab -- preview             what the baseline's telemetry adds up to, map by map
+//   npx vite-node tools/v3/map-lab/page.ts -- report.html --logs=a.json,b.json
+//                                             a report page (maps, layers, numbers) from any play logs
 //
 // A sidecar is a pure function of the build and the log, so nothing here
 // needs a sidecar to have been saved when the run was played.

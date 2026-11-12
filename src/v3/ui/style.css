@@ -5369,3 +5369,353 @@ a.v3-lab-page {
 .v2-card[data-testing] {
   box-shadow: 0 0 0 2px var(--gold), 0 6px 20px rgb(245 197 66 / 0.25);
 }
+
+/* ---- Map Analytics (the Map & Convoy Lab's viewer, ui/mapLab.ts) ---------
+   A developer screen in the Test Lab: the map with one layer on it, its
+   controls and numbers beside it. On a landscape phone the map keeps the
+   left and everything else scrolls on the right. */
+
+.v2-overlay.open:has(.v3-maplab-screen) {
+  background: rgb(4 8 11 / 0.95);
+  align-items: stretch;
+}
+
+.v2-panel.v3-maplab-screen {
+  max-width: 1500px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.v3-maplab {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr);
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.v3-maplab-main,
+.v3-maplab-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.v3-maplab-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-maplab-segs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.v3-maplab-seg {
+  min-height: 36px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.v3-maplab-seg.on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 16%, rgb(15 26 34 / 0.9));
+}
+
+.v3-maplab-seg:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.v3-maplab-board {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--panel-edge);
+  background: #0f161d;
+  flex: none;
+}
+
+.v3-maplab-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.v3-maplab-strip {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-edge);
+  flex: none;
+}
+
+.v3-maplab-window {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.v3-maplab-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 180px;
+}
+
+.v3-maplab-range input {
+  flex: 1;
+  min-width: 80px;
+  height: 28px;
+  accent-color: var(--gold);
+}
+
+.v3-maplab-range b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.2em;
+}
+
+.v3-maplab-legend {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v3-maplab-legend p {
+  margin: 0;
+  color: var(--ink);
+}
+
+.v3-maplab-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.v3-maplab-ramp {
+  display: inline-flex;
+  border-radius: 3px;
+  overflow: hidden;
+  outline: 1px solid var(--panel-edge);
+}
+
+.v3-maplab-ramp i {
+  width: 16px;
+  height: 11px;
+  display: block;
+}
+
+.v3-maplab-hatch {
+  width: 16px;
+  height: 11px;
+  border: 1px dashed var(--muted);
+  background: repeating-linear-gradient(45deg, transparent 0 3px, var(--muted) 3px 4.5px);
+}
+
+.v3-maplab-num,
+.v3-maplab-sample {
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-maplab-sample {
+  margin-left: auto;
+}
+
+.v3-maplab-detail {
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v3-maplab-detail h4 {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+}
+
+.v3-maplab-detail p {
+  margin: 0;
+}
+
+.v3-maplab-hint {
+  color: var(--muted);
+}
+
+.v3-maplab-refs,
+.v3-maplab-trace {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v3-maplab-refs {
+  list-style: none;
+  padding: 0;
+}
+
+.v3-maplab-refs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 3px 0;
+  border-top: 1px solid rgb(38 65 79 / 0.6);
+}
+
+.v3-maplab-refs li span {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.v3-maplab-link {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.v3-maplab-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.v3-maplab-pick select {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  padding: 0 8px;
+}
+
+.v3-maplab-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v3-maplab-label {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.v3-maplab-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.85);
+  color: var(--ink);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-maplab-run b {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #062029;
+  font-size: 12px;
+}
+
+.v3-maplab-run.b b {
+  background: var(--lab-amber);
+}
+
+.v3-maplab-run.off {
+  opacity: 0.55;
+}
+
+.v3-maplab-run.off b {
+  background: var(--panel-edge);
+  color: var(--ink);
+}
+
+.v3-maplab-run span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.v3-maplab-status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--gold);
+}
+
+.v3-maplab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-maplab-table th,
+.v3-maplab-table td {
+  text-align: left;
+  padding: 3px 6px 3px 0;
+  border-top: 1px solid rgb(38 65 79 / 0.6);
+  vertical-align: top;
+}
+
+.v3-maplab-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.v3-maplab :is(button, select, input, canvas):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (max-height: 430px) {
+  .v3-maplab-seg {
+    min-height: 32px;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+  .v3-maplab-strip {
+    height: 34px;
+  }
+}
