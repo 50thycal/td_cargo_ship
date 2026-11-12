@@ -49,6 +49,8 @@ Design, the weapon table, measurements and where to tune:
 
 **Next V3 development phase (design only):** [Map & Convoy Lab plan](docs/design/v3-map-convoy-lab-plan.md) — spatial telemetry, launch/damage/pickup heatmaps, convoy control experiments, map-specific tactical commands, and three reference-map encounter redesigns. Start with the plan's Slice 0/1; no implementation is included in this documentation change.
 
+**Map & Convoy Lab, slices 0 and 1 (built):** [the baseline and the telemetry](docs/design/v3-map-lab-slice0-1.md) — twelve stored baseline runs on The Strait, The Gauntlet and Harbor Mouth, and a telemetry sidecar (launches, hits with the attacker named, pickups, taps, convoy commands, ship positions) that any play log replays to. `npm run v3:map-lab -- baseline | telemetry <log.json> | audit | bench | preview`; browser check `node e2e/v3-map-lab.mjs`.
+
 ## Play it
 
 ```bash
