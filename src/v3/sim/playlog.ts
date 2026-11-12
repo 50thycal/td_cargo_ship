@@ -33,6 +33,7 @@ import {
   type WaveRecord,
 } from './game';
 import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley } from './feedback';
+import { attachTelemetry, type TelHeader, type TelMode, type Telemetry } from './telemetry';
 
 /** Bump when the log format or sim rules change in a way that breaks replay.
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
@@ -113,6 +114,37 @@ export interface LabResult {
   round?: number;
 }
 export const SIM_DT = 1 / 60;
+
+/** Map & Convoy Lab telemetry for a run (sim/telemetry.ts): a sidecar to
+ *  its log, never part of it, so the log's format and version stay as they
+ *  are and a log without one replays as before. Call it before the game's
+ *  first step. `mode` and `player` say what kind of run this is; the events
+ *  do not depend on them, so a live run and the replay of its log make the
+ *  same sidecar. */
+export function logTelemetry(
+  g: Game,
+  log: Pick<PlayLog, 'id' | 'build' | 'v' | 'firstWave' | 'lab' | 'dev' | 'device'>,
+  mode: TelMode,
+  player?: string,
+  input?: TelHeader['input'],
+): Telemetry {
+  return attachTelemetry(g, {
+    runId: log.id,
+    build: log.build,
+    logVersion: log.v,
+    firstWave: log.firstWave,
+    mode,
+    player: player ?? log.dev?.bot ?? (log.device.ua === 'mimic' ? 'mimic' : 'human'),
+    ...(input ? { input } : {}),
+    ...(log.lab ? { lab: { card: log.lab.card, length: log.lab.length, ...(log.lab.rev !== undefined ? { rev: log.lab.rev } : {}), ...(log.lab.round !== undefined ? { round: log.lab.round } : {}) } } : {}),
+  });
+}
+
+/** How to replay: `telemetry` records a sidecar as the log plays (read it
+ *  from the game's `tel`). */
+export interface ReplayOpts {
+  telemetry?: boolean;
+}
 
 /** Compact input encoding: [step, code, ...args]. */
 export type LogCommand =
@@ -250,6 +282,12 @@ export class Recorder {
     if (from) this.drafts = (from.log.summary?.drafts ?? []).filter((d) => d.wave < from.mark.wave);
     this.mark = { wave: game.wave, steps: game.steps, commands: this.log.commands.length };
     this.watch = new Watch(game);
+  }
+
+  /** Map & Convoy Lab telemetry for this run, from here on (call it before
+   *  the first step; a wave retry's game already carries its own). */
+  telemetry(mode: TelMode, player?: string, input?: TelHeader['input']): Telemetry {
+    return this.game.tel ?? logTelemetry(this.game, this.log, mode, player, input);
   }
 
   /** Once a frame (and before the UI drains the game's events): keeps the
@@ -424,16 +462,21 @@ export class Recorder {
 
 /** Re-run a log from its seed and inputs. Stops at the last recorded step
  *  for a quit, or when the game ends. */
-export function replay(log: PlayLog): Game {
-  return replayTo(log, log.summary?.steps ?? Infinity, log.commands.length);
+export function replay(log: PlayLog, opts: ReplayOpts = {}): Game {
+  const g = replayTo(log, log.summary?.steps ?? Infinity, log.commands.length, opts);
+  // A run that was left (a quit, a Test Lab "Done"): its telemetry ends
+  // there, as the live run's did.
+  if (g.tel && log.end === 'quit' && g.phase !== 'lost' && g.phase !== 'won') g.tel.leave(g);
+  return g;
 }
 
 /** Re-run a log's first `commands` inputs, stopping at step `lastStep`:
  *  with a `WaveMark`, the run exactly as that wave began. */
-export function replayTo(log: PlayLog, lastStep: number, commands: number): Game {
+export function replayTo(log: PlayLog, lastStep: number, commands: number, opts: ReplayOpts = {}): Game {
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
   if (log.freePlay) applyFreePlay(g, log.freePlay);
   if (log.lab) applyLab(g, log.lab);
+  if (opts.telemetry) logTelemetry(g, log, 'replay');
   const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {
@@ -492,11 +535,11 @@ export class Playback {
   private i: number;
   private cmds: LogCommand[];
 
-  constructor(log: PlayLog, from: number) {
+  constructor(log: PlayLog, from: number, opts: ReplayOpts = {}) {
     const start = Math.max(0, from);
     let upto = log.commands.findIndex((c) => c[0] > start);
     if (upto < 0) upto = log.commands.length;
-    this.game = replayTo(log, start, upto);
+    this.game = replayTo(log, start, upto, opts);
     this.cmds = log.commands;
     this.i = upto;
   }
