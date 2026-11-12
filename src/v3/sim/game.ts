@@ -69,10 +69,11 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOE, FOES, HEAVY_FOES, type FoeId, type FoeSetting } from '../data/foes';
+import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
+import { OLD_THREATS, isOldThreat, memberKind, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState } from './foes';
+import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
@@ -183,6 +184,9 @@ export interface Threat {
   maxHp?: number;
   /** A special event's supply drone: shot down, it drops a pickup. */
   cargo?: boolean;
+  /** An original threat an enemy pair's set brought (data/pairs.ts), not
+   *  the wave's own. */
+  paired?: boolean;
 }
 
 export interface Interceptor {
@@ -316,6 +320,8 @@ export interface Launch {
   /** A special event's supply drone (the Bombardment): shot down, it drops
    *  a pickup. */
   cargo?: boolean;
+  /** Brought by an enemy pair's set (data/pairs.ts). */
+  paired?: boolean;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1479,7 +1485,7 @@ export function labBring(g: Game): void {
     rerunEvent(g);
     return;
   }
-  // A combo brings its whole set, paired as in its waves (and its weapon).
+  // A combo brings its whole set, paired as in its waves.
   if (lab.pair) {
     lab.sets.push(newSet(lab, g.waveT));
     updateLabSets(g);
@@ -1499,13 +1505,14 @@ export function labBring(g: Game): void {
   }
 }
 
-/** Is a combo's lead at its station: the Spotter on its circle, the Repair
- *  Tender on station, the Rocket Truck at the end of its road? */
+/** Is a pair's lead at its station: the Spotter on its circle, the Repair
+ *  Ship on station, the Rocket Truck at the end of its road, the Attack
+ *  Helicopter at its hover, the Lure Beacon risen? */
 function atStation(th: Threat): boolean {
   const f = th.foe;
   if (!f) return true;
   if (th.kind === 'tender') return f.n === 1;
-  if (th.kind === 'spotter' || th.kind === 'rocketTruck') return f.state >= 1;
+  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
   return true;
 }
 
@@ -1518,18 +1525,49 @@ function farBase(g: Game): number | undefined {
   return live.reduce((m, i) => (far(i) > far(m) ? i : m));
 }
 
+/** Water near (x, y) for a boat: the point itself, or the first one on
+ *  water stepping from it toward the convoy's lane, `clear` px past the
+ *  shore. */
+function waterNear(g: Game, x: number, y: number, clear: number): Point {
+  const ch = g.map.channels[0];
+  const to = laneAt(ch, laneLength(ch) * clamp(x / VIEW.width, 0.05, 0.95), 0);
+  const d = Math.max(1, dist(x, y, to.x, to.y));
+  for (let k = 0; k <= d; k += 10) {
+    const px = x + ((to.x - x) * k) / d;
+    const py = y + ((to.y - y) * k) / d;
+    if (onLand(g, px, py)) continue;
+    const u = Math.min(d, k + (k > 0 ? clear : 0));
+    return { x: x + ((to.x - x) * u) / d, y: y + ((to.y - y) * u) / d };
+  }
+  return to;
+}
+
 /** The Test Lab's combo sets (Test Lab round 4, "the recon drone and then
- *  the siege cannon never really appeared at the same time"): each set's
- *  weapon drops by the carrier, its lead launches, and the others follow on
- *  the pairing's cues, so the set is on the board together. */
+ *  the siege cannon never really appeared at the same time"; round 8, enemy
+ *  pairs, data/pairs.ts): each set's lead launches, and the others follow on
+ *  the pairing's cues, so the set is on the board together. A map script
+ *  placing a pair in a wave would launch it the same way. */
 function updateLabSets(g: Game): void {
   const lab = g.lab;
   if (!lab?.pair || !lab.sets.length) return;
   const P = lab.pair;
   const c = g.map.carrier;
-  // One member out now; returns its base (-1 if it came from no base).
-  const out = (f: FoeId, base?: number): number => {
-    const kind = FOES[f].kind;
+  const leadKind = memberKind(P.lead);
+  const isLead = (t: Threat, led: { id: number }) => t.kind === leadKind && t.id >= led.id && (!isOldThreat(P.lead) || !!t.paired);
+  // One member out now; returns its base (-1 if it came from no base). An
+  // original threat is its swarm or volley out of one base: the first now,
+  // the rest queued.
+  const out = (f: PairMember, base?: number): number => {
+    const kind = memberKind(f);
+    if (isOldThreat(f)) {
+      const b = base ?? pickBase(g, kind, g.rng.foes);
+      if (b < 0) return -1;
+      const O = OLD_THREATS[f];
+      launch(g, { at: g.waveT, kind, base: b, paired: true });
+      for (let k = 1; k < O.size; k++) g.queue.push({ at: g.waveT + k * O.every, kind, base: b, paired: true });
+      g.queue.sort((a, b2) => a.at - b2.at);
+      return b;
+    }
     if (isPlaneKind(kind)) {
       g.queue.unshift({ at: g.waveT, kind, base: -1 });
       return -1;
@@ -1540,18 +1578,25 @@ function updateLabSets(g: Game): void {
     return b;
   };
   for (const s of lab.sets) {
-    if (!s.dropped && g.waveT >= s.at - LAB_SET.weaponLead) {
-      s.dropped = true;
-      if (lab.weapon && (g.levels[lab.weapon] ?? 0) > 0) addPickup(g, 'weapon', c.x + g.rng.foes.range(-160, 160), c.y - 150, lab.weapon);
-    }
     if (!s.led && g.waveT >= s.at) {
       const id = g.nextId;
       s.led = { id, t: g.waveT, base: out(P.lead, P.far ? farBase(g) : s.bases[P.lead]) };
+      // A Repair Ship whose truck it places: moored off the end of the
+      // shore road nearest its station.
+      const roads = g.map.roads.popups;
+      const tender = P.lead === 'tender' && P.follow.some((f) => f.near && f.foe === 'rocketTruck') ? g.threats.find((t) => t.kind === 'tender' && t.id >= id) : undefined;
+      if (tender?.foe && roads.length) {
+        const k = roads.reduce((m, r, i) => (dist(r.to.x, r.to.y, tender.foe!.px, tender.foe!.py) < dist(roads[m].to.x, roads[m].to.y, tender.foe!.px, tender.foe!.py) ? i : m), 0);
+        const p = waterNear(g, roads[k].to.x, roads[k].to.y, PAIR_MOOR);
+        tender.foe.px = p.x;
+        tender.foe.py = p.y;
+        s.road = k;
+      }
     }
     const led = s.led;
     if (!led) continue;
     if (led.station === undefined) {
-      const th = g.threats.find((t) => t.kind === FOES[P.lead].kind && t.id >= led.id);
+      const th = g.threats.find((t) => isLead(t, led));
       // Shot down first (or never on the board), or slow getting there: the
       // others come now.
       if (!th || th.dead || atStation(th) || g.waveT - led.t >= LAB_SET.station) led.station = g.waveT;
@@ -1562,10 +1607,10 @@ function updateLabSets(g: Game): void {
       if (f.on === 'arrive') {
         // Out once the lead is due within this one's own flight from its
         // base, plus `after`: they arrive together.
-        const kind = FOES[f.foe].kind;
+        const kind = memberKind(f.foe);
         const from = base !== undefined && base >= 0 ? g.map.bases[base] : c;
         const speed = THREATS[kind].speed * (1 + (g.waveSpeed - 1) * WAVE_SPEED_SHARE[kind]);
-        const leads = g.threats.filter((t) => !t.dead && t.kind === FOES[P.lead].kind && t.id >= led.id);
+        const leads = g.threats.filter((t) => !t.dead && isLead(t, led));
         const due = leads.some((t) => {
           const p = targetPos(g, t);
           return timeToImpact(g, t) <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
@@ -1576,10 +1621,50 @@ function updateLabSets(g: Game): void {
         if (from === undefined || g.waveT < from + f.after) return;
       }
       s.done[i] = true;
+      const lead = g.threats.find((t) => !t.dead && isLead(t, led));
+      if (f.near && f.foe === 'bodyguard') {
+        // A ring round the lead, no heavy of its own (gone with the lead).
+        if (lead) ringGuards(g, lead);
+        return;
+      }
+      const id0 = g.nextId;
       out(f.foe, base);
+      if (!f.near) return;
+      if (f.foe === 'torpedoSub' && lead?.foe) {
+        // The sub surfaces under the helicopter's hover.
+        const m = g.foe.marks.find((o) => o.kind === 'periscope' && o.id >= id0);
+        if (m) {
+          const p = waterNear(g, lead.foe.px, lead.foe.py, 30);
+          m.x = p.x;
+          m.y = p.y;
+        }
+      } else if (f.foe === 'rocketTruck' && s.road !== undefined) {
+        // The truck takes its Repair Ship's road.
+        const road = g.map.roads.popups[s.road];
+        const th = g.threats.find((o) => o.kind === 'rocketTruck' && o.id >= id0);
+        if (th?.foe && road) {
+          th.foe.path = [road.from, road.to];
+          th.x = road.from.x;
+          th.y = road.from.y;
+          th.heading = Math.atan2(road.to.y - road.from.y, road.to.x - road.from.x);
+        }
+      }
     });
   }
-  lab.sets = lab.sets.filter((s) => !s.led || !s.dropped || s.done.some((d) => !d));
+  lab.sets = lab.sets.filter((s) => !s.led || s.done.some((d) => !d));
+}
+
+/** How far off the shore a pair's Repair Ship moors (px of water). */
+const PAIR_MOOR = 70;
+
+/** A Bodyguard Ring round a threat already on the board (an enemy pair's:
+ *  a guarded Spotter). */
+function ringGuards(g: Game, th: Threat): void {
+  for (let k = 0; k < FOE.bodyguard.guards; k++) {
+    const t = spawnThreat(g, 'guard', th.x, th.y, 'base');
+    t.target = CARRIER_TARGET;
+    t.foe = foeData({ link: th.id, n: k });
+  }
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. */
@@ -4040,6 +4125,7 @@ function launch(g: Game, l: Launch): void {
   if (isFoe(l.kind)) launchFoe(g, l, base);
   else {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
+    if (l.paired) th.paired = true;
     // A supply drone (the Bombardment's) heads for the carrier.
     if (l.cargo) {
       th.cargo = true;

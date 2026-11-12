@@ -883,8 +883,10 @@ try {
     await tp.reload({ waitUntil: 'networkidle' });
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
-    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, first: document.querySelector('.v3-lab-sec')?.dataset.section }));
-    check(hub.rows === 93 && hub.events === 21 && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, combos: document.querySelectorAll('[data-section="combo"] [data-card]').length, cut: !!document.querySelector('[data-card="combo-lure-screen"]'), first: document.querySelector('.v3-lab-sec')?.dataset.section }));
+    // Round 8: the combos are thirteen enemy pairs (the four with a player
+    // weapon in them are cut).
+    check(hub.rows === 98 && hub.events === 21 && hub.combos === 13 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });

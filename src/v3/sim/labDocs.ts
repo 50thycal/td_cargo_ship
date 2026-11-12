@@ -5,7 +5,7 @@
 // rounds is round 1): a card's document is its latest round's latest
 // verdict, with the earlier rounds' verdicts as its history.
 
-import { LAB_ROUNDS, cardChangeList, labCard } from '../data/lab';
+import { LAB_ROUNDS, cardChangeList, labCard, retiredCard } from '../data/lab';
 import { evidenceLines } from './lab';
 import type { LabResult, PlayLog } from './playlog';
 
@@ -24,6 +24,9 @@ export interface LabResultDoc {
   changes: string[];
   /** The latest verdict of each earlier round, newest first. */
   history: { round: number; verdict: LabResult['verdict']; note: string; at: string; log: string }[];
+  /** A card since cut from the lab (LAB_RETIRED): the round it went in,
+   *  and why. Its verdicts are kept, under the page's Cut cards. */
+  cut?: { round: number; why: string };
 }
 
 export interface LabBuildDoc {
@@ -69,7 +72,10 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
   const results: Record<string, LabResultDoc> = {};
   const builds: Record<string, LabBuildDoc> = {};
   for (const [id, rounds] of byCard) {
-    const card = labCard(id);
+    // A card cut since keeps its verdicts (round 8: the four combos with a
+    // player weapon in them); an id the lab never had is dropped.
+    const gone = retiredCard(id);
+    const card = labCard(id) ?? gone;
     if (!card) continue;
     const order = [...rounds.keys()].sort((a, b) => b - a);
     const l = rounds.get(order[0])!;
@@ -92,6 +98,7 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
         const o = rounds.get(n)!;
         return { round: n, verdict: o.labResult!.verdict, note: o.labResult!.note, at: when(o), log: o.id };
       }),
+      ...(gone ? { cut: { round: gone.cut, why: gone.why } } : {}),
     };
     results[id] = doc;
     // An enemy card's verdict also goes on the enemy page's Build tab.

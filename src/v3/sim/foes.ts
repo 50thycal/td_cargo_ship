@@ -389,7 +389,11 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       // No ship on the water yet (a test's first seconds): the lane where
       // the convoy is coming in.
       const ch = g.map.channels[0];
-      const ship = pool.length ? rng.pick(pool) : null;
+      // A ship a Spotter is painting gets the circle (the enemy pairs,
+      // round 8: Spotter + Dive Bombers). The pick is drawn either way, so
+      // the rest of the run's draws don't move.
+      const pick = pool.length ? rng.pick(pool) : null;
+      const ship = (g.foe.paint && pool.find((s) => s.id === g.foe.paint!.ship)) || pick;
       let p: Point = ship ? shipAhead(g, ship, D.mark + D.window + D.fall) : laneAt(ch, laneLength(ch) * 0.3, 0);
       let a = diveLine(p, tilt);
       for (let k = 0; k < 2 && ship; k++) {

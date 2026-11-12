@@ -70,7 +70,8 @@ describe('round 7: the round and its lines', () => {
     for (const id of ['decoy', 'hydra', 'torpedoSub', 'ev-decoy-storm', 'ev-hydra-bloom']) expect(LAB_CHANGES[id]!.filter((c) => c.round === 7), id).toHaveLength(1);
     // The combos take their enemies' lines on.
     expect(cardChanges('combo-decoy-sprint', 6)).toContain('Decoy Drones: No strobe: the decoys are a shade cooler (grey, not cream) all the way in');
-    expect(cardChanges('combo-hydra-tesla', 6)).toContain('Hydra Missile: 25% slower before it splits; its darts as fast as before');
+    // (Round 8: the Hydra's combos are enemy pairs; they take the line on too.)
+    expect(cardChanges('combo-hydra-swarm', 6)).toContain('Hydra Missile: 25% slower before it splits; its darts as fast as before');
     // The Wolf Pack is as it was (its subs keep their two or three).
     expect((LAB_CHANGES['ev-wolf-pack'] ?? []).some((c) => c.round === 7)).toBe(false);
   });
