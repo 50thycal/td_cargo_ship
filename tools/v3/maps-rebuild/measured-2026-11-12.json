@@ -1,0 +1,869 @@
+{
+ "date": "2026-11-12",
+ "seeds": 8,
+ "how": "Each map from wave 1 through its three-run ending (the map is won when its last run holds), flow 2. \"through10\": got through the ten normal waves. \"empty\": the reaction-time bots, no Armory. \"campaign\": the persona fitted to the player's playtests (\"you\") and the average bot, with one upgrade in each bay at level 5 \u00d7 (slot \u2212 1) / 9.",
+ "maps": {
+  "strait": {
+   "slot": 1,
+   "armoryLevel": 0,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 100,
+     "won": 100,
+     "lost": 2.6,
+     "wave": 13
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 100,
+     "lost": 2.4,
+     "wave": 13
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 6,
+     "wave": 10.1
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 4.8,
+     "wave": 10.1
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 100,
+     "lost": 2.4,
+     "wave": 13
+    }
+   }
+  },
+  "kesh": {
+   "slot": 2,
+   "armoryLevel": 1,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 100,
+     "won": 88,
+     "lost": 4.4,
+     "wave": 13
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 5,
+     "wave": 12.6
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 6.3,
+     "wave": 10.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 75,
+     "won": 75,
+     "lost": 4.4,
+     "wave": 12.1
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 100,
+     "lost": 2.1,
+     "wave": 13
+    }
+   }
+  },
+  "marrow": {
+   "slot": 3,
+   "armoryLevel": 1,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 88,
+     "won": 25,
+     "lost": 5.4,
+     "wave": 12.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 13,
+     "lost": 7.1,
+     "wave": 12.9
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 38,
+     "won": 13,
+     "lost": 7,
+     "wave": 10.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 38,
+     "won": 25,
+     "lost": 5,
+     "wave": 10.6
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 38,
+     "lost": 6,
+     "wave": 12.8
+    }
+   }
+  },
+  "gauntlet": {
+   "slot": 4,
+   "armoryLevel": 2,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 75,
+     "won": 0,
+     "lost": 7,
+     "wave": 11.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 50,
+     "won": 25,
+     "lost": 5.5,
+     "wave": 11
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 25,
+     "won": 0,
+     "lost": 7,
+     "wave": 9.8
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 25,
+     "won": 13,
+     "lost": 3.9,
+     "wave": 10.4
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 38,
+     "lost": 6.6,
+     "wave": 12.8
+    }
+   }
+  },
+  "harbor": {
+   "slot": 5,
+   "armoryLevel": 2,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 5.5,
+     "wave": 10.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 5.4,
+     "wave": 10.3
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 7.9
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 5,
+     "wave": 10.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 2.4,
+     "wave": 12.6
+    }
+   }
+  },
+  "island": {
+   "slot": 6,
+   "armoryLevel": 3,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 38,
+     "won": 25,
+     "lost": 6.1,
+     "wave": 10.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 38,
+     "won": 25,
+     "lost": 5.8,
+     "wave": 10.5
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6.1,
+     "wave": 8.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 50,
+     "won": 50,
+     "lost": 4.4,
+     "wave": 10.9
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 2.9,
+     "wave": 12.6
+    }
+   }
+  },
+  "behemoth": {
+   "slot": 7,
+   "armoryLevel": 3,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 75,
+     "won": 75,
+     "lost": 4.8,
+     "wave": 12.1
+    },
+    "average": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 5.9,
+     "wave": 10.5
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.9,
+     "wave": 8.4
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 38,
+     "won": 25,
+     "lost": 5.8,
+     "wave": 10
+    },
+    "average": {
+     "runs": 8,
+     "through10": 75,
+     "won": 50,
+     "lost": 5.1,
+     "wave": 12
+    }
+   }
+  },
+  "needle": {
+   "slot": 8,
+   "armoryLevel": 4,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 5.1,
+     "wave": 10
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.4,
+     "wave": 8.8
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.6,
+     "wave": 7.3
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 25,
+     "won": 13,
+     "lost": 5.3,
+     "wave": 9.3
+    },
+    "average": {
+     "runs": 8,
+     "through10": 50,
+     "won": 50,
+     "lost": 5.5,
+     "wave": 11.4
+    }
+   }
+  },
+  "archipelago": {
+   "slot": 9,
+   "armoryLevel": 4,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.1,
+     "wave": 9.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.3,
+     "wave": 8.8
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.6,
+     "wave": 7.1
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.1,
+     "wave": 8.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 2,
+     "wave": 12.5
+    }
+   }
+  },
+  "saltgate": {
+   "slot": 10,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.9,
+     "wave": 7.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.6,
+     "wave": 6.9
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6.4,
+     "wave": 5.9
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 6.3,
+     "wave": 8.3
+    },
+    "average": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 4.5,
+     "wave": 10.1
+    }
+   }
+  },
+  "battery": {
+   "slot": 11,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.9,
+     "wave": 8.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 8.3
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.5,
+     "wave": 8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 75,
+     "won": 75,
+     "lost": 3.5,
+     "wave": 12.1
+    }
+   }
+  },
+  "sowers": {
+   "slot": 12,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 7.6
+    },
+    "average": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.8,
+     "wave": 9.5
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 7
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 5,
+     "wave": 9.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 100,
+     "won": 100,
+     "lost": 1.4,
+     "wave": 13
+    }
+   }
+  },
+  "rigs": {
+   "slot": 13,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 5,
+     "wave": 8.6
+    },
+    "average": {
+     "runs": 8,
+     "through10": 38,
+     "won": 38,
+     "lost": 4.6,
+     "wave": 8.1
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 5.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 5.4,
+     "wave": 8.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 2,
+     "wave": 12.6
+    }
+   }
+  },
+  "lantern": {
+   "slot": 14,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.6,
+     "wave": 8.9
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6.1,
+     "wave": 8.1
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.8
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.9,
+     "wave": 9
+    },
+    "average": {
+     "runs": 8,
+     "through10": 75,
+     "won": 75,
+     "lost": 2.4,
+     "wave": 12
+    }
+   }
+  },
+  "dreadnought": {
+   "slot": 15,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 5.3,
+     "wave": 10
+    },
+    "average": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 6,
+     "wave": 9.6
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.3
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 4.9,
+     "wave": 9.3
+    },
+    "average": {
+     "runs": 8,
+     "through10": 63,
+     "won": 63,
+     "lost": 4,
+     "wave": 11.8
+    }
+   }
+  },
+  "coves": {
+   "slot": 16,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.3,
+     "wave": 8.6
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.8,
+     "wave": 7.6
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.5
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 4.9,
+     "wave": 8.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 88,
+     "lost": 3.3,
+     "wave": 12.6
+    }
+   }
+  },
+  "delta": {
+   "slot": 17,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 13,
+     "won": 0,
+     "lost": 4.6,
+     "wave": 8.9
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.1,
+     "wave": 7.4
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.6,
+     "wave": 4.6
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 4.6,
+     "wave": 8.8
+    },
+    "average": {
+     "runs": 8,
+     "through10": 75,
+     "won": 63,
+     "lost": 3.1,
+     "wave": 12
+    }
+   }
+  },
+  "crossing": {
+   "slot": 18,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.4,
+     "wave": 7.5
+    },
+    "average": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 5.4,
+     "wave": 8.5
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.5
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 13,
+     "lost": 4.1,
+     "wave": 9.1
+    },
+    "average": {
+     "runs": 8,
+     "through10": 75,
+     "won": 75,
+     "lost": 2.1,
+     "wave": 12.1
+    }
+   }
+  },
+  "tide": {
+   "slot": 19,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 8.4
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 8
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 5.4
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.5,
+     "wave": 8.3
+    },
+    "average": {
+     "runs": 8,
+     "through10": 50,
+     "won": 50,
+     "lost": 5.4,
+     "wave": 11.1
+    }
+   }
+  },
+  "citadel": {
+   "slot": 20,
+   "armoryLevel": 5,
+   "empty": {
+    "sharp": {
+     "runs": 8,
+     "through10": 25,
+     "won": 25,
+     "lost": 6.1,
+     "wave": 9.3
+    },
+    "average": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 5.5,
+     "wave": 8
+    },
+    "casual": {
+     "runs": 8,
+     "through10": 0,
+     "won": 0,
+     "lost": 6,
+     "wave": 6.1
+    }
+   },
+   "campaign": {
+    "you": {
+     "runs": 8,
+     "through10": 13,
+     "won": 0,
+     "lost": 5.9,
+     "wave": 7.6
+    },
+    "average": {
+     "runs": 8,
+     "through10": 88,
+     "won": 75,
+     "lost": 3.9,
+     "wave": 12.6
+    }
+   }
+  }
+ },
+ "build": "c4e5850 (claude/v3-enemies-round8)",
+ "tool": "npx vite-node tools/v3/maps-rebuild/measure.mts -- 8 (run as two halves, --maps=, merged)"
+}
