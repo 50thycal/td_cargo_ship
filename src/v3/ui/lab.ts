@@ -4,6 +4,7 @@
 // tested is kept on this device (and every test's verdict also goes into its
 // game log, which reaches Claude).
 
+import { COMMANDS, mapConvoy, type ConvoyPolicy } from '../data/convoy';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { evidenceLines, labCountText, type LabStats } from '../sim/lab';
@@ -24,6 +25,11 @@ export interface LabRunSetup {
   weapons: { id: AbilityId; level: number }[];
   length: LabLength;
   mix: LabMix;
+  /** The Map & Convoy Lab: the convoy policy to play it under (absent:
+   *  today's controls). */
+  convoy?: ConvoyPolicy;
+  /** The map's authored encounters on (slice 5), or its shared waves. */
+  encounters?: boolean;
 }
 
 /** One test's verdict as kept on the device: the result, when, the card's
@@ -404,13 +410,14 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     lv.addEventListener('change', sync);
     sheet.append(row(`Weapon ${i + 1}`, pick, lv));
   }
-  const seg = <T extends string>(value: T, options: [T, string][], set: (v: T) => void) => {
+  const seg = <T extends string>(value: T, options: [T, string][], set: (v: T) => void, key?: string) => {
     const g = el('div', 'v3-lab-len');
     const btns = options.map(([v, t]) => {
       const b = button(t, `v3-lab-seg small${v === value ? ' on' : ''}`, () => {
         set(v);
         btns.forEach((o, k) => o.classList.toggle('on', options[k][0] === v));
       });
+      if (key) b.dataset[key] = v;
       return b;
     });
     g.append(...btns);
@@ -420,6 +427,19 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
   const runs = card.event ? LAB_EVENT_RUNS : LAB_LENGTH;
   const unit = (n: number) => (card.event ? `${n} run${n === 1 ? '' : 's'}` : `${n} waves`);
   sheet.append(row('Length', seg(s.length, [['quick', `Quick · ${unit(runs.quick)}`], ['full', `Full · ${unit(runs.full)}`]], (v) => (s.length = v))));
+  // The Map & Convoy Lab: who steers the convoy in this test.
+  const cmds = mapConvoy(card.map).commands.map((id) => COMMANDS[id].name).join(' and ');
+  sheet.append(
+    row(
+      'Convoy',
+      seg<ConvoyPolicy>(
+        s.convoy ?? 'current',
+        [['current', "Today's"], ['auto', 'Automatic'], ['formation', 'Formations'], ['tactical', cmds ? `Commands: ${cmds}` : 'Commands (none here)']],
+        (v) => (s.convoy = v),
+        'labConvoy',
+      ),
+    ),
+  );
   const acts = el('div', 'v3-lab-sheet-acts');
   const go = button('Restart with this', 'v2-btn primary', () => apply(s));
   go.dataset.labApply = '1';

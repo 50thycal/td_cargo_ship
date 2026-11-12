@@ -5719,3 +5719,146 @@ a.v3-lab-page {
     height: 34px;
   }
 }
+
+/* ---- The Map & Convoy Lab's convoy policies (a lab run only) -------------
+   Automatic: no convoy control. Formations: no flow slider. Tactical: the
+   map's command buttons where the formation button and the slider were. */
+
+.v3-commands {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.convoy-auto .v3-commands,
+.convoy-tactical .v3-commands {
+  display: flex;
+}
+
+.convoy-auto .v2-formation-btn,
+.convoy-tactical .v2-formation-btn,
+.convoy-auto [data-flow],
+.convoy-formation [data-flow],
+.convoy-tactical [data-flow] {
+  display: none;
+}
+
+.v3-convoy-auto {
+  width: 64px;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1px dashed var(--panel-edge);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v3-convoy-auto small {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* A command: its name, where it stands, and a bar that runs down while it
+   is on and fills again as it cools. 64 x 56: a thumb's target. */
+.v3-command {
+  position: relative;
+  width: 64px;
+  min-height: 56px;
+  padding: 6px 2px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--ink);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.v3-command b {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.v3-command small {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.v3-command i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 100%;
+  background: var(--accent);
+}
+
+.v3-command.active {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 22%, var(--panel));
+}
+
+.v3-command.active small,
+.v3-command.active i {
+  color: var(--gold);
+}
+
+.v3-command.active i {
+  background: var(--gold);
+}
+
+.v3-command.waiting {
+  border-color: var(--panel-edge);
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.v3-command.waiting small {
+  color: var(--muted);
+}
+
+.v3-command.waiting i {
+  background: var(--panel-edge);
+}
+
+.v3-command.refused {
+  animation: v3-command-no 0.28s ease-out;
+}
+
+@keyframes v3-command-no {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-command.refused {
+    animation: none;
+    outline: 2px solid var(--danger);
+  }
+}
+
+.v3-command:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
