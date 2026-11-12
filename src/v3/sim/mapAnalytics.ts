@@ -565,7 +565,16 @@ export function timeline(runs: RunData[], f: Filter): EventRef[] {
   const out: EventRef[] = [];
   for (const w of walk(runs, f)) {
     const e = w.e;
-    if (e.k === 'cmd') out.push({ run: w.run.id, s: e.s, t: e.t, wave: w.ph.wave, text: `${e.what}: ${e.was} to ${e.req}${e.ok ? ` (${e.ships} ships afloat)` : `, refused (${e.why ?? 'no change'})`}` });
+    if (e.k === 'cmd') {
+      const refused = e.ok ? '' : `, refused (${e.why ?? 'no change'})`;
+      const text =
+        e.what === 'flow' || e.what === 'formation' || e.what === 'fork'
+          ? `${e.what}: ${e.was} to ${e.req}${e.ok ? ` (${e.ships} ships afloat)` : refused}`
+          : e.what === 'release'
+            ? `release (${e.req}): ${e.was} group${e.was === 1 ? '' : 's'} waiting`
+            : `${e.what}${e.ok ? (e.ids ? ` (${e.ids.length} ships)` : '') : refused}`;
+      out.push({ run: w.run.id, s: e.s, t: e.t, wave: w.ph.wave, text });
+    }
     else if (e.k === 'env') out.push({ run: w.run.id, s: e.s, t: e.t, wave: w.ph.wave, text: `${e.what}${e.i !== undefined ? ` ${e.i}` : ''}: ${e.st}` });
   }
   return out;

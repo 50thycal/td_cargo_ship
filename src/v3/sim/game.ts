@@ -78,6 +78,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
+import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupDue, groupOwed, groupSailed, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -806,6 +807,9 @@ export interface Game {
   /** The Map & Convoy Lab's telemetry (sim/telemetry.ts): null unless a
    *  run asked for it. It only watches: nothing in the sim reads it. */
   tel: Telemetry | null;
+  /** The Map & Convoy Lab's convoy policy and commands (sim/convoy.ts):
+   *  null in every campaign run, which plays as it always has. */
+  convoy: ConvoyState | null;
 }
 
 
@@ -953,6 +957,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     bonusDone: [],
     lossBase: 0,
     tel: null,
+    convoy: null,
   };
   const m = g.map;
   if (m.fork) g.forkLane = m.fork.start;
@@ -1240,6 +1245,12 @@ function launcher(b: { kinds: ThreatKind[]; cove?: boolean; chute?: boolean; gen
 
 export function setFlow(g: Game, flow: number): void {
   const next = Math.max(0, Math.min(FLOW_STEPS.length - 1, Math.round(flow)));
+  // A lab policy may leave the flow to the map (sim/convoy.ts).
+  const lock = flowLocked(g);
+  if (lock) {
+    if (g.tel) g.tel.command(g, 'flow', flow, g.flow, false, lock);
+    return;
+  }
   if (g.tel) g.tel.command(g, 'flow', flow, g.flow, next !== g.flow);
   if (next === g.flow) return;
   g.flow = next;
@@ -1248,6 +1259,11 @@ export function setFlow(g: Game, flow: number): void {
 }
 
 export function setFormation(g: Game, id: FormationId): void {
+  const lock = formationLocked(g);
+  if (lock) {
+    if (g.tel) g.tel.command(g, 'formation', id, g.formation, false, lock);
+    return;
+  }
   if (g.tel) g.tel.command(g, 'formation', id, g.formation, id !== g.formation);
   if (id === g.formation) return;
   g.formation = id;
@@ -3743,6 +3759,7 @@ function stepSim(g: Game, dt: number): void {
   g.t += dt;
   g.waveT += dt;
 
+  if (g.convoy) updateConvoy(g, dt);
   spawnShips(g, dt);
   // An aircraft's line is fixed when its warning arrow appears.
   for (const l of g.queue) {
@@ -3847,6 +3864,7 @@ export function shipsSunk(g: Game): number {
  *  the rack is full for the next wave. Explosions already on screen play
  *  out. */
 function clearField(g: Game): void {
+  if (g.convoy) convoyWaveEnd(g);
   g.interceptors = [];
   if (g.tel) for (const p of g.pickups) g.tel.pickupOut(g, p, 'cleared');
   g.pickups = [];
@@ -3918,7 +3936,7 @@ function slotLat(g: Game, s: Ship): number {
   if (s.vip) return 0;
   const ch = g.map.channels[s.channel];
   if (ch.widths && Math.min(laneHalfWidth(ch, s.d), laneHalfWidth(ch, s.d + MERGE_AHEAD)) < LANE_FLOOR) return 0;
-  const offsets = FORMATIONS[g.formation].offsets;
+  const offsets = formationNow(g).offsets;
   return offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
 }
 
@@ -3969,12 +3987,20 @@ function newShip(g: Game, channel: number, slot: number, d: number): Ship {
 function spawnShips(g: Game, dt: number): void {
   spawnTanker(g);
   g.spawnT -= dt;
-  if (g.spawnT > 0) return;
+  // The lab's Hold (sim/convoy.ts): a group that waited off the entry sails
+  // as soon as it is clear, ahead of the schedule's next.
+  const owed = groupOwed(g);
+  if (g.spawnT > 0 && !owed) return;
   const f = FORMATIONS[g.formation];
   const channel = nextChannel(g);
   // Never drop a hull on top of one still waiting at the entry: hold the spawn
   // (it retries next tick) until the entry is clear.
   if (entryBusy(g, g.map.channels[channel])) return;
+  // The schedule's group is due: under a Hold it waits, and the schedule moves on.
+  if (!owed && !groupDue(g)) {
+    g.spawnT += spawnGap(g);
+    return;
+  }
   g.channelCursor++;
   for (let i = 0; i < f.group; i++) {
     const slot = f.group > 1 ? i : g.spawnCount++ % f.offsets.length;
@@ -3982,7 +4008,8 @@ function spawnShips(g: Game, dt: number): void {
     g.ships.push(ship);
     if (g.tel) g.tel.shipIn(g, ship);
   }
-  g.spawnT += spawnGap(g);
+  groupSailed(g, owed);
+  if (!owed) g.spawnT += spawnGap(g);
 }
 
 /** The Behemoth Run: one supertanker a wave sails the tanker lane, from a
@@ -4149,7 +4176,7 @@ function steamMult(g: Game): number {
 }
 
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g) * convoySpeed(g);
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
@@ -4182,7 +4209,7 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
     if (g.tel) g.tel.shipBlocked(g, s, amount, by, direct, 'glance', imp);
     return;
   }
-  const f = FORMATIONS[g.formation];
+  const f = formationNow(g);
   const nominal = amount;
   if (f.blastCut > 0 && SPLASH_WEAPONS.includes(by)) amount = Math.max(1, Math.ceil(amount * (1 - f.blastCut)));
   const dealt = direct ? Math.max(1, amount - f.armor) : amount;
@@ -4849,7 +4876,7 @@ export function checkImpact(g: Game, th: Threat): void {
   if (shielded(g, blame)) reflect(g, th, th.x, th.y);
   if (th.kind === 'heavy') {
     // A heavy warhead also damages everything close by.
-    const reach = HEAVY.splash * FORMATIONS[g.formation].splash;
+    const reach = HEAVY.splash * formationNow(g).splash;
     addFx(g, 'splash', th.x, th.y, { life: 0.9, r: Math.max(reach, 24) });
     cue(g, 'impact.splash', th.x, th.y);
     for (const o of [...g.ships]) {
@@ -4922,7 +4949,7 @@ function impactBallistic(g: Game, th: Threat): void {
   const dmg = THREATS.ballistic.damage;
   // The formation sets how far the blast reaches other hulls; Spread (0)
   // means only the nearest ship inside the blast is hit.
-  const reach = BALLISTIC.splash * FORMATIONS[g.formation].splash;
+  const reach = BALLISTIC.splash * formationNow(g).splash;
   addFx(g, 'splash', th.ix, th.iy, { life: 0.9, r: Math.max(reach, BALLISTIC.splash) });
   cue(g, 'impact.splash', th.ix, th.iy);
   if (shielded(g, 'ballistic')) reflect(g, th, th.ix, th.iy);

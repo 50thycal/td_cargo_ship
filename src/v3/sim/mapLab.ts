@@ -111,6 +111,10 @@ export function phaseWords(sc: TelemetrySidecar): string[] {
 export function stateText(g: Game): string {
   return JSON.stringify(g, (key, v) => {
     if (key === 'tel' || key === 'rng' || key === 'map') return undefined;
+    // The lab's own layers (a convoy policy, authored encounters), when off:
+    // not part of a campaign game's state, so a baseline from before they
+    // existed still hashes the same.
+    if ((key === 'convoy' || key === 'enc') && v === null) return undefined;
     if (v instanceof Set) return [...v];
     return v;
   });
@@ -228,7 +232,7 @@ export function lockstepLive(
 
 /** A log's inputs as a hash (what replay reads of it). */
 export function logHash(log: PlayLog): string {
-  return hashText(JSON.stringify([log.v, log.map, log.seed, log.firstWave, log.tempo ?? null, log.armory, log.freePlay ?? null, log.lab ?? null, log.commands]));
+  return hashText(JSON.stringify([log.v, log.map, log.seed, log.firstWave, log.tempo ?? null, log.armory, log.freePlay ?? null, log.lab ?? null, log.commands, ...(log.convoy ? [log.convoy] : [])]));
 }
 
 /** Replay a log with telemetry and say what it came to. */

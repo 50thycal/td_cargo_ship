@@ -34,6 +34,8 @@ import {
 } from './game';
 import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley } from './feedback';
 import { attachTelemetry, type TelHeader, type TelMode, type Telemetry } from './telemetry';
+import { applyConvoy, convoyCommand, type CommandResult } from './convoy';
+import type { CommandId, ConvoySetup } from '../data/convoy';
 
 /** Bump when the log format or sim rules change in a way that breaks replay.
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
@@ -156,6 +158,7 @@ export type LogCommand =
   | [number, 'b'] // Test Lab: bring the card's enemy (or weapon) in now; an event card: run the event again
   | [number, 'f', number] // flow step
   | [number, 'm', FormationId] // formation
+  | [number, 'k', CommandId] // a lab convoy command: rush, disperse, hold (sim/convoy.ts)
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
   | [number, 'e'] // continue into endless
   | [number, 's', number] // game speed (UI only; kept for context)
@@ -188,6 +191,11 @@ export interface PlayLog {
   freePlay?: FreePlaySetup;
   /** A Test Lab run: its card, applied after the Free Play setup. */
   lab?: LabSetup;
+  /** The Map & Convoy Lab: the convoy policy this run was played under
+   *  (absent: today's controls, as every campaign run). Applied last. A
+   *  log with it, or with a 'k' command, needs a build that has them; a
+   *  log without replays as before, so the version stays. */
+  convoy?: ConvoySetup;
   /** The verdict the player gave after a Test Lab run, and the evidence
    *  the game counted (none of it touches replay). */
   labResult?: LabResult;
@@ -368,6 +376,14 @@ export class Recorder {
     setFormation(this.game, id);
   }
 
+  /** A lab convoy command (Rush, Disperse, Hold): logged whether or not
+   *  it was accepted, so the replay refuses the same ones. */
+  command(id: CommandId): CommandResult {
+    if (this.game.phase !== 'wave' || !this.game.convoy) return { ok: false, why: 'policy' };
+    this.log.commands.push([this.game.steps, 'k', id]);
+    return convoyCommand(this.game, id);
+  }
+
   pick(id: CardId, replace?: AbilityId): void {
     if (this.game.phase !== 'draft' || !this.game.offer.includes(id)) return;
     this.drafts.push({ wave: this.game.wave, offered: [...this.game.offer], picked: id, ...(replace ? { replaced: replace } : {}) });
@@ -476,6 +492,7 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number, opts:
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
   if (log.freePlay) applyFreePlay(g, log.freePlay);
   if (log.lab) applyLab(g, log.lab);
+  if (log.convoy) applyConvoy(g, log.convoy);
   if (opts.telemetry) logTelemetry(g, log, 'replay');
   const cmds = log.commands.slice(0, commands);
   let i = 0;
@@ -506,6 +523,9 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number, opts:
           break;
         case 'm':
           setFormation(g, c[2]);
+          break;
+        case 'k':
+          convoyCommand(g, c[2]);
           break;
         case 'u':
           pickUpgrade(g, c[2], c[3]);
@@ -558,6 +578,7 @@ export class Playback {
       else if (c[1] === 'b') labBring(g);
       else if (c[1] === 'f') setFlow(g, c[2]);
       else if (c[1] === 'm') setFormation(g, c[2]);
+      else if (c[1] === 'k') convoyCommand(g, c[2]);
       else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);
       else if (c[1] === 'e') continueEndless(g);
     }
