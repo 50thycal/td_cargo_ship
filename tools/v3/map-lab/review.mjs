@@ -181,3 +181,208 @@ export const GAPS = [
   ['Flow and formation', 'In the play log, with no result', 'What was asked, what stood before, whether it changed anything'],
   ['The bonus wave', 'No wave record of its own', 'Its own stretch, with its grade'],
 ];
+
+// ---------------------------------------------------------------------------
+// Round 2: slices 2 to 5 (the viewer, the convoy policies, the commands and
+// the authored encounters). New ids (`ml2-…`); round 1's stay as they are.
+// The numbers under each finding come from results/experiment.json and
+// results/experiment-encounters.json (npm run v3:map-lab -- experiment).
+
+export const ROUND2 = { n: 2, date: '2026-11-12', name: 'Slices 2 to 5: the viewer, convoy policies, commands and encounters' };
+
+export const GROUPS2 = [
+  { id: 'built', name: 'What you can open now', blurb: 'All of it is in the Test Lab only. A campaign run plays exactly as before.' },
+  { id: 'bots', name: 'What the bots showed', blurb: 'Eight seeds a row, two bots, the three reference maps. Bots are a first read, never proof of how it feels: your playtest decides.' },
+  { id: 'found2', name: 'Found on the way', blurb: 'Facts about the game as it stands. None was changed.' },
+];
+
+export const FINDINGS2 = [
+  {
+    id: 'ml2-viewer',
+    group: 'built',
+    kind: 'measured',
+    title: 'Map Analytics: the heatmap viewer',
+    says: 'A screen in the Test Lab (the "Map Analytics" button on its front page). It reads the runs kept on the device and draws, on the map itself, where enemies launch from, where hull is lost, where pickups are taken or missed, where shots land and where ships spend their time. Filters by wave, enemy, weapon and time; squares with too little play are greyed out. Tap a hot square and "Watch" opens the replay a few seconds before it.',
+    evidence: ['viewer'],
+  },
+  {
+    id: 'ml2-policies',
+    group: 'built',
+    kind: 'measured',
+    title: 'Four convoy policies to compare',
+    says: 'A test can be played under one of four rules for who steers the convoy. A: the map does it all. B: you pick formations, the map sets the flow. C: today\'s controls. D: the map steers, and you get one or two commands that belong to that map. The setup sheet\'s "Convoy" row picks one. Runs under different policies are labelled and never mixed.',
+    evidence: ['policies'],
+  },
+  {
+    id: 'ml2-commands',
+    group: 'built',
+    kind: 'measured',
+    title: 'Three commands: Rush, Disperse, Hold',
+    says: 'Under policy D the left rail shows the map\'s commands as thumb-sized buttons. The Strait and The Gauntlet: Rush (faster now, slower after) and Disperse (spread out and slow down). Harbor Mouth: Hold (keep the next ships out of the funnel, then Release). Each has a cost and a cooldown, a refused press shakes the button and changes nothing, and every press is in the log.',
+    evidence: ['commands'],
+  },
+  {
+    id: 'ml2-encounters',
+    group: 'built',
+    kind: 'measured',
+    title: 'Nine authored encounters on the three reference maps',
+    says: 'Each is one planned moment in a wave, built only from enemies and launchers that map already has by then, and it takes its launches out of the wave so the wave is no bigger. The setup sheet\'s "Waves" row turns them on; the wave names its encounter as it starts. They are listed one by one further down, each to mark.',
+    evidence: ['encounterGate'],
+  },
+  {
+    id: 'ml2-campaign',
+    group: 'built',
+    kind: 'measured',
+    title: 'The campaign is untouched',
+    says: 'A normal run has no convoy policy and no encounters. The twelve stored baseline runs from round 1 still replay to the same state, step for step, with all of this code in the game.',
+    evidence: ['untouched'],
+  },
+  {
+    id: 'ml2-control',
+    group: 'bots',
+    kind: 'measured',
+    title: 'The control holds: commands nobody presses change nothing',
+    says: 'Policy D with a bot that never presses a command gave the same result as policy A on every seed, map and bot. So any difference below comes from the commands being used, not from the harness.',
+    evidence: ['expControl'],
+  },
+  {
+    id: 'ml2-flow',
+    group: 'bots',
+    kind: 'measured',
+    title: 'Today\'s flow slider has one best setting: all the way up',
+    says: 'With the same ships owed, the fastest flow cut the hull lost per ship-minute by a quarter to a half and about doubled the score or more, on every map and for both bots. A choice with one right answer is not a choice. This is the strongest result of the round.',
+    evidence: ['expFlow'],
+  },
+  {
+    id: 'ml2-rush',
+    group: 'bots',
+    kind: 'measured',
+    title: 'The Strait: Rush and Disperse save hull, but pressing at random works as well as pressing well',
+    says: 'Commands lowered the hull lost on most seeds. But a bot pressing them at random did about as well as one timing them, so on this map the commands are close to free. They need a real cost before they are a decision.',
+    evidence: ['expStrait'],
+  },
+  {
+    id: 'ml2-gauntlet',
+    group: 'bots',
+    kind: 'measured',
+    title: 'The Gauntlet: timing matters here',
+    says: 'The same two commands on The Gauntlet helped when timed and did nothing, or harm, when pressed at random. That is the shape a tactical command should have.',
+    evidence: ['expGauntlet'],
+  },
+  {
+    id: 'ml2-hold',
+    group: 'bots',
+    kind: 'measured',
+    title: 'Harbor Mouth: Hold is not right yet',
+    says: 'Hold helped the stronger bot and hurt the weaker one, and formations alone were clearly worse than leaving the convoy alone. Held ships bunch up and then arrive together. Treat Hold as a first draft.',
+    evidence: ['expHarbor'],
+  },
+  {
+    id: 'ml2-enc-bots',
+    group: 'bots',
+    kind: 'measured',
+    title: 'With the encounters on: harder on two maps, and the commands\' gain is less clear',
+    says: 'The whole experiment was run again with the nine encounters in the waves. Two things stand out. The encounters are not yet "the same difficulty, better shaped": hull lost per ship-minute went up on Harbor Mouth and The Gauntlet for both bots, and stayed about level on The Strait. And with planned attacks in the waves the commands\' gain on The Strait mostly went away, and on the other two maps it depends on the bot. So the bots cannot settle the commands; your playtest has to.',
+    evidence: ['expEncA', 'expEncounters'],
+  },
+  {
+    id: 'ml2-drones',
+    group: 'found2',
+    kind: 'found',
+    title: 'By the middle waves most drone swarms are already replaced',
+    says: 'Each new enemy and each aircraft stands in for a whole drone swarm. On The Strait at wave 5 the table asks for 18 drones and about 6 or 7 are launched. So an encounter built on "a big swarm" is, on those waves, most of the drones there are.',
+    evidence: [],
+  },
+  {
+    id: 'ml2-salvo',
+    group: 'found2',
+    kind: 'found',
+    title: 'A submarine always fires a full salvo',
+    says: 'If a wave gives a submarine fewer shells than its salvo, the game tops it up. Taking one shell out of a wave can therefore take out none, and taking the last one takes out the whole salvo. Encounter budgets allow for this.',
+    evidence: [],
+  },
+  {
+    id: 'ml2-close',
+    group: 'found2',
+    kind: 'found',
+    title: 'A shell fired from very close lands behind its ship',
+    says: 'A ballistic shell always flies at least 2.6 seconds, but its aim assumes the real, shorter flight. From a submarine close to the lane it lands where the ship was. Seen in a scripted test; not changed.',
+    evidence: [],
+  },
+];
+
+/** The owner's playtest, in order. Each link opens that test on a phone. */
+export const PLAYTEST = [
+  { text: 'Map Analytics: open it, pick The Strait, look at "Damage" and "Launches", tap a hot square and Watch.', q: 'maplab=1' },
+  { text: 'The Strait as today (policy C). Play a few waves, so the others have something to be compared with.', q: 'lab=map-strait' },
+  { text: 'The Strait with commands (policy D): Rush and Disperse.', q: 'lab=map-strait&convoy=tactical' },
+  { text: 'The Strait with commands and its encounters.', q: 'lab=map-strait&convoy=tactical&enc=1' },
+  { text: 'The Gauntlet with commands and its encounters.', q: 'lab=map-gauntlet&convoy=tactical&enc=1' },
+  { text: 'Harbor Mouth with Hold and its encounters.', q: 'lab=map-harbor&convoy=tactical&enc=1' },
+  { text: 'One map of your choice fully automatic (policy A), to feel what having no convoy control is like.', q: 'lab=map-strait&convoy=auto' },
+];
+
+export const QUESTIONS2 = [
+  {
+    id: 'ml2-policy',
+    text: 'After playing them: which way should the convoy controls go?',
+    why: 'The bots say today\'s flow slider has one right answer, and that map commands can be a real decision on some maps. They cannot say which one feels good under your thumb.',
+    options: [
+      'D: the map steers, I get its one or two commands (recommended to try first)',
+      'C: keep today\'s controls',
+      'B: formations only',
+      'A: no convoy control at all',
+      'Different per map (say which in the note)',
+    ],
+  },
+  {
+    id: 'ml2-flow',
+    text: 'The flow slider: its fastest setting is always best. What should happen to it?',
+    why: 'More ships sooner means less time under fire and more score, with nothing given up.',
+    options: [
+      'Take it out of the player\'s hands where a map has commands (recommended)',
+      'Keep it, but make the fast settings cost something',
+      'Leave it as it is',
+    ],
+  },
+  {
+    id: 'ml2-rush',
+    text: 'Rush and Disperse on The Strait work as well pressed at random. What next?',
+    why: 'A command that pays whenever it is pressed becomes a button to mash on cooldown.',
+    options: [
+      'Raise their cost and test again before I judge them (recommended)',
+      'Let me play them first as they are',
+      'Drop them from The Strait',
+    ],
+  },
+  {
+    id: 'ml2-hold',
+    text: 'Hold on Harbor Mouth is a first draft. What next?',
+    why: 'It helped one bot and hurt the other. The ships it keeps back arrive in a bunch.',
+    options: [
+      'Rework it (release ships one group at a time) and test again (recommended)',
+      'Try a different command for Harbor Mouth (say what in the note)',
+      'Harbor Mouth gets no command',
+    ],
+  },
+  {
+    id: 'ml2-encounters',
+    text: 'The nine encounters: where should they go?',
+    why: 'They are lab-only now. Slice 6 of the plan is where, map by map, something is proposed for the real campaign.',
+    options: [
+      'Tune them from my marks, then propose them map by map in slice 6 (recommended)',
+      'Keep them lab-only for longer and write more of them first',
+      'Drop authored encounters',
+    ],
+  },
+  {
+    id: 'ml2-next',
+    text: 'What should the next session do?',
+    why: 'The plan stops here for your playtest. Nothing from slices 3 to 5 goes near the campaign without your say.',
+    options: [
+      'Read my marks and my playtest logs, fix what I flagged, then slice 6 (recommended)',
+      'More bot experiments first (say what in the note)',
+      'Pause the Map & Convoy Lab',
+    ],
+  },
+];

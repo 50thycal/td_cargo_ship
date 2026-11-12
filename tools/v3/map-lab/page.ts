@@ -16,7 +16,12 @@ import { TEL_SAMPLING, TEL_SCHEMA } from '../../../src/v3/sim/telemetry';
 import { LOG_VERSION, type PlayLog } from '../../../src/v3/sim/playlog';
 import { GRID, LAYERS, PLATFORMS, RAMPS, SCOPES, THIN, buildPreview, gridTop, renderPreview, type MapPreview, type Scope, type ScopeData } from './preview';
 // @ts-expect-error a plain data module, shared with the notes
-import { FINDINGS, GAPS, GROUPS, MAP_ITEMS, QUESTIONS, ROUND } from './review.mjs';
+import { FINDINGS, FINDINGS2, GAPS, GROUPS, GROUPS2, MAP_ITEMS, PLAYTEST, QUESTIONS, QUESTIONS2, ROUND, ROUND2 } from './review.mjs';
+import { existsSync } from 'node:fs';
+import { COMMANDS, CONVOY, MAP_CONVOY, POLICY_NAME, POLICY_ORDER } from '../../../src/v3/data/convoy';
+import { ENCOUNTERS } from '../../../src/v3/data/encounters';
+import { MAPS } from '../../../src/v3/data/maps';
+import { LAYERS as VIEW_LAYERS } from '../../../src/v3/sim/mapAnalytics';
 
 const R = 'tools/v3/map-lab/results';
 const json = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8'));
@@ -31,6 +36,15 @@ const cost = json<Record<string, { usPerStep: number; steps: number; events: num
 const browser = json<{ touches: number; seconds: number; taps: number; launches: number; samples: number; events: number; bytes: number; digestLive: string; digestBrowserReplay: string; digestNodeReplay: string; viewport: string }>(`${R}/browser-run.json`);
 const cross = json<{ runs: number; identical: boolean; base: string; compared: string }>(`${R}/crossbuild.json`);
 const build = json<{ before: { kb: number; gz: number }; after: { kb: number; gz: number }; tests: { before: number; after: number; files: number } }>(`${R}/build.json`);
+
+// Round 2: the convoy experiment (shared waves, and with the encounters on)
+// and the checks of slices 2 to 5.
+interface Stat { mean: number; min: number; max: number }
+interface ExpRow { map: string; persona: string; block: string; policy: string; n: number; finished: number; m: Record<string, Stat>; vsA: Record<string, { mean: number; lower: number; n: number }> | null; problems: number }
+interface Exp { seeds: number; convoyRev: number; encounters: number | null; rows: ExpRow[] }
+const exp = json<Exp>(`${R}/experiment.json`);
+const expEnc: Exp | null = existsSync(`${R}/experiment-encounters.json`) ? json<Exp>(`${R}/experiment-encounters.json`) : null;
+const s25 = json<{ tests: { total: number; files: number; byFile: Record<string, number> }; e2e: Record<string, number>; baseline: { runs: number; same: boolean }; build: { mainKb: number; mainGz: number; viewerKb: number; viewerGz: number } }>(`${R}/slices2-5.json`);
 
 const esc = (s: unknown) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n = (v: number, d = 0) => v.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -106,6 +120,101 @@ const EVIDENCE: Record<string, () => string> = {
     ]),
 };
 
+// ---- Round 2's evidence ------------------------------------------------------
+
+const BOT: Record<string, string> = { you: 'the bot fitted to you, base gun', tryhard: 'the sharper bot, Wide Warhead 3' };
+const FIXED = 'fixed schedule (';
+const FAST = 'fixed schedule at the fastest flow';
+const signed = (v: number, d = 1) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${n(Math.abs(v), d)}`;
+const expRows = (e: Exp, map: string, persona: string, block: string) => e.rows.filter((r) => r.map === map && r.persona === persona && r.block.startsWith(block));
+/** One map's fixed-schedule rows, both bots: what each policy cost against A. */
+function policyTable(e: Exp, map: string, keep: (policy: string) => boolean = () => true): string {
+  return Object.keys(BOT)
+    .map((persona) => {
+      const rows = expRows(e, map, persona, FIXED).filter((r) => keep(r.policy));
+      return `<p class="muted">${esc(MAPS[map as keyof typeof MAPS].name)}, ${esc(BOT[persona])}: the same ships owed under every policy, ${e.seeds} seeds${e.encounters ? ', encounters on' : ''}.</p>${table(
+        ['Policy', 'Hull lost', 'Ships sunk', 'Commands', 'Hull lost against A', 'Seeds better than A'],
+        rows.map((r) => [esc(r.policy), n(r.m.hpShip.mean), n(r.m.sunk.mean, 1), n(r.m.commands.mean, 1), r.vsA ? signed(r.vsA.hull.mean) : 'the comparison', r.vsA ? `${r.vsA.hull.lower} of ${r.n}` : '']),
+      )}`;
+    })
+    .join('');
+}
+const pairs = (e: Exp) => [...new Set(e.rows.map((r) => `${r.map}|${r.persona}`))].map((k) => k.split('|'));
+
+const EVIDENCE2: Record<string, () => string> = {
+  viewer: () =>
+    facts([
+      ['What it draws', (VIEW_LAYERS as { name: string }[]).map((l) => esc(l.name)).join(', ')],
+      ['Checked by', `${s25.tests.byFile['mapAnalytics.test.ts']} unit tests and ${s25.e2e['v3-map-analytics']} checks by touch on a phone-sized screen, all passing`],
+      ['Size', `${n(s25.build.viewerKb, 1)} kB (${n(s25.build.viewerGz, 1)} kB zipped), loaded only when the screen is opened`],
+      ['Outside the game', '<code>npx vite-node tools/v3/map-lab/page.ts -- report.html --logs=a.json,b.json</code> makes the same maps from any log files'],
+    ]),
+  policies: () =>
+    table(
+      ['Policy', 'Flow', 'Formation', 'Commands'],
+      POLICY_ORDER.map((p) => [esc(POLICY_NAME[p]), p === 'current' ? 'your slider' : 'the map sets it', p === 'auto' || p === 'tactical' ? 'the map sets it' : 'your button', p === 'tactical' ? 'the map\'s own' : 'none']),
+    ) +
+    facts([
+      ['Checked by', `${s25.tests.byFile['convoy.test.ts']} unit tests; runs under each policy replay to the same state and the same telemetry`],
+      ['In a log', 'the policy and its rules version are written into the play log, so runs are never compared across policies by mistake'],
+    ]),
+  commands: () =>
+    table(
+      ['Command', 'On', 'What it does', 'What it costs', 'Wait before the next'],
+      (Object.keys(COMMANDS) as (keyof typeof COMMANDS)[]).map((id) => [
+        `<b>${esc(COMMANDS[id].name)}</b>`,
+        Object.entries(MAP_CONVOY).filter(([, m]) => m.commands.includes(id)).map(([map]) => esc(MAPS[map as keyof typeof MAPS].name)).join(', '),
+        esc(COMMANDS[id].says),
+        esc(COMMANDS[id].cost),
+        `${CONVOY[id].cooldown} s`,
+      ]),
+    ) + facts([['Checked by', `${s25.e2e['v3-convoy']} checks by touch at 874 x 402 and 667 x 375: a press gives the command and never fires the gun, a tap on the water fires and never gives a command`]]),
+  encounterGate: () =>
+    facts([
+      ['Encounters', `${ENCOUNTERS.length}: three each on ${[...new Set(ENCOUNTERS.map((e) => MAPS[e.map].name))].map(esc).join(', ')}`],
+      ['Checked by', `${s25.tests.byFile['encounters.test.ts']} unit tests (only enemies and launchers that map has by that wave, a warning before every launch, the wave no bigger, the same every time) and ${s25.e2e['v3-encounters']} checks on a phone-sized screen`],
+      ['Left alone', 'each map\'s own event (waves 11 to 13) and the Siren Field bonus wave play exactly as they do without encounters'],
+    ]),
+  untouched: () =>
+    facts([
+      ['Baseline', `${s25.baseline.runs} stored runs replayed: ${s25.baseline.same ? 'all the same as in round 1' : 'DIFFERENT'}`],
+      ['Unit tests', `${n(s25.tests.total)} in ${s25.tests.files} files, all passing`],
+      ['The game\'s download', `${n(s25.build.mainKb, 1)} kB (${n(s25.build.mainGz, 1)} kB zipped); it was ${n(build.after.kb, 1)} kB after round 1`],
+    ]),
+  expControl: () => {
+    const rows = exp.rows.filter((r) => r.policy.includes('never used'));
+    const same = rows.filter((r) => r.vsA && r.vsA.hull.mean === 0 && r.vsA.sunk.mean === 0 && r.vsA.score.mean === 0).length;
+    return facts([['D with no command pressed, against A', `${same} of ${rows.length} map and bot pairs identical (hull lost, ships sunk and score, ${exp.seeds} seeds each)`]]);
+  },
+  expFlow: () =>
+    table(
+      ['Map', 'Bot', 'Hull lost per ship-minute: map\'s flow', 'Fastest flow', 'Score: map\'s flow', 'Fastest flow'],
+      pairs(exp).map(([map, persona]) => {
+        const a = expRows(exp, map, persona, FIXED).find((r) => r.policy.startsWith('A'))!;
+        const b = expRows(exp, map, persona, FAST).find((r) => r.policy.startsWith('A'))!;
+        return [esc(MAPS[map as keyof typeof MAPS].name), persona === 'you' ? 'fitted to you' : 'sharper', n(a.m.risk.mean, 2), `<b>${n(b.m.risk.mean, 2)}</b>`, n(a.m.score.mean), `<b>${n(b.m.score.mean)}</b>`];
+      }),
+    ) + '<p class="muted">Policy A at the map\'s own flow (step 2) and at the fastest (step 4). Nothing else differs.</p>',
+  expStrait: () => policyTable(exp, 'strait'),
+  expGauntlet: () => policyTable(exp, 'gauntlet'),
+  expHarbor: () => policyTable(exp, 'harbor'),
+  expEncA: () =>
+    expEnc
+      ? table(
+          ['Map', 'Bot', 'Hull lost per ship-minute: shared waves', 'With encounters', 'Ships sunk: shared waves', 'With encounters'],
+          pairs(exp).map(([map, persona]) => {
+            const a = expRows(exp, map, persona, FIXED).find((r) => r.policy.startsWith('A'))!;
+            const b = expRows(expEnc, map, persona, FIXED).find((r) => r.policy.startsWith('A'))!;
+            return [esc(MAPS[map as keyof typeof MAPS].name), persona === 'you' ? 'fitted to you' : 'sharper', n(a.m.risk.mean, 2), `<b>${n(b.m.risk.mean, 2)}</b>`, n(a.m.sunk.mean, 1), `<b>${n(b.m.sunk.mean, 1)}</b>`];
+          }),
+        ) + `<p class="muted">Policy A, the same ${exp.seeds} seeds and the same ships owed, with the shared waves and with the encounters in them.</p>`
+      : '',
+  expEncounters: () =>
+    expEnc
+      ? ['strait', 'gauntlet', 'harbor'].map((map) => policyTable(expEnc, map, (p) => !p.includes('never') && !p.includes('spam'))).join('')
+      : '<p class="muted">This run had not finished when the page was made.</p>',
+};
+
 const KIND: Record<string, string> = { measured: 'Measured', decision: 'Decision', found: 'Found' };
 
 function verdicts(id: string, ok = 'Looks right', change = 'Change'): string {
@@ -113,9 +222,10 @@ function verdicts(id: string, ok = 'Looks right', change = 'Change'): string {
 <label class="note"><span>Notes</span><textarea id="n-${id}" rows="2" placeholder="Anything to change or check"></textarea></label>`;
 }
 
-const findings = (GROUPS as { id: string; name: string; blurb: string }[])
+type Finding = { id: string; group: string; kind: string; title: string; says: string; evidence: string[] };
+const findingsOf = (groups: { id: string; name: string; blurb: string }[], list: Finding[], EVIDENCE: Record<string, () => string>) => groups
   .map((g) => {
-    const items = (FINDINGS as { id: string; group: string; kind: string; title: string; says: string; evidence: string[] }[]).filter((f) => f.group === g.id);
+    const items = list.filter((f) => f.group === g.id);
     return `<div class="group"><div class="ghead"><h3>${esc(g.name)}</h3><p class="muted">${esc(g.blurb)}</p></div>${items
       .map(
         (f) => `<article class="item" data-id="${f.id}" id="${f.id}">
@@ -128,6 +238,36 @@ ${verdicts(f.id)}
       .join('')}</div>`;
   })
   .join('');
+const findings = findingsOf(GROUPS, FINDINGS as Finding[], EVIDENCE);
+const findings2 = findingsOf(GROUPS2, FINDINGS2 as Finding[], EVIDENCE2);
+
+// ---- Round 2: the encounters, one card each, and the playtest ----------------
+
+const ROLE: Record<string, string> = { teach: 'Teaches', combine: 'Combines', escalate: 'Escalates', climax: 'Climax' };
+const from = (b: (typeof ENCOUNTERS)[number]['beats'][number], map: keyof typeof MAPS) =>
+  'base' in b.from ? `base ${b.from.base + 1} of ${MAPS[map].bases.length}` : 'sub' in b.from ? 'a submarine' : 'an aircraft';
+const encounterCards = ENCOUNTERS.map(
+  (e) => `<article class="item" data-id="ml2-enc-${e.id}" id="ml2-enc-${e.id}">
+<header><span class="kind" data-kind="decision">${esc(MAPS[e.map].name)} · waves ${e.waves[0]} to ${e.waves[e.waves.length - 1]} · ${ROLE[e.role]}</span><h4>${esc(e.name)}</h4></header>
+<p>${esc(e.premise)}</p>
+${facts([
+  ['The decision', esc(e.decision)],
+  ['What answers it', esc(e.counters)],
+  ['It works if', esc(e.succeeds)],
+  ['What it sends', e.beats.map((b) => `${b.count} × ${esc(b.kind)} from ${from(b, e.map)}`).join(', then ')],
+])}
+${verdicts(`ml2-enc-${e.id}`)}
+</article>`,
+).join('');
+const playtest = `<ol class="steps">${(PLAYTEST as { text: string; q: string }[]).map((p) => `<li>${esc(p.text)}<br><code>v3.html?${esc(p.q)}</code></li>`).join('')}</ol>`;
+const questionsOf = (list: { id: string; text: string; why: string; options: string[] }[]) => list
+  .map(
+    (q) => `<fieldset class="q" data-q="${q.id}" id="${q.id}"><legend>${esc(q.text)}</legend><p class="muted">${esc(q.why)}</p>
+${q.options.map((o, i) => `<label class="opt"><input type="radio" name="q-${q.id}" id="q-${q.id}-${i}" value="${i}"><span>${esc(o)}</span></label>`).join('')}
+<label class="note"><span>Notes</span><textarea id="qn-${q.id}" rows="2"></textarea></label><span class="saved" aria-live="polite"></span></fieldset>`,
+  )
+  .join('');
+const questions2 = questionsOf(QUESTIONS2);
 
 // ---- The first maps ---------------------------------------------------------
 
@@ -235,8 +375,8 @@ ${q.options.map((o, i) => `<label class="opt"><input type="radio" name="q-${q.id
   )
   .join('');
 
-const ITEM_IDS = [...(FINDINGS as { id: string }[]).map((f) => f.id), ...(MAP_ITEMS as { id: string }[]).map((m) => m.id)];
-const Q_IDS = [...(QUESTIONS as { id: string }[]).map((q) => q.id), 'ml1-else'];
+const ITEM_IDS = [...(FINDINGS2 as { id: string }[]).map((f) => f.id), ...ENCOUNTERS.map((e) => `ml2-enc-${e.id}`), ...(FINDINGS as { id: string }[]).map((f) => f.id), ...(MAP_ITEMS as { id: string }[]).map((m) => m.id)];
+const Q_IDS = [...(QUESTIONS2 as { id: string }[]).map((q) => q.id), 'ml2-else', ...(QUESTIONS as { id: string }[]).map((q) => q.id), 'ml1-else'];
 
 const css = `
 /* Layout: one column of marked items under a sticky bar of three sections. */
@@ -327,6 +467,9 @@ details > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; min-height: 44px; cursor: pointer; }
 .opt input { margin-top: 4px; width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
 .how { font-size: 14px; }
+.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; max-width: 70ch; }
+.steps code { font: 13px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.rule { border: 0; border-top: 1px solid var(--line); margin: 12px 0 0; width: 100%; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 `;
 
@@ -357,8 +500,8 @@ const script = `
   function paintTally() {
     const v = ITEMS.map((id) => (state.reviews[id] || {}).verdict).filter(Boolean);
     const ch = v.filter((x) => x === "change").length;
-    const ans = QS.filter((id) => { const a = state.answers[id] || {}; return a.choice !== undefined && a.choice !== null || (id === "ml1-else" && a.note); }).length;
-    document.getElementById("tally").textContent = v.length + " of " + ITEMS.length + " marked" + (ch ? " (" + ch + " to change)" : "") + " · " + ans + " of " + (QS.length - 1) + " questions answered";
+    const ans = QS.filter((id) => { const a = state.answers[id] || {}; return a.choice !== undefined && a.choice !== null || (/-else$/.test(id) && a.note); }).length;
+    document.getElementById("tally").textContent = v.length + " of " + ITEMS.length + " marked" + (ch ? " (" + ch + " to change)" : "") + " · " + ans + " of " + QS.filter((id) => !/-else$/.test(id)).length + " questions answered";
   }
   function paintAll() { ITEMS.forEach(paintItem); QS.forEach(paintQ); paintTally(); }
 
@@ -482,18 +625,33 @@ const html = `<title>Map & Convoy Lab</title>
 <style>${css}</style>
 <main class="wrap">
   <header class="intro">
-    <div class="eyebrow">Straitwatch V3 · Map &amp; Convoy Lab · round ${ROUND.n} · ${ROUND.date}</div>
-    <h1>The baseline and the telemetry</h1>
-    <p class="lede">Slices 0 and 1 of the plan are built: twelve fixed runs to compare against, and a record of where and why damage happens. Nothing about combat, the convoy controls or the maps was changed. Mark each result, look at the first maps, and answer the questions. The next session reads your marks before it builds the heatmap viewer.</p>
+    <div class="eyebrow">Straitwatch V3 · Map &amp; Convoy Lab · round ${ROUND2.n} · ${ROUND2.date}</div>
+    <h1>The viewer, the convoy and the encounters</h1>
+    <p class="lede">Slices 2 to 5 of the plan are built, all inside the Test Lab: a heatmap viewer, four ways to steer the convoy, three map commands, and nine authored encounters. The campaign plays exactly as before. Play the tests below on your phone, mark each result and each encounter, and answer the six questions. Round 1 is kept underneath.</p>
     <p class="dbnote" id="dbnote">Connecting to the review store…</p>
   </header>
-  <nav class="bar" aria-label="Sections"><a href="#results">Results</a><a href="#maps">First maps</a><a href="#questions">Questions</a><span class="tally mono" id="tally">0 of ${ITEM_IDS.length} marked</span></nav>
-  <section id="results" aria-labelledby="h-results"><h2 id="h-results">Results</h2>${findings}</section>
-  <section id="maps" aria-labelledby="h-maps"><h2 id="h-maps">First maps</h2>
+  <nav class="bar" aria-label="Sections"><a href="#new">Round 2</a><a href="#playtest">Playtest</a><a href="#encounters">Encounters</a><a href="#questions2">Questions</a><a href="#results">Round 1</a><span class="tally mono" id="tally">0 of ${ITEM_IDS.length} marked</span></nav>
+  <section id="new" aria-labelledby="h-new"><h2 id="h-new">Round 2: what was built and what it showed</h2>${findings2}</section>
+  <section id="playtest" aria-labelledby="h-playtest"><h2 id="h-playtest">Your playtest</h2>
+    <p>In this order, a few waves each. Open the Test Lab, pick the map under "Maps", and use "Setup" to choose the Convoy and Waves rows; or add the ending shown to the game's address. Use the Note button whenever something feels wrong: notes go into the log with the moment they were made.</p>
+    ${playtest}
+  </section>
+  <section id="encounters" aria-labelledby="h-encounters"><h2 id="h-encounters">The nine encounters</h2>
+    <p>Each is a first draft to react to. "Looks right" means keep going with it; "Change" with a note says what to fix.</p>
+    <div class="group">${encounterCards}</div>
+  </section>
+  <section id="questions2" aria-labelledby="h-questions2"><h2 id="h-questions2">Questions</h2>
+    ${questions2}
+    <fieldset class="q" data-q="ml2-else" id="ml2-else"><legend>Anything else?</legend><label class="note"><span>Notes</span><textarea id="qn-ml2-else" rows="3"></textarea></label><span class="saved" aria-live="polite"></span></fieldset>
+  </section>
+  <hr class="rule">
+  <p class="eyebrow">Round ${ROUND.n} · ${ROUND.date} · ${esc(ROUND.name)}</p>
+  <section id="results" aria-labelledby="h-results"><h2 id="h-results">Round 1: results</h2>${findings}</section>
+  <section id="maps" aria-labelledby="h-maps"><h2 id="h-maps">Round 1: first maps</h2>
     <p>The baseline's own telemetry, drawn on each map. These are bots (four runs a map), so they show that the record is right, not yet how a person plays: a bot sees in the dark and reacts faster. They are a fixed first look, not the viewer. Pick the waves and one layer at a time.</p>
     ${maps}
   </section>
-  <section id="questions" aria-labelledby="h-questions"><h2 id="h-questions">Questions</h2>
+  <section id="questions" aria-labelledby="h-questions"><h2 id="h-questions">Round 1: questions</h2>
     ${questions}
     <fieldset class="q" data-q="ml1-else" id="ml1-else"><legend>Anything else?</legend><label class="note"><span>Notes</span><textarea id="qn-ml1-else" rows="3"></textarea></label><span class="saved" aria-live="polite"></span></fieldset>
   </section>

@@ -106,6 +106,8 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
 
 From 2026-11-12 a Test Lab run also records the Map & Convoy Lab's telemetry as it is played ([v3-map-lab-slice0-1.md](v3-map-lab-slice0-1.md)): where each attack was launched, every hit with what dealt it, pickups, taps and ship positions. It stays on the device and is not part of the log (the log is unchanged, and any log replays to it: `npm run v3:map-lab -- telemetry <log.json>`). `?tel=0` turns it off. (This file still describes the lab as of round 4; the hub is at round 8 with 98 cards.)
 
+Also from 2026-11-12 ([v3-map-lab-slices2-5.md](v3-map-lab-slices2-5.md)): the front page has a **Map Analytics** button (heatmaps of the runs kept on the device), and a test's Setup sheet has a **Convoy** row (today's controls, automatic, formations only, or the map's commands) and, on The Strait, The Gauntlet and Harbor Mouth, a **Waves** row (the shared waves or the map's authored encounters). Both are written into the test's log.
+
 ## Checks
 
 - `tests/v3/lab.test.ts`:
