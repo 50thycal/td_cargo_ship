@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, boostLevel, lanceCharge, pickupLife, raidWarning, reticleVisible, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
@@ -678,7 +678,8 @@ function drawAegis(ctx: CanvasRenderingContext2D, g: Game): void {
       ctx.restore();
     }
   };
-  const w = g.weapon?.id === 'aegis' ? g.weapon : null;
+  // Loaded, or brought by Wild Card (Test Lab round 8).
+  const w = held(g, 'aegis');
   if (!w) return;
   const k = w.level - 1;
   for (const s of g.ships) if (s.aegis) one(s.x, s.y - 36, s.aegis, AB.aegis.missiles[k]);

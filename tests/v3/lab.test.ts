@@ -45,7 +45,8 @@ describe('the hub\'s cards', () => {
     // the reworked weapons first.
     expect(ids.slice(0, 2)).toEqual(['ev-rush', 'ev-decoy-storm']);
     expect(LAB_CARDS.filter((c) => c.kind === 'enemy').slice(0, 3).map((c) => c.id)).toEqual(['diveBomber', 'siege', 'rocketTruck']);
-    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield']);
+    // Round 8's reworked weapons first, then round 5's.
+    expect(LAB_CARDS.filter((c) => c.kind === 'weapon').slice(0, 13).map((c) => c.weapon)).toEqual(['focus', 'wildCard', 'grapnel', 'overdrive', 'frigate', 'droneScreen', 'aegis', 'well', 'cutter', 'gunships', 'supplyRun', 'bomberWing', 'shield']);
     for (const c of LAB_CARDS) {
       expect(c.kit, c.id).toHaveLength(3);
       for (const w of c.kit) expect(ABILITY_ORDER, c.id).toContain(w);
@@ -318,8 +319,13 @@ describe('test rounds and card versions', () => {
     expect(LAB_CHANGES.decoy!.some((c) => c.round === 5)).toBe(false);
     // Round 5 (the player's round 4 weapon notes): a line for every weapon
     // changed, and nothing for the ones kept as they were.
-    const changed = ['aegis', 'well', 'cutter', 'grapnel', 'droneScreen', 'focus', 'gunships', 'frigate', 'supplyRun', 'bomberWing', 'overdrive', 'wildCard', 'shield'];
+    const changed = ['aegis', 'well', 'cutter', 'gunships', 'supplyRun', 'bomberWing', 'shield'];
     for (const id of changed) expect(cardRev(`w-${id}`), id).toBe(5);
+    // Round 8 (the player's round 7 weapon notes): a line for each weapon
+    // whose play changed; the text-only rewrite (every card) asks for no
+    // retest, so Gunship Pair stays at 5.
+    for (const id of ['grapnel', 'droneScreen', 'focus', 'frigate', 'overdrive', 'wildCard']) expect(cardRev(`w-${id}`), id).toBe(8);
+    expect(LAB_ROUNDS[LAB_ROUNDS.length - 1]).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
     expect(labCard('w-aegis')!.name).toBe('Point Defense');
   });

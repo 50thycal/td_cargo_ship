@@ -86,7 +86,13 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
  *      ships, the Scavenger locks pickups instead of taking them, the
  *      Spotter flies turns and calls shells from off the map, slower
  *      Hydras, Hydra Bloom without its line, Run the Canal cut down, and
- *      Beacon Strike in place of Undertow on Dunmar Crossing. */
+ *      Beacon Strike in place of Undertow on Dunmar Crossing.
+ *      Also round 8's weapon notes: Focus slows time while its button is
+ *      held ('h' commands, no long-press any more), Overdrive level 2 lasts
+ *      longer instead of refilling, Wild Card's pickup brings a random
+ *      passive from level 2, a thrown Grapnel ball bursts on the first
+ *      threat it hits, idle drones fly home, a new Frigate drop sends a
+ *      fresh set in, and a lab draft always deals the tested weapon first. */
 export const LOG_VERSION = 20;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */

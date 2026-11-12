@@ -107,21 +107,21 @@ const ENEMIES: LabCard[] = [
   enemy('bodyguard', 'Do you notice the guards taking your shots?', ['flak', 'tesla', 'railgun']),
 ];
 
-/** Weapons changed since they were last played: first (Test Lab round 5:
- *  the player's round-4 weapon notes). */
+/** Weapons changed since they were last played: first (Test Lab round 8:
+ *  the player's round-7 weapon notes; then round 5's, from round 4). */
 const REWORKED: Partial<Record<AbilityId, string>> = {
+  focus: 'Now a button on the left edge: hold it with your left thumb to slow time, tap anywhere else to shoot. Is the meter clear?',
+  wildCard: 'From level 2 each pickup also brings one random passive (frigates, gunships, drones...) for 8 s. Fun?',
+  grapnel: 'A thrown threat now bursts on the first threat it hits; a tough one keeps its health and flies on. Right?',
+  overdrive: 'Level 2 now lasts 18 s (was a refill you never saw). Worth the level?',
+  frigate: 'A new drop while they sail off: they keep going and a fresh pair sails in. Smoother?',
+  droneScreen: 'Out of targets, the drones fly home and land on the deck. Better?',
   aegis: 'Renamed Point Defense: does the name fit?',
   well: 'Missiles, drones and small boats are pulled in; aircraft and other big ones only slowed until MAX. Consistent now?',
   cutter: 'Keep your finger down and it keeps cutting, a round per stretch: does it feel right?',
-  grapnel: 'Hooks anything on screen from level 1; level 2 swings faster and smacks harder. Playable now?',
-  droneScreen: 'The drones wait on deck until something is on screen: better?',
-  focus: 'A quick tap is just a shot; press and hold to slow time. Comfortable?',
   gunships: 'Now Apache-style, nose on the target when they fire, and a new drop calls a leaving pair back: right?',
-  frigate: 'A new drop while they sail off turns them round: do they come back cleanly?',
   supplyRun: 'No magnet: tap the crates you want; they can hold your weapons, boosts and (Airdrop) a Nuke. Better?',
   bomberWing: 'Hits aircraft and subs too, and you see the bomber cross before the bomb lands: does it read?',
-  overdrive: 'Set it to MAX in Setup: every shot fires twice, two shells, two beams, side by side. Clear?',
-  wildCard: 'Now a weapon: it takes over the gun like any other. Right?',
   shield: 'New levels: a round back per block at level 2; 18 s and Reflect at MAX. Worth a slot?',
 };
 
@@ -335,15 +335,36 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   // weapon notes. (Overclock and Time Warp were cut: their cards are gone.)
   'w-aegis': [{ round: 5, what: 'Renamed Point Defense' }],
   'w-well': [{ round: 5, what: 'Pulls missiles, drones and small boats; only slows big ones until MAX' }],
-  'w-grapnel': [{ round: 5, what: 'Reaches the whole screen from level 1; level 2 swings faster and smacks for 3' }],
-  'w-droneScreen': [{ round: 5, what: 'Drones wait on deck until a threat is on screen' }],
-  'w-focus': [{ round: 5, what: 'A quick tap is a shot; slow motion only after a 0.3 s hold' }],
-  'w-frigate': [{ round: 5, what: 'A new drop turns leaving frigates round instead of replacing them' }],
+  'w-grapnel': [
+    { round: 5, what: 'Reaches the whole screen from level 1; level 2 swings faster and smacks for 3' },
+    { round: 8, what: 'A thrown threat bursts on the first threat it hits; a tough one keeps its health and flies on' },
+  ],
+  'w-droneScreen': [
+    { round: 5, what: 'Drones wait on deck until a threat is on screen' },
+    { round: 8, what: 'Drones with nothing left to ram fly home and land on the deck' },
+  ],
+  'w-focus': [
+    { round: 5, what: 'A quick tap is a shot; slow motion only after a 0.3 s hold' },
+    { round: 8, what: 'A button on the left edge: hold it to slow time; every tap elsewhere is a shot' },
+  ],
+  'w-frigate': [
+    { round: 5, what: 'A new drop turns leaving frigates round instead of replacing them' },
+    { round: 8, what: 'A new drop while frigates sail off: they keep going and a fresh set sails in' },
+  ],
   'w-supplyRun': [{ round: 5, what: 'No magnet; crates can hold your weapons and boosts, and Airdrop now and then a Nuke' }],
   'w-bomberWing': [{ round: 5, what: 'Bombs aircraft and subs too; on screen before its bomb lands, as it passes over' }],
-  'w-overdrive': [{ round: 5, what: 'MAX: every shot visibly fires twice (two shells, two beams)' }],
-  'w-wildCard': [{ round: 5, what: 'Now a weapon that takes over the gun, not a boost' }],
+  'w-overdrive': [
+    { round: 5, what: 'MAX: every shot visibly fires twice (two shells, two beams)' },
+    { round: 8, what: 'Level 2 lasts 18 s (was a rack refill at the end)' },
+  ],
+  'w-wildCard': [
+    { round: 5, what: 'Now a weapon that takes over the gun, not a boost' },
+    { round: 8, what: 'From level 2 each pickup also brings one random passive for 8 s; taps fire actives only' },
+  ],
   'w-shield': [{ round: 5, what: 'New levels: no strafe block; a round back per block, then 18 s and Reflect' }],
+  // Round 8 (docs/design/v3-lab-round8-weapons.md): the player's round-7
+  // weapon notes. (Every weapon's level text was rewritten to say what it
+  // does directly; a text-only change asks for no retest.)
   // Round 4 (docs/design/v3-lab-round4.md): the player's notes on Spotter +
   // Siege Battery, Dual Wield and Cadence.
   'w-dualWield': [{ round: 4, what: 'A second Dual Wield restarts both hands; another boost no longer empties them' }],

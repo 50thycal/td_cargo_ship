@@ -5262,3 +5262,110 @@ a.v3-lab-page {
   border-left: 2px solid var(--gold);
   pointer-events: none;
 }
+
+/* Focus's button (Test Lab round 8: "a button you hold on the left side of
+ * the screen with your left thumb"): bottom left of the battlefield, clear
+ * of the left rail and above the lab bar, thumb-sized. The ring is the slow
+ * motion still banked; the thin outer edge, the boost's own clock. */
+.v3-focus-btn {
+  --focus: #93c5fd;
+  --bank: 1;
+  --left: 1;
+  position: absolute;
+  z-index: 5;
+  left: calc(var(--map-left, 0px) + 12px);
+  bottom: calc(var(--sa-b) + 18px);
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: none;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  background: conic-gradient(rgb(245 241 232 / 0.85) calc(var(--left) * 360deg), rgb(245 241 232 / 0.12) 0);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.45);
+}
+
+.playing.lab-on .v3-focus-btn {
+  bottom: calc(var(--sa-b) + var(--lab-bar-h) + 14px);
+}
+
+.v3-focus-btn.on {
+  display: grid;
+}
+
+.v3-focus-ring {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--focus) calc(var(--bank) * 360deg), rgb(147 197 253 / 0.16) 0);
+  pointer-events: none;
+}
+
+.v3-focus-face {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: rgb(7 13 18 / 0.9);
+  border: 1px solid rgb(147 197 253 / 0.35);
+  color: var(--ink);
+  pointer-events: none;
+  transition: transform 80ms ease-out, background 80ms;
+}
+
+.v3-focus-secs {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.v3-focus-face small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--focus);
+}
+
+.v3-focus-btn.held .v3-focus-face {
+  transform: scale(0.93);
+  background: rgb(30 58 95 / 0.95);
+}
+
+.v3-focus-btn.empty {
+  opacity: 0.55;
+}
+
+.v3-focus-btn.empty .v3-focus-secs {
+  font-size: 12px;
+}
+
+/* The Test Lab's draft: the weapon under test says so (round 8). */
+.v3-card-testing {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #071119;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.v2-card[data-testing] {
+  box-shadow: 0 0 0 2px var(--gold), 0 6px 20px rgb(245 197 66 / 0.25);
+}

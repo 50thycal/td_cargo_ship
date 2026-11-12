@@ -610,30 +610,20 @@ describe('Wild Card (a weapon since Test Lab round 5)', () => {
 });
 
 describe('Focus', () => {
-  it('a quick tap never slows time (Test Lab round 5); a hold slows it only once held 0.3 s', () => {
+  it('the button slows time from the step it goes down (Test Lab round 8: no long-press) until it comes up', () => {
     const g = quietGame();
     pickUp(g, 'focus', 1);
-    expect(AB.focus.hold).toBe(0.3);
-    // A tap: down for 0.2 s.
-    let t = g.t;
     focusHold(g, true);
-    expect(g.focusing).toBe(false);
+    let t = g.t;
+    step(g, DT);
+    expect(g.focusing).toBe(true);
+    expect(g.t - t).toBeCloseTo(DT * AB.focus.scale[0], 6);
     run(g, 0.2);
     focusHold(g, false);
-    expect(g.t - t).toBeCloseTo(0.2, 3);
-    expect(g.boost!.bank).toBe(AB.focus.bank[0]);
-    // A hold: normal speed for the first 0.3 s, then slow.
-    focusHold(g, true);
-    t = g.t;
-    run(g, 0.3);
-    // (the step that reaches 0.3 s is already slow)
-    expect(g.t - t).toBeGreaterThan(0.3 - DT);
-    expect(g.focusing).toBe(true);
-    t = g.t;
-    run(g, 1);
-    expect(g.t - t).toBeCloseTo(AB.focus.scale[0], 2);
-    focusHold(g, false);
     expect(g.focusing).toBe(false);
+    t = g.t;
+    step(g, DT);
+    expect(g.t - t).toBeCloseTo(DT, 6);
   });
 
   it('time slows only while a finger is held down, spending the bank in real time', () => {
@@ -643,7 +633,6 @@ describe('Focus', () => {
     run(g, 1);
     expect(g.t - t).toBeCloseTo(1, 2);
     focusHold(g, true);
-    run(g, AB.focus.hold);
     t = g.t;
     run(g, 2);
     expect(g.t - t).toBeCloseTo(2 * AB.focus.scale[0], 2);
@@ -659,7 +648,6 @@ describe('Focus', () => {
     pickUp(g, 'focus', 1);
     const shots = g.shots;
     focusHold(g, true);
-    run(g, AB.focus.hold);
     expect(g.shots).toBe(shots);
     expect(g.focusing).toBe(true);
     g.ammo = 0;
@@ -690,7 +678,6 @@ describe('Focus', () => {
     const g = quietGame();
     pickUp(g, 'focus', 3);
     focusHold(g, true);
-    run(g, AB.focus.hold);
     const th = addThreat(g, { x: 800, y: 300, hp: 5 });
     tap(g, 800, 300, 30);
     run(g, 3);
@@ -723,17 +710,26 @@ describe('Focus', () => {
 });
 
 describe('Overdrive (was a power-up)', () => {
-  it('rounds cost nothing; level 2 hands the rack back full', () => {
+  it('rounds cost nothing; level 2 lasts 18 s (Test Lab round 8: it used to refill a rack that was already full)', () => {
     const g = quietGame();
     pickUp(g, 'overdrive', 1);
     g.ammo = 2;
     for (let k = 0; k < 5; k++) shoot(g, addThreat(g, { x: 300 + k * 200, y: 300 }), 0.1);
     expect(g.ammo).toBeGreaterThanOrEqual(2);
+    expect(g.boost!.t).toBeLessThanOrEqual(WEAPON.time);
     const h = quietGame();
     pickUp(h, 'overdrive', 2);
+    expect(h.boost!.t).toBeCloseTo(WEAPON.time * AB.overdrive.time[1], 6);
+    expect(WEAPON.time * AB.overdrive.time[1]).toBe(18);
+    run(h, WEAPON.time + 1);
+    expect(h.boost?.id).toBe('overdrive');
+    // No refill: an empty rack reloads at the usual pace.
     h.ammo = 0;
-    run(h, WEAPON.time + 0.1);
-    expect(h.ammo).toBe(h.stats.rack);
+    h.reloadT = 0;
+    step(h, DT);
+    expect(h.ammo).toBe(0);
+    run(h, 5.5);
+    expect(h.boost).toBeNull();
   });
 
   it('Hyper Overdrive: every shot fires twice', () => {
