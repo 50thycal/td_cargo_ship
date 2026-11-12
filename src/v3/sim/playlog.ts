@@ -11,6 +11,7 @@ import type { ArmoryLevels } from '../data/armory';
 import type { LabSetup, LabStats } from './lab';
 import type { EventRecord } from './events';
 import {
+  applyEncounters,
   applyFreePlay,
   applyLab,
   continueEndless,
@@ -36,6 +37,7 @@ import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volle
 import { attachTelemetry, type TelHeader, type TelMode, type Telemetry } from './telemetry';
 import { applyConvoy, convoyCommand, type CommandResult } from './convoy';
 import type { CommandId, ConvoySetup } from '../data/convoy';
+import type { EncounterSetup } from '../data/encounters';
 
 /** Bump when the log format or sim rules change in a way that breaks replay.
  *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
@@ -196,6 +198,10 @@ export interface PlayLog {
    *  log with it, or with a 'k' command, needs a build that has them; a
    *  log without replays as before, so the version stays. */
   convoy?: ConvoySetup;
+  /** The Map & Convoy Lab: the map's authored encounters were on (absent:
+   *  the shared waves alone, as every campaign run). Applied after the lab
+   *  card, before the convoy policy. */
+  encounters?: EncounterSetup;
   /** The verdict the player gave after a Test Lab run, and the evidence
    *  the game counted (none of it touches replay). */
   labResult?: LabResult;
@@ -492,6 +498,7 @@ export function replayTo(log: PlayLog, lastStep: number, commands: number, opts:
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
   if (log.freePlay) applyFreePlay(g, log.freePlay);
   if (log.lab) applyLab(g, log.lab);
+  if (log.encounters) applyEncounters(g, log.encounters);
   if (log.convoy) applyConvoy(g, log.convoy);
   if (opts.telemetry) logTelemetry(g, log, 'replay');
   const cmds = log.commands.slice(0, commands);

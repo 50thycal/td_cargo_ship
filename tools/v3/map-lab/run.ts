@@ -30,8 +30,7 @@ import { CONVOY_REV, mapConvoy } from '../../../src/v3/data/convoy';
 import { cohort, paired, runTrial, type Cohort, type TrialSpec } from '../../../src/v3/sim/convoyLab';
 import { REFERENCE_MAPS } from '../../../src/v3/sim/mapLab';
 
-/** Slice 5's encounters (off until then). */
-const ENCOUNTER_REV = 0;
+import { ENCOUNTER_REV } from '../../../src/v3/data/encounters';
 
 const DIR = 'tests/v3/fixtures/map-lab';
 const args = process.argv.slice(2).filter((a) => a !== '--');

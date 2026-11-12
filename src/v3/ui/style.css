@@ -4604,6 +4604,19 @@ a.v3-lab-page {
   font-size: 20px;
 }
 
+/* A landscape phone: the sheet's rows (the convoy policy and the map's
+   waves joined them) and its two buttons on one screen. */
+@media (max-height: 430px) {
+  .v3-lab-sheet {
+    gap: 4px;
+  }
+
+  .v3-lab-sheet h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
 .v3-lab-line {
   display: grid;
   grid-template-columns: 90px auto auto 1fr;

@@ -5,6 +5,7 @@
 // game log, which reaches Claude).
 
 import { COMMANDS, mapConvoy, type ConvoyPolicy } from '../data/convoy';
+import { ENCOUNTER_MAPS } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { evidenceLines, labCountText, type LabStats } from '../sim/lab';
@@ -440,6 +441,10 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
       ),
     ),
   );
+  // The map's authored encounters in place of part of its shared waves
+  // (the three reference maps; an event card plays its event either way).
+  if (!card.event && (ENCOUNTER_MAPS as string[]).includes(card.map))
+    sheet.append(row('Waves', seg<'shared' | 'authored'>(s.encounters ? 'authored' : 'shared', [['shared', 'Shared'], ['authored', 'Authored encounters']], (v) => (s.encounters = v === 'authored'), 'labEncounters')));
   const acts = el('div', 'v3-lab-sheet-acts');
   const go = button('Restart with this', 'v2-btn primary', () => apply(s));
   go.dataset.labApply = '1';

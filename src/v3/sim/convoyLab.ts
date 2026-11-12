@@ -16,6 +16,7 @@ import type { ArmoryLevels } from '../data/armory';
 import { RULES } from '../data/config';
 import type { MapId } from '../data/maps';
 import type { PilotSkill } from './convoyPilot';
+import type { EncounterSetup } from '../data/encounters';
 import { ALL, summarize, type RunData } from './mapAnalytics';
 import { PERSONAS, playMimic } from './mimic';
 import type { PlayLog } from './playlog';
@@ -36,6 +37,8 @@ export interface TrialSpec {
   undefended?: boolean;
   firstWave?: number;
   tune?: ConvoySetup['tune'];
+  /** Authored encounters on (slice 5), or the shared waves alone. */
+  encounters?: EncounterSetup;
 }
 
 export interface Trial {
@@ -73,7 +76,7 @@ export interface Trial {
 }
 
 export function specName(s: TrialSpec): string {
-  return `${s.map}/${s.policy}${s.policy === 'tactical' ? `:${s.pilot}` : ''}/${s.obligation}${s.flow !== undefined ? `/flow${s.flow}` : ''}${s.undefended ? '/undefended' : ''}/${s.persona}`;
+  return `${s.map}/${s.policy}${s.policy === 'tactical' ? `:${s.pilot}` : ''}/${s.obligation}${s.flow !== undefined ? `/flow${s.flow}` : ''}${s.undefended ? '/undefended' : ''}${s.encounters ? `/enc${s.encounters.rev}` : ''}/${s.persona}`;
 }
 
 /** One run under a spec: played by the bot, replayed with telemetry. */
@@ -88,6 +91,7 @@ export function runTrial(spec: TrialSpec): Trial {
     undefended: spec.undefended,
     // Equal obligations: no run ends on ships lost.
     ...(spec.obligation === 'fixed' ? { tempo: { waveLen: 1, stride: 1, lossLimit: 999 } } : {}),
+    ...(spec.encounters ? { encounters: spec.encounters } : {}),
     build: 'convoy-lab',
   });
   const g = replay(log, { telemetry: true });

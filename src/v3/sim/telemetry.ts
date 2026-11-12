@@ -115,6 +115,8 @@ export interface TelHeader {
   /** A Test Lab run: its card, its length, and the card's version and
    *  test round (the lab's own versioning). */
   lab?: { card: string; length?: string; rev?: number; round?: number };
+  /** The authored encounters' revision, when they were on. */
+  encounters?: number;
   freePlay?: boolean;
   sampling: { ship: number; threat: number; dt: number };
 }
@@ -161,6 +163,8 @@ export type TelEvent = Base &
         raid?: number;
         paired?: 1;
         cargo?: 1;
+        /** The authored encounter that sent it (data/encounters.ts). */
+        enc?: string;
         /** The same threat back on the board (a siege gun up from its
          *  hatch, a Spotter back for its next turn). */
         back?: 1;
@@ -279,7 +283,7 @@ export type TelEvent = Base &
     | { k: 'mark+'; id: number; kind: FoeMark['kind']; x: number; y: number; dur: number; link?: number }
     | { k: 'mark-'; id: number; kind: FoeMark['kind']; x: number; y: number; done: 0 | 1 }
     | { k: 'warn'; what: 'raid' | 'aircraft'; x?: number; y?: number; theme?: string; bases?: number[]; lead: number; raid?: number; kind?: ThreatKind }
-    | { k: 'env'; what: 'lock' | 'tide' | 'post' | 'base' | 'flare' | 'shield'; i?: number; st: string | number }
+    | { k: 'env'; what: 'lock' | 'tide' | 'post' | 'base' | 'flare' | 'shield' | 'encounter'; i?: number; st: string | number }
     | { k: 'audit'; what: 'hp' | 'ship' | 'pickup' | 'threat' | 'carrier' | 'post'; id: number; want?: number; got?: number }
   );
 
@@ -391,6 +395,9 @@ export function contentHash(): string {
 export function attachTelemetry(g: Game, meta: TelMeta): Telemetry {
   const tel = new Telemetry(g, meta, contentHash());
   g.tel = tel;
+  // Attached after the first wave was planned: its authored encounters are
+  // told of now, as later waves' are when they are planned.
+  if (g.enc && g.enc.wave === g.wave) for (const id of g.enc.now) tel.encounter(g, id);
   return tel;
 }
 
@@ -465,6 +472,7 @@ export class Telemetry {
         formations: Object.keys(FORMATIONS) as FormationId[],
       },
       ...(meta.lab ? { lab: meta.lab } : {}),
+      ...(g.enc ? { encounters: g.enc.setup.rev } : {}),
       ...(g.freePlay ? { freePlay: true } : {}),
       sampling: { ship: TEL_SAMPLING.ship, threat: TEL_SAMPLING.threat, dt: 1 / 60 },
     };
@@ -571,6 +579,7 @@ export class Telemetry {
       if (from !== undefined) e.from = from;
       if (th.paired) e.paired = 1;
       if (th.cargo) e.cargo = 1;
+      if (th.enc) e.enc = th.enc;
       if (th.kind === 'ballistic') {
         e.ix = r1(th.ix);
         e.iy = r1(th.iy);
@@ -1035,6 +1044,12 @@ export class Telemetry {
       ships: g.ships.filter((s) => !s.vip).length,
       next: r3(Math.max(0, g.spawnT)),
     });
+  }
+
+  /** An authored encounter is in this wave (data/encounters.ts). */
+  encounter(g: Game, id: string): void {
+    this.sync(g);
+    this.push({ ...this.base(g), k: 'env', what: 'encounter', st: id });
   }
 
   /** An aircraft's warning arrow goes up. */

@@ -54,7 +54,7 @@ import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Contr
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
-import { applyLab } from '../sim/game';
+import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
@@ -97,6 +97,7 @@ import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetr
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, CONVOY_REV, POLICY_ORDER, type CommandId, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
 import { applyConvoy, commandState, convoyCommands, formationLocked } from '../sim/convoy';
+import { ENCOUNTERS, ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -1411,6 +1412,10 @@ export class App {
           // The wave's bell is the sim's own cue (wave.start).
           this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', { icon: 'wave' }, null);
           if (hint) this.showBanner(...hint, { ...HINT, icon: 'info' });
+          // The Map & Convoy Lab: this wave's authored encounter, by name,
+          // so a tester knows which one they are judging.
+          const enc = g.enc?.wave === ev.wave ? ENCOUNTERS.find((e) => e.id === g.enc!.now[0]) : undefined;
+          if (enc) this.showBanner(`ENCOUNTER: ${enc.name.toUpperCase()}`, enc.premise, { icon: 'info' }, null);
           // Playthrough round: the first map teaches the two left-rail
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
@@ -2218,7 +2223,10 @@ export class App {
     const asked = !setup ? new URLSearchParams(location.search).get('convoy') : null;
     if (asked && (POLICY_ORDER as string[]).includes(asked)) s.convoy = asked as ConvoyPolicy;
     const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
-    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND }, convoy);
+    // The map's authored encounters, from the sheet or a link's ?enc=1.
+    if (!setup && new URLSearchParams(location.search).get('enc') === '1') s.encounters = true;
+    const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
+    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND }, convoy, encounters);
     const bar = labBar(card, {
       bring: () => this.rec?.bring(),
       note: () => this.openNote('rail'),
@@ -2963,7 +2971,7 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null): void {
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     const params = new URLSearchParams(location.search);
@@ -2981,7 +2989,9 @@ export class App {
     this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
     if (freePlay) applyFreePlay(this.game, freePlay);
     if (lab) applyLab(this.game, lab);
-    // The Map & Convoy Lab: the convoy policy this test is played under.
+    // The Map & Convoy Lab: the map's authored encounters, then the convoy
+    // policy this test is played under (the order a replay applies them in).
+    if (encounters) applyEncounters(this.game, encounters);
     if (convoy) applyConvoy(this.game, convoy);
     if (!lab) this.endLabRun();
     this.rec = new Recorder(this.game, {
@@ -2990,6 +3000,7 @@ export class App {
       firstWave: skip,
       ...(freePlay ? { freePlay } : {}),
       ...(lab ? { lab } : {}),
+      ...(encounters ? { encounters } : {}),
       ...(convoy ? { convoy } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: this.deviceInfo(),

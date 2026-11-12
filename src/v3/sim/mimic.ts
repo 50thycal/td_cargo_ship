@@ -14,13 +14,14 @@
 import { applyConvoy } from './convoy';
 import { ConvoyPilot, type PilotSkill } from './convoyPilot';
 import type { ConvoySetup } from '../data/convoy';
+import type { EncounterSetup } from '../data/encounters';
 import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, loadout, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
 
@@ -567,6 +568,7 @@ export interface RunOpts {
   armory?: ArmoryLevels;
   freePlay?: FreePlaySetup;
   convoy?: ConvoySetup;
+  encounters?: EncounterSetup;
   pilot?: PilotSkill;
   undefended?: boolean;
 }
@@ -589,7 +591,9 @@ export class BotRun {
   ) {
     const g = (this.game = createGame(map, seed, opts.firstWave ?? 1, opts.tempo, opts.armory));
     if (opts.freePlay) applyFreePlay(g, opts.freePlay);
-    // The Map & Convoy Lab: a convoy policy, and who gives its commands.
+    // The Map & Convoy Lab: authored encounters, a convoy policy, and who
+    // gives its commands.
+    if (opts.encounters) applyEncounters(g, opts.encounters);
     if (opts.convoy) applyConvoy(g, opts.convoy);
     if (opts.pilot && opts.pilot !== 'never') this.pilot = new ConvoyPilot(opts.pilot, seed);
     this.shoots = !opts.undefended;
@@ -599,6 +603,7 @@ export class BotRun {
       firstWave: opts.firstWave ?? 1,
       ...(opts.freePlay ? { freePlay: opts.freePlay } : {}),
       ...(opts.tempo ? { tempo: opts.tempo } : {}),
+      ...(opts.encounters ? { encounters: opts.encounters } : {}),
       ...(opts.convoy ? { convoy: opts.convoy } : {}),
       dev: { preset: 'sim', watch: true },
       device: { w: 0, h: 0, dpr: 1, touch: true, ua: 'mimic' },

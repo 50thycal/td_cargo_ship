@@ -232,7 +232,7 @@ export function lockstepLive(
 
 /** A log's inputs as a hash (what replay reads of it). */
 export function logHash(log: PlayLog): string {
-  return hashText(JSON.stringify([log.v, log.map, log.seed, log.firstWave, log.tempo ?? null, log.armory, log.freePlay ?? null, log.lab ?? null, log.commands, ...(log.convoy ? [log.convoy] : [])]));
+  return hashText(JSON.stringify([log.v, log.map, log.seed, log.firstWave, log.tempo ?? null, log.armory, log.freePlay ?? null, log.lab ?? null, log.commands, ...(log.convoy ? [log.convoy] : []), ...(log.encounters ? [log.encounters] : [])]));
 }
 
 /** Replay a log with telemetry and say what it came to. */

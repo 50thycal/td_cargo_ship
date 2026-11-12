@@ -24,6 +24,10 @@ export const ENCOUNTER_REV = 1;
 
 export interface EncounterSetup {
   rev: number;
+  /** Only these encounters (by id), to look at one on its own. An empty
+   *  list is the layer with nothing in it: the shared wave on the same
+   *  dice, to compare an encounter's wave against. */
+  only?: string[];
 }
 
 /** Where a beat's launches come from: a base of the map (its index), a
@@ -133,10 +137,10 @@ export const ENCOUNTERS: Encounter[] = [
     counters: 'Clear north fast; the south swarm has its own warning.',
     succeeds: 'Taps cross the carrier line once, not back and forth; damage by shore is even.',
     beats: [
-      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.3, plus: 4, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.3, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
     ],
-    replaces: { drones: 10 },
+    replaces: { drones: 8 },
   },
   {
     id: 'gauntlet-overlap',
@@ -165,12 +169,12 @@ export const ENCOUNTERS: Encounter[] = [
     counters: 'The strafer has the shortest fuse on a dense lane; the shores\' swarms are slow.',
     succeeds: 'The most threats on screen at once is higher than in the shared wave with no more launched; a person can say afterwards what hit them.',
     beats: [
-      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
       { at: 0.55, plus: 1.2, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
       { at: 0.55, plus: 2.5, kind: 'strafer', count: 1, from: { air: 1 } },
     ],
-    replaces: { drones: 16, guided: 1 },
+    replaces: { drones: 14, guided: 1 },
   },
   // ---- Harbor Mouth: when to be in the funnel ------------------------------
   {
