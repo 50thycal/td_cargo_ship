@@ -464,8 +464,9 @@ describe('the Test Lab: a weapon test always offers the tested weapon\'s next le
     return { offers, weapon: c.weapon! };
   };
 
-  it('in every draft, for a weapon card and a combo with a weapon, across seeds', () => {
-    for (const card of ['w-orbital', 'w-railgun', 'w-shield', 'combo-cloud-flak']) {
+  // (Round 8: no combo has a weapon now, so weapon cards only.)
+  it('in every draft, for a weapon card, across seeds', () => {
+    for (const card of ['w-orbital', 'w-railgun', 'w-shield']) {
       for (const seed of [1, 2, 3]) {
         const { offers, weapon } = draftOffers(card, seed);
         expect(offers.length, card).toBeGreaterThan(1);

@@ -11,6 +11,7 @@ import { LAB_EVENT_RUNS, LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE,
 import type { EventId } from '../data/events';
 import { ABILITIES, type AbilityId } from '../data/abilities';
 import { RULES, VIEW } from '../data/config';
+import { isOldThreat, memberKind, type PairMember } from '../data/pairs';
 import { foeHarmed, newFoeState } from './foes';
 import type { Game, Launch, Threat } from './game';
 
@@ -70,9 +71,9 @@ export interface LabSet {
   /** When the lead launches (wave clock). */
   at: number;
   /** The bases the wave planned for its members, where it planned them. */
-  bases: Partial<Record<FoeId, number>>;
-  /** The card's weapon has dropped (or there is none). */
-  dropped: boolean;
+  bases: Partial<Record<PairMember, number>>;
+  /** The shore road a placed Rocket Truck takes (its Repair Ship's). */
+  road?: number;
   /** The lead is out: the first threat id it can have, when, its base; and
    *  when it got to its station. */
   led?: { id: number; t: number; base: number; station?: number };
@@ -172,7 +173,7 @@ function planSets(lab: LabState, queue: Launch[], open: number): void {
   let prev = -Infinity;
   for (let k = 0; k < n; k++) {
     const planned = k === 0 ? Math.min(open, times[0] ?? open) : times[Math.min(times.length - 1, Math.floor((k * times.length) / n))];
-    const at = Math.max(planned, prev + LAB_SET.gap);
+    const at = Math.max(planned, prev + (lab.pair?.gap ?? LAB_SET.gap));
     prev = at;
     const bases: Partial<Record<FoeId, number>> = {};
     lab.foes.forEach((f, i) => {
@@ -184,19 +185,25 @@ function planSets(lab: LabState, queue: Launch[], open: number): void {
 }
 
 /** A set of the card's enemies, to launch at `at` (wave clock). */
-export function newSet(lab: LabState, at: number, bases: Partial<Record<FoeId, number>> = {}): LabSet {
-  return { at, bases, dropped: !lab.weapon, done: (lab.pair?.follow ?? []).map(() => false) };
+export function newSet(lab: LabState, at: number, bases: Partial<Record<PairMember, number>> = {}): LabSet {
+  return { at, bases, done: (lab.pair?.follow ?? []).map(() => false) };
 }
 
-/** Is one of this enemy on the board (on screen)? A siege gun down in its
- *  hatch between salvos, and a torpedo sub at periscope depth, count: they
- *  are there, and coming back up. The Hydra's darts count as the Hydra. */
-export function foeOnBoard(g: Game, f: FoeId): boolean {
-  const kind = FOES[f].kind;
+/** Is one of this pair member on the board (on screen)? A siege gun down
+ *  in its hatch between salvos, a torpedo sub at periscope depth and a dive
+ *  bomber's circle before its plane count: they are there, and coming. The
+ *  Hydra's darts count as the Hydra, a sub's torpedoes as the sub, a cluster
+ *  missile's bomblets as it. An original threat counts only as one a pair's
+ *  set brought (not the wave's own). */
+export function foeOnBoard(g: Game, f: PairMember): boolean {
+  const kind = memberKind(f);
+  const also: Partial<Record<PairMember, ThreatKind>> = { hydra: 'dart', torpedoSub: 'torpedo', cluster: 'bomblet' };
+  const old = isOldThreat(f);
   const on = (x: number, y: number) => x >= -10 && x <= VIEW.width + 10 && y >= -10 && y <= VIEW.height + 10;
-  if (g.threats.some((t) => !t.dead && (t.kind === kind || (f === 'hydra' && t.kind === 'dart')) && on(t.x, t.y))) return true;
+  if (g.threats.some((t) => !t.dead && (t.kind === kind ? !old || !!t.paired : t.kind === also[f]) && on(t.x, t.y))) return true;
   if (f === 'siege') return g.foe.marks.some((m) => m.kind === 'hatch' && !!(m.gun || m.spawn));
   if (f === 'torpedoSub') return g.foe.marks.some((m) => m.kind === 'periscope');
+  if (f === 'diveBomber') return g.foe.marks.some((m) => m.kind === 'dive');
   return false;
 }
 

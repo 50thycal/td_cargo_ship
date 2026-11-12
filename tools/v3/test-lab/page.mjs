@@ -267,6 +267,9 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       <ul class="cards">${LAB.cards.filter((c) => c.kind === s.kind).map((c) => `<li class="card result" data-result="${c.id}"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span></div>
         <div class="res"><span class="rhead"><span class="rround" data-rround></span><span class="rv" data-rv>Not tested yet</span></span><span class="rch" data-rch></span><span class="rn" data-rn></span><span class="rs" data-rs></span><span class="rstale" data-rstale></span><details class="rhist hidden" data-rhist><summary></summary><ul></ul></details></div>
         <a class="play" href="${GAME_URL}?lab=${encodeURIComponent(c.id)}" target="_blank" rel="noopener">Test in game ↗</a></li>`).join('\n')}</ul></section>`).join('\n')}
+    ${(LAB.retired ?? []).length ? `<section class="sec" aria-labelledby="rs-cut"><h3 id="rs-cut">Cut cards</h3><p>Cards taken out of the lab. Their verdicts stay here; they aren't tested again.</p>
+      <ul class="cards">${LAB.retired.map((c) => `<li class="card result" data-result="${c.id}" data-cut="1"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span></div>
+        <div class="res"><span class="rhead"><span class="rround" data-rround></span><span class="rv" data-rv>Not tested</span></span><span class="rch">${esc(`Cut in round ${c.cut}: ${c.why}`)}</span><span class="rch" data-rch></span><span class="rn" data-rn></span><span class="rs" data-rs></span><span class="rstale" data-rstale></span><details class="rhist hidden" data-rhist><summary></summary><ul></ul></details></div></li>`).join('\n')}</ul></section>` : ''}
   </section>
 
   <section class="pane hidden" id="pane-design" aria-labelledby="h-design">
@@ -297,7 +300,7 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
   const CARDS = ${JSON.stringify(CARDS.map((c) => c.id))};
   const QIDS = ${JSON.stringify(QUESTIONS.map((q) => q.id))};
   // Each card's current version and its changes by round (src/v3/data/lab.ts).
-  const LABC = ${JSON.stringify(Object.fromEntries(LAB.cards.map((c) => [c.id, { rev: c.rev, changes: c.changes }])))};
+  const LABC = ${JSON.stringify(Object.fromEntries([...LAB.cards.map((c) => [c.id, { rev: c.rev, changes: c.changes }]), ...(LAB.retired ?? []).map((c) => [c.id, { rev: 0, changes: [] }])]))};
   const state = { reviews: {}, cards: {}, answers: {}, results: {} };
   const COLLS = ['reviews', 'cards', 'answers', 'results'];
   const LS = 'straitwatch-test-lab-1';
@@ -343,7 +346,7 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       const old = !!r && (r.rev || 1) < c.rev;
       el.dataset.v = r && r.verdict ? r.verdict : '';
       el.dataset.stale = old ? '1' : '';
-      if (r && !old) n++;
+      if (r && !old && !el.dataset.cut) n++;
       if (old) stale++;
       el.querySelector('[data-rround]').textContent = r ? 'Round ' + round : '';
       el.querySelector('[data-rv]').textContent = r ? (r.verdict ? VLABEL[r.verdict] : 'Tested') + (r.tags && r.tags.length ? ' · ' + r.tags.join(', ') : '') : 'Not tested yet';
@@ -360,7 +363,7 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       const ul = det.querySelector('ul');
       ul.replaceChildren(...hist.map((h) => { const li = document.createElement('li'); li.textContent = ['Round ' + (h.round || 1), h.verdict ? VLABEL[h.verdict] : 'Tested', h.note ? '“' + h.note + '”' : ''].filter(Boolean).join(' · '); return li; }));
     });
-    document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]').length + ' tested at their current version' + (stale ? ' · ' + stale + ' changed since: retest' : '');
+    document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]:not([data-cut])').length + ' tested at their current version' + (stale ? ' · ' + stale + ' changed since: retest' : '');
   }
   function paintAll() {
     paintResults();

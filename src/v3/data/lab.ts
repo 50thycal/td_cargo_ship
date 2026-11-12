@@ -9,6 +9,7 @@ import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
+import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -36,34 +37,13 @@ export interface LabCard {
   wave?: number;
 }
 
-/** A combo's pairing (Test Lab round 4, the player on Spotter + Siege
- *  Battery: "the recon drone and then the siege cannon never really appeared
- *  at the same time"). Every featured appearance of a combo is its whole set,
- *  launched together and timed so the set is on the board at once. */
-export interface LabPair {
-  /** Leads the set: launched at the set's time. */
-  lead: FoeId;
-  /** The others. Each comes `after` s after the lead launches, or (`on:
-   *  'station'`) after the lead gets to its station: the Spotter on its
-   *  circle, the Repair Ship on station, the Rocket Truck at the end of
-   *  its road. A lead shot down first, or one that hasn't got there in
-   *  LAB_SET.station s, lets them come at once. `on: 'arrive'`: a faster one
-   *  after a slow lead, launched once the lead is due within its own flight
-   *  time plus `after` s (the lead's sprint and its own curve make up the
-   *  rest), so they arrive together. `base: 'same'`: out of the lead's base. */
-  follow: { foe: FoeId; after: number; on?: 'launch' | 'station' | 'arrive'; base?: 'same' }[];
-  /** The lead comes out of the launch base furthest from the convoy (the
-   *  longest look at a fast pair). */
-  far?: boolean;
-  /** The rule in words (the docs, and the review page). */
-  rule: string;
-}
+/** A combo's pairing: data/pairs.ts (the enemy pairs, round 8). */
+export type { LabPair, PairFollow, PairMember } from './pairs';
 
-/** Sets: the card's weapon drops by the carrier `weaponLead` s before each
- *  set comes in (a combo with a weapon is played holding it); sets in a wave
- *  are at least `gap` s apart; a follower waits at most `station` s for its
- *  lead to get to its station. */
-export const LAB_SET = { weaponLead: 1.5, gap: 12, station: 14 } as const;
+/** Sets: sets in a wave are at least `gap` s apart (a pair can ask for
+ *  more); a follower waits at most `station` s for its lead to get to its
+ *  station. (Round 8: no combo holds a weapon now, so no weapon drop.) */
+export const LAB_SET = { gap: 12, station: 14 } as const;
 
 /** The lab's own water: open, plain, no map system to get in the way. */
 export const LAB_MAP: MapId = 'strait';
@@ -163,51 +143,33 @@ const WEAPONS: LabCard[] = [
   ...ABILITY_ORDER.filter((id) => !(id in REWORKED)).map(weaponCard),
 ];
 
-const combo = (id: string, name: string, look: string, foes: FoeId[], kit: AbilityId[], pair: LabPair, weapon?: AbilityId): LabCard => ({ id: `combo-${id}`, kind: 'combo', name, look, foes, kit, map: LAB_MAP, pair, ...(weapon ? { weapon } : {}) });
-const alone = (lead: FoeId, rule: string): LabPair => ({ lead, follow: [], rule });
-/** The combos (Test Lab round 4: each one's set comes in together). */
-const COMBOS: LabCard[] = [
-  // The Spotter gets to its circle and paints a ship; the gun rises while it
-  // paints, so its first shells land with the strike it calls.
-  combo('spotter-siege', 'Spotter + Siege Battery', 'A painted ship and shells: which do you break first?', ['spotter', 'siege'], ['railgun', 'aegis', 'fullSteam'], {
-    lead: 'spotter',
-    follow: [{ foe: 'siege', after: 3.5, on: 'station' }],
-    rule: 'The Spotter leads. The siege gun\'s hatch opens 3.5 s after the Spotter reaches its circle, so the gun is up while it paints and the first shells land with the strike it calls.',
-  }),
-  // The Repair Ship sails to its station; a guarded heavy comes out as it gets
-  // there, so it has that heavy to mend while the guards take your shots.
-  combo('tender-bodyguard', 'Repair Ship + Bodyguard Ring', 'A heavy that\'s guarded and mended: too much?', ['tender', 'bodyguard'], ['flak', 'tesla', 'railgun'], {
-    lead: 'tender',
-    follow: [{ foe: 'bodyguard', after: 0, on: 'station' }],
-    rule: 'The Repair Ship leads. The Bodyguard Ring (a fresh heavy and its guards) launches as the Repair Ship reaches its station, so it has a guarded heavy to mend.',
-  }),
-  combo('lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], ['droneScreen', 'cutter', 'flak'], alone('lure', 'Drone Screen drops by the carrier 1.5 s before each Lure Beacon rises.'), 'droneScreen'),
-  combo('cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], ['flak', 'thermo', 'railgun'], alone('cloud', 'Flak drops by the carrier 1.5 s before each Incendiary Missile launches.'), 'flak'),
-  // One raid: the decoy swarm and the sprinters out of the same base, the
-  // one furthest off (the sprinters' dash cuts their flight short).
-  combo('decoy-sprint', 'Decoys + Sprint Drones', 'What do you shoot first?', ['decoy', 'sprinter'], ['flak', 'cutter', 'scatter'], {
-    lead: 'decoy',
-    follow: [{ foe: 'sprinter', after: 0.5, base: 'same' }],
-    far: true,
-    rule: 'One raid, out of the launch base furthest from the convoy: the Decoy swarm leads and the Sprint Drones follow 0.5 s later out of the same base.',
-  }),
-  // The truck drives to its spot; the gun's hatch opens as it gets there, so
-  // the gun is up as the launcher finishes rising and both fire together.
-  combo('siege-truck', 'Siege Battery + Rocket Truck', 'Shells and rockets you can\'t stop: which launcher first?', ['siege', 'rocketTruck'], ['railgun', 'lance', 'bomberWing'], {
-    lead: 'rocketTruck',
-    follow: [{ foe: 'siege', after: 0, on: 'station' }],
-    rule: 'The Rocket Truck leads. The siege gun\'s hatch opens as the truck stops to raise its launcher, so the shells and the rockets come in the same window.',
-  }),
-  combo('guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], ['seeker', 'airstrike', 'flak'], alone('bodyguard', 'Seeker Pod drops by the carrier 1.5 s before each Bodyguard Ring launches.'), 'seeker'),
-  // The hydra is twice as fast as the sprinters: out of the same base once
-  // they are part way, it catches them up and they arrive together.
-  combo('hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], ['tesla', 'flak', 'thermo'], {
-    lead: 'sprinter',
-    follow: [{ foe: 'hydra', after: 1.5, on: 'arrive', base: 'same' }],
-    far: true,
-    rule: 'The Sprint Drones lead, out of the launch base furthest from the convoy. The Hydra follows out of the same base once they are part way, timed to catch them up, so they arrive together. Tesla drops by the carrier 1.5 s before each set.',
-  }, 'tesla'),
+/** The combos (round 8, the player: "the pairs should be enemy pairs, not
+ *  player and enemy attack pairs"): one card per enemy pair (data/pairs.ts),
+ *  its set coming in together on the pair's rule. */
+const COMBOS: LabCard[] = PAIRS.map((p) => ({ id: pairCardId(p.id), kind: 'combo', name: p.name, look: p.look, foes: pairFoes(p), kit: p.kit, map: LAB_MAP, pair: p.pair }));
+
+/** Cards cut from the lab (the player's round 7 notes on the combos:
+ *  "Looking for enemy and enemy attack pairs"), kept so their old verdicts
+ *  still have a card to sit on in the review page's Results (sim/labDocs.ts,
+ *  tools/v3/test-lab/page.mjs). Not in LAB_CARDS: the hub doesn't list them
+ *  and a saved queue drops them. */
+export interface RetiredCard extends LabCard {
+  /** The round it was cut in, and why. */
+  cut: number;
+  why: string;
+}
+const WHY_PAIRS = 'A player weapon with an enemy: the combos are enemy pairs now';
+const retired = (id: string, name: string, look: string, foes: FoeId[], weapon: AbilityId): RetiredCard => ({ id, kind: 'combo', name, look, foes, weapon, kit: [], map: LAB_MAP, cut: 8, why: WHY_PAIRS });
+export const LAB_RETIRED: RetiredCard[] = [
+  retired('combo-lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], 'droneScreen'),
+  retired('combo-cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], 'flak'),
+  retired('combo-guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], 'seeker'),
+  retired('combo-hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], 'tesla'),
 ];
+
+export function retiredCard(id: string): RetiredCard | undefined {
+  return LAB_RETIRED.find((c) => c.id === id);
+}
 
 /** Special events (docs/design/v3-special-events-build.md): each on its own
  *  map, straight into it, with a kit from that map's chapter. The look line
@@ -271,7 +233,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'event', name: 'Events', blurb: 'Each special event on its own map, straight in. Run it again starts it over.' },
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
-  { kind: 'combo', name: 'Combos', blurb: 'Two things that should meet: they come in together.' },
+  { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
   { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
 ];
 
@@ -303,6 +265,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 5, date: '2026-11-09', name: 'Special events and new notes', since: '2026-11-09T18:00' },
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
   { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
+  { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -374,21 +337,22 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'w-cadence': [{ round: 4, what: 'War Drum (MAX): on the beat it blows up trucks, siege guns, helicopters, subs and repair ships' }],
   'combo-spotter-siege': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-tender-bodyguard': [{ round: 4, what: 'Its enemies now arrive together' }],
-  'combo-lure-screen': [{ round: 4, what: 'Drone Screen now drops by the carrier just before each Lure Beacon' }],
-  'combo-cloud-flak': [{ round: 4, what: 'Flak now drops by the carrier just before each Incendiary Missile' }],
   'combo-decoy-sprint': [{ round: 4, what: 'Its enemies now arrive together' }],
   'combo-siege-truck': [
     { round: 2, what: 'New pairing' },
     { round: 4, what: 'Its enemies now arrive together' },
+    { round: 8, what: 'They take turns: the gun rises as the truck fires its last salvos, so the shells land after the rockets' },
   ],
-  'combo-guard-seeker': [
-    { round: 2, what: 'New pairing' },
-    { round: 4, what: 'Seeker Pod now drops by the carrier just before each Bodyguard Ring' },
-  ],
-  'combo-hydra-tesla': [
-    { round: 2, what: 'New pairing' },
-    { round: 4, what: 'Its enemies now arrive together; Tesla drops by the carrier just before' },
-  ],
+  // Round 8 (docs/design/v3-enemy-pairs.md): the new enemy pairs.
+  'combo-decoy-cluster': [{ round: 8, what: 'New pair: two cluster missiles arrive with the decoy swarm' }],
+  'combo-hydra-swarm': [{ round: 8, what: 'New pair: a Hydra flies in a drone swarm' }],
+  'combo-scavenger-swarm': [{ round: 8, what: 'New pair: a drone swarm comes while the Scavenger circles' }],
+  'combo-heli-sub': [{ round: 8, what: 'New pair: a Torpedo Sub surfaces under the helicopter\'s hover' }],
+  'combo-armored-hydra': [{ round: 8, what: 'New pair: a Hydra arrives with two armored drones' }],
+  'combo-spotter-dive': [{ round: 8, what: 'New pair: dive bombers put their circles on the painted ship' }],
+  'combo-tender-truck': [{ round: 8, what: 'New pair: the Repair Ship moors off the truck\'s road and mends it' }],
+  'combo-lure-stealth': [{ round: 8, what: 'New pair: stealth strafers come in while the beacon draws your helpers' }],
+  'combo-guard-spotter': [{ round: 8, what: 'New pair: a ring of guards flies in round the Spotter' }],
   // Round 5 (docs/design/v3-special-events-build.md): the special events;
   // round 6 (docs/design/v3-events-round6.md): the player's notes on them.
   'ev-rush': [{ round: 5, what: 'New event: six sprint swarms and a dashed line on the water' }],
