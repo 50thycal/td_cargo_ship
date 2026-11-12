@@ -47,6 +47,8 @@ npm run e2e:v3          # browser smoke test (needs `npm run preview -- --port 4
 Design, the weapon table, measurements and where to tune:
 [docs/design/v3-plan.md](docs/design/v3-plan.md).
 
+**Next V3 development phase (design only):** [Map & Convoy Lab plan](docs/design/v3-map-convoy-lab-plan.md) — spatial telemetry, launch/damage/pickup heatmaps, convoy control experiments, map-specific tactical commands, and three reference-map encounter redesigns. Start with the plan's Slice 0/1; no implementation is included in this documentation change.
+
 ## Play it
 
 ```bash
