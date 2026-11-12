@@ -12,6 +12,7 @@ import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { EV } from '../data/events';
 import { hydraDartPace, hydraDarts, walkingBarrage } from './events';
+import type { TelImpact } from './telemetry';
 import {
   CARRIER_TARGET,
   addFx,
@@ -55,6 +56,9 @@ export interface FoeShot {
    *  on a hull does it; `spent`, the rest only splash). */
   salvo?: number;
   spent?: boolean;
+  /** Telemetry only (nothing in the sim reads it): the threat that fired
+   *  it (the truck, the dive bomber). */
+  src?: number;
 }
 
 /** A warning on the water before a foe shows (a periscope); when it runs
@@ -111,6 +115,10 @@ export interface FoeMark {
   flight?: number;
   /** A dive bomber's circle: the line its plane flies in on (its heading). */
   a?: number;
+  /** Telemetry only (nothing in the sim reads it): the threat behind it
+   *  when `link` does not say (the missile whose fireball this is, the
+   *  Fire Mission spotter whose barrage this shell is). */
+  src?: number;
 }
 
 /** A foe's own state, on its threat. `state` and `t` are its phase and the
@@ -790,7 +798,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         th.dead = true;
         addFx(g, 'splash', th.x, th.y, { life: 0.8, r: 34 });
         cue(g, 'impact.splash', th.x, th.y);
-        damageShip(g, hull, THREATS.torpedo.damage, 'torpedoSub');
+        damageShip(g, hull, THREATS.torpedo.damage, 'torpedoSub', true, g.tel?.impact(th.id, th.x, th.y));
         return;
       }
       if (dist(th.x, th.y, f.sx ?? th.x, f.sy ?? th.y) >= (f.along ?? 0)) th.dead = true;
@@ -863,7 +871,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         if (at.u >= 1) {
           // Released: the bomb falls on, onto the circle, and nothing stops
           // it now.
-          g.foe.shots.push({ id: g.nextId++, kind: 'bomb', x: th.x, y: th.y, sx: th.x, sy: th.y, tx: f.px, ty: f.py, t: 0, dur: D.fall, from: 'diveBomber' });
+          g.foe.shots.push({ id: g.nextId++, kind: 'bomb', x: th.x, y: th.y, sx: th.x, sy: th.y, tx: f.px, ty: f.py, t: 0, dur: D.fall, from: 'diveBomber', src: th.id });
           cue(g, 'bomber.drop', th.x, th.y);
           f.state = 1;
           f.t = 0;
@@ -1062,7 +1070,7 @@ export function burstCloud(g: Game, th: Threat): void {
   if (f.state === 9) return;
   f.state = 9;
   f.n = g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= C.radius * 2) ? 1 : 0;
-  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: g.event?.linger ?? C.linger, dose: {} });
+  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: g.event?.linger ?? C.linger, dose: {}, src: th.id });
   addFx(g, 'burst', th.x, th.y, { life: 0.6, r: C.radius * 0.8 });
   cue(g, 'foe.ignite', th.x, th.y);
 }
@@ -1082,11 +1090,14 @@ function fireStep(g: Game, m: FoeMark, dt: number): void {
     dose[key] -= C.tick;
     return true;
   };
+  // Telemetry: one impact a tick, shared by every hull the fire burns.
+  let imp: TelImpact | undefined;
+  const at = () => (g.tel ? (imp ??= g.tel.impact(m.src, m.x, m.y)) : undefined);
   for (const s of [...g.ships]) {
-    if (take(s.id, dist(s.x, s.y, m.x, m.y) <= C.radius)) damageShip(g, s, THREATS.cloud.damage, 'cloud', false);
+    if (take(s.id, dist(s.x, s.y, m.x, m.y) <= C.radius)) damageShip(g, s, THREATS.cloud.damage, 'cloud', false, at());
   }
   const c = g.map.carrier;
-  if (take(-1, dist(c.x, c.y, m.x, m.y) <= C.radius + 40)) damageCarrier(g, THREATS.cloud.damage, 'cloud');
+  if (take(-1, dist(c.x, c.y, m.x, m.y) <= C.radius + 40)) damageCarrier(g, THREATS.cloud.damage, 'cloud', at());
 }
 
 /** A Bodyguard Ring: a shot at the heavy meets one of its guards first. */
@@ -1447,6 +1458,7 @@ function heliRocket(g: Game, th: Threat, k: number): void {
   const y = th.y + Math.sin(th.heading + side * Math.PI / 2) * 14;
   const m = spawnThreat(g, 'heliRocket', x, y, 'air');
   m.parent = 'attackHeli';
+  m.src = th.id;
   // Off the rail pointed at its own ship (spawnThreat aims it), splayed a
   // little: launched along the helicopter's nose, one at a ship behind it
   // used to loop round first (Test Lab round 1).
@@ -1504,6 +1516,7 @@ function launchTorpedo(g: Game, sub: Threat, p: Point, target: number, speed: nu
   const heading = Math.atan2(p.y - sub.y, p.x - sub.x);
   const along = wetReach(g, sub, heading, dist(sub.x, sub.y, p.x, p.y) + over);
   const m = spawnThreat(g, 'torpedo', sub.x, sub.y, 'sub');
+  m.src = sub.id;
   m.speed = speed;
   m.heading = heading;
   m.target = target;
@@ -1745,6 +1758,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
     }
     if (m.kind === 'periscope') {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
+      th.src = m.id;
       th.target = CARRIER_TARGET;
       th.heading = 0;
       const S = FOE.torpedoSub;
@@ -1758,6 +1772,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const a = m.a ?? Math.PI / 2;
       const path = divePath(m, a);
       const th = spawnThreat(g, 'diveBomber', path.sx, path.sy, 'air');
+      th.src = m.id;
       th.target = CARRIER_TARGET;
       th.heading = a;
       th.foe = data({ px: m.x, py: m.y, sx: path.sx, sy: path.sy, dive: { len: path.len, app: path.app } });
@@ -1782,7 +1797,8 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const S = FOE.siege;
       addFx(g, 'splash', m.x, m.y, { life: 0.9, r: S.radius });
       cue(g, 'impact.splash', m.x, m.y);
-      for (const s of [...g.ships]) if (dist(s.x, s.y, m.x, m.y) <= S.radius) damageShip(g, s, m.dmg ?? S.damage, m.dmg !== undefined ? 'spotter' : 'siege');
+      const imp = g.tel?.impact(m.link ?? m.src, m.x, m.y);
+      for (const s of [...g.ships]) if (dist(s.x, s.y, m.x, m.y) <= S.radius) damageShip(g, s, m.dmg ?? S.damage, m.dmg !== undefined ? 'spotter' : 'siege', true, imp);
     }
   }
   g.foe.marks = live;
@@ -1896,7 +1912,7 @@ function fireRocket(g: Game, th: Threat, r: NonNullable<FoeData['ripple']>, k: n
   const off = k === 0 ? 0 : R.spread * g.rng.foes.range(0.6, 1);
   const tx = p.x + Math.cos(a) * off;
   const ty = p.y + Math.sin(a) * off;
-  g.foe.shots.push({ id: g.nextId++, kind: 'rocket', x: th.x, y: th.y, sx: th.x, sy: th.y, tx, ty, t: 0, dur, from: 'rocketTruck', salvo: r.id, ...(r.spent ? { spent: true } : {}) });
+  g.foe.shots.push({ id: g.nextId++, kind: 'rocket', x: th.x, y: th.y, sx: th.x, sy: th.y, tx, ty, t: 0, dur, from: 'rocketTruck', salvo: r.id, src: th.id, ...(r.spent ? { spent: true } : {}) });
   addFx(g, 'launch', th.x, th.y, { life: 0.3, r: 8 });
   cue(g, 'truck.fire', th.x, th.y, { gain: k === 0 ? 1 : 0.55 });
 }
@@ -1921,7 +1937,8 @@ export function updateFoeShots(g: Game, dt: number): void {
       addFx(g, 'splash', s.tx, s.ty, { life: 1, r: D.splash });
       cue(g, 'impact.splash', s.tx, s.ty);
       const near = g.ships.map((o) => ({ o, d: dist(o.x, o.y, s.tx, s.ty) })).filter((o) => o.d <= D.splash).sort((a, b) => a.d - b.d);
-      near.forEach((o, k) => damageShip(g, o.o, k === 0 && o.d <= D.hit ? THREATS.diveBomber.damage : D.splashDamage, 'diveBomber', k === 0));
+      const imp = near.length ? g.tel?.impact(s.src, s.tx, s.ty) : undefined;
+      near.forEach((o, k) => damageShip(g, o.o, k === 0 && o.d <= D.hit ? THREATS.diveBomber.damage : D.splashDamage, 'diveBomber', k === 0, imp));
       continue;
     }
     // A rocket hits the nearest hull within reach of where it lands. A
@@ -1935,7 +1952,7 @@ export function updateFoeShots(g: Game, dt: number): void {
       .filter((o) => o.d <= FOE.rocketTruck.hitRadius)
       .sort((a, b) => a.d - b.d)[0];
     if (!hull) continue;
-    damageShip(g, hull.o, 1, s.from);
+    damageShip(g, hull.o, 1, s.from, true, g.tel?.impact(s.src, s.tx, s.ty));
     if (s.salvo !== undefined) spendSalvo(g, s.salvo);
   }
   g.foe.shots = live;

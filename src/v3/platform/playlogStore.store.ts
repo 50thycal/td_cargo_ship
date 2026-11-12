@@ -31,3 +31,7 @@ export async function flushUnsent(): Promise<number> {
 export function downloadLog(_log: PlayLog): void {
   // nothing leaves the app
 }
+
+export function downloadTelemetry(_sc: unknown): void {
+  // nothing leaves the app (and the store build never records telemetry)
+}

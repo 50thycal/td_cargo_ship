@@ -102,6 +102,10 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
    - `builds/<enemy>.json` for the enemy page.
 3. Write them with `ArtifactData` `batch` (`file_path` per entry): to `results/` here, and `builds/` on https://claude.ai/artifact/Sm8d5jmPVxTwihiTiKdtGX.
 
+## Telemetry (the Map & Convoy Lab)
+
+From 2026-11-12 a Test Lab run also records the Map & Convoy Lab's telemetry as it is played ([v3-map-lab-slice0-1.md](v3-map-lab-slice0-1.md)): where each attack was launched, every hit with what dealt it, pickups, taps and ship positions. It stays on the device and is not part of the log (the log is unchanged, and any log replays to it: `npm run v3:map-lab -- telemetry <log.json>`). `?tel=0` turns it off. (This file still describes the lab as of round 4; the hub is at round 8 with 98 cards.)
+
 ## Checks
 
 - `tests/v3/lab.test.ts`:

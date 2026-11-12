@@ -91,7 +91,8 @@ import {
   volleyName,
   volleySummary,
 } from './notes';
-import { downloadLog, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { downloadLog, downloadTelemetry, flushUnsent, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
+import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -480,9 +481,27 @@ export class App {
   /** Seal the current run's log and send it wherever this build can. Safe to
    *  call more than once (a cleared map that continues into endless updates
    *  the same log). */
+  /** Map & Convoy Lab telemetry (sim/telemetry.ts): recorded for Test Lab
+   *  and dev runs, or with `?tel=1` (`?tel=0`: never). Not in the store
+   *  build, and not for ordinary campaign play. It stays on this device:
+   *  the play log is what is sent, and any log replays to its telemetry. */
+  private telWanted(lab: boolean): boolean {
+    if (STORE) return false;
+    const q = new URLSearchParams(location.search).get('tel');
+    return q === '1' || (q !== '0' && (lab || this.dev));
+  }
+
+  /** The last run's telemetry, kept until the next run starts. */
+  private lastTel: TelemetrySidecar | null = null;
+
   private endRun(end: 'won' | 'lost' | 'quit'): PlayLog | null {
     if (!this.rec) return null;
     const log = this.rec.finish(end);
+    const g = this.rec.game;
+    if (g.tel) {
+      if (end === 'quit') g.tel.leave(g);
+      this.lastTel = g.tel.sidecar(g);
+    }
     if (end !== 'won') this.rec = null;
     this.logState = null;
     void Promise.all([storeLog(log), logChannel()]).then(([state, channel]) => {
@@ -556,11 +575,21 @@ export class App {
       // The map behind the screens around a run, and how far it has sailed.
       backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
       log: () => this.rec?.snapshot() ?? null,
+      // The Map & Convoy Lab's telemetry of the run in play (or the last one).
+      telemetry: () => (this.game?.tel ? this.game.tel.sidecar(this.game) : this.lastTel),
       // Re-run a log here, so a browser test can check a recorded run replays.
       replay: (log: PlayLog) => {
         const g = replay(log);
         return { steps: g.steps, score: g.score, lost: g.lost, wave: g.wave };
       },
+      // The same, with telemetry: what a log replays to here, to set beside
+      // the sidecar the live run made.
+      replayTelemetry: (log: PlayLog) => {
+        const g = replay(log, { telemetry: true });
+        const sc = g.tel!.sidecar(g);
+        return { digest: sidecarDigest(sc), problems: reconcile(sc, g), steps: g.steps, events: sc.events.length };
+      },
+      telemetryDigest: (sc: TelemetrySidecar) => sidecarDigest(sc),
       // tools/v2/moment.mjs: show a log's game frozen at one step (a flag).
       showMoment: (log: PlayLog, step: number) => this.showMoment(log, step),
       // Sound: the engine's play log and state (e2e checks timing with it).
@@ -2907,6 +2936,15 @@ export class App {
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
       device: this.deviceInfo(),
     });
+    this.lastTel = null;
+    if (this.telWanted(!!lab)) {
+      this.rec.telemetry(lab ? 'lab' : watch ? 'watch' : free ? 'freePlay' : 'campaign', watch ? this.devSettings.bot : 'human', {
+        touch: navigator.maxTouchPoints > 0,
+        w: window.innerWidth,
+        h: window.innerHeight,
+        landscape: window.innerWidth >= window.innerHeight,
+      });
+    }
     this.startWatch(watch, seed, this.devSettings.bot);
     if (watch) this.setSpeed(this.devSettings.watchSpeed);
     else if (preset) this.setSpeed(preset.speed);
@@ -3019,7 +3057,8 @@ export class App {
    *  as a new log that carries the old run's inputs up to that wave. */
   private retryWave(rec: Recorder): void {
     const { mark, log } = rec;
-    const g = replayTo(log, mark.steps, mark.commands);
+    const g = replayTo(log, mark.steps, mark.commands, { telemetry: this.telWanted(false) });
+    this.lastTel = null;
     // The replay's own banners and blasts are old news.
     g.events = [{ kind: 'wave', wave: g.wave }];
     this.game = g;
@@ -3520,9 +3559,12 @@ export class App {
         if (channel === 'server') line.append(button('Download log', 'v2-link', () => downloadLog(log)));
         return;
       }
+      const tel = this.lastTel;
       line.replaceChildren(
         el('span', '', 'Log saved on this device. '),
         button('Download log', 'v2-link', () => downloadLog(log)),
+        // A Test Lab or dev run: its Map & Convoy Lab telemetry too.
+        ...(tel ? [el('span', '', ' '), button('Download telemetry', 'v2-link', () => downloadTelemetry(tel))] : []),
       );
     }
   }

@@ -227,6 +227,7 @@ export function startBonus(g: Game, id: EventId): void {
  *  afloat is mended, and the carrier's hull is full. */
 export function restoreConvoy(g: Game): void {
   g.lossBase = g.lost;
+  if (g.tel) g.tel.healAll(g, (s) => Math.max(s.hp, g.stats.shipHp), Math.max(g.carrierHp, g.stats.carrierHp), 'restore');
   g.carrierHp = Math.max(g.carrierHp, g.stats.carrierHp);
   for (const s of g.ships) s.hp = Math.max(s.hp, g.stats.shipHp);
   g.events.push({ kind: 'restore' });
@@ -730,7 +731,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'blackout': {
       if (s.op === 'shell') {
-        addPickup(g, 'starshell', c.x + rng.range(-170, 170), c.y - 190);
+        addPickup(g, 'starshell', c.x + rng.range(-170, 170), c.y - 190, undefined, 'event');
         return;
       }
       launchPlane(g, { at: g.waveT, kind: 'stealthJet', base: -1, side: s.k % 2 ? -1 : 1 });
@@ -1234,7 +1235,7 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
     const ux = d > 0.5 ? (q.x - p.x) / d : Math.cos(s.heading);
     const uy = d > 0.5 ? (q.y - p.y) / d : Math.sin(s.heading);
     const off = (k - (E.shells - 1) / 2) * E.walk;
-    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg, far: true, flight: FOE.spotter.flight });
+    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg, far: true, flight: FOE.spotter.flight, src: sp.id });
   }
   if (g.event) {
     g.event.painted = shipId;

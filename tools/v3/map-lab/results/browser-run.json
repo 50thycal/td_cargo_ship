@@ -1,0 +1,13 @@
+{
+ "viewport": "874 x 402",
+ "touches": 134,
+ "seconds": 35,
+ "taps": 125,
+ "launches": 25,
+ "samples": 177,
+ "events": 293,
+ "bytes": 50792,
+ "digestLive": "00c4db9f",
+ "digestBrowserReplay": "00c4db9f",
+ "digestNodeReplay": "00c4db9f"
+}

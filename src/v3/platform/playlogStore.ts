@@ -6,6 +6,7 @@
 // has neither, so the result screen offers "Download log" instead.
 
 import type { PlayLog } from '../sim/playlog';
+import type { TelemetrySidecar } from '../sim/telemetry';
 import { kv } from './store';
 
 const LOCAL_KEY = 'straitwatch.v3.playlogs';
@@ -127,10 +128,20 @@ export async function flushUnsent(): Promise<number> {
 }
 
 export function downloadLog(log: PlayLog): void {
-  const blob = new Blob([JSON.stringify(log)], { type: 'application/json' });
+  download(`straitwatch-${log.map}-${log.id}.json`, log);
+}
+
+/** A run's Map & Convoy Lab telemetry (sim/telemetry.ts), as a file beside
+ *  its log. It is never uploaded: a log replays to it. */
+export function downloadTelemetry(sc: TelemetrySidecar): void {
+  download(`straitwatch-${sc.header.map}-${sc.header.runId}.telemetry.json`, sc);
+}
+
+function download(name: string, data: unknown): void {
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `straitwatch-${log.map}-${log.id}.json`;
+  a.download = name;
   document.body.append(a);
   a.click();
   a.remove();

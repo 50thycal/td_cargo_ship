@@ -33,6 +33,7 @@
     "dev:v3": "vite --open /v3.html",
     "v3:sweep": "vite-node tools/v3/sweep.ts --",
     "e2e:v3": "node e2e/v3.mjs && node e2e/v3-audio.mjs",
+    "v3:map-lab": "vite-node tools/v3/map-lab/run.ts --",
     "build:store": "tsc --noEmit && vite build --mode store",
     "ios:sync": "npm run build:store && cap sync ios"
   },
