@@ -21,9 +21,10 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyEncounters, applyFreePlay, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, applyLab, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
+import type { LabSetup } from './lab';
 
 export interface Persona {
   id: string;
@@ -567,6 +568,8 @@ export interface RunOpts {
   dice?: number;
   armory?: ArmoryLevels;
   freePlay?: FreePlaySetup;
+  /** A Test Lab card (a map card's full run, Test Lab round 10). */
+  lab?: LabSetup;
   convoy?: ConvoySetup;
   encounters?: EncounterSetup;
   pilot?: PilotSkill;
@@ -591,6 +594,7 @@ export class BotRun {
   ) {
     const g = (this.game = createGame(map, seed, opts.firstWave ?? 1, opts.tempo, opts.armory));
     if (opts.freePlay) applyFreePlay(g, opts.freePlay);
+    if (opts.lab) applyLab(g, opts.lab);
     // The Map & Convoy Lab: authored encounters, a convoy policy, and who
     // gives its commands.
     if (opts.encounters) applyEncounters(g, opts.encounters);
@@ -603,6 +607,7 @@ export class BotRun {
       firstWave: opts.firstWave ?? 1,
       ...(opts.freePlay ? { freePlay: opts.freePlay } : {}),
       ...(opts.tempo ? { tempo: opts.tempo } : {}),
+      ...(opts.lab ? { lab: opts.lab } : {}),
       ...(opts.encounters ? { encounters: opts.encounters } : {}),
       ...(opts.convoy ? { convoy: opts.convoy } : {}),
       dev: { preset: 'sim', watch: true },

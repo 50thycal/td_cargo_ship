@@ -1009,7 +1009,8 @@ function startWave(g: Game): void {
     g.events.push({ kind: 'wave', wave: g.wave });
     // Round 7's experiment: the convoy and the carrier restored to full
     // right before the ending's first run.
-    if (!g.lab && ENDING.threeRuns && g.wave === EVENT_WAVE) restoreConvoy(g);
+    // (A map card's full run in the Test Lab too: it is the campaign's.)
+    if ((!g.lab || g.lab.full) && ENDING.threeRuns && g.wave === EVENT_WAVE) restoreConvoy(g);
     startEvent(g);
     cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
     return;
@@ -1643,7 +1644,7 @@ function replanWave(g: Game): void {
  *  test replays exactly. */
 export function labBring(g: Game): void {
   const lab = g.lab;
-  if (!lab || g.phase !== 'wave') return;
+  if (!lab || lab.full || g.phase !== 'wave') return;
   if (g.tel) g.tel.input(g, 'bring');
   // An event card: "Run it again" (the event starts over).
   if (lab.event) {
@@ -1835,7 +1836,6 @@ function ringGuards(g: Game, th: Threat): void {
   }
 }
 
-/** The Test Lab (after applyFreePlay): give the run its card. */
 /** The Map & Convoy Lab: turn the map's authored encounters on (after the
  *  game is created, before its first step). The wave is planned again with
  *  them in it. */
@@ -1844,9 +1844,13 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
   replanWave(g);
 }
 
+/** The Test Lab (after applyFreePlay): give the run its card. A map
+ *  card's full run (Test Lab round 10) changes nothing the first wave was
+ *  planned from, so it is not planned again: the run is the campaign's,
+ *  wave for wave, on the same seed. */
 export function applyLab(g: Game, setup: LabSetup): void {
   setUpLab(g, setup);
-  replanWave(g);
+  if (!g.lab?.full) replanWave(g);
 }
 
 /** Into the next wave, or (dev stride) on to the next skipped wave's draft. */

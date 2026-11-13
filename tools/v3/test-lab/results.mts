@@ -21,7 +21,8 @@ const rows: string[] = [];
 for (const [id, doc] of Object.entries(results)) {
   writeFileSync(`${out}/results/${id}.json`, JSON.stringify(doc, null, 1));
   const stale = doc.rev < cardRev(id) ? ' (changed since: retest)' : '';
-  rows.push(`${id}: round ${doc.round} ${doc.verdict ?? 'tested'}${doc.note ? ` "${doc.note}"` : ''}${doc.history.length ? ` [+${doc.history.length} earlier]` : ''}${stale}`);
+  // A map card's line says how it was played (round 10: the full map or a quick slice).
+  rows.push(`${id}: round ${doc.round} ${doc.verdict ?? 'tested'}${doc.setup ? ` [${doc.setup}]` : ''}${doc.note ? ` "${doc.note}"` : ''}${doc.history.length ? ` [+${doc.history.length} earlier]` : ''}${stale}`);
 }
 for (const [id, doc] of Object.entries(builds)) writeFileSync(`${out}/builds/${id}.json`, JSON.stringify(doc, null, 1));
 console.log(`${rows.length} cards with a verdict:\n${rows.join('\n')}`);

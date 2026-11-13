@@ -6,7 +6,8 @@
 // verdict, with the earlier rounds' verdicts as its history.
 
 import { LAB_ROUNDS, cardChangeList, labCard, retiredCard } from '../data/lab';
-import { evidenceLines } from './lab';
+import { POLICY_NAME } from '../data/convoy';
+import { evidenceLines, type LabPlays } from './lab';
 import type { LabResult, PlayLog } from './playlog';
 
 export interface LabResultDoc {
@@ -23,10 +24,14 @@ export interface LabResultDoc {
   rev: number;
   changes: string[];
   /** The latest verdict of each earlier round, newest first. */
-  history: { round: number; verdict: LabResult['verdict']; note: string; at: string; log: string }[];
+  history: { round: number; verdict: LabResult['verdict']; note: string; at: string; log: string; plays?: LabPlays }[];
   /** A card since cut from the lab (LAB_RETIRED): the round it went in,
    *  and why. Its verdicts are kept, under the page's Cut cards. */
   cut?: { round: number; why: string };
+  /** A map card (Test Lab round 10): the full map or a quick slice (a log
+   *  from before round 10 was a slice), and its setup in words. */
+  plays?: LabPlays;
+  setup?: string;
 }
 
 export interface LabBuildDoc {
@@ -86,7 +91,7 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
       verdict: r.verdict,
       tags: r.tags,
       note,
-      evidence: evidenceLines(card, r.stats, r.waves).join(' · '),
+      evidence: evidenceLines(card, r.stats, r.waves, logPlays(l)).join(' · '),
       ended: r.ended,
       log: l.id,
       at: when(l),
@@ -96,9 +101,11 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
       changes: cardChangeList(id).filter((c) => c.round === round).map((c) => c.what),
       history: order.slice(1).map((n) => {
         const o = rounds.get(n)!;
-        return { round: n, verdict: o.labResult!.verdict, note: o.labResult!.note, at: when(o), log: o.id };
+        const plays = logPlays(o);
+        return { round: n, verdict: o.labResult!.verdict, note: o.labResult!.note, at: when(o), log: o.id, ...(plays ? { plays } : {}) };
       }),
       ...(gone ? { cut: { round: gone.cut, why: gone.why } } : {}),
+      ...(logPlays(l) ? { plays: logPlays(l), setup: labSetupText(l) } : {}),
     };
     results[id] = doc;
     // An enemy card's verdict also goes on the enemy page's Build tab.
@@ -116,4 +123,30 @@ export function ownNote(note: string, earlier: string[]): string {
     if (o && note.trimStart().startsWith(o)) return note.trimStart().slice(o.length).trim();
   }
   return note;
+}
+
+/** How a map card's run was played (Test Lab round 10): what its log says;
+ *  a map card's log from before round 10 was a quick slice. None for other
+ *  cards. */
+export function logPlays(l: PlayLog): LabPlays | undefined {
+  if (!l.lab) return undefined;
+  if (l.lab.plays) return l.lab.plays;
+  return labCard(l.lab.card)?.kind === 'map' ? 'slice' : undefined;
+}
+
+/** A map card's run setup in words, straight from its log: "Full map from
+ *  wave 1 · D · Tactical commands · authored encounters rev 1 · production
+ *  setup", or "Quick slice from wave 5, full length · ...". */
+export function labSetupText(l: PlayLog): string | undefined {
+  const plays = logPlays(l);
+  if (!plays || !l.lab) return undefined;
+  const policy = l.lab.config?.convoy ?? l.convoy?.policy ?? 'current';
+  const enc = l.lab.config ? l.lab.config.encounters : (l.encounters?.rev ?? 0);
+  const parts = [
+    plays === 'full' ? `Full map from wave ${l.firstWave}` : `Quick slice from wave ${l.firstWave}, ${l.lab.length ?? 'full'} length`,
+    POLICY_NAME[policy],
+    enc ? `authored encounters rev ${enc}` : 'shared waves',
+  ];
+  if (plays === 'full' && l.lab.config) parts.push(l.lab.config.production ? 'production setup' : 'changed from the production setup');
+  return parts.join(' · ');
 }

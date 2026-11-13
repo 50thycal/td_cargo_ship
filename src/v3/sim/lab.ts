@@ -8,18 +8,43 @@
 import type { ThreatKind } from '../data/config';
 import { FOES, FOES_BUILT, type FoeId } from '../data/foes';
 import { LAB_EVENT_RUNS, LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix, type LabPair } from '../data/lab';
-import type { EventId } from '../data/events';
+import { campaignWaves, type EventId } from '../data/events';
+import type { ConvoyPolicy } from '../data/convoy';
 import { ABILITIES, type AbilityId } from '../data/abilities';
 import { RULES, VIEW } from '../data/config';
 import { isOldThreat, memberKind, type PairMember } from '../data/pairs';
 import { foeHarmed, newFoeState } from './foes';
 import type { Game, Launch, Threat } from './game';
 
+/** How a map card is played (Test Lab round 10, docs/design/
+ *  v3-map-cards-production.md): `full`, the whole map as the campaign plays
+ *  it (wave 1 to 10, its drafts, then its event ending); `slice`, the old
+ *  short lab run (the lab's start wave, kit, mix and Quick or Full length).
+ *  Absent on every other card, and on a map card's log from before round 10
+ *  (which was a slice). */
+export type LabPlays = 'full' | 'slice';
+
+/** What a full map run was set up with, as a record for whoever reads the
+ *  log (the sim never reads it: it plays the log's own `convoy` and
+ *  `encounters`). `production`: the map's production setup, unchanged. */
+export interface LabMapConfig {
+  convoy: ConvoyPolicy;
+  /** The authored encounters' revision, or 0 for the shared waves. */
+  encounters: number;
+  production: boolean;
+}
+
 /** What a test run is set up with (it goes in the play log). */
 export interface LabSetup {
   card: string;
-  length: LabLength;
-  mix: LabMix;
+  /** A lab test's length and mix (absent on a full map run: it has
+   *  neither). */
+  length?: LabLength;
+  mix?: LabMix;
+  /** A map card: the full map, or a quick slice (see LabPlays). */
+  plays?: LabPlays;
+  /** A full map run: its setup, as a record (see LabMapConfig). */
+  config?: LabMapConfig;
   /** The card's version and the test round it was played in (absent in
    *  logs from before rounds: round 1). Not used by the sim. */
   rev?: number;
@@ -52,6 +77,9 @@ export interface LabState {
   kinds: ThreatKind[];
   weapon?: AbilityId;
   map: boolean;
+  /** A map card's full run (round 10): the campaign's own map, waves and
+   *  ending; the lab only watches. */
+  full: boolean;
   /** Waves cleared in this test. */
   waves: number;
   cursor: number;
@@ -90,6 +118,7 @@ export function newLabState(setup: LabSetup): LabState | null {
     kinds: card.foes.map((f) => FOES[f].kind),
     ...(card.weapon ? { weapon: card.weapon } : {}),
     map: card.kind === 'map',
+    full: card.kind === 'map' && setup.plays === 'full',
     waves: 0,
     cursor: 0,
     stats: { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] },
@@ -101,11 +130,13 @@ export function newLabState(setup: LabSetup): LabState | null {
 }
 
 /** Give a game its card: every new enemy in the mix (a map card keeps its
- *  chapter's, as the campaign does), and no win at wave 10. */
+ *  chapter's, as the campaign does), and no win at wave 10. A full map run
+ *  changes nothing in the game: it plays to its win as the campaign does. */
 export function setUpLab(g: Game, setup: LabSetup): void {
   const lab = newLabState(setup);
   if (!lab) return;
   g.lab = lab;
+  if (lab.full) return;
   g.endless = true;
   // An event card plays its own map's waves and enemies, like a map card.
   if (!lab.map && !lab.event) {
@@ -136,7 +167,7 @@ export function labWave(g: Game, spec: { drones: number; ballistic: number; guid
   const lab = g.lab;
   if (!lab || lab.map || lab.event) return null;
   const sc = LAB_SCENARIOS[lab.waves % LAB_SCENARIOS.length];
-  const m = LAB_MIX[lab.setup.mix];
+  const m = LAB_MIX[lab.setup.mix ?? 'normal'];
   spec.drones = Math.round(spec.drones * m * sc.drones);
   spec.ballistic = Math.round(spec.ballistic * m * sc.missiles);
   spec.guided = Math.round(spec.guided * m * sc.missiles);
@@ -252,21 +283,33 @@ export function labWaveCleared(g: Game): void {
   if (g.lab) g.lab.waves += 1;
 }
 
-/** Has the test run its length? */
+/** Is this a lab test with its own rules (not a full map run, which plays
+ *  the campaign's)? */
+export function labTest(g: Game): boolean {
+  return !!g.lab && !g.lab.full;
+}
+
+/** Has the test run its length? (A full map run ends as the campaign's
+ *  does: won or lost.) */
 export function labDone(g: Game): boolean {
-  return !!g.lab && g.lab.waves >= labWaves(g.lab);
+  return !!g.lab && !g.lab.full && g.lab.waves >= labWaves(g.lab);
 }
 
 /** A test's length in waves: Quick or Full, and for an event card that
- *  many runs of the event. */
+ *  many runs of the event; a full map run, the map's ten and its ending. */
 export function labWaves(lab: { setup: LabSetup; event?: EventId }): number {
-  return (lab.event ? LAB_EVENT_RUNS : LAB_LENGTH)[lab.setup.length];
+  const card = labCard(lab.setup.card);
+  if (card?.kind === 'map' && lab.setup.plays === 'full') return campaignWaves(card.map);
+  return (lab.event ? LAB_EVENT_RUNS : LAB_LENGTH)[lab.setup.length ?? 'full'];
 }
 
 /** The bar's count in play: the card's tally, then how far into the test
  *  it is. An event card counts its runs (Test Lab round 6: "I thought it
- *  would be one and done"): "Run 1 of 3". */
-export function labCountText(card: LabCard, s: LabStats, waves: number, length: number): string {
+ *  would be one and done"): "Run 1 of 3". A full map run (round 10) says
+ *  so, and the wave it is on: "full map · wave 3/13"; a map card's quick
+ *  slice: "quick slice · 1/8". */
+export function labCountText(card: LabCard, s: LabStats, waves: number, length: number, at?: { plays?: LabPlays; wave?: number }): string {
+  if (at?.plays === 'full') return `full map · wave ${Math.min(at.wave ?? waves + 1, length)}/${length}`;
   const parts = card.event
     ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
     : card.foes.length
@@ -276,12 +319,22 @@ export function labCountText(card: LabCard, s: LabStats, waves: number, length: 
         : [];
   const n = Math.min(waves + 1, length);
   parts.push(card.event ? `Run ${n} of ${length}` : `${n}/${length}`);
+  if (at?.plays === 'slice') parts.unshift('quick slice');
   return parts.join(' · ');
 }
 
-/** The evidence, in words. */
-export function evidenceLines(card: LabCard, s: LabStats, waves: number): string[] {
+/** The evidence, in words. A map card's full run (round 10) says how far
+ *  into the map it got and how its ending went. */
+export function evidenceLines(card: LabCard, s: LabStats, waves: number, plays?: LabPlays): string[] {
   const out: string[] = [];
+  if (card.kind === 'map' && plays === 'full') {
+    const total = campaignWaves(card.map);
+    out.push(`Full map: ${waves} of ${total} waves cleared${waves >= total ? ' (the map cleared)' : ''}`);
+    const runs = (s.clean ?? 0) + (s.held ?? 0) + (s.broken ?? 0);
+    if (runs) out.push(`Its ending: Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}`);
+    return out;
+  }
+  if (card.kind === 'map' && plays === 'slice') out.push('Quick slice');
   if (card.kind === 'event') {
     const runs = (s.clean ?? 0) + (s.held ?? 0) + (s.broken ?? 0);
     out.push(runs ? `Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}` : 'Not finished');

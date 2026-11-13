@@ -228,9 +228,11 @@ try {
   }
 
   // ---- The setup sheet picks the policy ----
-  await open(page, 'lab=map-gauntlet&seed=7');
+  // (Test Lab round 10: a map card opens under its production setup, which
+  // on The Gauntlet is Commands; a link asks for today's controls.)
+  await open(page, 'lab=map-gauntlet&convoy=current&enc=0&seed=7');
   const plain = await page.evaluate(() => ({ convoy: window.__v3.game().convoy, cmds: document.querySelectorAll('.v3-command').length, cls: document.querySelector('.v2-root').className }));
-  check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test with no policy asked for plays with today\'s controls, and no convoy layer at all');
+  check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test asked for today\'s controls plays with them, and no convoy layer at all');
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-convoy="tactical"]');
   const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lab-convoy]')].map((b) => b.textContent));

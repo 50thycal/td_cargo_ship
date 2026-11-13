@@ -114,7 +114,7 @@ export interface TelHeader {
   convoy: { policy: ConvoyPolicy; obligation?: Obligation; rev: number; flow: number; formation: FormationId; flowSteps: number; formations: FormationId[]; commands?: CommandId[] };
   /** A Test Lab run: its card, its length, and the card's version and
    *  test round (the lab's own versioning). */
-  lab?: { card: string; length?: string; rev?: number; round?: number };
+  lab?: { card: string; length?: string; rev?: number; round?: number; plays?: 'full' | 'slice' };
   /** The authored encounters' revision, when they were on. */
   encounters?: number;
   freePlay?: boolean;
@@ -532,7 +532,7 @@ export class Telemetry {
     this.close(g, 'cleared');
     this.phaseKey = key;
     this.phase = this.phases.length;
-    const kind: TelPhaseKind = !ev ? 'wave' : g.lab ? 'labEvent' : ev.bonus ? 'bonusEvent' : 'mapEvent';
+    const kind: TelPhaseKind = !ev ? 'wave' : g.lab && !g.lab.full ? 'labEvent' : ev.bonus ? 'bonusEvent' : 'mapEvent';
     this.phases.push({
       i: this.phase,
       wave: g.wave,

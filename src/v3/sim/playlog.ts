@@ -121,6 +121,8 @@ export interface LabResult {
    *  version 1). */
   rev?: number;
   round?: number;
+  /** A map card (round 10): the full map or a quick slice. */
+  plays?: 'full' | 'slice';
 }
 export const SIM_DT = 1 / 60;
 
@@ -145,7 +147,7 @@ export function logTelemetry(
     mode,
     player: player ?? log.dev?.bot ?? (log.device.ua === 'mimic' ? 'mimic' : 'human'),
     ...(input ? { input } : {}),
-    ...(log.lab ? { lab: { card: log.lab.card, length: log.lab.length, ...(log.lab.rev !== undefined ? { rev: log.lab.rev } : {}), ...(log.lab.round !== undefined ? { round: log.lab.round } : {}) } } : {}),
+    ...(log.lab ? { lab: { card: log.lab.card, ...(log.lab.length ? { length: log.lab.length } : {}), ...(log.lab.rev !== undefined ? { rev: log.lab.rev } : {}), ...(log.lab.round !== undefined ? { round: log.lab.round } : {}), ...(log.lab.plays ? { plays: log.lab.plays } : {}) } } : {}),
   });
 }
 
@@ -196,7 +198,12 @@ export interface PlayLog {
   dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
   /** A Free Play run (round 7): its setup, applied as the game is created. */
   freePlay?: FreePlaySetup;
-  /** A Test Lab run: its card, applied after the Free Play setup. */
+  /** A Test Lab run: its card, applied after the Free Play setup. A map
+   *  card's full run (Test Lab round 10: `plays: 'full'`) has no Free Play
+   *  setup: it starts at wave 1 with the player's Armory, as the campaign
+   *  does, and `config` says the convoy policy and encounters it was set up
+   *  with. A log with `plays: 'full'` needs a build that has it; a log
+   *  without replays as before, so the version stays. */
   lab?: LabSetup;
   /** The Map & Convoy Lab: the convoy policy this run was played under
    *  (absent: today's controls, as every campaign run). Applied last. A
@@ -357,9 +364,10 @@ export class Recorder {
 
   /** Focus (a boost): the holding finger down or lifted. It only slows
    *  time; the other finger taps. */
-  /** Test Lab: bring the card's enemy (or weapon) in now. */
+  /** Test Lab: bring the card's enemy (or weapon) in now. (Never on a map
+   *  card's full run: it has nothing of its own to bring.) */
   bring(): void {
-    if (this.game.phase !== 'wave' || !this.game.lab) return;
+    if (this.game.phase !== 'wave' || !this.game.lab || this.game.lab.full) return;
     this.log.commands.push([this.game.steps, 'b']);
     labBring(this.game);
   }

@@ -17,6 +17,7 @@ import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
 import { GRID, LAYERS, cellBox, cellOf, diff, histogram, layer, summarize, timeline, trace, type EventRef, type Filter, type LayerId, type LayerResult, type MetricId, type Platform, type RunData, type Scope, type Summary, type TraceStep } from '../sim/mapAnalytics';
 import { BotRun, PERSONAS } from '../sim/mimic';
 import { LOG_VERSION, replay, type PlayLog } from '../sim/playlog';
+import { logPlays } from '../sim/labDocs';
 import { mapThumb } from './thumbs';
 
 export interface MapLabHandlers {
@@ -80,7 +81,10 @@ export function runFromLog(log: PlayLog): RunData | null {
   const s = log.summary;
   if (s && (s.steps !== g.steps || s.score !== g.score || s.lost !== g.lost)) return null;
   const who = log.dev?.bot ? `bot ${log.dev.bot}` : 'you';
-  const what = log.lab ? `${log.lab.card}${log.lab.rev ? ` v${log.lab.rev}` : ''}` : `from wave ${log.firstWave}`;
+  // A map card's run (Test Lab round 10) says which it was: the full map
+  // or a quick slice (a map card's log from before round 10 was a slice).
+  const plays = logPlays(log);
+  const what = log.lab ? `${log.lab.card}${log.lab.rev ? ` v${log.lab.rev}` : ''}${plays === 'full' ? ' · full map' : plays === 'slice' ? ` · quick slice from wave ${log.firstWave}` : ''}` : `from wave ${log.firstWave}`;
   return { id: log.id, label: `${who} · ${what} · ${log.startedAt.slice(5, 16).replace('T', ' ')}`, sidecar: g.tel!.sidecar(g), log };
 }
 

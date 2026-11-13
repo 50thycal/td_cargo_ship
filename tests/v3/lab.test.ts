@@ -272,8 +272,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(LAB_ROUND).toBe(9);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(LAB_ROUND).toBe(10);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       expect(labCard(id), id).toBeDefined();
       for (const c of list) expect(LAB_ROUNDS.map((r) => r.n), id).toContain(c.round);
@@ -327,9 +327,15 @@ describe('test rounds and card versions', () => {
     for (const id of ['grapnel', 'droneScreen', 'focus', 'frigate', 'overdrive', 'wildCard']) expect(cardRev(`w-${id}`), id).toBe(8);
     expect(LAB_ROUNDS.find((r) => r.n === 8)).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     // Round 9 (docs/design/v3-round9-fixes.md).
-    expect(LAB_ROUNDS[LAB_ROUNDS.length - 1]).toEqual({ n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' });
-    for (const id of ['decoy', 'scavenger', 'ev-decoy-storm', 'ev-breakout', 'ev-supply-raid', 'map-harbor', 'combo-decoy-sprint', 'combo-decoy-cluster', 'combo-scavenger-swarm']) expect(cardRev(id), id).toBe(9);
-    for (const id of ['map-strait', 'map-gauntlet']) expect(cardRev(id), id).toBe(1);
+    expect(LAB_ROUNDS.find((r) => r.n === 9)).toEqual({ n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' });
+    for (const id of ['decoy', 'scavenger', 'ev-decoy-storm', 'ev-breakout', 'ev-supply-raid', 'combo-decoy-sprint', 'combo-decoy-cluster', 'combo-scavenger-swarm']) expect(cardRev(id), id).toBe(9);
+    // Round 10 (docs/design/v3-map-cards-production.md): every map card is
+    // the full production map; nothing else changed.
+    expect(LAB_ROUNDS[LAB_ROUNDS.length - 1]).toEqual({ n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' });
+    for (const c of LAB_CARDS) expect(cardRev(c.id) === 10, c.id).toBe(c.kind === 'map');
+    expect(LAB_CHANGES['map-harbor']!.map((c) => c.round)).toEqual([9, 10]);
+    expect(cardChanges('map-strait', 9)).toEqual(['Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign\'s loadout and drafts, set up ready to test (Commands: Rush and Disperse · authored encounters)']);
+    expect(cardChanges('map-kesh', 9)[0]).toMatch(/today's convoy controls$/);
     for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
     expect(labCard('w-aegis')!.name).toBe('Point Defense');
   });

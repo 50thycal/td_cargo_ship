@@ -264,7 +264,7 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
     <p>Each result says which test round it is from. When a build changes a card, it gets a new version: a result from before that says “changed since: retest”, and its earlier rounds fold underneath.</p>
     <p class="tally" id="results-tally"></p>
     ${LAB.sections.map((s) => `<section class="sec" aria-labelledby="rs-${s.kind}"><h3 id="rs-${s.kind}">${esc(s.name)}</h3><p>${esc(s.blurb)}</p>
-      <ul class="cards">${LAB.cards.filter((c) => c.kind === s.kind).map((c) => `<li class="card result" data-result="${c.id}"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span></div>
+      <ul class="cards">${LAB.cards.filter((c) => c.kind === s.kind).map((c) => `<li class="card result" data-result="${c.id}"><div class="ct"><b>${esc(c.name)}</b><span class="look">${esc(c.look)}</span>${c.plays ? `<span class="look">${esc(c.plays)}</span>` : ''}</div>
         <div class="res"><span class="rhead"><span class="rround" data-rround></span><span class="rv" data-rv>Not tested yet</span></span><span class="rch" data-rch></span><span class="rn" data-rn></span><span class="rs" data-rs></span><span class="rstale" data-rstale></span><details class="rhist hidden" data-rhist><summary></summary><ul></ul></details></div>
         <a class="play" href="${GAME_URL}?lab=${encodeURIComponent(c.id)}" target="_blank" rel="noopener">Test in game ↗</a></li>`).join('\n')}</ul></section>`).join('\n')}
     ${(LAB.retired ?? []).length ? `<section class="sec" aria-labelledby="rs-cut"><h3 id="rs-cut">Cut cards</h3><p>Cards taken out of the lab. Their verdicts stay here; they aren't tested again.</p>
@@ -353,7 +353,8 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       const changed = r ? (Array.isArray(r.changes) ? r.changes : c.changes.filter((x) => x.round === round).map((x) => x.what)) : [];
       el.querySelector('[data-rch]').textContent = changed.length ? 'Changed for round ' + round + ': ' + changed.join(' · ') : '';
       el.querySelector('[data-rn]').textContent = r && r.note ? '“' + r.note + '”' : '';
-      el.querySelector('[data-rs]').textContent = r && r.evidence ? r.evidence : '';
+      // A map card (round 10): how the run was set up (full map or quick slice), before its evidence.
+      el.querySelector('[data-rs]').textContent = r ? [r.setup, r.evidence].filter(Boolean).join(' · ') : '';
       const since = old ? c.changes.filter((x) => x.round > round).map((x) => x.what) : [];
       el.querySelector('[data-rstale]').textContent = old ? 'Changed since: retest' + (since.length ? ' (' + since.join(' · ') + ')' : '') : '';
       const hist = r && Array.isArray(r.history) ? r.history : [];
@@ -361,7 +362,7 @@ a.play:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       det.classList.toggle('hidden', !hist.length);
       det.querySelector('summary').textContent = 'Earlier rounds (' + hist.length + ')';
       const ul = det.querySelector('ul');
-      ul.replaceChildren(...hist.map((h) => { const li = document.createElement('li'); li.textContent = ['Round ' + (h.round || 1), h.verdict ? VLABEL[h.verdict] : 'Tested', h.note ? '“' + h.note + '”' : ''].filter(Boolean).join(' · '); return li; }));
+      ul.replaceChildren(...hist.map((h) => { const li = document.createElement('li'); li.textContent = ['Round ' + (h.round || 1), h.plays === 'full' ? 'Full map' : h.plays === 'slice' ? 'Quick slice' : '', h.verdict ? VLABEL[h.verdict] : 'Tested', h.note ? '“' + h.note + '”' : ''].filter(Boolean).join(' · '); return li; }));
     });
     document.getElementById('results-tally').textContent = n + ' of ' + document.querySelectorAll('[data-result]:not([data-cut])').length + ' tested at their current version' + (stale ? ' · ' + stale + ' changed since: retest' : '');
   }

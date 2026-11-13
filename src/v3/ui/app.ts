@@ -56,7 +56,7 @@ import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../d
 import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
-import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
+import { LAB_ROUND, MAP_CARD_PLAYS, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
 import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
@@ -64,6 +64,7 @@ import {
   roundTitle,
   defaultSetup,
   keepLabLog,
+  labRunPlan,
   labBar,
   labHub,
   labLogs,
@@ -95,9 +96,9 @@ import {
 import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
 import type { MapLabMemory } from './mapLab';
-import { COMMANDS, CONVOY, CONVOY_REV, POLICY_ORDER, type CommandId, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
+import { COMMANDS, CONVOY, type CommandId, type ConvoySetup } from '../data/convoy';
 import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
-import { ENCOUNTERS, ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
+import { ENCOUNTERS, type EncounterSetup } from '../data/encounters';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -344,6 +345,10 @@ export class App {
   /** The verdict sheet's picks so far, for the test it is about. */
   private labDraft: { run: NonNullable<App['labRun']>; draft: VerdictDraft } | null = null;
   private labLast: LabRunSetup | undefined;
+  /** The card a ?lab= link opened: only its test reads the link's
+   *  ?convoy=, ?enc= and ?plays= (a comparison); every other card starts
+   *  from its own setup. */
+  private labLink: string | null = null;
   private devSettings = loadDevSettings();
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   /** Watch mode: the bot in this run, and who is at the controls. */
@@ -619,6 +624,7 @@ export class App {
     this.showMenu();
     // A Test Lab link from the review page: ?lab=<card> opens that test.
     const labLink = !STORE ? new URLSearchParams(location.search).get('lab') : null;
+    this.labLink = labLink;
     // ?maplab=1 opens the Map & Convoy Lab's viewer.
     if (!STORE && new URLSearchParams(location.search).get('maplab') === '1') this.showMapLab();
     else if (labLink) {
@@ -1423,7 +1429,9 @@ export class App {
           // Playthrough round: the first map teaches the two left-rail
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
-          const tip = g.map.id === MAP_ORDER[0] && !this.free ? FIRST_TIPS[ev.wave] : undefined;
+          // (Not under a lab convoy policy: the slider and formations may be
+          // the map's there.)
+          const tip = g.map.id === MAP_ORDER[0] && !this.free && !g.convoy ? FIRST_TIPS[ev.wave] : undefined;
           if (tip && this.hintsOn() && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ...HINT, icon: 'info' });
           break;
         }
@@ -1667,7 +1675,7 @@ export class App {
 
   private renderHud(g: Game): void {
     if (this.commandBtns.length) this.renderCommands(g);
-    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab));
+    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab), g.wave);
     const sunk = shipsSunk(g);
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < sunk ? '<i class="lost"></i>' : i === sunk && this.danger ? '<i class="next"></i>' : '<i></i>',
@@ -1678,7 +1686,7 @@ export class App {
       `<span><b>WAVE</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
-      (this.free ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
+      (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
@@ -2208,40 +2216,47 @@ export class App {
     });
   }
 
-  /** Start a test: the card's water, wave 5 (or the setup's), its kit. */
+  /** Start a test: the card's water, wave 5 (or the setup's), its kit. A
+   *  map card (Test Lab round 10) plays the full map from wave 1, as the
+   *  campaign does, under its production setup unless changed. */
   private startLab(id: string, setup?: LabRunSetup): void {
     const card = labCard(id);
     if (!card) return;
-    const s = setup ?? defaultSetup(card, this.labProgress, this.labLast ? { ...this.labLast, length: this.labProgress.length, mix: this.labProgress.mix } : undefined);
+    const first = setup ?? defaultSetup(card, this.labProgress, this.labLast ? { ...this.labLast, length: this.labProgress.length, mix: this.labProgress.mix } : undefined);
+    // A link's ?convoy=, ?enc= or ?plays= (a comparison), for the card it
+    // named and only as it opens; the plain link is the card's own setup.
+    const link = !setup && !STORE && this.labLink === id ? new URLSearchParams(location.search) : null;
+    if (link) this.labLink = null;
+    const plan = labRunPlan(card, first, link);
+    const s = plan.setup;
     this.labLast = s;
     this.endLabRun();
-    const free: FreeSetup = {
-      map: card.map,
-      wave: s.wave,
-      weapons: [0, 1, 2].map((i) => s.weapons[i] ?? null),
-      armory: { gun: null, hull: null, supply: null },
-      frequentDrops: true,
-      enemies: 'campaign',
-    };
-    // A convoy policy from the setup sheet, or a link's ?convoy=tactical.
-    const asked = !setup ? new URLSearchParams(location.search).get('convoy') : null;
-    if (asked && (POLICY_ORDER as string[]).includes(asked)) s.convoy = asked as ConvoyPolicy;
-    const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
-    // The map's authored encounters, from the sheet or a link's ?enc=1.
-    if (!setup && new URLSearchParams(location.search).get('enc') === '1') s.encounters = true;
-    const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
-    this.play(card.map, free, { card: id, length: s.length, mix: s.mix, rev: cardRev(id), round: LAB_ROUND }, convoy, encounters);
-    const bar = labBar(card, {
-      bring: () => this.rec?.bring(),
-      note: () => this.openNote('rail'),
-      setup: () => this.openLabSetup(),
-      done: () => this.showLabVerdict('done'),
-    });
+    const free: FreeSetup | null = plan.full
+      ? null
+      : {
+          map: card.map,
+          wave: s.wave,
+          weapons: [0, 1, 2].map((i) => s.weapons[i] ?? null),
+          armory: { gun: null, hull: null, supply: null },
+          frequentDrops: true,
+          enemies: 'campaign',
+        };
+    this.play(card.map, free, plan.lab, plan.convoy, plan.encounters);
+    const bar = labBar(
+      card,
+      {
+        bring: () => this.rec?.bring(),
+        note: () => this.openNote('rail'),
+        setup: () => this.openLabSetup(),
+        done: () => this.showLabVerdict('done'),
+      },
+      plan.lab.plays,
+    );
     this.labRun = { card, setup: s, bar };
     this.root.append(bar.el);
     this.root.classList.add('lab-on');
     // What to look for, said once as the test starts (the bar stays slim).
-    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, card.look, { now: true, icon: 'target' }, null);
+    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, plan.full ? `${MAP_CARD_PLAYS}. ${card.look}` : card.look, { now: true, icon: 'target' }, null);
   }
 
   private endLabRun(): void {
@@ -2284,6 +2299,7 @@ export class App {
     const p = this.labProgress;
     const stats = { ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 };
     const waves = g.lab.waves;
+    const plays = g.lab.setup.plays;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
     // The sheet drawn again for the same test (a wave's end coming in under
@@ -2296,21 +2312,24 @@ export class App {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
           const rev = cardRev(run.card.id);
-          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND };
+          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}) };
           addLabEntry(p, run.card.id, { ...result, at: new Date().toISOString(), build: __BUILD__ });
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
           saveLabProgress(p);
           // The verdict rides in the test's log (it reaches Claude).
           if (this.rec) this.rec.log.labResult = result;
-          const log = this.endRun(ended === 'lost' ? 'lost' : 'quit');
+          // A full map run that cleared the map ends as won (and keeps no
+          // run to go on with: the lab has no endless).
+          const log = this.endRun(g.phase === 'won' ? 'won' : ended === 'lost' ? 'lost' : 'quit');
+          this.rec = null;
           if (log) keepLabLog(run.card.id, log);
           this.labDraft = null;
           if (then === 'again') this.startLab(run.card.id, run.setup);
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }, draft),
+      }, draft, plays),
     ]);
   }
 
@@ -2978,13 +2997,16 @@ export class App {
   private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null): void {
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
+    // A map card's full run in the Test Lab (round 10) is the campaign's own
+    // map from wave 1: no playtest knob, dev preset or watch bot changes it.
     const params = new URLSearchParams(location.search);
-    const preset = this.dev && !free ? DEV_PRESETS[this.devSettings.preset] : null;
+    const fullMap = lab?.plays === 'full';
+    const preset = this.dev && !free && !fullMap ? DEV_PRESETS[this.devSettings.preset] : null;
     const tempo = preset?.tempo;
-    const start = free ? free.wave : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
+    const start = free ? free.wave : fullMap ? 1 : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = !STORE && params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
-    const watch = this.dev && !free && this.devSettings.watch;
+    const watch = this.dev && !free && !fullMap && this.devSettings.watch;
     if (this.rec) this.endRun('quit');
     this.free = free ? structuredClone(free) : null;
     this.radarShown = false;

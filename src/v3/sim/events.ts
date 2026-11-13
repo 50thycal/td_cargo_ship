@@ -160,10 +160,14 @@ export interface EventRecord {
   bonus: number;
 }
 
+/** A lab test with its own rules: a map card's full run (Test Lab round
+ *  10) is not one, it plays the campaign's waves and ending. */
+const labTest = (g: Game): boolean => !!g.lab && !g.lab.full;
+
 /** The event this run plays, if any: a lab event card's, or (in the
- *  campaign, not Free Play) the map's. */
+ *  campaign, not Free Play, and a map card's full run) the map's. */
 export function eventFor(g: Game): EventId | null {
-  if (g.lab) return g.lab.event ?? null;
+  if (labTest(g)) return g.lab!.event ?? null;
   if (g.freePlay) return null;
   return EVENT_MAPS[g.map.id] ?? null;
 }
@@ -171,7 +175,7 @@ export function eventFor(g: Game): EventId | null {
 /** The wave that wins the map: the tenth, or the last run of its event
  *  (the 13th with the three-run ending, the 11th without). */
 export function lastWave(g: Game): number {
-  return RULES.wavesToClear + (!g.lab && eventFor(g) ? endingRuns() : 0);
+  return RULES.wavesToClear + (!labTest(g) && eventFor(g) ? endingRuns() : 0);
 }
 
 /** Is the wave starting now an event? (Every wave of a lab event card; in
@@ -179,19 +183,19 @@ export function lastWave(g: Game): number {
 export function isEventWave(g: Game): boolean {
   const id = eventFor(g);
   if (!id) return false;
-  if (g.lab) return true;
+  if (labTest(g)) return true;
   return !g.endless && g.wave >= EVENT_WAVE && g.wave <= lastWave(g);
 }
 
 /** Which run of the map's event a campaign wave is (1 for wave 11). */
 function runOf(g: Game): number {
-  return g.lab ? 1 : g.wave - EVENT_WAVE + 1;
+  return labTest(g) ? 1 : g.wave - EVENT_WAVE + 1;
 }
 
 /** The campaign's next run of the map's event follows straight on, with no
  *  draft between (the three-run ending). */
 export function nextRunDue(g: Game): boolean {
-  return !g.lab && !g.endless && !!eventFor(g) && g.wave >= EVENT_WAVE && g.wave < lastWave(g);
+  return !labTest(g) && !g.endless && !!eventFor(g) && g.wave >= EVENT_WAVE && g.wave < lastWave(g);
 }
 
 /** The run's passive weapons held (roster.ts's passives, level 1 or more). */
@@ -200,10 +204,10 @@ export function passivesHeld(g: Game): AbilityId[] {
 }
 
 /** A bonus event due as the wave just cleared ends: in the campaign (not
- *  Free Play, the lab or endless), on any map, once a run, after its wave,
+ *  Free Play, a lab test or endless; a map card's full run has them), on any map, once a run, after its wave,
  *  when its condition holds. */
 export function bonusDue(g: Game): EventId | null {
-  if (g.lab || g.freePlay || g.endless) return null;
+  if (labTest(g) || g.freePlay || g.endless) return null;
   const held = g.slots.filter((id) => (g.levels[id] ?? 0) > 0);
   const ctx = { map: g.map.id, wave: g.wave, held, passives: passivesHeld(g).length };
   for (const b of BONUS_EVENTS) if (b.after === g.wave && !g.bonusDone.includes(b.id) && b.when(ctx)) return b.id;
@@ -270,7 +274,7 @@ function cardEvent(ev: EventRun): Extract<Game['events'][number], { kind: 'speci
 
 function newRun(g: Game, id: EventId): EventRun {
   const bonus = EVENTS[id].kind === 'bonus';
-  const runs = bonus || g.lab ? 1 : endingRuns();
+  const runs = bonus || labTest(g) ? 1 : endingRuns();
   const ev: EventRun = {
     id,
     wave: g.wave,
@@ -332,7 +336,9 @@ export function endEvent(g: Game, mapLost: boolean): void {
   g.score += bonus;
   record(g, ev, outcome, bonus);
   g.events.push({ kind: 'specialEnd', id: ev.id, outcome, bonus, ...(ev.bonus ? { bonusEvent: true } : {}), ...(ev.runs > 1 ? { run: ev.run, runs: ev.runs } : {}) });
-  if (g.lab) {
+  // A lab run counts how each run went (a map card's full run: its
+  // ending's runs, not a bonus wave).
+  if (g.lab && !(g.lab.full && ev.bonus)) {
     const s = g.lab.stats;
     if (outcome === 'clean') s.clean = (s.clean ?? 0) + 1;
     else if (outcome === 'held') s.held = (s.held ?? 0) + 1;

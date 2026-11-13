@@ -10,6 +10,8 @@ import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
+import { COMMANDS, mapConvoy, type ConvoyPolicy } from './convoy';
+import { ENCOUNTER_MAPS } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -216,7 +218,42 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   wave: bonusDef(id)?.after ?? EVENT_WAVE,
 }));
 
-/** Maps: a map card plays that map's own waves, with its chapter's enemies. */
+// ---- Map cards: the full production map (Test Lab round 10) ----------------
+// The player: "I want this map playtest to be the full finished 10 waves ...
+// Should be what the final product will be." A map card plays the map as
+// the campaign does (wave 1 to 10, its drafts, then its event ending), set
+// up as the production candidate: on the three reference maps the convoy
+// commands and the authored encounters are on. The old short lab run is
+// still on the setup sheet, as a "Quick slice" (docs/design/
+// v3-map-cards-production.md).
+
+/** What a map card is set up with unless the player changes it: the
+ *  production candidate. The three reference maps: policy D (their
+ *  commands) and their authored encounters. The rest: today's convoy
+ *  controls (no commands or encounters exist for them yet). */
+export interface MapProduction {
+  convoy: ConvoyPolicy;
+  encounters: boolean;
+}
+
+export function mapProduction(map: MapId): MapProduction {
+  const ref = (ENCOUNTER_MAPS as string[]).includes(map) && mapConvoy(map).commands.length > 0;
+  return ref ? { convoy: 'tactical', encounters: true } : { convoy: 'current', encounters: false };
+}
+
+/** The production setup in words: "Commands: Rush and Disperse · authored
+ *  encounters", or "today's convoy controls". */
+export function productionText(map: MapId): string {
+  const p = mapProduction(map);
+  if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
+  const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
+  return `Commands: ${cmds}${p.encounters ? ' · authored encounters' : ''}`;
+}
+
+/** What a map card plays, as its hub card and the review page say it. */
+export const MAP_CARD_PLAYS = 'Full map: waves 1–10 and its event ending';
+
+/** Maps: a map card plays that map in full, as the campaign does. */
 const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
   id: `map-${id}`,
   kind: 'map',
@@ -234,7 +271,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
   { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
-  { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
+  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its event ending, set up as the production candidate.' },
 ];
 
 export function labCard(id: string): LabCard | undefined {
@@ -267,6 +304,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
   { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
+  { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -455,6 +493,8 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   ],
   // Round 9 (docs/design/v3-round9-fixes.md): under the Commands policy,
   // Hold now stops every ship short of the hold line, on the water.
+  // Round 10 (docs/design/v3-map-cards-production.md): every map card is
+  // the full production map (MAP_ROUND10, below).
   'map-harbor': [{ round: 9, what: 'Commands policy: Hold stops every ship short of the hold line where it is; the line and the held ships are marked' }],
   'ev-run-the-canal': [
     { round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' },
@@ -464,6 +504,17 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-siege-of-vey': [{ round: 7, what: 'New event (Citadel of Vey): repair ships, a guarded heavy and beacons, then firebombs' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };
+
+// Round 10: every map card is the full production map. The three reference
+// maps open with their commands and authored encounters on; the rest with
+// today's convoy controls.
+for (const id of MAP_ORDER) {
+  const ref = mapProduction(id).convoy === 'tactical';
+  const what = ref
+    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${productionText(id)})`
+    : "Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, with today's convoy controls";
+  LAB_CHANGES[`map-${id}`] = [...(LAB_CHANGES[`map-${id}`] ?? []), { round: 10, what }];
+}
 
 /** The cards a card takes changes from: itself, and for a combo its
  *  enemies' and weapon's cards. */
