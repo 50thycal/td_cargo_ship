@@ -78,7 +78,8 @@ describe('the pairs list (data/pairs.ts)', () => {
   it('round 8 is in the lab, the Combos section says enemy pairs, and every pair card is new or changed in it', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 8)).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     expect(LAB_SECTIONS.find((s) => s.kind === 'combo')!.blurb).toMatch(/enemy pairs/i);
-    for (const p of PAIRS.filter((o) => !['decoy-sprint', 'spotter-siege', 'tender-bodyguard'].includes(o.id))) expect(cardRev(pairCardId(p.id)), p.id).toBe(8);
+    // (Round 9 changed the Decoy Drones and the Scavenger: their pairs take that on.)
+    for (const p of PAIRS.filter((o) => !['decoy-sprint', 'spotter-siege', 'tender-bodyguard'].includes(o.id))) expect(cardRev(pairCardId(p.id)), p.id).toBe(['decoy-cluster', 'scavenger-swarm'].includes(p.id) ? 9 : 8);
   });
 });
 

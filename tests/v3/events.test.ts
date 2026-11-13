@@ -185,7 +185,8 @@ describe('the event after the ten waves as they were (round 7: three runs)', () 
 describe('each event sends what it should', () => {
   const expectSent: Record<EventId, Partial<Record<ThreatKind, number>>> = {
     rush: { sprinter: 24 },
-    'decoy-storm': { decoy: 40, drone: 20 },
+    // Round 9: twelve swarms (ten), so 48 decoys and 24 real drones.
+    'decoy-storm': { decoy: 48, drone: 24 },
     'hydra-bloom': { hydra: 6 },
     'rocket-convoy': { rocketTruck: 8 },
     'gunship-wall': { attackHeli: 4 },
@@ -461,12 +462,12 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(20);
+    expect(log.v).toBe(21);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('decoy-storm');
     expect(e.wave).toBe(EVENT_WAVE);
-    expect(e.sent.decoy).toBe(40);
+    expect(e.sent.decoy).toBe(48);
     expect(e.shots).toBeGreaterThan(0);
     expect(e.decoyShots).toBeGreaterThanOrEqual(0);
     expect(e.decoyShots!).toBeLessThanOrEqual(e.shots);

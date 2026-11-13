@@ -40,7 +40,15 @@ const taste = (seed: number): AbilityId[] => makeRng(seed ^ 0x7a57e).shuffle([..
  *  under way), then played by the bot to the end. A bonus event starts
  *  after its wave, with two passives held (the campaign asks for them). */
 const WARM = 45;
+/** Gun shots in the last play() and the ones at a decoy (round 9: the
+ *  record keeps these only for the Decoy Storm; counted here for any). */
+const tally = { shots: 0, decoy: 0, pickups: 0 };
 function play(map: ReturnType<typeof eventMap>, seed: number, skill: string, id: EventId): EventRecord | undefined {
+  tally.shots = 0;
+  tally.decoy = 0;
+  tally.pickups = 0;
+  let taps0 = -1;
+  const seen = new Set<number>();
   const bonus = bonusDef(id);
   const g = createGame(map, seed, lab ? labCard(`ev-${id}`)!.wave : bonus ? bonus.after + 1 : EVENT_WAVE);
   if (lab) {
@@ -69,6 +77,15 @@ function play(map: ReturnType<typeof eventMap>, seed: number, skill: string, id:
   for (let i = 0; i < 30 * 200 && g.phase === 'wave' && !g.eventLog.some((x) => x.outcome !== 'rerun'); i++) {
     bot.act(g);
     step(g, 1 / 30);
+    if (!g.event) continue;
+    if (taps0 < 0) taps0 = g.taps.pickup;
+    tally.pickups = g.taps.pickup - taps0;
+    for (const it of g.interceptors) {
+      if (seen.has(it.id) || !it.tap) continue;
+      seen.add(it.id);
+      tally.shots += 1;
+      if (g.threats.find((t) => t.id === it.target)?.kind === 'decoy') tally.decoy += 1;
+    }
   }
   return g.eventLog.find((x) => x.outcome !== 'rerun');
 }
@@ -82,7 +99,7 @@ if (md) {
 for (const id of args.includes('--campaign') ? [] : (only ?? EVENT_ORDER)) {
   const map = eventMap(id);
   for (const skill of skills) {
-    const out = { clean: 0, held: 0, broken: 0, lost: 0, secs: 0, n: 0, shots: 0, decoy: 0 };
+    const out = { clean: 0, held: 0, broken: 0, lost: 0, secs: 0, n: 0, shots: 0, decoy: 0, pickups: 0 };
     for (let i = 0; i < seeds; i++) {
       const e = play(map, 2000 + i, skill, id);
       if (!e) continue;
@@ -90,10 +107,11 @@ for (const id of args.includes('--campaign') ? [] : (only ?? EVENT_ORDER)) {
       out[e.outcome as 'clean' | 'held' | 'broken'] += 1;
       out.lost += e.lost;
       out.secs += e.seconds;
-      out.shots += e.shots;
-      out.decoy += e.decoyShots ?? 0;
+      out.shots += tally.shots;
+      out.decoy += tally.decoy;
+      out.pickups += tally.pickups;
     }
-    const extra = id === 'decoy-storm' ? ` · ${pct(out.decoy, out.shots)} of shots at decoys` : '';
+    const extra = (out.decoy ? ` · ${pct(out.decoy, out.shots)} of shots at decoys (${out.decoy}/${out.shots})` : '') + (id === 'supply-raid' ? ` · ${(out.pickups / Math.max(1, out.n)).toFixed(1)} pickups taken a run` : '');
     if (md) rows.push(`| ${EVENTS[id].name} | ${MAPS[map].name} | ${skill} | ${pct(out.clean, out.n)} | ${pct(out.held, out.n)} | ${pct(out.broken, out.n)} | ${(out.lost / Math.max(1, out.n)).toFixed(2)} | ${Math.round(out.secs / Math.max(1, out.n))} |`);
     else console.log(`${EVENTS[id].name.padEnd(18)} ${map.padEnd(12)} ${skill.padEnd(8)} clean ${pct(out.clean, out.n).padStart(4)}  held ${pct(out.held, out.n).padStart(4)}  broken ${pct(out.broken, out.n).padStart(4)}  lost ${(out.lost / Math.max(1, out.n)).toFixed(2)}  ${Math.round(out.secs / Math.max(1, out.n))} s  (${out.n} runs)${extra}`);
   }

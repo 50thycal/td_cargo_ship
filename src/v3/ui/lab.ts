@@ -4,11 +4,12 @@
 // tested is kept on this device (and every test's verdict also goes into its
 // game log, which reaches Claude).
 
-import { COMMANDS, mapConvoy, type ConvoyPolicy } from '../data/convoy';
-import { ENCOUNTER_MAPS } from '../data/encounters';
+import { COMMANDS, CONVOY_REV, POLICY_ORDER, mapConvoy, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
+import { ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
-import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, cardChanges, cardRev, labCard, labRound, type LabCard, type LabLength, type LabMix } from '../data/lab';
-import { evidenceLines, labCountText, type LabStats } from '../sim/lab';
+import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, cardChanges, cardRev, labCard, labRound, mapProduction, productionText, type LabCard, type LabLength, type LabMix } from '../data/lab';
+import { campaignWaves } from '../data/events';
+import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 
@@ -31,6 +32,10 @@ export interface LabRunSetup {
   convoy?: ConvoyPolicy;
   /** The map's authored encounters on (slice 5), or its shared waves. */
   encounters?: boolean;
+  /** A map card (Test Lab round 10): the full map (the default), or the
+   *  old short lab run, a "Quick slice" (the wave, weapons, mix and length
+   *  above are a slice's; a full run has none of them). */
+  plays?: LabPlays;
 }
 
 /** One test's verdict as kept on the device: the result, when, the card's
@@ -178,6 +183,10 @@ export function nextCards(p: LabProgress, n: number, after?: string): LabCard[] 
 }
 
 export function defaultSetup(card: LabCard, p: LabProgress, last?: LabRunSetup): LabRunSetup {
+  // A map card (Test Lab round 10) opens as the production candidate: the
+  // full map, under its production convoy and encounters. Its quick slice
+  // (on the setup sheet) starts from the lab's own start wave.
+  if (card.kind === 'map') return { ...productionSetup(card), length: p.length, mix: p.mix };
   return {
     // An event card starts at its event's wave, its kit levelled up.
     wave: card.wave ?? last?.wave ?? LAB_START_WAVE,
@@ -185,6 +194,58 @@ export function defaultSetup(card: LabCard, p: LabProgress, last?: LabRunSetup):
     length: p.length,
     mix: p.mix,
   };
+}
+
+/** A map card's production setup (round 10): the full map, the map's
+ *  production convoy policy and encounters (data/lab.ts, mapProduction);
+ *  a quick slice's wave and kit are the lab's own, ready if picked. */
+export function productionSetup(card: LabCard, base?: Pick<LabRunSetup, 'length' | 'mix'>): LabRunSetup {
+  const prod = mapProduction(card.map);
+  return {
+    plays: 'full',
+    convoy: prod.convoy,
+    encounters: prod.encounters,
+    wave: LAB_START_WAVE,
+    weapons: card.kit.map((id) => ({ id, level: 1 })),
+    length: base?.length ?? 'full',
+    mix: base?.mix ?? 'normal',
+  };
+}
+
+/** Is this a map card's production setup: the full map, under its
+ *  production convoy policy and encounters? */
+export function isProduction(card: LabCard, s: LabRunSetup): boolean {
+  if (card.kind !== 'map') return false;
+  const prod = mapProduction(card.map);
+  return s.plays !== 'slice' && (s.convoy ?? 'current') === prod.convoy && !!s.encounters === prod.encounters;
+}
+
+/** What a test is started with, from its setup: the lab card's setup for
+ *  the log, the convoy policy and the encounters, and for a map card's full
+ *  run (round 10) no Free Play setup at all (it starts at wave 1 with the
+ *  player's Armory, as the campaign does). `link`: the page's link, when
+ *  it named this card (`?lab=map-strait&convoy=current&enc=0&plays=slice`
+ *  change the setup for a comparison; the plain link is the production
+ *  setup). The setup returned is the one played (the sheet starts from it). */
+export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchParams | null): { setup: LabRunSetup; full: boolean; lab: LabSetup; convoy: ConvoySetup | null; encounters: EncounterSetup | null } {
+  const s = structuredClone(setup);
+  if (link) {
+    const asked = link.get('convoy');
+    if (asked && (POLICY_ORDER as string[]).includes(asked)) s.convoy = asked as ConvoyPolicy;
+    if (link.get('enc') === '1') s.encounters = true;
+    else if (link.get('enc') === '0') s.encounters = false;
+    if (card.kind === 'map' && (link.get('plays') === 'slice' || link.get('plays') === 'full')) s.plays = link.get('plays') as LabPlays;
+  }
+  const map = card.kind === 'map';
+  if (map && !s.plays) s.plays = 'full';
+  const full = map && s.plays === 'full';
+  const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
+  const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
+  const rev = cardRev(card.id);
+  const lab: LabSetup = full
+    ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) } }
+    : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}) };
+  return { setup: s, full, lab, convoy, encounters };
 }
 
 // ---- DOM helpers -----------------------------------------------------------
@@ -267,6 +328,12 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
         text.append(el('small', '', r?.note ? `“${r.note}”` : c.look));
         row.append(text, chip(r));
       }
+      // A map card (round 10) says what it plays, and how it is set up.
+      if (c.kind === 'map') {
+        const plays = el('small', 'v3-lab-plays', `${MAP_CARD_PLAYS} · ${productionText(c.map)}`);
+        plays.dataset.labPlays = '1';
+        text.append(plays);
+      }
       sec.append(row);
     }
     list.append(sec);
@@ -311,7 +378,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(round, bar, go, five, len, report, analytics, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. Setup in play changes them. Nothing here counts toward records.'));
+  side.append(round, bar, go, five, len, report, analytics, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. A map card plays the whole map from wave 1, as the campaign does, set up ready to test. Setup in play changes them. Nothing here counts toward records.'));
   body.append(list, side);
   return body;
 }
@@ -325,15 +392,23 @@ export interface BarHandlers {
   done: () => void;
 }
 
-export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update: (s: LabStats, waves: number, length: number) => void } {
+/** The bar's buttons for a card: Bring one (Drop it, Run it again) only
+ *  where the card has something of its own to bring; never on a map card
+ *  (round 10: it plays the map as it is). */
+export type LabAction = 'bring' | 'note' | 'setup' | 'done';
+export function labActions(card: LabCard): LabAction[] {
+  const canBring = card.kind !== 'map' && (card.foes.length > 0 || !!card.weapon);
+  return [...(canBring ? (['bring'] as const) : []), 'note', 'setup', 'done'];
+}
+
+export function labBar(card: LabCard, h: BarHandlers, plays?: LabPlays): { el: HTMLElement; update: (s: LabStats, waves: number, length: number, wave?: number) => void } {
   const bar = el('div', 'v3-lab-bar');
   const head = el('div', 'v3-lab-bar-head');
   head.append(el('b', '', card.name.toUpperCase()));
   head.title = card.look;
   const count = el('span', 'v3-lab-count');
   const acts = el('div', 'v3-lab-acts');
-  const canBring = card.foes.length > 0 || !!card.weapon;
-  if (canBring) {
+  if (labActions(card).includes('bring')) {
     // An event card: the same command starts the event over.
     const b = button(card.event ? 'Run it again' : card.foes.length ? 'Bring one' : 'Drop it', 'v3-lab-act', h.bring);
     b.dataset.labBring = '1';
@@ -351,8 +426,8 @@ export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update
   let key = '';
   return {
     el: bar,
-    update: (s, waves, length) => {
-      const k = labCountText(card, s, waves, length);
+    update: (s, waves, length, wave) => {
+      const k = labCountText(card, s, waves, length, { plays, wave });
       if (k === key) return;
       key = k;
       count.textContent = k;
@@ -365,6 +440,8 @@ export function labBar(card: LabCard, h: BarHandlers): { el: HTMLElement; update
 
 export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabRunSetup) => void, cancel: () => void): HTMLElement {
   const s = structuredClone(setup);
+  const map = card.kind === 'map';
+  if (map && !s.plays) s.plays = 'full';
   const sheet = el('div', 'v3-lab-sheet');
   sheet.append(el('h2', '', `Setup · ${card.name}`));
   const row = (label: string, ...controls: HTMLElement[]) => {
@@ -372,6 +449,39 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     r.append(el('span', 'v3-fp-label', label), ...controls);
     return r;
   };
+  const seg = <T extends string>(value: T, options: [T, string][], set: (v: T) => void, key?: string) => {
+    const g = el('div', 'v3-lab-len');
+    const btns = options.map(([v, t]) => {
+      const b = button(t, `v3-lab-seg small${v === value ? ' on' : ''}`, () => {
+        set(v);
+        btns.forEach((o, k) => o.classList.toggle('on', options[k][0] === v));
+        refresh();
+      });
+      if (key) b.dataset[key] = v;
+      return b;
+    });
+    g.append(...btns);
+    return g;
+  };
+  // A map card (Test Lab round 10): the production setup, marked, with a
+  // way back to it in one tap; the full map, or a quick slice.
+  const prod = el('div', 'v3-lab-prod');
+  prod.dataset.labProduction = '0';
+  const prodHead = el('b', '');
+  const prodWhat = el('small', '');
+  const reset = button('Reset to production setup', 'v2-btn v3-lab-reset', () => {
+    sheet.replaceWith(labSetupSheet(card, productionSetup(card, s), apply, cancel));
+  });
+  reset.dataset.labReset = '1';
+  if (map) {
+    const txt = el('span', 'v3-lab-prod-text');
+    txt.append(prodHead, prodWhat);
+    prod.append(txt, reset);
+    sheet.append(prod);
+    sheet.append(row('Run', seg<LabPlays>(s.plays ?? 'full', [['full', `Full map · ${campaignWaves(card.map)} waves`], ['slice', 'Quick slice']], (v) => (s.plays = v), 'labPlays')));
+  }
+  // The lab test's own setup: every card but a map card's full run.
+  const slice = el('div', 'v3-lab-slice');
   const waveOut = el('b', 'v3-lab-wave', String(s.wave));
   const step = (d: number) => {
     s.wave = Math.max(1, Math.min(15, s.wave + d));
@@ -381,7 +491,7 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
   minus.setAttribute('aria-label', 'Earlier wave');
   const plus = button('+', 'v3-lab-step', () => step(1));
   plus.setAttribute('aria-label', 'Later wave');
-  sheet.append(row('Wave', minus, waveOut, plus));
+  slice.append(row('Wave', minus, waveOut, plus));
   for (let i = 0; i < 3; i++) {
     const w = s.weapons[i];
     const pick = document.createElement('select');
@@ -409,25 +519,13 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     };
     pick.addEventListener('change', sync);
     lv.addEventListener('change', sync);
-    sheet.append(row(`Weapon ${i + 1}`, pick, lv));
+    slice.append(row(`Weapon ${i + 1}`, pick, lv));
   }
-  const seg = <T extends string>(value: T, options: [T, string][], set: (v: T) => void, key?: string) => {
-    const g = el('div', 'v3-lab-len');
-    const btns = options.map(([v, t]) => {
-      const b = button(t, `v3-lab-seg small${v === value ? ' on' : ''}`, () => {
-        set(v);
-        btns.forEach((o, k) => o.classList.toggle('on', options[k][0] === v));
-      });
-      if (key) b.dataset[key] = v;
-      return b;
-    });
-    g.append(...btns);
-    return g;
-  };
-  sheet.append(row('Mix', seg(s.mix, [['light', 'Light'], ['normal', 'Normal'], ['heavy', 'Heavy']], (v) => (s.mix = v))));
+  slice.append(row('Mix', seg(s.mix, [['light', 'Light'], ['normal', 'Normal'], ['heavy', 'Heavy']], (v) => (s.mix = v))));
   const runs = card.event ? LAB_EVENT_RUNS : LAB_LENGTH;
   const unit = (n: number) => (card.event ? `${n} run${n === 1 ? '' : 's'}` : `${n} waves`);
-  sheet.append(row('Length', seg(s.length, [['quick', `Quick · ${unit(runs.quick)}`], ['full', `Full · ${unit(runs.full)}`]], (v) => (s.length = v))));
+  slice.append(row('Length', seg(s.length, [['quick', `Quick · ${unit(runs.quick)}`], ['full', `Full · ${unit(runs.full)}`]], (v) => (s.length = v))));
+  sheet.append(slice);
   // The Map & Convoy Lab: who steers the convoy in this test.
   const cmds = mapConvoy(card.map).commands.map((id) => COMMANDS[id].name).join(' and ');
   sheet.append(
@@ -442,9 +540,23 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     ),
   );
   // The map's authored encounters in place of part of its shared waves
-  // (the three reference maps; an event card plays its event either way).
+  // (the three reference maps, waves 1-10; an event card plays its event
+  // either way).
   if (!card.event && (ENCOUNTER_MAPS as string[]).includes(card.map))
     sheet.append(row('Waves', seg<'shared' | 'authored'>(s.encounters ? 'authored' : 'shared', [['shared', 'Shared'], ['authored', 'Authored encounters']], (v) => (s.encounters = v === 'authored'), 'labEncounters')));
+  function refresh(): void {
+    slice.hidden = map && s.plays !== 'slice';
+    if (!map) return;
+    const on = isProduction(card, s);
+    prod.dataset.labProduction = on ? '1' : '0';
+    prod.classList.toggle('on', on);
+    prodHead.textContent = on ? 'Production setup' : 'Changed from the production setup';
+    prodWhat.textContent = on
+      ? `${MAP_CARD_PLAYS} · ${productionText(card.map)}`
+      : `Production: ${MAP_CARD_PLAYS.toLowerCase()} · ${productionText(card.map)}`;
+    reset.disabled = on;
+  }
+  refresh();
   const acts = el('div', 'v3-lab-sheet-acts');
   const go = button('Restart with this', 'v2-btn primary', () => apply(s));
   go.dataset.labApply = '1';
@@ -485,9 +597,9 @@ export function verdictResult(d: VerdictDraft): Pick<LabResult, 'verdict' | 'tag
  *  player typed, the Keep / Tune / Cut row was folded away with the rest of
  *  the sheet, and Save (all that was left) saved a null verdict. The row now
  *  stays while typing, and Save with no verdict asks for one. */
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft): HTMLElement {
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays): HTMLElement {
   const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
-  const title = ended === 'lost' ? `${card.name} · the convoy was lost` : `${card.name} · how was it?`;
+  const title = ended === 'lost' ? `${card.name} · the convoy was lost` : plays === 'full' && ended === 'length' ? `${card.name} · map cleared: how was it?` : `${card.name} · how was it?`;
   sheet.append(el('h2', '', title));
   const older = olderEntries(p, card.id);
   const what = changedSince(p, card.id);
@@ -553,7 +665,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   left.append(vwrap, trow, note);
   const right = el('div', 'v3-lab-col v3-lab-evidence');
   right.append(el('span', 'v3-eyebrow', 'Counted this test'));
-  for (const line of evidenceLines(card, s, waves)) right.append(el('p', '', line));
+  for (const line of evidenceLines(card, s, waves, plays)) right.append(el('p', '', line));
   if (older.length) {
     // Earlier versions' verdicts, read only.
     const hist = el('div', 'v3-lab-history');
@@ -618,7 +730,7 @@ export function labReport(p: LabProgress, rewatch: (log: PlayLog, step: number) 
     item.append(head);
     if (r.tags.length) item.append(el('p', 'v3-lab-rtags', r.tags.join(' · ')));
     if (r.note) item.append(el('p', 'v3-lab-rnote', `“${r.note}”`));
-    item.append(el('p', 'v3-lab-rstats', evidenceLines(card, r.stats, r.waves).join(' · ')));
+    item.append(el('p', 'v3-lab-rstats', evidenceLines(card, r.stats, r.waves, r.plays).join(' · ')));
     const log = logs.find((l) => l.lab?.card === id);
     for (const n of log?.notes ?? []) {
       const b = button(`Rewatch: ${n.text ? `“${n.text.slice(0, 48)}”` : 'your note'}`, 'v2-btn v3-lab-rewatch', () => rewatch(log!, n.step));

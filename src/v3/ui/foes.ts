@@ -365,10 +365,35 @@ function drawSprinter(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headin
  *  not a coloured one. */
 export const DECOY_TINT = '#c2d3e3';
 
-/** A decoy: the attack drone's shape, flight and shadow, in DECOY_TINT, the
- *  whole way in. No strobe, ring or trail. */
+/** Round 9 (the player: "Needs to be more distinct. I say just go full
+ *  extreme and make it very obvious, say make it flash the whole time like
+ *  it used to, or fade in and out"): a decoy beats `hz` times a second
+ *  from full down to `low` and back, from the moment it is launched to the
+ *  moment it fizzles, in every swarm, pair and event. A real drone never
+ *  fades. Kept under 3 beats a second (the photosensitivity limit). */
+export const DECOY_PULSE = { hz: 1.6, low: 0.15 };
+
+/** A decoy's opacity `age` s after its launch: full at launch, then the
+ *  beat. */
+export function decoyAlpha(age: number): number {
+  const k = 0.5 + 0.5 * Math.cos(2 * Math.PI * DECOY_PULSE.hz * Math.max(0, age));
+  return DECOY_PULSE.low + (1 - DECOY_PULSE.low) * k;
+}
+
+/** A decoy: the attack drone's shape, flight and shadow, in DECOY_TINT,
+ *  fading in and out the whole way in (round 9), with a pale halo at the
+ *  top of each beat. */
 function drawDecoy(ctx: CanvasRenderingContext2D, th: Threat, heading: number): void {
+  const a = decoyAlpha(th.age);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = `rgba(194,211,227,${0.75 * a})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, 21, 0, Math.PI * 2);
+  ctx.stroke();
   deltaWing(ctx, th.x, th.y, heading, 1, DECOY_TINT);
+  ctx.restore();
 }
 
 /** A two-hit missile with a forked tail: two fins and two exhausts. */

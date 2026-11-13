@@ -10,6 +10,8 @@ import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
+import { COMMANDS, mapConvoy, type ConvoyPolicy } from './convoy';
+import { ENCOUNTER_MAPS } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -93,7 +95,7 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The decoys are a pale blue now, twice the difference: can you tell which is which?', ['flak', 'cutter', 'tesla']),
+  enemy('decoy', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Its torpedoes now go one by one, each at a ship: can you read the lines in time? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'It comes and goes now, hits kept, and calls shells in from off the map: do you see them coming?', ['railgun', 'aegis', 'shield']),
@@ -216,7 +218,42 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   wave: bonusDef(id)?.after ?? EVENT_WAVE,
 }));
 
-/** Maps: a map card plays that map's own waves, with its chapter's enemies. */
+// ---- Map cards: the full production map (Test Lab round 10) ----------------
+// The player: "I want this map playtest to be the full finished 10 waves ...
+// Should be what the final product will be." A map card plays the map as
+// the campaign does (wave 1 to 10, its drafts, then its event ending), set
+// up as the production candidate: on the three reference maps the convoy
+// commands and the authored encounters are on. The old short lab run is
+// still on the setup sheet, as a "Quick slice" (docs/design/
+// v3-map-cards-production.md).
+
+/** What a map card is set up with unless the player changes it: the
+ *  production candidate. The three reference maps: policy D (their
+ *  commands) and their authored encounters. The rest: today's convoy
+ *  controls (no commands or encounters exist for them yet). */
+export interface MapProduction {
+  convoy: ConvoyPolicy;
+  encounters: boolean;
+}
+
+export function mapProduction(map: MapId): MapProduction {
+  const ref = (ENCOUNTER_MAPS as string[]).includes(map) && mapConvoy(map).commands.length > 0;
+  return ref ? { convoy: 'tactical', encounters: true } : { convoy: 'current', encounters: false };
+}
+
+/** The production setup in words: "Commands: Rush and Disperse · authored
+ *  encounters", or "today's convoy controls". */
+export function productionText(map: MapId): string {
+  const p = mapProduction(map);
+  if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
+  const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
+  return `Commands: ${cmds}${p.encounters ? ' · authored encounters' : ''}`;
+}
+
+/** What a map card plays, as its hub card and the review page say it. */
+export const MAP_CARD_PLAYS = 'Full map: waves 1–10 and its event ending';
+
+/** Maps: a map card plays that map in full, as the campaign does. */
 const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
   id: `map-${id}`,
   kind: 'map',
@@ -234,7 +271,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
   { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
-  { kind: 'map', name: 'Maps', blurb: 'A map\'s own waves, with its chapter\'s enemies.' },
+  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its event ending, set up as the production candidate.' },
 ];
 
 export function labCard(id: string): LabCard | undefined {
@@ -266,6 +303,8 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 6, date: '2026-11-10', name: 'Special events, second pass', since: '2026-11-10T04:00' },
   { n: 7, date: '2026-11-10', name: 'Enemy tweaks; more events', since: '2026-11-10T06:00' },
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
+  { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
+  { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -298,12 +337,14 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   scavenger: [
     { round: 2, what: 'Circles over the water; a quadcopter with a claw' },
     { round: 8, what: 'Reworked: it no longer steals; pickups inside its ring are locked until you shoot it down' },
+    { round: 9, what: 'Its ring is twice as wide (240 px): it locks every pickup within it' },
   ],
   decoy: [
     { round: 2, what: 'The tell comes later; decoys fly like real drones' },
     { round: 3, what: 'The swarm spreads out; easier to tell apart' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream) all the way in' },
     { round: 8, what: 'The tint is about twice as strong: the decoys are a pale blue' },
+    { round: 9, what: 'The decoys fade in and out the whole way in, from launch' },
   ],
   // Round 7 (docs/design/v3-enemies-round7.md): the player's enemy notes
   // from the round 6 event playtest. The combos with these enemies take
@@ -394,6 +435,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 5, what: 'New event: ten swarms, mostly decoys, and no ammo drops' },
     { round: 7, what: 'No strobe: the decoys are a shade cooler (grey, not cream)' },
     { round: 8, what: 'The decoys are a pale blue, about twice the difference' },
+    { round: 9, what: 'The decoys fade in and out the whole way in, from launch; twelve swarms (ten), the second half 2 s sooner' },
   ],
   'ev-hydra-bloom': [
     { round: 5, what: 'New event: two fans of Hydras and a dashed line on the water' },
@@ -417,6 +459,7 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
     { round: 5, what: 'New event: two cargo runs of pickups, six scavengers and drone swarms' },
     { round: 6, what: 'No Nuke in the cargo; twelve scavengers, from every side' },
     { round: 8, what: 'The new Scavengers: six, each locking the pickups in its ring until shot down' },
+    { round: 9, what: 'The scavengers\' rings are twice as wide (240 px)' },
   ],
   'ev-blackout': [{ round: 5, what: 'New event: night, eight stealth strafers and a star shell' }],
   'ev-carpet-run': [{ round: 5, what: 'New event: two vees of three stealth bombers (three hits each)' }],
@@ -446,7 +489,13 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-breakout': [
     { round: 7, what: 'New event (Harbor Mouth): decoys, sprinters, Hydras, then trucks' },
     { round: 8, what: 'Its decoys are a pale blue; its Hydras a little slower' },
+    { round: 9, what: 'Its decoys fade in and out the whole way in' },
   ],
+  // Round 9 (docs/design/v3-round9-fixes.md): under the Commands policy,
+  // Hold now stops every ship short of the hold line, on the water.
+  // Round 10 (docs/design/v3-map-cards-production.md): every map card is
+  // the full production map (MAP_ROUND10, below).
+  'map-harbor': [{ round: 9, what: 'Commands policy: Hold stops every ship short of the hold line where it is; the line and the held ships are marked' }],
   'ev-run-the-canal': [
     { round: 7, what: 'New event (Saltgate Canal): subs, gunships over the banks, thieves, then an armored block' },
     { round: 8, what: 'Cut down: two subs (no torpedo crosses land), one gunship, then a block of six; no scavengers' },
@@ -455,6 +504,17 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
   'ev-siege-of-vey': [{ round: 7, what: 'New event (Citadel of Vey): repair ships, a guarded heavy and beacons, then firebombs' }],
   'ev-firestorm': [{ round: 5, what: 'New event: firebombs from every side; their fires burn longer' }],
 };
+
+// Round 10: every map card is the full production map. The three reference
+// maps open with their commands and authored encounters on; the rest with
+// today's convoy controls.
+for (const id of MAP_ORDER) {
+  const ref = mapProduction(id).convoy === 'tactical';
+  const what = ref
+    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${productionText(id)})`
+    : "Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, with today's convoy controls";
+  LAB_CHANGES[`map-${id}`] = [...(LAB_CHANGES[`map-${id}`] ?? []), { round: 10, what }];
+}
 
 /** The cards a card takes changes from: itself, and for a combo its
  *  enemies' and weapon's cards. */

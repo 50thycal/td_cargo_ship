@@ -330,8 +330,11 @@ describe('normal waves, the bonus wave and the map\'s event are told apart', () 
       const ph = sc.phases[e.p];
       expect(e.s >= ph.s0 && e.s <= (ph.s1 ?? Infinity), `${e.k} at step ${e.s} in stretch ${e.p}`).toBe(true);
     }
-    // The restore before the ending is in the stream, as heals.
-    expect(sc.events.some((e) => e.k === 'heal' && e.why === 'restore') || g.lost === 0).toBe(true);
+    // The restore before the ending is in the stream, as heals (when a hull
+    // or the carrier was short of full then; it always resets the losses).
+    const ending = sc.phases.find((p) => p.kind === 'mapEvent')!;
+    expect(g.lossBase).toBe(ending.lost0);
+    expect(sc.events.some((e) => e.k === 'heal' && e.why === 'restore') || g.lost === 0 || g.lossBase > 0).toBe(true);
     expect(reconcile(sc, g)).toEqual([]);
   });
 });

@@ -99,7 +99,8 @@ try {
     const small = [...document.querySelectorAll('.v3-maplab button, .v3-maplab select')].filter((e) => e.getBoundingClientRect().height > 0 && e.getBoundingClientRect().height < 30).length;
     return { map: s.map, runs: s.runs.length, label: row?.textContent, total: s.total, sw: document.documentElement.scrollWidth, iw: innerWidth, small, taps: s.summary.taps.fire };
   });
-  check(kept.map === 'harbor' && kept.runs === 1 && /you · map-harbor/.test(kept.label ?? '') && kept.taps > 5, `the Test Lab's button opens Map Analytics, and the run just played by touch is there (${JSON.stringify(kept)})`);
+  // (Test Lab round 10: the map card's full run, and its label says so.)
+  check(kept.map === 'harbor' && kept.runs === 1 && /you · map-harbor v\d+ · full map/.test(kept.label ?? '') && kept.taps > 5, `the Test Lab's button opens Map Analytics, and the run just played by touch is there (${JSON.stringify(kept)})`);
   check(kept.sw <= kept.iw && kept.small === 0, `on a landscape phone: no sideways scroll, no control under 30 px (${kept.sw}/${kept.iw}, ${kept.small} small)`);
   await phone.screenshot({ path: `${OUT_DIR}/phone-harbor-human.png` });
   check(errs.length === 0, `no page errors on the phone (${errs[0] ?? 'none'})`);

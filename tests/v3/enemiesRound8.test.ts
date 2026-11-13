@@ -101,21 +101,19 @@ describe('Decoy Drones: "Still can\'t tell which is which"', () => {
     expect(Math.abs(L(DECOY_TINT) - L(C.drone))).toBeLessThan(0.04);
   });
 
-  it('the bots tell a decoy apart sooner (it reads further out), but not in its first second', () => {
-    expect(FOE.decoy.readAt).toBeGreaterThan(320);
-    expect(FOE.decoy.readAfter).toBeGreaterThanOrEqual(1);
+  it('the bots tell a decoy apart from its launch (round 9: it fades in and out from then), anywhere on the board', () => {
+    // Round 8 read it within 420 px and from 1.5 s out; round 9's pulse reads at once.
+    expect(FOE.decoy.readAt).toBeGreaterThanOrEqual(Math.hypot(1600, 900));
+    expect(FOE.decoy.readAfter).toBe(0);
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, g.map.bases[1]);
     const fake = live(g, 'decoy')[0];
-    g.threats = [fake];
-    expect(worthShooting(g, g.threats)).toContain(fake);
-    const s = g.ships.find((o) => o.id === fake.target)!;
-    run(g, FOE.decoy.readAfter + 0.1);
-    fake.x = s.x - FOE.decoy.readAt + 30;
-    fake.y = s.y;
+    const real = live(g, 'drone')[0];
+    g.threats = [fake, real];
     run(g, 0.05);
     expect(fake.foe!.state).toBe(1);
     expect(worthShooting(g, g.threats)).not.toContain(fake);
+    expect(worthShooting(g, g.threats)).toContain(real);
   });
 });
 
@@ -518,7 +516,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish('quit');
-    expect(log.v).toBe(20);
+    expect(log.v).toBe(21);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);
     expect(again.steps).toBe(g.steps);

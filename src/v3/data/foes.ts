@@ -36,7 +36,7 @@ export interface FoeDef {
 
 export const FOES: Record<FoeId, FoeDef> = {
   sprinter: { id: 'sprinter', name: 'Sprint Drones', chapter: 1, cat: 'strike', kind: 'sprinter', from: 'base', blurb: 'A swarm that flares a booster near its ship and sprints in.' },
-  decoy: { id: 'decoy', name: 'Decoy Drones', chapter: 1, cat: 'support', kind: 'decoy', from: 'base', blurb: 'Half the swarm is fake. The decoys are a pale blue, not cream: look closely.' },
+  decoy: { id: 'decoy', name: 'Decoy Drones', chapter: 1, cat: 'support', kind: 'decoy', from: 'base', blurb: 'Half the swarm is fake. The decoys are pale blue and fade in and out the whole way in: let them go.' },
   hydra: { id: 'hydra', name: 'Hydra Missile', chapter: 1, cat: 'strike', kind: 'hydra', from: 'base', blurb: 'Kill it and it splits into two darts. Kill it early.' },
   rocketTruck: { id: 'rocketTruck', name: 'Rocket Truck', chapter: 1, cat: 'platform', kind: 'rocketTruck', from: 'road', blurb: 'Raises a launcher, then fires salvos of red rockets you can\'t stop. Kill the truck.' },
   attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Hovers beside the lane firing missile pairs, and moves.' },
@@ -129,7 +129,12 @@ export const FOE = {
   // Round 8 ("Still can't tell which is which"): the tint is about twice as
   // strong (a pale steel blue), so a careful player tells a decoy apart
   // sooner: within 420 px (320) and from 1.5 s out (2).
-  decoy: { size: 6, fakes: 3, readAt: 420, readAfter: 1.5, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
+  // Round 9 ("go full extreme and make it very obvious ... flash the whole
+  // time like it used to, or fade in and out"): on top of the tint a decoy
+  // fades in and out the whole way in, from its launch (ui/foes.ts
+  // DECOY_PULSE), so it reads at a glance from the moment it is up: `readAt`
+  // covers the whole board and `readAfter` is 0.
+  decoy: { size: 6, fakes: 3, readAt: 2000, readAfter: 0, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
   // Round 7 ("about 25% slower before the split"): the missile itself is
   // 25% slower (THREATS.hydra: 150 → 112.5 px/s); its darts are as fast as
   // before (THREATS.dart, 290). Round 8 ("a little bit more for both
@@ -180,8 +185,13 @@ export const FOE = {
    *  has none in its ring; with nothing on the water it circles (`orbit`
    *  px, `spin` rad/s) over the water `above` px off the convoy. It leaves
    *  (at `leave` px/s), its ring off, once nothing but helpers' targets is
-   *  left of the wave, or after `stay` s. */
-  scavenger: { deny: 120, hover: 48, hoverSpin: 1.1, leave: 210, stay: 40, orbit: 85, spin: 0.9, above: 170 },
+   *  left of the wave, or after `stay` s.
+   *  Round 9 (the player, on Supply Raid: "Radius for the drones could be
+   *  about twice as large, and make sure it applies to the drones normally,
+   *  outside of the special event"): `deny` 120 → 240 px, for every
+   *  scavenger (its card, its pairs and Supply Raid share this one number;
+   *  the ring is drawn from it). */
+  scavenger: { deny: 240, hover: 48, hoverSpin: 1.1, leave: 210, stay: 40, orbit: 85, spin: 0.9, above: 170 },
   // Its run-in grows with its speed (Test Lab round 1: 270 → 315 px/s), so
   // the time to shoot it before its guns open stays about 1.1 s.
   stealthJet: { runIn: 350 },

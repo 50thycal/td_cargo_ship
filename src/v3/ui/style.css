@@ -5871,7 +5871,146 @@ a.v3-lab-page {
   }
 }
 
+/* Hold on: the button beats in gold, as the hold line on the board does. */
+.v3-command.active[data-command='hold'] {
+  border-width: 2px;
+  animation: v3-hold-beat 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes v3-hold-beat {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+  to {
+    box-shadow: 0 0 14px 4px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
+
+/* What a press did, beside the buttons, over the board's edge: a refusal's
+   reason (round 9: "the command did not work at all"), or what a Hold
+   stopped. */
+.v3-commands {
+  position: relative;
+}
+
+.v3-command-says {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  z-index: 5;
+  transform: translate(-6px, -50%);
+  max-width: 240px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.v3-command-says.refused {
+  border-color: var(--danger);
+  color: #ffd2cc;
+}
+
+.v3-command-says.on {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-command.active[data-command='hold'] {
+    animation: none;
+    box-shadow: 0 0 10px 3px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
+
 .v3-command:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
+}
+
+/* Test Lab round 10: a map card is the full production map. Its hub card
+   says what it plays; its setup sheet marks the production setup and has
+   a one-tap way back to it. */
+.v3-lab-row-text small.v3-lab-plays {
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+.v3-lab-prod {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--lab-amber);
+  background: color-mix(in srgb, var(--lab-amber) 10%, transparent);
+}
+
+.v3-lab-prod.on {
+  border: 1px solid var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+
+.v3-lab-prod-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.v3-lab-prod-text b {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lab-amber);
+}
+
+.v3-lab-prod.on .v3-lab-prod-text b {
+  color: var(--gold);
+}
+
+.v3-lab-prod-text small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.v3-lab-prod .v3-lab-reset {
+  flex: none;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.v3-lab-prod .v3-lab-reset:disabled {
+  opacity: 0.45;
+}
+
+.v3-lab-slice {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+}
+
+.v3-lab-slice[hidden] {
+  display: none;
+}
+
+/* Round 10: a map card's full run has a draft after every wave, and Done
+   still works then: the bar stays above the draft, which makes room for it. */
+.playing.lab-on:has(.v2-overlay.open[data-screen="draft"]) .v3-lab-bar {
+  z-index: 11;
+}
+
+.playing.lab-on .v2-overlay.open[data-screen="draft"] {
+  padding-bottom: calc(var(--sa-b) + var(--lab-bar-h) + 10px);
 }
