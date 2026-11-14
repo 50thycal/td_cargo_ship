@@ -1062,7 +1062,10 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
     const v3 = await import('../../src/v3/data/maps');
     // Roads aside: the map visual-check round moved the Archipelago's pop-up
     // truck stops back onto the islets in V3 (in V2 they stop in the sea).
-    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null });
+    // Round 11: Harbor Mouth's pairs open out in its wide water (a lane's
+    // `open`, V3 only); the lane itself is V2's.
+    const lane = (c: object) => { const { open: _o, ...rest } = c as { open?: number }; return rest; };
+    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null, channels: ((m as { channels: object[] }).channels).map(lane) });
     for (const id of Object.keys(v2.MAPS) as (keyof typeof v2.MAPS)[]) expect(shape(v3.MAPS[id])).toBe(shape(v2.MAPS[id]));
   });
 });

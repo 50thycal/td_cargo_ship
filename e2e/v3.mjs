@@ -953,7 +953,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 10 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 10 && saved.v === 22 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 11 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 11 && saved.v === 22 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
@@ -991,7 +991,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 10/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 11/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
@@ -1129,11 +1129,13 @@ try {
     await lp.reload();
     await lp.locator('[data-map="strait"]').tap();
     const brief = await lp.locator('[data-brief-event="rush"]').textContent();
-    check(/Special event:\s*Afterburner Rush, waves 11–13/.test(brief ?? ''), `the briefing names the map's special event and its waves (${brief})`);
+    check(/Boss rounds:\s*Afterburner Rush, waves 11–13/.test(brief ?? ''), `the briefing names the map's boss rounds and their waves (${brief})`);
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
-    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent }));
-    check(/WAVE\s*11\/13/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /Run 1 of 3/.test(hud11.eyebrow ?? ''), `the wave counter reads 11/13 and the card says Run 1 of 3 (${JSON.stringify(hud11)})`);
+    await lp.waitForTimeout(400);
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent, name: document.querySelector('.v3-event-card .v3-event-name')?.textContent, banner: document.body.innerText.match(/BOSS ROUNDS[^\n]*\n?[^\n]*/)?.[0] ?? '' }));
+    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /^Boss round 1 of 3/.test(hud11.eyebrow ?? '') && hud11.name === 'Afterburner Rush', `round 11: the counter reads BOSS 1/3 and the card says Boss round 1 of 3, Afterburner Rush (${JSON.stringify(hud11)})`);
+    check(/Survive the next 3 rounds/.test(hud11.banner), `round 11: a banner says what the boss rounds are ("${hud11.banner.replace(/\s+/g, ' ')}")`);
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;

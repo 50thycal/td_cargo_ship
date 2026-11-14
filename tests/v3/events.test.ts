@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { RULES, VIEW, type ThreatKind } from '../../src/v3/data/config';
 import { ENDING, EVENT, EVENTS, EVENT_MAPS, EVENT_ORDER, EVENT_WAVE, RULE_TEXT, bonusDef, campaignWaves, eventMap, gradeEvent, type EventId } from '../../src/v3/data/events';
-import { FOES, FOES_BUILT } from '../../src/v3/data/foes';
+import { FOE, FOES, FOES_BUILT } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { LAB_CARDS, LAB_CHANGES, LAB_EVENT_RUNS, LAB_ROUNDS, LAB_SECTIONS, cardRev, labCard } from '../../src/v3/data/lab';
 import { draftPool } from '../../src/v3/data/roster';
@@ -252,9 +252,9 @@ describe('each event sends what it should', () => {
     expect(block.every((t) => t.foe!.state === 1)).toBe(true);
   });
 
-  it('the Afterburner Rush: the first sprinter over the line sets off every cruising one', () => {
+  it('the Afterburner Rush (round 11: no line): the sprinters cruise in slow, and each flares on its own, near its ship', () => {
     const g = eventGame('rush', 2);
-    const line = g.event!.line!;
+    expect('line' in g.event!).toBe(false);
     // Two swarms out, all still cruising (they cruise slower than a sprint
     // swarm normally flies).
     run(g, 30, () => g.threats.filter((t) => t.kind === 'sprinter').length >= 8);
@@ -262,10 +262,22 @@ describe('each event sends what it should', () => {
     expect(sprinters.length).toBeGreaterThanOrEqual(8);
     expect(sprinters.every((t) => t.foe!.state === 0)).toBe(true);
     expect(sprinters[0].speed).toBeLessThan(70 * 1.6);
-    // One over the line: next step, every one of them flares.
-    sprinters[0].y = line.y + line.dir * 4;
-    step(g, DT);
-    expect(g.threats.filter((t) => t.kind === 'sprinter').every((t) => t.foe!.state >= 1)).toBe(true);
+    // Nothing sets them all off at once: each flares by the sprinter's own
+    // rule, within FOE.sprinter.boostAt of where it is aiming.
+    const flaredFar: number[] = [];
+    const seen = new Set<number>();
+    for (let i = 0; i < 60 * 20 && g.event; i++) {
+      step(g, DT);
+      for (const t of g.threats) {
+        if (t.kind !== 'sprinter' || t.dead || seen.has(t.id) || t.foe!.state === 0) continue;
+        seen.add(t.id);
+        const s = g.ships.reduce((m, o) => Math.min(m, Math.hypot(o.x - t.x, o.y - t.y)), Infinity);
+        const c = Math.hypot(g.map.carrier.x - t.x, g.map.carrier.y - t.y);
+        if (Math.min(s, c) > FOE.sprinter.boostAt + 60) flaredFar.push(t.id);
+      }
+    }
+    expect(seen.size).toBeGreaterThan(0);
+    expect(flaredFar).toEqual([]);
   });
 
   it('the Escort Run: each ring of guards stripped speeds the heavy up', () => {
@@ -322,7 +334,7 @@ describe('event rules: on for the event, off after', () => {
 
   it('Hydra Bloom: a Hydra splits into three wherever it is killed (round 8: no line); after it, two', () => {
     const g = eventGame('hydra-bloom');
-    expect(g.event!.line).toBeUndefined();
+    expect('line' in g.event!).toBe(false);
     for (const y of [-50, 200, 600]) expect(hydraDarts(g, { y } as never)).toBe(3);
     g.event = null;
     expect(hydraDarts(g, { y: 200 } as never)).toBe(2);

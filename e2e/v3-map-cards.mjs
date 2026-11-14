@@ -3,7 +3,7 @@
 // BASE_URL. On a landscape phone (874 x 402), by touch:
 // - the hub's map cards say what they play and how they open;
 // - The Strait's card, tapped from the hub, starts at wave 1 of 13 with
-//   Rush and Disperse on the rail and no Bring one, and an encounter is
+//   no convoy command on the rail (round 11) and no Bring one, and an encounter is
 //   called out by wave 2-4;
 // - its log says it is a full production run, and how it was set up;
 // - the setup sheet marks the production setup, Reset returns to it, and
@@ -123,17 +123,17 @@ try {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
     return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
-  check(hub.n === 20 && hub.strait === 'Full map: waves 1–10 and its event ending · Commands: Rush and Disperse · authored encounters' && hub.harbor === 'Full map: waves 1–10 and its event ending · Commands: Hold · authored encounters', `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
-  check(/^Full map: waves 1–10 and its event ending · Today's convoy controls/.test(hub.kesh ?? ''), `a map with no commands or encounters yet says so ("${hub.kesh}")`);
+  check(hub.n === 20 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · authored encounters" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · authored encounters", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
+  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.kesh ?? ''), `a map with no commands or encounters yet says so ("${hub.kesh}")`);
   await shot(page, 'hub-card');
 
-  // ---- Tap The Strait's card: wave 1, Rush and Disperse, no Bring one ----
+  // ---- Tap The Strait's card: wave 1, no command (round 11), no Bring one ----
   await page.tap('[data-card="map-strait"]');
   await page.waitForSelector('.playing.lab-on');
   await page.waitForFunction(() => window.__v3.game().ships.length >= 2, null, { timeout: 30000 });
   const s0 = await runState(page);
   check(s0.map === 'strait' && s0.wave === 1 && s0.full && s0.plays === 'full' && !s0.endless && !s0.freePlay, `The Strait's card from the hub starts the full map at wave 1 (${JSON.stringify({ wave: s0.wave, plays: s0.plays, endless: s0.endless, freePlay: s0.freePlay })})`);
-  check(s0.policy === 'tactical' && s0.cmds.join() === 'rush,disperse' && s0.enc === 1, `its production setup: Rush and Disperse on the rail, authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
+  check(s0.policy === 'tactical' && s0.cmds.length === 0 && s0.enc === 1, `its production setup: the map's own convoy with no command (round 11: Rush and Disperse are gone), authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
   check(!s0.bring && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1/13' && /WAVE\s*1\/13/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `the bar reads "${s0.head} · ${s0.count}", with no Bring one; the HUD says WAVE 1/13 and TEST LAB`);
   check(s0.log.firstWave === 1 && !s0.log.freePlay && s0.log.lab?.plays === 'full' && s0.log.lab?.config?.convoy === 'tactical' && s0.log.lab?.config?.encounters === 1 && s0.log.lab?.config?.production === true && s0.log.convoy === 'tactical' && s0.log.encounters === 1 && !('length' in s0.log.lab), `the log says it is a full production run, and its setup (${JSON.stringify(s0.log.lab)})`);
   await page.waitForTimeout(1500);
@@ -174,7 +174,7 @@ try {
     const on = (k) => [...document.querySelectorAll(`[data-${k}]`)].filter((b) => b.classList.contains('on')).map((b) => b.textContent);
     return { prod: p.dataset.labProduction, text: p.textContent, reset: document.querySelector('[data-lab-reset]').disabled, plays: on('lab-plays'), convoy: on('lab-convoy'), enc: on('lab-encounters'), slice: document.querySelector('.v3-lab-slice').hidden, wave: !!document.querySelector('.v3-lab-wave')?.offsetParent };
   });
-  check(sh0.prod === '1' && /^Production setup/.test(sh0.text) && sh0.reset && sh0.plays.join() === 'Full map · 13 waves' && sh0.convoy.join() === 'Commands: Rush and Disperse' && sh0.enc.join() === 'Authored encounters' && sh0.slice && !sh0.wave, `the sheet marks the production setup; the lab's wave, kit, mix and length are folded away (${JSON.stringify(sh0)})`);
+  check(sh0.prod === '1' && /^Production setup/.test(sh0.text) && sh0.reset && sh0.plays.join() === 'Full map · 13 waves' && sh0.convoy.join() === 'Commands (none here)' && sh0.enc.join() === 'Authored encounters' && sh0.slice && !sh0.wave, `the sheet marks the production setup; the lab's wave, kit, mix and length are folded away (${JSON.stringify(sh0)})`);
   await shot(page, 'setup-production');
   await page.tap('[data-lab-convoy="current"]');
   const sh1 = await page.evaluate(() => ({ prod: document.querySelector('[data-lab-production]').dataset.labProduction, text: document.querySelector('[data-lab-production] b').textContent, reset: document.querySelector('[data-lab-reset]').disabled }));
@@ -268,14 +268,20 @@ try {
   await page.tap('[data-lab-next]');
   await page.waitForSelector('.playing.lab-on');
   const s4 = await runState(page);
-  check(next === 'The Gauntlet' && s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.join() === 'rush,disperse' && s4.enc === 1, `Next up (${next}) opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
+  check(next === 'The Gauntlet' && s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.length === 0 && s4.enc === 1, `Next up (${next}) opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
 
   // ---- The bare link ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
-  await page.waitForFunction(() => document.querySelectorAll('.v3-command').length > 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
   const s5 = await runState(page);
-  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.join() === 'hold' && s5.enc === 1 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with Hold and its encounters (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
+  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 1 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
+  // Round 11: Hold is on Sowers' Reach, where mines drift across the lane.
+  await page.goto(`${BASE_URL}/v3.html?lab=map-sowers&seed=7`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.playing.lab-on');
+  await page.waitForFunction(() => document.querySelectorAll('.v3-command').length > 0, null, { timeout: 8000 });
+  const s6 = await runState(page);
+  check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === 'hold' && s6.enc === null, `the bare link v3.html?lab=map-sowers opens the full map with Hold (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
 } catch (e) {

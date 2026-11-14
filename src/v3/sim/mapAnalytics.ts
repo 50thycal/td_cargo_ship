@@ -571,7 +571,7 @@ export function timeline(runs: RunData[], f: Filter): EventRef[] {
         e.what === 'flow' || e.what === 'formation' || e.what === 'fork'
           ? `${e.what}: ${e.was} to ${e.req}${e.ok ? ` (${e.ships} ships afloat)` : refused}`
           : e.what === 'release'
-            ? `release (${e.req}): ${e.was} ship${e.was === 1 ? '' : 's'} waiting at the line`
+            ? `release (${e.req}): ${e.was} ship${e.was === 1 ? '' : 's'} held`
             : `${e.what}${e.ok ? (e.ids ? ` (${e.ids.length} ships)` : '') : refused}`;
       out.push({ run: w.run.id, s: e.s, t: e.t, wave: w.ph.wave, text });
     }

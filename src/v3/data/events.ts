@@ -70,7 +70,7 @@ export interface EventDef {
 }
 
 export const EVENTS: Record<EventId, EventDef> = {
-  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Six sprint swarms and a dashed line on the water: does the line read before it matters?' },
+  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'No line now: six sprint swarms cruise in, and each boosts near its ship. Does it still feel like a rush?' },
   'decoy-storm': { id: 'decoy-storm', kind: 'map', name: 'Decoy Storm', foe: 'decoy', rules: ['noAmmo'], look: 'Twelve swarms and no ammo drops: did you run dry, and was that on you?' },
   'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
@@ -245,9 +245,10 @@ export const EVENT = {
 /** Each event's numbers (seconds from the end of the breather). */
 export const EV = {
   /** `swarms` sprint swarms, one every `every` s, cruising at `cruise` of
-   *  their speed; the line sits `line` of the way from the launch bases to
-   *  the lane's near edge. */
-  rush: { swarms: 6, every: 1.5, cruise: 0.5, line: 0.75 },
+   *  their speed. Round 11: the boost line is gone (it sat 0.75 of the way
+   *  from the bases to the lane, and the player saw the drones boost before
+   *  it anyway); each sprinter flares near its ship as usual. */
+  rush: { swarms: 6, every: 1.5, cruise: 0.5 },
   /** `swarms` decoy swarms of `size`, `fakes` of each fake, half at the
    *  start and half `second` s later. Round 9: the decoys now fade in and
    *  out from launch and the bots read them at once, which took the lab
@@ -418,3 +419,11 @@ export const EV = {
    *  s. `swarms` drone swarms of `size`. */
   'siege-of-vey': { hp: 12, speed: 0.8, tenders: 3, mend: 2, every: 2.6, meet: 0.3, ring: 56, apart: 1.1, sail: 1.6, escortAt: 8, heavyHp: 8, rings: [3, 4], radii: [34, 56], slow: 0.5, per: 0.25, lures: 2, fireAt: 17, fire: 5, fslow: 0.85, linger: 10, swarms: 2, size: 5 },
 } as const;
+
+/** Round 11 (the player: "the special effects waves at the end should be
+ *  just called the 'boss' rounds"): what the player reads for a run of the
+ *  map's ending, "Boss round 1 of 3". The event keeps its own name (the
+ *  boss round's title) and every id stays as it was. */
+export function bossRound(run: number, runs: number): string {
+  return `Boss round ${run} of ${runs}`;
+}

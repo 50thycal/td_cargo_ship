@@ -50,7 +50,7 @@ import {
   isStructure,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
+import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, slotOffset, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
 import { flightAt, laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
 import {
   AB,
@@ -79,7 +79,7 @@ import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDo
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { encountersFor, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
-import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, holdStop, updateConvoy, type ConvoyState } from './convoy';
+import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -4056,15 +4056,17 @@ function spawnGap(g: Game): number {
 const MERGE_AHEAD = 140;
 
 /** The offset across its lane a hull steers for: its formation slot, scaled
- *  to the lane's width where it is. Where the lane ahead narrows below
- *  LANE_FLOOR (a single-file gap), every hull lines up on the centre line,
- *  one behind another; the supertanker always sails the middle. */
+ *  to the lane's width where it is (and, round 11, opened out in the wide
+ *  water of a lane that asks for it: Harbor Mouth's pairs). Where the lane
+ *  ahead narrows below LANE_FLOOR (a single-file gap), every hull lines up
+ *  on the centre line, one behind another; the supertanker always sails
+ *  the middle. */
 function slotLat(g: Game, s: Ship): number {
   if (s.vip) return 0;
   const ch = g.map.channels[s.channel];
   if (ch.widths && Math.min(laneHalfWidth(ch, s.d), laneHalfWidth(ch, s.d + MERGE_AHEAD)) < LANE_FLOOR) return 0;
-  const offsets = formationNow(g).offsets;
-  return offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
+  const f = formationNow(g);
+  return slotOffset(ch, f.offsets[s.slot % f.offsets.length], halfWidthAt(ch, s.x), !!f.opens);
 }
 
 /** Put a hull where its lane distance and offset say. */
@@ -4147,11 +4149,10 @@ function spawnTanker(g: Game): void {
   cue(g, 'tanker.horn', t.x, t.y);
 }
 
-/** The furthest a hull may sail this step: up to a closed lock gate, or
- *  (the lab's Hold, sim/convoy.ts) the staging line. */
+/** The furthest a hull may sail this step: up to a closed lock gate. (The
+ *  lab's Hold, sim/convoy.ts, slows the hull itself: holdPace.) */
 function stopAt(g: Game, s: Ship): number {
-  const gate = gateStop(g, s.channel, s.d, LOCK.stand);
-  return g.convoy ? Math.min(gate, holdStop(g, s)) : gate;
+  return gateStop(g, s.channel, s.d, LOCK.stand);
 }
 
 /** Up to a closed lock gate on a lane, for a hull at d whose bow reaches
@@ -4298,7 +4299,7 @@ function steamMult(g: Game): number {
 }
 
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g) * convoySpeed(g);
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */

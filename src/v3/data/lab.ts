@@ -8,9 +8,9 @@
 import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
-import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
+import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, endingRuns, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
-import { COMMANDS, mapConvoy, type ConvoyPolicy } from './convoy';
+import { COMMANDS, CONVOY, mapConvoy, type ConvoyPolicy } from './convoy';
 import { ENCOUNTER_MAPS } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
@@ -228,30 +228,35 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
 // v3-map-cards-production.md).
 
 /** What a map card is set up with unless the player changes it: the
- *  production candidate. The three reference maps: policy D (their
- *  commands) and their authored encounters. The rest: today's convoy
- *  controls (no commands or encounters exist for them yet). */
+ *  production candidate. The three reference maps: policy D and their
+ *  authored encounters (round 11: D has no command on them, so their convoy
+ *  sails the map's own schedule and formation with no input). A map with a
+ *  command (round 11: Sowers' Reach, Hold): policy D, which offers it. The
+ *  rest: today's convoy controls (no commands or encounters exist for them
+ *  yet). */
 export interface MapProduction {
   convoy: ConvoyPolicy;
   encounters: boolean;
 }
 
 export function mapProduction(map: MapId): MapProduction {
-  const ref = (ENCOUNTER_MAPS as string[]).includes(map) && mapConvoy(map).commands.length > 0;
-  return ref ? { convoy: 'tactical', encounters: true } : { convoy: 'current', encounters: false };
+  const encounters = (ENCOUNTER_MAPS as string[]).includes(map);
+  const commands = mapConvoy(map).commands.length > 0;
+  return encounters || commands ? { convoy: 'tactical', encounters } : { convoy: 'current', encounters: false };
 }
 
-/** The production setup in words: "Commands: Rush and Disperse · authored
- *  encounters", or "today's convoy controls". */
+/** The production setup in words: "Commands: Hold", "The map's own
+ *  convoy · authored encounters", or "today's convoy controls". */
 export function productionText(map: MapId): string {
   const p = mapProduction(map);
   if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
   const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
-  return `Commands: ${cmds}${p.encounters ? ' · authored encounters' : ''}`;
+  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ' · authored encounters' : ''}`;
 }
 
-/** What a map card plays, as its hub card and the review page say it. */
-export const MAP_CARD_PLAYS = 'Full map: waves 1–10 and its event ending';
+/** What a map card plays, as its hub card and the review page say it.
+ *  Round 11: the event ending's runs are the map's boss rounds. */
+export const MAP_CARD_PLAYS = `Full map: waves 1–10 and ${endingRuns()} boss rounds`;
 
 /** Maps: a map card plays that map in full, as the campaign does. */
 const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
@@ -271,7 +276,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
   { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
-  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its event ending, set up as the production candidate.' },
+  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its boss rounds, set up as the production candidate.' },
 ];
 
 export function labCard(id: string): LabCard | undefined {
@@ -305,6 +310,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
   { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
   { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
+  { n: 11, date: '2026-11-14', name: 'Round 11: map notes — boss rounds, simpler Hold, no Rush or Disperse', since: '2026-11-14T20:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -508,13 +514,38 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
 // Round 10: every map card is the full production map. The three reference
 // maps open with their commands and authored encounters on; the rest with
 // today's convoy controls.
+// The words are round 10's own setups, kept as they were (round 11 changed
+// the commands, and a round's lines say what that round did).
+const ROUND10_SETUP: Partial<Record<MapId, string>> = {
+  strait: 'Commands: Rush and Disperse · authored encounters',
+  gauntlet: 'Commands: Rush and Disperse · authored encounters',
+  harbor: 'Commands: Hold · authored encounters',
+};
 for (const id of MAP_ORDER) {
-  const ref = mapProduction(id).convoy === 'tactical';
+  const ref = ROUND10_SETUP[id];
   const what = ref
-    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${productionText(id)})`
+    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${ref})`
     : "Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, with today's convoy controls";
   LAB_CHANGES[`map-${id}`] = [...(LAB_CHANGES[`map-${id}`] ?? []), { round: 10, what }];
 }
+
+// Round 11 (docs/design/v3-round11-map-notes.md, part A): the player's notes
+// from their full-map playtest of The Strait, The Gauntlet and Harbor Mouth.
+// (Part B, the decoy / Point Defense / Laser Cutter changes, adds its own
+// lines.)
+const BOSS_LINE = 'The three event runs at the end are now called boss rounds, and a banner says "survive the next 3 rounds" as they start';
+const ROUND11: Partial<Record<string, string[]>> = {
+  'map-strait': [
+    'Rush and Disperse are gone: the convoy sails on its own',
+    BOSS_LINE,
+    'Its boss rounds (Afterburner Rush) have no line on the water now: each sprinter boosts near its ship',
+  ],
+  'map-gauntlet': ['Rush and Disperse are gone: the convoy sails on its own', BOSS_LINE],
+  'map-harbor': ['Hold is gone here; ships start wide and close up at the neck', BOSS_LINE],
+  'map-sowers': [`New: Hold — tap to stop every ship while mines drift across, tap again to release (up to ${CONVOY.hold.max} s)`, BOSS_LINE],
+  'ev-rush': ['No line on the water: each sprinter flares and sprints near its ship, as sprinters always do'],
+};
+for (const [id, lines] of Object.entries(ROUND11)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), ...lines!.map((what) => ({ round: 11, what }))];
 
 /** The cards a card takes changes from: itself, and for a combo its
  *  enemies' and weapon's cards. */

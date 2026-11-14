@@ -1,34 +1,17 @@
-// Special events on the battlefield (sim/events.ts): the line on the water
-// (Afterburner Rush's boost line; Hydra Bloom lost its line in round 8) and the Shield
-// Wall's signal. Drawn plainly, with no words: the player works out what
-// they mean (the player's rule: no telling how to beat an event).
+// Special events on the battlefield (sim/events.ts): Beacon Strike's marks
+// and the Shield Wall's signal. Drawn plainly, with no words: the player
+// works out what they mean (the player's rule: no telling how to beat an
+// event). The lines on the water are gone: Hydra Bloom's in round 8,
+// Afterburner Rush's in round 11.
 
-import { VIEW } from '../data/config';
 import { EV } from '../data/events';
 import { beaconMark } from '../sim/events';
 import type { Game } from '../sim/game';
 
-/** Under the threats: the event's dashed line across the water, and Beacon
- *  Strike's marks (each beacon to the ship it has marked). */
+/** Under the threats: Beacon Strike's marks (each beacon to the ship it
+ *  has marked). */
 export function drawEventUnder(ctx: CanvasRenderingContext2D, g: Game): void {
-  const ev = g.event;
-  if (ev && ev.id === 'beacon-strike') drawBeaconMarks(ctx, g);
-  if (!ev?.line) return;
-  const y = ev.line.y;
-  const hot = ev.id === 'rush';
-  ctx.save();
-  // A soft band, then the dashes marching along it.
-  ctx.fillStyle = hot ? 'rgba(255,140,60,0.07)' : 'rgba(245,197,66,0.06)';
-  ctx.fillRect(0, y - 10, VIEW.width, 20);
-  ctx.setLineDash([22, 14]);
-  ctx.lineDashOffset = -g.t * 26;
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = hot ? 'rgba(255,150,70,0.75)' : 'rgba(245,197,66,0.7)';
-  ctx.beginPath();
-  ctx.moveTo(0, y);
-  ctx.lineTo(VIEW.width, y);
-  ctx.stroke();
-  ctx.restore();
+  if (g.event?.id === 'beacon-strike') drawBeaconMarks(ctx, g);
 }
 
 /** Beacon Strike (round 8): while a beacon charges its call, a dashed
