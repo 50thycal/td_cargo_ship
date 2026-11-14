@@ -6,8 +6,8 @@
 // (foeDown).
 
 import type { RNG } from '../../sim/rng';
-import { DRONE, THREATS, VIEW, type ThreatKind } from '../data/config';
-import { FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
+import { THREATS, VIEW, type ThreatKind } from '../data/config';
+import { DEBUT_SLOTS, FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { EV } from '../data/events';
@@ -27,8 +27,6 @@ import {
   pathLength,
   shipAhead,
   spawnThreat,
-  swarmAim,
-  swarmPart,
   targetable,
   type Game,
   type Launch,
@@ -249,8 +247,21 @@ export function newFoeState(mapId: MapId, setting: FoeSetting = 'campaign'): Foe
   }
   st.pool = foesUpTo(ch);
   st.lead = foesInChapter(ch);
-  st.cursor = Math.max(0, MAP_ORDER.indexOf(mapId)) % 5;
+  const debut = mapDebut(mapId);
+  st.cursor = debut ? Math.max(0, st.lead.indexOf(debut)) : 0;
   return st;
+}
+
+/** The new enemy a campaign map leads with (its debut), or null for a map
+ *  with none of its own (DEBUT_SLOTS: Kesh, since round 11). */
+export function mapDebut(mapId: MapId): FoeId | null {
+  const lead = foesInChapter(chapterOf(mapId));
+  if (!lead.length) return null;
+  const k = Math.max(0, MAP_ORDER.indexOf(mapId)) % 5;
+  const slots = DEBUT_SLOTS[chapterOf(mapId)];
+  if (!slots) return lead[k % lead.length];
+  const id = slots[k % slots.length];
+  return id && lead.includes(id) ? id : null;
 }
 
 /** Is this a Free Play setting the game knows? */
@@ -289,7 +300,7 @@ export function isFoe(kind: ThreatKind): boolean {
 /** Foes whose movement is their own (the missiles among them fly the shared
  *  steering code in game.ts). */
 const OWN_MOVES = new Set<ThreatKind>([
-  'sprinter', 'decoy', 'rocketTruck',
+  'sprinter', 'rocketTruck',
   'attackHeli', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'diveBomber', 'siege', 'spotter',
   'tender', 'guard', 'lure', 'cloud',
@@ -316,22 +327,6 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
         const th = spawnThreat(g, 'sprinter', at.x + (k - 1.5) * 14, at.y, 'base');
         th.foe = data();
       }
-      return;
-    }
-    case 'decoy': {
-      if (!at) return;
-      // Real drones and decoys, shuffled so the decoys aren't always the
-      // same places in the swarm. Spread out (Test Lab round 2: "they are
-      // just one large clump"): launched in a wide, staggered line, each
-      // keeps its place across the swarm's front until close in.
-      const D = FOE.decoy;
-      const kinds = rng.shuffle(Array.from({ length: D.size }, (_, k): ThreatKind => (k < D.fakes ? 'decoy' : 'drone')));
-      const mid = (D.size - 1) / 2;
-      kinds.forEach((kind, k) => {
-        const th = spawnThreat(g, kind, at.x + (k - mid) * D.spread, at.y + (k % 2) * D.stagger, 'base');
-        th.slot = (k - mid) * D.slot;
-        if (kind === 'decoy') th.foe = data();
-      });
       return;
     }
     case 'hydra': {
@@ -736,28 +731,6 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         steer(th, lead.x, lead.y, FOE.sprinter.sprint, 6, dt);
       }
       hit(th);
-      return;
-    }
-    case 'decoy': {
-      retarget(th);
-      const tp = aim(th);
-      const d = dist(th.x, th.y, tp.x, tp.y);
-      // Flown exactly as game.ts flies the attack drone (the same weave, the
-      // same speed), so nothing but its tint tells them apart.
-      const at = th.slot ? swarmAim(th, tp, d) : tp;
-      th.heading = Math.atan2(at.y - th.y, at.x - th.x) + (d > 80 ? DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase) : 0);
-      th.x += Math.cos(th.heading) * th.speed * dt;
-      th.y += Math.sin(th.heading) * th.speed * dt;
-      swarmPart(g, th, dt);
-      // Round 7: no strobe; its tint is there all the way in. `state` 1 is
-      // when a careful player has told it apart (read): close enough to be
-      // looking at the swarm, and not in its first seconds. Nothing draws it.
-      if (f.state === 0 && d <= FOE.decoy.readAt && f.t >= FOE.decoy.readAfter) f.state = 1;
-      if (d <= FOE.decoy.fizzle) {
-        // At the convoy, a decoy is nothing: a puff and it's gone.
-        th.dead = true;
-        addFx(g, 'burst', th.x, th.y, { life: 0.4, r: 14 });
-      }
       return;
     }
     case 'rocketTruck':
@@ -2052,12 +2025,6 @@ function splitHydra(g: Game, th: Threat): void {
   cue(g, 'foe.split', th.x, th.y);
 }
 
-/** Has a careful player told this decoy apart by now (its tint, round 7)?
- *  The bots and the broadside leave it alone then. */
-export function revealedDecoy(th: Threat): boolean {
-  return th.kind === 'decoy' && (th.foe?.state ?? 0) >= 1;
-}
-
 /** Seconds until a new enemy does harm (what the bots and helpers rank
  *  threats by), or null to use the usual distance over speed. */
 export function foeEta(g: Game, th: Threat): number | null {
@@ -2118,17 +2085,14 @@ export function foeEta(g: Game, th: Threat): number | null {
       const s = g.ships.reduce((m, o) => Math.min(m, dist(o.x, o.y, th.x, th.y)), Infinity);
       return Math.max(0.3, ((s - FOE.cloud.radius * 2) / Math.max(1, th.speed)) * 0.5);
     }
-    case 'decoy':
-      return revealedDecoy(th) ? 30 : null;
     default:
       return null;
   }
 }
 
-/** Worth a shot? Not a decoy a careful player has told apart. */
+/** Worth a shot? Not a guard, nor a siege gun on its way down. */
 export function foeWorthShooting(g: Game, th: Threat): boolean {
   void g;
-  if (revealedDecoy(th)) return false;
   if (th.kind === 'guard') return false;
   // A siege gun about to go down: a shot now gets there to a shut hatch.
   if (th.kind === 'siege' && siegeLowering(th)) return false;

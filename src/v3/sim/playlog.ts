@@ -102,7 +102,12 @@ import type { EncounterSetup } from '../data/encounters';
  *      twice as wide (240 px), decoys are told apart from launch (the bots,
  *      the broadside and the helpers leave them be), the Decoy Storm sends
  *      twelve swarms with the second half sooner, and the Map & Convoy Lab's
- *      Hold stops the ships short of its line (convoy rules rev 2). */
+ *      Hold stops the ships short of its line (convoy rules rev 2).
+ *  (Round 11, part B, docs/design/v3-round11-map-notes.md: the decoys out of
+ *  the game, Point Defense at munitions only, a Cutter tap fires nothing,
+ *  every weapon you fire hurts a Lure Beacon. The log's shape is the same,
+ *  so the version was left for the round's merge to settle: a v21 log
+ *  played before it no longer replays to the same game.) */
 export const LOG_VERSION = 21;
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
@@ -239,8 +244,9 @@ export interface PlayLog {
   moments?: Moment[];
   rating?: Rating;
   /** Special events met (sim/events.ts): when each started and ended
-   *  (steps), what it sent, how it went, the shots fired in it and, on the
-   *  Decoy Storm, how many went at decoys. Derived: replay remakes them. */
+   *  (steps), what it sent, how it went and the shots fired in it (an older
+   *  log's Decoy Storm also counted the shots at decoys). Derived: replay
+   *  remakes them. */
   events?: EventRecord[];
 }
 

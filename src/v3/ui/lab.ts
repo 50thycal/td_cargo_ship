@@ -397,7 +397,9 @@ export interface BarHandlers {
  *  (round 10: it plays the map as it is). */
 export type LabAction = 'bring' | 'note' | 'setup' | 'done';
 export function labActions(card: LabCard): LabAction[] {
-  const canBring = card.kind !== 'map' && (card.foes.length > 0 || !!card.weapon);
+  // An event card always has Run it again (round 11: the Drone Storm is
+  // built on plain drones, no new enemy).
+  const canBring = card.kind !== 'map' && (!!card.event || card.foes.length > 0 || !!card.weapon);
   return [...(canBring ? (['bring'] as const) : []), 'note', 'setup', 'done'];
 }
 

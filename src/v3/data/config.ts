@@ -95,14 +95,14 @@ export type ThreatKind =
   | 'dreadnought'
   // The enemy build (data/foes.ts): the new enemies, a chapter at a time,
   // and what some of them fire or carry.
-  | 'sprinter' | 'decoy' | 'hydra' | 'dart' | 'rocketTruck'
+  | 'sprinter' | 'hydra' | 'dart' | 'rocketTruck'
   | 'attackHeli' | 'heliRocket' | 'torpedoSub' | 'torpedo' | 'armored' | 'scavenger'
   | 'stealthJet' | 'stealthBomber' | 'diveBomber' | 'siege' | 'spotter'
   | 'tender' | 'guard' | 'lure' | 'cloud';
 
 /** The new enemies' kinds, as one list. */
 export const FOE_KINDS: ThreatKind[] = [
-  'sprinter', 'decoy', 'hydra', 'dart', 'rocketTruck',
+  'sprinter', 'hydra', 'dart', 'rocketTruck',
   'attackHeli', 'heliRocket', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter',
   'tender', 'guard', 'lure', 'cloud',
@@ -167,7 +167,6 @@ export const THREATS: Record<
   dreadnought: { speed: 24, hp: 50, damage: 0, dropChance: 1, label: 'Dreadnought' },
   // The enemy build (data/foes.ts has their other numbers).
   sprinter: { speed: 70, hp: 1, damage: 1, dropChance: 0.1, label: 'Sprint drone' },
-  decoy: { speed: 70, hp: 1, damage: 0, dropChance: 0.05, label: 'Decoy drone' },
   // Round 7 ("about 25% slower before the split"): 150 → 112.5, 0.75×. The
   // darts it splits into keep their speed. Round 8 ("still just a little
   // too hard … slow it down just a little bit more for both stages"): the
@@ -331,7 +330,6 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   bomber: 'volley',
   strafer: 'strike',
   sprinter: 'swarm',
-  decoy: 'swarm',
   hydra: 'volley',
   dart: 'volley',
   rocketTruck: 'barrage',

@@ -105,34 +105,8 @@ const P = (p: Omit<EnemyPair, 'members'>): EnemyPair => ({ ...p, members: [p.pai
 /** The pairs, by chapter. */
 export const PAIRS: EnemyPair[] = [
   // ---- Chapter 1: Home Waters ----
-  P({
-    id: 'decoy-sprint',
-    name: 'Decoys + Sprint Drones',
-    chapter: 1,
-    synergy: 'Half the swarm is fake and the sprinters fly in among it: every shot spent on a decoy is one not spent on a drone that is about to sprint.',
-    look: 'What do you shoot first?',
-    kit: ['flak', 'cutter', 'scatter'],
-    pair: {
-      lead: 'decoy',
-      follow: [{ foe: 'sprinter', after: 0.5, base: 'same' }],
-      far: true,
-      rule: 'One raid, out of the launch base furthest from the convoy: the Decoy swarm leads and the Sprint Drones follow 0.5 s later out of the same base.',
-    },
-  }),
-  P({
-    id: 'decoy-cluster',
-    name: 'Decoys + Cluster Missiles',
-    chapter: 1,
-    synergy: 'The decoy swarm draws your shots in the very seconds the cluster missiles have to die, before they split over the convoy.',
-    look: 'A swarm and two missiles at once: where do your shots go?',
-    kit: ['flak', 'railgun', 'seeker'],
-    pair: {
-      lead: 'decoy',
-      follow: [{ foe: 'cluster', after: 1, on: 'arrive', base: 'same' }],
-      far: true,
-      rule: 'The Decoy swarm leads, out of the launch base furthest from the convoy. Two Cluster Missiles follow out of the same base, launched so they reach the convoy with the swarm.',
-    },
-  }),
+  // Round 11: Decoys + Sprint Drones and Decoys + Cluster Missiles went
+  // with the decoys (the player: "remove the decoy drones ... entirely").
   P({
     id: 'hydra-swarm',
     name: 'Hydra + Drone Swarm',

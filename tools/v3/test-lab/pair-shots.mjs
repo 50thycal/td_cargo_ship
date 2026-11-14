@@ -29,7 +29,6 @@ const SHOTS = [
   { id: 'heli-sub', need: [['attackHeli'], ['torpedoSub', 'torpedo']], hold: 1.5 },
   { id: 'tender-truck', need: [['tender'], ['rocketTruck']], hold: 3.2 },
   { id: 'guard-spotter', need: [['spotter'], ['guard']], hold: 7 },
-  { id: 'decoy-cluster', need: [['decoy'], ['cluster']], hold: 1.5 },
   { id: 'lure-stealth', need: [['lure'], ['stealthJet']], hold: 0.8 },
   { id: 'siege-truck', need: [['rocketTruck'], ['siege']], hold: 0.8 },
 ];

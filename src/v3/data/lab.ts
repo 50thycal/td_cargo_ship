@@ -95,7 +95,6 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Its torpedoes now go one by one, each at a ship: can you read the lines in time? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'It comes and goes now, hits kept, and calls shells in from off the map: do you see them coming?', ['railgun', 'aegis', 'shield']),
@@ -112,15 +111,15 @@ const ENEMIES: LabCard[] = [
 /** Weapons changed since they were last played: first (Test Lab round 8:
  *  the player's round-7 weapon notes; then round 5's, from round 4). */
 const REWORKED: Partial<Record<AbilityId, string>> = {
-  focus: 'Now a button on the left edge: hold it with your left thumb to slow time, tap anywhere else to shoot. Is the meter clear?',
+  focus: 'Hold the left button to slow time; its dial is now your slow motion left, not the boost\'s time. Clear?',
   wildCard: 'From level 2 each pickup also brings one random passive (frigates, gunships, drones...) for 8 s. Fun?',
   grapnel: 'A thrown threat now bursts on the first threat it hits; a tough one keeps its health and flies on. Right?',
   overdrive: 'Level 2 now lasts 18 s (was a refill you never saw). Worth the level?',
   frigate: 'A new drop while they sail off: they keep going and a fresh pair sails in. Smoother?',
   droneScreen: 'Out of targets, the drones fly home and land on the deck. Better?',
-  aegis: 'Renamed Point Defense: does the name fit?',
+  aegis: 'It now fires only at missiles, bombs and drones about to hit a ship, never at the planes: right?',
   well: 'Missiles, drones and small boats are pulled in; aircraft and other big ones only slowed until MAX. Consistent now?',
-  cutter: 'Keep your finger down and it keeps cutting, a round per stretch: does it feel right?',
+  cutter: 'It only cuts now: a tap fires nothing. Does swiping read, and does it cut beacons?',
   gunships: 'Now Apache-style, nose on the target when they fire, and a new drop calls a leaving pair back: right?',
   supplyRun: 'No magnet: tap the crates you want; they can hold your weapons, boosts and (Airdrop) a Nuke. Better?',
   bomberWing: 'Hits aircraft and subs too, and you see the bomber cross before the bomb lands: does it read?',
@@ -162,11 +161,21 @@ export interface RetiredCard extends LabCard {
 }
 const WHY_PAIRS = 'A player weapon with an enemy: the combos are enemy pairs now';
 const retired = (id: string, name: string, look: string, foes: FoeId[], weapon: AbilityId): RetiredCard => ({ id, kind: 'combo', name, look, foes, weapon, kit: [], map: LAB_MAP, cut: 8, why: WHY_PAIRS });
+/** Round 11 (the player: "remove the decoy drones ... entirely"): the
+ *  Decoy Drones card, the Decoy Storm (Kesh's event is the Drone Storm
+ *  now, ev-drone-storm) and the two decoy pairs. Their old verdicts keep a
+ *  card to sit on; the decoy is no enemy any more, so they list none. */
+const WHY_DECOYS = 'decoys removed from the game';
+const gone11 = (id: string, kind: LabKind, name: string, look: string, map: MapId = LAB_MAP): RetiredCard => ({ id, kind, name, look, foes: [], kit: [], map, cut: 11, why: WHY_DECOYS });
 export const LAB_RETIRED: RetiredCard[] = [
   retired('combo-lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], 'droneScreen'),
   retired('combo-cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], 'flak'),
   retired('combo-guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], 'seeker'),
   retired('combo-hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], 'tesla'),
+  gone11('decoy', 'enemy', 'Decoy Drones', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?'),
+  gone11('ev-decoy-storm', 'event', 'Decoy Storm', 'Twelve swarms and no ammo drops: did you run dry, and was that on you?', 'kesh'),
+  gone11('combo-decoy-sprint', 'combo', 'Decoys + Sprint Drones', 'What do you shoot first?'),
+  gone11('combo-decoy-cluster', 'combo', 'Decoys + Cluster Missiles', 'A swarm and two missiles at once: where do your shots go?'),
 ];
 
 export function retiredCard(id: string): RetiredCard | undefined {
@@ -178,7 +187,7 @@ export function retiredCard(id: string): RetiredCard | undefined {
  *  asks one question and never says how to beat it (the player's rule). */
 const EVENT_KITS: Record<EventId, AbilityId[]> = {
   rush: ['flak', 'railgun', 'cutter'],
-  'decoy-storm': ['scatter', 'seeker', 'aegis'],
+  'drone-storm': ['scatter', 'seeker', 'aegis'],
   'hydra-bloom': ['railgun', 'flak', 'aegis'],
   'rocket-convoy': ['railgun', 'airstrike', 'aegis'],
   'gunship-wall': ['lance', 'flak', 'gunships'],
@@ -209,8 +218,9 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   kind: 'event',
   name: EVENTS[id].name,
   look: EVENTS[id].look,
-  // A chapter finale features all its chapter's new enemies.
-  foes: [EVENTS[id].foe, ...(EVENTS[id].also ?? [])],
+  // A chapter finale features all its chapter's new enemies (the Drone
+  // Storm, plain drones, none).
+  foes: [...(EVENTS[id].foe ? [EVENTS[id].foe] : []), ...(EVENTS[id].also ?? [])],
   kit: EVENT_KITS[id],
   map: eventMap(id),
   event: id,
@@ -305,6 +315,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
   { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
   { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
+  { n: 11, date: '2026-11-14', name: 'Round 11: map notes — boss rounds, simpler Hold, Rush wake', since: '2026-11-14T00:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -515,6 +526,22 @@ for (const id of MAP_ORDER) {
     : "Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, with today's convoy controls";
   LAB_CHANGES[`map-${id}`] = [...(LAB_CHANGES[`map-${id}`] ?? []), { round: 10, what }];
 }
+
+// Round 11, part B (docs/design/v3-round11-map-notes.md): the decoys out of
+// the game, Point Defense only at munitions, the Cutter only cuts, every
+// weapon you fire hurts a Lure Beacon, Focus's dial is its slow motion.
+const ROUND11_B: Record<string, string> = {
+  'ev-drone-storm': 'New event in place of the Decoy Storm (the decoys are gone): twelve plain drone swarms and no ammo drops',
+  'ev-breakout': 'No decoys: it opens with plain drone swarms, then the sprinters, Hydras and trucks as before',
+  'map-kesh': 'No decoys any more: Kesh has no new enemy of its own for now, and its event is the Drone Storm',
+  'map-harbor': 'Its event, The Breakout, opens with plain drone swarms (no decoys)',
+  'w-aegis': 'Fires only at what is about to hit a hull (missiles, bombs, drones), never at the aircraft',
+  'w-cutter': 'Only cuts: a tap fires no shell (it says SWIPE TO CUT), and its cut now hits beacons',
+  'w-focus': 'The dial on the left button shows your slow motion left, not the boost\'s own time',
+  lure: 'Every weapon you fire now hurts it: cuts, seekers, jets, blades, clouds and burning lines (your helpers still can\'t)',
+  'ev-beacon-strike': 'Every weapon you fire now hurts the beacons, the Laser Cutter too',
+};
+for (const [id, what] of Object.entries(ROUND11_B)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), { round: 11, what }];
 
 /** The cards a card takes changes from: itself, and for a combo its
  *  enemies' and weapon's cards. */

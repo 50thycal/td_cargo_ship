@@ -6,7 +6,7 @@
 // the setup sheet as a "Quick slice"; the log says which it was.
 
 import { describe, expect, it } from 'vitest';
-import { LAB_CARDS, LAB_LENGTH, LAB_START_WAVE, MAP_CARD_PLAYS, labCard, mapProduction, productionText, type LabCard } from '../../src/v3/data/lab';
+import { LAB_CARDS, LAB_LENGTH, LAB_ROUND, LAB_START_WAVE, MAP_CARD_PLAYS, cardRev, labCard, mapProduction, productionText, type LabCard } from '../../src/v3/data/lab';
 import { EVENT_MAPS, EVENT_WAVE, campaignWaves } from '../../src/v3/data/events';
 import { MAP_ORDER, type MapId } from '../../src/v3/data/maps';
 import { applyLab, createGame, labBring, type Game } from '../../src/v3/sim/game';
@@ -73,7 +73,7 @@ describe('a map card is the full production map', () => {
     for (const id of MAP_ORDER) {
       const plan = fromHub(`map-${id}`);
       expect(plan.full, id).toBe(true);
-      expect(plan.lab, id).toMatchObject({ card: `map-${id}`, plays: 'full', round: 10, rev: 10 });
+      expect(plan.lab, id).toMatchObject({ card: `map-${id}`, plays: 'full', round: LAB_ROUND, rev: cardRev(`map-${id}`) });
       expect(plan.lab.length, id).toBeUndefined();
       expect(plan.lab.mix, id).toBeUndefined();
     }
@@ -168,7 +168,7 @@ describe('a map card is the full production map', () => {
     const card = labCard('map-strait')!;
     expect(labCountText(card, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 2, 13, { plays: 'full', wave: 3 })).toBe('full map · wave 3/13');
     for (const c of LAB_CARDS.filter((o) => o.kind === 'map')) expect(labActions(c), c.id).toEqual(['note', 'setup', 'done']);
-    expect(labActions(labCard('decoy')!)).toContain('bring');
+    expect(labActions(labCard('hydra')!)).toContain('bring');
     expect(labActions(labCard('ev-rush')!)).toContain('bring');
     const g = createGame('strait', 2, 1);
     applyLab(g, { card: 'map-strait', plays: 'full' });
@@ -248,7 +248,7 @@ describe('the three reference maps open ready to test', () => {
     expect(isProduction(card, { ...prod, encounters: false })).toBe(false);
     expect(isProduction(card, { ...prod, plays: 'slice' })).toBe(false);
     expect(isProduction(labCard('map-kesh')!, productionSetup(labCard('map-kesh')!))).toBe(true);
-    expect(isProduction(labCard('decoy')!, prod)).toBe(false);
+    expect(isProduction(labCard('hydra')!, prod)).toBe(false);
   });
 });
 
@@ -257,7 +257,7 @@ describe('the quick slice: the old short lab run, on the setup sheet', () => {
     const card = labCard('map-gauntlet')!;
     const plan = labRunPlan(card, { ...defaultSetup(card, parseLabProgress(null)), plays: 'slice', length: 'quick', mix: 'heavy' });
     expect(plan.full).toBe(false);
-    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: 10, round: 10, plays: 'slice' });
+    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: 10, round: LAB_ROUND, plays: 'slice' });
     expect(plan.setup.wave).toBe(LAB_START_WAVE);
     expect(plan.setup.weapons.map((w) => w.id)).toEqual(card.kit);
     // Its production convoy and encounters stay on unless changed.
@@ -283,7 +283,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
 
   it('the log says it is a full production run, with its convoy policy and encounter revision, from wave 1 with no Free Play setup', () => {
     const { log } = played('strait', 3);
-    expect(log.lab).toEqual({ card: 'map-strait', rev: 10, round: 10, plays: 'full', config: { convoy: 'tactical', encounters: 1, production: true } });
+    expect(log.lab).toEqual({ card: 'map-strait', rev: 10, round: LAB_ROUND, plays: 'full', config: { convoy: 'tactical', encounters: 1, production: true } });
     expect(log.firstWave).toBe(1);
     expect(log.freePlay).toBeUndefined();
     expect(log.convoy).toMatchObject({ policy: 'tactical', obligation: 'natural', rev: 2 });
@@ -321,10 +321,10 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     expect(docs['map-gauntlet']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · D · Tactical commands · authored encounters rev 1` });
     expect(docs['map-gauntlet'].evidence).toMatch(/^Quick slice · /);
     expect(docs['map-kesh']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · C · Current controls · shared waves` });
-    expect(docs.decoy).toBeUndefined();
+    expect(docs.hydra).toBeUndefined();
     // Other cards' docs carry no setup.
-    const other: PlayLog = { ...slice, id: 'x', lab: { card: 'decoy', length: 'full', mix: 'normal', rev: 9, round: 9 } };
-    expect(labResultDocs([other]).results.decoy.plays).toBeUndefined();
+    const other: PlayLog = { ...slice, id: 'x', lab: { card: 'hydra', length: 'full', mix: 'normal', rev: 9, round: 9 } };
+    expect(labResultDocs([other]).results.hydra.plays).toBeUndefined();
   }, 60_000);
 
   it('evidence for a full run counts the map and its ending', () => {

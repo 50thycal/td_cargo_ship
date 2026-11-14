@@ -222,7 +222,7 @@ describe('Charge Lance (hold to charge, let go to fire)', () => {
 });
 
 describe('Laser Cutter (swipe across threats)', () => {
-  it('a swipe cuts everything under the finger once, for one round; a tap is a plain shot', () => {
+  it('a swipe cuts everything under the finger once, for one round; a tap fires nothing (round 11: "it should only do the cut")', () => {
     const g = quietGame();
     load(g, 'cutter');
     const line = [300, 380, 460].map((x) => addThreat(g, { x, y: 300 }));
@@ -237,11 +237,12 @@ describe('Laser Cutter (swipe across threats)', () => {
     for (const th of line) expect(th.dead).toBe(true);
     expect(alive(g, off)).toBe(true);
     expect(g.ammo).toBe(ammo - 1);
-    // A press that never moves is a tap.
+    // A press that never moves is a tap: no shell, no round (round 11).
     const t = addThreat(g, { x: 900, y: 300 });
     press(g, t.x, t.y, 30);
-    expect(release(g, t.x, t.y, 30)).toBe('fire');
-    expect(g.interceptors.length).toBeGreaterThan(0);
+    expect(release(g, t.x, t.y, 30)).toBe('empty');
+    expect(g.interceptors).toHaveLength(0);
+    expect(g.ammo).toBe(ammo - 1);
   });
 
   it('held down, it keeps cutting past its length, a round for each length (Test Lab round 5); Searing Edge leaves the cut lit', () => {

@@ -508,7 +508,9 @@ describe('weapons drop as pickups and load the gun', () => {
   it('every weapon shot spends its rounds (Air Strike two a jet): too few is a dry click; Overdrive is free', () => {
     // Fire Control spends its rounds when the salvo goes, not on the mark
     // (weapons.test.ts checks that).
-    for (const id of ABILITY_ORDER) {
+    // (Round 11: the Laser Cutter fires nothing on a tap; its swipe's round
+    // is in weapons.test.ts.)
+    for (const id of ABILITY_ORDER.filter((o) => o !== 'cutter')) {
       const g = quietGame();
       load(g, id, 1);
       // Tough enough to outlive a shot.
