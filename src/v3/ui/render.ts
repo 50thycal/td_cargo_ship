@@ -13,8 +13,8 @@ import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from '
 import { drawEventOver, drawEventUnder } from './events';
 import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, isFoeAircraft } from './foes';
 import { pickupLocked } from '../sim/foes';
-import { laneHalfWidth, laneSamples, lanePoint } from '../sim/lanes';
-import { commandState, convoyCommands, holdable, holdLineD } from '../sim/convoy';
+import { laneSamples } from '../sim/lanes';
+import { holdable } from '../sim/convoy';
 
 export const C = {
   waterDeep: '#0b2433',
@@ -67,7 +67,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const land of g.map.land) drawLand(ctx, land);
   drawRoads(ctx, g);
   drawLanes(ctx, g);
-  drawHoldLine(ctx, g);
   drawMapUnder(ctx, g);
   drawBases(ctx, g);
   drawRaiders(ctx, g);
@@ -288,64 +287,8 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.setLineDash([]);
 }
 
-/** The Map & Convoy Lab's Hold (sim/convoy.ts), on a map whose commands
- *  include it: the hold line across the lane, always there so the player
- *  knows where it is (a faint dashed gold line, "HOLD LINE"); while a Hold
- *  is on, a solid line that pulses, with "HOLD" and its seconds left.
- *  Round 9: a Hold that changed nothing on the board "did not work at all". */
-function drawHoldLine(ctx: CanvasRenderingContext2D, g: Game): void {
-  const c = g.convoy;
-  if (!c?.def.stage || !convoyCommands(g).includes('hold')) return;
-  const on = c.holding;
-  const pulse = on ? 0.5 + 0.5 * Math.sin(g.t * 9) : 0;
-  g.map.channels.forEach((ch, lane) => {
-    const d = holdLineD(g, lane);
-    if (d === null || ch.vip) return;
-    const p = lanePoint(ch, d);
-    const hw = laneHalfWidth(ch, d) + 14;
-    const ax = p.x + p.ty * hw;
-    const ay = p.y - p.tx * hw;
-    const bx = p.x - p.ty * hw;
-    const by = p.y + p.tx * hw;
-    ctx.save();
-    ctx.lineCap = 'round';
-    if (on) {
-      // A glow, then the line itself: thick and bright, beating.
-      ctx.strokeStyle = `rgba(245,197,66,${0.25 + 0.25 * pulse})`;
-      ctx.lineWidth = 22 + 10 * pulse;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      ctx.stroke();
-      ctx.strokeStyle = '#f5c542';
-      ctx.lineWidth = 7;
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle = 'rgba(245,197,66,0.45)';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([14, 12]);
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    // Its label above the lane's top edge.
-    const top = ay < by ? { x: ax, y: ay } : { x: bx, y: by };
-    const text = on ? `HOLD ${Math.ceil(commandState(g, 'hold').left)}` : 'HOLD LINE';
-    ctx.font = on ? '900 30px system-ui, sans-serif' : '800 20px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(7,13,18,0.9)';
-    ctx.fillStyle = on ? '#f5c542' : 'rgba(245,197,66,0.7)';
-    ctx.strokeText(text, top.x, top.y - 6);
-    ctx.fillText(text, top.x, top.y - 6);
-    ctx.restore();
-  });
-}
-
-/** While a Hold is on, every hull it stopped carries a pause mark. */
+/** While a Hold is on, every hull it stopped carries a pause mark. Rev 3
+ *  (round 11): that is every ship afloat; there is no hold line. */
 function drawHeldShips(ctx: CanvasRenderingContext2D, g: Game): void {
   if (!g.convoy?.holding) return;
   ctx.save();
@@ -974,8 +917,11 @@ function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t
   const rx = CARRIER.halfLength + 34 + out;
   const ry = CARRIER.halfBeam + 30 + out;
   const w = { t };
-  if (boost) ctx.setLineDash([10, 6]);
+  // The dash is set inside save() so restore() clears it. Set before save(),
+  // restore() put the dash back and every outline drawn after it (the
+  // ships, the carrier) came out dotted while a boost was loaded (round 11).
   ctx.save();
+  if (boost) ctx.setLineDash([10, 6]);
   ctx.strokeStyle = col;
   ctx.globalAlpha = 0.25;
   ctx.lineWidth = 6;
@@ -986,7 +932,6 @@ function drawLoadedRing(ctx: CanvasRenderingContext2D, g: Game, id: AbilityId, t
   ctx.beginPath();
   ctx.ellipse(x, y, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, Math.min(1, w.t / g.stats.weaponTime)));
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 

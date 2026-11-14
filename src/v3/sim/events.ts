@@ -22,7 +22,7 @@
 // (endEvent), a kill (eventFoeDown), a shot (in fireAt, the Decoy Storm's
 // count), the drop roll (eventDropWeights)
 // and the lab's "Run it again" (rerunEvent). foes.ts reads
-// the run's rules and features (the line, the fire's linger) where a foe
+// the run's rules and features (the fire's linger) where a foe
 // behaves differently in an event. Pure and deterministic like the rest of
 // the sim.
 
@@ -73,10 +73,6 @@ export interface EventRun {
   /** The script has run out. */
   done: boolean;
   rules: EventRule[];
-  /** A line on the water (Afterburner Rush's boost line; Hydra Bloom's
-   *  halfway line until round 8): its y, and +1 when the threats come down
-   *  the screen to it, -1 when up. */
-  line?: { y: number; dir: number };
   /** Shield Wall: signals given, and when the last came (event seconds). */
   signals: number;
   signalT: number;
@@ -434,8 +430,12 @@ const steps = (n: number, at: (k: number) => number, op: string): EventStep[] =>
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
+      // Round 11 ("the line for the boss round doesn't seem to matter cuz
+      // all the drones will just launch into boost mode before it"): no
+      // line. The sprinters cruise in slow and each one flares and sprints
+      // as any sprinter does, near its ship (as round 8 did for Hydra
+      // Bloom's line).
       const E = EV.rush;
-      ev.line = lineFrom(g, E.line, true);
       return steps(E.swarms, (k) => k * E.every, 'swarm');
     }
     case 'decoy-storm': {
@@ -576,17 +576,6 @@ function liveBases(g: Game, kind?: ThreatKind): number[] {
   const all = g.map.bases.map((b, i) => (b.kinds.length > 0 && !b.cove && !b.chute && !b.generator && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
   const able = kind ? all.filter((i) => g.map.bases[i].kinds.includes(kind)) : all;
   return able.length ? able : all;
-}
-
-/** A line across the water, `share` of the way from the launch bases to
- *  the first lane's near edge (`edge`) or its middle. */
-function lineFrom(g: Game, share: number, edge: boolean): { y: number; dir: number } {
-  const bs = liveBases(g);
-  const by = bs.reduce((a, i) => a + g.map.bases[i].y, 0) / Math.max(1, bs.length);
-  const ch = g.map.channels[0];
-  const dir = ch.y >= by ? 1 : -1;
-  const to = edge ? ch.y - dir * ch.halfWidth : ch.y;
-  return { y: by + (to - by) * share, dir };
 }
 
 /** A drone swarm out of a base, the usual way (0.35 s apart). `cargo`:
@@ -1360,20 +1349,6 @@ function inLane(g: Game, p: Point): boolean {
 
 function tick(g: Game, ev: EventRun): void {
   switch (ev.id) {
-    case 'rush': {
-      // The first sprinter over the line sets them all off.
-      const line = ev.line!;
-      const cruising = g.threats.filter((t) => !t.dead && t.kind === 'sprinter' && t.foe && t.foe.state === 0);
-      if (cruising.some((t) => (t.y - line.y) * line.dir >= 0)) {
-        for (const t of cruising) {
-          t.foe!.state = 1;
-          t.foe!.t = 0;
-        }
-        const lead = cruising[0];
-        cue(g, 'foe.flare', lead.x, lead.y, { gain: 1 });
-      }
-      return;
-    }
     case 'shield-wall':
     case 'run-the-canal': {
       // The block banks together at each signal (a horn and a flash).

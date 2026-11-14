@@ -6014,3 +6014,157 @@ a.v3-lab-page {
 .playing.lab-on .v2-overlay.open[data-screen="draft"] {
   padding-bottom: calc(var(--sa-b) + var(--lab-bar-h) + 10px);
 }
+
+/* ---- Round 11: the encounter script on the pause screen (developer view) --
+   Readable with the phone either way up; never wider than the screen. */
+.v2-pause-panel:has(.v3-enc-script) {
+  max-width: min(600px, 100%);
+  gap: 8px;
+}
+
+/* The lab bar sits over the overlay: the script scrolls clear of it. */
+.lab-on .v2-pause-panel:has(.v3-enc-script) {
+  padding-bottom: calc(var(--lab-bar-h) + 8px);
+}
+
+.v3-pause-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.v3-pause-row .v2-btn {
+  width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.v3-enc-script {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgb(245 197 66 / 0.35);
+  border-radius: 8px;
+  background: rgb(7 13 18 / 0.94);
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.v3-enc-script h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.v3-enc-script p {
+  margin: 0 0 6px;
+}
+
+.v3-enc-none {
+  color: var(--muted);
+}
+
+.v3-enc-card {
+  margin: 0 0 8px;
+}
+
+.v3-enc-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.v3-enc-title b {
+  font-size: 14px;
+}
+
+.v3-enc-title i {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgb(245 197 66 / 0.18);
+  color: var(--gold);
+  font-style: normal;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.v3-enc-title small,
+.v3-enc-premise {
+  color: var(--muted);
+}
+
+.v3-enc-beats {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.v3-enc-beats li {
+  margin: 0 0 2px;
+}
+
+.v3-enc-notes {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.v3-enc-notes dt {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.v3-enc-notes dd {
+  margin: 0;
+}
+
+.v3-enc-arc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin: 0;
+}
+
+.v3-enc-arc b {
+  margin-right: 2px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-enc-arc span {
+  padding: 1px 6px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 4px;
+  color: var(--muted);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v3-enc-arc span.now {
+  border-color: var(--gold);
+  background: rgb(245 197 66 / 0.18);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* Round 11: the first boss round's card says what is coming. */
+.v3-event-boss {
+  font-size: clamp(13px, 2.2vw, 17px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}

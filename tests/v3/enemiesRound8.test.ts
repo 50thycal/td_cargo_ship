@@ -379,7 +379,7 @@ describe('Spotter Plane: "they scout it out and lock on and then leave and come 
 describe('Hydra Bloom: "Hydras should split even before the line is crossed; you can remove that line"', () => {
   it('no line; a Hydra killed anywhere splits into three (slower) darts', () => {
     const g = eventGame('hydra-bloom', 1);
-    expect(g.event!.line).toBeUndefined();
+    expect('line' in g.event!).toBe(false);
     expect(RULE_TEXT.hydraThree).toBe('Hydras split into three, not two');
     run(g, EVENT.breather + 0.3, () => live(g, 'hydra').length > 0);
     const h = live(g, 'hydra')[0];

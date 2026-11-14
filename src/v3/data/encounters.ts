@@ -87,7 +87,7 @@ export const ENCOUNTERS: Encounter[] = [
     name: 'Ranging shots',
     premise: 'The middle base lights up alone and lobs two shells, one after the other.',
     decision: 'Read one warning from one place: where will it land, and which ship is under it?',
-    counters: 'Tap each shell in flight; under the Tactical policy, a Rush as they launch carries the ships out from under both.',
+    counters: 'Tap each shell in flight, the first as soon as it climbs.',
     succeeds: 'Hull lost to these shells is lower than to the same two ballistics in the shared wave; first shot at them comes sooner.',
     beats: [{ at: 0.3, kind: 'ballistic', count: 2, gap: 1.6, from: base(1), aim: 'lead' }],
     replaces: { ballistic: 2 },
@@ -116,7 +116,7 @@ export const ENCOUNTERS: Encounter[] = [
     name: 'Rolling push',
     premise: 'The three bases fire in turn, west to east, two seconds apart: drones, then shells, then a guided pair.',
     decision: 'Three different answers in six seconds, each with its own warning: take them in order or get ahead of the last?',
-    counters: 'Follow the lit base; shells can be outrun or shot; the guided pair needs the taps.',
+    counters: 'Follow the lit base; the shells need a tap each; the guided pair needs the taps.',
     succeeds: 'Launches overlap on screen more than in the shared wave, with no more of them: harder by timing, not by count.',
     beats: [
       { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
@@ -150,7 +150,7 @@ export const ENCOUNTERS: Encounter[] = [
     name: 'Overlap',
     premise: 'Shells from the north-east base while a swarm is still coming off the south-west one.',
     decision: 'Two shores at once and two kinds of answer: which lane do you save first?',
-    counters: 'Shells first (they are committed and few); a Disperse makes the shells cost less while the swarm is shot.',
+    counters: 'Shells first (they are committed and few), then the swarm.',
     succeeds: 'Both shores have threats in the air together for three seconds or more; the far lane is not abandoned.',
     beats: [
       { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
@@ -197,9 +197,9 @@ export const ENCOUNTERS: Encounter[] = [
     role: 'combine',
     name: 'Funnel salvo',
     premise: 'A submarine surfaces off the narrows and fires a salvo into the mouth of the funnel.',
-    decision: 'The periscope shows before the salvo: send the next ships in under it, or hold them out?',
-    counters: 'Shoot the shells; under the Tactical policy, Hold at the periscope keeps the next group out of the mouth until it has landed.',
-    succeeds: 'With Hold used at the periscope, hull lost in the middle third falls and deliveries do not.',
+    decision: 'The periscope shows before the salvo: shoot the sub, or save the taps for its four shells?',
+    counters: 'Shoot the shells as they climb; the periscope is the warning, and a weapon loaded early covers the mouth.',
+    succeeds: 'Hull lost in the middle third falls as the periscope is learnt (waves 4 to 7 against each other), and deliveries do not.',
     beats: [{ at: 0.45, kind: 'ballistic', count: 4, gap: 0.75, from: sub(1), aim: 'narrows' }],
     replaces: { ballistic: 4 },
   },
@@ -239,3 +239,47 @@ export function arc(map: MapId): { wave: number; role: ArcRole; encounters: Enco
 }
 
 export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
+
+// ---- The script in words (round 11: the pause screen's developer view) ----
+// The player: "I would like to see what the encounters are tho like as a
+// developer like tell me what the script is essentially doesn't need to be
+// during the game but maybe when u pause".
+
+const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
+  drone: ['drone', 'drones'],
+  ballistic: ['ballistic shell', 'ballistic shells'],
+  guided: ['guided missile', 'guided missiles'],
+  strafer: ['strafer', 'strafers'],
+};
+
+const AIM_TEXT: Record<BeatAim, string> = {
+  any: 'at any ship',
+  lead: 'aimed at the lead ship',
+  narrows: 'aimed at the ship nearest the narrows',
+};
+
+/** One beat as a line: "at 45% of the wave (+1.4 s): 1 guided missile from
+ *  base 3, aimed at the lead ship". Bases are counted from 1, as a person
+ *  reads them. */
+export function beatText(b: Beat): string {
+  const when = `at ${Math.round(b.at * 100)}% of the wave${b.plus ? ` (+${b.plus} s)` : ''}`;
+  const names = BEAT_NAME[b.kind] ?? [b.kind, b.kind];
+  const what = `${b.count} ${b.count === 1 ? names[0] : names[1]}`;
+  const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
+  const gap = b.count > 1 ? `, ${b.gap ?? (b.kind === 'drone' ? 0.35 : 1.5)} s apart` : '';
+  return `${when}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}`;
+}
+
+/** The map's arc in one line: its waves grouped by the encounter that
+ *  carries them ("1–3 Open water"), then the boss rounds. */
+export function arcGroups(map: MapId, bossFrom: number, bossTo: number, bossName: string | null): { from: number; to: number; name: string }[] {
+  const out: { from: number; to: number; name: string }[] = [];
+  for (const a of arc(map)) {
+    const name = a.encounters.map((e) => e.name).join(' + ') || 'shared wave';
+    const last = out[out.length - 1];
+    if (last && last.name === name && last.to === a.wave - 1) last.to = a.wave;
+    else out.push({ from: a.wave, to: a.wave, name });
+  }
+  if (bossName && bossTo >= bossFrom) out.push({ from: bossFrom, to: bossTo, name: `Boss rounds: ${bossName}` });
+  return out;
+}

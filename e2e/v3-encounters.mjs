@@ -120,7 +120,7 @@ try {
     const log = window.__v3.log();
     return { enc: g.enc?.now ?? null, policy: g.convoy?.setup.policy ?? null, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command), log: [!!log.encounters, log.convoy?.policy] };
   });
-  check(both.enc?.length === 1 && /^harbor-/.test(both.enc[0]) && both.policy === 'tactical' && both.cmds.join() === 'hold' && both.log.join() === 'true,tactical', `Harbor Mouth with its encounters under the Tactical policy: both in the run and in its log (${JSON.stringify(both)})`);
+  check(both.enc?.length === 1 && /^harbor-/.test(both.enc[0]) && both.policy === 'tactical' && both.cmds.length === 0 && both.log.join() === 'true,tactical', `Harbor Mouth with its encounters under the Tactical policy (no command since round 11): both in the run and in its log (${JSON.stringify(both)})`);
   await page.evaluate(() => window.__v3.advance(30));
   const bothRun = await page.evaluate(() => {
     const live = window.__v3.telemetry();

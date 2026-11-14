@@ -1,15 +1,17 @@
 // The Map & Convoy Lab's tactical commands in the browser
-// (docs/design/v3-map-convoy-lab-plan.md, slice 4). Expects `vite preview`
-// (or dev) at BASE_URL. On a landscape phone, by touch:
-// - under the Tactical policy the map's commands are buttons where the
-//   formation button and the flow slider were, each a thumb's size;
-// - a touch on a command gives it and never fires the gun; a touch on the
-//   water beside the rail fires and never gives a command;
-// - a refusal (cooling down, another posture running) is logged, shakes
-//   the button, and changes nothing;
-// - Hold on Harbor Mouth (round 9, at 874 x 402 and 667 x 375): the ships
-//   short of the hold line stop and stay stopped, the button and the board
-//   say so, it ends by itself, and a refusal's reason is on the screen;
+// (docs/design/v3-map-convoy-lab-plan.md, slice 4; round 11: Rush and
+// Disperse are cut, and Hold is on Sowers' Reach only, where mines drift
+// across the lane). Expects `vite preview` (or dev) at BASE_URL. On a
+// landscape phone, by touch:
+// - under the Tactical policy The Strait has no command: the rail says the
+//   convoy sails itself;
+// - on Sowers' Reach, Hold is a button where the formation button and the
+//   flow slider were, a thumb's size;
+// - a touch on it gives it and never fires the gun; a touch on the water
+//   beside the rail fires and never gives a command;
+// - Hold (at 874 x 402 and 667 x 375): every ship afloat stops and stays
+//   stopped, the button and the board say so, it ends by itself, and a press
+//   while it cools down is refused with the reason on the screen;
 // - the other policies hide what the map has taken over;
 // - the test's log carries its policy and commands and replays to the
 //   same telemetry; an ordinary run has none of this.
@@ -56,7 +58,7 @@ const snap = (page) =>
     const c = g.convoy;
     return {
       steps: g.steps, shots: g.shots, taps: log.commands.filter((x) => x[1] === 't').length, ks: log.commands.filter((x) => x[1] === 'k').map((x) => x[2]),
-      policy: c?.setup.policy ?? null, rushT: c?.rushT ?? 0, coastT: c?.coastT ?? 0, disperseT: c?.disperseT ?? 0, holding: c?.holding ?? false, owed: c?.owed ?? 0, refused: c?.refused ?? 0, used: c?.used ?? null,
+      policy: c?.setup.policy ?? null, holding: c?.holding ?? false, owed: c?.owed ?? 0, refused: c?.refused ?? 0, used: c?.used ?? null,
       ships: g.ships.length, flow: g.flow, formation: g.formation,
     };
   });
@@ -64,29 +66,32 @@ const centre = async (page, sel) => {
   const b = await page.locator(sel).boundingBox();
   return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, h: b.height };
 };
-const open = async (page, q) => {
+const open = async (page, q, ships = 4) => {
   await page.goto(`${BASE_URL}/v3.html?${q}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
-  // Ships on the water before anything is asked of them.
-  await page.waitForFunction(() => window.__v3.game().ships.length >= 4, null, { timeout: 30000 });
+  // Ships on the water before anything is asked of them (run on, no input,
+  // so the wait is short: Sowers' Reach sails a pair every 11 s).
+  await page.evaluate((n) => { const g = window.__v3.game(); for (let i = 0; i < 60 * 60 && g.ships.length < n; i++) window.__v3.advance(1 / 60); }, ships);
+  await page.waitForFunction((n) => window.__v3.game().ships.length >= n, ships, { timeout: 30000 });
 };
 
 
-/** Hold on Harbor Mouth, by touch, at this page's size (round 9: the
- *  player's Hold "did not work at all" on an iPhone at 874 x 402). The
- *  button is where a thumb lands and nothing covers it; a touch holds; the
- *  ships short of the line stop and stay stopped; the board shows the line
- *  and a pause mark on each; the button reads Release / HOLDING n and beats;
- *  words beside it say what it stopped; left alone it ends by itself; a
- *  press while it cools down is refused and the reason is on the screen. */
+/** Hold on Sowers' Reach, by touch, at this page's size (round 9: the
+ *  player's Hold "did not work at all" on an iPhone at 874 x 402; round 11:
+ *  every ship afloat stops, there is no line, and Hold is on the map whose
+ *  mines cross the lane). The button is where a thumb lands and nothing
+ *  covers it; a touch holds; every ship stops and stays stopped, with a
+ *  pause mark on each; the button reads Release / HOLDING n and beats; words
+ *  beside it say what it stopped; left alone it ends by itself; a press
+ *  while it cools down is refused and the reason is on the screen. */
 async function holdCheck(page, shot) {
   const size = page.viewportSize();
   const tag = `${size.width} x ${size.height}`;
-  await open(page, 'lab=map-harbor&convoy=tactical&seed=7');
+  await open(page, 'lab=map-sowers&seed=7');
   const hb = await page.evaluate(() => [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command).join());
   const hold = await centre(page, '[data-command="hold"]');
   const top = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-command]')?.dataset.command ?? document.elementFromPoint(x, y)?.className, hold);
-  check(hb === 'hold' && top === 'hold' && hold.w >= 44 && hold.h >= 44 && hold.y + hold.h / 2 <= size.height, `${tag}: Harbor Mouth has Hold alone, a thumb's size, on screen, and nothing covers it (${hold.w.toFixed(0)}x${hold.h.toFixed(0)}; under the thumb: ${top})`);
+  check(hb === 'hold' && top === 'hold' && hold.w >= 44 && hold.h >= 44 && hold.y + hold.h / 2 <= size.height, `${tag}: Sowers' Reach has Hold alone (its production setup), a thumb's size, on screen, and nothing covers it (${hold.w.toFixed(0)}x${hold.h.toFixed(0)}; under the thumb: ${top})`);
   const h0 = await snap(page);
   await page.touchscreen.tap(hold.x, hold.y);
   await page.waitForTimeout(700);
@@ -101,17 +106,16 @@ async function holdCheck(page, shot) {
   await page.waitForTimeout(1200);
   const st = await page.evaluate(() => {
     const g = window.__v3.game();
-    const line = g.convoy.def.stage.x;
-    return { ships: g.ships.map((s) => [s.id, s.d, s.x < line - 40]), owed: g.convoy.owed, holding: g.convoy.holding };
+    return { ships: g.ships.map((s) => [s.id, s.d]), owed: g.convoy.owed, holding: g.convoy.holding };
   });
   const before = new Map(d1);
-  const short = st.ships.filter(([id, , isShort]) => isShort && before.has(id));
+  const short = st.ships.filter(([id]) => before.has(id));
   const still = short.every(([id, d]) => Math.abs(d - before.get(id)) < 0.5);
   const hui = await page.evaluate(() => {
     return { name: document.querySelector('[data-command="hold"] b').textContent, label: document.querySelector('[data-command="hold"] small').textContent, cls: document.querySelector('[data-command="hold"]').className, anim: getComputedStyle(document.querySelector('[data-command="hold"]')).animationName };
   });
   check(h1.holding && h1.ks.join() === 'hold' && h1.taps === h0.taps && h1.shots === h0.shots, `${tag}: a touch on Hold holds, as a logged input, and fires nothing (${h1.ks.join()})`);
-  check(st.holding && short.length >= 2 && still && st.owed >= short.length, `${tag}: every ship short of the hold line has stopped and stays stopped (${short.length} stopped, ${st.owed} held)`);
+  check(st.holding && short.length >= 4 && still && st.owed === st.ships.length, `${tag}: every ship afloat has stopped and stays stopped (${short.length} stopped, ${st.owed} held)`);
   check(hui.name === 'Release' && /^HOLDING \d$/.test(hui.label) && /active/.test(hui.cls) && hui.anim === 'v3-hold-beat', `${tag}: the button reads Release / ${hui.label} and beats gold`);
   check(said.saysOn && /^HOLDING: \d+ ships? stopped$/.test(said.says) && said.saysBox.r <= size.width && said.saysBox.t >= 0 && said.saysBox.b <= size.height, `${tag}: words beside it say what it did ("${said.says}")`);
   await page.screenshot({ path: `${OUT_DIR}/${shot}-${size.width}.png` });
@@ -136,59 +140,58 @@ try {
   await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
 
-  // ---- The Strait under the Tactical policy: Rush and Disperse ----
-  await open(page, 'lab=map-strait&convoy=tactical&seed=7');
+  // ---- The Strait under the Tactical policy: no command (round 11) ----
+  await open(page, 'lab=map-strait&seed=7');
+  const strait = await page.evaluate(() => {
+    const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
+    return { policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length, note: vis('.v3-convoy-auto'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow]') };
+  });
+  check(strait.policy === 'tactical' && strait.cmds === 0 && strait.note && !strait.formation && !strait.flow, `The Strait's production setup: no Rush or Disperse; the rail says the convoy sails itself (${JSON.stringify(strait)})`);
+  await page.screenshot({ path: `${OUT_DIR}/strait-tactical-none.png` });
+  await open(page, 'lab=map-harbor&seed=7');
+  const harbor = await page.evaluate(() => ({ policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length }));
+  check(harbor.policy === 'tactical' && harbor.cmds === 0, `Harbor Mouth has no Hold now (${JSON.stringify(harbor)})`);
+
+  // ---- Sowers' Reach: Hold, by touch ----
+  await open(page, 'lab=map-sowers&seed=7');
   const rail = await page.evaluate(() => {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
     const btns = [...document.querySelectorAll('.v3-command')].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.command, w: r.width, h: r.height, top: r.top, bottom: r.bottom, label: b.textContent, aria: b.getAttribute('aria-label') }; });
     const railBox = document.querySelector('.v2-rail-left').getBoundingClientRect();
-    return { btns, formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), cls: document.querySelector('.v2-root').className, h: innerHeight, railRight: railBox.right, canvasLeft: document.querySelector('canvas').getBoundingClientRect().left };
+    return { btns, formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), cls: document.querySelector('.v2-root').className, h: innerHeight, railRight: railBox.right };
   });
-  check(rail.btns.map((b) => b.id).join() === 'rush,disperse' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls), `The Strait under Tactical: Rush and Disperse are where the formation button and the flow slider were (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
-  check(rail.btns.every((b) => b.w >= 44 && b.h >= 44 && b.top >= 0 && b.bottom <= rail.h), `each command is a thumb's size and on the screen (${rail.btns.map((b) => `${b.id} ${b.w.toFixed(0)}x${b.h.toFixed(0)}`).join(', ')})`);
-  check(/Rush: Ships afloat sail faster for 6 s\. Then slower for 10 s\./.test(rail.btns[0].aria ?? ''), `a command's label says what it does and what it costs ("${rail.btns[0].aria}")`);
-  await page.screenshot({ path: `${OUT_DIR}/strait-tactical-ready.png` });
+  check(rail.btns.map((b) => b.id).join() === 'hold' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls), `Sowers' Reach under Tactical: Hold is where the formation button and the flow slider were (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
+  check(rail.btns.every((b) => b.w >= 44 && b.h >= 44 && b.top >= 0 && b.bottom <= rail.h), `the button is a thumb's size and on the screen (${rail.btns.map((b) => `${b.id} ${b.w.toFixed(0)}x${b.h.toFixed(0)}`).join(', ')})`);
+  check(/Hold: Every ship stops where it is \(up to 6 s\)\. Tap again to release\./.test(rail.btns[0].aria ?? ''), `its label says what it does and what it costs ("${rail.btns[0].aria}")`);
 
   const s0 = await snap(page);
-  const rush = await centre(page, '[data-command="rush"]');
-  await page.touchscreen.tap(rush.x, rush.y);
+  const hold = await centre(page, '[data-command="hold"]');
+  await page.touchscreen.tap(hold.x, hold.y);
   await page.waitForTimeout(250);
   const s1 = await snap(page);
-  const ui1 = await page.evaluate(() => ({ cls: document.querySelector('[data-command="rush"]').className, label: document.querySelector('[data-command="rush"] small').textContent, banner: document.querySelector('.v3-alert, .v2-banner, [class*="callout"]')?.textContent ?? document.body.innerText.match(/RUSH[^\n]*\n?[^\n]*slower[^\n]*/)?.[0] ?? '' }));
-  check(s1.ks.join() === 'rush' && s1.rushT > 0 && s1.taps === s0.taps && s1.shots === s0.shots, `a touch on Rush gives it, as a logged input, and fires nothing (commands ${s1.ks.join()}; taps ${s0.taps} to ${s1.taps}, shots ${s0.shots} to ${s1.shots})`);
-  check(/active/.test(ui1.cls) && /^RUSHING \d$/.test(ui1.label) && /slower/i.test(ui1.banner), `the button shows it running with its seconds, and its cost is said once ("${ui1.label}"; "${ui1.banner.replace(/\s+/g, ' ').slice(0, 80)}")`);
-  await page.screenshot({ path: `${OUT_DIR}/strait-tactical-rushing.png` });
-
-  // Again, and Disperse while rushing: both refused, both logged, nothing changed.
-  await page.touchscreen.tap(rush.x, rush.y);
-  const dis = await centre(page, '[data-command="disperse"]');
-  await page.touchscreen.tap(dis.x, dis.y);
-  await page.waitForTimeout(120);
-  const s2 = await snap(page);
-  const shook = await page.evaluate(() => [...document.querySelectorAll('.v3-command.refused')].map((b) => b.dataset.command));
-  check(s2.ks.join() === 'rush,rush,disperse' && s2.refused === 2 && s2.used.rush === 1 && s2.used.disperse === 0 && s2.disperseT === 0 && shook.length === 2, `Rush again and Disperse meanwhile are refused: logged, shaken, nothing changed (refused ${s2.refused}; shook ${shook.join()})`);
-
-  // The water right beside the rail, and a threat: the gun's, never a command's.
+  check(s1.ks.join() === 'hold' && s1.holding && s1.taps === s0.taps && s1.shots === s0.shots, `a touch on Hold gives it, as a logged input, and fires nothing (commands ${s1.ks.join()}; taps ${s0.taps} to ${s1.taps}, shots ${s0.shots} to ${s1.shots})`);
+  // The water right beside the rail: the gun's, never a command's.
   const edge = await page.evaluate(() => window.__v3.toClient(0, 450));
-  await page.touchscreen.tap(edge.x + 10, rush.y);
+  await page.touchscreen.tap(edge.x + 10, hold.y);
   await page.waitForTimeout(80);
   const s3 = await snap(page);
-  check(edge.x + 10 - rail.railRight < 24 && s3.taps === s2.taps + 1 && s3.ks.length === s2.ks.length, `a touch on the water ${(edge.x + 10 - rail.railRight).toFixed(0)} px from the rail is a tap on the water, not a command (taps ${s2.taps} to ${s3.taps})`);
-  await page.waitForFunction(() => window.__v3.game().threats.some((t) => t.speed > 0 && t.x > 80 && t.x < 1500 && t.y > 60 && t.y < 840), null, { timeout: 30000 });
-  const th = await page.evaluate(() => { const t = window.__v3.game().threats.find((t) => t.speed > 0 && t.x > 80 && t.x < 1500 && t.y > 60 && t.y < 840); return window.__v3.toClient(t.x, t.y); });
-  await page.touchscreen.tap(th.x, th.y);
-  await page.waitForTimeout(80);
-  const s4 = await snap(page);
-  check(s4.shots > s3.shots || s4.taps > s3.taps, `the gun still answers while a command runs (shots ${s3.shots} to ${s4.shots})`);
-
-  // Paused: a command's button does nothing.
+  check(edge.x + 10 - rail.railRight < 24 && s3.taps === s1.taps + 1 && s3.ks.length === s1.ks.length, `a touch on the water ${(edge.x + 10 - rail.railRight).toFixed(0)} px from the rail is a tap on the water, not a command (taps ${s1.taps} to ${s3.taps})`);
+  // Paused: the button does nothing.
   await page.tap('.v2-pause');
   await page.waitForTimeout(150);
-  await page.evaluate(() => document.querySelector('[data-command="disperse"]').click());
+  await page.evaluate(() => document.querySelector('[data-command="hold"]').click());
   const s5 = await snap(page);
-  check(s5.ks.length === s4.ks.length, 'paused, a command is not given');
+  check(s5.ks.length === s3.ks.length, 'paused, a command is not given');
   await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /resume/i.test(b.textContent))?.click());
   await page.waitForTimeout(200);
+  // Released by a tap, then refused while it cools down.
+  await page.touchscreen.tap(hold.x, hold.y);
+  await page.waitForTimeout(120);
+  await page.touchscreen.tap(hold.x, hold.y);
+  await page.waitForTimeout(120);
+  const s6 = await snap(page);
+  const shook = await page.evaluate(() => [...document.querySelectorAll('.v3-command.refused')].map((b) => b.dataset.command));
+  check(s6.ks.join() === 'hold,hold,hold' && !s6.holding && s6.refused === 1 && s6.used.hold === 2 && shook.join() === 'hold', `a second tap releases; a third, while it cools down, is refused, logged and shaken (refused ${s6.refused}; used ${s6.used.hold})`);
 
   // Done: the log carries the policy and the commands, and replays to the same telemetry.
   await page.tap('[data-lab-done]');
@@ -197,13 +200,13 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const done = await page.evaluate(() => {
-    const log = JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') || '[]').find((l) => l.lab?.card === 'map-strait');
+    const log = JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') || '[]').find((l) => l.lab?.card === 'map-sowers');
     const live = window.__v3.telemetry();
     const again = window.__v3.replayTelemetry(log);
     return { convoy: log.convoy, ks: log.commands.filter((c) => c[1] === 'k').map((c) => c[2]), v: log.v, same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems, header: live.header.convoy, cmds: live.events.filter((e) => e.k === 'cmd').map((e) => `${e.what}:${e.ok}${e.why ? `:${e.why}` : ''}`) };
   });
-  check(done.convoy?.policy === 'tactical' && done.ks.join() === 'rush,rush,disperse' && done.v === 21, `the log carries its policy and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
-  check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'rush:1,rush:0:cooldown,disperse:0:busy', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
+  check(done.convoy?.policy === 'tactical' && done.convoy?.rev === 3 && done.ks.join() === 'hold,hold,hold' && done.v === 21, `the log carries its policy (rules rev 3) and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
+  check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'hold:1,release:1,hold:0:cooldown', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
 
   // The Map Analytics screen lists them.
   await page.tap('[data-maplab-open]');
@@ -211,10 +214,10 @@ try {
   await page.waitForFunction(() => { const s = window.__v3.mapLab()?.state(); return s && s.runs.length >= 1 && !s.busy; }, null, { timeout: 60000 });
   await page.tap('[data-maplab-layer="commands"]');
   const listed = await page.evaluate(() => [...document.querySelectorAll('.v3-maplab-refs li span')].map((s) => s.textContent));
-  check(listed.some((t) => /rush \(\d+ ships\)/.test(t)) && listed.some((t) => /rush, refused \(cooldown\)/.test(t)) && listed.some((t) => /disperse, refused \(busy\)/.test(t)), `Map Analytics lists the commands in time, with the ships each took and why each was refused (${listed.join(' | ')})`);
+  check(listed.some((t) => /hold \(\d+ ships\)/.test(t)) && listed.some((t) => /hold, refused \(cooldown\)/.test(t)), `Map Analytics lists the commands in time, with the ships each took and why each was refused (${listed.join(' | ')})`);
 
-  // ---- Harbor Mouth: Hold, and its release (round 9: "did not work at all") ----
-  await holdCheck(page, 'harbor-holding');
+  // ---- Sowers' Reach: Hold, and its release ----
+  await holdCheck(page, 'sowers-holding');
 
   // ---- The other policies hide what the map has taken over ----
   for (const [policy, want] of [['auto', { formation: false, flow: false, note: true }], ['formation', { formation: true, flow: false, note: false }]]) {
@@ -229,8 +232,8 @@ try {
 
   // ---- The setup sheet picks the policy ----
   // (Test Lab round 10: a map card opens under its production setup, which
-  // on The Gauntlet is Commands; a link asks for today's controls.)
-  await open(page, 'lab=map-gauntlet&convoy=current&enc=0&seed=7');
+  // on Sowers' Reach is Commands; a link asks for today's controls.)
+  await open(page, 'lab=map-sowers&convoy=current&seed=7', 1);
   const plain = await page.evaluate(() => ({ convoy: window.__v3.game().convoy, cmds: document.querySelectorAll('.v3-command').length, cls: document.querySelector('.v2-root').className }));
   check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test asked for today\'s controls plays with them, and no convoy layer at all');
   await page.tap('[data-lab-setup]');
@@ -238,23 +241,23 @@ try {
   const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lab-convoy]')].map((b) => b.textContent));
   await page.tap('[data-lab-convoy="tactical"]');
   await page.tap('[data-lab-apply]');
-  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical' && document.querySelectorAll('.v3-command').length === 2, null, { timeout: 8000 });
-  check(opts.join(' | ') === "Today's | Automatic | Formations | Commands: Rush and Disperse", `the setup sheet offers the four policies, naming the map's commands (${opts.join(' | ')}); picking one restarts the test under it`);
-  await page.screenshot({ path: `${OUT_DIR}/gauntlet-tactical.png` });
+  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical' && document.querySelectorAll('.v3-command').length === 1, null, { timeout: 8000 });
+  check(opts.join(' | ') === "Today's | Automatic | Formations | Commands: Hold", `the setup sheet offers the four policies, naming the map's command (${opts.join(' | ')}); picking one restarts the test under it`);
+  await page.screenshot({ path: `${OUT_DIR}/sowers-tactical.png` });
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
 
   // ---- A smaller phone: the rail still fits ----
   const small = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-  await open(small, 'lab=map-strait&convoy=tactical&seed=7');
+  await open(small, 'lab=map-sowers&seed=7');
   const fit = await small.evaluate(() => {
     const kids = [...document.querySelector('.v2-rail-left').children].filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getBoundingClientRect());
     const overlap = kids.some((a, i) => kids.some((b, j) => j > i && a.bottom > b.top + 1 && b.bottom > a.top + 1 && a.right > b.left + 1 && b.right > a.left + 1));
     return { overlap, bottom: Math.max(...kids.map((k) => k.bottom)), h: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth };
   });
   check(!fit.overlap && fit.bottom <= fit.h && fit.sw <= fit.iw, `at 667 x 375 the rail's parts fit without overlapping (${JSON.stringify(fit)})`);
-  await small.screenshot({ path: `${OUT_DIR}/strait-tactical-667.png` });
-  await holdCheck(small, 'harbor-holding');
+  await small.screenshot({ path: `${OUT_DIR}/sowers-tactical-667.png` });
+  await holdCheck(small, 'sowers-holding');
   await small.close();
 
   // ---- An ordinary campaign run ----

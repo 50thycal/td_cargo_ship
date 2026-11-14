@@ -8,7 +8,7 @@
 import type { ThreatKind } from '../data/config';
 import { FOES, FOES_BUILT, type FoeId } from '../data/foes';
 import { LAB_EVENT_RUNS, LAB_LENGTH, LAB_MIX, LAB_SCENARIOS, LAB_SET, LAB_SHARE, labCard, type LabCard, type LabLength, type LabMix, type LabPair } from '../data/lab';
-import { campaignWaves, type EventId } from '../data/events';
+import { EVENT_WAVE, campaignWaves, type EventId } from '../data/events';
 import type { ConvoyPolicy } from '../data/convoy';
 import { ABILITIES, type AbilityId } from '../data/abilities';
 import { RULES, VIEW } from '../data/config';
@@ -306,10 +306,15 @@ export function labWaves(lab: { setup: LabSetup; event?: EventId }): number {
 /** The bar's count in play: the card's tally, then how far into the test
  *  it is. An event card counts its runs (Test Lab round 6: "I thought it
  *  would be one and done"): "Run 1 of 3". A full map run (round 10) says
- *  so, and the wave it is on: "full map · wave 3/13"; a map card's quick
- *  slice: "quick slice · 1/8". */
+ *  so, and the wave it is on: "full map · wave 3/13", and in its ending
+ *  the boss round (round 11): "full map · boss round 1/3"; a map card's
+ *  quick slice: "quick slice · 1/8". */
 export function labCountText(card: LabCard, s: LabStats, waves: number, length: number, at?: { plays?: LabPlays; wave?: number }): string {
-  if (at?.plays === 'full') return `full map · wave ${Math.min(at.wave ?? waves + 1, length)}/${length}`;
+  if (at?.plays === 'full') {
+    const wave = Math.min(at.wave ?? waves + 1, length);
+    if (length >= EVENT_WAVE && wave >= EVENT_WAVE) return `full map · boss round ${wave - EVENT_WAVE + 1}/${length - EVENT_WAVE + 1}`;
+    return `full map · wave ${wave}/${length}`;
+  }
   const parts = card.event
     ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
     : card.foes.length
@@ -331,7 +336,7 @@ export function evidenceLines(card: LabCard, s: LabStats, waves: number, plays?:
     const total = campaignWaves(card.map);
     out.push(`Full map: ${waves} of ${total} waves cleared${waves >= total ? ' (the map cleared)' : ''}`);
     const runs = (s.clean ?? 0) + (s.held ?? 0) + (s.broken ?? 0);
-    if (runs) out.push(`Its ending: Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}`);
+    if (runs) out.push(`Boss rounds: Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}`);
     return out;
   }
   if (card.kind === 'map' && plays === 'slice') out.push('Quick slice');

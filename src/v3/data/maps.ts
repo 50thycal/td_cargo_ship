@@ -242,7 +242,9 @@ const FIRST_FIVE: Record<'strait' | 'gauntlet' | 'island' | 'archipelago' | 'har
     bases: HARBOR_BASES,
     carrier: { x: 900, y: 690 },
     frigate: { x: 660, y: 690 },
-    channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 } }],
+    // Round 11: a pair sails wide apart in the open water (2.2 times its
+    // slots, about 210 px between the hulls) and closes up into the neck.
+    channels: [{ y: 470, halfWidth: 150, narrow: { fromX: 700, halfWidth: 66 }, open: 2.2 }],
     // The 20-map plan: retuned for its slot with the player-fitted persona
     // (docs/design/v3-maps-build.md, Tuning). V2: 1.0.
     threatScale: 0.6,
