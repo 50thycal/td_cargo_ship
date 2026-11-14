@@ -257,7 +257,7 @@ describe('the quick slice: the old short lab run, on the setup sheet', () => {
     const card = labCard('map-gauntlet')!;
     const plan = labRunPlan(card, { ...defaultSetup(card, parseLabProgress(null)), plays: 'slice', length: 'quick', mix: 'heavy' });
     expect(plan.full).toBe(false);
-    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: 10, round: 10, plays: 'slice' });
+    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: 10, round: 10, plays: 'slice', variant: 'v1' });
     expect(plan.setup.wave).toBe(LAB_START_WAVE);
     expect(plan.setup.weapons.map((w) => w.id)).toEqual(card.kit);
     // Its production convoy and encounters stay on unless changed.
@@ -283,7 +283,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
 
   it('the log says it is a full production run, with its convoy policy and encounter revision, from wave 1 with no Free Play setup', () => {
     const { log } = played('strait', 3);
-    expect(log.lab).toEqual({ card: 'map-strait', rev: 10, round: 10, plays: 'full', config: { convoy: 'tactical', encounters: 1, production: true } });
+    expect(log.lab).toEqual({ card: 'map-strait', rev: 10, round: 10, plays: 'full', config: { convoy: 'tactical', encounters: 1, production: true }, variant: 'v1' });
     expect(log.firstWave).toBe(1);
     expect(log.freePlay).toBeUndefined();
     expect(log.convoy).toMatchObject({ policy: 'tactical', obligation: 'natural', rev: 2 });

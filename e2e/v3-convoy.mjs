@@ -202,7 +202,7 @@ try {
     const again = window.__v3.replayTelemetry(log);
     return { convoy: log.convoy, ks: log.commands.filter((c) => c[1] === 'k').map((c) => c[2]), v: log.v, same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems, header: live.header.convoy, cmds: live.events.filter((e) => e.k === 'cmd').map((e) => `${e.what}:${e.ok}${e.why ? `:${e.why}` : ''}`) };
   });
-  check(done.convoy?.policy === 'tactical' && done.ks.join() === 'rush,rush,disperse' && done.v === 21, `the log carries its policy and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
+  check(done.convoy?.policy === 'tactical' && done.ks.join() === 'rush,rush,disperse' && done.v === 22, `the log carries its policy and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
   check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'rush:1,rush:0:cooldown,disperse:0:busy', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
 
   // The Map Analytics screen lists them.

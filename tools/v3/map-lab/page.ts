@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { BASELINE, type BaselineResult } from '../../../src/v3/sim/mapLab';
 import { TEL_SAMPLING, TEL_SCHEMA } from '../../../src/v3/sim/telemetry';
-import { LOG_VERSION, type PlayLog } from '../../../src/v3/sim/playlog';
+import { LOG_VERSION, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
 import { GRID, LAYERS, PLATFORMS, RAMPS, SCOPES, THIN, buildPreview, gridTop, renderPreview, type MapPreview, type Scope, type ScopeData } from './preview';
 // @ts-expect-error a plain data module, shared with the notes
 import { FINDINGS, FINDINGS2, GAPS, GROUPS, GROUPS2, MAP_ITEMS, PLAYTEST, QUESTIONS, QUESTIONS2, ROUND, ROUND2 } from './review.mjs';
@@ -276,7 +276,7 @@ const logArg = process.argv.slice(2).find((a) => a.startsWith('--logs='));
 const reportLogs: PlayLog[] | undefined = logArg
   ? logArg.slice(7).split(',').flatMap((path) => {
       const raw = json<PlayLog | PlayLog[] | { logs: PlayLog[] }>(path);
-      return (Array.isArray(raw) ? raw : 'logs' in raw ? raw.logs : [raw]).filter((l) => l.game === 'v3' && l.v === LOG_VERSION && !l.notesOnly && l.commands?.length);
+      return (Array.isArray(raw) ? raw : 'logs' in raw ? raw.logs : [raw]).filter((l) => l.game === 'v3' && replaysHere(l.v) && !l.notesOnly && l.commands?.length);
     })
   : undefined;
 const previews = buildPreview(reportLogs);

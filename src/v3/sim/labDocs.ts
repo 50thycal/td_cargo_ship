@@ -7,8 +7,40 @@
 
 import { LAB_ROUNDS, cardChangeList, labCard, retiredCard } from '../data/lab';
 import { POLICY_NAME } from '../data/convoy';
+import { MAP_VARIANT_DEFAULT, cleanScorecard, type Scorecard } from '../data/scorecard';
 import { evidenceLines, type LabPlays } from './lab';
 import type { LabResult, PlayLog } from './playlog';
+
+/** A map card's full run in three numbers, from its log's summary (Test
+ *  Lab round 11; no extra telemetry): the share of ships that finished
+ *  their trip delivered (of those delivered or sunk; null before any
+ *  finished), the ships lost, and the wave the first was lost on (null:
+ *  none lost). The ending's restore doesn't reset the tally. */
+export interface MapRunNumbers {
+  delivered: number;
+  deliveredPct: number | null;
+  lost: number;
+  firstLoss: number | null;
+}
+
+/** One full map run of a card, for the page's averages (round 11). */
+export interface ScoredRun {
+  at: string;
+  log: string;
+  round: number;
+  /** The card's version, and the map's encounter version played. */
+  rev: number;
+  variant: string;
+  /** How the run ended: won (the map cleared), lost, or quit (Done). */
+  end: 'won' | 'lost' | 'quit';
+  verdict: LabResult['verdict'];
+  /** The player's scorecard (absent: skipped or blank), and the numbers. */
+  score?: Scorecard;
+  auto?: MapRunNumbers;
+}
+
+/** The most runs a card's document keeps for the averages (newest first). */
+export const MAX_RUNS = 60;
 
 export interface LabResultDoc {
   verdict: LabResult['verdict'];
@@ -24,7 +56,7 @@ export interface LabResultDoc {
   rev: number;
   changes: string[];
   /** The latest verdict of each earlier round, newest first. */
-  history: { round: number; verdict: LabResult['verdict']; note: string; at: string; log: string; plays?: LabPlays }[];
+  history: { round: number; verdict: LabResult['verdict']; note: string; at: string; log: string; plays?: LabPlays; variant?: string; score?: Scorecard; auto?: MapRunNumbers }[];
   /** A card since cut from the lab (LAB_RETIRED): the round it went in,
    *  and why. Its verdicts are kept, under the page's Cut cards. */
   cut?: { round: number; why: string };
@@ -32,6 +64,14 @@ export interface LabResultDoc {
    *  from before round 10 was a slice), and its setup in words. */
   plays?: LabPlays;
   setup?: string;
+  /** A map card's full run (round 11): the encounter version played, the
+   *  player's scorecard (absent: skipped or blank), the run's three
+   *  numbers, and every full run of the card (newest first, up to
+   *  MAX_RUNS) for the page's averages by version. */
+  variant?: string;
+  score?: Scorecard;
+  auto?: MapRunNumbers;
+  runs?: ScoredRun[];
 }
 
 export interface LabBuildDoc {
@@ -86,6 +126,7 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const l = rounds.get(order[0])!;
     const r = l.labResult!;
     const round = order[0];
+    const runs = card.kind === 'map' ? mapRuns(logs.filter((o) => o.lab?.card === id && !!o.labResult)) : [];
     const note = roundNote(id, round, order.slice(1).flatMap((n) => (allOf.get(`${id}#${n}`) ?? []).map((o) => o.labResult!.note)));
     const doc: LabResultDoc = {
       verdict: r.verdict,
@@ -102,10 +143,12 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
       history: order.slice(1).map((n) => {
         const o = rounds.get(n)!;
         const plays = logPlays(o);
-        return { round: n, verdict: o.labResult!.verdict, note: o.labResult!.note, at: when(o), log: o.id, ...(plays ? { plays } : {}) };
+        return { round: n, verdict: o.labResult!.verdict, note: o.labResult!.note, at: when(o), log: o.id, ...(plays ? { plays } : {}), ...mapRunFields(o) };
       }),
       ...(gone ? { cut: { round: gone.cut, why: gone.why } } : {}),
       ...(logPlays(l) ? { plays: logPlays(l), setup: labSetupText(l) } : {}),
+      ...mapRunFields(l),
+      ...(runs.length ? { runs } : {}),
     };
     results[id] = doc;
     // An enemy card's verdict also goes on the enemy page's Build tab.
@@ -149,4 +192,49 @@ export function labSetupText(l: PlayLog): string | undefined {
   ];
   if (plays === 'full' && l.lab.config) parts.push(l.lab.config.production ? 'production setup' : 'changed from the production setup');
   return parts.join(' · ');
+}
+
+/** A map card's full run's numbers, from its log's summary (none for any
+ *  other run, or a log with no summary). */
+export function mapRunNumbers(l: PlayLog): MapRunNumbers | undefined {
+  const s = l.summary;
+  if (logPlays(l) !== 'full' || !s) return undefined;
+  const done = s.delivered + s.lost;
+  const first = (s.waves ?? []).find((w) => w.lost > 0)?.wave ?? (s.lost > 0 ? s.wave : null);
+  return { delivered: s.delivered, deliveredPct: done ? Math.round((100 * s.delivered) / done) : null, lost: s.lost, firstLoss: first };
+}
+
+/** A map card's encounter version: what the log says, else v1. */
+export function logVariant(l: PlayLog): string {
+  return l.labResult?.variant ?? l.lab?.variant ?? MAP_VARIANT_DEFAULT;
+}
+
+/** What a full map run adds to its result: the version, score and numbers. */
+function mapRunFields(l: PlayLog): { variant?: string; score?: Scorecard; auto?: MapRunNumbers } {
+  if (logPlays(l) !== 'full') return {};
+  const score = cleanScorecard(l.labResult?.score);
+  const auto = mapRunNumbers(l);
+  return { variant: logVariant(l), ...(score ? { score } : {}), ...(auto ? { auto } : {}) };
+}
+
+/** Every full map run among a card's logs, newest first (up to MAX_RUNS). */
+export function mapRuns(logs: PlayLog[]): ScoredRun[] {
+  return logs
+    .filter((l) => !!l.labResult && logPlays(l) === 'full')
+    .sort((a, b) => (when(a) < when(b) ? 1 : -1))
+    .slice(0, MAX_RUNS)
+    .map((l) => {
+      const f = mapRunFields(l);
+      return {
+        at: when(l),
+        log: l.id,
+        round: logRound(l),
+        rev: l.labResult!.rev ?? l.lab!.rev ?? 1,
+        variant: f.variant ?? MAP_VARIANT_DEFAULT,
+        end: l.end ?? (l.labResult!.ended === 'lost' ? 'lost' : 'quit'),
+        verdict: l.labResult!.verdict,
+        ...(f.score ? { score: f.score } : {}),
+        ...(f.auto ? { auto: f.auto } : {}),
+      };
+    });
 }

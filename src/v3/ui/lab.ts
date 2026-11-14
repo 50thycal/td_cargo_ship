@@ -12,6 +12,7 @@ import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
+import { MAP_VARIANT_DEFAULT, SCORECARD_REV, cleanScorecard, scoreRows, waveChips, type ScoreCategory } from '../data/scorecard';
 
 /** The review page for the Test Lab: it shows what was marked here (Claude
  *  copies it over from the game logs), and what is left to test. */
@@ -36,6 +37,9 @@ export interface LabRunSetup {
    *  old short lab run, a "Quick slice" (the wave, weapons, mix and length
    *  above are a slice's; a full run has none of them). */
   plays?: LabPlays;
+  /** A map card (round 11): the map's encounter version to play (absent:
+   *  MAP_VARIANT_DEFAULT, 'v1'; only v1 exists so far). */
+  variant?: string;
 }
 
 /** One test's verdict as kept on the device: the result, when, the card's
@@ -242,9 +246,11 @@ export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchPa
   const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
   const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
   const rev = cardRev(card.id);
+  // A map card says which encounter version of the map it played (round 11).
+  const variant = map ? { variant: s.variant ?? MAP_VARIANT_DEFAULT } : {};
   const lab: LabSetup = full
-    ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) } }
-    : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}) };
+    ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) }, ...variant }
+    : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}), ...variant };
   return { setup: s, full, lab, convoy, encounters };
 }
 
@@ -568,7 +574,7 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
 // ---- The verdict ------------------------------------------------------------
 
 export interface VerdictHandlers {
-  save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note'>, then: 'next' | 'again' | 'list') => void;
+  save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'>, then: 'next' | 'again' | 'list') => void;
 }
 
 /** What the verdict sheet holds so far (the verdict, the tags, the note):
@@ -578,6 +584,11 @@ export interface VerdictDraft {
   verdict: LabVerdict | null;
   tags: string[];
   note: string;
+  /** A map card's full run (round 11): the scorecard's answers so far (row
+   *  id to answer), and whether the player skipped it. Never filled in
+   *  from an earlier run: each run's score is its own. */
+  score?: Partial<Record<ScoreCategory['id'], number | string>>;
+  skipScore?: boolean;
 }
 
 /** A fresh sheet: filled in from the card's verdict at this version, if
@@ -588,16 +599,84 @@ export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
 }
 
 /** What Save keeps from the sheet: nothing without a verdict (the sheet
- *  asks for one instead). */
-export function verdictResult(d: VerdictDraft): Pick<LabResult, 'verdict' | 'tags' | 'note'> | null {
-  return d.verdict ? { verdict: d.verdict, tags: [...d.tags], note: d.note.trim() } : null;
+ *  asks for one instead). A map card's full run (`played`: the waves it
+ *  played) adds its scorecard, unless it was skipped or left blank. */
+export function verdictResult(d: VerdictDraft, played?: number): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
+  if (!d.verdict) return null;
+  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, rev: SCORECARD_REV }, played) : undefined;
+  return { verdict: d.verdict, tags: [...d.tags], note: d.note.trim(), ...(score ? { score } : {}) };
+}
+
+/** The scorecard (round 11, data/scorecard.ts): one row per category, a
+ *  tap on a chip to answer (again to clear), every row optional, and Skip
+ *  to fold it away. The boss row shows only on a run that reached the boss
+ *  rounds; the wave rows offer the waves played. */
+export function scorecardEl(played: number, d: VerdictDraft): HTMLElement {
+  const answers = (d.score ??= {});
+  const box = el('section', 'v3-score');
+  box.dataset.labScore = '1';
+  box.setAttribute('aria-label', 'Scorecard');
+  const head = el('div', 'v3-score-head');
+  const title = el('span', 'v3-eyebrow');
+  const skip = button('', 'v3-score-skip', () => {
+    d.skipScore = !d.skipScore;
+    paint();
+  });
+  skip.dataset.scoreSkip = '1';
+  head.append(title, skip);
+  const rows = el('div', 'v3-score-rows');
+  for (const c of scoreRows(played)) {
+    const row = el('div', 'v3-score-row');
+    row.dataset.scoreRow = c.id;
+    const lab = el('div', 'v3-score-lab');
+    lab.append(el('b', '', c.label), el('small', '', c.help));
+    const chips = el('div', `v3-score-chips ${c.scale.kind}`);
+    chips.setAttribute('role', 'group');
+    chips.setAttribute('aria-label', c.label);
+    const opts: { v: number | string; label: string }[] =
+      c.scale.kind === 'choice'
+        ? c.scale.options.map((o) => ({ v: o.id, label: o.label }))
+        : c.scale.kind === 'wave'
+          ? waveChips(played).map((w) => ({ v: w.n, label: w.label }))
+          : [1, 2, 3, 4, 5].map((n) => ({ v: n, label: String(n) }));
+    const btns = opts.map((o) => {
+      const b = button(o.label, 'v3-score-chip', () => {
+        if (answers[c.id] === o.v) delete answers[c.id];
+        else answers[c.id] = o.v;
+        mark();
+      });
+      b.dataset.score = c.id;
+      b.dataset.value = String(o.v);
+      // A tap here while typing leaves the text box its focus.
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      return b;
+    });
+    const mark = () => btns.forEach((b, k) => {
+      const on = answers[c.id] === opts[k].v;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    mark();
+    chips.append(...btns);
+    row.append(lab, chips);
+    rows.append(row);
+  }
+  const paint = () => {
+    rows.hidden = !!d.skipScore;
+    box.classList.toggle('skipped', !!d.skipScore);
+    title.textContent = d.skipScore ? 'Scorecard skipped' : 'Scorecard · every row optional';
+    skip.textContent = d.skipScore ? 'Show it' : 'Skip';
+  };
+  paint();
+  box.append(head, rows);
+  return box;
 }
 
 /** Round 4's logs: seven cards saved with a note and no verdict. While the
  *  player typed, the Keep / Tune / Cut row was folded away with the rest of
  *  the sheet, and Save (all that was left) saved a null verdict. The row now
  *  stays while typing, and Save with no verdict asks for one. */
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays): HTMLElement {
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays, played?: number): HTMLElement {
   const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
   const title = ended === 'lost' ? `${card.name} · the convoy was lost` : plays === 'full' && ended === 'length' ? `${card.name} · map cleared: how was it?` : `${card.name} · how was it?`;
   sheet.append(el('h2', '', title));
@@ -609,9 +688,12 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
     for (const w of what) ch.append(el('p', '', w));
     sheet.append(ch);
   }
+  const d = draft ?? newVerdictDraft(p, card.id);
+  // A map card's full run (round 11): the scorecard, above the verdict.
+  const scored = card.kind === 'map' && plays === 'full' && played !== undefined ? played : undefined;
+  if (scored !== undefined) sheet.append(scorecardEl(scored, d));
   const cols = el('div', 'v3-lab-cols');
   const left = el('div', 'v3-lab-col');
-  const d = draft ?? newVerdictDraft(p, card.id);
   const tags = new Set<string>(d.tags);
   // The verdict row, and the ask for one: they stay in sight while the
   // keyboard is up (app.ts, enterTyping).
@@ -684,7 +766,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   // tags stay as they are).
   const save = (then: 'next' | 'again' | 'list') => {
     d.note = note.value;
-    const r = verdictResult(d);
+    const r = verdictResult(d, scored);
     if (!r) {
       // The keyboard goes, so the whole sheet (the row, and why) is back.
       note.blur();
@@ -692,6 +774,8 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
       vrow.classList.remove('need');
       void vrow.offsetWidth;
       vrow.classList.add('need');
+      // Under a scorecard the row can be scrolled out of sight.
+      vwrap.scrollIntoView?.({ block: 'nearest' });
       return;
     }
     h.save(r, then);

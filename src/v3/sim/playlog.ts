@@ -9,6 +9,7 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { LabSetup, LabStats } from './lab';
+import type { Scorecard } from '../data/scorecard';
 import type { EventRecord } from './events';
 import {
   applyEncounters,
@@ -102,8 +103,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      twice as wide (240 px), decoys are told apart from launch (the bots,
  *      the broadside and the helpers leave them be), the Decoy Storm sends
  *      twelve swarms with the second half sooner, and the Map & Convoy Lab's
- *      Hold stops the ships short of its line (convoy rules rev 2). */
-export const LOG_VERSION = 21;
+ *      Hold stops the ships short of its line (convoy rules rev 2).
+ *  22: Test Lab round 11's map scorecard (docs/design/v3-test-lab.md,
+ *      "Scorecard"): a map card's `labResult` can carry `score` (the
+ *      player's scorecard) and `variant` (the map's encounter version), and
+ *      its `lab` a `variant`. None of it touches replay: a v21 log replays
+ *      on this build exactly as before (LOG_REPLAYS). */
+export const LOG_VERSION = 22;
+/** The log versions this build replays exactly: its own, and those whose
+ *  rules it still plays (v22 only added fields outside replay). Tools that
+ *  replay logs (Map Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [21, 22];
+
+/** Does this build replay a log of this version exactly? */
+export function replaysHere(v: number): boolean {
+  return LOG_REPLAYS.includes(v);
+}
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -123,6 +138,11 @@ export interface LabResult {
   round?: number;
   /** A map card (round 10): the full map or a quick slice. */
   plays?: 'full' | 'slice';
+  /** A map card's full run (round 11, log v22): the player's scorecard
+   *  (data/scorecard.ts; absent when skipped or left blank), and the map's
+   *  encounter version played (absent: 'v1'). */
+  score?: Scorecard;
+  variant?: string;
 }
 export const SIM_DT = 1 / 60;
 

@@ -8,7 +8,11 @@
 // - its log says it is a full production run, and how it was set up;
 // - the setup sheet marks the production setup, Reset returns to it, and
 //   the Quick slice (the old short lab run) is still there;
-// - Next up and the bare link (?lab=map-harbor) open the same setup.
+// - Next up and the bare link (?lab=map-harbor) open the same setup;
+// - round 11's scorecard: Done on The Strait shows it above the verdict
+//   (no boss row on wave 1), Skip folds it, its chips land in the log
+//   (v22, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
+//   waves 1-7 and no boss row; a won run offers the boss row and B1-B3.
 // Screenshots for the doc go to docs/design/img/map-cards/.
 // Fails on any page error.
 //
@@ -65,6 +69,39 @@ const runState = (page) =>
       log: { firstWave: log.firstWave, freePlay: 'freePlay' in log, lab: log.lab, convoy: log.convoy?.policy ?? null, encounters: log.encounters?.rev ?? null },
     };
   });
+
+/** The verdict sheet's scorecard, as the tests read it: its rows, its wave
+ *  chips, whether it sits above the verdict row, and any chip under 40 px. */
+const scoreSheet = (page) =>
+  page.evaluate(() => {
+    const box = document.querySelector('[data-lab-score]');
+    const v = document.querySelector('.v3-lab-v');
+    return {
+      title: document.querySelector('.v3-lab-verdict h2')?.textContent ?? '',
+      rows: [...document.querySelectorAll('[data-score-row]')].map((r) => r.dataset.scoreRow),
+      waves: [...document.querySelectorAll('[data-score="best"]')].map((b) => b.textContent),
+      above: !!box && !!v && box.getBoundingClientRect().bottom <= v.getBoundingClientRect().top,
+      small: [...document.querySelectorAll('.v3-score-chip, [data-score-skip]')].map((b) => b.getBoundingClientRect()).filter((r) => r.width < 40 || r.height < 40).map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`),
+    };
+  });
+
+/** The newest test log kept on the device, and the card's newest entry. */
+const savedRun = (page, card) =>
+  page.evaluate((card) => {
+    const log = JSON.parse(localStorage.getItem('straitwatch.v3.lab.logs') ?? '[]')[0] ?? {};
+    const entry = (JSON.parse(localStorage.getItem('straitwatch.v3.lab') ?? '{}').results?.[card] ?? []).at(-1) ?? {};
+    return { v: log.v, end: log.end, verdict: log.labResult?.verdict, score: log.labResult?.score ?? null, variant: log.labResult?.variant, labVariant: log.lab?.variant, entryScore: entry.score ?? null };
+  }, card);
+
+/** Clear wave 1 and jump the run to `wave` (its draft says the wave before;
+ *  the pick starts it). Only the scorecard's checks use this shortcut. */
+const jumpTo = async (page, wave) => {
+  await page.evaluate(() => { const g = window.__v3.game(); const [limit, hp] = [g.tempo.lossLimit, g.carrierHp]; g.tempo.lossLimit = 999; g.carrierHp = 1e6; window.__v3.advance(300); g.carrierHp = hp; g.tempo.lossLimit = limit; });
+  await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
+  await page.evaluate((w) => { window.__v3.game().wave = w - 1; }, wave);
+  await page.locator('.v2-card:not([disabled])').first().click();
+  await page.waitForFunction((w) => window.__v3.game()?.phase === 'wave' && window.__v3.game().wave === w, wave, { timeout: 8000 });
+};
 
 /** A run that can't be lost (nobody shoots in this check). */
 const tough = (page) => page.evaluate(() => { const g = window.__v3.game(); g.tempo.lossLimit = 999; g.carrierHp = g.stats.carrierHp = 1e6; });
@@ -160,14 +197,61 @@ try {
   const s3 = await runState(page);
   check(s3.wave === 1 && s3.policy === 'tactical' && s3.enc === 1 && s3.log.lab?.config?.production === true, 'Reset from the slice restarts the full map under the production setup');
 
-  // Done: the verdict sheet, then back to the list.
+  // Done: the verdict sheet, with the scorecard, then back to the list.
   await page.tap('[data-lab-done]');
   await page.waitForSelector('[data-screen="lab-verdict"]');
   const ev = await page.evaluate(() => document.querySelector('.v3-lab-evidence')?.textContent ?? '');
   check(/Full map: 0 of 13 waves cleared/.test(ev), `the verdict sheet counts the full map ("${ev.slice(0, 80)}")`);
+  const sc0 = await scoreSheet(page);
+  check(sc0.rows.join() === 'fun,difficulty,pacing,variety,readability,mapFeel,best,weakest,again' && sc0.waves.join() === '1' && sc0.above && sc0.small.length === 0, `the scorecard sits above the verdict, one row per category, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
+  await page.tap('[data-score-skip]');
+  const skipped = await page.evaluate(() => ({ hidden: document.querySelector('.v3-score-rows').hidden, text: document.querySelector('[data-score-skip]').textContent }));
+  await page.tap('[data-score-skip]');
+  check(skipped.hidden && skipped.text === 'Show it' && (await page.evaluate(() => !document.querySelector('.v3-score-rows').hidden)), 'Skip folds the scorecard away, and Show it brings it back');
+  for (const [row, v] of [['fun', '4'], ['difficulty', 'bit-hard'], ['pacing', 'right'], ['readability', '2'], ['best', '1'], ['again', 'maybe'], ['variety', '3'], ['variety', '3']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
+  const on = await page.evaluate(() => [...document.querySelectorAll('.v3-score-chip.on')].map((b) => `${b.dataset.score}=${b.dataset.value}`));
+  check(on.join() === 'fun=4,difficulty=bit-hard,pacing=right,readability=2,best=1,again=maybe', `a tap answers a row and a second tap clears it (${on.join()})`);
   await page.tap('[data-lab-verdict="keep"]');
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
+  const saved = await savedRun(page, 'map-strait');
+  check(saved.v === 22 && JSON.stringify(saved.score) === JSON.stringify({ rev: 1, fun: 4, difficulty: 'bit-hard', pacing: 'right', readability: 2, best: 1, again: 'maybe' }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+
+  // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
+  await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.playing.lab-on');
+  await jumpTo(page, 7);
+  await page.evaluate(() => { const g = window.__v3.game(); g.carrierHp = 0; window.__v3.advance(1); });
+  await page.waitForSelector('[data-screen="lab-verdict"]', { timeout: 10000 });
+  const sc1 = await scoreSheet(page);
+  check(/the convoy was lost/.test(sc1.title) && !sc1.rows.includes('boss') && sc1.waves.join() === '1,2,3,4,5,6,7' && sc1.small.length === 0, `a run lost on wave 7: "${sc1.title}", wave chips ${sc1.waves.join(' ')}, no boss row`);
+  await page.tap('[data-score="fun"][data-value="2"]');
+  await page.tap('[data-score-skip]');
+  await page.tap('[data-lab-verdict="tune"]');
+  await page.tap('[data-lab-list]');
+  await page.waitForSelector('[data-screen="lab"]');
+  const lost = await savedRun(page, 'map-strait');
+  check(lost.end === 'lost' && lost.score === null && lost.verdict === 'tune', `a skipped scorecard saves no score (end ${lost.end}, score ${JSON.stringify(lost.score)})`);
+
+  // ---- A won run: the boss row and B1-B3 ----
+  await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.playing.lab-on');
+  await tough(page);
+  await jumpTo(page, 11);
+  for (let i = 0; i < 6 && !(await page.$('[data-screen="lab-verdict"]')); i++) {
+    await page.evaluate(() => window.__v3.advance(300));
+    await page.waitForTimeout(300);
+    if (await page.$('[data-screen="draft"]')) await page.locator('.v2-card:not([disabled])').first().click();
+  }
+  await page.waitForSelector('[data-screen="lab-verdict"]', { timeout: 10000 });
+  const sc2 = await scoreSheet(page);
+  check(/map cleared/.test(sc2.title) && sc2.rows.includes('boss') && sc2.waves.slice(9).join() === '10,B1,B2,B3' && sc2.small.length === 0, `a won run: "${sc2.title}", the boss row, and wave chips ${sc2.waves.join(' ')}`);
+  for (const [row, v] of [['boss', '5'], ['best', '12'], ['weakest', '3']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
+  await page.tap('[data-lab-verdict="keep"]');
+  await page.tap('[data-lab-list]');
+  await page.waitForSelector('[data-screen="lab"]');
+  const won = await savedRun(page, 'map-strait');
+  check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify({ rev: 1, boss: 5, best: 12, weakest: 3 }), `a won run's boss score lands in the log (${JSON.stringify(won.score)})`);
 
   // ---- Next up opens the same setup ----
   const ids = await page.evaluate(() => [...document.querySelectorAll('[data-card]')].map((c) => c.dataset.card));

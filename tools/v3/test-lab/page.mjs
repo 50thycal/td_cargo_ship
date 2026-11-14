@@ -13,7 +13,10 @@
 // round with its marks, and the cut cards. A new round in LAB_ROUNDS and
 // LAB_CHANGES needs no edit here: rebuild and republish.
 // The store (ids and shapes kept from the design round):
-//   results/{cardId}:     written by Claude from the game logs (labDocs.ts); read only here
+//   results/{cardId}:     written by Claude from the game logs (labDocs.ts); read only here.
+//                         A map card's (round 11) can also carry `variant`, `score`, `auto`
+//                         and `runs`: the page shows the scorecard and its averages
+//                         (scores.mjs). All optional; older documents show as before.
 //   answers/{questionId}: choice (option index), note; the open questions write these
 //   reviews/{pieceId}:    verdict (approve | change | cut), note; the design round, read only now
 //   cards/{cardId}:       verdict (keep | drop), note; the design round's checklist, read only now
@@ -22,6 +25,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { ROUND_DATE, ASK, TODAY, PIECES, SECTIONS, CARDS, QUESTIONS, OPEN_QUESTIONS, ROUND_DOCS } from './lab.mjs';
 import { cardStatus, changesSince, splitCards, groupBySection, untestedEarlier, isAnswered } from './split.mjs';
+import { waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords } from './scores.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // The game's own card list (src/v3/data/lab.ts), and where the game lives:
@@ -220,6 +224,21 @@ textarea { width: 100%; font: 14px/1.4 var(--body); color: var(--ink); backgroun
 a.play { justify-self: start; font: 600 13px var(--body); color: var(--signal); text-decoration: none; border: 1px solid var(--signal); border-radius: 999px; padding: 4px 12px; }
 a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .hidden { display: none !important; }
+/* A map card's scorecard (round 11): the latest run's numbers and scores as
+   chips, then the averages per category, by encounter version. */
+.scores { display: grid; gap: 6px; border-top: 1px dashed var(--rule); padding-top: 8px; min-width: 0; }
+.scores .lab { margin: 0; }
+.scores .auto { font: 500 12px var(--mono); color: var(--ink); }
+.schips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.schips li { display: inline-flex; align-items: baseline; gap: 4px; background: var(--chip); border-radius: 6px; padding: 2px 7px; font-size: 13px; line-height: 1.4; min-width: 0; }
+.schips li span { color: var(--muted); font-size: 12px; }
+.schips li b { font-weight: 600; }
+.schips li i { font: normal 500 11px var(--mono); color: var(--muted); }
+.vgroup { display: grid; gap: 4px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--sea); min-width: 0; }
+.vgroup .vhead { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 13px; }
+.vgroup .vhead b { font: 600 12px var(--mono); color: var(--signal); }
+.vgroup .vhead span { font: 500 12px var(--mono); color: var(--muted); }
+.scores .older { font-size: 12px; color: var(--muted); }
 .rhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .rround { font: 600 11px var(--mono); letter-spacing: .03em; background: var(--chip); color: var(--ink); border-radius: 999px; padding: 2px 8px; }
 .rround:empty, .rch:empty, .rn:empty, .rs:empty { display: none; }
@@ -319,6 +338,9 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
 (() => {
   // The live split (tools/v3/test-lab/split.mjs).
   ${[cardStatus, changesSince, splitCards, groupBySection, untestedEarlier, isAnswered].map((f) => f.toString()).join('\n  ')}
+  // The map scorecards (tools/v3/test-lab/scores.mjs).
+  ${[waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords].map((f) => f.toString()).join('\n  ')}
+  const SC = ${js(LAB.scorecard)};
   const ROUND = ${ROUND.n};
   const GAME = ${js(GAME_URL)};
   const SECTIONS = ${js(LAB.sections)};
@@ -343,6 +365,60 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
 
   // A card's link into the game.
   const playLink = (id) => { const a = h('a', 'play', 'Test in game ↗'); a.href = GAME + '?lab=' + encodeURIComponent(id); a.target = '_blank'; a.rel = 'noopener'; return a; };
+
+  // ---- A map card's scorecard (round 11): the latest full run's numbers
+  // and scores, then the averages per category, by encounter version.
+  const ENDS = { won: 'Map cleared', lost: 'Lost', quit: 'Stopped with Done' };
+  function autoWords(end, a) {
+    const parts = [ENDS[end] || ''];
+    if (a) {
+      parts.push((a.deliveredPct == null ? '–' : a.deliveredPct + '%') + ' delivered');
+      parts.push(plural(a.lost, 'ship lost', 'ships lost'));
+      parts.push(a.firstLoss == null ? 'no loss' : 'first loss wave ' + waveName(a.firstLoss, SC.bossFrom));
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+  function chipList(items) {
+    const ul = h('ul', 'schips');
+    ul.append(...items.map((c) => { const li = h('li'); li.dataset.score = c.id; li.append(h('span', '', c.label), h('b', '', c.text)); if (c.n != null) li.append(h('i', '', '×' + c.n)); return li; }));
+    return ul;
+  }
+  function scoreBlock(card, r) {
+    if (card.kind !== 'map' || !r || !(r.score || r.auto || (r.runs && r.runs.length))) return null;
+    const box = h('div', 'scores');
+    box.dataset.scores = card.id;
+    const sg = scoreGroups(r.runs || [], SC);
+    const many = sg.groups.length > 1;
+    const end = r.ended === 'lost' ? 'lost' : r.ended === 'length' ? 'won' : 'quit';
+    box.append(h('span', 'lab', 'Latest full run' + (many && r.variant ? ' · ' + r.variant : '')));
+    box.append(h('p', 'auto', autoWords(end, r.auto)));
+    const latest = scoreChips(r.score, SC);
+    box.append(latest.length ? chipList(latest) : h('p', 'older', 'No scorecard on this run.'));
+    const scored = sg.groups.reduce((m, g) => m + g.scored, 0);
+    if (scored >= 2 || many) {
+      box.append(h('span', 'lab', 'Average · ' + plural(scored, 'scored run', 'scored runs') + ' on version ' + sg.rev + (many ? ', by encounter version' : '') + ' · ×n: runs that answered'));
+      for (const g of sg.groups) {
+        const items = SC.categories.filter((c) => g.averages[c.id]).map((c) => ({ id: c.id, label: c.label.replace(/\\?$/, ''), text: averageWords(c, g.averages[c.id], SC.bossFrom), n: g.averages[c.id].n }));
+        const num = g.numbers;
+        const line = [plural(num.runs, 'run', 'runs'), 'won ' + num.won, num.deliveredPct == null ? '' : Math.round(num.deliveredPct) + '% delivered', num.lost == null ? '' : num.lost.toFixed(1) + ' lost'].filter(Boolean).join(' · ');
+        if (!many) { box.append(h('p', 'auto', line)); if (items.length) box.append(chipList(items)); continue; }
+        const vg = h('div', 'vgroup');
+        vg.dataset.variant = g.variant;
+        const head = h('div', 'vhead');
+        head.append(h('b', '', g.variant), h('span', '', line));
+        vg.append(head, items.length ? chipList(items) : h('p', 'older', 'No scorecards yet.'));
+        box.append(vg);
+      }
+    }
+    if (sg.older) box.append(h('p', 'older', plural(sg.older, 'run', 'runs') + ' on an older version of the map not averaged.'));
+    return box;
+  }
+  function setScores(li, card, r) {
+    const old = li.querySelector('.scores');
+    const b = scoreBlock(card, r);
+    if (old) old.remove();
+    if (b) li.insertBefore(b, li.querySelector('a.play'));
+  }
 
   // ---- A result card (Done, Cut cards): verdict, note, setup, earlier rounds.
   const resEls = {};
@@ -378,7 +454,8 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
     const det = li.querySelector('.rhist');
     det.classList.toggle('hidden', !hist.length);
     det.querySelector('summary').textContent = 'Earlier rounds (' + hist.length + ')';
-    det.querySelector('ul').replaceChildren(...hist.map((x) => h('li', '', ['Round ' + (x.round || 1), x.plays === 'full' ? 'Full map' : x.plays === 'slice' ? 'Quick slice' : '', x.verdict ? VLABEL[x.verdict] : 'Tested', x.note ? '“' + x.note + '”' : ''].filter(Boolean).join(' · '))));
+    det.querySelector('ul').replaceChildren(...hist.map((x) => h('li', '', ['Round ' + (x.round || 1), x.plays === 'full' ? 'Full map' : x.plays === 'slice' ? 'Quick slice' : '', x.verdict ? VLABEL[x.verdict] : 'Tested', x.note ? '“' + x.note + '”' : '', scoreChips(x.score, SC).map((c) => c.label + ' ' + c.text).join(', ')].filter(Boolean).join(' · '))));
+    setScores(li, card, r);
   }
 
   // ---- A card to test: why it's here, its newest change, and the link.
@@ -406,6 +483,7 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
     li.querySelector('.tline').textContent = last ? 'Round ' + last.round + ': ' + last.what + (e.since.length > 1 ? ' (and ' + plural(e.since.length - 1, 'earlier change', 'earlier changes') + ')' : '') : e.card.look;
     const r = e.result;
     li.querySelector('.tlast').textContent = r ? 'Your last test: round ' + (r.round || 1) + (r.verdict ? ', ' + VLABEL[r.verdict] : '') : '';
+    setScores(li, e.card, r);
     return li;
   }
 

@@ -4759,6 +4759,114 @@ a.v3-lab-page {
   gap: 4px;
 }
 
+/* The map scorecard (Test Lab round 11): one row per category, a chip per
+   answer, every chip a 40 px target. Held sideways the row's name sits
+   beside its chips; upright, above them. */
+.v3-score {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.6);
+}
+
+.v3-score-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.v3-score-skip {
+  min-height: 40px;
+  min-width: 64px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.v3-score-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-score-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 2fr);
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.v3-score-lab {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.v3-score-lab b {
+  font-size: 14px;
+}
+
+.v3-score-lab small {
+  font-size: 11px;
+  color: var(--muted, #9fb2bf);
+}
+
+.v3-score-chips {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+
+.v3-score-chips.wave {
+  flex-wrap: wrap;
+}
+
+.v3-score-chip {
+  flex: 1 1 0;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.9);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.v3-score-chips.wave .v3-score-chip {
+  flex: 0 0 40px;
+  padding: 0;
+}
+
+.v3-score-chip.on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 34%, rgb(15 26 34));
+  color: #fff;
+}
+
+/* Upright (or a narrow window): the row's name above its chips. */
+.portrait .v3-score-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 560px) {
+  .v3-score-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Save with no verdict: the row asks for one. */
 .v3-lab-need {
   margin: 0;

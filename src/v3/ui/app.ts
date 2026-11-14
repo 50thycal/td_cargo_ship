@@ -2300,6 +2300,10 @@ export class App {
     const stats = { ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 };
     const waves = g.lab.waves;
     const plays = g.lab.setup.plays;
+    // A full map run's waves played, for its scorecard (round 11): the wave
+    // it is on or ended on (a full run starts at wave 1).
+    const played = g.lab.full ? Math.max(waves, g.wave) : undefined;
+    const variant = g.lab.setup.variant;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
     // The sheet drawn again for the same test (a wave's end coming in under
@@ -2312,7 +2316,7 @@ export class App {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
           const rev = cardRev(run.card.id);
-          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}) };
+          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}), ...(variant ? { variant } : {}) };
           addLabEntry(p, run.card.id, { ...result, at: new Date().toISOString(), build: __BUILD__ });
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
@@ -2329,7 +2333,7 @@ export class App {
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }, draft, plays),
+      }, draft, plays, played),
     ]);
   }
 

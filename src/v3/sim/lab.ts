@@ -45,6 +45,10 @@ export interface LabSetup {
   plays?: LabPlays;
   /** A full map run: its setup, as a record (see LabMapConfig). */
   config?: LabMapConfig;
+  /** A map card (round 11): which encounter version of the map this was
+   *  (data/scorecard.ts MAP_VARIANT_DEFAULT, 'v1', until a map has more).
+   *  A record for the review page; the sim never reads it. */
+  variant?: string;
   /** The card's version and the test round it was played in (absent in
    *  logs from before rounds: round 1). Not used by the sim. */
   rev?: number;

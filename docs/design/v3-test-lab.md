@@ -31,7 +31,7 @@ It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
   - **A design doc:** add a line to `ROUND_DOCS` in `lab.mjs`, as `{ doc, summary }`. Without one, the page uses the doc in `docs/design/` that says "Test Lab round N is", with that doc's title as the summary.
   - **Questions for the player:** add them to `OPEN_QUESTIONS` in `lab.mjs`, as `{ id, round, text, options, why }`, with the recommended option first. Use a new `id` every time: the build stops if an id is used twice.
 - **The page's store.** The ids and shapes are unchanged from the design round, and nothing saved is rewritten:
-  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs, and the page only reads them. A document without `round` is round 1.
+  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs, and the page only reads them. A document without `round` is round 1 A map card's document can also carry `variant`, `score`, `auto` and `runs` (from round 11, see Scorecard). All are optional.
   - `answers/{questionId}`: `choice` (option index) and `note`. The open questions write these. The design round's `tl-*` answers are shown read only.
   - `reviews/{pieceId}` and `cards/{cardId}`: the design round's marks, shown read only.
 
@@ -114,6 +114,69 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
 
 ![The hub in round 2](img/test-lab/hub-round2.jpg)
 ![The verdict sheet for a changed card](img/test-lab/verdict-changed.jpg)
+
+## Scorecard
+
+The player asked for it on 2026-11-14: "let's improve the rating and feedback system at the end of the game. It should have categories to rank that we should have some feedback on to determine if this production map is good." Next: "make a few different versions of the same maps with different encounters and see which ones do the best". So every full map run asks the same short questions, and the answers can be compared across runs and across versions of one map.
+
+**On the verdict sheet.** After a map card's full run (won, lost, or Done), the sheet opens with a **Scorecard** box above Keep / Tune / Cut, the tags and the note. Other cards, and a map card's Quick slice, have no scorecard; their sheet is unchanged.
+- One row per category, and one tap on a chip answers it. A second tap clears it. Nothing needs typing.
+- Every row is optional. **Skip** folds the box away, and nothing from it is saved; **Show it** brings it back.
+- Save still asks for Keep, Tune or Cut. If the verdict row is out of sight under the scorecard, the sheet scrolls back to it.
+- Held sideways, a row's name sits beside its chips. Upright, the name sits above them. Every chip is a 40 px target.
+- A score is never filled in from an earlier run: each run's score is its own.
+
+| Row | Asks | Answers |
+|---|---|---|
+| Fun | How much fun was this run? | 1 to 5 |
+| Difficulty | How hard was it? | Too easy · Bit easy · Right · Bit hard · Too hard |
+| Pacing | How fast did the run move? | Too slow · Right · Too fast |
+| Variety | The waves felt different from each other | 1 to 5 |
+| Readability | I could tell what was coming and what hit me | 1 to 5 |
+| Map feel | The layout mattered to how I played | 1 to 5 |
+| Boss rounds | How were waves 11 to 13? (only on a run that reached wave 11) | 1 to 5 |
+| Best wave | The wave you liked most | a chip per wave played: 1 to 10, then B1 to B3 |
+| Weakest wave | The wave you liked least | the same |
+| Play again? | Would you play this map again? | Yes · Maybe · No |
+
+**In data.** The rows are `SCORECARD` in `src/v3/data/scorecard.ts`. Each has an `id`, a `label`, a `help` line and a `scale` (`stars`, `choice` with ordered `{ id, label, value }` options, or `wave`). A choice's `value` is what the page averages: Right is 0 on Difficulty (−2 to +2) and Pacing (−1 to +1). Changing a row's meaning, or adding or dropping a row, means bumping `SCORECARD_REV`, so answers to two different questions are never averaged together.
+
+**In the log (version 22).** The run's `labResult` carries the score, for example `"score": { "rev": 1, "fun": 4, "difficulty": "bit-hard", "best": 12, "again": "yes" }`. A row left alone is absent, and a skipped or blank scorecard leaves no `score` at all. A wave is its number (11 to 13 are B1 to B3).
+- **The encounter version.** A map card's `lab` and `labResult` also carry `variant`: which encounter version of the map was played. It is `'v1'` for now (`MAP_VARIANT_DEFAULT`). A log without it is v1. The setup's `variant` (`LabRunSetup`) is the plumbing for next round's A/B/C versions.
+- **Old logs.** Version 22 only adds fields outside replay, so a v21 log replays here exactly as before. `LOG_REPLAYS` (`[21, 22]`) lists the versions this build replays, and Map Analytics and the map lab tools accept either.
+
+**The bridge.** `labResultDocs` (`src/v3/sim/labDocs.ts`) adds these to a map card's `results/{cardId}` document:
+- `variant`, `score` and `auto` for the latest run (when it was a full run);
+- the same on each `history` entry;
+- `runs`: every full run of the card, newest first (up to 60), each `{ at, log, round, rev, variant, end, verdict, score?, auto? }`.
+
+**Three numbers per run (`auto`).** They come from the log's summary, so no new telemetry is needed:
+- `deliveredPct`: the ships delivered, as a share of those delivered or sunk;
+- `lost`: the ships lost. The restore before the ending doesn't reset the tally;
+- `firstLoss`: the wave the first ship was lost on, or `null` when none were lost.
+
+`results.mts` prints them, with the variant and the score, beside each map card's verdict.
+
+**The review page.** A map card, under To test or Done, gets a scorecard block:
+- **Latest full run:** how it ended (Map cleared, Lost, or Stopped with Done), the three numbers, and the answers as a row of chips ("Fun 4", "Difficulty Bit hard", "Best wave B2").
+- **Average:** once a card has two or more scored runs, one chip per category, with the number of runs that answered it:
+  - a 1-5 row shows its mean ("3.7");
+  - Difficulty and Pacing show the nearest answer and the signed mean ("Bit hard (+0.7)");
+  - the wave rows show the wave picked most ("7", or "7 (2 of 3)" when the runs differ);
+  - Play again shows its counts ("Yes 2 · No 1").
+
+  Each chip ends with "×n", the runs that answered it. A line above the chips gives the runs, the runs won, the mean delivered % and the mean ships lost.
+- **By encounter version:** when a card has runs on more than one `variant`, each version gets its own box with its own line and averages, so the versions can be compared side by side.
+- **Comparable runs only:**
+  - only runs on the newest card version are averaged, and older ones are counted in a line under the block;
+  - only scores on the current `SCORECARD_REV` count.
+
+The logic is `tools/v3/test-lab/scores.mjs`. The page inlines it, as it does `split.mjs`, and `tests/v3/labScores.test.ts` tests it. To try the block, the page reads fake results from its browser store when it is opened outside claude.ai (`localStorage['straitwatch-test-lab-1'] = { results: { 'map-strait': {...} } }`).
+
+**Checks:**
+- `tests/v3/scorecard.test.ts`: the rows, cleaning and saving a score, the variant on the plan, log version 22 with v21 still replaying, and the bridge's numbers, runs and history.
+- `tests/v3/labScores.test.ts`: the page's chips, averages and grouping.
+- `e2e/v3-map-cards.mjs`: a scorecard filled on The Strait's sheet lands in the log; Skip saves none.
 
 ## Copying results to the pages (Claude, each session)
 
