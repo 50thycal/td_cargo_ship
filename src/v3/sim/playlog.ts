@@ -9,6 +9,7 @@ import type { MapId } from '../data/maps';
 import type { AbilityId, CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { LabSetup, LabStats } from './lab';
+import type { Scorecard } from '../data/scorecard';
 import type { EventRecord } from './events';
 import {
   applyEncounters,
@@ -102,8 +103,25 @@ import type { EncounterSetup } from '../data/encounters';
  *      twice as wide (240 px), decoys are told apart from launch (the bots,
  *      the broadside and the helpers leave them be), the Decoy Storm sends
  *      twelve swarms with the second half sooner, and the Map & Convoy Lab's
- *      Hold stops the ships short of its line (convoy rules rev 2). */
-export const LOG_VERSION = 21;
+ *      Hold stops the ships short of its line (convoy rules rev 2).
+ *  22: Test Lab round 11's map scorecard (docs/design/v3-test-lab.md,
+ *      "Scorecard"): a map card's `labResult` can carry `score` (the
+ *      player's scorecard) and `variant` (the map's encounter version), and
+ *      its `lab` a `variant`. Round 11's game changes (Rush and Disperse cut,
+ *      Hold pauses every ship, decoys out of the game, Point Defense at
+ *      munitions only, a Cutter tap fires nothing, every weapon hurts a
+ *      Lure Beacon, Afterburner Rush with no line, Harbor's opening pairs)
+ *      mean a v21 log no longer replays to the same game. */
+export const LOG_VERSION = 22;
+/** The log versions this build replays exactly (only its own: round 11
+ *  changed the game). Tools that replay logs (Map Analytics, the map lab)
+ *  take any of these. */
+export const LOG_REPLAYS: readonly number[] = [22];
+
+/** Does this build replay a log of this version exactly? */
+export function replaysHere(v: number): boolean {
+  return LOG_REPLAYS.includes(v);
+}
 /** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
  *  shared log store keep the two games apart. */
 export const LOG_GAME = 'v3';
@@ -123,6 +141,11 @@ export interface LabResult {
   round?: number;
   /** A map card (round 10): the full map or a quick slice. */
   plays?: 'full' | 'slice';
+  /** A map card's full run (round 11, log v22): the player's scorecard
+   *  (data/scorecard.ts; absent when skipped or left blank), and the map's
+   *  encounter version played (absent: 'v1'). */
+  score?: Scorecard;
+  variant?: string;
 }
 export const SIM_DT = 1 / 60;
 
@@ -239,8 +262,9 @@ export interface PlayLog {
   moments?: Moment[];
   rating?: Rating;
   /** Special events met (sim/events.ts): when each started and ended
-   *  (steps), what it sent, how it went, the shots fired in it and, on the
-   *  Decoy Storm, how many went at decoys. Derived: replay remakes them. */
+   *  (steps), what it sent, how it went and the shots fired in it (an older
+   *  log's Decoy Storm also counted the shots at decoys). Derived: replay
+   *  remakes them. */
   events?: EventRecord[];
 }
 

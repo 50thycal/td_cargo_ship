@@ -64,12 +64,16 @@ async function touchDefend(page) {
 
 try {
   // ---- A Test Lab run on Harbor Mouth, played by touch ----
+  // (Since round 10 a map card opens on its production setup, where the
+  // convoy sails itself: ?convoy=current asks for the flow and formation
+  // controls this run exercises, and ?plays=slice the short lab slice from
+  // wave 5 it was written for.)
   const page = await browser.newPage(PHONE);
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
-  await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=5`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&convoy=current&plays=slice&seed=5`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
   const start = await page.evaluate(() => {
     const g = window.__v3.game();
@@ -134,7 +138,7 @@ try {
     const again = window.__v3.replayTelemetry(log);
     return { log, live, liveDigest: window.__v3.telemetryDigest(live), again, inLog: JSON.stringify(log).includes('"thr+"'), keys: Object.keys(log) };
   });
-  check(!!done.log && done.log.v === 21 && done.log.end === 'quit' && !done.inLog && !done.keys.includes('telemetry'), `the play log is as it was: version 21, no telemetry in it (${done.keys.join(',')})`);
+  check(!!done.log && done.log.v === 22 && done.log.end === 'quit' && !done.inLog && !done.keys.includes('telemetry'), `the play log is as it was: version 22, no telemetry in it (${done.keys.join(',')})`);
   check(done.again.steps === done.live.steps && done.again.digest === done.liveDigest, `replaying the log in the browser makes the sidecar the live run made (${done.again.events} events, digest ${done.again.digest} = ${done.liveDigest})`);
   check(done.again.problems.length === 0, `the telemetry adds up to the game: hulls, sinkings, deliveries, kills, launches, pickups, taps (${done.again.problems.join('; ') || 'no differences'})`);
   check(done.live.phases.at(-1).end === 'left' && done.live.header.runId === done.log.id, `the sidecar is keyed to its log (${done.live.header.runId}) and ends where the run was left`);
@@ -193,7 +197,7 @@ try {
         const cdp = await p.context().newCDPSession(p);
         await p.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
         await p.evaluate(() => localStorage.clear());
-        await p.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=5&tel=${tel}`, { waitUntil: 'networkidle' });
+        await p.goto(`${BASE_URL}/v3.html?lab=map-harbor&convoy=current&plays=slice&seed=5&tel=${tel}`, { waitUntil: 'networkidle' });
         await p.waitForSelector('.playing.lab-on');
         await p.evaluate(() => window.__v3.freeze(true));
         await cdp.send('Emulation.setCPUThrottlingRate', { rate });

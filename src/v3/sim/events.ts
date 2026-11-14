@@ -19,10 +19,9 @@
 //
 // game.ts calls in at: startWave (startEvent, restoreConvoy), each step
 // (updateEvent), the wave's end (endEvent, bonusDue, startBonus) and a loss
-// (endEvent), a kill (eventFoeDown), a shot (in fireAt, the Decoy Storm's
-// count), the drop roll (eventDropWeights)
+// (endEvent), a kill (eventFoeDown), the drop roll (eventDropWeights)
 // and the lab's "Run it again" (rerunEvent). foes.ts reads
-// the run's rules and features (the line, the fire's linger) where a foe
+// the run's rules and features (the fire's linger) where a foe
 // behaves differently in an event. Pure and deterministic like the rest of
 // the sim.
 
@@ -64,8 +63,6 @@ export interface EventRun {
   lost0: number;
   carrier0: number;
   shots0: number;
-  /** Shots fired at decoys (the Decoy Storm's count). */
-  decoyShots: number;
   /** What its script sent, by kind. */
   sent: Partial<Record<ThreatKind, number>>;
   /** Its script still to run (sorted by `at`). */
@@ -73,10 +70,6 @@ export interface EventRun {
   /** The script has run out. */
   done: boolean;
   rules: EventRule[];
-  /** A line on the water (Afterburner Rush's boost line; Hydra Bloom's
-   *  halfway line until round 8): its y, and +1 when the threats come down
-   *  the screen to it, -1 when up. */
-  line?: { y: number; dir: number };
   /** Shield Wall: signals given, and when the last came (event seconds). */
   signals: number;
   signalT: number;
@@ -155,8 +148,6 @@ export interface EventRecord {
   lost: number;
   carrierHit: boolean;
   shots: number;
-  /** The Decoy Storm: shots that went at decoys. */
-  decoyShots?: number;
   bonus: number;
 }
 
@@ -287,7 +278,6 @@ function newRun(g: Game, id: EventId): EventRun {
     lost0: g.lost,
     carrier0: g.carrierHp,
     shots0: g.shots,
-    decoyShots: 0,
     sent: {},
     plan: [],
     done: false,
@@ -361,7 +351,6 @@ function record(g: Game, ev: EventRun, outcome: EventRecord['outcome'], bonus: n
     lost: g.lost - ev.lost0,
     carrierHit: g.carrierHp < ev.carrier0,
     shots: g.shots - ev.shots0,
-    ...(ev.id === 'decoy-storm' ? { decoyShots: ev.decoyShots } : {}),
     bonus,
   });
 }
@@ -410,12 +399,7 @@ export function beaconMark(g: Game, th: Threat): Ship | undefined {
   return id === undefined || id < 0 ? undefined : g.ships.find((s) => s.id === id);
 }
 
-/** A shot at a threat (the Decoy Storm counts the ones at decoys). */
-export function eventShotAt(g: Game, th: Threat): void {
-  if (g.event && th.kind === 'decoy') g.event.decoyShots += 1;
-}
-
-/** The drop table under an event's rules: no ammo (the Decoy Storm), a
+/** The drop table under an event's rules: no ammo (the Drone Storm), a
  *  star shell in the dark (Blackout); and in every event, no Nuke (Test Lab
  *  round 6: "no nukes for these special events"). */
 export function eventDropWeights(g: Game, w: Record<string, number>, starshell: number): void {
@@ -434,14 +418,18 @@ const steps = (n: number, at: (k: number) => number, op: string): EventStep[] =>
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
+      // Round 11 ("the line for the boss round doesn't seem to matter cuz
+      // all the drones will just launch into boost mode before it"): no
+      // line. The sprinters cruise in slow and each one flares and sprints
+      // as any sprinter does, near its ship (as round 8 did for Hydra
+      // Bloom's line).
       const E = EV.rush;
-      ev.line = lineFrom(g, E.line, true);
       return steps(E.swarms, (k) => k * E.every, 'swarm');
     }
-    case 'decoy-storm': {
-      const E = EV['decoy-storm'];
+    case 'drone-storm': {
+      const E = EV['drone-storm'];
       const half = Math.ceil(E.swarms / 2);
-      return steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'decoys');
+      return steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'swarm');
     }
     case 'hydra-bloom': {
       // Round 8 ("Hydras should split even before the line is crossed; you
@@ -518,11 +506,11 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(1, () => 0, 'ring'), ...steps(1, () => E.gap, 'ring2')];
     }
     case 'breakout': {
-      // The opening (decoy swarms, sprint swarms among them, no ammo drops),
+      // The opening (drone swarms, sprint swarms among them, no ammo drops),
       // then a Hydra fan, then trucks down the shore road.
       const E = EV.breakout;
       return [
-        ...steps(E.decoys, (k) => k * E.gap, 'decoys'),
+        ...steps(E.swarms, (k) => k * E.gap, 'swarm'),
         ...steps(E.sprintAt.length, (k) => E.sprintAt[k], 'sprint'),
         ...steps(E.fan, (k) => E.fanAt + k * E.fanGap, 'fan'),
         ...steps(E.roads * E.trucks, (k) => E.truckAt + Math.floor(k / E.trucks) * 1.5 + (k % E.trucks) * E.gapT, 'truck'),
@@ -578,15 +566,13 @@ function liveBases(g: Game, kind?: ThreatKind): number[] {
   return able.length ? able : all;
 }
 
-/** A line across the water, `share` of the way from the launch bases to
- *  the first lane's near edge (`edge`) or its middle. */
-function lineFrom(g: Game, share: number, edge: boolean): { y: number; dir: number } {
-  const bs = liveBases(g);
-  const by = bs.reduce((a, i) => a + g.map.bases[i].y, 0) / Math.max(1, bs.length);
-  const ch = g.map.channels[0];
-  const dir = ch.y >= by ? 1 : -1;
-  const to = edge ? ch.y - dir * ch.halfWidth : ch.y;
-  return { y: by + (to - by) * share, dir };
+/** A drone swarm of `size` out of base `b`, the usual way (0.35 s apart):
+ *  the Drone Storm's and the Breakout's, a base each in turn. */
+function baseSwarm(g: Game, ev: EventRun, b: number, size: number): void {
+  if (b === undefined || b < 0) return;
+  for (let d = 0; d < size; d++) g.queue.push({ at: g.waveT + d * 0.35, kind: 'drone', base: b });
+  g.queue.sort((a, c) => a.at - c.at);
+  sent(ev, 'drone', size);
 }
 
 /** A drone swarm out of a base, the usual way (0.35 s apart). `cargo`:
@@ -613,20 +599,12 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       sent(ev, 'sprinter', FOE.sprinter.size);
       return;
     }
-    case 'decoy-storm': {
-      // Two in three of each swarm fake, and the late strobe as always.
-      const E = EV['decoy-storm'];
-      const D = FOE.decoy;
+    case 'drone-storm': {
+      // A plain drone swarm out of each drone base in turn; a size that is
+      // not whole alternates (2.5: three, then two...).
+      const E = EV['drone-storm'];
       const bs = liveBases(g, 'drone');
-      const at = g.map.bases[bs[s.k % bs.length]];
-      const kinds = rng.shuffle(Array.from({ length: E.size }, (_, k): ThreatKind => (k < E.fakes ? 'decoy' : 'drone')));
-      const mid = (E.size - 1) / 2;
-      kinds.forEach((kind, k) => {
-        const th = spawnThreat(g, kind, at.x + (k - mid) * D.spread, at.y + (k % 2) * D.stagger, 'base');
-        th.slot = (k - mid) * D.slot;
-        if (kind === 'decoy') th.foe = foeData();
-        sent(ev, kind);
-      });
+      baseSwarm(g, ev, bs[s.k % bs.length], Math.round((s.k + 1) * E.size) - Math.round(s.k * E.size));
       return;
     }
     case 'hydra-bloom': {
@@ -864,10 +842,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'breakout': {
       const E = EV.breakout;
-      if (s.op === 'decoys') {
-        // A decoy swarm out of the next drone base, most of it fake.
+      if (s.op === 'swarm') {
+        // A drone swarm out of the next drone base.
         const bs = liveBases(g, 'drone');
-        decoySwarm(g, ev, g.map.bases[bs[s.k % bs.length]], E.size, E.fakes);
+        baseSwarm(g, ev, bs[s.k % bs.length], E.size);
       } else if (s.op === 'sprint') {
         const bs = liveBases(g, 'drone');
         const b = bs[(s.k + 1) % bs.length];
@@ -949,20 +927,6 @@ function firebombs(g: Game, ev: EventRun, n: number, slow: number): void {
     for (const t of since(g, id0, 'cloud')) t.speed *= slow;
     sent(ev, 'cloud');
   }
-}
-
-/** A decoy swarm of `size` out of `at`, `fakes` of it fake, with the late
- *  strobe as always. */
-function decoySwarm(g: Game, ev: EventRun, at: Point, size: number, fakes: number): void {
-  const D = FOE.decoy;
-  const kinds = g.rng.foes.shuffle(Array.from({ length: size }, (_, k): ThreatKind => (k < fakes ? 'decoy' : 'drone')));
-  const mid = (size - 1) / 2;
-  kinds.forEach((kind, k) => {
-    const th = spawnThreat(g, kind, at.x + (k - mid) * D.spread, at.y + (k % 2) * D.stagger, 'base');
-    th.slot = (k - mid) * D.slot;
-    if (kind === 'decoy') th.foe = foeData();
-    sent(ev, kind);
-  });
 }
 
 /** A rocket truck down a shore road in a column (`col`: which road, `i`:
@@ -1360,20 +1324,6 @@ function inLane(g: Game, p: Point): boolean {
 
 function tick(g: Game, ev: EventRun): void {
   switch (ev.id) {
-    case 'rush': {
-      // The first sprinter over the line sets them all off.
-      const line = ev.line!;
-      const cruising = g.threats.filter((t) => !t.dead && t.kind === 'sprinter' && t.foe && t.foe.state === 0);
-      if (cruising.some((t) => (t.y - line.y) * line.dir >= 0)) {
-        for (const t of cruising) {
-          t.foe!.state = 1;
-          t.foe!.t = 0;
-        }
-        const lead = cruising[0];
-        cue(g, 'foe.flare', lead.x, lead.y, { gain: 1 });
-      }
-      return;
-    }
     case 'shield-wall':
     case 'run-the-canal': {
       // The block banks together at each signal (a horn and a flash).

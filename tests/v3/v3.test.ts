@@ -508,7 +508,9 @@ describe('weapons drop as pickups and load the gun', () => {
   it('every weapon shot spends its rounds (Air Strike two a jet): too few is a dry click; Overdrive is free', () => {
     // Fire Control spends its rounds when the salvo goes, not on the mark
     // (weapons.test.ts checks that).
-    for (const id of ABILITY_ORDER) {
+    // (Round 11: the Laser Cutter fires nothing on a tap; its swipe's round
+    // is in weapons.test.ts.)
+    for (const id of ABILITY_ORDER.filter((o) => o !== 'cutter')) {
       const g = quietGame();
       load(g, id, 1);
       // Tough enough to outlive a shot.
@@ -1062,7 +1064,10 @@ describe('V2 round 13 in V3: a fresh start each wave, strikes, roads, the Island
     const v3 = await import('../../src/v3/data/maps');
     // Roads aside: the map visual-check round moved the Archipelago's pop-up
     // truck stops back onto the islets in V3 (in V2 they stop in the sea).
-    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null });
+    // Round 11: Harbor Mouth's pairs open out in its wide water (a lane's
+    // `open`, V3 only); the lane itself is V2's.
+    const lane = (c: object) => { const { open: _o, ...rest } = c as { open?: number }; return rest; };
+    const shape = (m: object) => JSON.stringify({ ...m, threatScale: 0, extras: [], roads: null, channels: ((m as { channels: object[] }).channels).map(lane) });
     for (const id of Object.keys(v2.MAPS) as (keyof typeof v2.MAPS)[]) expect(shape(v3.MAPS[id])).toBe(shape(v2.MAPS[id]));
   });
 });

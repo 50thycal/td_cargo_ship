@@ -8,9 +8,9 @@
 import { ABILITIES, ABILITY_ORDER, type AbilityId } from './abilities';
 import { FOES, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, type MapId } from './maps';
-import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, eventMap, type EventId } from './events';
+import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, endingRuns, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
-import { COMMANDS, mapConvoy, type ConvoyPolicy } from './convoy';
+import { COMMANDS, CONVOY, mapConvoy, type ConvoyPolicy } from './convoy';
 import { ENCOUNTER_MAPS } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
@@ -95,7 +95,6 @@ const ENEMIES: LabCard[] = [
   enemy('rocketTruck', 'Salvos of five red rockets: does red read as "can\'t stop it, hit the truck"?', ['railgun', 'lance', 'bomberWing']),
   enemy('cloud', 'New fire on the water, and only the fire hurts: does it read, and do you kill the missile far out?', ['flak', 'railgun', 'lance']),
   enemy('lure', 'It rises out of the water: do your helpers all turn on it inside its yellow ring?', ['droneScreen', 'gunships', 'cutter']),
-  enemy('decoy', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?', ['flak', 'cutter', 'tesla']),
   enemy('armored', 'Can you see the bank (the yellow ring) and time your shots?', ['thermo', 'well', 'boomerang']),
   enemy('torpedoSub', 'Its torpedoes now go one by one, each at a ship: can you read the lines in time? Sub, torpedoes or move?', ['airstrike', 'bomberWing', 'fullSteam']),
   enemy('spotter', 'It comes and goes now, hits kept, and calls shells in from off the map: do you see them coming?', ['railgun', 'aegis', 'shield']),
@@ -112,15 +111,15 @@ const ENEMIES: LabCard[] = [
 /** Weapons changed since they were last played: first (Test Lab round 8:
  *  the player's round-7 weapon notes; then round 5's, from round 4). */
 const REWORKED: Partial<Record<AbilityId, string>> = {
-  focus: 'Now a button on the left edge: hold it with your left thumb to slow time, tap anywhere else to shoot. Is the meter clear?',
+  focus: 'Hold the left button to slow time; its dial is now your slow motion left, not the boost\'s time. Clear?',
   wildCard: 'From level 2 each pickup also brings one random passive (frigates, gunships, drones...) for 8 s. Fun?',
   grapnel: 'A thrown threat now bursts on the first threat it hits; a tough one keeps its health and flies on. Right?',
   overdrive: 'Level 2 now lasts 18 s (was a refill you never saw). Worth the level?',
   frigate: 'A new drop while they sail off: they keep going and a fresh pair sails in. Smoother?',
   droneScreen: 'Out of targets, the drones fly home and land on the deck. Better?',
-  aegis: 'Renamed Point Defense: does the name fit?',
+  aegis: 'It now fires only at missiles, bombs and drones about to hit a ship, never at the planes: right?',
   well: 'Missiles, drones and small boats are pulled in; aircraft and other big ones only slowed until MAX. Consistent now?',
-  cutter: 'Keep your finger down and it keeps cutting, a round per stretch: does it feel right?',
+  cutter: 'It only cuts now: a tap fires nothing. Does swiping read, and does it cut beacons?',
   gunships: 'Now Apache-style, nose on the target when they fire, and a new drop calls a leaving pair back: right?',
   supplyRun: 'No magnet: tap the crates you want; they can hold your weapons, boosts and (Airdrop) a Nuke. Better?',
   bomberWing: 'Hits aircraft and subs too, and you see the bomber cross before the bomb lands: does it read?',
@@ -152,7 +151,7 @@ const COMBOS: LabCard[] = PAIRS.map((p) => ({ id: pairCardId(p.id), kind: 'combo
 
 /** Cards cut from the lab (the player's round 7 notes on the combos:
  *  "Looking for enemy and enemy attack pairs"), kept so their old verdicts
- *  still have a card to sit on in the review page's Results (sim/labDocs.ts,
+ *  still have a card to sit on in the review page's Archive (sim/labDocs.ts,
  *  tools/v3/test-lab/page.mjs). Not in LAB_CARDS: the hub doesn't list them
  *  and a saved queue drops them. */
 export interface RetiredCard extends LabCard {
@@ -162,11 +161,21 @@ export interface RetiredCard extends LabCard {
 }
 const WHY_PAIRS = 'A player weapon with an enemy: the combos are enemy pairs now';
 const retired = (id: string, name: string, look: string, foes: FoeId[], weapon: AbilityId): RetiredCard => ({ id, kind: 'combo', name, look, foes, weapon, kit: [], map: LAB_MAP, cut: 8, why: WHY_PAIRS });
+/** Round 11 (the player: "remove the decoy drones ... entirely"): the
+ *  Decoy Drones card, the Decoy Storm (Kesh's event is the Drone Storm
+ *  now, ev-drone-storm) and the two decoy pairs. Their old verdicts keep a
+ *  card to sit on; the decoy is no enemy any more, so they list none. */
+const WHY_DECOYS = 'decoys removed from the game';
+const gone11 = (id: string, kind: LabKind, name: string, look: string, map: MapId = LAB_MAP): RetiredCard => ({ id, kind, name, look, foes: [], kit: [], map, cut: 11, why: WHY_DECOYS });
 export const LAB_RETIRED: RetiredCard[] = [
   retired('combo-lure-screen', 'Lure Beacon + Drone Screen', 'Your drones chasing the buoy: annoying, or a good puzzle?', ['lure'], 'droneScreen'),
   retired('combo-cloud-flak', 'Incendiary Missile + Flak', 'Flak catching the firebomb far out, or too close to the convoy.', ['cloud'], 'flak'),
   retired('combo-guard-seeker', 'Bodyguard Ring + Seeker Pod', 'Do the guards soak up your seekers?', ['bodyguard'], 'seeker'),
   retired('combo-hydra-tesla', 'Hydra + Sprint Drones, Tesla', 'Area answers to split targets.', ['hydra', 'sprinter'], 'tesla'),
+  gone11('decoy', 'enemy', 'Decoy Drones', 'The decoys now fade in and out the whole way in: can you tell them apart at a glance?'),
+  gone11('ev-decoy-storm', 'event', 'Decoy Storm', 'Twelve swarms and no ammo drops: did you run dry, and was that on you?', 'kesh'),
+  gone11('combo-decoy-sprint', 'combo', 'Decoys + Sprint Drones', 'What do you shoot first?'),
+  gone11('combo-decoy-cluster', 'combo', 'Decoys + Cluster Missiles', 'A swarm and two missiles at once: where do your shots go?'),
 ];
 
 export function retiredCard(id: string): RetiredCard | undefined {
@@ -178,7 +187,7 @@ export function retiredCard(id: string): RetiredCard | undefined {
  *  asks one question and never says how to beat it (the player's rule). */
 const EVENT_KITS: Record<EventId, AbilityId[]> = {
   rush: ['flak', 'railgun', 'cutter'],
-  'decoy-storm': ['scatter', 'seeker', 'aegis'],
+  'drone-storm': ['scatter', 'seeker', 'aegis'],
   'hydra-bloom': ['railgun', 'flak', 'aegis'],
   'rocket-convoy': ['railgun', 'airstrike', 'aegis'],
   'gunship-wall': ['lance', 'flak', 'gunships'],
@@ -209,8 +218,9 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
   kind: 'event',
   name: EVENTS[id].name,
   look: EVENTS[id].look,
-  // A chapter finale features all its chapter's new enemies.
-  foes: [EVENTS[id].foe, ...(EVENTS[id].also ?? [])],
+  // A chapter finale features all its chapter's new enemies (the Drone
+  // Storm, plain drones, none).
+  foes: [...(EVENTS[id].foe ? [EVENTS[id].foe] : []), ...(EVENTS[id].also ?? [])],
   kit: EVENT_KITS[id],
   map: eventMap(id),
   event: id,
@@ -228,30 +238,35 @@ const EVENT_CARDS: LabCard[] = EVENT_ORDER.map((id) => ({
 // v3-map-cards-production.md).
 
 /** What a map card is set up with unless the player changes it: the
- *  production candidate. The three reference maps: policy D (their
- *  commands) and their authored encounters. The rest: today's convoy
- *  controls (no commands or encounters exist for them yet). */
+ *  production candidate. The three reference maps: policy D and their
+ *  authored encounters (round 11: D has no command on them, so their convoy
+ *  sails the map's own schedule and formation with no input). A map with a
+ *  command (round 11: Sowers' Reach, Hold): policy D, which offers it. The
+ *  rest: today's convoy controls (no commands or encounters exist for them
+ *  yet). */
 export interface MapProduction {
   convoy: ConvoyPolicy;
   encounters: boolean;
 }
 
 export function mapProduction(map: MapId): MapProduction {
-  const ref = (ENCOUNTER_MAPS as string[]).includes(map) && mapConvoy(map).commands.length > 0;
-  return ref ? { convoy: 'tactical', encounters: true } : { convoy: 'current', encounters: false };
+  const encounters = (ENCOUNTER_MAPS as string[]).includes(map);
+  const commands = mapConvoy(map).commands.length > 0;
+  return encounters || commands ? { convoy: 'tactical', encounters } : { convoy: 'current', encounters: false };
 }
 
-/** The production setup in words: "Commands: Rush and Disperse · authored
- *  encounters", or "today's convoy controls". */
+/** The production setup in words: "Commands: Hold", "The map's own
+ *  convoy · authored encounters", or "today's convoy controls". */
 export function productionText(map: MapId): string {
   const p = mapProduction(map);
   if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
   const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
-  return `Commands: ${cmds}${p.encounters ? ' · authored encounters' : ''}`;
+  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ' · authored encounters' : ''}`;
 }
 
-/** What a map card plays, as its hub card and the review page say it. */
-export const MAP_CARD_PLAYS = 'Full map: waves 1–10 and its event ending';
+/** What a map card plays, as its hub card and the review page say it.
+ *  Round 11: the event ending's runs are the map's boss rounds. */
+export const MAP_CARD_PLAYS = `Full map: waves 1–10 and ${endingRuns()} boss rounds`;
 
 /** Maps: a map card plays that map in full, as the campaign does. */
 const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
@@ -271,7 +286,7 @@ export const LAB_SECTIONS: { kind: LabKind; name: string; blurb: string }[] = [
   { kind: 'enemy', name: 'New enemies', blurb: 'The open questions first.' },
   { kind: 'weapon', name: 'Weapons', blurb: 'The reworked ones first, then every other.' },
   { kind: 'combo', name: 'Combos', blurb: 'Enemy pairs: two enemies that make each other more dangerous, coming in together.' },
-  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its event ending, set up as the production candidate.' },
+  { kind: 'map', name: 'Maps', blurb: 'Each map in full, as the campaign plays it: waves 1–10 and its boss rounds, set up as the production candidate.' },
 ];
 
 export function labCard(id: string): LabCard | undefined {
@@ -305,6 +320,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' },
   { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
   { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
+  { n: 11, date: '2026-11-14', name: 'Map notes: boss rounds, Hold only, no decoys, scorecard', since: '2026-11-14T21:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -508,13 +524,53 @@ export const LAB_CHANGES: Record<string, { round: number; what: string }[]> = {
 // Round 10: every map card is the full production map. The three reference
 // maps open with their commands and authored encounters on; the rest with
 // today's convoy controls.
+// The words are round 10's own setups, kept as they were (round 11 changed
+// the commands, and a round's lines say what that round did).
+const ROUND10_SETUP: Partial<Record<MapId, string>> = {
+  strait: 'Commands: Rush and Disperse · authored encounters',
+  gauntlet: 'Commands: Rush and Disperse · authored encounters',
+  harbor: 'Commands: Hold · authored encounters',
+};
 for (const id of MAP_ORDER) {
-  const ref = mapProduction(id).convoy === 'tactical';
+  const ref = ROUND10_SETUP[id];
   const what = ref
-    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${productionText(id)})`
+    ? `Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, set up ready to test (${ref})`
     : "Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign's loadout and drafts, with today's convoy controls";
   LAB_CHANGES[`map-${id}`] = [...(LAB_CHANGES[`map-${id}`] ?? []), { round: 10, what }];
 }
+
+// Round 11 (docs/design/v3-round11-map-notes.md, part A): the player's notes
+// from their full-map playtest of The Strait, The Gauntlet and Harbor Mouth.
+// (Part B, the decoy / Point Defense / Laser Cutter changes, adds its own
+// lines.)
+const BOSS_LINE = 'The three event runs at the end are now called boss rounds, and a banner says "survive the next 3 rounds" as they start';
+const ROUND11: Partial<Record<string, string[]>> = {
+  'map-strait': [
+    'Rush and Disperse are gone: the convoy sails on its own',
+    BOSS_LINE,
+    'Its boss rounds (Afterburner Rush) have no line on the water now: each sprinter boosts near its ship',
+  ],
+  'map-gauntlet': ['Rush and Disperse are gone: the convoy sails on its own', BOSS_LINE],
+  'map-harbor': ['Hold is gone here; ships start wide and close up at the neck', BOSS_LINE],
+  'map-sowers': [`New: Hold — tap to stop every ship while mines drift across, tap again to release (up to ${CONVOY.hold.max} s)`, BOSS_LINE],
+  'ev-rush': ['No line on the water: each sprinter flares and sprints near its ship, as sprinters always do'],
+};
+for (const [id, lines] of Object.entries(ROUND11)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), ...lines!.map((what) => ({ round: 11, what }))];
+// Round 11, part B (docs/design/v3-round11-map-notes.md): the decoys out of
+// the game, Point Defense only at munitions, the Cutter only cuts, every
+// weapon you fire hurts a Lure Beacon, Focus's dial is its slow motion.
+const ROUND11_B: Record<string, string> = {
+  'ev-drone-storm': 'New event in place of the Decoy Storm (the decoys are gone): twelve plain drone swarms and no ammo drops',
+  'ev-breakout': 'No decoys: it opens with plain drone swarms, then the sprinters, Hydras and trucks as before',
+  'map-kesh': 'No decoys any more: Kesh has no new enemy of its own for now, and its event is the Drone Storm',
+  'map-harbor': 'Its event, The Breakout, opens with plain drone swarms (no decoys)',
+  'w-aegis': 'Fires only at what is about to hit a hull (missiles, bombs, drones), never at the aircraft',
+  'w-cutter': 'Only cuts: a tap fires no shell (it says SWIPE TO CUT), and its cut now hits beacons',
+  'w-focus': 'The dial on the left button shows your slow motion left, not the boost\'s own time',
+  lure: 'Every weapon you fire now hurts it: cuts, seekers, jets, blades, clouds and burning lines (your helpers still can\'t)',
+  'ev-beacon-strike': 'Every weapon you fire now hurts the beacons, the Laser Cutter too',
+};
+for (const [id, what] of Object.entries(ROUND11_B)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), { round: 11, what }];
 
 /** The cards a card takes changes from: itself, and for a combo its
  *  enemies' and weapon's cards. */

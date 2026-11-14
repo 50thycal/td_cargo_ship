@@ -23,7 +23,7 @@ import { MAP_ORDER, type MapId } from '../../../src/v3/data/maps';
 import { VIEW } from '../../../src/v3/data/config';
 import { BASELINE, baselineDiff, baselineResult, lockstep, phaseWords, playRecipe, stateHash, type BaselineResult } from '../../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../../src/v3/sim/mimic';
-import { LOG_VERSION, Playback, replay, type PlayLog } from '../../../src/v3/sim/playlog';
+import { LOG_REPLAYS, LOG_VERSION, Playback, replay, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
 import { TEL_SAMPLING, reconcile, sidecarDigest, type TelemetrySidecar } from '../../../src/v3/sim/telemetry';
 import { PLATFORMS, SCOPES, buildPreview } from './preview';
 import { CONVOY_REV, mapConvoy } from '../../../src/v3/data/convoy';
@@ -121,8 +121,8 @@ function telemetry(): void {
   const logs: PlayLog[] = Array.isArray(raw) ? raw : raw.logs ?? [raw];
   for (const log of logs) {
     if (log.game !== 'v3' || log.notesOnly || !log.commands?.length) continue;
-    if (log.v !== LOG_VERSION) {
-      console.log(`${log.id}: log v${log.v} is not this build's v${LOG_VERSION}; it replays only on the build that made it.`);
+    if (!replaysHere(log.v)) {
+      console.log(`${log.id}: log v${log.v} is not one this build replays (v${LOG_REPLAYS.join(', v')}); it replays only on the build that made it.`);
       continue;
     }
     const g = replay(log, { telemetry: true });

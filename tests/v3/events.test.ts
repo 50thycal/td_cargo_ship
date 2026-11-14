@@ -5,15 +5,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { RULES, VIEW, type ThreatKind } from '../../src/v3/data/config';
-import { ENDING, EVENT, EVENTS, EVENT_MAPS, EVENT_ORDER, EVENT_WAVE, RULE_TEXT, bonusDef, campaignWaves, eventMap, gradeEvent, type EventId } from '../../src/v3/data/events';
-import { FOES, FOES_BUILT } from '../../src/v3/data/foes';
+import { ENDING, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_ORDER, EVENT_WAVE, RULE_TEXT, bonusDef, campaignWaves, eventMap, gradeEvent, type EventId } from '../../src/v3/data/events';
+import { FOE, FOES, FOES_BUILT } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { LAB_CARDS, LAB_CHANGES, LAB_EVENT_RUNS, LAB_ROUNDS, LAB_SECTIONS, cardRev, labCard } from '../../src/v3/data/lab';
 import { draftPool } from '../../src/v3/data/roster';
 import { canTake } from '../../src/v3/data/abilities';
 import { applyFreePlay, applyLab, createGame, labBring, pickUpgrade, step, type Game } from '../../src/v3/sim/game';
 import { eventDropWeights, eventFor, hasRule, hydraDarts, lastWave, startBonus } from '../../src/v3/sim/events';
-import { lureIn } from '../../src/v3/sim/foes';
+import { lureIn, mapDebut } from '../../src/v3/sim/foes';
 import { labDone } from '../../src/v3/sim/lab';
 import { evidenceLines } from '../../src/v3/sim/lab';
 import { Recorder, replay, LOG_VERSION } from '../../src/v3/sim/playlog';
@@ -72,9 +72,16 @@ describe('the table: an event for every map, built on its debut enemy', () => {
       // finale brings its chapter's four.
       // (Round 8 took the scavengers out of Run the Canal: "way too much
       // going on".)
+      // Round 11: the Drone Storm (Kesh, whose debut, the decoys, left the
+      // game) is built on plain drones, and Kesh has no debut for now.
+      if (id === 'drone-storm') {
+        expect(EVENTS[id].foe, id).toBeUndefined();
+        expect(mapDebut(map)).toBeNull();
+        continue;
+      }
       if (!finale) expect(g.foe.lead[g.foe.cursor % g.foe.lead.length], id).toBe(EVENTS[id].foe);
-      else expect([EVENTS[id].foe, ...EVENTS[id].also!].sort(), id).toEqual(FOES_BUILT.filter((f) => FOES[f].chapter === chapterOf(map) && !(id === 'run-the-canal' && f === 'scavenger')).sort());
-      expect(FOES[EVENTS[id].foe].chapter, id).toBe(chapterOf(map));
+      else expect([EVENTS[id].foe!, ...EVENTS[id].also!].sort(), id).toEqual(FOES_BUILT.filter((f) => FOES[f].chapter === chapterOf(map) && !(id === 'run-the-canal' && f === 'scavenger')).sort());
+      expect(FOES[EVENTS[id].foe!].chapter, id).toBe(chapterOf(map));
     }
   });
 
@@ -92,7 +99,7 @@ describe('the table: an event for every map, built on its debut enemy', () => {
       const words = [EVENTS[id].name, EVENTS[id].look, ...EVENTS[id].rules.map((r) => RULE_TEXT[r])].join(' ').toLowerCase();
       for (const tell of ['how you beat', 'to beat it', 'kill them', 'shoot the', 'first, then', 'save the', 'hold fire', 'wait for']) expect(words, `${id}: ${tell}`).not.toContain(tell);
     }
-    expect(EVENTS['decoy-storm'].rules.map((r) => RULE_TEXT[r])).toEqual(['No ammo drops']);
+    expect(EVENTS['drone-storm'].rules.map((r) => RULE_TEXT[r])).toEqual(['No ammo drops']);
     expect(EVENTS.blackout.rules.map((r) => RULE_TEXT[r])).toContain('Night');
   });
 });
@@ -116,9 +123,9 @@ describe('the event after the ten waves as they were (round 7: three runs)', () 
     expect(g.event).toBeNull();
     expect(g.raids.length).toBeGreaterThan(0);
     const e = createGame('kesh', 4, 11);
-    expect(e.event?.id).toBe('decoy-storm');
+    expect(e.event?.id).toBe('drone-storm');
     expect(e.raids).toEqual([]);
-    expect(e.events.some((ev) => ev.kind === 'special' && ev.id === 'decoy-storm' && ev.wave === 11)).toBe(true);
+    expect(e.events.some((ev) => ev.kind === 'special' && ev.id === 'drone-storm' && ev.wave === 11)).toBe(true);
   });
 
   it('clearing wave 10 goes on to a draft, then the event; clearing its three runs wins the map', () => {
@@ -185,8 +192,8 @@ describe('the event after the ten waves as they were (round 7: three runs)', () 
 describe('each event sends what it should', () => {
   const expectSent: Record<EventId, Partial<Record<ThreatKind, number>>> = {
     rush: { sprinter: 24 },
-    // Round 9: twelve swarms (ten), so 48 decoys and 24 real drones.
-    'decoy-storm': { decoy: 48, drone: 24 },
+    // Round 11: the Drone Storm, twelve plain drone swarms.
+    'drone-storm': { drone: EV['drone-storm'].swarms * EV['drone-storm'].size },
     'hydra-bloom': { hydra: 6 },
     'rocket-convoy': { rocketTruck: 8 },
     'gunship-wall': { attackHeli: 4 },
@@ -203,7 +210,7 @@ describe('each event sends what it should', () => {
     'siren-field': { lure: 5 },
     firestorm: { cloud: 9 },
     // Round 7: the finales; round 8: Beacon Strike.
-    breakout: { decoy: 9, sprinter: 4, hydra: 3, rocketTruck: 2 },
+    breakout: { drone: EV.breakout.swarms * EV.breakout.size, sprinter: 4, hydra: 3, rocketTruck: 2 },
     'run-the-canal': { torpedoSub: 2, attackHeli: 1, armored: 4 },
     'beacon-strike': { lure: 4 },
     'siege-of-vey': { mothership: 1, tender: 3, heavy: 1, guard: 7, lure: 2, cloud: 5 },
@@ -212,7 +219,8 @@ describe('each event sends what it should', () => {
     it(`${EVENTS[id].name}: its debut enemy, as many as the script says`, () => {
       const { sent, seen } = sentBy(id);
       for (const [k, n] of Object.entries(expectSent[id])) expect(sent[k as ThreatKind], `${id} ${k}`).toBe(n);
-      expect(seen.has(FOES[EVENTS[id].foe].kind) || id === 'wolf-pack' || id === 'bombardment' || id === 'dive-circus', id).toBe(true);
+      const foe = EVENTS[id].foe;
+      expect(seen.has(foe ? FOES[foe].kind : 'drone') || id === 'wolf-pack' || id === 'bombardment' || id === 'dive-circus', id).toBe(true);
     });
   }
 
@@ -252,9 +260,9 @@ describe('each event sends what it should', () => {
     expect(block.every((t) => t.foe!.state === 1)).toBe(true);
   });
 
-  it('the Afterburner Rush: the first sprinter over the line sets off every cruising one', () => {
+  it('the Afterburner Rush (round 11: no line): the sprinters cruise in slow, and each flares on its own, near its ship', () => {
     const g = eventGame('rush', 2);
-    const line = g.event!.line!;
+    expect('line' in g.event!).toBe(false);
     // Two swarms out, all still cruising (they cruise slower than a sprint
     // swarm normally flies).
     run(g, 30, () => g.threats.filter((t) => t.kind === 'sprinter').length >= 8);
@@ -262,10 +270,22 @@ describe('each event sends what it should', () => {
     expect(sprinters.length).toBeGreaterThanOrEqual(8);
     expect(sprinters.every((t) => t.foe!.state === 0)).toBe(true);
     expect(sprinters[0].speed).toBeLessThan(70 * 1.6);
-    // One over the line: next step, every one of them flares.
-    sprinters[0].y = line.y + line.dir * 4;
-    step(g, DT);
-    expect(g.threats.filter((t) => t.kind === 'sprinter').every((t) => t.foe!.state >= 1)).toBe(true);
+    // Nothing sets them all off at once: each flares by the sprinter's own
+    // rule, within FOE.sprinter.boostAt of where it is aiming.
+    const flaredFar: number[] = [];
+    const seen = new Set<number>();
+    for (let i = 0; i < 60 * 20 && g.event; i++) {
+      step(g, DT);
+      for (const t of g.threats) {
+        if (t.kind !== 'sprinter' || t.dead || seen.has(t.id) || t.foe!.state === 0) continue;
+        seen.add(t.id);
+        const s = g.ships.reduce((m, o) => Math.min(m, Math.hypot(o.x - t.x, o.y - t.y)), Infinity);
+        const c = Math.hypot(g.map.carrier.x - t.x, g.map.carrier.y - t.y);
+        if (Math.min(s, c) > FOE.sprinter.boostAt + 60) flaredFar.push(t.id);
+      }
+    }
+    expect(seen.size).toBeGreaterThan(0);
+    expect(flaredFar).toEqual([]);
   });
 
   it('the Escort Run: each ring of guards stripped speeds the heavy up', () => {
@@ -281,8 +301,8 @@ describe('each event sends what it should', () => {
 });
 
 describe('event rules: on for the event, off after', () => {
-  it('Decoy Storm: no ammo drops while it runs', () => {
-    const g = eventGame('decoy-storm');
+  it('Drone Storm: no ammo drops while it runs', () => {
+    const g = eventGame('drone-storm');
     expect(hasRule(g, 'noAmmo')).toBe(true);
     const w: Record<string, number> = { ammo: 40, repair: 20 };
     eventDropWeights(g, w, 16);
@@ -322,7 +342,7 @@ describe('event rules: on for the event, off after', () => {
 
   it('Hydra Bloom: a Hydra splits into three wherever it is killed (round 8: no line); after it, two', () => {
     const g = eventGame('hydra-bloom');
-    expect(g.event!.line).toBeUndefined();
+    expect('line' in g.event!).toBe(false);
     for (const y of [-50, 200, 600]) expect(hydraDarts(g, { y } as never)).toBe(3);
     g.event = null;
     expect(hydraDarts(g, { y: 200 } as never)).toBe(2);
@@ -389,7 +409,7 @@ describe('the Test Lab: an Events section, one card per event', () => {
     expect(cards.map((c) => c.event)).toEqual(EVENT_ORDER);
     expect(cards).toHaveLength(21);
     expect(LAB_SECTIONS[0].kind).toBe('event');
-    const fresh: Record<string, number> = { breakout: 7, 'run-the-canal': 7, 'siege-of-vey': 7, 'beacon-strike': 8 };
+    const fresh: Record<string, number> = { breakout: 7, 'run-the-canal': 7, 'siege-of-vey': 7, 'beacon-strike': 8, 'drone-storm': 11 };
     for (const c of cards) {
       expect(c.map).toBe(eventMap(c.event!));
       expect(c.kit).toHaveLength(3);
@@ -445,11 +465,13 @@ describe('the Test Lab: an Events section, one card per event', () => {
     const { results } = labResultDocs([log]);
     expect(results['ev-decoy-storm'].round).toBe(5);
     expect(results['ev-decoy-storm'].evidence).toContain('Held 1');
+    // Round 11: the Decoy Storm's card is retired, its verdicts kept.
+    expect(results['ev-decoy-storm'].cut).toEqual({ round: 11, why: 'decoys removed from the game' });
   });
 });
 
 describe('the play log', () => {
-  it('records each event: when, what it sent, how it went, the shots, and on the Decoy Storm the shots at decoys', () => {
+  it('records each event: when, what it sent, how it went, the shots', () => {
     const g = createGame('kesh', 6, EVENT_WAVE);
     const rec = new Recorder(g, { build: 't', startedAt: '2026-11-09T00:00:00Z', firstWave: EVENT_WAVE, device: { w: 1, h: 1, dpr: 1, touch: false, ua: '' } });
     // Taps only through the recorder (so the log replays): every second, at
@@ -462,15 +484,13 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(21);
+    expect(log.v).toBe(22);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
-    expect(e.id).toBe('decoy-storm');
+    expect(e.id).toBe('drone-storm');
     expect(e.wave).toBe(EVENT_WAVE);
-    expect(e.sent.decoy).toBe(48);
+    expect(e.sent.drone).toBe(EV['drone-storm'].swarms * EV['drone-storm'].size);
     expect(e.shots).toBeGreaterThan(0);
-    expect(e.decoyShots).toBeGreaterThanOrEqual(0);
-    expect(e.decoyShots!).toBeLessThanOrEqual(e.shots);
     expect(e.end).toBeGreaterThan(e.step);
     // It replays exactly, event and all.
     const again = replay(log);

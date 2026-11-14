@@ -162,8 +162,10 @@ const WEAPON_SIGNATURE: Record<AbilityId, CueId[]> = {
   tesla: ['gun.fire', 'tesla.arc'],
   // The weapons plan, phase 1: a plain tap is a plain shot (their own sounds
   // need a hold, a swipe, two taps or the beat: see weapons.test.ts).
+  // (Round 11: the Laser Cutter only cuts, so a tap with it is silent: its
+  // sound is the swipe's, weapons.test.ts.)
   lance: ['gun.fire'],
-  cutter: ['gun.fire'],
+  cutter: [],
   grapnel: ['gun.fire'],
   cadence: ['cadence.beat'],
   // Phase 2 passives: they work on their own once loaded.

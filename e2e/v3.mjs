@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 21 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 22 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -766,6 +766,12 @@ try {
     await wp.waitForTimeout(400);
     const quick = await fstate();
     check(!quick.focusing && quick.shots === f0.shots + 1 && quick.bank === 10, `Focus: a tap on the water is a shot and never slows time (${JSON.stringify(quick)})`);
+    // Round 11: the dial is the slow motion left, not the boost's clock:
+    // with the boost running down and the button not held, it stays full.
+    const dial = () => wp.evaluate(() => { const b = document.querySelector('[data-focus-btn]'); return { bank: b.style.getPropertyValue('--bank'), left: b.style.getPropertyValue('--left'), bg: getComputedStyle(b).backgroundImage, t: window.__v3.game().boost?.t }; });
+    await wp.waitForTimeout(600);
+    const dialIdle = await dial();
+    check(dialIdle.bank === '1.000' && dialIdle.left === '' && !/conic/.test(dialIdle.bg) && dialIdle.t < 15, `Focus: its dial shows only the slow motion left: full while not held, though the boost runs down (${JSON.stringify(dialIdle)})`);
     // Hold the button: time slows and nothing fires; a tap elsewhere shoots.
     await thumb('pointerdown', 21);
     await wp.waitForTimeout(400);
@@ -777,6 +783,8 @@ try {
     await thumb('pointerup', 21);
     await wp.waitForTimeout(100);
     const fast = await fstate();
+    const dialHeld = await dial();
+    check(Number(dialHeld.bank) < 1 && Number(dialHeld.bank) > 0.9, `Focus: held, the dial drains with the slow motion (${JSON.stringify(dialHeld)})`);
     check(slow.focusing && slow.held && slow.bank < 10 && slow.shots === quick.shots && tapped.shots === quick.shots + 1 && tapped.focusing && !fast.focusing && !fast.held, `Focus: holding the button slows time and fires nothing, a tap elsewhere fires; letting go resumes at once (${JSON.stringify({ slow, tapped: tapped.shots, fast: fast.focusing })})`);
     // The round 7 quirk: held, then paused (where iOS may never send the
     // lift), then resumed: no slow motion with nothing touching.
@@ -895,17 +903,17 @@ try {
     await ep.click('[data-map]:not(.locked)');
     await ep.waitForSelector('[data-start]');
     const foes = await ep.evaluate(() => ({ list: document.querySelector('[data-new-enemies]')?.dataset.newEnemies ?? null, first: document.querySelectorAll('.v3-foe-chip.first').length }));
-    check(foes.list === 'sprinter decoy hydra rocketTruck' && foes.first === 1, `the briefing names the enemies a chapter brings, the map's first marked (${foes.list}, ${foes.first} first)`);
+    check(foes.list === 'sprinter hydra rocketTruck' && foes.first === 1, `the briefing names the enemies a chapter brings, the map's first marked (${foes.list}, ${foes.first} first)`);
     // Free Play: the Enemies line, then every new enemy brought in, drawn, no errors.
     await ep.evaluate(() => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify({ map: 'strait', wave: 5, weapons: [{ id: 'flak', level: 1 }], armory: { gun: null, hull: null, supply: null }, frequentDrops: false, enemies: 'all' })));
     await ep.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
     await ep.click('[data-free-play]');
     await ep.waitForSelector('[data-screen="freeplay"]');
     const line = await ep.evaluate(() => { const s = document.querySelector('[data-fp="enemies"]'); return s ? { value: s.value, n: s.options.length } : null; });
-    check(line && line.value === 'all' && line.n === 20, `Free Play has an Enemies line: as the campaign, all, none, or any one of 17 (${JSON.stringify(line)})`);
+    check(line && line.value === 'all' && line.n === 19, `Free Play has an Enemies line: as the campaign, all, none, or any one of 16 (round 11: no decoys) (${JSON.stringify(line)})`);
     await ep.click('[data-free-start]');
     await ep.waitForSelector('.playing');
-    const kinds = ['sprinter', 'decoy', 'hydra', 'rocketTruck', 'attackHeli', 'torpedoSub', 'armored', 'scavenger', 'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter', 'tender', 'guard', 'lure', 'cloud'];
+    const kinds = ['sprinter', 'hydra', 'rocketTruck', 'attackHeli', 'torpedoSub', 'armored', 'scavenger', 'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter', 'tender', 'guard', 'lure', 'cloud'];
     const seen = new Set();
     for (const k of kinds) {
       await ep.evaluate((kind) => { const g = window.__v3.game(); g.queue = [{ at: 1e9, kind: 'drone', base: 0 }]; g.raiderQueue = []; window.__v3.foe(kind); }, k);
@@ -930,8 +938,9 @@ try {
     await tp.waitForSelector('[data-screen="lab"]');
     const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, combos: document.querySelectorAll('[data-section="combo"] [data-card]').length, cut: !!document.querySelector('[data-card="combo-lure-screen"]'), first: document.querySelector('.v3-lab-sec')?.dataset.section }));
     // Round 8: the combos are thirteen enemy pairs (the four with a player
-    // weapon in them are cut).
-    check(hub.rows === 98 && hub.events === 21 && hub.combos === 13 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    // weapon in them are cut). Round 11: the decoy card and its two pairs
+    // are retired (95 cards, eleven pairs).
+    check(hub.rows === 95 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
@@ -953,23 +962,23 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 10 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 10 && saved.v === 21 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 11 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 11 && saved.v === 22 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
-    await tp.goto(`${BASE_URL}/v3.html?lab=ev-decoy-storm`, { waitUntil: 'networkidle' });
+    await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
-    await tp.waitForSelector('.v3-event-card.show[data-event-card="decoy-storm"]', { timeout: 3000 });
+    await tp.waitForSelector('.v3-event-card.show[data-event-card="drone-storm"]', { timeout: 3000 });
     const ev = await tp.evaluate(() => {
       const g = window.__v3.game();
       const card = document.querySelector('.v3-event-card');
       return { event: g.event?.id, wave: g.wave, map: g.map.id, name: card?.querySelector('.v3-event-name')?.textContent, rules: [...(card?.querySelectorAll('.v3-event-rules i') ?? [])].map((i) => i.textContent), rerun: document.querySelector('[data-lab-rerun]')?.textContent, bring: !!document.querySelector('[data-lab-bring]:not([data-lab-rerun])'), hud: document.querySelector('.v2-hud')?.textContent };
     });
-    check(ev.event === 'decoy-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Decoy Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
+    check(ev.event === 'drone-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Drone Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
     await tp.waitForTimeout(1500);
     await tp.click('[data-lab-rerun]');
     await tp.waitForTimeout(300);
     const again = await tp.evaluate(() => { const g = window.__v3.game(); return { cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, t: g.event?.t, reruns: g.eventLog.filter((e) => e.outcome === 'rerun').length, card: document.querySelector('.v3-event-card.show')?.dataset.eventCard }; });
-    check(again.cmds === 1 && again.reruns === 1 && again.t < 1 && again.card === 'decoy-storm', `Run it again starts the event over, as a recorded input (${JSON.stringify(again)})`);
+    check(again.cmds === 1 && again.reruns === 1 && again.t < 1 && again.card === 'drone-storm', `Run it again starts the event over, as a recorded input (${JSON.stringify(again)})`);
     // A link from the review page opens a test straight away.
     await tp.goto(`${BASE_URL}/v3.html?lab=w-cadence`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
@@ -991,7 +1000,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 10/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 11/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
@@ -1129,11 +1138,13 @@ try {
     await lp.reload();
     await lp.locator('[data-map="strait"]').tap();
     const brief = await lp.locator('[data-brief-event="rush"]').textContent();
-    check(/Special event:\s*Afterburner Rush, waves 11–13/.test(brief ?? ''), `the briefing names the map's special event and its waves (${brief})`);
+    check(/Boss rounds:\s*Afterburner Rush, waves 11–13/.test(brief ?? ''), `the briefing names the map's boss rounds and their waves (${brief})`);
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
-    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent }));
-    check(/WAVE\s*11\/13/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /Run 1 of 3/.test(hud11.eyebrow ?? ''), `the wave counter reads 11/13 and the card says Run 1 of 3 (${JSON.stringify(hud11)})`);
+    await lp.waitForTimeout(400);
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent, name: document.querySelector('.v3-event-card .v3-event-name')?.textContent, banner: document.body.innerText.match(/BOSS ROUNDS[^\n]*\n?[^\n]*/)?.[0] ?? '' }));
+    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /^Boss round 1 of 3/.test(hud11.eyebrow ?? '') && hud11.name === 'Afterburner Rush', `round 11: the counter reads BOSS 1/3 and the card says Boss round 1 of 3, Afterburner Rush (${JSON.stringify(hud11)})`);
+    check(/Survive the next 3 rounds/.test(hud11.banner), `round 11: a banner says what the boss rounds are ("${hud11.banner.replace(/\s+/g, ' ')}")`);
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;

@@ -1,6 +1,7 @@
 // WHO GIVES THE CONVOY COMMANDS in a bot run (the Map & Convoy Lab's
 // experiments, slices 3 and 4). The shooting bot (sim/mimic.ts) taps
-// threats; this gives Rush, Disperse and Hold, at one of four skills, so a
+// threats; this gives the convoy's command (round 11: Hold, the one left
+// after Rush and Disperse were cut), at one of four skills, so a
 // command's worth can be told from the skill of using it:
 //   never   no command at all (the policy's floor)
 //   sharp   each command when its moment comes (below)
@@ -52,6 +53,17 @@ export function incomingSplash(g: Game): number {
   return n;
 }
 
+/** Mines adrift in the lane close ahead of a ship (Sowers' Reach): the
+ *  moment a player would hold the convoy and let them pass. */
+export function minesCrossing(g: Game): number {
+  let n = 0;
+  for (const th of g.threats) {
+    if (th.dead || th.kind !== 'mine') continue;
+    if (g.ships.some((s) => !s.vip && th.x - s.x > 0 && th.x - s.x < 150 && Math.abs(th.y - s.y) < 70)) n++;
+  }
+  return n;
+}
+
 /** A raid of blasts or aircraft is warned of, or has just begun. */
 export function raidOpening(g: Game): boolean {
   return g.raids.some((r) => (r.theme === 'barrage' || r.theme === 'strike') && r.at - g.waveT <= RAID.warn && g.waveT - r.at <= 2.5);
@@ -75,8 +87,8 @@ export class ConvoyPilot {
       const st = commandState(g, id);
       if (!st.ready) continue;
       if (id === 'hold' && st.active) {
-        // Release once the raid's opening has passed (or let it run out).
-        if (this.skill === 'sharp' ? !raidOpening(g) && g.convoy.holdT > 1.5 : this.skill === 'random' ? this.rng.chance(1 / 240) : false) give(id);
+        // Release once the raid's opening and the mines have passed (or let it run out).
+        if (this.skill === 'sharp' ? !raidOpening(g) && !minesCrossing(g) && g.convoy.holdT > 1.5 : this.skill === 'random' ? this.rng.chance(1 / 240) : false) give(id);
         continue;
       }
       if (this.skill === 'spam') give(id);
@@ -86,7 +98,7 @@ export class ConvoyPilot {
           give(id);
           this.due[id] = undefined;
         }
-      } else if (id === 'rush' ? committed(g) >= 2 : id === 'disperse' ? incomingSplash(g) >= 2 && g.ships.length >= 3 : raidOpening(g)) give(id);
+      } else if (raidOpening(g) || minesCrossing(g) > 0) give(id);
     }
   }
 }

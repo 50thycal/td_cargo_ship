@@ -1,6 +1,8 @@
 // The Test Lab design round: a playtest mode built for testing new things
 // fast. The review page (page.mjs) and the plan doc (plan.mjs) are both
-// generated from this file, so they can't drift.
+// generated from this file, so they can't drift. Since the lab was built,
+// the page opens on the current test round; the design round below is its
+// Archive. Each round's questions go in OPEN_QUESTIONS (at the end).
 
 export const ROUND_DATE = '2026-11-08';
 
@@ -208,3 +210,36 @@ export const QUESTIONS = [
     ],
   },
 ];
+
+// ---- Each test round, after the design round --------------------------------
+// The review page opens on the current round (the latest in LAB_ROUNDS,
+// src/v3/data/lab.ts): what changed in the game, the cards to test, and the
+// questions below that have no saved answer yet. Answered ones move to its
+// Archive, with everything above.
+
+/**
+ * Questions for the player, asked on the page from the round they're added.
+ * `id` is the store id (`answers/{id}`): never reuse one, so earlier
+ * answers stay readable. `options` has the recommended one first, labelled
+ * "(recommended)"; leave it empty for a notes-only question. `why` is one
+ * line on why it's asked.
+ * @type {{ id: string, round: number, text: string, options: string[], why?: string }[]}
+ */
+export const OPEN_QUESTIONS = [];
+
+/**
+ * A round's design doc, in one line, for the page's round header. A round
+ * missing here is found by itself: the doc in docs/design/ that says
+ * "Test Lab round N is" (its title is the line).
+ * @type {Record<number, { doc: string, summary: string }>}
+ */
+export const ROUND_DOCS = {
+  9: {
+    doc: 'docs/design/v3-round9-fixes.md',
+    summary: 'From your phone playtest of 2026-11-12: Hold stops the ships short of its line, the decoys flash, and the Scavenger\'s lock is twice as wide.',
+  },
+  10: {
+    doc: 'docs/design/v3-map-cards-production.md',
+    summary: 'A map card now plays that map as the campaign does: waves 1–10 with its drafts, then its event ending, set up ready to test.',
+  },
+};

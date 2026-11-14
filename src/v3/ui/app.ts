@@ -53,12 +53,12 @@ import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } f
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
-import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
+import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
 import { LAB_ROUND, MAP_CARD_PLAYS, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, lastEventWave, type EventId, type EventOutcome } from '../data/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -98,7 +98,7 @@ import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetr
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, type CommandId, type ConvoySetup } from '../data/convoy';
 import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
-import { ENCOUNTERS, type EncounterSetup } from '../data/encounters';
+import { ENCOUNTERS, arcGroups, beatText, encountersFor, type EncounterSetup } from '../data/encounters';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -183,7 +183,6 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
-  decoy: 'Half this swarm is fake. The decoys are pale blue and fade in and out; the real ones stay solid cream. Save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
@@ -197,7 +196,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   spotter: 'It paints a ship and calls shells in from off the map, then flies off and comes back for another, its hits kept. Shoot it down before it calls.',
   tender: 'Sails in, then mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
-  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two taps sink it.',
+  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two hits of your own sink it: a shot, a cut, a blast.',
   cloud: 'A slow firebomb. Shot down or at its ship, it leaves a fireball burning on the water that hurts ships sailing through. Kill it far out.',
 };
 
@@ -808,8 +807,8 @@ export class App {
         extra.push(b);
       }
     }
-    this.showOverlay('v2-pause-panel', [
-      el('h2', '', 'Paused'),
+    const script = g ? this.encounterScript(g) : null;
+    const buttons = [
       button('Resume', 'v2-btn primary', () => this.togglePause()),
       ...extra,
       button('Quit to menu', 'v2-btn', () => {
@@ -818,7 +817,55 @@ export class App {
         this.endRun('quit');
         this.showMenu();
       }),
-    ]);
+    ];
+    // With the encounter script below, the buttons sit in a row, so the
+    // script has the room (a landscape phone is 390 px tall).
+    const row = el('div', 'v3-pause-row');
+    if (script) row.append(...buttons);
+    this.showOverlay('v2-pause-panel', [el('h2', '', 'Paused'), ...(script ? [row, script] : buttons)]);
+  }
+
+  /** Round 11, the developer's view of the run's authored encounters (the
+   *  player: "tell me what the script is essentially ... maybe when u
+   *  pause"): on a run with the encounter layer on, the pause screen shows
+   *  this wave's encounters (name, role, premise, every beat, and the
+   *  designer's decision, counters and test) and the map's arc in one line,
+   *  this wave marked. Nothing in it is shown during play. */
+  private encounterScript(g: Game): HTMLElement | null {
+    if (!g.enc) return null;
+    const only = g.enc.setup.only;
+    const list = encountersFor(g.map.id, g.wave).filter((e) => !only || only.includes(e.id));
+    const box = el('section', 'v3-enc-script');
+    box.dataset.encScript = list.map((e) => e.id).join(' ');
+    box.append(el('h3', '', `Encounter script · wave ${g.wave}`));
+    const evId = EVENT_MAPS[g.map.id];
+    const bossTo = lastEventWave();
+    if (!list.length) {
+      const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
+      box.append(el('p', 'v3-enc-none', boss ? `${bossRound(g.event!.run, g.event!.runs)}: ${EVENTS[g.event!.id].name}, the map's own event (no authored encounter).` : g.event?.bonus ? `Bonus wave: ${EVENTS[g.event.id].name} (no authored encounter).` : 'No authored encounter this wave: the shared wave plays as it is.'));
+    }
+    for (const e of list) {
+      const card = el('div', 'v3-enc-card');
+      card.dataset.enc = e.id;
+      const title = el('p', 'v3-enc-title');
+      title.append(el('b', '', e.name), el('i', '', e.role), el('small', '', `waves ${e.waves[0]}–${e.waves[e.waves.length - 1]}`));
+      const beats = el('ol', 'v3-enc-beats');
+      for (const b of e.beats) beats.append(el('li', '', beatText(b)));
+      const dl = el('dl', 'v3-enc-notes');
+      for (const [k, v] of [['Decision', e.decision], ['Counters', e.counters], ['Works if', e.succeeds]] as const) dl.append(el('dt', '', k), el('dd', '', v));
+      card.append(title, el('p', 'v3-enc-premise', e.premise), beats, dl);
+      box.append(card);
+    }
+    const arcLine = el('p', 'v3-enc-arc');
+    arcLine.append(el('b', '', 'Arc'));
+    for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? EVENTS[evId].name : null)) {
+      const now = g.wave >= a.from && g.wave <= a.to;
+      const chip = el('span', now ? 'now' : '', `${a.from === a.to ? a.from : `${a.from}–${a.to}`} ${a.name}`);
+      if (now) chip.dataset.now = '1';
+      arcLine.append(chip);
+    }
+    box.append(arcLine);
+    return box;
   }
 
   // -------------------------------------------------------------------------
@@ -1092,9 +1139,10 @@ export class App {
     if (this.game?.phase === 'wave') this.rec?.focus(false);
   }
 
-  /** Each frame: the Focus button shows while Focus runs, its ring the
-   *  slow motion still banked (the seconds in the middle) and its outer
-   *  edge the boost's own clock. Gone, it lets go. */
+  /** Each frame: the Focus button shows while Focus runs, its dial the
+   *  slow motion still banked, and the seconds of it in the middle (round
+   *  11: only the bank; the boost's own clock is on its carrier ring and
+   *  its chip). Gone, it lets go. */
   private renderFocus(g: Game | null): void {
     const b = g?.boost;
     const on = !!g && !!b && b.id === 'focus' && g.phase === 'wave' && !this.playback && !this.beat;
@@ -1104,8 +1152,7 @@ export class App {
     if (on && this.focusPointer !== null && !g!.finger) this.rec?.focus(true);
     const bank = on ? b!.bank : 0;
     const full = on ? AB.focus.bank[b!.level - 1] : 1;
-    const left = on ? Math.max(0, b!.t) / g!.stats.weaponTime : 0;
-    const key = on ? `${bank.toFixed(1)}|${left.toFixed(2)}|${g!.focusing ? 1 : 0}` : '';
+    const key = on ? `${bank.toFixed(1)}|${g!.focusing ? 1 : 0}` : '';
     if (key === this.focusKey) return;
     this.focusKey = key;
     const el0 = this.focusBtn;
@@ -1114,7 +1161,6 @@ export class App {
     el0.classList.toggle('slow', g!.focusing);
     el0.classList.toggle('empty', bank <= 0);
     el0.style.setProperty('--bank', (bank / full).toFixed(3));
-    el0.style.setProperty('--left', Math.min(1, left).toFixed(3));
     const secs = el0.querySelector<HTMLElement>('.v3-focus-secs')!;
     const text = bank <= 0 ? 'EMPTY' : `${bank.toFixed(1)}s`;
     if (secs.textContent !== text) secs.textContent = text;
@@ -1406,14 +1452,22 @@ export class App {
     for (const ev of g.events) {
       switch (ev.kind) {
         case 'special':
-          this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? `Run ${ev.run} of ${ev.runs}` : '');
+          // Round 11 (the player: "just called the 'boss' rounds ... and
+          // then say a little blurb at the start like survive the next
+          // rounds"): the first of the map's ending runs says what is
+          // coming, on its card and in a call-out.
+          {
+            const first = !ev.bonus && !!ev.runs && ev.run === 1;
+            this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? bossRound(ev.run!, ev.runs) : '', first ? `Survive the next ${ev.runs} rounds` : '');
+            if (first) this.showBanner('BOSS ROUNDS', `Survive the next ${ev.runs} rounds.`, { now: true, kind: 'alarm', icon: 'wave' }, null);
+          }
           break;
         case 'specialEnd':
-          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? `Run ${ev.run} of ${ev.runs}` : '');
+          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '');
           break;
         case 'restore':
           // Round 7's experiment: the convoy back to full before the ending.
-          this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired.', { icon: 'info' }, null);
+          this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
           break;
         case 'wave': {
           // A special event's wave has its own card instead.
@@ -1543,7 +1597,7 @@ export class App {
   /** A special event begins: its card in the middle of the field through
    *  the breather. It names the event and any rule in force; it never says
    *  how to beat it (the player's rule). */
-  private showEventCard(id: EventId, wave: number, tag: string): void {
+  private showEventCard(id: EventId, wave: number, tag: string, blurb = ''): void {
     const def = EVENTS[id];
     const card = this.eventCard;
     card.className = `v3-event-card${tag === 'bonus' ? ' bonus' : ''}`;
@@ -1551,10 +1605,11 @@ export class App {
     delete card.dataset.eventOutcome;
     const rules = el('span', 'v3-event-rules');
     for (const r of def.rules) rules.append(el('i', '', RULE_TEXT[r]));
-    // A bonus event says so (round 7); a run of the three-run ending says
-    // which.
-    const eyebrow = tag === 'bonus' ? 'Bonus event' : `Special event · wave ${wave}${tag ? ` · ${tag}` : ''}`;
-    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
+    // A bonus event says so (round 7); a run of the three-run ending is a
+    // boss round, and says which (round 11: "Boss round 1 of 3").
+    const eyebrow = tag === 'bonus' ? 'Bonus event' : tag ? `${tag} · wave ${wave}` : `Special event · wave ${wave}`;
+    card.dataset.eventBoss = blurb ? '1' : '';
+    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []), ...(blurb ? [el('span', 'v3-event-boss', blurb)] : []));
     this.flashEventCard(3200);
   }
 
@@ -1680,10 +1735,12 @@ export class App {
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < sunk ? '<i class="lost"></i>' : i === sunk && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
-    // A bonus wave is not one of the map's: the counter says so.
-    const waveLabel = g.event?.bonus ? 'BONUS' : g.endless ? `${g.wave}` : `${g.wave}/${lastWave(g)}`;
+    // A bonus wave is not one of the map's: the counter says so. A run of
+    // the map's ending is a boss round (round 11): "BOSS 1/3".
+    const boss = g.event && !g.event.bonus && g.event.runs > 1 ? g.event : null;
+    const waveLabel = g.event?.bonus ? 'BONUS' : g.endless ? `${g.wave}` : boss ? `${boss.run}/${boss.runs}` : `${g.wave}/${lastWave(g)}`;
     const html =
-      `<span><b>WAVE</b>${waveLabel}</span>` +
+      `<span><b>${boss ? 'BOSS' : 'WAVE'}</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
@@ -2300,6 +2357,10 @@ export class App {
     const stats = { ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 };
     const waves = g.lab.waves;
     const plays = g.lab.setup.plays;
+    // A full map run's waves played, for its scorecard (round 11): the wave
+    // it is on or ended on (a full run starts at wave 1).
+    const played = g.lab.full ? Math.max(waves, g.wave) : undefined;
+    const variant = g.lab.setup.variant;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
     // The sheet drawn again for the same test (a wave's end coming in under
@@ -2312,7 +2373,7 @@ export class App {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
           const rev = cardRev(run.card.id);
-          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}) };
+          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}), ...(variant ? { variant } : {}) };
           addLabEntry(p, run.card.id, { ...result, at: new Date().toISOString(), build: __BUILD__ });
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
@@ -2329,7 +2390,7 @@ export class App {
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }, draft, plays),
+      }, draft, plays, played),
     ]);
   }
 
@@ -2569,13 +2630,14 @@ export class App {
     }
     pic.append(img);
     info.append(pic, el('p', 'v3-brief-blurb', m.blurb));
-    // The map's special event, after its ten waves (its name only).
+    // The map's special event, after its ten waves (its name only). Round
+    // 11: its runs are the map's boss rounds.
     const evId = EVENT_MAPS[id];
     if (evId) {
       const line = el('p', 'v3-brief-event');
       line.dataset.briefEvent = evId;
       const last = lastEventWave();
-      line.append(el('b', '', 'Special event:'), document.createTextNode(` ${EVENTS[evId].name}, ${last > EVENT_WAVE ? `waves ${EVENT_WAVE}–${last}` : `wave ${EVENT_WAVE}`}`));
+      line.append(el('b', '', last > EVENT_WAVE ? 'Boss rounds:' : 'Boss round:'), document.createTextNode(` ${EVENTS[evId].name}, ${last > EVENT_WAVE ? `waves ${EVENT_WAVE}–${last}` : `wave ${EVENT_WAVE}`}`));
       info.append(line);
     }
     if (best) {
@@ -2616,7 +2678,7 @@ export class App {
     // with marked.
     const foes = foesInChapter(chapterOf(id));
     if (foes.length) {
-      const first = newFoeState(id).lead[newFoeState(id).cursor % foes.length];
+      const first = mapDebut(id);
       const box = el('div', 'v3-brief-new v3-brief-foes');
       box.dataset.newEnemies = foes.join(' ');
       box.append(el('span', 'v3-eyebrow', `New enemies in ${CHAPTERS[chapterOf(id) - 1].name}`));
@@ -3278,13 +3340,10 @@ export class App {
     for (const c of this.commandBtns) {
       const st = commandState(g, c.id);
       const def = COMMANDS[c.id];
-      const total = c.id === 'rush' ? CONVOY.rush.time : c.id === 'disperse' ? CONVOY.disperse.time : CONVOY.hold.max;
-      const cool = c.id === 'rush' ? CONVOY.rush.cooldown : c.id === 'disperse' ? CONVOY.disperse.cooldown : CONVOY.hold.cooldown;
-      const coasting = c.id === 'rush' && !st.active && (g.convoy?.coastT ?? 0) > 0;
-      // Rush and Disperse are one posture at a time: the other says so.
-      const other = c.id !== 'hold' && (c.id === 'rush' ? (g.convoy?.disperseT ?? 0) > 0 : (g.convoy?.rushT ?? 0) > 0);
-      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : coasting ? `SLOW ${Math.ceil(g.convoy!.coastT)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : other ? 'BUSY' : st.ready ? 'READY' : 'NO SHIPS';
-      const name = c.id === 'hold' && st.active ? 'Release' : def.name;
+      const total = CONVOY.hold.max;
+      const cool = CONVOY.hold.cooldown;
+      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : st.ready ? 'READY' : 'NO SHIPS';
+      const name = st.active ? 'Release' : def.name;
       const fill = st.active ? st.left / total : st.cool > 0 ? 1 - st.cool / cool : st.ready ? 1 : 0;
       const key = `${name}|${label}|${st.active ? 'a' : st.ready ? 'r' : 'w'}|${Math.round(fill * 40)}`;
       if (key === c.key) continue;
@@ -3495,7 +3554,7 @@ export class App {
       for (const e of met) {
         const o = e.outcome as EventOutcome;
         const chip = el('span', `v3-result-event-chip ${o}`);
-        const label = e.kind === 'bonus' ? 'Bonus event' : e.runs ? `Run ${e.run} of ${e.runs}` : 'Special event';
+        const label = e.kind === 'bonus' ? 'Bonus event' : e.runs ? bossRound(e.run!, e.runs) : 'Special event';
         chip.append(el('i', '', label), el('b', '', EVENTS[e.id].name), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
         evLine.append(chip);
       }
@@ -3503,7 +3562,7 @@ export class App {
       if (whole) {
         evLine.dataset.resultEnding = whole;
         const chip = el('span', `v3-result-event-chip ending ${whole}`);
-        chip.append(el('i', '', 'The ending'), el('b', '', 'Worst run'), el('em', '', OUTCOME_NAME[whole]));
+        chip.append(el('i', '', 'Boss rounds'), el('b', '', 'Worst round'), el('em', '', OUTCOME_NAME[whole]));
         evLine.append(chip);
       }
     }
@@ -3790,7 +3849,7 @@ export class App {
     // A dialog with a text box can be used with the phone held upright too
     // (the player: "give feedback with my phone up"): no "turn your phone"
     // notice over it.
-    this.root.classList.toggle('noting', !!panel.querySelector('textarea'));
+    this.root.classList.toggle('noting', !!panel.querySelector('textarea, .v3-enc-script'));
     this.overlay.dataset.screen = screen;
     // A panel taller than the screen scrolls under its header: only then
     // does the header need a backing of its own.

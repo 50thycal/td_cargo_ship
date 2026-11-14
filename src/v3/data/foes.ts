@@ -7,7 +7,7 @@ import type { ThreatKind } from './config';
 
 export type FoeId =
   // Chapter 1: Home Waters
-  | 'sprinter' | 'decoy' | 'hydra' | 'rocketTruck'
+  | 'sprinter' | 'hydra' | 'rocketTruck'
   // Chapter 2: The Narrows
   | 'attackHeli' | 'torpedoSub' | 'armored' | 'scavenger'
   // Chapter 3: Dark Water
@@ -36,7 +36,6 @@ export interface FoeDef {
 
 export const FOES: Record<FoeId, FoeDef> = {
   sprinter: { id: 'sprinter', name: 'Sprint Drones', chapter: 1, cat: 'strike', kind: 'sprinter', from: 'base', blurb: 'A swarm that flares a booster near its ship and sprints in.' },
-  decoy: { id: 'decoy', name: 'Decoy Drones', chapter: 1, cat: 'support', kind: 'decoy', from: 'base', blurb: 'Half the swarm is fake. The decoys are pale blue and fade in and out the whole way in: let them go.' },
   hydra: { id: 'hydra', name: 'Hydra Missile', chapter: 1, cat: 'strike', kind: 'hydra', from: 'base', blurb: 'Kill it and it splits into two darts. Kill it early.' },
   rocketTruck: { id: 'rocketTruck', name: 'Rocket Truck', chapter: 1, cat: 'platform', kind: 'rocketTruck', from: 'road', blurb: 'Raises a launcher, then fires salvos of red rockets you can\'t stop. Kill the truck.' },
   attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Hovers beside the lane firing missile pairs, and moves.' },
@@ -50,7 +49,7 @@ export const FOES: Record<FoeId, FoeDef> = {
   spotter: { id: 'spotter', name: 'Spotter Plane', chapter: 3, cat: 'support', kind: 'spotter', from: 'edge', blurb: 'Flies in, paints a ship and calls artillery from off the map on it, then leaves and comes back, hits kept, until shot down.' },
   tender: { id: 'tender', name: 'Repair Ship', chapter: 4, cat: 'support', kind: 'tender', from: 'water', blurb: 'Sails in and mends the most damaged enemy near it, a pulse at a time.' },
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
-  lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your taps can sink it.' },
+  lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your own weapons can sink it, not your helpers.' },
   cloud: { id: 'cloud', name: 'Incendiary Missile', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow firebomb. Where it bursts, a fireball burns on the water. Kill it far out.' },
 };
 
@@ -63,13 +62,27 @@ export const RED_FOES: FoeId[] = ['rocketTruck', 'diveBomber', 'siege'];
 
 /** The foes built so far (the build goes a chapter at a time). Cut after
  *  the Test Lab playtest (2026-11-08): Loitering Drones, Crossing Wing,
- *  Flak Picket, Supply Barge. */
+ *  Flak Picket, Supply Barge. Removed from the game in round 11 (the
+ *  player: "remove the decoy drones ... entirely"): Decoy Drones. */
 export const FOES_BUILT: FoeId[] = [
-  'sprinter', 'decoy', 'hydra', 'rocketTruck',
+  'sprinter', 'hydra', 'rocketTruck',
   'attackHeli', 'torpedoSub', 'armored', 'scavenger',
   'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter',
   'tender', 'bodyguard', 'lure', 'cloud',
 ];
+
+/** Which of its chapter's new enemies each map of the chapter leads with
+ *  (its debut), by the map's place in the chapter (the nth map, the nth
+ *  slot, wrapping). A chapter not listed takes its new enemies in order.
+ *  `null` is a map with no debut of its own: it leads with the chapter's
+ *  enemies in turn from the first, so it brings nothing new. Round 11 took
+ *  the Decoy Drones out of the game, and with them Kesh's debut; Kesh has
+ *  none for now (an open item: the map rebuild's design cards will give it
+ *  one, docs/design/v3-round11-map-notes.md). Marrow and The Gauntlet keep
+ *  theirs. */
+export const DEBUT_SLOTS: Partial<Record<number, (FoeId | null)[]>> = {
+  1: ['sprinter', null, 'hydra', 'rocketTruck'],
+};
 
 /** The foe a threat kind stands for, if it is one. */
 export const FOE_OF_KIND: Partial<Record<ThreatKind, FoeId>> = Object.fromEntries(FOE_ORDER.map((id) => [FOES[id].kind, id]));
@@ -111,30 +124,6 @@ export const FOE_LEAD_SHARE = 0.6;
 /** The numbers (first proposals; the plan doc has them in words). */
 export const FOE = {
   sprinter: { size: 4, boostAt: 160, flare: 0.6, sprint: 300 },
-  // Test Lab round 1: the strobe gave them away from launch (300 px out,
-  // shown 4 to 6 s of a 7 to 10 s flight). Now within 160 px of the ship and
-  // not before 3.5 s out: about the last 2 to 3 s.
-  // Test Lab round 2 ("spread them out more ... just one large clump"):
-  // launched `spread` px apart (every other one `stagger` px back), each
-  // flies `slot` px across the swarm's front from the next, closing up only
-  // over the last `closeUp` px to its ship; and any two closer than `part`
-  // px ease apart (at up to `partSpeed` px/s).
-  // Round 7 ("give just a faint color difference everywhere, instead of the
-  // flash on, flash off"): no strobe. A decoy is drawn a shade cooler than
-  // a real drone (ui/foes.ts DECOY_TINT) all the way in. `readAt` and
-  // `readAfter` are when a careful player, looking at the swarm, has told
-  // the tint apart: within `readAt` px of its ship and not before
-  // `readAfter` s out. The bots and the broadside leave a decoy alone from
-  // then (revealAt 160 / revealAfter 3.5 was the strobe's).
-  // Round 8 ("Still can't tell which is which"): the tint is about twice as
-  // strong (a pale steel blue), so a careful player tells a decoy apart
-  // sooner: within 420 px (320) and from 1.5 s out (2).
-  // Round 9 ("go full extreme and make it very obvious ... flash the whole
-  // time like it used to, or fade in and out"): on top of the tint a decoy
-  // fades in and out the whole way in, from its launch (ui/foes.ts
-  // DECOY_PULSE), so it reads at a glance from the moment it is up: `readAt`
-  // covers the whole board and `readAfter` is 0.
-  decoy: { size: 6, fakes: 3, readAt: 2000, readAfter: 0, fizzle: 40, spread: 40, stagger: 26, slot: 56, closeUp: 240, part: 44, partSpeed: 70 },
   // Round 7 ("about 25% slower before the split"): the missile itself is
   // 25% slower (THREATS.hydra: 150 → 112.5 px/s); its darts are as fast as
   // before (THREATS.dart, 290). Round 8 ("a little bit more for both

@@ -1,6 +1,6 @@
 # V3 enemy pairs (Test Lab round 8)
 
-The Test Lab's combos are now **enemy pairs**: two enemies that make each other more dangerous, or cover each other's weakness, coming in together. There are 13: the 4 the player kept and 9 new ones. They live in one list, `src/v3/data/pairs.ts`, which the Test Lab reads now and the map round can read later.
+The Test Lab's combos are now **enemy pairs**: two enemies that make each other more dangerous, or cover each other's weakness, coming in together. There are 13: the 4 the player kept and 9 new ones. (Round 11 removed the decoys from the game, and with them `decoy-sprint` and `decoy-cluster`: there are 11 now. See [v3-round11-map-notes.md](v3-round11-map-notes.md), Part B.) They live in one list, `src/v3/data/pairs.ts`, which the Test Lab reads now and the map round can read later.
 
 This is **test round 8** in `LAB_ROUNDS`: `{ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' }`. The parallel builds (player weapons; enemy behaviour and events) add the same round.
 

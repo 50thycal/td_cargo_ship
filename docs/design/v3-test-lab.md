@@ -9,10 +9,31 @@ A playtest hub for testing new things fast. The player asked for it on 2026-11-0
 
 It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
 
-- **Review page:** https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249. Its Results tab shows each card's verdict, copied from the game logs, with a "Test in game" link. The design tabs keep the round as it was marked. The page is built by `node tools/v3/test-lab/page.mjs <out.html>`, from `tools/v3/test-lab/lab.mjs` (the design round) and the game's own card list (`src/v3/data/lab.ts`, through `cards.mts`).
-- **The page's store:**
-  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs; the page only reads them. A document without `round` is round 1.
-  - `reviews/{pieceId}`, `cards/{cardId}` and `answers/{tl-*}`: the design round.
+- **Review page:** https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249. It is built by `node tools/v3/test-lab/page.mjs <out.html>`, from `tools/v3/test-lab/lab.mjs` and the game's own card list (`src/v3/data/lab.ts`, through `cards.mts`).
+- **The page's layout (from 2026-11-14).** The player asked for the page to "only have the new questions and new updates to the game on it". So it opens on one **This round** view, with only what is new, in this order:
+  1. **The current round's header:** the latest round in `LAB_ROUNDS`, e.g. "Test round 10 · Map cards are the full production map", with its date. If the round has a design doc, the header adds a one-line summary and a link to it.
+  2. **What's new in the game:**
+     - the current round's `LAB_CHANGES` lines, by card; cards with the same line share one entry;
+     - a fold, closed, with the earlier rounds' lines on cards not tested since that change.
+  3. **To test:** the cards never tested, and the cards whose latest verdict is older than their current version. Each has its newest change in a line, its last verdict, and its "Test in game" link. They are grouped by section, with this round's changed cards first.
+  4. **Open questions:** the questions in `OPEN_QUESTIONS` with no saved answer, or "No open questions". A question answered on the page stays until the page is reloaded.
+  5. **A tally**, in the sticky bar: "50 cards to test · 0 open questions".
+
+  Everything else is in one **Archive** at the bottom, closed by default. It holds:
+  - **Done:** the cards whose latest verdict is on their current version, with their verdict, note, setup and evidence, and the earlier rounds folded underneath;
+  - **Answered questions:** the saved choice and note, read only;
+  - **The original design round:** the ask, the pieces and the first checklist, read only, with their marks;
+  - **Cut cards.**
+
+  The page has no tabs. The only inputs are on the open questions.
+- **Results arrive after the page is published,** so the page's script works out To test, Done and the untested earlier changes from the store, each time a result comes in. The logic is `tools/v3/test-lab/split.mjs`: the page inlines its functions, and `tests/v3/labPage.test.ts` tests it. A card is done when its result's `rev` (1 if the result has none) is at least the card's `cardRev`.
+- **A new round needs no page edit.** Add the round to `LAB_ROUNDS` and its lines to `LAB_CHANGES`, then rebuild and republish the page. The page then shows that round's changes and retests. Two optional additions:
+  - **A design doc:** add a line to `ROUND_DOCS` in `lab.mjs`, as `{ doc, summary }`. Without one, the page uses the doc in `docs/design/` that says "Test Lab round N is", with that doc's title as the summary.
+  - **Questions for the player:** add them to `OPEN_QUESTIONS` in `lab.mjs`, as `{ id, round, text, options, why }`, with the recommended option first. Use a new `id` every time: the build stops if an id is used twice.
+- **The page's store.** The ids and shapes are unchanged from the design round, and nothing saved is rewritten:
+  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs, and the page only reads them. A document without `round` is round 1 A map card's document can also carry `variant`, `score`, `auto` and `runs` (from round 11, see Scorecard). All are optional.
+  - `answers/{questionId}`: `choice` (option index) and `note`. The open questions write these. The design round's `tl-*` answers are shown read only.
+  - `reviews/{pieceId}` and `cards/{cardId}`: the design round's marks, shown read only.
 
 ## What the player marked
 
@@ -84,15 +105,78 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
 - **The verdict sheet** fills in only a verdict given on the current version. When the card changed since your last test, it shows what changed under the title, and your earlier verdicts below the evidence, read only.
 - **The session report** tags each card with the round it was tested in.
 - **Logs** carry `rev` and `round` in both `lab` (the setup) and `labResult`. These fields are optional and the sim never reads them, so the log version stays 17. A log without them is round 1 and still replays.
-- **The page bridge** groups logs by card and round. Each card's document is its latest round's verdict, with that round's `changes`, and `history` holds the latest verdict of each earlier round. The page shows a "Round N" chip on each result, the change lines for that round, and the earlier rounds folded underneath. If a card's latest result is from an older version than the game's, the page says "changed since: retest". The enemy page's `builds/<enemy>` documents also carry `round`.
+- **The page bridge** groups logs by card and round. Each card's document is its latest round's verdict, with that round's `changes`, and `history` holds the latest verdict of each earlier round. The page shows a "Round N" chip on each result, the change lines for that round, and the earlier rounds folded underneath. If a card's latest result is from an older version than the game's, the page lists it under To test (until 2026-11-14 it said "changed since: retest" on the card). The enemy page's `builds/<enemy>` documents also carry `round`.
 
 **Starting a new round** (when a build changes something under test):
 1. Add the round to `LAB_ROUNDS`: its number, date and a short name.
 2. For each card the build changed, add `{ round, what }` to `LAB_CHANGES[cardId]` in one plain line. A combo picks up its enemies' and weapon's lines by itself. Give a combo its own line only if the combo itself changed, for example a new pairing.
-3. Rebuild the review page (`node tools/v3/test-lab/page.mjs <out.html>`) and republish it, so it knows the new versions.
+3. Rebuild the review page (`node tools/v3/test-lab/page.mjs <out.html>`) and republish it to the same URL, so it knows the new versions. It then opens on the new round, with its changes and the cards to retest. Add the round's design doc to `ROUND_DOCS` and any questions to `OPEN_QUESTIONS` in `lab.mjs`, if it has them.
 
 ![The hub in round 2](img/test-lab/hub-round2.jpg)
 ![The verdict sheet for a changed card](img/test-lab/verdict-changed.jpg)
+
+## Scorecard
+
+The player asked for it on 2026-11-14: "let's improve the rating and feedback system at the end of the game. It should have categories to rank that we should have some feedback on to determine if this production map is good." Next: "make a few different versions of the same maps with different encounters and see which ones do the best". So every full map run asks the same short questions, and the answers can be compared across runs and across versions of one map.
+
+**On the verdict sheet.** After a map card's full run (won, lost, or Done), the sheet opens with a **Scorecard** box above Keep / Tune / Cut, the tags and the note. Other cards, and a map card's Quick slice, have no scorecard; their sheet is unchanged.
+- One row per category, and one tap on a chip answers it. A second tap clears it. Nothing needs typing.
+- Every row is optional. **Skip** folds the box away, and nothing from it is saved; **Show it** brings it back.
+- Save still asks for Keep, Tune or Cut. If the verdict row is out of sight under the scorecard, the sheet scrolls back to it.
+- Held sideways, a row's name sits beside its chips. Upright, the name sits above them. Every chip is a 40 px target.
+- A score is never filled in from an earlier run: each run's score is its own.
+
+| Row | Asks | Answers |
+|---|---|---|
+| Fun | How much fun was this run? | 1 to 5 |
+| Difficulty | How hard was it? | Too easy · Bit easy · Right · Bit hard · Too hard |
+| Pacing | How fast did the run move? | Too slow · Right · Too fast |
+| Variety | The waves felt different from each other | 1 to 5 |
+| Readability | I could tell what was coming and what hit me | 1 to 5 |
+| Map feel | The layout mattered to how I played | 1 to 5 |
+| Boss rounds | How were waves 11 to 13? (only on a run that reached wave 11) | 1 to 5 |
+| Best wave | The wave you liked most | a chip per wave played: 1 to 10, then B1 to B3 |
+| Weakest wave | The wave you liked least | the same |
+| Play again? | Would you play this map again? | Yes · Maybe · No |
+
+**In data.** The rows are `SCORECARD` in `src/v3/data/scorecard.ts`. Each has an `id`, a `label`, a `help` line and a `scale` (`stars`, `choice` with ordered `{ id, label, value }` options, or `wave`). A choice's `value` is what the page averages: Right is 0 on Difficulty (−2 to +2) and Pacing (−1 to +1). Changing a row's meaning, or adding or dropping a row, means bumping `SCORECARD_REV`, so answers to two different questions are never averaged together.
+
+**In the log (version 22).** The run's `labResult` carries the score, for example `"score": { "rev": 1, "fun": 4, "difficulty": "bit-hard", "best": 12, "again": "yes" }`. A row left alone is absent, and a skipped or blank scorecard leaves no `score` at all. A wave is its number (11 to 13 are B1 to B3).
+- **The encounter version.** A map card's `lab` and `labResult` also carry `variant`: which encounter version of the map was played. It is `'v1'` for now (`MAP_VARIANT_DEFAULT`). A log without it is v1. The setup's `variant` (`LabRunSetup`) is the plumbing for next round's A/B/C versions.
+- **Old logs.** Version 22 only adds fields outside replay, so a v21 log replays here exactly as before. `LOG_REPLAYS` (`[21, 22]`) lists the versions this build replays, and Map Analytics and the map lab tools accept either.
+
+**The bridge.** `labResultDocs` (`src/v3/sim/labDocs.ts`) adds these to a map card's `results/{cardId}` document:
+- `variant`, `score` and `auto` for the latest run (when it was a full run);
+- the same on each `history` entry;
+- `runs`: every full run of the card, newest first (up to 60), each `{ at, log, round, rev, variant, end, verdict, score?, auto? }`.
+
+**Three numbers per run (`auto`).** They come from the log's summary, so no new telemetry is needed:
+- `deliveredPct`: the ships delivered, as a share of those delivered or sunk;
+- `lost`: the ships lost. The restore before the ending doesn't reset the tally;
+- `firstLoss`: the wave the first ship was lost on, or `null` when none were lost.
+
+`results.mts` prints them, with the variant and the score, beside each map card's verdict.
+
+**The review page.** A map card, under To test or Done, gets a scorecard block:
+- **Latest full run:** how it ended (Map cleared, Lost, or Stopped with Done), the three numbers, and the answers as a row of chips ("Fun 4", "Difficulty Bit hard", "Best wave B2").
+- **Average:** once a card has two or more scored runs, one chip per category, with the number of runs that answered it:
+  - a 1-5 row shows its mean ("3.7");
+  - Difficulty and Pacing show the nearest answer and the signed mean ("Bit hard (+0.7)");
+  - the wave rows show the wave picked most ("7", or "7 (2 of 3)" when the runs differ);
+  - Play again shows its counts ("Yes 2 · No 1").
+
+  Each chip ends with "×n", the runs that answered it. A line above the chips gives the runs, the runs won, the mean delivered % and the mean ships lost.
+- **By encounter version:** when a card has runs on more than one `variant`, each version gets its own box with its own line and averages, so the versions can be compared side by side.
+- **Comparable runs only:**
+  - only runs on the newest card version are averaged, and older ones are counted in a line under the block;
+  - only scores on the current `SCORECARD_REV` count.
+
+The logic is `tools/v3/test-lab/scores.mjs`. The page inlines it, as it does `split.mjs`, and `tests/v3/labScores.test.ts` tests it. To try the block, the page reads fake results from its browser store when it is opened outside claude.ai (`localStorage['straitwatch-test-lab-1'] = { results: { 'map-strait': {...} } }`).
+
+**Checks:**
+- `tests/v3/scorecard.test.ts`: the rows, cleaning and saving a score, the variant on the plan, log version 22 with v21 still replaying, and the bridge's numbers, runs and history.
+- `tests/v3/labScores.test.ts`: the page's chips, averages and grouping.
+- `e2e/v3-map-cards.mjs`: a scorecard filled on The Strait's sheet lands in the log; Skip saves none.
 
 ## Copying results to the pages (Claude, each session)
 

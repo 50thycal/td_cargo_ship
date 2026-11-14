@@ -18,7 +18,7 @@ mkdirSync(OUT, { recursive: true });
 // Seconds into each event (after its breather) to take the picture.
 // (Round 6: new moments for the eight events it changed.)
 const AT = {
-  rush: 4.5, 'decoy-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 7.5, 'gunship-wall': 9, 'wolf-pack': 4.4,
+  rush: 4.5, 'drone-storm': 5, 'hydra-bloom': 3.5, 'rocket-convoy': 7.5, 'gunship-wall': 9, 'wolf-pack': 4.4,
   'shield-wall': 2.6, 'supply-raid': 3.2, blackout: 5, 'carpet-run': 4, 'dive-circus': 4.2, bombardment: 3.6,
   'fire-mission': 4.6, 'repair-yard': 11, 'escort-run': 6, 'siren-field': 5, firestorm: 9,
   // Round 7: the finales.
@@ -81,7 +81,7 @@ try {
     const page = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 1, hasTouch: true });
     await page.goto(`${BASE}/v3.html?seed=7`, { waitUntil: 'networkidle' });
     await page.evaluate(() => localStorage.setItem('straitwatch.v3.callouts', 'off'));
-    await page.goto(`${BASE}/v3.html?lab=ev-decoy-storm&seed=7`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/v3.html?lab=ev-drone-storm&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.v3-event-card.show');
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${OUT}card.jpg`, type: 'jpeg', quality: 72 });

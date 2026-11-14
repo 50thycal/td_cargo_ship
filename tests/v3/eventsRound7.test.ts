@@ -188,7 +188,7 @@ describe('every map has its own event', () => {
 });
 
 describe('the three chapter finales', () => {
-  it('The Breakout (Harbor Mouth): decoys and sprinters with no ammo drops at first, then Hydras, then a pair of trucks down the shore road', () => {
+  it('The Breakout (Harbor Mouth): drone swarms (round 11: no decoys) and sprinters with no ammo drops at first, then Hydras, then a pair of trucks down the shore road', () => {
     const g = eventGame('breakout', 2);
     const w: Record<string, number> = { ammo: 40, repair: 10 };
     run(g, EVENT.breather + 2);
@@ -199,8 +199,9 @@ describe('the three chapter finales', () => {
     eventDropWeights(g, w2, 0);
     expect(w2.ammo).toBe(40);
     const seen = firstRun(g);
-    for (const k of ['decoy', 'drone', 'sprinter', 'hydra', 'rocketTruck'] as ThreatKind[]) expect(seen.has(k), k).toBe(true);
+    for (const k of ['drone', 'sprinter', 'hydra', 'rocketTruck'] as ThreatKind[]) expect(seen.has(k), k).toBe(true);
     const e = g.eventLog[0];
+    expect(e.sent.drone).toBe(EV.breakout.swarms * EV.breakout.size);
     expect(e.sent.rocketTruck).toBe(EV.breakout.trucks * EV.breakout.roads);
     expect(e.sent.hydra).toBe(EV.breakout.fan);
   });
@@ -265,7 +266,7 @@ describe('the three-run ending, the convoy restored first (one flag)', () => {
     expect(shipsSunk(g)).toBe(0);
     expect(g.carrierHp).toBe(g.stats.carrierHp);
     for (const s of g.ships) expect(s.hp).toBe(g.stats.shipHp);
-    expect(g.events.find((e) => e.kind === 'special')).toMatchObject({ id: 'decoy-storm', wave: 11, run: 1, runs: 3 });
+    expect(g.events.find((e) => e.kind === 'special')).toMatchObject({ id: 'drone-storm', wave: 11, run: 1, runs: 3 });
     // Run 1 cleared: run 2 at once (its card and breather, no draft).
     clearWave(g);
     expect(g.phase).toBe('wave');
@@ -313,7 +314,7 @@ describe('the three-run ending, the convoy restored first (one flag)', () => {
       expect(shipsSunk(g)).toBe(4);
       expect(g.carrierHp).toBe(3);
       expect(g.event?.runs).toBe(1);
-      expect(g.events.find((e) => e.kind === 'special')).toEqual({ kind: 'special', id: 'decoy-storm', wave: 11 });
+      expect(g.events.find((e) => e.kind === 'special')).toEqual({ kind: 'special', id: 'drone-storm', wave: 11 });
       clearWave(g);
       expect(g.phase).toBe('won');
       expect(g.eventLog[0].runs).toBeUndefined();
@@ -338,8 +339,8 @@ describe('the Test Lab: round 7', () => {
       expect(card.kind).toBe('event');
       expect(LAB_CHANGES[card.id].filter((c) => c.round === 7), id).toHaveLength(1);
       // (Round 8 changed The Breakout and Run the Canal again; round 9 The
-      // Breakout's decoys.)
-      expect(cardRev(card.id)).toBe(id === 'breakout' ? 9 : id === 'run-the-canal' ? 8 : 7);
+      // Breakout's decoys; round 11 took them out.)
+      expect(cardRev(card.id)).toBe(id === 'breakout' ? 11 : id === 'run-the-canal' ? 8 : 7);
     }
     // Undertow was cut in round 8; its place's kit has no helpers either.
     expect(labCard('ev-beacon-strike')!.kit.filter((w) => ROSTER[w].cat === 'passive')).toEqual([]);
@@ -386,7 +387,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit');
-    expect(log.v).toBe(21);
+    expect(log.v).toBe(22);
     expect(log.events!.length).toBeGreaterThanOrEqual(1);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);

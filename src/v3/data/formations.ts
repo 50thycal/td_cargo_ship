@@ -25,6 +25,11 @@ export interface FormationDef {
   armor: number;
   splash: number;
   blastCut: number;
+  /** Round 11: its slots open out in a lane's wide water, on a map whose
+   *  lane asks for it (Channel.open: Harbor Mouth). The Pairs only: the
+   *  Box is tight by design, the Spread is already wide, the Column has
+   *  one slot. */
+  opens?: boolean;
 }
 
 export const FORMATIONS: Record<FormationId, FormationDef> = {
@@ -51,6 +56,7 @@ export const FORMATIONS: Record<FormationId, FormationDef> = {
     armor: 0,
     splash: 1,
     blastCut: 0,
+    opens: true,
   },
   spread: {
     id: 'spread',

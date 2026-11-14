@@ -1,6 +1,6 @@
 // Round 8 (docs/design/v3-enemies-round8.md): the player's Test Lab notes on
-// the enemies and the special events. The Decoy tint about twice as strong;
-// the Hydra a little slower in both stages; the Torpedo Sub fires one by one,
+// the enemies and the special events. (The Decoy tint went with the decoys
+// in round 11.) The Hydra a little slower in both stages; the Torpedo Sub fires one by one,
 // each torpedo at a ship, never across land; the Scavenger reworked to lock
 // the pickups in its ring; every Spotter flies turns and calls shells in
 // from off the map; Hydra Bloom without its line; Run the Canal cut down;
@@ -15,12 +15,10 @@ import { ROSTER } from '../../src/v3/data/roster';
 import { LAB_CHANGES, LAB_ROUNDS, labCard } from '../../src/v3/data/lab';
 import { launchFoe, onLand, pickupLocked, shellAt } from '../../src/v3/sim/foes';
 import { beaconMark, hydraDarts } from '../../src/v3/sim/events';
-import { addPickup, applyFreePlay, applyLab, createGame, damageThreat, step, tap, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
+import { addPickup, applyFreePlay, applyLab, createGame, damageThreat, step, tap, type Game, type Threat } from '../../src/v3/sim/game';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
-import { DECOY_TINT } from '../../src/v3/ui/foes';
-import { C } from '../../src/v3/ui/render';
 
 const DT = 1 / 60;
 const DEVICE = { w: 1, h: 1, dpr: 1, touch: false, ua: '' };
@@ -56,24 +54,6 @@ function eventGame(id: EventId, seed = 1): Game {
   return g;
 }
 
-/** CIE76 colour difference between two hex colours. */
-function deltaE(a: string, b: string): number {
-  const lab = (hex: string) => {
-    const [r, g, bl] = [1, 3, 5].map((i) => {
-      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-    const X = f((0.4124 * r + 0.3576 * g + 0.1805 * bl) / 0.95047);
-    const Y = f(0.2126 * r + 0.7152 * g + 0.0722 * bl);
-    const Z = f((0.0193 * r + 0.1192 * g + 0.9505 * bl) / 1.08883);
-    return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
-  };
-  const p = lab(a);
-  const q = lab(b);
-  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
-}
-
 describe('round 8: the round and its lines', () => {
   it('round 8 is in the lab, with a line for each changed enemy and event card', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 8)).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
@@ -82,38 +62,6 @@ describe('round 8: the round and its lines', () => {
     // The events kept as they were have no round 8 line.
     for (const id of ['ev-siege-of-vey', 'ev-rush', 'ev-rocket-convoy', 'ev-wolf-pack', 'ev-shield-wall', 'ev-dive-circus', 'ev-bombardment', 'ev-repair-yard', 'ev-siren-field', 'ev-firestorm', 'ev-escort-run'])
       expect((LAB_CHANGES[id] ?? []).some((c) => c.round === 8), id).toBe(false);
-  });
-});
-
-describe('Decoy Drones: "Still can\'t tell which is which"', () => {
-  it('the tint is about twice as far from the real drone\'s cream as round 7\'s, and still pale', () => {
-    const r7 = deltaE(C.drone, '#d4dcdc');
-    const r8 = deltaE(C.drone, DECOY_TINT);
-    expect(r7).toBeGreaterThan(9);
-    expect(r7).toBeLessThan(12);
-    expect(r8).toBeGreaterThan(r7 * 1.6);
-    expect(r8).toBeLessThan(25);
-    // The same lightness within a few points (a pale drone, not a dark one).
-    const L = (hex: string) => {
-      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-      return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
-    };
-    expect(Math.abs(L(DECOY_TINT) - L(C.drone))).toBeLessThan(0.04);
-  });
-
-  it('the bots tell a decoy apart from its launch (round 9: it fades in and out from then), anywhere on the board', () => {
-    // Round 8 read it within 420 px and from 1.5 s out; round 9's pulse reads at once.
-    expect(FOE.decoy.readAt).toBeGreaterThanOrEqual(Math.hypot(1600, 900));
-    expect(FOE.decoy.readAfter).toBe(0);
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, g.map.bases[1]);
-    const fake = live(g, 'decoy')[0];
-    const real = live(g, 'drone')[0];
-    g.threats = [fake, real];
-    run(g, 0.05);
-    expect(fake.foe!.state).toBe(1);
-    expect(worthShooting(g, g.threats)).not.toContain(fake);
-    expect(worthShooting(g, g.threats)).toContain(real);
   });
 });
 
@@ -379,7 +327,7 @@ describe('Spotter Plane: "they scout it out and lock on and then leave and come 
 describe('Hydra Bloom: "Hydras should split even before the line is crossed; you can remove that line"', () => {
   it('no line; a Hydra killed anywhere splits into three (slower) darts', () => {
     const g = eventGame('hydra-bloom', 1);
-    expect(g.event!.line).toBeUndefined();
+    expect('line' in g.event!).toBe(false);
     expect(RULE_TEXT.hydraThree).toBe('Hydras split into three, not two');
     run(g, EVENT.breather + 0.3, () => live(g, 'hydra').length > 0);
     const h = live(g, 'hydra')[0];
@@ -516,7 +464,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish('quit');
-    expect(log.v).toBe(21);
+    expect(log.v).toBe(22);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);
     expect(again.steps).toBe(g.steps);

@@ -16,7 +16,7 @@ import { VIEW } from '../data/config';
 import { MAPS, MAP_ORDER, type MapId } from '../data/maps';
 import { GRID, LAYERS, cellBox, cellOf, diff, histogram, layer, summarize, timeline, trace, type EventRef, type Filter, type LayerId, type LayerResult, type MetricId, type Platform, type RunData, type Scope, type Summary, type TraceStep } from '../sim/mapAnalytics';
 import { BotRun, PERSONAS } from '../sim/mimic';
-import { LOG_VERSION, replay, type PlayLog } from '../sim/playlog';
+import { replay, replaysHere, type PlayLog } from '../sim/playlog';
 import { logPlays } from '../sim/labDocs';
 import { mapThumb } from './thumbs';
 
@@ -73,10 +73,10 @@ const fmt = (v: number): string => (Number.isInteger(v) ? String(v) : Math.abs(v
 const clock = (t: number): string => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 /** A log as a run: replayed here to its telemetry. Null when it is not
- *  this build's log version, or no longer replays to its own summary (a
+ *  a log version this build replays (LOG_REPLAYS), or no longer replays to its own summary (a
  *  log from before a change to the game). */
 export function runFromLog(log: PlayLog): RunData | null {
-  if (log.game !== 'v3' || log.v !== LOG_VERSION || log.notesOnly || !log.commands?.length) return null;
+  if (log.game !== 'v3' || !replaysHere(log.v) || log.notesOnly || !log.commands?.length) return null;
   const g = replay(log, { telemetry: true });
   const s = log.summary;
   if (s && (s.steps !== g.steps || s.score !== g.score || s.lost !== g.lost)) return null;

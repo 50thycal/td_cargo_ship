@@ -50,7 +50,7 @@ describe('round 6: the round and its lines', () => {
       if (changed.includes(id)) expect(r6.length, id).toBe(1);
     }
     // The player's "keep it as it is" events are not touched.
-    for (const id of ['rush', 'gunship-wall', 'blackout', 'decoy-storm', 'hydra-bloom', 'carpet-run', 'escort-run', 'siren-field', 'firestorm']) {
+    for (const id of ['rush', 'gunship-wall', 'blackout', 'hydra-bloom', 'carpet-run', 'escort-run', 'siren-field', 'firestorm']) {
       expect((LAB_CHANGES[`ev-${id}`] ?? []).some((c) => c.round === 6), id).toBe(false);
     }
   });

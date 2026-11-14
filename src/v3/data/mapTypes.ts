@@ -95,6 +95,29 @@ export interface Channel {
   tide?: boolean;
   /** The supertanker's lane (The Behemoth Run): one tanker a wave sails it. */
   vip?: boolean;
+  /** Round 11 (Harbor Mouth; the player: "the ship should start wider apart
+   *  from one another at the start and then get closer together at the
+   *  harbor neck"): a formation that opens out (FormationDef.opens, the
+   *  Pairs) sails its slots this many times further apart where the lane is
+   *  at its full `halfWidth`, easing back to its own slots where the lane
+   *  has narrowed to LANE_FLOOR. Always OPEN_EDGE inside the lane's edge.
+   *  Absent: 1 (every other map, unchanged). */
+  open?: number;
+}
+
+/** How far inside the lane's edge an opened-out hull's centre stays. */
+export const OPEN_EDGE = 34;
+
+/** A formation slot's offset across the lane (signed, px) where the lane's
+ *  half-width is `hw`: the slot's share of the half-width, opened out in a
+ *  channel that asks for it (Channel.open). */
+export function slotOffset(ch: Channel, share: number, hw: number, opens: boolean): number {
+  const lat = share * hw;
+  if (!opens || !ch.open || ch.open === 1) return lat;
+  const u = Math.max(0, Math.min(1, (hw - LANE_FLOOR) / Math.max(1, ch.halfWidth - LANE_FLOOR)));
+  const k = 1 + (ch.open - 1) * u;
+  const edge = Math.max(Math.abs(lat), hw - OPEN_EDGE);
+  return Math.max(-edge, Math.min(edge, lat * k));
 }
 
 /** The order ships take the channels in: each channel `share` times a cycle. */

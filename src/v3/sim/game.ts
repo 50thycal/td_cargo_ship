@@ -50,7 +50,7 @@ import {
   isStructure,
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
-import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
+import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, slotOffset, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
 import { flightAt, laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
 import {
   AB,
@@ -75,11 +75,11 @@ import { OLD_THREATS, isOldThreat, memberKind, type PairMember } from '../data/p
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
-import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, eventShotAt, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
+import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { encountersFor, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
-import { convoySpeed, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, holdStop, updateConvoy, type ConvoyState } from './convoy';
+import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -94,6 +94,27 @@ export function isBomberKind(k: ThreatKind): boolean {
 }
 export function isPlaneKind(k: ThreatKind): boolean {
   return isJet(k) || isBomberKind(k);
+}
+
+/** Everything that flies and is not itself a munition: the planes, the
+ *  attack helicopter, the dive bomber, the Spotter and the drone
+ *  mothership. */
+export function isAircraftKind(k: ThreatKind): boolean {
+  return isPlaneKind(k) || k === 'attackHeli' || k === 'diveBomber' || k === 'spotter' || k === 'mothership';
+}
+
+/** Point Defense's targets (round 11, the player: "The point defense should
+ *  not shoot down planes, only the munitions from the planes"): what does
+ *  its harm by hitting a hull (a missile, a bomb or bomblet, a rocket, a
+ *  drone, a torpedo, a boat that rams), never an aircraft, nor a launcher
+ *  or a support (a truck, a siege gun, a sub, a beacon...). The munitions
+ *  aircraft drop or fire are threats of their own, each aimed at a hull
+ *  (`target`): a bomber's guided missiles, the helicopter's missiles, a
+ *  cluster's bomblets, the firebomb. A strafer's guns hit the hulls under
+ *  it directly and a dive bomber's bomb is a red shot: nothing in the air
+ *  to intercept. */
+export function isMunitionKind(k: ThreatKind): boolean {
+  return !isAircraftKind(k) && (THREATS[k].damage > 0 || k === 'cluster');
 }
 
 export interface Ship {
@@ -185,10 +206,6 @@ export interface Threat {
   fireT?: number;
   /** The enemy build: a new enemy's own state (sim/foes.ts). */
   foe?: FoeData;
-  /** A Decoy Drones swarm member (real or decoy): its place across the
-   *  swarm's front, px off the line to its target, so the swarm flies spread
-   *  out and closes up only near the convoy (swarmAim). */
-  slot?: number;
   /** Its full hull when a special event made it tougher than its kind
    *  (THREATS[kind].hp otherwise): what a Repair Tender mends it up to. */
   maxHp?: number;
@@ -220,8 +237,9 @@ export interface Interceptor {
   weapon?: Weapon;
   /** Dual Wield's second weapon: another tag on the shot. */
   also?: Weapon[];
-  /** The enemy build: fired by the player's own tap (the Lure Beacon takes
-   *  only such shots). */
+  /** The enemy build: fired by the player's own hand (a tap's shot, and
+   *  since round 11 its seekers, a shell onto open water and War Drum's
+   *  broadside): the Lure Beacon takes only such shots. */
   tap?: boolean;
   /** Hyper Overdrive's second shot, fired from its own muzzle beside the
    *  first (the renderer draws it a shade lighter). */
@@ -1537,7 +1555,17 @@ function twinShot(f: () => void): void {
  *  one round); with nothing loaded, a plain interceptor or (Wild Card) a
  *  random weapon. */
 function fireLoaded(g: Game, x: number, y: number, threat: Threat | null, radius: number): TapResult {
-  const ws = loadedWeapons(g);
+  // The Laser Cutter only cuts (round 11, the player: "The laser player
+  // attack still shoots a munitions from the ship. It should NOT do that it
+  // should only do the cut"): a tap with it loaded fires no shell and spends
+  // no round, and says how it works. Under Dual Wield the other hand still
+  // fires its own shot (and Hyper Overdrive twins that one, not the cutter).
+  const all = loadedWeapons(g);
+  const ws = all.filter((w) => w.id !== 'cutter');
+  if (ws.length < all.length && !ws.length) {
+    swipeHint(g, x, y);
+    return 'empty';
+  }
   let res: TapResult | null = null;
   const plain: Weapon[] = [];
   for (const w of ws) {
@@ -1562,6 +1590,14 @@ function fireLoaded(g: Game, x: number, y: number, threat: Threat | null, radius
     return res ?? (ok ? 'fire' : 'dry');
   }
   return res!;
+}
+
+/** A tap with only the Laser Cutter loaded (round 11): no shot, just the
+ *  words over the finger, one at a time. */
+export const SWIPE_HINT = 'SWIPE TO CUT';
+function swipeHint(g: Game, x: number, y: number): void {
+  g.fx = g.fx.filter((f) => !(f.kind === 'text' && f.text === SWIPE_HINT));
+  addFx(g, 'text', x, y - 30, { life: 0.9, text: SWIPE_HINT });
 }
 
 /** Take a draft card. `replace` swaps a new ability in for one you hold when
@@ -1779,10 +1815,7 @@ function updateLabSets(g: Game): void {
         const leads = g.threats.filter((t) => !t.dead && isLead(t, led));
         const due = leads.some((t) => {
           const p = targetPos(g, t);
-          // A decoy's own flight: its "told apart, not urgent" for the bots
-          // (from launch since round 9) is not when it gets there.
-          const eta = t.kind === 'decoy' ? dist(t.x, t.y, p.x, p.y) / Math.max(1, t.speed) : timeToImpact(g, t);
-          return eta <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
+          return timeToImpact(g, t) <= dist(from.x, from.y, p.x, p.y) / speed + f.after;
         });
         if (leads.length && !due && g.waveT - led.t < LAB_SET.station) return;
       } else {
@@ -1946,7 +1979,7 @@ function fireWeapon(g: Game, w: Weapon, x: number, y: number, threat: Threat | n
         // Hyper Overdrive's second shell lands as far aside as it left.
         const m = muzzle(g, x, y);
         const c = g.map.carrier;
-        g.interceptors.push({ id: g.nextId++, x: m.x, y: m.y - 6, target: null, tx: x + m.x - c.x, ty: y + m.y - c.y, life: 0, src: 'gun', weapon: { ...w }, ...(twinSide ? { twin: true } : {}) });
+        g.interceptors.push({ id: g.nextId++, x: m.x, y: m.y - 6, target: null, tx: x + m.x - c.x, ty: y + m.y - c.y, life: 0, src: 'gun', tap: true, weapon: { ...w }, ...(twinSide ? { twin: true } : {}) });
         if (!twinSide) cue(g, 'gun.fire', c.x, c.y);
       }
       return 'fire';
@@ -2385,12 +2418,12 @@ function updateAegis(g: Game, dt: number): void {
     cue(g, 'aegis.launch', x, y);
     return a;
   };
-  // What is about to hit a hull: a threat aimed at it, or an aircraft over it.
-  const aircraft = (t: Threat) => isPlaneKind(t.kind);
-  for (const s of g.ships) s.aegis = arm(s.aegis, AB.aegis.missiles[k], s.x, s.y, (t) => t.target === s.id || aircraft(t));
+  // What is about to hit a hull: a munition aimed at it (round 11: never
+  // the aircraft that dropped or fired it, only what it dropped or fired).
+  for (const s of g.ships) s.aegis = arm(s.aegis, AB.aegis.missiles[k], s.x, s.y, (t) => t.target === s.id && isMunitionKind(t.kind));
   if (w.level >= 3) {
     const c = g.map.carrier;
-    g.carrierAegis = arm(g.carrierAegis, AB.aegis.carrier, c.x, c.y, (t) => t.target === CARRIER_TARGET || aircraft(t));
+    g.carrierAegis = arm(g.carrierAegis, AB.aegis.carrier, c.x, c.y, (t) => t.target === CARRIER_TARGET && isMunitionKind(t.kind));
   }
 }
 
@@ -2485,6 +2518,7 @@ function fireSeekers(g: Game, level: number, x: number, y: number, radius: numbe
       ty: t.y,
       life: -i * 0.03,
       src: 'seeker',
+      tap: true,
       blast: AB.seeker.blast,
       dmg,
       retarget: level >= 3,
@@ -2674,10 +2708,21 @@ export function press(g: Game, x: number, y: number, radius: number): void {
   }
 }
 
-/** The finger moves (the UI sends a move at most once a step). */
+/** The finger moves (the UI sends a move at most once a step). Its cut is
+ *  the player's own hand (round 11: the Laser Cutter now cuts a Lure
+ *  Beacon). */
 export function pressMove(g: Game, x: number, y: number): void {
   const p = g.press;
   if (!p || g.phase !== 'wave') return;
+  g.foe.byTap = true;
+  try {
+    pressMoveNow(g, p, x, y);
+  } finally {
+    g.foe.byTap = false;
+  }
+}
+
+function pressMoveNow(g: Game, p: Press, x: number, y: number): void {
   if (g.tel) g.tel.input(g, 'move', { x, y });
   const px = p.x;
   const py = p.y;
@@ -3038,7 +3083,7 @@ function updateBeat(g: Game): void {
     g.beat.armed = false;
     g.beat.run = 0;
     const targets = worthShooting(g, g.threats).filter((t) => !t.dead).sort((a, b) => timeToImpact(g, a) - timeToImpact(g, b)).slice(0, AB.cadence.broadside);
-    for (const t of targets) g.interceptors.push({ id: g.nextId++, x: c.x, y: c.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', dmg: 2, by: 'broadside' });
+    for (const t of targets) g.interceptors.push({ id: g.nextId++, x: c.x, y: c.y - 6, target: t.id, tx: t.x, ty: t.y, life: 0, src: 'gun', dmg: 2, by: 'broadside', tap: true });
     if (targets.length) cue(g, 'salvo.fire', c.x, c.y);
   }
 }
@@ -3916,22 +3961,30 @@ function stepSim(g: Game, dt: number): void {
   for (const th of g.threats) if (!th.dead) updateThreat(g, th, tdt);
   updateTimers(g, dt);
   updateBoost(g, dt, real);
+  // Your own weapons' work over time (the Air Strike's jets, the
+  // Boomerang's blades, a held finger's Lance or Cutter, the Grapnel's
+  // throws, the clouds, wells and burning lines your shots leave) is the
+  // player's own hand: it hurts a Lure Beacon (round 11's audit: "make sure
+  // all weapons will actually attack the beacon"). The helpers' shots
+  // (frigates, Point Defense, drones, gunships...) still pass through it.
+  g.foe.byTap = true;
   updateAllies(g, dt);
+  g.foe.byTap = false;
   updateEscorts(g, dt);
   updateAegis(g, dt);
   updateBombs(g, dt);
   updatePointDefense(g, dt);
   updateDamageControl(g, dt);
-  updateBlades(g, dt);
-  // A held finger's work (the Lance's charge, the Cutter's line) is the
-  // player's own hand.
   g.foe.byTap = true;
+  updateBlades(g, dt);
   updatePress(g, dt);
   updateFlings(g, dt);
   g.foe.byTap = false;
   updateBeat(g);
   updatePassives(g, dt);
+  g.foe.byTap = true;
   updateFields(g, dt);
+  g.foe.byTap = false;
   updateInterceptors(g, dt);
   updatePosts(g, dt);
   updateLocks(g, dt);
@@ -4056,15 +4109,17 @@ function spawnGap(g: Game): number {
 const MERGE_AHEAD = 140;
 
 /** The offset across its lane a hull steers for: its formation slot, scaled
- *  to the lane's width where it is. Where the lane ahead narrows below
- *  LANE_FLOOR (a single-file gap), every hull lines up on the centre line,
- *  one behind another; the supertanker always sails the middle. */
+ *  to the lane's width where it is (and, round 11, opened out in the wide
+ *  water of a lane that asks for it: Harbor Mouth's pairs). Where the lane
+ *  ahead narrows below LANE_FLOOR (a single-file gap), every hull lines up
+ *  on the centre line, one behind another; the supertanker always sails
+ *  the middle. */
 function slotLat(g: Game, s: Ship): number {
   if (s.vip) return 0;
   const ch = g.map.channels[s.channel];
   if (ch.widths && Math.min(laneHalfWidth(ch, s.d), laneHalfWidth(ch, s.d + MERGE_AHEAD)) < LANE_FLOOR) return 0;
-  const offsets = formationNow(g).offsets;
-  return offsets[s.slot % offsets.length] * halfWidthAt(ch, s.x);
+  const f = formationNow(g);
+  return slotOffset(ch, f.offsets[s.slot % f.offsets.length], halfWidthAt(ch, s.x), !!f.opens);
 }
 
 /** Put a hull where its lane distance and offset say. */
@@ -4147,11 +4202,10 @@ function spawnTanker(g: Game): void {
   cue(g, 'tanker.horn', t.x, t.y);
 }
 
-/** The furthest a hull may sail this step: up to a closed lock gate, or
- *  (the lab's Hold, sim/convoy.ts) the staging line. */
+/** The furthest a hull may sail this step: up to a closed lock gate. (The
+ *  lab's Hold, sim/convoy.ts, slows the hull itself: holdPace.) */
 function stopAt(g: Game, s: Ship): number {
-  const gate = gateStop(g, s.channel, s.d, LOCK.stand);
-  return g.convoy ? Math.min(gate, holdStop(g, s)) : gate;
+  return gateStop(g, s.channel, s.d, LOCK.stand);
 }
 
 /** Up to a closed lock gate on a lane, for a hull at d whose bow reaches
@@ -4248,32 +4302,6 @@ function tankerHome(g: Game, s: Ship): void {
   g.events.push({ kind: 'bigKill', label: 'TANKER HOME', x: clamp(s.x, 160, VIEW.width - 160), y: clamp(s.y, 80, VIEW.height - 80) });
 }
 
-/** Where a decoy swarm's member flies for: its target, moved across its
- *  line of flight by its `slot`, the full slot while far out, closing up
- *  over the last `FOE.decoy.closeUp` px. */
-export function swarmAim(th: Threat, tp: Point, d: number): Point {
-  const k = (th.slot ?? 0) * clamp((d - FOE.decoy.fizzle) / FOE.decoy.closeUp, 0, 1);
-  if (!k || d < 1) return tp;
-  return { x: tp.x - ((tp.y - th.y) / d) * k, y: tp.y + ((tp.x - th.x) / d) * k };
-}
-
-/** A decoy swarm's member keeps a little room: eased away from any other
- *  member closer than `FOE.decoy.part` px (real drones and decoys alike, so
- *  nothing tells them apart). */
-export function swarmPart(g: Game, th: Threat, dt: number): void {
-  const R = FOE.decoy.part;
-  for (const o of g.threats) {
-    if (o === th || o.dead || o.slot === undefined) continue;
-    const dx = th.x - o.x;
-    const dy = th.y - o.y;
-    const d = Math.hypot(dx, dy);
-    if (d >= R) continue;
-    const push = (FOE.decoy.partSpeed * (1 - d / R) * dt) / Math.max(1, d);
-    th.x += d > 0.01 ? dx * push : (th.id % 2 ? 1 : -1) * FOE.decoy.partSpeed * dt;
-    th.y += dy * push;
-  }
-}
-
 /** Where a ship will be `ahead` seconds from now, sailing its lane (and
  *  `plus` px further along it: a point off its bow). */
 export function shipAhead(g: Game, s: Ship, ahead: number, plus = 0): Point {
@@ -4298,7 +4326,7 @@ function steamMult(g: Game): number {
 }
 
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g) * convoySpeed(g);
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
@@ -4412,7 +4440,6 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   // The enemy build: drones and missiles speed up with the wave like their
   // kin; platforms and aircraft barely.
   sprinter: 1,
-  decoy: 1,
   hydra: GUIDED.waveSpeedShare,
   dart: 0.5,
   rocketTruck: 0,
@@ -4754,10 +4781,8 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     const want = Math.atan2(tp.y - th.y, tp.x - th.x);
     if (th.kind === 'drone' || th.kind === 'minidrone') {
       // Shahed-style: slow and steady with a lazy weave, re-aiming as it goes.
-      // A decoy swarm's drones keep their place in its spread.
       const weave = DRONE.weaveAmp * Math.sin(th.age * DRONE.weaveFreq + th.phase);
-      const at = th.slot ? swarmAim(th, tp, d) : tp;
-      th.heading = Math.atan2(at.y - th.y, at.x - th.x) + (d > 80 ? weave : 0);
+      th.heading = Math.atan2(tp.y - th.y, tp.x - th.x) + (d > 80 ? weave : 0);
     } else if (th.kind === 'mothership') {
       th.heading = want;
     } else {
@@ -4775,7 +4800,6 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
-    if (th.slot !== undefined) swarmPart(g, th, dt);
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
     if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
       splitCluster(g, th);
@@ -4793,7 +4817,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
  *  vehicles, subs, the tender, the buoy) it only slows, until MAX. */
 export const WELL_SMALL: ReadonlySet<ThreatKind> = new Set<ThreatKind>([
   'ballistic', 'guided', 'supersonic', 'heavy', 'cluster', 'bomblet', 'hydra', 'dart', 'heliRocket', 'torpedo', 'cloud',
-  'drone', 'minidrone', 'sprinter', 'decoy', 'armored', 'scavenger', 'guard',
+  'drone', 'minidrone', 'sprinter', 'armored', 'scavenger', 'guard',
   'fastboat', 'mine',
 ]);
 
@@ -5137,7 +5161,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   if (isStructure(th.kind)) {
     structureDown(g, th);
   } else {
-    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' || th.kind === 'decoy' ? 18 : 26 });
+    addFx(g, 'boom', th.x, th.y, { life: 0.55, r: th.kind === 'drone' ? 18 : 26 });
     cue(g, KILL_CUE[th.kind], th.x, th.y);
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }
@@ -5197,7 +5221,6 @@ function fireAt(g: Game, th: Threat, tags: Weapon[] = loadedWeapons(g)): boolean
     });
   firstShot(g, () => shoot(th));
   if (g.lab) labShotAt(g, th.id);
-  if (g.event) eventShotAt(g, th);
   cue(g, 'gun.fire', p.x, p.y);
   const twinOf = () =>
     g.threats
@@ -6165,7 +6188,6 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   dreadnought: 'structure.down',
   // The enemy build.
   sprinter: 'kill.small',
-  decoy: 'kill.small',
   hydra: 'kill.missile',
   dart: 'kill.small',
   rocketTruck: 'truck.destroyed',
@@ -6215,7 +6237,6 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   fastboat: 'fastboat.launch',
   // The enemy build (their own sounds come in its audio pass).
   sprinter: 'drone.launch',
-  decoy: 'drone.launch',
   hydra: 'missile.launch',
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
