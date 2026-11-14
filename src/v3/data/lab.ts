@@ -152,7 +152,7 @@ const COMBOS: LabCard[] = PAIRS.map((p) => ({ id: pairCardId(p.id), kind: 'combo
 
 /** Cards cut from the lab (the player's round 7 notes on the combos:
  *  "Looking for enemy and enemy attack pairs"), kept so their old verdicts
- *  still have a card to sit on in the review page's Results (sim/labDocs.ts,
+ *  still have a card to sit on in the review page's Archive (sim/labDocs.ts,
  *  tools/v3/test-lab/page.mjs). Not in LAB_CARDS: the hub doesn't list them
  *  and a saved queue drops them. */
 export interface RetiredCard extends LabCard {

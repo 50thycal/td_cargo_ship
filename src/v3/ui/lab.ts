@@ -13,8 +13,8 @@ import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStat
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 
-/** The review page for the Test Lab: its Results tab shows what was marked
- *  here (Claude copies it over from the game logs). */
+/** The review page for the Test Lab: it shows what was marked here (Claude
+ *  copies it over from the game logs), and what is left to test. */
 export const LAB_PAGE_URL = 'https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249';
 
 export type LabVerdict = 'keep' | 'tune' | 'cut';

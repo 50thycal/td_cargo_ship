@@ -9,10 +9,31 @@ A playtest hub for testing new things fast. The player asked for it on 2026-11-0
 
 It is built from the player's marks: `tools/v3/test-lab/marks-2026-11-08.json`.
 
-- **Review page:** https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249. Its Results tab shows each card's verdict, copied from the game logs, with a "Test in game" link. The design tabs keep the round as it was marked. The page is built by `node tools/v3/test-lab/page.mjs <out.html>`, from `tools/v3/test-lab/lab.mjs` (the design round) and the game's own card list (`src/v3/data/lab.ts`, through `cards.mts`).
-- **The page's store:**
-  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs; the page only reads them. A document without `round` is round 1.
-  - `reviews/{pieceId}`, `cards/{cardId}` and `answers/{tl-*}`: the design round.
+- **Review page:** https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249. It is built by `node tools/v3/test-lab/page.mjs <out.html>`, from `tools/v3/test-lab/lab.mjs` and the game's own card list (`src/v3/data/lab.ts`, through `cards.mts`).
+- **The page's layout (from 2026-11-14).** The player asked for the page to "only have the new questions and new updates to the game on it". So it opens on one **This round** view, with only what is new, in this order:
+  1. **The current round's header:** the latest round in `LAB_ROUNDS`, e.g. "Test round 10 · Map cards are the full production map", with its date. If the round has a design doc, the header adds a one-line summary and a link to it.
+  2. **What's new in the game:**
+     - the current round's `LAB_CHANGES` lines, by card; cards with the same line share one entry;
+     - a fold, closed, with the earlier rounds' lines on cards not tested since that change.
+  3. **To test:** the cards never tested, and the cards whose latest verdict is older than their current version. Each has its newest change in a line, its last verdict, and its "Test in game" link. They are grouped by section, with this round's changed cards first.
+  4. **Open questions:** the questions in `OPEN_QUESTIONS` with no saved answer, or "No open questions". A question answered on the page stays until the page is reloaded.
+  5. **A tally**, in the sticky bar: "50 cards to test · 0 open questions".
+
+  Everything else is in one **Archive** at the bottom, closed by default. It holds:
+  - **Done:** the cards whose latest verdict is on their current version, with their verdict, note, setup and evidence, and the earlier rounds folded underneath;
+  - **Answered questions:** the saved choice and note, read only;
+  - **The original design round:** the ask, the pieces and the first checklist, read only, with their marks;
+  - **Cut cards.**
+
+  The page has no tabs. The only inputs are on the open questions.
+- **Results arrive after the page is published,** so the page's script works out To test, Done and the untested earlier changes from the store, each time a result comes in. The logic is `tools/v3/test-lab/split.mjs`: the page inlines its functions, and `tests/v3/labPage.test.ts` tests it. A card is done when its result's `rev` (1 if the result has none) is at least the card's `cardRev`.
+- **A new round needs no page edit.** Add the round to `LAB_ROUNDS` and its lines to `LAB_CHANGES`, then rebuild and republish the page. The page then shows that round's changes and retests. Two optional additions:
+  - **A design doc:** add a line to `ROUND_DOCS` in `lab.mjs`, as `{ doc, summary }`. Without one, the page uses the doc in `docs/design/` that says "Test Lab round N is", with that doc's title as the summary.
+  - **Questions for the player:** add them to `OPEN_QUESTIONS` in `lab.mjs`, as `{ id, round, text, options, why }`, with the recommended option first. Use a new `id` every time: the build stops if an id is used twice.
+- **The page's store.** The ids and shapes are unchanged from the design round, and nothing saved is rewritten:
+  - `results/{cardId}`: `verdict`, `tags`, `note`, `evidence`, `ended`, `log`, `at`, and (from test round 2) `round`, `rev`, `changes` and `history`. Claude writes these from the logs, and the page only reads them. A document without `round` is round 1.
+  - `answers/{questionId}`: `choice` (option index) and `note`. The open questions write these. The design round's `tl-*` answers are shown read only.
+  - `reviews/{pieceId}` and `cards/{cardId}`: the design round's marks, shown read only.
 
 ## What the player marked
 
@@ -84,12 +105,12 @@ The player asked for it on 2026-11-08: "We need to have versions for the play te
 - **The verdict sheet** fills in only a verdict given on the current version. When the card changed since your last test, it shows what changed under the title, and your earlier verdicts below the evidence, read only.
 - **The session report** tags each card with the round it was tested in.
 - **Logs** carry `rev` and `round` in both `lab` (the setup) and `labResult`. These fields are optional and the sim never reads them, so the log version stays 17. A log without them is round 1 and still replays.
-- **The page bridge** groups logs by card and round. Each card's document is its latest round's verdict, with that round's `changes`, and `history` holds the latest verdict of each earlier round. The page shows a "Round N" chip on each result, the change lines for that round, and the earlier rounds folded underneath. If a card's latest result is from an older version than the game's, the page says "changed since: retest". The enemy page's `builds/<enemy>` documents also carry `round`.
+- **The page bridge** groups logs by card and round. Each card's document is its latest round's verdict, with that round's `changes`, and `history` holds the latest verdict of each earlier round. The page shows a "Round N" chip on each result, the change lines for that round, and the earlier rounds folded underneath. If a card's latest result is from an older version than the game's, the page lists it under To test (until 2026-11-14 it said "changed since: retest" on the card). The enemy page's `builds/<enemy>` documents also carry `round`.
 
 **Starting a new round** (when a build changes something under test):
 1. Add the round to `LAB_ROUNDS`: its number, date and a short name.
 2. For each card the build changed, add `{ round, what }` to `LAB_CHANGES[cardId]` in one plain line. A combo picks up its enemies' and weapon's lines by itself. Give a combo its own line only if the combo itself changed, for example a new pairing.
-3. Rebuild the review page (`node tools/v3/test-lab/page.mjs <out.html>`) and republish it, so it knows the new versions.
+3. Rebuild the review page (`node tools/v3/test-lab/page.mjs <out.html>`) and republish it to the same URL, so it knows the new versions. It then opens on the new round, with its changes and the cards to retest. Add the round's design doc to `ROUND_DOCS` and any questions to `OPEN_QUESTIONS` in `lab.mjs`, if it has them.
 
 ![The hub in round 2](img/test-lab/hub-round2.jpg)
 ![The verdict sheet for a changed card](img/test-lab/verdict-changed.jpg)
