@@ -116,7 +116,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Point Defense Grid',
     answers: 'Missiles',
     levels: [
-      'Every ship carries 1 interceptor that fires on its own at a threat about to hit it',
+      'Every ship carries 1 interceptor that fires on its own at a missile, bomb or drone about to hit it (never at the aircraft)',
       '2 interceptors a ship; they fire from 33% further out',
       'Spent interceptors reload every 3 s; the carrier gets 3 of its own',
     ],

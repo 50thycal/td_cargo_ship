@@ -24,7 +24,7 @@ import type { MapId } from './maps';
 
 export type EventId =
   // Chapter 1: Home Waters
-  | 'rush' | 'decoy-storm' | 'hydra-bloom' | 'rocket-convoy' | 'breakout'
+  | 'rush' | 'drone-storm' | 'hydra-bloom' | 'rocket-convoy' | 'breakout'
   // Chapter 2: The Narrows
   | 'gunship-wall' | 'wolf-pack' | 'shield-wall' | 'supply-raid' | 'run-the-canal'
   // Chapter 3: Dark Water
@@ -60,8 +60,9 @@ export interface EventDef {
   /** A map's own event, or a bonus event (BONUS_EVENTS). */
   kind: EventKind;
   /** The enemy it is built on (the debut enemy of its map; a chapter
-   *  finale's first, the chapter's others in `also`). */
-  foe: FoeId;
+   *  finale's first, the chapter's others in `also`). None: built on plain
+   *  drones (the Drone Storm, round 11: Kesh has no debut enemy for now). */
+  foe?: FoeId;
   also?: FoeId[];
   rules: EventRule[];
   /** The Test Lab's question for the player (one question; never the
@@ -71,10 +72,10 @@ export interface EventDef {
 
 export const EVENTS: Record<EventId, EventDef> = {
   rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'No line now: six sprint swarms cruise in, and each boosts near its ship. Does it still feel like a rush?' },
-  'decoy-storm': { id: 'decoy-storm', kind: 'map', name: 'Decoy Storm', foe: 'decoy', rules: ['noAmmo'], look: 'Twelve swarms and no ammo drops: did you run dry, and was that on you?' },
+  'drone-storm': { id: 'drone-storm', kind: 'map', name: 'Drone Storm', rules: ['noAmmo'], look: 'Twelve drone swarms and no ammo drops: did you run dry, and was that on you?' },
   'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
-  breakout: { id: 'breakout', kind: 'map', name: 'The Breakout', foe: 'decoy', also: ['sprinter', 'hydra', 'rocketTruck'], rules: ['noAmmoOpening'], look: 'The whole chapter in one go, decoys to trucks: does it feel like an ending?' },
+  breakout: { id: 'breakout', kind: 'map', name: 'The Breakout', foe: 'sprinter', also: ['hydra', 'rocketTruck'], rules: ['noAmmoOpening'], look: 'The whole chapter in one go, drone swarms to trucks: does it feel like an ending?' },
   'gunship-wall': { id: 'gunship-wall', kind: 'map', name: 'Gunship Wall', foe: 'attackHeli', rules: [], look: 'Four helicopters firing in turn: does the wall feel like a set piece or a slog?' },
   'wolf-pack': { id: 'wolf-pack', kind: 'map', name: 'Wolf Pack', foe: 'torpedoSub', rules: [], look: 'Every sub fires a spread, and one or two torpedoes are fast: can you read the lines?' },
   'shield-wall': { id: 'shield-wall', kind: 'map', name: 'Shield Wall', foe: 'armored', rules: [], look: 'Armored drones from three bases joining into one block: does it read as one wall?' },
@@ -106,7 +107,7 @@ export const EVENT_ORDER = Object.keys(EVENTS) as EventId[];
  *  map has its own"). */
 export const EVENT_MAPS: Partial<Record<MapId, EventId>> = {
   strait: 'rush',
-  kesh: 'decoy-storm',
+  kesh: 'drone-storm',
   marrow: 'hydra-bloom',
   gauntlet: 'rocket-convoy',
   harbor: 'breakout',
@@ -249,14 +250,16 @@ export const EV = {
    *  from the bases to the lane, and the player saw the drones boost before
    *  it anyway); each sprinter flares near its ship as usual. */
   rush: { swarms: 6, every: 1.5, cruise: 0.5 },
-  /** `swarms` decoy swarms of `size`, `fakes` of each fake, half at the
-   *  start and half `second` s later. Round 9: the decoys now fade in and
-   *  out from launch and the bots read them at once, which took the lab
-   *  card from Broken 20% to never; two more swarms (10 → 12, so 24 real
-   *  drones, not 20) and the second half 2 s sooner (9 → 7) bring it back
-   *  to round 8's (docs/design/v3-round9-fixes.md). No ammo drops, as
-   *  before. */
-  'decoy-storm': { swarms: 12, size: 6, fakes: 4, second: 7, gap: 0.45 },
+  /** The Drone Storm (Kesh; round 11, in place of the Decoy Storm when the
+   *  decoys left the game): `swarms` plain drone swarms of `size` (2.5:
+   *  three, then two, in turn; 30 drones), one from each drone base in
+   *  turn, `gap` s apart, half at the start and half `second` s later. No
+   *  ammo drops. `size` was measured with the bots to be about as hard as
+   *  the Decoy Storm was (ships lost a run, on the Test Lab card and the
+   *  event's own table: 2 was much easier, 3 much harder; docs/design/
+   *  v3-round11-map-notes.md, Part B). Provisional: Kesh's event may change
+   *  with the map rebuild. */
+  'drone-storm': { swarms: 12, size: 2.5, second: 7, gap: 0.45 },
   /** `fans` fans of Hydras, `gap` s apart, one from each base, at `slow` of
    *  their speed; each killed splits into `darts`. `swarms` drone swarms of
    *  `size` between. Round 8 ("Hydras should split even before the line is
@@ -367,16 +370,17 @@ export const EV = {
    *  at `slow` of their speed; fireballs burn `linger` s. */
   firestorm: { first: 6, second: 3, gap: 9, slow: 0.85, linger: 13 },
   // ---- Round 7: the three chapter finales and the Lure Beacon's second ----
-  /** The Breakout (Harbor Mouth): chapter 1's four new enemies in three
-   *  phases. Opening (no ammo drops until `open` s): `decoys` decoy swarms
-   *  of `size` (`fakes` fake), `gap` s apart from every drone base, with
+  /** The Breakout (Harbor Mouth): chapter 1's new enemies in three
+   *  phases. Opening (no ammo drops until `open` s): `swarms` drone swarms
+   *  of `size` (round 11: plain drones, the decoys gone), `gap` s apart
+   *  from every drone base, with
    *  a sprint swarm among them at each of `sprintAt`. Then a fan of
    *  `fan` Hydras from the bases furthest from the carrier, `fanGap` s
    *  apart from `fanAt` s, at `slow` of their speed. Then `trucks` rocket trucks in a
    *  column down each shore road from `truckAt` s (`drive` × their speed,
    *  `stagger` s apart raising, `salvos` salvos, `hp` hits; a wreck stalls
    *  the one behind it `stall` s). */
-  breakout: { decoys: 3, size: 5, fakes: 3, gap: 0.9, sprintAt: [2.4], open: 8, fanAt: 12, fan: 3, fanGap: 1.2, slow: 0.65, truckAt: 16, trucks: 2, roads: 1, gapT: 0.6, drive: 2.4, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, hp: 4, stall: 2, back: 2.5 },
+  breakout: { swarms: 3, size: 3, gap: 0.9, sprintAt: [2.4], open: 8, fanAt: 12, fan: 3, fanGap: 1.2, slow: 0.65, truckAt: 16, trucks: 2, roads: 1, gapT: 0.6, drive: 2.4, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, hp: 4, stall: 2, back: 2.5 },
   /** Run the Canal (Saltgate Canal): chapter 2's finale. Round 8 ("Really
    *  bad, the subs shoot torpedoes from water to land … way too difficult,
    *  way too much going on"): cut to three phases one after another, each

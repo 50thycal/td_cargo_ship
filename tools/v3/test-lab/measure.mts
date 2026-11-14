@@ -24,10 +24,8 @@ for (const id of cards.length ? cards : ['siege', 'rocketTruck', 'diveBomber', '
     let pickups = 0;
     // Ships sunk by anything (a combo's old threats are not the card's).
     let allSunk = 0;
-    // Gun shots, and the ones fired at a decoy (round 9: do the bots still
-    // waste shots on decoys?).
+    // Gun shots (your own: taps, seekers, shells).
     let shots = 0;
-    let decoyShots = 0;
     for (let seed = 1; seed <= Number(process.env.SEEDS ?? 10); seed++) {
       const card = labCard(id)!;
       const g = createGame(card.map, seed, LAB_START_WAVE);
@@ -45,7 +43,6 @@ for (const id of cards.length ? cards : ['siege', 'rocketTruck', 'diveBomber', '
           if (seen.has(it.id) || !it.tap) continue;
           seen.add(it.id);
           shots += 1;
-          if (g.threats.find((t) => t.id === it.target)?.kind === 'decoy') decoyShots += 1;
         }
       }
       const s = g.lab!.stats;
@@ -53,6 +50,6 @@ for (const id of cards.length ? cards : ['siege', 'rocketTruck', 'diveBomber', '
       pickups += g.taps.pickup;
       allSunk += g.lost + 99;
     }
-    console.log(id.padEnd(12), skill.padEnd(7), JSON.stringify({ ...sum, pickups, allSunk, shots, decoyShots }));
+    console.log(id.padEnd(12), skill.padEnd(7), JSON.stringify({ ...sum, pickups, allSunk, shots }));
   }
 }

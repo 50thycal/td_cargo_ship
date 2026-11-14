@@ -107,13 +107,16 @@ import type { EncounterSetup } from '../data/encounters';
  *  22: Test Lab round 11's map scorecard (docs/design/v3-test-lab.md,
  *      "Scorecard"): a map card's `labResult` can carry `score` (the
  *      player's scorecard) and `variant` (the map's encounter version), and
- *      its `lab` a `variant`. None of it touches replay: a v21 log replays
- *      on this build exactly as before (LOG_REPLAYS). */
+ *      its `lab` a `variant`. Round 11's game changes (Rush and Disperse cut,
+ *      Hold pauses every ship, decoys out of the game, Point Defense at
+ *      munitions only, a Cutter tap fires nothing, every weapon hurts a
+ *      Lure Beacon, Afterburner Rush with no line, Harbor's opening pairs)
+ *      mean a v21 log no longer replays to the same game. */
 export const LOG_VERSION = 22;
-/** The log versions this build replays exactly: its own, and those whose
- *  rules it still plays (v22 only added fields outside replay). Tools that
- *  replay logs (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [21, 22];
+/** The log versions this build replays exactly (only its own: round 11
+ *  changed the game). Tools that replay logs (Map Analytics, the map lab)
+ *  take any of these. */
+export const LOG_REPLAYS: readonly number[] = [22];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
@@ -259,8 +262,9 @@ export interface PlayLog {
   moments?: Moment[];
   rating?: Rating;
   /** Special events met (sim/events.ts): when each started and ended
-   *  (steps), what it sent, how it went, the shots fired in it and, on the
-   *  Decoy Storm, how many went at decoys. Derived: replay remakes them. */
+   *  (steps), what it sent, how it went and the shots fired in it (an older
+   *  log's Decoy Storm also counted the shots at decoys). Derived: replay
+   *  remakes them. */
   events?: EventRecord[];
 }
 

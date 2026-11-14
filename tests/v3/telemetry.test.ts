@@ -379,7 +379,9 @@ describe('the gate: the same game with telemetry on and off', () => {
         applyFreePlay(g, { weapons: kit.map((id) => ({ id, level: 3 })), frequentDrops: true });
         return g;
       };
-      const ls = lockstepLive(make, bot(k), { steps: 60 * 45 });
+      // 60 s (45 until round 11, when the waves without decoys left the bot
+      // too little time with the Drone Screen in hand to ram anything).
+      const ls = lockstepLive(make, bot(k), { steps: 60 * 60 });
       check(kit.join('+'), ls);
       for (const e of ls.sidecar.events) if (e.k === 'hurt') by.add(e.by);
     });

@@ -32,7 +32,8 @@ const COMBOS = LAB_CARDS.filter((c) => c.kind === 'combo');
 
 describe('the pairs list (data/pairs.ts)', () => {
   it('one Test Lab combo card per pair, in the same order, ids matching', () => {
-    expect(PAIRS.length).toBeGreaterThanOrEqual(12);
+    // (Round 11 took out the two decoy pairs: eleven.)
+    expect(PAIRS.length).toBeGreaterThanOrEqual(11);
     expect(COMBOS.map((c) => c.id)).toEqual(PAIRS.map((p) => pairCardId(p.id)));
     expect(new Set(PAIRS.map((p) => p.id)).size).toBe(PAIRS.length);
     for (const p of PAIRS) {
@@ -55,8 +56,9 @@ describe('the pairs list (data/pairs.ts)', () => {
       // Two enemies at least: a pair, not one enemy and a weapon.
       expect(new Set(p.members).size, c.id).toBeGreaterThanOrEqual(2);
     }
-    // The four cut ones are gone from the hub, kept only for their verdicts.
-    expect(LAB_RETIRED.map((c) => c.id)).toEqual(['combo-lure-screen', 'combo-cloud-flak', 'combo-guard-seeker', 'combo-hydra-tesla']);
+    // The four cut ones are gone from the hub, kept only for their verdicts
+    // (round 11 retired the decoy cards too).
+    expect(LAB_RETIRED.filter((c) => c.cut === 8).map((c) => c.id)).toEqual(['combo-lure-screen', 'combo-cloud-flak', 'combo-guard-seeker', 'combo-hydra-tesla']);
     for (const r of LAB_RETIRED) expect(labCard(r.id)).toBeUndefined();
   });
 
@@ -68,18 +70,21 @@ describe('the pairs list (data/pairs.ts)', () => {
       expect(p.kit, p.id).toHaveLength(3);
       for (const w of p.kit) expect(ROSTER[w].unlock, `${p.id} ${w}`).toBeLessThanOrEqual(p.chapter);
     }
-    // Across all four chapters, and the original threats mixed in.
-    for (const ch of [1, 2, 3, 4]) expect(PAIRS.filter((p) => p.chapter === ch).length, `chapter ${ch}`).toBeGreaterThanOrEqual(2);
-    expect(PAIRS.filter((p) => p.members.some(isOldThreat)).length).toBeGreaterThanOrEqual(3);
-    // The ones the player kept.
-    for (const id of ['decoy-sprint', 'spotter-siege', 'tender-bodyguard', 'siege-truck']) expect(enemyPair(id), id).toBeDefined();
+    // Across all four chapters, and the original threats mixed in. (Round
+    // 11 took the two decoy pairs out with the decoys: chapter 1 keeps one.)
+    for (const ch of [1, 2, 3, 4]) expect(PAIRS.filter((p) => p.chapter === ch).length, `chapter ${ch}`).toBeGreaterThanOrEqual(ch === 1 ? 1 : 2);
+    expect(PAIRS.filter((p) => p.members.some(isOldThreat)).length).toBeGreaterThanOrEqual(2);
+    // The ones the player kept (Decoys + Sprint Drones went with the decoys).
+    for (const id of ['spotter-siege', 'tender-bodyguard', 'siege-truck']) expect(enemyPair(id), id).toBeDefined();
+    for (const id of ['decoy-sprint', 'decoy-cluster']) expect(enemyPair(id), id).toBeUndefined();
   });
 
   it('round 8 is in the lab, the Combos section says enemy pairs, and every pair card is new or changed in it', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 8)).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     expect(LAB_SECTIONS.find((s) => s.kind === 'combo')!.blurb).toMatch(/enemy pairs/i);
-    // (Round 9 changed the Decoy Drones and the Scavenger: their pairs take that on.)
-    for (const p of PAIRS.filter((o) => !['decoy-sprint', 'spotter-siege', 'tender-bodyguard'].includes(o.id))) expect(cardRev(pairCardId(p.id)), p.id).toBe(['decoy-cluster', 'scavenger-swarm'].includes(p.id) ? 9 : 8);
+    // (Round 9 changed the Scavenger: its pair takes that on. Round 11
+    // changed the Lure Beacon: so does its pair.)
+    for (const p of PAIRS.filter((o) => !['spotter-siege', 'tender-bodyguard'].includes(o.id))) expect(cardRev(pairCardId(p.id)), p.id).toBe(p.id === 'scavenger-swarm' ? 9 : p.id === 'lure-stealth' ? 11 : 8);
   });
 });
 
@@ -198,7 +203,7 @@ describe('the synergies', () => {
 });
 
 describe('replays and the review page', () => {
-  for (const id of ['combo-tender-truck', 'combo-guard-spotter', 'combo-decoy-cluster']) {
+  for (const id of ['combo-tender-truck', 'combo-guard-spotter', 'combo-hydra-swarm']) {
     it(`${id}: a test that used Bring one replays exactly`, () => {
       const card = labCard(id)!;
       const g = createGame(card.map, 7, LAB_START_WAVE);

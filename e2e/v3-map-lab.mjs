@@ -64,12 +64,16 @@ async function touchDefend(page) {
 
 try {
   // ---- A Test Lab run on Harbor Mouth, played by touch ----
+  // (Since round 10 a map card opens on its production setup, where the
+  // convoy sails itself: ?convoy=current asks for the flow and formation
+  // controls this run exercises, and ?plays=slice the short lab slice from
+  // wave 5 it was written for.)
   const page = await browser.newPage(PHONE);
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
-  await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=5`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&convoy=current&plays=slice&seed=5`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
   const start = await page.evaluate(() => {
     const g = window.__v3.game();
@@ -193,7 +197,7 @@ try {
         const cdp = await p.context().newCDPSession(p);
         await p.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
         await p.evaluate(() => localStorage.clear());
-        await p.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=5&tel=${tel}`, { waitUntil: 'networkidle' });
+        await p.goto(`${BASE_URL}/v3.html?lab=map-harbor&convoy=current&plays=slice&seed=5&tel=${tel}`, { waitUntil: 'networkidle' });
         await p.waitForSelector('.playing.lab-on');
         await p.evaluate(() => window.__v3.freeze(true));
         await cdp.send('Emulation.setCPUThrottlingRate', { rate });

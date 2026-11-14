@@ -169,7 +169,7 @@ describe('a map card is the full production map', () => {
     const card = labCard('map-strait')!;
     expect(labCountText(card, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 2, 13, { plays: 'full', wave: 3 })).toBe('full map · wave 3/13');
     for (const c of LAB_CARDS.filter((o) => o.kind === 'map')) expect(labActions(c), c.id).toEqual(['note', 'setup', 'done']);
-    expect(labActions(labCard('decoy')!)).toContain('bring');
+    expect(labActions(labCard('hydra')!)).toContain('bring');
     expect(labActions(labCard('ev-rush')!)).toContain('bring');
     const g = createGame('strait', 2, 1);
     applyLab(g, { card: 'map-strait', plays: 'full' });
@@ -258,7 +258,7 @@ describe('the three reference maps open ready to test', () => {
     expect(isProduction(card, { ...prod, encounters: false })).toBe(false);
     expect(isProduction(card, { ...prod, plays: 'slice' })).toBe(false);
     expect(isProduction(labCard('map-kesh')!, productionSetup(labCard('map-kesh')!))).toBe(true);
-    expect(isProduction(labCard('decoy')!, prod)).toBe(false);
+    expect(isProduction(labCard('hydra')!, prod)).toBe(false);
   });
 });
 
@@ -333,10 +333,10 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     expect(docs['map-gauntlet']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · D · Tactical commands · authored encounters rev 1` });
     expect(docs['map-gauntlet'].evidence).toMatch(/^Quick slice · /);
     expect(docs['map-kesh']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · C · Current controls · shared waves` });
-    expect(docs.decoy).toBeUndefined();
+    expect(docs.hydra).toBeUndefined();
     // Other cards' docs carry no setup.
-    const other: PlayLog = { ...slice, id: 'x', lab: { card: 'decoy', length: 'full', mix: 'normal', rev: 9, round: 9 } };
-    expect(labResultDocs([other]).results.decoy.plays).toBeUndefined();
+    const other: PlayLog = { ...slice, id: 'x', lab: { card: 'hydra', length: 'full', mix: 'normal', rev: 9, round: 9 } };
+    expect(labResultDocs([other]).results.hydra.plays).toBeUndefined();
   }, 60_000);
 
   it('evidence for a full run counts the map and its ending', () => {

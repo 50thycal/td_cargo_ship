@@ -163,9 +163,13 @@ describe('Hold (Sowers\' Reach, round 11)', () => {
     run(g, CONVOY.hold.max);
     expect(g.convoy!.holding).toBe(false);
     expect(cmds(g).at(-1)).toMatchObject({ what: 'release', req: 'max' });
-    const d0 = g.ships[0].d;
+    // (The held ships followed by id, the freest of them at full speed:
+    // round 11's changes to the waves and the Cutter's taps move what
+    // happens later in this run, and which ship is first in the list.)
+    const d0 = new Map(g.ships.map((s) => [s.id, s.d] as const));
     run(g, 1);
-    expect(g.ships[0].d - d0).toBeGreaterThan(SHIP.speed * 0.8);
+    const moved = g.ships.filter((s) => d0.has(s.id)).map((s) => s.d - d0.get(s.id)!);
+    expect(Math.max(...moved)).toBeGreaterThan(SHIP.speed * 0.8);
   });
 
   it('stops every ship afloat, wherever it is; released, they sail on; then it cools down', () => {
@@ -290,7 +294,11 @@ describe('the gate: the same seed is the same game, and the log replays it', () 
 
 describe('no command is a way round the fight', () => {
   const base: Omit<TrialSpec, 'policy' | 'pilot' | 'map'> = { seed: 0, obligation: 'fixed', persona: 'tryhard', armory: { warhead: 3 }, firstWave: 4 };
-  const seeds = [41, 42, 43, 44];
+  // Eight seeds (four until round 11): a run is won or lost by a wave or two,
+  // so four seeds' mean score swung 35% on The Gauntlet when the decoys left
+  // the waves (spam 34,220 against 25,275 on 41 to 44; over 41 to 52 the two
+  // are within 4%).
+  const seeds = [41, 42, 43, 44, 45, 46, 47, 48];
   const of = (map: TrialSpec['map'], policy: ConvoyPolicy, pilot: TrialSpec['pilot']) => cohort(`${policy}:${pilot}`, seeds.map((seed) => runTrial({ ...base, map, seed, policy, pilot })));
 
   it('on the map with a command, giving it the instant it is ready: no lane, queue or wave breaks, and nobody is made safe', () => {

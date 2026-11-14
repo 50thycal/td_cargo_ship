@@ -53,7 +53,7 @@ import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } f
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
-import { foeSetting, launchFoe, newFoeState, redShots, tappedRedShot } from '../sim/foes';
+import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup } from '../sim/lab';
 import { LAB_ROUND, MAP_CARD_PLAYS, cardRev, labCard, type LabCard } from '../data/lab';
@@ -183,7 +183,6 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
-  decoy: 'Half this swarm is fake. The decoys are pale blue and fade in and out; the real ones stay solid cream. Save your shots for the real ones.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
   attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
@@ -197,7 +196,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   spotter: 'It paints a ship and calls shells in from off the map, then flies off and comes back for another, its hits kept. Shoot it down before it calls.',
   tender: 'Sails in, then mends the most damaged enemy near it, a green pulse at a time. Six hits.',
   guard: 'Guard drones take your shots for the heavy. A blast clears the ring; the Railgun goes through.',
-  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two taps sink it.',
+  lure: 'Every helper inside its yellow ring fires at it, and does nothing to it. Two hits of your own sink it: a shot, a cut, a blast.',
   cloud: 'A slow firebomb. Shot down or at its ship, it leaves a fireball burning on the water that hurts ships sailing through. Kill it far out.',
 };
 
@@ -1140,9 +1139,10 @@ export class App {
     if (this.game?.phase === 'wave') this.rec?.focus(false);
   }
 
-  /** Each frame: the Focus button shows while Focus runs, its ring the
-   *  slow motion still banked (the seconds in the middle) and its outer
-   *  edge the boost's own clock. Gone, it lets go. */
+  /** Each frame: the Focus button shows while Focus runs, its dial the
+   *  slow motion still banked, and the seconds of it in the middle (round
+   *  11: only the bank; the boost's own clock is on its carrier ring and
+   *  its chip). Gone, it lets go. */
   private renderFocus(g: Game | null): void {
     const b = g?.boost;
     const on = !!g && !!b && b.id === 'focus' && g.phase === 'wave' && !this.playback && !this.beat;
@@ -1152,8 +1152,7 @@ export class App {
     if (on && this.focusPointer !== null && !g!.finger) this.rec?.focus(true);
     const bank = on ? b!.bank : 0;
     const full = on ? AB.focus.bank[b!.level - 1] : 1;
-    const left = on ? Math.max(0, b!.t) / g!.stats.weaponTime : 0;
-    const key = on ? `${bank.toFixed(1)}|${left.toFixed(2)}|${g!.focusing ? 1 : 0}` : '';
+    const key = on ? `${bank.toFixed(1)}|${g!.focusing ? 1 : 0}` : '';
     if (key === this.focusKey) return;
     this.focusKey = key;
     const el0 = this.focusBtn;
@@ -1162,7 +1161,6 @@ export class App {
     el0.classList.toggle('slow', g!.focusing);
     el0.classList.toggle('empty', bank <= 0);
     el0.style.setProperty('--bank', (bank / full).toFixed(3));
-    el0.style.setProperty('--left', Math.min(1, left).toFixed(3));
     const secs = el0.querySelector<HTMLElement>('.v3-focus-secs')!;
     const text = bank <= 0 ? 'EMPTY' : `${bank.toFixed(1)}s`;
     if (secs.textContent !== text) secs.textContent = text;
@@ -2680,7 +2678,7 @@ export class App {
     // with marked.
     const foes = foesInChapter(chapterOf(id));
     if (foes.length) {
-      const first = newFoeState(id).lead[newFoeState(id).cursor % foes.length];
+      const first = mapDebut(id);
       const box = el('div', 'v3-brief-new v3-brief-foes');
       box.dataset.newEnemies = foes.join(' ');
       box.append(el('span', 'v3-eyebrow', `New enemies in ${CHAPTERS[chapterOf(id) - 1].name}`));

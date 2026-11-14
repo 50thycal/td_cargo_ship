@@ -42,12 +42,12 @@ function queued(g: Game): Set<string> {
 }
 
 describe('the roster', () => {
-  it('seventeen enemies (four cut after the Test Lab playtest), four, four, five and four a chapter; every chapter is built', () => {
-    expect(FOE_ORDER).toHaveLength(17);
-    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([4, 4, 5, 4]);
-    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(17);
+  it('sixteen enemies (four cut after the Test Lab playtest, the Decoy Drones in round 11), three, four, five and four a chapter; every chapter is built', () => {
+    expect(FOE_ORDER).toHaveLength(16);
+    expect([1, 2, 3, 4].map((c) => FOE_ORDER.filter((f) => FOES[f].chapter === c).length)).toEqual([3, 4, 5, 4]);
+    expect(new Set(FOE_ORDER.map((f) => FOES[f].kind)).size).toBe(16);
     for (const f of FOES_BUILT) expect(THREATS[FOES[f].kind], f).toBeDefined();
-    expect(foesInChapter(1)).toEqual(['sprinter', 'decoy', 'hydra', 'rocketTruck']);
+    expect(foesInChapter(1)).toEqual(['sprinter', 'hydra', 'rocketTruck']);
     expect(foesInChapter(2)).toEqual(['attackHeli', 'torpedoSub', 'armored', 'scavenger']);
     expect(foesInChapter(3)).toEqual(['stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter']);
     expect(foesInChapter(4)).toEqual(['tender', 'bodyguard', 'lure', 'cloud']);
@@ -142,23 +142,6 @@ describe('chapter 1: Home Waters', () => {
     expect(Math.hypot(d0.vx, d0.vy)).toBeGreaterThan(250);
   });
 
-  it('Decoys are read close in (round 7: no strobe, the tint) and fizzle at the convoy without harm', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
-    expect(live(g, 'decoy')).toHaveLength(FOE.decoy.fakes);
-    expect(live(g, 'drone')).toHaveLength(FOE.decoy.size - FOE.decoy.fakes);
-    // Real drones out of the way: only the decoys fly on.
-    g.threats = g.threats.filter((t) => t.kind === 'decoy');
-    const fakes = live(g, 'decoy');
-    expect(fakes.every((t) => t.foe!.state === 0)).toBe(true);
-    const carrier = g.carrierHp;
-    run(g, 40, () => live(g, 'decoy').length === 0);
-    expect(fakes.every((t) => t.foe!.state === 1 && t.dead)).toBe(true);
-    expect(g.kills.decoy).toBe(0);
-    // Nobody was hurt: every hull whole, the carrier untouched.
-    expect(g.ships.every((s) => s.hp === g.stats.shipHp)).toBe(true);
-    expect(g.carrierHp).toBe(carrier);
-  });
 
   it('a Hydra killed splits into two darts at the ships nearest it; one that lands does not split', () => {
     const g = quiet();
@@ -221,50 +204,6 @@ describe('chapter 1: Home Waters', () => {
     }
   });
 
-  it('Test Lab round 1: decoys fly exactly like the drones beside them and show nothing in their first seconds', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
-    const fake = live(g, 'decoy')[0];
-    // Same speed, and each step a decoy turns as an attack drone would: a
-    // real drone of the same swarm put in its place (its slot in the
-    // swarm too), each flown on its own in the same sea.
-    const g1 = quiet();
-    launchFoe(g1, { at: 0, kind: 'decoy', base: 1 }, base(g1));
-    const real = live(g1, 'drone')[0];
-    expect(fake.speed).toBe(real.speed);
-    real.x = fake.x;
-    real.y = fake.y;
-    real.phase = fake.phase;
-    real.target = fake.target;
-    real.slot = fake.slot;
-    g.threats = [fake];
-    g1.threats = [real];
-    run(g, 2);
-    run(g1, 2);
-    expect(Math.hypot(fake.x - real.x, fake.y - real.y)).toBeLessThan(1);
-    expect(fake.heading).toBeCloseTo(real.heading, 6);
-    // Close in, but too soon: not read yet. Later, close in: read (round
-    // 7: when a careful player has told its tint apart).
-    g.threats = [fake];
-    fake.foe!.t = 0;
-    // (Round 8 reads it from further out: it may be read already.)
-    fake.foe!.state = 0;
-    const s = g.ships.find((o) => o.id === fake.target)!;
-    fake.x = s.x - FOE.decoy.readAt + 20;
-    fake.y = s.y;
-    run(g, FOE.decoy.readAfter - 0.5);
-    expect(fake.foe!.state).toBe(0);
-    const g2 = quiet();
-    launchFoe(g2, { at: 0, kind: 'decoy', base: 1 }, base(g2));
-    const f2 = live(g2, 'decoy')[0];
-    g2.threats = [f2];
-    run(g2, FOE.decoy.readAfter + 0.1);
-    const s2 = g2.ships.find((o) => o.id === f2.target)!;
-    f2.x = s2.x - FOE.decoy.readAt + 20;
-    f2.y = s2.y;
-    run(g2, 0.1);
-    expect(f2.foe!.state).toBe(1);
-  });
 
   it('a Rocket Truck drives in and raises (no rockets yet); after the raise its rockets can\'t be shot and hit ships', () => {
     const g = quiet();
@@ -723,7 +662,7 @@ describe('chapter 4: Open War', () => {
 
 });
 
-describe('Test Lab round 2 notes (2026-11-08): the Dive Bomber, the Incendiary Missile, the Decoy Drones', () => {
+describe('Test Lab round 2 notes (2026-11-08): the Dive Bomber, the Incendiary Missile', () => {
   it('the Dive Bomber is quicker than round 1: its run is shorter', () => {
     const D = FOE.diveBomber;
     expect(D.window).toBeLessThan(2.2);
@@ -763,34 +702,6 @@ describe('Test Lab round 2 notes (2026-11-08): the Dive Bomber, the Incendiary M
     }
   });
 
-  it('a Decoy Drones swarm spreads out: wide at launch, its drones apart all the way in, real and decoy alike', () => {
-    const g = quiet();
-    launchFoe(g, { at: 0, kind: 'decoy', base: 1 }, base(g));
-    const swarm = g.threats.filter((t) => !t.dead && (t.kind === 'decoy' || t.kind === 'drone'));
-    expect(swarm).toHaveLength(FOE.decoy.size);
-    expect(swarm.every((t) => t.slot !== undefined)).toBe(true);
-    const width = () => {
-      const xs = swarm.map((t) => t.x);
-      const ys = swarm.map((t) => t.y);
-      return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-    };
-    const gap = () => {
-      let m = Infinity;
-      for (const a of swarm) for (const o of swarm) if (a !== o && !a.dead && !o.dead) m = Math.min(m, Math.hypot(a.x - o.x, a.y - o.y));
-      return m;
-    };
-    expect(width()).toBeGreaterThanOrEqual(FOE.decoy.spread * (FOE.decoy.size - 1));
-    let least = Infinity;
-    let widest = 0;
-    for (let t = 0; t < 3.5; t += 0.25) {
-      run(g, 0.25);
-      least = Math.min(least, gap());
-      widest = Math.max(widest, width());
-    }
-    // Not one clump: no two drones on top of each other, the swarm wide.
-    expect(least).toBeGreaterThan(20);
-    expect(widest).toBeGreaterThan(200);
-  });
 });
 
 describe('Test Lab round 1 (2026-11-08): cloud, lure, tender, scavenger', () => {
