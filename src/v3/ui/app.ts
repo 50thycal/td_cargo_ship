@@ -98,7 +98,8 @@ import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetr
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, type CommandId, type ConvoySetup } from '../data/convoy';
 import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
-import { ENCOUNTERS, arcGroups, beatText, encountersFor, type EncounterSetup } from '../data/encounters';
+import { ENCOUNTERS, arcGroups, beatText, calloutsOn, encountersFor, pairBeatText, setupVersion, versionLabel, waveScale, type EncounterSetup } from '../data/encounters';
+import { enemyPair } from '../data/pairs';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
@@ -834,15 +835,18 @@ export class App {
   private encounterScript(g: Game): HTMLElement | null {
     if (!g.enc) return null;
     const only = g.enc.setup.only;
-    const list = encountersFor(g.map.id, g.wave).filter((e) => !only || only.includes(e.id));
+    // Round 12: the run's own version of the map's encounters.
+    const version = setupVersion(g.enc.setup);
+    const list = encountersFor(g.map.id, g.wave, version).filter((e) => !only || only.includes(e.id));
     const box = el('section', 'v3-enc-script');
     box.dataset.encScript = list.map((e) => e.id).join(' ');
-    box.append(el('h3', '', `Encounter script · wave ${g.wave}`));
+    box.dataset.encVersion = version;
+    box.append(el('h3', '', `Encounter script · ${versionLabel(g.map.id, version)} · wave ${g.wave}`));
     const evId = EVENT_MAPS[g.map.id];
     const bossTo = lastEventWave();
     if (!list.length) {
       const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
-      box.append(el('p', 'v3-enc-none', boss ? `${bossRound(g.event!.run, g.event!.runs)}: ${EVENTS[g.event!.id].name}, the map's own event (no authored encounter).` : g.event?.bonus ? `Bonus wave: ${EVENTS[g.event.id].name} (no authored encounter).` : 'No authored encounter this wave: the shared wave plays as it is.'));
+      box.append(el('p', 'v3-enc-none', boss ? `${bossRound(g.event!.run, g.event!.runs)}: ${EVENTS[g.event!.id].name}, the map's own event (no authored encounter).` : g.event?.bonus ? `Bonus wave: ${EVENTS[g.event.id].name} (no authored encounter).` : quietText(waveScale(g.map.id, version, g.wave))));
     }
     for (const e of list) {
       const card = el('div', 'v3-enc-card');
@@ -850,7 +854,12 @@ export class App {
       const title = el('p', 'v3-enc-title');
       title.append(el('b', '', e.name), el('i', '', e.role), el('small', '', `waves ${e.waves[0]}–${e.waves[e.waves.length - 1]}`));
       const beats = el('ol', 'v3-enc-beats');
-      for (const b of e.beats) beats.append(el('li', '', beatText(b)));
+      // An enemy pair (v3) first, in its order with the beats by time.
+      const lines = [
+        ...(e.pairs ?? []).map((p) => ({ at: p.at + (p.plus ?? 0) / 100, text: pairBeatText(p, enemyPair(p.pair)?.name ?? p.pair) })),
+        ...e.beats.map((b) => ({ at: b.at + (b.plus ?? 0) / 100, text: beatText(b) })),
+      ].sort((a, b) => a.at - b.at);
+      for (const l of lines) beats.append(el('li', '', l.text));
       const dl = el('dl', 'v3-enc-notes');
       for (const [k, v] of [['Decision', e.decision], ['Counters', e.counters], ['Works if', e.succeeds]] as const) dl.append(el('dt', '', k), el('dd', '', v));
       card.append(title, el('p', 'v3-enc-premise', e.premise), beats, dl);
@@ -858,7 +867,7 @@ export class App {
     }
     const arcLine = el('p', 'v3-enc-arc');
     arcLine.append(el('b', '', 'Arc'));
-    for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? EVENTS[evId].name : null)) {
+    for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? EVENTS[evId].name : null, version)) {
       const now = g.wave >= a.from && g.wave <= a.to;
       const chip = el('span', now ? 'now' : '', `${a.from === a.to ? a.from : `${a.from}–${a.to}`} ${a.name}`);
       if (now) chip.dataset.now = '1';
@@ -1465,6 +1474,14 @@ export class App {
         case 'specialEnd':
           this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '');
           break;
+        case 'encounter': {
+          // Round 12: an encounter's call-out as its warning shows (v2, Set
+          // pieces; any version with `callouts=1`): its name and one line.
+          // A warning, so it shows at Call-outs: Essential too, and at once.
+          const e = ENCOUNTERS.find((x) => x.id === ev.id);
+          if (e) this.showBanner(e.name.toUpperCase(), e.callout, { now: true, kind: 'warn', tone: 'raid', icon: 'target', key: `enc-${e.id}` });
+          break;
+        }
         case 'restore':
           // Round 7's experiment: the convoy back to full before the ending.
           this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
@@ -1478,8 +1495,10 @@ export class App {
           if (hint) this.showBanner(...hint, { ...HINT, icon: 'info' });
           // The Map & Convoy Lab: this wave's authored encounter, by name,
           // so a tester knows which one they are judging.
+          // (Round 12: a version with call-outs names each encounter as it
+          // starts instead, so not here as well.)
           const enc = g.enc?.wave === ev.wave ? ENCOUNTERS.find((e) => e.id === g.enc!.now[0]) : undefined;
-          if (enc) this.showBanner(`ENCOUNTER: ${enc.name.toUpperCase()}`, enc.premise, { icon: 'info' }, null);
+          if (enc && !calloutsOn(g.map.id, g.enc!.setup)) this.showBanner(`ENCOUNTER: ${enc.name.toUpperCase()}`, enc.premise, { icon: 'info' }, null);
           // Playthrough round: the first map teaches the two left-rail
           // controls a new player otherwise never learns (on a phone the
           // slider's own hint is hidden for room). Once each, ever.
@@ -4097,4 +4116,11 @@ function freeArmory(fp: FreeSetup): ArmoryLevels {
 /** What the sim (and the play log) needs from a Free Play setup. */
 function freePlaySetup(fp: FreeSetup): FreePlaySetup {
   return { weapons: fp.weapons.filter((w): w is { id: AbilityId; level: number } => !!w), frequentDrops: fp.frequentDrops, enemies: fp.enemies };
+}
+
+/** The pause script's line for a wave with no encounter (round 12: a
+ *  version can make it lighter or heavier than the shared wave). */
+function quietText(scale: number): string {
+  if (scale === 1) return 'No authored encounter this wave: the shared wave plays as it is.';
+  return `No authored encounter this wave: the shared wave at ${Math.round(scale * 100)}% of its drones and missiles${scale < 1 ? ' (a quiet wave)' : ''}.`;
 }

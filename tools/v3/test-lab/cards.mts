@@ -4,13 +4,14 @@
 // combo's inherited lines too; `own`, only its own lines).
 import { SCORECARD, SCORECARD_REV } from '../../../src/v3/data/scorecard';
 import { EVENT_WAVE } from '../../../src/v3/data/events';
-import { LAB_CARDS, LAB_CHANGES, LAB_RETIRED, LAB_ROUND, LAB_ROUNDS, LAB_SECTIONS, MAP_CARD_PLAYS, cardChangeList, cardRev, productionText } from '../../../src/v3/data/lab';
+import { LAB_CARDS, LAB_CHANGES, LAB_RETIRED, LAB_ROUND, LAB_ROUNDS, LAB_SECTIONS, MAP_CARD_PLAYS, cardChangeList, cardRev, cardVersion, productionText } from '../../../src/v3/data/lab';
 console.log(JSON.stringify({
   sections: LAB_SECTIONS,
   rounds: LAB_ROUNDS,
   round: LAB_ROUND,
-  // A map card (round 10) also says what it plays and how it opens.
-  cards: LAB_CARDS.map(({ id, kind, name, look, map }) => ({ id, kind, name, look, ...(kind === 'map' ? { plays: `${MAP_CARD_PLAYS} · ${productionText(map)}` } : {}), rev: cardRev(id), changes: cardChangeList(id), own: LAB_CHANGES[id] ?? [] })),
+  // A map card (round 10) also says what it plays and how it opens, and
+  // (round 12) which encounter version it is.
+  cards: LAB_CARDS.map((c) => ({ id: c.id, kind: c.kind, name: c.name, look: c.look, ...(c.kind === 'map' ? { plays: `${MAP_CARD_PLAYS} · ${productionText(c.map, cardVersion(c))}`, map: c.map, variant: cardVersion(c) } : {}), rev: cardRev(c.id), changes: cardChangeList(c.id), own: LAB_CHANGES[c.id] ?? [] })),
   // Cards cut from the lab: their verdicts stay readable (round 8).
   retired: LAB_RETIRED.map(({ id, kind, name, look, cut, why }) => ({ id, kind, name, look, cut, why })),
   // The map scorecard (round 11): its categories, and the first boss round.

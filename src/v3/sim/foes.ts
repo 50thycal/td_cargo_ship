@@ -72,6 +72,9 @@ export interface FoeMark {
   y: number;
   t: number;
   dur: number;
+  /** Telemetry only: the authored encounter whose enemy pair it is part
+   *  of (round 12); what comes up from it carries it on. */
+  enc?: string;
   /** A shell's gun (its threat id), and where it fires from. */
   link?: number;
   gx?: number;
@@ -1732,6 +1735,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
     if (m.kind === 'periscope') {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
       th.src = m.id;
+      if (m.enc) th.enc = m.enc;
       th.target = CARRIER_TARGET;
       th.heading = 0;
       const S = FOE.torpedoSub;
@@ -1746,6 +1750,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const path = divePath(m, a);
       const th = spawnThreat(g, 'diveBomber', path.sx, path.sy, 'air');
       th.src = m.id;
+      if (m.enc) th.enc = m.enc;
       th.target = CARRIER_TARGET;
       th.heading = a;
       th.foe = data({ px: m.x, py: m.y, sx: path.sx, sy: path.sy, dive: { len: path.len, app: path.app } });
@@ -1761,6 +1766,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
         cue(g, 'truck.raise', th.x, th.y, { gain: 0.6 });
       } else if (m.spawn) {
         const th = spawnThreat(g, 'siege', m.x, m.y, 'truck');
+        if (m.enc) th.enc = m.enc;
         th.target = CARRIER_TARGET;
         th.heading = Math.PI / 2;
         th.foe = data({ n: m.salvos ?? FOE.siege.salvos });

@@ -225,7 +225,32 @@ export const QUESTIONS = [
  * line on why it's asked.
  * @type {{ id: string, round: number, text: string, options: string[], why?: string }[]}
  */
-export const OPEN_QUESTIONS = [];
+export const OPEN_QUESTIONS = [
+  // Round 12 (docs/design/v3-round12-encounter-versions.md): what the three
+  // versions can't answer on their own.
+  {
+    id: 'r12-callouts',
+    round: 12,
+    text: 'v2 names each encounter on screen as it starts ("PINCER: Both shores at once"). Should every map do that, whichever version wins?',
+    options: [
+      'Yes, on every map: name each big moment as it starts (recommended)',
+      'Only on a map built on a few big set pieces',
+      'No: the lit bases and periscopes are enough',
+    ],
+    why: 'The call-out is separate from the version: v2 may win or lose for other reasons, and this decides whether it goes on the checklist for all 17 maps.',
+  },
+  {
+    id: 'r12-guests',
+    round: 12,
+    text: 'v3 brings enemies from later chapters (the helicopter, the sub, the Spotter, the siege gun) onto these first-chapter maps. If you like v3, should the early maps get later-chapter pairs?',
+    options: [
+      'Only each chapter\'s own pairs: keep the later enemies for their own chapters (recommended)',
+      'Yes: a taste of a later enemy early is fine',
+      'Only in the boss rounds',
+    ],
+    why: 'Chapter 1 has only one enemy pair of its own (Hydra + Drone Swarm), so v3 had to borrow; your answer decides whether the 17-map rollout can.',
+  },
+];
 
 /**
  * A round's design doc, in one line, for the page's round header. A round
@@ -241,5 +266,13 @@ export const ROUND_DOCS = {
   10: {
     doc: 'docs/design/v3-map-cards-production.md',
     summary: 'A map card now plays that map as the campaign does: waves 1–10 with its drafts, then its event ending, set up ready to test.',
+  },
+  11: {
+    doc: 'docs/design/v3-round11-map-notes.md',
+    summary: 'From your full-map playtest of 2026-11-14: boss rounds, Rush and Disperse cut (Hold only on Sowers\' Reach), decoys removed, Point Defense and Laser Cutter fixes, and a scorecard after each map run.',
+  },
+  12: {
+    doc: 'docs/design/v3-round12-encounter-versions.md',
+    summary: 'Three encounter versions of each reference map, each its own card: v1 the original, v2 Set pieces (four big named moments, quiet waves between), v3 Enemy pairs (a pair in most waves). Play all three of a map and fill the scorecard each time.',
   },
 };

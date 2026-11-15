@@ -111,6 +111,12 @@ export interface LabSet {
   led?: { id: number; t: number; base: number; station?: number };
   /** Which followers are out. */
   done: boolean[];
+  /** An authored encounter's set (round 12, v3: data/encounters.ts): its
+   *  own pair (a combo card's sets use the card's), the encounter that
+   *  placed it, and the base its lead comes out of (lit before it). */
+  pair?: LabPair;
+  enc?: string;
+  base?: number;
 }
 
 export function newLabState(setup: LabSetup): LabState | null {

@@ -13,14 +13,36 @@
 // An encounter is a decision, not a list of extra enemies: each one says
 // what the player is asked to choose, what answers it, and what would show
 // it worked. Only enemies the map already has at that wave may appear
-// (tests/v3/encounters.test.ts checks every beat against the map).
+// (tests/v3/encounters.test.ts checks every beat against the map), except
+// in a version that says it brings enemy pairs in (`guests`, below).
+//
+// VERSIONS (Test Lab round 12, docs/design/v3-round12-encounter-versions.md).
+// Each reference map has three encounter versions, each built round one
+// idea, so playing them side by side teaches us something for the maps'
+// quality checklist:
+// - v1, the original nine (slice 5), unchanged;
+// - v2 "Set pieces": four big, named moments a map, each announced by a
+//   call-out as it starts, with quiet waves between (the wave budget moves
+//   from the quiet waves to the set pieces, `scale`);
+// - v3 "Enemy pairs": an encounter in most waves, each built from one of
+//   the enemy pairs (data/pairs.ts), taught, then combined, then escalated.
+// A run's version is in its EncounterSetup (and so in its play log).
 
 import type { ThreatKind } from './config';
+import type { FoeId } from './foes';
 import type { MapId } from './maps';
 
 /** Bump when any encounter's beats change: runs under different encounters
- *  are never compared as one. */
-export const ENCOUNTER_REV = 1;
+ *  are never compared as one. Rev 2 (round 12): the versions; v1's beats
+ *  are rev 1's, unchanged, so a rev 1 log replays as it did. */
+export const ENCOUNTER_REV = 2;
+
+/** A reference map's encounter version. */
+export type EncounterVersion = 'v1' | 'v2' | 'v3';
+export const ENCOUNTER_VERSIONS: EncounterVersion[] = ['v1', 'v2', 'v3'];
+
+/** The version a run with nothing said plays (every log before round 12). */
+export const VERSION_DEFAULT: EncounterVersion = 'v1';
 
 export interface EncounterSetup {
   rev: number;
@@ -28,6 +50,22 @@ export interface EncounterSetup {
    *  list is the layer with nothing in it: the shared wave on the same
    *  dice, to compare an encounter's wave against. */
   only?: string[];
+  /** The map's encounter version (absent: v1, as every log before round
+   *  12). */
+  version?: EncounterVersion;
+  /** The call-out as each encounter starts: on or off whatever the
+   *  version says (absent: the version's own `callouts`). */
+  callouts?: boolean;
+}
+
+/** Is this a version id? */
+export function isVersion(v: unknown): v is EncounterVersion {
+  return typeof v === 'string' && (ENCOUNTER_VERSIONS as string[]).includes(v);
+}
+
+/** A run's version: what its setup says, else v1. */
+export function setupVersion(s: Pick<EncounterSetup, 'version'> | null | undefined): EncounterVersion {
+  return isVersion(s?.version) ? s.version : VERSION_DEFAULT;
 }
 
 /** Where a beat's launches come from: a base of the map (its index), a
@@ -53,23 +91,45 @@ export interface Beat {
   aim?: BeatAim;
 }
 
+/** An enemy pair placed by an encounter (v3): one set of the pair (data/
+ *  pairs.ts), or `count` sets `every` s apart, its members launched on the
+ *  pair's own cues (the Test Lab's combo cards launch them the same way). */
+export interface PairBeat {
+  /** When its lead launches, as a Beat's `at` and `plus`. */
+  at: number;
+  plus?: number;
+  /** The pair's id (data/pairs.ts). */
+  pair: string;
+  /** The base its lead comes out of, when the lead comes from a base: lit
+   *  as a raid's warning before it fires. Absent: the pair's own rule. */
+  base?: number;
+  count?: number;
+  every?: number;
+}
+
 export type ArcRole = 'teach' | 'combine' | 'escalate' | 'climax';
 
 export interface Encounter {
   id: string;
   map: MapId;
+  version: EncounterVersion;
   /** The waves it plays in. */
   waves: number[];
   role: ArcRole;
   name: string;
   /** What the player sees, in a line. */
   premise: string;
+  /** The call-out's second line as it starts (its first is the name):
+   *  short, "Both shores at once". */
+  callout: string;
   /** The decision it asks for, what answers it, and what would show it
    *  worked (for the designer; never shown in the game). */
   decision: string;
   counters: string;
   succeeds: string;
   beats: Beat[];
+  /** Enemy pairs it places (v3). */
+  pairs?: PairBeat[];
   /** Taken out of the wave's own launches, so the wave is no bigger. */
   replaces: { drones?: number; ballistic?: number; guided?: number };
 }
@@ -77,7 +137,8 @@ export interface Encounter {
 const base = (i: number): BeatFrom => ({ base: i });
 const sub = (i: number): BeatFrom => ({ sub: i });
 
-export const ENCOUNTERS: Encounter[] = [
+/** The original nine (slice 5), version 1. Their beats are rev 1's. */
+const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   // ---- The Strait: where threats come from, and how to answer one ---------
   {
     id: 'strait-ranging-shots',
@@ -222,23 +283,772 @@ export const ENCOUNTERS: Encounter[] = [
   },
 ];
 
-/** A map's encounters for a wave (none on a map with no authored layer, or
- *  a wave past the tenth: the ending is the map's own event). */
-export function encountersFor(map: MapId, wave: number): Encounter[] {
-  return ENCOUNTERS.filter((e) => e.map === map && e.waves.includes(wave));
+/** Version 1's call-out lines (only shown when a run turns call-outs on). */
+const V1_CALLOUT: Record<string, string> = {
+  'strait-ranging-shots': 'Two shells from the middle base',
+  'strait-screen': 'A missile behind the swarm',
+  'strait-rolling-push': 'West to east, two seconds apart',
+  'gauntlet-north-then-south': 'North shore, then south',
+  'gauntlet-overlap': 'Shells and a swarm, two shores',
+  'gauntlet-crossfire': 'Both shores and a strafer',
+  'harbor-open-water': 'Drones on the open water',
+  'harbor-funnel-salvo': 'A sub fires into the funnel',
+  'harbor-last-mile': 'Everything on the last mile',
+};
+
+// ---- Version 2: Set pieces ---------------------------------------------------
+// Four big, readable moments a map, each named by a call-out as its warning
+// starts (the bases light, the periscopes show, the arrows point), on waves
+// whose budget is raised; the waves between are quieter. Each set piece is
+// built on the map's own shape: The Strait's three bases in a row, The
+// Gauntlet's two shores, Harbor Mouth's narrows and its submarines.
+
+const V2: Omit<Encounter, 'version'>[] = [
+  // ---- The Strait: the three-base sweep ----
+  {
+    id: 'strait-v2-sweep',
+    map: 'strait',
+    waves: [3],
+    role: 'teach',
+    name: 'The sweep',
+    callout: 'West to east, all three bases',
+    premise: 'The three bases light and fire in turn from west to east, under two seconds apart: drones, shells, then drones again.',
+    decision: 'Three warnings in a row, one order to fire in: follow it, or get ahead of the east base?',
+    counters: 'Clear the west swarm, tap the shells as they climb, then turn east.',
+    succeeds: 'Hull lost in the sweep falls when it is met again (wave 8 is its echo); the player can say the order afterwards.',
+    beats: [
+      { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.3, plus: 1.6, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
+      { at: 0.3, plus: 3.4, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 8, ballistic: 2 },
+  },
+  {
+    id: 'strait-v2-both-sides',
+    map: 'strait',
+    waves: [5],
+    role: 'combine',
+    name: 'Both sides',
+    callout: 'Subs north and south of the lane',
+    premise: 'Two periscopes at once, one off the north shore and one behind the convoy on the south side; each fires a salvo at the lead ship.',
+    decision: 'The threat comes from behind you for the first time: which salvo first?',
+    counters: 'Tap the shells as they climb; the south salvo is closer to the ships and lands sooner.',
+    succeeds: 'Both salvos are shot at; the player looks south once the periscope shows.',
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
+      { at: 0.4, plus: 0.6, kind: 'ballistic', count: 3, gap: 0.75, from: sub(4), aim: 'lead' },
+    ],
+    replaces: { ballistic: 6 },
+  },
+  {
+    id: 'strait-v2-air-raid',
+    map: 'strait',
+    waves: [8],
+    role: 'escalate',
+    name: 'Air raid',
+    callout: 'A bomber over the north water',
+    premise: 'A bomber flies in from the west along the north water and the middle base sends a swarm under it.',
+    decision: 'The bomber\'s missiles or the swarm under it: what can wait?',
+    counters: 'The bomber\'s missiles as they drop; the swarm is slower.',
+    succeeds: 'The arrow is read: the bomber\'s missiles are shot at before they land.',
+    beats: [
+      { at: 0.45, kind: 'bomber', count: 1, from: { air: 1 } },
+      { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 8, guided: 2 },
+  },
+  {
+    id: 'strait-v2-long-sweep',
+    map: 'strait',
+    waves: [10],
+    role: 'climax',
+    name: 'The long sweep',
+    callout: 'East to west this time',
+    premise: 'The sweep again, the other way and quicker: a guided missile from the east base, shells from the middle, then a swarm from the west.',
+    decision: 'You know the sweep: now it comes the other way, a second apart.',
+    counters: 'The missile first; then the shells as they climb.',
+    succeeds: 'Hull lost here is no worse than wave 9\'s by more than a ship; the player calls it fair.',
+    beats: [
+      { at: 0.4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.4, plus: 1.4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) },
+      { at: 0.4, plus: 2.8, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 6, ballistic: 2, guided: 1 },
+  },
+  // ---- The Gauntlet: a true two-shore pincer ----
+  {
+    id: 'gauntlet-v2-pincer',
+    map: 'gauntlet',
+    waves: [3],
+    role: 'teach',
+    name: 'Pincer',
+    callout: 'Both shores at once',
+    premise: 'A swarm from the north shore and one from the south at the same second, then shells from the north-east base.',
+    decision: 'Both shores light together: which side do you clear first, and how do you get back?',
+    counters: 'Take the nearer swarm, then the shells as they climb, then the far swarm.',
+    succeeds: 'Damage by shore is even; the far lane is not abandoned.',
+    beats: [
+      { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.35, plus: 1.6, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
+    ],
+    replaces: { drones: 10, ballistic: 2 },
+  },
+  {
+    id: 'gauntlet-v2-scissors',
+    map: 'gauntlet',
+    waves: [5],
+    role: 'combine',
+    name: 'Scissors',
+    callout: 'Shells north, a missile south',
+    premise: 'The north-east base and the south-east base fire in the same second, shells from one side and a guided missile at the lead ship from the other; a swarm follows from the south.',
+    decision: 'Two answers from two shores at once: which one do you leave?',
+    counters: 'The missile (it homes); then the shells as they climb.',
+    succeeds: 'The lead ship survives in most runs; both shores are shot at.',
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) },
+      { at: 0.4, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.4, plus: 2.2, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 5, ballistic: 2, guided: 1 },
+  },
+  {
+    id: 'gauntlet-v2-channel-run',
+    map: 'gauntlet',
+    waves: [8],
+    role: 'escalate',
+    name: 'Channel run',
+    callout: 'A strafer down the channel',
+    premise: 'A strafer comes down the channel from the west, and both shores send a swarm behind it.',
+    decision: 'An arrow from the west, and both shores firing: what has the shortest fuse?',
+    counters: 'The strafer first; the swarms are slower than they look.',
+    succeeds: 'The strafer is shot at before its run; ships lost to strafers fall against wave 8 of v1.',
+    beats: [
+      { at: 0.45, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.45, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.45, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 13 },
+  },
+  {
+    id: 'gauntlet-v2-full-pincer',
+    map: 'gauntlet',
+    waves: [10],
+    role: 'climax',
+    name: 'Full pincer',
+    callout: 'All four bases',
+    premise: 'All four bases light within a second: swarms from the west of each shore, then shells from the north-east and guided missiles from the south-east.',
+    decision: 'Everything warned of at once from both shores: what can wait two seconds?',
+    counters: 'Missiles and shells first (they are few and committed), then the swarms.',
+    succeeds: 'The most threats on screen is the run\'s peak, and the player can say what hit them.',
+    beats: [
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.4, plus: 1.2, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
+      { at: 0.4, plus: 1.2, kind: 'guided', count: 2, gap: 0.9, from: base(3), aim: 'lead' },
+    ],
+    replaces: { drones: 10, ballistic: 2, guided: 2 },
+  },
+  // ---- Harbor Mouth: the submarine ambush at the narrows ----
+  {
+    id: 'harbor-v2-ambush',
+    map: 'harbor',
+    waves: [2],
+    role: 'teach',
+    name: 'Ambush',
+    callout: 'A sub at the narrows',
+    premise: 'A periscope off the mouth of the narrows; the sub fires a salvo into the funnel, and the north headland sends a swarm down after it.',
+    decision: 'The periscope shows first: get ready over the funnel before the salvo.',
+    counters: 'Tap the shells as they climb; the swarm after them is slow.',
+    succeeds: 'The player looks at the periscope when it shows (taps near the funnel before the first shell lands).',
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
+      { at: 0.35, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'narrows' },
+    ],
+    replaces: { ballistic: 3, drones: 4 },
+  },
+  {
+    id: 'harbor-v2-headlands',
+    map: 'harbor',
+    waves: [4],
+    role: 'combine',
+    name: 'Headlands',
+    callout: 'Both headlands on the neck',
+    premise: 'The north and south headlands fire guided missiles at the ship in the neck at the same second, then a swarm from the south shore.',
+    decision: 'Two missiles at one ship from two sides, then a swarm: where do your taps go?',
+    counters: 'The missiles first (they home); the swarm is slow from the south.',
+    succeeds: 'The ship in the neck survives in most runs.',
+    beats: [
+      { at: 0.4, kind: 'guided', count: 1, from: base(2), aim: 'narrows' },
+      { at: 0.4, kind: 'guided', count: 1, from: base(3), aim: 'narrows' },
+      { at: 0.4, plus: 2.2, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    replaces: { guided: 2, drones: 4 },
+  },
+  {
+    id: 'harbor-v2-wolf-pack',
+    map: 'harbor',
+    waves: [7],
+    role: 'escalate',
+    name: 'Wolf pack',
+    callout: 'Two subs: the mouth, and behind you',
+    premise: 'A sub surfaces off the narrows and another in the open water behind the convoy; both fire salvos, the second a few seconds after the first.',
+    decision: 'The first salvo pulls you to the funnel; the second is behind you: do you turn in time?',
+    counters: 'Both periscopes show before their salvos; look back west after the first.',
+    succeeds: 'Both salvos are shot at; ships lost in the open water stay low.',
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
+      { at: 0.4, plus: 3, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'any' },
+    ],
+    replaces: { ballistic: 5 },
+  },
+  {
+    id: 'harbor-v2-harbor-gate',
+    map: 'harbor',
+    waves: [10],
+    role: 'climax',
+    name: 'Harbor gate',
+    callout: 'Everything at the neck',
+    premise: 'A sub at the mouth, the north-east base\'s guided pair at the lead ship, and a swarm from the south: everything on the last ships home.',
+    decision: 'The last mile, with every warning on screen: what can wait?',
+    counters: 'The guided pair, then the shells; the swarm is slow from the south.',
+    succeeds: 'Ships lost here are no more than wave 9\'s plus one; the player calls it hard but fair.',
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
+      { at: 0.4, plus: 1.2, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
+      { at: 0.4, plus: 2.8, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+    ],
+    replaces: { ballistic: 3, guided: 2, drones: 5 },
+  },
+];
+
+// ---- Version 3: Enemy pairs --------------------------------------------------
+// The player (Test Lab round 8): enemy pairs are "good synergy combos to add
+// to the maps". Each map takes three pairs that suit its water. Each pair is
+// taught on its own (one set, in a lighter wave), then combined with the
+// map's own fire, then two pairs overlap. The pairs from chapters 2 and 3
+// are guests on these chapter 1 maps (`guests`): this version tries them
+// here on purpose.
+
+const pairsOf = (...ps: (string | [string, number?, number?])[]): PairBeat[] => ps.map((p, k) => (typeof p === 'string' ? { at: 0.3 + k * 0.3, pair: p } : { at: p[1] ?? 0.3, pair: p[0], ...(p[2] !== undefined ? { base: p[2] } : {}) }));
+
+const V3: Omit<Encounter, 'version'>[] = [
+  // ---- The Strait: Hydra + Drone Swarm, Scavenger + Drone Swarm, Attack Helicopter + Torpedo Sub ----
+  {
+    id: 'strait-v3-hydra-teach',
+    map: 'strait',
+    waves: [2],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'A drone swarm from the far base with a Hydra launched to catch it up, so they arrive together.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.35, 0]),
+    replaces: { drones: 10 },
+  },
+  {
+    id: 'strait-v3-hydra-combine',
+    map: 'strait',
+    waves: [3],
+    role: 'combine',
+    name: 'Hydra and shells',
+    callout: 'Hydra swarm, and shells behind it',
+    premise: 'The Hydra swarm again, and two shells from the middle base as it closes.',
+    decision: 'The Hydra or the shells: both want the same taps.',
+    counters: 'The Hydra out in the swarm, then the shells as they climb.',
+    succeeds: 'Hull lost to darts falls from wave 2.',
+    beats: [{ at: 0.35, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
+    pairs: pairsOf(['hydra-swarm', 0.35, 2]),
+    replaces: { drones: 10, ballistic: 2 },
+  },
+  {
+    id: 'strait-v3-scavenger-teach',
+    map: 'strait',
+    waves: [4],
+    role: 'teach',
+    name: 'The Scavenger',
+    callout: 'Something waits over your drops',
+    premise: 'A Scavenger circles over the water where your pickups fall; a swarm comes in while it circles.',
+    decision: 'Shoot the Scavenger to free your pickups, or the swarm first?',
+    counters: 'The swarm, then the Scavenger before the next drop.',
+    succeeds: 'Pickups locked by it are freed in most runs.',
+    beats: [],
+    pairs: pairsOf(['scavenger-swarm', 0.3]),
+    replaces: { drones: 11 },
+  },
+  {
+    id: 'strait-v3-scavenger-combine',
+    map: 'strait',
+    waves: [5],
+    role: 'combine',
+    name: 'Scavenger and shells',
+    callout: 'The Scavenger, and shells behind',
+    premise: 'The Scavenger and its swarm, and two shells from the middle base while your drops are locked.',
+    decision: 'Ammo runs down on the swarm and the shells while the Scavenger holds your drops.',
+    counters: 'Keep a tap for the Scavenger; the shells as they climb.',
+    succeeds: 'No run runs dry here more than wave 4 did.',
+    beats: [{ at: 0.25, plus: 4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
+    pairs: pairsOf(['scavenger-swarm', 0.25]),
+    replaces: { drones: 11, ballistic: 2 },
+  },
+  {
+    id: 'strait-v3-heli-teach',
+    map: 'strait',
+    waves: [6],
+    role: 'teach',
+    name: 'Helicopter and sub',
+    callout: 'A helicopter, and a periscope under it',
+    premise: 'An Attack Helicopter comes to hover by the lane; a Torpedo Sub surfaces under its hover a second after it gets there.',
+    decision: 'The helicopter keeps your gun busy; the sub is up only a short time: which first?',
+    counters: 'The sub while it is up; the helicopter after.',
+    succeeds: 'The sub is shot at while it is up in most runs.',
+    beats: [],
+    pairs: pairsOf(['heli-sub', 0.3]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'strait-v3-heli-combine',
+    map: 'strait',
+    waves: [7],
+    role: 'combine',
+    name: 'Helicopter, sub and a swarm',
+    callout: 'Helicopter and sub, a swarm behind',
+    premise: 'The helicopter and its sub again, while the west base sends a swarm.',
+    decision: 'The pair and a swarm: what can wait?',
+    counters: 'The sub, then the swarm, then the helicopter.',
+    succeeds: 'Ships lost here are no more than wave 6\'s plus one.',
+    beats: [
+      { at: 0.3, plus: 5, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    pairs: pairsOf(['heli-sub', 0.3]),
+    replaces: { drones: 14, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'strait-v3-escalate-1',
+    map: 'strait',
+    waves: [8],
+    role: 'escalate',
+    name: 'Two swarms with company',
+    callout: 'Scavenger, then a Hydra swarm',
+    premise: 'The Scavenger pair and the Hydra pair overlap: two swarms, a Hydra in one of them, and your drops locked.',
+    decision: 'Two pairs at once: which half of each do you break?',
+    counters: 'The Hydra early, the Scavenger before your next drop.',
+    succeeds: 'The two pairs are on screen together for several seconds, and ships lost stay level with wave 7.',
+    beats: [],
+    pairs: pairsOf(['scavenger-swarm', 0.3], ['hydra-swarm', 0.45, 2]),
+    replaces: { drones: 14, ballistic: 4, guided: 4 },
+  },
+  {
+    id: 'strait-v3-escalate-2',
+    map: 'strait',
+    waves: [9],
+    role: 'escalate',
+    name: 'Air, water and a Hydra',
+    callout: 'Helicopter and sub, then a Hydra swarm',
+    premise: 'The helicopter and its sub, and a Hydra swarm from the west while the sub is up.',
+    decision: 'Three different answers in a few seconds.',
+    counters: 'The sub while it is up, the Hydra out in its swarm, then the helicopter.',
+    succeeds: 'Ships lost stay within one of wave 8.',
+    beats: [],
+    pairs: pairsOf(['heli-sub', 0.3], ['hydra-swarm', 0.5, 0]),
+    replaces: { drones: 21, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'strait-v3-climax',
+    map: 'strait',
+    waves: [10],
+    role: 'climax',
+    name: 'Finale: Hydra and helicopter',
+    callout: 'A Hydra swarm, then helicopter and sub',
+    premise: 'Two of the pairs you met, one after the other: a Hydra swarm from the west, then the helicopter and its sub.',
+    decision: 'What you learned, in order: keep up.',
+    counters: 'Each pair\'s own answer, one at a time.',
+    succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.2, 0], ['heli-sub', 0.55]),
+    replaces: { drones: 21, guided: 1, ballistic: 1 },
+  },
+  // ---- The Gauntlet: Hydra + Drone Swarm, Armored Drones + Hydra, Siege Battery + Rocket Truck ----
+  {
+    id: 'gauntlet-v3-hydra-teach',
+    map: 'gauntlet',
+    waves: [2],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'A swarm off the north shore with a Hydra launched to catch it up.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.35, 0]),
+    replaces: { drones: 10 },
+  },
+  {
+    id: 'gauntlet-v3-hydra-combine',
+    map: 'gauntlet',
+    waves: [3],
+    role: 'combine',
+    name: 'Hydra across the channel',
+    callout: 'Hydra swarm south, shells north',
+    premise: 'The Hydra swarm from the south shore, and shells from the north shore as it closes.',
+    decision: 'Two shores and two answers: Hydra or shells?',
+    counters: 'The Hydra out in the swarm, then the shells as they climb.',
+    succeeds: 'Damage by shore is even.',
+    beats: [{ at: 0.35, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
+    pairs: pairsOf(['hydra-swarm', 0.35, 2]),
+    replaces: { drones: 10, ballistic: 2 },
+  },
+  {
+    id: 'gauntlet-v3-armored-teach',
+    map: 'gauntlet',
+    waves: [4],
+    role: 'teach',
+    name: 'Plates and a Hydra',
+    callout: 'Armored drones, a Hydra behind',
+    premise: 'Two Armored Drones from the north shore, and a Hydra launched to arrive with them.',
+    decision: 'The plates make you wait for their bank; the Hydra makes you shoot early.',
+    counters: 'Shoot the Hydra early; wait for the drones to bank, or blast them.',
+    succeeds: 'The Hydra is killed before it splits in most runs.',
+    beats: [],
+    pairs: pairsOf(['armored-hydra', 0.35, 1]),
+    replaces: { drones: 15 },
+  },
+  {
+    id: 'gauntlet-v3-armored-combine',
+    map: 'gauntlet',
+    waves: [5],
+    role: 'combine',
+    name: 'Plates over the channel',
+    callout: 'Armored drones and a Hydra, south',
+    premise: 'The armored pair from the south shore this time, with the wave\'s own fire from the north.',
+    decision: 'Wait for the bank in the south, or turn to the north shore?',
+    counters: 'The Hydra first, then the drones as they bank.',
+    succeeds: 'The far lane is not abandoned.',
+    beats: [],
+    pairs: pairsOf(['armored-hydra', 0.35, 2]),
+    replaces: { drones: 15 },
+  },
+  {
+    id: 'gauntlet-v3-siege-teach',
+    map: 'gauntlet',
+    waves: [6],
+    role: 'teach',
+    name: 'Truck, then gun',
+    callout: 'Rockets, then shells',
+    premise: 'A Rocket Truck comes down a shore road and fires; as it fires its last salvo a Siege Battery rises from its hatch.',
+    decision: 'Two launchers you can\'t outshoot: which do you break first?',
+    counters: 'The truck before it fires; the gun while it is up.',
+    succeeds: 'The truck is killed before its third salvo in most runs.',
+    beats: [],
+    pairs: pairsOf(['siege-truck', 0.2]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'gauntlet-v3-siege-combine',
+    map: 'gauntlet',
+    waves: [7],
+    role: 'combine',
+    name: 'Launchers and a swarm',
+    callout: 'Truck and gun, a swarm from the south',
+    premise: 'The truck and its gun again, and a swarm from the south shore while they take turns.',
+    decision: 'The launchers or the swarm?',
+    counters: 'The truck early, the swarm, then the gun while it is up.',
+    succeeds: 'Ships lost stay within one of wave 6.',
+    beats: [
+      { at: 0.2, plus: 8, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+    ],
+    pairs: pairsOf(['siege-truck', 0.2]),
+    replaces: { drones: 14, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'gauntlet-v3-escalate-1',
+    map: 'gauntlet',
+    waves: [8],
+    role: 'escalate',
+    name: 'Hydras on both shores',
+    callout: 'Two Hydra pairs, two shores',
+    premise: 'The Hydra swarm from the south and the armored pair from the north, a few seconds apart.',
+    decision: 'Two Hydras from two shores: which do you take first?',
+    counters: 'Both Hydras early; the drones as they bank.',
+    succeeds: 'Hull lost to darts stays level with wave 5.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.3, 2], ['armored-hydra', 0.45, 1]),
+    replaces: { drones: 26 },
+  },
+  {
+    id: 'gauntlet-v3-escalate-2',
+    map: 'gauntlet',
+    waves: [9],
+    role: 'escalate',
+    name: 'Launchers and a Hydra',
+    callout: 'Truck and gun, and a Hydra swarm',
+    premise: 'The truck and its gun take turns, and a Hydra swarm comes off the north shore between them.',
+    decision: 'The launchers keep firing while the Hydra closes.',
+    counters: 'The truck early, the Hydra out in its swarm, the gun while it is up.',
+    succeeds: 'Ships lost stay within one of wave 8.',
+    beats: [],
+    pairs: pairsOf(['siege-truck', 0.2], ['hydra-swarm', 0.5, 0]),
+    replaces: { drones: 21, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'gauntlet-v3-climax',
+    map: 'gauntlet',
+    waves: [10],
+    role: 'climax',
+    name: 'Finale: launchers and plates',
+    callout: 'Armored pair, then truck and gun',
+    premise: 'Two of the pairs you met, one after the other: the armored pair off the north shore, then the truck and its gun.',
+    decision: 'What you learned, in order: keep up.',
+    counters: 'Each pair\'s own answer, one at a time.',
+    succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    beats: [],
+    pairs: pairsOf(['armored-hydra', 0.2, 1], ['siege-truck', 0.45]),
+    replaces: { drones: 25, guided: 1, ballistic: 1 },
+  },
+  // ---- Harbor Mouth: Hydra + Drone Swarm, Attack Helicopter + Torpedo Sub, Spotter + Siege Battery ----
+  {
+    id: 'harbor-v3-hydra-teach',
+    map: 'harbor',
+    waves: [2],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'A swarm from the west base with a Hydra launched to catch it up, over the open water.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.35, 0]),
+    replaces: { drones: 10, ballistic: 1 },
+  },
+  {
+    id: 'harbor-v3-hydra-combine',
+    map: 'harbor',
+    waves: [3],
+    role: 'combine',
+    name: 'Hydra off the headland',
+    callout: 'A Hydra swarm off the headland',
+    premise: 'The Hydra swarm from the north headland, down onto the ships at the neck, with the wave\'s own fire.',
+    decision: 'In the narrows the darts have nowhere to miss: kill it early.',
+    counters: 'The Hydra out in the swarm, before it is over the neck.',
+    succeeds: 'Hull lost in the narrows to darts stays low.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.35, 1]),
+    replaces: { drones: 10, ballistic: 2 },
+  },
+  {
+    id: 'harbor-v3-heli-teach',
+    map: 'harbor',
+    waves: [4],
+    role: 'teach',
+    name: 'Helicopter and sub',
+    callout: 'A helicopter, and a periscope under it',
+    premise: 'An Attack Helicopter hovers by the lane; a Torpedo Sub surfaces on the water under it.',
+    decision: 'The helicopter keeps your gun busy; the sub is up only a short time: which first?',
+    counters: 'The sub while it is up; the helicopter after.',
+    succeeds: 'The sub is shot at while it is up in most runs.',
+    beats: [],
+    pairs: pairsOf(['heli-sub', 0.3]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'harbor-v3-heli-combine',
+    map: 'harbor',
+    waves: [5],
+    role: 'combine',
+    name: 'Helicopter over the neck',
+    callout: 'Helicopter and sub at the neck',
+    premise: 'The helicopter and its sub again, now with the wave\'s own fire and the neck closer.',
+    decision: 'The pair and the wave at once: what can wait?',
+    counters: 'The sub while it is up, then the helicopter.',
+    succeeds: 'Ships lost stay within one of wave 4.',
+    beats: [],
+    pairs: pairsOf(['heli-sub', 0.3]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'harbor-v3-spotter-teach',
+    map: 'harbor',
+    waves: [6],
+    role: 'teach',
+    name: 'Painted ship',
+    callout: 'A Spotter, and a gun rising',
+    premise: 'A Spotter flies in and paints a ship; a Siege Battery rises while it paints, so its shells land with the strike it calls.',
+    decision: 'The painted ship or the gun: which do you break first?',
+    counters: 'The Spotter before it calls, or the gun while it is up.',
+    succeeds: 'The Spotter is shot down before its first strike in most runs.',
+    beats: [],
+    pairs: pairsOf(['spotter-siege', 0.25]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'harbor-v3-spotter-combine',
+    map: 'harbor',
+    waves: [7],
+    role: 'combine',
+    name: 'Painted at the neck',
+    callout: 'Spotter and gun over the neck',
+    premise: 'The Spotter and its gun again, with the wave\'s own fire, as the ships reach the neck.',
+    decision: 'The wave or the Spotter?',
+    counters: 'The Spotter before it calls, then the gun while it is up.',
+    succeeds: 'Ships lost stay within one of wave 6.',
+    beats: [],
+    pairs: pairsOf(['spotter-siege', 0.25]),
+    replaces: { drones: 10, guided: 1, ballistic: 1 },
+  },
+  {
+    id: 'harbor-v3-escalate-1',
+    map: 'harbor',
+    waves: [8],
+    role: 'escalate',
+    name: 'Two Hydras',
+    callout: 'Hydra swarms off both headlands',
+    premise: 'A Hydra swarm from the west base, and a second off the north headland as the first closes.',
+    decision: 'Two Hydras, one in the open water and one over the neck: which first?',
+    counters: 'Each Hydra out in its swarm, the nearer the neck first.',
+    succeeds: 'Ships lost stay within one of wave 7.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.2, 0], ['hydra-swarm', 0.5, 1]),
+    replaces: { drones: 14, ballistic: 4, guided: 4 },
+  },
+  {
+    id: 'harbor-v3-escalate-2',
+    map: 'harbor',
+    waves: [9],
+    role: 'escalate',
+    name: 'Hydra and the sub',
+    callout: 'Helicopter and sub, then a Hydra swarm',
+    premise: 'The helicopter and its sub, and a Hydra swarm from the west once the sub is up.',
+    decision: 'Two pairs at the mouth: which half of each do you break?',
+    counters: 'The sub while it is up, the Hydra out in its swarm, then the helicopter.',
+    succeeds: 'Ships lost stay within one of wave 8: no cliff.',
+    beats: [],
+    pairs: pairsOf(['heli-sub', 0.2], ['hydra-swarm', 0.65, 0]),
+    replaces: { drones: 15, ballistic: 4, guided: 4 },
+  },
+  {
+    id: 'harbor-v3-climax',
+    map: 'harbor',
+    waves: [10],
+    role: 'climax',
+    name: 'Finale: Hydra and Spotter',
+    callout: 'A Hydra swarm, then Spotter and gun',
+    premise: 'Two of the pairs you met, one after the other: a Hydra swarm from the west, then the Spotter and its gun.',
+    decision: 'What you learned, in order: keep up.',
+    counters: 'Each pair\'s own answer, one at a time.',
+    succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.2, 0], ['spotter-siege', 0.5]),
+    replaces: { drones: 21, guided: 1, ballistic: 1 },
+  },
+];
+
+export const ENCOUNTERS: Encounter[] = [
+  ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
+  ...V2.map((e) => ({ ...e, version: 'v2' as const })),
+  ...V3.map((e) => ({ ...e, version: 'v3' as const })),
+];
+
+// ---- The versions, per map ---------------------------------------------------
+
+export type EncounterMap = 'strait' | 'gauntlet' | 'harbor';
+export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
+
+export interface VersionDef {
+  /** Its name and its idea in a line, for the player. */
+  name: string;
+  idea: string;
+  /** A call-out as each encounter starts (data/encounters' `callout`). */
+  callouts: boolean;
+  /** Each wave's share of the shared wave's own drones and missiles (waves
+   *  1 to 10; 1 is the wave as it is). The set pieces move budget from the
+   *  quiet waves to theirs: the ten add up to no more than ten. */
+  scale?: number[];
+  /** Enemies it brings that the map's chapter doesn't (v3's pairs). */
+  guests?: FoeId[];
+}
+
+const QUIET = 0.85;
+const PEAK = 1.15;
+/** Set pieces on waves 3, 5, 8 and 10. Harbor Mouth's on 2, 4, 7 and 10:
+ *  its shared wave 5 is already a step up (strafers, bombers and a heavy
+ *  arrive by then), and waves 8 and 9, its cliff in v1, are quiet. */
+const SET_PIECES = [0.9, QUIET, PEAK, QUIET, PEAK, QUIET, QUIET, PEAK, QUIET, 1.0];
+/** The Gauntlet: its shared waves 5 and 8 are already steps up (wave 8 is
+ *  a cliff in every version), so those set pieces come on less budget. */
+const SET_PIECES_GAUNTLET = [0.9, 0.85, 1.15, 0.95, 1.0, 0.85, 0.85, 0.85, 0.85, 1.0];
+const SET_PIECES_HARBOR = [0.9, 1.05, 0.95, 1.1, 0.95, 0.95, 1.0, 0.9, 0.9, 1.0];
+
+/** v3: a wave with an enemy pair gives up a little more of its own fire
+ *  than the pair's launches (a pair is worth more than its count). */
+const PAIRS = [1, 0.95, 0.9, 1.0, 0.8, 0.85, 0.85, 1.0, 0.75, 0.7];
+/** Harbor Mouth's pairs come with less of its own fire: the narrows give
+ *  the guests' shots nowhere to miss. */
+const PAIRS_HARBOR = [1, 0.9, 0.85, 0.8, 0.65, 0.7, 0.65, 0.75, 0.65, 0.75];
+/** The Gauntlet's siege gun (wave 6) is the heaviest guest: its wave gives
+ *  up more. */
+const PAIRS_GAUNTLET = [1, 0.95, 0.8, 0.8, 0.75, 0.75, 0.85, 0.65, 0.85, 0.8];
+
+export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, VersionDef>> = {
+  strait: {
+    v1: { name: 'Original', idea: 'The first encounters: one small scripted moment in most waves, on top of the shared waves.', callouts: false },
+    v2: { name: 'Set pieces', idea: 'Four big named moments built on the three bases in a row (the sweep), announced as they start, with quiet waves between.', callouts: true, scale: SET_PIECES },
+    v3: { name: 'Enemy pairs', idea: 'An enemy pair in most waves: Hydra + swarm, Scavenger + swarm, helicopter + sub, each taught, then combined, then overlapped.', callouts: false, scale: PAIRS, guests: ['scavenger', 'attackHeli', 'torpedoSub'] },
+  },
+  gauntlet: {
+    v1: { name: 'Original', idea: 'The first encounters: one small scripted moment in most waves, on top of the shared waves.', callouts: false },
+    v2: { name: 'Set pieces', idea: 'Four big named moments built on the two shores (a true pincer), announced as they start, with quiet waves between.', callouts: true, scale: SET_PIECES_GAUNTLET },
+    v3: { name: 'Enemy pairs', idea: 'An enemy pair in most waves: Hydra + swarm, armored drones + Hydra, truck + siege gun, each taught, then combined, then overlapped.', callouts: false, scale: PAIRS_GAUNTLET, guests: ['armored', 'siege'] },
+  },
+  harbor: {
+    v1: { name: 'Original', idea: 'The first encounters: one small scripted moment in most waves, on top of the shared waves.', callouts: false },
+    v2: { name: 'Set pieces', idea: 'Four big named moments built on the narrows (a sub ambush at the mouth), announced as they start, with quiet waves between.', callouts: true, scale: SET_PIECES_HARBOR },
+    v3: { name: 'Enemy pairs', idea: 'An enemy pair in most waves: Hydra + swarm, helicopter + sub, Spotter + siege gun, each taught, then combined, then overlapped.', callouts: false, scale: PAIRS_HARBOR, guests: ['attackHeli', 'torpedoSub', 'spotter', 'siege'] },
+  },
+};
+
+/** A map's version (none for a map with no authored layer). */
+export function versionDef(map: MapId, v: EncounterVersion): VersionDef | undefined {
+  return (MAP_VERSIONS as Partial<Record<MapId, Record<EncounterVersion, VersionDef>>>)[map]?.[v];
+}
+
+/** "v2 Set pieces". */
+export function versionLabel(map: MapId, v: EncounterVersion): string {
+  const d = versionDef(map, v);
+  return d ? `${v} ${d.name}` : v;
+}
+
+/** Are the call-outs on for this run? */
+export function calloutsOn(map: MapId, s: EncounterSetup): boolean {
+  return s.callouts ?? versionDef(map, setupVersion(s))?.callouts ?? false;
+}
+
+/** A wave's share of its own drones and missiles under a version (1: the
+ *  shared wave's). */
+export function waveScale(map: MapId, v: EncounterVersion, wave: number): number {
+  return versionDef(map, v)?.scale?.[wave - 1] ?? 1;
+}
+
+/** A map's encounters for a wave in a version (none on a map with no
+ *  authored layer, or a wave past the tenth: the ending is the map's own
+ *  event). */
+export function encountersFor(map: MapId, wave: number, version: EncounterVersion = VERSION_DEFAULT): Encounter[] {
+  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave));
 }
 
 /** The ten-wave arc of a reference map: what each wave is for, and the
  *  encounter (if any) that carries it. Waves 1-3 teach, 4-6 combine, 7-9
  *  escalate, 10 is the climax; then the map's own event, untouched. */
-export function arc(map: MapId): { wave: number; role: ArcRole; encounters: Encounter[] }[] {
+export function arc(map: MapId, version: EncounterVersion = VERSION_DEFAULT): { wave: number; role: ArcRole; encounters: Encounter[] }[] {
   return Array.from({ length: 10 }, (_, k) => {
     const wave = k + 1;
-    return { wave, role: wave <= 3 ? 'teach' : wave <= 6 ? 'combine' : wave <= 9 ? 'escalate' : 'climax', encounters: encountersFor(map, wave) };
+    return { wave, role: wave <= 3 ? 'teach' : wave <= 6 ? 'combine' : wave <= 9 ? 'escalate' : 'climax', encounters: encountersFor(map, wave, version) };
   });
 }
-
-export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
 
 // ---- The script in words (round 11: the pause screen's developer view) ----
 // The player: "I would like to see what the encounters are tho like as a
@@ -250,6 +1060,8 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   ballistic: ['ballistic shell', 'ballistic shells'],
   guided: ['guided missile', 'guided missiles'],
   strafer: ['strafer', 'strafers'],
+  bomber: ['bomber', 'bombers'],
+  supersonic: ['supersonic missile', 'supersonic missiles'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
@@ -258,24 +1070,33 @@ const AIM_TEXT: Record<BeatAim, string> = {
   narrows: 'aimed at the ship nearest the narrows',
 };
 
+const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;
+
 /** One beat as a line: "at 45% of the wave (+1.4 s): 1 guided missile from
  *  base 3, aimed at the lead ship". Bases are counted from 1, as a person
  *  reads them. */
 export function beatText(b: Beat): string {
-  const when = `at ${Math.round(b.at * 100)}% of the wave${b.plus ? ` (+${b.plus} s)` : ''}`;
   const names = BEAT_NAME[b.kind] ?? [b.kind, b.kind];
   const what = `${b.count} ${b.count === 1 ? names[0] : names[1]}`;
   const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
   const gap = b.count > 1 ? `, ${b.gap ?? (b.kind === 'drone' ? 0.35 : 1.5)} s apart` : '';
-  return `${when}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}`;
+  return `${whenText(b.at, b.plus)}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}`;
+}
+
+/** An enemy pair as a line: "at 30% of the wave: enemy pair Hydra + Drone
+ *  Swarm, its lead from base 1". The pair's name comes from data/pairs.ts
+ *  (passed in, so this file needs no enemy data). */
+export function pairBeatText(p: PairBeat, name: string): string {
+  const sets = (p.count ?? 1) > 1 ? ` (${p.count} sets, ${p.every ?? 12} s apart)` : '';
+  return `${whenText(p.at, p.plus)}: enemy pair ${name}${p.base !== undefined ? `, its lead from base ${p.base + 1}` : ''}${sets}`;
 }
 
 /** The map's arc in one line: its waves grouped by the encounter that
  *  carries them ("1–3 Open water"), then the boss rounds. */
-export function arcGroups(map: MapId, bossFrom: number, bossTo: number, bossName: string | null): { from: number; to: number; name: string }[] {
+export function arcGroups(map: MapId, bossFrom: number, bossTo: number, bossName: string | null, version: EncounterVersion = VERSION_DEFAULT): { from: number; to: number; name: string }[] {
   const out: { from: number; to: number; name: string }[] = [];
-  for (const a of arc(map)) {
-    const name = a.encounters.map((e) => e.name).join(' + ') || 'shared wave';
+  for (const a of arc(map, version)) {
+    const name = a.encounters.map((e) => e.name).join(' + ') || (version === 'v2' ? 'quiet wave' : 'shared wave');
     const last = out[out.length - 1];
     if (last && last.name === name && last.to === a.wave - 1) last.to = a.wave;
     else out.push({ from: a.wave, to: a.wave, name });

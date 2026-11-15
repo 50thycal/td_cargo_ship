@@ -126,7 +126,10 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
     const l = rounds.get(order[0])!;
     const r = l.labResult!;
     const round = order[0];
-    const runs = card.kind === 'map' ? mapRuns(logs.filter((o) => o.lab?.card === id && !!o.labResult)) : [];
+    // A map's own card (round 12) also averages its version cards' runs,
+    // so the page can set the versions side by side; a version card, its own.
+    const mine = (o: PlayLog) => o.lab?.card === id || (card.kind === 'map' && !card.variant && labCard(o.lab?.card ?? '')?.kind === 'map' && labCard(o.lab!.card)!.map === card.map);
+    const runs = card.kind === 'map' ? mapRuns(logs.filter((o) => mine(o) && !!o.labResult)) : [];
     const note = roundNote(id, round, order.slice(1).flatMap((n) => (allOf.get(`${id}#${n}`) ?? []).map((o) => o.labResult!.note)));
     const doc: LabResultDoc = {
       verdict: r.verdict,
@@ -178,7 +181,7 @@ export function logPlays(l: PlayLog): LabPlays | undefined {
 }
 
 /** A map card's run setup in words, straight from its log: "Full map from
- *  wave 1 · D · Tactical commands · authored encounters rev 1 · production
+ *  wave 1 · D · Tactical commands · authored encounters rev 2 · v2 · production
  *  setup", or "Quick slice from wave 5, full length · ...". */
 export function labSetupText(l: PlayLog): string | undefined {
   const plays = logPlays(l);
@@ -188,7 +191,8 @@ export function labSetupText(l: PlayLog): string | undefined {
   const parts = [
     plays === 'full' ? `Full map from wave ${l.firstWave}` : `Quick slice from wave ${l.firstWave}, ${l.lab.length ?? 'full'} length`,
     POLICY_NAME[policy],
-    enc ? `authored encounters rev ${enc}` : 'shared waves',
+    // Round 12: and which version of them (a log from before: v1).
+    enc ? `authored encounters rev ${enc}${enc >= 2 ? ` · ${l.encounters?.version ?? logVariant(l)}` : ''}` : 'shared waves',
   ];
   if (plays === 'full' && l.lab.config) parts.push(l.lab.config.production ? 'production setup' : 'changed from the production setup');
   return parts.join(' · ');

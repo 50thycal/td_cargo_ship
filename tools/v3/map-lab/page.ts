@@ -19,9 +19,13 @@ import { GRID, LAYERS, PLATFORMS, RAMPS, SCOPES, THIN, buildPreview, gridTop, re
 import { FINDINGS, FINDINGS2, GAPS, GROUPS, GROUPS2, MAP_ITEMS, PLAYTEST, QUESTIONS, QUESTIONS2, ROUND, ROUND2 } from './review.mjs';
 import { existsSync } from 'node:fs';
 import { COMMANDS, CONVOY, MAP_CONVOY, POLICY_NAME, POLICY_ORDER } from '../../../src/v3/data/convoy';
-import { ENCOUNTERS } from '../../../src/v3/data/encounters';
+import { ENCOUNTERS as ALL_ENCOUNTERS } from '../../../src/v3/data/encounters';
+
 import { MAPS } from '../../../src/v3/data/maps';
 import { LAYERS as VIEW_LAYERS } from '../../../src/v3/sim/mapAnalytics';
+
+// The round 2 page is about the original nine (round 12's versions are on the Test Lab page).
+const ENCOUNTERS = ALL_ENCOUNTERS.filter((e) => e.version === 'v1');
 
 const R = 'tools/v3/map-lab/results';
 const json = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8'));

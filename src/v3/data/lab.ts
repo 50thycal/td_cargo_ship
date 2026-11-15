@@ -11,7 +11,7 @@ import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, endingRuns, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
 import { COMMANDS, CONVOY, mapConvoy, type ConvoyPolicy } from './convoy';
-import { ENCOUNTER_MAPS } from './encounters';
+import { ENCOUNTER_MAPS, ENCOUNTER_VERSIONS, VERSION_DEFAULT, versionDef, versionLabel, type EncounterVersion } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -37,6 +37,9 @@ export interface LabCard {
    *  the wave it starts at (its weapons' levels come from the kit). */
   event?: EventId;
   wave?: number;
+  /** A map card's encounter version (Test Lab round 12): v2 and v3 have a
+   *  card of their own beside the map's card, which plays v1. */
+  variant?: EncounterVersion;
 }
 
 /** A combo's pairing: data/pairs.ts (the enemy pairs, round 8). */
@@ -257,27 +260,46 @@ export function mapProduction(map: MapId): MapProduction {
 
 /** The production setup in words: "Commands: Hold", "The map's own
  *  convoy · authored encounters", or "today's convoy controls". */
-export function productionText(map: MapId): string {
+export function productionText(map: MapId, version: EncounterVersion = VERSION_DEFAULT): string {
   const p = mapProduction(map);
   if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
   const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
-  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ' · authored encounters' : ''}`;
+  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ` · encounters ${versionLabel(map, version)}` : ''}`;
 }
 
 /** What a map card plays, as its hub card and the review page say it.
  *  Round 11: the event ending's runs are the map's boss rounds. */
 export const MAP_CARD_PLAYS = `Full map: waves 1–10 and ${endingRuns()} boss rounds`;
 
-/** Maps: a map card plays that map in full, as the campaign does. */
-const MAP_CARDS: LabCard[] = MAP_ORDER.map((id) => ({
-  id: `map-${id}`,
-  kind: 'map',
-  name: MAPS[id].name,
-  look: MAPS[id].blurb,
-  foes: [],
-  kit: ['flak', 'railgun', 'cutter'],
-  map: id,
-}));
+/** A map card's id: the map's own (v1), or one of its other encounter
+ *  versions (round 12: `map-strait-v2`). */
+export function mapCardId(map: MapId, version: EncounterVersion = VERSION_DEFAULT): string {
+  return version === VERSION_DEFAULT ? `map-${map}` : `map-${map}-${version}`;
+}
+
+/** Maps: a map card plays that map in full, as the campaign does. Round
+ *  12: each reference map's other encounter versions follow its card, one
+ *  card each ("The Strait · v2 Set pieces"), so a version is one tap with
+ *  nothing to set. The map's own card plays v1. */
+const MAP_CARDS: LabCard[] = MAP_ORDER.flatMap((id) => {
+  const card = (version: EncounterVersion): LabCard => ({
+    id: mapCardId(id, version),
+    kind: 'map',
+    name: version === VERSION_DEFAULT ? MAPS[id].name : `${MAPS[id].name} · ${versionLabel(id, version)}`,
+    look: version === VERSION_DEFAULT ? MAPS[id].blurb : versionDef(id, version)!.idea,
+    foes: [],
+    kit: ['flak', 'railgun', 'cutter'],
+    map: id,
+    ...(version !== VERSION_DEFAULT ? { variant: version } : {}),
+  });
+  const versions = (ENCOUNTER_MAPS as string[]).includes(id) ? ENCOUNTER_VERSIONS : [VERSION_DEFAULT];
+  return versions.map(card);
+});
+
+/** A map card's encounter version (v1 for the map's own card). */
+export function cardVersion(card: LabCard): EncounterVersion {
+  return card.variant ?? VERSION_DEFAULT;
+}
 
 export const LAB_CARDS: LabCard[] = [...EVENT_CARDS, ...ENEMIES, ...WEAPONS, ...COMBOS, ...MAP_CARDS];
 
@@ -321,6 +343,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' },
   { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
   { n: 11, date: '2026-11-14', name: 'Map notes: boss rounds, Hold only, no decoys, scorecard', since: '2026-11-14T21:00' },
+  { n: 12, date: '2026-11-14', name: 'Encounter versions: set pieces and enemy pairs', since: '2026-11-15T00:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -572,10 +595,23 @@ const ROUND11_B: Record<string, string> = {
 };
 for (const [id, what] of Object.entries(ROUND11_B)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), { round: 11, what }];
 
-/** The cards a card takes changes from: itself, and for a combo its
- *  enemies' and weapon's cards. */
+// Round 12 (docs/design/v3-round12-encounter-versions.md): two more
+// encounter versions of each reference map, each its own card, to play
+// against the map's own (v1) and score.
+const ROUND12: Record<string, string> = {};
+for (const map of ENCOUNTER_MAPS) {
+  ROUND12[mapCardId(map)] = 'This card is v1, the original encounters. Two more versions of this map have their own cards (v2 Set pieces, v3 Enemy pairs): play all three and score each';
+  ROUND12[mapCardId(map, 'v2')] = 'New: four big encounters, each named on screen as it starts, with quieter waves between';
+  ROUND12[mapCardId(map, 'v3')] = 'New: an enemy pair in most waves (some from later chapters), taught, then combined, then overlapped';
+}
+for (const [id, what] of Object.entries(ROUND12)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), { round: 12, what }];
+
+/** The cards a card takes changes from: itself, for a combo its enemies'
+ *  and weapon's cards, and for a map's version card (round 12) the map's
+ *  own card (a change to the map is a change to every version of it). */
 function changeSources(cardId: string): string[] {
   const card = labCard(cardId);
+  if (card?.kind === 'map' && card.variant) return [cardId, mapCardId(card.map)];
   if (!card || card.kind !== 'combo') return [cardId];
   return [cardId, ...card.foes, ...(card.weapon ? [`w-${card.weapon}`] : [])];
 }
