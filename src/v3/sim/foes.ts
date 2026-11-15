@@ -72,6 +72,9 @@ export interface FoeMark {
   y: number;
   t: number;
   dur: number;
+  /** Telemetry only: the authored encounter whose enemy pair it is part
+   *  of (round 12); what comes up from it carries it on. */
+  enc?: string;
   /** A shell's gun (its threat id), and where it fires from. */
   link?: number;
   gx?: number;
@@ -147,14 +150,14 @@ export interface FoeData {
   sy?: number;
   // ---- Special events (sim/events.ts): how one behaves in an event ----
   /** A Rocket Truck: where along its road it stops, seconds it waits there
-   *  before raising, seconds it stands stalled, and its driving speed (out,
-   *  and back) times its own. An Attack Helicopter: `wait` is how long after
-   *  the wall opens fire its first volley goes. */
+   *  before raising, seconds it stands stalled, and its speed driving in
+   *  times its own (it drives off at FOE.rocketTruck.leave × its own). An
+   *  Attack Helicopter: `wait` is how long after the wall opens fire its
+   *  first volley goes. */
   stop?: number;
   wait?: number;
   stall?: number;
   drive?: number;
-  back?: number;
   /** An Attack Helicopter: the wave second it may open fire, that it holds
    *  its spot, and its volleys before it leaves. */
   hold?: number;
@@ -1732,6 +1735,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
     if (m.kind === 'periscope') {
       const th = spawnThreat(g, 'torpedoSub', m.x, m.y, 'sub');
       th.src = m.id;
+      if (m.enc) th.enc = m.enc;
       th.target = CARRIER_TARGET;
       th.heading = 0;
       const S = FOE.torpedoSub;
@@ -1746,6 +1750,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
       const path = divePath(m, a);
       const th = spawnThreat(g, 'diveBomber', path.sx, path.sy, 'air');
       th.src = m.id;
+      if (m.enc) th.enc = m.enc;
       th.target = CARRIER_TARGET;
       th.heading = a;
       th.foe = data({ px: m.x, py: m.y, sx: path.sx, sy: path.sy, dive: { len: path.len, app: path.app } });
@@ -1761,6 +1766,7 @@ export function updateFoeMarks(g: Game, dt: number): void {
         cue(g, 'truck.raise', th.x, th.y, { gain: 0.6 });
       } else if (m.spawn) {
         const th = spawnThreat(g, 'siege', m.x, m.y, 'truck');
+        if (m.enc) th.enc = m.enc;
         th.target = CARRIER_TARGET;
         th.heading = Math.PI / 2;
         th.foe = data({ n: m.salvos ?? FOE.siege.salvos });
@@ -1862,7 +1868,9 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
       f.t = 0;
     }
   } else {
-    f.along = Math.max(0, (f.along ?? 0) - th.speed * (f.drive ?? 1) * (f.back ?? 1) * dt);
+    // Done: it drives off at its own speed (round 12's fixes: an event's
+    // trucks drive in faster, but leave at the speed any truck drives).
+    f.along = Math.max(0, (f.along ?? 0) - th.speed * R.leave * dt);
     // Back off the shore and gone (not a kill).
     if (f.along <= 0) th.dead = true;
   }

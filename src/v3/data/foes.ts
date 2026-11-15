@@ -131,8 +131,14 @@ export const FOE = {
   hydra: { darts: 2, spread: 0.5, clear: 34 },
   // Test Lab round 1: each firing is a ripple of `perSalvo` small rockets,
   // `ripple` s apart, spread `spread` px round one aim point; the salvo
-  // does what one rocket did (1 to the first hull it hits).
-  rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6 },
+  // does what one rocket did (1 to the first hull it hits). Round 12's
+  // fixes (the player, round 11: "The rocket truck speed off too fast when
+  // they are done shooting, they should go at normal speeds"): done
+  // firing, a truck drives off at `leave` × its own speed (THREATS.
+  // rocketTruck, 75 px/s), in a boss round too. An event's trucks drive in
+  // faster (EV's `drive`), but none drives off faster (it was drive ×
+  // back, about 7 ×).
+  rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
   attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25 },
   // Round 7 ("the torpedo sub will fire three to five, and then sometimes
   // fast ones"): every sub fires a spread of `spread` torpedoes (three to

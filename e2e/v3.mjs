@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 22 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 23 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -939,8 +939,9 @@ try {
     const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, combos: document.querySelectorAll('[data-section="combo"] [data-card]').length, cut: !!document.querySelector('[data-card="combo-lure-screen"]'), first: document.querySelector('.v3-lab-sec')?.dataset.section }));
     // Round 8: the combos are thirteen enemy pairs (the four with a player
     // weapon in them are cut). Round 11: the decoy card and its two pairs
-    // are retired (95 cards, eleven pairs).
-    check(hub.rows === 95 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    // are retired (95 cards, eleven pairs). Round 12: two encounter
+    // versions of each reference map have cards of their own (101).
+    check(hub.rows === 101 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
@@ -962,7 +963,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 11 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 11 && saved.v === 22 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 12 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 12 && saved.v === 23 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1000,7 +1001,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 11/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 12/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 

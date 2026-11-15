@@ -5,9 +5,9 @@
 // game log, which reaches Claude).
 
 import { COMMANDS, CONVOY_REV, POLICY_ORDER, mapConvoy, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
-import { ENCOUNTER_MAPS, ENCOUNTER_REV, type EncounterSetup } from '../data/encounters';
+import { ENCOUNTER_MAPS, ENCOUNTER_REV, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
-import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, cardChanges, cardRev, labCard, labRound, mapProduction, productionText, type LabCard, type LabLength, type LabMix } from '../data/lab';
+import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, cardChanges, cardRev, cardVersion, labCard, labRound, mapProduction, productionText, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
@@ -38,8 +38,9 @@ export interface LabRunSetup {
    *  above are a slice's; a full run has none of them). */
   plays?: LabPlays;
   /** A map card (round 11): the map's encounter version to play (absent:
-   *  MAP_VARIANT_DEFAULT, 'v1'; only v1 exists so far). */
-  variant?: string;
+   *  MAP_VARIANT_DEFAULT, 'v1'). Round 12: the card's own (its `variant`:
+   *  each version has a card). */
+  variant?: EncounterVersion;
 }
 
 /** One test's verdict as kept on the device: the result, when, the card's
@@ -209,6 +210,7 @@ export function productionSetup(card: LabCard, base?: Pick<LabRunSetup, 'length'
     plays: 'full',
     convoy: prod.convoy,
     encounters: prod.encounters,
+    variant: cardVersion(card),
     wave: LAB_START_WAVE,
     weapons: card.kit.map((id) => ({ id, level: 1 })),
     length: base?.length ?? 'full',
@@ -221,7 +223,7 @@ export function productionSetup(card: LabCard, base?: Pick<LabRunSetup, 'length'
 export function isProduction(card: LabCard, s: LabRunSetup): boolean {
   if (card.kind !== 'map') return false;
   const prod = mapProduction(card.map);
-  return s.plays !== 'slice' && (s.convoy ?? 'current') === prod.convoy && !!s.encounters === prod.encounters;
+  return s.plays !== 'slice' && (s.convoy ?? 'current') === prod.convoy && !!s.encounters === prod.encounters && (s.variant ?? MAP_VARIANT_DEFAULT) === cardVersion(card);
 }
 
 /** What a test is started with, from its setup: the lab card's setup for
@@ -229,8 +231,10 @@ export function isProduction(card: LabCard, s: LabRunSetup): boolean {
  *  run (round 10) no Free Play setup at all (it starts at wave 1 with the
  *  player's Armory, as the campaign does). `link`: the page's link, when
  *  it named this card (`?lab=map-strait&convoy=current&enc=0&plays=slice`
- *  change the setup for a comparison; the plain link is the production
- *  setup). The setup returned is the one played (the sheet starts from it). */
+ *  change the setup for a comparison; `callouts=1` or `0` turns the
+ *  encounters' call-outs on or off whatever the version says (round 12);
+ *  the plain link is the production setup). The setup returned is the one
+ *  played (the sheet starts from it). */
 export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchParams | null): { setup: LabRunSetup; full: boolean; lab: LabSetup; convoy: ConvoySetup | null; encounters: EncounterSetup | null } {
   const s = structuredClone(setup);
   if (link) {
@@ -244,10 +248,17 @@ export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchPa
   if (map && !s.plays) s.plays = 'full';
   const full = map && s.plays === 'full';
   const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
-  const encounters: EncounterSetup | null = s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map) ? { rev: ENCOUNTER_REV } : null;
+  // The map's encounter version (round 12): the card's, unless the setup
+  // says otherwise.
+  const version: EncounterVersion = isVersion(s.variant) ? s.variant : cardVersion(card);
+  const callouts = link?.get('callouts');
+  const encounters: EncounterSetup | null =
+    s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map)
+      ? { rev: ENCOUNTER_REV, version, ...(callouts === '1' || callouts === '0' ? { callouts: callouts === '1' } : {}) }
+      : null;
   const rev = cardRev(card.id);
   // A map card says which encounter version of the map it played (round 11).
-  const variant = map ? { variant: s.variant ?? MAP_VARIANT_DEFAULT } : {};
+  const variant = map ? { variant: version } : {};
   const lab: LabSetup = full
     ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) }, ...variant }
     : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}), ...variant };
@@ -336,7 +347,7 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
       }
       // A map card (round 10) says what it plays, and how it is set up.
       if (c.kind === 'map') {
-        const plays = el('small', 'v3-lab-plays', `${MAP_CARD_PLAYS} · ${productionText(c.map)}`);
+        const plays = el('small', 'v3-lab-plays', `${MAP_CARD_PLAYS} · ${productionText(c.map, cardVersion(c))}`);
         plays.dataset.labPlays = '1';
         text.append(plays);
       }
@@ -560,8 +571,8 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
     prod.classList.toggle('on', on);
     prodHead.textContent = on ? 'Production setup' : 'Changed from the production setup';
     prodWhat.textContent = on
-      ? `${MAP_CARD_PLAYS} · ${productionText(card.map)}`
-      : `Production: ${MAP_CARD_PLAYS.toLowerCase()} · ${productionText(card.map)}`;
+      ? `${MAP_CARD_PLAYS} · ${productionText(card.map, cardVersion(card))}`
+      : `Production: ${MAP_CARD_PLAYS.toLowerCase()} · ${productionText(card.map, cardVersion(card))}`;
     reset.disabled = on;
   }
   refresh();

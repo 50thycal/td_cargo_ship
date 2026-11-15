@@ -114,7 +114,8 @@ describe('the encounter script, in words, for the pause screen', () => {
       { from: 8, to: 10, name: 'The last mile' },
       { from: 11, to: 13, name: 'Boss rounds: The Breakout' },
     ]);
-    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 1, name: 'shared wave' });
+    // (Round 12's fixes: wave 1 opens with the first encounter, Ranging shots.)
+    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 4, name: 'Ranging shots' });
   });
 
   it('no encounter text mentions a command that is gone', () => {
@@ -179,9 +180,13 @@ describe('Harbor Mouth: pairs sail wide in the open water and close up at the ne
 
 describe('Test Lab round 11', () => {
   it('the round, and the cards it changed', () => {
-    expect(LAB_ROUND).toBe(11);
-    expect(LAB_ROUNDS.at(-1)).toMatchObject({ n: 11, date: '2026-11-14' });
-    for (const id of ['map-strait', 'map-gauntlet', 'map-harbor', 'map-sowers', 'ev-rush']) expect(cardRev(id), id).toBe(11);
+    expect(LAB_ROUND).toBeGreaterThanOrEqual(11);
+    expect(LAB_ROUNDS.find((r) => r.n === 11)).toMatchObject({ n: 11, date: '2026-11-14' });
+    // (The Afterburner Rush changed again in round 12's fixes: Hydras in the rush.)
+    for (const id of ['map-sowers', 'ev-rush']) expect(cardRev(id), id).toBe(id === 'ev-rush' ? 12 : 11);
+    expect(LAB_CHANGES['ev-rush'].some((c) => c.round === 11), 'ev-rush').toBe(true);
+    // (The reference maps changed again in round 12: their encounter versions.)
+    for (const id of ['map-strait', 'map-gauntlet', 'map-harbor']) expect(LAB_CHANGES[id].some((c) => c.round === 11), id).toBe(true);
     expect(LAB_CHANGES['map-strait'].filter((c) => c.round === 11)[0].what).toBe('Rush and Disperse are gone: the convoy sails on its own');
     expect(LAB_CHANGES['map-harbor'].filter((c) => c.round === 11)[0].what).toBe('Hold is gone here; ships start wide and close up at the neck');
     expect(LAB_CHANGES['map-sowers'].filter((c) => c.round === 11)[0].what).toMatch(/^New: Hold/);
@@ -194,7 +199,7 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('harbor')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('sowers')).toEqual({ convoy: 'tactical', encounters: false });
     expect(mapProduction('kesh')).toEqual({ convoy: 'current', encounters: false });
-    expect(productionText('strait')).toBe("The map's own convoy (no commands) · authored encounters");
+    expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold');
   });
 });

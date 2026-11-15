@@ -340,7 +340,7 @@ describe('the Test Lab: round 7', () => {
       expect(LAB_CHANGES[card.id].filter((c) => c.round === 7), id).toHaveLength(1);
       // (Round 8 changed The Breakout and Run the Canal again; round 9 The
       // Breakout's decoys; round 11 took them out.)
-      expect(cardRev(card.id)).toBe(id === 'breakout' ? 11 : id === 'run-the-canal' ? 8 : 7);
+      expect(cardRev(card.id)).toBe(id === 'breakout' ? 12 : id === 'run-the-canal' ? 8 : 7);
     }
     // Undertow was cut in round 8; its place's kit has no helpers either.
     expect(labCard('ev-beacon-strike')!.kit.filter((w) => ROSTER[w].cat === 'passive')).toEqual([]);
@@ -387,7 +387,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit');
-    expect(log.v).toBe(22);
+    expect(log.v).toBe(23);
     expect(log.events!.length).toBeGreaterThanOrEqual(1);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);

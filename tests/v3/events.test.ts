@@ -191,7 +191,8 @@ describe('the event after the ten waves as they were (round 7: three runs)', () 
 
 describe('each event sends what it should', () => {
   const expectSent: Record<EventId, Partial<Record<ThreatKind, number>>> = {
-    rush: { sprinter: 24 },
+    // Round 12's fixes: a Hydra behind each sprint swarm.
+    rush: { sprinter: 24, hydra: 6 },
     // Round 11: the Drone Storm, twelve plain drone swarms.
     'drone-storm': { drone: EV['drone-storm'].swarms * EV['drone-storm'].size },
     'hydra-bloom': { hydra: 6 },
@@ -210,7 +211,7 @@ describe('each event sends what it should', () => {
     'siren-field': { lure: 5 },
     firestorm: { cloud: 9 },
     // Round 7: the finales; round 8: Beacon Strike.
-    breakout: { drone: EV.breakout.swarms * EV.breakout.size, sprinter: 4, hydra: 3, rocketTruck: 2 },
+    breakout: { drone: EV.breakout.swarms * EV.breakout.size, sprinter: 4, hydra: 3, rocketTruck: 6 },
     'run-the-canal': { torpedoSub: 2, attackHeli: 1, armored: 4 },
     'beacon-strike': { lure: 4 },
     'siege-of-vey': { mothership: 1, tender: 3, heavy: 1, guard: 7, lure: 2, cloud: 5 },
@@ -484,7 +485,7 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(22);
+    expect(log.v).toBe(23);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('drone-storm');

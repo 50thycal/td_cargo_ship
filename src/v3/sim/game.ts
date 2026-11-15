@@ -71,14 +71,14 @@ import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
-import { OLD_THREATS, isOldThreat, memberKind, type PairMember } from '../data/pairs';
-import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSetup, type LabState } from './lab';
+import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
+import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
 import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { encountersFor, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, encountersFor, setupVersion, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -312,7 +312,10 @@ export type GameEvent =
   | { kind: 'specialEnd'; id: EventId; outcome: EventOutcome; bonus: number; bonusEvent?: boolean; run?: number; runs?: number }
   /** Round 7's experiment: the convoy and the carrier restored to full
    *  before the ending's first run. */
-  | { kind: 'restore' };
+  | { kind: 'restore' }
+  /** The Map & Convoy Lab (round 12): an authored encounter starts (its
+   *  warning is up), on a run with its call-outs on. */
+  | { kind: 'encounter'; id: string };
 
 export type Phase = 'wave' | 'draft' | 'won' | 'lost';
 
@@ -843,7 +846,20 @@ export interface Game {
   convoy: ConvoyState | null;
   /** The Map & Convoy Lab's authored encounters (data/encounters.ts): null
    *  in every campaign run, which plays the shared waves alone. */
-  enc: { setup: EncounterSetup; played: string[]; wave: number; now: string[] } | null;
+  enc: EncState | null;
+}
+
+/** The authored encounters of a run (data/encounters.ts): its setup, the
+ *  encounters played so far, the wave planned and its encounters; the
+ *  enemy pairs still to launch this wave (v3: the Test Lab's combo sets,
+ *  each with its own pair); and the call-outs still to come (round 12). */
+export interface EncState {
+  setup: EncounterSetup;
+  played: string[];
+  wave: number;
+  now: string[];
+  sets: LabSet[];
+  calls: { at: number; id: string }[];
 }
 
 
@@ -1042,7 +1058,16 @@ function startWave(g: Game): void {
   }
   g.waveSpeed = spec.speed;
   const only = g.enc?.setup.only;
-  const authored = g.enc ? encountersFor(g.map.id, g.wave).filter((e) => !only || only.includes(e.id)) : [];
+  const version = setupVersion(g.enc?.setup);
+  const authored = g.enc ? encountersFor(g.map.id, g.wave, version, g.enc.setup.rev).filter((e) => !only || only.includes(e.id)) : [];
+  // A version's wave budget (round 12, v2's set pieces): its quiet waves
+  // give up part of their drones and missiles, its set pieces take more.
+  const scale = g.enc ? waveScale(g.map.id, version, g.wave) : 1;
+  if (scale !== 1) {
+    spec.drones = Math.round(spec.drones * scale);
+    spec.ballistic = Math.round(spec.ballistic * scale);
+    spec.guided = Math.round(spec.guided * scale);
+  }
   // The Test Lab: the wave's size and this wave's scenario.
   const labMods = labWave(g, spec);
   const rng = g.rng.threats;
@@ -1154,12 +1179,46 @@ function startWave(g: Game): void {
     const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
+  // A map's own extra fire, the same in every version (encounters rev 3:
+  // The Strait's waves 5-10), on top of the wave as planned.
+  const more = g.enc ? waveFire(g.map.id, g.wave, g.enc.setup.rev) : 0;
+  if (more) addFire(g, queue, more, lead, spec.duration, rng);
   queue.sort((a, b) => a.at - b.at);
   labOpener(g, queue);
   g.queue = queue.filter((l) => l.base !== -2);
   g.events.push({ kind: 'wave', wave: g.wave });
   cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
   if (g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
+}
+
+/** More of a planned wave's own fire (encounters rev 3, MAP_FIRE): `more`
+ *  of everything it will launch (the queue and its launchers' loads), on
+ *  top: about two thirds of it as one drone swarm, the rest missiles,
+ *  shells on odd waves and guided on even ones, each out of a base at a
+ *  rolled moment with the base lit first, as a raid's. Added after the
+ *  planner (a submarine fills its salvo whatever it is given, so more
+ *  missiles in the plan alone would mostly vanish into the salvos). */
+function addFire(g: Game, queue: Launch[], more: number, lead: number, duration: number, rng: RNG): void {
+  const fire = queue.filter((l) => l.at < 1e8 && !isStructure(l.kind)).length + g.raiderQueue.reduce((a, r) => a + r.units.reduce((b, u) => b + u.size, 0), 0);
+  const extra = Math.max(1, Math.round(fire * more));
+  const drones = extra >= 3 ? Math.round((extra * 2) / 3) : 0;
+  const at = () => lead + RAID.warn + duration * rng.range(0.15, 0.85);
+  if (drones) {
+    const t = at();
+    const base = pickBase(g, 'drone', rng);
+    if (base >= 0) {
+      for (let d = 0; d < drones; d++) queue.push({ at: t + d * 0.35, kind: 'drone', base });
+      g.raids.push({ at: t, theme: RAID_THEME.drone, bases: [base] });
+    }
+  }
+  const kind: ThreatKind = g.wave % 2 ? 'ballistic' : 'guided';
+  for (let k = drones; k < extra; k++) {
+    const t = at();
+    const base = pickBase(g, kind, rng);
+    if (base < 0) continue;
+    queue.push({ at: t, kind, base });
+    g.raids.push({ at: t, theme: RAID_THEME[kind], bases: [base] });
+  }
 }
 
 /** Takes out of a planned wave what its authored encounters replace: each
@@ -1201,14 +1260,22 @@ function makeRoom(units: { kind: ThreatKind; size: number }[], trickled: number[
 function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: number, duration: number): void {
   // A wave planned again (a policy or a card applied before its first
   // step) is still the one wave: its encounters are noted once.
-  const fresh = g.enc!.wave !== g.wave;
+  const enc = g.enc!;
+  const fresh = enc.wave !== g.wave;
   if (fresh) {
-    g.enc!.wave = g.wave;
-    g.enc!.now = list.map((e) => e.id);
-    g.enc!.played.push(...g.enc!.now);
+    enc.wave = g.wave;
+    enc.now = list.map((e) => e.id);
+    enc.played.push(...enc.now);
   }
+  // Planned again (a card applied before the first step): the same sets
+  // and call-outs, planned afresh.
+  enc.sets = [];
+  enc.calls = [];
+  const calls = calloutsOn(g.map.id, enc.setup);
   for (const e of list) {
     if (fresh && g.tel) g.tel.encounter(g, e.id);
+    // The moment its first warning shows: the call-out's.
+    let start = Infinity;
     for (const b of e.beats) {
       // Never sooner than a raid's warning after the wave's lead-in.
       const at = lead + RAID.warn + b.at * duration + (b.plus ?? 0);
@@ -1217,15 +1284,47 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         const gap = b.gap ?? 0.35;
         for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim });
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
+        start = Math.min(start, at - RAID.warn);
       } else if ('sub' in b.from) {
         // It shows its periscope and surfaces first, so its salvo starts at `at`.
-        g.raiderQueue.push({ at: Math.max(0.2, at - SUB.warn - SUB.surface), kind: 'sub', path: [g.map.subSpots[b.from.sub]], units: Array.from({ length: b.count }, () => ({ kind: b.kind, size: 1 })), enc: e.id, ...aim });
+        const up = Math.max(0.2, at - SUB.warn - SUB.surface);
+        g.raiderQueue.push({ at: up, kind: 'sub', path: [g.map.subSpots[b.from.sub]], units: Array.from({ length: b.count }, () => ({ kind: b.kind, size: 1 })), enc: e.id, ...aim });
         g.raiderQueue.sort((x, y) => x.at - y.at);
+        start = Math.min(start, up);
       } else {
         for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, side: b.from.air, enc: e.id });
+        start = Math.min(start, at - PLANE.warn);
       }
     }
+    // Enemy pairs (round 12, v3): a set each, launched on the pair's own
+    // cues (updateSets). A lead out of a named base lights it first.
+    for (const p of e.pairs ?? []) {
+      const pair = enemyPair(p.pair)?.pair;
+      if (!pair) continue;
+      for (let k = 0; k < (p.count ?? 1); k++) {
+        const at = lead + RAID.warn + p.at * duration + (p.plus ?? 0) + k * (p.every ?? LAB_SET.gap);
+        const set: LabSet = { at, bases: {}, done: pair.follow.map(() => false), pair, enc: e.id };
+        const kind = memberKind(pair.lead);
+        if (p.base !== undefined && (isOldThreat(pair.lead) || fromBase(kind))) {
+          set.base = p.base;
+          g.raids.push({ at, theme: RAID_THEME[kind], bases: [p.base] });
+          start = Math.min(start, at - RAID.warn);
+        } else start = Math.min(start, at);
+        enc.sets.push(set);
+      }
+    }
+    if (calls && Number.isFinite(start)) enc.calls.push({ at: Math.max(0, start), id: e.id });
   }
+  enc.sets.sort((a, b) => a.at - b.at);
+  enc.calls.sort((a, b) => a.at - b.at);
+}
+
+/** The call-outs due: each encounter named as its warning shows (round
+ *  12; on in a version that asks for them). */
+function updateEncCalls(g: Game): void {
+  const enc = g.enc;
+  if (!enc) return;
+  while (enc.calls.length && enc.calls[0].at <= g.waveT) g.events.push({ kind: 'encounter', id: enc.calls.shift()!.id });
 }
 
 /** An authored launch's target, picked as it leaves: the ship furthest
@@ -1751,38 +1850,53 @@ function waterNear(g: Game, x: number, y: number, clear: number): Point {
  *  placing a pair in a wave would launch it the same way. */
 function updateLabSets(g: Game): void {
   const lab = g.lab;
-  if (!lab?.pair || !lab.sets.length) return;
-  const P = lab.pair;
+  if (lab?.pair && lab.sets.length) lab.sets = updateSets(g, lab.sets, lab.pair);
+  // An authored encounter's enemy pairs (round 12, v3), each set its own.
+  if (g.enc?.sets.length) g.enc.sets = g.enc.sets.filter((s) => updateSets(g, [s], s.pair!).length > 0);
+}
+
+/** One pair's sets: launches what is due, and returns the sets still to
+ *  finish. */
+function updateSets(g: Game, sets: LabSet[], P: LabPair): LabSet[] {
   const c = g.map.carrier;
   const leadKind = memberKind(P.lead);
   const isLead = (t: Threat, led: { id: number }) => t.kind === leadKind && t.id >= led.id && (!isOldThreat(P.lead) || !!t.paired);
   // One member out now; returns its base (-1 if it came from no base). An
   // original threat is its swarm or volley out of one base: the first now,
-  // the rest queued.
-  const out = (f: PairMember, base?: number): number => {
+  // the rest queued. An encounter's set tags what it launches with the
+  // encounter (telemetry, and the launch's aim).
+  const out = (f: PairMember, base: number | undefined, enc: string | undefined): number => {
     const kind = memberKind(f);
+    const tag = enc ? { enc } : {};
     if (isOldThreat(f)) {
       const b = base ?? pickBase(g, kind, g.rng.foes);
       if (b < 0) return -1;
       const O = OLD_THREATS[f];
-      launch(g, { at: g.waveT, kind, base: b, paired: true });
-      for (let k = 1; k < O.size; k++) g.queue.push({ at: g.waveT + k * O.every, kind, base: b, paired: true });
+      launch(g, { at: g.waveT, kind, base: b, paired: true, ...tag });
+      for (let k = 1; k < O.size; k++) g.queue.push({ at: g.waveT + k * O.every, kind, base: b, paired: true, ...tag });
       g.queue.sort((a, b2) => a.at - b2.at);
       return b;
     }
     if (isPlaneKind(kind)) {
-      g.queue.unshift({ at: g.waveT, kind, base: -1 });
+      g.queue.unshift({ at: g.waveT, kind, base: -1, ...tag });
       return -1;
     }
     const b = fromBase(kind) ? (base ?? pickBase(g, kind, g.rng.foes)) : -1;
     if (fromBase(kind) && b < 0) return -1;
-    launch(g, { at: g.waveT, kind, base: b });
+    const id0 = g.nextId;
+    launch(g, { at: g.waveT, kind, base: b, ...tag });
+    // A foe that launches itself (a truck, a helicopter) is tagged here; one
+    // that comes up from a mark (a sub's periscope, a gun's hatch) through it.
+    if (enc) {
+      for (const t of g.threats) if (t.id >= id0 && !t.enc) t.enc = enc;
+      for (const m of g.foe.marks) if (m.id >= id0 && !m.enc) m.enc = enc;
+    }
     return b;
   };
-  for (const s of lab.sets) {
+  for (const s of sets) {
     if (!s.led && g.waveT >= s.at) {
       const id = g.nextId;
-      s.led = { id, t: g.waveT, base: out(P.lead, P.far ? farBase(g) : s.bases[P.lead]) };
+      s.led = { id, t: g.waveT, base: out(P.lead, s.base ?? (P.far ? farBase(g) : s.bases[P.lead]), s.enc) };
       // A Repair Ship whose truck it places: moored off the end of the
       // shore road nearest its station.
       const roads = g.map.roads.popups;
@@ -1826,11 +1940,11 @@ function updateLabSets(g: Game): void {
       const lead = g.threats.find((t) => !t.dead && isLead(t, led));
       if (f.near && f.foe === 'bodyguard') {
         // A ring round the lead, no heavy of its own (gone with the lead).
-        if (lead) ringGuards(g, lead);
+        if (lead) ringGuards(g, lead, s.enc);
         return;
       }
       const id0 = g.nextId;
-      out(f.foe, base);
+      out(f.foe, base, s.enc);
       if (!f.near) return;
       if (f.foe === 'torpedoSub' && lead?.foe) {
         // The sub surfaces under the helicopter's hover.
@@ -1853,7 +1967,7 @@ function updateLabSets(g: Game): void {
       }
     });
   }
-  lab.sets = lab.sets.filter((s) => !s.led || s.done.some((d) => !d));
+  return sets.filter((s) => !s.led || s.done.some((d) => !d));
 }
 
 /** How far off the shore a pair's Repair Ship moors (px of water). */
@@ -1861,11 +1975,12 @@ const PAIR_MOOR = 70;
 
 /** A Bodyguard Ring round a threat already on the board (an enemy pair's:
  *  a guarded Spotter). */
-function ringGuards(g: Game, th: Threat): void {
+function ringGuards(g: Game, th: Threat, enc?: string): void {
   for (let k = 0; k < FOE.bodyguard.guards; k++) {
     const t = spawnThreat(g, 'guard', th.x, th.y, 'base');
     t.target = CARRIER_TARGET;
     t.foe = foeData({ link: th.id, n: k });
+    if (enc) t.enc = enc;
   }
 }
 
@@ -1873,7 +1988,14 @@ function ringGuards(g: Game, th: Threat): void {
  *  game is created, before its first step). The wave is planned again with
  *  them in it. */
 export function applyEncounters(g: Game, setup: EncounterSetup): void {
-  g.enc = { setup: { rev: setup.rev, ...(setup.only ? { only: [...setup.only] } : {}) }, played: [], wave: -1, now: [] };
+  g.enc = {
+    setup: { rev: setup.rev, ...(setup.only ? { only: [...setup.only] } : {}), ...(setup.version ? { version: setup.version } : {}), ...(setup.callouts !== undefined ? { callouts: setup.callouts } : {}) },
+    played: [],
+    wave: -1,
+    now: [],
+    sets: [],
+    calls: [],
+  };
   replanWave(g);
 }
 
@@ -3948,6 +4070,7 @@ function stepSim(g: Game, dt: number): void {
   updateEvent(g);
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
   updateLabSets(g);
+  updateEncCalls(g);
   while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
   for (const r of g.raiders) updateRaider(g, r, dt);
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
@@ -4004,7 +4127,7 @@ function stepSim(g: Game, dt: number): void {
     recordWave(g, 'lost');
     return;
   }
-  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g) && !eventBusy(g)) {
+  if (g.queue.length === 0 && g.threats.every(standing) && g.raiders.length === 0 && g.raiderQueue.length === 0 && !foesBusy(g) && !labBusy(g) && !(g.enc?.sets.length) && !eventBusy(g)) {
     // A bonus wave is not one of the map's: no wave score (its event bonus
     // is its reward) and no wave record, and the draft the wave before it
     // earned comes now.

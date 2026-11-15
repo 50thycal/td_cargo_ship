@@ -423,8 +423,13 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       // line. The sprinters cruise in slow and each one flares and sprints
       // as any sprinter does, near its ship (as round 8 did for Hydra
       // Bloom's line).
+      // Round 12's fixes (the player's round 11 scorecard: its 24 sprint
+      // drones hit the ships four times in three boss rounds and sank
+      // none): a Hydra rides in behind each sprint swarm, so the rush can
+      // sink a ship. Measured with the bots against the Rocket Convoy
+      // (docs/design/v3-round12-encounter-versions.md).
       const E = EV.rush;
-      return steps(E.swarms, (k) => k * E.every, 'swarm');
+      return [...steps(E.swarms, (k) => k * E.every, 'swarm'), ...steps(E.hydras, (k) => E.hydraAt + k * E.every, 'hydra')];
     }
     case 'drone-storm': {
       const E = EV['drone-storm'];
@@ -507,7 +512,8 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     }
     case 'breakout': {
       // The opening (drone swarms, sprint swarms among them, no ammo drops),
-      // then a Hydra fan, then trucks down the shore road.
+      // then trucks down both shore roads (round 12's fixes: sooner, and
+      // more of them) and a Hydra fan.
       const E = EV.breakout;
       return [
         ...steps(E.swarms, (k) => k * E.gap, 'swarm'),
@@ -591,6 +597,18 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
   const c = g.map.carrier;
   switch (ev.id) {
     case 'rush': {
+      const E = EV.rush;
+      if (s.op === 'hydra') {
+        // Out of the base the swarm before it came from, a second behind
+        // it, slower than a lone Hydra so it rides with the rush.
+        const bs = liveBases(g, 'drone');
+        const b = bs[s.k % bs.length];
+        const id0 = g.nextId;
+        launchFoe(g, { at: g.waveT, kind: 'hydra', base: b }, g.map.bases[b]);
+        for (const t of since(g, id0, 'hydra')) t.speed *= E.slow;
+        sent(ev, 'hydra');
+        return;
+      }
       const bs = liveBases(g, 'drone');
       const b = bs[s.k % bs.length];
       const id0 = g.nextId;
@@ -640,7 +658,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       th.hp = th.maxHp = E.hp;
       // The columns raise in turn too: the second one's trucks half a turn
       // after the first's, so their salvos overlap.
-      th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive, back: E.back });
+      th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive });
       sent(ev, 'rocketTruck');
       return;
     }
@@ -931,14 +949,14 @@ function firebombs(g: Game, ev: EventRun, n: number, slow: number): void {
 
 /** A rocket truck down a shore road in a column (`col`: which road, `i`:
  *  its place), stopping behind the one ahead and raising after it. */
-function truck(g: Game, ev: EventRun, col: number, i: number, E: { trucks: number; stop: number; spacing: number; stagger: number; salvos: number; hp: number; drive: number; back: number }): void {
+function truck(g: Game, ev: EventRun, col: number, i: number, E: { trucks: number; stop: number; spacing: number; stagger: number; salvos: number; hp: number; drive: number }): void {
   const path = roadFor(g, col);
   const L = pathLength(path);
   const th = spawnThreat(g, 'rocketTruck', path[0].x, path[0].y, 'truck');
   th.target = CARRIER_TARGET;
   th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
   th.hp = th.maxHp = E.hp;
-  th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive, back: E.back });
+  th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive });
   sent(ev, 'rocketTruck');
 }
 
