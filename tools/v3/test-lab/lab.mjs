@@ -273,6 +273,6 @@ export const ROUND_DOCS = {
   },
   12: {
     doc: 'docs/design/v3-round12-encounter-versions.md',
-    summary: 'Three encounter versions of each reference map, each its own card: v1 the original, v2 Set pieces (four big named moments, quiet waves between), v3 Enemy pairs (a pair in most waves). Play all three of a map and fill the scorecard each time.',
+    summary: 'Three encounter versions of each reference map, each its own card: v1 the original, v2 Set pieces (four big named moments, quiet waves between), v3 Enemy pairs (a pair in most waves). Play all three of a map and fill the scorecard each time. Fixed from your round 11 scorecards: every version opens with an encounter on wave 1; the Strait\'s and Harbor Mouth\'s boss rounds now sink ships (Hydras in the rush; the Breakout\'s trucks sooner and more); trucks drive off at normal speed; the Strait\'s waves 5–10 a little harder; Harbor Mouth\'s wave 8 a real test again in v2 and v3.',
   },
 };

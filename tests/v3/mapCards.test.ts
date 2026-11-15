@@ -10,7 +10,7 @@ import { LAB_CARDS, LAB_LENGTH, LAB_ROUND, LAB_START_WAVE, MAP_CARD_PLAYS, cardR
 import { EVENT_MAPS, EVENT_WAVE, campaignWaves } from '../../src/v3/data/events';
 import { MAP_ORDER, type MapId } from '../../src/v3/data/maps';
 import { CONVOY_REV } from '../../src/v3/data/convoy';
-import { ENCOUNTER_REV } from '../../src/v3/data/encounters';
+import { ENCOUNTERS, ENCOUNTER_REV } from '../../src/v3/data/encounters';
 import { applyLab, createGame, labBring, type Game } from '../../src/v3/sim/game';
 import { lastWave, isEventWave } from '../../src/v3/sim/events';
 import { evidenceLines, labCountText, labDone, labWaves, type LabSetup } from '../../src/v3/sim/lab';
@@ -123,8 +123,10 @@ describe('a map card is the full production map', () => {
       );
       expect(plansB, map).toEqual(plansA);
       expect(withoutLab(B.game), map).toBe(withoutLab(A.game));
-      // Each of its three encounters, in every wave it plays (1-10 only).
-      expect(new Set(B.game.enc!.played).size, map).toBe(3);
+      // Each of its v1 encounters (three, and since round 12's fixes wave 1's
+      // opener on The Strait and The Gauntlet), in the waves it plays (1-10 only).
+      expect(new Set(B.game.enc!.played).size, map).toBe(ENCOUNTERS.filter((e) => e.map === map && e.version === 'v1').length);
+      expect(new Set(B.game.enc!.played).size, map).toBe(map === 'harbor' ? 3 : 4);
       expect(B.game.enc!.wave, map).toBeLessThanOrEqual(10);
       expect(B.game.phase, map).toBe('won');
     }
@@ -305,7 +307,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     expect(log.commands.some((c) => c[1] === 'k')).toBe(false);
     expect(played('sowers', 3).log.commands.some((c) => c[1] === 'k')).toBe(true);
     expect(logPlays(log)).toBe('full');
-    expect(labSetupText(log)).toBe('Full map from wave 1 · D · Tactical commands · authored encounters rev 2 · v1 · production setup');
+    expect(labSetupText(log)).toBe(`Full map from wave 1 · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1 · production setup`);
   });
 
   it('replay is exact: a full map run with commands and drafts plays back to the same game', () => {
@@ -331,9 +333,9 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     const slice = { ...played('gauntlet', 3, slicePlan, 600).log, firstWave: LAB_START_WAVE };
     const old: PlayLog = { ...slice, id: 'old', lab: { card: 'map-kesh', length: 'full', mix: 'normal', rev: 1, round: 9 }, convoy: undefined, encounters: undefined };
     const docs = labResultDocs([full, slice, { ...old, labResult: { ...old.labResult!, round: 9, plays: undefined } }]).results;
-    expect(docs['map-strait']).toMatchObject({ plays: 'full', setup: 'Full map from wave 1 · D · Tactical commands · authored encounters rev 2 · v1 · production setup' });
+    expect(docs['map-strait']).toMatchObject({ plays: 'full', setup: `Full map from wave 1 · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1 · production setup` });
     expect(docs['map-strait'].evidence).toMatch(/^Full map: \d+ of 13 waves cleared/);
-    expect(docs['map-gauntlet']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · D · Tactical commands · authored encounters rev 2 · v1` });
+    expect(docs['map-gauntlet']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1` });
     expect(docs['map-gauntlet'].evidence).toMatch(/^Quick slice · /);
     expect(docs['map-kesh']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · C · Current controls · shared waves` });
     expect(docs.hydra).toBeUndefined();

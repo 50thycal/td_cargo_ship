@@ -78,7 +78,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, encountersFor, setupVersion, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, encountersFor, setupVersion, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -1059,7 +1059,7 @@ function startWave(g: Game): void {
   g.waveSpeed = spec.speed;
   const only = g.enc?.setup.only;
   const version = setupVersion(g.enc?.setup);
-  const authored = g.enc ? encountersFor(g.map.id, g.wave, version).filter((e) => !only || only.includes(e.id)) : [];
+  const authored = g.enc ? encountersFor(g.map.id, g.wave, version, g.enc.setup.rev).filter((e) => !only || only.includes(e.id)) : [];
   // A version's wave budget (round 12, v2's set pieces): its quiet waves
   // give up part of their drones and missiles, its set pieces take more.
   const scale = g.enc ? waveScale(g.map.id, version, g.wave) : 1;
@@ -1179,12 +1179,46 @@ function startWave(g: Game): void {
     const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
+  // A map's own extra fire, the same in every version (encounters rev 3:
+  // The Strait's waves 5-10), on top of the wave as planned.
+  const more = g.enc ? waveFire(g.map.id, g.wave, g.enc.setup.rev) : 0;
+  if (more) addFire(g, queue, more, lead, spec.duration, rng);
   queue.sort((a, b) => a.at - b.at);
   labOpener(g, queue);
   g.queue = queue.filter((l) => l.base !== -2);
   g.events.push({ kind: 'wave', wave: g.wave });
   cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
   if (g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
+}
+
+/** More of a planned wave's own fire (encounters rev 3, MAP_FIRE): `more`
+ *  of everything it will launch (the queue and its launchers' loads), on
+ *  top: about two thirds of it as one drone swarm, the rest missiles,
+ *  shells on odd waves and guided on even ones, each out of a base at a
+ *  rolled moment with the base lit first, as a raid's. Added after the
+ *  planner (a submarine fills its salvo whatever it is given, so more
+ *  missiles in the plan alone would mostly vanish into the salvos). */
+function addFire(g: Game, queue: Launch[], more: number, lead: number, duration: number, rng: RNG): void {
+  const fire = queue.filter((l) => l.at < 1e8 && !isStructure(l.kind)).length + g.raiderQueue.reduce((a, r) => a + r.units.reduce((b, u) => b + u.size, 0), 0);
+  const extra = Math.max(1, Math.round(fire * more));
+  const drones = extra >= 3 ? Math.round((extra * 2) / 3) : 0;
+  const at = () => lead + RAID.warn + duration * rng.range(0.15, 0.85);
+  if (drones) {
+    const t = at();
+    const base = pickBase(g, 'drone', rng);
+    if (base >= 0) {
+      for (let d = 0; d < drones; d++) queue.push({ at: t + d * 0.35, kind: 'drone', base });
+      g.raids.push({ at: t, theme: RAID_THEME.drone, bases: [base] });
+    }
+  }
+  const kind: ThreatKind = g.wave % 2 ? 'ballistic' : 'guided';
+  for (let k = drones; k < extra; k++) {
+    const t = at();
+    const base = pickBase(g, kind, rng);
+    if (base < 0) continue;
+    queue.push({ at: t, kind, base });
+    g.raids.push({ at: t, theme: RAID_THEME[kind], bases: [base] });
+  }
 }
 
 /** Takes out of a planned wave what its authored encounters replace: each

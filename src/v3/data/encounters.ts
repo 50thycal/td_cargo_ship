@@ -34,8 +34,12 @@ import type { MapId } from './maps';
 
 /** Bump when any encounter's beats change: runs under different encounters
  *  are never compared as one. Rev 2 (round 12): the versions; v1's beats
- *  are rev 1's, unchanged, so a rev 1 log replays as it did. */
-export const ENCOUNTER_REV = 2;
+ *  are rev 1's, unchanged, so a rev 1 log replays as it did. Rev 3 (round
+ *  12's fixes, from the round 11 scorecards): every version opens with an
+ *  encounter on wave 1 (OPENERS), and The Strait's waves 5-10 send about
+ *  10% more fire in every version (MAP_FIRE). Both are rev 3's only: a log
+ *  of rev 1 or 2 plays as it did. */
+export const ENCOUNTER_REV = 3;
 
 /** A reference map's encounter version. */
 export type EncounterVersion = 'v1' | 'v2' | 'v3';
@@ -132,6 +136,15 @@ export interface Encounter {
   pairs?: PairBeat[];
   /** Taken out of the wave's own launches, so the wave is no bigger. */
   replaces: { drones?: number; ballistic?: number; guided?: number };
+  /** The encounter revision it came in (absent: 1, or 2 for v2 and v3,
+   *  their first). A run plays only the encounters of its own rev or
+   *  before, so an older log replays as it did. */
+  rev?: number;
+  /** Wave 1's opener (rev 3): a light first look at the version's first
+   *  encounter, so the map's opening shows what the map is. Not a set piece
+   *  (v2's four stay its peaks); it may preview what the map has by wave
+   *  2 (a shell, a periscope), and nothing later. */
+  opener?: boolean;
 }
 
 const base = (i: number): BeatFrom => ({ base: i });
@@ -913,7 +926,7 @@ const V3: Omit<Encounter, 'version'>[] = [
     succeeds: 'Ships lost stay within one of wave 7.',
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.2, 0], ['hydra-swarm', 0.5, 1]),
-    replaces: { drones: 14, ballistic: 4, guided: 4 },
+    replaces: { drones: 18, ballistic: 2, guided: 2 },
   },
   {
     id: 'harbor-v3-escalate-2',
@@ -947,11 +960,167 @@ const V3: Omit<Encounter, 'version'>[] = [
   },
 ];
 
+// ---- Wave 1's openers (rev 3) -----------------------------------------------
+// The player's round 11 scorecards put wave 1 last on every map: ten or so
+// plain drones for 25 s, most often with no encounter. So every version's
+// wave 1 now carries its first encounter, or a light opener drawn from it:
+// the map says what it is from the first wave, and the wave stays easy (no
+// ship lost for the bots that play like the player). An opener may preview
+// what the map has by wave 2 (the Strait's first shell, Harbor Mouth's first
+// periscope), never anything later. Harbor Mouth's v1 already opens with
+// its first encounter (Open water, waves 1-3), so it needs none.
+
+const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
+  // ---- v1: the first encounter, lighter ----
+  {
+    id: 'strait-ranging-opener',
+    map: 'strait',
+    version: 'v1',
+    waves: [1],
+    role: 'teach',
+    name: 'Ranging shots',
+    callout: 'One shell from the middle base',
+    premise: 'The middle base lights up alone and lobs a single shell at the ship furthest along: the first look at where the threats come from.',
+    decision: 'One warning, one place: where will it land?',
+    counters: 'Tap the shell as it climbs.',
+    succeeds: 'The shell is shot at in most runs; nothing is sunk on wave 1.',
+    beats: [{ at: 0.4, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' }],
+    replaces: { ballistic: 1 },
+  },
+  {
+    id: 'gauntlet-north-south-opener',
+    map: 'gauntlet',
+    version: 'v1',
+    waves: [1],
+    role: 'teach',
+    name: 'North, then south',
+    callout: 'North shore, then south',
+    premise: 'Two drones from the north shore; four seconds later, two from the south.',
+    decision: 'Two shores from the first wave: clear one before the other opens.',
+    counters: 'Clear north; the south swarm has its own warning.',
+    succeeds: 'Taps cross the carrier line once; nothing is sunk on wave 1.',
+    beats: [
+      { at: 0.2, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
+      { at: 0.2, plus: 4, kind: 'drone', count: 2, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 4 },
+  },
+  // ---- v2: a small call-out opener, each the first set piece's setup ----
+  {
+    id: 'strait-v2-first-light',
+    map: 'strait',
+    version: 'v2',
+    waves: [1],
+    role: 'teach',
+    name: 'First light',
+    callout: 'Three bases, west to east',
+    premise: 'A small sweep: a few drones from the west base, a shell from the middle, a few drones from the east, in turn.',
+    decision: 'The order the map fires in, slowly: west, middle, east.',
+    counters: 'Follow the lit base.',
+    succeeds: 'The player meets The sweep on wave 3 knowing the order; nothing is sunk on wave 1.',
+    beats: [
+      { at: 0.35, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+      { at: 0.35, plus: 2, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.35, plus: 4, kind: 'drone', count: 3, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 6, ballistic: 1 },
+  },
+  {
+    id: 'gauntlet-v2-first-look',
+    map: 'gauntlet',
+    version: 'v2',
+    waves: [1],
+    role: 'teach',
+    name: 'Two shores',
+    callout: 'A swarm off each shore',
+    premise: 'A small swarm off the north shore and one off the south at the same second: the pincer, in miniature.',
+    decision: 'Both shores light together: which first?',
+    counters: 'The nearer swarm, then turn.',
+    succeeds: 'Both swarms are shot at; nothing is sunk on wave 1.',
+    beats: [
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 6 },
+  },
+  {
+    id: 'harbor-v2-first-periscope',
+    map: 'harbor',
+    version: 'v2',
+    waves: [1],
+    role: 'teach',
+    name: 'First periscope',
+    callout: 'A periscope off the narrows',
+    premise: 'A periscope rises off the mouth of the narrows and the sub lobs one shell into the funnel, long before the ships get there.',
+    decision: 'Learn the periscope: it shows before the shells.',
+    counters: 'Tap the shell as it climbs.',
+    succeeds: 'The player looks at the periscope when it shows; nothing is sunk on wave 1.',
+    beats: [{ at: 0.4, kind: 'ballistic', count: 1, from: sub(1), aim: 'narrows' }],
+    replaces: { ballistic: 1 },
+  },
+  // ---- v3: the first pair, taught once on the opening wave, early and from
+// the far base (out of the nearer bases it sank a ship in one run in ten) ----
+  {
+    id: 'strait-v3-hydra-opener',
+    map: 'strait',
+    version: 'v3',
+    waves: [1],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'The first pair from the first wave, early: a swarm out of the base furthest from the convoy with a Hydra launched to catch it up.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.25]),
+    replaces: { drones: 9 },
+  },
+  {
+    id: 'gauntlet-v3-hydra-opener',
+    map: 'gauntlet',
+    version: 'v3',
+    waves: [1],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'The first pair from the first wave, early: a swarm out of the base furthest from the convoy with a Hydra launched to catch it up.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.25]),
+    replaces: { drones: 9 },
+  },
+  {
+    id: 'harbor-v3-hydra-opener',
+    map: 'harbor',
+    version: 'v3',
+    waves: [1],
+    role: 'teach',
+    name: 'Hydra in the swarm',
+    callout: 'A Hydra inside a swarm',
+    premise: 'The first pair from the first wave, early: a swarm out of the base furthest from the convoy with a Hydra launched to catch it up.',
+    decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
+    counters: 'A shot at the Hydra before the swarm reaches the ships.',
+    succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    beats: [],
+    pairs: pairsOf(['hydra-swarm', 0.25]),
+    replaces: { drones: 9 },
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...V2.map((e) => ({ ...e, version: 'v2' as const })),
   ...V3.map((e) => ({ ...e, version: 'v3' as const })),
+  ...OPENERS.map((e) => ({ ...e, rev: 3, opener: true })),
 ];
+
+/** The rev an encounter came in. */
+export function encounterRev(e: Encounter): number {
+  return e.rev ?? (e.version === 'v1' ? 1 : 2);
+}
 
 // ---- The versions, per map ---------------------------------------------------
 
@@ -981,14 +1150,23 @@ const SET_PIECES = [0.9, QUIET, PEAK, QUIET, PEAK, QUIET, QUIET, PEAK, QUIET, 1.
 /** The Gauntlet: its shared waves 5 and 8 are already steps up (wave 8 is
  *  a cliff in every version), so those set pieces come on less budget. */
 const SET_PIECES_GAUNTLET = [0.9, 0.85, 1.15, 0.95, 1.0, 0.85, 0.85, 0.85, 0.85, 1.0];
-const SET_PIECES_HARBOR = [0.9, 1.05, 0.95, 1.1, 0.95, 0.95, 1.0, 0.9, 0.9, 1.0];
+/** Round 12's fixes (the player, round 11: Harbor Mouth's wave 8 sank four
+ *  ships with aimed weapons and one with weapons that fire themselves, "a
+ *  test of your build, not an unfair wall"): wave 8 is the shared wave
+ *  again (1.0, was 0.9). The rule now: a wave may hurt, but must not end
+ *  the run for every kit (measured with both kits, docs/design/
+ *  v3-round12-encounter-versions.md). */
+const SET_PIECES_HARBOR = [0.9, 1.05, 0.95, 1.1, 0.95, 0.95, 1.0, 1.0, 0.9, 1.0];
 
 /** v3: a wave with an enemy pair gives up a little more of its own fire
  *  than the pair's launches (a pair is worth more than its count). */
 const PAIRS = [1, 0.95, 0.9, 1.0, 0.8, 0.85, 0.85, 1.0, 0.75, 0.7];
 /** Harbor Mouth's pairs come with less of its own fire: the narrows give
- *  the guests' shots nowhere to miss. */
-const PAIRS_HARBOR = [1, 0.9, 0.85, 0.8, 0.65, 0.7, 0.65, 0.75, 0.65, 0.75];
+ *  the guests' shots nowhere to miss. Round 12's fixes: wave 8 (its two
+ *  Hydras) keeps all of its own fire again (1.0, was 0.75), and its pairs
+ *  take drones out of it rather than missiles, so it stays the test of
+ *  your build it is in v1 (the rule above). */
+const PAIRS_HARBOR = [1, 0.9, 0.85, 0.8, 0.65, 0.7, 0.65, 1.0, 0.65, 0.75];
 /** The Gauntlet's siege gun (wave 6) is the heaviest guest: its wave gives
  *  up more. */
 const PAIRS_GAUNTLET = [1, 0.95, 0.8, 0.8, 0.75, 0.75, 0.85, 0.65, 0.85, 0.8];
@@ -1033,11 +1211,28 @@ export function waveScale(map: MapId, v: EncounterVersion, wave: number): number
   return versionDef(map, v)?.scale?.[wave - 1] ?? 1;
 }
 
+/** A map's fire, the same in every version (rev 3, round 12's fixes): from
+ *  wave `from` to `to`, `more` more of the wave's own drones and missiles
+ *  on top of the version's budget. The player found The Strait "a bit easy"
+ *  (won with one ship lost, round 11): waves 5-10 send about 10% more. The
+ *  encounter layer is lab only, so the campaign's Strait is unchanged. */
+export const MAP_FIRE: Partial<Record<EncounterMap, { from: number; to: number; more: number }>> = {
+  strait: { from: 5, to: 10, more: 0.1 },
+};
+
+/** How much more fire a map's wave sends in every version (0: none; never
+ *  under a rev before 3). */
+export function waveFire(map: MapId, wave: number, rev: number = ENCOUNTER_REV): number {
+  const f = (MAP_FIRE as Partial<Record<MapId, { from: number; to: number; more: number }>>)[map];
+  return f && rev >= 3 && wave >= f.from && wave <= f.to ? f.more : 0;
+}
+
 /** A map's encounters for a wave in a version (none on a map with no
  *  authored layer, or a wave past the tenth: the ending is the map's own
- *  event). */
-export function encountersFor(map: MapId, wave: number, version: EncounterVersion = VERSION_DEFAULT): Encounter[] {
-  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave));
+ *  event), as of encounter rev `rev` (a log's own: an older log plays the
+ *  encounters it had). */
+export function encountersFor(map: MapId, wave: number, version: EncounterVersion = VERSION_DEFAULT, rev: number = ENCOUNTER_REV): Encounter[] {
+  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave) && encounterRev(e) <= rev);
 }
 
 /** The ten-wave arc of a reference map: what each wave is for, and the

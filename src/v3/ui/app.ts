@@ -98,7 +98,7 @@ import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetr
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, type CommandId, type ConvoySetup } from '../data/convoy';
 import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
-import { ENCOUNTERS, arcGroups, beatText, calloutsOn, encountersFor, pairBeatText, setupVersion, versionLabel, waveScale, type EncounterSetup } from '../data/encounters';
+import { ENCOUNTERS, arcGroups, beatText, calloutsOn, encountersFor, pairBeatText, setupVersion, versionLabel, waveFire, waveScale, type EncounterSetup } from '../data/encounters';
 import { enemyPair } from '../data/pairs';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
@@ -837,7 +837,7 @@ export class App {
     const only = g.enc.setup.only;
     // Round 12: the run's own version of the map's encounters.
     const version = setupVersion(g.enc.setup);
-    const list = encountersFor(g.map.id, g.wave, version).filter((e) => !only || only.includes(e.id));
+    const list = encountersFor(g.map.id, g.wave, version, g.enc.setup.rev).filter((e) => !only || only.includes(e.id));
     const box = el('section', 'v3-enc-script');
     box.dataset.encScript = list.map((e) => e.id).join(' ');
     box.dataset.encVersion = version;
@@ -865,6 +865,9 @@ export class App {
       card.append(title, el('p', 'v3-enc-premise', e.premise), beats, dl);
       box.append(card);
     }
+    // Round 12's fixes: a map's own extra fire, the same in every version.
+    const more = waveFire(g.map.id, g.wave, g.enc.setup.rev);
+    if (more) box.append(el('p', 'v3-enc-none', `Every version of this map: this wave sends ${Math.round(more * 100)}% more of its own drones and missiles.`));
     const arcLine = el('p', 'v3-enc-arc');
     arcLine.append(el('b', '', 'Arc'));
     for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? EVENTS[evId].name : null, version)) {

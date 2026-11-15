@@ -93,16 +93,20 @@ describe('a campaign run has no encounter layer', () => {
     expect(ENCOUNTER_VERSIONS).toEqual(['v1', 'v2', 'v3']);
     for (const map of ENCOUNTER_MAPS) {
       const of = (v: EncounterVersion) => ENCOUNTERS.filter((e) => e.map === map && e.version === v);
-      expect(of('v1'), map).toHaveLength(3);
-      expect(of('v2'), map).toHaveLength(4);
-      expect(of('v3').length, map).toBeGreaterThanOrEqual(7);
+      // Rev 3 (round 12's fixes): wave 1's opener on top (Harbor Mouth's v1
+      // already opens with its first encounter).
+      const big = (v: EncounterVersion) => of(v).filter((e) => !e.opener);
+      expect(big('v1'), map).toHaveLength(3);
+      expect(big('v2'), map).toHaveLength(4);
+      expect(big('v3').length, map).toBeGreaterThanOrEqual(7);
+      for (const v of ENCOUNTER_VERSIONS) expect(of(v).filter((e) => e.opener), `${map} ${v}`).toHaveLength(map === 'harbor' && v === 'v1' ? 0 : 1);
       for (const v of ENCOUNTER_VERSIONS) {
         const d = versionDef(map, v)!;
         expect(d.name.length, `${map} ${v}`).toBeGreaterThan(4);
         expect(d.idea.length, `${map} ${v}`).toBeGreaterThan(30);
       }
     }
-    expect(ENCOUNTERS.filter((e) => e.version === 'v1').map((e) => e.id)).toEqual([
+    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener).map((e) => e.id)).toEqual([
       'strait-ranging-shots', 'strait-screen', 'strait-rolling-push',
       'gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire',
       'harbor-open-water', 'harbor-funnel-salvo', 'harbor-last-mile',
@@ -128,9 +132,12 @@ describe('every beat is legal on its map at its wave', () => {
   it('only enemies the map already has by then (never a later chapter\'s), from launchers that carry them', () => {
     for (const e of ENCOUNTERS) {
       const m = MAPS[e.map];
-      for (const w of e.waves) {
-        expect(w, e.id).toBeGreaterThanOrEqual(1);
-        expect(w, e.id).toBeLessThanOrEqual(10);
+      for (const w0 of e.waves) {
+        expect(w0, e.id).toBeGreaterThanOrEqual(1);
+        expect(w0, e.id).toBeLessThanOrEqual(10);
+        // Wave 1's opener (rev 3) may preview what the map has by wave 2
+        // (the first shell, the first periscope), never anything later.
+        const w = e.opener ? (expect(w0, e.id).toBe(1), 2) : w0;
         const table = WAVE_TABLE[w - 1];
         for (const b of e.beats) {
           const where = `${e.id} wave ${w}: ${b.kind}`;
@@ -428,8 +435,8 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     for (const map of ENCOUNTER_MAPS) {
       const a = arc(map);
       expect(a.map((w) => w.role).join()).toBe('teach,teach,teach,combine,combine,combine,escalate,escalate,escalate,climax');
-      // Every wave from the second on carries an encounter; the first is the map alone (Harbor Mouth: its own lesson).
-      for (const w of a.slice(1)) expect(w.encounters.length, `${map} wave ${w.wave}`).toBeGreaterThan(0);
+      // Every wave carries an encounter (rev 3: wave 1 too, its opener, or Harbor Mouth's own lesson).
+      for (const w of a) expect(w.encounters.length, `${map} wave ${w.wave}`).toBeGreaterThan(0);
       // A wave has at most one encounter: a decision, not a pile.
       for (const w of a) expect(w.encounters.length, `${map} wave ${w.wave}`).toBeLessThanOrEqual(1);
     }
@@ -438,7 +445,9 @@ describe('the ten-wave arc, and what it leaves alone', () => {
   it('v2, set pieces: four, one a wave, with a quiet wave between any two; each set piece wave has more of the budget than the quiet ones', () => {
     for (const map of ENCOUNTER_MAPS) {
       const a = arc(map, 'v2');
-      const on = a.filter((w) => w.encounters.length).map((w) => w.wave);
+      // Wave 1's opener (rev 3) is a small call-out, not a set piece.
+      const on = a.filter((w) => w.encounters.some((e) => !e.opener)).map((w) => w.wave);
+      expect(a[0].encounters.map((e) => e.opener), map).toEqual([true]);
       expect(on, map).toHaveLength(4);
       for (const w of a) expect(w.encounters.length, `${map} wave ${w.wave}`).toBeLessThanOrEqual(1);
       for (let k = 1; k < on.length; k++) expect(on[k] - on[k - 1], `${map}: set pieces ${on[k - 1]} and ${on[k]}`).toBeGreaterThanOrEqual(2);
@@ -450,7 +459,7 @@ describe('the ten-wave arc, and what it leaves alone', () => {
         const e = encountersFor(map, w, 'v2')[0];
         expect(e.beats.length >= 2 || e.beats.reduce((x, b) => x + b.count, 0) >= 5, e.id).toBe(true);
       }
-      const quiet = a.filter((w) => !w.encounters.length && w.wave > 1).map((w) => waveScale(map, 'v2', w.wave));
+      const quiet = a.filter((w) => !w.encounters.some((e) => !e.opener) && w.wave > 1).map((w) => waveScale(map, 'v2', w.wave));
       expect(Math.max(...quiet), map).toBeLessThanOrEqual(1.15);
     }
   });

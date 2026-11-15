@@ -15,7 +15,7 @@ import { FORMATIONS } from '../../src/v3/data/formations';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { applyConvoy, commandState, convoyCommand, convoyCommands, formationNow, refusalText } from '../../src/v3/sim/convoy';
 import { cohort, paired, runTrial, type TrialSpec } from '../../src/v3/sim/convoyLab';
-import { createGame, setFlow, setFormation, shipSpeed, step, type Game } from '../../src/v3/sim/game';
+import { FULL_TEMPO, createGame, setFlow, setFormation, shipSpeed, step, type Game } from '../../src/v3/sim/game';
 import { lockstep, logHash, stateHash } from '../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
 import { LOG_VERSION, logTelemetry, replay, replayTo, type PlayLog } from '../../src/v3/sim/playlog';
@@ -347,7 +347,9 @@ describe('no command is a way round the fight', () => {
 describe('the ending and the bonus wave under a policy', () => {
   it('the three-run ending and Siren Field play on under each policy', () => {
     for (const policy of ['auto', 'tactical'] as ConvoyPolicy[]) {
-      const { game: g, log } = playMimic('harbor', 201, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11, convoy: setup(policy, 'natural'), pilot: 'spam' });
+      // (Round 12's fixes made the Breakout sink ships: the loss limit is
+      // lifted so the run plays all three boss rounds whatever it loses.)
+      const { game: g, log } = playMimic('harbor', 201, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11, tempo: { ...FULL_TEMPO, lossLimit: 99 }, convoy: setup(policy, 'natural'), pilot: 'spam' });
       expect(g.eventLog.map((e) => e.run), policy).toEqual([1, 2, 3]);
       expect(g.phase).toBe('won');
       expect(g.convoy!.waited).toBeLessThanOrEqual(CONVOY.hold.max + 0.05);

@@ -71,7 +71,7 @@ export interface EventDef {
 }
 
 export const EVENTS: Record<EventId, EventDef> = {
-  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'No line now: six sprint swarms cruise in, and each boosts near its ship. Does it still feel like a rush?' },
+  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Six sprint swarms, now with a Hydra riding behind each: does the boss round land this time?' },
   'drone-storm': { id: 'drone-storm', kind: 'map', name: 'Drone Storm', rules: ['noAmmo'], look: 'Twelve drone swarms and no ammo drops: did you run dry, and was that on you?' },
   'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
@@ -248,8 +248,14 @@ export const EV = {
   /** `swarms` sprint swarms, one every `every` s, cruising at `cruise` of
    *  their speed. Round 11: the boost line is gone (it sat 0.75 of the way
    *  from the bases to the lane, and the player saw the drones boost before
-   *  it anyway); each sprinter flares near its ship as usual. */
-  rush: { swarms: 6, every: 1.5, cruise: 0.5 },
+   *  it anyway); each sprinter flares near its ship as usual. Round 12's
+   *  fixes (the round 11 scorecard: 24 sprinters hit the ships four times
+   *  in three boss rounds and sank none): `hydras` Hydras, one `hydraAt` s
+   *  after each swarm out of the same base, at `slow` of their speed, so a
+   *  boss round can sink a ship. Chosen with the bots over rocket trucks
+   *  (four trucks cost a quarter to two fifths of the Rocket Convoy's
+   *  ships; six Hydras about two thirds, the target). */
+  rush: { swarms: 6, every: 1.5, cruise: 0.5, hydras: 6, hydraAt: 1, slow: 0.75 },
   /** The Drone Storm (Kesh; round 11, in place of the Decoy Storm when the
    *  decoys left the game): `swarms` plain drone swarms of `size` (2.5:
    *  three, then two, in turn; 30 drones), one from each drone base in
@@ -281,8 +287,11 @@ export const EV = {
    *  and raise closer together (2.6 s → 1.4 s; the second column half a
    *  turn after the first), so the salvos of both columns overlap. Each
    *  truck takes 5 hits (8) and fires 2 salvos (3): more trucks, less of
-   *  each. */
-  'rocket-convoy': { columns: 2, trucks: 4, second: 1.5, gap: 0.6, drive: 2.8, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, stall: 2, back: 2.5, hp: 5, swarms: 3, size: 5 },
+   *  each. Round 12's fixes (the player: "The rocket truck speed off too
+   *  fast when they are done shooting, they should go at normal speeds"):
+   *  `drive` is the drive in only; done firing, a truck drives off at its
+   *  own speed (FOE.rocketTruck.leave), not at `drive` × 2.5 (about 7 ×). */
+  'rocket-convoy': { columns: 2, trucks: 4, second: 1.5, gap: 0.6, drive: 2.8, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, stall: 2, hp: 5, swarms: 3, size: 5 },
   /** `helis` helicopters on station in a line `off` px off the lane, fire
    *  from `hold` s, each `turn` s after the one to its left; `hp` hits and
    *  `volleys` volleys each (the design's "six hits each is a lot");
@@ -376,11 +385,15 @@ export const EV = {
    *  from every drone base, with
    *  a sprint swarm among them at each of `sprintAt`. Then a fan of
    *  `fan` Hydras from the bases furthest from the carrier, `fanGap` s
-   *  apart from `fanAt` s, at `slow` of their speed. Then `trucks` rocket trucks in a
-   *  column down each shore road from `truckAt` s (`drive` × their speed,
+   *  apart from `fanAt` s, at `slow` of their speed. And `trucks` rocket
+   *  trucks in a column down each of `roads` shore roads from `truckAt` s (`drive` × their speed,
    *  `stagger` s apart raising, `salvos` salvos, `hp` hits; a wreck stalls
-   *  the one behind it `stall` s). */
-  breakout: { swarms: 3, size: 3, gap: 0.9, sprintAt: [2.4], open: 8, fanAt: 12, fan: 3, fanGap: 1.2, slow: 0.65, truckAt: 16, trucks: 2, roads: 1, gapT: 0.6, drive: 2.4, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, hp: 4, stall: 2, back: 2.5 },
+   *  the one behind it `stall` s). Round 12's fixes (the round 11
+   *  scorecard: three boss rounds sank no ship): the trucks come as the
+   *  opening ends (`truckAt` 8 s, was 16), `trucks` down each of the
+   *  map's two shore roads (`roads`: six trucks, was two down one), and
+   *  drive off at their own speed once they have fired. */
+  breakout: { swarms: 3, size: 3, gap: 0.9, sprintAt: [2.4], open: 8, fanAt: 12, fan: 3, fanGap: 1.2, slow: 0.65, truckAt: 8, trucks: 3, roads: 2, gapT: 0.6, drive: 2.4, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, hp: 4, stall: 2 },
   /** Run the Canal (Saltgate Canal): chapter 2's finale. Round 8 ("Really
    *  bad, the subs shoot torpedoes from water to land … way too difficult,
    *  way too much going on"): cut to three phases one after another, each

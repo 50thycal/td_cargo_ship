@@ -11,7 +11,7 @@
 // - Next up and the bare link (?lab=map-harbor) open the same setup;
 // - round 11's scorecard: Done on The Strait shows it above the verdict
 //   (no boss row on wave 1), Skip folds it, its chips land in the log
-//   (v22, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
+//   (v23, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
 //   waves 1-7 and no boss row; a won run offers the boss row and B1-B3.
 // Screenshots for the doc go to docs/design/img/map-cards/.
 // Fails on any page error.
@@ -134,9 +134,9 @@ try {
   await page.waitForFunction(() => window.__v3.game().ships.length >= 2, null, { timeout: 30000 });
   const s0 = await runState(page);
   check(s0.map === 'strait' && s0.wave === 1 && s0.full && s0.plays === 'full' && !s0.endless && !s0.freePlay, `The Strait's card from the hub starts the full map at wave 1 (${JSON.stringify({ wave: s0.wave, plays: s0.plays, endless: s0.endless, freePlay: s0.freePlay })})`);
-  check(s0.policy === 'tactical' && s0.cmds.length === 0 && s0.enc === 2, `its production setup: the map's own convoy with no command (round 11: Rush and Disperse are gone), authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
+  check(s0.policy === 'tactical' && s0.cmds.length === 0 && s0.enc === 3, `its production setup: the map's own convoy with no command (round 11: Rush and Disperse are gone), authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
   check(!s0.bring && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1/13' && /WAVE\s*1\/13/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `the bar reads "${s0.head} · ${s0.count}", with no Bring one; the HUD says WAVE 1/13 and TEST LAB`);
-  check(s0.log.firstWave === 1 && !s0.log.freePlay && s0.log.lab?.plays === 'full' && s0.log.lab?.config?.convoy === 'tactical' && s0.log.lab?.config?.encounters === 2 && s0.log.lab?.config?.production === true && s0.log.convoy === 'tactical' && s0.log.encounters === 2 && !('length' in s0.log.lab), `the log says it is a full production run, and its setup (${JSON.stringify(s0.log.lab)})`);
+  check(s0.log.firstWave === 1 && !s0.log.freePlay && s0.log.lab?.plays === 'full' && s0.log.lab?.config?.convoy === 'tactical' && s0.log.lab?.config?.encounters === 3 && s0.log.lab?.config?.production === true && s0.log.convoy === 'tactical' && s0.log.encounters === 3 && !('length' in s0.log.lab), `the log says it is a full production run, and its setup (${JSON.stringify(s0.log.lab)})`);
   await page.waitForTimeout(1500);
   await shot(page, 'strait-wave1-commands');
 
@@ -196,7 +196,7 @@ try {
   await page.tap('[data-lab-apply]');
   await page.waitForFunction(() => window.__v3.game()?.lab?.setup.plays === 'full', null, { timeout: 8000 });
   const s3 = await runState(page);
-  check(s3.wave === 1 && s3.policy === 'tactical' && s3.enc === 2 && s3.log.lab?.config?.production === true, 'Reset from the slice restarts the full map under the production setup');
+  check(s3.wave === 1 && s3.policy === 'tactical' && s3.enc === 3 && s3.log.lab?.config?.production === true, 'Reset from the slice restarts the full map under the production setup');
 
   // Done: the verdict sheet, with the scorecard, then back to the list.
   await page.tap('[data-lab-done]');
@@ -216,7 +216,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 22 && JSON.stringify(saved.score) === JSON.stringify({ rev: 1, fun: 4, difficulty: 'bit-hard', pacing: 'right', readability: 2, best: 1, again: 'maybe' }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 23 && JSON.stringify(saved.score) === JSON.stringify({ rev: 1, fun: 4, difficulty: 'bit-hard', pacing: 'right', readability: 2, best: 1, again: 'maybe' }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -269,14 +269,14 @@ try {
   await page.tap('[data-lab-next]');
   await page.waitForSelector('.playing.lab-on');
   const s4 = await runState(page);
-  check(next === 'The Gauntlet' && s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.length === 0 && s4.enc === 2, `Next up (${next}) opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
+  check(next === 'The Gauntlet' && s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.length === 0 && s4.enc === 3, `Next up (${next}) opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
 
   // ---- The bare link ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
   await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
   const s5 = await runState(page);
-  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 2 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
+  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 3 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
   // Round 11: Hold is on Sowers' Reach, where mines drift across the lane.
   await page.goto(`${BASE_URL}/v3.html?lab=map-sowers&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');

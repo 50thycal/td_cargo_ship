@@ -605,6 +605,29 @@ for (const map of ENCOUNTER_MAPS) {
   ROUND12[mapCardId(map, 'v3')] = 'New: an enemy pair in most waves (some from later chapters), taught, then combined, then overlapped';
 }
 for (const [id, what] of Object.entries(ROUND12)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), { round: 12, what }];
+// Round 12's fixes, from the round 11 scorecards (the same doc, "From the
+// round 11 scorecards"). A map card's lines show on its version cards too
+// (changeSources), so every version says what changed in all three.
+const ROUND12_FIXES: Record<string, string[]> = {
+  'map-strait': [
+    'All three versions: wave 1 opens with the version\'s first encounter (v1: one ranging shell; v2: a small sweep, named; v3: the Hydra in the swarm)',
+    'All three versions: waves 5–10 send about 10% more drones and missiles (you found it a bit easy)',
+    'The boss rounds: a Hydra rides in behind each sprint swarm, so the rush can sink ships now',
+  ],
+  'map-gauntlet': [
+    'All three versions: wave 1 opens with the version\'s first encounter (v1: north, then south; v2: a swarm off each shore, named; v3: the Hydra in the swarm)',
+    'The boss rounds: the rocket trucks drive off at normal speed once they have fired',
+  ],
+  'map-harbor': [
+    'Wave 1 opens with the version\'s first encounter (v2: the first periscope, named; v3: the Hydra in the swarm; v1 already opened with Open water)',
+    'v2 and v3: wave 8 is a real test of your build again (it hurts, but should not end every run)',
+    'The boss rounds: the trucks come sooner, three down each shore road, and drive off at normal speed',
+  ],
+  'ev-rush': ['A Hydra rides in behind each sprint swarm: in round 11 the rush sank no ships'],
+  'ev-rocket-convoy': ['Done firing, the trucks drive off at normal speed (they sped off at about 7 times it)'],
+  'ev-breakout': ['The trucks come sooner (as the opening ends, not at 16 s), three down each shore road, and drive off at normal speed'],
+};
+for (const [id, lines] of Object.entries(ROUND12_FIXES)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), ...lines.map((what) => ({ round: 12, what }))];
 
 /** The cards a card takes changes from: itself, for a combo its enemies'
  *  and weapon's cards, and for a map's version card (round 12) the map's

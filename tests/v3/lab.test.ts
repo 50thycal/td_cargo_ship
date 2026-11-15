@@ -335,7 +335,7 @@ describe('test rounds and card versions', () => {
     expect(LAB_ROUNDS.find((r) => r.n === 9)).toEqual({ n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' });
     // (Round 11 retired the decoy cards; The Breakout changed again.)
     for (const id of ['decoy', 'scavenger', 'ev-decoy-storm', 'ev-supply-raid', 'combo-scavenger-swarm']) expect(cardRev(id), id).toBe(9);
-    expect(LAB_CHANGES['ev-breakout']!.map((c) => c.round)).toEqual([7, 8, 9, 11]);
+    expect(LAB_CHANGES['ev-breakout']!.map((c) => c.round)).toEqual([7, 8, 9, 11, 12]);
     // Round 10 (docs/design/v3-map-cards-production.md): every map card is
     // the full production map; nothing else changed.
     expect(LAB_ROUNDS.find((r) => r.n === 10)).toEqual({ n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' });
@@ -345,7 +345,8 @@ describe('test rounds and card versions', () => {
     for (const id of ['map-sowers', 'map-kesh']) expect(cardRev(id), id).toBe(11);
     // Round 12: the reference maps again (their encounter versions).
     for (const id of ['map-strait', 'map-gauntlet', 'map-harbor']) expect(cardRev(id), id).toBe(12);
-    expect(LAB_CHANGES['map-harbor']!.map((c) => c.round)).toEqual([9, 10, 11, 11, 11, 12]);
+    // Round 12's fixes add three more lines (wave 1, wave 8, the boss rounds).
+    expect(LAB_CHANGES['map-harbor']!.map((c) => c.round)).toEqual([9, 10, 11, 11, 11, 12, 12, 12, 12]);
     expect(cardChanges('map-strait', 9)[0]).toBe('Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign\'s loadout and drafts, set up ready to test (Commands: Rush and Disperse · authored encounters)');
     expect(cardChanges('map-kesh', 9)[0]).toMatch(/today's convoy controls$/);
     for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);

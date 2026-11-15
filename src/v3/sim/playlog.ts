@@ -111,12 +111,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      Hold pauses every ship, decoys out of the game, Point Defense at
  *      munitions only, a Cutter tap fires nothing, every weapon hurts a
  *      Lure Beacon, Afterburner Rush with no line, Harbor's opening pairs)
- *      mean a v21 log no longer replays to the same game. */
-export const LOG_VERSION = 22;
+ *      mean a v21 log no longer replays to the same game.
+ *  23: Test Lab round 12's fixes (docs/design/v3-round12-encounter-
+ *      versions.md, "From the round 11 scorecards"): a rocket truck drives
+ *      off at its own speed once it has fired (the Rocket Convoy's and the
+ *      Breakout's sped off at about 7 ×), the Afterburner Rush has a Hydra
+ *      behind each sprint swarm, and the Breakout's trucks come sooner, three
+ *      down each shore road. A v22 log that reaches a boss round no longer
+ *      replays to the same game. (The encounters' own changes are lab only
+ *      and ride in the log's encounter rev.) */
+export const LOG_VERSION = 23;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [22];
+export const LOG_REPLAYS: readonly number[] = [23];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

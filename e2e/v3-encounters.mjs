@@ -72,14 +72,18 @@ try {
   // strait's second encounter plays; the full map is e2e/v3-map-cards.mjs.)
   await open(page, 'lab=map-strait&enc=1&plays=slice&seed=7');
   const s0 = await state(page);
-  check(s0.wave === 5 && s0.enc?.rev === 2 && s0.log?.rev === 2, `a map card opened with ?enc=1 carries the encounter layer, and its log says so (wave ${s0.wave}; log ${JSON.stringify(s0.log)})`);
+  check(s0.wave === 5 && s0.enc?.rev === 3 && s0.log?.rev === 3, `a map card opened with ?enc=1 carries the encounter layer, and its log says so (wave ${s0.wave}; log ${JSON.stringify(s0.log)})`);
   check(s0.enc?.now.length === 1 && /^strait-/.test(s0.enc.now[0]) && s0.queued.length > 0, `the wave has the map's encounter for it, its launches in the queue (${s0.enc?.now.join()}: ${s0.queued.join(' ')})`);
   const named = await page.waitForFunction(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0], null, { timeout: 10000 }).then((h) => h.jsonValue()).catch(() => '');
   check(/ENCOUNTER: THE SCREEN/.test(named), `the encounter is named as the wave starts ("${named}")`);
   await page.screenshot({ path: `${OUT_DIR}/strait-encounter-named.png` });
 
-  // Played on with nobody shooting: its launches come, tagged, and the log replays.
-  await page.evaluate(() => window.__v3.advance(40));
+  // Played on with nobody shooting: its launches come, tagged, and the log
+  // replays. (Round 12's fixes: The Strait's wave 5 sends 10% more, and after
+  // 40 s with nobody shooting the run was over; 32 s still takes in the
+  // encounter, its swarm and the guided missile behind it.)
+  await page.evaluate(() => window.__v3.advance(32));
+  check(await page.evaluate(() => window.__v3.game().phase === 'wave'), 'the run is still going after 32 s with nobody shooting');
   const run = await page.evaluate(() => {
     const live = window.__v3.telemetry();
     const log = window.__v3.log();
@@ -91,7 +95,7 @@ try {
       same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems,
     };
   });
-  check(run.header === 2 && run.named.includes(s0.enc.now[0]) && run.mine.length > 0 && run.ids.join() === s0.enc.now[0], `played on, the encounter's launches come and the telemetry tags each one (${run.mine.join(' ')}; named ${run.named.join()})`);
+  check(run.header === 3 && run.named.includes(s0.enc.now[0]) && run.mine.length > 0 && run.ids.join() === s0.enc.now[0], `played on, the encounter's launches come and the telemetry tags each one (${run.mine.join(' ')}; named ${run.named.join()})`);
   check(run.same && run.problems.length === 0, `the test's log replays to the same telemetry, and it reconciles (${run.problems[0] ?? 'no problems'})`);
   await page.screenshot({ path: `${OUT_DIR}/strait-encounter-playing.png` });
 

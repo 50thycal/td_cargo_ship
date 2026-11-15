@@ -1,9 +1,12 @@
 // Test Lab round 12's screenshots (docs/design/v3-round12-encounter-versions.md):
 // the hub's version cards, a v2 call-out on each reference map, and the
-// pause screen's script on a v3 wave. 844 x 390, 1x, touch.
+// pause screen's script on a v3 wave. 844 x 390, 1x, touch. Round 12's
+// fixes: wave 1's opener on each map (a version each), and a boss round
+// on The Strait (Hydras in the rush) and on Harbor Mouth (the trucks).
+// ONLY=fixes takes just those.
 //
 // Usage: npx vite preview --outDir <dist> --port 4771 &
-//        BASE_URL=http://localhost:4771 SHOT_DIR=<dir> node tools/v3/round12/shots.mjs
+//        BASE_URL=http://localhost:4771 SHOT_DIR=<dir> [ONLY=fixes] node tools/v3/round12/shots.mjs
 
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -54,9 +57,86 @@ async function open(page, card) {
   await page.waitForSelector('.playing.lab-on');
 }
 
+/** Step the run on in quarter seconds until `cond` holds in the page (or
+ *  `max` s go by); true if it did. */
+async function until(page, cond, max = 60) {
+  return page.evaluate(
+    ({ src, max }) => {
+      const f = new Function('g', `return (${src})`);
+      const g = window.__v3.game();
+      for (let t = 0; t < max; t += 0.25) {
+        if (f(g)) return true;
+        window.__v3.advance(0.25);
+      }
+      return !!f(g);
+    },
+    { src: cond, max },
+  );
+}
+
+/** The run can't be lost while a shot is set up. */
+async function tough(page) {
+  await page.evaluate(() => {
+    const g = window.__v3.game();
+    g.tempo.lossLimit = 999;
+    g.carrierHp = g.stats.carrierHp = 1e6;
+  });
+}
+
+async function fixes(page) {
+  // ---- Wave 1's opener, a version on each map ----
+  for (const [card, id, text] of [
+    ['map-strait', 'strait-ranging-opener', null],
+    ['map-gauntlet-v2', 'gauntlet-v2-first-look', /TWO SHORES/],
+    ['map-harbor-v3', 'harbor-v3-hydra-opener', null],
+  ]) {
+    await open(page, card);
+    await tough(page);
+    const played = await page.evaluate(() => window.__v3.game().enc?.played ?? []);
+    check(played[0] === id, `${card}: wave 1 opens with ${id} (${played.join(', ')})`);
+    // On until the opener's launches are well up on the screen.
+    const seen = await until(page, `g.wave === 1 && g.threats.some((t) => t.enc === '${id}' && t.y > 160 && t.y < 820 && (t.kind !== 'drone' || g.threats.filter((o) => o.enc === '${id}').length >= 2))`, 45);
+    check(seen, `${card}: the opener is in the air on wave 1`);
+    // On a little, so the launches are out over the water.
+    await page.evaluate((s) => window.__v3.advance(s), card.includes('harbor') ? 4 : 1.5);
+    await page.waitForTimeout(500);
+    if (text) check(text.test(await page.evaluate(() => document.body.innerText)), `${card}: its call-out is on screen`);
+    await page.evaluate(() => window.__v3.freeze(true));
+    // Without a call-out to show, let the opening cards fade first.
+    if (!text) await page.waitForTimeout(7000);
+    await page.screenshot({ path: `${OUT}/wave1-${card.replace('map-', '')}-844x390.jpg`, quality: 85 });
+    await page.evaluate(() => window.__v3.freeze(false));
+  }
+
+  // ---- A boss round on The Strait and on Harbor Mouth ----
+  for (const [card, kind, at] of [
+    ['map-strait', 'hydra', 'g.threats.filter((t) => t.kind === "hydra" && !t.dead).length >= 2 && g.threats.filter((t) => t.kind === "sprinter" && !t.dead).length >= 6'],
+    ['map-harbor', 'rocketTruck', 'g.threats.filter((t) => t.kind === "rocketTruck" && !t.dead && t.foe && t.foe.state >= 2).length >= 2'],
+  ]) {
+    await open(page, card);
+    await jumpTo(page, 11);
+    await tough(page);
+    const boss = await page.evaluate(() => ({ id: window.__v3.game().event?.id, run: window.__v3.game().event?.run }));
+    check(!!boss.id && boss.run === 1, `${card}: boss round 1 (${boss.id})`);
+    check(await until(page, at, 40), `${card}: the boss round's ${kind}s are in`);
+    // The rush: on until its Hydras are out over the water with the sprinters.
+    if (kind === 'hydra') check(await until(page, 'g.threats.filter((t) => t.kind === "hydra" && !t.dead && t.y > 300).length >= 1', 10), `${card}: a Hydra over the water`);
+    await page.evaluate(() => window.__v3.freeze(true));
+    // The boss banner and the restore card fade first (real time).
+    await page.waitForTimeout(7000);
+    await page.screenshot({ path: `${OUT}/boss-${card.replace('map-', '')}-844x390.jpg`, quality: 85 });
+    await page.evaluate(() => window.__v3.freeze(false));
+  }
+}
+
 try {
   const page = await browser.newPage(PHONE);
   page.on('pageerror', (e) => errs.push(e.message));
+  if (process.env.ONLY === 'fixes') {
+    await fixes(page);
+    check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
+    throw null;
+  }
   await page.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
@@ -103,10 +183,13 @@ try {
   const script = await page.evaluate(() => ({ head: document.querySelector('.v3-enc-script h3')?.textContent, ids: document.querySelector('.v3-enc-script')?.dataset.encScript, beats: [...document.querySelectorAll('.v3-enc-beats li')].map((l) => l.textContent) }));
   check(/v3 Enemy pairs · wave 9/.test(script.head ?? '') && script.ids === 'harbor-v3-escalate-2' && script.beats.some((b) => /enemy pair/.test(b)), `the pause script shows the v3 wave's encounter and its pairs (${JSON.stringify(script)})`);
   await page.screenshot({ path: `${OUT}/pause-v3-harbor-844x390.jpg`, quality: 85 });
+  await fixes(page);
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
 } catch (e) {
-  bad++;
-  console.log('FAIL:', e.stack ?? String(e));
+  if (e !== null) {
+    bad++;
+    console.log('FAIL:', e.stack ?? String(e));
+  }
 } finally {
   await browser.close();
 }

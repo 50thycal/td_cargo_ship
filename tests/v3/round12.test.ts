@@ -74,7 +74,8 @@ describe('Test Lab round 12', () => {
     const p = plan('map-harbor-v3');
     const run = new BotRun('harbor', 5, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, lab: p.lab, convoy: p.convoy!, encounters: p.encounters! });
     run.advance(60 * 60 * 3);
-    expect(run.game.enc!.played[0]).toBe('harbor-v3-hydra-teach');
+    // Rev 3 (round 12's fixes): wave 1 opens with the version's first pair.
+    expect(run.game.enc!.played.slice(0, 2)).toEqual(['harbor-v3-hydra-opener', 'harbor-v3-hydra-teach']);
     const log = run.finish();
     expect(log.encounters).toEqual({ rev: ENCOUNTER_REV, version: 'v3' });
     expect(log.lab).toMatchObject({ card: 'map-harbor-v3', variant: 'v3' });
@@ -110,7 +111,7 @@ describe('Test Lab round 12', () => {
     expect(encountersFor('strait', 6, 'v3').map((e) => e.id)).toEqual(['strait-v3-heli-teach']);
     expect(pairBeatText({ at: 0.35, pair: 'hydra-swarm', base: 0 }, 'Hydra + Drone Swarm')).toBe('at 35% of the wave: enemy pair Hydra + Drone Swarm, its lead from base 1');
     expect(arcGroups('harbor', 11, 13, 'The Breakout', 'v2')).toEqual([
-      { from: 1, to: 1, name: 'quiet wave' },
+      { from: 1, to: 1, name: 'First periscope' },
       { from: 2, to: 2, name: 'Ambush' },
       { from: 3, to: 3, name: 'quiet wave' },
       { from: 4, to: 4, name: 'Headlands' },
@@ -120,7 +121,7 @@ describe('Test Lab round 12', () => {
       { from: 10, to: 10, name: 'Harbor gate' },
       { from: 11, to: 13, name: 'Boss rounds: The Breakout' },
     ]);
-    // v1's arc is as it was.
-    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 1, name: 'shared wave' });
+    // v1's arc: its first encounter from wave 1 now (rev 3's opener).
+    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 4, name: 'Ranging shots' });
   });
 });
