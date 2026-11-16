@@ -85,12 +85,13 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 23 (round 12\'s fixes changed the boss rounds); a v22 or v21 log no longer replays here', () => {
-    expect(LOG_VERSION).toBe(23);
-    expect(LOG_REPLAYS).toEqual([23]);
+  it('the log is version 24 (Saltgate\'s locks and frigates changed); a v23 or older log no longer replays here', () => {
+    expect(LOG_VERSION).toBe(24);
+    expect(LOG_REPLAYS).toEqual([24]);
     expect(replaysHere(21)).toBe(false);
     expect(replaysHere(22)).toBe(false);
-    expect(replaysHere(23)).toBe(true);
+    expect(replaysHere(23)).toBe(false);
+    expect(replaysHere(24)).toBe(true);
     expect(replaysHere(20)).toBe(false);
   });
 });

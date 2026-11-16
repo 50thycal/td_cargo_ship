@@ -205,8 +205,14 @@ export const VIP = { hp: 8, loss: 3, after: 5, points: 4, targetShare: 0.3, heav
 
 /** Locks (Saltgate Canal): where a hull waits short of a shut gate, and how
  *  long each gate stays open (the fill wait is the map's, 6 s by the
- *  player's answer). */
-export const LOCK = { stand: 44, inTime: 8, outTime: 6 } as const;
+ *  player's answer). `gateway`: a hull whose centre is less than this past
+ *  the entry gate still straddles it (the gate can't shut on it), so a hull
+ *  goes in only if its place in the chamber is clear of that. `grace`: the
+ *  backstop, seconds past `inTime` after which the entry gate shuts even on
+ *  a hull still in its gateway (that hull then rides this fill with the
+ *  rest). Both came with the fix for the player's Saltgate note ("the gates
+ *  for the canal did not work": docs/design/v3-saltgate-locks.md). */
+export const LOCK = { stand: 44, inTime: 8, outTime: 6, gateway: 14, grace: 6 } as const;
 
 /** Allied structures: the radar's tracked-shot speed-up and the share of
  *  launches the enemy aims at a structure; a battery's rate of fire and how

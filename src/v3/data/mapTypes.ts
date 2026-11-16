@@ -220,6 +220,13 @@ export interface MapDef {
   posts?: PostDef[];
   /** Locks on every lane (Saltgate Canal). */
   locks?: LockDef[];
+  /** Where Frigate Escort's frigates berth on a map with locks, in the order
+   *  they are called in: beside the convoy's lane (`lat` off its centre
+   *  line, outside it) at `x`, in a stretch open to the map's edge. A
+   *  frigate sails in bow first from that end of the lane (`from`: -1 its
+   *  start, 1 its end), along the water between the lane and the bank, and
+   *  backs out the same way, so none ever passes a lock gate. */
+  berths?: { x: number; lat: number; from: -1 | 1 }[];
   /** Drift of mines, world units a second (Sowers' Reach). */
   current?: Point;
   /** Night (The Black Strait): a lighthouse beam sweeps from `light` between

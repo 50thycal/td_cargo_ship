@@ -235,6 +235,15 @@ const saltgate: MapDef = {
     { x0: 500, x1: 660, wait: 6 },
     { x0: 1140, x1: 1300, wait: 6 },
   ],
+  // The player ("frigates must not pass the gates"): frigates come in from
+  // the sides, onto berths on the friendly side of the open stretches west
+  // and east of the locks, between the lane (it ends at y 590) and the
+  // bank (y 700). Two at levels 1 and 2 (one each side), the third west.
+  berths: [
+    { x: 330, lat: 170, from: -1 },
+    { x: 1490, lat: 170, from: 1 },
+    { x: 130, lat: 170, from: -1 },
+  ],
 };
 
 // ---------------------------------------------------------------------------
