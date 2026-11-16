@@ -119,12 +119,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      behind each sprint swarm, and the Breakout's trucks come sooner, three
  *      down each shore road. A v22 log that reaches a boss round no longer
  *      replays to the same game. (The encounters' own changes are lab only
- *      and ride in the log's encounter rev.) */
-export const LOG_VERSION = 23;
+ *      and ride in the log's encounter rev.)
+ *  24: Saltgate Canal's locks and frigates (docs/design/v3-saltgate-locks.
+ *      md): a lock admits only what its chamber holds (the next hull waits
+ *      short of the open entry gate) and its entry shuts after LOCK.grace s
+ *      even on a hull in its gateway; frigates berth beside the canal,
+ *      coming in from the sides, and no longer open a gate. A v23 Saltgate
+ *      log that ran above the default flow, in Column, or with Frigate
+ *      Escort no longer replays to the same game. (Every other map plays as
+ *      it did: the map-lab baseline replays unchanged.) */
+export const LOG_VERSION = 24;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [23];
+export const LOG_REPLAYS: readonly number[] = [24];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

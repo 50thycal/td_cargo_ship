@@ -5,7 +5,7 @@
 // Like render.ts it reads the game and mutates nothing.
 
 import { THREATS } from '../data/config';
-import { FORK_RADIUS, frigateAtGate, highTide, lockCountdown, reticleVisible, shieldUp, tracked, type Game, type Threat } from '../sim/game';
+import { FORK_RADIUS, highTide, lockCountdown, reticleVisible, shieldUp, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 
 const RED = '#ff5a3d';
@@ -115,9 +115,8 @@ function drawLock(ctx: CanvasRenderingContext2D, g: Game, i: number, x0: number,
     ctx.arc(x, y - hw - 30, 9, 0, Math.PI * 2);
     ctx.fill();
   };
-  // A frigate in the gateway has priority passage: that gate stands open.
-  gate(x0, st.phase === 'in' || frigateAtGate(g, x0));
-  gate(x1, st.phase === 'out' || frigateAtGate(g, x1));
+  gate(x0, st.phase === 'in');
+  gate(x1, st.phase === 'out');
   const secs = Math.ceil(lockCountdown(g, i));
   const word = st.phase === 'in' ? `ENTER · ${secs}` : st.phase === 'fill' ? `FILLING · ${secs}` : `LEAVE`;
   label(ctx, word, (x0 + x1) / 2, y + hw + 40, filling ? GOLD : '#dfeef7', 20);

@@ -628,6 +628,14 @@ const ROUND12_FIXES: Record<string, string[]> = {
   'ev-breakout': ['The trucks come sooner (as the opening ends, not at 16 s), three down each shore road, and drive off at normal speed'],
 };
 for (const [id, lines] of Object.entries(ROUND12_FIXES)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), ...lines.map((what) => ({ round: 12, what }))];
+// Saltgate Canal, from the player's note on a campaign run ("The gates for
+// the canal did not work. I think the escorts broke it."):
+// docs/design/v3-saltgate-locks.md.
+LAB_CHANGES['map-saltgate'] = [
+  ...(LAB_CHANGES['map-saltgate'] ?? []),
+  { round: 12, what: 'The locks no longer jam above the default flow: a lock lets in only what its chamber holds, and the next ships wait short of the gate' },
+  { round: 12, what: 'Frigates never pass a lock gate: they come in from the sides to berths beside the canal (west and east of the locks) and back out the same way' },
+];
 
 /** The cards a card takes changes from: itself, for a combo its enemies'
  *  and weapon's cards, and for a map's version card (round 12) the map's
