@@ -1,12 +1,17 @@
 // Do frigates run over convoy ships? (docs/design/v3-saltgate-locks.md, "Do
-// escorts run over convoy ships?") Every map x frigate level x flow (1, 3) x
-// formation: 90 s with the convoy sailing and no enemy, frigates called in 3 s
-// into the wave and again each time the last set has gone. Hulls are the
-// boxes the renderer draws (ui/render.ts); an overlap is any intersection
-// (separating axes).
+// escorts run over convoy ships?"; round 13, all maps:
+// docs/design/v3-round13-escorts-munitions-nuke.md.) Every map x frigate
+// level x flow (1, 3) x formation: 90 s with the convoy sailing and no enemy,
+// frigates called in 3 s into the wave and again each time the last set has
+// gone. Hulls are the boxes the renderer draws (ui/render.ts); an overlap is
+// any intersection (separating axes).
 //
-// Usage: npx vite-node tools/v3/saltgate/escort-overlap.ts [-- maps=strait,saltgate secs=90]
+// Usage: npx vite-node tools/v3/saltgate/escort-overlap.ts [-- maps=strait,saltgate secs=90 json=out.json before=old.json]
+//   json=FILE    also writes the per-map numbers to FILE;
+//   before=FILE  a file written that way by an earlier build: prints the
+//                before and after overlap shares side by side.
 declare const process: { argv: string[] };
+import { readFileSync, writeFileSync } from 'node:fs';
 import { MAP_ORDER, type MapId } from '../../../src/v3/data/maps';
 import type { FormationId } from '../../../src/v3/data/formations';
 import { createGame, setFlow, setFormation, step, tap, type Game } from '../../../src/v3/sim/game';
@@ -18,7 +23,7 @@ const secs = Number(arg('secs') ?? 90);
 
 /** Centre, heading, half length, half beam, and how far the box's middle
  *  sits ahead of the centre. Frigate: drawn -74..78 along, ±12 across;
- *  cargo ship: -34..34, ±10. */
+ *  cargo ship: -34..34, ±10; the supertanker -70..70, ±16. */
 interface Box { x: number; y: number; h: number; L: number; B: number; o: number }
 const corners = (b: Box) => {
   const c = Math.cos(b.h), s = Math.sin(b.h);
@@ -32,8 +37,17 @@ function overlap(a: Box, b: Box): boolean {
   });
 }
 
-console.log('| Map | Frigate-s on screen | Overlap s | Overlap share | Events | Runs hit | Closest (px) | Events: arriving / station / leaving |');
-console.log('|---|---|---|---|---|---|---|---|');
+interface Row { map: MapId; frigS: number; overS: number; events: number; hitRuns: number; runs: number; closest: number; phase: { arriving: number; station: number; leaving: number } }
+const rows: Row[] = [];
+const before: Row[] | null = arg('before') ? JSON.parse(readFileSync(arg('before')!, 'utf8')) : null;
+const share = (r: Row) => `${((100 * r.overS) / Math.max(r.frigS, 1e-9)).toFixed(1)}%`;
+if (before) {
+  console.log('| Map | Before: overlap share | Before: events | Before: closest (px) | After: overlap share | After: events | After: runs hit | After: closest (px) |');
+  console.log('|---|---|---|---|---|---|---|---|');
+} else {
+  console.log('| Map | Frigate-s on screen | Overlap s | Overlap share | Events | Runs hit | Closest (px) | Events: arriving / station / leaving |');
+  console.log('|---|---|---|---|---|---|---|---|');
+}
 for (const map of maps) {
   let frigS = 0, overS = 0, events = 0, closest = Infinity, runs = 0, hitRuns = 0;
   const phase = { arriving: 0, station: 0, leaving: 0 };
@@ -70,7 +84,7 @@ for (const map of maps) {
             for (const s of g.ships) {
               if (s.x < -40 || s.x > 1640) continue;
               closest = Math.min(closest, Math.hypot(s.x - e.x, s.y - e.y));
-              if (!overlap({ x: e.x, y: e.y, h: e.heading, L: 76, B: 12, o: 2 }, { x: s.x, y: s.y, h: s.heading, L: 34, B: 10, o: 0 })) continue;
+              if (!overlap({ x: e.x, y: e.y, h: e.heading, L: 76, B: 12, o: 2 }, { x: s.x, y: s.y, h: s.heading, L: s.vip ? 70 : 34, B: s.vip ? 16 : 10, o: 0 })) continue;
               any = true;
               const k = `${e.id}:${s.id}`;
               now.add(k);
@@ -89,5 +103,10 @@ for (const map of maps) {
         runs++;
         if (hit) hitRuns++;
       }
-  console.log(`| ${map} | ${frigS.toFixed(0)} | ${overS.toFixed(0)} | ${((100 * overS) / Math.max(frigS, 1e-9)).toFixed(1)}% | ${events} | ${hitRuns}/${runs} | ${closest.toFixed(0)} | ${events ? `${phase.arriving} / ${phase.station} / ${phase.leaving}` : '–'} |`);
+  const r: Row = { map, frigS, overS, events, hitRuns, runs, closest, phase };
+  rows.push(r);
+  const b = before?.find((o) => o.map === map);
+  if (before) console.log(`| ${map} | ${b ? share(b) : '–'} | ${b?.events ?? '–'} | ${b ? b.closest.toFixed(0) : '–'} | ${share(r)} | ${events} | ${hitRuns}/${runs} | ${closest.toFixed(0)} |`);
+  else console.log(`| ${map} | ${frigS.toFixed(0)} | ${overS.toFixed(0)} | ${share(r)} | ${events} | ${hitRuns}/${runs} | ${closest.toFixed(0)} | ${events ? `${phase.arriving} / ${phase.station} / ${phase.leaving}` : '–'} |`);
 }
+if (arg('json')) writeFileSync(arg('json')!, JSON.stringify(rows, null, 1));

@@ -375,7 +375,10 @@ describe('the gate: the same game with telemetry on and off', () => {
     const by = new Set<string>();
     kits.forEach((kit, k) => {
       const make = () => {
-        const g = createGame(MAP_ORDER[k % 5], 40 + k, 6);
+        // Round 13: the frigate kit's seed moved (seed 40 stopped dropping a
+        // frigate in its 60 s when munitions on their launchers stopped
+        // being targets: the bot's kills, so the drops, shifted).
+        const g = createGame(MAP_ORDER[k % 5], kit.includes('frigate') ? 44 : 40 + k, 6);
         applyFreePlay(g, { weapons: kit.map((id) => ({ id, level: 3 })), frequentDrops: true });
         return g;
       };

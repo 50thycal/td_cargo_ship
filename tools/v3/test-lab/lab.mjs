@@ -275,4 +275,8 @@ export const ROUND_DOCS = {
     doc: 'docs/design/v3-round12-encounter-versions.md',
     summary: 'Three encounter versions of each reference map, each its own card: v1 the original, v2 Set pieces (four big named moments, quiet waves between), v3 Enemy pairs (a pair in most waves). Play all three of a map and fill the scorecard each time. Fixed from your round 11 scorecards: every version opens with an encounter on wave 1; the Strait\'s and Harbor Mouth\'s boss rounds now sink ships (Hydras in the rush; the Breakout\'s trucks sooner and more); trucks drive off at normal speed; the Strait\'s waves 5–10 a little harder; Harbor Mouth\'s wave 8 a real test again in v2 and v3.',
   },
+  13: {
+    doc: 'docs/design/v3-round13-escorts-munitions-nuke.md',
+    summary: 'Frigates never run over your ships on any map: they hold station in clear water outside the convoy and give way as they sail in and out (Saltgate keeps its berths). From your Strait run: a missile still on its launcher (the supersonic arming on its rail) can\'t be hit until it is away, and the Nuke destroys every enemy on the map, trucks driving off included.',
+  },
 };

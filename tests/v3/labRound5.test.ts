@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { AB, ABILITIES, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
+import { SUPERSONIC } from '../../src/v3/data/config';
 import { labCard, LAB_START_WAVE } from '../../src/v3/data/lab';
 import {
   CARRIER_TARGET,
@@ -81,7 +82,8 @@ describe('Gravity Well: by size', () => {
     const g = quietGame();
     load(g, 'well', level);
     g.fields.push({ kind: 'well', x1: 800, y1: 300, x2: 800, y2: 300, hw: AB.well.radius[level - 1], t: 0, life: 60, tick: 0, level });
-    const th = addThreat(g, { kind, x: 680, y: 300, hp: 50, speed: 100, heading: 0, vx: 100 });
+    // (A supersonic already off its rail: round 13, nothing drags one still on it.)
+    const th = addThreat(g, { kind, x: 680, y: 300, hp: 50, speed: 100, heading: 0, vx: 100, age: kind === 'supersonic' ? SUPERSONIC.arming : 0 });
     if (kind === 'ballistic') Object.assign(th, { sx: 600, sy: 300, ix: 1400, iy: 300, dur: 8, apex: 0 });
     const free = quietGame();
     const twin = addThreat(free, { ...th, id: th.id });

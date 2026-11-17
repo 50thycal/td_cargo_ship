@@ -127,12 +127,19 @@ import type { EncounterSetup } from '../data/encounters';
  *      coming in from the sides, and no longer open a gate. A v23 Saltgate
  *      log that ran above the default flow, in Column, or with Frigate
  *      Escort no longer replays to the same game. (Every other map plays as
- *      it did: the map-lab baseline replays unchanged.) */
-export const LOG_VERSION = 24;
+ *      it did: the map-lab baseline replays unchanged.)
+ *  25: round 13 (docs/design/v3-round13-escorts-munitions-nuke.md): lane
+ *      frigates hold station and sail on tracks clear of every formation's
+ *      files and give way to the convoy (they never run over a ship); a
+ *      munition still on its launcher (a supersonic arming on its rail) is
+ *      no target for anything; the Nuke destroys every enemy on the map,
+ *      off the screen and driving off included. A v24 log with frigates, a
+ *      supersonic or a Nuke no longer replays to the same game. */
+export const LOG_VERSION = 25;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [24];
+export const LOG_REPLAYS: readonly number[] = [25];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

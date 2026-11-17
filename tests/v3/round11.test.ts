@@ -183,7 +183,8 @@ describe('Test Lab round 11', () => {
     expect(LAB_ROUND).toBeGreaterThanOrEqual(11);
     expect(LAB_ROUNDS.find((r) => r.n === 11)).toMatchObject({ n: 11, date: '2026-11-14' });
     // (The Afterburner Rush changed again in round 12's fixes: Hydras in the rush.)
-    for (const id of ['map-sowers', 'ev-rush']) expect(cardRev(id), id).toBe(id === 'ev-rush' ? 12 : 11);
+    // (Every map card changed again in round 13: frigates, munitions, the Nuke.)
+    for (const id of ['map-sowers', 'ev-rush']) expect(cardRev(id), id).toBe(id === 'ev-rush' ? 12 : 13);
     expect(LAB_CHANGES['ev-rush'].some((c) => c.round === 11), 'ev-rush').toBe(true);
     // (The reference maps changed again in round 12: their encounter versions.)
     for (const id of ['map-strait', 'map-gauntlet', 'map-harbor']) expect(LAB_CHANGES[id].some((c) => c.round === 11), id).toBe(true);

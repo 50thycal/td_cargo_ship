@@ -344,6 +344,7 @@ export const LAB_ROUNDS: LabRound[] = [
   { n: 10, date: '2026-11-13', name: 'Map cards are the full production map', since: '2026-11-13T06:00' },
   { n: 11, date: '2026-11-14', name: 'Map notes: boss rounds, Hold only, no decoys, scorecard', since: '2026-11-14T21:00' },
   { n: 12, date: '2026-11-14', name: 'Encounter versions: set pieces and enemy pairs', since: '2026-11-15T00:00' },
+  { n: 13, date: '2026-11-17', name: 'Frigates give way; munitions on launchers; the Nuke', since: '2026-11-17T00:00' },
 ];
 
 /** The round being tested now (the latest). */
@@ -636,6 +637,26 @@ LAB_CHANGES['map-saltgate'] = [
   { round: 12, what: 'The locks no longer jam above the default flow: a lock lets in only what its chamber holds, and the next ships wait short of the gate' },
   { round: 12, what: 'Frigates never pass a lock gate: they come in from the sides to berths beside the canal (west and east of the locks) and back out the same way' },
 ];
+
+// Round 13 (docs/design/v3-round13-escorts-munitions-nuke.md): frigates
+// never run over convoy ships (every map but Saltgate, whose berths already
+// did that); the player's notes from The Strait on munitions still on their
+// launcher (wave 6) and the Nuke (wave 8), which hold on every map.
+const FRIGATE_LINE = 'Frigates never run over your ships: they hold station in clear water outside the convoy\'s widest files and give way to ships as they sail in and out';
+const RAIL_LINE = 'A missile still arming on its launcher (the supersonic on its rail) can\'t be hit by anything: shoot it once it is away, or hit the launcher';
+const NUKE_LINE = 'The Nuke destroys every enemy on the map: trucks driving in or driving off after firing, aircraft and helicopters still coming in, off the screen too';
+const ROUND13: Record<string, string[]> = {
+  'w-frigate': ['Never runs over your ships: its stations, and its way in and out, keep clear water outside the convoy\'s widest files (in open water off the lane where the lane is narrow); sailing, it steps aside or holds back behind a ship until there is room'],
+  'map-kesh': ['Frigates round the Hook only through a gap in the convoy, and the south frigate holds station further west, in open water'],
+  'map-island': ['The north lane\'s frigate holds station further west, where there is room beside the convoy'],
+  'map-needle': ['Frigates keep to the open water before the Needle: they back out the way they came instead of going through the narrows with the convoy'],
+  'map-delta': ['Frigates keep to the open water before the fork and south of the middle channel: the river branches have no room beside the convoy'],
+};
+for (const id of MAP_ORDER) {
+  const card = mapCardId(id);
+  ROUND13[card] = [...(id === 'saltgate' ? [] : [FRIGATE_LINE]), ...(ROUND13[card] ?? []), RAIL_LINE, NUKE_LINE];
+}
+for (const [id, lines] of Object.entries(ROUND13)) LAB_CHANGES[id] = [...(LAB_CHANGES[id] ?? []), ...lines.map((what) => ({ round: 13, what }))];
 
 /** The cards a card takes changes from: itself, for a combo its enemies'
  *  and weapon's cards, and for a map's version card (round 12) the map's

@@ -444,7 +444,8 @@ export const PICKUPS = {
   weights: { ammo: 40, repair: 20, overdrive: 22, timewarp: 0, shield: 8, steam: 9, starshell: 0, nuke: 3 } as Record<PowerKind, number>,
   /** The Nuke (the weapons plan, round 3: "about right"): the rarest drop,
    *  not before this wave, one on the water at a time. Structures and the
-   *  Dreadnought take `nukeStructure` hits instead of dying. */
+   *  Dreadnought take `nukeStructure` hits instead of dying (the player's
+   *  pick in the weapons review of 2026-11-06: "3 hits, not a kill"). */
   nukeFrom: 3,
   nukeStructure: 3,
   /** A Star Shell's weight on a night map, and how long its light lasts. */

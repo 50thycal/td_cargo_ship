@@ -25,6 +25,7 @@ import {
   damageShip,
   dist,
   pathLength,
+  released,
   shipAhead,
   spawnThreat,
   targetable,
@@ -1965,22 +1966,25 @@ export function redShots(g: Game): Point[] {
 /** A tap at (x, y) that found a red shot and nothing it could shoot: the
  *  game says so under the finger ("cannot intercept", the player's note). */
 export function tappedRedShot(g: Game, x: number, y: number, r: number): boolean {
-  if (g.threats.some((t) => !t.dead && dist(t.x, t.y, x, y) <= r)) return false;
+  if (g.threats.some((t) => released(t) && dist(t.x, t.y, x, y) <= r)) return false;
   return redShots(g).some((p) => dist(p.x, p.y, x, y) <= r);
 }
 
 /** The Nuke and the new enemies (Test Lab round 1: "it should blow up
- *  everything on the screen"): a siege gun down in its hatch is brought up
- *  to be caught with the rest (game.ts's nuke kills every threat on the
- *  screen next), and every warning and shot on the water is gone: a sub
- *  still at periscope depth, a dive bomber's circle, a siege battery's
- *  circles and shells, the rockets and bombs in the air. */
+ *  everything on the screen"; round 13: everything on the map): a siege gun
+ *  down in its hatch and a Spotter away between turns are brought back to
+ *  be caught with the rest (game.ts's nuke kills every threat on the map
+ *  next), a hatch whose gun hasn't come up yet blows, and every warning and
+ *  shot on the water is gone: a sub still at periscope depth, a dive
+ *  bomber's circle, a siege battery's circles and shells, the rockets and
+ *  bombs in the air. */
 export function nukeFoes(g: Game): void {
   for (const m of g.foe.marks) {
-    if (m.kind === 'hatch' && m.gun) {
+    if ((m.kind === 'hatch' || m.kind === 'recall') && m.gun) {
       m.gun.dead = false;
       g.threats.push(m.gun);
     }
+    if (m.kind === 'hatch' && m.spawn) addFx(g, 'boom', m.x, m.y, { life: 0.9, r: 34 });
     if (m.kind === 'periscope') addFx(g, 'sink', m.x, m.y, { life: 1.6, r: 26 });
   }
   g.foe.marks = [];

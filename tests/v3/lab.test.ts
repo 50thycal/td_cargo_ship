@@ -275,8 +275,8 @@ const oldShape = {
 
 describe('test rounds and card versions', () => {
   it('the rounds are in order and every change names a real card and round', () => {
-    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    expect(LAB_ROUND).toBe(12);
+    expect(LAB_ROUNDS.map((r) => r.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(LAB_ROUND).toBe(13);
     for (const [id, list] of Object.entries(LAB_CHANGES)) {
       // (A retired card keeps its lines, for its old verdicts.)
       expect(labCard(id) ?? retiredCard(id), id).toBeDefined();
@@ -329,7 +329,8 @@ describe('test rounds and card versions', () => {
     // Round 8 (the player's round 7 weapon notes): a line for each weapon
     // whose play changed; the text-only rewrite (every card) asks for no
     // retest, so Gunship Pair stays at 5.
-    for (const id of ['grapnel', 'droneScreen', 'focus', 'frigate', 'overdrive', 'wildCard']) expect(cardRev(`w-${id}`), id).toBe(id === 'focus' ? 11 : 8);
+    // (The Frigate Escort changed again in round 13: it gives way to the convoy.)
+    for (const id of ['grapnel', 'droneScreen', 'focus', 'frigate', 'overdrive', 'wildCard']) expect(cardRev(`w-${id}`), id).toBe(id === 'focus' ? 11 : id === 'frigate' ? 13 : 8);
     expect(LAB_ROUNDS.find((r) => r.n === 8)).toEqual({ n: 8, date: '2026-11-10', name: 'Enemy pairs; weapon and enemy notes', since: '2026-11-10T19:00' });
     // Round 9 (docs/design/v3-round9-fixes.md).
     expect(LAB_ROUNDS.find((r) => r.n === 9)).toEqual({ n: 9, date: '2026-11-12', name: 'Hold fix; decoys flash; wider scavenger lock', since: '2026-11-13T00:00' });
@@ -342,11 +343,14 @@ describe('test rounds and card versions', () => {
     // Round 11 (docs/design/v3-round11-map-notes.md) moved the reference
     // maps, Sowers' Reach and Kesh on again (parts A and B).
     for (const c of LAB_CARDS) if (!LAB_CHANGES[c.id]?.some((l) => l.round > 10)) expect(cardRev(c.id) === 10, c.id).toBe(c.kind === 'map');
-    for (const id of ['map-sowers', 'map-kesh']) expect(cardRev(id), id).toBe(11);
+    for (const id of ['map-sowers', 'map-kesh']) expect(LAB_CHANGES[id]!.some((c) => c.round === 11), id).toBe(true);
     // Round 12: the reference maps again (their encounter versions).
-    for (const id of ['map-strait', 'map-gauntlet', 'map-harbor']) expect(cardRev(id), id).toBe(12);
-    // Round 12's fixes add three more lines (wave 1, wave 8, the boss rounds).
-    expect(LAB_CHANGES['map-harbor']!.map((c) => c.round)).toEqual([9, 10, 11, 11, 11, 12, 12, 12, 12]);
+    for (const id of ['map-strait', 'map-gauntlet', 'map-harbor']) expect(LAB_CHANGES[id]!.some((c) => c.round === 12), id).toBe(true);
+    // Round 12's fixes add three more lines (wave 1, wave 8, the boss rounds);
+    // round 13 three (frigates, munitions on their launcher, the Nuke), and
+    // every map card is at 13.
+    expect(LAB_CHANGES['map-harbor']!.map((c) => c.round)).toEqual([9, 10, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13]);
+    for (const c of LAB_CARDS) if (c.kind === 'map') expect(cardRev(c.id), c.id).toBe(13);
     expect(cardChanges('map-strait', 9)[0]).toBe('Now the full map: waves 1–10 and its event ending, from wave 1 with the campaign\'s loadout and drafts, set up ready to test (Commands: Rush and Disperse · authored encounters)');
     expect(cardChanges('map-kesh', 9)[0]).toMatch(/today's convoy controls$/);
     for (const id of ['airstrike', 'shrapnel', 'thermo', 'scatter', 'boomerang', 'flak', 'seeker', 'railgun', 'tesla', 'cadence', 'dualWield', 'fullSteam', 'orbital', 'lance']) expect(cardRev(`w-${id}`), id).toBeLessThan(5);
