@@ -272,6 +272,8 @@ You lost at Harbor Mouth's wave 8 with weapons you aim (Overdrive, Railgun) and 
 - A run's version is in its `EncounterSetup` (`version`, and `callouts` when a link set it), so the sim plays it from the log.
 - It is also in the log's `lab.variant` and `labResult.variant`, so the review page groups by it.
 
+**Rev 4, The Gauntlet (map rebuild phase 4, `docs/design/v3-p4-gauntlet.md`).** The Gauntlet's v1 plan is rebuilt to the map and wave rules: nine new encounters (`gauntlet-p4-*`, `rev: 4`), one a wave from 2 to 10, none twice in a row; wave 1 keeps its rev 3 opener. Slice 5's three (`gauntlet-north-then-south`, `gauntlet-overlap`, `gauntlet-crossfire`) keep their beats and get `until: 3`, so a rev 3 log plays them as it did. A new beat aim, `rear` (the ship least far along, on the way in), is used only by rev 4 encounters, so no older log or campaign run changes for it.
+
 ## What we'll learn for the checklist
 
 - **Big and named, or many and small?** Your scorecard on v2 against v1 (Fun, Readability, Pacing, Variety) tells us whether a map should be built round a few announced set pieces with quiet waves between, or one small moment a wave.

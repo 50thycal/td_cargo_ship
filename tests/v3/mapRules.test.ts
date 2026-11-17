@@ -166,10 +166,12 @@ function runFoes(map: MapId, seed: number): [number, ReturnType<typeof planFoes>
 describe('w-variety: no encounter two waves in a row (v1)', () => {
   /** v1's encounters each run over three or four waves in a row (the
    *  original slice 5 design), so every wave inside one repeats it. Known
-   *  breaks, for phase 4 to fix: "wave a-b: id". */
+   *  breaks, for phase 4 to fix: "wave a-b: id". The Gauntlet's are fixed
+   *  (phase 4, encounter rev 4: one encounter a wave, docs/design/
+   *  v3-p4-gauntlet.md). */
   const EXPECTED_REPEATS: Record<string, string[]> = {
     strait: ['2-3: strait-ranging-shots', '3-4: strait-ranging-shots', '5-6: strait-screen', '6-7: strait-screen', '8-9: strait-rolling-push', '9-10: strait-rolling-push'],
-    gauntlet: ['2-3: gauntlet-north-then-south', '3-4: gauntlet-north-then-south', '5-6: gauntlet-overlap', '6-7: gauntlet-overlap', '8-9: gauntlet-crossfire', '9-10: gauntlet-crossfire'],
+    gauntlet: [],
     harbor: ['1-2: harbor-open-water', '2-3: harbor-open-water', '4-5: harbor-funnel-salvo', '5-6: harbor-funnel-salvo', '6-7: harbor-funnel-salvo', '8-9: harbor-last-mile', '9-10: harbor-last-mile'],
   };
 

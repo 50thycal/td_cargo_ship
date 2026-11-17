@@ -134,12 +134,18 @@ import type { EncounterSetup } from '../data/encounters';
  *      munition still on its launcher (a supersonic arming on its rail) is
  *      no target for anything; the Nuke destroys every enemy on the map,
  *      off the screen and driving off included. A v24 log with frigates, a
- *      supersonic or a Nuke no longer replays to the same game. */
-export const LOG_VERSION = 25;
+ *      supersonic or a Nuke no longer replays to the same game.
+ *  26: map rebuild phase 4, The Gauntlet (docs/design/v3-p4-gauntlet.md):
+ *      the Rocket Convoy builds up over the three boss rounds (three trucks
+ *      a column and one swarm, then three and two, then four and two
+ *      smaller swarms, in place of four and three every round). A v25 log
+ *      that reaches the Gauntlet's boss rounds (or a bonus Rocket Convoy in
+ *      a three-run ending) no longer replays to the same game. */
+export const LOG_VERSION = 26;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [25];
+export const LOG_REPLAYS: readonly number[] = [26];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

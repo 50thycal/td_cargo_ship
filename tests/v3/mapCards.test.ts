@@ -10,7 +10,7 @@ import { LAB_CARDS, LAB_LENGTH, LAB_ROUND, LAB_START_WAVE, MAP_CARD_PLAYS, cardR
 import { EVENT_MAPS, EVENT_WAVE, campaignWaves } from '../../src/v3/data/events';
 import { MAP_ORDER, type MapId } from '../../src/v3/data/maps';
 import { CONVOY_REV } from '../../src/v3/data/convoy';
-import { ENCOUNTERS, ENCOUNTER_REV } from '../../src/v3/data/encounters';
+import { ENCOUNTERS, ENCOUNTER_REV, playsAt } from '../../src/v3/data/encounters';
 import { applyLab, createGame, labBring, type Game } from '../../src/v3/sim/game';
 import { lastWave, isEventWave } from '../../src/v3/sim/events';
 import { evidenceLines, labCountText, labDone, labWaves, type LabSetup } from '../../src/v3/sim/lab';
@@ -123,10 +123,11 @@ describe('a map card is the full production map', () => {
       );
       expect(plansB, map).toEqual(plansA);
       expect(withoutLab(B.game), map).toBe(withoutLab(A.game));
-      // Each of its v1 encounters (three, and since round 12's fixes wave 1's
-      // opener on The Strait and The Gauntlet), in the waves it plays (1-10 only).
-      expect(new Set(B.game.enc!.played).size, map).toBe(ENCOUNTERS.filter((e) => e.map === map && e.version === 'v1').length);
-      expect(new Set(B.game.enc!.played).size, map).toBe(map === 'harbor' ? 3 : 4);
+      // Each of its v1 encounters at the current rev (three, and since round
+      // 12's fixes wave 1's opener on The Strait and The Gauntlet; phase 4's
+      // Gauntlet: one a wave, ten), in the waves it plays (1-10 only).
+      expect(new Set(B.game.enc!.played).size, map).toBe(ENCOUNTERS.filter((e) => e.map === map && e.version === 'v1' && playsAt(e)).length);
+      expect(new Set(B.game.enc!.played).size, map).toBe(map === 'harbor' ? 3 : map === 'gauntlet' ? 10 : 4);
       expect(B.game.enc!.wave, map).toBeLessThanOrEqual(10);
       expect(B.game.phase, map).toBe('won');
     }

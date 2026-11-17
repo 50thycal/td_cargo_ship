@@ -28,7 +28,28 @@ export interface MapPlan {
 
 /** Filled in map by map as each is rebuilt (phase 4: the three reference
  *  maps first). */
-export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {};
+export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
+  // The map card: docs/design/v3-p4-gauntlet.md.
+  gauntlet: {
+    problem: 'Enemy on both shores and one carrier between them: whichever shore you turn to, the other one fires at the ships coming in.',
+    // The waves send swarms off both west silos at once onto the way in
+    // (area weapons take a whole one in a shot), and the boss brings
+    // armoured trucks with swarms for company. Measured with the bots
+    // (docs/design/v3-p4-gauntlet.md, Kits): the best of seven kits, with
+    // the player's Armory and without.
+    counters: ['shrapnel', 'thermo', 'flak'],
+    // Weapons that fire themselves: they cover the shore you are not
+    // looking at, but spread their fire where the way in needs it massed
+    // (the worst of the seven).
+    offCounter: ['aegis', 'seeker', 'droneScreen'],
+    convoy: 'Two lines of ships, one each side of the carrier, sailing west to east on their own (no commands): the shores are the problem, so the convoy stays simple and every ship passes both west silos on the way in.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'The Rocket Convoy: a column of armoured rocket trucks down each shore road with drone swarms for company, built up round by round (round 1: three trucks a column and one swarm of five; round 2: three trucks and two swarms of five; round 3: four trucks and two swarms of three), 15-30 s each.',
+      botTarget: 1,
+    },
+  },
+};
 
 export function mapPlan(map: MapId): MapPlan | undefined {
   return MAP_PLANS[map];

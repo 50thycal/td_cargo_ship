@@ -22,6 +22,7 @@ import {
   arc,
   calloutsOn,
   encountersFor,
+  playsAt,
   versionDef,
   waveScale,
   type Encounter,
@@ -40,13 +41,16 @@ import { reconcile, type TelEvent, type TelemetrySidecar } from '../../src/v3/si
 
 const DT = 1 / 60;
 const ON = { rev: ENCOUNTER_REV };
-const VER = (version: EncounterVersion) => ({ rev: ENCOUNTER_REV, version });
+const VER = (version: EncounterVersion, rev = ENCOUNTER_REV) => ({ rev, version });
+/** The last rev an encounter plays in (one replaced in rev 4 plays to 3). */
+const lastRev = (e: Encounter) => e.until ?? ENCOUNTER_REV;
 
-/** A wave of a map, with or without its encounters (v1 unless said),
- *  nobody shooting, with telemetry: played to its end (or `seconds`). */
-function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1'): { g: Game; sc: TelemetrySidecar } {
+/** A wave of a map, with or without its encounters (v1 unless said, at
+ *  encounter rev `rev`), nobody shooting, with telemetry: played to its end
+ *  (or `seconds`). */
+function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1', rev = ENCOUNTER_REV): { g: Game; sc: TelemetrySidecar } {
   const g = createGame(map, seed, n);
-  if (on) applyEncounters(g, VER(version));
+  if (on) applyEncounters(g, VER(version, rev));
   g.tempo = { ...g.tempo, lossLimit: 999 };
   g.carrierHp = 999;
   logTelemetry(g, { id: 'enc-test', build: 'test', v: LOG_VERSION, firstWave: n, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'none');
@@ -96,7 +100,10 @@ describe('a campaign run has no encounter layer', () => {
       // Rev 3 (round 12's fixes): wave 1's opener on top (Harbor Mouth's v1
       // already opens with its first encounter).
       const big = (v: EncounterVersion) => of(v).filter((e) => !e.opener);
-      expect(big('v1'), map).toHaveLength(3);
+      // Rev 4 (map rebuild phase 4): The Gauntlet's v1 plan is rebuilt, one
+      // encounter a wave from 2 to 10; slice 5's three play to rev 3.
+      expect(big('v1').filter((e) => playsAt(e, 3)), map).toHaveLength(3);
+      expect(big('v1').filter((e) => playsAt(e)), map).toHaveLength(map === 'gauntlet' ? 9 : 3);
       expect(big('v2'), map).toHaveLength(4);
       expect(big('v3').length, map).toBeGreaterThanOrEqual(7);
       for (const v of ENCOUNTER_VERSIONS) expect(of(v).filter((e) => e.opener), `${map} ${v}`).toHaveLength(map === 'harbor' && v === 'v1' ? 0 : 1);
@@ -106,11 +113,18 @@ describe('a campaign run has no encounter layer', () => {
         expect(d.idea.length, `${map} ${v}`).toBeGreaterThan(30);
       }
     }
-    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener).map((e) => e.id)).toEqual([
+    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener && playsAt(e, 3)).map((e) => e.id)).toEqual([
       'strait-ranging-shots', 'strait-screen', 'strait-rolling-push',
       'gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire',
       'harbor-open-water', 'harbor-funnel-salvo', 'harbor-last-mile',
     ]);
+    // Rev 4: the Gauntlet's three are replaced (until 3), its new plan one a wave.
+    for (const id of ['gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire']) expect(ENCOUNTERS.find((e) => e.id === id)!.until, id).toBe(3);
+    expect(arc('gauntlet').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'gauntlet-north-south-opener', 'gauntlet-p4-shell-each-shore', 'gauntlet-p4-way-in', 'gauntlet-p4-periscope', 'gauntlet-p4-overlap',
+      'gauntlet-p4-crossing', 'gauntlet-p4-strafing-run', 'gauntlet-p4-long-way-round', 'gauntlet-p4-crossfire', 'gauntlet-p4-run-the-gauntlet',
+    ]);
+    for (const e of ENCOUNTERS.filter((x) => x.id.startsWith('gauntlet-p4-'))) expect(e.rev, e.id).toBe(4);
     expect(encountersFor('kesh', 5)).toEqual([]);
     expect(encountersFor('kesh', 5, 'v2')).toEqual([]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
@@ -278,7 +292,7 @@ describe('every authored launch is warned of', () => {
   it('a base lights up a raid\'s warning before it fires; a submarine shows its periscope; an aircraft its arrow', () => {
     for (const e of ENCOUNTERS) {
       const w = e.waves[e.waves.length - 1];
-      const { sc } = wave(e.map, w, true, 9, 90, e.version);
+      const { sc } = wave(e.map, w, true, 9, 90, e.version, lastRev(e));
       const mine = launches(sc).filter((l) => l.enc === e.id && beatLaunch(l));
       const want = e.beats.reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
@@ -397,8 +411,8 @@ describe('each encounter is what it says', () => {
     expect(missile.t).toBeLessThan(drones.at(-1)!.t + 1);
   });
 
-  it('The Gauntlet, crossfire: both shores open in the same half second, then a strafing run', () => {
-    const { g, sc } = wave('gauntlet', 9, true);
+  it('The Gauntlet, crossfire (rev 3, slice 5\'s): both shores open in the same half second, then a strafing run', () => {
+    const { g, sc } = wave('gauntlet', 9, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'gauntlet-crossfire');
     const north = mine.filter((l) => l.o === 'base' && g.map.bases[l.base!].y < 450);
     const south = mine.filter((l) => l.o === 'base' && g.map.bases[l.base!].y > 450);

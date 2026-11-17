@@ -415,6 +415,14 @@ export function eventDropWeights(g: Game, w: Record<string, number>, starshell: 
 const B = EVENT.breather;
 const steps = (n: number, at: (k: number) => number, op: string): EventStep[] => Array.from({ length: n }, (_, k) => ({ at: B + at(k), op, k }));
 
+/** The Rocket Convoy's size this run: as the boss rounds, round by round
+ *  (phase 4, play log v26); one run on its own, the base numbers. */
+function convoyRound(ev: EventRun): { trucks: number; swarms: number; size: number } {
+  const E = EV['rocket-convoy'];
+  if (ev.runs <= 1) return { trucks: E.trucks, swarms: E.swarms, size: E.size };
+  return E.rounds[clamp(ev.run, 1, E.rounds.length) - 1];
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -445,7 +453,8 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     case 'rocket-convoy': {
       // A column down each shore road, the second a little after the first.
       const E = EV['rocket-convoy'];
-      return [...steps(E.columns * E.trucks, (k) => Math.floor(k / E.trucks) * E.second + (k % E.trucks) * E.gap, 'truck'), ...steps(E.swarms, (k) => 6 + k * 6, 'swarm')];
+      const R = convoyRound(ev);
+      return [...steps(E.columns * R.trucks, (k) => Math.floor(k / R.trucks) * E.second + (k % R.trucks) * E.gap, 'truck'), ...steps(R.swarms, (k) => 6 + k * 6, 'swarm')];
     }
     case 'gunship-wall': {
       const E = EV['gunship-wall'];
@@ -643,13 +652,14 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // Down the shore road in a column; each stops behind the one ahead.
       const E = EV['rocket-convoy'];
       if (s.op === 'swarm') {
-        swarm(g, ev, E.size);
+        swarm(g, ev, convoyRound(ev).size);
         return;
       }
       // Column `col` takes the map's next shore road (one road: the second
       // column comes down it from the other end).
-      const col = Math.floor(s.k / E.trucks);
-      const i = s.k % E.trucks;
+      const R = convoyRound(ev);
+      const col = Math.floor(s.k / R.trucks);
+      const i = s.k % R.trucks;
       const path = roadFor(g, col);
       const L = pathLength(path);
       const th = spawnThreat(g, 'rocketTruck', path[0].x, path[0].y, 'truck');
