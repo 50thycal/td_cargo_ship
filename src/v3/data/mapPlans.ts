@@ -69,6 +69,23 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 1,
     },
   },
+  // docs/design/v3-p4-harbor.md
+  harbor: {
+    problem: 'Every ship has to pass the neck, where the lane closes and the convoy bunches up under both headlands, just before delivery.',
+    // The neck's fire comes at short warning onto one spot: sub salvos off
+    // the narrows, shells from the mouth, swarms from both headlands, a
+    // missile at the ship about to deliver. Fast aimed taps meet it, and the
+    // Railgun's line down the funnel takes what converges there. Weapons
+    // that fire themselves spread their shots over the whole board.
+    counters: ['overdrive', 'railgun', 'focus'],
+    offCounter: ['airstrike', 'seeker', 'droneScreen'],
+    convoy: 'Wide apart on the open water (2.2 times the slots), closing up into single file at the neck from x 700 (round 11): the open water forgives, the neck does not.',
+    stretches: { danger: 'middle', safe: 'early' },
+    boss: {
+      plan: 'The Breakout as it was (swarms, a sprint swarm, rocket trucks down both shore roads, a Hydra fan), plus submarine salvos into the neck, one more salvo or Hydra each round: round 1 one salvo of 3, round 2 two salvos (3 and 2), round 3 two of 3 and a fan of 4 Hydras (encounters rev 4, MAP_BOSS).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

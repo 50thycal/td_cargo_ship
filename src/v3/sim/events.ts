@@ -28,7 +28,8 @@
 import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gradeEvent, worstOutcome, type EventId, type EventOutcome, type EventRule } from '../data/events';
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
-import { RULES, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
+import { RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
+import { bossTune } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -527,11 +528,18 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       // then trucks down both shore roads (round 12's fixes: sooner, and
       // more of them) and a Hydra fan.
       const E = EV.breakout;
+      // Encounters rev 4 (lab only): Harbor Mouth's boss rounds come to the
+      // neck, harder each run (data/encounters.ts MAP_BOSS).
+      const tune = bossTune(g.map.id, g.enc?.setup.rev);
+      const salvos = tune?.salvos[ev.run - 1] ?? [];
       return [
         ...steps(E.swarms, (k) => k * E.gap, 'swarm'),
         ...steps(E.sprintAt.length, (k) => E.sprintAt[k], 'sprint'),
-        ...steps(E.fan, (k) => E.fanAt + k * E.fanGap, 'fan'),
+        ...steps(tune?.fan?.[ev.run - 1] ?? E.fan, (k) => E.fanAt + k * E.fanGap, 'fan'),
         ...steps(E.roads * E.trucks, (k) => E.truckAt + Math.floor(k / E.trucks) * 1.5 + (k % E.trucks) * E.gapT, 'truck'),
+        // The periscope shows first: the sub is called that long before
+        // its salvo.
+        ...steps(salvos.length, (k) => Math.max(0, salvos[k][0] - SUB.warn - SUB.surface), 'neck'),
       ];
     }
     case 'run-the-canal': {
@@ -891,6 +899,14 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
         launchFoe(g, { at: g.waveT, kind: 'hydra', base: b }, g.map.bases[b]);
         for (const t of since(g, id0, 'hydra')) t.speed *= E.slow;
         sent(ev, 'hydra');
+      } else if (s.op === 'neck') {
+        // A salvo into the neck (encounters rev 4): a sub at the map's spot,
+        // each shell at the ship nearest the narrows.
+        const tune = bossTune(g.map.id, g.enc?.setup.rev)!;
+        const n = tune.salvos[ev.run - 1][s.k][1];
+        g.raiderQueue.push({ at: g.waveT, kind: 'sub', path: [g.map.subSpots[tune.spot]], units: Array.from({ length: n }, () => ({ kind: 'ballistic' as const, size: 1 })), aim: 'narrows' });
+        g.raiderQueue.sort((a, b) => a.at - b.at);
+        sent(ev, 'ballistic', n);
       } else truck(g, ev, Math.floor(s.k / E.trucks), s.k % E.trucks, E);
       return;
     }

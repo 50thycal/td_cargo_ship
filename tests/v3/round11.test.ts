@@ -108,10 +108,19 @@ describe('the encounter script, in words, for the pause screen', () => {
   });
 
   it('the arc of a map in one line, then its boss rounds', () => {
+    // Encounters rev 4 (map rebuild phase 4, docs/design/v3-p4-harbor.md):
+    // Harbor Mouth's v1 has one encounter a wave, none twice in a row.
     expect(arcGroups('harbor', 11, 13, 'The Breakout')).toEqual([
-      { from: 1, to: 3, name: 'Open water' },
-      { from: 4, to: 7, name: 'Funnel salvo' },
-      { from: 8, to: 10, name: 'The last mile' },
+      { from: 1, to: 1, name: 'Over the neck' },
+      { from: 2, to: 2, name: 'Open water' },
+      { from: 3, to: 3, name: 'First periscope' },
+      { from: 4, to: 4, name: 'South headland' },
+      { from: 5, to: 5, name: 'Funnel and tail' },
+      { from: 6, to: 6, name: 'Both headlands' },
+      { from: 7, to: 7, name: 'Front and back' },
+      { from: 8, to: 8, name: 'Wolf pack' },
+      { from: 9, to: 9, name: 'Crossfire at the neck' },
+      { from: 10, to: 10, name: 'The last mile' },
       { from: 11, to: 13, name: 'Boss rounds: The Breakout' },
     ]);
     // (Round 12's fixes: wave 1 opens with Ranging shots. Phase 4, rev 4: a

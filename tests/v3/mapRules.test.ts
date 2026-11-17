@@ -170,10 +170,10 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
    *  (phase 4, encounter rev 4: one encounter a wave, docs/design/
    *  v3-p4-gauntlet.md). */
   const EXPECTED_REPEATS: Record<string, string[]> = {
-    // Phase 4 (docs/design/v3-p4-strait.md, v3-p4-gauntlet.md): a different encounter on every wave.
+    // Phase 4 (docs/design/v3-p4-*.md): a different encounter on every wave.
     strait: [],
     gauntlet: [],
-    harbor: ['1-2: harbor-open-water', '2-3: harbor-open-water', '4-5: harbor-funnel-salvo', '5-6: harbor-funnel-salvo', '6-7: harbor-funnel-salvo', '8-9: harbor-last-mile', '9-10: harbor-last-mile'],
+    harbor: [],
   };
 
   it('the back-to-back repeats are exactly the known ones', () => {

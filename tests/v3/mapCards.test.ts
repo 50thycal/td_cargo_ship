@@ -123,11 +123,11 @@ describe('a map card is the full production map', () => {
       );
       expect(plansB, map).toEqual(plansA);
       expect(withoutLab(B.game), map).toBe(withoutLab(A.game));
-      // Each of its v1 encounters at the current rev (three, and since round
-      // 12's fixes wave 1's opener on The Strait and The Gauntlet; phase 4's
-      // Strait and Gauntlet: one a wave, ten), in the waves it plays (1-10 only).
+      // Each of its v1 encounters at the current rev: phase 4's rebuilt plans
+      // play one a wave, ten (The Strait and The Gauntlet with wave 1's
+      // opener), in the waves it plays (1-10 only).
       expect(new Set(B.game.enc!.played).size, map).toBe(ENCOUNTERS.filter((e) => e.map === map && e.version === 'v1' && playsAt(e)).length);
-      expect(new Set(B.game.enc!.played).size, map).toBe(map === 'harbor' ? 3 : 10);
+      expect(new Set(B.game.enc!.played).size, map).toBe(10);
       expect(B.game.enc!.wave, map).toBeLessThanOrEqual(10);
       expect(B.game.phase, map).toBe('won');
     }
