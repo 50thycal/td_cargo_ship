@@ -428,8 +428,11 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       // none): a Hydra rides in behind each sprint swarm, so the rush can
       // sink a ship. Measured with the bots against the Rocket Convoy
       // (docs/design/v3-round12-encounter-versions.md).
+      // Phase 4 (docs/design/v3-p4-strait.md): each run of the ending a
+      // little more than the one before, so the three rounds rise.
       const E = EV.rush;
-      return [...steps(E.swarms, (k) => k * E.every, 'swarm'), ...steps(E.hydras, (k) => E.hydraAt + k * E.every, 'hydra')];
+      const more = E.more[clamp(ev.run, 1, E.more.length) - 1];
+      return [...steps(E.swarms + more, (k) => k * E.every, 'swarm'), ...steps(E.hydras + more, (k) => E.hydraAt + k * E.every, 'hydra')];
     }
     case 'drone-storm': {
       const E = EV['drone-storm'];

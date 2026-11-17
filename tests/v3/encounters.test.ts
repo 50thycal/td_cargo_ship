@@ -21,7 +21,9 @@ import {
   MAP_VERSIONS,
   arc,
   calloutsOn,
+  encounterRev,
   encountersFor,
+  playsAt,
   versionDef,
   waveScale,
   type Encounter,
@@ -44,9 +46,9 @@ const VER = (version: EncounterVersion) => ({ rev: ENCOUNTER_REV, version });
 
 /** A wave of a map, with or without its encounters (v1 unless said),
  *  nobody shooting, with telemetry: played to its end (or `seconds`). */
-function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1'): { g: Game; sc: TelemetrySidecar } {
+function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1', rev = ENCOUNTER_REV): { g: Game; sc: TelemetrySidecar } {
   const g = createGame(map, seed, n);
-  if (on) applyEncounters(g, VER(version));
+  if (on) applyEncounters(g, { rev, version });
   g.tempo = { ...g.tempo, lossLimit: 999 };
   g.carrierHp = 999;
   logTelemetry(g, { id: 'enc-test', build: 'test', v: LOG_VERSION, firstWave: n, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'none');
@@ -96,7 +98,10 @@ describe('a campaign run has no encounter layer', () => {
       // Rev 3 (round 12's fixes): wave 1's opener on top (Harbor Mouth's v1
       // already opens with its first encounter).
       const big = (v: EncounterVersion) => of(v).filter((e) => !e.opener);
-      expect(big('v1'), map).toHaveLength(3);
+      // Phase 4 (rev 4): The Strait's v1 is one encounter a wave on waves
+      // 2-10 (docs/design/v3-p4-strait.md); rev 3's three are kept for its logs.
+      expect(big('v1').filter((e) => playsAt(e)), map).toHaveLength(map === 'strait' ? 9 : 3);
+      expect(big('v1').filter((e) => playsAt(e, 3)), map).toHaveLength(3);
       expect(big('v2'), map).toHaveLength(4);
       expect(big('v3').length, map).toBeGreaterThanOrEqual(7);
       for (const v of ENCOUNTER_VERSIONS) expect(of(v).filter((e) => e.opener), `${map} ${v}`).toHaveLength(map === 'harbor' && v === 'v1' ? 0 : 1);
@@ -106,11 +111,17 @@ describe('a campaign run has no encounter layer', () => {
         expect(d.idea.length, `${map} ${v}`).toBeGreaterThan(30);
       }
     }
-    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener).map((e) => e.id)).toEqual([
+    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener && encounterRev(e) <= 3).map((e) => e.id)).toEqual([
       'strait-ranging-shots', 'strait-screen', 'strait-rolling-push',
       'gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire',
       'harbor-open-water', 'harbor-funnel-salvo', 'harbor-last-mile',
     ]);
+    // The Strait's rev 4 plan: a different encounter on each of waves 2-10.
+    expect(arc('strait').map((a) => a.encounters.map((e) => e.id).join())).toEqual([
+      'strait-ranging-opener', 'strait-far-silo', 'strait-silo-to-silo', 'strait-periscope', 'strait-swarm-screen',
+      'strait-both-ways', 'strait-down-the-lane', 'strait-sweep-east', 'strait-ambush', 'strait-final-approach',
+    ]);
+    for (const id of ['strait-ranging-shots', 'strait-screen', 'strait-rolling-push']) expect(ENCOUNTERS.find((e) => e.id === id)!.until, id).toBe(3);
     expect(encountersFor('kesh', 5)).toEqual([]);
     expect(encountersFor('kesh', 5, 'v2')).toEqual([]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
@@ -222,7 +233,13 @@ describe('every beat is legal on its map at its wave', () => {
           for (const e of list) {
             const sent = e.beats.reduce((a, b) => a + ('air' in b.from ? Math.min(5, spec.swarm - 1) * b.count : b.count), 0) + (e.pairs ?? []).reduce((a, p) => a + (p.count ?? 1) * pairCost(p.pair, spec.swarm), 0);
             const asked = (e.replaces.drones ?? 0) + (e.replaces.ballistic ?? 0) + (e.replaces.guided ?? 0);
-            expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked}`).toBeLessThanOrEqual(asked);
+            // Phase 4 (The Strait, docs/design/v3-p4-strait.md): an encounter
+            // that takes every shell of its wave also takes the shells the
+            // wave's submarines would have topped up (a sub with one shell
+            // fills a salvo of four), which the books don't see. It is held
+            // to the wave as planned instead (below).
+            const allShells = spec.ballistic > 0 && (e.replaces.ballistic ?? 0) >= spec.ballistic && (e.rev ?? 1) >= 4;
+            if (!allShells) expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked}`).toBeLessThanOrEqual(asked);
             expect(asked, `${e.id} wave ${w}: the wave has that much to give`).toBeLessThanOrEqual(spec.drones + spec.ballistic + spec.guided);
           }
           // And as planned: over eight seeds, no more launches than the same
@@ -278,7 +295,8 @@ describe('every authored launch is warned of', () => {
   it('a base lights up a raid\'s warning before it fires; a submarine shows its periscope; an aircraft its arrow', () => {
     for (const e of ENCOUNTERS) {
       const w = e.waves[e.waves.length - 1];
-      const { sc } = wave(e.map, w, true, 9, 90, e.version);
+      // An encounter replaced in phase 4 (`until`) plays under its last rev.
+      const { sc } = wave(e.map, w, true, 9, 90, e.version, e.until ?? ENCOUNTER_REV);
       const mine = launches(sc).filter((l) => l.enc === e.id && beatLaunch(l));
       const want = e.beats.reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
@@ -360,7 +378,8 @@ describe('call-outs (round 12)', () => {
     }
     // v1 says nothing; v1 with call-outs asked for names its encounter.
     expect(calls('strait', 6, VER('v1')).seen).toEqual([]);
-    expect(calls('strait', 6, { ...VER('v1'), callouts: true }).seen.map((s) => s.id)).toEqual(['strait-screen']);
+    expect(calls('strait', 6, { ...VER('v1'), callouts: true }).seen.map((s) => s.id)).toEqual(['strait-both-ways']);
+    expect(calls('strait', 6, { rev: 3, version: 'v1', callouts: true }).seen.map((s) => s.id)).toEqual(['strait-screen']);
   }, 60_000);
 
   it('the call-out comes as the warning starts: a raid\'s warning time before the set piece\'s first launch', () => {
@@ -375,8 +394,10 @@ describe('call-outs (round 12)', () => {
 
 
 describe('each encounter is what it says', () => {
-  it('The Strait, ranging shots: two shells from the middle base alone, at the ship furthest along', () => {
-    const { sc } = wave('strait', 3, true);
+  // The Strait's rev 3 plan (replaced in rev 4, docs/design/v3-p4-strait.md):
+  // a rev 3 log still plays it.
+  it('The Strait, ranging shots (rev 3): two shells from the middle base alone, at the ship furthest along', () => {
+    const { sc } = wave('strait', 3, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'strait-ranging-shots');
     expect(mine.map((l) => [l.kind, l.base])).toEqual([['ballistic', 1], ['ballistic', 1]]);
     expect(mine[1].t - mine[0].t).toBeCloseTo(1.6, 1);
@@ -386,8 +407,8 @@ describe('each encounter is what it says', () => {
     for (const l of mine) expect(l.tg, 'aimed at a ship').toBeGreaterThan(0);
   });
 
-  it('The Strait, the screen: a swarm, then a guided missile from the same pad behind it', () => {
-    const { sc } = wave('strait', 6, true);
+  it('The Strait, the screen (rev 3): a swarm, then a guided missile from the same pad behind it', () => {
+    const { sc } = wave('strait', 6, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'strait-screen');
     const drones = mine.filter((l) => l.kind === 'drone');
     const missile = mine.find((l) => l.kind === 'guided')!;
@@ -501,7 +522,7 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     // From wave 6 with two passives: Siren Field still comes after wave 6.
     const bonus = playMimic('strait', 8, { ...opts, firstWave: 6, encounters: ON });
     expect(bonus.game.eventLog[0]).toMatchObject({ id: 'siren-field', kind: 'bonus' });
-    expect(bonus.game.enc!.played).toContain('strait-screen');
+    expect(bonus.game.enc!.played).toContain('strait-both-ways');
   }, 90_000);
 });
 

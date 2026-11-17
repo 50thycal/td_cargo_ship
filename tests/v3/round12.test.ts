@@ -122,7 +122,9 @@ describe('Test Lab round 12', () => {
       { from: 10, to: 10, name: 'Harbor gate' },
       { from: 11, to: 13, name: 'Boss rounds: The Breakout' },
     ]);
-    // v1's arc: its first encounter from wave 1 now (rev 3's opener).
-    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 4, name: 'Ranging shots' });
+    // v1's arc: its first encounter from wave 1 now (rev 3's opener); phase 4
+    // (rev 4) gives every later wave its own.
+    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')).toHaveLength(11);
+    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 1, name: 'Ranging shots' });
   });
 });

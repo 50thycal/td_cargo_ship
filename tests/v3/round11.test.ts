@@ -114,8 +114,9 @@ describe('the encounter script, in words, for the pause screen', () => {
       { from: 8, to: 10, name: 'The last mile' },
       { from: 11, to: 13, name: 'Boss rounds: The Breakout' },
     ]);
-    // (Round 12's fixes: wave 1 opens with the first encounter, Ranging shots.)
-    expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 4, name: 'Ranging shots' });
+    // (Round 12's fixes: wave 1 opens with Ranging shots. Phase 4, rev 4: a
+    // different encounter on every wave after it, docs/design/v3-p4-strait.md.)
+    expect(arcGroups('strait', 11, 13, 'Afterburner Rush').slice(0, 2)).toEqual([{ from: 1, to: 1, name: 'Ranging shots' }, { from: 2, to: 2, name: 'The long crossing' }]);
   });
 
   it('no encounter text mentions a command that is gone', () => {

@@ -134,12 +134,18 @@ import type { EncounterSetup } from '../data/encounters';
  *      munition still on its launcher (a supersonic arming on its rail) is
  *      no target for anything; the Nuke destroys every enemy on the map,
  *      off the screen and driving off included. A v24 log with frigates, a
- *      supersonic or a Nuke no longer replays to the same game. */
-export const LOG_VERSION = 25;
+ *      supersonic or a Nuke no longer replays to the same game.
+ *  26: map rebuild phase 4, The Strait (docs/design/v3-p4-strait.md): the
+ *      Afterburner Rush rises from round to round, each run of the ending
+ *      sending more sprint swarms and Hydras (EV.rush.more). A v25 log that
+ *      reaches The Strait's boss rounds no longer replays to the same game.
+ *      (The Strait's new encounters are lab only and ride in the log's
+ *      encounter rev, 4.) */
+export const LOG_VERSION = 26;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [25];
+export const LOG_REPLAYS: readonly number[] = [26];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

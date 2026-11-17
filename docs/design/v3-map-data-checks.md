@@ -58,6 +58,8 @@ For each v1 encounter map, no encounter id on two waves in a row (`arc(map, 'v1'
 
 Wave 1's openers are different encounters, so waves 1–2 do not repeat on the Strait and the Gauntlet. Phase 4 needs about ten distinct encounters per map (or alternating ones) to pass.
 
+**Phase 4:** The Strait's row is gone. Under encounter rev 4 each of its waves 2–10 has its own encounter (`docs/design/v3-p4-strait.md`), and the test expects no repeats there.
+
 ## An encounter on each wave (rule `w-encounter`)
 
 For each v1 encounter map, every wave 1–10 has at least one encounter.
