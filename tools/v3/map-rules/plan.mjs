@@ -74,6 +74,7 @@ export const STATUS = {
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
+    { id: 'scorecard', name: 'The new scorecard', state: 'now', detail: 'You approved it (2026-11-17). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.' },
     { id: 'checks', name: 'Automatic checks and bot reports', state: 'next', detail: 'No wave cliffs, close calls from wave 3, wave budgets, counter vs off-counter kits, no later-chapter foes; a heat-map report per map that a session can read and act on.' },
     { id: 'reference', name: 'The three reference maps to the rules', state: 'later', detail: 'The Strait, The Gauntlet, Harbor Mouth: early stakes, wave 1, boss rounds at about a ship a round, counters, internal encounter notes. Tuned in the bot loop, then you play them.' },
     { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'later', detail: 'Map cards, build, bot loop, then your playtest.' },
@@ -88,6 +89,7 @@ export const STATUS = {
     { n: 160, title: 'Bots that play like you (the refit)', state: 'open' },
   ],
   log: [
+    { date: '2026-11-17', what: 'You approved the new scorecard. It is being built now, alongside the automatic checks; it moved to the Archive.' },
     { date: '2026-11-17', what: 'Your question answered. To calibrate, the bot now replays each of your runs with your exact setup: the same map (cards and campaign), seed, Armory upgrades and draft picks. On that basis it loses 0.69 ships in waves 1–5 (you 0.50), 3.6 in waves 6–10 (you 3.3) and 1.0 a boss round (you 0.5). Map testing keeps a baseline bot with no upgrades.' },
     { date: '2026-11-17', what: 'Bots refit to your play. The measuring tools read your logs and the bots the same way. The fit table and what is still off are in docs/design/v3-bot-refit.md.' },
     { date: '2026-11-17', what: 'The build session started on “Bots that play like you”: your play logs (218 runs) are downloaded for the refit.' },
@@ -99,9 +101,17 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
+];
+
+// ---- Answered after round 1 (out of NEEDS; the marks are in
+// review-2026-11-17-r2.json). The archive shows each with the player's call.
+export const ANSWERED = [
   {
     id: 'r2-scorecard',
     kind: 'item',
+    verdict: 'approve',
+    note: '',
+    at: '2026-11-17',
     title: 'A better scorecard (your note: “treat the score cards as a vibe check… maybe overhaul the score card system”)',
     text: 'Proposed scorecard: (1) before you rate, it shows your last scores for this map and the latest scores of the other maps, so you rate relative to them; (2) the waves of your run in a strip, with the moments the game marked, so you tap the best and weakest wave from what happened, not memory; (3) one comparison: “compared with <the map you rated last>, this one was worse / about the same / better”; (4) fewer sliders: Fun, Difficulty and Play again stay, plus a note; Readability and Pacing go (always 5 and “right”).',
   },
