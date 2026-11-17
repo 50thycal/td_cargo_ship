@@ -251,12 +251,12 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-The checks and bot reports are built. Now: tuning the Strait, the Gauntlet and Harbor Mouth to the rules with the bots, then they come to you to play.
+The Strait, the Gauntlet and Harbor Mouth are rebuilt to the rules and pass every bot check. Your turn: play the three map cards in the Test Lab.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.
 - **Done: The new scorecard.** Live in the Test Lab (#161). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.
 - **Done: Automatic checks and bot reports.** Built (#162). Each map now gets a bot report: losses per wave, cliffs, close calls, wave budgets, the danger and safe stretches, warning time, kits and a heat map. Encounters carry internal notes. Tests catch later-chapter foes and repeated encounters. First readings on the three reference maps: every map has a cliff (the Gauntlet’s wave 8 jumps from 0.75 to 3 ships for the bot); Harbor’s waves 4–7 send a third fewer attacks than they should; the Strait and the Gauntlet have no clearly safe stretch; every encounter repeats 3–4 waves in a row.
-- **Now: The three reference maps to the rules.** The Strait, The Gauntlet, Harbor Mouth: early stakes, wave 1, boss rounds at about a ship a round, counters, internal encounter notes. Tuned in the bot loop, then you play them.
+- **Now: The three reference maps to the rules.** Rebuilt with the bots (#163); every bot check passes on all three. Each map now has one encounter a wave with none repeated, real stakes from wave 3, no loss cliffs, a clear danger and safe stretch, counter weapons named, and boss rounds that rise. The Strait’s Rush and Harbor’s Breakout now cost ships; the Gauntlet’s Rocket Convoy is a little softer. Waiting on your playtest (see Needs you).
 - **Later: Chapter 1: Kesh and Marrow.** Map cards, build, bot loop, then your playtest.
 - **Later: Chapters 2–4.** A chapter at a time, the same way.
