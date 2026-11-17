@@ -33,6 +33,15 @@ function findChromium() {
 }
 
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] });
+// A test's commands are on the pause menu (pause-menu round: no bar over the
+// field): pause, if the menu isn't up, and wait for them.
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
 const fail = (msg) => {
   console.error('FAIL:', msg);
   process.exitCode = 1;
@@ -492,11 +501,13 @@ try {
     await tp.close();
   }
 
-  // ---- Call-outs round: the lab bar at the bottom, cards in the corner that
-  // go on their own or at a tap, and the Call-outs setting ----
+  // ---- Call-outs round: cards in the corner that go on their own or at a
+  // tap, and the Call-outs setting ----
   // The player: "The bar that says like done, note, and everything, put that
   // on the bottom and then move the notifications to the bottom right hand
   // corner ... they should also be disappearing ... you can turn them off".
+  // Pause-menu round: "that banner at the bottom covers up launchers": no bar
+  // over the field at all; its commands are on the pause menu.
   {
     const cp = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
     const errs = [];
@@ -515,14 +526,19 @@ try {
     await cp.waitForSelector('.playing.lab-on');
     await cp.waitForSelector('.v2-alert.show');
     const lay = await cp.evaluate(() => {
-      const bar = document.querySelector('.v3-lab-bar').getBoundingClientRect();
       const card = document.querySelector('.v2-alert').getBoundingClientRect();
       const tl = window.__v3.toClient(0, 0);
       const br = window.__v3.toClient(1600, 900);
-      return { bar: { top: bar.top, bottom: bar.bottom }, card: { left: card.left, right: card.right, top: card.top, bottom: card.bottom }, mid: (tl.x + br.x) / 2, right: br.x, h: innerHeight };
+      // Anything of the test's over the field's bottom strip: a button or a
+      // bar the player's taps would land on instead of the water.
+      const strip = [...document.querySelectorAll('.v2-root button, .v2-root [class*="lab"]')].filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden' && r.bottom > br.y - 60 && r.left < br.x && r.right > tl.x && !e.closest('.v2-rail, .v2-overlay, .v2-alerts');
+      }).map((e) => e.className);
+      return { bar: !!document.querySelector('.v3-lab-bar'), strip, done: !!document.querySelector('[data-lab-done]'), card: { left: card.left, right: card.right, top: card.top, bottom: card.bottom }, mid: (tl.x + br.x) / 2, right: br.x, h: innerHeight };
     });
-    check(lay.bar.top > lay.h / 2 && lay.bar.bottom <= lay.h && lay.h - lay.bar.bottom < 12, `the Test Lab bar sits along the bottom (${JSON.stringify(lay.bar)})`);
-    check(lay.card.left > lay.mid && lay.card.top > lay.h / 2 && lay.card.right <= lay.right && lay.card.bottom <= lay.bar.top, `a call-out sits in the bottom-right corner, above the bar (${JSON.stringify(lay.card)})`);
+    check(!lay.bar && !lay.done && lay.strip.length === 0, `no Test Lab bar over the field: nothing of the test along its bottom, Done not shown in play (${JSON.stringify({ bar: lay.bar, done: lay.done, strip: lay.strip })})`);
+    check(lay.card.left > lay.mid && lay.card.top > lay.h / 2 && lay.card.right <= lay.right && lay.h - lay.card.bottom < 16, `a call-out sits in the bottom-right corner, down at the bottom (${JSON.stringify(lay.card)})`);
     // An info card (3.2 s) goes on its own: the game held still, so no raid
     // hurries it along.
     await cp.evaluate(() => window.__v3.freeze(true));
@@ -544,7 +560,10 @@ try {
     const tapped = await cp.evaluate(() => ({ left: [...document.querySelectorAll('.v2-alert:not(.leaving)')].some((e) => e.textContent.includes('TAP ME')), taps: Object.values(window.__v3.game().taps).reduce((a, b) => a + b, 0) }));
     check(!tapped.left && tapped.taps === taps0, `a tap on a call-out sends it away and fires nothing (${JSON.stringify({ ...tapped, taps0 })})`);
     // At Call-outs: All a test meets its enemy with a first-sight card.
+    // (Bring one, on the pause menu, brings it and goes on with the game.)
+    await labMenu(cp);
     await cp.click('[data-lab-bring]');
+    check(await cp.evaluate(() => !document.querySelector('.v2-overlay.open') && document.querySelector('.v2-pause').textContent === 'II'), 'Bring one on the pause menu closes it: the game goes on');
     const all = await titlesFor(2500);
     check(all.some((t) => t.startsWith('NEW:')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
     // Off, from Settings: kept across a reload, and no hint, wave or test card.
@@ -560,11 +579,64 @@ try {
     check(kept.on === 'off' && kept.stored === 'off', `Call-outs: Off is kept across a reload (${JSON.stringify(kept)})`);
     await cp.goto(`${BASE_URL}/v3.html?lab=cloud`, { waitUntil: 'networkidle' });
     await cp.waitForSelector('.playing.lab-on');
+    await labMenu(cp);
     await cp.click('[data-lab-bring]');
     const off = await titlesFor(2500);
     check(off.length === 0, `at Call-outs: Off, no first-sight, wave or test card shows (${off.join(' | ') || 'none'})`);
     check(errs.length === 0, `the call-outs checks ran without a page error${errs.length ? `: ${errs[0]}` : ''}`);
     await cp.close();
+  }
+
+  // ---- Pause-menu round: a tip card only for a new type, remembered across
+  // maps and modes, and Settings → Show tips again ----
+  // The player: "the notification system can like be reduced to just notes
+  // about new weapon types and that should carry over between maps in the
+  // campaign mode so drones isn't said every time".
+  {
+    const sp = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+    const errs = [];
+    sp.on('pageerror', (e) => errs.push(e.message));
+    await sp.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
+    await sp.evaluate(() => localStorage.clear());
+    // Every card title seen until `until` is among them, or `ms` runs out.
+    const titles = async (ms, until) => {
+      const seen = new Set();
+      for (let t = 0; t < ms && !(until && [...seen].some(until)); t += 100) {
+        for (const x of await sp.locator('.v2-alert:not(.leaving) strong').allTextContents()) seen.add(x);
+        for (const x of await sp.locator('.v2-alert:not(.leaving)').allTextContents()) texts.add(x);
+        await sp.waitForTimeout(100);
+      }
+      return [...seen];
+    };
+    const drone = (t) => t === 'NEW: Attack drone';
+    const texts = new Set();
+    await sp.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
+    await sp.waitForSelector('.playing.lab-on');
+    const first = await titles(15000, drone);
+    const stored = await sp.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.seen') ?? 'null'));
+    check(first.some(drone) && !first.includes('TESTING: THE STRAIT') && stored?.v === 1 && stored.ids.includes('threat:drone'), `a Test Lab map meets the drone with a card, and the save remembers it (${first.join(' | ')}; ${JSON.stringify(stored)})`);
+    check(first.includes('WAVE 1') && ![...texts].some((t) => t.includes('Tap threats')), `wave 1's card carries no how-to line in a lab run (${[...texts].filter((t) => t.startsWith('WAVE')).join(' | ')})`);
+    // Another map, after a reload: drones again, and no card for them.
+    await sp.goto(`${BASE_URL}/v3.html?lab=map-gauntlet&seed=7`, { waitUntil: 'networkidle' });
+    await sp.waitForSelector('.playing.lab-on');
+    await sp.waitForFunction(() => window.__v3.game().threats.some((t) => t.kind === 'drone'), null, { timeout: 20000 });
+    const second = await titles(5000);
+    check(!second.some(drone) && second.length > 0, `on the next map the drone is not announced again (${second.join(' | ')})`);
+    // Free Play shares the memory.
+    await sp.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
+    await sp.locator('.v2-settings-btn').tap();
+    await sp.waitForSelector('[data-screen="settings"]');
+    const row = await sp.evaluate(() => ({ seen: Number(document.querySelector('[data-setting="tips"]')?.dataset.tipsSeen), text: document.querySelector('[data-setting="tips"]')?.textContent, h: document.querySelector('[data-tips-reset]')?.getBoundingClientRect().height }));
+    check(row.seen >= 1 && /\d+ met\./.test(row.text ?? '') && row.h >= 36, `Settings has Show tips again, with the types met so far (${JSON.stringify(row)})`);
+    await sp.locator('[data-tips-reset]').tap();
+    const cleared = await sp.evaluate(() => ({ stored: localStorage.getItem('straitwatch.v3.seen'), disabled: document.querySelector('[data-tips-reset]')?.disabled, text: document.querySelector('[data-setting="tips"]')?.textContent }));
+    check(cleared.stored === null && cleared.disabled && /None met yet/.test(cleared.text ?? ''), `Show tips again clears them (${JSON.stringify(cleared)})`);
+    await sp.goto(`${BASE_URL}/v3.html?lab=map-gauntlet&seed=7`, { waitUntil: 'networkidle' });
+    await sp.waitForSelector('.playing.lab-on');
+    const again = await titles(15000, drone);
+    check(again.some(drone), `after Show tips again the drone is introduced again (${again.join(' | ')})`);
+    check(errs.length === 0, `the tip memory checks ran without a page error${errs.length ? `: ${errs[0]}` : ''}`);
+    await sp.close();
   }
 
   // ---- The weapons plan, phases 0–1: the prototypes in Free Play, by touch ----
@@ -944,12 +1016,34 @@ try {
     check(hub.rows === 101 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
-    const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar'), map: g.map.id }; });
-    check(run.card === 'diveBomber' && run.wave === 5 && run.endless && run.bar, `a test starts at wave 5 on the lab's water with its bar (${JSON.stringify(run)})`);
+    const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar, [data-lab-done]'), map: g.map.id }; });
+    check(run.card === 'diveBomber' && run.wave === 5 && run.endless && !run.bar, `a test starts at wave 5 on the lab's water, with nothing of it over the field (${JSON.stringify(run)})`);
+    // Its commands are on the pause menu, under its name and count.
+    await labMenu(tp);
+    const menu = await tp.evaluate(() => ({ paused: window.__v3.game().phase === 'wave' && document.querySelector('.v2-pause').textContent === '▶', head: document.querySelector('.v3-lab-pause-name')?.textContent, count: document.querySelector('.v3-lab-pause-head .v3-lab-count')?.textContent, acts: [...document.querySelectorAll('.v2-pause-panel [data-lab-bring], .v2-pause-panel [data-lab-note], .v2-pause-panel [data-lab-setup], .v2-pause-panel [data-lab-done]')].map((b) => b.textContent) }));
+    check(menu.paused && menu.head === 'DIVE BOMBER' && /1\/\d+$/.test(menu.count ?? '') && menu.acts.join() === 'Bring one,📝 Note,Setup,Done', `the pause menu heads with the test and has its commands (${JSON.stringify(menu)})`);
+    const steps0 = await tp.evaluate(() => window.__v3.game().steps);
+    await tp.waitForTimeout(300);
+    check(await tp.evaluate((s) => window.__v3.game().steps === s, steps0), 'the game stays paused while the menu is up');
     await tp.click('[data-lab-bring]');
     await tp.waitForTimeout(400);
     const brought = await tp.evaluate(() => ({ cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, marks: window.__v3.game().foe.marks.length }));
     check(brought.cmds === 1 && brought.marks > 0, `Bring one brings the card's enemy now, as a recorded input (${JSON.stringify(brought)})`);
+    // Setup: its sheet over the paused game; Back to the test is the menu again.
+    await labMenu(tp);
+    await tp.click('[data-lab-setup]');
+    await tp.waitForSelector('[data-screen="lab-setup"]');
+    const st0 = await tp.evaluate(() => window.__v3.game().steps);
+    await tp.waitForTimeout(300);
+    check(await tp.evaluate((s) => window.__v3.game().steps === s, st0), 'the game stays paused under the setup sheet');
+    await tp.click('[data-screen="lab-setup"] button:text("Back to the test")');
+    await tp.waitForSelector('.v2-pause-panel [data-lab-setup]');
+    // Note: its sheet, and Cancel back to the menu, still paused.
+    await tp.click('[data-lab-note]');
+    await tp.waitForSelector('[data-screen="note"]');
+    await tp.click('[data-screen="note"] .v2-btn:not(.v3-note-save)');
+    await tp.waitForSelector('.v2-pause-panel [data-lab-note]');
+    check(await tp.evaluate((s) => window.__v3.game().steps === s && document.querySelector('.v2-pause').textContent === '▶', st0), 'Back to the test (Setup) and Cancel (Note) go back to the pause menu, the game still paused');
     await tp.click('[data-lab-done]');
     await tp.waitForSelector('[data-screen="lab-verdict"]');
     await tp.click('[data-lab-verdict="keep"]');
@@ -972,10 +1066,12 @@ try {
     const ev = await tp.evaluate(() => {
       const g = window.__v3.game();
       const card = document.querySelector('.v3-event-card');
-      return { event: g.event?.id, wave: g.wave, map: g.map.id, name: card?.querySelector('.v3-event-name')?.textContent, rules: [...(card?.querySelectorAll('.v3-event-rules i') ?? [])].map((i) => i.textContent), rerun: document.querySelector('[data-lab-rerun]')?.textContent, bring: !!document.querySelector('[data-lab-bring]:not([data-lab-rerun])'), hud: document.querySelector('.v2-hud')?.textContent };
+      return { event: g.event?.id, wave: g.wave, map: g.map.id, name: card?.querySelector('.v3-event-name')?.textContent, rules: [...(card?.querySelectorAll('.v3-event-rules i') ?? [])].map((i) => i.textContent), hud: document.querySelector('.v2-hud')?.textContent };
     });
-    check(ev.event === 'drone-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Drone Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
     await tp.waitForTimeout(1500);
+    await labMenu(tp);
+    Object.assign(ev, await tp.evaluate(() => ({ rerun: document.querySelector('[data-lab-rerun]')?.textContent, bring: !!document.querySelector('[data-lab-bring]:not([data-lab-rerun])') })));
+    check(ev.event === 'drone-storm' && ev.wave === 11 && ev.map === 'kesh' && ev.name === 'Drone Storm' && ev.rules.join() === 'No ammo drops' && ev.rerun === 'Run it again' && !ev.bring && /WAVE\s*11/.test(ev.hud ?? ''), `a lab event card starts straight into its event, its card shown with its rule (${JSON.stringify(ev)})`);
     await tp.click('[data-lab-rerun]');
     await tp.waitForTimeout(300);
     const again = await tp.evaluate(() => { const g = window.__v3.game(); return { cmds: window.__v3.log().commands.filter((c) => c[1] === 'b').length, t: g.event?.t, reruns: g.eventLog.filter((e) => e.outcome === 'rerun').length, card: document.querySelector('.v3-event-card.show')?.dataset.eventCard }; });
@@ -1060,6 +1156,7 @@ try {
       await kp.reload({ waitUntil: 'networkidle' });
       await kp.waitForSelector('.lab-on');
       await kp.waitForTimeout(600);
+      await labMenu(kp);
       await kp.evaluate(() => document.querySelector('[data-lab-done]').click());
       await kp.waitForSelector('[data-screen="lab-verdict"]');
       // Sideways: Keep picked first, then the note typed.

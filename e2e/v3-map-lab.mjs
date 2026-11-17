@@ -44,6 +44,16 @@ const check = (ok, msg) => {
   if (!ok) fail(msg);
   else console.log('ok:', msg);
 };
+
+// A test's commands are on the pause menu (pause-menu round: no bar over the
+// field): pause, if the menu isn't up, and wait for them.
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 
 /** One round of a player's touches: every threat with no shot on its way,
@@ -126,6 +136,7 @@ try {
   check(mid.cmds.some((c) => c.startsWith('flow:') && c.endsWith(':1')) && mid.flow === 4, `the flow change made on the slider is a command event (flow ${mid.flow}; ${JSON.stringify(mid.cmds)})`);
 
   // Done: the verdict, and the log kept on the device.
+  await labMenu(page);
   await page.tap('[data-lab-done]');
   await page.waitForSelector('[data-screen="lab-verdict"]');
   await page.tap('[data-lab-verdict="keep"]');

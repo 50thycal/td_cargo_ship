@@ -50,6 +50,16 @@ const check = (ok, msg) => {
   if (!ok) fail(msg);
   else console.log('ok:', msg);
 };
+
+// A test's commands are on the pause menu (pause-menu round: no bar over the
+// field): pause, if the menu isn't up, and wait for them.
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 const snap = (page) =>
   page.evaluate(() => {
@@ -194,6 +204,7 @@ try {
   check(s6.ks.join() === 'hold,hold,hold' && !s6.holding && s6.refused === 1 && s6.used.hold === 2 && shook.join() === 'hold', `a second tap releases; a third, while it cools down, is refused, logged and shaken (refused ${s6.refused}; used ${s6.used.hold})`);
 
   // Done: the log carries the policy and the commands, and replays to the same telemetry.
+  await labMenu(page);
   await page.tap('[data-lab-done]');
   await page.waitForSelector('[data-screen="lab-verdict"]');
   await page.tap('[data-lab-verdict="keep"]');
@@ -236,6 +247,7 @@ try {
   await open(page, 'lab=map-sowers&convoy=current&seed=7', 1);
   const plain = await page.evaluate(() => ({ convoy: window.__v3.game().convoy, cmds: document.querySelectorAll('.v3-command').length, cls: document.querySelector('.v2-root').className }));
   check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test asked for today\'s controls plays with them, and no convoy layer at all');
+  await labMenu(page);
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-convoy="tactical"]');
   const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lab-convoy]')].map((b) => b.textContent));

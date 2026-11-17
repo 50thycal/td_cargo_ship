@@ -400,18 +400,25 @@ export function labHub(p: LabProgress, h: HubHandlers): HTMLElement {
   return body;
 }
 
-// ---- The bar in play --------------------------------------------------------
+// ---- The test on the pause menu ---------------------------------------------
 
-export interface BarHandlers {
+// Pause-menu round (the player, on an iPhone in landscape: "We need to change
+// the done and notes at the bottom banner to be in the bottom pause menu cuz
+// that banner at the bottom covers up launchers"): the slim bar along the
+// bottom of the field (rounds 8/9) is gone. The card's name and where the
+// test is head the pause menu, and its commands are the menu's buttons; Done
+// is on the draft between waves too (app.ts).
+
+export interface LabPauseHandlers {
   bring: () => void;
   note: () => void;
   setup: () => void;
   done: () => void;
 }
 
-/** The bar's buttons for a card: Bring one (Drop it, Run it again) only
- *  where the card has something of its own to bring; never on a map card
- *  (round 10: it plays the map as it is). */
+/** The pause menu's commands for a card: Bring one (Drop it, Run it again)
+ *  only where the card has something of its own to bring; never on a map
+ *  card (round 10: it plays the map as it is). */
 export type LabAction = 'bring' | 'note' | 'setup' | 'done';
 export function labActions(card: LabCard): LabAction[] {
   // An event card always has Run it again (round 11: the Drone Storm is
@@ -420,39 +427,44 @@ export function labActions(card: LabCard): LabAction[] {
   return [...(canBring ? (['bring'] as const) : []), 'note', 'setup', 'done'];
 }
 
-export function labBar(card: LabCard, h: BarHandlers, plays?: LabPlays): { el: HTMLElement; update: (s: LabStats, waves: number, length: number, wave?: number) => void } {
-  const bar = el('div', 'v3-lab-bar');
-  const head = el('div', 'v3-lab-bar-head');
-  head.append(el('b', '', card.name.toUpperCase()));
-  head.title = card.look;
-  const count = el('span', 'v3-lab-count');
-  const acts = el('div', 'v3-lab-acts');
+/** The pause menu's header in a test: the card's name, where the test is
+ *  (as the bar said it: "full map · wave 1/13") and what to look for. */
+export function labPauseHead(card: LabCard, s: LabStats, waves: number, length: number, at: { plays?: LabPlays; wave?: number }): HTMLElement {
+  const head = el('div', 'v3-lab-pause-head');
+  head.dataset.labHead = card.id;
+  const name = el('b', 'v3-lab-pause-name', card.name.toUpperCase());
+  const count = el('span', 'v3-lab-count', labCountText(card, s, waves, length, at));
+  const top = el('p', 'v3-lab-pause-top');
+  top.append(el('span', 'v3-lab-pause-eyebrow', 'Paused · Test Lab'), name, count);
+  head.append(top, el('p', 'v3-lab-pause-look', card.look));
+  return head;
+}
+
+/** The pause menu's test commands, in the bar's order. Done turns gold once
+ *  the test has run long enough to judge (two waves). */
+export function labPauseActions(card: LabCard, h: LabPauseHandlers, waves: number, length: number): HTMLElement[] {
+  const out: HTMLElement[] = [];
   if (labActions(card).includes('bring')) {
     // An event card: the same command starts the event over.
-    const b = button(card.event ? 'Run it again' : card.foes.length ? 'Bring one' : 'Drop it', 'v3-lab-act', h.bring);
+    const b = button(card.event ? 'Run it again' : card.foes.length ? 'Bring one' : 'Drop it', 'v2-btn v3-lab-act', h.bring);
     b.dataset.labBring = '1';
     if (card.event) b.dataset.labRerun = '1';
-    acts.append(b);
+    out.push(b);
   }
-  const note = button('Note', 'v3-lab-act', h.note);
+  const note = button('📝 Note', 'v2-btn v3-lab-act', h.note);
   note.dataset.labNote = '1';
-  const setup = button('Setup', 'v3-lab-act', h.setup);
+  const setup = button('Setup', 'v2-btn v3-lab-act', h.setup);
   setup.dataset.labSetup = '1';
-  const done = button('Done', 'v3-lab-act done', h.done);
-  done.dataset.labDone = '1';
-  acts.append(note, setup, done);
-  bar.append(head, count, acts);
-  let key = '';
-  return {
-    el: bar,
-    update: (s, waves, length, wave) => {
-      const k = labCountText(card, s, waves, length, { plays, wave });
-      if (k === key) return;
-      key = k;
-      count.textContent = k;
-      done.classList.toggle('ready', waves >= Math.min(2, length));
-    },
-  };
+  out.push(note, setup, labDoneButton(h.done, waves, length));
+  return out;
+}
+
+/** Done: ends the test and opens the verdict sheet (on the pause menu, and
+ *  on the draft between a full run's waves). */
+export function labDoneButton(done: () => void, waves: number, length: number): HTMLButtonElement {
+  const b = button('Done', `v2-btn v3-lab-act done${waves >= Math.min(2, length) ? ' ready' : ''}`, done);
+  b.dataset.labDone = '1';
+  return b;
 }
 
 // ---- Setup ----------------------------------------------------------------

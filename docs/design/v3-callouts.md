@@ -11,6 +11,10 @@ The player, after a Test Lab session:
 > so I was thinking, like, you can turn them off, so maybe make that a
 > setting. But anything else you think you could do to improve that, too?"
 
+(Since the pause-menu round, `docs/design/v3-pause-menu-tips.md`, there is no
+lab bar: its commands are on the pause menu, and the stack sits at the
+bottom in a test too.)
+
 Code: `src/v3/ui/alerts.ts` (the stack, the kinds, the setting),
 `showBanner` / `raidAlert` / `calloutRow` in `src/v3/ui/app.ts`, the
 `.v2-alerts` / `.v2-alert` and `.v3-lab-bar` rules in `src/v3/ui/style.css`.
