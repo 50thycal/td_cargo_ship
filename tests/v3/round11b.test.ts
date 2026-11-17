@@ -316,7 +316,9 @@ describe('the Test Lab lines (round 11, part B)', () => {
     for (const id of ['ev-drone-storm', 'ev-breakout', 'map-kesh', 'map-harbor', 'w-aegis', 'w-cutter', 'w-focus', 'lure', 'ev-beacon-strike']) {
       // (Harbor Mouth changed again in round 12: its encounter versions; the
       // Breakout in round 12's fixes.)
-      expect(cardRev(id), id).toBe(id === 'map-harbor' || id === 'ev-breakout' ? 12 : 11);
+      // Every map card changed again in round 13 (frigates, munitions, the
+      // Nuke).
+      expect(cardRev(id), id).toBe(id.startsWith('map-') ? 13 : id === 'ev-breakout' ? 12 : 11);
       // (Harbor Mouth also has part A's two round 11 lines.)
       expect(cardChanges(id, 10).length - cardChanges(id, 11).length, id).toBe(id === 'map-harbor' ? 3 : 1);
     }

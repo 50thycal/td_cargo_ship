@@ -21,10 +21,10 @@ const plan = (id: string, link?: string) => {
 
 describe('Test Lab round 12', () => {
   it('the round: after round 11\'s builds, and its doc and questions', () => {
-    expect(LAB_ROUND).toBe(12);
-    const r = LAB_ROUNDS.at(-1)!;
+    expect(LAB_ROUND).toBeGreaterThanOrEqual(12);
+    const r = LAB_ROUNDS.find((o) => o.n === 12)!;
     expect(r).toMatchObject({ n: 12, date: '2026-11-14', name: 'Encounter versions: set pieces and enemy pairs' });
-    expect(r.since! > LAB_ROUNDS.at(-2)!.since!).toBe(true);
+    expect(r.since! > LAB_ROUNDS.find((o) => o.n === 11)!.since!).toBe(true);
     expect(ROUND_DOCS[12].doc).toBe('docs/design/v3-round12-encounter-versions.md');
     const qs = OPEN_QUESTIONS.filter((q) => q.round === 12);
     expect(qs.length).toBeGreaterThanOrEqual(1);
@@ -44,7 +44,8 @@ describe('Test Lab round 12', () => {
       expect(labCard(`map-${map}-v3`)!.name).toBe(`${labCard(`map-${map}`)!.name} · v3 Enemy pairs`);
       expect(mapCardId(map, 'v3')).toBe(`map-${map}-v3`);
       // Every card of the map is new or changed this round (play all three again).
-      for (const id of ids) expect(cardRev(id), id).toBe(12);
+      // (And again in round 13, every map card: frigates, munitions, the Nuke.)
+      for (const id of ids) expect(cardRev(id), id).toBe(13);
       expect(LAB_CHANGES[`map-${map}-v2`]).toHaveLength(1);
     }
     // No other map has versions.

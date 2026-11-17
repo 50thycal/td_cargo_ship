@@ -228,7 +228,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 24 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 25 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -963,7 +963,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 12 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 12 && saved.v === 24 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 25 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1001,7 +1001,7 @@ try {
       const old = row?.querySelector('.v3-lab-old');
       return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 12/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 13/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
     await tp.close();
   }
 
