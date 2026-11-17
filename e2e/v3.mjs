@@ -526,7 +526,8 @@ try {
     await cp.waitForSelector('.playing.lab-on');
     await cp.waitForSelector('.v2-alert.show');
     const lay = await cp.evaluate(() => {
-      const card = document.querySelector('.v2-alert').getBoundingClientRect();
+      // The lowest card (two can be stacked: a new type's card above a beat).
+      const card = [...document.querySelectorAll('.v2-alert.show:not(.leaving)')].map((a) => a.getBoundingClientRect()).sort((a, b) => b.bottom - a.bottom)[0] ?? document.querySelector('.v2-alert').getBoundingClientRect();
       const tl = window.__v3.toClient(0, 0);
       const br = window.__v3.toClient(1600, 900);
       // Anything of the test's over the field's bottom strip: a button or a
