@@ -140,7 +140,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      sending more sprint swarms and Hydras (EV.rush.more). A v25 log that
  *      reaches The Strait's boss rounds no longer replays to the same game.
  *      (The Strait's new encounters are lab only and ride in the log's
- *      encounter rev, 4.) */
+ *      encounter rev, 4.)
+ *      Also map rebuild phase 4, The Gauntlet (docs/design/v3-p4-gauntlet.md):
+ *      the Rocket Convoy builds up over the three boss rounds (three trucks
+ *      a column and one swarm, then three and two, then four and two
+ *      smaller swarms, in place of four and three every round). A v25 log
+ *      that reaches the Gauntlet's boss rounds (or a bonus Rocket Convoy in
+ *      a three-run ending) no longer replays to the same game. */
 export const LOG_VERSION = 26;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)

@@ -294,8 +294,35 @@ export const EV = {
    *  each. Round 12's fixes (the player: "The rocket truck speed off too
    *  fast when they are done shooting, they should go at normal speeds"):
    *  `drive` is the drive in only; done firing, a truck drives off at its
-   *  own speed (FOE.rocketTruck.leave), not at `drive` × 2.5 (about 7 ×). */
-  'rocket-convoy': { columns: 2, trucks: 4, second: 1.5, gap: 0.6, drive: 2.8, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, stall: 2, hp: 5, swarms: 3, size: 5 },
+   *  own speed (FOE.rocketTruck.leave), not at `drive` × 2.5 (about 7 ×).
+   *  Map rebuild phase 4 (docs/design/v3-p4-gauntlet.md; play log v26): as
+   *  the Gauntlet's three boss rounds, it builds up round by round
+   *  (`rounds`: trucks a column, drone swarms and their size, for rounds 1,
+   *  2 and 3),
+   *  so it costs about a ship a round to a good player, rising (it cost the
+   *  player 1.5 a round, and every round was the same). A single run (the
+   *  Test Lab's event card, the ending with the experiment off) plays the
+   *  base numbers, as before. */
+  'rocket-convoy': {
+    columns: 2,
+    trucks: 4,
+    second: 1.5,
+    gap: 0.6,
+    drive: 2.8,
+    stop: 0.55,
+    spacing: 80,
+    stagger: 1.4,
+    salvos: 2,
+    stall: 2,
+    hp: 5,
+    swarms: 3,
+    size: 5,
+    rounds: [
+      { trucks: 3, swarms: 1, size: 5 },
+      { trucks: 3, swarms: 2, size: 5 },
+      { trucks: 4, swarms: 2, size: 3 },
+    ],
+  },
   /** `helis` helicopters on station in a line `off` px off the lane, fire
    *  from `hold` s, each `turn` s after the one to its left; `hp` hits and
    *  `volleys` volleys each (the design's "six hits each is a lot");

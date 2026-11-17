@@ -146,11 +146,10 @@ describe('wave 1 says something about the map, in every version', () => {
           expect(e.rev, e.id).toBe(3);
         }
         // v1 and v3 open with their first encounter (or one of the same
-        // name); v2's opener is its own, and its four set pieces stay the peaks.
-        // Phase 4 (rev 4): The Strait's v1 keeps rev 3's opener (one shell
-        // across the open water: the map's long warning, rule w-first) and
-        // its waves 2-10 are its own (docs/design/v3-p4-strait.md).
-        const later = [2, 3, 4].flatMap((w) => encountersFor(map, w, v, map === 'strait' && v === 'v1' ? 3 : undefined)).filter((x) => !x.opener)[0];
+        // name), as of rev 3; v2's opener is its own, and its four set pieces
+        // stay the peaks. (Rev 4 rebuilt the Strait's and the Gauntlet's v1
+        // plans; their openers stay, docs/design/v3-p4-*.md.)
+        const later = [2, 3, 4].flatMap((w) => encountersFor(map, w, v, 3)).filter((x) => !x.opener)[0];
         if (v !== 'v2') expect(e.name, `${map} ${v}`).toBe(later.name);
       }
     expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 1, name: 'Ranging shots' });

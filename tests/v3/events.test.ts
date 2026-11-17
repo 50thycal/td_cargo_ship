@@ -198,7 +198,8 @@ describe('each event sends what it should', () => {
     // Round 11: the Drone Storm, twelve plain drone swarms.
     'drone-storm': { drone: EV['drone-storm'].swarms * EV['drone-storm'].size },
     'hydra-bloom': { hydra: 6 },
-    'rocket-convoy': { rocketTruck: 8 },
+    // Its first boss round (phase 4: it builds up round by round).
+    'rocket-convoy': { rocketTruck: 6, drone: 5 },
     'gunship-wall': { attackHeli: 4 },
     'wolf-pack': { torpedoSub: 7 },
     'shield-wall': { armored: 12 },
@@ -231,16 +232,37 @@ describe('each event sends what it should', () => {
     const g = eventGame('rocket-convoy', 2);
     run(g, EVENT.breather + 6);
     const all = g.threats.filter((t) => t.kind === 'rocketTruck');
-    expect(all).toHaveLength(8);
+    // Boss round 1: three trucks a column (phase 4).
+    expect(all).toHaveLength(6);
     const roads = [...new Set(all.map((t) => t.foe!.path))];
     // Round 6: two columns, one on each of the Gauntlet's shore roads.
     expect(roads).toHaveLength(2);
     expect(roads).toEqual(expect.arrayContaining(g.map.roads.runners));
     for (const road of roads) {
       const col = all.filter((t) => t.foe!.path === road).sort((a, b) => (b.foe!.stop ?? 0) - (a.foe!.stop ?? 0));
-      expect(col).toHaveLength(4);
+      expect(col).toHaveLength(3);
       for (let k = 1; k < col.length; k++) expect(col[k].foe!.stop!).toBeLessThan(col[k - 1].foe!.stop!);
     }
+  });
+
+  it('the Rocket Convoy builds up over the boss rounds (phase 4: three trucks a column and a swarm, then three and two, then four and two smaller); one run on its own plays the base numbers', () => {
+    expect(EV['rocket-convoy'].rounds).toEqual([
+      { trucks: 3, swarms: 1, size: 5 },
+      { trucks: 3, swarms: 2, size: 5 },
+      { trucks: 4, swarms: 2, size: 3 },
+    ]);
+    const sentIn = (wave: number) => {
+      const g = createGame('gauntlet', 1, wave);
+      g.tempo = { ...g.tempo, lossLimit: 999 };
+      g.carrierHp = 999;
+      g.event!.t0 = 0;
+      expect(g.event!.run).toBe(wave - EVENT_WAVE + 1);
+      for (let i = 0; i < 60 / DT && !g.eventLog.length && !(g.event!.done && g.event!.t > EVENT.breather + 4); i++) step(g, DT);
+      return g.event!.sent;
+    };
+    expect(sentIn(EVENT_WAVE)).toMatchObject({ rocketTruck: 6, drone: 5 });
+    expect(sentIn(EVENT_WAVE + 1)).toMatchObject({ rocketTruck: 6, drone: 10 });
+    expect(sentIn(EVENT_WAVE + 2)).toMatchObject({ rocketTruck: 8, drone: 6 });
   });
 
   it('the Gunship Wall holds a line and fires in turn, left to right', () => {

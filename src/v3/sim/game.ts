@@ -1350,12 +1350,13 @@ function updateEncCalls(g: Game): void {
 }
 
 /** An authored launch's target, picked as it leaves: the ship furthest
- *  along its lane, or the one nearest the mouth of the narrows. */
+ *  along its lane, the one nearest the mouth of the narrows, or (rev 4's
+ *  'rear', only rev 4 encounters use it) the one least far along. */
 function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!pool.length) return;
   const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
-  let pick = pool.reduce((a, b) => (along(b) > along(a) ? b : a));
+  let pick = aim === 'rear' ? pool.reduce((a, b) => (along(b) < along(a) ? b : a)) : pool.reduce((a, b) => (along(b) > along(a) ? b : a));
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
     const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);

@@ -185,7 +185,7 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 26 (phase 4: The Strait\'s boss rounds rise); a v25 or older log no longer replays here', () => {
+  it('the log is version 26 (phase 4: the Strait\'s and the Gauntlet\'s boss rounds build up); a v25 or older log no longer replays here', () => {
     expect(LOG_VERSION).toBe(26);
     expect(LOG_REPLAYS).toEqual([26]);
     expect(replaysHere(21)).toBe(false);
