@@ -71,7 +71,7 @@ export interface EventDef {
 }
 
 export const EVENTS: Record<EventId, EventDef> = {
-  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Six sprint swarms, now with a Hydra riding behind each: does the boss round land this time?' },
+  rush: { id: 'rush', kind: 'map', name: 'Afterburner Rush', foe: 'sprinter', rules: [], look: 'Sprint swarms with a Hydra riding behind each, more of them every round: does the boss round land this time?' },
   'drone-storm': { id: 'drone-storm', kind: 'map', name: 'Drone Storm', rules: ['noAmmo'], look: 'Twelve drone swarms and no ammo drops: did you run dry, and was that on you?' },
   'hydra-bloom': { id: 'hydra-bloom', kind: 'map', name: 'Hydra Bloom', foe: 'hydra', rules: ['hydraThree'], look: 'No line now: six Hydras, and every one splits into three. Hard in a good way?' },
   'rocket-convoy': { id: 'rocket-convoy', kind: 'map', name: 'Rocket Convoy', foe: 'rocketTruck', rules: [], look: 'Two columns of trucks, one on each shore: can you keep track of both?' },
@@ -254,8 +254,12 @@ export const EV = {
    *  after each swarm out of the same base, at `slow` of their speed, so a
    *  boss round can sink a ship. Chosen with the bots over rocket trucks
    *  (four trucks cost a quarter to two fifths of the Rocket Convoy's
-   *  ships; six Hydras about two thirds, the target). */
-  rush: { swarms: 6, every: 1.5, cruise: 0.5, hydras: 6, hydraAt: 1, slow: 0.75 },
+   *  ships; six Hydras about two thirds, the target). Map rebuild phase 4
+   *  (docs/design/v3-p4-strait.md; the player lost no ship in nine Strait
+   *  boss rounds and wants about one a round, rising): each run of the
+   *  ending sends `more[run - 1]` more swarms and as many more Hydras, so
+   *  the three rounds rise (a Test Lab event card plays run 1). */
+  rush: { swarms: 6, every: 1.5, cruise: 0.5, hydras: 6, hydraAt: 1, slow: 0.75, more: [1, 3, 4] },
   /** The Drone Storm (Kesh; round 11, in place of the Decoy Storm when the
    *  decoys left the game): `swarms` plain drone swarms of `size` (2.5:
    *  three, then two, in turn; 30 drones), one from each drone base in
@@ -290,8 +294,35 @@ export const EV = {
    *  each. Round 12's fixes (the player: "The rocket truck speed off too
    *  fast when they are done shooting, they should go at normal speeds"):
    *  `drive` is the drive in only; done firing, a truck drives off at its
-   *  own speed (FOE.rocketTruck.leave), not at `drive` × 2.5 (about 7 ×). */
-  'rocket-convoy': { columns: 2, trucks: 4, second: 1.5, gap: 0.6, drive: 2.8, stop: 0.55, spacing: 80, stagger: 1.4, salvos: 2, stall: 2, hp: 5, swarms: 3, size: 5 },
+   *  own speed (FOE.rocketTruck.leave), not at `drive` × 2.5 (about 7 ×).
+   *  Map rebuild phase 4 (docs/design/v3-p4-gauntlet.md; play log v26): as
+   *  the Gauntlet's three boss rounds, it builds up round by round
+   *  (`rounds`: trucks a column, drone swarms and their size, for rounds 1,
+   *  2 and 3),
+   *  so it costs about a ship a round to a good player, rising (it cost the
+   *  player 1.5 a round, and every round was the same). A single run (the
+   *  Test Lab's event card, the ending with the experiment off) plays the
+   *  base numbers, as before. */
+  'rocket-convoy': {
+    columns: 2,
+    trucks: 4,
+    second: 1.5,
+    gap: 0.6,
+    drive: 2.8,
+    stop: 0.55,
+    spacing: 80,
+    stagger: 1.4,
+    salvos: 2,
+    stall: 2,
+    hp: 5,
+    swarms: 3,
+    size: 5,
+    rounds: [
+      { trucks: 3, swarms: 1, size: 5 },
+      { trucks: 3, swarms: 2, size: 5 },
+      { trucks: 4, swarms: 2, size: 3 },
+    ],
+  },
   /** `helis` helicopters on station in a line `off` px off the lane, fire
    *  from `hold` s, each `turn` s after the one to its left; `hp` hits and
    *  `volleys` volleys each (the design's "six hits each is a lot");

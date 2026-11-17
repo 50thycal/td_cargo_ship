@@ -3,7 +3,7 @@
 // to design the map's waves.
 //
 //   npx vite-node tools/v3/map-report/report.ts -- --map=strait [--seeds=24]
-//       [--kits=aimed,self | --kits=name:id+id+id,...] [--armory=player]
+//       [--kits=aimed,self | --kits=name:id+id+id,... | --kits=plan] [--armory=player]
 //       [--persona=you] [--no-heat] [--out=tools/v3/map-report/results]
 //
 // Plays the map's Test Lab card on its production setup (as versions.ts),
@@ -22,6 +22,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { ABILITIES, type AbilityId } from '../../../src/v3/data/abilities';
 import { MAPS, type MapId } from '../../../src/v3/data/maps';
+import { mapPlan } from '../../../src/v3/data/mapPlans';
 import { REPORT_WAVES, STRETCH_NAMES, kitSummary, lookAt, mapReport, type KitSummary, type MapReport, type RunDigest } from '../../../src/v3/sim/mapReport';
 import { playReportRun, type ReportPlayOpts } from '../../../src/v3/sim/mapReportPlay';
 import type { PlayLog } from '../../../src/v3/sim/playlog';
@@ -34,9 +35,21 @@ const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')
  *  Strait's and Harbor's boss rounds the bot reads harder than the player,
  *  so "about one a round" for the player is about two on the bot). */
 const BOSS_TARGET: Partial<Record<MapId, number>> = { strait: 2, harbor: 2 };
+/** A map's plan sets its own boss target on the bot's scale. */
+const bossTarget = (map: MapId) => mapPlan(map)?.boss.botTarget ?? BOSS_TARGET[map] ?? 1;
 
-async function kitList(spec: string | undefined): Promise<{ kit: string; weapons: AbilityId[] }[]> {
+async function kitList(spec: string | undefined, map?: MapId): Promise<{ kit: string; weapons: AbilityId[] }[]> {
   if (!spec) return [];
+  // --kits=plan: the map's counter kit against its off-counter kit
+  // (src/v3/data/mapPlans.ts).
+  if (spec === 'plan') {
+    const p = map ? mapPlan(map) : undefined;
+    if (!p) throw new Error(`--kits=plan: no plan for ${map} in src/v3/data/mapPlans.ts`);
+    return [
+      { kit: 'counter', weapons: p.counters },
+      { kit: 'off-counter', weapons: p.offCounter },
+    ];
+  }
   // versions.ts runs its own main unless told it is imported.
   process.env.V3_VERSIONS_IMPORT = '1';
   const { KITS } = await import('../map-lab/versions');
@@ -96,7 +109,7 @@ export function markdown(r: MapReport, meta: { persona: string; armory: string; 
   L.push('');
   L.push('## Close calls per wave (tough)');
   L.push('');
-  L.push('A threat that came within 2.0 s of a hull (the sim\'s time to impact, read every step) and was then destroyed.');
+  L.push('A threat aimed at a ship that came within 1.0 s of impact (the sim\'s time to impact, read every step) and was then destroyed.');
   L.push('');
   L.push(head(['', ...waveCols(10), 'B1', 'B2', 'B3']));
   L.push(row(['mean a run', ...t.close.map((v) => f(v, 1))]));
@@ -205,7 +218,7 @@ async function main(): Promise<void> {
   const playerArmory = opt('armory') === 'player';
   const armory = playerArmory ? PLAYER_ARMORY : {};
   const outDir = opt('out') ?? 'tools/v3/map-report/results';
-  const kits = await kitList(opt('kits'));
+  const kits = await kitList(opt('kits'), map);
   const heat = !args.includes('--no-heat');
   const t0 = Date.now();
   const base: ReportPlayOpts = { persona, armory };
@@ -222,7 +235,7 @@ async function main(): Promise<void> {
     console.log(`  kit ${k.kit} ${((Date.now() - t0) / 1000).toFixed(0)} s`);
     return s;
   });
-  const report = mapReport({ map: MAPS[map], seeds, normal, tough, baseline, kits: kitRows, bossTarget: BOSS_TARGET[map] ?? 1 });
+  const report = mapReport({ map: MAPS[map], seeds, normal, tough, baseline, kits: kitRows, bossTarget: bossTarget(map) });
   mkdirSync(outDir, { recursive: true });
   const date = new Date().toISOString().slice(0, 10);
   const command = `npx vite-node tools/v3/map-report/report.ts -- ${args.join(' ')}`;

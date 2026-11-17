@@ -53,10 +53,12 @@ For each v1 encounter map, no encounter id on two waves in a row (`arc(map, 'v1'
 | Map | Repeats |
 |---|---|
 | The Strait | 2–3, 3–4 Ranging shots; 5–6, 6–7 The screen; 8–9, 9–10 Rolling push |
-| The Gauntlet | 2–3, 3–4 North, then south; 5–6, 6–7 Overlap; 8–9, 9–10 Crossfire |
+| The Gauntlet | 2–3, 3–4 North, then south; 5–6, 6–7 Overlap; 8–9, 9–10 Crossfire. **Fixed in phase 4** (encounter rev 4: one encounter a wave, `docs/design/v3-p4-gauntlet.md`); the expected list is empty. |
 | Harbor Mouth | 1–2, 2–3 Open water; 4–5, 5–6, 6–7 Funnel salvo; 8–9, 9–10 The last mile |
 
 Wave 1's openers are different encounters, so waves 1–2 do not repeat on the Strait and the Gauntlet. Phase 4 needs about ten distinct encounters per map (or alternating ones) to pass.
+
+**Phase 4:** The Strait's row is gone. Under encounter rev 4 each of its waves 2–10 has its own encounter (`docs/design/v3-p4-strait.md`), and the test expects no repeats there.
 
 ## An encounter on each wave (rule `w-encounter`)
 

@@ -82,8 +82,16 @@ describe('twenty maps, four chapters (the player\'s approved order)', () => {
     }
     // Over several seeds, not one: a single seed's win or loss swings with
     // any change to the random draws (16 seeds a map: about 3 in 4 cleared).
-    const ch1 = MAP_ORDER.slice(0, 2).flatMap((id) => [4, 5, 6, 7].map((s) => runBot(id, s, SKILLS.sharp).won));
-    expect(ch1.filter(Boolean).length).toBeGreaterThanOrEqual(4);
+    // Phase 4 (docs/design/v3-p4-strait.md): The Strait's boss rounds now
+    // rise and cost about two ships a round on the bots' scale (the player
+    // lost none in nine), so the strong bot plays the chapter with the
+    // Armory the player has (Quick Reload 5, Damage Control 4, Stockpile 5,
+    // as the bot reports do). With it, it cleared all eight before the
+    // change and six of eight after (The Strait two of four, Kesh four);
+    // with no Armory The Strait now wins one in eight for it (four before).
+    const armory = { reload: 5, repair: 4, stockpile: 5 };
+    const ch1 = MAP_ORDER.slice(0, 2).flatMap((id) => [4, 5, 6, 7].map((s) => runBot(id, s, SKILLS.sharp, { armory }).won));
+    expect(ch1.filter(Boolean).length).toBeGreaterThanOrEqual(5);
   });
 
   it('an old save keeps every map it had open, and counts the new order from what it has cleared', () => {

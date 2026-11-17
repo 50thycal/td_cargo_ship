@@ -22,6 +22,8 @@ import {
   arc,
   calloutsOn,
   encountersFor,
+  playsAt,
+  MAP_BOSS,
   versionDef,
   waveScale,
   type Encounter,
@@ -40,13 +42,16 @@ import { reconcile, type TelEvent, type TelemetrySidecar } from '../../src/v3/si
 
 const DT = 1 / 60;
 const ON = { rev: ENCOUNTER_REV };
-const VER = (version: EncounterVersion) => ({ rev: ENCOUNTER_REV, version });
+const VER = (version: EncounterVersion, rev = ENCOUNTER_REV) => ({ rev, version });
+/** The last rev an encounter plays in (one replaced in rev 4 plays to 3). */
+const lastRev = (e: Encounter) => e.until ?? ENCOUNTER_REV;
 
-/** A wave of a map, with or without its encounters (v1 unless said),
- *  nobody shooting, with telemetry: played to its end (or `seconds`). */
-function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1'): { g: Game; sc: TelemetrySidecar } {
+/** A wave of a map, with or without its encounters (v1 unless said, at
+ *  encounter rev `rev`), nobody shooting, with telemetry: played to its end
+ *  (or `seconds`). */
+function wave(map: Encounter['map'], n: number, on: boolean, seed = 9, seconds = 90, version: EncounterVersion = 'v1', rev = ENCOUNTER_REV): { g: Game; sc: TelemetrySidecar } {
   const g = createGame(map, seed, n);
-  if (on) applyEncounters(g, VER(version));
+  if (on) applyEncounters(g, VER(version, rev));
   g.tempo = { ...g.tempo, lossLimit: 999 };
   g.carrierHp = 999;
   logTelemetry(g, { id: 'enc-test', build: 'test', v: LOG_VERSION, firstWave: n, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'none');
@@ -95,8 +100,13 @@ describe('a campaign run has no encounter layer', () => {
       const of = (v: EncounterVersion) => ENCOUNTERS.filter((e) => e.map === map && e.version === v);
       // Rev 3 (round 12's fixes): wave 1's opener on top (Harbor Mouth's v1
       // already opens with its first encounter).
-      const big = (v: EncounterVersion) => of(v).filter((e) => !e.opener);
-      expect(big('v1'), map).toHaveLength(3);
+      const big = (v: EncounterVersion, rev = ENCOUNTER_REV) => of(v).filter((e) => !e.opener && playsAt(e, rev));
+      // Rev 4 (map rebuild phase 4): the three maps' v1 plans are rebuilt, one
+      // encounter a wave (docs/design/v3-p4-*.md): The Strait and The Gauntlet
+      // keep wave 1's opener; Harbor Mouth's wave 1 is its own. A rev 3 log
+      // still plays the original three.
+      expect(big('v1', 3), map).toHaveLength(3);
+      expect(big('v1'), map).toHaveLength(map === 'harbor' ? 10 : 9);
       expect(big('v2'), map).toHaveLength(4);
       expect(big('v3').length, map).toBeGreaterThanOrEqual(7);
       for (const v of ENCOUNTER_VERSIONS) expect(of(v).filter((e) => e.opener), `${map} ${v}`).toHaveLength(map === 'harbor' && v === 'v1' ? 0 : 1);
@@ -106,11 +116,35 @@ describe('a campaign run has no encounter layer', () => {
         expect(d.idea.length, `${map} ${v}`).toBeGreaterThan(30);
       }
     }
-    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener).map((e) => e.id)).toEqual([
+    expect(ENCOUNTERS.filter((e) => e.version === 'v1' && !e.opener && playsAt(e, 3)).map((e) => e.id)).toEqual([
       'strait-ranging-shots', 'strait-screen', 'strait-rolling-push',
       'gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire',
       'harbor-open-water', 'harbor-funnel-salvo', 'harbor-last-mile',
     ]);
+    // The Strait's rev 4 plan: a different encounter on each of waves 2-10.
+    expect(arc('strait').map((a) => a.encounters.map((e) => e.id).join())).toEqual([
+      'strait-ranging-opener', 'strait-far-silo', 'strait-silo-to-silo', 'strait-periscope', 'strait-swarm-screen',
+      'strait-both-ways', 'strait-down-the-lane', 'strait-sweep-east', 'strait-ambush', 'strait-final-approach',
+    ]);
+    for (const id of ['strait-ranging-shots', 'strait-screen', 'strait-rolling-push']) expect(ENCOUNTERS.find((e) => e.id === id)!.until, id).toBe(3);
+    // Rev 4: the Gauntlet's three are replaced (until 3), its new plan one a wave.
+    for (const id of ['gauntlet-north-then-south', 'gauntlet-overlap', 'gauntlet-crossfire']) expect(ENCOUNTERS.find((e) => e.id === id)!.until, id).toBe(3);
+    expect(arc('gauntlet').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'gauntlet-north-south-opener', 'gauntlet-p4-shell-each-shore', 'gauntlet-p4-way-in', 'gauntlet-p4-periscope', 'gauntlet-p4-overlap',
+      'gauntlet-p4-crossing', 'gauntlet-p4-strafing-run', 'gauntlet-p4-long-way-round', 'gauntlet-p4-crossfire', 'gauntlet-p4-run-the-gauntlet',
+    ]);
+    for (const e of ENCOUNTERS.filter((x) => x.id.startsWith('gauntlet-p4-'))) expect(e.rev, e.id).toBe(4);
+    expect(ENCOUNTERS.filter((e) => e.map === 'harbor' && e.version === 'v1' && playsAt(e)).map((e) => [e.id, ...e.waves])).toEqual([
+      ['harbor-first-look', 1], ['harbor-wide-water', 2], ['harbor-periscope', 3], ['harbor-south-headland', 4], ['harbor-funnel-tail', 5],
+      ['harbor-both-headlands', 6], ['harbor-front-and-back', 7], ['harbor-wolf-pack', 8], ['harbor-crossfire', 9], ['harbor-final-mile', 10],
+    ]);
+    // The ones they replace keep playing in a rev 3 log, and only there.
+    for (const id of ['harbor-open-water', 'harbor-funnel-salvo', 'harbor-last-mile']) {
+      const e = ENCOUNTERS.find((x) => x.id === id)!;
+      expect(e.until, id).toBe(3);
+      expect(playsAt(e, 3), id).toBe(true);
+      expect(playsAt(e, 4), id).toBe(false);
+    }
     expect(encountersFor('kesh', 5)).toEqual([]);
     expect(encountersFor('kesh', 5, 'v2')).toEqual([]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
@@ -222,7 +256,13 @@ describe('every beat is legal on its map at its wave', () => {
           for (const e of list) {
             const sent = e.beats.reduce((a, b) => a + ('air' in b.from ? Math.min(5, spec.swarm - 1) * b.count : b.count), 0) + (e.pairs ?? []).reduce((a, p) => a + (p.count ?? 1) * pairCost(p.pair, spec.swarm), 0);
             const asked = (e.replaces.drones ?? 0) + (e.replaces.ballistic ?? 0) + (e.replaces.guided ?? 0);
-            expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked}`).toBeLessThanOrEqual(asked);
+            // Phase 4 (The Strait, docs/design/v3-p4-strait.md): an encounter
+            // that takes every shell of its wave also takes the shells the
+            // wave's submarines would have topped up (a sub with one shell
+            // fills a salvo of four), which the books don't see. It is held
+            // to the wave as planned instead (below).
+            const allShells = spec.ballistic > 0 && (e.replaces.ballistic ?? 0) >= spec.ballistic && (e.rev ?? 1) >= 4;
+            if (!allShells) expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked}`).toBeLessThanOrEqual(asked);
             expect(asked, `${e.id} wave ${w}: the wave has that much to give`).toBeLessThanOrEqual(spec.drones + spec.ballistic + spec.guided);
           }
           // And as planned: over eight seeds, no more launches than the same
@@ -278,7 +318,7 @@ describe('every authored launch is warned of', () => {
   it('a base lights up a raid\'s warning before it fires; a submarine shows its periscope; an aircraft its arrow', () => {
     for (const e of ENCOUNTERS) {
       const w = e.waves[e.waves.length - 1];
-      const { sc } = wave(e.map, w, true, 9, 90, e.version);
+      const { sc } = wave(e.map, w, true, 9, 90, e.version, lastRev(e));
       const mine = launches(sc).filter((l) => l.enc === e.id && beatLaunch(l));
       const want = e.beats.reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
@@ -360,7 +400,8 @@ describe('call-outs (round 12)', () => {
     }
     // v1 says nothing; v1 with call-outs asked for names its encounter.
     expect(calls('strait', 6, VER('v1')).seen).toEqual([]);
-    expect(calls('strait', 6, { ...VER('v1'), callouts: true }).seen.map((s) => s.id)).toEqual(['strait-screen']);
+    expect(calls('strait', 6, { ...VER('v1'), callouts: true }).seen.map((s) => s.id)).toEqual(['strait-both-ways']);
+    expect(calls('strait', 6, { rev: 3, version: 'v1', callouts: true }).seen.map((s) => s.id)).toEqual(['strait-screen']);
   }, 60_000);
 
   it('the call-out comes as the warning starts: a raid\'s warning time before the set piece\'s first launch', () => {
@@ -375,8 +416,10 @@ describe('call-outs (round 12)', () => {
 
 
 describe('each encounter is what it says', () => {
-  it('The Strait, ranging shots: two shells from the middle base alone, at the ship furthest along', () => {
-    const { sc } = wave('strait', 3, true);
+  // The Strait's rev 3 plan (replaced in rev 4, docs/design/v3-p4-strait.md):
+  // a rev 3 log still plays it.
+  it('The Strait, ranging shots (rev 3): two shells from the middle base alone, at the ship furthest along', () => {
+    const { sc } = wave('strait', 3, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'strait-ranging-shots');
     expect(mine.map((l) => [l.kind, l.base])).toEqual([['ballistic', 1], ['ballistic', 1]]);
     expect(mine[1].t - mine[0].t).toBeCloseTo(1.6, 1);
@@ -386,8 +429,8 @@ describe('each encounter is what it says', () => {
     for (const l of mine) expect(l.tg, 'aimed at a ship').toBeGreaterThan(0);
   });
 
-  it('The Strait, the screen: a swarm, then a guided missile from the same pad behind it', () => {
-    const { sc } = wave('strait', 6, true);
+  it('The Strait, the screen (rev 3): a swarm, then a guided missile from the same pad behind it', () => {
+    const { sc } = wave('strait', 6, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'strait-screen');
     const drones = mine.filter((l) => l.kind === 'drone');
     const missile = mine.find((l) => l.kind === 'guided')!;
@@ -397,8 +440,8 @@ describe('each encounter is what it says', () => {
     expect(missile.t).toBeLessThan(drones.at(-1)!.t + 1);
   });
 
-  it('The Gauntlet, crossfire: both shores open in the same half second, then a strafing run', () => {
-    const { g, sc } = wave('gauntlet', 9, true);
+  it('The Gauntlet, crossfire (rev 3, slice 5\'s): both shores open in the same half second, then a strafing run', () => {
+    const { g, sc } = wave('gauntlet', 9, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'gauntlet-crossfire');
     const north = mine.filter((l) => l.o === 'base' && g.map.bases[l.base!].y < 450);
     const south = mine.filter((l) => l.o === 'base' && g.map.bases[l.base!].y > 450);
@@ -410,8 +453,8 @@ describe('each encounter is what it says', () => {
     expect(jet.t - north[0].t).toBeGreaterThan(2);
   });
 
-  it('Harbor Mouth, funnel salvo: a submarine off the narrows fires its salvo at the ships nearest the mouth', () => {
-    const { g, sc } = wave('harbor', 5, true);
+  it('Harbor Mouth, funnel salvo (rev 3): a submarine off the narrows fires its salvo at the ships nearest the mouth', () => {
+    const { g, sc } = wave('harbor', 5, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'harbor-funnel-salvo');
     expect(mine).toHaveLength(4);
     const spot = g.map.subSpots[1];
@@ -422,11 +465,44 @@ describe('each encounter is what it says', () => {
     for (const l of mine) expect(l.ix!).toBeLessThan(mouth + 420);
   });
 
-  it('Harbor Mouth, open water: waves 1 to 3 aim nothing of the encounter\'s into the narrows', () => {
-    const { sc } = wave('harbor', 2, true);
+  it('Harbor Mouth, open water (rev 3): waves 1 to 3 aim nothing of the encounter\'s into the narrows', () => {
+    const { sc } = wave('harbor', 2, true, 9, 90, 'v1', 3);
     const mine = launches(sc).filter((l) => l.enc === 'harbor-open-water');
     expect(mine).toHaveLength(5);
     expect(new Set(mine.map((l) => l.base))).toEqual(new Set([0]));
+  });
+
+  it('Harbor Mouth (rev 4): the subs\' salvos land in the neck, and the wave\'s own subs still fire theirs', () => {
+    // Funnel and tail (wave 5): its sub off the narrows, three shells at the
+    // ship nearest the mouth; the wave's own two subs keep their salvos (rev
+    // 3's Funnel salvo took the wave's shells and emptied them).
+    const { g, sc } = wave('harbor', 5, true);
+    const mine = launches(sc).filter((l) => l.enc === 'harbor-funnel-tail' && l.kind === 'ballistic');
+    expect(mine).toHaveLength(3);
+    const spot = g.map.subSpots[1];
+    for (const l of mine) expect(l).toMatchObject({ o: 'sub', x: spot.x, y: spot.y });
+    const mouth = g.map.channels[0].narrow!.fromX;
+    for (const l of mine) expect(l.ix!, `lands at x ${l.ix}`).toBeGreaterThan(mouth - 260);
+    const own = launches(sc).filter((l) => !l.enc && l.o === 'sub' && l.kind === 'ballistic');
+    expect(own.length).toBe(8);
+  });
+
+  it('Harbor Mouth (rev 4): a breath before the climax, nothing of the wave\'s own in the 5 s before it', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const g = createGame('harbor', seed, 10);
+      applyEncounters(g, VER('v1'));
+      const climax = Math.min(...g.queue.filter((l) => l.enc === 'harbor-final-mile').map((l) => l.at));
+      const own = [
+        ...g.queue.filter((l) => !l.enc && l.at < 1e8).map((l) => l.at),
+        ...g.raiderQueue.filter((r) => !r.enc).flatMap((r) => r.units.map((_, k) => r.at + SUB.warn + SUB.surface + k * SUB.gap)),
+      ];
+      const before = own.filter((t) => t < climax);
+      expect(climax - Math.max(...before), `seed ${seed}`).toBeGreaterThanOrEqual(5 - 0.01);
+      // Rev 3 had none.
+      const old = createGame('harbor', seed, 10);
+      applyEncounters(old, { rev: 3, version: 'v1' });
+      expect(old.queue.some((l) => l.enc === 'harbor-final-mile')).toBe(false);
+    }
   });
 });
 
@@ -501,7 +577,29 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     // From wave 6 with two passives: Siren Field still comes after wave 6.
     const bonus = playMimic('strait', 8, { ...opts, firstWave: 6, encounters: ON });
     expect(bonus.game.eventLog[0]).toMatchObject({ id: 'siren-field', kind: 'bonus' });
-    expect(bonus.game.enc!.played).toContain('strait-screen');
+    expect(bonus.game.enc!.played).toContain('strait-both-ways');
+  }, 90_000);
+
+  it('Harbor Mouth (rev 4): the Breakout comes to the neck, harder each round; a rev 3 log and the campaign play it as it was', () => {
+    const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+    const off = playMimic('harbor', 201, opts);
+    const old = playMimic('harbor', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => e.sent.ballistic ?? 0)).toEqual([0, 0, 0]);
+    const on = playMimic('harbor', 201, { ...opts, encounters: VER('v1') });
+    const tune = MAP_BOSS.harbor!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['breakout', 1], ['breakout', 2], ['breakout', 3]]);
+    // Its salvos into the neck, one more shell or Hydra each round.
+    expect(on.game.eventLog.map((e) => e.sent.ballistic)).toEqual(tune.salvos.map((r) => r.reduce((a, [, n]) => a + n, 0)));
+    expect(on.game.eventLog.map((e) => e.sent.hydra)).toEqual(tune.fan);
+    const weight = tune.salvos.map((r, k) => r.reduce((a, [, n]) => a + n, 0) + tune.fan![k]);
+    for (let k = 1; k < weight.length; k++) expect(weight[k]).toBeGreaterThan(weight[k - 1]);
+    // Each round 15-30 s.
+    for (const e of on.game.eventLog) {
+      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
+      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
+    }
   }, 90_000);
 });
 
@@ -531,9 +629,12 @@ describe('the same thing every time', () => {
 
   it('a log from before the versions (rev 1, no version) plays v1', () => {
     const a = playMimic('harbor', 31, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 4, encounters: { rev: 1 } });
-    const b = playMimic('harbor', 31, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 4, encounters: VER('v1') });
+    // (v1 at rev 3: rev 4 rebuilt Harbor Mouth's v1, so a rev 1 log is
+    // matched by the last rev that kept its plan.)
+    const b = playMimic('harbor', 31, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 4, encounters: { rev: 3, version: 'v1' } });
     expect(a.game.enc!.played).toEqual(b.game.enc!.played);
     expect(a.log.commands).toEqual(b.log.commands);
+    // Rev 1's plan, as it was (rev 4 replaced it with Harbor Mouth's ten).
     expect(a.game.enc!.played[0]).toBe('harbor-funnel-salvo');
   }, 60_000);
 

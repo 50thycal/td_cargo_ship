@@ -38,8 +38,14 @@ import type { MapId } from './maps';
  *  12's fixes, from the round 11 scorecards): every version opens with an
  *  encounter on wave 1 (OPENERS), and The Strait's waves 5-10 send about
  *  10% more fire in every version (MAP_FIRE). Both are rev 3's only: a log
- *  of rev 1 or 2 plays as it did. */
-export const ENCOUNTER_REV = 3;
+ *  of rev 1 or 2 plays as it did. Rev 4 (map rebuild phase 4, the reference
+ *  maps brought to the map and wave rules: docs/design/v3-map-wave-rules.md):
+ *  encounters may be replaced (`until`), and the reference maps' v1 plans
+ *  are reworked; a rev 3 log plays as it did. Harbor Mouth's rev 4
+ *  (docs/design/v3-p4-harbor.md): ten encounters, one a wave (HARBOR_R4),
+ *  a calm before wave 10's climax (`calm`) and its boss rounds tuned at the
+ *  neck (MAP_BOSS), all of it lab only. */
+export const ENCOUNTER_REV = 4;
 
 /** A reference map's encounter version. */
 export type EncounterVersion = 'v1' | 'v2' | 'v3';
@@ -78,9 +84,10 @@ export function setupVersion(s: Pick<EncounterSetup, 'version'> | null | undefin
 export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 };
 
 /** Who a beat is aimed at, decided as each launch leaves: any ship (the
- *  sim's own pick), the ship furthest along, or the ship nearest the
- *  narrows (Harbor Mouth's funnel). */
-export type BeatAim = 'any' | 'lead' | 'narrows';
+ *  sim's own pick), the ship furthest along, the ship nearest the narrows
+ *  (Harbor Mouth's funnel), or (rev 4, map rebuild phase 4) the ship least
+ *  far along, the one on the way in (The Gauntlet's danger stretch). */
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -156,11 +163,20 @@ export interface Encounter {
    *  their first). A run plays only the encounters of its own rev or
    *  before, so an older log replays as it did. */
   rev?: number;
+  /** The last encounter revision it plays in (absent: every one since its
+   *  own). Phase 4 replaces encounters under rev 4: the old one keeps
+   *  `until: 3`, so a rev 3 log replays as it did. */
+  until?: number;
   /** Wave 1's opener (rev 3): a light first look at the version's first
    *  encounter, so the map's opening shows what the map is. Not a set piece
    *  (v2's four stay its peaks); it may preview what the map has by wave
    *  2 (a shell, a periscope), and nothing later. */
   opener?: boolean;
+  /** A breath before it (rev 4, rule w-calm: "a short calm before wave
+   *  10's climax"): the wave's own raids and trickling drones that would
+   *  fly in the `calm` s before its first beat come before that instead
+   *  (calmBefore), so the climax starts out of a quiet sky. */
+  calm?: number;
 }
 
 const base = (i: number): BeatFrom => ({ base: i });
@@ -172,6 +188,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'strait-ranging-shots',
     map: 'strait',
+    // Replaced in rev 4 (phase 4: docs/design/v3-p4-strait.md).
+    until: 3,
     waves: [2, 3, 4],
     role: 'teach',
     name: 'Ranging shots',
@@ -190,6 +208,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'strait-screen',
     map: 'strait',
+    // Replaced in rev 4 (phase 4: docs/design/v3-p4-strait.md).
+    until: 3,
     waves: [5, 6, 7],
     role: 'combine',
     name: 'The screen',
@@ -211,6 +231,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'strait-rolling-push',
     map: 'strait',
+    // Replaced in rev 4 (phase 4: docs/design/v3-p4-strait.md).
+    until: 3,
     waves: [8, 9, 10],
     role: 'escalate',
     name: 'Rolling push',
@@ -234,6 +256,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'gauntlet-north-then-south',
     map: 'gauntlet',
+    // Replaced in rev 4 (map rebuild phase 4: docs/design/v3-p4-gauntlet.md).
+    until: 3,
     waves: [2, 3, 4],
     role: 'teach',
     name: 'North, then south',
@@ -255,6 +279,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'gauntlet-overlap',
     map: 'gauntlet',
+    // Replaced in rev 4 (map rebuild phase 4: docs/design/v3-p4-gauntlet.md).
+    until: 3,
     waves: [5, 6, 7],
     role: 'combine',
     name: 'Overlap',
@@ -276,6 +302,8 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
   {
     id: 'gauntlet-crossfire',
     map: 'gauntlet',
+    // Replaced in rev 4 (map rebuild phase 4: docs/design/v3-p4-gauntlet.md).
+    until: 3,
     waves: [8, 9, 10],
     role: 'climax',
     name: 'Crossfire',
@@ -314,6 +342,7 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     },
     beats: [{ at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0) }],
     replaces: { drones: 5 },
+    until: 3,
   },
   {
     id: 'harbor-funnel-salvo',
@@ -332,6 +361,7 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     },
     beats: [{ at: 0.45, kind: 'ballistic', count: 4, gap: 0.75, from: sub(1), aim: 'narrows' }],
     replaces: { ballistic: 4 },
+    until: 3,
   },
   {
     id: 'harbor-last-mile',
@@ -354,6 +384,7 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
       { at: 0.55, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'narrows' },
     ],
     replaces: { drones: 5, ballistic: 2, guided: 2 },
+    until: 3,
   },
 ];
 
@@ -369,6 +400,264 @@ const V1_CALLOUT: Record<string, string> = {
   'harbor-funnel-salvo': 'A sub fires into the funnel',
   'harbor-last-mile': 'Everything on the last mile',
 };
+
+// ---- The Strait, rev 4 (map rebuild phase 4: docs/design/v3-p4-strait.md) --
+// The Strait keeps its design (open water, one enemy shore: the player's
+// call, round 1) and its v1 waves follow the wave rules: one encounter a
+// wave, never the same one twice in a row; teach (1-2), first stakes (3-4),
+// combine (5-6), escalate (7-9), climax (10). The map's problem: every
+// threat comes off one shore, and the further east the ships sail, the
+// nearer the launchers and the shorter the warning. So the encounters aim
+// at the ship furthest along (the middle and last thirds of the lane, the
+// danger stretch) and leave the west third, where everything has the whole
+// open water to cross, the safe one. Their launchers move east, then onto
+// the water, as the waves go on (the warning falls).
+// - From wave 3 each takes all of its wave's own shells and sends its own,
+//   aimed at the lead ship. The planner's submarines then carry drones: a
+//   sub with a shell in its raid fills a salvo of four from a random spot,
+//   the west ones too, and those salvos made the west third hot (26% of the
+//   hull lost, rev 3; the safe stretch must stay under 25%).
+// - What each sends against what it replaces sets its wave's weight (the
+//   bots' curve had cliffs on waves 6 and 8): launches stay within a tenth
+//   of the wave with no encounter, wave 10 a tenth under.
+// - Wave 10's climax comes after the wave's own fire is spent (`at: 1`),
+//   so a calm of about 6-10 s falls before it.
+// Wave 1 keeps rev 3's opener (strait-ranging-opener). Rev 3's three
+// (ranging shots, the screen, the rolling push) end at rev 3 (`until`).
+const STRAIT_R4: Omit<Encounter, 'version'>[] = [
+  {
+    id: 'strait-far-silo',
+    map: 'strait',
+    rev: 4,
+    waves: [2],
+    role: 'teach',
+    name: 'The long crossing',
+    callout: 'Drones crossing the whole strait',
+    premise: 'A swarm from the far west silo flies the length of the strait at the ship furthest along; a shell from the middle silo follows it.',
+    decision: 'The longest warning on the map: meet the swarm out over the water, or wait until it is over the ships?',
+    counters: 'Tap the swarm early, anywhere along its long flight; the shell after it needs one tap.',
+    succeeds: 'The swarm is shot at before it reaches the lane in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'The west silo on the north shore for the swarm, then the middle silo for one shell.',
+      target: 'The lead ship, far to the east, so the swarm crosses the board on the diagonal and lands in the middle or last third.',
+      usesMap: 'The silo furthest from where it aims shows the map\'s long warning: the same shore that fires every shot, and how much water there is to cross.',
+    },
+    beats: [
+      { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.3, plus: 2.5, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
+    ],
+    replaces: { drones: 4, ballistic: 1 },
+  },
+  {
+    id: 'strait-silo-to-silo',
+    map: 'strait',
+    rev: 4,
+    waves: [3],
+    role: 'teach',
+    name: 'Silo to silo',
+    callout: 'Shells, each one closer',
+    premise: 'The middle silo lobs a shell at the lead ship, then the east silo lobs three more: each one closer, each with less warning.',
+    decision: 'The first stakes: the second and third shells come from nearer the ships. Shoot each as it climbs, or let the far one go and stand ready?',
+    counters: 'A tap on each shell as it climbs; the east silo\'s three need the quicker hand.',
+    succeeds: 'Each shell is shot at before it lands in most runs; a ship hit means the east silo was late, not unseen.',
+    notes: {
+      sites: 'The middle silo on the north shore, then the east silo three times.',
+      target: 'The lead ship among those a shell can reach (west of x 1280), in the middle third of the lane.',
+      usesMap: 'Middle then east along the one shore: the warning shortens as the launcher moves towards the delivery end, the map\'s problem in three shells.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.4, plus: 2.2, kind: 'ballistic', count: 3, gap: 0.9, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 3 },
+  },
+  {
+    id: 'strait-periscope',
+    map: 'strait',
+    rev: 4,
+    waves: [4],
+    role: 'teach',
+    name: 'Periscope ahead',
+    callout: 'A sub surfaces ahead of the ships',
+    premise: 'A periscope shows in the open water north-east, ahead of the convoy; the sub surfaces and fires four shells at the lead ship while the east silo sends a swarm at it.',
+    decision: 'Fire from the water as well as from the shore: watch the periscope, or the silo?',
+    counters: 'Tap the shells as the sub fires them (they climb fast from close); the swarm is slow and has its own warning.',
+    succeeds: 'The salvo is shot at in most runs; hull lost is in the last third, not the first.',
+    notes: {
+      sites: 'The sub spot in the north-east water (1180, 245), then the east silo on the north shore.',
+      target: 'The lead ship, in the last third of the lane, for the salvo and the swarm.',
+      usesMap: 'The first launcher off the shore: from the open water just north of the lane the shells have half a silo\'s flight, the warning the late stretch gets from here on.',
+    },
+    beats: [
+      { at: 0.45, kind: 'ballistic', count: 4, from: sub(1), aim: 'lead' },
+      { at: 0.45, plus: 1.5, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 4, drones: 4 },
+  },
+  {
+    id: 'strait-swarm-screen',
+    map: 'strait',
+    rev: 4,
+    waves: [5],
+    role: 'combine',
+    name: 'Swarm screen',
+    callout: 'A missile behind a swarm',
+    premise: 'A swarm out of the east silo with a guided missile behind it from the same silo, the missile at the lead ship; a shell from the middle silo after it. A smaller swarm off the middle silo opens the wave.',
+    decision: 'Shoot the swarm in front, or reach through it for the missile that does the damage?',
+    counters: 'One tap on the missile early; a blast weapon on the swarm.',
+    succeeds: 'The missile is shot at before half the swarm is down in most runs; a good player loses no more than a ship over waves 1 to 5.',
+    notes: {
+      sites: 'The east silo on the north shore for the swarm and the missile, the middle silo for the shell and the opening swarm.',
+      target: 'The missile and the shell at the lead ship, in the last third; the swarms at any ship, from the east, so the west ships get the longest warning.',
+      usesMap: 'The east silo is nearest the ships about to deliver: the swarm screens the missile on the shortest flight from the shore.',
+    },
+    beats: [
+      { at: 0.45, kind: 'drone', count: 8, gap: 0.35, from: base(2) },
+      { at: 0.45, plus: 1.4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.45, plus: 3, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 6, guided: 1, ballistic: 4 },
+  },
+  {
+    id: 'strait-both-ways',
+    map: 'strait',
+    rev: 4,
+    waves: [6],
+    role: 'combine',
+    name: 'Both ways',
+    callout: 'Drones from the north, a sub south',
+    premise: 'A swarm from the west silo crosses towards the lead ship while a sub surfaces south of the lane, on the carrier\'s side, and fires three shells at it. Before it, a sub to the north-east; after it, a guided pair from the east silo.',
+    decision: 'Two directions at once: north for the swarm, or south for the sub\'s shells?',
+    counters: 'The shells first: they are few and close. The swarm has the whole strait to cross.',
+    succeeds: 'Both are in the air together for three seconds or more, and the lead ship lives in most runs.',
+    notes: {
+      sites: 'The sub spot in the north-east water (1180, 245) first; then the west silo on the north shore with the sub spot south-east of the lane (1350, 700), on the friendly side; then the east silo.',
+      target: 'The lead ship, in the last third of the lane, from both sides.',
+      usesMap: 'The one shore is the north; the sub breaks that rule from behind the ships, so the player has to look both ways for the first time.',
+    },
+    beats: [
+      { at: 0.5, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.5, plus: 1, kind: 'ballistic', count: 3, from: sub(4), aim: 'lead' },
+      { at: 0.25, kind: 'ballistic', count: 3, from: sub(1), aim: 'lead' },
+      { at: 0.75, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
+    ],
+    // Wave 6 was a cliff (the supersonic's first wave): it gives up more
+    // than it sends.
+    replaces: { drones: 7, ballistic: 5, guided: 2 },
+  },
+  {
+    id: 'strait-down-the-lane',
+    map: 'strait',
+    rev: 4,
+    waves: [7],
+    role: 'escalate',
+    name: 'Down the lane',
+    callout: 'A strafer and two missiles',
+    premise: 'A strafer comes in from the east edge up the convoy\'s lane while the east silo fires a guided pair at the lead ship, the middle silo a swarm and a shell; swarms from the east and middle silos before and after.',
+    decision: 'The strafer has the shortest fuse; the missiles have further to fly. Which first?',
+    counters: 'The strafer as it lines up; then a tap each on the missiles.',
+    succeeds: 'The strafer is shot down before its run ends in most runs; the missiles are shot at.',
+    notes: {
+      sites: 'A strafer in from the east edge, the east silo on the north shore for two guided missiles and a swarm, the middle silo for a swarm, a shell and a last swarm.',
+      target: 'The strafer up the lane from the delivery end, the missiles and the shell at the lead ship, the swarms at any ship.',
+      usesMap: 'The open water gives the strafer a clear run the length of the lane; coming from the east, it meets the lead ships first, where the east silo\'s missiles land.',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 0.4, plus: 1.5, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
+      { at: 0.4, plus: 2, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.4, plus: 3.5, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 7, guided: 2, ballistic: 5 },
+  },
+  {
+    id: 'strait-sweep-east',
+    map: 'strait',
+    rev: 4,
+    waves: [8],
+    role: 'escalate',
+    name: 'Sweep east',
+    callout: 'West to east, two seconds apart',
+    premise: 'The three silos fire in turn, west to east, two seconds apart: drones, then shells, then a guided missile, all at the ship furthest along. Earlier, a sub off the east end fires three shells at it.',
+    decision: 'Three answers in four seconds, each with its own warning: take them in order or get ahead of the last?',
+    counters: 'Follow the lit silo; the shells need a tap each; the missile needs the last.',
+    succeeds: 'Launches overlap on screen more than in the shared wave, with fewer of them: harder by timing, not by count.',
+    notes: {
+      sites: 'All three north-shore silos in turn, west, middle, then east, two seconds apart; before them the sub spot in the far east water (1520, 250); swarms from the east and middle silos to open and close the wave.',
+      target: 'The sweep and the sub at the lead ship, in the middle and last thirds; the opening and closing swarms at any ship.',
+      usesMap: 'The three silos in a row along one shore make the fire sweep along the lane with the convoy, its warning shorter at each step.',
+    },
+    beats: [
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.55, plus: 2, kind: 'ballistic', count: 3, gap: 0.8, from: base(1), aim: 'lead' },
+      { at: 0.55, plus: 4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.25, kind: 'ballistic', count: 3, from: sub(2), aim: 'lead' },
+      { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+    ],
+    // Wave 8 was the second cliff: it gives up more than it sends.
+    replaces: { drones: 9, ballistic: 6, guided: 2 },
+  },
+  {
+    id: 'strait-ambush',
+    map: 'strait',
+    rev: 4,
+    waves: [9],
+    role: 'escalate',
+    name: 'Ambush ahead',
+    callout: 'Two subs ahead of the ships',
+    premise: 'Two periscopes in the north-east water, ahead of the convoy; the subs fire four and three shells at the lead ship as a swarm comes off the middle silo and a guided pair off the east one.',
+    decision: 'Two salvos from the water and a swarm from the shore: which sub is first, and is the swarm a feint?',
+    counters: 'The salvos as they climb, nearest sub first; the swarm with a blast weapon.',
+    succeeds: 'Both salvos are shot at; the lead ship lives in most runs for the player.',
+    notes: {
+      sites: 'The sub spots in the north-east water (1180, 245) and the far east (1520, 250), then the middle silo and the east silo on the north shore (an east swarm opens the wave).',
+      target: 'The salvos and the guided pair at the lead ship, in the middle and last thirds; the swarms at any ship.',
+      usesMap: 'Two subs just north of the delivery end give the shortest warning on the map before the climax.',
+    },
+    beats: [
+      { at: 0.5, kind: 'ballistic', count: 4, from: sub(1), aim: 'lead' },
+      { at: 0.5, plus: 1.5, kind: 'ballistic', count: 3, from: sub(2), aim: 'lead' },
+      { at: 0.5, plus: 2.5, kind: 'drone', count: 6, gap: 0.35, from: base(1) },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+      { at: 0.5, plus: 4, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 6, drones: 8, guided: 2 },
+  },
+  {
+    id: 'strait-final-approach',
+    map: 'strait',
+    rev: 4,
+    waves: [10],
+    role: 'climax',
+    name: 'Final approach',
+    callout: 'Everything at the leading ships',
+    premise: 'After the wave\'s own fire is spent and a few quiet seconds, all three silos and a sub off the east end open together on the ships nearest delivery.',
+    decision: 'Everything is warned of at once: what can wait two seconds, and what cannot?',
+    counters: 'The sub\'s shells and the guided pair have the shortest fuses; the swarms are slow.',
+    succeeds: 'The most threats on screen at once is the map\'s highest; a person can say afterwards what hit them.',
+    notes: {
+      sites: 'The west and middle silos\' swarms, the east silo\'s guided pair, the sub spot in the far east water (1520, 250) and the middle silo\'s shells; an east swarm early in the wave.',
+      target: 'The west swarm, the guided pair and the sub\'s shells at the lead ship; the rest at any ship.',
+      usesMap: 'The whole shore and the water off the delivery end at once, on the stretch with the shortest warning: the map\'s problem at its largest.',
+    },
+    beats: [
+      { at: 1, plus: 2.5, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 1, plus: 3.3, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 1, plus: 4, kind: 'guided', count: 2, gap: 0.8, from: base(2), aim: 'lead' },
+      { at: 1, plus: 4.5, kind: 'ballistic', count: 2, from: sub(2), aim: 'lead' },
+      { at: 1, plus: 5, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+    ],
+    // The climax gives up more than it sends: it was the hardest wave by
+    // far for every kit. It starts after the wave's own fire (`at: 1`): a
+    // calm before it.
+    replaces: { drones: 14, guided: 2, ballistic: 8 },
+  },
+];
 
 // ---- Version 2: Set pieces ---------------------------------------------------
 // Four big, readable moments a map, each named by a call-out as its warning
@@ -1406,16 +1695,502 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
   },
 ];
 
+// ---- Rev 4: The Gauntlet's v1 plan, rebuilt to the map and wave rules ----
+// (map rebuild phase 4; the map card: docs/design/v3-p4-gauntlet.md). One
+// encounter a wave, none twice in a row, on the arc: teach (1-2), first
+// stakes (3-4), combine (5-6), escalate (7-9), climax (10). Wave 1 keeps
+// its rev 3 opener. They replace slice 5's three (`until: 3`).
+//   The map's problem: two shores, one carrier between them. Its danger
+// stretch is the way in (the west third, between the two west silos, before
+// the carrier's guns are close); its safe stretch is the way out (the east
+// third, behind the carrier and the frigate). So waves 3-9 aim some of
+// their fire at the ship furthest back (`aim: 'rear'`, new in rev 4: the
+// ship on the way in) and the rest at any ship, never at the lead (an aim
+// at the lead ship lands in the east third: slice 5's shells and missile at
+// the lead made the south lane's way out its hottest stretch); only the
+// climax aims at the ships about to deliver.
+//   Budget: wave 8 was the cliff (two strafers of its own, and slice 5's
+// crossfire added a third): its encounter sends no aircraft and gives back
+// a little more than it sends; wave 7, the step before, carries the
+// strafer instead.
+const P4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'gauntlet-p4-shell-each-shore',
+    map: 'gauntlet',
+    waves: [2],
+    role: 'teach',
+    name: 'A shell from each shore',
+    callout: 'One shell north, one south',
+    premise: 'A shell from the north shore, three seconds later one from the south, then a small swarm off the north-west.',
+    decision: 'The first shells: read where each lands, and turn round for the second.',
+    counters: 'A tap on each shell as it climbs; the swarm after has time to spare.',
+    succeeds: 'Both shells are shot at in most runs; nothing is sunk on wave 2.',
+    notes: {
+      sites: 'The north-east silo\'s shell, the south-east silo\'s shell three seconds later, then four drones from the north-west silo.',
+      target: 'Any ship (a shell lands on ships not yet past the east third).',
+      usesMap: 'Both shores\' shell silos, one after the other, with the carrier between them: the two shores and the shell\'s long arc, taught once each.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(1) },
+      { at: 0.3, plus: 3, kind: 'ballistic', count: 1, from: base(3) },
+      { at: 0.3, plus: 5.5, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { ballistic: 2, drones: 4 },
+  },
+  {
+    id: 'gauntlet-p4-way-in',
+    map: 'gauntlet',
+    waves: [3],
+    role: 'teach',
+    name: 'The way in',
+    callout: 'Swarms off both shores at once',
+    premise: 'Both west shores launch a swarm a second apart, at the ships just coming in.',
+    decision: 'Two swarms, one each side of the ships coming in: which shore first, and is there time for the other?',
+    counters: 'The nearer swarm, then turn: the second is a second behind.',
+    succeeds: 'A close call on a ship in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The north-west silo, then the south-west silo a second later.',
+      target: 'The ship furthest back, on the way in, for the north swarm; any ship for the south one (from that silo the shortest flights land on the way in too).',
+      usesMap: 'The two silos facing each other across the way in make the first real pincer on the danger stretch, before the carrier\'s guns are close.',
+    },
+    beats: [
+      { at: 0.35, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.35, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 8 },
+  },
+  {
+    id: 'gauntlet-p4-periscope',
+    map: 'gauntlet',
+    waves: [4],
+    role: 'teach',
+    name: 'Periscope in the channel',
+    callout: 'A sub between the two lines',
+    premise: 'A periscope rises in the open water between the two lines of ships, west of the carrier, and the sub fires three shells as a swarm comes off the south-west.',
+    decision: 'The threat is between your ships, not on a shore: which line is it shooting at?',
+    counters: 'Tap each shell as it climbs (the periscope gives two seconds), then the swarm.',
+    succeeds: 'A close call in most runs; ships lost on wave 4 stay under a fifth of one a run for a good player.',
+    notes: {
+      sites: 'A submarine at the west sub spot, in the channel between the two lanes, then four drones from the south-west silo.',
+      target: 'The ship furthest back, on the way in, for the shells and the swarm.',
+      usesMap: 'The water between the lanes is the one place neither shore covers: the sub there has the shortest warning on the map so far, right beside the way in.',
+    },
+    beats: [
+      { at: 0.45, kind: 'ballistic', count: 3, gap: 0.8, from: sub(0), aim: 'rear' },
+      { at: 0.45, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'rear' },
+    ],
+    replaces: { ballistic: 2, drones: 5 },
+  },
+  {
+    id: 'gauntlet-p4-overlap',
+    map: 'gauntlet',
+    waves: [5],
+    role: 'combine',
+    name: 'Overlap',
+    callout: 'Shells and a swarm, two shores',
+    premise: 'Shells from the north-east while a swarm is still coming off the south-west, and a guided missile behind the swarm.',
+    decision: 'Two shores at once and two kinds of answer: which line do you save first?',
+    counters: 'Shells first (they are committed and few), then the missile, then the swarm.',
+    succeeds: 'Both shores have threats in the air together for three seconds or more; the far line is not abandoned.',
+    notes: {
+      sites: 'The south-west silo\'s swarm, two shells from the north-east silo, then a guided missile from the south-west silo.',
+      target: 'Any ship for the swarm and the shells; the ship furthest back, on the way in, for the missile.',
+      usesMap: 'Opposite shores and opposite ends of the channel, so the two threats never sit in one sweep of the thumb.',
+    },
+    beats: [
+      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+      { at: 0.45, plus: 1.2, kind: 'ballistic', count: 2, gap: 0.9, from: base(1) },
+      { at: 0.45, plus: 2.4, kind: 'guided', count: 1, from: base(2), aim: 'rear' },
+    ],
+    replaces: { drones: 6, ballistic: 2, guided: 1 },
+  },
+  {
+    id: 'gauntlet-p4-crossing',
+    map: 'gauntlet',
+    waves: [6],
+    role: 'combine',
+    name: 'The crossing',
+    callout: 'Drones north, missiles south',
+    premise: 'A swarm off the north-west, two guided missiles off the south-west a second later, and a periscope between them.',
+    decision: 'North swarm, south missiles, a sub in the middle: three directions at the way in. What goes first?',
+    counters: 'The missiles (two taps), then the shells as they climb; the swarm is slowest.',
+    succeeds: 'Both shores and the sub are shot at in most runs; the missiles are not the ones that land.',
+    notes: {
+      sites: 'The north-west silo\'s swarm, two guided missiles from the south-west silo, then a submarine at the west sub spot.',
+      target: 'The ship furthest back, on the way in, for the swarm and the first missile; any ship for the second missile and the shells.',
+      usesMap: 'All three of the west end\'s launchers at once, across and between the two lanes, on the danger stretch.',
+    },
+    beats: [
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.4, plus: 1, kind: 'guided', count: 1, from: base(2), aim: 'rear' },
+      { at: 0.4, plus: 1.9, kind: 'guided', count: 1, from: base(2) },
+      { at: 0.4, plus: 2.5, kind: 'ballistic', count: 2, gap: 0.8, from: sub(0) },
+    ],
+    replaces: { drones: 5, guided: 2, ballistic: 3 },
+  },
+  {
+    id: 'gauntlet-p4-strafing-run',
+    map: 'gauntlet',
+    waves: [7],
+    role: 'escalate',
+    name: 'Strafing run',
+    callout: 'A jet down the middle',
+    premise: 'A swarm off the north-west and two guided missiles off the south-west, and a strafing jet comes in from the west down the channel between the lines; shells from the north-east follow.',
+    decision: 'The jet has the shortest fuse but the missiles are already in the air: jet first, or the missiles?',
+    counters: 'The jet as soon as it turns in (an aimed shot), the missiles next, then the shells; the swarm last.',
+    succeeds: 'The jet is shot at in most runs; wave 7 costs more than wave 6, so wave 8 is no cliff.',
+    notes: {
+      sites: 'The north-west silo\'s swarm and two guided missiles from the south-west silo together, a strafer in from the west edge, then two shells from the north-east silo.',
+      target: 'The ship furthest back, on the way in, for the first missile; any ship for the rest (the strafer picks its run as it comes in).',
+      usesMap: 'The air down the middle of the channel, past the carrier, with both west shores closing on the way in.',
+    },
+    beats: [
+      { at: 0.45, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.45, kind: 'guided', count: 1, from: base(2), aim: 'rear' },
+      { at: 0.45, plus: 0.9, kind: 'guided', count: 1, from: base(2) },
+      { at: 0.45, plus: 1.5, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.45, plus: 3, kind: 'ballistic', count: 2, gap: 0.9, from: base(1) },
+    ],
+    replaces: { drones: 9, ballistic: 2, guided: 2 },
+  },
+  {
+    id: 'gauntlet-p4-long-way-round',
+    map: 'gauntlet',
+    waves: [8],
+    role: 'escalate',
+    name: 'The long way round',
+    callout: 'Swarms from opposite corners',
+    premise: 'A swarm off the north-east and one off the south-west, from opposite corners of the channel, then a guided missile at the ships coming in.',
+    decision: 'Two slow swarms from opposite corners and a missile, on top of a wave with two jets in it: which can wait?',
+    counters: 'An area weapon on the nearest swarm; the north-east one flies the length of the channel, so there is time to meet it.',
+    succeeds: 'Both swarms are met before the ships; wave 8 loses no more than twice wave 7.',
+    notes: {
+      sites: 'The north-east and south-west silos\' swarms together, then a guided missile from the south-west silo.',
+      target: 'Any ship for the swarms; the ship furthest back, on the way in, for the missile.',
+      usesMap: 'Opposite corners of the channel, the north-east swarm crossing the whole map and the south-west one meeting the ships coming in with a missile behind it; wave 8 already brings a second strafer, so this encounter is slow threats in place of four of the wave\'s shells.',
+    },
+    beats: [
+      { at: 0.45, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+      { at: 0.45, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.45, plus: 2.5, kind: 'guided', count: 1, from: base(2), aim: 'rear' },
+    ],
+    replaces: { ballistic: 4, drones: 8, guided: 1 },
+  },
+  {
+    id: 'gauntlet-p4-crossfire',
+    map: 'gauntlet',
+    waves: [9],
+    role: 'escalate',
+    name: 'Crossfire',
+    callout: 'Both shores, and a sub between',
+    premise: 'Both west shores open together, two guided missiles follow off the south shore, and a periscope between the lines lets out a swarm of its own.',
+    decision: 'Everything is warned of at once, from the north, the south and between your ships: what can wait two seconds, and what cannot?',
+    counters: 'The missiles first (aimed shots); an area weapon where the swarms meet; the sub\'s swarm is the nearest.',
+    succeeds: 'The most threats on screen at once is higher than in the shared wave with no more launched; a person can say afterwards what hit them.',
+    notes: {
+      sites: 'The north-west and south-west silos\' swarms together, two guided missiles from the south-west silo, then a submarine at the west sub spot launching drones.',
+      target: 'Any ship for the shores\' swarms and the missiles; the ship furthest back, on the way in, for the sub\'s swarm.',
+      usesMap: 'North shore, south shore and the water between the lanes, all on the way in; it takes three of the wave\'s shells (which land anywhere) for drones, so the way out stays the safe stretch, and wave 9 already has two strafers of its own, so no jet here.',
+    },
+    beats: [
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.55, plus: 1.2, kind: 'guided', count: 2, gap: 0.9, from: base(2) },
+      { at: 0.55, plus: 2.5, kind: 'drone', count: 3, gap: 0.35, from: sub(0), aim: 'rear' },
+    ],
+    replaces: { drones: 13, guided: 2, ballistic: 3 },
+  },
+  {
+    id: 'gauntlet-p4-run-the-gauntlet',
+    map: 'gauntlet',
+    waves: [10],
+    role: 'climax',
+    name: 'Run the gauntlet',
+    callout: 'Everything, both shores',
+    premise: 'Late in the wave: all four shores fire and a periscope rises east of the carrier, the shells and missiles all at the ships about to deliver.',
+    decision: 'The ships nearly home are the ones aimed at, from every side: which of them can you still save?',
+    counters: 'Missiles and shells on the lead ships first; the swarms come last.',
+    succeeds: 'Wave 10 is the hardest of the ten without ending the run for every kit.',
+    notes: {
+      sites: 'The north-west and south-west silos\' swarms, shells from the north-east silo, guided missiles from the south-east silo, and a submarine at the east-middle sub spot.',
+      target: 'The lead ship (about to deliver) for the shells and missiles, any ship for the swarms.',
+      usesMap: 'The climax is the one wave allowed to hit the safe stretch: the way out, behind the carrier, from both east silos and the sub beside the frigate.',
+    },
+    beats: [
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.7, plus: 1, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
+      { at: 0.7, plus: 1.5, kind: 'guided', count: 2, gap: 0.9, from: base(3), aim: 'lead' },
+      { at: 0.7, plus: 2.5, kind: 'ballistic', count: 2, gap: 0.8, from: sub(1), aim: 'lead' },
+    ],
+    replaces: { drones: 18, ballistic: 4, guided: 2 },
+  },
+];
+
+// ---- Rev 4: Harbor Mouth's v1, rebuilt to the map and wave rules ---------
+// (map rebuild phase 4, docs/design/v3-p4-harbor.md). One encounter a wave,
+// none twice in a row, each built on the neck: the lane closes from x 700
+// and the ships bunch up just before delivery. Everything an encounter sends
+// comes out of the wave's drones (and its guided missiles where it has
+// some), never its shells: a submarine fills its salvo to four whatever it
+// is given, so taking shells out emptied the wave's own subs (rev 3's
+// Funnel salvo cut waves 4-7 to two thirds). Rev 3's three keep playing in
+// a rev 3 log (`until: 3`).
+
+const HARBOR_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'harbor-first-look',
+    map: 'harbor',
+    waves: [1],
+    role: 'teach',
+    name: 'Over the neck',
+    callout: 'Two drones over the harbour neck',
+    premise: 'Two drones drop off the north headland straight at the ship nearest the narrows: wave 1 shows where the map bites.',
+    decision: 'The neck is where every ship has to pass: look there first.',
+    counters: 'Any tap on the pair before it reaches the narrows.',
+    succeeds: 'The pair is shot at before it reaches a hull in most runs; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The north-east headland silo, the one over the neck.',
+      target: 'The ship nearest the mouth of the narrows (the lead ship until one gets there).',
+      usesMap: 'Shows the neck on wave 1: the headland silo looks down on the narrows, where the lane closes and the ships bunch up.',
+    },
+    beats: [{ at: 0.45, kind: 'drone', count: 2, gap: 0.35, from: base(1), aim: 'narrows' }],
+    replaces: { drones: 2 },
+  },
+  {
+    id: 'harbor-wide-water',
+    map: 'harbor',
+    waves: [2],
+    role: 'teach',
+    name: 'Open water',
+    callout: 'A swarm on the open water',
+    premise: 'The far west base sends a swarm across the wide water, where the ships sail spread out.',
+    decision: 'Learn the two halves of the map: the wide water forgives, the neck will not.',
+    counters: 'Ordinary interception: the swarm has a long run in.',
+    succeeds: 'Hull lost on the open water stays small; the swarm is cleared before the ships reach the neck.',
+    notes: {
+      sites: 'The north-west silo, the one furthest from the harbour.',
+      target: 'Any ship, while the convoy is still in the wide water in the west.',
+      usesMap: 'The open water is the safe stretch: a long warning and ships far apart, the contrast to wave 1\'s neck.',
+    },
+    beats: [{ at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) }],
+    replaces: { drones: 4 },
+  },
+  {
+    id: 'harbor-periscope',
+    map: 'harbor',
+    waves: [3],
+    role: 'teach',
+    name: 'First periscope',
+    callout: 'A periscope off the narrows',
+    premise: 'A periscope rises off the mouth of the narrows and the sub lobs three shells into the funnel; two drones follow off the north headland.',
+    decision: 'The periscope shows before the shells: is a weapon ready over the neck when they fall?',
+    counters: 'Tap each shell as it climbs; the periscope is the warning. The two drones are slow.',
+    succeeds: 'The shells are shot at in most runs; a ship hit in the neck is the first real stake of the map.',
+    notes: {
+      sites: 'A submarine at the sub spot off the mouth of the narrows, north-east of the neck, then the north-east headland silo.',
+      target: 'The ship nearest the narrows, as it enters the funnel, for the shells and the drones.',
+      usesMap: 'The sub\'s short warning lands on the danger stretch, where the lane closes and the ships cannot spread out: the map\'s first real stake.',
+    },
+    beats: [
+      { at: 0.45, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
+      { at: 0.45, plus: 1, kind: 'drone', count: 2, gap: 0.35, from: base(1), aim: 'narrows' },
+    ],
+    replaces: { drones: 5 },
+  },
+  {
+    id: 'harbor-south-headland',
+    map: 'harbor',
+    waves: [4],
+    role: 'teach',
+    name: 'South headland',
+    callout: 'Missiles and drones from the south',
+    premise: 'The south headland opens up: a few drones at the ship in the narrows, two guided missiles at the lead ship, and a shell from the harbour mouth.',
+    decision: 'Fire now comes from the friendly side of the neck too: the missiles or the shell first?',
+    counters: 'The missiles first (a tap each), the shell as it climbs; the drones are slow and few.',
+    succeeds: 'The missiles are shot at before they reach the lead ship in most runs; a good player loses at most one ship by wave 5.',
+    notes: {
+      sites: 'The south headland silo on the south shore at the neck, then the south-east silo at the harbour mouth.',
+      target: 'The ship nearest the narrows for the drones and the shell, the lead ship for the missiles.',
+      usesMap: 'The second headland: the neck can be hit from both shores, and the south one is the closest of all to the ships.',
+    },
+    beats: [
+      { at: 0.4, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'narrows' },
+      { at: 0.4, plus: 1.5, kind: 'guided', count: 2, gap: 0.9, from: base(3), aim: 'lead' },
+      { at: 0.4, plus: 3, kind: 'ballistic', count: 1, from: base(4), aim: 'narrows' },
+    ],
+    replaces: { drones: 5, guided: 1 },
+  },
+  {
+    id: 'harbor-funnel-tail',
+    map: 'harbor',
+    waves: [5],
+    role: 'combine',
+    name: 'Funnel and tail',
+    callout: 'Shells in the neck, drones behind',
+    premise: 'A sub fires three shells into the funnel as a swarm comes in from the west at the ships still in the wide water.',
+    decision: 'The front of the convoy is in the neck and the back is in the open: which end do you cover?',
+    counters: 'Taps for the shells as they climb; an area weapon left on the open water for the swarm.',
+    succeeds: 'Both are shot at; the ships in the open water are not left to the swarm.',
+    notes: {
+      sites: 'A submarine off the mouth of the narrows, and the north-west silo.',
+      target: 'The ship nearest the narrows for the shells, any ship (the back of the convoy) for the swarm.',
+      usesMap: 'Front and back of the convoy at once: the neck at one end, the open water at the other.',
+    },
+    beats: [
+      { at: 0.45, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
+      { at: 0.45, plus: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 9 },
+  },
+  {
+    id: 'harbor-both-headlands',
+    map: 'harbor',
+    waves: [6],
+    role: 'combine',
+    name: 'Both headlands',
+    callout: 'Swarms from both shores at once',
+    premise: 'Both headlands fire at once: a swarm from the north and one from the south, both at the ship in the narrows; then a missile from the south at the lead ship.',
+    decision: 'Two swarms closing on one ship from opposite sides, and a missile behind them: split your fire or clear one first?',
+    counters: 'The swarms meet over the neck, where one shot can take several; save a tap for the missile.',
+    succeeds: 'Both swarms are shot at in most runs; the missile is shot at before it lands; hull lost sits in the neck, not the open water.',
+    notes: {
+      sites: 'The north-east headland silo and the south headland silo together, then the south headland silo again for the missile.',
+      target: 'The ship nearest the narrows for the swarms, the lead ship for the missile.',
+      usesMap: 'The two headlands face each other across the neck: the swarms meet where the ships bunch, from the north and the south at once.',
+    },
+    beats: [
+      { at: 0.4, kind: 'drone', count: 3, gap: 0.35, from: base(1), aim: 'narrows' },
+      { at: 0.4, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'narrows' },
+      { at: 0.4, plus: 3, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
+    ],
+    replaces: { drones: 8 },
+  },
+  {
+    id: 'harbor-front-and-back',
+    map: 'harbor',
+    waves: [7],
+    role: 'escalate',
+    name: 'Front and back',
+    callout: 'Drones ahead and behind',
+    premise: 'Two drones drop off the north headland at the ship about to deliver, as a swarm comes in from the west at the ships still in the open water.',
+    decision: 'The front of the convoy is nearly home and the back is in the wide water: which end gets your taps?',
+    counters: 'The pair at the front first (short flight); the swarm behind has a long run in.',
+    succeeds: 'Both ends are shot at; the back of the convoy is not left to the swarm. Wave 7 steps up without doubling wave 6.',
+    notes: {
+      sites: 'The north-east headland silo for the pair, the north-west silo for the swarm.',
+      target: 'The lead ship for the pair, any ship (the back of the convoy) for the swarm.',
+      usesMap: 'The two ends of the convoy, the last mile and the open water, at once, and light on purpose: the shared wave 7 is the step up (the mothership, a second strafer), so this encounter adds a choice, not weight.',
+    },
+    beats: [
+      { at: 0.5, kind: 'drone', count: 2, gap: 0.35, from: base(1), aim: 'lead' },
+      { at: 0.5, plus: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 5, guided: 1 },
+  },
+  {
+    id: 'harbor-wolf-pack',
+    map: 'harbor',
+    waves: [8],
+    role: 'escalate',
+    name: 'Wolf pack',
+    callout: 'Two periscopes, two salvos',
+    premise: 'Two subs surface a few seconds apart, each with two shells: one in the open water to the west, one off the narrows.',
+    decision: 'Two periscopes, two salvos: which one lands on a ship first?',
+    counters: 'The first salvo, then turn: the second periscope gives its own warning.',
+    succeeds: 'Both salvos are shot at; wave 8 hurts without ending the run.',
+    notes: {
+      sites: 'A submarine at the north-west sub spot, then one off the mouth of the narrows.',
+      target: 'Any ship for the first salvo, the ship nearest the narrows for the second.',
+      usesMap: 'The open water and the neck, one after the other, a few seconds apart, sending fewer than it takes out of the wave (about nine tenths of the shared wave) because wave 8 is the shared table\'s big step.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0) },
+      { at: 0.4, plus: 4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'narrows' },
+    ],
+    replaces: { drones: 7 },
+  },
+  {
+    id: 'harbor-crossfire',
+    map: 'harbor',
+    waves: [9],
+    role: 'escalate',
+    name: 'Crossfire at the neck',
+    callout: 'Fire from both sides of the neck',
+    premise: 'A swarm from the north headland, a guided missile from the south and shells from the harbour mouth, all at the neck.',
+    decision: 'Three answers in four seconds, from three sides: what can wait?',
+    counters: 'The missile first, the shells as they climb, the swarm last.',
+    succeeds: 'All three are shot at; hull lost sits in the neck.',
+    notes: {
+      sites: 'The north-east headland silo, the south headland silo, then the south-east silo at the mouth.',
+      target: 'The ship nearest the narrows for the swarm and the shells, the lead ship for the missile.',
+      usesMap: 'Three silos round the neck fire into it from both shores.',
+    },
+    beats: [
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'narrows' },
+      { at: 0.5, plus: 1.5, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.5, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'narrows' },
+    ],
+    replaces: { drones: 8 },
+  },
+  {
+    id: 'harbor-final-mile',
+    map: 'harbor',
+    waves: [10],
+    role: 'climax',
+    name: 'The last mile',
+    callout: 'Everything on the last mile',
+    premise: 'A breath of five seconds with nothing in the air, then everything round the harbour mouth fires down the funnel at the ships about to deliver.',
+    decision: 'The ships nearest home are the ones aimed at: defend the last mile or the ones behind?',
+    counters: 'The missile first; the shells as they climb; the swarm is slower than it looks from this side.',
+    succeeds: 'The calm is noticed (nothing launches for 5 s before it); sinkings in the last third do not rise against the shared wave, with the same number launched.',
+    notes: {
+      sites: 'The far north-east silo, the south headland silo, then the south-east silo at the mouth.',
+      target: 'The lead ship for the missile, any ship for the swarm, the ship nearest the narrows for the shells.',
+      usesMap: 'Three silos round the harbour mouth at once, into the last mile of the funnel, after a short calm (`calm`: the wave\'s own raids in the 5 s before it come earlier).',
+    },
+    beats: [
+      { at: 0.55, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.55, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.55, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'narrows' },
+    ],
+    replaces: { drones: 8, guided: 2 },
+    calm: 5,
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
+  ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
+  ...P4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...V2.map((e) => ({ ...e, version: 'v2' as const })),
   ...V3.map((e) => ({ ...e, version: 'v3' as const })),
   ...OPENERS.map((e) => ({ ...e, rev: 3, opener: true })),
+  ...HARBOR_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ];
 
 /** The rev an encounter came in. */
 export function encounterRev(e: Encounter): number {
   return e.rev ?? (e.version === 'v1' ? 1 : 2);
+}
+
+/** When an encounter's first beat launches, in seconds of the wave (as
+ *  the game plans it: a wave's lead-in, then a raid's warning, then the
+ *  beat's moment). */
+export function firstBeatAt(e: Encounter, lead: number, warn: number, duration: number): number {
+  return Math.min(...e.beats.map((b) => lead + warn + b.at * duration + (b.plus ?? 0)));
+}
+
+/** The quiet before an authored climax (rev 4, `calm`): each raid whose
+ *  launches (`span` s from its start) would fall in the `calm` s before
+ *  `at` starts early enough to be over by then. Returns the new starts. */
+export function calmBefore(starts: number[], at: number, calm: number, span: number, earliest: number): number[] {
+  return starts.map((s) => (s < at && s + span > at - calm ? Math.max(earliest, at - calm - span) : s));
+}
+
+/** Does it play under encounter rev `rev`: from its own rev to its `until`? */
+export function playsAt(e: Encounter, rev: number = ENCOUNTER_REV): boolean {
+  return encounterRev(e) <= rev && (e.until === undefined || rev <= e.until);
 }
 
 // ---- The versions, per map ---------------------------------------------------
@@ -1523,12 +2298,48 @@ export function waveFire(map: MapId, wave: number, rev: number = ENCOUNTER_REV):
   return f && rev >= 3 && wave >= f.from && wave <= f.to ? f.more : 0;
 }
 
+/** A map's boss rounds under the encounter layer (rev 4, map rebuild phase
+ *  4: rule w-boss, "harder each round, about a ship a round for a good
+ *  player"). The map's own event plays as it is, plus, in each run (1 to
+ *  3): submarine salvos into the neck (`salvos`: seconds into the run as
+ *  the salvo starts, and its shells, each at the ship nearest the narrows,
+ *  from the sub spot `spot`, its periscope up first as any sub's), and
+ *  the Hydra fan at `fan` Hydras (the event's own count otherwise). Lab
+ *  only, as every encounter: a campaign run and a log before rev 4 play the
+ *  event as it was. */
+export interface BossTune {
+  spot: number;
+  salvos: [at: number, shells: number][][];
+  fan?: number[];
+}
+
+export const MAP_BOSS: Partial<Record<EncounterMap, BossTune>> = {
+  // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
+  // no ship in six of its rounds; the boss rounds come to the funnel, one
+  // salvo more each round.
+  harbor: {
+    spot: 1,
+    salvos: [
+      [[5, 3]],
+      [[4, 3], [13, 2]],
+      [[4, 3], [11, 3]],
+    ],
+    fan: [3, 3, 4],
+  },
+};
+
+/** A map's boss tuning for a run's encounter rev (none before rev 4, or
+ *  with no encounter layer). */
+export function bossTune(map: MapId, rev: number | undefined): BossTune | undefined {
+  return rev !== undefined && rev >= 4 ? (MAP_BOSS as Partial<Record<MapId, BossTune>>)[map] : undefined;
+}
+
 /** A map's encounters for a wave in a version (none on a map with no
  *  authored layer, or a wave past the tenth: the ending is the map's own
  *  event), as of encounter rev `rev` (a log's own: an older log plays the
  *  encounters it had). */
 export function encountersFor(map: MapId, wave: number, version: EncounterVersion = VERSION_DEFAULT, rev: number = ENCOUNTER_REV): Encounter[] {
-  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave) && encounterRev(e) <= rev);
+  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave) && playsAt(e, rev));
 }
 
 /** The ten-wave arc of a reference map: what each wave is for, and the
@@ -1559,6 +2370,7 @@ const AIM_TEXT: Record<BeatAim, string> = {
   any: 'at any ship',
   lead: 'aimed at the lead ship',
   narrows: 'aimed at the ship nearest the narrows',
+  rear: 'aimed at the ship furthest back, on the way in',
 };
 
 const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;

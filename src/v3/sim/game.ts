@@ -78,7 +78,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, encountersFor, setupVersion, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -1167,6 +1167,13 @@ function startWave(g: Game): void {
   }
   const order = rng.shuffle(present.flatMap((t) => Array.from({ length: per.get(t)! }, () => t)));
   const raids: Raid[] = order.map((theme, k) => ({ at: lead + RAID.warn * 0.4 + (spec.duration * k) / order.length, theme, bases: [] }));
+  // A breath before an authored climax (encounters rev 4, `calm`): the
+  // raids that would fly in the quiet before it start early enough to be
+  // over by then (a sub's salvo is the longest a raid runs). Only an
+  // encounter that asks for it, so every other wave is planned as before.
+  const hush = authored.find((e) => e.calm);
+  const quietAt = hush ? firstBeatAt(hush, lead, RAID.warn, spec.duration) : 0;
+  if (hush) calmBefore(raids.map((r) => r.at), quietAt, hush.calm!, Math.max(RAID.window, SUB.salvo * SUB.gap), lead).forEach((at, k) => (raids[k].at = at));
   const raidUnits: Unit[][] = raids.map(() => []);
   const cursor = new Map<RaidTheme, number>();
   for (const u of units) {
@@ -1198,7 +1205,8 @@ function startWave(g: Game): void {
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
   trickled.forEach((size, k) => {
     const base = pickBase(g, 'drone', rng);
-    const at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
+    let at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
+    if (hush && at < quietAt && at + size * 0.35 > quietAt - hush.calm!) at = Math.max(lead, quietAt - hush.calm! - size * 0.35);
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
   // A map's own extra fire, the same in every version (encounters rev 3:
@@ -1350,12 +1358,13 @@ function updateEncCalls(g: Game): void {
 }
 
 /** An authored launch's target, picked as it leaves: the ship furthest
- *  along its lane, or the one nearest the mouth of the narrows. */
+ *  along its lane, the one nearest the mouth of the narrows, or (rev 4's
+ *  'rear', only rev 4 encounters use it) the one least far along. */
 function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!pool.length) return;
   const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
-  let pick = pool.reduce((a, b) => (along(b) > along(a) ? b : a));
+  let pick = aim === 'rear' ? pool.reduce((a, b) => (along(b) < along(a) ? b : a)) : pool.reduce((a, b) => (along(b) > along(a) ? b : a));
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
     const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);

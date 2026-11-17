@@ -25,8 +25,12 @@ import type { TelEvent, TelemetrySidecar } from './telemetry';
 
 /** Waves 1-10 and the three boss rounds (11-13). */
 export const REPORT_WAVES = 13;
-/** A close call: a threat this many seconds or less from a hull. */
-export const CLOSE_SECONDS = 2.0;
+/** A close call (rule w-early: "a moment that sinks a ship if the player
+ *  ignores it"): a threat aimed at a ship (not the carrier) that came this
+ *  many seconds or less from impact and was then destroyed. Phase 4
+ *  tightened it from 2 s at any hull, which every wave passed many times
+ *  over and so told nothing. */
+export const CLOSE_SECONDS = 1.0;
 /** A warning time above this (a plane with no hull ahead of it, a
  *  structure, a mine adrift) is not a warning: left out of the mean. */
 export const WARN_CAP = 30;
@@ -170,9 +174,11 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     d.stretch.all[key][l][s] += v;
     if (w >= 1 && w <= 9) d.stretch.core[key][l][s] += v;
   };
+  const atCarrier = new Set<number>();
   for (const e of sc.events) {
     const w = waveOfPhase(sc, e.p);
     if (e.k === 'thr+') {
+      if (e.tg === -1) atCarrier.add(e.id);
       if (!w || !isLaunch(e)) continue;
       d.launches[w - 1] += 1;
       const first = watch?.first[e.id];
@@ -183,7 +189,7 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     } else if (e.k === 'thr-') {
       if (!w || e.why !== 'kill') continue;
       const min = watch?.min[e.id];
-      if (min !== undefined && min <= CLOSE_SECONDS) d.close[w - 1] += 1;
+      if (min !== undefined && min <= CLOSE_SECONDS && !atCarrier.has(e.id)) d.close[w - 1] += 1;
     } else if (e.k === 'hit') {
       if (e.vt !== 's' || e.blk || !w) continue;
       addStretch(w, e.lane, e.d, 'hp', e.hp);
