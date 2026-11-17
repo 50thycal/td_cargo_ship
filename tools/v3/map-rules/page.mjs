@@ -79,7 +79,7 @@ if (!out) throw new Error('usage: page.mjs <out.html> | --doc');
 
 const ruleCard = (r) => `
 <article class="rule" data-coll="reviews" data-id="${r.id}" id="r-${r.id}">
-  <h3>${esc(r.title)}</h3>
+  <div class="ht"><h3>${esc(r.title)}</h3><button type="button" class="say" data-say="${r.id}" aria-label="Listen from ${esc(r.title)}" hidden>🔊</button></div>
   <p class="text">${esc(r.rule)}</p>
   ${r.ev ? `<div class="ev">${evFor(r.ev)}</div>` : ''}
   <details><summary>Why, how it’s checked, and where the maps stand</summary>
@@ -94,11 +94,27 @@ const ruleCard = (r) => `
 
 const qCard = (q) => `
 <fieldset class="q" data-q="${q.id}" id="q-${q.id}">
-  <legend>${esc(q.text)}</legend>
+  <legend><span>${esc(q.text)}</span> <button type="button" class="say" data-say="${q.id}" aria-label="Listen from this question" hidden>🔊</button></legend>
   ${q.options.map((o, i) => `<label class="opt"><input type="radio" name="${q.id}" value="${i}"> <span>${esc(o)}</span></label>`).join('')}
   <label class="nl">Notes <textarea id="qn-${q.id}" rows="2"></textarea></label>
   <p class="saved" aria-live="polite"></p>
 </fieldset>`;
+
+// The listen player's script: one item per section intro, rule and
+// question, read in the order the page shows them. Symbols are spelled out
+// so a voice reads them naturally.
+const say = (t) => String(t)
+  .replace(/≥\s*/g, 'at least ').replace(/≤\s*/g, 'at most ').replace(/±/g, 'plus or minus ')
+  .replace(/→/g, 'to').replace(/(\d)×(\d)/g, '$1 by $2').replace(/(\d)×/g, '$1 times').replace(/×/g, 'times')
+  .replace(/–/g, ' to ').replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+const SCRIPT = [];
+for (const s of SECTIONS) {
+  SCRIPT.push({ id: 'sec-' + s.id, sec: s.id, kind: 'sec', el: 'h-' + s.id, label: s.name, text: say(`${s.name}. ${s.blurb}`) });
+  const list = RULES.filter((r) => r.sec === s.id);
+  list.forEach((r, i) => SCRIPT.push({ id: r.id, sec: s.id, kind: 'rule', el: 'r-' + r.id, label: r.title, text: say(`Rule ${i + 1} of ${list.length}: ${r.title}. ${r.rule} Why: ${r.why} Where the maps stand today: ${r.now}`) }));
+}
+QUESTIONS.forEach((q, i) => SCRIPT.push({ id: q.id, sec: 'qs', kind: 'q', el: 'q-' + q.id, label: 'Question ' + (i + 1), text: say(`Question ${i + 1} of ${QUESTIONS.length}. ${q.text} ${q.options.map((o, k) => `Option ${k + 1}: ${o.replace(/ \(recommended\)$/, ', which I recommend')}.`).join(' ')}`) }));
+SCRIPT.push({ id: 'ev', sec: 'ev', kind: 'ev', el: 'h-ev', label: 'Evidence', text: say(`The evidence. Across your ${T.scorecards} map scorecards you lost ${T.lost.w1to5} ships in waves 1 to 5, ${T.lost.w6to10} in waves 6 to 10, and ${T.lost.boss} in the boss rounds. ${T.noLossW1to5} of ${T.scorecards} runs lost nothing before wave 6. Wave 1 was your weakest wave on ${T.weakestWave1} of ${T.scorecards}. Readability scored 5 on all ${T.readability5}, and pacing was right on all ${T.pacingRight}.`) });
 
 const ELSE = { id: 'mr-else', text: 'Anything else? A rule that’s missing, or something about the maps you want settled before the rebuild.' };
 
@@ -148,12 +164,25 @@ table{border-collapse:collapse;font-size:.85rem;width:100%}
 th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;white-space:nowrap}
 td.n{text-align:center}td.kit{white-space:normal;min-width:10em;color:var(--mute)}
 .hidden{display:none}
+.tops{display:flex;gap:8px;flex-wrap:wrap}
+.listen{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.ht{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.say{flex:0 0 auto;align-self:flex-start;width:44px;height:40px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);font-size:1.05rem;cursor:pointer}
+legend{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%}
+.reading{outline:3px solid var(--acc);outline-offset:2px}
+#player{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);padding:8px 16px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px rgba(0,0,0,.18)}
+.pl-now{font-size:.85rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:860px;margin:0 auto 6px}
+.pl-ctl{display:flex;gap:8px;justify-content:center;max-width:860px;margin:0 auto}
+.pl-ctl button{flex:1 1 0;min-height:48px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:.95rem;font-weight:600;cursor:pointer;padding:0 4px}
+#pl-play{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+body.playing main{padding-bottom:140px}
 .jump{border:0;background:var(--acc);color:var(--acc-ink);border-radius:10px;padding:10px 16px;min-height:44px;font:inherit;font-weight:600;cursor:pointer}
 </style>
 <main>
 <h1>Map and Wave Rules</h1>
 <p class="lead">The rules every map and its waves must follow before we rebuild the other 17 maps: what a map needs beyond its shape, how waves are built, and how waves use the map. Mark each rule <b>Approve</b>, <b>Change</b> or <b>Cut</b>, add notes, then answer the questions at the end.</p>
-<p><button type="button" class="jump" data-tab="qs">Answer the ${QUESTIONS.length} questions →</button></p>
+<p class="tops"><button type="button" class="jump" data-tab="qs">Answer the ${QUESTIONS.length} questions →</button> <button type="button" class="jump listen" id="listen" hidden>🔊 Listen to this tab</button></p>
+<p class="cap" id="listen-note" hidden></p>
 <p id="store">Connecting to the review store…</p>
 <p id="tally"></p>
 <nav aria-label="Sections">
@@ -162,16 +191,26 @@ td.n{text-align:center}td.kit{white-space:normal;min-width:10em;color:var(--mute
   ${SECTIONS.map((s) => `<button type="button" data-tab="${s.id}">${esc(s.name)}</button>`).join('')}
   <button type="button" data-tab="ev">Evidence</button>
 </nav>
-${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2>${esc(s.name)}</h2><p class="blurb">${esc(s.blurb)}</p>${RULES.filter((r) => r.sec === s.id).map(ruleCard).join('')}</section>`).join('')}
+${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2 id="h-${s.id}">${esc(s.name)}</h2><p class="blurb">${esc(s.blurb)}</p>${RULES.filter((r) => r.sec === s.id).map(ruleCard).join('')}</section>`).join('')}
 <section class="sec" data-sec="qs"><h2>Questions</h2><p class="blurb">The first option is my recommendation.</p>${QUESTIONS.map(qCard).join('')}
 <fieldset class="q" data-q="${ELSE.id}" id="q-${ELSE.id}"><legend>${esc(ELSE.text)}</legend><label class="nl">Notes <textarea id="qn-${ELSE.id}" rows="4"></textarea></label><p class="saved" aria-live="polite"></p></fieldset>
 </section>
-<section class="sec" data-sec="ev"><h2>Evidence</h2><p class="blurb">Your map scorecards so far (rounds 11–12, The Strait, The Gauntlet, Harbor Mouth). Every rule above cites these.</p>
+<section class="sec" data-sec="ev"><h2 id="h-ev">Evidence</h2><p class="blurb">Your map scorecards so far (rounds 11–12, The Strait, The Gauntlet, Harbor Mouth). Every rule above cites these.</p>
 <div class="panel"><h3>Where ships are lost</h3>${lossBars()}</div>
 <div class="panel"><h3>Every scorecard</h3>${scoreTable()}<p class="cap">Readability 5 on ${T.readability5} of ${T.scorecards}; pacing “right” on ${T.pacingRight} of ${T.scorecards}; wave 1 your weakest on ${T.weakestWave1} of ${T.scorecards}. “Weakest wave” 10+ means a late wave; 11–13 are boss rounds.</p></div>
 <div class="panel"><h3>Bots vs you in the boss rounds (round 12)</h3>${evFor('bots')}<p class="cap">Ships lost across the three boss rounds. The bots badly over-predict what you lose.</p></div>
 </section>
 </main>
+<div id="player" hidden role="region" aria-label="Listening">
+  <div class="pl-now" id="pl-now" aria-live="polite"></div>
+  <div class="pl-ctl">
+    <button type="button" id="pl-prev">Back</button>
+    <button type="button" id="pl-play">Pause</button>
+    <button type="button" id="pl-next">Next</button>
+    <button type="button" id="pl-stop">Stop</button>
+    <button type="button" id="pl-rate" aria-label="Speed">1×</button>
+  </div>
+</div>
 <script>
 (() => {
   const RULE_IDS = ${JSON.stringify(RULES.map((r) => r.id))};
@@ -252,6 +291,7 @@ ${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2>${esc(s.name)
   });
   document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
     tab = b.dataset.tab;
+    if (typeof playing !== 'undefined' && playing) stopAll();
     try { sessionStorage.setItem(LS + '-tab', tab); } catch {}
     paintTab();
     window.scrollTo({ top: 0 });
@@ -261,6 +301,122 @@ ${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2>${esc(s.name)
   Object.assign(state.reviews, local.reviews || {});
   Object.assign(state.answers, local.answers || {});
   paintAll(); paintTab();
+  // ---- Listen: a Claude voice where the page may use one, else the
+  // browser's own voice (iPhone Safari and the Claude app have no Claude
+  // voice). Reads the open tab, from the top or from a card's speaker.
+  const SCRIPT = ${JSON.stringify(SCRIPT)};
+  const VERB = { approve: 'approved', change: 'marked change', cut: 'cut' };
+  const RATES = [1, 1.25, 1.5, 0.85];
+  let rateI = 0; try { rateI = Number(localStorage.getItem(LS + '-rate')) || 0; } catch {}
+  let tts = null, engine = null, queue = [], at = -1, playing = false, paused = false, gen = 0;
+  const $ = (id) => document.getElementById(id);
+  const web = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance === 'function';
+  function itemsForTab() {
+    if (tab === 'qs') return SCRIPT.filter((x) => x.sec === 'qs');
+    if (tab === 'ev') return SCRIPT.filter((x) => x.sec === 'ev');
+    if (tab === 'all') return SCRIPT.filter((x) => x.sec !== 'qs' && x.sec !== 'ev');
+    return SCRIPT.filter((x) => x.sec === tab);
+  }
+  function spoken(it) {
+    let t = it.text;
+    if (it.kind === 'rule') { const v = (state.reviews[it.id] || {}).verdict; t += v ? ' You ' + VERB[v] + ' this one.' : ' Not marked yet.'; }
+    if (it.kind === 'q') { const c = (state.answers[it.id] || {}).choice; if (typeof c === 'number') t += ' You picked option ' + (c + 1) + '.'; }
+    return t.slice(0, 1990);
+  }
+  function mark(i) {
+    document.querySelectorAll('.reading').forEach((e) => e.classList.remove('reading'));
+    at = i;
+    const it = queue[i];
+    if (!it) return;
+    const el = $(it.el);
+    if (el) { (el.closest('.rule,.q') || el).classList.add('reading'); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    $('pl-now').textContent = (i + 1) + ' of ' + queue.length + ' · ' + it.label;
+  }
+  function ui() {
+    document.body.classList.toggle('playing', playing);
+    $('player').hidden = !playing;
+    $('pl-play').textContent = paused ? 'Play' : 'Pause';
+    $('pl-rate').textContent = RATES[rateI] + '×';
+  }
+  function finish() { playing = false; paused = false; gen++; document.querySelectorAll('.reading').forEach((e) => e.classList.remove('reading')); ui(); }
+  function webFrom(i, g) {
+    if (g !== gen) return;
+    if (i >= queue.length) { finish(); return; }
+    mark(i);
+    const u = new SpeechSynthesisUtterance(spoken(queue[i]));
+    u.rate = RATES[rateI]; u.lang = 'en-US';
+    u.onend = () => { if (g === gen && !paused) setTimeout(() => webFrom(i + 1, g), 250); };
+    u.onerror = (e) => { if (g === gen && e.error !== 'interrupted' && e.error !== 'canceled') finish(); };
+    speechSynthesis.speak(u);
+  }
+  function start(i) {
+    if (!queue.length) return;
+    i = Math.max(0, Math.min(queue.length - 1, i));
+    gen++; const g = gen;
+    playing = true; paused = false; ui();
+    if (engine === 'claude') {
+      mark(i);
+      tts.speak(queue.slice(i).map((it) => ({ text: spoken(it), id: it.id })), { rate: RATES[rateI], language: 'en' })
+        .then(() => { if (g === gen) finish(); })
+        .catch((e) => {
+          if (g !== gen) return;
+          if (e && e.code === 'not_granted') { $('listen-note').textContent = 'Reading aloud is turned off for this page (its Permissions menu).'; $('listen-note').hidden = false; }
+          else if (e && e.code === 'no_gesture') { $('listen-note').textContent = 'Tap Listen again to start.'; $('listen-note').hidden = false; }
+          else if (e && e.code === 'rate_limited') { $('listen-note').textContent = 'Reading aloud is busy right now. Try again in a bit.'; $('listen-note').hidden = false; }
+          finish();
+        });
+    } else {
+      speechSynthesis.cancel();
+      webFrom(i, g);
+    }
+  }
+  function listenFrom(id) {
+    queue = itemsForTab();
+    let i = id ? queue.findIndex((x) => x.id === id) : 0;
+    if (i < 0) { queue = SCRIPT.filter((x) => x.sec === (SCRIPT.find((y) => y.id === id) || {}).sec); i = Math.max(0, queue.findIndex((x) => x.id === id)); }
+    start(i);
+  }
+  function stopAll() { gen++; if (engine === 'claude') tts.stop().catch(() => {}); else if (web) speechSynthesis.cancel(); finish(); }
+  function togglePause() {
+    if (!playing) return;
+    if (engine === 'claude') {
+      if (paused) tts.resume().catch(() => {}); else tts.pause().catch(() => {});
+      paused = !paused; ui(); return;
+    }
+    // The browser's own pause is unreliable on iPhone: stop, and resume from
+    // the start of the same item.
+    if (paused) { paused = false; start(at); } else { paused = true; gen++; speechSynthesis.cancel(); ui(); }
+  }
+  function enable(kind) {
+    engine = kind;
+    $('listen').hidden = false;
+    document.querySelectorAll('.say').forEach((b) => { b.hidden = false; });
+  }
+  $('listen').addEventListener('click', () => listenFrom(null));
+  document.querySelectorAll('.say').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); listenFrom(b.dataset.say); }));
+  $('pl-play').addEventListener('click', togglePause);
+  $('pl-stop').addEventListener('click', stopAll);
+  $('pl-next').addEventListener('click', () => { if (at + 1 < queue.length) start(at + 1); });
+  $('pl-prev').addEventListener('click', () => start(at - 1));
+  $('pl-rate').addEventListener('click', () => {
+    rateI = (rateI + 1) % RATES.length;
+    try { localStorage.setItem(LS + '-rate', String(rateI)); } catch {}
+    ui();
+    if (engine === 'claude' && tts.setRate) tts.setRate(RATES[rateI]).catch(() => {});
+    else if (playing && !paused) start(at);
+  });
+  if (web) enable('web');
+  if (window.claude && window.claude.use) {
+    window.claude.use('tts').then((t) => {
+      if (!t) return;
+      tts = t; enable('claude');
+      if (t.setRate) t.setRate(RATES[rateI]).catch(() => {});
+      t.onState((e) => { if (e.state === 'idle' && playing && e.reason && e.reason !== 'replaced') finish(); });
+      t.onLine((e) => { if (!playing) return; const i = queue.findIndex((x) => x.id === e.id); if (i >= 0) mark(i); });
+    }).catch(() => {});
+  }
+  ui();
+
   const note = document.getElementById('store');
   const use = window.claude && window.claude.use;
   if (!use) { note.textContent = 'Open this page on claude.ai, signed in, to save your marks for the next session. Marks made here stay in this browser.'; return; }
