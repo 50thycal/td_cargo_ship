@@ -6,7 +6,7 @@
 //
 //   npx vite-node tools/v3/map-lab/versions.ts -- [--seeds=24] [--maps=strait,harbor]
 //       [--versions=v1,v2] [--personas=you,tryhard,casual] [--json=out.json]
-//       [--kits=harbor [--kits-only] [--kit-bots=you,tryhard]]
+//       [--kits=harbor [--kits-only] [--kit-bots=you,tryhard]] [--armory=player]
 //   npx vite-node tools/v3/map-lab/versions.ts -- --merge=a.json,b.json --json=out.json
 //
 // Per map, version and bot: won %, ships lost (waves 1-10 and the boss
@@ -63,9 +63,15 @@ export interface VersionRun {
   held: Record<string, number>;
 }
 
-// The "you" bot plays with the player's own Armory (map rebuild phase 2:
-// round 12 ran it with none, which alone cost it about a ship in waves 1-5).
-const PERSONA_KIT: Record<string, Record<string, number>> = { you: PLAYER_ARMORY, casual: {}, tryhard: { warhead: 3 } };
+// Map testing plays the baseline: "you" with no Armory upgrades (a new
+// player's gun). --armory=player gives it the player's own upgrades
+// instead (PLAYER_ARMORY, the setup the bot was calibrated on), to read a
+// map as the player will meet it.
+const PERSONA_KIT: Record<string, Record<string, number>> = {
+  you: process.argv.includes('--armory=player') ? PLAYER_ARMORY : {},
+  casual: {},
+  tryhard: { warhead: 3 },
+};
 
 /** The two kits the player brought to Harbor Mouth in round 11: weapons you
  *  aim (Overdrive, Railgun) and weapons that fire themselves (Airstrike,

@@ -4,15 +4,19 @@
 //
 //   npx vite-node tools/v3/bot-fit/fit.ts -- --logs=<dir of play logs>
 //       measure the player's logs and save them (tools/v3/bot-fit/player.json)
-//   npx vite-node tools/v3/bot-fit/fit.ts -- [--personas=you,you-r12] [--seeds=12]
-//       [--maps=strait,gauntlet,harbor] [--json=out.json]
-//       the fit table: the player against each persona
+//   npx vite-node tools/v3/bot-fit/fit.ts -- [--personas=you-r12,you] [--dice=6] [--own-picks] [--json=out.json]
+//       calibration (the default): each of the player's runs, map cards and
+//       campaign alike, mirrored by each bot with the same map, seed, Armory
+//       upgrades, card setup and draft picks
+//   npx vite-node tools/v3/bot-fit/fit.ts -- --cards [--seeds=12] [--maps=…] [--armory=none]
+//       the reference cards' production setup today, on fresh seeds
 //
-// The player's runs: every Test Lab map card's full run (log v21 and up) that
-// reached wave 5, and the campaign runs (v19 and up) for the hands-only rows.
-// The bots: the same cards' production setup (v1 encounters, the convoy
-// policy), the player's Armory, and the normal loss limit, so a bot's boss
-// rounds are counted only when it gets there, as the player's are.
+// The player's runs: every Test Lab map card's full run (log v21 and up) and
+// every campaign run (v19 and up) that reached wave 5. Calibration copies
+// each run's own Armory upgrades: the bot is fitted on the player's setup.
+// Map testing (map-lab versions.ts) plays the baseline, with no upgrades.
+// Bots play to the normal loss limit, so a boss round counts only for the
+// runs that reach it, as the player's do.
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import type { ArmoryLevels } from '../../../src/v3/data/armory';
@@ -20,6 +24,8 @@ import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
 import type { PlayLog } from '../../../src/v3/sim/playlog';
+import type { Game } from '../../../src/v3/sim/game';
+import type { CardId } from '../../../src/v3/data/abilities';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
 import { PLAYER_ARMORY, measure, pool, type Pooled, type RunMeasure } from './measure';
 
@@ -41,6 +47,10 @@ export function playerRun(l: PlayLog): 'card' | 'campaign' | null {
 
 export interface PlayerRun extends RunMeasure {
   kind: 'card' | 'campaign';
+  /** How the run was set up, as its log has it: what a mirrored bot run
+   *  copies (the seed, the Armory upgrades in use, the Test Lab card's
+   *  setup, or none for a campaign run), and the cards picked. */
+  setup: Pick<PlayLog, 'seed' | 'armory' | 'firstWave' | 'lab' | 'encounters' | 'convoy' | 'tempo' | 'freePlay'>;
 }
 
 /** Seconds to the millisecond: the saved file stays small. */
@@ -57,7 +67,9 @@ function loadPlayer(dir: string): PlayerRun[] {
     const l = JSON.parse(readFileSync(`${dir}/${f}`, 'utf8')) as PlayLog;
     const kind = playerRun(l);
     if (!kind) continue;
-    out.push({ ...compact(measure(l, 'you')), kind });
+    const setup: PlayerRun['setup'] = { seed: l.seed, armory: l.armory ?? {}, firstWave: l.firstWave };
+    for (const k of ['lab', 'encounters', 'convoy', 'tempo', 'freePlay'] as const) if (l[k]) (setup as Record<string, unknown>)[k] = l[k];
+    out.push({ ...compact(measure(l, 'you')), kind, setup });
   }
   return out;
 }
@@ -75,6 +87,39 @@ export function botRun(map: MapId, persona: string, seed: number, armory: Armory
     ...(plan.convoy ? { convoy: plan.convoy } : {}),
     ...(plan.encounters ? { encounters: plan.encounters } : {}),
   });
+  run.advance(Infinity);
+  return measure(run.finish(), 'bot', { botSpeed: p.speed ?? 1 });
+}
+
+/** Calibration: a bot run that mirrors one of the player's runs, on the
+ *  same map and seed (another roll of the bot's dice each time), with the
+ *  same Armory upgrades, the same Test Lab card setup (or none, for a
+ *  campaign run), and, with `picks`, the same cards whenever they are
+ *  offered (else the bot's own taste). */
+export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks = true): RunMeasure {
+  const p = PERSONAS[persona];
+  if (!p) throw new Error(`no persona ${persona}`);
+  const st = you.setup;
+  const run = new BotRun(you.map as MapId, st.seed, {
+    persona: p,
+    armory: st.armory,
+    firstWave: st.firstWave,
+    dice,
+    ...(st.tempo ? { tempo: st.tempo } : {}),
+    ...(st.freePlay ? { freePlay: st.freePlay } : {}),
+    ...(st.lab ? { lab: st.lab } : {}),
+    ...(st.encounters ? { encounters: st.encounters } : {}),
+    ...(st.convoy ? { convoy: st.convoy } : {}),
+  });
+  if (picks) {
+    const bot = (run as unknown as { bot: { choose: (g: Game) => { id: CardId } } }).bot;
+    const own = bot.choose.bind(bot);
+    let k = 0;
+    bot.choose = (g) => {
+      const want = you.picks[k++] as CardId | undefined;
+      return want && g.offer.includes(want) ? { id: want } : own(g);
+    };
+  }
   run.advance(Infinity);
   return measure(run.finish(), 'bot', { botSpeed: p.speed ?? 1 });
 }
@@ -115,24 +160,49 @@ function main(): void {
   const player = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs;
   const maps = (opt('maps')?.split(',') ?? FIT_MAPS) as MapId[];
   const personas = (opt('personas') ?? 'you-r12,you').split(',');
-  const seeds = Array.from({ length: Number(opt('seeds') ?? 12) }, (_, k) => 900 + k);
-  const cards = player.filter((r) => r.kind === 'card' && maps.includes(r.map as MapId));
-  const columns: { name: string; p: Pooled }[] = [{ name: 'you (cards)', p: pool(cards) }, { name: 'you (all)', p: pool(player) }];
+  const columns: { name: string; p: Pooled }[] = [];
   const perMap: Record<string, { name: string; p: Pooled }[]> = {};
-  for (const map of maps) perMap[map] = [{ name: 'you', p: pool(cards.filter((r) => r.map === map)) }];
-  const botRuns: Record<string, RunMeasure[]> = {};
-  for (const persona of personas) {
-    const runs: RunMeasure[] = [];
-    for (const map of maps) {
-      const mine = seeds.map((s) => botRun(map, persona, s));
-      runs.push(...mine);
-      perMap[map].push({ name: persona, p: pool(mine) });
+  let head: string;
+  if (args.includes('--cards')) {
+    // The cards' production setup today, on fresh seeds, with the player's
+    // usual Armory (or --armory=none): how the bot reads a map now.
+    const seeds = Array.from({ length: Number(opt('seeds') ?? 12) }, (_, k) => 900 + k);
+    const armory = opt('armory') === 'none' ? {} : PLAYER_ARMORY;
+    const cards = player.filter((r) => r.kind === 'card' && maps.includes(r.map as MapId));
+    columns.push({ name: 'you (cards)', p: pool(cards) });
+    for (const map of maps) perMap[map] = [{ name: 'you', p: pool(cards.filter((r) => r.map === map)) }];
+    for (const persona of personas) {
+      const runs: RunMeasure[] = [];
+      for (const map of maps) {
+        const mine = seeds.map((s) => botRun(map, persona, s, armory));
+        runs.push(...mine);
+        perMap[map].push({ name: persona, p: pool(mine) });
+      }
+      columns.push({ name: persona, p: pool(runs) });
     }
-    botRuns[persona] = runs;
-    columns.push({ name: persona, p: pool(runs) });
+    head = `The player's map-card runs (${cards.length}) against each bot on the cards' production setup today (${seeds.length} seeds × ${maps.join(', ')}; Armory ${JSON.stringify(armory)}).`;
+  } else {
+    // Calibration (the default): every bot run mirrors one of the player's
+    // runs, map cards and campaign alike: same map, seed, Armory upgrades,
+    // card setup and (unless --own-picks) draft picks.
+    const dice = Number(opt('dice') ?? 6);
+    const picks = !args.includes('--own-picks');
+    columns.push({ name: 'you', p: pool(player) });
+    const byMap = [...new Set(player.map((r) => r.map))];
+    for (const map of byMap) perMap[map] = [{ name: 'you', p: pool(player.filter((r) => r.map === map)) }];
+    for (const persona of personas) {
+      const all: RunMeasure[] = [];
+      for (const map of byMap) {
+        const mine = player.filter((r) => r.map === map).flatMap((r) => Array.from({ length: dice }, (_, d) => mirrorRun(r, persona, d + 1, picks)));
+        all.push(...mine);
+        perMap[map].push({ name: persona, p: pool(mine) });
+      }
+      columns.push({ name: persona, p: pool(all) });
+    }
+    head = `Calibration: each of the player's ${player.length} runs (${player.filter((r) => r.kind === 'card').length} map cards, ${player.filter((r) => r.kind === 'campaign').length} campaign) mirrored ${dice}× by each bot: same map, seed, Armory upgrades and setup${picks ? ', and the same draft picks where offered' : ''}.`;
   }
   const w = 34;
-  console.log(`The player's map-card runs (${cards.length}) and all their runs (${player.length}) against each bot (${seeds.length} seeds × ${maps.join(', ')}; Armory ${JSON.stringify(PLAYER_ARMORY)}).\n`);
+  console.log(`${head}\n`);
   console.log(`${''.padEnd(w)}${columns.map((c) => c.name.padStart(13)).join('')}`);
   let group = '';
   for (const r of ROWS) {
@@ -146,10 +216,10 @@ function main(): void {
   console.log('Seconds from a drop to its tap (median, exact waves)');
   for (const k of ['supply', 'weapon', 'ammo', 'repair', 'nuke']) console.log(`  ${k.padEnd(w - 2)}${columns.map((c) => (c.p.grab[k] === undefined ? '-' : c.p.grab[k].toFixed(2)).padStart(13)).join('')}`);
   console.log('\nShips lost per wave played (1-13), by map:');
-  for (const map of maps)
+  for (const map of Object.keys(perMap))
     for (const c of perMap[map]) console.log(`  ${map.padEnd(9)} ${c.name.padEnd(10)} ${c.p.curve.map((v) => (Number.isFinite(v) ? v.toFixed(1) : ' - ')).join(' ')}   (n ${c.p.n}, boss ${c.p.bossRound.toFixed(2)}/round over ${c.p.bossN})`);
   const out = opt('json');
-  if (out) writeFileSync(out, `${JSON.stringify({ seeds, maps, armory: PLAYER_ARMORY, columns, perMap }, null, 1)}\n`);
+  if (out) writeFileSync(out, `${JSON.stringify({ about: head, columns, perMap }, null, 1)}\n`);
 }
 
 if (!process.env.V3_FIT_IMPORT) main();

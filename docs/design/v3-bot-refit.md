@@ -16,20 +16,33 @@ The map rebuild tunes maps with bots and heat maps before the player plays them 
   - seconds to impact at the tap;
   - which threats got no tap;
   - how long a pickup sat before its tap.
-- **`fit.ts`** has two modes:
-  - `--logs=<dir>` measures the player's logs into **`player.json`**. That file holds the 13 map-card runs (logs v21–24, every one that reached wave 5) and 5 campaign runs, so later sessions need no download.
-  - Without `--logs`, it plays each persona on the three reference maps' Test Lab cards and prints the player against each bot. Each bot run uses the card's production setup, the player's Armory (`PLAYER_ARMORY`: Quick Reload 5, Damage Control 4, Stockpile 5) and the normal loss limit.
+- **`fit.ts`** has three modes:
+  - `--logs=<dir>` measures the player's logs into **`player.json`**. That file holds the 13 map-card runs (logs v21–24) and 5 campaign runs (Strait, Kesh, Saltgate ×2, Battery), each run that reached wave 5. With each run it keeps how the run was set up: seed, Armory upgrades, Test Lab card setup, draft picks. Later sessions need no download.
+  - **Calibration (the default).** Each of the player's runs is mirrored by each bot, 6 dice a run. The mirror copies:
+    - the same map, map card or campaign;
+    - the same seed;
+    - **the same Armory upgrades the player had on**;
+    - the same card setup;
+    - the same draft picks whenever they are offered (`--own-picks` lets the bot draft for itself).
 
-  `--json` saves the table (`results/fit-2026-11-17.json` is this round's).
+    The bot is fitted on the player's own setup: this is the table below.
+  - `--cards` plays the reference cards' production setup today on fresh seeds, with the player's usual Armory (`PLAYER_ARMORY`: Quick Reload 5, Damage Control 4, Stockpile 5) or `--armory=none`.
+
+  `--json` saves the table: `results/calibration-2026-11-17.json` (calibration) and `results/fit-2026-11-17.json` (cards).
 
 ```
 npx vite-node tools/v3/bot-fit/fit.ts -- --logs=<dir of logs>     # re-measure the player
-npx vite-node tools/v3/bot-fit/fit.ts -- --personas=you-r12,you --seeds=32
+npx vite-node tools/v3/bot-fit/fit.ts -- --personas=you-r12,you   # calibration
+npx vite-node tools/v3/bot-fit/fit.ts -- --cards --seeds=32       # the cards today
 ```
+
+**Two settings, kept apart:**
+- **Calibration** uses the player's upgrades, so the bot is measured against the player in the player's own setup.
+- **Map testing** (the map lab, `versions.ts`, the reports of phase 3) plays the baseline: "you" with **no Armory upgrades**. `versions.ts --armory=player` adds the player's upgrades, to read a map as the player will meet it.
 
 ## What was wrong
 
-1. **Setup, not skill.** Round 12's bot ran the cards with an empty Armory. Every log since round 11 has the player at Quick Reload 5, Damage Control 2–4 and Stockpile 4–5. The round 12 boss figure also came from "tough" runs: the bot kept playing after six ships were lost, so its worst runs filled the boss rounds. Both are fixed in the ruler, and `versions.ts` now gives "you" the player's Armory.
+1. **Setup, not skill.** Round 12 compared an empty-Armory bot with a player at Quick Reload 5, Damage Control 2–4 and Stockpile 4–5 (every log since round 11). Its boss figure also came from "tough" runs: the bot kept playing after six ships were lost, so its worst runs filled the boss rounds. Calibration now copies each run's own upgrades and plays to the normal loss limit.
 2. **Speed.** Round 12's bot played at 1.1× and rushed one wave in five at 1.4×. The player plays at 1× and is above 1× about a sixth of the time. At 1×, waves 1–5 match.
 3. **Pickups, the big one.** The player's hands and eyes were already matched: tap rate, burst length, rests, accuracy and which threat a tap goes for are all within a few points. The difference was the pickups.
    - The player grabs pickups **faster as the stakes rise**: about 1.6 s after a drop in waves 1–5, about 1 s in waves 6–10, and 0.35–0.8 s in the boss rounds (a Supply Run in 0.6–0.8 s).
@@ -61,7 +74,29 @@ The map-lab baseline and the test scenarios play round 12's bots, frozen (`YOU_R
 
 ## The fit
 
-The player's 13 map-card runs against 32 seeds a map of each bot. Same cards, same Armory, normal loss limit. Boss rounds are counted for the runs that reached them.
+**Calibration.** All 18 of the player's runs, each mirrored 6×: same map, seed, Armory upgrades, setup and draft picks.
+
+| | You | Round 12 bot | Refit bot |
+|---|---|---|---|
+| Ships lost, waves 1–5 | 0.50 | 1.19 | **0.69** |
+| Runs with no loss by wave 5 | 61% | 41% | **57%** |
+| Ships lost, waves 6–10 | 3.28 | 4.24 | **3.58** |
+| Ships lost a boss round | 0.52 | 1.37 | **1.03** |
+| Taps a second | 1.16 | 1.24 | 1.12 |
+| Kills a shot | 0.65 | 0.59 | 0.69 |
+| Weapon pickups a minute | 2.41 | 2.14 | 2.43 |
+
+By map, ships lost a boss round:
+
+| Map | You | Refit bot | Rounds |
+|---|---|---|---|
+| The Strait | 0.17 | 1.11 | 12 / 74 |
+| The Gauntlet | 1.56 | 1.84 | 9 / 25 |
+| Harbor Mouth | 0.00 | 0.33 | 6 / 3 |
+| Kesh | 0.00 | 0.00 | 3 / 18 |
+| Saltgate | 0.33 | 0.67 | 3 / 18 |
+
+**The cards today.** The player's 13 map-card runs against 32 seeds a map of each bot. Same cards, same Armory, normal loss limit. Boss rounds are counted for the runs that reached them.
 
 | | You | Round 12 bot | Refit bot |
 |---|---|---|---|
