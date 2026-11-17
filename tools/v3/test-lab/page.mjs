@@ -411,6 +411,9 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
       }
     }
     if (sg.older) box.append(h('p', 'older', plural(sg.older, 'run', 'runs') + ' on an older version of the map not averaged.'));
+    // Scorecard revision 2 asks other questions: older scores stay apart.
+    const oldScored = sg.groups.reduce((m, g) => m + g.oldScored, 0);
+    if (oldScored) box.append(h('p', 'older', plural(oldScored, 'run', 'runs') + ' scored on an older scorecard (other questions) not averaged with these.'));
     return box;
   }
   function setScores(li, card, r) {

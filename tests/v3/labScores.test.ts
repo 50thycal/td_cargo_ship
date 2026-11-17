@@ -1,6 +1,8 @@
 // The Test Lab review page's map scorecards (tools/v3/test-lab/scores.mjs,
 // inlined into the page like split.mjs): the latest score as chips, and the
 // averages per category, by encounter version, on the newest card version.
+// Scorecard revision 2 (2026-11-17): a score averages only with its own
+// revision's, and the rows revision 2 retired still read on older scores.
 
 import { describe, expect, it } from 'vitest';
 import { SCORECARD, SCORECARD_REV } from '../../src/v3/data/scorecard';
@@ -9,6 +11,8 @@ import { averageWords, runNumbers, scoreAverages, scoreChips, scoreGroups, waveN
 
 // The scorecard as the page gets it (tools/v3/test-lab/cards.mts).
 const SC: ScorecardDef = JSON.parse(JSON.stringify({ rev: SCORECARD_REV, bossFrom: EVENT_WAVE, categories: SCORECARD }));
+// The revision 1 cases: the same page as it read them before revision 2.
+const SC1: ScorecardDef = { ...SC, rev: 1 };
 const cat = (id: string) => SC.categories.find((c) => c.id === id)!;
 const run = (o: Partial<Run>): Run => ({ rev: 10, variant: 'v1', end: 'won', ...o });
 
@@ -20,8 +24,8 @@ describe('Test Lab page: a map card\'s scorecard', () => {
     expect(scoreChips({ rev: 1, again: 'maybe', best: 12, fun: 4, difficulty: 'too-hard' }, SC)).toEqual([
       { id: 'fun', label: 'Fun', text: '4' },
       { id: 'difficulty', label: 'Difficulty', text: 'Too hard' },
-      { id: 'best', label: 'Best wave', text: 'B2' },
       { id: 'again', label: 'Play again', text: 'Maybe' },
+      { id: 'best', label: 'Best wave', text: 'B2' },
     ]);
   });
 
@@ -33,7 +37,7 @@ describe('Test Lab page: a map card\'s scorecard', () => {
       run({}), // no scorecard: counts in the numbers, not the averages
       run({ score: { rev: 0, fun: 1 } }), // another scorecard revision: left out
     ];
-    const a = scoreAverages(runs, SC);
+    const a = scoreAverages(runs, SC1);
     expect(a.fun).toEqual({ n: 3, mean: 4 });
     expect(a.difficulty).toMatchObject({ n: 3, mean: 1, near: 'Bit hard' });
     expect(a.pacing).toMatchObject({ n: 1, mean: 0, near: 'Right' });
@@ -48,7 +52,7 @@ describe('Test Lab page: a map card\'s scorecard', () => {
     expect(averageWords(cat('again'), a.again, 11)).toBe('Yes 2 · No 1');
     expect(averageWords(cat('difficulty'), { n: 2, mean: -1.5, near: 'Too easy', counts: {} }, 11)).toBe('Too easy (−1.5)');
     // Halfway between two answers, the one nearer the middle.
-    const half = scoreAverages([run({ score: { rev: 1, pacing: 'too-slow' } }), run({ score: { rev: 1, pacing: 'right' } })], SC);
+    const half = scoreAverages([run({ score: { rev: 1, pacing: 'too-slow' } }), run({ score: { rev: 1, pacing: 'right' } })], SC1);
     expect(averageWords(cat('pacing'), half.pacing, 11)).toBe('Right (−0.5)');
   });
 
@@ -70,7 +74,7 @@ describe('Test Lab page: a map card\'s scorecard', () => {
       run({ variant: 'v2', end: 'lost' }),
       run({ rev: 9, score: { rev: 1, fun: 1 } }),
     ];
-    const g = scoreGroups(runs, SC);
+    const g = scoreGroups(runs, SC1);
     expect(g.rev).toBe(10);
     expect(g.older).toBe(1);
     expect(g.groups.map((x) => x.variant)).toEqual(['v1', 'v2', 'v10']);
@@ -78,7 +82,35 @@ describe('Test Lab page: a map card\'s scorecard', () => {
     expect(v1).toMatchObject({ scored: 2, numbers: { runs: 2, won: 2 }, averages: { fun: { n: 2, mean: 3 } } });
     expect(v2).toMatchObject({ scored: 1, numbers: { runs: 2, won: 1 }, averages: { fun: { n: 1, mean: 5 } } });
     // One version only: one group (the page then shows no version headings).
-    expect(scoreGroups([run({ score: { rev: 1, fun: 3 } }), run({})], SC).groups).toHaveLength(1);
+    expect(scoreGroups([run({ score: { rev: 1, fun: 3 } }), run({})], SC1).groups).toHaveLength(1);
     expect(scoreGroups(undefined, SC)).toEqual({ rev: 0, groups: [], older: 0 });
+  });
+
+  it('revision 2: its scores average apart from revision 1\'s, retired rows are not averaged on it, the comparison averages by its values', () => {
+    expect(SC.rev).toBe(2);
+    const runs = [
+      run({ score: { rev: 1, fun: 1, pacing: 'too-fast', readability: 2, again: 'no' } }),
+      run({ score: { rev: 2, fun: 4, vs: 'better', vsCard: 'map-gauntlet', again: 'yes' } }),
+      run({ score: { rev: 2, fun: 5, vs: 'same', vsCard: 'map-harbor', pacing: 'too-slow' } }),
+    ];
+    const a2 = scoreAverages(runs, SC);
+    expect(a2.fun).toEqual({ n: 2, mean: 4.5 });
+    expect(a2.again).toMatchObject({ n: 1, counts: { yes: 1 } });
+    expect(a2.vs).toMatchObject({ n: 2, mean: 0.5 });
+    // Retired on revision 2: not averaged there, even if a score carries it.
+    expect(a2.pacing).toBeUndefined();
+    expect(a2.readability).toBeUndefined();
+    expect(averageWords(cat('vs'), a2.vs, 11)).toBe('About the same (+0.5)');
+    // Revision 1's own averages, asked for: its rows, its scores only.
+    const a1 = scoreAverages(runs, SC, 1);
+    expect(a1.fun).toEqual({ n: 1, mean: 1 });
+    expect(a1.pacing).toMatchObject({ n: 1, near: 'Too fast' });
+    expect(a1.vs).toBeUndefined();
+    const g = scoreGroups(runs, SC).groups[0];
+    expect(g).toMatchObject({ scored: 2, oldScored: 1, averages: { fun: { n: 2, mean: 4.5 } } });
+    // A revision 1 score still reads as chips, retired rows and all; a
+    // revision 2 one shows its comparison.
+    expect(scoreChips({ rev: 1, fun: 4, pacing: 'right', mapFeel: 3 }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Pacing Right', 'Map feel 3']);
+    expect(scoreChips({ rev: 2, fun: 4, vs: 'worse', vsCard: 'map-gauntlet' }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Vs last map Worse']);
   });
 });

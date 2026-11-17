@@ -4846,6 +4846,115 @@ a.v3-lab-page {
   color: #fff;
 }
 
+/* Scorecard revision 2: "Your last scores" on top, so the player rates
+   relative to them. Two lines of two on a landscape phone, so the rows
+   (and the verdict under them) stay near. */
+.v3-score-last {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  min-width: 0;
+}
+
+.v3-score-last-h {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #9fb2bf);
+}
+
+.v3-score-last ul {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 0 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.v3-score-last li {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.v3-score-last li.mine b {
+  color: var(--gold);
+}
+
+.v3-score-last li i {
+  font-style: normal;
+  color: var(--muted, #9fb2bf);
+}
+
+/* The wave strip: each wave's chip says what happened in it ("−2" ships
+   lost, a mark per kind of moment). The row's name sits on one line above
+   it, so the 13 waves of a full run fit on one line on a landscape phone. */
+.v3-score-row.strip {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+}
+
+.v3-score-row.strip .v3-score-lab {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.v3-score-row.strip .v3-score-chips.wave {
+  gap: 3px;
+}
+
+.v3-score-row.strip .v3-score-chips.wave .v3-score-chip {
+  flex: 1 1 40px;
+  max-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.v3-wave-n {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.v3-wave-info {
+  min-height: 11px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.v3-wave-info em {
+  font-style: normal;
+  color: var(--danger);
+}
+
+.v3-score-chip.on .v3-wave-info em {
+  color: #fff;
+}
+
+.v3-score-legend {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted, #9fb2bf);
+}
+
 /* Upright (or a narrow window): the row's name above its chips. */
 .portrait .v3-score-row {
   grid-template-columns: minmax(0, 1fr);
@@ -4853,6 +4962,10 @@ a.v3-lab-page {
 
 @media (max-width: 560px) {
   .v3-score-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v3-score-last ul {
     grid-template-columns: minmax(0, 1fr);
   }
 }
