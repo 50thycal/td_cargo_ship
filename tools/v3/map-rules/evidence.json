@@ -1,0 +1,401 @@
+{
+ "source": "Play logs from the production game, map scorecards (Test Lab map cards), rounds 11-12, pulled 2026-11-17 by the session.",
+ "runs": [
+  {
+   "id": "v3-20261114221939-68855",
+   "date": "2026-11-14",
+   "card": "map-strait",
+   "round": 11,
+   "version": "v1",
+   "end": "won",
+   "wave": 13,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 1,
+    "boss": 0,
+    "total": 1
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 2,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 3,
+     "lost": 0,
+     "outcome": "clean"
+    }
+   ],
+   "kit": [
+    "airstrike",
+    "boomerang",
+    "flak"
+   ],
+   "score": {
+    "fun": 3,
+    "difficulty": "bit-easy",
+    "pacing": "right",
+    "variety": 3,
+    "readability": 5,
+    "mapFeel": 3,
+    "boss": 3,
+    "best": 9,
+    "weakest": 1,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": ""
+  },
+  {
+   "id": "v3-20261114233708-98555",
+   "date": "2026-11-14",
+   "card": "map-gauntlet",
+   "round": 11,
+   "version": "v1",
+   "end": "lost",
+   "wave": 13,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 4,
+    "boss": 6,
+    "total": 10
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 2,
+     "outcome": "broken"
+    },
+    {
+     "run": 2,
+     "lost": 3,
+     "outcome": "broken"
+    },
+    {
+     "run": 3,
+     "lost": 1,
+     "outcome": "broken"
+    }
+   ],
+   "kit": [
+    "frigate",
+    "railgun",
+    "scatter"
+   ],
+   "score": {
+    "fun": 3,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 3,
+    "readability": 5,
+    "mapFeel": 4,
+    "boss": 5,
+    "best": 10,
+    "weakest": 1,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": "The rocket truck speed off too fast when they are done shooting, they should go at  normal speeds"
+  },
+  {
+   "id": "v3-20261115031208-12507",
+   "date": "2026-11-15",
+   "card": "map-harbor",
+   "round": 11,
+   "version": "v1",
+   "end": "lost",
+   "wave": 8,
+   "lost": {
+    "w1to5": 1,
+    "w6to10": 5,
+    "boss": 0,
+    "total": 6
+   },
+   "bossRounds": [],
+   "kit": [
+    "overdrive",
+    "railgun",
+    "seeker"
+   ],
+   "score": {
+    "fun": 4,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 4,
+    "readability": 5,
+    "mapFeel": 4,
+    "boss": null,
+    "best": 7,
+    "weakest": 1,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": "Will finish later"
+  },
+  {
+   "id": "v3-20261115053110-40372",
+   "date": "2026-11-15",
+   "card": "map-harbor",
+   "round": 11,
+   "version": "v1",
+   "end": "won",
+   "wave": 13,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 2,
+    "boss": 0,
+    "total": 2
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 2,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 3,
+     "lost": 0,
+     "outcome": "clean"
+    }
+   ],
+   "kit": [
+    "airstrike",
+    "droneScreen",
+    "seeker"
+   ],
+   "score": {
+    "fun": 4,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 3,
+    "readability": 5,
+    "mapFeel": 4,
+    "boss": 3,
+    "best": 10,
+    "weakest": 1,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": "Alright this ranking is just fir the full play I finally did"
+  },
+  {
+   "id": "v3-20261116235757-66323",
+   "date": "2026-11-16",
+   "card": "map-strait",
+   "round": 12,
+   "version": "v1",
+   "end": "lost",
+   "wave": 10,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 6,
+    "boss": 0,
+    "total": 6
+   },
+   "bossRounds": [],
+   "kit": [
+    "airstrike",
+    "droneScreen",
+    "tesla"
+   ],
+   "score": {
+    "fun": 3,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 4,
+    "readability": 5,
+    "mapFeel": 5,
+    "boss": null,
+    "best": 10,
+    "weakest": 1,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": "Overall good I think this was a well balanced map. I didn\u2019t try all that hard so I\u2019m not too surprised. I lost right at the end there mainly just right on ammo I wasn\u2019t prioritizing."
+  },
+  {
+   "id": "v3-20261117023046-31629",
+   "date": "2026-11-17",
+   "card": "map-harbor",
+   "round": 12,
+   "version": "v1",
+   "end": "won",
+   "wave": 13,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 3,
+    "boss": 0,
+    "total": 3
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 2,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 3,
+     "lost": 0,
+     "outcome": "clean"
+    }
+   ],
+   "kit": [
+    "overdrive",
+    "scatter",
+    "supplyRun"
+   ],
+   "score": {
+    "fun": 5,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 4,
+    "readability": 5,
+    "mapFeel": 4,
+    "boss": 4,
+    "best": 2,
+    "weakest": 10,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": "My combo that I had to we really op"
+  },
+  {
+   "id": "v3-20261117024346-31630",
+   "date": "2026-11-17",
+   "card": "map-gauntlet",
+   "round": 12,
+   "version": "v1",
+   "end": "won",
+   "wave": 13,
+   "lost": {
+    "w1to5": 0,
+    "w6to10": 5,
+    "boss": 4,
+    "total": 9
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 2,
+     "outcome": "broken"
+    },
+    {
+     "run": 2,
+     "lost": 2,
+     "outcome": "broken"
+    },
+    {
+     "run": 3,
+     "lost": 0,
+     "outcome": "clean"
+    }
+   ],
+   "kit": [
+    "droneScreen",
+    "shrapnel",
+    "thermo"
+   ],
+   "score": {
+    "fun": 5,
+    "difficulty": "right",
+    "pacing": "right",
+    "variety": 4,
+    "readability": 5,
+    "mapFeel": 5,
+    "boss": 5,
+    "best": 9,
+    "weakest": 2,
+    "again": "yes"
+   },
+   "verdict": "keep",
+   "note": ""
+  },
+  {
+   "id": "v3-20261117034517-31631",
+   "date": "2026-11-17",
+   "card": "map-strait-v2",
+   "round": 12,
+   "version": "v2",
+   "end": "won",
+   "wave": 13,
+   "lost": {
+    "w1to5": 2,
+    "w6to10": 3,
+    "boss": 0,
+    "total": 5
+   },
+   "bossRounds": [
+    {
+     "run": 1,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 2,
+     "lost": 0,
+     "outcome": "clean"
+    },
+    {
+     "run": 3,
+     "lost": 0,
+     "outcome": "clean"
+    }
+   ],
+   "kit": [
+    "overdrive",
+    "scatter",
+    "supplyRun"
+   ],
+   "score": {
+    "fun": 3,
+    "difficulty": "bit-easy",
+    "pacing": "right",
+    "variety": 3,
+    "readability": 5,
+    "mapFeel": 4,
+    "boss": 4,
+    "best": 12,
+    "weakest": 1,
+    "again": "maybe"
+   },
+   "verdict": "cut",
+   "note": ""
+  }
+ ],
+ "totals": {
+  "scorecards": 8,
+  "lost": {
+   "w1to5": 3,
+   "w6to10": 29,
+   "boss": 10
+  },
+  "noLossW1to5": 6,
+  "weakestWave1": 6,
+  "readability5": 8,
+  "pacingRight": 8
+ },
+ "bots": {
+  "note": "Round 12 bot prediction (tools/v3/map-lab/results/round12-versions.json): ships lost over the three boss rounds by the \"you\" bot, v1, after the boss changes.",
+  "youBotBossLost": {
+   "map-strait": 14.4,
+   "map-harbor": 11.8,
+   "map-gauntlet": 18.3
+  }
+ }
+}
