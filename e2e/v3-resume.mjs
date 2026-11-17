@@ -140,12 +140,14 @@ try {
   await page.waitForSelector('.playing');
   const reached = await playUntil(page, (s) => s.phase === 'wave' && s.wave === 3 && s.waveT > 12);
   check(reached?.wave === 3 && reached.phase === 'wave', `played into wave 3 (${JSON.stringify(reached)})`);
-  const before = await gameNow(page);
   const id = await page.evaluate(() => window.__v3.log().id);
 
   // ---- The background: paused, and kept ----
   await hide(page);
   await page.waitForTimeout(400);
+  // Read where the game stopped once it is paused: the live loop can run a
+  // step between a read made before the background and the save itself.
+  const before = await gameNow(page);
   const kept = await savedRun(page);
   const paused = await page.evaluate(() => document.querySelector('.v2-pause').textContent === '▶' && !!document.querySelector('.v2-pause-panel'));
   check(paused, 'going to the background pauses the wave');
@@ -314,9 +316,9 @@ try {
   await page.locator('[data-free-start]').tap();
   await page.waitForSelector('.playing');
   await playUntil(page, (s) => s.phase === 'wave' && s.waveT > 6);
-  const fp = await gameNow(page);
   await hide(page);
   await page.waitForTimeout(300);
+  const fp = await gameNow(page); // read once paused (see the campaign run)
   await page.reload();
   await page.waitForSelector('[data-continue="free"]');
   const fpEntry = await page.evaluate(() => document.querySelector('[data-continue]').innerText.replace(/\s+/g, ' '));
@@ -336,11 +338,11 @@ try {
   const labStart = await page.evaluate(() => { const g = window.__v3.game(); return { full: g.lab?.full, enc: !!g.enc, convoy: g.convoy?.setup.policy ?? null }; });
   check(labStart.full && labStart.enc && labStart.convoy === 'tactical', `the Harbor Mouth card: full run, encounters, convoy commands (${JSON.stringify(labStart)})`);
   await playUntil(page, (s) => s.phase === 'wave' && s.waveT > 14);
-  const lab = await gameNow(page);
-  const labLog = await page.evaluate(() => window.__v3.log());
-  const convoyBox = await page.evaluate(() => document.querySelector('.v3-commands').innerText.replace(/\s+/g, ' '));
   await hide(page);
   await page.waitForTimeout(300);
+  const lab = await gameNow(page); // read once paused (see the campaign run)
+  const labLog = await page.evaluate(() => window.__v3.log());
+  const convoyBox = await page.evaluate(() => document.querySelector('.v3-commands').innerText.replace(/\s+/g, ' '));
   await page.goto(`${HOST}/v3.html`);
   await page.waitForSelector('[data-continue="lab"]');
   await page.locator('[data-lab]').tap();
