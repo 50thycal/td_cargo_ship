@@ -143,9 +143,14 @@ describe('wave 1 says something about the map, in every version', () => {
         }
         // v1 and v3 open with their first encounter (or one of the same
         // name); v2's opener is its own, and its four set pieces stay the peaks.
+        // Encounters rev 4: Harbor Mouth's v1 has one encounter a wave, so
+        // its wave 1 is its own (Over the neck), no opener; its rev 3 plan
+        // opened with Open water, waves 1-3.
         const later = [2, 3, 4].flatMap((w) => encountersFor(map, w, v)).filter((x) => !x.opener)[0];
-        if (v !== 'v2') expect(e.name, `${map} ${v}`).toBe(later.name);
+        if (v !== 'v2' && !(map === 'harbor' && v === 'v1')) expect(e.name, `${map} ${v}`).toBe(later.name);
       }
+    expect(encountersFor('harbor', 1, 'v1').map((e) => e.id)).toEqual(['harbor-first-look']);
+    expect(encountersFor('harbor', 1, 'v1', 3).map((e) => e.id)).toEqual(['harbor-open-water']);
     expect(arcGroups('strait', 11, 13, 'Afterburner Rush')[0]).toEqual({ from: 1, to: 4, name: 'Ranging shots' });
   });
 
