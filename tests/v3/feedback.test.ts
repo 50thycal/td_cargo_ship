@@ -3,15 +3,18 @@
 
 import { describe, expect, it } from 'vitest';
 import { BURST, DRY_STREAK, Watch, volleyPlan } from '../../src/v3/sim/feedback';
-import { BotRun } from '../../src/v3/sim/mimic';
+import { BotRun, YOU_R12 } from '../../src/v3/sim/mimic';
 import { Playback, replay, replayTo } from '../../src/v3/sim/playlog';
 import { createGame, step } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 
 /** A bot game with the recorder watching it frame by frame, as the UI does. */
+// The runs here are scenarios (fixed seeds that make volleys, sinkings and
+// event stretches): they play round 12's frozen bot, so a refit of the "you"
+// persona does not move them.
 function watchedRun(map: Parameters<typeof createGame>[0], seed: number, firstWave = 1, waves = 2) {
-  const run = new BotRun(map, seed, { firstWave });
+  const run = new BotRun(map, seed, { firstWave, persona: YOU_R12 });
   const g = run.game;
   while (!run.done && g.wave < firstWave + waves) {
     run.advance(2);
@@ -128,7 +131,7 @@ describe('notes', () => {
 
 describe('watch it (playback)', () => {
   it('plays a log on from a step exactly as the run went', () => {
-    const run = new BotRun('gauntlet', 21, { firstWave: 6 });
+    const run = new BotRun('gauntlet', 21, { firstWave: 6, persona: YOU_R12 });
     run.advance(60 * 70);
     const log = run.finish();
     const from = 60 * 30;
@@ -143,7 +146,7 @@ describe('watch it (playback)', () => {
   });
 
   it('stops at the end of the run', () => {
-    const run = new BotRun('strait', 3, { firstWave: 9 });
+    const run = new BotRun('strait', 3, { firstWave: 9, persona: YOU_R12 });
     run.advance(Infinity);
     const log = run.finish();
     const pb = new Playback(log, Math.max(0, run.game.steps - 120));

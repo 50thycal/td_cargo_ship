@@ -25,6 +25,7 @@ import { VIEW } from '../../../src/v3/data/config';
 import type { MapId } from '../../../src/v3/data/maps';
 import { REFERENCE_MAPS } from '../../../src/v3/sim/mapLab';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
+import { PLAYER_ARMORY } from '../bot-fit/measure';
 import { LOG_VERSION, logTelemetry } from '../../../src/v3/sim/playlog';
 import type { TelEvent } from '../../../src/v3/sim/telemetry';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
@@ -62,7 +63,9 @@ export interface VersionRun {
   held: Record<string, number>;
 }
 
-const PERSONA_KIT: Record<string, Record<string, number>> = { you: {}, casual: {}, tryhard: { warhead: 3 } };
+// The "you" bot plays with the player's own Armory (map rebuild phase 2:
+// round 12 ran it with none, which alone cost it about a ship in waves 1-5).
+const PERSONA_KIT: Record<string, Record<string, number>> = { you: PLAYER_ARMORY, casual: {}, tryhard: { warhead: 3 } };
 
 /** The two kits the player brought to Harbor Mouth in round 11: weapons you
  *  aim (Overdrive, Railgun) and weapons that fire themselves (Airstrike,

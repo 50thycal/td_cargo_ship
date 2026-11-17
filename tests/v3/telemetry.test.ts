@@ -314,7 +314,7 @@ describe('launches: where each came from', () => {
 
 describe('normal waves, the bonus wave and the map\'s event are told apart', () => {
   it('Siren Field after wave 6 is a bonus stretch; the ending is three stretches, runs 1 to 3', () => {
-    const { log } = playMimic('strait', 8, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 6 });
+    const { log } = playMimic('strait', 8, { persona: PERSONAS['tryhard-r12'], armory: { warhead: 3 }, firstWave: 6 });
     const g = replay(log, { telemetry: true });
     const sc = g.tel!.sidecar(g);
     expect(sc.phases.map((p) => [p.wave, p.kind, p.event ?? '', p.run ?? 0])).toEqual([

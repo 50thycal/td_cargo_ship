@@ -99,6 +99,11 @@ export interface Persona {
   fatigue?: number;
   /** Chance a noticed pickup gets a tap when the finger is free. */
   pickup: number;
+  /** Pickups as the player takes them (map rebuild phase 2): each one is
+   *  noticed a log-normal time after it drops (s), sooner in waves 6-10
+   *  (× `late`) and the boss rounds (× `boss`), and once noticed it gets the
+   *  next tap, even in the middle of a burst. In place of `pickup`. */
+  grab?: { median: number; sigma: number; late: number; boss: number };
   /** Flow step it turns the ships up to early in wave 1, with the odds of each. */
   flow: { step: number; weight: number }[];
   /** One formation change, in waves `from`–`to` (none when `to` < `from`). */
@@ -107,6 +112,10 @@ export interface Persona {
   taste: AbilityId[];
   /** 'stack' (default) levels what it holds; 'random' takes any card. */
   cards?: 'stack' | 'random';
+  /** Stacking, with a free slot: the chance it takes a new weapon it likes
+   *  over levelling one it holds (the player fills their three slots early,
+   *  map rebuild phase 2). Absent = 0: always level up. */
+  fresh?: number;
 }
 
 export const YOU_V1: Persona = {
@@ -142,10 +151,10 @@ export const YOU_V1: Persona = {
  *  ballistic launches, passing over threats already covered, resting only
  *  while the sky is clear, the odd two-thumb burst, a mood that changes
  *  wave to wave, and looking away. */
-export const YOU: Persona = {
-  id: 'you',
-  label: 'You',
-  blurb: 'Fitted to your own logs: your rhythm, aim and habits, noise included. Plays at 1.1× and, like you, rushes about one wave in five: faster game, quicker taps.',
+export const YOU_R12: Persona = {
+  id: 'you-r12',
+  label: 'You (round 12)',
+  blurb: 'The round 12 fit, kept to compare against: plays at 1.1×, rushes one wave in five, takes pickups only between bursts.',
   speed: 1.1,
   rush: { share: 0.2, speed: 1.4, tempo: 0.6 },
   react: { median: 0.5, sigma: 0.4 },
@@ -184,6 +193,30 @@ export const YOU: Persona = {
   taste: ['flak', 'airstrike', 'thermo', 'railgun', 'aegis', 'shrapnel', 'seeker', 'frigate', 'tesla', 'scatter', 'boomerang', 'well'],
 };
 
+/** You, map rebuild phase 2 (docs/design/v3-bot-refit.md): refit from the
+ *  player's map-card runs (logs v21-24) with tools/v3/bot-fit. Round 12's
+ *  hands and eyes already matched; what did not was the run around them.
+ *  Over round 12 it plays at 1× (the player is above 1× a sixth of the
+ *  time), takes pickups the way the player does (noticed sooner as the
+ *  stakes rise, and tapped at once, even mid-burst), passes over covered
+ *  threats more, keeps a burst going after a kill, and waits for the
+ *  reload more often. */
+export const YOU: Persona = {
+  ...YOU_R12,
+  id: 'you',
+  label: 'You',
+  blurb: 'Fitted to your own logs: your rhythm, aim and habits, noise included. Plays at 1× and now and then rushes a wave; grabs pickups fast, faster when it counts.',
+  speed: 1,
+  rush: { share: 0.15, speed: 1.5, tempo: 0.8 },
+  grab: { median: 1.5, sigma: 0.5, late: 0.65, boss: 0.4 },
+  coverSense: 0.7,
+  hop: 0.4,
+  hopReach: 140,
+  stopOnKill: 0.1,
+  waitDry: 0.7,
+  dryStop: 0.3,
+};
+
 /** What the bot can do: exactly what a player's touches can. */
 export interface BotIO {
   tap(x: number, y: number, radius: number): TapResult;
@@ -220,6 +253,8 @@ export class Mimic {
   /** Each thumb's aim error for the burst in hand. */
   private offset: ([number, number] | null)[] = [null, null];
   private nextLapse: number | null = null;
+  /** `grab`: when each pickup on the water will have been noticed. */
+  private pickupAt = new Map<number, number>();
 
   /** `dice` > 0 rolls a different (but repeatable) game of the same seed:
    *  the fitting tools want several bot games per player run. */
@@ -248,17 +283,21 @@ export class Mimic {
       const k = (g.wave * 7 + g.seed) % Math.max(1, takeable.length);
       return { id: takeable[k] ?? g.offer[0] };
     }
-    // Stack: level up the card it holds highest.
+    // Stack: level up the card it holds highest, or (with `fresh`, a slot
+    // free) now and then take a new weapon instead.
     const held = takeable.filter((id): id is AbilityId => id !== 'resupply' && (g.levels[id] ?? 0) > 0);
-    if (held.length) return { id: held.sort((a, b) => (g.levels[b] ?? 0) - (g.levels[a] ?? 0))[0] };
-    const fresh = takeable.filter((id) => id !== 'resupply');
-    if (fresh.length && loadout(g.levels).length < MAX_SLOTS) {
-      const rank = (id: CardId) => {
-        const k = this.persona.taste.indexOf(id as AbilityId);
-        return k < 0 ? 50 + (ABILITY_ORDER as readonly string[]).indexOf(id) : k;
-      };
-      return { id: fresh.sort((a, b) => rank(a) - rank(b))[0] };
-    }
+    const rank = (id: CardId) => {
+      const k = this.persona.taste.indexOf(id as AbilityId);
+      return k < 0 ? 50 + (ABILITY_ORDER as readonly string[]).indexOf(id) : k;
+    };
+    const fresh = takeable.filter((id) => id !== 'resupply' && !(g.levels[id as AbilityId] ?? 0));
+    const room = loadout(g.levels).length < MAX_SLOTS;
+    // The same game state always draws the same: the pick never moves the
+    // bot's dice.
+    const roll = (((g.seed ^ Math.imul(g.wave + 1, 0x9e3779b1)) >>> 0) % 1000) / 1000;
+    const goFresh = room && fresh.length > 0 && (!held.length || roll < (this.persona.fresh ?? 0));
+    if (held.length && !goFresh) return { id: held.sort((a, b) => (g.levels[b] ?? 0) - (g.levels[a] ?? 0))[0] };
+    if (fresh.length && room) return { id: fresh.sort((a, b) => rank(a) - rank(b))[0] };
     if (g.offer.includes('resupply')) return { id: 'resupply' };
     // Nothing to stack and no Resupply: the first card it can take at all.
     return { id: takeable[0] ?? g.offer[0] };
@@ -295,6 +334,19 @@ export class Mimic {
       this.nextLapse = this.lapseUntil + this.scale((-Math.log(Math.max(1e-6, this.rng.next())) * 60) / rate, false);
       this.tapsLeft = 0;
       return;
+    }
+    // A noticed pickup takes the next tap: mid-burst at the burst's next
+    // tap, or cutting a rest short.
+    if (p.grab && (t >= this.nextTap || this.tapsLeft <= 0)) {
+      const grab = this.grabDue(g, t);
+      if (grab) {
+        this.finger = { x: grab.x, y: grab.y };
+        io.tap(grab.x + this.rng.range(-12, 12), grab.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);
+        this.pickupAt.delete(grab.id);
+        this.nextTap = t + this.scale(this.rng.range(...p.burstGap), false);
+        if (this.tapsLeft <= 0) this.pausedAt = t;
+        return;
+      }
     }
     if (t < this.nextTap) {
       // Resting between bursts, until something new shows up.
@@ -384,7 +436,7 @@ export class Mimic {
       return;
     }
 
-    const pickup = g.pickups.find((pk) => pk.age > p.react.median * (p.speed ?? 1) && !pickupLocked(g, pk));
+    const pickup = p.grab ? undefined : g.pickups.find((pk) => pk.age > p.react.median * (p.speed ?? 1) && !pickupLocked(g, pk));
     if (pickup && this.rng.chance(p.pickup * SIM_DT * 6)) {
       this.finger = { x: pickup.x, y: pickup.y };
       io.tap(pickup.x + this.rng.range(-12, 12), pickup.y + this.rng.range(-12, 12), BOT_TAP_RADIUS);
@@ -504,6 +556,27 @@ export class Mimic {
       if (g.formation !== mp.id) io.formation(mp.id);
       this.formationPlan = null;
     }
+  }
+
+  /** `grab`: the pickup it has noticed and can take now, if any. Times each
+   *  new pickup as it first shows; forgets the ones that are gone. */
+  private grabDue(g: Game, t: number): Game['pickups'][number] | null {
+    const p = this.persona.grab!;
+    let due: Game['pickups'][number] | null = null;
+    for (const pk of g.pickups) {
+      let at = this.pickupAt.get(pk.id);
+      if (at === undefined) {
+        const k = g.wave >= 11 ? p.boss : g.wave >= 6 ? p.late : 1;
+        at = t - pk.age + this.scale(this.logNormal(p) * k);
+        this.pickupAt.set(pk.id, at);
+      }
+      if (at <= t && !due && !pickupLocked(g, pk)) due = pk;
+    }
+    if (this.pickupAt.size > g.pickups.length + 16) {
+      const on = new Set(g.pickups.map((pk) => pk.id));
+      for (const id of this.pickupAt.keys()) if (!on.has(id)) this.pickupAt.delete(id);
+    }
+    return due;
   }
 
   private glance(seen: Threat[]): Threat {
@@ -675,9 +748,9 @@ export function playMimic(map: MapId, seed: number, opts: RunOpts = {}): { game:
 const scaleR = (k: number, sigma = YOU.react.sigma) => ({ median: YOU.react.median * k, sigma });
 const scaleP = (k: number, sigma = YOU.pause.sigma) => ({ median: YOU.pause.median * k, sigma });
 
-export const TRYHARD: Persona = {
-  ...YOU,
-  id: 'tryhard',
+/** A sharper day: on top of any fitted "you" (round 12's is kept for the
+ *  map-lab baseline). */
+const TRYHARD_KNOBS: Partial<Persona> = {
   label: 'Try-hard',
   blurb: 'Locked in at 1×: quick eyes, both thumbs, goes for whatever lands first, never wastes a shot, never looks away.',
   speed: 1,
@@ -699,6 +772,9 @@ export const TRYHARD: Persona = {
   rush: undefined,
 };
 
+export const TRYHARD: Persona = { ...YOU, ...TRYHARD_KNOBS, id: 'tryhard' };
+export const TRYHARD_R12: Persona = { ...YOU_R12, ...TRYHARD_KNOBS, id: 'tryhard-r12', label: 'Try-hard (round 12)' };
+
 export const CASUAL: Persona = {
   ...YOU,
   id: 'casual',
@@ -716,6 +792,7 @@ export const CASUAL: Persona = {
   mood: 0.3,
   lapse: { perMin: 0.3, median: 4, sigma: 0.4 },
   pickup: 1.2,
+  grab: { ...YOU.grab!, median: YOU.grab!.median * 1.6 },
   flow: [{ step: 3, weight: 1 }],
   rush: undefined,
 };
@@ -802,6 +879,7 @@ export const NOVICE: Persona = {
   coverSense: 0,
   twoThumb: 0,
   pickup: 0.5,
+  grab: undefined,
   flow: [
     { step: 1, weight: 1 },
     { step: 2, weight: 1 },
@@ -825,7 +903,7 @@ export const TIRED: Persona = {
 export const PERSONA_ORDER = ['you', 'tryhard', 'sniper', 'casual', 'tired', 'distracted', 'rusher', 'masher', 'novice'] as const;
 
 export const PERSONAS: Record<string, Persona> = Object.fromEntries(
-  [YOU, TRYHARD, CASUAL, DISTRACTED, RUSHER, MASHER, SNIPER, NOVICE, TIRED, YOU_V1].map((p) => [p.id, p]),
+  [YOU, TRYHARD, CASUAL, DISTRACTED, RUSHER, MASHER, SNIPER, NOVICE, TIRED, YOU_R12, TRYHARD_R12, YOU_V1].map((p) => [p.id, p]),
 );
 // Weapon ids the taste list may name must exist.
 for (const p of Object.values(PERSONAS)) for (const id of p.taste) if (!(id in ABILITIES)) throw new Error(`persona ${p.id} names unknown ability ${id}`);
