@@ -38,8 +38,11 @@ import type { MapId } from './maps';
  *  12's fixes, from the round 11 scorecards): every version opens with an
  *  encounter on wave 1 (OPENERS), and The Strait's waves 5-10 send about
  *  10% more fire in every version (MAP_FIRE). Both are rev 3's only: a log
- *  of rev 1 or 2 plays as it did. */
-export const ENCOUNTER_REV = 3;
+ *  of rev 1 or 2 plays as it did. Rev 4 (map rebuild phase 4, the reference
+ *  maps brought to the map and wave rules: docs/design/v3-map-wave-rules.md):
+ *  encounters may be replaced (`until`), and the reference maps' v1 plans
+ *  are reworked; a rev 3 log plays as it did. */
+export const ENCOUNTER_REV = 4;
 
 /** A reference map's encounter version. */
 export type EncounterVersion = 'v1' | 'v2' | 'v3';
@@ -156,6 +159,10 @@ export interface Encounter {
    *  their first). A run plays only the encounters of its own rev or
    *  before, so an older log replays as it did. */
   rev?: number;
+  /** The last encounter revision it plays in (absent: every one since its
+   *  own). Phase 4 replaces encounters under rev 4: the old one keeps
+   *  `until: 3`, so a rev 3 log replays as it did. */
+  until?: number;
   /** Wave 1's opener (rev 3): a light first look at the version's first
    *  encounter, so the map's opening shows what the map is. Not a set piece
    *  (v2's four stay its peaks); it may preview what the map has by wave
@@ -1418,6 +1425,11 @@ export function encounterRev(e: Encounter): number {
   return e.rev ?? (e.version === 'v1' ? 1 : 2);
 }
 
+/** Does it play under encounter rev `rev`: from its own rev to its `until`? */
+export function playsAt(e: Encounter, rev: number = ENCOUNTER_REV): boolean {
+  return encounterRev(e) <= rev && (e.until === undefined || rev <= e.until);
+}
+
 // ---- The versions, per map ---------------------------------------------------
 
 export type EncounterMap = 'strait' | 'gauntlet' | 'harbor';
@@ -1528,7 +1540,7 @@ export function waveFire(map: MapId, wave: number, rev: number = ENCOUNTER_REV):
  *  event), as of encounter rev `rev` (a log's own: an older log plays the
  *  encounters it had). */
 export function encountersFor(map: MapId, wave: number, version: EncounterVersion = VERSION_DEFAULT, rev: number = ENCOUNTER_REV): Encounter[] {
-  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave) && encounterRev(e) <= rev);
+  return ENCOUNTERS.filter((e) => e.map === map && e.version === version && e.waves.includes(wave) && playsAt(e, rev));
 }
 
 /** The ten-wave arc of a reference map: what each wave is for, and the

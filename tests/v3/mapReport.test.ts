@@ -52,15 +52,16 @@ describe('a run digested', () => {
     expect(d.reached).toEqual([1, 2]);
   });
 
-  it('counts a close call: within 2 s of a hull, then destroyed', () => {
+  it('counts a close call: aimed at a ship, within 1 s of impact, then destroyed', () => {
     const sc = sidecar([3], [
-      launch(1, 0), launch(2, 0), launch(3, 0), launch(4, 0),
-      { k: 'thr-', id: 1, p: 0, why: 'kill' }, // came to 1.5 s: a close call
-      { k: 'thr-', id: 2, p: 0, why: 'kill' }, // never nearer than 2.5 s
+      launch(1, 0), launch(2, 0), launch(3, 0), launch(4, 0), launch(5, 0, { tg: -1 }),
+      { k: 'thr-', id: 1, p: 0, why: 'kill' }, // came to 0.6 s: a close call
+      { k: 'thr-', id: 2, p: 0, why: 'kill' }, // never nearer than 1.5 s
       { k: 'thr-', id: 3, p: 0, why: 'impact' }, // it hit: not a close call
-      { k: 'thr-', id: 4, p: 0, why: 'kill' }, // exactly 2.0 s: counts
+      { k: 'thr-', id: 4, p: 0, why: 'kill' }, // exactly 1.0 s: counts
+      { k: 'thr-', id: 5, p: 0, why: 'kill' }, // aimed at the carrier: not one
     ]);
-    const watch = { first: { 1: 8, 2: 9, 3: 5, 4: 6 }, min: { 1: 1.5, 2: 2.5, 3: 0, 4: 2.0 } };
+    const watch = { first: { 1: 8, 2: 9, 3: 5, 4: 6, 5: 7 }, min: { 1: 0.6, 2: 1.5, 3: 0, 4: 1.0, 5: 0.2 } };
     expect(digestRun(strait, 1, sc, watch).close[2]).toBe(2);
   });
 
