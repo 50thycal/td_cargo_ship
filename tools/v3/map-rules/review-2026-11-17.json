@@ -1,0 +1,206 @@
+{
+ "read": "2026-11-17",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {
+  "g-mechanic": {
+   "at": "2026-11-17T16:10:40.530Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "g-named": {
+   "at": "2026-11-17T16:09:25.975Z",
+   "note": "So I think this just needs to be an internal notes those notes saying “near silo target middle lane” will be confusing to player. Something like “drone swarm” is better. So include internal notes what this encounter does and what it targets and how it uses the map",
+   "verdict": "change"
+  },
+  "g-safe": {
+   "at": "2026-11-17T16:10:53.839Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "g-split": {
+   "at": "2026-11-17T16:10:04.966Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "g-timing": {
+   "at": "2026-11-17T16:09:35.617Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "g-warning": {
+   "at": "2026-11-17T16:10:25.319Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-carrier": {
+   "at": "2026-11-17T12:34:01.335Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-convoy": {
+   "at": "2026-11-17T12:34:07.358Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-difficulty": {
+   "at": "2026-11-17T12:37:17.169Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-dilemma": {
+   "at": "2026-11-17T05:00:06.322Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-enemy": {
+   "at": "2026-11-17T12:33:37.947Z",
+   "note": " It sure if we have enough enemy types for each map. So doesn’t have to be a hard rule but each new enemy should have its own”debut”",
+   "verdict": "change"
+  },
+  "m-kits": {
+   "at": "2026-11-17T12:39:35.713Z",
+   "note": "I would say ideally with the kits and the enemy weapons and the player weapons each Bab might have a particular combo the player weapons that counter the enemy weapons. Well, I’m kind of goes back to each map should have a problem that used to be solved and that can be solved by the specific player weapons. You’re choosing to pick to counter the enemy weapons here so thinking kind of like you know if the map has like very large swarms than an area.  you know if the map has like very large swarms than a area attack by the player would work well there or if it has a lot of heavy hitters and then you need something that obviously does a lot of damage.",
+   "verdict": "change"
+  },
+  "m-mechanic": {
+   "at": "2026-11-17T12:28:16.014Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-reads": {
+   "at": "2026-11-17T12:39:44.023Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-shape-convoy": {
+   "at": "2026-11-17T12:36:45.332Z",
+   "note": "I would say that’s a very based on the map just depends on the layout of the map so we can play around this mechanic. It doesn’t need to be a hard rule even make it so like there’s like a single line or a large volume of the ships coming in to change how the map plays so basically this is a lever that we can play with when it comes to map design since formations and rate to now set",
+   "verdict": "change"
+  },
+  "m-sources": {
+   "at": "2026-11-17T05:00:49.608Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "m-stretches": {
+   "at": "2026-11-17T12:27:50.879Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "q-batches": {
+   "at": "2026-11-17T16:15:50.258Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "q-bots": {
+   "at": "2026-11-17T16:13:45.612Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "q-card": {
+   "at": "2026-11-17T16:13:30.139Z",
+   "note": "Run preliminary bot test if needed to get an idea of the flow of the map ",
+   "verdict": "approve"
+  },
+  "q-player": {
+   "at": "2026-11-17T16:15:47.650Z",
+   "note": "We shouldn’t give soooo much weight to the score cards. These are kinda filled out on a whim and not all that detailed. Treat the score cards as a vibe check vs law. Maybe we can overhaul the score card system too. Like showing our previous rankings or other map rankings so I can make more informed decisions and anything else you think that will give me a better way to actually rate these waves "
+  },
+  "w-arc": {
+   "at": "2026-11-17T13:20:04.383Z",
+   "note": "Keep In mind that this might get “boring” for players. But let’s move forward with this decision and we can modify down the road if needed ",
+   "verdict": "approve"
+  },
+  "w-boss": {
+   "at": "2026-11-17T16:02:32.366Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-bots": {
+   "at": "2026-11-17T16:02:43.636Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-budget": {
+   "at": "2026-11-17T16:02:03.538Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-calm": {
+   "at": "2026-11-17T16:01:43.203Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-cliff": {
+   "at": "2026-11-17T16:01:35.070Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-early": {
+   "at": "2026-11-17T13:20:53.125Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-encounter": {
+   "at": "2026-11-17T15:37:41.458Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-first": {
+   "at": "2026-11-17T15:37:10.304Z",
+   "note": "",
+   "verdict": "approve"
+  },
+  "w-variety": {
+   "at": "2026-11-17T15:38:09.290Z",
+   "note": "",
+   "verdict": "approve"
+  }
+ },
+ "answers": {
+  "mr-boss": {
+   "at": "2026-11-17T04:54:32.045Z",
+   "choice": 0,
+   "note": ""
+  },
+  "mr-commands": {
+   "at": "2026-11-17T04:57:33.178Z",
+   "choice": 0,
+   "note": ""
+  },
+  "mr-early": {
+   "at": "2026-11-17T04:53:37.631Z",
+   "choice": 0,
+   "note": ""
+  },
+  "mr-else": {
+   "at": "2026-11-17T04:59:07.408Z",
+   "note": "With this rebuild we should have lots of bot testing and testing out the new heat maps we made to have the AI sessions read the results and come up with the best wave designs and make recommendations. Once all that testing is done then I will do okay testing. This is meant to save me time and optimize for the best build "
+  },
+  "mr-kit": {
+   "at": "2026-11-17T04:56:09.921Z",
+   "choice": 1,
+   "note": "Note I won’t always go for that so I will make notes on which ones are op as I play "
+  },
+  "mr-order": {
+   "at": "2026-11-17T04:56:55.795Z",
+   "choice": 0,
+   "note": ""
+  },
+  "mr-strait": {
+   "at": "2026-11-17T04:52:34.180Z",
+   "choice": 2,
+   "note": ""
+  },
+  "mr-style": {
+   "at": "2026-11-17T04:53:50.210Z",
+   "choice": 0,
+   "note": ""
+  },
+  "mr-test": {
+   "at": "2026-11-17T04:56:17.790Z",
+   "choice": 0,
+   "note": ""
+  }
+ }
+}
