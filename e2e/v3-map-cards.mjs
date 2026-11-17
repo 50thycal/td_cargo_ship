@@ -3,8 +3,10 @@
 // BASE_URL. On a landscape phone (874 x 402), by touch:
 // - the hub's map cards say what they play and how they open;
 // - The Strait's card, tapped from the hub, starts at wave 1 of 13 with
-//   no convoy command on the rail (round 11) and no Bring one, and an encounter is
-//   called out by wave 2-4;
+//   no convoy command on the rail (round 11), nothing of the test over the
+//   field (pause-menu round: its name, count and commands are on the pause
+//   menu) and no Bring one, and an encounter is called out by wave 2-4;
+// - the draft between waves keeps Done in reach;
 // - its log says it is a full production run, and how it was set up;
 // - the setup sheet marks the production setup, Reset returns to it, and
 //   the Quick slice (the old short lab run) is still there;
@@ -54,21 +56,42 @@ const check = (ok, msg) => {
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 const shot = (page, name) => page.screenshot({ path: `${DOC_DIR}/${name}.jpg`, type: 'jpeg', quality: 82 });
 
-/** The run in play, as the tests read it. */
-const runState = (page) =>
-  page.evaluate(() => {
+/** The test's commands are on the pause menu (pause-menu round): pause, if
+ *  the menu isn't up, and wait for them. */
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
+
+/** The run in play, as the tests read it; the test's name, count and
+ *  commands from its pause menu (opened and closed again). */
+const runState = async (page) => {
+  const bar = await page.evaluate(() => !!document.querySelector('.v3-lab-bar'));
+  await labMenu(page);
+  const menu = await page.evaluate(() => {
+    const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
+    const panel = document.querySelector('.v2-pause-panel').getBoundingClientRect();
+    const small = [...document.querySelectorAll('.v2-pause-panel button')].map((b) => b.getBoundingClientRect()).filter((r) => r.height < 44).length;
+    return { script: !!document.querySelector('.v2-pause-panel .v3-enc-script'), fits: panel.top >= 0 && panel.bottom <= innerHeight && panel.left >= 0 && panel.right <= innerWidth && document.documentElement.scrollWidth <= innerWidth, small, bring: vis('.v2-pause-panel [data-lab-bring]'), head: document.querySelector('.v3-lab-pause-name')?.textContent, count: document.querySelector('.v3-lab-pause-head .v3-lab-count')?.textContent, acts: [...document.querySelectorAll('.v2-pause-panel [data-lab-note], .v2-pause-panel [data-lab-setup], .v2-pause-panel [data-lab-done]')].map((b) => b.dataset.labNote ? 'note' : b.dataset.labSetup ? 'setup' : 'done') };
+  });
+  await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForFunction(() => !document.querySelector('.v2-overlay.open'));
+  const run = await page.evaluate(() => {
     const g = window.__v3.game();
     const log = window.__v3.log();
-    const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
     return {
       map: g.map.id, wave: g.wave, phase: g.phase, endless: g.endless, freePlay: g.freePlay, plays: g.lab?.setup.plays ?? null, full: g.lab?.full ?? null,
       policy: g.convoy?.setup.policy ?? null, enc: g.enc?.setup.rev ?? null,
       cmds: [...document.querySelectorAll('.v3-command')].filter((b) => b.getBoundingClientRect().width > 0).map((b) => b.dataset.command),
-      bring: vis('[data-lab-bring]'), head: document.querySelector('.v3-lab-bar-head b')?.textContent, count: document.querySelector('.v3-lab-count')?.textContent,
       hud: document.querySelector('.v2-hud')?.textContent,
       log: { firstWave: log.firstWave, freePlay: 'freePlay' in log, lab: log.lab, convoy: log.convoy?.policy ?? null, encounters: log.encounters?.rev ?? null },
     };
   });
+  return { ...run, ...menu, bar };
+};
 
 /** The verdict sheet's scorecard, as the tests read it: its rows, its wave
  *  chips, whether it sits above the verdict row, and any chip under 40 px. */
@@ -135,39 +158,51 @@ try {
   const s0 = await runState(page);
   check(s0.map === 'strait' && s0.wave === 1 && s0.full && s0.plays === 'full' && !s0.endless && !s0.freePlay, `The Strait's card from the hub starts the full map at wave 1 (${JSON.stringify({ wave: s0.wave, plays: s0.plays, endless: s0.endless, freePlay: s0.freePlay })})`);
   check(s0.policy === 'tactical' && s0.cmds.length === 0 && s0.enc === 3, `its production setup: the map's own convoy with no command (round 11: Rush and Disperse are gone), authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
-  check(!s0.bring && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1/13' && /WAVE\s*1\/13/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `the bar reads "${s0.head} · ${s0.count}", with no Bring one; the HUD says WAVE 1/13 and TEST LAB`);
+  check(s0.script && s0.fits && s0.small === 0, `the pause menu shows the encounter script with the test's commands, fits the phone and every button is 44 px or more (${JSON.stringify({ script: s0.script, fits: s0.fits, small: s0.small })})`);
+  check(!s0.bar && !s0.bring && s0.acts.join() === 'note,setup,done' && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1/13' && /WAVE\s*1\/13/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `no bar over the field; the pause menu reads "${s0.head} · ${s0.count}" with Note, Setup and Done and no Bring one; the HUD says WAVE 1/13 and TEST LAB`);
   check(s0.log.firstWave === 1 && !s0.log.freePlay && s0.log.lab?.plays === 'full' && s0.log.lab?.config?.convoy === 'tactical' && s0.log.lab?.config?.encounters === 3 && s0.log.lab?.config?.production === true && s0.log.convoy === 'tactical' && s0.log.encounters === 3 && !('length' in s0.log.lab), `the log says it is a full production run, and its setup (${JSON.stringify(s0.log.lab)})`);
   await page.waitForTimeout(1500);
   await shot(page, 'strait-wave1-commands');
 
-  // ---- An encounter is called out by wave 2-4 ----
+  // ---- An encounter is called out by wave 1-4 (pause-menu round: with no
+  // TESTING card ahead of it, wave 1's shows on wave 1); the draft after
+  // wave 1 is checked either way ----
   await tough(page);
   let called = '';
-  for (let w = 1; w <= 4 && !called; w++) {
-    called = await page.evaluate(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0] ?? '');
-    if (called) break;
+  let calledOn = 0;
+  for (let w = 1; w <= 4; w++) {
+    called ||= await page.evaluate(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0] ?? '');
+    if (called && !calledOn) calledOn = w;
+    if (called && w > 1) break;
     await page.evaluate(() => window.__v3.advance(200));
     await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
     await page.waitForTimeout(400);
     if (w === 1) {
-      // The campaign's draft after every wave, and Done still in reach over it.
+      // The campaign's draft after every wave, and Done still in reach on it
+      // (in its header: the bar it was on is gone).
+      await page.waitForTimeout(500);
       const d = await page.evaluate(() => {
-        const b = document.querySelector('[data-lab-done]').getBoundingClientRect();
+        const b = document.querySelector('.v2-draft [data-lab-done]').getBoundingClientRect();
         const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)?.closest('[data-lab-done]');
         const cards = [...document.querySelectorAll('.v2-card')].map((c) => c.getBoundingClientRect());
-        return { done: !!top, cards: cards.length, clear: cards.every((c) => c.bottom <= b.top + 1), h2: document.querySelector('.v2-draft h2')?.textContent };
+        return { done: !!top, h: Math.round(b.height), onScreen: b.top >= 0 && b.bottom <= innerHeight, cards: cards.length, clear: cards.every((c) => c.top >= b.bottom - 1 || c.bottom <= b.top + 1 || c.left >= b.right - 1 || c.right <= b.left + 1), h2: document.querySelector('.v2-draft h2')?.textContent };
       });
-      check(d.done && d.cards >= 3 && d.clear && d.h2 === 'Choose your weapon', `after wave 1 the campaign's draft deals ${d.cards} weapons, and Done is still in reach above it (${JSON.stringify(d)})`);
-      await page.screenshot({ path: `${OUT_DIR}/draft-with-bar.png` });
+      check(d.done && d.h >= 44 && d.onScreen && d.cards >= 3 && d.clear && d.h2 === 'Choose your weapon', `after wave 1 the campaign's draft deals ${d.cards} weapons, and Done is still in reach on it, clear of the cards (${JSON.stringify(d)})`);
+      await page.screenshot({ path: `${OUT_DIR}/draft-with-done.png` });
     }
     await page.locator('.v2-card:not([disabled])').first().click();
     await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 8000 });
-    called = await page.waitForFunction(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0], null, { timeout: 6000 }).then((h) => h.jsonValue()).catch(() => '');
+    if (!called) {
+      called = await page.waitForFunction(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0], null, { timeout: 6000 }).then((h) => h.jsonValue()).catch(() => '');
+      if (called) calledOn = w + 1;
+    }
   }
   const s1 = await runState(page);
-  check(!!called && s1.wave >= 2 && s1.wave <= 4 && s1.count === `full map · wave ${s1.wave}/13`, `an encounter is called out on wave ${s1.wave} ("${called}"); the bar reads "${s1.count}"`);
+  check(!!called && calledOn >= 1 && calledOn <= 4 && s1.wave >= 2 && s1.count === `full map · wave ${s1.wave}/13`, `an encounter is called out on wave ${calledOn} ("${called}"); on wave ${s1.wave} the pause menu reads "${s1.count}"`);
 
-  // ---- The setup sheet: Production setup, Reset, Quick slice ----
+  // ---- The setup sheet (from the pause menu): Production setup, Reset,
+  // Quick slice ----
+  await labMenu(page);
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-production]');
   const sh0 = await page.evaluate(() => {
@@ -187,9 +222,10 @@ try {
   const sh3 = await page.evaluate(() => ({ slice: document.querySelector('.v3-lab-slice').hidden, prod: document.querySelector('[data-lab-production]').dataset.labProduction }));
   check(!sh3.slice && sh3.prod === '0', 'the Quick slice shows the lab\'s wave, kit, mix and length, and is not the production setup');
   await page.tap('[data-lab-apply]');
-  await page.waitForFunction(() => window.__v3.game()?.lab?.setup.plays === 'slice' && !!document.querySelector('.v3-lab-count')?.textContent, null, { timeout: 8000 });
+  await page.waitForFunction(() => window.__v3.game()?.lab?.setup.plays === 'slice' && window.__v3.game().phase === 'wave' && !document.querySelector('.v2-overlay.open'), null, { timeout: 8000 });
   const s2 = await runState(page);
   check(s2.wave === 5 && s2.endless && s2.freePlay && s2.count === 'quick slice · 1/8' && s2.log.lab?.plays === 'slice' && s2.log.lab?.length === 'full' && s2.log.firstWave === 5, `the Quick slice is the old short lab run, and its log says so (wave ${s2.wave}; "${s2.count}"; ${JSON.stringify(s2.log.lab)})`);
+  await labMenu(page);
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-reset]');
   await page.tap('[data-lab-reset]');
@@ -198,7 +234,9 @@ try {
   const s3 = await runState(page);
   check(s3.wave === 1 && s3.policy === 'tactical' && s3.enc === 3 && s3.log.lab?.config?.production === true, 'Reset from the slice restarts the full map under the production setup');
 
-  // Done: the verdict sheet, with the scorecard, then back to the list.
+  // Done (on the pause menu): the verdict sheet, with the scorecard, then
+  // back to the list.
+  await labMenu(page);
   await page.tap('[data-lab-done]');
   await page.waitForSelector('[data-screen="lab-verdict"]');
   const ev = await page.evaluate(() => document.querySelector('.v3-lab-evidence')?.textContent ?? '');

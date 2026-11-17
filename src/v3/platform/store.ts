@@ -16,6 +16,9 @@
 export const KEYS = [
   'straitwatch.v3.progress',
   'straitwatch-v3-audio',
+  // The types met so far (platform/seen.ts), and the list it replaced (read
+  // once, to convert it).
+  'straitwatch.v3.seen',
   'straitwatch.v3.tips',
   'straitwatch.v3.freeplay',
   'straitwatch.v3.notes',
