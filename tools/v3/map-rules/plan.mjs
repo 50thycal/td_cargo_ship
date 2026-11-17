@@ -88,7 +88,7 @@ export const STATUS = {
     { n: 159, title: 'This hub page', state: 'merged' },
     { n: 160, title: 'Bots that play like you (the refit)', state: 'merged' },
     { n: 161, title: 'The new scorecard', state: 'merged' },
-    { n: 162, title: 'Automatic checks and a bot report for each map', state: 'open' },
+    { n: 162, title: 'Automatic checks and a bot report for each map', state: 'merged' },
   ],
   log: [
     { date: '2026-11-17', what: 'Checks and bot reports built. What they found on the three reference maps: a cliff on every map (a wave where losses more than double); Harbor Mouth’s waves 4–7 are a third light on attacks (its funnel encounter replaces more than it sends); the Strait and Gauntlet lack a clearly safe stretch; each encounter runs 3–4 waves in a row (the rules want no repeats back to back). Also: each chapter’s first map brings all its new enemies in waves 2–6, mixed in, so no enemy gets a debut wave of its own yet; the Hydra and Rocket Truck first appear on the Strait. These are the to-do list for the reference-map tuning that starts now.' },
