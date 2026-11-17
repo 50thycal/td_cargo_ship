@@ -44,6 +44,16 @@ const check = (ok, msg) => {
   if (!ok) fail(msg);
   else console.log('ok:', msg);
 };
+
+// A test's commands are on the pause menu (pause-menu round: no bar over the
+// field): pause, if the menu isn't up, and wait for them.
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 const open = async (page, q) => {
   await page.goto(`${BASE_URL}/v3.html?${q}`, { waitUntil: 'networkidle' });
@@ -100,6 +110,7 @@ try {
   await page.screenshot({ path: `${OUT_DIR}/strait-encounter-playing.png` });
 
   // ---- The setup sheet: the choice, and back to the shared waves ----
+  await labMenu(page);
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-encounters]');
   const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lab-encounters]')].map((b) => `${b.textContent}${b.classList.contains('on') ? '*' : ''}`));
@@ -110,6 +121,7 @@ try {
   await page.waitForFunction(() => window.__v3.game()?.steps < 600 && window.__v3.game().enc === null, null, { timeout: 8000 });
   const s1 = await state(page);
   check(s1.enc === null && s1.log === null && s1.queued.length === 0 && !/ENCOUNTER: /.test(s1.text), `"Shared" restarts the test on the map's shared waves: no layer, nothing authored in the queue`);
+  await labMenu(page);
   await page.tap('[data-lab-setup]');
   await page.waitForSelector('[data-lab-encounters]');
   await page.tap('[data-lab-encounters="authored"]');
@@ -137,6 +149,7 @@ try {
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-kesh', 'a map with no authored encounters'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
+    await labMenu(page);
     await page.tap('[data-lab-setup]');
     await page.waitForSelector('[data-lab-apply]');
     const none = await page.evaluate(() => ({ row: document.querySelectorAll('[data-lab-encounters]').length, enc: window.__v3.game().enc, log: 'encounters' in window.__v3.log() }));

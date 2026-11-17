@@ -48,15 +48,15 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutLevel } from './alerts';
+import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutKind, type CalloutLevel } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
-import { labDone, labWaves, type LabSetup } from '../sim/lab';
-import { LAB_ROUND, MAP_CARD_PLAYS, cardRev, labCard, type LabCard } from '../data/lab';
+import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
+import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
 import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
@@ -65,7 +65,9 @@ import {
   defaultSetup,
   keepLabLog,
   labRunPlan,
-  labBar,
+  labDoneButton,
+  labPauseActions,
+  labPauseHead,
   labHub,
   labLogs,
   labReport,
@@ -112,6 +114,7 @@ import { chromeSvg, MARK_SVG } from './chrome';
 import { calm, mapThumb, quietGame, thumbNow } from './thumbs';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 import { clearAll, kv } from '../platform/store';
+import { clearSeen, meet, seenTypes, type SeenId } from '../platform/seen';
 import { PRIVACY_URL, STORE, VERSION } from '../platform/flavor';
 import { haptic, hapticForCue, hapticsAvailable, hapticsEnabled, setHapticsEnabled } from '../platform/haptics';
 import { earned, gameCenterAvailable, showGameCenter, submitBest, unlock } from '../platform/gamecenter';
@@ -203,12 +206,13 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
 
 /** What each map's own system is, said once as the map starts (the 20-map
  *  plan: one new idea a map). */
-/** One-time tips on the first map, by wave (see drainEvents). */
-const FIRST_TIPS: Record<number, [string, string]> = {
-  2: ['MORE SHIPS, MORE POINTS', 'Slide SHIPS (left) up: ships come faster and each scores more.'],
-  3: ['FORMATIONS', 'Tap Pairs (top left) to sail in Column, Box or Spread. Each raid card says which helps.'],
+/** One-time tips on the first map, by wave (see drainEvents): how-to, not
+ *  a new type, so only on a fresh save's first campaign runs. */
+const FIRST_TIPS: Record<number, [SeenId, string, string]> = {
+  1: ['tip:basics', 'WAVE 1', 'Tap threats to shoot them down. Hold to keep firing.'],
+  2: ['tip:ships', 'MORE SHIPS, MORE POINTS', 'Slide SHIPS (left) up: ships come faster and each scores more.'],
+  3: ['tip:formations', 'FORMATIONS', 'Tap Pairs (top left) to sail in Column, Box or Spread. Each raid card says which helps.'],
 };
-const TIPS_KEY = 'straitwatch.v3.tips';
 
 /** The Call-outs setting, as Settings shows it. */
 const CALLOUT_LABEL: Record<CalloutLevel, string> = { all: 'All', essential: 'Essential', off: 'Off' };
@@ -217,18 +221,6 @@ const CALLOUT_BLURB: Record<CalloutLevel, string> = {
   essential: 'Only what needs an answer now: raids, the dreadnought, the last ship.',
   off: 'None, except the last-ship alarm.',
 };
-
-/** True the first time a tip is asked for on this device. */
-function firstTime(id: string): boolean {
-  try {
-    const seen = JSON.parse(kv.getItem(TIPS_KEY) ?? '[]') as string[];
-    if (seen.includes(id)) return false;
-    kv.setItem(TIPS_KEY, JSON.stringify([...seen, id]));
-    return true;
-  } catch {
-    return true;
-  }
-}
 
 const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
@@ -338,10 +330,10 @@ export class App {
    *  maps open, faster speeds, and a wave retry on the loss screen. */
   private dev = !STORE && devEnabled();
   /** The Test Lab (docs/design/v3-test-lab.md): what has been tested, the
-   *  test running now (its card, setup and bar), and the setup to start the
-   *  next one with. */
+   *  test running now (its card and setup; its commands are on the pause
+   *  menu), and the setup to start the next one with. */
   private labProgress = loadLabProgress();
-  private labRun: { card: LabCard; setup: LabRunSetup; bar: ReturnType<typeof labBar> } | null = null;
+  private labRun: { card: LabCard; setup: LabRunSetup } | null = null;
   /** The verdict sheet's picks so far, for the test it is about. */
   private labDraft: { run: NonNullable<App['labRun']>; draft: VerdictDraft } | null = null;
   private labLast: LabRunSetup | undefined;
@@ -800,8 +792,33 @@ export class App {
   private showPauseMenu(): void {
     const g = this.game;
     const extra: HTMLElement[] = [];
-    if (this.notesOn && this.rec && g) {
+    // A test (pause-menu round): its commands, where the bar along the
+    // bottom of the field had them; its Note is the menu's note.
+    const run = this.labRun;
+    const lab = run && g?.lab ? g.lab : null;
+    if (run && lab) {
+      extra.push(
+        ...labPauseActions(
+          run.card,
+          {
+            // Bring one is an input at this step: the game goes on at once,
+            // so the player sees it come.
+            bring: () => {
+              this.rec?.bring();
+              this.togglePause();
+            },
+            note: () => this.openNote('pause'),
+            setup: () => this.openLabSetup(),
+            done: () => this.showLabVerdict('done'),
+          },
+          lab.waves,
+          labWaves(lab),
+        ),
+      );
+    } else if (this.notesOn && this.rec && g) {
       extra.push(button('📝 Add a note', 'v2-btn v3-pause-note', () => this.openNote('pause')));
+    }
+    if (this.notesOn && this.rec && g) {
       const last = this.rec.watch.latest();
       if (last) {
         const b = button(`★ Rate last volley: ${volleyName(last.volley)}${last.volley.rating ? ' ✓' : ''}`, 'v2-btn v3-pause-rate', () => this.openRate('pause'));
@@ -819,11 +836,13 @@ export class App {
         this.showMenu();
       }),
     ];
-    // With the encounter script below, the buttons sit in a row, so the
-    // script has the room (a landscape phone is 390 px tall).
+    // With the encounter script below, or a test's commands, the buttons sit
+    // in a row, so the script has the room (a landscape phone is 390 px tall).
     const row = el('div', 'v3-pause-row');
-    if (script) row.append(...buttons);
-    this.showOverlay('v2-pause-panel', [el('h2', '', 'Paused'), ...(script ? [row, script] : buttons)]);
+    if (script || lab) row.append(...buttons);
+    const head = run && lab && g ? labPauseHead(run.card, this.labStats(g), lab.waves, labWaves(lab), { plays: lab.setup.plays, wave: g.wave }) : el('h2', '', 'Paused');
+    this.showOverlay('v2-pause-panel', [head, ...(script || lab ? [row, ...(script ? [script] : [])] : buttons)]);
+    if (lab) this.overlay.querySelector('.v2-pause-panel')?.classList.add('v3-lab-pause');
   }
 
   /** Round 11, the developer's view of the run's authored encounters (the
@@ -1492,27 +1511,33 @@ export class App {
         case 'wave': {
           // A special event's wave has its own card instead.
           if (g.event?.wave === ev.wave) break;
+          // A map's own system is a new type too: said the first time the
+          // player plays that map, in any mode, not on every run of it.
           const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
-          // The wave's bell is the sim's own cue (wave.start).
-          this.showBanner(`WAVE ${ev.wave}`, ev.wave === 1 ? 'Tap threats to shoot them down. Hold to keep firing.' : '', { icon: 'wave' }, null);
-          if (hint) this.showBanner(...hint, { ...HINT, icon: 'info' });
+          // Playthrough round: the first map teaches the basics and the two
+          // left-rail controls a new player otherwise never learns (on a
+          // phone the slider's own hint is hidden for room). Pause-menu
+          // round: how-to, not a new type, so only in the campaign, on the
+          // first map, once per save. (Not under a lab convoy policy: the
+          // slider and formations may be the map's there.)
+          const tip = g.map.id === MAP_ORDER[0] && !this.free && !this.labRun && !g.convoy ? FIRST_TIPS[ev.wave] : undefined;
+          const basics = tip?.[0] === 'tip:basics' && this.explain(tip[0]);
+          // The wave's bell is the sim's own cue (wave.start). The card is
+          // the wave's beat (its number is the HUD's too), never a tip.
+          this.showBanner(`WAVE ${ev.wave}`, basics ? tip![2] : '', { icon: 'wave' }, null);
+          if (hint && this.explain(`map:${g.map.id}`)) this.showBanner(...hint, { ...HINT, icon: 'info' });
           // The Map & Convoy Lab: this wave's authored encounter, by name,
           // so a tester knows which one they are judging.
           // (Round 12: a version with call-outs names each encounter as it
           // starts instead, so not here as well.)
           const enc = g.enc?.wave === ev.wave ? ENCOUNTERS.find((e) => e.id === g.enc!.now[0]) : undefined;
           if (enc && !calloutsOn(g.map.id, g.enc!.setup)) this.showBanner(`ENCOUNTER: ${enc.name.toUpperCase()}`, enc.premise, { icon: 'info' }, null);
-          // Playthrough round: the first map teaches the two left-rail
-          // controls a new player otherwise never learns (on a phone the
-          // slider's own hint is hidden for room). Once each, ever.
-          // (Not under a lab convoy policy: the slider and formations may be
-          // the map's there.)
-          const tip = g.map.id === MAP_ORDER[0] && !this.free && !g.convoy ? FIRST_TIPS[ev.wave] : undefined;
-          if (tip && this.hintsOn() && firstTime(tip[0])) this.showBanner(tip[0], tip[1], { ...HINT, icon: 'info' });
+          if (tip && tip[0] !== 'tip:basics' && this.explain(tip[0])) this.showBanner(tip[1], tip[2], { ...HINT, icon: 'info' });
           break;
         }
         case 'tanker':
-          this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.', WARN, null);
+          // One every wave on Behemoth: said the first time only.
+          if (this.explain('ship:supertanker', 'warn')) this.showBanner('SUPERTANKER UNDER WAY', 'Eight hits sink it, and it counts as three ships.', WARN, null);
           break;
         case 'post': {
           const def = g.map.posts?.[ev.post];
@@ -1531,13 +1556,14 @@ export class App {
           break;
         // Playthrough round: a new threat, launcher or pickup is explained
         // the first time a player meets it, not again on every map (map 2
-        // re-taught all of map 1). Free Play and developer runs always show
-        // them (they test them).
+        // re-taught all of map 1). Pause-menu round: the same memory in the
+        // campaign, Free Play and the Test Lab (the player, in the lab: "so
+        // drones isn't said every time"); Settings → Show tips again.
         case 'debut':
-          if (this.explain(`debut:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
+          if (this.explain(`threat:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
           break;
         case 'vector':
-          if (this.explain(`vector:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], HINT, null);
+          if (this.explain(`launcher:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], HINT, null);
           break;
         case 'shipLost':
           this.shake = 10;
@@ -1574,15 +1600,18 @@ export class App {
           // to two lines and, on the Island's one-card tray, rose onto the
           // carrier; what it does is on the card you drafted it from).
           // A boost's own time (Overdrive lasts longer from level 2).
+          // Pause-menu round: a new weapon type only, the first time it is
+          // loaded (the right rail's card shows what is loaded, and its
+          // seconds, every time after).
           const secs = g.boost?.id === ev.id ? Math.round(g.boost.t) : g.stats.weaponTime;
-          this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${secs}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE, null);
+          if (this.explain(`weapon:${ev.id}`, 'ack')) this.showBanner(`${abilityName(ev.id, ev.level).toUpperCase()} · ${secs}s`, `${ABILITIES[ev.id].how}.`, WEAPON_NOTE, null);
           this.shake = Math.max(this.shake, 4);
           break;
         }
         case 'wild':
           // Wild Card's pickup brought a passive (Test Lab round 8): the
           // banner names both (it takes the plain one's place).
-          this.showBanner(`WILD CARD + ${abilityName(ev.id, ev.level).toUpperCase()} · ${Math.round(g.wildPassive?.t ?? g.stats.weaponTime * AB.wildCard.time)}s`, `Each tap is a random weapon; the ${ABILITIES[ev.id].name} works on its own.`, WEAPON_NOTE, null);
+          if (this.explain(`weapon:wildCard+${ev.id}`, 'ack')) this.showBanner(`WILD CARD + ${abilityName(ev.id, ev.level).toUpperCase()} · ${Math.round(g.wildPassive?.t ?? g.stats.weaponTime * AB.wildCard.time)}s`, `Each tap is a random weapon; the ${ABILITIES[ev.id].name} works on its own.`, WEAPON_NOTE, null);
           break;
         case 'newPickup': {
           const hint = ev.pickup === 'weapon' ? weaponHint(g.stats.weaponTime) : PICKUP_HINT[ev.pickup];
@@ -1594,18 +1623,16 @@ export class App {
     g.events.length = 0;
   }
 
-  /** Show a first-meeting explanation? Once per save in the real game;
-   *  always in Free Play and developer mode. Never while the Call-outs
-   *  setting hides hints, and then it isn't used up either: switched back
-   *  to All, the player still meets it. */
-  private explain(id: string): boolean {
-    if (!this.hintsOn()) return false;
-    if (this.free || this.dev) return true;
-    return firstTime(id);
-  }
-
-  private hintsOn(): boolean {
-    return calloutLook('hint', this.alerts.level) !== null;
+  /** Introduce a type the player meets for the first time (platform/
+   *  seen.ts)? Once per save, in every mode: the campaign, Free Play and
+   *  the Test Lab share the memory (pause-menu round). Never while the
+   *  Call-outs setting hides that kind of card, and then it isn't used up
+   *  either: switched back to All, the player still meets it. Never in a
+   *  replay (history: nothing in it is met). */
+  private explain(id: SeenId, kind: CalloutKind = 'hint'): boolean {
+    if (this.playback) return false;
+    if (!calloutLook(kind, this.alerts.level)) return false;
+    return meet(id);
   }
 
   /** A call-out (see alerts.ts: how long it stays and who sees it). Its
@@ -1671,7 +1698,7 @@ export class App {
     if (this.radarShown || g.phase !== 'wave' || this.playback) return;
     if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
     this.radarShown = true;
-    if (this.explain('radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ...HINT, icon: 'info' });
+    if (this.explain('post:radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ...HINT, icon: 'info' });
   }
 
   /** Test Lab round 1 ("make the projectiles red ... then we can mention to
@@ -1681,7 +1708,7 @@ export class App {
     if (this.redShown || g.phase !== 'wave' || this.playback) return;
     if (!redShots(g).length) return;
     this.redShown = true;
-    if (this.hintsOn()) this.showBanner('RED SHOTS CAN\'T BE STOPPED', 'Hit the launcher instead.', { ...HINT, key: 'red-shots' }, null);
+    if (this.explain('munition:red')) this.showBanner('RED SHOTS CAN\'T BE STOPPED', 'Hit the launcher instead.', { ...HINT, key: 'red-shots' }, null);
   }
 
   /** A raid on its way: its card stays up as long as the warning, four
@@ -1752,7 +1779,6 @@ export class App {
 
   private renderHud(g: Game): void {
     if (this.commandBtns.length) this.renderCommands(g);
-    if (this.labRun && g.lab) this.labRun.bar.update({ ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 }, g.lab.waves, labWaves(g.lab), g.wave);
     const sunk = shipsSunk(g);
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
       i < sunk ? '<i class="lost"></i>' : i === sunk && this.danger ? '<i class="next"></i>' : '<i></i>',
@@ -1779,7 +1805,8 @@ export class App {
     this.lastPhase = g.phase;
     if (g.phase === 'wave') {
       this.beat = null;
-      this.hideOverlay();
+      // (A pause made before the run's first frame keeps its menu.)
+      if (!this.paused) this.hideOverlay();
     } else if (g.phase === 'draft') {
       this.draftWave = g.wave;
       this.saveProgress();
@@ -2321,31 +2348,26 @@ export class App {
           enemies: 'campaign',
         };
     this.play(card.map, free, plan.lab, plan.convoy, plan.encounters);
-    const bar = labBar(
-      card,
-      {
-        bring: () => this.rec?.bring(),
-        note: () => this.openNote('rail'),
-        setup: () => this.openLabSetup(),
-        done: () => this.showLabVerdict('done'),
-      },
-      plan.lab.plays,
-    );
-    this.labRun = { card, setup: s, bar };
-    this.root.append(bar.el);
+    // Its commands, name and what to look for are on the pause menu (pause-
+    // menu round: nothing of the test is over the field, and no card says
+    // what is being tested: the hub's row said so as it was tapped).
+    this.labRun = { card, setup: s };
     this.root.classList.add('lab-on');
-    // What to look for, said once as the test starts (the bar stays slim).
-    this.showBanner(`TESTING: ${card.name.toUpperCase()}`, plan.full ? `${MAP_CARD_PLAYS}. ${card.look}` : card.look, { now: true, icon: 'target' }, null);
   }
 
   private endLabRun(): void {
     if (!this.labRun) return;
-    this.labRun.bar.el.remove();
     this.labRun = null;
     this.root.classList.remove('lab-on');
   }
 
-  /** Change the wave, weapons, mix or length: the test restarts with it. */
+  /** The test's numbers so far (the pause menu's header, the verdict). */
+  private labStats(g: Game): LabStats {
+    return { ...g.lab!.stats, weaponUses: g.lab!.weapon ? (g.uses[g.lab!.weapon] ?? 0) : 0 };
+  }
+
+  /** Change the wave, weapons, mix or length: the test restarts with it.
+   *  Opened from the pause menu; Back to the test goes back to it. */
   private openLabSetup(): void {
     const run = this.labRun;
     if (!run || !this.game || this.game.phase !== 'wave') return;
@@ -2362,7 +2384,7 @@ export class App {
           saveLabProgress(this.labProgress);
           this.startLab(run.card.id, s);
         },
-        () => this.resumeFromDialog(),
+        () => this.showPauseMenu(),
       ),
     ]);
   }
@@ -2376,7 +2398,7 @@ export class App {
     this.hold = null;
     this.dropGesture();
     const p = this.labProgress;
-    const stats = { ...g.lab.stats, weaponUses: g.lab.weapon ? (g.uses[g.lab.weapon] ?? 0) : 0 };
+    const stats = this.labStats(g);
     const waves = g.lab.waves;
     const plays = g.lab.setup.plays;
     // A full map run's waves played, for its scorecard (round 11): the wave
@@ -2740,7 +2762,9 @@ export class App {
     const dev = this.switchRow('dev', 'Developer mode', 'Short test runs, every map open, a start-wave picker and faster speeds. Dev runs never count.', this.dev, (on) => this.setDev(on));
     const left = el('div', 'v3-set-col');
     left.append(this.setCard('Sound', this.soundRows()), this.setCard('Game', [this.calloutRow()]));
-    const cards: HTMLElement[] = [left, this.setCard('Playtest', [notes, dev])];
+    // Show tips again in the right-hand card: the left column is full on a
+    // phone (the App Store build has it under Game).
+    const cards: HTMLElement[] = [left, this.setCard('Playtest', [notes, dev, this.tipsRow()])];
     if (this.dev) {
       const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
       board.dataset.soundBoard = '1';
@@ -2775,7 +2799,7 @@ export class App {
     if (hapticsAvailable()) {
       sound.push(this.switchRow('haptics', 'Haptics', 'A tap on kills, a thud when a ship is lost, a buzz for a cleared map.', hapticsEnabled(), (on) => setHapticsEnabled(on)));
     }
-    const game: HTMLElement[] = [this.calloutRow()];
+    const game: HTMLElement[] = [this.calloutRow(), this.tipsRow()];
     if (!ownsFullGame()) {
       const row = this.infoRow('Full game', `Chapter ${FREE_CHAPTERS} is free. One purchase opens chapters 2–4: fifteen more maps.`);
       row.append(button('Unlock', 'v2-btn primary v3-set-btn', () => this.showUnlock()));
@@ -2842,7 +2866,7 @@ export class App {
     row.append(
       button('Cancel', 'v2-btn primary', () => this.showSettings()),
       button('Reset progress', 'v2-btn v3-danger', () => {
-        clearAll(['straitwatch.v3.progress', 'straitwatch.v3.tips', 'straitwatch.v3.freeplay']);
+        clearAll(['straitwatch.v3.progress', 'straitwatch.v3.seen', 'straitwatch.v3.tips', 'straitwatch.v3.freeplay']);
         this.progress = loadProgress();
         this.freeSetup = loadFreeSetup();
         this.menuChapter = 0;
@@ -3014,6 +3038,25 @@ export class App {
       chips.append(b);
     }
     row.append(el('strong', '', 'Call-outs'), chips, el('span', '', CALLOUT_BLURB[level]));
+    return row;
+  }
+
+  /** Settings → Show tips again (pause-menu round): every enemy, weapon and
+   *  map is introduced again the next time the player meets it, and a fresh
+   *  save's first-map tips come back. */
+  private tipsRow(): HTMLElement {
+    const seen = seenTypes();
+    const n = [...seen].filter((id) => !id.startsWith('tip:')).length;
+    const row = this.infoRow('Show tips again', `Each new type is explained once. ${n ? `${n} met.` : 'None met yet.'}`);
+    row.dataset.setting = 'tips';
+    row.dataset.tipsSeen = String(seen.size);
+    const b = button('Show again', 'v2-btn v3-set-btn', () => {
+      clearSeen();
+      this.showSettings();
+    });
+    b.dataset.tipsReset = '1';
+    b.disabled = !seen.size;
+    row.append(b);
     return row;
   }
 
@@ -3274,6 +3317,7 @@ export class App {
     this.lastPhase = null;
     this.acc = 0;
     this.paused = false;
+    this.pauseBtn.textContent = 'II';
     this.root.classList.add('playing');
     this.flowSlider.set(this.game.flow);
     this.syncFormation();
@@ -3501,6 +3545,14 @@ export class App {
     const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
     const head = el('div', 'v2-draft-head');
     head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your weapon'));
+    // A test's full map run (round 10) has a draft after every wave, and
+    // Done works then too: in the draft's own header (pause-menu round; the
+    // bar it was on is gone).
+    if (this.labRun && g.lab) {
+      const done = labDoneButton(() => this.showLabVerdict('done'), g.lab.waves, labWaves(g.lab));
+      done.classList.add('v3-draft-done');
+      head.append(done);
+    }
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
     this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : [])]);

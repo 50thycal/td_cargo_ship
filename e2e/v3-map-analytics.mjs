@@ -45,6 +45,16 @@ const check = (ok, msg) => {
   if (!ok) fail(msg);
   else console.log('ok:', msg);
 };
+
+// A test's commands are on the pause menu (pause-menu round: no bar over the
+// field): pause, if the menu isn't up, and wait for them.
+const labMenu = async (page) => {
+  // A run just (re)started, or a sheet closing: wait for play, or for a
+  // menu or a draft (between a full run's waves) that has Done on it.
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+};
 const state = (page) => page.evaluate(() => window.__v3.mapLab().state());
 const idle = (page, runs) => page.waitForFunction((n) => { const s = window.__v3.mapLab()?.state(); return s && s.runs.length >= n && !s.busy; }, runs, { timeout: 180000 });
 const setLayer = async (page, layer, metric) => {
@@ -85,6 +95,7 @@ try {
     for (const p of targets) await phone.touchscreen.tap(p.x, p.y);
     await phone.waitForTimeout(140);
   }
+  await labMenu(phone);
   await phone.tap('[data-lab-done]');
   await phone.waitForSelector('[data-screen="lab-verdict"]');
   await phone.tap('[data-lab-verdict="keep"]');
