@@ -251,10 +251,11 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-The rules are set. The build has started in a new session: first the bots learn to play like you, then the reference maps are tuned with bots and heat maps.
+The bots now play like you: they lose about what you lose in waves 1–5 and on the Gauntlet’s boss rounds. Next: automatic checks and a bot report for each map.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
-- **Now: Bots that play like you.** Refit the bots from your logs, so their losses (early waves, boss rounds) match yours. Today they predict 12–18 boss-round losses where you lose 0–4.
+- **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.
+- **Now: The new scorecard.** You approved it (2026-11-17). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.
 - **Next: Automatic checks and bot reports.** No wave cliffs, close calls from wave 3, wave budgets, counter vs off-counter kits, no later-chapter foes; a heat-map report per map that a session can read and act on.
 - **Later: The three reference maps to the rules.** The Strait, The Gauntlet, Harbor Mouth: early stakes, wave 1, boss rounds at about a ship a round, counters, internal encounter notes. Tuned in the bot loop, then you play them.
 - **Later: Chapter 1: Kesh and Marrow.** Map cards, build, bot loop, then your playtest.

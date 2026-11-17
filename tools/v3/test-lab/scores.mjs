@@ -9,6 +9,11 @@
 // [{ id, label, value }] }, boss? }] }. A run is a `results/{cardId}`
 // document's `runs` entry (src/v3/sim/labDocs.ts ScoredRun): { at, log,
 // round, rev, variant, end, verdict, score?, auto? }.
+//
+// Scorecard revision 2 (2026-11-17) retired four rows (`retired: 2` on
+// their category) and added the comparison (`vs`). A score is averaged only
+// with scores of its own revision, so a revision 1 answer and a revision 2
+// answer are never averaged together; the older ones are counted apart.
 
 /** A wave's name: "7", or "B2" for the second boss round. */
 export function waveName(n, bossFrom) {
@@ -41,12 +46,15 @@ export function scoreChips(score, sc) {
 /** The averages of some runs' scores, per category: stars, the mean (1-5);
  *  a choice, the mean of its options' values and the option nearest it
  *  ("Bit hard"), with each option's count; a wave, the one picked most.
- *  Each with `n`, the runs that answered it. Only scores on this
- *  scorecard revision count. */
-export function scoreAverages(runs, sc) {
-  const scored = runs.filter((r) => r.score && (r.score.rev ?? 1) === sc.rev);
+ *  Each with `n`, the runs that answered it. Only scores on one scorecard
+ *  revision count: `rev`, the current one unless given; a category that
+ *  revision no longer asks is left out. */
+export function scoreAverages(runs, sc, rev) {
+  const at = rev === undefined ? sc.rev : rev;
+  const scored = runs.filter((r) => r.score && (r.score.rev ?? 1) === at);
   const out = {};
   for (const c of sc.categories) {
+    if (c.retired !== undefined && at >= c.retired) continue;
     const vals = scored.map((r) => r.score[c.id]).filter((v) => v !== undefined && v !== null);
     if (!vals.length) continue;
     if (c.scale.kind === 'stars') {
@@ -97,8 +105,9 @@ export function runNumbers(runs) {
 /** A map card's runs, ready for the page: only those on the newest card
  *  version among them (a run on an older build is another experiment), by
  *  encounter version (variant, 'v1' when a run has none), each group with
- *  its run numbers, scored-run count and averages. `older`: runs left out
- *  for being on an older card version. */
+ *  its run numbers, scored-run count and averages, and `oldScored`: its
+ *  runs scored on another scorecard revision (not averaged). `older`: runs
+ *  left out for being on an older card version. */
 export function scoreGroups(runs, sc) {
   const list = Array.isArray(runs) ? runs : [];
   const rev = list.reduce((m, r) => Math.max(m, r.rev || 1), 0);
@@ -110,6 +119,7 @@ export function scoreGroups(runs, sc) {
       variant,
       numbers: runNumbers(mine),
       scored: mine.filter((r) => r.score && (r.score.rev ?? 1) === sc.rev).length,
+      oldScored: mine.filter((r) => r.score && (r.score.rev ?? 1) !== sc.rev).length,
       averages: scoreAverages(mine, sc),
     };
   });

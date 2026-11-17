@@ -16,7 +16,7 @@
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { step, type Game } from './game';
-import { PERSONAS, playMimic } from './mimic';
+import { TRYHARD_R12, YOU_R12, playMimic, type Persona } from './mimic';
 import { LOG_VERSION, Playback, SIM_DT, logTelemetry, replay, type PlayLog } from './playlog';
 import { contentHash, hashText, mapHash, pickupsOpen, reconcile, sidecarDigest, type TelemetrySidecar } from './telemetry';
 import { MAPS } from '../data/maps';
@@ -29,7 +29,9 @@ export interface BaselineRecipe {
   map: MapId;
   seed: number;
   /** The bot at the controls (sim/mimic.ts): `you` is the persona fitted to
-   *  the player's own logs, `tryhard` a sharper day. */
+   *  the player's own logs, `tryhard` a sharper day. The baseline plays
+   *  round 12's fit of both (BASELINE_PERSONAS), frozen, so a refit of the
+   *  bots never moves it: it checks replays, not the bots. */
   persona: 'you' | 'tryhard';
   armory: ArmoryLevels;
   firstWave: number;
@@ -58,10 +60,13 @@ export const BASELINE: BaselineRecipe[] = [
   { id: 'harbor-bonus', map: 'harbor', seed: 20, persona: 'tryhard', armory: KIT, firstWave: 6, covers: 'Siren Field after wave 6, then waves 7-10 (lost on wave 10)' },
 ];
 
+/** The bots the baseline plays: round 12's fit, frozen. */
+export const BASELINE_PERSONAS: Record<BaselineRecipe['persona'], Persona> = { you: YOU_R12, tryhard: TRYHARD_R12 };
+
 /** Play a recipe: the bot's game and the log of it. The log's id and date
  *  are fixed, so the same recipe makes the same bytes. */
 export function playRecipe(r: BaselineRecipe): { game: Game; log: PlayLog } {
-  const { game, log } = playMimic(r.map, r.seed, { persona: PERSONAS[r.persona], armory: r.armory, firstWave: r.firstWave, build: 'baseline' });
+  const { game, log } = playMimic(r.map, r.seed, { persona: BASELINE_PERSONAS[r.persona], armory: r.armory, firstWave: r.firstWave, build: 'baseline' });
   const fixed: PlayLog = { ...log, id: `v3-baseline-${r.id}`, endedAt: new Date(0).toISOString(), dev: { preset: 'baseline', watch: true, bot: r.persona } };
   return { game, log: fixed };
 }

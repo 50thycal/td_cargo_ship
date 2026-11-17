@@ -2,21 +2,23 @@
 // v3-test-lab.md "Scorecard"): its categories, how a score is cleaned and
 // saved from the verdict sheet into the log (v22), how the bridge carries
 // it to each map card's results document with the run's three numbers, and
-// that a v21 log still replays.
+// that a v21 log still replays. Revision 2 (2026-11-17): fewer rows asked,
+// the retired ones still read on revision 1 scores, the comparison row, the
+// last scores and the wave strip.
 
 import { describe, expect, it } from 'vitest';
 import { EVENT_WAVE } from '../../src/v3/data/events';
-import { MAP_VARIANT_DEFAULT, SCORECARD, SCORECARD_REV, cleanScorecard, reachedBoss, scoreLine, scoreRows, validAnswer, waveChips, waveLabel } from '../../src/v3/data/scorecard';
+import { MAP_VARIANT_DEFAULT, SCORECARD, SCORECARD_REV, askedAt, cleanScorecard, reachedBoss, scoreLine, scoreRows, validAnswer, waveChips, waveLabel } from '../../src/v3/data/scorecard';
 import { labCard } from '../../src/v3/data/lab';
 import { labResultDocs, logVariant, mapRunNumbers, mapRuns } from '../../src/v3/sim/labDocs';
 import { LOG_REPLAYS, LOG_VERSION, replaysHere, type PlayLog } from '../../src/v3/sim/playlog';
 import type { WaveRecord } from '../../src/v3/sim/game';
-import { defaultSetup, labRunPlan, parseLabProgress, verdictResult } from '../../src/v3/ui/lab';
+import { agoText, defaultSetup, labRunPlan, lastScores, parseLabProgress, shortScore, verdictResult, vsTarget, waveStrip, type LabEntry } from '../../src/v3/ui/lab';
 
 describe('the scorecard: its categories, in data', () => {
-  it('has the ten rows the player asked for, each with an id, a label, a help line and a scale, and a revision', () => {
-    expect(SCORECARD_REV).toBe(1);
-    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'best', 'weakest', 'again']);
+  it('keeps every row ever asked, each with an id, a label, a help line and a scale, and a revision', () => {
+    expect(SCORECARD_REV).toBe(2);
+    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'vs', 'again', 'best', 'weakest']);
     for (const c of SCORECARD) {
       expect(c.label.length, c.id).toBeGreaterThan(0);
       expect(c.help.length, c.id).toBeGreaterThan(0);
@@ -28,6 +30,7 @@ describe('the scorecard: its categories, in data', () => {
     expect(opts('difficulty')).toEqual(['Too easy', 'Bit easy', 'Right', 'Bit hard', 'Too hard']);
     expect(opts('pacing')).toEqual(['Too slow', 'Right', 'Too fast']);
     expect(opts('again')).toEqual(['Yes', 'Maybe', 'No']);
+    expect(opts('vs')).toEqual(['Worse', 'About the same', 'Better']);
     for (const id of ['fun', 'variety', 'readability', 'mapFeel', 'boss']) expect(opts(id)).toBe('stars');
     expect(opts('best')).toBe('wave');
     expect(SCORECARD.find((c) => c.id === 'variety')!.help).toBe('The waves felt different from each other');
@@ -59,7 +62,104 @@ describe('the scorecard: its categories, in data', () => {
     expect(cleanScorecard({ rev: 7, fun: 2 })).toEqual({ rev: 7, fun: 2 });
     expect(validAnswer(SCORECARD[0], 5)).toBe(true);
     expect(validAnswer(SCORECARD[0], '5')).toBe(false);
-    expect(scoreLine({ rev: 1, fun: 4, difficulty: 'bit-hard', best: 12, again: 'maybe' })).toBe('Fun 4 · Difficulty Bit hard · Best wave B2 · Play again Maybe');
+    expect(scoreLine({ rev: 1, fun: 4, difficulty: 'bit-hard', best: 12, again: 'maybe' })).toBe('Fun 4 · Difficulty Bit hard · Play again Maybe · Best wave B2');
+  });
+});
+
+describe('revision 2 (the player\'s approval, 2026-11-17): fewer rows, a comparison, rated relative to the other maps', () => {
+  const entry = (at: string, score?: LabEntry['score']): LabEntry => ({ verdict: 'keep', tags: [], note: '', waves: 13, ended: 'length', stats: { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, at, rev: 1, round: 13, plays: 'full', ...(score ? { score } : {}) });
+
+  it('asks Fun, Difficulty, Boss rounds, the comparison, Play again, Best and Weakest; Pacing, Variety, Readability and Map feel are retired, not asked', () => {
+    const retired = SCORECARD.filter((c) => c.retired !== undefined);
+    expect(retired.map((c) => [c.id, c.retired])).toEqual([['pacing', 2], ['variety', 2], ['readability', 2], ['mapFeel', 2]]);
+    for (const c of retired) {
+      expect(askedAt(c, 1)).toBe(true);
+      expect(askedAt(c, 2)).toBe(false);
+    }
+    expect(scoreRows(13, { vsCard: 'map-gauntlet' }).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'vs', 'again', 'best', 'weakest']);
+    // No other map card rated yet: no comparison row.
+    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'again', 'best', 'weakest']);
+    expect(scoreRows(7).map((c) => c.id)).toEqual(['fun', 'difficulty', 'again', 'best', 'weakest']);
+    const vs = SCORECARD.find((c) => c.id === 'vs')!.scale;
+    expect(vs.kind === 'choice' && vs.options.map((o) => [o.id, o.value])).toEqual([['worse', -1], ['same', 0], ['better', 1]]);
+  });
+
+  it('cleans a revision 1 score keeping its retired rows; a revision 2 score drops them; vsCard stays only beside a valid vs', () => {
+    const r1 = { rev: 1, fun: 4, pacing: 'right', variety: 3, readability: 5, mapFeel: 2, again: 'yes' };
+    expect(cleanScorecard(r1)).toEqual(r1);
+    expect(cleanScorecard(r1, 13)).toEqual(r1);
+    expect(scoreLine(cleanScorecard(r1))).toBe('Fun 4 · Pacing Right · Variety 3 · Readability 5 · Map feel 2 · Play again Yes');
+    expect(cleanScorecard({ rev: 2, fun: 4, pacing: 'right', readability: 5 })).toEqual({ rev: 2, fun: 4 });
+    expect(cleanScorecard({ rev: 2, vs: 'better', vsCard: 'map-gauntlet' })).toEqual({ rev: 2, vs: 'better', vsCard: 'map-gauntlet' });
+    expect(cleanScorecard({ rev: 2, fun: 3, vs: 'much', vsCard: 'map-gauntlet' })).toEqual({ rev: 2, fun: 3 });
+    expect(cleanScorecard({ rev: 2, fun: 3, vsCard: 'map-gauntlet' })).toEqual({ rev: 2, fun: 3 });
+    expect(cleanScorecard({ rev: 2, vsCard: 'map-gauntlet' })).toBeUndefined();
+    expect(scoreLine({ rev: 2, fun: 5, vs: 'same', vsCard: 'map-gauntlet' })).toBe('Fun 5 · Vs map-gauntlet About the same');
+    expect(scoreLine({ rev: 2, vs: 'worse' })).toBe('Vs last map Worse');
+  });
+
+  it('Save keeps the comparison with the card it named; a draft from before cannot carry a retired row', () => {
+    const d = { verdict: 'keep' as const, tags: [], note: '', score: { fun: 4, vs: 'better', pacing: 'right' } };
+    expect(verdictResult(d, 13, 'map-gauntlet')).toEqual({ verdict: 'keep', tags: [], note: '', score: { rev: 2, fun: 4, vs: 'better', vsCard: 'map-gauntlet' } });
+    expect(verdictResult({ ...d, score: { fun: 4 } }, 13, 'map-gauntlet')!.score).toEqual({ rev: 2, fun: 4 });
+  });
+
+  it('compares with the other map card scored most recently; never itself, never a card that is not a map, never an unscored run', () => {
+    const p = parseLabProgress(null);
+    expect(vsTarget(p, 'map-strait')).toBeUndefined();
+    p.results['map-strait'] = [entry('2026-11-17T09:00:00Z', { rev: 2, fun: 5 })];
+    p.results.rocketTruck = [entry('2026-11-17T08:00:00Z', { rev: 2, fun: 5 })];
+    p.results['map-kesh'] = [entry('2026-11-17T10:00:00Z')];
+    expect(vsTarget(p, 'map-strait')).toBeUndefined();
+    p.results['map-harbor'] = [entry('2026-11-15T09:00:00Z', { rev: 1, fun: 5, difficulty: 'right', again: 'yes' })];
+    p.results['map-gauntlet'] = [entry('2026-11-16T09:00:00Z', { rev: 2, fun: 3 }), entry('2026-11-10T09:00:00Z', { rev: 1, fun: 1 })];
+    expect(vsTarget(p, 'map-strait')).toBe('map-gauntlet');
+    expect(vsTarget(p, 'map-gauntlet')).toBe('map-strait');
+  });
+
+  it('the last scores: this map\'s latest (any revision), then each other map card\'s latest, newest first, four at most', () => {
+    const p = parseLabProgress(null);
+    const now = Date.parse('2026-11-17T12:00:00Z');
+    expect(lastScores(p, 'map-strait', now)).toEqual([]);
+    p.results['map-strait'] = [entry('2026-11-14T12:00:00Z', { rev: 1, fun: 4, difficulty: 'bit-hard', pacing: 'right', again: 'maybe' }), entry('2026-11-16T12:00:00Z')];
+    p.results['map-harbor'] = [entry('2026-11-15T12:00:00Z', { rev: 2, fun: 5, difficulty: 'right', again: 'yes' })];
+    p.results['map-gauntlet'] = [entry('2026-11-17T11:00:00Z', { rev: 2, best: 7 })];
+    p.results['map-kesh'] = [entry('2026-11-01T12:00:00Z', { rev: 1, fun: 2 })];
+    p.results['map-sowers'] = [entry('2026-10-01T12:00:00Z', { rev: 1, fun: 1 })];
+    p.results.rocketTruck = [entry('2026-11-17T11:30:00Z', { rev: 2, fun: 5 })];
+    const lines = lastScores(p, 'map-strait', now);
+    expect(lines.map((l) => [l.id, l.mine, l.text])).toEqual([
+      ['map-strait', true, 'Fun 4 · Bit hard · Again maybe'],
+      ['map-gauntlet', false, 'Best 7'],
+      ['map-harbor', false, 'Fun 5 · Right · Again yes'],
+      ['map-kesh', false, 'Fun 2'],
+    ]);
+    expect(lines[2].name).toBe('Harbor Mouth');
+    expect(shortScore({ rev: 2, fun: 5, difficulty: 'right', again: 'yes', vs: 'better' })).toBe('Fun 5 · Right · Again yes');
+    expect(agoText('2026-11-17T11:00:00Z', now)).toBe('today');
+    expect(agoText('2026-11-15T12:00:00Z', now)).toBe('2 days ago');
+    expect(agoText('2026-10-01T12:00:00Z', now)).toBe('6 weeks ago');
+  });
+
+  it('the wave strip: ships lost per wave from the run\'s running tally, the wave in play from the tally now, and each wave\'s marked moments once', () => {
+    const history = [{ wave: 1, lost: 0 }, { wave: 2, lost: 2 }, { wave: 3, lost: 2 }, { wave: 4, lost: 5 }];
+    const moments = [
+      { wave: 2, kind: 'sunk' as const },
+      { wave: 2, kind: 'sunk' as const },
+      { wave: 2, kind: 'debut' as const },
+      { wave: 4, kind: 'carrier' as const },
+      { wave: 4, kind: 'burst' as const },
+      { wave: 5, kind: 'dry' as const },
+    ];
+    expect(waveStrip(history, 6, 5, moments, 5)).toEqual([
+      { n: 1, lost: 0, marks: [] },
+      { n: 2, lost: 2, marks: ['debut', 'sunk'] },
+      { n: 3, lost: 0, marks: [] },
+      { n: 4, lost: 3, marks: ['burst', 'carrier'] },
+      { n: 5, lost: 1, marks: ['dry'] },
+    ]);
+    // A wave with no record and not in play (a run jumped past it) loses none.
+    expect(waveStrip([{ wave: 1, lost: 1 }, { wave: 7, lost: 4 }], 4, 7, [], 7).map((w) => w.lost)).toEqual([1, 0, 0, 0, 0, 0, 3]);
   });
 });
 

@@ -12,7 +12,8 @@ import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
-import { MAP_VARIANT_DEFAULT, SCORECARD_REV, cleanScorecard, scoreRows, waveChips, type ScoreCategory } from '../data/scorecard';
+import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, waveChips, waveLabel, type ScoreCategory, type Scorecard } from '../data/scorecard';
+import type { MomentKind } from '../sim/feedback';
 
 /** The review page for the Test Lab: it shows what was marked here (Claude
  *  copies it over from the game logs), and what is left to test. */
@@ -625,18 +626,131 @@ export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
 
 /** What Save keeps from the sheet: nothing without a verdict (the sheet
  *  asks for one instead). A map card's full run (`played`: the waves it
- *  played) adds its scorecard, unless it was skipped or left blank. */
-export function verdictResult(d: VerdictDraft, played?: number): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
+ *  played) adds its scorecard, unless it was skipped or left blank, and
+ *  with it the card its comparison row named (`vsCard`). */
+export function verdictResult(d: VerdictDraft, played?: number, vsCard?: string): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
   if (!d.verdict) return null;
-  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, rev: SCORECARD_REV }, played) : undefined;
+  // Revision 2: the comparison row keeps the card it compared with.
+  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, ...(vsCard ? { vsCard } : {}), rev: SCORECARD_REV }, played) : undefined;
   return { verdict: d.verdict, tags: [...d.tags], note: d.note.trim(), ...(score ? { score } : {}) };
 }
 
-/** The scorecard (round 11, data/scorecard.ts): one row per category, a
- *  tap on a chip to answer (again to clear), every row optional, and Skip
- *  to fold it away. The boss row shows only on a run that reached the boss
- *  rounds; the wave rows offer the waves played. */
-export function scorecardEl(played: number, d: VerdictDraft): HTMLElement {
+// ---- The scorecard, revision 2 (data/scorecard.ts) -----------------------------
+// The player's approval on the map-rebuild hub (2026-11-17): rate relative
+// to the other maps, from what happened, not from memory. So the scorecard
+// opens with the player's last scores, its wave rows show what happened in
+// each wave, and one row compares this map with the map rated last.
+
+/** One wave of the run on the scorecard's strip: the ships lost in it and
+ *  the moments the game marked in it (sim/feedback.ts, `Watch`). */
+export interface WaveStripEntry {
+  n: number;
+  lost: number;
+  marks: MomentKind[];
+}
+
+/** The strip's marks, in this order: a glyph and what it means. A sunk
+ *  ship shows as the wave's "−n" (its mark only when no count is known). */
+export const STRIP_MARKS: Record<MomentKind, { glyph: string; word: string }> = {
+  debut: { glyph: '★', word: 'new threat' },
+  burst: { glyph: '‼', word: 'ships lost in a burst' },
+  carrier: { glyph: '◆', word: 'carrier hit' },
+  dry: { glyph: '∅', word: 'out of ammo' },
+  sunk: { glyph: '▼', word: 'ship sunk' },
+};
+const MARK_ORDER = Object.keys(STRIP_MARKS) as MomentKind[];
+
+/** The strip for a run of `played` waves, from the game's wave records
+ *  (`g.history`: its `lost` is the run's tally at the wave's end, so a
+ *  wave's own is the difference from the wave before), the tally now (the
+ *  wave still in play, `waveNow`, has no record yet) and the moments the
+ *  run marked. */
+export function waveStrip(history: readonly { wave: number; lost: number }[], lostNow: number, waveNow: number, moments: readonly { wave: number; kind: MomentKind }[], played: number): WaveStripEntry[] {
+  return waveChips(played).map(({ n }) => {
+    const rec = history.filter((h) => h.wave === n).at(-1);
+    const end = rec ? rec.lost : n === waveNow ? lostNow : undefined;
+    const before = history.filter((h) => h.wave < n).reduce((m, h) => Math.max(m, h.lost), 0);
+    const kinds = new Set(moments.filter((m) => m.wave === n).map((m) => m.kind));
+    return { n, lost: end === undefined ? 0 : Math.max(0, end - before), marks: MARK_ORDER.filter((k) => kinds.has(k)) };
+  });
+}
+
+/** A card's entries that carry a score, newest first (by `at`). */
+function scoredEntries(p: LabProgress, id: string): LabEntry[] {
+  return (p.results[id] ?? []).filter((e) => e.score && typeof e.at === 'string').sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** The map card to compare this run with: the other map card the player
+ *  scored most recently (none: no comparison row). */
+export function vsTarget(p: LabProgress, cardId: string): string | undefined {
+  let best: { id: string; at: string } | undefined;
+  for (const id of Object.keys(p.results)) {
+    if (id === cardId || labCard(id)?.kind !== 'map') continue;
+    const e = scoredEntries(p, id)[0];
+    if (e && (!best || e.at > best.at)) best = { id, at: e.at };
+  }
+  return best?.id;
+}
+
+/** "today", "yesterday", "3 days ago", "2 weeks ago" (by local days). */
+export function agoText(at: string, now = Date.now()): string {
+  const t = Date.parse(at);
+  if (!Number.isFinite(t)) return '';
+  const localDay = (ms: number) => Math.floor((ms - new Date(ms).getTimezoneOffset() * 60000) / 86400000);
+  const days = localDay(now) - localDay(t);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 14) return `${days} days ago`;
+  return `${Math.floor(days / 7)} weeks ago`;
+}
+
+/** A score in a few words, any revision: "Fun 5 · Right · Again yes". */
+export function shortScore(s: Scorecard): string {
+  const word = (id: string) => {
+    const c = scoreCategory(id);
+    const v = (s as unknown as Record<string, number | string | undefined>)[id];
+    return c && v !== undefined ? answerText(c, v) : undefined;
+  };
+  const diff = word('difficulty');
+  const again = word('again');
+  const parts = [s.fun !== undefined ? `Fun ${s.fun}` : '', diff ?? '', again ? `Again ${again.toLowerCase()}` : ''].filter(Boolean);
+  if (!parts.length) {
+    if (s.best !== undefined) parts.push(`Best ${waveLabel(s.best)}`);
+    if (s.weakest !== undefined) parts.push(`Weakest ${waveLabel(s.weakest)}`);
+  }
+  return parts.join(' · ');
+}
+
+/** "Your last scores": this map card's latest score, then the latest of
+ *  each other map card, newest first, four lines at most. */
+export function lastScores(p: LabProgress, cardId: string, now = Date.now()): { id: string; name: string; mine: boolean; text: string; ago: string }[] {
+  const line = (id: string, e: LabEntry, mine: boolean) => ({ id, name: labCard(id)?.name ?? id, mine, text: shortScore(e.score!), ago: agoText(e.at, now) });
+  const mine = scoredEntries(p, cardId)[0];
+  const others = Object.keys(p.results)
+    .filter((id) => id !== cardId && labCard(id)?.kind === 'map')
+    .map((id) => ({ id, e: scoredEntries(p, id)[0] }))
+    .filter((o): o is { id: string; e: LabEntry } => !!o.e)
+    .sort((a, b) => b.e.at.localeCompare(a.e.at));
+  return [...(mine ? [line(cardId, mine, true)] : []), ...others.map((o) => line(o.id, o.e, false))].slice(0, 4);
+}
+
+/** What the scorecard shows beside its rows: the progress on the device
+ *  (for the last scores), the card scored, the run's wave strip, and the
+ *  card to compare with. */
+export interface ScorecardContext {
+  p?: LabProgress;
+  cardId?: string;
+  strip?: WaveStripEntry[];
+  vsCard?: string;
+}
+
+/** The scorecard (round 11; revision 2, data/scorecard.ts): the player's
+ *  last scores on top, then one row per category, a tap on a chip to
+ *  answer (again to clear), every row optional, and Skip to fold it away.
+ *  The boss row shows only on a run that reached the boss rounds, the
+ *  comparison only with another scored map card. The wave rows offer the
+ *  waves played, each with what happened in it when the strip is known. */
+export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardContext = {}): HTMLElement {
   const answers = (d.score ??= {});
   const box = el('section', 'v3-score');
   box.dataset.labScore = '1';
@@ -650,26 +764,63 @@ export function scorecardEl(played: number, d: VerdictDraft): HTMLElement {
   skip.dataset.scoreSkip = '1';
   head.append(title, skip);
   const rows = el('div', 'v3-score-rows');
-  for (const c of scoreRows(played)) {
-    const row = el('div', 'v3-score-row');
+  // Your last scores: rate relative to them.
+  const last = ctx.p && ctx.cardId ? lastScores(ctx.p, ctx.cardId) : [];
+  if (last.length) {
+    const panel = el('div', 'v3-score-last');
+    panel.dataset.scoreLast = '1';
+    const list = el('ul', '');
+    for (const l of last) {
+      const li = el('li', l.mine ? 'mine' : '');
+      li.dataset.scoreLastCard = l.id;
+      li.append(el('b', '', l.mine ? 'Last time' : l.name));
+      if (l.text) li.append(document.createTextNode(` · ${l.text}`));
+      if (l.ago) li.append(el('i', '', ` · ${l.ago}`));
+      li.title = li.textContent ?? '';
+      list.append(li);
+    }
+    panel.append(el('span', 'v3-score-last-h', 'Your last scores'), list);
+    rows.append(panel);
+  }
+  const strip = ctx.strip && ctx.strip.length >= played ? ctx.strip : undefined;
+  const vsName = ctx.vsCard ? (labCard(ctx.vsCard)?.name ?? ctx.vsCard) : '';
+  for (const c of scoreRows(played, { vsCard: ctx.vsCard })) {
+    const label = c.id === 'vs' ? `Compared with ${vsName}` : c.label;
+    const row = el('div', `v3-score-row${c.scale.kind === 'wave' && strip ? ' strip' : ''}`);
     row.dataset.scoreRow = c.id;
     const lab = el('div', 'v3-score-lab');
-    lab.append(el('b', '', c.label), el('small', '', c.help));
+    // The comparison's name says which map; its help, the rest.
+    lab.append(el('b', '', label), el('small', '', c.id === 'vs' ? 'this one was…' : c.help));
     const chips = el('div', `v3-score-chips ${c.scale.kind}`);
     chips.setAttribute('role', 'group');
-    chips.setAttribute('aria-label', c.label);
-    const opts: { v: number | string; label: string }[] =
+    chips.setAttribute('aria-label', label);
+    const opts: { v: number | string; label: string; w?: WaveStripEntry }[] =
       c.scale.kind === 'choice'
         ? c.scale.options.map((o) => ({ v: o.id, label: o.label }))
         : c.scale.kind === 'wave'
-          ? waveChips(played).map((w) => ({ v: w.n, label: w.label }))
+          ? waveChips(played).map((w) => ({ v: w.n, label: w.label, w: strip?.[w.n - 1] }))
           : [1, 2, 3, 4, 5].map((n) => ({ v: n, label: String(n) }));
     const btns = opts.map((o) => {
-      const b = button(o.label, 'v3-score-chip', () => {
+      const b = button(o.w ? '' : o.label, 'v3-score-chip', () => {
         if (answers[c.id] === o.v) delete answers[c.id];
         else answers[c.id] = o.v;
         mark();
       });
+      if (o.w) {
+        // The wave, then what happened in it: "−2" ships lost, and a mark
+        // for each kind of moment the game marked in it.
+        const w = o.w;
+        const marks = w.marks.filter((k) => k !== 'sunk' || !w.lost);
+        const info = el('span', `v3-wave-info${w.lost ? ' lost' : ''}`);
+        if (w.lost) info.append(el('em', '', `−${w.lost}`));
+        if (marks.length) info.append(document.createTextNode(marks.map((k) => STRIP_MARKS[k].glyph).join('')));
+        b.append(el('span', 'v3-wave-n', o.label), info);
+        b.dataset.lost = String(w.lost);
+        b.dataset.marks = w.marks.join(' ');
+        const what = [w.lost ? `${w.lost} ship${w.lost === 1 ? '' : 's'} lost` : 'no ship lost', ...marks.map((k) => STRIP_MARKS[k].word)];
+        b.setAttribute('aria-label', `Wave ${o.label}: ${what.join(', ')}`);
+        b.title = `Wave ${o.label}: ${what.join(', ')}`;
+      }
       b.dataset.score = c.id;
       b.dataset.value = String(o.v);
       // A tap here while typing leaves the text box its focus.
@@ -686,6 +837,16 @@ export function scorecardEl(played: number, d: VerdictDraft): HTMLElement {
     row.append(lab, chips);
     rows.append(row);
   }
+  if (strip) {
+    // What the strip's marks mean (only those it shows).
+    const shown = new Set(strip.flatMap((w) => w.marks.filter((k) => k !== 'sunk' || !w.lost)));
+    const key = [strip.some((w) => w.lost) ? '−n ships lost' : '', ...MARK_ORDER.filter((k) => shown.has(k)).map((k) => `${STRIP_MARKS[k].glyph} ${STRIP_MARKS[k].word}`)].filter(Boolean);
+    if (key.length) {
+      const legend = el('p', 'v3-score-legend', key.join(' · '));
+      legend.dataset.scoreLegend = '1';
+      rows.append(legend);
+    }
+  }
   const paint = () => {
     rows.hidden = !!d.skipScore;
     box.classList.toggle('skipped', !!d.skipScore);
@@ -700,8 +861,10 @@ export function scorecardEl(played: number, d: VerdictDraft): HTMLElement {
 /** Round 4's logs: seven cards saved with a note and no verdict. While the
  *  player typed, the Keep / Tune / Cut row was folded away with the rest of
  *  the sheet, and Save (all that was left) saved a null verdict. The row now
- *  stays while typing, and Save with no verdict asks for one. */
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays, played?: number): HTMLElement {
+ *  stays while typing, and Save with no verdict asks for one. A map card's
+ *  full run (scorecard revision 2) can pass its waves' `strip`: what
+ *  happened in each, for the Best and Weakest rows. */
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays, played?: number, strip?: WaveStripEntry[]): HTMLElement {
   const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
   const title = ended === 'lost' ? `${card.name} · the convoy was lost` : plays === 'full' && ended === 'length' ? `${card.name} · map cleared: how was it?` : `${card.name} · how was it?`;
   sheet.append(el('h2', '', title));
@@ -716,7 +879,9 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const d = draft ?? newVerdictDraft(p, card.id);
   // A map card's full run (round 11): the scorecard, above the verdict.
   const scored = card.kind === 'map' && plays === 'full' && played !== undefined ? played : undefined;
-  if (scored !== undefined) sheet.append(scorecardEl(scored, d));
+  // Its comparison row: the other map card scored most recently.
+  const vsCard = scored !== undefined ? vsTarget(p, card.id) : undefined;
+  if (scored !== undefined) sheet.append(scorecardEl(scored, d, { p, cardId: card.id, strip, vsCard }));
   const cols = el('div', 'v3-lab-cols');
   const left = el('div', 'v3-lab-col');
   const tags = new Set<string>(d.tags);
@@ -791,7 +956,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   // tags stay as they are).
   const save = (then: 'next' | 'again' | 'list') => {
     d.note = note.value;
-    const r = verdictResult(d, scored);
+    const r = verdictResult(d, scored, vsCard);
     if (!r) {
       // The keyboard goes, so the whole sheet (the row, and why) is back.
       note.blur();

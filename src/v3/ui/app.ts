@@ -75,6 +75,7 @@ import {
   labReport,
   labSetupSheet,
   labVerdictSheet,
+  waveStrip,
   newVerdictDraft,
   type VerdictDraft,
   loadLabProgress,
@@ -2719,6 +2720,9 @@ export class App {
     // A full map run's waves played, for its scorecard (round 11): the wave
     // it is on or ended on (a full run starts at wave 1).
     const played = g.lab.full ? Math.max(waves, g.wave) : undefined;
+    // Its wave strip (scorecard revision 2): the ships lost in each wave
+    // (the wave records keep the run's tally) and the moments marked.
+    const strip = played !== undefined ? waveStrip(g.history, g.lost, g.wave, this.rec?.watch.moments ?? [], played) : undefined;
     const variant = g.lab.setup.variant;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
@@ -2751,7 +2755,7 @@ export class App {
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }, draft, plays, played),
+      }, draft, plays, played, strip),
     ]);
   }
 

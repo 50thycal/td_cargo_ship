@@ -6,7 +6,7 @@
 //
 //   npx vite-node tools/v3/map-lab/versions.ts -- [--seeds=24] [--maps=strait,harbor]
 //       [--versions=v1,v2] [--personas=you,tryhard,casual] [--json=out.json]
-//       [--kits=harbor [--kits-only] [--kit-bots=you,tryhard]]
+//       [--kits=harbor [--kits-only] [--kit-bots=you,tryhard]] [--armory=player]
 //   npx vite-node tools/v3/map-lab/versions.ts -- --merge=a.json,b.json --json=out.json
 //
 // Per map, version and bot: won %, ships lost (waves 1-10 and the boss
@@ -25,6 +25,7 @@ import { VIEW } from '../../../src/v3/data/config';
 import type { MapId } from '../../../src/v3/data/maps';
 import { REFERENCE_MAPS } from '../../../src/v3/sim/mapLab';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
+import { PLAYER_ARMORY } from '../bot-fit/measure';
 import { LOG_VERSION, logTelemetry } from '../../../src/v3/sim/playlog';
 import type { TelEvent } from '../../../src/v3/sim/telemetry';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
@@ -62,7 +63,15 @@ export interface VersionRun {
   held: Record<string, number>;
 }
 
-const PERSONA_KIT: Record<string, Record<string, number>> = { you: {}, casual: {}, tryhard: { warhead: 3 } };
+// Map testing plays the baseline: "you" with no Armory upgrades (a new
+// player's gun). --armory=player gives it the player's own upgrades
+// instead (PLAYER_ARMORY, the setup the bot was calibrated on), to read a
+// map as the player will meet it.
+const PERSONA_KIT: Record<string, Record<string, number>> = {
+  you: process.argv.includes('--armory=player') ? PLAYER_ARMORY : {},
+  casual: {},
+  tryhard: { warhead: 3 },
+};
 
 /** The two kits the player brought to Harbor Mouth in round 11: weapons you
  *  aim (Overdrive, Railgun) and weapons that fire themselves (Airstrike,

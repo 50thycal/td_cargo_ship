@@ -11,7 +11,7 @@
 // r2-*), so earlier answers stay readable.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { SECTIONS, RULES, QUESTIONS } from './rules.mjs';
-import { PAGE, REVISIONS, NOTES, SETTLED, STATUS, NEEDS } from './plan.mjs';
+import { PAGE, REVISIONS, NOTES, SETTLED, STATUS, NEEDS, ANSWERED } from './plan.mjs';
 
 const EV = JSON.parse(readFileSync(new URL('./evidence.json', import.meta.url), 'utf8'));
 const R1 = JSON.parse(readFileSync(new URL('./review-2026-11-17.json', import.meta.url), 'utf8'));
@@ -150,6 +150,7 @@ ${SECTIONS.map((s) => `<h2 id="h-${s.id}">${esc(s.name)}</h2><p class="blurb">${
 <section class="sec" data-sec="archive"><h2>Archive</h2>
 <p class="blurb">What you’ve already answered. Nothing here is asked again.</p>
 <div id="answered-now"></div>
+${ANSWERED.length ? `<h3>Answered since round 1</h3>${ANSWERED.map((n) => `<div class="panel"><h3>${esc(n.title)}</h3><p>Your call: <b>${esc({ approve: 'Approved', change: 'Change', cut: 'Cut' }[n.verdict] ?? n.verdict)}</b> <span class="cap">${esc(n.at)}</span></p>${n.note ? `<p class="quote">“${esc(n.note)}”</p>` : ''}</div>`).join('')}` : ''}
 <h3>Round 1 rules (${RULES.length})</h3>
 <p class="cap">Approved ${marks.approve ?? 0} · Changed ${marks.change ?? 0} · Cut ${marks.cut ?? 0}${marks.none ? ' · left unmarked ' + marks.none : ''}. The changes are in “The plan”.</p>
 <h3>Round 1 questions</h3>
