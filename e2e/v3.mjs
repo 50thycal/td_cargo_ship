@@ -33,6 +33,23 @@ function findChromium() {
 }
 
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--no-sandbox'] });
+// A run left mid-game by the page before is kept to continue, and starting
+// another over it asks first (docs/design/v3-resume-run.md). These checks
+// open run after run by link and reload: each page starts with no saved run.
+{
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = async (o) => {
+    const c = await newContext(o);
+    await c.addInitScript(() => {
+      try {
+        localStorage.removeItem('straitwatch.v3.run');
+      } catch {
+        // no storage
+      }
+    });
+    return c;
+  };
+}
 // A test's commands are on the pause menu (pause-menu round: no bar over the
 // field): pause, if the menu isn't up, and wait for them.
 const labMenu = async (page) => {
