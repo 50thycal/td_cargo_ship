@@ -211,6 +211,41 @@ export class Watch {
     }
   }
 
+  /** A saved run continued (docs/design/v3-resume-run.md): the volleys and
+   *  moments as they were marked (ratings and all), picked up at `g`, the
+   *  game replayed to the step it was saved at. The wave in play carries on
+   *  from where the plan stood; the volleys still open take the threats in
+   *  the air now (which one sent each is not in the save: the newest one
+   *  launching takes them, as a new threat would be filed). */
+  restore(g: Game, volleys: readonly Volley[], moments: readonly Moment[]): void {
+    this.volleys.length = 0;
+    this.volleys.push(...volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })));
+    this.moments.length = 0;
+    this.moments.push(...moments.map((m) => ({ ...m })));
+    this.closed = this.volleys.filter((v) => v.to !== undefined).length;
+    this.seen = new Set(g.threats.map((t) => t.id));
+    this.live = [];
+    this.sinks = [];
+    this.dryAt = [];
+    this.lastDryMark = -Infinity;
+    if (g.phase === 'wave') {
+      this.wave = g.wave;
+      this.plan = volleyPlan(g);
+      // This wave's volleys are the newest ones, opened in the plan's order.
+      let mine = 0;
+      while (mine < this.volleys.length && this.volleys[this.volleys.length - 1 - mine].wave === g.wave) mine++;
+      this.opened = Math.min(this.plan.length, mine, this.plan.filter((p) => g.waveT >= p.start).length);
+      const first = this.volleys.length - this.opened;
+      for (let k = 0; k < this.opened; k++) {
+        const index = first + k;
+        if (this.volleys[index].to === undefined) this.live.push({ index, plan: this.plan[k], ids: new Set() });
+      }
+      const launching = [...this.live].reverse().find((l) => g.waveT >= l.plan.start + RAID.warn) ?? this.live[0];
+      if (launching) for (const th of g.threats) if (!th.dead && hostile(th.kind)) launching.ids.add(th.id);
+    } else this.wave = -1;
+    this.sync(g);
+  }
+
   /** Call once a frame, before the UI drains `g.events`. */
   observe(g: Game): void {
     // What was open when this frame began: a loss that ends the run closes

@@ -273,6 +273,12 @@ export interface PlayLog {
    *  thing that happens before it is closed): sealed `quit` in case it never
    *  comes back. A run that resumes saves over it. */
   left?: boolean;
+  /** Each time this run was continued from its saved state (the menu's
+   *  Continue, docs/design/v3-resume-run.md): when, the step it picked up
+   *  at, and the build. The run keeps its id and every input, so the log
+   *  is still one run (and replays as one); this only says it was played
+   *  in more than one sitting. Never read by replay. */
+  resumes?: { at: string; step: number; build: string }[];
   commands: LogCommand[];
   summary?: PlaySummary;
   /** Playtest feedback (none of it touches replay; see sim/feedback.ts):
@@ -361,6 +367,25 @@ export class Recorder {
    *  the first step; a wave retry's game already carries its own). */
   telemetry(mode: TelMode, player?: string, input?: TelHeader['input']): Telemetry {
     return this.game.tel ?? logTelemetry(this.game, this.log, mode, player, input);
+  }
+
+  /** Continue a saved run (docs/design/v3-resume-run.md): `game` is its log
+   *  replayed to the step it was saved at, and this recorder carries on the
+   *  same log, id and all: every input so far, the draft picks, the notes,
+   *  the volleys and moments as they were marked, and the wave mark. What
+   *  the log said about its end (a background's `quit`, `left`) is dropped:
+   *  the run is not over. */
+  static resume(game: Game, log: PlayLog, mark: WaveMark, build: string, at = new Date().toISOString()): Recorder {
+    const { v, game: _game, commands, map: _map, seed: _seed, armory, summary, volleys, moments, events: _events, end: _end, endedAt: _endedAt, left: _left, notes, resumes, ...meta } = log;
+    const rec = new Recorder(game, { ...meta, ...(notes ? { notes: notes.map((n) => ({ ...n })) } : {}) });
+    rec.log.v = v;
+    rec.log.armory = { ...armory };
+    rec.log.commands = [...commands];
+    rec.log.resumes = [...(resumes ?? []), { at, step: game.steps, build }];
+    rec.drafts = (summary?.drafts ?? []).map((d) => ({ ...d, offered: [...d.offered] }));
+    rec.mark = { ...mark };
+    rec.watch.restore(game, volleys ?? [], moments ?? []);
+    return rec;
   }
 
   /** Once a frame (and before the UI drains the game's events): keeps the
@@ -542,6 +567,46 @@ export class Recorder {
   }
 }
 
+/** One logged input, applied to a game as the live run applied it. The UI-
+ *  only codes ('s', 'c', 'g', 'p') change nothing. */
+export function applyCommand(g: Game, c: LogCommand): void {
+  switch (c[1]) {
+    case 't':
+      tap(g, c[2], c[3], c[4]);
+      break;
+    case 'd':
+      press(g, c[2], c[3], c[4]);
+      break;
+    case 'v':
+      pressMove(g, c[2], c[3]);
+      break;
+    case 'r':
+      release(g, c[2], c[3], c[4]);
+      break;
+    case 'h':
+      focusHold(g, c[2] === 1);
+      break;
+    case 'b':
+      labBring(g);
+      break;
+    case 'f':
+      setFlow(g, c[2]);
+      break;
+    case 'm':
+      setFormation(g, c[2]);
+      break;
+    case 'k':
+      convoyCommand(g, c[2]);
+      break;
+    case 'u':
+      pickUpgrade(g, c[2], c[3]);
+      break;
+    case 'e':
+      continueEndless(g);
+      break;
+  }
+}
+
 /** Re-run a log from its seed and inputs. Stops at the last recorded step
  *  for a quit, or when the game ends. */
 export function replay(log: PlayLog, opts: ReplayOpts = {}): Game {
@@ -552,56 +617,27 @@ export function replay(log: PlayLog, opts: ReplayOpts = {}): Game {
   return g;
 }
 
-/** Re-run a log's first `commands` inputs, stopping at step `lastStep`:
- *  with a `WaveMark`, the run exactly as that wave began. */
-export function replayTo(log: PlayLog, lastStep: number, commands: number, opts: ReplayOpts = {}): Game {
+/** A log's game as it stood before its first step: the map, seed, wave,
+ *  tempo and Armory, then its Free Play setup, lab card, encounters and
+ *  convoy policy, in the order the live run applied them. */
+export function setupGame(log: PlayLog): Game {
   const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
   if (log.freePlay) applyFreePlay(g, log.freePlay);
   if (log.lab) applyLab(g, log.lab);
   if (log.encounters) applyEncounters(g, log.encounters);
   if (log.convoy) applyConvoy(g, log.convoy);
+  return g;
+}
+
+/** Re-run a log's first `commands` inputs, stopping at step `lastStep`:
+ *  with a `WaveMark`, the run exactly as that wave began. */
+export function replayTo(log: PlayLog, lastStep: number, commands: number, opts: ReplayOpts = {}): Game {
+  const g = setupGame(log);
   if (opts.telemetry) logTelemetry(g, log, 'replay');
   const cmds = log.commands.slice(0, commands);
   let i = 0;
   for (let guard = 0; guard < 10_000_000; guard++) {
-    while (i < cmds.length && cmds[i][0] <= g.steps) {
-      const c = cmds[i++];
-      switch (c[1]) {
-        case 't':
-          tap(g, c[2], c[3], c[4]);
-          break;
-        case 'd':
-          press(g, c[2], c[3], c[4]);
-          break;
-        case 'v':
-          pressMove(g, c[2], c[3]);
-          break;
-        case 'r':
-          release(g, c[2], c[3], c[4]);
-          break;
-        case 'h':
-          focusHold(g, c[2] === 1);
-          break;
-        case 'b':
-          labBring(g);
-          break;
-        case 'f':
-          setFlow(g, c[2]);
-          break;
-        case 'm':
-          setFormation(g, c[2]);
-          break;
-        case 'k':
-          convoyCommand(g, c[2]);
-          break;
-        case 'u':
-          pickUpgrade(g, c[2], c[3]);
-          break;
-        case 'e':
-          continueEndless(g);
-          break;
-      }
-    }
+    while (i < cmds.length && cmds[i][0] <= g.steps) applyCommand(g, cmds[i++]);
     if (g.steps >= lastStep && i >= cmds.length) break;
     if (g.phase === 'lost') break;
     if (g.phase !== 'wave') {
@@ -636,18 +672,7 @@ export class Playback {
   advance(): boolean {
     const g = this.game;
     while (this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps) {
-      const c = this.cmds[this.i++];
-      if (c[1] === 't') tap(g, c[2], c[3], c[4]);
-      else if (c[1] === 'd') press(g, c[2], c[3], c[4]);
-      else if (c[1] === 'v') pressMove(g, c[2], c[3]);
-      else if (c[1] === 'r') release(g, c[2], c[3], c[4]);
-      else if (c[1] === 'h') focusHold(g, c[2] === 1);
-      else if (c[1] === 'b') labBring(g);
-      else if (c[1] === 'f') setFlow(g, c[2]);
-      else if (c[1] === 'm') setFormation(g, c[2]);
-      else if (c[1] === 'k') convoyCommand(g, c[2]);
-      else if (c[1] === 'u') pickUpgrade(g, c[2], c[3]);
-      else if (c[1] === 'e') continueEndless(g);
+      applyCommand(g, this.cmds[this.i++]);
     }
     if (g.phase !== 'wave') return this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps;
     step(g, SIM_DT);

@@ -50,7 +50,9 @@ import {
 } from '../sim/game';
 import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutKind, type CalloutLevel } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
-import { LOG_GAME, LOG_VERSION, Playback, Recorder, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { Restorer, printDiff, runPrint, samePrint } from '../sim/resume';
+import { canContinue, canSaveRuns, clearRun, loadRun, makeRunSave, saveRun, timeAgo, type RunSave } from '../platform/runSave';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
 import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
@@ -121,6 +123,10 @@ import { earned, gameCenterAvailable, showGameCenter, submitBest, unlock } from 
 import { FREE_CHAPTERS, buyFullGame, chapterOwned, onEntitlementChange, ownsFullGame, purchasesAvailable, restoreFullGame, unlockPrice } from '../platform/unlock';
 
 const DT = 1 / 60;
+/** Continuing a saved run: the replay's share of each frame (ms), and the
+ *  least time "Restoring…" stays up (so it reads as a step, not a flash). */
+const RESTORE_SLICE_MS = 12;
+const RESTORE_MIN_MS = 450;
 /** "Watch it" on the review: seconds before and after the moment. */
 const PLAYBACK_BEFORE = 6;
 const PLAYBACK_AFTER = 2;
@@ -505,6 +511,10 @@ export class App {
   /** The last run's telemetry, kept until the next run starts. */
   private lastTel: TelemetrySidecar | null = null;
 
+  /** A saved run being put back (docs/design/v3-resume-run.md): its log
+   *  replaying a slice a frame under the Restoring overlay. */
+  private restoring: { save: RunSave<RunUI>; rest: Restorer; since: number; bar: HTMLElement; count: HTMLElement } | null = null;
+
   private endRun(end: 'won' | 'lost' | 'quit'): PlayLog | null {
     if (!this.rec) return null;
     const log = this.rec.finish(end);
@@ -514,6 +524,8 @@ export class App {
       this.lastTel = g.tel.sidecar(g);
     }
     if (end !== 'won') this.rec = null;
+    // A run that has ended can't be continued.
+    if (end !== 'quit') clearRun(log.id);
     this.logState = null;
     void Promise.all([storeLog(log), logChannel()]).then(([state, channel]) => {
       this.logState = state;
@@ -528,6 +540,7 @@ export class App {
   private saveProgress(): void {
     if (this.rec && this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) {
       void storeLog(this.rec.snapshot());
+      this.keepRun();
     }
   }
 
@@ -535,9 +548,284 @@ export class App {
    *  app switcher): pause a wave in progress and save the run so far. */
   background(): void {
     if (this.game?.phase === 'wave' && !this.paused && !this.playback) this.togglePause();
-    // Mid-run: seal what there is as a quit (iOS rarely fires pagehide when
-    // an app is swiped away, so this may be the last chance).
-    if (this.rec && this.game && (this.game.phase === 'wave' || this.game.phase === 'draft') && !this.playback) void storeLog(this.rec.left());
+    // Mid-run: keep it to continue later, and seal what there is as a quit
+    // (iOS rarely fires pagehide when an app is swiped away, so this may be
+    // the last chance). Continued, the same log id carries on and its next
+    // save replaces this one.
+    if (this.rec && this.game && (this.game.phase === 'wave' || this.game.phase === 'draft') && !this.playback) {
+      this.keepRun();
+      void storeLog(this.rec.left());
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // The run in progress (docs/design/v3-resume-run.md): kept at every pause,
+  // wave end and trip to the background, continued from the menu.
+
+  /** Can the run in play be kept to continue later? A campaign, Free Play
+   *  or Test Lab run mid-wave or in a draft. Not a replay, the dev watch
+   *  bot (its own state isn't in the log), or endless (the map's win is
+   *  already recorded; leaving endless ends it, as before). */
+  private keepable(): boolean {
+    const g = this.game;
+    const rec = this.rec;
+    return !!g && !!rec && rec.game === g && !this.playback && !this.bot && !this.restoring && !g.endless && (g.phase === 'wave' || g.phase === 'draft');
+  }
+
+  /** Keep the run in play: its log so far, the step, and a fingerprint of
+   *  the game there. False when it can't be kept (see `keepable`), or the
+   *  device has no storage. */
+  private keepRun(): boolean {
+    if (!this.keepable()) return false;
+    const g = this.game!;
+    const rec = this.rec!;
+    // Nothing stays pressed in a kept run (a finger can't be held across
+    // leaving): a gesture weapon's press is let go here, as a note does.
+    if (g.phase === 'wave') this.dropGesture();
+    const save = makeRunSave<RunUI>(rec, {
+      kind: this.labRun ? 'lab' : this.free ? 'free' : 'campaign',
+      ui: {
+        ...(this.free ? { free: structuredClone(this.free) } : {}),
+        ...(this.labRun ? { lab: { card: this.labRun.card.id, setup: structuredClone(this.labRun.setup) } } : {}),
+        speed: this.speed,
+      },
+      title: this.labRun ? this.labRun.card.name : g.map.name,
+      build: __BUILD__,
+    });
+    return !!save && saveRun(save);
+  }
+
+  /** The pause menu's Quit: keep the run to finish later (the default), or
+   *  abandon it. A run that can't be kept quits as it always has. */
+  private confirmQuit(): void {
+    if (!this.keepable() || !canSaveRuns()) {
+      this.quitRun(false);
+      return;
+    }
+    const keep = button('Save and quit', 'v2-btn primary', () => this.quitRun(true));
+    keep.dataset.quitSave = '1';
+    const drop = button('Abandon run', 'v2-btn v3-abandon', () => this.quitRun(false));
+    drop.dataset.quitAbandon = '1';
+    const back = button('Back', 'v2-btn', () => this.showPauseMenu());
+    back.dataset.quitBack = '1';
+    this.showOverlay('v2-pause-panel v3-quit', [el('h2', '', 'Quit to menu'), el('p', 'v2-sub', 'Save this run and finish it later, or abandon it.'), keep, drop, back]);
+  }
+
+  /** Off to the menu. `keep`: the run is saved to continue (its log is
+   *  sealed as left, as on a trip to the background, and the same id goes
+   *  on when it is continued); otherwise it ends as a quit and is gone. */
+  private quitRun(keep: boolean): void {
+    this.paused = false;
+    this.pauseBtn.textContent = 'II';
+    const rec = this.rec;
+    if (keep && rec && this.keepRun()) {
+      void storeLog(rec.left());
+      // Not ended: leaving the field must not seal it again.
+      this.rec = null;
+    } else {
+      if (rec) clearRun(rec.log.id);
+      this.endRun('quit');
+    }
+    this.showMenu();
+  }
+
+  /** Starting a new run while one is saved: ask first. True if it asked
+   *  (`go` runs once the player chooses Start new). A restart of the run in
+   *  play (the lab's Setup → Apply) replaces its save without asking. */
+  private askBeforeNew(go: () => void): boolean {
+    const saved = loadRun<RunUI>();
+    if (!saved) return false;
+    if (this.rec && this.rec.log.id === saved.log.id) {
+      clearRun();
+      return false;
+    }
+    const cont = button('Continue saved run', 'v2-btn primary', () => this.continueRun(saved));
+    cont.dataset.askContinue = '1';
+    const fresh = button('Start new', 'v2-btn v3-abandon', () => {
+      clearRun();
+      go();
+    });
+    fresh.dataset.askNew = '1';
+    const back = button('Back', 'v2-btn', () => (saved.kind === 'lab' && !STORE ? this.showLab() : this.showMenu()));
+    this.showOverlay('v2-pause-panel v3-ask-saved', [
+      el('h2', '', 'You have a saved run'),
+      this.savedLine(saved),
+      el('p', 'v2-sub', 'Continue your saved run, or start new (the saved run is lost)?'),
+      cont,
+      fresh,
+      back,
+    ]);
+    return true;
+  }
+
+  /** "Harbor Mouth · wave 6 · 12,400 · 3 min ago". */
+  private savedLine(save: RunSave<RunUI>): HTMLElement {
+    const line = el('p', 'v3-saved-line');
+    const where = save.kind === 'lab' ? 'Test Lab' : save.kind === 'free' ? 'Free Play' : MAPS[save.log.map]?.name ?? '';
+    line.append(el('b', '', save.title), el('span', '', [where !== save.title ? where : '', `wave ${save.wave}`, `score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
+    return line;
+  }
+
+  /** The menu's (and the Test Lab hub's) Continue: the saved run's map,
+   *  how far it got and when. */
+  private continueEntry(save: RunSave<RunUI>): HTMLElement {
+    const b = button('', `v3-continue${canContinue(save) ? '' : ' old'}`, () => this.continueRun(save));
+    b.dataset.continue = save.kind;
+    const pic = el('span', 'v3-continue-pic');
+    const img = el('img');
+    img.alt = '';
+    const url = thumbNow(save.log.map);
+    if (url) img.src = url;
+    else void mapThumb(save.log.map).then((u) => u && (img.src = u));
+    pic.append(img);
+    const text = el('span', 'v3-continue-text');
+    const kind = save.kind === 'lab' ? 'Test Lab' : save.kind === 'free' ? 'Free Play' : '';
+    text.append(el('span', 'v3-eyebrow', kind ? `Continue · ${kind}` : 'Continue'), el('strong', '', save.title), el('small', '', [`Wave ${save.wave}`, `Score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
+    const go = el('span', 'v3-continue-go');
+    go.innerHTML = chromeSvg('play', 16);
+    b.append(pic, text, go);
+    b.setAttribute('aria-label', `Continue ${save.title}, wave ${save.wave}, saved ${timeAgo(save.savedAt)}`);
+    return b;
+  }
+
+  /** Continue the saved run: replay its log to the step it was saved at
+   *  (headless, a slice a frame, under "Restoring…"), check the game there
+   *  is the game that was saved, and open it paused. */
+  private continueRun(save: RunSave<RunUI>): void {
+    if (!canContinue(save) || (save.kind === 'lab' && !labCard(save.ui.lab?.card ?? ''))) {
+      this.showOldRun(save);
+      return;
+    }
+    this.leaveRun();
+    this.setBackdrop(save.log.map);
+    const mode = save.kind === 'lab' ? 'lab' : save.kind === 'free' ? 'freePlay' : 'campaign';
+    // The run's telemetry (a lab run's), rebuilt with it: one sidecar for
+    // the whole run, as if it had never stopped.
+    const attach = this.telWanted(save.kind === 'lab')
+      ? (g: Game) => void logTelemetry(g, save.log, mode, 'human', { touch: navigator.maxTouchPoints > 0, w: window.innerWidth, h: window.innerHeight, landscape: window.innerWidth >= window.innerHeight })
+      : undefined;
+    let rest: Restorer;
+    try {
+      rest = new Restorer(save.log, save.step, save.commands, attach);
+    } catch (e) {
+      console.warn('resume: the saved run could not be set up', e);
+      this.showOldRun(save);
+      return;
+    }
+    const track = el('div', 'v3-restore-track');
+    const bar = el('i');
+    track.append(bar);
+    const count = el('span', 'v3-restore-count', `Wave ${save.log.firstWave} of ${save.wave}`);
+    const cancel = button('Cancel', 'v2-btn v3-restore-cancel', () => {
+      this.restoring = null;
+      this.showMenu();
+    });
+    this.showOverlay('v3-restore', [el('h2', '', 'Restoring…'), this.savedLine(save), track, count, cancel]);
+    this.restoring = { save, rest, since: performance.now(), bar, count };
+    requestAnimationFrame(() => this.runRestore());
+  }
+
+  /** One frame's slice of the replay; then the check, and the run. */
+  private runRestore(): void {
+    const r = this.restoring;
+    if (!r) return;
+    let done = false;
+    try {
+      // (Tests can hold it part way, to see the screen.)
+      if (this.restoreCap === null || r.rest.progress < this.restoreCap) done = r.rest.runFor(RESTORE_SLICE_MS);
+    } catch (e) {
+      console.warn('resume: the replay failed', e);
+      this.restoring = null;
+      this.showOldRun(r.save);
+      return;
+    }
+    r.bar.style.width = `${(r.rest.progress * 100).toFixed(1)}%`;
+    r.count.textContent = `Wave ${Math.min(r.rest.game.wave, r.save.wave)} of ${r.save.wave}`;
+    // Long enough to read, however fast the replay.
+    if (!done || performance.now() - r.since < RESTORE_MIN_MS) {
+      requestAnimationFrame(() => this.runRestore());
+      return;
+    }
+    this.restoring = null;
+    const g = r.rest.game;
+    const now = runPrint(g);
+    if (!samePrint(r.save.print, now)) {
+      // A newer build plays the same inputs differently: not the same game.
+      console.warn('resume: the replay differs from the saved run', printDiff(r.save.print, now));
+      this.showOldRun(r.save);
+      return;
+    }
+    this.resumeRun(r.save, g);
+  }
+
+  /** The replayed game becomes the run in play, paused: the pause menu up
+   *  mid-wave, the draft in a draft (a test that has run its length: its
+   *  verdict). The same log carries on (Recorder.resume). */
+  private resumeRun(save: RunSave<RunUI>, g: Game): void {
+    const ui = save.ui;
+    this.resetFinale();
+    this.endLabRun();
+    this.free = save.kind === 'free' && ui.free ? structuredClone(ui.free) : null;
+    const card = save.kind === 'lab' && ui.lab ? labCard(ui.lab.card) : undefined;
+    this.radarShown = false;
+    this.redShown = false;
+    this.lastTel = null;
+    this.game = g;
+    this.rec = Recorder.resume(g, save.log, save.mark, __BUILD__);
+    this.startWatch(false, g.seed);
+    if (card && ui.lab) {
+      this.labRun = { card, setup: ui.lab.setup };
+      this.labLast = ui.lab.setup;
+      this.root.classList.add('lab-on');
+    }
+    if (ui.speed && ui.speed !== this.speed && this.speedSteps.includes(ui.speed)) this.setSpeed(ui.speed);
+    this.begin();
+    // No beat, no deal: the screen it was on comes straight back.
+    this.lastPhase = g.phase;
+    this.draftWave = g.wave;
+    this.restored = true;
+    if (g.phase === 'wave') {
+      this.paused = true;
+      this.pauseBtn.textContent = '▶';
+      this.showPauseMenu();
+    } else if (this.labRun && labDone(g)) this.showLabVerdict('length');
+    else this.openDraft(g);
+    this.restored = false;
+  }
+
+  /** Screenshots: hold the restore at this much of the way (null: never). */
+  private restoreCap: number | null = null;
+
+  /** Set only while the restored run's first screen is drawn (its pause
+   *  menu says so). */
+  private restored = false;
+
+  /** A saved run this build can't continue: an older log version, a card
+   *  since removed, or a replay that no longer matches. Said in one line;
+   *  its map (or card, with its setup) can be started again. The log it
+   *  left in the log store stays as it was. */
+  private showOldRun(save: RunSave<RunUI>): void {
+    this.restoring = null;
+    clearRun(save.log.id);
+    this.leaveRun();
+    const again = button('Start this map again', 'v2-btn primary', () => this.restartSaved(save));
+    again.dataset.oldAgain = '1';
+    const back = button('Back', 'v2-btn', () => this.showMenu());
+    this.showOverlay('v2-pause-panel v3-old-run', [el('h2', '', 'Can\'t continue'), this.savedLine(save), el('p', 'v2-sub', 'This run was from an older version and can\'t be continued.'), again, back]);
+  }
+
+  /** The saved run's map from the start: the same card and setup, the same
+   *  Free Play setup, or the campaign map. */
+  private restartSaved(save: RunSave<RunUI>): void {
+    const ui = save.ui;
+    if (save.kind === 'lab') {
+      const card = ui.lab ? labCard(ui.lab.card) : undefined;
+      if (card && ui.lab) this.startLab(card.id, ui.lab.setup);
+      else this.showLab();
+    } else if (save.kind === 'free' && ui.free) {
+      this.play(ui.free.map, ui.free);
+    } else if (MAPS[save.log.map]) this.play(save.log.map);
+    else this.showMenu();
   }
 
   start(): void {
@@ -545,7 +833,10 @@ export class App {
     // Closing the tab mid-run still leaves a log.
     window.addEventListener('pagehide', () => {
       if (this.beat) this.finishBeat();
-      if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) this.endRun('quit');
+      if (this.game && (this.game.phase === 'wave' || this.game.phase === 'draft')) {
+        this.keepRun();
+        this.endRun('quit');
+      }
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.background();
@@ -586,6 +877,18 @@ export class App {
       // The map behind the screens around a run, and how far it has sailed.
       backdrop: () => (this.backdrop ? { map: this.backdropId, steps: this.backdrop.steps } : null),
       log: () => this.rec?.snapshot() ?? null,
+      // The run kept to continue (platform/runSave.ts), and how long this
+      // browser takes to rebuild a log at a step, headless (resume timing).
+      savedRun: () => loadRun(),
+      restoreHold: (at: number | null) => {
+        this.restoreCap = at;
+      },
+      restoreTiming: (log: PlayLog, step: number, commands = log.commands.length) => {
+        const t0 = performance.now();
+        const r = new Restorer(log, step, commands);
+        r.run(Infinity);
+        return { ms: performance.now() - t0, steps: r.game.steps, wave: r.game.wave };
+      },
       // The Map & Convoy Lab's telemetry of the run in play (or the last one).
       telemetry: () => (this.game?.tel ? this.game.tel.sidecar(this.game) : this.lastTel),
       // Re-run a log here, so a browser test can check a recorded run replays.
@@ -791,6 +1094,8 @@ export class App {
 
   private showPauseMenu(): void {
     const g = this.game;
+    // A pause is a save point: the run can be continued from here.
+    this.keepRun();
     const extra: HTMLElement[] = [];
     // A test (pause-menu round): its commands, where the bar along the
     // bottom of the field had them; its Note is the menu's note.
@@ -829,19 +1134,16 @@ export class App {
     const buttons = [
       button('Resume', 'v2-btn primary', () => this.togglePause()),
       ...extra,
-      button('Quit to menu', 'v2-btn', () => {
-        this.paused = false;
-        this.pauseBtn.textContent = 'II';
-        this.endRun('quit');
-        this.showMenu();
-      }),
+      button('Quit to menu', 'v2-btn', () => this.confirmQuit()),
     ];
     // With the encounter script below, or a test's commands, the buttons sit
     // in a row, so the script has the room (a landscape phone is 390 px tall).
     const row = el('div', 'v3-pause-row');
     if (script || lab) row.append(...buttons);
     const head = run && lab && g ? labPauseHead(run.card, this.labStats(g), lab.waves, labWaves(lab), { plays: lab.setup.plays, wave: g.wave }) : el('h2', '', 'Paused');
-    this.showOverlay('v2-pause-panel', [head, ...(script || lab ? [row, ...(script ? [script] : [])] : buttons)]);
+    // Just continued from a save: say so, and where it stands.
+    const back = this.restored && g ? [el('p', 'v3-restored', `Run restored · wave ${g.wave} · score ${g.score.toLocaleString()}`)] : [];
+    this.showOverlay('v2-pause-panel', [head, ...back, ...(script || lab ? [row, ...(script ? [script] : [])] : buttons)]);
     if (lab) this.overlay.querySelector('.v2-pause-panel')?.classList.add('v3-lab-pause');
   }
 
@@ -1815,8 +2117,11 @@ export class App {
       if (from === 'wave') {
         this.startBeat('clear', CLEAR_BEAT);
       } else this.openDraft(g);
-    } else if (g.phase === 'won') this.startBeat('won', WON_BEAT);
-    else if (g.phase === 'lost') this.startBeat('lost', LOST_BEAT);
+    } else if (g.phase === 'won' || g.phase === 'lost') {
+      // Over: nothing left to continue (endless, after a win, isn't kept).
+      if (this.rec) clearRun(this.rec.log.id);
+      this.startBeat(g.phase, g.phase === 'won' ? WON_BEAT : LOST_BEAT);
+    }
   }
 
   private openDraft(g: Game): void {
@@ -2138,6 +2443,12 @@ export class App {
     // The locked-map line shows just above the tabs, under the title, where
     // it covers nothing.
     maps.append(toast, tabs, grid);
+    // A run left mid-game: Continue, beside the title (resume round).
+    const saved = loadRun<RunUI>();
+    if (saved && (!STORE || saved.kind !== 'lab')) {
+      title.classList.add('with-continue');
+      title.append(this.continueEntry(saved));
+    }
     this.showOverlay('v2-menu', [bar, title, ...(this.dev ? [this.devPanel()] : []), maps]);
   }
 
@@ -2275,8 +2586,11 @@ export class App {
   private showLab(): void {
     this.leaveRun();
     const p = this.labProgress;
+    // A test left mid-run: Continue, at the top of the hub.
+    const saved = loadRun<RunUI>();
     this.showOverlay('v3-lab', [
       this.screenHead('Test Lab', () => this.showMenu(), undefined, roundTitle()),
+      ...(saved?.kind === 'lab' ? [this.continueEntry(saved)] : []),
       labHub(p, {
         start: (id) => this.startLab(id),
         playFive: () => {
@@ -2328,6 +2642,7 @@ export class App {
   private startLab(id: string, setup?: LabRunSetup): void {
     const card = labCard(id);
     if (!card) return;
+    if (this.askBeforeNew(() => this.startLab(id, setup))) return;
     const first = setup ?? defaultSetup(card, this.labProgress, this.labLast ? { ...this.labLast, length: this.labProgress.length, mix: this.labProgress.mix } : undefined);
     // A link's ?convoy=, ?enc= or ?plays= (a comparison), for the card it
     // named and only as it opens; the plain link is the card's own setup.
@@ -2424,6 +2739,8 @@ export class App {
           saveLabProgress(p);
           // The verdict rides in the test's log (it reaches Claude).
           if (this.rec) this.rec.log.labResult = result;
+          // The test is over: its saved run (if any) goes.
+          if (this.rec) clearRun(this.rec.log.id);
           // A full map run that cleared the map ends as won (and keeps no
           // run to go on with: the lab has no endless).
           const log = this.endRun(g.phase === 'won' ? 'won' : ended === 'lost' ? 'lost' : 'quit');
@@ -3122,6 +3439,7 @@ export class App {
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
   private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null): void {
+    if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters))) return;
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     // A map card's full run in the Test Lab (round 10) is the campaign's own
@@ -4091,6 +4409,14 @@ function speedButton(steps: readonly number[], initial: number, onChange: (step:
 
 // ---------------------------------------------------------------------------
 // Free Play (round 7): the setup on its screen, kept between visits.
+
+/** What the screens need to put a saved run back (platform/runSave.ts):
+ *  Free Play's form, a Test Lab card and its setup, the game speed. */
+interface RunUI {
+  free?: FreeSetup;
+  lab?: { card: string; setup: LabRunSetup };
+  speed?: number;
+}
 
 interface FreeSetup {
   map: MapId;

@@ -6243,3 +6243,228 @@ a.v3-lab-page {
   letter-spacing: 0.06em;
   color: var(--gold);
 }
+
+/* -- The run in progress (docs/design/v3-resume-run.md) -- */
+
+/* The menu's Continue: beside the title, which gives it room. */
+.v3-title.with-continue {
+  width: 100%;
+  justify-content: center;
+  gap: clamp(12px, 2.4vw, 26px);
+}
+
+.v3-title.with-continue h1 {
+  font-size: clamp(22px, 3.7vw, 40px);
+}
+
+.v3-title.with-continue .v3-mark {
+  width: clamp(34px, 5.4vw, 52px);
+  height: clamp(34px, 5.4vw, 52px);
+}
+
+.v3-continue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 340px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  background: rgb(10 20 27 / 0.92);
+  box-shadow: 0 0 0 3px rgb(127 233 255 / 0.12), 0 6px 20px rgb(0 0 0 / 0.45);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+
+.v3-continue:active {
+  transform: scale(0.97);
+}
+
+.v3-continue-pic {
+  flex: none;
+  width: 78px;
+  height: 48px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #0b1820;
+}
+
+.v3-continue-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v3-continue-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.v3-continue-text strong {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v3-continue-text small {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v3-continue-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #062029;
+}
+
+/* A run this build can't continue still shows (tapped, it says why). */
+.v3-continue.old {
+  border-color: var(--panel-edge);
+  box-shadow: none;
+}
+
+.v3-continue.old .v3-continue-go {
+  background: var(--panel-edge);
+  color: var(--ink);
+}
+
+/* The Test Lab hub: its own row at the top. */
+.v2-panel.v3-lab > .v3-continue {
+  align-self: flex-start;
+  margin: 0 0 8px;
+  max-width: 420px;
+}
+
+/* Restoring…, the Quit prompt, the saved-run question, can't continue. */
+.v2-panel.v3-restore,
+.v2-panel.v3-quit,
+.v2-panel.v3-ask-saved,
+.v2-panel.v3-old-run {
+  max-width: 340px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(10 18 24 / 0.94);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.5);
+}
+
+.v2-panel.v3-quit .v2-btn,
+.v2-panel.v3-ask-saved .v2-btn,
+.v2-panel.v3-old-run .v2-btn {
+  width: 100%;
+}
+
+.v2-panel.v3-restore h2,
+.v2-panel.v3-quit h2,
+.v2-panel.v3-ask-saved h2,
+.v2-panel.v3-old-run h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.v2-panel.v3-quit .v2-sub,
+.v2-panel.v3-ask-saved .v2-sub,
+.v2-panel.v3-old-run .v2-sub {
+  margin: 0;
+}
+
+.v2-btn.v3-abandon {
+  border-color: rgb(255 77 61 / 0.55);
+  color: #ffb3ab;
+}
+
+.v3-saved-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+}
+
+.v3-saved-line b {
+  font-size: 16px;
+}
+
+.v3-saved-line span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.v3-restore-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgb(127 233 255 / 0.14);
+}
+
+.v3-restore-track i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.08s linear;
+}
+
+.v3-restore-count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v2-btn.v3-restore-cancel {
+  min-height: 36px;
+}
+
+.v3-restored {
+  margin: -4px 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+@media (max-height: 430px) {
+  .v2-panel.v3-restore,
+  .v2-panel.v3-quit,
+  .v2-panel.v3-ask-saved,
+  .v2-panel.v3-old-run {
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .v2-panel.v3-quit .v2-btn,
+  .v2-panel.v3-ask-saved .v2-btn,
+  .v2-panel.v3-old-run .v2-btn {
+    min-height: 40px;
+  }
+  .v3-continue-pic {
+    width: 66px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 720px) {
+  .v3-continue {
+    max-width: 300px;
+  }
+}
