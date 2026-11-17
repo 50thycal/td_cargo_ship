@@ -148,16 +148,18 @@ table{border-collapse:collapse;font-size:.85rem;width:100%}
 th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left;white-space:nowrap}
 td.n{text-align:center}td.kit{white-space:normal;min-width:10em;color:var(--mute)}
 .hidden{display:none}
+.jump{border:0;background:var(--acc);color:var(--acc-ink);border-radius:10px;padding:10px 16px;min-height:44px;font:inherit;font-weight:600;cursor:pointer}
 </style>
 <main>
 <h1>Map and Wave Rules</h1>
 <p class="lead">The rules every map and its waves must follow before we rebuild the other 17 maps: what a map needs beyond its shape, how waves are built, and how waves use the map. Mark each rule <b>Approve</b>, <b>Change</b> or <b>Cut</b>, add notes, then answer the questions at the end.</p>
+<p><button type="button" class="jump" data-tab="qs">Answer the ${QUESTIONS.length} questions →</button></p>
 <p id="store">Connecting to the review store…</p>
 <p id="tally"></p>
 <nav aria-label="Sections">
+  <button type="button" data-tab="qs">Questions</button>
   <button type="button" data-tab="all">All rules</button>
   ${SECTIONS.map((s) => `<button type="button" data-tab="${s.id}">${esc(s.name)}</button>`).join('')}
-  <button type="button" data-tab="qs">Questions</button>
   <button type="button" data-tab="ev">Evidence</button>
 </nav>
 ${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2>${esc(s.name)}</h2><p class="blurb">${esc(s.blurb)}</p>${RULES.filter((r) => r.sec === s.id).map(ruleCard).join('')}</section>`).join('')}
@@ -203,7 +205,7 @@ ${SECTIONS.map((s) => `<section class="sec" data-sec="${s.id}"><h2>${esc(s.name)
     document.getElementById('tally').innerHTML = marked + ' of ' + RULE_IDS.length + ' rules marked · <b>' + n('approve') + ' approve</b> · ' + n('change') + ' change · ' + n('cut') + ' cut · ' + qa + ' of ' + Q_IDS.length + ' questions answered';
   }
   function paintTab() {
-    document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
+    document.querySelectorAll('nav [data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
     document.querySelectorAll('section.sec').forEach((s) => {
       const k = s.dataset.sec;
       const show = tab === 'all' ? k !== 'ev' : k === tab;
