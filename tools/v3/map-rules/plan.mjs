@@ -70,13 +70,13 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-17',
-  headline: 'The bots now play like you: they lose about what you lose in waves 1–5 and on the Gauntlet’s boss rounds. Next: automatic checks and a bot report for each map.',
+  headline: 'The checks and bot reports are built. Now: tuning the Strait, the Gauntlet and Harbor Mouth to the rules with the bots, then they come to you to play.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
-    { id: 'scorecard', name: 'The new scorecard', state: 'now', detail: 'You approved it (2026-11-17). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.' },
-    { id: 'checks', name: 'Automatic checks and bot reports', state: 'next', detail: 'No wave cliffs, close calls from wave 3, wave budgets, counter vs off-counter kits, no later-chapter foes; a heat-map report per map that a session can read and act on.' },
-    { id: 'reference', name: 'The three reference maps to the rules', state: 'later', detail: 'The Strait, The Gauntlet, Harbor Mouth: early stakes, wave 1, boss rounds at about a ship a round, counters, internal encounter notes. Tuned in the bot loop, then you play them.' },
+    { id: 'scorecard', name: 'The new scorecard', state: 'done', detail: 'Live in the Test Lab (#161). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.' },
+    { id: 'checks', name: 'Automatic checks and bot reports', state: 'done', detail: 'Built (#162). Each map now gets a bot report: losses per wave, cliffs, close calls, wave budgets, the danger and safe stretches, warning time, kits and a heat map. Encounters carry internal notes. Tests catch later-chapter foes and repeated encounters. First readings on the three reference maps: every map has a cliff (the Gauntlet’s wave 8 jumps from 0.75 to 3 ships for the bot); Harbor’s waves 4–7 send a third fewer attacks than they should; the Strait and the Gauntlet have no clearly safe stretch; every encounter repeats 3–4 waves in a row.' },
+    { id: 'reference', name: 'The three reference maps to the rules', state: 'now', detail: 'The Strait, The Gauntlet, Harbor Mouth: early stakes, wave 1, boss rounds at about a ship a round, counters, internal encounter notes. Tuned in the bot loop, then you play them.' },
     { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'later', detail: 'Map cards, build, bot loop, then your playtest.' },
     { id: 'ch2', name: 'Chapters 2–4', state: 'later', detail: 'A chapter at a time, the same way.' },
   ],
@@ -86,9 +86,13 @@ export const STATUS = {
     { n: 157, title: 'Map and wave rules page', state: 'merged' },
     { n: 158, title: 'Resume test fix', state: 'merged' },
     { n: 159, title: 'This hub page', state: 'merged' },
-    { n: 160, title: 'Bots that play like you (the refit)', state: 'open' },
+    { n: 160, title: 'Bots that play like you (the refit)', state: 'merged' },
+    { n: 161, title: 'The new scorecard', state: 'merged' },
+    { n: 162, title: 'Automatic checks and a bot report for each map', state: 'open' },
   ],
   log: [
+    { date: '2026-11-17', what: 'Checks and bot reports built. What they found on the three reference maps: a cliff on every map (a wave where losses more than double); Harbor Mouth’s waves 4–7 are a third light on attacks (its funnel encounter replaces more than it sends); the Strait and Gauntlet lack a clearly safe stretch; each encounter runs 3–4 waves in a row (the rules want no repeats back to back). Also: each chapter’s first map brings all its new enemies in waves 2–6, mixed in, so no enemy gets a debut wave of its own yet; the Hydra and Rocket Truck first appear on the Strait. These are the to-do list for the reference-map tuning that starts now.' },
+    { date: '2026-11-17', what: 'Merged: the bot refit (#160) and the new scorecard (#161). The next map card you finish shows the new scorecard. The iOS check on #160 never got a Mac to run on; #161 carries the same code and passed it.' },
     { date: '2026-11-17', what: 'You approved the new scorecard. It is being built now, alongside the automatic checks; it moved to the Archive.' },
     { date: '2026-11-17', what: 'Your question answered. To calibrate, the bot now replays each of your runs with your exact setup: the same map (cards and campaign), seed, Armory upgrades and draft picks. On that basis it loses 0.69 ships in waves 1–5 (you 0.50), 3.6 in waves 6–10 (you 3.3) and 1.0 a boss round (you 0.5). Map testing keeps a baseline bot with no upgrades.' },
     { date: '2026-11-17', what: 'Bots refit to your play. The measuring tools read your logs and the bots the same way. The fit table and what is still off are in docs/design/v3-bot-refit.md.' },

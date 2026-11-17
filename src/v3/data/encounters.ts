@@ -113,6 +113,17 @@ export interface PairBeat {
 
 export type ArcRole = 'teach' | 'combine' | 'escalate' | 'climax';
 
+/** An encounter's internal notes, one sentence each, naming launch sites as
+ *  the map draws them ("the east silo on the north shore"). */
+export interface EncounterNotes {
+  /** Which launch sites fire: silos, sub spots, edges, roads. */
+  sites: string;
+  /** Which ship or stretch it aims at. */
+  target: string;
+  /** How it uses the map's shape or mechanic. */
+  usesMap: string;
+}
+
 export interface Encounter {
   id: string;
   map: MapId;
@@ -131,6 +142,11 @@ export interface Encounter {
   decision: string;
   counters: string;
   succeeds: string;
+  /** Internal design notes (rule g-named, docs/design/v3-map-data-checks.md):
+   *  where it fires from, what it aims at and how it uses the map. For the
+   *  designer and the checks only; never shown in the game, and it changes
+   *  nothing a run plays (the call-out stays the player's line). */
+  notes: EncounterNotes;
   beats: Beat[];
   /** Enemy pairs it places (v3). */
   pairs?: PairBeat[];
@@ -163,6 +179,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Read one warning from one place: where will it land, and which ship is under it?',
     counters: 'Tap each shell in flight, the first as soon as it climbs.',
     succeeds: 'Hull lost to these shells is lower than to the same two ballistics in the shared wave; first shot at them comes sooner.',
+    notes: {
+      sites: 'The middle silo on the north shore, on its own.',
+      target: 'The lead ship, furthest east along the lane.',
+      usesMap: 'One silo straight across the water from the carrier teaches the north shore\'s long warning: each shell crosses the whole open water, so there is time to read where it lands.',
+    },
     beats: [{ at: 0.3, kind: 'ballistic', count: 2, gap: 1.6, from: base(1), aim: 'lead' }],
     replaces: { ballistic: 2 },
   },
@@ -176,6 +197,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Shoot the swarm in front, or reach through it for the missile that does the damage?',
     counters: 'One tap on the missile early; a blast weapon on the swarm.',
     succeeds: 'The missile is shot at before half the swarm is down in most runs; hull lost to guided in these waves does not rise.',
+    notes: {
+      sites: 'The east silo on the north shore, for both the swarm and the missile behind it.',
+      target: 'The swarm at any ship, the missile at the lead ship near the delivery end.',
+      usesMap: 'The east silo is the one nearest the ships about to deliver, so the swarm screens the missile with the shortest flight on the map.',
+    },
     beats: [
       { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
       { at: 0.45, plus: 1.4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
@@ -192,6 +218,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Three different answers in six seconds, each with its own warning: take them in order or get ahead of the last?',
     counters: 'Follow the lit base; the shells need a tap each; the guided pair needs the taps.',
     succeeds: 'Launches overlap on screen more than in the shared wave, with no more of them: harder by timing, not by count.',
+    notes: {
+      sites: 'All three north-shore silos in turn, west, middle, then east, two seconds apart.',
+      target: 'The swarm and the guided pair at any ship, the shells at the lead ship.',
+      usesMap: 'The three silos in a row along one shore make the fire sweep along the lane with the convoy: harder by timing, not by count.',
+    },
     beats: [
       { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.55, plus: 2, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
@@ -210,6 +241,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Finish the first shore before the second opens, or leave some to turn round in time?',
     counters: 'Clear north fast; the south swarm has its own warning.',
     succeeds: 'Taps cross the carrier line once, not back and forth; damage by shore is even.',
+    notes: {
+      sites: 'The north-west silo, then the south-west silo four seconds later.',
+      target: 'Any ship on either lane, as the convoy enters the west end of the channel.',
+      usesMap: 'The two shores with the carrier between them: the second swarm comes from the other side once the first has pulled the player north.',
+    },
     beats: [
       { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.3, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
@@ -226,6 +262,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Two shores at once and two kinds of answer: which lane do you save first?',
     counters: 'Shells first (they are committed and few), then the swarm.',
     succeeds: 'Both shores have threats in the air together for three seconds or more; the far lane is not abandoned.',
+    notes: {
+      sites: 'The south-west silo\'s swarm, then shells from the north-east silo.',
+      target: 'The swarm at any ship, the shells at the lead ship further east.',
+      usesMap: 'Opposite shores and opposite ends of the channel, so the two threats never sit in one sweep of the thumb.',
+    },
     beats: [
       { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
       { at: 0.45, plus: 1.2, kind: 'ballistic', count: 2, gap: 0.9, from: base(1), aim: 'lead' },
@@ -242,6 +283,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Everything is warned of at once: what can wait two seconds, and what cannot?',
     counters: 'The strafer has the shortest fuse on a dense lane; the shores\' swarms are slow.',
     succeeds: 'The most threats on screen at once is higher than in the shared wave with no more launched; a person can say afterwards what hit them.',
+    notes: {
+      sites: 'The north-west and south-west silos together, then the south-east silo\'s missile and a strafer in from the west edge.',
+      target: 'The swarms at any ship, the missile at the lead ship, the strafer down the channel.',
+      usesMap: 'Every side of the channel at once: both shores, the far east end, and the air down the middle where the carrier sits.',
+    },
     beats: [
       { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
@@ -261,6 +307,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'Learn the two halves of the map: the wide water forgives, the narrows will not.',
     counters: 'Ordinary interception; nothing is aimed into the funnel yet.',
     succeeds: 'No sinking in the narrows in waves 1 to 3; hull lost sits in the first third of the board.',
+    notes: {
+      sites: 'The north-west silo, the one furthest from the harbour.',
+      target: 'Any ship while the convoy is still in the wide open water in the west.',
+      usesMap: 'The open water is the safe stretch: a swarm with a long run in teaches the map before the neck matters.',
+    },
     beats: [{ at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0) }],
     replaces: { drones: 5 },
   },
@@ -274,6 +325,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'The periscope shows before the salvo: shoot the sub, or save the taps for its four shells?',
     counters: 'Shoot the shells as they climb; the periscope is the warning, and a weapon loaded early covers the mouth.',
     succeeds: 'Hull lost in the middle third falls as the periscope is learnt (waves 4 to 7 against each other), and deliveries do not.',
+    notes: {
+      sites: 'A submarine at the sub spot off the mouth of the narrows, north of the neck.',
+      target: 'The ship nearest the narrows, as it enters the funnel.',
+      usesMap: 'Puts the sub\'s short warning right on the danger stretch, where the lane closes and the ships cannot spread out.',
+    },
     beats: [{ at: 0.45, kind: 'ballistic', count: 4, gap: 0.75, from: sub(1), aim: 'narrows' }],
     replaces: { ballistic: 4 },
   },
@@ -287,6 +343,11 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
     decision: 'The ships nearest home are the ones aimed at: defend the last mile or the ones behind?',
     counters: 'The guided pair first; the swarm is slower than it looks from this side.',
     succeeds: 'Sinkings in the last third do not rise against the shared wave, with the same number launched.',
+    notes: {
+      sites: 'The north-east headland silo, the south headland silo, then the south-east silo at the mouth.',
+      target: 'The lead ship about to deliver for the missiles, any ship for the swarm, the ship nearest the narrows for the shells.',
+      usesMap: 'The silos round the harbour mouth fire into the last mile of the funnel, the map\'s danger stretch, from both sides of the neck.',
+    },
     beats: [
       { at: 0.55, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
       { at: 0.55, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
@@ -298,7 +359,7 @@ const V1: Omit<Encounter, 'version' | 'callout'>[] = [
 
 /** Version 1's call-out lines (only shown when a run turns call-outs on). */
 const V1_CALLOUT: Record<string, string> = {
-  'strait-ranging-shots': 'Two shells from the middle base',
+  'strait-ranging-shots': 'Two shells, one after the other',
   'strait-screen': 'A missile behind the swarm',
   'strait-rolling-push': 'West to east, two seconds apart',
   'gauntlet-north-then-south': 'North shore, then south',
@@ -324,11 +385,16 @@ const V2: Omit<Encounter, 'version'>[] = [
     waves: [3],
     role: 'teach',
     name: 'The sweep',
-    callout: 'West to east, all three bases',
+    callout: 'West to east, one after another',
     premise: 'The three bases light and fire in turn from west to east, under two seconds apart: drones, shells, then drones again.',
     decision: 'Three warnings in a row, one order to fire in: follow it, or get ahead of the east base?',
     counters: 'Clear the west swarm, tap the shells as they climb, then turn east.',
     succeeds: 'Hull lost in the sweep falls when it is met again (wave 8 is its echo); the player can say the order afterwards.',
+    notes: {
+      sites: 'The three north-shore silos in turn, west, middle, then east.',
+      target: 'The swarms at any ship, the shells at the lead ship.',
+      usesMap: 'The three silos in a row along the north shore make an order the player can learn and say back.',
+    },
     beats: [
       { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.3, plus: 1.6, kind: 'ballistic', count: 2, gap: 0.8, from: base(1), aim: 'lead' },
@@ -342,11 +408,16 @@ const V2: Omit<Encounter, 'version'>[] = [
     waves: [5],
     role: 'combine',
     name: 'Both sides',
-    callout: 'Subs north and south of the lane',
+    callout: 'Subs north and south of the convoy',
     premise: 'Two periscopes at once, one off the north shore and one behind the convoy on the south side; each fires a salvo at the lead ship.',
     decision: 'The threat comes from behind you for the first time: which salvo first?',
     counters: 'Tap the shells as they climb; the south salvo is closer to the ships and lands sooner.',
     succeeds: 'Both salvos are shot at; the player looks south once the periscope shows.',
+    notes: {
+      sites: 'Two submarines: the north-east sub spot off the north shore and the south-east spot on the friendly side, behind the convoy.',
+      target: 'The lead ship, from both sides of the lane.',
+      usesMap: 'The south sub spot is the one place fire can come from behind the lane, turning a one-shore map into two.',
+    },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.4, plus: 0.6, kind: 'ballistic', count: 3, gap: 0.75, from: sub(4), aim: 'lead' },
@@ -364,6 +435,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'The bomber\'s missiles or the swarm under it: what can wait?',
     counters: 'The bomber\'s missiles as they drop; the swarm is slower.',
     succeeds: 'The arrow is read: the bomber\'s missiles are shot at before they land.',
+    notes: {
+      sites: 'A bomber in from the west edge along the north water, then the middle silo on the north shore.',
+      target: 'The bomber\'s missiles at the ships under its line, the swarm at any ship.',
+      usesMap: 'The bomber flies the open water between the north shore and the lane, so its arrow and the silo warn from the same side.',
+    },
     beats: [
       { at: 0.45, kind: 'bomber', count: 1, from: { air: 1 } },
       { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
@@ -381,6 +457,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'You know the sweep: now it comes the other way, a second apart.',
     counters: 'The missile first; then the shells as they climb.',
     succeeds: 'Hull lost here is no worse than wave 9\'s by more than a ship; the player calls it fair.',
+    notes: {
+      sites: 'The three north-shore silos in reverse, east, middle, then west, under a second and a half apart.',
+      target: 'The missile at the lead ship, the shells and the swarm at any ship.',
+      usesMap: 'The sweep\'s row of silos run the other way, so the east silo\'s short flight comes first.',
+    },
     beats: [
       { at: 0.4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
       { at: 0.4, plus: 1.4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) },
@@ -400,6 +481,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'Both shores light together: which side do you clear first, and how do you get back?',
     counters: 'Take the nearer swarm, then the shells as they climb, then the far swarm.',
     succeeds: 'Damage by shore is even; the far lane is not abandoned.',
+    notes: {
+      sites: 'The north-west and south-west silos in the same second, then shells from the north-east silo.',
+      target: 'The swarms at any ship on either lane, the shells at the lead ship.',
+      usesMap: 'The two shores face each other across the carrier, so both swarms close on the convoy from opposite sides.',
+    },
     beats: [
       { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
@@ -418,6 +504,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'Two answers from two shores at once: which one do you leave?',
     counters: 'The missile (it homes); then the shells as they climb.',
     succeeds: 'The lead ship survives in most runs; both shores are shot at.',
+    notes: {
+      sites: 'The north-east and south-east silos in the same second, then a swarm from the south-west silo.',
+      target: 'The shells and the swarm at any ship, the missile at the lead ship.',
+      usesMap: 'The two east silos face each other at the end of the channel, so the scissors close on the ships nearest delivery.',
+    },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) },
       { at: 0.4, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
@@ -436,6 +527,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'An arrow from the west, and both shores firing: what has the shortest fuse?',
     counters: 'The strafer first; the swarms are slower than they look.',
     succeeds: 'The strafer is shot at before its run; ships lost to strafers fall against wave 8 of v1.',
+    notes: {
+      sites: 'A strafer in from the west edge, then the north-west and south-west silos together.',
+      target: 'The strafer along the channel at the ships, the swarms at any ship.',
+      usesMap: 'The channel between the shores is the strafer\'s runway, and the two west silos fill both flanks behind it.',
+    },
     beats: [
       { at: 0.45, kind: 'strafer', count: 1, from: { air: 1 } },
       { at: 0.45, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
@@ -449,11 +545,16 @@ const V2: Omit<Encounter, 'version'>[] = [
     waves: [10],
     role: 'climax',
     name: 'Full pincer',
-    callout: 'All four bases',
+    callout: 'Everything at once, both shores',
     premise: 'All four bases light within a second: swarms from the west of each shore, then shells from the north-east and guided missiles from the south-east.',
     decision: 'Everything warned of at once from both shores: what can wait two seconds?',
     counters: 'Missiles and shells first (they are few and committed), then the swarms.',
     succeeds: 'The most threats on screen is the run\'s peak, and the player can say what hit them.',
+    notes: {
+      sites: 'All four silos: north-west and south-west swarms, then the north-east shells and the south-east missiles.',
+      target: 'The swarms at any ship, the shells and the missiles at the lead ship.',
+      usesMap: 'Every silo on both shores lights within a second, so the climax is the whole channel at once.',
+    },
     beats: [
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
@@ -474,6 +575,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'The periscope shows first: get ready over the funnel before the salvo.',
     counters: 'Tap the shells as they climb; the swarm after them is slow.',
     succeeds: 'The player looks at the periscope when it shows (taps near the funnel before the first shell lands).',
+    notes: {
+      sites: 'A submarine at the sub spot off the mouth of the narrows, then the north headland silo.',
+      target: 'The ship nearest the narrows, for both the salvo and the swarm.',
+      usesMap: 'The periscope rises right over the funnel, the danger stretch, and the headland silo sits above the same water.',
+    },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
       { at: 0.35, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'narrows' },
@@ -491,6 +597,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'Two missiles at one ship from two sides, then a swarm: where do your taps go?',
     counters: 'The missiles first (they home); the swarm is slow from the south.',
     succeeds: 'The ship in the neck survives in most runs.',
+    notes: {
+      sites: 'The north-east headland silo and the south headland silo together, then a swarm from the south headland.',
+      target: 'The ship nearest the narrows, from both sides of the neck; the swarm at any ship.',
+      usesMap: 'The two headlands face each other across the neck, so the funnel is hit from the north and the south at once.',
+    },
     beats: [
       { at: 0.4, kind: 'guided', count: 1, from: base(2), aim: 'narrows' },
       { at: 0.4, kind: 'guided', count: 1, from: base(3), aim: 'narrows' },
@@ -509,6 +620,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'The first salvo pulls you to the funnel; the second is behind you: do you turn in time?',
     counters: 'Both periscopes show before their salvos; look back west after the first.',
     succeeds: 'Both salvos are shot at; ships lost in the open water stay low.',
+    notes: {
+      sites: 'Two submarines: the sub spot off the mouth of the narrows, then the open-water spot to the south-west, behind the convoy.',
+      target: 'The ship nearest the narrows first, then any ship in the open water.',
+      usesMap: 'Pulls the player east to the funnel and then back west to the open water, the safe stretch, which for once is not safe.',
+    },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
       { at: 0.4, plus: 3, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'any' },
@@ -526,6 +642,11 @@ const V2: Omit<Encounter, 'version'>[] = [
     decision: 'The last mile, with every warning on screen: what can wait?',
     counters: 'The guided pair, then the shells; the swarm is slow from the south.',
     succeeds: 'Ships lost here are no more than wave 9\'s plus one; the player calls it hard but fair.',
+    notes: {
+      sites: 'A submarine off the mouth of the narrows, the north-east headland silo, then the south headland silo.',
+      target: 'The ship nearest the narrows and the lead ship about to deliver; the swarm at any ship.',
+      usesMap: 'Everything the harbour mouth has (the sub, the headland, the south shore) on the last ships home in the neck.',
+    },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'narrows' },
       { at: 0.4, plus: 1.2, kind: 'guided', count: 2, gap: 0.9, from: base(2), aim: 'lead' },
@@ -558,6 +679,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    notes: {
+      sites: 'The west silo on the north shore: the swarm, then the Hydra out of the same silo.',
+      target: 'Any ship; the Hydra is timed to arrive with the swarm.',
+      usesMap: 'The west silo gives a long look at the pair across the open water before it closes on the lane.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.35, 0]),
     replaces: { drones: 10 },
@@ -573,6 +699,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The Hydra or the shells: both want the same taps.',
     counters: 'The Hydra out in the swarm, then the shells as they climb.',
     succeeds: 'Hull lost to darts falls from wave 2.',
+    notes: {
+      sites: 'The east silo on the north shore for the Hydra and its swarm, then shells from the middle silo.',
+      target: 'Any ship, for the pair and the shells.',
+      usesMap: 'The east silo is near the delivery end, so the Hydra closes sooner than on wave 2 while the middle silo adds shells.',
+    },
     beats: [{ at: 0.35, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
     pairs: pairsOf(['hydra-swarm', 0.35, 2]),
     replaces: { drones: 10, ballistic: 2 },
@@ -588,6 +719,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Shoot the Scavenger to free your pickups, or the swarm first?',
     counters: 'The swarm, then the Scavenger before the next drop.',
     succeeds: 'Pickups locked by it are freed in most runs.',
+    notes: {
+      sites: 'A Scavenger in from the top edge, then a swarm from a north-shore silo.',
+      target: 'The Scavenger circles over the water where pickups fall; the swarm goes at any ship.',
+      usesMap: 'Uses the open water between the shore and the lane, where drops land, rather than a stretch of the lane.',
+    },
     beats: [],
     pairs: pairsOf(['scavenger-swarm', 0.3]),
     replaces: { drones: 11 },
@@ -603,6 +739,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Ammo runs down on the swarm and the shells while the Scavenger holds your drops.',
     counters: 'Keep a tap for the Scavenger; the shells as they climb.',
     succeeds: 'No run runs dry here more than wave 4 did.',
+    notes: {
+      sites: 'A Scavenger in from the top edge with its swarm from a north-shore silo, then shells from the middle silo.',
+      target: 'The pickups on the water, and any ship for the swarm and the shells.',
+      usesMap: 'The middle silo\'s shells come while the drops on the open water are locked, so ammo runs down over the long warnings.',
+    },
     beats: [{ at: 0.25, plus: 4, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
     pairs: pairsOf(['scavenger-swarm', 0.25]),
     replaces: { drones: 11, ballistic: 2 },
@@ -618,6 +759,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The helicopter keeps your gun busy; the sub is up only a short time: which first?',
     counters: 'The sub while it is up; the helicopter after.',
     succeeds: 'The sub is shot at while it is up in most runs.',
+    notes: {
+      sites: 'An Attack Helicopter in from the edge to hover by the lane, and a Torpedo Sub surfacing on the water under it.',
+      target: 'The ships on the lane, by the helicopter\'s missile pairs and the sub\'s torpedoes.',
+      usesMap: 'Brings fire off the water beside the lane instead of the far north shore, cutting the Strait\'s long warning.',
+    },
     beats: [],
     pairs: pairsOf(['heli-sub', 0.3]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -633,6 +779,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The pair and a swarm: what can wait?',
     counters: 'The sub, then the swarm, then the helicopter.',
     succeeds: 'Ships lost here are no more than wave 6\'s plus one.',
+    notes: {
+      sites: 'The helicopter and its sub by the lane, then a swarm from the west silo on the north shore.',
+      target: 'The ships on the lane; the swarm at any ship.',
+      usesMap: 'The west silo\'s swarm comes from the far shore while the pair is close, so the player splits between near and far.',
+    },
     beats: [
       { at: 0.3, plus: 5, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
@@ -650,6 +801,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two pairs at once: which half of each do you break?',
     counters: 'The Hydra early, the Scavenger before your next drop.',
     succeeds: 'The two pairs are on screen together for several seconds, and ships lost stay level with wave 7.',
+    notes: {
+      sites: 'A Scavenger from the top edge with its swarm, then the Hydra swarm from the east silo.',
+      target: 'The pickups on the water, and any ship for the swarms and the Hydra.',
+      usesMap: 'The east silo\'s Hydra closes on the delivery end while the drops on the open water are held.',
+    },
     beats: [],
     pairs: pairsOf(['scavenger-swarm', 0.3], ['hydra-swarm', 0.45, 2]),
     replaces: { drones: 14, ballistic: 4, guided: 4 },
@@ -665,6 +821,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Three different answers in a few seconds.',
     counters: 'The sub while it is up, the Hydra out in its swarm, then the helicopter.',
     succeeds: 'Ships lost stay within one of wave 8.',
+    notes: {
+      sites: 'The helicopter and its sub by the lane, then the Hydra swarm from the west silo.',
+      target: 'The ships on the lane; the Hydra swarm at any ship.',
+      usesMap: 'Near fire from the water beside the lane and far fire from the west of the north shore at once.',
+    },
     beats: [],
     pairs: pairsOf(['heli-sub', 0.3], ['hydra-swarm', 0.5, 0]),
     replaces: { drones: 21, guided: 1, ballistic: 1 },
@@ -680,6 +841,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'What you learned, in order: keep up.',
     counters: 'Each pair\'s own answer, one at a time.',
     succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    notes: {
+      sites: 'The Hydra swarm from the west silo, then the helicopter and its sub by the lane.',
+      target: 'Any ship for the Hydra swarm, then the ships on the lane.',
+      usesMap: 'The far shore first, then the water beside the lane: the map\'s two distances, in order.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.2, 0], ['heli-sub', 0.55]),
     replaces: { drones: 21, guided: 1, ballistic: 1 },
@@ -696,6 +862,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    notes: {
+      sites: 'The north-west silo: the swarm, then the Hydra out of the same silo.',
+      target: 'Any ship on either lane; the Hydra is timed to arrive with the swarm.',
+      usesMap: 'Fires off the north shore only, so the first pair comes from one side of the carrier.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.35, 0]),
     replaces: { drones: 10 },
@@ -711,6 +882,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two shores and two answers: Hydra or shells?',
     counters: 'The Hydra out in the swarm, then the shells as they climb.',
     succeeds: 'Damage by shore is even.',
+    notes: {
+      sites: 'The Hydra swarm from the south-west silo, then shells from the north-east silo.',
+      target: 'Any ship on either lane.',
+      usesMap: 'Opposite shores again: the Hydra from the south, the shells from the north.',
+    },
     beats: [{ at: 0.35, plus: 3, kind: 'ballistic', count: 2, gap: 0.8, from: base(1) }],
     pairs: pairsOf(['hydra-swarm', 0.35, 2]),
     replaces: { drones: 10, ballistic: 2 },
@@ -726,6 +902,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The plates make you wait for their bank; the Hydra makes you shoot early.',
     counters: 'Shoot the Hydra early; wait for the drones to bank, or blast them.',
     succeeds: 'The Hydra is killed before it splits in most runs.',
+    notes: {
+      sites: 'The north-east silo: two Armored Drones, then the Hydra out of the same silo.',
+      target: 'Any ship on either lane; the Hydra is timed to arrive with the drones.',
+      usesMap: 'One silo on one shore, so the player can stand over that side while learning the plates.',
+    },
     beats: [],
     pairs: pairsOf(['armored-hydra', 0.35, 1]),
     replaces: { drones: 15 },
@@ -741,6 +922,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Wait for the bank in the south, or turn to the north shore?',
     counters: 'The Hydra first, then the drones as they bank.',
     succeeds: 'The far lane is not abandoned.',
+    notes: {
+      sites: 'The south-west silo for the armored pair, with the wave\'s own fire from the north shore.',
+      target: 'Any ship on either lane.',
+      usesMap: 'Puts the pair on the south shore while the wave\'s own fire keeps the north busy.',
+    },
     beats: [],
     pairs: pairsOf(['armored-hydra', 0.35, 2]),
     replaces: { drones: 15 },
@@ -756,6 +942,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two launchers you can\'t outshoot: which do you break first?',
     counters: 'The truck before it fires; the gun while it is up.',
     succeeds: 'The truck is killed before its third salvo in most runs.',
+    notes: {
+      sites: 'A Rocket Truck down one of the shore roads, then a Siege Battery out of a hatch on the shore.',
+      target: 'The ships on the lanes: the truck\'s rockets, then the gun\'s shells on circles.',
+      usesMap: 'Uses the shore roads along both banks: launchers that move along the shore instead of fixed silos.',
+    },
     beats: [],
     pairs: pairsOf(['siege-truck', 0.2]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -771,6 +962,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The launchers or the swarm?',
     counters: 'The truck early, the swarm, then the gun while it is up.',
     succeeds: 'Ships lost stay within one of wave 6.',
+    notes: {
+      sites: 'The truck and the gun on the shore, then a swarm from the south-west silo.',
+      target: 'The ships on the lanes; the swarm at any ship.',
+      usesMap: 'The south-west swarm comes while the launchers take turns, so the player turns between a road and a silo.',
+    },
     beats: [
       { at: 0.2, plus: 8, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
     ],
@@ -788,6 +984,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two Hydras from two shores: which do you take first?',
     counters: 'Both Hydras early; the drones as they bank.',
     succeeds: 'Hull lost to darts stays level with wave 5.',
+    notes: {
+      sites: 'The Hydra swarm from the south-west silo, then the armored pair from the north-east silo.',
+      target: 'Any ship on either lane.',
+      usesMap: 'Two Hydras from opposite shores and opposite ends of the channel.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.3, 2], ['armored-hydra', 0.45, 1]),
     replaces: { drones: 26 },
@@ -803,6 +1004,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The launchers keep firing while the Hydra closes.',
     counters: 'The truck early, the Hydra out in its swarm, the gun while it is up.',
     succeeds: 'Ships lost stay within one of wave 8.',
+    notes: {
+      sites: 'The truck and the gun on the shore, then the Hydra swarm from the north-west silo.',
+      target: 'The ships on the lanes; the Hydra swarm at any ship.',
+      usesMap: 'A road launcher and a north-shore silo keep both kinds of launch site busy at once.',
+    },
     beats: [],
     pairs: pairsOf(['siege-truck', 0.2], ['hydra-swarm', 0.5, 0]),
     replaces: { drones: 21, guided: 1, ballistic: 1 },
@@ -818,6 +1024,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'What you learned, in order: keep up.',
     counters: 'Each pair\'s own answer, one at a time.',
     succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    notes: {
+      sites: 'The armored pair from the north-east silo, then the truck and the gun on the shore.',
+      target: 'Any ship, then the lanes under the gun\'s circles.',
+      usesMap: 'A north-shore silo first, then the shore road and its hatch: the map\'s two kinds of launch site, in order.',
+    },
     beats: [],
     pairs: pairsOf(['armored-hydra', 0.2, 1], ['siege-truck', 0.45]),
     replaces: { drones: 25, guided: 1, ballistic: 1 },
@@ -834,6 +1045,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is killed before it splits in most runs by wave 3.',
+    notes: {
+      sites: 'The north-west silo: the swarm, then the Hydra out of the same silo.',
+      target: 'Any ship in the open water.',
+      usesMap: 'The far west silo gives the pair the open water to cross, the safe stretch to learn it in.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.35, 0]),
     replaces: { drones: 10, ballistic: 1 },
@@ -849,6 +1065,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'In the narrows the darts have nowhere to miss: kill it early.',
     counters: 'The Hydra out in the swarm, before it is over the neck.',
     succeeds: 'Hull lost in the narrows to darts stays low.',
+    notes: {
+      sites: 'The north headland silo: the swarm, then the Hydra out of the same silo.',
+      target: 'The ships at the neck.',
+      usesMap: 'The headland sits above the neck, so the Hydra\'s darts split where the lane is narrowest.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.35, 1]),
     replaces: { drones: 10, ballistic: 2 },
@@ -864,6 +1085,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The helicopter keeps your gun busy; the sub is up only a short time: which first?',
     counters: 'The sub while it is up; the helicopter after.',
     succeeds: 'The sub is shot at while it is up in most runs.',
+    notes: {
+      sites: 'An Attack Helicopter in from the edge to hover by the lane, and a Torpedo Sub surfacing on the water under it.',
+      target: 'The ships on the lane, by the helicopter\'s missile pairs and the sub\'s torpedoes.',
+      usesMap: 'Puts fire on the water beside the lane, closer than any silo, before the convoy reaches the funnel.',
+    },
     beats: [],
     pairs: pairsOf(['heli-sub', 0.3]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -879,6 +1105,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The pair and the wave at once: what can wait?',
     counters: 'The sub while it is up, then the helicopter.',
     succeeds: 'Ships lost stay within one of wave 4.',
+    notes: {
+      sites: 'The helicopter and its sub by the lane, with the wave\'s own fire from the silos.',
+      target: 'The ships on the lane as they near the neck.',
+      usesMap: 'The same pair later in the run, when the convoy is closer to the funnel and has less room.',
+    },
     beats: [],
     pairs: pairsOf(['heli-sub', 0.3]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -894,6 +1125,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The painted ship or the gun: which do you break first?',
     counters: 'The Spotter before it calls, or the gun while it is up.',
     succeeds: 'The Spotter is shot down before its first strike in most runs.',
+    notes: {
+      sites: 'A Spotter Plane in from the edge, and a Siege Battery out of a hatch on the shore.',
+      target: 'The ship the Spotter paints, with the gun\'s shells on circles on the lane.',
+      usesMap: 'Strikes called in from off the map, so no silo on the harbour shore warns of them.',
+    },
     beats: [],
     pairs: pairsOf(['spotter-siege', 0.25]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -909,6 +1145,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'The wave or the Spotter?',
     counters: 'The Spotter before it calls, then the gun while it is up.',
     succeeds: 'Ships lost stay within one of wave 6.',
+    notes: {
+      sites: 'The Spotter from the edge and the siege gun from its shore hatch, with the wave\'s own fire.',
+      target: 'The painted ship, as the convoy reaches the neck.',
+      usesMap: 'Timed for the neck, where a painted ship has nowhere to go.',
+    },
     beats: [],
     pairs: pairsOf(['spotter-siege', 0.25]),
     replaces: { drones: 10, guided: 1, ballistic: 1 },
@@ -924,6 +1165,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two Hydras, one in the open water and one over the neck: which first?',
     counters: 'Each Hydra out in its swarm, the nearer the neck first.',
     succeeds: 'Ships lost stay within one of wave 7.',
+    notes: {
+      sites: 'Hydra swarms from the north-west silo, then from the north headland silo.',
+      target: 'Any ship in the open water, then the ships at the neck.',
+      usesMap: 'One Hydra over the open water and one over the narrows: both of the map\'s stretches.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.2, 0], ['hydra-swarm', 0.5, 1]),
     replaces: { drones: 18, ballistic: 2, guided: 2 },
@@ -939,6 +1185,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'Two pairs at the mouth: which half of each do you break?',
     counters: 'The sub while it is up, the Hydra out in its swarm, then the helicopter.',
     succeeds: 'Ships lost stay within one of wave 8: no cliff.',
+    notes: {
+      sites: 'The helicopter and its sub by the lane, then the Hydra swarm from the north-west silo.',
+      target: 'The ships on the lane; the Hydra swarm at any ship.',
+      usesMap: 'Close fire on the water beside the lane and a far pair from the west end at once.',
+    },
     beats: [],
     pairs: pairsOf(['heli-sub', 0.2], ['hydra-swarm', 0.65, 0]),
     replaces: { drones: 15, ballistic: 4, guided: 4 },
@@ -954,6 +1205,11 @@ const V3: Omit<Encounter, 'version'>[] = [
     decision: 'What you learned, in order: keep up.',
     counters: 'Each pair\'s own answer, one at a time.',
     succeeds: 'Ships lost are no more than wave 9\'s plus one.',
+    notes: {
+      sites: 'The Hydra swarm from the north-west silo, then the Spotter from the edge and a siege gun from its shore hatch.',
+      target: 'Any ship for the Hydra swarm, then the painted ship.',
+      usesMap: 'Starts at the far west with a long look and ends with called-in shells that give none.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.2, 0], ['spotter-siege', 0.5]),
     replaces: { drones: 21, guided: 1, ballistic: 1 },
@@ -979,11 +1235,16 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     waves: [1],
     role: 'teach',
     name: 'Ranging shots',
-    callout: 'One shell from the middle base',
+    callout: 'One shell: watch where it lands',
     premise: 'The middle base lights up alone and lobs a single shell at the ship furthest along: the first look at where the threats come from.',
     decision: 'One warning, one place: where will it land?',
     counters: 'Tap the shell as it climbs.',
     succeeds: 'The shell is shot at in most runs; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The middle silo on the north shore, on its own.',
+      target: 'The lead ship.',
+      usesMap: 'One shell across the open water from the silo facing the carrier: the map\'s long warning, shown on wave 1.',
+    },
     beats: [{ at: 0.4, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' }],
     replaces: { ballistic: 1 },
   },
@@ -999,6 +1260,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Two shores from the first wave: clear one before the other opens.',
     counters: 'Clear north; the south swarm has its own warning.',
     succeeds: 'Taps cross the carrier line once; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The north-west silo, then the south-west silo four seconds later.',
+      target: 'Any ship on either lane, as the convoy enters the channel.',
+      usesMap: 'Shows the two shores on wave 1: a small swarm from each side of the carrier.',
+    },
     beats: [
       { at: 0.2, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
       { at: 0.2, plus: 4, kind: 'drone', count: 2, gap: 0.35, from: base(2) },
@@ -1013,11 +1279,16 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     waves: [1],
     role: 'teach',
     name: 'First light',
-    callout: 'Three bases, west to east',
+    callout: 'Drones, a shell, drones: west to east',
     premise: 'A small sweep: a few drones from the west base, a shell from the middle, a few drones from the east, in turn.',
     decision: 'The order the map fires in, slowly: west, middle, east.',
     counters: 'Follow the lit base.',
     succeeds: 'The player meets The sweep on wave 3 knowing the order; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The three north-shore silos in turn, west, middle, then east.',
+      target: 'Any ship for the drones, the lead ship for the shell.',
+      usesMap: 'The row of three silos fired slowly, in the order wave 3\'s sweep will use.',
+    },
     beats: [
       { at: 0.35, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
       { at: 0.35, plus: 2, kind: 'ballistic', count: 1, from: base(1), aim: 'lead' },
@@ -1037,6 +1308,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Both shores light together: which first?',
     counters: 'The nearer swarm, then turn.',
     succeeds: 'Both swarms are shot at; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The north-west and south-west silos in the same second.',
+      target: 'Any ship on either lane.',
+      usesMap: 'Both shores at once, in miniature: the pincer of wave 3.',
+    },
     beats: [
       { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
       { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(2) },
@@ -1055,6 +1331,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Learn the periscope: it shows before the shells.',
     counters: 'Tap the shell as it climbs.',
     succeeds: 'The player looks at the periscope when it shows; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'A submarine at the sub spot off the mouth of the narrows.',
+      target: 'The ship nearest the narrows.',
+      usesMap: 'Shows the periscope over the funnel, the danger stretch, long before the ships reach it.',
+    },
     beats: [{ at: 0.4, kind: 'ballistic', count: 1, from: sub(1), aim: 'narrows' }],
     replaces: { ballistic: 1 },
   },
@@ -1072,6 +1353,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The north-shore silo furthest from the convoy (the pair\'s own rule): the swarm, then the Hydra out of it.',
+      target: 'Any ship; the Hydra is timed to arrive with the swarm.',
+      usesMap: 'The far silo gives the longest look at the pair across the Strait\'s open water.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.25]),
     replaces: { drones: 9 },
@@ -1088,6 +1374,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The silo furthest from the convoy, on either shore (the pair\'s own rule): the swarm, then the Hydra out of it.',
+      target: 'Any ship on either lane; the Hydra is timed to arrive with the swarm.',
+      usesMap: 'The far silo gives the most warning a narrow channel between two shores allows.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.25]),
     replaces: { drones: 9 },
@@ -1104,6 +1395,11 @@ const OPENERS: Omit<Encounter, 'rev' | 'opener'>[] = [
     decision: 'Kill the Hydra early, out in the swarm, or let it close and split?',
     counters: 'A shot at the Hydra before the swarm reaches the ships.',
     succeeds: 'The Hydra is shot at before it splits in most runs; nothing is sunk on wave 1.',
+    notes: {
+      sites: 'The silo furthest from the convoy (the pair\'s own rule): the swarm, then the Hydra out of it.',
+      target: 'Any ship, while the convoy is in the open water.',
+      usesMap: 'The far silo makes the pair cross open water before it reaches the ships, well before the neck.',
+    },
     beats: [],
     pairs: pairsOf(['hydra-swarm', 0.25]),
     replaces: { drones: 9 },
