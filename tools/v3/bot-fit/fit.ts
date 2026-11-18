@@ -10,6 +10,10 @@
 //       upgrades, card setup and draft picks
 //   npx vite-node tools/v3/bot-fit/fit.ts -- --cards [--seeds=12] [--maps=…] [--armory=none]
 //       the reference cards' production setup today, on fresh seeds
+//   npx vite-node tools/v3/bot-fit/fit.ts -- --fun [--raw=tools/v3/bot-fit/logs] [--dice=6] [--fun-dice=3] [--json=out.json]
+//       the fun measures (saves, tension; docs/design/v3-fun-metrics.md) on
+//       the player's runs whose raw log this build replays exactly, against
+//       the bot's mirrored runs; lists the player's own saves
 //
 // The player's runs: every Test Lab map card's full run (log v21 and up) and
 // every campaign run (v19 and up) that reached wave 5. Calibration copies
@@ -23,11 +27,12 @@ import type { ArmoryLevels } from '../../../src/v3/data/armory';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
-import type { PlayLog } from '../../../src/v3/sim/playlog';
+import { LOG_REPLAYS, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
 import type { Game } from '../../../src/v3/sim/game';
 import type { CardId } from '../../../src/v3/data/abilities';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
-import { PLAYER_ARMORY, measure, pool, type Pooled, type RunMeasure } from './measure';
+import { PLAYER_ARMORY, measure, measureFun, pool, poolFun, type Pooled, type PooledFun, type RunMeasure } from './measure';
+import { SAVE_NAMES, SHAPE_NAMES, waveName, type Save, type SaveKind } from '../../../src/v3/sim/funMetrics';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
@@ -96,7 +101,7 @@ export function botRun(map: MapId, persona: string, seed: number, armory: Armory
  *  same Armory upgrades, the same Test Lab card setup (or none, for a
  *  campaign run), and, with `picks`, the same cards whenever they are
  *  offered (else the bot's own taste). */
-export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks = true): RunMeasure {
+export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks = true, funDice = 0): RunMeasure {
   const p = PERSONAS[persona];
   if (!p) throw new Error(`no persona ${persona}`);
   const st = you.setup;
@@ -121,7 +126,9 @@ export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks =
     };
   }
   run.advance(Infinity);
-  return measure(run.finish(), 'bot', { botSpeed: p.speed ?? 1 });
+  const log = run.finish();
+  const m = measure(log, 'bot', { botSpeed: p.speed ?? 1 });
+  return funDice ? { ...m, ...measureFun(log, funDice) } : m;
 }
 
 export const ROWS: { key: keyof Pooled | string; name: string; d: number; group: string }[] = [
@@ -149,6 +156,118 @@ export const ROWS: { key: keyof Pooled | string; name: string; d: number; group:
 
 const get = (p: Pooled, key: string): number => (p as unknown as Record<string, number>)[key];
 
+const FUN_ROWS: { key: keyof PooledFun; name: string; d: number }[] = [
+  { key: 'savesWave', name: 'saves a wave (1-10)', d: 2 },
+  { key: 'savesBoss', name: 'saves a boss round', d: 2 },
+  { key: 'savedWave', name: 'ships saved a wave (1-10)', d: 2 },
+  { key: 'bigRun', name: 'big saves a run (stakes)', d: 2 },
+  { key: 'peak', name: 'tension peak a wave', d: 2 },
+  { key: 'peaks', name: 'tension peaks a wave', d: 2 },
+  { key: 'releaseS', name: 'release after a peak (s)', d: 1 },
+  { key: 'hotShare', name: 'hot share of a wave', d: 2 },
+  { key: 'calmShare', name: 'calm share of a wave', d: 2 },
+  { key: 'tapR', name: 'taps follow tension (r)', d: 2 },
+];
+
+const saveLine = (s: Save) =>
+  `${(s.wave >= 11 ? waveName(s.wave) : `w${s.wave}`).padEnd(4)} ${s.t.toFixed(1).padStart(5)} s  ${SAVE_NAMES[s.kind].padEnd(17)} ${(s.what === 'kill' ? s.thrKind ?? '' : s.w ?? s.pk ?? '').padEnd(12)} ${s.margin.toFixed(2)} s from impact  saved ${s.saved.toFixed(2)}${s.delayCost >= 0.5 ? '  clutch (0.5 s later loses it)' : ''}${s.stakes.length ? `  STAKES: ${s.stakes.join(', ')}` : ''}  (${s.afloat} afloat, ${s.left} loss${s.left === 1 ? '' : 'es'} left)`;
+
+/** The fun measures on the player's runs that replay exactly here, and on
+ *  the bot's mirrors of them. */
+function funCalibration(player: PlayerRun[]): void {
+  const raw = opt('raw') ?? `${HERE}logs`;
+  const dice = Number(opt('dice') ?? 6);
+  const funDice = Number(opt('fun-dice') ?? 3);
+  const personas = (opt('personas') ?? 'you').split(',');
+  const picks = !args.includes('--own-picks');
+  const t0 = Date.now();
+  const byId = new Map<string, PlayLog>();
+  for (const f of readdirSync(raw).filter((x) => x.endsWith('.json'))) {
+    const l = JSON.parse(readFileSync(`${raw}/${f}`, 'utf8')) as PlayLog;
+    byId.set(l.id, l);
+  }
+  const mine: (PlayerRun & RunMeasure)[] = [];
+  for (const r of player) {
+    const l = byId.get(r.id);
+    if (!l) continue;
+    // A log this build no longer replays exactly would be forked into a
+    // different game: its saves would be wrong, so it is left out.
+    if (!replaysHere(l.v)) {
+      console.log(`SKIPPED ${r.id} (${r.map}): a v${l.v} log; this build replays v${LOG_REPLAYS.join(', v')} only, so its forks would be another game.`);
+      continue;
+    }
+    const f = measureFun(l, funDice);
+    if (!f.fun) {
+      console.log(`SKIPPED ${r.id} (${r.map}, v${l.v}): its replay on this build does not end as the log did, so its forks would be another game.`);
+      continue;
+    }
+    mine.push({ ...r, ...f });
+  }
+  console.log(`The player's runs with a raw log in ${raw} that this build replays exactly: ${mine.length} of ${player.length}${mine.length ? ` (${mine.map((r) => `${r.map} v${r.v}`).join(', ')})` : ''}. Without the raw log a run can't be forked: player.json keeps no inputs.`);
+  if (!mine.length) {
+    console.log(`\nNothing to compare: no player log here replays exactly on this build (v${LOG_REPLAYS.join(', v')}). Add new playtest logs to ${raw}. The last results, on the v26 build, are in tools/v3/bot-fit/results/fun-2026-11-18.json.`);
+    return;
+  }
+  const cols: { name: string; runs: RunMeasure[] }[] = [{ name: 'you', runs: mine }];
+  const mirrors = new Map<string, RunMeasure[]>();
+  for (const persona of personas) {
+    const all: RunMeasure[] = [];
+    for (const r of mine) {
+      const ms = Array.from({ length: dice }, (_, d) => mirrorRun(r, persona, d + 1, picks, funDice));
+      mirrors.set(`${persona}:${r.id}`, ms);
+      all.push(...ms);
+    }
+    cols.push({ name: persona, runs: all });
+  }
+  const pooled = cols.map((c) => ({ name: c.name, p: pool(c.runs) }));
+  const w = 34;
+  console.log(`\nFun: the player's ${mine.length} runs against each bot's ${dice} mirrors of each (same map, seed, Armory, setup${picks ? ', draft picks' : ''}); forks with ${funDice} rolls of the "you" bot's dice.\n`);
+  console.log(`${''.padEnd(w)}${pooled.map((c) => c.name.padStart(13)).join('')}`);
+  for (const r of ROWS.slice(0, 4)) console.log(`  ${r.name.padEnd(w - 2)}${pooled.map((c) => get(c.p, r.key as string).toFixed(r.d).padStart(13)).join('')}`);
+  for (const r of FUN_ROWS) console.log(`  ${r.name.padEnd(w - 2)}${pooled.map((c) => (c.p.fun ? (c.p.fun[r.key] as number).toFixed(r.d) : '-').padStart(13)).join('')}`);
+  console.log('  n (runs)'.padEnd(w) + pooled.map((c) => `${c.p.n}`.padStart(13)).join(''));
+  console.log('\nSaves a wave, by map (waves 1-10, B1-B3):');
+  const perMap: Record<string, { name: string; fun: PooledFun | null }[]> = {};
+  for (const map of [...new Set(mine.map((r) => r.map))]) {
+    perMap[map] = cols.map((c) => ({ name: c.name, fun: poolFun(c.runs.filter((r) => r.map === map)) }));
+    for (const c of perMap[map]) {
+      if (!c.fun) continue;
+      console.log(`  ${map.padEnd(9)} ${c.name.padEnd(5)} saves ${c.fun.waves.map((x) => (x.n ? x.saves.toFixed(1) : ' - ')).join(' ')}`);
+      console.log(`  ${''.padEnd(9)} ${''.padEnd(5)} shape ${c.fun.waves.map((x) => (x.n ? SHAPE_NAMES[x.shape].split(' ').map((y) => y[0]).join('').padStart(3) : ' - ')).join(' ')}`);
+    }
+  }
+  console.log('\nThe player\'s own saves, and the bot\'s on the same run (mean of its mirrors):');
+  const rows: Record<string, unknown>[] = [];
+  for (const r of mine) {
+    console.log(`\n  ${r.map} (${r.id}, ${r.end}, wave ${r.wave}, ${r.lost.reduce((a, b) => a + b, 0)} lost)`);
+    for (const s of r.saves ?? []) console.log(`    ${saveLine(s)}`);
+    if (!r.saves?.length) console.log('    none');
+    const kinds = (list: Save[]) => {
+      const k: Partial<Record<SaveKind, number>> = {};
+      for (const s of list) k[s.kind] = (k[s.kind] ?? 0) + 1;
+      return k;
+    };
+    const yk = kinds(r.saves ?? []);
+    for (const persona of personas) {
+      const ms = mirrors.get(`${persona}:${r.id}`) ?? [];
+      const n = ms.length || 1;
+      const all = ms.flatMap((m) => m.saves ?? []);
+      const bk = kinds(all);
+      const kindText = (k: Partial<Record<SaveKind, number>>, div: number) => (Object.keys(SAVE_NAMES) as SaveKind[]).filter((x) => k[x]).map((x) => `${SAVE_NAMES[x]} ${((k[x] ?? 0) / div).toFixed(1)}`).join(', ') || 'none';
+      console.log(`    you: ${(r.saves ?? []).length} saves (${kindText(yk, 1)}), ${(r.saves ?? []).filter((s) => s.stakes.length).length} with stakes`);
+      console.log(`    ${persona}: ${(all.length / n).toFixed(1)} saves a run (${kindText(bk, n)}), ${(all.filter((s) => s.stakes.length).length / n).toFixed(1)} with stakes; reached wave ${(ms.reduce((a, m) => a + m.wave, 0) / n).toFixed(1)}, lost ${(ms.reduce((a, m) => a + m.lost.reduce((x, y) => x + y, 0), 0) / n).toFixed(1)}`);
+      rows.push({ id: r.id, map: r.map, persona, you: r.saves ?? [], youKinds: yk, botSavesRun: all.length / n, botKinds: Object.fromEntries(Object.entries(bk).map(([k, v]) => [k, (v ?? 0) / n])), botStakesRun: all.filter((s) => s.stakes.length).length / n });
+    }
+  }
+  console.log(`\n${((Date.now() - t0) / 1000).toFixed(0)} s`);
+  const out = opt('json');
+  if (out)
+    writeFileSync(
+      out,
+      `${JSON.stringify({ about: 'Fun measures (docs/design/v3-fun-metrics.md): the player\'s runs that replay exactly against the bot\'s mirrors. Made by tools/v3/bot-fit/fit.ts --fun.', dice, funDice, columns: pooled.map((c) => ({ name: c.name, n: c.p.n, lost1to5: c.p.lost1to5, lost6to10: c.p.lost6to10, bossRound: c.p.bossRound, fun: c.p.fun })), perMap, runs: rows, digests: { you: mine.map((r) => ({ id: r.id, map: r.map, fun: r.fun })) } }, (_k, v) => (typeof v === 'number' ? (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null) : v), 1)}\n`,
+    );
+}
+
 function main(): void {
   const logs = opt('logs');
   if (logs) {
@@ -158,6 +277,10 @@ function main(): void {
     return;
   }
   const player = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs;
+  if (args.includes('--fun')) {
+    funCalibration(player);
+    return;
+  }
   const maps = (opt('maps')?.split(',') ?? FIT_MAPS) as MapId[];
   const personas = (opt('personas') ?? 'you-r12,you').split(',');
   const columns: { name: string; p: Pooled }[] = [];

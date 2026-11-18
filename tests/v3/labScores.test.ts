@@ -13,6 +13,8 @@ import { averageWords, runNumbers, scoreAverages, scoreChips, scoreGroups, waveN
 const SC: ScorecardDef = JSON.parse(JSON.stringify({ rev: SCORECARD_REV, bossFrom: EVENT_WAVE, categories: SCORECARD }));
 // The revision 1 cases: the same page as it read them before revision 2.
 const SC1: ScorecardDef = { ...SC, rev: 1 };
+// And as it read revision 2's (the comparison and the strip).
+const SC2: ScorecardDef = { ...SC, rev: 2 };
 const cat = (id: string) => SC.categories.find((c) => c.id === id)!;
 const run = (o: Partial<Run>): Run => ({ rev: 10, variant: 'v1', end: 'won', ...o });
 
@@ -87,7 +89,8 @@ describe('Test Lab page: a map card\'s scorecard', () => {
   });
 
   it('revision 2: its scores average apart from revision 1\'s, retired rows are not averaged on it, the comparison averages by its values', () => {
-    expect(SC.rev).toBe(2);
+    // Read as the page read it under revision 2.
+    const SC = SC2;
     const runs = [
       run({ score: { rev: 1, fun: 1, pacing: 'too-fast', readability: 2, again: 'no' } }),
       run({ score: { rev: 2, fun: 4, vs: 'better', vsCard: 'map-gauntlet', again: 'yes' } }),
@@ -112,5 +115,24 @@ describe('Test Lab page: a map card\'s scorecard', () => {
     // revision 2 one shows its comparison.
     expect(scoreChips({ rev: 1, fun: 4, pacing: 'right', mapFeel: 3 }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Pacing Right', 'Map feel 3']);
     expect(scoreChips({ rev: 2, fun: 4, vs: 'worse', vsCard: 'map-gauntlet' }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Vs last map Worse']);
+  });
+});
+
+describe('Test Lab page: scorecard revision 3 (Best moment)', () => {
+  it('the page reads revision 3; Best moment averages like a wave row, only on revision 3 scores', () => {
+    expect(SC.rev).toBe(3);
+    const runs = [
+      run({ score: { rev: 2, fun: 5, best: 10 } }),
+      run({ score: { rev: 3, fun: 4, moment: 10, momentT: 31.5 } }),
+      run({ score: { rev: 3, fun: 2, moment: 10, momentT: 60 } }),
+      run({ score: { rev: 3, moment: 7 } }),
+    ];
+    const a3 = scoreAverages(runs, SC);
+    expect(a3.fun).toEqual({ n: 2, mean: 3 });
+    expect(a3.moment).toMatchObject({ n: 3, top: 10, topCount: 2 });
+    expect(averageWords(cat('moment'), a3.moment, 11)).toBe('10 (2 of 3)');
+    // Revision 2 never asked it.
+    expect(scoreAverages(runs, SC, 2).moment).toBeUndefined();
+    expect(scoreChips({ rev: 3, fun: 4, moment: 12, momentT: 8 }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Best moment B2']);
   });
 });

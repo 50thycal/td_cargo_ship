@@ -22,6 +22,7 @@ import { waveSpec } from '../data/waves';
 import { timeToImpact, type Game } from './game';
 import { laneLength } from './lanes';
 import type { TelEvent, TelemetrySidecar } from './telemetry';
+import { funSummary, funVerdict, FUN_TARGET, type FunDigest, type FunVerdict, type FunWaveSummary } from './funMetrics';
 
 /** Waves 1-10 and the three boss rounds (11-13). */
 export const REPORT_WAVES = 13;
@@ -222,7 +223,7 @@ export interface Check {
   target: string;
   verdict: Verdict;
   /** Which runs it is read on. */
-  from: 'tough' | 'normal' | 'tough+baseline' | 'kits';
+  from: 'tough' | 'normal' | 'tough+baseline' | 'kits' | 'normal+forks';
 }
 
 export interface CliffResult {
@@ -419,7 +420,21 @@ export interface MapReport {
   };
   boss: { reachedMean: number[]; reached: number[]; tough: number[] };
   kits: KitSummary[];
+  /** The fun measures (src/v3/sim/funMetrics.ts) on the normal runs'
+   *  logs: saves and tension per wave, over the runs that reached it. */
+  fun: FunReport | null;
   checks: Check[];
+}
+
+export interface FunReport {
+  /** Runs read, the bot's dice per fork, and milliseconds in all. */
+  n: number;
+  dice: number;
+  ms: number;
+  waves: FunWaveSummary[];
+  verdict: FunVerdict;
+  /** The noise floor (`--fun-placebo`): false saves a run per wave. */
+  placebo: number[] | null;
 }
 
 export interface ReportInput {
@@ -433,6 +448,8 @@ export interface ReportInput {
   /** The boss target on the bot's scale, ships a round (the recorded bias:
    *  about 2 on the Strait and Harbor Mouth, else about 1). */
   bossTarget?: number;
+  /** The fun measures of the normal runs (one digest a run). */
+  fun?: { digests: FunDigest[]; dice: number; placebo?: FunDigest[] };
 }
 
 export function mapReport(input: ReportInput): MapReport {
@@ -488,6 +505,13 @@ export function mapReport(input: ReportInput): MapReport {
     },
     boss: { reachedMean: nc.reachedMean.slice(10, 13), reached: nc.reached.slice(10, 13), tough: toughLost.slice(10, 13) },
     kits: input.kits ?? [],
+    fun: input.fun?.digests.length
+      ? (() => {
+          const waves = funSummary(input.fun.digests);
+          const pl = input.fun.placebo?.length ? funSummary(input.fun.placebo).map((w) => w.saves) : null;
+          return { n: input.fun.digests.length, dice: input.fun.dice, ms: input.fun.digests.reduce((a, d) => a + d.ms, 0), waves, verdict: funVerdict(waves), placebo: pl };
+        })()
+      : null,
     checks: [],
   };
   report.checks = checksOf(report, input.bossTarget ?? 1);
@@ -592,6 +616,16 @@ export function checksOf(r: MapReport, bossTarget: number): Check[] {
     verdict: 'INFO',
     from: 'normal',
   });
+  if (r.fun) {
+    out.push({
+      rule: 'fun',
+      name: 'Fun: saves a wave (provisional)',
+      value: r.fun.verdict.value,
+      target: `you-bot: about ${FUN_TARGET.low}–${FUN_TARGET.high} real saves a wave 1–10, more in 8–10 and the boss rounds; flat under ${FUN_TARGET.flat}, chaotic over ${FUN_TARGET.chaos} mostly small`,
+      verdict: r.fun.verdict.verdict,
+      from: 'normal+forks',
+    });
+  }
   if (r.kits.length >= 2) {
     const sorted = [...r.kits].sort((a, b2) => a.lost10Tough - b2.lost10Tough);
     out.push({
@@ -624,6 +658,12 @@ export function lookAt(r: MapReport): string[] {
       out.push(`No safe stretch on ${bad.map((s) => `lane ${s.lane + 1} (coldest ${STRETCH_NAMES[s.cold]} takes ${pct(s.hpShare[s.cold])})`).join(', ')}: aim waves 1–9 away from it.`);
     } else if (c.rule === 'g-warning') out.push(`Warning time does not fall (wave 1 ${f(t.warning[0], 1)} s, wave 10 ${f(t.warning[9], 1)} s): later waves should fire from nearer sites.`);
     else if (c.rule === 'w-first') out.push(`Wave 1 sinks ${f(t.lost[0])} ships a run: it should cost nothing.`);
+  }
+  if (r.fun) {
+    const v = r.fun.verdict;
+    if (v.flat.length) out.push(`Fun (provisional): no real save for the bot on wave ${v.flat.join(', ')}. Give it one moment that needs a quick answer: a heavy or a salvo at the danger stretch, a drop that lands under pressure.`);
+    if (v.chaotic.length) out.push(`Fun (provisional): wave ${v.chaotic.join(', ')} has many small saves: too much at once to read. Space its raids out.`);
+    if (!v.rising) out.push('Fun (provisional): waves 8–10 and the boss rounds have no more saves than waves 1–7. The big moments should come late.');
   }
   const peak = t.lost.slice(0, 10).reduce((a, v, k) => (v > a.v ? { wave: k + 1, v } : a), { wave: 1, v: -1 });
   out.push(`Hardest of waves 1–10 for the bot: wave ${peak.wave} (${f(peak.v)} ships a run, tough runs).`);

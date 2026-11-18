@@ -1,0 +1,10 @@
+{
+ "read": "2026-11-18",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {},
+ "answers": {
+  "r4-harbor-boss": { "choice": 0, "label": "Soften round 3 a little (one sub salvo fewer), keep rounds 1–2 (recommended)" },
+  "r4-ios-check": { "choice": 0, "label": "Only on pull requests that touch iOS files; also after every merge to the main branch, and by hand before a release (recommended)" }
+ },
+ "chat": "2026-11-18: approved fun measures 1 (saves) and 2 (tension curve) from the brainstorm; start chapter 1 (Kesh, Marrow); advance overnight."
+}

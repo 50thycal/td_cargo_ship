@@ -5,6 +5,7 @@
 //   npx vite-node tools/v3/map-report/report.ts -- --map=strait [--seeds=24]
 //       [--kits=aimed,self | --kits=name:id+id+id,... | --kits=plan] [--armory=player]
 //       [--persona=you] [--no-heat] [--out=tools/v3/map-report/results]
+//       [--no-fun] [--fun-dice=3] [--fun-placebo]
 //
 // Plays the map's Test Lab card on its production setup (as versions.ts),
 // by the "you" bot with no Armory upgrades (the baseline; --armory=player:
@@ -18,6 +19,8 @@
 //   kits      normal and tough again with the bot's taste set to each kit
 // Writes results/<map>.json (every number), results/<map>.md (the report)
 // and results/<map>-heat.html (the map-lab heat map of the normal runs).
+// The fun measures (saves and tension, src/v3/sim/funMetrics.ts,
+// docs/design/v3-fun-metrics.md) are read on the normal runs' logs.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { ABILITIES, type AbilityId } from '../../../src/v3/data/abilities';
@@ -25,6 +28,7 @@ import { MAPS, type MapId } from '../../../src/v3/data/maps';
 import { mapPlan } from '../../../src/v3/data/mapPlans';
 import { REPORT_WAVES, STRETCH_NAMES, kitSummary, lookAt, mapReport, type KitSummary, type MapReport, type RunDigest } from '../../../src/v3/sim/mapReport';
 import { playReportRun, type ReportPlayOpts } from '../../../src/v3/sim/mapReportPlay';
+import { FUN, SAVE_NAMES, SHAPE_NAMES, funDigest, funOfLog, waveName, type FunDigest, type SaveKind } from '../../../src/v3/sim/funMetrics';
 import type { PlayLog } from '../../../src/v3/sim/playlog';
 import { PLAYER_ARMORY } from '../bot-fit/measure';
 
@@ -68,6 +72,15 @@ function pass(map: MapId, seeds: number[], o: ReportPlayOpts, logs?: PlayLog[]):
     if (logs && r.log) logs.push(r.log);
     return r.digest;
   });
+}
+
+/** The fun measures on the normal runs' logs (and the placebo: the noise
+ *  floor). */
+function funPass(logs: PlayLog[], dice: number, placebo: boolean): { digests: FunDigest[]; dice: number; placebo?: FunDigest[] } {
+  const digests = logs.map((l) => funDigest(funOfLog(l, { dice })));
+  const bad = digests.filter((d) => !d.exact).length;
+  if (bad) console.warn(`  fun: ${bad} of ${logs.length} logs did not replay exactly`);
+  return { digests, dice, ...(placebo ? { placebo: logs.map((l) => funDigest(funOfLog(l, { dice, mode: 'placebo' }))) } : {}) };
 }
 
 const f = (v: number | null | undefined, d = 2) => (v === null || v === undefined || !Number.isFinite(v) ? '–' : v.toFixed(d));
@@ -152,6 +165,34 @@ export function markdown(r: MapReport, meta: { persona: string; armory: string; 
   L.push(row(['runs that reached it', ...r.boss.reached.map((v) => `${v}`)]));
   L.push(row(['tough, every run', ...r.boss.tough.map((v) => f(v))]));
   L.push('');
+  if (r.fun) {
+    const fu = r.fun;
+    L.push('## Fun: saves and tension (provisional)');
+    L.push('');
+    L.push(`Read on the normal runs' logs, over the runs that reached each wave (docs/design/v3-fun-metrics.md). **Saves**: at each tap that finished a threat under ${FUN.scanTti} s from impact, each nuke, and each pickup grabbed with a threat under ${FUN.scanPickupTti} s away, the game is forked and played on by the "you" bot with and without it (${fu.dice} roll${fu.dice > 1 ? 's' : ''} of its dice); a save is a fork without it that loses at least one more ship to the threats in play. Big: it kept the run going, the last ship afloat, or came at the loss limit. Clutch: 0.5 s later would also have lost the ship. **Tension**: the danger on the board each second (each threat's damage over its target's hull × e^(−time to impact / ${FUN.tau} s)); hot ≥ ${FUN.hot}, calm < ${FUN.calm}.`);
+    L.push('');
+    const W = fu.waves;
+    const cols = W.map((w) => waveName(w.wave));
+    L.push(head(['', ...cols]));
+    L.push(row(['runs', ...W.map((w) => `${w.n}`)]));
+    L.push(row(['**saves a run**', ...W.map((w) => (w.n ? `**${f(w.saves, 1)}**` : '–'))]));
+    L.push(row(['ships saved a run', ...W.map((w) => f(w.saved, 1))]));
+    L.push(row(['big (stakes)', ...W.map((w) => f(w.big, 2))]));
+    L.push(row(['clutch', ...W.map((w) => f(w.clutch, 2))]));
+    L.push(row(['runs with no save', ...W.map((w) => pct(w.none))]));
+    for (const k of Object.keys(SAVE_NAMES) as SaveKind[]) if (W.some((w) => w.kinds[k])) L.push(row([`  ${SAVE_NAMES[k]}`, ...W.map((w) => f(w.kinds[k] ?? 0, 2))]));
+    if (fu.placebo) L.push(row(['noise floor (placebo)', ...fu.placebo.map((v) => f(v, 2))]));
+    L.push(row(['tension peak', ...W.map((w) => f(w.peak, 2))]));
+    L.push(row(['peaks', ...W.map((w) => f(w.peaks, 1))]));
+    L.push(row(['release after a peak (s)', ...W.map((w) => f(w.releaseS, 1))]));
+    L.push(row(['hot share', ...W.map((w) => pct(w.hotShare))]));
+    L.push(row(['calm share', ...W.map((w) => pct(w.calmShare))]));
+    L.push(row(['shape (most runs)', ...W.map((w) => (w.n ? `${SHAPE_NAMES[w.shape]} ${pct(w.shapes[w.shape] ?? 0)}` : '–'))]));
+    L.push(row(['taps follow tension (r)', ...W.map((w) => f(w.tapR, 2))]));
+    L.push('');
+    L.push(`${fu.verdict.value}. ${fu.n} runs, ${(fu.ms / 1000).toFixed(0)} s of forks and replays.`);
+    L.push('');
+  }
   if (r.kits.length) {
     L.push('## Kits');
     L.push('');
@@ -220,12 +261,16 @@ async function main(): Promise<void> {
   const outDir = opt('out') ?? 'tools/v3/map-report/results';
   const kits = await kitList(opt('kits'), map);
   const heat = !args.includes('--no-heat');
+  const fun = !args.includes('--no-fun');
+  const funDice = Number(opt('fun-dice') ?? 3);
   const t0 = Date.now();
   const base: ReportPlayOpts = { persona, armory };
   const logs: PlayLog[] = [];
   console.log(`${MAPS[map].name}: ${seeds.length} seeds, persona ${persona}, Armory ${playerArmory ? 'player' : 'none'}`);
-  const normal = pass(map, seeds, base, heat ? logs : undefined);
+  const normal = pass(map, seeds, base, heat || fun ? logs : undefined);
   console.log(`  normal   ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+  const funIn = fun ? funPass(logs, funDice, args.includes('--fun-placebo')) : undefined;
+  if (fun) console.log(`  fun      ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   const tough = pass(map, seeds, { ...base, tough: true });
   console.log(`  tough    ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   const baseline = pass(map, seeds, { ...base, tough: true, noEncounters: true });
@@ -235,7 +280,7 @@ async function main(): Promise<void> {
     console.log(`  kit ${k.kit} ${((Date.now() - t0) / 1000).toFixed(0)} s`);
     return s;
   });
-  const report = mapReport({ map: MAPS[map], seeds, normal, tough, baseline, kits: kitRows, bossTarget: bossTarget(map) });
+  const report = mapReport({ map: MAPS[map], seeds, normal, tough, baseline, kits: kitRows, bossTarget: bossTarget(map), ...(funIn ? { fun: funIn } : {}) });
   mkdirSync(outDir, { recursive: true });
   const date = new Date().toISOString().slice(0, 10);
   const command = `npx vite-node tools/v3/map-report/report.ts -- ${args.join(' ')}`;
@@ -243,6 +288,17 @@ async function main(): Promise<void> {
   const name = `${map}${playerArmory ? '-player' : ''}${persona !== 'you' ? `-${persona}` : ''}`;
   const heatPath = `${outDir}/${name}-heat.html`;
   const heatOk = heat && (await heatMap(logs, heatPath, `${MAPS[map].name}: bot heat map`));
+  if (report.fun) {
+    const W = report.fun.waves;
+    console.log(`\nFun (provisional), ${report.fun.n} normal runs, dice ${report.fun.dice}:`);
+    console.log(`  wave        ${W.map((w) => waveName(w.wave).padStart(6)).join('')}`);
+    console.log(`  saves a run ${W.map((w) => f(w.saves, 1).padStart(6)).join('')}`);
+    console.log(`  big         ${W.map((w) => f(w.big, 2).padStart(6)).join('')}`);
+    console.log(`  peak        ${W.map((w) => f(w.peak, 2).padStart(6)).join('')}`);
+    console.log(`  hot         ${W.map((w) => pct(w.hotShare).padStart(6)).join('')}`);
+    console.log(`  shape       ${W.map((w) => (w.n ? SHAPE_NAMES[w.shape].split(' ').map((x) => x[0]).join('') : '-').padStart(6)).join('')}`);
+    if (report.fun.placebo) console.log(`  placebo     ${report.fun.placebo.map((v) => f(v, 2).padStart(6)).join('')}`);
+  }
   const meta = { persona, armory: playerArmory ? `the player's (${JSON.stringify(PLAYER_ARMORY)})` : 'none (baseline)', date, command, heat: heatOk ? heatPath : null };
   writeFileSync(`${outDir}/${name}.json`, `${JSON.stringify({ about: 'Bot report (docs/design/v3-map-report.md). Made by tools/v3/map-report/report.ts.', ...meta, waves: REPORT_WAVES, report }, tidy, 1)}\n`);
   writeFileSync(`${outDir}/${name}.md`, markdown(report, meta));

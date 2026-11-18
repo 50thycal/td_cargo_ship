@@ -29,7 +29,9 @@ Options:
 - `--no-heat`: skip the heat map.
 - `--out=dir`: where to write.
 
-A map takes about 100 s with two kits.
+A map takes about 100 s with two kits, plus a few minutes for the fun measures.
+
+**Fun measures (provisional).** The report also reads, on the normal runs' logs, the bot's **saves** (moments where a kill, a nuke or a pickup grab kept a ship afloat, found by playing the game on with and without it) and the **tension curve** (the danger on the board second by second), wave by wave, with a provisional "fun" check row. What they are, their formulas and the first results: `docs/design/v3-fun-metrics.md`. Options: `--no-fun` skips them, `--fun-dice=N` (3) rolls the bot that plays on in each fork N times, `--fun-placebo` adds the noise floor.
 
 ## What is played
 

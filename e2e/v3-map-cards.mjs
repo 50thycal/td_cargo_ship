@@ -13,13 +13,16 @@
 // - Next up and the bare link (?lab=map-harbor) open the same setup;
 // - round 11's scorecard: Done on The Strait shows it above the verdict
 //   (no boss row on wave 1), Skip folds it, its chips land in the log
-//   (v27, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
+//   (v28, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
 //   waves 1-7 and no boss row; a won run offers the boss row and B1-B3.
 // - scorecard revision 2 (2026-11-17): Pacing, Variety, Readability and Map
 //   feel are no longer asked; the wave rows are a strip (ships lost and the
 //   moments marked in each wave); "Your last scores" shows this map's last
 //   score and the other map cards' (seeded for The Gauntlet), and the row
 //   "Compared with The Gauntlet" saves `vs` and `vsCard`.
+// - scorecard revision 3 (the fun measures, docs/design/v3-fun-metrics.md):
+//   a "Best moment" strip; one tap saves the wave and, from where on the
+//   chip it landed, the seconds into it (`moment`, `momentT`).
 // Screenshots for the doc go to docs/design/img/map-cards/.
 // Fails on any page error.
 //
@@ -126,7 +129,7 @@ const scoreSheet = (page) =>
       rows: [...document.querySelectorAll('[data-score-row]')].map((r) => r.dataset.scoreRow),
       waves: [...document.querySelectorAll('[data-score="best"]')].map((b) => b.querySelector('.v3-wave-n')?.textContent ?? b.textContent),
       // The strip: every wave chip (both rows) says what happened in it.
-      strip: [...document.querySelectorAll('[data-score="best"], [data-score="weakest"]')].every((b) => !!b.querySelector('.v3-wave-info') && b.dataset.lost !== undefined),
+      strip: [...document.querySelectorAll('[data-score="best"], [data-score="weakest"], [data-score="moment"]')].every((b) => !!b.querySelector('.v3-wave-info') && b.dataset.lost !== undefined),
       lostSum: [...document.querySelectorAll('[data-score="best"]')].reduce((m, b) => m + Number(b.dataset.lost ?? 0), 0),
       last: [...document.querySelectorAll('[data-score-last-card]')].map((l) => l.dataset.scoreLastCard),
       lastText: [...document.querySelectorAll('[data-score-last-card]')].map((l) => l.textContent),
@@ -275,7 +278,7 @@ try {
   const ev = await page.evaluate(() => document.querySelector('.v3-lab-evidence')?.textContent ?? '');
   check(/Full map: 0 of 13 waves cleared/.test(ev), `the verdict sheet counts the full map ("${ev.slice(0, 80)}")`);
   const sc0 = await scoreSheet(page);
-  check(sc0.rows.join() === 'fun,difficulty,again,best,weakest' && sc0.waves.join() === '1' && sc0.strip && sc0.above && sc0.small.length === 0 && !sc0.wide, `the scorecard (revision 2) sits above the verdict: Fun, Difficulty, Play again and the wave strip, no Pacing, Variety, Readability or Map feel, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
+  check(sc0.rows.join() === 'fun,difficulty,again,best,weakest,moment' && sc0.waves.join() === '1' && sc0.strip && sc0.above && sc0.small.length === 0 && !sc0.wide, `the scorecard (revision 3) sits above the verdict: Fun, Difficulty, Play again and the wave strips (Best, Weakest, Best moment), no Pacing, Variety, Readability or Map feel, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
   check(sc0.last.length === 0 && sc0.vs === null, `nothing scored before: no last scores and no comparison row (${JSON.stringify({ last: sc0.last, vs: sc0.vs })})`);
   await page.tap('[data-score-skip]');
   const skipped = await page.evaluate(() => ({ hidden: document.querySelector('.v3-score-rows').hidden, text: document.querySelector('[data-score-skip]').textContent }));
@@ -284,11 +287,25 @@ try {
   for (const [row, v] of [['fun', '4'], ['difficulty', 'bit-hard'], ['best', '1'], ['again', 'maybe'], ['weakest', '1'], ['weakest', '1']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
   const on = await page.evaluate(() => [...document.querySelectorAll('.v3-score-chip.on')].map((b) => `${b.dataset.score}=${b.dataset.value}`));
   check(on.join() === 'fun=4,difficulty=bit-hard,again=maybe,best=1', `a tap answers a row and a second tap clears it; a tap on the Best row's strip answers Best only (${on.join()})`);
+  // Best moment (revision 3): one tap three quarters of the way along wave
+  // 1's chip is the wave and the seconds three quarters into it (this run
+  // is often only a moment old: then the wave alone; the won run below
+  // checks the seconds on a long wave).
+  const waveSec = await page.evaluate(() => window.__v3.game().t);
+  {
+    const r = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="1"]'); b.scrollIntoView({ block: 'center' }); const q = b.getBoundingClientRect(); return { x: q.left, y: q.top, w: q.width, h: q.height }; });
+    await page.touchscreen.tap(r.x + r.w * 0.75, r.y + r.h / 2);
+  }
+  const mo = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="1"]'); return { on: b.classList.contains('on'), t: b.dataset.momentT === undefined ? undefined : Number(b.dataset.momentT), tick: !!b.querySelector('.v3-moment-tick'), others: [...document.querySelectorAll('.v3-score-chip.on')].map((x) => x.dataset.score).join() }; });
+  const timed = waveSec >= 0.05;
+  check(mo.on && mo.others === 'fun,difficulty,again,best,moment' && (timed ? mo.tick && Math.abs(mo.t - 0.75 * waveSec) <= Math.max(0.2, 0.1 * waveSec) : mo.t === undefined), `Best moment: one tap on the strip picks the wave${timed ? ` and when in it (${mo.t} s of ${waveSec.toFixed(1)}, a tick on the chip)` : ' (a wave not yet a moment old: no seconds)'} (${JSON.stringify(mo)})`);
+  await shot(page, 'scorecard-best-moment');
   await page.tap('[data-lab-verdict="keep"]');
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 28 && JSON.stringify(saved.score) === JSON.stringify({ rev: 2, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  const { momentT: savedT, ...savedRest } = saved.score ?? {};
+  check(saved.v === 28 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -329,7 +346,7 @@ try {
   }
   await page.waitForSelector('[data-screen="lab-verdict"]', { timeout: 10000 });
   const sc2 = await scoreSheet(page);
-  check(/map cleared/.test(sc2.title) && sc2.rows.join() === 'fun,difficulty,boss,vs,again,best,weakest' && sc2.waves.slice(9).join() === '10,B1,B2,B3' && sc2.strip && sc2.small.length === 0 && !sc2.wide, `a won run: "${sc2.title}", rows ${sc2.rows.join(' ')}, wave chips ${sc2.waves.join(' ')}`);
+  check(/map cleared/.test(sc2.title) && sc2.rows.join() === 'fun,difficulty,boss,vs,again,best,weakest,moment' && sc2.waves.slice(9).join() === '10,B1,B2,B3' && sc2.strip && sc2.small.length === 0 && !sc2.wide, `a won run: "${sc2.title}", rows ${sc2.rows.join(' ')}, wave chips ${sc2.waves.join(' ')}`);
   check(sc2.last.join() === 'map-strait,map-gauntlet' && /^The Gauntlet · Fun 5 · Right · Again yes · yesterday$/.test(sc2.lastText[1] ?? '') && sc2.vs === 'Compared with The Gauntlet', `your last scores: this map's, then The Gauntlet's ("${sc2.lastText[1]}"); the comparison names it ("${sc2.vs}")`);
   {
     // The last scores stay compact: two lines at most on a landscape phone.
@@ -337,11 +354,20 @@ try {
     check(h <= 70, `the last scores take ${h} px`);
   }
   for (const [row, v] of [['boss', '5'], ['vs', 'better'], ['best', '12'], ['weakest', '3']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
+  // Best moment on boss round 2, a quarter of the way in: the seconds come
+  // from the wave's length (the game clock at its end less the one before).
+  const b2 = await page.evaluate(() => { const h = window.__v3.game().history; const end = (w) => h.filter((x) => x.wave === w).at(-1)?.t ?? 0; return end(12) - Math.max(...h.filter((x) => x.wave < 12).map((x) => x.t), 0); });
+  {
+    const r = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="12"]'); b.scrollIntoView({ block: 'center' }); const q = b.getBoundingClientRect(); return { x: q.left, y: q.top, w: q.width, h: q.height }; });
+    await page.touchscreen.tap(r.x + r.w * 0.25, r.y + r.h / 2);
+  }
+  const mo2 = await page.evaluate(() => Number(document.querySelector('[data-score="moment"][data-value="12"]').dataset.momentT));
+  check(b2 > 5 && Math.abs(mo2 - 0.25 * b2) <= Math.max(1, 0.1 * b2), `Best moment on B2, a quarter along its chip: ${mo2} s into a ${b2.toFixed(1)} s round`);
   await page.tap('[data-lab-verdict="keep"]');
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const won = await savedRun(page, 'map-strait');
-  check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify({ rev: 2, boss: 5, vs: 'better', vsCard: 'map-gauntlet', best: 12, weakest: 3 }) && JSON.stringify(won.entryScore) === JSON.stringify(won.score), `a won run's boss score and its comparison with The Gauntlet land in the log and on the device (${JSON.stringify(won.score)})`);
+  check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify({ rev: 3, boss: 5, vs: 'better', vsCard: 'map-gauntlet', best: 12, weakest: 3, moment: 12, momentT: mo2 }) && JSON.stringify(won.entryScore) === JSON.stringify(won.score), `a won run's boss score and its comparison with The Gauntlet land in the log and on the device (${JSON.stringify(won.score)})`);
 
   // ---- Next up opens the same setup ----
   const ids = await page.evaluate(() => [...document.querySelectorAll('[data-card]')].map((c) => c.dataset.card));
