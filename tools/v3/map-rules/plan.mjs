@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-17',
-  headline: 'The Strait, the Gauntlet and Harbor Mouth are rebuilt to the rules and pass every bot check. Your turn: play the three map cards in the Test Lab.',
+  updated: '2026-11-18',
+  headline: 'You played the three rebuilt maps: all Keep, fun 4–5. Next: two small fixes from your runs, then Kesh and Marrow (two questions in Needs you).',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -92,6 +92,7 @@ export const STATUS = {
     { n: 163, title: 'The three reference maps to the rules', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-18', what: 'Your playtest against the bots (each run replayed by the bot on your seed, Armory and picks, 12 times). The Strait: you lost on wave 10 (3 ships there; you looked away on wave 5); the bot loses about 0.5 by wave 5 and 3.7 in waves 6–10 against your 1 and 5. The Gauntlet: you won with 5 lost, the boss cost you 0, 0, 1; the bot reads it 3× harder (1 a round) and wins 1 in 12. Harbor Mouth: the boss cost you 2, 0, 4 and ended the run; the bot predicted 1.9 a round, the same, so the old rule that the bot reads Harbor twice as hard no longer holds and its boss target was set too high.' },
     { date: '2026-11-17', what: 'Phase 4 done by the bots. The Strait: its Afterburner Rush now sends 7, 9, then 10 swarms (6 before), and its quiet first third really is quiet. The Gauntlet: wave 8’s jump is gone, the danger is on the way in, and the Rocket Convoy builds up round by round, a little softer. Harbor Mouth: waves 4–7 send their full attack again, a 5-second calm before wave 10, and the Breakout adds sub salvos into the neck. Counter weapons per map: the Strait Flak, Shrapnel, Drone Screen; the Gauntlet Shrapnel, Thermobaric, Flak; Harbor Overdrive, Railgun, Focus.' },
     { date: '2026-11-17', what: 'Checks and bot reports built. What they found on the three reference maps: a cliff on every map (a wave where losses more than double); Harbor Mouth’s waves 4–7 are a third light on attacks (its funnel encounter replaces more than it sends); the Strait and Gauntlet lack a clearly safe stretch; each encounter runs 3–4 waves in a row (the rules want no repeats back to back). Also: each chapter’s first map brings all its new enemies in waves 2–6, mixed in, so no enemy gets a debut wave of its own yet; the Hydra and Rocket Truck first appear on the Strait. These are the to-do list for the reference-map tuning that starts now.' },
     { date: '2026-11-17', what: 'Merged: the bot refit (#160) and the new scorecard (#161). The next map card you finish shows the new scorecard. The iOS check on #160 never got a Mac to run on; #161 carries the same code and passed it.' },
@@ -108,16 +109,40 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
-    id: 'r3-play-reference',
-    kind: 'item',
-    title: 'Play the three rebuilt maps: The Strait, The Gauntlet, Harbor Mouth',
-    text: 'In the Test Lab, play each map card in full (the cards “The Strait”, “The Gauntlet” and “Harbor Mouth”) and fill in the new scorecard at the end. Your usual Armory is fine. What to look for: does each wave from 3 have a moment that could cost a ship; does any wave suddenly jump in difficulty; do the boss rounds now cost about a ship a round; do the named counter weapons feel like the answer (the Strait: Flak, Shrapnel, Drone Screen; the Gauntlet: Shrapnel, Thermobaric, Flak; Harbor: Overdrive, Railgun, Focus). Mark Approve when you have played all three, or Change with what felt off. The bots read the Strait’s and Harbor’s boss rounds as about twice as hard as you find them, so your scores decide those.',
+    id: 'r4-harbor-boss',
+    kind: 'question',
+    text: '',
+    title: 'Harbor Mouth’s boss rounds cost you 2, 0, then 4 ships and ended the run on round 3, yet you scored the boss 5 and fun 5. What should they do?',
+    options: [
+      'Soften round 3 a little (one sub salvo fewer), keep rounds 1–2 (recommended)',
+      'Keep them as they are: it felt right',
+      'Soften all three rounds',
+    ],
+  },
+  {
+    id: 'r4-ios-check',
+    kind: 'question',
+    text: '',
+    title: 'The iOS build check (6–17 minutes on a Mac runner, once stuck with no Mac) runs on every pull request that touches the game. When should it run?',
+    options: [
+      'Only on pull requests that touch iOS files; also after every merge to the main branch, and by hand before a release (recommended)',
+      'On every pull request, as now',
+    ],
   },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r3-play-reference',
+    kind: 'item',
+    verdict: 'approve',
+    note: 'Played all three (2026-11-17/18), each Keep, Fun. The Strait fun 4, the Gauntlet fun 5 (boss 5), Harbor Mouth fun 5 (boss 5); each “better” than the map before. Notes: a supersonic stays untouchable a little too long after it leaves the truck; and track the close calls where a nuke, an ammo drop or killing a heavy saves the last ship, and reproduce them with the bots.',
+    at: '2026-11-18',
+    title: 'Play the three rebuilt maps: The Strait, The Gauntlet, Harbor Mouth',
+    text: '',
+  },
   {
     id: 'r2-scorecard',
     kind: 'item',
