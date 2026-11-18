@@ -1,9 +1,9 @@
 # Bot report: The Strait (`strait`)
 
-- Seeds: 24 (900–923); persona "you"; Armory: the player's ({"reload":5,"repair":4,"stockpile":5}); threat scale 0.7; built 2026-11-17.
+- Seeds: 24 (900–923); persona "you"; Armory: the player's ({"reload":5,"repair":4,"stockpile":5}); threat scale 0.7; built 2026-11-18.
 - Setup: the map's Test Lab card, production setup (full map, its convoy policy, encounters v1 on).
 - **normal** = the loss limit as in play (24 runs); **tough** = no loss limit and a carrier that can't sink, so every seed plays every wave (24 runs). Each number says which.
-- Made by `npx vite-node tools/v3/map-report/report.ts -- --map=strait --seeds=24 --kits=plan --armory=player`. Heat map: `tools/v3/map-report/results/strait-player-heat.html`.
+- Made by `npx vite-node tools/v3/map-report/report.ts -- --map=strait --seeds=24 --kits=plan --armory=player --fun-placebo`. Heat map: `tools/v3/map-report/results/strait-player-heat.html`.
 
 ## Checks
 
@@ -17,10 +17,12 @@
 | `w-first` | Wave 1: no ship lost | 0.00 a run | 0 (under 0.1 a run) | tough | PASS |
 | `w-early` | Ships lost waves 1–5 | 0.38 a run | a good player 0–1 (rule w-early) | normal | INFO |
 | `w-boss` | Boss rounds | normal (runs that reached it): r1 1.60 (15), r2 1.27 (15), r3 2.23 (13); tough (every run): 1.54, 2.21, 4.38 | about 2 a round on the bot's scale, rising | normal | INFO |
+| `fun` | Fun: saves a wave (provisional) | saves a run: waves 1–7 0.0, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10 | you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small | normal+forks | **FLAG** |
 | `m-kits` | Kits | counter 4.3 lost 1–10, end 12.4; off-counter 5.3 lost 1–10, end 11.3 | the counter kit clearly better; neither trivial | kits | INFO |
 
 ## What to look at
 
+- Fun (provisional): no real save for the bot on wave 1, 2, 3, 4, 5, 6, 7, 8, 9, 10. Give it one moment that needs a quick answer: a heavy or a salvo at the danger stretch, a drop that lands under pressure.
 - Hardest of waves 1–10 for the bot: wave 10 (1.58 ships a run, tough runs).
 - Hull damage by stretch (waves 1–9, all lanes): early 15%, middle 32%, late 53%.
 
@@ -87,6 +89,33 @@ Slope over waves 1–10: -0.53 s a wave.
 | normal, runs that reached it | 1.60 | 1.27 | 2.23 |
 | runs that reached it | 15 | 15 | 13 |
 | tough, every run | 1.54 | 2.21 | 4.38 |
+
+## Fun: saves and tension (provisional)
+
+Read on the normal runs' logs, over the runs that reached each wave (docs/design/v3-fun-metrics.md). **Saves**: at each tap that finished a threat under 3 s from impact, each nuke, and each pickup grabbed with a threat under 4 s away, the game is forked and played on by the "you" bot with and without it (3 rolls of its dice); a save is a fork without it that loses at least one more ship to the threats in play. Big: it kept the run going, the last ship afloat, or came at the loss limit. Clutch: 0.5 s later would also have lost the ship. **Tension**: the danger on the board each second (each threat's damage over its target's hull × e^(−time to impact / 2 s)); hot ≥ 0.75, calm < 0.2.
+
+|  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| runs | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 23 | 23 | 15 | 15 | 13 |
+| **saves a run** | **0.0** | **0.0** | **0.0** | **0.2** | **0.0** | **0.0** | **0.0** | **0.0** | **0.1** | **0.2** | **0.2** | **0.3** | **0.2** |
+| ships saved a run | 0.0 | 0.0 | 0.0 | 0.1 | 0.0 | 0.0 | 0.0 | 0.0 | 0.1 | 0.2 | 0.1 | 0.2 | 0.2 |
+| big (stakes) | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.09 | 0.00 | 0.00 | 0.07 | 0.00 |
+| clutch | 0.00 | 0.00 | 0.00 | 0.08 | 0.00 | 0.04 | 0.04 | 0.04 | 0.09 | 0.13 | 0.13 | 0.13 | 0.08 |
+| runs with no save | 100% | 100% | 100% | 83% | 100% | 96% | 96% | 96% | 87% | 83% | 80% | 73% | 85% |
+|   pickup save | 0.00 | 0.00 | 0.00 | 0.08 | 0.00 | 0.04 | 0.00 | 0.00 | 0.04 | 0.17 | 0.07 | 0.27 | 0.00 |
+|   cover choice | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+|   last-second kill | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+|   kill save | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.09 | 0.00 | 0.13 | 0.00 | 0.15 |
+| noise floor (placebo) | 0.00 | 0.00 | 0.00 | 0.08 | 0.08 | 0.00 | 0.00 | 0.04 | 0.04 | 0.22 | 0.13 | 0.20 | 0.08 |
+| tension peak | 0.24 | 0.21 | 0.58 | 1.13 | 0.68 | 0.91 | 1.09 | 0.99 | 1.33 | 2.13 | 1.10 | 1.01 | 1.62 |
+| peaks | 0.0 | 0.0 | 0.3 | 1.0 | 0.3 | 1.1 | 0.7 | 1.0 | 0.9 | 0.9 | 0.9 | 0.5 | 0.8 |
+| release after a peak (s) | 0.0 | 0.0 | 0.8 | 2.4 | 0.5 | 1.4 | 1.9 | 1.9 | 3.4 | 2.0 | 2.4 | 1.2 | 2.2 |
+| hot share | 0% | 0% | 1% | 8% | 1% | 3% | 4% | 3% | 6% | 4% | 13% | 14% | 26% |
+| calm share | 96% | 96% | 86% | 83% | 85% | 80% | 82% | 82% | 78% | 85% | 41% | 52% | 40% |
+| shape (most runs) | flat 100% | flat 100% | flat 71% | one peak 96% | flat 75% | sawtooth 38% | one peak 71% | one peak 75% | one peak 78% | one peak 91% | one peak 73% | flat 53% | pinned 46% |
+| taps follow tension (r) | 0.43 | 0.38 | 0.53 | 0.68 | 0.50 | 0.52 | 0.42 | 0.35 | 0.47 | 0.37 | 0.35 | 0.37 | 0.21 |
+
+saves a run: waves 1–7 0.0, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 91 s of forks and replays.
 
 ## Kits
 

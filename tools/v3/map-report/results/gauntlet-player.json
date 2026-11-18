@@ -2,8 +2,8 @@
  "about": "Bot report (docs/design/v3-map-report.md). Made by tools/v3/map-report/report.ts.",
  "persona": "you",
  "armory": "the player's ({\"reload\":5,\"repair\":4,\"stockpile\":5})",
- "date": "2026-11-17",
- "command": "npx vite-node tools/v3/map-report/report.ts -- --map=gauntlet --seeds=24 --kits=plan --armory=player",
+ "date": "2026-11-18",
+ "command": "npx vite-node tools/v3/map-report/report.ts -- --map=gauntlet --seeds=24 --kits=plan --armory=player --fun-placebo",
  "heat": "tools/v3/map-report/results/gauntlet-player-heat.html",
  "waves": 13,
  "report": {
@@ -449,6 +449,359 @@
     ]
    }
   ],
+  "fun": {
+   "n": 24,
+   "dice": 3,
+   "ms": 139583,
+   "waves": [
+    {
+     "wave": 1,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.189,
+     "peaks": 0,
+     "releaseS": 0,
+     "hotShare": 0,
+     "calmShare": 0.974,
+     "shape": "flat",
+     "shapes": {
+      "flat": 1
+     },
+     "tapR": 0.535
+    },
+    {
+     "wave": 2,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.19,
+     "peaks": 0,
+     "releaseS": 0,
+     "hotShare": 0,
+     "calmShare": 0.98,
+     "shape": "flat",
+     "shapes": {
+      "flat": 1
+     },
+     "tapR": 0.398
+    },
+    {
+     "wave": 3,
+     "n": 24,
+     "saves": 0.083,
+     "saved": 0.056,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {
+      "kill": 0.083
+     },
+     "none": 0.917,
+     "peak": 0.813,
+     "peaks": 0.458,
+     "releaseS": 1.042,
+     "hotShare": 0.022,
+     "calmShare": 0.813,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.542,
+      "single": 0.458
+     },
+     "tapR": 0.485
+    },
+    {
+     "wave": 4,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.845,
+     "peaks": 0.75,
+     "releaseS": 1.25,
+     "hotShare": 0.021,
+     "calmShare": 0.838,
+     "shape": "single",
+     "shapes": {
+      "single": 0.583,
+      "rising": 0.042,
+      "flat": 0.333,
+      "sawtooth": 0.042
+     },
+     "tapR": 0.516
+    },
+    {
+     "wave": 5,
+     "n": 24,
+     "saves": 0.125,
+     "saved": 0.097,
+     "big": 0,
+     "clutch": 0.042,
+     "kinds": {
+      "kill": 0.083,
+      "pickup": 0.042
+     },
+     "none": 0.875,
+     "peak": 0.928,
+     "peaks": 0.75,
+     "releaseS": 1.792,
+     "hotShare": 0.025,
+     "calmShare": 0.79,
+     "shape": "single",
+     "shapes": {
+      "single": 0.667,
+      "sawtooth": 0.042,
+      "flat": 0.292
+     },
+     "tapR": 0.471
+    },
+    {
+     "wave": 6,
+     "n": 24,
+     "saves": 0.167,
+     "saved": 0.125,
+     "big": 0,
+     "clutch": 0.167,
+     "kinds": {
+      "kill": 0.042,
+      "lastSecond": 0.083,
+      "pickup": 0.042
+     },
+     "none": 0.833,
+     "peak": 1.07,
+     "peaks": 0.833,
+     "releaseS": 1.917,
+     "hotShare": 0.042,
+     "calmShare": 0.799,
+     "shape": "single",
+     "shapes": {
+      "sawtooth": 0.083,
+      "single": 0.667,
+      "flat": 0.25
+     },
+     "tapR": 0.466
+    },
+    {
+     "wave": 7,
+     "n": 24,
+     "saves": 0.333,
+     "saved": 0.278,
+     "big": 0,
+     "clutch": 0.25,
+     "kinds": {
+      "kill": 0.042,
+      "pickup": 0.167,
+      "cover": 0.125
+     },
+     "none": 0.708,
+     "peak": 0.974,
+     "peaks": 0.875,
+     "releaseS": 1.917,
+     "hotShare": 0.035,
+     "calmShare": 0.751,
+     "shape": "single",
+     "shapes": {
+      "flat": 0.292,
+      "single": 0.542,
+      "rising": 0.167
+     },
+     "tapR": 0.449
+    },
+    {
+     "wave": 8,
+     "n": 24,
+     "saves": 0.292,
+     "saved": 0.264,
+     "big": 0,
+     "clutch": 0.208,
+     "kinds": {
+      "cover": 0.125,
+      "pickup": 0.083,
+      "lastSecond": 0.042,
+      "kill": 0.042
+     },
+     "none": 0.75,
+     "peak": 0.973,
+     "peaks": 0.958,
+     "releaseS": 1.646,
+     "hotShare": 0.033,
+     "calmShare": 0.751,
+     "shape": "single",
+     "shapes": {
+      "single": 0.542,
+      "rising": 0.125,
+      "sawtooth": 0.083,
+      "flat": 0.25
+     },
+     "tapR": 0.434
+    },
+    {
+     "wave": 9,
+     "n": 23,
+     "saves": 0.217,
+     "saved": 0.16,
+     "big": 0.043,
+     "clutch": 0.174,
+     "kinds": {
+      "nuke": 0.043,
+      "lastSecond": 0.087,
+      "kill": 0.043,
+      "cover": 0.043
+     },
+     "none": 0.826,
+     "peak": 1.211,
+     "peaks": 1.13,
+     "releaseS": 1.87,
+     "hotShare": 0.053,
+     "calmShare": 0.737,
+     "shape": "single",
+     "shapes": {
+      "flat": 0.174,
+      "rising": 0.087,
+      "sawtooth": 0.217,
+      "single": 0.522
+     },
+     "tapR": 0.453
+    },
+    {
+     "wave": 10,
+     "n": 20,
+     "saves": 0.4,
+     "saved": 0.285,
+     "big": 0.05,
+     "clutch": 0.3,
+     "kinds": {
+      "pickup": 0.25,
+      "kill": 0.1,
+      "lastSecond": 0.05
+     },
+     "none": 0.75,
+     "peak": 1.874,
+     "peaks": 1.55,
+     "releaseS": 2.434,
+     "hotShare": 0.076,
+     "calmShare": 0.718,
+     "shape": "single",
+     "shapes": {
+      "single": 0.5,
+      "rising": 0.45,
+      "sawtooth": 0.05
+     },
+     "tapR": 0.393
+    },
+    {
+     "wave": 11,
+     "n": 13,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.872,
+     "peaks": 0.462,
+     "releaseS": 1.385,
+     "hotShare": 0.046,
+     "calmShare": 0.669,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.538,
+      "single": 0.462
+     },
+     "tapR": 0.251
+    },
+    {
+     "wave": 12,
+     "n": 13,
+     "saves": 0.154,
+     "saved": 0.103,
+     "big": 0,
+     "clutch": 0.077,
+     "kinds": {
+      "pickup": 0.154
+     },
+     "none": 0.846,
+     "peak": 0.729,
+     "peaks": 0.462,
+     "releaseS": 1.615,
+     "hotShare": 0.043,
+     "calmShare": 0.616,
+     "shape": "flat",
+     "shapes": {
+      "single": 0.462,
+      "flat": 0.538
+     },
+     "tapR": 0.219
+    },
+    {
+     "wave": 13,
+     "n": 13,
+     "saves": 0.231,
+     "saved": 0.18,
+     "big": 0.077,
+     "clutch": 0.231,
+     "kinds": {
+      "pickup": 0.154,
+      "lastSecond": 0.077
+     },
+     "none": 0.846,
+     "peak": 0.833,
+     "peaks": 0.615,
+     "releaseS": 2.538,
+     "hotShare": 0.077,
+     "calmShare": 0.657,
+     "shape": "single",
+     "shapes": {
+      "single": 0.615,
+      "flat": 0.385
+     },
+     "tapR": 0.205
+    }
+   ],
+   "verdict": {
+    "flat": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "chaotic": [],
+    "rising": true,
+    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "verdict": "FLAG"
+   },
+   "placebo": [
+    0,
+    0,
+    0,
+    0.042,
+    0,
+    0,
+    0.083,
+    0.125,
+    0.043,
+    0.05,
+    0,
+    0.231,
+    0.077
+   ]
+  },
   "checks": [
    {
     "rule": "w-cliff",
@@ -513,6 +866,14 @@
     "target": "about 1 a round on the bot's scale, rising",
     "verdict": "INFO",
     "from": "normal"
+   },
+   {
+    "rule": "fun",
+    "name": "Fun: saves a wave (provisional)",
+    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "target": "you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small",
+    "verdict": "FLAG",
+    "from": "normal+forks"
    },
    {
     "rule": "m-kits",
