@@ -21,6 +21,10 @@ import { replay, type PlayLog } from '../../src/v3/sim/playlog';
 import { defaultSetup, isProduction, labActions, labRunPlan, nextCards, parseLabProgress, productionSetup, type LabEntry } from '../../src/v3/ui/lab';
 
 const REF: MapId[] = ['strait', 'gauntlet', 'harbor'];
+/** Every map with authored encounters: the reference maps and (map
+ *  rebuild, chapter 1: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md) Kesh
+ *  and Marrow, which have the original (v1) only. */
+const LAYER: MapId[] = [...REF, 'kesh', 'marrow'];
 
 /** A map card's run as the app starts it from the hub (no setup given, no
  *  link): the plan labRunPlan makes. */
@@ -193,19 +197,22 @@ describe('a map card is the full production map', () => {
     // Round 12: a version card says its version.
     expect(productionText('harbor', 'v3')).toBe("The map's own convoy (no commands) · encounters v3 Enemy pairs");
     expect(productionText('sowers')).toBe('Commands: Hold');
-    expect(productionText('kesh')).toMatch(/^Today's convoy controls/);
+    // Chapter 1's Kesh and Marrow: the map's own convoy and their encounters.
+    expect(productionText('kesh')).toBe("The map's own convoy (no commands) · encounters v1 Original");
+    expect(productionText('marrow')).toBe("The map's own convoy (no commands) · encounters v1 Original");
+    expect(productionText('island')).toMatch(/^Today's convoy controls/);
   });
 });
 
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '' };
 
-  it('from the hub: D and authored encounters; Sowers\' Reach: D with Hold; the other 16: today\'s convoy, no encounters', () => {
+  it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold; the other 14: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {
       const plan = fromHub(`map-${id}`);
-      if (REF.includes(id)) {
+      if (LAYER.includes(id)) {
         expect(plan.convoy, id).toMatchObject({ policy: 'tactical', obligation: 'natural' });
         expect(plan.encounters, id).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });
         expect(plan.lab.config, id).toEqual({ convoy: 'tactical', encounters: ENCOUNTER_REV, production: true });
@@ -221,7 +228,7 @@ describe('the three reference maps open ready to test', () => {
         expect(plan.encounters, id).toBeNull();
         expect(plan.lab.config, id).toEqual({ convoy: 'current', encounters: 0, production: true });
       }
-      expect(mapProduction(id).convoy === 'tactical', id).toBe(REF.includes(id) || id === 'sowers');
+      expect(mapProduction(id).convoy === 'tactical', id).toBe(LAYER.includes(id) || id === 'sowers');
     }
   });
 
@@ -242,7 +249,7 @@ describe('the three reference maps open ready to test', () => {
   });
 
   it('from the bare link (v3.html?lab=map-strait): the same setup; a link can still ask for another, for comparison', () => {
-    for (const map of REF) {
+    for (const map of LAYER) {
       const plan = fromHub(`map-${map}`, `lab=map-${map}`);
       expect(plan.full).toBe(true);
       expect(plan.convoy?.policy).toBe('tactical');

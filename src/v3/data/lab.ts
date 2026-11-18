@@ -11,7 +11,7 @@ import { MAPS, MAP_ORDER, type MapId } from './maps';
 import { ENDING, EVENTS, EVENT_ORDER, EVENT_WAVE, bonusDef, endingRuns, eventMap, type EventId } from './events';
 import { PAIRS, pairCardId, pairFoes, type LabPair } from './pairs';
 import { COMMANDS, CONVOY, mapConvoy, type ConvoyPolicy } from './convoy';
-import { ENCOUNTER_MAPS, ENCOUNTER_VERSIONS, VERSION_DEFAULT, versionDef, versionLabel, type EncounterVersion } from './encounters';
+import { ENCOUNTER_MAPS, ENCOUNTER_VERSIONS, VERSION_DEFAULT, hasEncounters, versionDef, versionLabel, type EncounterVersion } from './encounters';
 
 export type LabKind = 'event' | 'enemy' | 'weapon' | 'combo' | 'map';
 
@@ -253,7 +253,7 @@ export interface MapProduction {
 }
 
 export function mapProduction(map: MapId): MapProduction {
-  const encounters = (ENCOUNTER_MAPS as string[]).includes(map);
+  const encounters = hasEncounters(map);
   const commands = mapConvoy(map).commands.length > 0;
   return encounters || commands ? { convoy: 'tactical', encounters } : { convoy: 'current', encounters: false };
 }

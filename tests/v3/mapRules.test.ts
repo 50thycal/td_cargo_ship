@@ -18,7 +18,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ThreatKind } from '../../src/v3/data/config';
-import { ENCOUNTERS, ENCOUNTER_MAPS, arc, encountersFor, type EncounterVersion } from '../../src/v3/data/encounters';
+import { ENCOUNTERS, LAYER_MAPS, arc, encountersFor, type EncounterVersion } from '../../src/v3/data/encounters';
+import { MAP_PLANS } from '../../src/v3/data/mapPlans';
+import { ABILITIES } from '../../src/v3/data/abilities';
 import { FOES, FOE_OF_KIND, FOE_ORDER, foeCount } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf, type MapId } from '../../src/v3/data/maps';
 import { debuts, kindChapter, mapKindWaves, mapListedKinds, PLAN_WAVES } from '../../src/v3/data/mapRules';
@@ -174,11 +176,14 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
     strait: [],
     gauntlet: [],
     harbor: [],
+    // Chapter 1 (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md): the same.
+    kesh: [],
+    marrow: [],
   };
 
   it('the back-to-back repeats are exactly the known ones', () => {
     const found: Record<string, string[]> = {};
-    for (const map of ENCOUNTER_MAPS) {
+    for (const map of LAYER_MAPS) {
       const a = arc(map, KEPT);
       found[map] = [];
       for (let k = 1; k < a.length; k++) {
@@ -192,12 +197,33 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
 
 describe('w-encounter: an encounter on each of waves 1-10 (v1)', () => {
   /** Waves with no v1 encounter, per map (none today). */
-  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [] };
+  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [] };
 
   it('the waves without one are exactly the known gaps', () => {
     const found: Record<string, number[]> = {};
-    for (const map of ENCOUNTER_MAPS) found[map] = Array.from({ length: PLAN_WAVES }, (_, k) => k + 1).filter((w) => encountersFor(map, w, KEPT).length === 0);
+    for (const map of LAYER_MAPS) found[map] = Array.from({ length: PLAN_WAVES }, (_, k) => k + 1).filter((w) => encountersFor(map, w, KEPT).length === 0);
     expect(found).toEqual(EXPECTED_GAPS);
+  });
+});
+
+describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
+  it('the problem in a sentence, a counter and an off-counter kit of three, the convoy, the stretches and the boss target', () => {
+    expect(Object.keys(MAP_PLANS).sort()).toEqual([...LAYER_MAPS].sort());
+    for (const map of LAYER_MAPS) {
+      const p = MAP_PLANS[map]!;
+      expect(p.problem.length, map).toBeGreaterThan(40);
+      expect(p.convoy.length, map).toBeGreaterThan(40);
+      for (const kit of [p.counters, p.offCounter]) {
+        expect(kit, map).toHaveLength(3);
+        for (const id of kit) expect(ABILITIES[id], `${map}: ${id}`).toBeDefined();
+      }
+      expect(p.counters.filter((id) => p.offCounter.includes(id)), map).toEqual([]);
+      expect(p.stretches.danger, map).not.toBe(p.stretches.safe);
+      expect(p.boss.botTarget, map).toBeGreaterThan(0);
+    }
+    // Chapter 1 is the easiest chapter: a ship a round at most, on the bot's scale.
+    expect(MAP_PLANS.kesh!.boss.botTarget).toBeLessThanOrEqual(1);
+    expect(MAP_PLANS.marrow!.boss.botTarget).toBeLessThanOrEqual(1);
   });
 });
 

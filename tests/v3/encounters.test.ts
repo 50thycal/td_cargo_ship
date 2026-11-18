@@ -18,7 +18,10 @@ import {
   ENCOUNTER_MAPS,
   ENCOUNTER_REV,
   ENCOUNTER_VERSIONS,
+  LAYER_MAPS,
   MAP_VERSIONS,
+  REBUILT_MAPS,
+  hasEncounters,
   arc,
   calloutsOn,
   encountersFor,
@@ -43,6 +46,9 @@ import { reconcile, type TelEvent, type TelemetrySidecar } from '../../src/v3/si
 const DT = 1 / 60;
 const ON = { rev: ENCOUNTER_REV };
 const VER = (version: EncounterVersion, rev = ENCOUNTER_REV) => ({ rev, version });
+/** The versions a map has: three on a reference map, the original (v1)
+ *  only on a map rebuilt after them (chapter 1's Kesh and Marrow). */
+const versionsOf = (map: Encounter['map']): EncounterVersion[] => (ENCOUNTER_MAPS.includes(map) ? ENCOUNTER_VERSIONS : ['v1']);
 /** The last rev an encounter plays in (one replaced in rev 4 plays to 3). */
 const lastRev = (e: Encounter) => e.until ?? ENCOUNTER_REV;
 
@@ -145,15 +151,43 @@ describe('a campaign run has no encounter layer', () => {
       expect(playsAt(e, 3), id).toBe(true);
       expect(playsAt(e, 4), id).toBe(false);
     }
-    expect(encountersFor('kesh', 5)).toEqual([]);
-    expect(encountersFor('kesh', 5, 'v2')).toEqual([]);
+    // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
+    // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
+    // wave; nothing at rev 3, so an older log plays them as it did.
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow']);
+    expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
+      'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
+    ]);
+    expect(arc('marrow').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship',
+      'marrow-both-shores', 'marrow-down-the-lane', 'marrow-wolf-pack', 'marrow-crossfire', 'marrow-last-stand',
+    ]);
+    for (const map of REBUILT_MAPS) {
+      expect(hasEncounters(map), map).toBe(true);
+      for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
+        expect(e.rev, e.id).toBe(4);
+        expect(e.version, e.id).toBe('v1');
+        expect(playsAt(e, 3), e.id).toBe(false);
+      }
+      for (let w = 1; w <= 10; w++) {
+        expect(encountersFor(map, w, 'v1', 3), `${map} wave ${w}`).toEqual([]);
+        for (const v of ['v2', 'v3'] as const) expect(encountersFor(map, w, v), `${map} ${v}`).toEqual([]);
+      }
+      expect(versionDef(map, 'v1')!.idea.length, map).toBeGreaterThan(30);
+      expect(versionDef(map, 'v2'), map).toBeUndefined();
+    }
+    // The other maps have none yet.
+    expect(hasEncounters('island')).toBe(false);
+    expect(encountersFor('island', 5)).toEqual([]);
+    expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
     for (const e of ENCOUNTERS) expect(e.callout.length, e.id).toBeLessThanOrEqual(42);
   });
 
   it('v1 is the original: no wave budget of its own, no call-outs, no pairs', () => {
-    for (const map of ENCOUNTER_MAPS) {
+    for (const map of LAYER_MAPS) {
       expect(versionDef(map, 'v1')!.scale, map).toBeUndefined();
       expect(versionDef(map, 'v1')!.callouts, map).toBe(false);
       for (let w = 1; w <= 10; w++) expect(waveScale(map, 'v1', w)).toBe(1);
@@ -243,7 +277,7 @@ describe('every beat is legal on its map at its wave', () => {
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const seeds = [1, 2, 3, 4, 5, 6, 7, 8];
     for (const version of ENCOUNTER_VERSIONS)
-      for (const map of ENCOUNTER_MAPS)
+      for (const map of LAYER_MAPS.filter((m) => versionsOf(m).includes(version)))
         for (let w = 1; w <= 10; w++) {
           const list = encountersFor(map, w, version);
           if (!list.length) continue;
@@ -506,9 +540,71 @@ describe('each encounter is what it says', () => {
   });
 });
 
+describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
+  /** Each launch of an encounter as it leaves: its threat, and the ships on
+   *  the water then. Nobody shoots. */
+  function aimed(map: Encounter['map'], n: number, id: string, before?: (g: Game) => void) {
+    const g = createGame(map, 9, n);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    before?.(g);
+    const seen = new Set<number>();
+    const out: { th: Game['threats'][number]; ships: Game['ships'] }[] = [];
+    for (let i = 0; i < 90 / DT && g.phase === 'wave' && g.wave === n; i++) {
+      step(g, DT);
+      for (const th of g.threats)
+        if (th.enc === id && !seen.has(th.id)) {
+          seen.add(th.id);
+          out.push({ th: { ...th }, ships: g.ships.map((s) => ({ ...s })) });
+        }
+    }
+    return { g, out };
+  }
+  const d = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  it('The Kesh Hook: the south silo\'s fire goes at the ship nearest it, the one rounding the apex', () => {
+    const { g, out } = aimed('kesh', 3, 'kesh-apex-shells');
+    expect(out).toHaveLength(6);
+    const silo = g.map.bases[0];
+    for (const { th, ships } of out) {
+      expect({ x: th.sx, y: th.sy }).toEqual({ x: silo.x, y: silo.y });
+      const target = ships.find((s) => s.id === th.target)!;
+      expect(target, `${th.kind} ${th.id}`).toBeDefined();
+      // The nearest ship it could aim at (a shell only reaches ships west of x 1280).
+      const pool = ships.filter((s) => th.kind !== 'ballistic' || s.x <= VIEW.width - 320);
+      expect(d(target, silo)).toBeCloseTo(Math.min(...pool.map((s) => d(s, silo))), 3);
+    }
+  });
+
+  it('Lee of Marrow: a shot at the radar tower while it stands; once it is gone, at the ship nearest where it stood', () => {
+    const tower = MAPS.marrow.posts![0];
+    const up = aimed('marrow', 2, 'marrow-shell-at-tower');
+    const shell = up.out.find((o) => o.th.kind === 'ballistic')!;
+    // Allied posts are targets -10, -11, ...: the tower is post 0.
+    expect(shell.th.target).toBe(-10);
+    const down = aimed('marrow', 2, 'marrow-shell-at-tower', (g) => {
+      g.posts[0].hp = 0;
+      g.posts[0].lost = true;
+    });
+    const s2 = down.out.find((o) => o.th.kind === 'ballistic')!;
+    const target = s2.ships.find((s) => s.id === s2.th.target)!;
+    expect(target).toBeDefined();
+    const pool = s2.ships.filter((s) => s.x <= VIEW.width - 320);
+    expect(d(target, tower)).toBeCloseTo(Math.min(...pool.map((s) => d(s, tower))), 3);
+  });
+
+  it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
+    const at = (map: Encounter['map']) => arc(map).filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'post'))).map((a) => a.wave);
+    expect(at('marrow')).toEqual([2, 5, 8, 10]);
+    expect(at('kesh')).toEqual([]);
+    expect(MAPS.kesh.posts).toBeUndefined();
+  });
+});
+
 describe('the ten-wave arc, and what it leaves alone', () => {
   it('each map (v1): waves 1-3 teach, 4-6 combine, 7-9 escalate, 10 is the climax; no wave is left without its role', () => {
-    for (const map of ENCOUNTER_MAPS) {
+    for (const map of LAYER_MAPS) {
       const a = arc(map);
       expect(a.map((w) => w.role).join()).toBe('teach,teach,teach,combine,combine,combine,escalate,escalate,escalate,climax');
       // Every wave carries an encounter (rev 3: wave 1 too, its opener, or Harbor Mouth's own lesson).
@@ -564,7 +660,7 @@ describe('the ten-wave arc, and what it leaves alone', () => {
   });
 
   it('the map\'s own event (runs 1 to 3) and the Siren Field bonus wave play as they do without the layer', () => {
-    for (const map of ENCOUNTER_MAPS) for (const v of ENCOUNTER_VERSIONS) for (const w of [11, 12, 13]) expect(encountersFor(map, w, v)).toEqual([]);
+    for (const map of LAYER_MAPS) for (const v of ENCOUNTER_VERSIONS) for (const w of [11, 12, 13]) expect(encountersFor(map, w, v)).toEqual([]);
     const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 } };
     // From wave 11: the event's three runs, the same game with the layer on or off.
     const off = playMimic('strait', 201, { ...opts, firstWave: 11 });
@@ -592,12 +688,13 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['breakout', 1], ['breakout', 2], ['breakout', 3]]);
     // Its salvos into the neck: one salvo, then two, then (log v27, the
     // player's choice after the playtest) one again with the fan of 4.
-    expect(on.game.eventLog.map((e) => e.sent.ballistic)).toEqual(tune.salvos.map((r) => r.reduce((a, [, n]) => a + n, 0)));
+    const salvos = tune.salvos!;
+    expect(on.game.eventLog.map((e) => e.sent.ballistic)).toEqual(salvos.map((r) => r.reduce((a, [, n]) => a + n, 0)));
     expect(on.game.eventLog.map((e) => e.sent.hydra)).toEqual(tune.fan);
-    expect(tune.salvos.map((r) => r.map(([, n]) => n))).toEqual([[3], [3, 2], [3]]);
+    expect(salvos.map((r) => r.map(([, n]) => n))).toEqual([[3], [3, 2], [3]]);
     expect(tune.fan).toEqual([3, 3, 4]);
     // Round 3 is still more than round 1 (a Hydra more), less than round 2.
-    const weight = tune.salvos.map((r, k) => r.reduce((a, [, n]) => a + n, 0) + tune.fan![k]);
+    const weight = salvos.map((r, k) => r.reduce((a, [, n]) => a + n, 0) + tune.fan![k]);
     expect(weight).toEqual([6, 8, 7]);
     // Each round 15-30 s.
     for (const e of on.game.eventLog) {
@@ -607,10 +704,60 @@ describe('the ten-wave arc, and what it leaves alone', () => {
   }, 90_000);
 });
 
+describe('chapter 1\'s boss rounds (rev 4, MAP_BOSS): Kesh and Marrow rise; a rev 3 log and the campaign play them as they were', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  it('The Kesh Hook\'s Drone Storm: more drones each round, the second half sooner', () => {
+    const off = playMimic('kesh', 201, opts);
+    const old = playMimic('kesh', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => e.sent.drone)).toEqual([30, 30, 30]);
+    const on = playMimic('kesh', 201, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.kesh!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['drone-storm', 1], ['drone-storm', 2], ['drone-storm', 3]]);
+    expect(on.game.eventLog.map((e) => e.sent.drone)).toEqual(rounds.map((r) => Math.round(r.swarms! * r.size!)));
+    // Each round at least as heavy as the one before, its second half no
+    // later, and harder in one of the two: the rounds rise.
+    for (let k = 1; k < rounds.length; k++) {
+      const [a, b] = [rounds[k - 1], rounds[k]];
+      expect(b.swarms! * b.size!).toBeGreaterThanOrEqual(a.swarms! * a.size!);
+      expect(b.second!).toBeLessThanOrEqual(a.second!);
+      expect(b.swarms! * b.size! > a.swarms! * a.size! || b.second! < a.second!, `round ${k + 1}`).toBe(true);
+    }
+    // Heavier than the event's own (12 swarms, 30 drones) from round 1.
+    expect(rounds[0].swarms! * rounds[0].size!).toBeGreaterThan(30);
+    for (const e of on.game.eventLog) {
+      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
+      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
+    }
+  }, 90_000);
+
+  it('Lee of Marrow\'s Hydra Bloom: each round opens with missiles at the radar tower, and builds up', () => {
+    const off = playMimic('marrow', 201, opts);
+    const old = playMimic('marrow', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => e.sent.guided ?? 0)).toEqual([0, 0, 0]);
+    const on = playMimic('marrow', 201, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.marrow!.rounds!;
+    const bases = MAPS.marrow.bases.length;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['hydra-bloom', 1], ['hydra-bloom', 2], ['hydra-bloom', 3]]);
+    expect(on.game.eventLog.map((e) => e.sent.guided)).toEqual(rounds.map((r) => r.tower));
+    expect(on.game.eventLog.map((e) => e.sent.hydra)).toEqual(rounds.map((r) => r.fans! * bases));
+    expect(on.game.eventLog.map((e) => e.sent.drone ?? 0)).toEqual(rounds.map((r) => r.swarms! * r.size!));
+    const weight = rounds.map((r) => r.tower! + r.fans! * bases + r.swarms! * r.size!);
+    for (let k = 1; k < weight.length; k++) expect(weight[k]).toBeGreaterThan(weight[k - 1]);
+    for (const e of on.game.eventLog) {
+      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
+      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
+    }
+  }, 90_000);
+});
+
 describe('the same thing every time', () => {
   it('a run with encounters is the same game on the same seed, carries the layer in its log, and replays with telemetry on or off', () => {
-    for (const map of ENCOUNTER_MAPS)
-      for (const v of ENCOUNTER_VERSIONS) {
+    for (const map of LAYER_MAPS)
+      for (const v of versionsOf(map)) {
         const setup = VER(v);
         const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 4, encounters: setup };
         const a = playMimic(map, 77, opts);

@@ -209,7 +209,11 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('strait')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('harbor')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('sowers')).toEqual({ convoy: 'tactical', encounters: false });
-    expect(mapProduction('kesh')).toEqual({ convoy: 'current', encounters: false });
+    // Chapter 1's Kesh and Marrow, rebuilt to the rules (docs/design/v3-ch1-*.md):
+    // the map's own convoy, no command, and their encounters.
+    expect(mapProduction('kesh')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('marrow')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('island')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold');
   });

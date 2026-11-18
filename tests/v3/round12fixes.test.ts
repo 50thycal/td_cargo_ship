@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import { EV, EVENT, EVENT_WAVE, eventMap, type EventId } from '../../src/v3/data/events';
 import { THREATS, type ThreatKind } from '../../src/v3/data/config';
-import { ENCOUNTER_MAPS, ENCOUNTER_REV, ENCOUNTER_VERSIONS, MAP_FIRE, arcGroups, encountersFor, waveFire } from '../../src/v3/data/encounters';
+import { ENCOUNTER_MAPS, ENCOUNTER_REV, ENCOUNTER_VERSIONS, MAP_FIRE, REBUILT_MAPS, arcGroups, encountersFor, waveFire } from '../../src/v3/data/encounters';
 import { FOE } from '../../src/v3/data/foes';
 import { labCard, mapCardId } from '../../src/v3/data/lab';
 import { applyEncounters, createGame, step, type Game, type Threat } from '../../src/v3/sim/game';
@@ -183,6 +183,26 @@ describe('wave 1 says something about the map, in every version', () => {
           }
       }
   }, 240_000);
+
+  it('chapter 1 (rev 4, docs/design/v3-ch1-*.md): Kesh and Marrow open with their own encounter on wave 1, no opener, and lose no ship on it', () => {
+    for (const map of REBUILT_MAPS) {
+      const first = encountersFor(map, 1, 'v1');
+      expect(first.map((e) => [e.rev, e.opener, e.role]), map).toEqual([[4, undefined, 'teach']]);
+      // Light: a few drones out of the map's own signature launcher.
+      expect(first[0].beats.map((b) => [b.kind, b.count]), map).toEqual([['drone', 3]]);
+      expect(encountersFor(map, 1, 'v1', 3), map).toEqual([]);
+      const p = plan(map, 'v1');
+      expect(p.encounters, map).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });
+      expect(p.convoy?.policy, map).toBe('tactical');
+      for (const persona of ['you', 'casual'])
+        for (const seed of [11, 12, 13]) {
+          const run = new BotRun(map, seed, { persona: PERSONAS[persona], lab: p.lab, convoy: p.convoy!, encounters: p.encounters! });
+          while (!run.done && run.game.wave === 1) run.advance(60);
+          expect(run.game.enc!.played[0], map).toBe(first[0].id);
+          expect(run.game.lost, `${map} ${persona} seed ${seed}: ships lost on wave 1`).toBe(0);
+        }
+    }
+  }, 120_000);
 });
 
 describe('The Strait sends about 10% more fire on waves 5-10, the same in every version', () => {
@@ -208,7 +228,7 @@ describe('The Strait sends about 10% more fire on waves 5-10, the same in every 
         expect(waveFire('strait', w)).toBe(w >= 5 ? 0.1 : 0);
         expect(waveFire('strait', w, 2)).toBe(0);
       }
-    for (const map of ['gauntlet', 'harbor'] as const) for (let w = 1; w <= 10; w++) expect(waveFire(map, w), `${map} ${w}`).toBe(0);
+    for (const map of ['gauntlet', 'harbor', 'kesh', 'marrow'] as const) for (let w = 1; w <= 10; w++) expect(waveFire(map, w), `${map} ${w}`).toBe(0);
     // Past the tenth wave (the boss rounds) nothing changes.
     expect(waveFire('strait', 11)).toBe(0);
   });

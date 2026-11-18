@@ -154,12 +154,24 @@ import type { EncounterSetup } from '../data/encounters';
  *      when it did; the lock line still shows for 1.1 s). And Harbor Mouth's Breakout (encounters
  *      rev 4, MAP_BOSS) sends one sub salvo in round 3, not two. A v26 log
  *      with a supersonic, or that reaches Harbor's third boss round under
- *      the encounter layer, no longer replays to the same game. */
-export const LOG_VERSION = 27;
-/** The log versions this build replays exactly (only its own: round 11
- *  changed the game). Tools that replay logs (Map Analytics, the map lab)
- *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [27];
+ *      the encounter layer, no longer replays to the same game.
+ *  28: map rebuild, chapter 1 (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.
+ *      md): the Kesh Hook and Lee of Marrow get authored encounters (rev 4,
+ *      one a wave, with two new aims: the ship nearest the launcher and the
+ *      ship halfway along, plus Marrow's radar tower as a target), boss
+ *      rounds that rise (MAP_BOSS: the Drone Storm and Hydra Bloom), and a
+ *      map card that plays them by default (the map's own convoy, no
+ *      command). All of it is lab only, under the encounter layer: a
+ *      campaign run plays as it did. A v28 Kesh or Marrow map-card log needs
+ *      this build (an older one would play its encounters as nothing), so
+ *      the version moves; a v27 log played none of it (those maps had no
+ *      encounter layer, and every other map is unchanged), so this build
+ *      still replays v27 exactly. */
+export const LOG_VERSION = 28;
+/** The log versions this build replays exactly (its own, and v27, which
+ *  nothing in v28 changed: see 28 above). Tools that replay logs (Map
+ *  Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [27, 28];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
