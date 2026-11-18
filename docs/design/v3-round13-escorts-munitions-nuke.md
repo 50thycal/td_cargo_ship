@@ -198,6 +198,8 @@ The bots skip it too: `worthShooting` leaves it out.
 | Hydra darts | Made as the Hydra dies, flung clear of it | No | None |
 | Ballistic, guided, heavy, Incendiary Missile, sprinters, the Dreadnought's broadside | Leave the silo or ship the moment they are made | No arming phase | None |
 
+**Changed in log v27** (the player, Harbor Mouth, wave 5: "the invincibility of the supersonic missile is just a tad too long … you can attack it basically as soon as it is off the truck"): it is on its rail, still and no target, for `SUPERSONIC.rail` (0.4 s) only, no longer for its whole 1.1 s lock. Then it lifts off slowly and can be shot; the lock line still shows to 1.1 s and it lands when it did. See `docs/design/v3-p4-harbor.md`, "After the playtest".
+
 **Screenshot:** a supersonic arming at The Strait's west silo, its lock line on a ship. A tap right on it fired nothing (`tools/v3/round13/shots.mjs` checks this).
 
 ![Supersonic on its rail](img/round13/supersonic-rail-844x390.jpg)

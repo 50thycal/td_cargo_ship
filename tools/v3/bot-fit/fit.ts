@@ -27,7 +27,7 @@ import type { ArmoryLevels } from '../../../src/v3/data/armory';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
-import type { PlayLog } from '../../../src/v3/sim/playlog';
+import { LOG_REPLAYS, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
 import type { Game } from '../../../src/v3/sim/game';
 import type { CardId } from '../../../src/v3/data/abilities';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
@@ -190,14 +190,24 @@ function funCalibration(player: PlayerRun[]): void {
   for (const r of player) {
     const l = byId.get(r.id);
     if (!l) continue;
+    // A log this build no longer replays exactly would be forked into a
+    // different game: its saves would be wrong, so it is left out.
+    if (!replaysHere(l.v)) {
+      console.log(`SKIPPED ${r.id} (${r.map}): a v${l.v} log; this build replays v${LOG_REPLAYS.join(', v')} only, so its forks would be another game.`);
+      continue;
+    }
     const f = measureFun(l, funDice);
     if (!f.fun) {
-      console.log(`${r.id} (${r.map}, v${r.v}): does not replay exactly here; left out`);
+      console.log(`SKIPPED ${r.id} (${r.map}, v${l.v}): its replay on this build does not end as the log did, so its forks would be another game.`);
       continue;
     }
     mine.push({ ...r, ...f });
   }
-  console.log(`The player's runs with a raw log in ${raw} that this build replays exactly: ${mine.length} of ${player.length} (${mine.map((r) => `${r.map} v${r.v}`).join(', ')}). Without the raw log a run can't be forked: player.json keeps no inputs.`);
+  console.log(`The player's runs with a raw log in ${raw} that this build replays exactly: ${mine.length} of ${player.length}${mine.length ? ` (${mine.map((r) => `${r.map} v${r.v}`).join(', ')})` : ''}. Without the raw log a run can't be forked: player.json keeps no inputs.`);
+  if (!mine.length) {
+    console.log(`\nNothing to compare: no player log here replays exactly on this build (v${LOG_REPLAYS.join(', v')}). Add new playtest logs to ${raw}. The last results, on the v26 build, are in tools/v3/bot-fit/results/fun-2026-11-18.json.`);
+    return;
+  }
   const cols: { name: string; runs: RunMeasure[] }[] = [{ name: 'you', runs: mine }];
   const mirrors = new Map<string, RunMeasure[]>();
   for (const persona of personas) {

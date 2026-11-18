@@ -185,6 +185,32 @@ npx vite-node tools/v3/map-report/report.ts -- --map=harbor --seeds=24 --kits=pl
 | after | 0.00 | 0.08 | 0.13 | 0.38 | 0.50 | 0.71 | 0.63 | 1.00 | 1.96 | 2.29 |
 | after, 96 seeds | 0.00 | 0.05 | 0.17 | 0.33 | 0.50 | 0.65 | 0.80 | 1.16 | 1.68 | 2.32 |
 
+## After the playtest (log v27, 2026-11-18)
+
+The player played the rebuilt Harbor Mouth (log v26, encounters rev 4; `tools/v3/map-rules/review-2026-11-18.json`): lost on wave 13 with 10 ships lost, fun 5, difficulty "right". The Breakout cost 2, then 0, then 4 ships, and round 3 ended the run. Two changes follow, and both change the game, so they ride one log version.
+
+**Play log v27** (`LOG_VERSION`; `LOG_REPLAYS` is `[27]`). Two changes:
+- **Harbor's boss round 3 is one sub salvo lighter** (the player chose "Soften round 3 a little (one sub salvo fewer), keep rounds 1–2"). `MAP_BOSS.harbor` round 3 now sends one salvo of 3 into the neck (at 4 s) in place of two (at 4 s and 11 s); the fan of 4 Hydras stays, and rounds 1–2 are as they were (one salvo of 3; two salvos of 3 and 2; fans of 3).
+- **A supersonic is no target for 0.4 s, not 1.1 s** (the player, Harbor, wave 5: "the invincibility of the super sonic missile is just a tad too long … you can attack it basically as soon as it is off the truck"). Until now it sat still on its launcher for the whole 1.1 s lock (`SUPERSONIC.arming`), untargetable, while the launch flash and sound had already played and a truck or sub began to pull away beside it. Now it is on the rail, still and no target, for `SUPERSONIC.rail` (0.4 s). Then it lifts off slowly, at a fifth of its speed rising to full over `SUPERSONIC.lift` (1.75 s), and can be shot from then on. By 1.1 s it is about 100 px off the launcher. It lands when it did, because the slow lift-off costs exactly the 0.7 s it gained. The lock line and the lock sound still run for the whole 1.1 s. On screen: the pink glow under the launcher shows only while it is on the rail; after that the missile flies out along its flashing lock line with a trail that grows as it speeds up.
+
+Neither change is hidden behind the encounter rev. The Breakout tuning is gated on encounter rev 4 (`bossTune`), and the player's own v26 Harbor log was played at rev 4, so it would have replayed differently, as would any v26 log with a supersonic. The map-lab baseline differed on all 12 runs: 8 changed state (the bots' kills, drops and drafts shift once supersonics can be shot sooner, and harbor-bonus also meets the lighter round 3), and the 3 event runs and gauntlet-campaign-you changed only the version and content hash. It was rewritten with `--write`, and every run replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 27.
+
+**Harbor's map plan.** `boss.botTarget` is 1, not 2. On the player's own seed, Armory and picks, the bot loses 1.9 a round to the Breakout and the player lost 2.0: the bot predicts Harbor's boss as the player meets it, not twice as hard (`docs/design/v3-bot-refit.md`, "What is still off").
+
+**The boss rounds, before and after** (24 seeds, 900–923, `--kits=plan`). "v26" is the build the player played; "round 3 only" is that build with only the salvo removed, which isolates it; "v27" is both changes.
+
+| Ships lost a boss round | v26 | Round 3 only | v27 |
+| --- | --- | --- | --- |
+| Player's Armory, tough (every run) | 1.33 / 1.83 / 2.38 | 1.33 / 1.83 / **1.88** | 1.17 / 2.29 / **1.46** |
+| Player's Armory, normal (runs that reached it) | 1.63 / 1.63 / 2.43 (8 / 8 / 7 runs) | 1.63 / 1.63 / 2.43 | 1.00 / 2.75 / **1.14** (8 / 8 / 7) |
+| Baseline, tough (every run) | 3.46 / 4.71 / 4.92 | 3.46 / 4.71 / **4.00** | 2.79 / 5.17 / **4.54** |
+
+- **Round 3 alone:** the salvo is worth about half a ship a round to the bot with the player's Armory (2.38 → 1.88), and about 0.9 with no Armory. On the normal runs that reached round 3, the second salvo had sunk nothing, so that figure did not move.
+- **With the supersonic too,** rounds 1 and 2 also move, though their tuning did not change: the bot shoots supersonics sooner, so its kills, drops and drafts shift through the run. Read the 1.83 → 2.29 of round 2 as that noise. With the player's Armory the bot now wins 25% of normal runs (17% before), ends on wave 10.6 (10.4) and loses 0.92 in waves 1–5 (1.08).
+- **Rule `w-boss` ("harder each round")** no longer holds on Harbor: round 3 sends a salvo fewer than round 2 and one Hydra more. That is the player's choice.
+
+Every other check in the two reports still passes (cliffs, close calls, budgets, stretches, warning time, wave 1). Reports: `tools/v3/map-report/results/harbor.md` and `harbor-player.md`.
+
 ## Tests
 
 - `tests/v3/mapRules.test.ts`: Harbor's expected back-to-back repeats are now none.
@@ -216,4 +242,4 @@ npx vite-node tools/v3/map-report/report.ts -- --map=harbor --seeds=24 --kits=pl
   - each enemy type in at least two waves (`w-variety`, second half);
   - the calm before boss round 1: the boss starts after its 3 s breather as before.
 - **Shared code.** The calm (`calm`, `firstBeatAt`, `calmBefore`, and the hook in `startWave`) is generic, and The Strait and The Gauntlet may want the same thing for their wave 10. If another phase 4 change adds its own calm, merge the two. The Breakout hook in `sim/events.ts` reads only `MAP_BOSS`, which only Harbor has.
-- **`LOG_VERSION`** is unchanged at 25. Everything here is encounter rev 4, which is lab only: the campaign is unchanged, and the map-lab baseline replays exactly with telemetry on and off.
+- **`LOG_VERSION`** was unchanged at 25 by this phase (it is 27 since the playtest: "After the playtest" above). Everything here is encounter rev 4, which is lab only: the campaign is unchanged, and the map-lab baseline replays exactly with telemetry on and off.

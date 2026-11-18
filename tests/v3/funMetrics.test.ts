@@ -15,7 +15,7 @@ import {
   tensionStats,
   type Action,
 } from '../../src/v3/sim/funMetrics';
-import { SIM_DT, applyCommand, replay, type LogCommand, type PlayLog } from '../../src/v3/sim/playlog';
+import { LOG_VERSION, SIM_DT, applyCommand, replay, type LogCommand, type PlayLog } from '../../src/v3/sim/playlog';
 import { spawnThreat, step, timeToImpact, type Game } from '../../src/v3/sim/game';
 import { playMimic, YOU_R12 } from '../../src/v3/sim/mimic';
 import { runPrint } from '../../src/v3/sim/resume';
@@ -68,7 +68,7 @@ describe('a copyable game', () => {
  *  `secs` from impact, nothing else coming; and the tap that kills it. */
 function oneDrone(secs: number): { g: Game; cmd: LogCommand; a: Action } {
   const log: PlayLog = {
-    v: 26,
+    v: LOG_VERSION,
     game: 'v3',
     id: 'fun-test',
     armory: {},

@@ -81,10 +81,11 @@ Why tough for the curve: a normal run that ends on wave 8 says nothing of waves 
 ## Reading it: the bots' known biases
 
 From `docs/design/v3-bot-refit.md`:
-- **The boss rounds on the Strait and Harbor Mouth read harder to the bot than to the player.**
-  - The bot loses about 1.2–1.4 ships a round where the player lost none in 15 rounds.
-  - For those two maps the boss target is **about 2 ships a round on the bot** for the player's "about one". The report prints that target.
-  - On the Gauntlet the bot matches the player: the target is about 1.
+- **The boss rounds, map by map** (re-checked 2026-11-18 with the playtest of the rebuilt maps):
+  - **The Strait** reads harder to the bot: about 1.7 ships a round where the player lost 0.17 over 12 rounds. Its boss target is **about 2 ships a round on the bot** for the player's "about one".
+  - **Harbor Mouth** no longer does: on the player's rebuilt-map run the bot lost 1.9 a round on the same seed, the player 2.0. Its target is now **about 1 on the bot** (the map plan's `botTarget`).
+  - **The Gauntlet** reads harder on the rebuilt map (bot about 1.0 a round, player 0.33 on one run; few rounds behind either). Its target stays about 1.
+  - The report prints each map's target.
 - **Waves 6–10** read up to about a ship pessimistic over the five waves.
 - **The bot taps a threat sooner than the player** (0.47 s against 0.82 s on waves 1–5). Close calls on the player's side may be a little more frequent than the bot's.
 - **The baseline has no Armory upgrades.** The player has Quick Reload 5, Damage Control 4 and Stockpile 5, so on the baseline the bot loses more and reaches the boss rounds less often than the player would. That is why the boss rounds are also given on the tough runs. Run `--armory=player` to read difficulty as the player meets it.

@@ -146,12 +146,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      a column and one swarm, then three and two, then four and two
  *      smaller swarms, in place of four and three every round). A v25 log
  *      that reaches the Gauntlet's boss rounds (or a bonus Rocket Convoy in
- *      a three-run ending) no longer replays to the same game. */
-export const LOG_VERSION = 26;
+ *      a three-run ending) no longer replays to the same game.
+ *  27: after the playtest of the three rebuilt maps (review 2026-11-18;
+ *      docs/design/v3-p4-harbor.md, "After the playtest"): a supersonic is
+ *      on its rail, no target, for SUPERSONIC.rail (0.4 s) in place of its
+ *      whole 1.1 s lock, then lifts off slowly and can be shot (it lands
+ *      when it did; the lock line still shows for 1.1 s). And Harbor Mouth's Breakout (encounters
+ *      rev 4, MAP_BOSS) sends one sub salvo in round 3, not two. A v26 log
+ *      with a supersonic, or that reaches Harbor's third boss round under
+ *      the encounter layer, no longer replays to the same game. */
+export const LOG_VERSION = 27;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [26];
+export const LOG_REPLAYS: readonly number[] = [27];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

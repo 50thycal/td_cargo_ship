@@ -127,9 +127,30 @@ export function isMunitionKind(k: ThreatKind): boolean {
  *  arming on its rail with its lock line showing; every other munition is
  *  spawned as it leaves (docs/design/v3-round13-escorts-munitions-nuke.md
  *  has the table). Dead threats aren't released either: this is the check
- *  every target scan makes. */
+ *  every target scan makes. Log v27 (the player, Harbor Mouth: "you can
+ *  attack it basically as soon as it is off the truck"): the rail is the
+ *  first SUPERSONIC.rail (0.4 s) of its lock only; then it lifts off and is
+ *  a target, its lock line still showing. */
 export function released(th: Threat): boolean {
-  return !th.dead && !(th.kind === 'supersonic' && th.age < SUPERSONIC.arming);
+  return !th.dead && !(th.kind === 'supersonic' && th.age < SUPERSONIC.rail);
+}
+
+/** A supersonic's share of its full speed at `age` (log v27): none on the
+ *  rail, then a slow lift-off ramping up to full over `SUPERSONIC.lift` s. */
+export function supersonicPace(age: number): number {
+  const S = SUPERSONIC;
+  if (age < S.rail) return 0;
+  return S.liftFrom + (1 - S.liftFrom) * Math.min(1, (age - S.rail) / S.lift);
+}
+
+/** The seconds a supersonic of `age` will lose to its rail and lift-off
+ *  against flying at full speed from now (its arming, for the bots and the
+ *  helpers' timing). */
+export function supersonicDelay(age: number): number {
+  const S = SUPERSONIC;
+  const s = Math.max(0, age - S.rail);
+  const lifting = s < S.lift ? ((1 - S.liftFrom) * (S.lift - s) ** 2) / (2 * S.lift) : 0;
+  return Math.max(0, S.rail - age) + lifting;
 }
 
 export interface Ship {
@@ -5432,7 +5453,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     th.x = th.sx + (th.ix - th.sx) * p;
     th.y = th.sy + (th.iy - th.sy) * p - 4 * th.apex * p * (1 - p);
     if (p >= 1) impactBallistic(g, th);
-  } else if (th.kind === 'supersonic' && th.age < SUPERSONIC.arming) {
+  } else if (th.kind === 'supersonic' && th.age < SUPERSONIC.rail) {
     // On the rail with its lock line showing: aim, don't move yet.
     ensureTarget(g, th);
     const tp = leadPoint(g, th);
@@ -5457,10 +5478,14 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       const turn = (th.kind === 'heliRocket' ? homingTurn(base, th.speed, d) : base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
       th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
     }
+    // Off the rail slowly (a guided missile from its launch; a supersonic
+    // from the end of its rail, log v27).
     const boost =
       th.kind === 'guided' && th.age < GUIDED.boost
         ? GUIDED.boostFrom + (1 - GUIDED.boostFrom) * (th.age / GUIDED.boost)
-        : 1;
+        : th.kind === 'supersonic'
+          ? supersonicPace(th.age)
+          : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
@@ -7017,6 +7042,6 @@ export function timeToImpact(g: Game, th: Threat): number {
     return best === Infinity ? 30 : best;
   }
   const t = targetPos(g, th);
-  const arming = th.kind === 'supersonic' ? Math.max(0, SUPERSONIC.arming - th.age) : 0;
+  const arming = th.kind === 'supersonic' ? supersonicDelay(th.age) : 0;
   return arming + dist(th.x, th.y, t.x, t.y) / th.speed;
 }

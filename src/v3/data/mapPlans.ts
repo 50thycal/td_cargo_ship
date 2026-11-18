@@ -82,8 +82,8 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'Wide apart on the open water (2.2 times the slots), closing up into single file at the neck from x 700 (round 11): the open water forgives, the neck does not.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'The Breakout as it was (swarms, a sprint swarm, rocket trucks down both shore roads, a Hydra fan), plus submarine salvos into the neck, one more salvo or Hydra each round: round 1 one salvo of 3, round 2 two salvos (3 and 2), round 3 two of 3 and a fan of 4 Hydras (encounters rev 4, MAP_BOSS).',
-      botTarget: 2,
+      plan: 'The Breakout as it was (swarms, a sprint swarm, rocket trucks down both shore roads, a Hydra fan), plus submarine salvos into the neck: round 1 one salvo of 3, round 2 two salvos (3 and 2), round 3 one salvo of 3 and a fan of 4 Hydras (encounters rev 4, MAP_BOSS; round 3 softened after the playtest, log v27). The bot predicts these rounds about as the player meets them (playtest: bot 1.9 a round, player 2.0), so the target is a ship a round, not two.',
+      botTarget: 1,
     },
   },
 };

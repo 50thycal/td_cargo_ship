@@ -5,6 +5,16 @@ name: iOS build
 # app's own Game Center plugin build, with no Apple account or secrets.
 # Signing, archiving and TestFlight upload live in app_farm
 # (farm-capacitor-release.yml).
+#
+# When it runs (the player's choice, 2026-11-18; a macOS runner is slow and
+# costly, and most pull requests touch only the game):
+# - on a pull request only when it touches iOS files: the Xcode project, the
+#   native plugins, the Capacitor config, the packages or this workflow. A
+#   pull request that changes only src/** does not run it;
+# - after every merge to the main branch (claude/mobile-game-predator-prey-
+#   tu1t5k), on those paths and on src/** too, so a game change that breaks
+#   the store build shows up right after it lands;
+# - by hand (workflow_dispatch) before a release.
 
 on:
   pull_request:
@@ -14,7 +24,6 @@ on:
       - 'capacitor.config.ts'
       - 'package.json'
       - 'package-lock.json'
-      - 'src/**'
       - '.github/workflows/ios-build.yml'
   push:
     branches: [claude/mobile-game-predator-prey-tu1t5k]
@@ -24,6 +33,8 @@ on:
       - 'capacitor.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - 'src/**'
+      - '.github/workflows/ios-build.yml'
   workflow_dispatch:
 
 concurrency:

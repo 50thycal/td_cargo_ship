@@ -189,13 +189,13 @@ Bot report options:
 - 130–190 actions tested;
 - 400–600 branches.
 
-On a 24-seed bot report that adds about 2–4 minutes per map, plus about a third more with `--fun-placebo`. Measured times (Strait / Gauntlet / Harbor, 24 runs, 3 rolls, with the placebo): 170 / 244 / 178 s. The player's three runs, with 6 bot mirrors of each, take 112 s.
+On a 24-seed bot report that adds about 2–4 minutes per map, plus about a third more with `--fun-placebo`. Measured times (Strait / Gauntlet / Harbor, 24 runs, 3 rolls, with the placebo): 170 / 244 / 178 s on v26, 180 / 259 / 228 s on v27. The player's three runs, with 6 bot mirrors of each, took 112 s (v26).
 
 ## Results
 
-### The player's three v26 runs
+### The player's three v26 runs (measured on the v26 build)
 
-All three replay exactly on this build, so they can be forked. The older player runs in `player.json` cannot: they are v19–24 and have no raw logs.
+These numbers were computed on the **v26 build**, where the three logs replayed exactly; they are kept in `tools/v3/bot-fit/results/fun-2026-11-18.json`. Since #165 (play log v27: a softer Harbor B3, supersonics that sit on the rail 0.4 s and lift off slowly) these logs no longer replay exactly, so they can't be forked again. `fit.ts --fun` now skips them with a message rather than forking another game. The older player runs in `player.json` can't be forked either: they are v19–24 and have no raw logs. The next v27 playtest logs, dropped into `tools/v3/bot-fit/logs/`, bring the comparison back.
 
 The player's own saves (3 rolls a fork):
 
@@ -258,32 +258,47 @@ Before the Best moment row existed, the scorecard already asked for the best and
 
 On all three runs, **the wave with the highest tension peak is the wave the player liked most**, and the wave they liked least is the flattest. That is three runs, so it is only a hint, not proof. The new Best moment row (wave plus seconds) will test it properly, moment by moment.
 
-### The reference maps, bot report
+### The reference maps, bot report (v27 build)
 
-The "you" bot, the player's Armory, 24 seeds, `--kits=plan`, normal loss limit. Saves per run on each wave, over the runs that reached it (boss rounds: 13–15 runs on the Strait and Gauntlet, 7–8 on Harbor). Shapes: the most common shape; f = flat, 1 = one peak, s = sawtooth, sr = sawtooth rising, p = pinned.
+The "you" bot, the player's Armory, 24 seeds, `--kits=plan`, normal loss limit, on the **v27 build** (#165: a softer Harbor B3, supersonics that sit on the rail 0.4 s and lift off slowly). Saves per run on each wave, over the runs that reached it. Boss rounds were reached by 13–14 runs on the Strait, 12 on the Gauntlet and 7–8 on Harbor, so read them loosely. Shapes: the most common shape; f = flat, 1 = one peak, s = sawtooth, sr = sawtooth rising, p = pinned.
 
 | | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Strait** saves | 0 | 0 | 0 | 0.17 | 0 | 0.04 | 0.04 | 0.04 | 0.13 | 0.17 | 0.20 | 0.27 | 0.15 |
-| noise floor | 0 | 0 | 0 | 0.08 | 0.08 | 0 | 0 | 0.04 | 0.04 | 0.22 | 0.13 | 0.20 | 0.08 |
-| tension peak | 0.24 | 0.21 | 0.58 | 1.13 | 0.68 | 0.91 | 1.09 | 0.99 | 1.33 | 2.13 | 1.10 | 1.01 | 1.62 |
-| shape | f | f | f | 1 | f | s | 1 | 1 | 1 | 1 | 1 | f | p |
-| **Gauntlet** saves | 0 | 0 | 0.08 | 0 | 0.12 | 0.17 | 0.33 | 0.29 | 0.22 | 0.40 | 0 | 0.15 | 0.23 |
-| noise floor | 0 | 0 | 0 | 0.04 | 0 | 0 | 0.08 | 0.13 | 0.04 | 0.05 | 0 | 0.23 | 0.08 |
-| tension peak | 0.19 | 0.19 | 0.81 | 0.85 | 0.93 | 1.07 | 0.97 | 0.97 | 1.21 | 1.87 | 0.87 | 0.73 | 0.83 |
-| shape | f | f | f | 1 | 1 | 1 | 1 | 1 | 1 | 1 | f | f | 1 |
-| **Harbor** saves | 0 | 0 | 0 | 0.17 | 0.17 | 0.08 | 0.13 | 0.48 | 0.27 | 0 | 0.25 | 0.62 | **1.00** |
-| noise floor | 0 | 0 | 0 | 0 | 0 | 0 | 0.04 | 0.13 | 0.05 | 0 | 0 | 0.13 | 0.29 |
-| tension peak | 0.12 | 0.72 | 0.68 | 0.79 | 1.04 | 0.92 | 0.97 | 1.11 | 1.30 | 1.21 | 1.05 | 1.41 | 1.36 |
-| shape | f | f | f | f | 1 | 1 | 1 | sr | 1 | s | 1 | 1 | p |
+| **Strait** saves | 0 | 0 | 0 | 0.17 | 0 | 0.04 | 0.12 | 0.08 | 0.26 | 0.23 | 0.14 | **0.71** | 0.08 |
+| noise floor | 0 | 0 | 0 | 0.08 | 0.08 | 0 | 0 | 0.04 | 0 | 0.14 | 0 | 0.21 | 0.15 |
+| tension peak | 0.24 | 0.21 | 0.58 | 1.13 | 0.68 | 0.91 | 1.07 | 0.97 | 1.32 | 2.01 | 0.99 | 1.04 | 1.43 |
+| shape | f | f | f | 1 | f | 1 | 1 | 1 | 1 | 1 | 1 | f | p |
+| **Gauntlet** saves | 0 | 0 | 0.08 | 0 | 0.12 | 0.17 | 0.33 | 0.38 | 0.18 | 0.22 | 0.50 | 0.50 | 0.33 |
+| noise floor | 0 | 0 | 0 | 0.04 | 0 | 0 | 0.08 | 0.12 | 0.09 | 0.06 | 0.25 | 0.17 | 0.08 |
+| tension peak | 0.19 | 0.19 | 0.81 | 0.84 | 0.93 | 1.07 | 1.02 | 1.03 | 1.16 | 1.88 | 0.69 | 0.74 | 0.91 |
+| shape | f | f | f | 1 | 1 | 1 | 1 | 1 | 1 | sr | f | f | 1 |
+| **Harbor** saves | 0 | 0 | 0 | 0.17 | 0.12 | 0.17 | 0.17 | 0.09 | 0.48 | 0.40 | 0 | 0.62 | 0.29 |
+| noise floor | 0 | 0 | 0 | 0.04 | 0 | 0.04 | 0.04 | 0.09 | 0.10 | 0.13 | 0.25 | 0 | 0.29 |
+| tension peak | 0.12 | 0.71 | 0.68 | 0.77 | 0.98 | 1.03 | 0.98 | 1.22 | 1.33 | 1.24 | 0.98 | 1.33 | 1.21 |
+| shape | f | f | f | f | 1 | 1 | sr | 1 | sr | s | f | s | 1 |
 
-Hot share rises from 0% on waves 1–2 to 4–8% by wave 10, and to 26–27% on the Strait's and Harbor's last boss round. Full tables are in `tools/v3/map-report/results/<map>-player.md`, section "Fun".
+Hot share rises from 0% on waves 1–2 to 4–8% by wave 10. In the boss rounds it reaches 24% on the Strait's B3 and on Harbor's B2. Full tables are in `tools/v3/map-report/results/<map>-player.md`, section "Fun".
+
+**Against the v26 build** (the first run of this page):
+- **Waves 1–6 barely moved.** Supersonics matter little there.
+- **Waves 7–10 have a few more saves** (Strait w7–9 0.04–0.13 → 0.08–0.26; Harbor w9 0.27 → 0.48, w10 0 → 0.40 with 0.20 big). Harbor's waves 7 and 9 turned into rising sawtooths, and the Gauntlet's wave 10 became the Gauntlet's only rising sawtooth.
+- **Harbor B3, as intended by #165, calmed down.**
+  - Saves: 1.00 → 0.29, now at the noise floor.
+  - Shape: pinned (27% hot) → one peak (12% hot).
+  - The hot round moved to B2: 24% hot, a sawtooth, 0.62 saves.
+- **Strait B2** went from 0.27 to 0.71 saves (noise 0.21), the clearest boss-round save on any map. The Strait's B3 is still pinned.
+- **The Gauntlet's boss rounds** went from 0 / 0.15 / 0.23 to 0.50 / 0.50 / 0.33 saves, though the B1 noise floor is also 0.25.
+
+v26 values, for the record (saves; shape):
+- Strait: 0 0 0 .17 0 .04 .04 .04 .13 .17 | .20 .27 .15; f f f 1 f s 1 1 1 1 | 1 f p.
+- Gauntlet: 0 0 .08 0 .12 .17 .33 .29 .22 .40 | 0 .15 .23; f f f 1 1 1 1 1 1 1 | f f 1.
+- Harbor: 0 0 0 .17 .17 .08 .13 .48 .27 0 | .25 .62 1.00; f f f f 1 1 1 sr 1 s | 1 1 p.
 
 What it says:
 - **Waves 1–3 are flat on every map.** The tension never gets hot, and there is no save. That is right for wave 1 (it shows the map) and too quiet for waves 2–3.
-- **Most waves 4–10 are a single peak.** The curve rises once and releases within about 2 s. There is almost no sawtooth (several peaks in a wave). Harbor's wave 8 is the only rising sawtooth.
-- **Tension does build over the map.** Each map's highest peak in waves 1–10 comes on wave 9 or 10, and the boss rounds are the only waves held hot for a quarter of their time (the Strait and Harbor B3).
-- **Harbor's boss rounds are the save-rich moments** (B3: one save a run, 0.43 of them with stakes), and Harbor's B3 was the player's best wave.
+- **Most waves 4–10 are a single peak.** The curve rises once and releases within about 2 s. Sawtooths (several peaks in a wave) are still rare: Harbor's waves 7, 9 and 10 and the Gauntlet's wave 10.
+- **Tension does build over the map.** Each map's highest peak in waves 1–10 comes on wave 9 or 10.
+- **The boss rounds hold the save-rich moments**, now Strait B2 and Harbor B2. On v26, Harbor's B3, the player's best wave, was the richest. The player has not played B3 on v27 yet.
 - **The provisional check flags every map "flat"** (see below). This is a statement about the target, not only about the maps.
 
 ## Reading it honestly (what is uncertain)
@@ -296,7 +311,7 @@ What it says:
 - **The target of 1–2 real saves a wave is far above what anyone makes.** By this strict definition, the player made 0.27 a wave on waves 1–10 and the bot 0.24. Either the target should come down (a first suggestion: about **0.3–0.5 a wave on waves 6–10 and about 1 a boss round, at least one with stakes per run**), or the definition should loosen. For example, the bot that plays on could be made "cold" (it must notice the threat first) instead of warm. The check row stays marked provisional until the player's Best moment answers say which.
 - **Kill saves are rare by design.** The warm bot covers for almost any kill that left more than about 1 s. A save therefore really means "nobody could have covered it".
 - **The bot's saves are its own.** In the report, the action forked is the bot's, and the play-on is a bot too. The player's runs are forked the same way.
-- **Only three player runs replay here** (v26). Other agents' game changes (LOG_VERSION 27) will stop these three from replaying exactly. Re-run the calibration on new playtests.
+- **No player run replays on the current build.** The three playtest runs are v26; the game is now v27. Their results (above) are the v26 build's. Re-run `fit.ts --fun` on new playtests.
 - **Gesture weapons** (press and release) are not forked yet.
 - **The thresholds** (hot 0.75 and the rest) were set on three runs.
 
