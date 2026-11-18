@@ -170,13 +170,14 @@ try {
     g.queue.unshift({ at: g.waveT, kind: 'supersonic', base: i });
     return i;
   });
-  await page.evaluate(() => window.__v3.advance(0.6));
+  // Log v27: it sits on the rail for 0.4 s only (SUPERSONIC.rail).
+  await page.evaluate(() => window.__v3.advance(0.2));
   const rail = await page.evaluate(() => {
     const g = window.__v3.game();
     const m = g.threats.find((t) => t.kind === 'supersonic');
     return m ? { x: Math.round(m.x), y: Math.round(m.y), age: m.age } : null;
   });
-  check(base >= 0 && !!rail && rail.age < 1.1, `a supersonic arming on its rail (${JSON.stringify(rail)})`);
+  check(base >= 0 && !!rail && rail.age < 0.4, `a supersonic arming on its rail (${JSON.stringify(rail)})`);
   // A tap right on it: nothing is fired at it.
   const at = await page.evaluate((r) => window.__v3.toClient(r.x, r.y), rail);
   await page.touchscreen.tap(at.x, at.y);

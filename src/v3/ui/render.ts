@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
@@ -1592,14 +1592,20 @@ export function hpPips(ctx: CanvasRenderingContext2D, x: number, y: number, hp: 
 }
 
 function drawSupersonic(ctx: CanvasRenderingContext2D, g: Game, th: Threat, heading: number): void {
+  const onRail = th.age < SUPERSONIC.rail;
   if (th.age < SUPERSONIC.arming) {
-    // Locking on: the base glows and a flashing line marks where it will go.
+    // Locking on: a flashing line marks where it will go, for the whole
+    // lock. On the rail (no target yet, log v27: its first 0.4 s) the launch
+    // site glows under it; once it lifts off it can be shot, and it flies
+    // slowly out along the line.
     const target = th.target === CARRIER_TARGET ? g.map.carrier : g.ships.find((s) => s.id === th.target);
     const flash = Math.floor(g.t * 8) % 2 === 0;
-    ctx.fillStyle = `rgba(255,138,240,${0.25 + 0.25 * (th.age / SUPERSONIC.arming)})`;
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, 30, 0, Math.PI * 2);
-    ctx.fill();
+    if (onRail) {
+      ctx.fillStyle = `rgba(255,138,240,${0.25 + 0.25 * (th.age / SUPERSONIC.rail)})`;
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (target) {
       ctx.strokeStyle = flash ? 'rgba(255,77,61,0.85)' : 'rgba(255,77,61,0.35)';
       ctx.lineWidth = 2.5;
@@ -1610,14 +1616,18 @@ function drawSupersonic(ctx: CanvasRenderingContext2D, g: Game, th: Threat, head
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    missile(ctx, th.x, th.y, th.heading, 30, 5, '#f4f1e8', '#ff8af0');
-    return;
+    if (onRail) {
+      missile(ctx, th.x, th.y, th.heading, 30, 5, '#f4f1e8', '#ff8af0');
+      return;
+    }
   }
+  // Its trail grows as it picks up speed off the rail.
+  const trail = 90 * supersonicPace(th.age);
   ctx.strokeStyle = 'rgba(255,138,240,0.45)';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(th.x, th.y);
-  ctx.lineTo(th.x - Math.cos(heading) * 90, th.y - Math.sin(heading) * 90);
+  ctx.lineTo(th.x - Math.cos(heading) * trail, th.y - Math.sin(heading) * trail);
   ctx.stroke();
   missile(ctx, th.x, th.y, heading, 34, 5, '#f4f1e8', '#ff8af0');
 }

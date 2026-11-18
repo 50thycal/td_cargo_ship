@@ -135,7 +135,39 @@ The game changes since v24 (round 13) were checked the same way. They are not wh
 
 ## What is still off (recorded biases)
 
-- **The Strait's and Harbor's boss rounds.** The refit bot loses about 1.2–1.4 ships a round where the player lost none in 15 rounds; the Gauntlet's matches. **RECORDED BIAS: on the Rush and the Breakout the bot reads harder than the player finds them.** Round 1 said the same thing from the player's side ("cost 0 in all six rounds you played"). In phase 4, the bot target for those two maps is **about 2 ships a round on the bot** for the player's "about one".
+**Re-checked 2026-11-18** with the player's three v26 runs added (the playtest of the three rebuilt maps; 21 runs in all, 16 map cards and 5 campaign). The calibration was run on the v26 build those runs were played on, 6 dice a run: `results/calibration-2026-11-18.json` (the same run on the v27 build, after the supersonic and Harbor changes, is `calibration-2026-11-18-v27.json`).
+
+| | You | Round 12 bot | Refit bot | Refit bot, 2026-11-17 (18 runs) |
+|---|---|---|---|---|
+| Ships lost, waves 1–5 | 0.48 | 1.13 | **0.63** | 0.69 (you 0.50) |
+| Runs with no loss by wave 5 | 62% | 43% | **60%** | 57% (you 61%) |
+| Ships lost, waves 6–10 | 3.43 | 4.36 | **3.76** | 3.58 (you 3.28) |
+| Ships lost a boss round | 0.62 | 1.68 | **1.25** | 1.03 (you 0.52) |
+| Taps a second | 1.18 | 1.25 | 1.13 | 1.12 |
+| Kills a shot | 0.63 | 0.58 | 0.69 | 0.69 |
+| Weapon pickups a minute | 2.45 | 2.19 | 2.58 | 2.43 |
+
+**The "you" bot still fits.** Its hands, aim and pickups are within a few points of the player's, as before. It reads waves 1–5 about 1.3× the player (0.63 against 0.48), waves 6–10 about a third of a ship high (3.76 against 3.43), and the boss rounds about 2× (1.25 against 0.62), the same ratio as on 2026-11-17 (1.03 against 0.52). No knob was retuned: three new runs are too few, and the gap did not move.
+
+**Boss rounds by map** (ships lost a boss round; rounds played in brackets):
+
+| Map | You, all runs | Refit bot, all runs | You, the three new runs | Refit bot, the new runs (12 dice) |
+|---|---|---|---|---|
+| The Strait | 0.17 (12) | 1.71 (76) | – (lost on wave 10) | 1.45 (22) |
+| The Gauntlet | 1.25 (12) | 1.04 (27) | 0.33 (3) | 1.00 (3) |
+| Harbor Mouth | 0.67 (9) | 1.58 (12) | 2.00 (3) | 1.90 (20) |
+| Kesh | 0.00 (3) | 0.00 (18) | – | – |
+| Saltgate | 0.33 (3) | 0.67 (18) | – | – |
+
+What each map's bias is now, in plain numbers:
+
+- **The Strait: the bot reads its boss rounds about 1.5 ships a round too hard.** The player lost 0.17 a round over 12 rounds (none since the rebuild: the playtest ended on wave 10). The bot loses 1.71. **RECORDED BIAS, unchanged.**
+- **The Gauntlet: about 0.7 a round too hard on the rebuilt map.** On the new run the player lost 0, 0 and 1 (0.33 a round) where the bot loses about 1.0 a round. Over all the Gauntlet runs the two are close (1.25 against 1.04), because the player's older runs lost more. Only 3 bot rounds back the new figure (most mirrors lose before the boss), so read it as "the rebuilt Rocket Convoy reads about 3× too hard on the bot", not as a firm number. **RECORDED BIAS, new.**
+- **Harbor Mouth: no bias on the rebuilt map.** The player lost 2, 0 and 4 (2.0 a round) and the bot loses 1.9 on the same seed, Armory and picks. Phase 4 assumed the bot reads Harbor's Breakout twice as hard and set its boss target at 2 a round on the bot; that assumption no longer holds. Harbor's target is now **1 a round on the bot** (`MAP_PLANS.harbor.boss.botTarget`), and round 3 was softened (log v27, `docs/design/v3-p4-harbor.md`, "After the playtest"). Over all runs the bot still reads 0.9 a round high, from the six old rounds the player lost nothing in.
+- **Kesh and Saltgate:** one and two old runs only; nothing new.
+
+The other recorded biases (from 2026-11-17):
+
 - **Waves 6–10** read about 1 ship too costly over the whole map against 3.0 for the player, though the twin check matches (3.52 against 3.60). The player's 13 runs are few and include early quits. Treat the bot's waves 6–10 as at most a ship pessimistic.
 - **Reaction.** The bot notices a threat sooner than the player (0.47 s against 0.82 s on waves 1–5). Slowing it to the player's reaction made it lose more, so it is compensating for something the ruler does not see. A candidate is where the player waits for a stream of threats to come to them. **RECORDED BIAS: the bot is quicker to the first tap than the player.**
 - **Weapon time.** The player keeps a weapon loaded longer: 251 Scattergun taps over the five v24 runs against about 136 for the bot on the same runs.

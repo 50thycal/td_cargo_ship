@@ -13,7 +13,7 @@
 // - Next up and the bare link (?lab=map-harbor) open the same setup;
 // - round 11's scorecard: Done on The Strait shows it above the verdict
 //   (no boss row on wave 1), Skip folds it, its chips land in the log
-//   (v26, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
+//   (v27, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
 //   waves 1-7 and no boss row; a won run offers the boss row and B1-B3.
 // - scorecard revision 2 (2026-11-17): Pacing, Variety, Readability and Map
 //   feel are no longer asked; the wave rows are a strip (ships lost and the
@@ -284,7 +284,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 26 && JSON.stringify(saved.score) === JSON.stringify({ rev: 2, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 27 && JSON.stringify(saved.score) === JSON.stringify({ rev: 2, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });

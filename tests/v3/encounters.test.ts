@@ -580,7 +580,7 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     expect(bonus.game.enc!.played).toContain('strait-both-ways');
   }, 90_000);
 
-  it('Harbor Mouth (rev 4): the Breakout comes to the neck, harder each round; a rev 3 log and the campaign play it as it was', () => {
+  it('Harbor Mouth (rev 4): the Breakout comes to the neck, round 3 a salvo short of round 2 (log v27); a rev 3 log and the campaign play it as it was', () => {
     const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
     const off = playMimic('harbor', 201, opts);
     const old = playMimic('harbor', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
@@ -590,11 +590,15 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     const on = playMimic('harbor', 201, { ...opts, encounters: VER('v1') });
     const tune = MAP_BOSS.harbor!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['breakout', 1], ['breakout', 2], ['breakout', 3]]);
-    // Its salvos into the neck, one more shell or Hydra each round.
+    // Its salvos into the neck: one salvo, then two, then (log v27, the
+    // player's choice after the playtest) one again with the fan of 4.
     expect(on.game.eventLog.map((e) => e.sent.ballistic)).toEqual(tune.salvos.map((r) => r.reduce((a, [, n]) => a + n, 0)));
     expect(on.game.eventLog.map((e) => e.sent.hydra)).toEqual(tune.fan);
+    expect(tune.salvos.map((r) => r.map(([, n]) => n))).toEqual([[3], [3, 2], [3]]);
+    expect(tune.fan).toEqual([3, 3, 4]);
+    // Round 3 is still more than round 1 (a Hydra more), less than round 2.
     const weight = tune.salvos.map((r, k) => r.reduce((a, [, n]) => a + n, 0) + tune.fan![k]);
-    for (let k = 1; k < weight.length; k++) expect(weight[k]).toBeGreaterThan(weight[k - 1]);
+    expect(weight).toEqual([6, 8, 7]);
     // Each round 15-30 s.
     for (const e of on.game.eventLog) {
       expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
