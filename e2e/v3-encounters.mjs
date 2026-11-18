@@ -15,6 +15,9 @@
 
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+// The authored data itself (type-only imports, so Node loads the .ts as is):
+// the checks expect the current encounter rev and what it plays, not a copy.
+const { ENCOUNTER_REV, encountersFor } = await import(new URL('../src/v3/data/encounters.ts', import.meta.url).href);
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173';
 const OUT_DIR = process.env.OUT_DIR ?? 'e2e/shots/v3-encounters';
@@ -95,14 +98,16 @@ try {
   await page.evaluate(() => localStorage.clear());
 
   // ---- The Strait with its authored encounters ----
-  // (Test Lab round 10: the map card's Quick slice, from wave 5, where the
-  // strait's second encounter plays; the full map is e2e/v3-map-cards.mjs.)
+  // (Test Lab round 10: the map card's Quick slice, from wave 5; the full
+  // map is e2e/v3-map-cards.mjs. Which encounter plays there, and under
+  // which rev, comes from the data: rev 4's Strait has Swarm screen.)
+  const [strait5] = encountersFor('strait', 5);
   await open(page, 'lab=map-strait&enc=1&plays=slice&seed=7');
   const s0 = await state(page);
-  check(s0.wave === 5 && s0.enc?.rev === 3 && s0.log?.rev === 3, `a map card opened with ?enc=1 carries the encounter layer, and its log says so (wave ${s0.wave}; log ${JSON.stringify(s0.log)})`);
-  check(s0.enc?.now.length === 1 && /^strait-/.test(s0.enc.now[0]) && s0.queued.length > 0, `the wave has the map's encounter for it, its launches in the queue (${s0.enc?.now.join()}: ${s0.queued.join(' ')})`);
+  check(s0.wave === 5 && s0.enc?.rev === ENCOUNTER_REV && s0.log?.rev === ENCOUNTER_REV, `a map card opened with ?enc=1 carries the encounter layer at the current rev (${ENCOUNTER_REV}), and its log says so (wave ${s0.wave}; log ${JSON.stringify(s0.log)})`);
+  check(s0.enc?.now.length === 1 && s0.enc.now[0] === strait5?.id && s0.queued.length > 0, `the wave has the map's encounter for it (${strait5?.id}), its launches in the queue (${s0.enc?.now.join()}: ${s0.queued.join(' ')})`);
   const named = await page.waitForFunction(() => document.body.innerText.match(/ENCOUNTER: [^\n]*/)?.[0], null, { timeout: 10000 }).then((h) => h.jsonValue()).catch(() => '');
-  check(/ENCOUNTER: THE SCREEN/.test(named), `the encounter is named as the wave starts ("${named}")`);
+  check(!!strait5 && named === `ENCOUNTER: ${strait5.name.toUpperCase()}`, `the encounter is named as the wave starts ("${named}")`);
   await page.screenshot({ path: `${OUT_DIR}/strait-encounter-named.png` });
 
   // Played on with nobody shooting: its launches come, tagged, and the log
@@ -122,7 +127,7 @@ try {
       same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems,
     };
   });
-  check(run.header === 3 && run.named.includes(s0.enc.now[0]) && run.mine.length > 0 && run.ids.join() === s0.enc.now[0], `played on, the encounter's launches come and the telemetry tags each one (${run.mine.join(' ')}; named ${run.named.join()})`);
+  check(run.header === ENCOUNTER_REV && run.named.includes(s0.enc.now[0]) && run.mine.length > 0 && run.ids.join() === s0.enc.now[0], `played on, the encounter's launches come and the telemetry tags each one (${run.mine.join(' ')}; named ${run.named.join()})`);
   check(run.same && run.problems.length === 0, `the test's log replays to the same telemetry, and it reconciles (${run.problems[0] ?? 'no problems'})`);
   await page.screenshot({ path: `${OUT_DIR}/strait-encounter-playing.png` });
 
