@@ -13,7 +13,7 @@
 // - Next up and the bare link (?lab=map-harbor) open the same setup;
 // - round 11's scorecard: Done on The Strait shows it above the verdict
 //   (no boss row on wave 1), Skip folds it, its chips land in the log
-//   (v27, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
+//   (v28, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
 //   waves 1-7 and no boss row; a won run offers the boss row and B1-B3.
 // - scorecard revision 2 (2026-11-17): Pacing, Variety, Readability and Map
 //   feel are no longer asked; the wave rows are a strip (ships lost and the
@@ -176,11 +176,15 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
-  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.kesh ?? ''), `a map with no commands or encounters yet says so ("${hub.kesh}")`);
+  // Chapter 1 (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md): Kesh and
+  // Marrow open with their encounters, as the reference maps do (v1 only).
+  const enc1 = "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original";
+  check(hub.kesh === enc1 && hub.marrow === enc1, `Kesh and Marrow say they open with their encounters (${hub.kesh} | ${hub.marrow})`);
+  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.island ?? ''), `a map with no commands or encounters yet says so ("${hub.island}")`);
   await shot(page, 'hub-card');
 
   // ---- Tap The Strait's card: wave 1, no command (round 11), no Bring one ----
@@ -301,7 +305,7 @@ try {
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
   const { momentT: savedT, ...savedRest } = saved.score ?? {};
-  check(saved.v === 27 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 28 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -388,6 +392,15 @@ try {
   await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
   const s5 = await runState(page);
   check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 4 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
+  // Chapter 1: the bare link to the Kesh Hook and Lee of Marrow opens the
+  // full map with their encounters (rev 4) and no command.
+  for (const map of ['kesh', 'marrow']) {
+    await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.playing.lab-on');
+    await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
+    const sk = await runState(page);
+    check(sk.map === map && sk.wave === 1 && sk.plays === 'full' && sk.policy === 'tactical' && sk.cmds.length === 0 && sk.enc === 4 && sk.count === 'full map · wave 1/13' && sk.log.encounters === 4 && sk.log.lab?.config?.production === true, `the bare link v3.html?lab=map-${map} opens the full map with its encounters and no command (${JSON.stringify({ wave: sk.wave, policy: sk.policy, cmds: sk.cmds, enc: sk.enc, count: sk.count })})`);
+  }
   // Round 11: Hold is on Sowers' Reach, where mines drift across the lane.
   await page.goto(`${BASE_URL}/v3.html?lab=map-sowers&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');

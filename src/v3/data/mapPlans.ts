@@ -86,6 +86,43 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 1,
     },
   },
+  // Chapter 1 (docs/design/v3-ch1-kesh.md): the Kesh Hook, rebuilt to the
+  // rules after the reference maps. Its hook is a shape, not a mechanic.
+  kesh: {
+    problem: 'Every ship rounds the hook hard against the enemy\'s outer bank: at the apex of the turn the convoy bunches and passes right under the south silo, where the warning is shortest; once round, it sails out under the carrier\'s guns.',
+    // The apex's fire comes from close, at short warning, onto ships
+    // bunched in the turn: fast aimed taps meet it, and the Railgun's line
+    // runs through the bunch. Weapons that fire themselves spread their
+    // shots over the whole hook (bots, player Armory: docs/design/
+    // v3-ch1-kesh.md, Kits).
+    counters: ['overdrive', 'railgun', 'focus'],
+    offCounter: ['airstrike', 'seeker', 'droneScreen'],
+    convoy: 'The map\'s own convoy, no commands: pairs sailing east along the south bank and round the hook to the north edge. The lane does the shaping: the turn brings every pair past the south silo, one after another, before it straightens out under the carrier.',
+    stretches: { danger: 'middle', safe: 'late' },
+    boss: {
+      plan: 'The Drone Storm round the hook: twelve drone swarms off the outer bank in turn and no ammo drops, bigger than before (33 drones in round 1, 36 in rounds 2 and 3, against 30), the second half coming 6, 6, then 5.5 s after the first; 15-30 s each (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 1,
+    },
+  },
+  // Chapter 1 (docs/design/v3-ch1-marrow.md): Lee of Marrow, its radar
+  // tower the map's one mechanic.
+  marrow: {
+    problem: 'The radar on the island makes your shots fly half again as fast over the middle of the lane, right where the middle silo fires down on the ships; the enemy goes for the tower, and once it falls it is gone for the run.',
+    // The tower wants your taps as much as the ships do: weapons that fire
+    // themselves (each ship's Point Defense, the Seeker Pod, the Drone
+    // Screen) keep shooting at the stretch under the island, where the radar
+    // speeds their shots too, while your hand goes to the tower. Weapons
+    // that need your hand (Scattergun, Railgun, Overdrive) do worst (bots,
+    // player Armory: docs/design/v3-ch1-marrow.md, Kits).
+    counters: ['aegis', 'seeker', 'droneScreen'],
+    offCounter: ['scatter', 'railgun', 'overdrive'],
+    convoy: 'The map\'s own convoy, no commands: pairs in one wide lane, west to east, under the island and its radar halfway along. The mechanic needs no command: the tower is defended by shooting, not by sailing.',
+    stretches: { danger: 'middle', safe: 'early' },
+    boss: {
+      plan: 'Hydra Bloom at the tower: each round opens with guided missiles at the radar (one, one, then two; at the ship nearest where it stood once it has fallen), then two fans of Hydras from every silo, each Hydra splitting into three, and a drone swarm from round 2; 15-30 s each (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 1,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

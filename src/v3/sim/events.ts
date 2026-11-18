@@ -29,7 +29,7 @@ import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gr
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
 import { RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
-import { bossTune } from '../data/encounters';
+import { bossTune, type BossRound } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -424,6 +424,13 @@ function convoyRound(ev: EventRun): { trucks: number; swarms: number; size: numb
   return E.rounds[clamp(ev.run, 1, E.rounds.length) - 1];
 }
 
+/** This run's numbers from the map's boss tuning (encounters rev 4, lab
+ *  only: MAP_BOSS `rounds`), if it has any. */
+function bossRound(g: Game, ev: EventRun): BossRound | undefined {
+  const r = bossTune(g.map.id, g.enc?.setup.rev)?.rounds;
+  return r ? r[clamp(ev.run, 1, r.length) - 1] : undefined;
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -444,15 +451,25 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(E.swarms + more, (k) => k * E.every, 'swarm'), ...steps(E.hydras + more, (k) => E.hydraAt + k * E.every, 'hydra')];
     }
     case 'drone-storm': {
-      const E = EV['drone-storm'];
+      // Encounters rev 4 (lab only; docs/design/v3-ch1-kesh.md): the Kesh
+      // Hook's boss rounds rise, each run its own numbers (MAP_BOSS).
+      const E = { ...EV['drone-storm'], ...bossRound(g, ev) };
       const half = Math.ceil(E.swarms / 2);
       return steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'swarm');
     }
     case 'hydra-bloom': {
       // Round 8 ("Hydras should split even before the line is crossed; you
       // can remove that line"): no line; every Hydra splits into three.
+      // Encounters rev 4 (lab only; docs/design/v3-ch1-marrow.md): Lee of
+      // Marrow's boss rounds rise, and each opens with missiles at the
+      // radar tower (MAP_BOSS).
       const E = EV['hydra-bloom'];
-      return [...steps(E.fans, (k) => k * E.gap, 'fan'), ...steps(E.swarms, (k) => 3 + k * E.gap, 'swarm')];
+      const R = bossRound(g, ev);
+      return [
+        ...steps(R?.tower ?? 0, (k) => k * 0.9, 'tower'),
+        ...steps(R?.fans ?? E.fans, (k) => k * E.gap, 'fan'),
+        ...steps(R?.swarms ?? E.swarms, (k) => 3 + k * E.gap, 'swarm'),
+      ];
     }
     case 'rocket-convoy': {
       // A column down each shore road, the second a little after the first.
@@ -531,7 +548,7 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       // Encounters rev 4 (lab only): Harbor Mouth's boss rounds come to the
       // neck, harder each run (data/encounters.ts MAP_BOSS).
       const tune = bossTune(g.map.id, g.enc?.setup.rev);
-      const salvos = tune?.salvos[ev.run - 1] ?? [];
+      const salvos = tune?.salvos?.[ev.run - 1] ?? [];
       return [
         ...steps(E.swarms, (k) => k * E.gap, 'swarm'),
         ...steps(E.sprintAt.length, (k) => E.sprintAt[k], 'sprint'),
@@ -640,14 +657,25 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     case 'drone-storm': {
       // A plain drone swarm out of each drone base in turn; a size that is
       // not whole alternates (2.5: three, then two...).
-      const E = EV['drone-storm'];
+      const E = { ...EV['drone-storm'], ...bossRound(g, ev) };
       const bs = liveBases(g, 'drone');
       baseSwarm(g, ev, bs[s.k % bs.length], Math.round((s.k + 1) * E.size) - Math.round(s.k * E.size));
       return;
     }
     case 'hydra-bloom': {
       if (s.op === 'swarm') {
-        swarm(g, ev, EV['hydra-bloom'].size);
+        swarm(g, ev, bossRound(g, ev)?.size ?? EV['hydra-bloom'].size);
+        return;
+      }
+      if (s.op === 'tower') {
+        // A guided missile at the radar tower (encounters rev 4), out of the
+        // live guided bases in turn.
+        const bs = liveBases(g, 'guided');
+        const b = bs[s.k % bs.length];
+        if (b === undefined) return;
+        g.queue.push({ at: g.waveT, kind: 'guided', base: b, aim: 'post' });
+        g.queue.sort((x, y) => x.at - y.at);
+        sent(ev, 'guided');
         return;
       }
       // A fan: one Hydra from each base at once, slow.
@@ -903,8 +931,8 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
         // A salvo into the neck (encounters rev 4): a sub at the map's spot,
         // each shell at the ship nearest the narrows.
         const tune = bossTune(g.map.id, g.enc?.setup.rev)!;
-        const n = tune.salvos[ev.run - 1][s.k][1];
-        g.raiderQueue.push({ at: g.waveT, kind: 'sub', path: [g.map.subSpots[tune.spot]], units: Array.from({ length: n }, () => ({ kind: 'ballistic' as const, size: 1 })), aim: 'narrows' });
+        const n = tune.salvos![ev.run - 1][s.k][1];
+        g.raiderQueue.push({ at: g.waveT, kind: 'sub', path: [g.map.subSpots[tune.spot ?? 0]], units: Array.from({ length: n }, () => ({ kind: 'ballistic' as const, size: 1 })), aim: 'narrows' });
         g.raiderQueue.sort((a, b) => a.at - b.at);
         sent(ev, 'ballistic', n);
       } else truck(g, ev, Math.floor(s.k / E.trucks), s.k % E.trucks, E);

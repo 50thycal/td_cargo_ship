@@ -1380,12 +1380,34 @@ function updateEncCalls(g: Game): void {
 
 /** An authored launch's target, picked as it leaves: the ship furthest
  *  along its lane, the one nearest the mouth of the narrows, or (rev 4's
- *  'rear', only rev 4 encounters use it) the one least far along. */
+ *  'rear', only rev 4 encounters use it) the one least far along. Rev 4's
+ *  chapter 1 maps: 'near', the ship nearest the launcher; 'mid', the ship
+ *  nearest halfway along its lane; 'post', the map's allied structure while
+ *  it stands (Lee of Marrow's radar), else the ship nearest where it stood. */
 function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
+  let from: Point = { x: th.x, y: th.y };
+  if (aim === 'post' && g.map.posts) {
+    const up = g.map.posts.map((_, i) => i).filter((i) => postUp(g, i));
+    if (up.length) {
+      th.target = POST_TARGET - up[0];
+      if (th.kind === 'ballistic') aimBallistic(g, th);
+      const tp = targetPos(g, th);
+      th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
+      return;
+    }
+    from = g.map.posts[0];
+  }
   const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!pool.length) return;
   const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
-  let pick = aim === 'rear' ? pool.reduce((a, b) => (along(b) < along(a) ? b : a)) : pool.reduce((a, b) => (along(b) > along(a) ? b : a));
+  let pick =
+    aim === 'near' || aim === 'post'
+      ? pool.reduce((a, b) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a))
+      : aim === 'mid'
+        ? pool.reduce((a, b) => (Math.abs(along(b) - 0.5) < Math.abs(along(a) - 0.5) ? b : a))
+        : aim === 'rear'
+          ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
+          : pool.reduce((a, b) => (along(b) > along(a) ? b : a));
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
     const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);

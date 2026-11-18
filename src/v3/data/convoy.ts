@@ -119,6 +119,11 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   strait: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   gauntlet: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   harbor: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  // Chapter 1, rebuilt to the rules after the reference maps (docs/design/
+  // v3-ch1-kesh.md, v3-ch1-marrow.md): the map's own convoy, as the
+  // reference maps', no command (neither the hook nor the radar needs one).
+  kesh: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  marrow: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
   // left alone: only Hold is added.

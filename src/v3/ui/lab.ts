@@ -5,7 +5,7 @@
 // game log, which reaches Claude).
 
 import { COMMANDS, CONVOY_REV, POLICY_ORDER, mapConvoy, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
-import { ENCOUNTER_MAPS, ENCOUNTER_REV, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
+import { ENCOUNTER_REV, hasEncounters, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, cardChanges, cardRev, cardVersion, labCard, labRound, mapProduction, productionText, type LabCard, type LabLength, type LabMix } from '../data/lab';
 import { campaignWaves } from '../data/events';
@@ -254,7 +254,7 @@ export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchPa
   const version: EncounterVersion = isVersion(s.variant) ? s.variant : cardVersion(card);
   const callouts = link?.get('callouts');
   const encounters: EncounterSetup | null =
-    s.encounters && !card.event && (ENCOUNTER_MAPS as string[]).includes(card.map)
+    s.encounters && !card.event && hasEncounters(card.map)
       ? { rev: ENCOUNTER_REV, version, ...(callouts === '1' || callouts === '0' ? { callouts: callouts === '1' } : {}) }
       : null;
   const rev = cardRev(card.id);
@@ -574,7 +574,7 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
   // The map's authored encounters in place of part of its shared waves
   // (the three reference maps, waves 1-10; an event card plays its event
   // either way).
-  if (!card.event && (ENCOUNTER_MAPS as string[]).includes(card.map))
+  if (!card.event && hasEncounters(card.map))
     sheet.append(row('Waves', seg<'shared' | 'authored'>(s.encounters ? 'authored' : 'shared', [['shared', 'Shared'], ['authored', 'Authored encounters']], (v) => (s.encounters = v === 'authored'), 'labEncounters')));
   function refresh(): void {
     slice.hidden = map && s.plays !== 'slice';
