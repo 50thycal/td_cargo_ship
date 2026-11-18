@@ -615,6 +615,9 @@ export interface VerdictDraft {
    *  from an earlier run: each run's score is its own. */
   score?: Partial<Record<ScoreCategory['id'], number | string>>;
   skipScore?: boolean;
+  /** Revision 3: the best moment's seconds into its wave (where on the
+   *  wave's chip it was tapped). */
+  momentT?: number;
 }
 
 /** A fresh sheet: filled in from the card's verdict at this version, if
@@ -631,7 +634,7 @@ export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
 export function verdictResult(d: VerdictDraft, played?: number, vsCard?: string): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
   if (!d.verdict) return null;
   // Revision 2: the comparison row keeps the card it compared with.
-  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, ...(vsCard ? { vsCard } : {}), rev: SCORECARD_REV }, played) : undefined;
+  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, ...(vsCard ? { vsCard } : {}), ...(d.momentT !== undefined ? { momentT: d.momentT } : {}), rev: SCORECARD_REV }, played) : undefined;
   return { verdict: d.verdict, tags: [...d.tags], note: d.note.trim(), ...(score ? { score } : {}) };
 }
 
@@ -647,6 +650,9 @@ export interface WaveStripEntry {
   n: number;
   lost: number;
   marks: MomentKind[];
+  /** Game seconds the wave took (absent when not known): the best moment's
+   *  chip turns where it was tapped into seconds. */
+  sec?: number;
 }
 
 /** The strip's marks, in this order: a glyph and what it means. A sunk
@@ -665,14 +671,27 @@ const MARK_ORDER = Object.keys(STRIP_MARKS) as MomentKind[];
  *  wave's own is the difference from the wave before), the tally now (the
  *  wave still in play, `waveNow`, has no record yet) and the moments the
  *  run marked. */
-export function waveStrip(history: readonly { wave: number; lost: number }[], lostNow: number, waveNow: number, moments: readonly { wave: number; kind: MomentKind }[], played: number): WaveStripEntry[] {
+export function waveStrip(history: readonly { wave: number; lost: number; t?: number }[], lostNow: number, waveNow: number, moments: readonly { wave: number; kind: MomentKind }[], played: number, tNow?: number): WaveStripEntry[] {
   return waveChips(played).map(({ n }) => {
     const rec = history.filter((h) => h.wave === n).at(-1);
     const end = rec ? rec.lost : n === waveNow ? lostNow : undefined;
     const before = history.filter((h) => h.wave < n).reduce((m, h) => Math.max(m, h.lost), 0);
     const kinds = new Set(moments.filter((m) => m.wave === n).map((m) => m.kind));
-    return { n, lost: end === undefined ? 0 : Math.max(0, end - before), marks: MARK_ORDER.filter((k) => kinds.has(k)) };
+    // The wave's length: the game clock at its end (a record's `t`, or now
+    // for the wave in play) less the clock at the end of the one before (the
+    // clock stands still between waves).
+    const t1 = rec?.t ?? (n === waveNow ? tNow : undefined);
+    const t0 = history.filter((h) => h.wave < n && h.t !== undefined).reduce((m, h) => Math.max(m, h.t!), 0);
+    const sec = t1 !== undefined && t1 > t0 ? Math.round((t1 - t0) * 10) / 10 : undefined;
+    return { n, lost: end === undefined ? 0 : Math.max(0, end - before), marks: MARK_ORDER.filter((k) => kinds.has(k)), ...(sec !== undefined ? { sec } : {}) };
   });
+}
+
+/** Where on a wave's chip a tap landed (0 its left edge, 1 its right) as
+ *  seconds into the wave (none when the wave's length isn't known). */
+export function momentSeconds(share: number, w: WaveStripEntry | undefined): number | undefined {
+  if (!w?.sec || !Number.isFinite(share)) return undefined;
+  return Math.round(Math.max(0, Math.min(1, share)) * w.sec * 10) / 10;
 }
 
 /** A card's entries that carry a score, newest first (by `at`). */
@@ -800,12 +819,31 @@ export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardConte
         : c.scale.kind === 'wave'
           ? waveChips(played).map((w) => ({ v: w.n, label: w.label, w: strip?.[w.n - 1] }))
           : [1, 2, 3, 4, 5].map((n) => ({ v: n, label: String(n) }));
+    // Best moment (revision 3): where on the chip the tap lands says when
+    // in the wave; tapping the chosen wave again elsewhere moves it, on the
+    // same spot clears it.
+    let tapShare = NaN;
     const btns = opts.map((o) => {
       const b = button(o.w ? '' : o.label, 'v3-score-chip', () => {
-        if (answers[c.id] === o.v) delete answers[c.id];
+        if (c.id === 'moment') {
+          const t = momentSeconds(tapShare, o.w);
+          if (answers.moment === o.v && (t === undefined || t === d.momentT)) {
+            delete answers.moment;
+            delete d.momentT;
+          } else {
+            answers.moment = o.v;
+            if (t === undefined) delete d.momentT;
+            else d.momentT = t;
+          }
+        } else if (answers[c.id] === o.v) delete answers[c.id];
         else answers[c.id] = o.v;
         mark();
       });
+      if (c.id === 'moment')
+        b.addEventListener('pointerdown', (e) => {
+          const r = b.getBoundingClientRect();
+          tapShare = r.width ? (e.clientX - r.left) / r.width : NaN;
+        });
       if (o.w) {
         // The wave, then what happened in it: "−2" ships lost, and a mark
         // for each kind of moment the game marked in it.
@@ -831,6 +869,16 @@ export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardConte
       const on = answers[c.id] === opts[k].v;
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
+      if (c.id !== 'moment') return;
+      // The moment's place on its chip: a tick, and the seconds.
+      b.querySelector('.v3-moment-tick')?.remove();
+      const w = opts[k].w;
+      if (on && d.momentT !== undefined && w?.sec) {
+        const tick = el('i', 'v3-moment-tick');
+        tick.style.left = `${Math.min(92, Math.max(8, Math.round((d.momentT / w.sec) * 100)))}%`;
+        b.append(tick);
+        b.dataset.momentT = String(d.momentT);
+      } else delete b.dataset.momentT;
     });
     mark();
     chips.append(...btns);

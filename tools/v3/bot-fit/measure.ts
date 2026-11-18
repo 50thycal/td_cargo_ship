@@ -10,7 +10,8 @@
 // over the speed slider); a bot's over the game speed it plays at.
 
 import type { ArmoryLevels } from '../../../src/v3/data/armory';
-import { SIM_DT, applyCommand, setupGame, type LogCommand, type PlayLog } from '../../../src/v3/sim/playlog';
+import { SIM_DT, applyCommand, replaysHere, setupGame, type LogCommand, type PlayLog } from '../../../src/v3/sim/playlog';
+import { funDigest, funOfLog, funSummary, type FunDigest, type FunWaveSummary, type Save } from '../../../src/v3/sim/funMetrics';
 import { CARRIER_TARGET, released, step, timeToImpact, worthShooting, type Game } from '../../../src/v3/sim/game';
 
 /** The Armory the player has played with since round 12 (every recent
@@ -76,6 +77,23 @@ export interface RunMeasure {
    *  the tap, by kind ('weapon', 'supply' for a Supply Run, 'ammo',
    *  'repair', …). */
   grab: Record<string, number[]>;
+  /** The fun measures (src/v3/sim/funMetrics.ts, docs/design/
+   *  v3-fun-metrics.md), on a log this build replays exactly: per wave, and
+   *  each save. Absent otherwise. */
+  fun?: FunDigest;
+  saves?: Save[];
+}
+
+/** The fun measures on a log, when this build replays it exactly (its
+ *  version replays here, and the replay ends as the log did). `dice`: rolls
+ *  of the bot that plays on in each fork. */
+export function measureFun(log: PlayLog, dice = 3): Pick<RunMeasure, 'fun' | 'saves'> {
+  if (!replaysHere(log.v)) return {};
+  const r = funOfLog(log, { dice });
+  if (!r.exact) return {};
+  // A save keeps what a person reads: where, what, how much, the stakes.
+  const saves = r.saves.map(({ near: _n, ...sv }) => ({ ...sv, t: Math.round(sv.t * 10) / 10, margin: Math.round(sv.margin * 100) / 100 }));
+  return { fun: funDigest(r), saves };
 }
 
 /** A pickup's kind for the grab times: a Supply Run drop apart from the
@@ -319,6 +337,55 @@ export interface Pooled {
   untapped: Record<string, number>;
   /** Median real seconds from a drop to its tap, by pickup kind (n ≥ 3). */
   grab: Record<string, number>;
+  /** The fun measures over the runs that have them (null: none has). */
+  fun: PooledFun | null;
+}
+
+export interface PooledFun {
+  n: number;
+  /** Saves a wave played, waves 1-10 and a boss round; ships saved a wave;
+   *  saves with stakes (the run, the last ship, at the limit) a run. */
+  savesWave: number;
+  savesBoss: number;
+  savedWave: number;
+  bigRun: number;
+  /** Tension, the mean over the waves played (1-10): the wave's peak, its
+   *  peaks, the release after one (s), its hot and calm shares; and how
+   *  well the taps follow it (r, second by second). */
+  peak: number;
+  peaks: number;
+  releaseS: number;
+  hotShare: number;
+  calmShare: number;
+  tapR: number;
+  waves: FunWaveSummary[];
+}
+
+export function poolFun(runs: RunMeasure[]): PooledFun | null {
+  const ds = runs.map((r) => r.fun).filter((d): d is FunDigest => !!d);
+  if (!ds.length) return null;
+  const waves = funSummary(ds);
+  // Weighted by the runs that played each wave.
+  const over = (ws: FunWaveSummary[], f: (w: FunWaveSummary) => number) => {
+    const on = ws.filter((w) => w.n && Number.isFinite(f(w)));
+    const n = on.reduce((a, w) => a + w.n, 0);
+    return n ? on.reduce((a, w) => a + f(w) * w.n, 0) / n : NaN;
+  };
+  const core = waves.slice(0, 10);
+  return {
+    n: ds.length,
+    savesWave: over(core, (w) => w.saves),
+    savesBoss: over(waves.slice(10, 13), (w) => w.saves),
+    savedWave: over(core, (w) => w.saved),
+    bigRun: mean(ds.map((d) => d.waves.reduce((a, w) => a + (w?.big ?? 0), 0))),
+    peak: over(core, (w) => w.peak),
+    peaks: over(core, (w) => w.peaks),
+    releaseS: over(core, (w) => w.releaseS),
+    hotShare: over(core, (w) => w.hotShare),
+    calmShare: over(core, (w) => w.calmShare),
+    tapR: over(core, (w) => w.tapR),
+    waves,
+  };
 }
 
 export function pool(runs: RunMeasure[]): Pooled {
@@ -366,6 +433,7 @@ export function pool(runs: RunMeasure[]): Pooled {
       for (const r of runs) for (const [k, v] of Object.entries(r.grab ?? {})) (g[k] ??= []).push(...v);
       return Object.fromEntries(Object.entries(g).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, median(v)]));
     })(),
+    fun: poolFun(runs),
     untapped: (() => {
       const shown: Record<string, number> = {};
       const un: Record<string, number> = {};

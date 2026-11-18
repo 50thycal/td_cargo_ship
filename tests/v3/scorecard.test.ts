@@ -8,17 +8,17 @@
 
 import { describe, expect, it } from 'vitest';
 import { EVENT_WAVE } from '../../src/v3/data/events';
-import { MAP_VARIANT_DEFAULT, SCORECARD, SCORECARD_REV, askedAt, cleanScorecard, reachedBoss, scoreLine, scoreRows, validAnswer, waveChips, waveLabel } from '../../src/v3/data/scorecard';
+import { MAP_VARIANT_DEFAULT, SCORECARD, SCORECARD_REV, askedAt, cleanScorecard, reachedBoss, scoreCategory, scoreLine, scoreRows, validAnswer, waveChips, waveLabel } from '../../src/v3/data/scorecard';
 import { labCard } from '../../src/v3/data/lab';
 import { labResultDocs, logVariant, mapRunNumbers, mapRuns } from '../../src/v3/sim/labDocs';
 import { LOG_REPLAYS, LOG_VERSION, replaysHere, type PlayLog } from '../../src/v3/sim/playlog';
 import type { WaveRecord } from '../../src/v3/sim/game';
-import { agoText, defaultSetup, labRunPlan, lastScores, parseLabProgress, shortScore, verdictResult, vsTarget, waveStrip, type LabEntry } from '../../src/v3/ui/lab';
+import { agoText, defaultSetup, labRunPlan, lastScores, momentSeconds, parseLabProgress, shortScore, verdictResult, vsTarget, waveStrip, type LabEntry } from '../../src/v3/ui/lab';
 
 describe('the scorecard: its categories, in data', () => {
   it('keeps every row ever asked, each with an id, a label, a help line and a scale, and a revision', () => {
-    expect(SCORECARD_REV).toBe(2);
-    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'vs', 'again', 'best', 'weakest']);
+    expect(SCORECARD_REV).toBe(3);
+    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'vs', 'again', 'best', 'weakest', 'moment']);
     for (const c of SCORECARD) {
       expect(c.label.length, c.id).toBeGreaterThan(0);
       expect(c.help.length, c.id).toBeGreaterThan(0);
@@ -76,10 +76,11 @@ describe('revision 2 (the player\'s approval, 2026-11-17): fewer rows, a compari
       expect(askedAt(c, 1)).toBe(true);
       expect(askedAt(c, 2)).toBe(false);
     }
-    expect(scoreRows(13, { vsCard: 'map-gauntlet' }).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'vs', 'again', 'best', 'weakest']);
+    // (Revision 3 adds Best moment at the end.)
+    expect(scoreRows(13, { vsCard: 'map-gauntlet' }).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'vs', 'again', 'best', 'weakest', 'moment']);
     // No other map card rated yet: no comparison row.
-    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'again', 'best', 'weakest']);
-    expect(scoreRows(7).map((c) => c.id)).toEqual(['fun', 'difficulty', 'again', 'best', 'weakest']);
+    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'again', 'best', 'weakest', 'moment']);
+    expect(scoreRows(7).map((c) => c.id)).toEqual(['fun', 'difficulty', 'again', 'best', 'weakest', 'moment']);
     const vs = SCORECARD.find((c) => c.id === 'vs')!.scale;
     expect(vs.kind === 'choice' && vs.options.map((o) => [o.id, o.value])).toEqual([['worse', -1], ['same', 0], ['better', 1]]);
   });
@@ -100,8 +101,8 @@ describe('revision 2 (the player\'s approval, 2026-11-17): fewer rows, a compari
 
   it('Save keeps the comparison with the card it named; a draft from before cannot carry a retired row', () => {
     const d = { verdict: 'keep' as const, tags: [], note: '', score: { fun: 4, vs: 'better', pacing: 'right' } };
-    expect(verdictResult(d, 13, 'map-gauntlet')).toEqual({ verdict: 'keep', tags: [], note: '', score: { rev: 2, fun: 4, vs: 'better', vsCard: 'map-gauntlet' } });
-    expect(verdictResult({ ...d, score: { fun: 4 } }, 13, 'map-gauntlet')!.score).toEqual({ rev: 2, fun: 4 });
+    expect(verdictResult(d, 13, 'map-gauntlet')).toEqual({ verdict: 'keep', tags: [], note: '', score: { rev: SCORECARD_REV, fun: 4, vs: 'better', vsCard: 'map-gauntlet' } });
+    expect(verdictResult({ ...d, score: { fun: 4 } }, 13, 'map-gauntlet')!.score).toEqual({ rev: SCORECARD_REV, fun: 4 });
   });
 
   it('compares with the other map card scored most recently; never itself, never a card that is not a map, never an unscored run', () => {
@@ -160,6 +161,35 @@ describe('revision 2 (the player\'s approval, 2026-11-17): fewer rows, a compari
     ]);
     // A wave with no record and not in play (a run jumped past it) loses none.
     expect(waveStrip([{ wave: 1, lost: 1 }, { wave: 7, lost: 4 }], 4, 7, [], 7).map((w) => w.lost)).toEqual([1, 0, 0, 0, 0, 0, 3]);
+  });
+});
+
+describe('revision 3: Best moment (the fun measures\' ground truth)', () => {
+  it('is asked from revision 3, as a wave row, and saved with the seconds into the wave beside it', () => {
+    const m = scoreCategory('moment')!;
+    expect(m.scale.kind).toBe('wave');
+    expect(askedAt(m, 2)).toBe(false);
+    expect(askedAt(m, 3)).toBe(true);
+    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'boss', 'again', 'best', 'weakest', 'moment']);
+    expect(cleanScorecard({ moment: 10, momentT: 31.46 }, 13)).toEqual({ rev: 3, moment: 10, momentT: 31.5 });
+    // The seconds only beside a wave; a bad one is dropped.
+    expect(cleanScorecard({ fun: 3, momentT: 12 }, 13)).toEqual({ rev: 3, fun: 3 });
+    expect(cleanScorecard({ moment: 4, momentT: -1 }, 13)).toEqual({ rev: 3, moment: 4 });
+    expect(cleanScorecard({ moment: 12 }, 9)).toBeUndefined();
+    // A revision 2 score never had it.
+    expect(cleanScorecard({ rev: 2, moment: 7 }, 13)).toBeUndefined();
+    expect(scoreLine({ rev: 3, fun: 4, moment: 12, momentT: 8.2 })).toBe('Fun 4 · Best moment B2 at 8 s');
+  });
+
+  it('the strip knows each wave\'s length; a tap\'s place on the chip is the seconds into it', () => {
+    const history = [{ wave: 1, lost: 0, t: 30 }, { wave: 2, lost: 1, t: 72 }];
+    const s = waveStrip(history, 1, 3, [], 3, 100.5);
+    expect(s.map((w) => w.sec)).toEqual([30, 42, 28.5]);
+    expect(momentSeconds(0.5, s[1])).toBe(21);
+    expect(momentSeconds(1.4, s[1])).toBe(42);
+    expect(momentSeconds(0.5, { n: 1, lost: 0, marks: [] })).toBeUndefined();
+    const d = { verdict: 'keep' as const, tags: [], note: '', score: { moment: 2 }, momentT: 21 };
+    expect(verdictResult(d, 3)).toEqual({ verdict: 'keep', tags: [], note: '', score: { rev: 3, moment: 2, momentT: 21 } });
   });
 });
 

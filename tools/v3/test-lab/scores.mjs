@@ -14,6 +14,8 @@
 // their category) and added the comparison (`vs`). A score is averaged only
 // with scores of its own revision, so a revision 1 answer and a revision 2
 // answer are never averaged together; the older ones are counted apart.
+// Revision 3 added "Best moment" (`since: 3`; its wave reads like Best
+// wave's, and `momentT`, the seconds into it, is for the fun measures).
 
 /** A wave's name: "7", or "B2" for the second boss round. */
 export function waveName(n, bossFrom) {
@@ -54,7 +56,7 @@ export function scoreAverages(runs, sc, rev) {
   const scored = runs.filter((r) => r.score && (r.score.rev ?? 1) === at);
   const out = {};
   for (const c of sc.categories) {
-    if (c.retired !== undefined && at >= c.retired) continue;
+    if ((c.retired !== undefined && at >= c.retired) || (c.since !== undefined && at < c.since)) continue;
     const vals = scored.map((r) => r.score[c.id]).filter((v) => v !== undefined && v !== null);
     if (!vals.length) continue;
     if (c.scale.kind === 'stars') {

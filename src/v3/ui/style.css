@@ -4949,6 +4949,23 @@ a.v3-lab-page {
   color: #fff;
 }
 
+/* Scorecard revision 3: Best moment. Where on a wave's chip the tap lands
+   says when in the wave; a tick marks it. */
+.v3-score-row[data-score-row='moment'] .v3-score-chip {
+  position: relative;
+}
+
+.v3-moment-tick {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #fff;
+  pointer-events: none;
+}
+
 .v3-score-legend {
   margin: 0;
   font-size: 11px;

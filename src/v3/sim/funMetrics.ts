@@ -100,14 +100,17 @@ export const FUN = {
   ready: 0.3,
   /** Sample every this many sim steps; a second's value is the mean. */
   sampleSteps: 6,
-  /** Hot: the reading at or above this (about one hull's worth of damage a
-   *  second from impact). Calm: below `calm`. A peak ends (is "released")
-   *  when the reading falls below `release`. */
-  hot: 1,
-  calm: 0.25,
-  release: 0.5,
+  /** Hot: the reading at or above this (a whole hull's worth of damage
+   *  about half a second out, or a few smaller threats a second or two
+   *  out). Calm: below `calm` (nothing much within a few seconds). A peak
+   *  ends (is "released") when the reading falls below `release`. Set from
+   *  the player's three v26 runs: a wave's reading runs 0.1-0.5 on average,
+   *  its top 0.5-3. */
+  hot: 0.75,
+  calm: 0.2,
+  release: 0.35,
   /** A wave is "pinned" when this share of it is hot. */
-  pinned: 0.4,
+  pinned: 0.3,
   /** "Rising": the last peak this much over the first. */
   rising: 1.15,
 } as const;

@@ -2722,7 +2722,7 @@ export class App {
     const played = g.lab.full ? Math.max(waves, g.wave) : undefined;
     // Its wave strip (scorecard revision 2): the ships lost in each wave
     // (the wave records keep the run's tally) and the moments marked.
-    const strip = played !== undefined ? waveStrip(g.history, g.lost, g.wave, this.rec?.watch.moments ?? [], played) : undefined;
+    const strip = played !== undefined ? waveStrip(g.history, g.lost, g.wave, this.rec?.watch.moments ?? [], played, g.t) : undefined;
     const variant = g.lab.setup.variant;
     const queued = p.queue.filter((id) => id !== run.card.id);
     const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
