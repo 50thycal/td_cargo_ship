@@ -185,15 +185,16 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 26 (phase 4: the Strait\'s and the Gauntlet\'s boss rounds build up); a v25 or older log no longer replays here', () => {
-    expect(LOG_VERSION).toBe(26);
-    expect(LOG_REPLAYS).toEqual([26]);
+  it('the log is version 27 (after the playtest: a supersonic leaves its rail sooner, Harbor\'s third boss round a salvo lighter); a v26 or older log no longer replays here', () => {
+    expect(LOG_VERSION).toBe(27);
+    expect(LOG_REPLAYS).toEqual([27]);
     expect(replaysHere(21)).toBe(false);
     expect(replaysHere(22)).toBe(false);
     expect(replaysHere(23)).toBe(false);
     expect(replaysHere(24)).toBe(false);
     expect(replaysHere(25)).toBe(false);
-    expect(replaysHere(26)).toBe(true);
+    expect(replaysHere(26)).toBe(false);
+    expect(replaysHere(27)).toBe(true);
     expect(replaysHere(20)).toBe(false);
   });
 });

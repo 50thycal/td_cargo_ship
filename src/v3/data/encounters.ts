@@ -2316,13 +2316,15 @@ export interface BossTune {
 export const MAP_BOSS: Partial<Record<EncounterMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
-  // salvo more each round.
+  // salvo more in round 2. Round 3 had two salvos of 3 and ended the
+  // player's playtest (log v26: 2, 0 and 4 ships lost); the player chose
+  // one salvo fewer there (log v27, review 2026-11-18), the fan of 4 kept.
   harbor: {
     spot: 1,
     salvos: [
       [[5, 3]],
       [[4, 3], [13, 2]],
-      [[4, 3], [11, 3]],
+      [[4, 3]],
     ],
     fan: [3, 3, 4],
   },

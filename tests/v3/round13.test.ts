@@ -12,7 +12,7 @@ import { WEAPON, type AbilityId } from '../../src/v3/data/abilities';
 import { PICKUPS, SUPERSONIC } from '../../src/v3/data/config';
 import { FOE } from '../../src/v3/data/foes';
 import { launchFoe } from '../../src/v3/sim/foes';
-import { CARRIER_TARGET, createGame, damageThreat, released, step, tap, worthShooting, type Game, type Raider, type Threat } from '../../src/v3/sim/game';
+import { CARRIER_TARGET, createGame, damageThreat, released, step, supersonicDelay, supersonicPace, tap, worthShooting, type Game, type Raider, type Threat } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 const run = (g: Game, seconds: number) => {
@@ -56,6 +56,54 @@ describe('munitions on their launcher are no target (round 13)', () => {
     expect(released(m)).toBe(true);
   });
 
+  // Log v27 (the player, Harbor Mouth, wave 5: "the invincibility of the
+  // supersonic missile is just a tad too long ... you can attack it basically
+  // as soon as it is off the truck"): it sits on the rail for a short time
+  // only, then lifts off slowly, and can be shot from then on.
+  it('it sits on the rail, still and no target, for SUPERSONIC.rail only; then it lifts off and can be shot, its lock line still up', () => {
+    expect(SUPERSONIC.rail).toBeLessThan(0.5);
+    expect(SUPERSONIC.rail).toBeLessThan(SUPERSONIC.arming);
+    const g = quietGame();
+    const m = onRail(g);
+    const x = m.x;
+    const y = m.y;
+    run(g, SUPERSONIC.rail - 0.05);
+    expect(released(m)).toBe(false);
+    expect([m.x, m.y]).toEqual([x, y]);
+    run(g, 0.1);
+    expect(released(m)).toBe(true);
+    // Still inside its lock (the warning), already off the rail and away.
+    expect(m.age).toBeLessThan(SUPERSONIC.arming);
+    run(g, 0.3);
+    expect(m.age).toBeLessThan(SUPERSONIC.arming);
+    expect(Math.hypot(m.x - x, m.y - y)).toBeGreaterThan(15);
+    expect(tap(g, m.x, m.y, 60)).toBe('fire');
+    expect(aimedAt(g, m)).toBe(true);
+  });
+
+  it('its lift-off is slow and lands it when the 1.1 s rail did: the same delay against full speed', () => {
+    expect(supersonicPace(0)).toBe(0);
+    expect(supersonicPace(SUPERSONIC.rail - 0.01)).toBe(0);
+    expect(supersonicPace(SUPERSONIC.rail)).toBeCloseTo(SUPERSONIC.liftFrom, 6);
+    expect(supersonicPace(SUPERSONIC.rail + SUPERSONIC.lift)).toBe(1);
+    expect(supersonicPace(9)).toBe(1);
+    // From launch: as long as the old whole lock on the rail.
+    expect(supersonicDelay(0)).toBeCloseTo(SUPERSONIC.arming, 6);
+    expect(supersonicDelay(SUPERSONIC.rail + SUPERSONIC.lift)).toBe(0);
+    // Flown in the sim: by the end of its lift it has flown as far as it
+    // would at full speed for (age - 1.1 s).
+    const g = quietGame();
+    const m = onRail(g, 300, 260);
+    let flown = 0;
+    for (let i = 0; i < Math.round((SUPERSONIC.rail + SUPERSONIC.lift) / DT); i++) {
+      const [x, y] = [m.x, m.y];
+      step(g, DT);
+      flown += Math.hypot(m.x - x, m.y - y);
+    }
+    expect(m.dead).toBe(false);
+    expect(flown / m.speed).toBeCloseTo(m.age - SUPERSONIC.arming, 1);
+  });
+
   it('a tap on it alone is a tap on empty water: no shot at it', () => {
     const g = quietGame();
     const m = onRail(g);
@@ -64,7 +112,7 @@ describe('munitions on their launcher are no target (round 13)', () => {
     expect(aimedAt(g, m)).toBe(false);
     expect(g.ammo).toBe(ammo);
     // Off the rail, the same tap shoots it.
-    run(g, SUPERSONIC.arming + 0.02);
+    run(g, SUPERSONIC.rail + 0.02);
     expect(tap(g, m.x, m.y, 60)).toBe('fire');
     expect(aimedAt(g, m)).toBe(true);
   });
@@ -93,9 +141,9 @@ describe('munitions on their launcher are no target (round 13)', () => {
     // A well right on it neither drags it nor slows its arming.
     g.fields.push({ kind: 'well', x1: m.x + 40, y1: m.y, x2: m.x + 40, y2: m.y, hw: 200, t: 0, life: 60, tick: 0, level: 3 });
     const x = m.x;
-    run(g, 0.5);
+    run(g, SUPERSONIC.rail - 0.1);
     expect(m.x).toBe(x);
-    expect(m.age).toBeCloseTo(0.5, 1);
+    expect(m.age).toBeCloseTo(SUPERSONIC.rail - 0.1, 1);
   });
 
   it('the frigates hold fire at it until it is away, then shoot it', () => {
@@ -107,7 +155,7 @@ describe('munitions on their launcher are no target (round 13)', () => {
     run(g, 6);
     const m = onRail(g, 800, 470);
     const helpers = () => g.interceptors.filter((i) => i.target === m.id && i.by).length;
-    run(g, SUPERSONIC.arming - 0.1);
+    run(g, SUPERSONIC.rail - 0.1);
     expect(helpers()).toBe(0);
     run(g, 0.6);
     expect(m.dead || helpers() > 0).toBe(true);

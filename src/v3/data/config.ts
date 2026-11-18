@@ -229,8 +229,19 @@ export const MINE = { hitRadius: 30, wobble: 6 } as const;
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
 
 export const SUPERSONIC = {
-  /** Seconds it sits on the rail with its lock line showing before launch. */
+  /** Seconds its lock line shows from launch (the warning). */
   arming: 1.1,
+  /** Seconds of that it sits on the rail, still, and no target for anything
+   *  (round 13). Log v27 (the player, Harbor Mouth, wave 5: "you can attack
+   *  it basically as soon as it is off the truck"): it lifts off after
+   *  this, no longer after the whole lock (1.1 s before). */
+  rail: 0.4,
+  /** Off the rail slowly: its speed ramps from `liftFrom` of full to full
+   *  over `lift` s, so it lands when it did with 1.1 s still on the rail
+   *  (rail + lift * (1 - liftFrom) / 2 = arming). It can be shot all the
+   *  way, the lock line still showing until `arming`. */
+  liftFrom: 0.2,
+  lift: 1.75,
   turnRate: 0.9,
   /** Share of a wave's speed-up it takes (it is already fast). */
   waveSpeedShare: 0.3,
