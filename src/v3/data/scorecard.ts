@@ -21,13 +21,22 @@
 // never asked again. The score rides in `labResult.score` as before and
 // never touches replay, so the log version is unchanged.
 //
+// Revision 3 (the fun measures, docs/design/v3-fun-metrics.md): one more
+// row, "Best moment": one tap on the wave strip, where in the chip saying
+// when in the wave (its left edge the wave's start, its right edge its
+// end). It saves the wave (`moment`) and, when the strip knows the wave's
+// length, the seconds into it (`momentT`). It is the ground truth the
+// saves and the tension curve are checked against: do they find the
+// moments the player liked? It asks nothing new of the other rows, but a
+// row added is a revision (below), so revision 3 scores average apart.
+//
 // Change a category's meaning, add one or drop one: bump SCORECARD_REV, so
 // the page never averages answers to two different questions together.
 
 import { EVENT_WAVE } from './events';
 
 /** The scorecard's revision: in every saved score (`score.rev`). */
-export const SCORECARD_REV = 2;
+export const SCORECARD_REV = 3;
 
 /** A map card's encounter version when nothing says otherwise. Next
  *  round's A/B/C versions of one map get their own ids (v2, v3 ...). */
@@ -50,7 +59,7 @@ export type ScoreScale =
    *  B1 to B3). */
   | { kind: 'wave' };
 
-export type ScoreId = 'fun' | 'difficulty' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest';
+export type ScoreId = 'fun' | 'difficulty' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest' | 'moment';
 
 export interface ScoreCategory {
   id: ScoreId;
@@ -64,6 +73,8 @@ export interface ScoreCategory {
   /** The scorecard revision that stopped asking it. Kept so an older
    *  score still validates, reads and averages under its own revision. */
   retired?: number;
+  /** The scorecard revision that first asked it. */
+  since?: number;
   /** Asked only when another map card has been rated to compare with. */
   compare?: boolean;
 }
@@ -137,6 +148,8 @@ export const SCORECARD: ScoreCategory[] = [
   },
   { id: 'best', label: 'Best wave', help: 'The wave you liked most', scale: { kind: 'wave' } },
   { id: 'weakest', label: 'Weakest wave', help: 'The wave you liked least', scale: { kind: 'wave' } },
+  // Revision 3: one tap, the wave and where in it (`momentT`).
+  { id: 'moment', label: 'Best moment', help: 'Tap your best moment: left of a wave is its start, right its end', scale: { kind: 'wave' }, since: 3 },
 ];
 
 /** A saved scorecard: its revision and the rows answered (a row left
@@ -159,6 +172,10 @@ export interface Scorecard {
   again?: string;
   best?: number;
   weakest?: number;
+  /** Revision 3: the best moment's wave, and its seconds into the wave
+   *  (game seconds, when the strip knew the wave's length). */
+  moment?: number;
+  momentT?: number;
 }
 
 export function scoreCategory(id: string): ScoreCategory | undefined {
@@ -172,7 +189,7 @@ export function reachedBoss(played: number): boolean {
 
 /** Was the category asked on a score of this revision? */
 export function askedAt(c: ScoreCategory, rev: number): boolean {
-  return c.retired === undefined || rev < c.retired;
+  return (c.retired === undefined || rev < c.retired) && (c.since === undefined || rev >= c.since);
 }
 
 /** The rows a run asks now: no retired row, the boss row only once the
@@ -227,6 +244,7 @@ export function cleanScorecard(raw: unknown, played?: number): Scorecard | undef
     (out as unknown as Record<string, unknown>)[c.id] = v;
     any = true;
     if (c.id === 'vs' && typeof r.vsCard === 'string' && r.vsCard) out.vsCard = r.vsCard;
+    if (c.id === 'moment' && typeof r.momentT === 'number' && Number.isFinite(r.momentT) && r.momentT >= 0) out.momentT = Math.round(r.momentT * 10) / 10;
   }
   return any ? out : undefined;
 }
@@ -240,7 +258,7 @@ export function scoreLine(s: Scorecard | undefined): string {
     const v = (s as unknown as Record<string, unknown>)[c.id];
     if (v === undefined) continue;
     const label = c.id === 'vs' && s.vsCard ? `Vs ${s.vsCard}` : c.label.replace(/\?$/, '');
-    parts.push(`${label} ${answerText(c, v as number | string)}`);
+    parts.push(`${label} ${answerText(c, v as number | string)}${c.id === 'moment' && s.momentT !== undefined ? ` at ${Math.round(s.momentT)} s` : ''}`);
   }
   return parts.join(' · ');
 }
