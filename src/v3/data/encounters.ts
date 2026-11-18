@@ -2234,8 +2234,8 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'A tap on each shell as it climbs, then the swarm before it reaches the turn.',
     succeeds: 'A close call on a ship in the turn in most runs; a good player loses under half a ship.',
     notes: {
-      sites: 'The south silo on the outer bank, three times.',
-      target: 'The ship nearest the silo, rounding the apex (the middle third).',
+      sites: 'The south silo on the outer bank, for the shells and the swarm.',
+      target: 'The shells at the ship nearest the silo, rounding the apex (the middle third); the swarm at any ship.',
       usesMap: 'Everything from the silo over the turn: the shortest warning on the map, on the stretch where the ships bunch.',
     },
     beats: [
@@ -2257,7 +2257,7 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'The salvo is shot at in most runs; hull lost lands in the turn, not on the way out.',
     notes: {
       sites: 'A submarine at the sub spot inside the hook (1075, 300), then the south silo.',
-      target: 'The shells at any ship (the sub reaches the turn and the way out), the swarm at the ship nearest the south silo.',
+      target: 'The shells at the ship halfway along the lane (the apex), the swarm at the ship nearest the south silo.',
       usesMap: 'The only water inside the turn: a launcher on the carrier\'s side of the lane, so the ships in the turn are fired on from both banks.',
     },
     beats: [
@@ -2296,17 +2296,17 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Bunched in the turn',
     callout: 'Shells and drones at the turn',
-    premise: 'A swarm at the turn, then three shells from the south silo into the bunch, while a periscope rises behind the convoy on the straight.',
-    decision: 'The turn takes the shells and the swarm; the sub behind the convoy fires at the ships coming in. Which end first?',
-    counters: 'A blast in the turn takes the swarm; the shells need a tap each; the sub\'s shells have the longer flight.',
+    premise: 'A swarm at the turn, then two shells from the south silo into the bunch, and a periscope rises inside the hook for two more.',
+    decision: 'The turn is fired on from the outer bank and from inside the hook: which launcher first?',
+    counters: 'A blast in the turn takes the swarm; the shells need a tap each; the periscope warns of the sub\'s.',
     succeeds: 'The shells in the turn are shot at in most runs; no wave-6 cliff.',
     notes: {
-      sites: 'The south silo for the swarm and three shells, a submarine at the west sub spot (190, 572) behind the convoy.',
-      target: 'The silo\'s fire at the ship nearest it (the turn), the sub\'s at the ship furthest back.',
-      usesMap: 'The convoy bunches as it turns: area fire into the bunch, and the one launcher on the convoy\'s own side of the straight.',
+      sites: 'The south silo for the swarm and two shells, a submarine at the sub spot inside the hook (1075, 300) for two.',
+      target: 'The silo\'s fire at the ship nearest it (the turn), the sub\'s at the ship halfway along the lane (the apex).',
+      usesMap: 'The convoy bunches as it turns: fire into the bunch from both banks of the turn.',
     },
     beats: [
-      { at: 0.35, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'near' },
       { at: 0.35, plus: 2.5, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'near' },
       { at: 0.65, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'mid' },
     ],
@@ -2318,14 +2318,14 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [7],
     role: 'escalate',
     name: 'Strafing the hook',
-    callout: 'A jet along the lane',
-    premise: 'A strafer comes in from the west along the lane, and as it reaches the turn the south silo sends a swarm; two guided missiles from the east follow.',
+    callout: 'A jet round the hook',
+    premise: 'A strafer comes in from the west along the lane, and as it reaches the turn the south silo sends a swarm; two guided missiles from the east follow at the turn.',
     decision: 'The jet has the shortest fuse; the swarm is the most damage. One of them gets a ship if you wait.',
     counters: 'The jet first, before its guns reach the convoy; then the swarm at the turn; the missiles last.',
     succeeds: 'The jet is shot down before it passes the turn in most runs.',
     notes: {
       sites: 'A strafer from the west edge, the south silo\'s swarm, the east silo\'s two guided missiles.',
-      target: 'The jet down the lane, the swarm at the ship nearest the south silo, the missiles at any ship.',
+      target: 'The jet down the lane, the swarm at any ship, the missiles at the ship halfway along the lane (the apex).',
       usesMap: 'The jet follows the lane round the hook into the turn, where the swarm meets it: the apex from the air and the bank at once.',
     },
     beats: [
@@ -2341,14 +2341,14 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [8],
     role: 'escalate',
     name: 'The whole outer bank',
-    callout: 'Every silo on the bank',
-    premise: 'The three silos on the outer bank fire in turn, south to north: drones at the turn, a swarm across the hook, then shells at the lead ship.',
+    callout: 'Swarms and shells, south to north',
+    premise: 'The three silos on the outer bank fire in turn, south to north: a swarm, a second swarm across the hook, then shells, the last two at the ships in the turn.',
     decision: 'Three answers in turn along the bank: follow the lit silo, or get ahead of the last one?',
     counters: 'The south swarm first (it is closest), the east swarm has time; the shells need the taps.',
     succeeds: 'Launches overlap more than in the shared wave with no more of them: harder by timing, not by count.',
     notes: {
       sites: 'The south silo, then the east silo, then the north-east silo, a second or two apart.',
-      target: 'The south drones at the ship nearest them (the turn), the east swarm at any ship, the shells at the ship nearest the north-east silo.',
+      target: 'The south swarm at any ship, the east swarm and the north-east shells at the ship halfway along the lane (the apex).',
       usesMap: 'The outer bank wraps round the hook: fire that sweeps along it follows the convoy through the turn.',
     },
     beats: [
@@ -2364,15 +2364,15 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [9],
     role: 'escalate',
     name: 'Crossfire in the turn',
-    callout: 'Both sides of the turn',
-    premise: 'A sub surfaces inside the hook as the south silo opens on the turn: shells from the inside, drones and shells from the outer bank, and two guided missiles from the east.',
-    decision: 'The ships in the turn are fired on from both sides at once. What can wait two seconds?',
+    callout: 'Shells and missiles at the turn',
+    premise: 'The south silo opens on the turn with a swarm and three shells, and two guided missiles from the east silo come in on the same ships.',
+    decision: 'The ships in the turn are fired on from the south and the east at once. What can wait two seconds?',
     counters: 'Shells as they climb; a blast in the turn for the swarm; the missiles have the longest flight.',
     succeeds: 'Most of the fire is shot at before it lands; a lost ship is in the turn.',
     notes: {
-      sites: 'The sub spot inside the hook, the south silo (drones and shells), the east silo (two guided).',
-      target: 'The sub\'s shells at any ship, the south silo\'s fire at the ship nearest it (the turn), the missiles at the ship nearest the east silo.',
-      usesMap: 'The inside of the turn and the outer bank at once: the apex has no side the fire does not come from.',
+      sites: 'The south silo (a swarm and three shells), the east silo (two guided).',
+      target: 'The south silo\'s fire at the ship nearest it (the turn), the missiles at the ship halfway along the lane (the apex).',
+      usesMap: 'Two silos of the outer bank at right angles to each other, both on the apex: the turn has no quiet side.',
     },
     beats: [
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'near' },
@@ -2394,7 +2394,7 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call on the last ship out in most runs; the climax is the hardest wave.',
     notes: {
       sites: 'The south silo (a swarm and shells), the east silo (a swarm and two guided), the north-east silo (two shells), after a calm.',
-      target: 'The south silo at the ship nearest it (the turn); the east swarm and missiles and the north-east shells at the lead ship, on the way out.',
+      target: 'The swarms at any ship, the south silo\'s shells at the ship nearest it (the turn); the east missiles and the north-east shells at the lead ship, on the way out.',
       usesMap: 'The climax may hit the safe stretch: the way out north, under the carrier, gets the east and north-east silos for the first time.',
     },
     beats: [
@@ -2415,9 +2415,9 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
 // lane, and the map's one mechanic on it: a radar tower whose sweep covers
 // the middle third of the lane, where your shots fly half as fast again.
 // The middle silo fires straight down on that same stretch, so the middle
-// is the danger stretch and the radar is what makes it defensible; the east
-// third (the way out) is the safe one. The enemy goes for the tower: the
-// encounters of waves 2, 3, 5, 6, 8 and 10 aim at it (`aim: 'post'`, new in
+// is the danger stretch and the radar is what makes it defensible; the west
+// third (the way in) is the coldest. The enemy goes for the tower: the
+// encounters of waves 2, 5, 8 and 10 aim at it (`aim: 'post'`, new in
 // rev 4 here; once it is gone, at the ship nearest where it stood), and so
 // do the boss rounds (MAP_BOSS). Lost is lost (the player's review), so
 // every missile you spend on it is one not spent on a ship, and every one
@@ -2455,7 +2455,7 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'The shell is shot at in most runs; the tower is still up after wave 2.',
     notes: {
       sites: 'The middle silo for the shell, the west silo for the swarm.',
-      target: 'The shell at the radar tower; the swarm at any ship.',
+      target: 'The shell at the radar tower; the swarm at the ship halfway along the lane, under the radar.',
       usesMap: 'The mechanic\'s stake on wave 2: the enemy fires at the tower, and the player sees that it can be hit.',
     },
     beats: [
@@ -2471,14 +2471,14 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'Under the island',
     callout: 'A swarm and a missile',
-    premise: 'The middle silo sends a swarm at the ship below the island, and a guided missile from the west silo follows at the ships coming in.',
-    decision: 'The first stakes: the swarm is quick, the missile goes the other way. Is there time for both?',
+    premise: 'The middle silo sends a swarm at the ship below the island, and a guided missile from the west silo follows at the same stretch.',
+    decision: 'The first stakes: the swarm is quick, the missile comes from the side. Is there time for both?',
     counters: 'The swarm first, inside the sweep where your shots are quick; then the missile, which has the longer flight.',
     succeeds: 'A close call on a ship in most runs; a good player loses under half a ship.',
     notes: {
       sites: 'The middle silo for the swarm, the west silo for the missile.',
-      target: 'The swarm at the ship nearest the middle silo (the middle third), the missile at the ship nearest the west silo (the way in).',
-      usesMap: 'The danger stretch under the radar, then the way in outside it: the same tap is quicker under the sweep than off it.',
+      target: 'The swarm at the ship nearest the middle silo, the missile at the ship halfway along the lane: both in the middle third.',
+      usesMap: 'Two silos on the danger stretch under the radar, where every shot of yours is quicker.',
     },
     beats: [
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'near' },
@@ -2516,14 +2516,14 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Tower or ship',
     callout: 'A missile at the radar',
-    premise: 'A guided missile from the east silo at the radar tower, and at the same moment swarms from the middle and west silos at the ships.',
+    premise: 'A guided missile from the east silo at the radar tower, and at the same moment swarms from the middle and west silos at the ships below it.',
     decision: 'Save the tower or the ships: all three come at once.',
     counters: 'The middle swarm inside the sweep is quick to kill; the missile at the tower is slower, but only one tap away from losing the radar for good.',
     succeeds: 'The tower is still up after wave 5 in some runs, not all: the choice is real.',
     notes: {
       sites: 'The east silo (one guided), the middle silo (a swarm), the west silo (a swarm).',
-      target: 'The missile at the radar tower, each swarm at the ship nearest its silo (the middle third and the way in).',
-      usesMap: 'The mechanic as a choice: a missile at the tower while the ships under it and the ones coming in are both under fire.',
+      target: 'The missile at the radar tower, the middle swarm at the ship nearest that silo, the west swarm at the ship halfway along: all on the middle third.',
+      usesMap: 'The mechanic as a choice: a missile at the tower while the ships it guards are under fire from two silos.',
     },
     beats: [
       { at: 0.45, kind: 'guided', count: 1, from: base(2), aim: 'post' },
@@ -2539,22 +2539,22 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'West and middle',
     callout: 'Two swarms, two missiles',
-    premise: 'A swarm from the west silo at the ships coming in, shells and a swarm from the middle silo at the ships below the island, and two guided missiles from the east.',
-    decision: 'The way in and the middle at once: one is under the radar, one is not.',
-    counters: 'The swarm off the radar needs the time; the one under it dies quickly; the missiles have the longest flight.',
+    premise: 'A swarm from the west silo across to the ships below the island, shells and a swarm from the middle silo at the same ships, and two guided missiles from the east.',
+    decision: 'Fire from three silos converging on one stretch: which comes first?',
+    counters: 'The shells first, as they climb; a blast for the swarms as they meet over the middle; the missiles have the longest flight.',
     succeeds: 'Both swarms are shot at before they arrive in most runs.',
     notes: {
       sites: 'The west silo (a swarm), the middle silo (two shells and a swarm), the east silo (two guided).',
-      target: 'Each silo\'s fire at the ship nearest it (the way in, the middle third); the missiles at any ship.',
-      usesMap: 'Two directions, one inside the radar\'s sweep and one outside it.',
+      target: 'The west swarm at the ship halfway along, the middle silo\'s fire at the ship nearest it (both the middle third); the missiles at any ship.',
+      usesMap: 'The whole shore converging on the radar\'s stretch from two angles.',
     },
     beats: [
-      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.4, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.4, plus: 1, kind: 'ballistic', count: 2, gap: 0.9, from: base(1), aim: 'near' },
-      { at: 0.4, plus: 2.5, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'near' },
+      { at: 0.4, plus: 2.5, kind: 'drone', count: 3, gap: 0.35, from: base(1), aim: 'near' },
       { at: 0.4, plus: 3.5, kind: 'guided', count: 2, gap: 0.9, from: base(2) },
     ],
-    replaces: { drones: 12, guided: 2 },
+    replaces: { drones: 9, guided: 2 },
   },
   {
     id: 'marrow-down-the-lane',
@@ -2562,14 +2562,14 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [7],
     role: 'escalate',
     name: 'Down the lane',
-    callout: 'A jet down the lane',
+    callout: 'A jet over the island',
     premise: 'A strafer runs down the lane from the east as the middle silo opens on the ships below the island, and two guided missiles from the west follow.',
     decision: 'The jet, the swarm or the missiles: the jet has the shortest fuse.',
     counters: 'The jet first; the swarm inside the sweep is quick to kill; the missiles last.',
     succeeds: 'The jet is shot down before its guns reach the middle in most runs.',
     notes: {
       sites: 'A strafer from the east edge, the middle silo (a swarm), the west silo (two guided).',
-      target: 'The jet down the lane, the swarm at the ship nearest the middle silo, the missiles at the ship nearest the west silo.',
+      target: 'The jet down the lane, the swarm at the ship nearest the middle silo, the missiles at the ship halfway along the lane.',
       usesMap: 'The jet crosses the radar\'s sweep like everything else: a test of whether the tower still stands.',
     },
     beats: [
@@ -2586,21 +2586,21 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Subs off the island',
     callout: 'Two subs, the radar and the ships',
-    premise: 'A sub off the west end shells the ships coming in; a sub off the east end shells the radar tower; between them the middle silo sends a swarm.',
+    premise: 'A sub off the west end shells the convoy; a sub off the east end shells the radar tower; between them the middle silo sends a swarm.',
     decision: 'Two periscopes, opposite ends: one wants a ship, the other the tower.',
     counters: 'Each salvo as it climbs; the swarm inside the sweep is quick while the tower stands.',
     succeeds: 'The salvo at the tower is shot at in most runs where it still stands.',
     notes: {
       sites: 'Submarines at the north-west (180, 330) and north-east (1420, 330) sub spots, the middle silo for a swarm.',
-      target: 'The west sub at the ship nearest it (the first third), the east sub at the radar tower, the swarm at the ship nearest the middle silo.',
+      target: 'The west sub and the swarm at any ship, the east sub at the radar tower.',
       usesMap: 'The water between the shore and the lane, at both ends of the island: the tower is in reach of a sub.',
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(0) },
       { at: 0.3, plus: 4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'post' },
-      { at: 0.55, kind: 'drone', count: 6, gap: 0.35, from: base(1) },
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
     ],
-    replaces: { drones: 11 },
+    replaces: { drones: 10 },
   },
   {
     id: 'marrow-crossfire',
@@ -2609,14 +2609,14 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Crossfire at the island',
     callout: 'Everything on the middle',
-    premise: 'The west and middle silos send swarms at the ships under the island, shells follow, and two guided missiles come from the east.',
-    decision: 'The whole shore on the middle of the lane: keep up inside the sweep, and do not lose the ships coming in.',
-    counters: 'A blast for the swarms; the shells as they climb; the missiles last, they fly the furthest.',
+    premise: 'The west and middle silos send a swarm each, and the middle silo follows with two shells at the ships under the island.',
+    decision: 'Two swarms anywhere on the lane, then shells into the middle: thin the swarms, or keep a hand free for the shells?',
+    counters: 'A blast for the swarms; the shells as they climb.',
     succeeds: 'Most of it is shot down inside the sweep while the tower stands.',
     notes: {
-      sites: 'The west silo (a swarm), the middle silo (a swarm and three shells), the east silo (two guided).',
-      target: 'Each silo at the ship nearest it; the missiles at any ship.',
-      usesMap: 'The middle third under three silos at once: the radar is the difference between this wave and a cliff.',
+      sites: 'The west silo (a swarm), the middle silo (a swarm and two shells).',
+      target: 'The swarms at any ship, the shells at the ship nearest the middle silo (the middle third).',
+      usesMap: 'Wave 9 brings the map\'s heavy missile and the shared table\'s big step, so the encounter is the lighter half of it: the shells still fall on the radar\'s stretch.',
     },
     beats: [
       { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
@@ -2632,13 +2632,13 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'The tower\'s last stand',
     callout: 'Everything, and the radar',
-    premise: 'After a short calm, missiles at the radar tower, swarms from the west and middle silos at the ships, shells into the middle and missiles at the lead ship.',
+    premise: 'Once the wave\'s own fire is spent, a short calm, then missiles at the radar tower, swarms from the west and middle silos, shells into the middle and missiles at the lead ship.',
     decision: 'The tower, the middle and the ships about to deliver all at once.',
     counters: 'The tower\'s missiles first if it still stands; then the swarms inside the sweep; then the lead ship.',
     succeeds: 'A close call on the lead ship in most runs; the climax is the hardest wave.',
     notes: {
-      sites: 'The east silo (two guided at the tower, then two at the lead ship), the west and middle silos (swarms), the middle silo (shells), after a calm.',
-      target: 'The radar tower, the ships nearest the west and middle silos, and the lead ship on the way out.',
+      sites: 'The east silo (two guided at the tower, then two at the lead ship), the west and middle silos (swarms), the middle silo (shells), after the wave\'s own fire.',
+      target: 'The radar tower, any ship for the swarms, the ship nearest the middle silo for the shells, and the lead ship on the way out.',
       usesMap: 'The mechanic and the danger stretch together, and the climax may reach the safe stretch: the way out east gets the missiles.',
     },
     beats: [

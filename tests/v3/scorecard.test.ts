@@ -215,9 +215,9 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 28 (chapter 1: Kesh and Marrow\'s encounters, lab only); a v27 log still replays here (nothing it played changed), a v26 or older one no longer does', () => {
+  it('the log is version 28 (chapter 1: Kesh and Marrow\'s encounters, lab only); only its own version replays here', () => {
     expect(LOG_VERSION).toBe(28);
-    expect(LOG_REPLAYS).toEqual([27, 28]);
+    expect(LOG_REPLAYS).toEqual([28]);
     expect(replaysHere(28)).toBe(true);
     expect(replaysHere(21)).toBe(false);
     expect(replaysHere(22)).toBe(false);
@@ -225,7 +225,7 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(replaysHere(24)).toBe(false);
     expect(replaysHere(25)).toBe(false);
     expect(replaysHere(26)).toBe(false);
-    expect(replaysHere(27)).toBe(true);
+    expect(replaysHere(27)).toBe(false);
     expect(replaysHere(20)).toBe(false);
   });
 });

@@ -165,13 +165,14 @@ import type { EncounterSetup } from '../data/encounters';
  *      campaign run plays as it did. A v28 Kesh or Marrow map-card log needs
  *      this build (an older one would play its encounters as nothing), so
  *      the version moves; a v27 log played none of it (those maps had no
- *      encounter layer, and every other map is unchanged), so this build
- *      still replays v27 exactly. */
+ *      encounter layer, and every other map is unchanged: the map-lab
+ *      baseline's twelve runs changed only their version), but as with
+ *      every version before, this build lists only its own. */
 export const LOG_VERSION = 28;
-/** The log versions this build replays exactly (its own, and v27, which
- *  nothing in v28 changed: see 28 above). Tools that replay logs (Map
- *  Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [27, 28];
+/** The log versions this build replays exactly (only its own: round 11
+ *  changed the game). Tools that replay logs (Map Analytics, the map lab)
+ *  take any of these. */
+export const LOG_REPLAYS: readonly number[] = [28];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

@@ -564,10 +564,15 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
   const d = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
   it('The Kesh Hook: the south silo\'s fire goes at the ship nearest it, the one rounding the apex', () => {
+    // Shells at the apex (wave 3): two shells at the ship nearest the
+    // silo, then a swarm from the same silo at any ship.
     const { g, out } = aimed('kesh', 3, 'kesh-apex-shells');
     expect(out).toHaveLength(6);
     const silo = g.map.bases[0];
-    for (const { th, ships } of out) {
+    for (const { th } of out) expect({ x: th.sx, y: th.sy }).toEqual({ x: silo.x, y: silo.y });
+    const shells = out.filter((o) => o.th.kind === 'ballistic');
+    expect(shells).toHaveLength(2);
+    for (const { th, ships } of shells) {
       expect({ x: th.sx, y: th.sy }).toEqual({ x: silo.x, y: silo.y });
       const target = ships.find((s) => s.id === th.target)!;
       expect(target, `${th.kind} ${th.id}`).toBeDefined();
