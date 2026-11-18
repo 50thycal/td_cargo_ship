@@ -70,14 +70,14 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-18',
-  headline: 'Working overnight. Done: the fixes from your runs (Harbor round 3, the supersonic, the iOS check; #165). Being built: the two fun measures (saves and the tension curve) and Kesh and Marrow. Nothing needs you right now.',
+  headline: 'Overnight: the fixes from your runs (#165) and the fun measures (#167) are live. Kesh and Marrow are being built. One question in Needs you: how many saves a wave to aim for.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
     { id: 'scorecard', name: 'The new scorecard', state: 'done', detail: 'Live in the Test Lab (#161). Before you rate, it shows your last scores for this map and the others; your run’s waves in a strip with the moments the game marked, to pick best and weakest; one “compared with the map you rated last” question; and only Fun, Difficulty, Play again and a note.' },
     { id: 'checks', name: 'Automatic checks and bot reports', state: 'done', detail: 'Built (#162). Each map now gets a bot report: losses per wave, cliffs, close calls, wave budgets, the danger and safe stretches, warning time, kits and a heat map. Encounters carry internal notes. Tests catch later-chapter foes and repeated encounters. First readings on the three reference maps: every map has a cliff (the Gauntlet’s wave 8 jumps from 0.75 to 3 ships for the bot); Harbor’s waves 4–7 send a third fewer attacks than they should; the Strait and the Gauntlet have no clearly safe stretch; every encounter repeats 3–4 waves in a row.' },
     { id: 'reference', name: 'The three reference maps to the rules', state: 'done', detail: 'Rebuilt (#163), played by you (all Keep, fun 4–5) and fixed from your runs (#165): Harbor’s boss round 3 sends one sub salvo, not two; a supersonic missile sits untouchable on the launcher for 0.4 s (was 1.1 s), then lifts off slowly and can be shot, landing when it did; the lock-on warning still runs the full 1.1 s.' },
-    { id: 'fun', name: 'Measuring the fun moments', state: 'now', detail: 'Your two picks from the brainstorm. Saves: at each kill, nuke and pickup the game is replayed without it; if a ship would have sunk, that was a save (how many ships, was it the last one, how close). Tension: a danger reading every second, from how close the threats are to hitting; each wave gets a curve (peaks, breathers, flat or pinned). Both go into the bot reports and the bot-vs-you comparison, and the scorecard asks you to tap your best moment so we can check them.' },
+    { id: 'fun', name: 'Measuring the fun moments', state: 'done', detail: 'Built (#167). Saves: at each kill, nuke and pickup the game is copied and played on without it (and 0.5 s late); if a ship would have sunk, it was a save, with its stakes (the run, the last ship) and how close. Tension: a danger reading every 0.1 s from how close threats are to hitting, giving each wave a curve (flat, one peak, sawtooth, rising, pinned). On your three runs the tensest wave was the wave you scored best, all three times. Your Strait wave 10 shows as two clutch saves with the run at stake: the ammo drop, then the last-second drone kill. The scorecard now asks you to tap your best moment on the wave strip.' },
     { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'now', detail: 'Being built: a map card for each, the encounter plan for waves 1–10 and the boss, then the bot loop until every check passes. Chapter 1 should be the easiest: the bot with your Armory should win about half to three quarters of its runs. Then your playtest.' },
     { id: 'ch2', name: 'Chapters 2–4', state: 'later', detail: 'A chapter at a time, the same way.' },
   ],
@@ -92,9 +92,12 @@ export const STATUS = {
     { n: 162, title: 'Automatic checks and a bot report for each map', state: 'merged' },
     { n: 163, title: 'The three reference maps to the rules', state: 'merged' },
     { n: 164, title: 'Hub: your playtest and answers', state: 'merged' },
+    { n: 166, title: 'Hub update', state: 'merged' },
+    { n: 167, title: 'Fun measures: saves and the tension curve; Best moment on the scorecard', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-18', what: 'Merged #167, the fun measures. What they say about the three reference maps (bot with your Armory): waves 1–3 are flat on every map; waves 4–10 mostly one peak each, building to the top peak on wave 9 or 10; real saves are rare, about 0.1–0.5 a wave in waves 6–10 and up to 0.7 in a boss round (the Strait’s round 2). Your own runs had about 0.3 a wave and 0.7 a boss round, about the same as the bot. After #165, Harbor’s round 3 went from pinned to one peak and its round 2 is now the tense one. Next for the maps: a first bump of tension by wave 3, and more sawtooth waves (several peaks with breathers).' },
     { date: '2026-11-18', what: 'Merged #165. Harbor: with your Armory the bot now loses about 1.2, 2.3, 1.5 ships in boss rounds 1–3 (was 1.3, 1.8, 2.4) and wins a quarter of its runs (was a sixth); round 3 is now lighter than round 2, as you chose. The supersonic is easier to shoot down. The bot still matches you on waves 1–10 with your 3 new runs added (waves 1–5: 0.63 against your 0.48; waves 6–10: 3.8 against 3.4) and still reads boss rounds about twice as hard as you overall: the Strait much harder (1.7 against 0.2), the Gauntlet the same (1.0 against 1.25), Harbor harder (1.6 against 0.7). The iOS check now runs only when iOS files change, after merges and by hand. Play log is now v27.' },
     { date: '2026-11-18', what: 'Your answers filed: Harbor’s boss round 3 gets one sub salvo fewer, rounds 1–2 stay; the iOS check runs only on pull requests that touch iOS files, after merges and by hand. You picked two fun measures from the brainstorm (saves and the tension curve); both are being built tonight, and Kesh and Marrow start after the fixes land.' },
     { date: '2026-11-18', what: 'Your playtest against the bots (each run replayed by the bot on your seed, Armory and picks, 12 times). The Strait: you lost on wave 10 (3 ships there; you looked away on wave 5); the bot loses about 0.5 by wave 5 and 3.7 in waves 6–10 against your 1 and 5. The Gauntlet: you won with 5 lost, the boss cost you 0, 0, 1; the bot reads it 3× harder (1 a round) and wins 1 in 12. Harbor Mouth: the boss cost you 2, 0, 4 and ended the run; the bot predicted 1.9 a round, the same, so the old rule that the bot reads Harbor twice as hard no longer holds and its boss target was set too high.' },
@@ -112,7 +115,19 @@ export const STATUS = {
 };
 
 // ---- What needs the player now. Only new things; new ids each round.
-export const NEEDS = [];
+export const NEEDS = [
+  {
+    id: 'r5-fun-target',
+    kind: 'question',
+    text: 'A save here is strict: without your action a ship really sinks. Measured that way, you made about 0.3 a wave in waves 6–10 and 0.7 a boss round, and the bot about the same. The 1–2 a wave in the brainstorm is out of reach for anyone. The target steers how maps and waves are tuned from Kesh and Marrow on.',
+    title: 'How many real saves should a wave aim for?',
+    options: [
+      'About 0.3–0.5 a wave in waves 6–10, about 1 a boss round, and a first tension bump by wave 3; check it against your Best moment taps (recommended)',
+      'More: aim for about 1 a wave from wave 6, even if waves get harder',
+      'Don’t set a number yet: just report saves and tension for now',
+    ],
+  },
+];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
