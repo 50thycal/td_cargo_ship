@@ -4949,23 +4949,6 @@ a.v3-lab-page {
   color: #fff;
 }
 
-/* Scorecard revision 3: Best moment. Where on a wave's chip the tap lands
-   says when in the wave; a tick marks it. */
-.v3-score-row[data-score-row='moment'] .v3-score-chip {
-  position: relative;
-}
-
-.v3-moment-tick {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  width: 3px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: #fff;
-  pointer-events: none;
-}
-
 .v3-score-legend {
   margin: 0;
   font-size: 11px;
@@ -6597,4 +6580,233 @@ a.v3-lab-page {
   .v3-continue {
     max-width: 300px;
   }
+}
+
+/* ---- Rate & review (docs/design/v3-rate-and-review.md) -------------------- */
+
+/* The draft's "Rate wave N" row: optional and compact, under the cards. */
+.v3-wave-rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--gold) 45%, var(--panel-edge));
+  background: rgb(10 18 24 / 0.72);
+  max-width: 100%;
+}
+
+.v3-wave-rate-h {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.v3-wave-rate-h b {
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.v3-wave-rate-h small {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.v3-wave-rate-axes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+}
+
+.v3-wave-rate-axis {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.v3-wave-rate-axis > i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.v3-wave-rate-n,
+.v3-wave-rate-note {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.v3-wave-rate-n.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #062029;
+}
+
+.v3-wave-rate-note.on {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.v3-wave-rate-text {
+  flex: 1 1 260px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  background: #08131a;
+  color: var(--ink);
+  font: inherit;
+  /* 16 px: anything smaller and iOS zooms the page in on focus. */
+  font-size: 16px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.v3-wave-rate-text[hidden] {
+  display: none;
+}
+
+@media (max-height: 430px) {
+  .v3-wave-rate {
+    padding: 2px 8px;
+  }
+  .v3-wave-rate-n,
+  .v3-wave-rate-note {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* A wave's band on the timeline: its number, its rating from the draft,
+   and the Test Lab's Best (▲) and Weakest (▼) wave. */
+.v3-tl-wave b {
+  font-weight: 700;
+}
+
+.v3-tl-wave .v3-tl-rate {
+  display: block;
+  font-style: normal;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.v3-tl-wave .v3-tl-pick {
+  position: absolute;
+  right: 2px;
+  top: 1px;
+  font-style: normal;
+  font-size: 10px;
+}
+
+.v3-tl-wave.best {
+  background: rgb(127 233 255 / 0.16);
+}
+
+.v3-tl-wave.best .v3-tl-pick {
+  color: var(--accent);
+}
+
+.v3-tl-wave.weakest {
+  background: rgb(255 93 93 / 0.14);
+}
+
+.v3-tl-wave.weakest .v3-tl-pick {
+  color: var(--danger, #ff5d5d);
+}
+
+/* The wave chips under the timeline say how the wave was rated. */
+.v3-wave-rated {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.v3-score-chip.on .v3-wave-rated {
+  color: #062029;
+}
+
+.v3-score-suggest {
+  color: var(--gold) !important;
+}
+
+/* The Test Lab's end screen: the normal game's review with a Test Lab
+   section. One look: accent chips, like the normal game's 1–5 rows. */
+.v3-review-merged .v3-review-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+
+.v3-review-merged .v3-review-title .v2-sub {
+  margin: 0;
+  font-size: 13px;
+}
+
+.v3-review-merged .v3-score-chip.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #062029;
+}
+
+.v3-review-merged .v3-score-chip.on .v3-wave-info,
+.v3-review-merged .v3-score-chip.on .v3-wave-info em {
+  color: #062029;
+}
+
+.v3-review-merged .v3-score-chips.stars .v3-score-chip {
+  width: auto;
+  height: auto;
+}
+
+.v3-review-merged .v3-lab-rating .v3-rating-row {
+  gap: 10px;
+}
+
+.v3-review-run,
+.v3-lab-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: rgb(15 26 34 / 0.6);
+}
+
+.v3-review-run .v3-stop .v2-btn-row {
+  justify-content: flex-start;
+}
+
+.v3-score-waves {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v3-score-waves[hidden] {
+  display: none;
+}
+
+.v3-lab-section-h {
+  color: var(--lab-amber, var(--gold));
 }

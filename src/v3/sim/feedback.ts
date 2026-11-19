@@ -42,6 +42,23 @@ export const RATING_AXES: { id: keyof Rating; label: string; low: string; high: 
   { id: 'intensity', label: 'Intensity', low: 'calm', high: 'frantic' },
 ];
 
+/** The player's rating of a whole wave, given (optionally) on the weapon
+ *  draft straight after it (docs/design/v3-rate-and-review.md): the same
+ *  three 1–5 axes as a volley's or the run's, and a short note. One per
+ *  wave (rated again, it replaces the earlier one). `step` is the sim step
+ *  it was given on (the draft's), `at` the wall clock. None of it touches
+ *  replay: the log carries it beside `volleys` and `notes`. */
+export interface WaveRating {
+  wave: number;
+  step: number;
+  at: string;
+  rating: Rating;
+  note?: string;
+}
+
+/** The longest note a wave rating keeps. */
+export const WAVE_NOTE_MAX = 280;
+
 /** The game as it stood when a note was made. */
 export interface NoteContext {
   phase: Game['phase'];

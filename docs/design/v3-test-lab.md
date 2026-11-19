@@ -155,6 +155,16 @@ Retired in revision 2. These rows are still defined, so a revision 1 score reads
 | Readability | I could tell what was coming and what hit me | 1 to 5 |
 | Map feel | The layout mattered to how I played | 1 to 5 |
 
+### Revision 4 (2026-11-19): the normal game's review screen, with a Test Lab section
+
+The player, on the campaign's end-of-run review: "This score card here on the normal game is wayyyyyy better apply this to the test lab and retain the question for the test lab tho". Since revision 4 every card's end screen is the normal game's **Rate & review this run** with the Test Lab's questions in it (details: `docs/design/v3-rate-and-review.md`):
+- the rating rows on top: a map card's full run gets its scorecard (Fun, Difficulty, **Intensity** 1 calm to 5 frantic, Boss rounds, the comparison, Play again, with "Your last scores" above them); any other card gets the normal game's three 1–5 rows (saved as the log's `rating`);
+- the run on the normal review's timeline: its marked moments, ‹ › to step through them, **Watch it**, **Note on this**, and each wave's rating from the draft on its band;
+- Best and Weakest wave are picked under that timeline, on the same wave chips, and are **suggested from the per-wave ratings** the player gave on the draft (the most and least fun wave);
+- the Test Lab section last: Keep / Tune / Cut, the tags and the note (the note on the run).
+
+**Best moment** (revision 3) is retired (`retired: 4`): the player found it hard to recall. A revision 4 score adds `intensity`, `waves` (the draft's per-wave ratings, `[{ n, difficulty?, fun?, intensity?, note? }]`) and `bestSuggested` / `weakestSuggested`. Revision 3 scores keep `moment` and `momentT` and average under revision 3.
+
 **In data.** The rows are `SCORECARD` in `src/v3/data/scorecard.ts`. Each has an `id`, a `label`, a `help` line and a `scale`. The scale is `stars`, `choice` (ordered `{ id, label, value }` options) or `wave`. A choice's `value` is what the page averages. Right is 0 on Difficulty (−2 to +2) and on Pacing (−1 to +1), and About the same is 0 on the comparison (−1 to +1).
 - A row that is no longer asked keeps its definition and gets `retired: <the revision that retired it>`.
 - `scoreRows(played, { vsCard })` gives the rows to ask. It leaves out retired rows, leaves out the boss row before wave 11, and includes the comparison only when there is a `vsCard`.
@@ -196,7 +206,7 @@ The logic is `tools/v3/test-lab/scores.mjs`. The page inlines it, as it does `sp
 **Checks:**
 - `tests/v3/scorecard.test.ts`: the rows, cleaning and saving a score, the variant on the plan, log version 22 with v21 still replaying, and the bridge's numbers, runs and history.
 - `tests/v3/labScores.test.ts`: the page's chips, averages and grouping.
-- `e2e/v3-map-cards.mjs`: a scorecard filled on The Strait's sheet lands in the log; Skip saves none.
+- `e2e/v3-map-cards.mjs`: a scorecard filled on The Strait's sheet lands in the log; Skip saves none; a wave rated on the draft shows on the end screen's timeline and suggests Best and Weakest wave (revision 4).
 
 ## Copying results to the pages (Claude, each session)
 
