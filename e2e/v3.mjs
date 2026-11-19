@@ -271,6 +271,22 @@ try {
   check(offer >= 3, `draft deals ${offer} weapon cards`);
   check((await page.locator('.v2-draft h2').textContent()) === 'Choose your weapon', 'the draft asks for a weapon');
   check(!(await page.locator('.v2-draft').textContent()).includes('15 s in the gun') && !/EVOLVES:/.test(await page.locator('.v2-card-row').textContent()), 'cards carry only their own text (no repeated drop rule, no "EVOLVES:")');
+  // Rate & review (docs/design/v3-rate-and-review.md): an optional "Rate
+  // wave 1" row under the cards; each tap lands in the log at once, and the
+  // game is untouched.
+  {
+    const row = await page.evaluate(() => { const r = document.querySelector('.v2-draft [data-wave-rate]'); const b = r?.getBoundingClientRect(); return r ? { wave: r.dataset.waveRate, axes: [...r.querySelectorAll('[data-axis]')].map((a) => a.dataset.axis), fits: b.bottom <= innerHeight && b.right <= innerWidth } : null; });
+    check(row?.wave === '1' && row.axes.join() === 'difficulty,fun,intensity' && row.fits, `the draft offers "Rate wave 1": difficulty, fun and intensity (${JSON.stringify(row)})`);
+    const steps = await page.evaluate(() => window.__v3.game().steps);
+    await page.locator('.v2-draft [data-wave-rate] [data-axis="fun"] [data-n="4"]').click();
+    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
+    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
+    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="5"]').click();
+    await page.locator('.v2-draft [data-wave-rate-note]').click();
+    await page.locator('.v2-draft .v3-wave-rate-text').fill('Swarm from the left');
+    const wr = await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
+    check(wr.list?.length === 1 && wr.list[0].wave === 1 && JSON.stringify(wr.list[0].rating) === '{"fun":4,"intensity":5}' && wr.list[0].note === 'Swarm from the left' && wr.steps === steps && wr.phase === 'draft', `the wave's rating lands in the log at once, the game untouched (${JSON.stringify(wr)})`);
+  }
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);
@@ -357,6 +373,13 @@ try {
   await page.screenshot({ path: `${SHOT_DIR}/12-cards-won.png` });
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
   check(after.cards === before + 1 && (await page.locator('.v3-won-cards .v3-armory-card').count()) === 1, `a lost run that cleared 3 waves wins one Armory card, shown as a card (${before} → ${after.cards})`);
+  // The run's review shows wave 1's rating from the draft on its band.
+  await page.click('[data-screen="result"] .v3-review-btn');
+  await page.waitForSelector('[data-screen="review"]');
+  const band = await page.evaluate(() => { const b = document.querySelector('.v3-timeline .v3-tl-wave[data-wave="1"]'); return b ? { rated: b.classList.contains('rated'), text: b.querySelector('.v3-tl-rate')?.textContent, data: b.dataset.waveRating, title: b.title } : null; });
+  check(band?.rated && band.text === '♥4' && band.data === 'F4 I5' && /Swarm from the left/.test(band.title), `the review's timeline shows wave 1's draft rating on its band (${JSON.stringify(band)})`);
+  await page.click('.v3-review-done');
+  await page.waitForSelector('[data-screen="result"]');
 
   // ---- Free Play (round 7): any map, wave, weapons and Armory; nothing counts ----
   await page.click('[data-screen="result"] .v2-btn:has-text("Menu")');

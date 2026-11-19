@@ -17,7 +17,7 @@ Both are **provisional**: they are new, they are checked against three of the pl
 | In the bot report | `tools/v3/map-report/report.ts`, `src/v3/sim/mapReport.ts`: a "Fun" section and a provisional check row |
 | Player against bot | `tools/v3/bot-fit/fit.ts --fun`, `tools/v3/bot-fit/measure.ts` (`measureFun`, `poolFun`) |
 | The player's raw logs | `tools/v3/bot-fit/logs/` (the three v26 playtest runs; `player.json` keeps no inputs, so it can't be forked) |
-| Ground truth from the player | the scorecard's new **Best moment** row (revision 3) |
+| Ground truth from the player | the **per-wave ratings** the player gives on the weapon draft (fun, difficulty, intensity 1–5; the log's `waveRatings`, a score's `waves`), since scorecard revision 4. Best moment (revision 3) is retired: see the end of this page |
 
 ## Measure 1: saves
 
@@ -256,7 +256,7 @@ Before the Best moment row existed, the scorecard already asked for the best and
 | Gauntlet | 10 | **10** (2.33) | 10: a clutch repair save | 1 | **1** (0.18) |
 | Harbor | B3 | **B3** (2.13, the only "pinned" wave) | **B3**: a clutch kill save | 1 | **1** (0.11) |
 
-On all three runs, **the wave with the highest tension peak is the wave the player liked most**, and the wave they liked least is the flattest. That is three runs, so it is only a hint, not proof. The new Best moment row (wave plus seconds) will test it properly, moment by moment.
+On all three runs, **the wave with the highest tension peak is the wave the player liked most**, and the wave they liked least is the flattest. That is three runs, so it is only a hint, not proof. The per-wave ratings (below) test it properly: every wave the player rates gets its own fun and intensity score, given straight after the wave, not recalled at the end.
 
 ### The reference maps, bot report (v27 build)
 
@@ -308,7 +308,7 @@ What it says:
   - read the **wave-by-wave pattern over many seeds**, and above all the **tension curve**, which has no dice.
 
   Raising `--fun-dice` lowers the noise at a proportional cost.
-- **The target of 1–2 real saves a wave is far above what anyone makes.** By this strict definition, the player made 0.27 a wave on waves 1–10 and the bot 0.24. Either the target should come down (a first suggestion: about **0.3–0.5 a wave on waves 6–10 and about 1 a boss round, at least one with stakes per run**), or the definition should loosen. For example, the bot that plays on could be made "cold" (it must notice the threat first) instead of warm. The check row stays marked provisional until the player's Best moment answers say which.
+- **The target of 1–2 real saves a wave is far above what anyone makes.** By this strict definition, the player made 0.27 a wave on waves 1–10 and the bot 0.24. Either the target should come down (a first suggestion: about **0.3–0.5 a wave on waves 6–10 and about 1 a boss round, at least one with stakes per run**), or the definition should loosen. For example, the bot that plays on could be made "cold" (it must notice the threat first) instead of warm. The check row stays marked provisional until the player's per-wave ratings say which.
 - **Kill saves are rare by design.** The warm bot covers for almost any kill that left more than about 1 s. A save therefore really means "nobody could have covered it".
 - **The bot's saves are its own.** In the report, the action forked is the bot's, and the play-on is a bot too. The player's runs are forked the same way.
 - **No player run replays on the current build.** The three playtest runs are v26; the game is now v27. Their results (above) are the v26 build's. Re-run `fit.ts --fun` on new playtests.
@@ -325,9 +325,20 @@ What it says:
   - Aim for saves to show up: at least one in a third of runs on waves 8–10.
 - **Boss rounds:** hot for a quarter of the round or more, with at least one save a round and a chance of a big one (stakes). Harbor's B3 is the model today.
 - **Avoid "pinned" before the boss rounds** (hot for 30% of a wave or more): the player gets no release. Avoid many small saves with no stakes in one wave: that is chaos, not drama.
-- **Check against the player.** After each playtest, compare the scorecard's Best moment with where the tension peaked and where the saves were. If they keep matching, the tension curve can become a real check.
+- **Check against the player.** After each playtest, compare the player's per-wave ratings (fun and intensity, from the draft) with each wave's tension peak and saves: the waves rated most fun and most intense should be the tensest, the least fun the flattest. If they keep matching, the tension curve can become a real check.
 
-## The scorecard's Best moment (revision 3)
+## Ground truth since revision 4: the per-wave ratings
+
+The player, on the Kesh map card (2026-11-19), about Best moment: "the best part of the wave in the ranking is not a great mechanic it is still hard to recall what happened so not a great stat". So scorecard revision 4 retired it (`retired: 4`) and the ground truth is now the **per-wave ratings** (docs/design/v3-rate-and-review.md):
+- on the weapon draft after each wave, an optional row asks for that wave's difficulty, fun and intensity (1–5) and a short note;
+- they go into the log as `waveRatings` (`{ wave, step, at, rating, note? }`; no replay change, the log version stays), and a map card's score carries them as `waves`;
+- the end screen suggests Best and Weakest wave from them (`bestSuggested`, `weakestSuggested`), so `best` / `weakest` are no longer recalled from memory either.
+
+What to compare: per wave, the player's **fun** and **intensity** against the wave's tension peak, shape and saves. Intensity is the closer match to the tension curve (both say how hot the wave was); fun says whether that heat was enjoyable. A wave rated intense but not fun, with a pinned curve, is the "chaos, not drama" case above. Waves the player did not rate are left out, not counted as average. `tools/v3/test-lab/scores.mjs` (`waveRatingAverages`) averages them per wave over a map card's runs.
+
+Revision 3 scores keep their `moment` and `momentT` and still read on the review page as before; they are simply no longer asked.
+
+## The scorecard's Best moment (revision 3, retired by revision 4)
 
 After a map card's full run, the scorecard has a new row, **Best moment**. It is optional and one tap:
 - the player taps the wave strip;

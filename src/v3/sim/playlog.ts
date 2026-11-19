@@ -34,7 +34,7 @@ import {
   type Tempo,
   type WaveRecord,
 } from './game';
-import { Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley } from './feedback';
+import { WAVE_NOTE_MAX, Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley, type WaveRating } from './feedback';
 import { attachTelemetry, type TelHeader, type TelMode, type Telemetry } from './telemetry';
 import { applyConvoy, convoyCommand, type CommandResult } from './convoy';
 import type { CommandId, ConvoySetup } from '../data/convoy';
@@ -334,6 +334,11 @@ export interface PlayLog {
   volleys?: Volley[];
   moments?: Moment[];
   rating?: Rating;
+  /** The player's rating of each wave, given on the weapon draft after it
+   *  (optional; docs/design/v3-rate-and-review.md), in the order given.
+   *  Like `rating` and `notes` it never touches replay: a log with it
+   *  replays exactly as one without, so the version stays. */
+  waveRatings?: WaveRating[];
   /** Special events met (sim/events.ts): when each started and ended
    *  (steps), what it sent, how it went and the shots fired in it (an older
    *  log's Decoy Storm also counted the shots at decoys). Derived: replay
@@ -421,7 +426,8 @@ export class Recorder {
    *  the run is not over. */
   static resume(game: Game, log: PlayLog, mark: WaveMark, build: string, at = new Date().toISOString()): Recorder {
     const { v, game: _game, commands, map: _map, seed: _seed, armory, summary, volleys, moments, events: _events, end: _end, endedAt: _endedAt, left: _left, notes, resumes, ...meta } = log;
-    const rec = new Recorder(game, { ...meta, ...(notes ? { notes: notes.map((n) => ({ ...n })) } : {}) });
+    const { waveRatings, ...rest } = meta;
+    const rec = new Recorder(game, { ...rest, ...(notes ? { notes: notes.map((n) => ({ ...n })) } : {}), ...(waveRatings ? { waveRatings: waveRatings.map((w) => ({ ...w, rating: { ...w.rating } })) } : {}) });
     rec.log.v = v;
     rec.log.armory = { ...armory };
     rec.log.commands = [...commands];
@@ -443,6 +449,35 @@ export class Recorder {
     const note: PlayNote = { step: this.game.steps, at: new Date().toISOString(), ...n, ctx: noteContext(this.game) };
     (this.log.notes ??= []).push(note);
     return note;
+  }
+
+  /** The player's rating of the wave just played (on the draft after it):
+   *  any of the three axes and a short note. Rated again, the wave's rating
+   *  is replaced; nothing left (no axis, no note) removes it. The game is
+   *  not touched. */
+  rateWave(wave: number, rating: Rating, note?: string): WaveRating | undefined {
+    const list = (this.log.waveRatings ??= []);
+    const at = list.findIndex((w) => w.wave === wave);
+    const r: Rating = {};
+    for (const k of ['difficulty', 'fun', 'intensity'] as const) {
+      const v = rating[k];
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5) r[k] = v;
+    }
+    const text = (note ?? '').trim().slice(0, WAVE_NOTE_MAX);
+    if (!Object.keys(r).length && !text) {
+      if (at >= 0) list.splice(at, 1);
+      if (!list.length) delete this.log.waveRatings;
+      return undefined;
+    }
+    const w: WaveRating = { wave, step: this.game.steps, at: new Date().toISOString(), rating: r, ...(text ? { note: text } : {}) };
+    if (at >= 0) list[at] = w;
+    else list.push(w);
+    return w;
+  }
+
+  /** The rating given for a wave, if any. */
+  waveRating(wave: number): WaveRating | undefined {
+    return this.log.waveRatings?.find((w) => w.wave === wave);
   }
 
   /** The player's rating of a finished volley. */
@@ -604,6 +639,7 @@ export class Recorder {
       ...this.log,
       commands: [...this.log.commands],
       ...(this.log.notes ? { notes: this.log.notes.map((n) => ({ ...n })) } : {}),
+      ...(this.log.waveRatings ? { waveRatings: this.log.waveRatings.map((w) => ({ ...w, rating: { ...w.rating } })) } : {}),
       ...(volleys.length ? { volleys: volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })) } : {}),
       ...(moments.length ? { moments: [...moments] } : {}),
       ...(g.eventLog.length ? { events: g.eventLog.map((e) => ({ ...e, sent: { ...e.sent } })) } : {}),

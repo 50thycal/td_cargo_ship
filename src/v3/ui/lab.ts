@@ -12,8 +12,9 @@ import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
-import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, waveChips, waveLabel, type ScoreCategory, type Scorecard } from '../data/scorecard';
-import type { MomentKind } from '../sim/feedback';
+import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, suggestWaves, waveChips, waveLabel, waveScoreText, type ScoreCategory, type Scorecard, type WaveScore } from '../data/scorecard';
+import type { MomentKind, Rating } from '../sim/feedback';
+import { ratingRows } from './notes';
 
 /** The review page for the Test Lab: it shows what was marked here (Claude
  *  copies it over from the game logs), and what is left to test. */
@@ -598,6 +599,13 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
 }
 
 // ---- The verdict ------------------------------------------------------------
+// Since scorecard revision 4 (docs/design/v3-rate-and-review.md) a test's
+// end screen is the normal game's "Rate & review this run" screen with a
+// Test Lab section: the rating rows on top (a map card's full run: its
+// scorecard, with the last scores for context), then the run on a
+// timeline (its marked moments, Watch it, a note on a moment, each wave's
+// rating from the draft, and a map run's Best and Weakest wave picked
+// under it), then the Test Lab's verdict, tags and note.
 
 export interface VerdictHandlers {
   save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'>, then: 'next' | 'again' | 'list') => void;
@@ -605,7 +613,8 @@ export interface VerdictHandlers {
 
 /** What the verdict sheet holds so far (the verdict, the tags, the note):
  *  app.ts keeps it for the test, so the sheet drawn again (a wave's end
- *  coming in under it) starts where the player left it. */
+ *  coming in under it, a moment picked on the timeline, a replay watched)
+ *  starts where the player left it. */
 export interface VerdictDraft {
   verdict: LabVerdict | null;
   tags: string[];
@@ -615,9 +624,14 @@ export interface VerdictDraft {
    *  from an earlier run: each run's score is its own. */
   score?: Partial<Record<ScoreCategory['id'], number | string>>;
   skipScore?: boolean;
-  /** Revision 3: the best moment's seconds into its wave (where on the
-   *  wave's chip it was tapped). */
-  momentT?: number;
+  /** Revision 4: the Best and Weakest wave suggested from the per-wave
+   *  ratings, and whether they were put in the score once already (a wave
+   *  the player cleared is not put back). */
+  suggested?: { best?: number; weakest?: number };
+  prefilled?: boolean;
+  /** Any other card: the normal game's three 1–5 rows (the log's
+   *  `rating`). */
+  rating?: Rating;
 }
 
 /** A fresh sheet: filled in from the card's verdict at this version, if
@@ -627,22 +641,45 @@ export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
   return { verdict: prior?.verdict ?? null, tags: [...(prior?.tags ?? [])], note: prior?.note ?? '' };
 }
 
+/** Revision 4: suggest Best and Weakest wave from the per-wave ratings,
+ *  once, into rows the player hasn't answered. */
+export function prefillWaves(d: VerdictDraft, waves: readonly WaveScore[]): void {
+  if (d.prefilled) return;
+  const s = suggestWaves(waves);
+  if (s.best === undefined && s.weakest === undefined) return;
+  d.prefilled = true;
+  d.suggested = s;
+  const answers = (d.score ??= {});
+  if (s.best !== undefined && answers.best === undefined) answers.best = s.best;
+  if (s.weakest !== undefined && answers.weakest === undefined) answers.weakest = s.weakest;
+}
+
 /** What Save keeps from the sheet: nothing without a verdict (the sheet
  *  asks for one instead). A map card's full run (`played`: the waves it
  *  played) adds its scorecard, unless it was skipped or left blank, and
- *  with it the card its comparison row named (`vsCard`). */
-export function verdictResult(d: VerdictDraft, played?: number, vsCard?: string): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
+ *  with it the card its comparison row named (`vsCard`), the waves rated
+ *  on the draft (`waves`) and what the sheet suggested from them. */
+export function verdictResult(d: VerdictDraft, played?: number, vsCard?: string, waves?: readonly WaveScore[]): Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'> | null {
   if (!d.verdict) return null;
   // Revision 2: the comparison row keeps the card it compared with.
-  const score = played !== undefined && !d.skipScore ? cleanScorecard({ ...d.score, ...(vsCard ? { vsCard } : {}), ...(d.momentT !== undefined ? { momentT: d.momentT } : {}), rev: SCORECARD_REV }, played) : undefined;
+  const raw = {
+    ...d.score,
+    ...(vsCard ? { vsCard } : {}),
+    ...(waves?.length ? { waves } : {}),
+    ...(d.suggested?.best !== undefined ? { bestSuggested: d.suggested.best } : {}),
+    ...(d.suggested?.weakest !== undefined ? { weakestSuggested: d.suggested.weakest } : {}),
+    rev: SCORECARD_REV,
+  };
+  const score = played !== undefined && !d.skipScore ? cleanScorecard(raw, played) : undefined;
   return { verdict: d.verdict, tags: [...d.tags], note: d.note.trim(), ...(score ? { score } : {}) };
 }
 
-// ---- The scorecard, revision 2 (data/scorecard.ts) -----------------------------
+// ---- The scorecard (data/scorecard.ts) ------------------------------------------
 // The player's approval on the map-rebuild hub (2026-11-17): rate relative
 // to the other maps, from what happened, not from memory. So the scorecard
 // opens with the player's last scores, its wave rows show what happened in
-// each wave, and one row compares this map with the map rated last.
+// each wave (and, revision 4, how the player rated it on the draft), and
+// one row compares this map with the map rated last.
 
 /** One wave of the run on the scorecard's strip: the ships lost in it and
  *  the moments the game marked in it (sim/feedback.ts, `Watch`). */
@@ -650,8 +687,7 @@ export interface WaveStripEntry {
   n: number;
   lost: number;
   marks: MomentKind[];
-  /** Game seconds the wave took (absent when not known): the best moment's
-   *  chip turns where it was tapped into seconds. */
+  /** Game seconds the wave took (absent when not known). */
   sec?: number;
 }
 
@@ -685,13 +721,6 @@ export function waveStrip(history: readonly { wave: number; lost: number; t?: nu
     const sec = t1 !== undefined && t1 > t0 ? Math.round((t1 - t0) * 10) / 10 : undefined;
     return { n, lost: end === undefined ? 0 : Math.max(0, end - before), marks: MARK_ORDER.filter((k) => kinds.has(k)), ...(sec !== undefined ? { sec } : {}) };
   });
-}
-
-/** Where on a wave's chip a tap landed (0 its left edge, 1 its right) as
- *  seconds into the wave (none when the wave's length isn't known). */
-export function momentSeconds(share: number, w: WaveStripEntry | undefined): number | undefined {
-  if (!w?.sec || !Number.isFinite(share)) return undefined;
-  return Math.round(Math.max(0, Math.min(1, share)) * w.sec * 10) / 10;
 }
 
 /** A card's entries that carry a score, newest first (by `at`). */
@@ -754,22 +783,80 @@ export function lastScores(p: LabProgress, cardId: string, now = Date.now()): { 
 }
 
 /** What the scorecard shows beside its rows: the progress on the device
- *  (for the last scores), the card scored, the run's wave strip, and the
- *  card to compare with. */
+ *  (for the last scores), the card scored, the run's wave strip, the card
+ *  to compare with, and the waves rated on the draft. */
 export interface ScorecardContext {
   p?: LabProgress;
   cardId?: string;
   strip?: WaveStripEntry[];
   vsCard?: string;
+  waves?: readonly WaveScore[];
 }
 
-/** The scorecard (round 11; revision 2, data/scorecard.ts): the player's
- *  last scores on top, then one row per category, a tap on a chip to
- *  answer (again to clear), every row optional, and Skip to fold it away.
- *  The boss row shows only on a run that reached the boss rounds, the
- *  comparison only with another scored map card. The wave rows offer the
- *  waves played, each with what happened in it when the strip is known. */
-export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardContext = {}): HTMLElement {
+/** One row of chips: a scorecard row's answers (`data-score-row`, each
+ *  chip `data-score` and `data-value`), a tap to answer, again to clear. */
+function chipRow(c: ScoreCategory, label: string, hint: string, opts: { v: number | string; label: string; w?: WaveStripEntry; rated?: WaveScore }[], answers: NonNullable<VerdictDraft['score']>, after: () => void): HTMLElement {
+  const row = el('div', `v3-score-row ${c.scale.kind}`);
+  row.dataset.scoreRow = c.id;
+  const lab = el('div', 'v3-score-lab');
+  lab.append(el('b', '', label), el('small', '', hint));
+  const chips = el('div', `v3-score-chips ${c.scale.kind}`);
+  chips.setAttribute('role', 'group');
+  chips.setAttribute('aria-label', label);
+  const btns = opts.map((o) => {
+    const b = button(o.w || o.rated ? '' : o.label, c.scale.kind === 'stars' ? 'v3-score-chip v3-rating-n' : 'v3-score-chip', () => {
+      if (answers[c.id] === o.v) delete answers[c.id];
+      else answers[c.id] = o.v;
+      mark();
+      after();
+    });
+    if (o.w || o.rated) {
+      // The wave, then what happened in it: "−2" ships lost and a mark for
+      // each kind of moment the game marked in it; and how the player
+      // rated it on the draft ("♥4": the fun; ★ is the strip's new-threat mark).
+      const w = o.w;
+      const marks = w ? w.marks.filter((k) => k !== 'sunk' || !w.lost) : [];
+      const info = el('span', `v3-wave-info${w?.lost ? ' lost' : ''}`);
+      if (w?.lost) info.append(el('em', '', `−${w.lost}`));
+      if (marks.length) info.append(document.createTextNode(marks.map((k) => STRIP_MARKS[k].glyph).join('')));
+      b.append(el('span', 'v3-wave-n', o.label), info);
+      if (o.rated) {
+        const r = el('span', 'v3-wave-rated', o.rated.fun !== undefined ? `♥${o.rated.fun}` : '✎');
+        b.append(r);
+        b.dataset.waveRating = waveScoreText(o.rated);
+      }
+      if (w) {
+        b.dataset.lost = String(w.lost);
+        b.dataset.marks = w.marks.join(' ');
+      }
+      const what = [...(w ? [w.lost ? `${w.lost} ship${w.lost === 1 ? '' : 's'} lost` : 'no ship lost', ...marks.map((k) => STRIP_MARKS[k].word)] : []), ...(o.rated ? [`you rated it ${waveScoreText(o.rated) || 'with a note'}`] : [])];
+      b.setAttribute('aria-label', `Wave ${o.label}: ${what.join(', ')}`);
+      b.title = `Wave ${o.label}: ${what.join(', ')}${o.rated?.note ? ` · “${o.rated.note}”` : ''}`;
+    }
+    b.dataset.score = c.id;
+    b.dataset.value = String(o.v);
+    // A tap here while typing leaves the text box its focus.
+    b.addEventListener('mousedown', (e) => e.preventDefault());
+    return b;
+  });
+  const mark = () => btns.forEach((b, k) => {
+    const on = answers[c.id] === opts[k].v;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  mark();
+  chips.append(...btns);
+  row.append(lab, chips);
+  return row;
+}
+
+/** The scorecard (round 11; revision 4, data/scorecard.ts), as the rating
+ *  rows of the review screen: the player's last scores on top, then one
+ *  row per question (Fun, Difficulty, Intensity, the boss rounds, the
+ *  comparison, Play again), a tap on a chip to answer (again to clear),
+ *  every row optional, and Skip to fold it away (with `alsoHide`: the
+ *  Best and Weakest rows under the timeline). */
+export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardContext = {}, alsoHide: HTMLElement[] = []): HTMLElement {
   const answers = (d.score ??= {});
   const box = el('section', 'v3-score');
   box.dataset.labScore = '1';
@@ -801,102 +888,18 @@ export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardConte
     panel.append(el('span', 'v3-score-last-h', 'Your last scores'), list);
     rows.append(panel);
   }
-  const strip = ctx.strip && ctx.strip.length >= played ? ctx.strip : undefined;
   const vsName = ctx.vsCard ? (labCard(ctx.vsCard)?.name ?? ctx.vsCard) : '';
   for (const c of scoreRows(played, { vsCard: ctx.vsCard })) {
+    if (c.scale.kind === 'wave') continue;
     const label = c.id === 'vs' ? `Compared with ${vsName}` : c.label;
-    const row = el('div', `v3-score-row${c.scale.kind === 'wave' && strip ? ' strip' : ''}`);
-    row.dataset.scoreRow = c.id;
-    const lab = el('div', 'v3-score-lab');
-    // The comparison's name says which map; its help, the rest.
-    lab.append(el('b', '', label), el('small', '', c.id === 'vs' ? 'this one was…' : c.help));
-    const chips = el('div', `v3-score-chips ${c.scale.kind}`);
-    chips.setAttribute('role', 'group');
-    chips.setAttribute('aria-label', label);
-    const opts: { v: number | string; label: string; w?: WaveStripEntry }[] =
-      c.scale.kind === 'choice'
-        ? c.scale.options.map((o) => ({ v: o.id, label: o.label }))
-        : c.scale.kind === 'wave'
-          ? waveChips(played).map((w) => ({ v: w.n, label: w.label, w: strip?.[w.n - 1] }))
-          : [1, 2, 3, 4, 5].map((n) => ({ v: n, label: String(n) }));
-    // Best moment (revision 3): where on the chip the tap lands says when
-    // in the wave; tapping the chosen wave again elsewhere moves it, on the
-    // same spot clears it.
-    let tapShare = NaN;
-    const btns = opts.map((o) => {
-      const b = button(o.w ? '' : o.label, 'v3-score-chip', () => {
-        if (c.id === 'moment') {
-          const t = momentSeconds(tapShare, o.w);
-          if (answers.moment === o.v && (t === undefined || t === d.momentT)) {
-            delete answers.moment;
-            delete d.momentT;
-          } else {
-            answers.moment = o.v;
-            if (t === undefined) delete d.momentT;
-            else d.momentT = t;
-          }
-        } else if (answers[c.id] === o.v) delete answers[c.id];
-        else answers[c.id] = o.v;
-        mark();
-      });
-      if (c.id === 'moment')
-        b.addEventListener('pointerdown', (e) => {
-          const r = b.getBoundingClientRect();
-          tapShare = r.width ? (e.clientX - r.left) / r.width : NaN;
-        });
-      if (o.w) {
-        // The wave, then what happened in it: "−2" ships lost, and a mark
-        // for each kind of moment the game marked in it.
-        const w = o.w;
-        const marks = w.marks.filter((k) => k !== 'sunk' || !w.lost);
-        const info = el('span', `v3-wave-info${w.lost ? ' lost' : ''}`);
-        if (w.lost) info.append(el('em', '', `−${w.lost}`));
-        if (marks.length) info.append(document.createTextNode(marks.map((k) => STRIP_MARKS[k].glyph).join('')));
-        b.append(el('span', 'v3-wave-n', o.label), info);
-        b.dataset.lost = String(w.lost);
-        b.dataset.marks = w.marks.join(' ');
-        const what = [w.lost ? `${w.lost} ship${w.lost === 1 ? '' : 's'} lost` : 'no ship lost', ...marks.map((k) => STRIP_MARKS[k].word)];
-        b.setAttribute('aria-label', `Wave ${o.label}: ${what.join(', ')}`);
-        b.title = `Wave ${o.label}: ${what.join(', ')}`;
-      }
-      b.dataset.score = c.id;
-      b.dataset.value = String(o.v);
-      // A tap here while typing leaves the text box its focus.
-      b.addEventListener('mousedown', (e) => e.preventDefault());
-      return b;
-    });
-    const mark = () => btns.forEach((b, k) => {
-      const on = answers[c.id] === opts[k].v;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', String(on));
-      if (c.id !== 'moment') return;
-      // The moment's place on its chip: a tick, and the seconds.
-      b.querySelector('.v3-moment-tick')?.remove();
-      const w = opts[k].w;
-      if (on && d.momentT !== undefined && w?.sec) {
-        const tick = el('i', 'v3-moment-tick');
-        tick.style.left = `${Math.min(92, Math.max(8, Math.round((d.momentT / w.sec) * 100)))}%`;
-        b.append(tick);
-        b.dataset.momentT = String(d.momentT);
-      } else delete b.dataset.momentT;
-    });
-    mark();
-    chips.append(...btns);
-    row.append(lab, chips);
-    rows.append(row);
-  }
-  if (strip) {
-    // What the strip's marks mean (only those it shows).
-    const shown = new Set(strip.flatMap((w) => w.marks.filter((k) => k !== 'sunk' || !w.lost)));
-    const key = [strip.some((w) => w.lost) ? '−n ships lost' : '', ...MARK_ORDER.filter((k) => shown.has(k)).map((k) => `${STRIP_MARKS[k].glyph} ${STRIP_MARKS[k].word}`)].filter(Boolean);
-    if (key.length) {
-      const legend = el('p', 'v3-score-legend', key.join(' · '));
-      legend.dataset.scoreLegend = '1';
-      rows.append(legend);
-    }
+    // A 1-5 row says its ends, as the normal game's rows do.
+    const hint = c.id === 'vs' ? 'this one was…' : c.scale.kind === 'stars' && c.low ? `1 ${c.low} · 5 ${c.high}` : c.help;
+    const opts = c.scale.kind === 'choice' ? c.scale.options.map((o) => ({ v: o.id, label: o.label })) : [1, 2, 3, 4, 5].map((n) => ({ v: n, label: String(n) }));
+    rows.append(chipRow(c, label, hint, opts, answers, () => {}));
   }
   const paint = () => {
     rows.hidden = !!d.skipScore;
+    for (const e of alsoHide) e.hidden = !!d.skipScore;
     box.classList.toggle('skipped', !!d.skipScore);
     title.textContent = d.skipScore ? 'Scorecard skipped' : 'Scorecard · every row optional';
     skip.textContent = d.skipScore ? 'Show it' : 'Skip';
@@ -906,16 +909,84 @@ export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardConte
   return box;
 }
 
-/** Round 4's logs: seven cards saved with a note and no verdict. While the
- *  player typed, the Keep / Tune / Cut row was folded away with the rest of
- *  the sheet, and Save (all that was left) saved a null verdict. The row now
- *  stays while typing, and Save with no verdict asks for one. A map card's
- *  full run (scorecard revision 2) can pass its waves' `strip`: what
- *  happened in each, for the Best and Weakest rows. */
-export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays, played?: number, strip?: WaveStripEntry[]): HTMLElement {
-  const sheet = el('div', 'v3-lab-sheet v3-lab-verdict');
-  const title = ended === 'lost' ? `${card.name} · the convoy was lost` : plays === 'full' && ended === 'length' ? `${card.name} · map cleared: how was it?` : `${card.name} · how was it?`;
-  sheet.append(el('h2', '', title));
+/** Best and Weakest wave (a map card's full run), picked under the run's
+ *  timeline: each wave's chip says what happened in it and how the player
+ *  rated it on the draft. With two or more waves rated for fun, the most
+ *  and least fun are suggested (put in once; a tap changes them). A pick
+ *  marks its wave's band on the timeline (▲ best, ▼ weakest). */
+export function waveRowsEl(played: number, d: VerdictDraft, ctx: ScorecardContext = {}): HTMLElement {
+  const answers = (d.score ??= {});
+  const box = el('div', 'v3-score-waves');
+  box.dataset.scoreWaves = '1';
+  const strip = ctx.strip && ctx.strip.length >= played ? ctx.strip : undefined;
+  const rated = new Map((ctx.waves ?? []).map((w) => [w.n, w]));
+  const sync = () => {
+    // The timeline's bands show the picks.
+    const tl = box.closest('.v3-lab-verdict') ?? box.parentElement;
+    for (const band of tl?.querySelectorAll<HTMLElement>('.v3-tl-wave[data-wave]') ?? []) {
+      const n = Number(band.dataset.wave);
+      band.querySelector('.v3-tl-pick')?.remove();
+      const best = answers.best === n;
+      const weak = answers.weakest === n;
+      band.classList.toggle('best', best);
+      band.classList.toggle('weakest', weak && !best);
+      if (best || weak) band.append(el('i', 'v3-tl-pick', best ? '▲' : '▼'));
+    }
+    for (const id of ['best', 'weakest'] as const) {
+      const note = box.querySelector<HTMLElement>(`[data-score-suggest="${id}"]`);
+      if (note) note.hidden = d.suggested?.[id] === undefined || answers[id] !== d.suggested[id];
+    }
+  };
+  for (const c of scoreRows(played)) {
+    if (c.scale.kind !== 'wave') continue;
+    const opts = waveChips(played).map((w) => ({ v: w.n, label: w.label, w: strip?.[w.n - 1], rated: rated.get(w.n) }));
+    const row = chipRow(c, c.label, c.help, opts, answers, sync);
+    row.classList.add('strip');
+    const sug = d.suggested?.[c.id as 'best' | 'weakest'];
+    if (sug !== undefined) {
+      const note = el('small', 'v3-score-suggest', `Suggested from your wave ratings (♥${rated.get(sug)?.fun ?? '?'}): tap to change`);
+      note.dataset.scoreSuggest = c.id;
+      row.querySelector('.v3-score-lab')?.append(note);
+    }
+    box.append(row);
+  }
+  if (strip) {
+    // What the chips' marks mean (only those shown).
+    const shown = new Set(strip.flatMap((w) => w.marks.filter((k) => k !== 'sunk' || !w.lost)));
+    const key = [strip.some((w) => w.lost) ? '−n ships lost' : '', ...MARK_ORDER.filter((k) => shown.has(k)).map((k) => `${STRIP_MARKS[k].glyph} ${STRIP_MARKS[k].word}`), rated.size ? '♥n your fun rating on the draft' : ''].filter(Boolean);
+    if (key.length) {
+      const legend = el('p', 'v3-score-legend', key.join(' · '));
+      legend.dataset.scoreLegend = '1';
+      box.append(legend);
+    }
+  }
+  // Once in the page (the bands exist then).
+  queueMicrotask(sync);
+  return box;
+}
+
+/** The run on the review screen (app.ts builds its parts: the timeline,
+ *  its legend, the selected moment with Watch it and Note on this), and
+ *  the waves the player rated on the draft. */
+export interface VerdictReview {
+  run: HTMLElement[];
+  waves?: readonly WaveScore[];
+}
+
+/** The verdict sheet: the normal game's "Rate & review this run" with a
+ *  Test Lab section (scorecard revision 4). Round 4's logs: seven cards
+ *  saved with a note and no verdict. While the player typed, the Keep /
+ *  Tune / Cut row was folded away with the rest of the sheet, and Save
+ *  (all that was left) saved a null verdict. The row now stays while
+ *  typing, and Save with no verdict asks for one. A map card's full run
+ *  passes its waves' `strip`: what happened in each, for Best and Weakest
+ *  wave. */
+export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended: LabResult['ended'], p: LabProgress, next: LabCard | undefined, h: VerdictHandlers, draft?: VerdictDraft, plays?: LabPlays, played?: number, strip?: WaveStripEntry[], review?: VerdictReview): HTMLElement {
+  const sheet = el('div', 'v3-lab-sheet v3-lab-verdict v3-review-merged');
+  const how = ended === 'lost' ? 'the convoy was lost' : plays === 'full' && ended === 'length' ? 'map cleared' : ended === 'length' ? 'test run to its length' : `stopped with Done · ${waves} wave${waves === 1 ? '' : 's'} cleared`;
+  const head = el('div', 'v3-review-title');
+  head.append(el('h2', '', 'Rate & review this run'), el('p', 'v2-sub', `${card.name} · ${how}`));
+  sheet.append(head);
   const older = olderEntries(p, card.id);
   const what = changedSince(p, card.id);
   if (what.length) {
@@ -925,11 +996,38 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
     sheet.append(ch);
   }
   const d = draft ?? newVerdictDraft(p, card.id);
-  // A map card's full run (round 11): the scorecard, above the verdict.
+  const rated = review?.waves ?? [];
+  // A map card's full run (round 11): the scorecard, as the rating rows.
   const scored = card.kind === 'map' && plays === 'full' && played !== undefined ? played : undefined;
   // Its comparison row: the other map card scored most recently.
   const vsCard = scored !== undefined ? vsTarget(p, card.id) : undefined;
-  if (scored !== undefined) sheet.append(scorecardEl(scored, d, { p, cardId: card.id, strip, vsCard }));
+  const ctx: ScorecardContext = { p, cardId: card.id, strip, vsCard, waves: rated };
+  if (scored !== undefined) prefillWaves(d, rated);
+  const waveRows = scored !== undefined ? waveRowsEl(scored, d, ctx) : null;
+  if (scored !== undefined) sheet.append(scorecardEl(scored, d, ctx, waveRows ? [waveRows] : []));
+  else {
+    // Any other card: the normal game's three rows (the log's rating).
+    const rate = el('section', 'v3-score v3-lab-rating');
+    rate.dataset.labRating = '1';
+    const rows = ratingRows(d.rating ?? {});
+    // The rows keep their own state; the draft follows each tap.
+    rows.el.addEventListener('click', () => (d.rating = rows.value()));
+    const eyebrow = el('div', 'v3-score-head');
+    eyebrow.append(el('span', 'v3-eyebrow', 'Rate this run · optional'));
+    rate.append(eyebrow, rows.el);
+    sheet.append(rate);
+  }
+  // The run: its timeline, the selected moment, and Best and Weakest wave.
+  if (review?.run.length || waveRows) {
+    const run = el('section', 'v3-review-run');
+    run.dataset.reviewRun = '1';
+    run.append(el('span', 'v3-eyebrow', rated.length ? `The run · ${rated.length} wave${rated.length === 1 ? '' : 's'} rated on the draft` : 'The run'), ...(review?.run ?? []), ...(waveRows ? [waveRows] : []));
+    sheet.append(run);
+  }
+  // The Test Lab's own section: the verdict, the tags, the note.
+  const labSec = el('section', 'v3-lab-section');
+  labSec.dataset.labSection = '1';
+  labSec.append(el('span', 'v3-eyebrow v3-lab-section-h', 'Test Lab · your verdict'));
   const cols = el('div', 'v3-lab-cols');
   const left = el('div', 'v3-lab-col');
   const tags = new Set<string>(d.tags);
@@ -977,7 +1075,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const note = el('textarea', 'v3-lab-note');
   note.id = 'lab-note';
   note.rows = 3;
-  note.placeholder = 'What did you notice? (the microphone key on the keyboard dictates)';
+  note.placeholder = 'A note on the run: what did you notice? (the microphone key on the keyboard dictates)';
   note.value = d.note;
   note.addEventListener('input', () => (d.note = note.value));
   // Keys typed here are the note's, not the game's.
@@ -999,12 +1097,13 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
     right.append(hist);
   }
   cols.append(left, right);
+  labSec.append(cols);
   const acts = el('div', 'v3-lab-sheet-acts');
   // No verdict yet: ask for one rather than save a blank (the note and the
   // tags stay as they are).
   const save = (then: 'next' | 'again' | 'list') => {
     d.note = note.value;
-    const r = verdictResult(d, scored, vsCard);
+    const r = verdictResult(d, scored, vsCard, rated);
     if (!r) {
       // The keyboard goes, so the whole sheet (the row, and why) is back.
       note.blur();
@@ -1012,7 +1111,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
       vrow.classList.remove('need');
       void vrow.offsetWidth;
       vrow.classList.add('need');
-      // Under a scorecard the row can be scrolled out of sight.
+      // Under the scorecard and the run the row can be scrolled out of sight.
       vwrap.scrollIntoView?.({ block: 'nearest' });
       return;
     }
@@ -1029,7 +1128,7 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
     n.append(el('span', '', 'Save · next'), el('small', '', next.name));
     acts.append(n);
   }
-  sheet.append(cols, acts);
+  sheet.append(labSec, acts);
   return sheet;
 }
 
