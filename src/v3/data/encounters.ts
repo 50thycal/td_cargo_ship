@@ -2739,7 +2739,7 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 1, from: base(1), aim: 'near' },
-      { at: 0.35, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.35, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
     ],
     replaces: { drones: 6 },
   },
@@ -2830,7 +2830,7 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
       { at: 0.4, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
-      { at: 0.4, plus: 2.5, kind: 'guided', count: 1, from: base(4) },
+      { at: 0.4, plus: 2.5, kind: 'guided', count: 1, from: base(4), aim: 'near' },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
     replaces: { drones: 9, ballistic: 3, guided: 2 },
@@ -2853,7 +2853,7 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
-      { at: 0.5, plus: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+      { at: 0.5, plus: 0.6, kind: 'drone', count: 3, gap: 0.35, from: base(1) },
       { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(3) },
     ],
     replaces: { drones: 11, ballistic: 6, extras: { cluster: 1, supersonic: 1 } },
@@ -2880,7 +2880,7 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 9, ballistic: 6, guided: 2, extras: { cluster: 1, heavy: 1 } },
+    replaces: { drones: 8, ballistic: 6, guided: 2, extras: { cluster: 1, heavy: 1 } },
   },
   {
     id: 'island-run-past',
@@ -3431,9 +3431,9 @@ export const ISLAND_BOSS_ROUNDS: BossRound[] = [
  *  missiles at the supertanker and, in round 3, guided missiles from the
  *  headland at the lead ship. */
 export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
-  { packs: [2, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }] },
-  { packs: [3, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }] },
-  { packs: [3, 2], fast: 2, fire: [{ kind: 'guided', at: 4, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
+  { packs: [2, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
+  { packs: [3, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
+  { packs: [3, 3], fast: 2, fire: [{ kind: 'guided', at: 4, count: 2, gap: 3, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

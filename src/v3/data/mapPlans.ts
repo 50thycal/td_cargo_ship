@@ -131,13 +131,14 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   island: {
     problem: 'The enemy island sits between the two lanes: its silos fire on the ships passing it from closer than any shore, with almost no warning, and the fast north lane runs between the island and the far shore, furthest from your carrier.',
     // The island's fire is swarms from point-blank range onto ships
-    // bunched beside it: area fire that takes a swarm in a shot (Shrapnel,
-    // the Boomerang's sweep) and the Gunship Pair over the convoy, which
-    // rockets the thickest cluster. Slow aimed weapons and the Seeker's long
-    // flight are too late at that range (bots, the player's Armory:
-    // docs/design/v3-ch2-island.md, Kits). Every weapon is in chapter 2's
-    // draft.
-    counters: ['shrapnel', 'boomerang', 'gunships'],
+    // bunched beside it, too close for a shot from the carrier to get
+    // there first: helpers that fight on their own over the convoy (the
+    // Gunship Pair's rockets at the thickest cluster, the Drone Screen) and
+    // the Gravity Well, which pulls a swarm off the lane. Slow aimed
+    // weapons and the Seeker's long flight are too late at that range
+    // (bots, the player's Armory: docs/design/v3-ch2-island.md, Kits).
+    // Every weapon is in chapter 2's draft.
+    counters: ['well', 'droneScreen', 'gunships'],
     offCounter: ['railgun', 'seeker', 'lance'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east, two groups in three in the wide south lane, the third making a fast run up the narrow north lane between the island and the far shore.',
     stretches: { danger: 'middle', safe: 'late' },
