@@ -11,7 +11,7 @@ import { RULES } from '../../src/v3/data/config';
 import { foeOnBoard, labDone } from '../../src/v3/sim/lab';
 import { Recorder, replay, type PlayLog } from '../../src/v3/sim/playlog';
 import { labResultDocs, logRound, ownNote } from '../../src/v3/sim/labDocs';
-import { addLabEntry, currentEntry, labStatus, newVerdictDraft, nextCards, olderEntries, parseLabProgress, verdictResult, type LabEntry } from '../../src/v3/ui/lab';
+import { addLabEntry, currentEntry, earlierEntries, labStatus, newVerdictDraft, nextCards, olderEntries, parseLabProgress, verdictResult, type LabEntry } from '../../src/v3/ui/lab';
 import { applyFreePlay, applyLab, createGame, damageThreat, labBring, step, type Game } from '../../src/v3/sim/game';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
 
@@ -415,17 +415,19 @@ describe('the verdict sheet (Test Lab round 4: seven notes saved with no verdict
     expect(verdictResult({ verdict: 'keep', tags: ['Fun'], note: '  the fire looks off \n' })).toEqual({ verdict: 'keep', tags: ['Fun'], note: 'the fire looks off' });
   });
 
-  it('a sheet starts from the card\'s verdict at this version, and its picks are one object the sheet keeps through typing and a redraw', () => {
+  it('every run\'s sheet starts blank (log v30: the old note and tags came back on a replay); earlier verdicts are history', () => {
     const p = parseLabProgress(null);
     expect(newVerdictDraft(p, 'cloud')).toEqual({ verdict: null, tags: [], note: '' });
     addLabEntry(p, 'cloud', { verdict: 'tune', tags: ['Bug'], note: 'old words', waves: 2, ended: 'done', stats, at: 'x', rev: cardRev('cloud'), round: LAB_ROUND });
     const d = newVerdictDraft(p, 'cloud');
-    expect(d).toEqual({ verdict: 'tune', tags: ['Bug'], note: 'old words' });
-    // Its own copy: picks on the sheet don't touch the saved entry.
+    expect(d).toEqual({ verdict: null, tags: [], note: '' });
+    // The earlier verdict is still there, as history.
+    expect(earlierEntries(p, 'cloud').map((e) => e.note)).toEqual(['old words']);
+    // Picks on the sheet don't touch the saved entry.
     d.tags.push('Fun');
     d.verdict = 'keep';
     expect(currentEntry(p, 'cloud')!.tags).toEqual(['Bug']);
-    expect(verdictResult(d)).toEqual({ verdict: 'keep', tags: ['Bug', 'Fun'], note: 'old words' });
+    expect(verdictResult(d)).toEqual({ verdict: 'keep', tags: ['Fun'], note: '' });
   });
 });
 

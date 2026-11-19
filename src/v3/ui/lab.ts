@@ -634,11 +634,19 @@ export interface VerdictDraft {
   rating?: Rating;
 }
 
-/** A fresh sheet: filled in from the card's verdict at this version, if
- *  it has one. */
-export function newVerdictDraft(p: LabProgress, cardId: string): VerdictDraft {
-  const prior = currentEntry(p, cardId);
-  return { verdict: prior?.verdict ?? null, tags: [...(prior?.tags ?? [])], note: prior?.note ?? '' };
+/** A fresh sheet: blank on every run. Until log v30 it started from the
+ *  card's verdict at this version, so a replay of the Kesh card brought
+ *  back the earlier run's note and tags (the player, Marrow v29: "still
+ *  has my old notes from the previous run"). Earlier verdicts show on the
+ *  sheet as history instead (earlierEntries). */
+export function newVerdictDraft(_p: LabProgress, _cardId: string): VerdictDraft {
+  return { verdict: null, tags: [], note: '' };
+}
+
+/** Every verdict given on the card so far, at any version, newest first:
+ *  the sheet's history. */
+export function earlierEntries(p: LabProgress, id: string): LabEntry[] {
+  return [...(p.results[id] ?? [])].reverse();
 }
 
 /** Revision 4: suggest Best and Weakest wave from the per-wave ratings,
@@ -1084,12 +1092,14 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const right = el('div', 'v3-lab-col v3-lab-evidence');
   right.append(el('span', 'v3-eyebrow', 'Counted this test'));
   for (const line of evidenceLines(card, s, waves, plays)) right.append(el('p', '', line));
-  if (older.length) {
-    // Earlier versions' verdicts, read only.
+  const earlier = earlierEntries(p, card.id);
+  if (earlier.length) {
+    // Earlier verdicts, this version's too, read only: the sheet itself
+    // starts blank (newVerdictDraft).
     const hist = el('div', 'v3-lab-history');
     hist.dataset.labHistory = '1';
     hist.append(el('span', 'v3-eyebrow', 'Your earlier verdicts'));
-    for (const e of older.slice(0, 2)) {
+    for (const e of earlier.slice(0, 3)) {
       const line = el('p', '', oldLine(e));
       line.title = oldLine(e);
       hist.append(line);

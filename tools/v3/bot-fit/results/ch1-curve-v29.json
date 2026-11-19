@@ -1,0 +1,814 @@
+{
+ "about": "The \"you\" bot on the player's setup (mirror: the player's seed, picks, Armory; seeds: the same setup on seeds 900..): ships lost and tension per wave. Made by tools/v3/bot-fit/curve.ts.",
+ "dice": 24,
+ "seeds": 24,
+ "runs": {
+  "v3-20261119202157-1083": {
+   "mirror": {
+    "id": "v3-20261119202157-1083",
+    "map": "kesh",
+    "runs": 24,
+    "won": 0.88,
+    "lost1to5": 0.13,
+    "lost6to10": 2.67,
+    "lost1to10": 2.79,
+    "firstHot": 4.46,
+    "waves": [
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.04,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.19,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.41,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.98,
+      "peaks": 0.88,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "single": 0.71,
+       "rising": 0.08,
+       "flat": 0.21
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.13,
+      "peak": 1.05,
+      "peaks": 0.79,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "single": 0.79,
+       "flat": 0.21
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.04,
+      "peak": 0.64,
+      "peaks": 0.25,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.75,
+       "single": 0.25
+      }
+     },
+     {
+      "n": 24,
+      "lost": 1,
+      "peak": 1.04,
+      "peaks": 0.79,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "single": 0.79,
+       "flat": 0.21
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.5,
+      "peak": 0.83,
+      "peaks": 0.67,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.38,
+       "flat": 0.5,
+       "rising": 0.04,
+       "sawtooth": 0.08
+      }
+     },
+     {
+      "n": 23,
+      "lost": 0.43,
+      "peak": 1.12,
+      "peaks": 0.74,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.26,
+       "single": 0.74
+      }
+     },
+     {
+      "n": 23,
+      "lost": 0.74,
+      "peak": 1.31,
+      "peaks": 1,
+      "hot": 0.04,
+      "shape": "single",
+      "shapes": {
+       "sawtooth": 0.09,
+       "single": 0.7,
+       "flat": 0.17,
+       "rising": 0.04
+      }
+     },
+     {
+      "n": 21,
+      "lost": 0.38,
+      "peak": 1.24,
+      "peaks": 0.9,
+      "hot": 0.15,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.24,
+       "single": 0.43,
+       "pinned": 0.19,
+       "sawtooth": 0.1,
+       "rising": 0.05
+      }
+     },
+     {
+      "n": 21,
+      "lost": 0.67,
+      "peak": 1.47,
+      "peaks": 1,
+      "hot": 0.2,
+      "shape": "single",
+      "shapes": {
+       "sawtooth": 0.05,
+       "pinned": 0.24,
+       "single": 0.38,
+       "flat": 0.19,
+       "rising": 0.14
+      }
+     },
+     {
+      "n": 21,
+      "lost": 0.33,
+      "peak": 1.25,
+      "peaks": 1.1,
+      "hot": 0.22,
+      "shape": "single",
+      "shapes": {
+       "single": 0.62,
+       "sawtooth": 0.14,
+       "pinned": 0.19,
+       "flat": 0.05
+      }
+     }
+    ]
+   },
+   "player": {
+    "exact": true,
+    "lost": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     3,
+     1,
+     3,
+     0
+    ],
+    "peak": [
+     0.05,
+     0.17,
+     0.26,
+     1.18,
+     1.01,
+     0.89,
+     0.51,
+     0.49,
+     0.8,
+     1.03,
+     1.41,
+     2.61,
+     1.15
+    ],
+    "shape": [
+     "flat",
+     "flat",
+     "flat",
+     "single",
+     "single",
+     "single",
+     "flat",
+     "flat",
+     "single",
+     "sawtooth",
+     "single",
+     "pinned",
+     "single"
+    ]
+   },
+   "seeds": {
+    "id": "v3-20261119202157-1083",
+    "map": "kesh",
+    "runs": 24,
+    "won": 0.54,
+    "lost1to5": 0.29,
+    "lost6to10": 1.88,
+    "lost1to10": 2.17,
+    "firstHot": 5.71,
+    "waves": [
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.03,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.18,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.41,
+      "peaks": 0.04,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.96,
+       "single": 0.04
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.17,
+      "peak": 0.72,
+      "peaks": 0.46,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.46,
+       "flat": 0.54
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.13,
+      "peak": 0.66,
+      "peaks": 0.38,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.38,
+       "flat": 0.62
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.04,
+      "peak": 0.6,
+      "peaks": 0.17,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.17,
+       "flat": 0.83
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.5,
+      "peak": 0.82,
+      "peaks": 0.58,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.42,
+       "single": 0.58
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.29,
+      "peak": 0.82,
+      "peaks": 0.58,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.42,
+       "flat": 0.5,
+       "sawtooth": 0.08
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.33,
+      "peak": 0.93,
+      "peaks": 0.75,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "single": 0.58,
+       "flat": 0.33,
+       "sawtooth": 0.08
+      }
+     },
+     {
+      "n": 23,
+      "lost": 0.74,
+      "peak": 1.36,
+      "peaks": 1,
+      "hot": 0.04,
+      "shape": "single",
+      "shapes": {
+       "single": 0.74,
+       "flat": 0.13,
+       "rising": 0.09,
+       "sawtooth": 0.04
+      }
+     },
+     {
+      "n": 22,
+      "lost": 0.45,
+      "peak": 1.04,
+      "peaks": 0.73,
+      "hot": 0.12,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.36,
+       "single": 0.5,
+       "pinned": 0.05,
+       "sawtooth": 0.05,
+       "rising": 0.05
+      }
+     },
+     {
+      "n": 21,
+      "lost": 0.9,
+      "peak": 1.58,
+      "peaks": 1.1,
+      "hot": 0.28,
+      "shape": "single",
+      "shapes": {
+       "rising": 0.05,
+       "pinned": 0.43,
+       "single": 0.48,
+       "flat": 0.05
+      }
+     },
+     {
+      "n": 21,
+      "lost": 3.29,
+      "peak": 2.47,
+      "peaks": 1,
+      "hot": 0.48,
+      "shape": "pinned",
+      "shapes": {
+       "pinned": 0.81,
+       "single": 0.19
+      }
+     }
+    ]
+   }
+  },
+  "v3-20261119132436-3976": {
+   "mirror": {
+    "id": "v3-20261119132436-3976",
+    "map": "marrow",
+    "runs": 24,
+    "won": 0.92,
+    "lost1to5": 0,
+    "lost6to10": 3.33,
+    "lost1to10": 3.33,
+    "firstHot": 5.21,
+    "waves": [
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.07,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.18,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.67,
+      "peaks": 0.42,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.58,
+       "single": 0.42
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.61,
+      "peaks": 0.13,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.87,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.56,
+      "peaks": 0.13,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.87,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.08,
+      "peak": 0.72,
+      "peaks": 0.46,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.29,
+       "flat": 0.62,
+       "rising": 0.04,
+       "sawtooth": 0.04
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.5,
+      "peak": 0.82,
+      "peaks": 0.71,
+      "hot": 0.03,
+      "shape": "flat",
+      "shapes": {
+       "sawtooth": 0.17,
+       "single": 0.29,
+       "flat": 0.5,
+       "rising": 0.04
+      }
+     },
+     {
+      "n": 23,
+      "lost": 0.61,
+      "peak": 1.1,
+      "peaks": 1.35,
+      "hot": 0.04,
+      "shape": "sawtooth",
+      "shapes": {
+       "sawtooth": 0.39,
+       "single": 0.22,
+       "flat": 0.3,
+       "rising": 0.09
+      }
+     },
+     {
+      "n": 23,
+      "lost": 0.83,
+      "peak": 1.16,
+      "peaks": 1.52,
+      "hot": 0.06,
+      "shape": "single",
+      "shapes": {
+       "rising": 0.09,
+       "sawtooth": 0.39,
+       "single": 0.43,
+       "flat": 0.09
+      }
+     },
+     {
+      "n": 23,
+      "lost": 1.43,
+      "peak": 1.3,
+      "peaks": 1.91,
+      "hot": 0.06,
+      "shape": "single",
+      "shapes": {
+       "sawtooth": 0.22,
+       "single": 0.39,
+       "rising": 0.39
+      }
+     },
+     {
+      "n": 22,
+      "lost": 0.18,
+      "peak": 0.62,
+      "peaks": 0.36,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.68,
+       "single": 0.27,
+       "sawtooth": 0.05
+      }
+     },
+     {
+      "n": 22,
+      "lost": 0.23,
+      "peak": 0.7,
+      "peaks": 0.32,
+      "hot": 0.02,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.23,
+       "flat": 0.73,
+       "sawtooth": 0.05
+      }
+     },
+     {
+      "n": 22,
+      "lost": 0.5,
+      "peak": 1.05,
+      "peaks": 1.18,
+      "hot": 0.11,
+      "shape": "single",
+      "shapes": {
+       "sawtooth": 0.14,
+       "flat": 0.18,
+       "single": 0.45,
+       "rising": 0.18,
+       "pinned": 0.05
+      }
+     }
+    ]
+   },
+   "player": {
+    "exact": true,
+    "lost": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     1,
+     2,
+     2
+    ],
+    "peak": [
+     0.11,
+     0.03,
+     0.21,
+     0.41,
+     0.28,
+     0.55,
+     0.73,
+     1.28,
+     0.66,
+     1.03,
+     null,
+     null,
+     null
+    ],
+    "shape": [
+     "flat",
+     "flat",
+     "flat",
+     "flat",
+     "flat",
+     "flat",
+     "flat",
+     "sawtooth",
+     "flat",
+     "sawtooth",
+     null,
+     null,
+     null
+    ]
+   },
+   "seeds": {
+    "id": "v3-20261119132436-3976",
+    "map": "marrow",
+    "runs": 24,
+    "won": 0.75,
+    "lost1to5": 0,
+    "lost6to10": 3.29,
+    "lost1to10": 3.29,
+    "firstHot": 5.63,
+    "waves": [
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.05,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.17,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.5,
+      "peaks": 0.13,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.87,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.52,
+      "peaks": 0.08,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.92,
+       "single": 0.08
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0,
+      "peak": 0.53,
+      "peaks": 0.25,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.75,
+       "single": 0.25
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.17,
+      "peak": 0.81,
+      "peaks": 0.63,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "single": 0.46,
+       "flat": 0.46,
+       "sawtooth": 0.08
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.21,
+      "peak": 0.79,
+      "peaks": 0.67,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.42,
+       "sawtooth": 0.04,
+       "single": 0.5,
+       "rising": 0.04
+      }
+     },
+     {
+      "n": 24,
+      "lost": 0.46,
+      "peak": 0.98,
+      "peaks": 1.58,
+      "hot": 0.04,
+      "shape": "sawtooth",
+      "shapes": {
+       "sawtooth": 0.54,
+       "flat": 0.17,
+       "single": 0.21,
+       "rising": 0.08
+      }
+     },
+     {
+      "n": 23,
+      "lost": 1.17,
+      "peak": 1.23,
+      "peaks": 1.57,
+      "hot": 0.06,
+      "shape": "single",
+      "shapes": {
+       "single": 0.39,
+       "rising": 0.26,
+       "sawtooth": 0.26,
+       "flat": 0.09
+      }
+     },
+     {
+      "n": 23,
+      "lost": 1.39,
+      "peak": 1.21,
+      "peaks": 1.65,
+      "hot": 0.05,
+      "shape": "single",
+      "shapes": {
+       "rising": 0.26,
+       "sawtooth": 0.22,
+       "single": 0.43,
+       "flat": 0.09
+      }
+     },
+     {
+      "n": 18,
+      "lost": 0.11,
+      "peak": 0.45,
+      "peaks": 0.17,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.89,
+       "single": 0.06,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 18,
+      "lost": 0.06,
+      "peak": 0.47,
+      "peaks": 0.06,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.94,
+       "single": 0.06
+      }
+     },
+     {
+      "n": 18,
+      "lost": 0,
+      "peak": 0.75,
+      "peaks": 0.56,
+      "hot": 0.05,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.44,
+       "flat": 0.5,
+       "sawtooth": 0.06
+      }
+     }
+    ]
+   }
+  }
+ }
+}
