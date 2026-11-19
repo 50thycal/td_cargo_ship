@@ -51,7 +51,7 @@ On Marrow the counter kit is level with the bot's own draft (6.3 each).
 - Your usual build uses two of the three weakest. With the counter kit it loses 12.7 ships a run; Wide Warhead + Armor Plating + Stockpile loses 6.0.
 
 ### Proposals for you (nothing here is applied)
-1. **Overdrive.** It ties Seeker Pod as the weakest shooting-era weapon alone (11.7 ships a run) and is in two of the four worst triples. First check whether the bot plays it as you do (above). If the bot is right, give Overdrive a stronger level 1 or a longer run.
+1. **Overdrive.** Alone it ties Seeker Pod at 11.7 ships a run, ahead of only Supply Run and the Laser Cutter, and is in two of the four worst triples. First check whether the bot plays it as you do (above). If the bot is right, give Overdrive a stronger level 1 or a longer run.
 2. **Seeker Pod and Tesla Arc** are the weakest shooting weapons on their own: about 11–12 ships a run alone, against 8.4–9.4 for the best. A small buff to either would widen the good choices.
 3. **Harbor Mouth and Kesh need a new counter kit** (rule `m-kits`): one the chapter 1 draft can deal (no Focus) and that beats the bot's own draft. Candidates from the sweep:
    - Harbor Mouth: Point Defense + Railgun + Supply Run, the best there.
