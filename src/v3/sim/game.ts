@@ -1295,6 +1295,14 @@ function makeRoom(units: { kind: ThreatKind; size: number }[], trickled: number[
         if (i >= 0) units.splice(i, 1);
         else drones++;
       }
+    // Chapter 2 (encounters rev 4): a map's own extras (data/maps.ts
+    // `extras`) the encounter stands in for; one the wave doesn't have
+    // takes nothing.
+    for (const [kind, n] of Object.entries(e.replaces.extras ?? {}))
+      for (let k = n ?? 0; k > 0; k--) {
+        const i = units.findIndex((u) => u.kind === kind);
+        if (i >= 0) units.splice(i, 1);
+      }
   }
   for (let i = units.length - 1; i >= 0 && drones > 0; i--) {
     if (units[i].kind !== 'drone') continue;
@@ -1385,12 +1393,14 @@ function updateEncCalls(g: Game): void {
   while (enc.calls.length && enc.calls[0].at <= g.waveT) g.events.push({ kind: 'encounter', id: enc.calls.shift()!.id });
 }
 
-/** An authored launch's target, picked as it leaves: the ship furthest
+/** An authored launch's target, picked as it leaves (data/encounters.ts,
+ *  BeatAim): the ship furthest
  *  along its lane, the one nearest the mouth of the narrows, or (rev 4's
  *  'rear', only rev 4 encounters use it) the one least far along. Rev 4's
  *  chapter 1 maps: 'near', the ship nearest the launcher; 'mid', the ship
  *  nearest halfway along its lane; 'post', the map's allied structure while
- *  it stands (Lee of Marrow's radar), else the ship nearest where it stood. */
+ *  it stands (Lee of Marrow's radar), else the ship nearest where it stood.
+ *  Chapter 2's Behemoth Run: 'vip', the supertanker while it sails. */
 function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   let from: Point = { x: th.x, y: th.y };
   if (aim === 'post' && g.map.posts) {
@@ -1407,14 +1417,18 @@ function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
   if (!pool.length) return;
   const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
+  // Chapter 2 (rev 4): the supertanker while it sails (else, as 'lead',
+  // the ship furthest along).
+  const tanker = aim === 'vip' ? pool.find((s) => s.vip) : undefined;
   let pick =
-    aim === 'near' || aim === 'post'
+    tanker ??
+    (aim === 'near' || aim === 'post'
       ? pool.reduce((a, b) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a))
       : aim === 'mid'
         ? pool.reduce((a, b) => (Math.abs(along(b) - 0.5) < Math.abs(along(a) - 0.5) ? b : a))
         : aim === 'rear'
           ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
-          : pool.reduce((a, b) => (along(b) > along(a) ? b : a));
+          : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
     const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);

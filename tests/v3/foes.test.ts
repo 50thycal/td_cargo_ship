@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { SHIP, THREATS, VIEW } from '../../src/v3/data/config';
 import { AB, type AbilityId } from '../../src/v3/data/abilities';
-import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId } from '../../src/v3/data/foes';
+import { FOE, FOES, FOE_ORDER, FOES_BUILT, foeCount, foeDebutTag, foesInChapter, foesUpTo, type FoeId } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
@@ -1026,5 +1026,18 @@ describe('Test Lab round 4 notes (2026-11-09): the Dive Bomber, the Incendiary M
   it('the Repair Tender is now called the Repair Ship wherever the player sees it (its id stays)', () => {
     expect(FOES.tender.name).toBe('Repair Ship');
     expect(THREATS.tender.label).toBe('Repair ship');
+  });
+});
+
+describe('m-debut-tag: a new enemy says which chapter brought it', () => {
+  it('from chapter 2 on, a new enemy\'s first banner carries its chapter, as the chapter\'s new weapon cards do; chapter 1\'s and the old threats carry none', () => {
+    expect(foeDebutTag('attackHeli')).toBe('NEW · The Narrows');
+    expect(foeDebutTag('torpedoSub')).toBe('NEW · The Narrows');
+    expect(foeDebutTag('stealthJet')).toBe('NEW · Dark Water');
+    expect(foeDebutTag('cloud')).toBe('NEW · Open War');
+    for (const id of FOE_ORDER.filter((f) => FOES[f].chapter >= 2)) expect(foeDebutTag(FOES[id].kind), id).toMatch(/^NEW · /);
+    expect(foeDebutTag('hydra')).toBeNull();
+    expect(foeDebutTag('drone')).toBeNull();
+    expect(foeDebutTag('heavy')).toBeNull();
   });
 });

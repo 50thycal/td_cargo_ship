@@ -93,8 +93,11 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 };
  *  the ship nearest halfway along its lane (the Hook's apex, the stretch
  *  under Marrow's radar), from wherever it is fired; 'post',
  *  the map's allied structure while it stands (Lee of Marrow's radar tower),
- *  and once it is gone the ship nearest where it stood. */
-export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post';
+ *  and once it is gone the ship nearest where it stood. Rev 4, chapter 2's
+ *  Behemoth Run (docs/design/v3-ch2-behemoth.md): 'vip', the supertanker
+ *  while it sails, else the ship furthest along. (The Island needs no aim
+ *  of its own: 'near' from a far-shore silo is the north lane's ship.) */
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -164,8 +167,11 @@ export interface Encounter {
   beats: Beat[];
   /** Enemy pairs it places (v3). */
   pairs?: PairBeat[];
-  /** Taken out of the wave's own launches, so the wave is no bigger. */
-  replaces: { drones?: number; ballistic?: number; guided?: number };
+  /** Taken out of the wave's own launches, so the wave is no bigger.
+   *  `extras` (chapter 2, rev 4): of the map's own extra kinds (data/maps.ts
+   *  `extras`: supersonic, heavy, cluster...), each taken only if the wave
+   *  has one. */
+  replaces: { drones?: number; ballistic?: number; guided?: number; extras?: Partial<Record<ThreatKind, number>> };
   /** The encounter revision it came in (absent: 1, or 2 for v2 and v3,
    *  their first). A run plays only the encounters of its own rev or
    *  before, so an older log replays as it did. */
@@ -2655,6 +2661,496 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+// ---- Chapter 2, The Narrows: the Island and the Behemoth Run ---------------
+// (map rebuild, chapter 2; the map cards: docs/design/v3-ch2-island.md,
+// v3-ch2-behemoth.md). Kept in one block so chapter 1's and chapter 2's
+// edits merge apart.
+
+// The Island (`island`, the 6th map). The enemy holds an island in mid-
+// strait between the far shore and the south lane, with two silos on it, and
+// a second, fast lane runs north of it, between the island and the far shore.
+// Its problem is the island itself: its silos fire on the ships passing it
+// from closer than anything on chapter 1's maps, so the middle third of
+// each lane (alongside the island) is the danger stretch; the way out east,
+// past the island's tip and under the carrier's reach, is the safe one. The
+// far shore's silos reach the north lane best (`aim: 'near'` from them is
+// the north-lane ship when one is out). No mechanic of its own: the island
+// is a shape (rule m-mechanic). Chapter 2's four new enemies arrive here,
+// one a wave from wave 2 (the wave planner's rule: docs/design/
+// v3-map-data-checks.md); wave 2 gives up its shells so the Attack
+// Helicopter's first wave is it and drones.
+const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'island-point-blank',
+    map: 'island',
+    waves: [1],
+    role: 'teach',
+    name: 'Point-blank',
+    callout: 'Drones off the island',
+    premise: 'The island\'s west silo sends a few drones at the ship passing it.',
+    decision: 'The first look at the island: its silo is right beside the lane, so its drones arrive almost at once.',
+    counters: 'Tap the drones as they leave the island; they have the shortest flight on the map.',
+    succeeds: 'Nothing is sunk on wave 1; the drones are shot down beside the island.',
+    notes: {
+      sites: 'The west silo on the island (540, 362).',
+      target: 'The ship nearest the silo: the one alongside the island (the middle third), on either lane.',
+      usesMap: 'Shows the map\'s problem on wave 1: the island sits between the lanes, closer than any shore on chapter 1\'s maps.',
+    },
+    beats: [{ at: 0.3, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'near' }],
+    replaces: { drones: 3 },
+  },
+  {
+    id: 'island-far-shore',
+    map: 'island',
+    waves: [2],
+    role: 'teach',
+    name: 'From the far shore',
+    callout: 'A swarm from the far shore',
+    premise: 'The far shore\'s middle silo sends a swarm down at the ships in the north lane, and the island\'s east silo follows with a few drones of its own.',
+    decision: 'The long warning and the short on one map: the far shore\'s swarm crosses open water; the island\'s comes at once.',
+    counters: 'The island\'s drones first (they arrive first), then the far shore\'s swarm while it crosses the water.',
+    succeeds: 'The swarm is cleared before it reaches the lane in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'The middle silo on the far (north) shore (800, 62), then the east silo on the island (1060, 362).',
+      target: 'The ship nearest each silo: from the far shore, a ship on the north lane when one is out; from the island, the ship alongside it.',
+      usesMap: 'The two lanes and their two threats (the north lane is the far shore\'s, the island fires on both), in a wave that gives up its shells so the Attack Helicopter\'s debut is it and drones (rule m-enemy).',
+    },
+    beats: [
+      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.3, plus: 3, kind: 'drone', count: 3, gap: 0.35, from: base(1), aim: 'near' },
+    ],
+    replaces: { drones: 8, ballistic: 2 },
+  },
+  {
+    id: 'island-shells',
+    map: 'island',
+    waves: [3],
+    role: 'teach',
+    name: 'Shells off the island',
+    callout: 'A shell at close range',
+    premise: 'The island\'s east silo lobs a shell at the ship passing it, and its west silo sends a swarm right behind it.',
+    decision: 'The first stakes: the shell lands quickly, and the swarm is already on its way. Shell first, or the swarm?',
+    counters: 'A tap on the shell as it climbs, then the swarm before it crosses the water.',
+    succeeds: 'A close call alongside the island in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The east silo on the island for the shells, the west silo on the island for the swarm.',
+      target: 'The ship nearest each silo: alongside the island (the middle third).',
+      usesMap: 'Both of the island\'s silos at once, at the shortest warning on the map, onto the danger stretch.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 1, from: base(1), aim: 'near' },
+      { at: 0.35, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
+    ],
+    replaces: { drones: 6 },
+  },
+  {
+    id: 'island-west-tip',
+    map: 'island',
+    waves: [4],
+    role: 'teach',
+    name: 'Off the west tip',
+    callout: 'A periscope off the island',
+    premise: 'A periscope rises in the water off the island\'s west tip, between the two lanes, and fires two shells; the island\'s east silo sends a swarm at the same time.',
+    decision: 'Fire from the water and from the island, at ships on both lanes: which first?',
+    counters: 'The shells as they climb (they are committed); the swarm has the water to cross.',
+    succeeds: 'The salvo is shot at in most runs; what is lost is lost alongside the island.',
+    notes: {
+      sites: 'A submarine at the west sub spot between the lanes (180, 380), then the east silo on the island.',
+      target: 'The shells at the ship halfway along its lane (alongside the island), the swarm at the ship nearest the east silo.',
+      usesMap: 'The only water between the lanes: a launcher with both lanes in reach, beside the island.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'mid' },
+      { at: 0.4, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
+    ],
+    replaces: { drones: 6 },
+  },
+  {
+    id: 'island-both-lanes',
+    map: 'island',
+    waves: [5],
+    role: 'combine',
+    name: 'Both lanes',
+    callout: 'Missiles and a swarm',
+    premise: 'Two guided missiles from the far shore\'s east silo and a swarm from the island at the ships halfway along.',
+    decision: 'The missiles fly far and can go for either lane; the island\'s swarm is close. Which first?',
+    counters: 'The swarm first (it is quickest), then the missiles while they cross the water.',
+    succeeds: 'Both are shot at in most runs; losses fall alongside the island, not on the way out.',
+    notes: {
+      sites: 'The far shore\'s east silo (1300, 70) for the missiles, the island\'s west silo for the swarm.',
+      target: 'The missiles at any ship (the north lane is the nearest to their silo), the swarm at the ship halfway along its lane.',
+      usesMap: 'The two lanes at once: the far shore over the north lane, the island onto the south one.',
+    },
+    beats: [
+      { at: 0.4, kind: 'guided', count: 2, gap: 0.9, from: base(4) },
+      { at: 0.4, plus: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { drones: 5, guided: 2 },
+  },
+  {
+    id: 'island-behind',
+    map: 'island',
+    waves: [6],
+    role: 'combine',
+    name: 'Front and behind',
+    callout: 'The island, and a sub behind',
+    premise: 'A periscope rises on your side of the south lane, behind the ships, while the island sends a swarm and a shell at them from the front and the far shore a second swarm.',
+    decision: 'The ships alongside the island are fired on from both sides: the sub behind them, the island ahead.',
+    counters: 'The sub\'s shells as they climb, then the island\'s shell, then the swarms.',
+    succeeds: 'The salvo is shot at in most runs; a lost ship is alongside the island.',
+    notes: {
+      sites: 'A submarine at the south-west sub spot (300, 748), between the south lane and the carrier; the island\'s west silo (swarm) and east silo (shell); the far shore\'s middle silo (a second swarm).',
+      target: 'The sub\'s shells at the ship halfway along its lane, the island\'s swarm and shell at the ship nearest each silo, the far shore\'s swarm at any ship.',
+      usesMap: 'The danger stretch from both sides, the island ahead of the south lane and the water behind it, in place of the wave\'s first supersonic missile.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.45, plus: 1, kind: 'ballistic', count: 1, from: base(1), aim: 'near' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 7, ballistic: 5, extras: { supersonic: 1 } },
+  },
+  {
+    id: 'island-strafe',
+    map: 'island',
+    waves: [7],
+    role: 'escalate',
+    name: 'Down the south lane',
+    callout: 'A jet and a swarm',
+    premise: 'A strafer runs in from the west as the island\'s east silo opens on the ships beside it, a guided missile comes from the far shore, and a swarm follows from its middle silo.',
+    decision: 'The jet sweeps the south lane; the island\'s swarm converges on the stretch alongside it.',
+    counters: 'The jet as it comes in, the island\'s swarm before it crosses, the missile and the far swarm last (they fly furthest).',
+    succeeds: 'The jet is shot down or its run is short in most runs; a close call alongside the island.',
+    notes: {
+      sites: 'A strafer from the west edge; the island\'s east silo (swarm); the far shore\'s east silo (missile) and middle silo (swarm).',
+      target: 'The jet any ship on its line, the island\'s swarm at the ship nearest it, the rest at any ship.',
+      usesMap: 'The south lane end to end, then both of the island\'s threats at once.',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.4, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
+      { at: 0.4, plus: 2.5, kind: 'guided', count: 1, from: base(4) },
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 9, ballistic: 3, guided: 2 },
+  },
+  {
+    id: 'island-crossfire',
+    map: 'island',
+    waves: [8],
+    role: 'escalate',
+    name: 'Both silos on the island',
+    callout: 'Crossfire off the island',
+    premise: 'Both of the island\'s silos send a swarm, one after the other, at the ships alongside it, after a swarm from the far shore.',
+    decision: 'Two swarms from point-blank range, a breath apart: no time to wait for either.',
+    counters: 'Area fire over the island\'s water, or fast taps from the near swarm to the far one.',
+    succeeds: 'A close call alongside the island in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The island\'s west and east silos (swarms), after the far shore\'s middle silo (a swarm early in the wave).',
+      target: 'The west silo\'s swarm at the ship nearest it, alongside the island; the others at any ship.',
+      usesMap: 'The danger stretch at its hottest, both of the island\'s silos at once, in place of the wave\'s cluster and supersonic missiles and most of its shells.',
+    },
+    beats: [
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.5, plus: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 11, ballistic: 6, extras: { cluster: 1, supersonic: 1 } },
+  },
+  {
+    id: 'island-north-gap',
+    map: 'island',
+    waves: [9],
+    role: 'escalate',
+    name: 'The north gap',
+    callout: 'The far shore opens up',
+    premise: 'The far shore\'s middle silo sends a swarm down at the north lane and a guided missile follows, and the island sends a swarm to pull you back.',
+    decision: 'The north lane is the shortcut; this is its price. Its ships are far from your carrier, and the island\'s swarm is close to it.',
+    counters: 'The island\'s swarm first (it is quickest), then the north lane\'s swarm and missile.',
+    succeeds: 'The north lane loses no more than a ship in most runs; the south lane\'s swarm is cleared.',
+    notes: {
+      sites: 'The far shore\'s middle silo (two swarms) and east silo (missile); the island\'s west silo (swarm).',
+      target: 'The far shore\'s first swarm at the ship nearest it (the north lane when one is out); the rest at any ship.',
+      usesMap: 'The fast north lane between the island and the far shore, fired on from both sides and furthest from the carrier, in place of the wave\'s cluster and heavy.',
+    },
+    beats: [
+      { at: 0.45, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.45, plus: 2, kind: 'guided', count: 1, from: base(4) },
+      { at: 0.45, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 9, ballistic: 6, guided: 2, extras: { cluster: 1, heavy: 1 } },
+  },
+  {
+    id: 'island-run-past',
+    map: 'island',
+    waves: [10],
+    role: 'climax',
+    name: 'Run past the island',
+    callout: 'Everything off the island',
+    premise: 'Once the wave\'s own fire is spent, a short calm, then a swarm from the island, another from the far shore, a periscope off the east tip and a missile at the lead ship.',
+    decision: 'Every launcher beside the lanes at once, and the ships about to deliver.',
+    counters: 'The island\'s swarm first, then the sub\'s salvo, the far swarm, the lead ship\'s missile last.',
+    succeeds: 'A close call on the lead ship in most runs; the climax is the hardest wave.',
+    notes: {
+      sites: 'The island\'s west silo (swarm), the far shore\'s middle silo (two swarms) and east silo (missile), a submarine at the east sub spot off the island\'s tip (1430, 380), after the wave\'s own fire.',
+      target: 'The island\'s swarm at the ship beside it, the sub\'s shells at the ship halfway along its lane, the missile at the lead ship on the way out.',
+      usesMap: 'The island and its water at once, in place of part of the wave\'s heavies, cluster and supersonic missiles; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 2.5, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 1, plus: 3.3, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 1, plus: 4, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 1, plus: 5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'mid' },
+      { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    // After the wave's own fire is spent (`at: 1`, as the Strait's climax),
+    // so a calm falls before it without moving the wave's own raids.
+    replaces: { drones: 11, ballistic: 8, guided: 2, extras: { supersonic: 1, heavy: 2, cluster: 1 } },
+  },
+];
+
+// The Behemoth Run (`behemoth`, the 7th map). Once a wave a supertanker
+// crawls along its own deep lane, right under the enemy's north shore, with
+// the convoy's lane between it and the carrier. It soaks eight hits but
+// counts as three ships, and heavies and guided missiles go for it. Its
+// problem is the tanker: fire aimed at it (`aim: 'vip'`, new here: the
+// supertanker while it sails) pulls the gun north while the convoy sails
+// the open lane below, and the south-east headland fires on the convoy from
+// behind. The tanker is the map's one mechanic (rule m-mechanic), the stake
+// in waves 1-2, 4-10 and every boss round.
+const BEHEMOTH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'behemoth-first-tanker',
+    map: 'behemoth',
+    waves: [1],
+    role: 'teach',
+    name: 'The tanker sails',
+    callout: 'Drones at the tanker',
+    premise: 'The far shore\'s west silo sends a few drones at the supertanker as it sets out.',
+    decision: 'The first look at the tanker: it is slow, it is big, and it sails right under the enemy shore.',
+    counters: 'Tap the drones as they cross; the tanker takes a few hits, but each one counts.',
+    succeeds: 'Nothing is sunk on wave 1; the drones are shot down over the deep lane.',
+    notes: {
+      sites: 'The west silo on the north shore (280, 95).',
+      target: 'The supertanker (the lead ship when none is out).',
+      usesMap: 'Shows the mechanic on wave 1: the tanker\'s lane is the one nearest the enemy.',
+    },
+    beats: [{ at: 0.35, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'vip' }],
+    replaces: { drones: 3 },
+  },
+  {
+    id: 'behemoth-tanker-shell',
+    map: 'behemoth',
+    waves: [2],
+    role: 'teach',
+    name: 'A shell for the tanker',
+    callout: 'Shells at the tanker',
+    premise: 'The west silo lobs a shell at the supertanker, and the east silo sends a swarm down at the convoy.',
+    decision: 'The tanker or the convoy, for the first time: the shell is quick, the swarm has the water to cross.',
+    counters: 'The shell as it climbs, then the swarm before it reaches the lane.',
+    succeeds: 'The shell is shot down in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'The north shore\'s west silo (shell) and east silo (1260, 95; swarm).',
+      target: 'The shell at the supertanker, the swarm at the lead ship of the convoy.',
+      usesMap: 'The two lanes\' two jobs: the deep lane takes the shore\'s heavy fire, the convoy\'s lane the swarms.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'vip' },
+      { at: 0.3, plus: 2, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { drones: 5 },
+  },
+  {
+    id: 'behemoth-headland',
+    map: 'behemoth',
+    waves: [3],
+    role: 'teach',
+    name: 'From the headland',
+    callout: 'A shell from behind',
+    premise: 'The enemy headland in the south-east lobs a shell at the convoy from behind, and the west silo sends a swarm at the tanker.',
+    decision: 'The first stakes: fire from the south, behind the ships, and a swarm on the tanker to the north.',
+    counters: 'The shell as it climbs (it has a short flight), then the swarm.',
+    succeeds: 'A close call on the convoy\'s lead ship in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The silo on the south-east headland (1430, 810), then the north shore\'s west silo.',
+      target: 'The shell at the lead ship (the way out east, past the carrier), the swarm at the supertanker.',
+      usesMap: 'The headland is the only enemy land on your side of the lanes: the convoy is fired on from behind as it sails out east.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.4, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'vip' },
+    ],
+    replaces: { drones: 6 },
+  },
+  {
+    id: 'behemoth-periscope',
+    map: 'behemoth',
+    waves: [4],
+    role: 'teach',
+    name: 'Periscope by the deep lane',
+    callout: 'A sub by the tanker',
+    premise: 'A periscope rises off the north shore, beside the tanker\'s lane, and fires two shells at it; the east silo sends a swarm at the convoy.',
+    decision: 'The tanker is fired on from close; the convoy\'s swarm comes at the same moment.',
+    counters: 'The shells as they climb, then the swarm.',
+    succeeds: 'The salvo is shot at in most runs; the tanker comes home in most waves.',
+    notes: {
+      sites: 'A submarine at the north-east sub spot (1450, 228), between the shore and the deep lane, then the north shore\'s east silo.',
+      target: 'The shells at the supertanker, the swarm at the lead ship.',
+      usesMap: 'The water between the shore and the deep lane: a launcher with the tanker in point-blank reach.',
+    },
+    beats: [
+      { at: 0.45, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'vip' },
+      { at: 0.45, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { drones: 7 },
+  },
+  {
+    id: 'behemoth-tanker-or-convoy',
+    map: 'behemoth',
+    waves: [5],
+    role: 'combine',
+    name: 'Tanker or convoy',
+    callout: 'Missiles for tanker and convoy',
+    premise: 'A guided missile from the middle silo at the supertanker, a swarm at the convoy, and a guided missile from the headland at the lead ship.',
+    decision: 'One missile for the tanker, one for the convoy, and a swarm between: one gun, two lanes.',
+    counters: 'The swarm while it crosses, the missiles in the order they will land.',
+    succeeds: 'Both missiles are shot at in most runs; losses split between tanker hits and the convoy.',
+    notes: {
+      sites: 'The north shore\'s middle silo (760, 88; a guided missile), its east silo (swarm), the south-east headland (guided).',
+      target: 'The middle silo\'s missile at the supertanker, the swarm and the headland\'s missile at the lead ship.',
+      usesMap: 'The mechanic\'s decision: the tanker\'s worth three ships, and the convoy is everything else.',
+    },
+    beats: [
+      { at: 0.45, kind: 'guided', count: 1, from: base(1), aim: 'vip' },
+      { at: 0.45, plus: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.45, plus: 2, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
+    ],
+    replaces: { drones: 6, guided: 2 },
+  },
+  {
+    id: 'behemoth-both-sides',
+    map: 'behemoth',
+    waves: [6],
+    role: 'combine',
+    name: 'Both sides of the convoy',
+    callout: 'The headland and a sub',
+    premise: 'A guided missile from the headland, a periscope on your side of the lane for two shells, a swarm from the west silo at the tanker, and another from the east silo.',
+    decision: 'The convoy is fired on from the south twice over while the tanker takes a swarm to the north.',
+    counters: 'The sub\'s shells as they climb, the missile while it crosses, the swarms before they reach the lanes.',
+    succeeds: 'The salvo is shot at in most runs; a lost ship is on the way out, not on the way in.',
+    notes: {
+      sites: 'The south-east headland (guided), a submarine at the south-west sub spot (300, 735), the north shore\'s west and east silos (swarms).',
+      target: 'The missile at any ship, the sub\'s shells at the ship halfway along its lane, the west swarm at the supertanker, the east swarm at any ship.',
+      usesMap: 'The convoy\'s lane between the headland and the carrier\'s water and the tanker\'s under the shore, three directions at once, in place of the wave\'s cluster missiles and most of its shells.',
+    },
+    beats: [
+      { at: 0.4, kind: 'guided', count: 1, from: base(3) },
+      { at: 0.4, plus: 1, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'mid' },
+      { at: 0.4, plus: 2, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'vip' },
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 5, ballistic: 6, guided: 1, extras: { cluster: 2 } },
+  },
+  {
+    id: 'behemoth-strafe',
+    map: 'behemoth',
+    waves: [7],
+    role: 'escalate',
+    name: 'Strafing the deep lane',
+    callout: 'A jet, and missiles at the tanker',
+    premise: 'A strafer runs in from the east as two guided missiles from the middle silo go for the tanker, with swarms from the west and east silos.',
+    decision: 'The jet sweeps the lanes; the missiles go for the tanker; the swarm for the convoy.',
+    counters: 'The jet as it comes in, the missiles while they cross, the swarms last.',
+    succeeds: 'The tanker comes home in most runs; a close call on the convoy.',
+    notes: {
+      sites: 'A strafer from the east edge; the north shore\'s middle silo (guided); its west and east silos (swarms).',
+      target: 'The jet any ship on its line, the missiles at the supertanker, the swarms at any ship.',
+      usesMap: 'Both lanes in one wave: the jet crosses them, the shore\'s missiles go for the tanker.',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 0.4, plus: 1.5, kind: 'guided', count: 2, gap: 0.9, from: base(1), aim: 'vip' },
+      { at: 0.4, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 7, ballistic: 6, guided: 2 },
+  },
+  {
+    id: 'behemoth-wolves',
+    map: 'behemoth',
+    waves: [8],
+    role: 'escalate',
+    name: 'A sub by the deep lane',
+    callout: 'A periscope by the tanker',
+    premise: 'A periscope rises off the west end of the north shore and fires at the supertanker, with swarms from the west and east silos.',
+    decision: 'Two shells at the tanker from close range, and swarms at the same time.',
+    counters: 'The shells as they climb, then the swarms.',
+    succeeds: 'The tanker takes no more than one hit in most runs.',
+    notes: {
+      sites: 'A submarine at the north-west sub spot (160, 228), then the north shore\'s west and east silos (swarms).',
+      target: 'The shells at the supertanker, the swarms at any ship.',
+      usesMap: 'The water between the north shore and the deep lane, in place of the wave\'s cluster missile, most of its shells and its mothership (so the first mothership comes on wave 9).',
+    },
+    beats: [
+      { at: 0.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'vip' },
+      { at: 0.5, plus: 2.5, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 6, ballistic: 8, extras: { cluster: 1, mothership: 1 } },
+  },
+  {
+    id: 'behemoth-heavies',
+    map: 'behemoth',
+    waves: [9],
+    role: 'escalate',
+    name: 'A heavy for the tanker',
+    callout: 'A heavy for the tanker',
+    premise: 'A heavy cruise missile from the middle silo at the supertanker, and swarms from the east and west silos while it flies.',
+    decision: 'The heavy takes half the tanker in one hit; the swarms go for the convoy. Where do the first taps go?',
+    counters: 'Start on the heavy as it leaves (it needs several hits), take the swarms between.',
+    succeeds: 'The heavy is shot down in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The north shore\'s middle silo (760, 88; the heavy), its east and west silos (swarms).',
+      target: 'The heavy at the supertanker, the swarms at any ship.',
+      usesMap: 'The tanker is worth three ships and two heavies sink it, so this heavy stands in for the wave\'s own two (and a cluster) and comes straight at it.',
+    },
+    beats: [
+      { at: 0.45, kind: 'heavy', count: 1, from: base(1), aim: 'vip' },
+      { at: 0.45, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.45, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 5, ballistic: 7, guided: 1, extras: { heavy: 2, cluster: 1 } },
+  },
+  {
+    id: 'behemoth-last-run',
+    map: 'behemoth',
+    waves: [10],
+    role: 'climax',
+    name: 'The last run',
+    callout: 'Everything at the tanker',
+    premise: 'Once the wave\'s own fire is spent, a short calm, then a missile and a swarm at the supertanker, a swarm at the convoy, missiles from the headland and a periscope behind the convoy.',
+    decision: 'The tanker and the convoy at once, from the north, the south and the water.',
+    counters: 'The tanker\'s missile first, then the swarms, the sub\'s shells as they climb, the headland\'s missiles last.',
+    succeeds: 'A close call on the tanker or the lead ship in most runs; the climax is the hardest wave.',
+    notes: {
+      sites: 'The north shore\'s middle silo (guided), its west silo (swarms) and east silo (swarm), the south-east headland (guided), a submarine at the south sub spot (960, 735), after the wave\'s own fire.',
+      target: 'The supertanker for the middle silo\'s missile and the west swarm; the lead ship for the headland\'s missiles; the ship halfway along for the sub.',
+      usesMap: 'The mechanic and both lanes, in place of a heavy and two cluster missiles; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 2, kind: 'guided', count: 1, from: base(1), aim: 'vip' },
+      { at: 1, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'vip' },
+      { at: 1, plus: 3.3, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 1, plus: 4, kind: 'guided', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
+      { at: 1, plus: 5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(3), aim: 'mid' },
+      { at: 0.3, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 8, ballistic: 10, guided: 3, extras: { heavy: 1, cluster: 2 } },
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
@@ -2665,6 +3161,9 @@ export const ENCOUNTERS: Encounter[] = [
   ...HARBOR_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...KESH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...MARROW_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md).
+  ...ISLAND_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  ...BEHEMOTH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ];
 
 /** The rev an encounter came in. */
@@ -2700,9 +3199,15 @@ export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** The maps rebuilt to the map and wave rules after them, a chapter at a
  *  time, with the original (v1) only (round 1: set pieces and enemy pairs
  *  were dropped). Chapter 1: the Kesh Hook and Lee of Marrow (encounters
- *  rev 4: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md). */
-export type RebuiltMap = 'kesh' | 'marrow';
-export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow'];
+ *  rev 4: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md). Chapter 2 so far:
+ *  the Island and the Behemoth Run (rev 4: docs/design/v3-ch2-island.md,
+ *  v3-ch2-behemoth.md). */
+export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap;
+/** Chapter 2: the Island and the Behemoth Run (docs/design/v3-ch2-island.md,
+ *  v3-ch2-behemoth.md). */
+export type ChapterTwoMap = 'island' | 'behemoth';
+export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth'];
+export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
 
@@ -2778,6 +3283,9 @@ export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, Version
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
   kesh: { v1: { name: 'Original', idea: 'One encounter a wave, built on the apex of the hook.', callouts: false } },
   marrow: { v1: { name: 'Original', idea: 'One encounter a wave, built on the radar tower and the stretch it guards.', callouts: false } },
+  // Chapter 2.
+  island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane.', callouts: false } },
+  behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it.', callouts: false } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -2860,6 +3368,30 @@ export interface BossRound {
   guided?: number;
   guidedAt?: number;
   guidedGap?: number;
+  /** Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md). The
+   *  Gunship Wall: `helis` helicopters of `heliHp` hits, `volleys` each
+   *  (`swarms` and `size` as above). The Wolf Pack: `packs` periscopes in
+   *  each wave of the pack, `fast` of the subs with a fast torpedo. */
+  helis?: number;
+  heliHp?: number;
+  volleys?: number;
+  packs?: number[];
+  fast?: number;
+  /** Launches the round adds to its event, each from base `base` (its
+   *  index; absent, the bases that fire the kind in turn), `at` s into the
+   *  round, `count` of them `gap` s apart, aimed as an encounter's beat
+   *  (the Island's shells at the north lane, the Behemoth's heavies at the
+   *  supertanker). */
+  fire?: BossFire[];
+}
+
+export interface BossFire {
+  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic';
+  at: number;
+  count?: number;
+  gap?: number;
+  base?: number;
+  aim?: BeatAim;
 }
 
 /** The Kesh Hook's Drone Storm rounds (log v29); before: 33 / 36 / 36
@@ -2869,6 +3401,29 @@ export const KESH_BOSS_ROUNDS: BossRound[] = [
   { swarms: 12, size: 3, second: 6, shells: 3, shellAt: 3, shellGap: 4 },
   { swarms: 12, size: 3, second: 6, shells: 2, shellAt: 3, shellGap: 5, guided: 1, guidedAt: 7 },
   { swarms: 14, size: 3, second: 5.5, shells: 3, shellAt: 3, shellGap: 4, guided: 3, guidedAt: 5, guidedGap: 3 },
+];
+
+/** Chapter 2's boss rounds (docs/design/v3-ch2-island.md,
+ *  v3-ch2-behemoth.md). The Island's Gunship Wall: the event's helicopters
+ *  in a line off the island's side of the south lane (before: 4 of 4 hits,
+ *  4 volleys each, and 3 swarms of 5, every round), with shells from the
+ *  island's east silo at the ship nearest it and, from round 2, guided
+ *  missiles from the far shore at the ship nearest that silo (the north
+ *  lane when one is out). */
+export const ISLAND_BOSS_ROUNDS: BossRound[] = [
+  { helis: 3, swarms: 3, size: 5, fire: [{ kind: 'ballistic', at: 3, count: 2, gap: 4, base: 1, aim: 'near' }, { kind: 'guided', at: 6, count: 1, base: 4, aim: 'near' }] },
+  { helis: 4, swarms: 3, size: 5, fire: [{ kind: 'ballistic', at: 3, count: 3, gap: 3, base: 1, aim: 'near' }, { kind: 'guided', at: 6, count: 1, base: 4, aim: 'near' }] },
+  { helis: 5, swarms: 2, size: 5, fire: [{ kind: 'ballistic', at: 3, count: 2, gap: 4, base: 1, aim: 'near' }, { kind: 'guided', at: 6, count: 1, base: 4, aim: 'near' }] },
+];
+
+/** The Behemoth Run's Wolf Pack: periscopes in two waves (before: 4 then 3,
+ *  two of the subs with a fast torpedo, every round), with heavy cruise
+ *  missiles at the supertanker and, in round 3, guided missiles from the
+ *  headland at the lead ship. */
+export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
+  { packs: [2, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }] },
+  { packs: [3, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }] },
+  { packs: [3, 2], fast: 2, fire: [{ kind: 'guided', at: 4, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
@@ -2903,6 +3458,10 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
       { tower: 2, fans: 2, swarms: 1, size: 5 },
     ],
   },
+  // Chapter 2 (ISLAND_BOSS_ROUNDS, BEHEMOTH_BOSS_ROUNDS above): the map's
+  // own event, rising round by round, with fire aimed at the map's problem.
+  island: { rounds: ISLAND_BOSS_ROUNDS },
+  behemoth: { rounds: BEHEMOTH_BOSS_ROUNDS },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or
@@ -2951,6 +3510,7 @@ const AIM_TEXT: Record<BeatAim, string> = {
   near: 'aimed at the ship nearest it',
   mid: 'aimed at the ship halfway along the lane',
   post: 'aimed at the radar tower (once it is gone, the ship nearest where it stood)',
+  vip: 'aimed at the supertanker (when none is out, the lead ship)',
 };
 
 const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;

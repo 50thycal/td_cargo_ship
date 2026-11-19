@@ -154,7 +154,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -162,6 +162,16 @@ describe('a campaign run has no encounter layer', () => {
     expect(arc('marrow').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship',
       'marrow-both-shores', 'marrow-down-the-lane', 'marrow-wolf-pack', 'marrow-crossfire', 'marrow-last-stand',
+    ]);
+    // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-island.md,
+    // v3-ch2-behemoth.md): the same.
+    expect(arc('island').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'island-point-blank', 'island-far-shore', 'island-shells', 'island-west-tip', 'island-both-lanes',
+      'island-behind', 'island-strafe', 'island-crossfire', 'island-north-gap', 'island-run-past',
+    ]);
+    expect(arc('behemoth').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'behemoth-first-tanker', 'behemoth-tanker-shell', 'behemoth-headland', 'behemoth-periscope', 'behemoth-tanker-or-convoy',
+      'behemoth-both-sides', 'behemoth-strafe', 'behemoth-wolves', 'behemoth-heavies', 'behemoth-last-run',
     ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
@@ -178,8 +188,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('island')).toBe(false);
-    expect(encountersFor('island', 5)).toEqual([]);
+    expect(hasEncounters('needle')).toBe(false);
+    expect(encountersFor('needle', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -599,6 +609,33 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(d(target, tower)).toBeCloseTo(Math.min(...pool.map((s) => d(s, tower))), 3);
   });
 
+  // Chapter 2 (docs/design/v3-ch2-behemoth.md): 'vip', the supertanker.
+  it('The Behemoth Run: a launch aimed at the supertanker goes for it while it sails; the tanker is the stake in most waves', () => {
+    const { out } = aimed('behemoth', 1, 'behemoth-first-tanker');
+    expect(out).toHaveLength(3);
+    for (const { th, ships } of out) {
+      const target = ships.find((s) => s.id === th.target);
+      expect(target?.vip, `drone ${th.id}`).toBe(true);
+    }
+    const at = arc('behemoth').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'vip'))).map((a) => a.wave);
+    expect(at.length).toBeGreaterThanOrEqual(3);
+    expect(at).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(arc('island').some((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'vip')))).toBe(false);
+  });
+
+  it('an encounter may stand in for the map\'s own extras: the Island\'s wave 8 plans fewer cluster and supersonic missiles than the shared wave', () => {
+    const count = (g: Game, kind: string) => g.queue.filter((l) => l.kind === kind && l.at < 1e8).length;
+    for (const seed of [1, 2, 3]) {
+      const off = createGame('island', seed, 8);
+      applyEncounters(off, { ...VER('v1'), only: [] });
+      const on = createGame('island', seed, 8);
+      applyEncounters(on, VER('v1'));
+      for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
+    }
+    // Only rev 4's chapter 2 encounters do it.
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth'], e.id).toContain(e.map);
+  });
+
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
     const at = (map: Encounter['map']) => arc(map).filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'post'))).map((a) => a.wave);
     expect(at('marrow')).toEqual([2, 5, 8, 10]);
@@ -761,6 +798,61 @@ describe('chapter 1\'s boss rounds (rev 4, MAP_BOSS): Kesh and Marrow rise; a re
     const weight = rounds.map((r) => r.tower! + r.fans! * bases + r.swarms! * r.size!);
     for (let k = 1; k < weight.length; k++) expect(weight[k]).toBeGreaterThan(weight[k - 1]);
     roundLengths(on.game.eventLog);
+  }, 90_000);
+});
+
+describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemoth Run rise; a rev 3 log and the campaign play them as they were', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  /** What a round adds, by kind (MAP_BOSS `fire`). */
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('The Island\'s Gunship Wall: helicopters, swarms, and shells and missiles off the island, building up', () => {
+    const off = playMimic('island', 201, opts);
+    const old = playMimic('island', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => e.sent.attackHeli)).toEqual([4, 4, 4]);
+    const on = playMimic('island', 201, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.island!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['gunship-wall', 1], ['gunship-wall', 2], ['gunship-wall', 3]]);
+    expect(on.game.eventLog.map((e) => e.sent.attackHeli)).toEqual(rounds.map((r) => r.helis));
+    expect(on.game.eventLog.map((e) => e.sent.drone ?? 0)).toEqual(rounds.map((r) => r.swarms! * r.size!));
+    expect(on.game.eventLog.map((e) => e.sent.ballistic ?? 0)).toEqual(rounds.map((r) => fired(r, 'ballistic')));
+    expect(on.game.eventLog.map((e) => e.sent.guided ?? 0)).toEqual(rounds.map((r) => fired(r, 'guided')));
+    // A helicopter is worth a swarm and more; each round sends more.
+    const weight = rounds.map((r) => 8 * r.helis! + r.swarms! * r.size! + 2 * fired(r, 'ballistic') + 3 * fired(r, 'guided'));
+    for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+    roundLengths(on.game.eventLog);
+  }, 90_000);
+
+  it('The Behemoth Run\'s Wolf Pack: more periscopes and fast torpedoes each round, and missiles at the supertanker', () => {
+    const off = playMimic('behemoth', 201, opts);
+    const old = playMimic('behemoth', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Not the same game step for step: turning the layer on plans the first
+    // wave again (applyEncounters), and the Wolf Pack's plan rolls which subs
+    // carry a fast torpedo, so its dice are drawn twice. What it sends is
+    // the event's own, as without the layer (seven subs a round, nothing
+    // added; a round the run is lost in stops short).
+    expect(old.game.eventLog.map((e) => [e.id, e.run])).toEqual(off.game.eventLog.map((e) => [e.id, e.run]));
+    for (const e of old.game.eventLog) {
+      expect(e.sent.torpedoSub, `run ${e.run}`).toBeLessThanOrEqual(7);
+      if (e.run! < 3) expect(e.sent.torpedoSub, `run ${e.run}`).toBe(7);
+      expect((e.sent.guided ?? 0) + (e.sent.heavy ?? 0), `run ${e.run}`).toBe(0);
+    }
+    expect(off.game.eventLog.map((e) => e.sent.torpedoSub)).toEqual([7, 7, 7]);
+    const on = playMimic('behemoth', 201, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.behemoth!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['wolf-pack', 1], ['wolf-pack', 2], ['wolf-pack', 3]]);
+    // The tryhard bot loses this seed in round 3 (the tanker counts three):
+    // a round the run is lost in stops short, so it is checked up to there.
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.torpedoSub)).toEqual(done.map((e) => rounds[e.run! - 1].packs!.reduce((a, n) => a + n, 0)));
+    expect(done.map((e) => e.sent.guided ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'guided')));
+    // The supertanker is what the added missiles go for.
+    for (const r of rounds) expect(r.fire!.some((f) => f.aim === 'vip')).toBe(true);
+    const weight = rounds.map((r) => 3 * r.packs!.reduce((a, n) => a + n, 0) + 2 * r.fast! + 3 * fired(r, 'guided') + 6 * fired(r, 'heavy'));
+    for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+    roundLengths(done);
   }, 90_000);
 });
 

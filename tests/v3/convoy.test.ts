@@ -55,8 +55,9 @@ describe('a campaign run has no convoy layer', () => {
 
   it('round 11: Hold, the one command left, is on Sowers\' Reach only (mines cross its lane); the reference maps have none', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-*.md) sail the map's own convoy, as the reference maps do.
-    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['gauntlet', 'harbor', 'kesh', 'marrow', 'sowers', 'strait']);
-    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
+    // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-*.md): the same.
+    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'sowers', 'strait']);
+    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
     expect(mapConvoy('sowers').commands).toEqual(['hold']);
     // Sowers' Reach keeps the campaign's own schedule and formation.
     expect(mapConvoy('sowers')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });

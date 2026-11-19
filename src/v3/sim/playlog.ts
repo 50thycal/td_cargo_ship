@@ -178,12 +178,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      opens EVENT.bossCalm s later; and frigates round a bend smoothly
  *      (their bow and their step across eased, the bend's corners
  *      averaged). A v28 log with a frigate on a bent lane, on Marrow, or
- *      that reaches a three-run ending no longer replays to the same game. */
-export const LOG_VERSION = 29;
+ *      that reaches a three-run ending no longer replays to the same game.
+ *  30: map rebuild, chapter 2 (docs/design/v3-ch2-island.md,
+ *      v3-ch2-behemoth.md): the Island and the Behemoth Run get an encounter
+ *      layer (encounters rev 4: one encounter a wave), their map cards open
+ *      with it, and their boss rounds rise (MAP_BOSS: the Gunship Wall's and
+ *      the Wolf Pack's numbers a round, and launches the round adds). New
+ *      for it: the aim 'vip' (the supertanker), and an encounter may
+ *      stand in for a map's own extras (`replaces.extras`).
+ *      All of it is lab only, under the encounter layer: a campaign run
+ *      plays as it did, and a v29 Island or Behemoth card log played its
+ *      shared waves. */
+export const LOG_VERSION = 30;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [29];
+export const LOG_REPLAYS: readonly number[] = [30];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

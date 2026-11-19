@@ -17,6 +17,10 @@ import { CARRIER_TARGET, released, step, timeToImpact, worthShooting, type Game 
 /** The Armory the player has played with since round 12 (every recent
  *  log): bot reports play with it, so their numbers are the player's game. */
 export const PLAYER_ARMORY: ArmoryLevels = { reload: 5, repair: 4, stockpile: 5 };
+/** The player's latest Armory (2026-11-19, chapter 2's rebuild: Wide Warhead
+ *  5, Point Defense 4, Supply Lines 3): a second "good player" yardstick for
+ *  the bot reports (`--armory=latest`). */
+export const LATEST_ARMORY: ArmoryLevels = { warhead: 5, pointdef: 4, drops: 3 };
 
 /** Taps under this many real seconds apart are one burst. */
 export const BURST_GAP = 0.3;

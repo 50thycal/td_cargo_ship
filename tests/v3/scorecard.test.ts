@@ -276,10 +276,11 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 29 (after the chapter 1 playtest: the radar slows, the Drone Storm, the boss calm, smooth frigates); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(29);
-    expect(LOG_REPLAYS).toEqual([29]);
-    expect(replaysHere(29)).toBe(true);
+  it('the log is version 30 (chapter 2: the Island\'s and the Behemoth Run\'s encounters and boss rounds, lab only); only its own version replays here', () => {
+    expect(LOG_VERSION).toBe(30);
+    expect(LOG_REPLAYS).toEqual([30]);
+    expect(replaysHere(30)).toBe(true);
+    expect(replaysHere(29)).toBe(false);
     expect(replaysHere(28)).toBe(false);
     expect(replaysHere(21)).toBe(false);
     expect(replaysHere(22)).toBe(false);

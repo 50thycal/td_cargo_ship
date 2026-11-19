@@ -29,7 +29,7 @@ import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gr
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
 import { RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
-import { bossTune, type BossRound } from '../data/encounters';
+import { bossTune, type BossFire, type BossRound } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -439,6 +439,44 @@ function bossRound(g: Game, ev: EventRun): BossRound | undefined {
   return r ? r[clamp(ev.run, 1, r.length) - 1] : undefined;
 }
 
+/** The Gunship Wall's numbers this run (the map's boss tuning over the
+ *  event's own). */
+function gunshipRound(g: Game, ev: EventRun) {
+  const E = EV['gunship-wall'];
+  const R = bossRound(g, ev);
+  return { ...E, helis: R?.helis ?? E.helis, hp: R?.heliHp ?? E.hp, volleys: R?.volleys ?? E.volleys, swarms: R?.swarms ?? E.swarms, size: R?.size ?? E.size };
+}
+
+/** The Wolf Pack's numbers this run (the same). */
+function wolfRound(g: Game, ev: EventRun) {
+  const E = EV['wolf-pack'];
+  const R = bossRound(g, ev);
+  return { ...E, packs: R?.packs ?? E.packs, fast: R?.fast ?? E.fast };
+}
+
+/** A round's added launches (MAP_BOSS `fire`), one step each: step k is
+ *  launch k of the list flattened. */
+function fireSteps(R: BossRound | undefined): EventStep[] {
+  const out: EventStep[] = [];
+  let k = 0;
+  for (const f of R?.fire ?? []) for (let i = 0; i < (f.count ?? 1); i++) out.push({ at: B + f.at + i * (f.gap ?? 1), op: 'fire', k: k++ });
+  return out;
+}
+
+/** Launch step k of a round's added launches: out of its base (or the live
+ *  bases that fire its kind, in turn), aimed as its beat says. */
+function fireStep(g: Game, ev: EventRun, k: number): void {
+  const list: BossFire[] = (bossRound(g, ev)?.fire ?? []).flatMap((f) => Array.from({ length: f.count ?? 1 }, () => f));
+  const f = list[k];
+  if (!f) return;
+  const kb = liveBases(g, f.kind);
+  const b = f.base !== undefined && !g.baseDown[f.base] ? f.base : kb[k % kb.length];
+  if (b === undefined) return;
+  g.queue.push({ at: g.waveT, kind: f.kind, base: b, ...(f.aim ? { aim: f.aim } : {}) });
+  g.queue.sort((x, y) => x.at - y.at);
+  sent(ev, f.kind);
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -492,15 +530,19 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(E.columns * R.trucks, (k) => Math.floor(k / R.trucks) * E.second + (k % R.trucks) * E.gap, 'truck'), ...steps(R.swarms, (k) => 6 + k * 6, 'swarm')];
     }
     case 'gunship-wall': {
-      const E = EV['gunship-wall'];
-      return [...steps(E.helis, () => 0, 'heli'), ...steps(E.swarms, (k) => 2 + k * 5, 'swarm')];
+      // Encounters rev 4 (lab only; docs/design/v3-ch2-island.md): the
+      // Island's boss rounds rise, each run its own numbers (MAP_BOSS).
+      const E = gunshipRound(g, ev);
+      return [...steps(E.helis, () => 0, 'heli'), ...steps(E.swarms, (k) => 2 + k * 5, 'swarm'), ...fireSteps(bossRound(g, ev))];
     }
     case 'wolf-pack': {
-      // Which subs carry a fast torpedo: `fast` of them, in all.
-      const E = EV['wolf-pack'];
+      // Which subs carry a fast torpedo: `fast` of them, in all. Encounters
+      // rev 4 (lab only; docs/design/v3-ch2-behemoth.md): the Behemoth
+      // Run's rounds rise (MAP_BOSS).
+      const E = wolfRound(g, ev);
       const all = E.packs.reduce((a, n) => a + n, 0);
       ev.fastAt = g.rng.foes.shuffle(Array.from({ length: all }, (_, k) => k)).slice(0, E.fast);
-      return steps(E.packs.length, (k) => k * E.gap, 'pack');
+      return [...steps(E.packs.length, (k) => k * E.gap, 'pack'), ...fireSteps(bossRound(g, ev))];
     }
     case 'shield-wall':
       // The rows set out (run plans each one's start so they join up).
@@ -646,6 +688,11 @@ function swarm(g: Game, ev: EventRun, size: number, cargo = false): void {
 function run(g: Game, ev: EventRun, s: EventStep): void {
   const rng = g.rng.foes;
   const c = g.map.carrier;
+  // A boss round's added launches (encounters rev 4, MAP_BOSS `fire`).
+  if (s.op === 'fire') {
+    fireStep(g, ev, s.k);
+    return;
+  }
   switch (ev.id) {
     case 'rush': {
       const E = EV.rush;
@@ -741,7 +788,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'gunship-wall': {
       // In a line off the lane's far side from the carrier, left to right.
-      const E = EV['gunship-wall'];
+      const E = gunshipRound(g, ev);
       if (s.op === 'swarm') {
         swarm(g, ev, E.size);
         return;
@@ -763,7 +810,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // Five periscopes together; their subs fire on a stagger, each a
       // spread of two or three torpedoes; one or two subs in the event put
       // a fast one in their spread.
-      const E = EV['wolf-pack'];
+      const E = wolfRound(g, ev);
       const S = FOE.torpedoSub;
       const spots = openWater(g, E.packs[s.k], 150);
       spots.forEach((p, k) => {
