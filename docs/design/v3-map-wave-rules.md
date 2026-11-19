@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-Chapter 1 polish is built (#178, play log v30): Kesh and Marrow now climb from wave 3 instead of falling off a cliff at the end, the boss intro is your card sequence, and the verdict sheet starts blank each run. Next for you: replay Kesh and Marrow, and two quick calls in Needs you. Chapter 2 (The Island, The Behemoth Run) is still being built.
+Chapter 1 polish is merged (#178, play log v30): Kesh and Marrow now climb from wave 3 instead of falling off a cliff at the end, the boss intro is your card sequence, and the verdict sheet starts blank each run. Next for you: replay Kesh and Marrow, and two quick calls in Needs you. Chapter 2 (The Island, The Behemoth Run) is still being built.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.
