@@ -239,6 +239,11 @@ export const EVENT = {
   /** Seconds more when no ship is on the water yet (a Test Lab card's first
    *  run): the convoy sails in first. */
   convoyWait: 9,
+  /** Log v29 (the player, Marrow: "with the boss wave have more of a pause
+   *  before it begins ... make it feel more dramatic"): seconds of calm
+   *  more, after the breather, before the first boss round's first launch
+   *  (the map's ending, run 1 of several; every map). */
+  bossCalm: 5,
   cap: 48,
   bonus: { clean: 3000, held: 1500, broken: 0 } as Record<EventOutcome, number>,
 };

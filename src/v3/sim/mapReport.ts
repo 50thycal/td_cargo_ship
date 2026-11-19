@@ -116,6 +116,9 @@ export interface RunDigest {
     core: { hp: number[][]; sunk: number[][] };
     all: { hp: number[][]; sunk: number[][] };
   };
+  /** A map with a radar tower (Lee of Marrow): the wave (1-13) it fell on,
+   *  0 if it stood to the end of the run. */
+  towerLost?: number;
 }
 
 const zeros = (n = REPORT_WAVES) => new Array<number>(n).fill(0);
@@ -158,6 +161,7 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     warnSum: zeros(),
     warnN: zeros(),
     stretch: { core: { hp: grid(lanes), sunk: grid(lanes) }, all: { hp: grid(lanes), sunk: grid(lanes) } },
+    ...(map.posts?.some((p) => p.kind === 'radar') ? { towerLost: 0 } : {}),
   };
   const reached = new Set<number>();
   for (let p = 0; p < sc.phases.length; p++) {
@@ -192,6 +196,7 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
       const min = watch?.min[e.id];
       if (min !== undefined && min <= CLOSE_SECONDS && !atCarrier.has(e.id)) d.close[w - 1] += 1;
     } else if (e.k === 'hit') {
+      if (e.vt === 'p' && e.sunk && d.towerLost === 0 && map.posts?.[e.vid]?.kind === 'radar') d.towerLost = w || last;
       if (e.vt !== 's' || e.blk || !w) continue;
       addStretch(w, e.lane, e.d, 'hp', e.hp);
     } else if (e.k === 'ship-') {
@@ -419,6 +424,9 @@ export interface MapReport {
     stretchAll: StretchRow[];
   };
   boss: { reachedMean: number[]; reached: number[]; tough: number[] };
+  /** A map with a radar tower: the wave it fell on in each run (0: it
+   *  stood to the end), normal and tough runs. */
+  tower: { normal: number[]; tough: number[] } | null;
   kits: KitSummary[];
   /** The fun measures (src/v3/sim/funMetrics.ts) on the normal runs'
    *  logs: saves and tension per wave, over the runs that reached it. */
@@ -504,6 +512,7 @@ export function mapReport(input: ReportInput): MapReport {
       stretchAll,
     },
     boss: { reachedMean: nc.reachedMean.slice(10, 13), reached: nc.reached.slice(10, 13), tough: toughLost.slice(10, 13) },
+    tower: normal.some((d) => d.towerLost !== undefined) ? { normal: normal.map((d) => d.towerLost ?? 0), tough: tough.map((d) => d.towerLost ?? 0) } : null,
     kits: input.kits ?? [],
     fun: input.fun?.digests.length
       ? (() => {
@@ -616,6 +625,25 @@ export function checksOf(r: MapReport, bossTarget: number): Check[] {
     verdict: 'INFO',
     from: 'normal',
   });
+  if (r.tower) {
+    // The radar tower (rule g-mechanic): how long it stands. On a normal run
+    // that ended before it fell, it counts as standing as far as it got.
+    const tw = r.tower;
+    const by = (fell: number[], w: number) => fell.filter((x) => x > 0 && x <= w).length;
+    const med = (fell: number[]) => {
+      const xs = fell.map((x) => (x > 0 ? x : 14)).sort((a, b2) => a - b2);
+      return xs.length ? xs[Math.floor((xs.length - 1) / 2)] : NaN;
+    };
+    const line = (fell: number[]) => `fell by w5 in ${by(fell, 5)}, by w6 ${by(fell, 6)}, by w10 ${by(fell, 10)}, in the boss rounds ${fell.filter((x) => x > 10).length}, stood to the end ${fell.filter((x) => x === 0).length} (of ${fell.length}); median ${med(fell) > 13 ? 'stands' : `w${med(fell)}`}`;
+    out.push({
+      rule: 'g-mechanic',
+      name: 'Radar tower standing',
+      value: `normal: ${line(tw.normal)}; tough: ${line(tw.tough)}`,
+      target: 'worth defending: standing past wave 6 in most runs',
+      verdict: 'INFO',
+      from: 'normal',
+    });
+  }
   if (r.fun) {
     out.push({
       rule: 'fun',

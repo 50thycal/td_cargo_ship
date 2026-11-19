@@ -176,3 +176,12 @@ The other recorded biases (from 2026-11-17):
 
 - Bot reports and checks (phase 3) play "you" with `PLAYER_ARMORY` and the normal loss limit, and read boss rounds over the runs that reach them.
 - To re-check the fit after a game change, re-run `fit.ts`. After new playtests, re-measure the player with `--logs`.
+
+**Re-checked 2026-11-19** with the chapter 1 playtest (Kesh and Marrow map cards, a Battery campaign run; log v28). `fit.ts --logs` now adds new runs to `player.json` and keeps the earlier ones as measured (`--remeasure`, `--fresh`), and takes every map card (it read only the three reference maps' before). 24 runs, 18 map cards. On the player's own seed, Armory and picks (12 dice; `results/ch1-playtest-2026-11-19.json`):
+
+| | Waves 1–10, you / bot | Boss r1 / r2 / r3, you / bot |
+| --- | --- | --- |
+| Kesh | 3 / 3.0 | 0 / 0 / 1 against 0.25 / 1.25 / 1.00 |
+| Marrow | 2 / 4.25 | 1 / 0 / 1 against 0.29 / 1.00 / 1.71 |
+
+Kesh's waves match; its boss reads about 2.5× too hard on the bot. Marrow reads about 2× too hard in waves 1–10 and 1.4× in the boss rounds. **RECORDED BIAS, new: the bot reads Marrow's waves 1–10 about twice as hard as the player (one run).**

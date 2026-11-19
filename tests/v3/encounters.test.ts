@@ -701,17 +701,22 @@ describe('the ten-wave arc, and what it leaves alone', () => {
     // Round 3 is still more than round 1 (a Hydra more), less than round 2.
     const weight = salvos.map((r, k) => r.reduce((a, [, n]) => a + n, 0) + tune.fan![k]);
     expect(weight).toEqual([6, 8, 7]);
-    // Each round 15-30 s.
-    for (const e of on.game.eventLog) {
-      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
-      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
-    }
+    roundLengths(on.game.eventLog);
   }, 90_000);
 });
 
+/** Each boss round 15-30 s, from its first launch (the first round's longer
+ *  calm, EVENT.bossCalm, log v29, comes before its clock starts). */
+function roundLengths(log: { run?: number; seconds: number }[]): void {
+  for (const e of log) {
+    expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
+    expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
+  }
+}
+
 describe('chapter 1\'s boss rounds (rev 4, MAP_BOSS): Kesh and Marrow rise; a rev 3 log and the campaign play them as they were', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
-  it('The Kesh Hook\'s Drone Storm: more drones each round, the second half sooner', () => {
+  it('The Kesh Hook\'s Drone Storm: more each round, shells and guided missiles with the swarms (log v29)', () => {
     const off = playMimic('kesh', 201, opts);
     const old = playMimic('kesh', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
     expect(old.game.eventLog).toEqual(off.game.eventLog);
@@ -721,20 +726,23 @@ describe('chapter 1\'s boss rounds (rev 4, MAP_BOSS): Kesh and Marrow rise; a re
     const rounds = MAP_BOSS.kesh!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['drone-storm', 1], ['drone-storm', 2], ['drone-storm', 3]]);
     expect(on.game.eventLog.map((e) => e.sent.drone)).toEqual(rounds.map((r) => Math.round(r.swarms! * r.size!)));
-    // Each round at least as heavy as the one before, its second half no
-    // later, and harder in one of the two: the rounds rise.
+    // Log v29 (the playtest: "the boss was way too easy"): shells and guided
+    // missiles ride with the swarms.
+    expect(on.game.eventLog.map((e) => e.sent.ballistic ?? 0)).toEqual(rounds.map((r) => r.shells ?? 0));
+    expect(on.game.eventLog.map((e) => e.sent.guided ?? 0)).toEqual(rounds.map((r) => r.guided ?? 0));
+    // Each round sends more than the one before, counting a shell as two
+    // drones and a guided missile as three, its second half no later: round
+    // 3 is harder than round 2 by what it sends, not only by its timing.
+    const weight = rounds.map((r) => r.swarms! * r.size! + 2 * (r.shells ?? 0) + 3 * (r.guided ?? 0));
     for (let k = 1; k < rounds.length; k++) {
-      const [a, b] = [rounds[k - 1], rounds[k]];
-      expect(b.swarms! * b.size!).toBeGreaterThanOrEqual(a.swarms! * a.size!);
-      expect(b.second!).toBeLessThanOrEqual(a.second!);
-      expect(b.swarms! * b.size! > a.swarms! * a.size! || b.second! < a.second!, `round ${k + 1}`).toBe(true);
+      expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+      expect(rounds[k].second!).toBeLessThanOrEqual(rounds[k - 1].second!);
     }
+    expect(rounds[2].swarms! * rounds[2].size!).toBeGreaterThan(rounds[1].swarms! * rounds[1].size!);
+    expect(rounds[2].guided!).toBeGreaterThan(rounds[1].guided!);
     // Heavier than the event's own (12 swarms, 30 drones) from round 1.
     expect(rounds[0].swarms! * rounds[0].size!).toBeGreaterThan(30);
-    for (const e of on.game.eventLog) {
-      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
-      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
-    }
+    roundLengths(on.game.eventLog);
   }, 90_000);
 
   it('Lee of Marrow\'s Hydra Bloom: each round opens with missiles at the radar tower, and builds up', () => {
@@ -752,10 +760,7 @@ describe('chapter 1\'s boss rounds (rev 4, MAP_BOSS): Kesh and Marrow rise; a re
     expect(on.game.eventLog.map((e) => e.sent.drone ?? 0)).toEqual(rounds.map((r) => r.swarms! * r.size!));
     const weight = rounds.map((r) => r.tower! + r.fans! * bases + r.swarms! * r.size!);
     for (let k = 1; k < weight.length; k++) expect(weight[k]).toBeGreaterThan(weight[k - 1]);
-    for (const e of on.game.eventLog) {
-      expect(e.seconds, `run ${e.run}`).toBeGreaterThanOrEqual(15);
-      expect(e.seconds, `run ${e.run}`).toBeLessThanOrEqual(30);
-    }
+    roundLengths(on.game.eventLog);
   }, 90_000);
 });
 
