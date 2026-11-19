@@ -76,7 +76,7 @@ export function writeDoc(): void {
   const P = (s = '') => L.push(s);
   P('# V3 combo sweep: weapon loadouts and Armory builds');
   P();
-  P(`> Made by \`npm run v3:combo-sweep\` (tools/v3/combo-sweep/), game version ${any.logVersion} (LOG_VERSION), ${any.date}. The tables below are written by the tool; the reading at the top is hand-written (tools/v3/combo-sweep/notes.md). The chapter 1 changes coming in LOG_VERSION 29 (Marrow's radar, Kesh's boss, a calm before the boss) will move these numbers: re-run the sweep once they land.`);
+  P(`> Made by \`npm run v3:combo-sweep\` (tools/v3/combo-sweep/), game version ${any.logVersion} (LOG_VERSION), ${any.date}. The tables below are written by the tool; the reading at the top is hand-written (tools/v3/combo-sweep/notes.md). Re-run the sweep after any game change.`);
   P();
   if (existsSync(NOTES)) {
     P(readFileSync(NOTES, 'utf8').trim());
