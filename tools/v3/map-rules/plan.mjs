@@ -109,7 +109,7 @@ export const STATUS = {
     { n: 177, title: 'Hub: your v29 replays read', state: 'merged' },
     { n: 178, title: 'Chapter 1 polish: the climb, boss intro cards, a blank verdict sheet (play log v30)', state: 'merged' },
     { n: 179, title: 'Hub update', state: 'merged' },
-    { n: 180, title: 'Chapter 2: The Island and The Behemoth Run rebuilt (play log v31)', state: 'open' },
+    { n: 180, title: 'Chapter 2: The Island and The Behemoth Run rebuilt (play log v31)', state: 'merged' },
     { n: 181, title: 'Hub update', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
@@ -145,7 +145,7 @@ export const NEEDS = [
     id: 'r8-play-ch2',
     kind: 'item',
     title: 'Play The Island and The Behemoth Run',
-    text: 'In the Test Lab, once #180 is merged. The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
+    text: 'In the Test Lab (live now, #180 merged). The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
   },
   {
     id: 'r8-behemoth-boss',
