@@ -356,3 +356,19 @@ Measured on the v28 build the runs were played on (`tools/v3/bot-fit/results/ch1
 - **Saves:** Kesh 2 (clutch last-second kills, w10 and B2), Marrow 2 (clutch cover choices on the tower missiles, B1 and B3), Battery 1 (a kill save, w6). None with stakes. Pooled over the three runs: 0.07 saves a wave in waves 1–10 and 0.50 a boss round (the bot's mirrors: 0.13 and 0.33); taps follow tension r 0.49 (bot 0.43).
 - **Best moment against the curve:** Kesh (wave 10, 35.7 s) is the run's highest-peak wave but falls in a lull 7 s before the wave's top and 9 s before its save; Marrow (wave 10, 44 s) is 2 s before wave 10's top, though B3 is that run's highest. Both match by wave, not by second. The player called the strip hard to recall; the per-wave rating at the draft (another change) should answer better.
 - **The Battery run's "clutch nuke"** (pause note at step 6546): the nuke at wave 3, 24.7 s (step 6315), with the rack empty, a guided missile 0.6 s from a ship, a stealth bomber 1.8 s, drones 2.3 and 3.3 s. **The saves detector does not catch it**: in the branch without the grab the nuke is still on the water, and the warm bot grabs it itself on its first step (0 ships saved on 6 of 6 rolls). With the pickup gone from that branch (the new opt-in `gone`, `FunOpts.gone`) it is a nuke save: 1 ship on 6 of 6 rolls. The same option also finds Marrow's wave 10 nuke (1.17 ships), a Battery repair and a Kesh B2 weapon pickup. It stays off by default so earlier results compare; switching it on is the likely right reading of "removed", and would raise pickup and nuke saves on every report.
+
+## The flat start, checked on every rebuilt map (log v30, 2026-11-19)
+
+The player's v29 replays of Kesh and Marrow rated waves 1–4 fun 1, intensity 1, and lost nothing for 6–9 waves before a cliff. The tension curve showed the same: no wave hot (0.75) before wave 4–5 on the bot replaying the player's setup, and on the player's own runs before wave 4 (Kesh) and wave 8 (Marrow). Log v30 reshapes both (`docs/design/v3-ch1-kesh.md`, `v3-ch1-marrow.md`, "After the v29 replay"); the first hot wave on the player's setup is now 3.4–4.0.
+
+The three reference maps on the same measure (their `-player` bot reports, v29 build, 24 seeds; unchanged by v30 apart from the boss calm). Tension peak a wave 1–5, and the first wave whose most common shape is a peak:
+
+| Map | Peak w1 | w2 | w3 | w4 | w5 | First peaked wave | Lost w1–5 | Player's score |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| The Strait | 0.24 | 0.21 | 0.58 | 1.13 | 0.68 | 4 (w5 flat again) | 0.38 | 4–5 |
+| The Gauntlet | 0.19 | 0.19 | 0.81 | 0.85 | 0.93 | 4 (w3 hot in 46%) | 0.58 | 4–5 |
+| Harbor Mouth | 0.12 | 0.72 | 0.68 | 0.76 | 0.98 | 5 | 0.92 | 4–5 |
+| Kesh, v29 → v30 | 0.04 | 0.36 → 0.41 | 0.54 → 1.22 | 1.02 → 1.34 | 0.79 → 1.03 | 4 → 3 | 0.50 → 0.38 | 3 |
+| Marrow, v29 → v30 | 0.05 | 0.27 | 0.50 → 0.61 | 0.56 → 1.11 | 0.65 → 0.91 | 8 → 4 | 0.04 → 0.25 | 3 |
+
+So the reference maps have a milder version of the same flat start (waves 1–2 flat everywhere, the first peak on wave 3–5), but they lose ships steadily from wave 3 and climb without Kesh's and Marrow's late cliff. They were not changed (the player rated them 4–5).

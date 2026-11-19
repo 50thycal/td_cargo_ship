@@ -105,10 +105,18 @@ export function botRun(map: MapId, persona: string, seed: number, armory: Armory
  *  campaign run), and, with `picks`, the same cards whenever they are
  *  offered (else the bot's own taste). */
 export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks = true, funDice = 0): RunMeasure {
+  const log = mirrorLog(you, persona, dice, picks);
+  const m = measure(log, 'bot', { botSpeed: PERSONAS[persona].speed ?? 1 });
+  return funDice ? { ...m, ...measureFun(log, funDice) } : m;
+}
+
+/** A mirrored run's play log (mirrorRun's game); `seed` plays the player's
+ *  setup on another seed (tools/v3/bot-fit/curve.ts). */
+export function mirrorLog(you: PlayerRun, persona: string, dice: number, picks = true, seed?: number): PlayLog {
   const p = PERSONAS[persona];
   if (!p) throw new Error(`no persona ${persona}`);
   const st = you.setup;
-  const run = new BotRun(you.map as MapId, st.seed, {
+  const run = new BotRun(you.map as MapId, seed ?? st.seed, {
     persona: p,
     armory: st.armory,
     firstWave: st.firstWave,
@@ -129,9 +137,7 @@ export function mirrorRun(you: PlayerRun, persona: string, dice: number, picks =
     };
   }
   run.advance(Infinity);
-  const log = run.finish();
-  const m = measure(log, 'bot', { botSpeed: p.speed ?? 1 });
-  return funDice ? { ...m, ...measureFun(log, funDice) } : m;
+  return run.finish();
 }
 
 export const ROWS: { key: keyof Pooled | string; name: string; d: number; group: string }[] = [

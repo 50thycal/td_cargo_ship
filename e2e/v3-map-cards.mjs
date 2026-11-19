@@ -319,7 +319,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 30 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 31 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -332,6 +332,10 @@ try {
   // The Strait's own last score shows; no other map card is scored, so no
   // comparison.
   check(sc1.last.join() === 'map-strait' && /^Last time · Fun 4 · Bit hard · Again maybe · today$/.test(sc1.lastText[0] ?? '') && sc1.vs === null && !sc1.rows.includes('vs'), `your last scores: this map's last one ("${sc1.lastText[0]}"), and no comparison without another map scored`);
+  // Log v30 (the player: "still has my old notes from the previous run"):
+  // the sheet starts blank on every run; the earlier verdict is history.
+  const fresh = await page.evaluate(() => ({ on: [...document.querySelectorAll('[data-lab-verdict].on')].map((b) => b.dataset.labVerdict), note: document.querySelector('#lab-note')?.value, tags: [...document.querySelectorAll('.v3-lab-tags .on')].length, history: document.querySelector('[data-lab-history]')?.textContent ?? '' }));
+  check(fresh.on.length === 0 && fresh.note === '' && fresh.tags === 0 && /Keep/.test(fresh.history), `a second run's sheet starts blank, the first run's verdict under "Your earlier verdicts" (${JSON.stringify(fresh)})`);
   await page.tap('[data-score="fun"][data-value="2"]');
   await page.tap('[data-score-skip]');
   await page.tap('[data-lab-verdict="tune"]');

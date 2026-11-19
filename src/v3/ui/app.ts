@@ -60,7 +60,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, lastEventWave, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -377,6 +377,8 @@ export class App {
    *  ends): its own centred card, not a corner call-out. */
   private eventCard = el('div', 'v3-event-card');
   private eventCardT = 0;
+  /** The boss intro's cards while they play (log v30). */
+  private bossIntro: { wave: number; id: EventId; cards: IntroCard[]; shown: number } | null = null;
   /** Seconds of hit-stop left (see HIT_STOP). */
   private hitStop = 0;
   /** One more loss ends the run (see `syncDanger`). */
@@ -1674,6 +1676,7 @@ export class App {
     this.alerts.update(real);
     if (g) this.raidAlert(g);
     if (g) this.radarHint(g);
+    if (g) this.tickBossIntro(g);
     if (g) this.redHint(g);
     this.syncTimers(g);
     this.renderFocus(g);
@@ -1791,27 +1794,21 @@ export class App {
           // Round 11 (the player: "just called the 'boss' rounds ... and
           // then say a little blurb at the start like survive the next
           // rounds"): the first of the map's ending runs says what is
-          // coming, on its card and in a call-out.
-          // Log v29 (the player, Marrow: "more of a pause before it begins
-          // ... survive for these next three waves, make it feel more
-          // dramatic"): the first boss round opens on a longer calm
-          // (EVENT.bossCalm, sim/events.ts); its card holds through it, and
-          // one banner names the boss, the rounds to survive and how many
-          // ships can still be lost. The convoy restore before it is round
-          // 7's (restoreConvoy in sim/events.ts, called from startWave under
-          // ENDING.threeRuns): turning it off is that one flag, and this
-          // banner then reads the losses left as they are.
-          {
-            const first = !ev.bonus && !!ev.runs && ev.run === 1;
-            this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? bossRound(ev.run!, ev.runs) : '', first ? `Survive the next ${ev.runs} rounds` : '');
-            if (first) {
-              this.flashEventCard((EVENT.breather + EVENT.bossCalm) * 1000);
-              const left = Math.max(0, g.tempo.lossLimit - (g.lost - g.lossBase));
-              const restored = g.events.some((e) => e.kind === 'restore');
-              const ships = `${left} ship${left === 1 ? '' : 's'} can still be lost`;
-              this.showBanner(`BOSS: ${EVENTS[ev.id].name.toUpperCase()}`, `Survive the next ${ev.runs} rounds. ${restored ? `Convoy restored: ${ships}.` : `${ships[0].toUpperCase()}${ships.slice(1)}.`}`, { now: true, kind: 'alarm', icon: 'wave' }, null);
-            }
-          }
+          // coming. Log v29 gave the first round a longer calm (EVENT.
+          // bossCalm, sim/events.ts) and one banner. Log v30 (the player:
+          // "have it say 'boss round', then 'live reset', then what it is,
+          // like 'drone swarm', then 'round one', so each text is like a new
+          // card pop up"): the event card itself plays a sequence through
+          // the calm (bossIntroCards): BOSS ROUND, Convoy restored (the
+          // ships that can still be lost), the boss's name, Round 1 of 3;
+          // rounds 2 and 3 one card, Round 2 of 3. The convoy restore is
+          // round 7's (restoreConvoy, under ENDING.threeRuns): with it off,
+          // the second card reads the losses left as they are.
+          if (!ev.bonus && ev.runs && ev.runs > 1 && ev.run) {
+            const left = Math.max(0, g.tempo.lossLimit - (g.lost - g.lossBase));
+            const restored = g.events.some((e) => e.kind === 'restore');
+            this.startBossIntro(g, ev.id, bossIntroCards(ev.id, ev.run, ev.runs, left, restored));
+          } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '');
           break;
         case 'specialEnd':
           this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '');
@@ -1826,8 +1823,8 @@ export class App {
         }
         case 'restore':
           // Round 7's experiment: the convoy back to full before the ending
-          // (said in the boss banner when the first boss round starts with
-          // it, log v29).
+          // (said on the boss intro's second card when the first boss round
+          // starts with it, log v30).
           if (!g.events.some((e) => e.kind === 'special' && !e.bonus && e.run === 1)) this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
           break;
         case 'wave': {
@@ -1973,7 +1970,7 @@ export class App {
   /** A special event begins: its card in the middle of the field through
    *  the breather. It names the event and any rule in force; it never says
    *  how to beat it (the player's rule). */
-  private showEventCard(id: EventId, wave: number, tag: string, blurb = ''): void {
+  private showEventCard(id: EventId, wave: number, tag: string): void {
     const def = EVENTS[id];
     const card = this.eventCard;
     card.className = `v3-event-card${tag === 'bonus' ? ' bonus' : ''}`;
@@ -1981,17 +1978,21 @@ export class App {
     delete card.dataset.eventOutcome;
     const rules = el('span', 'v3-event-rules');
     for (const r of def.rules) rules.append(el('i', '', RULE_TEXT[r]));
-    // A bonus event says so (round 7); a run of the three-run ending is a
-    // boss round, and says which (round 11: "Boss round 1 of 3").
+    // A bonus event says so (round 7). A boss round has its own cards
+    // (startBossIntro, log v30).
     const eyebrow = tag === 'bonus' ? 'Bonus event' : tag ? `${tag} · wave ${wave}` : `Special event · wave ${wave}`;
-    card.dataset.eventBoss = blurb ? '1' : '';
-    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []), ...(blurb ? [el('span', 'v3-event-boss', blurb)] : []));
+    delete card.dataset.bossCard;
+    delete card.dataset.bossKey;
+    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
     this.flashEventCard(3200);
   }
 
   /** A special event is over: its outcome, and what it paid. */
   private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number, tag: string): void {
     const card = this.eventCard;
+    this.bossIntro = null;
+    delete card.dataset.bossCard;
+    delete card.dataset.bossKey;
     card.className = `v3-event-card outcome ${outcome}`;
     card.dataset.eventOutcome = outcome;
     card.replaceChildren(
@@ -2001,6 +2002,50 @@ export class App {
     );
     this.audio.ui('notice');
     this.flashEventCard(3600);
+  }
+
+  /** The boss intro (log v30): its cards on the event card, one after
+   *  another, each popping in, timed on the wave's own clock (so a pause or
+   *  the speed slider moves them with the calm). */
+  private startBossIntro(g: Game, id: EventId, cards: IntroCard[]): void {
+    this.eventCardT += 1;
+    this.bossIntro = { wave: g.wave, id, cards, shown: -1 };
+    this.tickBossIntro(g);
+  }
+
+  private tickBossIntro(g: Game): void {
+    const bi = this.bossIntro;
+    if (!bi) return;
+    const card = this.eventCard;
+    const t = g.waveT;
+    const last = bi.cards[bi.cards.length - 1];
+    if (g.wave !== bi.wave || g.phase !== 'wave' || t >= last.until) {
+      this.bossIntro = null;
+      card.classList.remove('show', 'pop');
+      return;
+    }
+    let k = -1;
+    for (let i = 0; i < bi.cards.length; i++) if (t >= bi.cards[i].at) k = i;
+    if (k < 0 || k === bi.shown) return;
+    bi.shown = k;
+    const c = bi.cards[k];
+    const rules = el('span', 'v3-event-rules');
+    for (const r of EVENTS[bi.id].rules) rules.append(el('i', '', RULE_TEXT[r]));
+    card.className = `v3-event-card boss-intro ${c.key}`;
+    card.dataset.eventCard = bi.id;
+    card.dataset.bossCard = `${k + 1}/${bi.cards.length}`;
+    card.dataset.bossKey = c.key;
+    delete card.dataset.eventOutcome;
+    card.replaceChildren(
+      ...(c.eyebrow ? [el('span', 'v3-event-eyebrow', c.eyebrow)] : []),
+      el('b', 'v3-event-name', c.title),
+      ...(c.key === 'name' && rules.childElementCount ? [rules] : []),
+      ...(c.sub ? [el('span', 'v3-event-boss', c.sub)] : []),
+    );
+    // A pop-in for each card: the animation restarts on every new card.
+    void card.offsetWidth;
+    card.classList.add('show', 'pop');
+    if (k > 0) this.audio.ui('notice');
   }
 
   private flashEventCard(ms: number): void {
@@ -2014,6 +2059,7 @@ export class App {
 
   private hideEventCard(): void {
     this.eventCardT += 1;
+    this.bossIntro = null;
     this.eventCard.classList.remove('show');
   }
 

@@ -196,10 +196,20 @@ describe('a campaign run has no encounter layer', () => {
     for (const e of ENCOUNTERS) expect(e.callout.length, e.id).toBeLessThanOrEqual(42);
   });
 
-  it('v1 is the original: no wave budget of its own, no call-outs, no pairs', () => {
+  it('v1 is the original: no wave budget of its own on the reference maps, no call-outs, no pairs', () => {
     for (const map of LAYER_MAPS) {
-      expect(versionDef(map, 'v1')!.scale, map).toBeUndefined();
       expect(versionDef(map, 'v1')!.callouts, map).toBe(false);
+      // Log v30: Kesh and Marrow move a little of their shared waves' fire
+      // from waves 9-10 to waves 2-7 (a climb, not a cliff), within ±15% of
+      // each wave and never more than the ten.
+      if ((REBUILT_MAPS as string[]).includes(map)) {
+        const scale = Array.from({ length: 10 }, (_, k) => waveScale(map, 'v1', k + 1));
+        expect(scale.reduce((a, b) => a + b, 0), map).toBeLessThanOrEqual(10 + 1e-9);
+        for (const x of scale) expect(Math.abs(x - 1), map).toBeLessThanOrEqual(0.15 + 1e-9);
+        expect(waveScale(map, 'v1', 11)).toBe(1);
+        continue;
+      }
+      expect(versionDef(map, 'v1')!.scale, map).toBeUndefined();
       for (let w = 1; w <= 10; w++) expect(waveScale(map, 'v1', w)).toBe(1);
     }
     for (const e of ENCOUNTERS.filter((x) => x.version === 'v1')) expect(e.pairs, e.id).toBeUndefined();
@@ -574,14 +584,16 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
   const d = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
   it('The Kesh Hook: the south silo\'s fire goes at the ship nearest it, the one rounding the apex', () => {
-    // Shells at the apex (wave 3): two shells at the ship nearest the
-    // silo, then a swarm from the same silo at any ship.
-    const { g, out } = aimed('kesh', 3, 'kesh-apex-shells');
-    expect(out).toHaveLength(6);
+    // Shells at the apex (wave 3; log v30, timed to land with the swarm): a
+    // swarm and three shells from the silo, all at the ship nearest it, and
+    // two shells from the sub inside the hook at the same moment.
+    const { g, out: all } = aimed('kesh', 3, 'kesh-apex-shells');
+    expect(all).toHaveLength(10);
     const silo = g.map.bases[0];
-    for (const { th } of out) expect({ x: th.sx, y: th.sy }).toEqual({ x: silo.x, y: silo.y });
+    const out = all.filter(({ th }) => th.sx === silo.x && th.sy === silo.y);
+    expect(out).toHaveLength(8);
     const shells = out.filter((o) => o.th.kind === 'ballistic');
-    expect(shells).toHaveLength(2);
+    expect(shells).toHaveLength(3);
     for (const { th, ships } of shells) {
       expect({ x: th.sx, y: th.sy }).toEqual({ x: silo.x, y: silo.y });
       const target = ships.find((s) => s.id === th.target)!;

@@ -254,3 +254,69 @@ The moves are within a run or two of the 8–14 that reach the boss (the convoy 
 - `e2e/v3.mjs`: the boss banner names the boss, the rounds and the ships left.
 
 Reports: `tools/v3/map-report/results/marrow.md` and `marrow-player.md`.
+
+## After the v29 replay (log v30, 2026-11-19)
+
+The player replayed Marrow on log v29 (`v3-20261119132436-3976`; review `tools/v3/map-rules/review-2026-11-19-r6.json`): **lost on wave 10**, ships lost 0 on waves 1–6, then 1, 1, 2, 2. Fun 3 (was 4), "a bit easy"; waves 1–4 rated about 1 / 1 / 1 (difficulty, fun, intensity), waves 6–7 2 / 2 / 1–2. Their note: "pretty easy till the last like two waves". On the replay **the radar tower fell on wave 4**, so waves 5–10 had no slow at all: the cliff at the end is partly the tower's.
+
+### What changed
+
+Lab only (the encounter layer, rev 4 reworked in place):
+- **The shared waves' fire moves from the end to the start** (`MARROW_CLIMB`, v1's `scale` in `src/v3/data/encounters.ts`): waves 1–10 × 1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85.
+- **Early pressure that is not slowed.** Inside the radar's sweep every threat is a third slower, so fire at the middle reads calm while the tower stands. The early waves add shells from the east silo at the ship nearest it, just past the island (`aim: 'near'`), timed with the middle's fire:
+  - **w3, the first real threat:** the middle swarm and the west missile, plus two east shells (new);
+  - w4: the south-west sub's salvo and three east shells together (the middle's two shells are gone), and a smaller swarm;
+  - w5: the guided missile at the tower, the middle swarm, and two east shells (the west swarm is gone);
+  - w6: three east shells at the ship halfway along (they were the middle silo's two);
+  - w7: the two guided missiles come from the east silo (were the west's); w8: the west sub's salvo aims at the middle.
+- **The end is the top of the climb:** wave 9's two shells and wave 10's shells and lead-ship missiles become drones (wave 10 keeps its two missiles at the tower), and wave 10 sends 15% less of its own fire.
+
+### Before and after (the bot replaying the player's setup)
+
+`tools/v3/bot-fit/curve.ts` (see `docs/design/v3-ch1-kesh.md`): 24 dice on the player's seed ("mirror"), and the player's setup on seeds 900–923 ("seeds"); Armory warhead 5 / Point Defense 4 / drops 3, the player's picks (Thermobaric, Railgun, Drone Screen).
+
+Ships lost per wave:
+
+| | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 1–5 | 1–10 | Won |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| The player (v29) | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 2 | 0 | 6 | lost w10 |
+| Mirror, v29 | 0 | 0 | 0 | 0 | 0 | .08 | **.50** | .61 | .83 | **1.43** | 0 | 3.33 | 92% |
+| Mirror, v30 | 0 | 0 | 0 | 0 | .25 | .25 | .25 | .42 | .67 | .78 | 0.25 | 2.58 | 96% |
+| Seeds, v29 | 0 | 0 | 0 | 0 | 0 | .17 | .21 | .46 | **1.17** | 1.39 | 0 | 3.29 | 75% |
+| Seeds, v30 | 0 | 0 | .04 | 0 | .42 | .54 | .46 | .78 | .82 | .75 | 0.46 | 3.58 | 67% |
+
+Tension peak a wave (shape: f flat, 1 one peak, s sawtooth):
+
+| | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | First hot wave |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| The player (v29) | .11 f | .03 f | .21 f | .41 f | .28 f | .55 f | .73 f | 1.28 s | .66 f | 1.03 s | 8 |
+| Mirror, v29 | .07 f | .18 f | .67 f | .61 f | .56 f | .72 f | .82 f | 1.10 s | 1.16 1 | 1.30 1 | 5.2 |
+| Mirror, v30 | .07 f | .18 f | **.94 1** | 1.14 1 | .87 1 | 1.00 1 | .75 f | 1.07 1 | .93 s | .92 s | 3.4 |
+| Seeds, v29 | .05 f | .17 f | .50 f | .52 f | .53 f | .81 1 | .79 1 | .98 s | 1.23 1 | 1.21 1 | 5.6 |
+| Seeds, v30 | .05 f | .17 f | .72 f | 1.14 1 | .83 f | 1.06 1 | .85 f | 1.19 1 | .98 1 | .98 1 | 3.8 |
+
+The tower fell (median) on wave 7 in both v29 (12 dice) and v30 mirrors; on the player's run, wave 4.
+
+The bot report (`npm run v3:map-report -- --map=marrow --seeds=24 --kits=plan --armory=player`):
+
+| | v29 | v30 |
+| --- | --- | --- |
+| Ships lost per wave 1–10 (normal, reached) | 0 0 .04 0 0 .29 .21 .63 .71 1.30 | 0 0 0 .04 .21 .13 .67 .71 .38 .52 |
+| Waves 1–5 / 1–10 | 0.04 / 3.1 | 0.25 / 2.6 |
+| Won (normal) | 79% | 83% |
+| Tension peak 1–10 | .05 .27 .50 .56 .65 .73 .73 .98 .98 1.23 | .05 .27 .61 **1.11** .91 .97 1.01 .99 .92 .85 |
+| `w-cliff` | FLAG: w8 0.21 → 0.63 | FLAG: w7 0.13 → 0.67 (tough runs) |
+| `m-stretches` | FLAG: cold early 27% | FLAG: cold early 26% (hot middle 42%) |
+| `w-budget`, `w-early`, `g-warning`, `w-first` | PASS | PASS (furthest w6 ×1.13) |
+| Radar tower fell, median | w8 | w7 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.52 / 0.76 / 1.71 | 0.33 / 0.95 / 1.76 |
+
+Without the Armory (`marrow.md`): won 8% → 8%, waves 1–10 5.0 → 5.7, `w-cliff` FLAG on w6, w7 and w9 → FLAG on w5 and w7, `m-stretches` 26% → 25% (FLAG).
+
+### What it does, and what it doesn't
+
+- **Waves 1–5 now ask something:** the first bump on wave 3 (mirror 0.94, one peak), wave 4 hot on every reading, and 0.25–0.46 ships lost in waves 1–5 (asked for 0.3–0.6; was 0).
+- **The end is no longer a cliff on the player's setup:** waves 6–10 read 0.25, 0.25, 0.42, 0.67, 0.78 on the player's seed (0.08 → 0.50 and 0.83 → 1.43 before), and 0.54, 0.46, 0.78, 0.82, 0.75 on the other seeds. No wave doubles the one before. Totals stay about where they were (2.58 / 3.58 against 3.33 / 3.29).
+- **The bot report still flags one cliff**, in its tough runs with its own picks: wave 7 at 0.67 after wave 6's 0.13 (it moved from wave 8; a second try, wave 7's missiles back from the west, moved it to wave 10). It reads a sinking either side of the line from run to run.
+- **The early stretch** still takes 26% (rule: under 25%): the east shells land past the island, not on the way in, but the shared waves' trucks and strafers keep the way in warm.
+- **The tower:** it still falls around wave 7 for the bot. The player lost it on wave 4. The waves after it get harder by the tower's loss on top of the table's rise, so the player's 7–10 are likely to stay the hardest stretch.

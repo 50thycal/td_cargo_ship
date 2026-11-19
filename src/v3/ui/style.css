@@ -6349,6 +6349,56 @@ a.v3-lab-page {
   font-weight: 700;
 }
 
+/* Log v30: the boss intro, the event card as a sequence of cards (BOSS
+   ROUND, Convoy restored, the boss's name, Round 1 of 3), each popping in. */
+.v3-event-card.boss-intro.pop {
+  animation: v3-card-pop 0.42s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+@keyframes v3-card-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.v3-event-card.boss-intro.boss {
+  border-color: var(--danger);
+  box-shadow: 0 0 44px rgb(255 77 61 / 0.35);
+}
+
+.v3-event-card.boss-intro.boss .v3-event-name {
+  color: var(--danger);
+  font-size: clamp(30px, 6.4vw, 58px);
+}
+
+.v3-event-card.boss-intro.restore {
+  border-color: #5fd38a;
+  box-shadow: 0 0 34px rgb(95 211 138 / 0.25);
+}
+
+.v3-event-card.boss-intro.restore .v3-event-name {
+  color: #5fd38a;
+}
+
+.v3-event-card.boss-intro.restore .v3-event-boss {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-event-card.boss-intro.pop {
+    animation: none;
+  }
+}
+
 /* Round 11: the first boss round's card says what is coming. */
 .v3-event-boss {
   font-size: clamp(13px, 2.2vw, 17px);

@@ -249,3 +249,98 @@ See `docs/design/v3-ch1-marrow.md`, "After the playtest": the first boss round n
 `LOG_VERSION` 29, `LOG_REPLAYS` `[29]` (`src/v3/sim/playlog.ts`): the radar (campaign and lab), the Drone Storm (lab, encounter rev 4), the boss calm (every map's three-run ending) and the frigates change the game. The map-lab baseline differed on all 12 runs (state on the runs that reach a boss round or use frigates; the rest by version and content hash) and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 29. The player's v28 logs no longer replay here; their measures were taken on the v28 build first.
 
 Reports: `tools/v3/map-report/results/kesh.md` and `kesh-player.md`.
+
+## After the v29 replay (log v30, 2026-11-19)
+
+The player replayed Kesh on log v29 (`v3-20261119202157-1083`; review `tools/v3/map-rules/review-2026-11-19-r6.json`): won, ships lost 0 on waves 1–9, 3 on wave 10, boss 1 / 3 / 0 (the harder Drone Storm works: it was 0 / 0 / 1 and "way too easy"; now rated 3, left alone). Fun 3 (was 4), "a bit easy"; waves 3 and 4 rated 1 / 1 / 1 (difficulty, fun, intensity), wave 5 2 / 3 / 2, wave 10 2 / 3 / 2. The read: the total is right, the shape is wrong. Nothing happens for nine waves, then everything lands on wave 10.
+
+### What changed
+
+All lab only (the encounter layer, rev 4 reworked in place):
+- **The shared waves' fire moves from the end to the start** (`KESH_CLIMB`, the v1 version's `scale` in `src/v3/data/encounters.ts`): waves 1–10 × 1, 0.9, 1, 1.05, 1.05, 1.08, 1.08, 1.06, 0.93, 0.85. Within ±15% of each wave (rule `w-budget`), never more than the ten (a test checks both).
+- **The early encounters sink ships with shells, not drones.** The player's Armory (Point Defense 4) eats drones before they arrive, so a drone swarm makes no tension. Waves 2–9 trade drones for shells at the ship in the turn (`aim: 'near'`), timed to land together:
+  - w2: two shells, not one;
+  - **w3, the first real threat:** five drones, then three shells from the south silo and two from a sub inside the hook, all on the ship in the turn at once (was two shells then a swarm);
+  - w4: three shells from the south silo with the sub's three (was a swarm);
+  - w5: four shells (was one); w6: three shells and the sub's two at the same moment;
+  - w7: the jet, then two shells, and the two guided missiles later on their own (they came with the swarm);
+  - w8: three north-east shells (was two); w9: four shells (was three);
+  - **w10, the top of the climb:** the two north-east shells at the lead ship are gone, the east swarm is two drones bigger.
+
+### Before and after (the bot replaying the player's setup)
+
+`tools/v3/bot-fit/curve.ts` (new): the "you" bot mirroring the player's run (same card setup, Armory warhead 5 / Point Defense 4 / drops 3, and the player's draft picks), 24 dice on the player's seed ("mirror") and the same setup on seeds 900–923 ("seeds"). Ships lost per wave over the runs that reached it; tension peak a wave (`src/v3/sim/funMetrics.ts`, no forks); shape: f flat, 1 one peak. Results: `tools/v3/bot-fit/results/ch1-curve-v29.json` (measured on the v29 build) and `ch1-curve-v30.json`.
+
+Ships lost per wave:
+
+| | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 1–5 | 1–10 | Won |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| The player (v29) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 3 | won |
+| Mirror, v29 | 0 | 0 | 0 | 0 | .13 | .04 | **1.00** | .50 | .43 | .74 | 0.13 | 2.79 | 88% |
+| Mirror, v30 | 0 | 0 | .04 | 0 | 0 | .21 | .21 | .08 | .25 | **.88** | 0.04 | 1.67 | 100% |
+| Seeds, v29 | 0 | 0 | 0 | .17 | .13 | .04 | **.50** | .29 | .33 | .74 | 0.29 | 2.17 | 54% |
+| Seeds, v30 | 0 | 0 | 0 | 0 | .04 | .13 | .46 | .67 | .52 | .36 | 0.04 | 2.13 | 63% |
+
+Tension peak a wave (shape):
+
+| | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | First hot wave |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| The player (v29) | .05 f | .17 f | .26 f | 1.18 1 | 1.01 1 | .89 1 | .51 f | .49 f | .80 1 | 1.03 s | 4 |
+| Mirror, v29 | .04 f | .19 f | .41 f | .98 1 | 1.05 1 | .64 f | 1.04 1 | .83 f | 1.12 1 | 1.31 1 | 4.5 |
+| Mirror, v30 | .04 f | .26 f | .62 f | 1.03 1 | 1.17 1 | 1.07 1 | .65 f | .71 f | .92 1 | 1.26 1 | 4.0 |
+| Seeds, v29 | .03 f | .18 f | .41 f | .72 f | .66 f | .60 f | .82 1 | .82 f | .93 1 | 1.36 1 | 5.7 |
+| Seeds, v30 | .03 f | .28 f | **.94 1** | 1.11 1 | .95 f | .92 1 | .69 f | 1.04 1 | 1.05 1 | 1.39 1 | 3.7 |
+
+The bot report (`npm run v3:map-report -- --map=kesh --seeds=24 --kits=plan --armory=player`; the bot drafts for itself, Armory `PLAYER_ARMORY`):
+
+| | v29 | v30 |
+| --- | --- | --- |
+| Ships lost per wave 1–10 (normal, reached) | 0 0 .08 .17 .25 .21 .54 .54 .83 1.17 | 0 0 .04 .13 .21 .33 .38 .71 .67 .83 |
+| Waves 1–5 / 1–10 | 0.50 / 3.8 | 0.38 / 3.2 |
+| Won (normal) | 13% | 21% |
+| Tension peak 1–10 | .04 .36 .54 1.02 .79 .91 .80 1.14 1.43 1.72 | .04 .41 **1.22** 1.34 1.03 1.13 .80 1.16 1.24 1.33 |
+| Wave 3's shape | flat 79% | **one peak 62%** |
+| `w-cliff` | FLAG: w7 0.21 → 0.54 | **PASS** (biggest step w10 +0.42) |
+| `m-stretches` | FLAG: cold late 26% | FLAG: cold late 26% |
+| `w-budget`, `w-early`, `g-warning`, `w-first` | PASS | PASS (furthest w7 ×0.88) |
+| Boss r1 / r2 / r3 (normal, reached) | 1.20 / 2.35 / 2.73 | 0.70 / 2.45 / 2.65 |
+
+Without the Armory (`kesh.md`): won 0% → 0%, waves 1–10 5.4 → 5.5, `w-cliff` FLAG on w7 → FLAG on w6 and w8 (0.63 → 1.92), `m-stretches` PASS (24%).
+
+### What it does, and what it doesn't
+
+- **The first bump comes by wave 3** on the seeds (peak 0.94, one peak in most runs; the bot report 1.22, one peak in 62%). On the player's own seed it reads 0.62: close, not hot. Waves 4–6 are now each a peak; before, waves 5–6 were flat.
+- **No cliff.** The wave 7 jump (1.00 on the mirror, the strafer, swarm and missiles together) is gone, and `w-cliff` passes on the bot report for the first time.
+- **Waves 1–5 still sink almost nothing** with the player's Armory (0.04 on both mirrors; asked for 0.3–0.6). The early fire is tense but Point Defense 4, Aegis and Scattergun cover it. The bot report, with its own picks and Armory, loses 0.38. Getting the mirror to lose ships early would take more than the ±15% budget allows: it is a question for the player (on the hub) whether early tension without losses is what "make the player act" meant.
+- **The mirror on the player's seed is noisy.** Its 24 dice share one draft order, and any change in the waves moves which cards come up. Its waves 6–10 read 0.21, 0.21, 0.08, 0.25, 0.88, with wave 10 more than double wave 9; on 24 other seeds the same setup reads 0.13, 0.46, 0.67, 0.52, 0.36. Pooled (48 runs) it is 0.17, 0.34, 0.38, 0.39, 0.62: a climb with no doubling. Total waves 1–10: 1.67 / 2.13 (2.79 / 2.17 on v29). The player lost 3.
+
+### The boss intro: a sequence of cards (every map)
+
+The player's choice on the hub (`r6-boss-reset`: keep the restore) and their words: "Have it say 'boss round', then 'live reset', then what it is, like 'drone swarm', then 'round one', so each text is like a new card pop up explains all of that in sequence."
+
+- **The cards** (`bossIntroCards` in `src/v3/data/events.ts`; shown by `startBossIntro` / `tickBossIntro` in `src/v3/ui/app.ts`, on the event card in the middle of the field): boss round 1 opens on four cards, one after another, each popping in (`v3-card-pop`, scale 1.6 → 0.94 → 1 in 0.42 s, with a soft tick from the second):
+  1. **BOSS ROUND** (red);
+  2. **CONVOY RESTORED**, "6 ships can still be lost" (green; with the restore off it reads "2 ships left, can still be lost");
+  3. the boss's name, "The boss" above it and its rule chips (e.g. **DRONE STORM**, No ammo drops);
+  4. **ROUND 1 OF 3**, "Survive the next 3 rounds".
+- Rounds 2 and 3 open on one short card: the boss's name over **ROUND 2 OF 3** (3 s).
+- **Timing:** each card holds `EVENT.introCard` (2 s) of game time, so a pause or the speed slider moves the cards with the calm. **The calm is now 6 s** (`EVENT.bossCalm`, 5 s on v29): the breather and the calm are 9 s, the four cards fill 8 s, and the last holds to the first launch.
+- The v29 banner ("BOSS: … Survive the next 3 rounds. Convoy restored: …") is gone; the separate CONVOY RESTORED call-out stays folded in.
+
+Screenshots (e2e, the Strait's Afterburner Rush on a phone, 874×402): `docs/design/img/boss-intro/1-boss-round.png`, `2-convoy-restored.png`, `3-the-boss.png`, `4-round-1.png`.
+
+### A fresh verdict sheet on every run
+
+The player, on the Marrow run: "one didn't clear the screen on here and still has my old notes from the previous run". `newVerdictDraft` (`src/v3/ui/lab.ts`) filled the sheet from the card's verdict at this version, so a replay of a card brought back the last run's verdict, tags and note (the Kesh tags "Too easy, Fun" in review r6 were the previous run's). The sheet now starts blank every run; every earlier verdict, this version's too, shows read-only under "Your earlier verdicts" (`earlierEntries`, the newest three).
+
+### The play log (v30)
+
+`LOG_VERSION` 30, `LOG_REPLAYS` `[30]`: Kesh's and Marrow's encounters and wave budgets (lab only) and the 6 s boss calm (every map's three-run ending) change the game. The map-lab baseline differed on all 12 runs (the reference maps' boss rounds open 1 s later, and every run by version) and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 30. The player's v29 logs no longer replay; their tension and the v29 mirrors were measured on the v29 build first (`ch1-curve-v29.json`).
+
+### Tests
+
+- `tests/v3/encounters.test.ts`: Kesh and Marrow's v1 may carry a wave budget (sum ≤ 10, each within ±15%); the reference maps' v1 still has none; wave 3's apex shells (three from the silo at the ship nearest it, two from the sub).
+- `tests/v3/bossIntro.test.ts`: the four cards, their order and text, each held `EVENT.introCard`, the last until the first launch; no restore; rounds 2 and 3 one card.
+- `tests/v3/lab.test.ts`: a second run's sheet is blank; the earlier verdict is history.
+- `e2e/v3.mjs`: the Strait's round 11 shows the four cards in order, each popping in, nothing launched while they read; rounds 2 and 3 show Round 2 of 3 and Round 3 of 3.
+- `e2e/v3-map-cards.mjs`: a second run of the Strait card opens on a blank sheet, the first run's Keep under "Your earlier verdicts".
