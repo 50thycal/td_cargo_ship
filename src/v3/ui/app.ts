@@ -54,7 +54,7 @@ import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, replay, replay
 import { Restorer, printDiff, runPrint, samePrint } from '../sim/resume';
 import { canContinue, canSaveRuns, clearRun, loadRun, makeRunSave, saveRun, timeAgo, type RunSave } from '../platform/runSave';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
-import { FOES, FOES_BUILT, RED_FOES, foesInChapter, type FoeSetting } from '../data/foes';
+import { FOES, FOES_BUILT, RED_FOES, foeDebutTag, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
@@ -1879,7 +1879,12 @@ export class App {
         // campaign, Free Play and the Test Lab (the player, in the lab: "so
         // drones isn't said every time"); Settings → Show tips again.
         case 'debut':
-          if (this.explain(`threat:${ev.threat}`)) this.showBanner(`NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
+          // Rule m-debut-tag: a chapter's new enemy says which chapter
+          // brought it, as its new weapons' cards do.
+          if (this.explain(`threat:${ev.threat}`)) {
+            const tag = foeDebutTag(ev.threat);
+            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
+          }
           break;
         case 'vector':
           if (this.explain(`launcher:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], HINT, null);

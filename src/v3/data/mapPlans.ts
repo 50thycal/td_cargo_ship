@@ -126,6 +126,44 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 1,
     },
   },
+  // ---- Chapter 2, The Narrows (docs/design/v3-ch2-island.md,
+  // v3-ch2-behemoth.md) ----
+  island: {
+    problem: 'The enemy island sits between the two lanes: its silos fire on the ships passing it from closer than any shore, with almost no warning, and the fast north lane runs between the island and the far shore, furthest from your carrier.',
+    // The island's fire is swarms from point-blank range onto ships
+    // bunched beside it, too close for a shot from the carrier to get
+    // there first: helpers that fight on their own over the convoy (the
+    // Gunship Pair's rockets at the thickest cluster, the Drone Screen) and
+    // the Gravity Well, which pulls a swarm off the lane. Slow aimed
+    // weapons and the Seeker's long flight are too late at that range
+    // (bots, the player's Armory: docs/design/v3-ch2-island.md, Kits).
+    // Every weapon is in chapter 2's draft.
+    counters: ['well', 'droneScreen', 'gunships'],
+    offCounter: ['railgun', 'seeker', 'lance'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east, two groups in three in the wide south lane, the third making a fast run up the narrow north lane between the island and the far shore.',
+    stretches: { danger: 'middle', safe: 'late' },
+    boss: {
+      plan: 'The Gunship Wall off the island: attack helicopters in a line on the island\'s side of the south lane, firing missile pairs in turn, with drone swarms; 3, 4, then 4 tougher helicopters, with shells from the island\'s east silo at the ship beside it and, from round 2, guided missiles from the far shore at the north lane (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
+  behemoth: {
+    problem: 'Once a wave the supertanker crawls along the deep lane right under the enemy shore: it takes eight hits but counts as three ships, so the heavies and missiles that go for it pull your gun north while the convoy sails the lane below.',
+    // The tanker soaks hits that add up: the Shield (chapter 2's new boost)
+    // takes the missiles and drones off every hull for 15 s, the Frigate
+    // Escort sails with the convoy, and the Air Strike breaks up what the
+    // shore sends at the deep lane. Weapons that fight drones one by one
+    // (Scattergun, Tesla, Seeker) leave the heavies and the shells to land
+    // (bots, the player's Armory: docs/design/v3-ch2-behemoth.md, Kits).
+    counters: ['shield', 'frigate', 'airstrike'],
+    offCounter: ['scatter', 'tesla', 'seeker'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east in the main lane, and once a wave the supertanker on its own, slower, in the deep lane under the north shore.',
+    stretches: { danger: 'middle', safe: 'early' },
+    boss: {
+      plan: 'The Wolf Pack by the deep lane: periscopes in two waves, each sub firing a spread of torpedoes (3 + 3, 4 + 3, then 4 + 4 subs; 1, 2, then 3 of them with a fast torpedo), with heavy cruise missiles at the supertanker (1, 2, then 2) and, in round 3, guided missiles from the headland at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

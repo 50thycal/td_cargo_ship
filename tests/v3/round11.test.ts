@@ -213,7 +213,10 @@ describe('Test Lab round 11', () => {
     // the map's own convoy, no command, and their encounters.
     expect(mapProduction('kesh')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('marrow')).toEqual({ convoy: 'tactical', encounters: true });
-    expect(mapProduction('island')).toEqual({ convoy: 'current', encounters: false });
+    // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-*.md): the same.
+    expect(mapProduction('island')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('behemoth')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('needle')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold');
   });

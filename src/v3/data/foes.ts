@@ -4,6 +4,7 @@
 // chapters 1 to n, and the chapter's own come up most.
 
 import type { ThreatKind } from './config';
+import { CHAPTERS } from './maps';
 
 export type FoeId =
   // Chapter 1: Home Waters
@@ -86,6 +87,16 @@ export const DEBUT_SLOTS: Partial<Record<number, (FoeId | null)[]>> = {
 
 /** The foe a threat kind stands for, if it is one. */
 export const FOE_OF_KIND: Partial<Record<ThreatKind, FoeId>> = Object.fromEntries(FOE_ORDER.map((id) => [FOES[id].kind, id]));
+
+/** Rule m-debut-tag (docs/design/v3-map-wave-rules.md): a new enemy from
+ *  chapter 2 on is announced with its chapter, as the chapter's new weapon
+ *  cards are ("NEW · The Narrows"). Chapter 1's (the game's first enemies)
+ *  and anything that is not a new enemy: none. */
+export function foeDebutTag(kind: ThreatKind): string | null {
+  const id = FOE_OF_KIND[kind];
+  if (!id || FOES[id].chapter < 2) return null;
+  return `NEW · ${CHAPTERS[FOES[id].chapter - 1].name}`;
+}
 
 /** The foes that debut in a chapter. */
 export function foesInChapter(chapter: number): FoeId[] {
