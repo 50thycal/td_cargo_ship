@@ -124,6 +124,11 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // reference maps', no command (neither the hook nor the radar needs one).
   kesh: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   marrow: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md): the same,
+  // no command. The Island's two lanes and the Behemoth's supertanker lane
+  // shape the convoy on their own.
+  island: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  behemoth: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
   // left alone: only Hold is added.

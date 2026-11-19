@@ -187,12 +187,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      and the first boss round of every map's three-run ending opens on a
  *      calm of EVENT.bossCalm 6 s (5 before), for the intro's four cards. A
  *      v29 Kesh or Marrow map-card log, or one that reaches a three-run
- *      ending, no longer replays to the same game. */
-export const LOG_VERSION = 30;
+ *      ending, no longer replays to the same game.
+ *  31: map rebuild, chapter 2 (docs/design/v3-ch2-island.md,
+ *      v3-ch2-behemoth.md): the Island and the Behemoth Run get an encounter
+ *      layer (encounters rev 4: one encounter a wave), their map cards open
+ *      with it, and their boss rounds rise (MAP_BOSS: the Gunship Wall's and
+ *      the Wolf Pack's numbers a round, and launches the round adds). New
+ *      for it: the aim 'vip' (the supertanker), and an encounter may
+ *      stand in for a map's own extras (`replaces.extras`).
+ *      All of it is lab only, under the encounter layer: a campaign run
+ *      plays as it did, and a v30 Island or Behemoth card log played its
+ *      shared waves. */
+export const LOG_VERSION = 31;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [30];
+export const LOG_REPLAYS: readonly number[] = [31];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
