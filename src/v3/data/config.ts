@@ -214,10 +214,13 @@ export const VIP = { hp: 8, loss: 3, after: 5, points: 4, targetShare: 0.3, heav
  *  for the canal did not work": docs/design/v3-saltgate-locks.md). */
 export const LOCK = { stand: 44, inTime: 8, outTime: 6, gateway: 14, grace: 6 } as const;
 
-/** Allied structures: the radar's tracked-shot speed-up and the share of
- *  launches the enemy aims at a structure; a battery's rate of fire and how
- *  long a hit knocks it out. */
-export const POST = { radarBoost: 1.5, targetShare: 0.22, batteryGap: 1.3, batteryDown: 12, hitRadius: 30 } as const;
+/** Allied structures: the pace of an enemy inside a standing radar's sweep
+ *  (log v29, the player's Marrow note: "have the radar slow enemy down that
+ *  are in the radius instead of speeding up my munitions"; it used to make
+ *  your shots fly 1.5× at what it tracked), and the share of launches the
+ *  enemy aims at a structure; a battery's rate of fire and how long a hit
+ *  knocks it out. */
+export const POST = { radarSlow: 0.65, targetShare: 0.22, batteryGap: 1.3, batteryDown: 12, hitRadius: 30 } as const;
 
 /** Fast attack boats: how hard they turn onto a ship (rad/s). */
 export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;

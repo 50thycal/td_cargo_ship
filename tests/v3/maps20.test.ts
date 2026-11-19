@@ -213,13 +213,22 @@ describe('each new map\'s own system', () => {
     expect(g2.lost).toBe(VIP.loss);
   });
 
-  it('Lee of Marrow: shots at threats in the radar\'s sweep fly faster; four hits and the radar is lost for good', () => {
+  it('Lee of Marrow: enemies in the radar\'s sweep are slowed (log v29); four hits and the radar is lost for good', () => {
     const g = quiet('marrow');
     const r = g.map.posts![0];
     const inSweep = addThreat(g, { x: r.x + 100, y: r.y + 200 });
     const outside = addThreat(g, { x: 1500, y: 260 });
     expect(tracked(g, inSweep)).toBe(true);
     expect(tracked(g, outside)).toBe(false);
+    // A guided missile inside the sweep covers POST.radarSlow of the ground
+    // one outside does; the time to impact reads it.
+    const a = addThreat(g, { kind: 'guided', x: r.x - 150, y: r.y + 100, heading: 0, speed: 200, hp: 1, age: 9, target: -2 });
+    const b = addThreat(g, { kind: 'guided', x: 100, y: 820, heading: 0, speed: 200, hp: 1, age: 9, target: -2 });
+    const [ax, bx] = [a.x, b.x];
+    for (let k = 0; k < 15; k++) step(g, DT);
+    expect((a.x - ax) / (b.x - bx)).toBeCloseTo(POST.radarSlow, 1);
+    expect(POST.radarSlow).toBeGreaterThanOrEqual(0.6);
+    expect(POST.radarSlow).toBeLessThanOrEqual(0.7);
     // Hits on the tower (a guided aimed at it lands on it).
     for (let k = 0; k < 2; k++) {
       addThreat(g, { kind: 'guided', x: r.x, y: r.y + 4, target: -10, speed: 10, hp: 2 });

@@ -443,6 +443,10 @@ export interface FunOpts {
   mode?: ForkMode;
   /** Keep every fork's record in `judged`, save or not (tests). */
   judgeAll?: boolean;
+  /** A pickup or nuke grab's "removed" branch has no such pickup (else it
+   *  stays on the water and the warm bot grabs it a moment later). Off by
+   *  default, so earlier results compare (2026-11-19). */
+  gone?: boolean;
 }
 
 /** One wave's fun numbers. */
@@ -723,7 +727,7 @@ export type ForkMode = 'save' | 'placebo' | 'noop';
 /** Judge one action: `base` is the game just before its command. Returns
  *  the save, or null when the action saved nothing (`judge` true: the save
  *  record whatever it found, for tests). */
-export function forkAction(base: Game, cmd: LogCommand, a: Action, persona: string, dice: number, seed: number, mode: ForkMode = 'save', judge = false): Save | null {
+export function forkAction(base: Game, cmd: LogCommand, a: Action, persona: string, dice: number, seed: number, mode: ForkMode = 'save', judge = false, gone = false): Save | null {
   const placebo = mode !== 'save';
   const follow = a.what === 'kill' && a.thr !== undefined ? [a.thr, ...(a.rival !== undefined ? [a.rival] : [])] : (a.near ?? []);
   const dAct: number[] = [];
@@ -738,11 +742,20 @@ export function forkAction(base: Game, cmd: LogCommand, a: Action, persona: stri
   for (let d = 0; d < dice; d++) {
     const bSeed = (seed ^ Math.imul(a.step + 1, 0x9e3779b1)) >>> 0;
     const act = branch(base, persona, bSeed, d, follow);
+    const had = act.g.pickups.map((p) => p.id);
     applyCommand(act.g, cmd);
     // The placebo (the noise floor): the "cut" branch keeps the action and
     // only rolls the bot's dice differently.
     const cut = branch(base, persona, bSeed, mode === 'placebo' ? d + 1000 : d, follow);
     if (placebo) applyCommand(cut.g, cmd);
+    // `gone` (2026-11-19): without a pickup's grab, the pickup is not there
+    // at all. Left on the water, the warm bot grabs it itself a step or two
+    // later, so a grab only counts when those few steps matter (the
+    // Battery playtest's "clutch nuke" read as no save that way).
+    else if (gone && a.what !== 'kill') {
+      const took = new Set(had.filter((id) => !act.g.pickups.some((p) => p.id === id)));
+      cut.g.pickups = cut.g.pickups.filter((p) => !took.has(p.id));
+    }
     const late = branch(base, persona, bSeed, d, follow);
     late.later = {
       at: lateStep,
@@ -824,7 +837,7 @@ export function funOfLog(log: PlayLog, o: FunOpts = {}): FunResult {
       while (i < cmds.length && cmds[i][0] <= g.steps) {
         const a = due.get(i);
         if (a) {
-          const s = forkAction(g, cmds[i], a, persona, dice, seed, mode, o.judgeAll);
+          const s = forkAction(g, cmds[i], a, persona, dice, seed, mode, o.judgeAll, o.gone);
           branches += dice * (mode !== 'save' ? 2 : a.rival !== undefined ? 4 : 3);
           if (s && o.judgeAll) judged.push(s);
           if (s && isSave(s.perDie)) saves.push(s);

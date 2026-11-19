@@ -53,8 +53,9 @@ const kesh: MapDef = {
 // 3. Lee of Marrow — an allied radar tower on a friendly island.
 // The Strait's layout plus a friendly island between the enemy shore and the
 // lane, with a radar tower on it. While the tower stands its sweep covers the
-// lane: threats inside it are tracked (a lock box) and your interceptors fly
-// half as fast again at them. The enemy aims some launches at the tower (4
+// lane: threats inside it are tracked (an icy lock box) and slowed to about
+// two thirds of their pace (log v29; before, your interceptors flew half as
+// fast again at them). The enemy aims some launches at the tower (4
 // hits); once it falls it is gone for the rest of the run (player's review).
 const MARROW_BASES: BaseDef[] = [
   { x: 260, y: 105, kinds: ['drone', 'guided'] },
@@ -64,7 +65,7 @@ const MARROW_BASES: BaseDef[] = [
 const marrow: MapDef = {
   id: 'marrow',
   name: 'Lee of Marrow',
-  blurb: 'A radar tower on a friendly island sweeps the lane, speeding your shots at anything it tracks. The enemy wants it gone; once lost, it stays lost.',
+  blurb: 'A radar tower on a friendly island sweeps the lane, slowing every enemy drone and missile inside it. The enemy wants it gone; once lost, it stays lost.',
   land: [
     { side: 'enemy', points: shore('top', 150, 14, 0.9) },
     { side: 'friendly', hill: true, points: lens(520, 1080, 325, 78) },

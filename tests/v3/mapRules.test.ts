@@ -221,8 +221,11 @@ describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
       expect(p.stretches.danger, map).not.toBe(p.stretches.safe);
       expect(p.boss.botTarget, map).toBeGreaterThan(0);
     }
-    // Chapter 1 is the easiest chapter: a ship a round at most, on the bot's scale.
-    expect(MAP_PLANS.kesh!.boss.botTarget).toBeLessThanOrEqual(1);
+    // Chapter 1 is the easiest chapter: a ship a round at most on Marrow, on
+    // the bot's scale. The Kesh Hook's boss reads 2 on the bot since the
+    // playtest (log v29: the player lost 0 / 0 / 1, "way too easy"), about
+    // 1 a round for the player.
+    expect(MAP_PLANS.kesh!.boss.botTarget).toBeLessThanOrEqual(2);
     expect(MAP_PLANS.marrow!.boss.botTarget).toBeLessThanOrEqual(1);
   });
 });

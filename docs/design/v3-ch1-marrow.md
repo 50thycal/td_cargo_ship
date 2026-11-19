@@ -182,3 +182,75 @@ Shared with the Kesh Hook (`docs/design/v3-ch1-kesh.md`, "The play log"):
 - **Kits:** the two come out even on this report. The counter kit wins more (67% against 58%); the off-counter loses slightly fewer ships in waves 1–10. Rule `m-kits` asks for clearly better. The bot's kit is only its draft taste, and the six kits tried were within 0.5 of a ship of each other.
 - **Boss round 2** reads a little under round 1 on the bot (0.56 against 0.61 on normal runs; 0.63 and 0.63 tough). Round 3 rises (1.44).
 - **No player data on Marrow.** The bot's bias for Marrow's boss rounds is unknown. The target assumes the overall 2× bias.
+
+## After the playtest (log v29, 2026-11-19)
+
+The player played the Marrow map card (log v28, `v3-20261118180044-83324`; review `tools/v3/map-rules/review-2026-11-19.json`): won, 4 ships lost, fun 4, difficulty "right", boss 3, "keep", better than Kesh. Measured on the v28 build: `tools/v3/bot-fit/results/ch1-playtest-2026-11-19.json`.
+
+### The player against the bot
+
+| | Waves 1–9 | 10 | Waves 1–10 | B1 / B2 / B3 |
+| --- | --- | --- | --- | --- |
+| The player | 0 | 2 | 2 | 1 / 0 / 1 |
+| The bot on the player's seed, Armory and picks (12 dice) | 2.9 | 1.36 | 4.25 | 0.29 / 1.00 / 1.71 |
+| The map card's prediction (24 seeds) | | | 4.0 | 0.61 / 0.56 / 1.44 |
+
+The bot reads waves 1–10 about twice as hard as the player played them (4.25 against 2), and the boss rounds about 1.4× (1.0 a round against 0.67).
+
+**Fun measures on the player's run:** two saves, both clutch **cover choices** on a guided missile (B1 at 7.2 s, 0.70 s from impact, 1 ship; B3 at 7.2 s, 0.64 s, 0.67): the boss rounds' opening missiles at the tower, the moment the round asks for. Tension is flat on waves 1–5 (peaks 0.04–0.56), rises on waves 6, 8 and 10 (sawtooth rising on 6 and 10), and B3 is pinned (hot 38%, peak 1.85, the run's top). **Best moment** (wave 10, 44 s) is 2 s before wave 10's top (1.12 at 46 s): a match within the second the strip can resolve, though the run's highest peak is B3, not wave 10.
+
+### The radar tower: it slows the enemy
+
+The player's decision, in their own note at step 784: "Have the radar slow enemy down that are in the radius instead of speeding up my munitions I think that makes more sense"; and on the hub: "kinda useless to keep. Let's buff it a bit based on my recommendation to slow down enemy's".
+
+- **The sim** (`src/v3/sim/game.ts`, `updateThreat`): while the tower stands, every enemy unit and munition inside its 400 px sweep moves at `POST.radarSlow` of its pace (**0.65: 35% slower**), its clock too (a shell's arc, a missile's boost, a drone's weave, an aircraft's run). Launchers (trucks, subs) are not slowed. The time to impact (the bots, the warnings, the tension curve) reads the slowed pace. The shot speed-up (`POST.radarBoost`) is gone.
+- **On screen** (`src/v3/ui/features.ts`): the sweep is an icy wash with a ring pulsing out from the tower every 2 s; each slowed threat wears an icy halo, its lock box and a frosted trail of three ghosts. The first-time hint reads "Drones and missiles in its sweep are slowed (the icy ring)". The map blurb and the encounters' text say the same.
+- **Other maps:** the radar is Marrow's alone (Battery Point's posts are batteries, unchanged).
+- **The amount:** tried at 0.60, 0.65 and 0.70 (player Armory, 24 seeds, `--no-fun`): waves 1–10 lost 2.8 / 3.1 / 3.2; the tower fell by wave 6 in 8 / 9 / 14 runs (median wave 7 / 8 / 6). 0.70 lets it fall as early as before; 0.60 makes the map easier still. 0.65 is the middle.
+- **Its hit points stay 4.** 5 or 6 read the same (a missile or shell takes 2, so 5 and 6 both take three hits): the tower then fell by wave 6 in only 4 runs, but the map got easier again (won 96%, 2.4 lost in waves 1–10). Since 0.65 alone keeps it up past wave 6 in most runs, it was left at 4.
+
+Bot, the player's Armory, 24 seeds, `--kits=plan` (v29 includes the boss intro):
+
+| | v28 | v29 |
+| --- | --- | --- |
+| Tower fell by wave 5 / by wave 6 / standing into the boss rounds (of 24) | 9 / 16 / 0 | **6 / 9 / 2** (median wave 8; one run kept it to the end) |
+| Won (normal) | 67% | 79% |
+| Ships lost in waves 1–10 / 1–5 | 4.0 / 0.42 | **3.1 / 0.04** |
+| Boss r1 / r2 / r3 (normal, reached) | 0.61 / 0.56 / 1.44 | 0.52 / 0.76 / 1.71 |
+| `w-cliff` | FLAG: w9 by 0.08 | FLAG: w8 0.21 → 0.63 |
+| `m-stretches` | PASS: cold early 23% | **FLAG: cold early 27%** |
+
+Without the Armory: won 0% → 8%, waves 1–10 5.5 → 5.0, the tower fell by wave 6 in 14 runs (median wave 6); cliffs on waves 6, 7 and 9 (it passed before), and the early stretch 26% (22%). Warning time on wave 1 now reads 11.4 s (8.4), as slowed threats read longer to impact.
+
+**What it does to the map:** the tower is worth defending now (standing past wave 6 in about two runs in three), and Marrow got easier, mostly in waves 1–7, where the tower still stands: the middle stretch, which the tower covers, got safer, so the early third's share rose past the 25% line. The player found Marrow "right" at 2 ships lost in waves 1–10 where the bot read 4.25; now the bot reads 3.1 on the card's seeds. **A question for the player** (hub): keep Marrow a little easier as the price of a tower that matters, or add a little fire to waves 6–10 to win it back.
+
+**The boss** moved little (0.61 / 0.56 / 1.44 → 0.52 / 0.76 / 1.71) and was left alone, as asked.
+
+### The boss intro: a longer calm and one banner (every map)
+
+The player's note: "with the boss wave have more of a pause before it begins and say live or ships reset and then like survive for these next three waves make it feel more dramatic".
+
+- **The calm** (`EVENT.bossCalm`, 5 s, `src/v3/data/events.ts`; `firstBossRound` in `src/v3/sim/events.ts`): the first round of every map's three-run ending starts its script 5 s later, so the breather and the calm are 8 s with no launch. Rounds 2 and 3, bonus events and the Test Lab's event cards start as before. The round's own 15–30 s is counted from its first launch and is unchanged.
+- **The banner** (`src/v3/ui/app.ts`, the `special` case of `drainEvents`): "BOSS: DRONE STORM" (the boss's name), "Survive the next 3 rounds. Convoy restored: 6 ships can still be lost." The event card holds through the breather and the calm. The separate "CONVOY RESTORED" banner is folded into it on that step.
+- **Ship losses are not reset by this change, but they already were.** Round 7's experiment (`ENDING.threeRuns`, `restoreConvoy` in `sim/events.ts`, called from `startWave`) restores the convoy and the carrier before boss round 1 in the campaign and on a map card's full run: the ships lost before it stop counting against the six. On the player's Kesh run the replay shows it (3 lost by wave 10, `lossBase` 3 at wave 11). So the banner says "Convoy restored". Turning the restore off is that one flag; the banner then reads the losses left as they are ("2 ships can still be lost").
+
+On the reference maps the calm is the only change, and waves 1–10 read exactly as before. Their `-player` reports were re-run (24 seeds, `--kits=plan --fun-placebo`); boss rounds, normal runs that reached them, v28 → v29:
+
+| Map | v28 | v29 | Won |
+| --- | --- | --- | --- |
+| The Strait | 1.07 / 1.86 / 2.00 | 1.07 / 1.21 / 2.00 | 29% → 33% |
+| The Gauntlet | 0.67 / 0.67 / 1.33 | 0.67 / 0.67 / 1.25 | 50% → 46% |
+| Harbor Mouth | 1.00 / 2.75 / 1.14 | 0.63 / 2.63 / 1.25 | 25% → 17% |
+
+The moves are within a run or two of the 8–14 that reach the boss (the convoy sails 5 s further in before round 1 starts), so the boss rounds play as before apart from the calm.
+
+### Tests
+
+- `tests/v3/maps20.test.ts`: a guided missile inside the sweep covers `POST.radarSlow` of the ground one outside does; the amount is 30–40%.
+- `tests/v3/bossIntro.test.ts`: on every map with a boss, round 1 waits `EVENT.bossCalm` more and nothing flies until the breather and the calm are over; only run 1 of a several-run ending counts.
+- `tests/v3/encounters.test.ts`: the Drone Storm's shells and missiles and its rise; every boss round still 15–30 s.
+- `tests/v3/frigateJitter.test.ts`, `tests/v3/nuke.test.ts`: the two Kesh notes (`docs/design/v3-ch1-kesh.md`).
+- `src/v3/sim/mapReport.ts`: a "Radar tower standing" INFO row (`g-mechanic`) in the bot report.
+- `e2e/v3.mjs`: the boss banner names the boss, the rounds and the ships left.
+
+Reports: `tools/v3/map-report/results/marrow.md` and `marrow-player.md`.

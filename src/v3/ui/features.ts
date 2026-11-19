@@ -206,14 +206,26 @@ export function drawPosts(ctx: CanvasRenderingContext2D, g: Game): void {
     const up = !st.lost && st.downT <= 0;
     if (p.kind === 'radar') {
       if (up) {
-        // The sweep: a wedge turning through the covered circle, fading behind.
-        ctx.strokeStyle = 'rgba(143,224,162,0.28)';
+        // The slowing field (log v29): an icy wash over the covered circle,
+        // its edge, and a ring pulsing out from the tower every two
+        // seconds, so the zone that slows the enemy reads at a glance.
+        ctx.fillStyle = 'rgba(120,200,255,0.06)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.reach, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(140,215,255,0.45)';
         ctx.lineWidth = 2;
         ctx.setLineDash([10, 10]);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.reach, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
+        const pulse = (g.t / 2) % 1;
+        ctx.strokeStyle = `rgba(140,215,255,${0.35 * (1 - pulse)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 30 + (p.reach - 30) * pulse, 0, Math.PI * 2);
+        ctx.stroke();
         for (let k = 0; k < 10; k++) {
           const a = st.aim - k * 0.06;
           ctx.fillStyle = `rgba(143,224,162,${0.22 * (1 - k / 10)})`;
@@ -277,13 +289,30 @@ export function drawPosts(ctx: CanvasRenderingContext2D, g: Game): void {
   });
 }
 
-/** A lock box round each threat the radar is tracking. */
+/** Each threat the radar is slowing (log v29): an icy halo and a frosted
+ *  trail of ghosts behind it, the lock box's corners kept in the same ice. */
 export function drawTracked(ctx: CanvasRenderingContext2D, g: Game): void {
   if (!g.map.posts?.some((p) => p.kind === 'radar')) return;
-  ctx.strokeStyle = 'rgba(143,224,162,0.9)';
-  ctx.lineWidth = 2;
   for (const th of g.threats) {
     if (th.dead || !tracked(g, th)) continue;
+    // The trail: three fading ghosts back along its path.
+    const v = Math.hypot(th.vx, th.vy);
+    if (v > 1) {
+      const ux = th.vx / v;
+      const uy = th.vy / v;
+      for (let k = 1; k <= 3; k++) {
+        ctx.fillStyle = `rgba(150,220,255,${0.32 - k * 0.08})`;
+        ctx.beginPath();
+        ctx.arc(th.x - ux * k * 13, th.y - uy * k * 13, 9 - k * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = 'rgba(150,220,255,0.22)';
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(170,230,255,0.95)';
+    ctx.lineWidth = 2;
     const r = 22;
     for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       ctx.beginPath();
