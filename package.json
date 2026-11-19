@@ -35,6 +35,7 @@
     "e2e:v3": "node e2e/v3.mjs && node e2e/v3-audio.mjs",
     "v3:map-lab": "vite-node tools/v3/map-lab/run.ts --",
     "v3:map-report": "vite-node tools/v3/map-report/report.ts --",
+    "v3:combo-sweep": "vite-node tools/v3/combo-sweep/sweep.ts --",
     "build:store": "tsc --noEmit && vite build --mode store",
     "ios:sync": "npm run build:store && cap sync ios"
   },

@@ -1,0 +1,4274 @@
+{
+ "stage": "confirm",
+ "about": "The 15 best and 5 worst triples, Overdrive + Scattergun + Supply Run, each map's counter kit, the plain gun and the bot drafting for itself, on more seeds, with the tension reading.",
+ "logVersion": 28,
+ "date": "2026-11-19",
+ "seeds": [
+  900,
+  901,
+  902,
+  903,
+  904,
+  905,
+  906,
+  907,
+  908,
+  909,
+  910,
+  911
+ ],
+ "maps": [
+  "strait",
+  "gauntlet",
+  "harbor",
+  "kesh",
+  "marrow"
+ ],
+ "pool": [
+  "airstrike",
+  "shrapnel",
+  "frigate",
+  "thermo",
+  "scatter",
+  "boomerang",
+  "flak",
+  "seeker",
+  "aegis",
+  "well",
+  "railgun",
+  "tesla",
+  "cutter",
+  "droneScreen",
+  "supplyRun",
+  "overdrive"
+ ],
+ "seconds": 405,
+ "runs": 1380,
+ "configs": [
+  {
+   "key": "airstrike+well+supplyRun",
+   "name": "Air Strike + Gravity Well + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 2,
+     "lostAll": 8.833,
+     "bossNormal": 1.424,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.009,
+      "hot": 0.064,
+      "calm": 0.771,
+      "sawtooth": 0.078,
+      "flat": 0.386
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.889,
+     "lostAll": 6.917,
+     "bossNormal": 0.963,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.895,
+      "hot": 0.031,
+      "calm": 0.812,
+      "sawtooth": 0.15,
+      "flat": 0.49
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 11.083,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2,
+     "lostAll": 11,
+     "bossNormal": 1.714,
+     "bossReached": 1.167,
+     "tension": {
+      "peak": 0.986,
+      "hot": 0.042,
+      "calm": 0.768,
+      "sawtooth": 0.328,
+      "flat": 0.275
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.889,
+     "lostAll": 5.417,
+     "bossNormal": 0.909,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.12,
+      "hot": 0.098,
+      "calm": 0.716,
+      "sawtooth": 0.144,
+      "flat": 0.327
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 4.167,
+     "boss": 0.639,
+     "lostAll": 6.083,
+     "bossNormal": 0.733,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 0.937,
+      "hot": 0.06,
+      "calm": 0.75,
+      "sawtooth": 0.243,
+      "flat": 0.399
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.633,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3.8,
+    "boss": 1.283,
+    "lostAll": 7.65,
+    "bossNormal": 1.149,
+    "bossReached": 2.283,
+    "tension": {
+     "peak": 0.989,
+     "hot": 0.059,
+     "calm": 0.763,
+     "sawtooth": 0.189,
+     "flat": 0.375
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "well",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -4.575,
+     "gauntlet": -3.573,
+     "harbor": -6.653,
+     "kesh": -3.106,
+     "marrow": -3.873
+    },
+    "mean": -4.356,
+    "predicted": 3.294,
+    "win": -0.169,
+    "winPredicted": 0.803
+   }
+  },
+  {
+   "key": "flak+aegis+supplyRun",
+   "name": "Flak Cannon + Point Defense + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0.083,
+     "lost10": 2.917,
+     "boss": 1.833,
+     "lostAll": 8.417,
+     "bossNormal": 1.4,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 1.026,
+      "hot": 0.05,
+      "calm": 0.775,
+      "sawtooth": 0.087,
+      "flat": 0.32
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 11.667,
+     "flawless": 0.083,
+     "lost10": 5.167,
+     "boss": 0.861,
+     "lostAll": 7.75,
+     "bossNormal": 0.81,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 0.846,
+      "hot": 0.024,
+      "calm": 0.822,
+      "sawtooth": 0.128,
+      "flat": 0.504
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.722,
+     "lostAll": 11.833,
+     "bossNormal": 1.667,
+     "bossReached": 0.5,
+     "tension": {
+      "peak": 0.999,
+      "hot": 0.043,
+      "calm": 0.775,
+      "sawtooth": 0.345,
+      "flat": 0.286
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.417,
+     "flawless": 0,
+     "lost10": 2.417,
+     "boss": 0.806,
+     "lostAll": 4.833,
+     "bossNormal": 0.697,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.894,
+      "hot": 0.069,
+      "calm": 0.743,
+      "sawtooth": 0.093,
+      "flat": 0.48
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.75,
+     "lostAll": 5.5,
+     "bossNormal": 0.7,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 0.896,
+      "hot": 0.056,
+      "calm": 0.731,
+      "sawtooth": 0.287,
+      "flat": 0.38
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.583,
+    "endWave": 12.283,
+    "flawless": 0.033,
+    "lost10": 4.083,
+    "boss": 1.194,
+    "lostAll": 7.667,
+    "bossNormal": 1.055,
+    "bossReached": 2,
+    "tension": {
+     "peak": 0.932,
+     "hot": 0.048,
+     "calm": 0.769,
+     "sawtooth": 0.188,
+     "flat": 0.394
+    }
+   },
+   "weapons": [
+    "flak",
+    "aegis",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -4.807,
+     "gauntlet": -3.719,
+     "harbor": -7.41,
+     "kesh": -3.257,
+     "marrow": -2.82
+    },
+    "mean": -4.402,
+    "predicted": 3.264,
+    "win": -0.213,
+    "winPredicted": 0.796
+   }
+  },
+  {
+   "key": "airstrike+aegis+supplyRun",
+   "name": "Air Strike + Point Defense + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 2.361,
+     "lostAll": 9.083,
+     "bossNormal": 1.781,
+     "bossReached": 2.667,
+     "tension": {
+      "peak": 0.954,
+      "hot": 0.052,
+      "calm": 0.8,
+      "sawtooth": 0.039,
+      "flat": 0.454
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 0.722,
+     "lostAll": 7.25,
+     "bossNormal": 0.833,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.875,
+      "hot": 0.028,
+      "calm": 0.822,
+      "sawtooth": 0.178,
+      "flat": 0.452
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.417,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 1.667,
+     "lostAll": 10.75,
+     "bossNormal": 1.667,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.957,
+      "hot": 0.039,
+      "calm": 0.781,
+      "sawtooth": 0.271,
+      "flat": 0.323
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.889,
+     "lostAll": 5.167,
+     "bossNormal": 0.875,
+     "bossReached": 2.667,
+     "tension": {
+      "peak": 0.997,
+      "hot": 0.078,
+      "calm": 0.736,
+      "sawtooth": 0.132,
+      "flat": 0.388
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.583,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 0.861,
+     "lostAll": 5.917,
+     "bossNormal": 0.879,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.887,
+      "hot": 0.053,
+      "calm": 0.743,
+      "sawtooth": 0.242,
+      "flat": 0.438
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.583,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 3.733,
+    "boss": 1.3,
+    "lostAll": 7.633,
+    "bossNormal": 1.207,
+    "bossReached": 2.167,
+    "tension": {
+     "peak": 0.934,
+     "hot": 0.05,
+     "calm": 0.776,
+     "sawtooth": 0.172,
+     "flat": 0.411
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "aegis",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -5.34,
+     "gauntlet": -3.945,
+     "harbor": -6.64,
+     "kesh": -2.856,
+     "marrow": -3.305
+    },
+    "mean": -4.417,
+    "predicted": 3.216,
+    "win": -0.227,
+    "winPredicted": 0.81
+   }
+  },
+  {
+   "key": "airstrike+scatter+supplyRun",
+   "name": "Air Strike + Scattergun + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 2.417,
+     "lostAll": 10.333,
+     "bossNormal": 1.933,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 1.011,
+      "hot": 0.061,
+      "calm": 0.781,
+      "sawtooth": 0.087,
+      "flat": 0.38
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 0.917,
+     "lostAll": 7.583,
+     "bossNormal": 0.833,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.891,
+      "hot": 0.025,
+      "calm": 0.822,
+      "sawtooth": 0.113,
+      "flat": 0.444
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 7.667,
+     "boss": 1.417,
+     "lostAll": 11.917,
+     "bossNormal": 0.909,
+     "bossReached": 0.917,
+     "tension": {
+      "peak": 1.031,
+      "hot": 0.044,
+      "calm": 0.779,
+      "sawtooth": 0.29,
+      "flat": 0.29
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.917,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 0.944,
+     "lostAll": 5.917,
+     "bossNormal": 0.944,
+     "bossReached": 3,
+     "tension": {
+      "peak": 1.101,
+      "hot": 0.092,
+      "calm": 0.726,
+      "sawtooth": 0.128,
+      "flat": 0.346
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.167,
+     "boss": 1.056,
+     "lostAll": 7.333,
+     "bossNormal": 0.905,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 0.925,
+      "hot": 0.048,
+      "calm": 0.774,
+      "sawtooth": 0.197,
+      "flat": 0.401
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.533,
+    "endWave": 12.35,
+    "flawless": 0,
+    "lost10": 4.567,
+    "boss": 1.35,
+    "lostAll": 8.617,
+    "bossNormal": 1.105,
+    "bossReached": 2.033,
+    "tension": {
+     "peak": 0.992,
+     "hot": 0.054,
+     "calm": 0.777,
+     "sawtooth": 0.163,
+     "flat": 0.372
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "scatter",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -5.56,
+     "gauntlet": -2.84,
+     "harbor": -8.162,
+     "kesh": -3.909,
+     "marrow": -4.956
+    },
+    "mean": -5.085,
+    "predicted": 3.532,
+    "win": -0.252,
+    "winPredicted": 0.786
+   }
+  },
+  {
+   "key": "airstrike+well+droneScreen",
+   "name": "Air Strike + Gravity Well + Drone Screen",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 3.583,
+     "boss": 2.056,
+     "lostAll": 9.75,
+     "bossNormal": 1.962,
+     "bossReached": 2.167,
+     "tension": {
+      "peak": 1.114,
+      "hot": 0.069,
+      "calm": 0.782,
+      "sawtooth": 0.123,
+      "flat": 0.315
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.167,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.861,
+     "lostAll": 8.333,
+     "bossNormal": 0.8,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.949,
+      "hot": 0.031,
+      "calm": 0.813,
+      "sawtooth": 0.147,
+      "flat": 0.473
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.917,
+     "flawless": 0,
+     "lost10": 5.667,
+     "boss": 1.639,
+     "lostAll": 10.583,
+     "bossNormal": 2,
+     "bossReached": 1.083,
+     "tension": {
+      "peak": 1.018,
+      "hot": 0.044,
+      "calm": 0.77,
+      "sawtooth": 0.357,
+      "flat": 0.287
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.139,
+     "lostAll": 6.75,
+     "bossNormal": 1,
+     "bossReached": 2.417,
+     "tension": {
+      "peak": 1.083,
+      "hot": 0.084,
+      "calm": 0.731,
+      "sawtooth": 0.168,
+      "flat": 0.342
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 0.417,
+     "lostAll": 4.417,
+     "bossNormal": 0.394,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.908,
+      "hot": 0.058,
+      "calm": 0.741,
+      "sawtooth": 0.294,
+      "flat": 0.399
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.483,
+    "endWave": 12.25,
+    "flawless": 0,
+    "lost10": 4.3,
+    "boss": 1.222,
+    "lostAll": 7.967,
+    "bossNormal": 1.231,
+    "bossReached": 1.933,
+    "tension": {
+     "peak": 1.014,
+     "hot": 0.057,
+     "calm": 0.767,
+     "sawtooth": 0.218,
+     "flat": 0.363
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "well",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -7.251,
+     "gauntlet": -5.878,
+     "harbor": -7.541,
+     "kesh": -5.131,
+     "marrow": -3.216
+    },
+    "mean": -5.803,
+    "predicted": 2.163,
+    "win": -0.377,
+    "winPredicted": 0.86
+   }
+  },
+  {
+   "key": "airstrike+thermo+well",
+   "name": "Air Strike + Thermobaric Shell + Gravity Well",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.583,
+     "lostAll": 9,
+     "bossNormal": 1.37,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.952,
+      "hot": 0.053,
+      "calm": 0.776,
+      "sawtooth": 0.145,
+      "flat": 0.393
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.417,
+     "flawless": 0,
+     "lost10": 7.583,
+     "boss": 1.306,
+     "lostAll": 11.5,
+     "bossNormal": 1.167,
+     "bossReached": 1,
+     "tension": {
+      "peak": 0.94,
+      "hot": 0.03,
+      "calm": 0.818,
+      "sawtooth": 0.154,
+      "flat": 0.431
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.167,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.667,
+     "lostAll": 11.667,
+     "bossNormal": 1.4,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.992,
+      "hot": 0.042,
+      "calm": 0.763,
+      "sawtooth": 0.285,
+      "flat": 0.3
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.806,
+     "lostAll": 5.167,
+     "bossNormal": 0.788,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.028,
+      "hot": 0.076,
+      "calm": 0.729,
+      "sawtooth": 0.145,
+      "flat": 0.375
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.583,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 0.944,
+     "lostAll": 6.667,
+     "bossNormal": 0.788,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.925,
+      "hot": 0.06,
+      "calm": 0.738,
+      "sawtooth": 0.289,
+      "flat": 0.349
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.533,
+    "endWave": 12.233,
+    "flawless": 0,
+    "lost10": 5.017,
+    "boss": 1.261,
+    "lostAll": 8.8,
+    "bossNormal": 1.103,
+    "bossReached": 2,
+    "tension": {
+     "peak": 0.967,
+     "hot": 0.052,
+     "calm": 0.765,
+     "sawtooth": 0.204,
+     "flat": 0.37
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "thermo",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.441,
+     "gauntlet": -9.255,
+     "harbor": -9.039,
+     "kesh": -3.159,
+     "marrow": -5.17
+    },
+    "mean": -6.613,
+    "predicted": 2.187,
+    "win": -0.303,
+    "winPredicted": 0.836
+   }
+  },
+  {
+   "key": "airstrike+well+railgun",
+   "name": "Air Strike + Gravity Well + Railgun",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 2.194,
+     "lostAll": 10.417,
+     "bossNormal": 1.667,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 1.038,
+      "hot": 0.058,
+      "calm": 0.789,
+      "sawtooth": 0.082,
+      "flat": 0.336
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.917,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 1.056,
+     "lostAll": 9.167,
+     "bossNormal": 1,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.959,
+      "hot": 0.031,
+      "calm": 0.814,
+      "sawtooth": 0.197,
+      "flat": 0.433
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.083,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.528,
+     "lostAll": 11.25,
+     "bossNormal": 1.467,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 1.023,
+      "hot": 0.046,
+      "calm": 0.766,
+      "sawtooth": 0.362,
+      "flat": 0.323
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.222,
+     "lostAll": 7.667,
+     "bossNormal": 1.242,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.08,
+      "hot": 0.091,
+      "calm": 0.718,
+      "sawtooth": 0.163,
+      "flat": 0.353
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 0.778,
+     "lostAll": 5.5,
+     "bossNormal": 0.833,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 0.943,
+      "hot": 0.06,
+      "calm": 0.752,
+      "sawtooth": 0.275,
+      "flat": 0.389
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.5,
+    "endWave": 12.25,
+    "flawless": 0,
+    "lost10": 4.733,
+    "boss": 1.356,
+    "lostAll": 8.8,
+    "bossNormal": 1.242,
+    "bossReached": 2,
+    "tension": {
+     "peak": 1.009,
+     "hot": 0.057,
+     "calm": 0.768,
+     "sawtooth": 0.216,
+     "flat": 0.367
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "well",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -7.878,
+     "gauntlet": -6.805,
+     "harbor": -8.326,
+     "kesh": -5.464,
+     "marrow": -4.003
+    },
+    "mean": -6.495,
+    "predicted": 2.305,
+    "win": -0.34,
+    "winPredicted": 0.84
+   }
+  },
+  {
+   "key": "frigate+thermo+supplyRun",
+   "name": "Frigate Escort + Thermobaric Shell + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.833,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 3.028,
+     "lostAll": 12.833,
+     "bossNormal": 2.333,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 1.022,
+      "hot": 0.056,
+      "calm": 0.794,
+      "sawtooth": 0.078,
+      "flat": 0.355
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.083,
+     "flawless": 0,
+     "lost10": 5.417,
+     "boss": 0.917,
+     "lostAll": 8.167,
+     "bossNormal": 0.933,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.882,
+      "hot": 0.027,
+      "calm": 0.819,
+      "sawtooth": 0.148,
+      "flat": 0.453
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 10.667,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 1.917,
+     "lostAll": 12.5,
+     "bossNormal": 2.154,
+     "bossReached": 1.083,
+     "tension": {
+      "peak": 1.027,
+      "hot": 0.047,
+      "calm": 0.775,
+      "sawtooth": 0.268,
+      "flat": 0.346
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.111,
+     "lostAll": 7.333,
+     "bossNormal": 0.926,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 1.001,
+      "hot": 0.076,
+      "calm": 0.741,
+      "sawtooth": 0.116,
+      "flat": 0.39
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 12.917,
+     "flawless": 0.083,
+     "lost10": 3.917,
+     "boss": 0.806,
+     "lostAll": 6.333,
+     "bossNormal": 0.889,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.898,
+      "hot": 0.055,
+      "calm": 0.762,
+      "sawtooth": 0.233,
+      "flat": 0.466
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.383,
+    "endWave": 11.85,
+    "flawless": 0.017,
+    "lost10": 4.767,
+    "boss": 1.556,
+    "lostAll": 9.433,
+    "bossNormal": 1.447,
+    "bossReached": 1.717,
+    "tension": {
+     "peak": 0.966,
+     "hot": 0.052,
+     "calm": 0.778,
+     "sawtooth": 0.169,
+     "flat": 0.402
+    }
+   },
+   "weapons": [
+    "frigate",
+    "thermo",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -8.846,
+     "gauntlet": -4.557,
+     "harbor": -8.477,
+     "kesh": -5.167,
+     "marrow": -3.603
+    },
+    "mean": -6.13,
+    "predicted": 3.303,
+    "win": -0.34,
+    "winPredicted": 0.724
+   }
+  },
+  {
+   "key": "airstrike+flak+supplyRun",
+   "name": "Air Strike + Flak Cannon + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3.583,
+     "boss": 2.556,
+     "lostAll": 11.25,
+     "bossNormal": 2.042,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1.016,
+      "hot": 0.054,
+      "calm": 0.795,
+      "sawtooth": 0.091,
+      "flat": 0.378
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 12.583,
+     "flawless": 0,
+     "lost10": 4.083,
+     "boss": 0.75,
+     "lostAll": 6.333,
+     "bossNormal": 0.889,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.862,
+      "hot": 0.027,
+      "calm": 0.815,
+      "sawtooth": 0.141,
+      "flat": 0.472
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.333,
+     "flawless": 0,
+     "lost10": 6.417,
+     "boss": 1.556,
+     "lostAll": 11.083,
+     "bossNormal": 1.444,
+     "bossReached": 0.75,
+     "tension": {
+      "peak": 0.991,
+      "hot": 0.039,
+      "calm": 0.781,
+      "sawtooth": 0.295,
+      "flat": 0.295
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 4.333,
+     "boss": 1.028,
+     "lostAll": 7.417,
+     "bossNormal": 0.963,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 1.049,
+      "hot": 0.084,
+      "calm": 0.755,
+      "sawtooth": 0.116,
+      "flat": 0.381
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 4.333,
+     "boss": 0.833,
+     "lostAll": 6.833,
+     "bossNormal": 0.704,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.9,
+      "hot": 0.053,
+      "calm": 0.748,
+      "sawtooth": 0.274,
+      "flat": 0.404
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.467,
+    "endWave": 12.133,
+    "flawless": 0,
+    "lost10": 4.55,
+    "boss": 1.344,
+    "lostAll": 8.583,
+    "bossNormal": 1.208,
+    "bossReached": 1.9,
+    "tension": {
+     "peak": 0.964,
+     "hot": 0.052,
+     "calm": 0.779,
+     "sawtooth": 0.183,
+     "flat": 0.386
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "flak",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.614,
+     "gauntlet": -2.017,
+     "harbor": -6.914,
+     "kesh": -5.821,
+     "marrow": -4.188
+    },
+    "mean": -5.111,
+    "predicted": 3.472,
+    "win": -0.354,
+    "winPredicted": 0.82
+   }
+  },
+  {
+   "key": "frigate+droneScreen+supplyRun",
+   "name": "Frigate Escort + Drone Screen + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.306,
+     "lostAll": 12.167,
+     "bossNormal": 1.895,
+     "bossReached": 1.583,
+     "tension": {
+      "peak": 1.104,
+      "hot": 0.054,
+      "calm": 0.779,
+      "sawtooth": 0.101,
+      "flat": 0.283
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 5.833,
+     "boss": 0.5,
+     "lostAll": 7.333,
+     "bossNormal": 0.778,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.89,
+      "hot": 0.031,
+      "calm": 0.812,
+      "sawtooth": 0.173,
+      "flat": 0.429
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.667,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.889,
+     "lostAll": 12.333,
+     "bossNormal": 1.643,
+     "bossReached": 1.167,
+     "tension": {
+      "peak": 0.986,
+      "hot": 0.04,
+      "calm": 0.775,
+      "sawtooth": 0.294,
+      "flat": 0.365
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13.417,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 1.222,
+     "lostAll": 6.833,
+     "bossNormal": 1,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.037,
+      "hot": 0.088,
+      "calm": 0.717,
+      "sawtooth": 0.105,
+      "flat": 0.418
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.639,
+     "lostAll": 4.917,
+     "bossNormal": 0.636,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.852,
+      "hot": 0.058,
+      "calm": 0.744,
+      "sawtooth": 0.289,
+      "flat": 0.47
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.483,
+    "endWave": 12.133,
+    "flawless": 0,
+    "lost10": 4.783,
+    "boss": 1.311,
+    "lostAll": 8.717,
+    "bossNormal": 1.19,
+    "bossReached": 1.95,
+    "tension": {
+     "peak": 0.974,
+     "hot": 0.054,
+     "calm": 0.765,
+     "sawtooth": 0.192,
+     "flat": 0.393
+    }
+   },
+   "weapons": [
+    "frigate",
+    "droneScreen",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -8.273,
+     "gauntlet": -3.385,
+     "harbor": -7.676,
+     "kesh": -5.086,
+     "marrow": -2.726
+    },
+    "mean": -5.429,
+    "predicted": 3.288,
+    "win": -0.259,
+    "winPredicted": 0.743
+   }
+  },
+  {
+   "key": "airstrike+scatter+well",
+   "name": "Air Strike + Scattergun + Gravity Well",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 1.889,
+     "lostAll": 9.417,
+     "bossNormal": 1.536,
+     "bossReached": 2.333,
+     "tension": {
+      "peak": 1.018,
+      "hot": 0.057,
+      "calm": 0.784,
+      "sawtooth": 0.129,
+      "flat": 0.401
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.833,
+     "flawless": 0,
+     "lost10": 6.417,
+     "boss": 0.444,
+     "lostAll": 7.75,
+     "bossNormal": 0.167,
+     "bossReached": 1,
+     "tension": {
+      "peak": 0.946,
+      "hot": 0.029,
+      "calm": 0.815,
+      "sawtooth": 0.159,
+      "flat": 0.437
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.722,
+     "lostAll": 11.833,
+     "bossNormal": 1.643,
+     "bossReached": 1.167,
+     "tension": {
+      "peak": 1.031,
+      "hot": 0.049,
+      "calm": 0.761,
+      "sawtooth": 0.364,
+      "flat": 0.271
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 0.75,
+     "lostAll": 6.083,
+     "bossNormal": 0.727,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.045,
+      "hot": 0.077,
+      "calm": 0.718,
+      "sawtooth": 0.152,
+      "flat": 0.377
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 0.806,
+     "lostAll": 7,
+     "bossNormal": 0.625,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.947,
+      "hot": 0.057,
+      "calm": 0.752,
+      "sawtooth": 0.282,
+      "flat": 0.366
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.533,
+    "endWave": 12.117,
+    "flawless": 0,
+    "lost10": 5.05,
+    "boss": 1.122,
+    "lostAll": 8.417,
+    "bossNormal": 0.94,
+    "bossReached": 1.85,
+    "tension": {
+     "peak": 0.997,
+     "hot": 0.054,
+     "calm": 0.766,
+     "sawtooth": 0.217,
+     "flat": 0.371
+    }
+   },
+   "weapons": [
+    "airstrike",
+    "scatter",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.638,
+     "gauntlet": -4.897,
+     "harbor": -9.324,
+     "kesh": -4.507,
+     "marrow": -5.764
+    },
+    "mean": -6.226,
+    "predicted": 2.191,
+    "win": -0.33,
+    "winPredicted": 0.863
+   }
+  },
+  {
+   "key": "aegis+railgun+supplyRun",
+   "name": "Point Defense + Railgun + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 1.889,
+     "lostAll": 10.25,
+     "bossNormal": 1.44,
+     "bossReached": 2.083,
+     "tension": {
+      "peak": 1.071,
+      "hot": 0.059,
+      "calm": 0.785,
+      "sawtooth": 0.117,
+      "flat": 0.331
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.417,
+     "boss": 0.694,
+     "lostAll": 7.5,
+     "bossNormal": 0.667,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.841,
+      "hot": 0.027,
+      "calm": 0.819,
+      "sawtooth": 0.126,
+      "flat": 0.511
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.667,
+     "boss": 1.833,
+     "lostAll": 10.167,
+     "bossNormal": 1.679,
+     "bossReached": 2.333,
+     "tension": {
+      "peak": 0.996,
+      "hot": 0.047,
+      "calm": 0.759,
+      "sawtooth": 0.367,
+      "flat": 0.306
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 1.25,
+     "lostAll": 6.833,
+     "bossNormal": 1.323,
+     "bossReached": 2.583,
+     "tension": {
+      "peak": 1.025,
+      "hot": 0.086,
+      "calm": 0.739,
+      "sawtooth": 0.128,
+      "flat": 0.376
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 0.944,
+     "lostAll": 5.667,
+     "bossNormal": 0.97,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.9,
+      "hot": 0.062,
+      "calm": 0.73,
+      "sawtooth": 0.262,
+      "flat": 0.403
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.55,
+    "endWave": 12.633,
+    "flawless": 0,
+    "lost10": 4.117,
+    "boss": 1.322,
+    "lostAll": 8.083,
+    "bossNormal": 1.216,
+    "bossReached": 2.25,
+    "tension": {
+     "peak": 0.967,
+     "hot": 0.056,
+     "calm": 0.766,
+     "sawtooth": 0.2,
+     "flat": 0.385
+    }
+   },
+   "weapons": [
+    "aegis",
+    "railgun",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.854,
+     "gauntlet": -3.832,
+     "harbor": -5.523,
+     "kesh": -4.061,
+     "marrow": -2.749
+    },
+    "mean": -4.604,
+    "predicted": 3.479,
+    "win": -0.17,
+    "winPredicted": 0.72
+   }
+  },
+  {
+   "key": "scatter+aegis+railgun",
+   "name": "Scattergun + Point Defense + Railgun",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 1.639,
+     "lostAll": 8.75,
+     "bossNormal": 1.385,
+     "bossReached": 2.167,
+     "tension": {
+      "peak": 1.001,
+      "hot": 0.052,
+      "calm": 0.782,
+      "sawtooth": 0.116,
+      "flat": 0.37
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 5.583,
+     "boss": 1.056,
+     "lostAll": 8.75,
+     "bossNormal": 0.926,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.882,
+      "hot": 0.028,
+      "calm": 0.818,
+      "sawtooth": 0.163,
+      "flat": 0.482
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 1.667,
+     "lostAll": 11.25,
+     "bossNormal": 1.467,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 1.035,
+      "hot": 0.046,
+      "calm": 0.763,
+      "sawtooth": 0.336,
+      "flat": 0.275
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.889,
+     "lostAll": 5.917,
+     "bossNormal": 0.75,
+     "bossReached": 3,
+     "tension": {
+      "peak": 1.02,
+      "hot": 0.088,
+      "calm": 0.72,
+      "sawtooth": 0.167,
+      "flat": 0.314
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.583,
+     "flawless": 0,
+     "lost10": 2.917,
+     "boss": 0.889,
+     "lostAll": 5.583,
+     "bossNormal": 0.909,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.936,
+      "hot": 0.06,
+      "calm": 0.731,
+      "sawtooth": 0.283,
+      "flat": 0.408
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.633,
+    "endWave": 12.733,
+    "flawless": 0,
+    "lost10": 4.367,
+    "boss": 1.228,
+    "lostAll": 8.05,
+    "bossNormal": 1.087,
+    "bossReached": 2.283,
+    "tension": {
+     "peak": 0.975,
+     "hot": 0.055,
+     "calm": 0.763,
+     "sawtooth": 0.213,
+     "flat": 0.37
+    }
+   },
+   "weapons": [
+    "scatter",
+    "aegis",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.534,
+     "gauntlet": -5.62,
+     "harbor": -8.57,
+     "kesh": -4.025,
+     "marrow": -3.952
+    },
+    "mean": -5.74,
+    "predicted": 2.31,
+    "win": -0.19,
+    "winPredicted": 0.823
+   }
+  },
+  {
+   "key": "scatter+seeker+aegis",
+   "name": "Scattergun + Seeker Pod + Point Defense",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 1.417,
+     "lostAll": 9.083,
+     "bossNormal": 1.167,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1,
+      "hot": 0.046,
+      "calm": 0.783,
+      "sawtooth": 0.128,
+      "flat": 0.418
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.833,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.194,
+     "lostAll": 10.25,
+     "bossNormal": 1.056,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.938,
+      "hot": 0.029,
+      "calm": 0.809,
+      "sawtooth": 0.162,
+      "flat": 0.39
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.083,
+     "boss": 2,
+     "lostAll": 13.083,
+     "bossNormal": 1,
+     "bossReached": 0.5,
+     "tension": {
+      "peak": 0.967,
+      "hot": 0.04,
+      "calm": 0.771,
+      "sawtooth": 0.347,
+      "flat": 0.306
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.917,
+     "boss": 0.806,
+     "lostAll": 5.333,
+     "bossNormal": 0.727,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 0.996,
+      "hot": 0.069,
+      "calm": 0.725,
+      "sawtooth": 0.137,
+      "flat": 0.359
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.583,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.972,
+     "lostAll": 7.167,
+     "bossNormal": 0.875,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1.009,
+      "hot": 0.062,
+      "calm": 0.73,
+      "sawtooth": 0.259,
+      "flat": 0.357
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.55,
+    "endWave": 12.117,
+    "flawless": 0,
+    "lost10": 5.15,
+    "boss": 1.278,
+    "lostAll": 8.983,
+    "bossNormal": 0.965,
+    "bossReached": 1.75,
+    "tension": {
+     "peak": 0.982,
+     "hot": 0.049,
+     "calm": 0.764,
+     "sawtooth": 0.207,
+     "flat": 0.366
+    }
+   },
+   "weapons": [
+    "scatter",
+    "seeker",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -5.908,
+     "gauntlet": -6.253,
+     "harbor": -10.059,
+     "kesh": -3.386,
+     "marrow": -5.46
+    },
+    "mean": -6.213,
+    "predicted": 2.77,
+    "win": -0.231,
+    "winPredicted": 0.781
+   }
+  },
+  {
+   "key": "frigate+aegis+supplyRun",
+   "name": "Frigate Escort + Point Defense + Supply Run",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.667,
+     "lostAll": 9.75,
+     "bossNormal": 1.3,
+     "bossReached": 1.667,
+     "tension": {
+      "peak": 0.994,
+      "hot": 0.049,
+      "calm": 0.791,
+      "sawtooth": 0.081,
+      "flat": 0.368
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 0.639,
+     "lostAll": 7,
+     "bossNormal": 0.722,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.866,
+      "hot": 0.023,
+      "calm": 0.812,
+      "sawtooth": 0.144,
+      "flat": 0.523
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.667,
+     "flawless": 0,
+     "lost10": 5.917,
+     "boss": 1.861,
+     "lostAll": 11.5,
+     "bossNormal": 1.909,
+     "bossReached": 0.917,
+     "tension": {
+      "peak": 0.99,
+      "hot": 0.039,
+      "calm": 0.777,
+      "sawtooth": 0.272,
+      "flat": 0.336
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 4.083,
+     "boss": 1.056,
+     "lostAll": 7.25,
+     "bossNormal": 1.037,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.979,
+      "hot": 0.075,
+      "calm": 0.742,
+      "sawtooth": 0.144,
+      "flat": 0.438
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 0.806,
+     "lostAll": 6.083,
+     "bossNormal": 0.75,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.867,
+      "hot": 0.046,
+      "calm": 0.758,
+      "sawtooth": 0.278,
+      "flat": 0.472
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.483,
+    "endWave": 11.867,
+    "flawless": 0,
+    "lost10": 4.7,
+    "boss": 1.206,
+    "lostAll": 8.317,
+    "bossNormal": 1.144,
+    "bossReached": 1.667,
+    "tension": {
+     "peak": 0.939,
+     "hot": 0.047,
+     "calm": 0.776,
+     "sawtooth": 0.184,
+     "flat": 0.427
+    }
+   },
+   "weapons": [
+    "frigate",
+    "aegis",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -6.354,
+     "gauntlet": -3.804,
+     "harbor": -7.296,
+     "kesh": -5.293,
+     "marrow": -3.607
+    },
+    "mean": -5.271,
+    "predicted": 3.046,
+    "win": -0.289,
+    "winPredicted": 0.772
+   }
+  },
+  {
+   "key": "boomerang+flak+aegis",
+   "name": "Boomerang + Flak Cannon + Point Defense",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.722,
+     "lostAll": 13.667,
+     "bossNormal": 2.053,
+     "bossReached": 1.583,
+     "tension": {
+      "peak": 1.082,
+      "hot": 0.054,
+      "calm": 0.792,
+      "sawtooth": 0.124,
+      "flat": 0.358
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.083,
+     "boss": 0.611,
+     "lostAll": 7.917,
+     "bossNormal": 0.667,
+     "bossReached": 1,
+     "tension": {
+      "peak": 0.913,
+      "hot": 0.029,
+      "calm": 0.807,
+      "sawtooth": 0.176,
+      "flat": 0.48
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.333,
+     "flawless": 0,
+     "lost10": 7.083,
+     "boss": 2.167,
+     "lostAll": 13.583,
+     "bossNormal": 1.818,
+     "bossReached": 0.917,
+     "tension": {
+      "peak": 0.972,
+      "hot": 0.042,
+      "calm": 0.764,
+      "sawtooth": 0.322,
+      "flat": 0.281
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 1.083,
+     "lostAll": 6.417,
+     "bossNormal": 1.03,
+     "bossReached": 2.75,
+     "tension": {
+      "peak": 1.013,
+      "hot": 0.086,
+      "calm": 0.718,
+      "sawtooth": 0.137,
+      "flat": 0.34
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.917,
+     "lostAll": 7,
+     "bossNormal": 0.963,
+     "bossReached": 2.25,
+     "tension": {
+      "peak": 0.913,
+      "hot": 0.058,
+      "calm": 0.739,
+      "sawtooth": 0.267,
+      "flat": 0.404
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.433,
+    "endWave": 11.8,
+    "flawless": 0,
+    "lost10": 5.217,
+    "boss": 1.5,
+    "lostAll": 9.717,
+    "bossNormal": 1.306,
+    "bossReached": 1.7,
+    "tension": {
+     "peak": 0.979,
+     "hot": 0.054,
+     "calm": 0.764,
+     "sawtooth": 0.205,
+     "flat": 0.373
+    }
+   },
+   "weapons": [
+    "boomerang",
+    "flak",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -11.701,
+     "gauntlet": -4.562,
+     "harbor": -10.165,
+     "kesh": -5.046,
+     "marrow": -4.995
+    },
+    "mean": -7.294,
+    "predicted": 2.423,
+    "win": -0.403,
+    "winPredicted": 0.837
+   }
+  },
+  {
+   "key": "flak+seeker+overdrive",
+   "name": "Flak Cannon + Seeker Pod + Overdrive",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.917,
+     "flawless": 0,
+     "lost10": 6.417,
+     "boss": 1.861,
+     "lostAll": 12,
+     "bossNormal": 1.643,
+     "bossReached": 1.167,
+     "tension": {
+      "peak": 1.06,
+      "hot": 0.055,
+      "calm": 0.793,
+      "sawtooth": 0.102,
+      "flat": 0.297
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 9.917,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 1.056,
+     "lostAll": 10.917,
+     "bossNormal": 1.833,
+     "bossReached": 0.5,
+     "tension": {
+      "peak": 0.984,
+      "hot": 0.036,
+      "calm": 0.807,
+      "sawtooth": 0.186,
+      "flat": 0.356
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 9.833,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 2.389,
+     "lostAll": 16.667,
+     "bossNormal": 1.875,
+     "bossReached": 0.667,
+     "tension": {
+      "peak": 1.01,
+      "hot": 0.043,
+      "calm": 0.762,
+      "sawtooth": 0.333,
+      "flat": 0.291
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 1.083,
+     "lostAll": 8.083,
+     "bossNormal": 0.917,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1.01,
+      "hot": 0.075,
+      "calm": 0.746,
+      "sawtooth": 0.136,
+      "flat": 0.407
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 1.028,
+     "lostAll": 7.667,
+     "bossNormal": 1.125,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.884,
+      "hot": 0.054,
+      "calm": 0.74,
+      "sawtooth": 0.3,
+      "flat": 0.407
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.333,
+    "endWave": 11.05,
+    "flawless": 0,
+    "lost10": 6.617,
+    "boss": 1.483,
+    "lostAll": 11.067,
+    "bossNormal": 1.479,
+    "bossReached": 1.267,
+    "tension": {
+     "peak": 0.99,
+     "hot": 0.053,
+     "calm": 0.77,
+     "sawtooth": 0.211,
+     "flat": 0.352
+    }
+   },
+   "weapons": [
+    "flak",
+    "seeker",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -7.586,
+     "gauntlet": -6.553,
+     "harbor": -12.511,
+     "kesh": -6.481,
+     "marrow": -5.597
+    },
+    "mean": -7.746,
+    "predicted": 3.321,
+    "win": -0.351,
+    "winPredicted": 0.684
+   }
+  },
+  {
+   "key": "flak+tesla+overdrive",
+   "name": "Flak Cannon + Tesla Arc + Overdrive",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 2.5,
+     "lostAll": 14,
+     "bossNormal": 1.667,
+     "bossReached": 0.75,
+     "tension": {
+      "peak": 1.009,
+      "hot": 0.043,
+      "calm": 0.808,
+      "sawtooth": 0.113,
+      "flat": 0.306
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 8.667,
+     "boss": 0.944,
+     "lostAll": 11.5,
+     "bossNormal": 1,
+     "bossReached": 0.75,
+     "tension": {
+      "peak": 0.928,
+      "hot": 0.033,
+      "calm": 0.822,
+      "sawtooth": 0.217,
+      "flat": 0.45
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 9.417,
+     "boss": 2.028,
+     "lostAll": 15.5,
+     "bossNormal": null,
+     "bossReached": 0,
+     "tension": {
+      "peak": 1.047,
+      "hot": 0.045,
+      "calm": 0.772,
+      "sawtooth": 0.407,
+      "flat": 0.25
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.083,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 0.806,
+     "lostAll": 7.25,
+     "bossNormal": 0.75,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.897,
+      "hot": 0.061,
+      "calm": 0.766,
+      "sawtooth": 0.117,
+      "flat": 0.482
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.417,
+     "flawless": 0,
+     "lost10": 5.667,
+     "boss": 0.833,
+     "lostAll": 8.167,
+     "bossNormal": 0.8,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.898,
+      "hot": 0.044,
+      "calm": 0.765,
+      "sawtooth": 0.311,
+      "flat": 0.417
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.3,
+    "endWave": 10.65,
+    "flawless": 0,
+    "lost10": 7.017,
+    "boss": 1.422,
+    "lostAll": 11.283,
+    "bossNormal": 1.054,
+    "bossReached": 0.95,
+    "tension": {
+     "peak": 0.956,
+     "hot": 0.045,
+     "calm": 0.786,
+     "sawtooth": 0.233,
+     "flat": 0.381
+    }
+   },
+   "weapons": [
+    "flak",
+    "tesla",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -10.532,
+     "gauntlet": -7.068,
+     "harbor": -11.071,
+     "kesh": -5.938,
+     "marrow": -6.143
+    },
+    "mean": -8.15,
+    "predicted": 3.133,
+    "win": -0.392,
+    "winPredicted": 0.692
+   }
+  },
+  {
+   "key": "boomerang+flak+overdrive",
+   "name": "Boomerang + Flak Cannon + Overdrive",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 2.556,
+     "lostAll": 12.75,
+     "bossNormal": 1.905,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 1.062,
+      "hot": 0.057,
+      "calm": 0.784,
+      "sawtooth": 0.086,
+      "flat": 0.324
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.417,
+     "flawless": 0,
+     "lost10": 6.833,
+     "boss": 0.833,
+     "lostAll": 9.333,
+     "bossNormal": 0.333,
+     "bossReached": 0.75,
+     "tension": {
+      "peak": 0.941,
+      "hot": 0.034,
+      "calm": 0.807,
+      "sawtooth": 0.197,
+      "flat": 0.41
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10.083,
+     "boss": 1.694,
+     "lostAll": 15.167,
+     "bossNormal": 2,
+     "bossReached": 0.25,
+     "tension": {
+      "peak": 0.969,
+      "hot": 0.044,
+      "calm": 0.774,
+      "sawtooth": 0.324,
+      "flat": 0.278
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.583,
+     "flawless": 0,
+     "lost10": 4.167,
+     "boss": 1.417,
+     "lostAll": 8.417,
+     "bossNormal": 1.208,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1.018,
+      "hot": 0.072,
+      "calm": 0.743,
+      "sawtooth": 0.139,
+      "flat": 0.326
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.167,
+     "flawless": 0,
+     "lost10": 4.417,
+     "boss": 1.167,
+     "lostAll": 7.917,
+     "bossNormal": 1.095,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 0.947,
+      "hot": 0.056,
+      "calm": 0.745,
+      "sawtooth": 0.286,
+      "flat": 0.4
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.283,
+    "endWave": 11.167,
+    "flawless": 0,
+    "lost10": 6.117,
+    "boss": 1.533,
+    "lostAll": 10.717,
+    "bossNormal": 1.308,
+    "bossReached": 1.3,
+    "tension": {
+     "peak": 0.987,
+     "hot": 0.053,
+     "calm": 0.771,
+     "sawtooth": 0.206,
+     "flat": 0.348
+    }
+   },
+   "weapons": [
+    "boomerang",
+    "flak",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -9.937,
+     "gauntlet": -5.307,
+     "harbor": -10.937,
+     "kesh": -6.998,
+     "marrow": -5.732
+    },
+    "mean": -7.782,
+    "predicted": 2.935,
+    "win": -0.468,
+    "winPredicted": 0.751
+   }
+  },
+  {
+   "key": "scatter+supplyRun+overdrive",
+   "name": "Scattergun + Supply Run + Overdrive",
+   "kind": "triple",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 6.167,
+     "boss": 3.083,
+     "lostAll": 15.417,
+     "bossNormal": 1.909,
+     "bossReached": 0.917,
+     "tension": {
+      "peak": 1.012,
+      "hot": 0.049,
+      "calm": 0.795,
+      "sawtooth": 0.127,
+      "flat": 0.405
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.333,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 0.667,
+     "lostAll": 8.25,
+     "bossNormal": 0.8,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.87,
+      "hot": 0.03,
+      "calm": 0.815,
+      "sawtooth": 0.176,
+      "flat": 0.42
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 9.333,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 1.667,
+     "lostAll": 14.25,
+     "bossNormal": 1.667,
+     "bossReached": 0.25,
+     "tension": {
+      "peak": 1.01,
+      "hot": 0.039,
+      "calm": 0.786,
+      "sawtooth": 0.351,
+      "flat": 0.297
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.806,
+     "lostAll": 7.667,
+     "bossNormal": 0.714,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 0.952,
+      "hot": 0.055,
+      "calm": 0.765,
+      "sawtooth": 0.13,
+      "flat": 0.428
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.333,
+     "lostAll": 8.75,
+     "bossNormal": 1.333,
+     "bossReached": 1.75,
+     "tension": {
+      "peak": 0.934,
+      "hot": 0.061,
+      "calm": 0.735,
+      "sawtooth": 0.261,
+      "flat": 0.428
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.317,
+    "endWave": 11.05,
+    "flawless": 0,
+    "lost10": 6.333,
+    "boss": 1.511,
+    "lostAll": 10.867,
+    "bossNormal": 1.285,
+    "bossReached": 1.183,
+    "tension": {
+     "peak": 0.956,
+     "hot": 0.047,
+     "calm": 0.779,
+     "sawtooth": 0.209,
+     "flat": 0.395
+    }
+   },
+   "weapons": [
+    "scatter",
+    "supplyRun",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "strait": -10.098,
+     "gauntlet": -2.933,
+     "harbor": -9.32,
+     "kesh": -5.612,
+     "marrow": -6.125
+    },
+    "mean": -6.817,
+    "predicted": 4.049,
+    "win": -0.325,
+    "winPredicted": 0.642
+   }
+  },
+  {
+   "key": "counter",
+   "name": "The map's counter kit",
+   "kind": "kit",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.833,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.028,
+     "lostAll": 11.333,
+     "bossNormal": 1.65,
+     "bossReached": 1.667,
+     "tension": {
+      "peak": 1.089,
+      "hot": 0.053,
+      "calm": 0.783,
+      "sawtooth": 0.151,
+      "flat": 0.288
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.75,
+     "lostAll": 8,
+     "bossNormal": 0.867,
+     "bossReached": 1.25,
+     "tension": {
+      "peak": 0.912,
+      "hot": 0.026,
+      "calm": 0.816,
+      "sawtooth": 0.164,
+      "flat": 0.485
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 10.583,
+     "boss": 2.139,
+     "lostAll": 17,
+     "bossNormal": null,
+     "bossReached": 0,
+     "tension": {
+      "peak": 0.996,
+      "hot": 0.039,
+      "calm": 0.779,
+      "sawtooth": 0.276,
+      "flat": 0.295
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 6.083,
+     "boss": 1.417,
+     "lostAll": 10.333,
+     "bossNormal": 1.222,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 1.06,
+      "hot": 0.071,
+      "calm": 0.752,
+      "sawtooth": 0.176,
+      "flat": 0.346
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.361,
+     "lostAll": 7.75,
+     "bossNormal": 1.233,
+     "bossReached": 2.5,
+     "tension": {
+      "peak": 0.926,
+      "hot": 0.063,
+      "calm": 0.724,
+      "sawtooth": 0.353,
+      "flat": 0.36
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.383,
+    "endWave": 11.45,
+    "flawless": 0,
+    "lost10": 6.267,
+    "boss": 1.539,
+    "lostAll": 10.883,
+    "bossNormal": 1.243,
+    "bossReached": 1.383,
+    "tension": {
+     "peak": 0.996,
+     "hot": 0.05,
+     "calm": 0.771,
+     "sawtooth": 0.224,
+     "flat": 0.355
+    }
+   }
+  },
+  {
+   "key": "plain",
+   "name": "Plain gun",
+   "kind": "plain",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9.333,
+     "flawless": 0,
+     "lost10": 8.333,
+     "boss": 4.694,
+     "lostAll": 22.417,
+     "bossNormal": 3,
+     "bossReached": 0.167,
+     "tension": {
+      "peak": 1.095,
+      "hot": 0.049,
+      "calm": 0.816,
+      "sawtooth": 0.179,
+      "flat": 0.33
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0,
+     "endWave": 8.667,
+     "flawless": 0,
+     "lost10": 11.167,
+     "boss": 0.917,
+     "lostAll": 13.917,
+     "bossNormal": null,
+     "bossReached": 0,
+     "tension": {
+      "peak": 1.007,
+      "hot": 0.042,
+      "calm": 0.794,
+      "sawtooth": 0.269,
+      "flat": 0.337
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.917,
+     "boss": 3.611,
+     "lostAll": 23.75,
+     "bossNormal": null,
+     "bossReached": 0,
+     "tension": {
+      "peak": 0.997,
+      "hot": 0.044,
+      "calm": 0.762,
+      "sawtooth": 0.412,
+      "flat": 0.255
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.917,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 2.361,
+     "lostAll": 13.833,
+     "bossNormal": 1.846,
+     "bossReached": 1.083,
+     "tension": {
+      "peak": 1.169,
+      "hot": 0.077,
+      "calm": 0.752,
+      "sawtooth": 0.195,
+      "flat": 0.328
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.667,
+     "boss": 1.444,
+     "lostAll": 13,
+     "bossNormal": 1.667,
+     "bossReached": 0.25,
+     "tension": {
+      "peak": 0.914,
+      "hot": 0.044,
+      "calm": 0.748,
+      "sawtooth": 0.398,
+      "flat": 0.407
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.067,
+    "endWave": 9.383,
+    "flawless": 0,
+    "lost10": 9.567,
+    "boss": 2.606,
+    "lostAll": 17.383,
+    "bossNormal": 2.171,
+    "bossReached": 0.3,
+    "tension": {
+     "peak": 1.036,
+     "hot": 0.051,
+     "calm": 0.775,
+     "sawtooth": 0.291,
+     "flat": 0.331
+    }
+   },
+   "weapons": []
+  },
+  {
+   "key": "self",
+   "name": "Bot drafts for itself",
+   "kind": "self",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 5.417,
+     "boss": 1.806,
+     "lostAll": 10.833,
+     "bossNormal": 1.667,
+     "bossReached": 1.5,
+     "tension": {
+      "peak": 0.974,
+      "hot": 0.048,
+      "calm": 0.797,
+      "sawtooth": 0.088,
+      "flat": 0.412
+     }
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.833,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 0.778,
+     "lostAll": 8.583,
+     "bossNormal": 0.583,
+     "bossReached": 1,
+     "tension": {
+      "peak": 0.894,
+      "hot": 0.026,
+      "calm": 0.814,
+      "sawtooth": 0.175,
+      "flat": 0.476
+     }
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 7.417,
+     "boss": 1.528,
+     "lostAll": 12,
+     "bossNormal": 1.583,
+     "bossReached": 1,
+     "tension": {
+      "peak": 0.978,
+      "hot": 0.044,
+      "calm": 0.769,
+      "sawtooth": 0.35,
+      "flat": 0.301
+     }
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.583,
+     "flawless": 0,
+     "lost10": 4.083,
+     "boss": 0.972,
+     "lostAll": 7,
+     "bossNormal": 0.917,
+     "bossReached": 2,
+     "tension": {
+      "peak": 1.05,
+      "hot": 0.071,
+      "calm": 0.752,
+      "sawtooth": 0.147,
+      "flat": 0.392
+     }
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 0.75,
+     "lostAll": 7.083,
+     "bossNormal": 0.708,
+     "bossReached": 2,
+     "tension": {
+      "peak": 0.926,
+      "hot": 0.052,
+      "calm": 0.758,
+      "sawtooth": 0.262,
+      "flat": 0.418
+     }
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.45,
+    "endWave": 11.6,
+    "flawless": 0,
+    "lost10": 5.6,
+    "boss": 1.167,
+    "lostAll": 9.1,
+    "bossNormal": 1.092,
+    "bossReached": 1.5,
+    "tension": {
+     "peak": 0.964,
+     "hot": 0.048,
+     "calm": 0.778,
+     "sawtooth": 0.204,
+     "flat": 0.4
+    }
+   }
+  },
+  {
+   "key": "airstrike",
+   "name": "Air Strike",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.889,
+     "lostAll": 11.667,
+     "bossNormal": 2.103,
+     "bossReached": 2.417
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 0.917,
+     "lostAll": 7.583,
+     "bossNormal": 0.857,
+     "bossReached": 1.75
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5.417,
+     "boss": 1.833,
+     "lostAll": 10.917,
+     "bossNormal": 1.417,
+     "bossReached": 2
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.139,
+     "lostAll": 7.083,
+     "bossNormal": 1.222,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.028,
+     "lostAll": 6.417,
+     "bossNormal": 1.033,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.567,
+    "endWave": 12.683,
+    "flawless": 0,
+    "lost10": 4.05,
+    "boss": 1.561,
+    "lostAll": 8.733,
+    "bossNormal": 1.327,
+    "bossReached": 2.183
+   },
+   "weapons": [
+    "airstrike"
+   ]
+  },
+  {
+   "key": "shrapnel",
+   "name": "Shrapnel Shell",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 5.333,
+     "boss": 2.139,
+     "lostAll": 11.75,
+     "bossNormal": 1.737,
+     "bossReached": 1.583
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 5.333,
+     "boss": 0.944,
+     "lostAll": 8.167,
+     "bossNormal": 0.889,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.167,
+     "flawless": 0,
+     "lost10": 7.833,
+     "boss": 2.028,
+     "lostAll": 13.917,
+     "bossNormal": 1.625,
+     "bossReached": 0.667
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.861,
+     "lostAll": 6.333,
+     "bossNormal": 0.867,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.972,
+     "lostAll": 7.417,
+     "bossNormal": 0.917,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.45,
+    "endWave": 11.8,
+    "flawless": 0,
+    "lost10": 5.35,
+    "boss": 1.389,
+    "lostAll": 9.517,
+    "bossNormal": 1.207,
+    "bossReached": 1.65
+   },
+   "weapons": [
+    "shrapnel"
+   ]
+  },
+  {
+   "key": "frigate",
+   "name": "Frigate Escort",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.917,
+     "boss": 1.889,
+     "lostAll": 10.583,
+     "bossNormal": 1.947,
+     "bossReached": 1.583
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.167,
+     "flawless": 0,
+     "lost10": 4.833,
+     "boss": 0.833,
+     "lostAll": 7.333,
+     "bossNormal": 1,
+     "bossReached": 2
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.833,
+     "boss": 1.778,
+     "lostAll": 11.167,
+     "bossNormal": 1.571,
+     "bossReached": 1.75
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.75,
+     "lostAll": 6,
+     "bossNormal": 0.733,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.694,
+     "lostAll": 6.083,
+     "bossNormal": 0.8,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.55,
+    "endWave": 12.4,
+    "flawless": 0,
+    "lost10": 4.667,
+    "boss": 1.189,
+    "lostAll": 8.233,
+    "bossNormal": 1.21,
+    "bossReached": 2.067
+   },
+   "weapons": [
+    "frigate"
+   ]
+  },
+  {
+   "key": "thermo",
+   "name": "Thermobaric Shell",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.667,
+     "boss": 2,
+     "lostAll": 10.667,
+     "bossNormal": 2.217,
+     "bossReached": 1.917
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.167,
+     "boss": 0.944,
+     "lostAll": 8,
+     "bossNormal": 0.889,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.333,
+     "flawless": 0,
+     "lost10": 6.667,
+     "boss": 1.472,
+     "lostAll": 11.083,
+     "bossNormal": 1.556,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 1.056,
+     "lostAll": 7.75,
+     "bossNormal": 0.905,
+     "bossReached": 1.75
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 1.139,
+     "lostAll": 7.167,
+     "bossNormal": 1.259,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.4,
+    "endWave": 11.983,
+    "flawless": 0,
+    "lost10": 4.967,
+    "boss": 1.322,
+    "lostAll": 8.933,
+    "bossNormal": 1.365,
+    "bossReached": 1.783
+   },
+   "weapons": [
+    "thermo"
+   ]
+  },
+  {
+   "key": "scatter",
+   "name": "Scattergun",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 2.333,
+     "lostAll": 11.583,
+     "bossNormal": 1.769,
+     "bossReached": 2.167
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.417,
+     "flawless": 0,
+     "lost10": 7.083,
+     "boss": 1.028,
+     "lostAll": 10.167,
+     "bossNormal": 1.167,
+     "bossReached": 1
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 5.583,
+     "boss": 1.667,
+     "lostAll": 10.583,
+     "bossNormal": 1.737,
+     "bossReached": 1.583
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0.083,
+     "lost10": 4,
+     "boss": 0.694,
+     "lostAll": 6.083,
+     "bossNormal": 0.7,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.722,
+     "lostAll": 5.917,
+     "bossNormal": 0.667,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.5,
+    "endWave": 12.133,
+    "flawless": 0.017,
+    "lost10": 5,
+    "boss": 1.289,
+    "lostAll": 8.867,
+    "bossNormal": 1.208,
+    "bossReached": 1.9
+   },
+   "weapons": [
+    "scatter"
+   ]
+  },
+  {
+   "key": "boomerang",
+   "name": "Boomerang",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 1.528,
+     "lostAll": 9.667,
+     "bossNormal": 1.24,
+     "bossReached": 2.083
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.833,
+     "boss": 1.028,
+     "lostAll": 9.917,
+     "bossNormal": 0.917,
+     "bossReached": 1
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7.833,
+     "boss": 2.111,
+     "lostAll": 14.167,
+     "bossNormal": 1.667,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.083,
+     "lostAll": 7.75,
+     "bossNormal": 0.963,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.972,
+     "lostAll": 7.917,
+     "bossNormal": 1,
+     "bossReached": 1.75
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.433,
+    "endWave": 11.617,
+    "flawless": 0,
+    "lost10": 5.85,
+    "boss": 1.344,
+    "lostAll": 9.883,
+    "bossNormal": 1.157,
+    "bossReached": 1.517
+   },
+   "weapons": [
+    "boomerang"
+   ]
+  },
+  {
+   "key": "flak",
+   "name": "Flak Cannon",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 2.528,
+     "lostAll": 11.25,
+     "bossNormal": 1.8,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 6.083,
+     "boss": 1.056,
+     "lostAll": 9.25,
+     "bossNormal": 1.2,
+     "bossReached": 1.667
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.917,
+     "boss": 1.944,
+     "lostAll": 11.75,
+     "bossNormal": 2,
+     "bossReached": 1.25
+    },
+    "kesh": {
+     "n": 12,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 0.833,
+     "lostAll": 4.833,
+     "bossNormal": 0.833,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.028,
+     "lostAll": 6.583,
+     "bossNormal": 1.03,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.617,
+    "endWave": 12.65,
+    "flawless": 0,
+    "lost10": 4.3,
+    "boss": 1.478,
+    "lostAll": 8.733,
+    "bossNormal": 1.373,
+    "bossReached": 2.233
+   },
+   "weapons": [
+    "flak"
+   ]
+  },
+  {
+   "key": "seeker",
+   "name": "Seeker Pod",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.167,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 3.139,
+     "lostAll": 15.167,
+     "bossNormal": 2.5,
+     "bossReached": 1.167
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.083,
+     "boss": 1.222,
+     "lostAll": 10.75,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 10.333,
+     "flawless": 0,
+     "lost10": 7.167,
+     "boss": 2.25,
+     "lostAll": 13.917,
+     "bossNormal": 2.25,
+     "bossReached": 0.667
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 12.083,
+     "flawless": 0,
+     "lost10": 4.417,
+     "boss": 1.444,
+     "lostAll": 8.75,
+     "bossNormal": 1.417,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.083,
+     "lostAll": 7.5,
+     "bossNormal": 1.125,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.25,
+    "endWave": 11.25,
+    "flawless": 0,
+    "lost10": 5.733,
+    "boss": 1.828,
+    "lostAll": 11.217,
+    "bossNormal": 1.592,
+    "bossReached": 1.317
+   },
+   "weapons": [
+    "seeker"
+   ]
+  },
+  {
+   "key": "aegis",
+   "name": "Point Defense",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.028,
+     "lostAll": 9.083,
+     "bossNormal": 1.6,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 4.417,
+     "boss": 0.889,
+     "lostAll": 7.083,
+     "bossNormal": 0.9,
+     "bossReached": 2.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 11.333,
+     "flawless": 0,
+     "lost10": 6.167,
+     "boss": 1.806,
+     "lostAll": 11.583,
+     "bossNormal": 1.6,
+     "bossReached": 1.25
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.917,
+     "lostAll": 7,
+     "bossNormal": 1,
+     "bossReached": 1.917
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.75,
+     "lostAll": 6.5,
+     "bossNormal": 0.708,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.533,
+    "endWave": 12.483,
+    "flawless": 0,
+    "lost10": 4.417,
+    "boss": 1.278,
+    "lostAll": 8.25,
+    "bossNormal": 1.162,
+    "bossReached": 2.033
+   },
+   "weapons": [
+    "aegis"
+   ]
+  },
+  {
+   "key": "well",
+   "name": "Gravity Well",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.028,
+     "lostAll": 10.333,
+     "bossNormal": 1.667,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 0.694,
+     "lostAll": 7.167,
+     "bossNormal": 0.333,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.833,
+     "flawless": 0,
+     "lost10": 6.917,
+     "boss": 1.778,
+     "lostAll": 12.25,
+     "bossNormal": 1.5,
+     "bossReached": 1
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.111,
+     "lostAll": 7,
+     "bossNormal": 1.138,
+     "bossReached": 2.417
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 0.889,
+     "lostAll": 5.5,
+     "bossNormal": 0.9,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.55,
+    "endWave": 12.3,
+    "flawless": 0,
+    "lost10": 4.55,
+    "boss": 1.3,
+    "lostAll": 8.45,
+    "bossNormal": 1.108,
+    "bossReached": 1.933
+   },
+   "weapons": [
+    "well"
+   ]
+  },
+  {
+   "key": "railgun",
+   "name": "Railgun",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.111,
+     "lostAll": 10.583,
+     "bossNormal": 1.778,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 11.333,
+     "flawless": 0,
+     "lost10": 6.333,
+     "boss": 0.694,
+     "lostAll": 8.417,
+     "bossNormal": 0.867,
+     "bossReached": 1.25
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 1.861,
+     "lostAll": 12.333,
+     "bossNormal": 1.455,
+     "bossReached": 0.917
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 1.306,
+     "lostAll": 8.5,
+     "bossNormal": 1.37,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.083,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.722,
+     "lostAll": 7.167,
+     "bossNormal": 0.571,
+     "bossReached": 1.75
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.4,
+    "endWave": 11.817,
+    "flawless": 0,
+    "lost10": 5.383,
+    "boss": 1.339,
+    "lostAll": 9.4,
+    "bossNormal": 1.208,
+    "bossReached": 1.683
+   },
+   "weapons": [
+    "railgun"
+   ]
+  },
+  {
+   "key": "tesla",
+   "name": "Tesla Arc",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.583,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 2.278,
+     "lostAll": 11.917,
+     "bossNormal": 1.95,
+     "bossReached": 1.667
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 0.972,
+     "lostAll": 10.917,
+     "bossNormal": 0.667,
+     "bossReached": 1
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9.417,
+     "flawless": 0,
+     "lost10": 9.833,
+     "boss": 1.667,
+     "lostAll": 14.833,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.083,
+     "flawless": 0,
+     "lost10": 4.917,
+     "boss": 0.75,
+     "lostAll": 7.167,
+     "bossNormal": 0.714,
+     "bossReached": 1.75
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3.917,
+     "boss": 1.139,
+     "lostAll": 7.333,
+     "bossNormal": 1.033,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.367,
+    "endWave": 11.367,
+    "flawless": 0,
+    "lost10": 6.35,
+    "boss": 1.361,
+    "lostAll": 10.433,
+    "bossNormal": 1.091,
+    "bossReached": 1.383
+   },
+   "weapons": [
+    "tesla"
+   ]
+  },
+  {
+   "key": "cutter",
+   "name": "Laser Cutter",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0,
+     "endWave": 6.833,
+     "flawless": 0,
+     "lost10": 18.25,
+     "boss": 6.833,
+     "lostAll": 38.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.583,
+     "flawless": 0,
+     "lost10": 26.333,
+     "boss": 1.139,
+     "lostAll": 29.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.833,
+     "flawless": 0,
+     "lost10": 33.917,
+     "boss": 5.583,
+     "lostAll": 50.667,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.917,
+     "flawless": 0,
+     "lost10": 21.583,
+     "boss": 5.083,
+     "lostAll": 36.833,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.333,
+     "flawless": 0,
+     "lost10": 26.667,
+     "boss": 1.722,
+     "lostAll": 31.833,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0,
+    "endWave": 5.9,
+    "flawless": 0,
+    "lost10": 25.35,
+    "boss": 4.072,
+    "lostAll": 37.567,
+    "bossNormal": null,
+    "bossReached": 0
+   },
+   "weapons": [
+    "cutter"
+   ]
+  },
+  {
+   "key": "droneScreen",
+   "name": "Drone Screen",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 4.083,
+     "boss": 2.111,
+     "lostAll": 10.417,
+     "bossNormal": 1.704,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.917,
+     "boss": 0.944,
+     "lostAll": 8.75,
+     "bossNormal": 0.778,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 10.167,
+     "flawless": 0,
+     "lost10": 6.833,
+     "boss": 2,
+     "lostAll": 12.833,
+     "bossNormal": 1.667,
+     "bossReached": 0.25
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.417,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 1.167,
+     "lostAll": 6.25,
+     "bossNormal": 1.094,
+     "bossReached": 2.667
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.583,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 0.889,
+     "lostAll": 5.75,
+     "bossNormal": 0.818,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.517,
+    "endWave": 12.317,
+    "flawless": 0,
+    "lost10": 4.533,
+    "boss": 1.422,
+    "lostAll": 8.8,
+    "bossNormal": 1.212,
+    "bossReached": 1.883
+   },
+   "weapons": [
+    "droneScreen"
+   ]
+  },
+  {
+   "key": "supplyRun",
+   "name": "Supply Run",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 10.083,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 3.583,
+     "lostAll": 17.75,
+     "bossNormal": 1.4,
+     "bossReached": 0.417
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 10.167,
+     "flawless": 0,
+     "lost10": 8.583,
+     "boss": 1.111,
+     "lostAll": 11.917,
+     "bossNormal": 1.5,
+     "bossReached": 0.5
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 2.611,
+     "lostAll": 18.333,
+     "bossNormal": 3,
+     "bossReached": 0.167
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 1.139,
+     "lostAll": 8.917,
+     "bossNormal": 1.095,
+     "bossReached": 1.75
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 10.667,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 1.361,
+     "lostAll": 10.583,
+     "bossNormal": 1.167,
+     "bossReached": 1
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.233,
+    "endWave": 10.433,
+    "flawless": 0,
+    "lost10": 7.617,
+    "boss": 1.961,
+    "lostAll": 13.5,
+    "bossNormal": 1.632,
+    "bossReached": 0.767
+   },
+   "weapons": [
+    "supplyRun"
+   ]
+  },
+  {
+   "key": "overdrive",
+   "name": "Overdrive",
+   "kind": "single",
+   "perMap": {
+    "strait": {
+     "n": 12,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 2.639,
+     "lostAll": 13,
+     "bossNormal": 2.143,
+     "bossReached": 1.167
+    },
+    "gauntlet": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 0.417,
+     "lostAll": 8.5,
+     "bossNormal": 0.444,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9.917,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 2.111,
+     "lostAll": 14.333,
+     "bossNormal": 2.25,
+     "bossReached": 0.667
+    },
+    "kesh": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.917,
+     "boss": 0.778,
+     "lostAll": 7.25,
+     "bossNormal": 0.75,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 0.833,
+     "lostAll": 7.083,
+     "bossNormal": 0.889,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 60,
+    "won": 0.317,
+    "endWave": 11.383,
+    "flawless": 0,
+    "lost10": 5.967,
+    "boss": 1.356,
+    "lostAll": 10.033,
+    "bossNormal": 1.295,
+    "bossReached": 1.367
+   },
+   "weapons": [
+    "overdrive"
+   ]
+  }
+ ],
+ "notes": [
+  "counter kits: strait shrapnel+flak+droneScreen; gauntlet shrapnel+thermo+flak; harbor railgun+focus+overdrive; kesh railgun+focus+overdrive; marrow seeker+aegis+droneScreen"
+ ]
+}
