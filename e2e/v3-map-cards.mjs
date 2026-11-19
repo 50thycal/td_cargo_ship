@@ -20,9 +20,13 @@
 //   moments marked in each wave); "Your last scores" shows this map's last
 //   score and the other map cards' (seeded for The Gauntlet), and the row
 //   "Compared with The Gauntlet" saves `vs` and `vsCard`.
-// - scorecard revision 3 (the fun measures, docs/design/v3-fun-metrics.md):
-//   a "Best moment" strip; one tap saves the wave and, from where on the
-//   chip it landed, the seconds into it (`moment`, `momentT`).
+// - scorecard revision 4 (docs/design/v3-rate-and-review.md): the end
+//   screen is the normal game's "Rate & review this run" with a Test Lab
+//   section: the rating rows (Fun, Difficulty, Intensity ...), the run's
+//   timeline with its moments, Watch it and Note on this, Best and Weakest
+//   wave under it, then the verdict. Best moment is gone. Waves rated on
+//   the draft ("Rate wave N") show on the timeline and suggest Best and
+//   Weakest wave; the score keeps them (`waves`, `bestSuggested`, ...).
 // Screenshots for the doc go to docs/design/img/map-cards/.
 // Fails on any page error.
 //
@@ -34,8 +38,11 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173';
 const OUT_DIR = process.env.OUT_DIR ?? 'e2e/shots/v3-map-cards';
 const DOC_DIR = process.env.DOC_DIR ?? 'docs/design/img/map-cards';
+// Rate & review's screenshots for the player (docs/design/v3-rate-and-review.md).
+const RR_DIR = process.env.RR_DIR ?? 'docs/design/img/rate-review';
 mkdirSync(OUT_DIR, { recursive: true });
 mkdirSync(DOC_DIR, { recursive: true });
+mkdirSync(RR_DIR, { recursive: true });
 
 function findChromium() {
   if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
@@ -125,11 +132,19 @@ const scoreSheet = (page) =>
     const box = document.querySelector('[data-lab-score]');
     const v = document.querySelector('.v3-lab-v');
     return {
-      title: document.querySelector('.v3-lab-verdict h2')?.textContent ?? '',
+      title: document.querySelector('.v3-lab-verdict .v3-review-title')?.textContent ?? '',
       rows: [...document.querySelectorAll('[data-score-row]')].map((r) => r.dataset.scoreRow),
       waves: [...document.querySelectorAll('[data-score="best"]')].map((b) => b.querySelector('.v3-wave-n')?.textContent ?? b.textContent),
       // The strip: every wave chip (both rows) says what happened in it.
-      strip: [...document.querySelectorAll('[data-score="best"], [data-score="weakest"], [data-score="moment"]')].every((b) => !!b.querySelector('.v3-wave-info') && b.dataset.lost !== undefined),
+      strip: [...document.querySelectorAll('[data-score="best"], [data-score="weakest"]')].every((b) => !!b.querySelector('.v3-wave-info') && b.dataset.lost !== undefined),
+      moment: !!document.querySelector('[data-score="moment"]'),
+      // One screen, in the normal review's order: the rating rows, the run
+      // (timeline, its legend, the selected moment; Best and Weakest under
+      // it), then the Test Lab section.
+      order: [...document.querySelectorAll('.v3-lab-verdict > *')].map((e) => (e.matches('[data-lab-score]') ? 'score' : e.matches('[data-review-run]') ? 'run' : e.matches('[data-lab-section]') ? 'lab' : e.matches('.v3-lab-sheet-acts') ? 'acts' : e.matches('.v3-review-title') ? 'title' : '')).filter(Boolean).join(),
+      timeline: !!document.querySelector('[data-review-run] .v3-timeline') && !!document.querySelector('[data-review-run] .v3-tl-legend') && !!document.querySelector('[data-review-run] .v3-stop'),
+      wavesInRun: !!document.querySelector('[data-review-run] [data-score-waves] [data-score-row="best"]'),
+      bands: [...document.querySelectorAll('.v3-tl-wave[data-wave]')].map((b) => `${b.dataset.wave}${b.dataset.waveRating ? `:${b.dataset.waveRating}` : ''}${b.classList.contains('best') ? '^' : b.classList.contains('weakest') ? 'v' : ''}`),
       lostSum: [...document.querySelectorAll('[data-score="best"]')].reduce((m, b) => m + Number(b.dataset.lost ?? 0), 0),
       last: [...document.querySelectorAll('[data-score-last-card]')].map((l) => l.dataset.scoreLastCard),
       lastText: [...document.querySelectorAll('[data-score-last-card]')].map((l) => l.textContent),
@@ -148,11 +163,18 @@ const savedRun = (page, card) =>
     return { v: log.v, end: log.end, verdict: log.labResult?.verdict, score: log.labResult?.score ?? null, variant: log.labResult?.variant, labVariant: log.lab?.variant, entryScore: entry.score ?? null };
   }, card);
 
+/** Rate the wave just played on the draft's "Rate wave N" row. */
+const rateWave = async (page, axes) => {
+  for (const [axis, n] of Object.entries(axes)) await page.tap(`.v2-draft [data-wave-rate] [data-axis="${axis}"] [data-n="${n}"]`);
+};
+
 /** Clear wave 1 and jump the run to `wave` (its draft says the wave before;
- *  the pick starts it). Only the scorecard's checks use this shortcut. */
-const jumpTo = async (page, wave) => {
+ *  the pick starts it). Only the scorecard's checks use this shortcut.
+ *  `rate1`: rate wave 1 on its draft first. */
+const jumpTo = async (page, wave, rate1) => {
   await page.evaluate(() => { const g = window.__v3.game(); const [limit, hp] = [g.tempo.lossLimit, g.carrierHp]; g.tempo.lossLimit = 999; g.carrierHp = 1e6; window.__v3.advance(300); g.carrierHp = hp; g.tempo.lossLimit = limit; });
   await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
+  if (rate1) await rateWave(page, rate1);
   await page.evaluate((w) => { window.__v3.game().wave = w - 1; }, wave);
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction((w) => window.__v3.game()?.phase === 'wave' && window.__v3.game().wave === w, wave, { timeout: 8000 });
@@ -278,34 +300,23 @@ try {
   const ev = await page.evaluate(() => document.querySelector('.v3-lab-evidence')?.textContent ?? '');
   check(/Full map: 0 of 13 waves cleared/.test(ev), `the verdict sheet counts the full map ("${ev.slice(0, 80)}")`);
   const sc0 = await scoreSheet(page);
-  check(sc0.rows.join() === 'fun,difficulty,again,best,weakest,moment' && sc0.waves.join() === '1' && sc0.strip && sc0.above && sc0.small.length === 0 && !sc0.wide, `the scorecard (revision 3) sits above the verdict: Fun, Difficulty, Play again and the wave strips (Best, Weakest, Best moment), no Pacing, Variety, Readability or Map feel, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
+  check(sc0.rows.join() === 'fun,difficulty,intensity,again,best,weakest' && !sc0.moment && sc0.waves.join() === '1' && sc0.strip && sc0.above && sc0.small.length === 0 && !sc0.wide, `the scorecard (revision 4) sits above the verdict: Fun, Difficulty, Intensity, Play again and the wave strips (Best, Weakest), no Best moment, no Pacing, Variety, Readability or Map feel, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
+  check(/^Rate & review this run/.test(sc0.title) && /The Strait/.test(sc0.title) && sc0.order === 'title,score,run,lab,acts' && sc0.timeline && sc0.wavesInRun, `one screen, the normal game's review with a Test Lab section: "${sc0.title}", ${sc0.order}; the run's timeline, legend and moment, with Best and Weakest under it`);
   check(sc0.last.length === 0 && sc0.vs === null, `nothing scored before: no last scores and no comparison row (${JSON.stringify({ last: sc0.last, vs: sc0.vs })})`);
   await page.tap('[data-score-skip]');
   const skipped = await page.evaluate(() => ({ hidden: document.querySelector('.v3-score-rows').hidden, text: document.querySelector('[data-score-skip]').textContent }));
   await page.tap('[data-score-skip]');
   check(skipped.hidden && skipped.text === 'Show it' && (await page.evaluate(() => !document.querySelector('.v3-score-rows').hidden)), 'Skip folds the scorecard away, and Show it brings it back');
-  for (const [row, v] of [['fun', '4'], ['difficulty', 'bit-hard'], ['best', '1'], ['again', 'maybe'], ['weakest', '1'], ['weakest', '1']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
+  for (const [row, v] of [['fun', '4'], ['difficulty', 'bit-hard'], ['intensity', '5'], ['best', '1'], ['again', 'maybe'], ['weakest', '1'], ['weakest', '1']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
   const on = await page.evaluate(() => [...document.querySelectorAll('.v3-score-chip.on')].map((b) => `${b.dataset.score}=${b.dataset.value}`));
-  check(on.join() === 'fun=4,difficulty=bit-hard,again=maybe,best=1', `a tap answers a row and a second tap clears it; a tap on the Best row's strip answers Best only (${on.join()})`);
-  // Best moment (revision 3): one tap three quarters of the way along wave
-  // 1's chip is the wave and the seconds three quarters into it (this run
-  // is often only a moment old: then the wave alone; the won run below
-  // checks the seconds on a long wave).
-  const waveSec = await page.evaluate(() => window.__v3.game().t);
-  {
-    const r = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="1"]'); b.scrollIntoView({ block: 'center' }); const q = b.getBoundingClientRect(); return { x: q.left, y: q.top, w: q.width, h: q.height }; });
-    await page.touchscreen.tap(r.x + r.w * 0.75, r.y + r.h / 2);
-  }
-  const mo = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="1"]'); return { on: b.classList.contains('on'), t: b.dataset.momentT === undefined ? undefined : Number(b.dataset.momentT), tick: !!b.querySelector('.v3-moment-tick'), others: [...document.querySelectorAll('.v3-score-chip.on')].map((x) => x.dataset.score).join() }; });
-  const timed = waveSec >= 0.05;
-  check(mo.on && mo.others === 'fun,difficulty,again,best,moment' && (timed ? mo.tick && Math.abs(mo.t - 0.75 * waveSec) <= Math.max(0.2, 0.1 * waveSec) : mo.t === undefined), `Best moment: one tap on the strip picks the wave${timed ? ` and when in it (${mo.t} s of ${waveSec.toFixed(1)}, a tick on the chip)` : ' (a wave not yet a moment old: no seconds)'} (${JSON.stringify(mo)})`);
-  await shot(page, 'scorecard-best-moment');
+  check(on.join() === 'fun=4,difficulty=bit-hard,intensity=5,again=maybe,best=1', `a tap answers a row and a second tap clears it; a tap on the Best row's strip answers Best only (${on.join()})`);
+  // A pick marks its wave's band on the timeline.
+  check((await scoreSheet(page)).bands.join() === '1^', `Best wave 1 is marked on the timeline's band (${(await scoreSheet(page)).bands.join()})`);
   await page.tap('[data-lab-verdict="keep"]');
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  const { momentT: savedT, ...savedRest } = saved.score ?? {};
-  check(saved.v === 28 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 28 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -338,36 +349,70 @@ try {
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
   await tough(page);
-  await jumpTo(page, 11);
-  for (let i = 0; i < 6 && !(await page.$('[data-screen="lab-verdict"]')); i++) {
+  // Rate & review: wave 1 rated on its draft (fun 2), then waves 9 and 10
+  // on theirs (fun 5 and intensity 5; fun 3). The boss rounds run on with
+  // no draft between them.
+  await jumpTo(page, 9, { fun: 2 });
+  const draftRates = { 9: { fun: 5, intensity: 5 }, 10: { fun: 3 } };
+  let draftShot = false;
+  for (let i = 0; i < 40 && !(await page.$('[data-screen="lab-verdict"]')); i++) {
     await page.evaluate(() => window.__v3.advance(300));
     await page.waitForTimeout(300);
-    if (await page.$('[data-screen="draft"]')) await page.locator('.v2-card:not([disabled])').first().click();
+    if (await page.$('[data-screen="draft"]')) {
+      const w = await page.evaluate(() => Number(document.querySelector('.v2-draft [data-wave-rate]')?.dataset.waveRate ?? 0));
+      if (draftRates[w]) await rateWave(page, draftRates[w]);
+      if (w === 9 && !draftShot) {
+        // The draft with its rating row, for the player (phone size).
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: `${RR_DIR}/draft-rate-wave.png` });
+        draftShot = true;
+      }
+      await page.locator('.v2-card:not([disabled])').first().click();
+      await page.waitForFunction(() => window.__v3.game()?.phase !== 'draft', null, { timeout: 8000 });
+    }
   }
   await page.waitForSelector('[data-screen="lab-verdict"]', { timeout: 10000 });
+  const rated = await page.evaluate(() => window.__v3.log().waveRatings?.map((w) => [w.wave, w.rating]));
+  check(JSON.stringify(rated) === JSON.stringify([[1, { fun: 2 }], [9, { fun: 5, intensity: 5 }], [10, { fun: 3 }]]), `the waves rated on the Test Lab's drafts are in the run's log (${JSON.stringify(rated)})`);
   const sc2 = await scoreSheet(page);
-  check(/map cleared/.test(sc2.title) && sc2.rows.join() === 'fun,difficulty,boss,vs,again,best,weakest,moment' && sc2.waves.slice(9).join() === '10,B1,B2,B3' && sc2.strip && sc2.small.length === 0 && !sc2.wide, `a won run: "${sc2.title}", rows ${sc2.rows.join(' ')}, wave chips ${sc2.waves.join(' ')}`);
+  check(/map cleared/.test(sc2.title) && sc2.rows.join() === 'fun,difficulty,intensity,boss,vs,again,best,weakest' && sc2.waves.slice(9).join() === '10,B1,B2,B3' && sc2.strip && sc2.small.length === 0 && !sc2.wide, `a won run: "${sc2.title}", rows ${sc2.rows.join(' ')}, wave chips ${sc2.waves.join(' ')}`);
+  // The draft's ratings on the timeline's bands and the wave chips, and the
+  // most and least fun waves suggested as Best (9) and Weakest (1).
+  const sug = await page.evaluate(() => ({
+    on: [...document.querySelectorAll('[data-score-waves] .v3-score-chip.on')].map((b) => `${b.dataset.score}=${b.dataset.value}`).join(),
+    chip: document.querySelector('[data-score="best"][data-value="9"]')?.dataset.waveRating,
+    notes: [...document.querySelectorAll('[data-score-suggest]')].filter((n) => !n.hidden).map((n) => n.dataset.scoreSuggest).join(),
+  }));
+  check(sc2.bands.includes('1:F2v') && sc2.bands.includes('9:F5 I5^') && sc2.bands.includes('10:F3') && sug.on === 'best=9,weakest=1' && sug.chip === 'F5 I5' && sug.notes === 'best,weakest', `each wave's draft rating shows on the timeline, and Best (9) and Weakest (1) are suggested from them (${JSON.stringify({ bands: sc2.bands, ...sug })})`);
+  await page.evaluate(() => document.querySelector('[data-review-run]').scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${RR_DIR}/lab-end-run.png` });
+  await page.evaluate(() => document.querySelector('.v2-panel').scrollTop = 0);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${RR_DIR}/lab-end-top.png` });
+  // A moment picked on the timeline redraws the sheet as it was.
+  if (await page.$('[data-review-run] .v3-stop-step')) {
+    await page.tap('[data-score="fun"][data-value="4"]');
+    await page.locator('[data-review-run] .v3-stop-step').first().tap();
+    const kept = await page.evaluate(() => !!document.querySelector('[data-score="fun"][data-value="4"].on') && !!document.querySelector('[data-score="best"][data-value="9"].on'));
+    check(kept, 'stepping through the moments keeps the answers so far');
+    await page.tap('[data-score="fun"][data-value="4"]');
+  }
   check(sc2.last.join() === 'map-strait,map-gauntlet' && /^The Gauntlet · Fun 5 · Right · Again yes · yesterday$/.test(sc2.lastText[1] ?? '') && sc2.vs === 'Compared with The Gauntlet', `your last scores: this map's, then The Gauntlet's ("${sc2.lastText[1]}"); the comparison names it ("${sc2.vs}")`);
   {
     // The last scores stay compact: two lines at most on a landscape phone.
     const h = await page.evaluate(() => Math.round(document.querySelector('[data-score-last]').getBoundingClientRect().height));
     check(h <= 70, `the last scores take ${h} px`);
   }
-  for (const [row, v] of [['boss', '5'], ['vs', 'better'], ['best', '12'], ['weakest', '3']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
-  // Best moment on boss round 2, a quarter of the way in: the seconds come
-  // from the wave's length (the game clock at its end less the one before).
-  const b2 = await page.evaluate(() => { const h = window.__v3.game().history; const end = (w) => h.filter((x) => x.wave === w).at(-1)?.t ?? 0; return end(12) - Math.max(...h.filter((x) => x.wave < 12).map((x) => x.t), 0); });
-  {
-    const r = await page.evaluate(() => { const b = document.querySelector('[data-score="moment"][data-value="12"]'); b.scrollIntoView({ block: 'center' }); const q = b.getBoundingClientRect(); return { x: q.left, y: q.top, w: q.width, h: q.height }; });
-    await page.touchscreen.tap(r.x + r.w * 0.25, r.y + r.h / 2);
-  }
-  const mo2 = await page.evaluate(() => Number(document.querySelector('[data-score="moment"][data-value="12"]').dataset.momentT));
-  check(b2 > 5 && Math.abs(mo2 - 0.25 * b2) <= Math.max(1, 0.1 * b2), `Best moment on B2, a quarter along its chip: ${mo2} s into a ${b2.toFixed(1)} s round`);
+  // The player's own picks replace the suggestions.
+  for (const [row, v] of [['intensity', '4'], ['boss', '5'], ['vs', 'better'], ['best', '12'], ['weakest', '10']]) await page.tap(`[data-score="${row}"][data-value="${v}"]`);
+  check((await scoreSheet(page)).bands.filter((b) => /[\^v]$/.test(b)).join() === '10:F3v,12^', `the picks move their marks on the timeline (${(await scoreSheet(page)).bands.join()})`);
   await page.tap('[data-lab-verdict="keep"]');
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const won = await savedRun(page, 'map-strait');
-  check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify({ rev: 3, boss: 5, vs: 'better', vsCard: 'map-gauntlet', best: 12, weakest: 3, moment: 12, momentT: mo2 }) && JSON.stringify(won.entryScore) === JSON.stringify(won.score), `a won run's boss score and its comparison with The Gauntlet land in the log and on the device (${JSON.stringify(won.score)})`);
+  const wonScore = { rev: 4, intensity: 4, boss: 5, vs: 'better', vsCard: 'map-gauntlet', best: 12, weakest: 10, waves: [{ n: 1, fun: 2 }, { n: 9, fun: 5, intensity: 5 }, { n: 10, fun: 3 }], bestSuggested: 9, weakestSuggested: 1 };
+  check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify(wonScore) && JSON.stringify(won.entryScore) === JSON.stringify(won.score), `a won run's boss score, its comparison with The Gauntlet, the waves rated on the draft and what was suggested land in the log and on the device (${JSON.stringify(won.score)})`);
 
   // ---- Next up opens the same setup ----
   const ids = await page.evaluate(() => [...document.querySelectorAll('[data-card]')].map((c) => c.dataset.card));

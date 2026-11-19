@@ -167,9 +167,12 @@ describe('resume a run in progress', () => {
     const volleys = run.rec.watch.volleys.length;
     expect(volleys).toBeGreaterThan(0);
     run.rec.rateVolley(0, { fun: 4 });
+    // A wave rated on the draft (docs/design/v3-rate-and-review.md).
+    run.rec.rateWave(1, { fun: 3, intensity: 2 }, 'quiet start');
     const { rec } = saveAndResume(run);
     const log = rec.snapshot();
     expect(log.notes?.map((n) => n.text)).toEqual(['left at wave 2']);
+    expect(log.waveRatings?.map((w) => [w.wave, w.rating, w.note])).toEqual([[1, { fun: 3, intensity: 2 }, 'quiet start']]);
     expect(log.summary?.drafts).toEqual(run.rec.snapshot().summary?.drafts);
     expect(log.summary?.drafts.length).toBeGreaterThan(0);
     expect(rec.watch.volleys.length).toBe(volleys);

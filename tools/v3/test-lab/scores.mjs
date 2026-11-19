@@ -16,6 +16,12 @@
 // answer are never averaged together; the older ones are counted apart.
 // Revision 3 added "Best moment" (`since: 3`; its wave reads like Best
 // wave's, and `momentT`, the seconds into it, is for the fun measures).
+// Revision 4 (docs/design/v3-rate-and-review.md) retired it (`retired: 4`)
+// and added Intensity (`since: 4`, stars), and a score can carry `waves`:
+// the waves the player rated on the draft ([{ n, difficulty?, fun?,
+// intensity?, note? }]), with `bestSuggested` / `weakestSuggested`, the
+// Best and Weakest wave the end screen suggested from them. Older scores
+// read and average under their own revision as before.
 
 /** A wave's name: "7", or "B2" for the second boss round. */
 export function waveName(n, bossFrom) {
@@ -41,6 +47,66 @@ export function scoreChips(score, sc) {
     const v = score[c.id];
     if (v === undefined || v === null) continue;
     out.push({ id: c.id, label: c.label.replace(/\?$/, ''), text: answerWords(c, v, sc.bossFrom) });
+  }
+  return out;
+}
+
+/** A score's waves rated on the draft as chips, in wave order: [{ id:
+ *  'w<n>', label: '7', text: 'F4 D2 I5', note? }] (none: []). */
+export function waveRatingChips(score, bossFrom) {
+  if (!score || !Array.isArray(score.waves)) return [];
+  return score.waves
+    .filter((w) => w && typeof w.n === 'number')
+    .slice()
+    .sort((a, b) => a.n - b.n)
+    .map((w) => {
+      const text = [w.fun != null ? 'F' + w.fun : '', w.difficulty != null ? 'D' + w.difficulty : '', w.intensity != null ? 'I' + w.intensity : ''].filter(Boolean).join(' ');
+      return { id: 'w' + w.n, label: waveName(w.n, bossFrom), text: text || 'note', ...(w.note ? { note: w.note } : {}) };
+    });
+}
+
+/** The waves rated on the draft, averaged over some runs, wave by wave:
+ *  { [n]: { n: runs that rated it, fun?, difficulty?, intensity? (means) } }.
+ *  Any revision that carries `waves` (4 on). */
+export function waveRatingAverages(runs) {
+  const acc = {};
+  for (const r of runs || []) {
+    const waves = r && r.score && Array.isArray(r.score.waves) ? r.score.waves : [];
+    for (const w of waves) {
+      if (!w || typeof w.n !== 'number') continue;
+      const a = (acc[w.n] = acc[w.n] || { n: 0, sum: {}, cnt: {} });
+      a.n++;
+      for (const k of ['fun', 'difficulty', 'intensity']) {
+        if (typeof w[k] !== 'number') continue;
+        a.sum[k] = (a.sum[k] || 0) + w[k];
+        a.cnt[k] = (a.cnt[k] || 0) + 1;
+      }
+    }
+  }
+  const out = {};
+  for (const n of Object.keys(acc)) {
+    const a = acc[n];
+    const o = { n: a.n };
+    for (const k of Object.keys(a.sum)) o[k] = a.sum[k] / a.cnt[k];
+    out[n] = o;
+  }
+  return out;
+}
+
+/** How the end screen's suggestions fared (revision 4): of the runs where
+ *  Best (or Weakest) wave was suggested from the wave ratings, how many
+ *  kept it. { best: { suggested, kept }, weakest: { suggested, kept } }. */
+export function suggestionsKept(runs) {
+  const out = { best: { suggested: 0, kept: 0 }, weakest: { suggested: 0, kept: 0 } };
+  for (const r of runs || []) {
+    const s = r && r.score;
+    if (!s) continue;
+    for (const k of ['best', 'weakest']) {
+      const sug = s[k + 'Suggested'];
+      if (typeof sug !== 'number') continue;
+      out[k].suggested++;
+      if (s[k] === sug) out[k].kept++;
+    }
   }
   return out;
 }
