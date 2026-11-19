@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-18',
-  headline: 'Overnight: the fixes from your runs (#165), the fun measures (#167) and Kesh and Marrow (#169) are all live. Next for you: play Kesh and Marrow, and three things in Needs you.',
+  updated: '2026-11-19',
+  headline: 'Your Kesh, Marrow and Battery notes are read (see the log for what I think of each). Being built now: Marrow’s radar as a slow-down field, a harder Kesh boss, a pause and banner before every boss, the two bugs, your rating screen in the Test Lab with a rating at each weapon pick, and a bot test of every weapon combination. One question in Needs you.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -78,7 +78,9 @@ export const STATUS = {
     { id: 'checks', name: 'Automatic checks and bot reports', state: 'done', detail: 'Built (#162). Each map now gets a bot report: losses per wave, cliffs, close calls, wave budgets, the danger and safe stretches, warning time, kits and a heat map. Encounters carry internal notes. Tests catch later-chapter foes and repeated encounters. First readings on the three reference maps: every map has a cliff (the Gauntlet’s wave 8 jumps from 0.75 to 3 ships for the bot); Harbor’s waves 4–7 send a third fewer attacks than they should; the Strait and the Gauntlet have no clearly safe stretch; every encounter repeats 3–4 waves in a row.' },
     { id: 'reference', name: 'The three reference maps to the rules', state: 'done', detail: 'Rebuilt (#163), played by you (all Keep, fun 4–5) and fixed from your runs (#165): Harbor’s boss round 3 sends one sub salvo, not two; a supersonic missile sits untouchable on the launcher for 0.4 s (was 1.1 s), then lifts off slowly and can be shot, landing when it did; the lock-on warning still runs the full 1.1 s.' },
     { id: 'fun', name: 'Measuring the fun moments', state: 'done', detail: 'Built (#167). Saves: at each kill, nuke and pickup the game is copied and played on without it (and 0.5 s late); if a ship would have sunk, it was a save, with its stakes (the run, the last ship) and how close. Tension: a danger reading every 0.1 s from how close threats are to hitting, giving each wave a curve (flat, one peak, sawtooth, rising, pinned). On your three runs the tensest wave was the wave you scored best, all three times. Your Strait wave 10 shows as two clutch saves with the run at stake: the ammo drop, then the last-second drone kill. The scorecard now asks you to tap your best moment on the wave strip.' },
-    { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'now', detail: 'Rebuilt (#169) and ready for your playtest as map cards in the Test Lab. Kesh: the convoy bunches at the apex of the hook, right under the south silo; no mechanic. Marrow: the radar tower speeds your shots over the middle of the lane, exactly where the middle silo fires, and the enemy goes for the tower (waves 2, 5, 8, 10 and every boss round). With your Armory the bot wins Kesh 75% and Marrow 67% (both 96% before, far too easy for the rules), losing about 4 ships in waves 1–10. Tension now climbs in waves 1–3 on both. Three small flags left, each within one sunk ship in 24 runs: a step up on Kesh wave 7 and Marrow wave 9, and Kesh’s safe stretch at 26% of the damage (limit 25%).' },
+    { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'now', detail: 'Rebuilt (#169) and played by you: both Keep, fun 4, “good overall”. Being changed from your runs: Marrow’s radar slows enemies in its radius instead of speeding your shots (and is worth defending); Kesh’s boss gets harder (you lost 0, 0, 1 and called it way too easy); every boss starts after a longer pause with a banner: its name, “Survive the next 3 rounds”, your ships left; frigates stop jittering on Kesh’s turn; the nuke checked against your passive weapons. Play log will be v29.' },
+    { id: 'rate', name: 'Your rating screen in the Test Lab', state: 'now', detail: 'From your Battery note: the normal game’s “Rate & review” screen (1–5 difficulty, fun, intensity; the timeline of moments with playback and notes) becomes the Test Lab’s end screen too, keeping the Test Lab’s questions (fun, difficulty, play again, best and weakest wave, compared with the last map). “Best moment” goes: you found it hard to recall. New: an optional quick rating of the wave you just played at each weapon pick, so the end screen can show every wave’s rating and suggest best and weakest.' },
+    { id: 'combos', name: 'Bot test of every weapon combination', state: 'now', detail: 'From your Battery note. The bot plays every weapon alone, every pair and the best triples on the three reference maps and Kesh and Marrow, with your Armory; then each Armory upgrade alone and in pairs. Out comes: the strongest and weakest loadouts per map, the combos that are more (or less) than their parts, any kit that makes a map trivial (your Overdrive + Scattergun + Supply Run question), and which Armory upgrades matter. Proposals only; nothing is retuned without you.' },
     { id: 'ch2', name: 'Chapters 2–4', state: 'later', detail: 'A chapter at a time, the same way.' },
   ],
   prs: [
@@ -96,9 +98,13 @@ export const STATUS = {
     { n: 167, title: 'Fun measures: saves and the tension curve; Best moment on the scorecard', state: 'merged' },
     { n: 168, title: 'Hub update', state: 'merged' },
     { n: 169, title: 'Chapter 1: Kesh and Lee of Marrow rebuilt (play log v28)', state: 'merged' },
+    { n: 170, title: 'Hub update', state: 'merged' },
+    { n: 171, title: 'Encounter test follows the current encounters', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-19', what: 'Your campaign run on Battery (chapter 3, Dark Water; lost on wave 7, rated difficulty 5, fun 5, intensity 4). What I take from it: (1) the “NEW · Dark Water” tag on new weapons is now a rule for every rebuilt map; (2) “clutch nuke” and “those last two waves were really fun” are exactly the moments the saves and tension measures are for, and the run is being measured to check they find them; (3) yes, a bot test of every weapon and Armory combination makes sense, and it has started; (4) agreed, the normal game’s rating screen is better than the Test Lab scorecard: they are being merged, with a quick rating at each weapon pick so you don’t have to remember. Battery itself isn’t rebuilt yet (chapter 3), so its difficulty is noted for then.' },
+    { date: '2026-11-19', what: 'Your Kesh and Marrow runs (both won, 4 ships lost, Keep, fun 4). What I think: Kesh’s waves landed where they should (0 lost until wave 8, then 1, 1, 2), but its boss cost you 0, 0, 1: the bot again reads boss rounds harder than you play them (it predicted 0.6, 1.3, 1.3), so Kesh’s boss is being raised until the bot reads it about 1.5–2.5 a round. Marrow’s difficulty was right; your radar idea is better than the current one: a slow-down field makes the tower a place you defend and use, not a stat bonus you don’t notice. The boss build-up is a good call for every map, not only Marrow. Agreed on Best moment: it asks you to remember a second; a rating at each weapon pick asks while it is fresh. Bugs: the frigate jitter on Kesh’s hook is being fixed; whether the nuke really clears your passive weapons is being checked on your own log (the nuke is written to hit enemies only, so it may be something that only looks like it).' },
     { date: '2026-11-18', what: 'Merged #169: Kesh and Lee of Marrow rebuilt to the rules, each with a map card (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md), one encounter a wave and rising boss rounds. They were far too easy (the bot won 96%); now 75% and 67% with your Armory. Play log is now v28. No new enemies debut here: every chapter 1 enemy already debuts on the Strait.' },
     { date: '2026-11-18', what: 'Merged #167, the fun measures. What they say about the three reference maps (bot with your Armory): waves 1–3 are flat on every map; waves 4–10 mostly one peak each, building to the top peak on wave 9 or 10; real saves are rare, about 0.1–0.5 a wave in waves 6–10 and up to 0.7 in a boss round (the Strait’s round 2). Your own runs had about 0.3 a wave and 0.7 a boss round, about the same as the bot. After #165, Harbor’s round 3 went from pinned to one peak and its round 2 is now the tense one. Next for the maps: a first bump of tension by wave 3, and more sawtooth waves (several peaks with breathers).' },
     { date: '2026-11-18', what: 'Merged #165. Harbor: with your Armory the bot now loses about 1.2, 2.3, 1.5 ships in boss rounds 1–3 (was 1.3, 1.8, 2.4) and wins a quarter of its runs (was a sixth); round 3 is now lighter than round 2, as you chose. The supersonic is easier to shoot down. The bot still matches you on waves 1–10 with your 3 new runs added (waves 1–5: 0.63 against your 0.48; waves 6–10: 3.8 against 3.4) and still reads boss rounds about twice as hard as you overall: the Strait much harder (1.7 against 0.2), the Gauntlet the same (1.0 against 1.25), Harbor harder (1.6 against 0.7). The iOS check now runs only when iOS files change, after merges and by hand. Play log is now v27.' },
@@ -120,31 +126,14 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
-    id: 'r5-play-ch1',
-    kind: 'item',
-    text: 'Open the Test Lab and play the Kesh and Lee of Marrow map cards (production setup, encounters on), with your usual Armory. Fill in the scorecard after each, and use the new Best moment tap on the wave strip: it is how we check the fun measures against what you felt. Chapter 1 should be won on the first or second try, losing 2–6 ships.',
-    title: 'Play the two rebuilt chapter 1 maps: Kesh and Lee of Marrow',
-  },
-  {
-    id: 'r5-marrow-tower',
+    id: 'r6-boss-reset',
     kind: 'question',
-    text: 'On Marrow the bot loses the radar tower by wave 5–6 in most runs, so the boss rounds’ missiles at the tower mostly hit the nearest ship instead. You may defend it better than the bot.',
-    title: 'Marrow’s radar tower falls early for the bot. What should we do?',
+    text: 'Your Marrow note asked for a pause before the boss and to “say lives or ships reset”, then “survive the next three rounds”. The pause and a banner (the boss’s name, “Survive the next 3 rounds”, ships you still have) are being built now. Open: should the ships you lost in waves 1–10 count against you in the boss?',
+    title: 'At the boss: keep the ships you lost, or start the boss fresh?',
     options: [
-      'Keep it as is until your playtest shows how you do (recommended)',
-      'Make the tower tougher (6 hits instead of 4)',
-      'Rebuild the tower before the boss rounds (breaks “lost is lost”)',
-    ],
-  },
-  {
-    id: 'r5-fun-target',
-    kind: 'question',
-    text: 'A save here is strict: without your action a ship really sinks. Measured that way, you made about 0.3 a wave in waves 6–10 and 0.7 a boss round, and the bot about the same. The 1–2 a wave in the brainstorm is out of reach for anyone. The target steers how maps and waves are tuned from Kesh and Marrow on.',
-    title: 'How many real saves should a wave aim for?',
-    options: [
-      'About 0.3–0.5 a wave in waves 6–10, about 1 a boss round, and a first tension bump by wave 3; check it against your Best moment taps (recommended)',
-      'More: aim for about 1 a wave from wave 6, even if waves get harder',
-      'Don’t set a number yet: just report saves and tension for now',
+      'Keep the losses; the banner says how many ships you have left (recommended: waves 1–10 still matter)',
+      'Reset: every boss starts with the full allowance (a clean “survive 3 rounds” test)',
+      'Half way: repair 2 lost ships’ worth before the boss',
     ],
   },
 ];
@@ -152,6 +141,33 @@ export const NEEDS = [
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r5-play-ch1',
+    kind: 'item',
+    verdict: 'approve',
+    note: 'Played both (2026-11-18), both Keep, fun 4. “These maps were good overall.” Kesh: a bit easy, the boss far too easy (lost 0, 0, 1). Marrow: difficulty right, better than Kesh; turn the radar into a slow-down field; a bigger build-up before the boss. Frigates jitter on Kesh’s turn; the nuke shouldn’t clear your passive weapons.',
+    at: '2026-11-18',
+    title: 'Play the two rebuilt chapter 1 maps: Kesh and Lee of Marrow',
+    text: '',
+  },
+  {
+    id: 'r5-fun-target',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'About 0.3–0.5 saves a wave in waves 6–10, about 1 a boss round, and a first tension bump by wave 3.',
+    at: '2026-11-18',
+    title: 'How many real saves should a wave aim for?',
+    text: '',
+  },
+  {
+    id: 'r5-marrow-tower',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Keep the tower, but buff it your way: “the radar tower seems kinda useless to keep… slow down enemies” in its radius instead of speeding up your shots.',
+    at: '2026-11-18',
+    title: 'Marrow’s radar tower falls early for the bot. What should we do?',
+    text: '',
+  },
   {
     id: 'r4-harbor-boss',
     kind: 'question',
