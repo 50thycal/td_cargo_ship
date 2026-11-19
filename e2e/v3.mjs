@@ -254,7 +254,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 28 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 29 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -1075,7 +1075,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 28 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 29 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1258,9 +1258,9 @@ try {
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
     await lp.waitForTimeout(400);
-    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent, name: document.querySelector('.v3-event-card .v3-event-name')?.textContent, banner: document.body.innerText.match(/BOSS ROUNDS[^\n]*\n?[^\n]*/)?.[0] ?? '' }));
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent, name: document.querySelector('.v3-event-card .v3-event-name')?.textContent, banner: document.body.innerText.match(/BOSS: [^\n]*\n?[^\n]*/)?.[0] ?? '' }));
     check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /^Boss round 1 of 3/.test(hud11.eyebrow ?? '') && hud11.name === 'Afterburner Rush', `round 11: the counter reads BOSS 1/3 and the card says Boss round 1 of 3, Afterburner Rush (${JSON.stringify(hud11)})`);
-    check(/Survive the next 3 rounds/.test(hud11.banner), `round 11: a banner says what the boss rounds are ("${hud11.banner.replace(/\s+/g, ' ')}")`);
+    check(/AFTERBURNER RUSH/.test(hud11.banner) && /Survive the next 3 rounds/.test(hud11.banner) && /\d ships? can still be lost/i.test(hud11.banner), `round 11 (log v29): a banner names the boss, the rounds to survive and the ships that can still be lost ("${hud11.banner.replace(/\s+/g, ' ')}")`);
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
       if (ph !== 'wave') break;

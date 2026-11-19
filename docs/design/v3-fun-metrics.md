@@ -337,3 +337,11 @@ After a map card's full run, the scorecard has a new row, **Best moment**. It is
 It saves the wave (`moment`) and the seconds into it (`momentT`), from the wave's length on the strip. It lives in `labResult.score` next to the other answers, so the play log's format and version are unchanged.
 
 Adding a row bumped `SCORECARD_REV` to 3, so revision 3 scores average apart from revision 2's on the review page. The Test Lab page reads Best moment like Best wave.
+
+## The chapter 1 playtest (2026-11-19, log v28)
+
+Measured on the v28 build the runs were played on (`tools/v3/bot-fit/results/ch1-playtest-2026-11-19.json`, `tools/v3/bot-fit/playtest.ts`; per-run tables in `docs/design/v3-ch1-kesh.md` and `v3-ch1-marrow.md`, "After the playtest").
+
+- **Saves:** Kesh 2 (clutch last-second kills, w10 and B2), Marrow 2 (clutch cover choices on the tower missiles, B1 and B3), Battery 1 (a kill save, w6). None with stakes. Pooled over the three runs: 0.07 saves a wave in waves 1–10 and 0.50 a boss round (the bot's mirrors: 0.13 and 0.33); taps follow tension r 0.49 (bot 0.43).
+- **Best moment against the curve:** Kesh (wave 10, 35.7 s) is the run's highest-peak wave but falls in a lull 7 s before the wave's top and 9 s before its save; Marrow (wave 10, 44 s) is 2 s before wave 10's top, though B3 is that run's highest. Both match by wave, not by second. The player called the strip hard to recall; the per-wave rating at the draft (another change) should answer better.
+- **The Battery run's "clutch nuke"** (pause note at step 6546): the nuke at wave 3, 24.7 s (step 6315), with the rack empty, a guided missile 0.6 s from a ship, a stealth bomber 1.8 s, drones 2.3 and 3.3 s. **The saves detector does not catch it**: in the branch without the grab the nuke is still on the water, and the warm bot grabs it itself on its first step (0 ships saved on 6 of 6 rolls). With the pickup gone from that branch (the new opt-in `gone`, `FunOpts.gone`) it is a nuke save: 1 ship on 6 of 6 rolls. The same option also finds Marrow's wave 10 nuke (1.17 ships), a Battery repair and a Kesh B2 weapon pickup. It stays off by default so earlier results compare; switching it on is the likely right reading of "removed", and would raise pickup and nuke saves on every report.

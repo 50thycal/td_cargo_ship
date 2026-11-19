@@ -167,12 +167,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      the version moves; a v27 log played none of it (those maps had no
  *      encounter layer, and every other map is unchanged: the map-lab
  *      baseline's twelve runs changed only their version), but as with
- *      every version before, this build lists only its own. */
-export const LOG_VERSION = 28;
+ *      every version before, this build lists only its own.
+ *  29: after the chapter 1 playtest (review 2026-11-19; docs/design/
+ *      v3-ch1-kesh.md and v3-ch1-marrow.md, "After the playtest"): Lee of
+ *      Marrow's radar tower slows every enemy inside its sweep to
+ *      POST.radarSlow of its pace, in place of speeding your shots at them
+ *      (campaign and lab); the Kesh Hook's Drone Storm (encounters rev 4,
+ *      MAP_BOSS) sends shells and guided missiles with its swarms, more
+ *      each round; the first boss round of every map's three-run ending
+ *      opens EVENT.bossCalm s later; and frigates round a bend smoothly
+ *      (their bow and their step across eased, the bend's corners
+ *      averaged). A v28 log with a frigate on a bent lane, on Marrow, or
+ *      that reaches a three-run ending no longer replays to the same game. */
+export const LOG_VERSION = 29;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [28];
+export const LOG_REPLAYS: readonly number[] = [29];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

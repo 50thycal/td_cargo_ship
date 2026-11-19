@@ -305,7 +305,7 @@ try {
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
   const { momentT: savedT, ...savedRest } = saved.score ?? {};
-  check(saved.v === 28 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 29 && JSON.stringify(savedRest) === JSON.stringify({ rev: 3, fun: 4, difficulty: 'bit-hard', again: 'maybe', best: 1, moment: 1 }) && savedT === mo.t && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log, the best moment with it (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });

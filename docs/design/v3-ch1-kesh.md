@@ -175,3 +175,77 @@ From `kesh-player.md`:
 - **The wave 7 step.** The shared table steps up on wave 7: bombers arrive, and guided missiles go from 2 to 4. With the Armory, wave 7 is one sinking over the cliff line (0.21 → 0.54). Without it, 0.50 → 1.38.
 - **Kits.** The counter kit is better on every measure with the Armory, but by little (58% against 54%). With no Armory the off-counter loses less. As on every map, the bot's kit is only its draft taste.
 - **Boss rounds 2 and 3** send the same 36 drones; round 3 rises only by timing and by the damage the ships carry in. The bot reads them at 1.3 a round.
+
+## After the playtest (log v29, 2026-11-19)
+
+The player played the Kesh map card (log v28, `v3-20261118105818-35190`; review `tools/v3/map-rules/review-2026-11-19.json`): won, 4 ships lost, fun 4, difficulty "bit easy", boss 3, "keep". Their note: "Overall map was about good difficulty wise but the boss was way too much easy at least for me." Measured on the v28 build it was played on: `tools/v3/bot-fit/results/ch1-playtest-2026-11-19.json` (`tools/v3/bot-fit/playtest.ts`).
+
+### The player against the bot
+
+Ships lost per wave (the review file's `lostByWave` is cumulative; these are per wave):
+
+| | Waves 1–7 | 8 | 9 | 10 | Waves 1–10 | B1 / B2 / B3 |
+| --- | --- | --- | --- | --- | --- | --- |
+| The player | 0 | 1 | 0 | 2 | 3 | 0 / 0 / 1 |
+| The bot on the player's seed, Armory and picks (12 dice) | 0.33 | 0.50 | 0.83 | 0.75 | 3.0 | 0.25 / 1.25 / 1.00 |
+| The map card's prediction (24 seeds) | | | | | 3.7 | 0.60 / 1.30 / 1.26 |
+
+Waves 1–10 match (3 against 3.0 on the same seed). The boss rounds read about 2.5× as hard on the bot as for the player (0.83 a round against 0.33), the recorded bias (`docs/design/v3-bot-refit.md`) and then some.
+
+**Fun measures on the player's run** (3 rolls a fork):
+- Saves: two, both clutch last-second kills of a drone (wave 10 at 44.4 s, 0.85 s from impact; B2 at 8.3 s, 0.98 s), neither with stakes.
+- Tension: flat on waves 1–7 (peaks 0.02–0.67), one peak on waves 8 and 9 (1.0–1.1), a sawtooth on wave 10 (peak 2.04 at 43 s), and the boss rounds hot 24–39% of the time (B2 and B3 pinned).
+- **Best moment** (wave 10, 35.7 s) is the wave with the run's highest peak, but not its second: the reading there is 0.0, between a small peak at 33 s and the wave's top at 42–45 s; the save is at 44.4 s. So it matches by wave, a few seconds early by second. The player also wrote that the strip is "still hard to recall what happened, so not a great stat". The other agent's per-wave rating is the better answer.
+
+### Bug: "Frigates are a little jittery on the turn" (step 12067)
+
+Found on the replay: on its way to its station round the hook (wave 5, 45 s), a frigate's bow flicked about 2.5° left and right every step, and it stepped in and out a pixel or two each step. Three causes, on a bent lane only:
+- the lane is a polyline: offset 100+ px across it, the frigate's spot jumped at each corner (outside the bend) or doubled back (inside it), and its heading snapped by the corner's angle;
+- the track it steers for is sampled every 10 px, and it chased each sample;
+- giving way to a hull, it stepped out one step and back onto its track the next.
+
+Fix (`sailLane` in `src/v3/sim/game.ts`): its spot is the lane's averaged over 40 px either side (`escortAt`, the same on a straight); its step across is eased from the last one; once it has stepped out for a hull it holds that offset 0.6 s; and its bow eases onto its aim over 0.1 s (never faster than before). Measured with the convoy sailing and no enemy (`tests/v3/frigateJitter.test.ts`): heading flips 27 / 39 / 71 a minute → about 1 / 1 / 3 (three set-ups), wobble 2.7 / 3.9 / 7.1 → 0.3 / 0.4 / 0.7 °/s. Harbor Mouth's bend improves too (30 → 2 flips a minute); straight lanes are unchanged. `frigateOverlap.test.ts` still passes on every map (no hull overlaps, no land).
+
+### Not a bug: "the nuke should not clear out the players passive weapons" (step 23976)
+
+The Nuke takes only the enemy's threats, launchers, marks and shots (`nuke()` and `nukeFoes`); it never touches frigates, Aegis launchers, Drone Screen drones, Seeker or Gunship units, flak clouds, the Well, the Decoy or anything else of the player's. What the player saw: at wave 8, 55.0 s (step 23913) they grabbed a nuke with one shell left on the board, 0.6 s from a ship. That was the wave's last threat, so the wave ended on that step, and **every wave's end unloads the weapon in hand** (`clearField`): the two frigates (Frigate level 3, loaded) sailed off at once. The note was written a second into wave 9. A test now pins it: mid-wave, a nuke leaves Frigates, Aegis and Gunships loaded and on the water (`tests/v3/nuke.test.ts`).
+
+If the player wants weapons to carry over a wave's end, that is a separate rule change (a question on the hub).
+
+### The boss: harder (log v29)
+
+The Drone Storm sent only drones, and with no ammo drops the player's Aegis and Scattergun ate them. Now shells and guided missiles ride with the swarms, more each round, so round 3 is harder by what it sends (`KESH_BOSS_ROUNDS` in `src/v3/data/encounters.ts`; a shell at the ship nearest its silo, a guided missile at the ship halfway along; `sim/events.ts`):
+
+| Round | Drones (swarms × size) | Second half after | Shells | Guided |
+| --- | --- | --- | --- | --- |
+| before (v28) | 33 / 36 / 36 (12 × 2.75, 3, 3) | 6 / 6 / 5.5 s | 0 | 0 |
+| 1 | 36 (12 × 3) | 6 s | 3 (from 3 s, 4 s apart) | 0 |
+| 2 | 36 (12 × 3) | 6 s | 2 (from 3 s, 5 s apart) | 1 (at 7 s) |
+| 3 | 42 (14 × 3) | 5.5 s | 3 (from 3 s, 4 s apart) | 3 (from 5 s, 3 s apart) |
+
+`MAP_PLANS.kesh.boss.botTarget` is now 2. Bot, the player's Armory, 24 seeds, `--kits=plan`:
+
+| | v28 | v29 |
+| --- | --- | --- |
+| Boss r1 / r2 / r3 (normal, reached) | 0.60 / 1.30 / 1.26 (20 / 20 / 19 runs) | **1.20 / 2.35 / 2.73** (20 / 20 / 15) |
+| Boss r1 / r2 / r3 (tough) | 0.63 / 1.17 / 1.50 | 1.25 / 2.33 / 5.00 |
+| Won (normal) | 75% | **13%** |
+| Ships lost in waves 1–10 | 3.7 | 3.8 (unchanged by design) |
+
+Tuned on three tries (r1 / r2 / r3 on the bot): shells 2 / 3 + 2 guided / 4 + 4 guided read 1.35 / 3.50 / 2.75; 2 / 2 + 1 / 3 + 2 read 0.90 / 2.25 / 1.71; the table's reads 1.20 / 2.35 / 2.73, close to the 1.5 / 2 / 2.5 asked. At the bot's 2.5× bias that is about 0.5 / 0.9 / 1.1 for the player, near a ship a round.
+
+**Read this with care:** 1.5 + 2 + 2.5 is the whole loss limit (6) after the restore, so the bot now wins only 13% of normal runs (75% before), well under rule `m-difficulty`'s 50–75%. That is the bot's bias, not the player's expected result, but the player should know the target trades the bot's win rate away.
+
+Without the Armory (baseline): boss tough 1.92 / 3.79 / 4.08 → 2.83 / 4.50 / 6.63, won 4% → 0%; waves 1–10 unchanged (5.4).
+
+Waves 1–10 are as they were (every check reads as before: `w-cliff` FLAG on w7 by one sinking, `m-stretches` FLAG at 26%, the rest PASS). Fun (player Armory): saves a run 0.5 / 0.8 / 0.7 in the boss rounds (0.1 / 0.2 / 0.4 before), tension peaks 1.57 / 2.23 / 3.31, hot 21% / 43% / 51%.
+
+### The boss intro (every map)
+
+See `docs/design/v3-ch1-marrow.md`, "After the playtest": the first boss round now opens 5 s later (`EVENT.bossCalm`), with one banner naming the boss, the rounds to survive and the ships that can still be lost.
+
+### The play log (v29)
+
+`LOG_VERSION` 29, `LOG_REPLAYS` `[29]` (`src/v3/sim/playlog.ts`): the radar (campaign and lab), the Drone Storm (lab, encounter rev 4), the boss calm (every map's three-run ending) and the frigates change the game. The map-lab baseline differed on all 12 runs (state on the runs that reach a boss round or use frigates; the rest by version and content hash) and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 29. The player's v28 logs no longer replay here; their measures were taken on the v28 build first.
+
+Reports: `tools/v3/map-report/results/kesh.md` and `kesh-player.md`.

@@ -60,7 +60,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
+import { EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -1790,10 +1790,25 @@ export class App {
           // then say a little blurb at the start like survive the next
           // rounds"): the first of the map's ending runs says what is
           // coming, on its card and in a call-out.
+          // Log v29 (the player, Marrow: "more of a pause before it begins
+          // ... survive for these next three waves, make it feel more
+          // dramatic"): the first boss round opens on a longer calm
+          // (EVENT.bossCalm, sim/events.ts); its card holds through it, and
+          // one banner names the boss, the rounds to survive and how many
+          // ships can still be lost. The convoy restore before it is round
+          // 7's (restoreConvoy in sim/events.ts, called from startWave under
+          // ENDING.threeRuns): turning it off is that one flag, and this
+          // banner then reads the losses left as they are.
           {
             const first = !ev.bonus && !!ev.runs && ev.run === 1;
             this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? bossRound(ev.run!, ev.runs) : '', first ? `Survive the next ${ev.runs} rounds` : '');
-            if (first) this.showBanner('BOSS ROUNDS', `Survive the next ${ev.runs} rounds.`, { now: true, kind: 'alarm', icon: 'wave' }, null);
+            if (first) {
+              this.flashEventCard((EVENT.breather + EVENT.bossCalm) * 1000);
+              const left = Math.max(0, g.tempo.lossLimit - (g.lost - g.lossBase));
+              const restored = g.events.some((e) => e.kind === 'restore');
+              const ships = `${left} ship${left === 1 ? '' : 's'} can still be lost`;
+              this.showBanner(`BOSS: ${EVENTS[ev.id].name.toUpperCase()}`, `Survive the next ${ev.runs} rounds. ${restored ? `Convoy restored: ${ships}.` : `${ships[0].toUpperCase()}${ships.slice(1)}.`}`, { now: true, kind: 'alarm', icon: 'wave' }, null);
+            }
           }
           break;
         case 'specialEnd':
@@ -1808,8 +1823,10 @@ export class App {
           break;
         }
         case 'restore':
-          // Round 7's experiment: the convoy back to full before the ending.
-          this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
+          // Round 7's experiment: the convoy back to full before the ending
+          // (said in the boss banner when the first boss round starts with
+          // it, log v29).
+          if (!g.events.some((e) => e.kind === 'special' && !e.bonus && e.run === 1)) this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
           break;
         case 'wave': {
           // A special event's wave has its own card instead.
@@ -2001,7 +2018,7 @@ export class App {
     if (this.radarShown || g.phase !== 'wave' || this.playback) return;
     if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
     this.radarShown = true;
-    if (this.explain('post:radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ...HINT, icon: 'info' });
+    if (this.explain('post:radar')) this.showBanner('RADAR TOWER', 'Drones and missiles in its sweep are slowed (the icy ring). Missiles will go for it.', { ...HINT, icon: 'info' });
   }
 
   /** Test Lab round 1 ("make the projectiles red ... then we can mention to
