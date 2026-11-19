@@ -1,0 +1,8960 @@
+{
+ "stage": "armory",
+ "about": "Armory builds with each map's counter kit (forced) and with the bot drafting for itself.",
+ "logVersion": 29,
+ "date": "2026-11-19",
+ "seeds": [
+  900,
+  901,
+  902,
+  903
+ ],
+ "maps": [
+  "strait",
+  "gauntlet",
+  "harbor",
+  "kesh",
+  "marrow"
+ ],
+ "pool": [
+  "airstrike",
+  "shrapnel",
+  "frigate",
+  "thermo",
+  "scatter",
+  "boomerang",
+  "flak",
+  "seeker",
+  "aegis",
+  "well",
+  "railgun",
+  "tesla",
+  "cutter",
+  "droneScreen",
+  "supplyRun",
+  "overdrive"
+ ],
+ "seconds": 358,
+ "runs": 2280,
+ "configs": [
+  {
+   "key": "counter@none",
+   "name": "No Armory",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 5.167,
+     "lostAll": 22.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 2.417,
+     "lostAll": 18,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.75,
+     "flawless": 0,
+     "lost10": 19.25,
+     "boss": 5.083,
+     "lostAll": 34.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 12.75,
+     "boss": 5.25,
+     "lostAll": 28.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 3.167,
+     "lostAll": 19.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 8.65,
+    "flawless": 0,
+    "lost10": 11.85,
+    "boss": 4.217,
+    "lostAll": 24.5,
+    "bossNormal": 2.5,
+    "bossReached": 0.25
+   },
+   "kit": "counter",
+   "armory": {}
+  },
+  {
+   "key": "self@none",
+   "name": "No Armory",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 4.333,
+     "lostAll": 23.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 15.5,
+     "boss": 3.417,
+     "lostAll": 25.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7,
+     "flawless": 0,
+     "lost10": 17.75,
+     "boss": 5.083,
+     "lostAll": 33,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 5.5,
+     "lostAll": 27.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.75,
+     "boss": 2.917,
+     "lostAll": 21.5,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 8.45,
+    "flawless": 0,
+    "lost10": 13.45,
+    "boss": 4.25,
+    "lostAll": 26.2,
+    "bossNormal": 2.5,
+    "bossReached": 0.25
+   },
+   "kit": "self",
+   "armory": {}
+  },
+  {
+   "key": "counter@reload5",
+   "name": "Quick Reload 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 3.333,
+     "lostAll": 19,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 2,
+     "lostAll": 17.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 6.5,
+     "flawless": 0,
+     "lost10": 17.75,
+     "boss": 4.75,
+     "lostAll": 32,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 15.5,
+     "boss": 4.75,
+     "lostAll": 29.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 2.417,
+     "lostAll": 10.5,
+     "bossNormal": 2,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.25,
+    "flawless": 0,
+    "lost10": 11.35,
+    "boss": 3.45,
+    "lostAll": 21.7,
+    "bossNormal": 2.5,
+    "bossReached": 0.6
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5
+   }
+  },
+  {
+   "key": "self@reload5",
+   "name": "Quick Reload 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 4.083,
+     "lostAll": 20.75,
+     "bossNormal": 4,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 2.333,
+     "lostAll": 18.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 19,
+     "boss": 4.583,
+     "lostAll": 32.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 4.667,
+     "lostAll": 20.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 2.583,
+     "lostAll": 19.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 9.6,
+    "flawless": 0,
+    "lost10": 11.5,
+    "boss": 3.65,
+    "lostAll": 22.45,
+    "bossNormal": 2.933,
+    "bossReached": 0.65
+   },
+   "kit": "self",
+   "armory": {
+    "reload": 5
+   }
+  },
+  {
+   "key": "counter@warhead5",
+   "name": "Wide Warhead 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 3.75,
+     "lostAll": 18.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 2.167,
+     "lostAll": 15.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7,
+     "flawless": 0,
+     "lost10": 23.75,
+     "boss": 3.833,
+     "lostAll": 35.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 4.583,
+     "lostAll": 22,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0.417,
+     "lostAll": 6,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 9.65,
+    "flawless": 0,
+    "lost10": 10.6,
+    "boss": 2.95,
+    "lostAll": 19.45,
+    "bossNormal": 0.444,
+    "bossReached": 0.45
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5
+   }
+  },
+  {
+   "key": "self@warhead5",
+   "name": "Wide Warhead 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 3,
+     "lostAll": 16,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 13,
+     "boss": 2.917,
+     "lostAll": 21.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 16.75,
+     "boss": 3.083,
+     "lostAll": 26,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 14.25,
+     "boss": 2.833,
+     "lostAll": 22.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 0.417,
+     "lostAll": 9,
+     "bossNormal": 0.5,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 9.4,
+    "flawless": 0,
+    "lost10": 11.75,
+    "boss": 2.45,
+    "lostAll": 19.1,
+    "bossNormal": 1.083,
+    "bossReached": 0.45
+   },
+   "kit": "self",
+   "armory": {
+    "warhead": 5
+   }
+  },
+  {
+   "key": "counter@motor5",
+   "name": "Fast Motors 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 3.833,
+     "lostAll": 16.75,
+     "bossNormal": 2.286,
+     "bossReached": 1.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 2.25,
+     "lostAll": 15.75,
+     "bossNormal": 0.333,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 18.75,
+     "boss": 3.333,
+     "lostAll": 28.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 5,
+     "lostAll": 23.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 2.417,
+     "lostAll": 11,
+     "bossNormal": 1.917,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.5,
+    "flawless": 0,
+    "lost10": 9.1,
+    "boss": 3.367,
+    "lostAll": 19.2,
+    "bossNormal": 1.884,
+    "bossReached": 1.2
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5
+   }
+  },
+  {
+   "key": "self@motor5",
+   "name": "Fast Motors 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 3.25,
+     "lostAll": 20.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 1.917,
+     "lostAll": 17.5,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 15,
+     "boss": 3.5,
+     "lostAll": 25.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 4.667,
+     "lostAll": 23.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 2.5,
+     "lostAll": 14.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.7,
+    "flawless": 0,
+    "lost10": 10.75,
+    "boss": 3.167,
+    "lostAll": 20.25,
+    "bossNormal": 2.167,
+    "bossReached": 0.7
+   },
+   "kit": "self",
+   "armory": {
+    "motor": 5
+   }
+  },
+  {
+   "key": "counter@magazine5",
+   "name": "Deep Magazine 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3.417,
+     "lostAll": 16.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 10,
+     "boss": 0.583,
+     "lostAll": 11.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 16,
+     "boss": 4.167,
+     "lostAll": 28.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 4.833,
+     "lostAll": 25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 3.333,
+     "lostAll": 14.5,
+     "bossNormal": 2.571,
+     "bossReached": 1.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 9.5,
+    "flawless": 0,
+    "lost10": 9.5,
+    "boss": 3.267,
+    "lostAll": 19.3,
+    "bossNormal": 2.571,
+    "bossReached": 0.35
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5
+   }
+  },
+  {
+   "key": "self@magazine5",
+   "name": "Deep Magazine 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 4.583,
+     "lostAll": 22.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 15.25,
+     "boss": 1,
+     "lostAll": 18.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 15.75,
+     "boss": 3.583,
+     "lostAll": 26.5,
+     "bossNormal": 6,
+     "bossReached": 0.25
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 3.333,
+     "lostAll": 19.5,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 2.917,
+     "lostAll": 15.5,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 9.3,
+    "flawless": 0,
+    "lost10": 11.2,
+    "boss": 3.083,
+    "lostAll": 20.45,
+    "bossNormal": 3.35,
+    "bossReached": 0.7
+   },
+   "kit": "self",
+   "armory": {
+    "magazine": 5
+   }
+  },
+  {
+   "key": "counter@fuse5",
+   "name": "Proximity Fuse 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 4.25,
+     "lostAll": 19.75,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 0.083,
+     "lostAll": 7,
+     "bossNormal": 0,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 15,
+     "boss": 2.5,
+     "lostAll": 22.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 5.333,
+     "lostAll": 25.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2.333,
+     "lostAll": 12,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 9.8,
+    "flawless": 0,
+    "lost10": 8.65,
+    "boss": 2.9,
+    "lostAll": 17.35,
+    "bossNormal": 1.75,
+    "bossReached": 0.9
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5
+   }
+  },
+  {
+   "key": "self@fuse5",
+   "name": "Proximity Fuse 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 3.833,
+     "lostAll": 18.75,
+     "bossNormal": 4,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 1.333,
+     "lostAll": 15.25,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 15.5,
+     "boss": 2.917,
+     "lostAll": 24.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 3.833,
+     "lostAll": 18.5,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.917,
+     "lostAll": 10.75,
+     "bossNormal": 1.667,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 9.95,
+    "flawless": 0,
+    "lost10": 9.2,
+    "boss": 2.767,
+    "lostAll": 17.5,
+    "bossNormal": 2.333,
+    "bossReached": 0.95
+   },
+   "kit": "self",
+   "armory": {
+    "fuse": 5
+   }
+  },
+  {
+   "key": "counter@plating5",
+   "name": "Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.917,
+     "lostAll": 11.25,
+     "bossNormal": 2,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.667,
+     "lostAll": 7.75,
+     "bossNormal": 0.833,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 1.667,
+     "lostAll": 14.75,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.25,
+     "lostAll": 12.75,
+     "bossNormal": 1.8,
+     "bossReached": 1.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 1.417,
+     "lostAll": 9.75,
+     "bossNormal": 1.222,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.65,
+    "flawless": 0,
+    "lost10": 5.9,
+    "boss": 1.783,
+    "lostAll": 11.25,
+    "bossNormal": 1.504,
+    "bossReached": 1.55
+   },
+   "kit": "counter",
+   "armory": {
+    "plating": 5
+   }
+  },
+  {
+   "key": "self@plating5",
+   "name": "Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.833,
+     "lostAll": 11,
+     "bossNormal": 2.182,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 1.25,
+     "lostAll": 12,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 2,
+     "lostAll": 15,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2.25,
+     "lostAll": 11.75,
+     "bossNormal": 1.5,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1,
+     "lostAll": 8,
+     "bossNormal": 1.222,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.7,
+    "flawless": 0,
+    "lost10": 5.95,
+    "boss": 1.867,
+    "lostAll": 11.55,
+    "bossNormal": 1.414,
+    "bossReached": 1.75
+   },
+   "kit": "self",
+   "armory": {
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@pointdef5",
+   "name": "Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 4.417,
+     "lostAll": 21,
+     "bossNormal": 6,
+     "bossReached": 0.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 1.833,
+     "lostAll": 14.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 3.917,
+     "lostAll": 23.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 3.167,
+     "lostAll": 14.25,
+     "bossNormal": 2.125,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 1.833,
+     "lostAll": 13.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.4,
+    "flawless": 0,
+    "lost10": 8.3,
+    "boss": 3.033,
+    "lostAll": 17.4,
+    "bossNormal": 3.375,
+    "bossReached": 0.6
+   },
+   "kit": "counter",
+   "armory": {
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "self@pointdef5",
+   "name": "Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 3.917,
+     "lostAll": 23.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 1.083,
+     "lostAll": 12.75,
+     "bossNormal": 0.333,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 12.75,
+     "boss": 3.083,
+     "lostAll": 22,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 3.417,
+     "lostAll": 15.5,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 2.667,
+     "lostAll": 16,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.05,
+    "flawless": 0,
+    "lost10": 9.45,
+    "boss": 2.833,
+    "lostAll": 17.95,
+    "bossNormal": 1.352,
+    "bossReached": 0.9
+   },
+   "kit": "self",
+   "armory": {
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@repair5",
+   "name": "Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 4.75,
+     "lostAll": 18.75,
+     "bossNormal": 3,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 0.5,
+     "lostAll": 11.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 13.25,
+     "boss": 2.75,
+     "lostAll": 21.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3.917,
+     "lostAll": 18.25,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.917,
+     "lostAll": 8.5,
+     "bossNormal": 0.778,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.2,
+    "flawless": 0,
+    "lost10": 7.95,
+    "boss": 2.567,
+    "lostAll": 15.65,
+    "bossNormal": 1.815,
+    "bossReached": 0.9
+   },
+   "kit": "counter",
+   "armory": {
+    "repair": 5
+   }
+  },
+  {
+   "key": "self@repair5",
+   "name": "Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 2.5,
+     "lostAll": 13.75,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 0.667,
+     "lostAll": 9.75,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 1.917,
+     "lostAll": 17.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.833,
+     "lostAll": 14,
+     "bossNormal": 1.778,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 0.917,
+     "lostAll": 9.75,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 10.75,
+    "flawless": 0,
+    "lost10": 7.65,
+    "boss": 1.767,
+    "lostAll": 12.95,
+    "bossNormal": 1.333,
+    "bossReached": 1.2
+   },
+   "kit": "self",
+   "armory": {
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@longload5",
+   "name": "Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 4.417,
+     "lostAll": 20.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 3.583,
+     "lostAll": 18.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 17.75,
+     "boss": 3.333,
+     "lostAll": 27.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 4.75,
+     "lostAll": 24.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2.25,
+     "lostAll": 11.5,
+     "bossNormal": 1.667,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.55,
+    "flawless": 0,
+    "lost10": 9.55,
+    "boss": 3.667,
+    "lostAll": 20.55,
+    "bossNormal": 2.222,
+    "bossReached": 0.7
+   },
+   "kit": "counter",
+   "armory": {
+    "longload": 5
+   }
+  },
+  {
+   "key": "self@longload5",
+   "name": "Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 11.5,
+     "boss": 5.25,
+     "lostAll": 27.25,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 15.5,
+     "boss": 2.083,
+     "lostAll": 21.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 16.75,
+     "boss": 2.833,
+     "lostAll": 25.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 5.583,
+     "lostAll": 25,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 2.75,
+     "lostAll": 17.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.2,
+    "flawless": 0,
+    "lost10": 12.25,
+    "boss": 3.7,
+    "lostAll": 23.35,
+    "bossNormal": 2,
+    "bossReached": 0.65
+   },
+   "kit": "self",
+   "armory": {
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@drops5",
+   "name": "Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 3.833,
+     "lostAll": 16.5,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 11,
+     "boss": 2.333,
+     "lostAll": 18,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.75,
+     "flawless": 0,
+     "lost10": 13,
+     "boss": 2.583,
+     "lostAll": 20.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 5.333,
+     "lostAll": 25.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 2.417,
+     "lostAll": 17.75,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 8.75,
+    "flawless": 0,
+    "lost10": 9.75,
+    "boss": 3.3,
+    "lostAll": 19.65,
+    "bossNormal": 3,
+    "bossReached": 0.2
+   },
+   "kit": "counter",
+   "armory": {
+    "drops": 5
+   }
+  },
+  {
+   "key": "self@drops5",
+   "name": "Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 3.5,
+     "lostAll": 21,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 14.75,
+     "boss": 2.917,
+     "lostAll": 23.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 6.5,
+     "flawless": 0,
+     "lost10": 24.75,
+     "boss": 3.75,
+     "lostAll": 36,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 13.75,
+     "boss": 4.167,
+     "lostAll": 26.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 11.5,
+     "boss": 2.833,
+     "lostAll": 20,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 8.85,
+    "flawless": 0,
+    "lost10": 15.05,
+    "boss": 3.433,
+    "lostAll": 25.35,
+    "bossNormal": 2.267,
+    "bossReached": 0.65
+   },
+   "kit": "self",
+   "armory": {
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@stockpile5",
+   "name": "Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.083,
+     "lostAll": 11.75,
+     "bossNormal": 2.75,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 2.083,
+     "lostAll": 17,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7,
+     "flawless": 0,
+     "lost10": 22.25,
+     "boss": 5.25,
+     "lostAll": 38,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 6.083,
+     "lostAll": 30,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 2.333,
+     "lostAll": 14.5,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9,
+    "flawless": 0,
+    "lost10": 11.55,
+    "boss": 3.567,
+    "lostAll": 22.25,
+    "bossNormal": 2.75,
+    "bossReached": 0.2
+   },
+   "kit": "counter",
+   "armory": {
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "self@stockpile5",
+   "name": "Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 5.5,
+     "lostAll": 23.25,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 13.25,
+     "boss": 2.417,
+     "lostAll": 20.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 15.25,
+     "boss": 4.667,
+     "lostAll": 29.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 13.5,
+     "boss": 4.083,
+     "lostAll": 25.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 3.167,
+     "lostAll": 20,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 8.95,
+    "flawless": 0,
+    "lost10": 11.85,
+    "boss": 3.967,
+    "lostAll": 23.75,
+    "bossNormal": 2.5,
+    "bossReached": 0.35
+   },
+   "kit": "self",
+   "armory": {
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@reload5.plating5",
+   "name": "Quick Reload 5 + Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2.167,
+     "lostAll": 10.5,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.167,
+     "lostAll": 7.75,
+     "bossNormal": 1.333,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.25,
+     "boss": 1.75,
+     "lostAll": 15.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 2.5,
+     "lostAll": 14.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 0.5,
+     "boss": 1.167,
+     "lostAll": 4,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.35,
+    "flawless": 0,
+    "lost10": 5.2,
+    "boss": 1.75,
+    "lostAll": 10.45,
+    "bossNormal": 1.806,
+    "bossReached": 1.25
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@reload5.pointdef5",
+   "name": "Quick Reload 5 + Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 3.417,
+     "lostAll": 16.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.5,
+     "lostAll": 6,
+     "bossNormal": 0.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.25,
+     "boss": 2.5,
+     "lostAll": 19.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.75,
+     "lostAll": 14.25,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 2.167,
+     "lostAll": 9.75,
+     "bossNormal": 2.091,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 11,
+    "flawless": 0,
+    "lost10": 6.45,
+    "boss": 2.267,
+    "lostAll": 13.25,
+    "bossNormal": 1.764,
+    "bossReached": 1.35
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@reload5.repair5",
+   "name": "Quick Reload 5 + Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 1.583,
+     "lostAll": 10.25,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.5,
+     "lostAll": 6.5,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 2.083,
+     "lostAll": 18,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 3.667,
+     "lostAll": 15.5,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.25,
+     "boss": 0.583,
+     "lostAll": 3,
+     "bossNormal": 0.583,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.75,
+    "flawless": 0,
+    "lost10": 5.6,
+    "boss": 1.683,
+    "lostAll": 10.65,
+    "bossNormal": 1.139,
+    "bossReached": 1.75
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.plating5",
+   "name": "Wide Warhead 5 + Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1,
+     "lostAll": 5.5,
+     "bossNormal": 1,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.5,
+     "lostAll": 5.75,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 1.583,
+     "lostAll": 15.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.5,
+     "lostAll": 7.5,
+     "bossNormal": 1.556,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 1.5,
+     "boss": 0.25,
+     "lostAll": 2.25,
+     "bossNormal": 0.25,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.65,
+    "endWave": 12.45,
+    "flawless": 0.05,
+    "lost10": 4.35,
+    "boss": 0.967,
+    "lostAll": 7.25,
+    "bossNormal": 0.84,
+    "bossReached": 2.1
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.pointdef5",
+   "name": "Wide Warhead 5 + Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.5,
+     "lostAll": 13.5,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.5,
+     "lostAll": 6.5,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 3,
+     "lostAll": 20.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2.333,
+     "lostAll": 11,
+     "bossNormal": 1.778,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.167,
+     "lostAll": 3.5,
+     "bossNormal": 0.222,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.7,
+    "flawless": 0,
+    "lost10": 5.85,
+    "boss": 1.7,
+    "lostAll": 10.95,
+    "bossNormal": 0.972,
+    "bossReached": 1.5
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.repair5",
+   "name": "Wide Warhead 5 + Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 1.75,
+     "lostAll": 12.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 0.417,
+     "lostAll": 6.75,
+     "bossNormal": 0.5,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 2.083,
+     "lostAll": 18,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2.833,
+     "lostAll": 13.5,
+     "bossNormal": 2,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 2.5,
+     "boss": 0,
+     "lostAll": 2.5,
+     "bossNormal": 0,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.3,
+    "flawless": 0.05,
+    "lost10": 6.45,
+    "boss": 1.417,
+    "lostAll": 10.7,
+    "bossNormal": 1.125,
+    "bossReached": 1.5
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@motor5.plating5",
+   "name": "Fast Motors 5 + Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.833,
+     "lostAll": 8,
+     "bossNormal": 2,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 0.333,
+     "lostAll": 4.5,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2.167,
+     "lostAll": 11.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.083,
+     "lostAll": 10.5,
+     "bossNormal": 1.444,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.167,
+     "lostAll": 6,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.6,
+    "flawless": 0,
+    "lost10": 3.55,
+    "boss": 1.517,
+    "lostAll": 8.1,
+    "bossNormal": 1.411,
+    "bossReached": 2.15
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@motor5.pointdef5",
+   "name": "Fast Motors 5 + Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 4.5,
+     "lostAll": 16.25,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 0.333,
+     "lostAll": 7.5,
+     "bossNormal": 0.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 3.583,
+     "lostAll": 20.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 3.083,
+     "lostAll": 13,
+     "bossNormal": 1.875,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2,
+     "lostAll": 10,
+     "bossNormal": 1.625,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.7,
+    "flawless": 0,
+    "lost10": 5.3,
+    "boss": 2.7,
+    "lostAll": 13.4,
+    "bossNormal": 1.517,
+    "bossReached": 1.6
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@motor5.repair5",
+   "name": "Fast Motors 5 + Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.667,
+     "lostAll": 9.25,
+     "bossNormal": 1.625,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.5,
+     "lostAll": 6.75,
+     "bossNormal": 0.333,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 2.083,
+     "lostAll": 13.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 3.333,
+     "lostAll": 14.25,
+     "bossNormal": 2,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.5,
+     "lostAll": 4,
+     "bossNormal": 0.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 4.7,
+    "boss": 1.617,
+    "lostAll": 9.55,
+    "bossNormal": 1.292,
+    "bossReached": 1.9
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.plating5",
+   "name": "Deep Magazine 5 + Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.917,
+     "lostAll": 5.75,
+     "bossNormal": 0.917,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0.5,
+     "lostAll": 6.25,
+     "bossNormal": 0.667,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.25,
+     "boss": 1.5,
+     "lostAll": 14.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 2.667,
+     "lostAll": 13,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 1,
+     "lostAll": 4.75,
+     "bossNormal": 0.917,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.35,
+    "flawless": 0,
+    "lost10": 4.95,
+    "boss": 1.317,
+    "lostAll": 8.9,
+    "bossNormal": 1.5,
+    "bossReached": 2.05
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.pointdef5",
+   "name": "Deep Magazine 5 + Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 3.833,
+     "lostAll": 18.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.25,
+     "lostAll": 4,
+     "bossNormal": 0.25,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 3.417,
+     "lostAll": 20,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.333,
+     "lostAll": 13,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2,
+     "lostAll": 10.25,
+     "bossNormal": 1.556,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.25,
+    "flawless": 0,
+    "lost10": 6,
+    "boss": 2.367,
+    "lostAll": 13.1,
+    "bossNormal": 1.701,
+    "bossReached": 1.3
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.repair5",
+   "name": "Deep Magazine 5 + Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2,
+     "lostAll": 11.5,
+     "bossNormal": 1,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0.5,
+     "lostAll": 6.25,
+     "bossNormal": 0.333,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 2.25,
+     "lostAll": 15,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.75,
+     "lostAll": 13.75,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 0.417,
+     "lostAll": 3.5,
+     "bossNormal": 0.417,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.85,
+    "flawless": 0,
+    "lost10": 5.25,
+    "boss": 1.583,
+    "lostAll": 10,
+    "bossNormal": 0.937,
+    "bossReached": 1.5
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.plating5",
+   "name": "Proximity Fuse 5 + Armor Plating 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.333,
+     "lostAll": 10,
+     "bossNormal": 2.1,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.167,
+     "lostAll": 5.5,
+     "bossNormal": 0.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 1,
+     "lostAll": 11.25,
+     "bossNormal": 0.5,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2.667,
+     "lostAll": 12.75,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 0.5,
+     "boss": 0.667,
+     "lostAll": 2.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.3,
+    "flawless": 0,
+    "lost10": 4.3,
+    "boss": 1.367,
+    "lostAll": 8.4,
+    "bossNormal": 1.053,
+    "bossReached": 2
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "plating": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.pointdef5",
+   "name": "Proximity Fuse 5 + Point Defense 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3.417,
+     "lostAll": 15.75,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.25,
+     "lostAll": 5.75,
+     "bossNormal": 0.333,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 12.75,
+     "boss": 1.917,
+     "lostAll": 18.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 3.083,
+     "lostAll": 11.5,
+     "bossNormal": 2,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.5,
+     "lostAll": 9,
+     "bossNormal": 1.556,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.4,
+    "flawless": 0,
+    "lost10": 6,
+    "boss": 2.033,
+    "lostAll": 12.1,
+    "bossNormal": 1.572,
+    "bossReached": 1.55
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "pointdef": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.repair5",
+   "name": "Proximity Fuse 5 + Damage Control 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 3.333,
+     "lostAll": 14.75,
+     "bossNormal": 1.875,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 0.25,
+     "lostAll": 6.25,
+     "bossNormal": 0,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 1.167,
+     "lostAll": 10.25,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 3.417,
+     "lostAll": 14.5,
+     "bossNormal": 2.667,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 1.5,
+     "boss": 0.167,
+     "lostAll": 2,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 12.1,
+    "flawless": 0.05,
+    "lost10": 4.55,
+    "boss": 1.667,
+    "lostAll": 9.55,
+    "bossNormal": 1.075,
+    "bossReached": 1.9
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "repair": 5
+   }
+  },
+  {
+   "key": "counter@reload5.longload5",
+   "name": "Quick Reload 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 5,
+     "lostAll": 19.25,
+     "bossNormal": 3,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.083,
+     "lostAll": 11.75,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 18.75,
+     "boss": 3.333,
+     "lostAll": 28.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 9.75,
+     "boss": 5.833,
+     "lostAll": 27.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 2.333,
+     "lostAll": 13.25,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.85,
+    "flawless": 0,
+    "lost10": 8.9,
+    "boss": 3.717,
+    "lostAll": 20.05,
+    "bossNormal": 2,
+    "bossReached": 0.75
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@reload5.drops5",
+   "name": "Quick Reload 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3.333,
+     "lostAll": 16.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 2.333,
+     "lostAll": 14.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 12.5,
+     "boss": 4.833,
+     "lostAll": 27,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 3.833,
+     "lostAll": 20.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 2.75,
+     "lostAll": 11.5,
+     "bossNormal": 2.091,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 10.25,
+    "flawless": 0,
+    "lost10": 7.85,
+    "boss": 3.417,
+    "lostAll": 18.1,
+    "bossNormal": 2.364,
+    "bossReached": 0.8
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@reload5.stockpile5",
+   "name": "Quick Reload 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 4.333,
+     "lostAll": 20.5,
+     "bossNormal": 6,
+     "bossReached": 0.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 1.917,
+     "lostAll": 15,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 2.583,
+     "lostAll": 19,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 4.583,
+     "lostAll": 24.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 2.083,
+     "lostAll": 13,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0,
+    "endWave": 9.15,
+    "flawless": 0,
+    "lost10": 9.1,
+    "boss": 3.1,
+    "lostAll": 18.4,
+    "bossNormal": 4,
+    "bossReached": 0.2
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.longload5",
+   "name": "Wide Warhead 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2,
+     "lostAll": 10.75,
+     "bossNormal": 1.75,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2.333,
+     "lostAll": 11.75,
+     "bossNormal": 2.091,
+     "bossReached": 2.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 12,
+     "boss": 2.917,
+     "lostAll": 20.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 4.25,
+     "lostAll": 21.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.167,
+     "lostAll": 5,
+     "bossNormal": 0.222,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.4,
+    "flawless": 0,
+    "lost10": 6.9,
+    "boss": 2.333,
+    "lostAll": 13.9,
+    "bossNormal": 1.516,
+    "bossReached": 1.55
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.drops5",
+   "name": "Wide Warhead 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2.667,
+     "lostAll": 13.75,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 3.083,
+     "lostAll": 15.25,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 13.25,
+     "boss": 4.167,
+     "lostAll": 25.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 3.417,
+     "lostAll": 18.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.25,
+     "lostAll": 5,
+     "bossNormal": 0.25,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 10.9,
+    "flawless": 0,
+    "lost10": 7.45,
+    "boss": 2.717,
+    "lostAll": 15.6,
+    "bossNormal": 1.604,
+    "bossReached": 1.25
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.stockpile5",
+   "name": "Wide Warhead 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 2.917,
+     "lostAll": 17.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 2.583,
+     "lostAll": 15.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 13.75,
+     "boss": 3.75,
+     "lostAll": 25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 3.333,
+     "lostAll": 19,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 0.167,
+     "lostAll": 6.5,
+     "bossNormal": 0,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.85,
+    "flawless": 0,
+    "lost10": 9,
+    "boss": 2.55,
+    "lostAll": 16.65,
+    "bossNormal": 1.75,
+    "bossReached": 0.55
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@motor5.longload5",
+   "name": "Fast Motors 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 4.167,
+     "lostAll": 15.25,
+     "bossNormal": 2.667,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.5,
+     "lostAll": 13.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 17.25,
+     "boss": 3.25,
+     "lostAll": 27,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 5.083,
+     "lostAll": 21.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.667,
+     "lostAll": 9.75,
+     "bossNormal": 1.5,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 10.45,
+    "flawless": 0,
+    "lost10": 7.4,
+    "boss": 3.333,
+    "lostAll": 17.4,
+    "bossNormal": 1.958,
+    "bossReached": 1.05
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@motor5.drops5",
+   "name": "Fast Motors 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 3.25,
+     "lostAll": 14,
+     "bossNormal": 3,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 2.833,
+     "lostAll": 15.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 13,
+     "boss": 3.5,
+     "lostAll": 23.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 4.417,
+     "lostAll": 23.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 2.417,
+     "lostAll": 14.5,
+     "bossNormal": 1.6,
+     "bossReached": 1.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 10,
+    "flawless": 0,
+    "lost10": 8.4,
+    "boss": 3.283,
+    "lostAll": 18.25,
+    "bossNormal": 2.2,
+    "bossReached": 0.7
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@motor5.stockpile5",
+   "name": "Fast Motors 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 3.833,
+     "lostAll": 15.75,
+     "bossNormal": 2.571,
+     "bossReached": 1.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10,
+     "boss": 2.833,
+     "lostAll": 18.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 20.5,
+     "boss": 3,
+     "lostAll": 29.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 5,
+     "lostAll": 23.75,
+     "bossNormal": 6,
+     "bossReached": 0.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 2.667,
+     "lostAll": 15,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 9.65,
+    "flawless": 0,
+    "lost10": 10.1,
+    "boss": 3.467,
+    "lostAll": 20.5,
+    "bossNormal": 3.06,
+    "bossReached": 0.85
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.longload5",
+   "name": "Deep Magazine 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3.583,
+     "lostAll": 16.25,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 1.333,
+     "lostAll": 10.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 18,
+     "boss": 3.917,
+     "lostAll": 29.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 4.5,
+     "lostAll": 22.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 2.667,
+     "lostAll": 12.5,
+     "bossNormal": 1.667,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 10.3,
+    "flawless": 0,
+    "lost10": 8.65,
+    "boss": 3.2,
+    "lostAll": 18.25,
+    "bossNormal": 2.417,
+    "bossReached": 0.9
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.drops5",
+   "name": "Deep Magazine 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 2.167,
+     "lostAll": 13,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 0.917,
+     "lostAll": 8.75,
+     "bossNormal": 1,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 15.75,
+     "boss": 3.25,
+     "lostAll": 25.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 4.583,
+     "lostAll": 22.5,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2,
+     "lostAll": 12,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.15,
+    "flawless": 0,
+    "lost10": 8.6,
+    "boss": 2.583,
+    "lostAll": 16.35,
+    "bossNormal": 1.917,
+    "bossReached": 0.65
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.stockpile5",
+   "name": "Deep Magazine 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2.583,
+     "lostAll": 13.5,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 1.333,
+     "lostAll": 12.25,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 18,
+     "boss": 2.667,
+     "lostAll": 26,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12,
+     "boss": 3.583,
+     "lostAll": 22.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3.167,
+     "lostAll": 15,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 9.8,
+    "flawless": 0,
+    "lost10": 9.9,
+    "boss": 2.667,
+    "lostAll": 17.9,
+    "bossNormal": 1.778,
+    "bossReached": 0.75
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.longload5",
+   "name": "Proximity Fuse 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 4.333,
+     "lostAll": 18,
+     "bossNormal": 4,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 0.333,
+     "lostAll": 4.5,
+     "bossNormal": 0.222,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 15.75,
+     "boss": 2.667,
+     "lostAll": 23.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 4.167,
+     "lostAll": 21.25,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 1.917,
+     "lostAll": 9.5,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.95,
+    "flawless": 0,
+    "lost10": 7.35,
+    "boss": 2.683,
+    "lostAll": 15.4,
+    "bossNormal": 2.278,
+    "bossReached": 1.25
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.drops5",
+   "name": "Proximity Fuse 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 3.417,
+     "lostAll": 13.5,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 0.583,
+     "lostAll": 9.75,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 13.25,
+     "boss": 2.167,
+     "lostAll": 19.75,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 5.25,
+     "lostAll": 23,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.667,
+     "lostAll": 12.25,
+     "bossNormal": 2,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.8,
+    "flawless": 0,
+    "lost10": 7.2,
+    "boss": 2.817,
+    "lostAll": 15.65,
+    "bossNormal": 1.947,
+    "bossReached": 1.3
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.stockpile5",
+   "name": "Proximity Fuse 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.75,
+     "lostAll": 13.75,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 0.25,
+     "lostAll": 9,
+     "bossNormal": 0.333,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 13.5,
+     "boss": 2.833,
+     "lostAll": 22,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 5.583,
+     "lostAll": 26,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 2.333,
+     "lostAll": 10.5,
+     "bossNormal": 2.3,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 10.2,
+    "flawless": 0,
+    "lost10": 8,
+    "boss": 2.75,
+    "lostAll": 16.25,
+    "bossNormal": 1.878,
+    "bossReached": 0.85
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@plating5.longload5",
+   "name": "Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.25,
+     "lostAll": 9,
+     "bossNormal": 1.909,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.583,
+     "lostAll": 6,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 3.167,
+     "lostAll": 18,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 2.833,
+     "lostAll": 11.75,
+     "bossNormal": 1.917,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.167,
+     "lostAll": 6,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.8,
+    "flawless": 0,
+    "lost10": 4.15,
+    "boss": 2,
+    "lostAll": 10.15,
+    "bossNormal": 1.421,
+    "bossReached": 2.5
+   },
+   "kit": "counter",
+   "armory": {
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@plating5.drops5",
+   "name": "Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.417,
+     "lostAll": 9.75,
+     "bossNormal": 1.917,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.75,
+     "lostAll": 6.25,
+     "bossNormal": 0.75,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.417,
+     "lostAll": 12.5,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 3.417,
+     "lostAll": 15,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 0.667,
+     "lostAll": 5.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.8,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 1.933,
+    "lostAll": 9.8,
+    "bossNormal": 1.717,
+    "bossReached": 2.4
+   },
+   "kit": "counter",
+   "armory": {
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@plating5.stockpile5",
+   "name": "Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.25,
+     "lostAll": 9.25,
+     "bossNormal": 1.75,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.667,
+     "lostAll": 5.25,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 1.667,
+     "lostAll": 13.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.917,
+     "lostAll": 10.25,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 1.5,
+     "lostAll": 7.25,
+     "bossNormal": 1.444,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.4,
+    "flawless": 0,
+    "lost10": 4.35,
+    "boss": 1.6,
+    "lostAll": 9.15,
+    "bossNormal": 1.438,
+    "bossReached": 2.1
+   },
+   "kit": "counter",
+   "armory": {
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@pointdef5.longload5",
+   "name": "Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 5.333,
+     "lostAll": 21.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.583,
+     "lostAll": 7,
+     "bossNormal": 0.222,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.5,
+     "flawless": 0,
+     "lost10": 12,
+     "boss": 3.25,
+     "lostAll": 21.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 3,
+     "lostAll": 13,
+     "bossNormal": 2,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.167,
+     "lostAll": 8.75,
+     "bossNormal": 1.909,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 11.2,
+    "flawless": 0,
+    "lost10": 5.75,
+    "boss": 2.867,
+    "lostAll": 14.35,
+    "bossNormal": 1.783,
+    "bossReached": 1.55
+   },
+   "kit": "counter",
+   "armory": {
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@pointdef5.drops5",
+   "name": "Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3,
+     "lostAll": 14.5,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 1.583,
+     "lostAll": 13.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12,
+     "boss": 3,
+     "lostAll": 21,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 3.167,
+     "lostAll": 12,
+     "bossNormal": 2,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2,
+     "lostAll": 11.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.05,
+    "endWave": 10.55,
+    "flawless": 0,
+    "lost10": 6.9,
+    "boss": 2.55,
+    "lostAll": 14.55,
+    "bossNormal": 2,
+    "bossReached": 1
+   },
+   "kit": "counter",
+   "armory": {
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@pointdef5.stockpile5",
+   "name": "Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 3.917,
+     "lostAll": 19.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 0.583,
+     "lostAll": 8.5,
+     "bossNormal": 0.833,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.5,
+     "boss": 3,
+     "lostAll": 21.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 3.333,
+     "lostAll": 13,
+     "bossNormal": 1.909,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.833,
+     "lostAll": 10.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.75,
+    "flawless": 0,
+    "lost10": 7,
+    "boss": 2.533,
+    "lostAll": 14.6,
+    "bossNormal": 1.714,
+    "bossReached": 1.1
+   },
+   "kit": "counter",
+   "armory": {
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@repair5.longload5",
+   "name": "Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.833,
+     "lostAll": 10,
+     "bossNormal": 1.182,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.5,
+     "lostAll": 9,
+     "bossNormal": 1.375,
+     "bossReached": 2
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 2,
+     "lostAll": 13.25,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 3.5,
+     "lostAll": 15.25,
+     "bossNormal": 2.125,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.667,
+     "lostAll": 4.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.55,
+    "endWave": 12.6,
+    "flawless": 0,
+    "lost10": 4.7,
+    "boss": 1.9,
+    "lostAll": 10.4,
+    "bossNormal": 1.403,
+    "bossReached": 2.25
+   },
+   "kit": "counter",
+   "armory": {
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@repair5.drops5",
+   "name": "Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 3.333,
+     "lostAll": 14,
+     "bossNormal": 2.571,
+     "bossReached": 1.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 0.333,
+     "lostAll": 8.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11,
+     "boss": 2.667,
+     "lostAll": 19,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3.917,
+     "lostAll": 17.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.583,
+     "lostAll": 6,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.15,
+    "endWave": 10.85,
+    "flawless": 0,
+    "lost10": 6.45,
+    "boss": 2.167,
+    "lostAll": 12.95,
+    "bossNormal": 2.004,
+    "bossReached": 1.05
+   },
+   "kit": "counter",
+   "armory": {
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@repair5.stockpile5",
+   "name": "Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.75,
+     "lostAll": 9.5,
+     "bossNormal": 1.556,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.083,
+     "lostAll": 8.25,
+     "bossNormal": 1.111,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.5,
+     "boss": 2.333,
+     "lostAll": 19.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 3.833,
+     "lostAll": 18.5,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0.75,
+     "lostAll": 7,
+     "bossNormal": 0.5,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.35,
+    "flawless": 0,
+    "lost10": 6.7,
+    "boss": 1.95,
+    "lostAll": 12.55,
+    "bossNormal": 1.292,
+    "bossReached": 1.5
+   },
+   "kit": "counter",
+   "armory": {
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@reload5.plating5.longload5",
+   "name": "Quick Reload 5 + Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 2.25,
+     "lostAll": 8.5,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.75,
+     "lostAll": 6.75,
+     "bossNormal": 0.833,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 2,
+     "lostAll": 13.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 3,
+     "lostAll": 14.75,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 0.917,
+     "lostAll": 4.75,
+     "bossNormal": 0.917,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.35,
+    "endWave": 11.85,
+    "flawless": 0,
+    "lost10": 4.35,
+    "boss": 1.783,
+    "lostAll": 9.7,
+    "bossNormal": 1.597,
+    "bossReached": 1.85
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@reload5.plating5.drops5",
+   "name": "Quick Reload 5 + Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.083,
+     "lostAll": 6.25,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.833,
+     "lostAll": 5.25,
+     "bossNormal": 0.833,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 1.583,
+     "lostAll": 12.25,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 2.667,
+     "lostAll": 11.5,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 0.667,
+     "lostAll": 3.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.65,
+    "endWave": 12.9,
+    "flawless": 0,
+    "lost10": 3.65,
+    "boss": 1.367,
+    "lostAll": 7.75,
+    "bossNormal": 1.144,
+    "bossReached": 2.4
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@reload5.plating5.stockpile5",
+   "name": "Quick Reload 5 + Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 1.75,
+     "lostAll": 7.5,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.417,
+     "lostAll": 4,
+     "bossNormal": 0.417,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 1.25,
+     "lostAll": 12.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.75,
+     "lostAll": 10,
+     "bossNormal": 1.444,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 1,
+     "lostAll": 4.75,
+     "bossNormal": 1,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.65,
+    "endWave": 12.75,
+    "flawless": 0,
+    "lost10": 4.1,
+    "boss": 1.233,
+    "lostAll": 7.8,
+    "bossNormal": 1.132,
+    "bossReached": 2.25
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@reload5.pointdef5.longload5",
+   "name": "Quick Reload 5 + Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.917,
+     "lostAll": 14,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.667,
+     "lostAll": 6.5,
+     "bossNormal": 0.889,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 7.75,
+     "flawless": 0,
+     "lost10": 11.75,
+     "boss": 2.417,
+     "lostAll": 19,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 2.583,
+     "lostAll": 11.5,
+     "bossNormal": 1.778,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.75,
+     "lostAll": 7.25,
+     "bossNormal": 1.727,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.35,
+    "endWave": 11.55,
+    "flawless": 0,
+    "lost10": 5.45,
+    "boss": 2.067,
+    "lostAll": 11.65,
+    "bossNormal": 1.698,
+    "bossReached": 1.7
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@reload5.pointdef5.drops5",
+   "name": "Quick Reload 5 + Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.333,
+     "lostAll": 12.5,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.667,
+     "lostAll": 7.75,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 2.417,
+     "lostAll": 16.25,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 2.917,
+     "lostAll": 11.5,
+     "bossNormal": 2.444,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.083,
+     "lostAll": 5.25,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 5,
+    "boss": 1.883,
+    "lostAll": 10.65,
+    "bossNormal": 1.622,
+    "bossReached": 1.9
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@reload5.pointdef5.stockpile5",
+   "name": "Quick Reload 5 + Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 4.167,
+     "lostAll": 18.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 0.833,
+     "lostAll": 9.25,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 2.583,
+     "lostAll": 19,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 2.75,
+     "lostAll": 11.75,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.5,
+     "lostAll": 9.25,
+     "bossNormal": 1.5,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.8,
+    "flawless": 0,
+    "lost10": 6.45,
+    "boss": 2.367,
+    "lostAll": 13.55,
+    "bossNormal": 1.614,
+    "bossReached": 1.15
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@reload5.repair5.longload5",
+   "name": "Quick Reload 5 + Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.25,
+     "lostAll": 9.25,
+     "bossNormal": 1.273,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 0.333,
+     "lostAll": 5.5,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 10,
+     "boss": 1.917,
+     "lostAll": 15.75,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3.333,
+     "lostAll": 16.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.583,
+     "lostAll": 5.75,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 11.95,
+    "flawless": 0,
+    "lost10": 5.5,
+    "boss": 1.683,
+    "lostAll": 10.55,
+    "bossNormal": 1.166,
+    "bossReached": 1.75
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@reload5.repair5.drops5",
+   "name": "Quick Reload 5 + Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.5,
+     "lostAll": 9.5,
+     "bossNormal": 1.375,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.667,
+     "lostAll": 7.75,
+     "bossNormal": 0,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 1.917,
+     "lostAll": 15.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.75,
+     "lostAll": 13.5,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 0.5,
+     "lostAll": 3.75,
+     "bossNormal": 0.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.85,
+    "flawless": 0,
+    "lost10": 5.55,
+    "boss": 1.467,
+    "lostAll": 9.95,
+    "bossNormal": 1.153,
+    "bossReached": 1.75
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@reload5.repair5.stockpile5",
+   "name": "Quick Reload 5 + Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 1.167,
+     "lostAll": 9.5,
+     "bossNormal": 1.2,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.333,
+     "lostAll": 6.75,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 2.333,
+     "lostAll": 17.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2.667,
+     "lostAll": 12,
+     "bossNormal": 2.091,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1,
+     "lostAll": 5,
+     "bossNormal": 1,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.95,
+    "flawless": 0,
+    "lost10": 5.65,
+    "boss": 1.5,
+    "lostAll": 10.15,
+    "bossNormal": 1.239,
+    "bossReached": 1.7
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.plating5.longload5",
+   "name": "Wide Warhead 5 + Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1.25,
+     "boss": 1.167,
+     "lostAll": 4.75,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.083,
+     "lostAll": 5.25,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2,
+     "lostAll": 11.75,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.167,
+     "lostAll": 10.75,
+     "bossNormal": 2,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 2.25,
+     "boss": 0.25,
+     "lostAll": 3,
+     "bossNormal": 0.25,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 13.05,
+    "flawless": 0.05,
+    "lost10": 3.1,
+    "boss": 1.333,
+    "lostAll": 7.1,
+    "bossNormal": 1.283,
+    "bossReached": 2.55
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.plating5.drops5",
+   "name": "Wide Warhead 5 + Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.333,
+     "lostAll": 4,
+     "bossNormal": 0.333,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.083,
+     "lostAll": 5.25,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 1.75,
+     "lostAll": 13.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.667,
+     "lostAll": 10.25,
+     "bossNormal": 1.333,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 0.75,
+     "boss": 0.25,
+     "lostAll": 1.5,
+     "bossNormal": 0.25,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.7,
+    "endWave": 12.85,
+    "flawless": 0,
+    "lost10": 3.9,
+    "boss": 1.017,
+    "lostAll": 6.95,
+    "bossNormal": 1,
+    "bossReached": 2.25
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.plating5.stockpile5",
+   "name": "Wide Warhead 5 + Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.417,
+     "lostAll": 5,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.667,
+     "lostAll": 4.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 1.25,
+     "lostAll": 9.5,
+     "bossNormal": 1,
+     "bossReached": 2.25
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.583,
+     "lostAll": 7.75,
+     "bossNormal": 1.583,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.083,
+     "lostAll": 3.25,
+     "bossNormal": 0.111,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.8,
+    "endWave": 13.3,
+    "flawless": 0,
+    "lost10": 3.6,
+    "boss": 0.8,
+    "lostAll": 6,
+    "bossNormal": 0.761,
+    "bossReached": 2.55
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.pointdef5.longload5",
+   "name": "Wide Warhead 5 + Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.5,
+     "lostAll": 11.75,
+     "bossNormal": 2.125,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.833,
+     "lostAll": 7.5,
+     "bossNormal": 1,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 12.75,
+     "boss": 2.333,
+     "lostAll": 19.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.5,
+     "lostAll": 5.5,
+     "bossNormal": 1.417,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 1.5,
+     "boss": 0.333,
+     "lostAll": 2.5,
+     "bossNormal": 0.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.55,
+    "endWave": 12.3,
+    "flawless": 0.05,
+    "lost10": 4.9,
+    "boss": 1.5,
+    "lostAll": 9.4,
+    "bossNormal": 1.219,
+    "bossReached": 2.05
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.pointdef5.drops5",
+   "name": "Wide Warhead 5 + Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.667,
+     "lostAll": 9.75,
+     "bossNormal": 1.875,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 0.333,
+     "lostAll": 6.75,
+     "bossNormal": 0.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 11.5,
+     "boss": 2.417,
+     "lostAll": 18.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 2.333,
+     "lostAll": 8,
+     "bossNormal": 2,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.25,
+     "lostAll": 5.75,
+     "bossNormal": 0.333,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.75,
+    "flawless": 0,
+    "lost10": 5.6,
+    "boss": 1.4,
+    "lostAll": 9.8,
+    "bossNormal": 1.094,
+    "bossReached": 1.75
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.pointdef5.stockpile5",
+   "name": "Wide Warhead 5 + Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 2.583,
+     "lostAll": 14,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.083,
+     "lostAll": 8.25,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 2,
+     "lostAll": 14.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2,
+     "lostAll": 8.5,
+     "bossNormal": 1.75,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 0.167,
+     "lostAll": 2.25,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.8,
+    "flawless": 0,
+    "lost10": 4.8,
+    "boss": 1.567,
+    "lostAll": 9.5,
+    "bossNormal": 1.396,
+    "bossReached": 1.7
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.repair5.longload5",
+   "name": "Wide Warhead 5 + Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 1.5,
+     "lostAll": 7.75,
+     "bossNormal": 1.667,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 1,
+     "lostAll": 6.25,
+     "bossNormal": 1,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 2.667,
+     "lostAll": 15,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 3,
+     "lostAll": 11.25,
+     "bossNormal": 2,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 0,
+     "lostAll": 2,
+     "bossNormal": 0,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.65,
+    "flawless": 0,
+    "lost10": 3.55,
+    "boss": 1.633,
+    "lostAll": 8.45,
+    "bossNormal": 1.533,
+    "bossReached": 2.35
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.repair5.drops5",
+   "name": "Wide Warhead 5 + Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.417,
+     "lostAll": 5,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.583,
+     "lostAll": 6,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 1.667,
+     "lostAll": 13.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 2.333,
+     "lostAll": 11.5,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.167,
+     "lostAll": 3.5,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.55,
+    "endWave": 12.35,
+    "flawless": 0,
+    "lost10": 4.85,
+    "boss": 1.033,
+    "lostAll": 7.95,
+    "bossNormal": 0.792,
+    "bossReached": 1.95
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@warhead5.repair5.stockpile5",
+   "name": "Wide Warhead 5 + Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 1.583,
+     "lostAll": 10.75,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 0.583,
+     "lostAll": 7.25,
+     "bossNormal": 0.5,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9.5,
+     "boss": 1.333,
+     "lostAll": 13.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 1.25,
+     "lostAll": 7,
+     "bossNormal": 1,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.167,
+     "lostAll": 3.5,
+     "bossNormal": 0.111,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 11.85,
+    "flawless": 0,
+    "lost10": 5.45,
+    "boss": 0.983,
+    "lostAll": 8.4,
+    "bossNormal": 0.989,
+    "bossReached": 1.8
+   },
+   "kit": "counter",
+   "armory": {
+    "warhead": 5,
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@motor5.plating5.longload5",
+   "name": "Fast Motors 5 + Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.25,
+     "boss": 1.833,
+     "lostAll": 6.75,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.833,
+     "lostAll": 5,
+     "bossNormal": 0.833,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 2.417,
+     "lostAll": 14.5,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.333,
+     "lostAll": 9.25,
+     "bossNormal": 1.556,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.583,
+     "lostAll": 4.25,
+     "bossNormal": 0.583,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.55,
+    "endWave": 12.95,
+    "flawless": 0,
+    "lost10": 3.15,
+    "boss": 1.6,
+    "lostAll": 7.95,
+    "bossNormal": 1.494,
+    "bossReached": 2.45
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@motor5.plating5.drops5",
+   "name": "Fast Motors 5 + Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 2.083,
+     "lostAll": 7.25,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.75,
+     "lostAll": 5.5,
+     "bossNormal": 1,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.417,
+     "lostAll": 9.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.583,
+     "lostAll": 12,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.917,
+     "lostAll": 5.25,
+     "bossNormal": 0.917,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.7,
+    "flawless": 0,
+    "lost10": 3.25,
+    "boss": 1.55,
+    "lostAll": 7.9,
+    "bossNormal": 1.361,
+    "bossReached": 2.25
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@motor5.plating5.stockpile5",
+   "name": "Fast Motors 5 + Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 1.667,
+     "lostAll": 6.75,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.167,
+     "lostAll": 7.75,
+     "bossNormal": 1.111,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 8.75,
+     "boss": 1.167,
+     "lostAll": 12.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 2.583,
+     "lostAll": 11.5,
+     "bossNormal": 2,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.833,
+     "lostAll": 5.5,
+     "bossNormal": 0.833,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.65,
+    "flawless": 0,
+    "lost10": 4.3,
+    "boss": 1.483,
+    "lostAll": 8.75,
+    "bossNormal": 1.361,
+    "bossReached": 2.2
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@motor5.pointdef5.longload5",
+   "name": "Fast Motors 5 + Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 3.417,
+     "lostAll": 12.75,
+     "bossNormal": 2.125,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.75,
+     "lostAll": 5.25,
+     "bossNormal": 0.75,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3.667,
+     "lostAll": 17.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 3,
+     "lostAll": 11,
+     "bossNormal": 2.182,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.5,
+     "lostAll": 6,
+     "bossNormal": 1.417,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 12.4,
+    "flawless": 0,
+    "lost10": 3.1,
+    "boss": 2.467,
+    "lostAll": 10.5,
+    "bossNormal": 1.628,
+    "bossReached": 2.3
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@motor5.pointdef5.drops5",
+   "name": "Fast Motors 5 + Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 3.167,
+     "lostAll": 11.5,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.667,
+     "lostAll": 4.75,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9.25,
+     "boss": 1.833,
+     "lostAll": 14.75,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 3.25,
+     "lostAll": 13,
+     "bossNormal": 2.182,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.333,
+     "lostAll": 6,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 12.6,
+    "flawless": 0,
+    "lost10": 3.85,
+    "boss": 2.05,
+    "lostAll": 10,
+    "bossNormal": 1.516,
+    "bossReached": 2.4
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@motor5.pointdef5.stockpile5",
+   "name": "Fast Motors 5 + Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 3.583,
+     "lostAll": 14.25,
+     "bossNormal": 2,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.583,
+     "lostAll": 5.5,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 11.5,
+     "boss": 3.583,
+     "lostAll": 22.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.417,
+     "lostAll": 9.5,
+     "bossNormal": 1.583,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 1.5,
+     "lostAll": 6.25,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.4,
+    "flawless": 0,
+    "lost10": 4.55,
+    "boss": 2.333,
+    "lostAll": 11.55,
+    "bossNormal": 1.368,
+    "bossReached": 2.2
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@motor5.repair5.longload5",
+   "name": "Fast Motors 5 + Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 1.833,
+     "lostAll": 7.75,
+     "bossNormal": 1.545,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.333,
+     "lostAll": 8.5,
+     "bossNormal": 1.222,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 2.167,
+     "lostAll": 13,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 3.833,
+     "lostAll": 15.25,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 0.333,
+     "lostAll": 2.75,
+     "bossNormal": 0.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.35,
+    "flawless": 0,
+    "lost10": 3.75,
+    "boss": 1.9,
+    "lostAll": 9.45,
+    "bossNormal": 1.338,
+    "bossReached": 2
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@motor5.repair5.drops5",
+   "name": "Fast Motors 5 + Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2,
+     "lostAll": 8.5,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.667,
+     "lostAll": 7.25,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 2.583,
+     "lostAll": 14.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 3.667,
+     "lostAll": 17,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 0.667,
+     "lostAll": 5.25,
+     "bossNormal": 0.444,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.75,
+    "flawless": 0,
+    "lost10": 4.7,
+    "boss": 1.917,
+    "lostAll": 10.45,
+    "bossNormal": 1.522,
+    "bossReached": 1.6
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@motor5.repair5.stockpile5",
+   "name": "Fast Motors 5 + Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 3,
+     "lostAll": 13.25,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 0.917,
+     "lostAll": 10,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 1.167,
+     "lostAll": 14.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 3.417,
+     "lostAll": 15.5,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.667,
+     "lostAll": 4.5,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 11.1,
+    "flawless": 0,
+    "lost10": 6,
+    "boss": 1.833,
+    "lostAll": 11.5,
+    "bossNormal": 1.563,
+    "bossReached": 1.3
+   },
+   "kit": "counter",
+   "armory": {
+    "motor": 5,
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.plating5.longload5",
+   "name": "Deep Magazine 5 + Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 2.167,
+     "lostAll": 7.5,
+     "bossNormal": 1.636,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.5,
+     "lostAll": 5.25,
+     "bossNormal": 0.5,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 8.25,
+     "boss": 1,
+     "lostAll": 11.25,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 2.5,
+     "lostAll": 12,
+     "bossNormal": 2,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 1.083,
+     "lostAll": 5,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.65,
+    "endWave": 12.85,
+    "flawless": 0,
+    "lost10": 3.85,
+    "boss": 1.45,
+    "lostAll": 8.2,
+    "bossNormal": 1.244,
+    "bossReached": 2.3
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.plating5.drops5",
+   "name": "Deep Magazine 5 + Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1,
+     "lostAll": 6,
+     "bossNormal": 1.091,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.417,
+     "lostAll": 3.75,
+     "bossNormal": 0.417,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 10,
+     "boss": 2.25,
+     "lostAll": 16.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.75,
+     "lostAll": 9.75,
+     "bossNormal": 1.5,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.25,
+     "lostAll": 6.75,
+     "bossNormal": 1.25,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.6,
+    "endWave": 12.4,
+    "flawless": 0,
+    "lost10": 4.6,
+    "boss": 1.333,
+    "lostAll": 8.6,
+    "bossNormal": 1.064,
+    "bossReached": 2.05
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.plating5.stockpile5",
+   "name": "Deep Magazine 5 + Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.667,
+     "lostAll": 7.5,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.083,
+     "lostAll": 5.5,
+     "bossNormal": 0,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 1.583,
+     "lostAll": 11.5,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.667,
+     "lostAll": 9.75,
+     "bossNormal": 1,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.25,
+     "lostAll": 7.25,
+     "bossNormal": 1.222,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.3,
+    "flawless": 0,
+    "lost10": 4.55,
+    "boss": 1.25,
+    "lostAll": 8.3,
+    "bossNormal": 0.978,
+    "bossReached": 1.95
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.pointdef5.longload5",
+   "name": "Deep Magazine 5 + Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 3.583,
+     "lostAll": 14.25,
+     "bossNormal": 2.667,
+     "bossReached": 2.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0,
+     "lostAll": 5,
+     "bossNormal": 0,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 9,
+     "boss": 3.083,
+     "lostAll": 18.25,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.917,
+     "lostAll": 11.25,
+     "bossNormal": 1.909,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.667,
+     "lostAll": 10.5,
+     "bossNormal": 2.182,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 12.15,
+    "flawless": 0,
+    "lost10": 4.5,
+    "boss": 2.45,
+    "lostAll": 11.85,
+    "bossNormal": 1.952,
+    "bossReached": 2.1
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.pointdef5.drops5",
+   "name": "Deep Magazine 5 + Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 2.75,
+     "lostAll": 12.75,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.583,
+     "lostAll": 5.75,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 2.333,
+     "lostAll": 14,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 2,
+     "lostAll": 9.75,
+     "bossNormal": 1.889,
+     "bossReached": 2.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.25,
+     "lostAll": 9.75,
+     "bossNormal": 1.833,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.25,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 4.45,
+    "boss": 1.983,
+    "lostAll": 10.4,
+    "bossNormal": 1.706,
+    "bossReached": 2.05
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.pointdef5.stockpile5",
+   "name": "Deep Magazine 5 + Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.583,
+     "lostAll": 13.75,
+     "bossNormal": 2.571,
+     "bossReached": 1.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 0.417,
+     "lostAll": 8.5,
+     "bossNormal": 0.333,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 11.25,
+     "boss": 1.417,
+     "lostAll": 15.5,
+     "bossNormal": 1.333,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 1.583,
+     "lostAll": 11,
+     "bossNormal": 0.833,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 2.083,
+     "lostAll": 11.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.75,
+    "flawless": 0,
+    "lost10": 7.25,
+    "boss": 1.617,
+    "lostAll": 12.1,
+    "bossNormal": 1.614,
+    "bossReached": 1.05
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.repair5.longload5",
+   "name": "Deep Magazine 5 + Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.667,
+     "lostAll": 7.5,
+     "bossNormal": 1.417,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.917,
+     "lostAll": 8,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 1.667,
+     "lostAll": 10.75,
+     "bossNormal": 0.833,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 3.417,
+     "lostAll": 14.75,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 0.75,
+     "lostAll": 3.75,
+     "bossNormal": 0.75,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.2,
+    "flawless": 0,
+    "lost10": 3.9,
+    "boss": 1.683,
+    "lostAll": 8.95,
+    "bossNormal": 1.3,
+    "bossReached": 1.95
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.repair5.drops5",
+   "name": "Deep Magazine 5 + Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.417,
+     "lostAll": 9.5,
+     "bossNormal": 1.5,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.167,
+     "lostAll": 5.75,
+     "bossNormal": 0.222,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 1.833,
+     "lostAll": 12.25,
+     "bossNormal": 6,
+     "bossReached": 0.25
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 3.167,
+     "lostAll": 16.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.75,
+     "boss": 0.917,
+     "lostAll": 5.5,
+     "bossNormal": 0.917,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.65,
+    "flawless": 0,
+    "lost10": 5.35,
+    "boss": 1.5,
+    "lostAll": 9.85,
+    "bossNormal": 2.128,
+    "bossReached": 1.55
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@magazine5.repair5.stockpile5",
+   "name": "Deep Magazine 5 + Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.667,
+     "lostAll": 10.25,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.5,
+     "lostAll": 6.5,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 1.5,
+     "lostAll": 11.5,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 2.833,
+     "lostAll": 14.75,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.75,
+     "lostAll": 6.25,
+     "bossNormal": 0.75,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.4,
+    "endWave": 11.75,
+    "flawless": 0,
+    "lost10": 5.5,
+    "boss": 1.45,
+    "lostAll": 9.85,
+    "bossNormal": 1.05,
+    "bossReached": 1.65
+   },
+   "kit": "counter",
+   "armory": {
+    "magazine": 5,
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.plating5.longload5",
+   "name": "Proximity Fuse 5 + Armor Plating 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.417,
+     "lostAll": 9.5,
+     "bossNormal": 1.583,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.25,
+     "lost10": 2.25,
+     "boss": 0,
+     "lostAll": 2.25,
+     "bossNormal": 0,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 1.417,
+     "lostAll": 11.25,
+     "bossNormal": 1,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 3.333,
+     "lostAll": 14,
+     "bossNormal": 2.25,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 0.75,
+     "boss": 0.417,
+     "lostAll": 2,
+     "bossNormal": 0.417,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.8,
+    "flawless": 0.05,
+    "lost10": 3.25,
+    "boss": 1.517,
+    "lostAll": 7.8,
+    "bossNormal": 1.05,
+    "bossReached": 2.35
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "plating": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.plating5.drops5",
+   "name": "Proximity Fuse 5 + Armor Plating 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 2.667,
+     "lostAll": 10,
+     "bossNormal": 2.182,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.167,
+     "lostAll": 3.5,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.25,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 1.917,
+     "lostAll": 12.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 2.833,
+     "lostAll": 10.75,
+     "bossNormal": 1.909,
+     "bossReached": 2.75
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 0.583,
+     "lostAll": 3.25,
+     "bossNormal": 0.583,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.5,
+    "endWave": 12.85,
+    "flawless": 0,
+    "lost10": 3.05,
+    "boss": 1.633,
+    "lostAll": 7.95,
+    "bossNormal": 1.368,
+    "bossReached": 2.45
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "plating": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.plating5.stockpile5",
+   "name": "Proximity Fuse 5 + Armor Plating 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.083,
+     "lostAll": 8.75,
+     "bossNormal": 1.636,
+     "bossReached": 2.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 0.167,
+     "lostAll": 4,
+     "bossNormal": 0.111,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0.833,
+     "lostAll": 7.25,
+     "bossNormal": 1,
+     "bossReached": 2.25
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2.167,
+     "lostAll": 11.25,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.083,
+     "lostAll": 4.25,
+     "bossNormal": 1.083,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.6,
+    "endWave": 12.85,
+    "flawless": 0,
+    "lost10": 3.3,
+    "boss": 1.267,
+    "lostAll": 7.1,
+    "bossNormal": 1.246,
+    "bossReached": 2.3
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "plating": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.pointdef5.longload5",
+   "name": "Proximity Fuse 5 + Point Defense 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 3.917,
+     "lostAll": 17.5,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.167,
+     "lostAll": 3,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 10.5,
+     "boss": 2.5,
+     "lostAll": 18,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 1.75,
+     "boss": 3.5,
+     "lostAll": 12.25,
+     "bossNormal": 3,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 1.75,
+     "lostAll": 7.5,
+     "bossNormal": 1.583,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.9,
+    "flawless": 0,
+    "lost10": 4.55,
+    "boss": 2.367,
+    "lostAll": 11.65,
+    "bossNormal": 1.787,
+    "bossReached": 1.85
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "pointdef": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.pointdef5.drops5",
+   "name": "Proximity Fuse 5 + Point Defense 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.583,
+     "lostAll": 12,
+     "bossNormal": 2.286,
+     "bossReached": 1.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 0.5,
+     "lostAll": 5.75,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 2.083,
+     "lostAll": 14.75,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 3.25,
+     "lostAll": 12.25,
+     "bossNormal": 2.2,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.833,
+     "lostAll": 7,
+     "bossNormal": 1.273,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.35,
+    "endWave": 11.9,
+    "flawless": 0,
+    "lost10": 4.2,
+    "boss": 2.05,
+    "lostAll": 10.35,
+    "bossNormal": 1.863,
+    "bossReached": 1.95
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "pointdef": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.pointdef5.stockpile5",
+   "name": "Proximity Fuse 5 + Point Defense 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 3,
+     "lostAll": 15.5,
+     "bossNormal": 3,
+     "bossReached": 0.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 0,
+     "lostAll": 4.75,
+     "bossNormal": 0,
+     "bossReached": 2.25
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 2.083,
+     "lostAll": 12.75,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 3.917,
+     "lostAll": 14,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.583,
+     "lostAll": 5.75,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.85,
+    "flawless": 0,
+    "lost10": 4.2,
+    "boss": 2.117,
+    "lostAll": 10.55,
+    "bossNormal": 1.78,
+    "bossReached": 1.8
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "pointdef": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.repair5.longload5",
+   "name": "Proximity Fuse 5 + Damage Control 5 + Long Loads 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 1.5,
+     "lostAll": 7.75,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.25,
+     "boss": 0.083,
+     "lostAll": 2.5,
+     "bossNormal": 0.083,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7.25,
+     "boss": 2.417,
+     "lostAll": 14.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 2.583,
+     "lostAll": 12.5,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 0.75,
+     "boss": 0.667,
+     "lostAll": 2.75,
+     "bossNormal": 0.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.55,
+    "endWave": 12.7,
+    "flawless": 0,
+    "lost10": 3.65,
+    "boss": 1.45,
+    "lostAll": 8,
+    "bossNormal": 1.15,
+    "bossReached": 2.25
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "repair": 5,
+    "longload": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.repair5.drops5",
+   "name": "Proximity Fuse 5 + Damage Control 5 + Supply Lines 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.333,
+     "lostAll": 6.5,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 0.167,
+     "lostAll": 4.25,
+     "bossNormal": 0.167,
+     "bossReached": 3
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 1.25,
+     "lostAll": 10,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 13.25,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 3.5,
+     "lostAll": 13.5,
+     "bossNormal": 1.833,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.5,
+     "lostAll": 4.5,
+     "bossNormal": 0.556,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.6,
+    "endWave": 12.95,
+    "flawless": 0,
+    "lost10": 3.7,
+    "boss": 1.35,
+    "lostAll": 7.75,
+    "bossNormal": 1.078,
+    "bossReached": 2.55
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "repair": 5,
+    "drops": 5
+   }
+  },
+  {
+   "key": "counter@fuse5.repair5.stockpile5",
+   "name": "Proximity Fuse 5 + Damage Control 5 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12.25,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2.417,
+     "lostAll": 11.25,
+     "bossNormal": 2.875,
+     "bossReached": 2
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.167,
+     "lostAll": 5.75,
+     "bossNormal": 0.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 6.5,
+     "boss": 1.917,
+     "lostAll": 12.25,
+     "bossNormal": 1.667,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 3.5,
+     "lostAll": 13.5,
+     "bossNormal": 2,
+     "bossReached": 3
+    },
+    "marrow": {
+     "n": 4,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 0.333,
+     "lostAll": 3.5,
+     "bossNormal": 0.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.45,
+    "endWave": 12.55,
+    "flawless": 0,
+    "lost10": 4.25,
+    "boss": 1.667,
+    "lostAll": 9.25,
+    "bossNormal": 1.408,
+    "bossReached": 2.2
+   },
+   "kit": "counter",
+   "armory": {
+    "fuse": 5,
+    "repair": 5,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "counter@reload1.repair1.stockpile1",
+   "name": "Quick Reload 1 + Damage Control 1 + Stockpile 1",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.75,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2.75,
+     "lostAll": 14,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 6.25,
+     "boss": 1.75,
+     "lostAll": 11.5,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8,
+     "flawless": 0,
+     "lost10": 18,
+     "boss": 2.667,
+     "lostAll": 26,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.25,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 6.25,
+     "lostAll": 26.75,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.083,
+     "lostAll": 8.5,
+     "bossNormal": 0.667,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.25,
+    "flawless": 0,
+    "lost10": 8.65,
+    "boss": 2.9,
+    "lostAll": 17.35,
+    "bossNormal": 1.056,
+    "bossReached": 0.75
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 1,
+    "repair": 1,
+    "stockpile": 1
+   }
+  },
+  {
+   "key": "self@reload1.repair1.stockpile1",
+   "name": "Quick Reload 1 + Damage Control 1 + Stockpile 1",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 3.917,
+     "lostAll": 17.25,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 10.25,
+     "boss": 2.333,
+     "lostAll": 17.25,
+     "bossNormal": 2,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9,
+     "flawless": 0,
+     "lost10": 16.25,
+     "boss": 3.083,
+     "lostAll": 25.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 7,
+     "boss": 4.667,
+     "lostAll": 21,
+     "bossNormal": 3,
+     "bossReached": 1
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2,
+     "lostAll": 11.75,
+     "bossNormal": 1.875,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.1,
+    "endWave": 10.4,
+    "flawless": 0,
+    "lost10": 8.95,
+    "boss": 3.2,
+    "lostAll": 18.55,
+    "bossNormal": 2.319,
+    "bossReached": 1
+   },
+   "kit": "self",
+   "armory": {
+    "reload": 1,
+    "repair": 1,
+    "stockpile": 1
+   }
+  },
+  {
+   "key": "counter@reload3.repair3.stockpile3",
+   "name": "Quick Reload 3 + Damage Control 3 + Stockpile 3",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 2.333,
+     "lostAll": 12.25,
+     "bossNormal": 1.333,
+     "bossReached": 1.5
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.75,
+     "flawless": 0,
+     "lost10": 8,
+     "boss": 0.75,
+     "lostAll": 10.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 13,
+     "boss": 2.833,
+     "lostAll": 21.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 5.75,
+     "boss": 2.667,
+     "lostAll": 13.75,
+     "bossNormal": 2.4,
+     "bossReached": 1.25
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 0.833,
+     "lostAll": 7.5,
+     "bossNormal": 0.889,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.6,
+    "flawless": 0,
+    "lost10": 7.4,
+    "boss": 1.883,
+    "lostAll": 13.05,
+    "bossNormal": 1.541,
+    "bossReached": 1
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 3,
+    "repair": 3,
+    "stockpile": 3
+   }
+  },
+  {
+   "key": "self@reload3.repair3.stockpile3",
+   "name": "Quick Reload 3 + Damage Control 3 + Stockpile 3",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.75,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 3.667,
+     "lostAll": 17.75,
+     "bossNormal": 4,
+     "bossReached": 0.75
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.25,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 1.917,
+     "lostAll": 16.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11,
+     "flawless": 0,
+     "lost10": 7.5,
+     "boss": 2.5,
+     "lostAll": 15,
+     "bossNormal": 1.833,
+     "bossReached": 1.5
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 3.25,
+     "lostAll": 15,
+     "bossNormal": 2,
+     "bossReached": 2
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 1.333,
+     "lostAll": 9.25,
+     "bossNormal": 1,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.45,
+    "flawless": 0,
+    "lost10": 7.1,
+    "boss": 2.533,
+    "lostAll": 14.7,
+    "bossNormal": 2.208,
+    "bossReached": 1.15
+   },
+   "kit": "self",
+   "armory": {
+    "reload": 3,
+    "repair": 3,
+    "stockpile": 3
+   }
+  },
+  {
+   "key": "counter@reload5.repair4.stockpile5",
+   "name": "Quick Reload 5 + Damage Control 4 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 11.5,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 2.417,
+     "lostAll": 13.25,
+     "bossNormal": 1.2,
+     "bossReached": 1.25
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 0.75,
+     "lostAll": 7.5,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0,
+     "endWave": 8.5,
+     "flawless": 0,
+     "lost10": 10.75,
+     "boss": 2.833,
+     "lostAll": 19.25,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 4.167,
+     "lostAll": 16.75,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.417,
+     "lostAll": 6.75,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.3,
+    "endWave": 11.6,
+    "flawless": 0,
+    "lost10": 5.75,
+    "boss": 2.317,
+    "lostAll": 12.7,
+    "bossNormal": 1.525,
+    "bossReached": 1.65
+   },
+   "kit": "counter",
+   "armory": {
+    "reload": 5,
+    "repair": 4,
+    "stockpile": 5
+   }
+  },
+  {
+   "key": "self@reload5.repair4.stockpile5",
+   "name": "Quick Reload 5 + Damage Control 4 + Stockpile 5",
+   "kind": "armory",
+   "perMap": {
+    "strait": {
+     "n": 4,
+     "won": 0,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 2.667,
+     "lostAll": 16.5,
+     "bossNormal": null,
+     "bossReached": 0
+    },
+    "gauntlet": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 10.5,
+     "flawless": 0,
+     "lost10": 6.75,
+     "boss": 0.75,
+     "lostAll": 9,
+     "bossNormal": 0.667,
+     "bossReached": 0.75
+    },
+    "harbor": {
+     "n": 4,
+     "won": 0.25,
+     "endWave": 9.5,
+     "flawless": 0,
+     "lost10": 8.5,
+     "boss": 2,
+     "lostAll": 14.5,
+     "bossNormal": 1.667,
+     "bossReached": 0.75
+    },
+    "kesh": {
+     "n": 4,
+     "won": 0,
+     "endWave": 11.25,
+     "flawless": 0,
+     "lost10": 5.25,
+     "boss": 3.25,
+     "lostAll": 15,
+     "bossNormal": 2,
+     "bossReached": 1.5
+    },
+    "marrow": {
+     "n": 4,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5.5,
+     "boss": 1.417,
+     "lostAll": 9.75,
+     "bossNormal": 1.333,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 20,
+    "won": 0.2,
+    "endWave": 10.65,
+    "flawless": 0,
+    "lost10": 6.9,
+    "boss": 2.017,
+    "lostAll": 12.95,
+    "bossNormal": 1.417,
+    "bossReached": 1.05
+   },
+   "kit": "self",
+   "armory": {
+    "reload": 5,
+    "repair": 4,
+    "stockpile": 5
+   }
+  }
+ ],
+ "notes": [
+  "Harbor Mouth's counter kit has Focus, which its chapter's draft does not deal; forced in anyway (the kit as the plan names it).",
+  "The Kesh Hook's counter kit has Focus, which its chapter's draft does not deal; forced in anyway (the kit as the plan names it)."
+ ]
+}
