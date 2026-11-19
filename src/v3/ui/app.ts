@@ -60,7 +60,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
+import { EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossRound, lastEventWave, type EventId, type EventOutcome } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -97,7 +97,9 @@ import {
   timeline,
   volleyName,
   volleySummary,
+  waveRateRow,
 } from './notes';
+import { waveScores } from '../data/scorecard';
 import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, storeLog, type Channel, type UploadState } from '../platform/playlogStore';
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
 import type { MapLabMemory } from './mapLab';
@@ -316,7 +318,7 @@ export class App {
   /** The result screen's run, kept for its review (and a replay's way back). */
   private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
   /** "Watch it": a marked moment playing back, and where it stops. */
-  private playback: { pb: Playback; until: number; from: number; stop: number; after?: () => void } | null = null;
+  private playback: { pb: Playback; until: number; from: number; stop: number; after?: () => void; lab?: { g: Game; ended: 'done' | 'length' | 'lost' } } | null = null;
   /** Round 14: running power-ups count down here, in the rail, instead of
    *  in a corner of the battlefield (where they sat over roads and trucks). */
   private timers = el('div', 'v2-timers');
@@ -1790,10 +1792,25 @@ export class App {
           // then say a little blurb at the start like survive the next
           // rounds"): the first of the map's ending runs says what is
           // coming, on its card and in a call-out.
+          // Log v29 (the player, Marrow: "more of a pause before it begins
+          // ... survive for these next three waves, make it feel more
+          // dramatic"): the first boss round opens on a longer calm
+          // (EVENT.bossCalm, sim/events.ts); its card holds through it, and
+          // one banner names the boss, the rounds to survive and how many
+          // ships can still be lost. The convoy restore before it is round
+          // 7's (restoreConvoy in sim/events.ts, called from startWave under
+          // ENDING.threeRuns): turning it off is that one flag, and this
+          // banner then reads the losses left as they are.
           {
             const first = !ev.bonus && !!ev.runs && ev.run === 1;
             this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : ev.runs ? bossRound(ev.run!, ev.runs) : '', first ? `Survive the next ${ev.runs} rounds` : '');
-            if (first) this.showBanner('BOSS ROUNDS', `Survive the next ${ev.runs} rounds.`, { now: true, kind: 'alarm', icon: 'wave' }, null);
+            if (first) {
+              this.flashEventCard((EVENT.breather + EVENT.bossCalm) * 1000);
+              const left = Math.max(0, g.tempo.lossLimit - (g.lost - g.lossBase));
+              const restored = g.events.some((e) => e.kind === 'restore');
+              const ships = `${left} ship${left === 1 ? '' : 's'} can still be lost`;
+              this.showBanner(`BOSS: ${EVENTS[ev.id].name.toUpperCase()}`, `Survive the next ${ev.runs} rounds. ${restored ? `Convoy restored: ${ships}.` : `${ships[0].toUpperCase()}${ships.slice(1)}.`}`, { now: true, kind: 'alarm', icon: 'wave' }, null);
+            }
           }
           break;
         case 'specialEnd':
@@ -1808,8 +1825,10 @@ export class App {
           break;
         }
         case 'restore':
-          // Round 7's experiment: the convoy back to full before the ending.
-          this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
+          // Round 7's experiment: the convoy back to full before the ending
+          // (said in the boss banner when the first boss round starts with
+          // it, log v29).
+          if (!g.events.some((e) => e.kind === 'special' && !e.bonus && e.run === 1)) this.showBanner('CONVOY RESTORED', 'Every ship back, and the carrier\'s hull repaired, for the boss rounds.', { icon: 'info' }, null);
           break;
         case 'wave': {
           // A special event's wave has its own card instead.
@@ -2001,7 +2020,7 @@ export class App {
     if (this.radarShown || g.phase !== 'wave' || this.playback) return;
     if (!g.map.posts?.some((p) => p.kind === 'radar') || !g.threats.some((t) => tracked(g, t))) return;
     this.radarShown = true;
-    if (this.explain('post:radar')) this.showBanner('RADAR TOWER', 'Threats in its sweep get a lock box: your shots at them fly faster. Missiles will go for it.', { ...HINT, icon: 'info' });
+    if (this.explain('post:radar')) this.showBanner('RADAR TOWER', 'Drones and missiles in its sweep are slowed (the icy ring). Missiles will go for it.', { ...HINT, icon: 'info' });
   }
 
   /** Test Lab round 1 ("make the projectiles red ... then we can mention to
@@ -2705,11 +2724,19 @@ export class App {
     ]);
   }
 
-  /** The verdict sheet: after Done, the test's length, or the convoy lost. */
-  private showLabVerdict(ended: 'done' | 'length' | 'lost'): void {
+  /** The verdict sheet: after Done, the test's length, or the convoy lost.
+   *  Since scorecard revision 4 it is the normal game's "Rate & review this
+   *  run" with a Test Lab section (docs/design/v3-rate-and-review.md): the
+   *  run's timeline and moments (`selected`: the stop picked on it), Watch
+   *  it, a note on a moment, and each wave's rating from the draft. */
+  private showLabVerdict(ended: 'done' | 'length' | 'lost', selected = -1): void {
     const run = this.labRun;
     const g = this.game;
     if (!run || !g?.lab) return;
+    // Drawn again (a stop picked, back from a replay or a note): the sheet
+    // stays scrolled where it was.
+    const again = this.overlay.dataset.screen === 'lab-verdict';
+    const scroll = again ? (this.overlay.querySelector<HTMLElement>('.v2-panel')?.scrollTop ?? 0) : 0;
     this.paused = true;
     this.hold = null;
     this.dropGesture();
@@ -2730,6 +2757,19 @@ export class App {
     // it) keeps what the player has picked and typed.
     if (this.labDraft?.run !== run) this.labDraft = { run, draft: newVerdictDraft(p, run.card.id) };
     const draft = this.labDraft.draft;
+    // The run so far, as the normal review shows it (the log is not sealed
+    // until Save).
+    const log = this.rec?.snapshot();
+    const review = log
+      ? {
+          run: this.reviewRun(log, selected, {
+            pick: (i) => this.showLabVerdict(ended, i),
+            watch: (step, i) => this.startPlayback(step, i, undefined, { g, ended }),
+            note: (i, moment) => this.labReviewNote(ended, i, moment),
+          }),
+          waves: waveScores(log.waveRatings, played),
+        }
+      : undefined;
     this.showOverlay('v3-lab-verdict', [
       labVerdictSheet(run.card, stats, waves, ended, p, next, {
         save: (r, then) => {
@@ -2741,8 +2781,11 @@ export class App {
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
           saveLabProgress(p);
-          // The verdict rides in the test's log (it reaches Claude).
+          // The verdict rides in the test's log (it reaches Claude), and
+          // any other card's 1–5 rows ride as the run's rating, as in the
+          // normal game.
           if (this.rec) this.rec.log.labResult = result;
+          if (this.rec && draft.rating && Object.keys(draft.rating).length) this.rec.log.rating = { ...draft.rating };
           // The test is over: its saved run (if any) goes.
           if (this.rec) clearRun(this.rec.log.id);
           // A full map run that cleared the map ends as won (and keeps no
@@ -2755,7 +2798,40 @@ export class App {
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
-      }, draft, plays, played, strip),
+      }, draft, plays, played, strip, review),
+    ]);
+    if (again) {
+      const panel = this.overlay.querySelector<HTMLElement>('.v2-panel');
+      if (panel) panel.scrollTop = scroll;
+    }
+  }
+
+  /** A note on a moment of a test's run, from its end screen: it goes into
+   *  the run's log with the moment's step, as on the normal review. */
+  private labReviewNote(ended: 'done' | 'length' | 'lost', selected: number, moment?: number): void {
+    const rec = this.rec;
+    const g = this.game;
+    if (!rec || !g) return;
+    const m = moment !== undefined ? rec.watch.moments[moment] : undefined;
+    const form = noteForm();
+    const back = () => this.showLabVerdict(ended, selected);
+    this.showOverlay('v3-note', [
+      el('h2', '', m ? `📝 ${stopWhen(m)}` : '📝 Note on this run'),
+      el('p', 'v2-sub', m ? m.text : `${this.labRun?.card.name ?? 'Test'} · wave ${g.wave}`),
+      form.el,
+      this.dialogButtons('Save note', () => {
+        if (form.empty()) return;
+        const note: PlayNote = {
+          step: m?.step ?? g.steps,
+          at: new Date().toISOString(),
+          where: 'review',
+          ...form.value(),
+          ...(moment !== undefined ? { moment } : {}),
+          ctx: noteContext(g),
+        };
+        (rec.log.notes ??= []).push(note);
+        back();
+      }, back),
     ]);
   }
 
@@ -3877,8 +3953,25 @@ export class App {
     }
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
-    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : [])]);
+    // "Rate the wave you just played" (docs/design/v3-rate-and-review.md):
+    // optional, under the cards; each tap goes into the log at once.
+    const rate = this.waveRateEl(g, skipped);
+    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : []), ...(rate ? [rate] : [])]);
     this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
+  }
+
+  /** The draft's optional rating of the wave just played: only for a run
+   *  the player is playing (not a replay, not the bot's turn at the
+   *  controls, not a wave a dev stride skipped), with playtest notes on.
+   *  Campaign, Free Play and the Test Lab alike. */
+  private waveRateEl(g: Game, skipped: boolean): HTMLElement | null {
+    const rec = this.rec;
+    if (!this.notesOn || !rec || rec.game !== g || skipped || this.playback || (this.bot && this.control === 'bot')) return null;
+    const wave = g.wave;
+    const had = rec.waveRating(wave);
+    return waveRateRow(wave, { rating: had?.rating, note: had?.note }, (r, note) => {
+      if (this.game === g && g.phase === 'draft' && g.wave === wave) rec.rateWave(wave, r, note);
+    });
   }
 
   private showResult(g: Game, won: boolean): void {
@@ -3974,25 +4067,18 @@ export class App {
     if (!STORE && log && this.logState) void logChannel().then((c) => this.renderLogStatus(log, c));
   }
 
-  /** The run's review: rate the whole run, then step through its marked
-   *  moments (and your notes) on a timeline, note any of them, or watch one
-   *  play back. */
-  private showReview(selected = -1): void {
-    const view = this.review;
-    const log = view?.log;
-    if (!view || !log) return;
+  /** The run on a review screen (the normal game's, and since scorecard
+   *  revision 4 the Test Lab's end screen): the timeline (each wave's draft
+   *  rating on its band), its legend, and the selected stop with ‹ ›,
+   *  Watch it and Note on this. With no stop picked yet (`selected` < 0) it
+   *  starts on the worst moment: the first burst, else the last loss. */
+  private reviewRun(log: PlayLog, selected: number, go: { pick: (i: number) => void; watch: (step: number, i: number) => void; note: (i: number, moment?: number) => void }): HTMLElement[] {
     const stops = runStops(log);
     if (selected < 0 || selected >= stops.length) {
-      // Start on the worst moment: the first burst, else the last loss.
       const burst = stops.findIndex((s) => s.kind === 'burst');
       const sunk = stops.map((s) => s.kind).lastIndexOf('sunk');
       selected = burst >= 0 ? burst : sunk >= 0 ? sunk : stops.length - 1;
     }
-    const rows = ratingRows(log.rating);
-    const save = () => {
-      if (rows.any()) log.rating = rows.value();
-      this.resendReview();
-    };
     const stop = stops[selected];
     const detail = el('div', 'v3-stop');
     if (stop) {
@@ -4001,44 +4087,58 @@ export class App {
       const icon = el('span', 'v3-stop-icon', look.icon);
       icon.style.color = look.color;
       head.append(
-        button('‹', 'v2-btn v3-stop-step', () => {
-          save();
-          this.showReview(Math.max(0, selected - 1));
-        }),
+        button('‹', 'v2-btn v3-stop-step', () => go.pick(Math.max(0, selected - 1))),
         icon,
         el('span', 'v3-stop-text', `${stopWhen(stop)} · ${stop.text}`),
         el('span', 'v3-stop-count', `${selected + 1}/${stops.length}`),
-        button('›', 'v2-btn v3-stop-step', () => {
-          save();
-          this.showReview(Math.min(stops.length - 1, selected + 1));
-        }),
+        button('›', 'v2-btn v3-stop-step', () => go.pick(Math.min(stops.length - 1, selected + 1))),
       );
       const acts = el('div', 'v2-btn-row');
-      if (log.commands.length && !log.notesOnly)
-        acts.append(
-          button('▶ Watch it', 'v2-btn v3-watch-btn', () => {
-            save();
-            this.startPlayback(stop.step, selected);
-          }),
-        );
-      acts.append(
-        button('📝 Note on this', 'v2-btn v3-stop-note', () => {
-          save();
-          this.reviewNote(selected, stop.moment);
-        }),
-      );
+      if (log.commands.length && !log.notesOnly) acts.append(button('▶ Watch it', 'v2-btn v3-watch-btn', () => go.watch(stop.step, selected)));
+      acts.append(button('📝 Note on this', 'v2-btn v3-stop-note', () => go.note(selected, stop.moment)));
       detail.append(head, acts);
     } else detail.append(el('p', 'v2-sub', 'Nothing was marked this run: no ships lost, no carrier hits.'));
-    const strip = timeline(log, stops, selected, (i) => {
-      save();
-      this.showReview(i);
-    });
+    const strip = timeline(log, stops, selected, (i) => go.pick(i));
     const legend = el('div', 'v3-tl-legend');
     for (const k of ['sunk', 'burst', 'carrier', 'dry', 'debut'] as const) {
       const item = el('span', '', `${MOMENT_LOOK[k].icon} ${MOMENT_LOOK[k].label}`);
       item.style.color = MOMENT_LOOK[k].color;
       legend.append(item);
     }
+    if (log.waveRatings?.length) {
+      const item = el('span', 'v3-tl-legend-rate', '♥n your fun rating of the wave');
+      item.style.color = 'var(--gold)';
+      legend.append(item);
+    }
+    return [strip, legend, detail];
+  }
+
+  /** The run's review: rate the whole run, then step through its marked
+   *  moments (and your notes) on a timeline, note any of them, or watch one
+   *  play back. */
+  private showReview(selected = -1): void {
+    const view = this.review;
+    const log = view?.log;
+    if (!view || !log) return;
+    const rows = ratingRows(log.rating);
+    const save = () => {
+      if (rows.any()) log.rating = rows.value();
+      this.resendReview();
+    };
+    const run = this.reviewRun(log, selected, {
+      pick: (i) => {
+        save();
+        this.showReview(i);
+      },
+      watch: (step, i) => {
+        save();
+        this.startPlayback(step, i);
+      },
+      note: (i, moment) => {
+        save();
+        this.reviewNote(i, moment);
+      },
+    });
     const foot = el('div', 'v2-btn-row');
     foot.append(
       button('📝 Note on the run', 'v2-btn', () => {
@@ -4050,7 +4150,7 @@ export class App {
         this.renderResult();
       }),
     );
-    this.showOverlay('v3-review', [el('h2', '', 'Rate & review this run'), rows.el, strip, legend, detail, foot]);
+    this.showOverlay('v3-review', [el('h2', '', 'Rate & review this run'), rows.el, ...run, foot]);
   }
 
   /** A note made on the review: about a marked moment, or the run. */
@@ -4096,8 +4196,8 @@ export class App {
 
   /** "Watch it": the run plays back from a few seconds before a moment to
    *  just after it, inputs and all. */
-  private startPlayback(step: number, stop: number, other?: { log: PlayLog; after: () => void }): void {
-    const log = other?.log ?? this.review?.log;
+  private startPlayback(step: number, stop: number, other?: { log: PlayLog; after: () => void }, lab?: { g: Game; ended: 'done' | 'length' | 'lost' }): void {
+    const log = other?.log ?? (lab ? this.rec?.snapshot() : this.review?.log);
     if (!log) return;
     const from = Math.max(0, step - PLAYBACK_BEFORE * 60);
     let pb: Playback;
@@ -4109,7 +4209,7 @@ export class App {
     this.resetFinale();
     this.ghostRun = null;
     pb.game.events = [];
-    this.playback = { pb, until: step + PLAYBACK_AFTER * 60 + (other ? 4 * 60 : 0), from, stop, ...(other ? { after: other.after } : {}) };
+    this.playback = { pb, until: step + PLAYBACK_AFTER * 60 + (other ? 4 * 60 : 0), from, stop, ...(other ? { after: other.after } : {}), ...(lab ? { lab } : {}) };
     this.game = pb.game;
     this.lastPhase = pb.game.phase;
     this.acc = 0;
@@ -4153,6 +4253,16 @@ export class App {
       this.paused = false;
       this.root.classList.remove('playing');
       p.after();
+      return;
+    }
+    // A test's end screen: back to the paused test and its sheet.
+    if (p.lab) {
+      this.game = p.lab.g;
+      this.lastPhase = p.lab.g.phase;
+      this.flowSlider.set(p.lab.g.flow);
+      this.syncFormation();
+      this.syncConvoy();
+      this.showLabVerdict(p.lab.ended, p.stop);
       return;
     }
     if (view) {

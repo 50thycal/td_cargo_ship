@@ -25,7 +25,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { ROUND_DATE, ASK, TODAY, PIECES, SECTIONS, CARDS, QUESTIONS, OPEN_QUESTIONS, ROUND_DOCS } from './lab.mjs';
 import { cardStatus, changesSince, splitCards, groupBySection, untestedEarlier, isAnswered } from './split.mjs';
-import { waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords } from './scores.mjs';
+import { waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords, waveRatingChips, waveRatingAverages, suggestionsKept } from './scores.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // The game's own card list (src/v3/data/lab.ts), and where the game lives:
@@ -339,7 +339,7 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
   // The live split (tools/v3/test-lab/split.mjs).
   ${[cardStatus, changesSince, splitCards, groupBySection, untestedEarlier, isAnswered].map((f) => f.toString()).join('\n  ')}
   // The map scorecards (tools/v3/test-lab/scores.mjs).
-  ${[waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords].map((f) => f.toString()).join('\n  ')}
+  ${[waveName, answerWords, scoreChips, scoreAverages, runNumbers, scoreGroups, averageWords, waveRatingChips, waveRatingAverages, suggestionsKept].map((f) => f.toString()).join('\n  ')}
   const SC = ${js(LAB.scorecard)};
   const ROUND = ${ROUND.n};
   const GAME = ${js(GAME_URL)};
@@ -394,6 +394,14 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
     box.append(h('p', 'auto', autoWords(end, r.auto)));
     const latest = scoreChips(r.score, SC);
     box.append(latest.length ? chipList(latest) : h('p', 'older', 'No scorecard on this run.'));
+    // Scorecard revision 4: the waves rated on the draft (F fun, D difficulty, I intensity, 1-5).
+    const rated = waveRatingChips(r.score, SC.bossFrom);
+    if (rated.length) {
+      box.append(h('span', 'lab', 'Waves rated on the draft · F fun, D difficulty, I intensity'));
+      const ul = chipList(rated);
+      rated.forEach((c, i) => { if (c.note) ul.children[i].title = c.note; });
+      box.append(ul);
+    }
     const scored = sg.groups.reduce((m, g) => m + g.scored, 0);
     if (scored >= 2 || many) {
       box.append(h('span', 'lab', 'Average · ' + plural(scored, 'scored run', 'scored runs') + ' on version ' + sg.rev + (many ? ', by encounter version' : '') + ' · ×n: runs that answered'));
@@ -409,6 +417,15 @@ a.play:focus-visible, .docline a:focus-visible { outline: 2px solid var(--signal
         vg.append(head, items.length ? chipList(items) : h('p', 'older', 'No scorecards yet.'));
         box.append(vg);
       }
+    }
+    // The draft's wave ratings over every run, and how the suggested Best and Weakest wave fared.
+    const wavg = waveRatingAverages(r.runs || []);
+    const wk = Object.keys(wavg).map(Number).sort((a, b) => a - b);
+    if (wk.length && (r.runs || []).filter((x) => x.score && x.score.waves).length >= 2) {
+      box.append(h('span', 'lab', 'Wave ratings, average over runs · ×n: runs that rated it'));
+      box.append(chipList(wk.map((n) => ({ id: 'w' + n, label: waveName(n, SC.bossFrom), text: [wavg[n].fun != null ? 'F' + wavg[n].fun.toFixed(1) : '', wavg[n].intensity != null ? 'I' + wavg[n].intensity.toFixed(1) : ''].filter(Boolean).join(' ') || 'note', n: wavg[n].n }))));
+      const kept = suggestionsKept(r.runs || []);
+      if (kept.best.suggested || kept.weakest.suggested) box.append(h('p', 'older', 'Suggested from the wave ratings and kept: best ' + kept.best.kept + ' of ' + kept.best.suggested + ', weakest ' + kept.weakest.kept + ' of ' + kept.weakest.suggested + '.'));
     }
     if (sg.older) box.append(h('p', 'older', plural(sg.older, 'run', 'runs') + ' on an older version of the map not averaged.'));
     // Scorecard revision 2 asks other questions: older scores stay apart.

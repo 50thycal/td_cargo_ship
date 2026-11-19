@@ -89,3 +89,38 @@ describe('the Nuke and the Incendiary Missile', () => {
     expect(g.threats.filter((t) => t.kind === 'cloud' && !t.dead)).toHaveLength(0);
   });
 });
+
+// The Kesh playtest (2026-11-18, pause note at step 23976: "Not sure if it
+// does or not but the nuke should not clear out the players passive
+// weapons"). It does not: the Nuke takes the enemy's threats, launchers,
+// marks and shots only. On the replay the nuke at wave 8, 55.0 s killed the
+// wave's last threat, so the wave ended there, and every wave's end
+// unloads the weapon in hand (the frigates sailed off): that is what the
+// player saw. This pins it: mid-wave, a nuke leaves your passives running.
+describe('the Nuke spares your own weapons', () => {
+  for (const id of ['frigate', 'aegis', 'gunships'] as const) {
+    it(`${id}: still loaded and on the water after a nuke`, () => {
+      const g = quiet(3);
+      g.levels = { ...g.levels, [id]: 3 };
+      g.slots = [id];
+      g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: id, x: 800, y: 450, age: 0 });
+      expect(tap(g, 800, 450, 60)).toBe('pickup');
+      run(g, 4);
+      const count = () => ({ escorts: g.escorts.length, aegis: g.ships.filter((s) => s.aegis).length, wings: g.wings.length, helis: g.helis.length });
+      const before = count();
+      expect(g.weapon?.id).toBe(id);
+      expect(before.escorts + before.aegis + before.wings + before.helis).toBeGreaterThan(0);
+      launchFoe(g, { at: 0, kind: 'rocketTruck', base: -1 });
+      g.pickups.push({ id: g.nextId++, kind: 'nuke', x: 500, y: 500, age: 0 });
+      expect(tap(g, 500, 500, 20)).toBe('pickup');
+      step(g, DT);
+      expect(g.phase).toBe('wave');
+      expect(g.weapon?.id).toBe(id);
+      const after = count();
+      expect(after.escorts).toBe(before.escorts);
+      expect(after.aegis).toBe(before.aegis);
+      expect(after.wings).toBe(before.wings);
+      expect(after.helis).toBe(before.helis);
+    });
+  }
+});

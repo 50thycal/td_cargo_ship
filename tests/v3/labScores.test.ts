@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCORECARD, SCORECARD_REV } from '../../src/v3/data/scorecard';
 import { EVENT_WAVE } from '../../src/v3/data/events';
-import { averageWords, runNumbers, scoreAverages, scoreChips, scoreGroups, waveName, type Run, type ScorecardDef } from '../../tools/v3/test-lab/scores.mjs';
+import { averageWords, runNumbers, scoreAverages, scoreChips, scoreGroups, suggestionsKept, waveName, waveRatingAverages, waveRatingChips, type Run, type ScorecardDef } from '../../tools/v3/test-lab/scores.mjs';
 
 // The scorecard as the page gets it (tools/v3/test-lab/cards.mts).
 const SC: ScorecardDef = JSON.parse(JSON.stringify({ rev: SCORECARD_REV, bossFrom: EVENT_WAVE, categories: SCORECARD }));
@@ -15,6 +15,8 @@ const SC: ScorecardDef = JSON.parse(JSON.stringify({ rev: SCORECARD_REV, bossFro
 const SC1: ScorecardDef = { ...SC, rev: 1 };
 // And as it read revision 2's (the comparison and the strip).
 const SC2: ScorecardDef = { ...SC, rev: 2 };
+// And revision 3's (Best moment).
+const SC3: ScorecardDef = { ...SC, rev: 3 };
 const cat = (id: string) => SC.categories.find((c) => c.id === id)!;
 const run = (o: Partial<Run>): Run => ({ rev: 10, variant: 'v1', end: 'won', ...o });
 
@@ -120,7 +122,7 @@ describe('Test Lab page: a map card\'s scorecard', () => {
 
 describe('Test Lab page: scorecard revision 3 (Best moment)', () => {
   it('the page reads revision 3; Best moment averages like a wave row, only on revision 3 scores', () => {
-    expect(SC.rev).toBe(3);
+    const SC = SC3;
     const runs = [
       run({ score: { rev: 2, fun: 5, best: 10 } }),
       run({ score: { rev: 3, fun: 4, moment: 10, momentT: 31.5 } }),
@@ -134,5 +136,46 @@ describe('Test Lab page: scorecard revision 3 (Best moment)', () => {
     // Revision 2 never asked it.
     expect(scoreAverages(runs, SC, 2).moment).toBeUndefined();
     expect(scoreChips({ rev: 3, fun: 4, moment: 12, momentT: 8 }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Best moment B2']);
+  });
+});
+
+describe('Test Lab page: scorecard revision 4 (the merged review screen)', () => {
+  it('the page reads revision 4: Intensity averages like Fun; Best moment is no longer averaged; older revisions average apart', () => {
+    expect(SC.rev).toBe(4);
+    const runs = [
+      run({ score: { rev: 3, fun: 5, moment: 10, momentT: 4 } }),
+      run({ score: { rev: 4, fun: 4, intensity: 5, best: 10 } }),
+      run({ score: { rev: 4, fun: 2, intensity: 2, best: 10, moment: 3 } }),
+    ];
+    const a4 = scoreAverages(runs, SC);
+    expect(a4.fun).toEqual({ n: 2, mean: 3 });
+    expect(a4.intensity).toEqual({ n: 2, mean: 3.5 });
+    expect(averageWords(cat('intensity'), a4.intensity, 11)).toBe('3.5');
+    expect(a4.moment).toBeUndefined();
+    expect(scoreAverages(runs, SC, 3).moment).toMatchObject({ n: 1, top: 10 });
+    expect(scoreAverages(runs, SC, 3).intensity).toBeUndefined();
+    const g = scoreGroups(runs, SC).groups[0];
+    expect(g).toMatchObject({ scored: 2, oldScored: 1 });
+    expect(scoreChips({ rev: 4, fun: 4, difficulty: 'right', intensity: 5 }, SC).map((c) => `${c.label} ${c.text}`)).toEqual(['Fun 4', 'Difficulty Right', 'Intensity 5']);
+  });
+
+  it('the waves rated on the draft: as chips, averaged wave by wave over the runs, and how the suggested Best and Weakest fared', () => {
+    const score = { rev: 4, waves: [{ n: 12, fun: 5, intensity: 5 }, { n: 2, fun: 2, difficulty: 1, note: 'slow' }, { n: 3, note: 'x' }] };
+    expect(waveRatingChips(score, 11)).toEqual([
+      { id: 'w2', label: '2', text: 'F2 D1', note: 'slow' },
+      { id: 'w3', label: '3', text: 'note', note: 'x' },
+      { id: 'w12', label: 'B2', text: 'F5 I5' },
+    ]);
+    expect(waveRatingChips({ rev: 3, fun: 4 }, 11)).toEqual([]);
+    expect(waveRatingChips(undefined, 11)).toEqual([]);
+    const runs = [
+      run({ score: { rev: 4, waves: [{ n: 2, fun: 2 }, { n: 10, fun: 5, intensity: 4 }], best: 10, bestSuggested: 10, weakest: 1, weakestSuggested: 2 } }),
+      run({ score: { rev: 4, waves: [{ n: 10, fun: 4, intensity: 5 }] } }),
+      run({ score: { rev: 3, fun: 1 } }),
+      run({}),
+    ];
+    expect(waveRatingAverages(runs)).toEqual({ 2: { n: 1, fun: 2 }, 10: { n: 2, fun: 4.5, intensity: 4.5 } });
+    expect(waveRatingAverages(undefined)).toEqual({});
+    expect(suggestionsKept(runs)).toEqual({ best: { suggested: 1, kept: 1 }, weakest: { suggested: 1, kept: 0 } });
   });
 });

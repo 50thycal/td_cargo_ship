@@ -100,14 +100,17 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'The map\'s own convoy, no commands: pairs sailing east along the south bank and round the hook to the north edge. The lane does the shaping: the turn brings every pair past the south silo, one after another, before it straightens out under the carrier.',
     stretches: { danger: 'middle', safe: 'late' },
     boss: {
-      plan: 'The Drone Storm round the hook: twelve drone swarms off the outer bank in turn and no ammo drops, bigger than before (33 drones in round 1, 36 in rounds 2 and 3, against 30), the second half coming 6, 6, then 5.5 s after the first; 15-30 s each (encounters rev 4, MAP_BOSS; lab only).',
-      botTarget: 1,
+      plan: 'The Drone Storm round the hook: drone swarms off the outer bank in turn and no ammo drops (36, 36, then 42 drones, the second half 6, 6, then 5.5 s after the first), with shells at the ship nearest each shell silo (3, 2, 3) and guided missiles at the ship halfway along (none, 1, then 3); 15-30 s each (encounters rev 4, MAP_BOSS; lab only). Log v29, after the playtest ("the boss was way too easy": 0, 0 and 1 ships lost): the shells and missiles are new, so round 3 is harder by what it sends.',
+      // The player lost 0 / 0 / 1 where the bot read 0.6 / 1.3 / 1.3 (the
+      // bot reads boss rounds about twice as hard as the player): about
+      // 1.5 / 2 / 2.5 on the bot should land the player near 1 a round.
+      botTarget: 2,
     },
   },
   // Chapter 1 (docs/design/v3-ch1-marrow.md): Lee of Marrow, its radar
   // tower the map's one mechanic.
   marrow: {
-    problem: 'The radar on the island makes your shots fly half again as fast over the middle of the lane, right where the middle silo fires down on the ships; the enemy goes for the tower, and once it falls it is gone for the run.',
+    problem: 'The radar on the island slows every enemy drone and missile over the middle of the lane to about two thirds of its pace (log v29; it used to speed your shots), right where the middle silo fires down on the ships; the enemy goes for the tower, and once it falls it is gone for the run.',
     // The tower wants your taps as much as the ships do: weapons that fire
     // themselves (each ship's Point Defense, the Seeker Pod, the Drone
     // Screen) keep shooting at the stretch under the island, where the radar

@@ -183,3 +183,43 @@ describe('a sinking is filed under the volley that sent its killer', () => {
     expect(lossy).toBeGreaterThan(5);
   });
 });
+
+// Rate & review (docs/design/v3-rate-and-review.md): the player can rate
+// the wave just played on the draft after it. It goes into the log beside
+// the volleys and notes, and never touches the game.
+describe('wave ratings (the draft\'s "Rate wave N")', () => {
+  it('keeps one rating a wave in the log, replaced when rated again, removed when cleared; bad values dropped', () => {
+    const run = watchedRun('strait', 2, 3, 1);
+    const g = run.game;
+    expect(run.rec.rateWave(3, { difficulty: 2, fun: 4 })).toMatchObject({ wave: 3, step: g.steps, rating: { difficulty: 2, fun: 4 } });
+    run.rec.rateWave(4, { fun: 9, intensity: 5 }, '  Big rush on the left  ');
+    run.rec.rateWave(3, { fun: 5, intensity: 3 });
+    let log = run.rec.snapshot();
+    expect(log.waveRatings!.map((w) => [w.wave, w.rating, w.note])).toEqual([
+      [3, { fun: 5, intensity: 3 }, undefined],
+      [4, { intensity: 5 }, 'Big rush on the left'],
+    ]);
+    expect(run.rec.waveRating(4)?.note).toBe('Big rush on the left');
+    // The snapshot is a copy: changing it leaves the recorder's alone.
+    log.waveRatings![0].rating.fun = 1;
+    expect(run.rec.waveRating(3)?.rating.fun).toBe(5);
+    run.rec.rateWave(3, {});
+    run.rec.rateWave(4, {}, '');
+    log = run.rec.snapshot();
+    expect(log.waveRatings).toBeUndefined();
+  });
+
+  it('leaves the replay exactly as it was (the log version stays)', () => {
+    const run = watchedRun('gauntlet', 8, 6, 2);
+    run.rec.rateWave(6, { difficulty: 3, fun: 4, intensity: 5 }, 'tense');
+    run.advance(Infinity);
+    const log = run.finish();
+    expect(log.waveRatings).toHaveLength(1);
+    const g = replay(log);
+    expect({ score: g.score, lost: g.lost, wave: g.wave, steps: g.steps }).toEqual({ score: run.game.score, lost: run.game.lost, wave: run.game.wave, steps: run.game.steps });
+    const { waveRatings: _w, ...plain } = log;
+    const g2 = replay(plain);
+    expect(g2.steps).toBe(g.steps);
+    expect(g2.score).toBe(g.score);
+  });
+});

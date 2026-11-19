@@ -85,6 +85,15 @@ export const RULES = [
     now: 'Strait: none of its own. Gauntlet: Rocket Convoy trucks in the boss. Harbor: none in waves 1–10.',
   },
   {
+    id: 'm-debut-tag',
+    sec: 'map',
+    title: 'New weapons and enemies say which chapter brought them',
+    rule: 'A weapon card the chapter adds to the draft carries the chapter’s tag (“NEW · Dark Water”), and a chapter’s new enemies are announced the same way. Every rebuilt map keeps it.',
+    why: 'Your note on Battery (campaign, 2026-11-19): you like the “Dark Water” note on the weapons that appear in that chapter and want it kept when the maps are rebuilt.',
+    check: 'The draft e2e sees the tag on a chapter’s new weapon; the rebuild checks don’t remove it.',
+    now: 'Built for weapons in the campaign (draft cards say NEW · <chapter>).',
+  },
+  {
     id: 'm-carrier',
     sec: 'map',
     title: 'Carrier and frigates placed for the problem',

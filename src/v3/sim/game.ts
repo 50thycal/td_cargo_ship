@@ -482,6 +482,13 @@ export interface Escort {
    *  out the way it came (-1) where a narrows ahead has no room beside the
    *  convoy. */
   out?: -1 | 1;
+  /** Log v29: seconds it still holds the offset it stepped out to for a
+   *  hull, and its sideways drift (radians off the lane), smoothed. */
+  holdT?: number;
+  drift?: number;
+  /** Log v29: its last step across while steering for its track (px), for
+   *  smoothing the next one. */
+  vl?: number;
 }
 
 /** A Boomerang blade: out from the gun to (tx, ty) and back, cutting each
@@ -2539,6 +2546,41 @@ const ESCORT_GAP = 280;
 const ESCORT_GAP_MIN = 180;
 /** How fast a frigate turns (rad/s): smoothly round a bend at its speed. */
 const ESCORT_TURN = 2.6;
+/** Log v29 (the Kesh playtest: "frigates are a little jittery on the
+ *  turn"). Giving way round the hook's tight bend, a frigate used to step
+ *  out for a hull one step and back onto its track the next, its bow
+ *  flicking ~2.5° left and right each step (about 30-70 flips a minute on
+ *  the Kesh Hook, none on a straight lane). Now, once it has stepped out,
+ *  it holds that offset ESCORT_HOLD s before steering back in, and its bow
+ *  follows its sideways drift smoothed over ESCORT_DRIFT_TAU s. */
+const ESCORT_HOLD = 0.6;
+const ESCORT_DRIFT_TAU = 0.25;
+/** A lane is a polyline: offset 100+ px across it, a frigate's spot jumped
+ *  at each corner of a bend (outside it) or doubled back (inside it), and
+ *  its heading snapped by the corner's angle. Its pose is now the lane's
+ *  averaged over ESCORT_SMOOTH px either side (the same on a straight). */
+const ESCORT_SMOOTH = 40;
+/** The bow eases onto where it wants to point over about this long (s). */
+const ESCORT_HELM = 0.1;
+
+/** A frigate's spot at d, `lat` across lane `ch`, round a bend smoothed
+ *  (ESCORT_SMOOTH): the lane at that offset averaged over a short stretch,
+ *  its direction the stretch's. */
+function escortAt(ch: Channel, d: number, lat: number): { x: number; y: number; tx: number; ty: number } {
+  let x = 0;
+  let y = 0;
+  let tx = 0;
+  let ty = 0;
+  for (let k = -2; k <= 2; k++) {
+    const p = laneAt(ch, d + (k * ESCORT_SMOOTH) / 2, lat);
+    x += p.x;
+    y += p.y;
+    tx += p.tx;
+    ty += p.ty;
+  }
+  const n = Math.hypot(tx, ty) || 1;
+  return { x: x / 5, y: y / 5, tx: tx / n, ty: ty / n };
+}
 
 // ---------------------------------------------------------------------------
 // Frigates and the convoy (round 13, approved by the player: frigates must
@@ -3013,16 +3055,30 @@ function sailLane(g: Game, e: Escort, dt: number): void {
     }
   }
   const sideStep = AB.frigate.speed * ESCORT_SIDE * dt;
+  const ease = Math.min(1, dt / ESCORT_DRIFT_TAU);
+  // Just stepped out for a hull: hold that offset a moment, not back in.
+  const holding = (e.holdT ?? 0) > 0;
+  // Steering for its track, the step across eased from the last one
+  // (ESCORT_DRIFT_TAU): the track is sampled every few px, and a frigate
+  // chasing each sample went in and out a pixel or two a step.
   const steerFor = (d: number) => {
-    const want = e.leaving || Math.abs(goal - d) > 1 ? trackAhead(track, d, goal) : e.slat;
-    return clamp(want - e.lat, -sideStep, sideStep);
+    let want = e.leaving || Math.abs(goal - d) > 1 ? trackAhead(track, d, goal) : e.slat;
+    if (holding && side * (want - e.lat) < 0) want = e.lat;
+    const gap = want - e.lat;
+    const raw = clamp(gap, -sideStep, sideStep);
+    const prev = clamp(e.vl ?? raw, -sideStep, sideStep);
+    const eased = prev + (raw - prev) * ease;
+    // Never past the track: an eased step that would overshoot stops on it.
+    return Math.sign(eased) === Math.sign(gap) && Math.abs(eased) > Math.abs(gap) ? gap : eased;
   };
   const out = side * sideStep;
-  const moves: [number, number][] = [];
+  // Each move: along, across, and whether it is a step out for a hull.
+  const moves: [number, number, boolean][] = [];
   for (const a of [along, along * 0.5, along * 0.15, 0]) {
-    moves.push([a, steerFor(e.d + a)], [a, out]);
+    const steer = steerFor(e.d + a);
+    moves.push([a, steer, false], [a, out, steer !== out]);
   }
-  moves.push([0, 0], [-0.15 * step * (dir || 1), out], [-0.15 * step * (dir || 1), 0]);
+  moves.push([0, 0, false], [-0.15 * step * (dir || 1), out, true], [-0.15 * step * (dir || 1), 0, false]);
   // The hulls near enough to matter, each with the stretch it sails in the
   // next quarter second.
   const look = 0.25;
@@ -3034,19 +3090,22 @@ function sailLane(g: Game, e: Escort, dt: number): void {
       return { ...b, x: b.x + Math.cos(b.h) * run, y: b.y + Math.sin(b.h) * run, L: b.L + run };
     });
   const turn = ESCORT_TURN * dt;
-  const pose = (a: number, l: number) => {
+  // The bow eases onto its aim (ESCORT_HELM s), never past ESCORT_TURN.
+  const steer = Math.min(1, dt / ESCORT_HELM);
+  const pose = (a: number, l: number, stepOut = false) => {
     const d = e.d + a;
     const lat = e.lat + l;
-    const p = laneAt(ch, d, lat);
+    const p = escortAt(ch, d, lat);
     // Heading: the lane's, turned a little by any sideways drift (at most
-    // ~24°, a ship steering across, never crabbing sideways). Sailing back
-    // up the lane it goes stern first a moment (it never turns about); on
-    // station it keeps whichever way it faces.
+    // ~24°, a ship steering across, never crabbing sideways), the drift
+    // smoothed (log v29). Sailing back up the lane it goes stern first a
+    // moment (it never turns about); on station it keeps whichever way it
+    // faces.
     const lane = Math.atan2(p.ty, p.tx);
-    const drift = Math.atan2(l, Math.max(step, 1e-6));
+    const drift = (e.drift ?? 0) + ((a > 1e-6 ? Math.atan2(l, Math.max(step, 1e-6)) : 0) - (e.drift ?? 0)) * ease;
     const aim = a > 1e-6 ? lane + drift : Math.abs(angleDiff(lane + Math.PI, e.heading)) < Math.abs(angleDiff(lane, e.heading)) ? lane + Math.PI : lane;
-    const heading = e.heading + clamp(angleDiff(aim, e.heading), -turn, turn);
-    return { d, lat, x: p.x, y: p.y, heading };
+    const heading = e.heading + clamp(angleDiff(aim, e.heading) * steer, -turn, turn);
+    return { d, lat, x: p.x, y: p.y, heading, drift, stepOut };
   };
   const clear = (q: { x: number; y: number; heading: number }) => {
     const box = frigateBox(q.x, q.y, q.heading, ESCORT_GIVE);
@@ -3055,13 +3114,16 @@ function sailLane(g: Game, e: Escort, dt: number): void {
   // (Nor onto the carrier, nor the shore.)
   const deck = carrierHull(g);
   const wet = (q: { x: number; y: number; heading: number }) => !hullsOverlap(frigateBox(q.x, q.y, q.heading, ESCORT_SHORE), deck) && hullWet(g, frigateBox(q.x, q.y, q.heading), 0);
-  const tried = moves.map(([a, l]) => pose(a, l));
+  const tried = moves.map(([a, l, o]) => pose(a, l, o));
   const next = tried.find((q) => clear(q) && wet(q)) ?? tried.find(clear) ?? pose(0, 0);
+  e.vl = next.lat - e.lat;
   e.d = next.d;
   e.lat = next.lat;
   e.heading = next.heading;
   e.x = next.x;
   e.y = next.y;
+  e.drift = next.drift;
+  e.holdT = next.stepOut ? ESCORT_HOLD : Math.max(0, (e.holdT ?? 0) - dt);
 }
 
 /** Aegis Launchers (round 8 playtest: "all cargo ships get one interceptor
@@ -5458,6 +5520,10 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     }
     if (well) dt *= AB.well.slow;
   }
+  // Lee of Marrow's radar (log v29): every enemy unit and munition inside a
+  // standing tower's sweep moves at POST.radarSlow of its pace, its clock
+  // too (a shell's arc, a missile's boost, a drone's weave).
+  if (g.map.posts && !isStructure(th.kind) && released(th) && tracked(g, th)) dt *= POST.radarSlow;
   th.age += dt;
   if (isStructure(th.kind)) {
     if (th.kind === 'dreadnought') updateBoss(g, th, dt);
@@ -5985,8 +6051,7 @@ function updateInterceptors(g: Game, dt: number): void {
       continue;
     }
     let th = it.target === null ? undefined : g.threats.find((o) => o.id === it.target && !o.dead);
-    // Lee of Marrow: a shot at a threat the radar is tracking flies faster.
-    const speed = (it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed) * (th && tracked(g, th) ? POST.radarBoost : 1);
+    const speed = it.src === 'seeker' ? AB.seeker.speed : g.stats.interceptorSpeed;
     if (!th && it.target !== null) {
       // Swarm Pod: a seeker whose target is gone finds the nearest other.
       th = it.retarget ? nearestThreat(g, it.x, it.y) : undefined;
@@ -6371,7 +6436,7 @@ function damagePost(g: Game, i: number, amount: number, by: ThreatKind, imp?: Te
   g.events.push({ kind: 'post', post: i, down: true, lost: st.lost });
 }
 
-/** Is a threat inside a standing radar's sweep? */
+/** Is a threat inside a standing radar's sweep (slowed, log v29)? */
 export function tracked(g: Game, th: Threat): boolean {
   const posts = g.map.posts;
   if (!posts) return false;
@@ -7042,6 +7107,13 @@ export function reticleVisible(g: Game, th: Threat): boolean {
 /** Seconds until a threat reaches what it is aimed at (bot + UI warnings). */
 export function timeToImpact(g: Game, th: Threat): number {
   if (isStructure(th.kind)) return 99;
+  // Inside a standing radar's sweep it flies slowed (log v29): the time
+  // left as if it stays slowed (the bots and the warnings read it).
+  if (g.map.posts && released(th) && th.kind !== 'mine' && tracked(g, th)) return rawTti(g, th) / POST.radarSlow;
+  return rawTti(g, th);
+}
+
+function rawTti(g: Game, th: Threat): number {
   if (th.kind === 'mine') return mineEta(g, th);
   if (th.kind === 'ballistic') return Math.max(0, th.dur - th.age);
   if (isFoe(th.kind)) {

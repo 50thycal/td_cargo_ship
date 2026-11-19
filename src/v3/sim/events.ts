@@ -259,6 +259,11 @@ export function startEvent(g: Game, id: EventId = eventFor(g)!): void {
   cue(g, 'debut.sting', VIEW.width / 2, VIEW.height / 2);
 }
 
+/** The first run of a map's several-run ending (boss round 1). */
+export function firstBossRound(ev: Pick<EventRun, 'bonus' | 'run' | 'runs'>): boolean {
+  return !ev.bonus && ev.runs > 1 && ev.run === 1;
+}
+
 /** The card's event: the event, its wave, a bonus, and the run. */
 function cardEvent(ev: EventRun): Extract<Game['events'][number], { kind: 'special' }> {
   return { kind: 'special', id: ev.id, wave: ev.wave, ...(ev.bonus ? { bonus: true } : {}), ...(ev.runs > 1 ? { run: ev.run, runs: ev.runs } : {}) };
@@ -297,6 +302,9 @@ function newRun(g: Game, id: EventId): EventRun {
   // No convoy on the water yet (a Test Lab card starts straight into its
   // event): the attack waits for the first ships to sail in.
   if (!g.ships.length) ev.t0 += EVENT.convoyWait;
+  // The first boss round opens on a longer calm (log v29): its card, the
+  // boss's name and what is left to lose hold the screen first.
+  if (firstBossRound(ev)) ev.t0 += EVENT.bossCalm;
   ev.plan = plan(g, ev).sort((a, b) => a.at - b.at);
   return ev;
 }
@@ -453,9 +461,15 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     case 'drone-storm': {
       // Encounters rev 4 (lab only; docs/design/v3-ch1-kesh.md): the Kesh
       // Hook's boss rounds rise, each run its own numbers (MAP_BOSS).
-      const E = { ...EV['drone-storm'], ...bossRound(g, ev) };
+      const R = bossRound(g, ev);
+      const E = { ...EV['drone-storm'], ...R };
       const half = Math.ceil(E.swarms / 2);
-      return steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'swarm');
+      return [
+        ...steps(E.swarms, (k) => (k < half ? k * E.gap : E.second + (k - half) * E.gap), 'swarm'),
+        // Log v29: shells at the apex and guided missiles (MAP_BOSS kesh).
+        ...steps(R?.shells ?? 0, (k) => (R?.shellAt ?? 0) + k * (R?.shellGap ?? 3), 'shell'),
+        ...steps(R?.guided ?? 0, (k) => (R?.guidedAt ?? 0) + k * (R?.guidedGap ?? 3), 'missile'),
+      ];
     }
     case 'hydra-bloom': {
       // Round 8 ("Hydras should split even before the line is crossed; you
@@ -658,6 +672,20 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // A plain drone swarm out of each drone base in turn; a size that is
       // not whole alternates (2.5: three, then two...).
       const E = { ...EV['drone-storm'], ...bossRound(g, ev) };
+      if (s.op === 'shell' || s.op === 'missile') {
+        // Log v29: a shell at the ship nearest its silo (on the Kesh Hook,
+        // the south silo's: the ship in the turn), a guided missile at the
+        // ship halfway along (the start of the turn), out of the bases that
+        // fire them in turn.
+        const kind: ThreatKind = s.op === 'shell' ? 'ballistic' : 'guided';
+        const kb = liveBases(g, kind);
+        const b = kb[s.k % kb.length];
+        if (b === undefined) return;
+        g.queue.push({ at: g.waveT, kind, base: b, aim: s.op === 'shell' ? 'near' : 'mid' });
+        g.queue.sort((x, y) => x.at - y.at);
+        sent(ev, kind);
+        return;
+      }
       const bs = liveBases(g, 'drone');
       baseSwarm(g, ev, bs[s.k % bs.length], Math.round((s.k + 1) * E.size) - Math.round(s.k * E.size));
       return;

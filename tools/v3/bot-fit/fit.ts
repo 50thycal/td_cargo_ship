@@ -2,8 +2,11 @@
 // on the same ruler (measure.ts), on the reference maps' Test Lab cards, with
 // the player's own Armory (map rebuild phase 2; docs/design/v3-bot-refit.md).
 //
-//   npx vite-node tools/v3/bot-fit/fit.ts -- --logs=<dir of play logs>
-//       measure the player's logs and save them (tools/v3/bot-fit/player.json)
+//   npx vite-node tools/v3/bot-fit/fit.ts -- --logs=<dir of play logs> [--remeasure] [--fresh]
+//       measure the player's new logs and add them to tools/v3/bot-fit/player.json
+//       (runs measured before are kept as they were; --remeasure measures the
+//       folder's runs again, --fresh starts the file over)
+//   --ids=<log id,...> limits calibration and --fun to those runs
 //   npx vite-node tools/v3/bot-fit/fit.ts -- [--personas=you-r12,you] [--dice=6] [--own-picks] [--json=out.json]
 //       calibration (the default): each of the player's runs, map cards and
 //       campaign alike, mirrored by each bot with the same map, seed, Armory
@@ -45,7 +48,7 @@ export const FIT_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** Which of the player's logs the fit reads. */
 export function playerRun(l: PlayLog): 'card' | 'campaign' | null {
   if (!l.summary || l.device?.ua === 'mimic' || l.dev?.watch) return null;
-  if (l.lab?.plays === 'full' && l.v >= 21 && l.summary.wave >= 5 && /^map-(strait|gauntlet|harbor)/.test(l.lab.card)) return 'card';
+  if (l.lab?.plays === 'full' && l.v >= 21 && l.summary.wave >= 5 && /^map-/.test(l.lab.card)) return 'card';
   if (!l.lab && !l.freePlay && l.v >= 19 && l.summary.wave >= 5) return 'campaign';
   return null;
 }
@@ -271,12 +274,22 @@ function funCalibration(player: PlayerRun[]): void {
 function main(): void {
   const logs = opt('logs');
   if (logs) {
-    const runs = loadPlayer(logs);
+    // The player's earlier runs stay as they were measured: their raw logs
+    // are not all kept, and a log measured on its own build reads its eyes
+    // on more exact waves than a later build can. Only new runs are added;
+    // --remeasure measures again the runs in the folder, --fresh starts over.
+    const before = args.includes('--fresh') ? [] : (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs;
+    const had = new Set(before.map((r) => r.id));
+    const fresh = loadPlayer(logs).filter((r) => args.includes('--remeasure') || !had.has(r.id));
+    const ids = new Set(fresh.map((r) => r.id));
+    const kept = before.filter((r) => !ids.has(r.id));
+    const runs = [...kept, ...fresh].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     writeFileSync(PLAYER, `${JSON.stringify({ about: 'The player\'s runs, measured by tools/v3/bot-fit/measure.ts from their play logs (map cards v21+, campaign v19+). Rebuild with fit.ts --logs=<dir>.', made: new Date().toISOString().slice(0, 10), runs }, null, 0)}\n`);
-    console.log(`measured ${runs.length} runs (${runs.filter((r) => r.kind === 'card').length} map cards) -> ${PLAYER}`);
+    console.log(`measured ${fresh.length} runs from ${logs}, kept ${kept.length} earlier: ${runs.length} runs (${runs.filter((r) => r.kind === 'card').length} map cards) -> ${PLAYER}`);
     return;
   }
-  const player = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs;
+  const only = opt('ids')?.split(',');
+  const player = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs.filter((r) => !only || only.includes(r.id));
   if (args.includes('--fun')) {
     funCalibration(player);
     return;

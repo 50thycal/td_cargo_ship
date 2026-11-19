@@ -2413,7 +2413,8 @@ const KESH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
 // (map rebuild, chapter 1; the map card: docs/design/v3-ch1-marrow.md). The
 // Strait's layout with a friendly island between the enemy shore and the
 // lane, and the map's one mechanic on it: a radar tower whose sweep covers
-// the middle third of the lane, where your shots fly half as fast again.
+// the middle third of the lane, where the enemy flies about a third slower
+// (log v29; your shots flew half as fast again there before).
 // The middle silo fires straight down on that same stretch, so the middle
 // is the danger stretch and the radar is what makes it defensible; the west
 // third (the way in) is the coldest. The enemy goes for the tower: the
@@ -2431,7 +2432,7 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     name: 'Under the sweep',
     callout: 'Drones under the radar',
     premise: 'The middle silo sends a few drones straight down at the ship below the radar tower.',
-    decision: 'The first look at the radar: inside its sweep your shots fly half as fast again.',
+    decision: 'The first look at the radar: inside its sweep every drone and missile is slowed.',
     counters: 'Tap the drones as they cross the island: the radar does the rest.',
     succeeds: 'Nothing is sunk on wave 1; the drones die inside the sweep.',
     notes: {
@@ -2473,12 +2474,12 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     callout: 'A swarm and a missile',
     premise: 'The middle silo sends a swarm at the ship below the island, and a guided missile from the west silo follows at the same stretch.',
     decision: 'The first stakes: the swarm is quick, the missile comes from the side. Is there time for both?',
-    counters: 'The swarm first, inside the sweep where your shots are quick; then the missile, which has the longer flight.',
+    counters: 'The swarm first, inside the sweep where it is slowed; then the missile, which has the longer flight.',
     succeeds: 'A close call on a ship in most runs; a good player loses under half a ship.',
     notes: {
       sites: 'The middle silo for the swarm, the west silo for the missile.',
       target: 'The swarm at the ship nearest the middle silo, the missile at the ship halfway along the lane: both in the middle third.',
-      usesMap: 'Two silos on the danger stretch under the radar, where every shot of yours is quicker.',
+      usesMap: 'Two silos on the danger stretch under the radar, where every threat is slowed.',
     },
     beats: [
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'near' },
@@ -2518,7 +2519,7 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     callout: 'A missile at the radar',
     premise: 'A guided missile from the east silo at the radar tower, and at the same moment swarms from the middle and west silos at the ships below it.',
     decision: 'Save the tower or the ships: all three come at once.',
-    counters: 'The middle swarm inside the sweep is quick to kill; the missile at the tower is slower, but only one tap away from losing the radar for good.',
+    counters: 'The middle swarm inside the sweep is slowed and easy to pick off; the missile at the tower is one tap away from losing the radar for good.',
     succeeds: 'The tower is still up after wave 5 in some runs, not all: the choice is real.',
     notes: {
       sites: 'The east silo (one guided), the middle silo (a swarm), the west silo (a swarm).',
@@ -2565,7 +2566,7 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     callout: 'A jet over the island',
     premise: 'A strafer runs down the lane from the east as the middle silo opens on the ships below the island, and two guided missiles from the west follow.',
     decision: 'The jet, the swarm or the missiles: the jet has the shortest fuse.',
-    counters: 'The jet first; the swarm inside the sweep is quick to kill; the missiles last.',
+    counters: 'The jet first; the swarm inside the sweep is slowed and easy to pick off; the missiles last.',
     succeeds: 'The jet is shot down before its guns reach the middle in most runs.',
     notes: {
       sites: 'A strafer from the east edge, the middle silo (a swarm), the west silo (two guided).',
@@ -2588,7 +2589,7 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     callout: 'Two subs, the radar and the ships',
     premise: 'A sub off the west end shells the convoy; a sub off the east end shells the radar tower; between them the middle silo sends a swarm.',
     decision: 'Two periscopes, opposite ends: one wants a ship, the other the tower.',
-    counters: 'Each salvo as it climbs; the swarm inside the sweep is quick while the tower stands.',
+    counters: 'Each salvo as it climbs; the swarm inside the sweep is slowed while the tower stands.',
     succeeds: 'The salvo at the tower is shot at in most runs where it still stands.',
     notes: {
       sites: 'Submarines at the north-west (180, 330) and north-east (1420, 330) sub spots, the middle silo for a swarm.',
@@ -2847,7 +2848,28 @@ export interface BossRound {
   second?: number;
   fans?: number;
   tower?: number;
+  /** The Drone Storm (log v29, the Kesh playtest: "the boss was way too
+   *  easy"): shells lobbed at the ship nearest the launcher (`shells`, out
+   *  of the shell bases in turn, `shellAt` s into the round, `shellGap`
+   *  apart), and guided missiles at the ship halfway along its lane
+   *  (`guided`, out of the guided bases in turn, from `guidedAt`,
+   *  `guidedGap` apart). */
+  shells?: number;
+  shellAt?: number;
+  shellGap?: number;
+  guided?: number;
+  guidedAt?: number;
+  guidedGap?: number;
 }
+
+/** The Kesh Hook's Drone Storm rounds (log v29); before: 33 / 36 / 36
+ *  drones (2.75, 3, 3 a swarm, the second half 6, 6, 5.5 s after the
+ *  first) and nothing else. */
+export const KESH_BOSS_ROUNDS: BossRound[] = [
+  { swarms: 12, size: 3, second: 6, shells: 3, shellAt: 3, shellGap: 4 },
+  { swarms: 12, size: 3, second: 6, shells: 2, shellAt: 3, shellGap: 5, guided: 1, guidedAt: 7 },
+  { swarms: 14, size: 3, second: 5.5, shells: 3, shellAt: 3, shellGap: 4, guided: 3, guidedAt: 5, guidedGap: 3 },
+];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
@@ -2865,13 +2887,12 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
     fan: [3, 3, 4],
   },
   // The Kesh Hook's Drone Storm (docs/design/v3-ch1-kesh.md): drone swarms
-  // off the outer bank and no ammo drops, more and bigger each round.
+  // off the outer bank and no ammo drops, more and bigger each round. Log
+  // v29 (the playtest: 0 / 0 / 1 ships lost, "the boss was way too easy"):
+  // shells at the apex and guided missiles join the drones, more each round,
+  // so round 3 is harder by what it sends, not only by its timing.
   kesh: {
-    rounds: [
-      { swarms: 12, size: 2.75, second: 6 },
-      { swarms: 12, size: 3, second: 6 },
-      { swarms: 12, size: 3, second: 5.5 },
-    ],
+    rounds: KESH_BOSS_ROUNDS,
   },
   // Lee of Marrow's Hydra Bloom (docs/design/v3-ch1-marrow.md): each round
   // opens with guided missiles at the radar tower, then the fans of Hydras.

@@ -30,13 +30,24 @@
 // moments the player liked? It asks nothing new of the other rows, but a
 // row added is a revision (below), so revision 3 scores average apart.
 //
+// Revision 4 (docs/design/v3-rate-and-review.md; the player's notes of
+// 2026-11-19): the scorecard joins the normal game's "Rate & review this
+// run" screen. One row more, Intensity (1 calm, 5 frantic, the normal
+// game's third axis: `intensity`, `since: 4`), and Best moment goes
+// (`retired: 4`): "it is still hard to recall what happened so not a great
+// stat". In its place the player can rate each wave on the weapon draft
+// straight after it (the log's `waveRatings`); the score keeps them as
+// `waves` (one entry a rated wave), and the end screen suggests Best and
+// Weakest wave from them (`bestSuggested`, `weakestSuggested`: what was
+// suggested, so the tools can tell a pick from an accepted suggestion).
+//
 // Change a category's meaning, add one or drop one: bump SCORECARD_REV, so
 // the page never averages answers to two different questions together.
 
 import { EVENT_WAVE } from './events';
 
 /** The scorecard's revision: in every saved score (`score.rev`). */
-export const SCORECARD_REV = 3;
+export const SCORECARD_REV = 4;
 
 /** A map card's encounter version when nothing says otherwise. Next
  *  round's A/B/C versions of one map get their own ids (v2, v3 ...). */
@@ -59,7 +70,7 @@ export type ScoreScale =
    *  B1 to B3). */
   | { kind: 'wave' };
 
-export type ScoreId = 'fun' | 'difficulty' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest' | 'moment';
+export type ScoreId = 'fun' | 'difficulty' | 'intensity' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest' | 'moment';
 
 export interface ScoreCategory {
   id: ScoreId;
@@ -77,6 +88,10 @@ export interface ScoreCategory {
   since?: number;
   /** Asked only when another map card has been rated to compare with. */
   compare?: boolean;
+  /** A 1-5 row's ends in words ("a chore", "a blast"), as the normal
+   *  game's rating rows show them. */
+  low?: string;
+  high?: string;
 }
 
 const STARS: ScoreScale = { kind: 'stars' };
@@ -84,7 +99,7 @@ const STARS: ScoreScale = { kind: 'stars' };
 /** Every category ever asked, in the sheet's order (the retired ones where
  *  they stood, so a revision 1 score reads as it did). */
 export const SCORECARD: ScoreCategory[] = [
-  { id: 'fun', label: 'Fun', help: 'How much fun was this run?', scale: STARS },
+  { id: 'fun', label: 'Fun', help: 'How much fun was this run?', scale: STARS, low: 'a chore', high: 'a blast' },
   {
     id: 'difficulty',
     label: 'Difficulty',
@@ -100,6 +115,8 @@ export const SCORECARD: ScoreCategory[] = [
       ],
     },
   },
+  // Revision 4: the normal game's third axis.
+  { id: 'intensity', label: 'Intensity', help: 'How frantic was it?', scale: STARS, since: 4, low: 'calm', high: 'frantic' },
   {
     id: 'pacing',
     label: 'Pacing',
@@ -117,7 +134,7 @@ export const SCORECARD: ScoreCategory[] = [
   { id: 'variety', label: 'Variety', help: 'The waves felt different from each other', scale: STARS, retired: 2 },
   { id: 'readability', label: 'Readability', help: 'I could tell what was coming and what hit me', scale: STARS, retired: 2 },
   { id: 'mapFeel', label: 'Map feel', help: 'The layout mattered to how I played', scale: STARS, retired: 2 },
-  { id: 'boss', label: 'Boss rounds', help: 'How were waves 11 to 13?', scale: STARS, boss: true },
+  { id: 'boss', label: 'Boss rounds', help: 'How were waves 11 to 13?', scale: STARS, boss: true, low: 'dull', high: 'great' },
   {
     id: 'vs',
     // The sheet names the map: "Compared with The Gauntlet".
@@ -148,8 +165,9 @@ export const SCORECARD: ScoreCategory[] = [
   },
   { id: 'best', label: 'Best wave', help: 'The wave you liked most', scale: { kind: 'wave' } },
   { id: 'weakest', label: 'Weakest wave', help: 'The wave you liked least', scale: { kind: 'wave' } },
-  // Revision 3: one tap, the wave and where in it (`momentT`).
-  { id: 'moment', label: 'Best moment', help: 'Tap your best moment: left of a wave is its start, right its end', scale: { kind: 'wave' }, since: 3 },
+  // Revision 3: one tap, the wave and where in it (`momentT`). Retired by
+  // revision 4: the per-wave ratings took its place.
+  { id: 'moment', label: 'Best moment', help: 'Tap your best moment: left of a wave is its start, right its end', scale: { kind: 'wave' }, since: 3, retired: 4 },
 ];
 
 /** A saved scorecard: its revision and the rows answered (a row left
@@ -176,6 +194,76 @@ export interface Scorecard {
    *  (game seconds, when the strip knew the wave's length). */
   moment?: number;
   momentT?: number;
+  /** Revision 4: 1 calm to 5 frantic. */
+  intensity?: number;
+  /** Revision 4: the waves rated on the draft (the log's `waveRatings`),
+   *  in wave order. */
+  waves?: WaveScore[];
+  /** Revision 4: the Best and Weakest wave the screen suggested from
+   *  `waves` (absent: none suggested). `best` and `weakest` are what was
+   *  saved: the suggestion kept, or the player's own pick. */
+  bestSuggested?: number;
+  weakestSuggested?: number;
+}
+
+/** One wave's rating on the draft, in a score: the wave, the 1-5 axes
+ *  given and the note, if any. */
+export interface WaveScore {
+  n: number;
+  difficulty?: number;
+  fun?: number;
+  intensity?: number;
+  note?: string;
+}
+
+const AXES = ['difficulty', 'fun', 'intensity'] as const;
+
+/** Per-wave ratings (the log's `waveRatings`, or a score's `waves`) as a
+ *  score's `waves`: valid ones only, one a wave (the last given), in wave
+ *  order, waves past the run dropped. */
+export function waveScores(raw: unknown, played?: number): WaveScore[] {
+  if (!Array.isArray(raw)) return [];
+  const by = new Map<number, WaveScore>();
+  for (const r of raw) {
+    if (!r || typeof r !== 'object') continue;
+    const o = r as Record<string, unknown>;
+    const n = typeof o.n === 'number' ? o.n : o.wave;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || (played !== undefined && n > played)) continue;
+    const src = (o.rating && typeof o.rating === 'object' ? o.rating : o) as Record<string, unknown>;
+    const w: WaveScore = { n };
+    for (const k of AXES) {
+      const v = src[k];
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5) w[k] = v;
+    }
+    if (typeof o.note === 'string' && o.note.trim()) w.note = o.note.trim().slice(0, 280);
+    if (Object.keys(w).length > 1) by.set(n, w);
+  }
+  return [...by.values()].sort((a, b) => a.n - b.n);
+}
+
+/** Best and Weakest wave suggested by the per-wave ratings: the most fun
+ *  wave (a tie: the more intense, then the later) and the least (a tie:
+ *  the less intense, then the earlier). Needs two waves rated for fun
+ *  that differ; else nothing is suggested. */
+export function suggestWaves(waves: readonly WaveScore[]): { best?: number; weakest?: number } {
+  const rated = waves.filter((w) => w.fun !== undefined);
+  if (rated.length < 2) return {};
+  const key = (w: WaveScore) => [w.fun!, w.intensity ?? 3, w.n];
+  const cmp = (a: WaveScore, b: WaveScore) => {
+    const [x, y] = [key(a), key(b)];
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] - y[i];
+    return 0;
+  };
+  const sorted = [...rated].sort(cmp);
+  const lo = sorted[0];
+  const hi = sorted[sorted.length - 1];
+  if (lo.fun === hi.fun) return {};
+  return { best: hi.n, weakest: lo.n };
+}
+
+/** A wave's rating in a few characters: "F4 D2 I5" (the axes given). */
+export function waveScoreText(w: WaveScore): string {
+  return [w.fun !== undefined ? `F${w.fun}` : '', w.difficulty !== undefined ? `D${w.difficulty}` : '', w.intensity !== undefined ? `I${w.intensity}` : ''].filter(Boolean).join(' ');
 }
 
 export function scoreCategory(id: string): ScoreCategory | undefined {
@@ -246,6 +334,16 @@ export function cleanScorecard(raw: unknown, played?: number): Scorecard | undef
     if (c.id === 'vs' && typeof r.vsCard === 'string' && r.vsCard) out.vsCard = r.vsCard;
     if (c.id === 'moment' && typeof r.momentT === 'number' && Number.isFinite(r.momentT) && r.momentT >= 0) out.momentT = Math.round(r.momentT * 10) / 10;
   }
+  // Revision 4: the per-wave ratings, and what the screen suggested.
+  if (out.rev >= 4) {
+    const waves = waveScores(r.waves, played);
+    if (waves.length) {
+      out.waves = waves;
+      any = true;
+    }
+    const best = scoreCategory('best')!;
+    for (const k of ['bestSuggested', 'weakestSuggested'] as const) if (validAnswer(best, r[k], played)) out[k] = r[k] as number;
+  }
   return any ? out : undefined;
 }
 
@@ -260,5 +358,6 @@ export function scoreLine(s: Scorecard | undefined): string {
     const label = c.id === 'vs' && s.vsCard ? `Vs ${s.vsCard}` : c.label.replace(/\?$/, '');
     parts.push(`${label} ${answerText(c, v as number | string)}${c.id === 'moment' && s.momentT !== undefined ? ` at ${Math.round(s.momentT)} s` : ''}`);
   }
+  if (s.waves?.length) parts.push(`Waves ${s.waves.map((w) => `${waveLabel(w.n)}:${waveScoreText(w) || 'note'}`).join(' ')}`);
   return parts.join(' · ');
 }
