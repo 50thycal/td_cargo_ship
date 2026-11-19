@@ -1,0 +1,28 @@
+{
+ "read": "2026-11-19",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {
+  "r6-replay-ch1": { "verdict": "approve", "note": "" }
+ },
+ "answers": {
+  "r6-boss-reset": { "choice": 0, "label": "Keep the restore, as now", "note": "Have it say “boss round”\n\nThen “live reset”\n\nThen what it is, like “drone swarm” then “round one” so each text is like a new card pop up explains all of that in sequence " },
+  "r6-wave-end-weapons": { "choice": 0, "label": "No change: a wave’s end clears loaded weapons" }
+ },
+ "playtest": {
+  "marrow": { "log": "v3-20261119132436-3976", "v": 29, "end": "lost", "lostAtWave": 10, "lostByWave": [0,0,0,0,0,0,1,1,2,2], "armory": {"warhead":5,"pointdef":4,"drops":3},
+    "held": {"thermo":2,"railgun":3,"droneScreen":3},
+    "score": {"rev":4,"fun":3,"difficulty":"bit-easy","intensity":3,"vs":"same","vsCard":"map-kesh","again":"yes","best":7,"weakest":1},
+    "waveRatings": {"1":[1,1,1],"2":[1,2,1],"3":[1,1,1],"4":[2,2,1],"6":[2,2,1],"7":[2,2,2]},
+    "waveRatingsKey": "[difficulty, fun, intensity]",
+    "verdict": "keep",
+    "note": "First paragraph is the previous run's note, carried over by the verdict sheet. New: “Game was good overall, but one didn’t clear the screen on here and still has my old notes from the previous run so just make sure that’s fixed for next time and then on this run it was pretty easy till the last like two waves but yeah overall pretty”" },
+  "kesh": { "log": "v3-20261119202157-1083", "v": 29, "end": "won", "lostByWave": [0,0,0,0,0,0,0,0,0,3,1,3,0], "bossRounds": [1,3,0], "armory": {"warhead":5,"pointdef":4,"drops":3},
+    "held": {"supplyRun":3,"aegis":2,"scatter":3},
+    "score": {"rev":4,"fun":3,"difficulty":"bit-easy","intensity":3,"boss":3,"vs":"same","vsCard":"map-marrow","again":"yes","best":10,"weakest":3},
+    "waveRatings": {"3":[1,1,1],"4":[1,1,1],"5":[2,3,2],"8":[1,2,2],"10":[2,3,2]},
+    "waveRatingsKey": "[difficulty, fun, intensity]",
+    "verdict": "keep",
+    "note": "The note and the tags (Too easy, Fun) are the previous Kesh run's, carried over by the verdict sheet (the player reported it on the Marrow run). No new note." }
+ },
+ "read_of_it": "Both maps are flat for 6–9 waves (no ships lost, waves 1–4 rated fun 1 and intensity 1) and then everything lands in the last 2–4 waves. Kesh's boss is no longer too easy: 1, 3, 0 ships (was 0, 0, 1). Fun dropped from 4 to 3 on both."
+}
