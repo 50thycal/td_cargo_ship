@@ -1,0 +1,24 @@
+{
+ "read": "2026-11-19",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {
+  "r5-play-ch1": { "verdict": "approve", "note": "These maps were good overall." }
+ },
+ "answers": {
+  "r5-fun-target": { "choice": 0, "label": "About 0.3–0.5 a wave in waves 6–10, about 1 a boss round, and a first tension bump by wave 3; check it against your Best moment taps" },
+  "r5-marrow-tower": { "choice": 0, "note": "After playing this one the radar tower seems kinda useless to keep. Let’s buff it a bit based on my recommendation to slow down enemy’s" }
+ },
+ "playtest": {
+  "kesh": { "log": "v3-20261118105818-35190", "v": 28, "end": "won", "lost": 4, "lostByWave": [0,0,0,0,0,0,0,1,1,3,3,3,4], "armory": {"reload":5,"repair":4,"stockpile":5},
+    "score": {"fun":4,"difficulty":"bit-easy","boss":3,"vs":"same","vsCard":"map-harbor","again":"yes","best":10,"weakest":13,"moment":10,"momentT":35.7}, "tags": ["Too easy","Fun"], "verdict": "keep",
+    "note": "Overall map was about good difficulty wise but the boss was way too much easy at least for me. Also the best part of the wave in the ranking is not a great mechanic it is still hard to recall what happened so not a great stat",
+    "pauseNotes": ["Frigates are a little jittery on the turn", "Not sure if it does or not but the nuke should not clear out the players passive weapons"] },
+  "marrow": { "log": "v3-20261118180044-83324", "v": 28, "end": "won", "lost": 4, "lostByWave": [0,0,0,0,0,0,0,0,0,2,3,3,4], "armory": {"reload":5,"repair":4,"stockpile":5},
+    "score": {"fun":4,"difficulty":"right","boss":3,"vs":"better","vsCard":"map-kesh","again":"yes","best":10,"weakest":1,"moment":10,"momentT":44}, "verdict": "keep",
+    "note": "One thing with the boss wave have more of a pause before it begins and say live or ships reset and then like survive for these next three waves make it feel more dramatic",
+    "pauseNotes": ["Have the radar slow enemy down that are in the radius instead of speeding up my munitions I think that makes more sense"] },
+  "battery": { "log": "v3-20261119001829-48103", "v": 28, "mode": "campaign", "end": "lost", "wave": 7, "lost": 6, "lostByWave": [0,1,1,1,1,2,6], "armory": {"warhead":5,"pointdef":4,"drops":3},
+    "rating": {"difficulty":5,"fun":5,"intensity":4},
+    "notes": ["I like the 'dark waters' note on the weapons that appear in this chapter; retain that when rebuilding all the maps", "Now that was a clutch nuke", "I was trying really hard that last wave", "Those last two waves were really fun", "Are we running bot tests on all possible combinations of the weapon loadouts? We should, to see the best combos and synergies, and the same with the Armory", "(review screen) This scorecard on the normal game is way better: apply it to the Test Lab, keeping the Test Lab's questions (merge the two). Also add the option to rate after each wave at the weapon selection, which helps with not remembering what happened in the last wave"] }
+ }
+}
