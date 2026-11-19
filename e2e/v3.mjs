@@ -254,7 +254,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 29 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 30 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -1098,7 +1098,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 29 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 30 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1281,14 +1281,47 @@ try {
     await lp.locator('[data-start]').tap();
     await lp.waitForSelector('.playing');
     await lp.waitForTimeout(400);
-    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run, eyebrow: document.querySelector('.v3-event-card .v3-event-eyebrow')?.textContent, name: document.querySelector('.v3-event-card .v3-event-name')?.textContent, banner: document.body.innerText.match(/BOSS: [^\n]*\n?[^\n]*/)?.[0] ?? '' }));
-    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1 && /^Boss round 1 of 3/.test(hud11.eyebrow ?? '') && hud11.name === 'Afterburner Rush', `round 11: the counter reads BOSS 1/3 and the card says Boss round 1 of 3, Afterburner Rush (${JSON.stringify(hud11)})`);
-    check(/AFTERBURNER RUSH/.test(hud11.banner) && /Survive the next 3 rounds/.test(hud11.banner) && /\d ships? can still be lost/i.test(hud11.banner), `round 11 (log v29): a banner names the boss, the rounds to survive and the ships that can still be lost ("${hud11.banner.replace(/\s+/g, ' ')}")`);
-    for (let i = 0; i < 400; i++) {
-      const ph = await lp.evaluate(() => { const g = window.__v3.game(); g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = []; return g.phase; });
-      if (ph !== 'wave') break;
+    const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run }));
+    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS 1/3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    // Log v30 (the player: "have it say 'boss round', then 'live reset',
+    // then what it is ... then 'round one', so each text is like a new card
+    // pop up"): the intro is a sequence of cards through the calm, each
+    // popping in, and no launch before the last.
+    const cards = [];
+    for (let i = 0; i < 120 && cards.length < 4; i++) {
+      const c = await lp.evaluate(() => {
+        const card = document.querySelector('.v3-event-card.show.boss-intro');
+        const g = window.__v3.game();
+        return card ? { key: card.dataset.bossKey, n: card.dataset.bossCard, eyebrow: card.querySelector('.v3-event-eyebrow')?.textContent ?? '', name: card.querySelector('.v3-event-name')?.textContent ?? '', sub: card.querySelector('.v3-event-boss')?.textContent ?? '', pop: card.classList.contains('pop'), launched: g.threats.length, t: Math.round(g.waveT * 10) / 10 } : null;
+      });
+      if (c && c.key !== cards[cards.length - 1]?.key) {
+        cards.push(c);
+        await lp.waitForTimeout(450);
+        await lp.screenshot({ path: `${SHOT_DIR}/15-boss-card-${cards.length}.png` });
+      }
       await lp.waitForTimeout(100);
     }
+    const seq = cards.map((c) => `${c.n} ${c.key}: ${c.eyebrow ? `${c.eyebrow} / ` : ''}${c.name}${c.sub ? ` / ${c.sub}` : ''} @${c.t}s`).join(' | ');
+    check(cards.map((c) => c.key).join() === 'boss,restore,name,round', `round 11 (log v30): four cards pop up in turn, boss round, the convoy, the boss, the round (${seq})`);
+    check(/^Boss round$/i.test(cards[0]?.name ?? '') && /convoy restored/i.test(cards[1]?.name ?? '') && /\d ships? can still be lost/i.test(cards[1]?.sub ?? '') && cards[2]?.name === 'Afterburner Rush' && /^Round 1 of 3$/.test(cards[3]?.name ?? '') && /Survive the next 3 rounds/.test(cards[3]?.sub ?? ''), `the cards read BOSS ROUND, Convoy restored (the ships that can still be lost), the boss's name, Round 1 of 3 (${seq})`);
+    check(cards.every((c) => c.pop && c.launched === 0), `each card pops in, and nothing flies while they read (${seq})`);
+    // Rounds 2 and 3: one short card each, Round 2 of 3 and Round 3 of 3.
+    const later = new Set();
+    for (let i = 0; i < 400; i++) {
+      const ph = await lp.evaluate(() => {
+        const g = window.__v3.game();
+        // Each round runs to its card's end before it is emptied.
+        if (!document.querySelector('.v3-event-card.show.boss-intro')) {
+          g.threats = []; g.queue = []; g.raiderQueue = []; g.raids = []; if (g.event) g.event.plan = [];
+        }
+        const c = document.querySelector('.v3-event-card.show.boss-intro');
+        return { phase: g.phase, card: c ? `${c.querySelector('.v3-event-eyebrow')?.textContent ?? ''} / ${c.querySelector('.v3-event-name')?.textContent}` : '' };
+      });
+      if (ph.card) later.add(ph.card);
+      if (ph.phase !== 'wave' && ph.phase !== 'draft') break;
+      await lp.waitForTimeout(100);
+    }
+    check(later.has('Afterburner Rush / Round 2 of 3') && later.has('Afterburner Rush / Round 3 of 3'), `rounds 2 and 3 open on a short card each (${[...later].join(' | ')})`);
     await lp.waitForSelector('[data-screen="result"]');
     const resEv = await lp.evaluate(() => { const e = document.querySelector('[data-result-event]'); return `${e?.dataset.resultEvent} | ${e?.dataset.resultEnding}`; });
     check(resEv === 'rush:clean rush:clean rush:clean | clean', `the result screen lists the three runs and the ending as a whole (${resEv})`);

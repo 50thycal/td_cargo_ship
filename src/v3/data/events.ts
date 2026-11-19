@@ -242,8 +242,16 @@ export const EVENT = {
   /** Log v29 (the player, Marrow: "with the boss wave have more of a pause
    *  before it begins ... make it feel more dramatic"): seconds of calm
    *  more, after the breather, before the first boss round's first launch
-   *  (the map's ending, run 1 of several; every map). */
-  bossCalm: 5,
+   *  (the map's ending, run 1 of several; every map). 5 s in v29; 6 s
+   *  since v30, so the intro's four cards read (introCard). */
+  bossCalm: 6,
+  /** Log v30 (the player, on the hub: "have it say 'boss round', then
+   *  'live reset', then what it is, like 'drone swarm', then 'round one',
+   *  so each text is like a new card pop up"): seconds each card of the
+   *  boss intro holds (bossIntroCards). The first round's four cards fill
+   *  the breather and the calm (3 + 6 s) with a second to spare before the
+   *  first launch; rounds 2 and 3 get one card. */
+  introCard: 2,
   cap: 48,
   bonus: { clean: 3000, held: 1500, broken: 0 } as Record<EventOutcome, number>,
 };
@@ -479,4 +487,36 @@ export const EV = {
  *  boss round's title) and every id stays as it was. */
 export function bossRound(run: number, runs: number): string {
   return `Boss round ${run} of ${runs}`;
+}
+
+/** One card of the boss intro: shown from `at` s into the wave until the
+ *  next card (the last until `until`). */
+export interface IntroCard {
+  key: 'boss' | 'restore' | 'name' | 'round';
+  eyebrow?: string;
+  title: string;
+  sub?: string;
+  at: number;
+  until: number;
+}
+
+/** The boss intro (log v30, replacing v29's single banner): cards popping
+ *  up one after another through the calm before a boss round. Round 1:
+ *  "BOSS ROUND", then the convoy restored and the ships that can still be
+ *  lost (`left`; `restored` false: no restore, only the ships left), then
+ *  the boss's name, then "Round 1 of 3". Rounds 2 and 3: "Round 2 of 3". */
+export function bossIntroCards(id: EventId, run: number, runs: number, left: number, restored: boolean): IntroCard[] {
+  const d = EVENT.introCard;
+  const ships = `${left} ship${left === 1 ? '' : 's'}`;
+  const round = { key: 'round' as const, eyebrow: EVENTS[id].name, title: `Round ${run} of ${runs}` };
+  if (run !== 1) return [{ ...round, at: 0, until: d * 1.5 }];
+  const cards: Omit<IntroCard, 'at' | 'until'>[] = [
+    { key: 'boss', title: 'Boss round' },
+    restored ? { key: 'restore', title: 'Convoy restored', sub: `${ships} can still be lost` } : { key: 'restore', title: `${ships} left`, sub: 'can still be lost' },
+    { key: 'name', eyebrow: 'The boss', title: EVENTS[id].name },
+    { ...round, sub: `Survive the next ${runs} rounds` },
+  ];
+  // The last card holds to the first launch (the breather and the calm).
+  const end = EVENT.breather + EVENT.bossCalm;
+  return cards.map((c, k) => ({ ...c, at: k * d, until: k === cards.length - 1 ? end : (k + 1) * d }));
 }

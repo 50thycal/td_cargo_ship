@@ -178,12 +178,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      opens EVENT.bossCalm s later; and frigates round a bend smoothly
  *      (their bow and their step across eased, the bend's corners
  *      averaged). A v28 log with a frigate on a bent lane, on Marrow, or
- *      that reaches a three-run ending no longer replays to the same game. */
-export const LOG_VERSION = 29;
+ *      that reaches a three-run ending no longer replays to the same game.
+ *  30: after the chapter 1 replay (review 2026-11-19 r6; docs/design/
+ *      v3-ch1-kesh.md and v3-ch1-marrow.md, "After the v29 replay"): the
+ *      Kesh Hook's and Lee of Marrow's waves climb instead of ending on a
+ *      cliff (encounters rev 4 reworked, and each map's v1 moves a little
+ *      of its shared waves' fire from waves 9-10 to waves 2-6: lab only);
+ *      and the first boss round of every map's three-run ending opens on a
+ *      calm of EVENT.bossCalm 6 s (5 before), for the intro's four cards. A
+ *      v29 Kesh or Marrow map-card log, or one that reaches a three-run
+ *      ending, no longer replays to the same game. */
+export const LOG_VERSION = 30;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [29];
+export const LOG_REPLAYS: readonly number[] = [30];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
